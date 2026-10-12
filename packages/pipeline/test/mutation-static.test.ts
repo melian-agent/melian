@@ -44,6 +44,7 @@ import {
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MutationCache } from "../src/mutation-cache.ts";
+import { MutationProcess } from "../src/mutation-process.ts";
 import { MutationScratch } from "../src/mutation-scratch.ts";
 import { MutationRun, strykerNotInstalled, strykerVersion } from "../src/mutation-static.ts";
 import { MutationTests } from "../src/mutation-tests.ts";
@@ -693,7 +694,10 @@ ln -s '${secret}' '${name}'
 exit 0`,
 			);
 			const error = await mutate(base, head).catch((error: unknown) => error);
-			expect(error).toMatchObject({ code: "toolFailed", message: expect.stringContaining("non-file") });
+			expect(error).toMatchObject({
+				code: "toolFailed",
+				message: expect.stringMatching(/non-file|log is not a regular file/),
+			});
 			expect(String(error)).toContain(name.replace("../", ""));
 			expect(String(error)).not.toContain("secret-only-on-host");
 			expect(readFileSync(secret, "utf8")).toBe("secret-only-on-host");
@@ -1529,6 +1533,49 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 			expect(failure).toBeInstanceOf(CheckError);
 			expect(failure).toMatchObject({ code: "toolFailed", check: "static.mutation" });
 			expect((failure as CheckError).message).toContain("Stryker exited 1: stryker said something");
+		});
+
+		it.each(["missing", "directory", "symlink"])(
+			"names a %s log and retains supervisor stderr without following it",
+			async (kind) => {
+				const { base, head } = twoCommits();
+				stryker({ report: report({}) });
+				vi.spyOn(MutationProcess.prototype, "execute").mockResolvedValue({
+					code: 1,
+					output: "supervisor stderr: runner could not start",
+				});
+				const original = MutationScratch.prototype.read;
+				const secret = join(repo, "outside-log");
+				writeFileSync(secret, "HOST SECRET MUST NOT BE READ");
+				vi.spyOn(MutationScratch.prototype, "read").mockImplementation(async function (
+					this: MutationScratch,
+					path,
+					limit,
+				) {
+					if (path.endsWith("/stryker.log")) {
+						if (kind === "directory") mkdirSync(path);
+						if (kind === "symlink") symlinkSync(secret, path);
+					}
+					return original.call(this, path, limit);
+				});
+				const failure = await mutate(base, head).catch((error: unknown) => error);
+				expect(failure).toMatchObject({ code: "toolFailed", check: "static.mutation" });
+				expect(String(failure)).toContain("Stryker exited 1:");
+				expect(String(failure)).toContain(kind === "missing" ? "log missing" : "log is not a regular file");
+				expect(String(failure)).toContain("stryker.log");
+				expect(String(failure)).toContain("supervisor stderr: runner could not start");
+				expect(String(failure)).not.toContain("HOST SECRET");
+			},
+		);
+
+		it.each([4096, 4097])("bounds supervisor stderr when the log is missing (%s)", async (length) => {
+			const { base, head } = twoCommits();
+			stryker({ report: report({}) });
+			const stderr = `FIRST${"x".repeat(length - 9)}LAST`;
+			vi.spyOn(MutationProcess.prototype, "execute").mockResolvedValue({ code: 1, output: stderr });
+			const failure = await mutate(base, head).catch((error: unknown) => error);
+			expect(failure).toBeInstanceOf(CheckError);
+			expect((failure as CheckError).message.split("\n").at(-1)).toBe(stderr.slice(-4096));
 		});
 
 		it("fails as invalidOutput when it exits with a code it does not document, whatever it wrote", async () => {

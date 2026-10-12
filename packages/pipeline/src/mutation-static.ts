@@ -386,7 +386,19 @@ writeFileSync("reports/mutation/mutation.json", JSON.stringify(report));
 		} finally {
 			await restore();
 		}
-		const output = ((await this.#files.read(log, staticOutputLimit)) ?? result.output).slice(-4096).trim();
+		const stderr = result.output.slice(-4096).trim();
+		let logText: string | undefined;
+		try {
+			logText = await this.#files.read(log, staticOutputLimit);
+		} catch (error) {
+			throw this.#run.fail(
+				"toolFailed",
+				`Stryker exited ${result.code}: log unreadable at ${log}: ${String(error).replaceAll("non-file", "log is not a regular file")}\n${stderr}`,
+			);
+		}
+		if (logText === undefined)
+			throw this.#run.fail("toolFailed", `Stryker exited ${result.code}: log missing at ${log}\n${stderr}`);
+		const output = logText.slice(-4096).trim();
 		if (result.code === 1) throw this.#run.fail("toolFailed", `Stryker exited 1: ${output}`);
 		if (result.code !== 0)
 			throw this.#run.fail("invalidOutput", `Stryker exited ${result.code}, which it does not document: ${output}`);

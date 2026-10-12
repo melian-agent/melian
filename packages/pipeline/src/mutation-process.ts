@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { posix } from "node:path";
 import { backgroundContext, type Context, type ExecutionEnv } from "./harness.ts";
+import { MutationStderr } from "./mutation-stderr.ts";
 import type { Run } from "./static.ts";
 
 // Signal rule. Melian never signals a negative pid, 0, -1 or a process group. A mutation run ends by pid: only processes
@@ -177,16 +178,21 @@ const table = {
 	kill: (pid, signal) => { try { process.kill(pid, signal); } catch {} },
 };
 let child;
+const MutationStderr = ${MutationStderr};
+const stderr = new MutationStderr();
 supervise(options, {
 	pid: process.pid,
 	list,
 	spawn: () => {
-		child = spawn("/bin/bash", ["-c", ${JSON.stringify(command)}], { stdio: "ignore" });
+		child = spawn("/bin/bash", ["-c", ${JSON.stringify(command)}], { stdio: ["ignore", "ignore", "pipe"] });
+		child.stderr.setEncoding("utf8");
+		child.stderr.on("data", (text) => stderr.append(text));
 		return child.pid;
 	},
 	exited: (callback) => child.on("exit", (code) => callback(code ?? 1)),
 	terminated: (callback) => process.on("SIGTERM", callback),
 	write: (name, text) => {
+		writeFileSync(control + "/stderr.json", JSON.stringify(stderr.read()));
 		writeFileSync(control + "/" + name + ".tmp", text);
 		renameSync(control + "/" + name + ".tmp", control + "/" + name);
 	},
@@ -283,11 +289,13 @@ export class MutationProcess {
 			await run.input.mutationProcess?.started(record);
 			started = true;
 			const done = quote(posix.join(control, "done"));
-			return await run.shell(
+			const result = await run.shell(
 				`touch ${go}\nwhile [ ! -f ${done} ]; do sleep 0.1; done\nexit "$(cat ${done})"`,
 				undefined,
 				environment,
 			);
+			const stderr = await env.readTextFile(posix.join(control, "stderr.json"), run.context);
+			return { ...result, output: [result.output, stderr.ok ? JSON.parse(stderr.value) : ""].join("\n").trim() };
 		} finally {
 			if (record === undefined) await env.remove(control, { recursive: true, force: true }, backgroundContext);
 			else await (await MutationTree.read(env, record, backgroundContext)).terminate(env);

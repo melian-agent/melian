@@ -531,7 +531,7 @@ describe("MutationProcess.execute", () => {
 				ProcessTable,
 				MutationTree,
 				posix,
-				quote: (text: string) => JSON.stringify(text),
+				quote: (text: string) => `'${text.replaceAll("'", "'\\''")}'`,
 				process,
 				supervisorSource,
 				backgroundContext,
@@ -552,56 +552,145 @@ describe("MutationProcess.execute", () => {
 			rmSync(directory, { recursive: true, force: true });
 		}
 	});
-	it("records the ready tree before run.shell releases the paused command", async () => {
-		// macOS links /var to /private/var, and the shell command names the resolved path.
-		const directory = realpathSync(mkdtempSync(join(tmpdir(), "melian-launch-test-")));
-		const control = join(directory, "control");
-		mkdirSync(control);
-		const record = { control, supervisor: { pid: 20, start: "s20" }, root: { pid: 21, start: "s21" } };
-		const env = createNodeExecutionEnv(directory);
-		let recorded = false;
-		const started = vi.fn(async () => {
-			expect(existsSync(join(control, "go"))).toBe(false);
-			await new Promise((resolve) => setTimeout(resolve, 10));
-			recorded = true;
-		});
-		const stopped = vi.fn(async () => {});
-		vi.spyOn(env, "createTempDir").mockResolvedValue({ ok: true, value: control });
-		vi.spyOn(ProcessTable.prototype, "start").mockReturnValue("controller");
-		vi.spyOn(ProcessTable.prototype, "list").mockReturnValue([]);
-		const signal = vi.spyOn(ProcessTable.prototype, "kill").mockImplementation(() => {});
-		const execute = vi.spyOn(env, "exec");
-		execute.mockImplementationOnce(async (command) => {
-			expect(command).toContain("supervisor.mjs");
-			expect(command).toContain("ready.json");
-			writeFileSync(join(control, "ready.json"), JSON.stringify(record));
-			return { ok: true, value: { exitCode: 0 } };
-		});
-		execute.mockImplementationOnce(async (command) => {
-			expect(command).toContain(`touch '${join(control, "go")}'`);
-			expect(started).toHaveBeenCalledExactlyOnceWith(record);
-			expect(recorded).toBe(true);
-			return { ok: true, value: { exitCode: 0 } };
-		});
-		const run = new Run(
-			{
-				env,
-				repoRoot: directory,
-				commit: "a".repeat(40),
-				tool: "mutation",
-				settings: { enabled: true, timeout: 10, severity: {}, maxLines: 1 },
-				mutationProcess: { started, stopped },
+	it.each([true, false])(
+		"records the ready tree before run.shell releases the paused command (stderr=%s)",
+		async (captured) => {
+			// macOS links /var to /private/var, and the shell command names the resolved path.
+			const directory = realpathSync(mkdtempSync(join(tmpdir(), "melian-launch-test-")));
+			const control = join(directory, "control");
+			mkdirSync(control);
+			const record = { control, supervisor: { pid: 20, start: "s20" }, root: { pid: 21, start: "s21" } };
+			const env = createNodeExecutionEnv(directory);
+			let recorded = false;
+			const started = vi.fn(async () => {
+				expect(existsSync(join(control, "go"))).toBe(false);
+				await new Promise((resolve) => setTimeout(resolve, 10));
+				recorded = true;
+			});
+			const stopped = vi.fn(async () => {});
+			vi.spyOn(env, "createTempDir").mockResolvedValue({ ok: true, value: control });
+			vi.spyOn(ProcessTable.prototype, "start").mockReturnValue("controller");
+			vi.spyOn(ProcessTable.prototype, "list").mockReturnValue([]);
+			const signal = vi.spyOn(ProcessTable.prototype, "kill").mockImplementation(() => {});
+			const execute = vi.spyOn(env, "exec");
+			execute.mockImplementationOnce(async (command) => {
+				expect(command).toContain("supervisor.mjs");
+				expect(command).toContain("ready.json");
+				writeFileSync(join(control, "ready.json"), JSON.stringify(record));
+				return { ok: true, value: { exitCode: 0 } };
+			});
+			execute.mockImplementationOnce(async (command) => {
+				expect(command).toContain(`touch '${join(control, "go")}'`);
+				expect(started).toHaveBeenCalledExactlyOnceWith(record);
+				expect(recorded).toBe(true);
+				return { ok: true, value: { exitCode: 0 } };
+			});
+			const run = new Run(
+				{
+					env,
+					repoRoot: directory,
+					commit: "a".repeat(40),
+					tool: "mutation",
+					settings: { enabled: true, timeout: 10, severity: {}, maxLines: 1 },
+					mutationProcess: { started, stopped },
+				},
+				backgroundContext,
+			);
+			try {
+				if (captured) writeFileSync(join(control, "stderr.json"), JSON.stringify("supervisor captured stderr"));
+				let method = MutationProcess.prototype.execute;
+				if (process.env.MELIAN_EXECUTE_OUTPUT_FAULT) {
+					const source = readFileSync(new URL("../src/mutation-process.ts", import.meta.url), "utf8");
+					const original = source.slice(source.indexOf("\tasync execute("), source.lastIndexOf("\n}"));
+					const [before, after] = JSON.parse(process.env.MELIAN_EXECUTE_OUTPUT_FAULT) as [string, string];
+					expect(original.split(before)).toHaveLength(2);
+					method = runInNewContext(stripTypeScriptTypes(`({ ${original.replace(before, after)} }).execute`), {
+						ProcessTable,
+						MutationTree,
+						posix,
+						quote: (text: string) => `'${text.replaceAll("'", "'\\''")}'`,
+						process,
+						supervisorSource,
+						backgroundContext,
+					});
+				}
+				expect(await method.call(new MutationProcess(run), "true", {})).toEqual({
+					code: 0,
+					output: captured ? "supervisor captured stderr" : "",
+				});
+				expect(started).toHaveBeenCalledExactlyOnceWith(record);
+				expect(stopped).toHaveBeenCalledOnce();
+				expect(signal).not.toHaveBeenCalled();
+			} finally {
+				vi.restoreAllMocks();
+				rmSync(directory, { recursive: true, force: true });
+			}
+		},
+	);
+});
+
+it("captures bounded stderr in the supervisor before publishing done with fake process controls", async () => {
+	let exited: ((code: number) => void) | undefined;
+	let data: ((text: string) => void) | undefined;
+	const written = new Map<string, string>();
+	let table = ["10 1 controller", "20 1 supervisor", "21 20 root"];
+	const child = {
+		pid: 21,
+		stderr: {
+			setEncoding: vi.fn(),
+			on: (name: string, callback: (text: string) => void) => {
+				expect(name).toBe("data");
+				data = callback;
 			},
-			backgroundContext,
-		);
-		try {
-			expect(await new MutationProcess(run).execute("true", {})).toEqual({ code: 0, output: "" });
-			expect(started).toHaveBeenCalledExactlyOnceWith(record);
-			expect(stopped).toHaveBeenCalledOnce();
-			expect(signal).not.toHaveBeenCalled();
-		} finally {
-			vi.restoreAllMocks();
-			rmSync(directory, { recursive: true, force: true });
-		}
+		},
+		on: (name: string, callback: (code: number) => void) => {
+			expect(name).toBe("exit");
+			exited = callback;
+		},
+	};
+	let source = supervisorSource(
+		{ controller: { pid: 10, start: "controller" }, interval: 100 },
+		"head-command",
+		"/control",
+	).replace(/^import .*;$/gm, "");
+	if (process.env.MELIAN_STDERR_FAULT) {
+		const [before, after] = JSON.parse(process.env.MELIAN_STDERR_FAULT) as [string, string];
+		expect(source.split(before)).toHaveLength(2);
+		source = source.replace(before, after);
+	}
+	runInNewContext(source, {
+		spawn: (command: string, args: string[], options: object) => {
+			expect([command, args, options]).toEqual([
+				"/bin/bash",
+				["-c", "head-command"],
+				{ stdio: ["ignore", "ignore", "pipe"] },
+			]);
+			return child;
+		},
+		spawnSync: () => ({ status: 0, stdout: table.join("\n") }),
+		writeFileSync: (path: string, text: string) => {
+			written.set(path, text);
+		},
+		renameSync: (from: string, to: string) => {
+			written.set(to, written.get(from)!);
+		},
+		setInterval: () => 1,
+		setTimeout: (callback: () => void) => callback(),
+		process: {
+			pid: 20,
+			on: () => {},
+			exit: () => {},
+			kill: vi.fn((pid: number) => {
+				table = table.filter((row) => !row.startsWith(`${pid} `));
+			}),
+		},
 	});
+	expect(child.stderr.setEncoding).toHaveBeenCalledWith("utf8");
+	data!("initial stderr\n");
+	data!("last stderr");
+	expect(exited).toBeTypeOf("function");
+	exited!(1);
+	await new Promise(setImmediate);
+	expect(JSON.parse(written.get("/control/stderr.json")!)).toBe("initial stderr\nlast stderr");
+	expect(written.get("/control/done")).toBe("1");
 });
