@@ -519,3 +519,19 @@ it.each(["...getOptions()", '[name]: ["checks/*.check.ts"]'])(
 		}
 	},
 );
+
+it.each([undefined, '["checks/**/*.check.ts"]'])("reads only test.include beside a coverage include (%s)", (value) => {
+	root = mkdtempSync(join(tmpdir(), "melian-vitest-coverage-"));
+	writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ include: ["*.ts"] }));
+	writeFileSync(
+		join(root, "vitest.config.ts"),
+		`const include = ["ignored/**"]; export default { include: ["other/**"], plugin: { include, test: { include: ["plugin/**"] } }, test: { ${value === undefined ? "" : `include: ${value},`} coverage: { include: ["src/covered/**"] } } };`,
+	);
+	const compiler = CompilerGraph.open(root);
+	try {
+		compiler.read({ importsOnly: true });
+		expect(compiler.testIncludes()).toEqual(value === undefined ? undefined : ["checks/**/*.check.ts"]);
+	} finally {
+		compiler.close();
+	}
+});

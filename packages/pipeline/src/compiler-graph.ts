@@ -242,11 +242,21 @@ export class CompilerGraph {
 				if (path === undefined || !modules.has(path)) continue;
 				const source = project.program.getSourceFile(name);
 				const visit = (node: Node): void => {
+					const container = node.parent.parent;
+					const testOption =
+						container !== undefined &&
+						isPropertyAssignment(container) &&
+						container.parent.parent.kind !== SyntaxKind.PropertyAssignment &&
+						container.name.getText().replace(/^['"]|['"]$/g, "") === "test";
 					if (node.kind === SyntaxKind.SpreadAssignment || node.kind === SyntaxKind.ComputedPropertyName)
 						throw new Error(`Vitest ${property} is computed`);
-					if (isShorthandPropertyAssignment(node) && node.name.getText() === property)
+					if (isShorthandPropertyAssignment(node) && testOption && node.name.getText() === property)
 						throw new Error(`Vitest ${property} is computed`);
-					if (isPropertyAssignment(node) && node.name.getText().replace(/^['"]|['"]$/g, "") === property) {
+					if (
+						isPropertyAssignment(node) &&
+						testOption &&
+						node.name.getText().replace(/^['"]|['"]$/g, "") === property
+					) {
 						found = true;
 						const values = isArrayLiteralExpression(node.initializer)
 							? node.initializer.elements
