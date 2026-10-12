@@ -107,6 +107,10 @@ export class MutationScratch {
 	}
 
 	async #execute(operation: string, target: string, content = "", limit = 0): Promise<string | undefined> {
+		if (operation === "remove" || operation === "clean") {
+			const entry = await this.#run.input.env.fileInfo(target, backgroundContext);
+			if (!entry.ok && entry.error.code === "not_found") return;
+		}
 		const command = `${quote(process.execPath)} -e ${quote(mutationHousekeeping)} ${quote(JSON.stringify([this.#paths.scratch, target, operation, content, limit]))}`;
 		let output = "";
 		const result = await this.#run.input.env.exec(
@@ -144,6 +148,10 @@ export class MutationScratch {
 	async close(): Promise<void> {
 		await this.#execute("clean", this.#paths.scratch);
 		// rmdir never follows its final component; recursive deletion happened inside the sandbox.
-		await rmdir(this.#paths.scratch);
+		try {
+			await rmdir(this.#paths.scratch);
+		} catch (error) {
+			if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+		}
 	}
 }

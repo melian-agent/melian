@@ -1,4 +1,5 @@
 import * as fs from "node:fs";
+import * as promiseFilesystem from "node:fs/promises";
 import { tmpdir } from "node:os";
 import * as path from "node:path";
 import { runInNewContext } from "node:vm";
@@ -7,6 +8,8 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { MutationScratch, mutationHousekeeping } from "../src/mutation-scratch.ts";
 import { Run } from "../src/static.ts";
 import { unconfinedSandbox } from "./fixtures/sandbox.ts";
+
+vi.mock("node:fs/promises", { spy: true });
 
 let directory: string;
 let scratch: string;
@@ -216,6 +219,8 @@ it("writes and replaces a regular file, removes it, and closes the scratch direc
 	await operations.remove(target);
 	expect(fs.existsSync(target)).toBe(false);
 	await operations.close();
+	await operations.remove(path.join(scratch, "base/tree"));
+	await operations.close();
 	expect(fs.existsSync(scratch)).toBe(false);
 	expect(fs.readFileSync(path.join(outside, "sentinel"), "utf8")).toBe("host data");
 });
@@ -259,4 +264,55 @@ it("launches housekeeping from a trusted directory rather than a head-written sc
 		"",
 		undefined,
 	);
+});
+
+it("keeps missing cleanup harmless but refuses other filesystem failures", async () => {
+	const env = createNodeExecutionEnv(directory);
+	const run = new Run(
+		{
+			env,
+			repoRoot: directory,
+			commit: "a".repeat(40),
+			tool: "mutation",
+			settings: { enabled: true, timeout: 60, severity: {}, maxLines: 1 },
+		},
+		backgroundContext,
+	);
+	const operations = MutationScratch.open(run, scratch, unconfinedSandbox, []);
+	const execute = vi.spyOn(env, "exec");
+	await operations.remove(path.join(scratch, "base/tree"));
+	expect(execute).not.toHaveBeenCalled();
+	await expect(operations.close()).resolves.toBeUndefined();
+	fs.writeFileSync(scratch, "not a directory");
+	await expect(operations.close()).rejects.toThrow();
+});
+
+it("does not treat a denied cleanup lookup as an absent path", async () => {
+	const env = createNodeExecutionEnv(directory);
+	vi.spyOn(env, "fileInfo").mockResolvedValue({
+		ok: false,
+		error: Object.assign(new Error("denied"), { code: "permission_denied" as const }),
+	});
+	const execute = vi.spyOn(env, "exec").mockRejectedValue(new Error("attempted confined removal"));
+	const run = new Run(
+		{
+			env,
+			repoRoot: directory,
+			commit: "a".repeat(40),
+			tool: "mutation",
+			settings: { enabled: true, timeout: 60, severity: {}, maxLines: 1 },
+		},
+		backgroundContext,
+	);
+	await expect(
+		MutationScratch.open(run, scratch, unconfinedSandbox, []).remove(path.join(scratch, "tree")),
+	).rejects.toThrow("attempted confined removal");
+	expect(execute).toHaveBeenCalledOnce();
+});
+
+it("propagates an rmdir failure other than an already absent scratch", async () => {
+	vi.spyOn(promiseFilesystem, "rmdir").mockRejectedValueOnce(
+		Object.assign(new Error("rmdir denied"), { code: "EACCES" }),
+	);
+	await expect(files().close()).rejects.toThrow("rmdir denied");
 });

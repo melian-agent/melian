@@ -961,4 +961,4 @@ Melian’s committed Enola constraint forbids core importing the pipeline by pac
 
 Signal targets. Automatic mutation excludes Melian’s signal-sending production files: `packages/core/src/git.ts`, `packages/pipeline/src/cache-scratch.ts`, `packages/pipeline/src/mutation-process.ts` and `packages/pipeline/src/static.ts`. The last has a `kill -0` liveness probe, which is still a signal operation. Their contracts are proved on fake process controls. Keep this list in `mutation-static.ts` current when adding signal code.
 
-Mutation cleanup deletes scratch under retained confinement, then unlocks and prunes its missing git registration. Host git never recursively removes a head-written scratch path, including one recreated after deletion.
+Mutation cleanup unlocks the worktrees, removes their trees under retained confinement and prunes their registrations. It removes scratch last. A missing tree or scratch is harmless on retry. Host git never recursively removes a head-written scratch path, including one recreated after deletion.
