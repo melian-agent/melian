@@ -33,6 +33,7 @@ Melian follows Pi's philosophy: a minimal core, extensible by design, small enou
 - **Data, not instructions.** Submitted code and comments enter prompts as quoted data. Only repository collaborators can command Melian.
 - **Everything is a file in the repository.** Standards, lenses, configuration, and knowledge are versioned, reviewed, and inherited like code.
 - **Replay-safe by default.** Every step either reruns safely or is guarded by an idempotency key.
+- **Ask the authority.** Melian does not re-implement by hand what a dependency already parses or answers. Problem: a hand version handles the shapes its author thought of, and each review round finds one more. Example: [pull request #102](https://github.com/melian-agent/melian/pull/102) took eighteen rounds while a hand-written line reconstruction over the Markdown tree met a new shape each round. It ended when the code took decoded text and positions from the parser. Solution: the parser says what a document's text is, the test runner says which tests cover a file, and the compiler says what a name resolves to. An exception is fair only when the authority cannot run where the answer is needed, and the code then states the gap and fails closed. A rule of the `design` lens, `reimplements-an-authority`, is planned to check it. [The decision](decisions/2026-10-12-ask-the-authority.md) records both examples.
 
 ## Concepts
 
