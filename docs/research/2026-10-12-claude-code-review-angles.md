@@ -81,7 +81,7 @@ The prompt that ran as Melian's shadow reviewer on 2026-10-03 had eight inline a
 The `code-review` plugin is a pull request workflow, separate from the built-in skill.
 
 - Small-model agents check eligibility, find the `CLAUDE.md` files, and summarise the change.
-- Five reviewers run in parallel: compliance with `CLAUDE.md`, a shallow scan for obvious bugs in the changed lines, git blame and history, earlier pull requests on the same files with their comments, and guidance in code comments.
+- Five reviewers run in parallel. Two read the change: one for compliance with `CLAUDE.md`, one for obvious bugs in the changed lines. Two read history: git blame, and earlier pull requests on the same files with their comments. The fifth reads guidance in code comments.
 - A scorer rates each issue from 0 to 100 against a rubric, and anything under 80 is dropped.
 - A list of false positives excludes pre-existing issues, anything a linter catches, and lines the pull request did not touch.
 
@@ -91,7 +91,7 @@ The `code-review` plugin is a pull request workflow, separate from the built-in 
 
 In [the comparison of review tools](2026-10-04-review-tools-compared.md):
 
-1. Cleanup is not one finder. Reuse, simplification, efficiency, altitude, and conventions are five separate angles, and the conventions angle reads `CLAUDE.md` files.
+1. Cleanup is not one finder. The earlier note grouped five separate angles under it. The templates call three of them cleanup: reuse, simplification, and efficiency. Altitude and conventions stand apart, and the conventions angle reads `CLAUDE.md` files.
 2. Angle E, wrapper and proxy correctness, is missing. It joins with language pitfalls at the top two levels, so those levels run ten angles.
 3. The caps are 4, 8, 10, 15, and 15. The sweep adds at most eight candidates before the cap.
 4. The model-family templates differ more than the note says. Opus 4.8's medium and high templates verify nothing. Opus 5's are a minimal single pass with no angles. Low's cap of four holds for the default and Opus 5 only.

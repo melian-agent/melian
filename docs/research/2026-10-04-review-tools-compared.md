@@ -14,7 +14,7 @@ Past two files or 256 KB, Codex gets the file list instead of the diff and reads
 
 Source: the prompt templates in the [Claude Code](https://github.com/anthropics/claude-code) 2.1.252 binary, and the prompt that ran in Melian's review subagents on 2026-10-03 under 2.1.287, which matches them closely.
 
-[The note on Claude Code's review angles](2026-10-12-claude-code-review-angles.md) corrects this section on four points: the five separate cleanup angles, angle E, the caps, and the model-family templates.
+[The note on Claude Code's review angles](2026-10-12-claude-code-review-angles.md) corrects this section on four points: the five separate angles this note groups as cleanup, angle E, the caps, and the model-family templates.
 
 The skill reviews the branch against its upstream, with any uncommitted changes. Independent finders each take one angle, as separate subagents in the variants that use them:
 

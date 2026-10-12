@@ -54,7 +54,7 @@ A model writes almost every finding.
 - Linter output appears in about one inline finding in ten, 19 blocks in all. Most come from prose and Markdown linters run on documentation. No general security scanner appears in the sample.
 - 60 of the 199 inline findings, 30%, show that the model ran shell commands over the checkout before it posted. It searches and prints lines to check a claim about another file. This is a verification pass by the model, not a linter.
 - 52 findings carry a suggested fix as a diff.
-- Every finding carries a prompt for a coding agent. The prompt opens by telling the agent to treat the text as untrusted.
+- Every inline finding, 199 of 199, carries a prompt for a coding agent. The prompt opens by telling the agent to treat the text as untrusted.
 
 ## What the findings are about
 
@@ -96,7 +96,7 @@ Examples, paraphrased:
 | Dependency or configuration hygiene | 1 | A workflow exception is removed too early. |
 | Style, naming, performance, simplification | 0 | None in this sample. |
 
-Specification consistency is 22% of the sorted sample, and it comes from one repository that reviews its own specification documents. Style and naming are absent. The quiet profile and the repositories' own linters seem to remove them.
+Specification consistency is 22% of the sorted sample, and it comes from one repository that reviews its own specification documents. Style and naming are absent. The sample does not say why. The quiet profile and the repositories' own linters would each remove them.
 
 ## Outcomes
 
@@ -113,7 +113,7 @@ The outcome of each of the 199 inline findings was read from its thread. Accepte
 
 182 of the 199 threads are resolved. The bot resolved 141 of them itself. It appended a note naming the fixing commit to 123 of the original comments.
 
-A thread the bot resolved was resolved after a code change fixed the issue. The bot checks the new code, names the commit, and closes the thread. So a bot resolution that cites a fixing commit is evidence the finding was accepted. It is not the bot agreeing with itself. An earlier reading of this sample took the resolved flag to measure only the bot's opinion, and the maintainer of the repositories corrected it. A resolved flag with no fixing commit still says less. Where the bot accepts an explanation and no code changed, it often leaves the thread open pending a human decision.
+A thread the bot resolved was resolved after a code change fixed the issue. The bot checks the new code, names the commit, and closes the thread. So a bot resolution that cites a fixing commit is evidence the finding was accepted. It is not the bot agreeing with itself. An earlier reading of this sample took the resolved flag to measure only the bot's opinion, and the maintainer of the repositories corrected it. A resolved flag with no fixing commit still says less. In several threads the bot accepts an explanation, no code changes, and it leaves the thread open pending a human decision.
 
 By severity:
 
@@ -135,7 +135,7 @@ The authors in these repositories answer almost every finding, many with a stand
 - A finding on a line the pull request did not change cannot be posted inline. It goes in the review body with its file and lines, and has no thread.
 - Nitpicks are review-body only and mostly trivial.
 - One walkthrough comment per pull request is edited in place. It carries a summary, a table of changes, a sequence diagram, and pre-merge checks on the title, description, and linked issues.
-- The bot answers each human reply. Before it answers it often runs a check over the code. 44 of its 155 replies store a learning, a sentence recording the decision a human gave when dismissing or clarifying. Later findings cite those learnings.
+- The bot answers each human reply. Before it answers it often runs a check over the code. 44 of its 155 replies store a learning. A learning is one sentence recording the decision a human gave when dismissing or clarifying. Later findings cite those learnings.
 - When it is wrong, it withdraws the finding in words.
 
 ## Mapping to Melian's lenses
