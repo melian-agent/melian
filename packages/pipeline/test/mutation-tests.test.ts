@@ -1,5 +1,14 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	realpathSync,
+	rmSync,
+	symlinkSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -450,7 +459,7 @@ it("falls back to the whole suite when test includes cannot be resolved", () => 
 it.each(["default spec", "custom include", "default jsx", "default cjs"])(
 	"loads %s from the head through the compiler child",
 	async (kind) => {
-		const root = mkdtempSync(join(tmpdir(), "melian-head-includes-"));
+		const root = realpathSync(mkdtempSync(join(tmpdir(), "melian-head-includes-")));
 		const checkout = fileURLToPath(new URL("../../../", import.meta.url));
 		try {
 			for (const name of ["src", "test", "scratch"]) mkdirSync(join(root, name));
@@ -499,7 +508,7 @@ it.each(["default spec", "custom include", "default jsx", "default cjs"])(
 it.each(["head self-reference", "workspace package", "wrong package"])(
 	"keeps Vitest defaults in the installation boundary for %s",
 	async (kind) => {
-		const root = mkdtempSync(join(tmpdir(), "melian-vitest-boundary-"));
+		const root = realpathSync(mkdtempSync(join(tmpdir(), "melian-vitest-boundary-")));
 		const checkout = fileURLToPath(new URL("../../../", import.meta.url));
 		try {
 			for (const name of ["src", "test", "scratch", "node_modules"]) mkdirSync(join(root, name));
@@ -554,7 +563,7 @@ it.each(["head self-reference", "workspace package", "wrong package"])(
 it.each(["root", "dir", "shorthand-root", "shorthand-dir"])(
 	"uses the whole suite for a configured Vitest %s through the compiler child",
 	async (kind) => {
-		const root = mkdtempSync(join(tmpdir(), "melian-head-test-root-"));
+		const root = realpathSync(mkdtempSync(join(tmpdir(), "melian-head-test-root-")));
 		const checkout = fileURLToPath(new URL("../../../", import.meta.url));
 		try {
 			for (const name of ["app/src", "app/test", "scratch"]) mkdirSync(join(root, name), { recursive: true });
