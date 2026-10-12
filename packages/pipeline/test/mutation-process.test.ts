@@ -694,3 +694,56 @@ it("captures bounded stderr in the supervisor before publishing done with fake p
 	expect(JSON.parse(written.get("/control/stderr.json")!)).toBe("initial stderr\nlast stderr");
 	expect(written.get("/control/done")).toBe("1");
 });
+
+it("removes the control directory when startup fails before ready without releasing head code", async () => {
+	const directory = realpathSync(mkdtempSync(join(tmpdir(), "melian-pre-ready-")));
+	const control = join(directory, "control");
+	mkdirSync(control);
+	const env = createNodeExecutionEnv(directory);
+	vi.spyOn(env, "createTempDir").mockResolvedValue({ ok: true, value: control });
+	vi.spyOn(ProcessTable.prototype, "start").mockReturnValue(undefined);
+	vi.spyOn(ProcessTable.prototype, "list").mockReturnValue([]);
+	const signal = vi.spyOn(ProcessTable.prototype, "kill").mockImplementation(() => {});
+	const execute = vi.spyOn(env, "exec").mockRejectedValue(new Error("head code must not run"));
+	const remove = vi.spyOn(env, "remove");
+	const run = new Run(
+		{
+			env,
+			repoRoot: directory,
+			commit: "a".repeat(40),
+			tool: "mutation",
+			settings: { enabled: true, timeout: 10, severity: {}, maxLines: 1 },
+		},
+		backgroundContext,
+	);
+	let method = MutationProcess.prototype.execute;
+	if (process.env.MELIAN_PRE_READY_FAULT) {
+		const source = readFileSync(new URL("../src/mutation-process.ts", import.meta.url), "utf8");
+		const original = source.slice(source.indexOf("\tasync execute("), source.lastIndexOf("\n}"));
+		const removed = original.replace(
+			"await env.remove(control, { recursive: true, force: true }, backgroundContext);",
+			";",
+		);
+		expect(removed).not.toBe(original);
+		method = runInNewContext(stripTypeScriptTypes(`({ ${removed} }).execute`), {
+			ProcessTable,
+			MutationTree,
+			posix,
+			process,
+			supervisorSource,
+			backgroundContext,
+		});
+	}
+	try {
+		await expect(method.call(new MutationProcess(run), "true", {})).rejects.toThrow(
+			"could not read this process's start time",
+		);
+		expect(remove).toHaveBeenCalledExactlyOnceWith(control, { recursive: true, force: true }, backgroundContext);
+		expect(existsSync(control)).toBe(false);
+		expect(execute).not.toHaveBeenCalled();
+		expect(signal).not.toHaveBeenCalled();
+	} finally {
+		vi.restoreAllMocks();
+		rmSync(directory, { recursive: true, force: true });
+	}
+});
