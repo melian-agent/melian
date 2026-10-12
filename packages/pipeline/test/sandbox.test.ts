@@ -444,3 +444,43 @@ describe("sandbox policy on a host that cannot start nested sandboxes", () => {
 		);
 	});
 });
+
+it("denies terminal device reads and writes in the seatbelt policy", () => {
+	const sandbox = Object.assign(Object.create(Sandbox.prototype) as Sandbox, { backend: "seatbelt" as const });
+	const profile = sandbox.profile(paths())!;
+	expect(profile).toContain('(deny file-read* file-write* (literal "/dev/tty"))');
+	expect(profile).not.toContain(
+		'(allow file-write-data (literal "/dev/null") (literal "/dev/dtracehelper") (literal "/dev/tty"))',
+	);
+});
+
+it.skipIf(!seatbeltAvailable)(
+	"denies opening the controlling terminal from head code",
+	{ timeout: 60_000 },
+	async () => {
+		const sandbox = Sandbox.detect("darwin")!;
+		const where = paths();
+		const probe = join(where.worktree, "tty.cjs");
+		writeFileSync(
+			probe,
+			`const fs = require("node:fs"); try { const fd = fs.openSync("/dev/tty", "r+"); fs.closeSync(fd); console.log(JSON.stringify({ opened: true })); } catch (error) { console.log(JSON.stringify({ code: error.code })); }`,
+		);
+		const environment = { ...sandbox.environment(), HOME: join(where.scratch, "home"), TMPDIR: where.scratch };
+		const outside = await run("/usr/bin/script", ["-q", "/dev/null", process.execPath, probe], { env: environment });
+		expect(JSON.parse(outside.stdout)).toEqual({ opened: true });
+		const policy = join(where.scratch, "tty.sb");
+		writeFileSync(policy, sandbox.profile(where)!);
+		const inside = await run(
+			"/usr/bin/script",
+			[
+				"-q",
+				"/dev/null",
+				"/bin/bash",
+				"-c",
+				sandbox.command(`${JSON.stringify(process.execPath)} ${JSON.stringify(probe)}`, where, policy),
+			],
+			{ env: environment },
+		);
+		expect(JSON.parse(inside.stdout)).toEqual({ code: "EPERM" });
+	},
+);

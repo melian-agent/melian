@@ -188,7 +188,8 @@ export class Sandbox {
 			// /etc and /var are links into /private. The resolver stats /etc to find /etc/hosts, and the git shim reads the link in /var/select.
 			`(allow file-read-metadata (literal "/") (literal "/etc") (literal "/var") ${parents.join(" ")})`,
 			`(allow file-write* ${writable.map((path) => `(subpath ${profileString(path)})`).join(" ")})`,
-			'(allow file-write-data (literal "/dev/null") (literal "/dev/dtracehelper") (literal "/dev/tty"))',
+			'(allow file-write-data (literal "/dev/null") (literal "/dev/dtracehelper")))',
+			'(deny file-read* file-write* (literal "/dev/tty"))',
 			'(allow file-ioctl (literal "/dev/dtracehelper"))',
 			// `confstr` asks this service for the per-user temporary directory, which the git shim needs before it runs the real git.
 			'(allow mach-lookup (global-name "com.apple.bsd.dirhelper"))',
