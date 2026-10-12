@@ -14,7 +14,7 @@
 - Parse written decisions and design sections through MarkdownDocument. mdast owns Markdown syntax; never scan source text for links, definitions, images, headings or fences.
 - Resolve destinations through LocalDestination. It uses WHATWG URL parsing before URI decoding and repository boundary checks. Encode the declaring file’s path before constructing the base URL: Git filenames can contain newlines, hash signs and question marks.
 - Use mdast-util-definitions for references, mdast-util-to-string for heading text and github-slugger for heading IDs. YAML and TOML front matter are metadata. HTML nodes contribute no prose.
-- Supersedes declarations come from paragraph nodes. Bare filenames remain supported within their text nodes. Target filenames use the same domain as discovery: every Markdown file under docs/decisions, including nested, undated and Unicode names.
+- Supersedes declarations start at a line’s start in a paragraph whose parent is the root. Block quotes, list items and other containers are prose, with no declaration or parse error. Split each text node’s decoded value on the shared CommonMark CR, CRLF and LF pattern. Positions count source lines; never slice source offsets for declaration text. A piece count that disagrees with the line span refuses parsing with DecisionFilesError code invalid, as a malformed destination does. Bare filenames remain supported within decoded text nodes: `old&#46;md` reads as old.md. Target filenames use the same domain as discovery: every Markdown file under docs/decisions, including nested, undated and Unicode names.
 - Keep one table per input concern, with a positive and negative case in each row. Prove changed guards with failing mutations before committing.
 
 ## Running the tests

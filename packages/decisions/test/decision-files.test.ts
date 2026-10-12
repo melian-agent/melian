@@ -561,16 +561,16 @@ const declarationCases: [
 	],
 	[
 		"block quote",
-		" > Supersedes: [A](2026-10-01-a.md)",
+		"Supersedes: [A](2026-10-01-a.md)",
 		["docs/decisions/2026-10-01-a.md"],
-		" > ```md\n > Supersedes: [A](2026-10-01-a.md)\n > ```",
+		" > Supersedes: [A](2026-10-01-a.md)",
 		[],
 	],
 	[
 		"list paragraph",
-		"- Supersedes: [A](2026-10-01-a.md)",
+		"Supersedes: [A](2026-10-01-a.md)",
 		["docs/decisions/2026-10-01-a.md"],
-		"    Supersedes: [A](2026-10-01-a.md)",
+		"- Supersedes: [A](2026-10-01-a.md)",
 		[],
 	],
 	[
@@ -791,33 +791,53 @@ describe("inline node declaration lines", () => {
 	});
 });
 
-describe("supersession source text", () => {
+describe("top-level supersession declarations", () => {
 	it.each([
-		["bare filename", "Supersedes: old.md", ["docs/decisions/old.md"], "Supersedes: old&#46;md", []],
-		["declaration prefix", "Supersedes: old.md", ["docs/decisions/old.md"], "Supersedes&#58; old.md", []],
-		[
-			"sentinel spelling",
-			"Supersedes: n&#111;ne [Old](old.md)",
-			["docs/decisions/old.md"],
-			"Supersedes: none [Old](old.md)",
-			[],
-		],
-		[
-			"sentinel punctuation",
-			"Supersedes: none&#46; [Old](old.md)",
-			["docs/decisions/old.md"],
-			"Supersedes: none. [Old](old.md)",
-			[],
-		],
-	] as const)("%s", (_name, positive, targets, negative, negativeTargets) => {
+		["block quote first line", "> Supersedes: old.md"],
+		["round seventeen block quote continuation", "> Context: a\n> Supersedes: old.md"],
+		["list first line", "- Supersedes: old.md"],
+		["list continuation", "- Context: a\n  Supersedes: old.md"],
+		["nested quote in list", "- > Context: a\n  > Supersedes: old.md"],
+		["quoted malformed destination", "> Supersedes: [Old](old%ZZ.md)"],
+		["list malformed destination", "- Supersedes: [Old](old%ZZ.md)"],
+		["quoted entity newline", "> Context: &#10;example\n> Supersedes: old.md"],
+		["list entity newline", "- Context: &#13;example\n  Supersedes: old.md"],
+	])("%s", (_name, contained) => {
+		const path = "docs/decisions/new.md";
+		expect(parse(path, contained).supersedes).toEqual([]);
+		const declared = parse(path, `# New\n\n${contained}\n\nSupersedes: old.md`);
+		expect(declared.supersedes).toEqual(["docs/decisions/old.md"]);
+		const contextual = parse(path, `# New\n\nSupersedes: context.md\n\n${contained}`);
+		expect(contextual.supersedes).toEqual(["docs/decisions/context.md"]);
+		expect(
+			DecisionFiles.from([
+				parse("docs/decisions/old.md", "# Old"),
+				parse("docs/decisions/context.md", "# Context"),
+				contextual,
+			]).render(),
+		).toEqual(
+			"[INACTIVE; superseded by docs/decisions/new.md] docs/decisions/context.md — Context\n" +
+				"[ACTIVE] docs/decisions/new.md — New\n" +
+				"[ACTIVE] docs/decisions/old.md — Old",
+		);
+	});
+});
+
+describe("supersession decoded text", () => {
+	it.each([
+		["bare filename", "Supersedes: old&#46;md", "Supersedes: `old&#46;md`"],
+		["declaration prefix", "Supersedes&#58; old.md", "`Supersedes&#58;` old.md"],
+		["sentinel spelling", "Supersedes: old.md", "Supersedes: n&#111;ne [Old](old.md)"],
+		["sentinel punctuation", "Supersedes: old.md", "Supersedes: none&#46; [Old](old.md)"],
+	] as const)("%s", (_name, positive, negative) => {
 		const fresh = parse("docs/decisions/new.md", positive);
-		expect(fresh.supersedes).toEqual(targets);
-		const literal = parse(fresh.path, negative);
-		expect(literal.supersedes).toEqual(negativeTargets);
+		expect(fresh.supersedes).toEqual(["docs/decisions/old.md"]);
+		const contextual = parse(fresh.path, negative);
+		expect(contextual.supersedes).toEqual([]);
 		expect(DecisionFiles.from([parse("docs/decisions/old.md", "# Old"), fresh]).render()).toContain(
 			"[INACTIVE; superseded by docs/decisions/new.md] docs/decisions/old.md",
 		);
-		expect(DecisionFiles.from([parse("docs/decisions/old.md", "# Old"), literal]).render()).toContain(
+		expect(DecisionFiles.from([parse("docs/decisions/old.md", "# Old"), contextual]).render()).toContain(
 			"[ACTIVE] docs/decisions/old.md",
 		);
 	});

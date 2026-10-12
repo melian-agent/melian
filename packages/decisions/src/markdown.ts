@@ -62,7 +62,8 @@ export class MarkdownDocument {
 
 	supersedes(path: string): string[] {
 		const targets: string[] = [];
-		visit(this.#tree, "paragraph", (paragraph) => {
+		visit(this.#tree, "paragraph", (paragraph, _index, parent) => {
+			if (parent!.type !== "root") return SKIP;
 			targets.push(...this.paragraphTargets(paragraph, path));
 		});
 		return [...new Set(targets)];
@@ -83,12 +84,12 @@ export class MarkdownDocument {
 			const line = lines[start.line - firstLine]!;
 			switch (node.type) {
 				case "text": {
-					if (node.value.split(lineEndingPattern).length !== end.line - start.line + 1)
+					const prose = node.value.split(lineEndingPattern);
+					if (prose.length !== end.line - start.line + 1)
 						throw new DecisionFilesError(
 							"invalid",
 							`Invalid paragraph text in ${path} at line ${start.line}: decoded line endings disagree with source lines`,
 						);
-					const prose = this.#content.slice(start.offset!, end.offset!).split(lineEndingPattern);
 					for (let number = start.line; number <= end.line; number++)
 						lines[number - firstLine]!.prose += prose[number - start.line]!;
 					break;
