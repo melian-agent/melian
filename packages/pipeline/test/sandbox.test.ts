@@ -82,7 +82,7 @@ attempt("git", () => {
 });
 attempt("writeScratch", () => fs.writeFileSync(scratch + "/written", "1"));
 attempt("writeOutside", () => fs.writeFileSync(outside + "/written", "1"));
-// Stryker's logging server listens on every interface and its workers connect to it over loopback.
+// A tool that starts a server for its own workers listens on every interface and connects to it over loopback.
 const server = net.createServer((client) => client.end()).listen(0, "0.0.0.0", () => {
   const local = net.connect(server.address().port, "localhost");
   local.on("connect", () => { result.loopback = "ok"; local.destroy(); server.close(); });
@@ -132,8 +132,8 @@ function paths(): SandboxPaths {
 	};
 }
 
-async function probed(sandbox: Sandbox): Promise<Record<string, string>> {
-	const where = paths();
+async function probed(sandbox: Sandbox, loopback?: boolean): Promise<Record<string, string>> {
+	const where = { ...paths(), ...(loopback === undefined ? {} : { loopback }) };
 	const file = join(where.scratch, "sandbox.sb");
 	const profile = sandbox.profile(where);
 	if (profile !== undefined) writeFileSync(file, profile);
@@ -379,21 +379,28 @@ it.each(["seatbelt", "bubblewrap"] as const)(
 );
 
 describe.skipIf(!seatbeltAvailable)("seatbelt", { timeout: 60_000 }, () => {
-	it("denies the reviewer's home and the network, and allows writes under scratch only", async () => {
-		const sandbox = Sandbox.detect("darwin") as Sandbox;
-		expect(await probed(sandbox)).toEqual({
-			readHome: "denied",
-			sh: "ok",
-			shim: "ok",
-			shimWithoutTemp: "ok",
-			git: "ok",
-			writeScratch: "ok",
-			writeOutside: "denied",
-			loopback: "ok",
-			connect: "denied",
-		});
-		expect(readFileSync(join(base, "scratch/written"), "utf8")).toBe("1");
-	});
+	it.each([
+		[undefined, "denied"],
+		[false, "denied"],
+		[true, "ok"],
+	] as const)(
+		"denies the reviewer's home and the network, and allows writes under scratch only (loopback %s)",
+		async (loopback, reached) => {
+			const sandbox = Sandbox.detect("darwin") as Sandbox;
+			expect(await probed(sandbox, loopback)).toEqual({
+				readHome: "denied",
+				sh: "ok",
+				shim: "ok",
+				shimWithoutTemp: "ok",
+				git: "ok",
+				writeScratch: "ok",
+				writeOutside: "denied",
+				loopback: reached,
+				connect: "denied",
+			});
+			expect(readFileSync(join(base, "scratch/written"), "utf8")).toBe("1");
+		},
+	);
 });
 
 it.skipIf(!seatbeltAvailable)(
@@ -459,16 +466,24 @@ for (const backend of ["seatbelt", "bubblewrap"] as const) {
 	});
 }
 
-it("grants the seatbelt profile loopback and no other network rule", () => {
+it.each([
+	[undefined, []],
+	[false, []],
+	[true, ['(allow network-inbound (local ip "localhost:*"))', '(allow network-outbound (remote ip "localhost:*"))']],
+] as const)("gives the seatbelt profile no network rule unless loopback is asked for (%s)", (loopback, expected) => {
 	const sandbox = Object.assign(Object.create(Sandbox.prototype) as Sandbox, { backend: "seatbelt" });
 	const rules = sandbox
-		.profile(paths())!
+		.profile({ ...paths(), ...(loopback === undefined ? {} : { loopback }) })!
 		.split("\n")
 		.filter((line) => /network/.test(line.replace(/^\s*;.*/, "")));
-	expect(rules).toEqual([
-		'(allow network-inbound (local ip "localhost:*"))',
-		'(allow network-outbound (remote ip "localhost:*"))',
-	]);
+	expect(rules).toEqual(expected);
+});
+
+it("builds the same bubblewrap command whatever loopback says, since its namespace is private", () => {
+	const sandbox = Object.assign(Object.create(Sandbox.prototype) as Sandbox, { backend: "bubblewrap" });
+	const command = sandbox.command("true", paths(), "/unused");
+	expect(sandbox.command("true", { ...paths(), loopback: true }, "/unused")).toBe(command);
+	expect(command).toContain("--unshare-all");
 });
 
 describe("sandbox policy on a host that cannot start nested sandboxes", () => {

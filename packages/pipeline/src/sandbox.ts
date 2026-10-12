@@ -16,6 +16,12 @@ export interface SandboxPaths {
 	readonly installs: readonly string[];
 	/** The canonical Node executable, readable as a literal path. */
 	readonly node: string;
+	/**
+	 * Whether the command may listen on and connect to loopback addresses; absent means no network at all. On macOS
+	 * loopback is the host's own, so a command given it can reach every service that listens there. bubblewrap's private
+	 * network namespace has a loopback of its own with nothing on it, whatever this says.
+	 */
+	readonly loopback?: boolean;
 }
 
 // What a Node process needs from macOS to start: the dynamic linker's cache, the system frameworks and libraries, the
@@ -211,11 +217,11 @@ export class Sandbox {
 			// No Mach service and nothing in the host's per-user temporary directory. `xcrun`, which the git shim runs, keeps a
 			// cache there that host git reads later, so a write would let a command choose the program host git runs. Denied
 			// the directory's name, `xcrun` keeps its cache in `TMPDIR`, which every caller points into scratch.
-			// Stryker 10 starts a logging server on a port it picks, and its workers connect to it. Loopback is all it gets: no
-			// remote address, no unix-domain socket, no Mach service. On macOS loopback is the host's own, so the command can
-			// reach what listens there; bubblewrap's private network namespace gives it a loopback of its own.
-			'(allow network-inbound (local ip "localhost:*"))',
-			'(allow network-outbound (remote ip "localhost:*"))',
+			// Loopback is the most a caller can ask for: never a remote address or a unix-domain socket. Seatbelt cannot name a
+			// port the command picks for itself, so the allowance is every loopback port or none.
+			...(paths.loopback === true
+				? ['(allow network-inbound (local ip "localhost:*"))', '(allow network-outbound (remote ip "localhost:*"))']
+				: []),
 			"",
 		].join("\n");
 	}
