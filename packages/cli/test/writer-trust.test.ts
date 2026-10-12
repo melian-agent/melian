@@ -7,8 +7,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeGitHub } from "../../github/test/fixtures/fake-github.ts";
 import { moveTo, pullRequestState } from "../../github/test/fixtures/scenario.ts";
 import { fakeMutationProcesses } from "../../pipeline/test/fixtures/mutation-process.ts";
-import { baseAndHead, fakeTool, gitIn, isolatedGitEnv } from "../../pipeline/test/fixtures/repo.ts";
+import { baseAndHead, fakeTool, gitIn, isolatedGitEnv, writeFiles } from "../../pipeline/test/fixtures/repo.ts";
 import { unconfinedSandbox } from "../../pipeline/test/fixtures/sandbox.ts";
+import { emptyVitestInstall } from "../../pipeline/test/fixtures/vitest-listing.ts";
 import { review } from "../src/commands.ts";
 import * as targets from "../src/target.ts";
 
@@ -51,6 +52,7 @@ async function open(
 		},
 		{ "src/a.ts": "export const a = 2;\n", ...head },
 	);
+	writeFiles(repo, emptyVitestInstall);
 	calls = join(repo, "calls.txt");
 	fakeTool(
 		repo,

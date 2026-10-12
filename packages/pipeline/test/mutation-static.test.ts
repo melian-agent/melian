@@ -11,7 +11,6 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import {
 	Changeset,
 	CheckError,
@@ -47,7 +46,6 @@ import { MutationCache } from "../src/mutation-cache.ts";
 import { MutationProcess } from "../src/mutation-process.ts";
 import { MutationScratch } from "../src/mutation-scratch.ts";
 import { MutationRun, strykerNotInstalled, strykerVersion } from "../src/mutation-static.ts";
-import { MutationTests } from "../src/mutation-tests.ts";
 import { Sandbox } from "../src/sandbox.ts";
 import { Run, staticToolSource } from "../src/static.ts";
 import { fakeMutationProcesses } from "./fixtures/mutation-process.ts";
@@ -61,6 +59,7 @@ import {
 	writeFiles,
 } from "./fixtures/repo.ts";
 import { unconfinedSandbox } from "./fixtures/sandbox.ts";
+import { emptyVitestInstall } from "./fixtures/vitest-listing.ts";
 
 // The checkout's node_modules is never tracked, as in a real repository: a tracked one is ignored by the check.
 function commit(root: string, files: Record<string, string>): string {
@@ -77,6 +76,7 @@ beforeEach(() => {
 	repo = createRepository();
 	artifacts = realpathSync(mkdtempSync(join(tmpdir(), "melian-mutation-")));
 	opened = [];
+	writeFiles(repo, emptyVitestInstall);
 });
 
 afterEach(async () => {
@@ -126,7 +126,7 @@ function report(files: Record<string, Mutant[]>, ignoreStatic = false): string {
 
 // A fake `stryker` as the checkout's installed binary. It records each call's arguments and its working directory, and
 // writes the canned report where Stryker's JSON reporter does.
-function stryker(options: { report?: string; exit?: number; version?: string; requireWholeSuite?: boolean } = {}): {
+function stryker(options: { report?: string; exit?: number; version?: string } = {}): {
 	calls: () => string[][];
 	heads: () => string[];
 } {
@@ -138,7 +138,6 @@ function stryker(options: { report?: string; exit?: number; version?: string; re
 		repo,
 		"stryker",
 		`if [ "$1" = "--version" ]; then echo ${options.version ?? "10.0.0"}; exit 0; fi
-${options.requireWholeSuite ? `[ -z "\${MELIAN_MUTATION_TEST_INCLUDE+x}" ] || exit 1` : ""}
 git rev-parse HEAD >> '${heads}'
 printf 'CALL\\n%s\\n' "$(pwd)" >> '${record}'
 printf '%s\\n' "$@" >> '${record}'
@@ -320,7 +319,7 @@ describe("static.mutation", { timeout: 60_000 }, () => {
 		expect(calls).toHaveLength(1);
 		const { cwd, run, flag } = argumentsOf(calls[0]!);
 		expect(cwd).toMatch(/\/melian-static-[^/]+\/tree$/);
-		expect(run.slice(0, 2)).toEqual(["run", `${cwd}/stryker.config.json`]);
+		expect(run.slice(0, 2)).toEqual(["run", join(cwd, "../stryker.config.json")]);
 		expect(flag("--reporters")).toBe("json");
 		expect(run).toContain("--incremental");
 		expect(run).toContain("--inPlace");
@@ -477,179 +476,136 @@ printf '%s' '{"schemaVersion":"1.0","files":{}}' > reports/mutation/mutation.jso
 		expect(partitions().filter((file) => existsSync(file))).toEqual([]);
 	});
 
-	describe("related test dry run", () => {
-		function selected(tests: string[], setup = ["test/setup.ts"]) {
-			return MutationTests.select(
-				{
-					read: () => ({
-						files: [
-							{ path: "packages/p/src/a.ts", imports: [], pairs: [], external: 0, unresolved: 0 },
-							...tests.map((path) => ({
-								path,
-								imports: [
-									{
-										target: "packages/p/src/a.ts",
-										line: 1,
-										specifier: "../src/a.ts",
-										kind: "import" as const,
-										typeOnly: false,
-									},
-								],
-								pairs: [],
-								external: 0,
-								unresolved: 0,
-							})),
-						],
-					}),
-					setupFiles: () => setup,
-				},
-				["packages/p/src/a.ts"],
-			);
-		}
-		it("passes exactly the related test files through the sandbox environment", async () => {
-			const { base, head } = twoCommits();
-			vi.spyOn(MutationTests, "open").mockResolvedValue(selected(["test/a.test.ts", "test/b.test.mjs"]));
-			const saved = join(artifacts, "selected.json");
-			fakeTool(
-				repo,
-				"stryker",
-				`if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi
-cp "$MELIAN_MUTATION_TEST_INCLUDE" '${saved}'
-mkdir -p reports/mutation
-printf '%s' '{"schemaVersion":"1.0","files":{}}' > reports/mutation/mutation.json`,
-			);
-			await mutate(base, head);
-			expect(JSON.parse(readFileSync(saved, "utf8"))).toEqual(["test/a.test.ts", "test/b.test.mjs"]);
-		});
-		it("resolves related mjs tests and keeps literal setup files out of include", async () => {
-			const base = commit(repo, {
-				"stryker.config.json": config,
-				"tsconfig.json": JSON.stringify({
-					compilerOptions: { module: "nodenext", moduleResolution: "nodenext", target: "esnext" },
-				}),
-				"packages/p/src/a.ts": a,
-				"packages/p/src/middle.ts": 'export { a } from "./a.ts";',
-				"packages/p/test/a.test.ts": 'import { a } from "../src/a.ts";',
-				"scripts/transitive.test.mjs": 'import { a } from "../packages/p/src/middle.ts";',
-				"scripts/b.test.mjs": "export {};",
-				"packages/p/test/c.test.ts": "export {};",
-				"packages/p/test/d.test.ts": "export {};",
-				"vitest.config.ts": 'export default { test: { setupFiles: ["packages/p/test/setup.ts"] } };',
-				"packages/p/test/setup.ts": "export {};",
+	describe("Vitest selection inside the command", () => {
+		it("resolves installed Vitest even when the head names itself vitest", async () => {
+			const { base, head } = twoCommits({
+				"packages/p/src/a.ts": a.replace("x > 0", "x >= 0"),
+				"package.json": JSON.stringify({ name: "vitest", exports: { "./node": "./missing.js" } }),
 			});
-			const head = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 0") });
-			const saved = join(artifacts, "compiler-selected.json");
-			mkdirSync(join(repo, "node_modules"), { recursive: true });
-			symlinkSync(
-				fileURLToPath(new URL("../../../node_modules/vitest", import.meta.url)),
-				join(repo, "node_modules/vitest"),
-				"dir",
-			);
-			fakeTool(
-				repo,
-				"stryker",
-				`if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi
-cp "$MELIAN_MUTATION_TEST_INCLUDE" '${saved}'
-mkdir -p reports/mutation
-printf '%s' '{"schemaVersion":"1.0","files":{}}' > reports/mutation/mutation.json`,
-			);
-			const result = await mutate(base, head);
-			if (result.status !== "ran") throw new Error("skipped");
-			expect(result.notes).toContain(
-				"Mutation dry run selected 2 related test file(s); Vitest loads setup through test.setupFiles.",
-			);
-			expect(JSON.parse(readFileSync(saved, "utf8"))).toEqual([
-				"packages/p/test/a.test.ts",
-				"scripts/transitive.test.mjs",
-			]);
+			const fake = stryker({ report: report({}) });
+			expect((await mutate(base, head)).status).toBe("ran");
+			expect(fake.calls()).toHaveLength(1);
 		});
-		it.each([{ excluded: ["StringLiteral"] }, { excluded: undefined }])(
-			"honours excluded mutators in NoCoverage enumeration: $excluded",
-			async ({ excluded }) => {
+		function relatedInstall() {
+			writeFiles(repo, {
+				"node_modules/vitest/node.js": `import { resolve } from "node:path";
+export async function createVitest(mode, options) {
+ if (mode !== "test" || options.config !== "custom-vitest.ts" || options.dir !== "checks" || options.watch !== false || options.coverage.enabled !== false) throw new Error("wrong listing request");
+ const config = {};
+ return { config, close: async () => {}, getRelevantTestSpecifications: async () => {
+   if (config.related === undefined) return ["checks/a[1].spec.ts", "checks/other.spec.ts"].map(moduleId => ({ moduleId: resolve(moduleId) }));
+   if (JSON.stringify(config.related) !== JSON.stringify([resolve("packages/p/src/a.ts")])) throw new Error("wrong related files");
+   return [{ moduleId: resolve("checks/a[1].spec.ts") }];
+ } };
+}`,
+			});
+		}
+
+		it.each(["killed", "NoCoverage", "exit error", "missing report", "corrupt report"])(
+			"hands Stryker Vitest's files and confirms %s with the whole suite when needed",
+			async (kind) => {
 				const { base, head } = twoCommits({
 					"packages/p/src/a.ts": a.replace("x > 0", "x >= 0"),
 					"stryker.config.json": JSON.stringify({
 						testRunner: "vitest",
-						...(excluded === undefined ? {} : { mutator: { excludedMutations: excluded } }),
+						vitest: { configFile: "custom-vitest.ts", dir: "checks", related: true },
+						custom: "kept",
 					}),
 				});
-				vi.spyOn(MutationTests, "open").mockResolvedValue(selected([]));
-				const fake = stryker({ report: report({}) });
-				writeFiles(repo, {
-					"node_modules/@stryker-mutator/instrumenter/package.json": JSON.stringify({
-						type: "module",
-						main: "index.mjs",
-					}),
-					"node_modules/@stryker-mutator/instrumenter/index.mjs": `export class Instrumenter {
-async instrument(files, options) {
- if (files.length !== 1 || files[0].name !== "packages/p/src/a.ts" || files[0].mutate[0].start.line !== 1 || files[0].mutate[0].end.line !== 1 || options.plugins !== null || JSON.stringify(options.excludedMutations) !== ${JSON.stringify(JSON.stringify(excluded ?? []))}) throw new Error("wrong mutation request");
- return { mutants: [{ id: "1", fileName: files[0].name, mutatorName: "ConditionalExpression", replacement: "false", location: { start: { line: 1, column: 0 }, end: { line: 1, column: 8 } } }] };
-}
-}`,
-				});
-				const result = await mutate(base, head);
-				expect(fake.calls()).toEqual([]);
-				expect(result.status).toBe("ran");
-				if (result.status !== "ran") throw new Error("skipped");
-				expect(result.notes).toContain(
-					"No test reaches the changed production files; no dry run was started. Their mutants are NoCoverage.",
+				relatedInstall();
+				const saved = join(artifacts, "attempts.jsonl");
+				const script = join(artifacts, "runner.mjs");
+				writeFileSync(
+					script,
+					`import { existsSync, readFileSync, writeFileSync, appendFileSync, mkdirSync } from "node:fs";
+const args = process.argv.slice(2);
+if (args[0] === "--version") { console.log("10.0.0"); process.exit(0); }
+const config = JSON.parse(readFileSync(args[1], "utf8"));
+const incremental = args[args.indexOf("--incrementalFile") + 1];
+appendFileSync(${JSON.stringify(saved)}, JSON.stringify({ config, incremental: existsSync(incremental) }) + "\\n");
+const subset = config.testFiles.length > 0;
+writeFileSync(incremental, JSON.stringify({ subset }));
+mkdirSync("reports/mutation", { recursive: true });
+if (subset && ${JSON.stringify(kind)} === "exit error") process.exit(1);
+if (subset && ${JSON.stringify(kind)} === "missing report") process.exit(0);
+writeFileSync("reports/mutation/mutation.json", subset && ${JSON.stringify(kind)} === "corrupt report" ? "{broken" : JSON.stringify({ schemaVersion: "1.0", files: { "packages/p/src/a.ts": { language: "typescript", source: "", mutants: [{ id: "1", status: subset && ${JSON.stringify(kind)} === "NoCoverage" ? "NoCoverage" : "Killed", mutatorName: "EqualityOperator", replacement: "x > 0", location: { start: { line: 2, column: 0 }, end: { line: 2, column: 5 } } }] } } }));`,
 				);
-				expect(result.log.runs[0].results).toHaveLength(1);
-				expect(result.log.runs[0].results[0]).toMatchObject({
-					ruleId: "untested-behaviour",
-					message: { text: expect.stringContaining("no test coverage") },
+				fakeTool(repo, "stryker", `exec '${process.execPath}' '${script}' "$@"`);
+				const result = await mutate(base, head);
+				if (result.status !== "ran") throw new Error("skipped");
+				const attempts = readFileSync(saved, "utf8")
+					.trim()
+					.split("\n")
+					.map(
+						(line) =>
+							JSON.parse(line) as {
+								config: {
+									testFiles: string[];
+									vitest: { related: boolean; configFile: string; dir: string };
+									custom: string;
+								};
+								incremental: boolean;
+							},
+					);
+				expect(attempts[0]!.config).toMatchObject({
+					testFiles: ["checks/a\\[1\\].spec.ts"],
+					vitest: { related: false, configFile: "custom-vitest.ts", dir: "checks" },
+					custom: "kept",
 				});
+				expect(result.notes[0]).toBe("Mutation tests use 1 related test file(s) selected by Vitest.");
+				expect(result.log.runs[0].results).toEqual([]);
+				expect(attempts).toHaveLength(kind === "killed" ? 1 : 2);
+				if (kind !== "killed") {
+					expect(attempts[1]!.config.testFiles).toEqual([]);
+					expect(attempts[1]!.incremental).toBe(false);
+					expect(result.notes[1]).toContain("whole suite");
+				}
 			},
 		);
-		it.each(["include", "uncovered", "profile"])("fails closed when it cannot write the %s file", async (kind) => {
+
+		it("fails as toolFailed when Stryker cannot spawn", async () => {
 			const { base, head } = twoCommits();
-			vi.spyOn(MutationTests, "open").mockResolvedValue(selected(kind === "uncovered" ? [] : ["test/a.test.ts"]));
-			const fake = stryker({ report: report({}) });
-			writeFiles(repo, {
-				"node_modules/@stryker-mutator/instrumenter/package.json": JSON.stringify({ main: "index.mjs" }),
-				"node_modules/@stryker-mutator/instrumenter/index.mjs": "",
+			stryker();
+			const execute = vi.mocked(MutationProcess.prototype.execute).getMockImplementation()!;
+			vi.spyOn(MutationProcess.prototype, "execute").mockImplementation(async function (
+				this: MutationProcess,
+				command,
+				environment,
+			) {
+				rmSync(join(repo, "node_modules/.bin/stryker"));
+				return execute.call(this, command, environment);
 			});
-			if (kind === "profile")
+			await expect(mutate(base, head)).rejects.toMatchObject({
+				code: "toolFailed",
+				message: expect.stringContaining("Stryker exited 1"),
+			});
+		});
+
+		it.each(["mutation-vitest.ts", "mutation-runner.mjs", "sandbox.sb"])(
+			"refuses a denied %s write before running head code",
+			async (suffix) => {
+				const { base, head } = twoCommits();
+				const fake = stryker({ report: report({}) });
 				vi.spyOn(Sandbox, "detect").mockReturnValue({
 					...unconfinedSandbox,
 					profile: () => "(version 1)(allow default)",
 				} as unknown as Sandbox);
-			const env = createNodeExecutionEnv(repo);
-			const execute = env.exec.bind(env);
-			const suffix =
-				kind === "include" ? "test-include.json" : kind === "uncovered" ? "uncovered.mjs" : "sandbox.sb";
-			vi.spyOn(env, "exec").mockImplementation(async (command, options, executionContext) => {
-				if (command.includes(suffix)) {
-					await options?.onOutput?.("write denied", executionContext);
-					return Promise.resolve({ ok: true, value: { exitCode: 1 } });
-				}
-				return execute(command, options, executionContext);
-			});
-			await expect(mutate(base, head, { env })).rejects.toMatchObject({
-				code: "toolFailed",
-				message: expect.stringContaining("write denied"),
-			});
-			expect(fake.calls()).toEqual([]);
-		});
-
-		it("runs the whole suite when the selection bound is hit", async () => {
-			const { base, head } = twoCommits();
-			const fallback = MutationTests.select(
-				{
-					read: () => {
-						throw new Error("file bound");
-					},
-					setupFiles: () => [],
-				},
-				["packages/p/src/a.ts"],
-			);
-			vi.spyOn(MutationTests, "open").mockResolvedValue(fallback);
-			const fake = stryker({ report: report({}), requireWholeSuite: true });
-			const result = await mutate(base, head);
-			expect(fake.calls()).toHaveLength(1);
-			if (result.status !== "ran") throw new Error("skipped");
-			expect(result.notes).toContain(fallback.toJSON().note);
-		});
+				const env = createNodeExecutionEnv(repo);
+				const execute = env.exec.bind(env);
+				vi.spyOn(env, "exec").mockImplementation(async (command, options, executionContext) => {
+					if (command.includes(suffix)) {
+						await options?.onOutput?.("write denied", executionContext);
+						return { ok: true, value: { exitCode: 1 } };
+					}
+					return execute(command, options, executionContext);
+				});
+				await expect(mutate(base, head, { env })).rejects.toMatchObject({
+					code: "toolFailed",
+					message: expect.stringContaining("write denied"),
+				});
+				expect(fake.calls()).toEqual([]);
+			},
+		);
 	});
 
 	it("runs Stryker with a home and a temporary directory in scratch, and with none of the Melian process's variables", async () => {
@@ -1720,6 +1676,24 @@ exit 1`,
 				message: "mutation testing needs the revision it mutates",
 			});
 		});
+
+		it("refuses a completed run without selection notes", async () => {
+			const { base, head } = twoCommits();
+			stryker({ report: report({}) });
+			const read = MutationScratch.prototype.read;
+			vi.spyOn(MutationScratch.prototype, "read").mockImplementation(async function (
+				this: MutationScratch,
+				path,
+				bound,
+			) {
+				if (path.endsWith("/test-selection.json")) return undefined;
+				return read.call(this, path, bound);
+			});
+			await expect(mutate(base, head)).rejects.toMatchObject({
+				code: "invalidOutput",
+				message: expect.stringContaining("no test-selection notes"),
+			});
+		});
 	});
 
 	describe("the test file a finding names", () => {
@@ -1820,7 +1794,7 @@ exit 1`,
 					version: "10.0.0",
 					findings: 1,
 					notes: [
-						"Mutation dry run uses the whole suite: no root tsconfig.json.",
+						"Mutation tests use the whole suite: Vitest related no test to packages/p/src/a.ts.",
 						"Stryker mutated 1 changed lines in 1 file(s); the base was not mutated.",
 					],
 				},
@@ -1871,7 +1845,7 @@ exit 1`,
 					version: "10.0.0",
 					findings: 1,
 					notes: [
-						"Mutation dry run uses the whole suite: no root tsconfig.json.",
+						"Mutation tests use the whole suite: Vitest related no test to packages/p/src/a.ts.",
 						"Stryker mutated 1 changed lines in 1 file(s); the base was not mutated.",
 						"packages/p/src/a.ts produced no mutants, so nothing on its changed lines was judged.",
 					],

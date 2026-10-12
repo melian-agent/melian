@@ -88,7 +88,8 @@ Exit 1 with only resolved or suppressed results is clean; missing or unusable ou
 Its verified graph also supplies bounded caller context to lenses, which they must confirm before citing.
 
 **Mutation testing.** The check on [pull request #98](https://github.com/melian-agent/melian/pull/98), not yet on `main`, runs Stryker on changed production lines only.
-A dry run finds related tests, then each mutant runs only the tests that cover it; the incremental cache avoids repeat work.
+Vitest selects related tests using the head’s own configuration; an empty or failed selection runs the whole suite.
+An uncovered result from related tests is checked against the whole suite. Each mutant runs its covering tests; the incremental cache avoids repeat work.
 Surviving or uncovered mutants become findings, and Stryker runs in a secret-free sandbox for trusted writers.
 It can take minutes or hours on a large change, so it stays out of fast tiers.
 

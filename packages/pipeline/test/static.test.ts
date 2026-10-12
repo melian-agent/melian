@@ -16,6 +16,7 @@ import { Run, staticToolSource } from "../src/static.ts";
 import { fakeMutationProcesses } from "./fixtures/mutation-process.ts";
 import { commit, createRepository, fakeTool, gitIn, lines, removeRepository, writeFiles } from "./fixtures/repo.ts";
 import { unconfinedSandbox } from "./fixtures/sandbox.ts";
+import { emptyVitestInstall } from "./fixtures/vitest-listing.ts";
 
 let repo: string;
 
@@ -225,6 +226,7 @@ describe("runStaticTool with the repository's own tools", () => {
 	});
 
 	it("links a workspace's own dependencies and grants exactly those install directories to mutation tests", async () => {
+		writeFiles(repo, emptyVitestInstall);
 		vi.spyOn(Sandbox, "detect").mockReturnValue(unconfinedSandbox);
 		const command = vi.spyOn(unconfinedSandbox, "command");
 		const base = commit(repo, {
@@ -250,7 +252,7 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 			context,
 		);
 		expect(run.status).toBe("ran");
-		expect(command.mock.calls).toHaveLength(8);
+		expect(command.mock.calls).toHaveLength(11);
 		for (const [, paths] of command.mock.calls)
 			expect(paths.installs).toEqual([join(repo, "node_modules"), join(repo, "packages/b/node_modules")]);
 	});

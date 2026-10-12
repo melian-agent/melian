@@ -30,6 +30,7 @@ import { Sandbox } from "../src/sandbox.ts";
 import { fakeMutationProcesses } from "./fixtures/mutation-process.ts";
 import { commit, createRepository, fakeTool, lines, removeRepository, writeFiles } from "./fixtures/repo.ts";
 import { unconfinedSandbox } from "./fixtures/sandbox.ts";
+import { emptyVitestInstall } from "./fixtures/vitest-listing.ts";
 
 let repo: string;
 let artifacts: string;
@@ -40,6 +41,7 @@ beforeEach(() => {
 	fakeProcesses([]);
 	vi.spyOn(Sandbox, "detect").mockReturnValue(unconfinedSandbox);
 	repo = createRepository();
+	writeFiles(repo, emptyVitestInstall);
 	artifacts = realpathSync(mkdtempSync(join(tmpdir(), "melian-authority-")));
 	opened = [];
 });

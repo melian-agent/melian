@@ -44,7 +44,9 @@ export class MutationCache {
 
 	static async open(root: string, key: MutationCacheKey): Promise<MutationCache> {
 		await CacheScratch.open(root);
-		const name = createHash("sha256").update(JSON.stringify(key)).digest("hex");
+		const name = createHash("sha256")
+			.update(JSON.stringify({ version: 2, key }))
+			.digest("hex");
 		const directory = join(root, "mutation", name);
 		await mkdir(directory, { recursive: true });
 		const cache = new MutationCache(root, await realpath(directory));

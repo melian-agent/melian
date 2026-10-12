@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { posix } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import {
 	CheckError,
 	type MutationSettings,
@@ -17,7 +17,7 @@ import {
 import { MutationCache } from "./mutation-cache.ts";
 import { MutationProcess } from "./mutation-process.ts";
 import { MutationScratch } from "./mutation-scratch.ts";
-import { type MutationTestSelection, MutationTests } from "./mutation-tests.ts";
+import { mutationSelectionVersion, mutationVitestModule } from "./mutation-vitest.ts";
 import { nodeExecutable, type Sandbox } from "./sandbox.ts";
 import { type Run, type StaticRun, staticOutputLimit } from "./static.ts";
 import { CacheLocation } from "./tool-provisioning.ts";
@@ -174,7 +174,14 @@ export function mutationInstallation(repoRoot: string): string {
 		// A checkout without a lockfile cannot share a partition with a locked install.
 	}
 	return createHash("sha256")
-		.update(JSON.stringify({ lockfile, versions, node: process.versions.node }))
+		.update(
+			JSON.stringify({
+				lockfile,
+				versions,
+				node: process.versions.node,
+				selectionVersion: mutationSelectionVersion,
+			}),
+		)
 		.digest("hex");
 }
 
@@ -293,22 +300,39 @@ export class MutationRun {
 		return restore;
 	}
 
-	async #uncovered(lines: Record<string, [number, number][]>): Promise<string> {
-		const instrumenter = createRequire(posix.join(this.#run.input.repoRoot, "package.json")).resolve(
-			"@stryker-mutator/instrumenter",
-		);
-		const script = posix.join(this.#scratch, "uncovered.mjs");
+	async #runner(entries: readonly string[], changed: readonly string[], incremental: string): Promise<string> {
+		const require = createRequire(posix.join(this.#run.input.repoRoot, "node_modules/vitest/package.json"));
+		const module = posix.join(this.#scratch, posix.basename(fileURLToPath(mutationVitestModule)));
+		await this.#files!.write(module, readFileSync(fileURLToPath(mutationVitestModule), "utf8"));
+		const script = posix.join(this.#scratch, "mutation-runner.mjs");
+		const selectedConfig = posix.join(this.#scratch, "stryker.config.json");
 		const text = `
-import { readFileSync, mkdirSync, writeFileSync } from "node:fs";
-import { Instrumenter } from ${JSON.stringify(pathToFileURL(instrumenter).href)};
-const lines = ${JSON.stringify(lines)};
+import { readFileSync, rmSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { relative } from "node:path";
+import { createVitest } from ${JSON.stringify(pathToFileURL(require.resolve("vitest/node")).href)};
+import { MutationVitest } from ${JSON.stringify(pathToFileURL(module).href)};
 const config = JSON.parse(readFileSync("stryker.config.json", "utf8"));
-const logger = Object.fromEntries(["trace", "debug", "info", "warn", "error", "fatal"].flatMap(name => [[name, () => {}], ["is" + name[0].toUpperCase() + name.slice(1) + "Enabled", () => false]]));
-const files = Object.entries(lines).map(([name, ranges]) => ({ name, content: readFileSync(name, "utf8"), mutate: ranges.map(([first, last]) => ({ start: { line: first - 1, column: 0 }, end: { line: last - 1, column: Number.MAX_SAFE_INTEGER } })) }));
-const result = await new Instrumenter(logger).instrument(files, { plugins: null, ignorers: [], excludedMutations: config.mutator?.excludedMutations ?? [] });
-const report = { schemaVersion: "1.0", config, files: Object.fromEntries(files.map(file => [file.name, { language: "typescript", source: file.content, mutants: result.mutants.filter(mutant => mutant.fileName === file.name).map(mutant => ({ ...mutant, status: mutant.status ?? "NoCoverage", location: { start: { ...mutant.location.start, line: mutant.location.start.line + 1 }, end: { ...mutant.location.end, line: mutant.location.end.line + 1 } } })) }])) };
-mkdirSync("reports/mutation", { recursive: true });
-writeFileSync("reports/mutation/mutation.json", JSON.stringify(report));
+const selection = await MutationVitest.open(() => createVitest("test", {
+  config: config.vitest?.configFile, dir: config.vitest?.dir, watch: false, coverage: { enabled: false }
+}), ${JSON.stringify(changed)});
+const result = await selection.execute(async (tests, fresh) => {
+  // A whole-suite fallback must not reuse the related run's coverage or mutant results.
+  if (fresh) rmSync(${JSON.stringify(incremental)}, { force: true });
+  rmSync(${JSON.stringify(report)}, { force: true });
+  writeFileSync(${JSON.stringify(selectedConfig)}, JSON.stringify({ ...config,
+    vitest: { ...config.vitest, related: false },
+    testFiles: tests?.map(file => relative(process.cwd(), file).replace(/[\\\\*?[\\]{}()!+@#]/g, "\\\\$&")) ?? []
+  }));
+  const run = spawnSync(${JSON.stringify(this.#binary)}, ["run", ${JSON.stringify(selectedConfig)},
+    "--reporters", "json", "--incremental", "--incrementalFile", ${JSON.stringify(incremental)},
+    "--inPlace", "--mutate", ${JSON.stringify(entries.join(","))}], { stdio: "inherit" });
+  let report;
+  try { report = readFileSync(${JSON.stringify(report)}, "utf8"); } catch {}
+  return { code: run.status ?? 1, report };
+});
+writeFileSync(${JSON.stringify(posix.join(this.#scratch, "test-selection.json"))}, JSON.stringify(selection.notes));
+process.exitCode = result.code;
 `;
 		await this.#files!.write(script, text);
 		return `${quote(process.execPath)} ${quote(script)}`;
@@ -318,11 +342,7 @@ writeFileSync("reports/mutation/mutation.json", JSON.stringify(report));
 	// directory of its own in scratch, where the reviewer's credential files are not, and none of the Melian process's
 	// variables. It also runs in the host's sandbox: no network, and nothing readable or writable outside the worktree,
 	// scratch, which holds the staged copy of its incremental cache, and the installs it needs.
-	async #execute(
-		entries: readonly string[],
-		selection: MutationTestSelection,
-		lines: Record<string, [number, number][]>,
-	): Promise<string | { skipped: string }> {
+	async #execute(entries: readonly string[], changed: readonly string[]): Promise<string | { skipped: string }> {
 		const { repoRoot, policyCommit, base, commit, trustedWriter } = this.#run.input;
 		this.#files = MutationScratch.open(this.#run, this.#scratch, this.#sandbox, this.#installs);
 		this.#run.mutationScratch = this.#files;
@@ -332,22 +352,15 @@ writeFileSync("reports/mutation/mutation.json", JSON.stringify(report));
 			head: commit,
 			installation: mutationInstallation(repoRoot),
 			inputs: createHash("sha256")
-				.update(JSON.stringify({ version: this.#version, entries, selection }))
+				.update(JSON.stringify({ version: this.#version, entries }))
 				.digest("hex"),
 		});
 		const incremental = await cache.stage(posix.join(this.#scratch, "incremental"));
-		const includeFile = posix.join(this.#scratch, "test-include.json");
-		if ("include" in selection) {
-			await this.#files.write(includeFile, JSON.stringify(selection.include.map(literal)));
-		}
 		const log = posix.join(this.#scratch, "stryker.log");
 		const home = posix.join(this.#scratch, "home");
 		const temporary = posix.join(this.#scratch, "tmp");
 		// A report the revision committed must not stand in for the one this run writes.
-		const runner =
-			"tests" in selection && selection.tests.length === 0
-				? await this.#uncovered(lines)
-				: `${quote(this.#binary)} run ${quote(posix.join(this.#root, config))} --reporters json --incremental --incrementalFile ${quote(incremental)} --inPlace --mutate ${quote(entries.join(","))}`;
+		const runner = await this.#runner(entries, changed, incremental);
 		const command = [
 			`mkdir -p ${quote(home)} ${quote(temporary)}`,
 			`cd ${quote(this.#root)}`,
@@ -373,7 +386,6 @@ writeFileSync("reports/mutation/mutation.json", JSON.stringify(report));
 				...this.#sandbox.environment(),
 				HOME: home,
 				TMPDIR: temporary,
-				...("include" in selection ? { MELIAN_MUTATION_TEST_INCLUDE: includeFile } : {}),
 			});
 		} catch (error) {
 			// A change too slow to mutate is one the run could not judge, not one whose judgement failed.
@@ -397,6 +409,9 @@ writeFileSync("reports/mutation/mutation.json", JSON.stringify(report));
 		if (logText === undefined)
 			throw this.#run.fail("toolFailed", `Stryker exited ${result.code}: log missing at ${log}\n${stderr}`);
 		const output = logText.slice(-4096).trim();
+		const notes = await this.#files.read(posix.join(this.#scratch, "test-selection.json"), staticOutputLimit);
+		if (notes === undefined) throw this.#run.fail("invalidOutput", "mutation runner wrote no test-selection notes");
+		this.#notes.push(...(JSON.parse(notes) as string[]));
 		if (result.code === 1) throw this.#run.fail("toolFailed", `Stryker exited 1: ${output}`);
 		if (result.code !== 0)
 			throw this.#run.fail("invalidOutput", `Stryker exited ${result.code}, which it does not document: ${output}`);
@@ -451,13 +466,7 @@ writeFileSync("reports/mutation/mutation.json", JSON.stringify(report));
 		const entries = Object.entries(lines).flatMap(([path, ranges]) =>
 			ranges.map(([first, last]) => `${literal(path)}:${first}-${last}`),
 		);
-		const selection = (await MutationTests.open(this.#run, this.#root, this.#scratch, Object.keys(lines))).toJSON();
-		this.#notes.push(selection.note);
-		if ("tests" in selection && selection.tests.length === 0)
-			this.#notes.push(
-				"No test reaches the changed production files; no dry run was started. Their mutants are NoCoverage.",
-			);
-		const text = await this.#execute(entries, selection, lines);
+		const text = await this.#execute(entries, Object.keys(lines));
 		if (typeof text !== "string") {
 			return {
 				status: "skipped",

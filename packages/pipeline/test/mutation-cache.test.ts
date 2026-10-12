@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import type * as filesystem from "node:fs/promises";
 import {
 	type FileHandle,
@@ -12,6 +14,7 @@ import {
 	symlink,
 	writeFile,
 } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -20,6 +23,7 @@ import { MutationCache, type MutationCacheKey } from "../src/mutation-cache.ts";
 import { MutationScratch } from "../src/mutation-scratch.ts";
 import { mutationInstallation } from "../src/mutation-static.ts";
 import { Run } from "../src/static.ts";
+import { MutationCache as MutationCacheV1 } from "./fixtures/mutation-cache-v1.ts";
 import { unconfinedSandbox } from "./fixtures/sandbox.ts";
 
 vi.mock("node:fs/promises", async (importOriginal) => {
@@ -251,4 +255,36 @@ it("publishes a staged report of exactly the read bound", async () => {
 	await writeFile(staged, "{}".padEnd(16 * 1024 * 1024, " "));
 	await cache.publish(staged, scratchFiles());
 	expect((await readFile(cache.file)).length).toBe(16 * 1024 * 1024);
+});
+
+it("reopens a version-one cache without reusing its selection results", async () => {
+	const old = await MutationCacheV1.open(root, key());
+	const staged = await old.stage(join(root, "v1-stage"));
+	await writeFile(staged, JSON.stringify({ files: { a: { mutants: [{ status: "NoCoverage" }] } } }));
+	await old.publish(staged, scratchFiles());
+	expect(
+		JSON.parse(await readFile((await MutationCacheV1.open(root, key())).file, "utf8")).files.a.mutants[0].status,
+	).toBe("NoCoverage");
+	const current = await MutationCache.open(root, key());
+	expect(current.file).not.toBe(old.file);
+	await expect(readFile(await current.stage(join(root, "v2-stage")))).rejects.toMatchObject({ code: "ENOENT" });
+	await writeFile(current.file, "{}");
+	expect(await readFile((await MutationCache.open(root, key())).file, "utf8")).toBe("{}");
+});
+
+it("changes the installation identity that the durable run key hashes after selection changes", () => {
+	const checkout = process.cwd();
+	const require = createRequire(join(checkout, "package.json"));
+	const versions = ["@stryker-mutator/core", "@stryker-mutator/vitest-runner", "vitest"].map(
+		(name) =>
+			(JSON.parse(readFileSync(require.resolve(`${name}/package.json`), "utf8")) as { version: string }).version,
+	);
+	const lockfile = createHash("sha256")
+		.update(readFileSync(join(checkout, "package-lock.json")))
+		.digest("hex");
+	const old = createHash("sha256")
+		.update(JSON.stringify({ lockfile, versions, node: process.versions.node }))
+		.digest("hex");
+	expect(mutationInstallation(checkout)).not.toBe(old);
+	expect(mutationInstallation(checkout)).toBe(mutationInstallation(checkout));
 });
