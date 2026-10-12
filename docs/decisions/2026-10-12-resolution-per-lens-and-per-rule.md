@@ -6,7 +6,7 @@ Problem: a folder's `melian.yaml` maps each severity to `block`, `acknowledge`, 
 
 Example: a cleanup lens reports a reuse finding at P2. The folder's table says P2 needs an acknowledgement, which suits a correctness finding. For a cleanup finding it is too much, so the team either lowers P2 for every lens or disables the cleanup lens.
 
-Choice: a `melian.yaml` may map severities for one check and for one rule, beside its table. It may also set a ceiling for a check or a rule. A lens may declare a default of its own. Mappings resolve nearest file first. Ceilings are separate, and inherit.
+Choice: a `melian.yaml` may map severities for one check and for one rule, beside its table, and may set a ceiling for either. A lens may declare a default of its own. The nearest file that speaks about a finding wins outright.
 
 ## The shape
 
@@ -17,6 +17,8 @@ resolution:
   P2: acknowledge
   P3: advisory
   nit: silent
+  preExisting:
+    P0: acknowledge
   checks:
     lens.cleanup:
       ceiling: advisory
@@ -36,6 +38,7 @@ resolution:
 - An entry may map any of `P0` to `P3` and `nit`, and may set `ceiling`. Both take `block`, `acknowledge`, `advisory`, or `silent`.
 - An entry's `rules` is keyed by rule ID, as the check's findings carry it. A rule entry takes the same mapping and `ceiling`.
 - A rule sits under its check, because two lenses may share a rule ID.
+- `resolution.preExisting` is the cap on pre-existing findings, by severity. [Its own section](#the-cap-on-pre-existing-findings) describes it.
 
 A lens declares its default in its `LENS.md` front matter, in the same shape without `rules`. It may set a mapping and a ceiling. A ceiling is the usual one:
 
@@ -45,23 +48,28 @@ resolution: { ceiling: advisory }
 
 ## Precedence
 
-For a finding at severity S, from check C, under rule R, at a path:
+Nearest file wins outright. For a finding at severity S, from check C, under rule R, at a path:
 
-1. **The requirement comes from the nearest file that maps S.** Walk from the finding's folder to the root. In each `melian.yaml`, look for a rule entry for R that maps S, else a check entry for C that maps S, else the file's own table. The first file with any of the three decides. Specificity orders entries only within one file.
-2. **A file's table counts only where the file writes that severity itself.** A value it merely inherits is not written. So a folder that writes `P1: block` means it, whatever a rule entry in the root says.
-3. **With no file mapping S**, the lens's declared default mapping applies, then Melian's built-in table.
-4. **The ceiling is separate, and inherits.** A ceiling says a check or rule never requires more than a level. The ceiling in force is the nearest one a rule entry for R sets, in any file from the folder to the root. With none, it is the nearest one a check entry for C sets, in any file. With none, it is the lens's declared default ceiling. With none, there is no ceiling.
-5. **The result is the lesser of the requirement and the ceiling.** A ceiling can only lower. A rule's ceiling replaces its check's.
-6. **The caps apply last**, as [Trust](#trust) lists them.
-
-To let a capped lens block in one folder, that folder sets the ceiling for that check or rule itself. Writing a stricter table there is not enough, and `melian doctor` says so.
-
-Two things follow that a reader should expect:
-
-- A lens's declared mapping is weak. Any file on the walk that writes that severity beats it, and most roots write the whole table. A lens that must stay quiet declares a ceiling.
-- A nearer check ceiling does not lift a rule ceiling set farther away. The folder restates the rule's ceiling to lift it.
+1. **Find the nearest file that speaks.** Walk from the finding's folder to the root. A `melian.yaml` speaks about the finding when it writes any of three things: a rule entry for R under C, a check entry for C, or its own table's value for S. A value the file merely inherits is not written.
+2. **That file decides the whole result, mapping and ceiling both.** Nothing from a farther file applies once a nearer file has spoken.
+3. **Specificity orders entries only within that file.** The requirement is the rule entry's mapping for S, else the check entry's, else the table's. The ceiling is the rule entry's, else the check entry's. A ceiling in that file caps a mapping in that file.
+4. **What the file leaves out comes from Melian's built-in table.** A file that speaks only through a ceiling takes its requirement from the built-in table, never from a farther file. A file that sets no ceiling has none.
+5. **If no file speaks, the lens's declared default applies.** Where that default maps no S, Melian's built-in table does.
+6. **The result is the lesser of the requirement and the ceiling.** A ceiling can only lower.
+7. **The caps apply last**, as [Trust](#trust) lists them.
 
 A user's preference files layer over every committed file today, in a review of the working tree. They come first on the walk.
+
+## The accepted cost
+
+A file that writes its own severity table overrides a lens's declared default, unless it restates it. A cleanup lens declares `ceiling: advisory`. A repository whose root file writes `P2: acknowledge` has spoken about every P2 finding, the cleanup lens's among them. Its P2 cleanup findings now need an acknowledgement. The repository restates the ceiling under `checks` to keep it.
+
+The same holds between files. A folder that writes `P1: block` overrides every rule entry, check entry, and ceiling a farther file wrote for P1 findings. This is the price of a rule a maintainer can hold in one sentence: the nearest file that mentions the finding decides.
+
+Two diagnostics make the cost visible, and the step builds both.
+
+- `melian findings` names, for each finding, the file and the entry that decided: the rule entry, the check entry, the table, the lens's default, or the built-in table.
+- `melian doctor` lists, for each file that writes a table, each lens default and each farther entry that the table now overrides.
 
 ## An example with two folders
 
@@ -78,22 +86,20 @@ resolution:
 # services/payments/melian.yaml
 resolution:
   P1: block
-  checks:
-    lens.cleanup: { ceiling: acknowledge }
 ```
 
 One worked finding: `trust-boundary` reports `terminal-escape` at P1 in `services/payments/src/log.ts`.
 
-1. The walk starts at the payments file. It has no rule entry for `terminal-escape` and no check entry for `lens.trust-boundary`. Its table writes `P1: block`. That file decides: the requirement is `block`.
-2. The root's rule entry, `P1: acknowledge`, is never reached.
-3. No file sets a ceiling for the rule or for `lens.trust-boundary`, and the lens declares none.
+1. The walk starts at the payments file. It has no rule entry for `terminal-escape` and no check entry for `lens.trust-boundary`. Its table writes `P1: block`, so it speaks.
+2. That file decides. The requirement is `block`, from its table. It sets no ceiling.
+3. The root's rule entry, `P1: acknowledge`, never applies.
 4. The result is `block`.
 
-The same finding in `docs/guide.md` walks straight to the root. The root's rule entry maps P1, so the result is `acknowledge`.
+The same finding in `docs/guide.md` walks to the root. The root speaks through its rule entry, which maps P1, so the result is `acknowledge`.
 
-A second finding shows the ceiling: `cleanup` reports `reuse` at P2 in `services/payments/src/ledger.ts`. The payments file maps no P2, so the walk reaches the root, whose table writes `P2: acknowledge`. The nearest check ceiling is the payments file's `acknowledge`. The result is `acknowledge`. In `docs/` the ceiling is the root's `advisory`, and so is the result.
+A second finding: `cleanup` reports `reuse` at P2 in `services/payments/src/ledger.ts`. The payments file writes no P2 and nothing for `lens.cleanup`, so it does not speak. The root speaks twice over: its table writes P2, and its check entry sets a ceiling. The requirement is `acknowledge`, the ceiling is `advisory`, and the result is `advisory`.
 
-Had the payments file written `P2: block` and no ceiling, the requirement would be `block` and the root's ceiling would still hold it at `advisory`. `melian doctor` lists that case.
+A third finding shows the cost: `cleanup` reports `reuse` at P1 in the same file. The payments file writes P1, so it speaks and decides. It sets no ceiling for `lens.cleanup`, and the root's does not apply. The result is `block`. `melian doctor` lists the root's ceiling as overridden by the payments table for P1. To keep the ceiling, the payments file restates it.
 
 ## Merged defects
 
@@ -113,6 +119,24 @@ So the keys under `resolution.checks.guardrails.rules` are:
 
 For the last two forms, the step adds a typed field to a guardrail finding: the names of the configured rules that matched, or the notice's class. The field stays outside the finding's ID, so no stored finding changes identity. Within one file the named rule's entry comes before the guardrail's. A finding several rules matched resolves under each and takes the strictest.
 
+## The cap on pre-existing findings
+
+Today a pre-existing finding never resolves above `advisory`. [The verifier decision](2026-10-12-verifier-lowers-severity-and-sets-scope.md) makes that cap configuration, so a team can require an answer for an important old defect.
+
+```yaml
+resolution:
+  preExisting:
+    P0: acknowledge
+    P1: acknowledge
+```
+
+- Each severity takes `advisory` or `acknowledge`. The default is `advisory` for every severity. `block` is refused: [a pre-existing finding never blocks](2026-10-03-out-of-diff.md).
+- The cap is a ceiling. A pre-existing finding resolves to the lesser of its result under the precedence above and this cap.
+- An important pre-existing finding has a floor too. It never resolves below `advisory`, so it is never silent. Important means P0 or P1, or re-scoped by the verifier.
+- The key layers as every other setting does: key by key, nearest file first. It is not part of the walk. A file that writes only `preExisting` has not spoken about any finding, and a file that speaks about a finding does not erase a farther file's cap.
+
+The last rule is a choice. A cap is a limit on what an old defect may require, not a mapping for a check, so a folder's table should not switch it off by accident.
+
 ## Trust
 
 What is true today:
@@ -131,39 +155,34 @@ The policy source stays the base for a pull request. A head that lowers its own 
 
 The caps that apply after resolution, all of them:
 
-- a `pre-existing` finding is never above `advisory`;
+- a `pre-existing` finding is never above its `preExisting` cap, `advisory` by default;
 - an `affected` finding with no proving `cause` location is never above `advisory`;
 - a lens finding no verifier judged is never above `advisory`;
 - a policy-change notice on a `melian.yaml` is never below `acknowledge`, and from step 18 the two notices above share that floor.
 
 [Resolution ownership](2026-10-03-resolution-ownership.md) stands. A lens declares a default, which is configuration that travels with the lens. Configuration and adjudication still decide. No tool and no lens writes a finding's resolution, and `report_finding` still stores none.
 
-## Diagnostics
-
-One finding's requirement can now come from several places, so the step builds two diagnostics.
-
-- `melian findings` names the layer and the file that decided each finding's requirement, and the layer and file of its ceiling.
-- `melian doctor` lists, for each folder that writes a table, every inherited ceiling that keeps a check or rule below what that table asks.
-
 ## Goldens
 
 They live under `packages/evals/goldens/`, scripted, with no model, beside unit tests in core for each rule of the precedence.
 
 - a rule entry beats its check's, within one file;
-- a check entry beats the file's table;
+- a check entry beats the file's table, within one file;
+- a ceiling in a file caps a mapping in that file, and never raises one;
 - the nearest table beats a root rule entry;
-- an inherited ceiling still caps a nearer table, with its doctor line;
-- a lens's default mapping applies under a file that does not write that severity;
-- a rule mapping is capped by its check's ceiling;
-- a rule's ceiling replaces its check's;
-- a ceiling lowers and never raises;
+- a nearer file that speaks drops a farther file's ceiling, with its doctor line;
+- a file that speaks only through a ceiling takes its requirement from the built-in table;
+- a file that writes a table overrides a lens's declared ceiling, with its doctor line, and restating the ceiling keeps it;
+- a lens's declared default applies when no file speaks;
+- `melian findings` names the file and entry that decided;
 - a deterministic rule resolves through the keys, and a configured guardrail rule under its own name;
 - a merged defect with opposite policies, in both speaker orders, and with a speaker `ruleAliases` chose;
 - a finding the verifier lowered resolves under the lowered severity;
+- a pre-existing P0 under a `preExisting` cap of `acknowledge` needs an acknowledgement, and a nearer table does not erase the cap;
 - a head that edits the keys is judged under the base;
 - a `resolution` change in a nested `melian.yaml` whose parent switches the review off still draws a notice at `acknowledge`;
 - a change to a `LENS.md` declared resolution draws one too, and a `guardrails` ceiling of `advisory` lowers neither.
 
-What this gives up: resolution no longer reads one merged configuration. It needs each file's own layer, which the loader holds and `Finding.resolve` does not yet take. The nearest-file rule also means a root cannot force a rule's mapping on a folder that writes its own table. The table already works that way today. A root can still cap, because a ceiling inherits.
+What this gives up, beside the accepted cost above: resolution no longer reads one merged configuration. It needs each file's own layer, which the loader holds and `Finding.resolve` does not yet take.
 
 This extends [the resolution decision](2026-10-03-resolution.md) and [per-rule guardrail severity](2026-10-05-per-rule-guardrail-severity.md), and replaces neither: models still advise, and configuration still decides.
