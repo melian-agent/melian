@@ -297,9 +297,8 @@ describe("TriageResults", () => {
 
 type RecordedFingerprints = Record<string, string>;
 
-// The record at origin/main: its entries, no record there yet, a read git could not do, or main is the commit under
-// test, as on a push run, where there is nothing to compare.
-type MainRecord =
+// A committed baseline, including fixture cases where its record is absent, unreadable or the same as the head.
+type BaselineRecord =
 	| { readonly kind: "recorded"; readonly entries: RecordedFingerprints }
 	| { readonly kind: "same" }
 	| { readonly kind: "absent" }
@@ -311,7 +310,7 @@ function recordProblems(
 	recorded: RecordedFingerprints,
 	version: string,
 	fingerprint: string,
-	onMain: MainRecord,
+	onMain: BaselineRecord,
 	ci: boolean,
 ): string[] {
 	const problems: string[] = [];
@@ -329,7 +328,9 @@ function recordProblems(
 	if (onMain.kind === "recorded") {
 		for (const [recordedVersion, hash] of Object.entries(onMain.entries)) {
 			if (recorded[recordedVersion] !== hash)
-				problems.push(`version "${recordedVersion}" is recorded on main as ${hash} and must stay so`);
+				problems.push(
+					`version "${recordedVersion}" is recorded at the committed baseline as ${hash} and must stay so`,
+				);
 		}
 	}
 	return problems;
@@ -340,7 +341,7 @@ const recordPath = "packages/evals/triage/questions.json";
 // `git` runs a git command in the repository and returns its output, or throws. `ls-tree` succeeds with no output for
 // a file main does not have and fails when it has no main to read, which `show` alone would not tell apart.
 // `--full-tree` makes the path root-relative: `ls-tree` otherwise reads it from the directory git runs in.
-function recordOnMain(git: (args: string[]) => string): MainRecord {
+function recordOnMain(git: (args: string[]) => string): BaselineRecord {
 	try {
 		if (git(["rev-parse", "origin/main"]).trim() === git(["rev-parse", "HEAD"]).trim()) return { kind: "same" };
 	} catch {
@@ -363,6 +364,13 @@ const gitIn =
 	(args: string[]): string =>
 		execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
 
+function recordInTestedCommit(git: (args: string[]) => string): BaselineRecord {
+	return {
+		kind: "recorded",
+		entries: JSON.parse(git(["show", `HEAD:${recordPath}`])) as RecordedFingerprints,
+	};
+}
+
 const gitInTriageDirectory = gitIn(triageDirectory);
 
 describe("the triage question set's version", () => {
@@ -376,19 +384,39 @@ describe("the triage question set's version", () => {
 				recorded,
 				triageQuestionSet.version,
 				fingerprint,
-				recordOnMain(gitInTriageDirectory),
-				process.env.CI !== undefined && process.env.CI !== "",
+				recordInTestedCommit(gitInTriageDirectory),
+				true,
 			),
 		).toEqual([]);
 	});
 
+	it("validates version records in a one-commit repository without remote refs", () => {
+		const root = mkdtempSync(join(tmpdir(), "melian-record-snapshot-"));
+		const subdirectory = join(root, "packages", "evals", "triage");
+		const git = gitIn(root);
+		try {
+			mkdirSync(subdirectory, { recursive: true });
+			writeFileSync(join(subdirectory, "questions.json"), '{"1":"aaaa"}');
+			git(["init", "--quiet", "--initial-branch=snapshot"]);
+			git(["add", "--all"]);
+			git(["-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "--quiet", "-m", "snapshot"]);
+			expect(git(["for-each-ref", "--format=%(refname)"]).trim()).toBe("refs/heads/snapshot");
+			const baseline = recordInTestedCommit(gitIn(subdirectory));
+			expect(baseline).toEqual({ kind: "recorded", entries: { "1": "aaaa" } });
+			expect(recordProblems({ "1": "bbbb" }, "1", "bbbb", baseline, true)).toEqual([
+				'version "1" is recorded at the committed baseline as aaaa and must stay so',
+			]);
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
 	it("rejects a rewritten question under its old version, a rewritten record, and a missing record", () => {
-		const main: MainRecord = { kind: "recorded", entries: { "1": "aaaa" } };
-		const absent: MainRecord = { kind: "absent" };
+		const main: BaselineRecord = { kind: "recorded", entries: { "1": "aaaa" } };
+		const absent: BaselineRecord = { kind: "absent" };
 		expect(recordProblems({ "1": "aaaa" }, "1", "aaaa", main, true)).toEqual([]);
 		expect(recordProblems({ "1": "aaaa", "2": "bbbb" }, "2", "bbbb", main, true)).toEqual([]);
 		expect(recordProblems({ "1": "bbbb" }, "1", "bbbb", main, true)).toEqual([
-			'version "1" is recorded on main as aaaa and must stay so',
+			'version "1" is recorded at the committed baseline as aaaa and must stay so',
 		]);
 		expect(recordProblems({ "1": "aaaa" }, "1", "bbbb", main, true)).toEqual([
 			'the questions changed and version "1" did not: bump triageQuestionSet.version and add its fingerprint bbbb to questions.json',
