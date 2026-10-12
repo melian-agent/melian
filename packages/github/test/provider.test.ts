@@ -89,3 +89,84 @@ describe("provider identity", () => {
 		expect(await provider.permission("melian-user")).toBeUndefined();
 	});
 });
+
+it.each(["OtherEvent", "wrong-head", "wrong-ref"])(
+	"reads the exact head push identity past %s decoys",
+	async (decoy) => {
+		const { state, provider } = fixture();
+		state.pushEvents = [
+			{
+				type: decoy === "OtherEvent" ? "OtherEvent" : "PushEvent",
+				actor: { login: "wrong" },
+				payload: {
+					head: decoy === "wrong-head" ? "a".repeat(40) : state.pull.head.sha,
+					ref: decoy === "wrong-ref" ? "refs/heads/another" : "refs/heads/feature",
+				},
+			},
+			{
+				type: "PushEvent",
+				actor: { login: "head-writer" },
+				payload: { head: state.pull.head.sha, ref: "refs/heads/feature" },
+			},
+		];
+		expect((await provider.pullRequest(7)).head).toMatchObject({
+			repository: { owner: "owner", name: "repo" },
+			pusher: "head-writer",
+		});
+		expect(state.calls.filter(({ path }) => path.endsWith("/events"))).toEqual([
+			{ method: "GET", path: "/repos/owner/repo/events" },
+		]);
+	},
+);
+it("distinguishes absent push events, unreadable events and an event with no actor", async () => {
+	const { state, provider } = fixture();
+	expect((await provider.pullRequest(7)).head).not.toHaveProperty("pusher");
+	expect((await provider.pullRequest(7)).head).not.toHaveProperty("writerError");
+	state.failEvents = true;
+	expect((await provider.pullRequest(7)).head.writerError).toContain("could not be read");
+	state.failEvents = false;
+	state.pushEvents = [{ type: "PushEvent", payload: { head: state.pull.head.sha, ref: "refs/heads/feature" } }];
+	expect((await provider.pullRequest(7)).head.writerError).toContain("names no pushing identity");
+	state.headRepository = null;
+	expect((await provider.pullRequest(7)).head).not.toHaveProperty("repository");
+});
+it("reads subsequent event pages before using the author fallback", async () => {
+	const { state } = fixture();
+	const transport = fakeGitHub(state);
+	const pages: number[] = [];
+	const provider = createGitHubProvider({
+		owner: state.owner,
+		repo: state.repo,
+		token: "test",
+		fetch: async (input, init) => {
+			const url = new URL(String(input));
+			if (url.pathname !== "/repos/owner/repo/events") return transport(input, init);
+			expect(url.searchParams.get("per_page")).toBe("100");
+			const page = Number(url.searchParams.get("page") ?? "1");
+			pages.push(page);
+			return new Response(
+				JSON.stringify(
+					page === 1
+						? []
+						: [
+								{
+									type: "PushEvent",
+									actor: { login: "second-page-writer" },
+									payload: { head: state.pull.head.sha, ref: "refs/heads/feature" },
+								},
+							],
+				),
+				{
+					headers: {
+						"content-type": "application/json",
+						...(page === 1
+							? { link: '<https://api.github.com/repos/owner/repo/events?per_page=100&page=2>; rel="next"' }
+							: {}),
+					},
+				},
+			);
+		},
+	});
+	expect((await provider.pullRequest(7)).head.pusher).toBe("second-page-writer");
+	expect(pages).toEqual([1, 2]);
+});

@@ -25,7 +25,13 @@ export interface PullRequest {
 	readonly state: "open" | "closed";
 	/** The branch the pull request merges into, and its commit as the provider last saw it. */
 	readonly base: { readonly ref: string; readonly sha: string };
-	readonly head: { readonly ref: string; readonly sha: string };
+	readonly head: {
+		readonly ref: string;
+		readonly sha: string;
+		readonly repository?: { readonly owner: string; readonly name: string };
+		readonly pusher?: string;
+		readonly writerError?: string;
+	};
 	/** A git URL the pull request's commits can be fetched from, and the ref there that holds its head. */
 	readonly fetch: { readonly url: string; readonly headRef: string };
 }

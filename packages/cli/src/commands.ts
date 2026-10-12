@@ -6,6 +6,7 @@ import {
 	Lens,
 	loadConfig,
 	loadSecrets,
+	type PullRequest,
 	Rendering,
 	type RepositoryPermission,
 	type RepositorySource,
@@ -118,7 +119,7 @@ export async function review(
 			base: pullRequest.base.sha,
 			head: pullRequest.head.sha,
 		};
-		writer = await writerTrust(provider, pullRequest.author);
+		writer = await writerTrust(provider, pullRequest);
 	} else {
 		changeset = await Changeset.resolve(io.cwd, target.spec);
 		const checkedOut = await git(changeset.repoRoot, ["rev-parse", "--verify", "--quiet", "HEAD"]).catch(() => "");
@@ -258,15 +259,24 @@ export async function review(
 
 const writePermissions: readonly RepositoryPermission[] = ["write", "maintain", "admin"];
 
-// Whether a pull request's author may have the head's own code run by a check. Whoever the provider cannot name, or
-// cannot give a permission for, is not trusted.
-async function writerTrust(provider: ReviewProvider, author: string | undefined): Promise<WriterTrust> {
-	if (author === undefined) return { trusted: false, detail: "the provider names no author for the pull request" };
-	const permission = await provider.permission(author);
+async function writerTrust(provider: ReviewProvider, pullRequest: PullRequest): Promise<WriterTrust> {
+	const head = pullRequest.head.repository;
+	if (head === undefined)
+		return { trusted: false, detail: "the provider names no repository for the pull request head" };
+	if (
+		head.owner.toLowerCase() !== pullRequest.repository.owner.toLowerCase() ||
+		head.name.toLowerCase() !== pullRequest.repository.name.toLowerCase()
+	)
+		return { trusted: false, detail: "the pull request head is in a fork, outside the base repository" };
+	if (pullRequest.head.writerError !== undefined) return { trusted: false, detail: pullRequest.head.writerError };
+	const writer = pullRequest.head.pusher ?? pullRequest.author;
+	if (writer === undefined)
+		return { trusted: false, detail: "the provider names no author for the pull request or pusher for its head" };
+	const permission = await provider.permission(writer);
 	if (writePermissions.some((each) => each === permission)) return { trusted: true };
 	return {
 		trusted: false,
-		detail: `${author} has ${permission === undefined ? "no known" : permission} permission on the repository`,
+		detail: `${writer} has ${permission === undefined ? "no known" : permission} permission on the repository`,
 	};
 }
 

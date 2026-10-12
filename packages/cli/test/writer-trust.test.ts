@@ -34,6 +34,12 @@ async function open(
 	permissions: Record<string, string>,
 	head: Record<string, string> = {},
 	tier = "static.mutation",
+	identity: {
+		repository?: { owner: string; name: string } | null;
+		pusher?: string;
+		failEvents?: boolean;
+		failPermission?: boolean;
+	} = {},
 ) {
 	repo = baseAndHead(
 		{
@@ -58,6 +64,17 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 	moveTo(state, changeset);
 	if (author !== undefined) state.author = author;
 	state.permissions = permissions;
+	state.headRepository = identity.repository;
+	state.failEvents = identity.failEvents;
+	state.failPermission = identity.failPermission;
+	if (identity.pusher !== undefined)
+		state.pushEvents = [
+			{
+				type: "PushEvent",
+				actor: { login: identity.pusher },
+				payload: { head: changeset.revision.head, ref: `refs/heads/${state.pull.head.ref}` },
+			},
+		];
 	const provider = createGitHubProvider({
 		owner: state.owner,
 		repo: state.repo,
@@ -120,6 +137,62 @@ describe("static.mutation and the writer of a pull request", { timeout: 60_000 }
 		expect(await review(io, "#7", { rerun: false, walkthrough: false })).toBe(0);
 		expect(ran()).toBe(false);
 		expect(output()).toContain("octocat has no known permission on the repository");
+	});
+
+	it.each([
+		{ owner: "fork-owner", name: "example" },
+		{ owner: "melian-agent", name: "another" },
+	])("refuses a maintainer's fork head %s", async (repository) => {
+		const { io, output } = await open("maintainer", { maintainer: "admin" }, {}, "static.mutation", { repository });
+		expect(await review(io, "#7", { rerun: false, walkthrough: false })).toBe(0);
+		expect(ran()).toBe(false);
+		expect(output()).toContain("head is in a fork");
+	});
+	it("refuses an absent head repository", async () => {
+		const { io, output } = await open("maintainer", { maintainer: "admin" }, {}, "static.mutation", {
+			repository: null,
+		});
+		expect(await review(io, "#7", { rerun: false, walkthrough: false })).toBe(0);
+		expect(ran()).toBe(false);
+		expect(output()).toContain("names no repository");
+	});
+	it.each(["read", "surprise"])(
+		"refuses a pusher with %s permission despite the author's write access",
+		async (permission) => {
+			const { io, output } = await open(
+				"maintainer",
+				{ maintainer: "admin", contributor: permission },
+				{},
+				"static.mutation",
+				{ pusher: "contributor" },
+			);
+			expect(await review(io, "#7", { rerun: false, walkthrough: false })).toBe(0);
+			expect(ran()).toBe(false);
+			expect(output()).toContain("contributor has");
+		},
+	);
+	it("trusts a same-repository pusher with write permission despite the author's read role", async () => {
+		const { io } = await open("contributor", { maintainer: "write", contributor: "read" }, {}, "static.mutation", {
+			pusher: "maintainer",
+		});
+		expect(await review(io, "#7", { rerun: false, walkthrough: false })).toBe(0);
+		expect(ran()).toBe(1);
+	});
+	it("records unreadable permission as untrusted", async () => {
+		const { io, output } = await open("maintainer", { maintainer: "admin" }, {}, "static.mutation", {
+			failPermission: true,
+		});
+		expect(await review(io, "#7", { rerun: false, walkthrough: false })).toBe(0);
+		expect(ran()).toBe(false);
+		expect(output()).toContain("maintainer has no known permission");
+	});
+	it("refuses a failed pusher lookup rather than falling back to the writer author", async () => {
+		const { io, output } = await open("maintainer", { maintainer: "admin" }, {}, "static.mutation", {
+			failEvents: true,
+		});
+		expect(await review(io, "#7", { rerun: false, walkthrough: false })).toBe(0);
+		expect(ran()).toBe(false);
+		expect(output()).toContain("pushing identity could not be read");
 	});
 
 	it("runs the check for a range whose head is the checked-out commit, which the reviewer chose to run", async () => {

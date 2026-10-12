@@ -29,6 +29,9 @@ export type FakeState = {
 	login: string;
 	author?: string;
 	permissions?: Record<string, string>;
+	headRepository?: { owner: string; name: string } | null;
+	pushEvents?: { type: string; actor?: { login: string }; payload: { head: string; ref: string } }[];
+	failEvents?: boolean;
 	failPermission?: boolean;
 	pull: { number: number; title: string; base: { ref: string; sha: string }; head: { ref: string; sha: string } };
 	// The lines the pull request's diff adds, which alone take an inline comment.
@@ -110,7 +113,17 @@ export function fakeGitHub(
 				owner: { login: state.owner },
 			},
 		},
-		head: { ref: state.pull.head.ref, sha: state.pull.head.sha },
+		head: {
+			ref: state.pull.head.ref,
+			sha: state.pull.head.sha,
+			repo:
+				state.headRepository === null
+					? null
+					: {
+							name: state.headRepository?.name ?? state.repo,
+							owner: { login: state.headRepository?.owner ?? state.owner },
+						},
+		},
 	});
 	return async (input, init) => {
 		const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url);
@@ -120,6 +133,8 @@ export function fakeGitHub(
 		state.calls.push(call);
 		const path = url.pathname;
 		const user = { login: state.login };
+		if (method === "GET" && path === `${repoPath}/events`)
+			return state.failEvents ? json({ message: "Forbidden" }, 403) : json(state.pushEvents ?? []);
 		if (method === "POST" || method === "PATCH") await beforeWrite(call);
 		const collaborator = new RegExp(`^${repoPath}/collaborators/([^/]+)/permission$`).exec(path);
 		if (method === "GET" && collaborator !== null) {

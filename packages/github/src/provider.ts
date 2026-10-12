@@ -138,9 +138,37 @@ export class GitHubProvider implements ReviewProvider {
 			url: data.html_url,
 			state: data.state === "open" ? "open" : "closed",
 			base: { ref: data.base.ref, sha: data.base.sha },
-			head: { ref: data.head.ref, sha: data.head.sha },
+			head: {
+				ref: data.head.ref,
+				sha: data.head.sha,
+				...(data.head.repo == null
+					? {}
+					: { repository: { owner: data.head.repo.owner.login, name: data.head.repo.name } }),
+				...(await this.#headWriter(data.head.ref, data.head.sha)),
+			},
 			fetch: { url: data.base.repo.clone_url, headRef: `refs/pull/${data.number}/head` },
 		};
+	}
+
+	async #headWriter(ref: string, sha: string): Promise<Pick<PullRequest["head"], "pusher" | "writerError">> {
+		try {
+			const events = await this.octokit.paginate(this.octokit.rest.activity.listRepoEvents, {
+				owner: this.owner,
+				repo: this.repo,
+				per_page: 100,
+			});
+			const push = events.find(
+				(event) =>
+					event.type === "PushEvent" &&
+					(event.payload as { head?: string }).head === sha &&
+					(event.payload as { ref?: string }).ref === `refs/heads/${ref}`,
+			);
+			if (push === undefined) return {};
+			if (!push.actor?.login) return { writerError: "the head's push event names no pushing identity" };
+			return { pusher: push.actor.login };
+		} catch {
+			return { writerError: "the head's pushing identity could not be read from GitHub events" };
+		}
 	}
 
 	async permission(login: string): Promise<RepositoryPermission | undefined> {
