@@ -5,7 +5,7 @@ it.each([4096, 4097])("keeps the last 4096 stderr characters across chunks (%s)"
 	const stderr = new MutationStderr();
 	stderr.append("x".repeat(length - 1));
 	stderr.append("y");
-	expect(stderr.read()).toBe("x".repeat(Math.min(length, 4096) - 1) + "y");
+	expect(stderr.read()).toBe(`${"x".repeat(Math.min(length, 4096) - 1)}y`);
 });
 it.each([32, 33])("keeps the last 32 stderr lines (%s)", (length) => {
 	const stderr = new MutationStderr();
