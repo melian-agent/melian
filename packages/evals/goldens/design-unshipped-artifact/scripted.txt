@@ -1,6 +1,6 @@
 src/manifest.ts
 
-  P1  line 6  unshipped-artifact  (introduced, new, unresolved, confirmed)
+  P1  line 6  unshipped-artifact  (introduced, new, block, confirmed)
     Verified: faux/scripted: The scripted verifier traced the claim.
   The code reads a file at the package root that the published package does not contain.
     What: The code reads a file at the package root that the published package does not contain.

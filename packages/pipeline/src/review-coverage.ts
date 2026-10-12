@@ -88,7 +88,7 @@ export class ReviewTranscript {
 							reads.push({
 								lens,
 								path: match.path,
-								revision: "head",
+								revision: call.arguments.revision === "base" ? "base" : "head",
 								kind: "search",
 								lines: [Number(number[1])],
 							});

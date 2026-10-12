@@ -654,6 +654,11 @@ export class Lens {
 		return new Lens(fields);
 	}
 
+	/** Loads the shipped lenses without reading repository definitions. */
+	static async builtins(): Promise<Lens[]> {
+		return layer(await builtinDefinitions()).map((lens) => new Lens(lens));
+	}
+
 	/**
 	 * Loads the lenses that apply to each of `paths`, files or directories inside the repository at `repoRoot`, and
 	 * returns their union by name and version, sorted by name.

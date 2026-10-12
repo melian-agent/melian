@@ -1,0 +1,33 @@
+{
+  "pr_title": "Rename writer trust as publisher eligibility",
+  "comments": [
+    {
+      "comment": "A renamed concept and an unlinked decision select their own weaker publication baseline.",
+      "severity": "High",
+      "category": "bug",
+      "file": "docs/decisions/2026-10-07-publisher-eligibility.md",
+      "rule": "criterion-selection-bias",
+      "source": "lens.design",
+      "cause": "introduced",
+      "failureScenario": "Three writers govern a repository. Only one approves. The head calls them publishers and permits publication under its new decision, although the active base decision withholds trust until all three approve.",
+      "evidence": [
+        {
+          "file": "docs/decisions/2026-10-07-publisher-eligibility.md",
+          "line": 3,
+          "role": "cause"
+        },
+        {
+          "file": "src/publish.ts",
+          "line": 2,
+          "role": "context"
+        },
+        {
+          "file": "docs/decisions/2026-10-01-writer-trust.md",
+          "line": 3,
+          "role": "context",
+          "revision": "base"
+        }
+      ]
+    }
+  ]
+}

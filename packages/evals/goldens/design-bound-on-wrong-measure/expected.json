@@ -1,0 +1,28 @@
+{
+  "pr_title": "Bound the rendered standards",
+  "comments": [
+    {
+      "comment": "The standards cap now counts content bytes and omits rendered paths and headings.",
+      "severity": "Medium",
+      "category": "bug",
+      "file": "src/bound-on-wrong-measure.ts",
+      "rule": "bound-on-wrong-measure",
+      "source": "lens.design",
+      "cause": "introduced",
+      "failureScenario": "A caller passes 100 empty sections whose paths are 20 bytes each. Their content totals zero bytes and passes, but rendered headings exceed 1024 bytes and the prompt violates its bound.",
+      "evidence": [
+        {
+          "file": "src/bound-on-wrong-measure.ts",
+          "line": 3,
+          "role": "cause"
+        },
+        {
+          "file": "docs/decisions/2026-10-01-bound-on-wrong-measure.md",
+          "line": 3,
+          "role": "context",
+          "revision": "base"
+        }
+      ]
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 src/lint.ts
 
-  P1  line 8  secret-exposure  (affected, new, unresolved, confirmed)
+  P1  line 8  secret-exposure  (affected, new, block, confirmed)
     Verified: faux/scripted: The scripted verifier traced the claim.
   execFileSync in lint no longer sets env, so ESLint, and the head's configuration it loads, inherits every variable of the process, GITHUB_TOKEN included.
     What: execFileSync in lint no longer sets env, so ESLint, and the head's configuration it loads, inherits every variable of the process, GITHUB_TOKEN included.

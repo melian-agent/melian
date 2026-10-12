@@ -1,6 +1,6 @@
 docs/design.md
 
-  P2  line 7  missing-doc-update  (affected, new, unresolved, confirmed)
+  P2  line 7  missing-doc-update  (affected, new, acknowledge, confirmed)
     Verified: faux/scripted: The scripted verifier traced the claim.
   docs/design.md says a half cent rounds up, and the export now rounds it to the even cent.
     What: docs/design.md says a half cent rounds up, and the export now rounds it to the even cent.

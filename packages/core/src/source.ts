@@ -30,7 +30,7 @@ export type SourceErrorCode =
 	| "tooLarge"
 	| "unreadable";
 
-// Loaders translate this into their own typed error, so it never leaves the package.
+/** A bounded repository read failed. Loaders may translate this into their own error. */
 export class SourceError extends Error {
 	readonly code: SourceErrorCode;
 	readonly path: string;
@@ -48,6 +48,7 @@ export class SourceError extends Error {
 // Paths are repository-relative with forward slashes, "" for the root, and already checked to stay inside it.
 // Neither implementation follows a symlink: a symlink is refused with `symlink`, and a path beneath a symlinked
 // directory does not exist, as in git's own trees.
+/** A bounded reader over a single repository source, without following symlinks. */
 export interface SourceReader {
 	readonly commit?: string;
 	// Names a file for messages: the path for the working tree, git's `<commit>:<path>` for a revision.
@@ -68,6 +69,7 @@ function nulSeparated(output: string): string[] {
 	return output.split("\0").filter((path) => path !== "");
 }
 
+/** Opens the host’s chosen source; revision reads never depend on the checked-out tree. */
 export async function openSource(repoRoot: string, source: RepositorySource): Promise<SourceReader> {
 	if (!(await stat(repoRoot).catch(() => undefined))?.isDirectory()) {
 		throw new SourceError("missingRoot", repoRoot, `${repoRoot} is not a directory`);

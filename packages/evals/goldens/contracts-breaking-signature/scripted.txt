@@ -1,6 +1,6 @@
 src/cart.ts
 
-  P0  line 10  broken-caller  (affected, new, unresolved, confirmed)
+  P0  line 10  broken-caller  (affected, new, block, confirmed)
     Verified: faux/scripted: The scripted verifier traced the claim.
   summary calls formatPrice with the amount alone.
     What: summary calls formatPrice with the amount alone.
@@ -15,7 +15,7 @@ src/cart.ts
 
 src/price.ts
 
-  P1  line 2  wrong-result  (introduced, new, unresolved, confirmed)
+  P1  line 2  wrong-result  (introduced, new, block, confirmed)
     Verified: faux/scripted: The scripted verifier traced the claim.
   formatPrice divides every amount by 100, so formatPrice(500, "JPY") renders "JPY 5" for 500 yen.
     What: formatPrice divides every amount by 100, so formatPrice(500, "JPY") renders "JPY 5" for 500 yen.

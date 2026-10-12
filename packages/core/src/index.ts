@@ -289,7 +289,7 @@ export {
 	type NamedCredential,
 	secretsFileSchema,
 } from "./secrets.ts";
-export type { RepositorySource } from "./source.ts";
+export { openSource, type RepositorySource, SourceError, type SourceReader } from "./source.ts";
 export {
 	loadStandards,
 	Standards,

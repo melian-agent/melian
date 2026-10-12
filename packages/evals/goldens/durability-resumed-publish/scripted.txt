@@ -1,6 +1,6 @@
 packages/pipeline/src/publish.ts
 
-  P1  line 67  stale-task-write  (introduced, new, unresolved, confirmed)
+  P1  line 67  stale-task-write  (introduced, new, block, confirmed)
     Verified: faux/scripted: The scripted verifier traced the claim.
   The loop now resumes and waits for every unfinished publish task, and each posts the verdict of the revision its input was created with.
     What: The loop now resumes and waits for every unfinished publish task, and each posts the verdict of the revision its input was created with.

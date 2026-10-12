@@ -1,6 +1,6 @@
 docs/progress-log/2026-10-02-item-count.md
 
-  P3  line 3  quoted-rule-violation  (introduced, new, unresolved, confirmed)
+  P3  line 3  quoted-rule-violation  (introduced, new, advisory, confirmed)
     Verified: faux/scripted: The scripted verifier traced the claim.
   The entry mentions pull request #14 and issue #9 without links.
     What: The entry mentions pull request #14 and issue #9 without links.

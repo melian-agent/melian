@@ -67,6 +67,17 @@
     {
       "calls": [
         {
+          "name": "read_file",
+          "arguments": {
+            "path": "src/publish.ts"
+          },
+          "expectToolResult": "options.writersTrusted ?? true"
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
           "name": "report_finding",
           "arguments": {
             "file": "docs/decisions/2026-10-07-republish-trust.md",

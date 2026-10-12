@@ -1,0 +1,28 @@
+{
+  "pr_title": "Standards need matching provenance",
+  "comments": [
+    {
+      "comment": "A revision label promotes standards from the wrong commit into trusted instructions.",
+      "severity": "High",
+      "category": "security",
+      "file": "src/trust-by-label.ts",
+      "rule": "trust-by-label",
+      "source": "lens.design",
+      "cause": "introduced",
+      "failureScenario": "Policy is read at commit A. A caller supplies standards from commit B with kind revision. The head puts B text into trusted instructions even though B was not the policy revision.",
+      "evidence": [
+        {
+          "file": "src/trust-by-label.ts",
+          "line": 3,
+          "role": "cause"
+        },
+        {
+          "file": "docs/decisions/2026-10-01-trust-by-label.md",
+          "line": 3,
+          "role": "context",
+          "revision": "base"
+        }
+      ]
+    }
+  ]
+}

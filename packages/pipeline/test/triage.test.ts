@@ -947,12 +947,12 @@ describe("a decision task another call replaced", () => {
 		const held = holding(true);
 		await open(held.decider);
 		scriptConversations(fake, [{ match: correctness, replies: [done, done] }]);
-		const first = review({ decider: held.decider });
+		const first = review({ decider: held.decider }).catch((error: unknown) => error);
 		await vi.waitFor(() => expect(held.calls()).toBe(1));
 		const [pending] = await decisionTasks();
 
 		const rerun = await review({ decider: held.decider, rerun: true });
-		await expect(first).rejects.toMatchObject({ code: "superseded" });
+		expect(await first).toMatchObject({ code: "superseded" });
 
 		expect(lensRecord(rerun)).toMatchObject({ level: "quick" });
 		const settled = await harness.waitForTask(pending!.record.id, context);

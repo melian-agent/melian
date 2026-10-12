@@ -1,0 +1,28 @@
+{
+  "pr_title": "Preserve earlier coverage evidence",
+  "comments": [
+    {
+      "comment": "A graph-wide coverage slot overwrites evidence referenced by an earlier durable record.",
+      "severity": "Medium",
+      "category": "bug",
+      "file": "src/single-slot-overwrite.ts",
+      "rule": "single-slot-overwrite",
+      "source": "lens.design",
+      "cause": "introduced",
+      "failureScenario": "A durable record stores the key returned for graph G and coverage A. A rerun writes coverage B for G. The earlier record now reads B through the same key, so its evidence changes after it was committed.",
+      "evidence": [
+        {
+          "file": "src/single-slot-overwrite.ts",
+          "line": 4,
+          "role": "cause"
+        },
+        {
+          "file": "docs/decisions/2026-10-01-single-slot-overwrite.md",
+          "line": 3,
+          "role": "context",
+          "revision": "base"
+        }
+      ]
+    }
+  ]
+}

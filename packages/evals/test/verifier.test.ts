@@ -1,5 +1,8 @@
+import { cpSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { Verification } from "@melian-agent/core";
-import { loadVerifierGoldens, runVerifierGolden, scoreVerifierGolden } from "@melian-agent/evals";
+import { loadVerifierGoldens, runVerifierGolden, scoreVerifierGolden, type VerifierGolden } from "@melian-agent/evals";
 import {
 	createFakeModels,
 	fauxAssistantMessage,
@@ -10,10 +13,36 @@ import { describe, expect, it } from "vitest";
 
 const goldens = loadVerifierGoldens();
 
+const verdictCases: [VerifierGolden["expected"]["kind"], Verification["verdict"][], boolean][] = [
+	["design", ["confirmed"], true],
+	["design", ["plausible"], false],
+	["design", ["refuted"], false],
+	["design", ["confirmed", "plausible"], false],
+	["design", ["confirmed", "refuted"], false],
+	["design", ["plausible", "refuted"], false],
+	["design", ["confirmed", "plausible", "refuted"], false],
+	["decoy", ["confirmed"], false],
+	["decoy", ["plausible"], false],
+	["decoy", ["refuted"], true],
+	["decoy", ["confirmed", "plausible"], false],
+	["decoy", ["confirmed", "refuted"], false],
+	["decoy", ["plausible", "refuted"], false],
+	["decoy", ["confirmed", "plausible", "refuted"], false],
+	["needs-execution", ["confirmed"], false],
+	["needs-execution", ["plausible"], false],
+	["needs-execution", ["refuted"], false],
+	["needs-execution", ["confirmed", "plausible"], true],
+	["needs-execution", ["confirmed", "refuted"], false],
+	["needs-execution", ["plausible", "refuted"], false],
+	["needs-execution", ["confirmed", "plausible", "refuted"], false],
+	["needs-execution", ["plausible", "confirmed"], true],
+];
+
 describe("the verifier corpus", { timeout: 60_000 }, () => {
-	it("holds four executing-reviewer misses and two decoys outside the lens corpus", () => {
+	it("holds executing-reviewer misses, a design departure and two decoys outside the lens corpus", () => {
 		expect(goldens.map((golden) => golden.name)).toEqual([
 			"circular-import-tdz",
+			"design-supersedes-its-own-decision",
 			"excluded-zero-input",
 			"guarded-null-dereference",
 			"separator-hash-collision",
@@ -21,6 +50,27 @@ describe("the verifier corpus", { timeout: 60_000 }, () => {
 			"yaml-secret-diagnostic",
 		]);
 	});
+	it.each(verdictCases)("%s corpus verdicts %j", (kind, verdicts, accepted) => {
+		const directory = mkdtempSync(join(tmpdir(), "melian-verifier-verdicts-"));
+		try {
+			const golden = goldens.find((each) => each.expected.kind === kind)!;
+			const copy = join(directory, golden.name);
+			cpSync(golden.directory, copy, { recursive: true });
+			writeFileSync(join(copy, "expected.json"), JSON.stringify({ kind, verdicts }));
+			if (accepted) {
+				const loaded = loadVerifierGoldens(directory);
+				expect(loaded).toHaveLength(1);
+				expect(loaded[0]!.expected).toEqual({ kind, verdicts });
+			} else {
+				expect(() => loadVerifierGoldens(directory)).toThrow(
+					`${golden.name}: expected verdicts must retain real defects and refute decoys`,
+				);
+			}
+		} finally {
+			rmSync(directory, { recursive: true, force: true });
+		}
+	});
+
 	it.each(goldens)("judges $name through the verification task", async (golden) => {
 		const run = await runVerifierGolden(golden, { kind: "scripted" });
 		expect(scoreVerifierGolden(golden, run).passed).toBe(true);
@@ -31,6 +81,22 @@ describe("the verifier corpus", { timeout: 60_000 }, () => {
 		});
 		expect(run.verifierRequests).toBe(2);
 		expect(run.rendered).toContain(golden.script.verdict);
+	});
+	it("leaves a scripted candidate unjudged when a required verifier instruction is absent", async () => {
+		const golden = goldens.find((each) => each.expected.kind === "design")!;
+		const missing = "This instruction is deliberately absent from the verifier prompt.";
+		const run = await runVerifierGolden(
+			{
+				...golden,
+				script: { ...golden.script, expectInstructions: [...golden.script.expectInstructions!, missing] },
+			},
+			{ kind: "scripted" },
+		);
+		expect(run.verification).toBeUndefined();
+		expect(scoreVerifierGolden(golden, run)).toMatchObject({ verdict: undefined, passed: false });
+		expect(run.rendered).toContain("not reviewed");
+		expect(run.rendered).toContain(`Missing verifier instruction: ${missing}`);
+		expect(run.verifierRequests).toBe(1);
 	});
 	it("fails a refuted real defect, a retained decoy, and any unjudged candidate", () => {
 		const real = goldens.find((golden) => golden.expected.kind === "needs-execution")!;
