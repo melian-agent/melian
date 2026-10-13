@@ -17,6 +17,11 @@ export interface SandboxPaths {
 	/** The canonical Node executable, readable as a literal path. */
 	readonly node: string;
 	/**
+	 * Single programs the command may read and start, each by its canonical path: a tool that lives in no install. The
+	 * grant is the file and nothing beside it.
+	 */
+	readonly executables?: readonly string[];
+	/**
 	 * Whether the command may listen on and connect to loopback addresses; absent means no network at all. On macOS
 	 * loopback is the host's own, so a command given it can reach every service that listens there. bubblewrap's private
 	 * network namespace has a loopback of its own with nothing on it, whatever this says. On both, the hosts file is
@@ -30,6 +35,17 @@ export interface SandboxPaths {
 // shell and the tools a command line names, such as `env`, `sh`, and `date`; `/usr/share` holds the locale and ICU data
 // those libraries load. The last is the time zone database `/etc/localtime` points into, which `date` and Node read.
 const systemReads = ["/usr/lib", "/usr/bin", "/usr/share", "/bin", "/System", "/private/var/db/timezone"];
+
+// The sysctl names a command may read: host description, and nothing about a process.
+const sysctlReads = [
+	'(sysctl-name-prefix "hw.")',
+	'(sysctl-name "kern.ostype")',
+	'(sysctl-name "kern.osrelease")',
+	'(sysctl-name "kern.version")',
+	'(sysctl-name "kern.hostname")',
+	'(sysctl-name "kern.argmax")',
+	'(sysctl-name "kern.boottime")',
+];
 
 // Single files outside the sealed volume. `/etc/localtime` names the host's time zone, so a log's times match the
 // reviewer's. `/bin/sh` reads the `sh` link to choose its shell, and `xcrun`, behind the git shim, reads `developer_dir`.
@@ -188,7 +204,9 @@ export class Sandbox {
 		const runtime = nodeDirectories(paths.node);
 		const readable = [
 			'(literal "/")',
-			...[...systemFiles, paths.node].map((path) => `(literal ${profileString(path)})`),
+			...[...systemFiles, paths.node, ...(paths.executables ?? [])].map(
+				(path) => `(literal ${profileString(path)})`,
+			),
 			...[
 				...systemReads,
 				...(developer === undefined ? [] : [developer]),
@@ -197,9 +215,8 @@ export class Sandbox {
 				...paths.installs,
 			].map((path) => `(subpath ${profileString(path)})`),
 		].join(" ");
-		const parents = [...new Set([paths.node, ...runtime, ...writable, ...paths.installs].flatMap(ancestors))].map(
-			(path) => `(literal ${profileString(path)})`,
-		);
+		const granted = [paths.node, ...(paths.executables ?? []), ...runtime, ...writable, ...paths.installs];
+		const parents = [...new Set(granted.flatMap(ancestors))].map((path) => `(literal ${profileString(path)})`);
 		return [
 			"(version 1)",
 			"(deny default)",
@@ -211,9 +228,16 @@ export class Sandbox {
 			`(allow file-map-executable ${readable})`,
 			// A parent stops the children it started, as Node does at a timeout. No process outside this sandbox is a target.
 			"(allow signal (target same-sandbox))",
-			// Node aborts at start without the CPU count and page size, and libuv reads more by number, which a profile cannot
-			// list by name. A sysctl is read-only host description: hardware, kernel version, host name.
-			"(allow sysctl-read)",
+			// By name, never the whole tree: `kern.procargs2` and `kern.proc` hand any process the arguments and environment
+			// of every process the user owns, the reviewer's keys among them. Node aborts at start without the CPU count
+			// and page size under `hw.`; `uname`, which Node's `os.release()` and tsc's launcher call, reads the four
+			// `kern` names; `xargs` and `getconf` read `kern.argmax`; `os.uptime()` reads `kern.boottime`.
+			`(allow sysctl-read ${sysctlReads.join(" ")})`,
+			// The kernel also answers for another process through `proc_info`, and lets a process-argument sysctl through
+			// on that permission alone, so it is denied for every process but the caller: no process list, no path or
+			// arguments of another. A process asks about itself all the time; `xcrun` and Vitest's workers trap without it.
+			"(deny process-info*)",
+			"(allow process-info* (target self))",
 			// dyld lists the root directory before anything runs; without it the process aborts with no message.
 			`(allow file-read* ${readable})`,
 			// /etc and /var are links into /private, which a path through them stats. Each directory above a granted path is
@@ -264,7 +288,7 @@ export class Sandbox {
 			// A process table of the namespace alone, the few devices bubblewrap makes, and an empty /tmp for scratch to
 			// mount under.
 			"--proc /proc --dev /dev --tmpfs /tmp",
-			bind("--ro-bind", paths.node),
+			...[paths.node, ...(paths.executables ?? [])].map((path) => bind("--ro-bind", path)),
 			...nodeDirectories(paths.node).map((path) => bind("--ro-bind", path)),
 			...paths.installs.map((path) => bind("--ro-bind", path)),
 			bind("--bind", paths.scratch),

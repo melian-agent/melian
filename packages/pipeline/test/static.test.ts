@@ -348,6 +348,59 @@ describe("runStaticTool with the repository's own tools", () => {
 		}
 	});
 
+	// The layout round two found: the checkout's `.bin` entry links to a program that lives in no install. Run in the
+	// host's own sandbox, where an ungranted file cannot start.
+	it.skipIf(hostSandbox === undefined)(
+		"runs a standalone tool inside the sandbox, and reports one that needs a file beside itself as failed, not missing",
+		{ timeout: 60_000 },
+		async () => {
+			const head = commit(repo, { ".gitignore": lines("node_modules"), "src/a.ts": "export const a = 1;\n" });
+			const elsewhere = join(dirname(repo), `melian-standalone-${process.pid}`);
+			const script = [
+				'if [ "$1" = "--version" ]; then echo 0.0.0; exit 0; fi',
+				'for arg in "$@"; do case "$arg" in --reporter-file=*) out=$(printf %s "$arg" | cut -d= -f2-);; esac; done',
+				`printf '%s' '${emptySarif}' > "$out"`,
+			].join("\n");
+			const install = (source: string) => {
+				writeFiles(elsewhere, { biome: `#!/bin/sh\n${source}\n`, "library.sh": "helper=1\n" });
+				chmodSync(join(elsewhere, "biome"), 0o755);
+				mkdirSync(join(repo, "node_modules/.bin"), { recursive: true });
+				rmSync(join(repo, "node_modules/.bin/biome"), { force: true });
+				symlinkSync(join(elsewhere, "biome"), join(repo, "node_modules/.bin/biome"));
+			};
+			try {
+				install(script);
+				expect(await runStaticTool(input("biome", head), context)).toMatchObject({
+					status: "ran",
+					notes: [],
+					confinement: { confined: true },
+				});
+				// The same tool, now reading a file beside itself, which the grant does not cover.
+				install(`. "$(dirname "$0")/library.sh" || exit 3\n${script}`);
+				const failure = await runStaticTool(input("biome", head), context).catch((error: CheckError) => error);
+				expect(failure).toMatchObject({ code: "toolFailed" });
+				expect((failure as CheckError).message).toContain("library.sh");
+			} finally {
+				rmSync(elsewhere, { recursive: true, force: true });
+			}
+		},
+	);
+
+	it.each([
+		[126, "toolMissing"],
+		[127, "toolMissing"],
+		[125, "toolFailed"],
+		[128, "toolFailed"],
+		[1, "toolFailed"],
+	] as const)("reads a version probe that exits %s as %s", { timeout: 60_000 }, async (exit, code) => {
+		const head = commit(repo, { ".gitignore": lines("node_modules"), "src/a.ts": "export const a = 1;\n" });
+		fakeTool(repo, "biome", `echo "said by the tool"; exit ${exit}`);
+		await expect(runStaticTool(input("biome", head), context)).rejects.toMatchObject({
+			code,
+			message: expect.stringContaining(`--version failed with exit code ${exit}: said by the tool`),
+		});
+	});
+
 	it("grants no install of its own when the tool's path names no node_modules", { timeout: 60_000 }, async () => {
 		const head = commit(repo, { ".gitignore": lines("node_modules"), "src/a.ts": "export const a = 1;\n" });
 		fakeTool(
@@ -378,6 +431,8 @@ describe("runStaticTool with the repository's own tools", () => {
 			expect((await runStaticTool({ ...input("biome", head), env }, context)).status).toBe("ran");
 			expect(command.mock.calls[0]![0]).toBe(`'${join(elsewhere, "biome")}' --version`);
 			expect(command.mock.calls[0]![1].installs).toEqual([join(repo, "node_modules")]);
+			// In no install, so the one file is granted and nothing beside it.
+			expect(command.mock.calls[0]![1].executables).toEqual([join(elsewhere, "biome")]);
 			// A nested install is read from the outermost node_modules, where the packages hoisted beside it live.
 			linkTo("a/node_modules/b/node_modules/biome/bin/biome");
 			command.mockClear();
@@ -386,6 +441,7 @@ describe("runStaticTool with the repository's own tools", () => {
 				join(repo, "node_modules"),
 				join(elsewhere, "a/node_modules"),
 			]);
+			expect(command.mock.calls[0]![1].executables).toEqual([]);
 			// A tool whose path cannot be resolved runs as named, and the checkout's install already covers that name.
 			vi.spyOn(env, "canonicalPath").mockImplementation(async (path, at) =>
 				path.endsWith("/.bin/biome")

@@ -1,5 +1,5 @@
 import type * as childProcess from "node:child_process";
-import { execFile, spawnSync } from "node:child_process";
+import { execFile, spawn, spawnSync } from "node:child_process";
 import type * as filesystem from "node:fs";
 import {
 	copyFileSync,
@@ -500,6 +500,7 @@ describe.skipIf(!bubblewrapAvailable)("bubblewrap", { timeout: 60_000 }, () => {
 
 	// The Linux counterpart of the seatbelt test of what the profile no longer grants: what the namespace holds at all.
 	it("shows the command a filesystem of the named binds only, its own processes, and no terminal", async () => {
+		vi.stubEnv("MELIAN_TEST_KEY", "environment-marker-112");
 		const sandbox = (await detect("linux")) as Sandbox;
 		const where = paths();
 		writeFileSync(
@@ -516,6 +517,7 @@ console.log(JSON.stringify({
   absent: ["/usr/local", "/usr/sbin", "/sbin", "/lib32", "/var", "/root", "/etc/hosts", "/etc/shadow", "/etc/ssh", home + "/auth.json", outside].filter((path) => fs.existsSync(path)),
   processes: list("/proc").filter((name) => /^[0-9]+$/.test(name)).length,
   hostProcess: fs.existsSync("/proc/" + host),
+  environments: list("/proc").filter((name) => /^[0-9]+$/.test(name)).map((pid) => { try { return fs.readFileSync("/proc/" + pid + "/environ", "utf8"); } catch (error) { return ""; } }).join("\\0"),
   terminal: opens("/dev/tty", "r+"),
   devices: list("/dev"),
   temporary: list("/tmp").length,
@@ -529,6 +531,19 @@ console.log(JSON.stringify({
 			env: { ...sandbox.environment(), HOME: join(where.scratch, "home"), TMPDIR: where.scratch },
 		});
 		const seen = JSON.parse(stdout) as Record<string, unknown>;
+		// /proc is a new one for the namespace. Every environment readable through it is one Melian built for the
+		// command: the key this test process holds is in none, and no variable but the sandbox's own is there.
+		expect(process.env.MELIAN_TEST_KEY).toBe("environment-marker-112");
+		expect(seen.environments).not.toContain("environment-marker-112");
+		const variables = new Set(
+			String(seen.environments)
+				.split("\0")
+				.filter((entry) => entry.includes("="))
+				.map((entry) => entry.slice(0, entry.indexOf("="))),
+		);
+		for (const name of variables)
+			expect(["PATH", "HOME", "TMPDIR", "MELIAN_SANDBOX", "PWD", "OLDPWD", "SHLVL", "_"]).toContain(name);
+		expect(variables.has("MELIAN_SANDBOX")).toBe(true);
 		// The control: a system tool runs and the script reads itself, so what is missing below is the namespace's doing.
 		expect(seen.control).toEqual([0, "ok"]);
 		const allowed = ["alternatives", "group", "ld.so.cache", "localtime", "nsswitch.conf", "passwd"];
@@ -645,7 +660,9 @@ describe("sandbox policy on a host that cannot start nested sandboxes", () => {
 			`(allow process-exec ${readable})`,
 			`(allow file-map-executable ${readable})`,
 			"(allow signal (target same-sandbox))",
-			"(allow sysctl-read)",
+			'(allow sysctl-read (sysctl-name-prefix "hw.") (sysctl-name "kern.ostype") (sysctl-name "kern.osrelease") (sysctl-name "kern.version") (sysctl-name "kern.hostname") (sysctl-name "kern.argmax") (sysctl-name "kern.boottime"))',
+			"(deny process-info*)",
+			"(allow process-info* (target self))",
 			`(allow file-read* ${readable})`,
 			'(allow file-read-metadata (literal "/") (literal "/etc") (literal "/var") (literal "/opt/node/bin") (literal "/opt/node") (literal "/opt") (literal "/checkout"))',
 			'(allow file-write* (subpath "/work"))',
@@ -665,6 +682,25 @@ describe("sandbox policy on a host that cannot start nested sandboxes", () => {
 			'(allow file-read* (literal "/private/etc/hosts"))',
 			"",
 		]);
+		// A standalone program is granted as its own file in each rule that names the readable paths, with its parents'
+		// metadata, and its directory is not.
+		const tool = seatbelt.profile({ ...where, executables: ["/opt/tools/bin/lint"] })!.split("\n");
+		const withTool = readable.replace(
+			'(literal "/opt/node/bin/node")',
+			'(literal "/opt/node/bin/node") (literal "/opt/tools/bin/lint")',
+		);
+		expect(tool.slice(3, 5)).toEqual([`(allow process-exec ${withTool})`, `(allow file-map-executable ${withTool})`]);
+		expect(tool[9]).toBe(`(allow file-read* ${withTool})`);
+		expect(tool[10]).toBe(
+			'(allow file-read-metadata (literal "/") (literal "/etc") (literal "/var") (literal "/opt/node/bin") (literal "/opt/node") (literal "/opt") (literal "/opt/tools/bin") (literal "/opt/tools") (literal "/checkout"))',
+		);
+		expect(tool.join("\n")).not.toContain('(subpath "/opt/tools');
+		const bound = bubblewrap.command("true", { ...where, executables: ["/opt/tools/bin/lint"] }, "/unused");
+		expect(bound).toContain(
+			"--ro-bind '/opt/node/bin/node' '/opt/node/bin/node' --ro-bind '/opt/tools/bin/lint' '/opt/tools/bin/lint'",
+		);
+		expect(bound).not.toContain("'/opt/tools/bin' ");
+		expect(bubblewrap.command("true", where, "/unused")).not.toContain("/opt/tools");
 		expect(bubblewrap.profile(where)).toBeUndefined();
 	});
 
@@ -911,7 +947,6 @@ const start = (file, args = []) => { const r = spawnSync(file, args); if (r.erro
 attempt("run a system tool", () => start("/usr/bin/true"));
 attempt("run a program outside the readable set", () => start(outside));
 attempt("run a program in sbin", () => start("/sbin/ifconfig", ["lo0"]));
-attempt("list processes", () => start("/bin/ps", ["-ax"]));
 attempt("signal a process outside", () => process.kill(Number(host), 0));
 attempt("stop its own child", () => start("/bin/sh", ["-c", "/bin/sleep 30 & kill $!"]));
 for (const path of ["/Library/Preferences", "/Library/Apple", "/private/etc", "/private/var/select", "/Users", "/dev"])
@@ -930,7 +965,6 @@ console.log(JSON.stringify(result));`,
 			"run a system tool": "ok",
 			"run a program outside the readable set": "EPERM",
 			"run a program in sbin": "EPERM",
-			"list processes": "EPERM",
 			"signal a process outside": "EPERM",
 			"stop its own child": "ok",
 			"list /Library/Preferences": "EPERM",
@@ -949,5 +983,72 @@ console.log(JSON.stringify(result));`,
 			"read /dev/urandom": "ok",
 			"read /dev/null": "ok",
 		});
+	},
+);
+
+// The calls a tool would make to read another process, made directly: `ps` is setuid and fails to start for that
+// reason alone, which proves nothing about the calls.
+const compiler = spawnSync("/usr/bin/which", ["cc"], { encoding: "utf8" }).stdout.trim();
+it.skipIf(!seatbeltAvailable || compiler === "")(
+	"cannot read another process's environment, list processes, or find another's path (needs a C compiler)",
+	{ timeout: 60_000 },
+	async () => {
+		const sandbox = (await detect("darwin"))!;
+		const where = paths();
+		const probe = join(where.worktree, "process-probe");
+		await run(compiler, ["-o", probe, fileURLToPath(new URL("./fixtures/process-probe.c", import.meta.url))]);
+		// A process of the reviewer's with a key in its environment. It ends itself, and the test stops it by its pid.
+		const holder = spawn(process.execPath, ["-e", "setTimeout(() => {}, 30000)"], {
+			env: { MELIAN_TEST_KEY: "environment-marker-112" },
+			stdio: "ignore",
+		});
+		try {
+			const outside = JSON.parse((await run(probe, [String(holder.pid), "environment-marker-112"])).stdout);
+			// The control: outside the sandbox every one of these reads works, and the key is there to be found.
+			expect(outside).toMatchObject({
+				arguments: 1,
+				marker: 1,
+				table: 1,
+				entry: 1,
+				path: 1,
+				ownPath: 1,
+				hardware: 1,
+			});
+			expect(outside.pids).toBeGreaterThan(10);
+			const { stdout } = await run(
+				"/bin/bash",
+				[
+					"-c",
+					sandbox.command(
+						`./process-probe ${holder.pid} environment-marker-112`,
+						where,
+						"",
+						sandbox.profile(where),
+					),
+				],
+				{ env: { ...sandbox.environment(), HOME: join(where.scratch, "home"), TMPDIR: where.scratch } },
+			);
+			expect(JSON.parse(stdout)).toEqual({
+				arguments: 0,
+				marker: 0,
+				table: 0,
+				entry: 0,
+				path: 0,
+				pids: 0,
+				// It may still ask about itself and read the hardware's description, and no other sysctl.
+				ownPath: 1,
+				hardware: 1,
+				session: 0,
+			});
+		} finally {
+			holder.kill("SIGKILL");
+		}
+	},
+);
+
+it.skipIf(process.platform !== "darwin")(
+	"has a C compiler on a macOS host, so the process test above did not skip",
+	() => {
+		expect(seatbeltAvailable ? compiler : "not needed").not.toBe("");
 	},
 );
