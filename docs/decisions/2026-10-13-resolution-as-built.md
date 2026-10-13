@@ -174,6 +174,7 @@ What the step added:
 - A change to a lens's declared `resolution` in any `LENS.md` always draws it too.
 - Neither notice resolves below `acknowledge`. None of the new keys can lower it: no mapping and no ceiling under `guardrails` applies to it.
 - Melian compares the parsed `resolution` value at the base and at the head with its own loaders. A side that does not parse counts as changed.
+- A lens's default is compared as it takes effect in the folder its `LENS.md` governs. It also comes through `extends`, and from whichever file of that name is nearest. So a file that drops `extends`, or a new nearer file with no `resolution`, draws the notice though neither writes the key.
 - Such a notice resolves through the files' severity tables alone. It is marked in the typed field beside its class, and the floor reads the mark. A notice on a `LENS.md` that leaves its resolution alone has no floor, as before.
 
 The policy source stays the base for a pull request. A head that lowers its own lens's ceiling is reviewed under the base's keys, so it cannot lower its own findings. A lens's declared default is read from the same source as the lens, as the lens applies at the finding's path. It is no part of the lens's version, so a lens that gains a default keeps its stored findings.

@@ -952,6 +952,39 @@ describe("a change to what a finding requires", () => {
 		).toBe("acknowledge");
 	});
 
+	it("draws it when a lens's effective default changes through extends, or through a new nearer file", async () => {
+		const strict = (...frontMatter: string[]) =>
+			lines("---", "name: strict", ...frontMatter, "---", "Find what breaks.");
+		const whole = [
+			"description: Strictness.",
+			"tier: medium",
+			"rules:",
+			"  - id: loose",
+			"    description: Too loose.",
+		];
+		const { findings } = await guardrails(
+			{
+				"melian.yaml": root,
+				".melian/lenses/strict/LENS.md": strict(...whole, "resolution: { P3: block }"),
+				"svc/.melian/lenses/strict/LENS.md": strict("extends: strict"),
+				"same/.melian/lenses/strict/LENS.md": strict("extends: strict"),
+			},
+			{
+				// Neither file writes a resolution key at the base or at the head.
+				"svc/.melian/lenses/strict/LENS.md": strict(...whole),
+				"new/.melian/lenses/strict/LENS.md": strict(...whole),
+				// Still extends the root's, so its default stands.
+				"same/.melian/lenses/strict/LENS.md": strict("extends: strict", "severities: [P3]"),
+			},
+		);
+		expect(notices(findings)).toEqual([
+			["new/.melian/lenses/strict/LENS.md", { notice: "policy", resolution: true }],
+			["svc/.melian/lenses/strict/LENS.md", { notice: "policy", resolution: true }],
+		]);
+		const quiet = { resolution: { P2: "silent", checks: { guardrails: { ceiling: "silent" } } } } as const;
+		expect(findings.map((finding) => finding.resolve(quiet))).toEqual(["acknowledge", "acknowledge"]);
+	});
+
 	it("leaves a lens file's notice unmarked when its resolution stands", async () => {
 		const { findings } = await guardrails(
 			{ ".melian/lenses/cleanup/LENS.md": lens("resolution: { ceiling: advisory }") },

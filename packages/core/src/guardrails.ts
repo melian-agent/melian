@@ -22,7 +22,7 @@ import {
 	snippetOccurrence,
 } from "./findings.ts";
 import { git } from "./git.ts";
-import { isLensFile, parseLensFile } from "./lens.ts";
+import { isLensFile, Lens } from "./lens.ts";
 import { melianPaths } from "./paths.ts";
 import { compileGlob, compilePattern, type LinearPattern, matchesGlobs, Refused } from "./pattern.ts";
 import { openSource, type RepositorySource, SourceError, type SourceReader } from "./source.ts";
@@ -214,28 +214,36 @@ function loadsManifest(path: string, workspaces: readonly string[] | undefined):
 	return directory === "" || workspaces === undefined || matchesGlobs(workspaces, directory);
 }
 
-// Whether the revision changes what `path` says a finding requires: the `resolution` key of a `melian.yaml`, or the
-// resolution a `LENS.md` declares, each parsed at the base and at the head as its own loader parses it. A side that
-// does not parse counts as changed, since nothing shows it left the keys alone.
+// Whether the revision changes what `path` says a finding requires: the `resolution` key of a `melian.yaml`, parsed at
+// the base and at the head as the loader parses it, or the default a lens declares. A lens's default is compared as it
+// takes effect in the folder its `LENS.md` governs, since it also comes through `extends` and from whichever file of
+// that name is nearest: a file that drops `extends`, or a new nearer file, changes it without writing the key. A side
+// that cannot be read counts as changed, since nothing shows it left the keys alone.
 async function resolutionChanged(repoRoot: string, revision: Revision, path: string): Promise<boolean> {
-	const declared =
-		posix.basename(path) === melianPaths.config
-			? (text: string) => parseResolution(text, path)
-			: isLensFile(path)
-				? (text: string) => parseLensFile(path, text).frontMatter.resolution
-				: undefined;
-	if (declared === undefined) return false;
-	const sides = await Promise.all(
-		[revision.base, revision.head].map(async (commit) => {
+	let declared: (commit: string) => Promise<unknown>;
+	if (posix.basename(path) === melianPaths.config) {
+		declared = async (commit) => {
 			const blob = await blobText(repoRoot, commit, path);
-			if (blob.why === "absent") return { resolution: undefined };
-			if (blob.text === undefined) return undefined;
-			try {
-				return { resolution: declared(blob.text) };
-			} catch {
-				return undefined;
-			}
-		}),
+			if (blob.why === "absent") return undefined;
+			if (blob.text === undefined) throw new CheckError("unreadable", check, `${commit}:${path} is ${blob.why}`);
+			return parseResolution(blob.text, path);
+		};
+	} else if (isLensFile(path)) {
+		// `<scope>/.melian/lenses/<name>/LENS.md`: the lens of that name, as it applies in the scope.
+		// The lens's own directory lies beneath the folder it governs, so the lenses that apply there are that folder's.
+		const governed = posix.dirname(path);
+		const name = posix.basename(governed);
+		declared = async (commit) =>
+			(await Lens.load(repoRoot, { kind: "revision", commit }, [governed])).find((lens) => lens.name === name)
+				?.resolution;
+	} else return false;
+	const sides = await Promise.all(
+		[revision.base, revision.head].map((commit) =>
+			declared(commit).then(
+				(resolution) => ({ resolution }),
+				() => undefined,
+			),
+		),
 	);
 	const [base, head] = sides;
 	return base === undefined || head === undefined || !isDeepStrictEqual(base.resolution, head.resolution);
