@@ -248,10 +248,12 @@ describe("runStaticTool with the repository's own tools", () => {
 		expect(detect).toHaveBeenCalledExactlyOnceWith(env, context);
 		expect(paths.worktree).toBe(join(paths.scratch, "tree"));
 		expect(paths.scratch).toMatch(/melian-static-/);
-		// The checkout's install, then Melian's own, which holds the Biome that ran.
+		// The checkout's install, then Melian's own, which holds the Biome that ran: the outermost node_modules above
+		// its real path. Inside a mutation run's worktree the install is linked, and the real one is the checkout's.
+		const biome = realpathSync(fileURLToPath(new URL("../../../node_modules/@biomejs/biome", import.meta.url)));
 		expect(paths.installs).toEqual([
 			join(repo, "node_modules"),
-			realpathSync(fileURLToPath(new URL("../../../node_modules", import.meta.url))),
+			biome.slice(0, biome.indexOf("/node_modules/") + "/node_modules".length),
 		]);
 		expect(paths.loopback).toBeUndefined();
 		expect(
@@ -425,7 +427,9 @@ describe("runStaticTool with the repository's own tools", () => {
 		});
 	});
 
-	it("links a workspace's own dependencies and grants exactly those install directories to mutation tests", async () => {
+	it("links a workspace's own dependencies and grants exactly those install directories to mutation tests", {
+		timeout: 60_000,
+	}, async () => {
 		writeFiles(repo, emptyVitestInstall);
 		vi.spyOn(Sandbox, "detect").mockResolvedValue(unconfinedSandbox);
 		const command = vi.spyOn(unconfinedSandbox, "command");

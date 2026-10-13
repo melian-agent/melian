@@ -333,6 +333,19 @@ describe("supervise", () => {
 		expect(exits).toEqual([1]);
 	});
 
+	it("ends the tree it has recorded and exits 1 when the process table cannot be read", async () => {
+		table.push(at(301, 300));
+		start();
+		host.list = () => {
+			throw new Error("ps failed");
+		};
+		expect(() => ticks[0]!()).not.toThrow();
+		await settle();
+		expect(terminatedWith.map((records) => records.map((entry) => entry.pid).sort())).toEqual([[300, 301]]);
+		expect(files.get("done")).toBe("1");
+		expect(exits).toEqual([1]);
+	});
+
 	it("treats a controller pid with another start time as a different process", async () => {
 		start();
 		table = table.map((entry) => (entry.pid === 500 ? { ...entry, start: "reused" } : entry));

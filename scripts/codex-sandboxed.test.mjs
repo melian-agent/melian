@@ -33,6 +33,10 @@ const sandboxExec = (() => {
 		return false;
 	}
 })();
+// Melian's own sandbox, which the mutation check runs these tests in, grants no /dev/fd, and the wrapper reads its
+// environment through a process substitution. The tests that run the wrapper past that line skip there; they run on the
+// host and in CI.
+const melianSandbox = process.env.MELIAN_SANDBOX !== undefined;
 const realAgentSocket = (() => {
 	try {
 		return execFileSync("launchctl", ["getenv", "SSH_AUTH_SOCK"], { encoding: "utf8" }).trim();
@@ -114,7 +118,8 @@ describe("codex-sandboxed.sh profile", { timeout: 60_000 }, () => {
 		writeFileSync(join(home, ".codex", "config.toml"), "");
 		profilePath = join(root, "profile.sb");
 		writeFileSync(profilePath, profile(linked, scratch));
-	});
+		// Several git commands: Vitest's ten seconds for a hook are not enough on a loaded machine.
+	}, 60_000);
 
 	const tmpProbe = () => `/private/tmp/codex-sandboxed-probe-${basename(root)}`;
 
@@ -723,7 +728,7 @@ describe("codex-sandboxed.sh profile", { timeout: 60_000 }, () => {
 		},
 	);
 
-	it("builds the full-access Codex command with the model, worktree, and prompt", () => {
+	it.skipIf(melianSandbox)("builds the full-access Codex command with the model, worktree, and prompt", () => {
 		const freshHome = join(root, "command-home");
 		mkdirSync(freshHome);
 		expect(existsSync(join(freshHome, ".codex"))).toBe(false);
@@ -1365,7 +1370,7 @@ describe("codex-sandboxed.sh profile", { timeout: 60_000 }, () => {
 		});
 	});
 
-	it.each(["test", "cleanup"])(
+	it.skipIf(melianSandbox).each(["test", "cleanup"])(
 		"exits 143 on TERM during %s, leaving no stand-in codex, sleepers, run directory or profile",
 		async (phase) => {
 			const termBin = join(root, `term-bin-${phase}`);

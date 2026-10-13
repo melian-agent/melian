@@ -130,7 +130,15 @@ export function supervise(options: SupervisorOptions, host: SupervisorHost): voi
 	host.terminated(() => void end(1));
 	host.every(options.interval, () => {
 		if (ended) return;
-		const current = scan();
+		let current: ProcessEntry[];
+		try {
+			current = scan();
+		} catch {
+			// A table that cannot be read cannot show the controller alive. Thrown from here the error would end this
+			// process with nothing written, and the host would wait out the run's whole timeout.
+			void end(1);
+			return;
+		}
 		const alive = current.some(
 			(entry) => entry.pid === options.controller.pid && entry.start === options.controller.start,
 		);

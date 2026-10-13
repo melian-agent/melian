@@ -10,7 +10,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import {
 	Changeset,
@@ -643,7 +643,7 @@ ${body}`,
 
 		it("keeps the related run's failure when the whole suite fails after it with more output than a message holds", async () => {
 			const run = relatedRun(
-				`if [ "$attempt" = 1 ]; then echo RELATED FAILURE; exit 1; fi\nhead -c 5000 /dev/zero | tr '\\0' x\necho WHOLE FAILURE\nexit 1`,
+				`if [ "$attempt" = 1 ]; then echo RELATED FAILURE; exit 1; fi\nyes x | tr -d '\\n' | head -c 5000\necho WHOLE FAILURE\nexit 1`,
 			);
 			const failure = (await mutate(run.base, run.head).catch((error: unknown) => error)) as CheckError;
 			expect(run.attempts()).toBe(2);
@@ -658,7 +658,7 @@ ${body}`,
 			[4097, false],
 		])("keeps the last 4,096 characters of the related run's output (%s)", async (length, whole) => {
 			const run = relatedRun(
-				`if [ "$attempt" = 1 ]; then printf FIRST; head -c ${length - 9} /dev/zero | tr '\\0' x; printf LAST; exit 1; fi\necho WHOLE FAILURE\nexit 1`,
+				`if [ "$attempt" = 1 ]; then printf FIRST; yes x | tr -d '\\n' | head -c ${length - 9}; printf LAST; exit 1; fi\necho WHOLE FAILURE\nexit 1`,
 			);
 			const failure = (await mutate(run.base, run.head).catch((error: unknown) => error)) as CheckError;
 			const related = failure.message.slice("Stryker exited 1: ".length).split("\n[melian]")[0]!;
@@ -949,9 +949,14 @@ exit 1`,
 			);
 			const env = createNodeExecutionEnv(repo);
 			const remove = vi.spyOn(env, "remove");
+			const created = vi.spyOn(env, "createTempDir");
 			await expect(mutate(base, head, { env })).rejects.toThrow("symlink");
 			expect(readFileSync(join(outside, ".git/sentinel"), "utf8")).toBe("host data");
-			expect(remove.mock.calls.filter(([path]) => path.includes(confinedScratchPrefix)).length).toBe(0);
+			// By this run's own scratch, not by the prefix: run inside another mutation run, every path holds the prefix.
+			const made = (await created.mock.results[0]!.value) as { value: string };
+			const scratch = join(realpathSync(dirname(made.value)), basename(made.value));
+			expect(scratch).toContain(confinedScratchPrefix);
+			expect(remove.mock.calls.filter(([path]) => path.startsWith(scratch))).toEqual([]);
 		},
 	);
 
@@ -1300,20 +1305,9 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 			it("names the file when the run passes its timeout", async () => {
 				const base = commit(repo, { "stryker.config.json": config });
 				const head = commit(repo, { [path]: binary, "packages/p/src/a.ts": a });
-				fakeTool(repo, "stryker", `if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi\nsleep 30`);
-				const result = await runStaticTool(
-					{
-						env: createNodeExecutionEnv(repo),
-						repoRoot: repo,
-						base,
-						commit: head,
-						tool: "mutation",
-						trustedWriter: true,
-						settings: { ...defaultConfig.static.mutation, timeout: 1 },
-						revision: await revisionOf(base, head),
-					},
-					context,
-				);
+				stryker({ report: report({}) });
+				strykerTimesOut();
+				const result = await mutate(base, head);
 				if (result.status !== "skipped") throw new Error("ran");
 				expect(result.log?.runs[0].results.map((each) => each.message.text).join()).toContain(
 					`packages/p/src/a.ts, ${path}`,
@@ -1617,23 +1611,12 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 				"packages/p/src/b.ts": lines("export const b = 1;"),
 				"packages/p/src/c.ts": lines("export const c = 1;"),
 			});
-			fakeTool(repo, "stryker", `if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi\nsleep 30`);
-			const result = await runStaticTool(
-				{
-					env: createNodeExecutionEnv(repo),
-					repoRoot: repo,
-					base,
-					commit: head,
-					tool: "mutation",
-					trustedWriter: true,
-					settings: { ...defaultConfig.static.mutation, timeout: 1, maxLines: 1 },
-					revision: await revisionOf(base, head),
-				},
-				context,
-			);
+			stryker({ report: report({}) });
+			strykerTimesOut();
+			const result = await mutate(base, head, { maxLines: 1 });
 			if (result.status !== "skipped") throw new Error("ran");
 			expect(result.log?.runs[0].results.map((each) => each.message.text)).toEqual([
-				`Stryker did not judge the changed lines of packages/p/src/a.ts, packages/p/src/b.ts, packages/p/src/c.ts: ${mutationSkips.timeout(1)}.`,
+				`Stryker did not judge the changed lines of packages/p/src/a.ts, packages/p/src/b.ts, packages/p/src/c.ts: ${mutationSkips.timeout(120)}.`,
 			]);
 		});
 	});
@@ -1735,7 +1718,8 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 				repo,
 				"stryker",
 				`if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi
-head -c 20000000 /dev/zero > big.bin || exit 9
+yes | head -c 20000000 > big.bin
+[ "$(wc -c < big.bin | tr -d ' ')" = 20000000 ] || exit 9
 mkdir -p reports/mutation
 echo '{"files":{}}' > reports/mutation/mutation.json
 exit 0`,
@@ -1761,28 +1745,16 @@ exit 0`,
 
 		it("records a run that passes static.mutation.timeout as a skip with leave, not a failure", async () => {
 			const { base, head } = twoCommits();
-			fakeTool(repo, "stryker", `if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi\nsleep 30`);
-			const revision = await revisionOf(base, head);
-			const result = await runStaticTool(
-				{
-					env: createNodeExecutionEnv(repo),
-					repoRoot: repo,
-					base,
-					commit: head,
-					tool: "mutation",
-					trustedWriter: true,
-					settings: { ...defaultConfig.static.mutation, timeout: 1 },
-					revision,
-				},
-				context,
-			);
-			expect(result).toMatchObject({ status: "skipped", reason: mutationSkips.timeout(1), cause: "timeout" });
+			stryker({ report: report({}) });
+			strykerTimesOut();
+			const result = await mutate(base, head);
+			expect(result).toMatchObject({ status: "skipped", reason: mutationSkips.timeout(120), cause: "timeout" });
 			expect(mutationSkipHasLeave("timeout")).toBe(true);
 			if (result.status !== "skipped") throw new Error("ran");
 			expect(result.log?.runs[0].results.map((each) => [each.ruleId, each.message.text])).toEqual([
 				[
 					"unmutated",
-					`Stryker did not judge the changed lines of packages/p/src/a.ts: ${mutationSkips.timeout(1)}.`,
+					`Stryker did not judge the changed lines of packages/p/src/a.ts: ${mutationSkips.timeout(120)}.`,
 				],
 			]);
 		});
@@ -1817,7 +1789,7 @@ exit 0`,
 				repo,
 				"stryker",
 				`if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi
-printf 'START'; head -c 6000 /dev/zero | tr '\\0' x; printf 'END\\n'
+printf 'START'; yes x | tr -d '\\n' | head -c 6000; printf 'END\\n'
 exit 1`,
 			);
 			const failure = (await mutate(base, head).catch((error: unknown) => error)) as CheckError;
@@ -2053,7 +2025,7 @@ cp '${canned}' reports/mutation/mutation.json`,
 
 		it("records a run past its timeout as a skip with leave that still raises one P2 mutation/unmutated finding naming the files", async () => {
 			const base = commit(repo, {
-				"melian.yaml": policy.replace("timeout: 120", "timeout: 1"),
+				"melian.yaml": policy,
 				"stryker.config.json": config,
 				"packages/p/src/a.ts": a,
 				"packages/p/src/b.ts": a.replace("function a", "function b"),
@@ -2062,13 +2034,14 @@ cp '${canned}' reports/mutation/mutation.json`,
 				"packages/p/src/a.ts": a.replace("x > 0", "x >= 0"),
 				"packages/p/src/b.ts": a.replace("function a", "function b").replace("x > 0", "x >= 0"),
 			});
-			fakeTool(repo, "stryker", `if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi\nsleep 30`);
+			stryker({ report: report({}) });
+			strykerTimesOut();
 			const { harness, root, run } = await checks(base, head);
 			expect(run.records).toEqual([
 				{
 					name: "static.mutation",
 					status: "skipped",
-					reason: mutationSkips.timeout(1),
+					reason: mutationSkips.timeout(120),
 					cause: "timeout",
 				},
 			]);

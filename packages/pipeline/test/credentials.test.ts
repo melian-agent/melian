@@ -486,14 +486,7 @@ describe("MelianCredentialStore", () => {
 
 	it("says a command that prints more than any key would is too large, not slow", async () => {
 		const credentials = new MelianCredentialStore(
-			[
-				named(
-					"vault",
-					"openai",
-					{ kind: "command", command: "head -c 100000 /dev/zero" },
-					"/clone/melian.secrets.yaml",
-				),
-			],
+			[named("vault", "openai", { kind: "command", command: "yes | head -c 100000" }, "/clone/melian.secrets.yaml")],
 			() => ({ apiKey: true, oauth: false }),
 			new PiCredentialStore(authPath),
 			{},
