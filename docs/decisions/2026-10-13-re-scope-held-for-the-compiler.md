@@ -40,7 +40,7 @@ The verifier may lower a finding's severity by one step, and never raise it. A m
 - A lowering is always shown with the original severity and the verifier's reason: in the terminal, the ledger, and the JSON. An author reads "P3, lowered from P2" and why.
 - The lens's severity stays stored. Adjudication resolves the finding at the lowered one.
 
-As built: the fence against silence is held twice. `report_verdict` refuses the lowering under the table the review fixed when it built the candidate. Adjudication reads the table again, and resolves a lowered finding at the lens's severity when the table then in force silences the lowered one. A policy file edited between the two cannot lower a finding into silence. A lowering carries its own reason, beside the verdict's, because the reason a claim is true is not the reason it is narrow. A refused lowering still records the verdict, and `report_verdict` says why in its result.
+As built: the fence against silence is held twice. `report_verdict` refuses the lowering under the table the review fixed when it built the candidate. Adjudication reads the table again, and resolves a lowered finding at the lens's severity when the table then in force silences the lowered one. A policy file edited between the two cannot lower a finding into silence, and the terminal then says why the finding resolved at the lens's severity. A lowering carries its own reason, beside the verdict's, because the reason a claim is true is not the reason it is narrow. A refused lowering still records the verdict, and `report_verdict` says why in its result.
 
 ## What survives: the stored record
 
@@ -113,6 +113,8 @@ Two for surfacing: a re-scoped P2 is listed under "Pre-existing, important" with
 A correction stays text shown beside the finding, which changes nothing. The lowering is a separate typed field. So this refines [the verification pass](2026-10-04-verification-pass.md) and [the verifier as built](2026-10-05-verifier-as-built.md), and replaces neither. It leaves [resolution ownership](2026-10-03-resolution-ownership.md) alone: the verifier stores a severity, and only adjudication writes a resolution.
 
 Lowering is not scoring. Milestone 4 plans a decision model that scores severity and confidence as calibrated probabilities. A lowering has no number, and `confidence` stays reserved for the decision model. Each lowering, stored beside the lens's severity and joined to what the author did next, becomes calibration data for that scoring.
+
+A lowering can raise what a perverse table requires. The fence stops lowering into silence, and checks nothing else about the table. Under a table that maps P1 `silent` and P2 `advisory`, a pre-existing P1 the verifier lowers to P2 turns a review from `passed` to `findings`. The direction is stricter, and the table is the oddity.
 
 A second model can still move a P1 out of the blocking set by one step down. The verifier reads the head, which the author writes, so an author can argue for that. The fence bounds it to one step, never to silence, and the original severity is always shown.
 

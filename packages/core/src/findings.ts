@@ -13,7 +13,6 @@ import {
 } from "./config.ts";
 import { FindingError } from "./errors.ts";
 import {
-	causeSchema,
 	evidenceLocationSchema,
 	evidenceRevisionSchema,
 	evidenceRoleSchema,
@@ -25,7 +24,7 @@ import { evidenceLines, messageContinuation, plural, prose, Rendering, severityC
 
 import { type Verification, verificationSchema } from "./verification.ts";
 
-export { causeSchema, evidenceLocationSchema, evidenceRevisionSchema, evidenceRoleSchema, findingEvidenceSchema };
+export { evidenceLocationSchema, evidenceRevisionSchema, evidenceRoleSchema, findingEvidenceSchema };
 
 const strict = { additionalProperties: false } as const;
 const text = Type.String({ minLength: 1 });
@@ -38,6 +37,13 @@ export const fingerprintKey = "melian/v1";
 
 /** The JSON Schema of a SARIF `level`. Melian never emits `none`, which SARIF reserves for results that are not failures. */
 export const sarifLevelSchema = Type.Union([Type.Literal("error"), Type.Literal("warning"), Type.Literal("note")]);
+
+/** The JSON Schema of a {@link Cause}. */
+export const causeSchema = Type.Union([
+	Type.Literal("introduced"),
+	Type.Literal("affected"),
+	Type.Literal("pre-existing"),
+]);
 
 /** The JSON Schema of a {@link FindingStatus}. */
 export const findingStatusSchema = Type.Union([
@@ -125,6 +131,7 @@ export const findingPropertiesSchema = Type.Object(
 		trigger: Type.Optional(findingTriggerSchema),
 		severity: severitySchema,
 		originalSeverity: Type.Optional(severitySchema),
+		resolvedAtOriginal: Type.Optional(Type.Literal(true)),
 		confidence: Type.Optional(Type.Number({ minimum: 0, maximum: 1 })),
 		verification: Type.Optional(verificationSchema),
 		resolution: Type.Optional(resolutionSchema),
@@ -1023,6 +1030,11 @@ export class Finding {
 			`  ${rendering.paint(severityColor[severity], severity)}${lowered === undefined ? "" : `, lowered from ${lowered.from}`}  ${lines}  ${visibleText(this.ruleId)}  (${cause}, ${status}, ${resolution ?? "unresolved"}${verification === undefined ? (source.check.startsWith("lens.") ? ", unverified" : "") : `, ${verification.verdict}`})${ids ? `  ${visibleText(id)}` : ""}`,
 			...reports,
 			...(lowered === undefined ? [] : [`    Lowered from ${lowered.from}: ${prose(lowered.reason, "      ")}`]),
+			...(lowered === undefined || this.properties.resolvedAtOriginal !== true
+				? []
+				: [
+						`    Resolved at ${lowered.from}: the table in force resolves ${severity} silent, and a lowering never silences a finding.`,
+					]),
 			...(verification === undefined
 				? []
 				: [
@@ -1233,9 +1245,8 @@ export class Finding {
 		// The fence again, where the table is read: a lowering never takes a finding into silence, whatever the table
 		// said when the verifier asked. The lens's severity then stands.
 		const { severity } = this.properties;
-		const silenced = config.resolution[severity] === "silent";
 		// An unlowered finding's original severity is its own, so this changes only a lowered one.
-		const configured = config.resolution[silenced ? this.original() : severity];
+		const configured = config.resolution[this.#silenced(config) ? this.original() : severity];
 		const resolution =
 			this.causeRank() < 2 || resolutionOrder.indexOf(configured) > resolutionOrder.indexOf("advisory")
 				? configured
@@ -1248,10 +1259,24 @@ export class Finding {
 		return ownPolicy && belowAcknowledge ? "acknowledge" : resolution;
 	}
 
-	/** A copy with `properties.resolution` set by {@link Finding.resolve}, replacing any it carries. */
+	// Whether the table silences the severity the finding stands at, so that a lowered one resolves at the lens's.
+	#silenced(config: Pick<MelianConfig, "resolution">): boolean {
+		return config.resolution[this.properties.severity] === "silent";
+	}
+
+	/**
+	 * A copy with `properties.resolution` set by {@link Finding.resolve}, replacing any it carries, and
+	 * `properties.resolvedAtOriginal` set when a lowered finding resolved at the lens's severity because the table
+	 * silences the lowered one, so a reader is told why a P2 blocks.
+	 */
 	resolved(config: Pick<MelianConfig, "resolution">): ResolvedFinding {
 		const resolution = this.resolve(config);
-		return Finding.from({ ...this.toJSON(), properties: { ...this.properties, resolution } }) as ResolvedFinding;
+		const { resolvedAtOriginal: _, ...properties } = this.properties;
+		const held = this.lowered() !== undefined && this.#silenced(config);
+		return Finding.from({
+			...this.toJSON(),
+			properties: { ...properties, resolution, ...(held ? { resolvedAtOriginal: true as const } : {}) },
+		}) as ResolvedFinding;
 	}
 
 	/** The finding as it is stored: a SARIF result, its fields in their stored order. */

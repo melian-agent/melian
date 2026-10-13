@@ -242,7 +242,16 @@ export async function upsertFinding(
 	hunks?: readonly ProvingHunk[],
 ): Promise<void> {
 	const valid = Finding.parse(finding).toJSON();
-	const { status: _, reportedBy: __, dismissal: ___, pastDismissals: ____, ...properties } = valid.properties;
+	// A lowering is the verifier's to record and adjudication's to hold, so a producer's own claim of either is dropped.
+	const {
+		status: _,
+		reportedBy: __,
+		dismissal: ___,
+		pastDismissals: ____,
+		originalSeverity: _____,
+		resolvedAtOriginal: ______,
+		...properties
+	} = valid.properties;
 	const producer: ProducerFinding = { ...valid, properties };
 	const proved = proofOf(properties.cause, properties.trigger);
 	if (proved.length > 0 && hunks === undefined) {
