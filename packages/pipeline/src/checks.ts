@@ -51,7 +51,7 @@ export type CheckRunRecord =
 			confinement?: Confinement;
 	  }
 	| { name: string; status: "skipped"; reason: string }
-	| { name: string; status: "failed"; reason: string; error: string };
+	| { name: string; status: "failed"; reason: string; error: string; confinement?: Confinement };
 
 /**
  * What identifies one run of a tier: both commits, the tier, a hash of the configuration and source it ran under, and
@@ -185,7 +185,15 @@ function failure(name: string, error: unknown): CheckRunRecord {
 	const code =
 		typeof (error as { code?: unknown })?.code === "string" ? (error as { code: string }).code : "unexpected";
 	const message = error instanceof Error ? error.message : String(error);
-	return { name, status: "failed", reason: code, error: message };
+	// A tool that failed still ran where it ran: the failure carries that, so a crash on a host with no sandbox says so.
+	const confinement = error instanceof CheckError ? error.confinement : undefined;
+	return {
+		name,
+		status: "failed",
+		reason: code,
+		error: message,
+		...(confinement === undefined ? {} : { confinement }),
+	};
 }
 
 // One check on one revision. Rerunning it after a crash runs the tools again on the same commits and writes the same

@@ -14,6 +14,7 @@ import {
 	type StaticToolSettings,
 	type ToolLog,
 	type TscSettings,
+	visibleText,
 } from "@melian-agent/core";
 import { EnolaRun } from "./enola-static.ts";
 import { backgroundContext, type Context, type ExecutionEnv } from "./harness.ts";
@@ -132,8 +133,20 @@ export class Run {
 		return git(root, args);
 	}
 
+	// Whether this run's tool runs inside the sandbox, once that is decided. Every failure after that carries it.
+	confinement?: Confinement;
+
 	fail(code: ConstructorParameters<typeof CheckError>[0], message: string, cause?: unknown): CheckError {
-		return new CheckError(code, this.check, message, { cause });
+		return new CheckError(code, this.check, message, {
+			cause,
+			...(this.confinement === undefined ? {} : { confinement: this.confinement }),
+		});
+	}
+
+	// What a tool printed, for an error message. A tool that ran unconfined could read any file the reviewer can, and
+	// a stock tool will quote one a head names, so nothing it printed leaves the run: the message says only that.
+	said(output: string): string {
+		return this.confinement?.confined === true ? output : withheldOutput;
 	}
 
 	// Runs a command, keeping the start of what it prints for error messages. `replaced` overrides a passed variable, such
@@ -177,16 +190,21 @@ export class Run {
 		executables: readonly string[],
 	): Promise<Confinement> {
 		const sandbox = await Sandbox.detect(this.input.env, this.context);
-		if (sandbox === undefined) return { confined: false, reason: "this host offers no sandbox" };
+		if (sandbox === undefined) return this.#decided({ confined: false, reason: "this host offers no sandbox" });
 		const paths = { worktree: root, scratch, installs, node: nodeExecutable(), executables };
 		const failure = await sandbox.runtimeFailure(paths, this.input.env, this.context);
-		if (failure !== undefined) return { confined: false, reason: failure };
+		if (failure !== undefined) return this.#decided({ confined: false, reason: failure });
 		this.#confinement = { sandbox, paths, profile: sandbox.profile(paths) };
 		// From here the reader runs inside the sandbox too, under a profile built before the tool has run, and so does the
 		// teardown: a process the tool left behind may still be writing in scratch, where a host removal would follow it.
 		this.#outputs = MutationScratch.open(this, scratch, sandbox, []);
 		this.mutationScratch = this.#outputs;
-		return { confined: true };
+		return this.#decided({ confined: true });
+	}
+
+	#decided(confinement: Confinement): Confinement {
+		this.confinement = confinement;
+		return confinement;
 	}
 
 	// Runs the tool's own command, confined when `confine` found a sandbox. git, `ln`, and `rm` stay on `shell`.
@@ -375,8 +393,9 @@ async function versionOf(run: Run, binary: string): Promise<string> {
 	// The shell's own codes for a program it could not find or start. Any other failure is the tool's, with its message:
 	// a tool that started and then lacked something beside itself is broken, not absent.
 	if (code === 126 || code === 127)
-		throw run.fail("toolMissing", `${binary} --version failed with exit code ${code}: ${output}`);
-	if (code !== 0) throw run.fail("toolFailed", `${binary} --version failed with exit code ${code}: ${output}`);
+		throw run.fail("toolMissing", `${binary} --version failed with exit code ${code}: ${run.said(output)}`);
+	if (code !== 0)
+		throw run.fail("toolFailed", `${binary} --version failed with exit code ${code}: ${run.said(output)}`);
 	return /\d+\.\d+\.\d+[\w.+-]*/.exec(output)?.[0] ?? "unknown";
 }
 
@@ -394,7 +413,7 @@ async function runBiome(run: Run, root: string, scratch: string, binary: string,
 		const stderr = (await run.readOutput(posix.join(scratch, "biome.err")))?.slice(0, 4096) ?? output;
 		throw run.fail(
 			"toolFailed",
-			`biome exited with code ${code} and ${text === undefined ? "no report" : "a report"}: ${stderr.trim()}`,
+			`biome exited with code ${code} and ${text === undefined ? "no report" : "a report"}: ${run.said(stderr.trim())}`,
 		);
 	}
 	return normaliseBiomeSarif(text, { root, version });
@@ -467,7 +486,7 @@ async function runTsc(
 		if (code !== 0 && (none || (code !== 1 && code !== 2))) {
 			throw run.fail(
 				"toolFailed",
-				`tsc exited with code ${code} on ${each}: ${(text || output).slice(0, 4096).trim()}`,
+				`tsc exited with code ${code} on ${each}: ${run.said((text || output).slice(0, 4096).trim())}`,
 			);
 		}
 		results.push(...log.runs[0].results);
@@ -541,16 +560,22 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 		}
 		if (tool === "enola") {
 			const tools = input.tools ?? (await ToolProvisioning.open(repoRoot));
-			const checked = await (await EnolaRun.open(run, root, scratch, tools)).check();
 			// Enola runs on the host. Its record says so like any other tool's, so that no record implies a confinement
-			// that did not happen.
-			return checked.status === "ran"
-				? {
-						...checked,
-						notes: [...run.notes, ...checked.notes],
-						confinement: { confined: false, reason: "not yet confined" },
-					}
-				: checked;
+			// that did not happen, and what it prints is withheld like any other unconfined tool's.
+			const confinement: Confinement = { confined: false, reason: "not yet confined" };
+			run.confinement = confinement;
+			const checked = await (await EnolaRun.open(run, root, scratch, tools)).check();
+			if (checked.status !== "ran") return checked;
+			const notes = [...run.notes, ...checked.notes];
+			return {
+				...checked,
+				log: await unconfinedLog(run, root, checked.log, notes),
+				...(checked.baseLog === undefined
+					? {}
+					: { baseLog: await unconfinedLog(run, posix.join(scratch, "base", "tree"), checked.baseLog, notes) }),
+				notes,
+				confinement,
+			};
 		}
 		const files = await trackedFiles(run, root, posix.join(scratch, "files"));
 		const notes: string[] = [];
@@ -586,8 +611,45 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 			tool === "biome"
 				? await runBiome(run, root, scratch, binary, version)
 				: await runTsc(run, root, scratch, binary, version, new Set(files), notes);
-		return { status: "ran", log, notes: [...run.notes, ...notes], confinement };
+		const kept = confinement.confined ? log : await unconfinedLog(run, root, log, notes);
+		return { status: "ran", log: kept, notes: [...run.notes, ...notes], confinement };
 	});
+}
+
+// All an error says of what a tool printed when the tool ran with the reviewer's own access.
+const withheldOutput = "output withheld: the tool ran unconfined";
+
+// An absolute path of two segments or more, as a message would name a file: not a closing tag, a comment marker, a
+// relative path, or a package subpath.
+const absolutePath = /(?<![\w.@/<-])\/[\w.@+-]+(?:\/[\w.@+-]+)+/g;
+
+// The most of a diagnostic's message kept from an unconfined tool.
+const unconfinedMessageLimit = 1000;
+
+// The results of a tool that ran unconfined that are safe to keep. Such a tool reads any file the reviewer can, and
+// its messages are its own words, so a result stays only when its file is really inside the worktree, not a link out
+// of it, and its message names no path outside; the message is cut to a bound and made visible text. The rest are
+// counted in a note, never quoted.
+async function unconfinedLog(run: Run, root: string, log: ToolLog, notes: string[]): Promise<ToolLog> {
+	const kept: ToolLog["runs"][0]["results"] = [];
+	let dropped = 0;
+	for (const result of log.runs[0].results) {
+		const path = posix.join(root, decodeURIComponent(result.locations[0].physicalLocation.artifactLocation.uri));
+		const real = await run.input.env.canonicalPath(path, run.context);
+		const outside = (result.message.text.match(absolutePath) ?? []).some(
+			(named) => named !== root && !named.startsWith(`${root}/`),
+		);
+		if (!real.ok || real.value !== path || outside) {
+			dropped++;
+			continue;
+		}
+		kept.push({ ...result, message: { text: visibleText(result.message.text.slice(0, unconfinedMessageLimit)) } });
+	}
+	if (dropped > 0)
+		notes.push(
+			`${run.input.tool} ran unconfined, so ${dropped} diagnostic(s) that named a file outside the worktree were dropped.`,
+		);
+	return { ...log, runs: [{ ...log.runs[0], results: kept }] };
 }
 
 // Each worktree is locked with the adding process's ID, so a later run can tell a crashed run's worktree from a live one.

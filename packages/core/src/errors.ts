@@ -164,12 +164,20 @@ export type CheckErrorCode =
 export class CheckError extends Error {
 	readonly code: CheckErrorCode;
 	readonly check: string;
+	/** Whether the check's tool ran inside a sandbox, where the failure came after that was decided. */
+	readonly confinement?: { confined: true } | { confined: false; reason: string };
 
-	constructor(code: CheckErrorCode, check: string, message: string, options: { cause?: unknown } = {}) {
+	constructor(
+		code: CheckErrorCode,
+		check: string,
+		message: string,
+		options: { cause?: unknown; confinement?: { confined: true } | { confined: false; reason: string } } = {},
+	) {
 		super(message, { cause: options.cause });
 		this.name = "CheckError";
 		this.code = code;
 		this.check = check;
+		if (options.confinement !== undefined) this.confinement = options.confinement;
 	}
 }
 

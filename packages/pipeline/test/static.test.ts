@@ -389,10 +389,82 @@ describe("runStaticTool with the repository's own tools", () => {
 	] as const)("reads a version probe that exits %s as %s", { timeout: 60_000 }, async (exit, code) => {
 		const head = commit(repo, { ".gitignore": lines("node_modules"), "src/a.ts": "export const a = 1;\n" });
 		fakeTool(repo, "biome", `echo "said by the tool"; exit ${exit}`);
+		const sees = hostSandbox === undefined ? "output withheld: the tool ran unconfined" : "said by the tool";
 		await expect(runStaticTool(input("biome", head), context)).rejects.toMatchObject({
 			code,
-			message: expect.stringContaining(`--version failed with exit code ${exit}: said by the tool`),
+			message: expect.stringContaining(`--version failed with exit code ${exit}: ${sees}`),
 		});
+		// On a host with no sandbox the probe's output is withheld like any other.
+		vi.spyOn(Sandbox, "detect").mockResolvedValue(undefined);
+		await expect(runStaticTool(input("biome", head), context)).rejects.toMatchObject({
+			code,
+			message: expect.stringMatching(
+				/--version failed with exit code \d+: output withheld: the tool ran unconfined$/,
+			),
+			confinement: { confined: false, reason: "this host offers no sandbox" },
+		});
+	});
+
+	it("keeps of an unconfined tool's diagnostics only those inside the worktree, bounded and visible", {
+		timeout: 60_000,
+	}, async () => {
+		const outside = join(dirname(repo), `melian-outside-file-${process.pid}.ts`);
+		writeFileSync(outside, "secret\n");
+		symlinkSync(outside, join(repo, "linked.ts"));
+		const head = commit(repo, { ".gitignore": lines("node_modules"), "src/a.ts": "export const a = 1;\n" });
+		const result = (uri: string, text: string) => ({
+			ruleId: "lint/x",
+			level: "error",
+			message: { text },
+			locations: [{ physicalLocation: { artifactLocation: { uri }, region: { startLine: 1 } } }],
+		});
+		const exact = "m".repeat(1000);
+		const reported = [
+			result("src/a.ts", exact),
+			result("src/a.ts", `${exact}!`),
+			result("src/a.ts", `a bell${String.fromCharCode(7)} rings`),
+			result("src/a.ts", "closes </div>, // a comment, ./a/b, @scope/pkg/sub, and a/b are not files elsewhere"),
+			result("linked.ts", "its file is a link out of the worktree"),
+			result("src/a.ts", "quoted from /etc/ssh/ssh_config: Host *"),
+			result("src/a.ts", `found in ${outside}`),
+		];
+		fakeTool(
+			repo,
+			"biome",
+			[
+				'if [ "$1" = "--version" ]; then echo 0.0.0; exit 0; fi',
+				'for arg in "$@"; do case "$arg" in --reporter-file=*) out=$(printf %s "$arg" | cut -d= -f2-);; esac; done',
+				"# A message that names the worktree itself is the tool speaking of its own input.",
+				`sed "s#WORKTREE#$PWD#" > "$out" <<'SARIF'\n${JSON.stringify({ version: "2.1.0", runs: [{ results: [...reported, result("src/a.ts", "in WORKTREE/src/a.ts")] }] })}\nSARIF`,
+			].join("\n"),
+		);
+		const messages = async (sandbox: Sandbox | undefined) => {
+			vi.spyOn(Sandbox, "detect").mockResolvedValue(sandbox);
+			const ran = await runStaticTool(input("biome", head), context);
+			if (ran.status !== "ran") throw new Error(ran.reason);
+			return { texts: ran.log.runs[0].results.map((each) => each.message.text), notes: ran.notes };
+		};
+		try {
+			const unconfined = await messages(undefined);
+			expect(unconfined.texts).toEqual([
+				exact,
+				exact,
+				"a bell\\u0007 rings",
+				"closes </div>, // a comment, ./a/b, @scope/pkg/sub, and a/b are not files elsewhere",
+				expect.stringMatching(/^in \/.*\/tree\/src\/a\.ts$/),
+			]);
+			expect(unconfined.notes).toEqual([
+				"biome ran unconfined: this host offers no sandbox.",
+				"biome ran unconfined, so 3 diagnostic(s) that named a file outside the worktree were dropped.",
+			]);
+			// Confined, the tool could read nothing outside, so its diagnostics stand as it wrote them.
+			const confined = await messages(unconfinedSandbox);
+			expect(confined.texts).toHaveLength(8);
+			expect(confined.texts[1]).toBe(`${exact}!`);
+			expect(confined.notes).toEqual([]);
+		} finally {
+			rmSync(outside);
+		}
 	});
 
 	it("grants no install of its own when the tool's path names no node_modules", { timeout: 60_000 }, async () => {
@@ -713,12 +785,12 @@ describe("runStaticTool with the repository's own tools", () => {
 	});
 
 	it.each([
-		["the host's", undefined, "worktree remove --force --force"],
-		["the confined", unconfinedSandbox, ',"remove",'],
+		["the host's", undefined, "worktree remove --force --force", "output withheld: the tool ran unconfined"],
+		["the confined", unconfinedSandbox, ',"remove",', "out of memory"],
 	] as const)(
 		"reports the tool's own error when %s cleanup also fails",
 		{ timeout: 60_000 },
-		async (_name, sandbox, step) => {
+		async (_name, sandbox, step, said) => {
 			const head = commit(repo, { ".gitignore": lines("node_modules"), "tsconfig.json": tsconfig });
 			fakeTool(
 				repo,
@@ -743,7 +815,7 @@ describe("runStaticTool with the repository's own tools", () => {
 			);
 			expect(failed.length).toBeGreaterThan(0);
 			expect((error as CheckError).code).toBe("toolFailed");
-			expect((error as CheckError).message).toContain("out of memory");
+			expect((error as CheckError).message).toBe(`tsc exited with code 134 on tsconfig.json: ${said}`);
 			rmSync(((await created.mock.results[0]!.value) as { value: string }).value, { recursive: true, force: true });
 		},
 	);

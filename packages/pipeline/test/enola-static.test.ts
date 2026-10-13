@@ -642,6 +642,21 @@ describe("static.enola", { timeout: 60_000 }, () => {
 			context,
 		);
 	}
+	it("drops, from the head's and the base's results alike, a diagnostic that names a file outside the worktree", async () => {
+		const named = (text: string) =>
+			`{"ruleId":"constraints/old","level":"error","message":{"text":"${text}"},"locations":[{"physicalLocation":{"artifactLocation":{"uri":"src/a.ts"},"region":{"startLine":1}}}]}`;
+		const run = await runWith(1, {
+			base: `[${named("Old")},${named("read /etc/ssh/ssh_config at the base")}]`,
+			head: `[${named("Old")},${named("New")},${named("read /etc/ssh/ssh_config at the head")}]`,
+		});
+		if (run.status !== "ran") throw new Error("Enola failed");
+		expect(run.log.runs[0].results.map((each) => each.message.text)).toEqual(["Old", "New"]);
+		expect(run.baseLog?.runs[0].results.map((each) => each.message.text)).toEqual(["Old"]);
+		expect(run.notes.filter((note) => note.includes("dropped"))).toEqual([
+			"enola ran unconfined, so 1 diagnostic(s) that named a file outside the worktree were dropped.",
+			"enola ran unconfined, so 1 diagnostic(s) that named a file outside the worktree were dropped.",
+		]);
+	});
 	it.each([
 		["suppressed", oldFinding('"suppressions":[{"kind":"external"}],')],
 		["resolved", oldFinding('"properties":{"bucket":"resolved"},')],
@@ -679,24 +694,28 @@ describe("static.enola", { timeout: 60_000 }, () => {
 			),
 		).rejects.toMatchObject({ code: "invalidOutput" });
 	});
-	it.each([2, 3])("fails exit %s closed with Enola's message", async (exit) => {
-		const base = commit(repo, { "src/a.ts": "export const a = 1;\n" });
-		await expect(
-			runStaticTool(
-				{
-					env: createNodeExecutionEnv(repo),
-					repoRoot: repo,
-					base,
-					commit: base,
-					tool: "enola",
-					settings: defaultConfig.static.enola,
-					tools: await fake(exit),
-				},
-				context,
-			),
-		).rejects.toMatchObject({
-			code: "toolFailed",
-			message: expect.stringContaining(`Enola check exited ${exit}: declined`),
-		});
-	});
+	it.each([2, 3])(
+		"fails exit %s closed, withholding what Enola printed and saying it ran unconfined",
+		async (exit) => {
+			const base = commit(repo, { "src/a.ts": "export const a = 1;\n" });
+			await expect(
+				runStaticTool(
+					{
+						env: createNodeExecutionEnv(repo),
+						repoRoot: repo,
+						base,
+						commit: base,
+						tool: "enola",
+						settings: defaultConfig.static.enola,
+						tools: await fake(exit),
+					},
+					context,
+				),
+			).rejects.toMatchObject({
+				code: "toolFailed",
+				message: `Enola check exited ${exit}: output withheld: the tool ran unconfined`,
+				confinement: { confined: false, reason: "not yet confined" },
+			});
+		},
+	);
 });
