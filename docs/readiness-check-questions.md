@@ -28,3 +28,7 @@ The [implementation plan](design-implementation-plan.md) says the maintainer run
 ## Recurring extra sightings in the design goldens
 
 9. **Two design goldens draw an extra finding in every pass.** `design-identity-missing-input` and `design-terminology-change` each expect one finding. Each reported two in all three passes of the live run at a2793b71, and again in all three at ace07815: six passes of six for both. [The run record](../packages/evals/runs/2026-10-13-live-goldens-authority-rule.md) holds both runs, and [the run of 2026-10-12](../packages/evals/runs/2026-10-12-live-goldens-design-terra.md) shows the same two. An extra that never varies is not a draw. Decide for each whether the second finding is a real defect the golden should declare, a co-report to merge, or noise that owes a negative golden or a change to the lens prompt.
+
+## Policy changes under a parent's switch
+
+10. **A nested file's severities and lens switches change what blocks, unseen.** A nested `melian.yaml` is judged under the directory above it, where a base file may switch `policy-change-review` off. Step 18 made a change to a `resolution` key draw the notice whatever that switch says. A nested file's `guardrails.*.severity` and `lenses.*.enabled` also decide what blocks, and a change to either still stays under the parent's switch. The review of record for [pull request #117](https://github.com/melian-agent/melian/pull/117) noted it. Decide whether those keys force the notice too.
