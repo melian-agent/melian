@@ -1,5 +1,5 @@
 import { rmSync } from "node:fs";
-import { Changeset, type EvidenceLocation } from "@melian-agent/core";
+import { Changeset, type EvidenceLocation, revisionLimits } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HeadProgram } from "../src/compiler-graph.ts";
 import { EnclosingFunctions } from "../src/enclosing-functions.ts";
@@ -172,6 +172,8 @@ describe("rule (a), no evidence on a changed line", () => {
 		const seen = { cause: "affected" as const, evidence: [moved] };
 		const prepare = (root: string) => gitIn(root, "mv", "src/extra.ts", "src/moved.ts");
 		expect(await refusals({}, {}, seen, { prepare })).toEqual([]);
+		const shown = { newCaller: { answer: false, base: { file: "src/extra.ts", line: 1 } } };
+		expect(await refusals({}, shown, seen, { prepare })).toEqual([]);
 	});
 });
 
@@ -302,6 +304,7 @@ describe("rule (c), the trigger is untouched", () => {
 
 	it("refuses a trigger it cannot read at the head", async () => {
 		expect(await refusals(commentEdit, { trigger: { file: "src/main.ts", line: 40 } })).toEqual([
+			"(d) Melian cannot find the function that holds src/main.ts:40 with the compiler",
 			"(c) Melian cannot read the trigger src/main.ts:40 at the head",
 		]);
 	});
@@ -347,7 +350,7 @@ describe("rule (d), four typed answers, cross-checked", () => {
 				"\tconstructor(raw: string) {",
 				'\t\tthis.fields = raw.split(",");',
 				"\t}",
-				"\tname(): string {",
+				"\tsecondField(): string {",
 				"\t\t// The second field.",
 				"\t\treturn this.fields[1].trim();",
 				"\t}",
@@ -360,9 +363,14 @@ describe("rule (d), four typed answers, cross-checked", () => {
 		expect(await refusals({ "src/reader.ts": reader("export const label = 1;") }, inMethod, seen, options)).toEqual(
 			[],
 		);
-		expect(await refusals({ "src/reader.ts": reader("export const name = 1;") }, inMethod, seen, options)).toEqual([
-			"(d) a hunk in src/reader.ts adds a line that names name",
-		]);
+		expect(
+			await refusals(
+				{ "src/reader.ts": reader("export const two = new Reader(raw).secondField();") },
+				inMethod,
+				seen,
+				options,
+			),
+		).toEqual(["(d) a hunk in src/reader.ts adds a line that names secondField"]);
 		const inConstructor = { failing: { file: "src/reader.ts", line: 4, baseLine: 4 } };
 		expect(
 			await refusals(
@@ -472,7 +480,9 @@ describe("rule (d), four typed answers, cross-checked", () => {
 				{ path: "src/pick.ts", startLine: 1, endLine: 4, evidence: [] },
 				{ base: { "src/pick.ts": exported("\t// Second.") } },
 			),
-		).toEqual(["(d) the failing function is a default export, whose callers Melian cannot name"]);
+		).toEqual([
+			"(d) the failing function is a default export or has a computed name, so Melian cannot name its callers",
+		]);
 	});
 
 	it("refuses when a function holds the failing lines at only one of the two revisions", async () => {
@@ -496,12 +506,131 @@ describe("rule (d), four typed answers, cross-checked", () => {
 		expect(await refusals(head, atTop, seen, options)).toEqual([cannot]);
 	});
 
+	it("refuses a method whose name is not a plain identifier", async () => {
+		const quoted = (comment: string) =>
+			lines(
+				"export class Reader {",
+				'\t"second-field"(raw: string): string {',
+				comment,
+				'\t\treturn raw.split(",")[1].trim();',
+				"\t}",
+				"}",
+			);
+		expect(
+			await refusals(
+				{ "src/quoted.ts": quoted("\t\t// The second field.") },
+				{ failing: { file: "src/quoted.ts", line: 4, baseLine: 4 } },
+				{ path: "src/quoted.ts", startLine: 1, endLine: 6, evidence: [] },
+				{ base: { "src/quoted.ts": quoted("\t\t// Second.") } },
+			),
+		).toEqual([
+			"(d) the failing function is a default export or has a computed name, so Melian cannot name its callers",
+		]);
+	});
+
+	it("refuses base lines given for an answer when the change deleted or edited them", async () => {
+		for (const name of ["newCaller", "removedGuard", "changedTrigger", "copy"] as const) {
+			expect(
+				await refusals(commentEdit, { [name]: { answer: false, base: { file: "src/parse.ts", line: 6 } } }),
+			).toEqual([`(d) the change deleted or edited the base lines src/parse.ts:6 given for ${name}`]);
+		}
+	});
+
+	it("refuses a hunk that deletes or adds code in a function on the path, as a guard in a caller would be", async () => {
+		const guarded = run.replace("\treturn parseRecord", '\tif (!raw.includes(",")) return [];\n\treturn parseRecord');
+		expect(
+			await refusals({ ...commentEdit, "src/run.ts": run }, {}, {}, { base: { "src/run.ts": guarded } }),
+		).toEqual(["(d) a hunk deletes code at base line 4, inside the function that holds src/run.ts:4"]);
+		const reset = run.replace("\treturn parseRecord", "\traw.trim();\n\treturn parseRecord");
+		expect(
+			await refusals({ ...commentEdit, "src/run.ts": reset }, { path: [{ file: "src/run.ts", line: 5 }] }),
+		).toEqual(["(d) a hunk adds code at line 4, inside the function that holds src/run.ts:5"]);
+		const noted = run.replace("\treturn parseRecord", "\t// Parse it.\n\treturn parseRecord");
+		expect(
+			await refusals({ ...commentEdit, "src/run.ts": noted }, { path: [{ file: "src/run.ts", line: 5 }] }),
+		).toEqual([]);
+	});
+
+	it("holds the trigger's own function to the same check, and refuses a trigger outside every function", async () => {
+		const padded = main.replace("\treturn strict", "\tconst unused = 1;\n\treturn strict");
+		expect(
+			await refusals({ ...commentEdit, "src/main.ts": padded }, { trigger: { file: "src/main.ts", line: 6 } }),
+		).toEqual(["(d) a hunk adds code at line 5, inside the function that holds src/main.ts:6"]);
+		const boot = { "src/boot.ts": 'import { start } from "./main.ts";\n\nstart("a,b");\n' };
+		expect(
+			await refusals({ ...commentEdit, ...boot }, { trigger: { file: "src/boot.ts", line: 3 } }, {}, { base: boot }),
+		).toEqual(["(d) Melian cannot find the function that holds src/boot.ts:3 with the compiler"]);
+	});
+
+	it("refuses when the head names the failing symbol without calling it, since a caller may use another name", async () => {
+		const named = async (file: string) =>
+			refusals({ ...commentEdit, "src/alias.ts": file }, {}, {}, { base: { "src/alias.ts": file } });
+		const from = 'import { parseRecord } from "./parse.ts";\n';
+		expect(await named(`${from}export const decode = parseRecord;\n`)).toEqual([
+			"(d) src/alias.ts:2 names parseRecord without calling it, so a caller may reach it under another name",
+		]);
+		expect(
+			await named('import { parseRecord as decode } from "./parse.ts";\nexport const one = decode("a");\n'),
+		).toEqual([
+			"(d) src/alias.ts:1 names parseRecord without calling it, so a caller may reach it under another name",
+		]);
+		expect(await named(`${from}export const both = [parseRecord("a,b"), parseRecord];\n`)).toEqual([
+			"(d) src/alias.ts:2 names parseRecord without calling it, so a caller may reach it under another name",
+		]);
+		expect(await named('export { parseRecord } from "./parse.ts";\n')).toEqual([]);
+		expect(
+			await named('export { validate, parseRecord };\nimport { validate, parseRecord } from "./parse.ts";\n'),
+		).toEqual([]);
+		expect(await named(`${from}export const one = parseRecord < 1;\n`)).toEqual([
+			"(d) src/alias.ts:2 names parseRecord without calling it, so a caller may reach it under another name",
+		]);
+		expect(await named(`${from}export const reparseRecords = parseRecord<string>("a,b");\n`)).toEqual([]);
+		// The alias sits on line 5, where parseRecord's own declaration sits in its own file.
+		expect(await named(`${from}\n\n\nexport const decode = parseRecord;\n`)).toEqual([
+			"(d) src/alias.ts:5 names parseRecord without calling it, so a caller may reach it under another name",
+		]);
+		const own = `${parse("\t// Split on commas.")}export const decode = parseRecord;\n`;
+		const edited = `${parse("\t// Split the line at each comma.")}export const decode = parseRecord;\n`;
+		expect(await refusals({ "src/parse.ts": edited }, {}, {}, { base: { "src/parse.ts": own } })).toEqual([
+			"(d) src/parse.ts:12 names parseRecord without calling it, so a caller may reach it under another name",
+		]);
+		// Another name for the trigger's own function is no new caller of the failing one.
+		expect(await named('import { start } from "./main.ts";\nexport const begin = start;\n')).toEqual([]);
+	});
+
+	it("lets the failing function's own declaration name it without a call", async () => {
+		const arrow = (comment: string) =>
+			lines(
+				"export const pickName = (raw: string): string => {",
+				comment,
+				'\treturn raw.split(",")[1].trim();',
+				"};",
+			);
+		expect(
+			await refusals(
+				{ "src/arrow.ts": arrow("\t// The second field.") },
+				{ failing: { file: "src/arrow.ts", line: 3, baseLine: 3 } },
+				{ path: "src/arrow.ts", startLine: 1, endLine: 4, evidence: [] },
+				{ base: { "src/arrow.ts": arrow("\t// Second.") } },
+			),
+		).toEqual([]);
+	});
+
+	it("refuses when the head names the failing symbol on more lines than Melian lists", async () => {
+		const many = `import { parseRecord } from "./parse.ts";\n${'parseRecord("a,b");\n'.repeat(revisionLimits.searchMatches + 1)}`;
+		expect(
+			await refusals({ ...commentEdit, "src/many.ts": many }, {}, {}, { base: { "src/many.ts": many } }),
+		).toEqual(["(d) Melian cannot list every line of the head that names parseRecord"]);
+	});
+
 	it("refuses when the compiler cannot start", async () => {
 		vi.spyOn(HeadProgram, "open").mockImplementation(() => {
 			throw new Error("no compiler");
 		});
 		expect(await refusals(commentEdit)).toEqual([
 			"(d) Melian cannot find the function that holds the failing lines with the compiler",
+			"(d) Melian cannot find the function that holds src/main.ts:5 with the compiler",
+			"(d) Melian cannot find the function that holds src/run.ts:4 with the compiler",
 		]);
 	});
 
