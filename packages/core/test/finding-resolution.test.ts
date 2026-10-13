@@ -142,6 +142,8 @@ describe("the caps", () => {
 			resolution: "advisory",
 			decidedBy: { cap: "pre-existing" },
 		});
+		// One configuration for every path names no file, so the cap names none either.
+		expect(finding({ severity: "P0", cause: "pre-existing" }).decision(capped).decidedBy.capBy).toBeUndefined();
 		expect(finding({ severity: "P0", cause: "pre-existing" }).resolve({ resolution: strict })).toBe("advisory");
 		expect(finding({ severity: "P0" }).decision(capped)).toEqual({
 			resolution: "block",
@@ -165,8 +167,40 @@ describe("the caps", () => {
 		);
 		expect(finding({ severity: "P0", cause: "pre-existing" }).decision(source)).toMatchObject({
 			resolution: "acknowledge",
-			decidedBy: { file: "services/melian.yaml", cap: "pre-existing" },
+			decidedBy: {
+				file: "services/melian.yaml",
+				cap: "pre-existing",
+				capBy: { file: "melian.yaml", key: "resolution.preExisting.P0" },
+			},
 		});
+		// A severity no file caps takes the default, which no file set.
+		const uncapped = layered({
+			"services/melian.yaml": { P1: "block" },
+			"melian.yaml": { preExisting: { P0: "acknowledge" } },
+		});
+		const p1 = finding({ severity: "P1", cause: "pre-existing" }).decision(uncapped);
+		expect(p1).toMatchObject({ resolution: "advisory", decidedBy: { cap: "pre-existing" } });
+		expect(p1.decidedBy.capBy).toBeUndefined();
+	});
+
+	it("reads the cap at the severity the mapping was read at, the lens's when a lowering would fall silent", () => {
+		const lowered = finding({
+			severity: "P1",
+			cause: "pre-existing",
+			failureScenario: "run('1') evaluates input.",
+		}).verifiedAs({
+			...verification,
+			lowered: { from: "P1", to: "P2", reason: "One caller validates." },
+		});
+		expect(lowered.properties).toMatchObject({ severity: "P2", originalSeverity: "P1" });
+		const source = layered({ "melian.yaml": { P1: "block", P2: "silent", preExisting: { P1: "acknowledge" } } });
+		// P2 is silent, so the finding resolves at P1, and the cap is P1's too: acknowledge, where P2's would be advisory.
+		expect(lowered.decision(source)).toMatchObject({
+			resolution: "acknowledge",
+			decidedBy: { requirement: { key: "resolution.P1" }, capBy: { key: "resolution.preExisting.P1" } },
+		});
+		const audible = layered({ "melian.yaml": { P1: "block", P2: "block", preExisting: { P1: "acknowledge" } } });
+		expect(lowered.decision(audible)).toMatchObject({ resolution: "advisory", decidedBy: { cap: "pre-existing" } });
 	});
 
 	it("caps an affected finding at advisory only when no cause location proves it", () => {

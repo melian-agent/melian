@@ -4,7 +4,7 @@ Status: built in milestone 2, step 18, "Resolution per lens and per rule".
 
 Supersedes: [2026-10-12-resolution-per-lens-and-per-rule.md](2026-10-12-resolution-per-lens-and-per-rule.md)
 
-The supersession is in part. The decision log retires a superseded file whole, so this file restates every clause of that decision that still holds, as built. That decision superseded [the out-of-diff decision](2026-10-03-out-of-diff.md) in part, and [the cap's section](#the-cap-on-pre-existing-findings) carries forward the clauses of it that survive. What changed from the superseded text: the pre-existing cap sets no gate of its own; a wholly refuted report does not count beside one that stands; the unjudged cap applies per report; and the points under [What the step chose](#what-the-step-chose).
+The supersession is in part. The decision log retires a superseded file whole, so this file restates every clause of that decision that still holds, as built. That decision superseded [the out-of-diff decision](2026-10-03-out-of-diff.md) in part, and [the cap's section](#the-cap-on-pre-existing-findings) carries forward the clauses of it that survive. What changed from the superseded text: the pre-existing cap sets no gate of its own; a wholly refuted report does not count beside one that stands; the unjudged cap applies per report; the caps on a cause read the merged defect, where the superseded text said each member gets its own caps; and the points under [What the step chose](#what-the-step-chose).
 
 Problem: a folder's `melian.yaml` maps each severity to `block`, `acknowledge`, `advisory`, or `silent`, and that one table serves every check. A team cannot say that one lens only advises in one folder, or that one rule blocks in another. The only levers are the whole table and switching a lens off.
 
@@ -110,7 +110,9 @@ A fourth case is easy to miss. A folder that writes only `checks: lens.cleanup: 
 
 ## Merged defects
 
-One defect can carry reports from several checks. Every member claim resolves under its own check, rule, severity, and path. Each member gets its own ceiling and its own caps. The defect takes the strictest result among its members, and the floors then apply to the defect. The answer does not depend on which member speaks for the defect, or on `ruleAliases`. A member here is a report with a finding ID of its own. A lens report whose every claim a verifier refuted is left out, unless every report of the defect is one.
+One defect can carry reports from several checks. Every member claim resolves under its own check, rule, severity, and path. Each member gets its own mapping and its own ceiling: the policy is per report. The two caps on a cause read the merged defect instead. A merged defect takes the strongest cause any report proved, with the evidence that proves it, and a `pre-existing` cap or an unproven `affected` cap applies only when that merged cause calls for it. So one report's severity and another's proof combine, as they did before this step, and a merge never lowers what blocks. The cap on an unjudged lens report stays the report's own. The defect takes the strictest result among its members, and the floors then apply to the defect.
+
+Example of the merged cause: one lens reports a P0 on a line nothing ties to the change, and another check reports the same line at P3 as introduced. The defect is an introduced P0 and blocks under the built-in table. Resolved with each report's own cause it would be `advisory`: the P0 capped as pre-existing, the P3 advisory by the table. The answer does not depend on which member speaks for the defect, or on `ruleAliases`. A member here is a report with a finding ID of its own. A lens report whose every claim a verifier refuted is left out, unless every report of the defect is one.
 
 Example: `lens.cleanup` and `static.biome` both report one P1 defect. The root table writes `P1: block`, the cleanup entry sets `ceiling: advisory`, and the Biome entry maps `P1: acknowledge`. The cleanup member resolves `advisory` and the Biome member `acknowledge`. The defect needs an acknowledgement. The cap on a lens finding no verifier judged applies to the lens member alone, never to the Biome member.
 
@@ -176,9 +178,9 @@ What the step added:
 
 The policy source stays the base for a pull request. A head that lowers its own lens's ceiling is reviewed under the base's keys, so it cannot lower its own findings. A lens's declared default is read from the same source as the lens, as the lens applies at the finding's path. It is no part of the lens's version, so a lens that gains a default keeps its stored findings.
 
-The caps that apply after resolution, all of them. Each applies per member claim:
+The caps that apply after resolution, all of them. The first two read the merged defect's cause and evidence, and the third the report's own verdicts:
 
-- a `pre-existing` finding is never above its `preExisting` cap, `advisory` by default;
+- a `pre-existing` finding is never above its `preExisting` cap, `advisory` by default. The cap is read at the severity the mapping was read at;
 - an `affected` finding with no proving `cause` location is never above `advisory`;
 - a lens finding no verifier judged is never above `advisory`. This applies to a report, not to a defect: a judged report beside an unjudged one resolves in full.
 

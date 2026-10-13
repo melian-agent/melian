@@ -155,6 +155,7 @@ export const decidedBySchema = Type.Object(
 		cap: Type.Optional(
 			Type.Union([Type.Literal("pre-existing"), Type.Literal("unproven-cause"), Type.Literal("unverified")]),
 		),
+		capBy: Type.Optional(Type.Object({ file: text, key: text }, strict)),
 		floor: Type.Optional(
 			Type.Union([
 				Type.Literal("policy-change"),
@@ -499,7 +500,8 @@ export type GuardrailMatch = Static<typeof guardrailMatchSchema>;
 /**
  * Which file and entry decided a finding's resolution, as adjudication recorded it: the `melian.yaml` that spoke, or
  * the lens whose declared default applied; the check and rule of the report it decided for; the entry the requirement
- * came from and the ceiling in force; and the cap or floor that then moved the result.
+ * came from and the ceiling in force; and the cap or floor that then moved the result, with the file and key that set a
+ * `preExisting` cap when one did.
  */
 export type DecidedBy = Static<typeof decidedBySchema>;
 
@@ -1319,28 +1321,31 @@ export class Finding {
 	}
 
 	/**
-	 * The resolution after the caps and before the floors, as one member of a defect resolves. With `unverified`, a
-	 * lens finding no verifier judged is never above `advisory`: adjudication sets it for a review that ran the verifier.
+	 * The resolution after the caps and before the floors, as one report of a defect resolves. The walk, the mapping,
+	 * and the ceiling are the report's own. The two cause caps read `defect`, the finding that speaks for the merged
+	 * defect, this one by default: its cause and its evidence, so one report's severity and another's proof combine and
+	 * a merge never lowers what blocks. The `preExisting` cap is read at the severity the mapping was read at. With
+	 * `unverified`, a lens report no verifier judged is never above `advisory`: adjudication sets it for a review that
+	 * ran the verifier.
 	 */
-	capped(source: ResolutionSource, options: { readonly unverified?: boolean } = {}): FindingDecision {
+	capped(
+		source: ResolutionSource,
+		options: { readonly unverified?: boolean; readonly defect?: Finding } = {},
+	): FindingDecision {
 		const walk = ResolutionWalk.over(source);
-		const { severity, cause } = this.properties;
-		const limits: [NonNullable<DecidedBy["cap"]>, Resolution | undefined][] = [
-			[
-				"pre-existing",
-				cause === "pre-existing" ? (source.resolution.preExisting?.[severity] ?? "advisory") : undefined,
-			],
-			["unproven-cause", cause === "affected" && this.causeRank() === 2 ? "advisory" : undefined],
-			["unverified", options.unverified === true && this.unjudged() ? "advisory" : undefined],
-		];
+		const scope = options.defect ?? this;
+		const { cause } = scope.properties;
+		const unproven = cause === "affected" && scope.causeRank() === 2;
+		const unjudged = options.unverified === true && this.unjudged();
 		return this.#claims()
 			.map((claim): FindingDecision => {
 				// The fence again, where the keys are read: a lowering never takes a finding into silence, whatever they
 				// said when the verifier asked. The lens's severity then stands. An unlowered finding's original severity
 				// is its own, so this changes only a lowered one.
 				const asLowered = walk.decide(claim);
-				const decided =
-					asLowered.resolution === "silent" ? walk.decide({ ...claim, severity: this.original() }) : asLowered;
+				const severity = asLowered.resolution === "silent" ? this.original() : claim.severity;
+				const decided = severity === claim.severity ? asLowered : walk.decide({ ...claim, severity });
+				const preExisting = cause === "pre-existing" ? walk.preExistingCap(severity) : undefined;
 				const decidedBy = withoutUndefined({
 					file: decided.file,
 					lens: decided.lens,
@@ -1349,11 +1354,16 @@ export class Finding {
 					requirement: { entry: decided.requirement.entry, key: decided.requirement.key },
 					ceiling: decided.ceiling && { entry: decided.ceiling.entry, key: decided.ceiling.key },
 				}) as DecidedBy;
+				const limits: [Pick<DecidedBy, "cap" | "capBy">, Resolution | undefined][] = [
+					[withoutUndefined({ cap: "pre-existing", capBy: preExisting?.by }) as DecidedBy, preExisting?.value],
+					[{ cap: "unproven-cause" }, unproven ? "advisory" : undefined],
+					[{ cap: "unverified" }, unjudged ? "advisory" : undefined],
+				];
 				return limits.reduce<FindingDecision>(
-					(result, [cap, limit]) =>
+					(result, [capped, limit]) =>
 						limit === undefined || lesser(result.resolution, limit) === result.resolution
 							? result
-							: { resolution: limit, decidedBy: { ...result.decidedBy, cap } },
+							: { resolution: limit, decidedBy: { ...result.decidedBy, ...capped } },
 					{ resolution: decided.resolution, decidedBy },
 				);
 			})

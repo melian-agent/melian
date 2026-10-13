@@ -98,13 +98,64 @@ describe("a merged defect resolves each report under its own check, rule, and se
 		expect(defect.properties.decidedBy?.check).toBe("lens.cleanup");
 	});
 
-	it("gives each report its own cause's cap, so a pre-existing report never lends its severity", () => {
-		const old = cleanup({ severity: "P0", cause: "pre-existing" });
-		const fresh = biome({ severity: "P2" });
-		const defect = only([old, fresh], policy({}));
-		expect(defect.properties).toMatchObject({ severity: "P0", cause: "introduced", resolution: "acknowledge" });
-		expect(defect.properties.decidedBy?.check).toBe("static.biome");
-		expect(only([old], policy({})).properties.resolution).toBe("advisory");
+	const proof = {
+		file: "src/api.ts",
+		startLine: 3,
+		role: "cause",
+		revision: "head",
+		snippet: "load(userId)",
+	} as const;
+
+	it("never lowers what blocks: one report's severity and another's cause combine, in either order", () => {
+		// A cause location another, marked location outranks proves nothing.
+		const affected = cleanup({ severity: "P0", cause: "affected", evidence: [proof] });
+		const unproven = Finding.from({
+			...affected.toJSON(),
+			properties: { ...affected.properties, evidence: [{ ...proof, role: "context", proves: true }, proof] },
+		});
+		const rows = [
+			[cleanup({ severity: "P0", cause: "pre-existing" }), biome({ severity: "P3" }), "introduced"],
+			[
+				unproven,
+				biome({ severity: "P3", cause: "affected", evidence: [{ ...proof, startLine: 9, proves: true }] }),
+				"affected",
+			],
+		] as const;
+		for (const [severe, proven, cause] of rows) {
+			// Alone, the severe report is capped: nothing shows the change caused it.
+			expect(only([severe], policy({})).properties.resolution).toBe("advisory");
+			expect(only([proven], policy({})).properties.resolution).toBe("advisory");
+			for (const findings of [
+				[severe, proven],
+				[proven, severe],
+			]) {
+				const defect = only(findings, policy({}));
+				expect(defect.properties).toMatchObject({ severity: "P0", cause, resolution: "block" });
+				expect(defect.properties.decidedBy).toMatchObject({
+					check: "lens.cleanup",
+					requirement: { entry: "built-in" },
+				});
+				expect(defect.properties.decidedBy?.cap).toBeUndefined();
+			}
+		}
+	});
+
+	it("still caps a report under its own ceiling, whatever cause the defect merged", () => {
+		const capped = policy({ checks: { "lens.cleanup": { ceiling: "advisory" } } });
+		const defect = only([cleanup({ severity: "P0", cause: "pre-existing" }), biome({ severity: "P3" })], capped);
+		expect(defect.properties).toMatchObject({ severity: "P0", cause: "introduced", resolution: "advisory" });
+	});
+
+	it("caps every report of a defect no report ties to the change", () => {
+		const old = [
+			cleanup({ severity: "P0", cause: "pre-existing" }),
+			biome({ severity: "P1", cause: "pre-existing" }),
+		];
+		expect(only(old, policy({})).properties).toMatchObject({
+			cause: "pre-existing",
+			resolution: "advisory",
+			decidedBy: { cap: "pre-existing" },
+		});
 	});
 
 	it("caps the lens report no verifier judged, and never the static report beside it", () => {

@@ -101,7 +101,9 @@ export function describeDecision(by: DecidedBy, own: { readonly check: string; r
 		...(by.check === own.check && (rule === own.rule || rule.startsWith(`${own.rule}/`))
 			? []
 			: [`as ${by.check} reported it${by.rule === undefined ? "" : ` under ${by.rule}`}`]),
-		...(by.cap === undefined ? [] : [capNames[by.cap]]),
+		...(by.cap === undefined
+			? []
+			: [`${capNames[by.cap]}${by.capBy === undefined ? "" : ` by ${by.capBy.file}'s ${by.capBy.key}`}`]),
 		...(by.floor === undefined ? [] : [floorNames[by.floor]]),
 	].join("; ");
 }

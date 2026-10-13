@@ -497,6 +497,10 @@ describe("what decided a finding", () => {
 		expect(describeDecision({ ...table, cap: "pre-existing" }, own)).toBe(
 			"resolution.P1, the table; capped as pre-existing",
 		);
+		const capBy = { file: "melian.yaml", key: "resolution.preExisting.P0" };
+		expect(describeDecision({ ...table, cap: "pre-existing", capBy }, own)).toBe(
+			"resolution.P1, the table; capped as pre-existing by melian.yaml's resolution.preExisting.P0",
+		);
 		expect(describeDecision({ ...table, cap: "unproven-cause" }, own)).toContain("no cause location proves");
 		expect(describeDecision({ ...table, cap: "unverified" }, own)).toContain("no verifier judged it");
 		expect(describeDecision({ ...table, floor: "policy-change" }, own)).toContain(

@@ -31,7 +31,7 @@ docs/guide.md
 services/payments/src/ledger.ts
 
   P0  line 1  wrong-result  (pre-existing, new, acknowledge, confirmed)
-    Decided by: services/payments/melian.yaml: resolution.P0, the table; capped as pre-existing
+    Decided by: services/payments/melian.yaml: resolution.P0, the table; capped as pre-existing by melian.yaml's resolution.preExisting.P0
     Verified: scripted/judge: The scripted verifier judged the claim.
   wrong-result, as lens.correctness reports it.
     What: Scripted.

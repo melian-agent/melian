@@ -455,7 +455,7 @@ resolution:
 - Specificity orders entries only within that file: rule over check over table. A ceiling in that file caps a mapping in that file.
 - What that file leaves out comes from Melian's built-in table, never from a farther file.
 - If no file speaks, the lens's declared default applies, then the built-in table. A lens declares its default in `LENS.md`, usually a ceiling, as `resolution: { ceiling: advisory }`.
-- A merged defect resolves every member claim under its own check, rule, severity, and path, each with its own ceiling and caps. The defect takes the strictest result, and the floors then apply to the defect.
+- A merged defect resolves every member claim under its own check, rule, severity, and path, each with its own mapping and ceiling. The caps on a cause read the merged defect's cause and evidence, so one report's severity and another's proof combine and a merge never lowers what blocks. The defect takes the strictest result, and the floors then apply to the defect.
 - Deterministic checks use the same keys. `static.biome`, `static.tsc`, `static.enola`, and `guardrails` are check names like a lens's, and `static.mutation` joins them once step 16 lands. A key under `checks` that names none of the three kinds is refused when the file is read.
 - A lens report whose every claim a verifier refuted is left out of the strictest result, unless every report of the defect is one.
 
@@ -463,7 +463,7 @@ The accepted cost: a file that writes its own severity table overrides a lens's 
 
 A guardrail finding's ID carries only `guardrail/<name>`, so every `forbidden-patterns` rule shares one ID. The finding names the configured rules that matched in a typed field outside its ID, so no stored finding changed identity. A configured rule is keyed `guardrail/<name>/<rule>`, the rule-level entry, and a finding several rules matched resolves under each and takes the strictest. A whole-guardrail entry, `guardrail/<name>`, is a check-level entry for every finding of that guardrail. The two classes of policy-change notice are keyed apart, as `guardrail/policy-change-review/policy` and `guardrail/policy-change-review/analyser`.
 
-The caps apply after resolution, per member. An `affected` finding with no proving location and a lens finding no verifier judged stay at advisory or below. A `pre-existing` finding stays at or below its `preExisting` cap, which is `advisory` by default and may be `acknowledge`, never `block`. That cap merges upward key by key like other settings. It is not part of the walk, so a folder's table does not erase it.
+The caps apply after resolution. An `affected` finding with no proving location stays at advisory or below, read from the merged defect's evidence. So does a lens report no verifier judged, read from the report itself. A `pre-existing` finding stays at or below its `preExisting` cap, which is `advisory` by default and may be `acknowledge`, never `block`. That cap merges upward key by key like other settings. It is not part of the walk, so a folder's table does not erase it.
 
 The floors apply after the caps, to the defect. A policy-change notice on a `melian.yaml` never falls below `acknowledge`. Neither does a `melian/injection-attempt` finding, whatever a mapping, a ceiling, or a lens's default says. A member of "Pre-existing, important", as [Verification](#lowering-a-severity) defines it, never falls below `advisory`.
 

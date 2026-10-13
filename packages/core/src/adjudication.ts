@@ -151,7 +151,9 @@ export class Defect {
 
 	/**
 	 * What the defect requires. Every report resolves under its own check, rule, severity, and path, with its own
-	 * ceiling and caps ({@link Finding.capped}), from the policy `policyFor` gives for it. The defect takes the strictest
+	 * mapping and ceiling ({@link Finding.capped}), from the policy `policyFor` gives for it. The caps on a cause, for a
+	 * `pre-existing` finding and an `affected` one without proof, read the merged defect's cause and evidence, so one
+	 * report's severity and another's proof combine and a merge never lowers what blocks. The defect takes the strictest
 	 * result, the speaker's on a tie, and the floors then apply to the defect ({@link Finding.floored}). So the answer
 	 * does not depend on which report speaks. With `unverified`, a lens report no verifier judged is capped at
 	 * `advisory`, alone: a static report beside it is not. A lens report whose every claim a verifier refuted is left
@@ -161,7 +163,9 @@ export class Defect {
 		// A report a verifier refuted asks for nothing beside one that stands.
 		const standing = this.reports.filter((report) => !report.refuted());
 		const strictest = (standing.length === 0 ? this.reports : standing)
-			.map((report) => report.capped(policyFor(report.properties.path, report.ruleId), { unverified }))
+			.map((report) =>
+				report.capped(policyFor(report.properties.path, report.ruleId), { unverified, defect: this.speaker }),
+			)
 			.reduce((kept, each) =>
 				resolutionOrder.indexOf(each.resolution) < resolutionOrder.indexOf(kept.resolution) ? each : kept,
 			);

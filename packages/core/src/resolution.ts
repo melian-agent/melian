@@ -148,6 +148,24 @@ export class ResolutionWalk {
 	}
 
 	/**
+	 * The cap on a pre-existing finding at `severity`, and the file and key that set it: the nearest file that writes
+	 * `preExisting` for that severity, since the cap merges key by key and is no part of the walk. `advisory`, set by
+	 * no file, when none does.
+	 */
+	preExistingCap(severity: Severity): {
+		readonly value: Resolution;
+		readonly by?: { readonly file: string; readonly key: string };
+	} {
+		const written = this.layers.find((layer) => layer.resolution.preExisting?.[severity] !== undefined);
+		if (written === undefined) return { value: "advisory" };
+		const value = written.resolution.preExisting![severity]!;
+		// One configuration for every path names no file.
+		return written.file === ""
+			? { value }
+			: { value, by: { file: written.file, key: `resolution.preExisting.${severity}` } };
+	}
+
+	/**
 	 * What each file on the walk now overrides, one sentence each, for `melian doctor`: every value of a farther file,
 	 * and every lens default, that would have applied to some finding had the file not spoken. A value the file restates
 	 * in an entry of its own is not listed. A file that speaks only through a ceiling drops the farther table's value
