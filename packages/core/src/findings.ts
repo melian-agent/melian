@@ -1335,7 +1335,12 @@ export class Finding {
 		];
 		return this.#claims()
 			.map((claim): FindingDecision => {
-				const decided = walk.decide(claim);
+				// The fence again, where the keys are read: a lowering never takes a finding into silence, whatever they
+				// said when the verifier asked. The lens's severity then stands. An unlowered finding's original severity
+				// is its own, so this changes only a lowered one.
+				const asLowered = walk.decide(claim);
+				const decided =
+					asLowered.resolution === "silent" ? walk.decide({ ...claim, severity: this.original() }) : asLowered;
 				const decidedBy = withoutUndefined({
 					file: decided.file,
 					lens: decided.lens,

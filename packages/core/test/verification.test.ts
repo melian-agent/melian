@@ -352,6 +352,22 @@ describe("adjudicating lowered and important pre-existing findings", () => {
 		expect(result.toJSON()).not.toHaveProperty("preExistingImportant");
 	});
 
+	it("resolves at the lens's severity when the table in force silences the lowered one", () => {
+		const quiet = { ...defaultConfig, resolution: { ...defaultConfig.resolution, P2: "silent" as const } };
+		const result = decide([finding("lens.a").verifiedAs(lowering)], quiet);
+		expect(result.findings.block).toHaveLength(1);
+		expect(result.findings.silent).toHaveLength(0);
+		expect(result.findings.block[0]!.properties).toMatchObject({ severity: "P2", originalSeverity: "P1" });
+		const plain = Finding.create({
+			...evalInput,
+			severity: "P2",
+			source: { check: "lens.a", version: "v1@careful" },
+			failureScenario: "An empty input fails.",
+			verification,
+		});
+		expect(decide([plain], quiet).findings.silent).toHaveLength(1);
+	});
+
 	it("lists a pre-existing P0 under its own heading, new and then carried, and counts it as an advisory finding", () => {
 		const first = decide([old]);
 		expect(first.findings.advisory).toHaveLength(1);

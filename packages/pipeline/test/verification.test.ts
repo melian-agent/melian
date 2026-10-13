@@ -1685,6 +1685,14 @@ describe("lowering a severity through report_verdict", () => {
 		])[verifierMarker]!;
 	}
 
+	it("stores the answers the verifier gave, whatever they are, for calibration", async () => {
+		const answers = { code: "unknown", guard: "yes", base: "yes" };
+		reporting([{ answers, verdict: "plausible" }]);
+		const { findings } = await review();
+		expect(findings[0]!.properties.verification).toMatchObject({ verdict: "plausible", answers });
+		expect(findings[0]!.properties).toMatchObject({ severity: "P1", cause: "introduced" });
+	});
+
 	it("says a lowering was not kept when an equal report already holds the claim at the lens's severity", async () => {
 		const requests = reporting([{}, { evidence: cited, lower: narrow }]);
 		const { findings } = await review();
