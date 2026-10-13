@@ -3,6 +3,7 @@ import {
 	type LedgerDraft,
 	type LedgerHistory,
 	type LedgerRound,
+	type ResolvedFinding,
 	type LedgerStamp as StoredLedgerStamp,
 	Verdict,
 	visibleText,
@@ -180,14 +181,36 @@ export class Ledger {
 		const { verdict, publication, walkthrough, pullRequest } = this.draft;
 		const current = publication.rounds.at(-1)! as LedgerRound;
 		const summary = this.summary(current, verdict, links);
-		const findings = verdict.attention().map((finding) => {
+		const important = new Map((verdict.preExistingImportant ?? []).map((member) => [member.id, member]));
+		const line = (finding: ResolvedFinding) => {
 			const [start, end] = finding.lines();
-			return `- ${prose(finding.properties.id)}: ${code(visibleText(finding.properties.path))}:${start}${end === start ? "" : `-${end}`} — ${code(visibleText(finding.ruleId))} (${finding.properties.resolution}): ${prose(finding.properties.explanation.what)}`;
+			const lowered = finding.lowered();
+			const severity =
+				lowered === undefined
+					? ""
+					: ` ${finding.properties.severity}, lowered from ${lowered.from}: ${prose(lowered.reason)}`;
+			return `${code(visibleText(finding.properties.path))}:${start}${end === start ? "" : `-${end}`} — ${code(visibleText(finding.ruleId))} (${finding.properties.resolution}): ${prose(finding.properties.explanation.what)}${severity}`;
+		};
+		const findings = verdict
+			.attention()
+			.filter((finding) => !important.has(finding.id))
+			.map((finding) => `- ${prose(finding.properties.id)}: ${line(finding)}`);
+		const members = verdict.attention().flatMap((finding) => {
+			const member = important.get(finding.id);
+			if (member === undefined) return [];
+			const scope =
+				member.originalScope === undefined
+					? ""
+					: ` Re-scoped from ${member.originalScope}: ${prose(member.reason ?? "No reason stored.")}`;
+			return [
+				`- ${prose(finding.properties.id)} (${member.state}, originally ${member.originalSeverity}): ${line(finding)}${scope}`,
+			];
 		});
 		const parts = [
 			`## Melian review ledger\n\nBase ${current.base.slice(0, 12)}, head ${current.head.slice(0, 12)}, round ${current.round}.`,
 			summary,
 			...findings,
+			...(members.length === 0 ? [] : [["### Pre-existing, important", ...members].join("\n\n")]),
 		];
 		if (walkthrough.enabled) {
 			const text = current.walkthrough;

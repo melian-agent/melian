@@ -110,6 +110,91 @@ describe("ledger rendering", () => {
 		expect(repeat.diff(first.stamp)).toBe(false);
 	});
 
+	it("shows a lowered finding with its original severity and the verifier's reason", () => {
+		const record = {
+			verdict: "confirmed",
+			reason: "Traced.",
+			executor: "llm",
+			model: "fake/judge",
+			version: "1",
+		} as const;
+		const claimed = Finding.from({
+			...finding.toJSON(),
+			properties: { ...finding.properties, failureScenario: "Unchecked input runs." },
+		});
+		const lowered = claimed.verifiedAs({
+			...record,
+			lowered: { from: "P1", to: "P2", reason: "One caller\nvalidates." },
+		});
+		const decided = new Adjudication({
+			findings: [lowered],
+			manifest: [],
+			checks: [],
+			config: defaultConfig,
+		}).adjudicate();
+		const body = Ledger.from(decided, { rounds: [{ ...round, verdict: decided.toJSON() }] }, options).render(links);
+		expect(body).toContain(
+			`- ${finding.id}: \`src/run.ts\`:7 — \`unsafe\` (acknowledge): Unsafe input P2, lowered from P1: One caller validates.`,
+		);
+		expect(body).not.toContain("### Pre-existing, important");
+		const plain = Ledger.from(verdict, { rounds: [round] }, options).render(links);
+		expect(plain).toContain(`- ${finding.id}: \`src/run.ts\`:7 — \`unsafe\` (block): Unsafe input\n`);
+		expect(plain).not.toContain("lowered from");
+	});
+
+	it("lists an important pre-existing finding under its own heading, new and then carried", () => {
+		const record = {
+			verdict: "confirmed",
+			reason: "Traced.",
+			executor: "llm",
+			model: "fake/judge",
+			version: "1",
+		} as const;
+		const claimed = Finding.from({
+			...finding.toJSON(),
+			properties: { ...finding.properties, failureScenario: "Unchecked input runs." },
+		});
+		const rescoped = claimed.verifiedAs({
+			...record,
+			rescoped: { from: "introduced", reason: "The base\nhas the lines." },
+		});
+		const old = Finding.create({
+			rule: "old",
+			message: "Old defect",
+			file: "src/old.ts",
+			startLine: 3,
+			snippet: "old()",
+			occurrence: 0,
+			severity: "P0",
+			cause: "pre-existing",
+			source: { check: "static.tool" },
+			explanation: { what: "Old defect", whyHere: "It predates the change", whatToDo: "Fix it" },
+		});
+		const decide = (seenBefore: string[]) =>
+			new Adjudication({
+				findings: [rescoped, old],
+				manifest: [],
+				checks: [],
+				config: defaultConfig,
+				seenBefore,
+			}).adjudicate();
+		const first = decide([]);
+		const body = Ledger.from(first, { rounds: [{ ...round, verdict: first.toJSON() }] }, options).render(links);
+		expect(body).toContain(
+			[
+				"### Pre-existing, important",
+				`- ${old.id} (new, originally P0): \`src/old.ts\`:3 — \`old\` (advisory): Old defect`,
+				`- ${rescoped.id} (new, originally P1): \`src/run.ts\`:7 — \`unsafe\` (advisory): Unsafe input Re-scoped from introduced: The base has the lines.`,
+			].join("\n\n"),
+		);
+		expect(body).not.toContain(`- ${rescoped.id}: `);
+		expect(body).not.toContain(`- ${old.id}: `);
+		const second = decide([rescoped.id]);
+		const later = Ledger.from(second, { rounds: [{ ...round, verdict: second.toJSON() }] }, options).render(links);
+		expect(later).toContain(`- ${rescoped.id} (carried, originally P1): `);
+		expect(later).toContain(`- ${old.id} (new, originally P0): `);
+	});
+
 	it("renders run details beside verification outcomes, including refuted claims", () => {
 		const judged = Finding.from({
 			...finding.toJSON(),

@@ -426,6 +426,38 @@ describe("markers", () => {
 });
 
 describe("verification comments", () => {
+	it("shows a lowering with the original severity and reason, and a re-scope with the original scope", () => {
+		const record = {
+			verdict: "confirmed",
+			reason: "Traced.",
+			executor: "llm",
+			model: "fake/judge",
+			version: "v1",
+		} as const;
+		const claimed = Finding.create({ ...input, severity: "P1", cause: "introduced", failureScenario: "It fails." });
+		const lowered = claimed.verifiedAs({
+			...record,
+			lowered: { from: "P1", to: "P2", reason: "@octocat validates" },
+		});
+		const comment = ReviewComment.from(lowered).render({ revision, base, links, secret });
+		expect(comment).toContain(`**Lowered from P1:** ${renderProse("@octocat validates")}`);
+		expect(comment).toContain(`**P2**, lowered from P1, \`no-eval\` (introduced, block)`);
+		expect(comment).not.toContain("Re-scoped");
+		const rescoped = claimed.verifiedAs({
+			...record,
+			rescoped: { from: "introduced", reason: "<!-- old --> lines" },
+		});
+		const moved = ReviewComment.from(rescoped).render({ revision, base, links, secret });
+		expect(moved).toContain(`**Re-scoped from introduced:** ${renderProse("<!-- old --> lines")}`);
+		expect(moved).toContain(`**P1** \`no-eval\` (pre-existing, block)`);
+		expect(moved).not.toContain("Lowered from");
+		expect(markersIn(moved)).toHaveLength(1);
+		const plain = ReviewComment.from(claimed.verifiedAs(record)).render({ revision, base, links, secret });
+		expect(plain).not.toContain("Lowered from");
+		expect(plain).not.toContain("Re-scoped");
+		expect(plain).toContain(`**P1** \`no-eval\` (introduced, block)`);
+	});
+
 	it("shows the judgement and escapes its model, reason and correction", () => {
 		const finding = Finding.create({
 			...input,

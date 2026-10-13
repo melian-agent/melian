@@ -210,14 +210,29 @@ export class ReviewComment {
 							? []
 							: [`**Correction:** ${renderProse(verification.correction)}`, ""]),
 					];
-		return [marker(revision, "finding", id, context.secret), ...where, ...judged, ...this.#text(context)].join("\n");
+		const lowered = finding.lowered();
+		const rescoped = finding.rescoped();
+		const moved = [
+			...(lowered === undefined ? [] : [`**Lowered from ${lowered.from}:** ${renderProse(lowered.reason)}`, ""]),
+			...(rescoped === undefined
+				? []
+				: [`**Re-scoped from ${rescoped.from}:** ${renderProse(rescoped.reason)}`, ""]),
+		];
+		return [
+			marker(revision, "finding", id, context.secret),
+			...where,
+			...judged,
+			...moved,
+			...this.#text(context),
+		].join("\n");
 	}
 
 	#text(context: CommentContext): string[] {
 		const { finding } = this;
 		const { severity, cause, resolution, explanation, failureScenario } = finding.properties;
+		const lowered = finding.lowered();
 		return [
-			`**${severity}** ${code(finding.ruleId)} (${cause}, ${resolution ?? "unresolved"})`,
+			`**${severity}**${lowered === undefined ? "" : `, lowered from ${lowered.from},`} ${code(finding.ruleId)} (${cause}, ${resolution ?? "unresolved"})`,
 			"",
 			// A lens's message is its explanation's first part, which would otherwise print twice.
 			...(finding.message.text === explanation.what ? [] : [renderProse(finding.message.text), ""]),
