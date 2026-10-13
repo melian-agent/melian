@@ -224,6 +224,14 @@ async function found(base: string, head: string, extra: { maxLines?: number } = 
 	).findings;
 }
 
+// Stryker's command ends at the run's timeout, without waiting for one: a real one-second timeout also cuts the git
+// commands before Stryker on a loaded machine, and the test then fails for a reason it is not about.
+function strykerTimesOut(): void {
+	vi.spyOn(MutationProcess.prototype, "execute").mockImplementation(async function (this: MutationProcess) {
+		throw this.run.fail("timeout", `mutation ran past its ${this.run.input.settings.timeout}-second timeout`);
+	});
+}
+
 function twoCommits(headFiles: Record<string, string> = { "packages/p/src/a.ts": a.replace("x > 0", "x >= 0") }) {
 	const base = commit(repo, {
 		"stryker.config.json": config,
@@ -1121,6 +1129,51 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 			expect(result.notes).toContain(
 				"packages/p/vitest.config.ts was not mutated: a tool loads a configuration file to run the mutants.",
 			);
+		});
+
+		it.each([
+			["packages/p/src/rules.config.ts", mutationUnmutated.configuration],
+			["packages/pipeline/src/static.ts", mutationUnmutated.signals],
+			["packages/p/src/a,b.ts", mutationUnmutated.comma],
+		])(
+			"raises an unmutated finding for %s when another file is mutated and its mutants die",
+			async (path, reason) => {
+				const base = commit(repo, { "stryker.config.json": config, [path]: lines("export const kept = 1;") });
+				const head = commit(repo, {
+					"packages/p/src/a.ts": a,
+					[path]: lines("export const kept = 1;", "export function guard(x: number) {", "  return x > 0;", "}"),
+				});
+				stryker({ report: report({ "packages/p/src/a.ts": [{ status: "Killed", line: 2 }] }) });
+				const result = await mutate(base, head);
+				if (result.status !== "ran") throw new Error("skipped");
+				expect(result.log.runs[0].results).toEqual([
+					expect.objectContaining({
+						ruleId: "unmutated",
+						level: "error",
+						message: { text: `Stryker did not judge lines 2-4 of ${path}: ${reason.why}.` },
+						advice: expect.objectContaining({ whatToDo: reason.whatToDo }),
+					}),
+				]);
+				const raised = await found(base, head);
+				expect(
+					raised.map((finding) => [finding.ruleId, finding.properties.severity, finding.properties.path]),
+				).toEqual([["mutation/unmutated", "P2", path]]);
+			},
+		);
+
+		it("names a file it set aside in the finding a run past its timeout raises", async () => {
+			const base = commit(repo, { "stryker.config.json": config });
+			const head = commit(repo, {
+				"packages/p/src/a.ts": a,
+				"packages/p/src/rules.config.ts": lines("export const x = 1;"),
+			});
+			stryker({ report: report({}) });
+			strykerTimesOut();
+			const result = await mutate(base, head);
+			if (result.status !== "skipped") throw new Error("ran");
+			expect(result.log?.runs[0].results.map((each) => each.message.text)).toEqual([
+				`Stryker did not judge the changed lines of packages/p/src/a.ts, packages/p/src/rules.config.ts: ${mutationSkips.timeout(120)}.`,
+			]);
 		});
 
 		it("says nothing of a test file, a declaration, or a verifier file changed beside the production files it mutates", async () => {

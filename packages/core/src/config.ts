@@ -293,8 +293,10 @@ export interface TscSettings extends StaticToolSettings {
 }
 
 /**
- * How Melian runs mutation testing. `maxLines` is the most changed source lines one run will mutate; a change with more
- * has its first `maxLines` lines, in path order, mutated, and a note names the files not reached.
+ * How Melian runs mutation testing. `maxLines` is the most changed production lines one run will mutate. A change with
+ * more gives each file a share of `maxLines` in proportion to its changed lines, by largest remainder with ties in path
+ * order, and at least one line while the bound has one for each file. The run raises one P3 `mutation/unmutated`
+ * advisory that counts the lines left out and names the bound.
  */
 export interface MutationSettings extends StaticToolSettings {
 	readonly maxLines: number;

@@ -105,6 +105,18 @@ export const mutationUnmutated = {
 		why: "git treats the file as binary or its name is not UTF-8 text, so it lists no changed lines for Stryker to be asked about",
 		whatToDo: "Have a maintainer read the change to this file, or commit it as UTF-8 text.",
 	},
+	configuration: {
+		why: "a tool loads a configuration file to run the mutants, so Stryker is not asked to mutate it",
+		whatToDo: "Have a maintainer read the change to this file, or move its logic into a module that a test runs.",
+	},
+	signals: {
+		why: "it sends process signals, and a mutant there could signal a process outside the run",
+		whatToDo: "Prove its guards with tests on a fake process control, and have a maintainer acknowledge these lines.",
+	},
+	comma: {
+		why: "Stryker's list of files to mutate is comma-separated, so it cannot name a path that holds a comma",
+		whatToDo: "Rename the file, or have a maintainer acknowledge these lines.",
+	},
 	staticMutants: {
 		why: "its mutants are static, meaning they run when the module loads, such as a constant, a regular expression, or a table, and the run's ignoreStatic setting skips them, so no test was asked about them",
 		whatToDo: "Have a maintainer acknowledge these lines, or move the behaviour into a function that a test runs.",

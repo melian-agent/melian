@@ -13,6 +13,7 @@ import {
 	normaliseMutationReport,
 	type Revision,
 	type ToolLog,
+	type UnmutatedFile,
 } from "@melian-agent/core";
 import { MutationCache } from "./mutation-cache.ts";
 import { MutationProcess } from "./mutation-process.ts";
@@ -74,10 +75,6 @@ const signalFiles = new Set([
 	"packages/pipeline/src/mutation-process.ts",
 	"packages/pipeline/src/static.ts",
 ]);
-
-function mutable(path: string): boolean {
-	return production(path) && !configuration.test(path) && !signalFiles.has(path);
-}
 
 // Stryker reads each `--mutate` entry as a glob, so a file name with a glob character in it, such as `[id]` or `(group)`
 // in a Next.js route, names other files or none unless each character is escaped.
@@ -235,24 +232,26 @@ export class MutationRun {
 		};
 	}
 
-	// The changed production lines, and the paths set aside because Stryker's comma-separated `--mutate` cannot name them.
-	#targets(revision: Revision): Record<string, [number, number][]> {
-		const targets: Record<string, [number, number][]> = {};
+	// The changed production lines Stryker is asked about, and the production files set aside: a configuration file, a
+	// signal-sending file, and a path Stryker's comma-separated `--mutate` cannot name. Each file set aside is a note and,
+	// when the run goes ahead on the others, an `unmutated` result: a well-tested neighbour must not hide it.
+	#targets(revision: Revision): { changed: Record<string, [number, number][]>; aside: UnmutatedFile[] } {
+		const changed: Record<string, [number, number][]> = {};
+		const aside: UnmutatedFile[] = [];
 		for (const [path, ranges] of Object.entries(revision.diffLines())) {
-			if (!mutable(path)) {
-				if (production(path))
-					this.#notes.push(
-						`${path} was not mutated: ${signalFiles.has(path) ? "it sends process signals; prove its guards with fakes" : "a tool loads a configuration file to run the mutants"}.`,
-					);
-				continue;
-			}
-			if (path.includes(",")) {
+			if (!production(path)) continue;
+			if (signalFiles.has(path)) {
+				this.#notes.push(`${path} was not mutated: it sends process signals; prove its guards with fakes.`);
+				aside.push({ path, ranges, ...mutationUnmutated.signals });
+			} else if (configuration.test(path)) {
+				this.#notes.push(`${path} was not mutated: a tool loads a configuration file to run the mutants.`);
+				aside.push({ path, ranges, ...mutationUnmutated.configuration });
+			} else if (path.includes(",")) {
 				this.#notes.push(`${path} was not mutated: Stryker cannot take a path with a comma.`);
-				continue;
-			}
-			targets[path] = ranges;
+				aside.push({ path, ranges, ...mutationUnmutated.comma });
+			} else changed[path] = ranges;
 		}
-		return targets;
+		return { changed, aside };
 	}
 
 	// The production files the revision changes that `diffLines` cannot address: git calls them binary, or their names are not
@@ -469,7 +468,7 @@ process.exitCode = result.code;
 	async check(): Promise<StaticRun> {
 		const { revision, settings } = this.#run.input;
 		if (revision === undefined) throw this.#run.fail("toolFailed", "mutation testing needs the revision it mutates");
-		const changed = this.#targets(revision);
+		const { changed, aside } = this.#targets(revision);
 		const total = Object.values(changed).reduce(
 			(sum, ranges) => sum + ranges.reduce((count, [first, last]) => count + last - first + 1, 0),
 			0,
@@ -516,6 +515,7 @@ process.exitCode = result.code;
 						version: this.#version,
 						lines: {
 							...changed,
+							...Object.fromEntries(aside.map((file) => [file.path, file.ranges])),
 							...Object.fromEntries(binary.map((file) => [file.path, [[1, 1]] as [number, number][]])),
 						},
 					},
@@ -530,7 +530,7 @@ process.exitCode = result.code;
 			version: this.#version,
 			lines,
 			tests,
-			unmutated: binary,
+			unmutated: [...binary, ...aside],
 			...(total > maxLines
 				? { budget: { count: total - count, maxLines, path: firstOmitted![0], line: firstOmitted![1][0]![0] } }
 				: {}),
