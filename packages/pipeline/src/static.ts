@@ -111,6 +111,7 @@ interface Shell {
 export class Run {
 	mutationScratch?: MutationScratch;
 	#confinement?: { readonly sandbox: Sandbox; readonly paths: SandboxPaths; readonly profile: string | undefined };
+	#outputs?: MutationScratch;
 	readonly input: StaticRunInput;
 	readonly context: Context;
 	readonly check: string;
@@ -170,6 +171,8 @@ export class Run {
 		const failure = await sandbox.runtimeFailure(paths, this.input.env, this.context);
 		if (failure !== undefined) return `${this.input.tool} ran unconfined: ${failure}.`;
 		this.#confinement = { sandbox, paths, profile: sandbox.profile(paths) };
+		// From here the reader runs inside the sandbox too, under a profile built before the tool has run.
+		this.#outputs = MutationScratch.open(this, scratch, sandbox, []);
 	}
 
 	// Runs the tool's own command, confined when `confine` found a sandbox. git, `ln`, and `rm` stay on `shell`.
@@ -205,9 +208,16 @@ export class Run {
 		if (!/^[0-9a-f]{40,64}$/.test(commit)) throw this.fail("worktreeFailed", `${commit} is not a full commit hash`);
 		const created = await env.createTempDir("melian-static-", this.context);
 		if (!created.ok) throw this.fail("worktreeFailed", `no temporary directory: ${created.error.message}`);
+		// The reader refuses a link at any component and seatbelt matches real paths, so scratch is used by its real path
+		// or not at all.
 		const canonical = await env.canonicalPath(created.value, this.context);
-		const scratch = canonical.ok ? canonical.value : created.value;
+		if (!canonical.ok) {
+			await env.remove(created.value, { recursive: true, force: true }, backgroundContext);
+			throw this.fail("worktreeFailed", `${created.value} could not be resolved: ${canonical.error.message}`);
+		}
+		const scratch = canonical.value;
 		const root = posix.join(scratch, "tree");
+		this.#outputs = MutationScratch.open(this, scratch, undefined, []);
 		try {
 			await removeStaleWorktrees(this, scratch);
 			const added = await this.worktreeCommand(
@@ -220,40 +230,13 @@ export class Run {
 		}
 	}
 
-	// Reads a file the tool wrote, refusing one past the output limit rather than truncating it.
-	// The tool can replace its output with a symlink or a FIFO, so the target is checked and the read is capped; only a
-	// missing file means no output.
+	// Reads a file under scratch, refusing one past the output limit rather than truncating it. This is the only way the
+	// host reads there. A confined tool can leave a link, a FIFO, or a swapped directory where its output should be, so
+	// the reader follows no link at any component, opens only a regular file, and reads it once; only a missing file
+	// means no output. A refusal names the path and never holds what the path led to.
 	async readOutput(path: string): Promise<string | undefined> {
-		const { env, tool } = this.input;
-		const unreadable = (detail: string) => this.fail("toolFailed", `${tool}'s output ${path} ${detail}`);
-		const target = await env.canonicalPath(path, this.context);
-		if (!target.ok) {
-			if (target.error.code === "not_found") return undefined;
-			throw unreadable(`could not be read: ${target.error.message}`);
-		}
-		const info = await env.fileInfo(target.value, this.context);
-		if (!info.ok) throw unreadable(`could not be read: ${info.error.message}`);
-		if (info.value.kind !== "file") throw unreadable(`is a ${info.value.kind}, not a file`);
-		const tooLarge = (size: number) =>
-			this.fail("outputTooLarge", `${tool} wrote ${size} bytes or more; the limit is ${staticOutputLimit}`);
-		if (info.value.size >= staticOutputLimit) throw tooLarge(info.value.size);
-		const reader = await env.openTextLineReader(target.value, this.context);
-		if (!reader.ok) throw unreadable(`could not be read: ${reader.error.message}`);
-		let text = "";
-		let bytes = 0;
-		try {
-			for (;;) {
-				const line = await reader.value.readLine(this.context);
-				if (!line.ok) throw unreadable(`could not be read: ${line.error.message}`);
-				if (line.value === undefined) return text;
-				const read = line.value.terminated ? `${line.value.text}\n` : line.value.text;
-				text += read;
-				bytes += Buffer.byteLength(read);
-				if (bytes >= staticOutputLimit) throw tooLarge(bytes);
-			}
-		} finally {
-			await reader.value.close(this.context);
-		}
+		if (this.#outputs === undefined) throw this.fail("worktreeFailed", `${path} was read outside a run's scratch`);
+		return this.#outputs.read(path, staticOutputLimit);
 	}
 }
 
@@ -386,8 +369,10 @@ async function runBiome(run: Run, root: string, scratch: string, binary: string,
 async function tscProjects(run: Run, root: string, project: string, seen = new Set<string>()): Promise<string[]> {
 	if (seen.has(project)) return [];
 	seen.add(project);
-	const text = await run.input.env.readTextFile(posix.join(root, project), run.context);
-	const config = text.ok ? parseJsonc(text.value) : undefined;
+	// The head can commit this path as a link to any file on the host, so it is read like every file under scratch. A
+	// project the reader refuses is left for tsc to open, which it does confined.
+	const text = await run.readOutput(posix.join(root, project)).catch(() => undefined);
+	const config = text === undefined ? undefined : parseJsonc(text);
 	if (typeof config !== "object" || config === null) return [project];
 	const { files, include, references } = config as { files?: unknown; include?: unknown; references?: unknown };
 	const empty = (value: unknown) => Array.isArray(value) && value.length === 0;

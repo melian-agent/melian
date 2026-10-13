@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as promiseFilesystem from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -30,7 +31,7 @@ afterEach(() => {
 	fs.rmSync(directory, { recursive: true, force: true });
 });
 
-function files(): MutationScratch {
+function files(sandbox: Parameters<typeof MutationScratch.open>[2] = unconfinedSandbox): MutationScratch {
 	const run = new Run(
 		{
 			env: createNodeExecutionEnv(directory),
@@ -41,7 +42,7 @@ function files(): MutationScratch {
 		},
 		backgroundContext,
 	);
-	return MutationScratch.open(run, scratch, unconfinedSandbox, []);
+	return MutationScratch.open(run, scratch, sandbox, []);
 }
 
 function probe(
@@ -317,3 +318,58 @@ it("propagates an rmdir failure other than an already absent scratch", async () 
 	);
 	await expect(files().close()).rejects.toThrow("rmdir denied");
 });
+
+// With no sandbox the script runs on the host, and its own guards are the whole defence.
+it.each(components)("refuses to read through a symlink at %s, on the host and in a sandbox", async (component) => {
+	const swapped = path.join(scratch, component);
+	fs.renameSync(swapped, `${swapped}.saved`);
+	fs.symlinkSync(outside, swapped, "dir");
+	fs.mkdirSync(path.join(outside, "tree/.git/objects/info"), { recursive: true });
+	fs.writeFileSync(path.join(outside, "tree/.git/objects/info/sentinel"), "host data");
+	const target = path.join(scratch, component === "" ? "sentinel" : "tree/.git/objects/info/sentinel");
+	for (const sandbox of [undefined, unconfinedSandbox]) {
+		const failure = await files(sandbox)
+			.read(target, 64)
+			.catch((error: Error) => error.message);
+		expect(failure).toContain(`symlink ${swapped}`);
+		expect(failure).not.toContain("host data");
+	}
+});
+
+it("reads, writes, and removes on the host when there is no sandbox, with a scratch HOME and nothing inherited", async () => {
+	vi.stubEnv("MELIAN_TEST_SECRET", "hunter2");
+	const env = createNodeExecutionEnv(directory);
+	const execute = vi.spyOn(env, "exec");
+	const run = new Run(
+		{ env, repoRoot: directory, commit: "a".repeat(40), tool: "biome", settings: defaultConfig.static.biome },
+		backgroundContext,
+	);
+	const operations = MutationScratch.open(run, scratch, undefined, []);
+	const target = path.join(scratch, "tree/file");
+	await operations.write(target, "text");
+	expect(await operations.read(target, 64)).toBe("text");
+	await operations.remove(target);
+	expect(fs.existsSync(target)).toBe(false);
+	for (const [command, options] of execute.mock.calls) {
+		expect(command.startsWith(`'${process.execPath}' -e '`)).toBe(true);
+		expect(options).toMatchObject({ inheritEnv: false, env: { HOME: scratch, TMPDIR: scratch }, timeout: 60 });
+		expect(Object.keys(options!.env!)).toEqual(["HOME", "TMPDIR"]);
+	}
+	expect(execute).toHaveBeenCalledTimes(3);
+	vi.unstubAllEnvs();
+});
+
+it.each(["link", "fifo", "directory"])(
+	"refuses to read a %s on the host, naming it and reading nothing",
+	async (kind) => {
+		const target = path.join(scratch, "output");
+		if (kind === "link") fs.symlinkSync(path.join(outside, "sentinel"), target);
+		else if (kind === "directory") fs.mkdirSync(target);
+		else execFileSync("/usr/bin/mkfifo", [target]);
+		const failure = await files(undefined)
+			.read(target, 64)
+			.catch((error: Error) => error.message);
+		expect(failure).toContain(`non-file ${target}`);
+		expect(failure).not.toContain("host data");
+	},
+);

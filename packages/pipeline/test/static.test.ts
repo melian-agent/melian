@@ -41,21 +41,31 @@ it("keeps Enola provisioning out of checkout binary discovery", () => {
 	expect(staticToolSource(repo, "enola")).toEqual({ from: "missing" });
 });
 
-it("uses the created scratch path when canonicalisation fails", { timeout: 60_000 }, async () => {
+it("refuses to run in a scratch directory it cannot resolve, and removes it", { timeout: 60_000 }, async () => {
 	const head = commit(repo, { "a.ts": "function a() {}\n" });
 	const env = createNodeExecutionEnv(repo);
+	const created = vi.spyOn(env, "createTempDir");
 	vi.spyOn(env, "canonicalPath").mockResolvedValueOnce({
 		ok: false,
 		error: Object.assign(new Error("canonicalisation refused"), { code: "permission_denied" as const }),
 	});
 	const run = new Run({ ...input("biome", head), env }, context);
-	await expect(
-		run.inWorktree(async (root, scratch) => {
-			expect(root).toBe(join(scratch, "tree"));
-			expect(existsSync(root)).toBe(true);
-			return "done";
-		}),
-	).resolves.toBe("done");
+	const use = vi.fn(async () => "done");
+	const directory = async () => ((await created.mock.results[0]!.value) as { value: string }).value;
+	await expect(run.inWorktree(use)).rejects.toMatchObject({ code: "worktreeFailed" });
+	await expect(run.inWorktree(use)).resolves.toBe("done");
+	expect(use).toHaveBeenCalledOnce();
+	expect(await directory()).toMatch(/melian-static-/);
+	expect(existsSync(await directory())).toBe(false);
+	expect(gitIn(repo, "worktree", "list", "--porcelain")).not.toContain("melian-static-");
+});
+
+it("reads nothing before a run has a scratch directory", async () => {
+	const run = new Run(input("biome", "a".repeat(40)), context);
+	await expect(run.readOutput(join(repo, "a.ts"))).rejects.toMatchObject({
+		code: "worktreeFailed",
+		message: expect.stringContaining("outside a run's scratch"),
+	});
 });
 
 const tsconfig = JSON.stringify({
@@ -184,6 +194,21 @@ describe("runStaticTool with Melian's own tools", () => {
 		await expect(runStaticTool(input("tsc", nothing), context)).rejects.toMatchObject({ code: "nothingToCheck" });
 	});
 
+	it("does not read a tsconfig.json the head committed as a link to a host file", { timeout: 60_000 }, async () => {
+		const outside = join(dirname(repo), `melian-host-config-${process.pid}.json`);
+		writeFileSync(outside, JSON.stringify({ files: [], references: [{ path: "./leak-marker" }] }));
+		symlinkSync(outside, join(repo, "tsconfig.json"));
+		const head = commit(repo, { ".gitignore": lines("node_modules"), "leak-marker/tsconfig.json": tsconfig });
+		fakeTool(repo, "tsc", 'if [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi');
+		try {
+			const result = await runStaticTool(input("tsc", head), context);
+			// Read through the link, the host would have checked the project that file names and said so in a note.
+			expect(result).toMatchObject({ status: "ran", notes: unconfinedNotes("tsc") });
+		} finally {
+			rmSync(outside);
+		}
+	});
+
 	it("skips tsc on a commit with no tsconfig.json", { timeout: 60_000 }, async () => {
 		const head = commit(repo, { "src/a.ts": lines("export const a = 1;") });
 		expect(await runStaticTool(input("tsc", head), context)).toEqual({
@@ -228,8 +253,12 @@ describe("runStaticTool with the repository's own tools", () => {
 		).toEqual([
 			[" --version", "", undefined],
 			[" lint ", "", undefined],
+			[undefined, "", undefined],
 		]);
-		// Only those two commands carry the sandbox's variables and a scratch HOME and TMPDIR; git, ln, and rm do not.
+		// The third is the reader, fetching the report: it starts outside the worktree and is granted no install.
+		expect(command.mock.calls[2]![1]).toMatchObject({ worktree: "/", scratch: paths.scratch, installs: [] });
+		expect(command.mock.calls[2]![0]).toContain(JSON.stringify(join(paths.scratch, "biome.sarif")));
+		// Only those commands carry the sandbox's variables and a scratch HOME and TMPDIR; git, ln, and rm do not.
 		const confined = execute.mock.calls.filter(([, options]) => options?.env?.MELIAN_SANDBOX === "test");
 		expect(confined.map(([text]) => text)).toEqual(command.mock.results.map((made) => made.value));
 		for (const [, options] of confined)
@@ -589,10 +618,10 @@ describe("runStaticTool with the repository's own tools", () => {
 		expect((error as CheckError).code).toBe("toolFailed");
 	});
 
-	it("measures a report that is a symlink by its target", { timeout: 60_000 }, async () => {
+	it("refuses a report that is a symlink, with the reason and none of its target", { timeout: 60_000 }, async () => {
 		const head = commit(repo, { ".gitignore": lines("node_modules"), "src/a.ts": lines("a") });
 		const big = join(repo, ".git", "big.sarif");
-		writeFileSync(big, Buffer.alloc(17 * 1024 * 1024, 32));
+		writeFileSync(big, `{"marker":"credential-marker"}`);
 		fakeTool(
 			repo,
 			"biome",
@@ -606,7 +635,31 @@ describe("runStaticTool with the repository's own tools", () => {
 			() => undefined,
 			(caught: unknown) => caught,
 		);
-		expect((error as CheckError).code).toBe("outputTooLarge");
+		expect((error as CheckError).code).toBe("toolFailed");
+		expect((error as CheckError).message).toMatch(/scratch operation refused .*\/biome\.sarif: .*non-file /);
+		expect((error as CheckError).message).not.toContain("credential-marker");
+	});
+
+	it("fails with outputTooLarge at the limit, and reads a report one byte under it", {
+		timeout: 120_000,
+	}, async () => {
+		const head = commit(repo, { ".gitignore": lines("node_modules"), "src/a.ts": lines("a") });
+		const report = (bytes: number) =>
+			fakeTool(
+				repo,
+				"biome",
+				[
+					'if [ "$1" = "--version" ]; then echo "Version: 9.9.9"; exit 0; fi',
+					'for arg in "$@"; do case "$arg" in --reporter-file=*) out=$(printf %s "$arg" | cut -d= -f2-);; esac; done',
+					`printf '%s' '${emptySarif}' > "$out"`,
+					`printf '%${bytes - emptySarif.length}s' '' >> "$out"`,
+					`[ "$(wc -c < "$out")" -eq ${bytes} ] || exit 9`,
+				].join("\n"),
+			);
+		report(16 * 1024 * 1024 - 1);
+		expect((await runStaticTool(input("biome", head), context)).status).toBe("ran");
+		report(16 * 1024 * 1024);
+		await expect(runStaticTool(input("biome", head), context)).rejects.toMatchObject({ code: "outputTooLarge" });
 	});
 
 	it("fails with toolFailed when Biome writes no report", { timeout: 60_000 }, async () => {

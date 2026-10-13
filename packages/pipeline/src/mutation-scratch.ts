@@ -88,22 +88,25 @@ try {
 }
 `;
 
+// Reads, writes, and removes files under one scratch directory without ever following a link there. With a sandbox the
+// script runs inside it, under a profile built before any confined command ran. Without one it runs on the host, where
+// its own guards are all there is: a refused symlink at every component and an atomic no-follow open.
 export class MutationScratch {
 	readonly #run: Run;
-	readonly #sandbox: Sandbox;
+	readonly #sandbox: Sandbox | undefined;
 	readonly #paths: SandboxPaths;
 	readonly #profile: string | undefined;
 
-	private constructor(run: Run, sandbox: Sandbox, paths: SandboxPaths, profile: string | undefined) {
+	private constructor(run: Run, sandbox: Sandbox | undefined, paths: SandboxPaths, profile: string | undefined) {
 		this.#run = run;
 		this.#sandbox = sandbox;
 		this.#paths = paths;
 		this.#profile = profile;
 	}
 
-	static open(run: Run, scratch: string, sandbox: Sandbox, installs: readonly string[]): MutationScratch {
+	static open(run: Run, scratch: string, sandbox: Sandbox | undefined, installs: readonly string[]): MutationScratch {
 		const paths = { scratch, worktree: "/", installs, node: nodeExecutable() };
-		return new MutationScratch(run, sandbox, paths, sandbox.profile(paths));
+		return new MutationScratch(run, sandbox, paths, sandbox?.profile(paths));
 	}
 
 	async #execute(operation: string, target: string, content = "", limit = 0): Promise<string | undefined> {
@@ -114,10 +117,10 @@ export class MutationScratch {
 		const command = `${quote(process.execPath)} -e ${quote(mutationHousekeeping)} ${quote(JSON.stringify([this.#paths.scratch, target, operation, content, limit]))}`;
 		let output = "";
 		const result = await this.#run.input.env.exec(
-			this.#sandbox.command(command, this.#paths, "", this.#profile),
+			this.#sandbox === undefined ? command : this.#sandbox.command(command, this.#paths, "", this.#profile),
 			{
 				inheritEnv: false,
-				env: { ...this.#sandbox.environment(), HOME: this.#paths.scratch, TMPDIR: this.#paths.scratch },
+				env: { ...this.#sandbox?.environment(), HOME: this.#paths.scratch, TMPDIR: this.#paths.scratch },
 				timeout: 60,
 				onOutput: (text) => {
 					output += text;
