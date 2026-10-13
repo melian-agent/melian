@@ -59,8 +59,9 @@ function spelling(name: string): string {
 const plainName = /^[\p{L}_$][\p{L}\p{N}_$]*$/u;
 const specifierList = /^\s*(?:import|export)\s+\{[^{}]*\}\s*(?:from\s*(["'])[^"']*\1)?\s*;?\s*$/;
 
-// Whether a line names `symbol` in a way that could give it another name: anything but a call or a declaration with
-// its parameters, or a place in an import or export list that does not rename it.
+// Whether a line names `symbol` in a way that could give it another name: anything but a call, a declaration with its
+// parameters or as a function value, or a place in an import or export list that does not rename it. Every mention on
+// the line is read, the declaration's own line included, since an alias may share it.
 function aliases(line: string, symbol: string): boolean {
 	const listed = specifierList.test(line);
 	for (const match of line.matchAll(new RegExp(naming(symbol), "gu"))) {
@@ -68,6 +69,8 @@ function aliases(line: string, symbol: string): boolean {
 		// A class is declared by its name alone, and its constructor is the function that holds the lines.
 		if (/(?:^|[^\p{L}\p{N}_$])class\s+$/u.test(line.slice(0, match.index))) continue;
 		if (/^\s*(?:<[^<>()]*>)?\s*\(/.test(after)) continue;
+		// A function value declared under the name: `name = (`, `name: async (`, `name = function`.
+		if (/^\s*[=:]\s*(?:async\s+)?(?:\(|function\b)/.test(after)) continue;
 		if (listed && !/^\s+as\b/.test(after)) continue;
 		return true;
 	}
@@ -225,22 +228,19 @@ export class ScopeProposal {
 				`the change holds ${visibleText(unread.path)}, which git reads as binary, so Melian cannot check its lines`,
 			);
 		const readable = spots.filter((spot) => spot.headText !== undefined && spot.baseText !== undefined);
-		let functions: (HoldingFunction | undefined)[] = [];
-		try {
-			functions = EnclosingFunctions.around(
-				readable.flatMap((spot) => [
-					{
-						path: spot.file,
-						text: spot.headText!,
-						startLine: spot.at.line,
-						endLine: spot.at.endLine ?? spot.at.line,
-					},
-					{ path: spot.basePath, text: spot.baseText!, startLine: spot.baseStart, endLine: spot.baseEnd },
-				]),
-			);
-		} catch {
-			// The compiler could not start, which reads as a file it does not read.
-		}
+		// A compiler that cannot start throws, and the report fails whole: a replay must never record a refusal that the
+		// first run did not, only because the machine was worse off.
+		const functions: (HoldingFunction | undefined)[] = EnclosingFunctions.around(
+			readable.flatMap((spot) => [
+				{
+					path: spot.file,
+					text: spot.headText!,
+					startLine: spot.at.line,
+					endLine: spot.at.endLine ?? spot.at.line,
+				},
+				{ path: spot.basePath, text: spot.baseText!, startLine: spot.baseStart, endLine: spot.baseEnd },
+			]),
+		);
 		// A hunk that only rewords a comment in a function removes no guard and adds no cause.
 		const within = (code: ReadonlySet<number>, start: number, count: number) => {
 			for (let line = start; line < start + count; line++) if (code.has(line)) return true;
@@ -283,10 +283,7 @@ export class ScopeProposal {
 			// head that names it must call it, declare it, or pass it through an import or export list unrenamed.
 			const search = { pattern: spelling(symbol), regex: true, attributesFrom: review.base };
 			const named = await searchRevision(review.repoRoot, review.head, search);
-			const alias = named.matches.find(
-				(match) =>
-					!(match.path === spot.file && match.line === atHead.startLine) && aliases(unescaped(match.text), symbol),
-			);
+			const alias = named.matches.find((match) => aliases(unescaped(match.text), symbol));
 			// A search cuts a long line, and the name may sit past the cut.
 			const cut = named.matches.find((match) => match.text.length >= revisionLimits.matchChars);
 			if (named.truncated)

@@ -79,6 +79,7 @@ const sighting: ScopedSighting = {
 };
 
 let repo: string | undefined;
+const built: string[] = [];
 
 beforeEach(() => {
 	for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
@@ -87,7 +88,8 @@ beforeEach(() => {
 afterEach(() => {
 	vi.unstubAllEnvs();
 	vi.restoreAllMocks();
-	if (repo !== undefined) rmSync(repo, { recursive: true, force: true });
+	if (repo !== undefined) built.push(repo);
+	for (const each of built.splice(0)) rmSync(each, { recursive: true, force: true });
 	repo = undefined;
 });
 
@@ -101,6 +103,7 @@ async function refusals(
 		prepare?: (repo: string) => void;
 	} = {},
 ): Promise<readonly string[]> {
+	if (repo !== undefined) built.push(repo);
 	repo = baseAndHead({ ...base, ...options.base }, head);
 	if (options.prepare !== undefined) {
 		options.prepare(repo);
@@ -679,6 +682,11 @@ describe("rule (d), four typed answers, cross-checked", { timeout: 60_000 }, () 
 		expect(await named(`${from}export const both = [parseRecord("a,b"), parseRecord];\n`)).toEqual([
 			"(d) src/alias.ts:2 names parseRecord without calling it, so a caller may reach it under another name",
 		]);
+		expect(
+			await named('import * as parse from "./parse.ts";\nexport const { parseRecord: decode } = parse;\n'),
+		).toEqual([
+			"(d) src/alias.ts:2 names parseRecord without calling it, so a caller may reach it under another name",
+		]);
 		expect(await named('export { parseRecord } from "./parse.ts";\n')).toEqual([]);
 		expect(
 			await named('export { validate, parseRecord };\nimport { validate, parseRecord } from "./parse.ts";\n'),
@@ -779,6 +787,44 @@ describe("rule (d), four typed answers, cross-checked", { timeout: 60_000 }, () 
 		]);
 	});
 
+	it("reads an alias that shares the line of the failing function's declaration", async () => {
+		const shared = (comment: string) =>
+			lines(
+				"export const decode = sharedRecord; export function sharedRecord(raw: string): string {",
+				comment,
+				'\treturn raw.split(",")[1].trim();',
+				"}",
+			);
+		expect(
+			await refusals(
+				{ "src/shared.ts": shared("\t// The second field.") },
+				{ failing: { file: "src/shared.ts", line: 3, baseLine: 3 } },
+				{ path: "src/shared.ts", startLine: 1, endLine: 4, evidence: [] },
+				{ base: { "src/shared.ts": shared("\t// Second.") } },
+			),
+		).toEqual([
+			"(d) src/shared.ts:1 names sharedRecord without calling it, so a caller may reach it under another name",
+		]);
+	});
+
+	it("lets a function value be declared under the name, async or as a property, and nothing else assigned to it", async () => {
+		const value = (declared: string, comment: string) =>
+			lines(declared, comment, '\treturn raw.split(",")[1].trim();', "};");
+		const check = (declared: string) =>
+			refusals(
+				{ "src/arrow.ts": value(declared, "\t// The second field.") },
+				{ failing: { file: "src/arrow.ts", line: 3, baseLine: 3 } },
+				{ path: "src/arrow.ts", startLine: 1, endLine: 4, evidence: [] },
+				{ base: { "src/arrow.ts": value(declared, "\t// Second.") } },
+			);
+		expect(await check("export const pickName = async (raw: string): Promise<string> => {")).toEqual([]);
+		expect(await check("export const pickName = function (raw: string): string {")).toEqual([]);
+		expect(await check("export const pickers = { pickName: (raw: string): string => {")).toEqual([]);
+		expect(await check("export const pickName = other ?? ((raw: string): string => {")).toEqual([
+			"(d) Melian cannot find the function that holds the failing lines with the compiler",
+		]);
+	});
+
 	it("lets the failing function's own declaration name it without a call", async () => {
 		const arrow = (comment: string) =>
 			lines(
@@ -804,15 +850,11 @@ describe("rule (d), four typed answers, cross-checked", { timeout: 60_000 }, () 
 		).toEqual(["(d) Melian cannot list every line of the head that names parseRecord"]);
 	});
 
-	it("refuses when the compiler cannot start", async () => {
+	it("fails whole when the compiler cannot start, rather than record a refusal a replay would not repeat", async () => {
 		vi.spyOn(HeadProgram, "open").mockImplementation(() => {
 			throw new Error("no compiler");
 		});
-		expect(await refusals(commentEdit)).toEqual([
-			"(d) Melian cannot find the function that holds the failing lines with the compiler",
-			"(d) Melian cannot find the function that holds src/main.ts:5 with the compiler",
-			"(d) Melian cannot find the function that holds src/run.ts:4 with the compiler",
-		]);
+		await expect(refusals(commentEdit)).rejects.toThrow("no compiler");
 	});
 
 	it("refuses a hunk that changes a name the trigger reads, in a file the verifier never named", async () => {
