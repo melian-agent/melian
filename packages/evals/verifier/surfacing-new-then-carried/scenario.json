@@ -8,14 +8,13 @@
 	],
 	"expected": [
 		{
-			"status": "passed",
+			"status": "findings",
 			"blocking": false,
 			"severity": "P1",
 			"cause": "pre-existing",
 			"resolution": "advisory",
 			"verdict": "confirmed",
 			"lowered": false,
-			"rescoped": false,
 			"important": {
 				"state": "new",
 				"originalSeverity": "P1"
@@ -25,14 +24,13 @@
 			]
 		},
 		{
-			"status": "passed",
+			"status": "findings",
 			"blocking": false,
 			"severity": "P1",
 			"cause": "pre-existing",
 			"resolution": "advisory",
 			"verdict": "confirmed",
 			"lowered": false,
-			"rescoped": false,
 			"important": {
 				"state": "carried",
 				"originalSeverity": "P1"

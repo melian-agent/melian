@@ -143,21 +143,6 @@ describe("ledger rendering", () => {
 	});
 
 	it("lists an important pre-existing finding under its own heading, new and then carried", () => {
-		const record = {
-			verdict: "confirmed",
-			reason: "Traced.",
-			executor: "llm",
-			model: "fake/judge",
-			version: "1",
-		} as const;
-		const claimed = Finding.from({
-			...finding.toJSON(),
-			properties: { ...finding.properties, failureScenario: "Unchecked input runs." },
-		});
-		const rescoped = claimed.verifiedAs({
-			...record,
-			rescoped: { from: "introduced", reason: "The base\nhas the lines." },
-		});
 		const old = Finding.create({
 			rule: "old",
 			message: "Old defect",
@@ -172,7 +157,7 @@ describe("ledger rendering", () => {
 		});
 		const decide = (seenBefore: string[]) =>
 			new Adjudication({
-				findings: [rescoped, old],
+				findings: [finding, old],
 				manifest: [],
 				checks: [],
 				config: defaultConfig,
@@ -182,17 +167,15 @@ describe("ledger rendering", () => {
 		const body = Ledger.from(first, { rounds: [{ ...round, verdict: first.toJSON() }] }, options).render(links);
 		expect(body).toContain(
 			[
+				`- ${finding.id}: \`src/run.ts\`:7 — \`unsafe\` (block): Unsafe input`,
 				"### Pre-existing, important",
 				`- ${old.id} (new, originally P0): \`src/old.ts\`:3 — \`old\` (advisory): Old defect`,
-				`- ${rescoped.id} (new, originally P1): \`src/run.ts\`:7 — \`unsafe\` (advisory): Unsafe input Re-scoped from introduced: The base has the lines.`,
 			].join("\n\n"),
 		);
-		expect(body).not.toContain(`- ${rescoped.id}: `);
 		expect(body).not.toContain(`- ${old.id}: `);
-		const second = decide([rescoped.id]);
+		const second = decide([old.id]);
 		const later = Ledger.from(second, { rounds: [{ ...round, verdict: second.toJSON() }] }, options).render(links);
-		expect(later).toContain(`- ${rescoped.id} (carried, originally P1): `);
-		expect(later).toContain(`- ${old.id} (new, originally P0): `);
+		expect(later).toContain(`- ${old.id} (carried, originally P0): `);
 	});
 
 	it("renders run details beside verification outcomes, including refuted claims", () => {

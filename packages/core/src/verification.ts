@@ -15,16 +15,10 @@ export const verificationAnswersSchema = Type.Object({ code: answer, guard: answ
 /** The JSON Schema of a {@link StoredLowering}: the lens's severity, the one the verifier lowered it to, and why. */
 export const loweringSchema = Type.Object({ from: severitySchema, to: severitySchema, reason }, strict);
 
-/** The JSON Schema of a {@link StoredRescope}: the scope location gave the finding before it became `pre-existing`, and why. */
-export const rescopeSchema = Type.Object(
-	{ from: Type.Union([Type.Literal("introduced"), Type.Literal("affected")]), reason },
-	strict,
-);
-
 /**
  * The verifier's judgement, distinct from calibrated confidence. `answers` and `evidence`, the locations Melian read
- * back, are absent from a record written before Melian kept them. `lowered` and `rescoped` are present only when the
- * verifier proposed one and Melian accepted it.
+ * back, are absent from a record written before Melian kept them. `lowered` is present only when the verifier proposed
+ * a lowering and Melian accepted it.
  */
 export const verificationSchema = Type.Object(
 	{
@@ -34,7 +28,6 @@ export const verificationSchema = Type.Object(
 		answers: Type.Optional(verificationAnswersSchema),
 		evidence: Type.Optional(Type.Array(evidenceLocationSchema, { minItems: 1 })),
 		lowered: Type.Optional(loweringSchema),
-		rescoped: Type.Optional(rescopeSchema),
 		executor: Type.Literal("llm"),
 		model: Type.String({ pattern: "^[^/\\s]+/[^\\s]+$" }),
 		version: Type.String({ minLength: 1 }),
@@ -47,9 +40,6 @@ export type Verification = Static<typeof verificationSchema>;
 
 /** A lowering as a verification record stores it. */
 export type StoredLowering = Static<typeof loweringSchema>;
-
-/** A re-scope as a verification record stores it. */
-export type StoredRescope = Static<typeof rescopeSchema>;
 
 const verdictStrength: Readonly<Record<Verification["verdict"], number>> = { confirmed: 2, plausible: 1, refuted: 0 };
 const severities: readonly Severity[] = ["P0", "P1", "P2", "P3", "nit"];
@@ -111,22 +101,15 @@ export class VerificationRecord {
 
 	/**
 	 * The record after `report` arrives. The stronger verdict wins whole. On equal verdicts the record keeps the higher
-	 * severity and the stronger scope, with the reason and evidence of the report that gave them, so a later equal
-	 * report never weakens a stored one, in either order.
+	 * severity, with the reason and evidence of the report that gave it, so a later equal report never weakens a stored
+	 * one, in either order.
 	 */
 	after(report: Verification): Verification {
 		const { stored } = this;
 		if (stored === undefined) return report;
 		if (verdictStrength[stored.verdict] !== verdictStrength[report.verdict])
 			return verdictStrength[stored.verdict] > verdictStrength[report.verdict] ? stored : report;
-		const lowers = (each: Verification) => Number(each.lowered !== undefined);
-		const rescopes = (each: Verification) => Number(each.rescoped !== undefined);
-		const keepsStored = lowers(stored) - lowers(report) || rescopes(stored) - rescopes(report);
-		const winner = keepsStored < 0 ? stored : report;
-		const other = winner === stored ? report : stored;
-		if (winner.rescoped === undefined || other.rescoped !== undefined) return winner;
-		const { rescoped: _, ...unscoped } = winner;
-		return unscoped;
+		return stored.lowered === undefined && report.lowered !== undefined ? stored : report;
 	}
 }
 

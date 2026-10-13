@@ -1,6 +1,6 @@
 # conflict-replay-after-each-report
 
-Source: [the decision](../../../../docs/decisions/2026-10-12-verifier-lowers-severity-and-sets-scope.md), Goldens, conflict: a replay after each report.
+Source: [the decision](../../../../docs/decisions/2026-10-13-re-scope-held-for-the-compiler.md), Goldens, conflict: a replay after each report.
 
 The verifier makes each of two reports twice, as a replayed tool call does: the lowering, the lowering again, the plain one, the plain one again. The guard runs in each report's commit, so a repeat changes nothing and the plain report still wins the equal verdict.
 

@@ -40,14 +40,13 @@ import {
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AdjudicationTask, readDecision, readVerdict } from "../src/adjudication.ts";
-import { clearSightings, FindingsDocument } from "../src/findings.ts";
+import { clearSightings } from "../src/findings.ts";
 import { lensReadTools, reviewFiles } from "../src/lens-tools.ts";
 import { hasCredentials } from "../src/models.ts";
-import { ScopeProposal } from "../src/rescope.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { startVerification, type VerificationInput, VerificationTask } from "../src/verification.ts";
 import { verifierMarker, verifierVersion } from "../src/verification-instructions.ts";
-import { baseAndHead, gitIn, lines } from "./fixtures/repo.ts";
+import { baseAndHead, gitIn } from "./fixtures/repo.ts";
 import { crashFinding, crashRepository } from "./fixtures/review-scenario.ts";
 
 let repo: string;
@@ -1575,7 +1574,7 @@ describe("the verifier", () => {
 	});
 });
 
-describe("lowering a severity and setting scope through report_verdict", () => {
+describe("lowering a severity through report_verdict", () => {
 	type Outcome = Exclude<Parameters<typeof scriptVerifier>[1], undefined>[string];
 	// Plants `finding` through the lens, then answers every claim with `outcome`. Returns the verifier's requests.
 	function judging(outcome: Outcome, finding: Record<string, unknown> = crashFinding) {
@@ -1651,96 +1650,10 @@ describe("lowering a severity and setting scope through report_verdict", () => {
 		);
 	});
 
-	it("says nothing of a lowering or a re-scope the verifier did not ask for", async () => {
+	it("says nothing of a lowering the verifier did not ask for", async () => {
 		const requests = judging({ verdict: "confirmed", reason: "Traced it." });
 		await review();
 		expect(resultOf(requests)).toMatch(/^recorded verdict for c1\n<untrusted-/);
-	});
-
-	it("refuses a re-scope Melian cannot confirm, quotes why as data, and leaves the cause", async () => {
-		const at = { file: "src/user.ts", line: 7 };
-		const scope = {
-			reason: "The base has the line.",
-			failing: { ...at, baseLine: 7 },
-			trigger: { file: "src/user.ts", line: 6 },
-			newCaller: { answer: false, base: at },
-			removedGuard: { answer: false, base: at },
-			changedTrigger: { answer: false, base: at },
-			copy: { answer: false, base: at },
-		};
-		const requests = judging({ verdict: "confirmed", reason: "Traced it.", scope });
-		const { findings, verdict } = await review();
-		expect(findings[0]!.properties.cause).toBe("introduced");
-		expect(findings[0]!.properties.verification).not.toHaveProperty("rescoped");
-		expect(verdict.blocking).toBe(true);
-		const result = resultOf(requests);
-		expect(result).toMatch(
-			/recorded verdict for c1\nre-scope refused, and the finding stays introduced:\n<untrusted-[0-9a-f]+ label="findings">\n\(a\) the finding's cause evidence at src\/user\.ts:7 is on a changed line\n\(b\) the failing lines at the base differ from the head's\n/,
-		);
-	});
-
-	const parse = (comment: string) =>
-		lines(
-			"export function parseRecord(raw: string): string[] {",
-			comment,
-			'\tconst fields = raw.split(",");',
-			"\tconst name = fields[1].trim();",
-			"\treturn [name];",
-			"}",
-		);
-	const run = lines(
-		'import { parseRecord } from "./parse.ts";',
-		"",
-		"export function run(raw: string): string[] {",
-		"\treturn parseRecord(raw);",
-		"}",
-	);
-	const old = {
-		...crashFinding,
-		file: "src/parse.ts",
-		line: 1,
-		endLine: 6,
-		evidence: [{ file: "src/parse.ts", line: 4, role: "cause" }],
-	};
-	const older = {
-		reason: "The base reads fields[1] on the same line.",
-		failing: { file: "src/parse.ts", line: 4, baseLine: 4 },
-		trigger: { file: "src/run.ts", line: 4 },
-		newCaller: { answer: false, base: { file: "src/run.ts", line: 4 } },
-		removedGuard: { answer: false, base: { file: "src/parse.ts", line: 3 } },
-		changedTrigger: { answer: false, base: { file: "src/run.ts", line: 4 } },
-		copy: { answer: false, base: { file: "src/parse.ts", line: 4 } },
-	};
-	async function commentEdit() {
-		rmSync(repo, { recursive: true, force: true });
-		repo = baseAndHead(
-			{ "src/parse.ts": parse("\t// Split on commas."), "src/run.ts": run },
-			{ "src/parse.ts": parse("\t// Split the line at each comma."), "src/run.ts": run },
-		);
-		changeset = await Changeset.resolve(repo, "main...feature");
-	}
-
-	it("re-scopes a finding whose failing lines and trigger the change left alone, and lists it as important", async () => {
-		await commentEdit();
-		const requests = judging({ verdict: "confirmed", reason: "Traced it.", scope: older }, old);
-		const { findings, verdict } = await review();
-		expect(findings[0]!.properties).toMatchObject({ cause: "pre-existing", severity: "P1" });
-		expect(findings[0]!.properties.verification?.rescoped).toEqual({ from: "introduced", reason: older.reason });
-		expect(verdict.findings.advisory.map((finding) => finding.id)).toEqual([findings[0]!.id]);
-		expect(verdict.preExistingImportant).toEqual([
-			{
-				id: findings[0]!.id,
-				state: "new",
-				originalSeverity: "P1",
-				originalScope: "introduced",
-				reason: older.reason,
-			},
-		]);
-		expect(resultOf(requests)).toContain("recorded verdict for c1\nre-scoped from introduced to pre-existing\n");
-		const root = await harness.root(context);
-		const stored = (await harness.snapshot(FindingsDocument, root.id, context))!;
-		const sighting = Object.values(stored.items[findings[0]!.id]!.sightings[revisionKey(changeset.revision)]!)[0]!;
-		expect(sighting.properties.cause).toBe("introduced");
 	});
 
 	// Plants `finding`, then makes each of `reports` in its own turn. Returns the verifier's requests.
@@ -1780,17 +1693,6 @@ describe("lowering a severity and setting scope through report_verdict", () => {
 			"recorded verdict for c1\nlowering not kept, and the lens's P1 stands: an equal report of this claim already holds it there\n",
 		);
 		expect(resultOf(requests)).not.toContain("lowered P1 to P2");
-	});
-
-	it("says a re-scope was not kept when an equal report already holds the claim at its scope", async () => {
-		await commentEdit();
-		const requests = reporting([{}, { scope: older }], old);
-		const { findings } = await review();
-		expect(findings[0]!.properties.cause).toBe("introduced");
-		expect(resultOf(requests)).toContain(
-			"recorded verdict for c1\nre-scope not kept, and the finding stays introduced: an equal report of this claim already holds it there\n",
-		);
-		expect(resultOf(requests)).not.toContain("re-scoped from");
 	});
 
 	it("reads the table in force at the finding's own path for the fence, not the root's", async () => {
@@ -1920,26 +1822,6 @@ describe("lowering a severity and setting scope through report_verdict", () => {
 			messages.filter((message) => message.role === "toolResult" && message.isError),
 		);
 		expect(textOf(errors[0]!)).toContain("the claim no longer has a sighting");
-	});
-
-	it("refuses the report when the claim changes while the scope is being checked", async () => {
-		await commentEdit();
-		const requests = judging({ verdict: "confirmed", reason: "Traced it.", scope: older }, old);
-		const read = ScopeProposal.read.bind(ScopeProposal);
-		vi.spyOn(ScopeProposal, "read").mockImplementationOnce(async (...args) => {
-			const root = await harness.root(context);
-			const revision = revisionKey(changeset.revision);
-			const [seen] = await readFindings(harness, root.id, revision, context);
-			const { reportedBy: _, ...properties } = seen!.properties;
-			const reworded = Finding.from({ ...seen!.toJSON(), message: { text: "Reworded." }, properties });
-			await root.commit((tx) => upsertFinding(tx, root.id, reworded, revision), context);
-			return read(...args);
-		});
-		await expect(review()).rejects.toMatchObject({ code: "verifierFailed" });
-		const errors = requests.flatMap((messages) =>
-			messages.filter((message) => message.role === "toolResult" && message.isError),
-		);
-		expect(textOf(errors[0]!)).toContain("the claim changed while it was being judged; report the verdict again");
 	});
 });
 

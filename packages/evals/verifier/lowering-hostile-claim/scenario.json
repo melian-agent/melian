@@ -32,7 +32,6 @@
 			"resolution": "block",
 			"verdict": "confirmed",
 			"lowered": false,
-			"rescoped": false,
 			"notRendered": [
 				"lowered from"
 			]

@@ -198,12 +198,8 @@ export class Ledger {
 		const members = verdict.attention().flatMap((finding) => {
 			const member = important.get(finding.id);
 			if (member === undefined) return [];
-			const scope =
-				member.originalScope === undefined
-					? ""
-					: ` Re-scoped from ${member.originalScope}: ${prose(member.reason ?? "No reason stored.")}`;
 			return [
-				`- ${prose(finding.properties.id)} (${member.state}, originally ${member.originalSeverity}): ${line(finding)}${scope}`,
+				`- ${prose(finding.properties.id)} (${member.state}, originally ${member.originalSeverity}): ${line(finding)}`,
 			];
 		});
 		const parts = [

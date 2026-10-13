@@ -30,7 +30,6 @@
 			"resolution": "advisory",
 			"verdict": "confirmed",
 			"lowered": true,
-			"rescoped": false,
 			"rendered": [
 				"P3, lowered from P2",
 				"Lowered from P2: The only caller, run, returns early for a record without a comma, so the read fails only beside a second defect."

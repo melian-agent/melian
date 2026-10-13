@@ -1,6 +1,6 @@
 # surfacing-lowered-p1-member
 
-Source: [the decision](../../../../docs/decisions/2026-10-12-verifier-lowers-severity-and-sets-scope.md), Goldens, surfacing: a pre-existing P1 that the verifier lowered to P2 is still a member.
+Source: [the decision](../../../../docs/decisions/2026-10-13-re-scope-held-for-the-compiler.md), Goldens, surfacing: a pre-existing P1 that the verifier lowered to P2 is still a member.
 
 The lens reports a P1 on the untouched read, which location classifies `pre-existing`. The verifier lowers it to P2. Membership reads the lens's severity, before any lowering, so the finding is still listed under "Pre-existing, important".
 

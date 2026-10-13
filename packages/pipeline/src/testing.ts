@@ -216,9 +216,8 @@ export type VerifierScript = Readonly<
 					role: "cause" | "context";
 					revision?: "head" | "base";
 				}[];
-				/** Passed to `report_verdict` as its `lower` and `scope`, whatever they hold, so a script can try the fence. */
+				/** Passed to `report_verdict` as its `lower`, whatever it holds, so a script can try the fence. */
 				lower?: Readonly<Record<string, unknown>>;
-				scope?: Readonly<Record<string, unknown>>;
 		  }
 	>
 >;
@@ -309,7 +308,6 @@ export function scriptVerifier(messages: readonly Message[], verdicts: VerifierS
 			...("correction" in outcome && outcome.correction !== undefined ? { correction: outcome.correction } : {}),
 			...("evidence" in outcome && outcome.evidence !== undefined ? { evidence: [...outcome.evidence] } : {}),
 			...("lower" in outcome && outcome.lower !== undefined ? { lower: { ...outcome.lower } } : {}),
-			...("scope" in outcome && outcome.scope !== undefined ? { scope: structuredClone(outcome.scope) } : {}),
 		} as Parameters<typeof fauxToolCall>[1]);
 	});
 	return fauxAssistantMessage(calls, { stopReason: "toolUse" });

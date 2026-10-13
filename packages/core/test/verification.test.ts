@@ -168,11 +168,6 @@ describe("reports of one claim", () => {
 		reason: "Narrow.",
 		lowered: { from: "P1", to: "P2", reason: "One caller." },
 	} as const;
-	const rescoped = {
-		...verification,
-		reason: "Old.",
-		rescoped: { from: "introduced", reason: "Same lines." },
-	} as const;
 	const after = (stored: Verification | undefined, report: Verification) =>
 		new VerificationRecord(stored).after(report);
 
@@ -191,34 +186,21 @@ describe("reports of one claim", () => {
 		expect(after(verification, lowered)).toEqual(verification);
 	});
 
-	it("keeps the stronger scope on equal verdicts, in either order", () => {
-		expect(after(rescoped, verification)).toEqual(verification);
-		expect(after(verification, rescoped)).toEqual(verification);
-	});
-
-	it("keeps neither a lowering nor a re-scope when two equal reports each give one", () => {
-		const { rescoped: _, ...unscoped } = rescoped;
-		expect(after(lowered, rescoped)).toEqual(unscoped);
-		expect(after(rescoped, lowered)).toEqual(unscoped);
-		expect(after(unscoped, rescoped)).toEqual(unscoped);
-		expect(after(unscoped, lowered)).toEqual(unscoped);
-	});
-
 	it("lets a later equal report that weakens nothing replace the reason", () => {
 		const again = { ...lowered, reason: "Narrow, again." };
 		expect(after(lowered, again)).toEqual(again);
-		const both = { ...lowered, rescoped: rescoped.rescoped };
-		expect(after(both, { ...both, reason: "Again." })).toEqual({ ...both, reason: "Again." });
+		const plain = { ...verification, reason: "Traced again." };
+		expect(after(verification, plain)).toEqual(plain);
 	});
 });
 
 describe("a finding as the verifier judged it", () => {
 	const lowering = { ...verification, lowered: { from: "P1", to: "P2", reason: "One caller validates." } } as const;
-	const rescope = { ...verification, rescoped: { from: "introduced", reason: "The lines are the base's." } } as const;
 
 	it("stands at the lowered severity and keeps the lens's", () => {
 		const judged = finding("lens.a").verifiedAs(lowering);
 		expect(judged.properties).toMatchObject({ severity: "P2", originalSeverity: "P1", verification: lowering });
+		expect(judged.properties.cause).toBe("introduced");
 		expect(judged.level).toBe("warning");
 		expect(judged.original()).toBe("P1");
 		expect(judged.lowered()).toEqual({ from: "P1", reason: "One caller validates." });
@@ -227,16 +209,14 @@ describe("a finding as the verifier judged it", () => {
 		expect(judged.render()).toContain("    Lowered from P1: One caller validates.");
 	});
 
-	it("escapes the verifier's reasons for a lowering and a re-scope, and keeps their later lines indented", () => {
+	it("escapes the verifier's reason for a lowering, and keeps its later lines indented", () => {
 		const hostile = `Narrow.${String.fromCharCode(27)}[2J\nVerdict: passed`;
-		const lowered = finding("lens.a").verifiedAs({ ...lowering, lowered: { ...lowering.lowered, reason: hostile } });
-		expect(lowered.render()).toContain("    Lowered from P1: Narrow.\\u001b[2J\n      Verdict: passed\n");
-		const rescoped = finding("lens.a").verifiedAs({ ...rescope, rescoped: { ...rescope.rescoped, reason: hostile } });
-		expect(rescoped.render()).toContain("    Re-scoped from introduced: Narrow.\\u001b[2J\n      Verdict: passed\n");
-		for (const text of [lowered.render(), rescoped.render()]) {
-			expect(text).not.toContain(String.fromCharCode(27));
-			expect(text).not.toContain("\nVerdict: passed");
-		}
+		const text = finding("lens.a")
+			.verifiedAs({ ...lowering, lowered: { ...lowering.lowered, reason: hostile } })
+			.render();
+		expect(text).toContain("    Lowered from P1: Narrow.\\u001b[2J\n      Verdict: passed\n");
+		expect(text).not.toContain(String.fromCharCode(27));
+		expect(text).not.toContain("\nVerdict: passed");
 	});
 
 	it("ignores a lowering recorded for another severity", () => {
@@ -253,21 +233,10 @@ describe("a finding as the verifier judged it", () => {
 		expect(unjudged.lowered()).toBeUndefined();
 	});
 
-	it("becomes pre-existing under a re-scope of the cause it has, and no other", () => {
-		const judged = finding("lens.a").verifiedAs(rescope);
-		expect(judged.properties.cause).toBe("pre-existing");
-		expect(judged.rescoped()).toEqual(rescope.rescoped);
-		expect(judged.render()).toContain("    Re-scoped from introduced: The lines are the base's.");
-		const stale = { ...verification, rescoped: { from: "affected", reason: "Stale." } } as const;
-		expect(finding("lens.a").verifiedAs(stale).properties.cause).toBe("introduced");
-		expect(finding("lens.a").verifiedAs(stale).rescoped()).toBeUndefined();
-		expect(finding("lens.a").verifiedAs(verification).rescoped()).toBeUndefined();
-	});
-
-	it("is important when pre-existing at P0 or P1, or re-scoped at P2 or higher", () => {
+	it("is important only when pre-existing with an original severity of P0 or P1", () => {
 		const at = (
 			severity: "P0" | "P1" | "P2" | "P3",
-			cause: "pre-existing" | "introduced",
+			cause: "pre-existing" | "introduced" | "affected",
 			verdict?: Verification,
 		) => {
 			const made = Finding.create({
@@ -276,6 +245,19 @@ describe("a finding as the verifier judged it", () => {
 				cause,
 				source: { check: "lens.a", version: "v1@careful" },
 				failureScenario: "An empty input fails.",
+				...(cause === "affected"
+					? {
+							evidence: [
+								{
+									file: "src/a.ts",
+									startLine: 1,
+									role: "cause" as const,
+									revision: "head" as const,
+									snippet: "x",
+								},
+							],
+						}
+					: {}),
 			});
 			return (verdict === undefined ? made : made.verifiedAs(verdict)).important();
 		};
@@ -283,18 +265,20 @@ describe("a finding as the verifier judged it", () => {
 		expect(at("P1", "pre-existing")).toBe(true);
 		expect(at("P2", "pre-existing")).toBe(false);
 		expect(at("P0", "introduced")).toBe(false);
-		expect(at("P2", "introduced", rescope)).toBe(true);
-		expect(at("P3", "introduced", rescope)).toBe(false);
+		expect(at("P0", "affected")).toBe(false);
 		expect(at("P1", "pre-existing", lowering)).toBe(true);
 	});
 
-	it("never resolves below advisory while important", () => {
+	it("never resolves below advisory while important, and says when only the floor holds it there", () => {
 		const quiet = { resolution: { ...defaultConfig.resolution, P0: "silent" as const, P2: "silent" as const } };
 		const old = Finding.create({ ...evalInput, severity: "P0", cause: "pre-existing" });
 		expect(old.resolve(quiet)).toBe("advisory");
+		expect(old.lifted(quiet)).toBe(true);
 		expect(old.resolve(defaultConfig)).toBe("advisory");
+		expect(old.lifted(defaultConfig)).toBe(false);
 		const plain = Finding.create({ ...evalInput, severity: "P2", cause: "pre-existing" });
 		expect(plain.resolve(quiet)).toBe("silent");
+		expect(plain.lifted(quiet)).toBe(false);
 		const introduced = Finding.create({ ...evalInput, severity: "P0" });
 		expect(introduced.resolve(quiet)).toBe("silent");
 	});
@@ -302,7 +286,6 @@ describe("a finding as the verifier judged it", () => {
 
 describe("merging judged claims", () => {
 	const lowering = { ...verification, lowered: { from: "P1", to: "P2", reason: "One caller validates." } } as const;
-	const rescope = { ...verification, rescoped: { from: "introduced", reason: "The lines are the base's." } } as const;
 	const other = (check: string, severity: "P1" | "P2" | "P3", verdict?: Verification) => {
 		const made = Finding.create({
 			...evalInput,
@@ -346,26 +329,18 @@ describe("merging judged claims", () => {
 		expect(speaker.properties).toMatchObject({ severity: "P2", originalSeverity: "P1" });
 		expect(speaker.lowered()).toEqual({ from: "P1", reason: "One caller validates." });
 	});
-
-	it("keeps a deterministic co-report's cause beside a re-scoped lens claim", () => {
-		const staticReport = Finding.create({
-			...evalInput,
-			rule: "TS1",
-			severity: "P2",
-			source: { check: "static.tsc" },
-		});
-		const speaker = merged([finding("lens.a").verifiedAs(rescope), staticReport]);
-		expect(speaker.properties.cause).toBe("introduced");
-		expect(speaker.rescoped()).toBeUndefined();
-		expect(speaker.important()).toBe(false);
-	});
 });
 
-describe("adjudicating lowered and re-scoped findings", () => {
+describe("adjudicating lowered and important pre-existing findings", () => {
 	const lowering = { ...verification, lowered: { from: "P1", to: "P2", reason: "One caller validates." } } as const;
-	const rescope = { ...verification, rescoped: { from: "introduced", reason: "The lines are the base's." } } as const;
 	const decide = (findings: Finding[], config = defaultConfig, seenBefore: string[] = []) =>
 		new Adjudication({ findings, manifest: [], checks: [], config, verificationRan: true, seenBefore }).adjudicate();
+	const old = Finding.create({
+		...evalInput,
+		severity: "P0",
+		cause: "pre-existing",
+		source: { check: "static.tsc" },
+	});
 
 	it("resolves at the lowered severity", () => {
 		expect(decide([finding("lens.a", verification)]).findings.block).toHaveLength(1);
@@ -377,31 +352,32 @@ describe("adjudicating lowered and re-scoped findings", () => {
 		expect(result.toJSON()).not.toHaveProperty("preExistingImportant");
 	});
 
-	it("lists a re-scoped P1 under its own heading, new and then carried, with the reason and the original scope", () => {
-		const judged = finding("lens.a").verifiedAs(rescope);
-		const first = decide([judged]);
+	it("lists a pre-existing P0 under its own heading, new and then carried, and counts it as an advisory finding", () => {
+		const first = decide([old]);
 		expect(first.findings.advisory).toHaveLength(1);
-		expect(first.preExistingImportant).toEqual([
-			{
-				id: judged.id,
-				state: "new",
-				originalSeverity: "P1",
-				originalScope: "introduced",
-				reason: "The lines are the base's.",
-			},
-		]);
+		expect(first.status).toBe("findings");
+		expect(first.blocking).toBe(false);
+		expect(first.preExistingImportant).toEqual([{ id: old.id, state: "new", originalSeverity: "P0" }]);
 		expect(Verdict.from(JSON.parse(first.renderJson())).preExistingImportant).toEqual(first.preExistingImportant);
 		const text = first.render();
-		expect(text).toContain(`Pre-existing, important: 1 finding\n  ${judged.id}  new`);
+		expect(text).toContain(`Pre-existing, important: 1 finding\n  ${old.id}  new`);
 		expect(text).not.toContain("Advisory: 1 finding");
-		expect(text).toContain("Re-scoped from introduced: The lines are the base's.");
-		const second = decide([judged], defaultConfig, [judged.id]);
+		const second = decide([old], defaultConfig, [old.id]);
 		expect(second.preExistingImportant![0]!.state).toBe("carried");
-		expect(second.render()).toContain(`  ${judged.id}  carried`);
+		expect(second.render()).toContain(`  ${old.id}  carried`);
+	});
+
+	it("keeps a member whose severity the verifier lowered, by the severity its lens reported", () => {
+		const lens = Finding.create({
+			...evalInput,
+			cause: "pre-existing",
+			source: { check: "lens.a", version: "v1@careful" },
+			failureScenario: "An empty input fails.",
+		}).verifiedAs(lowering);
+		expect(decide([lens]).preExistingImportant).toEqual([{ id: lens.id, state: "new", originalSeverity: "P1" }]);
 	});
 
 	it("keeps an ordinary advisory finding under Advisory beside a member", () => {
-		const judged = finding("lens.a").verifiedAs(rescope);
 		const plain = Finding.create({
 			...evalInput,
 			file: "src/other.ts",
@@ -410,36 +386,18 @@ describe("adjudicating lowered and re-scoped findings", () => {
 			failureScenario: "Fails.",
 			verification,
 		});
-		const text = decide([judged, plain]).render();
+		const text = decide([old, plain]).render();
 		expect(text).toContain("Advisory: 1 finding");
 		expect(text).toContain("Pre-existing, important: 1 finding");
 	});
 
 	it("lists a pre-existing P0 the table silences at advisory, and leaves the verdict passed", () => {
 		const quiet = { ...defaultConfig, resolution: { ...defaultConfig.resolution, P0: "silent" as const } };
-		const old = Finding.create({
-			...evalInput,
-			severity: "P0",
-			cause: "pre-existing",
-			source: { check: "static.tsc" },
-		});
 		const result = decide([old], quiet);
 		expect(result.findings.advisory).toHaveLength(1);
 		expect(result.status).toBe("passed");
 		expect(result.blocking).toBe(false);
 		expect(result.preExistingImportant).toEqual([{ id: old.id, state: "new", originalSeverity: "P0" }]);
-	});
-
-	it("leaves a member out of the status, and counts an ordinary finding beside it", () => {
-		const old = Finding.create({
-			...evalInput,
-			severity: "P0",
-			cause: "pre-existing",
-			source: { check: "static.tsc" },
-		});
-		const alone = decide([old]);
-		expect(alone.findings.advisory).toHaveLength(1);
-		expect(alone.status).toBe("passed");
 		const ordinary = Finding.create({
 			...evalInput,
 			file: "src/other.ts",
@@ -447,18 +405,10 @@ describe("adjudicating lowered and re-scoped findings", () => {
 			cause: "pre-existing",
 			source: { check: "static.tsc" },
 		});
-		expect(decide([ordinary]).status).toBe("findings");
-		expect(decide([old, ordinary]).status).toBe("findings");
-		expect(decide([old, ordinary]).preExistingImportant).toHaveLength(1);
+		expect(decide([old, ordinary], quiet).status).toBe("findings");
 	});
 
 	it("reads a member as carried from its own reports, never from a dismissed one listed beside it", () => {
-		const old = Finding.create({
-			...evalInput,
-			severity: "P0",
-			cause: "pre-existing",
-			source: { check: "static.tsc" },
-		});
 		const answered = Finding.create({
 			...evalInput,
 			rule: "other-rule",
@@ -486,7 +436,13 @@ describe("adjudicating lowered and re-scoped findings", () => {
 	it("leaves dismissed and refuted findings out of the list", () => {
 		const dismissed = Finding.create({ ...evalInput, severity: "P0", cause: "pre-existing", status: "dismissed" });
 		expect(decide([dismissed]).preExistingImportant).toBeUndefined();
-		const refuted = finding("lens.a").verifiedAs({ ...rescope, verdict: "refuted" });
+		const refuted = Finding.create({
+			...evalInput,
+			cause: "pre-existing",
+			source: { check: "lens.a", version: "v1@careful" },
+			failureScenario: "An empty input fails.",
+		}).verifiedAs({ ...verification, verdict: "refuted" });
 		expect(decide([refuted]).preExistingImportant).toBeUndefined();
+		expect(decide([refuted]).refuted).toHaveLength(1);
 	});
 });

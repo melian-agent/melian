@@ -22,7 +22,7 @@
 	],
 	"expected": [
 		{
-			"status": "passed",
+			"status": "findings",
 			"blocking": false,
 			"severity": "P2",
 			"originalSeverity": "P1",
@@ -30,7 +30,6 @@
 			"resolution": "advisory",
 			"verdict": "confirmed",
 			"lowered": true,
-			"rescoped": false,
 			"important": {
 				"state": "new",
 				"originalSeverity": "P1"

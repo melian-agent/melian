@@ -211,13 +211,8 @@ export class ReviewComment {
 							: [`**Correction:** ${renderProse(verification.correction)}`, ""]),
 					];
 		const lowered = finding.lowered();
-		const rescoped = finding.rescoped();
-		const moved = [
-			...(lowered === undefined ? [] : [`**Lowered from ${lowered.from}:** ${renderProse(lowered.reason)}`, ""]),
-			...(rescoped === undefined
-				? []
-				: [`**Re-scoped from ${rescoped.from}:** ${renderProse(rescoped.reason)}`, ""]),
-		];
+		const moved =
+			lowered === undefined ? [] : [`**Lowered from ${lowered.from}:** ${renderProse(lowered.reason)}`, ""];
 		return [
 			marker(revision, "finding", id, context.secret),
 			...where,
