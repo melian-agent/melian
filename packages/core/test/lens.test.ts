@@ -117,15 +117,15 @@ describe("built-in lenses", () => {
 		expect(Object.fromEntries(lenses.map((lens) => [lens.name, lens.version]))).toEqual({
 			contracts: "686d7ad61a40",
 			conventions: "fad625ca7750",
-			correctness: "1aa3ac6ab310",
-			design: "8b109bd6679e",
+			correctness: "7a139e0e8584",
+			design: "1763518f10c7",
 			"removed-behaviour": "45fa8885fd01",
 			tests: "bee1be69be22",
 			"trust-boundary": "593b84bf6e82",
 		});
 		const tuned = { ...defaultConfig, lenses: { correctness: { tier: "light" as const, paths: ["src/**"] } } };
 		const [correctness] = Lens.select(named(lenses, "correctness"), tuned, ["src/index.ts"]);
-		expect(correctness!.lens.version).toBe("f9db0dab3665");
+		expect(correctness!.lens.version).toBe("687a9536c894");
 	});
 
 	it("load the design lens heavy, over every path, reading whole functions at the one level it declares", async () => {
@@ -171,7 +171,12 @@ describe("built-in lenses", () => {
 		expect(design!.instructions).toContain(
 			"A gap with no reason, or with a reason the code shows false, leaves the finding standing.",
 		);
-		expect(design!.instructions).toContain("one that guesses is still a finding");
+		expect(design!.instructions).toContain(
+			"Under a gap that holds, the hand-written code is still yours and no other lens's.",
+		);
+		expect(design!.instructions).toContain(
+			"when it answers an input wrong, or guesses, where the authority would have answered right",
+		);
 		expect(design!.declaredLevels()).toEqual(["careful"]);
 		expect(design!.levels).toEqual({
 			careful: {
@@ -195,13 +200,13 @@ describe("built-in lenses", () => {
 		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
 		expect(Object.fromEntries(lenses.map((lens) => [lens.name, lens.version]))).toMatchObject({
 			durability: "2d5b8a8ef26d",
-			correctness: "1fbd1565340c",
+			correctness: "722ec9d72d41",
 			"removed-behaviour": "d9d8851b1ced",
 		});
 		const { config } = await loadConfig(repo, { kind: "worktree" }, ".");
 		const selected = Lens.select(lenses, config, ["src/index.ts"]);
 		expect(Object.fromEntries(selected.map(({ lens }) => [lens.name, lens.version]))).toMatchObject({
-			correctness: "86fa92cf165a",
+			correctness: "8cc4ffd2bfa9",
 			"removed-behaviour": "a9e209da1c15",
 		});
 	});
@@ -919,7 +924,7 @@ describe("Lens.renderInstructions", () => {
 		}
 		const [correctness] = named(lenses, "correctness");
 		expect(correctness!.handoffs.design).toContain(
-			"Where the repository uses no such dependency, or the change says why the dependency cannot run there, a wrong result is yours.",
+			"It keeps them where the change says the dependency cannot run there. Where the repository uses no such dependency, a wrong result is yours.",
 		);
 		const [design] = named(lenses, "design");
 		const beside = design!.renderInstructions([], "careful", [every("correctness"), every("conventions")], asIs);
