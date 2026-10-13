@@ -768,6 +768,7 @@ it.skipIf(!seatbeltAvailable)(
 const [created, existing] = process.argv.slice(2);
 const result = {};
 const attempt = (name, body) => { try { body(); result[name] = "ok"; } catch (error) { result[name] = error.code; } };
+attempt("control", () => fs.writeFileSync(process.argv[4] + "/control", "sandbox"));
 attempt("create", () => fs.writeFileSync(created, "sandbox"));
 attempt("modify", () => fs.appendFileSync(existing, "sandbox"));
 attempt("replace", () => fs.renameSync(process.argv[1], existing));
@@ -776,11 +777,13 @@ attempt("list", () => fs.readdirSync(require("node:path").dirname(existing)));
 console.log(JSON.stringify(result));`,
 		);
 		try {
-			const inner = `${JSON.stringify(process.execPath)} ${JSON.stringify(probe)} ${JSON.stringify(created)} ${JSON.stringify(existing)}`;
+			const inner = `${JSON.stringify(process.execPath)} ${JSON.stringify(probe)} ${JSON.stringify(created)} ${JSON.stringify(existing)} ${JSON.stringify(where.scratch)}`;
 			const { stdout } = await run("/bin/bash", ["-c", sandbox.command(inner, where, "", sandbox.profile(where))], {
 				env: { ...sandbox.environment(), HOME: join(where.scratch, "home"), TMPDIR: where.scratch },
 			});
+			// The control: the same process writes in scratch, so each refusal is the profile's and not a failed start.
 			expect(JSON.parse(stdout)).toEqual({
+				control: "ok",
 				create: "EPERM",
 				modify: "EPERM",
 				replace: "EPERM",
