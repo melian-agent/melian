@@ -116,16 +116,16 @@ describe("built-in lenses", () => {
 		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
 		expect(Object.fromEntries(lenses.map((lens) => [lens.name, lens.version]))).toEqual({
 			contracts: "686d7ad61a40",
-			conventions: "bb08d9e590e4",
-			correctness: "05037e7ba4a2",
-			design: "b8e2918f3c85",
+			conventions: "fad625ca7750",
+			correctness: "1aa3ac6ab310",
+			design: "8b109bd6679e",
 			"removed-behaviour": "45fa8885fd01",
 			tests: "bee1be69be22",
 			"trust-boundary": "593b84bf6e82",
 		});
 		const tuned = { ...defaultConfig, lenses: { correctness: { tier: "light" as const, paths: ["src/**"] } } };
 		const [correctness] = Lens.select(named(lenses, "correctness"), tuned, ["src/index.ts"]);
-		expect(correctness!.lens.version).toBe("735049d98890");
+		expect(correctness!.lens.version).toBe("f9db0dab3665");
 	});
 
 	it("load the design lens heavy, over every path, reading whole functions at the one level it declares", async () => {
@@ -156,8 +156,22 @@ describe("built-in lenses", () => {
 			"criterion-selection-bias",
 			"unshipped-artifact",
 			"single-slot-overwrite",
+			"reimplements-an-authority",
 			"melian/injection-attempt",
 		]);
+		expect(design!.instructions).toContain(
+			"a package the manifest at base declares, or a tool the base's code already runs",
+		);
+		expect(design!.instructions).toContain(
+			"one input the hand-written code reads wrong that the authority reads right",
+		);
+		expect(design!.instructions).toContain(
+			"the base uses no dependency that parses the format or answers the question",
+		);
+		expect(design!.instructions).toContain(
+			"A gap with no reason, or with a reason the code shows false, leaves the finding standing.",
+		);
+		expect(design!.instructions).toContain("one that guesses is still a finding");
 		expect(design!.declaredLevels()).toEqual(["careful"]);
 		expect(design!.levels).toEqual({
 			careful: {
@@ -181,13 +195,13 @@ describe("built-in lenses", () => {
 		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
 		expect(Object.fromEntries(lenses.map((lens) => [lens.name, lens.version]))).toMatchObject({
 			durability: "2d5b8a8ef26d",
-			correctness: "23c306b4f6a0",
+			correctness: "1fbd1565340c",
 			"removed-behaviour": "d9d8851b1ced",
 		});
 		const { config } = await loadConfig(repo, { kind: "worktree" }, ".");
 		const selected = Lens.select(lenses, config, ["src/index.ts"]);
 		expect(Object.fromEntries(selected.map(({ lens }) => [lens.name, lens.version]))).toMatchObject({
-			correctness: "07dd74a2fa11",
+			correctness: "86fa92cf165a",
 			"removed-behaviour": "a9e209da1c15",
 		});
 	});
@@ -892,6 +906,26 @@ describe("Lens.renderInstructions", () => {
 		expect(some).toContain(keeps);
 		expect(some).not.toContain(handsOver);
 		expect(conventions!.renderInstructions(standards, "careful", [every("conventions")], asIs)).toContain(keeps);
+	});
+
+	it("gives a re-implemented authority to design from each side, only when design reviews beside the lens", async () => {
+		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
+		const handsOver =
+			"- `design`: Hand-written code that parses a format, or re-derives an answer, that a dependency";
+		for (const name of ["correctness", "conventions"]) {
+			const [lens] = named(lenses, name);
+			expect(lens!.renderInstructions([], "careful", [every(name), every("design")], asIs)).toContain(handsOver);
+			expect(lens!.renderInstructions([], "careful", [every(name)], asIs)).not.toContain(handsOver);
+		}
+		const [correctness] = named(lenses, "correctness");
+		expect(correctness!.handoffs.design).toContain(
+			"Where the repository uses no such dependency, or the change says why the dependency cannot run there, a wrong result is yours.",
+		);
+		const [design] = named(lenses, "design");
+		const beside = design!.renderInstructions([], "careful", [every("correctness"), every("conventions")], asIs);
+		expect(beside).toContain("- `conventions`: A breach of a rule the repository's standards state in words.");
+		expect(beside).toContain("the hand-written code is yours under `reimplements-an-authority`, reported once");
+		expect(design!.renderInstructions([], "careful", [every("design")], asIs)).not.toContain("- `conventions`:");
 	});
 
 	it("renders every declared rule ID, the severities, and the budget after the body", async () => {
