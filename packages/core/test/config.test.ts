@@ -834,8 +834,9 @@ describe("the user-level preference file", () => {
 	});
 });
 
-describe("resolution per check and rule", () => {
-	const worktree = { kind: "worktree" } as const;
+describe.each(sourceKinds)("resolution per check and rule, from the %s", (kind) => {
+	// Commits the working tree first when the source is a revision, so call it after writing the files.
+	const source = () => sourceFor(repo, kind);
 
 	it("keeps each file's own resolution, nearest first, and skips a file that writes none", async () => {
 		writeFiles(repo, {
@@ -847,17 +848,10 @@ describe("resolution per check and rule", () => {
 			),
 			"services/melian.yaml": lines("knowledge:", "  writeBack: false"),
 			"services/payments/melian.yaml": lines("resolution:", "  P1: block"),
-			"melian.local.yaml": lines("resolution:", "  nit: advisory"),
 		});
-		const { resolutionLayers, sources } = await loadConfig(repo, worktree, "services/payments/src/log.ts");
-		expect(sources).toEqual([
-			"melian.local.yaml",
-			"services/payments/melian.yaml",
-			"services/melian.yaml",
-			"melian.yaml",
-		]);
+		const { resolutionLayers, sources } = await loadConfig(repo, source(), "services/payments/src/log.ts");
+		expect(sources).toEqual(["services/payments/melian.yaml", "services/melian.yaml", "melian.yaml"]);
 		expect(resolutionLayers).toEqual([
-			{ file: "melian.local.yaml", resolution: { nit: "advisory" } },
 			{ file: "services/payments/melian.yaml", resolution: { P1: "block" } },
 			{
 				file: "melian.yaml",
@@ -883,7 +877,7 @@ describe("resolution per check and rule", () => {
 				"    static.biome: { P2: advisory }",
 			),
 		});
-		const { config } = await loadConfig(repo, worktree, "services/a.ts");
+		const { config } = await loadConfig(repo, source(), "services/a.ts");
 		expect(config.resolution).toEqual({
 			P0: "block",
 			P1: "block",
@@ -897,7 +891,7 @@ describe("resolution per check and rule", () => {
 	it("refuses a preExisting cap of block or silent", async () => {
 		for (const cap of ["block", "silent"]) {
 			writeFiles(repo, { "melian.yaml": lines("resolution:", `  preExisting: { P0: ${cap} }`) });
-			const error = await rejection(loadConfig(repo, worktree, "a.ts"));
+			const error = await rejection(loadConfig(repo, source(), "a.ts"));
 			expect(error).toMatchObject({ code: "invalidValue", key: "resolution.preExisting.P0" });
 			expect(error.message).toContain("must be one of advisory, acknowledge");
 		}
@@ -913,10 +907,10 @@ describe("resolution per check and rule", () => {
 				"guardrails: { rules: { guardrail/forbidden-patterns/focused-test: { ceiling: acknowledge } } }",
 			),
 		});
-		expect((await loadConfig(repo, worktree, "a.ts")).resolutionLayers).toHaveLength(1);
+		expect((await loadConfig(repo, source(), "a.ts")).resolutionLayers).toHaveLength(1);
 		for (const name of ["cleanup", "lens", "statics.biome", "guardrail"]) {
 			writeFiles(repo, { "melian.yaml": checks(`${name}: { ceiling: advisory }`) });
-			const error = await rejection(loadConfig(repo, worktree, "a.ts"));
+			const error = await rejection(loadConfig(repo, source(), "a.ts"));
 			expect(error).toMatchObject({ code: "invalidValue", key: `resolution.checks.${name}`, file: "melian.yaml" });
 			expect(error.message).toContain("lens.<name>, static.<tool>, or guardrails");
 		}
@@ -926,25 +920,25 @@ describe("resolution per check and rule", () => {
 		writeFiles(repo, {
 			"melian.yaml": lines("resolution:", "  checks:", "    guardrails: { rules: { focused-test: { P2: block } } }"),
 		});
-		expect(await rejection(loadConfig(repo, worktree, "a.ts"))).toMatchObject({
+		expect(await rejection(loadConfig(repo, source(), "a.ts"))).toMatchObject({
 			code: "invalidValue",
 			key: "resolution.checks.guardrails.rules.focused-test",
 		});
 		writeFiles(repo, {
 			"melian.yaml": lines("resolution:", "  checks:", "    lens.tests: { rules: { focused-test: { P2: block } } }"),
 		});
-		expect((await loadConfig(repo, worktree, "a.ts")).resolutionLayers).toHaveLength(1);
+		expect((await loadConfig(repo, source(), "a.ts")).resolutionLayers).toHaveLength(1);
 	});
 
 	it("refuses rules inside a rule entry, and a value that is no resolution", async () => {
 		const nested = "    lens.tests: { rules: { vacuous: { rules: {} } } }";
 		writeFiles(repo, { "melian.yaml": lines("resolution:", "  checks:", nested) });
-		expect(await rejection(loadConfig(repo, worktree, "a.ts"))).toMatchObject({
+		expect(await rejection(loadConfig(repo, source(), "a.ts"))).toMatchObject({
 			code: "unknownKey",
 			key: "resolution.checks.lens.tests.rules.vacuous.rules",
 		});
 		writeFiles(repo, { "melian.yaml": lines("resolution:", "  checks:", "    lens.tests: { ceiling: never }") });
-		expect(await rejection(loadConfig(repo, worktree, "a.ts"))).toMatchObject({
+		expect(await rejection(loadConfig(repo, source(), "a.ts"))).toMatchObject({
 			code: "invalidValue",
 			key: "resolution.checks.lens.tests.ceiling",
 		});
@@ -955,13 +949,37 @@ describe("resolution per check and rule", () => {
 			"melian.yaml": lines("resolution:", "  P2: acknowledge"),
 			"services/melian.yaml": lines("resolution:", "  P2: silent"),
 		});
-		const lookup = configLookup(repo, worktree);
+		const lookup = configLookup(repo, source());
 		const files = async (path: string) =>
 			(await lookup.policyReview(path)).resolutionLayers.map((layer) => layer.file);
 		expect(await files("services/melian.yaml")).toEqual(["melian.yaml"]);
 		expect(await files("melian.yaml")).toEqual(["melian.yaml"]);
 		expect(await files("services/AGENTS.md")).toEqual(["services/melian.yaml", "melian.yaml"]);
 		expect((await lookup.policyReview("services/melian.yaml")).config.resolution.P2).toBe("acknowledge");
+	});
+});
+
+describe("a preference file's resolution", () => {
+	it("comes first on the walk, from the working tree only", async () => {
+		writeFiles(repo, {
+			"melian.yaml": lines("resolution:", "  P2: acknowledge"),
+			"services/melian.yaml": lines("resolution:", "  P1: block"),
+			"melian.local.yaml": lines("resolution:", "  nit: advisory"),
+		});
+		const { resolutionLayers } = await loadConfig(repo, { kind: "worktree" }, "services/a.ts");
+		expect(resolutionLayers.map((layer) => layer.file)).toEqual([
+			"melian.local.yaml",
+			"services/melian.yaml",
+			"melian.yaml",
+		]);
+		expect(resolutionLayers[0]!.resolution).toEqual({ nit: "advisory" });
+		gitIn(repo, "add", "--all", "--force");
+		gitIn(repo, "commit", "--quiet", "-m", "the head supplies a local file");
+		const revision = { kind: "revision", commit: gitIn(repo, "rev-parse", "HEAD") } as const;
+		expect((await loadConfig(repo, revision, "services/a.ts")).resolutionLayers.map((layer) => layer.file)).toEqual([
+			"services/melian.yaml",
+			"melian.yaml",
+		]);
 	});
 });
 
