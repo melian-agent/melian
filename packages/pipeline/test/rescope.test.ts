@@ -508,6 +508,69 @@ describe("rule (d), four typed answers, cross-checked", { timeout: 60_000 }, () 
 		expect(await refusals(head, atTop, seen, options)).toEqual([cannot]);
 	});
 
+	it("refuses a named function or a class that is the module's default export", async () => {
+		const refused =
+			"(d) the failing function is a default export or has a computed name, so Melian cannot name its callers";
+		const named = (comment: string) =>
+			lines(
+				"export default function pick(raw: string): string {",
+				comment,
+				'\treturn raw.split(",")[1].trim();',
+				"}",
+			);
+		expect(
+			await refusals(
+				{ "src/pick.ts": named("\t// The second field.") },
+				{ failing: { file: "src/pick.ts", line: 3, baseLine: 3 } },
+				{ path: "src/pick.ts", startLine: 1, endLine: 4, evidence: [] },
+				{ base: { "src/pick.ts": named("\t// Second.") } },
+			),
+		).toEqual([refused]);
+		const held = (comment: string) =>
+			lines(
+				"export default class Picker {",
+				"\tpickSecond(raw: string): string {",
+				comment,
+				'\t\treturn raw.split(",")[1].trim();',
+				"\t}",
+				"}",
+				"export function exportDefaults(): number {",
+				"\t// A plain export beside it.",
+				"\treturn [1][1].valueOf();",
+				"}",
+			);
+		const seen = { path: "src/picker.ts", startLine: 1, endLine: 10, evidence: [] };
+		const options = { base: { "src/picker.ts": held("\t\t// Second.") } };
+		const head = { "src/picker.ts": held("\t\t// The second field.") };
+		expect(await refusals(head, { failing: { file: "src/picker.ts", line: 4, baseLine: 4 } }, seen, options)).toEqual(
+			[refused],
+		);
+		expect(await refusals(head, { failing: { file: "src/picker.ts", line: 9, baseLine: 9 } }, seen, options)).toEqual(
+			[],
+		);
+	});
+
+	it("refuses while the change holds a file git reads as binary, whose lines no check can see", async () => {
+		const hidden = {
+			...commentEdit,
+			"src/hidden.ts": 'import { parseRecord } from "./parse.ts";\n// \0\nparseRecord("solo");\n',
+		};
+		expect(await refusals(hidden)).toEqual([
+			"(d) the change holds src/hidden.ts, which git reads as binary, so Melian cannot check its lines",
+		]);
+		const gone = { "src/logo.bin": "\0\0binary" };
+		repo = baseAndHead({ ...base, ...gone }, commentEdit);
+		gitIn(repo, "rm", "--quiet", "src/logo.bin");
+		gitIn(repo, "commit", "--quiet", "-m", "remove the binary");
+		const changeset = await Changeset.resolve(repo, "main...feature");
+		const { base: from, head: to, files } = changeset.revision;
+		expect(files.find((file) => file.path === "src/logo.bin")).toMatchObject({ status: "deleted", binary: true });
+		const review: ReviewState = { repoRoot: repo, nonce: "n", base: from, head: to, files: reviewFiles(files) };
+		expect((await ScopeProposal.read(review, changeset.revision, sighting, proposal, "confirmed")).refusals).toEqual(
+			[],
+		);
+	});
+
 	it("refuses a method whose name is not a plain identifier", async () => {
 		const quoted = (comment: string) =>
 			lines(

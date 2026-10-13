@@ -17,7 +17,7 @@ import type { ReportVerdictInput } from "./verification-instructions.ts";
 type Proposal = NonNullable<ReportVerdictInput["scope"]>;
 type Lines = { file: string; line: number; endLine?: number };
 
-/** The finding a re-scope is proposed for, as its lens sighted it. */
+// The finding a re-scope is proposed for, as its lens sighted it.
 export interface ScopedSighting {
 	readonly path: string;
 	readonly startLine: number;
@@ -61,13 +61,11 @@ function where({ file, line, endLine = line }: Lines): string {
 	return `${visibleText(file)}:${line}${endLine === line ? "" : `-${endLine}`}`;
 }
 
-/**
- * A verifier's proposal that a finding is `pre-existing`, checked by Melian against the diff, git's rename map, and
- * the compiler: rules (a) to (d) of the decision that lets the verifier set scope. Whatever Melian cannot check is a
- * refusal, and a refused proposal leaves the finding the scope location gave it.
- */
+// A verifier's proposal that a finding is `pre-existing`, checked by Melian against the diff, git's rename map, and the
+// compiler: rules (a) to (d) of the decision that lets the verifier set scope. Whatever Melian cannot check is a
+// refusal, and a refused proposal leaves the finding the scope location gave it.
 export class ScopeProposal {
-	/** Why Melian refuses the proposal, each reason naming its rule. Empty when every check held. */
+	// Why Melian refuses the proposal, each reason naming its rule. Empty when every check held.
 	readonly refusals: readonly string[];
 	readonly #from: StoredRescope["from"] | undefined;
 
@@ -76,12 +74,12 @@ export class ScopeProposal {
 		this.#from = from;
 	}
 
-	/** The re-scope a verification record stores, with the verifier's `reason`; `undefined` for a refused proposal. */
+	// The re-scope a verification record stores, with the verifier's `reason`; `undefined` for a refused proposal.
 	accepted(reason: string): StoredRescope | undefined {
 		return this.#from === undefined || this.refusals.length > 0 ? undefined : { from: this.#from, reason };
 	}
 
-	/** Reads the files the proposal names and runs every check. Throws for a path that is not repository-relative. */
+	// Reads the files the proposal names and runs every check. Throws for a path that is not repository-relative.
 	static async read(
 		review: ReviewState,
 		revision: Revision,
@@ -186,6 +184,13 @@ export class ScopeProposal {
 			});
 		}
 		const hunks = review.files.flatMap((each) => each.hunks);
+		// Git gives a binary file no hunks, and a search skips it, so code in one would pass every check below unseen.
+		const unread = review.files.find((each) => each.binary && each.status !== "deleted");
+		if (unread !== undefined)
+			refuse(
+				"d",
+				`the change holds ${visibleText(unread.path)}, which git reads as binary, so Melian cannot check its lines`,
+			);
 		const readable = spots.filter((spot) => spot.headText !== undefined && spot.baseText !== undefined);
 		let functions: (HoldingFunction | undefined)[] = [];
 		try {
@@ -231,7 +236,7 @@ export class ScopeProposal {
 				? atHead.name.slice(0, -".constructor".length)
 				: atHead.name.slice(atHead.name.lastIndexOf(".") + 1);
 			// A default export is called by whatever name its importer chose, and a computed name by whatever it evaluates to.
-			if (symbol === "default" || !plainName.test(symbol)) {
+			if (symbol === "default" || atHead.defaultExport || !plainName.test(symbol)) {
 				refuse(
 					"d",
 					"the failing function is a default export or has a computed name, so Melian cannot name its callers",

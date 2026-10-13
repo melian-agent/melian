@@ -76,6 +76,17 @@ interface Callable {
 	readonly name: string;
 	readonly startLine: number;
 	readonly endLine: number;
+	// Whether the function, or the class that holds it, is declared `export default`, so an importer names it freely.
+	readonly defaultExport: boolean;
+}
+
+// Whether the declaration that names `node`, the function itself or the class around it, opens with `export default`.
+function exportedDefault(node: Node, source: SourceFile, text: string): boolean {
+	for (let each: Node | undefined = node; each !== undefined; each = each.parent) {
+		if (isFunctionDeclaration(each) || isClassDeclaration(each))
+			return /^export\s+default\b/.test(text.slice(each.getStart(source)));
+	}
+	return false;
 }
 
 // A function the code names: a declaration, a method, a constructor or accessor, or a function value a variable, a
@@ -147,6 +158,7 @@ function callables(source: SourceFile, text: string, limit: number): Callable[] 
 				name,
 				startLine: lineAt(starts, node.getStart(source)),
 				endLine: lineAt(starts, node.end),
+				defaultExport: exportedDefault(node, source, text),
 			});
 		}
 		node.forEachChild(visit);
@@ -160,6 +172,7 @@ export interface HoldingFunction {
 	readonly name: string;
 	readonly startLine: number;
 	readonly endLine: number;
+	readonly defaultExport: boolean;
 	readonly code: ReadonlySet<number>;
 }
 
