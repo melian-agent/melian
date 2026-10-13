@@ -288,16 +288,13 @@ describe("a finding as the verifier judged it", () => {
 		expect(at("P1", "pre-existing", lowering)).toBe(true);
 	});
 
-	it("never resolves below advisory while important, and says when only the floor holds it there", () => {
+	it("never resolves below advisory while important", () => {
 		const quiet = { resolution: { ...defaultConfig.resolution, P0: "silent" as const, P2: "silent" as const } };
 		const old = Finding.create({ ...evalInput, severity: "P0", cause: "pre-existing" });
 		expect(old.resolve(quiet)).toBe("advisory");
-		expect(old.lifted(quiet)).toBe(true);
 		expect(old.resolve(defaultConfig)).toBe("advisory");
-		expect(old.lifted(defaultConfig)).toBe(false);
 		const plain = Finding.create({ ...evalInput, severity: "P2", cause: "pre-existing" });
 		expect(plain.resolve(quiet)).toBe("silent");
-		expect(plain.lifted(quiet)).toBe(false);
 		const introduced = Finding.create({ ...evalInput, severity: "P0" });
 		expect(introduced.resolve(quiet)).toBe("silent");
 	});
@@ -431,7 +428,59 @@ describe("adjudicating lowered and re-scoped findings", () => {
 		expect(result.status).toBe("passed");
 		expect(result.blocking).toBe(false);
 		expect(result.preExistingImportant).toEqual([{ id: old.id, state: "new", originalSeverity: "P0" }]);
-		expect(decide([old]).status).toBe("findings");
+	});
+
+	it("leaves a member out of the status, and counts an ordinary finding beside it", () => {
+		const old = Finding.create({
+			...evalInput,
+			severity: "P0",
+			cause: "pre-existing",
+			source: { check: "static.tsc" },
+		});
+		const alone = decide([old]);
+		expect(alone.findings.advisory).toHaveLength(1);
+		expect(alone.status).toBe("passed");
+		const ordinary = Finding.create({
+			...evalInput,
+			file: "src/other.ts",
+			severity: "P2",
+			cause: "pre-existing",
+			source: { check: "static.tsc" },
+		});
+		expect(decide([ordinary]).status).toBe("findings");
+		expect(decide([old, ordinary]).status).toBe("findings");
+		expect(decide([old, ordinary]).preExistingImportant).toHaveLength(1);
+	});
+
+	it("reads a member as carried from its own reports, never from a dismissed one listed beside it", () => {
+		const old = Finding.create({
+			...evalInput,
+			severity: "P0",
+			cause: "pre-existing",
+			source: { check: "static.tsc" },
+		});
+		const answered = Finding.create({
+			...evalInput,
+			rule: "other-rule",
+			severity: "P2",
+			cause: "pre-existing",
+			status: "dismissed",
+			source: { check: "static.biome" },
+		});
+		const beside = decide([old, answered], defaultConfig, [answered.id]);
+		expect(beside.findings.advisory[0]!.properties.alsoReportedAs).toEqual([
+			expect.objectContaining({ id: answered.id, dismissed: true }),
+		]);
+		expect(beside.preExistingImportant).toEqual([{ id: old.id, state: "new", originalSeverity: "P0" }]);
+		const merged = Finding.create({
+			...evalInput,
+			rule: "other-rule",
+			severity: "P2",
+			cause: "pre-existing",
+			source: { check: "static.biome" },
+		});
+		const through = decide([old, merged], defaultConfig, [merged.id]);
+		expect(through.preExistingImportant).toEqual([{ id: old.id, state: "carried", originalSeverity: "P0" }]);
 	});
 
 	it("leaves dismissed and refuted findings out of the list", () => {

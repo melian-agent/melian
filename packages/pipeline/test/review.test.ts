@@ -3254,8 +3254,12 @@ describe("a stacked pull request retargeted onto another base", () => {
 		const { verdict, findings } = await reviewed({ range: "main...child" });
 
 		expect(findings.map((finding) => finding.properties.cause)).toEqual(["pre-existing"]);
-		expect(verdict).toMatchObject({ status: "findings", blocking: false });
+		// The parent's P1 is now an important pre-existing finding: listed, and no part of the verdict.
+		expect(verdict).toMatchObject({ status: "passed", blocking: false });
 		expect(verdict.findings.advisory.map((finding) => finding.properties.path)).toEqual(["src/report.ts"]);
+		expect(verdict.preExistingImportant).toEqual([
+			{ id: findings[0]!.id, state: "carried", originalSeverity: findings[0]!.properties.severity },
+		]);
 	});
 });
 

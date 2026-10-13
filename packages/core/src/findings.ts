@@ -1237,14 +1237,6 @@ export class Finding {
 		return capped === "silent" && this.important() ? "advisory" : capped;
 	}
 
-	/**
-	 * Whether only the floor of "Pre-existing, important" keeps the finding above `silent` under `config`. Such a
-	 * finding is listed and changes no verdict.
-	 */
-	lifted(config: Pick<MelianConfig, "resolution">): boolean {
-		return this.#capped(config) === "silent" && this.important();
-	}
-
 	// The resolution after the caps and before the floor of "Pre-existing, important".
 	#capped(config: Pick<MelianConfig, "resolution">): Resolution {
 		const configured = config.resolution[this.properties.severity];

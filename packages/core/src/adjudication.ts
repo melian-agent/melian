@@ -841,13 +841,17 @@ export class Adjudication {
 	adjudicate(): Verdict {
 		const defects = this.defects();
 		const refutedIds = new Set(defects.filter((defect) => defect.refuted()).map((defect) => defect.speaker.id));
-		const lifted = new Set<string>();
+		// A defect's own reports, without the dismissed ones it only lists beside it.
+		const memberIds = new Map(
+			defects.map((defect) => [
+				defect.speaker.id,
+				[defect.speaker.id, ...defect.members.map((member) => member.id)],
+			]),
+		);
 		const resolved = defects
 			.map((defect) => {
 				const finding = defect.speaker;
-				const config = this.#configFor(finding.properties.path, finding.ruleId);
-				if (finding.lifted(config)) lifted.add(finding.id);
-				const resolved = finding.resolved(config);
+				const resolved = finding.resolved(this.#configFor(finding.properties.path, finding.ruleId));
 				if (
 					!this.#verificationRan ||
 					!defect.unverified() ||
@@ -872,9 +876,12 @@ export class Adjudication {
 				counted.filter((finding) => finding.properties.resolution === resolution),
 			]),
 		) as Record<Resolution, ResolvedFinding[]>;
-		// A member the floor alone keeps above silent is listed, and changes no verdict.
+		// A member of "Pre-existing, important" is listed and never changes the verdict, unless it asks for more than
+		// advice.
 		const attention = counted.some(
-			(finding) => finding.properties.resolution !== "silent" && !lifted.has(finding.id),
+			(finding) =>
+				finding.properties.resolution !== "silent" &&
+				!(finding.important() && finding.properties.resolution === "advisory"),
 		);
 		const important = counted
 			.filter((finding) => finding.important())
@@ -882,7 +889,7 @@ export class Adjudication {
 				const rescoped = finding.rescoped();
 				return {
 					id: finding.id,
-					state: finding.reportIds().some((id) => this.#seenBefore.has(id)) ? "carried" : "new",
+					state: memberIds.get(finding.id)!.some((id) => this.#seenBefore.has(id)) ? "carried" : "new",
 					originalSeverity: finding.original(),
 					...(rescoped === undefined ? {} : { originalScope: rescoped.from, reason: rescoped.reason }),
 				};

@@ -237,7 +237,7 @@ describe("the scenario goldens of the verifier corpus", { timeout: 60_000 }, () 
 				run,
 			);
 		expect(missed({})).toEqual([]);
-		expect(missed({ status: "passed" })).toEqual(['revision 1: status is "findings", expected "passed"']);
+		expect(missed({ status: "findings" })).toEqual(['revision 1: status is "passed", expected "findings"']);
 		expect(missed({ blocking: true })).toEqual(["revision 1: blocking is false, expected true"]);
 		expect(missed({ severity: "P2" })).toEqual([
 			'revision 1: severity is "P1", expected "P2"',
