@@ -5,6 +5,7 @@ import {
 	ConfigError,
 	type Confinement,
 	type MelianConfig,
+	type MutationSkipCause,
 	type PublicationDetails,
 	type RepositorySource,
 	type Resolution,
@@ -28,6 +29,7 @@ type StoredCheck = {
 	name: string;
 	status: CheckStatus;
 	reason?: string;
+	cause?: MutationSkipCause;
 	error?: string;
 	version?: string;
 	level?: ScrutinyLevel;

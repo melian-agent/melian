@@ -88,7 +88,8 @@ Exit 1 with only resolved or suppressed results is clean; missing or unusable ou
 Its verified graph also supplies bounded caller context to lenses, which they must confirm before citing.
 
 **Mutation testing.** The check on [pull request #98](https://github.com/melian-agent/melian/pull/98), not yet on `main`, runs Stryker on changed production lines only.
-A dry run finds related tests, then each mutant runs only the tests that cover it; the incremental cache avoids repeat work.
+Vitest selects related tests using the head’s own configuration; an empty or failed selection runs the whole suite.
+An uncovered result from related tests is checked against the whole suite. Each mutant runs its covering tests; the incremental cache avoids repeat work.
 Surviving or uncovered mutants become findings, and Stryker runs in a secret-free sandbox for trusted writers.
 It can take minutes or hours on a large change, so it stays out of fast tiers.
 
@@ -179,6 +180,8 @@ Melian is licensed under the MIT License, the same as Pi.
 ## Project status
 
 Melian has a working CLI review and publication loop. Milestone 2 makes it the review of record for this repository. The required-status code is built; the maintainer's rehearsal and ruleset switch remain pending. Once `melian/review` is required on `main`, every pull request head needs `melian review "#N"` and `melian publish "#N"` before it can merge.
+
+The opt-in `static.mutation` check runs Stryker on Vitest over changed production TypeScript lines. Surviving mutants and code no test covers raise findings. It runs the head's tests inside a sandbox for trusted writers and belongs in the `full` tier. Melian enables it for its own reviews.
 
 [The design](docs/design.md) explains the decisions. [The implementation plan](docs/design-implementation-plan.md) tracks what is built and what remains.
 

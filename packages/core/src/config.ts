@@ -161,6 +161,9 @@ export const melianYamlSchema = Type.Object(
 				{
 					biome: Type.Optional(Type.Object(staticTool, strict)),
 					enola: Type.Optional(Type.Object(staticTool, strict)),
+					mutation: Type.Optional(
+						Type.Object({ ...staticTool, maxLines: Type.Optional(Type.Integer({ minimum: 1 })) }, strict),
+					),
 					tsc: Type.Optional(Type.Object({ ...staticTool, project: Type.Optional(name) }, strict)),
 				},
 				strict,
@@ -289,10 +292,19 @@ export interface TscSettings extends StaticToolSettings {
 	readonly project: string;
 }
 
+/**
+ * How Melian runs mutation testing. `maxLines` is the most changed source lines one run will mutate; a change with more
+ * has its first `maxLines` lines, in path order, mutated, and a note names the files not reached.
+ */
+export interface MutationSettings extends StaticToolSettings {
+	readonly maxLines: number;
+}
+
 /** The static tools Melian runs, read from the repository root's configuration. */
 export interface StaticSettings {
 	readonly biome: StaticToolSettings;
 	readonly enola: StaticToolSettings;
+	readonly mutation: MutationSettings;
 	readonly tsc: TscSettings;
 }
 
@@ -377,6 +389,14 @@ export interface MelianConfig {
 	readonly triage: { readonly escalateAt: Severity };
 }
 
+// Stryker’s runtime marker lets a test fake kills by throwing only during a mutant.
+const forgedMutationKill: ForbiddenPatternRule = {
+	pattern: "__stryker_{2}|activeMutan[t]",
+	paths: ["**/*.ts", "**/*.tsx", "**/*.mts", "**/*.cts", "**/*.js", "**/*.jsx", "**/*.mjs", "**/*.cjs"],
+	message:
+		"Stryker's active-mutant variable lets a file behave differently under a mutant, so a test could throw only when one runs and every mutant would read as killed; a file here may not read it",
+};
+
 /** The built-in defaults every `melian.yaml` layers onto. */
 export const defaultConfig: MelianConfig = {
 	trust: { writers: true },
@@ -401,12 +421,13 @@ export const defaultConfig: MelianConfig = {
 	static: {
 		biome: { enabled: true, timeout: 300, severity: {} },
 		enola: { enabled: false, timeout: 300, severity: {} },
+		mutation: { enabled: false, timeout: 1800, severity: {}, maxLines: 2000 },
 		tsc: { enabled: true, timeout: 300, severity: {}, project: "tsconfig.json" },
 	},
 	guardrails: {
 		"forbidden-paths": { enabled: true, severity: "P1", rules: {} },
 		"required-files": { enabled: true, severity: "P2", rules: {} },
-		"forbidden-patterns": { enabled: true, severity: "P2", rules: {} },
+		"forbidden-patterns": { enabled: true, severity: "P2", rules: { "forged-mutation-kill": forgedMutationKill } },
 		"policy-change-review": { enabled: true, severity: "P2", analyserSeverity: "P1", files: [] },
 	},
 	knowledge: { writeBack: false },

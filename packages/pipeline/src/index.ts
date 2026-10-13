@@ -7,6 +7,7 @@ export {
 	type RunIdentity,
 	readCheckRecords,
 	runChecks,
+	type WriterTrust,
 } from "./checks.ts";
 export {
 	CompareError,

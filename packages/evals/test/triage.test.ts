@@ -297,22 +297,52 @@ describe("TriageResults", () => {
 
 type RecordedFingerprints = Record<string, string>;
 
-// The record at origin/main: its entries, no record there yet, a read git could not do, or main is the commit under
-// test, as on a push run, where there is nothing to compare.
-type MainRecord =
-	| { readonly kind: "recorded"; readonly entries: RecordedFingerprints }
-	| { readonly kind: "same" }
-	| { readonly kind: "absent" }
-	| { readonly kind: "unreadable" };
+const recordPath = "packages/evals/triage/questions.json";
+const gitIn =
+	(cwd: string) =>
+	(args: string[]): string =>
+		execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
 
-// Why the record fails the gate, or nothing. A main that git could not read passes only off CI, where a checkout
-// without origin/main is a developer's; on CI it is a gate that is off, so it fails.
+function recordHistory(git: (args: string[]) => string): RecordedFingerprints[] {
+	try {
+		if (git(["rev-parse", "--is-shallow-repository"]).trim() !== "false")
+			throw new Error("questions.json history is shallow");
+		const commits = git(["log", "--full-history", "--format=%H", "HEAD", "--", `:(top)${recordPath}`])
+			.trim()
+			.split("\n");
+		if (commits[0] === "") throw new Error("questions.json history is empty");
+		if (
+			commits.length === 1 &&
+			git([
+				"diff-tree",
+				"--root",
+				"--no-commit-id",
+				"-r",
+				"--diff-filter=A",
+				"--name-only",
+				commits[0]!,
+				"--",
+				`:(top)${recordPath}`,
+			]).trim() !== recordPath
+		)
+			throw new Error("questions.json history holds only the commit under test, where the record is not new");
+		return commits.map((commit) => {
+			const record = JSON.parse(git(["show", `${commit}:${recordPath}`])) as
+				| RecordedFingerprints
+				| { questionSet: { name: string; version: string }; fingerprint: string };
+			if (typeof record.questionSet === "object") return { [record.questionSet.version]: record.fingerprint };
+			return record as RecordedFingerprints;
+		});
+	} catch (error) {
+		throw new Error(`Cannot read complete questions.json history: ${String(error)}`);
+	}
+}
+
 function recordProblems(
 	recorded: RecordedFingerprints,
 	version: string,
 	fingerprint: string,
-	onMain: MainRecord,
-	ci: boolean,
+	history: readonly RecordedFingerprints[],
 ): string[] {
 	const problems: string[] = [];
 	if (recorded[version] === undefined) {
@@ -322,179 +352,105 @@ function recordProblems(
 			`the questions changed and version "${version}" did not: bump triageQuestionSet.version and add its fingerprint ${fingerprint} to questions.json`,
 		);
 	}
-	if (onMain.kind === "unreadable" && ci)
-		problems.push(
-			"git could not read origin/main, so a rewritten fingerprint would go unseen: fetch main before the gate",
-		);
-	if (onMain.kind === "recorded") {
-		for (const [recordedVersion, hash] of Object.entries(onMain.entries)) {
+	for (const entries of history) {
+		for (const [recordedVersion, hash] of Object.entries(entries)) {
 			if (recorded[recordedVersion] !== hash)
-				problems.push(`version "${recordedVersion}" is recorded on main as ${hash} and must stay so`);
+				problems.push(`version "${recordedVersion}" was recorded as ${hash} and must stay so`);
 		}
 	}
 	return problems;
 }
 
-const recordPath = "packages/evals/triage/questions.json";
-
-// `git` runs a git command in the repository and returns its output, or throws. `ls-tree` succeeds with no output for
-// a file main does not have and fails when it has no main to read, which `show` alone would not tell apart.
-// `--full-tree` makes the path root-relative: `ls-tree` otherwise reads it from the directory git runs in.
-function recordOnMain(git: (args: string[]) => string): MainRecord {
-	try {
-		if (git(["rev-parse", "origin/main"]).trim() === git(["rev-parse", "HEAD"]).trim()) return { kind: "same" };
-	} catch {
-		// No origin/main to compare: the reads below tell absent from unreadable.
-	}
-	try {
-		if (git(["ls-tree", "--full-tree", "--name-only", "origin/main", "--", recordPath]).trim() === "")
-			return { kind: "absent" };
-		return {
-			kind: "recorded",
-			entries: JSON.parse(git(["show", `origin/main:${recordPath}`])) as RecordedFingerprints,
-		};
-	} catch {
-		return { kind: "unreadable" };
-	}
-}
-
-const gitIn =
-	(cwd: string) =>
-	(args: string[]): string =>
-		execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
-
-const gitInTriageDirectory = gitIn(triageDirectory);
-
 describe("the triage question set's version", () => {
-	it("stands for the questions as recorded: change one, bump the version and add its fingerprint", async () => {
+	it("stands for the questions across every commit that recorded their version", async () => {
 		const recorded = JSON.parse(
 			readFileSync(join(triageDirectory, "questions.json"), "utf8"),
 		) as RecordedFingerprints;
 		const fingerprint = (await TriageQuestions.shipped(goldens[0]!)).fingerprint();
 		expect(
-			recordProblems(
-				recorded,
-				triageQuestionSet.version,
-				fingerprint,
-				recordOnMain(gitInTriageDirectory),
-				process.env.CI !== undefined && process.env.CI !== "",
-			),
+			recordProblems(recorded, triageQuestionSet.version, fingerprint, recordHistory(gitIn(triageDirectory))),
 		).toEqual([]);
 	});
 
-	it("rejects a rewritten question under its old version, a rewritten record, and a missing record", () => {
-		const main: MainRecord = { kind: "recorded", entries: { "1": "aaaa" } };
-		const absent: MainRecord = { kind: "absent" };
-		expect(recordProblems({ "1": "aaaa" }, "1", "aaaa", main, true)).toEqual([]);
-		expect(recordProblems({ "1": "aaaa", "2": "bbbb" }, "2", "bbbb", main, true)).toEqual([]);
-		expect(recordProblems({ "1": "bbbb" }, "1", "bbbb", main, true)).toEqual([
-			'version "1" is recorded on main as aaaa and must stay so',
-		]);
-		expect(recordProblems({ "1": "aaaa" }, "1", "bbbb", main, true)).toEqual([
-			'the questions changed and version "1" did not: bump triageQuestionSet.version and add its fingerprint bbbb to questions.json',
-		]);
-		expect(recordProblems({ "1": "aaaa" }, "2", "bbbb", main, true)).toEqual([
-			'questions.json records no fingerprint for version "2"',
-		]);
-		expect(recordProblems({ "1": "bbbb" }, "1", "bbbb", absent, true)).toEqual([]);
-	});
-
-	describe("reading the record at main", () => {
-		const record = '{"1":"aaaa"}';
-		const git = (outputs: Record<string, string | Error>) => (args: string[]) => {
-			if (args[0] === "ls-tree" && !(args.includes("--full-tree") && args.at(-1) === recordPath))
-				throw new Error(`ls-tree must read the root-relative path: git ${args.join(" ")}`);
-			if (args[0] === "show" && args.at(-1) !== `origin/main:${recordPath}`)
-				throw new Error(`show must read the record: git ${args.join(" ")}`);
-			const output = outputs[args[0]!];
-			if (output === undefined) throw new Error(`unexpected git ${args.join(" ")}`);
-			if (output instanceof Error) throw output;
-			return output;
+	it("rejects committed rewording under an old version, even before the parent, and accepts a new version", () => {
+		const root = mkdtempSync(join(tmpdir(), "melian-record-history-"));
+		const directory = join(root, "packages/evals/triage");
+		const git = gitIn(root);
+		const commit = (message: string) => {
+			git(["add", "--all"]);
+			git(["-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "--quiet", "-m", message]);
 		};
-
-		describe("in a repository, from a subdirectory", () => {
-			const run = (cwd: string, ...args: string[]) =>
-				execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
-
-			function repositoryWhereMain(records: boolean, headIsMain = false): { root: string; subdirectory: string } {
-				const root = mkdtempSync(join(tmpdir(), "melian-record-main-"));
-				const subdirectory = join(root, "packages", "evals", "triage");
-				mkdirSync(subdirectory, { recursive: true });
-				writeFileSync(join(root, "README.md"), "x\n");
-				if (records) writeFileSync(join(subdirectory, "questions.json"), record);
-				run(root, "init", "--quiet", "--initial-branch=trunk");
-				run(root, "add", "-A");
-				run(root, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "--quiet", "-m", "base");
-				run(root, "update-ref", "refs/remotes/origin/main", "HEAD");
-				if (!headIsMain) {
-					writeFileSync(join(root, "README.md"), "y\n");
-					run(root, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "--quiet", "-am", "head");
-				}
-				return { root, subdirectory };
-			}
-
-			it("reads the entries main records", () => {
-				const { root, subdirectory } = repositoryWhereMain(true);
-				try {
-					expect(recordOnMain(gitIn(subdirectory))).toEqual({ kind: "recorded", entries: { "1": "aaaa" } });
-				} finally {
-					rmSync(root, { recursive: true, force: true });
-				}
-			});
-
-			it("compares nothing when main is the commit under test, as on a push run", () => {
-				const { root, subdirectory } = repositoryWhereMain(true, true);
-				try {
-					expect(recordOnMain(gitIn(subdirectory))).toEqual({ kind: "same" });
-					writeFileSync(join(subdirectory, "questions.json"), '{"1":"bbbb"}');
-					expect(recordOnMain(gitIn(subdirectory))).toEqual({ kind: "same" });
-					expect(recordProblems({ "1": "bbbb" }, "1", "bbbb", { kind: "same" }, true)).toEqual([]);
-				} finally {
-					rmSync(root, { recursive: true, force: true });
-				}
-			});
-
-			it("calls a main without the file absent", () => {
-				const { root, subdirectory } = repositoryWhereMain(false);
-				try {
-					expect(recordOnMain(gitIn(subdirectory))).toEqual({ kind: "absent" });
-				} finally {
-					rmSync(root, { recursive: true, force: true });
-				}
-			});
-		});
-
-		it("reads the entries main records", () => {
-			expect(recordOnMain(git({ "ls-tree": `${recordPath}\n`, show: record }))).toEqual({
-				kind: "recorded",
-				entries: { "1": "aaaa" },
-			});
-		});
-
-		it("calls a file main does not have absent, which passes on CI and off it", () => {
-			const main = recordOnMain(git({ "ls-tree": "" }));
-			expect(main).toEqual({ kind: "absent" });
-			expect(recordProblems({ "1": "aaaa" }, "1", "aaaa", main, true)).toEqual([]);
-			expect(recordProblems({ "1": "aaaa" }, "1", "aaaa", main, false)).toEqual([]);
-		});
-
-		it("calls a failed read unreadable, which fails on CI and is skipped off it", () => {
-			const failures: Record<string, string | Error>[] = [
-				{ "ls-tree": new Error("fatal: Not a valid object name origin/main") },
-				{ "ls-tree": `${recordPath}\n`, show: new Error("fatal: bad object") },
-				{ "ls-tree": `${recordPath}\n`, show: "not json" },
-			];
-			for (const failing of failures) {
-				const main = recordOnMain(git(failing));
-				expect(main).toEqual({ kind: "unreadable" });
-				expect(recordProblems({ "1": "aaaa" }, "1", "aaaa", main, true)).toEqual([
-					"git could not read origin/main, so a rewritten fingerprint would go unseen: fetch main before the gate",
-				]);
-				expect(recordProblems({ "1": "aaaa" }, "1", "aaaa", main, false)).toEqual([]);
-			}
-		});
+		try {
+			mkdirSync(directory, { recursive: true });
+			git(["init", "--quiet", "--initial-branch=snapshot"]);
+			writeFileSync(
+				join(directory, "questions.json"),
+				'{"questionSet":{"name":"triage","version":"1"},"fingerprint":"aaaa"}',
+			);
+			writeFileSync(join(directory, "question.txt"), "Original question");
+			commit("first version");
+			expect(recordProblems({ "1": "aaaa" }, "1", "aaaa", recordHistory(gitIn(directory)))).toEqual([]);
+			writeFileSync(join(directory, "question.txt"), "Reworded question");
+			writeFileSync(join(directory, "questions.json"), '{"1":"bbbb"}');
+			commit("rewrite old version");
+			expect(recordProblems({ "1": "bbbb" }, "1", "bbbb", recordHistory(git))).toContain(
+				'version "1" was recorded as aaaa and must stay so',
+			);
+			writeFileSync(join(root, "README.md"), "Unrelated parent");
+			commit("unrelated parent");
+			expect(recordProblems({ "1": "bbbb" }, "1", "bbbb", recordHistory(git))).toContain(
+				'version "1" was recorded as aaaa and must stay so',
+			);
+			writeFileSync(join(directory, "questions.json"), '{"1":"aaaa","2":"bbbb"}');
+			commit("add new version");
+			expect(recordProblems({ "1": "aaaa", "2": "bbbb" }, "2", "bbbb", recordHistory(git))).toContain(
+				'version "1" was recorded as bbbb and must stay so',
+			);
+			git(["reset", "--hard", "HEAD~3"]);
+			writeFileSync(join(directory, "question.txt"), "Reworded question");
+			writeFileSync(join(directory, "questions.json"), '{"1":"aaaa","2":"bbbb"}');
+			commit("add new version without rewriting history");
+			expect(recordProblems({ "1": "aaaa", "2": "bbbb" }, "2", "bbbb", recordHistory(git))).toEqual([]);
+			expect(git(["for-each-ref", "--format=%(refname)"]).trim()).toBe("refs/heads/snapshot");
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
 	});
 
+	it("fails closed on unreadable, empty, shallow or incomplete history", () => {
+		const git = (args: string[]): string => {
+			if (args[0] === "rev-parse") return "false";
+			if (args[0] === "log") return "only";
+			if (args[0] === "diff-tree") return "";
+			throw new Error(`unexpected git ${args.join(" ")}`);
+		};
+		expect(() => recordHistory(git)).toThrow("record is not new");
+		expect(() =>
+			recordHistory(() => {
+				throw new Error("unreadable");
+			}),
+		).toThrow("Cannot read complete questions.json history");
+		expect(() => recordHistory((args) => (args[0] === "rev-parse" ? "true" : git(args)))).toThrow(
+			"history is shallow",
+		);
+		expect(() => recordHistory((args) => (args[0] === "log" ? "" : git(args)))).toThrow("history is empty");
+		expect(() => recordHistory((args) => (args[0] === "diff-tree" ? recordPath : git(args)))).toThrow(
+			"unexpected git show",
+		);
+		expect(() =>
+			recordHistory((args) => (args[0] === "show" ? "not json" : args[0] === "diff-tree" ? recordPath : git(args))),
+		).toThrow("Cannot read complete questions.json history");
+	});
+
+	it("rejects a changed question, a missing current version and a deleted historical version", () => {
+		expect(recordProblems({ "1": "aaaa" }, "1", "bbbb", [])).toContain(
+			'the questions changed and version "1" did not: bump triageQuestionSet.version and add its fingerprint bbbb to questions.json',
+		);
+		expect(recordProblems({}, "2", "bbbb", [])).toContain('questions.json records no fingerprint for version "2"');
+		expect(recordProblems({ "2": "bbbb" }, "2", "bbbb", [{ "1": "aaaa" }])).toContain(
+			'version "1" was recorded as aaaa and must stay so',
+		);
+	});
 	it("changes when a question's wording, its options, or a lens's name does", async () => {
 		const { repo, base } = buildGoldenRepository(goldens[0]!);
 		try {

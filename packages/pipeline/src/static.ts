@@ -7,9 +7,13 @@ import {
 	type Confinement,
 	describeUnconfined,
 	type EnolaSnapshot,
+	type MutationSettings,
+	type MutationSkipCause,
+	mutationSkips,
 	normaliseBiomeSarif,
 	parseJsonc,
 	parseTscDiagnostics,
+	type Revision,
 	type StaticTool,
 	type StaticToolSettings,
 	type ToolLog,
@@ -17,7 +21,9 @@ import {
 } from "@melian-agent/core";
 import { EnolaRun } from "./enola-static.ts";
 import { backgroundContext, type Context, type ExecutionEnv } from "./harness.ts";
+import type { MutationProcessHooks } from "./mutation-process.ts";
 import { MutationScratch } from "./mutation-scratch.ts";
+import { MutationRun, strykerNotInstalled } from "./mutation-static.ts";
 import { nodeExecutable, Sandbox, type SandboxPaths } from "./sandbox.ts";
 import { ToolProvisioning } from "./tool-provisioning.ts";
 
@@ -36,7 +42,15 @@ export interface StaticRunInput {
 	readonly policyCommit?: string;
 	readonly tools?: ToolProvisioning;
 	readonly tool: StaticTool;
-	readonly settings: StaticToolSettings | TscSettings;
+	readonly settings: StaticToolSettings | TscSettings | MutationSettings;
+	/** The change under review. Mutation testing mutates the lines it adds or edits, so `mutation` needs it. */
+	readonly revision?: Revision;
+	/** Writer trust supplied by the host; mutation tests run only when this is true. */
+	readonly trustedWriter?: boolean;
+	/** Records and clears supervised process identities for durable recovery. */
+	readonly mutationProcess?: MutationProcessHooks;
+	/** Whether the run still answers to the latest review of its revision; absence means it does. */
+	readonly holdsAuthority?: () => Promise<boolean>;
 }
 
 /** A tool's log for one revision, with anything the run set aside, or why the tool does not apply to it. */
@@ -50,7 +64,13 @@ export type StaticRun =
 			/** Whether Biome or tsc ran inside the host's sandbox. Enola is never confined yet and says nothing. */
 			readonly confinement?: Confinement;
 	  }
-	| { readonly status: "skipped"; readonly reason: string };
+	| {
+			readonly status: "skipped";
+			readonly reason: string;
+			readonly cause?: MutationSkipCause;
+			/** Findings a skip still raises, from a head-only log: the base is not run. */
+			readonly log?: ToolLog;
+	  };
 
 // Variables a git hook sets for its own repository; git would honour them over `-C`.
 const gitVariables = [
@@ -96,11 +116,14 @@ function git(repoRoot: string, args: string): string {
 	return `unset ${gitVariables.join(" ")}; git -C ${quote(repoRoot)} -c core.hooksPath=/dev/null -c core.fsmonitor=false ${args}`;
 }
 
+// Stryker has no Melian copy: it and its Vitest runner are 161 packages that the reviewed repository installs, as it does
+// for the tests Stryker runs.
 const toolBinaries: Readonly<
-	Record<Exclude<StaticTool, "enola">, { readonly bin: string; readonly melian: () => string }>
+	Record<Exclude<StaticTool, "enola">, { readonly bin: string; readonly melian?: () => string }>
 > = {
 	biome: { bin: "biome", melian: () => melianBinary("@biomejs/biome", "bin/biome") },
 	tsc: { bin: "tsc", melian: () => melianBinary("typescript", "bin/tsc") },
+	mutation: { bin: "stryker" },
 };
 
 function melianBinary(packageName: string, bin: string): string {
@@ -137,7 +160,7 @@ export class Run {
 	}
 
 	// Runs a command, keeping the start of what it prints for error messages. `replaced` overrides a passed variable, such
-	// as the `HOME` of a command that runs confined.
+	// as the `HOME` of a command that runs the revision's own code.
 	async shell(
 		command: string,
 		timeout = this.input.settings.timeout,
@@ -243,7 +266,9 @@ export class Run {
 		try {
 			await removeStaleWorktrees(this, scratch);
 			const added = await this.worktreeCommand(
-				this.git(`worktree add --detach --quiet --lock --reason ${quote(lockReason)} ${quote(root)} ${commit}`),
+				this.git(
+					`worktree add --detach --quiet --lock --reason ${quote(this.input.tool === "mutation" ? `melian-static mutation pid ${process.pid}` : lockReason)} ${quote(root)} ${commit}`,
+				),
 			);
 			if (added.code !== 0) throw this.fail("worktreeFailed", `git worktree add failed: ${added.output}`);
 			await this.mark(root);
@@ -286,11 +311,16 @@ async function binaryFor(run: Run, installed: string | undefined): Promise<strin
 	const own = installed === undefined ? undefined : posix.join(installed, ".bin", bin);
 	if (own !== undefined && (await run.exists(own))) return own;
 	try {
-		return melian();
+		// Absent for Stryker, which Melian carries no copy of: calling it fails into the catch as a missing tool does.
+		return melian!();
 	} catch (cause) {
 		throw run.fail("toolMissing", `${bin} is in neither the checkout's node_modules nor Melian's`, cause);
 	}
 }
+
+// Directories a tool writes into `node_modules` while it runs. Linked, their writes would land in the reviewer's checkout, and
+// the sandbox would refuse them; left out, the tool makes its own in the worktree.
+const cacheDirectories: ReadonlySet<string> = new Set([".cache", ".vite", ".vite-temp"]);
 
 // Links the checkout's installed dependencies into the worktree entry by entry. Problem: one link to the checkout's
 // node_modules made its workspace links, such as `node_modules/b -> ../packages/b`, resolve to the checkout's own
@@ -309,6 +339,7 @@ async function linkDependencies(run: Run, root: string, scratch: string, notes: 
 		if (!listed.ok) return;
 		commands.push(`mkdir -p ${quote(to)}`);
 		for (const entry of listed.value) {
+			if (cacheDirectories.has(entry.name)) continue;
 			const source = posix.join(from, entry.name);
 			const target = posix.join(to, entry.name);
 			if (entry.kind === "directory" && entry.name.startsWith("@")) {
@@ -491,7 +522,8 @@ export function staticToolSource(repoRoot: string, tool: StaticTool): StaticTool
 	const tracked = spawnSync("git", ["-C", repoRoot, "ls-files", "--", "node_modules"], { encoding: "utf8" });
 	if (tracked.status === 0 && tracked.stdout === "" && existsSync(own)) return { from: "checkout", path: own };
 	try {
-		return { from: "melian", path: melian() };
+		// Absent for Stryker, which Melian carries no copy of: calling it fails into the catch, as a missing install does.
+		return { from: "melian", path: melian!() };
 	} catch {
 		return { from: "missing" };
 	}
@@ -520,6 +552,17 @@ export function staticToolSource(repoRoot: string, tool: StaticTool): StaticTool
 export async function runStaticTool(input: StaticRunInput, context: Context): Promise<StaticRun> {
 	const run = new Run(input, context);
 	const { repoRoot, commit, tool } = input;
+	if (tool === "mutation" && input.trustedWriter !== true)
+		return {
+			status: "skipped",
+			reason: mutationSkips.untrustedWriter("the caller did not establish a trusted writer for this head"),
+			cause: "untrustedWriter",
+		};
+	// The mutation check runs the head's own tests, so it runs only where the host can confine them.
+	const sandbox = tool === "mutation" ? await Sandbox.detect(input.env, context) : undefined;
+	if (tool === "mutation" && sandbox === undefined) {
+		return { status: "skipped", reason: mutationSkips.noSandbox, cause: "noSandbox" };
+	}
 	return run.inWorktree(async (root, scratch) => {
 		if (tool === "tsc") {
 			const { project } = input.settings as TscSettings;
@@ -550,6 +593,12 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 		const installed =
 			checkoutTracked.length === 0 && (await run.exists(checkoutModules)) ? checkoutModules : undefined;
 		const installs = installed === undefined ? [] : await linkDependencies(run, root, scratch, notes);
+		if (
+			tool === "mutation" &&
+			!(installed !== undefined && (await run.exists(posix.join(installed, ".bin", "stryker"))))
+		) {
+			return { status: "skipped", reason: strykerNotInstalled };
+		}
 		// The tool runs by its resolved path, the one the grants name. Reached through a linked checkout, the linked path
 		// does not exist inside bubblewrap, and the tool would read as missing.
 		const found = await binaryFor(run, installed);
@@ -560,6 +609,11 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 		const segments = binary.split("/");
 		const own = segments.slice(0, segments.indexOf("node_modules") + 1).join("/");
 		if (own !== "" && !installs.includes(own)) installs.push(own);
+		// Stryker runs the head's tests, so `MutationRun` confines it itself and never runs it unconfined.
+		if (sandbox !== undefined) {
+			const version = await versionOf(run, binary);
+			return new MutationRun(run, root, scratch, binary, version, notes, sandbox, installs).check();
+		}
 		const confinement = await run.confine(root, scratch, installs);
 		if (!confinement.confined) notes.push(`${tool} ${describeUnconfined(confinement.reason)}.`);
 		const version = await versionOf(run, binary);

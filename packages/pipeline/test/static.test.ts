@@ -13,7 +13,7 @@ import { type AddressInfo, createServer } from "node:net";
 import { dirname, join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
-import { CheckError, defaultConfig, type ToolLog } from "@melian-agent/core";
+import { Changeset, CheckError, defaultConfig, type ToolLog } from "@melian-agent/core";
 import {
 	backgroundContext as context,
 	createNodeExecutionEnv,
@@ -23,12 +23,15 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Sandbox } from "../src/sandbox.ts";
 import { Run, staticToolSource } from "../src/static.ts";
+import { fakeMutationProcesses } from "./fixtures/mutation-process.ts";
 import { commit, createRepository, fakeTool, gitIn, lines, removeRepository, writeFiles } from "./fixtures/repo.ts";
 import { hostSandbox, unconfinedNotes, unconfinedSandbox } from "./fixtures/sandbox.ts";
+import { emptyVitestInstall } from "./fixtures/vitest-listing.ts";
 
 let repo: string;
 
 beforeEach(() => {
+	fakeMutationProcesses();
 	repo = createRepository();
 });
 
@@ -78,6 +81,7 @@ function input(tool: StaticRunInput["tool"], commitId: string, timeout = 120): S
 		repoRoot: repo,
 		commit: commitId,
 		tool,
+		trustedWriter: true,
 		settings: { ...defaultConfig.static[tool], timeout },
 	};
 }
@@ -419,6 +423,38 @@ describe("runStaticTool with the repository's own tools", () => {
 				...unconfinedNotes("biome"),
 			],
 		});
+	});
+
+	it("links a workspace's own dependencies and grants exactly those install directories to mutation tests", async () => {
+		writeFiles(repo, emptyVitestInstall);
+		vi.spyOn(Sandbox, "detect").mockResolvedValue(unconfinedSandbox);
+		const command = vi.spyOn(unconfinedSandbox, "command");
+		const base = commit(repo, {
+			".gitignore": "node_modules\n",
+			"stryker.config.json": JSON.stringify({ testRunner: "vitest" }),
+			"packages/b/package.json": JSON.stringify({ name: "b", main: "index.ts" }),
+			"packages/b/index.ts": "export const b = 1;\n",
+		});
+		const head = commit(repo, { "src/a.ts": "export const a = 1;\n" });
+		writeFiles(repo, { "packages/b/node_modules/nested/index.js": "nested-version\n" });
+		mkdirSync(join(repo, "node_modules"), { recursive: true });
+		symlinkSync("../packages/b", join(repo, "node_modules/b"));
+		fakeTool(
+			repo,
+			"stryker",
+			`if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi
+[ "$(cat packages/b/node_modules/nested/index.js)" = "nested-version" ] || exit 1
+mkdir -p reports/mutation
+echo '{"files":{}}' > reports/mutation/mutation.json`,
+		);
+		const run = await runStaticTool(
+			{ ...input("mutation", head), base, revision: (await Changeset.resolve(repo, `${base}..${head}`)).revision },
+			context,
+		);
+		expect(run.status).toBe("ran");
+		expect(command.mock.calls).toHaveLength(11);
+		for (const [, paths] of command.mock.calls)
+			expect(paths.installs).toEqual([join(repo, "node_modules"), join(repo, "packages/b/node_modules")]);
 	});
 
 	it("prefers the tool in the checkout's node_modules", { timeout: 60_000 }, async () => {
@@ -996,3 +1032,15 @@ setInterval(() => {
 		}
 	});
 });
+it.each([undefined, false])(
+	"the exported mutation runner refuses trustedWriter=%s before creating a worktree",
+	async (trustedWriter) => {
+		const env = createNodeExecutionEnv(repo);
+		const execute = vi.spyOn(env, "exec");
+		const sandbox = vi.spyOn(Sandbox, "detect").mockResolvedValue(unconfinedSandbox);
+		const result = await runStaticTool({ ...input("mutation", "a".repeat(40)), env, trustedWriter }, context);
+		expect(result).toMatchObject({ status: "skipped", cause: "untrustedWriter" });
+		expect(execute).not.toHaveBeenCalled();
+		expect(sandbox).not.toHaveBeenCalled();
+	},
+);
