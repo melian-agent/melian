@@ -1703,6 +1703,18 @@ describe("lowering a severity through report_verdict", () => {
 		expect(resultOf(requests)).toContain("lowered P1 to P2");
 	});
 
+	it("refuses a lowering that rides on a refuted verdict, though every other check would hold", async () => {
+		const requests = judging({ verdict: "refuted", reason: "A guard prevents it.", evidence: cited, lower: narrow });
+		const { verdict } = await review();
+		const [refuted] = verdict.refuted!;
+		expect(refuted!.properties.severity).toBe("P1");
+		expect(refuted!.properties.originalSeverity).toBeUndefined();
+		expect(refuted!.properties.verification).not.toHaveProperty("lowered");
+		expect(resultOf(requests)).toContain(
+			"lowering refused, and the claim stands at P1: a lowering rides only on a confirmed or plausible verdict.",
+		);
+	});
+
 	it("says nothing of a lowering the verifier did not ask for", async () => {
 		const requests = judging({ verdict: "confirmed", reason: "Traced it." });
 		await review();

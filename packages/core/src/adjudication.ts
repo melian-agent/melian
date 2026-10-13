@@ -572,13 +572,15 @@ export class Verdict {
 			}
 		}
 		const held = new Set([...attention, ...this.findings.silent].map((finding) => finding.properties.id));
+		// A member only its floor lifted keeps its thread and is in no tally, so "still open" counts as the summary does.
+		const counted = new Set(this.counted().map((finding) => finding.properties.id));
 		const post: PlacedFinding[] = [];
 		const stillOpen: string[] = [];
 		const open: Record<string, PublishedFinding> = {};
 		for (const finding of attention) {
 			const { id, path } = finding.properties;
 			if (Object.hasOwn(previous, id)) {
-				stillOpen.push(id);
+				if (counted.has(id)) stillOpen.push(id);
 				open[id] = previous[id]!;
 				continue;
 			}
