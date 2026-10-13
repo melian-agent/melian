@@ -12,6 +12,8 @@
 // `functions` is `request` with correctness at `deep`, which reads the head's functions into its prompt.
 // `decision` parks in the decider's first call, with the decision task live and named by the decision document.
 // `replacement` first records a verdict, then parks in replacement triage after its decision commit.
+// `lowered-verdict` has the verifier confirm the claim and lower it one step, and parks once report_verdict has
+// committed, before the tool's result is stored and before adjudication.
 import { Changeset, type Decider, defaultConfig, Lens, severitySchema } from "@melian-agent/core";
 import { RecordedDecider } from "@melian-agent/decisions";
 import { AdjudicationTask } from "../../src/adjudication.ts";
@@ -63,6 +65,7 @@ const [scenario, repo, database, log] = process.argv.slice(2) as [
 		| "verifier"
 		| "verdict"
 		| "conflicting-verdict"
+		| "lowered-verdict"
 		| "decision"
 		| "replacement"
 		| "lens-failover"
@@ -136,12 +139,19 @@ const parkedAdjudication = defineTask({
 const parked = defineExtension({
 	...lensExtension,
 	tools: lensExtension.tools?.map((tool) =>
-		tool.name === "report_verdict" && ["verdict", "conflicting-verdict"].includes(scenario)
+		tool.name === "report_verdict" && ["verdict", "conflicting-verdict", "lowered-verdict"].includes(scenario)
 			? parkedVerdict
 			: tool.name === lensReadTools.read_file.name && ["read", "spent", "tokens"].includes(scenario)
 				? parkedRead
 				: tool.name !== reportFinding.name ||
-						["escalation", "verifier", "verdict", "conflicting-verdict", "verifier-failover"].includes(scenario)
+						[
+							"escalation",
+							"verifier",
+							"verdict",
+							"conflicting-verdict",
+							"lowered-verdict",
+							"verifier-failover",
+						].includes(scenario)
 					? tool
 					: scenario === "legacy"
 						? legacyReport
@@ -188,6 +198,7 @@ const correctness: Readonly<Record<typeof scenario, readonly ScriptedReply[]>> =
 	"lens-failover": [fauxAssistantMessage("", { stopReason: "error", errorMessage: "HTTP 503 service unavailable" })],
 	verdict: [toolUse("report_finding", crashFinding), done],
 	"conflicting-verdict": [toolUse("report_finding", crashFinding), done],
+	"lowered-verdict": [toolUse("report_finding", crashFinding), done],
 	finding: [toolUse("report_finding", crashFinding)],
 	legacy: [toolUse("report_finding", legacyCrashFinding)],
 	request: [requested("correctness")],
@@ -202,7 +213,7 @@ const correctness: Readonly<Record<typeof scenario, readonly ScriptedReply[]>> =
 	replacement: [done],
 };
 scriptConversations(fake, [
-	...(["verifier", "verdict", "conflicting-verdict", "verifier-failover"].includes(scenario)
+	...(["verifier", "verdict", "conflicting-verdict", "lowered-verdict", "verifier-failover"].includes(scenario)
 		? [
 				{
 					match: "Melian adversarial verifier",
@@ -224,7 +235,16 @@ scriptConversations(fake, [
 											),
 											{ stopReason: "toolUse" },
 										)
-									: (messages: Parameters<typeof scriptVerifier>[0]) => scriptVerifier(messages),
+									: scenario === "lowered-verdict"
+										? toolUse("report_verdict", {
+												claim: "c1",
+												answers: { code: "yes", guard: "no", base: "no" },
+												verdict: "confirmed",
+												reason: "Traced the dereference.",
+												evidence: [{ file: "src/user.ts", line: 6, role: "context" }],
+												lower: { severity: "P2", reason: "The only caller checks for a manager first." },
+											})
+										: (messages: Parameters<typeof scriptVerifier>[0]) => scriptVerifier(messages),
 					],
 				},
 			]
