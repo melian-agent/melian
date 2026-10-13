@@ -5,7 +5,15 @@ import { fileURLToPath } from "node:url";
 import Type, { type Static } from "typebox";
 import Value from "typebox/value";
 import { parseDocument } from "yaml";
-import { type LensTier, lensTierSchema, type MelianConfig, type Severity, severitySchema } from "./config.ts";
+import {
+	type LensTier,
+	lensTierSchema,
+	type MelianConfig,
+	type ResolutionEntry,
+	resolutionEntrySchema,
+	type Severity,
+	severitySchema,
+} from "./config.ts";
 import type { ChoiceQuestion, Decision } from "./decider.ts";
 import { LensError } from "./errors.ts";
 import { maxEvidenceLines, maxFailureScenarioLength } from "./findings.ts";
@@ -75,7 +83,7 @@ const lensName = Type.String({ pattern: "^[a-z0-9][a-z0-9-]*$" });
  * The JSON Schema of a `LENS.md` front matter block. Only `name` is required; unknown fields are rejected. `levels` maps
  * a {@link ScrutinyLevel} to the fields that differ there; each field it leaves out comes from the top level.
  * `handoffs` maps another lens's name to the defects that lens owns, which this lens leaves to it in the files both
- * review.
+ * review. `resolution` is the lens's declared default: a requirement for each severity it maps, and a `ceiling`.
  */
 export const lensFrontMatterSchema = Type.Object(
 	{
@@ -93,6 +101,7 @@ export const lensFrontMatterSchema = Type.Object(
 		extends: Type.Optional(Type.Union([text, Type.Null()])),
 		standards: Type.Optional(Type.Boolean()),
 		handoffs: Type.Optional(Type.Record(lensName, text)),
+		resolution: Type.Optional(resolutionEntrySchema),
 	},
 	strict,
 );
@@ -151,6 +160,11 @@ export interface LensFields {
 	readonly version: string;
 	/** The nearest `LENS.md` that defined or extended it. */
 	readonly file: string;
+	/**
+	 * The lens's declared default resolution, which applies to its findings when no `melian.yaml` speaks about them.
+	 * Not part of `version`: it changes what a finding requires, never which findings the lens reports.
+	 */
+	readonly resolution?: ResolutionEntry;
 	/**
 	 * Folders beneath `scope` whose own lens of this name replaces this one there, found by {@link Lens.load} across
 	 * the whole source, whether or not a changed path reaches them. Not part of `version`.
@@ -292,7 +306,7 @@ function required<T>(file: string, field: string, value: T | undefined): T {
 // Hashes everything that shapes a lens's behaviour, in the order the fields are declared, never its file or nearer
 // scopes: a lens's version names the findings it produced, so this hash must not change for an unchanged lens.
 function versioned(lens: Omit<LensFields, "version">): LensFields {
-	const { file: _, nearer: __, ...behaviour } = lens;
+	const { file: _, nearer: __, resolution: ___, ...behaviour } = lens;
 	const version = createHash("sha256").update(JSON.stringify(behaviour)).digest("hex").slice(0, 12);
 	return { ...lens, version };
 }
@@ -400,6 +414,7 @@ function resolve(definition: Definition, base: Layered | undefined): Layered {
 		throw new LensError("invalidValue", file, `${file}: "handoffs" ${inherited}`, { field: "handoffs" });
 	}
 	const declared = declare(own, base?.declared);
+	const resolution = own.resolution ?? base?.lens.resolution;
 	const lens = versioned({
 		name: own.name,
 		description,
@@ -413,6 +428,7 @@ function resolve(definition: Definition, base: Layered | undefined): Layered {
 		handoffs,
 		instructions: [base?.lens.instructions, body].filter((part) => part !== undefined && part !== "").join("\n\n"),
 		file,
+		resolution,
 	});
 	return { lens, declared };
 }
@@ -631,6 +647,7 @@ export class Lens {
 	readonly version: string;
 	readonly file: string;
 	readonly nearer?: readonly string[];
+	readonly resolution?: ResolutionEntry;
 
 	private constructor(fields: LensFields) {
 		this.name = fields.name;
@@ -647,6 +664,7 @@ export class Lens {
 		this.version = fields.version;
 		this.file = fields.file;
 		this.nearer = fields.nearer;
+		this.resolution = fields.resolution;
 	}
 
 	/** The lens `fields` describe, as given: its version is not computed again. */
@@ -925,7 +943,7 @@ export class Lens {
 	/** The lens's fields, in their declared order. */
 	toJSON(): LensFields {
 		const { name, description, tools, severities, rules, paths, scope, levels, standards, handoffs } = this;
-		const { instructions, version, file, nearer } = this;
+		const { instructions, version, file, nearer, resolution } = this;
 		return {
 			name,
 			description,
@@ -941,6 +959,7 @@ export class Lens {
 			version,
 			file,
 			...(nearer === undefined ? {} : { nearer }),
+			...(resolution === undefined ? {} : { resolution }),
 		};
 	}
 

@@ -4,6 +4,7 @@ import {
 	type CheckStatus,
 	ConfigError,
 	type MelianConfig,
+	type PreExistingCap,
 	type PublicationDetails,
 	type RepositorySource,
 	type Resolution,
@@ -155,7 +156,11 @@ export type AdjudicationTaskInput = {
 	head: string;
 	// Where per-path configuration is read from; without it, `config` applies to every path.
 	policy?: RepositorySource;
-	config: { resolution: Record<Severity, Resolution>; ruleAliases: Record<string, StoredAlias> };
+	// `preExisting` is absent from an input an older Melian stored, and every cap is then advisory.
+	config: {
+		resolution: Record<Severity, Resolution> & { preExisting?: Record<Severity, PreExistingCap> };
+		ruleAliases: Record<string, StoredAlias>;
+	};
 	// Every check the review's tier names. One with no record in `checks` makes the verdict not reviewed.
 	manifest: string[];
 	checks: StoredCheck[];
@@ -284,7 +289,7 @@ export function adjudicationInput(options: {
 		head,
 		...(policy === undefined ? {} : { policy: { ...policy } }),
 		config: {
-			resolution: { ...config.resolution },
+			resolution: structuredClone(config.resolution),
 			ruleAliases: structuredClone(config.ruleAliases) as Record<string, StoredAlias>,
 		},
 		manifest: [...manifest],

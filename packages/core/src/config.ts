@@ -73,6 +73,53 @@ const guardrail = <Rule extends Record<string, TSchema>>(rule: Rule) =>
 		strict,
 	);
 
+const severityMapping = {
+	P0: Type.Optional(resolutionSchema),
+	P1: Type.Optional(resolutionSchema),
+	P2: Type.Optional(resolutionSchema),
+	P3: Type.Optional(resolutionSchema),
+	nit: Type.Optional(resolutionSchema),
+};
+/** The JSON Schema of a {@link ResolutionEntry}: what one rule's entry under `resolution.checks` may write. */
+export const resolutionEntrySchema = Type.Object(
+	{ ...severityMapping, ceiling: Type.Optional(resolutionSchema) },
+	strict,
+);
+/** The JSON Schema of a {@link PreExistingCap}. `block` is not among them: a pre-existing finding never blocks. */
+export const preExistingCapSchema = Type.Union([Type.Literal("advisory"), Type.Literal("acknowledge")]);
+/** The JSON Schema of a {@link FileResolution}: the `resolution` key of one `melian.yaml`. */
+export const fileResolutionSchema = Type.Object(
+	{
+		...severityMapping,
+		preExisting: Type.Optional(
+			Type.Object(
+				{
+					P0: Type.Optional(preExistingCapSchema),
+					P1: Type.Optional(preExistingCapSchema),
+					P2: Type.Optional(preExistingCapSchema),
+					P3: Type.Optional(preExistingCapSchema),
+					nit: Type.Optional(preExistingCapSchema),
+				},
+				strict,
+			),
+		),
+		checks: Type.Optional(
+			Type.Record(
+				Type.String(),
+				Type.Object(
+					{
+						...severityMapping,
+						ceiling: Type.Optional(resolutionSchema),
+						rules: Type.Optional(Type.Record(Type.String(), resolutionEntrySchema)),
+					},
+					strict,
+				),
+			),
+		),
+	},
+	strict,
+);
+
 // A list says the rules are one defect the key owns; `distinct: true` says they are different defects never to merge.
 const ruleAliasSchema = Type.Union([
 	Type.Array(name),
@@ -118,18 +165,7 @@ export const melianYamlSchema = Type.Object(
 		),
 		tiers: Type.Optional(Type.Record(Type.String(), Type.Array(name))),
 		stages: Type.Optional(Type.Record(Type.String(), name)),
-		resolution: Type.Optional(
-			Type.Object(
-				{
-					P0: Type.Optional(resolutionSchema),
-					P1: Type.Optional(resolutionSchema),
-					P2: Type.Optional(resolutionSchema),
-					P3: Type.Optional(resolutionSchema),
-					nit: Type.Optional(resolutionSchema),
-				},
-				strict,
-			),
-		),
+		resolution: Type.Optional(fileResolutionSchema),
 		lenses: Type.Optional(
 			Type.Record(
 				Type.String(),
@@ -222,6 +258,30 @@ export type MelianYaml = Static<typeof melianYamlSchema>;
 
 /** What a finding at a given severity requires before merge. */
 export type Resolution = Static<typeof resolutionSchema>;
+
+/** What a severity of pre-existing finding may require at most: `advisory`, or `acknowledge` where a folder opts in. */
+export type PreExistingCap = Static<typeof preExistingCapSchema>;
+
+/**
+ * What one entry under `resolution.checks` writes, for a check or for one of its rules: a requirement for each severity
+ * it maps, and a `ceiling` no finding of it resolves above.
+ */
+export type ResolutionEntry = Static<typeof resolutionEntrySchema>;
+
+/**
+ * The `resolution` key of one `melian.yaml`, as written: its severity table, the `preExisting` cap, and `checks`, keyed
+ * by check name as a tier spells it, each with its `rules` keyed by rule ID.
+ */
+export type FileResolution = Static<typeof fileResolutionSchema>;
+
+/**
+ * What one file wrote under `resolution`, and the file: a `melian.yaml` by its repository-relative path, or a
+ * preference file by the path it was given. Resolution walks these nearest first and stops at the first that speaks.
+ */
+export interface ResolutionLayer {
+	readonly file: string;
+	readonly resolution: FileResolution;
+}
 
 /** The resolutions from strictest to most lenient. */
 export const resolutionOrder: readonly Resolution[] = ["block", "acknowledge", "advisory", "silent"];
@@ -359,7 +419,14 @@ export interface MelianConfig {
 	};
 	readonly tiers: Readonly<Record<string, readonly string[]>>;
 	readonly stages: Readonly<Record<string, string>>;
-	readonly resolution: Readonly<Record<Severity, Resolution>>;
+	/**
+	 * The severity table merged key by key, and the `preExisting` cap merged the same way. A file's `checks` are not
+	 * merged: the nearest file that speaks about a finding decides it whole, so resolution reads
+	 * {@link LoadedConfig.resolutionLayers}.
+	 */
+	readonly resolution: Readonly<Record<Severity, Resolution>> & {
+		readonly preExisting: Readonly<Record<Severity, PreExistingCap>>;
+	};
 	readonly lenses: Readonly<Record<string, LensSettings>>;
 	readonly models: Readonly<Partial<Record<ModelTier, ModelRoute>>>;
 	readonly static: StaticSettings;
@@ -395,7 +462,14 @@ export const defaultConfig: MelianConfig = {
 		],
 	},
 	stages: { "pre-commit": "fast", "pre-push": "standard", "pull-request": "full", comment: "standard" },
-	resolution: { P0: "block", P1: "block", P2: "acknowledge", P3: "advisory", nit: "silent" },
+	resolution: {
+		P0: "block",
+		P1: "block",
+		P2: "acknowledge",
+		P3: "advisory",
+		nit: "silent",
+		preExisting: { P0: "advisory", P1: "advisory", P2: "advisory", P3: "advisory", nit: "advisory" },
+	},
 	lenses: {},
 	models: {},
 	static: {
@@ -438,6 +512,8 @@ export interface LoadedConfig {
 	readonly config: MelianConfig;
 	readonly sources: readonly string[];
 	readonly routes: RouteLineage;
+	/** Each contributing file's own `resolution` key, nearest first, for the files that write one. */
+	readonly resolutionLayers: readonly ResolutionLayer[];
 }
 
 /** The largest `melian.yaml` the loader reads. A larger file is a `tooLarge` error, never truncated. */
@@ -635,6 +711,7 @@ function parseLayer(text: string, site: Site, directory: string): MelianYaml {
 	checkPatterns(site, value as MelianYaml);
 	checkLensNames(site, value as MelianYaml);
 	checkRequire(site, value as MelianYaml);
+	checkResolutionKeys(site, value as MelianYaml);
 	checkRootOnly(site, value as MelianYaml);
 	if (site.preference === true) checkPreference(site, value as MelianYaml);
 	else if (site.file !== melianPaths.config) checkNested(site, value as MelianYaml);
@@ -708,6 +785,32 @@ function checkRequire(site: Site, layer: MelianYaml): void {
 			site,
 			`"${key}" has ${negated}; each require glob must be touched, so it cannot exclude. Narrow the glob instead`,
 			{ key },
+		);
+	}
+}
+
+// An entry keyed by a name no finding carries would never apply, and a ceiling a maintainer believes in would be dead.
+function checkResolutionKeys(site: Site, layer: MelianYaml): void {
+	for (const [check, entry] of Object.entries(layer.resolution?.checks ?? {})) {
+		const key = `resolution.checks.${check}`;
+		if (check !== "guardrails" && !check.startsWith("lens.") && !check.startsWith("static.")) {
+			throw configError(
+				"invalidValue",
+				site,
+				`"${key}" names no check; a check is lens.<name>, static.<tool>, or guardrails`,
+				{ key },
+			);
+		}
+		const stray =
+			check === "guardrails"
+				? Object.keys(entry.rules ?? {}).find((rule) => !rule.startsWith("guardrail/"))
+				: undefined;
+		if (stray === undefined) continue;
+		throw configError(
+			"invalidValue",
+			site,
+			`"${key}.rules.${stray}" names no guardrail; write guardrail/<name>, or guardrail/<name>/<rule> for one rule`,
+			{ key: `${key}.rules.${stray}` },
 		);
 	}
 }
@@ -883,12 +986,12 @@ export interface ConfigLookup {
 	/** The nearest `melian.yaml` that sets a guardrail's rule for `path`: two files may declare rules of one name. */
 	ruleFile(path: string, guardrail: keyof typeof requiredRuleKeys, rule: string): Promise<string>;
 	/**
-	 * The configuration policy-change-review judges a change to `path` under, and resolves its finding under. A
-	 * `melian.yaml` is judged under the directory above its own, so none switches off the review of itself. The root's
-	 * has no directory above it: its own settings judge it, and they may make that review stricter than the defaults,
-	 * never more lenient.
+	 * The configuration policy-change-review judges a change to `path` under, and resolves its finding under, with the
+	 * resolution layers of the files that made it. A `melian.yaml` is judged under the directory above its own, so none
+	 * switches off the review of itself. The root's has no directory above it: its own settings judge it, and they may
+	 * make that review stricter than the defaults, never more lenient.
 	 */
-	policyReview(path: string): Promise<MelianConfig>;
+	policyReview(path: string): Promise<Pick<LoadedConfig, "config" | "resolutionLayers">>;
 }
 
 const severityOrder: readonly Severity[] = ["P0", "P1", "P2", "P3", "nit"];
@@ -932,9 +1035,10 @@ export function configLookup(repoRoot: string, source: RepositorySource): Config
 		return layers.find(({ layer }) => layer.guardrails?.[guardrail]?.rules?.[rule] !== undefined)?.site.file ?? "";
 	};
 	lookup.policyReview = async (path: string) => {
-		if (posix.basename(path) !== melianPaths.config) return lookup(path);
-		if (path !== melianPaths.config) return lookup(posix.dirname(path));
-		return withReviewFloor(await lookup(path));
+		if (posix.basename(path) !== melianPaths.config) return layered(path);
+		if (path !== melianPaths.config) return layered(posix.dirname(path));
+		const { config, resolutionLayers } = await layered(path);
+		return { config: withReviewFloor(config), resolutionLayers };
 	};
 	return lookup;
 }
@@ -959,12 +1063,12 @@ export async function loadConfig(repoRoot: string, source: RepositorySource, pat
 	const target = repoPath(repoRoot, path);
 	const reader = await openSource(repoRoot, source).catch(fromSource(repoRoot));
 	const kind = await reader.exists(target).catch(fromSource(target));
-	const { config, sources, routes } = await loadLayers(
+	const { config, sources, routes, resolutionLayers } = await loadLayers(
 		reader,
 		directoriesUpToRoot(target, kind === "directory"),
 		source,
 	);
-	return { config, sources, routes };
+	return { config, sources, routes, resolutionLayers };
 }
 
 // Every `melian.yaml` in `directories`, nearest first, merged over the defaults. From the working tree, the preference
@@ -994,7 +1098,14 @@ async function loadLayers(
 		if (layer !== undefined) layers.push({ site, layer });
 	}
 	const defaults = merge({}, structuredClone(defaultConfig) as unknown as Plain);
-	const config = layers.reduceRight((merged, { layer }) => merge(merged, layer), defaults) as unknown as MelianConfig;
+	// A file's `checks` never merge: the nearest file that speaks decides a finding whole, from its own layer.
+	const config = layers.reduceRight((merged, { layer }) => {
+		const { checks: _, ...table } = layer.resolution ?? {};
+		return merge(merged, { ...layer, resolution: table });
+	}, defaults) as unknown as MelianConfig;
+	const resolutionLayers = layers.flatMap(({ site, layer }) =>
+		layer.resolution === undefined ? [] : [{ file: site.file, resolution: layer.resolution }],
+	);
 	checkBands(config, layers);
 	checkGuardrailRules(config, layers);
 	const committed = layers
@@ -1025,5 +1136,5 @@ async function loadLayers(
 		if (nearest !== undefined) overridden[tier] = nearest.site.file;
 	}
 	const routes = { committed: committed.models as MelianConfig["models"], overridden, lensTiers, retiered };
-	return { config, sources: layers.map(({ site }) => site.file), routes, layers };
+	return { config, sources: layers.map(({ site }) => site.file), routes, layers, resolutionLayers };
 }

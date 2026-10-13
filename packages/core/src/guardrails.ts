@@ -214,7 +214,7 @@ async function policyChanges(input: GuardrailInput, paths: readonly string[], co
 		: [];
 	return Promise.all(
 		paths.map(async (path): Promise<Hit | undefined> => {
-			const guardrail = (await configFor.policyReview(path)).guardrails["policy-change-review"];
+			const guardrail = (await configFor.policyReview(path)).config.guardrails["policy-change-review"];
 			if (!guardrail.enabled) return undefined;
 			const added = matchesGlobs(guardrail.files, path);
 			const listed = revision.policyFiles.includes(path) && loadsManifest(path, workspaces);

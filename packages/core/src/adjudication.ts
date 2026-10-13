@@ -12,6 +12,7 @@ import {
 	type AlsoReportedAs,
 	type Cause,
 	Finding,
+	type FindingDecision,
 	type FindingDismissal,
 	FindingsLog,
 	levelForSeverity,
@@ -38,14 +39,18 @@ import {
 	statusLabel,
 	visibleText,
 } from "./render.ts";
+import type { ResolutionSource } from "./resolution.ts";
 import { VerificationState } from "./verification.ts";
 
+/** What adjudication reads at one path: what resolution reads there, and the path's `ruleAliases`. */
+export type PolicyAt = ResolutionSource & Pick<MelianConfig, "ruleAliases">;
+
 /**
- * The configuration that applies at a repository-relative path, usually through `loadConfig` for that path. Given
- * `rule`, the rule of a finding being resolved, it is the configuration that judged that rule at the path, which can
- * differ from the path's own: policy-change-review judges a `melian.yaml` under `ConfigLookup.policyReview`.
+ * The policy that applies at a repository-relative path, usually through `loadConfig` for that path. Given `rule`, the
+ * rule of a finding being resolved, it is the policy that judged that rule at the path, which can differ from the
+ * path's own: policy-change-review judges a `melian.yaml` under `ConfigLookup.policyReview`.
  */
-export type ConfigFor = (path: string, rule?: string) => Pick<MelianConfig, "resolution" | "ruleAliases">;
+export type ConfigFor = (path: string, rule?: string) => PolicyAt;
 
 type Aliases = MelianConfig["ruleAliases"];
 
@@ -74,10 +79,16 @@ function distinct(aliases: Aliases, left: string, right: string): boolean {
 export class Defect {
 	readonly speaker: Finding;
 	readonly members: readonly AlsoReportedAs[];
+	/**
+	 * The findings the defect was merged from, each as its check reported it, the one that speaks first. A defect read
+	 * back from a verdict holds only its speaker.
+	 */
+	readonly reports: readonly Finding[];
 
-	constructor(speaker: Finding, members: readonly AlsoReportedAs[]) {
+	constructor(speaker: Finding, members: readonly AlsoReportedAs[], reports: readonly Finding[] = [speaker]) {
 		this.speaker = speaker;
 		this.members = members;
+		this.reports = reports;
 	}
 
 	/**
@@ -135,7 +146,27 @@ export class Defect {
 				alsoReportedAs,
 			},
 		});
-		return Defect.of(speaker, dismissed);
+		const { members: live } = Defect.of(speaker, dismissed);
+		return new Defect(speaker, live, [keeper, ...findings.filter((member) => member !== keeper)]);
+	}
+
+	/**
+	 * What the defect requires. Every report resolves under its own check, rule, severity, and path, with its own
+	 * ceiling and caps ({@link Finding.capped}), from the policy `policyFor` gives for it. The defect takes the strictest
+	 * result, the speaker's on a tie, and the floors then apply to the defect ({@link Finding.floored}). So the answer
+	 * does not depend on which report speaks. With `unverified`, a lens report no verifier judged is capped at
+	 * `advisory`, alone: a static report beside it is not. A lens report whose every claim a verifier refuted is left
+	 * out, unless every report is one.
+	 */
+	decision(policyFor: ConfigFor, unverified: boolean): FindingDecision {
+		// A report a verifier refuted asks for nothing beside one that stands.
+		const standing = this.reports.filter((report) => !report.refuted());
+		const strictest = (standing.length === 0 ? this.reports : standing)
+			.map((report) => report.capped(policyFor(report.properties.path, report.ruleId), { unverified }))
+			.reduce((kept, each) =>
+				resolutionOrder.indexOf(each.resolution) < resolutionOrder.indexOf(kept.resolution) ? each : kept,
+			);
+		return this.speaker.floored(strictest, [this.speaker.ruleId, ...this.members.map((member) => member.ruleId)]);
 	}
 
 	/** Whether lenses alone reported this defect. */
@@ -578,11 +609,12 @@ export class Verdict {
 	 * The verdict's fingerprint: the first 16 hex digits of a SHA-256 over its JSON, which names the verdict a review
 	 * posted. Who dismissed each finding, why, and when stay out of it, a merged report's own dismissal included: a
 	 * reason changed by a second dismissal is answered in the finding's thread, and a review saying nothing new would
-	 * only repeat the last one. A verdict without dismissals hashes as it always has.
+	 * only repeat the last one. Which file and entry decided a finding stays out too: a resolution it changes moves the
+	 * finding to another group, which the fingerprint holds. A verdict without dismissals hashes as it always has.
 	 */
 	fingerprint(): string {
 		const bare = (finding: Finding): StoredFinding => {
-			const { dismissal: _, pastDismissals: __, ...properties } = finding.properties;
+			const { dismissal: _, pastDismissals: __, decidedBy: ____, ...properties } = finding.properties;
 			const { alsoReportedAs } = properties;
 			if (alsoReportedAs === undefined) return { ...finding.toJSON(), properties };
 			const reports = alsoReportedAs.map(({ dismissal: ___, ...report }) => report);
@@ -772,7 +804,7 @@ export interface AdjudicationInput {
 	/** What each check did: every check of the manifest, and any other the review ran. */
 	readonly checks: readonly CheckRecord[];
 	/** The configuration for every path, or a function returning the configuration at a path. */
-	readonly config: Pick<MelianConfig, "resolution" | "ruleAliases"> | ConfigFor;
+	readonly config: PolicyAt | ConfigFor;
 	/** Names of checks whose skip still lets a review pass, such as a tool with no files in its language to check. */
 	readonly allowSkip?: readonly string[];
 	/** Apply the unverified advisory cap only to reviews that ran the verifier step. */
@@ -844,20 +876,9 @@ export class Adjudication {
 		const lifted = new Set<string>();
 		const resolved = defects
 			.map((defect) => {
-				const finding = defect.speaker;
-				const config = this.#configFor(finding.properties.path, finding.ruleId);
-				if (finding.lifted(config)) lifted.add(finding.id);
-				const resolved = finding.resolved(config);
-				if (
-					!this.#verificationRan ||
-					!defect.unverified() ||
-					resolutionOrder.indexOf(resolved.properties.resolution) >= resolutionOrder.indexOf("advisory")
-				)
-					return resolved;
-				return Finding.from({
-					...resolved.toJSON(),
-					properties: { ...resolved.properties, resolution: "advisory" },
-				}) as ResolvedFinding;
+				const decision = defect.decision(this.#configFor, this.#verificationRan);
+				if (decision.decidedBy.floor === "pre-existing-important") lifted.add(defect.speaker.id);
+				return defect.speaker.decided(decision);
 			})
 			.sort((a, b) => a.compareReading(b));
 		const counted = resolved.filter(
@@ -905,7 +926,7 @@ export class Merge {
 	readonly findings: readonly Finding[];
 	readonly #configFor: ConfigFor;
 
-	constructor(findings: readonly Finding[], config: Pick<MelianConfig, "resolution" | "ruleAliases"> | ConfigFor) {
+	constructor(findings: readonly Finding[], config: PolicyAt | ConfigFor) {
 		this.findings = findings;
 		this.#configFor = typeof config === "function" ? config : () => config;
 	}

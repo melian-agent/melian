@@ -2027,10 +2027,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			budget: { ...verificationBudget },
 			fence: {
 				coReported: !defect.lensOnly(),
-				silent: (["P0", "P1", "P2", "P3", "nit"] as const).filter(
-					(severity) =>
-						configFor(defect.speaker.properties.path, defect.speaker.ruleId).resolution[severity] === "silent",
-				),
+				silent: defect.speaker.silentAt(configFor(defect.speaker.properties.path, defect.speaker.ruleId)),
 			},
 		});
 	}

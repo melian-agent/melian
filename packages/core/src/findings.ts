@@ -3,14 +3,7 @@ import { posix } from "node:path";
 import Type, { type Static } from "typebox";
 import Value from "typebox/value";
 import type { Revision } from "./changeset.ts";
-import {
-	type MelianConfig,
-	type Resolution,
-	resolutionOrder,
-	resolutionSchema,
-	type Severity,
-	severitySchema,
-} from "./config.ts";
+import { type Resolution, resolutionOrder, resolutionSchema, type Severity, severitySchema } from "./config.ts";
 import { FindingError } from "./errors.ts";
 import {
 	causeSchema,
@@ -22,8 +15,14 @@ import {
 import { melianPaths } from "./paths.ts";
 import type { DiffLines, Placement } from "./publication.ts";
 import { evidenceLines, messageContinuation, plural, prose, Rendering, severityColor, visibleText } from "./render.ts";
-
-import { type StoredRescope, type Verification, verificationSchema } from "./verification.ts";
+import { lesser, type ResolutionClaim, type ResolutionSource, ResolutionWalk } from "./resolution.ts";
+import {
+	injectionAttemptRuleId,
+	type StoredRescope,
+	type Verification,
+	VerificationState,
+	verificationSchema,
+} from "./verification.ts";
 
 export { causeSchema, evidenceLocationSchema, evidenceRevisionSchema, evidenceRoleSchema, findingEvidenceSchema };
 
@@ -112,6 +111,52 @@ export const pastDismissalSchema = Type.Object(
 	strict,
 );
 
+/**
+ * The JSON Schema of a {@link GuardrailMatch}: the configured rules a guardrail finding matched, by name, or the class
+ * of a policy-change notice, with `resolution` set when the change is to a `resolution` key or a lens's declared one.
+ */
+export const guardrailMatchSchema = Type.Union([
+	Type.Object({ rules: Type.Array(text, { minItems: 1 }) }, strict),
+	Type.Object(
+		{
+			notice: Type.Union([Type.Literal("policy"), Type.Literal("analyser")]),
+			resolution: Type.Optional(Type.Literal(true)),
+		},
+		strict,
+	),
+]);
+
+const entryKey = Type.Object(
+	{
+		entry: Type.Union(["rule", "check", "table", "lens-default", "built-in"].map((entry) => Type.Literal(entry))),
+		key: Type.Optional(text),
+	},
+	strict,
+);
+
+/** The JSON Schema of a {@link DecidedBy}. */
+export const decidedBySchema = Type.Object(
+	{
+		file: Type.Optional(text),
+		lens: Type.Optional(text),
+		check: text,
+		rule: Type.Optional(text),
+		requirement: entryKey,
+		ceiling: Type.Optional(entryKey),
+		cap: Type.Optional(
+			Type.Union([Type.Literal("pre-existing"), Type.Literal("unproven-cause"), Type.Literal("unverified")]),
+		),
+		floor: Type.Optional(
+			Type.Union([
+				Type.Literal("policy-change"),
+				Type.Literal("injection-attempt"),
+				Type.Literal("pre-existing-important"),
+			]),
+		),
+	},
+	strict,
+);
+
 /** The JSON Schema of {@link FindingProperties}. Unknown keys are rejected, so a misspelt optional key is not lost. */
 export const findingPropertiesSchema = Type.Object(
 	{
@@ -128,6 +173,8 @@ export const findingPropertiesSchema = Type.Object(
 		confidence: Type.Optional(Type.Number({ minimum: 0, maximum: 1 })),
 		verification: Type.Optional(verificationSchema),
 		resolution: Type.Optional(resolutionSchema),
+		decidedBy: Type.Optional(decidedBySchema),
+		guardrail: Type.Optional(guardrailMatchSchema),
 		status: findingStatusSchema,
 		dismissal: Type.Optional(findingDismissalSchema),
 		pastDismissals: Type.Optional(Type.Array(pastDismissalSchema)),
@@ -432,6 +479,27 @@ export type AlsoReportedAs = Static<typeof alsoReportedAsSchema>;
  */
 export type MemberClaim = Static<typeof memberClaimSchema>;
 
+/**
+ * What a guardrail finding matched, outside its ID: `rules` names the configured rules, so resolution can key one as
+ * `guardrail/<name>/<rule>`; `notice` is the class of a policy-change notice, keyed
+ * `guardrail/policy-change-review/<class>`. A notice with `resolution` reports a change to a `resolution` key in a
+ * `melian.yaml`, or to a lens's declared resolution, which no entry under `guardrails` may move.
+ */
+export type GuardrailMatch = Static<typeof guardrailMatchSchema>;
+
+/**
+ * Which file and entry decided a finding's resolution, as adjudication recorded it: the `melian.yaml` that spoke, or
+ * the lens whose declared default applied; the check and rule of the report it decided for; the entry the requirement
+ * came from and the ceiling in force; and the cap or floor that then moved the result.
+ */
+export type DecidedBy = Static<typeof decidedBySchema>;
+
+/** What a finding requires, and what decided it. */
+export interface FindingDecision {
+	readonly resolution: Resolution;
+	readonly decidedBy: DecidedBy;
+}
+
 /** Melian's extensions to a SARIF `result`, carried in its property bag. */
 export type FindingProperties = Static<typeof findingPropertiesSchema>;
 
@@ -663,6 +731,8 @@ export interface FindingInput {
 	readonly verification?: Verification;
 	/** What the finding requires. Only adjudication sets it; a producer leaves it out, and the finding is unresolved. */
 	readonly resolution?: Resolution;
+	/** What a guardrail finding matched. Never part of the ID. */
+	readonly guardrail?: GuardrailMatch;
 	/** Defaults to `new`. */
 	readonly status?: FindingStatus;
 	readonly explanation: FindingExplanation;
@@ -799,6 +869,7 @@ export class Finding {
 				confidence: input.confidence,
 				verification: input.verification,
 				resolution: input.resolution,
+				guardrail: input.guardrail,
 				status: input.status ?? "new",
 				explanation: input.explanation,
 				source: input.source,
@@ -1223,47 +1294,157 @@ export class Finding {
 	}
 
 	/**
-	 * What the finding requires under `config`, the effective configuration at its path: the resolution configured for
-	 * its severity. A finding not shown to be caused by the change, `pre-existing` or `affected` without a `cause`
-	 * evidence location marked `proves`, is never above `advisory`, so an old defect cannot block an unrelated change. A
-	 * finding stored before Melian marked proving locations marks none, and any `cause` location of it counts. A
-	 * `guardrail/policy-change-review` finding on a `melian.yaml` is never below `acknowledge`, so no `melian.yaml`
-	 * silences the review of a change to itself. A member of "Pre-existing, important" ({@link Finding.important}) is
-	 * never below `advisory`, whatever the table maps its severity to: the caps apply first, then that floor. It decides from rule, path, severity, cause, and evidence alone, never
-	 * from a resolution the finding already carries.
+	 * What the finding requires under `source`, what resolution reads at its path. Each report it holds resolves through
+	 * {@link ResolutionWalk.decide}: a lens or static finding under its check and rule, once for each check that reported
+	 * it; a guardrail finding under each configured rule it matched, or its notice class. The caps apply to each, and
+	 * the strictest result stands. A `pre-existing` finding is never above the `preExisting` cap for its severity,
+	 * `advisory` unless a folder opted in to `acknowledge`. An `affected` finding with no `cause` location marked
+	 * `proves` is never above `advisory`; one stored before Melian marked proving locations marks none, and any `cause`
+	 * location of it counts. The floors apply last, as {@link Finding.floored} lists them. It decides from rule, path,
+	 * severity, cause, and evidence alone, never from a resolution the finding already carries.
 	 */
-	resolve(config: Pick<MelianConfig, "resolution">): Resolution {
-		const capped = this.#capped(config);
-		return capped === "silent" && this.important() ? "advisory" : capped;
+	resolve(source: ResolutionSource): Resolution {
+		return this.decision(source).resolution;
+	}
+
+	/** {@link Finding.resolve}, with the file and entry that decided. */
+	decision(source: ResolutionSource): FindingDecision {
+		return this.floored(this.capped(source));
 	}
 
 	/**
-	 * Whether only the floor of "Pre-existing, important" keeps the finding above `silent` under `config`. Such a
+	 * Whether only the floor of "Pre-existing, important" keeps the finding above `silent` under `source`. Such a
 	 * finding is listed and changes no verdict.
 	 */
-	lifted(config: Pick<MelianConfig, "resolution">): boolean {
-		return this.#capped(config) === "silent" && this.important();
+	lifted(source: ResolutionSource): boolean {
+		return this.decision(source).decidedBy.floor === "pre-existing-important";
 	}
 
-	// The resolution after the caps and before the floor of "Pre-existing, important".
-	#capped(config: Pick<MelianConfig, "resolution">): Resolution {
-		const configured = config.resolution[this.properties.severity];
-		const resolution =
-			this.causeRank() < 2 || resolutionOrder.indexOf(configured) > resolutionOrder.indexOf("advisory")
-				? configured
-				: "advisory";
+	/**
+	 * The resolution after the caps and before the floors, as one member of a defect resolves. With `unverified`, a
+	 * lens finding no verifier judged is never above `advisory`: adjudication sets it for a review that ran the verifier.
+	 */
+	capped(source: ResolutionSource, options: { readonly unverified?: boolean } = {}): FindingDecision {
+		const walk = ResolutionWalk.over(source);
+		const { severity, cause } = this.properties;
+		const limits: [NonNullable<DecidedBy["cap"]>, Resolution | undefined][] = [
+			[
+				"pre-existing",
+				cause === "pre-existing" ? (source.resolution.preExisting?.[severity] ?? "advisory") : undefined,
+			],
+			["unproven-cause", cause === "affected" && this.causeRank() === 2 ? "advisory" : undefined],
+			["unverified", options.unverified === true && this.unjudged() ? "advisory" : undefined],
+		];
+		return this.#claims()
+			.map((claim): FindingDecision => {
+				const decided = walk.decide(claim);
+				const decidedBy = withoutUndefined({
+					file: decided.file,
+					lens: decided.lens,
+					check: claim.check,
+					rule: claim.rule ?? claim.group,
+					requirement: { entry: decided.requirement.entry, key: decided.requirement.key },
+					ceiling: decided.ceiling && { entry: decided.ceiling.entry, key: decided.ceiling.key },
+				}) as DecidedBy;
+				return limits.reduce<FindingDecision>(
+					(result, [cap, limit]) =>
+						limit === undefined || lesser(result.resolution, limit) === result.resolution
+							? result
+							: { resolution: limit, decidedBy: { ...result.decidedBy, cap } },
+					{ resolution: decided.resolution, decidedBy },
+				);
+			})
+			.reduce((strictest, each) =>
+				resolutionOrder.indexOf(each.resolution) < resolutionOrder.indexOf(strictest.resolution) ? each : strictest,
+			);
+	}
+
+	/**
+	 * `decision` after the floors, for the defect this finding speaks for, whose reports carry `rules`. A
+	 * `guardrail/policy-change-review` notice on a `melian.yaml`, or one for a changed `resolution`, is never below
+	 * `acknowledge`, so no file silences the review of a change to itself. Neither is a defect a lens reported as
+	 * `melian/injection-attempt`, whatever a mapping, a ceiling, or a lens's default says. A member of "Pre-existing,
+	 * important" ({@link Finding.important}) is never below `advisory`.
+	 */
+	floored(decision: FindingDecision, rules: readonly string[] = [this.ruleId]): FindingDecision {
 		// The notice carries no snippet, so adjudication never merges it into a finding of another rule.
-		const ownPolicy =
+		const notice =
 			this.ruleId === "guardrail/policy-change-review" &&
-			posix.basename(this.properties.path) === melianPaths.config;
-		const belowAcknowledge = resolutionOrder.indexOf(resolution) > resolutionOrder.indexOf("acknowledge");
-		return ownPolicy && belowAcknowledge ? "acknowledge" : resolution;
+			(posix.basename(this.properties.path) === melianPaths.config || this.#resolutionNotice());
+		const floors: [NonNullable<DecidedBy["floor"]>, Resolution | undefined][] = [
+			["policy-change", notice ? "acknowledge" : undefined],
+			["injection-attempt", rules.includes(injectionAttemptRuleId) ? "acknowledge" : undefined],
+			["pre-existing-important", this.important() ? "advisory" : undefined],
+		];
+		return floors.reduce<FindingDecision>(
+			(result, [floor, least]) =>
+				least === undefined || lesser(result.resolution, least) === least
+					? result
+					: { resolution: least, decidedBy: { ...result.decidedBy, floor } },
+			decision,
+		);
 	}
 
-	/** A copy with `properties.resolution` set by {@link Finding.resolve}, replacing any it carries. */
-	resolved(config: Pick<MelianConfig, "resolution">): ResolvedFinding {
-		const resolution = this.resolve(config);
-		return Finding.from({ ...this.toJSON(), properties: { ...this.properties, resolution } }) as ResolvedFinding;
+	/**
+	 * Whether no verifier judged the finding: only lenses reported it, and it has no claim, or one without a verdict.
+	 * A static or guardrail report is never unjudged.
+	 */
+	unjudged(): boolean {
+		const { source, reportedBy = [source] } = this.properties;
+		const claims = VerificationState.from(this).claims;
+		return (
+			reportedBy.every(({ check }) => check.startsWith("lens.")) &&
+			(claims.length === 0 || claims.some((claim) => claim.verification === undefined))
+		);
+	}
+
+	/** Whether a verifier refuted every claim of the finding, and only lenses reported it. */
+	refuted(): boolean {
+		const { source, reportedBy = [source] } = this.properties;
+		const claims = VerificationState.from(this).claims;
+		return (
+			reportedBy.every(({ check }) => check.startsWith("lens.")) &&
+			claims.length > 0 &&
+			claims.every((claim) => claim.verification?.verdict === "refuted")
+		);
+	}
+
+	/** The severities at which every report the finding holds would resolve `silent` under `source`, before caps and floors. */
+	silentAt(source: ResolutionSource): Severity[] {
+		const walk = ResolutionWalk.over(source);
+		return (["P0", "P1", "P2", "P3", "nit"] as const).filter((severity) =>
+			this.#claims().every((claim) => walk.decide({ ...claim, severity }).resolution === "silent"),
+		);
+	}
+
+	// The reports the finding holds, as the walk reads them.
+	#claims(): ResolutionClaim[] {
+		const { severity, source, reportedBy = [source], guardrail } = this.properties;
+		if (source.check !== "guardrails") return reportedBy.map(({ check }) => ({ check, rule: this.ruleId, severity }));
+		const whole = { check: source.check, group: this.ruleId, severity };
+		if (guardrail === undefined) return [whole];
+		if ("rules" in guardrail) return guardrail.rules.map((rule) => ({ ...whole, rule: `${this.ruleId}/${rule}` }));
+		if (this.#resolutionNotice()) return [{ check: source.check, severity, tableOnly: true }];
+		return [{ ...whole, rule: `${this.ruleId}/${guardrail.notice}` }];
+	}
+
+	// Whether the finding is a notice of a changed `resolution` key, or of a lens's changed declared resolution.
+	#resolutionNotice(): boolean {
+		const { guardrail } = this.properties;
+		return guardrail !== undefined && "notice" in guardrail && guardrail.resolution === true;
+	}
+
+	/** A copy with `properties.resolution` and `properties.decidedBy` set by {@link Finding.decision}, replacing any it carries. */
+	resolved(source: ResolutionSource): ResolvedFinding {
+		return this.decided(this.decision(source));
+	}
+
+	/** A copy holding `decision`: the resolution adjudication reached, and what decided it. */
+	decided({ resolution, decidedBy }: FindingDecision): ResolvedFinding {
+		return Finding.from({
+			...this.toJSON(),
+			properties: { ...this.properties, resolution, decidedBy },
+		}) as ResolvedFinding;
 	}
 
 	/** The finding as it is stored: a SARIF result, its fields in their stored order. */
