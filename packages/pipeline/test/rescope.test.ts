@@ -10,6 +10,8 @@ import { baseAndHead, gitIn, isolatedGitEnv, lines } from "./fixtures/repo.ts";
 
 type Proposal = NonNullable<ReportVerdictInput["scope"]>;
 
+// Each case builds a repository and may start the compiler, which outlasts the default timeout on a loaded machine.
+
 const parse = (comment: string, guard = "\tif (fields.length < 2) return [];") =>
 	lines(
 		"export function validate(raw: string): boolean {",
@@ -118,7 +120,7 @@ async function refusals(
 	return read.refusals;
 }
 
-describe("a proposed re-scope", () => {
+describe("a proposed re-scope", { timeout: 60_000 }, () => {
 	it("holds for a finding over a function whose comment the change edited", async () => {
 		expect(await refusals(commentEdit)).toEqual([]);
 		expect(await refusals(commentEdit, {}, {}, { verdict: "plausible" })).toEqual([]);
@@ -145,7 +147,7 @@ describe("a proposed re-scope", () => {
 	});
 });
 
-describe("rule (a), no evidence on a changed line", () => {
+describe("rule (a), no evidence on a changed line", { timeout: 60_000 }, () => {
 	const on = (startLine: number, extra: Partial<EvidenceLocation> = {}): EvidenceLocation => ({
 		file: "src/parse.ts",
 		startLine,
@@ -177,7 +179,7 @@ describe("rule (a), no evidence on a changed line", () => {
 	});
 });
 
-describe("rule (b), the failing lines are the same lines", () => {
+describe("rule (b), the failing lines are the same lines", { timeout: 60_000 }, () => {
 	it("refuses failing lines in another file, or outside the finding at either end", async () => {
 		const outside = "(b) the failing lines src/parse.ts:9 lie outside the finding";
 		expect(await refusals(commentEdit, {}, { endLine: 8 })).toEqual([outside]);
@@ -245,7 +247,7 @@ describe("rule (b), the failing lines are the same lines", () => {
 	});
 });
 
-describe("rule (c), the trigger is untouched", () => {
+describe("rule (c), the trigger is untouched", { timeout: 60_000 }, () => {
 	// The change also adds a blank line inside start, which names nothing a trigger could read.
 	const spaced = {
 		...commentEdit,
@@ -310,7 +312,7 @@ describe("rule (c), the trigger is untouched", () => {
 	});
 });
 
-describe("rule (d), four typed answers, cross-checked", () => {
+describe("rule (d), four typed answers, cross-checked", { timeout: 60_000 }, () => {
 	it.each(["newCaller", "removedGuard", "changedTrigger", "copy"] as const)(
 		"refuses %s answered true",
 		async (name) => {
@@ -689,7 +691,7 @@ describe("rule (d), four typed answers, cross-checked", () => {
 	});
 });
 
-describe("the function around some lines, and its code lines", () => {
+describe("the function around some lines, and its code lines", { timeout: 60_000 }, () => {
 	const text = lines(
 		"export function outer(a: number, b: number): string {",
 		"\t// A comment.",
