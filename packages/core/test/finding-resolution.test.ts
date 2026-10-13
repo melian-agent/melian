@@ -89,6 +89,35 @@ describe("Finding.decision", () => {
 		expect(twice.decision(both)).toMatchObject({ resolution: "advisory", decidedBy: { check: "lens.security" } });
 	});
 
+	// The stated limit: sightings of one ID are merged before adjudication, at the highest severity. Step 20 of the plan,
+	// "Resolution per sighting", would resolve each at its own.
+	it("resolves one ID two lenses sighted at the highest severity, under the strictest of their policies", () => {
+		// lens.security sighted a P1 and lens.tests a P3; the findings document hands adjudication one P1 finding.
+		const merged = Finding.from({
+			...finding({ severity: "P1" }).toJSON(),
+			properties: {
+				...finding({ severity: "P1" }).properties,
+				reportedBy: [
+					{ check: "lens.security", version: "1" },
+					{ check: "lens.tests", version: "1" },
+				],
+			},
+		});
+		const opposite = layered({
+			"melian.yaml": {
+				checks: { "lens.security": { P1: "silent", P3: "silent" }, "lens.tests": { P1: "block", P3: "silent" } },
+			},
+		});
+		// Each alone would be silent: security's P1, and tests' P3. Together the P1 meets the tests entry's P1.
+		expect(merged.decision(opposite)).toMatchObject({ resolution: "block", decidedBy: { check: "lens.tests" } });
+		const reversed = layered({
+			"melian.yaml": {
+				checks: { "lens.security": { P1: "block", P3: "silent" }, "lens.tests": { P1: "silent", P3: "silent" } },
+			},
+		});
+		expect(merged.decision(reversed)).toMatchObject({ resolution: "block", decidedBy: { check: "lens.security" } });
+	});
+
 	it("sets the resolution and what decided it on a resolved copy, replacing any it carries", () => {
 		const resolved = finding({ resolution: "silent" }).resolved(defaultConfig);
 		expect(resolved.properties.resolution).toBe("block");

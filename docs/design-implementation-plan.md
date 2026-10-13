@@ -129,6 +129,8 @@ Done when the `melian/review` status is required on `main`, and every pull reque
     - Done when, the stored shape: the verification record holds the original scope and the verifier's reason, with a version bump and a reopen test. The stored `base` answers show how often verifiers already say a failure predates the change.
     - Done when, surfacing: a re-scoped finding whose original severity is P2 or higher joins "Pre-existing, important", with the reason and the original scope.
 
+20. `[ ]` **Resolution per sighting.** Not started. Carry each sighting's severity and cause through to adjudication. Two producers that sight one finding ID are merged by the findings document at the highest severity and the strongest cause, so the finding resolves once per check at those values. [decisions/2026-10-13-resolution-as-built.md](decisions/2026-10-13-resolution-as-built.md) states the limit. Unblocks resolving two lenses that share a rule ID each under its own severity and caps.
+
 Not yet scheduled, from the same research: the comparison importer counts a CodeRabbit thread the bot resolved, citing a fixing commit, as an accepted finding. It is a follow-up to step 15, as [decisions/2026-10-12-lens-roadmap-after-the-research.md](decisions/2026-10-12-lens-roadmap-after-the-research.md) records.
 
 ### Milestone 2 in flight, 2026-10-08
