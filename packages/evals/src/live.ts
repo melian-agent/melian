@@ -7,7 +7,8 @@
  * `live: false` is skipped and left out of the corpus score. `MELIAN_EVAL_TRIAGE=1` runs the triage corpus instead:
  * the fallback decider on `MELIAN_EVAL_MODEL` chooses each lens's level `MELIAN_EVAL_TRIAGE_PASSES` times (three by
  * default), the measurement prints, `MELIAN_EVAL_TRIAGE_OUT` writes it as JSON, and `MELIAN_EVAL_TRIAGE_BASELINE`
- * names an earlier measurement to compare, exiting 1 when the questions choose worse.
+ * names an earlier measurement to compare, exiting 1 when the questions choose worse. `MELIAN_EVAL_SHOW=1` prints each
+ * golden's rendered review under its score, for a lens or a verifier golden.
  *
  * @module
  */
@@ -22,6 +23,7 @@ import {
 	scoreGolden,
 	selectGoldens,
 } from "./goldens.ts";
+import { shownOutput } from "./live-output.ts";
 import { loadTriageGoldens, runTriageGolden, type TriageChosen, TriageQuestions, TriageResults } from "./triage.ts";
 import { loadVerifierGoldens, runVerifierGolden, scoreVerifierGolden } from "./verifier.ts";
 
@@ -53,6 +55,7 @@ if (process.env.MELIAN_EVAL_VERIFIER === "1") {
 		console.log(
 			`${golden.name}: ${score.verdict ?? "unjudged"}, ${score.passed ? "passed" : "failed"} (${score.kind})`,
 		);
+		for (const line of shownOutput(run.rendered)) console.log(line);
 	}
 	console.log(`verifier corpus: ${scores.filter((score) => score.passed).length}/${scores.length} passed`);
 	process.exit(scores.every((score) => score.passed) ? 0 : 1);
@@ -113,6 +116,7 @@ for (const golden of goldens) {
 	console.log(
 		`${golden.name}: precision ${score.precision.toFixed(2)}, recall ${score.recall.toFixed(2)} (${score.reported} reported, ${score.expected} expected)`,
 	);
+	for (const line of shownOutput(run.rendered)) console.log(line);
 }
 const corpus = scoreCorpus(scores);
 console.log(`corpus: precision ${corpus.precision.toFixed(2)}, recall ${corpus.recall.toFixed(2)}`);
