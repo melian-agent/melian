@@ -101,7 +101,10 @@ export function replyKey(id: string, thread: string, dismissal?: string): string
 export interface PublicationPlan {
 	/** Findings that need attention and were not open before, each with its placement. */
 	readonly post: readonly PlacedFinding[];
-	/** Findings an earlier revision posted that still need attention. They are not posted again. */
+	/**
+	 * Findings an earlier revision posted that still need attention. They are not posted again. A member of
+	 * "Pre-existing, important" that only its floor lifted is left out, as it is out of every tally.
+	 */
 	readonly stillOpen: readonly string[];
 	/** Findings an earlier revision posted that this revision no longer reports, or that were dismissed since. */
 	readonly resolved: readonly ClosedFinding[];

@@ -459,6 +459,43 @@ describe("an important pre-existing finding that only its floor lifts", () => {
 		expect(verdict.reviewStatus()).toEqual({ state: "success", description: "Passed" });
 	});
 
+	it("does not count it as posted on an earlier revision, which the summary would then contradict", () => {
+		const published = { ruleId: "no-eval", path: "src/run.ts", line: 12, revision: "1".repeat(40) };
+		const lines = { "src/run.ts": [[1, 20]], "src/other.ts": [[1, 20]] } as const;
+		const alone = decide([old]);
+		const plan = alone.publication({ [old.id]: published }, lines, revision);
+		expect(plan.stillOpen).toEqual([]);
+		expect(plan.post).toEqual([]);
+		expect(plan.open).toEqual({ [old.id]: published });
+		const body = renderReviewBody(
+			{
+				pullRequest: 7,
+				revision,
+				base,
+				fingerprint: "0123456789abcdef",
+				round: 2,
+				verdict: alone,
+				findings: plan.post,
+				stillOpen: plan.stillOpen.length,
+				resolved: [],
+				secret,
+			},
+			links,
+		);
+		expect(body).toContain("No findings need attention.");
+		expect(body).not.toContain("posted on an earlier revision");
+		const mixed = decide([old, plain]);
+		const both = mixed.publication(
+			{ [old.id]: published, [plain.id]: { ...published, path: "src/other.ts" } },
+			lines,
+			revision,
+		);
+		expect(both.stillOpen).toEqual([plain.id]);
+		// A member the floor did not lift is an advisory finding like any other, and still open like any other.
+		const usual = new Adjudication({ findings: [old], manifest: [], checks: [], config: defaultConfig }).adjudicate();
+		expect(usual.publication({ [old.id]: published }, lines, revision).stillOpen).toEqual([old.id]);
+	});
+
 	it("counts the ordinary findings beside it, and not the member", () => {
 		const verdict = decide([old, plain]);
 		const body = bodyOf(verdict, verdict.attention());
