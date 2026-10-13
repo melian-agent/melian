@@ -1,0 +1,118 @@
+{
+  "correctness": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "contracts": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "trust-boundary": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "removed-behaviour": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "tests": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "conventions": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "design": [
+    {
+      "calls": [
+        {
+          "name": "read_file",
+          "arguments": {
+            "path": "package.json",
+            "revision": "base"
+          },
+          "expectToolResult": "\"yaml\": \"2.9.1\""
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "search",
+          "arguments": {
+            "pattern": "from \"yaml\"",
+            "path": "src",
+            "revision": "base"
+          },
+          "expectToolResult": "import { parse } from \"yaml\";"
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "read_file",
+          "arguments": {
+            "path": "src/note.ts"
+          },
+          "expectToolResult": "line.indexOf(\":\")"
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "report_finding",
+          "arguments": {
+            "file": "src/note.ts",
+            "line": 6,
+            "rule": "reimplements-an-authority",
+            "severity": "P1",
+            "explanation": {
+              "what": "readHeader parses a note's YAML header by splitting each line at its first colon, though the repository already depends on yaml, whose parse reads that format.",
+              "why": "The hand-written loop reads only a plain scalar on one line. Quoted values, lists, and every other YAML shape come back as raw text, and each one found later is one more special case.",
+              "fix": "Parse the header block with yaml's parse, as loadConfig does."
+            },
+            "failureScenario": "A note opens with a header whose title line is `title: \"Plans: 2027\"` and whose tags line is `tags: [work, home]`. readHeader returns the title with its quotation marks kept, `\"Plans: 2027\"`, and tags as the text `[work, home]`. yaml's parse, which loadConfig already calls, returns the title Plans: 2027 and a list of two tags.",
+            "evidence": [
+              {
+                "file": "src/note.ts",
+                "line": 6,
+                "endLine": 9,
+                "role": "cause"
+              },
+              {
+                "file": "package.json",
+                "line": 5,
+                "role": "context",
+                "revision": "base"
+              },
+              {
+                "file": "src/config.ts",
+                "line": 2,
+                "role": "context",
+                "revision": "base"
+              }
+            ]
+          },
+          "expectToolResult": "recorded finding"
+        }
+      ]
+    },
+    {
+      "text": "Reported 1 findings."
+    }
+  ],
+  "durability": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ]
+}
