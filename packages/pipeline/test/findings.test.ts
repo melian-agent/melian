@@ -3,6 +3,7 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+	Adjudication,
 	Changeset,
 	defaultConfig,
 	dismissalVersion,
@@ -896,6 +897,45 @@ describe("lowered and re-scoped sightings", () => {
 			expect(await findingsVersion(harness, root.id, "rev1", context)).toBe(version);
 			expect((await readFindings(harness, root.id, "rev1", context))[0]!.properties.verification).toEqual(record);
 		}
+	});
+
+	it("keeps the acknowledgement of a pre-existing finding at the next revision, so a preExisting cap asks once", async () => {
+		const { harness, root } = await open(createMemoryStorage());
+		const old = Finding.create({ ...input, severity: "P0", cause: "pre-existing", resolution: undefined });
+		const capped = {
+			resolution: {
+				...defaultConfig.resolution,
+				preExisting: { ...defaultConfig.resolution.preExisting, P0: "acknowledge" },
+			},
+			ruleAliases: {},
+		} as const;
+		const decide = async (revision: string) =>
+			new Adjudication({
+				findings: await readFindings(harness, root.id, revision, context),
+				manifest: [],
+				checks: [],
+				config: capped,
+				seenBefore: await seenBefore(harness, root.id, revision, context),
+			}).adjudicate();
+		await root.commit((tx) => upsertFinding(tx, root.id, old, "rev1"), context);
+		const first = await decide("rev1");
+		expect(first.status).toBe("findings");
+		expect(first.findings.acknowledge.map((each) => each.id)).toEqual([old.id]);
+		expect(first.preExistingImportant).toMatchObject([{ id: old.id, state: "new" }]);
+
+		await root.commit((tx) => upsertFinding(tx, root.id, old, "rev2"), context);
+		const carried = await decide("rev2");
+		expect(carried.findings.acknowledge.map((each) => each.id)).toEqual([old.id]);
+		expect(carried.preExistingImportant).toMatchObject([{ id: old.id, state: "carried" }]);
+
+		// The maintainer's answer is a dismissal, kept by finding ID, so the next revision does not ask again.
+		const answer = { by: "tal", reason: "Tracked for the next release.", at: "2026-10-13T00:00:00.000Z" };
+		await root.commit((tx) => dismissFinding(tx, root.id, old.id, answer), context);
+		await root.commit((tx) => upsertFinding(tx, root.id, old, "rev3"), context);
+		const answered = await decide("rev3");
+		expect(answered.status).toBe("passed");
+		expect(answered.dismissed.map((each) => each.id)).toEqual([old.id]);
+		expect(answered.preExistingImportant).toBeUndefined();
 	});
 
 	it("names a finding as seen before only at a revision after the one that first sighted it", async () => {
