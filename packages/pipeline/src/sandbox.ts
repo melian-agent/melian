@@ -24,22 +24,15 @@ export interface SandboxPaths {
 	readonly loopback?: boolean;
 }
 
-// What a Node process needs from macOS to start: the dynamic linker's cache, the system frameworks and libraries, the
-// locale and time zone data, and the root directory itself, which dyld lists. Nothing here is the reviewer's own.
-const systemReads = [
-	"/usr/lib",
-	"/usr/bin",
-	"/usr/share",
-	"/bin",
-	"/System",
-	"/Library/Preferences",
-	"/Library/Apple",
-	"/private/etc",
-	// /bin/sh reads the link in here that chooses its shell, and complains on stderr when it cannot.
-	"/private/var/select",
-	"/private/var/db/dyld",
-	"/private/var/db/timezone",
-];
+// Directories of the sealed system volume, the same on every Mac of one release, so nothing in them is the reviewer's own.
+// `/usr/lib` and `/System` hold dyld and the libraries and frameworks every program links; `/usr/bin` and `/bin` hold the
+// shell and the tools a command line names, such as `env`, `sh`, and `date`; `/usr/share` holds the locale and ICU data
+// those libraries load. The last is the time zone database `/etc/localtime` points into, which `date` and Node read.
+const systemReads = ["/usr/lib", "/usr/bin", "/usr/share", "/bin", "/System", "/private/var/db/timezone"];
+
+// Single files outside the sealed volume. `/etc/localtime` names the host's time zone, so a log's times match the
+// reviewer's. `/bin/sh` reads the `sh` link to choose its shell, and `xcrun`, behind the git shim, reads `developer_dir`.
+const systemFiles = ["/private/etc/localtime", "/private/var/select/sh", "/private/var/select/developer_dir"];
 
 // The Linux counterparts, bound read-only when the host has them. Of /etc only what a process needs to resolve localhost, name
 // its user, and tell the time is bound, so no credential file in it is visible; the alternatives directory is bound too,
@@ -122,10 +115,10 @@ function available(backend: SandboxBackend): boolean {
 }
 
 /**
- * A way to run the head's own code with no route off the machine and nothing readable but the run's files. Problem: the mutation
- * check runs the head's tests, setup files, and Vitest configuration as the reviewer, so a fork's test could read the
- * reviewer's `auth.json` and send it out. Solution: the command runs under a seatbelt profile on macOS or inside a
- * bubblewrap namespace on Linux, and a host with neither runs nothing.
+ * A way to run a command with no route off the machine and nothing readable but the run's files. Problem: a command
+ * that reads what a pull request wrote, or runs it, does so as the reviewer, and could read the reviewer's `auth.json`
+ * and send it out. Solution: the command runs under a seatbelt profile on macOS or inside a bubblewrap namespace on
+ * Linux. What a caller does on a host with neither is the caller's rule.
  */
 export class Sandbox {
 	readonly backend: SandboxBackend;
@@ -187,40 +180,57 @@ export class Sandbox {
 		const developer = developerDirectory();
 		const writable = [paths.scratch];
 		const runtime = nodeDirectories(paths.node);
-		const readable = [...systemReads, ...(developer === undefined ? [] : [developer]), ...runtime, ...writable].map(
-			(path) => `(subpath ${profileString(path)})`,
-		);
-		const installs = paths.installs.map((path) => `(subpath ${profileString(path)})`);
+		const readable = [
+			'(literal "/")',
+			...[...systemFiles, paths.node].map((path) => `(literal ${profileString(path)})`),
+			...[
+				...systemReads,
+				...(developer === undefined ? [] : [developer]),
+				...runtime,
+				...writable,
+				...paths.installs,
+			].map((path) => `(subpath ${profileString(path)})`),
+		].join(" ");
 		const parents = [...new Set([paths.node, ...runtime, ...writable, ...paths.installs].flatMap(ancestors))].map(
 			(path) => `(literal ${profileString(path)})`,
 		);
 		return [
 			"(version 1)",
 			"(deny default)",
-			"(allow process-exec)",
+			// Bash forks for every command, and Node for every child.
 			"(allow process-fork)",
+			// A program runs only from where it can be read, so nothing elsewhere on the disk starts, readable or not.
+			`(allow process-exec ${readable})`,
+			// dyld maps each library a program links, from the same places.
+			`(allow file-map-executable ${readable})`,
+			// A parent stops the children it started, as Node does at a timeout. No process outside this sandbox is a target.
 			"(allow signal (target same-sandbox))",
-			"(allow process-info* (target same-sandbox))",
+			// Node aborts at start without the CPU count and page size, and libuv reads more by number, which a profile cannot
+			// list by name. A sysctl is read-only host description: hardware, kernel version, host name.
 			"(allow sysctl-read)",
-			"(allow file-map-executable)",
-			"(allow ipc-posix-sem)",
-			"(allow ipc-posix-shm*)",
-			"(allow system-mac-syscall)",
-			`(allow file-read* (literal "/") ${[`(literal ${profileString(paths.node)})`, ...readable, ...installs].join(" ")})`,
-			// /etc and /var are links into /private. The resolver stats /etc to find /etc/hosts, and the git shim reads the link in /var/select.
+			// dyld lists the root directory before anything runs; without it the process aborts with no message.
+			`(allow file-read* ${readable})`,
+			// /etc and /var are links into /private, which a path through them stats. Each directory above a granted path is
+			// stat-ed on the way to it; metadata shows that a directory exists, never what it holds.
 			`(allow file-read-metadata (literal "/") (literal "/etc") (literal "/var") ${parents.join(" ")})`,
 			`(allow file-write* ${writable.map((path) => `(subpath ${profileString(path)})`).join(" ")})`,
-			'(allow file-read* (literal "/dev/null") (literal "/dev/zero") (literal "/dev/random") (literal "/dev/urandom") (literal "/dev/dtracehelper"))',
-			'(allow file-write-data (literal "/dev/null") (literal "/dev/dtracehelper"))',
+			// Every shell redirect to discard output opens /dev/null, Melian's own commands included. Programs that seed from a
+			// device and not a system call, such as Python, open /dev/urandom. No other device, so no terminal.
+			'(allow file-read* (literal "/dev/null") (literal "/dev/urandom"))',
+			'(allow file-write-data (literal "/dev/null"))',
 			'(deny file-read* file-write* (literal "/dev/tty"))',
-			'(allow file-ioctl (literal "/dev/dtracehelper"))',
 			// No Mach service and nothing in the host's per-user temporary directory. `xcrun`, which the git shim runs, keeps a
 			// cache there that host git reads later, so a write would let a command choose the program host git runs. Denied
 			// the directory's name, `xcrun` keeps its cache in `TMPDIR`, which every caller points into scratch.
 			// Loopback is the most a caller can ask for: never a remote address or a unix-domain socket. Seatbelt cannot name a
 			// port the command picks for itself, so the allowance is every loopback port or none.
+			// With it comes /etc/hosts, where the resolver finds `localhost` once the lookup service is out of reach.
 			...(paths.loopback === true
-				? ['(allow network-inbound (local ip "localhost:*"))', '(allow network-outbound (remote ip "localhost:*"))']
+				? [
+						'(allow network-inbound (local ip "localhost:*"))',
+						'(allow network-outbound (remote ip "localhost:*"))',
+						'(allow file-read* (literal "/private/etc/hosts"))',
+					]
 				: []),
 			"",
 		].join("\n");

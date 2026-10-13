@@ -516,13 +516,36 @@ describe("sandbox policy on a host that cannot start nested sandboxes", () => {
 
 	it("renders just the allowed reads and parent metadata when developer tools are absent", () => {
 		host(undefined);
-		const profile = seatbelt.profile(where)!;
-		expect(profile).toContain('(allow file-read* (literal "/") (literal "/opt/node/bin/node") (subpath "/usr/lib")');
-		expect(profile).toContain('(subpath "/work") (subpath "/checkout/node_modules"))');
-		expect(profile).toContain(
+		const readable =
+			'(literal "/") (literal "/private/etc/localtime") (literal "/private/var/select/sh") (literal "/private/var/select/developer_dir") (literal "/opt/node/bin/node") (subpath "/usr/lib") (subpath "/usr/bin") (subpath "/usr/share") (subpath "/bin") (subpath "/System") (subpath "/private/var/db/timezone") (subpath "/work") (subpath "/checkout/node_modules")';
+		// The whole profile, rule for rule: a grant added or widened anywhere fails here.
+		expect(seatbelt.profile(where)!.split("\n")).toEqual([
+			"(version 1)",
+			"(deny default)",
+			"(allow process-fork)",
+			`(allow process-exec ${readable})`,
+			`(allow file-map-executable ${readable})`,
+			"(allow signal (target same-sandbox))",
+			"(allow sysctl-read)",
+			`(allow file-read* ${readable})`,
 			'(allow file-read-metadata (literal "/") (literal "/etc") (literal "/var") (literal "/opt/node/bin") (literal "/opt/node") (literal "/opt") (literal "/checkout"))',
-		);
-		expect(profile).toContain('(allow file-write* (subpath "/work"))');
+			'(allow file-write* (subpath "/work"))',
+			'(allow file-read* (literal "/dev/null") (literal "/dev/urandom"))',
+			'(allow file-write-data (literal "/dev/null"))',
+			'(deny file-read* file-write* (literal "/dev/tty"))',
+			"",
+		]);
+		expect(
+			seatbelt
+				.profile({ ...where, loopback: true })!
+				.split("\n")
+				.slice(-4),
+		).toEqual([
+			'(allow network-inbound (local ip "localhost:*"))',
+			'(allow network-outbound (remote ip "localhost:*"))',
+			'(allow file-read* (literal "/private/etc/hosts"))',
+			"",
+		]);
 		expect(bubblewrap.profile(where)).toBeUndefined();
 	});
 
@@ -557,11 +580,10 @@ describe("sandbox policy on a host that cannot start nested sandboxes", () => {
 		const deviceRules = seatbelt
 			.profile(where)!
 			.split("\n")
-			.filter((rule) => rule.startsWith("(allow") && rule.includes("/dev"));
+			.filter((rule) => rule.startsWith("(allow") && rule.includes('"/dev/'));
 		expect(deviceRules).toEqual([
-			'(allow file-read* (literal "/dev/null") (literal "/dev/zero") (literal "/dev/random") (literal "/dev/urandom") (literal "/dev/dtracehelper"))',
-			'(allow file-write-data (literal "/dev/null") (literal "/dev/dtracehelper"))',
-			'(allow file-ioctl (literal "/dev/dtracehelper"))',
+			'(allow file-read* (literal "/dev/null") (literal "/dev/urandom"))',
+			'(allow file-write-data (literal "/dev/null"))',
 		]);
 	});
 	it("stops ancestor traversal at the root before asking for its parent", () => {
@@ -645,9 +667,7 @@ it("denies terminal device reads and writes in the seatbelt policy", () => {
 	const sandbox = Object.assign(Object.create(Sandbox.prototype) as Sandbox, { backend: "seatbelt" as const });
 	const profile = sandbox.profile(paths())!;
 	expect(profile).toContain('(deny file-read* file-write* (literal "/dev/tty"))');
-	expect(profile).not.toContain(
-		'(allow file-write-data (literal "/dev/null") (literal "/dev/dtracehelper") (literal "/dev/tty"))',
-	);
+	expect(profile).not.toMatch(/^\(allow[^\n]*\/dev\/tty/m);
 });
 
 it.skipIf(!seatbeltAvailable || python === "")(
@@ -745,5 +765,66 @@ console.log(JSON.stringify(result));`,
 			rmSync(created, { force: true });
 			rmSync(existing, { force: true });
 		}
+	},
+);
+
+it.skipIf(!seatbeltAvailable)(
+	"refuses what the profile no longer grants: programs, host files, devices, and other processes",
+	{ timeout: 60_000 },
+	async () => {
+		const sandbox = Sandbox.detect("darwin")!;
+		const where = paths();
+		const outside = join(base, "outside/true");
+		copyFileSync("/usr/bin/true", outside);
+		const probe = join(where.worktree, "narrow.cjs");
+		writeFileSync(
+			probe,
+			`const fs = require("node:fs");
+const { spawnSync } = require("node:child_process");
+const [outside, host] = process.argv.slice(2);
+const result = {};
+const attempt = (name, body) => { try { body(); result[name] = "ok"; } catch (error) { result[name] = error.code; } };
+const start = (file, args = []) => { const r = spawnSync(file, args); if (r.error) throw r.error; if (r.status !== 0) throw Object.assign(new Error("exit"), { code: "exit " + r.status }); };
+attempt("run a system tool", () => start("/usr/bin/true"));
+attempt("run a program outside the readable set", () => start(outside));
+attempt("run a program in sbin", () => start("/sbin/ifconfig", ["lo0"]));
+attempt("list processes", () => start("/bin/ps", ["-ax"]));
+attempt("signal a process outside", () => process.kill(Number(host), 0));
+attempt("stop its own child", () => start("/bin/sh", ["-c", "/bin/sleep 30 & kill $!"]));
+for (const path of ["/Library/Preferences", "/Library/Apple", "/private/etc", "/private/var/select", "/Users", "/dev"])
+  attempt("list " + path, () => fs.readdirSync(path));
+for (const path of ["/private/etc/hosts", "/private/etc/passwd", "/dev/zero", "/dev/random", "/dev/dtracehelper"])
+  attempt("read " + path, () => fs.closeSync(fs.openSync(path, "r")));
+for (const path of ["/private/etc/localtime", "/private/var/select/sh", "/dev/urandom", "/dev/null"])
+  attempt("read " + path, () => fs.closeSync(fs.openSync(path, "r")));
+console.log(JSON.stringify(result));`,
+		);
+		const inner = `${JSON.stringify(process.execPath)} ${JSON.stringify(probe)} ${JSON.stringify(outside)} ${process.pid}`;
+		const { stdout } = await run("/bin/bash", ["-c", sandbox.command(inner, where, "", sandbox.profile(where))], {
+			env: { ...sandbox.environment(), HOME: join(where.scratch, "home"), TMPDIR: where.scratch },
+		});
+		expect(JSON.parse(stdout)).toEqual({
+			"run a system tool": "ok",
+			"run a program outside the readable set": "EPERM",
+			"run a program in sbin": "EPERM",
+			"list processes": "EPERM",
+			"signal a process outside": "EPERM",
+			"stop its own child": "ok",
+			"list /Library/Preferences": "EPERM",
+			"list /Library/Apple": "EPERM",
+			"list /private/etc": "EPERM",
+			"list /private/var/select": "EPERM",
+			"list /Users": "EPERM",
+			"list /dev": "EPERM",
+			"read /private/etc/hosts": "EPERM",
+			"read /private/etc/passwd": "EPERM",
+			"read /dev/zero": "EPERM",
+			"read /dev/random": "EPERM",
+			"read /dev/dtracehelper": "EPERM",
+			"read /private/etc/localtime": "ok",
+			"read /private/var/select/sh": "ok",
+			"read /dev/urandom": "ok",
+			"read /dev/null": "ok",
+		});
 	},
 );
