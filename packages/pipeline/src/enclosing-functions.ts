@@ -15,6 +15,7 @@ import {
 	isVariableDeclaration,
 	type Node,
 	type SourceFile,
+	SyntaxKind,
 } from "typescript/unstable/ast";
 import { HeadProgram } from "./compiler-graph.ts";
 import { quoteUntrusted } from "./untrusted.ts";
@@ -80,11 +81,12 @@ interface Callable {
 	readonly defaultExport: boolean;
 }
 
-// Whether the declaration that names `node`, the function itself or the class around it, opens with `export default`.
-function exportedDefault(node: Node, source: SourceFile, text: string): boolean {
+// Whether the declaration that names `node`, the function itself or the class around it, carries the compiler's
+// `default` modifier. Its text is no guide: a comment may sit between `export` and `default`.
+function exportedDefault(node: Node): boolean {
 	for (let each: Node | undefined = node; each !== undefined; each = each.parent) {
 		if (isFunctionDeclaration(each) || isClassDeclaration(each))
-			return /^export\s+default\b/.test(text.slice(each.getStart(source)));
+			return each.modifiers?.some((modifier) => modifier.kind === SyntaxKind.DefaultKeyword) === true;
 	}
 	return false;
 }
@@ -158,7 +160,7 @@ function callables(source: SourceFile, text: string, limit: number): Callable[] 
 				name,
 				startLine: lineAt(starts, node.getStart(source)),
 				endLine: lineAt(starts, node.end),
-				defaultExport: exportedDefault(node, source, text),
+				defaultExport: exportedDefault(node),
 			});
 		}
 		node.forEachChild(visit);

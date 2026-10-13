@@ -189,7 +189,7 @@ describe("rule (b), the failing lines are the same lines", { timeout: 60_000 }, 
 	});
 
 	it("refuses failing lines it cannot read at the head or at the base", async () => {
-		const past = { file: "src/parse.ts", line: 11, endLine: 12, baseLine: 10 };
+		const past = { file: "src/parse.ts", line: 11, endLine: 12, baseLine: 11 };
 		expect(await refusals(commentEdit, { failing: past })).toEqual([
 			"(b) Melian cannot read src/parse.ts:11-12 at the head",
 			"(d) Melian cannot find the function that holds the failing lines with the compiler",
@@ -489,41 +489,78 @@ describe("rule (d), four typed answers, cross-checked", { timeout: 60_000 }, () 
 
 	it("refuses when a function holds the failing lines at only one of the two revisions", async () => {
 		const cannot = "(d) Melian cannot find the function that holds the failing lines with the compiler";
-		const mixed = (comment: string) =>
+		const body = ['const fields = ["a", "b"];', "// The second field.", "export const name = fields[1].trim();"];
+		const loose = lines(...body);
+		const wrapped = lines("export function pick(): void {", ...body, "}");
+		const seen = { path: "src/mixed.ts", evidence: [] };
+		expect(
+			await refusals(
+				{ "src/mixed.ts": wrapped },
+				{ failing: { file: "src/mixed.ts", line: 4, baseLine: 3 } },
+				{ ...seen, startLine: 1, endLine: 5 },
+				{ base: { "src/mixed.ts": loose } },
+			),
+		).toEqual([cannot]);
+		expect(
+			await refusals(
+				{ "src/mixed.ts": loose },
+				{ failing: { file: "src/mixed.ts", line: 3, baseLine: 4 } },
+				{ ...seen, startLine: 1, endLine: 3 },
+				{ base: { "src/mixed.ts": wrapped } },
+			),
+		).toEqual([cannot]);
+	});
+
+	it("refuses base lines that hold the same bytes elsewhere, where the head's lines did not come from", async () => {
+		const twice = (guard: string[], comment: string) =>
 			lines(
-				'const fields = ["a", "b"];',
+				"export function first(raw: string): string {",
+				'\tconst fields = raw.split(",");',
+				...guard,
 				"\tconst name = fields[1].trim();",
-				"export function pick(): string {",
+				"\treturn name;",
+				"}",
+				"",
+				"export function second(raw: string): string {",
 				comment,
+				'\tconst fields = raw.split(";");',
 				"\tconst name = fields[1].trim();",
 				"\treturn name;",
 				"}",
 			);
-		const seen = { path: "src/mixed.ts", startLine: 1, endLine: 7, evidence: [] };
-		const options = { base: { "src/mixed.ts": mixed("\t// Second.") } };
-		const head = { "src/mixed.ts": mixed("\t// The second field.") };
-		const inFunction = { failing: { file: "src/mixed.ts", line: 5, baseLine: 2 } };
-		expect(await refusals(head, inFunction, seen, options)).toEqual([cannot]);
-		const atTop = { failing: { file: "src/mixed.ts", line: 2, baseLine: 5 } };
-		expect(await refusals(head, atTop, seen, options)).toEqual([cannot]);
+		const seen = { path: "src/twice.ts", startLine: 1, endLine: 12, evidence: [] };
+		const options = { base: { "src/twice.ts": twice(['\tif (fields.length < 2) return "";'], "\t// Split.") } };
+		const head = { "src/twice.ts": twice([], "\t// Split it.") };
+		// The guard above head line 3 is gone. Base line 11 holds the same bytes, in a function the change left alone.
+		expect(await refusals(head, { failing: { file: "src/twice.ts", line: 3, baseLine: 11 } }, seen, options)).toEqual(
+			["(b) the failing lines came from base line 4, not line 11 as the proposal says"],
+		);
+		expect(await refusals(head, { failing: { file: "src/twice.ts", line: 3, baseLine: 4 } }, seen, options)).toEqual([
+			"(d) a hunk deletes code at base line 3, inside the function that holds the failure",
+		]);
 	});
 
 	it("refuses a named function or a class that is the module's default export", async () => {
 		const refused =
 			"(d) the failing function is a default export or has a computed name, so Melian cannot name its callers";
-		const named = (comment: string) =>
-			lines(
-				"export default function pick(raw: string): string {",
-				comment,
-				'\treturn raw.split(",")[1].trim();',
-				"}",
-			);
+		const named = (comment: string, opening = "export default function") =>
+			lines(`${opening} pick(raw: string): string {`, comment, '\treturn raw.split(",")[1].trim();', "}");
 		expect(
 			await refusals(
 				{ "src/pick.ts": named("\t// The second field.") },
 				{ failing: { file: "src/pick.ts", line: 3, baseLine: 3 } },
 				{ path: "src/pick.ts", startLine: 1, endLine: 4, evidence: [] },
 				{ base: { "src/pick.ts": named("\t// Second.") } },
+			),
+		).toEqual([refused]);
+		// A comment between the two keywords changes the text and not what the compiler exports.
+		const spaced = "export /* public */ default function";
+		expect(
+			await refusals(
+				{ "src/pick.ts": named("\t// The second field.", spaced) },
+				{ failing: { file: "src/pick.ts", line: 3, baseLine: 3 } },
+				{ path: "src/pick.ts", startLine: 1, endLine: 4, evidence: [] },
+				{ base: { "src/pick.ts": named("\t// Second.", spaced) } },
 			),
 		).toEqual([refused]);
 		const held = (comment: string) =>
@@ -729,6 +766,16 @@ describe("rule (d), four typed answers, cross-checked", { timeout: 60_000 }, () 
 		};
 		expect(await refusals({ ...commentEdit, ...hidden }, {}, {}, { base: hidden })).toEqual([
 			"(d) src/alias.ts:2 is too long for Melian to read whole, so it may give parseRecord another name",
+		]);
+	});
+
+	it("searches under the base's attributes, so the head cannot mark the file that holds an alias as binary", async () => {
+		const alias = {
+			"src/alias.ts": 'import { parseRecord } from "./parse.ts";\nexport const decode = parseRecord;\n',
+		};
+		const hiding = { ...commentEdit, ".gitattributes": "src/alias.ts -diff\n" };
+		expect(await refusals(hiding, {}, {}, { base: alias })).toEqual([
+			"(d) src/alias.ts:2 names parseRecord without calling it, so a caller may reach it under another name",
 		]);
 	});
 
