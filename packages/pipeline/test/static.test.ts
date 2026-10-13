@@ -31,6 +31,10 @@ import { emptyVitestInstall } from "./fixtures/vitest-listing.ts";
 
 let repo: string;
 
+// What an error says a tool printed on this host. Where the host has no sandbox, as inside a mutation run's own, the
+// tool ran unconfined and its output is withheld.
+const said = (printed: string) => (hostSandbox === undefined ? "output withheld: the tool ran unconfined" : printed);
+
 beforeEach(() => {
 	fakeMutationProcesses();
 	repo = createRepository();
@@ -895,7 +899,9 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 			(caught: unknown) => caught,
 		);
 		expect((error as CheckError).code).toBe("toolFailed");
-		expect((error as CheckError).message).toMatch(/exited with code 134 on tsconfig.json: out of memory/);
+		expect((error as CheckError).message).toContain(
+			`exited with code 134 on tsconfig.json: ${said("out of memory")}`,
+		);
 		expectCheckoutUntouched();
 	});
 
@@ -1047,7 +1053,7 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 			(caught: unknown) => caught,
 		);
 		expect((error as CheckError).code).toBe("toolFailed");
-		expect((error as CheckError).message).toMatch(/no report: bad config/);
+		expect((error as CheckError).message).toContain(`no report: ${said("bad config")}`);
 	});
 });
 

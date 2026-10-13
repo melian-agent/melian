@@ -641,23 +641,27 @@ ${body}`,
 			});
 		});
 
-		it("ends when the supervisor ends it, and starts no second Stryker once the first has been stopped", async () => {
-			// The first Stryker ends its own parent, the runner, as the supervisor does at a timeout, then exits as an
-			// interrupted Stryker does. It signals that one process, by pid, and only after checking it is the runner.
-			const run = relatedRun(
-				`if [ "$attempt" = 1 ]; then
+		// Inside a mutation run's own sandbox the fake cannot start `ps`, a setuid program, to check whom it signals.
+		it.skipIf(process.env.MELIAN_SANDBOX !== undefined)(
+			"ends when the supervisor ends it, and starts no second Stryker once the first has been stopped",
+			async () => {
+				// The first Stryker ends its own parent, the runner, as the supervisor does at a timeout, then exits as an
+				// interrupted Stryker does. It signals that one process, by pid, and only after checking it is the runner.
+				const run = relatedRun(
+					`if [ "$attempt" = 1 ]; then
   case "$(ps -o command= -p "$PPID")" in *mutation-runner.mjs*) ;; *) exit 9 ;; esac
   kill -TERM "$PPID"
   sleep 0.5
 fi
 exit 1`,
-			);
-			// A listing library that takes SIGTERM for itself, as Vitest does, leaves the runner alive unless it ends itself.
-			const listing = join(repo, "node_modules/vitest/node.js");
-			writeFileSync(listing, `process.on("SIGTERM", () => {});\n${readFileSync(listing, "utf8")}`);
-			await expect(mutate(run.base, run.head)).rejects.toMatchObject({ code: "invalidOutput" });
-			expect(run.attempts()).toBe(1);
-		});
+				);
+				// A listing library that takes SIGTERM for itself, as Vitest does, leaves the runner alive unless it ends itself.
+				const listing = join(repo, "node_modules/vitest/node.js");
+				writeFileSync(listing, `process.on("SIGTERM", () => {});\n${readFileSync(listing, "utf8")}`);
+				await expect(mutate(run.base, run.head)).rejects.toMatchObject({ code: "invalidOutput" });
+				expect(run.attempts()).toBe(1);
+			},
+		);
 
 		it("keeps the related run's failure when the whole suite fails after it with more output than a message holds", async () => {
 			const run = relatedRun(
