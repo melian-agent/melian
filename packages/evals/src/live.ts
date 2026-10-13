@@ -15,7 +15,7 @@
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { liveModels } from "./credentials.ts";
-import { type Golden, loadGoldens, runGolden, scoreCorpus, selectGoldens } from "./goldens.ts";
+import { type Golden, loadGoldens, runGolden, selectGoldens } from "./goldens.ts";
 import { reportGoldens, reportVerifierGoldens } from "./live-output.ts";
 import { loadTriageGoldens, runTriageGolden, type TriageChosen, TriageQuestions, TriageResults } from "./triage.ts";
 import { loadVerifierGoldens, runVerifierGolden } from "./verifier.ts";
@@ -35,15 +35,14 @@ if (process.env.MELIAN_EVAL_VERIFIER === "1") {
 		process.exit(2);
 	}
 	const models = await liveModels(process.cwd());
-	const { scores, failed } = await reportVerifierGoldens(
+	const verifier = await reportVerifierGoldens(
 		goldens,
 		(golden) =>
 			runVerifierGolden(golden, { kind: "live", models, model: process.env.MELIAN_EVAL_MODEL, verifierModel }),
 		process.env,
 		console.log,
 	);
-	console.log(`verifier corpus: ${scores.filter((score) => score.passed).length}/${scores.length} passed`);
-	process.exit(failed.length === 0 && scores.every((score) => score.passed) ? 0 : 1);
+	process.exit(verifier.status);
 }
 
 if (process.env.MELIAN_EVAL_TRIAGE === "1") {
@@ -84,7 +83,7 @@ try {
 }
 const models = await liveModels(process.cwd());
 const model = process.env.MELIAN_EVAL_MODEL;
-const { scores, failed } = await reportGoldens(
+const lens = await reportGoldens(
 	goldens,
 	(golden) =>
 		runGolden(golden, {
@@ -96,6 +95,4 @@ const { scores, failed } = await reportGoldens(
 	process.env,
 	console.log,
 );
-const corpus = scoreCorpus(scores);
-console.log(`corpus: precision ${corpus.precision.toFixed(2)}, recall ${corpus.recall.toFixed(2)}`);
-if (failed.length > 0) process.exit(1);
+process.exit(lens.status);

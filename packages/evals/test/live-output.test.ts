@@ -41,12 +41,14 @@ describe("reportGoldens", { timeout: 60_000 }, () => {
 		"pre-existing-beside-change: skipped, live: false",
 		"clean-rename: precision 1.00, recall 1.00 (0 reported, 0 expected)",
 	];
+	const corpus = "corpus: precision 1.00, recall 1.00";
 
 	it("prints one score line for each golden, skips one marked live: false, and returns the scores", async () => {
 		const lines: string[] = [];
 		const report = await reportGoldens(goldens, scripted, {}, (line) => lines.push(line));
-		expect(lines).toEqual(scores);
+		expect(lines).toEqual([...scores, corpus]);
 		expect(report.failed).toEqual([]);
+		expect(report.status).toBe(0);
 		expect(report.scores.map((score) => [score.golden, score.reported, score.found])).toEqual([
 			["correctness-null-deref", 1, 1],
 			["clean-rename", 0, 0],
@@ -64,6 +66,7 @@ describe("reportGoldens", { timeout: 60_000 }, () => {
 			scores[1],
 			scores[2],
 			...rendering("clean-rename"),
+			corpus,
 		]);
 	});
 	it("prints a run's error as no score, goes on to the next golden, and names the one that failed", async () => {
@@ -81,7 +84,9 @@ describe("reportGoldens", { timeout: 60_000 }, () => {
 			"correctness-null-deref: no score (every model of a lens's tier failed)",
 			scores[1],
 			scores[2],
+			corpus,
 		]);
+		expect(report.status).toBe(1);
 		expect(report.failed).toEqual(["correctness-null-deref"]);
 		expect(report.scores.map((score) => score.golden)).toEqual(["clean-rename"]);
 	});
@@ -103,8 +108,10 @@ describe("reportVerifierGoldens", { timeout: 60_000 }, () => {
 	it("prints each verdict, and an unjudged golden with the reason its verifier check recorded", async () => {
 		const lines: string[] = [];
 		const report = await reportVerifierGoldens([decoy!, unjudged], scripted, {}, (line) => lines.push(line));
-		expect(lines).toHaveLength(2);
+		expect(lines).toHaveLength(3);
 		expect(lines[0]).toBe("guarded-null-dereference: refuted, passed (decoy)");
+		expect(lines[2]).toBe("verifier corpus: 1/2 passed");
+		expect(report.status).toBe(1);
 		expect(lines[1]).toMatch(/^design-supersedes-its-own-decision: unjudged \(.*Missing verifier instruction: This/);
 		expect(lines[1]).toMatch(/\), failed \(design\)$/);
 		expect(report.scores.map((score) => score.passed)).toEqual([true, false]);
@@ -112,7 +119,9 @@ describe("reportVerifierGoldens", { timeout: 60_000 }, () => {
 	});
 	it("prints the rendered review under each verdict when MELIAN_EVAL_SHOW is 1", async () => {
 		const lines: string[] = [];
-		await reportVerifierGoldens([decoy!], scripted, shown, (line) => lines.push(line));
+		const report = await reportVerifierGoldens([decoy!], scripted, shown, (line) => lines.push(line));
+		expect(report.status).toBe(0);
+		expect(lines.pop()).toBe("verifier corpus: 1/1 passed");
 		const run = await scripted(decoy!);
 		expect(shownOutput(run.rendered, shown).length).toBeGreaterThan(3);
 		expect(lines.slice(1).map((line) => line.replace(/[0-9a-f]{16}/g, "ID"))).toEqual(
@@ -130,7 +139,9 @@ describe("reportVerifierGoldens", { timeout: 60_000 }, () => {
 		expect(lines).toEqual([
 			"design-supersedes-its-own-decision: no score (no route)",
 			"guarded-null-dereference: refuted, passed (decoy)",
+			"verifier corpus: 1/1 passed",
 		]);
+		expect(report.status).toBe(1);
 		expect(report.failed).toEqual(["design-supersedes-its-own-decision"]);
 		expect(report.scores).toHaveLength(1);
 	});

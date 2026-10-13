@@ -1,4 +1,4 @@
-import { type Golden, type GoldenRun, type GoldenScore, scoreGolden } from "./goldens.ts";
+import { type Golden, type GoldenRun, type GoldenScore, scoreCorpus, scoreGolden } from "./goldens.ts";
 import { scoreVerifierGolden, type VerifierGolden, type VerifierRun } from "./verifier.ts";
 
 type Print = (line: string) => void;
@@ -33,7 +33,7 @@ export async function reportGoldens(
 	run: (golden: Golden) => Promise<GoldenRun>,
 	env: NodeJS.ProcessEnv,
 	print: Print,
-): Promise<{ scores: GoldenScore[]; failed: string[] }> {
+): Promise<{ scores: GoldenScore[]; failed: string[]; status: 0 | 1 }> {
 	const scores: GoldenScore[] = [];
 	const failed: string[] = [];
 	for (const golden of goldens) {
@@ -53,7 +53,9 @@ export async function reportGoldens(
 		);
 		for (const line of shownOutput(ran.rendered, env)) print(line);
 	}
-	return { scores, failed };
+	const corpus = scoreCorpus(scores);
+	print(`corpus: precision ${corpus.precision.toFixed(2)}, recall ${corpus.recall.toFixed(2)}`);
+	return { scores, failed, status: failed.length > 0 ? 1 : 0 };
 }
 
 export async function reportVerifierGoldens(
@@ -61,7 +63,7 @@ export async function reportVerifierGoldens(
 	run: (golden: VerifierGolden) => Promise<VerifierRun>,
 	env: NodeJS.ProcessEnv,
 	print: Print,
-): Promise<{ scores: VerifierScore[]; failed: string[] }> {
+): Promise<{ scores: VerifierScore[]; failed: string[]; status: 0 | 1 }> {
 	const scores: VerifierScore[] = [];
 	const failed: string[] = [];
 	for (const golden of goldens) {
@@ -77,5 +79,6 @@ export async function reportVerifierGoldens(
 		);
 		for (const line of shownOutput(ran.rendered, env)) print(line);
 	}
-	return { scores, failed };
+	print(`verifier corpus: ${scores.filter((score) => score.passed).length}/${scores.length} passed`);
+	return { scores, failed, status: failed.length === 0 && scores.every((score) => score.passed) ? 0 : 1 };
 }
