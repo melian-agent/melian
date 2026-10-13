@@ -173,8 +173,10 @@ export class Run {
 		const failure = await sandbox.runtimeFailure(paths, this.input.env, this.context);
 		if (failure !== undefined) return `${this.input.tool} ran unconfined: ${failure}.`;
 		this.#confinement = { sandbox, paths, profile: sandbox.profile(paths) };
-		// From here the reader runs inside the sandbox too, under a profile built before the tool has run.
+		// From here the reader runs inside the sandbox too, under a profile built before the tool has run, and so does the
+		// teardown: a process the tool left behind may still be writing in scratch, where a host removal would follow it.
 		this.#outputs = MutationScratch.open(this, scratch, sandbox, []);
+		this.mutationScratch = this.#outputs;
 	}
 
 	// Runs the tool's own command, confined when `confine` found a sandbox. git, `ln`, and `rm` stay on `shell`.
@@ -232,6 +234,7 @@ export class Run {
 		const scratch = canonical.value;
 		const root = posix.join(scratch, "tree");
 		this.#outputs = MutationScratch.open(this, scratch, undefined, []);
+		let result: T;
 		try {
 			await removeStaleWorktrees(this, scratch);
 			const added = await this.worktreeCommand(
@@ -239,10 +242,16 @@ export class Run {
 			);
 			if (added.code !== 0) throw this.fail("worktreeFailed", `git worktree add failed: ${added.output}`);
 			await this.mark(root);
-			return await use(root, scratch);
-		} finally {
-			await removeWorktree(this, scratch);
+			result = await use(root, scratch);
+		} catch (error) {
+			// The run's own error is the one to report, whatever its cleanup then meets.
+			await removeWorktree(this, scratch).catch(() => {});
+			throw error;
 		}
+		// A confined teardown that cannot finish fails the run: scratch it could not remove is scratch something still
+		// writes to.
+		await removeWorktree(this, scratch);
+		return result;
 	}
 
 	// Reads a file under scratch, refusing one past the output limit rather than truncating it. This is the only way the

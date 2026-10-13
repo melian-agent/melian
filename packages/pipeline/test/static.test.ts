@@ -117,6 +117,8 @@ describe("runStaticTool with Melian's own tools", () => {
 		timeout: 60_000,
 	}, async () => {
 		const head = commit(repo, { "src/a.ts": "export const a = 1;\n" });
+		// The host's own teardown, which a run takes where it was not confined.
+		vi.spyOn(Sandbox, "detect").mockResolvedValue(undefined);
 		const env = createNodeExecutionEnv(repo);
 		const execute = env.exec.bind(env);
 		const cleanup: string[] = [];
@@ -254,6 +256,13 @@ describe("runStaticTool with the repository's own tools", () => {
 			[" --version", "", undefined],
 			[" lint ", "", undefined],
 			[undefined, "", undefined],
+			[undefined, "", undefined],
+			[undefined, "", undefined],
+		]);
+		// The last two are the teardown: the tree removed, then scratch emptied, both from outside the worktree.
+		expect(command.mock.calls.slice(3).map(([inner]) => /,"(remove|clean)",/.exec(inner)?.[1])).toEqual([
+			"remove",
+			"clean",
 		]);
 		// The third is the reader, fetching the report: it starts outside the worktree and is granted no install.
 		expect(command.mock.calls[2]![1]).toMatchObject({ worktree: "/", scratch: paths.scratch, installs: [] });
@@ -642,26 +651,79 @@ describe("runStaticTool with the repository's own tools", () => {
 		expectCheckoutUntouched();
 	});
 
-	it("reports the tool's own error when worktree cleanup also fails", { timeout: 60_000 }, async () => {
-		const head = commit(repo, { ".gitignore": lines("node_modules"), "tsconfig.json": tsconfig });
-		fakeTool(
-			repo,
-			"tsc",
-			'if [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi\necho "out of memory"\nexit 134',
-		);
+	it.each([
+		["the host's", undefined, "worktree remove --force --force"],
+		["the confined", unconfinedSandbox, ',"remove",'],
+	] as const)(
+		"reports the tool's own error when %s cleanup also fails",
+		{ timeout: 60_000 },
+		async (_name, sandbox, step) => {
+			const head = commit(repo, { ".gitignore": lines("node_modules"), "tsconfig.json": tsconfig });
+			fakeTool(
+				repo,
+				"tsc",
+				'if [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi\necho "out of memory"\nexit 134',
+			);
+			vi.spyOn(Sandbox, "detect").mockResolvedValue(sandbox);
+			const env = createNodeExecutionEnv(repo);
+			const created = vi.spyOn(env, "createTempDir");
+			const execute = env.exec.bind(env);
+			const failed: string[] = [];
+			vi.spyOn(env, "exec").mockImplementation(async (command, options, executionContext) => {
+				if (command.includes(step)) {
+					failed.push(command);
+					return { ok: false, error: { name: "ExecutionError", code: "timeout", message: "cleanup timed out" } };
+				}
+				return execute(command, options, executionContext);
+			});
+			const error = await runStaticTool({ ...input("tsc", head), env }, context).then(
+				() => undefined,
+				(caught: unknown) => caught,
+			);
+			expect(failed.length).toBeGreaterThan(0);
+			expect((error as CheckError).code).toBe("toolFailed");
+			expect((error as CheckError).message).toContain("out of memory");
+			rmSync(((await created.mock.results[0]!.value) as { value: string }).value, { recursive: true, force: true });
+		},
+	);
+
+	it("fails a run whose confined teardown cannot finish, and keeps its registration for the next run", {
+		timeout: 60_000,
+	}, async () => {
+		const head = commit(repo, { "src/a.ts": "export const a = 1;\n" });
+		vi.spyOn(Sandbox, "detect").mockResolvedValue(unconfinedSandbox);
 		const env = createNodeExecutionEnv(repo);
+		const created = vi.spyOn(env, "createTempDir");
 		const execute = env.exec.bind(env);
-		vi.spyOn(env, "exec").mockImplementation(async (command, options, executionContext) => {
-			if (command.includes("worktree remove --force --force")) {
-				return { ok: false, error: { name: "ExecutionError", code: "timeout", message: "cleanup timed out" } };
-			}
-			return execute(command, options, executionContext);
-		});
-		const error = await runStaticTool({ ...input("tsc", head), env }, context).then(
-			() => undefined,
-			(caught: unknown) => caught,
+		vi.spyOn(env, "exec").mockImplementation(async (command, options, executionContext) =>
+			command.includes(',"clean",')
+				? { ok: false, error: { name: "ExecutionError", code: "timeout", message: "cleanup timed out" } }
+				: execute(command, options, executionContext),
 		);
-		expect((error as CheckError).code).toBe("toolFailed");
+		await expect(runStaticTool({ ...input("biome", head), env }, context)).rejects.toMatchObject({
+			code: "toolFailed",
+			message: expect.stringContaining("scratch operation refused"),
+		});
+		const scratch = ((await created.mock.results[0]!.value) as { value: string }).value;
+		expect(gitIn(repo, "worktree", "list", "--porcelain")).toContain(`${realpathSync(scratch)}/tree`);
+		rmSync(scratch, { recursive: true, force: true });
+	});
+
+	it("tears a confined run down confined: host git removes no tree and the host deletes only the registration", {
+		timeout: 60_000,
+	}, async () => {
+		const head = commit(repo, { "src/a.ts": "export const a = 1;\n" });
+		vi.spyOn(Sandbox, "detect").mockResolvedValue(unconfinedSandbox);
+		const env = createNodeExecutionEnv(repo);
+		const execute = vi.spyOn(env, "exec");
+		const remove = vi.spyOn(env, "remove");
+		const created = vi.spyOn(env, "createTempDir");
+		expect((await runStaticTool({ ...input("biome", head), env }, context)).status).toBe("ran");
+		const scratch = ((await created.mock.results[0]!.value) as { value: string }).value;
+		expect(execute.mock.calls.filter(([command]) => /worktree (remove|prune|unlock)/.test(command))).toEqual([]);
+		expect(remove.mock.calls.map(([path]) => path)).toEqual([expect.stringMatching(/\/\.git\/worktrees\/tree\d*$/)]);
+		expect(gitIn(repo, "worktree", "list", "--porcelain")).not.toContain("melian-static-");
+		expect(existsSync(scratch)).toBe(false);
 	});
 
 	it("refuses a report that is a symlink, with the reason and none of its target", { timeout: 60_000 }, async () => {
@@ -851,5 +913,81 @@ describe("runStaticTool after a crash", () => {
 		await log("biome", head);
 		expect(existsSync(stale[0]!)).toBe(false);
 		expectCheckoutUntouched();
+	});
+});
+
+// Seatbelt has no hold on a process once its command has exited, so a tool can leave one behind. bubblewrap ends every
+// process in the namespace with the command, and a pid from inside it means nothing on the host, so this is macOS only.
+describe.skipIf(hostSandbox?.backend !== "seatbelt")("a process a confined tool leaves behind", () => {
+	it("cannot change what the host read, nor write outside scratch once teardown has removed it", {
+		timeout: 60_000,
+	}, async () => {
+		const head = commit(repo, { ".gitignore": lines("node_modules"), "tsconfig.json": tsconfig, "src/a.ts": "a\n" });
+		const outside = join(dirname(repo), `melian-survivor-${process.pid}`);
+		mkdirSync(outside);
+		// The child waits for the host to have read the output, rewrites it, says so, then tries to get out until it is
+		// stopped or twenty seconds pass.
+		const child = `
+const fs = require("node:fs");
+const [out, outside] = process.argv.slice(1);
+const scratch = require("node:path").dirname(out);
+const started = Date.now();
+let tampered = false;
+setInterval(() => {
+  if (Date.now() - started > 20000) process.exit(0);
+  if (!tampered && fs.existsSync(scratch + "/go")) {
+    fs.writeFileSync(out, "src/a.ts(1,1): error TS1: altered after the read\\n");
+    fs.writeFileSync(scratch + "/tampered", "");
+    tampered = true;
+  }
+  try { fs.writeFileSync(outside + "/escaped", "survivor"); } catch {}
+}, 10);`;
+		fakeTool(
+			repo,
+			"tsc",
+			[
+				'if [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi',
+				`node -e '${child}' "$(dirname "$PWD")/tsc-0.out" '${outside}' > /dev/null 2>&1 &`,
+				'echo "src/a.ts(1,1): error TS9000: child $!"',
+				"exit 1",
+			].join("\n"),
+		);
+		const env = createNodeExecutionEnv(repo);
+		const execute = env.exec.bind(env);
+		const created = vi.spyOn(env, "createTempDir");
+		let reads = 0;
+		// Once the host has read the output, and only then, let the child rewrite it, and wait until it has.
+		vi.spyOn(env, "exec").mockImplementation(async (command, options, at) => {
+			const result = await execute(command, options, at);
+			if (command.includes("tsc-0.out") && command.includes(',"read",')) {
+				reads++;
+				const scratch = ((await created.mock.results[0]!.value) as { value: string }).value;
+				writeFileSync(join(realpathSync(scratch), "go"), "");
+				while (!existsSync(join(realpathSync(scratch), "tampered"))) await sleep(10);
+			}
+			return result;
+		});
+		let pid = 0;
+		try {
+			const result = await runStaticTool({ ...input("tsc", head), env }, context);
+			if (result.status !== "ran") throw new Error(result.reason);
+			const messages = result.log.runs[0].results.map((each) => each.message.text);
+			pid = Number(/^child (\d+)$/.exec(messages[0] ?? "")?.[1]);
+			expect(messages).toEqual([`child ${pid}`]);
+			expect(reads).toBe(1);
+			expect(Number.isInteger(pid) && pid > 1).toBe(true);
+			// The child is still running, still inside the sandbox, with scratch gone from under it.
+			expect(() => process.kill(pid, 0)).not.toThrow();
+			const scratch = ((await created.mock.results[0]!.value) as { value: string }).value;
+			expect(existsSync(scratch)).toBe(false);
+			expect(gitIn(repo, "worktree", "list", "--porcelain")).not.toContain("melian-static-");
+			await sleep(300);
+			expect(existsSync(join(outside, "escaped"))).toBe(false);
+			expect(existsSync(scratch)).toBe(false);
+		} finally {
+			// Only the child this test's own fake started, by the pid that fake reported.
+			if (Number.isInteger(pid) && pid > 1) process.kill(pid, "SIGKILL");
+			rmSync(outside, { recursive: true, force: true });
+		}
 	});
 });

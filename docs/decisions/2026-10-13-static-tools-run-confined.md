@@ -34,7 +34,7 @@ What this gives up:
 
 - Each run spends two extra process starts on the probe, about 50 ms on this host.
 - A tool that reads outside the worktree fails where it used to pass: a `tsconfig.json` that `extends` a path above the repository, or a globally installed type package. No repository reviewed so far does either.
-- The teardown is unchanged. It still removes the worktree with host git, which is right for a tree no head code ran in.
+- A confined run is torn down confined, three more process starts. A run that was not confined is torn down by host git as before. A crashed confined run is still removed on the host by the next run, of any build; [the grants decision](2026-10-13-seatbelt-profile-grants.md) says why that is left.
 
 Enola is deferred. It has the strongest case, since it is the largest program reading head input, and the most unknowns:
 
