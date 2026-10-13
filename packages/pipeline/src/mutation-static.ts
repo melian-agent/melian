@@ -416,6 +416,8 @@ process.exitCode = result.code;
 		let result: Awaited<ReturnType<Run["shell"]>> | undefined;
 		let failure: unknown;
 		const restore = await this.#ownGit();
+		// From here every failure's record says the run was confined, as a Biome or tsc run's does.
+		this.#run.confinement = { confined: true };
 		try {
 			result = await new MutationProcess(this.#run).execute(this.#sandbox.command(command, paths, profileFile), {
 				...this.#sandbox.environment(),

@@ -1671,7 +1671,11 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 			stryker({ exit: 1, report: report({}) });
 			const failure = await mutate(base, head).catch((error: unknown) => error);
 			expect(failure).toBeInstanceOf(CheckError);
-			expect(failure).toMatchObject({ code: "toolFailed", check: "static.mutation" });
+			expect(failure).toMatchObject({
+				code: "toolFailed",
+				check: "static.mutation",
+				confinement: { confined: true },
+			});
 			expect((failure as CheckError).message).toContain("Stryker exited 1: stryker said something");
 		});
 
