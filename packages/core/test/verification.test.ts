@@ -4,12 +4,16 @@ import {
 	Finding,
 	Lowering,
 	type LoweringFields,
+	loweringSchema,
 	Merge,
 	Verdict,
 	type Verification,
 	VerificationRecord,
 	VerificationState,
+	verificationAnswersSchema,
+	verificationSchema,
 } from "@melian-agent/core";
+import Value from "typebox/value";
 import { describe, expect, it } from "vitest";
 import { evalInput } from "./fixtures/findings.ts";
 
@@ -122,6 +126,39 @@ describe("adjudicating verification", () => {
 	});
 });
 
+describe("the stored lowering and answers", () => {
+	const lowered = { from: "P1", to: "P2", reason: "x".repeat(2000) };
+
+	it("takes a lowering whose reason is at the bound, and refuses one past it, blank, or with another key", () => {
+		expect(Value.Check(loweringSchema, lowered)).toBe(true);
+		expect(Value.Check(loweringSchema, { ...lowered, reason: "x".repeat(2001) })).toBe(false);
+		expect(Value.Check(loweringSchema, { ...lowered, reason: "x" })).toBe(true);
+		expect(Value.Check(loweringSchema, { ...lowered, reason: "" })).toBe(false);
+		expect(Value.Check(loweringSchema, { ...lowered, reason: " \n" })).toBe(false);
+		expect(Value.Check(loweringSchema, { ...lowered, to: "P5" })).toBe(false);
+		expect(Value.Check(loweringSchema, { ...lowered, from: "high" })).toBe(false);
+		expect(Value.Check(loweringSchema, { from: "P1", to: "P2" })).toBe(false);
+		expect(Value.Check(loweringSchema, { ...lowered, confidence: 0.5 })).toBe(false);
+	});
+
+	it("takes the three answers, each yes, no or unknown, and nothing else", () => {
+		const answers = { code: "yes", guard: "no", base: "unknown" };
+		expect(Value.Check(verificationAnswersSchema, answers)).toBe(true);
+		expect(Value.Check(verificationAnswersSchema, { ...answers, base: "maybe" })).toBe(false);
+		expect(Value.Check(verificationAnswersSchema, { code: "yes", guard: "no" })).toBe(false);
+		expect(Value.Check(verificationAnswersSchema, { ...answers, scope: "yes" })).toBe(false);
+	});
+
+	it("holds both on a verification record, and refuses a record that names a scope", () => {
+		const record = { ...verification, answers: { code: "yes", guard: "no", base: "yes" }, lowered };
+		expect(Value.Check(verificationSchema, record)).toBe(true);
+		expect(Value.Check(verificationSchema, { ...record, rescoped: { from: "introduced", reason: "Old." } })).toBe(
+			false,
+		);
+		expect(Value.Check(verificationSchema, { ...record, evidence: [] })).toBe(false);
+	});
+});
+
 describe("the lowering fence", () => {
 	const held: LoweringFields = {
 		from: "P1",
@@ -207,6 +244,21 @@ describe("a finding as the verifier judged it", () => {
 		expect(Finding.parse(judged.toJSON()).id).toBe(finding("lens.a").id);
 		expect(judged.render()).toContain("P2, lowered from P1  line 12");
 		expect(judged.render()).toContain("    Lowered from P1: One caller validates.");
+	});
+
+	it("takes the level of the lowered severity, at each step a lowering may take", () => {
+		const p2 = Finding.create({
+			...evalInput,
+			severity: "P2",
+			source: { check: "lens.a", version: "v1@careful" },
+			failureScenario: "An empty input fails.",
+		});
+		expect(p2.level).toBe("warning");
+		const judged = p2.verifiedAs({ ...verification, lowered: { from: "P2", to: "P3", reason: "Narrow." } });
+		expect(judged.properties).toMatchObject({ severity: "P3", originalSeverity: "P2" });
+		expect(judged.level).toBe("note");
+		expect(Finding.parse(judged.toJSON()).level).toBe("note");
+		expect(Finding.parse(finding("lens.a").verifiedAs(lowering).toJSON()).level).toBe("warning");
 	});
 
 	it("escapes the verifier's reason for a lowering, and keeps its later lines indented", () => {
