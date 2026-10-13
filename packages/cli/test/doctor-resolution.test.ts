@@ -138,6 +138,16 @@ describe("doctor resolution overrides", { timeout: 60_000 }, () => {
 		]);
 	});
 
+	it("puts the user-level preference file first on the walk, by the path it was given", async () => {
+		write({ "melian.yaml": "resolution:\n  P1: block\n" });
+		const preferences = join(directory, "melian", "config.yaml");
+		mkdirSync(dirname(preferences), { recursive: true });
+		writeFileSync(preferences, "resolution:\n  P1: silent\n");
+		expect(await resolutionLines()).toEqual([
+			`ok: ${preferences}: resolution.P1 overrides melian.yaml's table for P1 findings`,
+		]);
+	});
+
 	it("walks the root when only a preference file speaks there", async () => {
 		write({
 			".melian/lenses/cleanup/LENS.md": lens("resolution: { ceiling: advisory }"),
