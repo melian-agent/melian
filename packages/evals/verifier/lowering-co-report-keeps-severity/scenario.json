@@ -22,7 +22,7 @@
 				"reason": "The only caller, run, returns early for a record without a comma, so the read fails only beside a second defect."
 			},
 			"expectResult": [
-				"lowering refused, and the lens's P1 stands: a deterministic check reported this defect too"
+				"lowering refused, and the claim stands at P1: a deterministic check reported this defect too"
 			]
 		}
 	],

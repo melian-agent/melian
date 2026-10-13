@@ -876,13 +876,14 @@ export const reportVerdict = defineTool({
 					version: lens.version,
 				});
 				if (args.lower === undefined) return [];
+				// The record decides where the claim stands: a stored report may hold it lowered, or at the lens's severity.
+				const stands = kept.lowered?.to ?? severity;
 				if (refusedLowering !== undefined)
-					return [`lowering refused, and the lens's ${severity} stands: ${refusedLowering}`];
-				// The record decides: an equal report already stored may hold the claim at the lens's severity.
+					return [`lowering refused, and the claim stands at ${stands}: ${refusedLowering}`];
 				return [
 					kept.lowered === undefined
-						? `lowering not kept, and the lens's ${severity} stands: an equal report of this claim already holds it there`
-						: `lowered ${severity} to ${kept.lowered.to}`,
+						? `lowering not kept, and the claim stands at ${stands}: the stored report of this claim holds it there`
+						: `lowered ${severity} to ${stands}`,
 				];
 			}, context);
 			return text(

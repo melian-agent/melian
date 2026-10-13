@@ -1646,7 +1646,7 @@ describe("lowering a severity through report_verdict", () => {
 		});
 		expect(verdict.blocking).toBe(true);
 		expect(resultOf(requests)).toContain(
-			"recorded verdict for c1\nlowering refused, and the lens's P1 stands: a lowering needs evidence locations naming the code that narrows the failure\n",
+			"recorded verdict for c1\nlowering refused, and the claim stands at P1: a lowering needs evidence locations naming the code that narrows the failure\n",
 		);
 	});
 
@@ -1685,6 +1685,18 @@ describe("lowering a severity through report_verdict", () => {
 		])[verifierMarker]!;
 	}
 
+	it("says where the claim stands when a refused lowering follows one a stronger report already made", async () => {
+		const requests = reporting([
+			{ evidence: cited, lower: narrow },
+			{ verdict: "plausible", evidence: cited, lower: { severity: "P3", reason: "Narrower still." } },
+		]);
+		const { findings } = await review();
+		expect(findings[0]!.properties).toMatchObject({ severity: "P2", originalSeverity: "P1" });
+		expect(resultOf(requests)).toContain(
+			"recorded verdict for c1\nlowering refused, and the claim stands at P2: a lowering is one step, P1 to P2 or P2 to P3; P1 to P3 is not\n",
+		);
+	});
+
 	it("stores the answers the verifier gave, whatever they are, for calibration", async () => {
 		const answers = { code: "unknown", guard: "yes", base: "yes" };
 		reporting([{ answers, verdict: "plausible" }]);
@@ -1698,7 +1710,7 @@ describe("lowering a severity through report_verdict", () => {
 		const { findings } = await review();
 		expect(findings[0]!.properties.severity).toBe("P1");
 		expect(resultOf(requests)).toContain(
-			"recorded verdict for c1\nlowering not kept, and the lens's P1 stands: an equal report of this claim already holds it there\n",
+			"recorded verdict for c1\nlowering not kept, and the claim stands at P1: the stored report of this claim holds it there\n",
 		);
 		expect(resultOf(requests)).not.toContain("lowered P1 to P2");
 	});
@@ -1909,7 +1921,7 @@ describe("verification ownership and budgets", () => {
 			expect(result).toContain("lowered P1 to P2");
 		} else {
 			expect(finding!.properties.severity).toBe("P1");
-			expect(result).toContain(`lowering refused, and the lens's P1 stands: ${refusal}`);
+			expect(result).toContain(`lowering refused, and the claim stands at P1: ${refusal}`);
 		}
 	});
 	it("limits nine candidates to eight in-flight judge requests", async () => {

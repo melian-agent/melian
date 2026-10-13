@@ -223,6 +223,23 @@ describe("reports of one claim", () => {
 		expect(after(verification, lowered)).toEqual(verification);
 	});
 
+	it("keeps the winning report whole, with its own reason and evidence and none of the other's", () => {
+		const at = (startLine: number) => [
+			{ file: "src/run.ts", startLine, role: "context" as const, revision: "head" as const, snippet: "run()" },
+		];
+		const plain = { ...verification, reason: "Other callers may come.", evidence: at(3) };
+		const narrowed = { ...lowered, evidence: at(9) };
+		expect(after(narrowed, plain)).toEqual(plain);
+		expect(after(plain, narrowed)).toEqual(plain);
+		const bare = { ...verification, reason: "No evidence cited." };
+		expect(after(narrowed, bare)).toEqual(bare);
+		expect(after(bare, narrowed)).not.toHaveProperty("evidence");
+		const stronger = { ...narrowed, verdict: "confirmed" } as const;
+		const weaker = { ...plain, verdict: "plausible" } as const;
+		expect(after(weaker, stronger)).toEqual(stronger);
+		expect(after(stronger, weaker)).toEqual(stronger);
+	});
+
 	it("lets a later equal report that weakens nothing replace the reason", () => {
 		const again = { ...lowered, reason: "Narrow, again." };
 		expect(after(lowered, again)).toEqual(again);

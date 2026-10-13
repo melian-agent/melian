@@ -9,7 +9,7 @@
 				"reason": "The only caller, run, returns early for a record without a comma, so the read fails only beside a second defect."
 			},
 			"expectResult": [
-				"lowering refused, and the lens's P2 stands: a lowering needs evidence locations"
+				"lowering refused, and the claim stands at P2: a lowering needs evidence locations"
 			]
 		}
 	],
