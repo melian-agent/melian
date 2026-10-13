@@ -809,15 +809,19 @@ function checkResolutionKeys(site: Site, layer: MelianYaml): void {
 				{ key },
 			);
 		}
+		// `guardrail/<name>` or `guardrail/<name>/<rule>`, the name one of the four guardrails.
 		const stray =
 			check === "guardrails"
-				? Object.keys(entry.rules ?? {}).find((rule) => !rule.startsWith("guardrail/"))
+				? Object.keys(entry.rules ?? {}).find((rule) => {
+						const [prefix, guardrail] = rule.split("/");
+						return prefix !== "guardrail" || !Object.hasOwn(defaultConfig.guardrails, guardrail ?? "");
+					})
 				: undefined;
 		if (stray === undefined) continue;
 		throw configError(
 			"invalidValue",
 			site,
-			`"${key}.rules.${stray}" names no guardrail; write guardrail/<name>, or guardrail/<name>/<rule> for one rule`,
+			`"${key}.rules.${stray}" names no guardrail; write guardrail/<name>, or guardrail/<name>/<rule> for one rule, where <name> is one of ${Object.keys(defaultConfig.guardrails).join(", ")}`,
 			{ key: `${key}.rules.${stray}` },
 		);
 	}

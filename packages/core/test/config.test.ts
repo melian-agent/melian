@@ -924,6 +924,24 @@ describe.each(sourceKinds)("resolution per check and rule, from the %s", (kind) 
 			code: "invalidValue",
 			key: "resolution.checks.guardrails.rules.focused-test",
 		});
+		for (const key of [
+			"guardrail/forbiden-patterns",
+			"guardrail/forbiden-patterns/focused-test",
+			"guardrails/forbidden-patterns",
+			"guardrail",
+		]) {
+			writeFiles(repo, {
+				"melian.yaml": lines("resolution:", "  checks:", `    guardrails: { rules: { ${key}: { P2: block } } }`),
+			});
+			const error = await rejection(loadConfig(repo, source(), "a.ts"));
+			expect(error).toMatchObject({ code: "invalidValue", key: `resolution.checks.guardrails.rules.${key}` });
+			expect(error.message).toContain("forbidden-paths, required-files, forbidden-patterns, policy-change-review");
+		}
+		for (const name of ["forbidden-paths", "required-files", "forbidden-patterns", "policy-change-review"]) {
+			const rules = `{ guardrail/${name}: { P2: block }, guardrail/${name}/any-rule: { ceiling: advisory } }`;
+			writeFiles(repo, { "melian.yaml": lines("resolution:", "  checks:", `    guardrails: { rules: ${rules} }`) });
+			expect((await loadConfig(repo, source(), "a.ts")).resolutionLayers).toHaveLength(1);
+		}
 		writeFiles(repo, {
 			"melian.yaml": lines("resolution:", "  checks:", "    lens.tests: { rules: { focused-test: { P2: block } } }"),
 		});

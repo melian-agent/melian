@@ -89,7 +89,7 @@ describe("Finding.decision", () => {
 		expect(twice.decision(both)).toMatchObject({ resolution: "advisory", decidedBy: { check: "lens.security" } });
 	});
 
-	// The stated limit: sightings of one ID are merged before adjudication, at the highest severity. Step 20 of the plan,
+	// The stated limit: sightings of one ID are merged before adjudication, at the highest severity. Step 21 of the plan,
 	// "Resolution per sighting", would resolve each at its own.
 	it("resolves one ID two lenses sighted at the highest severity, under the strictest of their policies", () => {
 		// lens.security sighted a P1 and lens.tests a P3; the findings document hands adjudication one P1 finding.
