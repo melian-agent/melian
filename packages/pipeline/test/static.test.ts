@@ -1,8 +1,9 @@
-import { spawn, spawnSync } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import {
 	chmodSync,
 	existsSync,
 	mkdirSync,
+	readdirSync,
 	readFileSync,
 	realpathSync,
 	rmSync,
@@ -465,6 +466,90 @@ describe("runStaticTool with the repository's own tools", () => {
 		} finally {
 			rmSync(outside);
 		}
+	});
+
+	// The review of record's probe: the checkout has a workspace package with dependencies of its own, and the head
+	// replaces that package's directory with a link to a directory outside the repository.
+	it.each([
+		["the workspace directory", "packages/b"],
+		["a directory above it", "packages"],
+	])(
+		"links nothing through %s when the head commits it as a link out of the worktree",
+		{ timeout: 60_000 },
+		async (_name, swapped) => {
+			writeFiles(repo, {
+				".gitignore": lines("node_modules"),
+				"tsconfig.json": tsconfig,
+				"packages/b/index.ts": "export const b = 1;\n",
+				"packages/b/node_modules/dep/index.js": "1\n",
+			});
+			mkdirSync(join(repo, "node_modules"), { recursive: true });
+			symlinkSync("../packages/b", join(repo, "node_modules/b"));
+			const main = commit(repo, {});
+			const outside = join(dirname(repo), `melian-outside-target-${process.pid}`);
+			mkdirSync(join(outside, "b"), { recursive: true });
+			const target = swapped === "packages" ? outside : join(outside, "b");
+			gitIn(repo, "checkout", "--quiet", "-b", "linked");
+			gitIn(repo, "rm", "-r", "--quiet", "--cached", swapped);
+			const blob = execFileSync("git", ["hash-object", "-w", "--stdin"], {
+				cwd: repo,
+				input: target,
+				encoding: "utf8",
+			}).trim();
+			gitIn(repo, "update-index", "--add", "--cacheinfo", `120000,${blob},${swapped}`);
+			gitIn(repo, "commit", "--quiet", "-m", "a workspace path becomes a link");
+			const head = gitIn(repo, "rev-parse", "HEAD");
+			gitIn(repo, "checkout", "--quiet", "--force", "main");
+			fakeTool(repo, "tsc", 'if [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi');
+			try {
+				const result = await runStaticTool(input("tsc", head), context);
+				if (result.status !== "ran") throw new Error(result.reason);
+				expect(result.notes).toContain(
+					`tsc did not link packages/b's own dependencies: ${head.slice(0, 12)} makes that path a link.`,
+				);
+				expect(readdirSync(join(outside, "b"))).toEqual([]);
+				expect(readdirSync(outside)).toEqual(["b"]);
+				// The same checkout at a head that leaves the directory alone still gets its nested dependencies linked.
+				const plain = await runStaticTool(input("tsc", main), context);
+				expect(plain).toMatchObject({ status: "ran", notes: unconfinedNotes("tsc") });
+			} finally {
+				rmSync(outside, { recursive: true, force: true });
+			}
+		},
+	);
+
+	it("links a workspace's own dependencies only where it has some and the revision has the workspace", {
+		timeout: 60_000,
+	}, async () => {
+		const before = commit(repo, { ".gitignore": lines("node_modules"), "tsconfig.json": tsconfig });
+		const head = commit(repo, {
+			"packages/b/index.ts": "export const b = 1;\n",
+			"packages/c/index.ts": "export const c = 1;\n",
+		});
+		writeFiles(repo, { "packages/b/node_modules/dep/index.js": "1\n" });
+		mkdirSync(join(repo, "node_modules"), { recursive: true });
+		symlinkSync("../packages/b", join(repo, "node_modules/b"));
+		symlinkSync("../packages/c", join(repo, "node_modules/c"));
+		fakeTool(repo, "tsc", 'if [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi');
+		vi.spyOn(Sandbox, "detect").mockResolvedValue(unconfinedSandbox);
+		const command = vi.spyOn(unconfinedSandbox, "command");
+		const linked = async (revision: string) => {
+			const env = createNodeExecutionEnv(repo);
+			const written = vi.spyOn(env, "writeFile");
+			command.mockClear();
+			expect((await runStaticTool({ ...input("tsc", revision), env }, context)).status).toBe("ran");
+			const script = written.mock.calls.find(([path]) => path.endsWith("/link.sh"))![1] as string;
+			return { script, installs: command.mock.calls[0]![1].installs };
+		};
+		// At the head both workspaces exist; only b has dependencies of its own to link and to grant.
+		const at = await linked(head);
+		expect(at.script).toContain("/tree/packages/b/node_modules/dep'");
+		expect(at.script).not.toContain("/tree/packages/c/node_modules");
+		expect(at.installs).toEqual([join(repo, "node_modules"), join(repo, "packages/b/node_modules")]);
+		// Before the workspaces existed there is no directory to link into, and none is made.
+		const earlier = await linked(before);
+		expect(earlier.script).not.toContain("/tree/packages/b/node_modules");
+		expect(earlier.installs).toEqual([join(repo, "node_modules")]);
 	});
 
 	it("grants no install of its own when the tool's path names no node_modules", { timeout: 60_000 }, async () => {

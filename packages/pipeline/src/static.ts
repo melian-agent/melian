@@ -354,10 +354,21 @@ async function linkDependencies(run: Run, root: string, scratch: string, notes: 
 	// A workspace package's own node_modules holds the versions only it depends on.
 	for (const workspace of workspaces) {
 		const nested = posix.join(checkout, workspace, "node_modules");
-		if ((await run.exists(nested)) && (await run.exists(posix.join(root, workspace)))) {
-			installs.push(nested);
-			await link(nested, posix.join(root, workspace, "node_modules"));
+		if (!(await run.exists(nested))) continue;
+		// The head can commit a workspace directory, or one above it, as a link to anywhere. Linking into it would have
+		// the host make directories and links out there, before any sandbox starts, so the directory must be what its
+		// path says: its resolved path is its joined path.
+		const directory = posix.join(root, workspace);
+		const real = await env.canonicalPath(directory, run.context);
+		if (!real.ok) continue;
+		if (real.value !== directory) {
+			notes.push(
+				`${tool} did not link ${workspace}'s own dependencies: ${commit.slice(0, 12)} makes that path a link.`,
+			);
+			continue;
 		}
+		installs.push(nested);
+		await link(nested, posix.join(root, workspace, "node_modules"));
 	}
 	const script = posix.join(scratch, "link.sh");
 	const written = await env.writeFile(script, `${commands.join("\n")}\n`, run.context);
