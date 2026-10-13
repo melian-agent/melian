@@ -20,3 +20,11 @@ The [implementation plan](design-implementation-plan.md) says the maintainer run
 ## A small code follow-up
 
 7. **The family notice repeats a primary.** `Plan.familyMessages` in `packages/core/src/plan.ts`, lines 581 to 606, lists in `failures` the verifier route's first model when its family differs from the finder's, and the finder's primary when the finder is a fallback. Both can be the same model when the finder is a fallback of another family and the verifier's first model equals the finder's primary. The notice then reads "if openai-codex/gpt-5.6-terra fails and openai-codex/gpt-5.6-terra fails". The list needs de-duplicating. No decision is needed, only the fix and a test that sets up that route and fails without it.
+
+## Resolution and the status
+
+8. **Should an `acknowledge` finding fail the published status?** No `acknowledge` finding fails `melian/review` today, pre-existing or not. Decide whether one should, repository-wide; step 18 built no gate for `resolution.preExisting`.
+
+## Recurring extra sightings in the design goldens
+
+9. **Two design goldens draw an extra finding in every pass.** `design-identity-missing-input` and `design-terminology-change` each expect one finding. Each reported two in all three passes of the live run at a2793b71, and again in all three at ace07815: six passes of six for both. [The run record](../packages/evals/runs/2026-10-13-live-goldens-authority-rule.md) holds both runs, and [the run of 2026-10-12](../packages/evals/runs/2026-10-12-live-goldens-design-terra.md) shows the same two. An extra that never varies is not a draw. Decide for each whether the second finding is a real defect the golden should declare, a co-report to merge, or noise that owes a negative golden or a change to the lens prompt.
