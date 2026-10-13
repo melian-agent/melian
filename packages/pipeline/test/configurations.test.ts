@@ -1,4 +1,4 @@
-import { Adjudication, Finding, type FindingInput, Lens } from "@melian-agent/core";
+import { Adjudication, Finding, type FindingInput, Lens, loadConfig } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { configsFor } from "../src/configurations.ts";
 import { commit, createRepository, lines, removeRepository, writeFiles } from "./fixtures/repo.ts";
@@ -97,6 +97,65 @@ describe("configsFor", () => {
 		expect(verdict.findings.silent.map(({ properties }) => properties.path)).toEqual([
 			"services/payments/src/ledger.ts",
 		]);
+	});
+
+	it("resolves a report under the variant that made it, for a file a nearer variant also covers", async () => {
+		// A moved file is reviewed by the lens of the folder it left, so the root's cleanup can report under services.
+		const base = commit(repo, {
+			"melian.yaml": lines("lenses:", "  tuned: { tier: heavy }"),
+			".melian/lenses/cleanup/LENS.md": lensFile("cleanup", "resolution: { P1: block }"),
+			".melian/lenses/tuned/LENS.md": lensFile("tuned", "resolution: { P1: block }"),
+			".melian/lenses/bare/LENS.md": lensFile("bare"),
+			"services/.melian/lenses/cleanup/LENS.md": lensFile("cleanup", "resolution: { P1: silent }"),
+			"services/.melian/lenses/tuned/LENS.md": lensFile("tuned", "resolution: { P1: silent }"),
+			"services/.melian/lenses/bare/LENS.md": lensFile("bare", "resolution: { P1: silent }"),
+			".melian/lenses/plain/LENS.md": lensFile("plain", "resolution: { P1: silent }"),
+			"services/.melian/lenses/plain/LENS.md": lensFile("plain"),
+		});
+		const policy = { kind: "revision", commit: base } as const;
+		const { config } = await loadConfig(repo, policy, ".");
+		const versionOf = async (name: string, at: string, tuned = false) => {
+			const lens = (await Lens.load(repo, policy, [at])).find((each) => each.name === name)!;
+			return (tuned ? lens.configured(config.lenses[name]) : lens).version;
+		};
+		const path = "services/payments/src/ledger.ts";
+		const reported = (name: string, version?: string) =>
+			finding({
+				severity: "P1",
+				rule: `${name}-rule`,
+				source: { check: `lens.${name}`, ...(version ? { version } : {}) },
+			});
+		const findings = [
+			reported("cleanup", `${await versionOf("cleanup", ".")}@careful`),
+			reported("cleanup", `${await versionOf("cleanup", "services")}@deep`),
+			reported("tuned", `${await versionOf("tuned", ".", true)}@quick`),
+			reported("tuned", await versionOf("tuned", "services", true)),
+			reported("bare", `${await versionOf("bare", ".")}@careful`),
+			reported("cleanup", "0123456789ab@careful"),
+			reported("cleanup"),
+			reported("plain"),
+			reported("tuned", await versionOf("tuned", ".")),
+		];
+		expect(await versionOf("tuned", ".", true)).not.toBe(await versionOf("tuned", "."));
+		const configFor = await configsFor(repo, policy, findings);
+		const at = configFor(path, "cleanup-rule");
+		expect(findings.map((each) => each.resolve(at))).toEqual([
+			"block",
+			"silent",
+			"block",
+			"silent",
+			// The root's bare lens declares nothing, so the built-in table decides, not the nearer variant's default.
+			"block",
+			// A version no variant along the path has, or none at all, takes the nearest lens's default.
+			"silent",
+			"silent",
+			// The nearest plain lens declares nothing, so the root's default does not reach an unknown variant.
+			"block",
+			// The root's version as it loaded, with no level.
+			"block",
+		]);
+		const listed = Object.keys(at.lensVariants ?? {}).filter((key) => /^(cleanup|tuned|bare)@/.test(key));
+		expect(listed.every((key) => /@[0-9a-f]{12}(@(quick|careful|deep))?$/.test(key))).toBe(true);
 	});
 
 	it("loads no lens for findings no lens reported", async () => {

@@ -66,6 +66,19 @@ describe("Finding.decision", () => {
 		});
 	});
 
+	it("resolves a lens report under the default of the version its source names", () => {
+		const source = layered(
+			{},
+			{
+				lensDefaults: { security: { ceiling: "silent" } },
+				lensVariants: { "security@1": { ceiling: "acknowledge" } },
+			},
+		);
+		expect(finding().resolve(source)).toBe("acknowledge");
+		expect(finding({ source: { check: "lens.security", version: "2" } }).resolve(source)).toBe("silent");
+		expect(finding({ source: { check: "lens.security" } }).resolve(source)).toBe("silent");
+	});
+
 	it("resolves a finding two checks reported under each, and keeps the strictest", () => {
 		const twice = Finding.from({
 			...finding().toJSON(),

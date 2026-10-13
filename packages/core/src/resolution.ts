@@ -17,13 +17,20 @@ export interface ResolutionSource {
 	readonly resolution: FileResolution;
 	readonly layers?: readonly ResolutionLayer[];
 	readonly lensDefaults?: Readonly<Record<string, ResolutionEntry>>;
+	/**
+	 * Each lens variant that could have reported at the path, as `<name>@<version>` with the version a finding's source
+	 * names, to its declared default, `null` when it declares none. A report whose variant is listed takes that
+	 * default, whatever lens of its name is nearest: a moved file is reviewed by the lens of the folder it left.
+	 */
+	readonly lensVariants?: Readonly<Record<string, ResolutionEntry | null>>;
 }
 
 /**
  * One report as the walk reads it: its check, as a tier spells it, its severity, and the keys it is looked up under in
  * the check's `rules`. `rule` is the rule-level key: a finding's rule ID, or `guardrail/<name>/<rule>` for one
  * configured guardrail rule. `group` is `guardrail/<name>`, a check-level entry for every finding of that guardrail.
- * `tableOnly` leaves every `checks` entry out, for a notice no entry may move.
+ * `tableOnly` leaves every `checks` entry out, for a notice no entry may move. `variant` is the version of the lens
+ * that reported, as the finding's source names it.
  */
 export interface ResolutionClaim {
 	readonly check: string;
@@ -31,6 +38,7 @@ export interface ResolutionClaim {
 	readonly group?: string;
 	readonly severity: Severity;
 	readonly tableOnly?: boolean;
+	readonly variant?: string;
 }
 
 /** Where a requirement came from: an entry of the file that spoke, a lens's declared default, or the built-in table. */
@@ -88,15 +96,25 @@ function entriesFor(resolution: FileResolution, { check, rule, group, tableOnly 
 export class ResolutionWalk {
 	readonly layers: readonly ResolutionLayer[];
 	readonly lensDefaults: Readonly<Record<string, ResolutionEntry>>;
+	readonly lensVariants: Readonly<Record<string, ResolutionEntry | null>>;
 
-	constructor(layers: readonly ResolutionLayer[], lensDefaults: Readonly<Record<string, ResolutionEntry>> = {}) {
+	constructor(
+		layers: readonly ResolutionLayer[],
+		lensDefaults: Readonly<Record<string, ResolutionEntry>> = {},
+		lensVariants: Readonly<Record<string, ResolutionEntry | null>> = {},
+	) {
 		this.layers = layers;
 		this.lensDefaults = lensDefaults;
+		this.lensVariants = lensVariants;
 	}
 
 	/** The walk over what `source` holds. */
 	static over(source: ResolutionSource): ResolutionWalk {
-		return new ResolutionWalk(source.layers ?? [{ file: "", resolution: source.resolution }], source.lensDefaults);
+		return new ResolutionWalk(
+			source.layers ?? [{ file: "", resolution: source.resolution }],
+			source.lensDefaults,
+			source.lensVariants,
+		);
 	}
 
 	/** What `claim` requires, the lesser of its requirement and its ceiling, and which file and entries decided. */
@@ -127,7 +145,14 @@ export class ResolutionWalk {
 			};
 		}
 		const lens = check.startsWith("lens.") ? check.slice("lens.".length) : undefined;
-		const declared = lens === undefined ? undefined : this.lensDefaults[lens];
+		// The variant that reported, when it is known: the nearest lens of the name is another's default otherwise.
+		const variant = `${lens}@${claim.variant}`;
+		const declared =
+			lens === undefined
+				? undefined
+				: Object.hasOwn(this.lensVariants, variant)
+					? (this.lensVariants[variant] ?? undefined)
+					: this.lensDefaults[lens];
 		const mapped = declared?.[severity];
 		const requirement =
 			mapped === undefined

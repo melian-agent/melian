@@ -6,6 +6,7 @@ import Type, { type Static } from "typebox";
 import Value from "typebox/value";
 import { parseDocument } from "yaml";
 import {
+	type LensSettings,
 	type LensTier,
 	lensTierSchema,
 	type MelianConfig,
@@ -752,17 +753,7 @@ export class Lens {
 		return lenses.flatMap((lens) => {
 			const settings = Object.hasOwn(config.lenses, lens.name) ? config.lenses[lens.name] : undefined;
 			if (settings?.enabled === false) return [];
-			// A band or `enabled` alone changes nothing the version hashes, so the lens keeps the version it loaded with.
-			const tuned =
-				settings?.tier === undefined && settings?.paths === undefined
-					? lens
-					: new Lens(
-							versioned({
-								...lens.toJSON(),
-								levels: settings.tier === undefined ? lens.levels : retiered(lens.levels, settings.tier),
-								paths: settings.paths ?? lens.paths,
-							}),
-						);
+			const tuned = lens.configured(settings);
 			const nearer = lenses
 				.filter(
 					(other) => other.name === lens.name && other.scope !== lens.scope && beneath(lens.scope, other.scope),
@@ -773,6 +764,22 @@ export class Lens {
 			const files = paths.filter((path) => lensCovers(coverage, path));
 			return files.length > 0 ? [{ lens: tuned, coverage, files }] : [];
 		});
+	}
+
+	/**
+	 * The lens as configuration's `settings` for it tune it: `tier` replaces the tier of every level and `paths` the
+	 * lens's own, which gives it another version. A band or `enabled` alone changes nothing the version hashes, so the
+	 * lens is returned as it loaded.
+	 */
+	configured(settings: LensSettings | undefined): Lens {
+		if (settings?.tier === undefined && settings?.paths === undefined) return this;
+		return new Lens(
+			versioned({
+				...this.toJSON(),
+				levels: settings.tier === undefined ? this.levels : retiered(this.levels, settings.tier),
+				paths: settings.paths ?? this.paths,
+			}),
+		);
 	}
 
 	/**

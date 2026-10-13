@@ -149,6 +149,31 @@ describe("ResolutionWalk.decide", () => {
 		expect(spoken.decide(claim({ severity: "P0" }))).toMatchObject({ resolution: "advisory", lens: "cleanup" });
 	});
 
+	it("takes the default of the variant that reported, and the nearest lens's only when the variant is unknown", () => {
+		const walk = new ResolutionWalk(
+			[],
+			{ cleanup: { P1: "silent" } },
+			{ "cleanup@root": { P1: "block" }, "cleanup@near": { P1: "silent" }, "cleanup@bare": null },
+		);
+		const p1 = claim({ severity: "P1" });
+		expect(walk.decide({ ...p1, variant: "root" })).toMatchObject({ resolution: "block", lens: "cleanup" });
+		expect(walk.decide({ ...p1, variant: "near" }).resolution).toBe("silent");
+		// A listed variant that declares nothing takes the built-in table, never the nearest lens's default.
+		expect(walk.decide({ ...p1, variant: "bare" })).toEqual({
+			resolution: "block",
+			requirement: { entry: "built-in", value: "block" },
+		});
+		expect(walk.decide({ ...p1, variant: "other" }).resolution).toBe("silent");
+		expect(walk.decide(p1).resolution).toBe("silent");
+		expect(walk.decide({ ...p1, check: "lens.tests", variant: "root" }).resolution).toBe("block");
+		const over = ResolutionWalk.over({
+			resolution: {},
+			layers: [],
+			lensVariants: { "cleanup@root": { P1: "silent" } },
+		});
+		expect(over.decide({ ...p1, variant: "root" }).resolution).toBe("silent");
+	});
+
 	it("names no lens when the lens's default says nothing about the severity", () => {
 		const walk = new ResolutionWalk([], { cleanup: { P1: "advisory" } });
 		expect(walk.decide(claim({ severity: "P2" }))).toEqual({

@@ -1456,7 +1456,12 @@ export class Finding {
 	// The reports the finding holds, as the walk reads them.
 	#claims(): ResolutionClaim[] {
 		const { severity, source, reportedBy = [source], guardrail } = this.properties;
-		if (source.check !== "guardrails") return reportedBy.map(({ check }) => ({ check, rule: this.ruleId, severity }));
+		if (source.check !== "guardrails") {
+			return reportedBy.map(
+				({ check, version }) =>
+					withoutUndefined({ check, rule: this.ruleId, severity, variant: version }) as ResolutionClaim,
+			);
+		}
 		const whole = { check: source.check, group: this.ruleId, severity };
 		if (guardrail === undefined) return [whole];
 		if ("rules" in guardrail) return guardrail.rules.map((rule) => ({ ...whole, rule: `${this.ruleId}/${rule}` }));
