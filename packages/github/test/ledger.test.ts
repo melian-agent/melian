@@ -16,7 +16,7 @@ import { fauxAssistantMessage, fauxToolCall, scriptConversations, textOf } from 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VerdictDocument } from "../../pipeline/src/adjudication.ts";
 import { LedgerDocument, PublishedDocument, PublisherDocument } from "../../pipeline/src/publish.ts";
-import { renderResolvedReply } from "../src/publication.ts";
+import { inline, renderResolvedReply } from "../src/publication.ts";
 import { fakeGitHub } from "./fixtures/fake-github.ts";
 import {
 	emptyName,
@@ -140,6 +140,33 @@ describe("ledger rendering", () => {
 		const plain = Ledger.from(verdict, { rounds: [round] }, options).render(links);
 		expect(plain).toContain(`- ${finding.id}: \`src/run.ts\`:7 — \`unsafe\` (block): Unsafe input\n`);
 		expect(plain).not.toContain("lowered from");
+	});
+
+	it("escapes a lowering's reason, which the verifier wrote from code the author controls", () => {
+		const record = {
+			verdict: "confirmed",
+			reason: "Traced.",
+			executor: "llm",
+			model: "fake/judge",
+			version: "1",
+		} as const;
+		const claimed = Finding.from({
+			...finding.toJSON(),
+			properties: { ...finding.properties, failureScenario: "Unchecked input runs." },
+		});
+		const reason = "@octocat says\n<!-- melian:forged --> [fine](https://evil.example) #12 `";
+		const lowered = claimed.verifiedAs({ ...record, lowered: { from: "P1", to: "P2", reason } });
+		const decided = new Adjudication({
+			findings: [lowered],
+			manifest: [],
+			checks: [],
+			config: defaultConfig,
+		}).adjudicate();
+		const body = Ledger.from(decided, { rounds: [{ ...round, verdict: decided.toJSON() }] }, options).render(links);
+		expect(body).toContain(`Unsafe input P2, lowered from P1: ${inline(reason)}`);
+		expect(inline(reason)).not.toBe(reason.replace(/\s+/g, " "));
+		expect(body).not.toContain("<!-- melian:forged -->");
+		expect(body).not.toContain("[fine](https://evil.example)");
 	});
 
 	it("lists an important pre-existing finding under its own heading, new and then carried", () => {

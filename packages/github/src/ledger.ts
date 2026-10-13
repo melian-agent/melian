@@ -182,24 +182,15 @@ export class Ledger {
 		const current = publication.rounds.at(-1)! as LedgerRound;
 		const summary = this.summary(current, verdict, links);
 		const important = new Map((verdict.preExistingImportant ?? []).map((member) => [member.id, member]));
-		const line = (finding: ResolvedFinding) => {
-			const [start, end] = finding.lines();
-			const lowered = finding.lowered();
-			const severity =
-				lowered === undefined
-					? ""
-					: ` ${finding.properties.severity}, lowered from ${lowered.from}: ${prose(lowered.reason)}`;
-			return `${code(visibleText(finding.properties.path))}:${start}${end === start ? "" : `-${end}`} — ${code(visibleText(finding.ruleId))} (${finding.properties.resolution}): ${prose(finding.properties.explanation.what)}${severity}`;
-		};
 		const findings = verdict
 			.attention()
 			.filter((finding) => !important.has(finding.id))
-			.map((finding) => `- ${prose(finding.properties.id)}: ${line(finding)}`);
+			.map((finding) => `- ${prose(finding.properties.id)}: ${this.line(finding)}`);
 		const members = verdict.attention().flatMap((finding) => {
 			const member = important.get(finding.id);
 			if (member === undefined) return [];
 			return [
-				`- ${prose(finding.properties.id)} (${member.state}, originally ${member.originalSeverity}): ${line(finding)}`,
+				`- ${prose(finding.properties.id)} (${member.state}, originally ${member.originalSeverity}): ${this.line(finding)}`,
 			];
 		});
 		const parts = [
@@ -270,6 +261,17 @@ export class Ledger {
 		const prompt = withPrompt ? verdict.agentPrompt(`#${pullRequest}`, nonce) : "";
 		if (prompt !== "") parts.push(details("Prompt for agents", prompt));
 		return parts;
+	}
+
+	// One finding as the ledger lists it, with the lens's severity and the verifier's reason when it was lowered.
+	private line(finding: ResolvedFinding): string {
+		const [start, end] = finding.lines();
+		const lowered = finding.lowered();
+		const severity =
+			lowered === undefined
+				? ""
+				: ` ${finding.properties.severity}, lowered from ${lowered.from}: ${prose(lowered.reason)}`;
+		return `${code(visibleText(finding.properties.path))}:${start}${end === start ? "" : `-${end}`} — ${code(visibleText(finding.ruleId))} (${finding.properties.resolution}): ${prose(finding.properties.explanation.what)}${severity}`;
 	}
 
 	private summary(round: LedgerRound, verdict: Verdict, links: RepositoryLinks): string {
