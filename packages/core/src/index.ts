@@ -95,6 +95,7 @@ export {
 	type StaticSettings,
 	type StaticToolSettings,
 	severitySchema,
+	stricter,
 	type TscSettings,
 } from "./config.ts";
 export {

@@ -1,4 +1,5 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -41,7 +42,7 @@ import {
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { VerdictDocument } from "../src/adjudication.ts";
-import { FindingsDocument, findingsVersion, upsertVerification } from "../src/findings.ts";
+import { FindingsDocument, findingsVersion, seenBefore, upsertVerification } from "../src/findings.ts";
 import { PublishedDocument, PublisherDocument } from "../src/publish.ts";
 
 const input: FindingInput = {
@@ -621,6 +622,182 @@ describe("version 5 findings", () => {
 		await first.harness.close(context);
 		const { harness, root } = await open(await openSqliteStorage(path));
 		expect(await readFindings(harness, root.id, "rev1", context)).toEqual([seen(evalFinding)]);
+	});
+});
+
+describe("version 6 findings and verdicts", () => {
+	const recorded = JSON.parse(readFileSync(new URL("./fixtures/stored-v6/review.json", import.meta.url), "utf8")) as {
+		revision: string;
+		findings: Legacy;
+		verdicts: Legacy & { verdicts: Record<string, StoredVerdict> };
+	};
+	const legacy = (kind: string) =>
+		defineDoc<Legacy>({
+			kind,
+			version: 6,
+			scope: "conversation",
+			history: "rewindable",
+			fork: "asOf",
+			initial: () => ({}),
+		});
+
+	it("reads what version 6 wrote after an SQLite reopen, then lowers its finding and reads that after another", async () => {
+		const path = join(dir, "version-six.sqlite");
+		const first = await open(await openSqliteStorage(path));
+		await first.root.commit(async (tx) => {
+			Object.assign(await tx.doc(legacy("melian.findings"), first.root.id), recorded.findings);
+			Object.assign(await tx.doc(legacy("melian.verdicts"), first.root.id), recorded.verdicts);
+		}, context);
+		await first.harness.close(context);
+
+		const second = await open(await openSqliteStorage(path));
+		const { revision } = recorded;
+		const [finding] = await readFindings(second.harness, second.root.id, revision, context);
+		expect(finding!.properties).toMatchObject({ severity: "P1", cause: "introduced" });
+		expect(finding!.properties.originalSeverity).toBeUndefined();
+		expect(finding!.properties.verification).toEqual({
+			verdict: "confirmed",
+			reason: "Traced the code.",
+			correction: "Use the guarded value.",
+			executor: "llm",
+			model: "faux/judge",
+			version: "6e135e83e4a4679e",
+		});
+		const verdict = (await readVerdict(second.harness, second.root.id, revision, context))!;
+		expect(verdict.findings.block.map((each) => each.id)).toEqual([finding!.id]);
+		expect(verdict.preExistingImportant).toBeUndefined();
+		// The stored JSON of a verdict without dismissals is what its fingerprint hashes, so the new code adds nothing to it.
+		const stored = JSON.stringify(recorded.verdicts.verdicts[revision]);
+		expect(verdict.fingerprint()).toBe(createHash("sha256").update(stored).digest("hex").slice(0, 16));
+
+		const lowered = { from: "P1", to: "P2", reason: "The only caller validates." } as const;
+		await second.root.commit(
+			(tx) =>
+				upsertVerification(tx, second.root.id, revision, finding!.id, finding!.properties.source, {
+					...finding!.properties.verification!,
+					// A later verifier's record, since an equal report from the same one could not lower.
+					version: "next",
+					answers: { code: "yes", guard: "no", base: "no" },
+					lowered,
+				}),
+			context,
+		);
+		await second.harness.close(context);
+
+		const third = await open(await openSqliteStorage(path));
+		const [again] = await readFindings(third.harness, third.root.id, revision, context);
+		expect(again!.properties).toMatchObject({ severity: "P2", originalSeverity: "P1" });
+		expect(again!.properties.verification?.lowered).toEqual(lowered);
+		expect(await readVerdict(third.harness, third.root.id, revision, context)).toEqual(verdict);
+	});
+});
+
+describe("lowered and re-scoped sightings", () => {
+	const record: Verification = {
+		verdict: "confirmed",
+		reason: "Traced.",
+		executor: "llm",
+		model: "fake/judge",
+		version: "1",
+	};
+	const lowered: Verification = { ...record, lowered: { from: "P1", to: "P2", reason: "One caller validates." } };
+	const rescoped: Verification = { ...record, rescoped: { from: "introduced", reason: "The base has the lines." } };
+	const judge = (root: Awaited<ReturnType<typeof open>>["root"], verification: Verification, source = input.source) =>
+		root.commit((tx) => upsertVerification(tx, root.id, "rev1", evalFinding.id, source, verification), context);
+
+	it("reads a lowered sighting at the lowered severity, and leaves the lens's severity stored", async () => {
+		const { harness, root } = await open(createMemoryStorage());
+		await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
+		await judge(root, lowered);
+		const [finding] = await readFindings(harness, root.id, "rev1", context);
+		expect(finding!.properties).toMatchObject({ severity: "P2", originalSeverity: "P1" });
+		expect(finding!.level).toBe("warning");
+		const state = (await harness.snapshot(FindingsDocument, root.id, context))!;
+		const stored = state.items[evalFinding.id]!.sightings.rev1!["lens.security@1"]!;
+		expect(stored.properties.severity).toBe("P1");
+		expect(stored.level).toBe("error");
+		expect(stored.properties).not.toHaveProperty("originalSeverity");
+	});
+
+	it("reads a re-scoped sighting as pre-existing, and leaves the lens's cause stored", async () => {
+		const { harness, root } = await open(createMemoryStorage());
+		await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
+		await judge(root, rescoped);
+		const [finding] = await readFindings(harness, root.id, "rev1", context);
+		expect(finding!.properties.cause).toBe("pre-existing");
+		expect(finding!.rescoped()).toEqual(rescoped.rescoped);
+		const state = (await harness.snapshot(FindingsDocument, root.id, context))!;
+		expect(state.items[evalFinding.id]!.sightings.rev1!["lens.security@1"]!.properties.cause).toBe("introduced");
+	});
+
+	it("takes the highest severity among sightings of one ID after lowering, and names the original", async () => {
+		const { harness, root } = await open(createMemoryStorage());
+		const other = { check: "lens.contracts", version: "1" };
+		const second = Finding.create({ ...input, severity: "P2", source: other, failureScenario: "It fails." });
+		const third = Finding.create({ ...input, severity: "P3", source: { check: "lens.tests", version: "1" } });
+		const first = Finding.create({ ...input, failureScenario: "eval('1') runs." });
+		await root.commit((tx) => upsertFinding(tx, root.id, first, "rev1"), context);
+		await root.commit((tx) => upsertFinding(tx, root.id, third, "rev1"), context);
+		await judge(root, lowered);
+		const [alone] = await readFindings(harness, root.id, "rev1", context);
+		expect(alone!.properties).toMatchObject({ severity: "P2", originalSeverity: "P1" });
+		expect(alone!.properties.source.check).toBe("lens.security");
+		await root.commit((tx) => upsertFinding(tx, root.id, second, "rev1"), context);
+		const [tied] = await readFindings(harness, root.id, "rev1", context);
+		expect(tied!.properties).toMatchObject({ severity: "P2", originalSeverity: "P1" });
+		expect(tied!.properties.source.check).toBe("lens.contracts");
+		expect(tied!.lowered()).toEqual({ from: "P1", reason: "One caller validates." });
+	});
+
+	it("drops the original severity when an unlowered sighting holds the finding at it", async () => {
+		const { harness, root } = await open(createMemoryStorage());
+		const other = { check: "lens.contracts", version: "1" };
+		await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
+		await root.commit(
+			(tx) => upsertFinding(tx, root.id, Finding.create({ ...input, source: other }), "rev1"),
+			context,
+		);
+		await judge(root, lowered);
+		const [finding] = await readFindings(harness, root.id, "rev1", context);
+		expect(finding!.properties.severity).toBe("P1");
+		expect(finding!.properties.originalSeverity).toBeUndefined();
+	});
+
+	it.each([
+		["a lowering", lowered],
+		["a re-scope", rescoped],
+	])("leaves a claim without %s when an equal report disagrees, in either order, and on replay", async (_, weaker) => {
+		for (const order of [
+			[weaker, record],
+			[record, weaker],
+		]) {
+			const { harness, root } = await open(createMemoryStorage());
+			await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
+			for (const report of order) {
+				await judge(root, report);
+				const version = await findingsVersion(harness, root.id, "rev1", context);
+				await judge(root, { ...report });
+				expect(await findingsVersion(harness, root.id, "rev1", context)).toBe(version);
+			}
+			const [finding] = await readFindings(harness, root.id, "rev1", context);
+			expect(finding!.properties.verification).toEqual(record);
+			expect(finding!.properties).toMatchObject({ severity: "P1", cause: "introduced" });
+			const version = await findingsVersion(harness, root.id, "rev1", context);
+			await judge(root, order[0]!);
+			expect(await findingsVersion(harness, root.id, "rev1", context)).toBe(version);
+			expect((await readFindings(harness, root.id, "rev1", context))[0]!.properties.verification).toEqual(record);
+		}
+	});
+
+	it("names a finding as seen before only at a revision after the one that first sighted it", async () => {
+		const { harness, root } = await open(createMemoryStorage());
+		await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
+		expect(await seenBefore(harness, root.id, "rev1", context)).toEqual([]);
+		await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev2"), context);
+		const fresh = Finding.create({ ...input, snippet: "eval(body)" });
+		await root.commit((tx) => upsertFinding(tx, root.id, fresh, "rev2"), context);
+		expect(await seenBefore(harness, root.id, "rev2", context)).toEqual([evalFinding.id]);
+		expect(await seenBefore(harness, root.id, "rev1", context)).toEqual([fresh.id]);
 	});
 });
 

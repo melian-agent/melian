@@ -1,4 +1,4 @@
-import type { ModelReference, StoredVerificationState } from "@melian-agent/core";
+import type { ModelReference, Severity, StoredVerificationState } from "@melian-agent/core";
 import { clearVerifications, revisionKey, sightingVerification } from "./findings.ts";
 import {
 	type Context,
@@ -30,6 +30,8 @@ export type VerificationCandidate = {
 	route: ModelReference[];
 	budget: { tokens: number; tools: number };
 	decisionsAtBase?: string;
+	// What a lowering of any claim is checked against; absent from a candidate an older Melian stored.
+	fence?: { coReported: boolean; silent: Severity[] };
 };
 export type VerificationInput = {
 	root: ConversationId;
@@ -78,6 +80,7 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 						label: `c${index + 1}`,
 						id,
 						source,
+						...(candidate.fence === undefined ? {} : { fence: structuredClone(candidate.fence) }),
 					}));
 					await configure(tx, child.id, {
 						model: candidate.route[0],

@@ -1,0 +1,254 @@
+{
+	"revision": "2083d41c1e07065185817d84054d3588b0deb9c3..6dbe51401f1f181043915a3958a2bacb0e2f6d44",
+	"findings": {
+		"revisions": [
+			"2083d41c1e07065185817d84054d3588b0deb9c3..6dbe51401f1f181043915a3958a2bacb0e2f6d44"
+		],
+		"items": {
+			"64f813a9f8e50dfe": {
+				"lifecycle": {
+					"status": "new",
+					"firstSeenRevision": "2083d41c1e07065185817d84054d3588b0deb9c3..6dbe51401f1f181043915a3958a2bacb0e2f6d44",
+					"lastSeenRevision": "2083d41c1e07065185817d84054d3588b0deb9c3..6dbe51401f1f181043915a3958a2bacb0e2f6d44",
+					"history": []
+				},
+				"sightings": {
+					"2083d41c1e07065185817d84054d3588b0deb9c3..6dbe51401f1f181043915a3958a2bacb0e2f6d44": {
+						"lens.correctness@05037e7ba4a2@careful": {
+							"ruleId": "null-dereference",
+							"level": "error",
+							"message": {
+								"text": "managerName reads name from a manager that may be undefined."
+							},
+							"partialFingerprints": {
+								"melian/v1": "64f813a9f8e50dfe"
+							},
+							"locations": [
+								{
+									"physicalLocation": {
+										"artifactLocation": {
+											"uri": "src/user.ts"
+										},
+										"region": {
+											"startLine": 7,
+											"snippet": {
+												"text": "\treturn user.manager.name;"
+											}
+										}
+									}
+								}
+							],
+							"properties": {
+								"id": "64f813a9f8e50dfe",
+								"path": "src/user.ts",
+								"occurrence": 0,
+								"cause": "introduced",
+								"failureScenario": "managerName({ name: \"Ada\" }) throws a TypeError reading name of undefined.",
+								"evidence": [
+									{
+										"file": "src/user.ts",
+										"startLine": 7,
+										"role": "cause",
+										"revision": "head",
+										"proves": true,
+										"snippet": "\treturn user.manager.name;"
+									}
+								],
+								"trigger": {
+									"file": "src/user.ts",
+									"index": 0,
+									"snippet": "\treturn user.manager.name;",
+									"hash": "2ccd7d9ec80a2d0ae81c5d36e913910bc47ff488c129753fb931ebe72833a538"
+								},
+								"severity": "P1",
+								"explanation": {
+									"what": "managerName reads name from a manager that may be undefined.",
+									"whyHere": "This change dropped the optional chain, so a user without a manager throws.",
+									"whatToDo": "Restore user.manager?.name with a fallback."
+								},
+								"source": {
+									"check": "lens.correctness",
+									"version": "05037e7ba4a2@careful"
+								}
+							}
+						}
+					}
+				},
+				"verifications": {
+					"2083d41c1e07065185817d84054d3588b0deb9c3..6dbe51401f1f181043915a3958a2bacb0e2f6d44": {
+						"lens.correctness@05037e7ba4a2@careful": {
+							"6e135e83e4a4679e": {
+								"verdict": "confirmed",
+								"reason": "Traced the code.",
+								"correction": "Use the guarded value.",
+								"executor": "llm",
+								"model": "faux/judge",
+								"version": "6e135e83e4a4679e"
+							}
+						}
+					}
+				}
+			}
+		},
+		"versions": {
+			"2083d41c1e07065185817d84054d3588b0deb9c3..6dbe51401f1f181043915a3958a2bacb0e2f6d44": 2
+		}
+	},
+	"verdicts": {
+		"verdicts": {
+			"2083d41c1e07065185817d84054d3588b0deb9c3..6dbe51401f1f181043915a3958a2bacb0e2f6d44": {
+				"status": "findings",
+				"blocking": true,
+				"findings": {
+					"block": [
+						{
+							"ruleId": "null-dereference",
+							"level": "error",
+							"message": {
+								"text": "managerName reads name from a manager that may be undefined."
+							},
+							"partialFingerprints": {
+								"melian/v1": "64f813a9f8e50dfe"
+							},
+							"locations": [
+								{
+									"physicalLocation": {
+										"artifactLocation": {
+											"uri": "src/user.ts"
+										},
+										"region": {
+											"startLine": 7,
+											"snippet": {
+												"text": "\treturn user.manager.name;"
+											}
+										}
+									}
+								}
+							],
+							"properties": {
+								"id": "64f813a9f8e50dfe",
+								"path": "src/user.ts",
+								"occurrence": 0,
+								"cause": "introduced",
+								"trigger": {
+									"file": "src/user.ts",
+									"index": 0,
+									"snippet": "\treturn user.manager.name;",
+									"hash": "2ccd7d9ec80a2d0ae81c5d36e913910bc47ff488c129753fb931ebe72833a538"
+								},
+								"severity": "P1",
+								"explanation": {
+									"what": "managerName reads name from a manager that may be undefined.",
+									"whyHere": "This change dropped the optional chain, so a user without a manager throws.",
+									"whatToDo": "Restore user.manager?.name with a fallback."
+								},
+								"source": {
+									"check": "lens.correctness",
+									"version": "05037e7ba4a2@careful"
+								},
+								"verification": {
+									"verdict": "confirmed",
+									"reason": "Traced the code.",
+									"correction": "Use the guarded value.",
+									"executor": "llm",
+									"model": "faux/judge",
+									"version": "6e135e83e4a4679e"
+								},
+								"evidence": [
+									{
+										"file": "src/user.ts",
+										"startLine": 7,
+										"role": "cause",
+										"revision": "head",
+										"proves": true,
+										"snippet": "\treturn user.manager.name;"
+									}
+								],
+								"failureScenario": "managerName({ name: \"Ada\" }) throws a TypeError reading name of undefined.",
+								"status": "new",
+								"reportedBy": [
+									{
+										"check": "lens.correctness",
+										"version": "05037e7ba4a2@careful"
+									}
+								],
+								"resolution": "block"
+							}
+						}
+					],
+					"acknowledge": [],
+					"advisory": [],
+					"silent": []
+				},
+				"dismissed": [],
+				"notRun": [],
+				"ran": [
+					{
+						"name": "lens.correctness",
+						"status": "ran",
+						"level": "careful"
+					},
+					{
+						"name": "verifier",
+						"status": "ran",
+						"version": "6e135e83e4a4679e"
+					}
+				]
+			}
+		},
+		"provenance": {
+			"2083d41c1e07065185817d84054d3588b0deb9c3..6dbe51401f1f181043915a3958a2bacb0e2f6d44": {
+				"verifierVersion": "6e135e83e4a4679e",
+				"kind": "range",
+				"policy": "config",
+				"manifest": [
+					"lens.correctness",
+					"verifier"
+				],
+				"lenses": [
+					"correctness@05037e7ba4a2@careful"
+				]
+			}
+		},
+		"details": {
+			"2083d41c1e07065185817d84054d3588b0deb9c3..6dbe51401f1f181043915a3958a2bacb0e2f6d44": {
+				"policy": "config",
+				"manifest": [
+					"lens.correctness",
+					"verifier"
+				],
+				"lenses": [
+					{
+						"name": "correctness",
+						"version": "05037e7ba4a2",
+						"level": "careful",
+						"models": [
+							"faux/finder"
+						],
+						"standards": [],
+						"ran": "faux/finder",
+						"usage": {
+							"models": [
+								"faux/finder"
+							],
+							"tokens": 6407,
+							"cost": 0
+						},
+						"budget": {
+							"findings": 8,
+							"tokens": 200000,
+							"tools": 30
+						}
+					}
+				],
+				"standards": []
+			}
+		},
+		"decisions": {
+			"2083d41c1e07065185817d84054d3588b0deb9c3..6dbe51401f1f181043915a3958a2bacb0e2f6d44": {
+				"task": 40,
+				"findingsVersion": 2
+			}
+		}
+	}
+}

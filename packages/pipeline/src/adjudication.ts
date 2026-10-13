@@ -16,7 +16,7 @@ import {
 	type Walkthrough,
 } from "@melian-agent/core";
 import { configsFor } from "./configurations.ts";
-import { findingsVersion, type Producer, readFindings, revisionKey } from "./findings.ts";
+import { findingsVersion, type Producer, readFindings, revisionKey, seenBefore } from "./findings.ts";
 import { type Context, type ConversationId, type DocumentReader, defineDoc, defineTask } from "./harness.ts";
 import type { StoredBudgetEnd } from "./lens-tools.ts";
 import { ReviewIndex } from "./review-index.ts";
@@ -137,12 +137,13 @@ class VerdictState {
 
 export const VerdictDocument = defineDoc<StoredVerdictState>({
 	kind: "melian.verdicts",
-	version: 6,
+	version: 7,
 	scope: "conversation",
 	history: "rewindable",
 	fork: "asOf",
 	initial: () => new VerdictState({ verdicts: {} }).toJSON(),
-	// Older records keep head-only keys and leave per-lens standards absent.
+	// Version 7 lets a verdict list its important pre-existing findings and a finding hold an original severity; a
+	// version 6 verdict has neither and reads unchanged. Older records keep head-only keys and leave per-lens standards absent.
 	migrate: (value, from) => VerdictState.upgrade(value, from),
 });
 
@@ -194,6 +195,7 @@ export const AdjudicationTask = defineTask<AdjudicationTaskInput, { phase: "adju
 			// newer, than what it was decided from.
 			const seen = await findingsVersion(runtime, root, revision, context);
 			const findings = await readFindings(runtime, root, revision, context, { producers });
+			const carried = await seenBefore(runtime, root, revision, context);
 			let verdict: Verdict;
 			try {
 				const configFor = policy === undefined ? () => config : await configsFor(repoRoot, policy, findings);
@@ -204,6 +206,7 @@ export const AdjudicationTask = defineTask<AdjudicationTaskInput, { phase: "adju
 					config: configFor,
 					allowSkip,
 					verificationRan: task.input.verificationRan,
+					seenBefore: carried,
 				}).adjudicate();
 			} catch (error) {
 				// A policy that cannot be read is the task's outcome rather than a fault. It may not fail the same way next

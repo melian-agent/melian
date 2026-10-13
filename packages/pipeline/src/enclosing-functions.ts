@@ -155,6 +155,47 @@ function callables(source: SourceFile, text: string, limit: number): Callable[] 
 	return found.length > limit ? undefined : found;
 }
 
+/** A named function around some lines, and the lines within it that hold code. */
+export interface HoldingFunction {
+	readonly name: string;
+	readonly startLine: number;
+	readonly endLine: number;
+	readonly code: ReadonlySet<number>;
+}
+
+// The lines of `within` that hold code. A line holds none only when it reads as a comment or is blank, no syntax node
+// starts or ends on it, and no node without children, such as a template literal, runs across it. A line reads as a
+// comment when it starts with `//`, or starts a block comment with `/*`, or follows one such line before its `*/`.
+// Anything the two tests disagree on counts as code.
+function codeLines(source: SourceFile, text: string, within: Callable): Set<number> {
+	const starts = lineStarts(text);
+	const lines = text.split("\n");
+	const held = new Set<number>();
+	const visit = (node: Node): void => {
+		const first = lineAt(starts, node.getStart(source));
+		const last = lineAt(starts, Math.max(node.end - 1, node.getStart(source)));
+		let children = 0;
+		node.forEachChild((child) => {
+			children++;
+			visit(child);
+		});
+		held.add(first);
+		held.add(last);
+		if (children === 0) for (let line = first; line <= last; line++) held.add(line);
+	};
+	source.forEachChild(visit);
+	const code = new Set<number>();
+	let inBlock = false;
+	for (let line = within.startLine; line <= within.endLine; line++) {
+		const written = lines[line - 1]!.trim();
+		const opens: boolean = !inBlock && written.startsWith("/*");
+		const comment = inBlock || opens || written === "" || written.startsWith("//");
+		if (inBlock || opens) inBlock = !written.slice(opens ? 2 : 0).includes("*/");
+		if (held.has(line) || !comment) code.add(line);
+	}
+	return code;
+}
+
 // A max-heap of the callables whose start the sweep has passed: the latest start first, and for one start line the
 // shorter span, then the one the compiler visited last. It visits an outer function before the ones inside it, so the
 // innermost around a line is the later visit when the spans match.
@@ -304,6 +345,42 @@ export class EnclosingFunctions {
 			return new EnclosingFunctions(functions, undefined, [...skipped, ...capped]);
 		} catch (error) {
 			return new EnclosingFunctions([], visibleText(error instanceof Error ? error.message : String(error)), []);
+		}
+	}
+
+	/**
+	 * The innermost named function around `startLine` to `endLine` in each text, in the order given, with the lines of
+	 * the function that hold code rather than a comment or nothing. `undefined` for a text that is not TypeScript, that
+	 * the compiler holds no tree for, that names more functions than {@link enclosingLimits}`.callablesPerFile`, or
+	 * whose lines no named function holds. Throws when the compiler cannot start.
+	 */
+	static around(
+		texts: readonly {
+			readonly path: string;
+			readonly text: string;
+			readonly startLine: number;
+			readonly endLine: number;
+		}[],
+	): (HoldingFunction | undefined)[] {
+		const readable = texts.map(({ path }) => typescriptFile.test(path) && !path.endsWith(".d.ts"));
+		if (!readable.includes(true)) return texts.map(() => undefined);
+		// Two texts may share a path, as a file's base and head do, so each is opened under its position.
+		const keyed = texts.map(({ path }, index) => `${index}/${path}`);
+		const program = HeadProgram.open(
+			new Map(texts.flatMap(({ text }, index) => (readable[index] ? [[keyed[index]!, text] as const] : []))),
+		);
+		try {
+			return texts.map(({ text, startLine, endLine }, index) => {
+				const source = readable[index] ? program.source(keyed[index]!) : undefined;
+				if (source === undefined) return undefined;
+				const holding = callables(source, text, enclosingLimits.callablesPerFile)
+					?.filter((each) => each.startLine <= startLine && each.endLine >= endLine)
+					.sort((a, b) => a.endLine - a.startLine - (b.endLine - b.startLine))[0];
+				if (holding === undefined) return undefined;
+				return { ...holding, code: codeLines(source, text, holding) };
+			});
+		} finally {
+			program.close();
 		}
 	}
 

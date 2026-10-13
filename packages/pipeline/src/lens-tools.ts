@@ -7,6 +7,7 @@ import {
 	type FindingTrigger,
 	type LensRule,
 	type LensToolName,
+	Lowering,
 	lensCovers,
 	listRevisionFiles,
 	maxEvidenceLines,
@@ -31,8 +32,10 @@ import Value from "typebox/value";
 import {
 	FindingsDocument,
 	hasSighting,
+	readSighting,
 	revisionKey,
 	sightingCount,
+	sightingIn,
 	upsertFinding,
 	upsertVerification,
 } from "./findings.ts";
@@ -58,6 +61,7 @@ import {
 	type UsageState,
 	validateToolArguments,
 } from "./harness.ts";
+import { ScopeProposal } from "./rescope.ts";
 import { ReviewIndex } from "./review-index.ts";
 import { injectionAttemptRule, injectionPolicy, injectionSeverity, quoteUntrusted } from "./untrusted.ts";
 import { type ReportVerdictInput, reportVerdictSchema } from "./verification-instructions.ts";
@@ -133,7 +137,10 @@ export type LensPolicy = {
 	version: string;
 	role?: "verifier";
 	model?: string;
-	claims?: { label: string; id: string; source: FindingSource }[];
+	// `fence` is what a lowering is checked against, fixed when the candidate was built: whether a deterministic check
+	// co-reported the defect, and the severities the table in force at its path resolves silent. Absent from a verifier
+	// an older Melian created, which may lower nothing.
+	claims?: { label: string; id: string; source: FindingSource; fence?: { coReported: boolean; silent: Severity[] } }[];
 	// The level it runs at, which its findings' source names; absent from a lens an older Melian created, whose findings
 	// name the lens's version alone.
 	level?: ScrutinyLevel;
@@ -800,14 +807,14 @@ export const reportVerdict = defineTool({
 	name: "report_verdict",
 	executionMode: "sequential",
 	description:
-		"Judge one labelled claim with code, guard and base answers, a verdict, reason, optional correction, and evidence locations required for a refutation.",
+		"Judge one labelled claim with code, guard and base answers, a verdict, reason, optional correction, and evidence locations required for a refutation or a lowering. Optionally lower the severity one step, or propose that the failure is pre-existing.",
 	parameters: reportVerdictSchema,
 	outputLimits,
 	prepareArguments: (args) => {
 		const error = [...Value.Errors(reportVerdictSchema, args)][0];
 		if (error !== undefined)
 			throw new Error(
-				`report_verdict needs claim c1 (or another supplied label), answers { code, guard, base } each yes, no or unknown, verdict confirmed, plausible or refuted, reason (1–2000 characters), optional correction (1–2000 characters), and evidence locations { file, line, endLine?, role, revision? }: ${error.instancePath} ${error.message}`,
+				`report_verdict needs claim c1 (or another supplied label), answers { code, guard, base } each yes, no or unknown, verdict confirmed, plausible or refuted, reason (1–2000 characters), optional correction (1–2000 characters), and evidence locations { file, line, endLine?, role, revision? }. It takes an optional lower { severity, reason }, and an optional scope { reason, failing { file, line, endLine?, baseLine }, trigger { file, line, endLine? }, path, newCaller, removedGuard, changedTrigger, copy }, each of the four { answer, base { file, line, endLine? } }: ${error.instancePath} ${error.message}`,
 			);
 		const prepared = args as ReportVerdictInput;
 		if (prepared.verdict === "refuted" && (prepared.evidence?.length ?? 0) === 0)
@@ -834,24 +841,85 @@ export const reportVerdict = defineTool({
 				})),
 			});
 			const evidence = await evidenceFrom(args.evidence ?? [], review, revision, args.evidence?.[0]?.file ?? "");
-			await api.commit(async (tx) => {
-				const entry = (await tx.doc(ReviewIndex, lens.review)).reviews[revisionKey(review)];
+			const at = revisionKey(review);
+			// Read outside the commit, since the scope checks read git and ask the compiler; the commit refuses a
+			// sighting that changed meanwhile.
+			const seen = await readSighting(api, lens.review, at, claim.id, claim.source, context);
+			let proposal: ScopeProposal | undefined;
+			if (args.scope !== undefined && seen !== undefined) {
+				const { region } = seen.locations[0]!.physicalLocation;
+				const sighted = {
+					path: seen.properties.path,
+					startLine: region.startLine,
+					endLine: region.endLine ?? region.startLine,
+					cause: seen.properties.cause,
+					evidence: seen.properties.evidence ?? [],
+				};
+				proposal = await ScopeProposal.read(review, revision, sighted, args.scope, args.verdict);
+			}
+			const notes = await api.commit(async (tx) => {
+				const entry = (await tx.doc(ReviewIndex, lens.review)).reviews[at];
 				if (entry?.verification?.task !== lens.task)
 					throw new Error("superseded: this verification task no longer owns the revision");
 				const document = await tx.doc(LensDocument, api.conversationId);
 				if (spent !== undefined || document.spend?.ended !== undefined)
 					throw new Error("the verifier budget ended");
-				await upsertVerification(tx, lens.review, revisionKey(review), claim.id, claim.source, {
+				const sighting = sightingIn(await tx.doc(FindingsDocument, lens.review), at, claim.id, claim.source);
+				if (sighting === undefined) throw new Error("the claim no longer has a sighting");
+				if (JSON.stringify(sighting) !== JSON.stringify(seen))
+					throw new Error("the claim changed while it was being judged; report the verdict again");
+				const { severity, cause } = sighting.properties;
+				const refusedLowering =
+					args.lower === undefined
+						? undefined
+						: new Lowering({
+								from: severity,
+								to: args.lower.severity,
+								verdict: args.verdict,
+								rule: sighting.ruleId,
+								coReported: claim.fence?.coReported ?? false,
+								silent: claim.fence?.silent,
+								evidence: evidence.length,
+								executor: "llm",
+							}).refusal();
+				const lowers = args.lower !== undefined && refusedLowering === undefined;
+				const rescoped = proposal?.accepted(args.scope!.reason);
+				await upsertVerification(tx, lens.review, at, claim.id, claim.source, {
 					verdict: args.verdict,
 					reason: args.reason,
 					...(args.correction === undefined ? {} : { correction: args.correction }),
+					answers: { ...args.answers },
+					...(evidence.length === 0 ? {} : { evidence }),
+					...(lowers ? { lowered: { from: severity, to: args.lower!.severity, reason: args.lower!.reason } } : {}),
+					...(rescoped === undefined ? {} : { rescoped }),
 					executor: "llm",
 					model: lens.model!,
 					version: lens.version,
 				});
+				return [
+					...(args.lower === undefined
+						? []
+						: [
+								lowers
+									? `lowered ${severity} to ${args.lower.severity}`
+									: `lowering refused, and the lens's ${severity} stands: ${refusedLowering}`,
+							]),
+					...(proposal === undefined
+						? []
+						: [
+								rescoped !== undefined
+									? `re-scoped from ${cause} to pre-existing`
+									: // The reasons name paths and symbols the change wrote, so they are quoted as data.
+										`re-scope refused, and the finding stays ${cause}:\n${quoteUntrusted("findings", proposal.refusals.join("\n"), review.nonce)}`,
+							]),
+				];
 			}, context);
 			return text(
-				`recorded verdict for ${args.claim}\n${quoteUntrusted("evidence", JSON.stringify(evidence), review.nonce)}`,
+				[
+					`recorded verdict for ${args.claim}`,
+					...notes,
+					quoteUntrusted("evidence", JSON.stringify(evidence), review.nonce),
+				].join("\n"),
 			);
 		})().catch((error: unknown) => failed(error, context, lens.revision.nonce));
 		return ending(result, lens, spent);

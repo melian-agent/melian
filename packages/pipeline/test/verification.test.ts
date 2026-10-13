@@ -40,13 +40,14 @@ import {
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AdjudicationTask, readDecision, readVerdict } from "../src/adjudication.ts";
-import { clearSightings } from "../src/findings.ts";
+import { clearSightings, FindingsDocument } from "../src/findings.ts";
 import { lensReadTools, reviewFiles } from "../src/lens-tools.ts";
 import { hasCredentials } from "../src/models.ts";
+import { ScopeProposal } from "../src/rescope.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { startVerification, type VerificationInput, VerificationTask } from "../src/verification.ts";
 import { verifierMarker, verifierVersion } from "../src/verification-instructions.ts";
-import { baseAndHead, gitIn } from "./fixtures/repo.ts";
+import { baseAndHead, gitIn, lines } from "./fixtures/repo.ts";
 import { crashFinding, crashRepository } from "./fixtures/review-scenario.ts";
 
 let repo: string;
@@ -1574,6 +1575,195 @@ describe("the verifier", () => {
 	});
 });
 
+describe("lowering a severity and setting scope through report_verdict", () => {
+	type Outcome = Exclude<Parameters<typeof scriptVerifier>[1], undefined>[string];
+	// Plants `finding` through the lens, then answers every claim with `outcome`. Returns the verifier's requests.
+	function judging(outcome: Outcome, finding: Record<string, unknown> = crashFinding) {
+		return scriptConversations(fake, [
+			...lenses.map((lens) => ({
+				match: lens.instructions,
+				replies: [
+					fauxAssistantMessage(fauxToolCall("report_finding", { ...finding, rule: lens.rules[0]!.id }), {
+						stopReason: "toolUse",
+					}),
+					fauxAssistantMessage("Done."),
+				],
+			})),
+			{
+				match: verifierMarker,
+				replies: [
+					(messages) => {
+						const ids = [...systemPromptOf(messages).matchAll(/finding ([0-9a-f]+)/g)].map((match) => match[1]!);
+						return scriptVerifier(messages, Object.fromEntries(ids.map((id) => [id, outcome])));
+					},
+					(messages) => scriptVerifier(messages),
+				],
+			},
+		])[verifierMarker]!;
+	}
+	const resultOf = (requests: ReturnType<typeof judging>) =>
+		textOf(requests.at(-1)!.findLast((message) => message.role === "toolResult")!);
+	const narrow = { severity: "P2", reason: "The only caller checks for a manager first." };
+	const cited = [{ file: "src/user.ts", line: 6, role: "context" as const }];
+
+	it("lowers a confirmed claim one step, and stores the answers and the evidence it read back", async () => {
+		const requests = judging({ verdict: "confirmed", reason: "Traced it.", evidence: cited, lower: narrow });
+		const { findings, verdict } = await review();
+		expect(findings[0]!.properties).toMatchObject({ severity: "P2", originalSeverity: "P1", cause: "introduced" });
+		expect(findings[0]!.properties.verification).toEqual({
+			verdict: "confirmed",
+			reason: "Traced it.",
+			answers: { code: "yes", guard: "no", base: "no" },
+			evidence: [
+				{
+					file: "src/user.ts",
+					startLine: 6,
+					role: "context",
+					revision: "head",
+					snippet: "export function managerName(user: User): string {",
+				},
+			],
+			lowered: { from: "P1", to: "P2", reason: narrow.reason },
+			executor: "llm",
+			model: "faux/judge",
+			version: verifierVersion,
+		});
+		expect(verdict.findings.acknowledge.map((finding) => finding.id)).toEqual([findings[0]!.id]);
+		expect(verdict.blocking).toBe(false);
+		expect(resultOf(requests)).toContain("recorded verdict for c1\nlowered P1 to P2\n<untrusted-");
+	});
+
+	it("records the verdict and leaves the lens's severity when the fence refuses the lowering", async () => {
+		const requests = judging({ verdict: "confirmed", reason: "Traced it.", lower: narrow });
+		const { findings, verdict } = await review();
+		expect(findings[0]!.properties.severity).toBe("P1");
+		expect(findings[0]!.properties.verification).toEqual({
+			verdict: "confirmed",
+			reason: "Traced it.",
+			answers: { code: "yes", guard: "no", base: "no" },
+			executor: "llm",
+			model: "faux/judge",
+			version: verifierVersion,
+		});
+		expect(verdict.blocking).toBe(true);
+		expect(resultOf(requests)).toContain(
+			"recorded verdict for c1\nlowering refused, and the lens's P1 stands: a lowering needs evidence locations naming the code that narrows the failure\n",
+		);
+	});
+
+	it("says nothing of a lowering or a re-scope the verifier did not ask for", async () => {
+		const requests = judging({ verdict: "confirmed", reason: "Traced it." });
+		await review();
+		expect(resultOf(requests)).toMatch(/^recorded verdict for c1\n<untrusted-/);
+	});
+
+	it("refuses a re-scope Melian cannot confirm, quotes why as data, and leaves the cause", async () => {
+		const at = { file: "src/user.ts", line: 7 };
+		const scope = {
+			reason: "The base has the line.",
+			failing: { ...at, baseLine: 7 },
+			trigger: { file: "src/user.ts", line: 6 },
+			newCaller: { answer: false, base: at },
+			removedGuard: { answer: false, base: at },
+			changedTrigger: { answer: false, base: at },
+			copy: { answer: false, base: at },
+		};
+		const requests = judging({ verdict: "confirmed", reason: "Traced it.", scope });
+		const { findings, verdict } = await review();
+		expect(findings[0]!.properties.cause).toBe("introduced");
+		expect(findings[0]!.properties.verification).not.toHaveProperty("rescoped");
+		expect(verdict.blocking).toBe(true);
+		const result = resultOf(requests);
+		expect(result).toMatch(
+			/recorded verdict for c1\nre-scope refused, and the finding stays introduced:\n<untrusted-[0-9a-f]+ label="findings">\n\(a\) the finding's cause evidence at src\/user\.ts:7 is on a changed line\n\(b\) the failing lines at the base differ from the head's\n/,
+		);
+	});
+
+	const parse = (comment: string) =>
+		lines(
+			"export function parseRecord(raw: string): string[] {",
+			comment,
+			'\tconst fields = raw.split(",");',
+			"\tconst name = fields[1].trim();",
+			"\treturn [name];",
+			"}",
+		);
+	const run = lines(
+		'import { parseRecord } from "./parse.ts";',
+		"",
+		"export function run(raw: string): string[] {",
+		"\treturn parseRecord(raw);",
+		"}",
+	);
+	const old = {
+		...crashFinding,
+		file: "src/parse.ts",
+		line: 1,
+		endLine: 6,
+		evidence: [{ file: "src/parse.ts", line: 4, role: "cause" }],
+	};
+	const older = {
+		reason: "The base reads fields[1] on the same line.",
+		failing: { file: "src/parse.ts", line: 4, baseLine: 4 },
+		trigger: { file: "src/run.ts", line: 4 },
+		newCaller: { answer: false, base: { file: "src/run.ts", line: 4 } },
+		removedGuard: { answer: false, base: { file: "src/parse.ts", line: 3 } },
+		changedTrigger: { answer: false, base: { file: "src/run.ts", line: 4 } },
+		copy: { answer: false, base: { file: "src/parse.ts", line: 4 } },
+	};
+	async function commentEdit() {
+		rmSync(repo, { recursive: true, force: true });
+		repo = baseAndHead(
+			{ "src/parse.ts": parse("\t// Split on commas."), "src/run.ts": run },
+			{ "src/parse.ts": parse("\t// Split the line at each comma."), "src/run.ts": run },
+		);
+		changeset = await Changeset.resolve(repo, "main...feature");
+	}
+
+	it("re-scopes a finding whose failing lines and trigger the change left alone, and lists it as important", async () => {
+		await commentEdit();
+		const requests = judging({ verdict: "confirmed", reason: "Traced it.", scope: older }, old);
+		const { findings, verdict } = await review();
+		expect(findings[0]!.properties).toMatchObject({ cause: "pre-existing", severity: "P1" });
+		expect(findings[0]!.properties.verification?.rescoped).toEqual({ from: "introduced", reason: older.reason });
+		expect(verdict.findings.advisory.map((finding) => finding.id)).toEqual([findings[0]!.id]);
+		expect(verdict.preExistingImportant).toEqual([
+			{
+				id: findings[0]!.id,
+				state: "new",
+				originalSeverity: "P1",
+				originalScope: "introduced",
+				reason: older.reason,
+			},
+		]);
+		expect(resultOf(requests)).toContain("recorded verdict for c1\nre-scoped from introduced to pre-existing\n");
+		const root = await harness.root(context);
+		const stored = (await harness.snapshot(FindingsDocument, root.id, context))!;
+		const sighting = Object.values(stored.items[findings[0]!.id]!.sightings[revisionKey(changeset.revision)]!)[0]!;
+		expect(sighting.properties.cause).toBe("introduced");
+	});
+
+	it("refuses the report when the claim changes while the scope is being checked", async () => {
+		await commentEdit();
+		const requests = judging({ verdict: "confirmed", reason: "Traced it.", scope: older }, old);
+		const read = ScopeProposal.read.bind(ScopeProposal);
+		vi.spyOn(ScopeProposal, "read").mockImplementationOnce(async (...args) => {
+			const root = await harness.root(context);
+			const revision = revisionKey(changeset.revision);
+			const [seen] = await readFindings(harness, root.id, revision, context);
+			const { reportedBy: _, ...properties } = seen!.properties;
+			const reworded = Finding.from({ ...seen!.toJSON(), message: { text: "Reworded." }, properties });
+			await root.commit((tx) => upsertFinding(tx, root.id, reworded, revision), context);
+			return read(...args);
+		});
+		await expect(review()).rejects.toMatchObject({ code: "verifierFailed" });
+		const errors = requests.flatMap((messages) =>
+			messages.filter((message) => message.role === "toolResult" && message.isError),
+		);
+		expect(textOf(errors[0]!)).toContain("the claim changed while it was being judged; report the verdict again");
+	});
+});
+
 describe("verification ownership and budgets", () => {
 	async function input(): Promise<VerificationInput> {
 		scripts();
@@ -1600,6 +1790,59 @@ describe("verification ownership and budgets", () => {
 			],
 		};
 	}
+	it.each([
+		["a verifier an older Melian created, with no fence", undefined, "Melian could not read the resolution table"],
+		[
+			"a defect a deterministic check co-reported",
+			{ coReported: true, silent: [] },
+			"a deterministic check reported",
+		],
+		[
+			"a target the table resolves silent",
+			{ coReported: false, silent: ["P2" as const] },
+			"the table in force at the finding's path resolves P2 silent",
+		],
+		["a claim inside the fence", { coReported: false, silent: ["nit" as const] }, undefined],
+	])("checks a lowering against the candidate's fence: %s", async (_, fence, refusal) => {
+		const stored = await input();
+		stored.candidates[0] = {
+			...stored.candidates[0]!,
+			budget: { tokens: 100000, tools: 20 },
+			...(fence && { fence }),
+		};
+		const id = stored.candidates[0]!.state.claims[0]!.id;
+		const requests = scriptConversations(fake, [
+			{
+				match: verifierMarker,
+				replies: [
+					(messages) =>
+						scriptVerifier(messages, {
+							[id]: {
+								verdict: "confirmed",
+								reason: "Traced it again.",
+								evidence: [{ file: "src/user.ts", line: 6, role: "context" }],
+								lower: { severity: "P2", reason: "One caller checks first." },
+							},
+						}),
+					fauxAssistantMessage("Done."),
+				],
+			},
+		]);
+		const root = await harness.root(context);
+		const revision = revisionKey(changeset.revision);
+		const selection = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.lenses;
+		const task = (await startVerification(harness, stored, selection, true, context))!;
+		expect((await harness.waitForTask(task, context)).state.outcome).toMatchObject({ status: "completed" });
+		const [finding] = await readFindings(harness, root.id, revision, context);
+		const result = textOf(requests[verifierMarker]!.at(-1)!.findLast((message) => message.role === "toolResult")!);
+		if (refusal === undefined) {
+			expect(finding!.properties).toMatchObject({ severity: "P2", originalSeverity: "P1" });
+			expect(result).toContain("lowered P1 to P2");
+		} else {
+			expect(finding!.properties.severity).toBe("P1");
+			expect(result).toContain(`lowering refused, and the lens's P1 stands: ${refusal}`);
+		}
+	});
 	it("limits nine candidates to eight in-flight judge requests", async () => {
 		const stored = await input();
 		const template = stored.candidates[0]!;
