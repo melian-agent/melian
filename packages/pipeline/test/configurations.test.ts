@@ -1,7 +1,7 @@
 import { Adjudication, Finding, type FindingInput, Lens } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { configsFor } from "../src/configurations.ts";
-import { commit, createRepository, lines, removeRepository } from "./fixtures/repo.ts";
+import { commit, createRepository, lines, removeRepository, writeFiles } from "./fixtures/repo.ts";
 
 const lensFile = (name: string, ...frontMatter: string[]) =>
 	lines(
@@ -114,6 +114,29 @@ describe("configsFor", () => {
 		});
 		await configsFor(repo, { kind: "revision", commit: base }, [twice]);
 		expect(load).toHaveBeenCalledTimes(1);
+	});
+
+	it("fingerprints the layers and lens defaults the findings resolve under, whatever their order", async () => {
+		const policy = { kind: "worktree" } as const;
+		const root = (ceiling: string) =>
+			lines("resolution:", "  P2: acknowledge", "  checks:", `    lens.cleanup: { ceiling: ${ceiling} }`);
+		commit(repo, {
+			"melian.yaml": root("advisory"),
+			".melian/lenses/cleanup/LENS.md": lensFile("cleanup", "resolution: { P3: silent }"),
+		});
+		const findings = [finding(), finding({ file: "docs/guide.md" })];
+		const read = async (order = findings) => (await configsFor(repo, policy, order)).fingerprint;
+		const first = await read();
+		expect(first).toMatch(/^[0-9a-f]{16}$/);
+		expect(await read()).toBe(first);
+		expect(await read([...findings].reverse())).toBe(first);
+		// Only a check entry changes: the merged table, which holds no checks, reads the same.
+		writeFiles(repo, { "melian.yaml": root("block") });
+		const edited = await read();
+		expect(edited).not.toBe(first);
+		// Only a lens's declared default changes.
+		writeFiles(repo, { ".melian/lenses/cleanup/LENS.md": lensFile("cleanup", "resolution: { P3: block }") });
+		expect(await read()).not.toBe(edited);
 	});
 
 	it("judges a policy-change notice on a nested melian.yaml under the layers of the directory above", async () => {

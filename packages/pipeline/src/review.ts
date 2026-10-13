@@ -3,6 +3,7 @@ import {
 	type Changeset,
 	type CheckRecord,
 	type ChoiceQuestion,
+	type ConfigFor,
 	checksOfTier,
 	configLookup,
 	type Decider,
@@ -1943,15 +1944,16 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	// As the lenses reported them: a lowering stored by a verification this review attaches to must not change which
 	// finding speaks for a defect, or the candidates would read as new input and the stored judgements be cleared.
 	const storedFindings = await readFindings(harness, root, reviewed, context, { producers, asReported: true });
-	const configFor =
+	const policies =
 		options.policy === undefined
-			? () => config
+			? undefined
 			: await configsFor(repoRoot, options.policy, storedFindings).catch((error: unknown) => {
 					throw new ReviewError("adjudicationFailed", error instanceof Error ? error.message : String(error), {
 						lenses: [],
 						findings: storedFindings,
 					});
 				});
+	const configFor: ConfigFor = policies ?? (() => config);
 	const allRuns = runsOf(ran.lenses);
 	const candidates: VerificationCandidate[] = [];
 	const designRules = new Set(
@@ -2153,6 +2155,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		base,
 		head,
 		policy: options.policy,
+		resolutionPolicy: policies?.fingerprint,
 		config,
 		manifest: verificationCheck === undefined ? manifest : [...manifest, "verifier"],
 		checks: verificationCheck === undefined ? checks : [...checks, verificationCheck],

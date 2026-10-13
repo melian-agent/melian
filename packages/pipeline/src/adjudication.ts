@@ -159,6 +159,11 @@ export type AdjudicationTaskInput = {
 	head: string;
 	// Where per-path configuration is read from; without it, `config` applies to every path.
 	policy?: RepositorySource;
+	// `configsFor`'s fingerprint of the policy the findings resolved under when the review created the task: each
+	// path's layers and each lens's declared default, which `config` does not hold. A working tree's policy can change
+	// under one source, so a repeat review after such a change starts a new task. Absent without a policy source, and
+	// from a task an older Melian created.
+	resolutionPolicy?: string;
 	// `preExisting` is absent from an input an older Melian stored, and every cap is then advisory.
 	config: {
 		resolution: Record<Severity, Resolution> & { preExisting?: Record<Severity, PreExistingCap> };
@@ -255,6 +260,7 @@ export function adjudicationInput(options: {
 	base: string;
 	head: string;
 	policy: RepositorySource | undefined;
+	resolutionPolicy?: string | undefined;
 	config: Pick<MelianConfig, "resolution" | "ruleAliases">;
 	manifest: readonly string[];
 	checks: readonly CheckRecord[];
@@ -292,6 +298,7 @@ export function adjudicationInput(options: {
 		base,
 		head,
 		...(policy === undefined ? {} : { policy: { ...policy } }),
+		...(options.resolutionPolicy === undefined ? {} : { resolutionPolicy: options.resolutionPolicy }),
 		config: {
 			resolution: structuredClone(config.resolution),
 			ruleAliases: structuredClone(config.ruleAliases) as Record<string, StoredAlias>,
