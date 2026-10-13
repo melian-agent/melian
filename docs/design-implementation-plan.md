@@ -129,6 +129,7 @@ Done when the `melian/review` status is required on `main`, and every pull reque
     - Done when, the five: each way past the text match is a golden that refuses: a guard deleted in a caller, a caller under an alias, a default export, a name spelt through an escape, and a binary file.
     - Done when, the stored shape: the verification record holds the original scope and the verifier's reason, with a version bump and a reopen test. The stored `base` answers show how often verifiers already say a failure predates the change.
     - Done when, surfacing: a re-scoped finding whose original severity is P2 or higher joins "Pre-existing, important", with the reason and the original scope.
+    - Goldens: the thirteen that [the decision](decisions/2026-10-13-re-scope-held-for-the-compiler.md#what-is-held-for-the-step-that-builds-the-route) holds, in `packages/evals/verifier/`. Ten cover scope: seven refusals, a renamed file, a true pre-existing case, and a co-report. Two cover surfacing, a re-scoped P2 and a re-scoped P3. One covers two scope answers that conflict. The five ways past the text match join them.
 
 Not yet scheduled, from the same research: the comparison importer counts a CodeRabbit thread the bot resolved, citing a fixing commit, as an accepted finding. It is a follow-up to step 15, as [decisions/2026-10-12-lens-roadmap-after-the-research.md](decisions/2026-10-12-lens-roadmap-after-the-research.md) records.
 

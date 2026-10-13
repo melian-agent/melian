@@ -22,6 +22,12 @@ What this gives up: a finding whose own range overlaps a changed line, while its
 
 ## What survives: lowering
 
+Problem: the verifier can keep a finding or drop it, and nothing in between. A lens sets the severity, and a verifier that confirms the mechanism also confirms that severity, however narrow the failure turns out to be.
+
+Example: a lens reports a P2 on a parse call that fails for one malformed input. The verifier reads the callers and confirms it. It also finds that the only caller validates that input first, so the failure needs a second defect to appear. The finding is real, so it is not refuted. It stays P2 and the author must acknowledge it.
+
+Two tools show the same gap from outside. In [the CodeRabbit sample](../research/2026-10-12-coderabbit-categories.md), authors dismissed 15% of major findings and 4% of minor ones. The severity the reviewer was surest of was the one most often rejected. And the `code-review` plugin for Claude Code keeps a list of false positives that excludes pre-existing issues, as [the note on its review angles](../research/2026-10-12-claude-code-review-angles.md) records.
+
 The verifier may lower a finding's severity by one step, and never raise it. A model's prose never moves a finding out of the blocking set by more than that step.
 
 - A lowering is one step: P1 to P2, or P2 to P3. No other lowering exists.
@@ -52,7 +58,7 @@ Solution: a heading of its own, "Pre-existing, important".
 - **The verdict.** A member counts toward the verdict and the exit code exactly as it did before the heading existed: as any advisory finding does, and not at all when the floor alone keeps it above `silent`. It never blocks. A host's tallies follow the same rule: on a pull request, a member the floor alone lifted is left out of the "need attention" sentence, the check's description and the ledger's open count, so they read as they did before the heading existed. Its own comment names the heading and says whether it is new or carried. The sentence in the superseded decision, "never changes the verdict or the exit code", meant that the heading adds nothing to what an advisory finding already does. It did not mean an important finding counts for less than an ordinary one.
 - **The floor.** A member never resolves below `advisory`. This overrides a `silent` mapping and a `silent` ceiling for members, on purpose. The caps apply first, then the floor.
 
-Lens budgets bound how many findings a lens reports, so the heading needs no bound of its own. The `preExisting` cap is a key that [resolution per lens and per rule](2026-10-12-resolution-per-lens-and-per-rule.md) defines, and step 18 builds it. Until then the cap is fixed at advisory. The membership threshold is a reading of the maintainer's words, "if important", and the maintainer may adjust it.
+Lens budgets bound how many findings a lens reports, so the heading needs no bound of its own. The superseded decision added "unless a folder's `preExisting` cap asks for an acknowledgement" to the rule on the verdict. That clause, and the cap key itself, live in [resolution per lens and per rule](2026-10-12-resolution-per-lens-and-per-rule.md), which step 18 builds. Until then the cap is fixed at advisory, and a member never asks for an acknowledgement. The membership threshold is a reading of the maintainer's words, "if important", and the maintainer may adjust it.
 
 ## What survives: conflicting reports
 
@@ -75,6 +81,32 @@ The superseded decision had itself superseded [cause by location](2026-10-03-cau
 - `affected` needs lens evidence: a `cause` location in changed code, which Melian checks against the hunks.
 - Everything else is `pre-existing`.
 - A location heuristic must never make an old defect block.
+
+A deterministic co-report keeps its own cause, and the merge keeps the strongest cause any member gave. That held before re-scoping was planned and holds now.
+
+## What is held, for the step that builds the route
+
+The superseded decision's scope rules are held, not withdrawn. The step that asks the compiler starts from them. Location classifies every finding first. The verifier may then propose `pre-existing`, never a stronger cause, and Melian accepts only when it confirms all four of these itself:
+
+- **(a) No evidence on a changed line.** The finding has no `cause` location and no other evidence location on a changed line. A line in a file git reports as renamed with identical content is the one exception.
+- **(b) The failing lines are the same lines.** The verifier quotes the failing lines at the base, and Melian compares them with the head's, byte for byte, finding the base file through git's rename map.
+- **(c) The trigger is untouched.** The verifier names the trigger and each location on the path from it to the failure. A proposal with no named trigger is refused. Every named location lies outside every hunk, at the base and at the head.
+- **(d) Four typed answers, cross-checked.** `newCaller`, `removedGuard`, `changedTrigger`, and `copy`, each `false` with a base location. Melian cross-checks each, and any hit refuses. A hunk adds a call to the failing symbol. A hunk deletes lines inside the guard or the function that holds the failing code. A hunk changes a configuration key or a default the trigger reads. The head holds an instance of the failing code whose twin still exists at the base.
+
+Thirteen goldens are held with the route. Ten for scope, each refused unless marked:
+
+- a new caller beside an older unvalidated one;
+- a removed guard;
+- a flag flipped in another file, with the trigger named;
+- an edited copy of a buggy function;
+- a moved function with a one-character edit;
+- a base location in dead code that the head makes reachable;
+- a proposal with no named trigger;
+- a renamed file with identical content, which may re-scope;
+- a true pre-existing case, which re-scopes and is capped;
+- a deterministic co-report, which keeps its cause beside a re-scoped lens claim.
+
+Two for surfacing: a re-scoped P2 is listed under "Pre-existing, important" with the reason and the original scope, and a re-scoped P3 is an ordinary pre-existing finding. One for conflicting reports: two scope answers that conflict. With them goes the second kind of member, a re-scoped finding whose original severity is P2 or higher, and the stronger scope that an equal verdict keeps.
 
 ## What this leaves alone
 
