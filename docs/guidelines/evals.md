@@ -114,7 +114,7 @@ A repeated review finding that becomes a guardrail gets a golden too, named `gua
 
 Comparison records feed the corpus where an adjudication owes a golden, as [Comparisons](#comparisons) sets out.
 
-One defect can fit two lenses’ rules, and each can report it under its own. Scoring uses the merged, adjudicated defect once. Expectations can require either rule and its source; a second sighting does not cost precision. Declare a second finding only where the second lens's instructions claim that kind of defect, as both `correctness` and `removed-behaviour` claim a removed guard: `correctness-deleted-guard` and `removed-behaviour-dropped-guard` each expect `correctness`'s `wrong-result` and `removed-behaviour`'s `dropped-guard`. An independent defect with no matching expectation costs precision.
+One defect can fit two lenses’ rules, and each can report it under its own. Scoring uses the merged, adjudicated defect once. Expectations can require either rule and its source; a second sighting does not cost precision. Declare a second finding only where the second lens's instructions claim that kind of defect, as both `correctness` and `removed-behaviour` claim a removed guard: `correctness-deleted-guard` and `removed-behaviour-dropped-guard` each expect `correctness`'s `wrong-result` and `removed-behaviour`'s `dropped-guard`. An independent defect with no matching expectation costs precision. An expectation can require a lens through `source`, but it cannot require another lens to stay silent on the same lines, because that sighting merges into the expected defect. `design-reimplements-an-authority-standard` expects `conventions` alone, so its live record counts `design`'s sightings by hand.
 
 ## Comparisons
 
