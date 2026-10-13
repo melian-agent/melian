@@ -1,0 +1,37 @@
+{
+	"title": "A nearer file that speaks drops a farther file's ceiling",
+	"findings": [
+		{
+			"check": "lens.cleanup",
+			"rule": "reuse",
+			"severity": "P2",
+			"file": "services/payments/src/ledger.ts",
+			"verdict": "confirmed"
+		},
+		{
+			"check": "lens.cleanup",
+			"rule": "reuse",
+			"severity": "P1",
+			"file": "services/payments/src/total.ts",
+			"verdict": "confirmed"
+		}
+	],
+	"expect": [
+		{
+			"file": "services/payments/src/ledger.ts",
+			"rule": "reuse",
+			"decidedBy": "melian.yaml",
+			"resolution": "advisory"
+		},
+		{
+			"file": "services/payments/src/total.ts",
+			"rule": "reuse",
+			"decidedBy": "services/payments/melian.yaml",
+			"resolution": "block"
+		}
+	],
+	"doctor": [
+		"services/payments/melian.yaml: resolution.P1 overrides melian.yaml's resolution.checks.lens.cleanup.ceiling for P1 lens.cleanup findings",
+		"services/payments/melian.yaml: resolution.P1 overrides melian.yaml's resolution.checks.lens.trust-boundary.rules.terminal-escape for P1 lens.trust-boundary terminal-escape findings"
+	]
+}

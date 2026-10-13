@@ -114,6 +114,8 @@ Use the same range or `"#N"` the review used, and the finding's ID, the 16 hex d
 
 A finding can carry other reports of the same defect, which Melian merged into it because they flag the same code; each is printed under the finding's first line as "Merged report", with its severity, rule, check, and ID. Dismissing the finding dismisses those reports with it, and the output names each one. Before you dismiss such a finding, show the user its merged reports and ask whether each is the same defect. To dismiss one report and keep the others counting, add `--only` and give the ID of the report to dismiss.
 
+If the repository's review policy changed in the working tree after the review, the dismissal is recorded but the verdict is not decided again. Run the review again, and it counts the dismissal.
+
 Dismissing a finding again replaces its reason and keeps the old one. A dismissal stays on this machine until it is published: for a pull request, it reaches GitHub only through `melian publish`, which still waits for the user to say so.
 
 ## Publish to a pull request

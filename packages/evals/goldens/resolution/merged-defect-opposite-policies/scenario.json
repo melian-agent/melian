@@ -1,0 +1,63 @@
+{
+	"title": "A merged defect with opposite policies, in both speaker orders, and with a speaker ruleAliases chose",
+	"findings": [
+		{
+			"check": "lens.cleanup",
+			"rule": "reuse",
+			"severity": "P1",
+			"file": "src/first.ts",
+			"verdict": "confirmed"
+		},
+		{
+			"check": "static.biome",
+			"rule": "biome/style/useConst",
+			"severity": "P1",
+			"file": "src/first.ts"
+		},
+		{
+			"check": "static.biome",
+			"rule": "biome/style/useConst",
+			"severity": "P1",
+			"file": "src/second.ts"
+		},
+		{
+			"check": "lens.cleanup",
+			"rule": "reuse",
+			"severity": "P1",
+			"file": "src/second.ts",
+			"verdict": "confirmed"
+		},
+		{
+			"check": "static.biome",
+			"rule": "biome/style/useConst",
+			"severity": "P1",
+			"file": "aliased/third.ts"
+		},
+		{
+			"check": "lens.cleanup",
+			"rule": "reuse",
+			"severity": "P1",
+			"file": "aliased/third.ts",
+			"verdict": "confirmed"
+		}
+	],
+	"expect": [
+		{
+			"file": "src/first.ts",
+			"decidedBy": "melian.yaml",
+			"resolution": "acknowledge"
+		},
+		{
+			"file": "src/second.ts",
+			"decidedBy": "melian.yaml",
+			"resolution": "acknowledge"
+		},
+		{
+			"file": "aliased/third.ts",
+			"rule": "reuse",
+			"decidedBy": "melian.yaml",
+			"resolution": "acknowledge"
+		}
+	],
+	"doctor": []
+}

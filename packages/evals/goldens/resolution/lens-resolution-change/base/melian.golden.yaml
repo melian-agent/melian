@@ -1,0 +1,7 @@
+guardrails:
+  policy-change-review:
+    enabled: false
+    severity: P1
+resolution:
+  checks:
+    guardrails: { ceiling: advisory }

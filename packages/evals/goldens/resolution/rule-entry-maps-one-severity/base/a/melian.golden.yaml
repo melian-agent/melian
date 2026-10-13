@@ -1,0 +1,5 @@
+resolution:
+  checks:
+    lens.cleanup:
+      rules:
+        reuse: { P1: silent }

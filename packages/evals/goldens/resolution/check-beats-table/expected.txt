@@ -1,0 +1,29 @@
+Verdict: findings, blocking
+
+Block: 1 finding
+
+src/receipt.ts
+
+  P2  line 1  wrong-result  (introduced, new, block, confirmed)
+    Decided by: melian.yaml: resolution.P2, the table
+    Verified: scripted/judge: The scripted verifier judged the claim.
+  wrong-result, as lens.correctness reports it.
+    What: Scripted.
+    Why here: Scripted.
+    Failure scenario: Scripted.
+    What to do: Scripted.
+
+Advisory: 1 finding
+
+src/total.ts
+
+  P2  line 1  reuse  (introduced, new, advisory, confirmed)
+    Decided by: melian.yaml: resolution.checks.lens.cleanup.P2, the check entry
+    Verified: scripted/judge: The scripted verifier judged the claim.
+  reuse, as lens.cleanup reports it.
+    What: Scripted.
+    Why here: Scripted.
+    Failure scenario: Scripted.
+    What to do: Scripted.
+
+2 findings in 2 files.

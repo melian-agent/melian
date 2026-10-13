@@ -1,0 +1,34 @@
+{
+	"title": "A file that speaks only through a ceiling drops a farther table's value",
+	"findings": [
+		{
+			"check": "lens.cleanup",
+			"rule": "reuse",
+			"severity": "P2",
+			"file": "a/total.ts",
+			"verdict": "confirmed"
+		},
+		{
+			"check": "lens.cleanup",
+			"rule": "reuse",
+			"severity": "P2",
+			"file": "src/total.ts",
+			"verdict": "confirmed"
+		}
+	],
+	"expect": [
+		{
+			"file": "a/total.ts",
+			"decidedBy": "a/melian.yaml",
+			"resolution": "acknowledge"
+		},
+		{
+			"file": "src/total.ts",
+			"decidedBy": "melian.yaml",
+			"resolution": "silent"
+		}
+	],
+	"doctor": [
+		"a/melian.yaml: resolution.checks.lens.cleanup.ceiling overrides melian.yaml's table for P2 lens.cleanup findings"
+	]
+}

@@ -15,6 +15,7 @@ export {
 	ComparisonReader,
 	type ImportedSource,
 } from "./compare.ts";
+export { configsFor, type PolicyLookup } from "./configurations.ts";
 export {
 	createReviewModels,
 	MelianCredentialStore,

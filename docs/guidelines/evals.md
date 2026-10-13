@@ -94,6 +94,16 @@ Live verifier runs need both `MELIAN_EVAL_LIVE=1` and `MELIAN_EVAL_VERIFIER=1`. 
 
 Existing lens goldens explicitly route the fake verifier in scripted mode. In live mode their verifier uses `MELIAN_EVAL_VERIFIER_MODEL`, or `MELIAN_EVAL_MODEL`, or the committed verifier route when neither variable is set. A fake provider can be added to an existing opaque model collection through the pipeline testing entry; this lets a planted finder share a harness with a separately routed judge.
 
+## Resolution goldens
+
+The twenty goldens that [the resolution decision](../decisions/2026-10-13-resolution-as-built.md) lists live under `packages/evals/goldens/resolution/<name>/`. They run no model and no lens, so `loadGoldens` leaves that directory out and `loadResolutionGoldens` reads it.
+
+Each holds a `base/` tree with the policy, under the corpus's inert names: `melian.golden.yaml` at any level, and `.melian/lenses/<name>/LENS.golden.md` for a lens that declares a default. A `head/` tree, when there is one, is laid over the base as the change. `scenario.json` scripts the findings a review would hold: each report's check, rule, severity and place, the verifier's verdict on a lens report, and a lowered severity. Two reports at one file, line and code are one defect.
+
+`runResolutionGolden` commits the trees and reads policy and lenses from the base, as a pull request's review does. It runs the guardrails over the change, resolves every finding through `configsFor` and core's `Adjudication`, and lists what `melian doctor` would print through `resolutionOverrides`.
+
+A golden is held three ways. `expect` in `scenario.json` says what each finding must resolve to and which file must have decided, written by hand from the decision. `doctor` lists the doctor lines. `expected.txt` holds the rendering `melian findings` prints, with its `Decided by` lines, and is read before it is committed. The rules that tie a lens golden's `LENS.golden.md` and tiers to Melian's own leave these goldens out.
+
 ## Scoring
 
 Score the verdict’s adjudicated findings, excluding its refuted and dismissed groups. A finding matches an expected path or `alternativeFiles` path and a rule/source pair from the speaker or `otherClaims`. `reportedBy` retains co-reporters, but never pairs a check with a rule another claim supplied. Each expected finding is a true positive at most once, and findings are paired with expectations so that as many count as can: a second reported finding matching an expectation already matched is a false positive, because it reports one defect twice. Precision is true positives over reported findings; recall is expected findings found over expected findings. A golden with nothing expected has recall 1, and one with nothing reported has precision 1. `scoreCorpus` sums the counts across goldens before dividing, so a golden with many findings weighs more than a clean one.

@@ -1,0 +1,4 @@
+resolution:
+  P1: silent
+  checks:
+    lens.cleanup: { ceiling: silent }

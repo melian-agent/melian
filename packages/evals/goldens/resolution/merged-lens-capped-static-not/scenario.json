@@ -1,0 +1,37 @@
+{
+	"title": "A merged defect whose lens member is capped does not cap its static member",
+	"findings": [
+		{
+			"check": "lens.cleanup",
+			"rule": "reuse",
+			"severity": "P1",
+			"file": "src/total.ts"
+		},
+		{
+			"check": "static.biome",
+			"rule": "biome/security/noGlobalEval",
+			"severity": "P1",
+			"file": "src/total.ts"
+		},
+		{
+			"check": "lens.cleanup",
+			"rule": "reuse",
+			"severity": "P1",
+			"file": "src/receipt.ts"
+		}
+	],
+	"expect": [
+		{
+			"file": "src/total.ts",
+			"decidedBy": "",
+			"resolution": "block"
+		},
+		{
+			"file": "src/receipt.ts",
+			"rule": "reuse",
+			"decidedBy": "",
+			"resolution": "advisory"
+		}
+	],
+	"doctor": []
+}

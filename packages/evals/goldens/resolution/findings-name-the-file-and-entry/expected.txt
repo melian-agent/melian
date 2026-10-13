@@ -1,0 +1,64 @@
+Verdict: findings, blocking
+
+Block: 2 findings
+
+src/a.ts
+
+  P1  line 1  reuse  (introduced, new, block, confirmed)
+    Decided by: melian.yaml: resolution.checks.lens.cleanup.rules.reuse.P1, the rule entry
+    Verified: scripted/judge: The scripted verifier judged the claim.
+  reuse, as lens.cleanup reports it.
+    What: Scripted.
+    Why here: Scripted.
+    Failure scenario: Scripted.
+    What to do: Scripted.
+
+src/e.ts
+
+  P0  line 1  wrong-result  (introduced, new, block, confirmed)
+    Decided by: the built-in table
+    Verified: scripted/judge: The scripted verifier judged the claim.
+  wrong-result, as lens.correctness reports it.
+    What: Scripted.
+    Why here: Scripted.
+    Failure scenario: Scripted.
+    What to do: Scripted.
+
+Acknowledge: 1 finding
+
+src/b.ts
+
+  P2  line 1  altitude  (introduced, new, acknowledge, confirmed)
+    Decided by: melian.yaml: resolution.checks.lens.cleanup.P2, the check entry
+    Verified: scripted/judge: The scripted verifier judged the claim.
+  altitude, as lens.cleanup reports it.
+    What: Scripted.
+    Why here: Scripted.
+    Failure scenario: Scripted.
+    What to do: Scripted.
+
+Advisory: 2 findings
+
+src/c.ts
+
+  P3  line 1  wrong-result  (introduced, new, advisory, confirmed)
+    Decided by: melian.yaml: resolution.P3, the table
+    Verified: scripted/judge: The scripted verifier judged the claim.
+  wrong-result, as lens.correctness reports it.
+    What: Scripted.
+    Why here: Scripted.
+    Failure scenario: Scripted.
+    What to do: Scripted.
+
+src/d.ts
+
+  P0  line 1  naming  (introduced, new, advisory, confirmed)
+    Decided by: lens tidy's default: the built-in table, under the ceiling resolution.ceiling
+    Verified: scripted/judge: The scripted verifier judged the claim.
+  naming, as lens.tidy reports it.
+    What: Scripted.
+    Why here: Scripted.
+    Failure scenario: Scripted.
+    What to do: Scripted.
+
+5 findings in 5 files.

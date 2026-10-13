@@ -25,9 +25,18 @@ const dedupe = (findings: readonly Finding[], configFor: (path: string) => Pick<
 		checks: [],
 		config: (path) => ({ ...defaultConfig, ...configFor(path) }),
 	}).dedupe();
+// Under one configuration for every path, the table decides, and no file is named.
 const resolvedAs = (each: Finding, resolution: Resolution) => ({
 	...each,
-	properties: { ...each.properties, resolution },
+	properties: {
+		...each.properties,
+		resolution,
+		decidedBy: {
+			check: each.properties.source.check,
+			rule: each.ruleId,
+			requirement: { entry: "table", key: `resolution.${each.properties.severity}` },
+		},
+	},
 });
 const renamedParameter = [
 	{
@@ -54,7 +63,7 @@ describe("Finding.resolve", () => {
 	it("caps a pre-existing finding at advisory, whatever its severity", () => {
 		const strict: MelianConfig = {
 			...defaultConfig,
-			resolution: { P0: "block", P1: "block", P2: "block", P3: "block", nit: "silent" },
+			resolution: { ...defaultConfig.resolution, P0: "block", P1: "block", P2: "block", P3: "block", nit: "silent" },
 		};
 		for (const severity of ["P0", "P1", "P2", "P3"] as const) {
 			expect(finding({ severity, cause: "pre-existing" }).resolve(strict)).toBe("advisory");

@@ -11,6 +11,7 @@ export {
 	Manifest,
 	Merge,
 	noRecord,
+	type PolicyAt,
 	type StoredCheckRecord,
 	type StoredVerdict,
 	Verdict,
@@ -66,8 +67,10 @@ export {
 	type ConfigLookup,
 	configLookup,
 	defaultConfig,
+	type FileResolution,
 	type ForbiddenPathRule,
 	type ForbiddenPatternRule,
+	fileResolutionSchema,
 	type Guardrail,
 	type GuardrailSettings,
 	type LensSettings,
@@ -84,10 +87,16 @@ export {
 	melianYamlSchema,
 	modelTiers,
 	type PolicyChangeReview,
+	type PreExistingCap,
+	parseResolution,
+	preExistingCapSchema,
 	type RequiredFileRule,
 	type Resolution,
+	type ResolutionEntry,
+	type ResolutionLayer,
 	type RouteLineage,
 	type RuleAlias,
+	resolutionEntrySchema,
 	resolutionOrder,
 	resolutionSchema,
 	routePolicyKeys,
@@ -144,6 +153,8 @@ export {
 	type Cause,
 	capSnippet,
 	causeSchema,
+	type DecidedBy,
+	decidedBySchema,
 	dismissalReason,
 	type EvidenceLocation,
 	type EvidenceRevision,
@@ -152,6 +163,7 @@ export {
 	evidenceRevisionSchema,
 	evidenceRoleSchema,
 	Finding,
+	type FindingDecision,
 	type FindingDismissal,
 	type FindingEvidence,
 	type FindingExplanation,
@@ -175,6 +187,8 @@ export {
 	findingsLogSchema,
 	findingTriggerSchema,
 	fingerprintKey,
+	type GuardrailMatch,
+	guardrailMatchSchema,
 	type LocationCause,
 	levelForSeverity,
 	type MemberClaim,
@@ -210,6 +224,7 @@ export {
 } from "./guardrails.ts";
 export {
 	defaultScrutinyLevel,
+	isLensFile,
 	Lens,
 	type LensBudget,
 	type LensCoverage,
@@ -233,6 +248,7 @@ export {
 	scrutinyLevels,
 } from "./lens.ts";
 export { type ModelReference, parseModelReference, type ResolvedModelRoute, resolveModelForTier } from "./models.ts";
+export { resolutionOverrides } from "./overrides.ts";
 export { analyserConfigNames, melianPaths, userFiles } from "./paths.ts";
 export {
 	type CatalogModel,
@@ -270,7 +286,22 @@ export {
 	replyKey,
 	type Walkthrough,
 } from "./publication.ts";
-export { describeBudgetEnd, describeLineage, Rendering, type TerminalRenderOptions, visibleText } from "./render.ts";
+export {
+	describeBudgetEnd,
+	describeDecision,
+	describeLineage,
+	Rendering,
+	type TerminalRenderOptions,
+	visibleText,
+} from "./render.ts";
+export {
+	type CeilingEntry,
+	type RequirementEntry,
+	type ResolutionClaim,
+	type ResolutionSource,
+	ResolutionWalk,
+	type WalkDecision,
+} from "./resolution.ts";
 export {
 	listRevisionFiles,
 	type RevisionEntry,

@@ -1,0 +1,13 @@
+{
+	"title": "A resolution change in a nested melian.yaml whose parent switches the review off still draws a notice",
+	"findings": [],
+	"expect": [
+		{
+			"file": "services/melian.yaml",
+			"rule": "guardrail/policy-change-review",
+			"decidedBy": "melian.yaml",
+			"resolution": "acknowledge"
+		}
+	],
+	"doctor": []
+}

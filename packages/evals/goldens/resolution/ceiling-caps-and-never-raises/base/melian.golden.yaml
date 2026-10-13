@@ -1,0 +1,5 @@
+resolution:
+  P1: block
+  P3: advisory
+  checks:
+    lens.cleanup: { ceiling: acknowledge }

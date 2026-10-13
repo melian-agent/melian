@@ -1,0 +1,3 @@
+resolution:
+  checks:
+    lens.cleanup: { ceiling: block }

@@ -1,0 +1,45 @@
+Verdict: findings, blocking
+
+Block: 1 finding
+
+notes/plan.txt
+
+  P2  line 2  guardrail/forbidden-patterns  (introduced, new, block)
+    Decided by: melian.yaml: resolution.checks.guardrails.rules.guardrail/forbidden-patterns/focused-test.P2, the rule entry
+  A focused test skips the rest of the suite.
+    What: This line matches the forbidden-patterns rule focused-test.
+    Why here: A focused test skips the rest of the suite.
+    What to do: Rewrite the line so it no longer matches.
+
+Acknowledge: 1 finding
+
+src/b.ts
+
+  P2  line 1  biome/correctness/noUnusedVariables  (introduced, new, acknowledge)
+    Decided by: the built-in table
+  biome/correctness/noUnusedVariables, as static.biome reports it.
+    What: Scripted.
+    Why here: Scripted.
+    What to do: Scripted.
+
+Advisory: 2 findings
+
+notes/plan.txt
+
+  P2  line 3  guardrail/forbidden-patterns  (introduced, new, advisory)
+    Decided by: melian.yaml: resolution.checks.guardrails.rules.guardrail/forbidden-patterns/todo.P2, the rule entry
+  Finish it before merging.
+    What: This line matches the forbidden-patterns rule todo.
+    Why here: Finish it before merging.
+    What to do: Rewrite the line so it no longer matches.
+
+src/a.ts
+
+  P2  line 1  biome/suspicious/noExplicitAny  (introduced, new, advisory)
+    Decided by: melian.yaml: resolution.checks.static.biome.rules.biome/suspicious/noExplicitAny.P2, the rule entry
+  biome/suspicious/noExplicitAny, as static.biome reports it.
+    What: Scripted.
+    Why here: Scripted.
+    What to do: Scripted.
+
+4 findings in 3 files.

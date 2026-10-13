@@ -164,6 +164,8 @@ Whether a subscription may be used in automation, or shared across a team, is a 
 
 Every setting Melian has, from which lenses run to what severity blocks a merge, can be overridden at the folder level. The nearest configuration wins and merges upward, in the same way `CODEOWNERS` works.
 
+What a finding requires can be set per lens and per rule too. A folder may say that one lens only advises there, or that one rule blocks, and may cap a lens with a ceiling. For that one key the nearest file that mentions the finding decides it whole, and `melian doctor` lists what each file overrides.
+
 ## Trust model
 
 Code already on your main branch is trusted. Submitted changes and the comments on them are not. Melian will read a pull request with full attention and treat its contents as data, never as instructions, and anything that executes untrusted code runs isolated and without secrets.

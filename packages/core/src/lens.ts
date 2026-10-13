@@ -5,7 +5,16 @@ import { fileURLToPath } from "node:url";
 import Type, { type Static } from "typebox";
 import Value from "typebox/value";
 import { parseDocument } from "yaml";
-import { type LensTier, lensTierSchema, type MelianConfig, type Severity, severitySchema } from "./config.ts";
+import {
+	type LensSettings,
+	type LensTier,
+	lensTierSchema,
+	type MelianConfig,
+	type ResolutionEntry,
+	resolutionEntrySchema,
+	type Severity,
+	severitySchema,
+} from "./config.ts";
 import type { ChoiceQuestion, Decision } from "./decider.ts";
 import { LensError } from "./errors.ts";
 import { maxEvidenceLines, maxFailureScenarioLength } from "./findings.ts";
@@ -75,7 +84,7 @@ const lensName = Type.String({ pattern: "^[a-z0-9][a-z0-9-]*$" });
  * The JSON Schema of a `LENS.md` front matter block. Only `name` is required; unknown fields are rejected. `levels` maps
  * a {@link ScrutinyLevel} to the fields that differ there; each field it leaves out comes from the top level.
  * `handoffs` maps another lens's name to the defects that lens owns, which this lens leaves to it in the files both
- * review.
+ * review. `resolution` is the lens's declared default: a requirement for each severity it maps, and a `ceiling`.
  */
 export const lensFrontMatterSchema = Type.Object(
 	{
@@ -93,6 +102,7 @@ export const lensFrontMatterSchema = Type.Object(
 		extends: Type.Optional(Type.Union([text, Type.Null()])),
 		standards: Type.Optional(Type.Boolean()),
 		handoffs: Type.Optional(Type.Record(lensName, text)),
+		resolution: Type.Optional(resolutionEntrySchema),
 	},
 	strict,
 );
@@ -151,6 +161,11 @@ export interface LensFields {
 	readonly version: string;
 	/** The nearest `LENS.md` that defined or extended it. */
 	readonly file: string;
+	/**
+	 * The lens's declared default resolution, which applies to its findings when no `melian.yaml` speaks about them.
+	 * Not part of `version`: it changes what a finding requires, never which findings the lens reports.
+	 */
+	readonly resolution?: ResolutionEntry;
 	/**
 	 * Folders beneath `scope` whose own lens of this name replaces this one there, found by {@link Lens.load} across
 	 * the whole source, whether or not a changed path reaches them. Not part of `version`.
@@ -292,7 +307,7 @@ function required<T>(file: string, field: string, value: T | undefined): T {
 // Hashes everything that shapes a lens's behaviour, in the order the fields are declared, never its file or nearer
 // scopes: a lens's version names the findings it produced, so this hash must not change for an unchanged lens.
 function versioned(lens: Omit<LensFields, "version">): LensFields {
-	const { file: _, nearer: __, ...behaviour } = lens;
+	const { file: _, nearer: __, resolution: ___, ...behaviour } = lens;
 	const version = createHash("sha256").update(JSON.stringify(behaviour)).digest("hex").slice(0, 12);
 	return { ...lens, version };
 }
@@ -400,6 +415,7 @@ function resolve(definition: Definition, base: Layered | undefined): Layered {
 		throw new LensError("invalidValue", file, `${file}: "handoffs" ${inherited}`, { field: "handoffs" });
 	}
 	const declared = declare(own, base?.declared);
+	const resolution = own.resolution ?? base?.lens.resolution;
 	const lens = versioned({
 		name: own.name,
 		description,
@@ -413,6 +429,7 @@ function resolve(definition: Definition, base: Layered | undefined): Layered {
 		handoffs,
 		instructions: [base?.lens.instructions, body].filter((part) => part !== undefined && part !== "").join("\n\n"),
 		file,
+		resolution,
 	});
 	return { lens, declared };
 }
@@ -473,6 +490,12 @@ async function repositoryDefinitions(reader: SourceReader, scope: string): Promi
 		}
 	}
 	return definitions;
+}
+
+/** Whether `path` is a lens's own file: `<scope>/.melian/lenses/<name>/LENS.md`, or the same under `.agents/`. */
+export function isLensFile(path: string): boolean {
+	const [file, , directory, owner] = path.split("/").reverse();
+	return file === "LENS.md" && directory === "lenses" && (owner === ".melian" || owner === ".agents");
 }
 
 // `<scope>/.melian/lenses/<name>/...` or `<scope>/.agents/lenses/<name>/...`, and the lens entry itself if it is a symlink.
@@ -631,6 +654,7 @@ export class Lens {
 	readonly version: string;
 	readonly file: string;
 	readonly nearer?: readonly string[];
+	readonly resolution?: ResolutionEntry;
 
 	private constructor(fields: LensFields) {
 		this.name = fields.name;
@@ -647,6 +671,7 @@ export class Lens {
 		this.version = fields.version;
 		this.file = fields.file;
 		this.nearer = fields.nearer;
+		this.resolution = fields.resolution;
 	}
 
 	/** The lens `fields` describe, as given: its version is not computed again. */
@@ -718,6 +743,18 @@ export class Lens {
 	}
 
 	/**
+	 * Every lens `source` defines, in every folder: the built-ins, and each variant a folder's `.melian/lenses/` or
+	 * `.agents/lenses/` gives, layered as {@link Lens.load} layers them for that folder. A review of a moved file runs
+	 * the lens of the folder it left, so what may have reported somewhere is not only what applies there. Throws as
+	 * {@link Lens.load} does.
+	 */
+	static async everywhere(repoRoot: string, source: RepositorySource): Promise<Lens[]> {
+		const reader = await openSource(repoRoot, source).catch(fromSource(repoRoot));
+		const scopes = [...(await lensScopes(reader)).keys()].map((scope) => scope || ".");
+		return Lens.load(repoRoot, source, [".", ...scopes]);
+	}
+
+	/**
 	 * Picks the lenses to run on a changeset and the changed files each reviews: a lens runs when `config` leaves it
 	 * enabled and it covers at least one of `paths`. A lens covers a path beneath its scope that its `paths` select,
 	 * unless a nearer folder defines a lens of the same name, which replaces it there. Configuration's `tier` replaces
@@ -728,17 +765,7 @@ export class Lens {
 		return lenses.flatMap((lens) => {
 			const settings = Object.hasOwn(config.lenses, lens.name) ? config.lenses[lens.name] : undefined;
 			if (settings?.enabled === false) return [];
-			// A band or `enabled` alone changes nothing the version hashes, so the lens keeps the version it loaded with.
-			const tuned =
-				settings?.tier === undefined && settings?.paths === undefined
-					? lens
-					: new Lens(
-							versioned({
-								...lens.toJSON(),
-								levels: settings.tier === undefined ? lens.levels : retiered(lens.levels, settings.tier),
-								paths: settings.paths ?? lens.paths,
-							}),
-						);
+			const tuned = lens.configured(settings);
 			const nearer = lenses
 				.filter(
 					(other) => other.name === lens.name && other.scope !== lens.scope && beneath(lens.scope, other.scope),
@@ -749,6 +776,22 @@ export class Lens {
 			const files = paths.filter((path) => lensCovers(coverage, path));
 			return files.length > 0 ? [{ lens: tuned, coverage, files }] : [];
 		});
+	}
+
+	/**
+	 * The lens as configuration's `settings` for it tune it: `tier` replaces the tier of every level and `paths` the
+	 * lens's own, which gives it another version. A band or `enabled` alone changes nothing the version hashes, so the
+	 * lens is returned as it loaded.
+	 */
+	configured(settings: LensSettings | undefined): Lens {
+		if (settings?.tier === undefined && settings?.paths === undefined) return this;
+		return new Lens(
+			versioned({
+				...this.toJSON(),
+				levels: settings.tier === undefined ? this.levels : retiered(this.levels, settings.tier),
+				paths: settings.paths ?? this.paths,
+			}),
+		);
 	}
 
 	/**
@@ -925,7 +968,7 @@ export class Lens {
 	/** The lens's fields, in their declared order. */
 	toJSON(): LensFields {
 		const { name, description, tools, severities, rules, paths, scope, levels, standards, handoffs } = this;
-		const { instructions, version, file, nearer } = this;
+		const { instructions, version, file, nearer, resolution } = this;
 		return {
 			name,
 			description,
@@ -941,6 +984,7 @@ export class Lens {
 			version,
 			file,
 			...(nearer === undefined ? {} : { nearer }),
+			...(resolution === undefined ? {} : { resolution }),
 		};
 	}
 

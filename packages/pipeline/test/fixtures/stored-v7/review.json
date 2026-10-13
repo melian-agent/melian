@@ -1,0 +1,361 @@
+{
+	"revision": "2846712c58e407b1d892e5a16a50931be635d07d..2a16a7957b003fa6fbf3393eeefce3716e617d67",
+	"findings": {
+		"revisions": [
+			"2846712c58e407b1d892e5a16a50931be635d07d..2a16a7957b003fa6fbf3393eeefce3716e617d67"
+		],
+		"items": {
+			"7644fa9818d0e178": {
+				"lifecycle": {
+					"status": "new",
+					"firstSeenRevision": "2846712c58e407b1d892e5a16a50931be635d07d..2a16a7957b003fa6fbf3393eeefce3716e617d67",
+					"lastSeenRevision": "2846712c58e407b1d892e5a16a50931be635d07d..2a16a7957b003fa6fbf3393eeefce3716e617d67",
+					"history": []
+				},
+				"sightings": {
+					"2846712c58e407b1d892e5a16a50931be635d07d..2a16a7957b003fa6fbf3393eeefce3716e617d67": {
+						"guardrails@": {
+							"ruleId": "guardrail/forbidden-patterns",
+							"level": "warning",
+							"message": {
+								"text": "Remove the focused test. Remove the console.log."
+							},
+							"partialFingerprints": {
+								"melian/v1": "7644fa9818d0e178"
+							},
+							"locations": [
+								{
+									"physicalLocation": {
+										"artifactLocation": {
+											"uri": "src/a.test.ts"
+										},
+										"region": {
+											"startLine": 2,
+											"snippet": {
+												"text": "it.only(\"logs\", () => console.log(a));"
+											}
+										}
+									}
+								}
+							],
+							"properties": {
+								"id": "7644fa9818d0e178",
+								"path": "src/a.test.ts",
+								"occurrence": 0,
+								"cause": "introduced",
+								"trigger": {
+									"file": "src/a.test.ts",
+									"index": 0,
+									"snippet": "it.only(\"logs\", () => console.log(a));"
+								},
+								"severity": "P2",
+								"explanation": {
+									"what": "This line matches the forbidden-patterns rule focused-test, console-log.",
+									"whyHere": "Remove the focused test. Remove the console.log.",
+									"whatToDo": "Rewrite the line so it no longer matches."
+								},
+								"source": {
+									"check": "guardrails"
+								}
+							}
+						}
+					}
+				}
+			},
+			"c4cf82a4cf3a9c13": {
+				"lifecycle": {
+					"status": "new",
+					"firstSeenRevision": "2846712c58e407b1d892e5a16a50931be635d07d..2a16a7957b003fa6fbf3393eeefce3716e617d67",
+					"lastSeenRevision": "2846712c58e407b1d892e5a16a50931be635d07d..2a16a7957b003fa6fbf3393eeefce3716e617d67",
+					"history": []
+				},
+				"sightings": {
+					"2846712c58e407b1d892e5a16a50931be635d07d..2a16a7957b003fa6fbf3393eeefce3716e617d67": {
+						"guardrails@": {
+							"ruleId": "guardrail/policy-change-review",
+							"level": "error",
+							"message": {
+								"text": "Review the change to biome.json, which configures Biome."
+							},
+							"partialFingerprints": {
+								"melian/v1": "c4cf82a4cf3a9c13"
+							},
+							"locations": [
+								{
+									"physicalLocation": {
+										"artifactLocation": {
+											"uri": "biome.json"
+										},
+										"region": {
+											"startLine": 1
+										}
+									}
+								}
+							],
+							"properties": {
+								"id": "c4cf82a4cf3a9c13",
+								"path": "biome.json",
+								"discriminator": "analyser",
+								"cause": "introduced",
+								"severity": "P1",
+								"explanation": {
+									"what": "This revision changes biome.json, which configures Biome. It turns Biome's linter off.",
+									"whyHere": "The head's configuration drives the static run on the head, so this change decides how the head's own results are judged, and a switched-off check reads as a clean one.",
+									"whatToDo": "Have a maintainer read the change to biome.json, or land it in its own pull request first."
+								},
+								"source": {
+									"check": "guardrails"
+								}
+							}
+						}
+					}
+				}
+			},
+			"ba1017f39989ffd8": {
+				"lifecycle": {
+					"status": "new",
+					"firstSeenRevision": "2846712c58e407b1d892e5a16a50931be635d07d..2a16a7957b003fa6fbf3393eeefce3716e617d67",
+					"lastSeenRevision": "2846712c58e407b1d892e5a16a50931be635d07d..2a16a7957b003fa6fbf3393eeefce3716e617d67",
+					"history": []
+				},
+				"sightings": {
+					"2846712c58e407b1d892e5a16a50931be635d07d..2a16a7957b003fa6fbf3393eeefce3716e617d67": {
+						"guardrails@": {
+							"ruleId": "guardrail/policy-change-review",
+							"level": "warning",
+							"message": {
+								"text": "Review policy and standards changed in this revision."
+							},
+							"partialFingerprints": {
+								"melian/v1": "ba1017f39989ffd8"
+							},
+							"locations": [
+								{
+									"physicalLocation": {
+										"artifactLocation": {
+											"uri": "melian.yaml"
+										},
+										"region": {
+											"startLine": 1
+										}
+									}
+								}
+							],
+							"properties": {
+								"id": "ba1017f39989ffd8",
+								"path": "melian.yaml",
+								"discriminator": "policy",
+								"cause": "introduced",
+								"severity": "P2",
+								"explanation": {
+									"what": "This revision changes melian.yaml, which steers how Melian reviews this repository.",
+									"whyHere": "Melian reviewed the revision under the policy and standards it changes, so nothing it ran judged the new ones.",
+									"whatToDo": "Have a maintainer read the change to melian.yaml before merging."
+								},
+								"source": {
+									"check": "guardrails"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"versions": {
+			"2846712c58e407b1d892e5a16a50931be635d07d..2a16a7957b003fa6fbf3393eeefce3716e617d67": 3
+		}
+	},
+	"verdicts": {
+		"verdicts": {
+			"2846712c58e407b1d892e5a16a50931be635d07d..2a16a7957b003fa6fbf3393eeefce3716e617d67": {
+				"status": "findings",
+				"blocking": true,
+				"findings": {
+					"block": [
+						{
+							"ruleId": "guardrail/policy-change-review",
+							"level": "error",
+							"message": {
+								"text": "Review the change to biome.json, which configures Biome."
+							},
+							"partialFingerprints": {
+								"melian/v1": "c4cf82a4cf3a9c13"
+							},
+							"locations": [
+								{
+									"physicalLocation": {
+										"artifactLocation": {
+											"uri": "biome.json"
+										},
+										"region": {
+											"startLine": 1
+										}
+									}
+								}
+							],
+							"properties": {
+								"id": "c4cf82a4cf3a9c13",
+								"path": "biome.json",
+								"discriminator": "analyser",
+								"cause": "introduced",
+								"severity": "P1",
+								"explanation": {
+									"what": "This revision changes biome.json, which configures Biome. It turns Biome's linter off.",
+									"whyHere": "The head's configuration drives the static run on the head, so this change decides how the head's own results are judged, and a switched-off check reads as a clean one.",
+									"whatToDo": "Have a maintainer read the change to biome.json, or land it in its own pull request first."
+								},
+								"source": {
+									"check": "guardrails"
+								},
+								"status": "new",
+								"reportedBy": [
+									{
+										"check": "guardrails"
+									}
+								],
+								"resolution": "block"
+							}
+						}
+					],
+					"acknowledge": [
+						{
+							"ruleId": "guardrail/policy-change-review",
+							"level": "warning",
+							"message": {
+								"text": "Review policy and standards changed in this revision."
+							},
+							"partialFingerprints": {
+								"melian/v1": "ba1017f39989ffd8"
+							},
+							"locations": [
+								{
+									"physicalLocation": {
+										"artifactLocation": {
+											"uri": "melian.yaml"
+										},
+										"region": {
+											"startLine": 1
+										}
+									}
+								}
+							],
+							"properties": {
+								"id": "ba1017f39989ffd8",
+								"path": "melian.yaml",
+								"discriminator": "policy",
+								"cause": "introduced",
+								"severity": "P2",
+								"explanation": {
+									"what": "This revision changes melian.yaml, which steers how Melian reviews this repository.",
+									"whyHere": "Melian reviewed the revision under the policy and standards it changes, so nothing it ran judged the new ones.",
+									"whatToDo": "Have a maintainer read the change to melian.yaml before merging."
+								},
+								"source": {
+									"check": "guardrails"
+								},
+								"status": "new",
+								"reportedBy": [
+									{
+										"check": "guardrails"
+									}
+								],
+								"resolution": "acknowledge"
+							}
+						},
+						{
+							"ruleId": "guardrail/forbidden-patterns",
+							"level": "warning",
+							"message": {
+								"text": "Remove the focused test. Remove the console.log."
+							},
+							"partialFingerprints": {
+								"melian/v1": "7644fa9818d0e178"
+							},
+							"locations": [
+								{
+									"physicalLocation": {
+										"artifactLocation": {
+											"uri": "src/a.test.ts"
+										},
+										"region": {
+											"startLine": 2,
+											"snippet": {
+												"text": "it.only(\"logs\", () => console.log(a));"
+											}
+										}
+									}
+								}
+							],
+							"properties": {
+								"id": "7644fa9818d0e178",
+								"path": "src/a.test.ts",
+								"occurrence": 0,
+								"cause": "introduced",
+								"trigger": {
+									"file": "src/a.test.ts",
+									"index": 0,
+									"snippet": "it.only(\"logs\", () => console.log(a));"
+								},
+								"severity": "P2",
+								"explanation": {
+									"what": "This line matches the forbidden-patterns rule focused-test, console-log.",
+									"whyHere": "Remove the focused test. Remove the console.log.",
+									"whatToDo": "Rewrite the line so it no longer matches."
+								},
+								"source": {
+									"check": "guardrails"
+								},
+								"status": "new",
+								"reportedBy": [
+									{
+										"check": "guardrails"
+									}
+								],
+								"resolution": "acknowledge"
+							}
+						}
+					],
+					"advisory": [],
+					"silent": []
+				},
+				"dismissed": [],
+				"notRun": [],
+				"ran": [
+					{
+						"name": "guardrails",
+						"status": "ran",
+						"findings": 3,
+						"notes": []
+					}
+				]
+			}
+		},
+		"provenance": {
+			"2846712c58e407b1d892e5a16a50931be635d07d..2a16a7957b003fa6fbf3393eeefce3716e617d67": {
+				"verifierVersion": "0c1cc1a1268b2c23",
+				"kind": "range",
+				"policy": "revision:2846712c58e407b1d892e5a16a50931be635d07d",
+				"manifest": [
+					"guardrails"
+				],
+				"lenses": []
+			}
+		},
+		"details": {
+			"2846712c58e407b1d892e5a16a50931be635d07d..2a16a7957b003fa6fbf3393eeefce3716e617d67": {
+				"policy": "revision:2846712c58e407b1d892e5a16a50931be635d07d",
+				"manifest": [
+					"guardrails"
+				],
+				"lenses": [],
+				"standards": []
+			}
+		},
+		"decisions": {
+			"2846712c58e407b1d892e5a16a50931be635d07d..2a16a7957b003fa6fbf3393eeefce3716e617d67": {
+				"task": 11,
+				"findingsVersion": 3
+			}
+		}
+	}
+}
