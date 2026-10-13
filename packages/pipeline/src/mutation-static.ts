@@ -326,10 +326,13 @@ export class MutationRun {
 		const selectedConfig = posix.join(this.#scratch, "stryker.config.json");
 		const text = `
 import { existsSync, readFileSync, rmSync, writeFileSync, writeSync } from "node:fs";
-import { spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { relative } from "node:path";
 import { createVitest } from ${JSON.stringify(pathToFileURL(require.resolve("vitest/node")).href)};
 import { MutationVitest } from ${JSON.stringify(pathToFileURL(module).href)};
+// The supervisor ends this process with SIGTERM, and it must end then. Waiting for Stryker synchronously held a handled
+// signal until Stryker had exited, and the repeat below then started a second Stryker that no one had recorded.
+process.on("SIGTERM", () => process.exit(143));
 const config = JSON.parse(readFileSync("stryker.config.json", "utf8"));
 const selection = await MutationVitest.open(() => createVitest("test", {
   config: config.vitest?.configFile, dir: config.vitest?.dir, watch: false, coverage: { enabled: false }
@@ -345,12 +348,16 @@ const result = await selection.execute(async (tests, fresh) => {
     vitest: { ...config.vitest, related: false },
     testFiles: tests?.map(file => relative(process.cwd(), file).replace(/[\\\\*?[\\]{}()!+@#]/g, "\\\\$&")) ?? []
   }));
-  const run = spawnSync(${JSON.stringify(this.#binary)}, ["run", ${JSON.stringify(selectedConfig)},
+  const run = spawn(${JSON.stringify(this.#binary)}, ["run", ${JSON.stringify(selectedConfig)},
     "--reporters", "json", "--incremental", "--incrementalFile", ${JSON.stringify(incremental)},
     "--inPlace", "--mutate", ${JSON.stringify(entries.join(","))}], { stdio: "inherit" });
+  const code = await new Promise((resolve) => {
+    run.on("error", () => resolve(1));
+    run.on("exit", (status) => resolve(status ?? 1));
+  });
   let report;
   try { report = readFileSync(${JSON.stringify(report)}, "utf8"); } catch {}
-  return { code: run.status ?? 1, report };
+  return { code, report };
 }, () => !existsSync(${JSON.stringify(script)}) || !existsSync("stryker.config.json"));
 writeFileSync(${JSON.stringify(posix.join(this.#scratch, "test-selection.json"))}, JSON.stringify(selection.notes));
 process.exitCode = result.code;
