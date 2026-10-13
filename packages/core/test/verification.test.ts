@@ -454,6 +454,19 @@ describe("adjudicating lowered and important pre-existing findings", () => {
 			verification,
 		});
 		expect(decide([plain], quiet).findings.silent).toHaveLength(1);
+		// The terminal says why a P2 blocks, and says nothing where the table left the lowering alone.
+		const held = result.findings.block[0]!;
+		expect(held.properties.resolvedAtOriginal).toBe(true);
+		expect(held.render()).toContain(
+			"    Resolved at P1: the table in force resolves P2 silent, and a lowering never silences a finding.",
+		);
+		const usual = decide([finding("lens.a").verifiedAs(lowering)]).findings.acknowledge[0]!;
+		expect(usual.properties).not.toHaveProperty("resolvedAtOriginal");
+		expect(usual.render()).not.toContain("Resolved at");
+		expect(decide([plain], quiet).findings.silent[0]!.properties).not.toHaveProperty("resolvedAtOriginal");
+		// A mark left from an earlier table does not outlive it.
+		expect(held.resolved(defaultConfig).properties).not.toHaveProperty("resolvedAtOriginal");
+		expect(Finding.parse(held.toJSON()).properties.resolvedAtOriginal).toBe(true);
 	});
 
 	it("lists a pre-existing P0 under its own heading, new and then carried, and counts it as an advisory finding", () => {

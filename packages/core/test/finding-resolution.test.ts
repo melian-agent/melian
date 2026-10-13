@@ -199,6 +199,13 @@ describe("the caps", () => {
 			resolution: "acknowledge",
 			decidedBy: { requirement: { key: "resolution.P1" }, capBy: { key: "resolution.preExisting.P1" } },
 		});
+		// A floor that then raises the result keeps the note that the lens's severity was read.
+		const hushed = layered({ "melian.yaml": { P1: "silent", P2: "silent" } });
+		expect(lowered.decision(hushed)).toMatchObject({
+			resolution: "advisory",
+			decidedBy: { floor: "pre-existing-important" },
+			resolvedAtOriginal: true,
+		});
 		const audible = layered({ "melian.yaml": { P1: "block", P2: "block", preExisting: { P1: "acknowledge" } } });
 		expect(lowered.decision(audible)).toMatchObject({ resolution: "advisory", decidedBy: { cap: "pre-existing" } });
 	});

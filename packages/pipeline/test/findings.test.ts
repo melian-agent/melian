@@ -932,6 +932,22 @@ describe("lowered sightings", () => {
 		expect(answered.preExistingImportant).toBeUndefined();
 	});
 
+	it("drops a producer's own claim to a lowering or to a held resolution", async () => {
+		const { harness, root } = await open(createMemoryStorage());
+		const claimed = Finding.from({
+			...evalFinding.toJSON(),
+			properties: { ...evalFinding.properties, originalSeverity: "P0", resolvedAtOriginal: true },
+		});
+		await root.commit((tx) => upsertFinding(tx, root.id, claimed, "rev1"), context);
+		const state = (await harness.snapshot(FindingsDocument, root.id, context))!;
+		const stored = state.items[evalFinding.id]!.sightings.rev1!["lens.security@1"]!;
+		expect(stored.properties).not.toHaveProperty("originalSeverity");
+		expect(stored.properties).not.toHaveProperty("resolvedAtOriginal");
+		const [finding] = await readFindings(harness, root.id, "rev1", context);
+		expect(finding!.original()).toBe("P1");
+		expect(finding!.important()).toBe(false);
+	});
+
 	it("names a finding as seen before only at a revision after the one that first sighted it", async () => {
 		const { harness, root } = await open(createMemoryStorage());
 		await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);

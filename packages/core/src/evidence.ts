@@ -6,13 +6,6 @@ const strict = { additionalProperties: false } as const;
 const text = Type.String({ minLength: 1 });
 const line = Type.Integer({ minimum: 1 });
 
-/** The JSON Schema of a {@link Cause}. */
-export const causeSchema = Type.Union([
-	Type.Literal("introduced"),
-	Type.Literal("affected"),
-	Type.Literal("pre-existing"),
-]);
-
 /** The JSON Schema of an {@link EvidenceRole}. */
 export const evidenceRoleSchema = Type.Union([Type.Literal("cause"), Type.Literal("context")]);
 

@@ -140,6 +140,29 @@ describe("a merged defect resolves each report under its own check, rule, and se
 		}
 	});
 
+	it("marks a defect as resolved at the lens's severity only when the finding that speaks stands lowered", () => {
+		const lowered = cleanup({ severity: "P1" }).verifiedAs({
+			...confirmed,
+			lowered: { from: "P1", to: "P2", reason: "One caller validates." },
+		});
+		// The cleanup entry silences P2, so the lowered report resolves at P1 and blocks.
+		const quiet = policy({
+			P1: "block",
+			checks: { "lens.cleanup": { P2: "silent" }, "static.biome": { P1: "acknowledge" } },
+		});
+		const alone = only([lowered], quiet);
+		expect(alone.properties).toMatchObject({ severity: "P2", resolution: "block", resolvedAtOriginal: true });
+		// Beside an unlowered P1 the defect stands at P1, so nothing needs explaining.
+		const defect = only([biome(), lowered], quiet);
+		expect(defect.properties).toMatchObject({
+			severity: "P1",
+			resolution: "block",
+			decidedBy: { check: "lens.cleanup" },
+		});
+		expect(defect.properties).not.toHaveProperty("resolvedAtOriginal");
+		expect(only([cleanup()], quiet).properties).not.toHaveProperty("resolvedAtOriginal");
+	});
+
 	it("still caps a report under its own ceiling, whatever cause the defect merged", () => {
 		const capped = policy({ checks: { "lens.cleanup": { ceiling: "advisory" } } });
 		const defect = only([cleanup({ severity: "P0", cause: "pre-existing" }), biome({ severity: "P3" })], capped);

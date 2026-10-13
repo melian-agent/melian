@@ -6,7 +6,6 @@ import type { Revision } from "./changeset.ts";
 import { type Resolution, resolutionOrder, resolutionSchema, type Severity, severitySchema } from "./config.ts";
 import { FindingError } from "./errors.ts";
 import {
-	causeSchema,
 	evidenceLocationSchema,
 	evidenceRevisionSchema,
 	evidenceRoleSchema,
@@ -27,7 +26,7 @@ import {
 import { lesser, type ResolutionClaim, type ResolutionSource, ResolutionWalk } from "./resolution.ts";
 import { injectionAttemptRuleId, type Verification, VerificationState, verificationSchema } from "./verification.ts";
 
-export { causeSchema, evidenceLocationSchema, evidenceRevisionSchema, evidenceRoleSchema, findingEvidenceSchema };
+export { evidenceLocationSchema, evidenceRevisionSchema, evidenceRoleSchema, findingEvidenceSchema };
 
 const strict = { additionalProperties: false } as const;
 const text = Type.String({ minLength: 1 });
@@ -40,6 +39,13 @@ export const fingerprintKey = "melian/v1";
 
 /** The JSON Schema of a SARIF `level`. Melian never emits `none`, which SARIF reserves for results that are not failures. */
 export const sarifLevelSchema = Type.Union([Type.Literal("error"), Type.Literal("warning"), Type.Literal("note")]);
+
+/** The JSON Schema of a {@link Cause}. */
+export const causeSchema = Type.Union([
+	Type.Literal("introduced"),
+	Type.Literal("affected"),
+	Type.Literal("pre-existing"),
+]);
 
 /** The JSON Schema of a {@link FindingStatus}. */
 export const findingStatusSchema = Type.Union([
@@ -180,6 +186,7 @@ export const findingPropertiesSchema = Type.Object(
 		trigger: Type.Optional(findingTriggerSchema),
 		severity: severitySchema,
 		originalSeverity: Type.Optional(severitySchema),
+		resolvedAtOriginal: Type.Optional(Type.Literal(true)),
 		confidence: Type.Optional(Type.Number({ minimum: 0, maximum: 1 })),
 		verification: Type.Optional(verificationSchema),
 		resolution: Type.Optional(resolutionSchema),
@@ -505,10 +512,14 @@ export type GuardrailMatch = Static<typeof guardrailMatchSchema>;
  */
 export type DecidedBy = Static<typeof decidedBySchema>;
 
-/** What a finding requires, and what decided it. */
+/**
+ * What a finding requires, and what decided it. `resolvedAtOriginal` says a lowered report resolved at the lens's
+ * severity, because its keys silence the lowered one and a lowering never silences a finding.
+ */
 export interface FindingDecision {
 	readonly resolution: Resolution;
 	readonly decidedBy: DecidedBy;
+	readonly resolvedAtOriginal?: boolean;
 }
 
 /** Melian's extensions to a SARIF `result`, carried in its property bag. */
@@ -1111,6 +1122,11 @@ export class Finding {
 				? []
 				: [`    Decided by: ${prose(describeDecision(decidedBy, own), "      ")}`]),
 			...(lowered === undefined ? [] : [`    Lowered from ${lowered.from}: ${prose(lowered.reason, "      ")}`]),
+			...(lowered === undefined || this.properties.resolvedAtOriginal !== true
+				? []
+				: [
+						`    Resolved at ${lowered.from}: the table in force resolves ${severity} silent, and a lowering never silences a finding.`,
+					]),
 			...(verification === undefined
 				? []
 				: [
@@ -1360,7 +1376,7 @@ export class Finding {
 					[{ cap: "unverified" }, unjudged ? "advisory" : undefined],
 				];
 				// A later cap that lowers further replaces the earlier one whole, with the file and key that set it.
-				return limits.reduce<FindingDecision>(
+				const capped = limits.reduce<FindingDecision>(
 					(result, [capped, limit]) => {
 						if (limit === undefined || lesser(result.resolution, limit) === result.resolution) return result;
 						const { capBy: _, ...kept } = result.decidedBy;
@@ -1368,6 +1384,7 @@ export class Finding {
 					},
 					{ resolution: decided.resolution, decidedBy },
 				);
+				return severity === claim.severity ? capped : { ...capped, resolvedAtOriginal: true };
 			})
 			.reduce((strictest, each) =>
 				resolutionOrder.indexOf(each.resolution) < resolutionOrder.indexOf(strictest.resolution) ? each : strictest,
@@ -1391,13 +1408,14 @@ export class Finding {
 			["injection-attempt", rules.includes(injectionAttemptRuleId) ? "acknowledge" : undefined],
 			["pre-existing-important", this.important() ? "advisory" : undefined],
 		];
-		return floors.reduce<FindingDecision>(
+		const floored = floors.reduce<FindingDecision>(
 			(result, [floor, least]) =>
 				least === undefined || lesser(result.resolution, least) === least
 					? result
 					: { resolution: least, decidedBy: { ...result.decidedBy, floor } },
 			decision,
 		);
+		return decision.resolvedAtOriginal === true ? { ...floored, resolvedAtOriginal: true } : floored;
 	}
 
 	/**
@@ -1457,11 +1475,17 @@ export class Finding {
 		return this.decided(this.decision(source));
 	}
 
-	/** A copy holding `decision`: the resolution adjudication reached, and what decided it. */
-	decided({ resolution, decidedBy }: FindingDecision): ResolvedFinding {
+	/**
+	 * A copy holding `decision`: the resolution adjudication reached, and what decided it. It carries
+	 * `properties.resolvedAtOriginal` when the finding stands at a lowered severity and the report that decided resolved
+	 * at the lens's, so a reader is told why a P2 blocks; any it carried is replaced.
+	 */
+	decided({ resolution, decidedBy, resolvedAtOriginal }: FindingDecision): ResolvedFinding {
+		const { resolvedAtOriginal: _, ...properties } = this.properties;
+		const held = resolvedAtOriginal === true && this.lowered() !== undefined;
 		return Finding.from({
 			...this.toJSON(),
-			properties: { ...this.properties, resolution, decidedBy },
+			properties: { ...properties, resolution, ...(held ? { resolvedAtOriginal: true as const } : {}), decidedBy },
 		}) as ResolvedFinding;
 	}
 
