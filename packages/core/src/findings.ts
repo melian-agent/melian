@@ -1359,11 +1359,13 @@ export class Finding {
 					[{ cap: "unproven-cause" }, unproven ? "advisory" : undefined],
 					[{ cap: "unverified" }, unjudged ? "advisory" : undefined],
 				];
+				// A later cap that lowers further replaces the earlier one whole, with the file and key that set it.
 				return limits.reduce<FindingDecision>(
-					(result, [capped, limit]) =>
-						limit === undefined || lesser(result.resolution, limit) === result.resolution
-							? result
-							: { resolution: limit, decidedBy: { ...result.decidedBy, ...capped } },
+					(result, [capped, limit]) => {
+						if (limit === undefined || lesser(result.resolution, limit) === result.resolution) return result;
+						const { capBy: _, ...kept } = result.decidedBy;
+						return { resolution: limit, decidedBy: { ...kept, ...capped } };
+					},
 					{ resolution: decided.resolution, decidedBy },
 				);
 			})

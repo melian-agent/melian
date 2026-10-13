@@ -203,6 +203,15 @@ describe("the caps", () => {
 		expect(lowered.decision(audible)).toMatchObject({ resolution: "advisory", decidedBy: { cap: "pre-existing" } });
 	});
 
+	it("names only the cap that decided when a later cap lowers further", () => {
+		const source = layered({ "melian.yaml": { preExisting: { P0: "acknowledge" } } });
+		const old = finding({ severity: "P0", cause: "pre-existing" });
+		expect(old.capped(source).decidedBy).toMatchObject({ cap: "pre-existing", capBy: { file: "melian.yaml" } });
+		const unjudged = old.capped(source, { unverified: true });
+		expect(unjudged).toMatchObject({ resolution: "advisory", decidedBy: { cap: "unverified" } });
+		expect(unjudged.decidedBy.capBy).toBeUndefined();
+	});
+
 	it("takes the nearest file's cap for a severity, in either direction", () => {
 		const old = finding({ severity: "P0", cause: "pre-existing" });
 		const stricterRoot = layered({
