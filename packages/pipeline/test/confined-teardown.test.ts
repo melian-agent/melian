@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { defaultConfig } from "@melian-agent/core";
 import { backgroundContext as context, createNodeExecutionEnv, type ExecutionEnv } from "@melian-agent/pipeline";
@@ -55,23 +55,18 @@ it("leaves the user's stale registration alone when a confined teardown drops it
 	expect(registrations()).toContain(`worktree ${stale}`);
 });
 
-// A run that died after locking its trees as head-written. The pid is one no process holds.
+// A run that died with its trees in scratch only confined cleanup may remove. The pid is one no process holds.
 function crashed(name: string): string {
-	const owner = join(dirname(repo), `melian-static-${name}-${process.pid}`);
+	const owner = join(dirname(repo), `melian-confined-${name}-${process.pid}`);
 	owners.push(owner);
 	mkdirSync(join(owner, "base"), { recursive: true });
-	for (const tree of [join(owner, "base/tree"), join(owner, "tree")])
-		gitIn(
-			repo,
-			"worktree",
-			"add",
-			"--quiet",
-			"--detach",
-			"--lock",
-			"--reason",
-			"melian-static mutation pid 2147483646",
-			tree,
+	for (const tree of [join(owner, "base/tree"), join(owner, "tree")]) {
+		gitIn(repo, "worktree", "add", "--quiet", "--detach", "--lock", "--reason", "melian-static pid 2147483646", tree);
+		writeFileSync(
+			join(gitIn(tree, "rev-parse", "--absolute-git-dir"), "melian-static"),
+			JSON.stringify({ tree, pid: 2147483646 }),
 		);
+	}
 	return owner;
 }
 

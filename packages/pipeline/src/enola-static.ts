@@ -327,6 +327,7 @@ export class EnolaRun {
 			),
 		);
 		if (added.code !== 0) throw this.#run.fail("worktreeFailed", `Enola base worktree failed: ${added.output}`);
+		await this.#run.mark(baseRoot);
 		const baseOutput = posix.join(this.#scratch, "base-output");
 		const headOutput = posix.join(this.#scratch, "head-output");
 		const before = await this.#generate(baseRoot, baseOutput, base);

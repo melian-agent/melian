@@ -1,5 +1,5 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { mkdirSync, readFileSync, rmSync } from "node:fs";
+import { dirname, join } from "node:path";
 import {
 	Changeset,
 	type Decider,
@@ -592,6 +592,34 @@ describe("static.enola", { timeout: 60_000 }, () => {
 		if (result.status !== "ran") throw new Error("Enola failed");
 		expect(result.log.runs[0].results).toEqual([]);
 		expect(result.notes).toContain("Enola check exited 1 with no unsuppressed SARIF results; treated as clean.");
+	});
+	it("carries the worktrees the run left alone into Enola's notes", async () => {
+		const base = commit(repo, { "src/a.ts": "export const a = 1;\n" });
+		const owner = join(dirname(repo), `melian-static-users-${process.pid}`);
+		mkdirSync(owner);
+		gitIn(repo, "worktree", "add", "--quiet", "--detach", join(owner, "tree"));
+		try {
+			const result = await runStaticTool(
+				{
+					env: createNodeExecutionEnv(repo),
+					repoRoot: repo,
+					base,
+					commit: base,
+					tool: "enola",
+					settings: defaultConfig.static.enola,
+					tools: await fake(1),
+				},
+				context,
+			);
+			if (result.status !== "ran") throw new Error("Enola failed");
+			expect(result.notes[0]).toBe(
+				`enola left the worktree at ${join(owner, "tree")} alone: it is not locked, so it is not a static run's.`,
+			);
+			expect(result.notes).toContain("Enola check exited 1 with no unsuppressed SARIF results; treated as clean.");
+		} finally {
+			gitIn(repo, "worktree", "remove", "--force", join(owner, "tree"));
+			rmSync(owner, { recursive: true, force: true });
+		}
 	});
 	const oldFinding = (extra = "") =>
 		`{"ruleId":"constraints/old","level":"error","message":{"text":"Old"},${extra}"locations":[{"physicalLocation":{"artifactLocation":{"uri":"src/a.ts"},"region":{"startLine":1}}}]}`;

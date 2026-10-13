@@ -113,7 +113,7 @@ async function fixture(cached = true, timeout = 30) {
 
 it.each([
 	["policy setup", "if [", "toolFailed", "policy setup exited"],
-	["graph tree", "rev-parse", "worktreeFailed", "Could not resolve graph tree"],
+	["graph tree", "^{tree}", "worktreeFailed", "Could not resolve graph tree"],
 	["generate", "--generate", "toolFailed", "Enola generate exited"],
 	["baseline pin", "baseline pin", "toolFailed", "baseline pin exited"],
 	["SARIF", "check --format", "toolFailed", "Enola check exited"],

@@ -112,6 +112,8 @@ export class Run {
 	mutationScratch?: MutationScratch;
 	#confinement?: { readonly sandbox: Sandbox; readonly paths: SandboxPaths; readonly profile: string | undefined };
 	#outputs?: MutationScratch;
+	/** What the run met on the way that its record should say, such as a worktree it would not remove. */
+	readonly notes: string[] = [];
 	readonly input: StaticRunInput;
 	readonly context: Context;
 	readonly check: string;
@@ -187,6 +189,18 @@ export class Run {
 		});
 	}
 
+	// Records beside a registration this run just made that it is this run's: see `marked`.
+	async mark(root: string): Promise<void> {
+		const admin = await this.shell(this.git("rev-parse --absolute-git-dir", root));
+		if (admin.code !== 0) throw this.fail("worktreeFailed", `git rev-parse failed in ${root}: ${admin.output}`);
+		const written = await this.input.env.writeFile(
+			posix.join(admin.output, markerFile),
+			JSON.stringify({ tree: root, pid: process.pid }),
+			this.context,
+		);
+		if (!written.ok) throw this.fail("worktreeFailed", `could not mark ${root}: ${written.error.message}`);
+	}
+
 	// git reads every registered worktree's commondir while adding or listing one, so another run that has made its
 	// admin directory but not yet written that file fails this command. The runs on base and head add four at once.
 	async worktreeCommand(command: string): Promise<Shell> {
@@ -206,7 +220,7 @@ export class Run {
 	async inWorktree<T>(use: (root: string, scratch: string) => Promise<T>): Promise<T> {
 		const { env, commit } = this.input;
 		if (!/^[0-9a-f]{40,64}$/.test(commit)) throw this.fail("worktreeFailed", `${commit} is not a full commit hash`);
-		const created = await env.createTempDir("melian-static-", this.context);
+		const created = await env.createTempDir(scratchPrefix, this.context);
 		if (!created.ok) throw this.fail("worktreeFailed", `no temporary directory: ${created.error.message}`);
 		// The reader refuses a link at any component and seatbelt matches real paths, so scratch is used by its real path
 		// or not at all.
@@ -224,6 +238,7 @@ export class Run {
 				this.git(`worktree add --detach --quiet --lock --reason ${quote(lockReason)} ${quote(root)} ${commit}`),
 			);
 			if (added.code !== 0) throw this.fail("worktreeFailed", `git worktree add failed: ${added.output}`);
+			await this.mark(root);
 			return await use(root, scratch);
 		} finally {
 			await removeWorktree(this, scratch);
@@ -503,7 +518,8 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 		}
 		if (tool === "enola") {
 			const tools = input.tools ?? (await ToolProvisioning.open(repoRoot));
-			return await (await EnolaRun.open(run, root, scratch, tools)).check();
+			const checked = await (await EnolaRun.open(run, root, scratch, tools)).check();
+			return checked.status === "ran" ? { ...checked, notes: [...run.notes, ...checked.notes] } : checked;
 		}
 		const files = await trackedFiles(run, root, posix.join(scratch, "files"));
 		const notes: string[] = [];
@@ -537,12 +553,22 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 			tool === "biome"
 				? await runBiome(run, root, scratch, binary, version)
 				: await runTsc(run, root, scratch, binary, version, new Set(files), notes);
-		return { status: "ran", log, notes };
+		return { status: "ran", log, notes: [...run.notes, ...notes] };
 	});
 }
 
 // Each worktree is locked with the adding process's ID, so a later run can tell a crashed run's worktree from a live one.
+// The text and the directory prefix are read by every build that reviews this clone, the oldest with
+// `/^melian-static pid (\d+)$/` under `melian-static-*`: a build that cannot parse a lock takes a live run for a
+// crashed one and deletes its scratch. Neither may change.
 const lockReason = `melian-static pid ${process.pid}`;
+const scratchPrefix = "melian-static-";
+
+/**
+ * The directory prefix for scratch that only confined cleanup may remove, because head code ran in it. Older builds
+ * remove a `melian-static-*` tree on the host, and skip every other name, so such scratch takes this prefix.
+ */
+export const confinedScratchPrefix = "melian-confined-";
 
 // Cleanup runs even when the caller cancelled, so it never takes the caller's context: a cancelled context makes every
 // command return at once, and the worktree would stay registered.
@@ -577,26 +603,53 @@ async function removeWorktree(run: Run, scratch: string, mutation = false): Prom
 // which deletes whatever sits at the path by then. The entry holds the lock that marks the tree as head-written, so it
 // goes last: a crash before here leaves a locked registration, which the next run finds and replays confined.
 async function unregister(cleanup: Run, root: string): Promise<void> {
+	const admin = await registration(cleanup, root);
+	if (admin === undefined) return;
+	const removed = await cleanup.input.env.remove(admin, { recursive: true, force: true }, backgroundContext);
+	if (!removed.ok) throw cleanup.fail("worktreeFailed", `could not remove ${admin}: ${removed.error.message}`);
+}
+
+// The entry under the repository's `worktrees` directory whose `gitdir` file names this tree, or undefined.
+async function registration(cleanup: Run, root: string): Promise<string | undefined> {
 	const { env } = cleanup.input;
 	const common = await cleanup.shell(cleanup.git("rev-parse --path-format=absolute --git-common-dir"));
 	if (common.code !== 0) throw cleanup.fail("worktreeFailed", `git rev-parse failed: ${common.output}`);
 	const entries = posix.join(common.output, "worktrees");
 	const listed = await env.listDir(entries, backgroundContext);
 	if (!listed.ok) {
-		if (listed.error.code === "not_found") return;
+		if (listed.error.code === "not_found") return undefined;
 		throw cleanup.fail("worktreeFailed", `could not list ${entries}: ${listed.error.message}`);
 	}
 	for (const entry of listed.value) {
 		const admin = posix.join(entries, entry.name);
 		const named = await env.readTextFile(posix.join(admin, "gitdir"), backgroundContext);
-		if (!named.ok || posix.resolve(admin, named.value.trim()) !== posix.join(root, ".git")) continue;
-		const removed = await env.remove(admin, { recursive: true, force: true }, backgroundContext);
-		if (!removed.ok) throw cleanup.fail("worktreeFailed", `could not remove ${admin}: ${removed.error.message}`);
+		if (named.ok && posix.resolve(admin, named.value.trim()) === posix.join(root, ".git")) return admin;
+	}
+}
+
+// What this build writes beside a registration it makes: the tree it added and the process that added it. The file sits
+// in the repository's git directory, which no confined command can write.
+const markerFile = "melian-static";
+
+// Whether the registration at `admin` carries this build's marker for this tree and this lock: true or false, or
+// undefined when it carries none, as a tree added by a build from before the marker does.
+async function marked(run: Run, admin: string | undefined, tree: string, pid: string): Promise<boolean | undefined> {
+	if (admin === undefined) return undefined;
+	const text = await run.input.env.readTextFile(posix.join(admin, markerFile), backgroundContext);
+	if (!text.ok) return text.error.code === "not_found" ? undefined : false;
+	try {
+		const marker = JSON.parse(text.value) as { tree?: unknown; pid?: unknown };
+		return marker.tree === tree && marker.pid === Number(pid);
+	} catch {
+		return false;
 	}
 }
 
 // A run killed with SIGKILL leaves its worktree registered and its directory in place, which `git worktree prune`
-// cannot remove. Any Melian worktree whose locking process is gone is removed before a new one is added.
+// cannot remove. A worktree is this code's to remove only on proof: it sits where a run puts one, it carries the exact
+// lock a run writes, the locking process is gone, and its marker, if it has one, names this tree and that process. A
+// path that merely looks like a run's is a user's, left alone and named in the run's notes. Every build that reviews
+// this clone reads these registrations, the oldest by lock text and directory name alone, so neither ever changes.
 async function removeStaleWorktrees(run: Run, scratch: string): Promise<void> {
 	const listing = posix.join(scratch, "worktrees");
 	const listed = await run.worktreeCommand(
@@ -609,20 +662,32 @@ async function removeStaleWorktrees(run: Run, scratch: string): Promise<void> {
 		if (path === undefined || posix.basename(path) !== "tree") continue;
 		const parent = posix.dirname(path);
 		const owner = posix.basename(parent) === "base" ? posix.dirname(parent) : parent;
-		if (!posix.basename(owner).startsWith("melian-static-") || owner === scratch) continue;
-		const lock = fields.find((field) => field.startsWith("locked "))?.slice("locked ".length) ?? "";
-		const pid = /^melian-static (?:mutation )?pid (\d+)$/.exec(lock)?.[1];
-		if (pid !== undefined && Number(pid) > 1 && (await run.shell(`kill -0 ${pid} 2> /dev/null`)).code === 0) continue;
+		const confined = posix.basename(owner).startsWith(confinedScratchPrefix);
+		if ((!confined && !posix.basename(owner).startsWith(scratchPrefix)) || owner === scratch) continue;
+		const left = (why: string) => run.notes.push(`${run.input.tool} left the worktree at ${path} alone: ${why}.`);
+		// A lock with no reason is listed as the bare word.
+		const lock = fields.find((field) => field === "locked" || field.startsWith("locked "))?.slice("locked ".length);
+		const pid = /^melian-static pid (\d+)$/.exec(lock ?? "")?.[1];
+		if (pid === undefined) {
+			left(lock === undefined ? "it is not locked, so it is not a static run's" : "its lock is not a static run's");
+			continue;
+		}
+		if (Number(pid) > 1 && (await run.shell(`kill -0 ${pid} 2> /dev/null`)).code === 0) continue;
+		const cleanup = new Run(run.input, backgroundContext);
+		const proof = await marked(run, await registration(cleanup, path), path, pid);
+		if (proof === false || (proof === undefined && confined)) {
+			left(proof === false ? "its marker names another tree or process" : "it has no marker");
+			continue;
+		}
 		for (const component of [owner, parent, path]) {
 			const info = await run.input.env.fileInfo(component, run.context);
 			if (info.ok && info.value.kind === "symlink")
 				throw run.fail("worktreeFailed", `refused symlink ${component} during stale worktree cleanup`);
 		}
-		const gitDirectory = await run.input.env.fileInfo(posix.join(path, ".git"), run.context);
-		await removeWorktree(
-			run,
-			owner,
-			lock.startsWith("melian-static mutation ") || (gitDirectory.ok && gitDirectory.value.kind !== "file"),
-		);
+		if (confined && (await Sandbox.detect(run.input.env, backgroundContext)) === undefined) {
+			left("only confined cleanup may remove it, and this host offers no sandbox");
+			continue;
+		}
+		await removeWorktree(run, owner, confined);
 	}
 }
