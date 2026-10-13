@@ -136,7 +136,11 @@ describe("configsFor", () => {
 		expect(edited).not.toBe(first);
 		// Only a lens's declared default changes.
 		writeFiles(repo, { ".melian/lenses/cleanup/LENS.md": lensFile("cleanup", "resolution: { P3: block }") });
-		expect(await read()).not.toBe(edited);
+		const declared = await read();
+		expect(declared).not.toBe(edited);
+		// Only a nested folder's ruleAliases change, which decide what merges as one defect.
+		writeFiles(repo, { "docs/melian.yaml": lines("ruleAliases:", "  reuse: { rules: [altitude], distinct: true }") });
+		expect(await read()).not.toBe(declared);
 	});
 
 	it("judges a policy-change notice on a nested melian.yaml under the layers of the directory above", async () => {
