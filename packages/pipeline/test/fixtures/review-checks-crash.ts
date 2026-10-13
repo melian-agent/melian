@@ -5,6 +5,9 @@ import { Sandbox } from "../../src/sandbox.ts";
 import { createFakeModels, scriptConversations } from "../../src/testing.ts";
 import { unconfinedSandbox } from "./sandbox.ts";
 
+// The parent test kills this process. Should that test die first, the process ends itself and nothing is left parked.
+setTimeout(() => process.exit(0), 120_000).unref();
+
 // The parent test's fake tsc records each run beside the repository, where the real sandbox allows no write.
 Object.defineProperty(Sandbox, "detect", { value: async () => unconfinedSandbox });
 

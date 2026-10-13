@@ -53,7 +53,8 @@ function staticTrees(): string[] {
 it("a build from before this one leaves this build's live run alone, and the run finishes", {
 	timeout: 60_000,
 }, async () => {
-	// A fake Biome that writes a file beside its report and waits there until the test lets it go.
+	// A fake Biome that writes a file beside its report and waits there until the test lets it go. It gives up by itself
+	// after thirty seconds: when the old build does delete the scratch, nothing can release it, and it must not run on.
 	fakeTool(
 		repo,
 		"biome",
@@ -61,11 +62,14 @@ it("a build from before this one leaves this build's live run alone, and the run
 			'if [ "$1" = "--version" ]; then echo 0.0.0; exit 0; fi',
 			'for arg in "$@"; do case "$arg" in --reporter-file=*) out=$(printf %s "$arg" | cut -d= -f2-);; esac; done',
 			'echo started > "$(dirname "$out")/started"',
-			'while [ ! -f "$(dirname "$out")/release" ]; do sleep 0.05; done',
+			"waited=0",
+			'while [ ! -f "$(dirname "$out")/release" ]; do sleep 0.05; waited=$((waited + 1)); [ "$waited" -lt 600 ] || exit 9; done',
 			`printf '%s' '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Biome"}},"results":[]}]}' > "$out"`,
 		].join("\n"),
 	);
 	const running = runStaticTool(input(), context);
+	// Settled before the test ends whatever an assertion below throws, so no run is left behind it.
+	const settled = running.catch(() => undefined);
 	let scratch = "";
 	for (const deadline = Date.now() + 30_000; Date.now() < deadline; await sleep(20)) {
 		const [tree] = staticTrees();
@@ -84,6 +88,7 @@ it("a build from before this one leaves this build's live run alone, and the run
 		expect(readFileSync(join(scratch, "started"), "utf8")).toBe("started\n");
 	} finally {
 		if (scratch !== "" && existsSync(scratch)) writeFileSync(join(scratch, "release"), "");
+		await settled;
 	}
 	expect(await running).toMatchObject({ status: "ran", notes: unconfinedNotes("biome") });
 	expect(staticTrees()).toEqual([]);
@@ -124,6 +129,7 @@ it("this build leaves the old build's live run alone, and removes its dead one",
 		expect(existsSync(join(live, "src/a.ts"))).toBe(true);
 	} finally {
 		release();
+		await oldRun.catch(() => undefined);
 	}
 	expect(await oldRun).toBe(lines("export const a = 1;"));
 	expect(staticTrees()).toEqual([]);

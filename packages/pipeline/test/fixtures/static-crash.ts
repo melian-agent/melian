@@ -4,6 +4,9 @@ import { defaultConfig } from "@melian-agent/core";
 import { backgroundContext, createNodeExecutionEnv, type ExecutionEnv } from "../../src/harness.ts";
 import { runStaticTool } from "../../src/static.ts";
 
+// The parent test kills this process. Should that test die first, the process ends itself and nothing is left parked.
+setTimeout(() => process.exit(0), 120_000).unref();
+
 const [repoRoot, commit, log] = process.argv.slice(2) as [string, string, string];
 const env = createNodeExecutionEnv(repoRoot);
 const parking: ExecutionEnv = Object.create(env);
