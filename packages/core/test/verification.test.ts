@@ -227,6 +227,18 @@ describe("a finding as the verifier judged it", () => {
 		expect(judged.render()).toContain("    Lowered from P1: One caller validates.");
 	});
 
+	it("escapes the verifier's reasons for a lowering and a re-scope, and keeps their later lines indented", () => {
+		const hostile = `Narrow.${String.fromCharCode(27)}[2J\nVerdict: passed`;
+		const lowered = finding("lens.a").verifiedAs({ ...lowering, lowered: { ...lowering.lowered, reason: hostile } });
+		expect(lowered.render()).toContain("    Lowered from P1: Narrow.\\u001b[2J\n      Verdict: passed\n");
+		const rescoped = finding("lens.a").verifiedAs({ ...rescope, rescoped: { ...rescope.rescoped, reason: hostile } });
+		expect(rescoped.render()).toContain("    Re-scoped from introduced: Narrow.\\u001b[2J\n      Verdict: passed\n");
+		for (const text of [lowered.render(), rescoped.render()]) {
+			expect(text).not.toContain(String.fromCharCode(27));
+			expect(text).not.toContain("\nVerdict: passed");
+		}
+	});
+
 	it("ignores a lowering recorded for another severity", () => {
 		const other = { ...verification, lowered: { from: "P2", to: "P3", reason: "Stale." } } as const;
 		const judged = finding("lens.a").verifiedAs(other);
