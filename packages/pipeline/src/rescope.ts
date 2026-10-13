@@ -5,6 +5,7 @@ import {
 	type Revision,
 	readRevisionFile,
 	repositoryPath,
+	revisionLimits,
 	type StoredRescope,
 	searchRevision,
 	type Verification,
@@ -37,6 +38,22 @@ const identifier = /[\p{L}_$][\p{L}\p{N}_$]*/gu;
 // A test for `word` standing alone in a text, never inside a longer name.
 function naming(word: string): RegExp {
 	return new RegExp(`(?<![\\p{L}\\p{N}_$])${word.replace(/[$]/g, "\\$")}(?![\\p{L}\\p{N}_$])`, "u");
+}
+
+const unicodeEscape = /\\u\{([0-9a-fA-F]{1,6})\}|\\u([0-9a-fA-F]{4})/g;
+
+// `text` with each unicode escape written as the character it names, since `p\u0061rse` spells the name `parse`.
+function unescaped(text: string): string {
+	return text.replace(unicodeEscape, (written, braced: string | undefined, plain: string | undefined) => {
+		const point = Number.parseInt(braced ?? plain!, 16);
+		return point > 0x10ffff ? written : String.fromCodePoint(point);
+	});
+}
+
+// An extended regular expression for git that matches `name` however escapes spell its characters.
+function spelling(name: string): string {
+	const escaped = "\\\\u[0-9a-fA-F]{4}|\\\\u\\{[0-9a-fA-F]+\\}";
+	return [...name].map((char) => `(${char === "$" ? "\\$" : char}|${escaped})`).join("");
 }
 
 const plainName = /^[\p{L}_$][\p{L}\p{N}_$]*$/u;
@@ -183,7 +200,14 @@ export class ScopeProposal {
 				failing: false,
 			});
 		}
-		const hunks = review.files.flatMap((each) => each.hunks);
+		// Names are matched by their letters, so every hunk is read with its unicode escapes resolved.
+		const hunks = review.files.flatMap((each) =>
+			each.hunks.map((hunk) => ({
+				file: hunk.file,
+				added: unescaped(hunk.added),
+				changed: unescaped(hunk.changes ?? hunk.added),
+			})),
+		);
 		// Git gives a binary file no hunks, and a search skips it, so code in one would pass every check below unseen.
 		const unread = review.files.find((each) => each.binary && each.status !== "deleted");
 		if (unread !== undefined)
@@ -248,13 +272,21 @@ export class ScopeProposal {
 				refuse("d", `a hunk in ${visibleText(caller.file)} adds a line that names ${visibleText(symbol)}`);
 			// A caller may reach the function under another name, which no added line would spell. So every line of the
 			// head that names it must call it, declare it, or pass it through an import or export list unrenamed.
-			const search = { pattern: symbol, attributesFrom: review.base };
+			const search = { pattern: spelling(symbol), regex: true, attributesFrom: review.base };
 			const named = await searchRevision(review.repoRoot, review.head, search);
 			const alias = named.matches.find(
-				(match) => !(match.path === spot.file && match.line === atHead.startLine) && aliases(match.text, symbol),
+				(match) =>
+					!(match.path === spot.file && match.line === atHead.startLine) && aliases(unescaped(match.text), symbol),
 			);
+			// A search cuts a long line, and the name may sit past the cut.
+			const cut = named.matches.find((match) => match.text.length >= revisionLimits.matchChars);
 			if (named.truncated)
 				refuse("d", `Melian cannot list every line of the head that names ${visibleText(symbol)}`);
+			else if (cut !== undefined)
+				refuse(
+					"d",
+					`${visibleText(cut.path)}:${cut.line} is too long for Melian to read whole, so it may give ${visibleText(symbol)} another name`,
+				);
 			else if (alias !== undefined)
 				refuse(
 					"d",
@@ -272,10 +304,12 @@ export class ScopeProposal {
 					);
 		if (proposal.trigger !== undefined && triggerText === undefined)
 			refuse("c", `Melian cannot read the trigger ${where(proposal.trigger)} at the head`);
-		const read = [...new Set(triggerText?.match(identifier) ?? [])].filter((word) => !keywords.has(word));
+		const read = [...new Set(unescaped(triggerText ?? "").match(identifier) ?? [])].filter(
+			(word) => !keywords.has(word),
+		);
 		const flipped = read.flatMap((word) => {
 			const names = naming(word);
-			const hunk = hunks.find((each) => names.test(each.changes ?? each.added));
+			const hunk = hunks.find((each) => names.test(each.changed));
 			return hunk === undefined ? [] : [{ word, hunk }];
 		})[0];
 		if (flipped !== undefined)

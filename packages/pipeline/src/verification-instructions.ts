@@ -23,7 +23,7 @@ const scopeAnswer = Type.Object(
 	strict,
 );
 
-/** The most locations a re-scope may name on the path from its trigger to the failure. */
+// The most locations a re-scope may name on the path from its trigger to the failure.
 export const maxScopePath = 10;
 
 const lowerSchema = Type.Object(

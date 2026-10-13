@@ -663,6 +663,75 @@ describe("rule (d), four typed answers, cross-checked", { timeout: 60_000 }, () 
 		expect(await named('import { start } from "./main.ts";\nexport const begin = start;\n')).toEqual([]);
 	});
 
+	it("reads a unicode escape as the letter it spells, in an added line, an old alias and a changed flag", async () => {
+		const through = 'import * as parse from "./parse.ts";\n';
+		for (const escaped of ["p\\u0061rseRecord", "p\\u{61}rseRecord", "p\\u{000061}rseRecord"]) {
+			const head = { ...commentEdit, "src/other.ts": `${through}export const first = parse.${escaped}("solo");\n` };
+			expect(await refusals(head)).toEqual(["(d) a hunk in src/other.ts adds a line that names parseRecord"]);
+			const alias = { "src/alias.ts": `${through}export const decode = parse.${escaped};\n` };
+			expect(await refusals({ ...commentEdit, ...alias }, {}, {}, { base: alias })).toEqual([
+				"(d) src/alias.ts:2 names parseRecord without calling it, so a caller may reach it under another name",
+			]);
+		}
+		const call = { "src/alias.ts": `${through}export const first = parse.p\\u0061rseRecord("a,b");\n` };
+		expect(await refusals({ ...commentEdit, ...call }, {}, {}, { base: call })).toEqual([]);
+		const other = {
+			"src/alias.ts":
+				'export const label = "\\u0061\\u0062\\u0063\\u0064\\u0065\\u0066\\u0067\\u0068\\u0069\\u006a\\u006b";\n',
+		};
+		expect(await refusals({ ...commentEdit, ...other }, {}, {}, { base: other })).toEqual([]);
+		const beyond = { "src/alias.ts": 'export const label = "p\\u{110000}rseRecord";\n' };
+		expect(await refusals({ ...commentEdit, ...beyond }, {}, {}, { base: beyond })).toEqual([]);
+		expect(
+			await refusals(
+				{ ...commentEdit, "src/config.ts": "export const str\\u0069ct = true;\n" },
+				{},
+				{},
+				{ base: { "src/config.ts": "export const str\\u0069ct = false;\n" } },
+			),
+		).toEqual(["(d) a hunk in src/config.ts changes a line that names strict, which the trigger reads"]);
+	});
+
+	it("resolves an escape on the trigger's own line, and searches for a name that holds a dollar sign", async () => {
+		const escapedMain = { "src/main.ts": main.replace("return strict", "return str\\u0069ct") };
+		expect(
+			await refusals(
+				{ ...commentEdit, ...escapedMain, "src/config.ts": "export const strict = true;\n" },
+				{},
+				{},
+				{ base: escapedMain },
+			),
+		).toEqual(["(d) a hunk in src/config.ts changes a line that names strict, which the trigger reads"]);
+		const dollar = (comment: string) =>
+			lines("export function pick$(raw: string): string {", comment, '\treturn raw.split(",")[1].trim();', "}");
+		const alias = { "src/alias.ts": 'import { pick$ } from "./dollar.ts";\nexport const decode = pick$;\n' };
+		expect(
+			await refusals(
+				{ "src/dollar.ts": dollar("\t// The second field."), ...alias },
+				{ failing: { file: "src/dollar.ts", line: 3, baseLine: 3 } },
+				{ path: "src/dollar.ts", startLine: 1, endLine: 4, evidence: [] },
+				{ base: { "src/dollar.ts": dollar("\t// Second."), ...alias } },
+			),
+		).toEqual(["(d) src/alias.ts:2 names pick$ without calling it, so a caller may reach it under another name"]);
+	});
+
+	it("refuses when a line that names the failing symbol is as long as a search shows, since the rest may be cut", async () => {
+		const line = (length: number) => `parseRecord("a,b"); //${"x".repeat(length - 'parseRecord("a,b"); //'.length)}`;
+		const from = 'import { parseRecord } from "./parse.ts";\n';
+		const short = { "src/alias.ts": `${from}${line(revisionLimits.matchChars - 1)}\n` };
+		expect(await refusals({ ...commentEdit, ...short }, {}, {}, { base: short })).toEqual([]);
+		const long = { "src/alias.ts": `${from}${line(revisionLimits.matchChars)}\n` };
+		expect(await refusals({ ...commentEdit, ...long }, {}, {}, { base: long })).toEqual([
+			"(d) src/alias.ts:2 is too long for Melian to read whole, so it may give parseRecord another name",
+		]);
+		const hidden = {
+			"src/alias.ts": `${from}${line(revisionLimits.matchChars + 20)} export const decode = parseRecord;\n`,
+		};
+		expect(await refusals({ ...commentEdit, ...hidden }, {}, {}, { base: hidden })).toEqual([
+			"(d) src/alias.ts:2 is too long for Melian to read whole, so it may give parseRecord another name",
+		]);
+	});
+
 	it("lets the failing function's own declaration name it without a call", async () => {
 		const arrow = (comment: string) =>
 			lines(

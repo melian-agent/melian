@@ -167,7 +167,7 @@ function callables(source: SourceFile, text: string, limit: number): Callable[] 
 	return found.length > limit ? undefined : found;
 }
 
-/** A named function around some lines, and the lines within it that hold code. */
+// A named function around some lines, and the lines within it that hold code.
 export interface HoldingFunction {
 	readonly name: string;
 	readonly startLine: number;
@@ -361,12 +361,10 @@ export class EnclosingFunctions {
 		}
 	}
 
-	/**
-	 * The innermost named function around `startLine` to `endLine` in each text, in the order given, with the lines of
-	 * the function that hold code rather than a comment or nothing. `undefined` for a text that is not TypeScript, that
-	 * the compiler holds no tree for, that names more functions than {@link enclosingLimits}`.callablesPerFile`, or
-	 * whose lines no named function holds. Throws when the compiler cannot start.
-	 */
+	// The innermost named function around `startLine` to `endLine` in each text, in the order given, with the lines of
+	// the function that hold code rather than a comment or nothing. `undefined` for a text that is not TypeScript, that
+	// the compiler holds no tree for, that names more functions than `enclosingLimits.callablesPerFile`, or whose lines
+	// no named function holds. Throws when the compiler cannot start.
 	static around(
 		texts: readonly {
 			readonly path: string;
