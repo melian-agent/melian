@@ -151,6 +151,22 @@ describe("a merged defect resolves each report under its own check, rule, and se
 		expect(only([biome()], quiet).properties.resolution).toBe("silent");
 	});
 
+	it("reads the important floor from the merged defect, never from a pre-existing report within it", () => {
+		const silent = policy({ P0: "silent", P2: "silent" });
+		const old = cleanup({ severity: "P0", cause: "pre-existing" });
+		// Alone, the pre-existing P0 is a member, and the floor holds it at advisory.
+		expect(only([old], silent).properties).toMatchObject({ resolution: "advisory", cause: "pre-existing" });
+		// Beside an introduced report the defect is introduced, so it is no member and stays silent, in either order.
+		for (const findings of [
+			[old, biome({ severity: "P2" })],
+			[biome({ severity: "P2" }), old],
+		]) {
+			const defect = only(findings, silent);
+			expect(defect.properties).toMatchObject({ resolution: "silent", cause: "introduced" });
+			expect(defect.properties.decidedBy?.floor).toBeUndefined();
+		}
+	});
+
 	it("asks the policy for each report's own rule", () => {
 		const asked: string[] = [];
 		const configFor: ConfigFor = (path, rule) => {
