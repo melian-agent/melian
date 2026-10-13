@@ -1,0 +1,3 @@
+# design-reimplements-an-authority-clean
+
+The negative golden of [the ask-the-authority decision](../../../../docs/decisions/2026-10-12-ask-the-authority.md): the authority cannot run where the answer is needed, and the change states the gap. The repository depends on `semver`, and the head compares the running Node with the `engines.node` range by hand. It does so in a `preinstall` script, which npm runs before any dependency is installed, and the comment that opens `scripts/node-range.mjs` says what it re-derives, which authority would answer, and why it cannot be asked. The check reads one shape of range and one shape of version. It refuses every other, a prerelease included, as `semver` does for a plain range, so it fails closed. A review must report nothing.

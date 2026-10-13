@@ -7,23 +7,18 @@
  * `live: false` is skipped and left out of the corpus score. `MELIAN_EVAL_TRIAGE=1` runs the triage corpus instead:
  * the fallback decider on `MELIAN_EVAL_MODEL` chooses each lens's level `MELIAN_EVAL_TRIAGE_PASSES` times (three by
  * default), the measurement prints, `MELIAN_EVAL_TRIAGE_OUT` writes it as JSON, and `MELIAN_EVAL_TRIAGE_BASELINE`
- * names an earlier measurement to compare, exiting 1 when the questions choose worse.
+ * names an earlier measurement to compare, exiting 1 when the questions choose worse. `MELIAN_EVAL_SHOW=1` prints each
+ * golden's rendered review under its score, for a lens or a verifier golden. A golden whose run throws prints
+ * `no score` with the error, the rest still run, and the script exits 1.
  *
  * @module
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { liveModels } from "./credentials.ts";
-import {
-	type Golden,
-	type GoldenScore,
-	loadGoldens,
-	runGolden,
-	scoreCorpus,
-	scoreGolden,
-	selectGoldens,
-} from "./goldens.ts";
+import { type Golden, loadGoldens, runGolden, selectGoldens } from "./goldens.ts";
+import { reportGoldens, reportVerifierGoldens } from "./live-output.ts";
 import { loadTriageGoldens, runTriageGolden, type TriageChosen, TriageQuestions, TriageResults } from "./triage.ts";
-import { loadVerifierGoldens, runVerifierGolden, scoreVerifierGolden } from "./verifier.ts";
+import { loadVerifierGoldens, runVerifierGolden } from "./verifier.ts";
 
 if (process.env.MELIAN_EVAL_LIVE !== "1") {
 	console.error("Live evals call real models and spend tokens. Set MELIAN_EVAL_LIVE=1 to run them.");
@@ -40,22 +35,14 @@ if (process.env.MELIAN_EVAL_VERIFIER === "1") {
 		process.exit(2);
 	}
 	const models = await liveModels(process.cwd());
-	const scores = [];
-	for (const golden of goldens) {
-		const run = await runVerifierGolden(golden, {
-			kind: "live",
-			models,
-			model: process.env.MELIAN_EVAL_MODEL,
-			verifierModel,
-		});
-		const score = scoreVerifierGolden(golden, run);
-		scores.push(score);
-		console.log(
-			`${golden.name}: ${score.verdict ?? "unjudged"}, ${score.passed ? "passed" : "failed"} (${score.kind})`,
-		);
-	}
-	console.log(`verifier corpus: ${scores.filter((score) => score.passed).length}/${scores.length} passed`);
-	process.exit(scores.every((score) => score.passed) ? 0 : 1);
+	const verifier = await reportVerifierGoldens(
+		goldens,
+		(golden) =>
+			runVerifierGolden(golden, { kind: "live", models, model: process.env.MELIAN_EVAL_MODEL, verifierModel }),
+		process.env,
+		console.log,
+	);
+	process.exit(verifier.status);
 }
 
 if (process.env.MELIAN_EVAL_TRIAGE === "1") {
@@ -96,23 +83,16 @@ try {
 }
 const models = await liveModels(process.cwd());
 const model = process.env.MELIAN_EVAL_MODEL;
-const scores: GoldenScore[] = [];
-for (const golden of goldens) {
-	if (!golden.live) {
-		console.log(`${golden.name}: skipped, live: false`);
-		continue;
-	}
-	const run = await runGolden(golden, {
-		kind: "live",
-		models,
-		...(model === undefined ? {} : { model }),
-		...(verifierModel === undefined ? {} : { verifierModel }),
-	});
-	const score = scoreGolden(golden, run.findings);
-	scores.push(score);
-	console.log(
-		`${golden.name}: precision ${score.precision.toFixed(2)}, recall ${score.recall.toFixed(2)} (${score.reported} reported, ${score.expected} expected)`,
-	);
-}
-const corpus = scoreCorpus(scores);
-console.log(`corpus: precision ${corpus.precision.toFixed(2)}, recall ${corpus.recall.toFixed(2)}`);
+const lens = await reportGoldens(
+	goldens,
+	(golden) =>
+		runGolden(golden, {
+			kind: "live",
+			models,
+			...(model === undefined ? {} : { model }),
+			...(verifierModel === undefined ? {} : { verifierModel }),
+		}),
+	process.env,
+	console.log,
+);
+process.exit(lens.status);

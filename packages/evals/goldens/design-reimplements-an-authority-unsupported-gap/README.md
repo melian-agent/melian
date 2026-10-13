@@ -1,0 +1,3 @@
+# design-reimplements-an-authority-unsupported-gap
+
+From finding 1 of the Codex adversarial review of [pull request #114](https://github.com/melian-agent/melian/pull/114): an author could evade `reimplements-an-authority` with a stated gap that repository code cannot support. The head parses a note's YAML header by hand, as `design-reimplements-an-authority` does, under a comment saying `yaml` cannot be asked because the module runs before the dependencies are installed. Nothing supports that: `src/cli.ts` imports the module beside `loadConfig`, which calls `yaml` in the same process, and `package.json` runs no script before install. A review must report the hand-written code.

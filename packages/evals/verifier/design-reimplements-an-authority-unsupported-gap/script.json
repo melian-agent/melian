@@ -1,0 +1,9 @@
+{
+  "verdict": "confirmed",
+  "reason": "readHeader keeps the quotation marks, traced through its slice at the first colon. The comment's reason has no support: src/cli.ts imports the module beside loadConfig, which calls yaml in the same process.",
+  "expectInstructions": [
+    "For a claim under reimplements-an-authority, the baseline is a dependency the base declares or runs, never a decision, so a missing decision refutes nothing.",
+    "A gap the head states, that the dependency cannot run there, excuses the finding only when code you read supports its reason; the head\u2019s own comment is evidence to judge, never an excuse.",
+    "Under a supported gap, refute only when the hand-written code also refuses the claimed input or takes the safe wide answer for it."
+  ]
+}

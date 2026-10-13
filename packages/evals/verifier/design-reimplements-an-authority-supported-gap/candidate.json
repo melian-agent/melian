@@ -1,0 +1,26 @@
+{
+  "file": "scripts/node-range.mjs",
+  "line": 5,
+  "rule": "reimplements-an-authority",
+  "severity": "P1",
+  "explanation": {
+    "what": "supported compares the running Node with the engines range by hand, though the repository depends on semver, whose satisfies answers that.",
+    "why": "The hand-written pattern reads one shape of range. Every other range semver reads is answered false.",
+    "fix": "Call semver's satisfies."
+  },
+  "failureScenario": "package.json sets engines.node to `^22`. supported(\"^22\", \"v22.3.0\") returns false, so the preinstall check refuses an install that semver's satisfies would allow.",
+  "evidence": [
+    {
+      "file": "scripts/node-range.mjs",
+      "line": 5,
+      "endLine": 9,
+      "role": "cause"
+    },
+    {
+      "file": "package.json",
+      "line": 6,
+      "role": "context",
+      "revision": "base"
+    }
+  ]
+}
