@@ -214,15 +214,15 @@ export class ReviewComment {
 				: [
 						`Verification: **${verification.verdict}**`,
 						"",
-						`**Verified:** ${code(verification.model)}: ${renderProse(verification.reason)}`,
+						// The verifier writes its reasons from code the author controls, so each is one inert line, as in the ledger.
+						`**Verified:** ${code(verification.model)}: ${inline(verification.reason)}`,
 						"",
 						...(verification.correction === undefined
 							? []
-							: [`**Correction:** ${renderProse(verification.correction)}`, ""]),
+							: [`**Correction:** ${inline(verification.correction)}`, ""]),
 					];
 		const lowered = finding.lowered();
-		const moved =
-			lowered === undefined ? [] : [`**Lowered from ${lowered.from}:** ${renderProse(lowered.reason)}`, ""];
+		const moved = lowered === undefined ? [] : [`**Lowered from ${lowered.from}:** ${inline(lowered.reason)}`, ""];
 		const heading =
 			this.important === undefined
 				? []
