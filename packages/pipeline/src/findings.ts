@@ -488,6 +488,11 @@ export interface ReadFindingsOptions {
 	 * neither restated nor refuted them. Every producer when absent.
 	 */
 	readonly producers?: readonly Producer[];
+	/**
+	 * Read each sighting at the severity and cause its lens reported, with its verification attached and not applied.
+	 * Verification picks its candidates from this read, so a lowering it stored never changes what it judges next.
+	 */
+	readonly asReported?: boolean;
 }
 
 /**
@@ -525,7 +530,10 @@ export async function readFindings(
 					.filter(([key, sighting]) => counts(key, sighting))
 					.map(([key, sighting]) => {
 						const verification = Object.values(verifications?.[revision]?.[key] ?? {}).at(-1);
-						return [key, verification === undefined ? sighting : judged(sighting, verification)];
+						if (verification === undefined) return [key, sighting];
+						if (options.asReported === true)
+							return [key, { ...sighting, properties: { ...sighting.properties, verification } }];
+						return [key, judged(sighting, verification)];
 					}),
 			);
 			if (Object.keys(atHead).length === 0) return [];
@@ -591,6 +599,7 @@ export async function clearVerifications(tx: Tx, root: ConversationId, revision:
 	if (cleared) bump(state, [revision]);
 }
 
+// Returns the record the claim holds once `verification` has met any stored one, which may be the stored one.
 export async function upsertVerification(
 	tx: Tx,
 	root: ConversationId,
@@ -598,7 +607,7 @@ export async function upsertVerification(
 	id: string,
 	source: FindingSource,
 	verification: Verification,
-): Promise<void> {
+): Promise<Verification> {
 	const state = await tx.doc(FindingsDocument, root);
 	const record = state.items[id];
 	const producer = producerKey(source);
@@ -607,7 +616,7 @@ export async function upsertVerification(
 	const previous = before[verification.version];
 	// Runs in the report's commit, replay included, so a later equal report never weakens a stored one.
 	const kept = new VerificationRecord(previous).after(verification);
-	if (JSON.stringify(previous) === JSON.stringify(kept)) return;
+	if (JSON.stringify(previous) === JSON.stringify(kept)) return kept;
 	const { [verification.version]: _, ...rest } = before;
 	record.verifications = {
 		...record.verifications,
@@ -617,6 +626,7 @@ export async function upsertVerification(
 		},
 	};
 	bump(state, [revision]);
+	return kept;
 }
 
 export async function sightingVerification(

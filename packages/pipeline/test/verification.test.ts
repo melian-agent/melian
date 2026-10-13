@@ -1743,6 +1743,153 @@ describe("lowering a severity and setting scope through report_verdict", () => {
 		expect(sighting.properties.cause).toBe("introduced");
 	});
 
+	// Plants `finding`, then makes each of `reports` in its own turn. Returns the verifier's requests.
+	function reporting(reports: Record<string, unknown>[], finding: Record<string, unknown> = crashFinding) {
+		const turn = (report: Record<string, unknown> | undefined) => (messages: Parameters<typeof scriptVerifier>[0]) =>
+			report === undefined
+				? fauxAssistantMessage("Every claim judged.")
+				: fauxAssistantMessage(
+						fauxToolCall("report_verdict", {
+							claim: "c1",
+							answers: { code: "yes", guard: "no", base: "no" },
+							verdict: "confirmed",
+							reason: `Traced it, report ${messages.length}.`,
+							...report,
+						} as Parameters<typeof fauxToolCall>[1]),
+						{ stopReason: "toolUse" },
+					);
+		return scriptConversations(fake, [
+			...lenses.map((lens) => ({
+				match: lens.instructions,
+				replies: [
+					fauxAssistantMessage(fauxToolCall("report_finding", { ...finding, rule: lens.rules[0]!.id }), {
+						stopReason: "toolUse",
+					}),
+					fauxAssistantMessage("Done."),
+				],
+			})),
+			{ match: verifierMarker, replies: [...reports.map(turn), turn(undefined)] },
+		])[verifierMarker]!;
+	}
+
+	it("says a lowering was not kept when an equal report already holds the claim at the lens's severity", async () => {
+		const requests = reporting([{}, { evidence: cited, lower: narrow }]);
+		const { findings } = await review();
+		expect(findings[0]!.properties.severity).toBe("P1");
+		expect(resultOf(requests)).toContain(
+			"recorded verdict for c1\nlowering not kept, and the lens's P1 stands: an equal report of this claim already holds it there\n",
+		);
+		expect(resultOf(requests)).not.toContain("lowered P1 to P2");
+	});
+
+	it("says a re-scope was not kept when an equal report already holds the claim at its scope", async () => {
+		await commentEdit();
+		const requests = reporting([{}, { scope: older }], old);
+		const { findings } = await review();
+		expect(findings[0]!.properties.cause).toBe("introduced");
+		expect(resultOf(requests)).toContain(
+			"recorded verdict for c1\nre-scope not kept, and the finding stays introduced: an equal report of this claim already holds it there\n",
+		);
+		expect(resultOf(requests)).not.toContain("re-scoped from");
+	});
+
+	it("reads the table in force at the finding's own path for the fence, not the root's", async () => {
+		writeFileSync(join(repo, "src", "melian.yaml"), "resolution:\n  P2: silent\n");
+		const requests = judging({ verdict: "confirmed", reason: "Traced it.", evidence: cited, lower: narrow });
+		const finder = fake.ref("finder");
+		const judge = fake.ref("judge");
+		const { findings } = await reviewChangeset({
+			harness,
+			checks: [],
+			changeset,
+			lenses,
+			standards: [],
+			models: fake.review,
+			policy: { kind: "worktree" },
+			config: {
+				...defaultConfig,
+				tiers: { full: lenses.map((lens) => `lens.${lens.name}`) },
+				stages: { "pull-request": "full" },
+				models: {
+					heavy: { model: `${finder.provider}/${finder.modelId}` },
+					verifier: { model: `${judge.provider}/${judge.modelId}` },
+				},
+			},
+		});
+		expect(findings[0]!.properties.severity).toBe("P1");
+		expect(resultOf(requests)).toContain("the table in force at the finding's path resolves P2 silent");
+	});
+
+	it("attaches a repeat review to the verification that lowered a claim, though the lowering changes who speaks", async () => {
+		const snippet = "\treturn user.manager.name;";
+		const idOf = (rule: string) =>
+			Finding.create({
+				rule,
+				message: "m",
+				file: "src/user.ts",
+				startLine: 7,
+				snippet,
+				occurrence: 0,
+				cause: "introduced",
+				severity: "P1",
+				explanation: { what: "w", whyHere: "y", whatToDo: "t" },
+				source: { check: "lens.any" },
+			}).id;
+		// The claim with the higher ID is lowered to a tie, so the other one speaks for the defect afterwards.
+		const [low, high] = ["first-rule", "second-rule"].sort((a, b) => (idOf(a) < idOf(b) ? -1 : 1)) as [
+			string,
+			string,
+		];
+		const first = lenses[0]!.toJSON();
+		lenses = [
+			Lens.from({
+				...first,
+				name: "trust-boundary",
+				instructions: "Finder of the lowered claim",
+				rules: [{ id: high, description: "Same failure." }],
+			}),
+			Lens.from({
+				...first,
+				name: "contracts",
+				instructions: "Finder of the other claim",
+				rules: [{ id: low, description: "Same failure." }],
+			}),
+		];
+		const requests = scriptConversations(fake, [
+			...[
+				{ lens: lenses[0]!, severity: "P1" },
+				{ lens: lenses[1]!, severity: "P2" },
+			].map(({ lens, severity }) => ({
+				match: lens.instructions,
+				replies: [
+					fauxAssistantMessage(
+						fauxToolCall("report_finding", { ...crashFinding, rule: lens.rules[0]!.id, severity }),
+						{ stopReason: "toolUse" },
+					),
+					fauxAssistantMessage("Done."),
+				],
+			})),
+			{
+				match: verifierMarker,
+				replies: [
+					(messages) =>
+						scriptVerifier(messages, {
+							[idOf(high)]: { verdict: "confirmed", reason: "Traced it.", evidence: cited, lower: narrow },
+						}),
+					(messages) => scriptVerifier(messages),
+				],
+			},
+		]);
+		const once = await review();
+		expect(once.verdict.attention()).toHaveLength(1);
+		expect(once.verdict.attention()[0]!.id).toBe(idOf(low));
+		expect(once.verdict.attention()[0]!.properties).toMatchObject({ severity: "P2", originalSeverity: "P1" });
+		const asked = requests[verifierMarker]!.length;
+		const again = await review();
+		expect(requests[verifierMarker]).toHaveLength(asked);
+		expect(again.verdict.attention()[0]!.properties).toMatchObject({ severity: "P2", originalSeverity: "P1" });
+	});
+
 	it("refuses the report when the claim's sighting is gone by the time it commits", async () => {
 		const requests = scriptConversations(fake, [
 			...lenses.map((lens) => ({

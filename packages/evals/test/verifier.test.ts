@@ -211,8 +211,10 @@ describe("the scenario goldens of the verifier corpus", { timeout: 60_000 }, () 
 		expect((await runScenarioGolden(marked)).resultMismatches).toEqual([
 			expect.stringContaining('report 2 returned "recorded verdict for c1'),
 		]);
+		// Reversed, the plain report comes first, so the lowering that follows it is not kept, and its result says so.
 		expect((await runScenarioGolden(marked, true)).resultMismatches).toEqual([
 			expect.stringContaining('report 1 returned "recorded verdict for c1'),
+			expect.stringContaining('report 2 returned "recorded verdict for c1\\nlowering not kept'),
 		]);
 	});
 
