@@ -114,6 +114,17 @@ describe("doctor resolution overrides", { timeout: 60_000 }, () => {
 		]);
 	});
 
+	it("walks a folder that defines a lens, though it holds no melian.yaml", async () => {
+		write({
+			"melian.yaml": "resolution:\n  P2: acknowledge\n",
+			"services/.agents/lenses/cleanup/LENS.md": lens("resolution: { ceiling: advisory }"),
+			"notes/LENS.md": "A note about lenses, not a lens.\n",
+		});
+		expect(await resolutionLines()).toEqual([
+			"ok: melian.yaml: resolution.P2 overrides lens cleanup's declared ceiling for P2 lens.cleanup findings",
+		]);
+	});
+
 	it("lists what a ceiling-only file drops, and a preference file's overrides at the root", async () => {
 		write({
 			"melian.yaml": "resolution:\n  P2: acknowledge\n",
