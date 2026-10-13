@@ -390,6 +390,25 @@ describe("merging judged claims", () => {
 		expect(speaker.properties.originalSeverity).toBeUndefined();
 	});
 
+	it("shows the reason of the lowering the defect stands at, not of another claim's", () => {
+		const owner = other("lens.b", "P2", {
+			...verification,
+			lowered: { from: "P2", to: "P3", reason: "P2 to P3 reason." },
+		});
+		const weaker = finding("lens.a").verifiedAs({
+			...verification,
+			verdict: "plausible",
+			lowered: { from: "P1", to: "P2", reason: "P1 to P2 reason." },
+		});
+		const aliases = { ...defaultConfig, ruleAliases: { [owner.ruleId]: ["no-eval"] } };
+		const speaker = new Merge([weaker, owner], aliases).defects()[0]!.speaker;
+		expect(speaker.ruleId).toBe(owner.ruleId);
+		expect(speaker.properties).toMatchObject({ severity: "P2", originalSeverity: "P1" });
+		expect(speaker.properties.verification?.lowered?.to).toBe("P3");
+		expect(speaker.lowered()).toEqual({ from: "P1", reason: "P1 to P2 reason." });
+		expect(speaker.render()).toContain("    Lowered from P1: P1 to P2 reason.");
+	});
+
 	it("keeps the highest severity a lens reported when the speaker is not the claim that was lowered", () => {
 		const owner = other("lens.b", "P2", verification);
 		const aliases = { ...defaultConfig, ruleAliases: { [owner.ruleId]: ["no-eval"] } };
