@@ -250,7 +250,12 @@ export class Run {
 	async inWorktree<T>(use: (root: string, scratch: string) => Promise<T>): Promise<T> {
 		const { env, commit } = this.input;
 		if (!/^[0-9a-f]{40,64}$/.test(commit)) throw this.fail("worktreeFailed", `${commit} is not a full commit hash`);
-		const created = await env.createTempDir(scratchPrefix, this.context);
+		// Head code runs in a mutation run's scratch, so only confined cleanup may remove it: it takes the prefix builds from
+		// before the check skip. The lock keeps the one form every build reads.
+		const created = await env.createTempDir(
+			this.input.tool === "mutation" ? confinedScratchPrefix : scratchPrefix,
+			this.context,
+		);
 		if (!created.ok) throw this.fail("worktreeFailed", `no temporary directory: ${created.error.message}`);
 		// The reader refuses a link at any component and seatbelt matches real paths, so scratch is used by its real path
 		// or not at all.
@@ -266,9 +271,7 @@ export class Run {
 		try {
 			await removeStaleWorktrees(this, scratch);
 			const added = await this.worktreeCommand(
-				this.git(
-					`worktree add --detach --quiet --lock --reason ${quote(this.input.tool === "mutation" ? `melian-static mutation pid ${process.pid}` : lockReason)} ${quote(root)} ${commit}`,
-				),
+				this.git(`worktree add --detach --quiet --lock --reason ${quote(lockReason)} ${quote(root)} ${commit}`),
 			);
 			if (added.code !== 0) throw this.fail("worktreeFailed", `git worktree add failed: ${added.output}`);
 			await this.mark(root);

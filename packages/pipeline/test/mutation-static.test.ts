@@ -10,7 +10,8 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { setTimeout as sleep } from "node:timers/promises";
 import {
 	Changeset,
 	CheckError,
@@ -47,7 +48,7 @@ import { MutationProcess } from "../src/mutation-process.ts";
 import { MutationScratch } from "../src/mutation-scratch.ts";
 import { MutationRun, strykerNotInstalled, strykerVersion } from "../src/mutation-static.ts";
 import { Sandbox } from "../src/sandbox.ts";
-import { Run, staticToolSource } from "../src/static.ts";
+import { confinedScratchPrefix, Run, staticToolSource } from "../src/static.ts";
 import { fakeMutationProcesses } from "./fixtures/mutation-process.ts";
 import {
 	commit as commitTo,
@@ -59,6 +60,7 @@ import {
 	writeFiles,
 } from "./fixtures/repo.ts";
 import { hostSandbox, unconfinedSandbox } from "./fixtures/sandbox.ts";
+import { RunV1, removeStaleWorktreesV1 } from "./fixtures/stale-worktrees-v1.ts";
 import { emptyVitestInstall } from "./fixtures/vitest-listing.ts";
 
 // The checkout's node_modules is never tracked, as in a real repository: a tracked one is ignored by the check.
@@ -318,13 +320,13 @@ describe("static.mutation", { timeout: 60_000 }, () => {
 		const calls = fake.calls();
 		expect(calls).toHaveLength(1);
 		const { cwd, run, flag } = argumentsOf(calls[0]!);
-		expect(cwd).toMatch(/\/melian-static-[^/]+\/tree$/);
+		expect(cwd).toMatch(/\/melian-confined-[^/]+\/tree$/);
 		expect(run.slice(0, 2)).toEqual(["run", join(cwd, "../stryker.config.json")]);
 		expect(flag("--reporters")).toBe("json");
 		expect(run).toContain("--incremental");
 		expect(run).toContain("--inPlace");
 		expect(flag("--mutate")).toBe("packages/p/src/a.ts:2-2");
-		expect(flag("--incrementalFile")).toMatch(/\/melian-static-[^/]+\/incremental\/incremental\.json$/);
+		expect(flag("--incrementalFile")).toMatch(/\/melian-confined-[^/]+\/incremental\/incremental\.json$/);
 		expect(result.log.runs[0].tool.driver).toEqual({ name: "Stryker", version: "10.0.0" });
 		expect(result.baseLog?.runs).toEqual([{ tool: { driver: { name: "Stryker", version: "10.0.0" } }, results: [] }]);
 		expect(result.notes).toContain("Stryker mutated 1 changed lines in 1 file(s); the base was not mutated.");
@@ -627,7 +629,7 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 		}
 		const [cwd, home, temporary, canary, homeExists, tmpExists] = readFileSync(seen, "utf8").trimEnd().split("\n");
 		const scratch = cwd!.replace(/\/tree$/, "");
-		expect(scratch).toMatch(/\/melian-static-[^/]+$/);
+		expect(scratch).toMatch(/\/melian-confined-[^/]+$/);
 		expect(home).toBe(`${scratch}/home`);
 		expect(temporary).toBe(`${scratch}/tmp`);
 		expect(home).not.toBe(process.env.HOME);
@@ -825,7 +827,7 @@ exit 1`,
 			const remove = vi.spyOn(env, "remove");
 			await expect(mutate(base, head, { env })).rejects.toThrow("symlink");
 			expect(readFileSync(join(outside, ".git/sentinel"), "utf8")).toBe("host data");
-			expect(remove.mock.calls.filter(([path]) => path.includes("melian-static-")).length).toBe(0);
+			expect(remove.mock.calls.filter(([path]) => path.includes(confinedScratchPrefix)).length).toBe(0);
 		},
 	);
 
@@ -2101,6 +2103,94 @@ exit 1`,
 			const [offFirst, offSecond] = await identities(policy.replace("enabled: true", "enabled: false"));
 			expect(offFirst).toBe(offSecond);
 		});
+	});
+});
+
+// Reviews from several worktrees of one clone run at once, each from its own build, and each starts by removing stale
+// worktrees across the whole clone. Main's build at 22a821b2 removes any `melian-static-*` tree whose lock it cannot read
+// or whose locking process is gone, on the host, with a recursive delete.
+describe("a build from before static.mutation", { timeout: 60_000 }, () => {
+	// A mutation run whose fake Stryker has written to its log and waits. The fake gives up after thirty seconds by itself:
+	// when the old build does delete its scratch nothing can release it, and it must not run on.
+	async function parked() {
+		const { base, head } = twoCommits();
+		fakeTool(
+			repo,
+			"stryker",
+			[
+				'if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi',
+				"echo stryker is parked",
+				`echo started > '${join(artifacts, "started")}'`,
+				"waited=0",
+				`while [ ! -f '${join(artifacts, "release")}' ]; do sleep 0.05; waited=$((waited + 1)); [ "$waited" -lt 600 ] || exit 9; done`,
+				"mkdir -p reports/mutation",
+				`echo '${report({})}' > reports/mutation/mutation.json`,
+			].join("\n"),
+		);
+		const running = mutate(base, head);
+		const settled = running.catch(() => undefined);
+		for (const deadline = Date.now() + 30_000; Date.now() < deadline; await sleep(20))
+			if (existsSync(join(artifacts, "started"))) break;
+		const registered = gitIn(repo, "worktree", "list", "--porcelain").split("\n\n")[1]?.split("\n") ?? [];
+		const tree = registered[0]?.slice("worktree ".length) ?? "";
+		const entries = join(repo, ".git/worktrees");
+		const admin = readdirSync(entries)
+			.map((name) => join(entries, name))
+			.find((entry) => readFileSync(join(entry, "gitdir"), "utf8").trim() === join(tree, ".git"));
+		const old = mkdtempSync(join(artifacts, "old-build-"));
+		const oldCleanup = () =>
+			removeStaleWorktreesV1(
+				new RunV1(
+					{
+						env: createNodeExecutionEnv(repo),
+						repoRoot: repo,
+						commit: head,
+						tool: "biome",
+						settings: defaultConfig.static.biome,
+					},
+					context,
+				),
+				old,
+			);
+		const intact = () => {
+			expect(readFileSync(join(dirname(tree), "stryker.log"), "utf8")).toBe("stryker is parked\n");
+			expect(readFileSync(join(tree, "packages/p/src/a.ts"), "utf8")).toBe(a.replace("x > 0", "x >= 0"));
+			expect(existsSync(join(dirname(tree), "mutation-runner.mjs"))).toBe(true);
+		};
+		const finish = async () => {
+			writeFileSync(join(artifacts, "release"), "");
+			await settled;
+			return running;
+		};
+		return { registered, tree, lock: join(admin ?? "", "locked"), oldCleanup, intact, finish, settled };
+	}
+
+	it("leaves a live mutation run's scratch, log, and tree alone, and the run finishes", async () => {
+		const run = await parked();
+		try {
+			expect(run.registered).toContain(`locked melian-static pid ${process.pid}`);
+			await run.oldCleanup();
+			run.intact();
+		} finally {
+			await run.finish().catch(() => undefined);
+		}
+		expect(await run.finish()).toMatchObject({ status: "ran" });
+		expect(gitIn(repo, "worktree", "list", "--porcelain").match(/^worktree /gm)).toHaveLength(1);
+	});
+
+	it("leaves the scratch of a mutation run whose lock names a dead process, which only confined cleanup may remove", async () => {
+		const run = await parked();
+		const lock = readFileSync(run.lock, "utf8");
+		try {
+			// The registration a crashed run leaves: the same lock, naming a process that is gone.
+			writeFileSync(run.lock, "melian-static pid 2147483646");
+			await run.oldCleanup();
+			run.intact();
+		} finally {
+			if (existsSync(dirname(run.lock))) writeFileSync(run.lock, lock);
+			await run.finish().catch(() => undefined);
+		}
+		expect(await run.finish()).toMatchObject({ status: "ran" });
 	});
 });
 
