@@ -331,6 +331,30 @@ export class Revision {
 	}
 
 	/**
+	 * The base lines a head location came from, when the change touched none of them: a file the change left alone or
+	 * renamed keeps its lines, named by its base path, and lines beside a hunk move by the lines the hunks above them
+	 * added or deleted. `undefined` when the change touched the location: it overlaps a hunk's new lines, spans a point
+	 * where a hunk deleted lines, or sits in an added file, or in a deleted or binary one, which has no lines to compare.
+	 */
+	untouched(location: CodeLocation): Required<CodeLocation> | undefined {
+		const path = canonicalPath(location.file, "/file");
+		const { startLine } = location;
+		const endLine = location.endLine ?? startLine;
+		const changed = this.files.find((file) => file.path === path);
+		if (changed === undefined) return { file: path, startLine, endLine };
+		// An added file's one hunk covers every line it has, so the overlap below refuses it.
+		if (changed.status === "deleted" || changed.binary) return undefined;
+		let shift = 0;
+		for (const hunk of changed.hunks) {
+			if (overlaps(startLine, endLine, hunk.newStart, hunk.newLines)) return undefined;
+			// A pure deletion sits after its new start, so it falls inside a location that holds that line and the next.
+			if (hunk.newLines === 0 && hunk.newStart >= startLine && hunk.newStart < endLine) return undefined;
+			if (hunk.newStart + Math.max(hunk.newLines - 1, 0) < startLine) shift += hunk.oldLines - hunk.newLines;
+		}
+		return { file: changed.oldPath ?? path, startLine: startLine + shift, endLine: endLine + shift };
+	}
+
+	/**
 	 * The part of the change a piece of evidence proves caused a finding in `findingFile`, by
 	 * {@link Revision.changeOverlap}, or `undefined` when it proves nothing. Only a `cause` location proves anything; a
 	 * `context` location never does.

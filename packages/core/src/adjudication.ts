@@ -1,8 +1,16 @@
 import { createHash, randomBytes } from "node:crypto";
-import { type MelianConfig, type Resolution, type RuleAlias, resolutionOrder } from "./config.ts";
+import {
+	type MelianConfig,
+	type Resolution,
+	type RuleAlias,
+	resolutionOrder,
+	type Severity,
+	stricter,
+} from "./config.ts";
 import type { EnolaSnapshot } from "./enola.ts";
 import {
 	type AlsoReportedAs,
+	type Cause,
 	Finding,
 	type FindingDismissal,
 	FindingsLog,
@@ -88,8 +96,9 @@ export class Defect {
 
 	/**
 	 * Merges `findings`, the reports of one defect, under `keeper`, the one among them that speaks for it. The speaker
-	 * takes the highest severity any of them reported and their merged claims ({@link Finding.mergeClaims}), so a merge
-	 * never lowers what blocks and drops no claim. It lists each other report's ID, rule, check, and severity in
+	 * takes the highest severity any of them holds after a verifier's lowering, with the highest any lens reported as
+	 * `originalSeverity` when that differs, and their merged claims ({@link Finding.mergeClaims}), so a merge never
+	 * lowers what blocks and drops no claim. It lists each other report's ID, rule, check, and severity in
 	 * `properties.alsoReportedAs`, then each report in `context`: the dismissed reports of the defect it never absorbed.
 	 * Its members are as {@link Defect.of} reads them, given the IDs of the review's `dismissed` reports.
 	 */
@@ -107,11 +116,24 @@ export class Defect {
 		];
 		const alsoReportedAs = [...members, ...context];
 		const severity = [...findings].sort((a, b) => a.compareStrength(b))[0]!.properties.severity;
-		const { evidence: _, failureScenario: __, otherClaims: ___, ...properties } = keeper.properties;
+		const original = findings.map((member) => member.original()).reduce(stricter);
+		const {
+			evidence: _,
+			failureScenario: __,
+			otherClaims: ___,
+			originalSeverity: ____,
+			...properties
+		} = keeper.properties;
 		const speaker = Finding.from({
 			...keeper.toJSON(),
 			level: levelForSeverity(severity),
-			properties: { ...properties, ...keeper.mergeClaims(findings), severity, alsoReportedAs },
+			properties: {
+				...properties,
+				...keeper.mergeClaims(findings),
+				severity,
+				...(original === severity ? {} : { originalSeverity: original }),
+				alsoReportedAs,
+			},
 		});
 		return Defect.of(speaker, dismissed);
 	}
@@ -329,6 +351,20 @@ export type StoredVerdict = {
 	// Absent from a verdict recorded before Melian kept the checks that ran.
 	ran?: StoredCheckRecord[];
 	refuted?: StoredFinding[];
+	preExistingImportant?: ImportantFinding[];
+};
+
+/**
+ * One member of "Pre-existing, important": a finding among the verdict's groups, by ID, with the severity its lenses
+ * reported. `state` is `carried` once an earlier revision sighted it, so it is raised once. A member the verifier
+ * re-scoped names the scope location gave it and the verifier's reason.
+ */
+export type ImportantFinding = {
+	id: string;
+	state: "new" | "carried";
+	originalSeverity: Severity;
+	originalScope?: Cause;
+	reason?: string;
 };
 
 /** What a {@link Verdict} holds. */
@@ -341,6 +377,8 @@ export interface VerdictFields {
 	readonly ran?: readonly CheckRecord[];
 	/** Defects whose lens claims were all refuted. Absent when empty. */
 	readonly refuted?: readonly ResolvedFinding[];
+	/** The members of "Pre-existing, important". Absent when empty. */
+	readonly preExistingImportant?: readonly ImportantFinding[];
 }
 
 /** What a review concluded: a runtime view over a {@link StoredVerdict}. */
@@ -364,6 +402,11 @@ export class Verdict {
 	readonly ran?: readonly CheckRecord[];
 	/** Defects whose lens claims were all refuted. Absent when empty. */
 	readonly refuted?: readonly ResolvedFinding[];
+	/**
+	 * The members of "Pre-existing, important", each a finding in {@link Verdict.findings}: listed under a heading of
+	 * their own and never changing the status. Absent when empty.
+	 */
+	readonly preExistingImportant?: readonly ImportantFinding[];
 
 	// Declared in the order a stored verdict holds them, so its JSON, and its fingerprint, is unchanged.
 	constructor(fields: VerdictFields) {
@@ -374,6 +417,7 @@ export class Verdict {
 		this.notRun = fields.notRun;
 		this.ran = fields.ran;
 		this.refuted = fields.refuted;
+		this.preExistingImportant = fields.preExistingImportant;
 	}
 
 	/** The verdict a stored one describes, trusted as stored. */
@@ -657,9 +701,10 @@ export class Verdict {
 			);
 			parts.push([`${plural(lineage.length, "check")} left the committed routes:`, ...checks].join("\n"));
 		}
+		const important = new Map((this.preExistingImportant ?? []).map((member) => [member.id, member]));
 		const groups = shownResolutions.map((resolution): [string, readonly Finding[]] => [
 			resolution,
-			this.findings[resolution],
+			this.findings[resolution].filter((finding) => !important.has(finding.id)),
 		]);
 		if (rendering.all)
 			groups.push(["silent", this.findings.silent], ["dismissed", this.dismissed], ["refuted", this.refuted ?? []]);
@@ -667,6 +712,16 @@ export class Verdict {
 			if (findings.length === 0) continue;
 			parts.push(rendering.paint("1", `${capitalised(name)}: ${plural(findings.length, "finding")}`));
 			parts.push(...FindingsLog.of(findings).files(rendering));
+		}
+		const members = this.attention().filter((finding) => important.has(finding.id));
+		if (members.length > 0) {
+			const states = members.map((finding) => `  ${visibleText(finding.id)}  ${important.get(finding.id)!.state}`);
+			parts.push(
+				[rendering.paint("1", `Pre-existing, important: ${plural(members.length, "finding")}`), ...states].join(
+					"\n",
+				),
+			);
+			parts.push(...FindingsLog.of(members).files(rendering));
 		}
 		const hidden = [
 			...(this.findings.silent.length > 0 ? [`${plural(this.findings.silent.length, "silent finding")}`] : []),
@@ -698,6 +753,9 @@ export class Verdict {
 			notRun: this.notRun.map(storedCheck),
 			...(this.ran === undefined ? {} : { ran: this.ran.map(storedCheck) }),
 			...(this.refuted === undefined ? {} : { refuted: this.refuted.map(stored) }),
+			...(this.preExistingImportant === undefined
+				? {}
+				: { preExistingImportant: this.preExistingImportant.map((member) => ({ ...member })) }),
 		};
 	}
 }
@@ -719,6 +777,8 @@ export interface AdjudicationInput {
 	readonly allowSkip?: readonly string[];
 	/** Apply the unverified advisory cap only to reviews that ran the verifier step. */
 	readonly verificationRan?: boolean;
+	/** The IDs of findings an earlier revision of the changeset sighted, so an important one reads as carried. */
+	readonly seenBefore?: readonly string[];
 }
 
 /** A review's findings, the checks it accounts for, and the configuration that decides them, ready to decide. */
@@ -727,11 +787,21 @@ export class Adjudication {
 	readonly manifest: Manifest;
 	readonly #configFor: ConfigFor;
 	readonly #verificationRan: boolean;
+	readonly #seenBefore: ReadonlySet<string>;
 
-	constructor({ findings, manifest, checks, config, allowSkip = [], verificationRan = false }: AdjudicationInput) {
+	constructor({
+		findings,
+		manifest,
+		checks,
+		config,
+		allowSkip = [],
+		verificationRan = false,
+		seenBefore = [],
+	}: AdjudicationInput) {
 		this.findings = findings;
 		this.manifest = new Manifest(manifest, checks, allowSkip);
 		this.#verificationRan = verificationRan;
+		this.#seenBefore = new Set(seenBefore);
 		this.#configFor = typeof config === "function" ? config : () => config;
 	}
 
@@ -771,10 +841,13 @@ export class Adjudication {
 	adjudicate(): Verdict {
 		const defects = this.defects();
 		const refutedIds = new Set(defects.filter((defect) => defect.refuted()).map((defect) => defect.speaker.id));
+		const lifted = new Set<string>();
 		const resolved = defects
 			.map((defect) => {
 				const finding = defect.speaker;
-				const resolved = finding.resolved(this.#configFor(finding.properties.path, finding.ruleId));
+				const config = this.#configFor(finding.properties.path, finding.ruleId);
+				if (finding.lifted(config)) lifted.add(finding.id);
+				const resolved = finding.resolved(config);
 				if (
 					!this.#verificationRan ||
 					!defect.unverified() ||
@@ -799,7 +872,21 @@ export class Adjudication {
 				counted.filter((finding) => finding.properties.resolution === resolution),
 			]),
 		) as Record<Resolution, ResolvedFinding[]>;
-		const attention = counted.some((finding) => finding.properties.resolution !== "silent");
+		// A member the floor alone keeps above silent is listed, and changes no verdict.
+		const attention = counted.some(
+			(finding) => finding.properties.resolution !== "silent" && !lifted.has(finding.id),
+		);
+		const important = counted
+			.filter((finding) => finding.important())
+			.map((finding): ImportantFinding => {
+				const rescoped = finding.rescoped();
+				return {
+					id: finding.id,
+					state: finding.reportIds().some((id) => this.#seenBefore.has(id)) ? "carried" : "new",
+					originalSeverity: finding.original(),
+					...(rescoped === undefined ? {} : { originalScope: rescoped.from, reason: rescoped.reason }),
+				};
+			});
 		return new Verdict({
 			status: this.manifest.complete() ? (attention ? "findings" : "passed") : "not-reviewed",
 			blocking: grouped.block.length > 0,
@@ -808,6 +895,7 @@ export class Adjudication {
 			notRun: this.manifest.notRun(),
 			ran: this.manifest.ran(),
 			...(refuted.length === 0 ? {} : { refuted }),
+			...(important.length === 0 ? {} : { preExistingImportant: important }),
 		});
 	}
 }
