@@ -14,7 +14,10 @@ Choice: a grant stays only when a named program fails without it. Each rule was 
 | `process-exec` on the readable paths | A program starts only from a place the command may read. Before, any path. |
 | `file-map-executable` on the readable paths | dyld maps the libraries a program links. Before, any path. |
 | `signal` to the same sandbox | A parent stops its own children, as Node does at a timeout. |
-| `sysctl-read` | Node aborts at start without it. It reads host description only: hardware, kernel version, host name. |
+| `sysctl-read`, by name: the `hw.` prefix | Node aborts at start without the CPU count and page size. |
+| `sysctl-read` of `kern.ostype`, `kern.osrelease`, `kern.version`, `kern.hostname` | `uname`, which Node's `os.release()` and tsc's launcher call. |
+| `sysctl-read` of `kern.argmax` and `kern.boottime` | `xargs` and `getconf`; Node's `os.uptime()`. |
+| deny `process-info*`, then allow it for the caller itself | A process asks about itself all the time; `xcrun` and Vitest's workers trap without that. About any other process it learns nothing. |
 | read `/` as a literal | dyld lists the root; without it a process aborts with status 134 and no message. |
 | read `/usr/lib`, `/System` | dyld, system libraries, and frameworks. |
 | read `/usr/bin`, `/bin` | `sh`, `bash`, `env`, `date`, and the other tools a command line names. |
@@ -42,13 +45,17 @@ dyld opens `/dev/dtracehelper` to register trace probes and carries on without i
 
 One test pins the whole profile, rule for rule, so a grant added anywhere fails it. A second runs inside the real sandbox and checks that a program outside the readable paths does not start, that `ps` and a signal to a process outside fail, and that each removed path and device is refused.
 
+The first form of this decision allowed `sysctl-read` whole and said it "reads host description only" and could not be narrowed. Both were wrong. `kern.procargs2` returns the arguments and environment of any process the user owns, and `kern.proc` the process table, so a confined tool could copy an API key from the reviewer's shell into its own report with no network at all. The only test of it ran `ps`, which fails to start because it is setuid, and proved nothing about the calls. Two rules are needed, because the kernel lets the process-argument read through on either permission: the sysctl allow-list above, found by denying every name and adding back what nine commands failed without, and the `process-info*` deny. A test compiles a small program that makes each call directly against a process holding a marker in its environment. Outside the sandbox it finds the marker; inside, every call fails, while the hardware read and the question about itself still work.
+
+Under bubblewrap the same reads go through `/proc`, which is a new one for the namespace: it holds bubblewrap, the shell, and the command, and each of their environments is the one Melian built. A CI test reads every `/proc/<pid>/environ` it can and finds no variable but the sandbox's own.
+
 A standalone tool gets its file and nothing beside it. Before this grant such a tool could not start inside the sandbox and the check read `toolMissing`, where the build before ran it. The tool may start and then fail because it needs a library or a script beside itself. That is a recorded `toolFailed` carrying the tool's own message, never `toolMissing`. The tool is there, and what it lacks is a grant somebody has to argue for. bubblewrap binds the same single file.
 
 What this gives up, and what stays open:
 
 - A tool that needs a removed grant fails until someone adds the rule with the tool's name beside it. That is the point.
 - `/etc/gitconfig` is not readable. A host that has one makes git inside the sandbox stop with "unable to access". A caller that runs git there sets `GIT_CONFIG_NOSYSTEM=1`.
-- `sysctl-read` cannot be narrowed to names: libuv reads some by number. The host name is therefore readable.
+- The host name stays readable, through `kern.hostname`, which `uname` needs.
 - Seatbelt cannot close the bootstrap port. `launchctl print` lists the user's services from inside the sandbox. On this host launchd refused to create a job, set its environment, or run a command outside the sandbox; a request to restart a service the user already has was not tried, since it would disturb the host.
 - Seatbelt gives no lifecycle control. `process-fork` cannot be withheld, and nothing ends a command's descendants when the command exits. A subverted Biome or tsc could start a child, detach it, and exit; the child runs on. It stays inside the same profile for as long as it lives: it reads only what the profile reads, writes only under the scratch path, signals only its own kind, and has no network. bubblewrap has no such gap, since `--die-with-parent` and its process namespace end everything with the command. Melian never signals a process group, pid 0, or a negative pid, so it does not hunt the child down; a wrapper that did would be the wrong trade for tools that do not execute head code. Instead nothing the child can still reach matters:
   - The host reads each output file once, through the no-follow reader, and judges what it read. It never opens the file again.
