@@ -879,7 +879,9 @@ export const reportVerdict = defineTool({
 				// The record decides where the claim stands: a stored report may hold it lowered, or at the lens's severity.
 				const stands = kept.lowered?.to ?? severity;
 				if (refusedLowering !== undefined)
-					return [`lowering refused, and the claim stands at ${stands}: ${refusedLowering}`];
+					return [
+						`lowering refused, and the claim stands at ${stands}: ${refusedLowering}. No further lowering of this claim will be taken at this verdict.`,
+					];
 				return [
 					kept.lowered === undefined
 						? `lowering not kept, and the claim stands at ${stands}: the stored report of this claim holds it there`

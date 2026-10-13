@@ -63,6 +63,8 @@ The grain is the claim. Each lens sighting is one claim, and a lowering belongs 
 - When an equal report replaces a stored one, the record keeps the winning report's reason and evidence.
 - The merged defect takes the highest severity among its claims after lowering. A claim no verifier judged keeps its own severity.
 
+The verifier has one chance per claim, by design, so that a second call can never be used to lower: a report whose lowering the fence refused is stored unlowered, and a later equal report does not correct it. So that the one chance is a fair one, the label line Melian writes for each claim, outside the boundary, names the severity the lens reported.
+
 The guard runs in the report's commit, replay included. As built, `report_verdict` reads the record the rule kept, and says so when a lowering was not kept. Verification picks its candidates from the findings as the lenses reported them: a stored lowering can change which finding speaks for a merged defect, and a repeat review would otherwise read as new input and clear the stored judgements.
 
 ## What survives of cause by location

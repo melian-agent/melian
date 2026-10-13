@@ -20,6 +20,10 @@
 			]
 		}
 	],
+	"expectInstructions": [
+		"one step down from the one on the claim's label line",
+		", reported at P2"
+	],
 	"expected": [
 		{
 			"status": "findings",
