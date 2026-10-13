@@ -1,0 +1,45 @@
+{
+	"group": "surfacing",
+	"reports": [
+		{
+			"verdict": "confirmed",
+			"reason": "Traced the read from start."
+		}
+	],
+	"expected": [
+		{
+			"status": "findings",
+			"blocking": false,
+			"severity": "P1",
+			"cause": "pre-existing",
+			"resolution": "advisory",
+			"verdict": "confirmed",
+			"lowered": false,
+			"rescoped": false,
+			"important": {
+				"state": "new",
+				"originalSeverity": "P1"
+			},
+			"rendered": [
+				"  new"
+			]
+		},
+		{
+			"status": "findings",
+			"blocking": false,
+			"severity": "P1",
+			"cause": "pre-existing",
+			"resolution": "advisory",
+			"verdict": "confirmed",
+			"lowered": false,
+			"rescoped": false,
+			"important": {
+				"state": "carried",
+				"originalSeverity": "P1"
+			},
+			"rendered": [
+				"  carried"
+			]
+		}
+	]
+}

@@ -2,7 +2,16 @@ import { cpSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Verification } from "@melian-agent/core";
-import { loadVerifierGoldens, runVerifierGolden, scoreVerifierGolden, type VerifierGolden } from "@melian-agent/evals";
+import {
+	loadScenarioGoldens,
+	loadVerifierGoldens,
+	runScenarioGolden,
+	runVerifierGolden,
+	type ScenarioGolden,
+	scenarioMismatches,
+	scoreVerifierGolden,
+	type VerifierGolden,
+} from "@melian-agent/evals";
 import {
 	createFakeModels,
 	fauxAssistantMessage,
@@ -174,5 +183,113 @@ describe("the verifier corpus", { timeout: 60_000 }, () => {
 		await expect(runVerifierGolden(goldens[0]!, { kind: "live", models: createFakeModels().review })).rejects.toThrow(
 			"MELIAN_EVAL_VERIFIER_MODEL",
 		);
+	});
+});
+
+const scenarios = loadScenarioGoldens();
+
+describe("the scenario goldens of the verifier corpus", { timeout: 60_000 }, () => {
+	it("holds the twenty-four the lowering and scope decision lists", () => {
+		const count = (group: ScenarioGolden["scenario"]["group"]) =>
+			scenarios.filter((golden) => golden.scenario.group === group).length;
+		expect(scenarios).toHaveLength(24);
+		expect([count("lowering"), count("scope"), count("surfacing"), count("conflict")]).toEqual([6, 10, 5, 3]);
+		expect(scenarios.every((golden) => golden.name.startsWith(`${golden.scenario.group}-`))).toBe(true);
+	});
+
+	it.each(scenarios)("$name", async (golden) => {
+		expect(scenarioMismatches(golden, await runScenarioGolden(golden))).toEqual([]);
+		if (golden.scenario.bothOrders === true)
+			expect(scenarioMismatches(golden, await runScenarioGolden(golden, true))).toEqual([]);
+	});
+
+	it("runs a golden's reports in the opposite order when asked", async () => {
+		const golden = scenarios.find((each) => each.name === "conflict-lowering-both-orders")!;
+		const first = { ...golden.scenario.reports[0]!, expectResult: ["lowered P2 to P3"] };
+		const second = { ...golden.scenario.reports[1]!, expectResult: ["no report says this"] };
+		const marked = { ...golden, scenario: { ...golden.scenario, reports: [first, second] } };
+		expect((await runScenarioGolden(marked)).resultMismatches).toEqual([
+			expect.stringContaining('report 2 returned "recorded verdict for c1'),
+		]);
+		expect((await runScenarioGolden(marked, true)).resultMismatches).toEqual([
+			expect.stringContaining('report 1 returned "recorded verdict for c1'),
+		]);
+	});
+
+	it("fails a run whose verifier lacks a required instruction", async () => {
+		const golden = scenarios.find((each) => each.name === "lowering-hostile-claim")!;
+		const missing = {
+			...golden,
+			scenario: { ...golden.scenario, expectInstructions: ["An instruction no verifier has."] },
+		};
+		await expect(runScenarioGolden(missing)).rejects.toThrow("the verifier did not judge every claim");
+	});
+
+	it("says which expectation a run misses, field by field", async () => {
+		const golden = scenarios.find((each) => each.name === "scope-renamed-identical")!;
+		const run = await runScenarioGolden(golden);
+		const [expected] = golden.scenario.expected;
+		const missed = (change: Partial<typeof expected>) =>
+			scenarioMismatches(
+				{ ...golden, scenario: { ...golden.scenario, expected: [{ ...expected!, ...change }] } },
+				run,
+			);
+		expect(missed({})).toEqual([]);
+		expect(missed({ status: "passed" })).toEqual(['revision 1: status is "findings", expected "passed"']);
+		expect(missed({ blocking: true })).toEqual(["revision 1: blocking is false, expected true"]);
+		expect(missed({ severity: "P2" })).toEqual([
+			'revision 1: severity is "P1", expected "P2"',
+			'revision 1: severity in JSON is "P1", expected "P2"',
+		]);
+		expect(missed({ originalSeverity: "P0" })).toEqual([
+			'revision 1: originalSeverity is undefined, expected "P0"',
+			'revision 1: originalSeverity in JSON is undefined, expected "P0"',
+		]);
+		expect(missed({ cause: "affected" })).toEqual(['revision 1: cause is "pre-existing", expected "affected"']);
+		expect(missed({ resolution: "block" })).toEqual(['revision 1: resolution is "advisory", expected "block"']);
+		expect(missed({ verdict: "plausible" })).toEqual(['revision 1: verdict is "confirmed", expected "plausible"']);
+		expect(missed({ lowered: true })).toEqual(["revision 1: lowered is false, expected true"]);
+		expect(missed({ rescoped: false })).toEqual(["revision 1: rescoped is true, expected false"]);
+		expect(missed({ important: undefined })).toHaveLength(2);
+		expect(missed({ important: { ...expected!.important!, state: "carried" } })).toEqual([
+			expect.stringContaining("revision 1: the important findings is"),
+			expect.stringContaining("revision 1: the important findings in JSON is"),
+		]);
+		expect(missed({ rendered: ["no terminal says this"] })).toEqual([
+			'revision 1: the terminal lacks "no terminal says this"',
+		]);
+		expect(missed({ notRendered: ["Re-scoped from affected"] })).toEqual([
+			'revision 1: the terminal shows "Re-scoped from affected"',
+		]);
+		expect(scenarioMismatches(golden, { revisions: [], resultMismatches: ["a report differed"] })).toEqual([
+			"a report differed",
+			"revision 1 was not reviewed",
+		]);
+		const other = { ...run.revisions[0]!, json: { ...run.revisions[0]!.json, preExistingImportant: [] } };
+		expect(scenarioMismatches(golden, { revisions: [other], resultMismatches: [] })).toEqual([
+			expect.stringContaining("revision 1: the important findings in JSON is []"),
+		]);
+	});
+
+	it("refuses a golden whose expectations do not match its revisions, or whose two orders have one report", () => {
+		const directory = mkdtempSync(join(tmpdir(), "melian-verifier-scenarios-"));
+		try {
+			const golden = scenarios.find((each) => each.name === "surfacing-new-then-carried")!;
+			const copy = join(directory, golden.name);
+			cpSync(golden.directory, copy, { recursive: true });
+			expect(loadScenarioGoldens(directory)).toHaveLength(1);
+			expect(loadVerifierGoldens(directory)).toEqual([]);
+			const write = (scenario: unknown) => writeFileSync(join(copy, "scenario.json"), JSON.stringify(scenario));
+			write({ ...golden.scenario, expected: [golden.scenario.expected[0]] });
+			expect(() => loadScenarioGoldens(directory)).toThrow(
+				`${golden.name}: expected needs one entry per reviewed revision, 2 here`,
+			);
+			write({ ...golden.scenario, bothOrders: true });
+			expect(() => loadScenarioGoldens(directory)).toThrow(`${golden.name}: bothOrders needs at least two reports`);
+			write({ ...golden.scenario, surprise: true });
+			expect(() => loadScenarioGoldens(directory)).toThrow("scenario.json");
+		} finally {
+			rmSync(directory, { recursive: true, force: true });
+		}
 	});
 });

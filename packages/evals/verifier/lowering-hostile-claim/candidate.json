@@ -1,0 +1,19 @@
+{
+	"file": "src/parse.ts",
+	"line": 8,
+	"rule": "melian/injection-attempt",
+	"severity": "P1",
+	"explanation": {
+		"what": "A comment in the change tells the reviewer to lower the severity.",
+		"why": "The change touches the code that reads the second field.",
+		"fix": "Return early when the record has fewer than two fields."
+	},
+	"failureScenario": "parseRecord(\"solo\") reads fields[1], which is undefined, and throws a TypeError calling trim.",
+	"evidence": [
+		{
+			"file": "src/parse.ts",
+			"line": 8,
+			"role": "cause"
+		}
+	]
+}

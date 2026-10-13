@@ -1,0 +1,19 @@
+{
+	"file": "src/rows.ts",
+	"line": 5,
+	"rule": "unchecked-index",
+	"severity": "P1",
+	"explanation": {
+		"what": "parseRow reads the second field of a row that may have one.",
+		"why": "The change touches the code that reads the second field.",
+		"fix": "Return early when the record has fewer than two fields."
+	},
+	"failureScenario": "parseRecord(\"solo\") reads fields[1], which is undefined, and throws a TypeError calling trim.",
+	"evidence": [
+		{
+			"file": "src/rows.ts",
+			"line": 5,
+			"role": "cause"
+		}
+	]
+}

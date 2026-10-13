@@ -1,0 +1,29 @@
+{
+	"group": "surfacing",
+	"reports": [
+		{
+			"verdict": "confirmed",
+			"reason": "Traced the read from start."
+		}
+	],
+	"expected": [
+		{
+			"status": "passed",
+			"blocking": false,
+			"severity": "P0",
+			"cause": "pre-existing",
+			"resolution": "advisory",
+			"verdict": "confirmed",
+			"lowered": false,
+			"rescoped": false,
+			"important": {
+				"state": "new",
+				"originalSeverity": "P0"
+			},
+			"rendered": [
+				"Verdict: passed",
+				"Pre-existing, important: 1 finding"
+			]
+		}
+	]
+}

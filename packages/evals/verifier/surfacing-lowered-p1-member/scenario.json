@@ -1,0 +1,44 @@
+{
+	"group": "surfacing",
+	"reports": [
+		{
+			"verdict": "confirmed",
+			"reason": "Traced the read from start.",
+			"evidence": [
+				{
+					"file": "src/run.ts",
+					"line": 4,
+					"role": "context"
+				}
+			],
+			"lower": {
+				"severity": "P2",
+				"reason": "Only start reaches the read, and only while strict is off."
+			},
+			"expectResult": [
+				"lowered P1 to P2"
+			]
+		}
+	],
+	"expected": [
+		{
+			"status": "findings",
+			"blocking": false,
+			"severity": "P2",
+			"originalSeverity": "P1",
+			"cause": "pre-existing",
+			"resolution": "advisory",
+			"verdict": "confirmed",
+			"lowered": true,
+			"rescoped": false,
+			"important": {
+				"state": "new",
+				"originalSeverity": "P1"
+			},
+			"rendered": [
+				"Pre-existing, important: 1 finding",
+				"P2, lowered from P1"
+			]
+		}
+	]
+}

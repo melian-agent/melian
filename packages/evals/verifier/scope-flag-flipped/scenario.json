@@ -1,0 +1,79 @@
+{
+	"group": "scope",
+	"reports": [
+		{
+			"verdict": "confirmed",
+			"reason": "Traced the read from start.",
+			"scope": {
+				"reason": "The read of fields[1] is the base's own line.",
+				"failing": {
+					"file": "src/parse.ts",
+					"line": 9,
+					"baseLine": 9
+				},
+				"trigger": {
+					"file": "src/main.ts",
+					"line": 5
+				},
+				"path": [
+					{
+						"file": "src/run.ts",
+						"line": 4
+					},
+					{
+						"file": "src/config.ts",
+						"line": 1
+					}
+				],
+				"newCaller": {
+					"answer": false,
+					"base": {
+						"file": "src/run.ts",
+						"line": 4
+					}
+				},
+				"removedGuard": {
+					"answer": false,
+					"base": {
+						"file": "src/parse.ts",
+						"line": 8
+					}
+				},
+				"changedTrigger": {
+					"answer": false,
+					"base": {
+						"file": "src/config.ts",
+						"line": 1
+					}
+				},
+				"copy": {
+					"answer": false,
+					"base": {
+						"file": "src/parse.ts",
+						"line": 9
+					}
+				}
+			},
+			"expectResult": [
+				"re-scope refused, and the finding stays introduced",
+				"(c) src/config.ts:1 is inside a hunk of the diff",
+				"(d) a hunk in src/config.ts changes a line that names strict, which the trigger reads"
+			]
+		}
+	],
+	"expected": [
+		{
+			"status": "findings",
+			"blocking": true,
+			"severity": "P1",
+			"cause": "introduced",
+			"resolution": "block",
+			"verdict": "confirmed",
+			"lowered": false,
+			"rescoped": false,
+			"notRendered": [
+				"Re-scoped from"
+			]
+		}
+	]
+}
