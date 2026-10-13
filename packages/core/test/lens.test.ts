@@ -116,9 +116,9 @@ describe("built-in lenses", () => {
 		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
 		expect(Object.fromEntries(lenses.map((lens) => [lens.name, lens.version]))).toEqual({
 			contracts: "686d7ad61a40",
-			conventions: "fad625ca7750",
+			conventions: "bb08d9e590e4",
 			correctness: "7a139e0e8584",
-			design: "1763518f10c7",
+			design: "77c0ec07a946",
 			"removed-behaviour": "45fa8885fd01",
 			tests: "bee1be69be22",
 			"trust-boundary": "593b84bf6e82",
@@ -913,22 +913,25 @@ describe("Lens.renderInstructions", () => {
 		expect(conventions!.renderInstructions(standards, "careful", [every("conventions")], asIs)).toContain(keeps);
 	});
 
-	it("gives a re-implemented authority to design from each side, only when design reviews beside the lens", async () => {
+	it("gives a re-implemented authority one owner among design, correctness, and conventions", async () => {
 		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
 		const handsOver =
 			"- `design`: Hand-written code that parses a format, or re-derives an answer, that a dependency";
-		for (const name of ["correctness", "conventions"]) {
-			const [lens] = named(lenses, name);
-			expect(lens!.renderInstructions([], "careful", [every(name), every("design")], asIs)).toContain(handsOver);
-			expect(lens!.renderInstructions([], "careful", [every(name)], asIs)).not.toContain(handsOver);
-		}
 		const [correctness] = named(lenses, "correctness");
+		expect(correctness!.renderInstructions([], "careful", [every("correctness"), every("design")], asIs)).toContain(
+			handsOver,
+		);
+		expect(correctness!.renderInstructions([], "careful", [every("correctness")], asIs)).not.toContain(handsOver);
+		const [conventions] = named(lenses, "conventions");
+		expect(conventions!.handoffs).toEqual({});
 		expect(correctness!.handoffs.design).toContain(
 			"It keeps them where the change says the dependency cannot run there. Where the repository uses no such dependency, a wrong result is yours.",
 		);
 		const [design] = named(lenses, "design");
 		const beside = design!.renderInstructions([], "careful", [every("correctness"), every("conventions")], asIs);
 		expect(beside).toContain("- `conventions`: A breach of a rule the repository's standards state in words.");
+		expect(beside).toContain("is that lens's breach to quote, with or without a stated gap");
+		expect(beside).toContain("`reimplements-an-authority` is yours where no standard names the dependency.");
 		expect(beside).toContain("the hand-written code is yours under `reimplements-an-authority`, reported once");
 		expect(design!.renderInstructions([], "careful", [every("design")], asIs)).not.toContain("- `conventions`:");
 	});
