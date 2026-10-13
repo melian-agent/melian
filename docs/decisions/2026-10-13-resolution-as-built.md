@@ -172,10 +172,10 @@ What the step added:
 
 - A change to any `resolution` key in any `melian.yaml` always draws the notice, wherever the file sits and whatever switch the directory above sets.
 - A change to a lens's declared `resolution` in any `LENS.md` always draws it too.
-- Neither notice resolves below `acknowledge`. None of the new keys can lower it: no mapping and no ceiling under `guardrails` applies to it.
+- Neither notice resolves below `acknowledge`. None of the new keys can lower it: no mapping and no ceiling under `guardrails` lowers it.
 - Melian compares the parsed `resolution` value at the base and at the head with its own loaders. A side that does not parse counts as changed.
 - A lens's default is compared as it takes effect in the folder its `LENS.md` governs. It also comes through `extends`, and from whichever file of that name is nearest. So a file that drops `extends`, or a new nearer file with no `resolution`, draws the notice though neither writes the key.
-- Such a notice resolves through the files' severity tables alone. It is marked in the typed field beside its class, and the floor reads the mark. A notice on a `LENS.md` that leaves its resolution alone has no floor, as before.
+- Such a notice resolves twice, through the files' severity tables alone and under its class's entries, and the stricter result stands. So an entry cannot lower it, and an entry the base wrote to ask more of a policy notice still applies. The head's edit is what marks the notice, so the mark must never shed a stricter rule. It is marked in the typed field beside its class, and the floor reads the mark. A notice on a `LENS.md` that leaves its resolution alone has no floor, as before.
 
 The policy source stays the base for a pull request. A head that lowers its own lens's ceiling is reviewed under the base's keys, so it cannot lower its own findings. A lens's declared default is read from the same source as the lens. It is the default of the variant that reported: a moved file is reviewed by the lens of the folder it left, so a report under a nearer variant's folder may be the farther variant's, and the finding's source names which by its version. The folder it left may be any folder, so every variant the source defines is known by its version. A report whose version matches none takes the nearest lens's default. It is no part of the lens's version, so a lens that gains a default keeps its stored findings.
 

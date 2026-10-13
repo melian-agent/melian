@@ -423,6 +423,20 @@ describe("a guardrail finding's keys", () => {
 			resolution: "acknowledge",
 			decidedBy: { floor: "policy-change" },
 		});
+		// An entry the base wrote to ask more of a policy notice still applies: a head cannot shed it by editing a
+		// resolution key, which is what marks the notice.
+		const stricter = layered({
+			"melian.yaml": {
+				P2: "acknowledge",
+				checks: { guardrails: { rules: { "guardrail/policy-change-review/policy": { P2: "block" } } } },
+			},
+		});
+		expect(
+			guardrail({ ...notice, guardrail: { notice: "policy", resolution: true } }).decision(stricter),
+		).toMatchObject({
+			resolution: "block",
+			decidedBy: { rule: "guardrail/policy-change-review/policy", requirement: { entry: "rule" } },
+		});
 	});
 
 	it("holds the exported schema of what a guardrail matched at its bounds", () => {
