@@ -203,6 +203,26 @@ describe("the caps", () => {
 		expect(lowered.decision(audible)).toMatchObject({ resolution: "advisory", decidedBy: { cap: "pre-existing" } });
 	});
 
+	it("takes the nearest file's cap for a severity, in either direction", () => {
+		const old = finding({ severity: "P0", cause: "pre-existing" });
+		const stricterRoot = layered({
+			"services/melian.yaml": { P0: "block", preExisting: { P0: "advisory" } },
+			"melian.yaml": { preExisting: { P0: "acknowledge" } },
+		});
+		expect(old.decision(stricterRoot)).toMatchObject({
+			resolution: "advisory",
+			decidedBy: { capBy: { file: "services/melian.yaml", key: "resolution.preExisting.P0" } },
+		});
+		const stricterNear = layered({
+			"services/melian.yaml": { P0: "block", preExisting: { P0: "acknowledge" } },
+			"melian.yaml": { preExisting: { P0: "advisory" } },
+		});
+		expect(old.decision(stricterNear)).toMatchObject({
+			resolution: "acknowledge",
+			decidedBy: { capBy: { file: "services/melian.yaml", key: "resolution.preExisting.P0" } },
+		});
+	});
+
 	it("caps an affected finding at advisory only when no cause location proves it", () => {
 		const proven = finding({ cause: "affected", evidence: [{ ...cause, proves: true }] });
 		expect(proven.decision(defaultConfig).resolution).toBe("block");
