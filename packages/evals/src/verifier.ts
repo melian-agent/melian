@@ -71,7 +71,6 @@ const scenarioReportSchema = Type.Object(
 		answers: Type.Optional(Type.Object({ code: answerSchema, guard: answerSchema, base: answerSchema }, strict)),
 		evidence: Type.Optional(Type.Array(goldenEvidenceSchema, { minItems: 1 })),
 		lower: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
-		scope: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
 		// Substrings the call's result must contain, so a fence that stops refusing fails the golden.
 		expectResult: Type.Optional(Type.Array(text, { minItems: 1 })),
 	},
@@ -87,15 +86,9 @@ const scenarioExpectationSchema = Type.Object(
 		resolution: resolutionSchema,
 		verdict: verdictSchema,
 		lowered: Type.Boolean(),
-		rescoped: Type.Boolean(),
 		important: Type.Optional(
 			Type.Object(
-				{
-					state: Type.Union([Type.Literal("new"), Type.Literal("carried")]),
-					originalSeverity: severitySchema,
-					originalScope: Type.Optional(causeSchema),
-					reason: Type.Optional(text),
-				},
+				{ state: Type.Union([Type.Literal("new"), Type.Literal("carried")]), originalSeverity: severitySchema },
 				strict,
 			),
 		),
@@ -106,12 +99,7 @@ const scenarioExpectationSchema = Type.Object(
 );
 const scenarioSchema = Type.Object(
 	{
-		group: Type.Union([
-			Type.Literal("lowering"),
-			Type.Literal("scope"),
-			Type.Literal("surfacing"),
-			Type.Literal("conflict"),
-		]),
+		group: Type.Union([Type.Literal("lowering"), Type.Literal("surfacing"), Type.Literal("conflict")]),
 		// A deterministic check's report of the candidate's own lines, planted beside the lens's.
 		coReport: Type.Optional(
 			Type.Object({ check: text, rule: text, severity: severitySchema, cause: causeSchema }, strict),
@@ -129,7 +117,7 @@ const scenarioSchema = Type.Object(
 
 /**
  * A planted claim, the reports a scripted verifier makes of it, and what the review must then show: the goldens of the
- * decision that lets the verifier lower a severity and set scope. They are scripted only, since they test what Melian
+ * decision that lets the verifier lower a severity. They are scripted only, since they test what Melian
  * does with a report, never what a model says.
  */
 export interface ScenarioGolden {
@@ -327,7 +315,7 @@ function coReport(
 
 /**
  * How a scenario run differs from what its golden expects, described: each revision's status, the one finding's
- * severity, cause, resolution, verdict, lowering and re-scope, its place under "Pre-existing, important", and the text
+ * severity, cause, resolution, verdict and lowering, its place under "Pre-existing, important", and the text
  * the terminal must and must not show, then each report whose result lacked an expected substring. Empty when it agrees.
  */
 export function scenarioMismatches(golden: ScenarioGolden, run: ScenarioRun): string[] {
@@ -357,18 +345,11 @@ export function scenarioMismatches(golden: ScenarioGolden, run: ScenarioRun): st
 		say("resolution", finding.properties.resolution, expected.resolution);
 		say("verdict", finding.properties.verification?.verdict, expected.verdict);
 		say("lowered", finding.lowered() !== undefined, expected.lowered);
-		say("rescoped", finding.rescoped() !== undefined, expected.rescoped);
 		const listed = (members: readonly ImportantFinding[] | undefined) =>
 			members?.map(({ id, ...member }) => ({ ...member, listed: id === finding.id }));
 		const wanted = expected.important === undefined ? undefined : [{ ...expected.important, listed: true }];
 		const order = (members: ReturnType<typeof listed>) =>
-			members?.map(({ state, originalSeverity, originalScope, reason, listed: own }) => ({
-				state,
-				originalSeverity,
-				originalScope,
-				reason,
-				listed: own,
-			}));
+			members?.map(({ state, originalSeverity, listed: own }) => ({ state, originalSeverity, listed: own }));
 		say("the important findings", order(listed(verdict.preExistingImportant)), order(wanted));
 		say("the important findings in JSON", order(listed(json.preExistingImportant)), order(wanted));
 		const stored = Object.values(json.findings).flat()[0]?.properties;

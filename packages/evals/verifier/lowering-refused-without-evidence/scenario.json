@@ -22,7 +22,6 @@
 			"resolution": "acknowledge",
 			"verdict": "confirmed",
 			"lowered": false,
-			"rescoped": false,
 			"notRendered": [
 				"lowered from"
 			]

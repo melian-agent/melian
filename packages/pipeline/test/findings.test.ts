@@ -802,7 +802,7 @@ describe("version 7 findings and verdicts", () => {
 	});
 });
 
-describe("lowered and re-scoped sightings", () => {
+describe("lowered sightings", () => {
 	const record: Verification = {
 		verdict: "confirmed",
 		reason: "Traced.",
@@ -811,7 +811,6 @@ describe("lowered and re-scoped sightings", () => {
 		version: "1",
 	};
 	const lowered: Verification = { ...record, lowered: { from: "P1", to: "P2", reason: "One caller validates." } };
-	const rescoped: Verification = { ...record, rescoped: { from: "introduced", reason: "The base has the lines." } };
 	const judge = (root: Awaited<ReturnType<typeof open>>["root"], verification: Verification, source = input.source) =>
 		root.commit((tx) => upsertVerification(tx, root.id, "rev1", evalFinding.id, source, verification), context);
 
@@ -827,17 +826,6 @@ describe("lowered and re-scoped sightings", () => {
 		expect(stored.properties.severity).toBe("P1");
 		expect(stored.level).toBe("error");
 		expect(stored.properties).not.toHaveProperty("originalSeverity");
-	});
-
-	it("reads a re-scoped sighting as pre-existing, and leaves the lens's cause stored", async () => {
-		const { harness, root } = await open(createMemoryStorage());
-		await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
-		await judge(root, rescoped);
-		const [finding] = await readFindings(harness, root.id, "rev1", context);
-		expect(finding!.properties.cause).toBe("pre-existing");
-		expect(finding!.rescoped()).toEqual(rescoped.rescoped);
-		const state = (await harness.snapshot(FindingsDocument, root.id, context))!;
-		expect(state.items[evalFinding.id]!.sightings.rev1!["lens.security@1"]!.properties.cause).toBe("introduced");
 	});
 
 	it("takes the highest severity among sightings of one ID after lowering, and names the original", async () => {
@@ -873,10 +861,8 @@ describe("lowered and re-scoped sightings", () => {
 		expect(finding!.properties.originalSeverity).toBeUndefined();
 	});
 
-	it.each([
-		["a lowering", lowered],
-		["a re-scope", rescoped],
-	])("leaves a claim without %s when an equal report disagrees, in either order, and on replay", async (_, weaker) => {
+	it("leaves a claim unlowered when an equal report disagrees, in either order, and on replay", async () => {
+		const weaker = lowered;
 		for (const order of [
 			[weaker, record],
 			[record, weaker],

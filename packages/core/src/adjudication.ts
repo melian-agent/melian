@@ -10,7 +10,6 @@ import {
 import type { EnolaSnapshot } from "./enola.ts";
 import {
 	type AlsoReportedAs,
-	type Cause,
 	Finding,
 	type FindingDecision,
 	type FindingDismissal,
@@ -393,16 +392,9 @@ export type StoredVerdict = {
 
 /**
  * One member of "Pre-existing, important": a finding among the verdict's groups, by ID, with the severity its lenses
- * reported. `state` is `carried` once an earlier revision sighted it, so it is raised once. A member the verifier
- * re-scoped names the scope location gave it and the verifier's reason.
+ * reported. `state` is `carried` once an earlier revision sighted it, so it is raised once.
  */
-export type ImportantFinding = {
-	id: string;
-	state: "new" | "carried";
-	originalSeverity: Severity;
-	originalScope?: Cause;
-	reason?: string;
-};
+export type ImportantFinding = { id: string; state: "new" | "carried"; originalSeverity: Severity };
 
 /** What a {@link Verdict} holds. */
 export interface VerdictFields {
@@ -895,8 +887,13 @@ export class Adjudication {
 				[defect.speaker.id, ...defect.members.map((member) => member.id)],
 			]),
 		);
+		const lifted = new Set<string>();
 		const resolved = defects
-			.map((defect) => defect.speaker.decided(defect.decision(this.#configFor, this.#verificationRan)))
+			.map((defect) => {
+				const decision = defect.decision(this.#configFor, this.#verificationRan);
+				if (decision.decidedBy.floor === "pre-existing-important") lifted.add(defect.speaker.id);
+				return defect.speaker.decided(decision);
+			})
 			.sort((a, b) => a.compareReading(b));
 		const counted = resolved.filter(
 			(finding) => finding.properties.status !== "dismissed" && !refutedIds.has(finding.id),
@@ -910,24 +907,20 @@ export class Adjudication {
 				counted.filter((finding) => finding.properties.resolution === resolution),
 			]),
 		) as Record<Resolution, ResolvedFinding[]>;
-		// A member of "Pre-existing, important" is listed and never changes the verdict, unless it asks for more than
-		// advice.
+		// A member counts toward the status as it did before the heading existed: one the floor alone keeps above
+		// silent is listed and changes nothing, and any other counts as an advisory finding does.
 		const attention = counted.some(
-			(finding) =>
-				finding.properties.resolution !== "silent" &&
-				!(finding.important() && finding.properties.resolution === "advisory"),
+			(finding) => finding.properties.resolution !== "silent" && !lifted.has(finding.id),
 		);
 		const important = counted
 			.filter((finding) => finding.important())
-			.map((finding): ImportantFinding => {
-				const rescoped = finding.rescoped();
-				return {
+			.map(
+				(finding): ImportantFinding => ({
 					id: finding.id,
 					state: memberIds.get(finding.id)!.some((id) => this.#seenBefore.has(id)) ? "carried" : "new",
 					originalSeverity: finding.original(),
-					...(rescoped === undefined ? {} : { originalScope: rescoped.from, reason: rescoped.reason }),
-				};
-			});
+				}),
+			);
 		return new Verdict({
 			status: this.manifest.complete() ? (attention ? "findings" : "passed") : "not-reviewed",
 			blocking: grouped.block.length > 0,

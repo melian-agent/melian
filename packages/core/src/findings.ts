@@ -25,13 +25,7 @@ import {
 	visibleText,
 } from "./render.ts";
 import { lesser, type ResolutionClaim, type ResolutionSource, ResolutionWalk } from "./resolution.ts";
-import {
-	injectionAttemptRuleId,
-	type StoredRescope,
-	type Verification,
-	VerificationState,
-	verificationSchema,
-} from "./verification.ts";
+import { injectionAttemptRuleId, type Verification, VerificationState, verificationSchema } from "./verification.ts";
 
 export { causeSchema, evidenceLocationSchema, evidenceRevisionSchema, evidenceRoleSchema, findingEvidenceSchema };
 
@@ -1108,7 +1102,6 @@ export class Finding {
 				? `line ${region.startLine}`
 				: `lines ${region.startLine}-${region.endLine}`;
 		const lowered = this.lowered();
-		const rescoped = this.rescoped();
 		return [
 			`  ${rendering.paint(severityColor[severity], severity)}${lowered === undefined ? "" : `, lowered from ${lowered.from}`}  ${lines}  ${visibleText(this.ruleId)}  (${cause}, ${status}, ${resolution ?? "unresolved"}${verification === undefined ? (source.check.startsWith("lens.") ? ", unverified" : "") : `, ${verification.verdict}`})${ids ? `  ${visibleText(id)}` : ""}`,
 			...reports,
@@ -1116,9 +1109,6 @@ export class Finding {
 				? []
 				: [`    Decided by: ${prose(describeDecision(decidedBy, own), "      ")}`]),
 			...(lowered === undefined ? [] : [`    Lowered from ${lowered.from}: ${prose(lowered.reason, "      ")}`]),
-			...(rescoped === undefined
-				? []
-				: [`    Re-scoped from ${rescoped.from}: ${prose(rescoped.reason, "      ")}`]),
 			...(verification === undefined
 				? []
 				: [
@@ -1176,32 +1166,20 @@ export class Finding {
 	}
 
 	/**
-	 * The scope location gave the finding and the verifier's reason, when the finding is `pre-existing` because Melian
-	 * accepted a verifier's re-scope. A finding another member keeps `introduced` or `affected` is not re-scoped.
-	 */
-	rescoped(): StoredRescope | undefined {
-		if (this.properties.cause !== "pre-existing") return undefined;
-		return this.#verifications().find((each) => each.rescoped !== undefined)?.rescoped;
-	}
-
-	/**
 	 * Whether the finding belongs under "Pre-existing, important": `pre-existing` with an original severity of P0 or
-	 * P1, or re-scoped by the verifier with an original severity of P2 or higher.
+	 * P1.
 	 */
 	important(): boolean {
-		if (this.properties.cause !== "pre-existing") return false;
-		const rank = severityRank[this.original()];
-		return rank <= severityRank.P1 || (rank <= severityRank.P2 && this.rescoped() !== undefined);
+		return this.properties.cause === "pre-existing" && severityRank[this.original()] <= severityRank.P1;
 	}
 
 	/**
 	 * The finding as a verifier judged it: `verification` attached, its severity lowered when the record lowers the
-	 * severity it has, keeping the lens's as `originalSeverity`, and its cause `pre-existing` when the record re-scopes
-	 * the cause it has. A record made for another severity or cause changes neither.
+	 * severity it has, keeping the lens's as `originalSeverity`. A record made for another severity lowers nothing.
 	 */
 	verifiedAs(verification: Verification): Finding {
-		const { lowered, rescoped } = verification;
-		const { severity, cause } = this.properties;
+		const { lowered } = verification;
+		const { severity } = this.properties;
 		const lowers = lowered !== undefined && lowered.from === severity;
 		const stored = this.toJSON();
 		return Finding.from({
@@ -1210,7 +1188,6 @@ export class Finding {
 			properties: {
 				...stored.properties,
 				...(lowers ? { severity: lowered.to, originalSeverity: lowered.from } : {}),
-				...(rescoped !== undefined && rescoped.from === cause ? { cause: "pre-existing" as const } : {}),
 				verification,
 			},
 		});
@@ -1331,6 +1308,14 @@ export class Finding {
 	/** {@link Finding.resolve}, with the file and entry that decided. */
 	decision(source: ResolutionSource): FindingDecision {
 		return this.floored(this.capped(source));
+	}
+
+	/**
+	 * Whether only the floor of "Pre-existing, important" keeps the finding above `silent` under `source`. Such a
+	 * finding is listed and leaves the status as it was.
+	 */
+	lifted(source: ResolutionSource): boolean {
+		return this.decision(source).decidedBy.floor === "pre-existing-important";
 	}
 
 	/**

@@ -4,4 +4,4 @@
 
 The recording ran in a checkout of that commit, as a Vitest test in `packages/pipeline/test/`. It built `crashRepository()`, loaded the built-in correctness lens, and scripted it to report `crashFinding`. It scripted the verifier to confirm the claim with a correction. It ran `reviewChangeset` on memory storage with the fake model, then read both documents through `harness.snapshot` and wrote them with the revision key. No provider, credential or environment file was read.
 
-The verification record therefore has no answers, no evidence, no lowering and no re-scope, and the verdict has no `preExistingImportant`. The reopen test in `findings.test.ts` writes these values through version-6 document tokens to SQLite, closes it, and reads and writes them through the current definitions.
+The verification record therefore has no answers, no evidence and no lowering, and the verdict has no `preExistingImportant`. The reopen test in `findings.test.ts` writes these values through version-6 document tokens to SQLite, closes it, and reads and writes them through the current definitions.

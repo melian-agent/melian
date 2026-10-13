@@ -15,7 +15,6 @@
 			"resolution": "advisory",
 			"verdict": "confirmed",
 			"lowered": false,
-			"rescoped": false,
 			"important": {
 				"state": "new",
 				"originalSeverity": "P0"

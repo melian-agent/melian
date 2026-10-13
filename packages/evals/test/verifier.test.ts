@@ -189,11 +189,11 @@ describe("the verifier corpus", { timeout: 60_000 }, () => {
 const scenarios = loadScenarioGoldens();
 
 describe("the scenario goldens of the verifier corpus", { timeout: 60_000 }, () => {
-	it("holds the twenty-four the lowering and scope decision lists", () => {
+	it("holds the eleven that lowering and surfacing keep", () => {
 		const count = (group: ScenarioGolden["scenario"]["group"]) =>
 			scenarios.filter((golden) => golden.scenario.group === group).length;
-		expect(scenarios).toHaveLength(24);
-		expect([count("lowering"), count("scope"), count("surfacing"), count("conflict")]).toEqual([6, 10, 5, 3]);
+		expect(scenarios).toHaveLength(11);
+		expect([count("lowering"), count("surfacing"), count("conflict")]).toEqual([6, 3, 2]);
 		expect(scenarios.every((golden) => golden.name.startsWith(`${golden.scenario.group}-`))).toBe(true);
 	});
 
@@ -228,7 +228,7 @@ describe("the scenario goldens of the verifier corpus", { timeout: 60_000 }, () 
 	});
 
 	it("says which expectation a run misses, field by field", async () => {
-		const golden = scenarios.find((each) => each.name === "scope-renamed-identical")!;
+		const golden = scenarios.find((each) => each.name === "surfacing-lowered-p1-member")!;
 		const run = await runScenarioGolden(golden);
 		const [expected] = golden.scenario.expected;
 		const missed = (change: Partial<typeof expected>) =>
@@ -237,21 +237,20 @@ describe("the scenario goldens of the verifier corpus", { timeout: 60_000 }, () 
 				run,
 			);
 		expect(missed({})).toEqual([]);
-		expect(missed({ status: "findings" })).toEqual(['revision 1: status is "passed", expected "findings"']);
+		expect(missed({ status: "passed" })).toEqual(['revision 1: status is "findings", expected "passed"']);
 		expect(missed({ blocking: true })).toEqual(["revision 1: blocking is false, expected true"]);
-		expect(missed({ severity: "P2" })).toEqual([
-			'revision 1: severity is "P1", expected "P2"',
-			'revision 1: severity in JSON is "P1", expected "P2"',
+		expect(missed({ severity: "P3" })).toEqual([
+			'revision 1: severity is "P2", expected "P3"',
+			'revision 1: severity in JSON is "P2", expected "P3"',
 		]);
 		expect(missed({ originalSeverity: "P0" })).toEqual([
-			'revision 1: originalSeverity is undefined, expected "P0"',
-			'revision 1: originalSeverity in JSON is undefined, expected "P0"',
+			'revision 1: originalSeverity is "P1", expected "P0"',
+			'revision 1: originalSeverity in JSON is "P1", expected "P0"',
 		]);
 		expect(missed({ cause: "affected" })).toEqual(['revision 1: cause is "pre-existing", expected "affected"']);
 		expect(missed({ resolution: "block" })).toEqual(['revision 1: resolution is "advisory", expected "block"']);
 		expect(missed({ verdict: "plausible" })).toEqual(['revision 1: verdict is "confirmed", expected "plausible"']);
-		expect(missed({ lowered: true })).toEqual(["revision 1: lowered is false, expected true"]);
-		expect(missed({ rescoped: false })).toEqual(["revision 1: rescoped is true, expected false"]);
+		expect(missed({ lowered: false })).toEqual(["revision 1: lowered is true, expected false"]);
 		expect(missed({ important: undefined })).toHaveLength(2);
 		expect(missed({ important: { ...expected!.important!, state: "carried" } })).toEqual([
 			expect.stringContaining("revision 1: the important findings is"),
@@ -260,8 +259,8 @@ describe("the scenario goldens of the verifier corpus", { timeout: 60_000 }, () 
 		expect(missed({ rendered: ["no terminal says this"] })).toEqual([
 			'revision 1: the terminal lacks "no terminal says this"',
 		]);
-		expect(missed({ notRendered: ["Re-scoped from affected"] })).toEqual([
-			'revision 1: the terminal shows "Re-scoped from affected"',
+		expect(missed({ notRendered: ["P2, lowered from P1"] })).toEqual([
+			'revision 1: the terminal shows "P2, lowered from P1"',
 		]);
 		expect(scenarioMismatches(golden, { revisions: [], resultMismatches: ["a report differed"] })).toEqual([
 			"a report differed",

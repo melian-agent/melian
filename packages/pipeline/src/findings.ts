@@ -71,8 +71,8 @@ type FindingsState = { revisions: string[]; items: Record<string, FindingRecord>
 
 // Version 8 lets a guardrail sighting name the configured rules it matched, or its notice class, outside its ID; a
 // version 7 sighting names neither, reads unchanged, and resolves under its whole guardrail.
-// Version 7 lets a verification record hold the verifier's answers, the evidence read back, a lowered severity, and a
-// re-scope; a version 6 record has none and reads unchanged. Version 6 added the optional per-sighting verification
+// Version 7 lets a verification record hold the verifier's answers, the evidence read back, and a lowered severity; a
+// version 6 record has none and reads unchanged. Version 6 added the optional per-sighting verification
 // records. Version 5 made evidence a list of locations; a sighting stored before reads with its one location as a cause.
 export const FindingsDocument = defineDoc<FindingsState>({
 	kind: "melian.findings",
@@ -491,7 +491,7 @@ export interface ReadFindingsOptions {
 	 */
 	readonly producers?: readonly Producer[];
 	/**
-	 * Read each sighting at the severity and cause its lens reported, with its verification attached and not applied.
+	 * Read each sighting at the severity its lens reported, with its verification attached and not applied.
 	 * Verification picks its candidates from this read, so a lowering it stored never changes what it judges next.
 	 */
 	readonly asReported?: boolean;
@@ -545,8 +545,8 @@ export async function readFindings(
 		});
 }
 
-// A sighting as its verifier judged it: at the lowered severity and the re-scoped cause its record holds, by core's
-// `verifiedAs`. The stored sighting keeps the lens's own.
+// A sighting as its verifier judged it: at the lowered severity its record holds, by core's `verifiedAs`. The stored
+// sighting keeps the lens's own.
 function judged(sighting: ProducerFinding, verification: Verification): ProducerFinding {
 	const finding = Finding.from({ ...sighting, properties: { ...sighting.properties, status: "new" } });
 	const { properties, ...rest } = finding.verifiedAs(verification).toJSON();
@@ -555,19 +555,6 @@ function judged(sighting: ProducerFinding, verification: Verification): Producer
 }
 
 // The sighting `source` stored for finding `id` at `revision`, as the lens reported it.
-export async function readSighting(
-	reader: DocumentReader,
-	root: ConversationId,
-	revision: string,
-	id: string,
-	source: FindingSource,
-	context: Context,
-): Promise<StoredSighting | undefined> {
-	const state = await reader.snapshot(FindingsDocument, root, context);
-	return state === undefined ? undefined : sightingIn(state, revision, id, source);
-}
-
-// The same, inside a commit.
 export function sightingIn(
 	state: FindingsState,
 	revision: string,
