@@ -1,11 +1,12 @@
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, lstatSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { defaultConfig } from "@melian-agent/core";
 import { backgroundContext as context, createNodeExecutionEnv, runStaticTool } from "@melian-agent/pipeline";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { Sandbox } from "../src/sandbox.ts";
 import { Run } from "../src/static.ts";
 import { commit, createRepository, gitIn, lines, removeRepository } from "./fixtures/repo.ts";
-import { unconfinedNotes } from "./fixtures/sandbox.ts";
+import { unconfinedNotes, unconfinedSandbox } from "./fixtures/sandbox.ts";
 
 let repo: string;
 let head: string;
@@ -147,3 +148,72 @@ it.each([
 	vi.restoreAllMocks();
 	expect(gitIn(repo, "worktree", "list", "--porcelain")).not.toContain("melian-static-");
 });
+
+it("writes into the marker that a confined command ran, once the run is confined", { timeout: 60_000 }, async () => {
+	vi.spyOn(Sandbox, "detect").mockResolvedValue(unconfinedSandbox);
+	const run = new Run(
+		{
+			env: createNodeExecutionEnv(repo),
+			repoRoot: repo,
+			commit: head,
+			tool: "biome",
+			settings: defaultConfig.static.biome,
+		},
+		context,
+	);
+	await run.inWorktree(async (root, scratch) => {
+		const marker = () =>
+			JSON.parse(readFileSync(join(gitIn(root, "rev-parse", "--absolute-git-dir"), "melian-static"), "utf8"));
+		expect(marker()).toEqual({ tree: root, pid: process.pid });
+		expect(await run.confine(root, scratch, [], [])).toEqual({ confined: true });
+		expect(marker()).toEqual({ tree: root, pid: process.pid, confined: true });
+	});
+	vi.restoreAllMocks();
+});
+
+it("goes on past a dead run whose tree was swapped for a link, dropping only its registration", {
+	timeout: 60_000,
+}, async () => {
+	const tree = worktree("swapped", ["--lock", "--reason", "melian-static pid 2147483646"]);
+	writeFileSync(
+		join(gitIn(tree, "rev-parse", "--absolute-git-dir"), "melian-static"),
+		JSON.stringify({ tree, pid: 2147483646 }),
+	);
+	const elsewhere = join(dirname(repo), `melian-elsewhere-${process.pid}`);
+	made.push(elsewhere);
+	mkdirSync(elsewhere);
+	writeFileSync(join(elsewhere, "keep.txt"), "the user's");
+	rmSync(tree, { recursive: true, force: true });
+	symlinkSync(elsewhere, tree);
+	const first = await biome();
+	if (first.status !== "ran") throw new Error(first.reason);
+	expect(first.notes).toContain(
+		`biome left the worktree at ${tree} alone: its path is now a symbolic link, so only its registration was removed.`,
+	);
+	expect(registered(tree)).toBe(false);
+	expect(readFileSync(join(elsewhere, "keep.txt"), "utf8")).toBe("the user's");
+	expect(lstatSync(tree).isSymbolicLink()).toBe(true);
+	// The clone is not blocked: the next run meets nothing and says nothing.
+	expect(await biome()).toMatchObject({ status: "ran", notes: unconfinedNotes("biome") });
+});
+
+it.skipIf(process.getuid?.() === 0)(
+	"says so when a dead run's scratch holds a directory it cannot remove",
+	{ timeout: 60_000 },
+	async () => {
+		const tree = worktree("locked-dir", ["--lock", "--reason", "melian-static pid 2147483646"]);
+		const sealed = join(dirname(tree), "sealed");
+		mkdirSync(join(sealed, "inner"), { recursive: true });
+		chmodSync(sealed, 0o000);
+		try {
+			const result = await biome();
+			if (result.status !== "ran") throw new Error(result.reason);
+			expect(result.notes.filter((note) => note.includes("could not remove"))).toEqual([
+				expect.stringMatching(new RegExp(`^biome could not remove ${dirname(tree)}: .+\\.$`)),
+			]);
+			expect(registered(tree)).toBe(false);
+		} finally {
+			chmodSync(sealed, 0o755);
+		}
+	},
+);

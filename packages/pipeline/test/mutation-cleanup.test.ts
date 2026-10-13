@@ -190,19 +190,81 @@ function crashedConfined(c: ReturnType<typeof cleanup>) {
 }
 
 it.each(["/tmp/melian-confined-old", "/tmp/melian-confined-old/tree"])(
-	"refuses the stale symlink component %s with fake process and delete controls",
+	"leaves a dead run whose path %s is now a link, drops its registration, and goes on",
 	async (path) => {
 		const c = cleanup();
 		crashedConfined(c);
+		c.registered.set("users", "/home/user/stale/.git");
 		c.fileInfo.mockImplementation(async (asked) => ({
 			ok: true,
 			value: { kind: asked === path ? "symlink" : "file" },
 		}));
-		await expect(c.removeStaleWorktrees(c.run, "/scratch")).rejects.toThrow(`refused symlink ${path}`);
-		expect(c.remove).not.toHaveBeenCalled();
+		await expect(c.removeStaleWorktrees(c.run, "/scratch")).resolves.toBeUndefined();
+		expect(c.run.notes).toEqual(left("its path is now a symbolic link, so only its registration was removed"));
+		// Its own entry and nothing else: nothing is removed through the link, on the host or confined.
+		expect(c.remove.mock.calls).toEqual([["/repo/.git/worktrees/old", { recursive: true, force: true }, {}]]);
+		expect([...c.registered.keys()]).toEqual(["users"]);
+		expect(c.open).not.toHaveBeenCalled();
 		expect(c.close).not.toHaveBeenCalled();
+		expect(hostGit(c)).toEqual([]);
 	},
 );
+
+// A Biome or tsc run that was confined: scratch under the ordinary prefix, and a marker that says so.
+function crashedStatic(c: ReturnType<typeof cleanup>, confined: boolean) {
+	c.run.readOutput = async () => "worktree /tmp/melian-static-old/tree\0locked melian-static pid 120\0\0";
+	c.registered.set("old", "/tmp/melian-static-old/tree/.git");
+	c.markers.set(
+		"old",
+		JSON.stringify({ tree: "/tmp/melian-static-old/tree", pid: 120, ...(confined ? { confined } : {}) }),
+	);
+}
+
+it("removes a dead static run's tree confined when its marker says a confined command ran there", async () => {
+	const c = cleanup();
+	crashedStatic(c, true);
+	await c.removeStaleWorktrees(c.run, "/scratch");
+	expect(c.open).toHaveBeenCalledExactlyOnceWith(expect.anything(), "/tmp/melian-static-old", expect.anything(), []);
+	expect(c.close).toHaveBeenCalledOnce();
+	expect(hostGit(c)).toEqual([]);
+	// The host deletes the registration's own entry and never the scratch directory.
+	expect(c.remove.mock.calls.map(([path]) => path)).toEqual(["/repo/.git/worktrees/old"]);
+	expect(c.run.notes).toEqual([]);
+	const unmarked = cleanup();
+	crashedStatic(unmarked, false);
+	await unmarked.removeStaleWorktrees(unmarked.run, "/scratch");
+	expect(unmarked.open).not.toHaveBeenCalled();
+	expect(hostGit(unmarked)).toHaveLength(2);
+});
+
+it("leaves such a tree with a note on a host with no sandbox, and reads only true as confined", async () => {
+	const c = cleanup();
+	crashedStatic(c, true);
+	c.detect.mockReturnValue(undefined);
+	await c.removeStaleWorktrees(c.run, "/scratch");
+	expect(c.run.notes).toEqual(
+		left("only confined cleanup may remove it, and this host offers no sandbox", "/tmp/melian-static-old/tree"),
+	);
+	expect(c.remove).not.toHaveBeenCalled();
+	expect(hostGit(c)).toEqual([]);
+	const truthy = cleanup();
+	crashedStatic(truthy, false);
+	truthy.markers.set("old", JSON.stringify({ tree: "/tmp/melian-static-old/tree", pid: 120, confined: "yes" }));
+	await truthy.removeStaleWorktrees(truthy.run, "/scratch");
+	expect(truthy.open).not.toHaveBeenCalled();
+	expect(hostGit(truthy)).toHaveLength(2);
+});
+
+it("says so when the host cannot remove a dead run's scratch", async () => {
+	const c = cleanup();
+	crashedStatic(c, false);
+	c.remove.mockResolvedValue({
+		ok: false,
+		error: { code: "permission_denied", message: "a directory is unreadable" },
+	});
+	await c.removeStaleWorktrees(c.run, "/scratch");
+	expect(c.run.notes).toEqual(["biome could not remove /tmp/melian-static-old: a directory is unreadable."]);
+});
 
 it("leaves a live run alone and removes a dead confined one only confined", async () => {
 	const c = cleanup();

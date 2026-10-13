@@ -199,6 +199,9 @@ export class Run {
 		// teardown: a process the tool left behind may still be writing in scratch, where a host removal would follow it.
 		this.#outputs = MutationScratch.open(this, scratch, sandbox, []);
 		this.mutationScratch = this.#outputs;
+		// Said beside the registration before the tool starts: should this run's own teardown fail, as a process the tool
+		// left writing in scratch makes it, the next run must not remove the tree with host git.
+		await this.mark(root, true);
 		return this.#decided({ confined: true });
 	}
 
@@ -220,12 +223,13 @@ export class Run {
 	}
 
 	// Records beside a registration this run just made that it is this run's: see `marked`.
-	async mark(root: string): Promise<void> {
+	// `confined` says a confined command is about to run in the tree, so only confined cleanup may remove it.
+	async mark(root: string, confined = false): Promise<void> {
 		const admin = await this.shell(this.git("rev-parse --absolute-git-dir", root));
 		if (admin.code !== 0) throw this.fail("worktreeFailed", `git rev-parse failed in ${root}: ${admin.output}`);
 		const written = await this.input.env.writeFile(
 			posix.join(admin.output, markerFile),
-			JSON.stringify({ tree: root, pid: process.pid }),
+			JSON.stringify({ tree: root, pid: process.pid, ...(confined ? { confined: true } : {}) }),
 			this.context,
 		);
 		if (!written.ok) throw this.fail("worktreeFailed", `could not mark ${root}: ${written.error.message}`);
@@ -699,7 +703,8 @@ async function removeWorktree(run: Run, scratch: string, mutation = false): Prom
 			// Best effort: a cleanup failure must not replace the run's result or error.
 		}
 	}
-	await run.input.env.remove(scratch, { recursive: true, force: true }, backgroundContext);
+	const removed = await run.input.env.remove(scratch, { recursive: true, force: true }, backgroundContext);
+	if (!removed.ok) run.notes.push(`${run.input.tool} could not remove ${scratch}: ${removed.error.message}.`);
 }
 
 // Drops one worktree's registration: the entry under the repository's `worktrees` directory whose `gitdir` file names this
@@ -735,17 +740,23 @@ async function registration(cleanup: Run, root: string): Promise<string | undefi
 // in the repository's git directory, which no confined command can write.
 const markerFile = "melian-static";
 
-// Whether the registration at `admin` carries this build's marker for this tree and this lock: true or false, or
-// undefined when it carries none, as a tree added by a build from before the marker does.
-async function marked(run: Run, admin: string | undefined, tree: string, pid: string): Promise<boolean | undefined> {
-	if (admin === undefined) return undefined;
+// What the registration at `admin` says of itself. `owned` is whether it carries this build's marker for this tree and
+// this lock: true or false, or undefined when it carries none, as a tree added by a build from before the marker does.
+// `confined` is whether a confined command ran in the tree.
+async function marked(
+	run: Run,
+	admin: string | undefined,
+	tree: string,
+	pid: string,
+): Promise<{ owned: boolean | undefined; confined: boolean }> {
+	if (admin === undefined) return { owned: undefined, confined: false };
 	const text = await run.input.env.readTextFile(posix.join(admin, markerFile), backgroundContext);
-	if (!text.ok) return text.error.code === "not_found" ? undefined : false;
+	if (!text.ok) return { owned: text.error.code === "not_found" ? undefined : false, confined: false };
 	try {
-		const marker = JSON.parse(text.value) as { tree?: unknown; pid?: unknown };
-		return marker.tree === tree && marker.pid === Number(pid);
+		const marker = JSON.parse(text.value) as { tree?: unknown; pid?: unknown; confined?: unknown };
+		return { owned: marker.tree === tree && marker.pid === Number(pid), confined: marker.confined === true };
 	} catch {
-		return false;
+		return { owned: false, confined: false };
 	}
 }
 
@@ -766,8 +777,8 @@ async function removeStaleWorktrees(run: Run, scratch: string): Promise<void> {
 		if (path === undefined || posix.basename(path) !== "tree") continue;
 		const parent = posix.dirname(path);
 		const owner = posix.basename(parent) === "base" ? posix.dirname(parent) : parent;
-		const confined = posix.basename(owner).startsWith(confinedScratchPrefix);
-		if ((!confined && !posix.basename(owner).startsWith(scratchPrefix)) || owner === scratch) continue;
+		const prefixed = posix.basename(owner).startsWith(confinedScratchPrefix);
+		if ((!prefixed && !posix.basename(owner).startsWith(scratchPrefix)) || owner === scratch) continue;
 		const left = (why: string) => run.notes.push(`${run.input.tool} left the worktree at ${path} alone: ${why}.`);
 		// A lock with no reason is listed as the bare word.
 		const lock = fields.find((field) => field === "locked" || field.startsWith("locked "))?.slice("locked ".length);
@@ -778,15 +789,22 @@ async function removeStaleWorktrees(run: Run, scratch: string): Promise<void> {
 		}
 		if (Number(pid) > 1 && (await run.shell(`kill -0 ${pid} 2> /dev/null`)).code === 0) continue;
 		const cleanup = new Run(run.input, backgroundContext);
-		const proof = await marked(run, await registration(cleanup, path), path, pid);
-		if (proof === false || (proof === undefined && confined)) {
-			left(proof === false ? "its marker names another tree or process" : "it has no marker");
+		const marker = await marked(run, await registration(cleanup, path), path, pid);
+		// Confined cleanup only, by the directory's prefix or by what the run wrote beside its registration.
+		const confined = prefixed || marker.confined;
+		if (marker.owned === false || (marker.owned === undefined && prefixed)) {
+			left(marker.owned === false ? "its marker names another tree or process" : "it has no marker");
 			continue;
 		}
-		for (const component of [owner, parent, path]) {
-			const info = await run.input.env.fileInfo(component, run.context);
-			if (info.ok && info.value.kind === "symlink")
-				throw run.fail("worktreeFailed", `refused symlink ${component} during stale worktree cleanup`);
+		// A dead run's path that is now a link leads somewhere this run must not go. Its registration is this run's to
+		// drop, by its own entry, so the next run does not meet it again; nothing is removed through the link.
+		const kinds = await Promise.all(
+			[owner, parent, path].map((component) => run.input.env.fileInfo(component, run.context)),
+		);
+		if (kinds.some((info) => info.ok && info.value.kind === "symlink")) {
+			await unregister(cleanup, path);
+			left("its path is now a symbolic link, so only its registration was removed");
+			continue;
 		}
 		if (confined && (await Sandbox.detect(run.input.env, backgroundContext)) === undefined) {
 			left("only confined cleanup may remove it, and this host offers no sandbox");

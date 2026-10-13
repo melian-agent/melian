@@ -154,7 +154,10 @@ export class MutationScratch {
 		try {
 			await rmdir(this.#paths.scratch);
 		} catch (error) {
-			if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+			const { code } = error as NodeJS.ErrnoException;
+			if (code === "ENOENT") return;
+			// Not empty after it was emptied: something is still writing there.
+			throw this.#run.fail("worktreeFailed", `${this.#paths.scratch} could not be removed: ${code}`, error);
 		}
 	}
 }

@@ -1137,6 +1137,11 @@ describe("runStaticTool after a crash", () => {
 // Seatbelt has no hold on a process once its command has exited, so a tool can leave one behind. bubblewrap ends every
 // process in the namespace with the command, and a pid from inside it means nothing on the host, so this is macOS only.
 describe.skipIf(hostSandbox?.backend !== "seatbelt")("a process a confined tool leaves behind", () => {
+	const emptySarif = JSON.stringify({
+		version: "2.1.0",
+		runs: [{ tool: { driver: { name: "Biome" } }, results: [] }],
+	});
+
 	it("cannot change what the host read, nor write outside scratch once teardown has removed it", {
 		timeout: 60_000,
 	}, async () => {
@@ -1206,6 +1211,86 @@ setInterval(() => {
 			// Only the child this test's own fake started, by the pid that fake reported.
 			if (Number.isInteger(pid) && pid > 1) process.kill(pid, "SIGKILL");
 			rmSync(outside, { recursive: true, force: true });
+		}
+	});
+
+	// The review of record's probe. No crash is needed to leave a confined run's scratch behind: a child that keeps
+	// writing there makes the teardown's last step fail. The next run must still not remove that tree with host git.
+	it("fails the teardown by name when a child keeps writing in scratch, and the next run removes it confined", {
+		timeout: 60_000,
+	}, async () => {
+		const head = commit(repo, { ".gitignore": lines("node_modules"), "src/a.ts": "export const a = 1;\n" });
+		const child = `
+const fs = require("node:fs");
+const scratch = process.argv[1];
+const end = Date.now() + 4000;
+let n = 0;
+while (Date.now() < end) { try { fs.writeFileSync(scratch + "/child.pid", String(process.pid)); fs.writeFileSync(scratch + "/refill-" + (n++ % 50), "x"); } catch {} }`;
+		fakeTool(
+			repo,
+			"biome",
+			[
+				'if [ "$1" = "--version" ]; then echo 0.0.0; exit 0; fi',
+				'for arg in "$@"; do case "$arg" in --reporter-file=*) out=$(printf %s "$arg" | cut -d= -f2-);; esac; done',
+				`node -e '${child}' "$(dirname "$out")" > /dev/null 2>&1 &`,
+				`printf '%s' '${emptySarif}' > "$out"`,
+			].join("\n"),
+		);
+		const env = createNodeExecutionEnv(repo);
+		const created = vi.spyOn(env, "createTempDir");
+		let pid = 0;
+		let scratch = "";
+		try {
+			const failure = await runStaticTool({ ...input("biome", head), env }, context).catch(
+				(error: CheckError) => error,
+			);
+			scratch = realpathSync(((await created.mock.results[0]!.value) as { value: string }).value);
+			for (const deadline = Date.now() + 3000; pid === 0 && Date.now() < deadline; await sleep(5)) {
+				try {
+					pid = Number(readFileSync(join(scratch, "child.pid"), "utf8"));
+				} catch {}
+			}
+			expect(Number.isInteger(pid) && pid > 1).toBe(true);
+			expect(failure).toMatchObject({
+				code: "worktreeFailed",
+				message: `${scratch} could not be removed: ENOTEMPTY`,
+			});
+			const tree = join(scratch, "tree");
+			expect(gitIn(repo, "worktree", "list", "--porcelain")).toContain(`worktree ${tree}`);
+			const admin = readdirSync(join(repo, ".git/worktrees")).map((name) => join(repo, ".git/worktrees", name))[0]!;
+			expect(JSON.parse(readFileSync(join(admin, "melian-static"), "utf8"))).toEqual({
+				tree,
+				pid: process.pid,
+				confined: true,
+			});
+			// Stop the child this test's fake started, by its own pid, then let the reviewer's process be gone.
+			process.kill(pid, "SIGKILL");
+			pid = 0;
+			writeFileSync(join(admin, "locked"), "melian-static pid 2147483646\n");
+			writeFileSync(join(admin, "melian-static"), JSON.stringify({ tree, pid: 2147483646, confined: true }));
+			fakeTool(
+				repo,
+				"biome",
+				[
+					'if [ "$1" = "--version" ]; then echo 0.0.0; exit 0; fi',
+					'for arg in "$@"; do case "$arg" in --reporter-file=*) out=$(printf %s "$arg" | cut -d= -f2-);; esac; done',
+					`printf '%s' '${emptySarif}' > "$out"`,
+				].join("\n"),
+			);
+			const next = createNodeExecutionEnv(repo);
+			const execute = vi.spyOn(next, "exec");
+			const remove = vi.spyOn(next, "remove");
+			expect(await runStaticTool({ ...input("biome", head), env: next }, context)).toMatchObject({
+				status: "ran",
+				notes: [],
+			});
+			expect(execute.mock.calls.filter(([command]) => /worktree (remove|prune|unlock)/.test(command))).toEqual([]);
+			expect(remove.mock.calls.filter(([path]) => !path.includes("/.git/worktrees/"))).toEqual([]);
+			expect(existsSync(scratch)).toBe(false);
+			expect(gitIn(repo, "worktree", "list", "--porcelain")).not.toContain("melian-static-");
+		} finally {
+			if (Number.isInteger(pid) && pid > 1) process.kill(pid, "SIGKILL");
+			if (scratch !== "") rmSync(scratch, { recursive: true, force: true });
 		}
 	});
 });
