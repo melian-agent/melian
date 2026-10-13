@@ -197,12 +197,6 @@ export class Defect {
 		return this.lensOnly() && claims.length > 0 && claims.every((claim) => claim.verification?.verdict === "refuted");
 	}
 
-	/** Whether a lens-only defect still has an unjudged claim. */
-	unverified(): boolean {
-		const claims = VerificationState.from(this.speaker).claims;
-		return this.lensOnly() && (claims.length === 0 || claims.some((claim) => claim.verification === undefined));
-	}
-
 	/**
 	 * The IDs of the reports a dismissal records: the speaker's own and every member's, or the one report `only` names
 	 * alone, leaving every other report live.
