@@ -141,7 +141,7 @@ function readJson<T>(file: string, schema: TSchema): T {
 	return value as T;
 }
 
-/** The directory under {@link goldensDirectory} that holds the resolution goldens, which have a shape of their own. */
+// The directory under the goldens that holds the resolution goldens, which have a shape of their own.
 export const resolutionGoldens = "resolution";
 
 /** Loads every golden under `directory`, in name order, leaving the resolution goldens to their own loader. */

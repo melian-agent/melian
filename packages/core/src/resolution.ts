@@ -53,7 +53,7 @@ export interface WalkDecision {
 
 const severities: readonly Severity[] = ["P0", "P1", "P2", "P3", "nit"];
 
-/** The more lenient of two resolutions. */
+// The more lenient of two resolutions.
 export function lesser(left: Resolution, right: Resolution): Resolution {
 	return resolutionOrder.indexOf(left) >= resolutionOrder.indexOf(right) ? left : right;
 }
