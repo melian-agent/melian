@@ -3,6 +3,7 @@ import {
 	type CheckRecord,
 	type CheckStatus,
 	ConfigError,
+	LensError,
 	type MelianConfig,
 	type PreExistingCap,
 	type PublicationDetails,
@@ -216,7 +217,8 @@ export const AdjudicationTask = defineTask<AdjudicationTaskInput, { phase: "adju
 			} catch (error) {
 				// A policy that cannot be read is the task's outcome rather than a fault. It may not fail the same way next
 				// time, as when a shallow clone fetches the base later, so the next review starts a new task.
-				if (!(error instanceof ConfigError)) throw error;
+				// A lens file is policy too: its declared resolution is read with the finding's configuration.
+				if (!(error instanceof ConfigError) && !(error instanceof LensError)) throw error;
 				const failure = { message: error.message };
 				await runtime.commit(
 					() => ({ status: "terminal", outcome: { status: "failed", error: failure } }),

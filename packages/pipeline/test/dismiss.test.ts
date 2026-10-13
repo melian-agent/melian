@@ -769,6 +769,28 @@ describe("recording a dismissal", () => {
 		expect(old.state.outcome).toEqual({ status: "completed", result: "superseded" });
 	});
 
+	it("ends the adjudication, naming the lens file, when a lens the policy declares can no longer be read", async () => {
+		const harness = await reviewHarness(createMemoryStorage());
+		scriptFinding();
+		const changeset = await Changeset.resolve(repo, "main...feature");
+		const { findings } = await reviewChangeset({
+			harness,
+			changeset,
+			config,
+			lenses,
+			standards: [],
+			models: fake.review,
+			checks: [...deterministicRan],
+			policy: { kind: "worktree" },
+		});
+		writeFiles(repo, { ".melian/lenses/broken/LENS.md": "No front matter here.\n" });
+
+		await expect(dismiss(harness, findings[0]!.properties.id)).rejects.toMatchObject({
+			code: "adjudicationFailed",
+			message: expect.stringContaining("LENS.md must start with a --- front matter block"),
+		});
+	});
+
 	it("refuses to publish a verdict whose adjudication ended without deciding, naming why", async () => {
 		const path = join(dir, "changeset.sqlite");
 		const first = await reviewHarness(await openSqliteStorage(path));
