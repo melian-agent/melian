@@ -117,7 +117,7 @@ describe("built-in lenses", () => {
 		expect(Object.fromEntries(lenses.map((lens) => [lens.name, lens.version]))).toEqual({
 			contracts: "686d7ad61a40",
 			conventions: "bb08d9e590e4",
-			correctness: "7a139e0e8584",
+			correctness: "fa07e8f02cca",
 			design: "831b3c219a2e",
 			"removed-behaviour": "45fa8885fd01",
 			tests: "bee1be69be22",
@@ -125,7 +125,7 @@ describe("built-in lenses", () => {
 		});
 		const tuned = { ...defaultConfig, lenses: { correctness: { tier: "light" as const, paths: ["src/**"] } } };
 		const [correctness] = Lens.select(named(lenses, "correctness"), tuned, ["src/index.ts"]);
-		expect(correctness!.lens.version).toBe("687a9536c894");
+		expect(correctness!.lens.version).toBe("91c23c43addc");
 	});
 
 	it("load the design lens heavy, over every path, reading whole functions at the one level it declares", async () => {
@@ -202,13 +202,13 @@ describe("built-in lenses", () => {
 		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
 		expect(Object.fromEntries(lenses.map((lens) => [lens.name, lens.version]))).toMatchObject({
 			durability: "2d5b8a8ef26d",
-			correctness: "722ec9d72d41",
+			correctness: "61fcea7a7f63",
 			"removed-behaviour": "d9d8851b1ced",
 		});
 		const { config } = await loadConfig(repo, { kind: "worktree" }, ".");
 		const selected = Lens.select(lenses, config, ["src/index.ts"]);
 		expect(Object.fromEntries(selected.map(({ lens }) => [lens.name, lens.version]))).toMatchObject({
-			correctness: "8cc4ffd2bfa9",
+			correctness: "557077187771",
 			"removed-behaviour": "a9e209da1c15",
 		});
 	});
@@ -927,8 +927,9 @@ describe("Lens.renderInstructions", () => {
 		const [conventions] = named(lenses, "conventions");
 		expect(conventions!.handoffs).toEqual({});
 		expect(correctness!.handoffs.design).toContain(
-			"It keeps them where the change says the dependency cannot run there. Where the repository uses no such dependency, a wrong result is yours.",
+			"Design keeps them where the change says the dependency cannot run there. Where the repository uses no such dependency, a wrong result is yours.",
 		);
+		expect(correctness!.handoffs.design).not.toMatch(/\b(It|it) keeps\b/);
 		const [design] = named(lenses, "design");
 		const beside = design!.renderInstructions([], "careful", [every("correctness"), every("conventions")], asIs);
 		expect(beside).toContain("- `conventions`: A breach of a rule the repository's standards state in words.");
