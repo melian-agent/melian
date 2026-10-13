@@ -150,6 +150,15 @@ export class ScopeProposal {
 			refuse("b", `Melian cannot read the failing lines at the base, at line ${failing.baseLine} of the base file`);
 		else if (baseLines !== headLines) refuse("b", "the failing lines at the base differ from the head's");
 
+		// The base lines must be the ones the head's lines came from. The same bytes elsewhere at the base, in another
+		// function, would send every check that follows to the wrong one.
+		const origin = revision.untouched({ file, startLine: failing.line, endLine });
+		if (origin !== undefined && origin.startLine !== failing.baseLine)
+			refuse(
+				"b",
+				`the failing lines came from base line ${origin.startLine}, not line ${failing.baseLine} as the proposal says`,
+			);
+
 		const named = [...(proposal.trigger === undefined ? [] : [proposal.trigger]), ...(proposal.path ?? []), failing];
 		if (proposal.trigger === undefined) refuse("c", "the proposal names no trigger");
 		for (const location of named) {

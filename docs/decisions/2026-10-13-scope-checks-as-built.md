@@ -21,7 +21,10 @@ Choice: step 17, "The verifier lowers severity and sets scope", builds the rules
 - **A lowering carries its own reason**, beside the verdict's, because the reason a claim is true is not the reason it is narrow.
 - **A member is carried when another revision first sighted it.** The findings document already records the revision that first saw each finding. The terminal and the JSON have no pull request to ask, so adjudication reads that record. The ledger renders the same state from the verdict each round stored.
 - **The JSON keeps a member in its resolution group** and lists it again under `preExistingImportant`, with its state, its original severity and, when re-scoped, its original scope and the reason. A consumer that reads only the groups still sees every finding.
-- **A member the floor alone lifts does not change the status.** A pre-existing P0 that the table maps to `silent` is listed at `advisory`, and the review still reads `passed`.
+- **A member at advisory does not count toward the status.** The decision says a member never changes the verdict or the exit code unless a cap asks for an acknowledgement. So a review whose only findings are members reads `passed` and exits 0, with the members listed. This changes what a pre-existing P0 or P1 did before step 17: it made the review read `findings`. An ordinary pre-existing finding, a P2 or lower that no verifier re-scoped, still counts as it did.
+- **The base line of the failing lines is Melian's to say.** The verifier gives it, and Melian checks it against the line the head's lines came from, by the hunks above them. The same bytes in another function at the base would otherwise pass rule (b) and send the guard check to the wrong function.
+- **A default export is read from the compiler's modifiers**, never from the text, where a comment may sit between `export` and `default`.
+- **A member is carried by its own reports.** A dismissed report that a live finding only lists beside it does not make that finding carried.
 
 What step 18 still owes: the `resolution.preExisting` cap key, and with it how an acknowledgement is recorded for a carried finding. Until then the cap is fixed at advisory, and a member never asks for one.
 

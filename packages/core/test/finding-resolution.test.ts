@@ -228,16 +228,14 @@ describe("the floors", () => {
 		expect(speaker.floored(capped, ["no-eval", "melian/injection-attempt"]).resolution).toBe("acknowledge");
 	});
 
-	it("holds a member of Pre-existing, important at advisory, and says the floor alone lifted it", () => {
+	it("holds a member of Pre-existing, important at advisory, and marks the floor", () => {
 		const silent = { resolution: { ...defaultConfig.resolution, P0: "silent" } } as const;
 		const member = finding({ severity: "P0", cause: "pre-existing" });
 		expect(member.decision(silent)).toMatchObject({
 			resolution: "advisory",
 			decidedBy: { floor: "pre-existing-important" },
 		});
-		expect(member.lifted(silent)).toBe(true);
-		expect(member.lifted(defaultConfig)).toBe(false);
-		expect(finding({ rule: "melian/injection-attempt", severity: "P1" }).lifted(quiet)).toBe(false);
+		expect(member.decision(defaultConfig).decidedBy.floor).toBeUndefined();
 		expect(finding({ severity: "P0" }).resolve(silent)).toBe("silent");
 		expect(finding({ severity: "P2", cause: "pre-existing" }).resolve(quiet)).toBe("silent");
 	});

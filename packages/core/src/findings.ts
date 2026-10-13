@@ -1334,14 +1334,6 @@ export class Finding {
 	}
 
 	/**
-	 * Whether only the floor of "Pre-existing, important" keeps the finding above `silent` under `source`. Such a
-	 * finding is listed and changes no verdict.
-	 */
-	lifted(source: ResolutionSource): boolean {
-		return this.decision(source).decidedBy.floor === "pre-existing-important";
-	}
-
-	/**
 	 * The resolution after the caps and before the floors, as one member of a defect resolves. With `unverified`, a
 	 * lens finding no verifier judged is never above `advisory`: adjudication sets it for a review that ran the verifier.
 	 */

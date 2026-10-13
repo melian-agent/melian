@@ -176,7 +176,7 @@ describe("a merged defect resolves each report under its own check, rule, and se
 		expect(only([cleanup(), biome({ severity: "P3" })], declared).properties.resolution).toBe("advisory");
 	});
 
-	it("counts a member the important floor alone lifted as no finding", () => {
+	it("leaves a member the important floor holds at advisory out of the status, and counts one a stricter floor holds", () => {
 		const silent = policy({ P0: "silent" });
 		const old = cleanup({ severity: "P0", cause: "pre-existing" });
 		const verdict = decide([old], silent);

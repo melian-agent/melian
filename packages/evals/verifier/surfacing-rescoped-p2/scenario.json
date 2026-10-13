@@ -54,7 +54,7 @@
 	],
 	"expected": [
 		{
-			"status": "findings",
+			"status": "passed",
 			"blocking": false,
 			"severity": "P2",
 			"cause": "pre-existing",
