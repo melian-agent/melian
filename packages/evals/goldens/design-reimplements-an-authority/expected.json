@@ -1,0 +1,35 @@
+{
+  "pr_title": "Read a note's header",
+  "comments": [
+    {
+      "comment": "readHeader parses a note's YAML header by splitting each line at its first colon, though the repository already depends on yaml, whose parse reads that format.",
+      "severity": "High",
+      "category": "bug",
+      "file": "src/note.ts",
+      "rule": "reimplements-an-authority",
+      "source": "lens.design",
+      "cause": "introduced",
+      "failureScenario": "A note opens with a header whose title line is `title: \"Plans: 2027\"` and whose tags line is `tags: [work, home]`. readHeader returns the title with its quotation marks kept, `\"Plans: 2027\"`, and tags as the text `[work, home]`. yaml's parse, which loadConfig already calls, returns the title Plans: 2027 and a list of two tags.",
+      "evidence": [
+        {
+          "file": "src/note.ts",
+          "line": 6,
+          "endLine": 9,
+          "role": "cause"
+        },
+        {
+          "file": "package.json",
+          "line": 5,
+          "role": "context",
+          "revision": "base"
+        },
+        {
+          "file": "src/config.ts",
+          "line": 2,
+          "role": "context",
+          "revision": "base"
+        }
+      ]
+    }
+  ]
+}

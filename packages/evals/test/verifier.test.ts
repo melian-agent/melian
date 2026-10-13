@@ -39,9 +39,11 @@ const verdictCases: [VerifierGolden["expected"]["kind"], Verification["verdict"]
 ];
 
 describe("the verifier corpus", { timeout: 60_000 }, () => {
-	it("holds executing-reviewer misses, a design departure and two decoys outside the lens corpus", () => {
+	it("holds executing-reviewer misses, two design claims and three decoys outside the lens corpus", () => {
 		expect(goldens.map((golden) => golden.name)).toEqual([
 			"circular-import-tdz",
+			"design-reimplements-an-authority-supported-gap",
+			"design-reimplements-an-authority-unsupported-gap",
 			"design-supersedes-its-own-decision",
 			"excluded-zero-input",
 			"guarded-null-dereference",
@@ -96,6 +98,7 @@ describe("the verifier corpus", { timeout: 60_000 }, () => {
 		expect(scoreVerifierGolden(golden, run)).toMatchObject({ verdict: undefined, passed: false });
 		expect(run.rendered).toContain("not reviewed");
 		expect(run.rendered).toContain(`Missing verifier instruction: ${missing}`);
+		expect(run.unjudged).toContain(`Missing verifier instruction: ${missing}`);
 		expect(run.verifierRequests).toBe(1);
 	});
 	it("fails a refuted real defect, a retained decoy, and any unjudged candidate", () => {
@@ -141,6 +144,29 @@ describe("the verifier corpus", { timeout: 60_000 }, () => {
 		expect(requests["Melian adversarial verifier"]).toHaveLength(2);
 		expect(scoreVerifierGolden(golden, run).passed).toBe(true);
 	});
+	it("retries a live judge's failed request, so one provider error does not score a golden unjudged", async () => {
+		const judge = createFakeModels({ provider: "flaky-judge", models: [{ id: "separate" }] });
+		const requests = scriptConversations(judge, [
+			{
+				match: "Melian adversarial verifier",
+				replies: [
+					fauxAssistantMessage("", { stopReason: "error", errorMessage: "503 overloaded_error" }),
+					(messages) => scriptVerifier(messages),
+					(messages) => scriptVerifier(messages),
+				],
+			},
+		]);
+		const ref = judge.ref();
+		const golden = goldens.find((each) => each.expected.kind === "needs-execution")!;
+		const run = await runVerifierGolden(golden, {
+			kind: "live",
+			models: judge.review,
+			verifierModel: `${ref.provider}/${ref.modelId}`,
+		});
+		expect(requests["Melian adversarial verifier"]).toHaveLength(3);
+		expect(run.unjudged).toBeUndefined();
+		expect(scoreVerifierGolden(golden, run).passed).toBe(true);
+	});
 	it("scores an unfinished judge as unjudged and continues to the next golden", async () => {
 		const judge = createFakeModels({ provider: "unfinished-judge", models: [{ id: "separate" }] });
 		const requests = scriptConversations(judge, [
@@ -163,6 +189,7 @@ describe("the verifier corpus", { timeout: 60_000 }, () => {
 			});
 			scores.push(scoreVerifierGolden(golden, run));
 			if (scores.length === 1) expect(run.rendered).toContain("not reviewed");
+			expect(run.unjudged).toBe(scores.length === 1 ? "the verifier left a claim unjudged" : undefined);
 		}
 		expect(scores).toMatchObject([
 			{ verdict: undefined, passed: false },

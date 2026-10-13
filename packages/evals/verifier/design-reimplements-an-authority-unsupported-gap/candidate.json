@@ -1,0 +1,37 @@
+{
+  "file": "src/note.ts",
+  "line": 8,
+  "rule": "reimplements-an-authority",
+  "severity": "P1",
+  "explanation": {
+    "what": "readHeader parses a note's YAML header by hand beside a yaml dependency, and the gap its comment states is one nothing in the repository supports.",
+    "why": "The comment names the authority and a reason, but no code supports the reason: the module is imported by the same entry point that already parses with yaml. A stated gap excuses nothing on its own.",
+    "fix": "Parse the header block with yaml's parse, as loadConfig does, and delete the comment."
+  },
+  "failureScenario": "A note opens with a header whose title line is `title: \"Plans: 2027\"`. title() in src/cli.ts calls readHeader, which returns the title with its quotation marks kept, `\"Plans: 2027\"`. yaml's parse returns Plans: 2027. The comment says the module runs before the dependencies are installed, but src/cli.ts imports it beside loadConfig, which calls yaml's parse in the same process, and package.json runs no script before install.",
+  "evidence": [
+    {
+      "file": "src/note.ts",
+      "line": 8,
+      "endLine": 11,
+      "role": "cause"
+    },
+    {
+      "file": "src/note.ts",
+      "line": 2,
+      "role": "context"
+    },
+    {
+      "file": "src/cli.ts",
+      "line": 2,
+      "endLine": 3,
+      "role": "context"
+    },
+    {
+      "file": "package.json",
+      "line": 5,
+      "role": "context",
+      "revision": "base"
+    }
+  ]
+}

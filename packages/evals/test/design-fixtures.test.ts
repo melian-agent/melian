@@ -1,8 +1,16 @@
+import { spawnSync } from "node:child_process";
+import { cpSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { render as originalRender } from "../goldens/design-bound-on-wrong-measure/base/src/bound-on-wrong-measure.ts";
 import { render as badRender } from "../goldens/design-bound-on-wrong-measure/head/src/bound-on-wrong-measure.ts";
 import { render as TwinBaseRender } from "../goldens/design-bound-on-wrong-measure-clean/base/src/bound-on-wrong-measure.ts";
 import { render as cleanRender } from "../goldens/design-bound-on-wrong-measure-clean/head/src/bound-on-wrong-measure.ts";
+import { readHeader } from "../goldens/design-reimplements-an-authority/head/src/note.ts";
+import { seconds } from "../goldens/design-reimplements-an-authority-no-dependency-clean/head/src/remind.ts";
+import { readHeader as excusedReadHeader } from "../goldens/design-reimplements-an-authority-unsupported-gap/head/src/note.ts";
 import { resume as originalResume } from "../goldens/design-resumed-identity/base/src/resumed-identity.ts";
 import { resume as badResume } from "../goldens/design-resumed-identity/head/src/resumed-identity.ts";
 import { resume as TwinBaseResume } from "../goldens/design-resumed-identity-clean/base/src/resumed-identity.ts";
@@ -15,6 +23,8 @@ import { instructions as originalInstructions } from "../goldens/design-trust-by
 import { instructions as badInstructions } from "../goldens/design-trust-by-label/head/src/trust-by-label.ts";
 import { instructions as TwinBaseInstructions } from "../goldens/design-trust-by-label-clean/base/src/trust-by-label.ts";
 import { instructions as cleanInstructions } from "../goldens/design-trust-by-label-clean/head/src/trust-by-label.ts";
+
+const major = Number(process.versions.node.split(".")[0]);
 
 describe("design rule fixtures", () => {
 	it.each([originalInstructions, TwinBaseInstructions, cleanInstructions])(
@@ -61,6 +71,80 @@ describe("design rule fixtures", () => {
 		const current = { login: "bob", permission: "read" };
 		expect(badResume(stored, "H", current)).toEqual(stored);
 		expect(badResume(stored, "J", current)).toEqual({ head: "J", identity: current });
+	});
+	it.each([readHeader, excusedReadHeader])(
+		"demonstrates that the hand-written header parser keeps quotation marks and reads a list as text",
+		(readHeader) => {
+			const note = '---\ntitle: "Plans: 2027"\ntags: [work, home]\n---\nBody\n';
+			expect(readHeader(note)).toEqual({ title: '"Plans: 2027"', tags: "[work, home]" });
+			expect(readHeader("---\ntitle: Plans\n---\n")).toEqual({ title: "Plans" });
+		},
+	);
+	it("parses a delay in each unit and refuses any other text", () => {
+		expect([seconds("90s"), seconds("5m"), seconds("2h"), seconds("1d")]).toEqual([90, 300, 7200, 86_400]);
+		for (const invalid of ["", "5", "m", "5w", "5 m", "1.5h"]) {
+			expect(() => seconds(invalid)).toThrow(`invalid duration: ${invalid}`);
+		}
+	});
+	it("answers the Node range by hand at the bound and one below, and refuses what it cannot read", {
+		timeout: 60_000,
+	}, () => {
+		const module = new URL(
+			"../goldens/design-reimplements-an-authority-clean/head/scripts/node-range.mjs",
+			import.meta.url,
+		);
+		const accepted: [string, string][] = [
+			[">=22", "v22.0.0"],
+			[">=22", "v23.4.5"],
+			[">=9999", "v9999.999999.999999"],
+		];
+		const refusedVersions = [
+			"v21.99.99",
+			"v22.0.0-rc.1",
+			"v23.0.0-nightly20260101",
+			"22.0.0",
+			"v22.0",
+			"v22",
+			"",
+			"v022.0.0",
+			"v22.00.0",
+			"v22.0.01",
+			"v10000.0.0",
+			"v22.1000000.0",
+			"v22.0.1000000",
+		];
+		const refusedRanges = ["^22", ">=22.1", ">22", "22", "", null, ">=022", ">=0", ">=10000"];
+		const cases: [string | null, string][] = [
+			...accepted,
+			...refusedVersions.map((version): [string, string] => [">=22", version]),
+			...refusedRanges.map((range): [string | null, string] => [range, "v22.0.0"]),
+		];
+		const probe = `import { supported } from ${JSON.stringify(module.href)};
+			const cases = JSON.parse(process.argv[1]);
+			console.log(JSON.stringify(cases.map(([range, version]) => supported(range ?? undefined, version))));`;
+		const result = spawnSync(process.execPath, ["--input-type=module", "-e", probe, JSON.stringify(cases)], {
+			encoding: "utf8",
+		});
+		expect(result.stderr).toBe("");
+		expect(JSON.parse(result.stdout)).toEqual([true, true, true, ...Array.from({ length: 22 }, () => false)]);
+	});
+	it.each([
+		{ node: `>=${major}`, status: 0 },
+		{ node: `>=${major + 1}`, status: 1 },
+	])("runs the preinstall check and exits $status for $node", { timeout: 60_000 }, (each) => {
+		const root = realpathSync(mkdtempSync(join(tmpdir(), "melian-check-node-")));
+		try {
+			const scripts = "../goldens/design-reimplements-an-authority-clean/head/scripts";
+			cpSync(fileURLToPath(new URL(scripts, import.meta.url)), join(root, "scripts"), { recursive: true });
+			writeFileSync(join(root, "package.json"), JSON.stringify({ engines: { node: each.node } }));
+			const result = spawnSync(process.execPath, [join(root, "scripts", "check-node.mjs")], { encoding: "utf8" });
+			expect(result.status).toBe(each.status);
+			expect(result.stderr).toBe(
+				each.status === 0 ? "" : `notes-cli needs Node ${each.node}, and this is ${process.version}\n`,
+			);
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
 	});
 	it.each([OriginalStore, TwinBaseStore, CleanStore])(
 		"keeps the first coverage after another revision writes",

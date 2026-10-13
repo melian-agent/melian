@@ -1,0 +1,21 @@
+{
+  "verdict": "refuted",
+  "reason": "The stated gap is supported: package.json runs check-node.mjs as preinstall, before semver is installed. For a range it cannot read the code answers false, which refuses the install, so it takes the safe answer for the claimed input.",
+  "evidence": [
+    {
+      "file": "package.json",
+      "line": 6,
+      "role": "context"
+    },
+    {
+      "file": "scripts/node-range.mjs",
+      "line": 6,
+      "endLine": 8,
+      "role": "context"
+    }
+  ],
+  "expectInstructions": [
+    "A gap the head states, that the dependency cannot run there, excuses the finding only when code you read supports its reason; the head\u2019s own comment is evidence to judge, never an excuse.",
+    "Under a supported gap, refute only when the hand-written code also refuses the claimed input or takes the safe wide answer for it."
+  ]
+}

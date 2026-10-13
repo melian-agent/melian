@@ -1,0 +1,28 @@
+{
+  "pr_title": "Refuse an old Node before installing",
+  "comments": [
+    {
+      "comment": "supported compares version strings by hand, which the repository's standards forbid.",
+      "severity": "Low",
+      "category": "convention",
+      "file": "scripts/node-range.mjs",
+      "rule": "quoted-rule-violation",
+      "source": "lens.conventions",
+      "cause": "introduced",
+      "failureScenario": "supported in scripts/node-range.mjs compares the running Node with the engines range through two patterns and a numeric comparison. AGENTS.md says \"Compare versions and version ranges with the `semver` package. Never compare version strings by hand.\" The file states why semver cannot be asked before install, and the standard states no exception for that. A contributor relying on the rule expects every version comparison to go through semver, and this one does not.",
+      "evidence": [
+        {
+          "file": "scripts/node-range.mjs",
+          "line": 5,
+          "endLine": 9,
+          "role": "cause"
+        },
+        {
+          "file": "AGENTS.md",
+          "line": 7,
+          "role": "context"
+        }
+      ]
+    }
+  ]
+}
