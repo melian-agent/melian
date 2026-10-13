@@ -163,11 +163,11 @@ export class Run {
 	// Puts every later `tool` command inside the host's sandbox: no network, the reviewer's files unreadable, and writes
 	// in scratch only. Returns a note when it cannot, and the tool then runs as it always has. That is safe to do because
 	// Biome and tsc read the revision and never run it; the sandbox is there for a tool a crafted file subverts.
-	confine(root: string, scratch: string, installs: readonly string[]): string | undefined {
-		const sandbox = Sandbox.detect();
+	async confine(root: string, scratch: string, installs: readonly string[]): Promise<string | undefined> {
+		const sandbox = await Sandbox.detect(this.input.env, this.context);
 		if (sandbox === undefined) return `${this.input.tool} ran unconfined: this host offers no sandbox.`;
 		const paths = { worktree: root, scratch, installs, node: nodeExecutable() };
-		const failure = sandbox.runtimeFailure(paths);
+		const failure = await sandbox.runtimeFailure(paths, this.input.env, this.context);
 		if (failure !== undefined) return `${this.input.tool} ran unconfined: ${failure}.`;
 		this.#confinement = { sandbox, paths, profile: sandbox.profile(paths) };
 	}
@@ -542,7 +542,7 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 		const segments = (real.ok ? real.value : binary).split("/");
 		const own = segments.slice(0, segments.indexOf("node_modules") + 1).join("/");
 		if (own !== "" && !installs.includes(own)) installs.push(own);
-		const unconfined = run.confine(root, scratch, installs);
+		const unconfined = await run.confine(root, scratch, installs);
 		if (unconfined !== undefined) notes.push(unconfined);
 		const version = await versionOf(run, binary);
 		const log =
@@ -562,7 +562,7 @@ async function removeWorktree(run: Run, scratch: string, mutation = false): Prom
 	const cleanup = new Run({ ...run.input, settings: { ...run.input.settings, timeout: 60 } }, backgroundContext);
 	let files = run.mutationScratch;
 	if (mutation) {
-		const sandbox = Sandbox.detect();
+		const sandbox = await Sandbox.detect(run.input.env, backgroundContext);
 		if (sandbox === undefined)
 			throw run.fail("worktreeFailed", `cannot safely remove mutation scratch ${scratch}: no sandbox`);
 		files = MutationScratch.open(cleanup, scratch, sandbox, []);

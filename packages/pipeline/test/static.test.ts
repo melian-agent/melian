@@ -24,7 +24,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Sandbox } from "../src/sandbox.ts";
 import { Run, staticToolSource } from "../src/static.ts";
 import { commit, createRepository, fakeTool, gitIn, lines, removeRepository, writeFiles } from "./fixtures/repo.ts";
-import { unconfinedNotes, unconfinedSandbox } from "./fixtures/sandbox.ts";
+import { hostSandbox, unconfinedNotes, unconfinedSandbox } from "./fixtures/sandbox.ts";
 
 let repo: string;
 
@@ -203,7 +203,7 @@ describe("runStaticTool with the repository's own tools", () => {
 	it("probes the sandbox once and runs the version probe and the tool inside it", { timeout: 60_000 }, async () => {
 		const head = commit(repo, { ".gitignore": lines("node_modules"), "src/a.ts": "export const a = 1;\n" });
 		writeFiles(repo, { "node_modules/x/index.js": "x\n" });
-		const detect = vi.spyOn(Sandbox, "detect").mockReturnValue(unconfinedSandbox);
+		const detect = vi.spyOn(Sandbox, "detect").mockResolvedValue(unconfinedSandbox);
 		const started = vi.spyOn(unconfinedSandbox, "runtimeFailure");
 		const command = vi.spyOn(unconfinedSandbox, "command");
 		vi.spyOn(unconfinedSandbox, "environment").mockReturnValue({ PATH: process.env.PATH!, MELIAN_SANDBOX: "test" });
@@ -213,7 +213,8 @@ describe("runStaticTool with the repository's own tools", () => {
 		expect(result).toMatchObject({ status: "ran", notes: [] });
 		expect(detect).toHaveBeenCalledOnce();
 		const [, paths] = command.mock.calls[0]!;
-		expect(started).toHaveBeenCalledExactlyOnceWith(paths);
+		expect(started).toHaveBeenCalledExactlyOnceWith(paths, env, context);
+		expect(detect).toHaveBeenCalledExactlyOnceWith(env, context);
 		expect(paths.worktree).toBe(join(paths.scratch, "tree"));
 		expect(paths.scratch).toMatch(/melian-static-/);
 		// The checkout's install, then Melian's own, which holds the Biome that ran.
@@ -243,12 +244,12 @@ describe("runStaticTool with the repository's own tools", () => {
 		["the host offers no sandbox", undefined, "biome ran unconfined: this host offers no sandbox."],
 		[
 			"Node cannot start inside the sandbox",
-			{ ...unconfinedSandbox, runtimeFailure: () => "Node runtime /n could not start within seatbelt" },
+			{ ...unconfinedSandbox, runtimeFailure: async () => "Node runtime /n could not start within seatbelt" },
 			"biome ran unconfined: Node runtime /n could not start within seatbelt.",
 		],
 	] as const)("runs the tool unconfined with a note when %s", { timeout: 60_000 }, async (_name, sandbox, note) => {
 		const head = commit(repo, { "src/a.ts": lines("debugger;") });
-		vi.spyOn(Sandbox, "detect").mockReturnValue(sandbox as Sandbox | undefined);
+		vi.spyOn(Sandbox, "detect").mockResolvedValue(sandbox as Sandbox | undefined);
 		const command = vi.spyOn(unconfinedSandbox, "command");
 		const env = createNodeExecutionEnv(repo);
 		const execute = vi.spyOn(env, "exec");
@@ -275,7 +276,7 @@ describe("runStaticTool with the repository's own tools", () => {
 				`printf '%s' '${emptySarif}' > "$out"`,
 			].join("\n"),
 		);
-		vi.spyOn(Sandbox, "detect").mockReturnValue(unconfinedSandbox);
+		vi.spyOn(Sandbox, "detect").mockResolvedValue(unconfinedSandbox);
 		const command = vi.spyOn(unconfinedSandbox, "command");
 		const env = createNodeExecutionEnv(repo);
 		const canonical = env.canonicalPath.bind(env);
@@ -380,7 +381,7 @@ describe("runStaticTool with the repository's own tools", () => {
 		vi.stubEnv("MELIAN_TEST_SECRET", "hunter2");
 		vi.stubEnv("NODE_V8_COVERAGE", "");
 		// The fake records what it saw beside the repository, so this run is the unconfined one.
-		vi.spyOn(Sandbox, "detect").mockReturnValue(undefined);
+		vi.spyOn(Sandbox, "detect").mockResolvedValue(undefined);
 		const head = commit(repo, { ".gitignore": lines("node_modules"), "tsconfig.json": tsconfig });
 		const seen = join(repo, ".git", "tool-env.txt");
 		fakeTool(repo, "tsc", `if [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi\nenv > '${seen}'`);
@@ -396,7 +397,7 @@ describe("runStaticTool with the repository's own tools", () => {
 		).toEqual([]);
 	});
 
-	it.skipIf(Sandbox.detect() === undefined)(
+	it.skipIf(hostSandbox === undefined)(
 		"gives a confined tool the sandbox's variables and a scratch HOME and TMPDIR, and still no secret",
 		{ timeout: 60_000 },
 		async () => {
@@ -430,7 +431,7 @@ describe("runStaticTool with the repository's own tools", () => {
 		},
 	);
 
-	it.skipIf(Sandbox.detect() === undefined)(
+	it.skipIf(hostSandbox === undefined)(
 		"confines the tool: it cannot read a home, write beside scratch, or reach a local port",
 		{ timeout: 60_000 },
 		async () => {

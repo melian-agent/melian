@@ -1,7 +1,7 @@
-import { spawnSync } from "node:child_process";
 import { existsSync, readlinkSync, realpathSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, posix } from "node:path";
+import type { Context, ExecutionEnv } from "./harness.ts";
 
 /** The sandbox a host offers: seatbelt through `sandbox-exec` on macOS, bubblewrap on Linux. */
 export type SandboxBackend = "seatbelt" | "bubblewrap";
@@ -104,15 +104,11 @@ function nodeDirectories(executable: string): string[] {
 	);
 }
 
-function available(backend: SandboxBackend): boolean {
-	const trial =
-		backend === "seatbelt"
-			? spawnSync("/usr/bin/sandbox-exec", ["-p", "(version 1)(allow default)", "/usr/bin/true"], {
-					stdio: "ignore",
-				})
-			: spawnSync("bwrap", ["--unshare-all", "--ro-bind", "/", "/", "true"], { stdio: "ignore" });
-	return trial.status === 0;
-}
+// One trial start of each backend, with nothing denied: it shows the host lets a sandbox start at all.
+const trials: Readonly<Record<SandboxBackend, string>> = {
+	seatbelt: "/usr/bin/sandbox-exec -p '(version 1)(allow default)' /usr/bin/true",
+	bubblewrap: "bwrap --unshare-all --ro-bind / / true",
+};
 
 /**
  * A way to run a command with no route off the machine and nothing readable but the run's files. Problem: a command
@@ -128,13 +124,24 @@ export class Sandbox {
 	}
 
 	/**
-	 * The sandbox this host offers, or undefined. It tries the backend, not only the program's presence: a host that
-	 * forbids nested sandboxes, or unprivileged user namespaces, has none.
+	 * The sandbox the host behind `env` offers, or undefined. It starts the backend there, not only looks for the
+	 * program: a host that forbids nested sandboxes, or unprivileged user namespaces, has none. The policy itself is
+	 * built from this process's view of the machine, so `env` must run commands on the machine Melian runs on; an
+	 * environment that runs elsewhere finds no backend here and its commands run unwrapped.
 	 */
-	static detect(platform: NodeJS.Platform = process.platform): Sandbox | undefined {
+	static async detect(
+		env: ExecutionEnv,
+		context: Context,
+		platform: NodeJS.Platform = process.platform,
+	): Promise<Sandbox | undefined> {
 		const backend = platform === "darwin" ? "seatbelt" : platform === "linux" ? "bubblewrap" : undefined;
-		if (backend === undefined || !available(backend)) return undefined;
-		return new Sandbox(backend);
+		if (backend === undefined) return undefined;
+		const trial = await env.exec(
+			trials[backend],
+			{ inheritEnv: false, env: { PATH: process.env.PATH ?? "/usr/bin:/bin" }, timeout: 30 },
+			context,
+		);
+		return trial.ok && trial.value.exitCode === 0 ? new Sandbox(backend) : undefined;
 	}
 
 	/**
@@ -161,16 +168,17 @@ export class Sandbox {
 		};
 	}
 
-	runtimeFailure(paths: SandboxPaths): string | undefined {
-		const result = spawnSync(
-			"/bin/bash",
-			["-c", this.command(`${quote(paths.node)} --version`, paths, "", this.profile(paths))],
+	async runtimeFailure(paths: SandboxPaths, env: ExecutionEnv, context: Context): Promise<string | undefined> {
+		const result = await env.exec(
+			this.command(`${quote(paths.node)} --version`, paths, "", this.profile(paths)),
 			{
-				encoding: "utf8",
+				inheritEnv: false,
 				env: { ...this.environment(), HOME: paths.scratch, TMPDIR: paths.scratch },
+				timeout: 30,
 			},
+			context,
 		);
-		if (result.status === 0) return undefined;
+		if (result.ok && result.value.exitCode === 0) return undefined;
 		return `Node runtime ${paths.node} could not start within ${this.backend}; the runtime grant was not widened`;
 	}
 

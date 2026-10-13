@@ -30,7 +30,14 @@ Choice: a grant stays only when a named program fails without it. Each rule was 
 | deny `/dev/tty` | Stated, so a later device grant cannot open the terminal by accident. |
 | loopback, and read `/private/etc/hosts`, only when the caller asks | A tool that talks to its own workers; the resolver needs the file to find `localhost`. |
 
-Removed, because no command needed them: `process-info*`, `ipc-posix-sem`, `ipc-posix-shm*`, `system-mac-syscall`, the Mach lookup, `/Library/Preferences`, `/Library/Apple`, `/private/var/db/dyld`, the rest of `/private/etc` and `/private/var/select`, and the devices `/dev/zero`, `/dev/random`, and `/dev/dtracehelper`. dyld opens `/dev/dtracehelper` to register trace probes and carries on without it. This replaces the device list in [the devices decision](2026-10-12-sandbox-devices-are-literals.md), which is corrected to match.
+Removed, because no command needed them:
+
+- `process-info*`, `ipc-posix-sem`, `ipc-posix-shm*`, `system-mac-syscall`, and the Mach lookup.
+- `/Library/Preferences`, `/Library/Apple`, and `/private/var/db/dyld`.
+- The rest of `/private/etc` and `/private/var/select`.
+- The devices `/dev/zero`, `/dev/random`, and `/dev/dtracehelper`.
+
+dyld opens `/dev/dtracehelper` to register trace probes and carries on without it. This replaces the device list in [the devices decision](2026-10-12-sandbox-devices-are-literals.md), which is corrected to match.
 
 One test pins the whole profile, rule for rule, so a grant added anywhere fails it. A second runs inside the real sandbox and checks that a program outside the readable paths does not start, that `ps` and a signal to a process outside fail, and that each removed path and device is refused.
 

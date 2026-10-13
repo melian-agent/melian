@@ -58,7 +58,12 @@ describe.skipIf(!available || process.env.MELIAN_SANDBOX !== undefined)(
 				},
 				backgroundContext,
 			);
-			const files = MutationScratch.open(run, scratch, Sandbox.detect()!, []);
+			const files = MutationScratch.open(
+				run,
+				scratch,
+				(await Sandbox.detect(createNodeExecutionEnv(directory), backgroundContext))!,
+				[],
+			);
 			const target = join(scratch, leaf);
 			const pending = operation === "remove" ? files.remove(target) : files.write(target, "overwritten");
 			await expect(pending).rejects.toThrow(target);

@@ -18,6 +18,7 @@ import { join, posix } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { backgroundContext as context, createNodeExecutionEnv, type ExecutionEnv } from "../src/harness.ts";
 import { nodeExecutable, Sandbox, type SandboxPaths } from "../src/sandbox.ts";
 
 vi.mock("node:child_process", async (importOriginal) => {
@@ -99,6 +100,19 @@ socket.on("error", (error) => { result.connect = ["EPERM", "EACCES", "ENETUNREAC
 
 let base: string;
 
+const host = createNodeExecutionEnv("/");
+const detect = (platform: NodeJS.Platform) => Sandbox.detect(host, context, platform);
+
+// An environment that answers every command with one exit code, or cannot run commands at all, and records them.
+function answering(exitCode: number | undefined) {
+	const exec = vi.fn<ExecutionEnv["exec"]>(async () =>
+		exitCode === undefined
+			? { ok: false, error: Object.assign(new Error("no shell"), { code: "spawn_error" as const }) }
+			: { ok: true, value: { exitCode } },
+	);
+	return { env: { exec } as unknown as ExecutionEnv, exec };
+}
+
 beforeEach(() => {
 	base = realpathSync(mkdtempSync(join(tmpdir(), "melian-sandbox-")));
 	for (const directory of [
@@ -147,9 +161,8 @@ async function probed(sandbox: Sandbox, loopback?: boolean): Promise<Record<stri
 
 describe("Sandbox.environment", () => {
 	for (const platform of ["darwin", "linux"] as const) {
-		it(`gives a PATH of Node's bin and the system's, whatever the host's is (${platform})`, () => {
-			vi.mocked(spawnSync).mockReturnValueOnce({ status: 0 } as ReturnType<typeof spawnSync>);
-			const sandbox = Sandbox.detect(platform)!;
+		it(`gives a PATH of Node's bin and the system's, whatever the host's is (${platform})`, async () => {
+			const sandbox = (await Sandbox.detect(answering(0).env, context, platform))!;
 			vi.stubEnv("PATH", "/opt/homebrew/bin:/Users/someone/bin");
 			const directories = sandbox!.environment().PATH!.split(":");
 			expect(directories).toContain(posix.dirname(nodeExecutable()));
@@ -268,7 +281,7 @@ it.skipIf(!seatbeltAvailable)(
 		const node = join(prefix, "bin/node");
 		copyFileSync(process.execPath, node);
 		vi.mocked(homedir).mockReturnValue(prefix);
-		const sandbox = Sandbox.detect("darwin")!;
+		const sandbox = (await detect("darwin"))!;
 		const where = { ...paths(), node };
 		const script = join(where.worktree, "beside-bin.cjs");
 		writeFileSync(
@@ -332,49 +345,64 @@ describe("the bubblewrap command", () => {
 });
 
 describe("Sandbox.detect", () => {
-	it("finds no sandbox on a platform that has neither backend", () => {
-		expect(Sandbox.detect("freebsd")).toBeUndefined();
-		expect(Sandbox.detect("win32")).toBeUndefined();
+	it("finds no sandbox on a platform that has neither backend, and starts nothing to find out", async () => {
+		const { env, exec } = answering(0);
+		expect(await Sandbox.detect(env, context, "freebsd")).toBeUndefined();
+		expect(await Sandbox.detect(env, context, "win32")).toBeUndefined();
+		expect(exec).not.toHaveBeenCalled();
 	});
 
-	for (const [platform, backend, executable, args] of [
-		["darwin", "seatbelt", "/usr/bin/sandbox-exec", ["-p", "(version 1)(allow default)", "/usr/bin/true"]],
-		["linux", "bubblewrap", "bwrap", ["--unshare-all", "--ro-bind", "/", "/", "true"]],
+	for (const [platform, backend, trial] of [
+		["darwin", "seatbelt", "/usr/bin/sandbox-exec -p '(version 1)(allow default)' /usr/bin/true"],
+		["linux", "bubblewrap", "bwrap --unshare-all --ro-bind / / true"],
 	] as const) {
-		it(`requires a successful probe before returning ${backend}`, () => {
-			const reply = { status: 0 } as ReturnType<typeof spawnSync>;
-			vi.mocked(spawnSync).mockReturnValueOnce(reply);
-			expect(Sandbox.detect(platform)?.backend).toBe(backend);
-			expect(spawnSync).toHaveBeenLastCalledWith(executable, args, { stdio: "ignore" });
-			vi.mocked(spawnSync).mockReturnValueOnce({ ...reply, status: 1 });
-			expect(Sandbox.detect(platform)).toBeUndefined();
+		it(`starts ${backend} through the run's environment and requires it to succeed`, async () => {
+			vi.stubEnv("PATH", "/opt/tools:/usr/bin");
+			vi.stubEnv("MELIAN_TEST_SECRET", "hunter2");
+			const working = answering(0);
+			expect((await Sandbox.detect(working.env, context, platform))?.backend).toBe(backend);
+			expect(working.exec).toHaveBeenCalledExactlyOnceWith(
+				trial,
+				{ inheritEnv: false, env: { PATH: "/opt/tools:/usr/bin" }, timeout: 30 },
+				context,
+			);
+			expect(await Sandbox.detect(answering(1).env, context, platform)).toBeUndefined();
+			expect(await Sandbox.detect(answering(undefined).env, context, platform)).toBeUndefined();
 		});
 	}
 
-	it.skipIf(process.platform === "darwin")("finds no seatbelt where sandbox-exec is absent", () => {
-		expect(Sandbox.detect("darwin")).toBeUndefined();
+	it("falls back to the system PATH when the process has none", async () => {
+		vi.stubEnv("PATH", undefined);
+		const { env, exec } = answering(0);
+		await Sandbox.detect(env, context, "linux");
+		expect(exec.mock.calls[0]![1]?.env).toEqual({ PATH: "/usr/bin:/bin" });
+	});
+
+	it.skipIf(process.platform === "darwin")("finds no seatbelt where sandbox-exec is absent", async () => {
+		expect(await detect("darwin")).toBeUndefined();
 	});
 });
 
 it.each(["seatbelt", "bubblewrap"] as const)(
 	"refuses a runtime that cannot start within %s without widening its grants",
-	(backend) => {
+	async (backend) => {
 		const sandbox = Object.assign(Object.create(Sandbox.prototype) as Sandbox, { backend });
 		const where = paths();
-		vi.mocked(spawnSync).mockImplementation((command, args, options) => {
-			expect(command).toBe("/bin/bash");
-			expect(args?.[0]).toBe("-c");
-			expect(args?.[1]?.replaceAll("'\\''", "'")).toContain(`'${where.node}' --version`);
-			expect(options?.env).toMatchObject({ HOME: where.scratch, TMPDIR: where.scratch, MELIAN_SANDBOX: backend });
-			return { status: 0 } as ReturnType<typeof spawnSync>;
+		const started = answering(0);
+		expect(await sandbox.runtimeFailure(where, started.env, context)).toBeUndefined();
+		const [command, options, at] = started.exec.mock.calls[0]!;
+		expect(command).toBe(sandbox.command(`'${where.node}' --version`, where, "", sandbox.profile(where)));
+		expect(options).toEqual({
+			inheritEnv: false,
+			env: { ...sandbox.environment(), HOME: where.scratch, TMPDIR: where.scratch },
+			timeout: 30,
 		});
-		expect(sandbox.runtimeFailure(where)).toBeUndefined();
-		const successful = vi.mocked(spawnSync).getMockImplementation()!;
-		vi.mocked(spawnSync).mockImplementation((command, args, options) => {
-			const result = successful(command, args, options);
-			return { ...result, status: 1 };
-		});
-		expect(sandbox.runtimeFailure(where)).toContain(`Node runtime ${where.node} could not start within ${backend}`);
+		expect(options?.env?.MELIAN_SANDBOX).toBe(backend);
+		expect(at).toBe(context);
+		for (const failing of [answering(1), answering(undefined)])
+			expect(await sandbox.runtimeFailure(where, failing.env, context)).toBe(
+				`Node runtime ${where.node} could not start within ${backend}; the runtime grant was not widened`,
+			);
 	},
 );
 
@@ -386,7 +414,7 @@ describe.skipIf(!seatbeltAvailable)("seatbelt", { timeout: 60_000 }, () => {
 	] as const)(
 		"denies the reviewer's home and the network, and allows writes under scratch only (loopback %s)",
 		async (loopback, reached) => {
-			const sandbox = Sandbox.detect("darwin") as Sandbox;
+			const sandbox = (await detect("darwin")) as Sandbox;
 			expect(await probed(sandbox, loopback)).toEqual({
 				readHome: "denied",
 				sh: "ok",
@@ -407,7 +435,7 @@ it.skipIf(!seatbeltAvailable)(
 	"requires a scratch HOME for a child with an otherwise empty environment inside seatbelt",
 	{ timeout: 60_000 },
 	async () => {
-		const sandbox = Sandbox.detect("darwin") as Sandbox;
+		const sandbox = (await detect("darwin")) as Sandbox;
 		const where = paths();
 		const file = join(where.scratch, "sandbox.sb");
 		writeFileSync(file, sandbox.profile(where)!);
@@ -436,7 +464,7 @@ console.log(JSON.stringify({ absent: { status: absent.status, stderr: absent.std
 
 describe.skipIf(!bubblewrapAvailable)("bubblewrap", { timeout: 60_000 }, () => {
 	it("denies the reviewer's home and the network, and allows writes under scratch only", async () => {
-		const sandbox = Sandbox.detect("linux") as Sandbox;
+		const sandbox = (await detect("linux")) as Sandbox;
 		expect(await probed(sandbox)).toEqual({
 			readHome: "denied",
 			sh: "ok",
@@ -674,7 +702,7 @@ it.skipIf(!seatbeltAvailable || python === "")(
 	"denies opening the controlling terminal and its pty slave from head code",
 	{ timeout: 60_000 },
 	async () => {
-		const sandbox = Sandbox.detect("darwin")!;
+		const sandbox = (await detect("darwin"))!;
 		const where = paths();
 		const probe = join(where.worktree, "tty.cjs");
 		writeFileSync(
@@ -727,7 +755,7 @@ it.skipIf(!seatbeltAvailable)(
 	async () => {
 		const asked = await run("/usr/bin/getconf", ["DARWIN_USER_TEMP_DIR"]);
 		const directory = realpathSync(asked.stdout.trim());
-		const sandbox = Sandbox.detect("darwin")!;
+		const sandbox = (await detect("darwin"))!;
 		const where = paths();
 		// Names the retired grant matched, so a profile that brings it back fails here.
 		const created = join(directory, `xcrun_db-MelianCreated${process.pid}`);
@@ -772,7 +800,7 @@ it.skipIf(!seatbeltAvailable)(
 	"refuses what the profile no longer grants: programs, host files, devices, and other processes",
 	{ timeout: 60_000 },
 	async () => {
-		const sandbox = Sandbox.detect("darwin")!;
+		const sandbox = (await detect("darwin"))!;
 		const where = paths();
 		const outside = join(base, "outside/true");
 		copyFileSync("/usr/bin/true", outside);

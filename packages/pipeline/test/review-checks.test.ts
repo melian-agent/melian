@@ -41,7 +41,7 @@ beforeEach(() => {
 	repo = createRepository();
 	opened = [];
 	// These fake tools count their runs in a file beside the repository, which the real sandbox would refuse.
-	vi.spyOn(Sandbox, "detect").mockReturnValue(unconfinedSandbox);
+	vi.spyOn(Sandbox, "detect").mockResolvedValue(unconfinedSandbox);
 });
 afterEach(async () => {
 	await Promise.all(opened.map((review) => review.close()));

@@ -98,7 +98,7 @@ function crashing(owner: string, at: number): { env: ExecutionEnv; reached: () =
 }
 
 it("ends clean on the next run after a crash between any two teardown steps", { timeout: 120_000 }, async () => {
-	vi.spyOn(Sandbox, "detect").mockReturnValue(unconfinedSandbox);
+	vi.spyOn(Sandbox, "detect").mockResolvedValue(unconfinedSandbox);
 	let points = 0;
 	for (let at = 1; ; at++) {
 		const owner = crashed(`crash${at}`);

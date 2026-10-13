@@ -17,7 +17,7 @@ So neither tool is a check that executes head code, and the sandbox decision's r
 
 Choice: where the host offers a sandbox, Biome, tsc, and their `--version` probes run inside it.
 
-- `runStaticTool` calls `Sandbox.detect()` and then `runtimeFailure`, which starts Node inside the sandbox once.
+- `runStaticTool` calls `Sandbox.detect` and then `runtimeFailure`, which starts Node inside the sandbox once. Both run their command through the run's `ExecutionEnv`, never in the Melian process.
 - The profile is built in memory and passed inline, never read from a file in scratch.
 - The tool reads the worktree, the installs the worktree links to, and its own install: the outermost `node_modules` above the tool's resolved path, which is Melian's when the checkout has no copy.
 - It writes to scratch only, with `HOME` and `TMPDIR` there, and a `PATH` of Node's directory and the system's.

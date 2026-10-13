@@ -6,7 +6,7 @@ import { createFakeModels, scriptConversations } from "../../src/testing.ts";
 import { unconfinedSandbox } from "./sandbox.ts";
 
 // The parent test's fake tsc records each run beside the repository, where the real sandbox allows no write.
-Object.defineProperty(Sandbox, "detect", { value: () => unconfinedSandbox });
+Object.defineProperty(Sandbox, "detect", { value: async () => unconfinedSandbox });
 
 const [repo, base, head, database, ready] = process.argv.slice(2) as [string, string, string, string, string];
 const fake = createFakeModels();
