@@ -7,6 +7,7 @@ import {
 	type FindingTrigger,
 	type LensRule,
 	type LensToolName,
+	Lowering,
 	lensCovers,
 	listRevisionFiles,
 	maxEvidenceLines,
@@ -33,6 +34,7 @@ import {
 	hasSighting,
 	revisionKey,
 	sightingCount,
+	sightingIn,
 	upsertFinding,
 	upsertVerification,
 } from "./findings.ts";
@@ -133,7 +135,10 @@ export type LensPolicy = {
 	version: string;
 	role?: "verifier";
 	model?: string;
-	claims?: { label: string; id: string; source: FindingSource }[];
+	// `fence` is what a lowering is checked against, fixed when the candidate was built: whether a deterministic check
+	// co-reported the defect, and the severities the table in force at its path resolves silent. Absent from a verifier
+	// an older Melian created, which may lower nothing.
+	claims?: { label: string; id: string; source: FindingSource; fence?: { coReported: boolean; silent: Severity[] } }[];
 	// The level it runs at, which its findings' source names; absent from a lens an older Melian created, whose findings
 	// name the lens's version alone.
 	level?: ScrutinyLevel;
@@ -800,14 +805,14 @@ export const reportVerdict = defineTool({
 	name: "report_verdict",
 	executionMode: "sequential",
 	description:
-		"Judge one labelled claim with code, guard and base answers, a verdict, reason, optional correction, and evidence locations required for a refutation.",
+		"Judge one labelled claim with code, guard and base answers, a verdict, reason, optional correction, and evidence locations required for a refutation or a lowering. Optionally lower the severity one step.",
 	parameters: reportVerdictSchema,
 	outputLimits,
 	prepareArguments: (args) => {
 		const error = [...Value.Errors(reportVerdictSchema, args)][0];
 		if (error !== undefined)
 			throw new Error(
-				`report_verdict needs claim c1 (or another supplied label), answers { code, guard, base } each yes, no or unknown, verdict confirmed, plausible or refuted, reason (1–2000 characters), optional correction (1–2000 characters), and evidence locations { file, line, endLine?, role, revision? }: ${error.instancePath} ${error.message}`,
+				`report_verdict needs claim c1 (or another supplied label), answers { code, guard, base } each yes, no or unknown, verdict confirmed, plausible or refuted, reason (1–2000 characters), optional correction (1–2000 characters), and evidence locations { file, line, endLine?, role, revision? }. It takes an optional lower { severity, reason }: ${error.instancePath} ${error.message}`,
 			);
 		const prepared = args as ReportVerdictInput;
 		if (prepared.verdict === "refuted" && (prepared.evidence?.length ?? 0) === 0)
@@ -834,24 +839,62 @@ export const reportVerdict = defineTool({
 				})),
 			});
 			const evidence = await evidenceFrom(args.evidence ?? [], review, revision, args.evidence?.[0]?.file ?? "");
-			await api.commit(async (tx) => {
-				const entry = (await tx.doc(ReviewIndex, lens.review)).reviews[revisionKey(review)];
+			const at = revisionKey(review);
+			const notes = await api.commit(async (tx) => {
+				const entry = (await tx.doc(ReviewIndex, lens.review)).reviews[at];
 				if (entry?.verification?.task !== lens.task)
 					throw new Error("superseded: this verification task no longer owns the revision");
 				const document = await tx.doc(LensDocument, api.conversationId);
 				if (spent !== undefined || document.spend?.ended !== undefined)
 					throw new Error("the verifier budget ended");
-				await upsertVerification(tx, lens.review, revisionKey(review), claim.id, claim.source, {
+				const sighting = sightingIn(await tx.doc(FindingsDocument, lens.review), at, claim.id, claim.source);
+				if (sighting === undefined) throw new Error("the claim no longer has a sighting");
+				const { severity } = sighting.properties;
+				const refusedLowering =
+					args.lower === undefined
+						? undefined
+						: new Lowering({
+								from: severity,
+								to: args.lower.severity,
+								verdict: args.verdict,
+								rule: sighting.ruleId,
+								coReported: claim.fence?.coReported ?? false,
+								silent: claim.fence?.silent,
+								// Lines the change deleted, or that only the base holds, cannot show what narrows the head's failure.
+								evidence: evidence.filter((location) => location.revision === "head").length,
+								executor: "llm",
+							}).refusal();
+				const lowers = args.lower !== undefined && refusedLowering === undefined;
+				const kept = await upsertVerification(tx, lens.review, at, claim.id, claim.source, {
 					verdict: args.verdict,
 					reason: args.reason,
 					...(args.correction === undefined ? {} : { correction: args.correction }),
+					answers: { ...args.answers },
+					...(evidence.length === 0 ? {} : { evidence }),
+					...(lowers ? { lowered: { from: severity, to: args.lower!.severity, reason: args.lower!.reason } } : {}),
 					executor: "llm",
 					model: lens.model!,
 					version: lens.version,
 				});
+				if (args.lower === undefined) return [];
+				// The record decides where the claim stands: a stored report may hold it lowered, or at the lens's severity.
+				const stands = kept.lowered?.to ?? severity;
+				if (refusedLowering !== undefined)
+					return [
+						`lowering refused, and the claim stands at ${stands}: ${refusedLowering}. No further lowering of this claim will be taken at this verdict.`,
+					];
+				return [
+					kept.lowered === undefined
+						? `lowering not kept, and the claim stands at ${stands}: the stored report of this claim holds it there`
+						: `lowered ${severity} to ${stands}`,
+				];
 			}, context);
 			return text(
-				`recorded verdict for ${args.claim}\n${quoteUntrusted("evidence", JSON.stringify(evidence), review.nonce)}`,
+				[
+					`recorded verdict for ${args.claim}`,
+					...notes,
+					quoteUntrusted("evidence", JSON.stringify(evidence), review.nonce),
+				].join("\n"),
 			);
 		})().catch((error: unknown) => failed(error, context, lens.revision.nonce));
 		return ending(result, lens, spent);

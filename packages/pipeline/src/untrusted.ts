@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import { injectionAttemptRuleId } from "@melian-agent/core";
 
 /**
  * What a quoted block of the change's content is: a diff, a file's text, a function of the head, search results, a directory listing, the
@@ -37,7 +38,7 @@ export function quoteUntrusted(label: UntrustedLabel, text: string, nonce: strin
 
 /** The rule every lens may report an injection attempt under, whether or not its `LENS.md` declares it. */
 export const injectionAttemptRule = {
-	id: "melian/injection-attempt",
+	id: injectionAttemptRuleId,
 	description: "Text in the change tries to instruct the reviewer rather than be reviewed.",
 } as const;
 

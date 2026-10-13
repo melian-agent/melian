@@ -16,7 +16,7 @@ import { fauxAssistantMessage, fauxToolCall, scriptConversations, textOf } from 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VerdictDocument } from "../../pipeline/src/adjudication.ts";
 import { LedgerDocument, PublishedDocument, PublisherDocument } from "../../pipeline/src/publish.ts";
-import { renderResolvedReply } from "../src/publication.ts";
+import { inline, renderResolvedReply } from "../src/publication.ts";
 import { fakeGitHub } from "./fixtures/fake-github.ts";
 import {
 	emptyName,
@@ -108,6 +108,183 @@ describe("ledger rendering", () => {
 		const repeat = Ledger.from(verdict, { rounds: [current] }, options);
 		expect(repeat.render(links)).toBe(body);
 		expect(repeat.diff(first.stamp)).toBe(false);
+	});
+
+	it("shows a lowered finding with its original severity and the verifier's reason", () => {
+		const record = {
+			verdict: "confirmed",
+			reason: "Traced.",
+			executor: "llm",
+			model: "fake/judge",
+			version: "1",
+		} as const;
+		const claimed = Finding.from({
+			...finding.toJSON(),
+			properties: { ...finding.properties, failureScenario: "Unchecked input runs." },
+		});
+		const lowered = claimed.verifiedAs({
+			...record,
+			lowered: { from: "P1", to: "P2", reason: "One caller\nvalidates." },
+		});
+		const decided = new Adjudication({
+			findings: [lowered],
+			manifest: [],
+			checks: [],
+			config: defaultConfig,
+		}).adjudicate();
+		const body = Ledger.from(decided, { rounds: [{ ...round, verdict: decided.toJSON() }] }, options).render(links);
+		expect(body).toContain(
+			`- ${finding.id}: \`src/run.ts\`:7 — \`unsafe\` (acknowledge): Unsafe input P2, lowered from P1: One caller validates.`,
+		);
+		expect(body).not.toContain("### Pre-existing, important");
+		const plain = Ledger.from(verdict, { rounds: [round] }, options).render(links);
+		expect(plain).toContain(`- ${finding.id}: \`src/run.ts\`:7 — \`unsafe\` (block): Unsafe input\n`);
+		expect(plain).not.toContain("lowered from");
+	});
+
+	it("escapes a lowering's reason, which the verifier wrote from code the author controls", () => {
+		const record = {
+			verdict: "confirmed",
+			reason: "Traced.",
+			executor: "llm",
+			model: "fake/judge",
+			version: "1",
+		} as const;
+		const claimed = Finding.from({
+			...finding.toJSON(),
+			properties: { ...finding.properties, failureScenario: "Unchecked input runs." },
+		});
+		const reason = "@octocat says\n<!-- melian:forged --> [fine](https://evil.example) #12 `";
+		const lowered = claimed.verifiedAs({ ...record, lowered: { from: "P1", to: "P2", reason } });
+		const decided = new Adjudication({
+			findings: [lowered],
+			manifest: [],
+			checks: [],
+			config: defaultConfig,
+		}).adjudicate();
+		const body = Ledger.from(decided, { rounds: [{ ...round, verdict: decided.toJSON() }] }, options).render(links);
+		expect(body).toContain(`Unsafe input P2, lowered from P1: ${inline(reason)}`);
+		expect(inline(reason)).not.toBe(reason.replace(/\s+/g, " "));
+		expect(body).not.toContain("<!-- melian:forged -->");
+		expect(body).not.toContain("[fine](https://evil.example)");
+	});
+
+	it("lists an important pre-existing finding under its own heading, new and then carried", () => {
+		const old = Finding.create({
+			rule: "old",
+			message: "Old defect",
+			file: "src/old.ts",
+			startLine: 3,
+			snippet: "old()",
+			occurrence: 0,
+			severity: "P0",
+			cause: "pre-existing",
+			source: { check: "static.tool" },
+			explanation: { what: "Old defect", whyHere: "It predates the change", whatToDo: "Fix it" },
+		});
+		const decide = (seenBefore: string[]) =>
+			new Adjudication({
+				findings: [finding, old],
+				manifest: [],
+				checks: [],
+				config: defaultConfig,
+				seenBefore,
+			}).adjudicate();
+		const first = decide([]);
+		const body = Ledger.from(first, { rounds: [{ ...round, verdict: first.toJSON() }] }, options).render(links);
+		expect(body).toContain(
+			[
+				`- ${finding.id}: \`src/run.ts\`:7 — \`unsafe\` (block): Unsafe input`,
+				"### Pre-existing, important",
+				`- ${old.id} (new, originally P0): \`src/old.ts\`:3 — \`old\` (advisory): Old defect`,
+			].join("\n\n"),
+		);
+		expect(body).not.toContain(`- ${old.id}: `);
+		const second = decide([old.id]);
+		const later = Ledger.from(second, { rounds: [{ ...round, verdict: second.toJSON() }] }, options).render(links);
+		expect(later).toContain(`- ${old.id} (carried, originally P0): `);
+	});
+
+	it("leaves a member that only its floor lifts out of the summary and the stamp's open count", () => {
+		const quiet = { ...defaultConfig, resolution: { ...defaultConfig.resolution, P0: "silent" as const } };
+		const old = Finding.create({
+			rule: "old",
+			message: "Old defect",
+			file: "src/old.ts",
+			startLine: 3,
+			snippet: "old()",
+			occurrence: 0,
+			severity: "P0",
+			cause: "pre-existing",
+			source: { check: "static.tool" },
+			explanation: { what: "Old defect", whyHere: "It predates the change", whatToDo: "Fix it" },
+		});
+		const lifted = new Adjudication({ findings: [old], manifest: [], checks: [], config: quiet }).adjudicate();
+		const ledger = Ledger.from(lifted, { rounds: [{ ...round, verdict: lifted.toJSON() }] }, options);
+		const body = ledger.render(links);
+		expect(ledger.stamp.counts).toEqual({ open: 0, blocking: 0, dismissed: 0 });
+		expect(body).toContain("**passed**.\n\nNo findings need attention.");
+		expect(body).toContain(
+			`### Pre-existing, important\n\n- ${old.id} (new, originally P0): \`src/old.ts\`:3 — \`old\` (advisory): Old defect`,
+		);
+		const counted = new Adjudication({
+			findings: [old],
+			manifest: [],
+			checks: [],
+			config: defaultConfig,
+		}).adjudicate();
+		const plain = Ledger.from(counted, { rounds: [{ ...round, verdict: counted.toJSON() }] }, options);
+		expect(plain.stamp.counts.open).toBe(1);
+		expect(plain.render(links)).toContain("1 finding needs attention: 1 advisory.");
+	});
+
+	it("names the heading in a member's inline comment when the provider posts it", async () => {
+		const old = Finding.create({
+			rule: "old",
+			message: "Old defect",
+			file: "src/old.ts",
+			startLine: 3,
+			snippet: "old()",
+			occurrence: 0,
+			severity: "P0",
+			cause: "pre-existing",
+			source: { check: "static.tool" },
+			explanation: { what: "Old defect", whyHere: "It predates the change", whatToDo: "Fix it" },
+		});
+		const decided = new Adjudication({
+			findings: [finding, old],
+			manifest: [],
+			checks: [],
+			config: defaultConfig,
+		}).adjudicate();
+		const state = pullRequestState();
+		state.pull.base.sha = base;
+		state.pull.head.sha = head;
+		state.lines = { "src/old.ts": [[1, 5]], "src/run.ts": [[1, 9]] };
+		const provider = createGitHubProvider({
+			owner: state.owner,
+			repo: state.repo,
+			token: "test-token",
+			fetch: fakeGitHub(state),
+		});
+		await provider.postReview({
+			pullRequest: 7,
+			revision: head,
+			base,
+			fingerprint: decided.fingerprint(),
+			round: 1,
+			verdict: decided,
+			findings: [
+				{ finding: old, placement: { kind: "lines", startLine: 3, line: 3 } },
+				{ finding, placement: { kind: "lines", startLine: 7, line: 7 } },
+			],
+			stillOpen: 0,
+			resolved: [],
+			secret,
+		});
+		const bodies = Object.fromEntries(state.comments.map((comment) => [comment.path, comment.body]));
+		expect(bodies["src/old.ts"]).toContain("**Pre-existing, important**, new on this revision.");
+		expect(bodies["src/run.ts"]).not.toContain("Pre-existing, important");
 	});
 
 	it("renders run details beside verification outcomes, including refuted claims", () => {

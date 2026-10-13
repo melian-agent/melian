@@ -168,15 +168,25 @@ export interface CommentContext {
 export class ReviewComment {
 	readonly finding: Finding;
 	readonly placement: Placement;
+	/** Set for a member of "Pre-existing, important": whether this revision raises it or an earlier one did. */
+	readonly important: "new" | "carried" | undefined;
 
-	private constructor(finding: Finding, placement: Placement) {
+	private constructor(finding: Finding, placement: Placement, important: "new" | "carried" | undefined) {
 		this.finding = finding;
 		this.placement = placement;
+		this.important = important;
 	}
 
-	/** The comment for `finding` at `placement`; in the review's body unless placed. */
-	static from(finding: Finding, placement: Placement = { kind: "body" }): ReviewComment {
-		return new ReviewComment(finding, placement);
+	/**
+	 * The comment for `finding` at `placement`; in the review's body unless placed. `important` is the finding's state
+	 * under "Pre-existing, important", when it is a member, which the comment then names.
+	 */
+	static from(
+		finding: Finding,
+		placement: Placement = { kind: "body" },
+		important?: "new" | "carried",
+	): ReviewComment {
+		return new ReviewComment(finding, placement, important);
 	}
 
 	/**
@@ -204,20 +214,38 @@ export class ReviewComment {
 				: [
 						`Verification: **${verification.verdict}**`,
 						"",
-						`**Verified:** ${code(verification.model)}: ${renderProse(verification.reason)}`,
+						// The verifier writes its reasons from code the author controls, so each is one inert line, as in the ledger.
+						`**Verified:** ${code(verification.model)}: ${inline(verification.reason)}`,
 						"",
 						...(verification.correction === undefined
 							? []
-							: [`**Correction:** ${renderProse(verification.correction)}`, ""]),
+							: [`**Correction:** ${inline(verification.correction)}`, ""]),
 					];
-		return [marker(revision, "finding", id, context.secret), ...where, ...judged, ...this.#text(context)].join("\n");
+		const lowered = finding.lowered();
+		const moved = lowered === undefined ? [] : [`**Lowered from ${lowered.from}:** ${inline(lowered.reason)}`, ""];
+		const heading =
+			this.important === undefined
+				? []
+				: [
+						`**Pre-existing, important**, ${this.important === "new" ? "new on this revision" : "carried from an earlier revision"}. It predates this change and does not block it.`,
+						"",
+					];
+		return [
+			marker(revision, "finding", id, context.secret),
+			...where,
+			...heading,
+			...judged,
+			...moved,
+			...this.#text(context),
+		].join("\n");
 	}
 
 	#text(context: CommentContext): string[] {
 		const { finding } = this;
 		const { severity, cause, resolution, explanation, failureScenario } = finding.properties;
+		const lowered = finding.lowered();
 		return [
-			`**${severity}** ${code(finding.ruleId)} (${cause}, ${resolution ?? "unresolved"})`,
+			`**${severity}**${lowered === undefined ? "" : `, lowered from ${lowered.from},`} ${code(finding.ruleId)} (${cause}, ${resolution ?? "unresolved"})`,
 			"",
 			// A lens's message is its explanation's first part, which would otherwise print twice.
 			...(finding.message.text === explanation.what ? [] : [renderProse(finding.message.text), ""]),
@@ -265,10 +293,14 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 	const parts = [
 		`${marker(revision, "verdict", draft.fingerprint, secret, { round: draft.round })}\nMelian reviewed ${code(short(revision))}: ${status}.`,
 	];
-	const counts = (["block", "acknowledge", "advisory"] as const)
-		.filter((resolution) => verdict.findings[resolution].length > 0)
-		.map((resolution) => `${verdict.findings[resolution].length} ${resolution}`);
-	const shown = verdict.attention().length;
+	// A member of "Pre-existing, important" that only its floor lifted is listed and counted nowhere, so the summary
+	// reads as it did before the heading existed.
+	const tallied = verdict.counted();
+	const counts = (["block", "acknowledge", "advisory"] as const).flatMap((resolution) => {
+		const count = tallied.filter((finding) => finding.properties.resolution === resolution).length;
+		return count === 0 ? [] : [`${count} ${resolution}`];
+	});
+	const shown = tallied.length;
 	const summary = [
 		shown === 0
 			? "No findings need attention."
@@ -317,7 +349,12 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 	if (dismissed.length > 0) parts.push(["Dismissed since the last review:", "", ...dismissed].join("\n"));
 	const inBody = draft.findings.filter((placed) => placed.placement.kind === "body");
 	const sections = inBody.map(({ finding }) =>
-		ReviewComment.from(finding).render({ revision, base: draft.base, links, secret }),
+		ReviewComment.from(finding, { kind: "body" }, verdict.importance(finding.id)).render({
+			revision,
+			base: draft.base,
+			links,
+			secret,
+		}),
 	);
 	const heading = options.inlineRefused
 		? "### Findings\n\nGitHub refused this review's inline comments, so every finding is listed here."

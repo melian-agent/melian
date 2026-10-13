@@ -3,6 +3,7 @@ import {
 	type LedgerDraft,
 	type LedgerHistory,
 	type LedgerRound,
+	type ResolvedFinding,
 	type LedgerStamp as StoredLedgerStamp,
 	Verdict,
 	visibleText,
@@ -111,7 +112,7 @@ export class Ledger {
 			round: current.round,
 			verdict: verdict.fingerprint(),
 			counts: {
-				open: verdict.attention().length,
+				open: verdict.counted().length,
 				blocking: verdict.findings.block.length,
 				dismissed: verdict.dismissed.length,
 			},
@@ -180,14 +181,23 @@ export class Ledger {
 		const { verdict, publication, walkthrough, pullRequest } = this.draft;
 		const current = publication.rounds.at(-1)! as LedgerRound;
 		const summary = this.summary(current, verdict, links);
-		const findings = verdict.attention().map((finding) => {
-			const [start, end] = finding.lines();
-			return `- ${prose(finding.properties.id)}: ${code(visibleText(finding.properties.path))}:${start}${end === start ? "" : `-${end}`} — ${code(visibleText(finding.ruleId))} (${finding.properties.resolution}): ${prose(finding.properties.explanation.what)}`;
+		const important = new Map((verdict.preExistingImportant ?? []).map((member) => [member.id, member]));
+		const findings = verdict
+			.attention()
+			.filter((finding) => !important.has(finding.id))
+			.map((finding) => `- ${prose(finding.properties.id)}: ${this.line(finding)}`);
+		const members = verdict.attention().flatMap((finding) => {
+			const member = important.get(finding.id);
+			if (member === undefined) return [];
+			return [
+				`- ${prose(finding.properties.id)} (${member.state}, originally ${member.originalSeverity}): ${this.line(finding)}`,
+			];
 		});
 		const parts = [
 			`## Melian review ledger\n\nBase ${current.base.slice(0, 12)}, head ${current.head.slice(0, 12)}, round ${current.round}.`,
 			summary,
 			...findings,
+			...(members.length === 0 ? [] : [["### Pre-existing, important", ...members].join("\n\n")]),
 		];
 		if (walkthrough.enabled) {
 			const text = current.walkthrough;
@@ -251,6 +261,17 @@ export class Ledger {
 		const prompt = withPrompt ? verdict.agentPrompt(`#${pullRequest}`, nonce) : "";
 		if (prompt !== "") parts.push(details("Prompt for agents", prompt));
 		return parts;
+	}
+
+	// One finding as the ledger lists it, with the lens's severity and the verifier's reason when it was lowered.
+	private line(finding: ResolvedFinding): string {
+		const [start, end] = finding.lines();
+		const lowered = finding.lowered();
+		const severity =
+			lowered === undefined
+				? ""
+				: ` ${finding.properties.severity}, lowered from ${lowered.from}: ${prose(lowered.reason)}`;
+		return `${code(visibleText(finding.properties.path))}:${start}${end === start ? "" : `-${end}`} — ${code(visibleText(finding.ruleId))} (${finding.properties.resolution}): ${prose(finding.properties.explanation.what)}${severity}`;
 	}
 
 	private summary(round: LedgerRound, verdict: Verdict, links: RepositoryLinks): string {

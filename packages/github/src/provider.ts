@@ -178,7 +178,11 @@ export class GitHubProvider implements ReviewProvider {
 					line: placement.line,
 					side: "RIGHT" as const,
 					...range,
-					body: ReviewComment.from(placed.finding, placed.placement).render({
+					body: ReviewComment.from(
+						placed.finding,
+						placed.placement,
+						draft.verdict.importance(placed.finding.properties.id),
+					).render({
 						revision: draft.revision,
 						base: draft.base,
 						links: this.links,

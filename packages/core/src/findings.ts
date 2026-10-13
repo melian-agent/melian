@@ -12,11 +12,19 @@ import {
 	severitySchema,
 } from "./config.ts";
 import { FindingError } from "./errors.ts";
+import {
+	evidenceLocationSchema,
+	evidenceRevisionSchema,
+	evidenceRoleSchema,
+	findingEvidenceSchema,
+} from "./evidence.ts";
 import { melianPaths } from "./paths.ts";
 import type { DiffLines, Placement } from "./publication.ts";
 import { evidenceLines, messageContinuation, plural, prose, Rendering, severityColor, visibleText } from "./render.ts";
 
 import { type Verification, verificationSchema } from "./verification.ts";
+
+export { evidenceLocationSchema, evidenceRevisionSchema, evidenceRoleSchema, findingEvidenceSchema };
 
 const strict = { additionalProperties: false } as const;
 const text = Type.String({ minLength: 1 });
@@ -65,30 +73,6 @@ export const findingTriggerSchema = Type.Object(
 
 /** The JSON Schema of a {@link FindingExplanation}. */
 export const findingExplanationSchema = Type.Object({ what: text, whyHere: text, whatToDo: text }, strict);
-
-/** The JSON Schema of an {@link EvidenceRole}. */
-export const evidenceRoleSchema = Type.Union([Type.Literal("cause"), Type.Literal("context")]);
-
-/** The JSON Schema of an {@link EvidenceRevision}. */
-export const evidenceRevisionSchema = Type.Union([Type.Literal("head"), Type.Literal("base")]);
-
-/** The JSON Schema of an {@link EvidenceLocation}. */
-export const evidenceLocationSchema = Type.Object(
-	{
-		file: text,
-		startLine: line,
-		endLine: Type.Optional(line),
-		role: evidenceRoleSchema,
-		revision: evidenceRevisionSchema,
-		deleted: Type.Optional(Type.Literal(true)),
-		proves: Type.Optional(Type.Literal(true)),
-		snippet: text,
-	},
-	strict,
-);
-
-/** The JSON Schema of {@link FindingEvidence}. */
-export const findingEvidenceSchema = Type.Array(evidenceLocationSchema, { minItems: 1 });
 
 /** The JSON Schema of a {@link FindingSource}. */
 export const findingSourceSchema = Type.Object({ check: text, version: Type.Optional(text) }, strict);
@@ -146,6 +130,8 @@ export const findingPropertiesSchema = Type.Object(
 		evidence: Type.Optional(findingEvidenceSchema),
 		trigger: Type.Optional(findingTriggerSchema),
 		severity: severitySchema,
+		originalSeverity: Type.Optional(severitySchema),
+		resolvedAtOriginal: Type.Optional(Type.Literal(true)),
 		confidence: Type.Optional(Type.Number({ minimum: 0, maximum: 1 })),
 		verification: Type.Optional(verificationSchema),
 		resolution: Type.Optional(resolutionSchema),
@@ -680,7 +666,7 @@ export interface FindingInput {
 	readonly trigger?: FindingTrigger;
 	readonly severity: Severity;
 	readonly confidence?: number;
-	/** The verifier judgement; never changes identity or severity. */
+	/** The verifier judgement; never changes identity. {@link Finding.verifiedAs} applies a lowering it holds. */
 	readonly verification?: Verification;
 	/** What the finding requires. Only adjudication sets it; a producer leaves it out, and the finding is unresolved. */
 	readonly resolution?: Resolution;
@@ -1039,9 +1025,16 @@ export class Finding {
 			region.endLine === undefined || region.endLine === region.startLine
 				? `line ${region.startLine}`
 				: `lines ${region.startLine}-${region.endLine}`;
+		const lowered = this.lowered();
 		return [
-			`  ${rendering.paint(severityColor[severity], severity)}  ${lines}  ${visibleText(this.ruleId)}  (${cause}, ${status}, ${resolution ?? "unresolved"}${verification === undefined ? (source.check.startsWith("lens.") ? ", unverified" : "") : `, ${verification.verdict}`})${ids ? `  ${visibleText(id)}` : ""}`,
+			`  ${rendering.paint(severityColor[severity], severity)}${lowered === undefined ? "" : `, lowered from ${lowered.from}`}  ${lines}  ${visibleText(this.ruleId)}  (${cause}, ${status}, ${resolution ?? "unresolved"}${verification === undefined ? (source.check.startsWith("lens.") ? ", unverified" : "") : `, ${verification.verdict}`})${ids ? `  ${visibleText(id)}` : ""}`,
 			...reports,
+			...(lowered === undefined ? [] : [`    Lowered from ${lowered.from}: ${prose(lowered.reason, "      ")}`]),
+			...(lowered === undefined || this.properties.resolvedAtOriginal !== true
+				? []
+				: [
+						`    Resolved at ${lowered.from}: the table in force resolves ${severity} silent, and a lowering never silences a finding.`,
+					]),
 			...(verification === undefined
 				? []
 				: [
@@ -1075,6 +1068,55 @@ export class Finding {
 				return `    Earlier dismissal, ${ended}, ${said(past)}`;
 			}),
 		];
+	}
+
+	// Every verification the finding carries: the one it shows, then each claim's own.
+	#verifications(): Verification[] {
+		return [
+			this.properties.verification,
+			...[...this.claims(), ...(this.properties.otherClaims ?? [])].map((claim) => claim.verification),
+		].filter((each) => each !== undefined);
+	}
+
+	/** The severity the lenses reported, before any lowering: `properties.originalSeverity`, else the severity. */
+	original(): Severity {
+		return this.properties.originalSeverity ?? this.properties.severity;
+	}
+
+	/** The lens's severity and the verifier's reason, when the finding stands at a severity the verifier lowered. */
+	lowered(): { from: Severity; reason: string } | undefined {
+		const { originalSeverity, severity } = this.properties;
+		const lowering = this.#verifications().find((each) => each.lowered?.to === severity)?.lowered;
+		if (originalSeverity === undefined || lowering === undefined) return undefined;
+		return { from: originalSeverity, reason: lowering.reason };
+	}
+
+	/**
+	 * Whether the finding belongs under "Pre-existing, important": `pre-existing` with an original severity of P0 or
+	 * P1.
+	 */
+	important(): boolean {
+		return this.properties.cause === "pre-existing" && severityRank[this.original()] <= severityRank.P1;
+	}
+
+	/**
+	 * The finding as a verifier judged it: `verification` attached, its severity lowered when the record lowers the
+	 * severity it has, keeping the lens's as `originalSeverity`. A record made for another severity lowers nothing.
+	 */
+	verifiedAs(verification: Verification): Finding {
+		const { lowered } = verification;
+		const { severity } = this.properties;
+		const lowers = lowered !== undefined && lowered.from === severity;
+		const stored = this.toJSON();
+		return Finding.from({
+			...stored,
+			level: levelForSeverity(lowers ? lowered.to : severity),
+			properties: {
+				...stored.properties,
+				...(lowers ? { severity: lowered.to, originalSeverity: lowered.from } : {}),
+				verification,
+			},
+		});
 	}
 
 	/** The IDs of the reports the finding holds: its own, then each it lists in `alsoReportedAs`. */
@@ -1181,11 +1223,30 @@ export class Finding {
 	 * evidence location marked `proves`, is never above `advisory`, so an old defect cannot block an unrelated change. A
 	 * finding stored before Melian marked proving locations marks none, and any `cause` location of it counts. A
 	 * `guardrail/policy-change-review` finding on a `melian.yaml` is never below `acknowledge`, so no `melian.yaml`
-	 * silences the review of a change to itself. It decides from rule, path, severity, cause, and evidence alone, never
+	 * silences the review of a change to itself. A member of "Pre-existing, important" ({@link Finding.important}) is
+	 * never below `advisory`, whatever the table maps its severity to: the caps apply first, then that floor. It decides from rule, path, severity, cause, and evidence alone, never
 	 * from a resolution the finding already carries.
 	 */
 	resolve(config: Pick<MelianConfig, "resolution">): Resolution {
-		const configured = config.resolution[this.properties.severity];
+		const capped = this.#capped(config);
+		return capped === "silent" && this.important() ? "advisory" : capped;
+	}
+
+	/**
+	 * Whether only the floor of "Pre-existing, important" keeps the finding above `silent` under `config`. Such a
+	 * finding is listed and leaves the status as it was.
+	 */
+	lifted(config: Pick<MelianConfig, "resolution">): boolean {
+		return this.#capped(config) === "silent" && this.important();
+	}
+
+	// The resolution after the caps and before the floor of "Pre-existing, important".
+	#capped(config: Pick<MelianConfig, "resolution">): Resolution {
+		// The fence again, where the table is read: a lowering never takes a finding into silence, whatever the table
+		// said when the verifier asked. The lens's severity then stands.
+		const { severity } = this.properties;
+		// An unlowered finding's original severity is its own, so this changes only a lowered one.
+		const configured = config.resolution[this.#silenced(config) ? this.original() : severity];
 		const resolution =
 			this.causeRank() < 2 || resolutionOrder.indexOf(configured) > resolutionOrder.indexOf("advisory")
 				? configured
@@ -1198,10 +1259,24 @@ export class Finding {
 		return ownPolicy && belowAcknowledge ? "acknowledge" : resolution;
 	}
 
-	/** A copy with `properties.resolution` set by {@link Finding.resolve}, replacing any it carries. */
+	// Whether the table silences the severity the finding stands at, so that a lowered one resolves at the lens's.
+	#silenced(config: Pick<MelianConfig, "resolution">): boolean {
+		return config.resolution[this.properties.severity] === "silent";
+	}
+
+	/**
+	 * A copy with `properties.resolution` set by {@link Finding.resolve}, replacing any it carries, and
+	 * `properties.resolvedAtOriginal` set when a lowered finding resolved at the lens's severity because the table
+	 * silences the lowered one, so a reader is told why a P2 blocks.
+	 */
 	resolved(config: Pick<MelianConfig, "resolution">): ResolvedFinding {
 		const resolution = this.resolve(config);
-		return Finding.from({ ...this.toJSON(), properties: { ...this.properties, resolution } }) as ResolvedFinding;
+		const { resolvedAtOriginal: _, ...properties } = this.properties;
+		const held = this.lowered() !== undefined && this.#silenced(config);
+		return Finding.from({
+			...this.toJSON(),
+			properties: { ...properties, resolution, ...(held ? { resolvedAtOriginal: true as const } : {}) },
+		}) as ResolvedFinding;
 	}
 
 	/** The finding as it is stored: a SARIF result, its fields in their stored order. */

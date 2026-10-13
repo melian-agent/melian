@@ -220,12 +220,18 @@ export function buildGoldenRepository(golden: Pick<Golden, "name" | "directory">
 	git(repo, "commit", "--quiet", "-m", "base");
 	const base = git(repo, "rev-parse", "HEAD");
 	git(repo, "checkout", "--quiet", "-b", "feature");
+	return { repo, base, head: commitGoldenTree(repo, join(golden.directory, "head"), "head") };
+}
+
+// Replaces the tree of a golden's repository with `tree`, keeping the root `melian.yaml`, and commits it on the
+// checked-out branch. Returns the commit.
+export function commitGoldenTree(repo: string, tree: string, message: string): string {
 	for (const entry of readdirSync(repo))
 		if (entry !== ".git" && entry !== "melian.yaml") rmSync(join(repo, entry), { recursive: true });
-	copyTree(join(golden.directory, "head"), repo);
+	copyTree(tree, repo);
 	git(repo, "add", "--all");
-	git(repo, "commit", "--quiet", "--allow-empty", "-m", "head");
-	return { repo, base, head: git(repo, "rev-parse", "HEAD") };
+	git(repo, "commit", "--quiet", "--allow-empty", "-m", message);
+	return git(repo, "rev-parse", "HEAD");
 }
 
 /** How a golden is run: on canned replies from its `script.json`, or on real models. */

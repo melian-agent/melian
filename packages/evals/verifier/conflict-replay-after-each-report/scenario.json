@@ -1,0 +1,63 @@
+{
+	"group": "conflict",
+	"reports": [
+		{
+			"verdict": "confirmed",
+			"reason": "Traced parseRecord from run.",
+			"evidence": [
+				{
+					"file": "src/run.ts",
+					"line": 4,
+					"role": "context"
+				}
+			],
+			"lower": {
+				"severity": "P3",
+				"reason": "The only caller, run, returns early for a record without a comma, so the read fails only beside a second defect."
+			},
+			"expectResult": [
+				"lowered P2 to P3"
+			]
+		},
+		{
+			"verdict": "confirmed",
+			"reason": "Traced parseRecord from run.",
+			"evidence": [
+				{
+					"file": "src/run.ts",
+					"line": 4,
+					"role": "context"
+				}
+			],
+			"lower": {
+				"severity": "P3",
+				"reason": "The only caller, run, returns early for a record without a comma, so the read fails only beside a second defect."
+			},
+			"expectResult": [
+				"lowered P2 to P3"
+			]
+		},
+		{
+			"verdict": "confirmed",
+			"reason": "Traced parseRecord from run, and other callers may come."
+		},
+		{
+			"verdict": "confirmed",
+			"reason": "Traced parseRecord from run, and other callers may come."
+		}
+	],
+	"expected": [
+		{
+			"status": "findings",
+			"blocking": false,
+			"severity": "P2",
+			"cause": "introduced",
+			"resolution": "acknowledge",
+			"verdict": "confirmed",
+			"lowered": false,
+			"notRendered": [
+				"lowered from"
+			]
+		}
+	]
+}

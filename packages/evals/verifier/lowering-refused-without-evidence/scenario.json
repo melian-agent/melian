@@ -1,0 +1,30 @@
+{
+	"group": "lowering",
+	"reports": [
+		{
+			"verdict": "confirmed",
+			"reason": "Traced parseRecord from run.",
+			"lower": {
+				"severity": "P3",
+				"reason": "The only caller, run, returns early for a record without a comma, so the read fails only beside a second defect."
+			},
+			"expectResult": [
+				"lowering refused, and the claim stands at P2: a lowering needs evidence locations"
+			]
+		}
+	],
+	"expected": [
+		{
+			"status": "findings",
+			"blocking": false,
+			"severity": "P2",
+			"cause": "introduced",
+			"resolution": "acknowledge",
+			"verdict": "confirmed",
+			"lowered": false,
+			"notRendered": [
+				"lowered from"
+			]
+		}
+	]
+}

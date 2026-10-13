@@ -13,7 +13,9 @@ import {
 	type Severity,
 	type StoredFinding,
 	snippetHash,
+	stricter,
 	type Verification,
+	VerificationRecord,
 } from "@melian-agent/core";
 import { type Context, type ConversationId, type DocumentReader, defineDoc, type Harness, type Tx } from "./harness.ts";
 
@@ -49,6 +51,7 @@ type FindingLifecycle = {
 export type Dismissal = FindingDismissal;
 
 // Status and dismissals are Melian's lifecycle, never a producer's, so a sighting stores none of them.
+export type StoredSighting = ProducerFinding;
 type ProducerFinding = Omit<StoredFinding, "properties"> & {
 	properties: Omit<FindingProperties, "status" | "reportedBy" | "dismissal" | "pastDismissals">;
 };
@@ -66,10 +69,12 @@ type FindingRecord = {
 // lifecycle change of a finding sighted there. Adjudication's input carries it, so a dismissal decides afresh.
 type FindingsState = { revisions: string[]; items: Record<string, FindingRecord>; versions: Record<string, number> };
 
-// Version 6 adds optional per-sighting verification records. Version 5 made evidence a list of locations; a sighting stored before reads with its one location as a cause.
+// Version 7 lets a verification record hold the verifier's answers, the evidence read back, and a lowered severity; a
+// version 6 record has none and reads unchanged. Version 6 added the optional per-sighting verification
+// records. Version 5 made evidence a list of locations; a sighting stored before reads with its one location as a cause.
 export const FindingsDocument = defineDoc<FindingsState>({
 	kind: "melian.findings",
-	version: 6,
+	version: 7,
 	scope: "conversation",
 	history: "rewindable",
 	fork: "asOf",
@@ -156,7 +161,9 @@ function compareSources(a: FindingSource, b: FindingSource): number {
 	return compareText(a.check, b.check) || compareText(a.version ?? "", b.version ?? "");
 }
 
-// The highest severity wins, and a tie goes to the producer whose name sorts first, so every reader merges alike. The
+// The highest severity wins, after any lowering a verifier's record applied, and a tie goes to the producer whose name
+// sorts first, so every reader merges alike. The winner names the highest severity any producer reported as its
+// original when that differs. The
 // winner keeps its own claim and takes the strongest cause any sighting gave, with the cause locations that prove it,
 // and every other sighting's claim, so a P1 whose cause location overlaps the change, beside a P0 whose evidence proves
 // nothing, reads as an affected P0 that still carries the P1's scenario and evidence.
@@ -171,7 +178,10 @@ function adjudicate(sightings: Readonly<Record<string, ProducerFinding>>) {
 	// A sighting stores no lifecycle status, and merging claims reads none.
 	const members = ranked.map((each) => Finding.from({ ...each, properties: { ...each.properties, status: "new" } }));
 	const claims = members[0]!.mergeClaims(members);
-	return { winner: { ...ranked[0]!, properties: { ...properties, ...claims } }, reportedBy };
+	const original = members.map((member) => member.original()).reduce(stricter);
+	// The winner is the highest after lowering, so its own original, when it has one, is never above this one.
+	const lowered = original === properties.severity ? {} : { originalSeverity: original };
+	return { winner: { ...ranked[0]!, properties: { ...properties, ...lowered, ...claims } }, reportedBy };
 }
 
 /**
@@ -232,7 +242,16 @@ export async function upsertFinding(
 	hunks?: readonly ProvingHunk[],
 ): Promise<void> {
 	const valid = Finding.parse(finding).toJSON();
-	const { status: _, reportedBy: __, dismissal: ___, pastDismissals: ____, ...properties } = valid.properties;
+	// A lowering is the verifier's to record and adjudication's to hold, so a producer's own claim of either is dropped.
+	const {
+		status: _,
+		reportedBy: __,
+		dismissal: ___,
+		pastDismissals: ____,
+		originalSeverity: _____,
+		resolvedAtOriginal: ______,
+		...properties
+	} = valid.properties;
 	const producer: ProducerFinding = { ...valid, properties };
 	const proved = proofOf(properties.cause, properties.trigger);
 	if (proved.length > 0 && hunks === undefined) {
@@ -478,6 +497,11 @@ export interface ReadFindingsOptions {
 	 * neither restated nor refuted them. Every producer when absent.
 	 */
 	readonly producers?: readonly Producer[];
+	/**
+	 * Read each sighting at the severity its lens reported, with its verification attached and not applied.
+	 * Verification picks its candidates from this read, so a lowering it stored never changes what it judges next.
+	 */
+	readonly asReported?: boolean;
 }
 
 /**
@@ -515,12 +539,10 @@ export async function readFindings(
 					.filter(([key, sighting]) => counts(key, sighting))
 					.map(([key, sighting]) => {
 						const verification = Object.values(verifications?.[revision]?.[key] ?? {}).at(-1);
-						return [
-							key,
-							verification === undefined
-								? sighting
-								: { ...sighting, properties: { ...sighting.properties, verification } },
-						];
+						if (verification === undefined) return [key, sighting];
+						if (options.asReported === true)
+							return [key, { ...sighting, properties: { ...sighting.properties, verification } }];
+						return [key, judged(sighting, verification)];
 					}),
 			);
 			if (Object.keys(atHead).length === 0) return [];
@@ -528,6 +550,38 @@ export async function readFindings(
 			const properties = { ...winner.properties, status: lifecycle.status, ...dismissalsOf(lifecycle), reportedBy };
 			return [Finding.from(structuredClone({ ...winner, properties }))];
 		});
+}
+
+// A sighting as its verifier judged it: at the lowered severity its record holds, by core's `verifiedAs`. The stored
+// sighting keeps the lens's own.
+function judged(sighting: ProducerFinding, verification: Verification): ProducerFinding {
+	const finding = Finding.from({ ...sighting, properties: { ...sighting.properties, status: "new" } });
+	const { properties, ...rest } = finding.verifiedAs(verification).toJSON();
+	const { status: _, ...kept } = properties;
+	return { ...rest, properties: kept };
+}
+
+// The sighting `source` stored for finding `id` at `revision`, as the lens reported it.
+export function sightingIn(
+	state: FindingsState,
+	revision: string,
+	id: string,
+	source: FindingSource,
+): StoredSighting | undefined {
+	return state.items[id]?.sightings[revision]?.[producerKey(source)];
+}
+
+// The IDs of the findings first sighted at a revision other than `revision`: a later revision carries them.
+export async function seenBefore(
+	reader: Pick<Harness, "snapshot">,
+	root: ConversationId,
+	revision: string,
+	context: Context,
+): Promise<string[]> {
+	const items = (await reader.snapshot(FindingsDocument, root, context))?.items ?? {};
+	return Object.keys(items)
+		.sort()
+		.filter((id) => items[id]!.lifecycle.firstSeenRevision !== revision);
 }
 
 export async function clearVerifications(tx: Tx, root: ConversationId, revision: string): Promise<void> {
@@ -541,6 +595,7 @@ export async function clearVerifications(tx: Tx, root: ConversationId, revision:
 	if (cleared) bump(state, [revision]);
 }
 
+// Returns the record the claim holds once `verification` has met any stored one, which may be the stored one.
 export async function upsertVerification(
 	tx: Tx,
 	root: ConversationId,
@@ -548,25 +603,26 @@ export async function upsertVerification(
 	id: string,
 	source: FindingSource,
 	verification: Verification,
-): Promise<void> {
+): Promise<Verification> {
 	const state = await tx.doc(FindingsDocument, root);
 	const record = state.items[id];
 	const producer = producerKey(source);
 	if (record?.sightings[revision]?.[producer] === undefined) throw new Error("the claim no longer has a sighting");
 	const before = record.verifications?.[revision]?.[producer] ?? {};
 	const previous = before[verification.version];
-	const strength = { confirmed: 2, plausible: 1, refuted: 0 };
-	if (previous !== undefined && strength[previous.verdict] > strength[verification.verdict]) return;
-	if (JSON.stringify(previous) === JSON.stringify(verification)) return;
+	// Runs in the report's commit, replay included, so a later equal report never weakens a stored one.
+	const kept = new VerificationRecord(previous).after(verification);
+	if (JSON.stringify(previous) === JSON.stringify(kept)) return kept;
 	const { [verification.version]: _, ...rest } = before;
 	record.verifications = {
 		...record.verifications,
 		[revision]: {
 			...record.verifications?.[revision],
-			[producer]: { ...rest, [verification.version]: verification },
+			[producer]: { ...rest, [verification.version]: kept },
 		},
 	};
 	bump(state, [revision]);
+	return kept;
 }
 
 export async function sightingVerification(

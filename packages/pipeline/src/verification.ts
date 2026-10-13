@@ -1,5 +1,5 @@
-import type { ModelReference, StoredVerificationState } from "@melian-agent/core";
-import { clearVerifications, revisionKey, sightingVerification } from "./findings.ts";
+import type { ModelReference, Severity, StoredVerificationState } from "@melian-agent/core";
+import { clearVerifications, FindingsDocument, revisionKey, sightingIn, sightingVerification } from "./findings.ts";
 import {
 	type Context,
 	type ConversationId,
@@ -30,6 +30,8 @@ export type VerificationCandidate = {
 	route: ModelReference[];
 	budget: { tokens: number; tools: number };
 	decisionsAtBase?: string;
+	// What a lowering of any claim is checked against; absent from a candidate an older Melian stored.
+	fence?: { coReported: boolean; silent: Severity[] };
 };
 export type VerificationInput = {
 	root: ConversationId;
@@ -70,6 +72,9 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 						?.task !== runtime.taskId
 				)
 					return { status: "terminal", outcome: { status: "completed", result: {} } };
+				// Read before any write. The severity each lens reported goes on the claim's label line, which Melian
+				// writes outside the boundary: a lowering is one step from it, and the claim itself does not hold it.
+				const findings = await tx.doc(FindingsDocument, task.input.root);
 				const children: Record<string, ConversationId> = {};
 				for (const candidate of task.input.candidates) {
 					const child = await tx.createConversation({ ownership: { kind: "task", taskId: runtime.taskId } });
@@ -78,6 +83,7 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 						label: `c${index + 1}`,
 						id,
 						source,
+						...(candidate.fence === undefined ? {} : { fence: structuredClone(candidate.fence) }),
 					}));
 					await configure(tx, child.id, {
 						model: candidate.route[0],
@@ -88,7 +94,11 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 								: [
 										`## Decisions at base\n${quoteUntrusted("listing", candidate.decisionsAtBase, task.input.revision.nonce)}`,
 									]),
-							...claims.map(({ label, id }) => `Claim ${label} finding ${id}`),
+							...claims.map(({ label, id, source }) => {
+								const at = revisionKey(task.input.revision);
+								const severity = sightingIn(findings, at, id, source)?.properties.severity;
+								return `Claim ${label} finding ${id}${severity === undefined ? "" : `, reported at ${severity}`}`;
+							}),
 						].join("\n\n"),
 						tools: [...Object.values(lensReadTools), reportVerdict],
 						extensions: [lensExtension],

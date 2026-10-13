@@ -90,6 +90,7 @@ async function killWhen(
 		| "verifier"
 		| "verdict"
 		| "conflicting-verdict"
+		| "lowered-verdict"
 		| "decision"
 		| "replacement"
 		| "lens-failover"
@@ -1112,6 +1113,39 @@ describe("verification across a crash", { timeout: 30_000 }, () => {
 		expect(after[0]!.properties.verification).toEqual(before[0]!.properties.verification);
 		expect(await findingsVersion(harness, root.id, reviewedRevision(), context)).toBe(version);
 		expect(requests["Melian adversarial verifier"]).toHaveLength(1);
+	});
+	it("holds a lowering once when the report that made it replays after a real kill, before adjudication", async () => {
+		const database = join(dir, "lowered-verdict.sqlite");
+		const log = join(dir, "lowered-verdict.jsonl");
+		await killWhen("lowered-verdict", (events) => count(events, "verdict-committed") === 1, database, log);
+		const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }, { id: "medium" }] });
+		const requests = scriptConversations(fake, [
+			{ match: "Melian adversarial verifier", replies: [fauxAssistantMessage("Done.")] },
+		]);
+		harness = await openHarness(await openSqliteStorage(database), {
+			models: fake.models,
+			registry: createReviewRegistry(),
+			settings: { retry: { enabled: false } },
+		});
+		const root = await harness.root(context);
+		const lowered = { from: "P1", to: "P2", reason: "The only caller checks for a manager first." };
+		const before = await readFindings(harness, root.id, reviewedRevision(), context);
+		expect(before).toHaveLength(1);
+		expect(before[0]!.properties).toMatchObject({ severity: "P2", originalSeverity: "P1" });
+		expect(before[0]!.properties.verification?.lowered).toEqual(lowered);
+		expect(await readVerdict(harness, root.id, reviewedRevision(), context)).toBeUndefined();
+		const version = await findingsVersion(harness, root.id, reviewedRevision(), context);
+		harness.resume();
+		const task = (await harness.inspect(context)).tasks.find((task) => task.record.kind === "melian.verification")!;
+		expect((await harness.waitForTask(task.record.id, context)).state.outcome.status).toBe("completed");
+		const after = await readFindings(harness, root.id, reviewedRevision(), context);
+		expect(after).toHaveLength(1);
+		expect(after[0]!.properties).toMatchObject({ severity: "P2", originalSeverity: "P1" });
+		expect(after[0]!.properties.verification).toEqual(before[0]!.properties.verification);
+		expect(await findingsVersion(harness, root.id, reviewedRevision(), context)).toBe(version);
+		// The replayed call's result reaches the verifier, which then finishes: one request, and no second lowering.
+		expect(requests["Melian adversarial verifier"]).toHaveLength(1);
+		expect(toolResults(requests["Melian adversarial verifier"]![0]!).join("\n")).toContain("lowered P1 to P2");
 	});
 	it.each(["verifier", "verdict"] as const)("resumes %s after a real kill", async (scenario) => {
 		const database = join(dir, "verifier.sqlite");

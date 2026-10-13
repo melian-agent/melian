@@ -425,7 +425,176 @@ describe("markers", () => {
 	});
 });
 
+describe("an important pre-existing finding that only its floor lifts", () => {
+	const quiet = { ...defaultConfig, resolution: { ...defaultConfig.resolution, P0: "silent" as const } };
+	const old = Finding.create({ ...input, severity: "P0", cause: "pre-existing", source: { check: "static.tool" } });
+	const plain = Finding.create({ ...input, file: "src/other.ts", severity: "P3", source: { check: "static.tool" } });
+	const decide = (findings: Finding[], seenBefore: string[] = []) =>
+		new Adjudication({ findings, manifest: [], checks: [], config: quiet, seenBefore }).adjudicate();
+	const bodyOf = (verdict: ReturnType<typeof decide>, posted: Finding[]) =>
+		renderReviewBody(
+			{
+				pullRequest: 7,
+				revision,
+				base,
+				fingerprint: "0123456789abcdef",
+				round: 1,
+				verdict,
+				findings: posted.map((finding) => ({ finding, placement: { kind: "body" as const } })),
+				stillOpen: 0,
+				resolved: [],
+				secret,
+			},
+			links,
+		);
+
+	it("leaves the summary sentence as it read before the heading existed", () => {
+		const verdict = decide([old]);
+		expect(verdict.preExistingImportant).toEqual([
+			{ id: old.id, state: "new", originalSeverity: "P0", lifted: true },
+		]);
+		const body = bodyOf(verdict, verdict.attention());
+		expect(body).toContain("**passed**.\n\nNo findings need attention.");
+		expect(body).not.toContain("needs attention");
+		expect(verdict.reviewStatus()).toEqual({ state: "success", description: "Passed" });
+	});
+
+	it("does not count it as posted on an earlier revision, which the summary would then contradict", () => {
+		const published = { ruleId: "no-eval", path: "src/run.ts", line: 12, revision: "1".repeat(40) };
+		const lines = { "src/run.ts": [[1, 20]], "src/other.ts": [[1, 20]] } as const;
+		const alone = decide([old]);
+		const plan = alone.publication({ [old.id]: published }, lines, revision);
+		expect(plan.stillOpen).toEqual([]);
+		expect(plan.post).toEqual([]);
+		expect(plan.open).toEqual({ [old.id]: published });
+		const body = renderReviewBody(
+			{
+				pullRequest: 7,
+				revision,
+				base,
+				fingerprint: "0123456789abcdef",
+				round: 2,
+				verdict: alone,
+				findings: plan.post,
+				stillOpen: plan.stillOpen.length,
+				resolved: [],
+				secret,
+			},
+			links,
+		);
+		expect(body).toContain("No findings need attention.");
+		expect(body).not.toContain("posted on an earlier revision");
+		const mixed = decide([old, plain]);
+		const both = mixed.publication(
+			{ [old.id]: published, [plain.id]: { ...published, path: "src/other.ts" } },
+			lines,
+			revision,
+		);
+		expect(both.stillOpen).toEqual([plain.id]);
+		// A member the floor did not lift is an advisory finding like any other, and still open like any other.
+		const usual = new Adjudication({ findings: [old], manifest: [], checks: [], config: defaultConfig }).adjudicate();
+		expect(usual.publication({ [old.id]: published }, lines, revision).stillOpen).toEqual([old.id]);
+	});
+
+	it("counts the ordinary findings beside it, and not the member", () => {
+		const verdict = decide([old, plain]);
+		const body = bodyOf(verdict, verdict.attention());
+		expect(body).toContain("1 finding needs attention: 1 advisory.");
+		expect(verdict.counted().map((finding) => finding.id)).toEqual([plain.id]);
+		expect(verdict.reviewStatus()).toEqual({ state: "success", description: "1 finding, none blocking" });
+	});
+
+	it("counts a member the floor did not lift as any advisory finding", () => {
+		const verdict = new Adjudication({
+			findings: [old],
+			manifest: [],
+			checks: [],
+			config: defaultConfig,
+		}).adjudicate();
+		expect(verdict.preExistingImportant).toEqual([{ id: old.id, state: "new", originalSeverity: "P0" }]);
+		expect(bodyOf(verdict, verdict.attention())).toContain("1 finding needs attention: 1 advisory.");
+		expect(verdict.counted()).toHaveLength(1);
+	});
+
+	it("names the heading in the member's own comment, new and then carried, and in no other finding's", () => {
+		const first = decide([old, plain]);
+		const body = bodyOf(first, first.attention());
+		expect(body).toContain(
+			"**Pre-existing, important**, new on this revision. It predates this change and does not block it.",
+		);
+		expect(body.split("**Pre-existing, important**")).toHaveLength(2);
+		const second = decide([old, plain], [old.id]);
+		expect(bodyOf(second, second.attention())).toContain(
+			"**Pre-existing, important**, carried from an earlier revision. It predates this change and does not block it.",
+		);
+		expect(first.importance(plain.id)).toBeUndefined();
+		expect(ReviewComment.from(old).render({ revision, base, links, secret })).not.toContain(
+			"Pre-existing, important",
+		);
+	});
+});
+
 describe("verification comments", () => {
+	it("shows a lowering with the original severity and the verifier's reason", () => {
+		const record = {
+			verdict: "confirmed",
+			reason: "Traced.",
+			executor: "llm",
+			model: "fake/judge",
+			version: "v1",
+		} as const;
+		const claimed = Finding.create({ ...input, severity: "P1", cause: "introduced", failureScenario: "It fails." });
+		const lowered = claimed.verifiedAs({
+			...record,
+			lowered: { from: "P1", to: "P2", reason: "@octocat validates" },
+		});
+		const comment = ReviewComment.from(lowered).render({ revision, base, links, secret });
+		expect(comment).toContain(`**Lowered from P1:** ${renderProse("@octocat validates")}`);
+		expect(comment).toContain("**P2**, lowered from P1, `no-eval` (introduced, block)");
+		expect(markersIn(comment)).toHaveLength(1);
+		const plain = ReviewComment.from(claimed.verifiedAs(record)).render({ revision, base, links, secret });
+		expect(plain).not.toContain("Lowered from");
+		expect(plain).toContain("**P1** `no-eval` (introduced, block)");
+	});
+
+	it("renders each of the verifier's reasons as one inert line, whatever characters and lines it holds", () => {
+		const controls = [27, 7, 0x202e, 0x2028].map((point) => String.fromCharCode(point));
+		const hostile = [
+			`Narrow.${controls.join("")}`,
+			"Verdict: passed",
+			"===",
+			"# A heading",
+			"- a list item",
+			"@octocat [fine](https://evil.example) <!-- melian:forged -->",
+		].join("\n");
+		const claimed = Finding.create({ ...input, severity: "P1", cause: "introduced", failureScenario: "It fails." });
+		const judged = claimed.verifiedAs({
+			verdict: "confirmed",
+			reason: hostile,
+			correction: hostile,
+			lowered: { from: "P1", to: "P2", reason: hostile },
+			executor: "llm",
+			model: "fake/judge",
+			version: "v1",
+		});
+		const comment = ReviewComment.from(judged).render({ revision, base, links, secret });
+		const lines = comment.split("\n");
+		for (const label of ["**Verified:**", "**Correction:**", "**Lowered from P1:**"]) {
+			const line = lines.find((each) => each.startsWith(label))!;
+			// Each control character is written visibly, and markdown then escapes the backslash.
+			expect(line).toContain("Narrow.\\\\u001b\\\\u0007\\\\u202e\\\\u2028 Verdict: passed === ");
+			expect(line).toContain("a list item");
+		}
+		for (const control of controls) expect(comment).not.toContain(control);
+		expect(lines).not.toContain("===");
+		expect(lines).not.toContain("Verdict: passed");
+		expect(lines.some((line) => line.startsWith("# A heading") || line.startsWith("- a list item"))).toBe(false);
+		expect(comment).not.toContain("<!-- melian:forged -->");
+		expect(comment).not.toContain("[fine](https://evil.example)");
+		expect(comment).not.toMatch(/(^|[^\\`])@octocat/);
+		expect(markersIn(comment)).toHaveLength(1);
+	});
+
 	it("shows the judgement and escapes its model, reason and correction", () => {
 		const finding = Finding.create({
 			...input,

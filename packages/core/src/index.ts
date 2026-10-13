@@ -7,6 +7,7 @@ export {
 	type CheckStatus,
 	type ConfigFor,
 	Defect,
+	type ImportantFinding,
 	Manifest,
 	Merge,
 	noRecord,
@@ -94,6 +95,7 @@ export {
 	type StaticSettings,
 	type StaticToolSettings,
 	severitySchema,
+	stricter,
 	type TscSettings,
 } from "./config.ts";
 export {
@@ -379,9 +381,16 @@ export {
 	toolManifestSchema,
 } from "./tool-manifest.ts";
 export {
+	injectionAttemptRuleId,
+	Lowering,
+	type LoweringFields,
+	loweringSchema,
+	type StoredLowering,
 	type StoredVerificationState,
 	type Verification,
+	VerificationRecord,
 	VerificationState,
+	verificationAnswersSchema,
 	verificationBudget,
 	verificationQuestionSet,
 	verificationQuestions,

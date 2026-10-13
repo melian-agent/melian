@@ -33,8 +33,14 @@ export {
 	triageDirectory,
 } from "./triage.ts";
 export {
+	loadScenarioGoldens,
 	loadVerifierGoldens,
+	runScenarioGolden,
 	runVerifierGolden,
+	type ScenarioGolden,
+	type ScenarioRevision,
+	type ScenarioRun,
+	scenarioMismatches,
 	scoreVerifierGolden,
 	type VerifierGolden,
 	type VerifierRun,
