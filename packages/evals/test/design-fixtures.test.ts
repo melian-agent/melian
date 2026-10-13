@@ -93,14 +93,31 @@ describe("design rule fixtures", () => {
 			"../goldens/design-reimplements-an-authority-clean/head/scripts/node-range.mjs",
 			import.meta.url,
 		);
-		const cases: [string | null, string][] = [
+		const accepted: [string, string][] = [
 			[">=22", "v22.0.0"],
 			[">=22", "v23.4.5"],
-			[">=22", "v21.99.99"],
-			...["v22.0.0-rc.1", "v23.0.0-nightly20260101", "22.0.0", "v22.0", "v22", ""].map(
-				(version): [string, string] => [">=22", version],
-			),
-			...["^22", ">=22.1", ">22", "22", "", null].map((range): [string | null, string] => [range, "v22.0.0"]),
+			[">=9999", "v9999.999999.999999"],
+		];
+		const refusedVersions = [
+			"v21.99.99",
+			"v22.0.0-rc.1",
+			"v23.0.0-nightly20260101",
+			"22.0.0",
+			"v22.0",
+			"v22",
+			"",
+			"v022.0.0",
+			"v22.00.0",
+			"v22.0.01",
+			"v10000.0.0",
+			"v22.1000000.0",
+			"v22.0.1000000",
+		];
+		const refusedRanges = ["^22", ">=22.1", ">22", "22", "", null, ">=022", ">=0", ">=10000"];
+		const cases: [string | null, string][] = [
+			...accepted,
+			...refusedVersions.map((version): [string, string] => [">=22", version]),
+			...refusedRanges.map((range): [string | null, string] => [range, "v22.0.0"]),
 		];
 		const probe = `import { supported } from ${JSON.stringify(module.href)};
 			const cases = JSON.parse(process.argv[1]);
@@ -109,7 +126,7 @@ describe("design rule fixtures", () => {
 			encoding: "utf8",
 		});
 		expect(result.stderr).toBe("");
-		expect(JSON.parse(result.stdout)).toEqual([true, true, false, ...Array.from({ length: 12 }, () => false)]);
+		expect(JSON.parse(result.stdout)).toEqual([true, true, true, ...Array.from({ length: 22 }, () => false)]);
 	});
 	it.each([
 		{ node: `>=${major}`, status: 0 },
