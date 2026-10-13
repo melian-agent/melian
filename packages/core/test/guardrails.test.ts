@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { Adjudication, Changeset, ConfigError, evaluateGuardrails, Finding, loadConfig } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { maxProgram } from "../src/pattern.ts";
@@ -275,6 +276,42 @@ describe("required-files", () => {
 	});
 });
 
+// The names Stryker gives its active-mutant variable, spelt apart so that this file does not match the rule it tests.
+const strykerGlobal = ["__stryker", "__"].join("");
+const mutantFlag = ["active", "Mutant"].join("");
+
+describe("the built-in rule against forged mutation kills", () => {
+	const forging = (file: string, content: string) => guardrails({ "a.ts": "export {};\n" }, { [file]: content });
+
+	it.each([
+		["a setup file", "test/setup.ts", `if (globalThis.${strykerGlobal}?.${mutantFlag}) throw new Error("killed");\n`],
+		["a module setup", "test/setup.mjs", `export default { setup: globalThis.${strykerGlobal} };\n`],
+		["a plain script", "scripts/hook.cjs", `const mutant = state.${mutantFlag};\n`],
+	])("flags %s that reads Stryker's active mutant, with no melian.yaml at all", async (_name, file, content) => {
+		const report = await forging(file, content);
+		expect(summary(report.findings)).toEqual([
+			{
+				rule: "guardrail/forbidden-patterns",
+				file,
+				line: 1,
+				severity: "P2",
+				cause: "introduced",
+				resolution: undefined,
+			},
+		]);
+	});
+
+	it("leaves documents that name the variable alone, and a line the base already held", async () => {
+		const documented = await forging("docs/note.md", `Stryker sets ${strykerGlobal}.${mutantFlag}.\n`);
+		expect(documented.findings).toEqual([]);
+		const held = await guardrails(
+			{ "old.ts": `use(${mutantFlag});\n` },
+			{ "old.ts": `use(${mutantFlag});\n// edit\n` },
+		);
+		expect(held.findings).toEqual([]);
+	});
+});
+
 describe("forbidden-patterns", () => {
 	const config = lines(
 		quiet,
@@ -493,6 +530,50 @@ describe("forbidden-patterns", () => {
 	});
 });
 
+describe("this repository's own policy", () => {
+	it("flags a Stryker disable comment on an added TypeScript line, and not in prose", async () => {
+		const own = readFileSync(new URL("../../../melian.yaml", import.meta.url), "utf8");
+		const { findings } = await guardrails(
+			{ "melian.yaml": own, "src/a.ts": lines("export const a = 1;") },
+			{
+				"src/a.ts": lines("export const a = 1;", "// Stryker disable next-line all", "export const b = 2;"),
+				"notes.md": lines("Stryker disable comments hide mutants."),
+			},
+		);
+		expect(summary(findings).filter((finding) => finding.rule === "guardrail/forbidden-patterns")).toEqual([
+			{
+				rule: "guardrail/forbidden-patterns",
+				file: "src/a.ts",
+				line: 2,
+				severity: "P2",
+				cause: "introduced",
+				resolution: undefined,
+			},
+		]);
+	});
+});
+
+describe("this repository's own Stryker disable policy scope", () => {
+	it("reads source files and not test files, whose text may quote the phrase", async () => {
+		const own = readFileSync(new URL("../../../melian.yaml", import.meta.url), "utf8");
+		const quoted = lines("export const a = 1;", "// Stryker disable next-line all", "export const b = 2;");
+		const { findings } = await guardrails(
+			{ "melian.yaml": own },
+			{
+				"packages/p/src/a.ts": quoted,
+				"packages/p/test/a.ts": quoted,
+				"packages/p/src/a.test.ts": quoted,
+				"packages/p/src/a.spec.ts": quoted,
+			},
+		);
+		expect(
+			summary(findings)
+				.filter((finding) => finding.rule === "guardrail/forbidden-patterns")
+				.map((finding) => finding.file),
+		).toEqual(["packages/p/src/a.ts"]);
+	});
+});
+
 describe("policy-change-review", () => {
 	it("reports each policy and standards file the revision changes", async () => {
 		const { findings } = await guardrails(
@@ -534,6 +615,59 @@ describe("policy-change-review", () => {
 			"web/.babelrc",
 			"web/package.json",
 		]);
+	});
+
+	it("covers a Stryker configuration at the root and in a package, whatever its extension", async () => {
+		const { findings } = await guardrails(
+			{ "src/a.ts": lines("a") },
+			{
+				"stryker.config.json": lines("{}"),
+				"packages/a/stryker.config.mjs": lines("export default {};"),
+				"packages/a/stryker.conf.json": lines("{}"),
+				"src/a.ts": lines("b"),
+			},
+		);
+		expect(findings.map((finding) => [finding.ruleId, finding.properties.path, finding.properties.severity])).toEqual(
+			[
+				["guardrail/policy-change-review", "packages/a/stryker.config.mjs", "P1"],
+				["guardrail/policy-change-review", "stryker.config.json", "P1"],
+			],
+		);
+	});
+
+	// stryker.config.* points at the Vitest configuration the run loads, and that loads the test-name script, so each of
+	// them steers what the mutation check calls a kill.
+	it.each([
+		"vitest.stryker.config.ts",
+		"packages/a/vitest.stryker.config.mts",
+		"vitest.config.ts",
+		"packages/a/vitest.config.mjs",
+		"scripts/stryker-test-names.mjs",
+		"vitest.setup.ts",
+		"packages/a/vitest.stryker.setup.mjs",
+		"stryker.setup.js",
+	])("raises policy-change-review for %s, which the Stryker run loads", async (path) => {
+		const { findings } = await guardrails(
+			{ "src/a.ts": lines("a") },
+			{ [path]: lines("export default {};"), "src/a.ts": lines("b") },
+		);
+		expect(findings.map((finding) => [finding.ruleId, finding.properties.path, finding.properties.severity])).toEqual(
+			[["guardrail/policy-change-review", path, "P1"]],
+		);
+	});
+
+	it.each([
+		"vitest.workspace.ts",
+		"not-vitest.config.ts",
+		"my-vitest.setup.ts",
+		"scripts/stryker-names.mjs",
+		"vitest.configs.ts",
+	])("does not raise policy-change-review for %s", async (path) => {
+		const { findings } = await guardrails(
+			{ "src/a.ts": lines("a") },
+			{ [path]: lines("export default {};"), "src/a.ts": lines("b") },
+		);
+		expect(findings).toEqual([]);
 	});
 
 	describe("a Biome glob past the step limit", () => {

@@ -1,6 +1,7 @@
 import { ComparisonAdjudication } from "@melian-agent/core";
 import { describe, expect, it, vi } from "vitest";
 import type { Io } from "../src/commands.ts";
+import * as commands from "../src/commands.ts";
 import * as comparison from "../src/compare.ts";
 import { main } from "../src/main.ts";
 
@@ -181,6 +182,23 @@ describe("comparison report arguments", () => {
 			}
 		} finally {
 			adjudicate.mockRestore();
+		}
+	});
+});
+
+describe("the isolated-runner declaration", () => {
+	it.each([
+		[["review", "#7"], false],
+		[["review", "#7", "--isolated-runner"], true],
+		[["review", "#7", "--no-isolated-runner"], false],
+	])("passes it to the review only when the flag is given: %j", async (args, isolatedRunner) => {
+		const io = output();
+		const review = vi.spyOn(commands, "review").mockResolvedValue(0);
+		try {
+			expect(await main(args as string[], io)).toBe(0);
+			expect(review).toHaveBeenCalledExactlyOnceWith(io, "#7", { rerun: false, walkthrough: true, isolatedRunner });
+		} finally {
+			review.mockRestore();
 		}
 	});
 });

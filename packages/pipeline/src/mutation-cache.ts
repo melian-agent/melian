@@ -1,0 +1,75 @@
+import { createHash } from "node:crypto";
+import { constants } from "node:fs";
+import { copyFile, mkdir, open, readFile, realpath, rename, rm, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { CacheScratch } from "./cache-scratch.ts";
+
+const bound = 16 * 1024 * 1024;
+
+export interface MutationCacheKey {
+	readonly policy: string;
+	// Whether the head was the reviewer's own or a writer's. A head run only because the host is an isolated runner keeps
+	// results of its own, so a stranger's tests never write what a trusted run of the same commit would reuse.
+	readonly trusted: boolean;
+	readonly head: string;
+	readonly inputs: string;
+	readonly installation: string;
+}
+
+async function readable(path: string): Promise<boolean> {
+	try {
+		const file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+		try {
+			const stat = await file.stat();
+			if (!stat.isFile() || stat.size > bound) return false;
+			JSON.parse(await file.readFile("utf8"));
+			return true;
+		} finally {
+			await file.close();
+		}
+	} catch {
+		return false;
+	}
+}
+
+// The run writes a staged copy in its scratch; only a run that still holds authority publishes a completed partition.
+export class MutationCache {
+	readonly directory: string;
+	readonly file: string;
+	readonly #root: string;
+	private constructor(root: string, directory: string) {
+		this.#root = root;
+		this.directory = directory;
+		this.file = join(directory, "incremental.json");
+	}
+
+	static async open(root: string, key: MutationCacheKey): Promise<MutationCache> {
+		await CacheScratch.open(root);
+		const name = createHash("sha256")
+			.update(JSON.stringify({ version: 2, key }))
+			.digest("hex");
+		const directory = join(root, "mutation", name);
+		await mkdir(directory, { recursive: true });
+		const cache = new MutationCache(root, await realpath(directory));
+		if (!(await readable(cache.file))) await rm(cache.file, { recursive: true, force: true });
+		return cache;
+	}
+
+	async stage(directory: string): Promise<string> {
+		const staged = join(directory, "incremental.json");
+		await mkdir(directory, { recursive: true });
+		await rm(staged, { recursive: true, force: true });
+		if (await readable(this.file)) await copyFile(this.file, staged);
+		return staged;
+	}
+
+	// The head's tests ran beside the staged file, so it is taken only as a regular file within the bound that parses.
+	async publish(staged: string): Promise<void> {
+		if (!(await readable(staged))) return;
+		const text = await readFile(staged, "utf8");
+		const scratch = await CacheScratch.open(this.#root);
+		const temporary = scratch.file(this.file);
+		await writeFile(temporary, text);
+		await rename(temporary, this.file);
+	}
+}

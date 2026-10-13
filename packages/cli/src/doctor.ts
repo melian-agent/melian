@@ -19,7 +19,7 @@ import { createGitHubProvider, parseGitHubRemote, resolveGitHubToken } from "@me
 import { createReviewModels, piAuthPath, providersWithCredentials, staticToolSource } from "@melian-agent/pipeline";
 import type { Io } from "./commands.ts";
 import { decisionProviderRefusal, reviewModels } from "./models.ts";
-import { git, stateDirectory, stateDirectoryVariable } from "./repository.ts";
+import { git, isolatedRunner, isolatedRunnerVariable, stateDirectory, stateDirectoryVariable } from "./repository.ts";
 import { ToolInventory } from "./tools.ts";
 
 type Check = { readonly name: string; readonly state: "ok" | "warn" | "fail"; readonly detail: string };
@@ -185,6 +185,36 @@ async function staticCheck(cwd: string): Promise<Check | undefined> {
 		state: sources.some((source) => source.from === "missing") ? "warn" : "ok",
 		detail: sources.map((source) => `${source.tool} from ${where[source.from]}`).join(", "),
 	};
+}
+
+// Mutation testing runs only the checkout's own Stryker: Melian carries none, and without one the check records a skip
+// that leaves the review not reviewed. It runs the head's own tests unconfined, so doctor says which heads it runs for
+// on this host. Silent while the check is off.
+async function mutationCheck(cwd: string, env: NodeJS.ProcessEnv): Promise<Check | undefined> {
+	const root = await git(cwd, ["rev-parse", "--show-toplevel"]).catch(() => undefined);
+	if (root === undefined) return undefined;
+	try {
+		const { config } = await loadConfig(root, { kind: "worktree", preferences: userFiles(env).config }, ".");
+		if (!config.static.mutation.enabled) return undefined;
+		const source = staticToolSource(root, "mutation");
+		if (source.from !== "checkout") {
+			return {
+				name: "mutation",
+				state: "warn",
+				detail:
+					"static.mutation is on, but Stryker is not installed in the checkout and Melian carries none; add @stryker-mutator/core and @stryker-mutator/vitest-runner to its dev dependencies, or the check records a skip",
+			};
+		}
+		return {
+			name: "mutation",
+			state: "ok",
+			detail: isolatedRunner(env)
+				? `static.mutation runs Stryker from the checkout for every head: ${isolatedRunnerVariable} declares this host an isolated runner`
+				: "static.mutation runs Stryker from the checkout for your own checked-out commit and for a head a writer pushed to the base repository; a fork's head runs only on an isolated runner",
+		};
+	} catch (error) {
+		return { name: "mutation", state: "warn", detail: error instanceof Error ? error.message : String(error) };
+	}
 }
 
 async function standardsCheck(cwd: string): Promise<Check | undefined> {
@@ -417,6 +447,7 @@ export async function doctor(io: Io, options: { readonly fetch?: typeof globalTh
 			await stateCheck(io.cwd, io.env),
 			await levelsCheck(io.cwd),
 			await staticCheck(io.cwd),
+			await mutationCheck(io.cwd, io.env),
 			await standardsCheck(io.cwd),
 		].filter((check) => check !== undefined),
 		...(await planChecks(io.cwd, io.env, secrets)),

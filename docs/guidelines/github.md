@@ -4,7 +4,7 @@ The github package implements core's `ReviewProvider` port for GitHub through Oc
 
 ## Identity reads
 
-`pullRequest` carries its author login. `login()` reads `/user` once and remembers a refusal. `permission(login)` reads the collaborator permission endpoint for that repository. A refused lookup or unknown role reads as absent. GitHub maps maintain to write and triage to read in that endpoint's permission field.
+`pullRequest` carries its author login. `login()` reads `/user` once and remembers a refusal. `permission(login)` reads the collaborator permission endpoint for that repository. A refused lookup or unknown role reads as absent. Pull-request metadata also carries the head repository and the pushing actor from the first exact head-SHA and branch match across GitHub’s event pages. An absent match permits author fallback. A failed event read or an event without an actor records a writer error; the CLI refuses trust. GitHub maps maintain to write and triage to read in that endpoint's permission field.
 
 ## Posting
 

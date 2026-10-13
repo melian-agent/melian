@@ -6,9 +6,12 @@ import {
 	Lens,
 	loadConfig,
 	loadSecrets,
+	type PullRequest,
 	Rendering,
+	type RepositoryPermission,
 	type RepositorySource,
 	ReviewPlan,
+	type ReviewProvider,
 	Standards,
 	userFiles,
 	type Verdict,
@@ -32,6 +35,7 @@ import {
 	revisionKey,
 	runChecks,
 	summarizeReview,
+	type WriterTrust,
 } from "@melian-agent/pipeline";
 import {
 	decisionProviderRefusal,
@@ -42,7 +46,7 @@ import {
 	scriptVariable,
 	Triage,
 } from "./models.ts";
-import { CliError, git, openStorage, storagePath } from "./repository.ts";
+import { CliError, git, isolatedRunner, openStorage, storagePath } from "./repository.ts";
 import { currentBase, fetchedPullRequest, gitHubFor, parseTarget, pullRequestChangeset } from "./target.ts";
 
 /** Where a command reads and writes: its working directory, environment, and output. */
@@ -93,12 +97,25 @@ export class ReviewOutcome {
 export async function review(
 	io: Io,
 	argument: string,
-	options: { readonly model?: string; readonly rerun: boolean; readonly walkthrough?: boolean },
+	options: {
+		readonly model?: string;
+		readonly rerun: boolean;
+		readonly walkthrough?: boolean;
+		readonly isolatedRunner?: boolean;
+	},
 ): Promise<number> {
 	const target = parseTarget(argument);
 	let changeset: Changeset;
 	let source: RepositorySource;
 	let origin: ReviewOrigin = { kind: "range" };
+	// Whether a check that runs the head's own code may run it here. A range whose head is the checked-out commit is the
+	// reviewer's own to run, as `npm test` is. A pull request's head runs when it sits in the base repository and a
+	// writer pushed it. Any other head, such as a fork's, runs only where the host has declared itself an isolated
+	// runner, by the flag or the variable: both are the host's, and nothing a pull request holds can set either.
+	let writer: WriterTrust = {
+		trusted: false,
+		detail: "the review's range head is not the checked-out commit, and this host is not an isolated runner",
+	};
 	if (target.kind === "pullRequest") {
 		const provider = await gitHubFor(io.cwd, io.env);
 		const { pullRequest, changeset: fetched } = await fetchedPullRequest(io.cwd, provider, target.number);
@@ -111,13 +128,17 @@ export async function review(
 			base: pullRequest.base.sha,
 			head: pullRequest.head.sha,
 		};
+		writer = await writerTrust(provider, pullRequest);
 	} else {
 		changeset = await Changeset.resolve(io.cwd, target.spec);
 		const checkedOut = await git(changeset.repoRoot, ["rev-parse", "--verify", "--quiet", "HEAD"]).catch(() => "");
 		const own = checkedOut === changeset.revision.head;
+		if (own) writer = { trusted: true, by: "checkout" };
 		const preferences = userFiles(io.env).config;
 		source = own ? { kind: "worktree", preferences } : { kind: "revision", commit: changeset.revision.base };
 	}
+	// The host's own declaration stands ahead of the other two: it holds where the repository trusts no writer.
+	if (options.isolatedRunner === true || isolatedRunner(io.env)) writer = { trusted: true, by: "isolatedRunner" };
 	const { repoRoot } = changeset;
 	const paths = changeset.revision.paths();
 	const lenses = await Lens.load(repoRoot, source, paths);
@@ -166,7 +187,7 @@ export async function review(
 		const rootConversationId = (await harness.root(context)).id;
 		const checks = await runChecks(
 			harness,
-			{ rootConversationId, changeset, config: loaded, source, tier, rerunFailed: options.rerun },
+			{ rootConversationId, changeset, config: loaded, source, tier, rerunFailed: options.rerun, writer },
 			context,
 		);
 		const callerLenses = new Set(
@@ -245,6 +266,29 @@ export async function review(
 	} finally {
 		await reviewHarness.close(context);
 	}
+}
+
+const writePermissions: readonly RepositoryPermission[] = ["write", "maintain", "admin"];
+
+async function writerTrust(provider: ReviewProvider, pullRequest: PullRequest): Promise<WriterTrust> {
+	const head = pullRequest.head.repository;
+	if (head === undefined)
+		return { trusted: false, detail: "the provider names no repository for the pull request head" };
+	if (
+		head.owner.toLowerCase() !== pullRequest.repository.owner.toLowerCase() ||
+		head.name.toLowerCase() !== pullRequest.repository.name.toLowerCase()
+	)
+		return { trusted: false, detail: "the head is from a fork and this host is not an isolated runner" };
+	if (pullRequest.head.writerError !== undefined) return { trusted: false, detail: pullRequest.head.writerError };
+	const writer = pullRequest.head.pusher ?? pullRequest.author;
+	if (writer === undefined)
+		return { trusted: false, detail: "the provider names no author for the pull request or pusher for its head" };
+	const permission = await provider.permission(writer);
+	if (writePermissions.some((each) => each === permission)) return { trusted: true, by: "writer" };
+	return {
+		trusted: false,
+		detail: `${writer} has ${permission === undefined ? "no known" : permission} permission on the repository`,
+	};
 }
 
 export function short(commit: string): string {

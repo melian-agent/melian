@@ -61,7 +61,7 @@ flowchart TD
     S[("Durable state<br/>every task survives a crash<br/>and resumes without repeating work")] -.-> E
     S -.-> F
     S -.-> M
-    T["Sandbox<br/>anything that executes the change's own code<br/>runs isolated, without secrets"] -.-> C
+    T["Host guard<br/>a check that runs the change's own tests runs for<br/>your own checkout, a writer's head, or on an isolated runner"] -.-> C
 ```
 
 ## What each stage does
@@ -88,8 +88,9 @@ Exit 1 with only resolved or suppressed results is clean; missing or unusable ou
 Its verified graph also supplies bounded caller context to lenses, which they must confirm before citing.
 
 **Mutation testing.** The check on [pull request #98](https://github.com/melian-agent/melian/pull/98), not yet on `main`, runs Stryker on changed production lines only.
-A dry run finds related tests, then each mutant runs only the tests that cover it; the incremental cache avoids repeat work.
-Surviving or uncovered mutants become findings, and Stryker runs in a secret-free sandbox for trusted writers.
+Vitest selects related tests using the head’s own configuration; an empty or failed selection runs the whole suite.
+An uncovered result from related tests is checked against the whole suite. Each mutant runs its covering tests; the incremental cache avoids repeat work.
+Surviving or uncovered mutants become findings. Stryker runs the head's tests unconfined, so it runs only where the host allows that head.
 It can take minutes or hours on a large change, so it stays out of fast tiers.
 
 **Guardrails.** Guardrails read the diff and the policy that applies to each changed path.
@@ -120,9 +121,9 @@ You see what blocks the change, what resolved, and why a dismissed finding no lo
 It produces a resumable review record, so a restart continues work without repeating safe steps or losing decisions.
 You see one coherent result and no duplicate finding or ledger post after recovery.
 
-**The sandbox.** The sandbox runs any check that executes the change's own code with no secrets and restricted access.
-It produces an isolated execution environment for untrusted tests, rather than trusting the reviewer's machine.
-You see a recorded skip when no sandbox is available, never an unlabelled reduction in coverage.
+**The host guard.** The guard decides whether a check that runs the change's own tests may run on this machine.
+It allows your own checked-out commit, a head a writer pushed to the base repository, and any head on a host that declared itself an isolated runner.
+You see `not reviewed`, with the reason, when a configured check did not run; a review is never approved without it.
 
 ## How you work with it
 
@@ -166,7 +167,7 @@ Every setting Melian has, from which lenses run to what severity blocks a merge,
 
 ## Trust model
 
-Code already on your main branch is trusted. Submitted changes and the comments on them are not. Melian will read a pull request with full attention and treat its contents as data, never as instructions, and anything that executes untrusted code runs isolated and without secrets.
+Code already on your main branch is trusted. Submitted changes and the comments on them are not. Melian reads a pull request with full attention and treats its contents as data, never as instructions. Static checks are not sandboxed: they run your repository's code on your machine or your runners, as your build does. A check that runs a change's own tests runs for your checked-out commit and for a head a writer pushed to your repository. A fork's code is untrusted and runs only on a host that has declared itself an isolated runner, with `melian review --isolated-runner` or `MELIAN_ISOLATED_RUNNER=1`, which is the isolation a fork's pull request gets from GitHub's runners today. Anywhere else that check does not run, and the review reads `not reviewed`: a review is never approved while a configured static check has not run. Agents are the part that will be sandboxed. [The decision](docs/decisions/2026-10-14-static-checks-run-unconfined.md) records why.
 
 ## Built on Pi, in Pi's spirit
 
@@ -179,6 +180,8 @@ Melian is licensed under the MIT License, the same as Pi.
 ## Project status
 
 Melian has a working CLI review and publication loop. Milestone 2 makes it the review of record for this repository. The required-status code is built; the maintainer's rehearsal and ruleset switch remain pending. Once `melian/review` is required on `main`, every pull request head needs `melian review "#N"` and `melian publish "#N"` before it can merge.
+
+The opt-in `static.mutation` check runs Stryker on Vitest over changed production TypeScript lines. Surviving mutants and code no test covers raise findings. It runs the head's tests unconfined, for the heads the host guard allows, and belongs in the `full` tier. Melian enables it for its own reviews.
 
 [The design](docs/design.md) explains the decisions. [The implementation plan](docs/design-implementation-plan.md) tracks what is built and what remains.
 

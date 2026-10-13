@@ -138,6 +138,18 @@ To install a skill, first put `melian` on `PATH`: in a clone of Melian, `npm ci 
 
 `review` prepares `CallerContext` after deterministic checks when static.enola is enabled. It supplies only changed files selected by the lenses, using the same trusted policy commit as deterministic checks and the existing verified snapshot. A failure is advisory context on lens records; static.enola’s own failed record still makes the review not reviewed.
 
+A repository that turns on `static.mutation` sees its findings in the ordinary form. Mutants on one line share a finding, so it names the first and counts the rest. A survivor reads:
+
+```
+  P2  line 2  mutation/untested-behaviour  (introduced, new, acknowledge)  89960fff5ea96f14
+  ConditionalExpression mutant survived: with this code changed to `false`, every test still passed. (and 4 more on these lines)
+    What: ConditionalExpression mutant survived: with this code changed to `false`, every test still passed.
+    Why here: A mutant of this changed line survived the test run, so no test fails when this behaviour changes.
+    What to do: Add or tighten a test in src/classify.test.ts so it fails when this code is changed as the mutant changed it, then restore the code.
+```
+
+A mutant in code no test runs says `has no test coverage` instead. The check's record names Stryker's version, the lines it mutated and Vitest’s selection path with its reason. An empty or failed related selection uses the whole suite. A related run that errors or reports NoCoverage repeats with every candidate test. An uncovered finding requires Stryker’s whole-suite coverage analysis. A change past `static.mutation.maxLines` has a share of every file mutated, and the run raises one P3 advisory `mutation/unmutated` notice counting omitted lines by reason, budget and `ignoreStatic`, and naming the budget. Both reasons share that notice; neither produces per-file acknowledgement. A change with no production lines records the check as skipped, with the reason, and the review still finishes. A run past its timeout, and a head this host may not run, record a skip too, and the review is `not reviewed` and exits 2: `review "#N"` on a fork's pull request from a laptop prints `static.mutation  skipped: the head is from a fork and this host is not an isolated runner`, and the same review on the repository's runner, which declares itself with `--isolated-runner` or `MELIAN_ISOLATED_RUNNER=1`, runs the check. The flag and the variable are the host's to set; nothing in a pull request or a `melian.yaml` can. `melian doctor` says on its `mutation` line which heads the check runs for on this host: your own checkout and a writer's head, or every head where `MELIAN_ISOLATED_RUNNER` is `1`. A checkout with no Stryker records a skip that leaves the review not reviewed.
+
 `ToolInventory` uses the host’s environment for the state-directory rule. Listing and doctor re-hash cached executables without fetching. Only fetch repairs a mismatched entry. Fake-archive tests cover command routing, all three readiness states and repair.
 
 A doctor test that reads the development checkout must set MELIAN_STATE_DIR to fresh temporary state. Otherwise the clone’s older cached pins can change its exit status when verification changes. Keep node_modules in the checkout for sourcing assertions.

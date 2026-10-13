@@ -3,7 +3,7 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, wr
 import { dirname, join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
-import { CheckError, defaultConfig, type ToolLog } from "@melian-agent/core";
+import { Changeset, CheckError, defaultConfig, type ToolLog } from "@melian-agent/core";
 import {
 	backgroundContext as context,
 	createNodeExecutionEnv,
@@ -12,11 +12,14 @@ import {
 } from "@melian-agent/pipeline";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Run, staticToolSource } from "../src/static.ts";
+import { fakeMutationProcesses } from "./fixtures/mutation-process.ts";
 import { commit, createRepository, fakeTool, gitIn, lines, removeRepository, writeFiles } from "./fixtures/repo.ts";
+import { emptyVitestInstall } from "./fixtures/vitest-listing.ts";
 
 let repo: string;
 
 beforeEach(() => {
+	fakeMutationProcesses();
 	repo = createRepository();
 });
 
@@ -56,6 +59,7 @@ function input(tool: StaticRunInput["tool"], commitId: string, timeout = 120): S
 		repoRoot: repo,
 		commit: commitId,
 		tool,
+		headCode: "trusted",
 		settings: { ...defaultConfig.static[tool], timeout },
 	};
 }
@@ -183,6 +187,59 @@ describe("runStaticTool with the repository's own tools", () => {
 	const emptySarif = JSON.stringify({
 		version: "2.1.0",
 		runs: [{ tool: { driver: { name: "Biome" } }, results: [] }],
+	});
+
+	it("names a checkout lockfile mismatch after linking its installed dependencies", async () => {
+		const head = commit(repo, {
+			".gitignore": "node_modules\n",
+			"package-lock.json": "old\n",
+			"src/a.ts": "export const a = 1;\n",
+		});
+		writeFileSync(join(repo, "package-lock.json"), "new\n");
+		fakeTool(
+			repo,
+			"biome",
+			[
+				'if [ "$1" = "--version" ]; then echo 0.0.0; exit 0; fi',
+				'for arg in "$@"; do case "$arg" in --reporter-file=*) out=$(printf %s "$arg" | cut -d= -f2-);; esac; done',
+				`printf '%s' '${emptySarif}' > "$out"`,
+			].join("\n"),
+		);
+		const run = await runStaticTool(input("biome", head), context);
+		expect(run).toMatchObject({
+			status: "ran",
+			notes: [
+				`biome resolved dependencies from the checkout's install, whose package-lock.json differs from ${head.slice(0, 12)}'s.`,
+			],
+		});
+	});
+
+	it("links a workspace's own dependencies where the mutation run's tests find them", async () => {
+		writeFiles(repo, emptyVitestInstall);
+		const base = commit(repo, {
+			".gitignore": "node_modules\n",
+			"stryker.config.json": JSON.stringify({ testRunner: "vitest" }),
+			"packages/b/package.json": JSON.stringify({ name: "b", main: "index.ts" }),
+			"packages/b/index.ts": "export const b = 1;\n",
+		});
+		const head = commit(repo, { "src/a.ts": "export const a = 1;\n" });
+		writeFiles(repo, { "packages/b/node_modules/nested/index.js": "nested-version\n" });
+		mkdirSync(join(repo, "node_modules"), { recursive: true });
+		symlinkSync("../packages/b", join(repo, "node_modules/b"));
+		fakeTool(
+			repo,
+			"stryker",
+			`if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi
+[ "$(cat packages/b/node_modules/nested/index.js)" = "nested-version" ] || exit 1
+mkdir -p reports/mutation
+echo '{"files":{}}' > reports/mutation/mutation.json`,
+		);
+		const run = await runStaticTool(
+			{ ...input("mutation", head), base, revision: (await Changeset.resolve(repo, `${base}..${head}`)).revision },
+			context,
+		);
+		// The fake exits 1 unless it reads the nested package through the worktree's own link.
+		expect(run.status).toBe("ran");
 	});
 
 	it("prefers the tool in the checkout's node_modules", { timeout: 60_000 }, async () => {
@@ -425,6 +482,32 @@ describe("runStaticTool and a stale worktree that cannot be removed", () => {
 	});
 });
 
+describe("runStaticTool and a worktree locked by pid 0", () => {
+	it("treats the lock as dead rather than probing a process group", { timeout: 60_000 }, async () => {
+		const head = commit(repo, { "src/a.ts": lines("export const a = 1;") });
+		const owner = join(dirname(repo), `melian-static-lowpid-${process.pid}`);
+		mkdirSync(owner);
+		gitIn(
+			repo,
+			"worktree",
+			"add",
+			"--quiet",
+			"--detach",
+			"--lock",
+			"--reason",
+			"melian-static pid 0",
+			join(owner, "tree"),
+		);
+		try {
+			await log("biome", head);
+			expect(gitIn(repo, "worktree", "list", "--porcelain")).not.toContain(join(owner, "tree"));
+		} finally {
+			rmSync(owner, { recursive: true, force: true });
+			gitIn(repo, "worktree", "prune");
+		}
+	});
+});
+
 describe("runStaticTool after a cancellation", () => {
 	it("removes its worktree even though the caller's context is cancelled", { timeout: 60_000 }, async () => {
 		const head = commit(repo, { ".gitignore": lines("node_modules"), "tsconfig.json": tsconfig });
@@ -477,4 +560,13 @@ describe("runStaticTool after a crash", () => {
 		expect(existsSync(stale[0]!)).toBe(false);
 		expectCheckoutUntouched();
 	});
+});
+
+it("the exported mutation runner refuses a head the caller gave no leave for, before creating a worktree", async () => {
+	const env = createNodeExecutionEnv(repo);
+	const execute = vi.spyOn(env, "exec");
+	const { headCode: _leave, ...refusedInput } = input("mutation", "a".repeat(40));
+	const result = await runStaticTool({ ...refusedInput, env }, context);
+	expect(result).toMatchObject({ status: "skipped", cause: "headNotAllowed" });
+	expect(execute).not.toHaveBeenCalled();
 });

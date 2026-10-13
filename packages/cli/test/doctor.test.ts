@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import * as core from "@melian-agent/core";
@@ -339,6 +339,7 @@ describe("doctor trust boundaries", () => {
 		expect(result.status).toBe(0);
 		expect(result.trust).toMatch(/^warn /);
 		expect(result.trust).toContain("not inside a git repository; root policy is unknown");
+		expect(result.stdout).not.toMatch(/ {2}mutation\s/);
 		expect(state.calls).toEqual([]);
 	});
 
@@ -449,6 +450,68 @@ describe("doctor trust boundaries", () => {
 		},
 		5_000,
 	);
+});
+
+describe("doctor mutation testing", () => {
+	const line = (stdout: string) => stdout.split("\n").find((each) => / {2}mutation\s+/.test(each));
+	const enable = () => writeFileSync(join(repo, "melian.yaml"), "static: { mutation: { enabled: true } }\n");
+
+	it("warns that the check records a skip when it is on and the checkout has no Stryker, since Melian carries none", async () => {
+		enable();
+		const { status, stdout } = await run(github());
+		expect(status).toBe(0);
+		expect(line(stdout)).toMatch(
+			/^warn {2}mutation\s+static\.mutation is on, but Stryker is not installed in the checkout/,
+		);
+		expect(line(stdout)).toContain("@stryker-mutator/core and @stryker-mutator/vitest-runner");
+	});
+
+	it.each([
+		[
+			"your own checkout and a writer's head, on a host that has declared nothing",
+			undefined,
+			/^ok {4}mutation\s+static\.mutation runs Stryker from the checkout for your own checked-out commit and for a head a writer pushed to the base repository; a fork's head runs only on an isolated runner$/,
+		],
+		[
+			"your own checkout and a writer's head, where the variable holds anything but 1",
+			"true",
+			/for your own checked-out commit and for a head a writer pushed to the base repository; a fork's head runs only on an isolated runner$/,
+		],
+		[
+			"every head, on a host that declared itself an isolated runner",
+			"1",
+			/^ok {4}mutation\s+static\.mutation runs Stryker from the checkout for every head: MELIAN_ISOLATED_RUNNER declares this host an isolated runner$/,
+		],
+	])("says the check runs for %s", async (_name, declared, expected) => {
+		enable();
+		mkdirSync(join(repo, "node_modules/.bin"), { recursive: true });
+		writeFileSync(join(repo, "node_modules/.bin/stryker"), "#!/bin/sh\n");
+		chmodSync(join(repo, "node_modules/.bin/stryker"), 0o755);
+		const state = github();
+		const { MELIAN_ISOLATED_RUNNER: _inherited, ...inherited } = process.env;
+		const { stdout } = await run(state, undefined, {
+			env: {
+				...inherited,
+				XDG_CONFIG_HOME: home,
+				PI_CODING_AGENT_DIR: home,
+				GITHUB_TOKEN: "test-token-never-printed",
+				...(declared === undefined ? {} : { MELIAN_ISOLATED_RUNNER: declared }),
+			},
+		});
+		expect(line(stdout)).toMatch(expected);
+	});
+
+	it("warns with the reason when the configuration cannot be read", async () => {
+		writeFileSync(join(repo, "melian.yaml"), "static: { mutation: { enabled: 3 } }\n");
+		const { stdout } = await run(github());
+		expect(line(stdout)).toMatch(/^warn {2}mutation\s+\S/);
+		expect(line(stdout)).not.toContain("static.mutation is on");
+	});
+
+	it("says nothing while the check is off", async () => {
+		const { stdout } = await run(github());
+		expect(line(stdout)).toBeUndefined();
+	});
 });
 
 describe("doctor clone check", () => {
