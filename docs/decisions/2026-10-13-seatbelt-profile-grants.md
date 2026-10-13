@@ -25,18 +25,20 @@ Choice: a grant stays only when a named program fails without it. Each rule was 
 | read `/private/var/db/timezone`, and `/private/etc/localtime` as a literal | `date` and Node, so a log's times match the reviewer's. |
 | read `/private/var/select/sh` and `developer_dir` as literals | `/bin/sh` chooses its shell by the first; `xcrun`, behind the git shim, reads the second. |
 | read the developer tools directory | The real git. |
-| read the Node executable as a literal, and `lib/node_modules` and `include/node` under an owned prefix | Node; npm, npx, and corepack; node-gyp. [The runtime-grant decision](2026-10-12-sandbox-node-runtime-grants.md) sets the rule. |
+| read the Node executable as a literal | Node. Nothing else of its prefix: [the runtime-grant decision](2026-10-12-sandbox-node-runtime-grants.md) says why. |
 | read the caller's installs | The tool the caller runs and its dependencies. |
 | read, start, and map a standalone tool, as a literal | A tool that lives in no install, such as a `.bin` entry linked to a program elsewhere. It gets its own file and nothing beside it. |
 | read and write scratch | The run's own files. |
 | metadata of `/`, `/etc`, `/var`, and each directory above a granted path | Path lookup stats each directory on the way. Metadata shows a directory exists, never its contents. |
 | read `/dev/null` and `/dev/urandom`; write `/dev/null` | Shell redirects; programs that seed from the device, such as Python. |
 | deny `/dev/tty` | Stated, so a later device grant cannot open the terminal by accident. |
+| deny starting `/bin/launchctl` | Nothing in a tool run needs launchd's client; see the open points. |
 | loopback, and read `/private/etc/hosts`, only when the caller asks | A tool that talks to its own workers; the resolver needs the file to find `localhost`. |
 
 Removed, because no command needed them:
 
-- `process-info*`, `ipc-posix-sem`, `ipc-posix-shm*`, `system-mac-syscall`, and the Mach lookup.
+- `process-info*` for any process but the caller, `ipc-posix-sem`, `ipc-posix-shm*`, `system-mac-syscall`, and the Mach lookup.
+- Every sysctl name but seven, and Node's `lib/node_modules` and `include/node`.
 - `/Library/Preferences`, `/Library/Apple`, and `/private/var/db/dyld`.
 - The rest of `/private/etc` and `/private/var/select`.
 - The devices `/dev/zero`, `/dev/random`, and `/dev/dtracehelper`.
@@ -56,7 +58,7 @@ What this gives up, and what stays open:
 - A tool that needs a removed grant fails until someone adds the rule with the tool's name beside it. That is the point.
 - `/etc/gitconfig` is not readable. A host that has one makes git inside the sandbox stop with "unable to access". A caller that runs git there sets `GIT_CONFIG_NOSYSTEM=1`.
 - The host name stays readable, through `kern.hostname`, which `uname` needs.
-- Seatbelt cannot close the bootstrap port. `launchctl print` lists the user's services from inside the sandbox. On this host launchd refused to create a job, set its environment, or run a command outside the sandbox; a request to restart a service the user already has was not tried, since it would disturb the host.
+- Seatbelt cannot close the bootstrap port, so launchd answers a confined process. `launchctl print user/<uid>` and `gui/<uid>` return the whole domain: about 1,500 and 2,600 lines on this host, naming every service, its program path and arguments, its state and pid, its Mach endpoints, and the domain's environment block. That block holds what `launchctl setenv` put there, here `SSH_AUTH_SOCK` alone, with its value; a key a user set that way would be readable. launchd refused to create a job, set its environment, or run a command outside the sandbox; a request to restart a service the user already has was not tried, since it would disturb the host. The profile now denies starting `/bin/launchctl`, which nothing in a tool run needs. That removes the ready-made client and nothing more: `mach-lookup` was already denied and does not govern the bootstrap port every process holds, so a process that speaks launchd's protocol itself still gets the same answers.
 - Seatbelt gives no lifecycle control. `process-fork` cannot be withheld, and nothing ends a command's descendants when the command exits. A subverted Biome or tsc could start a child, detach it, and exit; the child runs on. It stays inside the same profile for as long as it lives: it reads only what the profile reads, writes only under the scratch path, signals only its own kind, and has no network. bubblewrap has no such gap, since `--die-with-parent` and its process namespace end everything with the command. Melian never signals a process group, pid 0, or a negative pid, so it does not hunt the child down; a wrapper that did would be the wrong trade for tools that do not execute head code. Instead nothing the child can still reach matters:
   - The host reads each output file once, through the no-follow reader, and judges what it read. It never opens the file again.
   - A confined run is torn down confined. The trees and scratch are removed from inside the sandbox, where a path the child swaps for a link leads nowhere, and host git is never asked to remove a tree. A teardown that cannot finish fails the check, because scratch that will not empty is scratch something still writes to.
@@ -64,7 +66,7 @@ What this gives up, and what stays open:
   - What remains is its use of CPU and memory until the host kills it or it ends.
 
   A test leaves a detached child behind, lets it rewrite the output after the host's read, and checks the result is the first read's, the write beside scratch never lands, and scratch is gone while the child still runs. For a check that executes head code the control is a supervisor that records each descendant's pid and start time and ends each by its own pid, which [pull request #98](https://github.com/melian-agent/melian/pull/98) brings.
-- A crash between a confined command and its teardown leaves scratch under `melian-static-`, which the next run of any build removes on the host. Scratch that must never be removed that way takes the `melian-confined-` prefix; a Biome or tsc run does not, since an old build must still see its live lock.
+- A confined run whose teardown did not finish leaves scratch under `melian-static-`. No crash is needed: a child that keeps writing there makes the last step fail, which the teardown reports as `worktreeFailed` with the path. This build's next run removes such a tree confined, because the run's marker says a confined command ran there. A build from before the marker removes it on the host. Scratch that no build may remove that way takes the `melian-confined-` prefix; a Biome or tsc run does not, since an old build must still see its live lock.
 - bubblewrap's bind list was read against this table, below, and CI is its only test host. No command was run with each bind removed in turn, as was done for seatbelt.
 
 ## The bubblewrap command, bind by bind
@@ -87,7 +89,7 @@ bubblewrap starts from an empty root, so its list is what exists at all, not wha
 | `--proc /proc` | A process table of the namespace alone. Node reads `/proc/self`, and the housekeeping script opens files through `/proc/self/fd`. |
 | `--dev /dev` | The few devices bubblewrap makes itself: `null`, `zero`, `full`, `random`, `urandom`, `tty`, and a private `pts` and `shm`. |
 | `--tmpfs /tmp` | An empty `/tmp` for scratch to mount under; the host's is not visible. |
-| the Node executable, and its owned `lib/node_modules` and `include/node` | As under seatbelt. |
+| the Node executable, as its one file | As under seatbelt. |
 | a standalone tool, as its one file | As under seatbelt. |
 | the caller's installs, read-only | The tool and its dependencies. |
 | scratch, read and write | The run's own files. |

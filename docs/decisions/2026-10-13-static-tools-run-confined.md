@@ -2,9 +2,9 @@
 
 Supersedes: none. [The sandbox decision](2026-10-08-head-code-runs-in-a-sandbox.md) stands: a check that executes head code runs in a sandbox or is skipped. This decision is about two checks that do not.
 
-Problem: Biome and tsc run as the reviewer, on files a pull request wrote. They ran with the reviewer's real `HOME`, the whole disk readable, and an open network. Neither runs the head's code, so nothing known was wrong. But each parses input the head controls: source files, `biome.json`, `tsconfig.json`, a GritQL plugin. A parser bug in either would run with everything the reviewer can reach.
+Problem: Biome and tsc run as the reviewer, on files a pull request wrote. They ran with the reviewer's real `HOME`, the whole disk readable, and an open network. Neither stock tool runs the head's code. But each reads the files the head names, and says what it found. No bug is needed for that to leak.
 
-Example: a pull request from a fork adds a source file built to exploit a bug in a tool's parser. The subverted tool reads `~/.pi/agent/auth.json` and posts it to a server. The review reports a tool crash.
+Example: a pull request from a fork commits `biome.json` with `"extends": ["/Users/reviewer/.pi/agent/auth.json"]`. Stock Biome 2.5.15 opens that file as a configuration, fails to make sense of it, and quotes it line by line in its error. The host stored that error in the check record and printed it in the terminal and the JSON. The review of record on [pull request #112](https://github.com/melian-agent/melian/pull/112) showed it with a fake key; main has done this since static tools landed. A parser bug would be worse, since a subverted tool could also send the file out, but the plain case needs none.
 
 Whether these tools execute head code, checked in the code and the installed packages:
 
@@ -13,7 +13,9 @@ Whether these tools execute head code, checked in the code and the installed pac
 - tsc 7.0.2 reads `tsconfig.json` and what it `extends`. The `plugins` field configures an editor's language service, and tsc never loads it.
 - The worktree's workspace packages are the head's own sources. tsc type-checks them and does not import them.
 
-So neither tool is a check that executes head code, and the sandbox decision's rule, skip where there is no sandbox, does not apply to them. [The pipeline guideline](../guidelines/pipeline.md#static-tools-run-in-the-execution-environment) said that running them "runs the revision's code"; that sentence was wrong and is corrected.
+That is a claim about the stock tools at those versions, not about whatever a checkout installs under their names. `binaryFor` runs the checkout's `node_modules/.bin/<tool>` when the checkout has one, and does not compare it with the package the lockfile declares. A checkout whose `typescript` has been patched by ts-patch has a `tsc` that loads the transformers a `tsconfig.json` names, and the head writes that file. Open risk, for the maintainer: when the checkout's installed tsc is patched in that way and the head's `tsconfig.json` names a transformer, static.tsc executes head code, confined where the host has a sandbox and unconfined where it has none. Nothing here detects it. Closing it means running only a binary that matches the declared package, or Melian's own.
+
+So neither stock tool is a check that executes head code, and the sandbox decision's rule, skip where there is no sandbox, does not apply to them. [The pipeline guideline](../guidelines/pipeline.md#static-tools-run-in-the-execution-environment) said that running them "runs the revision's code"; that sentence was wrong and is corrected.
 
 Choice: where the host offers a sandbox, Biome, tsc, and their `--version` probes run inside it.
 
@@ -40,7 +42,17 @@ Enola's record says `unconfined`, with the reason "not yet confined", like any o
 
 A policy key that makes an unconfined run skip or fail is deferred to the per-rule resolution step. That step is where a repository will say, rule by rule and path by path, what blocks; a second, separate switch here would be a policy surface to review and migrate twice. Until then the default stays "run, with a visible warning", because these tools do not execute head code: refusing to lint on a host with no sandbox would cost every such review two checks to guard against a parser bug nobody has found.
 
-Why the fallback is not fail-open: fail-open means a control that guards a known danger gives way and the danger proceeds unseen. Here there is no head code to stop, so skipping would remove two checks from every such host to guard against a bug nobody has found. The sandbox is defence in depth for these tools. Its absence leaves the run where every run was before this change, and every rendering of the review says so. A check that does execute head code gets no such fallback; the sandbox decision still skips it.
+Why the fallback may run at all: the stock tools execute no head code, but they read head-named files, so an unconfined run withholds their output. That is the whole argument; the first form of this decision said there was "no head code to stop" and only "a bug nobody has found" to fear, and both halves were wrong about what an unconfined tool can give away.
+
+On a run that was not confined, nothing the tool printed reaches a record, a log, the terminal, or the JSON.
+
+- A failure carries its reason code, the tool's exit code, and the fixed sentence "output withheld: the tool ran unconfined". That holds for the version probe, Biome's stderr, tsc's output, and Enola's logs alike.
+- A diagnostic from the tool's structured report is kept only when its file really is inside the worktree, not a link out of it, and its message names no absolute path outside the worktree. A kept message is cut to 1,000 characters and written as visible text. The rest are dropped and counted in a note, never quoted.
+- On a confined run messages stay as the tool wrote them, since the tool could read nothing to quote.
+
+What that costs: on a host with no sandbox a broken tool says only that it broke, and the maintainer reruns it by hand to see why. A failed check carries its confinement too, so the crash on a host with no sandbox, the one case where the warning matters most, says "ran unconfined" in all four outputs.
+
+A check that does execute head code gets no such fallback; the sandbox decision still skips it.
 
 The loopback flag: `SandboxPaths.loopback` is off unless a caller sets it. A later caller that runs a tool which talks to its own workers over loopback, as Stryker's logging server does, sets it. Seatbelt cannot name a port the tool picks for itself, so the rule is every loopback port, and on macOS loopback is the host's own: the command can reach any service listening there. Such a caller needs a second control, writer trust, and must say why no narrower rule works. bubblewrap's private network namespace has no such hole. Biome and tsc open no socket, so they get none.
 

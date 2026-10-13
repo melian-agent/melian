@@ -1,7 +1,10 @@
+import { spawnSync } from "node:child_process";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import * as core from "@melian-agent/core";
 import {
+	Adjudication,
 	Changeset,
 	CheckError,
 	defaultConfig,
@@ -38,7 +41,7 @@ import * as staticRunner from "../src/static.ts";
 import { ToolProvisioning } from "../src/tool-provisioning.ts";
 import { fakeMutationProcesses } from "./fixtures/mutation-process.ts";
 import { commit, createRepository, fakeTool, lines, removeRepository } from "./fixtures/repo.ts";
-import { hostConfinement, unconfinedNotes, unconfinedSandbox } from "./fixtures/sandbox.ts";
+import { hostConfinement, hostSandbox, unconfinedNotes, unconfinedSandbox } from "./fixtures/sandbox.ts";
 
 let repo: string;
 let opened: Harness[];
@@ -641,5 +644,126 @@ describe("runChecks and where a static tool ran", () => {
 		);
 		expect((await checks(first, second)).records).toMatchObject([{ status: "ran", confinement: inside }]);
 		vi.restoreAllMocks();
+	});
+});
+
+describe("runChecks and a head that names a reviewer's file to a stock tool", () => {
+	// The review of record's probe: the head's biome.json extends a file outside the repository, and the real Biome
+	// quotes that file in its error. Inside the sandbox Biome cannot open it. Outside one, nothing Biome printed is kept.
+	it.each([
+		[
+			"a JSON credential file",
+			"auth.json",
+			JSON.stringify({ anthropic: { type: "api_key", key: "FAKE-SECRET-112-KEY" } }, null, 2),
+		],
+		[
+			"a text key file",
+			"id_fake",
+			"-----BEGIN FAKE PRIVATE KEY-----\nFAKE-SECRET-112-KEY\n-----END FAKE PRIVATE KEY-----\n",
+		],
+	])("keeps %s out of every output, confined or not", { timeout: 120_000 }, async (_name, file, content) => {
+		const outside = join(dirname(repo), `melian-outside-${process.pid}`);
+		mkdirSync(outside);
+		writeFileSync(join(outside, file), content);
+		const base = commit(repo, {
+			"melian.yaml": lines("tiers:", "  fast: [static.biome]"),
+			"src/a.ts": lines("export const a = 1;"),
+		});
+		const head = commit(repo, { "biome.json": JSON.stringify({ extends: [join(outside, file)] }) });
+		try {
+			for (const confined of [true, false]) {
+				if (!confined) vi.spyOn(Sandbox, "detect").mockResolvedValue(undefined);
+				else if (hostSandbox === undefined) continue;
+				const { harness, root, records } = await checks(base, head);
+				expect(records).toMatchObject([
+					{
+						name: "static.biome",
+						status: "failed",
+						reason: "toolFailed",
+						confinement: confined
+							? { confined: true }
+							: { confined: false, reason: "this host offers no sandbox" },
+					},
+				]);
+				const verdict = new Adjudication({
+					findings: [],
+					manifest: ["static.biome"],
+					checks: records,
+					config: defaultConfig,
+				}).adjudicate();
+				const outputs = {
+					record: JSON.stringify(records),
+					stored: JSON.stringify(await harness.snapshot(ChecksDocument, root.id, context)),
+					terminal: verdict.render(),
+					json: verdict.renderJson(),
+				};
+				for (const [where, text] of Object.entries(outputs))
+					expect(text, where).not.toContain("FAKE-SECRET-112-KEY");
+				const error = (records[0] as { error: string }).error;
+				if (confined) expect(error).toContain("biome exited with code");
+				else {
+					// The reason code, the exit code, and the fixed sentence, and not one word of Biome's own.
+					expect(error).toMatch(
+						/^biome exited with code \d+ and (no report|a report): output withheld: the tool ran unconfined$/,
+					);
+					expect(outputs.terminal).toContain("static.biome  ran unconfined: this host offers no sandbox");
+					expect(outputs.json).toContain('"confined": false');
+				}
+				vi.restoreAllMocks();
+			}
+			// The file was there to be quoted: outside both, the stock Biome prints it.
+			const stock = spawnSync(
+				fileURLToPath(new URL("../../../node_modules/.bin/biome", import.meta.url)),
+				["lint", "."],
+				{
+					encoding: "utf8",
+					cwd: repo,
+				},
+			);
+			expect(`${stock.stdout}${stock.stderr}`).toContain("FAKE-SECRET-112-KEY");
+		} finally {
+			rmSync(outside, { recursive: true, force: true });
+		}
+	});
+
+	it("says a tool that crashed outside a sandbox ran unconfined, in the record and in every rendering", {
+		timeout: 60_000,
+	}, async () => {
+		const base = commit(repo, {
+			".gitignore": "node_modules\n",
+			"melian.yaml": lines("tiers:", "  fast: [static.biome]"),
+		});
+		const head = commit(repo, { "src/a.ts": lines("export const a = 1;") });
+		fakeTool(
+			repo,
+			"biome",
+			'if [ "$1" = "--version" ]; then echo 0.0.0; exit 0; fi\necho "a secret the tool read" >&2\nexit 70',
+		);
+		vi.spyOn(Sandbox, "detect").mockResolvedValue(undefined);
+		const { records } = await checks(base, head);
+		vi.restoreAllMocks();
+		expect(records).toEqual([
+			{
+				name: "static.biome",
+				status: "failed",
+				reason: "toolFailed",
+				error: "biome exited with code 70 and no report: output withheld: the tool ran unconfined",
+				confinement: { confined: false, reason: "this host offers no sandbox" },
+			},
+		]);
+		const verdict = new Adjudication({
+			findings: [],
+			manifest: ["static.biome"],
+			checks: records,
+			config: defaultConfig,
+		}).adjudicate();
+		expect(verdict.unconfined()).toEqual([{ name: "static.biome", reason: "this host offers no sandbox" }]);
+		expect(verdict.render()).toContain(
+			"1 check ran outside a sandbox:\n  static.biome  ran unconfined: this host offers no sandbox",
+		);
+		expect(JSON.parse(verdict.renderJson()).notRun[0].confinement).toEqual({
+			confined: false,
+			reason: "this host offers no sandbox",
+		});
 	});
 });

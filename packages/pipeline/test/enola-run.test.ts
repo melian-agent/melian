@@ -123,7 +123,11 @@ it.each([
 	f.shell.mockImplementation(async (text) =>
 		text.includes(command) ? { code: 2, output: "failure" } : { code: 0, output: "a".repeat(40) },
 	);
-	await expect(f.enola.check()).rejects.toMatchObject({ code, message: expect.stringContaining(message) });
+	const failure = await f.enola.check().catch((error: Error) => error);
+	expect(failure).toMatchObject({ code, message: expect.stringContaining(message) });
+	// What a failing Enola command printed is withheld, since Enola runs unconfined.
+	// Git's own complaint about the base worktree is the host's, and is kept.
+	if (_case !== "base worktree") expect((failure as Error).message).not.toContain(": failure");
 });
 
 it.each([
@@ -478,5 +482,16 @@ it.each([
 	const f = await fixture(false);
 	f.artifacts[output] = "x".repeat(5000);
 	f.shell.mockImplementation(async (text) => ({ code: text.includes(command) ? 2 : 0, output: "a".repeat(40) }));
-	await expect(f.enola.check()).rejects.toMatchObject({ code: "toolFailed", message: `${prefix}${"x".repeat(4096)}` });
+	// Unconfined, as Enola runs today, nothing it printed is carried: only the exit code and the fixed sentence.
+	await expect(f.enola.check()).rejects.toMatchObject({
+		code: "toolFailed",
+		message: `${prefix}output withheld: the tool ran unconfined`,
+	});
+	// Once a run is confined its output is shown, to the cap.
+	f.run.confinement = { confined: true };
+	await expect(f.enola.check()).rejects.toMatchObject({
+		code: "toolFailed",
+		message: `${prefix}${"x".repeat(4096)}`,
+		confinement: { confined: true },
+	});
 });

@@ -1,5 +1,4 @@
-import { existsSync, readlinkSync, realpathSync, statSync } from "node:fs";
-import { homedir } from "node:os";
+import { existsSync, readlinkSync, realpathSync } from "node:fs";
 import { dirname, posix } from "node:path";
 import type { Context, ExecutionEnv } from "./harness.ts";
 
@@ -105,21 +104,6 @@ export function nodeExecutable(): string {
 	return realpathSync(process.execPath);
 }
 
-function nodeDirectories(executable: string): string[] {
-	const prefix = dirname(dirname(executable));
-	const home = homedir();
-	if (
-		executable !== posix.join(prefix, "bin/node") ||
-		["/", "/usr", "/usr/local", home, posix.join(home, ".local")].includes(prefix) ||
-		home.startsWith(`${prefix}/`) ||
-		!statSync(prefix, { throwIfNoEntry: false })?.isDirectory()
-	)
-		return [];
-	return [posix.join(prefix, "lib/node_modules"), posix.join(prefix, "include/node")].filter(
-		(path) => statSync(path, { throwIfNoEntry: false })?.isDirectory() && realpathSync(path) === path,
-	);
-}
-
 // One trial start of each backend, with nothing denied: it shows the host lets a sandbox start at all.
 const trials: Readonly<Record<SandboxBackend, string>> = {
 	seatbelt: "/usr/bin/sandbox-exec -p '(version 1)(allow default)' /usr/bin/true",
@@ -154,7 +138,8 @@ export class Sandbox {
 		if (backend === undefined) return undefined;
 		const trial = await env.exec(
 			trials[backend],
-			{ inheritEnv: false, env: { PATH: process.env.PATH ?? "/usr/bin:/bin" }, timeout: 30 },
+			// With the PATH a sandboxed command gets, so a backend found here is one the command line will also find.
+			{ inheritEnv: false, env: { PATH: `${dirname(nodeExecutable())}:/usr/bin:/bin` }, timeout: 30 },
 			context,
 		);
 		return trial.ok && trial.value.exitCode === 0 ? new Sandbox(backend) : undefined;
@@ -193,7 +178,8 @@ export class Sandbox {
 			context,
 		);
 		if (result.ok && result.value.exitCode === 0) return undefined;
-		return `Node runtime ${paths.node} could not start within ${this.backend}; the runtime grant was not widened`;
+		// No path: this reason is printed in a pull request's review, and Node's often sits under a home directory.
+		return `Node could not start within ${this.backend}; the runtime grant was not widened`;
 	}
 
 	/** The seatbelt profile for these paths, which the caller writes to a file; bubblewrap needs none. */
@@ -201,21 +187,16 @@ export class Sandbox {
 		if (this.backend !== "seatbelt") return undefined;
 		const developer = developerDirectory();
 		const writable = [paths.scratch];
-		const runtime = nodeDirectories(paths.node);
 		const readable = [
 			'(literal "/")',
 			...[...systemFiles, paths.node, ...(paths.executables ?? [])].map(
 				(path) => `(literal ${profileString(path)})`,
 			),
-			...[
-				...systemReads,
-				...(developer === undefined ? [] : [developer]),
-				...runtime,
-				...writable,
-				...paths.installs,
-			].map((path) => `(subpath ${profileString(path)})`),
+			...[...systemReads, ...(developer === undefined ? [] : [developer]), ...writable, ...paths.installs].map(
+				(path) => `(subpath ${profileString(path)})`,
+			),
 		].join(" ");
-		const granted = [paths.node, ...(paths.executables ?? []), ...runtime, ...writable, ...paths.installs];
+		const granted = [paths.node, ...(paths.executables ?? []), ...writable, ...paths.installs];
 		const parents = [...new Set(granted.flatMap(ancestors))].map((path) => `(literal ${profileString(path)})`);
 		return [
 			"(version 1)",
@@ -224,6 +205,9 @@ export class Sandbox {
 			"(allow process-fork)",
 			// A program runs only from where it can be read, so nothing elsewhere on the disk starts, readable or not.
 			`(allow process-exec ${readable})`,
+			// launchd answers any process that holds the bootstrap port, which is every process. Its client is not needed
+			// by a tool, so at least the ready-made way to ask is closed.
+			'(deny process-exec (literal "/bin/launchctl"))',
 			// dyld maps each library a program links, from the same places.
 			`(allow file-map-executable ${readable})`,
 			// A parent stops the children it started, as Node does at a timeout. No process outside this sandbox is a target.
@@ -289,7 +273,6 @@ export class Sandbox {
 			// mount under.
 			"--proc /proc --dev /dev --tmpfs /tmp",
 			...[paths.node, ...(paths.executables ?? [])].map((path) => bind("--ro-bind", path)),
-			...nodeDirectories(paths.node).map((path) => bind("--ro-bind", path)),
 			...paths.installs.map((path) => bind("--ro-bind", path)),
 			bind("--bind", paths.scratch),
 			`--chdir ${quote(paths.worktree)}`,

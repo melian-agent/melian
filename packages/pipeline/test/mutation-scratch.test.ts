@@ -312,11 +312,20 @@ it("does not treat a denied cleanup lookup as an absent path", async () => {
 	expect(execute).toHaveBeenCalledOnce();
 });
 
-it("propagates an rmdir failure other than an already absent scratch", async () => {
-	vi.spyOn(promiseFilesystem, "rmdir").mockRejectedValueOnce(
-		Object.assign(new Error("rmdir denied"), { code: "EACCES" }),
-	);
-	await expect(files().close()).rejects.toThrow("rmdir denied");
+it.each(["EACCES", "ENOTEMPTY"])(
+	"fails with worktreeFailed, naming scratch, when it cannot be removed (%s)",
+	async (code) => {
+		vi.spyOn(promiseFilesystem, "rmdir").mockRejectedValueOnce(Object.assign(new Error("rmdir failed"), { code }));
+		await expect(files().close()).rejects.toMatchObject({
+			code: "worktreeFailed",
+			message: `${scratch} could not be removed: ${code}`,
+		});
+	},
+);
+
+it("takes a scratch directory that is already gone as removed", async () => {
+	vi.spyOn(promiseFilesystem, "rmdir").mockRejectedValueOnce(Object.assign(new Error("gone"), { code: "ENOENT" }));
+	await expect(files().close()).resolves.toBeUndefined();
 });
 
 // With no sandbox the script runs on the host, and its own guards are the whole defence.

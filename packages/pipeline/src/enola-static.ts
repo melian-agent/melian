@@ -93,7 +93,7 @@ export class EnolaRun {
 	async #required(command: string, phase: string): Promise<void> {
 		const result = await this.#run.shell(command);
 		if (result.code !== 0)
-			throw this.#run.fail("toolFailed", `Enola ${phase} exited ${result.code}: ${result.output}`);
+			throw this.#run.fail("toolFailed", `Enola ${phase} exited ${result.code}: ${this.#run.said(result.output)}`);
 	}
 
 	#command(root: string, output: string, args: string): string {
@@ -152,7 +152,7 @@ export class EnolaRun {
 		if (result.code !== 0)
 			throw this.#run.fail(
 				"toolFailed",
-				`Enola generate exited ${result.code}: ${((await this.#run.readOutput(log)) ?? result.output).slice(0, 4096)}`,
+				`Enola generate exited ${result.code}: ${this.#run.said(((await this.#run.readOutput(log)) ?? result.output).slice(0, 4096))}`,
 			);
 		for (const name of ["facts.jsonl", "insights.json", "receipt.json"]) {
 			if ((await this.#run.readOutput(posix.join(output, name))) === undefined)
@@ -204,7 +204,7 @@ export class EnolaRun {
 		if (result.code !== 0 && result.code !== 1)
 			throw this.#run.fail(
 				"toolFailed",
-				`Enola check exited ${result.code}: ${((await this.#run.readOutput(error)) ?? result.output).slice(0, 4096)}`,
+				`Enola check exited ${result.code}: ${this.#run.said(((await this.#run.readOutput(error)) ?? result.output).slice(0, 4096))}`,
 			);
 		const text = await this.#run.readOutput(report);
 		if (text === undefined) throw this.#run.fail("invalidOutput", "Enola check wrote no SARIF");

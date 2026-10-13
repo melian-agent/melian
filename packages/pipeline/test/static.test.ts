@@ -1,8 +1,9 @@
-import { spawn, spawnSync } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import {
 	chmodSync,
 	existsSync,
 	mkdirSync,
+	readdirSync,
 	readFileSync,
 	realpathSync,
 	rmSync,
@@ -395,10 +396,166 @@ describe("runStaticTool with the repository's own tools", () => {
 	] as const)("reads a version probe that exits %s as %s", { timeout: 60_000 }, async (exit, code) => {
 		const head = commit(repo, { ".gitignore": lines("node_modules"), "src/a.ts": "export const a = 1;\n" });
 		fakeTool(repo, "biome", `echo "said by the tool"; exit ${exit}`);
+		const sees = hostSandbox === undefined ? "output withheld: the tool ran unconfined" : "said by the tool";
 		await expect(runStaticTool(input("biome", head), context)).rejects.toMatchObject({
 			code,
-			message: expect.stringContaining(`--version failed with exit code ${exit}: said by the tool`),
+			message: expect.stringContaining(`--version failed with exit code ${exit}: ${sees}`),
 		});
+		// On a host with no sandbox the probe's output is withheld like any other.
+		vi.spyOn(Sandbox, "detect").mockResolvedValue(undefined);
+		await expect(runStaticTool(input("biome", head), context)).rejects.toMatchObject({
+			code,
+			message: expect.stringMatching(
+				/--version failed with exit code \d+: output withheld: the tool ran unconfined$/,
+			),
+			confinement: { confined: false, reason: "this host offers no sandbox" },
+		});
+	});
+
+	it("keeps of an unconfined tool's diagnostics only those inside the worktree, bounded and visible", {
+		timeout: 60_000,
+	}, async () => {
+		const outside = join(dirname(repo), `melian-outside-file-${process.pid}.ts`);
+		writeFileSync(outside, "secret\n");
+		symlinkSync(outside, join(repo, "linked.ts"));
+		const head = commit(repo, { ".gitignore": lines("node_modules"), "src/a.ts": "export const a = 1;\n" });
+		const result = (uri: string, text: string) => ({
+			ruleId: "lint/x",
+			level: "error",
+			message: { text },
+			locations: [{ physicalLocation: { artifactLocation: { uri }, region: { startLine: 1 } } }],
+		});
+		const exact = "m".repeat(1000);
+		const reported = [
+			result("src/a.ts", exact),
+			result("src/a.ts", `${exact}!`),
+			result("src/a.ts", `a bell${String.fromCharCode(7)} rings`),
+			result("src/a.ts", "closes </div>, // a comment, ./a/b, @scope/pkg/sub, and a/b are not files elsewhere"),
+			result("linked.ts", "its file is a link out of the worktree"),
+			result("src/a.ts", "quoted from /etc/ssh/ssh_config: Host *"),
+			result("src/a.ts", `found in ${outside}`),
+		];
+		fakeTool(
+			repo,
+			"biome",
+			[
+				'if [ "$1" = "--version" ]; then echo 0.0.0; exit 0; fi',
+				'for arg in "$@"; do case "$arg" in --reporter-file=*) out=$(printf %s "$arg" | cut -d= -f2-);; esac; done',
+				"# A message that names the worktree itself is the tool speaking of its own input.",
+				`sed "s#WORKTREE#$PWD#" > "$out" <<'SARIF'\n${JSON.stringify({ version: "2.1.0", runs: [{ results: [...reported, result("src/a.ts", "in WORKTREE/src/a.ts")] }] })}\nSARIF`,
+			].join("\n"),
+		);
+		const messages = async (sandbox: Sandbox | undefined) => {
+			vi.spyOn(Sandbox, "detect").mockResolvedValue(sandbox);
+			const ran = await runStaticTool(input("biome", head), context);
+			if (ran.status !== "ran") throw new Error(ran.reason);
+			return { texts: ran.log.runs[0].results.map((each) => each.message.text), notes: ran.notes };
+		};
+		try {
+			const unconfined = await messages(undefined);
+			expect(unconfined.texts).toEqual([
+				exact,
+				exact,
+				"a bell\\u0007 rings",
+				"closes </div>, // a comment, ./a/b, @scope/pkg/sub, and a/b are not files elsewhere",
+				expect.stringMatching(/^in \/.*\/tree\/src\/a\.ts$/),
+			]);
+			expect(unconfined.notes).toEqual([
+				"biome ran unconfined: this host offers no sandbox.",
+				"biome ran unconfined, so 3 diagnostic(s) that named a file outside the worktree were dropped.",
+			]);
+			// Confined, the tool could read nothing outside, so its diagnostics stand as it wrote them.
+			const confined = await messages(unconfinedSandbox);
+			expect(confined.texts).toHaveLength(8);
+			expect(confined.texts[1]).toBe(`${exact}!`);
+			expect(confined.notes).toEqual([]);
+		} finally {
+			rmSync(outside);
+		}
+	});
+
+	// The review of record's probe: the checkout has a workspace package with dependencies of its own, and the head
+	// replaces that package's directory with a link to a directory outside the repository.
+	it.each([
+		["the workspace directory", "packages/b"],
+		["a directory above it", "packages"],
+	])(
+		"links nothing through %s when the head commits it as a link out of the worktree",
+		{ timeout: 60_000 },
+		async (_name, swapped) => {
+			writeFiles(repo, {
+				".gitignore": lines("node_modules"),
+				"tsconfig.json": tsconfig,
+				"packages/b/index.ts": "export const b = 1;\n",
+				"packages/b/node_modules/dep/index.js": "1\n",
+			});
+			mkdirSync(join(repo, "node_modules"), { recursive: true });
+			symlinkSync("../packages/b", join(repo, "node_modules/b"));
+			const main = commit(repo, {});
+			const outside = join(dirname(repo), `melian-outside-target-${process.pid}`);
+			mkdirSync(join(outside, "b"), { recursive: true });
+			const target = swapped === "packages" ? outside : join(outside, "b");
+			gitIn(repo, "checkout", "--quiet", "-b", "linked");
+			gitIn(repo, "rm", "-r", "--quiet", "--cached", swapped);
+			const blob = execFileSync("git", ["hash-object", "-w", "--stdin"], {
+				cwd: repo,
+				input: target,
+				encoding: "utf8",
+			}).trim();
+			gitIn(repo, "update-index", "--add", "--cacheinfo", `120000,${blob},${swapped}`);
+			gitIn(repo, "commit", "--quiet", "-m", "a workspace path becomes a link");
+			const head = gitIn(repo, "rev-parse", "HEAD");
+			gitIn(repo, "checkout", "--quiet", "--force", "main");
+			fakeTool(repo, "tsc", 'if [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi');
+			try {
+				const result = await runStaticTool(input("tsc", head), context);
+				if (result.status !== "ran") throw new Error(result.reason);
+				expect(result.notes).toContain(
+					`tsc did not link packages/b's own dependencies: ${head.slice(0, 12)} makes that path a link.`,
+				);
+				expect(readdirSync(join(outside, "b"))).toEqual([]);
+				expect(readdirSync(outside)).toEqual(["b"]);
+				// The same checkout at a head that leaves the directory alone still gets its nested dependencies linked.
+				const plain = await runStaticTool(input("tsc", main), context);
+				expect(plain).toMatchObject({ status: "ran", notes: unconfinedNotes("tsc") });
+			} finally {
+				rmSync(outside, { recursive: true, force: true });
+			}
+		},
+	);
+
+	it("links a workspace's own dependencies only where it has some and the revision has the workspace", {
+		timeout: 60_000,
+	}, async () => {
+		const before = commit(repo, { ".gitignore": lines("node_modules"), "tsconfig.json": tsconfig });
+		const head = commit(repo, {
+			"packages/b/index.ts": "export const b = 1;\n",
+			"packages/c/index.ts": "export const c = 1;\n",
+		});
+		writeFiles(repo, { "packages/b/node_modules/dep/index.js": "1\n" });
+		mkdirSync(join(repo, "node_modules"), { recursive: true });
+		symlinkSync("../packages/b", join(repo, "node_modules/b"));
+		symlinkSync("../packages/c", join(repo, "node_modules/c"));
+		fakeTool(repo, "tsc", 'if [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi');
+		vi.spyOn(Sandbox, "detect").mockResolvedValue(unconfinedSandbox);
+		const command = vi.spyOn(unconfinedSandbox, "command");
+		const linked = async (revision: string) => {
+			const env = createNodeExecutionEnv(repo);
+			const written = vi.spyOn(env, "writeFile");
+			command.mockClear();
+			expect((await runStaticTool({ ...input("tsc", revision), env }, context)).status).toBe("ran");
+			const script = written.mock.calls.find(([path]) => path.endsWith("/link.sh"))![1] as string;
+			return { script, installs: command.mock.calls[0]![1].installs };
+		};
+		// At the head both workspaces exist; only b has dependencies of its own to link and to grant.
+		const at = await linked(head);
+		expect(at.script).toContain("/tree/packages/b/node_modules/dep'");
+		expect(at.script).not.toContain("/tree/packages/c/node_modules");
+		expect(at.installs).toEqual([join(repo, "node_modules"), join(repo, "packages/b/node_modules")]);
+		// Before the workspaces existed there is no directory to link into, and none is made.
+		const earlier = await linked(before);
+		expect(earlier.script).not.toContain("/tree/packages/b/node_modules");
+		expect(earlier.installs).toEqual([join(repo, "node_modules")]);
 	});
 
 	it("grants no install of its own when the tool's path names no node_modules", { timeout: 60_000 }, async () => {
@@ -760,12 +917,12 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 	});
 
 	it.each([
-		["the host's", undefined, "worktree remove --force --force"],
-		["the confined", unconfinedSandbox, ',"remove",'],
+		["the host's", undefined, "worktree remove --force --force", "output withheld: the tool ran unconfined"],
+		["the confined", unconfinedSandbox, ',"remove",', "out of memory"],
 	] as const)(
 		"reports the tool's own error when %s cleanup also fails",
 		{ timeout: 60_000 },
-		async (_name, sandbox, step) => {
+		async (_name, sandbox, step, said) => {
 			const head = commit(repo, { ".gitignore": lines("node_modules"), "tsconfig.json": tsconfig });
 			fakeTool(
 				repo,
@@ -790,7 +947,7 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 			);
 			expect(failed.length).toBeGreaterThan(0);
 			expect((error as CheckError).code).toBe("toolFailed");
-			expect((error as CheckError).message).toContain("out of memory");
+			expect((error as CheckError).message).toBe(`tsc exited with code 134 on tsconfig.json: ${said}`);
 			rmSync(((await created.mock.results[0]!.value) as { value: string }).value, { recursive: true, force: true });
 		},
 	);
@@ -1027,6 +1184,11 @@ describe("runStaticTool after a crash", () => {
 // Seatbelt has no hold on a process once its command has exited, so a tool can leave one behind. bubblewrap ends every
 // process in the namespace with the command, and a pid from inside it means nothing on the host, so this is macOS only.
 describe.skipIf(hostSandbox?.backend !== "seatbelt")("a process a confined tool leaves behind", () => {
+	const emptySarif = JSON.stringify({
+		version: "2.1.0",
+		runs: [{ tool: { driver: { name: "Biome" } }, results: [] }],
+	});
+
 	it("cannot change what the host read, nor write outside scratch once teardown has removed it", {
 		timeout: 60_000,
 	}, async () => {
@@ -1096,6 +1258,86 @@ setInterval(() => {
 			// Only the child this test's own fake started, by the pid that fake reported.
 			if (Number.isInteger(pid) && pid > 1) process.kill(pid, "SIGKILL");
 			rmSync(outside, { recursive: true, force: true });
+		}
+	});
+
+	// The review of record's probe. No crash is needed to leave a confined run's scratch behind: a child that keeps
+	// writing there makes the teardown's last step fail. The next run must still not remove that tree with host git.
+	it("fails the teardown by name when a child keeps writing in scratch, and the next run removes it confined", {
+		timeout: 60_000,
+	}, async () => {
+		const head = commit(repo, { ".gitignore": lines("node_modules"), "src/a.ts": "export const a = 1;\n" });
+		const child = `
+const fs = require("node:fs");
+const scratch = process.argv[1];
+const end = Date.now() + 4000;
+let n = 0;
+while (Date.now() < end) { try { fs.writeFileSync(scratch + "/child.pid", String(process.pid)); fs.writeFileSync(scratch + "/refill-" + (n++ % 50), "x"); } catch {} }`;
+		fakeTool(
+			repo,
+			"biome",
+			[
+				'if [ "$1" = "--version" ]; then echo 0.0.0; exit 0; fi',
+				'for arg in "$@"; do case "$arg" in --reporter-file=*) out=$(printf %s "$arg" | cut -d= -f2-);; esac; done',
+				`node -e '${child}' "$(dirname "$out")" > /dev/null 2>&1 &`,
+				`printf '%s' '${emptySarif}' > "$out"`,
+			].join("\n"),
+		);
+		const env = createNodeExecutionEnv(repo);
+		const created = vi.spyOn(env, "createTempDir");
+		let pid = 0;
+		let scratch = "";
+		try {
+			const failure = await runStaticTool({ ...input("biome", head), env }, context).catch(
+				(error: CheckError) => error,
+			);
+			scratch = realpathSync(((await created.mock.results[0]!.value) as { value: string }).value);
+			for (const deadline = Date.now() + 3000; pid === 0 && Date.now() < deadline; await sleep(5)) {
+				try {
+					pid = Number(readFileSync(join(scratch, "child.pid"), "utf8"));
+				} catch {}
+			}
+			expect(Number.isInteger(pid) && pid > 1).toBe(true);
+			expect(failure).toMatchObject({
+				code: "worktreeFailed",
+				message: `${scratch} could not be removed: ENOTEMPTY`,
+			});
+			const tree = join(scratch, "tree");
+			expect(gitIn(repo, "worktree", "list", "--porcelain")).toContain(`worktree ${tree}`);
+			const admin = readdirSync(join(repo, ".git/worktrees")).map((name) => join(repo, ".git/worktrees", name))[0]!;
+			expect(JSON.parse(readFileSync(join(admin, "melian-static"), "utf8"))).toEqual({
+				tree,
+				pid: process.pid,
+				confined: true,
+			});
+			// Stop the child this test's fake started, by its own pid, then let the reviewer's process be gone.
+			process.kill(pid, "SIGKILL");
+			pid = 0;
+			writeFileSync(join(admin, "locked"), "melian-static pid 2147483646\n");
+			writeFileSync(join(admin, "melian-static"), JSON.stringify({ tree, pid: 2147483646, confined: true }));
+			fakeTool(
+				repo,
+				"biome",
+				[
+					'if [ "$1" = "--version" ]; then echo 0.0.0; exit 0; fi',
+					'for arg in "$@"; do case "$arg" in --reporter-file=*) out=$(printf %s "$arg" | cut -d= -f2-);; esac; done',
+					`printf '%s' '${emptySarif}' > "$out"`,
+				].join("\n"),
+			);
+			const next = createNodeExecutionEnv(repo);
+			const execute = vi.spyOn(next, "exec");
+			const remove = vi.spyOn(next, "remove");
+			expect(await runStaticTool({ ...input("biome", head), env: next }, context)).toMatchObject({
+				status: "ran",
+				notes: [],
+			});
+			expect(execute.mock.calls.filter(([command]) => /worktree (remove|prune|unlock)/.test(command))).toEqual([]);
+			expect(remove.mock.calls.filter(([path]) => !path.includes("/.git/worktrees/"))).toEqual([]);
+			expect(existsSync(scratch)).toBe(false);
+			expect(gitIn(repo, "worktree", "list", "--porcelain")).not.toContain("melian-static-");
+		} finally {
+			if (Number.isInteger(pid) && pid > 1) process.kill(pid, "SIGKILL");
+			if (scratch !== "") rmSync(scratch, { recursive: true, force: true });
 		}
 	});
 });
