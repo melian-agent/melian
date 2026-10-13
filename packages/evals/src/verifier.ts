@@ -88,7 +88,11 @@ const scenarioExpectationSchema = Type.Object(
 		lowered: Type.Boolean(),
 		important: Type.Optional(
 			Type.Object(
-				{ state: Type.Union([Type.Literal("new"), Type.Literal("carried")]), originalSeverity: severitySchema },
+				{
+					state: Type.Union([Type.Literal("new"), Type.Literal("carried")]),
+					originalSeverity: severitySchema,
+					lifted: Type.Optional(Type.Literal(true)),
+				},
 				strict,
 			),
 		),
@@ -349,7 +353,12 @@ export function scenarioMismatches(golden: ScenarioGolden, run: ScenarioRun): st
 			members?.map(({ id, ...member }) => ({ ...member, listed: id === finding.id }));
 		const wanted = expected.important === undefined ? undefined : [{ ...expected.important, listed: true }];
 		const order = (members: ReturnType<typeof listed>) =>
-			members?.map(({ state, originalSeverity, listed: own }) => ({ state, originalSeverity, listed: own }));
+			members?.map(({ state, originalSeverity, lifted, listed: own }) => ({
+				state,
+				originalSeverity,
+				lifted,
+				listed: own,
+			}));
 		say("the important findings", order(listed(verdict.preExistingImportant)), order(wanted));
 		say("the important findings in JSON", order(listed(json.preExistingImportant)), order(wanted));
 		const stored = Object.values(json.findings).flat()[0]?.properties;
@@ -420,6 +429,8 @@ export function loadVerifierGoldens(directory: string = verifierDirectory): Veri
 /** One candidate's recorded judgement and review output. */
 export interface VerifierRun {
 	readonly verification: Verification | undefined;
+	/** Why the verifier judged nothing, as its check recorded it: a provider's error, a spent budget, or a claim left out. */
+	readonly unjudged?: string;
 	readonly rendered: string;
 	readonly verifierRequests: number;
 }
@@ -482,7 +493,8 @@ export async function runVerifierGolden(golden: VerifierGolden, mode: GoldenMode
 					]
 				: []),
 		]);
-		const reviewHarness = await openReviewHarness(createMemoryStorage(), fake.review, { retry: false });
+		// The judge retries a failed request with backoff, as a review does; one provider error would otherwise score unjudged.
+		const reviewHarness = await openReviewHarness(createMemoryStorage(), fake.review);
 		try {
 			const result = await reviewChangeset({
 				harness: reviewHarness.harness,
@@ -508,8 +520,10 @@ export async function runVerifierGolden(golden: VerifierGolden, mode: GoldenMode
 			});
 			if (result.findings.length !== 1)
 				throw new Error(`${golden.name}: expected one planted finding, got ${result.findings.length}`);
+			const reason = result.verdict!.notRun.find((check) => check.name === "verifier")?.reason;
 			return {
 				verification: result instanceof ReviewError ? undefined : result.findings[0]!.properties.verification,
+				...(reason === undefined ? {} : { unjudged: reason }),
 				rendered: result.verdict!.render(new Rendering({ all: true })),
 				verifierRequests: requests[marker]?.length ?? 0,
 			};

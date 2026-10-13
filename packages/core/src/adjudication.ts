@@ -396,9 +396,10 @@ export type StoredVerdict = {
 
 /**
  * One member of "Pre-existing, important": a finding among the verdict's groups, by ID, with the severity its lenses
- * reported. `state` is `carried` once an earlier revision sighted it, so it is raised once.
+ * reported. `state` is `carried` once an earlier revision sighted it, so it is raised once. `lifted` marks a member
+ * that only the heading's floor keeps above `silent`: it is listed, and counts toward nothing.
  */
-export type ImportantFinding = { id: string; state: "new" | "carried"; originalSeverity: Severity };
+export type ImportantFinding = { id: string; state: "new" | "carried"; originalSeverity: Severity; lifted?: true };
 
 /** What a {@link Verdict} holds. */
 export interface VerdictFields {
@@ -488,6 +489,20 @@ export class Verdict {
 	/** The findings that need attention: those that resolve to `block`, `acknowledge`, or `advisory`. */
 	attention(): ResolvedFinding[] {
 		return [...this.findings.block, ...this.findings.acknowledge, ...this.findings.advisory];
+	}
+
+	/**
+	 * The findings that count toward the status and every tally a host shows: those that need attention, less each
+	 * member of "Pre-existing, important" that only its floor keeps above `silent`.
+	 */
+	counted(): ResolvedFinding[] {
+		const lifted = new Set((this.preExistingImportant ?? []).flatMap((member) => (member.lifted ? [member.id] : [])));
+		return this.attention().filter((finding) => !lifted.has(finding.id));
+	}
+
+	/** Whether the finding with `id` is listed under "Pre-existing, important", and as new or carried. */
+	importance(id: string): ImportantFinding["state"] | undefined {
+		return this.preExistingImportant?.find((member) => member.id === id)?.state;
 	}
 
 	/** Every finding the verdict holds, by resolution, strictest first, then the dismissed ones. */
@@ -599,7 +614,7 @@ export class Verdict {
 			});
 			return { state: "error", description: `Not reviewed: ${reasons.join("; ") || "the review did not complete"}` };
 		}
-		const shown = this.attention().length;
+		const shown = this.counted().length;
 		if (this.status === "passed" || shown === 0) return { state: "success", description: "Passed" };
 		if (this.blocking) {
 			return { state: "failure", description: `${count(shown, "finding")}, ${this.findings.block.length} blocking` };
@@ -923,6 +938,7 @@ export class Adjudication {
 					id: finding.id,
 					state: memberIds.get(finding.id)!.some((id) => this.#seenBefore.has(id)) ? "carried" : "new",
 					originalSeverity: finding.original(),
+					...(lifted.has(finding.id) ? { lifted: true as const } : {}),
 				}),
 			);
 		return new Verdict({

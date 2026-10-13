@@ -17,7 +17,8 @@
 			"lowered": false,
 			"important": {
 				"state": "new",
-				"originalSeverity": "P0"
+				"originalSeverity": "P0",
+				"lifted": true
 			},
 			"rendered": [
 				"Verdict: passed",

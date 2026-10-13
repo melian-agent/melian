@@ -57,7 +57,7 @@ export interface LoweringFields {
 	readonly coReported: boolean;
 	/** The severities the table in force at the finding's path resolves `silent`; `undefined` when Melian could not read it. */
 	readonly silent: readonly Severity[] | undefined;
-	/** How many evidence locations Melian read back. */
+	/** How many evidence locations at the head Melian read back. Lines only the base holds show nothing the head has. */
 	readonly evidence: number;
 	readonly executor: "llm" | "decision-model";
 }
@@ -86,7 +86,8 @@ export class Lowering {
 			return `a lowering is one step, P1 to P2 or P2 to P3; ${from} to ${to} is not`;
 		if (silent === undefined) return "Melian could not read the resolution table at the finding's path";
 		if (silent.includes(to)) return `the table in force at the finding's path resolves ${to} silent`;
-		if (evidence === 0) return "a lowering needs evidence locations naming the code that narrows the failure";
+		if (evidence === 0)
+			return "a lowering needs evidence locations at the head naming the code that narrows the failure";
 		return undefined;
 	}
 }

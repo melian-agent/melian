@@ -860,7 +860,8 @@ export const reportVerdict = defineTool({
 								rule: sighting.ruleId,
 								coReported: claim.fence?.coReported ?? false,
 								silent: claim.fence?.silent,
-								evidence: evidence.length,
+								// Lines the change deleted, or that only the base holds, cannot show what narrows the head's failure.
+								evidence: evidence.filter((location) => location.revision === "head").length,
 								executor: "llm",
 							}).refusal();
 				const lowers = args.lower !== undefined && refusedLowering === undefined;
@@ -879,7 +880,9 @@ export const reportVerdict = defineTool({
 				// The record decides where the claim stands: a stored report may hold it lowered, or at the lens's severity.
 				const stands = kept.lowered?.to ?? severity;
 				if (refusedLowering !== undefined)
-					return [`lowering refused, and the claim stands at ${stands}: ${refusedLowering}`];
+					return [
+						`lowering refused, and the claim stands at ${stands}: ${refusedLowering}. No further lowering of this claim will be taken at this verdict.`,
+					];
 				return [
 					kept.lowered === undefined
 						? `lowering not kept, and the claim stands at ${stands}: the stored report of this claim holds it there`

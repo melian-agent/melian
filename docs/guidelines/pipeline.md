@@ -453,6 +453,7 @@ The findings document is version 8. Version 7 added optional maps that hold verd
 
 `report_verdict` takes an optional `lower`, a severity and a reason, built in step 17, "The verifier lowers severity, and important pre-existing findings surface". A refused lowering never fails the call: the verdict is stored without it, and the result says why.
 
+- The spawn commit reads each claim's stored sighting and writes the severity its lens reported on the claim's label line, `Claim c1 finding <id>, reported at P1`, outside the boundary. A lowering is one step from it, and the claim inside the boundary does not hold it.
 - The record stores the `code`, `guard` and `base` answers, and the evidence locations Melian read back, on every report. The answers change nothing.
 - A lowering is held against core's `Lowering`. The tool reads the claim's severity and rule from its stored sighting inside the commit. Whether a deterministic check co-reported the defect, and which severities the table in force resolves `silent`, come from the candidate's `fence`, fixed by `reviewChangeset` when it builds the candidate and copied onto each claim of the verifier's `LensDocument`. A verifier an older Melian created has no fence and may lower nothing.
 - `readFindings` applies core's `verifiedAs` to each sighting, so a read is at the lowered severity while the stored sighting keeps the lens's. Among sightings of one ID the highest severity after lowering wins, and the winner carries the highest any producer reported as `originalSeverity` when the two differ.

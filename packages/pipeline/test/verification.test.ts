@@ -1646,7 +1646,38 @@ describe("lowering a severity through report_verdict", () => {
 		});
 		expect(verdict.blocking).toBe(true);
 		expect(resultOf(requests)).toContain(
-			"recorded verdict for c1\nlowering refused, and the claim stands at P1: a lowering needs evidence locations naming the code that narrows the failure\n",
+			"recorded verdict for c1\nlowering refused, and the claim stands at P1: a lowering needs evidence locations at the head naming the code that narrows the failure. No further lowering of this claim will be taken at this verdict.\n",
+		);
+	});
+
+	it.each([
+		[
+			"only base lines the change deleted",
+			[{ file: "src/user.ts", line: 7, role: "context", revision: "base" }],
+			false,
+		],
+		[
+			"only base lines the change left alone",
+			[{ file: "src/user.ts", line: 6, role: "context", revision: "base" }],
+			false,
+		],
+		[
+			"a head location beside a deleted base one",
+			[
+				{ file: "src/user.ts", line: 7, role: "context", revision: "base" },
+				{ file: "src/user.ts", line: 6, role: "context" },
+			],
+			true,
+		],
+	] as const)("takes a lowering only with evidence at the head: %s", async (_, evidence, lowers) => {
+		const requests = judging({ verdict: "confirmed", reason: "Traced it.", evidence: [...evidence], lower: narrow });
+		const { findings } = await review();
+		expect(findings[0]!.properties.severity).toBe(lowers ? "P2" : "P1");
+		expect(findings[0]!.properties.verification?.evidence).toHaveLength(evidence.length);
+		expect(resultOf(requests)).toContain(
+			lowers
+				? "lowered P1 to P2"
+				: "lowering refused, and the claim stands at P1: a lowering needs evidence locations at the head naming the code that narrows the failure.",
 		);
 	});
 
@@ -1693,8 +1724,74 @@ describe("lowering a severity through report_verdict", () => {
 		const { findings } = await review();
 		expect(findings[0]!.properties).toMatchObject({ severity: "P2", originalSeverity: "P1" });
 		expect(resultOf(requests)).toContain(
-			"recorded verdict for c1\nlowering refused, and the claim stands at P2: a lowering is one step, P1 to P2 or P2 to P3; P1 to P3 is not\n",
+			"recorded verdict for c1\nlowering refused, and the claim stands at P2: a lowering is one step, P1 to P2 or P2 to P3; P1 to P3 is not. No further lowering of this claim will be taken at this verdict.\n",
 		);
+	});
+
+	it("shows the verifier the severity each lens reported, on the label line Melian writes for every claim", async () => {
+		const first = lenses[0]!.toJSON();
+		lenses = [
+			Lens.from({
+				...first,
+				name: "trust-boundary",
+				instructions: "Finder at P0",
+				rules: [{ id: "fail-open", description: "Same failure." }],
+			}),
+			Lens.from({
+				...first,
+				name: "contracts",
+				instructions: "Finder at P2",
+				rules: [{ id: "wrong-result", description: "Same failure." }],
+			}),
+		];
+		const requests = scriptConversations(fake, [
+			...[
+				{ lens: lenses[0]!, severity: "P0" },
+				{ lens: lenses[1]!, severity: "P2" },
+			].map(({ lens, severity }) => ({
+				match: lens.instructions,
+				replies: [
+					fauxAssistantMessage(
+						fauxToolCall("report_finding", { ...crashFinding, rule: lens.rules[0]!.id, severity }),
+						{ stopReason: "toolUse" },
+					),
+					fauxAssistantMessage("Done."),
+				],
+			})),
+			{ match: verifierMarker, replies: [(messages) => scriptVerifier(messages), fauxAssistantMessage("Done.")] },
+		]);
+		const { findings } = await review();
+		const bySeverity = Object.fromEntries(findings.map((finding) => [finding.properties.severity, finding.id]));
+		const request = requests[verifierMarker]![0]!;
+		const prompt = systemPromptOf(request);
+		expect(prompt).toContain(`Claim c1 finding ${bySeverity.P0}, reported at P0`);
+		expect(prompt).toContain(`Claim c2 finding ${bySeverity.P2}, reported at P2`);
+		// The label is Melian's own line: the claim inside the boundary does not hold the severity.
+		const claims = textOf(request.findLast((message) => message.role === "user")!);
+		expect(claims).not.toContain("reported at");
+		expect(claims).not.toContain('"severity"');
+	});
+
+	it("stores the evidence it read back for a report that lowers nothing, as for a refutation", async () => {
+		judging({ verdict: "refuted", reason: "A guard prevents it.", evidence: cited });
+		const { findings } = await review();
+		expect(findings[0]!.properties.verification).toEqual({
+			verdict: "refuted",
+			reason: "A guard prevents it.",
+			answers: { code: "yes", guard: "yes", base: "no" },
+			evidence: [
+				{
+					file: "src/user.ts",
+					startLine: 6,
+					role: "context",
+					revision: "head",
+					snippet: "export function managerName(user: User): string {",
+				},
+			],
+			executor: "llm",
+			model: "faux/judge",
+			version: verifierVersion,
+		});
 	});
 
 	it("stores the answers the verifier gave, whatever they are, for calibration", async () => {
@@ -2014,6 +2111,23 @@ describe("verification ownership and budgets", () => {
 			expect(result).toContain(`lowering refused, and the claim stands at P1: ${refusal}`);
 		}
 	});
+	it("labels a claim whose sighting is gone without a severity, never with another claim's", async () => {
+		const stored = await input();
+		const claim = stored.candidates[0]!.state.claims[0]!;
+		claim.source = { ...claim.source, version: "a-run-that-left-no-sighting" };
+		const requests = scriptConversations(fake, [
+			{ match: verifierMarker, replies: [(messages) => scriptVerifier(messages), fauxAssistantMessage("Done.")] },
+		]);
+		const root = await harness.root(context);
+		const revision = revisionKey(changeset.revision);
+		const selection = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.lenses;
+		const task = (await startVerification(harness, stored, selection, true, context))!;
+		await harness.waitForTask(task, context);
+		const prompt = systemPromptOf(requests[verifierMarker]![0]!);
+		expect(prompt).toMatch(new RegExp(`Claim c1 finding ${claim.id}$`, "m"));
+		expect(prompt).not.toContain("reported at undefined");
+	});
+
 	it("limits nine candidates to eight in-flight judge requests", async () => {
 		const stored = await input();
 		const template = stored.candidates[0]!;

@@ -117,15 +117,15 @@ describe("built-in lenses", () => {
 		expect(Object.fromEntries(lenses.map((lens) => [lens.name, lens.version]))).toEqual({
 			contracts: "686d7ad61a40",
 			conventions: "bb08d9e590e4",
-			correctness: "05037e7ba4a2",
-			design: "b8e2918f3c85",
+			correctness: "a0dbe7ba139d",
+			design: "fd139ab5785f",
 			"removed-behaviour": "45fa8885fd01",
 			tests: "bee1be69be22",
 			"trust-boundary": "593b84bf6e82",
 		});
 		const tuned = { ...defaultConfig, lenses: { correctness: { tier: "light" as const, paths: ["src/**"] } } };
 		const [correctness] = Lens.select(named(lenses, "correctness"), tuned, ["src/index.ts"]);
-		expect(correctness!.lens.version).toBe("735049d98890");
+		expect(correctness!.lens.version).toBe("468088474aa9");
 	});
 
 	it("load the design lens heavy, over every path, reading whole functions at the one level it declares", async () => {
@@ -156,8 +156,58 @@ describe("built-in lenses", () => {
 			"criterion-selection-bias",
 			"unshipped-artifact",
 			"single-slot-overwrite",
+			"reimplements-an-authority",
 			"melian/injection-attempt",
 		]);
+		expect(design!.instructions).toContain(
+			"a package the manifest at base declares, or a tool the base's code already runs",
+		);
+		expect(design!.instructions).toContain(
+			"one input the hand-written code reads wrong that the authority reads right",
+		);
+		expect(design!.instructions).toContain(
+			"the base declares or runs no dependency that parses the format or answers the question",
+		);
+		expect(design!.instructions).toContain(
+			"is an authority only where the hand-written code runs with it installed, such as a build script or a development tool, and never for code the package ships",
+		);
+		expect(design!.instructions).toContain(
+			"it must be one the change accepts: one its callers, its documented contract, or its own checks let through",
+		);
+		expect(design!.instructions).toContain("is a finding only for an input it accepts and reads wrong");
+		expect(design!.instructions).toContain(
+			"the hand-written code sits in a test, a test fixture, or a golden file: those are out of scope for this rule",
+		);
+		expect(design!.instructions).toContain(
+			"For `reimplements-an-authority`, the hand-written code reads wrong an input every run passes it.",
+		);
+		expect(design!.instructions).toContain(
+			"For `reimplements-an-authority`, a caller or a documented use supplies the misread input.",
+		);
+		expect(design!.instructions).toContain(
+			"For `reimplements-an-authority`, the change accepts the misread input and nothing supplies it yet.",
+		);
+		expect(design!.rules.find((rule) => rule.id === "reimplements-an-authority")!.description).toContain(
+			"a dependency the repository already declares or runs",
+		);
+		expect(design!.instructions).not.toMatch(/declares or uses|repository (already )?uses|base uses/);
+		expect(design!.instructions).toContain(
+			"Third, the authority cannot run where the answer is needed, and the change states the gap.",
+		);
+		expect(design!.instructions).toContain(
+			"The stated gap names what the code re-derives, which authority would answer, and why it cannot be asked there.",
+		);
+		expect(design!.instructions).toContain("Keep the exemption only when code you read supports the reason");
+		expect(design!.instructions).toContain(
+			"A gap with no reason, a reason the code shows false, or a reason nothing you read supports leaves the finding standing.",
+		);
+		expect(design!.instructions).toContain("label it as inferred, and drop the finding when you are not sure of it");
+		expect(design!.instructions).toContain(
+			"Under a gap that holds, the hand-written code is still yours and no other lens's.",
+		);
+		expect(design!.instructions).toContain(
+			"when it answers an input wrong, or guesses, where the authority would have answered right",
+		);
 		expect(design!.declaredLevels()).toEqual(["careful"]);
 		expect(design!.levels).toEqual({
 			careful: {
@@ -181,13 +231,13 @@ describe("built-in lenses", () => {
 		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
 		expect(Object.fromEntries(lenses.map((lens) => [lens.name, lens.version]))).toMatchObject({
 			durability: "2d5b8a8ef26d",
-			correctness: "23c306b4f6a0",
+			correctness: "28929348a943",
 			"removed-behaviour": "d9d8851b1ced",
 		});
 		const { config } = await loadConfig(repo, { kind: "worktree" }, ".");
 		const selected = Lens.select(lenses, config, ["src/index.ts"]);
 		expect(Object.fromEntries(selected.map(({ lens }) => [lens.name, lens.version]))).toMatchObject({
-			correctness: "07dd74a2fa11",
+			correctness: "6c0ba52fcd4d",
 			"removed-behaviour": "a9e209da1c15",
 		});
 	});
@@ -937,6 +987,30 @@ describe("Lens.renderInstructions", () => {
 		expect(some).toContain(keeps);
 		expect(some).not.toContain(handsOver);
 		expect(conventions!.renderInstructions(standards, "careful", [every("conventions")], asIs)).toContain(keeps);
+	});
+
+	it("gives a re-implemented authority one owner among design, correctness, and conventions", async () => {
+		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
+		const handsOver =
+			"- `design`: Hand-written code that parses a format, or re-derives an answer, that a dependency";
+		const [correctness] = named(lenses, "correctness");
+		expect(correctness!.renderInstructions([], "careful", [every("correctness"), every("design")], asIs)).toContain(
+			handsOver,
+		);
+		expect(correctness!.renderInstructions([], "careful", [every("correctness")], asIs)).not.toContain(handsOver);
+		const [conventions] = named(lenses, "conventions");
+		expect(conventions!.handoffs).toEqual({});
+		expect(correctness!.handoffs.design).toContain(
+			"Design keeps them where the change says the dependency cannot run there. Where the repository declares or runs no such dependency, a wrong result is yours.",
+		);
+		expect(correctness!.handoffs.design).not.toMatch(/\b(It|it) keeps\b/);
+		const [design] = named(lenses, "design");
+		const beside = design!.renderInstructions([], "careful", [every("correctness"), every("conventions")], asIs);
+		expect(beside).toContain("- `conventions`: A breach of a rule the repository's standards state in words.");
+		expect(beside).toContain("is that lens's breach to quote, with or without a stated gap");
+		expect(beside).toContain("`reimplements-an-authority` is yours where no standard names the dependency.");
+		expect(beside).toContain("the hand-written code is yours under `reimplements-an-authority`, reported once");
+		expect(design!.renderInstructions([], "careful", [every("design")], asIs)).not.toContain("- `conventions`:");
 	});
 
 	it("renders every declared rule ID, the severities, and the budget after the body", async () => {

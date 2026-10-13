@@ -205,6 +205,88 @@ describe("ledger rendering", () => {
 		expect(later).toContain(`- ${old.id} (carried, originally P0): `);
 	});
 
+	it("leaves a member that only its floor lifts out of the summary and the stamp's open count", () => {
+		const quiet = { ...defaultConfig, resolution: { ...defaultConfig.resolution, P0: "silent" as const } };
+		const old = Finding.create({
+			rule: "old",
+			message: "Old defect",
+			file: "src/old.ts",
+			startLine: 3,
+			snippet: "old()",
+			occurrence: 0,
+			severity: "P0",
+			cause: "pre-existing",
+			source: { check: "static.tool" },
+			explanation: { what: "Old defect", whyHere: "It predates the change", whatToDo: "Fix it" },
+		});
+		const lifted = new Adjudication({ findings: [old], manifest: [], checks: [], config: quiet }).adjudicate();
+		const ledger = Ledger.from(lifted, { rounds: [{ ...round, verdict: lifted.toJSON() }] }, options);
+		const body = ledger.render(links);
+		expect(ledger.stamp.counts).toEqual({ open: 0, blocking: 0, dismissed: 0 });
+		expect(body).toContain("**passed**.\n\nNo findings need attention.");
+		expect(body).toContain(
+			`### Pre-existing, important\n\n- ${old.id} (new, originally P0): \`src/old.ts\`:3 — \`old\` (advisory): Old defect`,
+		);
+		const counted = new Adjudication({
+			findings: [old],
+			manifest: [],
+			checks: [],
+			config: defaultConfig,
+		}).adjudicate();
+		const plain = Ledger.from(counted, { rounds: [{ ...round, verdict: counted.toJSON() }] }, options);
+		expect(plain.stamp.counts.open).toBe(1);
+		expect(plain.render(links)).toContain("1 finding needs attention: 1 advisory.");
+	});
+
+	it("names the heading in a member's inline comment when the provider posts it", async () => {
+		const old = Finding.create({
+			rule: "old",
+			message: "Old defect",
+			file: "src/old.ts",
+			startLine: 3,
+			snippet: "old()",
+			occurrence: 0,
+			severity: "P0",
+			cause: "pre-existing",
+			source: { check: "static.tool" },
+			explanation: { what: "Old defect", whyHere: "It predates the change", whatToDo: "Fix it" },
+		});
+		const decided = new Adjudication({
+			findings: [finding, old],
+			manifest: [],
+			checks: [],
+			config: defaultConfig,
+		}).adjudicate();
+		const state = pullRequestState();
+		state.pull.base.sha = base;
+		state.pull.head.sha = head;
+		state.lines = { "src/old.ts": [[1, 5]], "src/run.ts": [[1, 9]] };
+		const provider = createGitHubProvider({
+			owner: state.owner,
+			repo: state.repo,
+			token: "test-token",
+			fetch: fakeGitHub(state),
+		});
+		await provider.postReview({
+			pullRequest: 7,
+			revision: head,
+			base,
+			fingerprint: decided.fingerprint(),
+			round: 1,
+			verdict: decided,
+			findings: [
+				{ finding: old, placement: { kind: "lines", startLine: 3, line: 3 } },
+				{ finding, placement: { kind: "lines", startLine: 7, line: 7 } },
+			],
+			stillOpen: 0,
+			resolved: [],
+			secret,
+		});
+		const bodies = Object.fromEntries(state.comments.map((comment) => [comment.path, comment.body]));
+		expect(bodies["src/old.ts"]).toContain("**Pre-existing, important**, new on this revision.");
+		expect(bodies["src/run.ts"]).not.toContain("Pre-existing, important");
+	});
+
 	it("renders run details beside verification outcomes, including refuted claims", () => {
 		const judged = Finding.from({
 			...finding.toJSON(),
