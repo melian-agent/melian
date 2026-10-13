@@ -96,7 +96,7 @@ Existing lens goldens explicitly route the fake verifier in scripted mode. In li
 
 ## Resolution goldens
 
-The twenty goldens that [the resolution decision](../decisions/2026-10-12-resolution-per-lens-and-per-rule.md) lists live under `packages/evals/goldens/resolution/<name>/`. They run no model and no lens, so `loadGoldens` leaves that directory out and `loadResolutionGoldens` reads it.
+The twenty goldens that [the resolution decision](../decisions/2026-10-13-resolution-as-built.md) lists live under `packages/evals/goldens/resolution/<name>/`. They run no model and no lens, so `loadGoldens` leaves that directory out and `loadResolutionGoldens` reads it.
 
 Each holds a `base/` tree with the policy, under the corpus's inert names: `melian.golden.yaml` at any level, and `.melian/lenses/<name>/LENS.golden.md` for a lens that declares a default. A `head/` tree, when there is one, is laid over the base as the change. `scenario.json` scripts the findings a review would hold: each report's check, rule, severity and place, the verifier's verdict on a lens report, and a lowered severity. Two reports at one file, line and code are one defect.
 

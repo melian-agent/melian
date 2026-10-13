@@ -471,7 +471,7 @@ A pre-existing finding never resolves `block`. A folder that opts in to `preExis
 
 The policy-change notice is forced on for the root file, and a nested file is judged under the directory above it, where a base file may switch the notice off. Two rules close that gap. A change to any `resolution` key in any `melian.yaml` always draws the notice. So does a change to a lens's declared resolution in any `LENS.md`. Melian parses the value at the base and at the head with its own loaders, and a side that does not parse counts as changed. Neither notice resolves below `acknowledge`, and no entry under `guardrails` applies to it: it resolves through the files' tables alone. A pull request is judged under its base's keys, so a head cannot lower its own findings. A lens's declared default leaves [resolution ownership](decisions/2026-10-03-resolution-ownership.md) alone: only adjudication writes a resolution.
 
-[The decision](decisions/2026-10-12-resolution-per-lens-and-per-rule.md) gives a two-folder example, three worked findings, the guardrail keys, and the step's goldens, which live under `packages/evals/goldens/resolution/`.
+[The decision](decisions/2026-10-13-resolution-as-built.md) gives a two-folder example, three worked findings, the guardrail keys, and the step's goldens, which live under `packages/evals/goldens/resolution/`.
 
 ### Files a user owns
 
