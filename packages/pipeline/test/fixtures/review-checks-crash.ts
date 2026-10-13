@@ -1,7 +1,12 @@
 import { writeFileSync } from "node:fs";
 import { Changeset, Lens, loadConfig } from "@melian-agent/core";
 import { openReviewHarness, openSqliteStorage, reviewChangeset } from "../../src/index.ts";
+import { Sandbox } from "../../src/sandbox.ts";
 import { createFakeModels, scriptConversations } from "../../src/testing.ts";
+import { unconfinedSandbox } from "./sandbox.ts";
+
+// The parent test's fake tsc records each run beside the repository, where the real sandbox allows no write.
+Object.defineProperty(Sandbox, "detect", { value: () => unconfinedSandbox });
 
 const [repo, base, head, database, ready] = process.argv.slice(2) as [string, string, string, string, string];
 const fake = createFakeModels();

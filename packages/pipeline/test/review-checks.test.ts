@@ -31,13 +31,17 @@ import { createFakeModels, fauxAssistantMessage, scriptConversations } from "@me
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as checks from "../src/checks.ts";
 import { ChecksDocument } from "../src/checks.ts";
+import { Sandbox } from "../src/sandbox.ts";
 import { commit, createRepository, fakeTool, lines } from "./fixtures/repo.ts";
+import { unconfinedSandbox } from "./fixtures/sandbox.ts";
 
 let repo: string;
 let opened: ReviewHarness[];
 beforeEach(() => {
 	repo = createRepository();
 	opened = [];
+	// These fake tools count their runs in a file beside the repository, which the real sandbox would refuse.
+	vi.spyOn(Sandbox, "detect").mockReturnValue(unconfinedSandbox);
 });
 afterEach(async () => {
 	await Promise.all(opened.map((review) => review.close()));

@@ -32,6 +32,7 @@ import { findingsVersion } from "../src/findings.ts";
 import * as staticRunner from "../src/static.ts";
 import { ToolProvisioning } from "../src/tool-provisioning.ts";
 import { commit, createRepository, fakeTool, lines, removeRepository } from "./fixtures/repo.ts";
+import { unconfinedNotes } from "./fixtures/sandbox.ts";
 
 let repo: string;
 let opened: Harness[];
@@ -114,8 +115,21 @@ describe("runChecks", () => {
 			findings.find((finding) => finding.ruleId.startsWith(prefix))!.properties.source.version;
 		expect(records).toEqual([
 			{ name: "guardrails", status: "ran", findings: 0, notes: [] },
-			{ name: "static.biome", status: "ran", version: "2.5.15", findings: 2, notes: [] },
-			{ name: "static.tsc", status: "ran", version: versionOf("tsc/"), findings: 2, notes: [] },
+			// Head and base each ran the tool, so a host with no sandbox notes it twice.
+			{
+				name: "static.biome",
+				status: "ran",
+				version: "2.5.15",
+				findings: 2,
+				notes: [...unconfinedNotes("biome"), ...unconfinedNotes("biome")],
+			},
+			{
+				name: "static.tsc",
+				status: "ran",
+				version: versionOf("tsc/"),
+				findings: 2,
+				notes: [...unconfinedNotes("tsc"), ...unconfinedNotes("tsc")],
+			},
 		]);
 		expect(summary(findings)).toEqual([
 			{ rule: "tsc/TS2322", file: "src/old.ts", line: 1, cause: "introduced", severity: "P1" },

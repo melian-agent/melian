@@ -16,7 +16,7 @@ import {
 import { EnolaRun } from "./enola-static.ts";
 import { backgroundContext, type Context, type ExecutionEnv } from "./harness.ts";
 import { MutationScratch } from "./mutation-scratch.ts";
-import { Sandbox } from "./sandbox.ts";
+import { nodeExecutable, Sandbox, type SandboxPaths } from "./sandbox.ts";
 import { ToolProvisioning } from "./tool-provisioning.ts";
 
 /** The most a static tool may write, its report included. Past it the run fails with `outputTooLarge`. */
@@ -110,6 +110,7 @@ interface Shell {
 
 export class Run {
 	mutationScratch?: MutationScratch;
+	#confinement?: { readonly sandbox: Sandbox; readonly paths: SandboxPaths; readonly profile: string | undefined };
 	readonly input: StaticRunInput;
 	readonly context: Context;
 	readonly check: string;
@@ -157,6 +158,30 @@ export class Run {
 			throw this.fail("toolFailed", `${this.input.tool} could not be run: ${result.error.message}`, result.error);
 		}
 		return { code: result.value.exitCode, output: output.trim() };
+	}
+
+	// Puts every later `tool` command inside the host's sandbox: no network, the reviewer's files unreadable, and writes
+	// in scratch only. Returns a note when it cannot, and the tool then runs as it always has. That is safe to do because
+	// Biome and tsc read the revision and never run it; the sandbox is there for a tool a crafted file subverts.
+	confine(root: string, scratch: string, installs: readonly string[]): string | undefined {
+		const sandbox = Sandbox.detect();
+		if (sandbox === undefined) return `${this.input.tool} ran unconfined: this host offers no sandbox.`;
+		const paths = { worktree: root, scratch, installs, node: nodeExecutable() };
+		const failure = sandbox.runtimeFailure(paths);
+		if (failure !== undefined) return `${this.input.tool} ran unconfined: ${failure}.`;
+		this.#confinement = { sandbox, paths, profile: sandbox.profile(paths) };
+	}
+
+	// Runs the tool's own command, confined when `confine` found a sandbox. git, `ln`, and `rm` stay on `shell`.
+	async tool(command: string): Promise<Shell> {
+		const confinement = this.#confinement;
+		if (confinement === undefined) return this.shell(command);
+		const { sandbox, paths, profile } = confinement;
+		return this.shell(sandbox.command(command, paths, "", profile), undefined, {
+			...sandbox.environment(),
+			HOME: paths.scratch,
+			TMPDIR: paths.scratch,
+		});
 	}
 
 	// git reads every registered worktree's commondir while adding or listing one, so another run that has made its
@@ -329,7 +354,7 @@ function trackedModules(files: readonly string[]): string[] {
 }
 
 async function versionOf(run: Run, binary: string): Promise<string> {
-	const { code, output } = await run.shell(`${quote(binary)} --version`);
+	const { code, output } = await run.tool(`${quote(binary)} --version`);
 	if (code !== 0) throw run.fail("toolMissing", `${binary} --version failed with exit code ${code}: ${output}`);
 	return /\d+\.\d+\.\d+[\w.+-]*/.exec(output)?.[0] ?? "unknown";
 }
@@ -339,7 +364,7 @@ const fileLimit = `ulimit -f ${staticOutputLimit / 1024}`;
 
 async function runBiome(run: Run, root: string, scratch: string, binary: string, version: string): Promise<ToolLog> {
 	const report = posix.join(scratch, "biome.sarif");
-	const { code, output } = await run.shell(
+	const { code, output } = await run.tool(
 		`cd ${quote(root)} && ${fileLimit} && ${quote(binary)} lint --reporter=sarif --reporter-file=${quote(report)} --max-diagnostics=none --colors=off --no-errors-on-unmatched . > /dev/null 2> ${quote(posix.join(scratch, "biome.err"))}`,
 	);
 	const text = await run.readOutput(report);
@@ -403,7 +428,7 @@ async function runTsc(
 	const results: ToolLog["runs"][0]["results"] = [];
 	for (const [index, each] of projects.entries()) {
 		const out = posix.join(scratch, `tsc-${index}.out`);
-		const { code, output } = await run.shell(
+		const { code, output } = await run.tool(
 			`cd ${quote(root)} && ${fileLimit} && ${quote(binary)} --noEmit --pretty false -p ${quote(each)} > ${quote(out)} 2>&1`,
 		);
 		const text = (await run.readOutput(out)) ?? "";
@@ -472,6 +497,9 @@ export function staticToolSource(repoRoot: string, tool: StaticTool): StaticTool
  * bounded by `settings.timeout` and output by {@link staticOutputLimit}. tsc is skipped when the revision has no
  * `settings.project`.
  *
+ * Biome and tsc run inside the host's sandbox when it has one: no network, a scratch `HOME`, and nothing readable but
+ * the worktree and the installs. On a host with none they run unconfined and the run's notes say so.
+ *
  * Throws core's `CheckError`: `worktreeFailed`, `toolMissing`, `toolFailed` for a crash or an unexpected exit,
  * `aborted` when `context` is cancelled, `timeout`, `outputTooLarge`, or `invalidOutput`. A failure never returns an empty log.
  */
@@ -506,8 +534,16 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 		if (checkoutTracked.length > 0) notes.push(`${tool} ignored the checkout's node_modules, which git tracks.`);
 		const installed =
 			checkoutTracked.length === 0 && (await run.exists(checkoutModules)) ? checkoutModules : undefined;
-		if (installed !== undefined) await linkDependencies(run, root, scratch, notes);
+		const installs = installed === undefined ? [] : await linkDependencies(run, root, scratch, notes);
 		const binary = await binaryFor(run, installed);
+		// The tool's own install, when it is not one of the checkout's: Melian's copy, read from the outermost node_modules
+		// above it, so the packages it loads beside itself are readable too.
+		const real = await input.env.canonicalPath(binary, context);
+		const segments = (real.ok ? real.value : binary).split("/");
+		const own = segments.slice(0, segments.indexOf("node_modules") + 1).join("/");
+		if (own !== "" && !installs.includes(own)) installs.push(own);
+		const unconfined = run.confine(root, scratch, installs);
+		if (unconfined !== undefined) notes.push(unconfined);
 		const version = await versionOf(run, binary);
 		const log =
 			tool === "biome"
