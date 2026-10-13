@@ -1,0 +1,33 @@
+{
+	"recordedBy": "571859b2",
+	"checksVersion": 3,
+	"checks": {
+		"runs": {
+			"3b63ae957a4fe4973f1cf3c659bf8cacf7e59531 79c82e59c2c4e544d654bd1155771d9076f0b30c fast e001d2e521540644 7": {
+				"guardrails": {
+					"name": "guardrails",
+					"status": "ran",
+					"findings": 0,
+					"notes": []
+				},
+				"static.biome": {
+					"name": "static.biome",
+					"status": "ran",
+					"version": "2.5.15",
+					"findings": 1,
+					"notes": []
+				},
+				"static.tsc": {
+					"name": "static.tsc",
+					"status": "ran",
+					"version": "7.0.2",
+					"findings": 0,
+					"notes": []
+				}
+			}
+		},
+		"tasks": {
+			"3b63ae957a4fe4973f1cf3c659bf8cacf7e59531 79c82e59c2c4e544d654bd1155771d9076f0b30c fast e001d2e521540644 0": 7
+		}
+	}
+}

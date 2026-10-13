@@ -23,6 +23,7 @@ import {
 	capitalised,
 	describeBudgetEnd,
 	describeLineage,
+	describeUnconfined,
 	plural,
 	prose,
 	Rendering,
@@ -193,6 +194,8 @@ export interface CheckRecord {
 	readonly budgetEnded?: BudgetEnd;
 	/** Why a lens ran, or was to run, on a model other than the one the committed routes chose. */
 	readonly lineage?: CheckLineage;
+	/** Whether a static tool ran inside the host's sandbox, and why not when it did not. */
+	readonly confinement?: Confinement;
 }
 
 /**
@@ -209,6 +212,13 @@ export interface CheckLineage {
 	readonly moved?: { readonly by: string; readonly from: string; readonly to: string };
 	readonly outside: boolean;
 }
+
+/**
+ * Whether a check's tool ran inside the host's sandbox. A tool that reads the head and never runs it may run without
+ * one, on a host that has none, and then `reason` says why. A record with no confinement is a check with no tool to
+ * confine, or one recorded before this was kept.
+ */
+export type Confinement = { confined: true } | { confined: false; reason: string };
 
 /** The reason a {@link Manifest} gives a check it names that has no record. */
 export const noRecord = "no record";
@@ -309,6 +319,7 @@ export type StoredCheckRecord = {
 		moved?: { by: string; from: string; to: string };
 		outside: boolean;
 	};
+	confinement?: Confinement;
 };
 
 function storedCheck(record: CheckRecord): StoredCheckRecord {
@@ -657,6 +668,13 @@ export class Verdict {
 			);
 			parts.push([`${plural(lineage.length, "check")} left the committed routes:`, ...checks].join("\n"));
 		}
+		const unconfined = this.unconfined();
+		if (unconfined.length > 0) {
+			const checks = unconfined.map(
+				({ name, reason }) => `  ${visibleText(name)}  ${prose(describeUnconfined(reason), "    ")}`,
+			);
+			parts.push([`${plural(unconfined.length, "check")} ran outside a sandbox:`, ...checks].join("\n"));
+		}
 		const groups = shownResolutions.map((resolution): [string, readonly Finding[]] => [
 			resolution,
 			this.findings[resolution],
@@ -680,6 +698,16 @@ export class Verdict {
 	}
 
 	/** The verdict as JSON text, indented by two spaces and ending in a newline. Its findings are SARIF results. */
+	/**
+	 * Each check whose tool ran with the reviewer's own access because the host offered no sandbox, with the reason. Such
+	 * a check still ran and its findings count; this is what a reader must be told about how.
+	 */
+	unconfined(): { readonly name: string; readonly reason: string }[] {
+		return [...(this.ran ?? []), ...this.notRun].flatMap(({ name, confinement }) =>
+			confinement?.confined === false ? [{ name, reason: confinement.reason }] : [],
+		);
+	}
+
 	renderJson(): string {
 		return `${JSON.stringify(this, null, 2)}\n`;
 	}

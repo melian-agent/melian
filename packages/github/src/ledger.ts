@@ -1,5 +1,6 @@
 import { createHash, createHmac } from "node:crypto";
 import {
+	describeUnconfined,
 	type LedgerDraft,
 	type LedgerHistory,
 	type LedgerRound,
@@ -286,6 +287,11 @@ export class Ledger {
 								`- ${prose(name)}@${prose(version)}, ${prose(level)}; route ${models.map(prose).join(", ")}${ran === undefined ? "" : `; ran on ${prose(ran)}`}${lineage === undefined ? "" : `; ${prose(lineage)}`}; budgets ${prose(JSON.stringify(budget))}${usage === undefined ? "" : `; used ${usage.models.map(prose).join(", ")}, ${usage.tokens} tokens, $${usage.cost.toFixed(6)}`}${standards === undefined ? "" : `; standards ${standards.map(code).join(", ") || "none"}`}`,
 						),
 					];
+		lines.push(
+			...[...(round.verdict.ran ?? []), ...round.verdict.notRun].flatMap(({ name, confinement }) =>
+				confinement?.confined === false ? [`- ${code(name)} ${prose(describeUnconfined(confinement.reason))}`] : [],
+			),
+		);
 		const publisher = round.publishedBy ?? { trustedWriters: true };
 		lines.unshift(
 			`Published by ${code(publisher.login ?? "unknown")} (${code(publisher.permission ?? "unknown")}); writers trusted: ${publisher.trustedWriters ? "yes" : "no"}`,

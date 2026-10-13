@@ -3,6 +3,7 @@ import {
 	type CheckRecord,
 	type CheckStatus,
 	ConfigError,
+	type Confinement,
 	type MelianConfig,
 	type PublicationDetails,
 	type RepositorySource,
@@ -38,6 +39,7 @@ type StoredCheck = {
 		moved?: { by: string; from: string; to: string };
 		outside: boolean;
 	};
+	confinement?: Confinement;
 };
 
 /**
@@ -137,12 +139,13 @@ class VerdictState {
 
 export const VerdictDocument = defineDoc<StoredVerdictState>({
 	kind: "melian.verdicts",
-	version: 6,
+	version: 7,
 	scope: "conversation",
 	history: "rewindable",
 	fork: "asOf",
 	initial: () => new VerdictState({ verdicts: {} }).toJSON(),
-	// Older records keep head-only keys and leave per-lens standards absent.
+	// Older records keep head-only keys and leave per-lens standards absent. Version 7 lets a check record say whether
+	// its tool ran confined; an older record says nothing, and none is invented for it.
 	migrate: (value, from) => VerdictState.upgrade(value, from),
 });
 

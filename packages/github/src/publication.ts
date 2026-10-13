@@ -3,6 +3,7 @@ import {
 	type ClosedFinding,
 	describeBudgetEnd,
 	describeLineage,
+	describeUnconfined,
 	dismissalVersion,
 	type Finding,
 	type Placement,
@@ -290,6 +291,11 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 		lineage === undefined ? [] : [`- ${code(name)} ${inline(describeLineage(lineage))}`],
 	);
 	if (routed.length > 0) parts.push(["Checks that left the committed routes:", "", ...routed].join("\n"));
+	// A tool that ran with the reviewer's own access is said so beside the outcome, never left to a stored note.
+	const unconfined = verdict
+		.unconfined()
+		.map(({ name, reason }) => `- ${code(name)} ${inline(describeUnconfined(reason))}`);
+	if (unconfined.length > 0) parts.push(["Checks that ran outside a sandbox:", "", ...unconfined].join("\n"));
 	if (verdict.notRun.length > 0) {
 		const checks = verdict.notRun.map(({ name, status: ran, reason, budgetEnded }) => {
 			const ended = budgetEnded === undefined ? [] : [describeBudgetEnd(budgetEnded)];

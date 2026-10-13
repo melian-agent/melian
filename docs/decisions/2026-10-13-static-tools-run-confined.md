@@ -24,9 +24,20 @@ Choice: where the host offers a sandbox, Biome, tsc, and their `--version` probe
 - It gets no network: `SandboxPaths.loopback` is left absent.
 - git, `ln`, and `rm` stay on the host. They are Melian's own commands on paths Melian chose, and git needs the repository's git directory, which the sandbox does not grant.
 
-The fallback: where the host has no sandbox, or Node cannot start inside it, the tool runs unconfined exactly as before, and the check's record carries a note: "biome ran unconfined: this host offers no sandbox." Three kinds of host get it: Windows, Linux without bubblewrap or with user namespaces off, and a process already inside a seatbelt, such as a Codex task, where macOS refuses a nested one.
+The fallback: where the host has no sandbox, or Node cannot start inside it, the tool runs unconfined exactly as before, and the review says so wherever it reports. Three kinds of host get it: Windows, Linux without bubblewrap or with user namespaces off, and a process already inside a seatbelt, such as a Codex task, where macOS refuses a nested one.
 
-Why the fallback is not fail-open: fail-open means a control that guards a known danger gives way and the danger proceeds unseen. Here there is no head code to stop, so skipping would remove two checks from every such host to guard against a bug nobody has found. The sandbox is defence in depth for these tools. Its absence leaves the run where every run was before this change, and the note says so in the record. A check that does execute head code gets no such fallback; the sandbox decision still skips it.
+The fallback is visible. A note in a stored record was not enough: no renderer shows a passing check's notes, so a review on such a host read "Passed" and said nothing. Confinement is therefore a typed field on the check record, `{ confined: true }` or `{ confined: false, reason }`, carried from the run through the checks document, the verdict, and the published round.
+
+- The terminal verdict lists "1 check ran outside a sandbox:" with each check and "ran unconfined: this host offers no sandbox".
+- `melian review --json` carries the field on each record under `ran`, for confined and unconfined alike.
+- The GitHub review body has a section, "Checks that ran outside a sandbox:", ahead of the checks that did not run.
+- The ledger's run details name each such check.
+
+A check is unconfined when either its head run or its base run was. A record with no field is a check with no tool to confine, Enola, which is not confined yet, or a record from before the field. The checks document moves to version 4, the verdict document to 7, and the published document to 8. An older build refuses the newer documents, which is right: it would otherwise republish a verdict and drop the warning. `test/fixtures/stored-v6` holds the three documents as the previous version wrote them, and a test reopens them.
+
+A policy key that makes an unconfined run skip or fail is deferred to the per-rule resolution step. That step is where a repository will say, rule by rule and path by path, what blocks; a second, separate switch here would be a policy surface to review and migrate twice. Until then the default stays "run, with a visible warning", because these tools do not execute head code: refusing to lint on a host with no sandbox would cost every such review two checks to guard against a parser bug nobody has found.
+
+Why the fallback is not fail-open: fail-open means a control that guards a known danger gives way and the danger proceeds unseen. Here there is no head code to stop, so skipping would remove two checks from every such host to guard against a bug nobody has found. The sandbox is defence in depth for these tools. Its absence leaves the run where every run was before this change, and every rendering of the review says so. A check that does execute head code gets no such fallback; the sandbox decision still skips it.
 
 The loopback flag: `SandboxPaths.loopback` is off unless a caller sets it. A later caller that runs a tool which talks to its own workers over loopback, as Stryker's logging server does, sets it. Seatbelt cannot name a port the tool picks for itself, so the rule is every loopback port, and on macOS loopback is the host's own: the command can reach any service listening there. Such a caller needs a second control, writer trust, and must say why no narrower rule works. bubblewrap's private network namespace has no such hole. Biome and tsc open no socket, so they get none.
 

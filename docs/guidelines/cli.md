@@ -153,3 +153,5 @@ Verification runs after lenses and before adjudication. Its unfinished or refuse
 A native module mocked with Vitest’s `spy: true` can retain its mocked return after `restoreAllMocks()`. In the comparison command tests, reset `existsSync` before loading the golden repository. Otherwise the next test sees the previous test’s filesystem answer.
 
 Doctor checks a linked clone with `git status --porcelain --untracked-files=all --ignore-submodules=none`. Untracked files and dirty submodules warn even when Git configuration hides them. A clean clone names the commit whose code it runs.
+
+`melian review` prints each check whose tool ran outside a sandbox under the verdict line, and `--json` carries each record's `confinement` field as stored.

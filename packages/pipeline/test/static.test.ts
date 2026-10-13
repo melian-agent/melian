@@ -237,7 +237,7 @@ describe("runStaticTool with the repository's own tools", () => {
 		const env = createNodeExecutionEnv(repo);
 		const execute = vi.spyOn(env, "exec");
 		const result = await runStaticTool({ ...input("biome", head), env }, context);
-		expect(result).toMatchObject({ status: "ran", notes: [] });
+		expect(result).toMatchObject({ status: "ran", notes: [], confinement: { confined: true } });
 		expect(detect).toHaveBeenCalledOnce();
 		const [, paths] = command.mock.calls[0]!;
 		expect(started).toHaveBeenCalledExactlyOnceWith(paths, env, context);
@@ -279,29 +279,34 @@ describe("runStaticTool with the repository's own tools", () => {
 	});
 
 	it.each([
-		["the host offers no sandbox", undefined, "biome ran unconfined: this host offers no sandbox."],
+		["the host offers no sandbox", undefined, "this host offers no sandbox"],
 		[
 			"Node cannot start inside the sandbox",
 			{ ...unconfinedSandbox, runtimeFailure: async () => "Node runtime /n could not start within seatbelt" },
-			"biome ran unconfined: Node runtime /n could not start within seatbelt.",
+			"Node runtime /n could not start within seatbelt",
 		],
-	] as const)("runs the tool unconfined with a note when %s", { timeout: 60_000 }, async (_name, sandbox, note) => {
-		const head = commit(repo, { "src/a.ts": lines("debugger;") });
-		vi.spyOn(Sandbox, "detect").mockResolvedValue(sandbox as Sandbox | undefined);
-		const command = vi.spyOn(unconfinedSandbox, "command");
-		const env = createNodeExecutionEnv(repo);
-		const execute = vi.spyOn(env, "exec");
-		const result = await runStaticTool({ ...input("biome", head), env }, context);
-		if (result.status !== "ran") throw new Error(result.reason);
-		// The fallback reached the tool: the real Biome reported the finding, through a plain shell command.
-		expect(results(result.log)).toEqual([["lint/suspicious/noDebugger", "src/a.ts", 1]]);
-		expect(result.notes).toEqual([note]);
-		expect(command).not.toHaveBeenCalled();
-		const lint = execute.mock.calls.find(([text]) => text.includes(" lint "))!;
-		expect(lint[0]).toMatch(/^cd '/);
-		expect(lint[1]?.env?.HOME).toBe(process.env.HOME);
-		expect(lint[1]?.env).not.toHaveProperty("MELIAN_SANDBOX");
-	});
+	] as const)(
+		"runs the tool unconfined, and says so on the record, when %s",
+		{ timeout: 60_000 },
+		async (_name, sandbox, reason) => {
+			const head = commit(repo, { "src/a.ts": lines("debugger;") });
+			vi.spyOn(Sandbox, "detect").mockResolvedValue(sandbox as Sandbox | undefined);
+			const command = vi.spyOn(unconfinedSandbox, "command");
+			const env = createNodeExecutionEnv(repo);
+			const execute = vi.spyOn(env, "exec");
+			const result = await runStaticTool({ ...input("biome", head), env }, context);
+			if (result.status !== "ran") throw new Error(result.reason);
+			// The fallback reached the tool: the real Biome reported the finding, through a plain shell command.
+			expect(results(result.log)).toEqual([["lint/suspicious/noDebugger", "src/a.ts", 1]]);
+			expect(result.confinement).toEqual({ confined: false, reason });
+			expect(result.notes).toEqual([`biome ran unconfined: ${reason}.`]);
+			expect(command).not.toHaveBeenCalled();
+			const lint = execute.mock.calls.find(([text]) => text.includes(" lint "))!;
+			expect(lint[0]).toMatch(/^cd '/);
+			expect(lint[1]?.env?.HOME).toBe(process.env.HOME);
+			expect(lint[1]?.env).not.toHaveProperty("MELIAN_SANDBOX");
+		},
+	);
 
 	it("runs the tool by its resolved path when the checkout is reached through a link", {
 		timeout: 60_000,

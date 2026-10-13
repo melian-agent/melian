@@ -5,6 +5,7 @@ import {
 	CheckError,
 	type CheckErrorCode,
 	type CheckReport,
+	type Confinement,
 	checksOfTier,
 	type DeterministicCheck,
 	deterministicChecks,
@@ -40,7 +41,15 @@ import { ToolProvisioning } from "./tool-provisioning.ts";
  * findings, so adjudication reports the revision as not reviewed by it rather than as clean.
  */
 export type CheckRunRecord =
-	| { name: string; status: "ran"; version?: string; findings: number; notes: string[]; snapshots?: EnolaSnapshot[] }
+	| {
+			name: string;
+			status: "ran";
+			version?: string;
+			findings: number;
+			notes: string[];
+			snapshots?: EnolaSnapshot[];
+			confinement?: Confinement;
+	  }
 	| { name: string; status: "skipped"; reason: string }
 	| { name: string; status: "failed"; reason: string; error: string };
 
@@ -65,7 +74,9 @@ type Runs = {
 
 export const ChecksDocument = defineDoc<Runs>({
 	kind: "melian.checks",
-	version: 3,
+	// Version 4 lets a record say whether its tool ran confined. An older record says nothing and is read as it is.
+	version: 4,
+	migrate: (value) => value as Runs,
 	scope: "conversation",
 	history: "rewindable",
 	fork: "asOf",
@@ -92,6 +103,7 @@ type Outcome =
 			readonly report: CheckReport;
 			readonly version?: string;
 			readonly snapshots?: EnolaSnapshot[];
+			readonly confinement?: Confinement;
 	  }
 	| { readonly status: "skipped"; readonly reason: string };
 
@@ -142,10 +154,16 @@ async function runStatic(input: CheckInput, env: ExecutionEnv | undefined, conte
 		head: head.log,
 	});
 	const notes = [...report.notes, ...head.notes, ...(base.status === "ran" ? base.notes : [])];
+	// The check ran unconfined if either revision's run did; the head's reason leads.
+	const confinement =
+		[head.confinement, ...(base.status === "ran" ? [base.confinement] : [])].find(
+			(each) => each?.confined === false,
+		) ?? head.confinement;
 	return {
 		status: "ran",
 		report: { findings: report.findings, notes },
 		version: head.log.runs[0].tool.driver.version,
+		...(confinement === undefined ? {} : { confinement }),
 		...(head.snapshots === undefined ? {} : { snapshots: head.snapshots }),
 	};
 }
@@ -194,6 +212,7 @@ const CheckTask = defineTask<CheckInput, { phase: "run" }, CheckRunRecord>({
 								findings: outcome.report.findings.length,
 								...(outcome.snapshots === undefined ? {} : { snapshots: outcome.snapshots }),
 								notes: [...outcome.report.notes],
+								...(outcome.confinement === undefined ? {} : { confinement: outcome.confinement }),
 							};
 			} catch (error) {
 				record = failure(check, error);

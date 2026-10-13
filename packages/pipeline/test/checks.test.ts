@@ -9,6 +9,7 @@ import {
 	loadConfig,
 	normaliseEnolaSarif,
 	type RepositorySource,
+	type ToolLog,
 	ToolManifest,
 } from "@melian-agent/core";
 import {
@@ -33,7 +34,7 @@ import { findingsVersion } from "../src/findings.ts";
 import * as staticRunner from "../src/static.ts";
 import { ToolProvisioning } from "../src/tool-provisioning.ts";
 import { commit, createRepository, fakeTool, lines, removeRepository } from "./fixtures/repo.ts";
-import { unconfinedNotes } from "./fixtures/sandbox.ts";
+import { hostConfinement, unconfinedNotes } from "./fixtures/sandbox.ts";
 
 let repo: string;
 let opened: Harness[];
@@ -123,6 +124,7 @@ describe("runChecks", () => {
 				version: "2.5.15",
 				findings: 2,
 				notes: [...unconfinedNotes("biome"), ...unconfinedNotes("biome")],
+				confinement: hostConfinement,
 			},
 			{
 				name: "static.tsc",
@@ -130,6 +132,7 @@ describe("runChecks", () => {
 				version: versionOf("tsc/"),
 				findings: 2,
 				notes: [...unconfinedNotes("tsc"), ...unconfinedNotes("tsc")],
+				confinement: hostConfinement,
 			},
 		]);
 		expect(summary(findings)).toEqual([
@@ -490,4 +493,67 @@ describe("runChecks and a tool that links its output to a credential", () => {
 			}
 		},
 	);
+});
+
+describe("runChecks and where a static tool ran", () => {
+	const log = (version = "1.0.0"): ToolLog => ({
+		version: "2.1.0",
+		runs: [{ tool: { driver: { name: "Biome", version } }, results: [] }],
+	});
+	const inside = { confined: true } as const;
+	const outside = (reason: string) => ({ confined: false, reason }) as const;
+
+	// The head's run and the base's run of one check may differ, since each probes the sandbox for itself.
+	it.each([
+		["both ran confined", inside, inside, inside],
+		["only the head ran unconfined", outside("head had none"), inside, outside("head had none")],
+		["only the base ran unconfined", inside, outside("base had none"), outside("base had none")],
+		["both ran unconfined", outside("head had none"), outside("base had none"), outside("head had none")],
+		["neither says", undefined, undefined, undefined],
+		["only the base says, and it was unconfined", undefined, outside("base had none"), outside("base had none")],
+	] as const)(
+		"records the check as unconfined when either revision's run was: %s",
+		{ timeout: 60_000 },
+		async (_name, head, base, expected) => {
+			const first = commit(repo, {
+				"melian.yaml": lines("tiers:", "  fast: [static.biome]"),
+				"src/a.ts": lines("a"),
+			});
+			const second = commit(repo, { "src/a.ts": lines("b") });
+			vi.spyOn(staticRunner, "runStaticTool").mockImplementation(async (input) => ({
+				status: "ran",
+				log: log(),
+				notes: [],
+				...((input.commit === second ? head : base) === undefined
+					? {}
+					: { confinement: input.commit === second ? head : base }),
+			}));
+			const { harness, root, records } = await checks(first, second);
+			expect(records).toEqual([
+				{
+					name: "static.biome",
+					status: "ran",
+					version: "1.0.0",
+					findings: 0,
+					notes: [],
+					...(expected === undefined ? {} : { confinement: expected }),
+				},
+			]);
+			const stored = await harness.snapshot(ChecksDocument, root.id, context);
+			expect(Object.values(Object.values(stored!.runs)[0]!)).toEqual(records);
+			vi.restoreAllMocks();
+		},
+	);
+
+	it("leaves a skipped base out of the record's confinement", { timeout: 60_000 }, async () => {
+		const first = commit(repo, { "melian.yaml": lines("tiers:", "  fast: [static.biome]"), "src/a.ts": lines("a") });
+		const second = commit(repo, { "src/a.ts": lines("b") });
+		vi.spyOn(staticRunner, "runStaticTool").mockImplementation(async (input) =>
+			input.commit === second
+				? { status: "ran", log: log(), notes: [], confinement: inside }
+				: { status: "skipped", reason: "nothing to check at the base" },
+		);
+		expect((await checks(first, second)).records).toMatchObject([{ status: "ran", confinement: inside }]);
+		vi.restoreAllMocks();
+	});
 });

@@ -6,6 +6,7 @@ export {
 	type CheckRecord,
 	type CheckStatus,
 	type ConfigFor,
+	type Confinement,
 	Defect,
 	Manifest,
 	Merge,
@@ -268,7 +269,14 @@ export {
 	replyKey,
 	type Walkthrough,
 } from "./publication.ts";
-export { describeBudgetEnd, describeLineage, Rendering, type TerminalRenderOptions, visibleText } from "./render.ts";
+export {
+	describeBudgetEnd,
+	describeLineage,
+	describeUnconfined,
+	Rendering,
+	type TerminalRenderOptions,
+	visibleText,
+} from "./render.ts";
 export {
 	listRevisionFiles,
 	type RevisionEntry,

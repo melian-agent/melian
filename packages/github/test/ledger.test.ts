@@ -75,6 +75,29 @@ describe("ledger rendering", () => {
 		expect(body).toContain("Pull request author permission: `unknown`");
 	});
 
+	it("says in the run details which checks ran outside a sandbox, and nothing for one that ran inside", () => {
+		const ran = new Adjudication({
+			findings: [finding],
+			manifest: [],
+			checks: [
+				{
+					name: "static.biome",
+					status: "ran",
+					confinement: { confined: false, reason: "this host offers no sandbox" },
+				},
+				{ name: "static.tsc", status: "ran", confinement: { confined: true } },
+			],
+			config: defaultConfig,
+		}).adjudicate();
+		const body = Ledger.from(ran, { rounds: [{ ...round, verdict: ran.toJSON() }] }, options).render(links);
+		const start = body.indexOf("<summary>Run details</summary>");
+		const runDetails = body.slice(start, body.indexOf("</details>", start));
+		expect(runDetails).toContain("- `static.biome` ran unconfined: this host offers no sandbox");
+		expect(runDetails).not.toContain("static.tsc");
+		// A round recorded before records carried confinement says nothing either way.
+		expect(Ledger.from(verdict, { rounds: [round] }, options).render(links)).not.toContain("ran unconfined");
+	});
+
 	it("renders known publisher and author attribution", () => {
 		const current = {
 			...round,

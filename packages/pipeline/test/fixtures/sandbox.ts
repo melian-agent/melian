@@ -21,3 +21,9 @@ export const hostSandbox = await Sandbox.detect(createNodeExecutionEnv(tmpdir())
 export function unconfinedNotes(tool: string): string[] {
 	return hostSandbox === undefined ? [`${tool} ran unconfined: this host offers no sandbox.`] : [];
 }
+
+// What a static check's record says of where its tool ran on this host.
+export const hostConfinement =
+	hostSandbox === undefined
+		? ({ confined: false, reason: "this host offers no sandbox" } as const)
+		: ({ confined: true } as const);

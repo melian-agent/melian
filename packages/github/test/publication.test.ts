@@ -339,6 +339,39 @@ describe("markers", () => {
 		);
 	});
 
+	it("names each check that ran outside a sandbox, with the reason, before the checks that did not run", () => {
+		const draft = (checks: ConstructorParameters<typeof Adjudication>[0]["checks"]) =>
+			renderReviewBody(
+				{
+					pullRequest: 7,
+					revision,
+					base,
+					fingerprint: "0123456789abcdef",
+					round: 1,
+					verdict: new Adjudication({ findings: [], manifest: [], checks, config: defaultConfig }).adjudicate(),
+					findings: [],
+					stillOpen: 0,
+					resolved: [],
+					secret,
+				},
+				links,
+			);
+		const body = draft([
+			{
+				name: "static.biome",
+				status: "ran",
+				confinement: { confined: false, reason: "this host offers no `sandbox`" },
+			},
+			{ name: "static.tsc", status: "ran", confinement: { confined: true } },
+			{ name: "lens.contracts", status: "failed", level: "careful", reason: "refused" },
+		]);
+		expect(body).toContain(
+			"Checks that ran outside a sandbox:\n\n- `static.biome` ran unconfined: this host offers no \\`sandbox\\`\n\nChecks that did not run:",
+		);
+		expect(body).not.toContain("`static.tsc`");
+		expect(draft([{ name: "static.tsc", status: "ran", confinement: { confined: true } }])).not.toContain("sandbox");
+	});
+
 	it("cuts findings from a body over GitHub's limit, keeping the marker and saying where they all are", () => {
 		const findings = Array.from({ length: 12 }, (_, index) =>
 			Finding.create({

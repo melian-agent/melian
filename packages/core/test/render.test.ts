@@ -305,6 +305,58 @@ describe("Verdict.render", () => {
 		);
 	});
 
+	it("names each check whose tool ran outside a sandbox, with the reason, and no check that ran inside one", () => {
+		const checked = new Adjudication({
+			findings: [],
+			manifest: [],
+			checks: [
+				{
+					name: "static.biome",
+					status: "ran",
+					confinement: { confined: false, reason: "this host offers no sandbox" },
+				},
+				{ name: "static.tsc", status: "ran", confinement: { confined: true } },
+				{ name: "guardrails", status: "ran" },
+				{
+					name: "static.enola",
+					status: "failed",
+					reason: "toolFailed",
+					confinement: { confined: false, reason: "Node could not start" },
+				},
+			],
+			config: defaultConfig,
+		}).adjudicate();
+		expect(checked.unconfined()).toEqual([
+			{ name: "static.biome", reason: "this host offers no sandbox" },
+			{ name: "static.enola", reason: "Node could not start" },
+		]);
+		expect(checked.render()).toContain(
+			[
+				"2 checks ran outside a sandbox:",
+				"  static.biome  ran unconfined: this host offers no sandbox",
+				"  static.enola  ran unconfined: Node could not start",
+			].join("\n"),
+		);
+		// The JSON a script reads carries the field as it was recorded, for confined and unconfined alike.
+		const json = JSON.parse(checked.renderJson()) as { ran: { name: string; confinement?: unknown }[] };
+		expect(json.ran.map(({ name, confinement }) => [name, confinement])).toEqual([
+			["static.biome", { confined: false, reason: "this host offers no sandbox" }],
+			["static.tsc", { confined: true }],
+			["guardrails", undefined],
+		]);
+		const confined = new Adjudication({
+			findings: [],
+			manifest: [],
+			checks: [{ name: "static.tsc", status: "ran", confinement: { confined: true } }],
+			config: defaultConfig,
+		}).adjudicate();
+		expect(confined.unconfined()).toEqual([]);
+		expect(confined.render()).not.toContain("sandbox");
+		expect(
+			new Adjudication({ findings: [], manifest: [], checks: [], config: defaultConfig }).adjudicate().unconfined(),
+		).toEqual([]);
+	});
+
 	describe("with every finding and its ID", () => {
 		const dismissal = {
 			by: "Tal <tal@melian.invalid>",

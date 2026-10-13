@@ -4,6 +4,8 @@ import { createRequire } from "node:module";
 import { dirname, posix } from "node:path";
 import {
 	CheckError,
+	type Confinement,
+	describeUnconfined,
 	type EnolaSnapshot,
 	normaliseBiomeSarif,
 	parseJsonc,
@@ -45,6 +47,8 @@ export type StaticRun =
 			readonly notes: readonly string[];
 			readonly baseLog?: ToolLog;
 			readonly snapshots?: EnolaSnapshot[];
+			/** Whether Biome or tsc ran inside the host's sandbox. Enola is never confined yet and says nothing. */
+			readonly confinement?: Confinement;
 	  }
 	| { readonly status: "skipped"; readonly reason: string };
 
@@ -166,17 +170,18 @@ export class Run {
 	// Puts every later `tool` command inside the host's sandbox: no network, the reviewer's files unreadable, and writes
 	// in scratch only. Returns a note when it cannot, and the tool then runs as it always has. That is safe to do because
 	// Biome and tsc read the revision and never run it; the sandbox is there for a tool a crafted file subverts.
-	async confine(root: string, scratch: string, installs: readonly string[]): Promise<string | undefined> {
+	async confine(root: string, scratch: string, installs: readonly string[]): Promise<Confinement> {
 		const sandbox = await Sandbox.detect(this.input.env, this.context);
-		if (sandbox === undefined) return `${this.input.tool} ran unconfined: this host offers no sandbox.`;
+		if (sandbox === undefined) return { confined: false, reason: "this host offers no sandbox" };
 		const paths = { worktree: root, scratch, installs, node: nodeExecutable() };
 		const failure = await sandbox.runtimeFailure(paths, this.input.env, this.context);
-		if (failure !== undefined) return `${this.input.tool} ran unconfined: ${failure}.`;
+		if (failure !== undefined) return { confined: false, reason: failure };
 		this.#confinement = { sandbox, paths, profile: sandbox.profile(paths) };
 		// From here the reader runs inside the sandbox too, under a profile built before the tool has run, and so does the
 		// teardown: a process the tool left behind may still be writing in scratch, where a host removal would follow it.
 		this.#outputs = MutationScratch.open(this, scratch, sandbox, []);
 		this.mutationScratch = this.#outputs;
+		return { confined: true };
 	}
 
 	// Runs the tool's own command, confined when `confine` found a sandbox. git, `ln`, and `rm` stay on `shell`.
@@ -555,14 +560,14 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 		const segments = binary.split("/");
 		const own = segments.slice(0, segments.indexOf("node_modules") + 1).join("/");
 		if (own !== "" && !installs.includes(own)) installs.push(own);
-		const unconfined = await run.confine(root, scratch, installs);
-		if (unconfined !== undefined) notes.push(unconfined);
+		const confinement = await run.confine(root, scratch, installs);
+		if (!confinement.confined) notes.push(`${tool} ${describeUnconfined(confinement.reason)}.`);
 		const version = await versionOf(run, binary);
 		const log =
 			tool === "biome"
 				? await runBiome(run, root, scratch, binary, version)
 				: await runTsc(run, root, scratch, binary, version, new Set(files), notes);
-		return { status: "ran", log, notes: [...run.notes, ...notes] };
+		return { status: "ran", log, notes: [...run.notes, ...notes], confinement };
 	});
 }
 

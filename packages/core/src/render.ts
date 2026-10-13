@@ -85,6 +85,11 @@ export function describeLineage({ model, wanted, by, moved, outside }: CheckLine
 	return `on ${model}, ${why}, ${policy} ${outside ? "does not accept" : "accepts"} ${model}`;
 }
 
+/** Says that a check's tool ran with no sandbox, and why, for an author: "ran unconfined: this host offers no sandbox". */
+export function describeUnconfined(reason: string): string {
+	return `ran unconfined: ${reason}`;
+}
+
 /**
  * The options every terminal rendering of a finding, a findings log, or a verdict shares, as `finding.render()`,
  * `log.render()`, and `verdict.render()` read them.
