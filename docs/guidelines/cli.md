@@ -84,6 +84,8 @@ The review plan and scripts receive every loaded lens. Credential unlocking uses
 
 ## Dismissals
 
+`dismiss` decides the verdict again under the policy the review read. When the review read policy from the working tree and a `melian.yaml` or a lens's declared resolution has changed since, the dismissal is recorded, the verdict is not decided, and `dismiss` exits `1` asking for a fresh review, which then counts the dismissal.
+
 `dismiss` records who dismissed a finding as the git author, `git var GIT_AUTHOR_IDENT` without its timestamp: `GIT_AUTHOR_NAME` and `GIT_AUTHOR_EMAIL`, then `user.name` and `user.email`. Not the GitHub login the token resolves to: a range has no GitHub at all, `dismiss` works offline as `findings` does, and the record sits in local storage that trusts whoever can write it, so a login the token proves would add a network call and no trust. A reply on the pull request never names the dismisser; GitHub shows whose token posted it. [The decision](../decisions/2026-10-04-dismissal.md) says more.
 
 A dismissal lives in the changeset's SQLite file under the git common directory, so every worktree of the clone sees it, and nothing outside the clone does. A second maintainer never sees it until the state branch lands in milestone 3, and losing the clone loses it. It reaches a pull request only when `melian publish` posts the verdict it changed: the thread of a finding posted earlier gets a reply with the reason, and the status counts the finding out.
