@@ -93,10 +93,12 @@ const floorNames: Readonly<Record<NonNullable<DecidedBy["floor"]>, string>> = {
 export function describeDecision(by: DecidedBy, own: { readonly check: string; readonly rule: string }): string {
 	const who = by.file ?? (by.lens === undefined ? undefined : `lens ${by.lens}'s default`);
 	const { entry, key } = by.requirement;
+	// A guardrail finding is decided under one of its configured rules, `guardrail/<name>/<rule>`, which is its own.
+	const rule = by.rule ?? own.rule;
 	const requirement = key === undefined ? entryNames[entry] : `${key}, ${entryNames[entry]}`;
 	return [
 		`${who === undefined ? "" : `${who}: `}${requirement}${by.ceiling === undefined ? "" : `, under the ceiling ${by.ceiling.key}`}`,
-		...(by.check === own.check && (by.rule ?? own.rule) === own.rule
+		...(by.check === own.check && (rule === own.rule || rule.startsWith(`${own.rule}/`))
 			? []
 			: [`as ${by.check} reported it${by.rule === undefined ? "" : ` under ${by.rule}`}`]),
 		...(by.cap === undefined ? [] : [capNames[by.cap]]),

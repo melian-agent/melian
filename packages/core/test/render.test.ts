@@ -478,6 +478,12 @@ describe("what decided a finding", () => {
 		expect(describeDecision({ ...table, rule: "altitude" }, own)).toBe(
 			"resolution.P1, the table; as lens.cleanup reported it under altitude",
 		);
+		const guardrails = { check: "guardrails", rule: "guardrail/forbidden-patterns" };
+		const focused = { ...table, check: "guardrails", rule: "guardrail/forbidden-patterns/focused-test" };
+		expect(describeDecision(focused, guardrails)).toBe("resolution.P1, the table");
+		expect(describeDecision({ ...focused, rule: "guardrail/forbidden-patterns-extra" }, guardrails)).toContain(
+			"as guardrails reported it under guardrail/forbidden-patterns-extra",
+		);
 		const { rule: _, ...unruled } = table;
 		expect(describeDecision({ ...unruled, check: "guardrails" }, { check: "guardrails", rule: "guardrail/x" })).toBe(
 			"resolution.P1, the table",
