@@ -14,7 +14,16 @@ import {
 } from "./evidence.ts";
 import { melianPaths } from "./paths.ts";
 import type { DiffLines, Placement } from "./publication.ts";
-import { evidenceLines, messageContinuation, plural, prose, Rendering, severityColor, visibleText } from "./render.ts";
+import {
+	describeDecision,
+	evidenceLines,
+	messageContinuation,
+	plural,
+	prose,
+	Rendering,
+	severityColor,
+	visibleText,
+} from "./render.ts";
 import { lesser, type ResolutionClaim, type ResolutionSource, ResolutionWalk } from "./resolution.ts";
 import {
 	injectionAttemptRuleId,
@@ -128,7 +137,13 @@ export const guardrailMatchSchema = Type.Union([
 
 const entryKey = Type.Object(
 	{
-		entry: Type.Union(["rule", "check", "table", "lens-default", "built-in"].map((entry) => Type.Literal(entry))),
+		entry: Type.Union([
+			Type.Literal("rule"),
+			Type.Literal("check"),
+			Type.Literal("table"),
+			Type.Literal("lens-default"),
+			Type.Literal("built-in"),
+		]),
 		key: Type.Optional(text),
 	},
 	strict,
@@ -1072,12 +1087,15 @@ export class Finding {
 	 * The finding as one block of terminal text: its severity, lines, rule, cause, status, and resolution; each other
 	 * report of its defect, merged into it or dismissed beside it, with its severity, rule, and check; who dismissed it
 	 * and why, and each earlier dismissal; then the message, the explanation's three parts, its failure scenario, and
-	 * each evidence location with its role and the code read there.
+	 * each evidence location with its role and the code read there. When the rendering's `decided` is set, a line names
+	 * the file and entry that decided its resolution, as {@link describeDecision} says it.
 	 */
 	render(rendering: Rendering = new Rendering()): string {
 		const { ids } = rendering;
 		const { severity, cause, evidence, failureScenario, status, explanation, resolution, id, verification, source } =
 			this.properties;
+		const { decidedBy } = this.properties;
+		const own = { check: source.check, rule: this.ruleId };
 		// The other reports of its defect: those adjudication merged into it, which a dismissal of it dismisses too, and
 		// the dismissed ones it lists beside it.
 		const reports = (this.properties.alsoReportedAs ?? []).map((other) => {
@@ -1094,6 +1112,9 @@ export class Finding {
 		return [
 			`  ${rendering.paint(severityColor[severity], severity)}${lowered === undefined ? "" : `, lowered from ${lowered.from}`}  ${lines}  ${visibleText(this.ruleId)}  (${cause}, ${status}, ${resolution ?? "unresolved"}${verification === undefined ? (source.check.startsWith("lens.") ? ", unverified" : "") : `, ${verification.verdict}`})${ids ? `  ${visibleText(id)}` : ""}`,
 			...reports,
+			...(decidedBy === undefined || !rendering.decided
+				? []
+				: [`    Decided by: ${prose(describeDecision(decidedBy, own), "      ")}`]),
 			...(lowered === undefined ? [] : [`    Lowered from ${lowered.from}: ${prose(lowered.reason, "      ")}`]),
 			...(rescoped === undefined
 				? []

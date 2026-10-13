@@ -285,7 +285,14 @@ export {
 	replyKey,
 	type Walkthrough,
 } from "./publication.ts";
-export { describeBudgetEnd, describeLineage, Rendering, type TerminalRenderOptions, visibleText } from "./render.ts";
+export {
+	describeBudgetEnd,
+	describeDecision,
+	describeLineage,
+	Rendering,
+	type TerminalRenderOptions,
+	visibleText,
+} from "./render.ts";
 export {
 	type CeilingEntry,
 	type RequirementEntry,

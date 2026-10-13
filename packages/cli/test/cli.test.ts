@@ -407,6 +407,10 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(nonce(found.stdout)).toBe(nonce(review.stdout + storedVerdict.agentPrompt("main")));
 		const openText = melian(repo, ["findings", "main", "--open"], env);
 		expect(openText.status).toBe(0);
+		// No melian.yaml speaks in the golden, so each rendering names the built-in table as what decided.
+		for (const { stdout } of [review, found, openText]) {
+			expect(stdout).toContain("\n    Decided by: the built-in table\n");
+		}
 		expect(openText.stdout).toContain("null-dereference");
 		expect(nonce(openText.stdout).endsWith(nonce(storedVerdict.agentPrompt("main")))).toBe(true);
 		const open = melian(repo, ["findings", "main", "--open", "--json"], env);
@@ -587,7 +591,7 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 		expect(all.stdout).toContain("Dismissed: 1 finding");
 		expect(all.stdout).toMatch(
 			new RegExp(
-				`\\(introduced, dismissed, block, confirmed\\)  ${id}\\n    Verified:[^\\n]+\\n    Dismissed by Melian Test <test@melian\\.invalid> at \\d{4}-[^:]+:\\d\\d:[^:]+: ${reason}\\n`,
+				`\\(introduced, dismissed, block, confirmed\\)  ${id}\\n    Decided by: the built-in table\\n    Verified:[^\\n]+\\n    Dismissed by Melian Test <test@melian\\.invalid> at \\d{4}-[^:]+:\\d\\d:[^:]+: ${reason}\\n`,
 			),
 		);
 		const verdict = JSON.parse(melian(repo, ["findings", range, "--json"], env).stdout) as StoredVerdict;
