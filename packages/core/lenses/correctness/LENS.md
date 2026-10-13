@@ -21,7 +21,7 @@ handoffs:
   removed-behaviour: A cleanup, error path, or ordering the change deleted or moved with nothing in its place. Leave a deleted rethrow or error branch to it, even when a `catch` the change wrote now swallows the failure; `unhandled-error` keeps a failure that a line the change wrote drops or swallows. A deleted guard, a check that refused an input before an operation ran, is yours as well as its, so report what the input it refused now does.
   trust-boundary: A value an author or outside party controls that reaches a sink unescaped, makes a check pass, or carries a secret out.
   tests: A defect in a test.
-  design: Hand-written code that parses a format, or re-derives an answer, that a dependency the repository already uses parses or answers. Leave the inputs it reads wrong to it, which reports the hand-written code once. Design keeps them where the change says the dependency cannot run there. Where the repository uses no such dependency, a wrong result is yours.
+  design: Hand-written code that parses a format, or re-derives an answer, that a dependency the repository already declares or runs parses or answers. Leave the inputs it reads wrong to it, which reports the hand-written code once. Design keeps them where the change says the dependency cannot run there. Where the repository declares or runs no such dependency, a wrong result is yours.
 budget: { findings: 8, tokens: 200k, tools: 30 }
 levels:
   quick: { tier: medium, reads: hunks, verify: false, budget: { findings: 3, tokens: 100k, tools: 10 } }
