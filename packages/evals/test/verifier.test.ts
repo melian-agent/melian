@@ -39,9 +39,11 @@ const verdictCases: [VerifierGolden["expected"]["kind"], Verification["verdict"]
 ];
 
 describe("the verifier corpus", { timeout: 60_000 }, () => {
-	it("holds executing-reviewer misses, a design departure and two decoys outside the lens corpus", () => {
+	it("holds executing-reviewer misses, two design claims and three decoys outside the lens corpus", () => {
 		expect(goldens.map((golden) => golden.name)).toEqual([
 			"circular-import-tdz",
+			"design-reimplements-an-authority-supported-gap",
+			"design-reimplements-an-authority-unsupported-gap",
 			"design-supersedes-its-own-decision",
 			"excluded-zero-input",
 			"guarded-null-dereference",
