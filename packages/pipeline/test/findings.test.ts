@@ -757,6 +757,14 @@ describe("version 7 findings and verdicts", () => {
 		}
 	}
 
+	it("refuses a version-8 findings document opened by a version-7 definition", async () => {
+		const { harness, root } = await open(createMemoryStorage());
+		await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
+		await expect(harness.snapshot(legacy("melian.findings"), root.id, context)).rejects.toThrow(
+			/newer version 8 than 7/,
+		);
+	});
+
 	it("reads what version 7 wrote after an SQLite reopen, then keys its guardrail sighting and reads that after another", async () => {
 		const path = join(dir, "version-seven.sqlite");
 		const first = await open(await openSqliteStorage(path));
