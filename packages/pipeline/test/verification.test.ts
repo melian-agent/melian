@@ -1820,6 +1820,96 @@ describe("lowering a severity and setting scope through report_verdict", () => {
 		expect(resultOf(requests)).toContain("the table in force at the finding's path resolves P2 silent");
 	});
 
+	it("refuses to lower a claim to a severity its own check resolves silent, though the speaker's check does not", async () => {
+		const first = lenses[0]!.toJSON();
+		lenses = [
+			Lens.from({
+				...first,
+				name: "trust-boundary",
+				instructions: "Finder of the claim that speaks",
+				rules: [{ id: "speaking-rule", description: "Same failure." }],
+			}),
+			Lens.from({
+				...first,
+				name: "contracts",
+				instructions: "Finder of the lowered claim",
+				rules: [{ id: "lowered-rule", description: "Same failure." }],
+			}),
+		];
+		// Only the contracts lens's own entry makes P3 silent: the table, and the lens that speaks, leave it advisory.
+		writeFileSync(join(repo, "src", "melian.yaml"), "resolution:\n  checks:\n    lens.contracts: { P3: silent }\n");
+		const lowered = Finding.create({
+			rule: "lowered-rule",
+			message: "m",
+			file: "src/user.ts",
+			startLine: 7,
+			snippet: "\treturn user.manager.name;",
+			occurrence: 0,
+			cause: "introduced",
+			severity: "P2",
+			explanation: { what: "w", whyHere: "y", whatToDo: "t" },
+			source: { check: "lens.contracts" },
+		}).id;
+		const requests = scriptConversations(fake, [
+			...[
+				{ lens: lenses[0]!, severity: "P1" },
+				{ lens: lenses[1]!, severity: "P2" },
+			].map(({ lens, severity }) => ({
+				match: lens.instructions,
+				replies: [
+					fauxAssistantMessage(
+						fauxToolCall("report_finding", { ...crashFinding, rule: lens.rules[0]!.id, severity }),
+						{ stopReason: "toolUse" },
+					),
+					fauxAssistantMessage("Done."),
+				],
+			})),
+			{
+				match: verifierMarker,
+				replies: [
+					(messages) =>
+						scriptVerifier(messages, {
+							[lowered]: {
+								verdict: "confirmed",
+								reason: "Traced it.",
+								evidence: cited,
+								lower: { severity: "P3", reason: "The only caller checks for a manager first." },
+							},
+						}),
+					(messages) => scriptVerifier(messages),
+				],
+			},
+		])[verifierMarker]!;
+		const finder = fake.ref("finder");
+		const judge = fake.ref("judge");
+		const { verdict } = await reviewChangeset({
+			harness,
+			checks: [],
+			changeset,
+			lenses,
+			standards: [],
+			models: fake.review,
+			policy: { kind: "worktree" },
+			config: {
+				...defaultConfig,
+				tiers: { full: lenses.map((lens) => `lens.${lens.name}`) },
+				stages: { "pull-request": "full" },
+				models: {
+					heavy: { model: `${finder.provider}/${finder.modelId}` },
+					verifier: { model: `${judge.provider}/${judge.modelId}` },
+				},
+			},
+		});
+		const results = requests
+			.at(-1)!
+			.filter((message) => message.role === "toolResult")
+			.map(textOf);
+		expect(results.join("\n")).toContain("the table in force at the finding's path resolves P3 silent");
+		expect(verdict.attention()[0]!.ruleId).toBe("speaking-rule");
+		const claim = verdict.attention()[0]!.properties.otherClaims?.find((each) => each.ruleId === "lowered-rule");
+		expect(claim?.verification?.lowered).toBeUndefined();
+	});
+
 	it("attaches a repeat review to the verification that lowered a claim, though the lowering changes who speaks", async () => {
 		const snippet = "\treturn user.manager.name;";
 		const idOf = (rule: string) =>

@@ -187,6 +187,36 @@ describe("a merged defect resolves each report under its own check, rule, and se
 	});
 });
 
+describe("Defect.silentAt", () => {
+	it("lists a severity any report of the defect resolves silent, whichever speaks", () => {
+		const quiet = policy({ checks: { "lens.cleanup": { P2: "silent" }, "static.biome": { P3: "silent" } } });
+		for (const findings of [
+			[cleanup(), biome()],
+			[biome(), cleanup()],
+		]) {
+			const [defect] = new Adjudication({ findings, manifest: [], checks: [], config: quiet }).defects();
+			expect(defect!.silentAt(() => quiet)).toEqual(["P2", "P3", "nit"]);
+		}
+		const [alone] = new Adjudication({ findings: [biome()], manifest: [], checks: [], config: quiet }).defects();
+		expect(alone!.silentAt(() => quiet)).toEqual(["P3", "nit"]);
+	});
+
+	it("asks the policy for each report's own rule", () => {
+		const asked: string[] = [];
+		const [defect] = new Adjudication({
+			findings: [cleanup(), biome()],
+			manifest: [],
+			checks: [],
+			config: policy({}),
+		}).defects();
+		defect!.silentAt((path, rule) => {
+			asked.push(`${path} ${rule}`);
+			return policy({});
+		});
+		expect(asked.sort()).toEqual(["src/run.ts biome/security/noGlobalEval", "src/run.ts reuse"]);
+	});
+});
+
 describe("Verdict.fingerprint", () => {
 	it("leaves out which file and entry decided each finding", () => {
 		const table = decide([biome()], policy({ P1: "acknowledge" }));

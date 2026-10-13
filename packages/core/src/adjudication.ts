@@ -169,6 +169,18 @@ export class Defect {
 		return this.speaker.floored(strictest, [this.speaker.ruleId, ...this.members.map((member) => member.ruleId)]);
 	}
 
+	/**
+	 * The severities a verifier must not lower a claim of the defect to: those at which any report of it would resolve
+	 * `silent` under its own check, rule, and path ({@link Finding.silentAt}). The speaker's keys alone would let a
+	 * lowering silence another report, whose check maps that severity to `silent`.
+	 */
+	silentAt(policyFor: ConfigFor): Severity[] {
+		const silent = this.reports.flatMap((report) =>
+			report.silentAt(policyFor(report.properties.path, report.ruleId)),
+		);
+		return (["P0", "P1", "P2", "P3", "nit"] as const).filter((severity) => silent.includes(severity));
+	}
+
 	/** Whether lenses alone reported this defect. */
 	lensOnly(): boolean {
 		const checks = [

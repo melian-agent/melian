@@ -2029,7 +2029,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			budget: { ...verificationBudget },
 			fence: {
 				coReported: !defect.lensOnly(),
-				silent: defect.speaker.silentAt(configFor(defect.speaker.properties.path, defect.speaker.ruleId)),
+				silent: defect.silentAt(configFor),
 			},
 		});
 	}

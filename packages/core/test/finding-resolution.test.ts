@@ -320,7 +320,7 @@ describe("a guardrail finding's keys", () => {
 });
 
 describe("Finding.silentAt", () => {
-	it("lists the severities its own keys resolve silent, before any cap or floor", () => {
+	it("lists the severities a check that reported it resolves silent, before any cap or floor", () => {
 		const source = layered({
 			"melian.yaml": {
 				P3: "silent",
@@ -334,7 +334,8 @@ describe("Finding.silentAt", () => {
 			...finding().toJSON(),
 			properties: { ...finding().properties, reportedBy: [{ check: "lens.security" }, { check: "lens.tests" }] },
 		});
-		expect(twice.silentAt(source)).toEqual(["nit"]);
+		// lens.tests has no entry, so the table makes P3 silent for it, and the security entry makes P2 silent.
+		expect(twice.silentAt(source)).toEqual(["P2", "P3", "nit"]);
 	});
 });
 

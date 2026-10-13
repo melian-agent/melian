@@ -1430,11 +1430,14 @@ export class Finding {
 		);
 	}
 
-	/** The severities at which every report the finding holds would resolve `silent` under `source`, before caps and floors. */
+	/**
+	 * The severities at which a check that reported the finding would resolve it `silent` under `source`, before caps
+	 * and floors. A verifier lowers no claim of the finding to one of them.
+	 */
 	silentAt(source: ResolutionSource): Severity[] {
 		const walk = ResolutionWalk.over(source);
 		return (["P0", "P1", "P2", "P3", "nit"] as const).filter((severity) =>
-			this.#claims().every((claim) => walk.decide({ ...claim, severity }).resolution === "silent"),
+			this.#claims().some((claim) => walk.decide({ ...claim, severity }).resolution === "silent"),
 		);
 	}
 
