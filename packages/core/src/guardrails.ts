@@ -1,3 +1,5 @@
+import { posix } from "node:path";
+import { isDeepStrictEqual } from "node:util";
 import { analyserOf, switchOffs } from "./analyser.ts";
 import type { Revision } from "./changeset.ts";
 import {
@@ -5,6 +7,7 @@ import {
 	configLookup,
 	type ForbiddenPatternRule,
 	type MelianConfig,
+	parseResolution,
 	type Severity,
 	stricter,
 } from "./config.ts";
@@ -19,6 +22,8 @@ import {
 	snippetOccurrence,
 } from "./findings.ts";
 import { git } from "./git.ts";
+import { isLensFile, parseLensFile } from "./lens.ts";
+import { melianPaths } from "./paths.ts";
 import { compileGlob, compilePattern, type LinearPattern, matchesGlobs, Refused } from "./pattern.ts";
 import { openSource, type RepositorySource, SourceError, type SourceReader } from "./source.ts";
 
@@ -209,9 +214,37 @@ function loadsManifest(path: string, workspaces: readonly string[] | undefined):
 	return directory === "" || workspaces === undefined || matchesGlobs(workspaces, directory);
 }
 
+// Whether the revision changes what `path` says a finding requires: the `resolution` key of a `melian.yaml`, or the
+// resolution a `LENS.md` declares, each parsed at the base and at the head as its own loader parses it. A side that
+// does not parse counts as changed, since nothing shows it left the keys alone.
+async function resolutionChanged(repoRoot: string, revision: Revision, path: string): Promise<boolean> {
+	const declared =
+		posix.basename(path) === melianPaths.config
+			? (text: string) => parseResolution(text, path)
+			: isLensFile(path)
+				? (text: string) => parseLensFile(path, text).frontMatter.resolution
+				: undefined;
+	if (declared === undefined) return false;
+	const sides = await Promise.all(
+		[revision.base, revision.head].map(async (commit) => {
+			const blob = await blobText(repoRoot, commit, path);
+			if (blob.why === "absent") return { resolution: undefined };
+			if (blob.text === undefined) return undefined;
+			try {
+				return { resolution: declared(blob.text) };
+			} catch {
+				return undefined;
+			}
+		}),
+	);
+	const [base, head] = sides;
+	return base === undefined || head === undefined || !isDeepStrictEqual(base.resolution, head.resolution);
+}
+
 // Every policy file the revision lists, and every touched path its own configuration adds to the list. A change to an
 // analyser's configuration blocks by default: the head's copy drives the run that judges the head, so a switched-off
-// check would otherwise read as a clean one.
+// check would otherwise read as a clean one. A change to a `resolution` key, or to a lens's declared resolution, draws
+// the notice whatever switch the directory above sets: those keys decide what every other finding requires.
 async function policyChanges(input: GuardrailInput, paths: readonly string[], configFor: ConfigLookup): Promise<Hit[]> {
 	const { revision, repoRoot } = input;
 	const changed = revision.files.map((file) => file.path);
@@ -221,10 +254,12 @@ async function policyChanges(input: GuardrailInput, paths: readonly string[], co
 	return Promise.all(
 		paths.map(async (path): Promise<Hit | undefined> => {
 			const guardrail = (await configFor.policyReview(path)).config.guardrails["policy-change-review"];
-			if (!guardrail.enabled) return undefined;
+			const forced = await resolutionChanged(repoRoot, revision, path);
+			if (!guardrail.enabled && !forced) return undefined;
 			const added = matchesGlobs(guardrail.files, path);
 			const listed = revision.policyFiles.includes(path) && loadsManifest(path, workspaces);
-			if (!listed && !added) return undefined;
+			if (!listed && !added && !forced) return undefined;
+			const marked = forced ? { resolution: true as const } : {};
 			const analyser = analyserOf(path) ?? (added ? "an analyser this repository configures" : undefined);
 			if (analyser !== undefined) {
 				const [base, head] = await Promise.all([
@@ -241,7 +276,7 @@ async function policyChanges(input: GuardrailInput, paths: readonly string[], co
 					line: 1,
 					discriminator: "analyser",
 					severity: guardrail.analyserSeverity,
-					match: { notice: "analyser" },
+					match: { notice: "analyser", ...marked },
 					message: `Review the change to ${path}, which configures ${analyser}.`,
 					explanation: {
 						what: [`This revision changes ${path}, which configures ${analyser}.`, ...switched].join(" "),
@@ -257,10 +292,10 @@ async function policyChanges(input: GuardrailInput, paths: readonly string[], co
 				line: 1,
 				discriminator: "policy",
 				severity: guardrail.severity,
-				match: { notice: "policy" },
+				match: { notice: "policy", ...marked },
 				message: "Review policy and standards changed in this revision.",
 				explanation: {
-					what: `This revision changes ${path}, which steers how Melian reviews this repository.`,
+					what: `This revision changes ${path}, which steers how Melian reviews this repository.${forced ? " It changes the resolution the file declares, which decides what a finding requires." : ""}`,
 					whyHere:
 						"Melian reviewed the revision under the policy and standards it changes, so nothing it ran judged the new ones.",
 					whatToDo: `Have a maintainer read the change to ${path} before merging.`,
@@ -462,7 +497,9 @@ async function forbiddenPatterns(
  * - `policy-change-review`: the revision changes a policy, standards, or tool configuration file, one of
  *   `revision.policyFiles` or a path the configuration's `files` adds. A `melian.yaml` takes this guardrail from the
  *   configuration of the directory above its own, so it never switches off the review of itself. The root's takes it
- *   from its own configuration, which may make it stricter than the defaults but never more lenient.
+ *   from its own configuration, which may make it stricter than the defaults but never more lenient. A change to the
+ *   `resolution` key of any `melian.yaml`, or to the resolution a `LENS.md` declares, is reported whatever that
+ *   configuration switches off, and marked so that it never resolves below `acknowledge`.
  *
  * Every finding is `introduced`. Several rules of one guardrail that fire on one path or line give one finding, which
  * names each in `properties.guardrail`, outside its ID; a policy-change notice names its class there. Throws

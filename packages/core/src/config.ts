@@ -718,6 +718,14 @@ function parseLayer(text: string, site: Site, directory: string): MelianYaml {
 	return anchorPaths(site, directory, value as MelianYaml);
 }
 
+/**
+ * The `resolution` key of the `melian.yaml` at `file` whose text is `text`, read as the loader reads that file, or
+ * `undefined` when it writes none. Throws {@link ConfigError} as {@link loadConfig} does for a file it refuses.
+ */
+export function parseResolution(text: string, file: string): FileResolution | undefined {
+	return parseLayer(text, { file, where: file }, posix.dirname(file)).resolution;
+}
+
 // The review plan reads routes from the root's configuration alone until it plans per path, so a nested file's route
 // policy would never apply: a stricter nested policy would fail open. Refusing it says so where it is written.
 function checkNested(site: Site, layer: MelianYaml): void {

@@ -88,6 +88,7 @@ export {
 	modelTiers,
 	type PolicyChangeReview,
 	type PreExistingCap,
+	parseResolution,
 	preExistingCapSchema,
 	type RequiredFileRule,
 	type Resolution,
@@ -223,6 +224,7 @@ export {
 } from "./guardrails.ts";
 export {
 	defaultScrutinyLevel,
+	isLensFile,
 	Lens,
 	type LensBudget,
 	type LensCoverage,
