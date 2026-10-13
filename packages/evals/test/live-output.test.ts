@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { shownOutput } from "../src/live-output.ts";
+import { shownOutput, verdictLabel } from "../src/live-output.ts";
+
+describe("verdictLabel", () => {
+	it("prints the verdict, or unjudged with the reason the verifier check recorded", () => {
+		expect(verdictLabel("confirmed", undefined)).toBe("confirmed");
+		expect(verdictLabel("refuted", "ignored")).toBe("refuted");
+		expect(verdictLabel(undefined, "Codex error: overloaded")).toBe("unjudged (Codex error: overloaded)");
+		expect(verdictLabel(undefined, undefined)).toBe("unjudged (no reason recorded)");
+	});
+});
 
 describe("shownOutput", () => {
 	it("prints nothing unless MELIAN_EVAL_SHOW is exactly 1", () => {

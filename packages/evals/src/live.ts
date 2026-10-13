@@ -23,7 +23,7 @@ import {
 	scoreGolden,
 	selectGoldens,
 } from "./goldens.ts";
-import { shownOutput } from "./live-output.ts";
+import { shownOutput, verdictLabel } from "./live-output.ts";
 import { loadTriageGoldens, runTriageGolden, type TriageChosen, TriageQuestions, TriageResults } from "./triage.ts";
 import { loadVerifierGoldens, runVerifierGolden, scoreVerifierGolden } from "./verifier.ts";
 
@@ -53,7 +53,7 @@ if (process.env.MELIAN_EVAL_VERIFIER === "1") {
 		const score = scoreVerifierGolden(golden, run);
 		scores.push(score);
 		console.log(
-			`${golden.name}: ${score.verdict ?? "unjudged"}, ${score.passed ? "passed" : "failed"} (${score.kind})`,
+			`${golden.name}: ${verdictLabel(score.verdict, run.unjudged)}, ${score.passed ? "passed" : "failed"} (${score.kind})`,
 		);
 		for (const line of shownOutput(run.rendered)) console.log(line);
 	}
