@@ -112,7 +112,7 @@ export class Ledger {
 			round: current.round,
 			verdict: verdict.fingerprint(),
 			counts: {
-				open: verdict.attention().length,
+				open: verdict.counted().length,
 				blocking: verdict.findings.block.length,
 				dismissed: verdict.dismissed.length,
 			},

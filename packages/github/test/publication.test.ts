@@ -425,6 +425,78 @@ describe("markers", () => {
 	});
 });
 
+describe("an important pre-existing finding that only its floor lifts", () => {
+	const quiet = { ...defaultConfig, resolution: { ...defaultConfig.resolution, P0: "silent" as const } };
+	const old = Finding.create({ ...input, severity: "P0", cause: "pre-existing", source: { check: "static.tool" } });
+	const plain = Finding.create({ ...input, file: "src/other.ts", severity: "P3", source: { check: "static.tool" } });
+	const decide = (findings: Finding[], seenBefore: string[] = []) =>
+		new Adjudication({ findings, manifest: [], checks: [], config: quiet, seenBefore }).adjudicate();
+	const bodyOf = (verdict: ReturnType<typeof decide>, posted: Finding[]) =>
+		renderReviewBody(
+			{
+				pullRequest: 7,
+				revision,
+				base,
+				fingerprint: "0123456789abcdef",
+				round: 1,
+				verdict,
+				findings: posted.map((finding) => ({ finding, placement: { kind: "body" as const } })),
+				stillOpen: 0,
+				resolved: [],
+				secret,
+			},
+			links,
+		);
+
+	it("leaves the summary sentence as it read before the heading existed", () => {
+		const verdict = decide([old]);
+		expect(verdict.preExistingImportant).toEqual([
+			{ id: old.id, state: "new", originalSeverity: "P0", lifted: true },
+		]);
+		const body = bodyOf(verdict, verdict.attention());
+		expect(body).toContain("**passed**.\n\nNo findings need attention.");
+		expect(body).not.toContain("needs attention");
+		expect(verdict.reviewStatus()).toEqual({ state: "success", description: "Passed" });
+	});
+
+	it("counts the ordinary findings beside it, and not the member", () => {
+		const verdict = decide([old, plain]);
+		const body = bodyOf(verdict, verdict.attention());
+		expect(body).toContain("1 finding needs attention: 1 advisory.");
+		expect(verdict.counted().map((finding) => finding.id)).toEqual([plain.id]);
+		expect(verdict.reviewStatus()).toEqual({ state: "success", description: "1 finding, none blocking" });
+	});
+
+	it("counts a member the floor did not lift as any advisory finding", () => {
+		const verdict = new Adjudication({
+			findings: [old],
+			manifest: [],
+			checks: [],
+			config: defaultConfig,
+		}).adjudicate();
+		expect(verdict.preExistingImportant).toEqual([{ id: old.id, state: "new", originalSeverity: "P0" }]);
+		expect(bodyOf(verdict, verdict.attention())).toContain("1 finding needs attention: 1 advisory.");
+		expect(verdict.counted()).toHaveLength(1);
+	});
+
+	it("names the heading in the member's own comment, new and then carried, and in no other finding's", () => {
+		const first = decide([old, plain]);
+		const body = bodyOf(first, first.attention());
+		expect(body).toContain(
+			"**Pre-existing, important**, new on this revision. It predates this change and does not block it.",
+		);
+		expect(body.split("**Pre-existing, important**")).toHaveLength(2);
+		const second = decide([old, plain], [old.id]);
+		expect(bodyOf(second, second.attention())).toContain(
+			"**Pre-existing, important**, carried from an earlier revision. It predates this change and does not block it.",
+		);
+		expect(first.importance(plain.id)).toBeUndefined();
+		expect(ReviewComment.from(old).render({ revision, base, links, secret })).not.toContain(
+			"Pre-existing, important",
+		);
+	});
+});
+
 describe("verification comments", () => {
 	it("shows a lowering with the original severity and the verifier's reason", () => {
 		const record = {

@@ -56,7 +56,7 @@ Finding text is never live markdown either. Problem: Melian posts from the maint
 - The crash test, `test/publish-crash.test.ts`, runs `test/fixtures/publish-crash.ts` in a child process that parks once the fake has accepted the review, kills it, and publishes again in the test process. The child writes the fake's state to a file after every write, so the post outlives the process. It runs once with `/user` answering and once with it refusing, as for an installation token, so recovery never leans on knowing the author.
 
 
-ReviewComment.render shows verification, its model, reason and optional correction through the existing escaping. The review body counts sighting judgements and the refuted defects it did not post. Verdict.verificationSummary supplies the ledger's outcomes.
+ReviewComment.render shows verification, its model, reason and optional correction through the existing escaping. `ReviewComment.from` takes a third argument, the finding's state under "Pre-existing, important", and the comment then names the heading and says new or carried. The review body's "need attention" sentence and the ledger stamp's open count read `verdict.counted()`, which leaves out a member that only its floor lifted, so they read as before the heading existed. The review body counts sighting judgements and the refuted defects it did not post. Verdict.verificationSummary supplies the ledger's outcomes.
 
 ## The ledger
 

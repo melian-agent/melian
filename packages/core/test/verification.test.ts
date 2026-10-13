@@ -482,7 +482,11 @@ describe("adjudicating lowered and important pre-existing findings", () => {
 		expect(result.findings.advisory).toHaveLength(1);
 		expect(result.status).toBe("passed");
 		expect(result.blocking).toBe(false);
-		expect(result.preExistingImportant).toEqual([{ id: old.id, state: "new", originalSeverity: "P0" }]);
+		expect(result.preExistingImportant).toEqual([{ id: old.id, state: "new", originalSeverity: "P0", lifted: true }]);
+		expect(result.counted()).toEqual([]);
+		expect(result.importance(old.id)).toBe("new");
+		expect(result.importance("0000000000000000")).toBeUndefined();
+		expect(result.reviewStatus()).toEqual({ state: "success", description: "Passed" });
 		const ordinary = Finding.create({
 			...evalInput,
 			file: "src/other.ts",
