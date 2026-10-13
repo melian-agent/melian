@@ -403,6 +403,38 @@ describe("rule (d), four typed answers, cross-checked", () => {
 		).toEqual(["(d) a hunk adds code at line 8, inside the function that holds the failure"]);
 	});
 
+	it("reads a deleted line at the base and an added line at the head, each by its own revision's lines", async () => {
+		const noted = (guard: string[]) =>
+			lines(
+				"export function pick(raw: string): string {",
+				'\tconst fields = raw.split(",");',
+				...guard,
+				"\t// The second field.",
+				"\tconst name = fields[1].trim();",
+				"\treturn name;",
+				"}",
+			);
+		const seen = { path: "src/pick.ts", startLine: 1, endLine: 8, evidence: [] };
+		// The guard on base line 3 goes, and head line 3 is the comment.
+		expect(
+			await refusals(
+				{ "src/pick.ts": noted([]) },
+				{ failing: { file: "src/pick.ts", line: 4, baseLine: 5 } },
+				seen,
+				{ base: { "src/pick.ts": noted(['\tif (fields.length < 2) return "";']) } },
+			),
+		).toEqual(["(d) a hunk deletes code at base line 3, inside the function that holds the failure"]);
+		// Code arrives on head line 3, where the base holds the comment.
+		expect(
+			await refusals(
+				{ "src/pick.ts": noted(["\tfields.length = 1;"]) },
+				{ failing: { file: "src/pick.ts", line: 5, baseLine: 4 } },
+				seen,
+				{ base: { "src/pick.ts": noted([]) } },
+			),
+		).toEqual(["(d) a hunk adds code at line 3, inside the function that holds the failure"]);
+	});
+
 	it("lets a hunk delete code in another function of the file", async () => {
 		const elsewhere = { "src/parse.ts": parse("\t// Split on commas.").replace("raw.length > 0", "raw.length > 1") };
 		expect(await refusals(elsewhere)).toEqual([]);

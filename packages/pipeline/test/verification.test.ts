@@ -1743,6 +1743,38 @@ describe("lowering a severity and setting scope through report_verdict", () => {
 		expect(sighting.properties.cause).toBe("introduced");
 	});
 
+	it("refuses the report when the claim's sighting is gone by the time it commits", async () => {
+		const requests = scriptConversations(fake, [
+			...lenses.map((lens) => ({
+				match: lens.instructions,
+				replies: [
+					fauxAssistantMessage(fauxToolCall("report_finding", { ...crashFinding, rule: lens.rules[0]!.id }), {
+						stopReason: "toolUse",
+					}),
+					fauxAssistantMessage("Done."),
+				],
+			})),
+			{
+				match: verifierMarker,
+				replies: [
+					async (messages) => {
+						const root = await harness.root(context);
+						const revision = revisionKey(changeset.revision);
+						const [seen] = await readFindings(harness, root.id, revision, context);
+						await root.commit((tx) => clearSightings(tx, root.id, revision, [seen!.properties.source]), context);
+						return scriptVerifier(messages);
+					},
+					(messages) => scriptVerifier(messages),
+				],
+			},
+		])[verifierMarker]!;
+		await expect(review()).rejects.toBeDefined();
+		const errors = requests.flatMap((messages) =>
+			messages.filter((message) => message.role === "toolResult" && message.isError),
+		);
+		expect(textOf(errors[0]!)).toContain("the claim no longer has a sighting");
+	});
+
 	it("refuses the report when the claim changes while the scope is being checked", async () => {
 		await commentEdit();
 		const requests = judging({ verdict: "confirmed", reason: "Traced it.", scope: older }, old);
