@@ -118,7 +118,7 @@ describe("built-in lenses", () => {
 			contracts: "686d7ad61a40",
 			conventions: "bb08d9e590e4",
 			correctness: "7a139e0e8584",
-			design: "77c0ec07a946",
+			design: "831b3c219a2e",
 			"removed-behaviour": "45fa8885fd01",
 			tests: "bee1be69be22",
 			"trust-boundary": "593b84bf6e82",
@@ -168,9 +168,11 @@ describe("built-in lenses", () => {
 		expect(design!.instructions).toContain(
 			"the base uses no dependency that parses the format or answers the question",
 		);
+		expect(design!.instructions).toContain("Keep the exemption only when code you read supports the reason");
 		expect(design!.instructions).toContain(
-			"A gap with no reason, or with a reason the code shows false, leaves the finding standing.",
+			"A gap with no reason, a reason the code shows false, or a reason nothing you read supports leaves the finding standing.",
 		);
+		expect(design!.instructions).toContain("label it as inferred, and drop the finding when you are not sure of it");
 		expect(design!.instructions).toContain(
 			"Under a gap that holds, the hand-written code is still yours and no other lens's.",
 		);

@@ -79,7 +79,7 @@ Lens budgets, which a scripted golden can drive and no lens judges:
 
 ## design
 
-The design corpus now has twenty-two goldens. Nine of its ten design rules have coverage, including the terminology-change case for criterion-selection-bias. Source-based positives and clean twins cover trust-by-label, bound-on-wrong-measure, resumed-identity and single-slot-overwrite. The superseded-at-base clean case and decision-file injection case cover the baseline follow-up. `reimplements-an-authority` has a positive, a stated-gap clean case and a no-dependency clean case.
+The design corpus now has twenty-three goldens. Nine of its ten design rules have coverage, including the terminology-change case for criterion-selection-bias. Source-based positives and clean twins cover trust-by-label, bound-on-wrong-measure, resumed-identity and single-slot-overwrite. The superseded-at-base clean case and decision-file injection case cover the baseline follow-up. `reimplements-an-authority` has a positive, a positive under an unsupported stated gap, a stated-gap clean case and a no-dependency clean case.
 
 - `capability-by-class`: access or an exemption granted to a class whose member should not hold it. [The source decision](../../../docs/decisions/2026-10-07-design-lens-goldens-and-sources.md) points to adversarial review threads but names no finding or record. A source must be identified before this golden is written.
 

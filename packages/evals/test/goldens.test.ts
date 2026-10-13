@@ -124,6 +124,7 @@ describe("the golden corpus", () => {
 			"design-reimplements-an-authority",
 			"design-reimplements-an-authority-clean",
 			"design-reimplements-an-authority-no-dependency-clean",
+			"design-reimplements-an-authority-unsupported-gap",
 			"design-resumed-identity",
 			"design-resumed-identity-clean",
 			"design-rewrites-its-own-decision",

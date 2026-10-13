@@ -10,6 +10,7 @@ import { render as TwinBaseRender } from "../goldens/design-bound-on-wrong-measu
 import { render as cleanRender } from "../goldens/design-bound-on-wrong-measure-clean/head/src/bound-on-wrong-measure.ts";
 import { readHeader } from "../goldens/design-reimplements-an-authority/head/src/note.ts";
 import { seconds } from "../goldens/design-reimplements-an-authority-no-dependency-clean/head/src/remind.ts";
+import { readHeader as excusedReadHeader } from "../goldens/design-reimplements-an-authority-unsupported-gap/head/src/note.ts";
 import { resume as originalResume } from "../goldens/design-resumed-identity/base/src/resumed-identity.ts";
 import { resume as badResume } from "../goldens/design-resumed-identity/head/src/resumed-identity.ts";
 import { resume as TwinBaseResume } from "../goldens/design-resumed-identity-clean/base/src/resumed-identity.ts";
@@ -71,11 +72,14 @@ describe("design rule fixtures", () => {
 		expect(badResume(stored, "H", current)).toEqual(stored);
 		expect(badResume(stored, "J", current)).toEqual({ head: "J", identity: current });
 	});
-	it("demonstrates that the hand-written header parser keeps quotation marks and reads a list as text", () => {
-		const note = '---\ntitle: "Plans: 2027"\ntags: [work, home]\n---\nBody\n';
-		expect(readHeader(note)).toEqual({ title: '"Plans: 2027"', tags: "[work, home]" });
-		expect(readHeader("---\ntitle: Plans\n---\n")).toEqual({ title: "Plans" });
-	});
+	it.each([readHeader, excusedReadHeader])(
+		"demonstrates that the hand-written header parser keeps quotation marks and reads a list as text",
+		(readHeader) => {
+			const note = '---\ntitle: "Plans: 2027"\ntags: [work, home]\n---\nBody\n';
+			expect(readHeader(note)).toEqual({ title: '"Plans: 2027"', tags: "[work, home]" });
+			expect(readHeader("---\ntitle: Plans\n---\n")).toEqual({ title: "Plans" });
+		},
+	);
 	it("parses a delay in each unit and refuses any other text", () => {
 		expect([seconds("90s"), seconds("5m"), seconds("2h"), seconds("1d")]).toEqual([90, 300, 7200, 86_400]);
 		for (const invalid of ["", "5", "m", "5w", "5 m", "1.5h"]) {
