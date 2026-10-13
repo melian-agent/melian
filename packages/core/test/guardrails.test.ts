@@ -472,6 +472,8 @@ describe("forbidden-patterns", () => {
 			{ "a.test.ts": lines(...rows, "it.only(hidden)") },
 		);
 		expect(summary(findings).map(({ severity }) => severity)).toEqual(["P1"]);
+		// Every rule it could not check there, so resolution keys the finding under each.
+		expect(findings[0]!.properties.guardrail).toEqual({ rules: ["note", "block"] });
 	});
 
 	it("reports what is past the scan limit as a finding, never only a note", { timeout: 60_000 }, async () => {
@@ -785,5 +787,79 @@ describe("policy-change-review", () => {
 		expect(summary(findings).map(({ file, severity }) => ({ file, severity }))).toEqual([
 			{ file: "melian.yaml", severity: "P1" },
 		]);
+	});
+});
+
+describe("what a guardrail finding matched", () => {
+	const config = lines(
+		"guardrails:",
+		"  forbidden-paths:",
+		"    rules:",
+		"      build-output: { paths: [dist/**], message: dist is built by CI }",
+		"      bundles: { paths: ['**/*.js'], message: bundles are generated }",
+		"      vendored: { paths: [vendor/**], message: vendored code is read-only }",
+		"  required-files:",
+		"    rules:",
+		"      schema: { when: [db/migrations/**], require: [db/schema.sql], message: update the schema }",
+		"  forbidden-patterns:",
+		"    rules:",
+		"      focused-test: { pattern: '\\.only\\(', message: a focused test skips the suite }",
+		"      console-log: { pattern: 'console\\.log', message: remove the log }",
+	);
+
+	it("names the configured rules that matched, outside the finding's ID", async () => {
+		const { findings } = await guardrails(
+			{ "melian.yaml": config, "biome.json": "{}\n" },
+			{
+				"dist/app.js": lines("built"),
+				"db/migrations/002.sql": lines("alter table a;"),
+				"a.test.ts": lines("it.only(() => console.log(1))", "console.log(2)"),
+				"AGENTS.md": lines("Be brief."),
+				"biome.json": '{ "linter": { "enabled": false } }\n',
+			},
+		);
+		const matched = findings.map(({ ruleId, properties }) => [ruleId, properties.path, properties.guardrail]);
+		expect(matched).toEqual([
+			["guardrail/forbidden-paths", "dist/app.js", { rules: ["build-output", "bundles"] }],
+			["guardrail/required-files", "db/migrations/002.sql", { rules: ["schema"] }],
+			["guardrail/forbidden-patterns", "a.test.ts", { rules: ["focused-test", "console-log"] }],
+			["guardrail/forbidden-patterns", "a.test.ts", { rules: ["console-log"] }],
+			["guardrail/policy-change-review", "AGENTS.md", { notice: "policy" }],
+			["guardrail/policy-change-review", "biome.json", { notice: "analyser" }],
+		]);
+		for (const finding of findings) {
+			const { guardrail: _, ...properties } = finding.properties;
+			expect(Finding.parse({ ...finding.toJSON(), properties }).id).toBe(finding.id);
+		}
+	});
+
+	it("resolves a line under each rule it matched, through the keys of the nearest file that speaks", async () => {
+		const keyed = lines(
+			config,
+			"resolution:",
+			"  checks:",
+			"    guardrails:",
+			"      rules:",
+			"        guardrail/forbidden-patterns/console-log: { P2: advisory }",
+			"        guardrail/forbidden-patterns/focused-test: { P2: block }",
+			"        guardrail/forbidden-paths: { ceiling: silent }",
+		);
+		const base = commit({ "melian.yaml": keyed }, "base");
+		const head = commit(
+			{ "a.test.ts": lines("it.only(() => console.log(1))", "console.log(2)"), "dist/a.js": "x\n" },
+			"head",
+		);
+		const source = { kind: "revision", commit: base } as const;
+		const { revision } = await Changeset.resolve(repo, `${base}..${head}`);
+		const { findings } = await evaluateGuardrails({ repoRoot: repo, revision, source });
+		const { config: loaded, resolutionLayers } = await loadConfig(repo, source, "a.test.ts");
+		const policy = { resolution: loaded.resolution, layers: resolutionLayers };
+		expect(findings.map((finding) => [finding.properties.path, finding.lines()[0], finding.resolve(policy)])).toEqual(
+			[
+				["dist/a.js", 1, "silent"],
+				["a.test.ts", 1, "block"],
+				["a.test.ts", 2, "advisory"],
+			],
+		);
 	});
 });

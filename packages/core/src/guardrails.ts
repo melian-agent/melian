@@ -14,6 +14,7 @@ import {
 	Finding,
 	type FindingExplanation,
 	type FindingTrigger,
+	type GuardrailMatch,
 	normaliseSnippet,
 	snippetOccurrence,
 } from "./findings.ts";
@@ -62,6 +63,8 @@ interface Hit {
 	readonly severity: Severity;
 	readonly message: string;
 	readonly explanation: FindingExplanation;
+	// The configured rules that matched, or the notice's class: what resolution keys the finding under, never its ID.
+	readonly match: GuardrailMatch;
 }
 
 function finding(hit: Hit): Finding {
@@ -79,6 +82,7 @@ function finding(hit: Hit): Finding {
 		severity: hit.severity,
 		explanation: hit.explanation,
 		source: { check },
+		guardrail: hit.match,
 	});
 }
 
@@ -111,6 +115,7 @@ async function forbiddenPaths(
 			line: 1,
 			discriminator: "path",
 			severity: guardrail.severity,
+			match: { rules: matched.map(([name]) => name) },
 			message: sentences(messages),
 			explanation: {
 				what: `This change touches ${path}, which the forbidden-paths rule ${names} forbids.`,
@@ -146,6 +151,7 @@ async function requiredFiles(paths: readonly string[], configFor: ConfigLookup):
 				line: 1,
 				discriminator: `${name} in ${declaredIn}`,
 				severity: guardrail.severity,
+				match: { rules: [name] },
 				message: sentences([rule.message]),
 				explanation: {
 					what: `This change touches ${path} but nothing matching ${missing.join(", ")}, which the required-files rule ${name} requires.`,
@@ -235,6 +241,7 @@ async function policyChanges(input: GuardrailInput, paths: readonly string[], co
 					line: 1,
 					discriminator: "analyser",
 					severity: guardrail.analyserSeverity,
+					match: { notice: "analyser" },
 					message: `Review the change to ${path}, which configures ${analyser}.`,
 					explanation: {
 						what: [`This revision changes ${path}, which configures ${analyser}.`, ...switched].join(" "),
@@ -250,6 +257,7 @@ async function policyChanges(input: GuardrailInput, paths: readonly string[], co
 				line: 1,
 				discriminator: "policy",
 				severity: guardrail.severity,
+				match: { notice: "policy" },
 				message: "Review policy and standards changed in this revision.",
 				explanation: {
 					what: `This revision changes ${path}, which steers how Melian reviews this repository.`,
@@ -363,6 +371,7 @@ async function forbiddenPatterns(
 			line,
 			discriminator: "unscanned",
 			severity: strictestOf(rules, guardrail.severity),
+			match: { rules: rules.map(([name]) => name) },
 			message: "line could not be scanned.",
 			explanation: {
 				what: `forbidden-patterns could not scan ${what}, so the rule ${rules.map(([name]) => name).join(", ")} was not checked there.`,
@@ -429,6 +438,7 @@ async function forbiddenPatterns(
 				discriminator: byCode ? undefined : `line ${added.line}`,
 				trigger: hunk === undefined ? undefined : { file: file.path, index: hunk.index, snippet: added.text },
 				severity: strictestOf(matched, guardrail.severity),
+				match: { rules: matched.map(([name]) => name) },
 				message: sentences(messages),
 				explanation: {
 					what: `This line matches the forbidden-patterns rule ${matched.map(([name]) => name).join(", ")}.`,
@@ -454,7 +464,8 @@ async function forbiddenPatterns(
  *   configuration of the directory above its own, so it never switches off the review of itself. The root's takes it
  *   from its own configuration, which may make it stricter than the defaults but never more lenient.
  *
- * Every finding is `introduced`. Several rules of one guardrail that fire on one path or line give one finding. Throws
+ * Every finding is `introduced`. Several rules of one guardrail that fire on one path or line give one finding, which
+ * names each in `properties.guardrail`, outside its ID; a policy-change notice names its class there. Throws
  * `ConfigError` when a `melian.yaml` cannot be loaded, and {@link CheckError} `unreadable` when a file at head cannot be read.
  */
 export async function evaluateGuardrails(input: GuardrailInput): Promise<CheckReport> {

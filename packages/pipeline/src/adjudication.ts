@@ -139,11 +139,13 @@ class VerdictState {
 
 export const VerdictDocument = defineDoc<StoredVerdictState>({
 	kind: "melian.verdicts",
-	version: 7,
+	version: 8,
 	scope: "conversation",
 	history: "rewindable",
 	fork: "asOf",
 	initial: () => new VerdictState({ verdicts: {} }).toJSON(),
+	// Version 8 lets a finding hold what its guardrail matched and which file and entry decided its resolution; a
+	// version 7 finding holds neither and reads unchanged.
 	// Version 7 lets a verdict list its important pre-existing findings and a finding hold an original severity; a
 	// version 6 verdict has neither and reads unchanged. Older records keep head-only keys and leave per-lens standards absent.
 	migrate: (value, from) => VerdictState.upgrade(value, from),
