@@ -610,11 +610,18 @@ export class Verdict {
 	 * posted. Who dismissed each finding, why, and when stay out of it, a merged report's own dismissal included: a
 	 * reason changed by a second dismissal is answered in the finding's thread, and a review saying nothing new would
 	 * only repeat the last one. Which file and entry decided a finding stays out too: a resolution it changes moves the
-	 * finding to another group, which the fingerprint holds. A verdict without dismissals hashes as it always has.
+	 * finding to another group, which the fingerprint holds. So does what a guardrail finding matched, which its message
+	 * already says. A verdict an older Melian published therefore hashes alike when it is decided again.
 	 */
 	fingerprint(): string {
 		const bare = (finding: Finding): StoredFinding => {
-			const { dismissal: _, pastDismissals: __, decidedBy: ____, ...properties } = finding.properties;
+			const {
+				dismissal: _,
+				pastDismissals: __,
+				decidedBy: ____,
+				guardrail: _____,
+				...properties
+			} = finding.properties;
 			const { alsoReportedAs } = properties;
 			if (alsoReportedAs === undefined) return { ...finding.toJSON(), properties };
 			const reports = alsoReportedAs.map(({ dismissal: ___, ...report }) => report);
@@ -646,11 +653,13 @@ export class Verdict {
 			return evidence.length === 1 && evidence[0]!.role === "cause" && evidence[0]!.revision === "head";
 		};
 		if (!this.all().every(legacy)) return undefined;
+		// What decided a finding, and what its guardrail matched, are fields no older Melian wrote.
 		const downgrade = (finding: Finding) => {
-			const [location] = finding.properties.evidence ?? [];
-			if (location === undefined) return finding.toJSON();
-			const { role: _, revision: __, ...old } = location;
-			return { ...finding.toJSON(), properties: { ...finding.properties, evidence: old } };
+			const { decidedBy: _, guardrail: __, ...properties } = finding.properties;
+			const [location] = properties.evidence ?? [];
+			if (location === undefined) return { ...finding.toJSON(), properties };
+			const { role: ___, revision: ____, ...old } = location;
+			return { ...finding.toJSON(), properties: { ...properties, evidence: old } };
 		};
 		const groups = Object.fromEntries(
 			Object.entries(this.findings).map(([resolution, group]) => [resolution, group.map(downgrade)]),

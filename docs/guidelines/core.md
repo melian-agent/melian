@@ -433,7 +433,7 @@ A merged defect resolves each of its reports alone, with its own ceiling and cap
 
 The floors apply last, to the defect: `finding.floored(decision, rules)`. A policy-change notice on a `melian.yaml`, or one for a changed `resolution`, is never below `acknowledge`. Neither is a defect any lens reported as `melian/injection-attempt`. A member of "Pre-existing, important" is never below `advisory`.
 
-Adjudication stores what decided on the finding, as `properties.decidedBy`: the file, the report's check and rule, the entry the requirement came from, the ceiling in force, and the cap or floor that moved the result. `describeDecision` renders it, and a `Rendering` with `decided` prints it under each finding. `Verdict.fingerprint` leaves it out, so a change in which file decided posts no new review.
+Adjudication stores what decided on the finding, as `properties.decidedBy`: the file, the report's check and rule, the entry the requirement came from, the ceiling in force, and the cap or floor that moved the result. `describeDecision` renders it, and a `Rendering` with `decided` prints it under each finding. `Verdict.fingerprint` and `Verdict.legacyFingerprint` leave it out, with `properties.guardrail`, so a change in which file decided posts no new review, and a verdict published before the fields existed hashes alike when it is decided again.
 
 `resolutionOverrides(repoRoot, source)` in `src/overrides.ts` lists, one sentence each, what every file's resolution overrides, for `melian doctor`. It walks each directory that holds a `melian.yaml`, with each lens's default as the lens applies there. A value the nearer file restates in an entry of its own is not listed.
 
