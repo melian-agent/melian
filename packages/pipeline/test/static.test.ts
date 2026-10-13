@@ -25,12 +25,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Sandbox } from "../src/sandbox.ts";
 import { Run, staticToolSource } from "../src/static.ts";
 import { commit, createRepository, fakeTool, gitIn, lines, removeRepository, writeFiles } from "./fixtures/repo.ts";
-import { hostSandbox, unconfinedNotes, unconfinedSandbox } from "./fixtures/sandbox.ts";
+import { hostSandbox, standInWhereNoSandbox, unconfinedSandbox } from "./fixtures/sandbox.ts";
 
 let repo: string;
 
 beforeEach(() => {
 	repo = createRepository();
+	standInWhereNoSandbox();
 });
 
 afterEach(() => {
@@ -189,10 +190,7 @@ describe("runStaticTool with Melian's own tools", () => {
 			["TS2322", "a/index.ts", 1],
 			["TS2322", "b/index.ts", 1],
 		]);
-		expect(result.notes).toEqual([
-			...unconfinedNotes("tsc"),
-			"tsc checked a/tsconfig.json, b/tsconfig.json, which tsconfig.json references.",
-		]);
+		expect(result.notes).toEqual(["tsc checked a/tsconfig.json, b/tsconfig.json, which tsconfig.json references."]);
 		const nothing = commit(repo, { "tsconfig.json": JSON.stringify({ files: [] }) });
 		await expect(runStaticTool(input("tsc", nothing), context)).rejects.toMatchObject({ code: "nothingToCheck" });
 	});
@@ -206,7 +204,7 @@ describe("runStaticTool with Melian's own tools", () => {
 		try {
 			const result = await runStaticTool(input("tsc", head), context);
 			// Read through the link, the host would have checked the project that file names and said so in a note.
-			expect(result).toMatchObject({ status: "ran", notes: unconfinedNotes("tsc") });
+			expect(result).toMatchObject({ status: "ran", notes: [] });
 		} finally {
 			rmSync(outside);
 		}
@@ -329,7 +327,7 @@ describe("runStaticTool with the repository's own tools", () => {
 		try {
 			// In the host's own sandbox where it has one: under bubblewrap the linked path is not there to run.
 			const result = await runStaticTool({ ...input("biome", head), env, repoRoot: linked }, context);
-			expect(result).toMatchObject({ status: "ran", notes: unconfinedNotes("biome") });
+			expect(result).toMatchObject({ status: "ran", notes: [] });
 			const tool = execute.mock.calls
 				.map(([text]) => text.replaceAll("'\\''", "'"))
 				.filter((text) => /biome' (--version|lint )/.test(text));
@@ -390,83 +388,312 @@ describe("runStaticTool with the repository's own tools", () => {
 	] as const)("reads a version probe that exits %s as %s", { timeout: 60_000 }, async (exit, code) => {
 		const head = commit(repo, { ".gitignore": lines("node_modules"), "src/a.ts": "export const a = 1;\n" });
 		fakeTool(repo, "biome", `echo "said by the tool"; exit ${exit}`);
-		const sees = hostSandbox === undefined ? "output withheld: the tool ran unconfined" : "said by the tool";
 		await expect(runStaticTool(input("biome", head), context)).rejects.toMatchObject({
 			code,
-			message: expect.stringContaining(`--version failed with exit code ${exit}: ${sees}`),
+			message: expect.stringContaining(`--version failed with exit code ${exit}: said by the tool`),
 		});
-		// On a host with no sandbox the probe's output is withheld like any other.
+	});
+
+	it.each([
+		[127, "toolMissing"],
+		[3, "toolFailed"],
+	] as const)(
+		"withholds what a version probe printed outside a sandbox (exit %s)",
+		{ timeout: 60_000 },
+		async (exit, code) => {
+			const head = commit(repo, { "src/a.ts": "export const a = 1;\n" });
+			vi.spyOn(Sandbox, "detect").mockResolvedValue(undefined);
+			const env = createNodeExecutionEnv(repo);
+			const execute = env.exec.bind(env);
+			vi.spyOn(env, "exec").mockImplementation(async (command, options, at) => {
+				if (!command.endsWith(" --version")) return execute(command, options, at);
+				await options?.onOutput?.("a line the tool read from somewhere", at);
+				return { ok: true, value: { exitCode: exit } };
+			});
+			await expect(runStaticTool({ ...input("biome", head), env }, context)).rejects.toMatchObject({
+				code,
+				message: expect.stringMatching(
+					new RegExp(`--version failed with exit code ${exit}: output withheld: the tool ran unconfined$`),
+				),
+				confinement: { confined: false, reason: "this host offers no sandbox" },
+			});
+		},
+	);
+
+	it("bounds the version a tool reports at 64 characters", { timeout: 60_000 }, async () => {
+		const head = commit(repo, { ".gitignore": lines("node_modules"), "src/a.ts": "export const a = 1;\n" });
+		const report = (version: string) =>
+			fakeTool(
+				repo,
+				"biome",
+				[
+					`if [ "$1" = "--version" ]; then echo "Version: ${version}"; exit 0; fi`,
+					'for arg in "$@"; do case "$arg" in --reporter-file=*) out=$(printf %s "$arg" | cut -d= -f2-);; esac; done',
+					`printf '%s' '${emptySarif}' > "$out"`,
+				].join("\n"),
+			);
+		const exact = `1.2.3-${"a".repeat(58)}`;
+		for (const [printed, kept] of [
+			[exact, exact],
+			[`${exact}b`, exact],
+			["no version here", "unknown"],
+		] as const) {
+			report(printed);
+			const ran = await runStaticTool(input("biome", head), context);
+			if (ran.status !== "ran") throw new Error(ran.reason);
+			expect(ran.log.runs[0].tool.driver.version).toBe(kept);
+		}
+		expect(exact).toHaveLength(64);
+	});
+
+	// The review of record's second pass: outside a sandbox the stock tsc puts a type it read from a reviewer's file into
+	// a diagnostic on a file inside the worktree, with no path beside it. So no message of an unconfined tool is kept.
+	describe("an unconfined tsc that reads a file outside the worktree", () => {
+		let home: string;
+		beforeEach(() => {
+			home = join(dirname(repo), `melian-fake-home-${process.pid}`);
+			mkdirSync(home);
+			writeFileSync(join(home, "secrets.ts"), 'export const KEY = "FAKE-SECRET-112-KEY";\n');
+			writeFileSync(join(home, "config.mjs"), 'export const TOKEN = "FAKE-SECRET-112-KEY";\n');
+		});
+		afterEach(() => rmSync(home, { recursive: true, force: true }));
+		const options = (extra: object = {}) =>
+			JSON.stringify({
+				compilerOptions: {
+					strict: true,
+					noEmit: true,
+					module: "NodeNext",
+					moduleResolution: "NodeNext",
+					target: "ES2022",
+					skipLibCheck: true,
+					...extra,
+				},
+				include: ["src"],
+			});
+		const routes: Record<string, (home: string) => { files: Record<string, string>; link?: string }> = {
+			"an absolute import of a .ts": (home) => ({
+				files: {
+					"tsconfig.json": options({ allowImportingTsExtensions: true }),
+					"src/a.ts": `import { KEY } from "${join(home, "secrets.ts")}";\nexport const n: "a" = KEY;\n`,
+				},
+			}),
+			"an .mjs with allowJs": (home) => ({
+				files: {
+					"tsconfig.json": options({ allowJs: true }),
+					"src/a.ts": `import { TOKEN } from "${join(home, "config.mjs")}";\nexport const n: "a" = TOKEN;\n`,
+				},
+			}),
+			"a link inside the worktree, imported relatively": (home) => ({
+				files: {
+					"tsconfig.json": options({ allowImportingTsExtensions: true }),
+					"src/a.ts": 'import { KEY } from "./s.ts";\nexport const n: "a" = KEY;\n',
+				},
+				link: join(home, "secrets.ts"),
+			}),
+			"a paths mapping": (home) => ({
+				files: {
+					"tsconfig.json": JSON.stringify({
+						compilerOptions: {
+							strict: true,
+							noEmit: true,
+							module: "ESNext",
+							moduleResolution: "Bundler",
+							paths: { secret: [join(home, "secrets.ts")] },
+						},
+						include: ["src"],
+					}),
+					"src/a.ts": 'import { KEY } from "secret";\nexport const n: "a" = KEY;\n',
+				},
+			}),
+			"typeof import()": (home) => ({
+				files: {
+					"tsconfig.json": options(),
+					"src/a.ts": `export const n: "a" = null as unknown as typeof import("${join(home, "secrets.js")}").KEY;\n`,
+				},
+			}),
+		};
+		it.each(Object.keys(routes))(
+			"keeps the diagnostic and none of its words: %s",
+			{ timeout: 120_000 },
+			async (route) => {
+				const { files, link } = routes[route]!(home);
+				if (link !== undefined) {
+					mkdirSync(join(repo, "src"), { recursive: true });
+					symlinkSync(link, join(repo, "src/s.ts"));
+				}
+				const head = commit(repo, files);
+				vi.spyOn(Sandbox, "detect").mockResolvedValue(undefined);
+				const outcome = await runStaticTool(input("tsc", head), context).then(
+					(ran) => ran,
+					(error: CheckError) => error,
+				);
+				expect(JSON.stringify(outcome instanceof Error ? [outcome.message, outcome.code] : outcome)).not.toContain(
+					"FAKE-SECRET",
+				);
+				if (outcome instanceof Error) {
+					// tsc placed a diagnostic in the outside file itself: nothing to keep, so the run fails and says only that.
+					expect(outcome).toMatchObject({
+						code: "invalidOutput",
+						message: expect.stringMatching(
+							/^tsc reported \d+ diagnostic\(s\) on files outside the worktree: output withheld: the tool ran unconfined$/,
+						),
+						confinement: { confined: false, reason: "this host offers no sandbox" },
+					});
+					return;
+				}
+				if (outcome.status !== "ran") throw new Error(outcome.reason);
+				// The error the head introduced is still there, at its place, under tsc's own code.
+				expect(
+					outcome.log.runs[0].results.map((each) => [
+						each.ruleId,
+						each.locations[0].physicalLocation.artifactLocation.uri,
+						each.message.text,
+					]),
+				).toEqual([["TS2322", "src/a.ts", "message withheld: the tool ran unconfined"]]);
+				// Read before any mock of this test is gone, and outside a sandbox, tsc does print the marker.
+				const stock = spawnSync(
+					fileURLToPath(new URL("../../../node_modules/.bin/tsc", import.meta.url)),
+					["--noEmit", "--pretty", "false", "-p", "tsconfig.json"],
+					{ cwd: repo, encoding: "utf8" },
+				);
+				expect(`${stock.stdout}${stock.stderr}`).toContain("FAKE-SECRET-112-KEY");
+			},
+		);
+	});
+
+	it("fails closed when an unconfined tool reports on a file outside the worktree, and only notes one in node_modules", {
+		timeout: 60_000,
+	}, async () => {
+		const head = commit(repo, { "tsconfig.json": tsconfig, "src/a.ts": "export const a = 1;\n" });
+		const reporting = async (output: string) => {
+			vi.spyOn(Sandbox, "detect").mockResolvedValue(undefined);
+			const env = createNodeExecutionEnv(repo);
+			const execute = env.exec.bind(env);
+			// Melian's own tsc ran; what it wrote is replaced with what a tsc that read elsewhere would write.
+			vi.spyOn(env, "exec").mockImplementation(async (command, options, at) => {
+				const result = await execute(command, options, at);
+				const out = / --noEmit .* > '([^']+)' 2>&1$/.exec(command)?.[1];
+				if (out === undefined) return result;
+				writeFileSync(out, output);
+				return { ok: true as const, value: { exitCode: 2 } };
+			});
+			return runStaticTool({ ...input("tsc", head), env }, context);
+		};
+		await expect(reporting("../elsewhere.ts(2,1): error TS1005: ';' expected.\n")).rejects.toMatchObject({
+			code: "invalidOutput",
+			message:
+				"tsc reported 1 diagnostic(s) on files outside the worktree: output withheld: the tool ran unconfined",
+			confinement: { confined: false, reason: "this host offers no sandbox" },
+		});
+		const dependency = await reporting("node_modules/x/index.d.ts(1,1): error TS1005: ';' expected.\n");
+		if (dependency.status !== "ran") throw new Error(dependency.reason);
+		expect(dependency.log.runs[0].results).toEqual([]);
+		expect(dependency.notes).toContain(
+			"tsc reported 1 diagnostic(s) Melian does not review: 1 in node_modules and 0 outside the repository.",
+		);
+	});
+
+	it("fails closed when an unconfined Biome reports on a file outside the worktree", { timeout: 60_000 }, async () => {
+		const head = commit(repo, { "src/a.ts": "export const a = 1;\n" });
+		const outside = join(dirname(repo), "elsewhere.ts");
+		const reporting = async (sandbox: Sandbox | undefined) => {
+			vi.spyOn(Sandbox, "detect").mockResolvedValue(sandbox);
+			const env = createNodeExecutionEnv(repo);
+			const execute = env.exec.bind(env);
+			vi.spyOn(env, "exec").mockImplementation(async (command, options, at) => {
+				const result = await execute(command, options, at);
+				const report = / --reporter-file='([^']+)' /.exec(command.replaceAll("'\\''", "'"))?.[1];
+				if (report !== undefined)
+					writeFileSync(
+						report,
+						JSON.stringify({
+							version: "2.1.0",
+							runs: [
+								{
+									results: [
+										{
+											ruleId: "lint/x",
+											level: "error",
+											message: { text: "read elsewhere" },
+											locations: [
+												{
+													physicalLocation: {
+														artifactLocation: { uri: outside },
+														region: { startLine: 1 },
+													},
+												},
+											],
+										},
+									],
+								},
+							],
+						}),
+					);
+				return result;
+			});
+			return runStaticTool({ ...input("biome", head), env }, context);
+		};
+		await expect(reporting(undefined)).rejects.toMatchObject({
+			code: "invalidOutput",
+			message:
+				"biome reported 1 diagnostic(s) on files outside the worktree: output withheld: the tool ran unconfined",
+		});
+		// Confined, Biome could not have read the file, so the stray result is dropped as it always was.
+		const confined = await reporting(unconfinedSandbox);
+		if (confined.status !== "ran") throw new Error(confined.reason);
+		expect(confined.log.runs[0].results).toEqual([]);
+	});
+
+	it("carries where the tool ran on a failure core's report parser throws", { timeout: 60_000 }, async () => {
+		const head = commit(repo, { "src/a.ts": "export const a = 1;\n" });
 		vi.spyOn(Sandbox, "detect").mockResolvedValue(undefined);
-		await expect(runStaticTool(input("biome", head), context)).rejects.toMatchObject({
-			code,
-			message: expect.stringMatching(
-				/--version failed with exit code \d+: output withheld: the tool ran unconfined$/,
-			),
+		const env = createNodeExecutionEnv(repo);
+		const execute = env.exec.bind(env);
+		vi.spyOn(env, "exec").mockImplementation(async (command, options, at) => {
+			const result = await execute(command, options, at);
+			const report = / --reporter-file='([^']+)' /.exec(command)?.[1];
+			if (report !== undefined) writeFileSync(report, "not a report");
+			return result;
+		});
+		await expect(runStaticTool({ ...input("biome", head), env }, context)).rejects.toMatchObject({
+			code: "invalidOutput",
+			message: expect.stringContaining("the SARIF report is not JSON"),
 			confinement: { confined: false, reason: "this host offers no sandbox" },
 		});
 	});
 
-	it("keeps of an unconfined tool's diagnostics only those inside the worktree, bounded and visible", {
-		timeout: 60_000,
-	}, async () => {
-		const outside = join(dirname(repo), `melian-outside-file-${process.pid}.ts`);
-		writeFileSync(outside, "secret\n");
-		symlinkSync(outside, join(repo, "linked.ts"));
-		const head = commit(repo, { ".gitignore": lines("node_modules"), "src/a.ts": "export const a = 1;\n" });
-		const result = (uri: string, text: string) => ({
-			ruleId: "lint/x",
-			level: "error",
-			message: { text },
-			locations: [{ physicalLocation: { artifactLocation: { uri }, region: { startLine: 1 } } }],
-		});
-		const exact = "m".repeat(1000);
-		const reported = [
-			result("src/a.ts", exact),
-			result("src/a.ts", `${exact}!`),
-			result("src/a.ts", `a bell${String.fromCharCode(7)} rings`),
-			result("src/a.ts", "closes </div>, // a comment, ./a/b, @scope/pkg/sub, and a/b are not files elsewhere"),
-			result("linked.ts", "its file is a link out of the worktree"),
-			result("src/a.ts", "quoted from /etc/ssh/ssh_config: Host *"),
-			result("src/a.ts", `found in ${outside}`),
-		];
-		fakeTool(
-			repo,
-			"biome",
-			[
-				'if [ "$1" = "--version" ]; then echo 0.0.0; exit 0; fi',
-				'for arg in "$@"; do case "$arg" in --reporter-file=*) out=$(printf %s "$arg" | cut -d= -f2-);; esac; done',
-				"# A message that names the worktree itself is the tool speaking of its own input.",
-				`sed "s#WORKTREE#$PWD#" > "$out" <<'SARIF'\n${JSON.stringify({ version: "2.1.0", runs: [{ results: [...reported, result("src/a.ts", "in WORKTREE/src/a.ts")] }] })}\nSARIF`,
-			].join("\n"),
-		);
-		const messages = async (sandbox: Sandbox | undefined) => {
-			vi.spyOn(Sandbox, "detect").mockResolvedValue(sandbox);
-			const ran = await runStaticTool(input("biome", head), context);
-			if (ran.status !== "ran") throw new Error(ran.reason);
-			return { texts: ran.log.runs[0].results.map((each) => each.message.text), notes: ran.notes };
-		};
-		try {
-			const unconfined = await messages(undefined);
-			expect(unconfined.texts).toEqual([
-				exact,
-				exact,
-				"a bell\\u0007 rings",
-				"closes </div>, // a comment, ./a/b, @scope/pkg/sub, and a/b are not files elsewhere",
-				expect.stringMatching(/^in \/.*\/tree\/src\/a\.ts$/),
-			]);
-			expect(unconfined.notes).toEqual([
-				"biome ran unconfined: this host offers no sandbox.",
-				"biome ran unconfined, so 3 diagnostic(s) that named a file outside the worktree were dropped.",
-			]);
-			// Confined, the tool could read nothing outside, so its diagnostics stand as it wrote them.
-			const confined = await messages(unconfinedSandbox);
-			expect(confined.texts).toHaveLength(8);
-			expect(confined.texts[1]).toBe(`${exact}!`);
-			expect(confined.notes).toEqual([]);
-		} finally {
-			rmSync(outside);
-		}
-	});
+	// A checkout's binary is whatever its install made it, so it never runs outside a sandbox.
+	it.each(["biome", "tsc"] as const)(
+		"runs Melian's own %s, never the checkout's, on a host with no sandbox",
+		{ timeout: 60_000 },
+		async (tool) => {
+			const head = commit(repo, {
+				".gitignore": lines("node_modules"),
+				"tsconfig.json": tsconfig,
+				"src/a.ts": lines("debugger;"),
+			});
+			const ran = join(dirname(repo), `melian-checkout-tool-ran-${process.pid}`);
+			fakeTool(repo, tool, `echo ran >> '${ran}'\necho "Version: 9.9.9"`);
+			vi.spyOn(Sandbox, "detect").mockResolvedValue(undefined);
+			try {
+				const result = await runStaticTool(input(tool, head), context);
+				if (result.status !== "ran") throw new Error(result.reason);
+				expect(existsSync(ran)).toBe(false);
+				expect(result.log.runs[0].tool.driver.version).toBe(tool === "biome" ? "2.5.15" : "7.0.2");
+				expect(result.notes).toEqual([
+					`${tool} ran unconfined: this host offers no sandbox.`,
+					`${tool} ran from Melian's own install, not the checkout's: a checkout's ${tool} runs only inside a sandbox.`,
+				]);
+				expect(result.confinement).toEqual({ confined: false, reason: "this host offers no sandbox" });
+				// The same checkout inside a sandbox runs its own tool.
+				vi.spyOn(Sandbox, "detect").mockResolvedValue(unconfinedSandbox);
+				await runStaticTool(input(tool, head), context).catch(() => undefined);
+				expect(readFileSync(ran, "utf8")).toContain("ran");
+			} finally {
+				rmSync(ran, { force: true });
+			}
+		},
+	);
 
 	// The review of record's probe: the checkout has a workspace package with dependencies of its own, and the head
 	// replaces that package's directory with a link to a directory outside the repository.
@@ -511,7 +738,7 @@ describe("runStaticTool with the repository's own tools", () => {
 				expect(readdirSync(outside)).toEqual(["b"]);
 				// The same checkout at a head that leaves the directory alone still gets its nested dependencies linked.
 				const plain = await runStaticTool(input("tsc", main), context);
-				expect(plain).toMatchObject({ status: "ran", notes: unconfinedNotes("tsc") });
+				expect(plain).toMatchObject({ status: "ran", notes: [] });
 			} finally {
 				rmSync(outside, { recursive: true, force: true });
 			}
@@ -629,7 +856,6 @@ describe("runStaticTool with the repository's own tools", () => {
 			status: "ran",
 			notes: [
 				`biome resolved dependencies from the checkout's install, whose package-lock.json differs from ${head.slice(0, 12)}'s.`,
-				...unconfinedNotes("biome"),
 			],
 		});
 	});
@@ -672,31 +898,28 @@ describe("runStaticTool with the repository's own tools", () => {
 			`biome ignored node_modules, which ${head.slice(0, 12)} tracks.`,
 			`biome ignored packages/a/node_modules, which ${head.slice(0, 12)} tracks.`,
 			"biome ignored the checkout's node_modules, which git tracks.",
-			...unconfinedNotes("biome"),
 		]);
 		expectCheckoutUntouched();
 	});
 
-	it("runs the tool with PATH, HOME, TMPDIR, and LANG only, so no secret reaches it", {
+	it("runs an unconfined tool with PATH, HOME, TMPDIR, and LANG only, so no secret reaches it", {
 		timeout: 60_000,
 	}, async () => {
 		vi.stubEnv("MELIAN_TEST_SECRET", "hunter2");
-		vi.stubEnv("NODE_V8_COVERAGE", "");
-		// The fake records what it saw beside the repository, so this run is the unconfined one.
 		vi.spyOn(Sandbox, "detect").mockResolvedValue(undefined);
-		const head = commit(repo, { ".gitignore": lines("node_modules"), "tsconfig.json": tsconfig });
-		const seen = join(repo, ".git", "tool-env.txt");
-		fakeTool(repo, "tsc", `if [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi\nenv > '${seen}'`);
-		await log("tsc", head);
-		const names = readFileSync(seen, "utf8")
-			.split("\n")
-			.map((line) => line.split("=")[0])
-			.filter((name) => name !== "");
-		expect(names).not.toContain("MELIAN_TEST_SECRET");
-		expect(names).toContain("PATH");
-		expect(
-			names.filter((name) => !["PATH", "HOME", "TMPDIR", "LANG", "PWD", "OLDPWD", "SHLVL", "_"].includes(name!)),
-		).toEqual([]);
+		const head = commit(repo, { "tsconfig.json": tsconfig, "src/a.ts": "export const a = 1;\n" });
+		const env = createNodeExecutionEnv(repo);
+		const execute = vi.spyOn(env, "exec");
+		await runStaticTool({ ...input("tsc", head), env }, context);
+		const tool = execute.mock.calls.filter(([command]) => / --version$| --noEmit /.test(command));
+		expect(tool).toHaveLength(2);
+		for (const [, options] of tool) {
+			expect(options?.inheritEnv).toBe(false);
+			expect(Object.keys(options!.env!).sort()).toEqual(
+				["HOME", "LANG", "PATH", "TMPDIR"].filter((name) => process.env[name] !== undefined),
+			);
+			expect(options!.env!.HOME).toBe(process.env.HOME);
+		}
 	});
 
 	it.skipIf(hostSandbox === undefined)(
@@ -831,7 +1054,6 @@ describe("runStaticTool with the repository's own tools", () => {
 		if (result.status !== "ran") throw new Error(result.reason);
 		expect(results(result.log)).toEqual([]);
 		expect(result.notes).toEqual([
-			...unconfinedNotes("tsc"),
 			"tsc reported 2 diagnostic(s) Melian does not review: 1 in node_modules and 1 outside the repository.",
 		]);
 	});
@@ -891,6 +1113,12 @@ describe("runStaticTool with the repository's own tools", () => {
 				if (command.includes(step)) {
 					failed.push(command);
 					return { ok: false, error: { name: "ExecutionError", code: "timeout", message: "cleanup timed out" } };
+				}
+				// Outside a sandbox Melian's own tsc runs, and it does not crash; make it, as the fake does inside one.
+				const out = sandbox === undefined ? / --noEmit .* > '([^']+)' 2>&1$/.exec(command)?.[1] : undefined;
+				if (out !== undefined) {
+					writeFileSync(out, "out of memory\n");
+					return { ok: true, value: { exitCode: 134 } };
 				}
 				return execute(command, options, executionContext);
 			});

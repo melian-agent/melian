@@ -6,7 +6,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { Sandbox } from "../src/sandbox.ts";
 import { Run } from "../src/static.ts";
 import { commit, createRepository, gitIn, lines, removeRepository } from "./fixtures/repo.ts";
-import { unconfinedNotes, unconfinedSandbox } from "./fixtures/sandbox.ts";
+import { standInWhereNoSandbox, unconfinedSandbox } from "./fixtures/sandbox.ts";
 
 let repo: string;
 let head: string;
@@ -14,10 +14,12 @@ const made: string[] = [];
 
 beforeEach(() => {
 	repo = createRepository();
+	standInWhereNoSandbox();
 	head = commit(repo, { "src/a.ts": lines("export const a = 1;") });
 });
 
 afterEach(() => {
+	vi.restoreAllMocks();
 	for (const owner of made.splice(0)) rmSync(owner, { recursive: true, force: true });
 	removeRepository(repo);
 });
@@ -66,7 +68,6 @@ it("leaves the user's own worktrees at a run's kind of path, with their files, a
 			`biome left the worktree at ${unlocked} alone: it is not locked, so it is not a static run's.`,
 			`biome left the worktree at ${theirs} alone: its lock is not a static run's.`,
 			`biome left the worktree at ${bare} alone: its lock is not a static run's.`,
-			...unconfinedNotes("biome"),
 		].sort(),
 	);
 });
@@ -78,7 +79,7 @@ it("removes a genuine stale tree: a run's lock, a dead process, and its own mark
 		JSON.stringify({ tree, pid: 2147483646 }),
 	);
 	const result = await biome();
-	expect(result).toMatchObject({ status: "ran", notes: unconfinedNotes("biome") });
+	expect(result).toMatchObject({ status: "ran", notes: [] });
 	expect(registered(tree)).toBe(false);
 	expect(existsSync(dirname(tree))).toBe(false);
 });
@@ -194,7 +195,7 @@ it("goes on past a dead run whose tree was swapped for a link, dropping only its
 	expect(readFileSync(join(elsewhere, "keep.txt"), "utf8")).toBe("the user's");
 	expect(lstatSync(tree).isSymbolicLink()).toBe(true);
 	// The clone is not blocked: the next run meets nothing and says nothing.
-	expect(await biome()).toMatchObject({ status: "ran", notes: unconfinedNotes("biome") });
+	expect(await biome()).toMatchObject({ status: "ran", notes: [] });
 });
 
 it.skipIf(process.getuid?.() === 0)(

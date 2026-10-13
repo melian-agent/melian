@@ -147,10 +147,10 @@ interface LooseResult {
 /**
  * Reads the output of Biome's SARIF reporter, `biome lint --reporter=sarif`, into a {@link ToolLog}. Biome writes
  * absolute paths as URIs and no version, so paths are made relative to `run.root` and `run.version` is recorded. A
- * result outside the worktree, or under a `node_modules` directory, is dropped. Throws `CheckError` `invalidOutput` when
- * the text is not a SARIF log.
+ * result outside the worktree, or under a `node_modules` directory, is dropped, and the file it named, as Biome wrote
+ * it, is pushed onto `dropped`. Throws `CheckError` `invalidOutput` when the text is not a SARIF log.
  */
-export function normaliseBiomeSarif(output: string, run: ToolRun): ToolLog {
+export function normaliseBiomeSarif(output: string, run: ToolRun, dropped: string[] = []): ToolLog {
 	let parsed: { runs?: readonly { results?: readonly LooseResult[] }[] };
 	try {
 		parsed = JSON.parse(output);
@@ -168,7 +168,10 @@ export function normaliseBiomeSarif(output: string, run: ToolRun): ToolLog {
 			throw invalid("biome", "a result has no file or no message");
 		}
 		const path = repositoryPath(run.root, uri);
-		if (path === undefined) continue;
+		if (path === undefined) {
+			dropped.push(uri);
+			continue;
+		}
 		const region = location?.region ?? {};
 		const startLine = typeof region.startLine === "number" ? region.startLine : 1;
 		normalised.push({

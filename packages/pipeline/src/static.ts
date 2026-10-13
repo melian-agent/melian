@@ -210,6 +210,19 @@ export class Run {
 		return confinement;
 	}
 
+	// A tool that ran unconfined and reports on a file outside the worktree has read one, and what it found there cannot
+	// be judged or shown. The run fails rather than drop the result and read as clean. A file under `node_modules` is
+	// inside the worktree, and is dropped with a note as on any run.
+	refuseOutside(dropped: readonly string[]): void {
+		if (this.confinement?.confined !== false) return;
+		const outside = dropped.filter((path) => !path.split(/[\\/]/).includes("node_modules")).length;
+		if (outside > 0)
+			throw this.fail(
+				"invalidOutput",
+				`${this.input.tool} reported ${outside} diagnostic(s) on files outside the worktree: ${withheldOutput}`,
+			);
+	}
+
 	// Runs the tool's own command, confined when `confine` found a sandbox. git, `ln`, and `rm` stay on `shell`.
 	async tool(command: string): Promise<Shell> {
 		const confinement = this.#confinement;
@@ -411,8 +424,11 @@ async function versionOf(run: Run, binary: string): Promise<string> {
 		throw run.fail("toolMissing", `${binary} --version failed with exit code ${code}: ${run.said(output)}`);
 	if (code !== 0)
 		throw run.fail("toolFailed", `${binary} --version failed with exit code ${code}: ${run.said(output)}`);
-	return /\d+\.\d+\.\d+[\w.+-]*/.exec(output)?.[0] ?? "unknown";
+	// A version is the tool's own text and goes into the record, so it is bounded.
+	return (/\d+\.\d+\.\d+[\w.+-]*/.exec(output)?.[0] ?? "unknown").slice(0, versionLimit);
 }
+
+const versionLimit = 64;
 
 // `ulimit -f` counts 1,024-byte blocks in bash, or 512-byte blocks in POSIX mode, which only halves the bound.
 const fileLimit = `ulimit -f ${staticOutputLimit / 1024}`;
@@ -431,7 +447,10 @@ async function runBiome(run: Run, root: string, scratch: string, binary: string,
 			`biome exited with code ${code} and ${text === undefined ? "no report" : "a report"}: ${run.said(stderr.trim())}`,
 		);
 	}
-	return normaliseBiomeSarif(text, { root, version });
+	const dropped: string[] = [];
+	const log = normaliseBiomeSarif(text, { root, version }, dropped);
+	run.refuseOutside(dropped);
+	return log;
 }
 
 // The projects a tsconfig asks tsc to check. A solution-style tsconfig, with `references` and an empty `files` and no
@@ -507,6 +526,7 @@ async function runTsc(
 		results.push(...log.runs[0].results);
 	}
 	if (dropped.length > 0) {
+		run.refuseOutside(dropped);
 		const dependencies = dropped.filter((path) => path.split(/[\\/]/).includes("node_modules")).length;
 		const outside = dropped.length - dependencies;
 		notes.push(
@@ -562,6 +582,18 @@ export function staticToolSource(repoRoot: string, tool: StaticTool): StaticTool
  */
 export async function runStaticTool(input: StaticRunInput, context: Context): Promise<StaticRun> {
 	const run = new Run(input, context);
+	try {
+		return await staticRun(run);
+	} catch (error) {
+		// A failure thrown from outside this file, such as core's report parsers, knows nothing of where the tool ran.
+		if (error instanceof CheckError && error.confinement === undefined && run.confinement !== undefined)
+			throw new CheckError(error.code, error.check, error.message, { cause: error, confinement: run.confinement });
+		throw error;
+	}
+}
+
+function staticRun(run: Run): Promise<StaticRun> {
+	const { input, context } = run;
 	const { repoRoot, commit, tool } = input;
 	return run.inWorktree(async (root, scratch) => {
 		if (tool === "tsc") {
@@ -584,10 +616,8 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 			const notes = [...run.notes, ...checked.notes];
 			return {
 				...checked,
-				log: await unconfinedLog(run, root, checked.log, notes),
-				...(checked.baseLog === undefined
-					? {}
-					: { baseLog: await unconfinedLog(run, posix.join(scratch, "base", "tree"), checked.baseLog, notes) }),
+				log: unconfinedLog(checked.log),
+				...(checked.baseLog === undefined ? {} : { baseLog: unconfinedLog(checked.baseLog) }),
 				notes,
 				confinement,
 			};
@@ -611,7 +641,7 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 		// does not exist inside bubblewrap, and the tool would read as missing.
 		const found = await binaryFor(run, installed);
 		const real = await input.env.canonicalPath(found, context);
-		const binary = real.ok ? real.value : found;
+		let binary = real.ok ? real.value : found;
 		// The tool's own install, when it is not one of the checkout's: Melian's copy, read from the outermost node_modules
 		// above it, so the packages it loads beside itself are readable too.
 		const segments = binary.split("/");
@@ -620,13 +650,35 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 		// A tool in no install at all, such as a `.bin` entry linked to a standalone program, is granted as that one
 		// file: readable and startable, with nothing beside it.
 		const confinement = await run.confine(root, scratch, installs, own === "" ? [binary] : []);
-		if (!confinement.confined) notes.push(`${tool} ${describeUnconfined(confinement.reason)}.`);
+		if (!confinement.confined) {
+			notes.push(`${tool} ${describeUnconfined(confinement.reason)}.`);
+			// A checkout's binary is whatever its install made it: a tsc patched to load plugins runs code the head's
+			// tsconfig names, and nothing here can tell a patched install from a stock one. So a checkout's binary runs
+			// only inside a sandbox. Outside one Melian's own runs in its place, or the check is skipped.
+			const { bin, melian } = toolBinaries[tool as Exclude<StaticTool, "enola">];
+			let own: string;
+			try {
+				own = melian();
+			} catch {
+				return {
+					status: "skipped",
+					reason: `${bin} runs from a checkout only inside a sandbox, and Melian has no ${bin} of its own to run: ${confinement.reason}`,
+				};
+			}
+			const resolved = await input.env.canonicalPath(own, context);
+			const mine = resolved.ok ? resolved.value : own;
+			if (mine !== binary)
+				notes.push(
+					`${tool} ran from Melian's own install, not the checkout's: a checkout's ${bin} runs only inside a sandbox.`,
+				);
+			binary = mine;
+		}
 		const version = await versionOf(run, binary);
 		const log =
 			tool === "biome"
 				? await runBiome(run, root, scratch, binary, version)
 				: await runTsc(run, root, scratch, binary, version, new Set(files), notes);
-		const kept = confinement.confined ? log : await unconfinedLog(run, root, log, notes);
+		const kept = confinement.confined ? log : unconfinedLog(log);
 		return { status: "ran", log: kept, notes: [...run.notes, ...notes], confinement };
 	});
 }
@@ -634,37 +686,23 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 // All an error says of what a tool printed when the tool ran with the reviewer's own access.
 const withheldOutput = "output withheld: the tool ran unconfined";
 
-// An absolute path of two segments or more, as a message would name a file: not a closing tag, a comment marker, a
-// relative path, or a package subpath.
-const absolutePath = /(?<![\w.@/<-])\/[\w.@+-]+(?:\/[\w.@+-]+)+/g;
+// All a diagnostic says, beyond its rule and its place, when the tool ran with the reviewer's own access.
+const withheldMessage = "message withheld: the tool ran unconfined";
 
-// The most of a diagnostic's message kept from an unconfined tool.
-const unconfinedMessageLimit = 1000;
+// The longest rule name kept from an unconfined tool. A stock tool's are a handful of words.
+const unconfinedRuleLimit = 128;
 
-// The results of a tool that ran unconfined that are safe to keep. Such a tool reads any file the reviewer can, and
-// its messages are its own words, so a result stays only when its file is really inside the worktree, not a link out
-// of it, and its message names no path outside; the message is cut to a bound and made visible text. The rest are
-// counted in a note, never quoted.
-async function unconfinedLog(run: Run, root: string, log: ToolLog, notes: string[]): Promise<ToolLog> {
-	const kept: ToolLog["runs"][0]["results"] = [];
-	let dropped = 0;
-	for (const result of log.runs[0].results) {
-		const path = posix.join(root, decodeURIComponent(result.locations[0].physicalLocation.artifactLocation.uri));
-		const real = await run.input.env.canonicalPath(path, run.context);
-		const outside = (result.message.text.match(absolutePath) ?? []).some(
-			(named) => named !== root && !named.startsWith(`${root}/`),
-		);
-		if (!real.ok || real.value !== path || outside) {
-			dropped++;
-			continue;
-		}
-		kept.push({ ...result, message: { text: visibleText(result.message.text.slice(0, unconfinedMessageLimit)) } });
-	}
-	if (dropped > 0)
-		notes.push(
-			`${run.input.tool} ran unconfined, so ${dropped} diagnostic(s) that named a file outside the worktree were dropped.`,
-		);
-	return { ...log, runs: [{ ...log.runs[0], results: kept }] };
+// The results of a tool that ran unconfined, each kept, none in the tool's words. Such a tool reads any file the
+// reviewer can, and a stock tsc will quote a type it found in one with no path beside it, so no message is safe to
+// keep and no filter on messages can be. What a result says of the repository's own tree stays: its rule, its file,
+// its lines, and its level. Dropping a result instead would turn an error the head introduced into a clean review.
+function unconfinedLog(log: ToolLog): ToolLog {
+	const results = log.runs[0].results.map((result) => ({
+		...result,
+		ruleId: visibleText(result.ruleId.slice(0, unconfinedRuleLimit)),
+		message: { text: withheldMessage },
+	}));
+	return { ...log, runs: [{ ...log.runs[0], results }] };
 }
 
 // Each worktree is locked with the adding process's ID, so a later run can tell a crashed run's worktree from a live one.

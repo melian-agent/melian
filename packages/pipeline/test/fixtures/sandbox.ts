@@ -1,4 +1,5 @@
 import { tmpdir } from "node:os";
+import { vi } from "vitest";
 import { backgroundContext, createNodeExecutionEnv } from "../../src/harness.ts";
 import { Sandbox } from "../../src/sandbox.ts";
 
@@ -17,13 +18,9 @@ export const unconfinedSandbox = {
 // The sandbox this host offers, probed once, for a test that runs only where there is one.
 export const hostSandbox = await Sandbox.detect(createNodeExecutionEnv(tmpdir()), backgroundContext);
 
-// The note a static run of `tool` adds on a host with no sandbox, and nothing where the host has one.
-export function unconfinedNotes(tool: string): string[] {
-	return hostSandbox === undefined ? [`${tool} ran unconfined: this host offers no sandbox.`] : [];
+// For a test file whose fake tools must run: on a host with no sandbox a checkout's tool is never started, so such a
+// file runs against the stand-in there, and against the host's own sandbox where it has one. Call it in `beforeEach`. A
+// test of what a host with no sandbox does stubs `Sandbox.detect` with undefined itself.
+export function standInWhereNoSandbox(): void {
+	if (hostSandbox === undefined) vi.spyOn(Sandbox, "detect").mockResolvedValue(unconfinedSandbox);
 }
-
-// What a static check's record says of where its tool ran on this host.
-export const hostConfinement =
-	hostSandbox === undefined
-		? ({ confined: false, reason: "this host offers no sandbox" } as const)
-		: ({ confined: true } as const);

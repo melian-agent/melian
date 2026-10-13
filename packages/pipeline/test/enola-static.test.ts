@@ -642,20 +642,29 @@ describe("static.enola", { timeout: 60_000 }, () => {
 			context,
 		);
 	}
-	it("drops, from the head's and the base's results alike, a diagnostic that names a file outside the worktree", async () => {
-		const named = (text: string) =>
-			`{"ruleId":"constraints/old","level":"error","message":{"text":"${text}"},"locations":[{"physicalLocation":{"artifactLocation":{"uri":"src/a.ts"},"region":{"startLine":1}}}]}`;
+	it("keeps every Enola result, at head and at base, with its rule and place and none of its words", async () => {
+		const named = (rule: string, text: string) =>
+			`{"ruleId":"${rule}","level":"error","message":{"text":"${text}"},"locations":[{"physicalLocation":{"artifactLocation":{"uri":"src/a.ts"},"region":{"startLine":1}}}]}`;
+		const long = `constraints/${"r".repeat(200)}`;
 		const run = await runWith(1, {
-			base: `[${named("Old")},${named("read /etc/ssh/ssh_config at the base")}]`,
-			head: `[${named("Old")},${named("New")},${named("read /etc/ssh/ssh_config at the head")}]`,
+			base: `[${named("constraints/old", "Old")},${named("constraints/base", "read /etc/ssh/ssh_config at the base")}]`,
+			head: `[${named("constraints/old", "Old")},${named("constraints/new", "New: FAKE-SECRET")},${named(long, "read /etc/ssh/ssh_config at the head")}]`,
 		});
 		if (run.status !== "ran") throw new Error("Enola failed");
-		expect(run.log.runs[0].results.map((each) => each.message.text)).toEqual(["Old", "New"]);
-		expect(run.baseLog?.runs[0].results.map((each) => each.message.text)).toEqual(["Old"]);
-		expect(run.notes.filter((note) => note.includes("dropped"))).toEqual([
-			"enola ran unconfined, so 1 diagnostic(s) that named a file outside the worktree were dropped.",
-			"enola ran unconfined, so 1 diagnostic(s) that named a file outside the worktree were dropped.",
+		const said = (log: typeof run.log) => log.runs[0].results.map((each) => [each.ruleId, each.message.text]);
+		const withheld = "message withheld: the tool ran unconfined";
+		expect(said(run.log)).toEqual([
+			["constraints/old", withheld],
+			["constraints/new", withheld],
+			[long.slice(0, 128), withheld],
 		]);
+		expect(said(run.baseLog!)).toEqual([
+			["constraints/old", withheld],
+			["constraints/base", withheld],
+		]);
+		expect(JSON.stringify(run)).not.toContain("FAKE-SECRET");
+		expect(JSON.stringify(run)).not.toContain("ssh_config");
+		expect(run.notes.filter((note) => note.includes("dropped"))).toEqual([]);
 	});
 	it.each([
 		["suppressed", oldFinding('"suppressions":[{"kind":"external"}],')],

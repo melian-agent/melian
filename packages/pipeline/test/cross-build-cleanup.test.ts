@@ -12,7 +12,7 @@ import {
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { Run } from "../src/static.ts";
 import { commit, createRepository, fakeTool, gitIn, lines, removeRepository } from "./fixtures/repo.ts";
-import { unconfinedNotes } from "./fixtures/sandbox.ts";
+import { standInWhereNoSandbox } from "./fixtures/sandbox.ts";
 import { RunV1, removeStaleWorktreesV1 } from "./fixtures/stale-worktrees-v1.ts";
 
 // Reviews from several worktrees of one clone run at once, each from its own build, and every one starts by cleaning up
@@ -25,6 +25,7 @@ const made: string[] = [];
 
 beforeEach(() => {
 	repo = createRepository();
+	standInWhereNoSandbox();
 	head = commit(repo, { ".gitignore": lines("node_modules"), "src/a.ts": lines("export const a = 1;") });
 });
 
@@ -90,7 +91,7 @@ it("a build from before this one leaves this build's live run alone, and the run
 		if (scratch !== "" && existsSync(scratch)) writeFileSync(join(scratch, "release"), "");
 		await settled;
 	}
-	expect(await running).toMatchObject({ status: "ran", notes: unconfinedNotes("biome") });
+	expect(await running).toMatchObject({ status: "ran", notes: [] });
 	expect(staticTrees()).toEqual([]);
 });
 

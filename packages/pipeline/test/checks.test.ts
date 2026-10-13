@@ -38,7 +38,7 @@ import { Sandbox } from "../src/sandbox.ts";
 import * as staticRunner from "../src/static.ts";
 import { ToolProvisioning } from "../src/tool-provisioning.ts";
 import { commit, createRepository, fakeTool, lines, removeRepository } from "./fixtures/repo.ts";
-import { hostConfinement, hostSandbox, unconfinedNotes } from "./fixtures/sandbox.ts";
+import { hostSandbox, standInWhereNoSandbox } from "./fixtures/sandbox.ts";
 
 let repo: string;
 let opened: Harness[];
@@ -46,6 +46,7 @@ let opened: Harness[];
 beforeEach(() => {
 	repo = createRepository();
 	opened = [];
+	standInWhereNoSandbox();
 });
 
 afterEach(async () => {
@@ -121,22 +122,21 @@ describe("runChecks", () => {
 			findings.find((finding) => finding.ruleId.startsWith(prefix))!.properties.source.version;
 		expect(records).toEqual([
 			{ name: "guardrails", status: "ran", findings: 0, notes: [] },
-			// Head and base each ran the tool, so a host with no sandbox notes it twice.
 			{
 				name: "static.biome",
 				status: "ran",
 				version: "2.5.15",
 				findings: 2,
-				notes: [...unconfinedNotes("biome"), ...unconfinedNotes("biome")],
-				confinement: hostConfinement,
+				notes: [],
+				confinement: { confined: true },
 			},
 			{
 				name: "static.tsc",
 				status: "ran",
 				version: versionOf("tsc/"),
 				findings: 2,
-				notes: [...unconfinedNotes("tsc"), ...unconfinedNotes("tsc")],
-				confinement: hostConfinement,
+				notes: [],
+				confinement: { confined: true },
 			},
 		]);
 		expect(summary(findings)).toEqual([
@@ -644,17 +644,19 @@ describe("runChecks and a head that names a reviewer's file to a stock tool", ()
 	it("says a tool that crashed outside a sandbox ran unconfined, in the record and in every rendering", {
 		timeout: 60_000,
 	}, async () => {
-		const base = commit(repo, {
-			".gitignore": "node_modules\n",
-			"melian.yaml": lines("tiers:", "  fast: [static.biome]"),
-		});
+		const base = commit(repo, { "melian.yaml": lines("tiers:", "  fast: [static.biome]") });
 		const head = commit(repo, { "src/a.ts": lines("export const a = 1;") });
-		fakeTool(
-			repo,
-			"biome",
-			'if [ "$1" = "--version" ]; then echo 0.0.0; exit 0; fi\necho "a secret the tool read" >&2\nexit 70',
+		const unconfined = { confined: false, reason: "this host offers no sandbox" } as const;
+		vi.spyOn(staticRunner, "runStaticTool").mockRejectedValue(
+			new CheckError(
+				"toolFailed",
+				"static.biome",
+				"biome exited with code 70 and no report: output withheld: the tool ran unconfined",
+				{
+					confinement: unconfined,
+				},
+			),
 		);
-		vi.spyOn(Sandbox, "detect").mockResolvedValue(undefined);
 		const { records } = await checks(base, head);
 		vi.restoreAllMocks();
 		expect(records).toEqual([
@@ -663,7 +665,7 @@ describe("runChecks and a head that names a reviewer's file to a stock tool", ()
 				status: "failed",
 				reason: "toolFailed",
 				error: "biome exited with code 70 and no report: output withheld: the tool ran unconfined",
-				confinement: { confined: false, reason: "this host offers no sandbox" },
+				confinement: unconfined,
 			},
 		]);
 		const verdict = new Adjudication({
@@ -676,9 +678,91 @@ describe("runChecks and a head that names a reviewer's file to a stock tool", ()
 		expect(verdict.render()).toContain(
 			"1 check ran outside a sandbox:\n  static.biome  ran unconfined: this host offers no sandbox",
 		);
-		expect(JSON.parse(verdict.renderJson()).notRun[0].confinement).toEqual({
-			confined: false,
-			reason: "this host offers no sandbox",
+		expect(JSON.parse(verdict.renderJson()).notRun[0].confinement).toEqual(unconfined);
+	});
+});
+
+describe("runChecks and an unconfined tsc", () => {
+	// Base and head are both run with every message replaced by one sentence. The comparison keys a result by its rule,
+	// its file, and the code on its lines, so what the head introduced is still told from what the base had.
+	it("tells an introduced error from a pre-existing one with every message withheld, and shows nothing it read", {
+		timeout: 180_000,
+	}, async () => {
+		const home = join(dirname(repo), `melian-fake-home-${process.pid}`);
+		mkdirSync(home);
+		writeFileSync(join(home, "secrets.ts"), 'export const KEY = "FAKE-SECRET-112-KEY";\n');
+		const options = JSON.stringify({
+			compilerOptions: {
+				strict: true,
+				noEmit: true,
+				module: "NodeNext",
+				moduleResolution: "NodeNext",
+				target: "ES2022",
+				allowImportingTsExtensions: true,
+			},
+			include: ["src"],
 		});
+		const base = commit(repo, {
+			"melian.yaml": lines("tiers:", "  fast: [static.tsc]"),
+			"tsconfig.json": options,
+			"src/old.ts": lines("export const old: number = 'old';"),
+		});
+		const head = commit(repo, {
+			"src/new.ts": lines(`import { KEY } from "${join(home, "secrets.ts")}";`, 'export const n: "a" = KEY;'),
+			"src/missing.ts": lines('import { gone } from "/opt/shared/missing";', "export const m = gone;"),
+		});
+		const summarised = async () => {
+			const { harness, root, records } = await checks(base, head);
+			const findings = await readFindings(harness, root.id, revisionKey({ base, head }), context);
+			const verdict = new Adjudication({
+				findings,
+				manifest: ["static.tsc"],
+				checks: records,
+				config: defaultConfig,
+			}).adjudicate();
+			const everything = [
+				JSON.stringify(records),
+				JSON.stringify(findings),
+				JSON.stringify(await harness.snapshot(ChecksDocument, root.id, context)),
+				verdict.render(),
+				verdict.renderJson(),
+			].join("\n");
+			return {
+				records,
+				everything,
+				found: summary(findings).map(({ rule, file, cause }) => `${rule} ${file} ${cause}`),
+				findings,
+			};
+		};
+		try {
+			vi.spyOn(Sandbox, "detect").mockResolvedValue(undefined);
+			const unconfined = await summarised();
+			vi.restoreAllMocks();
+			expect(unconfined.records).toMatchObject([{ status: "ran", findings: 3, confinement: { confined: false } }]);
+			expect(unconfined.found).toEqual([
+				"tsc/TS2307 src/missing.ts introduced",
+				"tsc/TS2322 src/new.ts introduced",
+				"tsc/TS2322 src/old.ts pre-existing",
+			]);
+			for (const finding of unconfined.findings)
+				expect(finding.properties.explanation.what).toBe("message withheld: the tool ran unconfined");
+			expect(unconfined.everything).not.toContain("FAKE-SECRET");
+			// The paths the head's own lines name are the repository's content and show in each finding's snippet; what
+			// tsc said of them, and what it read at them, does not.
+			expect(unconfined.everything).not.toContain("Cannot find module");
+			expect(unconfined.everything).not.toContain("is not assignable");
+			// A confined run finds the same three, by the same rules except where the sandbox hid the outside file from tsc.
+			if (hostSandbox !== undefined) {
+				const confined = await summarised();
+				expect(confined.found.map((each) => each.replace(/TS\d+/, "TS"))).toEqual(
+					unconfined.found.map((each) => each.replace(/TS\d+/, "TS")),
+				);
+				expect(confined.everything).not.toContain("FAKE-SECRET");
+				expect(confined.everything).toContain("Cannot find module");
+			}
+		} finally {
+			vi.restoreAllMocks();
+			rmSync(home, { recursive: true, force: true });
+		}
 	});
 });
