@@ -75,8 +75,6 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 				// Read before any write. The severity each lens reported goes on the claim's label line, which Melian
 				// writes outside the boundary: a lowering is one step from it, and the claim itself does not hold it.
 				const findings = await tx.doc(FindingsDocument, task.input.root);
-				const reported = (id: string, source: { check: string; version?: string }) =>
-					sightingIn(findings, revisionKey(task.input.revision), id, source)?.properties.severity;
 				const children: Record<string, ConversationId> = {};
 				for (const candidate of task.input.candidates) {
 					const child = await tx.createConversation({ ownership: { kind: "task", taskId: runtime.taskId } });
@@ -97,7 +95,8 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 										`## Decisions at base\n${quoteUntrusted("listing", candidate.decisionsAtBase, task.input.revision.nonce)}`,
 									]),
 							...claims.map(({ label, id, source }) => {
-								const severity = reported(id, source);
+								const at = revisionKey(task.input.revision);
+								const severity = sightingIn(findings, at, id, source)?.properties.severity;
 								return `Claim ${label} finding ${id}${severity === undefined ? "" : `, reported at ${severity}`}`;
 							}),
 						].join("\n\n"),
