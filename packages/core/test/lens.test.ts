@@ -118,7 +118,7 @@ describe("built-in lenses", () => {
 			contracts: "686d7ad61a40",
 			conventions: "bb08d9e590e4",
 			correctness: "a0dbe7ba139d",
-			design: "0072e37ba124",
+			design: "fd139ab5785f",
 			"removed-behaviour": "45fa8885fd01",
 			tests: "bee1be69be22",
 			"trust-boundary": "593b84bf6e82",
@@ -191,6 +191,12 @@ describe("built-in lenses", () => {
 			"a dependency the repository already declares or runs",
 		);
 		expect(design!.instructions).not.toMatch(/declares or uses|repository (already )?uses|base uses/);
+		expect(design!.instructions).toContain(
+			"Third, the authority cannot run where the answer is needed, and the change states the gap.",
+		);
+		expect(design!.instructions).toContain(
+			"The stated gap names what the code re-derives, which authority would answer, and why it cannot be asked there.",
+		);
 		expect(design!.instructions).toContain("Keep the exemption only when code you read supports the reason");
 		expect(design!.instructions).toContain(
 			"A gap with no reason, a reason the code shows false, or a reason nothing you read supports leaves the finding standing.",
