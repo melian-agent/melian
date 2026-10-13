@@ -294,6 +294,40 @@ describe("runStaticTool with the repository's own tools", () => {
 		expect(lint[1]?.env).not.toHaveProperty("MELIAN_SANDBOX");
 	});
 
+	it("runs the tool by its resolved path when the checkout is reached through a link", {
+		timeout: 60_000,
+	}, async () => {
+		const head = commit(repo, { ".gitignore": lines("node_modules"), "src/a.ts": "export const a = 1;\n" });
+		fakeTool(
+			repo,
+			"biome",
+			[
+				'if [ "$1" = "--version" ]; then echo 0.0.0; exit 0; fi',
+				'for arg in "$@"; do case "$arg" in --reporter-file=*) out=$(printf %s "$arg" | cut -d= -f2-);; esac; done',
+				`printf '%s' '${emptySarif}' > "$out"`,
+			].join("\n"),
+		);
+		const linked = join(dirname(repo), `melian-linked-checkout-${process.pid}`);
+		symlinkSync(repo, linked);
+		const env = createNodeExecutionEnv(linked);
+		const execute = vi.spyOn(env, "exec");
+		try {
+			// In the host's own sandbox where it has one: under bubblewrap the linked path is not there to run.
+			const result = await runStaticTool({ ...input("biome", head), env, repoRoot: linked }, context);
+			expect(result).toMatchObject({ status: "ran", notes: unconfinedNotes("biome") });
+			const tool = execute.mock.calls
+				.map(([text]) => text.replaceAll("'\\''", "'"))
+				.filter((text) => /biome' (--version|lint )/.test(text));
+			expect(tool).toHaveLength(2);
+			for (const text of tool) {
+				expect(text).toContain(`'${join(repo, "node_modules/.bin/biome")}'`);
+				expect(text).not.toContain(linked);
+			}
+		} finally {
+			rmSync(linked);
+		}
+	});
+
 	it("grants no install of its own when the tool's path names no node_modules", { timeout: 60_000 }, async () => {
 		const head = commit(repo, { ".gitignore": lines("node_modules"), "src/a.ts": "export const a = 1;\n" });
 		fakeTool(
@@ -309,30 +343,42 @@ describe("runStaticTool with the repository's own tools", () => {
 		const command = vi.spyOn(unconfinedSandbox, "command");
 		const env = createNodeExecutionEnv(repo);
 		const canonical = env.canonicalPath.bind(env);
-		vi.spyOn(env, "canonicalPath").mockImplementation(async (path, at) =>
-			path.endsWith("/.bin/biome") ? { ok: true, value: "/opt/tools/biome" } : canonical(path, at),
-		);
-		expect((await runStaticTool({ ...input("biome", head), env }, context)).status).toBe("ran");
-		expect(command.mock.calls[0]![1].installs).toEqual([join(repo, "node_modules")]);
-		// A tool inside the checkout's install adds nothing either, and one whose path cannot be resolved is taken as named.
-		vi.mocked(env.canonicalPath).mockImplementation(async (path, at) =>
-			path.endsWith("/.bin/biome")
-				? { ok: false, error: Object.assign(new Error("unreadable"), { code: "permission_denied" as const }) }
-				: canonical(path, at),
-		);
-		command.mockClear();
-		expect((await runStaticTool({ ...input("biome", head), env }, context)).status).toBe("ran");
-		expect(command.mock.calls[0]![1].installs).toEqual([join(repo, "node_modules")]);
-		// A nested install is read from the outermost node_modules, where the packages hoisted beside it live. The path
-		// is the resolved one: the name the runner calls the tool by is a link under the checkout.
-		vi.mocked(env.canonicalPath).mockImplementation(async (path, at) =>
-			path.endsWith("/.bin/biome")
-				? { ok: true, value: "/opt/a/node_modules/b/node_modules/biome/bin/biome" }
-				: canonical(path, at),
-		);
-		command.mockClear();
-		expect((await runStaticTool({ ...input("biome", head), env }, context)).status).toBe("ran");
-		expect(command.mock.calls[0]![1].installs).toEqual([join(repo, "node_modules"), "/opt/a/node_modules"]);
+		// The checkout's `.bin` entry is a link, as npm makes it, to a tool that lives wherever `to` says.
+		const bin = join(repo, "node_modules/.bin/biome");
+		const script = readFileSync(bin, "utf8");
+		const elsewhere = join(dirname(repo), `melian-tools-${process.pid}`);
+		const linkTo = (to: string) => {
+			writeFiles(elsewhere, { [to]: script });
+			chmodSync(join(elsewhere, to), 0o755);
+			rmSync(bin);
+			symlinkSync(join(elsewhere, to), bin);
+		};
+		try {
+			linkTo("biome");
+			expect((await runStaticTool({ ...input("biome", head), env }, context)).status).toBe("ran");
+			expect(command.mock.calls[0]![0]).toBe(`'${join(elsewhere, "biome")}' --version`);
+			expect(command.mock.calls[0]![1].installs).toEqual([join(repo, "node_modules")]);
+			// A nested install is read from the outermost node_modules, where the packages hoisted beside it live.
+			linkTo("a/node_modules/b/node_modules/biome/bin/biome");
+			command.mockClear();
+			expect((await runStaticTool({ ...input("biome", head), env }, context)).status).toBe("ran");
+			expect(command.mock.calls[0]![1].installs).toEqual([
+				join(repo, "node_modules"),
+				join(elsewhere, "a/node_modules"),
+			]);
+			// A tool whose path cannot be resolved runs as named, and the checkout's install already covers that name.
+			vi.spyOn(env, "canonicalPath").mockImplementation(async (path, at) =>
+				path.endsWith("/.bin/biome")
+					? { ok: false, error: Object.assign(new Error("unreadable"), { code: "permission_denied" as const }) }
+					: canonical(path, at),
+			);
+			command.mockClear();
+			expect((await runStaticTool({ ...input("biome", head), env }, context)).status).toBe("ran");
+			expect(command.mock.calls[0]![0]).toBe(`'${bin}' --version`);
+			expect(command.mock.calls[0]![1].installs).toEqual([join(repo, "node_modules")]);
+		} finally {
+			rmSync(elsewhere, { recursive: true, force: true });
+		}
 	});
 
 	it("names a checkout lockfile mismatch after linking its installed dependencies", async () => {

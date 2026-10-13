@@ -520,11 +520,14 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 		const installed =
 			checkoutTracked.length === 0 && (await run.exists(checkoutModules)) ? checkoutModules : undefined;
 		const installs = installed === undefined ? [] : await linkDependencies(run, root, scratch, notes);
-		const binary = await binaryFor(run, installed);
+		// The tool runs by its resolved path, the one the grants name. Reached through a linked checkout, the linked path
+		// does not exist inside bubblewrap, and the tool would read as missing.
+		const found = await binaryFor(run, installed);
+		const real = await input.env.canonicalPath(found, context);
+		const binary = real.ok ? real.value : found;
 		// The tool's own install, when it is not one of the checkout's: Melian's copy, read from the outermost node_modules
 		// above it, so the packages it loads beside itself are readable too.
-		const real = await input.env.canonicalPath(binary, context);
-		const segments = (real.ok ? real.value : binary).split("/");
+		const segments = binary.split("/");
 		const own = segments.slice(0, segments.indexOf("node_modules") + 1).join("/");
 		if (own !== "" && !installs.includes(own)) installs.push(own);
 		const unconfined = await run.confine(root, scratch, installs);
