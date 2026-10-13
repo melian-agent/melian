@@ -1,6 +1,6 @@
 # Live golden run, design lens with the Terra verifier, 2026-10-12
 
-Three passes over the nineteen design goldens, thirteen seeded and six clean, run from `main` at 06b9907a after [pull request #102](https://github.com/melian-agent/melian/pull/102) landed. `openai-codex/gpt-6.1-sol` ran every lens tier and `openai-codex/gpt-5.6-terra` verified, one golden per invocation, from 12:35 to 13:19 with no usage-limit message. The earlier run on #102's branch used the Sonnet verifier and eighteen goldens.
+Three passes over the nineteen design goldens, thirteen seeded and six clean, run from `main` at 06b9907a after [pull request #102](https://github.com/melian-agent/melian/pull/102) landed. `openai-codex/gpt-6.1-sol` ran every lens tier and `openai-codex/gpt-5.6-terra` verified, one golden per invocation, from 12:35 to 13:19 with no usage-limit message. The earlier run on that pull request's branch used the Sonnet verifier and eighteen goldens.
 
 The per-golden lines come from the run's output, kept by the coordinator. The table copies them. A cell reads reported findings, precision, recall.
 
