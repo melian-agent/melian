@@ -414,6 +414,8 @@ process.exitCode = result.code;
 				...this.#sandbox.environment(),
 				HOME: home,
 				TMPDIR: temporary,
+				// The sandbox hides /etc/gitconfig, and git stops at a system configuration it may not read.
+				GIT_CONFIG_NOSYSTEM: "1",
 			});
 		} catch (error) {
 			failure = error;
@@ -504,6 +506,9 @@ process.exitCode = result.code;
 		const entries = Object.entries(lines).flatMap(([path, ranges]) =>
 			ranges.map(([first, last]) => `${literal(path)}:${first}-${last}`),
 		);
+		// Looked up on the host before the head's tests run: afterwards a path in the worktree may be a link they left.
+		const tests: Record<string, string> = {};
+		for (const path of Object.keys(lines)) tests[path] = await this.#nearestTest(path);
 		const text = await this.#execute(entries, Object.keys(lines));
 		if (typeof text !== "string") {
 			return {
@@ -523,8 +528,6 @@ process.exitCode = result.code;
 				),
 			};
 		}
-		const tests: Record<string, string> = {};
-		for (const path of Object.keys(lines)) tests[path] = await this.#nearestTest(path);
 		const firstOmitted = Object.entries(omitted)[0];
 		const read = normaliseMutationReport(text, {
 			version: this.#version,
@@ -541,6 +544,8 @@ process.exitCode = result.code;
 			status: "ran",
 			log: read.log,
 			baseLog,
+			// Stryker never runs unconfined: a host with no sandbox, or one whose sandbox cannot start Node, skipped above.
+			confinement: { confined: true },
 			notes: [
 				...this.#notes,
 				`Stryker mutated ${count} changed lines in ${Object.keys(lines).length} file(s); the base was not mutated.`,

@@ -61,7 +61,10 @@ export type StaticRun =
 			readonly notes: readonly string[];
 			readonly baseLog?: ToolLog;
 			readonly snapshots?: EnolaSnapshot[];
-			/** Whether Biome or tsc ran inside the host's sandbox. Enola is never confined yet and says nothing. */
+			/**
+			 * Whether the tool ran inside the host's sandbox. Stryker always does; Enola is never confined yet and says
+			 * nothing.
+			 */
 			readonly confinement?: Confinement;
 	  }
 	| {

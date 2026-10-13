@@ -338,6 +338,7 @@ describe("static.mutation", { timeout: 60_000 }, () => {
 		expect(result.log.runs[0].tool.driver).toEqual({ name: "Stryker", version: "10.0.0" });
 		expect(result.baseLog?.runs).toEqual([{ tool: { driver: { name: "Stryker", version: "10.0.0" } }, results: [] }]);
 		expect(result.notes).toContain("Stryker mutated 1 changed lines in 1 file(s); the base was not mutated.");
+		expect(result.confinement).toEqual({ confined: true });
 		expect(gitIn(repo, "worktree", "list", "--porcelain").match(/^worktree /gm)).toHaveLength(1);
 		expect(gitIn(repo, "status", "--porcelain", "--untracked-files=no")).toBe("");
 	});
@@ -717,7 +718,7 @@ ${body}`,
 			repo,
 			"stryker",
 			`if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi
-printf '%s\\n' "$(pwd)" "$HOME" "$TMPDIR" "\${MELIAN_CANARY:-unset}" "$([ -d "$HOME" ] && echo home-exists)" "$([ -d "$TMPDIR" ] && echo tmp-exists)" > '${seen}'
+printf '%s\\n' "$(pwd)" "$HOME" "$TMPDIR" "\${MELIAN_CANARY:-unset}" "$([ -d "$HOME" ] && echo home-exists)" "$([ -d "$TMPDIR" ] && echo tmp-exists)" "\${GIT_CONFIG_NOSYSTEM:-unset}" > '${seen}'
 mkdir -p reports/mutation
 echo '{"files":{}}' > reports/mutation/mutation.json`,
 		);
@@ -727,13 +728,17 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 		} finally {
 			delete process.env.MELIAN_CANARY;
 		}
-		const [cwd, home, temporary, canary, homeExists, tmpExists] = readFileSync(seen, "utf8").trimEnd().split("\n");
+		const [cwd, home, temporary, canary, homeExists, tmpExists, noSystem] = readFileSync(seen, "utf8")
+			.trimEnd()
+			.split("\n");
 		const scratch = cwd!.replace(/\/tree$/, "");
 		expect(scratch).toMatch(/\/melian-confined-[^/]+$/);
 		expect(home).toBe(`${scratch}/home`);
 		expect(temporary).toBe(`${scratch}/tmp`);
 		expect(home).not.toBe(process.env.HOME);
 		expect([canary, homeExists, tmpExists]).toEqual(["unset", "home-exists", "tmp-exists"]);
+		// The sandbox hides /etc/gitconfig, so the head's git is told not to look for it.
+		expect(noSystem).toBe("1");
 	});
 
 	it.each(["../stryker.log", "reports/mutation/mutation.json"])(
@@ -905,6 +910,25 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 			expect.stringMatching(/^gitdir: .*\/worktrees\/tree\d*\n?$/),
 		]);
 		expect(gitIn(repo, "worktree", "list", "--porcelain").match(/^worktree /gm)).toHaveLength(1);
+	});
+
+	it("never runs host git with a temporary directory inside scratch, where the head's tests can write", async () => {
+		const { base, head } = twoCommits();
+		stryker({ report: report({}) });
+		const env = createNodeExecutionEnv(repo);
+		const execute = vi.spyOn(env, "exec");
+		expect((await mutate(base, head, { env })).status).toBe("ran");
+		const hostGit = execute.mock.calls.filter(([command]) => /(^|\n)unset GIT_ALTERNATE/.test(command));
+		// The worktree's add, the listing of its files, and the repository of its own the run is given.
+		expect(hostGit.some(([command]) => command.includes(" init --quiet --template="))).toBe(true);
+		expect(hostGit.length).toBeGreaterThan(3);
+		for (const [, options] of hostGit) expect(options?.env?.TMPDIR ?? "").not.toContain(confinedScratchPrefix);
+		// The command that runs the head's tests is the one that gets it.
+		const sandboxed = execute.mock.calls.filter(([, options]) =>
+			options?.env?.TMPDIR?.includes(confinedScratchPrefix),
+		);
+		expect(sandboxed.length).toBeGreaterThan(0);
+		for (const [command] of sandboxed) expect(command).not.toMatch(/(^|\n)unset GIT_ALTERNATE/);
 	});
 
 	it.each(["tree", "tree/.git"])(
@@ -1875,6 +1899,24 @@ exit 1`,
 			expect(await whatToDo("packages/p/src/deep/a.ts", [])).toContain("in a new packages/p/test/a.test.ts so");
 		});
 
+		it("is looked up before the head's tests run, so a file they remove or plant does not change it", async () => {
+			const base = commit(repo, { "stryker.config.json": config, "packages/p/test/a.test.ts": "// t\n" });
+			const head = commit(repo, { "packages/p/src/a.ts": lines("export const x = 1;") });
+			const canned = join(artifacts, "survivor.json");
+			writeFileSync(canned, report({ "packages/p/src/a.ts": [{ status: "Survived", line: 1 }] }));
+			fakeTool(
+				repo,
+				"stryker",
+				`if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi
+rm packages/p/test/a.test.ts
+echo planted > packages/p/src/a.test.ts
+mkdir -p reports/mutation
+cp '${canned}' reports/mutation/mutation.json`,
+			);
+			const [finding] = await found(base, head);
+			expect(finding!.properties.explanation.whatToDo).toContain("in packages/p/test/a.test.ts so");
+		});
+
 		it("is a new file beside the source when the source is not under a src directory", async () => {
 			expect(await whatToDo("lib/a.ts", [])).toContain("in a new lib/a.test.ts so");
 		});
@@ -1942,6 +1984,7 @@ exit 1`,
 						"Mutation tests use the whole suite: Vitest related no test to packages/p/src/a.ts.",
 						"Stryker mutated 1 changed lines in 1 file(s); the base was not mutated.",
 					],
+					confinement: { confined: true },
 				},
 			]);
 			const findings = await readFindings(harness, root.id, revisionKey({ base, head }), context);
@@ -1994,6 +2037,7 @@ exit 1`,
 						"Stryker mutated 1 changed lines in 1 file(s); the base was not mutated.",
 						"packages/p/src/a.ts produced no mutants, so nothing on its changed lines was judged.",
 					],
+					confinement: { confined: true },
 				},
 			]);
 			const [left] = await readFindings(harness, root.id, revisionKey({ base, head }), context);
@@ -2314,6 +2358,11 @@ describe("a build from before static.mutation", { timeout: 60_000 }, () => {
 		const run = await parked();
 		try {
 			expect(run.registered).toContain(`locked melian-static pid ${process.pid}`);
+			// The marker confined cleanup asks for before it removes a dead run's tree.
+			expect(JSON.parse(readFileSync(join(dirname(run.lock), "melian-static"), "utf8"))).toEqual({
+				tree: run.tree,
+				pid: process.pid,
+			});
 			await run.oldCleanup();
 			run.intact();
 		} finally {

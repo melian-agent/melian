@@ -429,6 +429,7 @@ describe("runStaticTool with the repository's own tools", () => {
 		writeFiles(repo, emptyVitestInstall);
 		vi.spyOn(Sandbox, "detect").mockResolvedValue(unconfinedSandbox);
 		const command = vi.spyOn(unconfinedSandbox, "command");
+		const probed = vi.spyOn(unconfinedSandbox, "runtimeFailure");
 		const base = commit(repo, {
 			".gitignore": "node_modules\n",
 			"stryker.config.json": JSON.stringify({ testRunner: "vitest" }),
@@ -452,9 +453,15 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 			context,
 		);
 		expect(run.status).toBe("ran");
-		expect(command.mock.calls).toHaveLength(11);
+		expect(command.mock.calls).toHaveLength(13);
 		for (const [, paths] of command.mock.calls)
 			expect(paths.installs).toEqual([join(repo, "node_modules"), join(repo, "packages/b/node_modules")]);
+		// Loopback is for Stryker's logging server alone: the command that runs it, never the housekeeping around it.
+		const loopback = command.mock.calls.filter(([, paths]) => paths.loopback !== undefined);
+		expect(loopback.map(([inner, paths]) => [inner.includes("mutation-runner.mjs"), paths.loopback])).toEqual([
+			[true, true],
+		]);
+		expect(probed.mock.calls.map(([paths]) => paths.loopback)).toEqual([true]);
 	});
 
 	it("prefers the tool in the checkout's node_modules", { timeout: 60_000 }, async () => {
