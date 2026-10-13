@@ -917,16 +917,19 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 		stryker({ report: report({}) });
 		const env = createNodeExecutionEnv(repo);
 		const execute = vi.spyOn(env, "exec");
+		const created = vi.spyOn(env, "createTempDir");
 		expect((await mutate(base, head, { env })).status).toBe("ran");
+		// This run's own scratch, not the prefix: run inside another mutation run, the host's TMPDIR holds the prefix too.
+		const made = (await created.mock.results[0]!.value) as { value: string };
+		const scratch = join(realpathSync(dirname(made.value)), basename(made.value));
+		expect(scratch).toContain(confinedScratchPrefix);
 		const hostGit = execute.mock.calls.filter(([command]) => /(^|\n)unset GIT_ALTERNATE/.test(command));
 		// The worktree's add, the listing of its files, and the repository of its own the run is given.
 		expect(hostGit.some(([command]) => command.includes(" init --quiet --template="))).toBe(true);
 		expect(hostGit.length).toBeGreaterThan(3);
-		for (const [, options] of hostGit) expect(options?.env?.TMPDIR ?? "").not.toContain(confinedScratchPrefix);
+		for (const [, options] of hostGit) expect((options?.env?.TMPDIR ?? "").startsWith(scratch)).toBe(false);
 		// The command that runs the head's tests is the one that gets it.
-		const sandboxed = execute.mock.calls.filter(([, options]) =>
-			options?.env?.TMPDIR?.includes(confinedScratchPrefix),
-		);
+		const sandboxed = execute.mock.calls.filter(([, options]) => options?.env?.TMPDIR === `${scratch}/tmp`);
 		expect(sandboxed.length).toBeGreaterThan(0);
 		for (const [command] of sandboxed) expect(command).not.toMatch(/(^|\n)unset GIT_ALTERNATE/);
 	});
