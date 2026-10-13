@@ -38,3 +38,4 @@ misses:
   - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "C13", tool: tests }
   - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "C14", tool: tests }
   - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "C15", tool: tests }
+  - { record: packages/evals/comparisons/2026-10-14-pr-113.md, finding: "B1", tool: none }
