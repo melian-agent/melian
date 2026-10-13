@@ -55,4 +55,32 @@ What this gives up, and what stays open:
 
   A test leaves a detached child behind, lets it rewrite the output after the host's read, and checks the result is the first read's, the write beside scratch never lands, and scratch is gone while the child still runs. For a check that executes head code the control is a supervisor that records each descendant's pid and start time and ends each by its own pid, which [pull request #98](https://github.com/melian-agent/melian/pull/98) brings.
 - A crash between a confined command and its teardown leaves scratch under `melian-static-`, which the next run of any build removes on the host. Scratch that must never be removed that way takes the `melian-confined-` prefix; a Biome or tsc run does not, since an old build must still see its live lock.
-- bubblewrap's bind list was not reviewed this way. No Linux host was to hand.
+- bubblewrap's bind list was read against this table, below, and CI is its only test host. No command was run with each bind removed in turn, as was done for seatbelt.
+
+## The bubblewrap command, bind by bind
+
+bubblewrap starts from an empty root, so its list is what exists at all, not what is allowed. CI on Ubuntu 24.04 is the host these were checked on.
+
+| Flag or bind | Who needs it |
+| --- | --- |
+| `--unshare-all` | A network namespace with its own loopback and nothing on it; a process namespace that hides the host's processes; no shared IPC. |
+| `--die-with-parent` | Everything in the namespace ends with the command, so nothing outlives a run. |
+| `--new-session` | The command has no controlling terminal, so `/dev/tty` opens nothing. |
+| `/usr/bin`, `/bin` | `bash`, `sh`, `env`, `date`, git. |
+| `/usr/lib`, `/usr/lib64`, `/lib`, `/lib64` | The dynamic loader and the libraries every program links. |
+| `/usr/share` | Locale data, and the zone files `/etc/localtime` points into. |
+| `/etc/ld.so.cache` | The loader's index of those libraries. |
+| `/etc/alternatives` | A merged-`/usr` host links `/usr/bin` entries through it. |
+| `/etc/nsswitch.conf`, `/etc/passwd`, `/etc/group` | Name lookups: git cannot name the user it commits as without them. |
+| `/etc/localtime` | `date` and Node, so a log's times match the reviewer's. |
+| `/etc/hosts`, only when the caller asks for loopback | The resolver, to find `localhost`. It can name machines on the reviewer's network, so it is not bound otherwise. |
+| `--proc /proc` | A process table of the namespace alone. Node reads `/proc/self`, and the housekeeping script opens files through `/proc/self/fd`. |
+| `--dev /dev` | The few devices bubblewrap makes itself: `null`, `zero`, `full`, `random`, `urandom`, `tty`, and a private `pts` and `shm`. |
+| `--tmpfs /tmp` | An empty `/tmp` for scratch to mount under; the host's is not visible. |
+| the Node executable, and its owned `lib/node_modules` and `include/node` | As under seatbelt. |
+| the caller's installs, read-only | The tool and its dependencies. |
+| scratch, read and write | The run's own files. |
+
+Removed in this review: `/usr/sbin` and `/sbin`, which seatbelt already refused and no command needs, with both dropped from `PATH`; `/lib32`, for which no 64-bit tool has a use; and `/etc/hosts` unless loopback is asked for. `/usr/local` was never bound.
+
+A test builds the command and pins the system binds in order. In CI a script inside the namespace lists `/etc` and `/usr`, counts the processes it can see, and tries the terminal; beside it a system tool runs and the script reads itself, so an empty listing is the namespace's doing and not a failed start. The same CI run puts Biome, tsc, the housekeeping script, the output-link refusal, and the confined teardown through bubblewrap.

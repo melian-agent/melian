@@ -19,7 +19,8 @@ export interface SandboxPaths {
 	/**
 	 * Whether the command may listen on and connect to loopback addresses; absent means no network at all. On macOS
 	 * loopback is the host's own, so a command given it can reach every service that listens there. bubblewrap's private
-	 * network namespace has a loopback of its own with nothing on it, whatever this says.
+	 * network namespace has a loopback of its own with nothing on it, whatever this says. On both, the hosts file is
+	 * readable only with it.
 	 */
 	readonly loopback?: boolean;
 }
@@ -34,23 +35,22 @@ const systemReads = ["/usr/lib", "/usr/bin", "/usr/share", "/bin", "/System", "/
 // reviewer's. `/bin/sh` reads the `sh` link to choose its shell, and `xcrun`, behind the git shim, reads `developer_dir`.
 const systemFiles = ["/private/etc/localtime", "/private/var/select/sh", "/private/var/select/developer_dir"];
 
-// The Linux counterparts, bound read-only when the host has them. Of /etc only what a process needs to resolve localhost, name
-// its user, and tell the time is bound, so no credential file in it is visible; the alternatives directory is bound too,
-// since a merged-/usr host links /usr/bin entries through it.
+// The Linux counterparts, each bound read-only when the host has it. `/usr/bin` and `/bin` hold the shell and the tools
+// a command line names; `/usr/lib`, `/usr/lib64`, `/lib`, and `/lib64` hold the dynamic loader and the libraries every
+// program links; `/usr/share` holds locale data and the zone files `/etc/localtime` points into. Nothing of `/usr/local`,
+// `/usr/sbin`, or `/sbin`. Of /etc, single entries and never the directory, so no credential file in it is visible:
+// the loader's cache; `alternatives`, which a merged-/usr host links `/usr/bin` entries through; `nsswitch.conf`,
+// `passwd`, and `group`, without which git cannot name the user it commits as; and `localtime`.
 const linuxReads = [
 	"/usr/bin",
-	"/usr/sbin",
 	"/usr/lib",
 	"/usr/lib64",
 	"/usr/share",
 	"/bin",
-	"/sbin",
 	"/lib",
-	"/lib32",
 	"/lib64",
 	"/etc/alternatives",
 	"/etc/ld.so.cache",
-	"/etc/hosts",
 	"/etc/nsswitch.conf",
 	"/etc/passwd",
 	"/etc/group",
@@ -156,8 +156,6 @@ export class Sandbox {
 			dirname(nodeExecutable()),
 			"/usr/bin",
 			"/bin",
-			"/usr/sbin",
-			"/sbin",
 		];
 		// With DEVELOPER_DIR set, `/usr/bin/git` runs the real one without asking `xcode-select`, which the sandbox cannot answer.
 		return {
@@ -254,10 +252,17 @@ export class Sandbox {
 			return `cd ${quote(paths.worktree)} && /usr/bin/sandbox-exec ${policy} /bin/bash -c ${quote(inner)}`;
 		}
 		const bind = (flag: string, path: string) => `${flag} ${quote(path)} ${quote(path)}`;
-		const system = linuxReads.filter((path) => existsSync(path)).map((path) => bind("--ro-bind", path));
+		// As under seatbelt, the hosts file comes only with loopback: it can name machines on the reviewer's network.
+		const system = [...linuxReads, ...(paths.loopback === true ? ["/etc/hosts"] : [])]
+			.filter((path) => existsSync(path))
+			.map((path) => bind("--ro-bind", path));
 		return [
+			// Every namespace is new: no network but a loopback of its own, no view of the host's processes, and no terminal,
+			// since the new session has none. Everything in it ends when the command does.
 			"bwrap --unshare-all --die-with-parent --new-session",
 			...system,
+			// A process table of the namespace alone, the few devices bubblewrap makes, and an empty /tmp for scratch to
+			// mount under.
 			"--proc /proc --dev /dev --tmpfs /tmp",
 			bind("--ro-bind", paths.node),
 			...nodeDirectories(paths.node).map((path) => bind("--ro-bind", path)),

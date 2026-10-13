@@ -166,7 +166,9 @@ describe("Sandbox.environment", () => {
 			vi.stubEnv("PATH", "/opt/homebrew/bin:/Users/someone/bin");
 			const directories = sandbox!.environment().PATH!.split(":");
 			expect(directories).toContain(posix.dirname(nodeExecutable()));
-			expect(directories.slice(-4)).toEqual(["/usr/bin", "/bin", "/usr/sbin", "/sbin"]);
+			expect(directories.slice(-2)).toEqual(["/usr/bin", "/bin"]);
+			expect(directories).not.toContain("/usr/sbin");
+			expect(directories).not.toContain("/sbin");
 			expect(directories).not.toContain("/opt/homebrew/bin");
 			expect(directories).not.toContain("/Users/someone/bin");
 			expect(sandbox!.environment().MELIAN_SANDBOX).toBe(platform === "darwin" ? "seatbelt" : "bubblewrap");
@@ -336,9 +338,20 @@ describe("the bubblewrap command", () => {
 	});
 
 	it("binds the system directories the host has, read-only, and a private /proc, /dev, and /tmp before scratch", () => {
-		for (const directory of ["/usr/bin", "/bin", "/sbin"])
+		for (const directory of ["/usr/bin", "/bin"])
 			if (existsSync(directory)) expect(command).toContain(`--ro-bind '${directory}' '${directory}'`);
-		expect(command).not.toContain("--ro-bind '/etc' ");
+		for (const absent of [
+			"/etc",
+			"/usr",
+			"/usr/local",
+			"/usr/sbin",
+			"/sbin",
+			"/lib32",
+			"/etc/hosts",
+			"/var",
+			"/home",
+		])
+			expect(command).not.toContain(`--ro-bind '${absent}' `);
 		expect(command).toContain("--proc /proc --dev /dev --tmpfs /tmp");
 		expect(command.indexOf("--tmpfs /tmp")).toBeLessThan(command.indexOf("--bind '/work' '/work'"));
 	});
@@ -463,20 +476,76 @@ console.log(JSON.stringify({ absent: { status: absent.status, stderr: absent.std
 );
 
 describe.skipIf(!bubblewrapAvailable)("bubblewrap", { timeout: 60_000 }, () => {
-	it("denies the reviewer's home and the network, and allows writes under scratch only", async () => {
+	it.each([undefined, true] as const)(
+		"denies the reviewer's home and the network, and allows writes under scratch only (loopback %s)",
+		async (loopback) => {
+			const sandbox = (await detect("linux")) as Sandbox;
+			const { loopback: reached, ...rest } = await probed(sandbox, loopback);
+			expect(rest).toEqual({
+				readHome: "denied",
+				sh: "ok",
+				shim: "ok",
+				shimWithoutTemp: "ok",
+				git: "ok",
+				writeScratch: "ok",
+				writeOutside: "denied",
+				connect: "denied",
+			});
+			// The namespace's own loopback is always up. Whether `localhost` resolves without the hosts file is the C
+			// library's choice, so the name is asserted only where the file is bound.
+			if (loopback === true) expect(reached).toBe("ok");
+			expect(readFileSync(join(base, "scratch/written"), "utf8")).toBe("1");
+		},
+	);
+
+	// The Linux counterpart of the seatbelt test of what the profile no longer grants: what the namespace holds at all.
+	it("shows the command a filesystem of the named binds only, its own processes, and no terminal", async () => {
 		const sandbox = (await detect("linux")) as Sandbox;
-		expect(await probed(sandbox)).toEqual({
-			readHome: "denied",
-			sh: "ok",
-			shim: "ok",
-			shimWithoutTemp: "ok",
-			git: "ok",
-			writeScratch: "ok",
-			writeOutside: "denied",
-			loopback: "ok",
-			connect: "denied",
+		const where = paths();
+		writeFileSync(
+			join(where.worktree, "namespace.cjs"),
+			`const fs = require("node:fs");
+const { spawnSync } = require("node:child_process");
+const [home, outside, host] = process.argv.slice(2);
+const list = (path) => { try { return fs.readdirSync(path).sort(); } catch (error) { return error.code; } };
+const opens = (path, flags = "r") => { try { fs.closeSync(fs.openSync(path, flags)); return "ok"; } catch (error) { return error.code; } };
+console.log(JSON.stringify({
+  control: [spawnSync("/usr/bin/true").status, opens(process.argv[1])],
+  etc: list("/etc"),
+  usr: list("/usr"),
+  absent: ["/usr/local", "/usr/sbin", "/sbin", "/lib32", "/var", "/root", "/etc/hosts", "/etc/shadow", "/etc/ssh", home + "/auth.json", outside].filter((path) => fs.existsSync(path)),
+  processes: list("/proc").filter((name) => /^[0-9]+$/.test(name)).length,
+  hostProcess: fs.existsSync("/proc/" + host),
+  terminal: opens("/dev/tty", "r+"),
+  devices: list("/dev"),
+  temporary: list("/tmp").length,
+  writeEtc: opens("/etc/passwd", "a"),
+  writeInstalls: opens(process.argv[5] + "/written", "w"),
+}));`,
+		);
+		const inner = `${JSON.stringify(process.execPath)} namespace.cjs ${base}/home ${base}/outside ${process.pid} ${base}/installs`;
+		const { stdout } = await run("/bin/bash", ["-c", sandbox.command(inner, where, "")], {
+			timeout: 30_000,
+			env: { ...sandbox.environment(), HOME: join(where.scratch, "home"), TMPDIR: where.scratch },
 		});
-		expect(readFileSync(join(base, "scratch/written"), "utf8")).toBe("1");
+		const seen = JSON.parse(stdout) as Record<string, unknown>;
+		// The control: a system tool runs and the script reads itself, so what is missing below is the namespace's doing.
+		expect(seen.control).toEqual([0, "ok"]);
+		const allowed = ["alternatives", "group", "ld.so.cache", "localtime", "nsswitch.conf", "passwd"];
+		expect((seen.etc as string[]).filter((name) => !allowed.includes(name))).toEqual([]);
+		expect(seen.etc).toContain("passwd");
+		expect((seen.usr as string[]).filter((name) => !["bin", "lib", "lib64", "share"].includes(name))).toEqual([]);
+		expect(seen.absent).toEqual([]);
+		// Its own process table: bubblewrap, bash, and this script, never the hundreds the host runs.
+		expect(seen.processes).toBeLessThan(10);
+		expect(seen.hostProcess).toBe(false);
+		expect(seen.terminal).not.toBe("ok");
+		expect(
+			(seen.devices as string[]).filter((name) => /^(tty[A-Za-z0-9]+|sd|nvme|disk|mem|kmsg)/.test(name)),
+		).toEqual([]);
+		expect(seen.temporary).toBeLessThanOrEqual(1);
+		expect(seen.writeEtc).not.toBe("ok");
+		expect(seen.writeInstalls).not.toBe("ok");
 	});
 });
 
@@ -507,11 +576,33 @@ it.each([
 	expect(rules).toEqual(expected);
 });
 
-it("builds the same bubblewrap command whatever loopback says, since its namespace is private", () => {
+it.each([
+	[undefined, false],
+	[false, false],
+	[true, true],
+] as const)("binds the hosts file under bubblewrap only when loopback is asked for (%s)", (loopback, bound) => {
+	vi.mocked(existsSync).mockReturnValue(true);
 	const sandbox = Object.assign(Object.create(Sandbox.prototype) as Sandbox, { backend: "bubblewrap" });
-	const command = sandbox.command("true", paths(), "/unused");
-	expect(sandbox.command("true", { ...paths(), loopback: true }, "/unused")).toBe(command);
+	const command = sandbox.command("true", { ...paths(), ...(loopback === undefined ? {} : { loopback }) }, "/unused");
+	expect(command.includes("--ro-bind '/etc/hosts' '/etc/hosts'")).toBe(bound);
 	expect(command).toContain("--unshare-all");
+	// The whole list of system binds, in order: a path added or widened fails here.
+	expect([...command.matchAll(/--ro-bind '(\/(?:usr|bin|lib|lib64|etc)[^']*)'/g)].map((match) => match[1])).toEqual([
+		"/usr/bin",
+		"/usr/lib",
+		"/usr/lib64",
+		"/usr/share",
+		"/bin",
+		"/lib",
+		"/lib64",
+		"/etc/alternatives",
+		"/etc/ld.so.cache",
+		"/etc/nsswitch.conf",
+		"/etc/passwd",
+		"/etc/group",
+		"/etc/localtime",
+		...(bound ? ["/etc/hosts"] : []),
+	]);
 });
 
 describe("sandbox policy on a host that cannot start nested sandboxes", () => {
@@ -630,7 +721,7 @@ describe("sandbox policy on a host that cannot start nested sandboxes", () => {
 	it("does not inspect macOS developer tools for a bubblewrap environment", () => {
 		host("/dev-tools/Xcode");
 		expect(bubblewrap.environment()).toStrictEqual({
-			PATH: `${posix.dirname(nodeExecutable())}:/usr/bin:/bin:/usr/sbin:/sbin`,
+			PATH: `${posix.dirname(nodeExecutable())}:/usr/bin:/bin`,
 			MELIAN_SANDBOX: "bubblewrap",
 		});
 		expect(readlinkSync).not.toHaveBeenCalled();
@@ -658,19 +749,20 @@ describe("sandbox policy on a host that cannot start nested sandboxes", () => {
 		host("/missing/developer");
 		vi.mocked(existsSync).mockReturnValue(false);
 		expect(seatbelt.environment()).toStrictEqual({
-			PATH: `${posix.dirname(nodeExecutable())}:/usr/bin:/bin:/usr/sbin:/sbin`,
+			PATH: `${posix.dirname(nodeExecutable())}:/usr/bin:/bin`,
 			MELIAN_SANDBOX: "seatbelt",
 		});
 		expect(seatbelt.profile(where)).not.toContain("/missing/developer");
 	});
 
 	it("binds only Linux system paths the host has", () => {
-		vi.mocked(existsSync).mockImplementation((path) => ["/usr/bin", "/etc/hosts"].includes(String(path)));
-		const command = bubblewrap.command("true", where, "/unused");
+		vi.mocked(existsSync).mockImplementation((path) => ["/usr/bin", "/etc/group"].includes(String(path)));
+		const command = bubblewrap.command("true", { ...where, loopback: true }, "/unused");
 		expect(command).toContain("--ro-bind '/usr/bin' '/usr/bin'");
-		expect(command).toContain("--ro-bind '/etc/hosts' '/etc/hosts'");
+		expect(command).toContain("--ro-bind '/etc/group' '/etc/group'");
 		expect(command).not.toContain("--ro-bind '/bin'");
 		expect(command).not.toContain("--ro-bind '/etc/passwd'");
+		expect(command).not.toContain("--ro-bind '/etc/hosts'");
 	});
 
 	it.each(['"', "\\", "\n"])("rejects a seatbelt path with %j", (character) => {
