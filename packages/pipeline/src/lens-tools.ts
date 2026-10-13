@@ -860,7 +860,8 @@ export const reportVerdict = defineTool({
 								rule: sighting.ruleId,
 								coReported: claim.fence?.coReported ?? false,
 								silent: claim.fence?.silent,
-								evidence: evidence.length,
+								// Lines the change deleted, or that only the base holds, cannot show what narrows the head's failure.
+								evidence: evidence.filter((location) => location.revision === "head").length,
 								executor: "llm",
 							}).refusal();
 				const lowers = args.lower !== undefined && refusedLowering === undefined;

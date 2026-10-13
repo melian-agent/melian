@@ -29,7 +29,7 @@ The verifier may lower a finding's severity by one step, and never raise it. A m
 - A `melian/injection-attempt` finding is never lowered.
 - A deterministic finding is never lowered, and neither is a defect a static, guardrail, or mutation check co-reported.
 - A lowering rides only on a `confirmed` or `plausible` verdict.
-- A lowering needs evidence locations, as a refutation does. Melian reads them back and stores them. Without them the lowering is refused and the lens's severity stands.
+- A lowering needs evidence locations, as a refutation does. Melian reads them back and stores them. Without them the lowering is refused and the lens's severity stands. As built, at least one must be at the head: lines the change deleted, or that only the base holds, earn no lowering. Melian checks that the lines exist and reads them back. It does not check that they narrow the failure, which is the verifier's judgement.
 - Only the LLM verifier lowers. The decision-model executor may not.
 - A lowering is always shown with the original severity and the verifier's reason: in the terminal, the ledger, and the JSON. An author reads "P3, lowered from P2" and why.
 - The lens's severity stays stored. Adjudication resolves the finding at the lowered one.

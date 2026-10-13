@@ -1646,7 +1646,38 @@ describe("lowering a severity through report_verdict", () => {
 		});
 		expect(verdict.blocking).toBe(true);
 		expect(resultOf(requests)).toContain(
-			"recorded verdict for c1\nlowering refused, and the claim stands at P1: a lowering needs evidence locations naming the code that narrows the failure. No further lowering of this claim will be taken at this verdict.\n",
+			"recorded verdict for c1\nlowering refused, and the claim stands at P1: a lowering needs evidence locations at the head naming the code that narrows the failure. No further lowering of this claim will be taken at this verdict.\n",
+		);
+	});
+
+	it.each([
+		[
+			"only base lines the change deleted",
+			[{ file: "src/user.ts", line: 7, role: "context", revision: "base" }],
+			false,
+		],
+		[
+			"only base lines the change left alone",
+			[{ file: "src/user.ts", line: 6, role: "context", revision: "base" }],
+			false,
+		],
+		[
+			"a head location beside a deleted base one",
+			[
+				{ file: "src/user.ts", line: 7, role: "context", revision: "base" },
+				{ file: "src/user.ts", line: 6, role: "context" },
+			],
+			true,
+		],
+	] as const)("takes a lowering only with evidence at the head: %s", async (_, evidence, lowers) => {
+		const requests = judging({ verdict: "confirmed", reason: "Traced it.", evidence: [...evidence], lower: narrow });
+		const { findings } = await review();
+		expect(findings[0]!.properties.severity).toBe(lowers ? "P2" : "P1");
+		expect(findings[0]!.properties.verification?.evidence).toHaveLength(evidence.length);
+		expect(resultOf(requests)).toContain(
+			lowers
+				? "lowered P1 to P2"
+				: "lowering refused, and the claim stands at P1: a lowering needs evidence locations at the head naming the code that narrows the failure.",
 		);
 	});
 

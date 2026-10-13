@@ -189,7 +189,7 @@ describe("the lowering fence", () => {
 		[{ to: "P1" as const }, "one step"],
 		[{ silent: undefined }, "could not read the resolution table"],
 		[{ silent: ["P2" as const, "nit" as const] }, "resolves P2 silent"],
-		[{ evidence: 0 }, "needs evidence locations"],
+		[{ evidence: 0 }, "needs evidence locations at the head"],
 	])("refuses %j", (fields, why) => {
 		expect(refusal(fields)).toContain(why);
 	});
