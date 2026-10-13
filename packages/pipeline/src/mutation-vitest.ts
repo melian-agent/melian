@@ -50,18 +50,30 @@ export class MutationVitest {
 		}
 	}
 
-	async execute(run: (tests?: readonly string[], fresh?: true) => Promise<MutationAttempt>): Promise<MutationAttempt> {
+	// `lost` says whether the files the run needs have gone from under it. A repeat then can only fail again, and its
+	// failure would stand in for the one that says what happened.
+	async execute(
+		run: (tests?: readonly string[], fresh?: true) => Promise<MutationAttempt>,
+		lost: () => boolean,
+	): Promise<MutationAttempt> {
 		if (this.#tests === undefined) return run(this.#tests);
 		let reason: string;
+		let related: MutationAttempt | undefined;
 		try {
-			const result = await run(this.#tests);
-			if (result.code !== 0) throw new Error(`related run exited ${result.code}`);
-			const report = JSON.parse(result.report!) as { files: Record<string, { mutants: { status: string }[] }> };
+			related = await run(this.#tests);
+			if (related.code !== 0) throw new Error(`related run exited ${related.code}`);
+			const report = JSON.parse(related.report!) as { files: Record<string, { mutants: { status: string }[] }> };
 			if (!Object.values(report.files).some((file) => file.mutants.some((mutant) => mutant.status === "NoCoverage")))
-				return result;
+				return related;
 			reason = "Stryker reported NoCoverage in the related run";
 		} catch (error) {
 			reason = `related result could not be read: ${String(error)}`;
+		}
+		if (lost()) {
+			this.notes.push(
+				`Mutation tests were not repeated with the whole suite: ${reason}, and the run's files are gone.`,
+			);
+			return { code: related === undefined || related.code === 0 ? 1 : related.code };
 		}
 		this.notes.push(`Mutation tests use the whole suite: ${reason}.`);
 		return run(undefined, true);

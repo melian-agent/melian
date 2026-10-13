@@ -565,6 +565,98 @@ writeFileSync("reports/mutation/mutation.json", subset && ${JSON.stringify(kind)
 			},
 		);
 
+		// A head whose changed file Vitest relates to one test of two, and a fake Stryker that runs `body` with the number
+		// of the attempt in `$attempt`.
+		function relatedRun(body: string) {
+			const commits = twoCommits({
+				"packages/p/src/a.ts": a.replace("x > 0", "x >= 0"),
+				"stryker.config.json": JSON.stringify({
+					testRunner: "vitest",
+					vitest: { configFile: "custom-vitest.ts", dir: "checks", related: true },
+				}),
+			});
+			relatedInstall();
+			const attempts = join(artifacts, "attempts.txt");
+			fakeTool(
+				repo,
+				"stryker",
+				`if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi
+echo attempt >> '${attempts}'
+attempt=$(wc -l < '${attempts}' | tr -d ' ')
+${body}`,
+			);
+			return { ...commits, attempts: () => readFileSync(attempts, "utf8").trim().split("\n").length };
+		}
+
+		it.each(["mutation-runner.mjs", "tree/stryker.config.json"])(
+			"does not repeat with the whole suite once %s is gone, and says another process removed it",
+			async (lost) => {
+				const run = relatedRun(`rm -f "$(dirname "$PWD")/${lost}"\necho RELATED FAILURE\nexit 1`);
+				const failure = (await mutate(run.base, run.head).catch((error: unknown) => error)) as CheckError;
+				expect(run.attempts()).toBe(1);
+				expect(failure).toMatchObject({ code: "worktreeFailed", check: "static.mutation" });
+				const scratch = /scratch directory (\S+) lost files/.exec(failure.message)?.[1];
+				expect(scratch).toMatch(/\/melian-confined-[^/]+$/);
+				expect(failure.message).toBe(
+					`static.mutation's scratch directory ${scratch} lost files while Stryker ran: ${scratch}/${lost} is gone. They were there when the run began, so another process removed them while it was in progress: most likely a Melian review of this clone from a build that does not recognise this run's scratch, or else the head's own tests. Stryker exited 1.`,
+				);
+			},
+		);
+
+		it("names both files when the whole scratch was emptied, and that Stryker did not finish when it was cut", async () => {
+			// The whole tree goes, as when another build's cleanup removes it: restoring its git link would be refused.
+			const run = relatedRun('rm -f "$(dirname "$PWD")/mutation-runner.mjs"\nrm -rf "$PWD"\nexit 1');
+			const execute = vi.mocked(MutationProcess.prototype.execute).getMockImplementation()!;
+			vi.spyOn(MutationProcess.prototype, "execute").mockImplementation(async function (
+				this: MutationProcess,
+				command,
+				environment,
+			) {
+				await execute.call(this, command, environment);
+				throw this.run.fail("timeout", "mutation ran past its 120-second timeout");
+			});
+			const failure = (await mutate(run.base, run.head).catch((error: unknown) => error)) as CheckError;
+			expect(failure).toMatchObject({ code: "worktreeFailed" });
+			expect(failure.message).toMatch(
+				/lost files while Stryker ran: \S+\/mutation-runner\.mjs and \S+\/tree\/stryker\.config\.json are gone\. .* Stryker did not finish\.$/,
+			);
+		});
+
+		it("does not take a runner or configuration the reader refuses for a lost one", async () => {
+			const run = relatedRun(
+				'rm -f "$(dirname "$PWD")/mutation-runner.mjs" stryker.config.json\nmkdir "$(dirname "$PWD")/mutation-runner.mjs" stryker.config.json\necho RELATED FAILURE\nexit 1',
+			);
+			await expect(mutate(run.base, run.head)).rejects.toMatchObject({
+				code: "toolFailed",
+				message: expect.stringContaining("RELATED FAILURE"),
+			});
+		});
+
+		it("keeps the related run's failure when the whole suite fails after it with more output than a message holds", async () => {
+			const run = relatedRun(
+				`if [ "$attempt" = 1 ]; then echo RELATED FAILURE; exit 1; fi\nhead -c 5000 /dev/zero | tr '\\0' x\necho WHOLE FAILURE\nexit 1`,
+			);
+			const failure = (await mutate(run.base, run.head).catch((error: unknown) => error)) as CheckError;
+			expect(run.attempts()).toBe(2);
+			expect(failure).toMatchObject({ code: "toolFailed" });
+			expect(failure.message).toMatch(
+				/^Stryker exited 1: RELATED FAILURE\n\[melian\] the related tests did not settle the run; the whole suite follows\nx{4082}WHOLE FAILURE$/,
+			);
+		});
+
+		it.each([
+			[4096, true],
+			[4097, false],
+		])("keeps the last 4,096 characters of the related run's output (%s)", async (length, whole) => {
+			const run = relatedRun(
+				`if [ "$attempt" = 1 ]; then printf FIRST; head -c ${length - 9} /dev/zero | tr '\\0' x; printf LAST; exit 1; fi\necho WHOLE FAILURE\nexit 1`,
+			);
+			const failure = (await mutate(run.base, run.head).catch((error: unknown) => error)) as CheckError;
+			const related = failure.message.slice("Stryker exited 1: ".length).split("\n[melian]")[0]!;
+			expect(related).toBe(`FIRST${"x".repeat(length - 9)}LAST`.slice(-4096));
+			expect(related.startsWith("FIRST")).toBe(whole);
+		});
+
 		it("fails as toolFailed when Stryker cannot spawn", async () => {
 			const { base, head } = twoCommits();
 			stryker();

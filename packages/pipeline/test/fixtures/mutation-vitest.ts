@@ -10,14 +10,17 @@ const selection = await MutationVitest.open(
 	JSON.parse(changed) as string[],
 );
 const runs: string[][] = [];
-await selection.execute(async (tests) => {
-	const vitest = await createVitest("test", { config: resolve("vitest.config.ts"), watch: false, maxWorkers: 1 });
-	try {
-		await vitest.start(tests?.slice());
-		runs.push(vitest.state.getFiles().map((file) => file.filepath));
-		return { code: 0, report: '{"files":{}}' };
-	} finally {
-		await vitest.close();
-	}
-});
+await selection.execute(
+	async (tests) => {
+		const vitest = await createVitest("test", { config: resolve("vitest.config.ts"), watch: false, maxWorkers: 1 });
+		try {
+			await vitest.start(tests?.slice());
+			runs.push(vitest.state.getFiles().map((file) => file.filepath));
+			return { code: 0, report: '{"files":{}}' };
+		} finally {
+			await vitest.close();
+		}
+	},
+	() => false,
+);
 writeFileSync(output, JSON.stringify({ runs, notes: selection.notes }));

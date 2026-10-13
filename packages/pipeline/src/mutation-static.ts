@@ -23,6 +23,14 @@ import { type Run, type StaticRun, staticOutputLimit } from "./static.ts";
 import { CacheLocation } from "./tool-provisioning.ts";
 
 const config = "stryker.config.json";
+const runner = "mutation-runner.mjs";
+
+// What the runner prints between a related run and its repeat with the whole suite, so a failure message can keep both.
+const repeatMarker = "[melian] the related tests did not settle the run; the whole suite follows";
+
+function tail(text: string): string {
+	return text.slice(-4096).trim();
+}
 
 // The head's own tests run under this limit, and some write files past `staticOutputLimit`: Melian's own cache tests write
 // 128 MiB archives, and a limit of 16 MiB ended their processes with SIGXFSZ and failed Stryker's initial run. A runaway
@@ -315,10 +323,10 @@ export class MutationRun {
 		const require = createRequire(posix.join(this.#run.input.repoRoot, "node_modules/vitest/package.json"));
 		const module = posix.join(this.#scratch, posix.basename(fileURLToPath(mutationVitestModule)));
 		await this.#files!.write(module, readFileSync(fileURLToPath(mutationVitestModule), "utf8"));
-		const script = posix.join(this.#scratch, "mutation-runner.mjs");
+		const script = posix.join(this.#scratch, runner);
 		const selectedConfig = posix.join(this.#scratch, "stryker.config.json");
 		const text = `
-import { readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, writeFileSync, writeSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { relative } from "node:path";
 import { createVitest } from ${JSON.stringify(pathToFileURL(require.resolve("vitest/node")).href)};
@@ -329,7 +337,10 @@ const selection = await MutationVitest.open(() => createVitest("test", {
 }), ${JSON.stringify(changed)});
 const result = await selection.execute(async (tests, fresh) => {
   // A whole-suite fallback must not reuse the related run's coverage or mutant results.
-  if (fresh) rmSync(${JSON.stringify(incremental)}, { force: true });
+  if (fresh) {
+    rmSync(${JSON.stringify(incremental)}, { force: true });
+    writeSync(1, ${JSON.stringify(`\n${repeatMarker}\n`)});
+  }
   rmSync(${JSON.stringify(report)}, { force: true });
   writeFileSync(${JSON.stringify(selectedConfig)}, JSON.stringify({ ...config,
     vitest: { ...config.vitest, related: false },
@@ -341,12 +352,23 @@ const result = await selection.execute(async (tests, fresh) => {
   let report;
   try { report = readFileSync(${JSON.stringify(report)}, "utf8"); } catch {}
   return { code: run.status ?? 1, report };
-});
+}, () => !existsSync(${JSON.stringify(script)}) || !existsSync("stryker.config.json"));
 writeFileSync(${JSON.stringify(posix.join(this.#scratch, "test-selection.json"))}, JSON.stringify(selection.notes));
 process.exitCode = result.code;
 `;
 		await this.#files!.write(script, text);
 		return `${quote(process.execPath)} ${quote(script)}`;
+	}
+
+	// The files the run cannot do without that are gone: the runner Melian wrote into scratch, and the head's Stryker
+	// configuration, which was in the worktree when the run began. A path the reader refuses is still there.
+	async #gone(): Promise<string[]> {
+		const gone: string[] = [];
+		for (const path of [posix.join(this.#scratch, runner), posix.join(this.#root, config)]) {
+			const text = await this.#files!.read(path, staticOutputLimit).catch(() => "");
+			if (text === undefined) gone.push(path);
+		}
+		return gone;
 	}
 
 	// The run executes the head's own test files, setup files, and Vitest configuration, so it gets a home and a temporary
@@ -385,7 +407,8 @@ process.exitCode = result.code;
 		if (profile !== undefined) {
 			await this.#files.write(profileFile, profile);
 		}
-		let result: Awaited<ReturnType<Run["shell"]>>;
+		let result: Awaited<ReturnType<Run["shell"]>> | undefined;
+		let failure: unknown;
 		const restore = await this.#ownGit();
 		try {
 			result = await new MutationProcess(this.#run).execute(this.#sandbox.command(command, paths, profileFile), {
@@ -394,15 +417,27 @@ process.exitCode = result.code;
 				TMPDIR: temporary,
 			});
 		} catch (error) {
+			failure = error;
+		}
+		// Checked before anything else is read: with these gone, every later symptom is a consequence, and the log that
+		// would have explained it went with them.
+		const gone = await this.#gone();
+		if (gone.length > 0) {
+			throw this.#run.fail(
+				"worktreeFailed",
+				`static.mutation's scratch directory ${this.#scratch} lost files while Stryker ran: ${gone.join(" and ")} ${gone.length === 1 ? "is" : "are"} gone. They were there when the run began, so another process removed them while it was in progress: most likely a Melian review of this clone from a build that does not recognise this run's scratch, or else the head's own tests. ${result === undefined ? "Stryker did not finish" : `Stryker exited ${result.code}`}.`,
+				failure,
+			);
+		}
+		await restore();
+		if (result === undefined) {
 			// A change too slow to mutate is one the run could not judge, not one whose judgement failed.
-			if (error instanceof CheckError && error.code === "timeout") {
+			if (failure instanceof CheckError && failure.code === "timeout") {
 				return { skipped: mutationSkips.timeout(this.#run.input.settings.timeout) };
 			}
-			throw error;
-		} finally {
-			await restore();
+			throw failure;
 		}
-		const stderr = result.output.slice(-4096).trim();
+		const stderr = tail(result.output);
 		let logText: string | undefined;
 		try {
 			logText = await this.#files.read(log, staticOutputLimit);
@@ -414,7 +449,10 @@ process.exitCode = result.code;
 		}
 		if (logText === undefined)
 			throw this.#run.fail("toolFailed", `Stryker exited ${result.code}: log missing at ${log}\n${stderr}`);
-		const output = logText.slice(-4096).trim();
+		// A repeat's output ends the log, so its tail alone would hide why the related run failed.
+		const [related, ...repeats] = logText.split(`\n${repeatMarker}\n`);
+		const output =
+			repeats.length === 0 ? tail(logText) : `${tail(related!)}\n${repeatMarker}\n${tail(repeats.at(-1)!)}`;
 		const notes = await this.#files.read(posix.join(this.#scratch, "test-selection.json"), staticOutputLimit);
 		if (notes === undefined) throw this.#run.fail("invalidOutput", "mutation runner wrote no test-selection notes");
 		this.#notes.push(...(JSON.parse(notes) as string[]));

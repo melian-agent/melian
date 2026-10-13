@@ -148,7 +148,7 @@ it("unions each source's Vitest answer, closes the listing and runs only those t
 	);
 	const selection = await MutationVitest.open(async () => vitest, ["src/a.ts", "src/b.ts"]);
 	const run = vi.fn(async () => ({ code: 0, report: '{"files":{}}' }));
-	await selection.execute(run);
+	await selection.execute(run, () => false);
 	expect(run.mock.calls).toEqual([[["a.spec.ts", "b.spec.ts"]]]);
 	expect(vitest.close).toHaveBeenCalledOnce();
 	expect(vitest.getRelevantTestSpecifications).toHaveBeenCalledTimes(3);
@@ -173,7 +173,7 @@ it.each(["empty", "query error", "unreadable", "startup error", "close error", "
 			return vitest;
 		}, ["src/a.ts"]);
 		const run = vi.fn(async () => ({ code: 0, report: '{"files":{}}' }));
-		await selection.execute(run);
+		await selection.execute(run, () => false);
 		expect(run.mock.calls).toEqual([[undefined]]);
 		expect(selection.notes[0]).toContain("whole suite");
 		if (kind !== "startup error") expect(vitest.close).toHaveBeenCalledOnce();
@@ -207,7 +207,7 @@ it.each(["NoCoverage", "exit error", "thrown error", "missing report", "corrupt 
 									: '{"files":{"a":{"mutants":[{"status":"NoCoverage"}]}}}',
 			};
 		});
-		await expect(selection.execute(run)).resolves.toEqual({ code: 0, report: '{"files":{}}' });
+		await expect(selection.execute(run, () => false)).resolves.toEqual({ code: 0, report: '{"files":{}}' });
 		expect(run.mock.calls).toEqual([[["a.spec.ts"]], [undefined, true]]);
 		expect(selection.notes[1]).toContain("whole suite");
 	},
@@ -217,7 +217,7 @@ it("accepts Stryker's whole-suite NoCoverage and related kills without a repeat"
 	const uncovered = '{"files":{"a":{"mutants":[{"status":"NoCoverage"}]}}}';
 	const whole = MutationVitest.whole("no related test");
 	const all = vi.fn(async () => ({ code: 0, report: uncovered }));
-	await expect(whole.execute(all)).resolves.toEqual({ code: 0, report: uncovered });
+	await expect(whole.execute(all, () => false)).resolves.toEqual({ code: 0, report: uncovered });
 	expect(all).toHaveBeenCalledOnce();
 	const selected = await MutationVitest.open(
 		async () => listing((files) => (files ? ["a.spec.ts"] : ["a.spec.ts", "other.spec.ts"])),
@@ -225,6 +225,44 @@ it("accepts Stryker's whole-suite NoCoverage and related kills without a repeat"
 	);
 	const killed = '{"files":{"a":{"mutants":[{"status":"Killed"}]}}}';
 	const related = vi.fn(async () => ({ code: 0, report: killed }));
-	await expect(selected.execute(related)).resolves.toEqual({ code: 0, report: killed });
+	await expect(selected.execute(related, () => false)).resolves.toEqual({ code: 0, report: killed });
 	expect(related).toHaveBeenCalledOnce();
+});
+
+it.each([
+	["exit error", { code: 3, report: undefined }, 3],
+	["thrown error", undefined, 1],
+	["missing report", { code: 0, report: undefined }, 1],
+	["NoCoverage", { code: 0, report: '{"files":{"a":{"mutants":[{"status":"NoCoverage"}]}}}' }, 1],
+] as const)("does not repeat a related run after %s once the run's files are gone", async (_kind, attempt, code) => {
+	const selection = await MutationVitest.open(
+		async () => listing((files) => (files ? ["a.spec.ts"] : ["a.spec.ts", "other.spec.ts"])),
+		["src/a.ts"],
+	);
+	const run = vi.fn(async () => {
+		if (attempt === undefined) throw new Error("related attempt threw");
+		return attempt;
+	});
+	await expect(selection.execute(run, () => true)).resolves.toEqual({ code });
+	expect(run.mock.calls).toEqual([[["a.spec.ts"]]]);
+	expect(selection.notes[1]).toMatch(
+		/^Mutation tests were not repeated with the whole suite: .*, and the run's files are gone\.$/,
+	);
+});
+
+it("does not ask whether files are gone when the related run settles the result", async () => {
+	const selection = await MutationVitest.open(
+		async () => listing((files) => (files ? ["a.spec.ts"] : ["a.spec.ts", "other.spec.ts"])),
+		["src/a.ts"],
+	);
+	const killed = '{"files":{"a":{"mutants":[{"status":"Killed"}]}}}';
+	const lost = vi.fn(() => true);
+	await expect(selection.execute(async () => ({ code: 0, report: killed }), lost)).resolves.toEqual({
+		code: 0,
+		report: killed,
+	});
+	await expect(MutationVitest.whole("no related test").execute(async () => ({ code: 1 }), lost)).resolves.toEqual({
+		code: 1,
+	});
+	expect(lost).not.toHaveBeenCalled();
 });
