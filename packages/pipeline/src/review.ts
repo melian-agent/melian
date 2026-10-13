@@ -1940,7 +1940,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		},
 		options,
 	);
-	const storedFindings = await readFindings(harness, root, reviewed, context, { producers });
+	// As the lenses reported them: a lowering stored by a verification this review attaches to must not change which
+	// finding speaks for a defect, or the candidates would read as new input and the stored judgements be cleared.
+	const storedFindings = await readFindings(harness, root, reviewed, context, { producers, asReported: true });
 	const configFor =
 		options.policy === undefined
 			? () => config

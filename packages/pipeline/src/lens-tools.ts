@@ -884,7 +884,7 @@ export const reportVerdict = defineTool({
 							}).refusal();
 				const lowers = args.lower !== undefined && refusedLowering === undefined;
 				const rescoped = proposal?.accepted(args.scope!.reason);
-				await upsertVerification(tx, lens.review, at, claim.id, claim.source, {
+				const kept = await upsertVerification(tx, lens.review, at, claim.id, claim.source, {
 					verdict: args.verdict,
 					reason: args.reason,
 					...(args.correction === undefined ? {} : { correction: args.correction }),
@@ -896,21 +896,27 @@ export const reportVerdict = defineTool({
 					model: lens.model!,
 					version: lens.version,
 				});
+				// The record decides: an equal report already stored may hold the claim at the lens's severity or scope.
+				const held = "an equal report of this claim already holds it there";
 				return [
 					...(args.lower === undefined
 						? []
 						: [
-								lowers
-									? `lowered ${severity} to ${args.lower.severity}`
-									: `lowering refused, and the lens's ${severity} stands: ${refusedLowering}`,
+								refusedLowering !== undefined
+									? `lowering refused, and the lens's ${severity} stands: ${refusedLowering}`
+									: kept.lowered === undefined
+										? `lowering not kept, and the lens's ${severity} stands: ${held}`
+										: `lowered ${severity} to ${kept.lowered.to}`,
 							]),
 					...(proposal === undefined
 						? []
 						: [
-								rescoped !== undefined
-									? `re-scoped from ${cause} to pre-existing`
-									: // The reasons name paths and symbols the change wrote, so they are quoted as data.
-										`re-scope refused, and the finding stays ${cause}:\n${quoteUntrusted("findings", proposal.refusals.join("\n"), review.nonce)}`,
+								rescoped === undefined
+									? // The reasons name paths and symbols the change wrote, so they are quoted as data.
+										`re-scope refused, and the finding stays ${cause}:\n${quoteUntrusted("findings", proposal.refusals.join("\n"), review.nonce)}`
+									: kept.rescoped === undefined
+										? `re-scope not kept, and the finding stays ${cause}: ${held}`
+										: `re-scoped from ${cause} to pre-existing`,
 							]),
 				];
 			}, context);

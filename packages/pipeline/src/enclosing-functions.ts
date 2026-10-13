@@ -76,6 +76,17 @@ interface Callable {
 	readonly name: string;
 	readonly startLine: number;
 	readonly endLine: number;
+	// Whether the function, or the class that holds it, is declared `export default`, so an importer names it freely.
+	readonly defaultExport: boolean;
+}
+
+// Whether the declaration that names `node`, the function itself or the class around it, opens with `export default`.
+function exportedDefault(node: Node, source: SourceFile, text: string): boolean {
+	for (let each: Node | undefined = node; each !== undefined; each = each.parent) {
+		if (isFunctionDeclaration(each) || isClassDeclaration(each))
+			return /^export\s+default\b/.test(text.slice(each.getStart(source)));
+	}
+	return false;
 }
 
 // A function the code names: a declaration, a method, a constructor or accessor, or a function value a variable, a
@@ -147,6 +158,7 @@ function callables(source: SourceFile, text: string, limit: number): Callable[] 
 				name,
 				startLine: lineAt(starts, node.getStart(source)),
 				endLine: lineAt(starts, node.end),
+				defaultExport: exportedDefault(node, source, text),
 			});
 		}
 		node.forEachChild(visit);
@@ -155,11 +167,12 @@ function callables(source: SourceFile, text: string, limit: number): Callable[] 
 	return found.length > limit ? undefined : found;
 }
 
-/** A named function around some lines, and the lines within it that hold code. */
+// A named function around some lines, and the lines within it that hold code.
 export interface HoldingFunction {
 	readonly name: string;
 	readonly startLine: number;
 	readonly endLine: number;
+	readonly defaultExport: boolean;
 	readonly code: ReadonlySet<number>;
 }
 
@@ -348,12 +361,10 @@ export class EnclosingFunctions {
 		}
 	}
 
-	/**
-	 * The innermost named function around `startLine` to `endLine` in each text, in the order given, with the lines of
-	 * the function that hold code rather than a comment or nothing. `undefined` for a text that is not TypeScript, that
-	 * the compiler holds no tree for, that names more functions than {@link enclosingLimits}`.callablesPerFile`, or
-	 * whose lines no named function holds. Throws when the compiler cannot start.
-	 */
+	// The innermost named function around `startLine` to `endLine` in each text, in the order given, with the lines of
+	// the function that hold code rather than a comment or nothing. `undefined` for a text that is not TypeScript, that
+	// the compiler holds no tree for, that names more functions than `enclosingLimits.callablesPerFile`, or whose lines
+	// no named function holds. Throws when the compiler cannot start.
 	static around(
 		texts: readonly {
 			readonly path: string;

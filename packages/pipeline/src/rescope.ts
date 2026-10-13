@@ -5,7 +5,9 @@ import {
 	type Revision,
 	readRevisionFile,
 	repositoryPath,
+	revisionLimits,
 	type StoredRescope,
+	searchRevision,
 	type Verification,
 	visibleText,
 } from "@melian-agent/core";
@@ -16,7 +18,7 @@ import type { ReportVerdictInput } from "./verification-instructions.ts";
 type Proposal = NonNullable<ReportVerdictInput["scope"]>;
 type Lines = { file: string; line: number; endLine?: number };
 
-/** The finding a re-scope is proposed for, as its lens sighted it. */
+// The finding a re-scope is proposed for, as its lens sighted it.
 export interface ScopedSighting {
 	readonly path: string;
 	readonly startLine: number;
@@ -38,17 +40,49 @@ function naming(word: string): RegExp {
 	return new RegExp(`(?<![\\p{L}\\p{N}_$])${word.replace(/[$]/g, "\\$")}(?![\\p{L}\\p{N}_$])`, "u");
 }
 
+const unicodeEscape = /\\u\{([0-9a-fA-F]{1,6})\}|\\u([0-9a-fA-F]{4})/g;
+
+// `text` with each unicode escape written as the character it names, since `p\u0061rse` spells the name `parse`.
+function unescaped(text: string): string {
+	return text.replace(unicodeEscape, (written, braced: string | undefined, plain: string | undefined) => {
+		const point = Number.parseInt(braced ?? plain!, 16);
+		return point > 0x10ffff ? written : String.fromCodePoint(point);
+	});
+}
+
+// An extended regular expression for git that matches `name` however escapes spell its characters.
+function spelling(name: string): string {
+	const escaped = "\\\\u[0-9a-fA-F]{4}|\\\\u\\{[0-9a-fA-F]+\\}";
+	return [...name].map((char) => `(${char === "$" ? "\\$" : char}|${escaped})`).join("");
+}
+
+const plainName = /^[\p{L}_$][\p{L}\p{N}_$]*$/u;
+const specifierList = /^\s*(?:import|export)\s+\{[^{}]*\}\s*(?:from\s*(["'])[^"']*\1)?\s*;?\s*$/;
+
+// Whether a line names `symbol` in a way that could give it another name: anything but a call or a declaration with
+// its parameters, or a place in an import or export list that does not rename it.
+function aliases(line: string, symbol: string): boolean {
+	const listed = specifierList.test(line);
+	for (const match of line.matchAll(new RegExp(naming(symbol), "gu"))) {
+		const after = line.slice(match.index + symbol.length);
+		// A class is declared by its name alone, and its constructor is the function that holds the lines.
+		if (/(?:^|[^\p{L}\p{N}_$])class\s+$/u.test(line.slice(0, match.index))) continue;
+		if (/^\s*(?:<[^<>()]*>)?\s*\(/.test(after)) continue;
+		if (listed && !/^\s+as\b/.test(after)) continue;
+		return true;
+	}
+	return false;
+}
+
 function where({ file, line, endLine = line }: Lines): string {
 	return `${visibleText(file)}:${line}${endLine === line ? "" : `-${endLine}`}`;
 }
 
-/**
- * A verifier's proposal that a finding is `pre-existing`, checked by Melian against the diff, git's rename map, and
- * the compiler: rules (a) to (d) of the decision that lets the verifier set scope. Whatever Melian cannot check is a
- * refusal, and a refused proposal leaves the finding the scope location gave it.
- */
+// A verifier's proposal that a finding is `pre-existing`, checked by Melian against the diff, git's rename map, and the
+// compiler: rules (a) to (d) of the decision that lets the verifier set scope. Whatever Melian cannot check is a
+// refusal, and a refused proposal leaves the finding the scope location gave it.
 export class ScopeProposal {
-	/** Why Melian refuses the proposal, each reason naming its rule. Empty when every check held. */
+	// Why Melian refuses the proposal, each reason naming its rule. Empty when every check held.
 	readonly refusals: readonly string[];
 	readonly #from: StoredRescope["from"] | undefined;
 
@@ -57,12 +91,12 @@ export class ScopeProposal {
 		this.#from = from;
 	}
 
-	/** The re-scope a verification record stores, with the verifier's `reason`; `undefined` for a refused proposal. */
+	// The re-scope a verification record stores, with the verifier's `reason`; `undefined` for a refused proposal.
 	accepted(reason: string): StoredRescope | undefined {
 		return this.#from === undefined || this.refusals.length > 0 ? undefined : { from: this.#from, reason };
 	}
 
-	/** Reads the files the proposal names and runs every check. Throws for a path that is not repository-relative. */
+	// Reads the files the proposal names and runs every check. Throws for a path that is not repository-relative.
 	static async read(
 		review: ReviewState,
 		revision: Revision,
@@ -126,51 +160,138 @@ export class ScopeProposal {
 		const answers = ["newCaller", "removedGuard", "changedTrigger", "copy"] as const;
 		for (const name of answers) {
 			const { answer, base } = proposal[name];
+			const site = { file: repositoryPath(base.file), startLine: base.line, endLine: base.endLine };
 			if (answer) refuse("d", `the verifier answered ${name} true`);
-			const shown = slice(await text("base", repositoryPath(base.file)), base.line, base.endLine ?? base.line);
+			const shown = slice(await text("base", site.file), base.line, base.endLine ?? base.line);
 			if (shown === undefined) refuse("d", `Melian cannot read the base lines ${where(base)} given for ${name}`);
+			// Lines the change deleted or edited cannot show that the change left something alone.
+			if (revision.changeOverlap({ ...site, revision: "base" })?.kind === "hunk")
+				refuse("d", `the change deleted or edited the base lines ${where(base)} given for ${name}`);
 		}
 
-		const hunks = review.files.flatMap((each) => each.hunks);
-		let functions: (HoldingFunction | undefined)[] = [undefined, undefined];
-		if (headText !== undefined && baseText !== undefined) {
-			try {
-				functions = EnclosingFunctions.around([
-					{ path: file, text: headText, startLine: failing.line, endLine },
-					{ path: basePath, text: baseText, startLine: failing.baseLine, endLine: baseEnd },
-				]);
-			} catch {
-				// The compiler could not start, which reads as a file it does not read.
-			}
+		// The failing lines, then the trigger and each location on the path that no hunk touches, each with its base twin.
+		const spots = [
+			{
+				at: failing as Lines,
+				file,
+				basePath,
+				headText,
+				baseText,
+				baseStart: failing.baseLine,
+				baseEnd,
+				failing: true,
+			},
+		];
+		for (const location of [
+			...(proposal.trigger === undefined ? [] : [proposal.trigger]),
+			...(proposal.path ?? []),
+		]) {
+			const path = repositoryPath(location.file);
+			const twin = revision.untouched({ file: path, startLine: location.line, endLine: location.endLine });
+			if (twin === undefined) continue;
+			spots.push({
+				at: location,
+				file: path,
+				basePath: twin.file,
+				headText: await text("head", path),
+				baseText: await text("base", twin.file),
+				baseStart: twin.startLine,
+				baseEnd: twin.endLine,
+				failing: false,
+			});
 		}
-		const [atHead, atBase] = functions;
-		if (atHead === undefined || atBase === undefined) {
-			refuse("d", "Melian cannot find the function that holds the failing lines with the compiler");
-		} else {
+		// Names are matched by their letters, so every hunk is read with its unicode escapes resolved.
+		const hunks = review.files.flatMap((each) =>
+			each.hunks.map((hunk) => ({
+				file: hunk.file,
+				added: unescaped(hunk.added),
+				changed: unescaped(hunk.changes ?? hunk.added),
+			})),
+		);
+		// Git gives a binary file no hunks, and a search skips it, so code in one would pass every check below unseen.
+		const unread = review.files.find((each) => each.binary && each.status !== "deleted");
+		if (unread !== undefined)
+			refuse(
+				"d",
+				`the change holds ${visibleText(unread.path)}, which git reads as binary, so Melian cannot check its lines`,
+			);
+		const readable = spots.filter((spot) => spot.headText !== undefined && spot.baseText !== undefined);
+		let functions: (HoldingFunction | undefined)[] = [];
+		try {
+			functions = EnclosingFunctions.around(
+				readable.flatMap((spot) => [
+					{
+						path: spot.file,
+						text: spot.headText!,
+						startLine: spot.at.line,
+						endLine: spot.at.endLine ?? spot.at.line,
+					},
+					{ path: spot.basePath, text: spot.baseText!, startLine: spot.baseStart, endLine: spot.baseEnd },
+				]),
+			);
+		} catch {
+			// The compiler could not start, which reads as a file it does not read.
+		}
+		// A hunk that only rewords a comment in a function removes no guard and adds no cause.
+		const within = (code: ReadonlySet<number>, start: number, count: number) => {
+			for (let line = start; line < start + count; line++) if (code.has(line)) return true;
+			return false;
+		};
+		for (const spot of spots) {
+			const index = readable.indexOf(spot);
+			const atHead = index === -1 ? undefined : functions[index * 2];
+			const atBase = index === -1 ? undefined : functions[index * 2 + 1];
+			if (atHead === undefined || atBase === undefined) {
+				const what = spot.failing ? "the failing lines" : where(spot.at);
+				refuse("d", `Melian cannot find the function that holds ${what} with the compiler`);
+				continue;
+			}
+			// A guard may sit in any function between the trigger and the failure, so each is held to the same check.
+			const held = spot.failing ? "the failure" : where(spot.at);
+			const own = review.files.find((each) => each.path === spot.file)?.hunks ?? [];
+			const deleted = own.find((hunk) => within(atBase.code, hunk.oldStart, hunk.oldLines));
+			if (deleted !== undefined)
+				refuse("d", `a hunk deletes code at base line ${deleted.oldStart}, inside the function that holds ${held}`);
+			const added = own.find((hunk) => within(atHead.code, hunk.newStart, hunk.newLines));
+			if (added !== undefined)
+				refuse("d", `a hunk adds code at line ${added.newStart}, inside the function that holds ${held}`);
+			if (!spot.failing) continue;
 			const symbol = atHead.name.endsWith(".constructor")
 				? atHead.name.slice(0, -".constructor".length)
 				: atHead.name.slice(atHead.name.lastIndexOf(".") + 1);
-			// A default export is called by whatever name its importer chose, so no added line can be matched to it.
-			const caller = hunks.find((hunk) => naming(symbol).test(hunk.added));
-			if (symbol === "default")
-				refuse("d", "the failing function is a default export, whose callers Melian cannot name");
-			if (caller !== undefined)
-				refuse("d", `a hunk in ${visibleText(caller.file)} adds a line that names ${visibleText(symbol)}`);
-			// A hunk that only rewords a comment in the function removes no guard and adds no cause.
-			const within = (code: ReadonlySet<number>, start: number, count: number) => {
-				for (let line = start; line < start + count; line++) if (code.has(line)) return true;
-				return false;
-			};
-			const own = changed?.hunks ?? [];
-			const deleted = own.find((hunk) => within(atBase.code, hunk.oldStart, hunk.oldLines));
-			if (deleted !== undefined)
+			// A default export is called by whatever name its importer chose, and a computed name by whatever it evaluates to.
+			if (symbol === "default" || atHead.defaultExport || !plainName.test(symbol)) {
 				refuse(
 					"d",
-					`a hunk deletes code at base line ${deleted.oldStart}, inside the function that holds the failure`,
+					"the failing function is a default export or has a computed name, so Melian cannot name its callers",
 				);
-			const added = own.find((hunk) => within(atHead.code, hunk.newStart, hunk.newLines));
-			if (added !== undefined)
-				refuse("d", `a hunk adds code at line ${added.newStart}, inside the function that holds the failure`);
+				continue;
+			}
+			const caller = hunks.find((hunk) => naming(symbol).test(hunk.added));
+			if (caller !== undefined)
+				refuse("d", `a hunk in ${visibleText(caller.file)} adds a line that names ${visibleText(symbol)}`);
+			// A caller may reach the function under another name, which no added line would spell. So every line of the
+			// head that names it must call it, declare it, or pass it through an import or export list unrenamed.
+			const search = { pattern: spelling(symbol), regex: true, attributesFrom: review.base };
+			const named = await searchRevision(review.repoRoot, review.head, search);
+			const alias = named.matches.find(
+				(match) =>
+					!(match.path === spot.file && match.line === atHead.startLine) && aliases(unescaped(match.text), symbol),
+			);
+			// A search cuts a long line, and the name may sit past the cut.
+			const cut = named.matches.find((match) => match.text.length >= revisionLimits.matchChars);
+			if (named.truncated)
+				refuse("d", `Melian cannot list every line of the head that names ${visibleText(symbol)}`);
+			else if (cut !== undefined)
+				refuse(
+					"d",
+					`${visibleText(cut.path)}:${cut.line} is too long for Melian to read whole, so it may give ${visibleText(symbol)} another name`,
+				);
+			else if (alias !== undefined)
+				refuse(
+					"d",
+					`${visibleText(alias.path)}:${alias.line} names ${visibleText(symbol)} without calling it, so a caller may reach it under another name`,
+				);
 		}
 
 		const triggerText =
@@ -183,10 +304,12 @@ export class ScopeProposal {
 					);
 		if (proposal.trigger !== undefined && triggerText === undefined)
 			refuse("c", `Melian cannot read the trigger ${where(proposal.trigger)} at the head`);
-		const read = [...new Set(triggerText?.match(identifier) ?? [])].filter((word) => !keywords.has(word));
+		const read = [...new Set(unescaped(triggerText ?? "").match(identifier) ?? [])].filter(
+			(word) => !keywords.has(word),
+		);
 		const flipped = read.flatMap((word) => {
 			const names = naming(word);
-			const hunk = hunks.find((each) => names.test(each.changes ?? each.added));
+			const hunk = hunks.find((each) => names.test(each.changed));
 			return hunk === undefined ? [] : [{ word, hunk }];
 		})[0];
 		if (flipped !== undefined)
