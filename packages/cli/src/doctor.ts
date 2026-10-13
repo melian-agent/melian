@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { existsSync, realpathSync } from "node:fs";
 import { mkdir, rm, writeFile } from "node:fs/promises";
-import { dirname, join, posix, sep } from "node:path";
+import { dirname, join, sep } from "node:path";
 import {
 	checksOfTier,
 	Lens,
@@ -9,7 +9,7 @@ import {
 	loadConfig,
 	loadSecrets,
 	melianPaths,
-	ResolutionWalk,
+	resolutionOverrides,
 	StandardsInventory,
 	type StaticTool,
 	standardsLimits,
@@ -159,37 +159,17 @@ async function levelsCheck(cwd: string): Promise<Check | undefined> {
 }
 
 // What each file's `resolution` now overrides: the accepted cost of letting the nearest file that speaks decide a
-// finding whole. Every directory that holds a melian.yaml is walked from the working tree, with each lens's declared
-// default as the lens applies there, and the preference files first, as a review of the working tree reads them.
+// finding whole, read from the working tree as a review of it would.
 async function resolutionChecks(cwd: string, env: NodeJS.ProcessEnv): Promise<Check[]> {
 	const root = await git(cwd, ["rev-parse", "--show-toplevel"]).catch(() => undefined);
 	if (root === undefined) return [];
 	const name = "resolution";
 	try {
-		const source = { kind: "worktree", preferences: userFiles(env).config } as const;
-		const pathspec = `:(glob,top)**/${melianPaths.config}`;
-		const listed = await git(root, ["ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", pathspec]);
-		// The root is walked even with no melian.yaml of its own: a preference file there may speak.
-		const directories = [
-			".",
-			...listed
-				.split("\0")
-				.filter(Boolean)
-				.map((file) => posix.dirname(file)),
-		];
-		const lines = new Set<string>();
-		for (const directory of directories) {
-			const { resolutionLayers } = await loadConfig(root, source, directory);
-			const declared = (await Lens.load(root, source, [directory])).flatMap((lens) =>
-				lens.resolution === undefined ? [] : [[lens.name, lens.resolution] as const],
-			);
-			for (const line of new ResolutionWalk(resolutionLayers, Object.fromEntries(declared)).overrides())
-				lines.add(line);
-		}
-		if (lines.size === 0) {
+		const lines = await resolutionOverrides(root, { kind: "worktree", preferences: userFiles(env).config });
+		if (lines.length === 0) {
 			return [{ name, state: "ok", detail: "no file overrides a lens's default or a farther file's resolution" }];
 		}
-		return [...lines].map((line) => ({ name, state: "ok", detail: visibleText(line) }));
+		return lines.map((line) => ({ name, state: "ok", detail: visibleText(line) }));
 	} catch (error) {
 		return [{ name, state: "warn", detail: visibleText(error instanceof Error ? error.message : String(error)) }];
 	}
