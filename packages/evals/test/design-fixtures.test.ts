@@ -82,16 +82,39 @@ describe("design rule fixtures", () => {
 			expect(() => seconds(invalid)).toThrow(`invalid duration: ${invalid}`);
 		}
 	});
+	it("answers the Node range by hand at the bound and one below, and refuses what it cannot read", {
+		timeout: 60_000,
+	}, () => {
+		const module = new URL(
+			"../goldens/design-reimplements-an-authority-clean/head/scripts/node-range.mjs",
+			import.meta.url,
+		);
+		const cases: [string | null, string][] = [
+			[">=22", "v22.0.0"],
+			[">=22", "v23.4.5"],
+			[">=22", "v21.99.99"],
+			...["v22.0.0-rc.1", "v23.0.0-nightly20260101", "22.0.0", "v22.0", "v22", ""].map(
+				(version): [string, string] => [">=22", version],
+			),
+			...["^22", ">=22.1", ">22", "22", "", null].map((range): [string | null, string] => [range, "v22.0.0"]),
+		];
+		const probe = `import { supported } from ${JSON.stringify(module.href)};
+			const cases = JSON.parse(process.argv[1]);
+			console.log(JSON.stringify(cases.map(([range, version]) => supported(range ?? undefined, version))));`;
+		const result = spawnSync(process.execPath, ["--input-type=module", "-e", probe, JSON.stringify(cases)], {
+			encoding: "utf8",
+		});
+		expect(result.stderr).toBe("");
+		expect(JSON.parse(result.stdout)).toEqual([true, true, false, ...Array.from({ length: 12 }, () => false)]);
+	});
 	it.each([
 		{ node: `>=${major}`, status: 0 },
 		{ node: `>=${major + 1}`, status: 1 },
-		{ node: `^${major}`, status: 1 },
-		{ node: undefined, status: 1 },
-	])("runs the preinstall check by hand and refuses a range it cannot read: $node", { timeout: 60_000 }, (each) => {
+	])("runs the preinstall check and exits $status for $node", { timeout: 60_000 }, (each) => {
 		const root = realpathSync(mkdtempSync(join(tmpdir(), "melian-check-node-")));
 		try {
-			const script = "../goldens/design-reimplements-an-authority-clean/head/scripts/check-node.mjs";
-			cpSync(fileURLToPath(new URL(script, import.meta.url)), join(root, "scripts", "check-node.mjs"));
+			const scripts = "../goldens/design-reimplements-an-authority-clean/head/scripts";
+			cpSync(fileURLToPath(new URL(scripts, import.meta.url)), join(root, "scripts"), { recursive: true });
 			writeFileSync(join(root, "package.json"), JSON.stringify({ engines: { node: each.node } }));
 			const result = spawnSync(process.execPath, [join(root, "scripts", "check-node.mjs")], { encoding: "utf8" });
 			expect(result.status).toBe(each.status);

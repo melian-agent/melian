@@ -47,9 +47,20 @@
         {
           "name": "read_file",
           "arguments": {
-            "path": "scripts/check-node.mjs"
+            "path": "scripts/node-range.mjs"
           },
           "expectToolResult": "before it installs any dependency"
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "read_file",
+          "arguments": {
+            "path": "scripts/check-node.mjs"
+          },
+          "expectToolResult": "if (!supported(engines.node, process.version))"
         }
       ]
     },
