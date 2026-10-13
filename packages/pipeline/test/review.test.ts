@@ -2640,7 +2640,8 @@ describe("adjudication", () => {
 		// A static finding in a file the change leaves alone, whose folder's policy no lens reads.
 		writeFiles(repo, { "lib/melian.yaml": "resolution: [" });
 		const root = await harness.root(context);
-		const legacy = Finding.create({ ...staticFinding, file: "lib/legacy.ts", cause: "pre-existing" });
+		// A P2, since a pre-existing P0 or P1 is listed as important and never resolves below advisory.
+		const legacy = Finding.create({ ...staticFinding, file: "lib/legacy.ts", cause: "pre-existing", severity: "P2" });
 		await root.commit((tx) => upsertFinding(tx, root.id, legacy, revision()), context);
 		scriptConversations(fake, [
 			{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
@@ -2651,7 +2652,7 @@ describe("adjudication", () => {
 		expect((error as ReviewError).findings).toHaveLength(2);
 		expect(await readVerdict(harness, await rootId(), revision(), context)).toBeUndefined();
 		// A pre-existing finding never resolves above advisory, so only silent shows that the fixed policy decided.
-		writeFiles(repo, { "lib/melian.yaml": lines("resolution:", "  P0: silent") });
+		writeFiles(repo, { "lib/melian.yaml": lines("resolution:", "  P2: silent") });
 
 		const { verdict } = await reviewed({ policy: { kind: "worktree" } });
 
