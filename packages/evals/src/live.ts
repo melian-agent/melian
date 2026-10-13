@@ -55,7 +55,7 @@ if (process.env.MELIAN_EVAL_VERIFIER === "1") {
 		console.log(
 			`${golden.name}: ${verdictLabel(score.verdict, run.unjudged)}, ${score.passed ? "passed" : "failed"} (${score.kind})`,
 		);
-		for (const line of shownOutput(run.rendered)) console.log(line);
+		for (const line of shownOutput(run.rendered, process.env)) console.log(line);
 	}
 	console.log(`verifier corpus: ${scores.filter((score) => score.passed).length}/${scores.length} passed`);
 	process.exit(scores.every((score) => score.passed) ? 0 : 1);
@@ -116,7 +116,7 @@ for (const golden of goldens) {
 	console.log(
 		`${golden.name}: precision ${score.precision.toFixed(2)}, recall ${score.recall.toFixed(2)} (${score.reported} reported, ${score.expected} expected)`,
 	);
-	for (const line of shownOutput(run.rendered)) console.log(line);
+	for (const line of shownOutput(run.rendered, process.env)) console.log(line);
 }
 const corpus = scoreCorpus(scores);
 console.log(`corpus: precision ${corpus.precision.toFixed(2)}, recall ${corpus.recall.toFixed(2)}`);
