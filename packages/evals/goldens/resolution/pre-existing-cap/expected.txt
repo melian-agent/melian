@@ -1,0 +1,42 @@
+Verdict: findings, blocking
+
+Block: 1 finding
+
+services/payments/src/total.ts
+
+  P0  line 1  wrong-result  (introduced, new, block, confirmed)
+    Decided by: services/payments/melian.yaml: resolution.P0, the table
+    Verified: scripted/judge: The scripted verifier judged the claim.
+  wrong-result, as lens.correctness reports it.
+    What: Scripted.
+    Why here: Scripted.
+    Failure scenario: Scripted.
+    What to do: Scripted.
+
+Pre-existing, important: 2 findings
+  ae2fafb2cfdf7bd4  new
+  9319e79fa0649064  new
+
+docs/guide.md
+
+  P0  line 1  wrong-result  (pre-existing, new, advisory, confirmed)
+    Decided by: docs/melian.yaml: resolution.P0, the table
+    Verified: scripted/judge: The scripted verifier judged the claim.
+  wrong-result, as lens.correctness reports it.
+    What: Scripted.
+    Why here: Scripted.
+    Failure scenario: Scripted.
+    What to do: Scripted.
+
+services/payments/src/ledger.ts
+
+  P0  line 1  wrong-result  (pre-existing, new, acknowledge, confirmed)
+    Decided by: services/payments/melian.yaml: resolution.P0, the table; capped as pre-existing
+    Verified: scripted/judge: The scripted verifier judged the claim.
+  wrong-result, as lens.correctness reports it.
+    What: Scripted.
+    Why here: Scripted.
+    Failure scenario: Scripted.
+    What to do: Scripted.
+
+3 findings in 3 files.

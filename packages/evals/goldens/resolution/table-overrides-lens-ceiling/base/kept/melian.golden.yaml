@@ -1,0 +1,4 @@
+resolution:
+  P2: acknowledge
+  checks:
+    lens.cleanup: { ceiling: advisory }

@@ -1,0 +1,16 @@
+guardrails:
+  policy-change-review:
+    enabled: false
+  forbidden-patterns:
+    rules:
+      focused-test: { pattern: '\.only\(', message: A focused test skips the rest of the suite. }
+      todo: { pattern: 'TODO', message: Finish it before merging. }
+resolution:
+  checks:
+    static.biome:
+      rules:
+        biome/suspicious/noExplicitAny: { P2: advisory }
+    guardrails:
+      rules:
+        guardrail/forbidden-patterns/focused-test: { P2: block }
+        guardrail/forbidden-patterns/todo: { P2: advisory }

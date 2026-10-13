@@ -1,0 +1,37 @@
+{
+	"title": "The nearest table beats a root rule entry",
+	"findings": [
+		{
+			"check": "lens.trust-boundary",
+			"rule": "terminal-escape",
+			"severity": "P1",
+			"file": "services/payments/src/log.ts",
+			"verdict": "confirmed"
+		},
+		{
+			"check": "lens.trust-boundary",
+			"rule": "terminal-escape",
+			"severity": "P1",
+			"file": "docs/guide.md",
+			"verdict": "confirmed"
+		}
+	],
+	"expect": [
+		{
+			"file": "services/payments/src/log.ts",
+			"rule": "terminal-escape",
+			"decidedBy": "services/payments/melian.yaml",
+			"resolution": "block"
+		},
+		{
+			"file": "docs/guide.md",
+			"rule": "terminal-escape",
+			"decidedBy": "melian.yaml",
+			"resolution": "acknowledge"
+		}
+	],
+	"doctor": [
+		"services/payments/melian.yaml: resolution.P1 overrides melian.yaml's resolution.checks.lens.cleanup.ceiling for P1 lens.cleanup findings",
+		"services/payments/melian.yaml: resolution.P1 overrides melian.yaml's resolution.checks.lens.trust-boundary.rules.terminal-escape for P1 lens.trust-boundary terminal-escape findings"
+	]
+}

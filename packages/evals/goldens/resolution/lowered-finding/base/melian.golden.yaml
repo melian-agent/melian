@@ -1,0 +1,4 @@
+resolution:
+  P1: block
+  checks:
+    lens.correctness: { P2: advisory }

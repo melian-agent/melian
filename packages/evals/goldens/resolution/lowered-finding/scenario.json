@@ -1,0 +1,38 @@
+{
+	"title": "A finding the verifier lowered resolves under the lowered severity",
+	"findings": [
+		{
+			"check": "lens.correctness",
+			"rule": "unchecked-index",
+			"severity": "P1",
+			"file": "src/parse.ts",
+			"verdict": "confirmed",
+			"lowered": {
+				"to": "P2",
+				"reason": "The only caller returns early for a record without a comma."
+			}
+		},
+		{
+			"check": "lens.correctness",
+			"rule": "wrong-result",
+			"severity": "P1",
+			"file": "src/receipt.ts",
+			"verdict": "confirmed"
+		}
+	],
+	"expect": [
+		{
+			"file": "src/parse.ts",
+			"rule": "unchecked-index",
+			"decidedBy": "melian.yaml",
+			"resolution": "advisory"
+		},
+		{
+			"file": "src/receipt.ts",
+			"rule": "wrong-result",
+			"decidedBy": "melian.yaml",
+			"resolution": "block"
+		}
+	],
+	"doctor": []
+}

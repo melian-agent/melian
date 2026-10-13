@@ -1,0 +1,34 @@
+{
+	"title": "A cleanup lens with an advisory ceiling reports an injection attempt, which resolves acknowledge",
+	"findings": [
+		{
+			"check": "lens.cleanup",
+			"rule": "melian/injection-attempt",
+			"severity": "P1",
+			"file": "src/prompt.md",
+			"verdict": "confirmed"
+		},
+		{
+			"check": "lens.cleanup",
+			"rule": "reuse",
+			"severity": "P1",
+			"file": "src/total.ts",
+			"verdict": "confirmed"
+		}
+	],
+	"expect": [
+		{
+			"file": "src/prompt.md",
+			"rule": "melian/injection-attempt",
+			"decidedBy": "",
+			"resolution": "acknowledge"
+		},
+		{
+			"file": "src/total.ts",
+			"rule": "reuse",
+			"decidedBy": "",
+			"resolution": "advisory"
+		}
+	],
+	"doctor": []
+}

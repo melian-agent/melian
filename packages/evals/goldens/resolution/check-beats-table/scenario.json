@@ -1,0 +1,34 @@
+{
+	"title": "A check entry beats the file's table, within one file",
+	"findings": [
+		{
+			"check": "lens.cleanup",
+			"rule": "reuse",
+			"severity": "P2",
+			"file": "src/total.ts",
+			"verdict": "confirmed"
+		},
+		{
+			"check": "lens.correctness",
+			"rule": "wrong-result",
+			"severity": "P2",
+			"file": "src/receipt.ts",
+			"verdict": "confirmed"
+		}
+	],
+	"expect": [
+		{
+			"file": "src/total.ts",
+			"rule": "reuse",
+			"decidedBy": "melian.yaml",
+			"resolution": "advisory"
+		},
+		{
+			"file": "src/receipt.ts",
+			"rule": "wrong-result",
+			"decidedBy": "melian.yaml",
+			"resolution": "block"
+		}
+	],
+	"doctor": []
+}

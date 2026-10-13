@@ -140,10 +140,13 @@ function readJson<T>(file: string, schema: TSchema): T {
 	return value as T;
 }
 
-/** Loads every golden under `directory`, in name order. */
+/** The directory under {@link goldensDirectory} that holds the resolution goldens, which have a shape of their own. */
+export const resolutionGoldens = "resolution";
+
+/** Loads every golden under `directory`, in name order, leaving the resolution goldens to their own loader. */
 export function loadGoldens(directory: string = goldensDirectory): Golden[] {
 	return readdirSync(directory, { withFileTypes: true })
-		.filter((entry) => entry.isDirectory())
+		.filter((entry) => entry.isDirectory() && entry.name !== resolutionGoldens)
 		.map((entry) => entry.name)
 		.sort()
 		.map((name) => {
@@ -191,7 +194,7 @@ function git(repo: string, ...args: string[]): string {
 const inert = /\.golden(?=\.[^.]*$)/;
 
 // Copies a golden's tree into `repo`, writing each file stored under an inert name under its live one.
-function copyTree(tree: string, repo: string): void {
+export function copyTree(tree: string, repo: string): void {
 	for (const entry of readdirSync(tree, { recursive: true, withFileTypes: true })) {
 		if (!entry.isFile()) continue;
 		const target = join(repo, relative(tree, entry.parentPath), entry.name.replace(inert, ""));

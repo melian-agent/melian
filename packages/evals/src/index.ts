@@ -20,6 +20,15 @@ export {
 	selectGoldens,
 } from "./goldens.ts";
 export {
+	loadResolutionGoldens,
+	type ResolutionGolden,
+	type ResolutionRun,
+	type ResolutionScenario,
+	resolutionDirectory,
+	resolutionScenarioSchema,
+	runResolutionGolden,
+} from "./resolution.ts";
+export {
 	loadTriageGoldens,
 	runTriageGolden,
 	type StoredTriageResults,

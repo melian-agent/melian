@@ -1,0 +1,34 @@
+{
+	"title": "A ceiling caps a mapping in its file, and never raises one",
+	"findings": [
+		{
+			"check": "lens.cleanup",
+			"rule": "reuse",
+			"severity": "P1",
+			"file": "src/total.ts",
+			"verdict": "confirmed"
+		},
+		{
+			"check": "lens.cleanup",
+			"rule": "altitude",
+			"severity": "P3",
+			"file": "src/receipt.ts",
+			"verdict": "confirmed"
+		}
+	],
+	"expect": [
+		{
+			"file": "src/total.ts",
+			"rule": "reuse",
+			"decidedBy": "melian.yaml",
+			"resolution": "acknowledge"
+		},
+		{
+			"file": "src/receipt.ts",
+			"rule": "altitude",
+			"decidedBy": "melian.yaml",
+			"resolution": "advisory"
+		}
+	],
+	"doctor": []
+}

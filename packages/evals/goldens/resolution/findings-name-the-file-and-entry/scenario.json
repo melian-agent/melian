@@ -1,0 +1,70 @@
+{
+	"title": "melian findings names the file and entry that decided",
+	"findings": [
+		{
+			"check": "lens.cleanup",
+			"rule": "reuse",
+			"severity": "P1",
+			"file": "src/a.ts",
+			"verdict": "confirmed"
+		},
+		{
+			"check": "lens.cleanup",
+			"rule": "altitude",
+			"severity": "P2",
+			"file": "src/b.ts",
+			"verdict": "confirmed"
+		},
+		{
+			"check": "lens.correctness",
+			"rule": "wrong-result",
+			"severity": "P3",
+			"file": "src/c.ts",
+			"verdict": "confirmed"
+		},
+		{
+			"check": "lens.tidy",
+			"rule": "naming",
+			"severity": "P0",
+			"file": "src/d.ts",
+			"verdict": "confirmed"
+		},
+		{
+			"check": "lens.correctness",
+			"rule": "wrong-result",
+			"severity": "P0",
+			"file": "src/e.ts",
+			"verdict": "confirmed"
+		}
+	],
+	"expect": [
+		{
+			"file": "src/a.ts",
+			"decidedBy": "melian.yaml",
+			"resolution": "block"
+		},
+		{
+			"file": "src/b.ts",
+			"decidedBy": "melian.yaml",
+			"resolution": "acknowledge"
+		},
+		{
+			"file": "src/c.ts",
+			"decidedBy": "melian.yaml",
+			"resolution": "advisory"
+		},
+		{
+			"file": "src/d.ts",
+			"decidedBy": "",
+			"resolution": "advisory"
+		},
+		{
+			"file": "src/e.ts",
+			"decidedBy": "",
+			"resolution": "block"
+		}
+	],
+	"doctor": [
+		"melian.yaml: resolution.P3 overrides lens tidy's declared ceiling for P3 lens.tidy findings"
+	]
+}

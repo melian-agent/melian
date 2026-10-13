@@ -1,0 +1,29 @@
+Verdict: findings, blocking
+
+Block: 1 finding
+
+services/payments/src/log.ts
+
+  P1  line 1  terminal-escape  (introduced, new, block, confirmed)
+    Decided by: services/payments/melian.yaml: resolution.P1, the table
+    Verified: scripted/judge: The scripted verifier judged the claim.
+  terminal-escape, as lens.trust-boundary reports it.
+    What: Scripted.
+    Why here: Scripted.
+    Failure scenario: Scripted.
+    What to do: Scripted.
+
+Acknowledge: 1 finding
+
+docs/guide.md
+
+  P1  line 1  terminal-escape  (introduced, new, acknowledge, confirmed)
+    Decided by: melian.yaml: resolution.checks.lens.trust-boundary.rules.terminal-escape.P1, the rule entry
+    Verified: scripted/judge: The scripted verifier judged the claim.
+  terminal-escape, as lens.trust-boundary reports it.
+    What: Scripted.
+    Why here: Scripted.
+    Failure scenario: Scripted.
+    What to do: Scripted.
+
+2 findings in 2 files.

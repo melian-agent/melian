@@ -1,0 +1,34 @@
+{
+	"title": "A rule entry beats its check's entry, within one file",
+	"findings": [
+		{
+			"check": "lens.trust-boundary",
+			"rule": "terminal-escape",
+			"severity": "P1",
+			"file": "src/log.ts",
+			"verdict": "confirmed"
+		},
+		{
+			"check": "lens.trust-boundary",
+			"rule": "fail-open",
+			"severity": "P1",
+			"file": "src/auth.ts",
+			"verdict": "confirmed"
+		}
+	],
+	"expect": [
+		{
+			"file": "src/log.ts",
+			"rule": "terminal-escape",
+			"decidedBy": "melian.yaml",
+			"resolution": "acknowledge"
+		},
+		{
+			"file": "src/auth.ts",
+			"rule": "fail-open",
+			"decidedBy": "melian.yaml",
+			"resolution": "block"
+		}
+	],
+	"doctor": []
+}
