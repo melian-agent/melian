@@ -1230,7 +1230,12 @@ export class Finding {
 
 	// The resolution after the caps and before the floor of "Pre-existing, important".
 	#capped(config: Pick<MelianConfig, "resolution">): Resolution {
-		const configured = config.resolution[this.properties.severity];
+		// The fence again, where the table is read: a lowering never takes a finding into silence, whatever the table
+		// said when the verifier asked. The lens's severity then stands.
+		const { severity } = this.properties;
+		const silenced = config.resolution[severity] === "silent";
+		// An unlowered finding's original severity is its own, so this changes only a lowered one.
+		const configured = config.resolution[silenced ? this.original() : severity];
 		const resolution =
 			this.causeRank() < 2 || resolutionOrder.indexOf(configured) > resolutionOrder.indexOf("advisory")
 				? configured

@@ -34,7 +34,7 @@ The verifier may lower a finding's severity by one step, and never raise it. A m
 - A lowering is always shown with the original severity and the verifier's reason: in the terminal, the ledger, and the JSON. An author reads "P3, lowered from P2" and why.
 - The lens's severity stays stored. Adjudication resolves the finding at the lowered one.
 
-As built: a lowering carries its own reason, beside the verdict's, because the reason a claim is true is not the reason it is narrow. A refused lowering still records the verdict, and `report_verdict` says why in its result.
+As built: the fence against silence is held twice. `report_verdict` refuses the lowering under the table the review fixed when it built the candidate. Adjudication reads the table again, and resolves a lowered finding at the lens's severity when the table then in force silences the lowered one. A policy file edited between the two cannot lower a finding into silence. A lowering carries its own reason, beside the verdict's, because the reason a claim is true is not the reason it is narrow. A refused lowering still records the verdict, and `report_verdict` says why in its result.
 
 ## What survives: the stored record
 
