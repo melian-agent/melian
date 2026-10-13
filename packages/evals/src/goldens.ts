@@ -22,6 +22,7 @@ import {
 } from "@melian-agent/core";
 import {
 	backgroundContext,
+	configsFor,
 	createMemoryStorage,
 	openReviewHarness,
 	type ReviewModels,
@@ -270,16 +271,17 @@ function routeEveryTier(config: MelianConfig, model: string, override: boolean):
 
 // A golden that expects a `guardrail/` finding also runs the guardrails, under the policy it commits. The others do not:
 // the lenses are what they measure, and the default guardrails would add notices on every fixture's package.json.
+// Each resolves as adjudication resolves it: under its own path's layers, and a notice under what judged it.
 async function guardrailFindings(
 	golden: Golden,
 	repoRoot: string,
 	changeset: Changeset,
 	source: RepositorySource,
-	config: MelianConfig,
 ): Promise<Finding[]> {
 	if (!golden.expected.comments.some((comment) => comment.rule.startsWith("guardrail/"))) return [];
 	const { findings } = await evaluateGuardrails({ repoRoot, revision: changeset.revision, source });
-	return findings.map((finding) => finding.resolved(config));
+	const policyFor = await configsFor(repoRoot, source, findings);
+	return findings.map((finding) => finding.resolved(policyFor(finding.properties.path, finding.ruleId)));
 }
 
 /**
@@ -319,7 +321,7 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 			const reviewed = await reviewChangeset(review);
 			const findings = [
 				...Object.values(reviewed.verdict.findings).flat(),
-				...(await guardrailFindings(golden, repo, changeset, source, loaded)),
+				...(await guardrailFindings(golden, repo, changeset, source)),
 			];
 			const rendered = FindingsLog.of(findings).render();
 			return { golden, findings, rendered, toolMismatches };

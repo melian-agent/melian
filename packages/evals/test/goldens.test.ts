@@ -217,6 +217,31 @@ describe("a golden's standards and policy", () => {
 		}
 	});
 
+	it("resolves a guardrail golden's finding through its policy's own keys, as adjudication does", async () => {
+		const directory = mkdtempSync(join(tmpdir(), "melian-keyed-guardrail-golden-"));
+		try {
+			const golden = goldens.find((each) => each.name === "guardrails-overlong-sentence")!;
+			const plain = await runGolden(golden, { kind: "scripted" });
+			expect(plain.findings.map((finding) => finding.properties.resolution)).toEqual(["advisory"]);
+			const copy = join(directory, golden.name);
+			cpSync(golden.directory, copy, { recursive: true });
+			const keyed = [
+				readFileSync(join(copy, "melian.golden.yaml"), "utf8"),
+				"resolution:",
+				"  checks:",
+				"    guardrails:",
+				"      rules:",
+				"        guardrail/forbidden-patterns/overlong-sentence: { P3: block }",
+				"",
+			].join("\n");
+			writeFileSync(join(copy, "melian.golden.yaml"), keyed);
+			const run = await runGolden({ ...golden, directory: copy }, { kind: "scripted" });
+			expect(run.findings.map((finding) => finding.properties.resolution)).toEqual(["block"]);
+		} finally {
+			rmSync(directory, { recursive: true, force: true });
+		}
+	}, 60_000);
+
 	it("are stored under inert names, so the repository the corpus sits in never reads them as its own", () => {
 		const live = new Set(["AGENTS.md", "CLAUDE.md", "melian.yaml", "melian.local.yaml", "LENS.md"]);
 		const entries = readdirSync(goldensDirectory, { recursive: true, withFileTypes: true });
