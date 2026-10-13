@@ -178,89 +178,26 @@ describe("Sandbox.environment", () => {
 
 describe("Node runtime grants", () => {
 	const home = "/home/reviewer";
-	const versioned = `${home}/.nvm/versions/node/v24.18.0`;
-	const backends = ["seatbelt", "bubblewrap"] as const;
-	for (const backend of backends) {
-		it.each([
-			[versioned, true],
-			[home, false],
-			["/home", false],
-			[`${home}/.local`, false],
-			["/usr/local", false],
-			["/usr", false],
-			["/", false],
-		] as const)(`grants only the executable and owned Node directories at %s (${backend})`, (prefix, owned) => {
-			vi.mocked(homedir).mockReturnValue(home);
-			const directory = statSync(base);
-			vi.mocked(statSync).mockReturnValue(directory);
-			vi.mocked(realpathSync).mockImplementation((path) => String(path));
-			const node = join(prefix, "bin/node");
-			const sandbox = Object.assign(Object.create(Sandbox.prototype) as Sandbox, { backend });
-			const where = { worktree: "/work/tree", scratch: "/work", installs: [], node };
-			const output = backend === "seatbelt" ? sandbox.profile(where)! : sandbox.command("true", where, "/unused");
-			const grant = (path: string) =>
-				backend === "seatbelt" ? `(subpath "${path}")` : `--ro-bind '${path}' '${path}'`;
-			expect(output).not.toContain(grant(prefix));
-			expect(output).toContain(backend === "seatbelt" ? `(literal "${node}")` : grant(node));
-			for (const suffix of ["lib/node_modules", "include/node"]) {
-				expect(output.includes(grant(join(prefix, suffix)))).toBe(owned);
-			}
-			if (backend === "bubblewrap") expect(output).not.toContain("--ro-bind '/usr' '/usr'");
-		});
-
-		it.each(["not-bin/node", "bin/other"])(
-			`requires bin/node before granting directories (%s, ${backend})`,
-			(suffix) => {
-				vi.mocked(homedir).mockReturnValue(home);
-				vi.mocked(statSync).mockReturnValue(statSync(base));
-				const node = join(versioned, suffix);
+	// Wherever Node sits, the grant is its one file: nothing of its prefix, such as globally installed packages.
+	for (const backend of ["seatbelt", "bubblewrap"] as const) {
+		it.each([`${home}/.nvm/versions/node/v24.18.0`, home, `${home}/.local`, "/usr/local", "/opt/node"])(
+			`grants only the executable at %s (${backend})`,
+			(prefix) => {
+				const node = join(prefix, "bin/node");
 				const sandbox = Object.assign(Object.create(Sandbox.prototype) as Sandbox, { backend });
 				const where = { worktree: "/work/tree", scratch: "/work", installs: [], node };
 				const output = backend === "seatbelt" ? sandbox.profile(where)! : sandbox.command("true", where, "/unused");
-				expect(output).not.toContain(join(versioned, "lib/node_modules"));
-				expect(output).not.toContain(join(versioned, "include/node"));
-			},
-		);
-
-		it.each(["lib/node_modules", "include/node"])(
-			`grants each existing Node directory independently (%s, ${backend})`,
-			(suffix) => {
-				vi.mocked(homedir).mockReturnValue(home);
-				const directory = statSync(base);
-				const permitted = join(versioned, suffix);
-				vi.mocked(statSync).mockImplementation((path) =>
-					path === versioned || path === permitted ? directory : undefined,
-				);
-				vi.mocked(realpathSync).mockImplementation((path) => String(path));
-				const sandbox = Object.assign(Object.create(Sandbox.prototype) as Sandbox, { backend });
-				const where = { worktree: "/work/tree", scratch: "/work", installs: [], node: join(versioned, "bin/node") };
-				const output = backend === "seatbelt" ? sandbox.profile(where)! : sandbox.command("true", where, "/unused");
-				expect(output).toContain(permitted);
-				const absent = suffix === "lib/node_modules" ? "include/node" : "lib/node_modules";
-				expect(output).not.toContain(join(versioned, absent));
-			},
-		);
-
-		it.each(["absent prefix", "file prefix", "absent directory", "file directory", "linked directory"])(
-			`refuses optional Node grants for %s (${backend})`,
-			(layout) => {
-				vi.mocked(homedir).mockReturnValue(home);
-				const directory = statSync(base);
-				const file = statSync(join(base, "home/auth.json"));
-				vi.mocked(statSync).mockImplementation((path) => {
-					if (path === versioned)
-						return layout === "absent prefix" ? undefined : layout === "file prefix" ? file : directory;
-					return layout === "absent directory" ? undefined : layout === "file directory" ? file : directory;
-				});
-				vi.mocked(realpathSync).mockImplementation((path) =>
-					layout === "linked directory" && String(path).startsWith(versioned) ? "/host/private" : String(path),
-				);
-				const sandbox = Object.assign(Object.create(Sandbox.prototype) as Sandbox, { backend });
-				const where = { worktree: "/work/tree", scratch: "/work", installs: [], node: join(versioned, "bin/node") };
-				const output = backend === "seatbelt" ? sandbox.profile(where)! : sandbox.command("true", where, "/unused");
-				expect(output).not.toContain(join(versioned, "lib/node_modules"));
-				expect(output).not.toContain(join(versioned, "include/node"));
-				expect(output).not.toContain("/host/private");
+				expect(output).toContain(backend === "seatbelt" ? `(literal "${node}")` : `--ro-bind '${node}' '${node}'`);
+				for (const directory of [
+					prefix,
+					join(prefix, "bin"),
+					join(prefix, "lib/node_modules"),
+					join(prefix, "include/node"),
+				]) {
+					expect(output).not.toContain(`(subpath "${directory}")`);
+					expect(output).not.toContain(`--ro-bind '${directory}' `);
+				}
+				if (backend === "bubblewrap") expect(output).not.toContain("--ro-bind '/usr' '/usr'");
 			},
 		);
 	}
@@ -370,26 +307,21 @@ describe("Sandbox.detect", () => {
 		["linux", "bubblewrap", "bwrap --unshare-all --ro-bind / / true"],
 	] as const) {
 		it(`starts ${backend} through the run's environment and requires it to succeed`, async () => {
-			vi.stubEnv("PATH", "/opt/tools:/usr/bin");
+			vi.stubEnv("PATH", "/opt/tools:/usr/local/bin");
 			vi.stubEnv("MELIAN_TEST_SECRET", "hunter2");
 			const working = answering(0);
 			expect((await Sandbox.detect(working.env, context, platform))?.backend).toBe(backend);
 			expect(working.exec).toHaveBeenCalledExactlyOnceWith(
 				trial,
-				{ inheritEnv: false, env: { PATH: "/opt/tools:/usr/bin" }, timeout: 30 },
+				// The PATH a sandboxed command will have, not the process's: a backend found only on the reviewer's own PATH
+				// would be detected and then not found.
+				{ inheritEnv: false, env: { PATH: `${posix.dirname(nodeExecutable())}:/usr/bin:/bin` }, timeout: 30 },
 				context,
 			);
 			expect(await Sandbox.detect(answering(1).env, context, platform)).toBeUndefined();
 			expect(await Sandbox.detect(answering(undefined).env, context, platform)).toBeUndefined();
 		});
 	}
-
-	it("falls back to the system PATH when the process has none", async () => {
-		vi.stubEnv("PATH", undefined);
-		const { env, exec } = answering(0);
-		await Sandbox.detect(env, context, "linux");
-		expect(exec.mock.calls[0]![1]?.env).toEqual({ PATH: "/usr/bin:/bin" });
-	});
 
 	it.skipIf(process.platform === "darwin")("finds no seatbelt where sandbox-exec is absent", async () => {
 		expect(await detect("darwin")).toBeUndefined();
@@ -414,7 +346,7 @@ it.each(["seatbelt", "bubblewrap"] as const)(
 		expect(at).toBe(context);
 		for (const failing of [answering(1), answering(undefined)])
 			expect(await sandbox.runtimeFailure(where, failing.env, context)).toBe(
-				`Node runtime ${where.node} could not start within ${backend}; the runtime grant was not widened`,
+				`Node could not start within ${backend}; the runtime grant was not widened`,
 			);
 	},
 );
@@ -658,6 +590,7 @@ describe("sandbox policy on a host that cannot start nested sandboxes", () => {
 			"(deny default)",
 			"(allow process-fork)",
 			`(allow process-exec ${readable})`,
+			'(deny process-exec (literal "/bin/launchctl"))',
 			`(allow file-map-executable ${readable})`,
 			"(allow signal (target same-sandbox))",
 			'(allow sysctl-read (sysctl-name-prefix "hw.") (sysctl-name "kern.ostype") (sysctl-name "kern.osrelease") (sysctl-name "kern.version") (sysctl-name "kern.hostname") (sysctl-name "kern.argmax") (sysctl-name "kern.boottime"))',
@@ -689,9 +622,12 @@ describe("sandbox policy on a host that cannot start nested sandboxes", () => {
 			'(literal "/opt/node/bin/node")',
 			'(literal "/opt/node/bin/node") (literal "/opt/tools/bin/lint")',
 		);
-		expect(tool.slice(3, 5)).toEqual([`(allow process-exec ${withTool})`, `(allow file-map-executable ${withTool})`]);
-		expect(tool[9]).toBe(`(allow file-read* ${withTool})`);
-		expect(tool[10]).toBe(
+		expect([tool[3], tool[5]]).toEqual([
+			`(allow process-exec ${withTool})`,
+			`(allow file-map-executable ${withTool})`,
+		]);
+		expect(tool[10]).toBe(`(allow file-read* ${withTool})`);
+		expect(tool[11]).toBe(
 			'(allow file-read-metadata (literal "/") (literal "/etc") (literal "/var") (literal "/opt/node/bin") (literal "/opt/node") (literal "/opt") (literal "/opt/tools/bin") (literal "/opt/tools") (literal "/checkout"))',
 		);
 		expect(tool.join("\n")).not.toContain('(subpath "/opt/tools');
@@ -947,6 +883,7 @@ const start = (file, args = []) => { const r = spawnSync(file, args); if (r.erro
 attempt("run a system tool", () => start("/usr/bin/true"));
 attempt("run a program outside the readable set", () => start(outside));
 attempt("run a program in sbin", () => start("/sbin/ifconfig", ["lo0"]));
+attempt("ask launchd through its client", () => start("/bin/launchctl", ["print", "user/" + process.getuid()]));
 attempt("signal a process outside", () => process.kill(Number(host), 0));
 attempt("stop its own child", () => start("/bin/sh", ["-c", "/bin/sleep 30 & kill $!"]));
 for (const path of ["/Library/Preferences", "/Library/Apple", "/private/etc", "/private/var/select", "/Users", "/dev"])
@@ -965,6 +902,7 @@ console.log(JSON.stringify(result));`,
 			"run a system tool": "ok",
 			"run a program outside the readable set": "EPERM",
 			"run a program in sbin": "EPERM",
+			"ask launchd through its client": "EPERM",
 			"signal a process outside": "EPERM",
 			"stop its own child": "ok",
 			"list /Library/Preferences": "EPERM",
@@ -1013,6 +951,8 @@ it.skipIf(!seatbeltAvailable || compiler === "")(
 				path: 1,
 				ownPath: 1,
 				hardware: 1,
+				shm: 1,
+				semaphore: 1,
 			});
 			expect(outside.pids).toBeGreaterThan(10);
 			const { stdout } = await run(
@@ -1029,6 +969,8 @@ it.skipIf(!seatbeltAvailable || compiler === "")(
 				{ env: { ...sandbox.environment(), HOME: join(where.scratch, "home"), TMPDIR: where.scratch } },
 			);
 			expect(JSON.parse(stdout)).toEqual({
+				shm: 0,
+				semaphore: 0,
 				arguments: 0,
 				marker: 0,
 				table: 0,
