@@ -592,6 +592,8 @@ describe("static.enola", { timeout: 60_000 }, () => {
 		if (result.status !== "ran") throw new Error("Enola failed");
 		expect(result.log.runs[0].results).toEqual([]);
 		expect(result.notes).toContain("Enola check exited 1 with no unsuppressed SARIF results; treated as clean.");
+		// Enola runs on the host, and its record says so.
+		expect(result.confinement).toEqual({ confined: false, reason: "not yet confined" });
 	});
 	it("carries the worktrees the run left alone into Enola's notes", async () => {
 		const base = commit(repo, { "src/a.ts": "export const a = 1;\n" });

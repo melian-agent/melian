@@ -24,6 +24,7 @@ Choice: a grant stays only when a named program fails without it. Each rule was 
 | read the developer tools directory | The real git. |
 | read the Node executable as a literal, and `lib/node_modules` and `include/node` under an owned prefix | Node; npm, npx, and corepack; node-gyp. [The runtime-grant decision](2026-10-12-sandbox-node-runtime-grants.md) sets the rule. |
 | read the caller's installs | The tool the caller runs and its dependencies. |
+| read, start, and map a standalone tool, as a literal | A tool that lives in no install, such as a `.bin` entry linked to a program elsewhere. It gets its own file and nothing beside it. |
 | read and write scratch | The run's own files. |
 | metadata of `/`, `/etc`, `/var`, and each directory above a granted path | Path lookup stats each directory on the way. Metadata shows a directory exists, never its contents. |
 | read `/dev/null` and `/dev/urandom`; write `/dev/null` | Shell redirects; programs that seed from the device, such as Python. |
@@ -40,6 +41,8 @@ Removed, because no command needed them:
 dyld opens `/dev/dtracehelper` to register trace probes and carries on without it. This replaces the device list in [the devices decision](2026-10-12-sandbox-devices-are-literals.md), which is corrected to match.
 
 One test pins the whole profile, rule for rule, so a grant added anywhere fails it. A second runs inside the real sandbox and checks that a program outside the readable paths does not start, that `ps` and a signal to a process outside fail, and that each removed path and device is refused.
+
+A standalone tool gets its file and nothing beside it. Before this grant such a tool could not start inside the sandbox and the check read `toolMissing`, where the build before ran it. The tool may start and then fail because it needs a library or a script beside itself. That is a recorded `toolFailed` carrying the tool's own message, never `toolMissing`. The tool is there, and what it lacks is a grant somebody has to argue for. bubblewrap binds the same single file.
 
 What this gives up, and what stays open:
 
@@ -78,6 +81,7 @@ bubblewrap starts from an empty root, so its list is what exists at all, not wha
 | `--dev /dev` | The few devices bubblewrap makes itself: `null`, `zero`, `full`, `random`, `urandom`, `tty`, and a private `pts` and `shm`. |
 | `--tmpfs /tmp` | An empty `/tmp` for scratch to mount under; the host's is not visible. |
 | the Node executable, and its owned `lib/node_modules` and `include/node` | As under seatbelt. |
+| a standalone tool, as its one file | As under seatbelt. |
 | the caller's installs, read-only | The tool and its dependencies. |
 | scratch, read and write | The run's own files. |
 

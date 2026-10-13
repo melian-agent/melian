@@ -21,6 +21,7 @@ Choice: where the host offers a sandbox, Biome, tsc, and their `--version` probe
 - The profile is built in memory and passed inline, never read from a file in scratch.
 - The tool reads the worktree, the installs the worktree links to, and its own install: the outermost `node_modules` above the tool's resolved path, which is Melian's when the checkout has no copy.
 - It writes to scratch only, with `HOME` and `TMPDIR` there, and a `PATH` of Node's directory and the system's.
+- A tool that lives in no install is granted as its one file, readable and startable, and nothing beside it.
 - It gets no network: `SandboxPaths.loopback` is left absent.
 - git, `ln`, and `rm` stay on the host. They are Melian's own commands on paths Melian chose, and git needs the repository's git directory, which the sandbox does not grant.
 
@@ -33,7 +34,9 @@ The fallback is visible. A note in a stored record was not enough: no renderer s
 - The GitHub review body has a section, "Checks that ran outside a sandbox:", ahead of the checks that did not run.
 - The ledger's run details name each such check.
 
-A check is unconfined when either its head run or its base run was. A record with no field is a check with no tool to confine, Enola, which is not confined yet, or a record from before the field. The checks document moves to version 4, the verdict document to 7, and the published document to 8. An older build refuses the newer documents, which is right: it would otherwise republish a verdict and drop the warning. `test/fixtures/stored-v6` holds the three documents as the previous version wrote them, and a test reopens them.
+A check is unconfined when either its head run or its base run was. A record with no field is a check with no tool to confine, or a record from before the field.
+
+Enola's record says `unconfined`, with the reason "not yet confined", like any other tool that ran outside the sandbox. A record that said nothing would imply a confinement that did not happen. The cost is that every review whose tier runs Enola prints a warning, on every host, until Enola is confined. It is one line per review: a check has one record whatever its head and base runs did, and each renderer prints one line per record. The checks document moves to version 4, the verdict document to 7, and the published document to 8. An older build refuses the newer documents, which is right: it would otherwise republish a verdict and drop the warning. `test/fixtures/stored-v6` holds the three documents as the previous version wrote them, and a test reopens them.
 
 A policy key that makes an unconfined run skip or fail is deferred to the per-rule resolution step. That step is where a repository will say, rule by rule and path by path, what blocks; a second, separate switch here would be a policy surface to review and migrate twice. Until then the default stays "run, with a visible warning", because these tools do not execute head code: refusing to lint on a host with no sandbox would cost every such review two checks to guard against a parser bug nobody has found.
 

@@ -47,7 +47,7 @@ export type StaticRun =
 			readonly notes: readonly string[];
 			readonly baseLog?: ToolLog;
 			readonly snapshots?: EnolaSnapshot[];
-			/** Whether Biome or tsc ran inside the host's sandbox. Enola is never confined yet and says nothing. */
+			/** Whether the tool ran inside the host's sandbox. Enola is not confined yet and always says so. */
 			readonly confinement?: Confinement;
 	  }
 	| { readonly status: "skipped"; readonly reason: string };
@@ -116,7 +116,7 @@ export class Run {
 	mutationScratch?: MutationScratch;
 	#confinement?: { readonly sandbox: Sandbox; readonly paths: SandboxPaths; readonly profile: string | undefined };
 	#outputs?: MutationScratch;
-	/** What the run met on the way that its record should say, such as a worktree it would not remove. */
+	// What the run met on the way that its record should say, such as a worktree it would not remove.
 	readonly notes: string[] = [];
 	readonly input: StaticRunInput;
 	readonly context: Context;
@@ -170,10 +170,15 @@ export class Run {
 	// Puts every later `tool` command inside the host's sandbox: no network, the reviewer's files unreadable, and writes
 	// in scratch only. Returns a note when it cannot, and the tool then runs as it always has. That is safe to do because
 	// Biome and tsc read the revision and never run it; the sandbox is there for a tool a crafted file subverts.
-	async confine(root: string, scratch: string, installs: readonly string[]): Promise<Confinement> {
+	async confine(
+		root: string,
+		scratch: string,
+		installs: readonly string[],
+		executables: readonly string[],
+	): Promise<Confinement> {
 		const sandbox = await Sandbox.detect(this.input.env, this.context);
 		if (sandbox === undefined) return { confined: false, reason: "this host offers no sandbox" };
-		const paths = { worktree: root, scratch, installs, node: nodeExecutable() };
+		const paths = { worktree: root, scratch, installs, node: nodeExecutable(), executables };
 		const failure = await sandbox.runtimeFailure(paths, this.input.env, this.context);
 		if (failure !== undefined) return { confined: false, reason: failure };
 		this.#confinement = { sandbox, paths, profile: sandbox.profile(paths) };
@@ -367,7 +372,11 @@ function trackedModules(files: readonly string[]): string[] {
 
 async function versionOf(run: Run, binary: string): Promise<string> {
 	const { code, output } = await run.tool(`${quote(binary)} --version`);
-	if (code !== 0) throw run.fail("toolMissing", `${binary} --version failed with exit code ${code}: ${output}`);
+	// The shell's own codes for a program it could not find or start. Any other failure is the tool's, with its message:
+	// a tool that started and then lacked something beside itself is broken, not absent.
+	if (code === 126 || code === 127)
+		throw run.fail("toolMissing", `${binary} --version failed with exit code ${code}: ${output}`);
+	if (code !== 0) throw run.fail("toolFailed", `${binary} --version failed with exit code ${code}: ${output}`);
 	return /\d+\.\d+\.\d+[\w.+-]*/.exec(output)?.[0] ?? "unknown";
 }
 
@@ -533,7 +542,15 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 		if (tool === "enola") {
 			const tools = input.tools ?? (await ToolProvisioning.open(repoRoot));
 			const checked = await (await EnolaRun.open(run, root, scratch, tools)).check();
-			return checked.status === "ran" ? { ...checked, notes: [...run.notes, ...checked.notes] } : checked;
+			// Enola runs on the host. Its record says so like any other tool's, so that no record implies a confinement
+			// that did not happen.
+			return checked.status === "ran"
+				? {
+						...checked,
+						notes: [...run.notes, ...checked.notes],
+						confinement: { confined: false, reason: "not yet confined" },
+					}
+				: checked;
 		}
 		const files = await trackedFiles(run, root, posix.join(scratch, "files"));
 		const notes: string[] = [];
@@ -560,7 +577,9 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 		const segments = binary.split("/");
 		const own = segments.slice(0, segments.indexOf("node_modules") + 1).join("/");
 		if (own !== "" && !installs.includes(own)) installs.push(own);
-		const confinement = await run.confine(root, scratch, installs);
+		// A tool in no install at all, such as a `.bin` entry linked to a standalone program, is granted as that one
+		// file: readable and startable, with nothing beside it.
+		const confinement = await run.confine(root, scratch, installs, own === "" ? [binary] : []);
 		if (!confinement.confined) notes.push(`${tool} ${describeUnconfined(confinement.reason)}.`);
 		const version = await versionOf(run, binary);
 		const log =
@@ -578,10 +597,8 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 const lockReason = `melian-static pid ${process.pid}`;
 const scratchPrefix = "melian-static-";
 
-/**
- * The directory prefix for scratch that only confined cleanup may remove, because head code ran in it. Older builds
- * remove a `melian-static-*` tree on the host, and skip every other name, so such scratch takes this prefix.
- */
+// The directory prefix for scratch that only confined cleanup may remove, because head code ran in it. Older builds
+// remove a `melian-static-*` tree on the host, and skip every other name, so such scratch takes this prefix.
 export const confinedScratchPrefix = "melian-confined-";
 
 // Cleanup runs even when the caller cancelled, so it never takes the caller's context: a cancelled context makes every

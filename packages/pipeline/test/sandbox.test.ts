@@ -665,6 +665,25 @@ describe("sandbox policy on a host that cannot start nested sandboxes", () => {
 			'(allow file-read* (literal "/private/etc/hosts"))',
 			"",
 		]);
+		// A standalone program is granted as its own file in each rule that names the readable paths, with its parents'
+		// metadata, and its directory is not.
+		const tool = seatbelt.profile({ ...where, executables: ["/opt/tools/bin/lint"] })!.split("\n");
+		const withTool = readable.replace(
+			'(literal "/opt/node/bin/node")',
+			'(literal "/opt/node/bin/node") (literal "/opt/tools/bin/lint")',
+		);
+		expect(tool.slice(3, 5)).toEqual([`(allow process-exec ${withTool})`, `(allow file-map-executable ${withTool})`]);
+		expect(tool[7]).toBe(`(allow file-read* ${withTool})`);
+		expect(tool[8]).toBe(
+			'(allow file-read-metadata (literal "/") (literal "/etc") (literal "/var") (literal "/opt/node/bin") (literal "/opt/node") (literal "/opt") (literal "/opt/tools/bin") (literal "/opt/tools") (literal "/checkout"))',
+		);
+		expect(tool.join("\n")).not.toContain('(subpath "/opt/tools');
+		const bound = bubblewrap.command("true", { ...where, executables: ["/opt/tools/bin/lint"] }, "/unused");
+		expect(bound).toContain(
+			"--ro-bind '/opt/node/bin/node' '/opt/node/bin/node' --ro-bind '/opt/tools/bin/lint' '/opt/tools/bin/lint'",
+		);
+		expect(bound).not.toContain("'/opt/tools/bin' ");
+		expect(bubblewrap.command("true", where, "/unused")).not.toContain("/opt/tools");
 		expect(bubblewrap.profile(where)).toBeUndefined();
 	});
 

@@ -17,6 +17,11 @@ export interface SandboxPaths {
 	/** The canonical Node executable, readable as a literal path. */
 	readonly node: string;
 	/**
+	 * Single programs the command may read and start, each by its canonical path: a tool that lives in no install. The
+	 * grant is the file and nothing beside it.
+	 */
+	readonly executables?: readonly string[];
+	/**
 	 * Whether the command may listen on and connect to loopback addresses; absent means no network at all. On macOS
 	 * loopback is the host's own, so a command given it can reach every service that listens there. bubblewrap's private
 	 * network namespace has a loopback of its own with nothing on it, whatever this says. On both, the hosts file is
@@ -188,7 +193,9 @@ export class Sandbox {
 		const runtime = nodeDirectories(paths.node);
 		const readable = [
 			'(literal "/")',
-			...[...systemFiles, paths.node].map((path) => `(literal ${profileString(path)})`),
+			...[...systemFiles, paths.node, ...(paths.executables ?? [])].map(
+				(path) => `(literal ${profileString(path)})`,
+			),
 			...[
 				...systemReads,
 				...(developer === undefined ? [] : [developer]),
@@ -197,9 +204,8 @@ export class Sandbox {
 				...paths.installs,
 			].map((path) => `(subpath ${profileString(path)})`),
 		].join(" ");
-		const parents = [...new Set([paths.node, ...runtime, ...writable, ...paths.installs].flatMap(ancestors))].map(
-			(path) => `(literal ${profileString(path)})`,
-		);
+		const granted = [paths.node, ...(paths.executables ?? []), ...runtime, ...writable, ...paths.installs];
+		const parents = [...new Set(granted.flatMap(ancestors))].map((path) => `(literal ${profileString(path)})`);
 		return [
 			"(version 1)",
 			"(deny default)",
@@ -264,7 +270,7 @@ export class Sandbox {
 			// A process table of the namespace alone, the few devices bubblewrap makes, and an empty /tmp for scratch to
 			// mount under.
 			"--proc /proc --dev /dev --tmpfs /tmp",
-			bind("--ro-bind", paths.node),
+			...[paths.node, ...(paths.executables ?? [])].map((path) => bind("--ro-bind", path)),
 			...nodeDirectories(paths.node).map((path) => bind("--ro-bind", path)),
 			...paths.installs.map((path) => bind("--ro-bind", path)),
 			bind("--bind", paths.scratch),
