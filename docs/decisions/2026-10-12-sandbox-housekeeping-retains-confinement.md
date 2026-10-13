@@ -1,10 +1,10 @@
 # Sandbox housekeeping retains confinement
 
-Supersedes: [the sandbox decision](2026-10-08-head-code-runs-in-a-sandbox.md).
+Supersedes: none. [The sandbox decision](2026-10-08-head-code-runs-in-a-sandbox.md) stands, and this adds to it.
 
 Problem: head code can leave a symlink or replace a scratch directory while housekeeping runs. A host read or recursive deletion could then follow it outside the run.
 
-Choice: every check that executes head code runs in a sandbox. macOS uses seatbelt; Linux uses bubblewrap or equivalent namespaces. A host with neither skips with leave. Writer trust remains a second control.
+Choice: the sandbox decision's rule is unchanged. Every check that executes head code runs in a sandbox; a host with neither backend skips it with leave; writer trust remains a second control.
 
 Scratch housekeeping stays confined after head code ends. The host retains its policy in memory and refuses symlink components. Log, report and staged-cache reads require regular files and atomic no-follow opens. A refused path is recorded without reading its target into an error.
 
@@ -12,4 +12,4 @@ Cleanup removes each tree under retained confinement, then scratch, then its own
 
 Host git never recursively deletes a head-written tree. A surviving process could recreate a deleted path before unregistering it. The host removes only its own entries in the trusted repository’s registration metadata, each matched by the tree it names; it never prunes.
 
-[Pull request #98](https://github.com/melian-agent/melian/pull/98) records these housekeeping controls without rewriting the earlier decision.
+[Pull request #98](https://github.com/melian-agent/melian/pull/98) found the need for these controls. They are recorded here without rewriting or retiring the earlier decision: the index retires a superseded file whole, and the rule in it is still relied on.
