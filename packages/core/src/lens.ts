@@ -743,6 +743,18 @@ export class Lens {
 	}
 
 	/**
+	 * Every lens `source` defines, in every folder: the built-ins, and each variant a folder's `.melian/lenses/` or
+	 * `.agents/lenses/` gives, layered as {@link Lens.load} layers them for that folder. A review of a moved file runs
+	 * the lens of the folder it left, so what may have reported somewhere is not only what applies there. Throws as
+	 * {@link Lens.load} does.
+	 */
+	static async everywhere(repoRoot: string, source: RepositorySource): Promise<Lens[]> {
+		const reader = await openSource(repoRoot, source).catch(fromSource(repoRoot));
+		const scopes = [...(await lensScopes(reader)).keys()].map((scope) => scope || ".");
+		return Lens.load(repoRoot, source, [".", ...scopes]);
+	}
+
+	/**
 	 * Picks the lenses to run on a changeset and the changed files each reviews: a lens runs when `config` leaves it
 	 * enabled and it covers at least one of `paths`. A lens covers a path beneath its scope that its `paths` select,
 	 * unless a nearer folder defines a lens of the same name, which replaces it there. Configuration's `tier` replaces

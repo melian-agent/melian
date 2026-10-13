@@ -5,7 +5,6 @@ import {
 	type Finding,
 	Lens,
 	loadConfig,
-	type MelianConfig,
 	type PolicyAt,
 	type RepositorySource,
 	type ResolutionEntry,
@@ -36,7 +35,6 @@ export async function configsFor(
 	const lookup = configLookup(repoRoot, policy);
 	const atPath = new Map<string, PolicyAt>();
 	const judging = new Map<string, PolicyAt>();
-	let tuning: MelianConfig["lenses"] | undefined;
 	const lensPaths = new Set(
 		findings
 			.filter(({ properties: { source, reportedBy = [source] } }) =>
@@ -44,32 +42,34 @@ export async function configsFor(
 			)
 			.map(({ properties }) => properties.path),
 	);
+	// A moved file is reviewed by the lens of the folder it left, which may be any folder, so every variant the source
+	// defines may have reported anywhere. Each is listed under the versions a finding's source can name it by: as it
+	// loaded and as the root's settings tune it, bare and at every level. No prototype, so a lens named `constructor`
+	// is looked up like any other.
+	const [variants, tuning] =
+		lensPaths.size === 0
+			? [[], {}]
+			: [await Lens.everywhere(repoRoot, policy), (await loadConfig(repoRoot, policy, ".")).config.lenses];
+	const lensVariants: Record<string, ResolutionEntry | null> = Object.create(null);
+	for (const lens of variants) {
+		const settings = Object.hasOwn(tuning, lens.name) ? tuning[lens.name] : undefined;
+		for (const { version } of [lens, lens.configured(settings)]) {
+			for (const level of [undefined, ...scrutinyLevels]) {
+				lensVariants[`${lens.name}@${lensSource(lens.name, version, level).version}`] = lens.resolution ?? null;
+			}
+		}
+	}
 	for (const { ruleId, properties } of findings) {
 		const { path } = properties;
 		if (!atPath.has(path)) {
 			const { config, resolutionLayers } = await loadConfig(repoRoot, policy, path);
-			// No prototype, so a lens named `constructor` is looked up like any other.
+			// The nearest lens of a name, the one defined deepest above the path, gives the default for a report whose
+			// variant is none of those listed.
 			const lensDefaults: Record<string, ResolutionEntry> = Object.create(null);
-			const lensVariants: Record<string, ResolutionEntry | null> = Object.create(null);
-			if (lensPaths.has(path)) {
-				tuning ??= (await loadConfig(repoRoot, policy, ".")).config.lenses;
-				// A moved file is reviewed by the lens of the folder it left, so every variant from the root down to the
-				// path may have reported here. Each is listed under the versions a finding's source can name it by: as it
-				// loaded and as the root's settings tune it, at every level. The nearest of a name, the one defined
-				// deepest, gives the default for a report whose variant is none of them.
-				const ancestors = path.split("/").map((_, depth, segments) => segments.slice(0, depth).join("/") || ".");
-				const variants = await Lens.load(repoRoot, policy, ancestors);
-				for (const lens of [...variants].sort((left, right) => left.scope.length - right.scope.length)) {
-					if (lens.resolution === undefined) delete lensDefaults[lens.name];
-					else lensDefaults[lens.name] = lens.resolution;
-					const settings = Object.hasOwn(tuning, lens.name) ? tuning[lens.name] : undefined;
-					for (const { version } of [lens, lens.configured(settings)]) {
-						for (const level of [undefined, ...scrutinyLevels]) {
-							lensVariants[`${lens.name}@${lensSource(lens.name, version, level).version}`] =
-								lens.resolution ?? null;
-						}
-					}
-				}
+			const above = variants.filter((lens) => lens.scope === "" || path.startsWith(`${lens.scope}/`));
+			for (const lens of above.sort((left, right) => left.scope.length - right.scope.length)) {
+				if (lens.resolution === undefined) delete lensDefaults[lens.name];
+				else lensDefaults[lens.name] = lens.resolution;
 			}
 			atPath.set(path, {
 				resolution: config.resolution,

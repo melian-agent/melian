@@ -3,9 +3,11 @@ import {
 	type FileResolution,
 	Finding,
 	type FindingInput,
+	guardrailMatchSchema,
 	type ResolutionSource,
 	type Verification,
 } from "@melian-agent/core";
+import Value from "typebox/value";
 import { describe, expect, it } from "vitest";
 import { evalInput } from "./fixtures/findings.ts";
 
@@ -421,6 +423,15 @@ describe("a guardrail finding's keys", () => {
 			resolution: "acknowledge",
 			decidedBy: { floor: "policy-change" },
 		});
+	});
+
+	it("holds the exported schema of what a guardrail matched at its bounds", () => {
+		expect(Value.Check(guardrailMatchSchema, { rules: ["focused-test"] })).toBe(true);
+		expect(Value.Check(guardrailMatchSchema, { rules: [] })).toBe(false);
+		expect(Value.Check(guardrailMatchSchema, { notice: "policy", resolution: true })).toBe(true);
+		expect(Value.Check(guardrailMatchSchema, { notice: "policy", resolution: false })).toBe(false);
+		expect(Value.Check(guardrailMatchSchema, { notice: "other" })).toBe(false);
+		expect(Value.Check(guardrailMatchSchema, { rules: ["a"], notice: "policy" })).toBe(false);
 	});
 
 	it("keeps what a guardrail finding matched out of its ID", () => {

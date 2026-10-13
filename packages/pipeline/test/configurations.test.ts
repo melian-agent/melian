@@ -41,7 +41,8 @@ afterEach(() => {
 	removeRepository(repo);
 });
 
-describe("configsFor", () => {
+// Each test builds a repository and loads its lenses from git several times.
+describe("configsFor", { timeout: 60_000 }, () => {
 	it("gives each finding its path's own layers, nearest first, and the merged cap", async () => {
 		const base = commit(repo, {
 			"melian.yaml": lines(
@@ -110,6 +111,8 @@ describe("configsFor", () => {
 			"services/.melian/lenses/tuned/LENS.md": lensFile("tuned", "resolution: { P1: silent }"),
 			"services/.melian/lenses/bare/LENS.md": lensFile("bare", "resolution: { P1: silent }"),
 			".melian/lenses/plain/LENS.md": lensFile("plain", "resolution: { P1: silent }"),
+			// A sibling folder's variant, which reviews a file moved out of that folder into services.
+			"docs/.melian/lenses/cleanup/LENS.md": lensFile("cleanup", "resolution: { P1: acknowledge }"),
 			"services/.melian/lenses/plain/LENS.md": lensFile("plain"),
 		});
 		const policy = { kind: "revision", commit: base } as const;
@@ -135,6 +138,7 @@ describe("configsFor", () => {
 			reported("cleanup"),
 			reported("plain"),
 			reported("tuned", await versionOf("tuned", ".")),
+			reported("cleanup", `${await versionOf("cleanup", "docs")}@careful`),
 		];
 		expect(await versionOf("tuned", ".", true)).not.toBe(await versionOf("tuned", "."));
 		const configFor = await configsFor(repo, policy, findings);
@@ -153,6 +157,7 @@ describe("configsFor", () => {
 			"block",
 			// The root's version as it loaded, with no level.
 			"block",
+			"acknowledge",
 		]);
 		const listed = Object.keys(at.lensVariants ?? {}).filter((key) => /^(cleanup|tuned|bare)@/.test(key));
 		expect(listed.every((key) => /@[0-9a-f]{12}(@(quick|careful|deep))?$/.test(key))).toBe(true);
