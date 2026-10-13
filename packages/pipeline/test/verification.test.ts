@@ -1741,6 +1741,28 @@ describe("lowering a severity through report_verdict", () => {
 		expect(claims).not.toContain('"severity"');
 	});
 
+	it("stores the evidence it read back for a report that lowers nothing, as for a refutation", async () => {
+		judging({ verdict: "refuted", reason: "A guard prevents it.", evidence: cited });
+		const { findings } = await review();
+		expect(findings[0]!.properties.verification).toEqual({
+			verdict: "refuted",
+			reason: "A guard prevents it.",
+			answers: { code: "yes", guard: "yes", base: "no" },
+			evidence: [
+				{
+					file: "src/user.ts",
+					startLine: 6,
+					role: "context",
+					revision: "head",
+					snippet: "export function managerName(user: User): string {",
+				},
+			],
+			executor: "llm",
+			model: "faux/judge",
+			version: verifierVersion,
+		});
+	});
+
 	it("stores the answers the verifier gave, whatever they are, for calibration", async () => {
 		const answers = { code: "unknown", guard: "yes", base: "yes" };
 		reporting([{ answers, verdict: "plausible" }]);
