@@ -211,12 +211,22 @@ export const AdjudicationTask = defineTask<AdjudicationTaskInput, { phase: "adju
 			const carried = await seenBefore(runtime, root, revision, context);
 			let verdict: Verdict;
 			try {
-				const configFor = policy === undefined ? () => config : await configsFor(repoRoot, policy, findings);
+				const policies = policy === undefined ? undefined : await configsFor(repoRoot, policy, findings);
+				// The input names the policy the review read. A working tree can change before this phase runs, as after a
+				// dismissal a crash cut short, and a verdict decided under another policy must not sit under this input.
+				const { resolutionPolicy } = task.input;
+				if (policies !== undefined && resolutionPolicy !== undefined && policies.fingerprint !== resolutionPolicy) {
+					throw new ConfigError(
+						"invalidValue",
+						repoRoot,
+						"the resolution policy changed since the review read it, so its verdict would be decided under another; run melian review again",
+					);
+				}
 				verdict = new Adjudication({
 					findings,
 					manifest,
 					checks,
-					config: configFor,
+					config: policies ?? (() => config),
 					allowSkip,
 					verificationRan: task.input.verificationRan,
 					seenBefore: carried,
