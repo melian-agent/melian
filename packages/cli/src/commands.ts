@@ -32,6 +32,7 @@ import {
 	revisionKey,
 	runChecks,
 	summarizeReview,
+	WithheldOutput,
 } from "@melian-agent/pipeline";
 import {
 	decisionProviderRefusal,
@@ -95,6 +96,7 @@ export async function review(
 	argument: string,
 	options: { readonly model?: string; readonly rerun: boolean; readonly walkthrough?: boolean },
 ): Promise<number> {
+	const started = Date.now();
 	const target = parseTarget(argument);
 	let changeset: Changeset;
 	let source: RepositorySource;
@@ -241,6 +243,10 @@ export async function review(
 			});
 		const outcome = new ReviewOutcome(verdict);
 		io.stdout(outcome.render(io.color));
+		// What a tool that ran unconfined printed is in no record. It is in a file only this user can read, named here
+		// on the terminal and nowhere else.
+		for (const path of await (await WithheldOutput.open(repoRoot, io.env)).since(started))
+			io.stderr(`melian: a tool ran unconfined; what it printed is kept in ${path}\n`);
 		return outcome.exitCode();
 	} finally {
 		await reviewHarness.close(context);

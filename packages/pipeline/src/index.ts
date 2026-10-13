@@ -84,7 +84,6 @@ export {
 	type ReviewOptions,
 	reviewChangeset,
 } from "./review.ts";
-export { Sandbox, type SandboxBackend, type SandboxPaths } from "./sandbox.ts";
 export {
 	runStaticTool,
 	type StaticRun,
@@ -99,6 +98,7 @@ export {
 	reviewNonce,
 	type UntrustedLabel,
 } from "./untrusted.ts";
+export { WithheldOutput, withheldOutputAge } from "./withheld-output.ts";
 
 export const packageName = "@melian-agent/pipeline";
 

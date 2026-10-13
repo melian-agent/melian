@@ -97,6 +97,10 @@ async function fixture(cached = true, timeout = 30) {
 	const shell = vi.spyOn(run, "shell").mockResolvedValue({ code: 0, output: "a".repeat(40) });
 	const read = vi.spyOn(run, "readOutput").mockImplementation(async (path) => artifacts[path.split("/").at(-1)!]);
 	const write = vi.spyOn(run.input.env, "writeFile").mockResolvedValue({ ok: true, value: undefined });
+	// Every path the fixtures name is taken for the file it names; a test of a link says otherwise.
+	const canonical = vi
+		.spyOn(run.input.env, "canonicalPath")
+		.mockImplementation(async (path) => ({ ok: true, value: path }));
 	const enola = await EnolaRun.open(run, repo, join(repo, "scratch"), tools);
 	const files: ChangedFile[] = [
 		{
@@ -108,7 +112,7 @@ async function fixture(cached = true, timeout = 30) {
 			],
 		},
 	];
-	return { run, shell, read, write, artifacts, graphRead, graphStore, snapshot, enola, files };
+	return { run, shell, read, write, canonical, artifacts, graphRead, graphStore, snapshot, enola, files };
 }
 
 it.each([
@@ -494,4 +498,64 @@ it.each([
 		message: `${prefix}${"x".repeat(4096)}`,
 		confinement: { confined: true },
 	});
+});
+
+it("asks nothing about a changed path that is a link, and keeps no caller whose file is one", async () => {
+	const f = await fixture();
+	const linked = (path: string) => async (asked: string) =>
+		asked.endsWith(path)
+			? { ok: true as const, value: "/home/reviewer/elsewhere.ts" }
+			: { ok: true as const, value: asked };
+	// The changed file is a link out of the tree: Enola's symbols for it are another file's, and no query is made.
+	f.canonical.mockImplementation(linked("/src/a.ts"));
+	const skipped = await f.enola.callers(f.files, []);
+	expect(skipped.groups).toEqual([]);
+	expect(skipped.issues).toEqual([
+		{ file: "src/a.ts", reason: "line 1: the path is a link, so its symbols are not used" },
+	]);
+	expect(f.shell.mock.calls.filter(([command]) => command.includes("impact --json"))).toEqual([]);
+	// A caller Enola found through a link is dropped; the changed file's own group stays.
+	f.canonical.mockImplementation(linked("/src/caller.ts"));
+	const filtered = await f.enola.callers(f.files, []);
+	expect(filtered.groups).toMatchObject([
+		{ file: "src/a.ts", symbol: "Alpha", callers: [{ name: "Changed", file: "src/a.ts" }] },
+	]);
+	// A path that cannot be resolved at all is not taken on trust.
+	f.canonical.mockResolvedValue({
+		ok: false,
+		error: Object.assign(new Error("gone"), { code: "not_found" as const }),
+	});
+	expect((await f.enola.callers(f.files, [])).groups).toEqual([]);
+});
+
+it("keeps only the validated fields of Enola's receipt in the record", async () => {
+	const f = await fixture(false);
+	f.artifacts["receipt.json"] = JSON.stringify({
+		note: "a line Enola read somewhere",
+		enola_version: "0.0.1",
+		snapshot_id: `sha256:${"a".repeat(64)}`,
+		format_version: 1,
+	});
+	const result = await f.enola.check();
+	if (result.status !== "ran") throw new Error(result.reason);
+	expect(result.snapshots?.map((snapshot) => snapshot.receipt)).toEqual(
+		result.snapshots?.map(
+			() => `{"format_version":1,"snapshot_id":"sha256:${"a".repeat(64)}","enola_version":"0.0.1"}`,
+		),
+	);
+	expect(result.snapshots?.length).toBeGreaterThan(0);
+	expect(JSON.stringify(result)).not.toContain("a line Enola read");
+});
+
+it("puts only the exit code of a refused caller query into its note", async () => {
+	const f = await fixture();
+	f.artifacts["impact.json"] = "panic: read /home/reviewer/.netrc: machine example login secret";
+	f.shell.mockImplementation(async (text) => ({
+		code: text.includes("impact --json") ? 3 : 0,
+		output: "a".repeat(40),
+	}));
+	const data = await f.enola.callers(f.files, []);
+	expect(data.issues).toEqual([
+		{ file: "src/a.ts", reason: "line 1: Enola impact exited 3: output withheld: the tool ran unconfined" },
+	]);
 });

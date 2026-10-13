@@ -1461,6 +1461,8 @@ while (Date.now() < end) { try { fs.writeFileSync(scratch + "/child.pid", String
 				'if [ "$1" = "--version" ]; then echo 0.0.0; exit 0; fi',
 				'for arg in "$@"; do case "$arg" in --reporter-file=*) out=$(printf %s "$arg" | cut -d= -f2-);; esac; done',
 				`node -e '${child}' "$(dirname "$out")" > /dev/null 2>&1 &`,
+				// Not before the child has written once: under load the tool would be gone, and scratch with it, first.
+				'waited=0; while [ ! -f "$(dirname "$out")/child.pid" ] && [ "$waited" -lt 400 ]; do sleep 0.05; waited=$((waited + 1)); done',
 				`printf '%s' '${emptySarif}' > "$out"`,
 			].join("\n"),
 		);
@@ -1479,10 +1481,10 @@ while (Date.now() < end) { try { fs.writeFileSync(scratch + "/child.pid", String
 				} catch {}
 			}
 			expect(Number.isInteger(pid) && pid > 1).toBe(true);
-			expect(failure).toMatchObject({
-				code: "worktreeFailed",
-				message: `${scratch} could not be removed: ENOTEMPTY`,
-			});
+			expect(failure).toMatchObject({ code: "worktreeFailed" });
+			expect((failure as CheckError).message).toMatch(
+				new RegExp(`^${scratch} could not be removed: rmdir: .*not empty`, "i"),
+			);
 			const tree = join(scratch, "tree");
 			expect(gitIn(repo, "worktree", "list", "--porcelain")).toContain(`worktree ${tree}`);
 			const admin = readdirSync(join(repo, ".git/worktrees")).map((name) => join(repo, ".git/worktrees", name))[0]!;

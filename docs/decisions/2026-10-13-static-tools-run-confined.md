@@ -13,7 +13,9 @@ Whether these tools execute head code, checked in the code and the installed pac
 - tsc 7.0.2 reads `tsconfig.json` and what it `extends`. The `plugins` field configures an editor's language service, and tsc never loads it.
 - The worktree's workspace packages are the head's own sources. tsc type-checks them and does not import them.
 
-That is a claim about the stock tools at those versions, not about whatever a checkout installs under their names. `binaryFor` runs the checkout's `node_modules/.bin/<tool>` when the checkout has one, and does not compare it with the package the lockfile declares. A checkout whose `typescript` has been patched by ts-patch has a `tsc` that loads the transformers a `tsconfig.json` names, and the head writes that file. Open risk, for the maintainer: when the checkout's installed tsc is patched in that way and the head's `tsconfig.json` names a transformer, static.tsc executes head code, confined where the host has a sandbox and unconfined where it has none. Nothing here detects it. Closing it means running only a binary that matches the declared package, or Melian's own.
+That is a claim about the stock tools at those versions, not about whatever a checkout installs under their names. A checkout's `tsc` may execute head code. A `plugins` entry in `tsconfig.json` resolves from that file's directory, so with a TypeScript that loads plugins the head supplies the code itself. ts-patch makes such a TypeScript; so does patch-package, a `postinstall` step, or a lockfile entry that aliases `typescript` to a fork. No check of the lockfile's integrity can tell: that is a hash of the tarball, and each of these changes the install after npm wrote it.
+
+So the rule needs no detection: Melian never runs a checkout's binary outside a sandbox. Inside one, the checkout's own Biome and tsc run, as the repository pinned them, and whatever they execute is confined. On a host with no sandbox, Melian's own pinned Biome or tsc runs in its place, and the check's notes say which binary ran and why. Where Melian has none of its own to run, the check is skipped with that reason, which leaves the review not reviewed; it is never run unconfined from the checkout. The rule covers Biome as well as tsc. Biome 2.5.15 holds no engine to run configured code with, but a checkout can pin another version or a patched binary, the cost of the rule is the same, and applying it removes the question. What it costs is version fidelity on hosts that have no sandbox: there the repository is linted and type-checked by Melian's versions, not its own.
 
 So neither stock tool is a check that executes head code, and the sandbox decision's rule, skip where there is no sandbox, does not apply to them. [The pipeline guideline](../guidelines/pipeline.md#static-tools-run-in-the-execution-environment) said that running them "runs the revision's code"; that sentence was wrong and is corrected.
 
@@ -44,11 +46,18 @@ A policy key that makes an unconfined run skip or fail is deferred to the per-ru
 
 Why the fallback may run at all: the stock tools execute no head code, but they read head-named files, so an unconfined run withholds their output. That is the whole argument; the first form of this decision said there was "no head code to stop" and only "a bug nobody has found" to fear, and both halves were wrong about what an unconfined tool can give away.
 
-On a run that was not confined, nothing the tool printed reaches a record, a log, the terminal, or the JSON.
+On a run that was not confined, nothing the tool printed reaches a record, the JSON, a pull request, or a model.
 
 - A failure carries its reason code, the tool's exit code, and the fixed sentence "output withheld: the tool ran unconfined". That holds for the version probe, Biome's stderr, tsc's output, and Enola's logs alike.
-- A diagnostic from the tool's structured report is kept only when its file really is inside the worktree, not a link out of it, and its message names no absolute path outside the worktree. A kept message is cut to 1,000 characters and written as visible text. The rest are dropped and counted in a note, never quoted.
+- Every diagnostic is kept, and none of its words. A result keeps its rule, its file, its lines, and its level, which describe the repository's own tree: tsc's code, Biome's rule name, Enola's rule ID. Its message becomes the fixed sentence "message withheld: the tool ran unconfined". A rule name is cut to 128 characters and a version to 64, since both are the tool's text.
+- A result whose file is inside the worktree as the tool wrote it is kept at that path, link or no. A result on a file outside the worktree means the tool read one, and nothing about it can be judged or shown: the run fails with `invalidOutput` and the withheld-output sentence. It is never dropped.
 - On a confined run messages stay as the tool wrote them, since the tool could read nothing to quote.
+
+Two earlier forms of this rule were wrong, in opposite directions. The first kept a diagnostic whose message named no outside path, cut to a bound. But stock tsc quotes a type it read from an outside file with no path beside it: `Type '"<the key>"' is not assignable to type '"a"'`, by an absolute import, an `.mjs` with `allowJs`, a link inside the worktree, a `paths` mapping, or `typeof import()`. No filter on a message's text can find that, and a kept diagnostic becomes a finding, which is published. The same form dropped a diagnostic whose message did name an outside path, and still recorded the check as ran. So an error the head introduced, tsc's "Cannot find module '/opt/shared/missing'", became a clean review, on every host for Enola. That broke the rule that a tool's report is the authority and Melian fails closed. One rule fixes both: never drop a diagnostic, never keep its text.
+
+Base and head are both run this way, and the comparison between them does not read messages. `staticFindings` keys a result by its rule, its file, and the code on its lines at its own revision, so what the head introduced is still told from what the base had. It falls back to the message only where the code cannot be read: a file too large, a symlink, or one of Enola's results with no place. There, with every message the same, results of one rule in one file merge and are counted, and a head with more of them than the base still reports the difference as introduced.
+
+The whole of what an unconfined tool printed is not lost. It is written to a file of mode 0600 under `withheld/` in Melian's state directory, and `melian review` names that file on the local terminal's error stream. The path is in no record, no JSON, no review body, and no ledger. Files older than seven days are removed by the next run that keeps one.
 
 What that costs: on a host with no sandbox a broken tool says only that it broke, and the maintainer reruns it by hand to see why. A failed check carries its confinement too, so the crash on a host with no sandbox, the one case where the warning matters most, says "ran unconfined" in all four outputs.
 
@@ -68,6 +77,19 @@ Enola is deferred. It has the strongest case, since it is the largest program re
 - It is a Go program whose strings include `git log` and GitHub addresses, so it may start git or expect a network.
 - Nobody has run it inside the sandbox on either backend.
 
-It stays outside until a host probe passes on macOS and Linux.
+It stays outside until a host probe passes on macOS and Linux. Until then it is an unconfined tool like any other, and each thing of its output that leaves the run is held to the same principle:
+
+| What Enola writes | Where it goes | What is kept |
+| --- | --- | --- |
+| Check results | Findings, and from there every output | Rule ID, file, lines, level. The message is withheld. |
+| Error output of `generate`, `check`, `baseline`, and `impact` | The failed record; for `impact`, a note in a lens prompt | The exit code and the withheld-output sentence. |
+| The receipt | The check record | Its three validated fields only: the format version, a `sha256` snapshot ID of fixed shape, and the pinned Enola version. Any other field stays in the local cache. |
+| Facts, for the files a change touches | Symbol names in lens prompts, and the arguments of `impact` | Kept only for a changed file that resolves to itself inside the worktree. A changed path that is a link gets no caller query, and the prompt says callers are unavailable for it. |
+| Impact reports | Caller names, files, and lines in lens prompts | Kept only for a caller whose file resolves to itself inside the worktree. |
+| Facts, insights, and the receipt whole | The graph cache in the state directory | Kept as written. They stay on the reviewer's disk, and only content hashes of them reach a record. |
+
+A symbol's name in a file inside the worktree is the repository's own content, which the lens reads anyway. The filter on files is what keeps a link, in the tree, to a file elsewhere from putting that file's identifiers into a prompt.
+
+Owed work: a test of the real Enola binary against marker files reached three ways, a symlink in the tree, a `go.mod` `replace`, and a tsconfig `paths` entry, searching every output above for the marker. If none appears, Enola's messages can be shown again. Nobody has fetched the binary for it yet.
 
 Proof: on macOS 26.5, `runStaticTool` ran the real Biome and tsc on this repository's own head inside seatbelt. Both reported no findings and no notes. A test gives a fake tool a credential file to read, a path beside scratch to write, and a local port to connect to; all three fail inside the sandbox and succeed outside it. Two tests cover the fallbacks and assert that the real Biome still reported its finding.

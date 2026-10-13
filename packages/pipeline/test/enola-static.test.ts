@@ -438,7 +438,10 @@ describe("static.enola", { timeout: 60_000 }, () => {
 		}
 	});
 	it("judges a diverged PR with target-tip policy and reuses that policy for callers", async () => {
-		const base = commit(repo, { "src/a.ts": "export function Alpha() { return 1; }\n" });
+		const base = commit(repo, {
+			"src/a.ts": "export function Alpha() { return 1; }\n",
+			"src/caller.ts": "export function Caller() { return 0; }\n",
+		});
 		const policy = commit(repo, {
 			"melian.yaml": "tiers:\n  fast: [static.enola]\nstatic:\n  enola: { enabled: true }\n",
 			"enola/constraints/layer.yaml": "rules: [] # target constraint\n",

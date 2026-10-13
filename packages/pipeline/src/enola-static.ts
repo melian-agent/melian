@@ -4,6 +4,7 @@ import {
 	EnolaFacts,
 	EnolaImpact,
 	EnolaPolicy,
+	EnolaQueryError,
 	type EnolaSnapshot,
 	type GraphFiles,
 	GraphSnapshot,
@@ -14,10 +15,17 @@ import {
 	visibleText,
 } from "@melian-agent/core";
 import type { CallerData, CallerGroup } from "./callers.ts";
+
 import { CoverageCache } from "./coverage-cache.ts";
 import { GraphCache } from "./graph-cache.ts";
 import { type Run, type StaticRun, staticOutputLimit } from "./static.ts";
 import type { ToolProvisioning } from "./tool-provisioning.ts";
+
+// What of a receipt goes into a check's record: the three fields the run validated, and nothing else Enola wrote there.
+function recordedReceipt(receipt: string): string {
+	const { format_version, snapshot_id, enola_version } = JSON.parse(receipt) as Record<string, unknown>;
+	return JSON.stringify({ format_version, snapshot_id, enola_version });
+}
 
 const uncalledExtensions: ReadonlySet<string> = new Set([
 	".md",
@@ -142,7 +150,7 @@ export class EnolaRun {
 			return {
 				commit,
 				snapshotId: cached.snapshotId,
-				receipt: cached.files()["receipt.json"],
+				receipt: recordedReceipt(cached.files()["receipt.json"]),
 				cacheKey: cached.key,
 				coverage: await this.#coverage(cached),
 			};
@@ -187,7 +195,7 @@ export class EnolaRun {
 		return {
 			commit,
 			snapshotId: stored.snapshot_id,
-			receipt,
+			receipt: recordedReceipt(receipt),
 			cacheKey: snapshot.key,
 			coverage: await this.#coverage(snapshot),
 		};
@@ -215,6 +223,13 @@ export class EnolaRun {
 		if (result.code === 1 && kept === 0)
 			this.#notes.push("Enola check exited 1 with no unsuppressed SARIF results; treated as clean.");
 		return log;
+	}
+
+	// Whether a repository path in the head's worktree is the file it names: inside the tree, and no link out of it.
+	async #ownFile(path: string): Promise<boolean> {
+		const joined = posix.join(this.#root, path);
+		const real = await this.#run.input.env.canonicalPath(joined, this.#run.context);
+		return real.ok && real.value === joined;
 	}
 
 	async callers(files: readonly ChangedFile[], changedPaths: readonly string[]): Promise<CallerData> {
@@ -265,6 +280,9 @@ export class EnolaRun {
 			}
 			attempted++;
 			try {
+				// Enola is unconfined and follows what the tree holds. A changed path that is a link carries the symbols of
+				// whatever it points at, which are not the repository's to put in a prompt.
+				if (!(await this.#ownFile(file.path))) throw new Error("the path is a link, so its symbols are not used");
 				if (names.get(symbol.name) !== 1) throw new Error("directory-scoped name is ambiguous");
 				if (Date.now() >= deadline) throw new Error("caller-query time budget ended");
 				const report = posix.join(output, "impact.json");
@@ -273,18 +291,22 @@ export class EnolaRun {
 					`${this.#command(this.#root, output, `impact --json --max-depth 1 --max-nodes 50 ${quote(`file:${file.path} ${symbol.name}`)}`)} > ${quote(report)} 2> ${quote(error)}`,
 					Math.max(1, Math.ceil((deadline - Date.now()) / 1000)),
 				);
-				const impact = EnolaImpact.parse((await this.#run.readOutput(report)) ?? "", result.code);
+				let impact: EnolaImpact;
+				try {
+					impact = EnolaImpact.parse((await this.#run.readOutput(report)) ?? "", result.code);
+				} catch (failure) {
+					// A refusal quotes what Enola printed, which goes into a prompt: only its exit code is kept.
+					if (failure instanceof EnolaQueryError && failure.code === "noAnswer")
+						throw new Error(`Enola impact exited ${result.code}: ${this.#run.said(failure.message)}`);
+					throw failure;
+				}
 				if (!impact.matchesTarget(symbol.name)) throw new Error("impact selected another full target name");
-				groups.push({
-					file: file.path,
-					symbol: symbol.name,
-					callers: impact
-						.callers()
-						.filter(
-							(node) => node.file !== undefined && node.line !== undefined && !changedPaths.includes(node.file),
-						),
-					truncated: impact.truncated,
-				});
+				const callers = [];
+				for (const node of impact.callers()) {
+					if (node.file === undefined || node.line === undefined || changedPaths.includes(node.file)) continue;
+					if (await this.#ownFile(node.file)) callers.push(node);
+				}
+				groups.push({ file: file.path, symbol: symbol.name, callers, truncated: impact.truncated });
 			} catch (error) {
 				issues.push({
 					file: file.path,

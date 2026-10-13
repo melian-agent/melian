@@ -1,6 +1,5 @@
 import { execFileSync } from "node:child_process";
 import * as fs from "node:fs";
-import * as promiseFilesystem from "node:fs/promises";
 import { tmpdir } from "node:os";
 import * as path from "node:path";
 import { runInNewContext } from "node:vm";
@@ -10,8 +9,6 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { MutationScratch, mutationHousekeeping } from "../src/mutation-scratch.ts";
 import { Run } from "../src/static.ts";
 import { unconfinedSandbox } from "./fixtures/sandbox.ts";
-
-vi.mock("node:fs/promises", { spy: true });
 
 let directory: string;
 let scratch: string;
@@ -43,6 +40,20 @@ function files(sandbox: Parameters<typeof MutationScratch.open>[2] = unconfinedS
 		backgroundContext,
 	);
 	return MutationScratch.open(run, scratch, sandbox, []);
+}
+
+function scratchOf(env: ReturnType<typeof createNodeExecutionEnv>): MutationScratch {
+	const run = new Run(
+		{
+			env,
+			repoRoot: directory,
+			commit: "a".repeat(40),
+			tool: "biome",
+			settings: { ...defaultConfig.static.biome, timeout: 60 },
+		},
+		backgroundContext,
+	);
+	return MutationScratch.open(run, scratch, unconfinedSandbox, []);
 }
 
 function probe(
@@ -312,20 +323,53 @@ it("does not treat a denied cleanup lookup as an absent path", async () => {
 	expect(execute).toHaveBeenCalledOnce();
 });
 
-it.each(["EACCES", "ENOTEMPTY"])(
-	"fails with worktreeFailed, naming scratch, when it cannot be removed (%s)",
-	async (code) => {
-		vi.spyOn(promiseFilesystem, "rmdir").mockRejectedValueOnce(Object.assign(new Error("rmdir failed"), { code }));
-		await expect(files().close()).rejects.toMatchObject({
-			code: "worktreeFailed",
-			message: `${scratch} could not be removed: ${code}`,
-		});
-	},
-);
+it("fails with worktreeFailed, naming scratch, when something refills it before it is removed", async () => {
+	const env = createNodeExecutionEnv(directory);
+	const execute = env.exec.bind(env);
+	// The teardown's emptying ran; before the directory goes, a process the tool left writes there again.
+	vi.spyOn(env, "exec").mockImplementation(async (command, options, context) => {
+		if (command.includes("rmdir -- ")) fs.writeFileSync(path.join(scratch, "refilled"), "x");
+		return execute(command, options, context);
+	});
+	const failure = await scratchOf(env)
+		.close()
+		.catch((error: Error) => error);
+	expect(failure).toMatchObject({ code: "worktreeFailed" });
+	expect((failure as Error).message).toMatch(new RegExp(`^${scratch} could not be removed: rmdir: .*not empty`, "i"));
+	expect(fs.existsSync(path.join(scratch, "refilled"))).toBe(true);
+});
 
-it("takes a scratch directory that is already gone as removed", async () => {
-	vi.spyOn(promiseFilesystem, "rmdir").mockRejectedValueOnce(Object.assign(new Error("gone"), { code: "ENOENT" }));
-	await expect(files().close()).resolves.toBeUndefined();
+it("removes scratch through the run's environment, with nothing inherited, and takes one already gone as removed", async () => {
+	vi.stubEnv("MELIAN_TEST_SECRET", "hunter2");
+	const env = createNodeExecutionEnv(directory);
+	const execute = vi.spyOn(env, "exec");
+	const operations = scratchOf(env);
+	await operations.close();
+	expect(fs.existsSync(scratch)).toBe(false);
+	const removal = execute.mock.calls.find(([command]) => command.includes("rmdir -- "))!;
+	expect(removal[0]).toBe(`if [ ! -e '${scratch}' ] && [ ! -L '${scratch}' ]; then exit 0; fi; rmdir -- '${scratch}'`);
+	expect(removal[1]).toMatchObject({ inheritEnv: false, env: { PATH: "/usr/bin:/bin" }, timeout: 60 });
+	// Gone already: nothing to empty and nothing to remove, and no error.
+	await expect(operations.close()).resolves.toBeUndefined();
+	// A link where scratch was is not removed through, and is not taken for an absent directory.
+	fs.symlinkSync(outside, scratch);
+	await expect(operations.close()).rejects.toThrow();
+	expect(fs.readFileSync(path.join(outside, "sentinel"), "utf8")).toBe("host data");
+	vi.unstubAllEnvs();
+});
+
+it("fails with worktreeFailed when the environment cannot run the removal", async () => {
+	const env = createNodeExecutionEnv(directory);
+	const execute = env.exec.bind(env);
+	vi.spyOn(env, "exec").mockImplementation(async (command, options, context) =>
+		command.includes("rmdir -- ")
+			? { ok: false, error: Object.assign(new Error("no shell"), { code: "spawn_error" as const }) }
+			: execute(command, options, context),
+	);
+	await expect(scratchOf(env).close()).rejects.toMatchObject({
+		code: "worktreeFailed",
+		message: `${scratch} could not be removed: no shell`,
+	});
 });
 
 // With no sandbox the script runs on the host, and its own guards are the whole defence.

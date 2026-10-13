@@ -243,7 +243,10 @@ it("leaves such a tree with a note on a host with no sandbox, and reads only tru
 	c.detect.mockReturnValue(undefined);
 	await c.removeStaleWorktrees(c.run, "/scratch");
 	expect(c.run.notes).toEqual(
-		left("only confined cleanup may remove it, and this host offers no sandbox", "/tmp/melian-static-old/tree"),
+		left(
+			"only confined cleanup may remove it, and this host offers no sandbox; review from a host that has one, or remove it yourself with git worktree remove --force --force /tmp/melian-static-old/tree and delete /tmp/melian-static-old",
+			"/tmp/melian-static-old/tree",
+		),
 	);
 	expect(c.remove).not.toHaveBeenCalled();
 	expect(hostGit(c)).toEqual([]);
@@ -315,7 +318,7 @@ it.each([
 	[
 		"no sandbox on the host",
 		(c: ReturnType<typeof cleanup>) => c.detect.mockReturnValue(undefined),
-		"only confined cleanup may remove it, and this host offers no sandbox",
+		"only confined cleanup may remove it, and this host offers no sandbox; review from a host that has one, or remove it yourself with git worktree remove --force --force /tmp/melian-confined-old/tree and delete /tmp/melian-confined-old",
 	],
 ] as const)("leaves a dead confined tree with %s, and says so", async (_name, arrange, why) => {
 	const c = cleanup();

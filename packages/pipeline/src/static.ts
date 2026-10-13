@@ -21,6 +21,7 @@ import { backgroundContext, type Context, type ExecutionEnv } from "./harness.ts
 import { MutationScratch } from "./mutation-scratch.ts";
 import { nodeExecutable, Sandbox, type SandboxPaths } from "./sandbox.ts";
 import { ToolProvisioning } from "./tool-provisioning.ts";
+import { WithheldOutput } from "./withheld-output.ts";
 
 /** The most a static tool may write, its report included. Past it the run fails with `outputTooLarge`. */
 export const staticOutputLimit = 16 * 1024 * 1024;
@@ -146,8 +147,13 @@ export class Run {
 	// What a tool printed, for an error message. A tool that ran unconfined could read any file the reviewer can, and
 	// a stock tool will quote one a head names, so nothing it printed leaves the run: the message says only that.
 	said(output: string): string {
-		return this.confinement?.confined === true ? output : withheldOutput;
+		if (this.confinement?.confined === true) return output;
+		if (output !== "") this.withheld.push(output);
+		return withheldOutput;
 	}
+
+	// Everything withheld from this run's record, for the file only the reviewer reads.
+	readonly withheld: string[] = [];
 
 	// Runs a command, keeping the start of what it prints for error messages. `replaced` overrides a passed variable, such
 	// as the `HOME` of a command that runs confined.
@@ -589,6 +595,12 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 		if (error instanceof CheckError && error.confinement === undefined && run.confinement !== undefined)
 			throw new CheckError(error.code, error.check, error.message, { cause: error, confinement: run.confinement });
 		throw error;
+	} finally {
+		// What was withheld is kept for the reviewer alone. Losing it must not change the run's result.
+		if (run.withheld.length > 0)
+			await WithheldOutput.open(input.repoRoot)
+				.then((kept) => kept.keep(run.check, input.commit, `${run.withheld.join("\n")}\n`))
+				.catch(() => undefined);
 	}
 }
 
@@ -616,8 +628,8 @@ function staticRun(run: Run): Promise<StaticRun> {
 			const notes = [...run.notes, ...checked.notes];
 			return {
 				...checked,
-				log: unconfinedLog(checked.log),
-				...(checked.baseLog === undefined ? {} : { baseLog: unconfinedLog(checked.baseLog) }),
+				log: unconfinedLog(checked.log, run.withheld),
+				...(checked.baseLog === undefined ? {} : { baseLog: unconfinedLog(checked.baseLog, run.withheld) }),
 				notes,
 				confinement,
 			};
@@ -678,7 +690,7 @@ function staticRun(run: Run): Promise<StaticRun> {
 			tool === "biome"
 				? await runBiome(run, root, scratch, binary, version)
 				: await runTsc(run, root, scratch, binary, version, new Set(files), notes);
-		const kept = confinement.confined ? log : unconfinedLog(log);
+		const kept = confinement.confined ? log : unconfinedLog(log, run.withheld);
 		return { status: "ran", log: kept, notes: [...run.notes, ...notes], confinement };
 	});
 }
@@ -696,7 +708,11 @@ const unconfinedRuleLimit = 128;
 // reviewer can, and a stock tsc will quote a type it found in one with no path beside it, so no message is safe to
 // keep and no filter on messages can be. What a result says of the repository's own tree stays: its rule, its file,
 // its lines, and its level. Dropping a result instead would turn an error the head introduced into a clean review.
-function unconfinedLog(log: ToolLog): ToolLog {
+function unconfinedLog(log: ToolLog, withheld: string[]): ToolLog {
+	for (const result of log.runs[0].results) {
+		const { artifactLocation, region } = result.locations[0].physicalLocation;
+		withheld.push(`${result.ruleId} ${artifactLocation.uri}:${region.startLine} ${result.message.text}`);
+	}
 	const results = log.runs[0].results.map((result) => ({
 		...result,
 		ruleId: visibleText(result.ruleId.slice(0, unconfinedRuleLimit)),
@@ -845,7 +861,9 @@ async function removeStaleWorktrees(run: Run, scratch: string): Promise<void> {
 			continue;
 		}
 		if (confined && (await Sandbox.detect(run.input.env, backgroundContext)) === undefined) {
-			left("only confined cleanup may remove it, and this host offers no sandbox");
+			left(
+				`only confined cleanup may remove it, and this host offers no sandbox; review from a host that has one, or remove it yourself with git worktree remove --force --force ${path} and delete ${owner}`,
+			);
 			continue;
 		}
 		await removeWorktree(run, owner, confined);

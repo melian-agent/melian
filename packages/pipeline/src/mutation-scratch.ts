@@ -1,4 +1,3 @@
-import { rmdir } from "node:fs/promises";
 import { backgroundContext } from "./harness.ts";
 import { nodeExecutable, type Sandbox, type SandboxPaths } from "./sandbox.ts";
 import type { Run } from "./static.ts";
@@ -150,14 +149,26 @@ export class MutationScratch {
 
 	async close(): Promise<void> {
 		await this.#execute("clean", this.#paths.scratch);
-		// rmdir never follows its final component; recursive deletion happened inside the sandbox.
-		try {
-			await rmdir(this.#paths.scratch);
-		} catch (error) {
-			const { code } = error as NodeJS.ErrnoException;
-			if (code === "ENOENT") return;
-			// Not empty after it was emptied: something is still writing there.
-			throw this.#run.fail("worktreeFailed", `${this.#paths.scratch} could not be removed: ${code}`, error);
-		}
+		// The directory itself goes from outside the sandbox, where it is a mount point under bubblewrap, and through the
+		// run's environment like everything else the runner executes. rmdir never follows its final component and
+		// removes nothing that is not empty; recursive deletion happened inside the sandbox.
+		const scratch = quote(this.#paths.scratch);
+		let output = "";
+		const removed = await this.#run.input.env.exec(
+			`if [ ! -e ${scratch} ] && [ ! -L ${scratch} ]; then exit 0; fi; rmdir -- ${scratch}`,
+			{
+				inheritEnv: false,
+				env: { PATH: "/usr/bin:/bin" },
+				timeout: 60,
+				onOutput: (text) => {
+					output += text;
+				},
+			},
+			backgroundContext,
+		);
+		if (removed.ok && removed.value.exitCode === 0) return;
+		// Not empty after it was emptied: something is still writing there.
+		const why = removed.ok ? output.trim() : removed.error.message;
+		throw this.#run.fail("worktreeFailed", `${this.#paths.scratch} could not be removed: ${why}`);
 	}
 }

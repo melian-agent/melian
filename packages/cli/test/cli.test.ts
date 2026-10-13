@@ -510,6 +510,11 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 			{ mode: 0o755 },
 		);
 		const first = melian(repo, ["review", "main"], env);
+		// A host with no sandbox never runs the checkout's tsc, so the crashing one cannot fail the check there.
+		if (first.stdout.includes("static.tsc  ran unconfined")) {
+			expect(first.stdout).not.toContain("static.tsc  failed");
+			return;
+		}
 		expect(first.stdout).toContain("static.tsc  failed");
 		rmSync(join(repo, "node_modules"), { recursive: true, force: true });
 
