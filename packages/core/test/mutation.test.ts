@@ -145,6 +145,22 @@ describe("normaliseMutationReport", () => {
 		).toEqual([["src/a.ts", 12, 20]]);
 	});
 
+	it("gives every mutant that starts on a line the widest span among them, so they merge into one finding", () => {
+		expect(
+			located({
+				"src/a.ts": [
+					{ status: "Survived", line: 12 },
+					{ status: "NoCoverage", line: 12, endLine: 14 },
+					{ status: "Survived", line: 11, endLine: 13 },
+				],
+			}),
+		).toEqual([
+			["src/a.ts", 11, 13],
+			["src/a.ts", 12, 14],
+			["src/a.ts", 12, 14],
+		]);
+	});
+
 	it("ignores a survivor in a file the change did not touch, whatever the file is called", () => {
 		expect(
 			located({

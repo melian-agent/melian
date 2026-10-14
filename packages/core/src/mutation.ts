@@ -265,8 +265,9 @@ function collectMutants(
 	groups: CollectedMutants,
 ): void {
 	const { results, aside, ignored, configured, exempt } = groups;
+	const reportable: Static<typeof mutant>[] = [];
 	for (const each of mutants) {
-		const { start, end } = each.location;
+		const { start } = each.location;
 		if (!ranges.some(([first, last]) => start.line >= first && start.line <= last)) continue;
 		if (setAside.has(each.status)) {
 			aside.set(each.status, (aside.get(each.status) ?? 0) + 1);
@@ -287,6 +288,16 @@ function collectMutants(
 			continue;
 		}
 		if (each.status === "Killed") continue;
+		reportable.push(each);
+	}
+	// One finding per line: every mutant that starts on a line takes the widest span among them, so their results share a
+	// snippet, and so an ID, and merge into one finding that counts them.
+	const widest = new Map<number, number>();
+	for (const { location } of reportable)
+		widest.set(location.start.line, Math.max(widest.get(location.start.line) ?? 0, location.end.line));
+	for (const each of reportable) {
+		const start = each.location.start;
+		const end = { line: widest.get(start.line)! };
 		const survived = each.status === "Survived";
 		const test = run.tests[path] ?? "a test file";
 		results.push({
