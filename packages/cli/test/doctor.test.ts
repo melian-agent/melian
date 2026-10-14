@@ -466,14 +466,14 @@ describe("doctor mutation testing", () => {
 		expect(line(stdout)).toContain("@stryker-mutator/core and @stryker-mutator/vitest-runner");
 	});
 
-	it("says the check runs for your own checkout and a writer's head, and that other heads wait for the Actions host", async () => {
+	it("says the check runs for a writer's pull request and a range vouched for, and that other heads wait for the Actions host", async () => {
 		enable();
 		mkdirSync(join(repo, "node_modules/.bin"), { recursive: true });
 		writeFileSync(join(repo, "node_modules/.bin/stryker"), "#!/bin/sh\n");
 		chmodSync(join(repo, "node_modules/.bin/stryker"), 0o755);
 		const { stdout } = await run(github());
 		expect(line(stdout)).toMatch(
-			/^ok {4}mutation\s+static\.mutation runs Stryker from the checkout for your own checked-out commit and for a head a writer pushed to the base repository; any other head waits for the Actions host's credential-free job$/,
+			/^ok {4}mutation\s+static\.mutation runs Stryker from the checkout for a pull request a writer pushed to the base repository, and for a range you pass --trust-head; any other head waits for the Actions host's credential-free job$/,
 		);
 	});
 

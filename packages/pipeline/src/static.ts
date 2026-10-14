@@ -43,7 +43,7 @@ export interface StaticRunInput {
 	readonly revision?: Revision;
 	/**
 	 * The host's leave to run the head's own code, which mutation testing does through the head's tests: the head is the
-	 * reviewer's own checkout or a writer's. Without it the mutation runner refuses before it touches the repository.
+	 * reviewer's own, a writer's, or one the reviewer vouched for. Without it the mutation runner refuses before it touches the repository.
 	 */
 	readonly headCode?: "trusted";
 	/** Records and clears supervised process identities for durable recovery. */

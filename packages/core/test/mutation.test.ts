@@ -481,7 +481,7 @@ describe("normaliseMutationReport", () => {
 	it("words each skip reason as the review shows it", () => {
 		expect(mutationSkips.noProductionLines).toBe("the change adds or edits no production TypeScript lines");
 		expect(mutationSkips.headNotAllowed("the head is from a fork")).toBe(
-			"the head is from a fork; the mutation check runs the head's own tests, so it runs only for the reviewer's own checkout and for a head a writer pushed to the base repository, and a head from outside the repository's writers runs its tests only in a credential-free job, which arrives with the Actions host",
+			"the head is from a fork; the mutation check runs the head's own tests, so it runs only for a head a writer pushed to the base repository or one the reviewer vouches for with --trust-head, and a head from outside the repository's writers runs its tests only in a credential-free job, which arrives with the Actions host",
 		);
 		expect(mutationSkips.timeout(7)).toBe("Stryker ran past static.mutation.timeout of 7 seconds before it finished");
 		expect(mutationSkips.unmutated(["src/a.ts", "src/b.ts"])).toBe(

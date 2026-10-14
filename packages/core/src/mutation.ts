@@ -63,7 +63,7 @@ export const mutationSkips = {
 	noProductionLines: "the change adds or edits no production TypeScript lines",
 	// The particular reason leads, so a status line cut short still says it.
 	headNotAllowed: (detail: string) =>
-		`${detail}; the mutation check runs the head's own tests, so it runs only for the reviewer's own checkout and for a head a writer pushed to the base repository, and a head from outside the repository's writers runs its tests only in a credential-free job, which arrives with the Actions host`,
+		`${detail}; the mutation check runs the head's own tests, so it runs only for a head a writer pushed to the base repository or one the reviewer vouches for with --trust-head, and a head from outside the repository's writers runs its tests only in a credential-free job, which arrives with the Actions host`,
 	timeout: (seconds: number) => `Stryker ran past static.mutation.timeout of ${seconds} seconds before it finished`,
 	unmutated: (paths: readonly string[]) =>
 		`the change adds or edits lines of production TypeScript files that Stryker is not asked to mutate (${paths.join(", ")}), so none of them was judged`,

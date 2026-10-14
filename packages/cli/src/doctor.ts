@@ -227,7 +227,7 @@ async function mutationCheck(cwd: string, env: NodeJS.ProcessEnv): Promise<Check
 			name: "mutation",
 			state: "ok",
 			detail:
-				"static.mutation runs Stryker from the checkout for your own checked-out commit and for a head a writer pushed to the base repository; any other head waits for the Actions host's credential-free job",
+				"static.mutation runs Stryker from the checkout for a pull request a writer pushed to the base repository, and for a range you pass --trust-head; any other head waits for the Actions host's credential-free job",
 		};
 	} catch (error) {
 		return { name: "mutation", state: "warn", detail: error instanceof Error ? error.message : String(error) };
