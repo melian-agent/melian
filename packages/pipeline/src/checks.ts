@@ -141,16 +141,15 @@ const toolOf: Readonly<Record<Exclude<DeterministicCheck, "guardrails">, StaticT
 // The note a mutation check carries when it ran the head's tests only because the reviewer vouched for the head.
 export const trustedHeadNote = "Ran the head's own tests because the reviewer passed --trust-head.";
 
-// Why the head's code may not run here, or undefined when it may. The repository's `trust.writers` policy, which
-// publication reads too, can switch off trust in writers; it says nothing of the reviewer's own checkout. The reason sits
-// in an object so that a refusal with no detail still reads as one.
-function refused(input: CheckInput): { detail: string } | undefined {
+// What lets the head's code run here, or why it may not. The repository's `trust.writers` policy, which publication reads
+// too, can switch off trust in writers; it says nothing of the other leaves.
+function leaveOf(input: CheckInput): { by: "checkout" | "writer" | "reviewer" } | { detail: string } {
 	const { writer } = input;
 	if (writer === undefined) return { detail: "the review did not say whose code the head is" };
 	if (!writer.trusted) return { detail: writer.detail };
 	if (writer.by === "writer" && !input.config.trust.writers)
 		return { detail: "trust.writers is false in the repository's policy" };
-	return undefined;
+	return { by: writer.by };
 }
 
 interface MutationHooks {
@@ -167,14 +166,16 @@ async function runStatic(
 	const tool = toolOf[input.check as keyof typeof toolOf];
 	const settings = input.config.static[tool];
 	if (!settings.enabled) return { status: "skipped", reason: `static.${tool}.enabled is false` };
+	const leaveNotes: string[] = [];
 	if (tool === "mutation") {
 		// Asked first: a change with nothing to judge runs no head code, so it needs no leave and passes on any host.
 		if (!MutationRun.judges(Revision.from(input.changeset.revision)))
 			return { status: "skipped", reason: mutationSkips.noProductionLines, cause: "noProductionLines" };
-		const reason = refused(input);
-		if (reason !== undefined) {
-			return { status: "skipped", reason: mutationSkips.headNotAllowed(reason.detail), cause: "headNotAllowed" };
+		const leave = leaveOf(input);
+		if ("detail" in leave) {
+			return { status: "skipped", reason: mutationSkips.headNotAllowed(leave.detail), cause: "headNotAllowed" };
 		}
+		if (leave.by === "reviewer") leaveNotes.push(trustedHeadNote);
 	}
 	if (env === undefined) {
 		throw new CheckError(
@@ -224,13 +225,7 @@ async function runStatic(
 		base: base.status === "ran" ? base.log : empty,
 		head: head.log,
 	});
-	const vouched = tool === "mutation" && input.writer?.trusted === true && input.writer.by === "reviewer";
-	const notes = [
-		...(vouched ? [trustedHeadNote] : []),
-		...report.notes,
-		...head.notes,
-		...(base.status === "ran" ? base.notes : []),
-	];
+	const notes = [...leaveNotes, ...report.notes, ...head.notes, ...(base.status === "ran" ? base.notes : [])];
 	return {
 		status: "ran",
 		report: { findings: report.findings, notes },
