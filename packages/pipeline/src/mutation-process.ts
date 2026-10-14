@@ -56,9 +56,14 @@ export async function terminateRecorded(
 				table.some((entry) => entry.pid === record.pid && entry.start === record.start),
 		);
 	};
-	for (const record of live()) control.kill(record.pid, "SIGTERM");
+	// The table is read again before each signal, not once for the batch: a recorded process can exit while the ones
+	// before it are signalled, and its pid can pass to a process that is nobody's to end.
+	const signal = (name: "SIGTERM" | "SIGKILL") => {
+		for (const record of live()) if (live().includes(record)) control.kill(record.pid, name);
+	};
+	signal("SIGTERM");
 	for (let wait = 0; wait < 20 && live().length > 0; wait++) await sleep(50);
-	for (const record of live()) control.kill(record.pid, "SIGKILL");
+	signal("SIGKILL");
 }
 
 export interface SupervisorHost {

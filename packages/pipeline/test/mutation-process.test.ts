@@ -67,6 +67,28 @@ describe("terminateRecorded", () => {
 		expect(fake.kills).toEqual([]);
 	});
 
+	it.each(["SIGTERM", "SIGKILL"] as const)(
+		"does not send %s to a pid that passed to another process while an earlier one was signalled",
+		async (signal) => {
+			// Ending 10 lets 11 exit too, and its pid goes to a process that was never recorded.
+			class Reusing extends FakeProcesses {
+				override kill(pid: number, name: "SIGTERM" | "SIGKILL"): void {
+					this.kills.push([pid, name]);
+					if (pid === 10 && name === signal)
+						this.table = [at(11, 1, "a stranger"), ...this.table.filter((entry) => entry.pid > 11)];
+				}
+			}
+			const fake = new Reusing([at(10, 1), at(11, 10), at(12, 1)]);
+			await terminateRecorded(recorded(at(10, 1), at(11, 10)), fake, async () => {}, []);
+			expect(fake.kills.filter(([pid]) => pid === 11).map(([, name]) => name)).toEqual(
+				signal === "SIGTERM" ? [] : ["SIGTERM"],
+			);
+			expect(fake.kills.filter(([pid]) => pid === 10).map(([, name]) => name)).toEqual(
+				signal === "SIGTERM" ? ["SIGTERM"] : ["SIGTERM", "SIGKILL"],
+			);
+		},
+	);
+
 	it("leaves a recorded pid alone when no such process runs", async () => {
 		const fake = new FakeProcesses([at(99, 1)]);
 		await terminateRecorded(recorded(at(10, 1)), fake, async () => {}, []);
