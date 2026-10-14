@@ -1734,7 +1734,7 @@ cp '${canned}' reports/mutation/mutation.json`,
 			return { harness, root: await harness.root(context, { agent: { model: fake.ref() } }) };
 		}
 
-		const trusted: WriterTrust = { trusted: true, by: "checkout" };
+		const trusted: WriterTrust = { trusted: true, by: "writer" };
 
 		async function checks(base: string, head: string, writer: WriterTrust | null = trusted) {
 			const { harness, root } = await open();
@@ -1939,7 +1939,7 @@ cp '${canned}' reports/mutation/mutation.json`,
 				expect(fake.calls()).toEqual([]);
 			});
 
-			it.each(["checkout", "writer"] as const)("runs for a head allowed by %s", async (by) => {
+			it.each(["writer", "reviewer"] as const)("runs for a head allowed by %s", async (by) => {
 				const { base, head: tip } = head();
 				const fake = stryker({ report: report({}) });
 				const { run } = await checks(base, tip, { trusted: true, by });
@@ -1952,7 +1952,7 @@ cp '${canned}' reports/mutation/mutation.json`,
 				stryker({ report: report({}) });
 				const vouched = (await checks(base, tip, { trusted: true, by: "reviewer" })).run.records[0];
 				expect(vouched).toMatchObject({ status: "ran", notes: expect.arrayContaining([trustedHeadNote]) });
-				const own = (await checks(base, tip, { trusted: true, by: "checkout" })).run.records[0];
+				const own = (await checks(base, tip, { trusted: true, by: "writer" })).run.records[0];
 				expect(own).toMatchObject({ status: "ran", notes: expect.not.arrayContaining([trustedHeadNote]) });
 			});
 
@@ -2015,10 +2015,10 @@ cp '${canned}' reports/mutation/mutation.json`,
 					expect(fake.calls()).toEqual([]);
 				});
 
-				it.each(["checkout", "reviewer"] as const)("still runs a head allowed by %s", async (by) => {
+				it("still runs a head the reviewer vouched for", async () => {
 					const { base, tip } = distrusting();
 					const fake = stryker({ report: report({}) });
-					const { run } = await checks(base, tip, { trusted: true, by });
+					const { run } = await checks(base, tip, { trusted: true, by: "reviewer" });
 					expect(run.records[0]).toMatchObject({ name: "static.mutation", status: "ran" });
 					expect(fake.calls()).toHaveLength(1);
 				});
@@ -2027,7 +2027,7 @@ cp '${canned}' reports/mutation/mutation.json`,
 			it("runs again when the writer's trust changes", async () => {
 				const { base, head: tip } = head();
 				stryker({ report: report({}) });
-				const trustedRun = (await checks(base, tip, { trusted: true, by: "checkout" })).run.identity.policy;
+				const trustedRun = (await checks(base, tip, { trusted: true, by: "reviewer" })).run.identity.policy;
 				const untrustedRun = (await checks(base, tip, { trusted: false, detail: "x" })).run.identity.policy;
 				expect(trustedRun).not.toBe(untrustedRun);
 			});

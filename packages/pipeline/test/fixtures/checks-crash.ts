@@ -46,7 +46,7 @@ await runChecks(
 		config,
 		source,
 		tier: "full",
-		writer: { trusted: true, by: "checkout" },
+		writer: { trusted: true, by: "reviewer" },
 	},
 	backgroundContext,
 );

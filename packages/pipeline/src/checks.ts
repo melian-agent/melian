@@ -91,13 +91,10 @@ export const MutationProcesses = defineDoc<{ trees: Record<string, MutationTreeR
 /**
  * The host's decision on whether a check that runs the head's own code, as `static.mutation` does through the head's
  * tests, may run for this head. Made by the host from what it knows itself, never from anything the head supplies:
- * `checkout` when the head is the reviewer's own uncommitted work, which no review of the CLI covers today, `writer` when
- * it sits in the base repository and was pushed by someone with write access, `reviewer` when the reviewer vouched for it
- * with `melian review --trust-head`. Otherwise `detail` says why not, and the check does not run.
+ * `writer` when the head sits in the base repository and was pushed by someone with write access, `reviewer` when the
+ * reviewer vouched for it with `melian review --trust-head`. Otherwise `detail` says why not, and the check does not run.
  */
-export type WriterTrust =
-	| { trusted: true; by: "checkout" | "writer" | "reviewer" }
-	| { trusted: false; detail: string };
+export type WriterTrust = { trusted: true; by: "writer" | "reviewer" } | { trusted: false; detail: string };
 
 function identityKey({ base, head, tier, policy, task }: RunIdentity): string {
 	return `${base} ${head} ${tier} ${policy} ${task}`;
@@ -143,7 +140,7 @@ export const trustedHeadNote = "Ran the head's own tests because the reviewer pa
 
 // What lets the head's code run here, or why it may not. The repository's `trust.writers` policy, which publication reads
 // too, can switch off trust in writers; it says nothing of the other leaves.
-function leaveOf(input: CheckInput): { by: "checkout" | "writer" | "reviewer" } | { detail: string } {
+function leaveOf(input: CheckInput): { by: "writer" | "reviewer" } | { detail: string } {
 	const { writer } = input;
 	if (writer === undefined) return { detail: "the review did not say whose code the head is" };
 	if (!writer.trusted) return { detail: writer.detail };

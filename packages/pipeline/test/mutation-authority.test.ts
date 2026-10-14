@@ -50,7 +50,7 @@ afterEach(async () => {
 	rmSync(artifacts, { recursive: true, force: true });
 });
 
-const trusted: WriterTrust = { trusted: true, by: "checkout" };
+const trusted: WriterTrust = { trusted: true, by: "reviewer" };
 const revoked: WriterTrust = { trusted: false, detail: "write permission was revoked" };
 const source = (commitId: string): RepositorySource => ({ kind: "revision", commit: commitId });
 const a = lines("export function a(x: number) {", "  if (x > 0) return 1;", "  return 0;", "}");
