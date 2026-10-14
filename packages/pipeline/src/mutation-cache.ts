@@ -14,22 +14,24 @@ export interface MutationCacheKey {
 }
 
 // The text of an incremental report, read through one no-follow open: a regular file within the bound that parses, or
-// undefined. What was checked is what is returned, so nothing can be swapped in between.
+// undefined. What was checked is what is returned, so nothing can be swapped in between. The text is dropped in the
+// catch, not returned from it, so a report that does not parse cannot fall through as read.
 async function reportText(path: string): Promise<string | undefined> {
+	let text: string | undefined;
 	try {
 		const file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
 		try {
 			const stat = await file.stat();
 			if (!stat.isFile() || stat.size > bound) return undefined;
-			const text = await file.readFile("utf8");
+			text = await file.readFile("utf8");
 			JSON.parse(text);
-			return text;
 		} finally {
 			await file.close();
 		}
 	} catch {
-		return undefined;
+		text = undefined;
 	}
+	return text;
 }
 
 // The run writes a staged copy in its scratch; only a run that still holds authority publishes a completed partition.
