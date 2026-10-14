@@ -142,7 +142,8 @@ export async function review(
 		changeset = await Changeset.resolve(io.cwd, target.spec);
 		const checkedOut = await git(changeset.repoRoot, ["rev-parse", "--verify", "--quiet", "HEAD"]).catch(() => "");
 		if (checkedOut === changeset.revision.head) writer = await checkoutTrust(changeset.repoRoot, checkedOut);
-		const own = checkedOut === changeset.revision.head;
+		// Only the reviewer's own work reads policy from the working tree, so a fork's melian.yaml cannot turn a check on.
+		const own = writer.trusted;
 		const preferences = userFiles(io.env).config;
 		source = own ? { kind: "worktree", preferences } : { kind: "revision", commit: changeset.revision.base };
 	}

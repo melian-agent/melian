@@ -319,6 +319,19 @@ describe("static.mutation on a checked-out head", { timeout: 60_000 }, () => {
 		expect(output()).toContain(outsideCheckout);
 	});
 
+	it("reads whether the check runs from the base, not from a fork head's own melian.yaml", async () => {
+		const enabling = "tiers:\n  full: [static.mutation]\nstatic:\n  mutation: { enabled: true, timeout: 120 }\n";
+		const { io } = await open("octocat", { octocat: "admin" }, { "melian.yaml": enabling }, "guardrails", {}, {});
+		track("origin", "refs/pull/7/head");
+		// Even vouched for, a head that is not the reviewer's own does not choose its policy.
+		await review(io, "main...feature", { rerun: false, walkthrough: false, trustHead: true });
+		expect(ran()).toBe(false);
+		// The same head, the reviewer's own, reads its own policy and runs.
+		gitIn(repo, "config", "--unset", "branch.feature.merge");
+		gitIn(repo, "config", "--unset", "branch.feature.remote");
+		await review(io, "main...feature", { rerun: true, walkthrough: false });
+		expect(ran()).toBe(1);
+	});
 
 	it("runs a head the reviewer vouches for with --trust-head, a fork's or one not checked out", async () => {
 		const { io } = await open("octocat", { octocat: "read" });
