@@ -270,6 +270,9 @@ export class MutationRun {
 		await this.#write(module, readFileSync(fileURLToPath(mutationVitestModule), "utf8"));
 		const script = posix.join(this.#scratch, runner);
 		const selectedConfig = posix.join(this.#scratch, "stryker.config.json");
+		// Stryker ends a dry run that passes its own limit, which the configuration may set below Melian's timeout; whole
+		// minutes at or past Melian's leave the timeout the only one that ends the run.
+		const dryRunMinutes = Math.ceil(this.#run.input.settings.timeout / 60);
 		const text = `
 import { existsSync, readFileSync, rmSync, writeFileSync, writeSync } from "node:fs";
 import { spawn } from "node:child_process";
@@ -291,6 +294,7 @@ const result = await selection.execute(async (tests, fresh) => {
   }
   rmSync(${JSON.stringify(report)}, { force: true });
   writeFileSync(${JSON.stringify(selectedConfig)}, JSON.stringify({ ...config,
+    dryRunTimeoutMinutes: ${dryRunMinutes},
     vitest: { ...config.vitest, related: false },
     testFiles: tests?.map(file => relative(process.cwd(), file).replace(/[\\\\*?[\\]{}()!+@#]/g, "\\\\$&")) ?? []
   }));

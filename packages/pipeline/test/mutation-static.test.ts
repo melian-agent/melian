@@ -173,6 +173,7 @@ async function mutate(
 	head: string,
 	extra: {
 		maxLines?: number;
+		timeout?: number;
 		revision?: boolean;
 		headCode?: "trusted" | undefined;
 		policyCommit?: string;
@@ -193,7 +194,7 @@ async function mutate(
 			...(extra.holdsAuthority === undefined ? {} : { holdsAuthority: extra.holdsAuthority }),
 			settings: {
 				...defaultConfig.static.mutation,
-				timeout: 120,
+				timeout: extra.timeout ?? 120,
 				...(extra.maxLines === undefined ? {} : { maxLines: extra.maxLines }),
 			},
 			...(extra.revision === false ? {} : { revision }),
@@ -237,6 +238,24 @@ function twoCommits(headFiles: Record<string, string> = { "packages/p/src/a.ts":
 }
 
 describe("static.mutation", { timeout: 60_000 }, () => {
+	it.each([
+		[60, 1],
+		[7140, 119],
+		[7141, 120],
+		[7200, 120],
+		[7201, 121],
+	])("gives Stryker a dry-run limit no shorter than a %i-second timeout: %i minutes", async (timeout, minutes) => {
+		const { base, head } = twoCommits();
+		const selected = join(artifacts, "selected.json");
+		fakeTool(
+			repo,
+			"stryker",
+			`if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi\ncp "$2" '${selected}'\nmkdir -p reports/mutation\necho '{"schemaVersion":"1.0","files":{}}' > reports/mutation/mutation.json`,
+		);
+		await mutate(base, head, { timeout });
+		expect(JSON.parse(readFileSync(selected, "utf8")).dryRunTimeoutMinutes).toBe(minutes);
+	});
+
 	it.each([
 		"packages/core/src/git.ts",
 		"packages/pipeline/src/cache-scratch.ts",

@@ -57,7 +57,7 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 			comment: "standard",
 		});
 		expect(loaded.config.static.enola).toEqual({ enabled: false, timeout: 300, severity: {} });
-		expect(loaded.config.static.mutation).toEqual({ enabled: false, timeout: 1800, severity: {}, maxLines: 2000 });
+		expect(loaded.config.static.mutation).toEqual({ enabled: false, timeout: 7200, severity: {}, maxLines: 2000 });
 		expect(loaded.config.resolution).toEqual({
 			P0: "block",
 			P1: "block",
@@ -381,7 +381,7 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 		writeFiles(repo, { "melian.yaml": lines("static:", "  mutation: { enabled: true, maxLines: 1 }") });
 		expect((await load("a.ts")).config.static.mutation).toEqual({
 			enabled: true,
-			timeout: 1800,
+			timeout: 7200,
 			severity: {},
 			maxLines: 1,
 		});
@@ -389,6 +389,18 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 			writeFiles(repo, { "melian.yaml": lines("static:", `  mutation: { maxLines: ${bound} }`) });
 			expect(await rejection(load("a.ts"))).toMatchObject({ code: "invalidValue", key: "static.mutation.maxLines" });
 		}
+	});
+
+	it("allows the mutation check two hours and every other tool one, and refuses a second past either", async () => {
+		writeFiles(repo, {
+			"melian.yaml": lines("static:", "  mutation: { timeout: 7200 }", "  biome: { timeout: 3600 }"),
+		});
+		const { config } = await load("a.ts");
+		expect([config.static.mutation.timeout, config.static.biome.timeout]).toEqual([7200, 3600]);
+		writeFiles(repo, { "melian.yaml": lines("static:", "  mutation: { timeout: 7201 }") });
+		expect(await rejection(load("a.ts"))).toMatchObject({ code: "invalidValue", key: "static.mutation.timeout" });
+		writeFiles(repo, { "melian.yaml": lines("static:", "  biome: { timeout: 3601 }") });
+		expect(await rejection(load("a.ts"))).toMatchObject({ code: "invalidValue", key: "static.biome.timeout" });
 	});
 
 	it("reads an empty file as contributing nothing", async () => {

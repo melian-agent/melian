@@ -198,7 +198,14 @@ export const melianYamlSchema = Type.Object(
 					biome: Type.Optional(Type.Object(staticTool, strict)),
 					enola: Type.Optional(Type.Object(staticTool, strict)),
 					mutation: Type.Optional(
-						Type.Object({ ...staticTool, maxLines: Type.Optional(Type.Integer({ minimum: 1 })) }, strict),
+						Type.Object(
+							{
+								...staticTool,
+								timeout: Type.Optional(Type.Integer({ minimum: 1, maximum: 7200 })),
+								maxLines: Type.Optional(Type.Integer({ minimum: 1 })),
+							},
+							strict,
+						),
 					),
 					tsc: Type.Optional(Type.Object({ ...staticTool, project: Type.Optional(name) }, strict)),
 				},
@@ -497,7 +504,7 @@ export const defaultConfig: MelianConfig = {
 	static: {
 		biome: { enabled: true, timeout: 300, severity: {} },
 		enola: { enabled: false, timeout: 300, severity: {} },
-		mutation: { enabled: false, timeout: 1800, severity: {}, maxLines: 2000 },
+		mutation: { enabled: false, timeout: 7200, severity: {}, maxLines: 2000 },
 		tsc: { enabled: true, timeout: 300, severity: {}, project: "tsconfig.json" },
 	},
 	guardrails: {
