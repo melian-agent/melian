@@ -289,19 +289,35 @@ describe("the authority over a revision's mutation check", { timeout: 120_000 },
 			try {
 				// The other head's own check is not what this is about, so it parks like the first if it runs at all.
 				const second = runChecks(harness, await input(base, otherHead, root.id, next), context);
-				if (status === "failed") {
-					expect((await first).records).toMatchObject([
-						{ name: "static.mutation", status: "failed", reason: "aborted" },
-					]);
-				}
+				// The earlier run, whose leave was a declaration this call does not make, ends with its check.
+				if (status === "failed") await expect(first).rejects.toThrow("ended aborted");
 				writeFileSync(join(artifacts, "release"), "");
 				await second;
 			} finally {
 				writeFileSync(join(artifacts, "release"), "");
 			}
-			expect((await first).records).toMatchObject([{ name: "static.mutation", status }]);
+			if (status === "ran") expect((await first).records).toMatchObject([{ name: "static.mutation", status }]);
+			// One run for the first head, and one for the other head when this call may run it.
+			expect(runs()).toBe(next.trusted ? 2 : 1);
 		},
 	);
+
+	it("ends a pending checks run that holds the host's declaration before it can hand that leave to a new child", async () => {
+		const { base, head } = scenario();
+		const otherHead = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x <= 0") });
+		const { harness, root } = await openOn();
+		const declared: WriterTrust = { trusted: true, by: "isolatedRunner" };
+		// The crash: the parent is committed, and the process dies before anything runs it.
+		vi.spyOn(harness, "waitForTask").mockRejectedValueOnce(new Error("killed before the start phase"));
+		await expect(runChecks(harness, await input(base, head, root.id, declared), context)).rejects.toThrow(
+			"killed before the start phase",
+		);
+		expect((await harness.inspect(context)).tasks.map(({ record }) => record.kind)).toContain("melian.checks");
+		expect(runs()).toBe(0);
+		await runChecks(harness, await input(base, otherHead, root.id, revoked), context);
+		expect(runs()).toBe(0);
+		expect(await liveChecks(harness)).toEqual([]);
+	});
 
 	it("leaves a task of another kind alone even when its input resembles a retired mutation check", async () => {
 		const { base, head } = scenario();

@@ -254,14 +254,19 @@ async function abortRetiredMutation(
 	isolated: boolean,
 	context: Context,
 ): Promise<void> {
+	const undeclared = (writer: WriterTrust | undefined) =>
+		!isolated && writer?.trusted === true && writer.by === "isolatedRunner";
 	const { tasks } = await harness.inspect(context);
 	for (const { record } of tasks) {
-		if (record.kind !== CheckTask.definition.name) continue;
+		// A parent a crash left before its start phase holds the same leave, and would hand it to the children it creates.
+		const parent =
+			record.kind === ChecksTask.definition.name && undeclared((record.input as unknown as ChecksInput).writer);
 		const input = record.input as unknown as CheckInput;
-		if (input.check !== "static.mutation") continue;
-		const retired = revisionKey(input.changeset.revision) === revision && input.authority !== key;
-		const undeclared = !isolated && input.writer?.trusted === true && input.writer.by === "isolatedRunner";
-		if (retired || undeclared) {
+		const child =
+			record.kind === CheckTask.definition.name &&
+			input.check === "static.mutation" &&
+			((revisionKey(input.changeset.revision) === revision && input.authority !== key) || undeclared(input.writer));
+		if (parent || child) {
 			await harness.abortTask(record.id, context);
 			await harness.waitForTask(record.id, context);
 		}
