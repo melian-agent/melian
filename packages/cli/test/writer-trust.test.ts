@@ -92,7 +92,7 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 	const io = {
 		cwd: repo,
 		// Whatever the machine running these tests has declared, the host under test has declared nothing.
-		env: { ...process.env, MELIAN_TEST_SCRIPT: script, MELIAN_ISOLATED_RUNNER: "" } as NodeJS.ProcessEnv,
+		env: { ...process.env, MELIAN_TEST_SCRIPT: script } as NodeJS.ProcessEnv,
 		stdout: (text: string) => {
 			output += text;
 		},
@@ -151,7 +151,7 @@ describe("static.mutation and the writer of a pull request", { timeout: 60_000 }
 		const { io, output } = await open("maintainer", { maintainer: "admin" }, {}, "static.mutation", { repository });
 		expect(await review(io, "#7", { rerun: false, walkthrough: false })).toBe(notReviewed);
 		expect(ran()).toBe(false);
-		expect(output()).toContain("the head is from a fork and this host is not an isolated runner");
+		expect(output()).toContain("the head is from a fork; the mutation check runs the head's own tests");
 	});
 	it("refuses an absent head repository", async () => {
 		const { io, output } = await open("maintainer", { maintainer: "admin" }, {}, "static.mutation", {
@@ -227,50 +227,8 @@ describe("static.mutation and the writer of a pull request", { timeout: 60_000 }
 		expect(await review(io, "main...feature", { rerun: false, walkthrough: false })).toBe(notReviewed);
 		expect(ran()).toBe(false);
 		expect(output()).toContain("Verdict: not reviewed");
-		expect(output()).toContain(
-			"the review's range head is not the checked-out commit, and this host is not an isolated runner",
-		);
-	});
-});
-
-describe("static.mutation on a host that declares itself an isolated runner", { timeout: 60_000 }, () => {
-	const fork = { repository: { owner: "fork-owner", name: "example" } };
-
-	it("runs a fork's head when the review is given the flag", async () => {
-		const { io, output } = await open("stranger", { stranger: "read" }, {}, "static.mutation", fork);
-		expect(await review(io, "#7", { rerun: false, walkthrough: false, isolatedRunner: true })).toBe(0);
-		expect(ran()).toBe(1);
-		expect(output()).toContain("Verdict: passed");
-	});
-
-	it("runs a fork's head when the host's environment declares it", async () => {
-		const { io } = await open("stranger", { stranger: "read" }, {}, "static.mutation", fork);
-		const declared = { ...io, env: { ...io.env, MELIAN_ISOLATED_RUNNER: "1" } };
-		expect(await review(declared, "#7", { rerun: false, walkthrough: false })).toBe(0);
-		expect(ran()).toBe(1);
-	});
-
-	it.each(["true", "0", ""])("does not take MELIAN_ISOLATED_RUNNER=%j for the declaration", async (value) => {
-		const { io, output } = await open("stranger", { stranger: "read" }, {}, "static.mutation", fork);
-		const declared = { ...io, env: { ...io.env, MELIAN_ISOLATED_RUNNER: value } };
-		expect(await review(declared, "#7", { rerun: false, walkthrough: false, isolatedRunner: false })).toBe(
-			notReviewed,
-		);
-		expect(ran()).toBe(false);
-		expect(output()).toContain("the head is from a fork and this host is not an isolated runner");
-	});
-
-	it("runs a range whose head is not checked out, and a head whose pusher could not be read", async () => {
-		const range = await open("octocat", { octocat: "read" });
-		gitIn(repo, "checkout", "--quiet", "main");
-		expect(await review(range.io, "main...feature", { rerun: false, walkthrough: false, isolatedRunner: true })).toBe(
-			0,
-		);
-		expect(ran()).toBe(1);
-		rmSync(repo, { recursive: true, force: true });
-		const unread = await open("maintainer", { maintainer: "admin" }, {}, "static.mutation", { failEvents: true });
-		expect(await review(unread.io, "#7", { rerun: false, walkthrough: false, isolatedRunner: true })).toBe(0);
-		expect(ran()).toBe(1);
+		expect(output()).toContain("the review's range head is not the checked-out commit;");
+		expect(output()).toContain("which arrives with the Actions host");
 	});
 });
 
@@ -284,20 +242,12 @@ describe("static.mutation where the repository does not trust writers", { timeou
 		const { io, output } = await open("octocat", { octocat: "admin" }, {}, "static.mutation", {}, untrusting);
 		expect(await review(io, "#7", { rerun: false, walkthrough: false })).toBe(notReviewed);
 		expect(ran()).toBe(false);
-		expect(output()).toContain(
-			"trust.writers is false in the repository's policy, and this host is not an isolated runner",
-		);
+		expect(output()).toContain("trust.writers is false in the repository's policy;");
 	});
 
 	it("still runs the reviewer's own checked-out commit", async () => {
 		const { io } = await open("octocat", { octocat: "read" }, {}, "static.mutation", {}, untrusting);
 		await review(io, "main...feature", { rerun: false, walkthrough: false });
-		expect(ran()).toBe(1);
-	});
-
-	it("still runs any head on an isolated runner", async () => {
-		const { io } = await open("octocat", { octocat: "admin" }, {}, "static.mutation", {}, untrusting);
-		await review(io, "#7", { rerun: false, walkthrough: false, isolatedRunner: true });
 		expect(ran()).toBe(1);
 	});
 });

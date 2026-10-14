@@ -20,7 +20,7 @@ import { createGitHubProvider, parseGitHubRemote, resolveGitHubToken } from "@me
 import { createReviewModels, piAuthPath, providersWithCredentials, staticToolSource } from "@melian-agent/pipeline";
 import type { Io } from "./commands.ts";
 import { decisionProviderRefusal, reviewModels } from "./models.ts";
-import { git, isolatedRunner, isolatedRunnerVariable, stateDirectory, stateDirectoryVariable } from "./repository.ts";
+import { git, stateDirectory, stateDirectoryVariable } from "./repository.ts";
 import { ToolInventory } from "./tools.ts";
 
 type Check = { readonly name: string; readonly state: "ok" | "warn" | "fail"; readonly detail: string };
@@ -226,9 +226,8 @@ async function mutationCheck(cwd: string, env: NodeJS.ProcessEnv): Promise<Check
 		return {
 			name: "mutation",
 			state: "ok",
-			detail: isolatedRunner(env)
-				? `static.mutation runs Stryker from the checkout for every head: ${isolatedRunnerVariable} declares this host an isolated runner`
-				: "static.mutation runs Stryker from the checkout for your own checked-out commit and for a head a writer pushed to the base repository; a fork's head runs only on an isolated runner",
+			detail:
+				"static.mutation runs Stryker from the checkout for your own checked-out commit and for a head a writer pushed to the base repository; any other head waits for the Actions host's credential-free job",
 		};
 	} catch (error) {
 		return { name: "mutation", state: "warn", detail: error instanceof Error ? error.message : String(error) };

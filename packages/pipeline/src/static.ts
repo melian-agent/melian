@@ -42,11 +42,10 @@ export interface StaticRunInput {
 	/** The change under review. Mutation testing mutates the lines it adds or edits, so `mutation` needs it. */
 	readonly revision?: Revision;
 	/**
-	 * The host's leave to run the head's own code, which mutation testing does through the head's tests: `trusted` for
-	 * the reviewer's own checkout or a writer's head, `isolated` for any head on a host that declared itself an isolated
-	 * runner. Without it the mutation runner refuses before it touches the repository.
+	 * The host's leave to run the head's own code, which mutation testing does through the head's tests: the head is the
+	 * reviewer's own checkout or a writer's. Without it the mutation runner refuses before it touches the repository.
 	 */
-	readonly headCode?: "trusted" | "isolated";
+	readonly headCode?: "trusted";
 	/** Records and clears supervised process identities for durable recovery. */
 	readonly mutationProcess?: MutationProcessHooks;
 	/** Whether the run still answers to the latest review of its revision; absence means it does. */

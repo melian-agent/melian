@@ -43,7 +43,6 @@ import {
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { MutationCache } from "../src/mutation-cache.ts";
 import { MutationProcess } from "../src/mutation-process.ts";
 import { strykerNotInstalled, strykerVersion } from "../src/mutation-static.ts";
 import { Run, staticToolSource } from "../src/static.ts";
@@ -175,7 +174,7 @@ async function mutate(
 	extra: {
 		maxLines?: number;
 		revision?: boolean;
-		headCode?: "trusted" | "isolated" | undefined;
+		headCode?: "trusted" | undefined;
 		policyCommit?: string;
 		env?: ExecutionEnv;
 		holdsAuthority?: () => Promise<boolean>;
@@ -384,24 +383,6 @@ printf '%s' '{"schemaVersion":"1.0","files":{}}' > reports/mutation/mutation.jso
 		const root = join(repo, ".git", "melian", "mutation");
 		return existsSync(root) ? readdirSync(root).map((name) => join(root, name, "incremental.json")) : [];
 	};
-
-	it("keeps the incremental file of a head run only on an isolated runner away from a trusted run", async () => {
-		const cache = vi.spyOn(MutationCache, "open");
-		const { base, head } = twoCommits();
-		const reads = incrementalTool();
-		await mutate(base, head, { headCode: "isolated" });
-		expect(cache.mock.calls.map(([, key]) => key.trusted)).toEqual([false]);
-		const [first] = partitions();
-		writeFileSync(first!, '{"stamp":"isolated-forgery"}');
-		await mutate(base, head, { headCode: "trusted" });
-		expect(cache.mock.calls.map(([, key]) => key.trusted)).toEqual([false, true]);
-		expect(reads()).toEqual([]);
-		expect(partitions()).toHaveLength(2);
-		expect(readFileSync(first!, "utf8")).toBe('{"stamp":"isolated-forgery"}');
-		await mutate(base, head, { headCode: "trusted", policyCommit: head });
-		expect(reads()).toEqual([]);
-		expect(partitions()).toHaveLength(3);
-	});
 
 	it("reuses identities for the same head and inputs only", async () => {
 		const { base, head } = twoCommits();
@@ -1868,22 +1849,19 @@ cp '${canned}' reports/mutation/mutation.json`,
 				]);
 				expect(run.records[0]).toMatchObject({
 					reason: expect.stringMatching(
-						/^octocat has read permission on the repository; .* or on an isolated runner$/,
+						/^octocat has read permission on the repository; .* which arrives with the Actions host$/,
 					),
 				});
 				expect(mutationSkipHasLeave((run.records[0] as { cause?: string }).cause)).toBe(false);
 				expect(fake.calls()).toEqual([]);
 			});
 
-			it.each(["checkout", "writer", "isolatedRunner"] as const)("runs for a head allowed by %s", async (by) => {
+			it.each(["checkout", "writer"] as const)("runs for a head allowed by %s", async (by) => {
 				const { base, head: tip } = head();
 				const fake = stryker({ report: report({}) });
-				const cache = vi.spyOn(MutationCache, "open");
 				const { run } = await checks(base, tip, { trusted: true, by });
 				expect(run.records[0]).toMatchObject({ name: "static.mutation", status: "ran" });
 				expect(fake.calls()).toHaveLength(1);
-				// A head that ran only because the host is isolated keeps its results apart from a trusted head's.
-				expect(cache.mock.calls.map(([, key]) => key.trusted)).toEqual([by !== "isolatedRunner"]);
 			});
 
 			it("skips when the review names no writer", async () => {
@@ -1938,19 +1916,17 @@ cp '${canned}' reports/mutation/mutation.json`,
 						{
 							name: "static.mutation",
 							status: "skipped",
-							reason: mutationSkips.headNotAllowed(
-								"trust.writers is false in the repository's policy, and this host is not an isolated runner",
-							),
+							reason: mutationSkips.headNotAllowed("trust.writers is false in the repository's policy"),
 							cause: "headNotAllowed",
 						},
 					]);
 					expect(fake.calls()).toEqual([]);
 				});
 
-				it.each(["checkout", "isolatedRunner"] as const)("still runs a head allowed by %s", async (by) => {
+				it("still runs the reviewer's own checkout", async () => {
 					const { base, tip } = distrusting();
 					const fake = stryker({ report: report({}) });
-					const { run } = await checks(base, tip, { trusted: true, by });
+					const { run } = await checks(base, tip, { trusted: true, by: "checkout" });
 					expect(run.records[0]).toMatchObject({ name: "static.mutation", status: "ran" });
 					expect(fake.calls()).toHaveLength(1);
 				});

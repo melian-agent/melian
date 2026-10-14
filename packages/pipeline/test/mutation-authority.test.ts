@@ -209,7 +209,7 @@ describe("the authority over a revision's mutation check", { timeout: 120_000 },
 		});
 		const request = await input(base, head, root.id, trusted);
 		const first = await runChecks(harness, request, context);
-		const second = await runChecks(harness, { ...request, writer: { trusted: true, by: "isolatedRunner" } }, context);
+		const second = await runChecks(harness, { ...request, writer: { trusted: true, by: "writer" } }, context);
 		expect(second.identity.policy).not.toBe(first.identity.policy);
 		expect(second.identity.task).not.toBe(first.identity.task);
 		expect(runs()).toBe(2);
@@ -267,56 +267,6 @@ describe("the authority over a revision's mutation check", { timeout: 120_000 },
 		}
 		expect((await first).records).toMatchObject([{ name: "static.mutation", status: "ran" }]);
 		expect(runs()).toBe(1);
-	});
-
-	it.each([
-		["ends", revoked, "failed"],
-		["ends", trusted, "failed"],
-		["leaves running", { trusted: true, by: "isolatedRunner" } as WriterTrust, "ran"],
-	] as const)(
-		"%s a mutation check of another revision that ran on the host's declaration when the next call's leave is %o",
-		async (_what, next, status) => {
-			const { base, head } = scenario(true);
-			const otherHead = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x <= 0") });
-			const { harness, root } = await openOn();
-			const declared: WriterTrust = { trusted: true, by: "isolatedRunner" };
-			const first = runChecks(harness, await input(base, head, root.id, declared), context);
-			const deadline = Date.now() + 20_000;
-			while (runs() === 0) {
-				if (Date.now() > deadline) throw new Error("Stryker never started");
-				await sleep(20);
-			}
-			try {
-				// The other head's own check is not what this is about, so it parks like the first if it runs at all.
-				const second = runChecks(harness, await input(base, otherHead, root.id, next), context);
-				// The earlier run, whose leave was a declaration this call does not make, ends with its check.
-				if (status === "failed") await expect(first).rejects.toThrow("ended aborted");
-				writeFileSync(join(artifacts, "release"), "");
-				await second;
-			} finally {
-				writeFileSync(join(artifacts, "release"), "");
-			}
-			if (status === "ran") expect((await first).records).toMatchObject([{ name: "static.mutation", status }]);
-			// One run for the first head, and one for the other head when this call may run it.
-			expect(runs()).toBe(next.trusted ? 2 : 1);
-		},
-	);
-
-	it("ends a pending checks run that holds the host's declaration before it can hand that leave to a new child", async () => {
-		const { base, head } = scenario();
-		const otherHead = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x <= 0") });
-		const { harness, root } = await openOn();
-		const declared: WriterTrust = { trusted: true, by: "isolatedRunner" };
-		// The crash: the parent is committed, and the process dies before anything runs it.
-		vi.spyOn(harness, "waitForTask").mockRejectedValueOnce(new Error("killed before the start phase"));
-		await expect(runChecks(harness, await input(base, head, root.id, declared), context)).rejects.toThrow(
-			"killed before the start phase",
-		);
-		expect((await harness.inspect(context)).tasks.map(({ record }) => record.kind)).toContain("melian.checks");
-		expect(runs()).toBe(0);
-		await runChecks(harness, await input(base, otherHead, root.id, revoked), context);
-		expect(runs()).toBe(0);
-		expect(await liveChecks(harness)).toEqual([]);
 	});
 
 	it("leaves a task of another kind alone even when its input resembles a retired mutation check", async () => {

@@ -46,7 +46,7 @@ import {
 	scriptVariable,
 	Triage,
 } from "./models.ts";
-import { CliError, git, isolatedRunner, openStorage, storagePath } from "./repository.ts";
+import { CliError, git, openStorage, storagePath } from "./repository.ts";
 import { currentBase, fetchedPullRequest, gitHubFor, parseTarget, pullRequestChangeset } from "./target.ts";
 
 /** Where a command reads and writes: its working directory, environment, and output. */
@@ -104,7 +104,6 @@ export async function review(
 		readonly model?: string;
 		readonly rerun: boolean;
 		readonly walkthrough?: boolean;
-		readonly isolatedRunner?: boolean;
 	},
 ): Promise<number> {
 	const target = parseTarget(argument);
@@ -113,11 +112,10 @@ export async function review(
 	let origin: ReviewOrigin = { kind: "range" };
 	// Whether a check that runs the head's own code may run it here. A range whose head is the checked-out commit is the
 	// reviewer's own to run, as `npm test` is. A pull request's head runs when it sits in the base repository and a
-	// writer pushed it. Any other head, such as a fork's, runs only where the host has declared itself an isolated
-	// runner, by the flag or the variable: both are the host's, and nothing a pull request holds can set either.
+	// writer pushed it. Any other head, such as a fork's, runs its tests only in a credential-free job of the Actions host.
 	let writer: WriterTrust = {
 		trusted: false,
-		detail: "the review's range head is not the checked-out commit, and this host is not an isolated runner",
+		detail: "the review's range head is not the checked-out commit",
 	};
 	if (target.kind === "pullRequest") {
 		const provider = await gitHubFor(io.cwd, io.env);
@@ -140,8 +138,6 @@ export async function review(
 		const preferences = userFiles(io.env).config;
 		source = own ? { kind: "worktree", preferences } : { kind: "revision", commit: changeset.revision.base };
 	}
-	// The host's own declaration stands ahead of the other two: it holds where the repository trusts no writer.
-	if (options.isolatedRunner === true || isolatedRunner(io.env)) writer = { trusted: true, by: "isolatedRunner" };
 	const { repoRoot } = changeset;
 	const paths = changeset.revision.paths();
 	const lenses = await Lens.load(repoRoot, source, paths);
@@ -281,7 +277,7 @@ async function writerTrust(provider: ReviewProvider, pullRequest: PullRequest): 
 		head.owner.toLowerCase() !== pullRequest.repository.owner.toLowerCase() ||
 		head.name.toLowerCase() !== pullRequest.repository.name.toLowerCase()
 	)
-		return { trusted: false, detail: "the head is from a fork and this host is not an isolated runner" };
+		return { trusted: false, detail: "the head is from a fork" };
 	if (pullRequest.head.writerError !== undefined) return { trusted: false, detail: pullRequest.head.writerError };
 	const writer = pullRequest.head.pusher ?? pullRequest.author;
 	if (writer === undefined)

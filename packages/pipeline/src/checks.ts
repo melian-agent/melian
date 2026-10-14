@@ -92,12 +92,9 @@ export const MutationProcesses = defineDoc<{ trees: Record<string, MutationTreeR
  * The host's decision on whether a check that runs the head's own code, as `static.mutation` does through the head's
  * tests, may run for this head. Made by the host from what it knows itself, never from anything the head supplies:
  * `checkout` when the head is the reviewer's own checked-out commit, `writer` when it sits in the base repository and
- * was pushed by someone with write access, `isolatedRunner` when the host has declared itself one. Otherwise `detail`
- * says why not, and the check does not run.
+ * was pushed by someone with write access. Otherwise `detail` says why not, and the check does not run.
  */
-export type WriterTrust =
-	| { trusted: true; by: "checkout" | "writer" | "isolatedRunner" }
-	| { trusted: false; detail: string };
+export type WriterTrust = { trusted: true; by: "checkout" | "writer" } | { trusted: false; detail: string };
 
 function identityKey({ base, head, tier, policy, task }: RunIdentity): string {
 	return `${base} ${head} ${tier} ${policy} ${task}`;
@@ -139,14 +136,14 @@ const toolOf: Readonly<Record<Exclude<DeterministicCheck, "guardrails">, StaticT
 };
 
 // Why the head's code may not run here, or undefined when it may. The repository's `trust.writers` policy, which
-// publication reads too, can switch off trust in writers; it says nothing of the reviewer's own checkout or of a host
-// that has declared itself isolated. The reason sits in an object so that a refusal with no detail still reads as one.
+// publication reads too, can switch off trust in writers; it says nothing of the reviewer's own checkout. The reason sits
+// in an object so that a refusal with no detail still reads as one.
 function refused(input: CheckInput): { detail: string } | undefined {
 	const { writer } = input;
 	if (writer === undefined) return { detail: "the review did not say whose code the head is" };
 	if (!writer.trusted) return { detail: writer.detail };
 	if (writer.by === "writer" && !input.config.trust.writers)
-		return { detail: "trust.writers is false in the repository's policy, and this host is not an isolated runner" };
+		return { detail: "trust.writers is false in the repository's policy" };
 	return undefined;
 }
 
@@ -194,9 +191,7 @@ async function runStatic(
 				tool,
 				settings,
 				revision,
-				...(tool === "mutation" && input.writer?.trusted === true
-					? { headCode: input.writer.by === "isolatedRunner" ? ("isolated" as const) : ("trusted" as const) }
-					: {}),
+				...(tool === "mutation" ? { headCode: "trusted" as const } : {}),
 				...(input.source.kind === "revision" ? { policyCommit: input.source.commit } : {}),
 			},
 			context,
@@ -246,30 +241,17 @@ async function runCheck(
 }
 
 // Aborts every live mutation task of the revision that a run other than `key` created. Its own check would end it when it
-// next runs; this also stops one whose tests are running now. It aborts, too, a task of any revision whose leave was the
-// host's declaration that it is an isolated runner, unless this call carries the same declaration: that leave is a fact
-// about the host at the time, stored in the task's input, and a task a crash left pending would otherwise run a fork's
-// tests on a host that no longer says it may.
-async function abortRetiredMutation(
-	harness: Harness,
-	revision: string,
-	key: string,
-	isolated: boolean,
-	context: Context,
-): Promise<void> {
-	const undeclared = (writer: WriterTrust | undefined) =>
-		!isolated && writer?.trusted === true && writer.by === "isolatedRunner";
+// next runs; this also stops one whose tests are running now.
+async function abortRetiredMutation(harness: Harness, revision: string, key: string, context: Context): Promise<void> {
 	const { tasks } = await harness.inspect(context);
 	for (const { record } of tasks) {
-		// A parent a crash left before its start phase holds the same leave, and would hand it to the children it creates.
-		const parent =
-			record.kind === ChecksTask.definition.name && undeclared((record.input as unknown as ChecksInput).writer);
+		if (record.kind !== CheckTask.definition.name) continue;
 		const input = record.input as unknown as CheckInput;
-		const child =
-			record.kind === CheckTask.definition.name &&
+		if (
 			input.check === "static.mutation" &&
-			((revisionKey(input.changeset.revision) === revision && input.authority !== key) || undeclared(input.writer));
-		if (parent || child) {
+			revisionKey(input.changeset.revision) === revision &&
+			input.authority !== key
+		) {
 			await harness.abortTask(record.id, context);
 			await harness.waitForTask(record.id, context);
 		}
@@ -658,8 +640,7 @@ export async function runChecks(harness: Harness, input: RunChecksInput, context
 			return { restart: lost, authority: runs.owners[revision]! };
 		}, context);
 		restart = retirement.restart;
-		const isolated = input.writer?.trusted === true && input.writer.by === "isolatedRunner";
-		await abortRetiredMutation(harness, revision, retirement.authority, isolated, context);
+		await abortRetiredMutation(harness, revision, retirement.authority, context);
 	}
 	let taskId = await start(undefined, undefined, restart);
 	let settled = await harness.waitForTask(taskId, context);

@@ -236,10 +236,8 @@ export class MutationRun {
 			.filter(production);
 	}
 
-	/**
-	 * Whether `revision` changes any production TypeScript, mutable or not, binary or not. Read from the diff alone, so a
-	 * caller asks it before deciding whether the head's code may run: a change with nothing to judge needs no leave.
-	 */
+	// Whether `revision` changes any production TypeScript, mutable or not, binary or not. Read from the diff alone, so a
+	// caller asks it before deciding whether the head's code may run: a change with nothing to judge needs no leave.
 	static judges(revision: Revision): boolean {
 		return (
 			Object.keys(revision.diffLines()).some(production) ||
@@ -345,10 +343,9 @@ process.exitCode = result.code;
 	// The run executes the head's own test files, setup files, and Vitest configuration, as an ordinary child process with
 	// the environment every static tool gets. Nothing confines it: the caller decided this head's code may run here.
 	async #execute(entries: readonly string[], changed: readonly string[]): Promise<string | { skipped: string }> {
-		const { repoRoot, policyCommit, base, commit, headCode } = this.#run.input;
+		const { repoRoot, policyCommit, base, commit } = this.#run.input;
 		const cache = await MutationCache.open((await CacheLocation.open(repoRoot)).root, {
 			policy: policyCommit ?? base ?? commit,
-			trusted: headCode === "trusted",
 			head: commit,
 			installation: mutationInstallation(repoRoot),
 			inputs: createHash("sha256")

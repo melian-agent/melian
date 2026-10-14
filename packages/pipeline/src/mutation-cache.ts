@@ -8,9 +8,6 @@ const bound = 16 * 1024 * 1024;
 
 export interface MutationCacheKey {
 	readonly policy: string;
-	// Whether the head was the reviewer's own or a writer's. A head run only because the host is an isolated runner keeps
-	// results of its own, so a stranger's tests never write what a trusted run of the same commit would reuse.
-	readonly trusted: boolean;
 	readonly head: string;
 	readonly inputs: string;
 	readonly installation: string;

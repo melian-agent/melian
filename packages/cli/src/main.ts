@@ -60,9 +60,6 @@ Options:
   --rerun                Run again the checks and lenses that failed in the last review of this base and head,
                          and ask triage again if its decision did not complete, rather than print what it
                          stored; a completed triage decision is never asked again (review).
-  --isolated-runner      Declare this host an isolated runner, one that holds nothing a stranger's code may not
-                         reach, so a check that runs the head's own tests runs for any head, a fork's too.
-                         MELIAN_ISOLATED_RUNNER=1 says the same (review).
   --open, --all, --json  For findings.
   --reason <text>        Dismissal reason, or owned-missed, no-owner, needs-execution, out-of-scope (adjudicate).
   --only                 Dismiss the report the ID names alone, leaving the reports merged with it live (dismiss).
@@ -117,7 +114,6 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 				model: { type: "string" },
 				walkthrough: { type: "boolean", default: true },
 				rerun: { type: "boolean", default: false },
-				"isolated-runner": { type: "boolean", default: false },
 				all: { type: "boolean", default: false },
 				reason: { type: "string" },
 				verdict: { type: "string" },
@@ -154,7 +150,6 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 					...(values.model === undefined ? {} : { model: values.model }),
 					rerun: values.rerun,
 					walkthrough: values.walkthrough,
-					isolatedRunner: values["isolated-runner"],
 				});
 			case "publish":
 				return await publish(scoped, one(rest, name, "pull request"), { walkthrough: values.walkthrough });

@@ -466,39 +466,15 @@ describe("doctor mutation testing", () => {
 		expect(line(stdout)).toContain("@stryker-mutator/core and @stryker-mutator/vitest-runner");
 	});
 
-	it.each([
-		[
-			"your own checkout and a writer's head, on a host that has declared nothing",
-			undefined,
-			/^ok {4}mutation\s+static\.mutation runs Stryker from the checkout for your own checked-out commit and for a head a writer pushed to the base repository; a fork's head runs only on an isolated runner$/,
-		],
-		[
-			"your own checkout and a writer's head, where the variable holds anything but 1",
-			"true",
-			/for your own checked-out commit and for a head a writer pushed to the base repository; a fork's head runs only on an isolated runner$/,
-		],
-		[
-			"every head, on a host that declared itself an isolated runner",
-			"1",
-			/^ok {4}mutation\s+static\.mutation runs Stryker from the checkout for every head: MELIAN_ISOLATED_RUNNER declares this host an isolated runner$/,
-		],
-	])("says the check runs for %s", async (_name, declared, expected) => {
+	it("says the check runs for your own checkout and a writer's head, and that other heads wait for the Actions host", async () => {
 		enable();
 		mkdirSync(join(repo, "node_modules/.bin"), { recursive: true });
 		writeFileSync(join(repo, "node_modules/.bin/stryker"), "#!/bin/sh\n");
 		chmodSync(join(repo, "node_modules/.bin/stryker"), 0o755);
-		const state = github();
-		const { MELIAN_ISOLATED_RUNNER: _inherited, ...inherited } = process.env;
-		const { stdout } = await run(state, undefined, {
-			env: {
-				...inherited,
-				XDG_CONFIG_HOME: home,
-				PI_CODING_AGENT_DIR: home,
-				GITHUB_TOKEN: "test-token-never-printed",
-				...(declared === undefined ? {} : { MELIAN_ISOLATED_RUNNER: declared }),
-			},
-		});
-		expect(line(stdout)).toMatch(expected);
+		const { stdout } = await run(github());
+		expect(line(stdout)).toMatch(
+			/^ok {4}mutation\s+static\.mutation runs Stryker from the checkout for your own checked-out commit and for a head a writer pushed to the base repository; any other head waits for the Actions host's credential-free job$/,
+		);
 	});
 
 	it("warns with the reason when the configuration cannot be read", async () => {

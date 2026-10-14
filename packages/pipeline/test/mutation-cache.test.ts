@@ -29,7 +29,6 @@ vi.mock("node:fs/promises", async (importOriginal) => {
 
 const key = (changes: Partial<MutationCacheKey> = {}): MutationCacheKey => ({
 	policy: "policy",
-	trusted: false,
 	head: "head",
 	inputs: "inputs",
 	installation: "installation",
@@ -44,25 +43,23 @@ afterEach(async () => {
 	await rm(root, { recursive: true, force: true });
 });
 
-it("reopens what the previous run wrote without sharing across policy or writer trust", async () => {
-	const first = await MutationCache.open(root, key({ trusted: false }));
+it("reopens what the previous run wrote without sharing across policy or repository", async () => {
+	const first = await MutationCache.open(root, key());
 	await writeFile(first.file, JSON.stringify({ files: { a: { mutants: [] } } }));
-	const second = await MutationCache.open(root, key({ trusted: false }));
+	const second = await MutationCache.open(root, key());
 	expect(second.file).toBe(first.file);
 	expect(JSON.parse(await readFile(second.file, "utf8"))).toEqual({ files: { a: { mutants: [] } } });
-	const trusted = await MutationCache.open(root, key({ trusted: true }));
-	expect(trusted.file).not.toBe(first.file);
-	await expect(stat(trusted.file)).rejects.toMatchObject({ code: "ENOENT" });
-	const changed = await MutationCache.open(root, key({ trusted: false, policy: "next-policy" }));
+	const changed = await MutationCache.open(root, key({ policy: "next-policy" }));
 	expect(changed.file).not.toBe(first.file);
-	const other = await MutationCache.open(join(root, "other-repository"), key({ trusted: false }));
+	await expect(stat(changed.file)).rejects.toMatchObject({ code: "ENOENT" });
+	const other = await MutationCache.open(join(root, "other-repository"), key());
 	expect(other.file).not.toBe(first.file);
 });
 
 it("discards corrupt output before the next run can read it", async () => {
-	const first = await MutationCache.open(root, key({ trusted: true }));
+	const first = await MutationCache.open(root, key());
 	await writeFile(first.file, "{corrupt");
-	const second = await MutationCache.open(root, key({ trusted: true }));
+	const second = await MutationCache.open(root, key());
 	await expect(stat(second.file)).rejects.toMatchObject({ code: "ENOENT" });
 });
 
@@ -89,41 +86,41 @@ it.each(["valid", "corrupt", "oversized"])("closes the cache descriptor after re
 	}
 });
 
-it("refuses a symlink into another writer partition without removing its target", async () => {
-	const untrusted = await MutationCache.open(root, key({ trusted: false }));
-	const trusted = await MutationCache.open(root, key({ trusted: true }));
-	await writeFile(untrusted.file, "{}");
-	await symlink(untrusted.file, trusted.file);
-	await MutationCache.open(root, key({ trusted: true }));
-	await expect(stat(trusted.file)).rejects.toMatchObject({ code: "ENOENT" });
-	expect(await readFile(untrusted.file, "utf8")).toBe("{}");
+it("refuses a symlink into another partition without removing its target", async () => {
+	const elsewhere = await MutationCache.open(root, key({ policy: "other-policy" }));
+	const cache = await MutationCache.open(root, key());
+	await writeFile(elsewhere.file, "{}");
+	await symlink(elsewhere.file, cache.file);
+	await MutationCache.open(root, key());
+	await expect(stat(cache.file)).rejects.toMatchObject({ code: "ENOENT" });
+	expect(await readFile(elsewhere.file, "utf8")).toBe("{}");
 });
 
 it("keeps a parsed report at the read bound and discards one byte past it", async () => {
-	const cache = await MutationCache.open(root, key({ trusted: true }));
+	const cache = await MutationCache.open(root, key());
 	const text = "{}".padEnd(16 * 1024 * 1024, " ");
 	await writeFile(cache.file, text);
-	await MutationCache.open(root, key({ trusted: true }));
+	await MutationCache.open(root, key());
 	expect((await readFile(cache.file)).length).toBe(text.length);
 	await writeFile(cache.file, `${text} `);
-	await MutationCache.open(root, key({ trusted: true }));
+	await MutationCache.open(root, key());
 	await expect(stat(cache.file)).rejects.toMatchObject({ code: "ENOENT" });
 });
 
 it("sweeps old partial cache writes while keeping the incremental report", async () => {
-	const cache = await MutationCache.open(root, key({ trusted: true }));
+	const cache = await MutationCache.open(root, key());
 	await writeFile(cache.file, "{}");
 	const stale = join(cache.directory, `incremental.json.2147483647.${crypto.randomUUID()}.tmp`);
 	await writeFile(stale, "partial");
-	await MutationCache.open(root, key({ trusted: true }));
+	await MutationCache.open(root, key());
 	await expect(readFile(stale)).rejects.toMatchObject({ code: "ENOENT" });
 	expect(await readFile(cache.file, "utf8")).toBe("{}");
 });
 
 it("discards a non-file occupying the report path", async () => {
-	const cache = await MutationCache.open(root, key({ trusted: true }));
+	const cache = await MutationCache.open(root, key());
 	await mkdir(cache.file);
-	await MutationCache.open(root, key({ trusted: true }));
+	await MutationCache.open(root, key());
 	await expect(stat(cache.file)).rejects.toMatchObject({ code: "ENOENT" });
 });
 
@@ -264,12 +261,13 @@ it("publishes a staged report of exactly the read bound", async () => {
 });
 
 it("reopens a version-one cache without reusing its selection results", async () => {
-	const old = await MutationCacheV1.open(root, key());
+	const old = await MutationCacheV1.open(root, { ...key(), trusted: false });
 	const staged = await old.stage(join(root, "v1-stage"));
 	await writeFile(staged, JSON.stringify({ files: { a: { mutants: [{ status: "NoCoverage" }] } } }));
 	await old.publish(staged, { read: (path) => readFile(path, "utf8") });
 	expect(
-		JSON.parse(await readFile((await MutationCacheV1.open(root, key())).file, "utf8")).files.a.mutants[0].status,
+		JSON.parse(await readFile((await MutationCacheV1.open(root, { ...key(), trusted: false })).file, "utf8")).files.a
+			.mutants[0].status,
 	).toBe("NoCoverage");
 	const current = await MutationCache.open(root, key());
 	expect(current.file).not.toBe(old.file);

@@ -3021,12 +3021,8 @@ describe("adjudication", () => {
 			] as const;
 			// A configured check that did not run: the review is not reviewed, whatever kept it from running.
 			const noLeave = [
-				[
-					"a fork's head on a host that is not an isolated runner",
-					mutationSkips.headNotAllowed("the head is from a fork and this host is not an isolated runner"),
-					"headNotAllowed",
-				],
-				["a run past its timeout", mutationSkips.timeout(3600), "timeout"],
+				["a fork's head", mutationSkips.headNotAllowed("the head is from a fork"), "headNotAllowed"],
+				["a run past its timeout", mutationSkips.timeout(7200), "timeout"],
 				["production files it did not mutate", mutationSkips.unmutated(["src/a.config.ts"]), "unmutated"],
 			] as const;
 

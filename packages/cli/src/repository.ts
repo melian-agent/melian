@@ -20,15 +20,6 @@ export class CliError extends Error {
 	}
 }
 
-// The environment variable by which a host declares itself an isolated runner: a machine that holds nothing a
-// stranger's code may not reach, as a hosted CI runner is. Set to `1`, it lets a check that runs the head's own code
-// run for any head. A host sets it; nothing in a repository or a pull request can.
-export const isolatedRunnerVariable = "MELIAN_ISOLATED_RUNNER";
-
-export function isolatedRunner(env: NodeJS.ProcessEnv): boolean {
-	return env[isolatedRunnerVariable] === "1";
-}
-
 /** The environment variable naming a directory for Melian's storage, for a host that cannot write under `.git`. */
 export const stateDirectoryVariable = "MELIAN_STATE_DIR";
 
