@@ -14,6 +14,7 @@ import {
 	resolveGitHubToken,
 } from "@melian-agent/github";
 import { type GitHubRecording, recordedGitHub } from "@melian-agent/github/testing";
+import type { WriterTrust } from "@melian-agent/pipeline";
 import { isScripted } from "./models.ts";
 import { CliError, fetchBase, fetchPullRequest, git, pullRequestRefs } from "./repository.ts";
 
@@ -36,6 +37,58 @@ async function gitHubRepository(cwd: string): Promise<GitHubRepository> {
 		);
 	});
 	return parseGitHubRemote(url);
+}
+
+// Why a checked-out head that is not the reviewer's own work does not run its tests.
+export const outsideCheckout =
+	"the checked-out head tracks a remote outside the repository; fork code runs its tests only in a credential-free job";
+
+// A remote's URL as git resolves it from the host's configuration, `insteadOf` rewrites included, reduced so that two
+// spellings of one GitHub repository compare equal. `ls-remote --get-url` contacts nothing.
+async function remoteIdentity(cwd: string, name: string): Promise<string> {
+	const url = await git(cwd, ["ls-remote", "--get-url", name]);
+	try {
+		const { owner, repo } = parseGitHubRemote(url);
+		return `github.com/${owner}/${repo}`.toLowerCase();
+	} catch {
+		return url.replace(/\/+$/, "").replace(/\.git$/, "");
+	}
+}
+
+// Whether `branch` is the reviewer's own: it has no upstream, when `local` allows that, or its upstream is a branch of
+// the repository's own remote. A pull request ref such as `refs/pull/7/head`, which `gh pr checkout` tracks for a fork
+// it cannot push to, is not a branch of the repository.
+async function ownBranch(cwd: string, branch: string, local: boolean): Promise<boolean> {
+	const upstream = await git(cwd, ["config", "--get", `branch.${branch}.remote`]).catch(() => undefined);
+	if (upstream === undefined) return local;
+	const merge = await git(cwd, ["config", "--get", `branch.${branch}.merge`]);
+	if (!merge.startsWith("refs/heads/")) return false;
+	return (await remoteIdentity(cwd, upstream)) === (await remoteIdentity(cwd, remote));
+}
+
+// Whether the checked-out `head` is the reviewer's own work, read from the host's git configuration and never from the
+// head's files. The branch checked out must have no upstream, as local work not yet pushed, or track a branch of the
+// repository's own remote, and hold `head`. A detached head counts only on a local branch that tracks the repository.
+// A fork checked out with `gh pr checkout`, or anything git cannot answer, is not the reviewer's own.
+export async function checkoutTrust(cwd: string, head: string): Promise<WriterTrust> {
+	try {
+		const attached = await git(cwd, ["symbolic-ref", "--quiet", "--short", "HEAD"]).catch(() => undefined);
+		const branches =
+			attached === undefined
+				? (await git(cwd, ["for-each-ref", "--format=%(refname:short)", "refs/heads"])).split("\n").filter(Boolean)
+				: [attached];
+		for (const branch of branches) {
+			if (!(await ownBranch(cwd, branch, attached !== undefined))) continue;
+			const holds = await git(cwd, ["merge-base", "--is-ancestor", head, branch]).then(
+				() => true,
+				() => false,
+			);
+			if (holds) return { trusted: true, by: "checkout" };
+		}
+	} catch {
+		// Anything git cannot answer reads as not the reviewer's own.
+	}
+	return { trusted: false, detail: outsideCheckout };
 }
 
 // Names a recording of GitHub's answers, in `@melian-agent/github/testing`'s shape, which scripted mode reads GitHub

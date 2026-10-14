@@ -47,7 +47,14 @@ import {
 	Triage,
 } from "./models.ts";
 import { CliError, git, openStorage, storagePath } from "./repository.ts";
-import { currentBase, fetchedPullRequest, gitHubFor, parseTarget, pullRequestChangeset } from "./target.ts";
+import {
+	checkoutTrust,
+	currentBase,
+	fetchedPullRequest,
+	gitHubFor,
+	parseTarget,
+	pullRequestChangeset,
+} from "./target.ts";
 
 /** Where a command reads and writes: its working directory, environment, and output. */
 export interface Io {
@@ -133,8 +140,8 @@ export async function review(
 	} else {
 		changeset = await Changeset.resolve(io.cwd, target.spec);
 		const checkedOut = await git(changeset.repoRoot, ["rev-parse", "--verify", "--quiet", "HEAD"]).catch(() => "");
+		if (checkedOut === changeset.revision.head) writer = await checkoutTrust(changeset.repoRoot, checkedOut);
 		const own = checkedOut === changeset.revision.head;
-		if (own) writer = { trusted: true, by: "checkout" };
 		const preferences = userFiles(io.env).config;
 		source = own ? { kind: "worktree", preferences } : { kind: "revision", commit: changeset.revision.base };
 	}

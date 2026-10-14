@@ -10,6 +10,7 @@ import { baseAndHead, fakeTool, gitIn, isolatedGitEnv, writeFiles } from "../../
 import { emptyVitestInstall } from "../../pipeline/test/fixtures/vitest-listing.ts";
 import { review } from "../src/commands.ts";
 import * as targets from "../src/target.ts";
+import { outsideCheckout } from "../src/target.ts";
 
 let repo: string;
 let calls: string;
@@ -230,6 +231,95 @@ describe("static.mutation and the writer of a pull request", { timeout: 60_000 }
 		expect(output()).toContain("the review's range head is not the checked-out commit;");
 		expect(output()).toContain("which arrives with the Actions host");
 	});
+});
+
+describe("static.mutation on a checked-out head", { timeout: 60_000 }, () => {
+	const base = "https://github.com/melian-agent/melian.git";
+	const fork = "https://github.com/fork-owner/melian.git";
+	// Sets up the clone's remotes and the upstream of `feature`, as `git clone`, `git push -u` or `gh pr checkout` would.
+	const track = (remote: string | undefined, merge = "refs/heads/feature") => {
+		gitIn(repo, "remote", "add", "origin", base);
+		if (remote === undefined) return;
+		gitIn(repo, "config", "branch.feature.remote", remote);
+		gitIn(repo, "config", "branch.feature.merge", merge);
+	};
+
+	it.each([
+		["a branch with no upstream", undefined],
+		["a branch that tracks the repository's own remote", "origin"],
+		["a branch whose upstream is the repository's URL in another spelling", "git@github.com:Melian-Agent/melian"],
+	])("runs the head's tests on %s", async (_name, remote) => {
+		const { io } = await open("octocat", { octocat: "read" });
+		track(remote);
+		expect(await review(io, "main...feature", { rerun: false, walkthrough: false })).toBe(0);
+		expect(ran()).toBe(1);
+	});
+
+	it.each([
+		[
+			"a fork's remote, as gh pr checkout adds it",
+			() => {
+				gitIn(repo, "remote", "add", "fork-owner", fork);
+				return "fork-owner";
+			},
+		],
+		["a fork's URL as the upstream itself", () => fork],
+		["a remote that does not exist", () => "ghost"],
+		["a local branch", () => "."],
+		["no branch at all, its merge ref unset", () => "origin"],
+	])("refuses a branch that tracks %s", async (name, remote) => {
+		const { io, output } = await open("octocat", { octocat: "admin" });
+		track(undefined);
+		const upstream = remote();
+		gitIn(repo, "config", "branch.feature.remote", upstream);
+		if (!name.startsWith("no branch")) gitIn(repo, "config", "branch.feature.merge", "refs/heads/feature");
+		expect(await review(io, "main...feature", { rerun: false, walkthrough: false })).toBe(notReviewed);
+		expect(ran()).toBe(false);
+		expect(output()).toContain(outsideCheckout);
+	});
+
+	it("refuses a branch that tracks a pull request ref of the repository, as gh pr checkout sets up for a fork", async () => {
+		const { io, output } = await open("octocat", { octocat: "admin" });
+		track("origin", "refs/pull/7/head");
+		expect(await review(io, "main...feature", { rerun: false, walkthrough: false })).toBe(notReviewed);
+		expect(ran()).toBe(false);
+		expect(output()).toContain(outsideCheckout);
+	});
+
+	it("runs a detached head only when a branch that tracks the repository holds it", async () => {
+		const { io, output } = await open("octocat", { octocat: "admin" });
+		track(undefined);
+		gitIn(repo, "remote", "add", "fork-owner", fork);
+		gitIn(repo, "config", "branch.feature.remote", "fork-owner");
+		gitIn(repo, "config", "branch.feature.merge", "refs/heads/feature");
+		gitIn(repo, "checkout", "--quiet", "--detach", "feature");
+		expect(await review(io, "main...feature", { rerun: false, walkthrough: false })).toBe(notReviewed);
+		expect(ran()).toBe(false);
+		expect(output()).toContain(outsideCheckout);
+		// A detached head counts on no branch without an upstream: only one that tracks the repository vouches for it.
+		gitIn(repo, "branch", "--quiet", "local", "feature");
+		expect(await review(io, "main...feature", { rerun: true, walkthrough: false })).toBe(notReviewed);
+		expect(ran()).toBe(false);
+		gitIn(repo, "branch", "--quiet", "pushed", "feature");
+		gitIn(repo, "config", "branch.pushed.remote", "origin");
+		gitIn(repo, "config", "branch.pushed.merge", "refs/heads/pushed");
+		expect(await review(io, "main...feature", { rerun: true, walkthrough: false })).toBe(0);
+		expect(ran()).toBe(1);
+	});
+
+	it("does not take a branch that tracks the repository but does not hold the head", async () => {
+		const { io, output } = await open("octocat", { octocat: "admin" });
+		track(undefined);
+		gitIn(repo, "branch", "--quiet", "pushed", "main");
+		gitIn(repo, "config", "branch.pushed.remote", "origin");
+		gitIn(repo, "config", "branch.pushed.merge", "refs/heads/pushed");
+		gitIn(repo, "checkout", "--quiet", "--detach", "feature");
+		expect(await review(io, "main...feature", { rerun: false, walkthrough: false })).toBe(notReviewed);
+		expect(ran()).toBe(false);
+		expect(output()).toContain(outsideCheckout);
+	});
+
+
 });
 
 describe("static.mutation where the repository does not trust writers", { timeout: 60_000 }, () => {
