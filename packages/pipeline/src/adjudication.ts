@@ -5,6 +5,7 @@ import {
 	ConfigError,
 	LensError,
 	type MelianConfig,
+	type MutationSkipCause,
 	type PreExistingCap,
 	type PublicationDetails,
 	type RepositorySource,
@@ -29,6 +30,7 @@ type StoredCheck = {
 	name: string;
 	status: CheckStatus;
 	reason?: string;
+	cause?: MutationSkipCause;
 	error?: string;
 	version?: string;
 	level?: ScrutinyLevel;

@@ -18,7 +18,7 @@ import { type CheckReport, guardrailLimits } from "./guardrails.ts";
 import { openSource, SourceError, type SourceReader } from "./source.ts";
 
 /** The static tools Melian runs. */
-export type StaticTool = "biome" | "tsc" | "enola";
+export type StaticTool = "biome" | "tsc" | "enola" | "mutation";
 
 const strict = { additionalProperties: false } as const;
 const text = Type.String({ minLength: 1 });
@@ -30,6 +30,7 @@ export const toolResultSchema = Type.Object(
 		ruleId: text,
 		level: sarifLevelSchema,
 		message: Type.Object({ text }, strict),
+		advice: Type.Optional(Type.Object({ whyHere: text, whatToDo: text }, strict)),
 		locations: Type.Array(
 			Type.Object(
 				{
@@ -81,7 +82,8 @@ export const toolLogSchema = Type.Object(
 /**
  * One result of a static tool, as a SARIF `result` in the tool's own terms: `ruleId` is the tool's, such as Biome's
  * `lint/suspicious/noDebugger` or tsc's `TS2322`, and the one location's URI is repository-relative, each segment
- * percent-encoded as in a finding.
+ * percent-encoded as in a finding. `advice`, when a tool supplies it, replaces the generic explanation of why the
+ * result is here and what to do about it.
  */
 export type ToolResult = Static<typeof toolResultSchema>;
 
@@ -446,10 +448,11 @@ export async function staticFindings(input: StaticFindingsInput): Promise<CheckR
 				explanation: {
 					what: each.result.message.text,
 					whyHere:
-						cause === "introduced"
+						each.result.advice?.whyHere ??
+						(cause === "introduced"
 							? `${tool} reports this at head but not at the base, so this change introduced it.`
-							: `${tool} reports this at the base too, so it predates this change.`,
-					whatToDo: `Change the code so ${tool} no longer reports ${each.rule}.`,
+							: `${tool} reports this at the base too, so it predates this change.`),
+					whatToDo: each.result.advice?.whatToDo ?? `Change the code so ${tool} no longer reports ${each.rule}.`,
 				},
 				source: { check: checkOf(tool), version },
 			});

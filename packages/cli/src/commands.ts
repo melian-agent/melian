@@ -6,9 +6,12 @@ import {
 	Lens,
 	loadConfig,
 	loadSecrets,
+	type PullRequest,
 	Rendering,
+	type RepositoryPermission,
 	type RepositorySource,
 	ReviewPlan,
+	type ReviewProvider,
 	Standards,
 	userFiles,
 	type Verdict,
@@ -32,6 +35,7 @@ import {
 	revisionKey,
 	runChecks,
 	summarizeReview,
+	type WriterTrust,
 } from "@melian-agent/pipeline";
 import {
 	decisionProviderRefusal,
@@ -96,12 +100,22 @@ export class ReviewOutcome {
 export async function review(
 	io: Io,
 	argument: string,
-	options: { readonly model?: string; readonly rerun: boolean; readonly walkthrough?: boolean },
+	options: {
+		readonly model?: string;
+		readonly rerun: boolean;
+		readonly walkthrough?: boolean;
+		readonly trustHead?: boolean;
+	},
 ): Promise<number> {
 	const target = parseTarget(argument);
 	let changeset: Changeset;
 	let source: RepositorySource;
 	let origin: ReviewOrigin = { kind: "range" };
+	// Whether a check that runs the head's own code may run it here. A pull request's head runs when it sits in the base
+	// repository and a writer pushed it. Nothing git records about a committed range, its upstream, its author or where
+	// it was fetched from, says whose code it is, so a range runs only on the reviewer's word. Any other head, such as a
+	// fork's, runs its tests only in a credential-free job of the Actions host.
+	let writer: WriterTrust = { trusted: false, detail: committedRange };
 	if (target.kind === "pullRequest") {
 		const provider = await gitHubFor(io.cwd, io.env);
 		const { pullRequest, changeset: fetched } = await fetchedPullRequest(io.cwd, provider, target.number);
@@ -114,6 +128,7 @@ export async function review(
 			base: pullRequest.base.sha,
 			head: pullRequest.head.sha,
 		};
+		writer = await writerTrust(provider, pullRequest);
 	} else {
 		changeset = await Changeset.resolve(io.cwd, target.spec);
 		const checkedOut = await git(changeset.repoRoot, ["rev-parse", "--verify", "--quiet", "HEAD"]).catch(() => "");
@@ -121,6 +136,8 @@ export async function review(
 		const preferences = userFiles(io.env).config;
 		source = own ? { kind: "worktree", preferences } : { kind: "revision", commit: changeset.revision.base };
 	}
+	// The reviewer vouches for the head on the command line, never in a file the repository holds.
+	if (options.trustHead === true) writer = { trusted: true, by: "reviewer" };
 	const { repoRoot } = changeset;
 	const paths = changeset.revision.paths();
 	const lenses = await Lens.load(repoRoot, source, paths);
@@ -129,6 +146,20 @@ export async function review(
 	const standards = await Standards.load(repoRoot, standardsSource, paths);
 	const policy = await loadConfig(repoRoot, source, ".");
 	const { config: loaded } = policy;
+	// Under --trust-head the reviewer has read the working tree's melian.yaml, so its mutation settings stand. Without the
+	// flag, whether the check runs and for how long is the base's to say, even where the rest of the policy comes from the
+	// working tree.
+	const checksConfig =
+		options.trustHead !== true && source.kind === "worktree"
+			? {
+					...loaded,
+					static: {
+						...loaded.static,
+						mutation: (await loadConfig(repoRoot, { kind: "revision", commit: changeset.revision.base }, "."))
+							.config.static.mutation,
+					},
+				}
+			: loaded;
 	const tier = loaded.stages["pull-request"] ?? "full";
 	const secrets = await loadSecrets(repoRoot, userFiles(io.env).secrets);
 	for (const warning of secrets.warnings) io.stderr(`melian: ${warning}\n`);
@@ -169,7 +200,7 @@ export async function review(
 		const rootConversationId = (await harness.root(context)).id;
 		const checks = await runChecks(
 			harness,
-			{ rootConversationId, changeset, config: loaded, source, tier, rerunFailed: options.rerun },
+			{ rootConversationId, changeset, config: checksConfig, source, tier, rerunFailed: options.rerun, writer },
 			context,
 		);
 		const callerLenses = new Set(
@@ -248,6 +279,32 @@ export async function review(
 	} finally {
 		await reviewHarness.close(context);
 	}
+}
+
+const committedRange =
+	"the head is a committed range, and nothing git records says whose code it is; pass --trust-head if you have read this code and want its tests run";
+
+const writePermissions: readonly RepositoryPermission[] = ["write", "maintain", "admin"];
+
+async function writerTrust(provider: ReviewProvider, pullRequest: PullRequest): Promise<WriterTrust> {
+	const head = pullRequest.head.repository;
+	if (head === undefined)
+		return { trusted: false, detail: "the provider names no repository for the pull request head" };
+	if (
+		head.owner.toLowerCase() !== pullRequest.repository.owner.toLowerCase() ||
+		head.name.toLowerCase() !== pullRequest.repository.name.toLowerCase()
+	)
+		return { trusted: false, detail: "the head is from a fork" };
+	if (pullRequest.head.writerError !== undefined) return { trusted: false, detail: pullRequest.head.writerError };
+	const writer = pullRequest.head.pusher ?? pullRequest.author;
+	if (writer === undefined)
+		return { trusted: false, detail: "the provider names no author for the pull request or pusher for its head" };
+	const permission = await provider.permission(writer);
+	if (writePermissions.some((each) => each === permission)) return { trusted: true, by: "writer" };
+	return {
+		trusted: false,
+		detail: `${writer} has ${permission === undefined ? "no known" : permission} permission on the repository`,
+	};
 }
 
 export function short(commit: string): string {

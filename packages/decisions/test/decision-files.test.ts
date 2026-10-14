@@ -8,6 +8,21 @@ const a = "docs/decisions/2026-10-01-a.md";
 const b = "docs/decisions/2026-10-02-b.md";
 const c = "docs/decisions/2026-10-03-c.md";
 const parse = (path: string, text: string) => DecisionFile.parse(path, text);
+async function expectRepositoryIndex(repo: string): Promise<void> {
+	const commit = gitIn(repo, "rev-parse", "HEAD");
+
+	const source = await openSource(repo, { kind: "revision", commit });
+	const paths = await source.findPaths(/^docs\/decisions\/.*\.md$/s);
+	const files = await Promise.all(paths.map(async (path) => parse(path, (await source.readText(path, 256 * 1024))!)));
+	const inactive = new Set(files.flatMap((file) => [...file.supersedes]));
+	const active = files.filter((file) => !inactive.has(file.path));
+	expect(active.length).toBeGreaterThan(100);
+	const rendered = (await DecisionFiles.load(repo, commit)).render();
+	for (const file of active)
+		expect(rendered.split("\n")).toContain(visibleText(`[ACTIVE] ${file.path} — ${file.title}`));
+	expect(Buffer.byteLength(rendered)).toBeLessThan(49152);
+}
+
 const declarationCases: [
 	name: string,
 	positive: string,
@@ -1022,20 +1037,31 @@ describe("written decisions", () => {
 		const files = [parse(a, `# ${"x".repeat(65536)}`), parse(b, "# B")];
 		expect(() => DecisionFiles.from(files).render()).toThrow("2 decisions omitted; review refused");
 	});
-	it("lists every active path and full title at the repository base with headroom", async () => {
-		const repo = fileURLToPath(new URL("../../../", import.meta.url));
-		const source = await openSource(repo, { kind: "revision", commit: "origin/main" });
-		const paths = await source.findPaths(/^docs\/decisions\/.*\.md$/s);
-		const files = await Promise.all(
-			paths.map(async (path) => parse(path, (await source.readText(path, 256 * 1024))!)),
-		);
-		const inactive = new Set(files.flatMap((file) => [...file.supersedes]));
-		const active = files.filter((file) => !inactive.has(file.path));
-		expect(active.length).toBeGreaterThan(100);
-		const rendered = (await DecisionFiles.load(repo, "origin/main")).render();
-		for (const file of active)
-			expect(rendered.split("\n")).toContain(visibleText(`[ACTIVE] ${file.path} — ${file.title}`));
-		expect(Buffer.byteLength(rendered)).toBeLessThan(49152);
+
+	it("lists every active path and full title at the commit under test with headroom", async () => {
+		await expectRepositoryIndex(fileURLToPath(new URL("../../../", import.meta.url)));
+	}, 60_000);
+
+	it("checks a repository snapshot without remote refs or a branch named main", async () => {
+		const repo = temporaryDirectory();
+		try {
+			writeFiles(
+				repo,
+				Object.fromEntries(
+					Array.from({ length: 102 }, (_, index) => [
+						`docs/decisions/snapshot-${String(index).padStart(3, "0")}.md`,
+						`# Full title of snapshot decision ${index}\n`,
+					]),
+				),
+			);
+			gitIn(repo, "init", "--quiet", "--initial-branch=snapshot");
+			gitIn(repo, "add", "--all");
+			gitIn(repo, "commit", "--quiet", "-m", "snapshot");
+			expect(gitIn(repo, "for-each-ref", "--format=%(refname)")).toBe("refs/heads/snapshot");
+			await expectRepositoryIndex(repo);
+		} finally {
+			removeDirectory(repo);
+		}
 	}, 60_000);
 });
 

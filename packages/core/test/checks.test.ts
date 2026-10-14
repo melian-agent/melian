@@ -26,6 +26,16 @@ describe("checksOfTier", () => {
 		]);
 	});
 
+	it("leaves static.mutation out of the static group, so only a tier that names it runs it", () => {
+		expect(checksOfTier({ tiers: { a: ["static"] } }, "a")).toEqual(["static.biome", "static.tsc"]);
+		expect(checksOfTier({ tiers: { a: ["static", "static.mutation"] } }, "a")).toEqual([
+			"static.biome",
+			"static.tsc",
+			"static.mutation",
+		]);
+		expect(deterministicChecks).toContain("static.mutation");
+	});
+
 	it("passes decision questions through for the review to account for", () => {
 		expect(checksOfTier({ tiers: { fast: ["guardrails", "decisions.fast"] } }, "fast")).toEqual([
 			"guardrails",
