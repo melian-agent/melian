@@ -328,6 +328,31 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 		}
 	});
 
+	it("takes a pull request's settings from the base GitHub names, not from the fork point", async () => {
+		const disabled = "tiers:\n  full: [static.mutation]\nstatic:\n  mutation: { enabled: false, timeout: 120 }\n";
+		const { io } = await open(
+			"octocat",
+			{ octocat: "admin" },
+			{},
+			"static.mutation",
+			{},
+			{ "melian.yaml": disabled },
+		);
+		// The base branch moves on after the fork point and turns the check on.
+		gitIn(repo, "checkout", "--quiet", "main");
+		writeFiles(repo, { "melian.yaml": disabled.replace("enabled: false", "enabled: true") });
+		gitIn(repo, "commit", "--quiet", "-am", "enable mutation");
+		const moved = gitIn(repo, "rev-parse", "HEAD");
+		gitIn(repo, "checkout", "--quiet", "feature");
+		const fetched = await targets.fetchedPullRequest(repo, {} as never, 7);
+		vi.spyOn(targets, "fetchedPullRequest").mockResolvedValue({
+			...fetched,
+			pullRequest: { ...fetched.pullRequest, base: { ...fetched.pullRequest.base, sha: moved } },
+		});
+		expect(await review(io, "#7", { rerun: false, walkthrough: false })).toBe(0);
+		expect(ran()).toBe(1);
+	});
+
 	it.each([
 		[
 			"off in the base and on in the working tree",
