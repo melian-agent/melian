@@ -212,6 +212,30 @@ it("publishes a readable staged report into the partition", async () => {
 	expect((await readdir(cache.directory)).filter((name) => name.endsWith(".tmp"))).toEqual([]);
 });
 
+it("publishes the bytes it checked, not what the path names after the check", async () => {
+	const cache = await MutationCache.open(root, key());
+	await writeFile(cache.file, '{"old":true}');
+	const staged = await cache.stage(join(root, "work"));
+	await writeFile(staged, '{"checked":true}');
+	await writeFile(join(root, "forged.json"), '{"forged":true}');
+	const real = vi.mocked(open).getMockImplementation()!;
+	// The head's tests ran beside this file and may have left a process: it swaps the path the moment it is opened.
+	vi.mocked(open).mockImplementation(async (path, ...rest) => {
+		const handle = await real(path, ...rest);
+		if (path === staged) {
+			await rm(staged);
+			await symlink(join(root, "forged.json"), staged);
+		}
+		return handle;
+	});
+	try {
+		await cache.publish(staged);
+	} finally {
+		vi.mocked(open).mockImplementation(real);
+	}
+	expect(await readFile(cache.file, "utf8")).toBe('{"checked":true}');
+});
+
 it("keeps the partition's report when the staged one is corrupt, missing, a symlink, or past the bound", async () => {
 	const cache = await MutationCache.open(root, key());
 	await writeFile(cache.file, '{"old":true}');
