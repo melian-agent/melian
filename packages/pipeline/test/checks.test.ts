@@ -108,6 +108,20 @@ describe("runChecks", () => {
 		]);
 	});
 
+	it("records the base's notes beside the head's when the base ran", { timeout: 60_000 }, async () => {
+		const base = commit(repo, {
+			"melian.yaml": lines("tiers:", "  fast: [static.tsc]"),
+			"tsconfig.json": tsconfig,
+			"a.ts": "export const a = 0;\n",
+			"node_modules/left/index.js": "module.exports = 1;\n",
+		});
+		const head = commit(repo, { "a.ts": "export const a: number = 1;\n" }, ["node_modules/left/index.js"]);
+		const { records } = await checks(base, head, "fast");
+		expect(records).toMatchObject([
+			{ name: "static.tsc", status: "ran", notes: [`tsc ignored node_modules, which ${base.slice(0, 12)} tracks.`] },
+		]);
+	});
+
 	it("does not claim mutation authority for an unknown tier", async () => {
 		const base = commit(repo, { "a.ts": "export const a = 0;\n" });
 		const head = commit(repo, { "a.ts": "export const a = 1;\n" });
