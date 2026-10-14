@@ -3,7 +3,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { backgroundContext, createNodeExecutionEnv } from "../src/harness.ts";
 import {
 	MutationProcess,
@@ -138,4 +138,17 @@ describe.skipIf(!ps)("the mutation supervisor on real processes", { timeout: 60_
 		expect(tree.length).toBeGreaterThanOrEqual(2);
 		await until(() => running(tree).length === 0, "the leftover process to end", 10);
 	});
+});
+
+it("hands a real child's pid to process.kill, behind a fake that records the call", async () => {
+	const child = spawn(process.execPath, ["-e", "setTimeout(() => {}, 30_000)"], { stdio: "ignore" });
+	try {
+		await new Promise((resolve) => child.once("spawn", resolve));
+		const send = vi.spyOn(process, "kill").mockImplementation(() => true);
+		table.kill(child.pid!, "SIGTERM");
+		expect(send).toHaveBeenCalledExactlyOnceWith(child.pid, "SIGTERM");
+	} finally {
+		vi.restoreAllMocks();
+		child.kill("SIGKILL");
+	}
 });

@@ -232,7 +232,8 @@ describe("ProcessTable reads", () => {
 describe("ProcessTable.kill", () => {
 	afterEach(() => vi.restoreAllMocks());
 
-	it.each([1, 1.5, Number.NaN])("refuses pid %s before it reaches process.kill", (pid) => {
+	// process.kill is a fake that records its calls, so no test here ever signals one of these.
+	it.each([0, 1, -1, -10, 1.5, Number.NaN])("refuses pid %s before it reaches process.kill", (pid) => {
 		const send = vi.spyOn(process, "kill").mockImplementation(() => true);
 		expect(() => new ProcessTable().kill(pid, "SIGTERM")).toThrow("refusing to signal");
 		expect(send).not.toHaveBeenCalled();
