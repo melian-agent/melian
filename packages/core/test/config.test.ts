@@ -3,6 +3,7 @@ import { join } from "node:path";
 import {
 	Changeset,
 	ConfigError,
+	configLookup,
 	defaultConfig,
 	Lens,
 	loadConfig,
@@ -47,6 +48,7 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 			config: defaultConfig,
 			sources: [],
 			routes: { committed: {}, overridden: {}, lensTiers: {}, retiered: {} },
+			resolutionLayers: [],
 		});
 		expect(loaded.config.stages).toEqual({
 			"pre-commit": "fast",
@@ -62,6 +64,7 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 			P2: "acknowledge",
 			P3: "advisory",
 			nit: "silent",
+			preExisting: { P0: "advisory", P1: "advisory", P2: "advisory", P3: "advisory", nit: "advisory" },
 		});
 	});
 
@@ -187,7 +190,14 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 			const { config, sources } = await load("services/payments/api/charge.ts");
 
 			expect(sources).toEqual(["services/payments/melian.yaml", "melian.yaml"]);
-			expect(config.resolution).toEqual({ P0: "block", P1: "block", P2: "block", P3: "block", nit: "silent" });
+			expect(config.resolution).toEqual({
+				...defaultConfig.resolution,
+				P0: "block",
+				P1: "block",
+				P2: "block",
+				P3: "block",
+				nit: "silent",
+			});
 			expect(config.lenses).toEqual({
 				security: { tier: "heavy", paths: ["services/payments/api/**", "services/payments/webhooks/**"] },
 			});
@@ -326,6 +336,7 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 			config: defaultConfig,
 			sources: [],
 			routes: { committed: {}, overridden: {}, lensTiers: {}, retiered: {} },
+			resolutionLayers: [],
 		});
 	});
 
@@ -850,6 +861,173 @@ describe("this repository's own mutation budget", () => {
 		expect(maxLines * secondsPerLine).toBeLessThanOrEqual(aim * 0.8);
 		// The budget is the largest multiple of 50 that leaves the spare.
 		expect((maxLines + 50) * secondsPerLine).toBeGreaterThan(aim * 0.8);
+	});
+});
+
+describe.each(sourceKinds)("resolution per check and rule, from the %s", (kind) => {
+	// Commits the working tree first when the source is a revision, so call it after writing the files.
+	const source = () => sourceFor(repo, kind);
+
+	it("keeps each file's own resolution, nearest first, and skips a file that writes none", async () => {
+		writeFiles(repo, {
+			"melian.yaml": lines(
+				"resolution:",
+				"  P2: acknowledge",
+				"  checks:",
+				"    lens.cleanup: { ceiling: advisory }",
+			),
+			"services/melian.yaml": lines("knowledge:", "  writeBack: false"),
+			"services/payments/melian.yaml": lines("resolution:", "  P1: block"),
+		});
+		const { resolutionLayers, sources } = await loadConfig(repo, source(), "services/payments/src/log.ts");
+		expect(sources).toEqual(["services/payments/melian.yaml", "services/melian.yaml", "melian.yaml"]);
+		expect(resolutionLayers).toEqual([
+			{ file: "services/payments/melian.yaml", resolution: { P1: "block" } },
+			{
+				file: "melian.yaml",
+				resolution: { P2: "acknowledge", checks: { "lens.cleanup": { ceiling: "advisory" } } },
+			},
+		]);
+	});
+
+	it("merges the table and the preExisting cap key by key, and never merges checks", async () => {
+		writeFiles(repo, {
+			"melian.yaml": lines(
+				"resolution:",
+				"  P3: silent",
+				"  preExisting: { P0: acknowledge, P1: acknowledge }",
+				"  checks:",
+				"    lens.cleanup: { ceiling: advisory }",
+			),
+			"services/melian.yaml": lines(
+				"resolution:",
+				"  P2: block",
+				"  preExisting: { P1: advisory }",
+				"  checks:",
+				"    static.biome: { P2: advisory }",
+			),
+		});
+		const { config } = await loadConfig(repo, source(), "services/a.ts");
+		expect(config.resolution).toEqual({
+			P0: "block",
+			P1: "block",
+			P2: "block",
+			P3: "silent",
+			nit: "silent",
+			preExisting: { P0: "acknowledge", P1: "advisory", P2: "advisory", P3: "advisory", nit: "advisory" },
+		});
+	});
+
+	it("refuses a preExisting cap of block or silent", async () => {
+		for (const cap of ["block", "silent"]) {
+			writeFiles(repo, { "melian.yaml": lines("resolution:", `  preExisting: { P0: ${cap} }`) });
+			const error = await rejection(loadConfig(repo, source(), "a.ts"));
+			expect(error).toMatchObject({ code: "invalidValue", key: "resolution.preExisting.P0" });
+			expect(error.message).toContain("must be one of advisory, acknowledge");
+		}
+	});
+
+	it("takes lens, static, and guardrails checks, and refuses any other name", async () => {
+		const checks = (...entries: string[]) =>
+			lines("resolution:", "  checks:", ...entries.map((each) => `    ${each}`));
+		writeFiles(repo, {
+			"melian.yaml": checks(
+				"lens.cleanup: { ceiling: advisory }",
+				"static.biome: { rules: { biome/suspicious/noExplicitAny: { P2: advisory } } }",
+				"guardrails: { rules: { guardrail/forbidden-patterns/focused-test: { ceiling: acknowledge } } }",
+			),
+		});
+		expect((await loadConfig(repo, source(), "a.ts")).resolutionLayers).toHaveLength(1);
+		for (const name of ["cleanup", "lens", "statics.biome", "guardrail"]) {
+			writeFiles(repo, { "melian.yaml": checks(`${name}: { ceiling: advisory }`) });
+			const error = await rejection(loadConfig(repo, source(), "a.ts"));
+			expect(error).toMatchObject({ code: "invalidValue", key: `resolution.checks.${name}`, file: "melian.yaml" });
+			expect(error.message).toContain("lens.<name>, static.<tool>, or guardrails");
+		}
+	});
+
+	it("refuses a rule under guardrails that names no guardrail, and takes any rule name under a lens", async () => {
+		writeFiles(repo, {
+			"melian.yaml": lines("resolution:", "  checks:", "    guardrails: { rules: { focused-test: { P2: block } } }"),
+		});
+		expect(await rejection(loadConfig(repo, source(), "a.ts"))).toMatchObject({
+			code: "invalidValue",
+			key: "resolution.checks.guardrails.rules.focused-test",
+		});
+		for (const key of [
+			"guardrail/forbiden-patterns",
+			"guardrail/forbiden-patterns/focused-test",
+			"guardrails/forbidden-patterns",
+			"guardrail",
+		]) {
+			writeFiles(repo, {
+				"melian.yaml": lines("resolution:", "  checks:", `    guardrails: { rules: { ${key}: { P2: block } } }`),
+			});
+			const error = await rejection(loadConfig(repo, source(), "a.ts"));
+			expect(error).toMatchObject({ code: "invalidValue", key: `resolution.checks.guardrails.rules.${key}` });
+			expect(error.message).toContain("forbidden-paths, required-files, forbidden-patterns, policy-change-review");
+		}
+		for (const name of ["forbidden-paths", "required-files", "forbidden-patterns", "policy-change-review"]) {
+			const rules = `{ guardrail/${name}: { P2: block }, guardrail/${name}/any-rule: { ceiling: advisory } }`;
+			writeFiles(repo, { "melian.yaml": lines("resolution:", "  checks:", `    guardrails: { rules: ${rules} }`) });
+			expect((await loadConfig(repo, source(), "a.ts")).resolutionLayers).toHaveLength(1);
+		}
+		writeFiles(repo, {
+			"melian.yaml": lines("resolution:", "  checks:", "    lens.tests: { rules: { focused-test: { P2: block } } }"),
+		});
+		expect((await loadConfig(repo, source(), "a.ts")).resolutionLayers).toHaveLength(1);
+	});
+
+	it("refuses rules inside a rule entry, and a value that is no resolution", async () => {
+		const nested = "    lens.tests: { rules: { vacuous: { rules: {} } } }";
+		writeFiles(repo, { "melian.yaml": lines("resolution:", "  checks:", nested) });
+		expect(await rejection(loadConfig(repo, source(), "a.ts"))).toMatchObject({
+			code: "unknownKey",
+			key: "resolution.checks.lens.tests.rules.vacuous.rules",
+		});
+		writeFiles(repo, { "melian.yaml": lines("resolution:", "  checks:", "    lens.tests: { ceiling: never }") });
+		expect(await rejection(loadConfig(repo, source(), "a.ts"))).toMatchObject({
+			code: "invalidValue",
+			key: "resolution.checks.lens.tests.ceiling",
+		});
+	});
+
+	it("gives policy-change-review the layers of the directory that judges the path", async () => {
+		writeFiles(repo, {
+			"melian.yaml": lines("resolution:", "  P2: acknowledge"),
+			"services/melian.yaml": lines("resolution:", "  P2: silent"),
+		});
+		const lookup = configLookup(repo, source());
+		const files = async (path: string) =>
+			(await lookup.policyReview(path)).resolutionLayers.map((layer) => layer.file);
+		expect(await files("services/melian.yaml")).toEqual(["melian.yaml"]);
+		expect(await files("melian.yaml")).toEqual(["melian.yaml"]);
+		expect(await files("services/AGENTS.md")).toEqual(["services/melian.yaml", "melian.yaml"]);
+		expect((await lookup.policyReview("services/melian.yaml")).config.resolution.P2).toBe("acknowledge");
+	});
+});
+
+describe("a preference file's resolution", () => {
+	it("comes first on the walk, from the working tree only", async () => {
+		writeFiles(repo, {
+			"melian.yaml": lines("resolution:", "  P2: acknowledge"),
+			"services/melian.yaml": lines("resolution:", "  P1: block"),
+			"melian.local.yaml": lines("resolution:", "  nit: advisory"),
+		});
+		const { resolutionLayers } = await loadConfig(repo, { kind: "worktree" }, "services/a.ts");
+		expect(resolutionLayers.map((layer) => layer.file)).toEqual([
+			"melian.local.yaml",
+			"services/melian.yaml",
+			"melian.yaml",
+		]);
+		expect(resolutionLayers[0]!.resolution).toEqual({ nit: "advisory" });
+		gitIn(repo, "add", "--all", "--force");
+		gitIn(repo, "commit", "--quiet", "-m", "the head supplies a local file");
+		const revision = { kind: "revision", commit: gitIn(repo, "rev-parse", "HEAD") } as const;
+		expect((await loadConfig(repo, revision, "services/a.ts")).resolutionLayers.map((layer) => layer.file)).toEqual([
+			"services/melian.yaml",
+			"melian.yaml",
+		]);
 	});
 });
 

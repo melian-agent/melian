@@ -9,6 +9,7 @@ import {
 	loadConfig,
 	loadSecrets,
 	melianPaths,
+	resolutionOverrides,
 	StandardsInventory,
 	type StaticTool,
 	standardsLimits,
@@ -154,6 +155,23 @@ async function levelsCheck(cwd: string): Promise<Check | undefined> {
 			: { name: "levels", state: "warn", detail: `${inverted.join("; ")}; set the level's own tier or budget` };
 	} catch (error) {
 		return { name: "levels", state: "warn", detail: error instanceof Error ? error.message : String(error) };
+	}
+}
+
+// What each file's `resolution` now overrides: the accepted cost of letting the nearest file that speaks decide a
+// finding whole, read from the working tree as a review of it would.
+async function resolutionChecks(cwd: string, env: NodeJS.ProcessEnv): Promise<Check[]> {
+	const root = await git(cwd, ["rev-parse", "--show-toplevel"]).catch(() => undefined);
+	if (root === undefined) return [];
+	const name = "resolution";
+	try {
+		const lines = await resolutionOverrides(root, { kind: "worktree", preferences: userFiles(env).config });
+		if (lines.length === 0) {
+			return [{ name, state: "ok", detail: "no file overrides a lens's default or a farther file's resolution" }];
+		}
+		return lines.map((line) => ({ name, state: "ok", detail: visibleText(line) }));
+	} catch (error) {
+		return [{ name, state: "warn", detail: visibleText(error instanceof Error ? error.message : String(error)) }];
 	}
 }
 
@@ -450,6 +468,7 @@ export async function doctor(io: Io, options: { readonly fetch?: typeof globalTh
 			await mutationCheck(io.cwd, io.env),
 			await standardsCheck(io.cwd),
 		].filter((check) => check !== undefined),
+		...(await resolutionChecks(io.cwd, io.env)),
 		...(await planChecks(io.cwd, io.env, secrets)),
 	];
 	const width = Math.max(...checks.map((check) => check.name.length));

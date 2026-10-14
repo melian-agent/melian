@@ -3,8 +3,10 @@ import {
 	type CheckRecord,
 	type CheckStatus,
 	ConfigError,
+	LensError,
 	type MelianConfig,
 	type MutationSkipCause,
+	type PreExistingCap,
 	type PublicationDetails,
 	type RepositorySource,
 	type Resolution,
@@ -139,11 +141,13 @@ class VerdictState {
 
 export const VerdictDocument = defineDoc<StoredVerdictState>({
 	kind: "melian.verdicts",
-	version: 7,
+	version: 8,
 	scope: "conversation",
 	history: "rewindable",
 	fork: "asOf",
 	initial: () => new VerdictState({ verdicts: {} }).toJSON(),
+	// Version 8 lets a finding hold what its guardrail matched and which file and entry decided its resolution; a
+	// version 7 finding holds neither and reads unchanged.
 	// Version 7 lets a verdict list its important pre-existing findings and a finding hold an original severity; a
 	// version 6 verdict has neither and reads unchanged. Older records keep head-only keys and leave per-lens standards absent.
 	migrate: (value, from) => VerdictState.upgrade(value, from),
@@ -157,7 +161,16 @@ export type AdjudicationTaskInput = {
 	head: string;
 	// Where per-path configuration is read from; without it, `config` applies to every path.
 	policy?: RepositorySource;
-	config: { resolution: Record<Severity, Resolution>; ruleAliases: Record<string, StoredAlias> };
+	// `configsFor`'s fingerprint of the policy the findings resolved under when the review created the task: each
+	// path's layers and each lens's declared default, which `config` does not hold. A working tree's policy can change
+	// under one source, so a repeat review after such a change starts a new task. Absent without a policy source, and
+	// from a task an older Melian created.
+	resolutionPolicy?: string;
+	// `preExisting` is absent from an input an older Melian stored, and every cap is then advisory.
+	config: {
+		resolution: Record<Severity, Resolution> & { preExisting?: Record<Severity, PreExistingCap> };
+		ruleAliases: Record<string, StoredAlias>;
+	};
 	// Every check the review's tier names. One with no record in `checks` makes the verdict not reviewed.
 	manifest: string[];
 	checks: StoredCheck[];
@@ -200,12 +213,22 @@ export const AdjudicationTask = defineTask<AdjudicationTaskInput, { phase: "adju
 			const carried = await seenBefore(runtime, root, revision, context);
 			let verdict: Verdict;
 			try {
-				const configFor = policy === undefined ? () => config : await configsFor(repoRoot, policy, findings);
+				const policies = policy === undefined ? undefined : await configsFor(repoRoot, policy, findings);
+				// The input names the policy the review read. A working tree can change before this phase runs, as after a
+				// dismissal a crash cut short, and a verdict decided under another policy must not sit under this input.
+				const { resolutionPolicy } = task.input;
+				if (policies !== undefined && resolutionPolicy !== undefined && policies.fingerprint !== resolutionPolicy) {
+					throw new ConfigError(
+						"invalidValue",
+						repoRoot,
+						"the resolution policy changed since the review read it, so its verdict would be decided under another; run melian review again",
+					);
+				}
 				verdict = new Adjudication({
 					findings,
 					manifest,
 					checks,
-					config: configFor,
+					config: policies ?? (() => config),
 					allowSkip,
 					verificationRan: task.input.verificationRan,
 					seenBefore: carried,
@@ -213,7 +236,8 @@ export const AdjudicationTask = defineTask<AdjudicationTaskInput, { phase: "adju
 			} catch (error) {
 				// A policy that cannot be read is the task's outcome rather than a fault. It may not fail the same way next
 				// time, as when a shallow clone fetches the base later, so the next review starts a new task.
-				if (!(error instanceof ConfigError)) throw error;
+				// A lens file is policy too: its declared resolution is read with the finding's configuration.
+				if (!(error instanceof ConfigError) && !(error instanceof LensError)) throw error;
 				const failure = { message: error.message };
 				await runtime.commit(
 					() => ({ status: "terminal", outcome: { status: "failed", error: failure } }),
@@ -248,6 +272,7 @@ export function adjudicationInput(options: {
 	base: string;
 	head: string;
 	policy: RepositorySource | undefined;
+	resolutionPolicy?: string | undefined;
 	config: Pick<MelianConfig, "resolution" | "ruleAliases">;
 	manifest: readonly string[];
 	checks: readonly CheckRecord[];
@@ -285,8 +310,9 @@ export function adjudicationInput(options: {
 		base,
 		head,
 		...(policy === undefined ? {} : { policy: { ...policy } }),
+		...(options.resolutionPolicy === undefined ? {} : { resolutionPolicy: options.resolutionPolicy }),
 		config: {
-			resolution: { ...config.resolution },
+			resolution: structuredClone(config.resolution),
 			ruleAliases: structuredClone(config.ruleAliases) as Record<string, StoredAlias>,
 		},
 		manifest: [...manifest],

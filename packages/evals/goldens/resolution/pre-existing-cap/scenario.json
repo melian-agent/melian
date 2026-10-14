@@ -1,0 +1,46 @@
+{
+	"title": "A root preExisting cap holds a pre-existing P0 at acknowledge, and never raises one",
+	"findings": [
+		{
+			"check": "lens.correctness",
+			"rule": "wrong-result",
+			"severity": "P0",
+			"file": "services/payments/src/ledger.ts",
+			"verdict": "confirmed",
+			"cause": "pre-existing"
+		},
+		{
+			"check": "lens.correctness",
+			"rule": "wrong-result",
+			"severity": "P0",
+			"file": "docs/guide.md",
+			"verdict": "confirmed",
+			"cause": "pre-existing"
+		},
+		{
+			"check": "lens.correctness",
+			"rule": "wrong-result",
+			"severity": "P0",
+			"file": "services/payments/src/total.ts",
+			"verdict": "confirmed"
+		}
+	],
+	"expect": [
+		{
+			"file": "services/payments/src/ledger.ts",
+			"decidedBy": "services/payments/melian.yaml",
+			"resolution": "acknowledge"
+		},
+		{
+			"file": "docs/guide.md",
+			"decidedBy": "docs/melian.yaml",
+			"resolution": "advisory"
+		},
+		{
+			"file": "services/payments/src/total.ts",
+			"decidedBy": "services/payments/melian.yaml",
+			"resolution": "block"
+		}
+	],
+	"doctor": []
+}

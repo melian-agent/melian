@@ -1,0 +1,27 @@
+{
+	"title": "A head that edits the keys is judged under the base",
+	"findings": [
+		{
+			"check": "lens.cleanup",
+			"rule": "reuse",
+			"severity": "P1",
+			"file": "src/total.ts",
+			"verdict": "confirmed"
+		}
+	],
+	"expect": [
+		{
+			"file": "src/total.ts",
+			"rule": "reuse",
+			"decidedBy": "melian.yaml",
+			"resolution": "block"
+		},
+		{
+			"file": "melian.yaml",
+			"rule": "guardrail/policy-change-review",
+			"decidedBy": "",
+			"resolution": "acknowledge"
+		}
+	],
+	"doctor": []
+}

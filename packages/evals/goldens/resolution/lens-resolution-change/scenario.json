@@ -1,0 +1,22 @@
+{
+	"title": "A change to a LENS.md declared resolution draws a notice, and a guardrails ceiling of advisory lowers neither",
+	"findings": [],
+	"expect": [
+		{
+			"file": ".melian/lenses/cleanup/LENS.md",
+			"rule": "guardrail/policy-change-review",
+			"decidedBy": "",
+			"resolution": "block"
+		},
+		{
+			"file": "services/melian.yaml",
+			"rule": "guardrail/policy-change-review",
+			"decidedBy": "",
+			"resolution": "block"
+		}
+	],
+	"doctor": [
+		"services/melian.yaml: resolution.P1 overrides lens cleanup's declared ceiling for P1 lens.cleanup findings",
+		"services/melian.yaml: resolution.P1 overrides melian.yaml's resolution.checks.guardrails.ceiling for P1 guardrails findings"
+	]
+}

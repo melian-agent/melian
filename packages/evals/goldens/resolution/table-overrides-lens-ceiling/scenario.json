@@ -1,0 +1,36 @@
+{
+	"title": "A file that writes a table overrides a lens's declared ceiling, and restating the ceiling keeps it",
+	"findings": [
+		{
+			"check": "lens.cleanup",
+			"rule": "reuse",
+			"severity": "P2",
+			"file": "src/total.ts",
+			"verdict": "confirmed"
+		},
+		{
+			"check": "lens.cleanup",
+			"rule": "reuse",
+			"severity": "P2",
+			"file": "kept/total.ts",
+			"verdict": "confirmed"
+		}
+	],
+	"expect": [
+		{
+			"file": "src/total.ts",
+			"rule": "reuse",
+			"decidedBy": "melian.yaml",
+			"resolution": "acknowledge"
+		},
+		{
+			"file": "kept/total.ts",
+			"rule": "reuse",
+			"decidedBy": "kept/melian.yaml",
+			"resolution": "advisory"
+		}
+	],
+	"doctor": [
+		"melian.yaml: resolution.P2 overrides lens cleanup's declared ceiling for P2 lens.cleanup findings"
+	]
+}

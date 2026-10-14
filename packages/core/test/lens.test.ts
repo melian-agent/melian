@@ -335,6 +335,51 @@ describe("parseLensFile", () => {
 	});
 });
 
+describe.each(sourceKinds)("a lens's declared resolution, from the %s", (kind) => {
+	// Commits the working tree first when the source is a revision, so call it after writing the files.
+	const source = () => sourceFor(repo, kind);
+	it("reads a mapping and a ceiling, and leaves both out of the lens's version", async () => {
+		writeFiles(repo, { ".melian/lenses/security/LENS.md": lensFile(security) });
+		const [plain] = named(await Lens.load(repo, source(), ["."]), "security");
+		expect(plain!.resolution).toBeUndefined();
+		expect("resolution" in plain!.toJSON()).toBe(false);
+		const declared = [...security, "resolution: { ceiling: advisory, P3: silent }"];
+		writeFiles(repo, { ".melian/lenses/security/LENS.md": lensFile(declared) });
+		const [lens] = named(await Lens.load(repo, source(), ["."]), "security");
+		expect(lens!.resolution).toEqual({ ceiling: "advisory", P3: "silent" });
+		expect(lens!.toJSON().resolution).toEqual({ ceiling: "advisory", P3: "silent" });
+		expect(Lens.from(lens!.toJSON()).resolution).toEqual(lens!.resolution);
+		expect(lens!.version).toBe(plain!.version);
+	});
+
+	it("inherits the declared resolution through extends, and replaces it whole", async () => {
+		writeFiles(repo, {
+			".melian/lenses/security/LENS.md": lensFile([...security, "resolution: { ceiling: advisory, P3: silent }"]),
+			"services/.melian/lenses/security/LENS.md": lensFile(["name: security", "extends: security"]),
+			"docs/.melian/lenses/security/LENS.md": lensFile([
+				"name: security",
+				"extends: security",
+				"resolution: { ceiling: acknowledge }",
+			]),
+		});
+		const load = async (path: string) => named(await Lens.load(repo, source(), [path]), "security")[0]!;
+		expect((await load("services/a.ts")).resolution).toEqual({ ceiling: "advisory", P3: "silent" });
+		expect((await load("docs/a.md")).resolution).toEqual({ ceiling: "acknowledge" });
+	});
+});
+
+describe("a declared resolution's front matter", () => {
+	it("refuses rules in a declared resolution, and a value that is no resolution", () => {
+		const parse = (line: string) => () => parseLensFile("LENS.md", lensFile([...security, line]));
+		expect(parse("resolution: { rules: { injection: { P1: block } } }")).toThrow(
+			expect.objectContaining({ code: "unknownField", field: "resolution.rules" }),
+		);
+		expect(parse("resolution: { ceiling: never }")).toThrow(
+			expect.objectContaining({ code: "invalidValue", field: "resolution.ceiling" }),
+		);
+	});
+});
+
 describe("scrutiny levels", () => {
 	const caught = (content: string, file = "lenses/security/LENS.md") => {
 		try {

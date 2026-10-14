@@ -1,0 +1,14 @@
+Verdict: findings
+
+Acknowledge: 1 finding
+
+services/melian.yaml
+
+  P2  line 1  guardrail/policy-change-review  (introduced, new, acknowledge)
+    Decided by: melian.yaml: resolution.P2, the table; held at acknowledge as a change to policy
+  Review policy and standards changed in this revision.
+    What: This revision changes services/melian.yaml, which steers how Melian reviews this repository. It changes the resolution the file declares, which decides what a finding requires.
+    Why here: Melian reviewed the revision under the policy and standards it changes, so nothing it ran judged the new ones.
+    What to do: Have a maintainer read the change to services/melian.yaml before merging.
+
+1 finding in 1 file.

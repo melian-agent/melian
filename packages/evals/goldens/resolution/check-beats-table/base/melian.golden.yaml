@@ -1,0 +1,4 @@
+resolution:
+  P2: block
+  checks:
+    lens.cleanup: { P2: advisory }

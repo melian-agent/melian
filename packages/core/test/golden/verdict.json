@@ -51,7 +51,15 @@
             "check": "lens.security",
             "version": "1"
           },
-          "resolution": "block"
+          "resolution": "block",
+          "decidedBy": {
+            "check": "lens.security",
+            "rule": "sql-injection",
+            "requirement": {
+              "entry": "table",
+              "key": "resolution.P0"
+            }
+          }
         }
       },
       {
@@ -102,6 +110,14 @@
           "source": {
             "check": "lens.security",
             "version": "1"
+          },
+          "decidedBy": {
+            "check": "lens.security",
+            "rule": "no-eval",
+            "requirement": {
+              "entry": "table",
+              "key": "resolution.P1"
+            }
           }
         }
       },
@@ -153,6 +169,14 @@
           "source": {
             "check": "lens.security",
             "version": "1"
+          },
+          "decidedBy": {
+            "check": "lens.security",
+            "rule": "no-eval",
+            "requirement": {
+              "entry": "table",
+              "key": "resolution.P1"
+            }
           }
         }
       }
@@ -206,6 +230,14 @@
           "source": {
             "check": "lens.security",
             "version": "1"
+          },
+          "decidedBy": {
+            "check": "lens.security",
+            "rule": "missing-test",
+            "requirement": {
+              "entry": "table",
+              "key": "resolution.P2"
+            }
           }
         }
       }
@@ -271,6 +303,14 @@
           "source": {
             "check": "lens.security",
             "version": "1"
+          },
+          "decidedBy": {
+            "check": "lens.security",
+            "rule": "unchecked-result",
+            "requirement": {
+              "entry": "table",
+              "key": "resolution.P3"
+            }
           }
         }
       }
@@ -312,6 +352,14 @@
           },
           "source": {
             "check": "static.biome"
+          },
+          "decidedBy": {
+            "check": "static.biome",
+            "rule": "prefer-const",
+            "requirement": {
+              "entry": "table",
+              "key": "resolution.nit"
+            }
           }
         }
       }
@@ -366,6 +414,14 @@
         "source": {
           "check": "lens.security",
           "version": "1"
+        },
+        "decidedBy": {
+          "check": "lens.security",
+          "rule": "magic-number",
+          "requirement": {
+            "entry": "table",
+            "key": "resolution.P1"
+          }
         }
       }
     }

@@ -1,0 +1,5 @@
+resolution:
+  checks:
+    guardrails:
+      rules:
+        guardrail/forbidden-patterns: { ceiling: advisory }

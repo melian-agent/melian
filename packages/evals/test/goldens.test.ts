@@ -39,6 +39,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const goldens = loadGoldens();
 
+// The resolution goldens run no lens and no tier: their lens files declare scripted lenses, and their policy holds only
+// the keys under test. So the rules that tie a golden's lenses and tiers to Melian's own leave them out.
+const ofLensCorpus = (entry: { parentPath: string }) =>
+	relative(goldensDirectory, entry.parentPath).split(sep)[0] !== "resolution";
+
 describe("live design golden routing", { timeout: 60_000 }, () => {
 	it.each(["openai-codex/gpt-5.6-terra", undefined])(
 		"uses the subscription verifier route %s independently of the finder",
@@ -217,6 +222,31 @@ describe("a golden's standards and policy", () => {
 		}
 	});
 
+	it("resolves a guardrail golden's finding through its policy's own keys, as adjudication does", async () => {
+		const directory = mkdtempSync(join(tmpdir(), "melian-keyed-guardrail-golden-"));
+		try {
+			const golden = goldens.find((each) => each.name === "guardrails-overlong-sentence")!;
+			const plain = await runGolden(golden, { kind: "scripted" });
+			expect(plain.findings.map((finding) => finding.properties.resolution)).toEqual(["advisory"]);
+			const copy = join(directory, golden.name);
+			cpSync(golden.directory, copy, { recursive: true });
+			const keyed = [
+				readFileSync(join(copy, "melian.golden.yaml"), "utf8"),
+				"resolution:",
+				"  checks:",
+				"    guardrails:",
+				"      rules:",
+				"        guardrail/forbidden-patterns/overlong-sentence: { P3: block }",
+				"",
+			].join("\n");
+			writeFileSync(join(copy, "melian.golden.yaml"), keyed);
+			const run = await runGolden({ ...golden, directory: copy }, { kind: "scripted" });
+			expect(run.findings.map((finding) => finding.properties.resolution)).toEqual(["block"]);
+		} finally {
+			rmSync(directory, { recursive: true, force: true });
+		}
+	}, 60_000);
+
 	it("are stored under inert names, so the repository the corpus sits in never reads them as its own", () => {
 		const live = new Set(["AGENTS.md", "CLAUDE.md", "melian.yaml", "melian.local.yaml", "LENS.md"]);
 		const entries = readdirSync(goldensDirectory, { recursive: true, withFileTypes: true });
@@ -236,7 +266,7 @@ describe("a golden's standards and policy", () => {
 	it("carry each repository lens as an exact copy of Melian's own, so a golden measures the lens Melian runs", () => {
 		const melian = join(goldensDirectory, "../../..");
 		const copies = readdirSync(goldensDirectory, { recursive: true, withFileTypes: true }).filter(
-			(entry) => entry.name === "LENS.golden.md",
+			(entry) => entry.name === "LENS.golden.md" && ofLensCorpus(entry),
 		);
 		expect(copies.length).toBeGreaterThan(0);
 		for (const copy of copies) {
@@ -253,7 +283,7 @@ describe("a golden's standards and policy", () => {
 		expect(own).toEqual(expect.arrayContaining(["correctness", "durability", "removed-behaviour"]));
 		const trees = new Map<string, string[]>();
 		for (const copy of readdirSync(goldensDirectory, { recursive: true, withFileTypes: true })) {
-			if (copy.name !== "LENS.golden.md") continue;
+			if (copy.name !== "LENS.golden.md" || !ofLensCorpus(copy)) continue;
 			const tree = join(copy.parentPath, "../../..");
 			trees.set(tree, [...(trees.get(tree) ?? []), basename(copy.parentPath)]);
 		}
@@ -276,7 +306,7 @@ describe("a golden's standards and policy", () => {
 		const root = await fullTier(readFileSync(join(melian, "melian.yaml"), "utf8"));
 		expect(root).toEqual(expect.arrayContaining([...defaultConfig.tiers.full!]));
 		const copies = readdirSync(goldensDirectory, { recursive: true, withFileTypes: true }).filter(
-			(entry) => entry.name === "melian.golden.yaml",
+			(entry) => entry.name === "melian.golden.yaml" && ofLensCorpus(entry),
 		);
 		expect(copies.length).toBeGreaterThan(0);
 		// A guardrail golden names no lens of its own, so its policy sets no tiers and runs the default ones.

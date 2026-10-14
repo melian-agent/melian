@@ -31,7 +31,7 @@ import { createFakeModels, fauxAssistantMessage, scriptConversations } from "@me
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as checks from "../src/checks.ts";
 import { ChecksDocument } from "../src/checks.ts";
-import { commit, createRepository, fakeTool, lines } from "./fixtures/repo.ts";
+import { commit, createRepository, fakeTool, lines, writeFiles } from "./fixtures/repo.ts";
 
 let repo: string;
 let opened: ReviewHarness[];
@@ -66,6 +66,44 @@ async function setup(checkout = true) {
 }
 
 describe("review drives checks", { timeout: 60_000 }, () => {
+	it("decides again when only a check's resolution entry changes in the working tree", async () => {
+		const policyFile = (requirement: string) =>
+			lines(
+				"tiers:",
+				"  full: [guardrails]",
+				"guardrails:",
+				"  forbidden-patterns:",
+				"    rules:",
+				"      todo: { pattern: TODO, message: Finish it before merging. }",
+				"resolution:",
+				"  checks:",
+				"    guardrails:",
+				"      rules:",
+				`        guardrail/forbidden-patterns/todo: { P2: ${requirement} }`,
+			);
+		const base = commit(repo, { "melian.yaml": policyFile("advisory"), "notes.txt": "Ship it.\n" });
+		const head = commit(repo, { "notes.txt": "Ship it.\nTODO write the test\n" });
+		const changeset = await Changeset.resolve(repo, `${base}..${head}`);
+		const policy = { kind: "worktree" } as const;
+		const fake = createFakeModels();
+		const harness = await openReviewHarness(createMemoryStorage(), fake.review, { retry: false, checkout: repo });
+		opened.push(harness);
+		const reviewed = async () => {
+			const { config } = await loadConfig(repo, policy, ".");
+			const options = { harness, changeset, policy, config, lenses: [], standards: [], models: fake.review };
+			return (await reviewChangeset(options)).verdict;
+		};
+		const first = await reviewed();
+		expect(first.findings.advisory.map((finding) => finding.ruleId)).toEqual(["guardrail/forbidden-patterns"]);
+		expect((await reviewed()).fingerprint()).toBe(first.fingerprint());
+
+		// The merged configuration holds no checks, so only the policy's fingerprint tells the task's input apart.
+		writeFiles(repo, { "melian.yaml": policyFile("block") });
+		const second = await reviewed();
+		expect(second.findings.block.map((finding) => finding.ruleId)).toEqual(["guardrail/forbidden-patterns"]);
+		expect(second.findings.advisory).toEqual([]);
+	});
+
 	it("runs a clean change and attaches to the same check task after a model override", async () => {
 		const options = await setup();
 		const automatic = vi.spyOn(checks, "runChecks");

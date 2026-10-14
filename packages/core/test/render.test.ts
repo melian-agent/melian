@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import {
 	Adjudication,
 	defaultConfig,
+	describeDecision,
 	describeLineage,
 	Finding,
 	FindingsLog,
@@ -433,5 +434,95 @@ describe("verification rendering", () => {
 		expect(rendered).toContain("Correction: Use the guarded value.");
 		expect(verdict.verificationCounts()).toEqual({ confirmed: 0, plausible: 0, refuted: 1, unverified: 0 });
 		await expect(rendered).toMatchFileSnapshot("./golden/verification.txt");
+	});
+});
+
+describe("what decided a finding", () => {
+	const own = { check: "lens.cleanup", rule: "reuse" };
+	const table = {
+		check: "lens.cleanup",
+		rule: "reuse",
+		requirement: { entry: "table", key: "resolution.P1" },
+	} as const;
+
+	it("names the file, the key, and the entry the requirement came from", () => {
+		expect(describeDecision({ ...table, file: "services/payments/melian.yaml" }, own)).toBe(
+			"services/payments/melian.yaml: resolution.P1, the table",
+		);
+		const rule = { entry: "rule", key: "resolution.checks.lens.cleanup.rules.reuse.P2" } as const;
+		expect(describeDecision({ ...table, file: "melian.yaml", requirement: rule }, own)).toBe(
+			"melian.yaml: resolution.checks.lens.cleanup.rules.reuse.P2, the rule entry",
+		);
+		expect(
+			describeDecision({ ...table, requirement: { entry: "check", key: "resolution.checks.lens.cleanup.P2" } }, own),
+		).toBe("resolution.checks.lens.cleanup.P2, the check entry");
+		expect(describeDecision({ ...table, requirement: { entry: "built-in" } }, own)).toBe("the built-in table");
+	});
+
+	it("names a ceiling in force, and a lens whose default applied", () => {
+		const ceiling = { entry: "check", key: "resolution.checks.lens.cleanup.ceiling" } as const;
+		expect(
+			describeDecision({ ...table, file: "a/melian.yaml", requirement: { entry: "built-in" }, ceiling }, own),
+		).toBe("a/melian.yaml: the built-in table, under the ceiling resolution.checks.lens.cleanup.ceiling");
+		const declared = { entry: "lens-default", key: "resolution.ceiling" } as const;
+		const mapped = { entry: "lens-default", key: "resolution.P3" } as const;
+		expect(describeDecision({ ...table, lens: "cleanup", requirement: mapped, ceiling: declared }, own)).toBe(
+			"lens cleanup's default: resolution.P3, the lens's default, under the ceiling resolution.ceiling",
+		);
+	});
+
+	it("names the report it decided for only when that is another check or rule", () => {
+		expect(describeDecision({ ...table, check: "static.biome", rule: "biome/a" }, own)).toBe(
+			"resolution.P1, the table; as static.biome reported it under biome/a",
+		);
+		expect(describeDecision({ ...table, rule: "altitude" }, own)).toBe(
+			"resolution.P1, the table; as lens.cleanup reported it under altitude",
+		);
+		const guardrails = { check: "guardrails", rule: "guardrail/forbidden-patterns" };
+		const focused = { ...table, check: "guardrails", rule: "guardrail/forbidden-patterns/focused-test" };
+		expect(describeDecision(focused, guardrails)).toBe("resolution.P1, the table");
+		expect(describeDecision({ ...focused, rule: "guardrail/forbidden-patterns-extra" }, guardrails)).toContain(
+			"as guardrails reported it under guardrail/forbidden-patterns-extra",
+		);
+		const { rule: _, ...unruled } = table;
+		expect(describeDecision({ ...unruled, check: "guardrails" }, { check: "guardrails", rule: "guardrail/x" })).toBe(
+			"resolution.P1, the table",
+		);
+		expect(describeDecision(unruled, { check: "guardrails", rule: "guardrail/x" })).toBe(
+			"resolution.P1, the table; as lens.cleanup reported it",
+		);
+	});
+
+	it("names the cap or the floor that moved the result", () => {
+		expect(describeDecision({ ...table, cap: "pre-existing" }, own)).toBe(
+			"resolution.P1, the table; capped as pre-existing",
+		);
+		const capBy = { file: "melian.yaml", key: "resolution.preExisting.P0" };
+		expect(describeDecision({ ...table, cap: "pre-existing", capBy }, own)).toBe(
+			"resolution.P1, the table; capped as pre-existing by melian.yaml's resolution.preExisting.P0",
+		);
+		expect(describeDecision({ ...table, cap: "unproven-cause" }, own)).toContain("no cause location proves");
+		expect(describeDecision({ ...table, cap: "unverified" }, own)).toContain("no verifier judged it");
+		expect(describeDecision({ ...table, floor: "policy-change" }, own)).toContain(
+			"held at acknowledge as a change to policy",
+		);
+		expect(describeDecision({ ...table, floor: "injection-attempt" }, own)).toContain("as an injection attempt");
+		expect(describeDecision({ ...table, cap: "pre-existing", floor: "pre-existing-important" }, own)).toBe(
+			"resolution.P1, the table; capped as pre-existing; held at advisory as pre-existing and important",
+		);
+	});
+
+	it("prints the line under a finding only when asked, and only once adjudication decided it", () => {
+		const produced = Finding.create({ ...evalInput, resolution: undefined, file: "src/\u001b[31m.ts" });
+		const source = {
+			resolution: {},
+			layers: [{ file: "src/\u001b[31m/melian.yaml", resolution: { P1: "block" } as const }],
+		};
+		const resolved = produced.resolved(source);
+		expect(resolved.render(new Rendering({ decided: true })).split("\n")[1]).toBe(
+			"    Decided by: src/\\u001b[31m/melian.yaml: resolution.P1, the table",
+		);
+		expect(resolved.render()).not.toContain("Decided by");
+		expect(produced.render(new Rendering({ decided: true }))).not.toContain("Decided by");
 	});
 });

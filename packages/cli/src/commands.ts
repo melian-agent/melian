@@ -85,9 +85,12 @@ export class ReviewOutcome {
 		return verdict.status === "passed" ? reviewExitCodes.passed : reviewExitCodes.findings;
 	}
 
-	/** The verdict as the terminal shows it, with each finding's ID, which `melian dismiss` takes. */
+	/**
+	 * The verdict as the terminal shows it, with each finding's ID, which `melian dismiss` takes, and the file and
+	 * entry that decided what it requires.
+	 */
 	render(color: boolean): string {
-		return this.verdict.render(new Rendering({ color, ids: true }));
+		return this.verdict.render(new Rendering({ color, ids: true, decided: true }));
 	}
 }
 
@@ -411,7 +414,7 @@ export async function findings(
 			for (const line of ReviewPlan.from(stored).summary().split("\n").filter(Boolean))
 				io.stderr(`melian: ${line}\n`);
 		}
-		const render = new Rendering({ color: io.color, ids: true, all: options.all });
+		const render = new Rendering({ color: io.color, ids: true, all: options.all, decided: true });
 		if (!options.open) {
 			io.stdout(options.json ? verdict.renderJson() : verdict.render(render) + verdict.agentPrompt(argument));
 			return 0;

@@ -1,0 +1,32 @@
+{
+	"title": "A rule entry that maps only P1 does not speak for a P2 finding of that rule",
+	"findings": [
+		{
+			"check": "lens.cleanup",
+			"rule": "reuse",
+			"severity": "P2",
+			"file": "a/total.ts",
+			"verdict": "confirmed"
+		},
+		{
+			"check": "lens.cleanup",
+			"rule": "reuse",
+			"severity": "P1",
+			"file": "a/receipt.ts",
+			"verdict": "confirmed"
+		}
+	],
+	"expect": [
+		{
+			"file": "a/total.ts",
+			"decidedBy": "melian.yaml",
+			"resolution": "block"
+		},
+		{
+			"file": "a/receipt.ts",
+			"decidedBy": "a/melian.yaml",
+			"resolution": "silent"
+		}
+	],
+	"doctor": []
+}

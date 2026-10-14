@@ -1,0 +1,5 @@
+guardrails:
+  policy-change-review:
+    enabled: false
+resolution:
+  P2: silent

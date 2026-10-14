@@ -1,0 +1,44 @@
+{
+	"title": "A deterministic rule resolves through the keys, and a configured guardrail rule under its own name",
+	"findings": [
+		{
+			"check": "static.biome",
+			"rule": "biome/suspicious/noExplicitAny",
+			"severity": "P2",
+			"file": "src/a.ts"
+		},
+		{
+			"check": "static.biome",
+			"rule": "biome/correctness/noUnusedVariables",
+			"severity": "P2",
+			"file": "src/b.ts"
+		}
+	],
+	"expect": [
+		{
+			"file": "src/a.ts",
+			"decidedBy": "melian.yaml",
+			"resolution": "advisory"
+		},
+		{
+			"file": "src/b.ts",
+			"decidedBy": "",
+			"resolution": "acknowledge"
+		},
+		{
+			"file": "notes/plan.txt",
+			"rule": "guardrail/forbidden-patterns",
+			"line": 2,
+			"decidedBy": "melian.yaml",
+			"resolution": "block"
+		},
+		{
+			"file": "notes/plan.txt",
+			"rule": "guardrail/forbidden-patterns",
+			"line": 3,
+			"decidedBy": "melian.yaml",
+			"resolution": "advisory"
+		}
+	],
+	"doctor": []
+}

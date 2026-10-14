@@ -1,6 +1,6 @@
 import type { BudgetEnd, CheckLineage, VerdictStatus } from "./adjudication.ts";
 import type { Severity } from "./config.ts";
-import type { EvidenceLocation } from "./findings.ts";
+import type { DecidedBy, EvidenceLocation } from "./findings.ts";
 
 /** How a {@link Rendering} renders for a terminal. */
 export interface TerminalRenderOptions {
@@ -10,6 +10,8 @@ export interface TerminalRenderOptions {
 	readonly ids?: boolean;
 	/** Print a verdict's silent and dismissed findings too, rather than count them. Off by default. */
 	readonly all?: boolean;
+	/** Name, under each finding, the file and entry that decided its resolution. Off by default. */
+	readonly decided?: boolean;
 }
 
 export const severityColor: Readonly<Record<Severity, string>> = { P0: "31", P1: "31", P2: "33", P3: "36", nit: "2" };
@@ -62,6 +64,50 @@ export function capitalised(text: string): string {
 	return `${text[0]!.toUpperCase()}${text.slice(1)}`;
 }
 
+const entryNames: Readonly<Record<NonNullable<DecidedBy["ceiling"]>["entry"], string>> = {
+	rule: "the rule entry",
+	check: "the check entry",
+	table: "the table",
+	"lens-default": "the lens's default",
+	"built-in": "the built-in table",
+};
+
+const capNames: Readonly<Record<NonNullable<DecidedBy["cap"]>, string>> = {
+	"pre-existing": "capped as pre-existing",
+	"unproven-cause": "capped at advisory, since no cause location proves the change broke it",
+	unverified: "capped at advisory, since no verifier judged it",
+};
+
+const floorNames: Readonly<Record<NonNullable<DecidedBy["floor"]>, string>> = {
+	"policy-change": "held at acknowledge as a change to policy",
+	"injection-attempt": "held at acknowledge as an injection attempt",
+	"pre-existing-important": "held at advisory as pre-existing and important",
+};
+
+/**
+ * Says which file and entry decided a finding's resolution, for an author: "services/payments/melian.yaml:
+ * resolution.P1, the table", or "lens cleanup's default: the built-in table, under the ceiling resolution.ceiling".
+ * It names the report it decided for when `own`, the finding's own check and rule, is another, and the cap or floor
+ * that then moved the result.
+ */
+export function describeDecision(by: DecidedBy, own: { readonly check: string; readonly rule: string }): string {
+	const who = by.file ?? (by.lens === undefined ? undefined : `lens ${by.lens}'s default`);
+	const { entry, key } = by.requirement;
+	// A guardrail finding is decided under one of its configured rules, `guardrail/<name>/<rule>`, which is its own.
+	const rule = by.rule ?? own.rule;
+	const requirement = key === undefined ? entryNames[entry] : `${key}, ${entryNames[entry]}`;
+	return [
+		`${who === undefined ? "" : `${who}: `}${requirement}${by.ceiling === undefined ? "" : `, under the ceiling ${by.ceiling.key}`}`,
+		...(by.check === own.check && (rule === own.rule || rule.startsWith(`${own.rule}/`))
+			? []
+			: [`as ${by.check} reported it${by.rule === undefined ? "" : ` under ${by.rule}`}`]),
+		...(by.cap === undefined
+			? []
+			: [`${capNames[by.cap]}${by.capBy === undefined ? "" : ` by ${by.capBy.file}'s ${by.capBy.key}`}`]),
+		...(by.floor === undefined ? [] : [floorNames[by.floor]]),
+	].join("; ");
+}
+
 const budgetNames: Readonly<Record<BudgetEnd["budget"], string>> = { tokens: "token", tools: "tool call" };
 
 /**
@@ -94,12 +140,15 @@ export class Rendering {
 	readonly ids: boolean;
 	/** Print a verdict's silent and dismissed findings too, rather than count them. */
 	readonly all: boolean;
+	/** Name, under each finding, the file and entry that decided its resolution. */
+	readonly decided: boolean;
 	readonly #color: boolean;
 
 	constructor(options: TerminalRenderOptions = {}) {
 		this.#color = options.color === true;
 		this.ids = options.ids === true;
 		this.all = options.all === true;
+		this.decided = options.decided === true;
 	}
 
 	/** `text` coloured with the ANSI code `code`, or as it is when colour is off. */

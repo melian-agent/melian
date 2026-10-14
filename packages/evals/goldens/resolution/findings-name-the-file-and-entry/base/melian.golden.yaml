@@ -1,0 +1,7 @@
+resolution:
+  P3: advisory
+  checks:
+    lens.cleanup:
+      P2: acknowledge
+      rules:
+        reuse: { P1: block }

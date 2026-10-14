@@ -3,9 +3,11 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
-	type Changeset,
+	Adjudication,
+	Changeset,
 	defaultConfig,
 	dismissalVersion,
+	evaluateGuardrails,
 	Finding,
 	FindingError,
 	type FindingInput,
@@ -44,6 +46,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { VerdictDocument } from "../src/adjudication.ts";
 import { FindingsDocument, findingsVersion, seenBefore, upsertVerification } from "../src/findings.ts";
 import { PublishedDocument, PublisherDocument } from "../src/publish.ts";
+import { baseAndHead, lines } from "./fixtures/repo.ts";
 
 const input: FindingInput = {
 	rule: "no-eval",
@@ -692,6 +695,121 @@ describe("version 6 findings and verdicts", () => {
 	});
 });
 
+describe("version 7 findings and verdicts", () => {
+	const recorded = JSON.parse(readFileSync(new URL("./fixtures/stored-v7/review.json", import.meta.url), "utf8")) as {
+		revision: string;
+		findings: Legacy & { items: Record<string, unknown> };
+		verdicts: Legacy & { verdicts: Record<string, StoredVerdict> };
+	};
+	const legacy = (kind: string) =>
+		defineDoc<Legacy>({
+			kind,
+			version: 7,
+			scope: "conversation",
+			history: "rewindable",
+			fork: "asOf",
+			initial: () => ({}),
+		});
+	// The rule-level key applies only to a sighting that names its rules; the whole guardrail's applies to any.
+	const keyed = {
+		resolution: defaultConfig.resolution,
+		layers: [
+			{
+				file: "melian.yaml",
+				resolution: {
+					checks: {
+						guardrails: {
+							rules: {
+								"guardrail/forbidden-patterns": { P2: "advisory" },
+								"guardrail/forbidden-patterns/focused-test": { P2: "block" },
+							},
+						},
+					},
+				},
+			},
+		],
+	} as const;
+	// The two commits the recording reviewed, built again.
+	const policy = lines(
+		"tiers:",
+		"  full: [guardrails]",
+		"guardrails:",
+		"  forbidden-patterns:",
+		"    rules:",
+		'      focused-test: { pattern: "\\\\bit\\\\.only\\\\(", message: Remove the focused test. }',
+		'      console-log: { pattern: "console\\\\.log", message: Remove the console.log., severity: P3 }',
+	);
+	async function guardrailsToday(): Promise<Finding[]> {
+		const repo = baseAndHead(
+			{ "melian.yaml": policy, "biome.json": "{}\n", "src/a.test.ts": "export const a = 1;\n" },
+			{
+				"melian.yaml": `${policy}resolution:\n  P3: silent\n`,
+				"biome.json": '{ "linter": { "enabled": false } }\n',
+				"src/a.test.ts": 'export const a = 1;\nit.only("logs", () => console.log(a));\n',
+			},
+		);
+		try {
+			const { revision } = await Changeset.resolve(repo, "main...feature");
+			const source = { kind: "revision", commit: revision.base } as const;
+			return [...(await evaluateGuardrails({ repoRoot: repo, revision, source })).findings];
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	}
+
+	it("refuses a version-8 findings document opened by a version-7 definition", async () => {
+		const { harness, root } = await open(createMemoryStorage());
+		await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
+		await expect(harness.snapshot(legacy("melian.findings"), root.id, context)).rejects.toThrow(
+			/newer version 8 than 7/,
+		);
+	});
+
+	it("reads what version 7 wrote after an SQLite reopen, then keys its guardrail sighting and reads that after another", async () => {
+		const path = join(dir, "version-seven.sqlite");
+		const first = await open(await openSqliteStorage(path));
+		await first.root.commit(async (tx) => {
+			Object.assign(await tx.doc(legacy("melian.findings"), first.root.id), recorded.findings);
+			Object.assign(await tx.doc(legacy("melian.verdicts"), first.root.id), recorded.verdicts);
+		}, context);
+		await first.harness.close(context);
+
+		const second = await open(await openSqliteStorage(path));
+		const { revision } = recorded;
+		const stored = await readFindings(second.harness, second.root.id, revision, context);
+		expect(stored.map((each) => each.ruleId).sort()).toEqual([
+			"guardrail/forbidden-patterns",
+			"guardrail/policy-change-review",
+			"guardrail/policy-change-review",
+		]);
+		expect(stored.map((each) => each.properties.guardrail)).toEqual([undefined, undefined, undefined]);
+		const pattern = stored.find((each) => each.ruleId === "guardrail/forbidden-patterns")!;
+		expect(pattern.resolve(keyed)).toBe("advisory");
+		const verdict = (await readVerdict(second.harness, second.root.id, revision, context))!;
+		expect(verdict.findings.acknowledge.map((each) => each.id)).toContain(pattern.id);
+		expect(verdict.all().map((each) => each.properties.decidedBy)).toEqual([undefined, undefined, undefined]);
+		// The stored JSON of a verdict without dismissals is what its fingerprint hashes, so the new code adds nothing to it.
+		const json = JSON.stringify(recorded.verdicts.verdicts[revision]);
+		expect(verdict.fingerprint()).toBe(createHash("sha256").update(json).digest("hex").slice(0, 16));
+
+		// No stored finding changes identity: today's guardrails give the same IDs, and name what each matched.
+		const today = await guardrailsToday();
+		expect(today.map((each) => each.id).sort()).toEqual(Object.keys(recorded.findings.items).sort());
+		const again = today.find((each) => each.id === pattern.id)!;
+		expect(again.properties.guardrail).toEqual({ rules: ["focused-test", "console-log"] });
+		await second.root.commit((tx) => upsertFinding(tx, second.root.id, again, revision), context);
+		await second.harness.close(context);
+
+		const third = await open(await openSqliteStorage(path));
+		const reread = await readFindings(third.harness, third.root.id, revision, context);
+		expect(reread).toHaveLength(3);
+		const rekeyed = reread.find((each) => each.id === pattern.id)!;
+		expect(rekeyed.properties.guardrail).toEqual({ rules: ["focused-test", "console-log"] });
+		expect(rekeyed.resolve(keyed)).toBe("block");
+		expect(await readVerdict(third.harness, third.root.id, revision, context)).toEqual(verdict);
+	});
+});
+
 describe("lowered sightings", () => {
 	const record: Verification = {
 		verdict: "confirmed",
@@ -773,6 +891,45 @@ describe("lowered sightings", () => {
 			expect(await findingsVersion(harness, root.id, "rev1", context)).toBe(version);
 			expect((await readFindings(harness, root.id, "rev1", context))[0]!.properties.verification).toEqual(record);
 		}
+	});
+
+	it("keeps the acknowledgement of a pre-existing finding at the next revision, so a preExisting cap asks once", async () => {
+		const { harness, root } = await open(createMemoryStorage());
+		const old = Finding.create({ ...input, severity: "P0", cause: "pre-existing", resolution: undefined });
+		const capped = {
+			resolution: {
+				...defaultConfig.resolution,
+				preExisting: { ...defaultConfig.resolution.preExisting, P0: "acknowledge" },
+			},
+			ruleAliases: {},
+		} as const;
+		const decide = async (revision: string) =>
+			new Adjudication({
+				findings: await readFindings(harness, root.id, revision, context),
+				manifest: [],
+				checks: [],
+				config: capped,
+				seenBefore: await seenBefore(harness, root.id, revision, context),
+			}).adjudicate();
+		await root.commit((tx) => upsertFinding(tx, root.id, old, "rev1"), context);
+		const first = await decide("rev1");
+		expect(first.status).toBe("findings");
+		expect(first.findings.acknowledge.map((each) => each.id)).toEqual([old.id]);
+		expect(first.preExistingImportant).toMatchObject([{ id: old.id, state: "new" }]);
+
+		await root.commit((tx) => upsertFinding(tx, root.id, old, "rev2"), context);
+		const carried = await decide("rev2");
+		expect(carried.findings.acknowledge.map((each) => each.id)).toEqual([old.id]);
+		expect(carried.preExistingImportant).toMatchObject([{ id: old.id, state: "carried" }]);
+
+		// The maintainer's answer is a dismissal, kept by finding ID, so the next revision does not ask again.
+		const answer = { by: "tal", reason: "Tracked for the next release.", at: "2026-10-13T00:00:00.000Z" };
+		await root.commit((tx) => dismissFinding(tx, root.id, old.id, answer), context);
+		await root.commit((tx) => upsertFinding(tx, root.id, old, "rev3"), context);
+		const answered = await decide("rev3");
+		expect(answered.status).toBe("passed");
+		expect(answered.dismissed.map((each) => each.id)).toEqual([old.id]);
+		expect(answered.preExistingImportant).toBeUndefined();
 	});
 
 	it("drops a producer's own claim to a lowering or to a held resolution", async () => {

@@ -1,3 +1,5 @@
+import { posix } from "node:path";
+import { isDeepStrictEqual } from "node:util";
 import { analyserOf, switchOffs } from "./analyser.ts";
 import type { Revision } from "./changeset.ts";
 import {
@@ -5,6 +7,7 @@ import {
 	configLookup,
 	type ForbiddenPatternRule,
 	type MelianConfig,
+	parseResolution,
 	type Severity,
 	stricter,
 } from "./config.ts";
@@ -14,10 +17,13 @@ import {
 	Finding,
 	type FindingExplanation,
 	type FindingTrigger,
+	type GuardrailMatch,
 	normaliseSnippet,
 	snippetOccurrence,
 } from "./findings.ts";
 import { git } from "./git.ts";
+import { isLensFile, Lens } from "./lens.ts";
+import { melianPaths } from "./paths.ts";
 import { compileGlob, compilePattern, type LinearPattern, matchesGlobs, Refused } from "./pattern.ts";
 import { openSource, type RepositorySource, SourceError, type SourceReader } from "./source.ts";
 
@@ -62,6 +68,8 @@ interface Hit {
 	readonly severity: Severity;
 	readonly message: string;
 	readonly explanation: FindingExplanation;
+	// The configured rules that matched, or the notice's class: what resolution keys the finding under, never its ID.
+	readonly match: GuardrailMatch;
 }
 
 function finding(hit: Hit): Finding {
@@ -79,6 +87,7 @@ function finding(hit: Hit): Finding {
 		severity: hit.severity,
 		explanation: hit.explanation,
 		source: { check },
+		guardrail: hit.match,
 	});
 }
 
@@ -111,6 +120,7 @@ async function forbiddenPaths(
 			line: 1,
 			discriminator: "path",
 			severity: guardrail.severity,
+			match: { rules: matched.map(([name]) => name) },
 			message: sentences(messages),
 			explanation: {
 				what: `This change touches ${path}, which the forbidden-paths rule ${names} forbids.`,
@@ -146,6 +156,7 @@ async function requiredFiles(paths: readonly string[], configFor: ConfigLookup):
 				line: 1,
 				discriminator: `${name} in ${declaredIn}`,
 				severity: guardrail.severity,
+				match: { rules: [name] },
 				message: sentences([rule.message]),
 				explanation: {
 					what: `This change touches ${path} but nothing matching ${missing.join(", ")}, which the required-files rule ${name} requires.`,
@@ -203,9 +214,45 @@ function loadsManifest(path: string, workspaces: readonly string[] | undefined):
 	return directory === "" || workspaces === undefined || matchesGlobs(workspaces, directory);
 }
 
+// Whether the revision changes what `path` says a finding requires: the `resolution` key of a `melian.yaml`, parsed at
+// the base and at the head as the loader parses it, or the default a lens declares. A lens's default is compared as it
+// takes effect in the folder its `LENS.md` governs, since it also comes through `extends` and from whichever file of
+// that name is nearest: a file that drops `extends`, or a new nearer file, changes it without writing the key. A side
+// that cannot be read counts as changed, since nothing shows it left the keys alone.
+async function resolutionChanged(repoRoot: string, revision: Revision, path: string): Promise<boolean> {
+	let declared: (commit: string) => Promise<unknown>;
+	if (posix.basename(path) === melianPaths.config) {
+		declared = async (commit) => {
+			const blob = await blobText(repoRoot, commit, path);
+			if (blob.why === "absent") return undefined;
+			if (blob.text === undefined) throw new CheckError("unreadable", check, `${commit}:${path} is ${blob.why}`);
+			return parseResolution(blob.text, path);
+		};
+	} else if (isLensFile(path)) {
+		// `<scope>/.melian/lenses/<name>/LENS.md`: the lens of that name, as it applies in the scope.
+		// The lens's own directory lies beneath the folder it governs, so the lenses that apply there are that folder's.
+		const governed = posix.dirname(path);
+		const name = posix.basename(governed);
+		declared = async (commit) =>
+			(await Lens.load(repoRoot, { kind: "revision", commit }, [governed])).find((lens) => lens.name === name)
+				?.resolution;
+	} else return false;
+	const sides = await Promise.all(
+		[revision.base, revision.head].map((commit) =>
+			declared(commit).then(
+				(resolution) => ({ resolution }),
+				() => undefined,
+			),
+		),
+	);
+	const [base, head] = sides;
+	return base === undefined || head === undefined || !isDeepStrictEqual(base.resolution, head.resolution);
+}
+
 // Every policy file the revision lists, and every touched path its own configuration adds to the list. A change to an
 // analyser's configuration blocks by default: the head's copy drives the run that judges the head, so a switched-off
-// check would otherwise read as a clean one.
+// check would otherwise read as a clean one. A change to a `resolution` key, or to a lens's declared resolution, draws
+// the notice whatever switch the directory above sets: those keys decide what every other finding requires.
 async function policyChanges(input: GuardrailInput, paths: readonly string[], configFor: ConfigLookup): Promise<Hit[]> {
 	const { revision, repoRoot } = input;
 	const changed = revision.files.map((file) => file.path);
@@ -214,11 +261,13 @@ async function policyChanges(input: GuardrailInput, paths: readonly string[], co
 		: [];
 	return Promise.all(
 		paths.map(async (path): Promise<Hit | undefined> => {
-			const guardrail = (await configFor.policyReview(path)).guardrails["policy-change-review"];
-			if (!guardrail.enabled) return undefined;
+			const guardrail = (await configFor.policyReview(path)).config.guardrails["policy-change-review"];
+			const forced = await resolutionChanged(repoRoot, revision, path);
+			if (!guardrail.enabled && !forced) return undefined;
 			const added = matchesGlobs(guardrail.files, path);
 			const listed = revision.policyFiles.includes(path) && loadsManifest(path, workspaces);
-			if (!listed && !added) return undefined;
+			if (!listed && !added && !forced) return undefined;
+			const marked = forced ? { resolution: true as const } : {};
 			const analyser = analyserOf(path) ?? (added ? "an analyser this repository configures" : undefined);
 			if (analyser !== undefined) {
 				const [base, head] = await Promise.all([
@@ -235,6 +284,7 @@ async function policyChanges(input: GuardrailInput, paths: readonly string[], co
 					line: 1,
 					discriminator: "analyser",
 					severity: guardrail.analyserSeverity,
+					match: { notice: "analyser", ...marked },
 					message: `Review the change to ${path}, which configures ${analyser}.`,
 					explanation: {
 						what: [`This revision changes ${path}, which configures ${analyser}.`, ...switched].join(" "),
@@ -250,9 +300,10 @@ async function policyChanges(input: GuardrailInput, paths: readonly string[], co
 				line: 1,
 				discriminator: "policy",
 				severity: guardrail.severity,
+				match: { notice: "policy", ...marked },
 				message: "Review policy and standards changed in this revision.",
 				explanation: {
-					what: `This revision changes ${path}, which steers how Melian reviews this repository.`,
+					what: `This revision changes ${path}, which steers how Melian reviews this repository.${forced ? " It changes the resolution the file declares, which decides what a finding requires." : ""}`,
 					whyHere:
 						"Melian reviewed the revision under the policy and standards it changes, so nothing it ran judged the new ones.",
 					whatToDo: `Have a maintainer read the change to ${path} before merging.`,
@@ -363,6 +414,7 @@ async function forbiddenPatterns(
 			line,
 			discriminator: "unscanned",
 			severity: strictestOf(rules, guardrail.severity),
+			match: { rules: rules.map(([name]) => name) },
 			message: "line could not be scanned.",
 			explanation: {
 				what: `forbidden-patterns could not scan ${what}, so the rule ${rules.map(([name]) => name).join(", ")} was not checked there.`,
@@ -429,6 +481,7 @@ async function forbiddenPatterns(
 				discriminator: byCode ? undefined : `line ${added.line}`,
 				trigger: hunk === undefined ? undefined : { file: file.path, index: hunk.index, snippet: added.text },
 				severity: strictestOf(matched, guardrail.severity),
+				match: { rules: matched.map(([name]) => name) },
 				message: sentences(messages),
 				explanation: {
 					what: `This line matches the forbidden-patterns rule ${matched.map(([name]) => name).join(", ")}.`,
@@ -452,9 +505,12 @@ async function forbiddenPatterns(
  * - `policy-change-review`: the revision changes a policy, standards, or tool configuration file, one of
  *   `revision.policyFiles` or a path the configuration's `files` adds. A `melian.yaml` takes this guardrail from the
  *   configuration of the directory above its own, so it never switches off the review of itself. The root's takes it
- *   from its own configuration, which may make it stricter than the defaults but never more lenient.
+ *   from its own configuration, which may make it stricter than the defaults but never more lenient. A change to the
+ *   `resolution` key of any `melian.yaml`, or to the resolution a `LENS.md` declares, is reported whatever that
+ *   configuration switches off, and marked so that it never resolves below `acknowledge`.
  *
- * Every finding is `introduced`. Several rules of one guardrail that fire on one path or line give one finding. Throws
+ * Every finding is `introduced`. Several rules of one guardrail that fire on one path or line give one finding, which
+ * names each in `properties.guardrail`, outside its ID; a policy-change notice names its class there. Throws
  * `ConfigError` when a `melian.yaml` cannot be loaded, and {@link CheckError} `unreadable` when a file at head cannot be read.
  */
 export async function evaluateGuardrails(input: GuardrailInput): Promise<CheckReport> {

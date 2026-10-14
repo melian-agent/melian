@@ -1,0 +1,30 @@
+Verdict: findings, blocking
+
+Block: 1 finding
+
+src/receipt.ts
+
+  P1  line 1  wrong-result  (introduced, new, block, confirmed)
+    Decided by: melian.yaml: resolution.P1, the table
+    Verified: scripted/judge: The scripted verifier judged the claim.
+  wrong-result, as lens.correctness reports it.
+    What: Scripted.
+    Why here: Scripted.
+    Failure scenario: Scripted.
+    What to do: Scripted.
+
+Advisory: 1 finding
+
+src/parse.ts
+
+  P2, lowered from P1  line 1  unchecked-index  (introduced, new, advisory, confirmed)
+    Decided by: melian.yaml: resolution.checks.lens.correctness.P2, the check entry
+    Lowered from P1: The only caller returns early for a record without a comma.
+    Verified: scripted/judge: The scripted verifier judged the claim.
+  unchecked-index, as lens.correctness reports it.
+    What: Scripted.
+    Why here: Scripted.
+    Failure scenario: Scripted.
+    What to do: Scripted.
+
+2 findings in 2 files.

@@ -69,12 +69,14 @@ type FindingRecord = {
 // lifecycle change of a finding sighted there. Adjudication's input carries it, so a dismissal decides afresh.
 type FindingsState = { revisions: string[]; items: Record<string, FindingRecord>; versions: Record<string, number> };
 
+// Version 8 lets a guardrail sighting name the configured rules it matched, or its notice class, outside its ID; a
+// version 7 sighting names neither, reads unchanged, and resolves under its whole guardrail.
 // Version 7 lets a verification record hold the verifier's answers, the evidence read back, and a lowered severity; a
 // version 6 record has none and reads unchanged. Version 6 added the optional per-sighting verification
 // records. Version 5 made evidence a list of locations; a sighting stored before reads with its one location as a cause.
 export const FindingsDocument = defineDoc<FindingsState>({
 	kind: "melian.findings",
-	version: 7,
+	version: 8,
 	scope: "conversation",
 	history: "rewindable",
 	fork: "asOf",

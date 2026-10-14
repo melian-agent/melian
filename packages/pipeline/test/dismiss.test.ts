@@ -769,6 +769,84 @@ describe("recording a dismissal", () => {
 		expect(old.state.outcome).toEqual({ status: "completed", result: "superseded" });
 	});
 
+	it("refuses to decide a dismissal under a working-tree policy that changed since the review read it", async () => {
+		const harness = await reviewHarness(createMemoryStorage());
+		scriptFinding();
+		const changeset = await Changeset.resolve(repo, "main...feature");
+		const worktree = () =>
+			reviewChangeset({
+				harness,
+				changeset,
+				config,
+				lenses,
+				standards: [],
+				models: fake.review,
+				checks: [...deterministicRan],
+				policy: { kind: "worktree" },
+			});
+		const { findings } = await worktree();
+		const id = findings[0]!.properties.id;
+		writeFiles(repo, { "src/melian.yaml": "resolution:\n  checks:\n    lens.correctness: { ceiling: advisory }\n" });
+
+		await expect(dismiss(harness, id)).rejects.toMatchObject({
+			code: "adjudicationFailed",
+			message: expect.stringContaining("the resolution policy changed since the review read it"),
+		});
+		// A review reads the policy afresh, so it decides under the new one, with the dismissal counted.
+		const { verdict } = await worktree();
+		expect(verdict.dismissed.map((each) => each.id)).toEqual([id]);
+	});
+
+	it("decides a dismissal for a task an older Melian created, whose input names no resolution policy", async () => {
+		const harness = await reviewHarness(createMemoryStorage());
+		scriptFinding();
+		const changeset = await Changeset.resolve(repo, "main...feature");
+		const { findings } = await reviewChangeset({
+			harness,
+			changeset,
+			config,
+			lenses,
+			standards: [],
+			models: fake.review,
+			checks: [...deterministicRan],
+			policy: { kind: "worktree" },
+		});
+		const root = await harness.root(context);
+		const key = revisionKey(changeset.revision);
+		await root.commit(async (tx) => {
+			const index = await tx.doc(ReviewIndex, root.id);
+			const known = index.reviews[key]!.adjudication!;
+			const { resolutionPolicy, ...older } = JSON.parse(known.input) as AdjudicationTaskInput;
+			expect(resolutionPolicy).toMatch(/^[0-9a-f]{16}$/);
+			known.input = JSON.stringify(older);
+		}, context);
+
+		const { verdict } = await dismiss(harness, findings[0]!.properties.id);
+		expect(verdict.dismissed).toHaveLength(1);
+	});
+
+	it("ends the adjudication, naming the lens file, when a lens the policy declares can no longer be read", async () => {
+		const harness = await reviewHarness(createMemoryStorage());
+		scriptFinding();
+		const changeset = await Changeset.resolve(repo, "main...feature");
+		const { findings } = await reviewChangeset({
+			harness,
+			changeset,
+			config,
+			lenses,
+			standards: [],
+			models: fake.review,
+			checks: [...deterministicRan],
+			policy: { kind: "worktree" },
+		});
+		writeFiles(repo, { ".melian/lenses/broken/LENS.md": "No front matter here.\n" });
+
+		await expect(dismiss(harness, findings[0]!.properties.id)).rejects.toMatchObject({
+			code: "adjudicationFailed",
+			message: expect.stringContaining("LENS.md must start with a --- front matter block"),
+		});
+	});
+
 	it("refuses to publish a verdict whose adjudication ended without deciding, naming why", async () => {
 		const path = join(dir, "changeset.sqlite");
 		const first = await reviewHarness(await openSqliteStorage(path));

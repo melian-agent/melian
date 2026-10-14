@@ -1,0 +1,21 @@
+{
+	"title": "A whole-guardrail entry in a nearer file speaks for a named rule's finding",
+	"findings": [],
+	"expect": [
+		{
+			"file": "tests/unit.txt",
+			"rule": "guardrail/forbidden-patterns",
+			"decidedBy": "tests/melian.yaml",
+			"resolution": "advisory"
+		},
+		{
+			"file": "src/unit.txt",
+			"rule": "guardrail/forbidden-patterns",
+			"decidedBy": "melian.yaml",
+			"resolution": "block"
+		}
+	],
+	"doctor": [
+		"tests/melian.yaml: resolution.checks.guardrails.rules.guardrail/forbidden-patterns.ceiling overrides melian.yaml's resolution.checks.guardrails.rules.guardrail/forbidden-patterns/focused-test for P2 guardrails guardrail/forbidden-patterns/focused-test findings"
+	]
+}

@@ -1,5 +1,14 @@
 import { readFileSync } from "node:fs";
-import { Adjudication, Changeset, ConfigError, evaluateGuardrails, Finding, loadConfig } from "@melian-agent/core";
+import {
+	Adjudication,
+	Changeset,
+	ConfigError,
+	configLookup,
+	evaluateGuardrails,
+	Finding,
+	isLensFile,
+	loadConfig,
+} from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { maxProgram } from "../src/pattern.ts";
 import {
@@ -509,6 +518,9 @@ describe("forbidden-patterns", () => {
 			{ "a.test.ts": lines(...rows, "it.only(hidden)") },
 		);
 		expect(summary(findings).map(({ severity }) => severity)).toEqual(["P1"]);
+		// Every rule it could not check there, the built-in one for forged mutation kills among them, so resolution keys
+		// the finding under each.
+		expect(findings[0]!.properties.guardrail).toEqual({ rules: ["forged-mutation-kill", "note", "block"] });
 	});
 
 	it("reports what is past the scan limit as a finding, never only a note", { timeout: 60_000 }, async () => {
@@ -824,6 +836,8 @@ describe("policy-change-review", () => {
 		expect(summary(findings).map(({ file, severity }) => ({ file, severity }))).toEqual([
 			{ file: "melian.yaml", severity: "P1" },
 		]);
+		// The head's bare `resolution:` does not parse, which counts as a change to it, whatever class the notice is.
+		expect(findings[0]!.properties.guardrail).toEqual({ notice: "analyser", resolution: true });
 	});
 
 	it("asks for acknowledgement of a change to the root melian.yaml though the root maps P2 to silent", async () => {
@@ -919,5 +933,272 @@ describe("policy-change-review", () => {
 		expect(summary(findings).map(({ file, severity }) => ({ file, severity }))).toEqual([
 			{ file: "melian.yaml", severity: "P1" },
 		]);
+	});
+});
+
+describe("what a guardrail finding matched", () => {
+	const config = lines(
+		"guardrails:",
+		"  forbidden-paths:",
+		"    rules:",
+		"      build-output: { paths: [dist/**], message: dist is built by CI }",
+		"      bundles: { paths: ['**/*.js'], message: bundles are generated }",
+		"      vendored: { paths: [vendor/**], message: vendored code is read-only }",
+		"  required-files:",
+		"    rules:",
+		"      schema: { when: [db/migrations/**], require: [db/schema.sql], message: update the schema }",
+		"  forbidden-patterns:",
+		"    rules:",
+		"      focused-test: { pattern: '\\.only\\(', message: a focused test skips the suite }",
+		"      console-log: { pattern: 'console\\.log', message: remove the log }",
+	);
+
+	it("names the configured rules that matched, outside the finding's ID", async () => {
+		const { findings } = await guardrails(
+			{ "melian.yaml": config, "biome.json": "{}\n" },
+			{
+				"dist/app.js": lines("built"),
+				"db/migrations/002.sql": lines("alter table a;"),
+				"a.test.ts": lines("it.only(() => console.log(1))", "console.log(2)"),
+				"AGENTS.md": lines("Be brief."),
+				"biome.json": '{ "linter": { "enabled": false } }\n',
+			},
+		);
+		const matched = findings.map(({ ruleId, properties }) => [ruleId, properties.path, properties.guardrail]);
+		expect(matched).toEqual([
+			["guardrail/forbidden-paths", "dist/app.js", { rules: ["build-output", "bundles"] }],
+			["guardrail/required-files", "db/migrations/002.sql", { rules: ["schema"] }],
+			["guardrail/forbidden-patterns", "a.test.ts", { rules: ["focused-test", "console-log"] }],
+			["guardrail/forbidden-patterns", "a.test.ts", { rules: ["console-log"] }],
+			["guardrail/policy-change-review", "AGENTS.md", { notice: "policy" }],
+			["guardrail/policy-change-review", "biome.json", { notice: "analyser" }],
+		]);
+		for (const finding of findings) {
+			const { guardrail: _, ...properties } = finding.properties;
+			expect(Finding.parse({ ...finding.toJSON(), properties }).id).toBe(finding.id);
+		}
+	});
+
+	it("resolves a line under each rule it matched, through the keys of the nearest file that speaks", async () => {
+		const keyed = lines(
+			config,
+			"resolution:",
+			"  checks:",
+			"    guardrails:",
+			"      rules:",
+			"        guardrail/forbidden-patterns/console-log: { P2: advisory }",
+			"        guardrail/forbidden-patterns/focused-test: { P2: block }",
+			"        guardrail/forbidden-paths: { ceiling: silent }",
+		);
+		const base = commit({ "melian.yaml": keyed }, "base");
+		const head = commit(
+			{ "a.test.ts": lines("it.only(() => console.log(1))", "console.log(2)"), "dist/a.js": "x\n" },
+			"head",
+		);
+		const source = { kind: "revision", commit: base } as const;
+		const { revision } = await Changeset.resolve(repo, `${base}..${head}`);
+		const { findings } = await evaluateGuardrails({ repoRoot: repo, revision, source });
+		const { config: loaded, resolutionLayers } = await loadConfig(repo, source, "a.test.ts");
+		const policy = { resolution: loaded.resolution, layers: resolutionLayers };
+		expect(findings.map((finding) => [finding.properties.path, finding.lines()[0], finding.resolve(policy)])).toEqual(
+			[
+				["dist/a.js", 1, "silent"],
+				["a.test.ts", 1, "block"],
+				["a.test.ts", 2, "advisory"],
+			],
+		);
+	});
+});
+
+describe("a change to what a finding requires", () => {
+	// The root switches the review off for every file but itself, and maps every notice silent.
+	const root = lines(quiet, "resolution:", "  P2: silent", "  checks:", "    guardrails: { ceiling: advisory }");
+	const lens = (...frontMatter: string[]) =>
+		lines(
+			"---",
+			"name: cleanup",
+			"description: Reuse.",
+			"tier: medium",
+			"rules:",
+			"  - id: reuse",
+			"    description: Repeats a helper.",
+			...frontMatter,
+			"---",
+			"Find what repeats.",
+		);
+	const notices = (findings: readonly Finding[]) =>
+		findings.map(({ properties }) => [properties.path, properties.guardrail]);
+
+	it("draws the notice for a resolution key in a nested melian.yaml whose parent switches the review off", async () => {
+		const { findings } = await guardrails(
+			{
+				"melian.yaml": root,
+				"services/melian.yaml": lines("resolution:", "  P1: block"),
+				"docs/melian.yaml": lines("knowledge:", "  writeBack: false"),
+			},
+			{
+				"services/melian.yaml": lines("resolution:", "  P1: advisory"),
+				"docs/melian.yaml": lines("knowledge:", "  writeBack: true"),
+			},
+		);
+		expect(notices(findings)).toEqual([["services/melian.yaml", { notice: "policy", resolution: true }]]);
+		expect(findings[0]!.properties.explanation.what).toContain("changes the resolution the file declares");
+	});
+
+	it("holds that notice at acknowledge, whatever the table or a guardrails ceiling says", async () => {
+		const base = commit({ "melian.yaml": root, "services/melian.yaml": lines("resolution:", "  P1: block") }, "base");
+		const head = commit({ "services/melian.yaml": lines("resolution:", "  P1: advisory") }, "head");
+		const source = { kind: "revision", commit: base } as const;
+		const { revision } = await Changeset.resolve(repo, `${base}..${head}`);
+		const { findings } = await evaluateGuardrails({ repoRoot: repo, revision, source });
+		const judged = await configLookup(repo, source).policyReview("services/melian.yaml");
+		const decided = findings[0]!.decision({ resolution: judged.config.resolution, layers: judged.resolutionLayers });
+		expect(decided).toEqual({
+			resolution: "acknowledge",
+			decidedBy: {
+				file: "melian.yaml",
+				check: "guardrails",
+				requirement: { entry: "table", key: "resolution.P2" },
+				floor: "policy-change",
+			},
+		});
+	});
+
+	it("draws it for a changed lens resolution, and leaves a lens's other changes to the switch", async () => {
+		const { findings } = await guardrails(
+			{
+				"melian.yaml": root,
+				".melian/lenses/cleanup/LENS.md": lens("resolution: { ceiling: advisory }"),
+				"services/.agents/lenses/cleanup/LENS.md": lens(),
+				"docs/.melian/lenses/cleanup/LENS.md": lens("resolution: { ceiling: advisory }"),
+			},
+			{
+				".melian/lenses/cleanup/LENS.md": lens("resolution: { ceiling: block }"),
+				"services/.agents/lenses/cleanup/LENS.md": lens("resolution: { P1: silent }"),
+				"docs/.melian/lenses/cleanup/LENS.md": lens("resolution: { ceiling: advisory }", "severities: [P2]"),
+			},
+		);
+		expect(notices(findings)).toEqual([
+			[".melian/lenses/cleanup/LENS.md", { notice: "policy", resolution: true }],
+			["services/.agents/lenses/cleanup/LENS.md", { notice: "policy", resolution: true }],
+		]);
+		expect(
+			findings[0]!.resolve({ resolution: { P2: "silent", checks: { guardrails: { ceiling: "silent" } } } }),
+		).toBe("acknowledge");
+	});
+
+	it("draws it when a lens's effective default changes through extends, or through a new nearer file", async () => {
+		const strict = (...frontMatter: string[]) =>
+			lines("---", "name: strict", ...frontMatter, "---", "Find what breaks.");
+		const whole = [
+			"description: Strictness.",
+			"tier: medium",
+			"rules:",
+			"  - id: loose",
+			"    description: Too loose.",
+		];
+		const { findings } = await guardrails(
+			{
+				"melian.yaml": root,
+				".melian/lenses/strict/LENS.md": strict(...whole, "resolution: { P3: block }"),
+				"svc/.melian/lenses/strict/LENS.md": strict("extends: strict"),
+				"same/.melian/lenses/strict/LENS.md": strict("extends: strict"),
+			},
+			{
+				// Neither file writes a resolution key at the base or at the head.
+				"svc/.melian/lenses/strict/LENS.md": strict(...whole),
+				"new/.melian/lenses/strict/LENS.md": strict(...whole),
+				// Still extends the root's, so its default stands.
+				"same/.melian/lenses/strict/LENS.md": strict("extends: strict", "severities: [P3]"),
+			},
+		);
+		expect(notices(findings)).toEqual([
+			["new/.melian/lenses/strict/LENS.md", { notice: "policy", resolution: true }],
+			["svc/.melian/lenses/strict/LENS.md", { notice: "policy", resolution: true }],
+		]);
+		const quiet = { resolution: { P2: "silent", checks: { guardrails: { ceiling: "silent" } } } } as const;
+		expect(findings.map((finding) => finding.resolve(quiet))).toEqual(["acknowledge", "acknowledge"]);
+	});
+
+	it("leaves a lens file's notice unmarked when its resolution stands", async () => {
+		const { findings } = await guardrails(
+			{ ".melian/lenses/cleanup/LENS.md": lens("resolution: { ceiling: advisory }") },
+			{ ".melian/lenses/cleanup/LENS.md": lens("resolution: { ceiling: advisory }", "severities: [P2]") },
+		);
+		expect(notices(findings)).toEqual([[".melian/lenses/cleanup/LENS.md", { notice: "policy" }]]);
+		expect(findings[0]!.properties.explanation.what).not.toContain("resolution");
+	});
+
+	it("counts an added or removed key as changed, and never a file that only reorders it", async () => {
+		const { findings } = await guardrails(
+			{
+				"melian.yaml": root,
+				"removed/melian.yaml": lines("resolution:", "  P1: block"),
+				"reordered/melian.yaml": lines("resolution:", "  P1: block", "  P2: block"),
+				"emptied/melian.yaml": lines("resolution:", "  P1: block"),
+			},
+			{
+				"added/melian.yaml": lines("resolution:", "  P1: block"),
+				"plain/melian.yaml": lines("knowledge:", "  writeBack: true"),
+				"reordered/melian.yaml": lines("# reordered", "resolution:", "  P2: block", "  P1: block"),
+				"emptied/melian.yaml": lines("knowledge:", "  writeBack: true"),
+			},
+			["removed/melian.yaml"],
+		);
+		expect(notices(findings).map(([path]) => path)).toEqual([
+			"added/melian.yaml",
+			"emptied/melian.yaml",
+			"removed/melian.yaml",
+		]);
+	});
+
+	it("counts a side that does not parse as changed, at the base or at the head", async () => {
+		const { findings } = await guardrails(
+			{
+				"melian.yaml": root,
+				"broken/melian.yaml": lines("knowledge:", "  writeBack: true"),
+				"mended/.melian/lenses/cleanup/LENS.md": "No front matter.\n",
+				"binary/melian.yaml": lines("knowledge:", "  writeBack: true"),
+				"refused/melian.yaml": lines("knowledge:", "  writeBack: true"),
+			},
+			{
+				"broken/melian.yaml": "resolution: [\n",
+				"mended/.melian/lenses/cleanup/LENS.md": lens(),
+				"binary/melian.yaml": Buffer.from([0x6b, 0x3a, 0x20, 0xff, 0xfe, 0x0a]),
+				"refused/melian.yaml": lines("trust:", "  writers: false"),
+			},
+		);
+		// A base melian.yaml that does not parse fails the whole check, so only a lens file can be mended.
+		expect(notices(findings)).toEqual(
+			[
+				"binary/melian.yaml",
+				"broken/melian.yaml",
+				"mended/.melian/lenses/cleanup/LENS.md",
+				"refused/melian.yaml",
+			].map((path) => [path, { notice: "policy", resolution: true }]),
+		);
+	});
+
+	it("reads the key only from a melian.yaml or a lens's own file", async () => {
+		const { findings } = await guardrails(
+			{ "melian.yaml": root },
+			{
+				"docs/policy.yaml": lines("resolution:", "  P1: silent"),
+				".melian/lenses/cleanup/NOTES.md": lens("resolution: { ceiling: silent }"),
+			},
+		);
+		expect(findings).toEqual([]);
+	});
+});
+
+describe("isLensFile", () => {
+	it("takes a LENS.md directly inside a lens's directory, under .melian or .agents, at any depth", () => {
+		expect(isLensFile(".melian/lenses/cleanup/LENS.md")).toBe(true);
+		expect(isLensFile("services/pay/.agents/lenses/cleanup/LENS.md")).toBe(true);
+		expect(isLensFile(".melian/lenses/cleanup/NOTES.md")).toBe(false);
+		expect(isLensFile(".melian/standards/cleanup/LENS.md")).toBe(false);
+		expect(isLensFile("melian/lenses/cleanup/LENS.md")).toBe(false);
+		expect(isLensFile(".melian/lenses/LENS.md")).toBe(false);
+		expect(isLensFile("LENS.md")).toBe(false);
 	});
 });

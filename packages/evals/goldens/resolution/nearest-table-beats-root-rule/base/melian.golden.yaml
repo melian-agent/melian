@@ -1,0 +1,7 @@
+resolution:
+  P2: acknowledge
+  checks:
+    lens.cleanup: { ceiling: advisory }
+    lens.trust-boundary:
+      rules:
+        terminal-escape: { P1: acknowledge }

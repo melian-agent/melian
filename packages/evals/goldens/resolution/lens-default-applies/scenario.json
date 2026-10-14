@@ -1,0 +1,47 @@
+{
+	"title": "A lens's declared default applies when no file speaks",
+	"findings": [
+		{
+			"check": "lens.cleanup",
+			"rule": "reuse",
+			"severity": "P1",
+			"file": "src/total.ts",
+			"verdict": "confirmed"
+		},
+		{
+			"check": "lens.cleanup",
+			"rule": "altitude",
+			"severity": "P3",
+			"file": "src/receipt.ts",
+			"verdict": "confirmed"
+		},
+		{
+			"check": "lens.correctness",
+			"rule": "wrong-result",
+			"severity": "P1",
+			"file": "src/ledger.ts",
+			"verdict": "confirmed"
+		}
+	],
+	"expect": [
+		{
+			"file": "src/total.ts",
+			"rule": "reuse",
+			"decidedBy": "",
+			"resolution": "advisory"
+		},
+		{
+			"file": "src/receipt.ts",
+			"rule": "altitude",
+			"decidedBy": "",
+			"resolution": "silent"
+		},
+		{
+			"file": "src/ledger.ts",
+			"rule": "wrong-result",
+			"decidedBy": "",
+			"resolution": "block"
+		}
+	],
+	"doctor": []
+}

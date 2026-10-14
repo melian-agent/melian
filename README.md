@@ -165,6 +165,8 @@ Whether a subscription may be used in automation, or shared across a team, is a 
 
 Every setting Melian has, from which lenses run to what severity blocks a merge, can be overridden at the folder level. The nearest configuration wins and merges upward, in the same way `CODEOWNERS` works.
 
+What a finding requires can be set per lens and per rule too. A folder may say that one lens only advises there, or that one rule blocks, and may cap a lens with a ceiling. For that one key the nearest file that mentions the finding decides it whole, and `melian doctor` lists what each file overrides.
+
 ## Trust model
 
 Code already on your main branch is trusted. Submitted changes and the comments on them are not. Melian reads a pull request with full attention and treats its contents as data, never as instructions. Static checks are not sandboxed: they run your repository's code on your machine or your runners, as your build does. A check that runs a change's own tests runs for your checked-out commit and for a head a writer pushed to your repository. A fork's code is untrusted and runs only on a host that has declared itself an isolated runner, with `melian review --isolated-runner` or `MELIAN_ISOLATED_RUNNER=1`, which is the isolation a fork's pull request gets from GitHub's runners today. Anywhere else that check does not run, and the review reads `not reviewed`: a review is never approved while a configured static check has not run. Agents are the part that will be sandboxed. [The decision](docs/decisions/2026-10-14-static-checks-run-unconfined.md) records why.

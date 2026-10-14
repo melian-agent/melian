@@ -1,0 +1,6 @@
+resolution:
+  checks:
+    lens.trust-boundary:
+      P1: block
+      rules:
+        terminal-escape: { P1: acknowledge }
