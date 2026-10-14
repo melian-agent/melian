@@ -191,7 +191,8 @@ async function runStatic(
 				tool,
 				settings,
 				revision,
-				...(tool === "mutation" ? { headCode: "trusted" as const } : {}),
+				// Only mutation runs head code, and it reaches here only past the guard above.
+				headCode: "trusted",
 				...(input.source.kind === "revision" ? { policyCommit: input.source.commit } : {}),
 			},
 			context,
