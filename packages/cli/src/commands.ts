@@ -111,6 +111,7 @@ export async function review(
 		readonly model?: string;
 		readonly rerun: boolean;
 		readonly walkthrough?: boolean;
+		readonly trustHead?: boolean;
 	},
 ): Promise<number> {
 	const target = parseTarget(argument);
@@ -145,6 +146,8 @@ export async function review(
 		const preferences = userFiles(io.env).config;
 		source = own ? { kind: "worktree", preferences } : { kind: "revision", commit: changeset.revision.base };
 	}
+	// The reviewer vouches for the head on the command line, never in a file the repository holds.
+	if (options.trustHead === true) writer = { trusted: true, by: "reviewer" };
 	const { repoRoot } = changeset;
 	const paths = changeset.revision.paths();
 	const lenses = await Lens.load(repoRoot, source, paths);

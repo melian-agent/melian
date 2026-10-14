@@ -320,6 +320,14 @@ describe("static.mutation on a checked-out head", { timeout: 60_000 }, () => {
 	});
 
 
+	it("runs a head the reviewer vouches for with --trust-head, a fork's or one not checked out", async () => {
+		const { io } = await open("octocat", { octocat: "read" });
+		track("origin", "refs/pull/7/head");
+		expect(await review(io, "main...feature", { rerun: false, walkthrough: false, trustHead: true })).toBe(0);
+		expect(ran()).toBe(1);
+		gitIn(repo, "checkout", "--quiet", "main");
+		expect(await review(io, "main...feature", { rerun: true, walkthrough: false, trustHead: true })).toBe(0);
+	});
 });
 
 describe("static.mutation where the repository does not trust writers", { timeout: 60_000 }, () => {

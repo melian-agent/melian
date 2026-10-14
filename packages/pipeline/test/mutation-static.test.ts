@@ -44,6 +44,7 @@ import {
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { trustedHeadNote } from "../src/checks.ts";
 import { MutationCache } from "../src/mutation-cache.ts";
 import { MutationProcess } from "../src/mutation-process.ts";
 import { MutationRun, strykerNotInstalled, strykerVersion } from "../src/mutation-static.ts";
@@ -1946,6 +1947,15 @@ cp '${canned}' reports/mutation/mutation.json`,
 				expect(fake.calls()).toHaveLength(1);
 			});
 
+			it("notes that a head ran because the reviewer vouched for it, and only then", async () => {
+				const { base, head: tip } = head();
+				stryker({ report: report({}) });
+				const vouched = (await checks(base, tip, { trusted: true, by: "reviewer" })).run.records[0];
+				expect(vouched).toMatchObject({ status: "ran", notes: expect.arrayContaining([trustedHeadNote]) });
+				const own = (await checks(base, tip, { trusted: true, by: "checkout" })).run.records[0];
+				expect(own).toMatchObject({ status: "ran", notes: expect.not.arrayContaining([trustedHeadNote]) });
+			});
+
 			it("skips when the review names no writer", async () => {
 				const { base, head: tip } = head();
 				const fake = stryker({ report: report({}) });
@@ -2005,10 +2015,10 @@ cp '${canned}' reports/mutation/mutation.json`,
 					expect(fake.calls()).toEqual([]);
 				});
 
-				it("still runs the reviewer's own checkout", async () => {
+				it.each(["checkout", "reviewer"] as const)("still runs a head allowed by %s", async (by) => {
 					const { base, tip } = distrusting();
 					const fake = stryker({ report: report({}) });
-					const { run } = await checks(base, tip, { trusted: true, by: "checkout" });
+					const { run } = await checks(base, tip, { trusted: true, by });
 					expect(run.records[0]).toMatchObject({ name: "static.mutation", status: "ran" });
 					expect(fake.calls()).toHaveLength(1);
 				});

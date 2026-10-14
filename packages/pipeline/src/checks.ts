@@ -91,10 +91,13 @@ export const MutationProcesses = defineDoc<{ trees: Record<string, MutationTreeR
 /**
  * The host's decision on whether a check that runs the head's own code, as `static.mutation` does through the head's
  * tests, may run for this head. Made by the host from what it knows itself, never from anything the head supplies:
- * `checkout` when the head is the reviewer's own checked-out commit, `writer` when it sits in the base repository and
- * was pushed by someone with write access. Otherwise `detail` says why not, and the check does not run.
+ * `checkout` when the head is the reviewer's own checked-out work, `writer` when it sits in the base repository and was
+ * pushed by someone with write access, `reviewer` when the reviewer vouched for it with `melian review --trust-head`.
+ * Otherwise `detail` says why not, and the check does not run.
  */
-export type WriterTrust = { trusted: true; by: "checkout" | "writer" } | { trusted: false; detail: string };
+export type WriterTrust =
+	| { trusted: true; by: "checkout" | "writer" | "reviewer" }
+	| { trusted: false; detail: string };
 
 function identityKey({ base, head, tier, policy, task }: RunIdentity): string {
 	return `${base} ${head} ${tier} ${policy} ${task}`;
@@ -134,6 +137,9 @@ const toolOf: Readonly<Record<Exclude<DeterministicCheck, "guardrails">, StaticT
 	"static.enola": "enola",
 	"static.mutation": "mutation",
 };
+
+// The note a mutation check carries when it ran the head's tests only because the reviewer vouched for the head.
+export const trustedHeadNote = "Ran the head's own tests because the reviewer passed --trust-head.";
 
 // Why the head's code may not run here, or undefined when it may. The repository's `trust.writers` policy, which
 // publication reads too, can switch off trust in writers; it says nothing of the reviewer's own checkout. The reason sits
@@ -218,7 +224,13 @@ async function runStatic(
 		base: base.status === "ran" ? base.log : empty,
 		head: head.log,
 	});
-	const notes = [...report.notes, ...head.notes, ...(base.status === "ran" ? base.notes : [])];
+	const vouched = tool === "mutation" && input.writer?.trusted === true && input.writer.by === "reviewer";
+	const notes = [
+		...(vouched ? [trustedHeadNote] : []),
+		...report.notes,
+		...head.notes,
+		...(base.status === "ran" ? base.notes : []),
+	];
 	return {
 		status: "ran",
 		report: { findings: report.findings, notes },
