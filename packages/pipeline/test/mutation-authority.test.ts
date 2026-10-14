@@ -269,6 +269,40 @@ describe("the authority over a revision's mutation check", { timeout: 120_000 },
 		expect(runs()).toBe(1);
 	});
 
+	it.each([
+		["ends", revoked, "failed"],
+		["ends", trusted, "failed"],
+		["leaves running", { trusted: true, by: "isolatedRunner" } as WriterTrust, "ran"],
+	] as const)(
+		"%s a mutation check of another revision that ran on the host's declaration when the next call's leave is %o",
+		async (_what, next, status) => {
+			const { base, head } = scenario(true);
+			const otherHead = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x <= 0") });
+			const { harness, root } = await openOn();
+			const declared: WriterTrust = { trusted: true, by: "isolatedRunner" };
+			const first = runChecks(harness, await input(base, head, root.id, declared), context);
+			const deadline = Date.now() + 20_000;
+			while (runs() === 0) {
+				if (Date.now() > deadline) throw new Error("Stryker never started");
+				await sleep(20);
+			}
+			try {
+				// The other head's own check is not what this is about, so it parks like the first if it runs at all.
+				const second = runChecks(harness, await input(base, otherHead, root.id, next), context);
+				if (status === "failed") {
+					expect((await first).records).toMatchObject([
+						{ name: "static.mutation", status: "failed", reason: "aborted" },
+					]);
+				}
+				writeFileSync(join(artifacts, "release"), "");
+				await second;
+			} finally {
+				writeFileSync(join(artifacts, "release"), "");
+			}
+			expect((await first).records).toMatchObject([{ name: "static.mutation", status }]);
+		},
+	);
+
 	it("leaves a task of another kind alone even when its input resembles a retired mutation check", async () => {
 		const { base, head } = scenario();
 		const { harness, root } = await openOn();

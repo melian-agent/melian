@@ -243,17 +243,25 @@ async function runCheck(
 }
 
 // Aborts every live mutation task of the revision that a run other than `key` created. Its own check would end it when it
-// next runs; this also stops one whose tests are running now.
-async function abortRetiredMutation(harness: Harness, revision: string, key: string, context: Context): Promise<void> {
+// next runs; this also stops one whose tests are running now. It aborts, too, a task of any revision whose leave was the
+// host's declaration that it is an isolated runner, unless this call carries the same declaration: that leave is a fact
+// about the host at the time, stored in the task's input, and a task a crash left pending would otherwise run a fork's
+// tests on a host that no longer says it may.
+async function abortRetiredMutation(
+	harness: Harness,
+	revision: string,
+	key: string,
+	isolated: boolean,
+	context: Context,
+): Promise<void> {
 	const { tasks } = await harness.inspect(context);
 	for (const { record } of tasks) {
 		if (record.kind !== CheckTask.definition.name) continue;
 		const input = record.input as unknown as CheckInput;
-		if (
-			input.check === "static.mutation" &&
-			revisionKey(input.changeset.revision) === revision &&
-			input.authority !== key
-		) {
+		if (input.check !== "static.mutation") continue;
+		const retired = revisionKey(input.changeset.revision) === revision && input.authority !== key;
+		const undeclared = !isolated && input.writer?.trusted === true && input.writer.by === "isolatedRunner";
+		if (retired || undeclared) {
 			await harness.abortTask(record.id, context);
 			await harness.waitForTask(record.id, context);
 		}
@@ -642,7 +650,8 @@ export async function runChecks(harness: Harness, input: RunChecksInput, context
 			return { restart: lost, authority: runs.owners[revision]! };
 		}, context);
 		restart = retirement.restart;
-		await abortRetiredMutation(harness, revision, retirement.authority, context);
+		const isolated = input.writer?.trusted === true && input.writer.by === "isolatedRunner";
+		await abortRetiredMutation(harness, revision, retirement.authority, isolated, context);
 	}
 	let taskId = await start(undefined, undefined, restart);
 	let settled = await harness.waitForTask(taskId, context);
