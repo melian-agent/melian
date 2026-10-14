@@ -1,0 +1,5 @@
+[Pull request #98](https://github.com/melian-agent/melian/pull/98): fixes from Melian's fifth round, the first in which the mutation check ran to the end (6,484 seconds of wall time).
+
+Ten mutants survived. Commits 05cdf38c and f25a6a6d add tests for nine of them: how an unmutated finding names its lines, which binary files count as production code still there, a runner that cannot be written, the cache's policy key, and a related run with one uncovered mutant among killed ones. Commit 077cbb74 removes the tenth, a condition the guard had already settled. Each mutant, run by hand, now fails a test. The descriptor close in `reportText` survived Stryker's run, but a test fails when it is removed by hand.
+
+Left for the maintainer: the design block on superseding the sandbox decision, the policy notices, and the `mutation/unmutated` notices on files that send signals. The confirmed `secret-exposure` finding is recorded but not fixed. A fork's pull request checked out with `gh pr checkout` reads as the reviewer's own checkout, so its tests run. Whether `checkout` needs more than `HEAD` matching the range head is a decision for the maintainer.
