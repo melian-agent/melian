@@ -502,6 +502,9 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 			reason: mutationSkips.headNotAllowed("the caller did not say this head's code may run here"),
 			cause: "headNotAllowed",
 		};
+	// Before the worktree and the check for Stryker: a change with nothing to judge needs neither.
+	if (tool === "mutation" && input.revision !== undefined && !MutationRun.judges(input.revision))
+		return { status: "skipped", reason: mutationSkips.noProductionLines, cause: "noProductionLines" };
 	return run.inWorktree(async (root, scratch) => {
 		if (tool === "tsc") {
 			const { project } = input.settings as TscSettings;

@@ -846,6 +846,19 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 			expect(entries(fake.calls()[0]!)).toEqual(["packages/p/src/a.ts:1-1"]);
 		});
 
+		it("answers a change with no production line before it adds a worktree or looks for Stryker", async () => {
+			const base = commit(repo, { "stryker.config.json": config, "packages/p/src/a.ts": a });
+			const head = commit(repo, { "README.md": "docs only\n" });
+			const env = createNodeExecutionEnv(repo);
+			const execute = vi.spyOn(env, "exec");
+			expect(await mutate(base, head, { env })).toEqual({
+				status: "skipped",
+				reason: mutationSkips.noProductionLines,
+				cause: "noProductionLines",
+			});
+			expect(execute).not.toHaveBeenCalled();
+		});
+
 		it("skips with a reason, and runs no Stryker, when the change leaves no production line to mutate", async () => {
 			const base = commit(repo, { "stryker.config.json": config, "packages/p/src/a.ts": a });
 			const head = commit(repo, {
@@ -1886,6 +1899,25 @@ cp '${canned}' reports/mutation/mutation.json`,
 					},
 				]);
 				expect(fake.calls()).toEqual([]);
+			});
+
+			it("passes a change with nothing to judge for any head, before the guard and before looking for Stryker", async () => {
+				const base = commit(repo, {
+					"melian.yaml": policy,
+					"stryker.config.json": config,
+					"packages/p/src/a.ts": a,
+				});
+				const docs = commit(repo, { "README.md": "docs only\n", "packages/p/test/a.test.ts": "// t\n" });
+				rmSync(join(repo, "node_modules/.bin/stryker"), { force: true });
+				const skip = { status: "skipped", reason: mutationSkips.noProductionLines, cause: "noProductionLines" };
+				const refusedRun = await checks(base, docs, { trusted: false, detail: "the head is from a fork" });
+				expect(refusedRun.run.records).toEqual([{ name: "static.mutation", ...skip }]);
+				expect((await checks(base, docs, trusted)).run.records).toEqual([{ name: "static.mutation", ...skip }]);
+				// A change that does touch production code still needs both.
+				const code = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 0") });
+				expect((await checks(docs, code, trusted)).run.records).toEqual([
+					{ name: "static.mutation", status: "skipped", reason: strykerNotInstalled },
+				]);
 			});
 
 			describe("where the repository's policy does not trust writers", () => {

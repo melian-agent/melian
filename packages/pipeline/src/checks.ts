@@ -32,7 +32,7 @@ import {
 	type TaskId,
 } from "./harness.ts";
 import { type MutationProcessHooks, MutationTree, type MutationTreeRecord } from "./mutation-process.ts";
-import { mutationInstallation, strykerVersion } from "./mutation-static.ts";
+import { MutationRun, mutationInstallation, strykerVersion } from "./mutation-static.ts";
 import { runStaticTool, staticToolSource } from "./static.ts";
 import { ToolProvisioning } from "./tool-provisioning.ts";
 
@@ -165,6 +165,9 @@ async function runStatic(
 	const settings = input.config.static[tool];
 	if (!settings.enabled) return { status: "skipped", reason: `static.${tool}.enabled is false` };
 	if (tool === "mutation") {
+		// Asked first: a change with nothing to judge runs no head code, so it needs no leave and passes on any host.
+		if (!MutationRun.judges(Revision.from(input.changeset.revision)))
+			return { status: "skipped", reason: mutationSkips.noProductionLines, cause: "noProductionLines" };
 		const reason = refused(input);
 		if (reason !== undefined) {
 			return { status: "skipped", reason: mutationSkips.headNotAllowed(reason.detail), cause: "headNotAllowed" };

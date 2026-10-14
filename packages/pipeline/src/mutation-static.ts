@@ -236,6 +236,20 @@ export class MutationRun {
 			.filter(production);
 	}
 
+	/**
+	 * Whether `revision` changes any production TypeScript, mutable or not, binary or not. Read from the diff alone, so a
+	 * caller asks it before deciding whether the head's code may run: a change with nothing to judge needs no leave.
+	 */
+	static judges(revision: Revision): boolean {
+		return (
+			Object.keys(revision.diffLines()).some(production) ||
+			revision.files.some(
+				(file) =>
+					file.status !== "deleted" && (file.binary || file.percentEncoded === true) && production(file.path),
+			)
+		);
+	}
+
 	// The test file that tests `path`, found beside it or under its package's `test` directory, and otherwise the one to add.
 	async #nearestTest(path: string): Promise<string> {
 		const name = posix.basename(path).replace(typescript, "");
