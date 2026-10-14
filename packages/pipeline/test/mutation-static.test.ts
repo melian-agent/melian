@@ -13,6 +13,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import {
+	type ChangedFile,
 	Changeset,
 	CheckError,
 	defaultConfig,
@@ -1079,17 +1080,20 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 			});
 
 			it("judges a change only by a production file that is still there", () => {
-				const file = (path: string, status: "added" | "deleted" = "added") => ({
+				const file = (path: string, status: "added" | "deleted" | "modified" = "added", binary = true) => ({
 					status,
 					path,
-					binary: true,
+					binary,
 					hunks: [],
 				});
-				const judges = (...files: ReturnType<typeof file>[]) =>
+				const judges = (...files: ChangedFile[]) =>
 					MutationRun.judges(Revision.from({ base: "b", head: "h", files }));
 				expect(judges(file(path), file("packages/p/test/blob.test.ts"))).toBe(true);
 				expect(judges(file(path, "deleted"))).toBe(false);
 				expect(judges(file("packages/p/test/blob.test.ts"))).toBe(false);
+				// A text file with no changed lines, such as one whose mode alone changed, has nothing to judge.
+				expect(judges(file(path, "modified", false))).toBe(false);
+				expect(judges({ ...file("packages/p/src/%FF.ts", "added", false), percentEncoded: true })).toBe(true);
 			});
 
 			it("counts a file whose name is not UTF-8 text, which git lists without lines", async () => {
