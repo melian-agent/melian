@@ -94,6 +94,20 @@ const tsconfig = JSON.stringify({
 const fast = lines("tiers:", "  fast: [guardrails, static.biome, static.tsc]");
 
 describe("runChecks", () => {
+	it("records only the head's notes when the base had no project for the tool to run", {
+		timeout: 60_000,
+	}, async () => {
+		const base = commit(repo, {
+			"melian.yaml": lines("tiers:", "  fast: [static.tsc]"),
+			"a.ts": "export const a = 0;\n",
+		});
+		const head = commit(repo, { "tsconfig.json": tsconfig, "a.ts": "export const a: number = 1;\n" });
+		const { records } = await checks(base, head, "fast");
+		expect(records).toEqual([
+			{ name: "static.tsc", status: "ran", version: expect.any(String), findings: 0, notes: [] },
+		]);
+	});
+
 	it("does not claim mutation authority for an unknown tier", async () => {
 		const base = commit(repo, { "a.ts": "export const a = 0;\n" });
 		const head = commit(repo, { "a.ts": "export const a = 1;\n" });
