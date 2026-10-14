@@ -155,6 +155,10 @@ export function strykerVersion(repoRoot: string): string {
 	return "unavailable";
 }
 
+// The lockfiles of every package manager whose install Node runs Stryker from. Bun's two formats are here because Melian
+// runs Stryker under Node whichever tool installed node_modules.
+const mutationLockfiles = ["package-lock.json", "pnpm-lock.yaml", "yarn.lock", "bun.lock", "bun.lockb"] as const;
+
 export function mutationInstallation(repoRoot: string): string {
 	const require = createRequire(posix.join(repoRoot, "package.json"));
 	const versions = ["@stryker-mutator/core", "@stryker-mutator/vitest-runner", "vitest"].map((name) => {
@@ -168,18 +172,25 @@ export function mutationInstallation(repoRoot: string): string {
 		}
 		return "unavailable";
 	});
-	let lockfile = "unavailable";
-	try {
-		lockfile = createHash("sha256")
-			.update(readFileSync(posix.join(repoRoot, "package-lock.json")))
-			.digest("hex");
-	} catch {
-		// A checkout without a lockfile cannot share a partition with a locked install.
-	}
+	const lockfiles = Object.fromEntries(
+		mutationLockfiles.map((name) => {
+			try {
+				return [
+					name,
+					createHash("sha256")
+						.update(readFileSync(posix.join(repoRoot, name)))
+						.digest("hex"),
+				];
+			} catch {
+				// A checkout without this lockfile cannot share a partition with one that has it.
+				return [name, "unavailable"];
+			}
+		}),
+	);
 	return createHash("sha256")
 		.update(
 			JSON.stringify({
-				lockfile,
+				lockfiles,
 				versions,
 				node: process.versions.node,
 				selectionVersion: mutationSelectionVersion,

@@ -20,6 +20,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { MutationCache, type MutationCacheKey } from "../src/mutation-cache.ts";
 import { mutationInstallation } from "../src/mutation-static.ts";
+import { mutationSelectionVersion } from "../src/mutation-vitest.ts";
 import { MutationCache as MutationCacheV1 } from "./fixtures/mutation-cache-v1.ts";
 
 vi.mock("node:fs/promises", async (importOriginal) => {
@@ -131,15 +132,36 @@ it("keeps one partition per head commit and per run input", async () => {
 	expect((await MutationCache.open(root, key({ inputs: "other-inputs" }))).file).not.toBe(first.file);
 });
 
-it("starts cold when the checkout lockfile changes at the same head", async () => {
-	await writeFile(join(root, "package-lock.json"), '{"lockfileVersion":3,"packages":{}}');
-	const first = await MutationCache.open(root, key({ installation: mutationInstallation(root) }));
-	await writeFile(first.file, '{"files":{"a":{"mutants":[{"status":"Killed"}]}}}');
-	const warm = await MutationCache.open(root, key({ installation: mutationInstallation(root) }));
-	expect(await readFile(warm.file, "utf8")).toContain("Killed");
-	await writeFile(join(root, "package-lock.json"), '{"lockfileVersion":3,"packages":{"new":{}}}');
-	const cold = await MutationCache.open(root, key({ installation: mutationInstallation(root) }));
-	await expect(stat(cold.file)).rejects.toMatchObject({ code: "ENOENT" });
+it.each(["package-lock.json", "pnpm-lock.yaml", "yarn.lock", "bun.lock", "bun.lockb"])(
+	"starts cold when %s changes at the same head",
+	async (name) => {
+		await writeFile(join(root, name), "first");
+		const first = await MutationCache.open(root, key({ installation: mutationInstallation(root) }));
+		await writeFile(first.file, '{"files":{"a":{"mutants":[{"status":"Killed"}]}}}');
+		const warm = await MutationCache.open(root, key({ installation: mutationInstallation(root) }));
+		expect(await readFile(warm.file, "utf8")).toContain("Killed");
+		await writeFile(join(root, name), "second");
+		const cold = await MutationCache.open(root, key({ installation: mutationInstallation(root) }));
+		await expect(stat(cold.file)).rejects.toMatchObject({ code: "ENOENT" });
+	},
+);
+
+it("does not reuse a partition written under the identity that hashed package-lock.json alone", async () => {
+	await writeFile(join(root, "package-lock.json"), "{}");
+	// The identity this pull request first shipped, copied as it was written.
+	const versions = ["unavailable", "unavailable", "unavailable"];
+	const lockfile = createHash("sha256").update("{}").digest("hex");
+	const old = createHash("sha256")
+		.update(
+			JSON.stringify({
+				lockfile,
+				versions,
+				node: process.versions.node,
+				selectionVersion: mutationSelectionVersion,
+			}),
+		)
+		.digest("hex");
+	expect(mutationInstallation(root)).not.toBe(old);
 });
 
 it("starts cold when the Node runtime changes with the same head and installation", async () => {
