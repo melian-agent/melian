@@ -1,0 +1,16 @@
+# A round after a fix pass reviews the change since the last reviewed head
+
+Problem: every Melian round reviews the whole pull request again. Lenses sample what they read, so a round re-reads unchanged code and finds something new in it, and "one clean round" depends on which lines a lens happened to read. Each round also costs the whole pull request's time and tokens, however small the fix.
+
+Example: on [pull request #116](https://github.com/melian-agent/melian/pull/116), twelve rounds each re-read the same lowering code. The late rounds found untested paths one at a time, in code no fix pass had touched, and the review of record found one more. On [pull request #98](https://github.com/melian-agent/melian/pull/98), rounds ran one to two hours against 13,000 changed lines, and the reviewers reported sampling.
+
+Choice: a delta round.
+
+- A delta round's lenses review the diff from the last reviewed head to the new head. The full range, base to new head, is their context: they may read any of it, and the change prompt names both.
+- Prior findings are carried. A prior open finding whose cause lines the delta did not touch stays open. One whose cause lines the delta changed goes to the verifier against the new head: confirmed or plausible keeps it open, refuted marks it resolved. Publication already tracks new, still open, and resolved findings by ID, as [cross-revision diffing](../design.md#cross-revision-diffing) sets out, so the ledger and the inline comments need no new state.
+- A full round runs at the start of a pull request and as the last round before the queue. A rebase or a base change also forces a full round, since the old head is no longer an ancestor.
+- Deterministic checks run as they do today. The mutation check reruns only later changes, as [its own decision](2026-10-15-mutation-reruns-later-changes-only.md) sets out.
+
+Why the full round stays: a delta round cannot see a defect that sits in unchanged code and only now interacts with the fix. The full round before the queue is the sample that decides readiness, and the delta rounds between are the cheap ones.
+
+What this gives up: a delta round can miss a defect in unchanged code that a full round would have sampled. Findings that only a full round can raise arrive late, at the last round. Until this is built, the coordinator runs every round in full, and the rule in `AGENTS.md` that the last round before the queue is a full one already holds.

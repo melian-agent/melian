@@ -264,6 +264,7 @@ Planned for milestone 3:
 
 - A `security` lens beside `trust-boundary`. It covers authorisation, authentication and sessions, cryptography misuse, server-side request forgery, unsafe deserialisation and mass assignment, and data exposure. `trust-boundary` owns how untrusted data flows. `security` owns the controls an application enforces for itself. Hand-offs go through `handoffs`, per file, so `trust-boundary` keeps its coverage where `security` does not run. Tools come first for secrets and dependencies. Goldens come from seeded examples or a customer repository. Codex's content filter refuses some security diffs, so the lens's default route is a Claude model.
 - A wrapper and proxy fidelity rule on `contracts`, and a language-pitfall rule on `correctness`.
+- A candidate rule on `contracts`: an instruction names an input the request built for it never supplies. A prompt and its request builder are a contract between two parts of one change. It waits for a second instance after [pull request #116](https://github.com/melian-agent/melian/pull/116)'s, as [its decision](decisions/2026-10-15-instruction-names-an-unsupplied-input.md) records.
 - A cleanup lens for reuse, simplification, efficiency, and altitude. It sits outside the default tier and is advisory by default. A folder raises it through [resolution per lens and per rule](#resolution-per-lens-and-per-rule).
 - A specification-consistency lens, outside the default tier. It waits for a second sample and for goldens from a customer repository.
 
@@ -529,6 +530,8 @@ Knowledge is proposed, never written directly. Each item carries a target:
 The test for placement is whether a human colleague would need it. A decision-model question answers it by default; the author of the proposal pull request can move it.
 
 Lifecycle: a proposal is a durable document with states `proposed`, `open`, `merged`, `declined`. Merged disposes the document. Declined keeps a tombstone keyed by content hash so the same proposal is not raised again. Write-back is opt-in per repository and always by pull request.
+
+The first source of proposals is planned for milestone 2: the [review outcome task](#the-review-loop), which reads a merged pull request's review history and drafts entries for `AGENTS.md` and candidate checks. For now it serves Melian's own repository and prints its draft for a maintainer. Milestone 4's learning loop takes it to customer repositories, where its drafts become proposals with this lifecycle.
 
 ## Decision models
 
@@ -978,6 +981,22 @@ CommonMark parsing resolves section links, including used references and optiona
 
 [decisions/2026-10-05-comparison-as-a-capability.md](decisions/2026-10-05-comparison-as-a-capability.md) records why.
 
+### The review loop
+
+Melian reviews its own pull requests in rounds. After each fix pass, a Melian round runs from the branch's own build. Codex's adversarial review and a review of record run beside the rounds. The loop ends when a round finds nothing above advisory apart from policy notices. `AGENTS.md` says who runs each part.
+
+Problem: fixing each finding as it comes does not always converge. Example: [pull request #102](https://github.com/melian-agent/melian/pull/102) took eighteen rounds while a hand-built Markdown line reconstruction met one new shape per round, and [pull request #98](https://github.com/melian-agent/melian/pull/98) grew to 13,000 changed lines, with rounds of one to two hours that sampled the change. Each finding was a true defect; only the count showed that the approach was the defect.
+
+Solution: six convergence rules, which [the convergence decision](decisions/2026-10-15-review-loop-convergence-rules.md) records. Two consecutive rounds that each find a new instance of one class stop the instance fixes, and the class goes to the maintainer as a design question that names the authority or stricter rule that would end it. A fix pass uses the least new code, within files and lines its brief names, and a fix that needs a new mechanism is a design question. A ruling on trust or blocking behaviour gets a short attacking review before a pass implements it. A pull request over about 3,000 changed lines is split. A review of record on a trust surface attacks with probes. Lens rounds sample, so the last round before the queue reviews the whole change.
+
+Planned, not built, to make the loop cheaper and teach Melian from it:
+
+- **Delta re-review.** A round after a fix pass reviews the change since the last reviewed head, with the full range as context. Prior findings on untouched lines stay open; the verifier re-judges those whose cause lines changed. A full round runs first and last. [The delta decision](decisions/2026-10-15-delta-re-review.md) records it.
+- **Mutation reruns of later changes only.** The mutation check's incremental cache is kept per pull request, and a new head reruns only mutants on lines changed since the last judged head and those whose covering tests changed, as Stryker's incremental mode decides. Reuse needs the last judged head as an ancestor, the same base and installation, and a trusted earlier run. [The rerun decision](decisions/2026-10-15-mutation-reruns-later-changes-only.md) records it, and why per-head keying no longer earns its cost.
+- **Comparison after a merge.** `melian compare` addresses a stored round by its head commit, and `#N` gathers every round of a merged pull request, so records come from the store. [The compare decision](decisions/2026-10-15-compare-addresses-revisions-by-head.md) records it.
+- **The review outcome task.** `melian learn "#N"` reads a merged pull request's stored review history and drafts guidance from it: classes repeated across rounds, findings that recur across pull requests, lens gaps, and process signals such as findings in code a fix pass just added. It never applies what it drafts. [The outcome decision](decisions/2026-10-15-review-outcome-task.md) names its inputs, output and goldens.
+- **A supersession check.** `static.supersession` lists each sentence of a retired decision that the decision superseding it neither restates nor quotes. [The check decision](decisions/2026-10-15-supersession-drop-check.md) records it.
+
 ## Tech stack
 
 In use since milestone 1, except what a row marks as planned.
@@ -1030,11 +1049,11 @@ docs/
 
 Milestone 1, the local CLI loop, is complete.
 
-Milestone 2 makes Melian the review of record for Melian. It brings the lens backlog, the verifier, and scrutiny levels with triage through the `Decider` port. It brings the review plan, the files a user owns, `melian dismiss`, the ledger, the tool manifest with Enola, and comparison with external reviewers as a capability. It ends with a required `melian/review` status on `main`, and takes the issues milestone 1 deferred. Three steps are planned after mutation testing: the verifier lowers a severity one step and sets a pre-existing scope, then resolution per lens and per rule, then the `design` lens rule `reimplements-an-authority`. Authority over the Melian repository needs lens coverage, a verifier, dismissal, and a required status check, and none of them needs the Actions host. [The classification of 151 accepted findings](research/2026-10-04-review-findings-by-bucket.md) shows why coverage comes first: correctness, at 54, is the only bucket today's lenses plausibly cover, and trust boundary, at 28, and durability, at 17, have no check at all.
+Milestone 2 makes Melian the review of record for Melian. It brings the lens backlog, the verifier, and scrutiny levels with triage through the `Decider` port. It brings the review plan, the files a user owns, `melian dismiss`, the ledger, the tool manifest with Enola, and comparison with external reviewers as a capability. It ends with a required `melian/review` status on `main`, and takes the issues milestone 1 deferred. Three steps after mutation testing have landed: the verifier lowers a severity one step, resolution per lens and per rule, and the `design` lens rule `reimplements-an-authority`. Planned next, from the review loop's lessons: the mutation check reruns only later changes, `melian compare` reaches a merged pull request's rounds, delta re-review, the review outcome task, and a supersession check, as [the review loop](#the-review-loop) sets out. Authority over the Melian repository needs lens coverage, a verifier, dismissal, and a required status check, and none of them needs the Actions host. [The classification of 151 accepted findings](research/2026-10-04-review-findings-by-bucket.md) shows why coverage comes first: correctness, at 54, is the only bucket today's lenses plausibly cover, and trust boundary, at 28, and durability, at 17, have no check at all.
 
 Milestone 3, "Melian reviews pull requests on GitHub Actions", brings the Actions host completing the manifest from local records, the state branch, container isolation, the credential pool, and Opengrep and gitleaks. It also brings the lenses and rules of [the lens roadmap](#the-lens-roadmap).
 
-Milestone 4 makes Melian remember and learn, and learning from dismissals comes first. A history source for lenses follows. Then: comment commands including dismiss-with-reason, knowledge write-back, the decision-model adapters and the verification executor on them, and calibration. [design-implementation-plan.md](design-implementation-plan.md) defines each milestone and lists what is deferred. The server host, Slack, autofix, and fine-tuning decision models from calibration data are not yet scheduled.
+Milestone 4 makes Melian remember and learn, and learning from dismissals comes first. The review outcome task, built for Melian's own repository in milestone 2, feeds the same loop for customer repositories. A history source for lenses follows. Then: comment commands including dismiss-with-reason, knowledge write-back, the decision-model adapters and the verification executor on them, and calibration. [design-implementation-plan.md](design-implementation-plan.md) defines each milestone and lists what is deferred. The server host, Slack, autofix, and fine-tuning decision models from calibration data are not yet scheduled.
 
 ## Decision log
 
