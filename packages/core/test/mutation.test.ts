@@ -461,6 +461,23 @@ describe("normaliseMutationReport", () => {
 		expect(mutationSkipHasLeave(undefined)).toBe(false);
 	});
 
+	it("names one line, a range, and several ranges of a file it did not judge", () => {
+		const file = (ranges: [number, number][]) => ({ path: "src/a.ts", ranges, why: "why", whatToDo: "do" });
+		const log = mutationUnmutatedLog("10.0.0", [
+			file([[3, 3]]),
+			file([[3, 5]]),
+			file([
+				[3, 3],
+				[7, 7],
+			]),
+		]);
+		expect(log.runs[0]!.results.map((result) => result.message.text)).toEqual([
+			"Stryker did not judge line 3 of src/a.ts: why.",
+			"Stryker did not judge lines 3-5 of src/a.ts: why.",
+			"Stryker did not judge lines 3, 7 of src/a.ts: why.",
+		]);
+	});
+
 	it("words each skip reason as the review shows it", () => {
 		expect(mutationSkips.noProductionLines).toBe("the change adds or edits no production TypeScript lines");
 		expect(mutationSkips.headNotAllowed("the head is from a fork")).toBe(
