@@ -543,6 +543,13 @@ describe("normaliseMutationReport", () => {
 		);
 	});
 
+	it("reads a mutant on line 1 and refuses one on line 0", () => {
+		const text = (line: number) => report({ "src/b c.ts": [{ status: "Killed", line, endLine: 1 }] });
+		expect(() => normaliseMutationReport(text(1), input)).not.toThrow();
+		expect(() => normaliseMutationReport(text(0), input)).toThrow(CheckError);
+		expect(() => normaliseMutationReport(text(0), input)).toThrow(/line/);
+	});
+
 	it("encodes each path segment, orders results by file and line, and names a missing test file generically", () => {
 		const unseen = normaliseMutationReport(report({ "src/a.ts": [{ status: "Survived", line: 10 }] }), {
 			...input,
