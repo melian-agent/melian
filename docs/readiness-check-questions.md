@@ -32,3 +32,22 @@ The [implementation plan](design-implementation-plan.md) says the maintainer run
 ## Policy changes under a parent's switch
 
 10. **A nested file's severities and lens switches change what blocks, unseen.** A nested `melian.yaml` is judged under the directory above it, where a base file may switch `policy-change-review` off. Step 18 made a change to a `resolution` key draw the notice whatever that switch says. A nested file's `guardrails.*.severity` and `lenses.*.enabled` also decide what blocks, and a change to either still stays under the parent's switch. The review of record for [pull request #117](https://github.com/melian-agent/melian/pull/117) noted it. Decide whether those keys force the notice too.
+
+## Answered by the maintainer since the list was written
+
+These were asked while the loop ran, outside this list. Each answer is the maintainer's, quoted where his words survive, with its date. [Pull request #98](https://github.com/melian-agent/melian/pull/98) records them in its decisions and documents.
+
+- **The trust model for forks**, 2026-10-14: "We assume fork code is untrusted, but it only runs within runners it would run on today anyway -- they are themselves isolated. Isolation model is same as current github forks." The README's trust paragraph is rewritten to match on #98.
+- **Which tools need a sandbox**, 2026-10-14: "Static analysis tools don't need to run in a sandbox, only agents do." Biome, tsc and Enola run unconfined, as on `main`. [Pull request #112](https://github.com/melian-agent/melian/pull/112), the sandbox boundary, closed unmerged.
+- **The mutation check's guard**, 2026-10-14: no sandbox, and the check runs a head's tests only when the head is trusted, "as long as when a check is configured, the melian review is not considered fully approved without all static checks that are configured for the repo have been run correctly. So it would mean, fork code run locally -- skipped, but then when run in github PR build, will run -- otherwise we need to not approve that PR." A fork's mutation result counts "like CI tests", and a fork's check runs in a separate job with no secrets once the Actions host exists.
+- **The mutation check's timeout**, 2026-10-14: "longer timeout everywhere, we'll make the call later on whether the return is worth it. I want to see how it works in practice with smaller PRs." The default is 7,200 seconds, provisional.
+
+Question 8, whether `acknowledge` should fail the status, has no answer from the maintainer yet. A coordinator's belief that it already gated the merge cost [pull request #117](https://github.com/melian-agent/melian/pull/117) rounds before it was corrected.
+
+## Raised by the review loop's lessons
+
+These start at 14, because [pull request #98](https://github.com/melian-agent/melian/pull/98) adds questions 11 to 13, on fork heads and the mutation check.
+
+14. **Does a delta round set the required status?** [Delta re-review](decisions/2026-10-15-delta-re-review.md) makes the last round before the queue a full one, which the caller marks. A delta round between could still publish `melian/review` as passed on a sample of the change. Decide whether only a full round sets the status, or whether a delta round sets it and the queue rule alone demands the full one.
+15. **How strict is the supersession check?** [The check](decisions/2026-10-15-supersession-drop-check.md) reports a dropped clause at P2, which the default table resolves `acknowledge`, so a decision that retires another whole needs a dismissal with a reason. Decide whether it starts at P2, or as an advisory until a live measure shows its noise.
+16. **When does the review outcome task run?** [`melian learn`](decisions/2026-10-15-review-outcome-task.md) drafts guidance after a merge. Decide whether the coordinator runs it after every merge and turns each draft into a docs pull request, or runs it on demand, such as after a pull request that took more than four rounds.
