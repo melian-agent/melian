@@ -29,13 +29,18 @@ afterEach(() => {
 const source = (name: string, otherwise: string) =>
 	lines(`export function ${name}(x: number) {`, "  if (x > 0) return 1;", `  return ${otherwise};`, "}");
 
-const test = (name: string) =>
+// Inside a describe, so the covering test's name has the nesting Stryker and Vitest spell differently. A weak test
+// asserts only the type, so the mutants of its function survive.
+const test = (name: string, weak = false) =>
 	lines(
-		'import { expect, it } from "vitest";',
+		'import { describe, expect, it } from "vitest";',
 		`import { ${name} } from "../src/${name}.ts";`,
-		`it("${name}", () => {`,
-		`  expect(${name}(1)).toBe(1);`,
-		`  expect(${name}(0)).toBe(0);`,
+		`describe("${name}", () => {`,
+		`  it("${name}", () => {`,
+		...(weak
+			? [`    expect(typeof ${name}(0)).toBe("number");`]
+			: [`    expect(${name}(1)).toBe(1);`, `    expect(${name}(0)).toBe(0);`]),
+		"  });",
 		"});",
 	);
 
@@ -53,13 +58,18 @@ describe.skipIf(inMutationRun)("the real backend", { timeout: 180_000 }, () => {
 			"packages/p/src/b.ts": source("b", "0"),
 			"packages/p/test/b.test.ts": test("b"),
 			"packages/p/test/a.test.ts": test("a"),
+			"packages/p/test/c.test.ts": test("c", true),
 		};
 		const base = commit(repo, {
 			".gitignore": "node_modules\n",
 			...project,
 			"packages/p/src/a.ts": source("a", "0"),
+			"packages/p/src/c.ts": source("c", "0"),
 		});
-		const head = commit(repo, { "packages/p/src/a.ts": source("a", "2 - 2") });
+		const head = commit(repo, {
+			"packages/p/src/a.ts": source("a", "2 - 2"),
+			"packages/p/src/c.ts": source("c", "2 - 2"),
+		});
 		// The project gets an install of its own, cloned where the file system can, so it resolves nothing from this checkout.
 		const clone = process.platform === "darwin" ? ["-cR"] : ["-R", "--reflink=auto"];
 		execFileSync("cp", [...clone, join(checkout, "node_modules"), join(repo, "node_modules")]);
@@ -82,6 +92,13 @@ describe.skipIf(inMutationRun)("the real backend", { timeout: 180_000 }, () => {
 		expect(result.status).toBe("ran");
 		if (result.status !== "ran") return;
 		expect(result.notes.join("\n")).toContain("related test file(s) selected by Vitest");
+		// The well-tested change is judged killed and the weakly tested one survives, so the tests ran against the mutants.
+		const judged = result.log.runs[0]!.results.map((each) => [
+			each.ruleId,
+			each.locations?.[0]?.physicalLocation?.artifactLocation?.uri,
+		]);
+		expect(judged.length).toBeGreaterThan(0);
+		expect(new Set(judged.map(String))).toEqual(new Set(["untested-behaviour,packages/p/src/c.ts"]));
 		expect(Date.now() - started).toBeLessThan(60_000);
 	});
 });
