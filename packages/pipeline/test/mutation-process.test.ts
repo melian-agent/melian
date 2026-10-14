@@ -368,6 +368,20 @@ describe("supervise", () => {
 		expect(exits).toEqual([1]);
 	});
 
+	it("still writes done and exits when ending the tree fails too, as it does while the table cannot be read", async () => {
+		start();
+		host.list = () => {
+			throw new Error("ps failed");
+		};
+		host.terminate = async () => {
+			throw new Error("ps failed");
+		};
+		ticks[0]!();
+		await settle();
+		expect(files.get("done")).toBe("1");
+		expect(exits).toEqual([1]);
+	});
+
 	it("treats a controller pid with another start time as a different process", async () => {
 		start();
 		table = table.map((entry) => (entry.pid === 500 ? { ...entry, start: "reused" } : entry));

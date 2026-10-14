@@ -114,7 +114,12 @@ export function supervise(options: SupervisorOptions, host: SupervisorHost): voi
 	const end = async (code: number) => {
 		if (ended) return;
 		ended = true;
-		await host.terminate(records());
+		try {
+			await host.terminate(records());
+		} catch {
+			// Ending the tree can fail as the scan did, on a process table that cannot be read. The host ends the recorded
+			// pids itself once it sees `done`; without that file it would wait out the run's whole timeout first.
+		}
 		host.write("done", String(code));
 		host.exit(code);
 	};
