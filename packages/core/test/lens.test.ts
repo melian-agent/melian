@@ -120,7 +120,7 @@ describe("built-in lenses", () => {
 			correctness: "8fab2587daa0",
 			design: "f528fcecf913",
 			"removed-behaviour": "a7e8f99fb8fc",
-			tests: "41fcf10eafe3",
+			tests: "ab15d40cef63",
 			"trust-boundary": "140b36876ea7",
 		});
 		const tuned = { ...defaultConfig, lenses: { correctness: { tier: "light" as const, paths: ["src/**"] } } };
@@ -328,6 +328,19 @@ describe("built-in lenses", () => {
 			"- Can the path reach another process's state or the environment, as `/proc/<pid>/environ` or `/dev/fd/` do?",
 		])
 			expect(trust!.instructions).toContain(probe);
+	});
+	it("give tests a rule for a fake that answers what the real request never asks, reported once at the fake", async () => {
+		const [tests] = named(await Lens.load(repo, { kind: "worktree" }, []), "tests");
+		expect(tests!.rules.find((rule) => rule.id === "fake-answers-unasked")?.description).toBe(
+			"A fake, stub, or scripted reply the change adds or edits answers a question the real request never asks, or relies on an input the real request never carries, so the test passes whatever that request holds.",
+		);
+		for (const sentence of [
+			"3. For each fake, stub, or scripted reply the change adds or edits, read the code that builds the request it stands in for: the prompt or instructions, and the fields sent to the model or service.",
+			"Name the input the request lacks, the line that builds the request, and the mutation every test lets through.",
+			"Report a fake that answers what the real request never asks once, under `fake-answers-unasked` at the fake, not as a vacuous test as well.",
+			"Cite the line that builds the request as `context`: the input the request lacks is part of that one finding.",
+		])
+			expect(tests!.instructions).toContain(sentence);
 	});
 });
 

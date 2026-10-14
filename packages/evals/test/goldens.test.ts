@@ -162,6 +162,7 @@ describe("the golden corpus", () => {
 			"removed-behaviour-injection",
 			"removed-behaviour-moved-status",
 			"tests-clean-covered",
+			"tests-fake-answers-unasked",
 			"tests-injection",
 			"tests-teardown-asymmetry",
 			"tests-untested-behaviour",

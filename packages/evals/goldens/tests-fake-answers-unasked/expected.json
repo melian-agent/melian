@@ -1,0 +1,31 @@
+{
+  "pr_title": "Let the model lower a ticket's priority",
+  "comments": [
+    {
+      "comment": "The downgrade test's fake answers P3 whatever it is asked, and downgrade's request never carries the priority its instructions ask the model to lower, so the test proves nothing about the real request.",
+      "severity": "Medium",
+      "category": "test",
+      "file": "test/triage.test.ts",
+      "rule": "fake-answers-unasked",
+      "cause": "introduced",
+      "failureScenario": "downgrade sends only { title, body }, while its instructions ask for the priority one step below the ticket's priority, which the request never carries. The test's fake answers \"P3\" to every request, so the test passes whatever the request holds: send a P1 ticket, or change the instructions to any other question, and it still returns P3. A real model shown only the title and body cannot know the ticket was P2, so it guesses, and a P1 ticket it judges less urgent can come back P3, two steps down.",
+      "evidence": [
+        {
+          "file": "test/triage.test.ts",
+          "line": 20,
+          "role": "cause"
+        },
+        {
+          "file": "src/triage.ts",
+          "line": 19,
+          "role": "context"
+        },
+        {
+          "file": "src/triage.ts",
+          "line": 20,
+          "role": "context"
+        }
+      ]
+    }
+  ]
+}
