@@ -43,8 +43,9 @@ import {
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { MutationCache } from "../src/mutation-cache.ts";
 import { MutationProcess } from "../src/mutation-process.ts";
-import { strykerNotInstalled, strykerVersion } from "../src/mutation-static.ts";
+import { MutationRun, strykerNotInstalled, strykerVersion } from "../src/mutation-static.ts";
 import { Run, staticToolSource } from "../src/static.ts";
 import { fakeMutationProcesses } from "./fixtures/mutation-process.ts";
 import {
@@ -403,6 +404,15 @@ printf '%s' '{"schemaVersion":"1.0","files":{}}' > reports/mutation/mutation.jso
 		return existsSync(root) ? readdirSync(root).map((name) => join(root, name, "incremental.json")) : [];
 	};
 
+	it("keys the cache by the review's policy commit, or by the base when it names none", async () => {
+		const cache = vi.spyOn(MutationCache, "open");
+		const { base, head } = twoCommits();
+		incrementalTool();
+		await mutate(base, head);
+		await mutate(base, head, { policyCommit: head });
+		expect(cache.mock.calls.map(([, key]) => key.policy)).toEqual([base, head]);
+	});
+
 	it("reuses identities for the same head and inputs only", async () => {
 		const { base, head } = twoCommits();
 		const reads = incrementalTool();
@@ -589,6 +599,22 @@ ${body}`,
 				);
 			},
 		);
+
+		it("fails with the path and the reason when it cannot write its runner", async () => {
+			const { base, head } = twoCommits();
+			const fake = stryker({ report: report({}) });
+			const env = createNodeExecutionEnv(repo);
+			const write = env.writeFile.bind(env);
+			vi.spyOn(env, "writeFile").mockImplementation(async (path, content, writeContext) =>
+				path.endsWith("mutation-runner.mjs")
+					? ({ ok: false, error: new Error("disk full") } as Awaited<ReturnType<ExecutionEnv["writeFile"]>>)
+					: write(path, content, writeContext),
+			);
+			const failure = (await mutate(base, head, { env }).catch((error: unknown) => error)) as CheckError;
+			expect(failure).toMatchObject({ code: "worktreeFailed", check: "static.mutation" });
+			expect(failure.message).toMatch(/^could not write \S+\/mutation-runner\.mjs: disk full$/);
+			expect(fake.calls()).toEqual([]);
+		});
 
 		it("names both files when the whole scratch was emptied, and that Stryker did not finish when it was cut", async () => {
 			// The whole tree goes, as when another build's cleanup removes it.
@@ -1031,6 +1057,39 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 					["packages/p/src/gone.ts"],
 				);
 				expect(await mutate(base, head)).toMatchObject({ status: "skipped", cause: "noProductionLines" });
+			});
+
+			it("raises no finding for those files beside a production change it mutates", async () => {
+				const base = commit(repo, {
+					"stryker.config.json": config,
+					"packages/p/src/a.ts": a,
+					"packages/p/src/gone.ts": binary,
+				});
+				stryker({ report: report({}) });
+				const head = commitTo(
+					repo,
+					{
+						"packages/p/src/a.ts": a.replace("x > 0", "x >= 0"),
+						"packages/p/test/blob.test.ts": "\0\0 a test, unlike the deleted file\0",
+						"packages/p/src/image.png": "\0PNG\0",
+					},
+					["packages/p/src/gone.ts"],
+				);
+				expect(await found(base, head)).toEqual([]);
+			});
+
+			it("judges a change only by a production file that is still there", () => {
+				const file = (path: string, status: "added" | "deleted" = "added") => ({
+					status,
+					path,
+					binary: true,
+					hunks: [],
+				});
+				const judges = (...files: ReturnType<typeof file>[]) =>
+					MutationRun.judges(Revision.from({ base: "b", head: "h", files }));
+				expect(judges(file(path), file("packages/p/test/blob.test.ts"))).toBe(true);
+				expect(judges(file(path, "deleted"))).toBe(false);
+				expect(judges(file("packages/p/test/blob.test.ts"))).toBe(false);
 			});
 
 			it("counts a file whose name is not UTF-8 text, which git lists without lines", async () => {

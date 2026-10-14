@@ -204,7 +204,8 @@ it.each(["NoCoverage", "exit error", "thrown error", "missing report", "corrupt 
 								? "{}"
 								: kind === "exit error"
 									? '{"files":{"a":{"mutants":[{"status":"Killed"}]}}}'
-									: '{"files":{"a":{"mutants":[{"status":"NoCoverage"}]}}}',
+									: // One uncovered mutant among killed ones is enough to repeat.
+										'{"files":{"a":{"mutants":[{"status":"Killed"},{"status":"NoCoverage"}]}}}',
 			};
 		});
 		await expect(selection.execute(run, () => false)).resolves.toEqual({ code: 0, report: '{"files":{}}' });
