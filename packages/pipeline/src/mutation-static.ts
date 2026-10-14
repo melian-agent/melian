@@ -281,6 +281,7 @@ export class MutationRun {
 		await this.#write(module, readFileSync(fileURLToPath(mutationVitestModule), "utf8"));
 		const script = posix.join(this.#scratch, runner);
 		const selectedConfig = posix.join(this.#scratch, "stryker.config.json");
+		// Melian reads the JSON report at one path, so the head's configuration cannot move it or switch its reporter off.
 		// Stryker ends a dry run that passes its own limit, which the configuration may set below Melian's timeout; whole
 		// minutes at or past Melian's leave the timeout the only one that ends the run.
 		const dryRunMinutes = Math.ceil(this.#run.input.settings.timeout / 60);
@@ -306,6 +307,8 @@ const result = await selection.execute(async (tests, fresh) => {
   rmSync(${JSON.stringify(report)}, { force: true });
   writeFileSync(${JSON.stringify(selectedConfig)}, JSON.stringify({ ...config,
     dryRunTimeoutMinutes: ${dryRunMinutes},
+    reporters: ["json"],
+    jsonReporter: { ...config.jsonReporter, fileName: ${JSON.stringify(report)} },
     vitest: { ...config.vitest, related: false },
     testFiles: tests?.map(file => relative(process.cwd(), file).replace(/[\\\\*?[\\]{}()!+@#]/g, "\\\\$&")) ?? []
   }));

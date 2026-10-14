@@ -241,6 +241,27 @@ function twoCommits(headFiles: Record<string, string> = { "packages/p/src/a.ts":
 }
 
 describe("static.mutation", { timeout: 60_000 }, () => {
+	it("reads the report where Stryker writes it, whatever reporter settings the head's configuration names", async () => {
+		const { base } = twoCommits();
+		const moved = JSON.stringify({
+			...JSON.parse(config),
+			reporters: ["html"],
+			jsonReporter: { fileName: "elsewhere.json" },
+		});
+		const head = commit(repo, { "stryker.config.json": moved, "packages/p/src/a.ts": a.replace("x > 0", "x <= 0") });
+		const selected = join(artifacts, "selected.json");
+		fakeTool(
+			repo,
+			"stryker",
+			`if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi\ncp "$2" '${selected}'\nmkdir -p reports/mutation\necho '{"schemaVersion":"1.0","files":{}}' > reports/mutation/mutation.json`,
+		);
+		expect(await mutate(base, head)).toMatchObject({ status: "ran" });
+		expect(JSON.parse(readFileSync(selected, "utf8"))).toMatchObject({
+			reporters: ["json"],
+			jsonReporter: { fileName: "reports/mutation/mutation.json" },
+		});
+	});
+
 	it.each([
 		[60, 1],
 		[7140, 119],
