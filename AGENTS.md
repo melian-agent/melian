@@ -59,6 +59,8 @@ A guard, branch, bound, or early return counts as tested only when a test fails 
 
 If you create or modify a test, run it and iterate until it passes. Tests use Vitest and the fake model from the pipeline's testing entry, `@melian-agent/pipeline/testing`; never real providers, keys, or paid tokens. Use Pi Durable's memory storage unless the test is about surviving a reopen or a crash; then use SQLite in a temporary directory.
 
+A fix for a reported defect, whether a review finding, a failing run, or a user's report, starts with a failing test. Build the test from the defect's failure scenario and run it against the current head. It must fail for the reported reason, not for a typo or a missing import. Then fix, and see it pass. The report records both runs: the failing output and the passing one. The mutation rule above proves after the fact that new code is tested; reproducing first proves that the test is about the reported defect and that the defect was real at that head. Without it, a fix's test can pass either way. On [pull request #98](https://github.com/melian-agent/melian/pull/98), a fix made the triage gate's test read its baseline from `HEAD`, so it passed once committed, whatever the code did, and round eleven found it vacuous. On [pull request #114](https://github.com/melian-agent/melian/pull/114), every test of the live runner's new output code passed its own environment, so replacing the code's default still passed. A finding that a test cannot reproduce says so in the report, with why, such as a race that needs a real kill or a provider's behaviour, and names what stands in for the test.
+
 ## Commits and pull requests
 
 - Commit each discrete change as soon as it is complete and verified, before starting the next separable piece of work. Do not let two separable changes accumulate in the working tree; splitting them afterwards is error-prone. If you are on `main`, branch first.
@@ -122,6 +124,8 @@ A code branch never edits `packages/evals/comparisons/`. The record has its own 
 ### Briefs
 
 Every brief for a fix pass or an implementation step requires a mutation inventory: each guard, branch, bound, and early return on the changed lines, each proven by a test that fails with it removed. The inventory pass on [pull request #85](https://github.com/melian-agent/melian/pull/85) found 27 unproven guards, and the one on [pull request #68](https://github.com/melian-agent/melian/pull/68) found 56. A brief also tells the task to push after each file's commit and to append the inventory file as it goes. A whole-branch inventory on a large branch can pass the two-hour task limit, and a cut then leaves unpushed commits and no report. Scope one pass per package when the branch is large.
+
+A brief for a fix pass also requires a failing test first, as Validation says: for each finding, a test from its failure scenario that fails on the current head for the reported reason and passes after the fix, with both runs in the report. A finding no test can reproduce is named in the report, with the reason and what stands in for the test.
 
 A brief states plainly whether the full gate passed, and reruns the whole gate when it did not, never a single file.
 
