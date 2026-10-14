@@ -1,0 +1,36 @@
+{
+  "pr_title": "Show the most recent log entries on the status page",
+  "comments": [
+    {
+      "comment": "Each of the three new readers takes the last count entries with slice(-count). For count 0, which the change declares hides the section, slice(-0) is slice(0) and returns every entry. One shape in three places: one finding citing all three.",
+      "severity": "High",
+      "category": "bug",
+      "file": "src/recent.ts",
+      "rule": "wrong-result",
+      "cause": "introduced",
+      "failureScenario": "recentErrors(log, 0) evaluates slice(-0), which is slice(0), and returns every error in the log rather than none, so a viewer who set the section to 0 to hide it sees the whole error history. recentWarnings(log, 0) and recentMessages(log, 0) do the same at lines 10 and 14: three readers, one shape.",
+      "evidence": [
+        {
+          "file": "src/recent.ts",
+          "line": 6,
+          "role": "cause"
+        },
+        {
+          "file": "src/recent.ts",
+          "line": 10,
+          "role": "cause"
+        },
+        {
+          "file": "src/recent.ts",
+          "line": 14,
+          "role": "cause"
+        },
+        {
+          "file": "src/recent.ts",
+          "line": 3,
+          "role": "context"
+        }
+      ]
+    }
+  ]
+}

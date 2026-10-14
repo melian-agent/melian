@@ -119,6 +119,7 @@ describe("the golden corpus", () => {
 			"correctness-deleted-guard",
 			"correctness-deleted-rethrow",
 			"correctness-null-deref",
+			"correctness-repeated-shape",
 			"design-bound-on-wrong-measure",
 			"design-bound-on-wrong-measure-clean",
 			"design-clean",

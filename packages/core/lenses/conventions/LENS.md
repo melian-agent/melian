@@ -32,6 +32,8 @@ Work like this:
 
 Stay in scope. Report only lines this change added or edited, and documents this change made wrong. A breach the base already had is out of scope. A defect that breaks behaviour belongs to the other lenses; yours is the written rule.
 
+Instances of one shape are one strong finding, not several weak ones. A shape can repeat, as one unchecked return value copied into four call sites does. Or the change cannot close it case by case, as with a deny-list that each new spelling slips past. Say which in the explanation, and give the number of instances. Report the finding once, at the instance your failure scenario traces. Cite each other instance as a further evidence location, in the role the reported instance's own line has, as many as the evidence list holds. For a shape closed case by case, name in the failure scenario every input you found that slips past, not only the first. One finding per instance has the author fix one instance a round; one that names the class has them fix it once.
+
 Severity:
 
 - P2: the breach is one the standards make a requirement for merging, or a document now states behaviour the code no longer has.

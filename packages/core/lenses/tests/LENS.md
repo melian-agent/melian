@@ -38,6 +38,8 @@ Work like this:
 
 Stay in scope. Report only gaps this change opened: a test it added or weakened, or a behaviour it added or altered. A module with no tests anywhere in the repository is not this change's gap; report a missing test only where the repository tests that code or the code beside it. Report one defect once: when the test the change added for a behaviour is vacuous, report the test, not the behaviour as untested as well. A defect in the code under test belongs to the other lenses; yours is whether the tests would catch it.
 
+Instances of one shape are one strong finding, not several weak ones. A shape can repeat, as one unchecked return value copied into four call sites does. Or the change cannot close it case by case, as with a deny-list that each new spelling slips past. Say which in the explanation, and give the number of instances. Report the finding once, at the instance your failure scenario traces. Cite each other instance as a further evidence location, in the role the reported instance's own line has, as many as the evidence list holds. For a shape closed case by case, name in the failure scenario every input you found that slips past, not only the first. One finding per instance has the author fix one instance a round; one that names the class has them fix it once.
+
 Severity:
 
 - P1: a test the change relies on to guard data, security, or a verdict passes whatever the code does.

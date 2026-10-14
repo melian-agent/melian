@@ -1,0 +1,20 @@
+src/recent.ts
+
+  P1  line 6  wrong-result  (introduced, new, block, confirmed)
+    Verified: faux/scripted: The scripted verifier traced the claim.
+  All three readers this change adds take the last count entries with slice(-count), and each returns every entry for a count of 0: one shape, three instances.
+    What: All three readers this change adds take the last count entries with slice(-count), and each returns every entry for a count of 0: one shape, three instances.
+    Why here: This change wrote the three readers and declares 0 a count they accept, the one that hides the section.
+    Failure scenario: recentErrors(log, 0) evaluates slice(-0), which is slice(0), and returns every error in the log rather than none, so a viewer who set the section to 0 to hide it sees the whole error history. recentWarnings(log, 0) and recentMessages(log, 0) do the same at lines 10 and 14: three readers, one shape.
+    Evidence:
+      cause: src/recent.ts:6
+          return log.entries.filter((entry) => entry.level === "error").slice(-count);
+      cause: src/recent.ts:10
+          return log.entries.filter((entry) => entry.level === "warn").slice(-count);
+      cause: src/recent.ts:14
+          return log.entries.slice(-count);
+      context: src/recent.ts:3
+        // Each reader takes `count`, how many entries the viewer asked to see: from 0 to 50, where 0 hides the section.
+    What to do: Return an empty list when count is 0, or take log.entries.slice(Math.max(0, length - count)), in all three readers.
+
+1 finding in 1 file.

@@ -1,0 +1,5 @@
+# correctness-repeated-shape
+
+The change adds three readers with one defect: `slice(-count)` returns every entry for a count of 0, which the change declares hides the section. A lens reports the class as one finding, at the instance its failure scenario traces, and cites the other two as further `cause` locations.
+
+Three findings would not be the honest outcome. Findings from one check never merge, so each would stand alone, and scoring would count the second and third as reports of a defect already found. The shape comes from milestone 2's rounds, which found one instance of a class a round: one more missing input in the adjudication task's attachment key in each early round of [pull request #117](https://github.com/melian-agent/melian/pull/117) ([record](../../comparisons/2026-10-14-pr-117.md)), and one more spelling past the re-scope check's name matching in each round of [pull request #116](https://github.com/melian-agent/melian/pull/116) ([record](../../comparisons/2026-10-14-pr-116.md)).
