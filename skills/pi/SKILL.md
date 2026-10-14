@@ -56,7 +56,7 @@ melian review "#N"
 
 Replace N with the pull request number. Keep the quotes: an unquoted `#` starts a shell comment. A bare number is not a pull request. Melian fetches the pull request and reviews it under the policy of its base, so its findings can differ from a review of the same commits as a branch.
 
-A check that runs the change's own tests, such as the mutation check, runs only for the user's own work: a branch with no upstream, or one that tracks the repository's own remote, and a pull request a writer pushed to the repository. A fork's pull request, even one checked out with gh, reads not reviewed with a reason naming the fork. Never add `--trust-head` on your own judgement. Add it only when the user says they have read the change and want its tests run anyway; Melian then runs them as the user and notes why.
+A check that runs the change's own tests, such as the mutation check, runs without asking only for a pull request a writer pushed to the repository. A branch, even the user's own, reads not reviewed for that check, with a reason that says to pass `--trust-head`. Never add `--trust-head` on your own judgement. Add it only when the user says they have read the change and want its tests run; Melian then runs them as the user and notes why. Tell the user once that their own branch needs it.
 
 ## Relay the result
 

@@ -61,7 +61,7 @@ flowchart TD
     S[("Durable state<br/>every task survives a crash<br/>and resumes without repeating work")] -.-> E
     S -.-> F
     S -.-> M
-    T["Host guard<br/>a check that runs the change's own tests runs for<br/>your own checkout or a writer's head"] -.-> C
+    T["Host guard<br/>a check that runs the change's own tests runs for<br/>a writer's head, or one you vouch for"] -.-> C
 ```
 
 ## What each stage does
@@ -122,7 +122,7 @@ It produces a resumable review record, so a restart continues work without repea
 You see one coherent result and no duplicate finding or ledger post after recovery.
 
 **The host guard.** The guard decides whether a check that runs the change's own tests may run on this machine.
-It allows your own checked-out commit and a head a writer pushed to the base repository. A fork's head will run in a credential-free job of its own on GitHub Actions.
+It allows a head a writer pushed to the base repository, and a branch you vouch for with `melian review --trust-head`. Reviewing your own committed branch locally needs the flag once per review; a writer's pull request on GitHub needs nothing. A fork's head will run in a credential-free job of its own on GitHub Actions.
 You see `not reviewed`, with the reason, when a configured check did not run; a review is never approved without it.
 
 ## How you work with it
@@ -169,7 +169,7 @@ What a finding requires can be set per lens and per rule too. A folder may say t
 
 ## Trust model
 
-Code already on your main branch is trusted. Submitted changes and the comments on them are not. Melian reads a pull request with full attention and treats its contents as data, never as instructions. Static checks are not sandboxed: they run your repository's code on your machine or your runners, as your build does. A check that runs a change's own tests runs for your checked-out commit and for a head a writer pushed to your repository. A fork's code is untrusted. It will run on GitHub Actions in a job of its own that holds no credentials and publishes nothing, the isolation a fork's pull request gets from GitHub's runners today. Anywhere else that check does not run, and the review reads `not reviewed`: a review is never approved while a configured static check has not run. Agents are the part that will be sandboxed. [The decision](docs/decisions/2026-10-14-static-checks-run-unconfined.md) records why.
+Code already on your main branch is trusted. Submitted changes and the comments on them are not. Melian reads a pull request with full attention and treats its contents as data, never as instructions. Static checks are not sandboxed: they run your repository's code on your machine or your runners, as your build does. A check that runs a change's own tests runs for a head a writer pushed to your repository, and for a branch you vouch for with `--trust-head`. A fork's code is untrusted. It will run on GitHub Actions in a job of its own that holds no credentials and publishes nothing, the isolation a fork's pull request gets from GitHub's runners today. Anywhere else that check does not run, and the review reads `not reviewed`: a review is never approved while a configured static check has not run. Agents are the part that will be sandboxed. [The decision](docs/decisions/2026-10-14-static-checks-run-unconfined.md) records why.
 
 ## Built on Pi, in Pi's spirit
 
