@@ -554,18 +554,24 @@ async function runIdentity(input: RunChecksInput, tier: string): Promise<Omit<Ru
 	return { base, head, tier, policy };
 }
 
-// What a rerun repeats: the checks that failed, or the whole tier when the run did not complete.
+// Whether a rerun repeats this record's check: one that failed, or a mutation run that passed its timeout. That run is
+// recorded as a skip, and it leaves the review not reviewed until it is run again, as a failure does.
+function repeated(record: CheckRunRecord): boolean {
+	return record.status === "failed" || (record.status === "skipped" && record.cause === "timeout");
+}
+
+// What a rerun repeats: the checks `repeated` names, or the whole tier when the run did not complete.
 function rerunOf(outcome: {
 	status: string;
 	result?: readonly CheckRunRecord[];
 }): ChecksInput["rerun"] | "none" | "all" {
 	if (outcome.status !== "completed" || outcome.result === undefined) return "all";
-	const failed = outcome.result.filter((record) => record.status === "failed").map((record) => record.name);
-	if (failed.length === 0) return "none";
+	const again = outcome.result.filter(repeated).map((record) => record.name);
+	if (again.length === 0) return "none";
 	const kept = Object.fromEntries(
-		outcome.result.filter((record) => record.status !== "failed").map((record) => [record.name, record]),
+		outcome.result.filter((record) => !repeated(record)).map((record) => [record.name, record]),
 	);
-	return { checks: failed, kept };
+	return { checks: again, kept };
 }
 
 /**

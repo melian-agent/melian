@@ -1799,6 +1799,37 @@ cp '${canned}' reports/mutation/mutation.json`,
 			expect(findings[0]!.properties.explanation.what).toContain("packages/p/src/a.ts, packages/p/src/b.ts");
 		});
 
+		it("runs a timed-out mutation check again on a rerun, and leaves a skip of any other cause as it is", async () => {
+			const base = commit(repo, { "melian.yaml": policy, "stryker.config.json": config, "packages/p/src/a.ts": a });
+			const head = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 0") });
+			const fake = stryker({ report: report({}) });
+			const { harness, root } = await open();
+			const changeset = await Changeset.resolve(repo, `${base}..${head}`);
+			const source: RepositorySource = { kind: "revision", commit: base };
+			const { config: loaded } = await loadConfig(repo, source, "");
+			const request = { rootConversationId: root.id, changeset, config: loaded, source, tier: "full" };
+			const timedOut = vi.spyOn(MutationProcess.prototype, "execute").mockImplementationOnce(async function (
+				this: MutationProcess,
+			) {
+				throw this.run.fail("timeout", "mutation ran past its 120-second timeout");
+			});
+			const first = await runChecks(harness, { ...request, writer: trusted }, context);
+			expect(first.records).toMatchObject([{ status: "skipped", cause: "timeout" }]);
+			expect(timedOut).toHaveBeenCalledOnce();
+			// Asked again without --rerun, the stored skip stands; with it, Stryker runs.
+			expect((await runChecks(harness, { ...request, writer: trusted }, context)).records).toEqual(first.records);
+			expect(fake.calls()).toEqual([]);
+			const again = await runChecks(harness, { ...request, writer: trusted, rerunFailed: true }, context);
+			expect(again.records).toMatchObject([{ name: "static.mutation", status: "ran" }]);
+			expect(fake.calls()).toHaveLength(1);
+			// A refused head is a skip too, and a rerun does not repeat it: nothing about it has changed.
+			const refusedWriter: WriterTrust = { trusted: false, detail: "the head is from a fork" };
+			const refusedRun = await runChecks(harness, { ...request, writer: refusedWriter }, context);
+			const rerun = await runChecks(harness, { ...request, writer: refusedWriter, rerunFailed: true }, context);
+			expect(rerun.identity.task).toBe(refusedRun.identity.task);
+			expect(fake.calls()).toHaveLength(1);
+		});
+
 		describe("for the writer of the head", () => {
 			const head = () => {
 				const base = commit(repo, {
