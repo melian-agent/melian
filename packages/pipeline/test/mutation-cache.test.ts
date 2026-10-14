@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import type * as filesystem from "node:fs/promises";
 import {
 	type FileHandle,
@@ -305,12 +305,21 @@ it("changes the installation identity that the durable run key hashes after sele
 		(name) =>
 			(JSON.parse(readFileSync(require.resolve(`${name}/package.json`), "utf8")) as { version: string }).version,
 	);
-	const lockfile = createHash("sha256")
-		.update(readFileSync(join(checkout, "package-lock.json")))
-		.digest("hex");
-	const old = createHash("sha256")
-		.update(JSON.stringify({ lockfile, versions, node: process.versions.node }))
-		.digest("hex");
-	expect(mutationInstallation(checkout)).not.toBe(old);
-	expect(mutationInstallation(checkout)).toBe(mutationInstallation(checkout));
+	const lockfiles = Object.fromEntries(
+		["package-lock.json", "pnpm-lock.yaml", "yarn.lock", "bun.lock", "bun.lockb"].map((name) => [
+			name,
+			existsSync(join(checkout, name))
+				? createHash("sha256")
+						.update(readFileSync(join(checkout, name)))
+						.digest("hex")
+				: "unavailable",
+		]),
+	);
+	const identity = (selection: object) =>
+		createHash("sha256")
+			.update(JSON.stringify({ lockfiles, versions, node: process.versions.node, ...selection }))
+			.digest("hex");
+	// The same shape on both sides, so only the selection version can tell them apart.
+	expect(mutationInstallation(checkout)).toBe(identity({ selectionVersion: mutationSelectionVersion }));
+	expect(mutationInstallation(checkout)).not.toBe(identity({}));
 });
