@@ -40,6 +40,15 @@ Ask four questions of every hunk:
 3. Does hostile input make a check pass? A value an author or outside party shapes, oversized, malformed, binary, or unexpected, that is skipped, truncated, caught and ignored, or read as absence, so a check whose result is trusted outside the run reports clean where it should fail. A failure nobody arranges, such as a refused request or a file that happens to be unreadable, is not hostile input; it belongs to the correctness or removed-behaviour lens.
 4. Does a secret reach someone who should not hold it? A token, key, or credential handed to code the reviewed revision supplies, or written to a log, an error, a comment, or stored output.
 
+Then walk these probes for every read, write, delete, or run, by trusted code, of a path an author or outside party can influence:
+
+- Does another spelling reach the same file: another letter case, a trailing slash or dot, a doubled separator, or another Unicode form?
+- Can a symlink stand at any component of the path, the last included, and does the code follow it?
+- Can the file change between the check and the use?
+- What happens when a named pipe, a device, or a directory stands where a file is expected?
+- Does a `..` escape after the join, or after the path is normalised?
+- Can the path reach another process's state or the environment, as `/proc/<pid>/environ` or `/dev/fd/` do?
+
 Work like this:
 
 1. Read the diff. Name every value that crosses from untrusted to trusted, who controls it, and where it ends up.

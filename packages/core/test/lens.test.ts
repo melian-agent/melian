@@ -121,7 +121,7 @@ describe("built-in lenses", () => {
 			design: "f528fcecf913",
 			"removed-behaviour": "a7e8f99fb8fc",
 			tests: "41fcf10eafe3",
-			"trust-boundary": "8020d23fbb9c",
+			"trust-boundary": "140b36876ea7",
 		});
 		const tuned = { ...defaultConfig, lenses: { correctness: { tier: "light" as const, paths: ["src/**"] } } };
 		const [correctness] = Lens.select(named(lenses, "correctness"), tuned, ["src/index.ts"]);
@@ -315,6 +315,19 @@ describe("built-in lenses", () => {
 			])
 				expect(lens.instructions, lens.name).toContain(sentence);
 		}
+	});
+	it("give trust-boundary a probe list for every path an author can influence", async () => {
+		const [trust] = named(await Lens.load(repo, { kind: "worktree" }, []), "trust-boundary");
+		for (const probe of [
+			"Then walk these probes for every read, write, delete, or run, by trusted code, of a path an author or outside party can influence:",
+			"- Does another spelling reach the same file: another letter case, a trailing slash or dot, a doubled separator, or another Unicode form?",
+			"- Can a symlink stand at any component of the path, the last included, and does the code follow it?",
+			"- Can the file change between the check and the use?",
+			"- What happens when a named pipe, a device, or a directory stands where a file is expected?",
+			"- Does a `..` escape after the join, or after the path is normalised?",
+			"- Can the path reach another process's state or the environment, as `/proc/<pid>/environ` or `/dev/fd/` do?",
+		])
+			expect(trust!.instructions).toContain(probe);
 	});
 });
 

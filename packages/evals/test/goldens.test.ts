@@ -173,6 +173,7 @@ describe("the golden corpus", () => {
 			"trust-boundary-clean-test-runner",
 			"trust-boundary-fail-open",
 			"trust-boundary-injection",
+			"trust-boundary-joined-path-escape",
 			"trust-boundary-policy-from-head",
 			"trust-boundary-secret-env",
 			"trust-boundary-terminal-escape",
