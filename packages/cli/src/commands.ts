@@ -146,10 +146,11 @@ export async function review(
 	const standards = await Standards.load(repoRoot, standardsSource, paths);
 	const policy = await loadConfig(repoRoot, source, ".");
 	const { config: loaded } = policy;
-	// A head runs its tests on the reviewer's word, never on its own files: whether the mutation check runs, and for how
-	// long, is the base's to say, even where the rest of the policy comes from the working tree.
+	// Under --trust-head the reviewer has read the working tree's melian.yaml, so its mutation settings stand. Without the
+	// flag, whether the check runs and for how long is the base's to say, even where the rest of the policy comes from the
+	// working tree.
 	const checksConfig =
-		options.trustHead === true && source.kind === "worktree"
+		options.trustHead !== true && source.kind === "worktree"
 			? {
 					...loaded,
 					static: {

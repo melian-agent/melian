@@ -298,37 +298,49 @@ describe("static.mutation on a committed range", { timeout: 60_000 }, () => {
 		expect(ran()).toBe(1);
 	});
 
-	it("reads whether the check runs from the base, not from the head's own melian.yaml, even when vouched for", async () => {
-		const enabling = "tiers:\n  full: [static.mutation]\nstatic:\n  mutation: { enabled: true, timeout: 120 }\n";
-		const { io } = await open(
-			"octocat",
-			{ octocat: "admin" },
-			{ "melian.yaml": enabling },
-			"guardrails",
-			{},
-			{
-				"melian.yaml": "tiers:\n  full: [guardrails]\n",
-			},
+	// Base and head disagree on whether the check runs and for how long.
+	const policies = (base: boolean) => {
+		const policy = (enabled: boolean, timeout: number) =>
+			`tiers:\n  full: [static.mutation]\nstatic:\n  mutation: { enabled: ${enabled}, timeout: ${timeout} }\n`;
+		return { base: { "melian.yaml": policy(base, 120) }, head: { "melian.yaml": policy(!base, 600) } };
+	};
+
+	it("takes the working tree's enablement and timeout for a range vouched for", async () => {
+		const { base, head } = policies(false);
+		const { io } = await open("octocat", { octocat: "read" }, head, "static.mutation", {}, base);
+		const selected = join(repo, "..", `${repo.split("/").at(-1)}-selected.json`);
+		fakeTool(
+			repo,
+			"stryker",
+			`if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi
+cp "$2" '${selected}'
+echo run >> '${calls}'
+mkdir -p reports/mutation
+echo '{"files":{}}' > reports/mutation/mutation.json`,
 		);
-		await review(io, "main...feature", { rerun: false, walkthrough: false, trustHead: true });
-		expect(ran()).toBe(false);
+		try {
+			expect(await review(io, "main...feature", { rerun: false, walkthrough: false, trustHead: true })).toBe(0);
+			expect(ran()).toBe(1);
+			// Stryker's own limit follows Melian's timeout: 600 seconds is 10 minutes, where the base's 120 would be 2.
+			expect(JSON.parse(readFileSync(selected, "utf8")).dryRunTimeoutMinutes).toBe(10);
+		} finally {
+			rmSync(selected, { force: true });
+		}
 	});
 
-	it("reads the head's own policy for a range not vouched for, and says how to opt in", async () => {
-		const enabling = "tiers:\n  full: [static.mutation]\nstatic:\n  mutation: { enabled: true, timeout: 120 }\n";
-		const { io, output } = await open(
-			"octocat",
-			{ octocat: "admin" },
-			{ "melian.yaml": enabling },
-			"guardrails",
-			{},
-			{
-				"melian.yaml": "tiers:\n  full: [guardrails]\n",
-			},
-		);
+	it.each([
+		[
+			"off in the base and on in the working tree",
+			false,
+			"static.mutation  skipped: static.mutation.enabled is false",
+		],
+		["on in the base and off in the working tree", true, "pass --trust-head if you have read this code"],
+	])("takes the base's enablement for a range not vouched for, %s", async (_name, enabled, reason) => {
+		const { base, head } = policies(enabled);
+		const { io, output } = await open("octocat", { octocat: "admin" }, head, "static.mutation", {}, base);
 		expect(await review(io, "main...feature", { rerun: false, walkthrough: false })).toBe(notReviewed);
 		expect(ran()).toBe(false);
-		expect(output()).toContain("pass --trust-head if you have read this code");
+		expect(output()).toContain(reason);
 	});
 });
 
