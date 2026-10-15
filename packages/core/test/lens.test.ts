@@ -120,7 +120,7 @@ describe("built-in lenses", () => {
 			correctness: "e1149bfc8eb8",
 			design: "13a857740fc7",
 			"removed-behaviour": "471ca3b025ea",
-			tests: "c0dd285a7d61",
+			tests: "5b647c5f80f8",
 			"trust-boundary": "4d14d668490d",
 		});
 		const tuned = { ...defaultConfig, lenses: { correctness: { tier: "light" as const, paths: ["src/**"] } } };
@@ -339,7 +339,7 @@ describe("built-in lenses", () => {
 			"3. For each fake, stub, or scripted reply the change adds or edits, read the code that builds the request it stands in for: the prompt or instructions, and the fields sent to the model or service.",
 			"Name the input the request lacks, the line that builds the request, and the mutation every test lets through.",
 			"Report a fake that answers what the real request never asks once, under `fake-answers-unasked` at the fake, not as a vacuous test as well.",
-			"Cite the line that builds the request as `context`: the input the request lacks is part of that one finding.",
+			"Cite the line that builds the request as `context`. A request that lacks an input its instructions name is a wrong result for `correctness`; yours is the fake that hid it.",
 		])
 			expect(tests!.instructions).toContain(sentence);
 	});
