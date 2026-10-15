@@ -214,10 +214,9 @@ it("stages the earlier report twice, and the repeat's copy stays when the run re
 	expect(await readFile(earlier, "utf8")).toBe('{"a":1}');
 });
 
-it("stages nothing for a cold run, and replaces stale staged files", async () => {
+it("stages nothing for a cold run, and replaces stale staged files and directories", async () => {
 	const cache = await MutationCache.open(root, key());
-	await mkdir(join(root, "work"));
-	await writeFile(join(root, "work", "incremental.json"), '{"stale":true}');
+	await mkdir(join(root, "work", "incremental.json", "inside"), { recursive: true });
 	await writeFile(join(root, "work", "earlier.json"), '{"stale":true}');
 	const { staged, earlier } = await cache.stage(join(root, "work"), undefined);
 	await expect(stat(staged)).rejects.toMatchObject({ code: "ENOENT" });
