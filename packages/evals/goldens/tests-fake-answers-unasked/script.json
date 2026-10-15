@@ -1,0 +1,134 @@
+{
+  "correctness": [
+    {
+      "calls": [
+        {
+          "name": "read_file",
+          "arguments": {
+            "path": "src/triage.ts"
+          },
+          "expectToolResult": "one step lower"
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "report_finding",
+          "arguments": {
+            "file": "src/triage.ts",
+            "line": 20,
+            "rule": "wrong-result",
+            "severity": "P1",
+            "explanation": {
+              "what": "downgrade's instructions ask for the priority one step below the ticket's, and its request sends only the title and body.",
+              "why": "This change wrote downgrade and its request.",
+              "fix": "Send ticket.priority in the input, as input.priority."
+            },
+            "failureScenario": "downgrade({ title, body, priority: \"P1\" }, model) sends only the title and body, while its instructions ask for the priority one step below the ticket's own. The model cannot see that the ticket is P1, so it guesses from the text, and an answer of P3 for a ticket it judges less urgent lowers a P1 two steps, where the instructions allow one.",
+            "evidence": [
+              {
+                "file": "src/triage.ts",
+                "line": 20,
+                "role": "cause"
+              },
+              {
+                "file": "src/triage.ts",
+                "line": 19,
+                "role": "context"
+              }
+            ]
+          },
+          "expectToolResult": "as introduced"
+        }
+      ]
+    },
+    {
+      "text": "Reported 1 finding."
+    }
+  ],
+  "contracts": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "trust-boundary": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "removed-behaviour": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "conventions": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "tests": [
+    {
+      "calls": [
+        {
+          "name": "read_file",
+          "arguments": {
+            "path": "test/triage.test.ts"
+          },
+          "expectToolResult": "ask: async () => \"P3\""
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "read_file",
+          "arguments": {
+            "path": "src/triage.ts"
+          },
+          "expectToolResult": "input: { title: ticket.title, body: ticket.body }"
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "report_finding",
+          "arguments": {
+            "file": "test/triage.test.ts",
+            "line": 20,
+            "rule": "fake-answers-unasked",
+            "severity": "P2",
+            "explanation": {
+              "what": "The fake answers P3 to every request, and the request downgrade builds never carries the ticket's priority, which its instructions ask the model to lower.",
+              "why": "This change added downgrade and its test together, and the test's fake answers a question the real request cannot answer.",
+              "fix": "Send the priority in downgrade's input, and give the fake an answer that reads request.input.priority, so a request without it fails the test."
+            },
+            "failureScenario": "downgrade sends only { title, body }, while its instructions ask for the priority one step below the ticket's priority, which the request never carries. The test's fake answers \"P3\" to every request, so the test passes whatever the request holds: send a P1 ticket, or change the instructions to any other question, and it still returns P3. A real model shown only the title and body cannot know the ticket was P2, so it guesses, and a P1 ticket it judges less urgent can come back P3, two steps down.",
+            "evidence": [
+              {
+                "file": "test/triage.test.ts",
+                "line": 20,
+                "role": "cause"
+              },
+              {
+                "file": "src/triage.ts",
+                "line": 19,
+                "role": "context"
+              },
+              {
+                "file": "src/triage.ts",
+                "line": 20,
+                "role": "context"
+              }
+            ]
+          },
+          "expectToolResult": "as introduced"
+        }
+      ]
+    },
+    {
+      "text": "Reported 1 finding."
+    }
+  ]
+}

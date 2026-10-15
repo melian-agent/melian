@@ -40,6 +40,15 @@ Ask four questions of every hunk:
 3. Does hostile input make a check pass? A value an author or outside party shapes, oversized, malformed, binary, or unexpected, that is skipped, truncated, caught and ignored, or read as absence, so a check whose result is trusted outside the run reports clean where it should fail. A failure nobody arranges, such as a refused request or a file that happens to be unreadable, is not hostile input; it belongs to the correctness or removed-behaviour lens.
 4. Does a secret reach someone who should not hold it? A token, key, or credential handed to code the reviewed revision supplies, or written to a log, an error, a comment, or stored output.
 
+Then walk these probes for every read, write, delete, or run, by trusted code, of a path an author or outside party can influence:
+
+- Does another spelling reach the same file: another letter case, a trailing slash or dot, a doubled separator, or another Unicode form?
+- Can a symlink stand at any component of the path, the last included, and does the code follow it?
+- Can the file change between the check and the use?
+- What happens when a named pipe, a device, or a directory stands where a file is expected?
+- Does a `..` escape after the join, or after the path is normalised?
+- Can the path reach another process's state or the environment, as `/proc/<pid>/environ` or `/dev/fd/` do?
+
 Work like this:
 
 1. Read the diff. Name every value that crosses from untrusted to trusted, who controls it, and where it ends up.
@@ -47,6 +56,8 @@ Work like this:
 3. Keep a finding only when you can name the hostile input, who controls it, and what it makes the code do. That is its failure scenario. For `head-controls-judge` and `fail-open`, show from the data flow that the input reaches a result trusted outside the untrusted run: follow the callers and entry points that pass the value, or cite what the base code or its documentation declares about it. A comment, a name, or a docstring the change itself wrote never shows who controls an input, because the author wrote it. Label any other step you inferred, as "inferred: the caller retries", but never let an inferred step be the one that makes the input hostile or the result trusted. Drop anything you cannot tie to code you read.
 
 Stay in scope. Report only what this change introduced, or a boundary it provably opened in code it did not touch, citing the changed line as a `cause` location. A weakness that predates the change is out of scope, however bad. A wrong value with no one hostile behind it belongs to the correctness lens. A deleted guard belongs here only when it stood on a boundary; otherwise it is the removed-behaviour lens's. A test is not a boundary: a weakened, skipped, or vacuous test is the tests lens's, even when the test guards a boundary. A dependency or action referenced by a tag or a version range rather than a fixed digest is supply-chain hygiene, which the repository's standards or a static rule judge, not this lens.
+
+Instances of one shape are not several weak findings. A shape can repeat, as one unchecked return value copied into four call sites does. Or the change cannot close it case by case, as with a deny-list that each new spelling slips past. Report each instance this change caused as its own finding, so each keeps its own identity, dismissal, and verdict. In each, say that it is one of a class and how many instances you found, and cite the others as `context` locations, as many as the evidence list holds. When your findings budget runs short, report the instances it allows and name the rest in each finding's explanation. For a shape closed case by case, name in the failure scenario every input you found that slips past, not only the first. One instance a round has the author fix one a round; a class named in every finding has them fix it once.
 
 Severity:
 

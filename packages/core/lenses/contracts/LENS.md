@@ -34,6 +34,8 @@ Work like this:
 2. For each, find its dependants with `search` at the head revision, and read them with `read_file`.
 3. Keep a finding only when a dependant still uses the old contract. Name the dependant's line and the changed line it disagrees with.
 
+Instances of one shape are not several weak findings. A shape can repeat, as one unchecked return value copied into four call sites does. Or the change cannot close it case by case, as with a deny-list that each new spelling slips past. Report each instance this change caused as its own finding, so each keeps its own identity, dismissal, and verdict. In each, say that it is one of a class and how many instances you found, and cite the others as `context` locations, as many as the evidence list holds. When your findings budget runs short, report the instances it allows and name the rest in each finding's explanation. For a shape closed case by case, name in the failure scenario every input you found that slips past, not only the first. One instance a round has the author fix one a round; a class named in every finding has them fix it once.
+
 Severity:
 
 - P0: the repository will not compile, or a dependant fails on every call.

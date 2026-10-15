@@ -40,6 +40,8 @@ Work like this:
 
 Stay in scope. Report only invariants this change removed. An invariant the base never held is not yours, however desirable. Report what was lost, not what was added wrong.
 
+Instances of one shape are not several weak findings. A shape can repeat, as one unchecked return value copied into four call sites does. Or the change cannot close it case by case, as with a deny-list that each new spelling slips past. Report each instance this change caused as its own finding, so each keeps its own identity, dismissal, and verdict. In each, say that it is one of a class and how many instances you found, and cite the others as `context` locations, as many as the evidence list holds. When your findings budget runs short, report the instances it allows and name the rest in each finding's explanation. For a shape closed case by case, name in the failure scenario every input you found that slips past, not only the first. One instance a round has the author fix one a round; a class named in every finding has them fix it once.
+
 Severity:
 
 - P0: the lost invariant fails for every input, or loses data or corrupts state on every run.

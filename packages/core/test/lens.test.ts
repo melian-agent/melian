@@ -115,17 +115,17 @@ describe("built-in lenses", () => {
 	it("keep their versions, and the version melian.yaml's tier and paths give one", async () => {
 		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
 		expect(Object.fromEntries(lenses.map((lens) => [lens.name, lens.version]))).toEqual({
-			contracts: "686d7ad61a40",
-			conventions: "bb08d9e590e4",
-			correctness: "a0dbe7ba139d",
-			design: "fd139ab5785f",
-			"removed-behaviour": "45fa8885fd01",
-			tests: "bee1be69be22",
-			"trust-boundary": "593b84bf6e82",
+			contracts: "dd8fb36095b4",
+			conventions: "1815e2aee9b9",
+			correctness: "5e57d5dca9bd",
+			design: "5e3c0f70c270",
+			"removed-behaviour": "37aeab0038e3",
+			tests: "9eb5dbf32a98",
+			"trust-boundary": "24aa8e2540b4",
 		});
 		const tuned = { ...defaultConfig, lenses: { correctness: { tier: "light" as const, paths: ["src/**"] } } };
 		const [correctness] = Lens.select(named(lenses, "correctness"), tuned, ["src/index.ts"]);
-		expect(correctness!.lens.version).toBe("468088474aa9");
+		expect(correctness!.lens.version).toBe("44fd47e23eb7");
 	});
 
 	it("load the design lens heavy, over every path, reading whole functions at the one level it declares", async () => {
@@ -230,15 +230,15 @@ describe("built-in lenses", () => {
 		writeFiles(repo, Object.fromEntries(own.map((path) => [path, readFileSync(join(melian, path), "utf8")])));
 		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
 		expect(Object.fromEntries(lenses.map((lens) => [lens.name, lens.version]))).toMatchObject({
-			durability: "2d5b8a8ef26d",
-			correctness: "28929348a943",
-			"removed-behaviour": "d9d8851b1ced",
+			durability: "cf27155ae0f7",
+			correctness: "732f94279c9f",
+			"removed-behaviour": "6eddfa91c6db",
 		});
 		const { config } = await loadConfig(repo, { kind: "worktree" }, ".");
 		const selected = Lens.select(lenses, config, ["src/index.ts"]);
 		expect(Object.fromEntries(selected.map(({ lens }) => [lens.name, lens.version]))).toMatchObject({
-			correctness: "6c0ba52fcd4d",
-			"removed-behaviour": "a9e209da1c15",
+			correctness: "80b67adbc505",
+			"removed-behaviour": "253e58f5075e",
 		});
 	});
 
@@ -295,6 +295,52 @@ describe("built-in lenses", () => {
 				deep: { tier: "heavy", reads: "functions", verify: true, budget: { tokens: 400_000, tools: 60 } },
 			});
 		}
+	});
+
+	// Rounds that found one instance of a class each serialised the fix; every lens names the class in each finding.
+	it("report each instance of one shape as its own finding naming the class, Melian's durability lens too", async () => {
+		const melian = fileURLToPath(new URL("../../../", import.meta.url));
+		writeFiles(repo, {
+			".melian/lenses/durability/LENS.md": readFileSync(join(melian, ".melian/lenses/durability/LENS.md"), "utf8"),
+		});
+		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
+		expect(lenses.map((lens) => lens.name).sort()).toEqual([...builtins, "durability"].sort());
+		for (const lens of lenses) {
+			for (const sentence of [
+				"Instances of one shape are not several weak findings.",
+				"Report each instance this change caused as its own finding, so each keeps its own identity, dismissal, and verdict.",
+				"In each, say that it is one of a class and how many instances you found, and cite the others as `context` locations, as many as the evidence list holds.",
+				"When your findings budget runs short, report the instances it allows and name the rest in each finding's explanation.",
+				"For a shape closed case by case, name in the failure scenario every input you found that slips past, not only the first.",
+			])
+				expect(lens.instructions, lens.name).toContain(sentence);
+		}
+	});
+	it("give trust-boundary a probe list for every path an author can influence", async () => {
+		const [trust] = named(await Lens.load(repo, { kind: "worktree" }, []), "trust-boundary");
+		for (const probe of [
+			"Then walk these probes for every read, write, delete, or run, by trusted code, of a path an author or outside party can influence:",
+			"- Does another spelling reach the same file: another letter case, a trailing slash or dot, a doubled separator, or another Unicode form?",
+			"- Can a symlink stand at any component of the path, the last included, and does the code follow it?",
+			"- Can the file change between the check and the use?",
+			"- What happens when a named pipe, a device, or a directory stands where a file is expected?",
+			"- Does a `..` escape after the join, or after the path is normalised?",
+			"- Can the path reach another process's state or the environment, as `/proc/<pid>/environ` or `/dev/fd/` do?",
+		])
+			expect(trust!.instructions).toContain(probe);
+	});
+	it("give tests a rule for a fake that answers what the real request never asks, reported once at the fake", async () => {
+		const [tests] = named(await Lens.load(repo, { kind: "worktree" }, []), "tests");
+		expect(tests!.rules.find((rule) => rule.id === "fake-answers-unasked")?.description).toBe(
+			"A fake, stub, or scripted reply the change adds or edits answers a question the real request never asks, or relies on an input the real request never carries, so the test passes whatever that request holds.",
+		);
+		for (const sentence of [
+			"3. For each fake, stub, or scripted reply the change adds or edits, read the code that builds the request it stands in for: the prompt or instructions, and the fields sent to the model or service.",
+			"Name the input the request lacks, the line that builds the request, and the mutation every test lets through.",
+			"Report a fake that answers what the real request never asks once, under `fake-answers-unasked` at the fake, not as a vacuous test as well.",
+			"Cite the line that builds the request as `context`. A request that lacks an input its instructions name is a wrong result for `correctness`; yours is the fake that hid it.",
+		])
+			expect(tests!.instructions).toContain(sentence);
 	});
 });
 

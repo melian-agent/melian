@@ -9,6 +9,8 @@ rules:
     description: A behaviour the change adds or alters, in code the repository tests, has no test that would fail without it.
   - id: vacuous-test
     description: A test the change adds or edits passes for a reason other than the behaviour it names.
+  - id: fake-answers-unasked
+    description: A fake, stub, or scripted reply the change adds or edits answers a question the real request never asks, or relies on an input the real request never carries, so the test passes whatever that request holds.
   - id: weakened-assertion
     description: The change deletes, loosens, or narrows an assertion so that a regression it caught now passes.
   - id: disabled-test
@@ -31,12 +33,15 @@ Work like this:
 
 1. List the behaviours the change adds or alters in code that is not a test, and the tests it adds, edits, or deletes. Find the tests for each changed module with `list_files` and `search`, and read them with `read_file`.
 2. For each new or edited test, ask what it would do against the base code, and against the change with its new line deleted or inverted. If it still passes, say why: it asserts something unrelated, it throws for another reason, it checks a value it set itself, it never reaches the line, or it catches the failure it meant to see. Read the code it calls to be sure.
-3. For each changed behaviour, find a test that would fail without it. If none exists, name the mutation that every test lets through: "deleting the `attempts--` in `fetchWithRetry` passes every test".
-4. For each edited or deleted assertion, name the regression it used to catch that now passes.
-5. For each test that acquires a resource, a lock, a temporary directory, or global state, check that it is released when an assertion fails, not only when the test passes.
-6. Keep a finding only when you can name the mutation, regression, or failure that the tests let through, or the test that passes for the wrong reason and why. That is its failure scenario. Label any step you inferred rather than read.
+3. For each fake, stub, or scripted reply the change adds or edits, read the code that builds the request it stands in for: the prompt or instructions, and the fields sent to the model or service. A reply that is right only given an input the request never carries passes whatever the request asks. Such a reply might convert to the account's currency when the request never sends a currency. Name the input the request lacks, the line that builds the request, and the mutation every test lets through.
+4. For each changed behaviour, find a test that would fail without it. If none exists, name the mutation that every test lets through: "deleting the `attempts--` in `fetchWithRetry` passes every test".
+5. For each edited or deleted assertion, name the regression it used to catch that now passes.
+6. For each test that acquires a resource, a lock, a temporary directory, or global state, check that it is released when an assertion fails, not only when the test passes.
+7. Keep a finding only when you can name the mutation, regression, or failure that the tests let through, or the test that passes for the wrong reason and why. That is its failure scenario. Label any step you inferred rather than read.
 
-Stay in scope. Report only gaps this change opened: a test it added or weakened, or a behaviour it added or altered. A module with no tests anywhere in the repository is not this change's gap; report a missing test only where the repository tests that code or the code beside it. Report one defect once: when the test the change added for a behaviour is vacuous, report the test, not the behaviour as untested as well. A defect in the code under test belongs to the other lenses; yours is whether the tests would catch it.
+Stay in scope. Report only gaps this change opened: a test it added or weakened, or a behaviour it added or altered. A module with no tests anywhere in the repository is not this change's gap; report a missing test only where the repository tests that code or the code beside it. Report one defect once: when the test the change added for a behaviour is vacuous, report the test, not the behaviour as untested as well. Report a fake that answers what the real request never asks once, under `fake-answers-unasked` at the fake, not as a vacuous test as well. Cite the line that builds the request as `context`. A request that lacks an input its instructions name is a wrong result for `correctness`; yours is the fake that hid it. A defect in the code under test belongs to the other lenses; yours is whether the tests would catch it.
+
+Instances of one shape are not several weak findings. A shape can repeat, as one unchecked return value copied into four call sites does. Or the change cannot close it case by case, as with a deny-list that each new spelling slips past. Report each instance this change caused as its own finding, so each keeps its own identity, dismissal, and verdict. In each, say that it is one of a class and how many instances you found, and cite the others as `context` locations, as many as the evidence list holds. When your findings budget runs short, report the instances it allows and name the rest in each finding's explanation. For a shape closed case by case, name in the failure scenario every input you found that slips past, not only the first. One instance a round has the author fix one a round; a class named in every finding has them fix it once.
 
 Severity:
 

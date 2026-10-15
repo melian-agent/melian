@@ -33,6 +33,16 @@ describe("the production verifier version", () => {
 		}
 	});
 
+	it("judges a claim that cites other instances of its shape at its own line", () => {
+		for (const sentence of [
+			"A claim may cite other instances of its shape as context.",
+			"Judge it at its own file and line alone: each other instance is a claim of its own, and one that code prevents neither confirms nor refutes this one.",
+		]) {
+			expect(verifierInstructions).toContain(sentence);
+			expect(computeVerifierVersion(verifierInstructions.replace(sentence, ""))).not.toBe(verifierVersion);
+		}
+	});
+
 	it("changes when the report schema changes", () => {
 		const schema = {
 			...reportVerdictSchema,
