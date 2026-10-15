@@ -96,9 +96,11 @@ export async function configsFor(
 		}
 	}
 	// What judges a notice is the layers above its file, which the file's own path already holds.
-	const byPath = [...atPath]
-		.sort(([left], [right]) => (left < right ? -1 : 1))
-		.map(([path, { lensVariants: _, ...policy }]) => [path, policy]);
+	const paths = [...atPath.keys()].sort();
+	const byPath = paths.map((path) => {
+		const { lensVariants: _, ...policy } = atPath.get(path)!;
+		return [path, policy];
+	});
 	// A lens variant is named by its version in `lensVariants`, and a version hashes everything the lens runs with, its
 	// budget included. So the fingerprint holds what each lens report resolves through: the declared default its
 	// variant maps to, or the nearest lens's where that variant is no longer defined.
@@ -116,7 +118,7 @@ export async function configsFor(
 		.sort();
 	const fingerprint = `2:${hash([byPath, declared])}`;
 	// The first recipe hashed the layers whole, lens variants keyed by version included.
-	const legacyFingerprint = hash([...atPath].sort(([left], [right]) => (left < right ? -1 : 1)));
+	const legacyFingerprint = hash(paths.map((path) => [path, atPath.get(path)]));
 	const policyFor: ConfigFor = (path, rule) => (rule === policyReview ? judging : atPath).get(path)!;
 	return Object.assign(policyFor, { fingerprint, legacyFingerprint });
 }
