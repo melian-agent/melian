@@ -120,9 +120,10 @@ export class MutationCache {
 	async #read(): Promise<{ head: string; trust: unknown; report: string } | undefined> {
 		const text = await jsonText(this.file, bound + wrapping);
 		if (text === undefined) return undefined;
-		const parsed = JSON.parse(text) as unknown;
-		if (typeof parsed !== "object" || parsed === null) return undefined;
-		const { head, trust, report } = parsed as { head?: unknown; trust?: unknown; report?: unknown };
+		// Any JSON but null destructures; a number or a string simply has none of these fields.
+		const parsed = JSON.parse(text) as { head?: unknown; trust?: unknown; report?: unknown } | null;
+		if (parsed === null) return undefined;
+		const { head, trust, report } = parsed;
 		if (typeof head !== "string" || !/^[0-9a-f]{40,64}$/.test(head)) return undefined;
 		if (typeof report !== "object" || report === null) return undefined;
 		return { head, trust, report: JSON.stringify(report) };

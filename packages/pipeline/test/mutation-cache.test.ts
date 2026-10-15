@@ -83,7 +83,8 @@ it.each([
 	["a head that is a list", partition({}, [judged])],
 	["a report that is no object", JSON.stringify({ version: 3, head: judged, trust: "writer", report: "{}" })],
 	["no report", JSON.stringify({ version: 3, head: judged, trust: "writer" })],
-	["a document that is no object", "null"],
+	["a document that is null", "null"],
+	["a document that is a number", "42"],
 ])("discards a partition with %s", async (_, text) => {
 	const first = await MutationCache.open(root, key());
 	await writeFile(first.file, text);
