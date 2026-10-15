@@ -520,6 +520,46 @@ describe("Adjudication.adjudicate", () => {
 		expect(verdict.findings.block).toEqual([resolvedAs(marked, "block")]);
 	});
 
+	describe("a provisional mutation result", () => {
+		const reason = "provisional: Stryker reused 3 of 5 results from an earlier head; a cold run decides approval";
+		const provisional = { name: "static.mutation", status: "provisional", version: "10.0.0", reason } as const;
+		const judged = (findings: Finding[]) =>
+			new Adjudication({
+				findings,
+				manifest: [...manifest, "static.mutation"],
+				checks: [...checks, provisional],
+				config: defaultConfig,
+			}).adjudicate();
+
+		it("never reads as passed or succeeds, though nothing needs attention", () => {
+			const verdict = judged([silent]);
+			expect(verdict).toMatchObject({ status: "not-reviewed", notRun: [provisional] });
+			expect(verdict.reviewStatus()).toEqual({
+				state: "error",
+				description: `Not reviewed: static.mutation provisional (${reason})`,
+			});
+			expect(verdict.render()).toContain(`Provisional:\n  static.mutation  ${reason}`);
+			expect(verdict.render()).not.toContain("did not run");
+		});
+
+		it("keeps the findings the run made, and a blocking one still blocks", () => {
+			const verdict = judged([blocker]);
+			expect(verdict).toMatchObject({ status: "not-reviewed", blocking: true });
+			expect(verdict.findings.block).toEqual([resolvedAs(blocker, "block")]);
+		});
+
+		it("passes once the same check ran cold", () => {
+			const verdict = new Adjudication({
+				findings: [silent],
+				manifest: [...manifest, "static.mutation"],
+				checks: [...checks, ran("static.mutation")],
+				config: defaultConfig,
+			}).adjudicate();
+			expect(verdict).toMatchObject({ status: "passed", notRun: [] });
+			expect(verdict.reviewStatus().state).toBe("success");
+		});
+	});
+
 	it("is not reviewed when a check failed, even with no findings", () => {
 		const failed = { name: "lens.security", status: "failed", reason: "the lens did not finish" } as const;
 		const verdict = new Adjudication({

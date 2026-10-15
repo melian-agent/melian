@@ -212,9 +212,10 @@ export class Defect {
 
 /**
  * Whether a check ran to completion, was skipped, failed, or was `ended` by its budget before it finished: a lens whose
- * level does not count a budget's end as a run.
+ * level does not count a budget's end as a run. `provisional` is a mutation check that reused an earlier head's
+ * results: its findings count, but only a cold run can let the review pass.
  */
-export type CheckStatus = "ran" | "skipped" | "failed" | "ended";
+export type CheckStatus = "ran" | "skipped" | "failed" | "ended" | "provisional";
 
 /**
  * Which budget ended a lens's conversation, and its limit, with what the lens had used of each when it ended: input and
@@ -737,8 +738,14 @@ export class Verdict {
 		const [color, label] = statusLabel[this.status];
 		const blocking = this.blocking ? `, ${rendering.paint("31", "blocking")}` : "";
 		const parts = [`Verdict: ${rendering.paint(color, label)}${blocking}`];
-		if (this.notRun.length > 0) {
-			const checks = this.notRun.map(({ name, status, level, reason, error, budgetEnded }) => {
+		const provisional = this.notRun.filter((check) => check.status === "provisional");
+		const notRun = this.notRun.filter((check) => check.status !== "provisional");
+		if (provisional.length > 0) {
+			const checks = provisional.map(({ name, reason }) => `  ${visibleText(name)}  ${prose(reason ?? "", "    ")}`);
+			parts.push(["Provisional:", ...checks].join("\n"));
+		}
+		if (notRun.length > 0) {
+			const checks = notRun.map(({ name, status, level, reason, error, budgetEnded }) => {
 				const ended = budgetEnded === undefined ? [] : [describeBudgetEnd(budgetEnded)];
 				const why = [...ended, ...(reason === undefined ? [] : [reason])].join("; ") || undefined;
 				return [
@@ -746,7 +753,7 @@ export class Verdict {
 					...(error === undefined ? [] : [`    Error: ${prose(error, "      ")}`]),
 				].join("\n");
 			});
-			parts.push([`${plural(this.notRun.length, "check")} did not run:`, ...checks].join("\n"));
+			parts.push([`${plural(notRun.length, "check")} did not run:`, ...checks].join("\n"));
 		}
 		const verifier = (this.ran ?? []).find((check) => check.name === "verifier");
 		if (verifier !== undefined) parts.push(`verifier  ran: ${this.verificationSummary()}`);
