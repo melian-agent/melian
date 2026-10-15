@@ -304,8 +304,8 @@ export class MutationRun {
 		entries: readonly string[],
 		changed: readonly string[],
 		{ staged: incremental, earlier }: { staged: string; earlier: string },
-		// Whether a whole-suite repeat starts from the earlier head's report: only for a run handed one. Decided here, not
-		// by the file, which the head's tests could write.
+		// Whether Melian handed the run an earlier head's report. Decided here, not by the file, which the head's tests could
+		// write: a run handed none passes `--force`, and a whole-suite repeat restores nothing.
 		reused: boolean,
 	): Promise<string> {
 		const require = createRequire(posix.join(this.#run.input.repoRoot, "node_modules/vitest/package.json"));
@@ -347,7 +347,7 @@ const result = await selection.execute(async (tests, fresh) => {
     testFiles: tests?.map(file => relative(process.cwd(), file).replace(/[\\\\*?[\\]{}()!+@#]/g, "\\\\$&")) ?? []
   }));
   const run = spawn(${JSON.stringify(this.#binary)}, ["run", ${JSON.stringify(selectedConfig)},
-    "--reporters", "json", "--incremental", "--incrementalFile", ${JSON.stringify(incremental)},
+    "--reporters", "json", "--incremental", "--incrementalFile", ${JSON.stringify(incremental)},${reused ? "" : ` "--force",`}
     "--inPlace", "--mutate", ${JSON.stringify(entries.join(","))}],
     // The marker tells the head's tests a mutation run is running them, so one that starts Stryker itself can skip.
     { stdio: "inherit", env: { ...process.env, MELIAN_MUTATION: "1" } });
@@ -495,7 +495,9 @@ process.exitCode = result.code;
 						`The mutation results were not stored for later heads: ${error instanceof Error ? error.message : String(error)}.`,
 					),
 				);
-		return cold ? { text } : { text, provisional: provisionalReason(deciding) };
+		// `--force` makes a cold run rerun every mutant; a log that still counts reused results means the run was not cold.
+		const reusedAnyway = Number(reusedCount.exec(deciding.replaceAll(String.fromCharCode(27), ""))?.[1] ?? 0) > 0;
+		return cold && !reusedAnyway ? { text } : { text, provisional: provisionalReason(deciding) };
 	}
 
 	async check(): Promise<StaticRun> {

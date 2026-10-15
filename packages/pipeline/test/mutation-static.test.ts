@@ -571,6 +571,54 @@ cp "$incremental" reports/mutation/mutation.json`,
 		expect(cold.notes).toContain("Stryker started cold: the review asked for a cold run with --cold.");
 	});
 
+	// A fake Stryker that, like the real one, reuses whatever report sits at its incremental file unless told `--force`.
+	// The head's Vitest configuration loads before Stryker reads that file, so the fake plants a forged report there first.
+	function plantedTool(options: { claimReuse?: boolean } = {}) {
+		const canned = join(artifacts, "planted-report.json");
+		writeFileSync(canned, report({ "packages/p/src/a.ts": [{ status: "Survived", line: 2 }] }));
+		fakeTool(
+			repo,
+			"stryker",
+			`
+if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi
+force=no
+for arg in "$@"; do [ "$arg" = "--force" ] && force=yes; done
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = "--incrementalFile" ]; then shift; incremental="$1"; fi
+  shift
+done
+printf '%s' '{"planted":true}' > "$incremental"
+mkdir -p reports/mutation
+if [ "$force" = no ] || [ '${options.claimReuse === true ? "yes" : "no"}' = yes ]; then
+  echo '1 of 1 mutant result(s) are reused.'
+fi
+if [ "$force" = no ]; then
+  printf '%s' '{"schemaVersion":"1.0","files":{}}' > reports/mutation/mutation.json
+else
+  cp '${canned}' reports/mutation/mutation.json
+fi`,
+		);
+	}
+
+	it("tells Stryker to rerun everything on a cold run, so a report the head planted is never reused", async () => {
+		const { base, head } = twoCommits();
+		plantedTool();
+		const cold = await mutate(base, head, { target: "range-feature", cold: true });
+		if (cold.status !== "ran") throw new Error("skipped");
+		expect(cold.log.runs[0].results).toHaveLength(1);
+		expect(cold.provisional).toBeUndefined();
+	});
+
+	it("marks a cold run provisional when Stryker's log says it reused results anyway", async () => {
+		const { base, head } = twoCommits();
+		plantedTool({ claimReuse: true });
+		const cold = await mutate(base, head, { target: "range-feature", cold: true });
+		if (cold.status !== "ran") throw new Error("skipped");
+		expect(cold.provisional).toBe(
+			"provisional: Stryker reused 1 of 1 results from an earlier head; a cold run decides approval",
+		);
+	});
+
 	it("keeps any run that reused results provisional, even one that reused a cold run of the same head", async () => {
 		const { base, head } = twoCommits();
 		const reads = incrementalTool();
