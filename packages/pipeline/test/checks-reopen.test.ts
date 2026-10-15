@@ -94,3 +94,22 @@ it.each([1, 2])("refuses a version-%i checks document rather than read it as the
 		`the checks document needs migrating from version ${version}, which Melian cannot do`,
 	);
 });
+
+it("reads a version-3 static.mutation record as a run, never as provisional, after an SQLite reopen", async () => {
+	const mutation = JSON.parse(
+		readFileSync(new URL("./fixtures/stored-mutation-checks-v3/checks.json", import.meta.url), "utf8"),
+	) as { checks: Legacy; records: Json[] };
+	const path = join(dir, "mutation.sqlite");
+	const first = await open(await openSqliteStorage(path));
+	await first.root.commit(async (tx) => {
+		Object.assign(await tx.doc(legacy("melian.checks", 3), first.root.id), mutation.checks);
+	}, context);
+	await first.harness.close(context);
+	opened = [];
+	const second = await open(await openSqliteStorage(path));
+	const stored = (await second.harness.snapshot(ChecksDocument, second.root.id, context))!;
+	expect(stored).toEqual(mutation.checks);
+	const [record] = Object.values(stored.runs).map((run) => run["static.mutation"]);
+	expect(record).toMatchObject({ name: "static.mutation", status: "ran", version: "10.0.0" });
+	expect(record).toEqual(mutation.records[0]);
+});
