@@ -82,7 +82,7 @@ dynamic_rules() {
   common=$(real "$(cd "$worktree" && git rev-parse --path-format=absolute --git-common-dir)")
   admin=$(real "$(cd "$worktree" && git rev-parse --path-format=absolute --git-dir)")
   if [ "$admin" = "$common" ] || [ ! -f "$worktree/.git" ]; then
-    echo "codex-sandboxed: $worktree is not a linked worktree; run from one beside the checkout (git worktree add)" >&2
+    echo "codex-sandboxed: $worktree is not a linked worktree; run from one in the melian-worktrees folder beside the checkout (git worktree add)" >&2
     exit 64
   fi
 
