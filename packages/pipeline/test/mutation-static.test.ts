@@ -573,7 +573,10 @@ cp "$incremental" reports/mutation/mutation.json`,
 
 	// A fake Stryker that, like the real one, reuses whatever report sits at its incremental file unless told `--force`.
 	// The head's Vitest configuration loads before Stryker reads that file, so the fake plants a forged report there first.
-	function plantedTool(options: { claimReuse?: boolean } = {}) {
+	function plantedTool(options: { claimReuse?: boolean; colour?: boolean } = {}) {
+		// chalk colours the reused count when it thinks it writes to a terminal.
+		const escape = String.fromCharCode(27);
+		const count = options.colour === true ? `${escape}[93m1${escape}[39m` : "1";
 		const canned = join(artifacts, "planted-report.json");
 		writeFileSync(canned, report({ "packages/p/src/a.ts": [{ status: "Survived", line: 2 }] }));
 		fakeTool(
@@ -590,7 +593,7 @@ done
 printf '%s' '{"planted":true}' > "$incremental"
 mkdir -p reports/mutation
 if [ "$force" = no ] || [ '${options.claimReuse === true ? "yes" : "no"}' = yes ]; then
-  echo '1 of 1 mutant result(s) are reused.'
+  printf '%s\n' '${count} of 1 mutant result(s) are reused.'
 fi
 if [ "$force" = no ]; then
   printf '%s' '{"schemaVersion":"1.0","files":{}}' > reports/mutation/mutation.json
@@ -599,6 +602,16 @@ else
 fi`,
 		);
 	}
+
+	it("marks a cold run provisional when Stryker's coloured log says it reused results anyway", async () => {
+		const { base, head } = twoCommits();
+		plantedTool({ claimReuse: true, colour: true });
+		const cold = await mutate(base, head, { target: "range-feature", cold: true });
+		if (cold.status !== "ran") throw new Error("skipped");
+		expect(cold.provisional).toBe(
+			"provisional: Stryker reused 1 of 1 results from an earlier head; a cold run decides approval",
+		);
+	});
 
 	it("tells Stryker to rerun everything on a cold run, so a report the head planted is never reused", async () => {
 		const { base, head } = twoCommits();
@@ -766,6 +779,9 @@ cp "$incremental" reports/mutation/mutation.json`,
 		expect(first.notes).toContain("Stryker started cold: this review target has no earlier judged head.");
 		expect(second.notes).toContain(
 			`Stryker reused 3 of 5 mutant result(s) from ${head.slice(0, 12)}, the last judged head, and ran 2.`,
+		);
+		expect(second.provisional).toBe(
+			"provisional: Stryker reused 3 of 5 results from an earlier head; a cold run decides approval",
 		);
 	});
 
