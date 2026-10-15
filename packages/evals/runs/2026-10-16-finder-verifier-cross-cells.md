@@ -1,6 +1,6 @@
 # Live golden run, finder and verifier cross cells, 2026-10-16
 
-Which model finds, and which verifies, decides a lens's precision? Five cells cross two finders with two verifiers on the design, durability and correctness goldens. One golden per invocation, scored as a corpus as [the evals guideline](../../docs/guidelines/evals.md) sets out: counts add before they divide.
+Which model finds, and which verifies, decides a lens's precision? Three cells at one head cross two finders with two verifiers on the design, durability and correctness goldens; two older cells are historical references. One golden per invocation, scored as a corpus as [the evals guideline](../../docs/guidelines/evals.md) sets out: counts add before they divide.
 
 ## Cells
 
@@ -19,7 +19,7 @@ MELIAN_EVAL_LIVE=1 MELIAN_EVAL_MODEL=<finder> MELIAN_EVAL_VERIFIER_MODEL=<verifi
 | Opus | `anthropic/claude-opus-5-5` | not recorded | 5d75fed3 | 2 |
 | Control | `anthropic/claude-sonnet-5-5` | `anthropic/claude-opus-5-5` | 5d75fed3 | 2 |
 
-The `Opus` cell's output does not record its models, and the coordinator named its finder. The control ran the design and durability goldens only. The three 69475b44 cells ran from 08:47 to 09:38 on 2026-10-16, in parallel; the two older cells ran on 2026-10-15. The driver is `tmp/m2/live-goldens-cross.sh` and the scorer `tmp/m2/score-cells.py`, which weights each golden's precision by its reported count and its recall by its expected count. No cell printed an unscored line.
+Neither older output records its models: both routes are the coordinator's account, and the `Opus` cell's verifier is unknown. The control ran the design and durability goldens only. The three 69475b44 cells ran from 08:47 to 09:38 on 2026-10-16, in parallel; the two older cells ran on 2026-10-15. The driver is `tmp/m2/live-goldens-cross.sh` and the scorer `tmp/m2/score-cells.py`, which weights each golden's precision by its reported count and its recall by its expected count. No cell printed an unscored line.
 
 ## Corpus precision and recall
 
@@ -54,17 +54,17 @@ A cell reads precision / recall.
 | Opus, Terra | 1.00 / 1.00 | 1.00 / 1.00 | | 6, 6 |
 | Opus (5d75fed3) | 1.00 / 1.00 | 1.00 / 1.00 | | 3, 3 |
 
-#121 added three correctness expectations in `correctness-repeated-shape`, so the 5d75fed3 counts are smaller by construction.
+The driver selects only goldens named `design-`, `durability-` or `correctness-`. Of the goldens #121 added, only `correctness-repeated-shape` falls in that set, with three expectations, so the 5d75fed3 correctness counts are smaller by construction. #121 also changed the prompts of the existing design and durability goldens' lenses.
 
 ## What the evidence shows
 
 - The heavy finder decides design and durability precision. On design, Sol sits at 0.85 to 0.90 and Opus at 0.51 to 0.52, a lead of about 0.35, with a Terra or a Sonnet verifier alike. On durability Sol averages about 0.93 over its five passes and Opus 0.68 over two, a lead of about 0.25. Swapping the verifier moves Sol by less than the pass-to-pass spread.
-- Opus over-reports on design: 31 and 33 findings against 18 expected, where Sol reports 20 or 21. Its recall is no better than Sol's, so the extra findings are noise.
+- Opus over-reports on design: 31 and 33 findings against 18 expected, where Sol reports 20 or 21. Its recall is no better than Sol's, so the extra reports do not buy coverage. Whether they are wrong or co-reports of one defect is unadjudicated.
 - Correctness ties. Every cell scores 1.00 and 1.00.
-- Sol with Terra at 69475b44 matches the earlier Sol runs, such as [the design run with the Terra verifier](2026-10-12-live-goldens-design-terra.md) at 0.76 to 0.83 precision over fewer goldens. #121 caused no regression in the committed routes.
+- Sol with Terra at 69475b44 matches the earlier Sol runs, such as [the design run with the Terra verifier](2026-10-12-live-goldens-design-terra.md) at 0.76 to 0.83 precision over fewer goldens. No regression is observed in these samples. The earlier run is at another head over fewer goldens, so the comparison does not isolate #121.
 
 ## Confound
 
-The two 5d75fed3 cells ran before #121 changed the lens prompts, and on a different corpus: they miss the three goldens #121 added. They also ran on the previous evening, and the `Opus` cell's verifier is not recorded. They show the Opus finder's behaviour on the old prompts only. The Opus finder's weak design precision recurs at 69475b44 (Opus, Terra cell), so the finder explains it rather than the prompts, but the 5d75fed3 cells cannot be pooled with the rest. The control changes both the finder and the verifier against the others, so it isolates neither.
+The two 5d75fed3 cells ran before #121 changed the lens prompts, and on a different corpus: they miss `correctness-repeated-shape`. They also ran on the previous evening, their models are unrecorded, and the `Opus` cell's verifier is unknown. They show the Opus finder's behaviour on the old prompts only, if the coordinator's account of them holds. The Opus finder's weak design precision recurs at 69475b44 (Opus, Terra cell), so the finder explains it rather than the prompts, but the 5d75fed3 cells cannot be pooled with the rest. The control changes both the finder and the verifier against the others, so it isolates neither.
 
 Two passes per cell, and three for one, is a small sample. Adjudicated precision was not measured: an extra finding may be a real defect or a co-report.
