@@ -1010,6 +1010,20 @@ describe("recording a dismissal", () => {
 			expect(verdict.dismissed.map((each) => each.id)).toEqual([id]);
 		});
 
+		it("decides a dismissal when the input names a fingerprint but no policy source to compare it with", async () => {
+			const { harness, id } = await reviewedByPreviousBuild();
+			const root = await harness.root(context);
+			await root.commit(async (tx) => {
+				const [entry] = Object.values((await tx.doc(ReviewIndex, root.id)).reviews);
+				const { policy: _, ...input } = JSON.parse(entry!.adjudication!.input) as AdjudicationTaskInput;
+				entry!.adjudication!.input = JSON.stringify(input);
+			}, context);
+
+			const { verdict } = await dismiss(harness, id);
+
+			expect(verdict.dismissed.map((each) => each.id)).toEqual([id]);
+		});
+
 		it("still refuses when the policy changed", async () => {
 			const { harness, id } = await reviewedByPreviousBuild();
 			writeFiles(repo, { "src/melian.yaml": "resolution:\n  P1: advisory\n" });

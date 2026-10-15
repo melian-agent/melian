@@ -39,6 +39,7 @@ export async function configsFor(
 ): Promise<PolicyLookup> {
 	const lookup = configLookup(repoRoot, policy);
 	const atPath = new Map<string, PolicyAt>();
+	const defaultsAt = new Map<string, Record<string, ResolutionEntry>>();
 	const judging = new Map<string, PolicyAt>();
 	const lensPaths = new Set(
 		findings
@@ -76,6 +77,7 @@ export async function configsFor(
 				if (lens.resolution === undefined) delete lensDefaults[lens.name];
 				else lensDefaults[lens.name] = lens.resolution;
 			}
+			defaultsAt.set(path, lensDefaults);
 			atPath.set(path, {
 				resolution: config.resolution,
 				ruleAliases: config.ruleAliases,
@@ -107,9 +109,8 @@ export async function configsFor(
 				.map(({ check, version }) => {
 					const name = check.slice("lens.".length);
 					const variant = `${name}@${version}`;
-					const { lensDefaults } = atPath.get(path)!;
-					const entry = Object.hasOwn(lensVariants, variant) ? lensVariants[variant] : lensDefaults?.[name];
-					return JSON.stringify([path, check, entry ?? null]);
+					const entry = Object.hasOwn(lensVariants, variant) ? lensVariants[variant] : defaultsAt.get(path)![name];
+					return JSON.stringify([path, entry]);
 				}),
 		)
 		.sort();

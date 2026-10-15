@@ -163,6 +163,115 @@ describe("configsFor", { timeout: 60_000 }, () => {
 		expect(listed.every((key) => /@[0-9a-f]{12}(@(quick|careful|deep))?$/.test(key))).toBe(true);
 	});
 
+	describe("the fingerprint's lens entries", () => {
+		// A cleanup lens defined under docs/ only: findings elsewhere resolve through its variant, never a path default.
+		const docsLens = (resolution: string) => ({
+			".melian/lenses/cleanup/LENS.md": lensFile("cleanup", resolution),
+		});
+		const variantVersion = async (commitSha: string) =>
+			(await Lens.everywhere(repo, { kind: "revision", commit: commitSha })).find((lens) => lens.name === "cleanup")!
+				.version;
+		const fingerprintOf = async (sha: string, findings: Finding[]) =>
+			(await configsFor(repo, { kind: "revision", commit: sha }, findings)).fingerprint;
+
+		it("changes with the declared resolution of the variant a report carries, whatever the path defaults say", async () => {
+			const silent = commit(repo, {
+				"docs/.melian/lenses/cleanup/LENS.md":
+					docsLens("resolution: { P3: silent }")[".melian/lenses/cleanup/LENS.md"],
+			});
+			const version = await variantVersion(silent);
+			const carried = finding({ source: { check: "lens.cleanup", version } });
+			const before = await fingerprintOf(silent, [carried]);
+			const blocking = commit(repo, {
+				"docs/.melian/lenses/cleanup/LENS.md":
+					docsLens("resolution: { P3: block }")[".melian/lenses/cleanup/LENS.md"],
+			});
+			expect(await variantVersion(blocking)).toBe(version);
+			expect(await fingerprintOf(blocking, [carried])).not.toBe(before);
+		});
+
+		it("falls back to the path's nearest lens default when the report's variant is no longer defined", async () => {
+			const withVariant = commit(repo, {
+				"melian.yaml": lines("resolution:", "  P2: acknowledge"),
+				".melian/lenses/cleanup/LENS.md": lensFile("cleanup", "resolution: { P3: silent }"),
+			});
+			const carried = finding({ source: { check: "lens.cleanup", version: await variantVersion(withVariant) } });
+			const unknown = finding({ source: { check: "lens.cleanup", version: "no-such-version" } });
+			const known = await fingerprintOf(withVariant, [carried]);
+			const fallback = await fingerprintOf(withVariant, [unknown]);
+			// Both resolve through the same root lens, so only the version a report names differs, which the entry hides.
+			expect(fallback).toBe(known);
+			commit(repo, { ".melian/lenses/cleanup/LENS.md": lensFile("cleanup", "resolution: { P3: block }") });
+			const edited = (await configsFor(repo, { kind: "worktree" }, [unknown])).fingerprint;
+			expect(edited).not.toBe(fallback);
+		});
+
+		it("ignores a report by a check that is no lens, and reads a finding with no reportedBy from its source", async () => {
+			const sha = commit(repo, {
+				"docs/.melian/lenses/cleanup/LENS.md":
+					docsLens("resolution: { P3: silent }")[".melian/lenses/cleanup/LENS.md"],
+			});
+			const version = await variantVersion(sha);
+			const lens = finding({ source: { check: "lens.cleanup", version } });
+			const alone = await fingerprintOf(sha, [lens]);
+			const withTool = Finding.from({
+				...lens.toJSON(),
+				properties: { ...lens.properties, reportedBy: [{ check: "static.biome" }, lens.properties.source] },
+			});
+			expect(await fingerprintOf(sha, [withTool])).toBe(alone);
+			const noLens = finding({ rule: "biome/x", source: { check: "static.biome" } });
+			expect(await fingerprintOf(sha, [noLens])).not.toBe(alone);
+		});
+
+		it("does not depend on the order of the findings, though their entries differ by path", async () => {
+			const sha = commit(repo, {
+				"docs/.melian/lenses/cleanup/LENS.md":
+					docsLens("resolution: { P3: silent }")[".melian/lenses/cleanup/LENS.md"],
+			});
+			const version = await variantVersion(sha);
+			const source = { check: "lens.cleanup", version };
+			const first = finding({ source });
+			const second = finding({ source, file: "services/payments/src/other.ts" });
+			const third = finding({ source: { check: "lens.cleanup", version: "other" }, file: "docs/guide.md" });
+			const forward = await fingerprintOf(sha, [first, second, third]);
+			expect(await fingerprintOf(sha, [third, second, first])).toBe(forward);
+			expect(await fingerprintOf(sha, [second, first, third])).toBe(forward);
+		});
+
+		it("changes when two reports swap the variants they carry between paths", async () => {
+			const sha = commit(repo, {
+				"docs/.melian/lenses/cleanup/LENS.md": lensFile(
+					"cleanup",
+					"resolution: { P3: silent }",
+					'paths: ["docs/**"]',
+				),
+				"other/.melian/lenses/cleanup/LENS.md": lensFile(
+					"cleanup",
+					"resolution: { P3: block }",
+					'paths: ["other/**"]',
+				),
+			});
+			const versions = (await Lens.everywhere(repo, { kind: "revision", commit: sha }))
+				.filter((lens) => lens.name === "cleanup")
+				.map((lens) => lens.version);
+			expect(new Set(versions).size).toBe(2);
+			const at = (file: string, version: string) => finding({ file, source: { check: "lens.cleanup", version } });
+			const straight = await fingerprintOf(sha, [at("a/one.ts", versions[0]!), at("b/two.ts", versions[1]!)]);
+			const swapped = await fingerprintOf(sha, [at("a/one.ts", versions[1]!), at("b/two.ts", versions[0]!)]);
+			expect(swapped).not.toBe(straight);
+		});
+
+		it("is a fixed value for a repository with no findings", async () => {
+			const sha = commit(repo, { "melian.yaml": lines("resolution:", "  P2: acknowledge") });
+			const none = await fingerprintOf(sha, []);
+			expect(none).toMatch(/^2:[0-9a-f]{16}$/);
+			expect(await fingerprintOf(sha, [])).toBe(none);
+			expect((await configsFor(repo, { kind: "revision", commit: sha }, [])).legacyFingerprint).toMatch(
+				/^[0-9a-f]{16}$/,
+			);
+		});
+	});
+
 	it("loads no lens for findings no lens reported", async () => {
 		const base = commit(repo, {
 			".melian/lenses/cleanup/LENS.md": lensFile("cleanup", "resolution: { ceiling: silent }"),
