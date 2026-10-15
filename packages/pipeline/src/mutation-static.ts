@@ -201,26 +201,35 @@ export function mutationInstallation(repoRoot: string): string {
 
 // Stryker logs how many results its incremental mode reused. The head's tests write to the same log, so the count is a
 // note and decides nothing. chalk may colour the first number; the escape character is dropped before matching.
-const reusedCount = /(?:\[\d{1,3}m)?(\d{1,9})(?:\[\d{1,3}m)? of (\d{1,9}) mutant result\(s\) are reused\./;
+const reusedCount = /(?:\[\d{1,3}m)?(\d{1,9})(?:\[\d{1,3}m)? of (\d{1,9}) mutant result\(s\) are reused\./g;
+
+// The largest count of reused results the log states, as `[reused, total]`. The head's tests can print a count of their
+// own beside Stryker's, so the first is not to be trusted, and the largest is what the belt must see.
+function reusedOf(log: string): [number, number] | undefined {
+	let largest: [number, number] | undefined;
+	for (const [, reused, total] of log.replaceAll(String.fromCharCode(27), "").matchAll(reusedCount))
+		if (largest === undefined || Number(reused) > largest[0]) largest = [Number(reused), Number(total)];
+	return largest;
+}
 
 function reuseNote(earlier: { readonly judged: JudgedHead } | { readonly cold: string }, log: string): string {
 	if ("cold" in earlier) return `Stryker started cold: ${earlier.cold}.`;
 	const judged = earlier.judged.head.slice(0, 12);
-	const counted = reusedCount.exec(log.replaceAll(String.fromCharCode(27), ""));
-	if (counted === null)
+	const counted = reusedOf(log);
+	if (counted === undefined)
 		return `Stryker was given the results of ${judged}, the last judged head; its log does not say how many it reused.`;
-	const [reused, total] = [Number(counted[1]), Number(counted[2])];
+	const [reused, total] = counted;
 	return `Stryker reused ${reused} of ${total} mutant result(s) from ${judged}, the last judged head, and ran ${total - reused}.`;
 }
 
 // What a run that built on an earlier head says in place of approval. Whether it is provisional is Melian's own fact,
 // that it handed Stryker an earlier report; the count is the head-written log's and only words the reason.
 function provisionalReason(log: string): string {
-	const counted = reusedCount.exec(log.replaceAll(String.fromCharCode(27), ""));
+	const counted = reusedOf(log);
 	const reused =
-		counted === null
+		counted === undefined
 			? "Stryker was handed an earlier head's results, and its log does not say how many it reused"
-			: `Stryker reused ${counted[1]} of ${counted[2]} results from an earlier head`;
+			: `Stryker reused ${counted[0]} of ${counted[1]} results from an earlier head`;
 	return `provisional: ${reused}; a cold run decides approval`;
 }
 
@@ -496,7 +505,7 @@ process.exitCode = result.code;
 					),
 				);
 		// `--force` makes a cold run rerun every mutant; a log that still counts reused results means the run was not cold.
-		const reusedAnyway = Number(reusedCount.exec(deciding.replaceAll(String.fromCharCode(27), ""))?.[1] ?? 0) > 0;
+		const reusedAnyway = (reusedOf(deciding)?.[0] ?? 0) > 0;
 		return cold && !reusedAnyway ? { text } : { text, provisional: provisionalReason(deciding) };
 	}
 

@@ -573,10 +573,12 @@ cp "$incremental" reports/mutation/mutation.json`,
 
 	// A fake Stryker that, like the real one, reuses whatever report sits at its incremental file unless told `--force`.
 	// The head's Vitest configuration loads before Stryker reads that file, so the fake plants a forged report there first.
-	function plantedTool(options: { claimReuse?: boolean; colour?: boolean } = {}) {
+	function plantedTool(options: { claimReuse?: boolean; colour?: boolean; decoy?: "before" | "after" } = {}) {
 		// chalk colours the reused count when it thinks it writes to a terminal.
-		const escape = String.fromCharCode(27);
-		const count = options.colour === true ? `${escape}[93m1${escape}[39m` : "1";
+		const ansi = String.fromCharCode(27);
+		const count = options.colour === true ? `${ansi}[93m1${ansi}[39m` : "1";
+		// The head's own tests write to the same log, and can print a count of their own first.
+		const decoy = options.decoy === undefined ? "" : "0 of 1 mutant result(s) are reused.";
 		const canned = join(artifacts, "planted-report.json");
 		writeFileSync(canned, report({ "packages/p/src/a.ts": [{ status: "Survived", line: 2 }] }));
 		fakeTool(
@@ -593,7 +595,7 @@ done
 printf '%s' '{"planted":true}' > "$incremental"
 mkdir -p reports/mutation
 if [ "$force" = no ] || [ '${options.claimReuse === true ? "yes" : "no"}' = yes ]; then
-  printf '%s\n' '${count} of 1 mutant result(s) are reused.'
+  printf '%s\n' '${options.decoy === "before" ? decoy : ""}' '${count} of 1 mutant result(s) are reused.' '${options.decoy === "after" ? decoy : ""}'
 fi
 if [ "$force" = no ]; then
   printf '%s' '{"schemaVersion":"1.0","files":{}}' > reports/mutation/mutation.json
@@ -603,15 +605,18 @@ fi`,
 		);
 	}
 
-	it("marks a cold run provisional when Stryker's coloured log says it reused results anyway", async () => {
-		const { base, head } = twoCommits();
-		plantedTool({ claimReuse: true, colour: true });
-		const cold = await mutate(base, head, { target: "range-feature", cold: true });
-		if (cold.status !== "ran") throw new Error("skipped");
-		expect(cold.provisional).toBe(
-			"provisional: Stryker reused 1 of 1 results from an earlier head; a cold run decides approval",
-		);
-	});
+	it.each(["before", "after"] as const)(
+		"marks a cold run provisional when Stryker's coloured log says it reused results, with a planted count of none %s it",
+		async (decoy) => {
+			const { base, head } = twoCommits();
+			plantedTool({ claimReuse: true, colour: true, decoy });
+			const cold = await mutate(base, head, { target: "range-feature", cold: true });
+			if (cold.status !== "ran") throw new Error("skipped");
+			expect(cold.provisional).toBe(
+				"provisional: Stryker reused 1 of 1 results from an earlier head; a cold run decides approval",
+			);
+		},
+	);
 
 	it("tells Stryker to rerun everything on a cold run, so a report the head planted is never reused", async () => {
 		const { base, head } = twoCommits();
