@@ -496,11 +496,11 @@ ruleAliases:
 
 ### The verdict
 
-`new Adjudication({ findings, manifest, checks, config, allowSkip, verificationRan }).adjudicate()` dedupes, resolves, and returns a `Verdict`. It carries a `status` and a `blocking` flag. It groups findings by resolution (`block`, `acknowledge`, `advisory`, `silent`) and lists the `dismissed` findings. `notRun` lists every check that was skipped, failed, or ended by its budget, with its reason. `ran` lists every check that ran. A verdict recorded before Melian kept `ran` has none, so a reader treats it as optional, and the stored verdict is never filled in on read: a publication's fingerprint hashes the verdict as stored. `config` is one configuration for every path or a `ConfigFor` function.
+`new Adjudication({ findings, manifest, checks, config, allowSkip, verificationRan }).adjudicate()` dedupes, resolves, and returns a `Verdict`. It carries a `status` and a `blocking` flag. It groups findings by resolution (`block`, `acknowledge`, `advisory`, `silent`) and lists the `dismissed` findings. `notRun` lists every check that was skipped, failed, ended by its budget, or is `provisional`, with its reason. `ran` lists every check that ran. A verdict recorded before Melian kept `ran` has none, so a reader treats it as optional, and the stored verdict is never filled in on read: a publication's fingerprint hashes the verdict as stored. `config` is one configuration for every path or a `ConfigFor` function.
 
 The status has three states, because a check that reports green while the review never ran is the incumbent failure the design names:
 
-- `not-reviewed` when any check failed, was ended by its budget, was skipped and is not in `allowSkip`, or is in the manifest with no record. This holds with zero findings: a lens that crashed found nothing because it looked at nothing, and a lens its budget ended stopped looking. `allowSkip` never excuses an `ended` check.
+- `not-reviewed` when any check failed, was ended by its budget, is `provisional`, was skipped and is not in `allowSkip`, or is in the manifest with no record. A provisional check is a mutation run that reused an earlier head's results: its findings count, but only a run from nothing can let the review pass. This holds with zero findings: a lens that crashed found nothing because it looked at nothing, and a lens its budget ended stopped looking. `allowSkip` never excuses an `ended` check.
 - `findings` when every check ran and a finding resolves above `silent`.
 - `passed` otherwise. An allowed skip does not stop a pass.
 
