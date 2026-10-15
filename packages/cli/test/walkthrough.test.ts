@@ -277,3 +277,17 @@ describe("CLI publish walkthrough settings", { timeout: 60_000 }, () => {
 		expect((await recorded())?.walkthroughNotes?.[revisionKey(changeset.revision)]).toBeDefined();
 	});
 });
+
+describe("CLI cold mutation run", { timeout: 60_000 }, () => {
+	it.each([
+		[{ rerun: false }, undefined],
+		[{ rerun: false, cold: false }, undefined],
+		[{ rerun: false, cold: true }, true],
+	])("hands the checks a cold run only when the review asks for one: %j", async (options, cold) => {
+		const checks = vi.spyOn(pipeline, "runChecks");
+		const io = { cwd: repo, env, stdout: () => {}, stderr: () => {}, color: false };
+		expect(await review(io, "#7", { ...options, walkthrough: false })).toBe(0);
+		expect(checks).toHaveBeenCalledOnce();
+		expect(checks.mock.calls[0]![1].cold).toBe(cold);
+	});
+});
