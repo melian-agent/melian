@@ -17,3 +17,5 @@ A budget, a model route, a tier, a lens body, or a band changes none of these, s
 The cost: a lens that no finding of the review reports through adds nothing beyond its default at the path, so a variant in a folder no finding sits under can change without refusing a dismissal, as it changes no resolution.
 
 The refusal message named the remedy twice, once in the task's error and once in `dismiss`. The task's error now states the cause alone and `dismiss` adds the remedy.
+
+The new recipe gives another value for the same policy, so a task input an earlier build stored would refuse every dismissal after an upgrade. Choice: the fingerprint now starts `2:`, and the check accepts either that or the value the first recipe gives the current policy, kept as `legacyFingerprint`. A stored input needs no migration and no new field; a review from the earlier build decides again when its policy is unchanged and refuses when it changed. The first recipe still hashes the version-keyed variants, so such a review keeps the old refusal for a removed budget override. Drop `legacyFingerprint` once no stored review predates the change.
