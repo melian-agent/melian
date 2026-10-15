@@ -19,7 +19,7 @@ MELIAN_EVAL_LIVE=1 MELIAN_EVAL_MODEL=<finder> MELIAN_EVAL_VERIFIER_MODEL=<verifi
 | Opus | `anthropic/claude-opus-5-5` | not recorded | 5d75fed3 | 2 |
 | Control | `anthropic/claude-sonnet-5-5` | `anthropic/claude-opus-5-5` | 5d75fed3 | 2 |
 
-The `Opus` cell's output does not record its models, and the Opus finder is the coordinator's account of it. The control ran the design and durability goldens only. The three 69475b44 cells ran 09:00 to 09:38 on 2026-10-16; the two older cells ran on 2026-10-15. The driver is `tmp/m2/live-goldens-cross.sh` and the scorer `tmp/m2/score-cells.py`, which weights each golden's precision by its reported count and its recall by its expected count. No cell printed an unscored line.
+The `Opus` cell's output does not record its models, and the coordinator named its finder. The control ran the design and durability goldens only. The three 69475b44 cells ran from 08:47 to 09:38 on 2026-10-16, in parallel; the two older cells ran on 2026-10-15. The driver is `tmp/m2/live-goldens-cross.sh` and the scorer `tmp/m2/score-cells.py`, which weights each golden's precision by its reported count and its recall by its expected count. No cell printed an unscored line.
 
 ## Corpus precision and recall
 
@@ -58,7 +58,7 @@ A cell reads precision / recall.
 
 ## What the evidence shows
 
-- The heavy finder decides design and durability precision. On design, Sol sits at 0.85 to 0.90 and Opus at 0.51 to 0.52, a lead of about 0.35, with a Terra or a Sonnet verifier alike. On durability Sol averages about 0.94 over its five passes and Opus 0.68 over two, a lead of about 0.25. Swapping the verifier moves Sol by less than the pass-to-pass spread.
+- The heavy finder decides design and durability precision. On design, Sol sits at 0.85 to 0.90 and Opus at 0.51 to 0.52, a lead of about 0.35, with a Terra or a Sonnet verifier alike. On durability Sol averages about 0.93 over its five passes and Opus 0.68 over two, a lead of about 0.25. Swapping the verifier moves Sol by less than the pass-to-pass spread.
 - Opus over-reports on design: 31 and 33 findings against 18 expected, where Sol reports 20 or 21. Its recall is no better than Sol's, so the extra findings are noise.
 - Correctness ties. Every cell scores 1.00 and 1.00.
 - Sol with Terra at 69475b44 matches the earlier Sol runs, such as [the design run with the Terra verifier](2026-10-12-live-goldens-design-terra.md) at 0.76 to 0.83 precision over fewer goldens. #121 caused no regression in the committed routes.
