@@ -84,7 +84,7 @@ The review plan and scripts receive every loaded lens. Credential unlocking uses
 
 ## Dismissals
 
-`dismiss` decides the verdict again under the policy the review read. When the review read policy from the working tree and a `melian.yaml` or a lens's declared resolution has changed since, the dismissal is recorded, the verdict is not decided, and `dismiss` exits `1` asking for a fresh review, which then counts the dismissal.
+`dismiss` decides the verdict again under the policy the review read. When the review read policy from the working tree and a `melian.yaml` or a lens's declared resolution has changed since, the dismissal is recorded, the verdict is not decided, and `dismiss` exits `1` asking for a fresh review, which then counts the dismissal. The fingerprint covers what decides resolution: every `resolution` key in each layer, `ruleAliases`, and each lens's declared resolution. Removing a preference file that names models only, or a lens override that changes a budget, does not change it. The message names the cause once, then `run melian review again`.
 
 `dismiss` records who dismissed a finding as the git author, `git var GIT_AUTHOR_IDENT` without its timestamp: `GIT_AUTHOR_NAME` and `GIT_AUTHOR_EMAIL`, then `user.name` and `user.email`. Not the GitHub login the token resolves to: a range has no GitHub at all, `dismiss` works offline as `findings` does, and the record sits in local storage that trusts whoever can write it, so a login the token proves would add a network call and no trust. A reply on the pull request never names the dismisser; GitHub shows whose token posted it. [The decision](../decisions/2026-10-04-dismissal.md) says more.
 
