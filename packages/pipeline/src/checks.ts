@@ -126,6 +126,9 @@ interface CheckInput {
 	readonly writer?: WriterTrust | undefined;
 	// Whether the review asked for a mutation run that reuses no earlier head's results. Absent in an earlier build's input.
 	readonly cold?: boolean | undefined;
+	// When the task was made, which the mutation check's publication compares with the partition's. Absent in an earlier
+	// build's input, which then never replaces another line's results.
+	readonly created?: number;
 	// The run identity, short of its task, that owns the revision's mutation check while it is the latest to ask. Absent in
 	// an input an earlier build stored.
 	readonly authority?: string;
@@ -183,7 +186,8 @@ async function runStatic(
 	if (!settings.enabled) return { status: "skipped", reason: `static.${tool}.enabled is false` };
 	const leaveNotes: string[] = [];
 	// Only mutation runs head code, and it gets its leave only past the guard below.
-	let mutationLeave: { headCode: HeadTrust; target: string; cold?: true } | Record<string, never> = {};
+	let mutationLeave: { headCode: HeadTrust; target: string; cold?: true; created: number } | Record<string, never> =
+		{};
 	if (tool === "mutation") {
 		// Asked first: a change with nothing to judge runs no head code, so it needs no leave and passes on any host.
 		if (!MutationRun.judges(Revision.from(input.changeset.revision)))
@@ -197,6 +201,7 @@ async function runStatic(
 			headCode: leave.by,
 			target: input.changeset.id,
 			...(input.cold === true ? { cold: true } : {}),
+			created: input.created ?? 0,
 		};
 	}
 	if (env === undefined) {
@@ -472,6 +477,7 @@ const ChecksTask = defineTask<ChecksInput, ChecksState, CheckRunRecord[]>({
 								source,
 								writer,
 								cold,
+								created: Date.now(),
 								authority: identityKey({ ...task.input.identity, task: runtime.taskId }),
 							},
 							{ ownership: { kind: "task", taskId: runtime.taskId } },

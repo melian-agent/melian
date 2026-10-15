@@ -10,6 +10,7 @@ import {
 	readFile,
 	realpath,
 	rm,
+	rmdir,
 	stat,
 	symlink,
 	writeFile,
@@ -27,7 +28,13 @@ import { MutationCache as MutationCacheV2 } from "./fixtures/mutation-cache-v2.t
 
 vi.mock("node:fs/promises", async (importOriginal) => {
 	const original = await importOriginal<typeof filesystem>();
-	return { ...original, open: vi.fn(original.open), mkdir: vi.fn(original.mkdir), stat: vi.fn(original.stat) };
+	return {
+		...original,
+		open: vi.fn(original.open),
+		mkdir: vi.fn(original.mkdir),
+		stat: vi.fn(original.stat),
+		rmdir: vi.fn(original.rmdir),
+	};
 });
 
 const key = (changes: Partial<MutationCacheKey> = {}): MutationCacheKey => ({
@@ -252,12 +259,13 @@ it("publishes a readable staged report with the head that wrote it, its leave an
 	await writeFile(cache.file, partition({ old: true }));
 	const { staged } = await cache.stage(join(root, "work"), undefined);
 	await writeFile(staged, '{"new":true}');
-	await cache.publish(staged, writer(B, true), undefined, lineOf(A, B));
+	await cache.publish(staged, writer(B, true), 0, lineOf(A, B));
 	expect(JSON.parse(await readFile(cache.file, "utf8"))).toEqual({
 		version: 3,
 		head: B,
 		trust: "writer",
 		cold: true,
+		at: expect.any(Number),
 		report: { new: true },
 	});
 	expect(await cache.earlier("writer", always)).toMatchObject({ judged: { head: B, cold: true } });
@@ -278,23 +286,52 @@ it("keeps a newer head's results when an older head's run finishes after it, eve
 	await writeFile(cache.file, partition({ newer: true }, B));
 	const { staged } = await cache.stage(join(root, "work"), undefined);
 	await writeFile(staged, '{"older":true}');
-	for (const seen of [undefined, B]) await cache.publish(staged, writer(A), seen, lineOf(A, B));
+	for (const since of [0, Number.MAX_SAFE_INTEGER]) await cache.publish(staged, writer(A), since, lineOf(A, B));
 	expect(JSON.parse(await readFile(cache.file, "utf8"))).toMatchObject({ head: B, report: { newer: true } });
 	expect((await readdir(cache.directory)).filter((name) => name.endsWith(".tmp"))).toEqual([]);
 });
 
-it("replaces a head of another line only when the run already saw it, as after a force-push", async () => {
+it("replaces a head of another line only when it was published before the run's task was made, as after a force-push", async () => {
 	const cache = await MutationCache.open(root, key());
-	await writeFile(cache.file, partition({ old: true }, B));
+	await writeFile(
+		cache.file,
+		JSON.stringify({ version: 3, head: B, trust: "writer", cold: false, at: 1000, report: { old: true } }),
+	);
 	const { staged } = await cache.stage(join(root, "work"), undefined);
 	await writeFile(staged, '{"rewritten":true}');
-	// C and B share only A: a late run of C's line must not replace B's results unless it began from them.
+	// C and B share only A: a task of C's line made before B was published is a late run, and leaves B's results.
 	const lines = async (older: string, newer: string) =>
 		(await lineOf(A, B)(older, newer)) || (await lineOf(A, C)(older, newer));
-	await cache.publish(staged, writer(C), A, lines);
+	await cache.publish(staged, writer(C), 999, lines);
 	expect(JSON.parse(await readFile(cache.file, "utf8"))).toMatchObject({ head: B });
-	await cache.publish(staged, writer(C), B, lines);
+	await cache.publish(staged, writer(C), 1000, lines);
 	expect(JSON.parse(await readFile(cache.file, "utf8"))).toMatchObject({ head: C, report: { rewritten: true } });
+});
+
+it.each([
+	["no publication time", JSON.stringify({ version: 3, head: B, trust: "writer", report: {} })],
+	[
+		"a publication time that is not a number",
+		JSON.stringify({ version: 3, head: B, trust: "writer", at: "1000", report: {} }),
+	],
+])("reads a partition with %s as published at once, so a later task of another line replaces it", async (_, text) => {
+	const cache = await MutationCache.open(root, key());
+	await writeFile(cache.file, text);
+	const { staged } = await cache.stage(join(root, "work"), undefined);
+	await writeFile(staged, '{"rewritten":true}');
+	await cache.publish(staged, writer(C), 0, async () => false);
+	expect(JSON.parse(await readFile(cache.file, "utf8"))).toMatchObject({ head: C });
+});
+
+it("stamps a published partition with the time it was published", async () => {
+	const cache = await MutationCache.open(root, key());
+	const { staged } = await cache.stage(join(root, "work"), undefined);
+	await writeFile(staged, "{}");
+	const before = Date.now();
+	await cache.publish(staged, writer(A), 0, never);
+	const { at } = JSON.parse(await readFile(cache.file, "utf8"));
+	expect(at).toBeGreaterThanOrEqual(before);
+	expect(at).toBeLessThanOrEqual(Date.now());
 });
 
 it("publishes into an empty partition without asking git", async () => {
@@ -302,7 +339,7 @@ it("publishes into an empty partition without asking git", async () => {
 	const { staged } = await cache.stage(join(root, "work"), undefined);
 	await writeFile(staged, '{"first":true}');
 	const asked: string[][] = [];
-	await cache.publish(staged, writer(A), undefined, async (older, newer) => {
+	await cache.publish(staged, writer(A), 0, async (older, newer) => {
 		asked.push([older, newer]);
 		return false;
 	});
@@ -319,9 +356,9 @@ it("checks and replaces under one lock, so a newer head published meanwhile is n
 	await writeFile(newer, '{"newer":true}');
 	const history = lineOf(C, A, B);
 	let second: Promise<void> | undefined;
-	await cache.publish(older, writer(A), C, async (from, to) => {
+	await cache.publish(older, writer(A), 0, async (from, to) => {
 		// The newer head's run finishes while this one asks git about the held head.
-		second ??= cache.publish(newer, writer(B), C, history);
+		second ??= cache.publish(newer, writer(B), 0, history);
 		await sleep(200);
 		return history(from, to);
 	});
@@ -349,7 +386,7 @@ it.each([
 		await rm(lock, { recursive: true, force: true });
 	});
 	try {
-		await cache.publish(staged, writer(A), undefined, never);
+		await cache.publish(staged, writer(A), 0, never);
 	} finally {
 		vi.mocked(Date.now).mockRestore();
 	}
@@ -364,7 +401,7 @@ it("leaves neither the lock nor the temporary file behind when the check throws"
 	const staged = join(root, "staged.json");
 	await writeFile(staged, '{"report":true}');
 	await expect(
-		cache.publish(staged, writer(B), undefined, async () => {
+		cache.publish(staged, writer(B), 0, async () => {
 			throw new Error("git failed");
 		}),
 	).rejects.toThrow("git failed");
@@ -377,6 +414,7 @@ it("leaves neither the lock nor the temporary file behind when the check throws"
 it.each([
 	["takes the lock when it is gone between the failed make and the look", "gone"],
 	["leaves a stale lock another waiter replaced since the look", "replaced"],
+	["takes a stale lock that is gone by the second look", "vanished"],
 ])("%s", async (_, race) => {
 	const cache = await MutationCache.open(root, key());
 	const lock = join(cache.directory, "partition.lock");
@@ -394,6 +432,11 @@ it.each([
 		// The first look sees a stale lock; by the second, another waiter has made a new one in its place.
 		if (race === "replaced" && looks === 1) return { ...made, mtimeMs: made.mtimeMs - staleLockMs - 1 } as never;
 		if (race === "replaced" && looks === 2) return { ...made, ino: made.ino + 1 } as never;
+		if (race === "vanished" && looks === 1) return { ...made, mtimeMs: made.mtimeMs - staleLockMs - 1 } as never;
+		if (race === "vanished" && looks === 2) {
+			await rm(lock, { recursive: true, force: true });
+			throw Object.assign(new Error("gone"), { code: "ENOENT" });
+		}
 		return actual(path, options);
 	});
 	const staged = join(root, "staged.json");
@@ -404,13 +447,48 @@ it.each([
 		await rm(lock, { recursive: true, force: true });
 	});
 	try {
-		await cache.publish(staged, writer(A), undefined, never);
+		await cache.publish(staged, writer(A), 0, never);
 	} finally {
 		vi.mocked(stat).mockImplementation(actual);
 	}
 	expect(released).toBe(race === "replaced");
 	await release;
 	expect(JSON.parse(await readFile(cache.file, "utf8")).report).toEqual({ report: true });
+});
+
+it.each([
+	["fails rather than wait for ever when a stale lock cannot be removed", "EBUSY"],
+	["takes a stale lock that another waiter removed first", "ENOENT"],
+])("%s", async (_, code) => {
+	const cache = await MutationCache.open(root, key());
+	const lock = join(cache.directory, "partition.lock");
+	await mkdir(lock);
+	const made = (await stat(lock)).mtimeMs;
+	let gone = false;
+	vi.spyOn(Date, "now").mockReturnValue(made + staleLockMs + 1);
+	const actual = vi.mocked(rmdir).getMockImplementation()!;
+	vi.mocked(rmdir).mockImplementation(async (path, options) => {
+		if (String(path) === lock && code === "EBUSY") throw Object.assign(new Error("busy"), { code });
+		if (String(path) === lock && code === "ENOENT" && !gone) {
+			gone = true;
+			await actual(path, options);
+			throw Object.assign(new Error("gone"), { code });
+		}
+		return actual(path, options);
+	});
+	const staged = join(root, "staged.json");
+	await writeFile(staged, '{"report":true}');
+	try {
+		const published = cache.publish(staged, writer(A), 0, never);
+		if (code === "EBUSY") await expect(published).rejects.toMatchObject({ code });
+		else {
+			await published;
+			expect(JSON.parse(await readFile(cache.file, "utf8")).report).toEqual({ report: true });
+		}
+	} finally {
+		vi.mocked(rmdir).mockImplementation(actual);
+		vi.mocked(Date.now).mockRestore();
+	}
 });
 
 it("fails rather than wait when the partition's lock cannot be made", async () => {
@@ -423,7 +501,7 @@ it("fails rather than wait when the partition's lock cannot be made", async () =
 		return actual(path, options);
 	});
 	try {
-		await expect(cache.publish(staged, writer(A), undefined, never)).rejects.toMatchObject({ code: "EACCES" });
+		await expect(cache.publish(staged, writer(A), 0, never)).rejects.toMatchObject({ code: "EACCES" });
 	} finally {
 		vi.mocked(mkdir).mockImplementation(actual);
 	}
@@ -434,7 +512,7 @@ it("replaces the results of the same head, as a rerun after a timeout does", asy
 	await writeFile(cache.file, partition({ first: true }));
 	const { staged } = await cache.stage(join(root, "work"), undefined);
 	await writeFile(staged, '{"second":true}');
-	await cache.publish(staged, writer(A), undefined, never);
+	await cache.publish(staged, writer(A), 0, never);
 	expect(JSON.parse(await readFile(cache.file, "utf8")).report).toEqual({ second: true });
 });
 
@@ -454,7 +532,7 @@ it("publishes the bytes it checked, not what the path names after the check", as
 		return handle;
 	});
 	try {
-		await cache.publish(staged, writer(A), undefined, never);
+		await cache.publish(staged, writer(A), 0, never);
 	} finally {
 		vi.mocked(open).mockImplementation(real);
 	}
@@ -467,7 +545,7 @@ it("keeps the partition when the staged report is corrupt, missing, a symlink, o
 	await mkdir(join(root, "work"));
 	const staged = join(root, "work", "incremental.json");
 	// B descends from A, so only the staged report's own faults can keep it out.
-	const publish = () => cache.publish(staged, writer(B), undefined, lineOf(A, B));
+	const publish = () => cache.publish(staged, writer(B), 0, lineOf(A, B));
 	await writeFile(staged, "{corrupt");
 	await publish();
 	await rm(staged);
@@ -486,7 +564,7 @@ it("publishes a staged report of exactly the read bound, and the next run reads 
 	await mkdir(join(root, "work"));
 	const staged = join(root, "work", "incremental.json");
 	await writeFile(staged, "{}".padEnd(16 * 1024 * 1024, " "));
-	await cache.publish(staged, writer(A), undefined, never);
+	await cache.publish(staged, writer(A), 0, never);
 	expect(await (await MutationCache.open(root, key())).earlier("writer", always)).toMatchObject({ report: "{}" });
 });
 

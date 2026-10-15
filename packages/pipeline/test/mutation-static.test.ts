@@ -184,6 +184,7 @@ async function mutate(
 		holdsAuthority?: () => Promise<boolean>;
 		target?: string;
 		cold?: boolean;
+		created?: number;
 	} = {},
 ) {
 	const revision = await revisionOf(base, head);
@@ -199,6 +200,7 @@ async function mutate(
 			...(extra.holdsAuthority === undefined ? {} : { holdsAuthority: extra.holdsAuthority }),
 			...(extra.target === undefined ? {} : { target: extra.target }),
 			...(extra.cold === undefined ? {} : { cold: extra.cold }),
+			...(extra.created === undefined ? {} : { created: extra.created }),
 			settings: {
 				...defaultConfig.static.mutation,
 				timeout: extra.timeout ?? 120,
@@ -502,7 +504,7 @@ printf '%s' '{"schemaVersion":"1.0","files":{}}' > reports/mutation/mutation.jso
 		const result = await mutate(base, head, { target: "range-feature" });
 		gitIn(repo, "reset", "--quiet", "--hard", base);
 		const rewritten = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 2") });
-		const next = await mutate(base, rewritten, { target: "range-feature" });
+		const next = await mutate(base, rewritten, { target: "range-feature", created: Date.now() });
 		expect(reads()).toEqual([]);
 		if (result.status !== "ran" || next.status !== "ran") throw new Error("skipped");
 		expect(next.notes).toContain(
@@ -522,7 +524,7 @@ printf '%s' '{"schemaVersion":"1.0","files":{}}' > reports/mutation/mutation.jso
 		incrementalTool("older again");
 		await mutate(base, head, { target: "range-feature" });
 		expect(partitions().map((file) => JSON.parse(readFileSync(file, "utf8")))).toEqual([
-			{ version: 3, head: next, trust: "writer", cold: false, report: { stamp: "newer" } },
+			{ version: 3, head: next, trust: "writer", cold: false, at: expect.any(Number), report: { stamp: "newer" } },
 		]);
 	});
 
@@ -604,6 +606,20 @@ cp "$incremental" reports/mutation/mutation.json`,
 		await mutate(base, next, { target: "range-feature", cold: true });
 		expect(reads()).toEqual([]);
 		expect(partitions().map((file) => JSON.parse(readFileSync(file, "utf8")).head)).toEqual([next]);
+	});
+
+	it("leaves a force-pushed line's results alone when a task made before they were published finishes late", async () => {
+		const { base, head } = twoCommits();
+		const reads = incrementalTool();
+		const made = Date.now() - 60_000;
+		await mutate(base, head, { target: "range-feature" });
+		gitIn(repo, "reset", "--quiet", "--hard", base);
+		const rewritten = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 2") });
+		await mutate(base, rewritten, { target: "range-feature", created: Date.now() });
+		// The old line's task, made a minute ago and resumed now, judges the old head again.
+		await mutate(base, head, { target: "range-feature", created: made });
+		expect(partitions().map((file) => JSON.parse(readFileSync(file, "utf8")).head)).toEqual([rewritten]);
+		expect(reads()).toEqual([]);
 	});
 
 	it("starts cold when the base changes under the same review target", async () => {
@@ -2164,6 +2180,19 @@ cp '${canned}' reports/mutation/mutation.json`,
 			expect(cold.identity.policy).not.toBe(provisional.identity.policy);
 			expect(cold.records).toMatchObject([{ name: "static.mutation", status: "ran" }]);
 			expect(reads()).toHaveLength(1);
+		});
+
+		it("hands the mutation check the time its task was made, which publication compares", async () => {
+			const base = commit(repo, { "melian.yaml": policy, "stryker.config.json": config, "packages/p/src/a.ts": a });
+			commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 0") });
+			incrementalTool();
+			const publish = vi.spyOn(MutationCache.prototype, "publish");
+			const before = Date.now();
+			await checks(base, gitIn(repo, "rev-parse", "HEAD"));
+			expect(publish).toHaveBeenCalledOnce();
+			const since = publish.mock.calls[0]![2];
+			expect(since).toBeGreaterThanOrEqual(before);
+			expect(since).toBeLessThanOrEqual(Date.now());
 		});
 
 		it("leaves a run's identity alone for --cold when the tier runs no mutation check", async () => {

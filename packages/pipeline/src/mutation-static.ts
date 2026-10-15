@@ -406,6 +406,8 @@ process.exitCode = result.code;
 		trust: HeadTrust,
 	): Promise<{ text: string; provisional?: string } | { skipped: string }> {
 		const { repoRoot, base, commit, target, policyCommit } = this.#run.input;
+		// A caller that does not say when its task was made never replaces another line's results.
+		const created = this.#run.input.created ?? 0;
 		const cache = await MutationCache.open((await CacheLocation.open(repoRoot)).root, {
 			base: base ?? commit,
 			policy: policyCommit ?? base ?? commit,
@@ -415,7 +417,6 @@ process.exitCode = result.code;
 				.update(JSON.stringify({ version: this.#version }))
 				.digest("hex"),
 		});
-		const seen = await cache.held();
 		const earlier = this.#run.input.cold
 			? { cold: "the review asked for a cold run with --cold" }
 			: await cache.earlier(trust, (judged) => this.#ancestor(judged, commit));
@@ -484,7 +485,7 @@ process.exitCode = result.code;
 		if (text === undefined) throw this.#run.fail("invalidOutput", `Stryker wrote no report at ${report}`);
 		// A run another review has retired may not leave identities for the next one to trust.
 		if ((await this.#run.input.holdsAuthority?.()) ?? true)
-			await cache.publish(incremental.staged, { head: commit, trust, cold }, seen, (older, newer) =>
+			await cache.publish(incremental.staged, { head: commit, trust, cold }, created, (older, newer) =>
 				this.#ancestor(older, newer),
 			);
 		return cold ? { text } : { text, provisional: provisionalReason(deciding) };

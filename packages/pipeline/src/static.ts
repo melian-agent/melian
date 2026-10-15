@@ -54,6 +54,11 @@ export interface StaticRunInput {
 	readonly target?: string;
 	/** Run the mutation check without any earlier head's results, as a run that may approve must. */
 	readonly cold?: boolean;
+	/**
+	 * When the task that runs the mutation check was made, in milliseconds since the epoch. A run replaces another line's
+	 * results only when they were published before it. Without it, the run never replaces them.
+	 */
+	readonly created?: number;
 	/** Records and clears supervised process identities for durable recovery. */
 	readonly mutationProcess?: MutationProcessHooks;
 	/** Whether the run still answers to the latest review of its revision; absence means it does. */

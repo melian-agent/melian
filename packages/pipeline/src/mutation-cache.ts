@@ -116,7 +116,7 @@ export class MutationCache {
 	async publish(
 		staged: string,
 		judged: JudgedHead,
-		seen: string | undefined,
+		since: number,
 		ancestor: (older: string, newer: string) => Promise<boolean>,
 	): Promise<void> {
 		const report = await jsonText(staged, bound);
@@ -125,11 +125,11 @@ export class MutationCache {
 		const temporary = scratch.file(this.file);
 		await writeFile(
 			temporary,
-			`{"version":3,"head":${JSON.stringify(judged.head)},"trust":${JSON.stringify(judged.trust)},"cold":${judged.cold},"report":${report}}`,
+			`{"version":3,"head":${JSON.stringify(judged.head)},"trust":${JSON.stringify(judged.trust)},"cold":${judged.cold},"at":${Date.now()},"report":${report}}`,
 		);
 		try {
 			await this.#locked(async () => {
-				if (await this.#replaces(judged.head, seen, ancestor)) await rename(temporary, this.file);
+				if (await this.#replaces(judged.head, since, ancestor)) await rename(temporary, this.file);
 			});
 		} finally {
 			await rm(temporary, { force: true });
@@ -162,41 +162,46 @@ export class MutationCache {
 	// Removes a stale lock only while it is still the one inspected, by its inode, so a waiter that was slower to look does
 	// not remove a lock another waiter has made since. The second look and the removal are two calls; a lock made in the
 	// moment between them can still go, which costs speed only, since the partition never decides approval.
+	// A lock already gone is taken; any other failure to remove it is thrown, as waiting on it would never end.
 	async #takeOver(lock: string, inode: number): Promise<void> {
 		const now = await stat(lock).catch(() => undefined);
-		if (now?.ino === inode) await rmdir(lock).catch(() => undefined);
+		if (now?.ino !== inode) return;
+		await rmdir(lock).catch((error: NodeJS.ErrnoException) => {
+			if (error.code !== "ENOENT") throw error;
+		});
 	}
 
 	// Whether a run of `head` may replace what the partition holds: nothing, its own head, or a head in its history. A
 	// newer head of its own line it never replaces, as a late run of an older head must not. A head of another line, after
-	// a force-push, it replaces only when it already held that head when the run began (`seen`): the run then started
-	// cold because of it. Otherwise the other line is a late run's, as a run of the old line finishing after a force-push
-	// published the new one.
+	// a force-push, it replaces only when that head was published before the run's task was made (`since`, durable in
+	// the task's input, so a task a crash left pending keeps its own). A task made earlier is a late run of the old line.
 	async #replaces(
 		head: string,
-		seen: string | undefined,
+		since: number,
 		ancestor: (older: string, newer: string) => Promise<boolean>,
 	): Promise<boolean> {
-		const held = (await this.#read())?.head;
-		if (held === undefined || held === head || (await ancestor(held, head))) return true;
-		if (await ancestor(head, held)) return false;
-		return held === seen;
+		const held = await this.#read();
+		if (held === undefined || held.head === head || (await ancestor(held.head, head))) return true;
+		if (await ancestor(head, held.head)) return false;
+		return held.at <= since;
 	}
 
-	// The head the partition holds now, which `publish` compares with what it holds when the run ends.
-	async held(): Promise<string | undefined> {
-		return (await this.#read())?.head;
-	}
-
-	async #read(): Promise<{ head: string; trust: unknown; cold: boolean; report: string } | undefined> {
+	async #read(): Promise<{ head: string; trust: unknown; cold: boolean; at: number; report: string } | undefined> {
 		const text = await jsonText(this.file, bound + wrapping);
 		if (text === undefined) return undefined;
 		// Any JSON but null destructures; a number or a string simply has none of these fields.
-		const parsed = JSON.parse(text) as { head?: unknown; trust?: unknown; cold?: unknown; report?: unknown } | null;
+		const parsed = JSON.parse(text) as {
+			head?: unknown;
+			trust?: unknown;
+			cold?: unknown;
+			at?: unknown;
+			report?: unknown;
+		} | null;
 		if (parsed === null) return undefined;
-		const { head, trust, cold, report } = parsed;
+		const { head, trust, cold, at, report } = parsed;
 		if (typeof head !== "string" || !/^[0-9a-f]{40,64}$/.test(head)) return undefined;
 		if (typeof report !== "object" || report === null) return undefined;
-		return { head, trust, cold: cold === true, report: JSON.stringify(report) };
+		// A partition from before publication times were kept reads as published at once, so any later task replaces it.
+		return { head, trust, cold: cold === true, at: typeof at === "number" ? at : 0, report: JSON.stringify(report) };
 	}
 }
