@@ -1,0 +1,17 @@
+# A deterministic check flags a superseding decision that drops a clause
+
+Problem: the decision index retires a superseded decision whole, and the design lens reads only active decisions. So a new decision that supersedes an old one, to change one clause, silently retires every clause it does not restate. Reviewers catch it by reading both files side by side, one pull request at a time.
+
+Example: the shape recurred on two pull requests in a row. On [pull request #116](https://github.com/melian-agent/melian/pull/116), the review of record found that the superseding decision left clauses of the old one stated nowhere. They were the reason lowering exists, the acknowledge case for a `preExisting` cap, the strongest-cause merge, and the held goldens by name (C8 in [its record](../../packages/evals/comparisons/2026-10-14-pr-116.md)). On [pull request #117](https://github.com/melian-agent/melian/pull/117) the design lens found the same in rounds one, two and four. It stopped only when the new decision restated every surviving clause, as [its record's patterns](../../packages/evals/comparisons/2026-10-14-pr-117.md#patterns) show. A lens that finds it in some rounds and not others is sampling; the question has a mechanical answer. [Pull request #111](https://github.com/melian-agent/melian/pull/111) showed the neighbouring shape: a decision that changed another with no `Supersedes:` line at all, C3 in [its record](../../packages/evals/comparisons/2026-10-13-pr-111.md). This check cannot see that one. It stays with the design lens's existing rule.
+
+Choice: a deterministic check flags a decision file whose `Supersedes:` line drops a clause of the decision it retires. The decisions package already parses both files, so the check asks it, and splits sentences with an authority such as `Intl.Segmenter`, not by hand. The design lens's rule against a conflicting decision without `Supersedes:` stays, and the lens judges whether a drop matters; the check makes sure every drop is seen.
+
+This decision records the problem and the direction only. The step that builds it, plan step 26, writes the full decision against the code first and has it attacked before any code. Its first fuller draft rested on a false premise about the decision index, found in the sixth round below; [the convergence rules](2026-10-15-review-loop-convergence-rules.md) say to hold a design that draws holes ahead of its step.
+
+Open questions for the step:
+
+- An absent target. The decision index loads only at the base (`DecisionFiles.load(repoRoot, base)` in `packages/pipeline/src/review.ts`), so a head declaration whose target exists nowhere is refused by nothing during its own review, and breaks the index for every review after it merges. The step decides whether the check reports it. Found by Melian's sixth round on [pull request #122](https://github.com/melian-agent/melian/pull/122).
+- What counts as kept. Matching a sentence after normalisation misses a rephrased clause; quoting it under a "Retired" heading is one way to keep or retire it by name.
+- A decision retired whole, as [the unconfined decision](2026-10-14-static-checks-run-unconfined.md) retires the sandbox decision. Listing every sentence draws a long finding that only a dismissal answers.
+- Severity. P2 resolves `acknowledge` under the default table; [readiness question 14](../readiness-check-questions.md) asks whether it starts there or as an advisory.
+- Scope: which files the check runs on, and whether headings, code and the `Supersedes:` line itself count as clauses.

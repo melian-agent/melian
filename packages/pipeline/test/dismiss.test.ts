@@ -797,6 +797,154 @@ describe("recording a dismissal", () => {
 		expect(verdict.dismissed.map((each) => each.id)).toEqual([id]);
 	});
 
+	describe("a working-tree policy that changed since the review read it", () => {
+		const lensOverride = (...extra: string[]) =>
+			lines("---", "name: correctness", "extends: correctness", ...extra, "---", "");
+		const budget = ["budget: { findings: 8, tokens: 600000, tools: 90 }"];
+
+		// Runs a review under `files`, replaces them with `after`, and dismisses the finding it reported.
+		async function dismissAfter(
+			files: Record<string, string>,
+			after: Record<string, string | null>,
+			options: { reviewWithFiles?: boolean; from?: string } = {},
+		) {
+			const harness = await reviewHarness(createMemoryStorage());
+			scriptFinding();
+			const changeset = await Changeset.resolve(repo, "main...feature");
+			writeFiles(repo, files);
+			// The lenses as the working tree defines them at the root, so findings carry the override's version.
+			// A nested lens of the same name would keep the root lens off its folder, so clear that, as if the finding's
+			// file had moved there after the root lens reviewed it.
+			const ran = options.reviewWithFiles
+				? await Lens.load(repo, { kind: "worktree" }, [options.from ?? "."])
+				: lenses;
+			for (const lens of ran) {
+				Object.defineProperty(lens, "nearer", { value: undefined });
+				Object.defineProperty(lens, "scope", { value: "" });
+			}
+			const { findings } = await reviewChangeset({
+				harness,
+				changeset,
+				config,
+				lenses: ran,
+				standards: [],
+				models: fake.review,
+				checks: [...deterministicRan],
+				policy: { kind: "worktree" },
+			});
+			for (const [file, text] of Object.entries(after)) {
+				if (text === null) rmSync(join(repo, file));
+				else writeFiles(repo, { [file]: text });
+			}
+			return dismiss(harness, findings[0]!.properties.id);
+		}
+
+		it("decides a dismissal again after a preference file that names models only, and a budget-only lens override, are removed", async () => {
+			const recorded = await dismissAfter(
+				{
+					"melian.local.yaml": 'models:\n  heavy: { model: "other/model" }\n',
+					".melian/lenses/correctness/LENS.md": lensOverride(...budget),
+				},
+				{ "melian.local.yaml": null, ".melian/lenses/correctness/LENS.md": null },
+			);
+
+			expect(recorded.finding.properties.status).toBe("dismissed");
+			expect(recorded.verdict.dismissed.map((each) => each.id)).toEqual([recorded.finding.properties.id]);
+		});
+
+		it("decides a dismissal again after only the preference file is removed", async () => {
+			const recorded = await dismissAfter(
+				{ "melian.local.yaml": 'models:\n  heavy: { model: "other/model" }\n' },
+				{ "melian.local.yaml": null },
+			);
+
+			expect(recorded.finding.properties.status).toBe("dismissed");
+		});
+
+		it("decides a dismissal again after only the budget-only lens override is removed", async () => {
+			const recorded = await dismissAfter(
+				{ ".melian/lenses/correctness/LENS.md": lensOverride(...budget) },
+				{ ".melian/lenses/correctness/LENS.md": null },
+			);
+
+			expect(recorded.finding.properties.status).toBe("dismissed");
+		});
+
+		it("refuses when a removed preference file wrote a resolution", async () => {
+			await expect(
+				dismissAfter({ "melian.local.yaml": "resolution:\n  P1: advisory\n" }, { "melian.local.yaml": null }),
+			).rejects.toMatchObject({ code: "adjudicationFailed" });
+		});
+
+		it("refuses when a removed lens override changed the lens's declared resolution", async () => {
+			await expect(
+				dismissAfter(
+					{ ".melian/lenses/correctness/LENS.md": lensOverride("resolution: { ceiling: advisory }") },
+					{ ".melian/lenses/correctness/LENS.md": null },
+				),
+			).rejects.toMatchObject({ code: "adjudicationFailed" });
+		});
+
+		it("decides a dismissal again after a lens variant in a folder the finding is not under is removed", async () => {
+			const recorded = await dismissAfter(
+				{ "other/.melian/lenses/correctness/LENS.md": lensOverride("resolution: { ceiling: advisory }") },
+				{ "other/.melian/lenses/correctness/LENS.md": null },
+			);
+
+			expect(recorded.finding.properties.status).toBe("dismissed");
+		});
+
+		it("decides a dismissal again after a budget-only override its findings carry the version of is removed", async () => {
+			const recorded = await dismissAfter(
+				{ ".melian/lenses/correctness/LENS.md": lensOverride(...budget) },
+				{ ".melian/lenses/correctness/LENS.md": null },
+				{ reviewWithFiles: true },
+			);
+
+			expect(recorded.finding.properties.status).toBe("dismissed");
+		});
+
+		it("refuses when removing a budget-only override moves its findings to a nearer lens that declares a resolution", async () => {
+			await expect(
+				dismissAfter(
+					{
+						".melian/lenses/correctness/LENS.md": lensOverride(...budget),
+						"src/.melian/lenses/correctness/LENS.md": lensOverride("resolution: { ceiling: advisory }"),
+					},
+					{ ".melian/lenses/correctness/LENS.md": null },
+					{ reviewWithFiles: true },
+				),
+			).rejects.toMatchObject({ code: "adjudicationFailed" });
+		});
+
+		it("refuses when removing the variant a moved report carries drops the resolution it declared", async () => {
+			const declared = lensOverride(...budget, "resolution: { ceiling: advisory }");
+			await expect(
+				dismissAfter(
+					{ "docs/.melian/lenses/correctness/LENS.md": declared },
+					{ "docs/.melian/lenses/correctness/LENS.md": null },
+					{ reviewWithFiles: true, from: "docs" },
+				),
+			).rejects.toMatchObject({ code: "adjudicationFailed" });
+		});
+
+		it("refuses when a removed preference file wrote a rule alias", async () => {
+			await expect(
+				dismissAfter(
+					{ "melian.local.yaml": "ruleAliases:\n  null-dereference: [other-rule]\n" },
+					{ "melian.local.yaml": null },
+				),
+			).rejects.toMatchObject({ code: "adjudicationFailed" });
+		});
+
+		it("names the cause once in the refusal", async () => {
+			await expect(dismissAfter({}, { "src/melian.yaml": "resolution:\n  P1: advisory\n" })).rejects.toMatchObject({
+				message:
+					"the dismissal is recorded, but the verdict was not decided again: the resolution policy changed since the review read it, so its verdict would be decided under another; run melian review again",
+			});
+		});
+	});
+
 	it("decides a dismissal for a task an older Melian created, whose input names no resolution policy", async () => {
 		const harness = await reviewHarness(createMemoryStorage());
 		scriptFinding();
@@ -817,12 +965,71 @@ describe("recording a dismissal", () => {
 			const index = await tx.doc(ReviewIndex, root.id);
 			const known = index.reviews[key]!.adjudication!;
 			const { resolutionPolicy, ...older } = JSON.parse(known.input) as AdjudicationTaskInput;
-			expect(resolutionPolicy).toMatch(/^[0-9a-f]{16}$/);
+			expect(resolutionPolicy).toMatch(/^2:[0-9a-f]{16}$/);
 			known.input = JSON.stringify(older);
 		}, context);
 
 		const { verdict } = await dismiss(harness, findings[0]!.properties.id);
 		expect(verdict.dismissed).toHaveLength(1);
+	});
+
+	describe("a review whose adjudication task a build before the fingerprint recipe change created", () => {
+		// The fingerprint main at 4471af34 stored in the task input for this repository, with no lens or preference file
+		// in the working tree. It hashes the policy, lens variants keyed by version included, so it changes only when a
+		// built-in lens or the stored policy shape does; record it again from that build if one does.
+		const recordedByPreviousBuild = "e6516af28ff6017a";
+
+		async function reviewedByPreviousBuild() {
+			const harness = await reviewHarness(createMemoryStorage());
+			scriptFinding();
+			const changeset = await Changeset.resolve(repo, "main...feature");
+			const { findings } = await reviewChangeset({
+				harness,
+				changeset,
+				config,
+				lenses,
+				standards: [],
+				models: fake.review,
+				checks: [...deterministicRan],
+				policy: { kind: "worktree" },
+			});
+			const root = await harness.root(context);
+			await root.commit(async (tx) => {
+				const known = (await tx.doc(ReviewIndex, root.id)).reviews[revisionKey(changeset.revision)]!.adjudication!;
+				const input = JSON.parse(known.input) as AdjudicationTaskInput;
+				known.input = JSON.stringify({ ...input, resolutionPolicy: recordedByPreviousBuild });
+			}, context);
+			return { harness, id: findings[0]!.properties.id };
+		}
+
+		it("decides a dismissal again when the policy is unchanged", async () => {
+			const { harness, id } = await reviewedByPreviousBuild();
+
+			const { verdict } = await dismiss(harness, id);
+
+			expect(verdict.dismissed.map((each) => each.id)).toEqual([id]);
+		});
+
+		it("decides a dismissal when the input names a fingerprint but no policy source to compare it with", async () => {
+			const { harness, id } = await reviewedByPreviousBuild();
+			const root = await harness.root(context);
+			await root.commit(async (tx) => {
+				const [entry] = Object.values((await tx.doc(ReviewIndex, root.id)).reviews);
+				const { policy: _, ...input } = JSON.parse(entry!.adjudication!.input) as AdjudicationTaskInput;
+				entry!.adjudication!.input = JSON.stringify(input);
+			}, context);
+
+			const { verdict } = await dismiss(harness, id);
+
+			expect(verdict.dismissed.map((each) => each.id)).toEqual([id]);
+		});
+
+		it("still refuses when the policy changed", async () => {
+			const { harness, id } = await reviewedByPreviousBuild();
+			writeFiles(repo, { "src/melian.yaml": "resolution:\n  P1: advisory\n" });
+
+			await expect(dismiss(harness, id)).rejects.toMatchObject({ code: "adjudicationFailed" });
+		});
 	});
 
 	it("ends the adjudication, naming the lens file, when a lens the policy declares can no longer be read", async () => {
