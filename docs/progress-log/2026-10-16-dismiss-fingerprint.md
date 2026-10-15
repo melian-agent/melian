@@ -1,0 +1,3 @@
+# A dismissal survives a budget-only lens override
+
+`melian dismiss` refused to decide a verdict again after an uncommitted lens file that raised a budget was removed, because the adjudication fingerprint listed lens variants by version and a version hashes the budget. The fingerprint now lists each variant by name, scope, and declared resolution, so only a change that decides resolution refuses. A models-only preference file never reached the fingerprint; a test now guards that too. The refusal named its remedy twice, and now names it once. [The decision](../decisions/2026-10-16-resolution-fingerprint-holds-resolution-only.md) records the choice.
