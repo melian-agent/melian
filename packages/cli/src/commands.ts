@@ -105,6 +105,7 @@ export async function review(
 		readonly rerun: boolean;
 		readonly walkthrough?: boolean;
 		readonly trustHead?: boolean;
+		readonly cold?: boolean;
 	},
 ): Promise<number> {
 	const target = parseTarget(argument);
@@ -200,7 +201,16 @@ export async function review(
 		const rootConversationId = (await harness.root(context)).id;
 		const checks = await runChecks(
 			harness,
-			{ rootConversationId, changeset, config: checksConfig, source, tier, rerunFailed: options.rerun, writer },
+			{
+				rootConversationId,
+				changeset,
+				config: checksConfig,
+				source,
+				tier,
+				rerunFailed: options.rerun,
+				writer,
+				...(options.cold === true ? { cold: true } : {}),
+			},
 			context,
 		);
 		const callerLenses = new Set(

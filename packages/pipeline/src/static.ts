@@ -52,6 +52,8 @@ export interface StaticRunInput {
 	 * another of the same target reruns only what changed since. Without it, results are kept for this head alone.
 	 */
 	readonly target?: string;
+	/** Run the mutation check without any earlier head's results, as a run that may approve must. */
+	readonly cold?: boolean;
 	/** Records and clears supervised process identities for durable recovery. */
 	readonly mutationProcess?: MutationProcessHooks;
 	/** Whether the run still answers to the latest review of its revision; absence means it does. */
@@ -63,6 +65,8 @@ export type StaticRun =
 	| {
 			readonly status: "ran";
 			readonly log: ToolLog;
+			/** Why a mutation run that reused an earlier head's results cannot let the review pass. */
+			readonly provisional?: string;
 			readonly notes: readonly string[];
 			readonly baseLog?: ToolLog;
 			readonly snapshots?: EnolaSnapshot[];

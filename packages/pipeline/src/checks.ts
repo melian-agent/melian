@@ -47,6 +47,7 @@ import { ToolProvisioning } from "./tool-provisioning.ts";
  */
 export type CheckRunRecord =
 	| { name: string; status: "ran"; version?: string; findings: number; notes: string[]; snapshots?: EnolaSnapshot[] }
+	| { name: string; status: "provisional"; version?: string; findings: number; notes: string[]; reason: string }
 	| { name: string; status: "skipped"; reason: string; cause?: MutationSkipCause }
 	| { name: string; status: "failed"; reason: string; error: string };
 
@@ -73,11 +74,14 @@ type Runs = {
 
 export const ChecksDocument = defineDoc<Runs>({
 	kind: "melian.checks",
-	version: 3,
+	version: 4,
 	scope: "conversation",
 	history: "rewindable",
 	fork: "asOf",
 	initial: () => ({ runs: {}, tasks: {} }),
+	// Version 4 lets a mutation record be `provisional`; a version 3 document has none, and reads unchanged. An older
+	// Melian refuses version 4, so it never takes a provisional record for a run that may approve.
+	migrate: (value) => value as Runs,
 });
 
 export const MutationProcesses = defineDoc<{ trees: Record<string, MutationTreeRecord> }>({
@@ -110,6 +114,8 @@ interface CheckInput {
 	readonly config: MelianConfig;
 	readonly source: RepositorySource;
 	readonly writer?: WriterTrust | undefined;
+	// Whether the review asked for a mutation run that reuses no earlier head's results. Absent in an earlier build's input.
+	readonly cold?: boolean;
 	// The run identity, short of its task, that owns the revision's mutation check while it is the latest to ask. Absent in
 	// an input an earlier build stored.
 	readonly authority?: string;
@@ -121,6 +127,7 @@ type Outcome =
 			readonly report: CheckReport;
 			readonly version?: string;
 			readonly snapshots?: EnolaSnapshot[];
+			readonly provisional?: string;
 	  }
 	| {
 			readonly status: "skipped";
@@ -166,7 +173,7 @@ async function runStatic(
 	if (!settings.enabled) return { status: "skipped", reason: `static.${tool}.enabled is false` };
 	const leaveNotes: string[] = [];
 	// Only mutation runs head code, and it gets its leave only past the guard below.
-	let mutationLeave: { headCode: HeadTrust; target: string } | Record<string, never> = {};
+	let mutationLeave: { headCode: HeadTrust; target: string; cold?: true } | Record<string, never> = {};
 	if (tool === "mutation") {
 		// Asked first: a change with nothing to judge runs no head code, so it needs no leave and passes on any host.
 		if (!MutationRun.judges(Revision.from(input.changeset.revision)))
@@ -176,7 +183,11 @@ async function runStatic(
 			return { status: "skipped", reason: mutationSkips.headNotAllowed(leave.detail), cause: "headNotAllowed" };
 		}
 		if (leave.by === "reviewer") leaveNotes.push(trustedHeadNote);
-		mutationLeave = { headCode: leave.by, target: input.changeset.id };
+		mutationLeave = {
+			headCode: leave.by,
+			target: input.changeset.id,
+			...(input.cold === true ? { cold: true } : {}),
+		};
 	}
 	if (env === undefined) {
 		throw new CheckError(
@@ -231,6 +242,7 @@ async function runStatic(
 		report: { findings: report.findings, notes },
 		version: head.log.runs[0].tool.driver.version,
 		...(head.snapshots === undefined ? {} : { snapshots: head.snapshots }),
+		...(head.provisional === undefined ? {} : { provisional: head.provisional }),
 	};
 }
 
@@ -344,14 +356,23 @@ const CheckTask = defineTask<CheckInput, { phase: "run" }, CheckRunRecord>({
 								reason: outcome.reason,
 								...(outcome.cause === undefined ? {} : { cause: outcome.cause }),
 							}
-						: {
-								name: check,
-								status: "ran",
-								...(outcome.version === undefined ? {} : { version: outcome.version }),
-								findings: outcome.report.findings.length,
-								...(outcome.snapshots === undefined ? {} : { snapshots: outcome.snapshots }),
-								notes: [...outcome.report.notes],
-							};
+						: outcome.provisional !== undefined
+							? {
+									name: check,
+									status: "provisional",
+									...(outcome.version === undefined ? {} : { version: outcome.version }),
+									findings: outcome.report.findings.length,
+									notes: [...outcome.report.notes],
+									reason: outcome.provisional,
+								}
+							: {
+									name: check,
+									status: "ran",
+									...(outcome.version === undefined ? {} : { version: outcome.version }),
+									findings: outcome.report.findings.length,
+									...(outcome.snapshots === undefined ? {} : { snapshots: outcome.snapshots }),
+									notes: [...outcome.report.notes],
+								};
 			} catch (error) {
 				record = failure(check, error);
 			}
@@ -389,6 +410,7 @@ interface ChecksInput {
 	readonly source: RepositorySource;
 	readonly tier: string;
 	readonly writer?: WriterTrust | undefined;
+	readonly cold?: boolean;
 	// A rerun runs only `checks`, and keeps the earlier run's records for the rest.
 	readonly rerun?: { readonly checks: readonly string[]; readonly kept: Readonly<Record<string, CheckRunRecord>> };
 }
@@ -408,7 +430,7 @@ const ChecksTask = defineTask<ChecksInput, ChecksState, CheckRunRecord[]>({
 	initial: () => ({ phase: "start" }),
 	phases: {
 		start: async (task, runtime, context) => {
-			const { changeset, config, source, tier, rerun, writer } = task.input;
+			const { changeset, config, source, tier, rerun, writer, cold } = task.input;
 			const run = identityKey({ ...task.input.identity, task: runtime.taskId });
 			let checks: string[];
 			try {
@@ -439,6 +461,7 @@ const ChecksTask = defineTask<ChecksInput, ChecksState, CheckRunRecord[]>({
 								config,
 								source,
 								writer,
+								...(cold === true ? { cold } : {}),
 								authority: identityKey({ ...task.input.identity, task: runtime.taskId }),
 							},
 							{ ownership: { kind: "task", taskId: runtime.taskId } },
@@ -524,6 +547,11 @@ export interface RunChecksInput {
 	readonly writer?: WriterTrust;
 	/** Run again the checks that failed in an earlier run with the same identity, or the whole tier if that run did not complete. */
 	readonly rerunFailed?: boolean;
+	/**
+	 * Run `static.mutation` with no earlier head's results, so its result can let the review pass. Without it, a later
+	 * head of the same review target reuses the last judged head's, and the check is `provisional`.
+	 */
+	readonly cold?: boolean;
 }
 
 // Canonical JSON: object keys sorted, so two equal configurations hash alike whatever order their files merged in.
@@ -553,8 +581,10 @@ async function runIdentity(input: RunChecksInput, tier: string): Promise<Omit<Ru
 			}
 		: undefined;
 	const writer = mutating ? (input.writer ?? null) : undefined;
+	// A cold run is another run of the check: a provisional result of the same head must not stand in for it.
+	const cold = mutating && input.cold === true ? true : undefined;
 	const policy = createHash("sha256")
-		.update(canonical({ config: input.config, source: input.source, tools, stryker, writer }))
+		.update(canonical({ config: input.config, source: input.source, tools, stryker, writer, cold }))
 		.digest("hex")
 		.slice(0, 16);
 	return { base, head, tier, policy };
@@ -608,6 +638,7 @@ export async function runChecks(harness: Harness, input: RunChecksInput, context
 		source: input.source,
 		tier,
 		writer: input.writer,
+		...(input.cold === true ? { cold: true } : {}),
 	};
 	// An unknown tier fails the checks task with its own error, so it is not this call's to report.
 	let knownTier = true;

@@ -195,7 +195,33 @@ describe("the --trust-head flag", () => {
 		const review = vi.spyOn(commands, "review").mockResolvedValue(0);
 		try {
 			expect(await main(args as string[], io)).toBe(0);
-			expect(review).toHaveBeenCalledExactlyOnceWith(io, "#7", { rerun: false, walkthrough: true, trustHead });
+			expect(review).toHaveBeenCalledExactlyOnceWith(io, "#7", {
+				rerun: false,
+				walkthrough: true,
+				trustHead,
+				cold: false,
+			});
+		} finally {
+			review.mockRestore();
+		}
+	});
+});
+
+describe("the --cold flag", () => {
+	it.each([
+		[["review", "#7"], false],
+		[["review", "#7", "--cold"], true],
+	])("asks the review for a cold mutation run only when given: %j", async (args, cold) => {
+		const io = output();
+		const review = vi.spyOn(commands, "review").mockResolvedValue(0);
+		try {
+			expect(await main(args as string[], io)).toBe(0);
+			expect(review).toHaveBeenCalledExactlyOnceWith(io, "#7", {
+				rerun: false,
+				walkthrough: true,
+				trustHead: false,
+				cold,
+			});
 		} finally {
 			review.mockRestore();
 		}

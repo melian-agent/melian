@@ -1,0 +1,138 @@
+{
+	"revision": "f419071a8866b947e465f03cbb6c5c05ef3a0374..594aaaa3b547181b965bbd0d643de2cc4cafc6ba",
+	"status": "findings",
+	"checks": {
+		"runs": {
+			"f419071a8866b947e465f03cbb6c5c05ef3a0374 594aaaa3b547181b965bbd0d643de2cc4cafc6ba full 3f7ee0479c5968f3 7": {
+				"guardrails": {
+					"name": "guardrails",
+					"status": "ran",
+					"findings": 1,
+					"notes": []
+				}
+			}
+		},
+		"tasks": {
+			"f419071a8866b947e465f03cbb6c5c05ef3a0374 594aaaa3b547181b965bbd0d643de2cc4cafc6ba full 3f7ee0479c5968f3 0": 7
+		},
+		"owners": {
+			"f419071a8866b947e465f03cbb6c5c05ef3a0374..594aaaa3b547181b965bbd0d643de2cc4cafc6ba": "f419071a8866b947e465f03cbb6c5c05ef3a0374 594aaaa3b547181b965bbd0d643de2cc4cafc6ba full 3f7ee0479c5968f3 7"
+		}
+	},
+	"verdicts": {
+		"verdicts": {
+			"f419071a8866b947e465f03cbb6c5c05ef3a0374..594aaaa3b547181b965bbd0d643de2cc4cafc6ba": {
+				"status": "findings",
+				"blocking": false,
+				"findings": {
+					"block": [],
+					"acknowledge": [
+						{
+							"ruleId": "guardrail/forbidden-patterns",
+							"level": "warning",
+							"message": {
+								"text": "Finish it before merging."
+							},
+							"partialFingerprints": {
+								"melian/v1": "cf24bd03b4adb16f"
+							},
+							"locations": [
+								{
+									"physicalLocation": {
+										"artifactLocation": {
+											"uri": "notes.txt"
+										},
+										"region": {
+											"startLine": 2,
+											"snippet": {
+												"text": "TODO write the test"
+											}
+										}
+									}
+								}
+							],
+							"properties": {
+								"id": "cf24bd03b4adb16f",
+								"path": "notes.txt",
+								"occurrence": 0,
+								"cause": "introduced",
+								"trigger": {
+									"file": "notes.txt",
+									"index": 0,
+									"snippet": "TODO write the test"
+								},
+								"severity": "P2",
+								"guardrail": {
+									"rules": [
+										"todo"
+									]
+								},
+								"explanation": {
+									"what": "This line matches the forbidden-patterns rule todo.",
+									"whyHere": "Finish it before merging.",
+									"whatToDo": "Rewrite the line so it no longer matches."
+								},
+								"source": {
+									"check": "guardrails"
+								},
+								"status": "new",
+								"reportedBy": [
+									{
+										"check": "guardrails"
+									}
+								],
+								"resolution": "acknowledge",
+								"decidedBy": {
+									"check": "guardrails",
+									"rule": "guardrail/forbidden-patterns/todo",
+									"requirement": {
+										"entry": "built-in"
+									}
+								}
+							}
+						}
+					],
+					"advisory": [],
+					"silent": []
+				},
+				"dismissed": [],
+				"notRun": [],
+				"ran": [
+					{
+						"name": "guardrails",
+						"status": "ran",
+						"findings": 1,
+						"notes": []
+					}
+				]
+			}
+		},
+		"provenance": {
+			"f419071a8866b947e465f03cbb6c5c05ef3a0374..594aaaa3b547181b965bbd0d643de2cc4cafc6ba": {
+				"verifierVersion": "4190289e598badf0",
+				"kind": "range",
+				"policy": "revision:f419071a8866b947e465f03cbb6c5c05ef3a0374",
+				"manifest": [
+					"guardrails"
+				],
+				"lenses": []
+			}
+		},
+		"details": {
+			"f419071a8866b947e465f03cbb6c5c05ef3a0374..594aaaa3b547181b965bbd0d643de2cc4cafc6ba": {
+				"policy": "revision:f419071a8866b947e465f03cbb6c5c05ef3a0374",
+				"manifest": [
+					"guardrails"
+				],
+				"lenses": [],
+				"standards": []
+			}
+		},
+		"decisions": {
+			"f419071a8866b947e465f03cbb6c5c05ef3a0374..594aaaa3b547181b965bbd0d643de2cc4cafc6ba": {
+				"task": 12,
+				"findingsVersion": 1
+			}
+		}
+	}
+}

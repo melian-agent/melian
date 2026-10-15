@@ -6,33 +6,46 @@ The mutation decision's "Related tests" and "Bounds" paragraphs stay superseded 
 
 [The rerun decision](2026-10-15-mutation-reruns-later-changes-only.md) set the direction and listed the open questions; this file is the full decision it asked for, and answers them in the next section. The code in [pull request #125](https://github.com/melian-agent/melian/pull/125) was written before this file was attacked, because its brief predated the rule that the full decision comes first; that pull request's review rounds were the attack.
 
+## Reuse while iterating, final run cold
+
+Problem: four review rounds each found another way a reused kill goes stale. A change Stryker's diff does not read, such as a configuration, a setup file, a test helper, a snapshot or a fixture, keeps every earlier kill. So does a change to another mutated file that a kill depended on. Each guess at which changed files are safe was wrong for some file a test loads.
+
+Choice, in the maintainer's words: "Reuse while iterating, final run cold." A run that builds on an earlier head is fast and provisional. Only a cold run, the normal full run with no earlier results, can let a review pass.
+
+- A run is provisional when Melian handed Stryker an earlier head's report. That is Melian's own fact, not the head's: the count of reused results in Stryker's log is the head's text, so a head that printed "0 of 5 reused" would otherwise read as cold.
+- A provisional run's check record has the status `provisional`, with the reason "provisional: Stryker reused X of Y results from an earlier head; a cold run decides approval", or, when the log gives no count, that Stryker was handed an earlier head's results. The record still carries its findings and version, so its findings count as a run's do.
+- A provisional record leaves the review `not reviewed`, even with no finding. The verdict is never `passed`, the exit code is 2, and the published `melian/review` status is `error`, naming the provisional check. A blocking finding still blocks. The terminal, the JSON, the review body and the ledger list the check under "Provisional", apart from the checks that did not run.
+- `melian review --cold` runs the check with no earlier results. It is part of the run's identity, so a provisional run of the same head never stands in for it. A cold run still publishes its results, so the next head can build on it.
+- `melian publish` publishes a provisional review as not yet approved rather than refusing it. Its status is `error`, never `success`, and its body says the result is provisional and that a cold run decides approval. Problem with refusing: the pull request would then carry no status and none of the iteration's findings, and an absent status is easier to mistake for a pass than one that says "not reviewed".
+- Iterate with reuse, and run `--cold` before the queue.
+
 ## The open questions, answered
 
 - The partition key holds only what stays fixed across a pull request's heads: the review target, the base, the base-policy commit, the Stryker version and the installation identity. The mutate entries belong to a run.
 - Both runs trusted alike. A run reuses a partition only when the leave it records equals the run's own, `writer` or `reviewer`.
-- The plant-then-revert forgery. A hook can be planted in a configuration, a setup file, a test helper or a production file the check sets aside. Stryker's diff does not read any of those, so the head that reverts the hook changes such a file and starts cold. A hook in a test file is reverted by a change to that file, which reruns every mutant that file's tests kill. One case stays open: a hook in a production file the run mutates, reverted while the file keeps other changes. Stryker reruns that file's own mutants but reuses kills elsewhere that the hook planted.
-- Whether the final run reuses the cache waits on [readiness question 16](../readiness-check-questions.md). Until the maintainer answers, a reviewer who wants a cold final run reviews the head as a bare commit, `origin/main...<sha>`, whose changeset ID is that head's alone.
+- The plant-then-revert forgery. A head can plant a hook that makes every mutant read `Killed` and a later head revert it, and a provisional run can keep the planted kills. The cold final run reruns everything, so the planting never decides approval.
+- Whether the final run reuses the cache: [readiness question 16](../readiness-check-questions.md), answered by the maintainer. It does not; it runs cold.
 - Publication only from a descendant head: a run never publishes over a newer head's results, as the last section says.
-- What starts cold: a force-push or rebase that drops the last judged head, a base change, an installation change, a different leave, and a change to code Stryker's diff does not read.
+- What starts cold: `--cold`, a force-push or rebase that drops the last judged head, a base change, an installation change, and a different leave.
 
 ## The review target is the changeset ID
 
-The changeset ID already names a review target independent of its head. A pull request's is a hash of its provider, repository and number. A branch range's is a hash of the range mode and the canonical names of both sides, so `origin/main...HEAD` on one branch gives the same ID at every head. A range that names a bare commit hashes the commit, so it gets an ID per head: it runs cold at each new head and warm only on a rerun of the same one, as the rerun decision requires. The check task already stores the changeset, so a task a crash left pending resumes with its target. A caller of `runStaticTool` that names no target shares nothing: the head stands in for it.
+The changeset ID already names a review target independent of its head. A pull request's is a hash of its provider, repository and number. A branch range's is a hash of the range mode and the canonical names of both sides, so `origin/main...HEAD` on one branch gives the same ID at every head. A range that names a bare commit hashes the commit, so it gets an ID per head: it runs cold at each new head and warm only on a rerun of the same one. The check task already stores the changeset, so a task a crash left pending resumes with its target. A caller of `runStaticTool` that names no target shares nothing: the head stands in for it.
 
 ## The partition stores the judged head and its leave
 
 `<cache>/mutation/<identity>/partition.json` holds `{ version: 3, head, trust, report }`: the last judged head, the leave its tests ran under (`writer` or `reviewer`), and Stryker's incremental report. One file, replaced by one rename, so the head and the report never come from two runs. The identity hashes the review target, the base, the base-policy commit, the Stryker version and the installation identity, with the identity version 3; the head and the mutate entries are not in it.
 
-The leave is the host's decision for the run, `StaticRunInput.headCode`, which the check task takes from `WriterTrust`. A run reuses the partition only when the recorded leave equals its own. A partition with any other value, or none, starts cold. The ancestor test is `git merge-base --is-ancestor <judged> <head>`; any exit but 0 starts cold.
-
-A run also starts cold when a file Stryker's incremental mode does not read changed since the judged head. Stryker diffs only the files it mutates and the test files it ran, the report's `testFiles`. Problem: a change anywhere else can change what a reused kill meant, and Stryker would never see it. Example: a head that edits `vite.config.ts`, a setup file under any name, a test helper, a snapshot or a fixture, so that a strong test no longer asserts, leaves every earlier kill reused. The first version listed configuration and setup files by name, and the next round found three names it missed; the second allowed only code files, and the round after found snapshots and text fixtures. Solution: list `git diff --name-only --no-renames` since the judged head, and start cold on any file that is not mutated in this run, not a test file in the report, not named as a test (`.test.` or `.spec.`), which Stryker will see, and not Markdown outside the test, fixture and golden directories, which no test loads. A production file changed since is in the pull request's diff, so it is mutated, unless the check sets it aside, and then the run starts cold. A failed listing starts cold too.
+The leave is the host's decision for the run, `StaticRunInput.headCode`, which the check task takes from `WriterTrust`. A run reuses the partition only when the recorded leave equals its own. A partition with any other value, or none, starts cold. The ancestor test is `git merge-base --is-ancestor <judged> <head>`; any exit but 0 starts cold. Nothing else is guessed: what reruns is Stryker's to decide.
 
 A run that starts cold says why in its notes. The reasons read:
 
+- "the review asked for a cold run with --cold";
 - "this review target has no earlier judged head";
 - "the run that judged ... was trusted as ..., not as ...";
-- "the last judged head ... is not in this head's history, which was rewritten";
-- "... changed since the last judged head ..., and Stryker's incremental mode does not read it".
+- "the last judged head ... is not in this head's history, which was rewritten".
+
+The check records of a run and the verdict that read them are stored shapes. The checks document rose to version 4 and the verdicts document to version 9, so an older Melian refuses them rather than read a provisional record as a run; a reopen test reads what versions 3 and 8 wrote.
 
 ## What Stryker reruns, as read in its code
 
@@ -56,14 +69,20 @@ A related run that fails or reports `NoCoverage` repeats with the whole suite, a
 
 The head's tests never see the cache: the run writes staged copies in its scratch. Melian publishes after a successful run, only if no later review has taken the revision (`holdsAuthority`). The published report must be a regular file within 16 MiB, not a symlink, and parse as JSON; otherwise the partition keeps what it had. Reads refuse symlinks and files over the bound, with 1 KiB more for the partition's wrapping. An unreadable, oversized or malformed partition is removed before Stryker starts. The scratch sweep removes dead partial writes and keeps completed partitions. The installation identity is unchanged: a digest of each lockfile the checkout has, `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, `bun.lock` or `bun.lockb`, the resolved versions of Stryker core, its Vitest runner and Vitest, the Node runtime version, and the selection version. Stryker reuses a kill by test identity and the linker supplies the checkout's dependencies, so a dependency change starts cold even at an identical head. A version-one or version-two partition is never read, and a reopen test reads one written by each earlier version's code.
 
+## The limits of a provisional result
+
+A provisional result is a guide for the next fix, not a judgement. These are the ways it can be stale, and the cold run is the remedy for each:
+
+- A change Stryker's diff does not read. Stryker diffs the files it mutates and the test files it ran. A changed configuration, setup file, test helper, snapshot or fixture, or a Markdown file a test reads, such as a skill or a lens file, can change what a reused kill meant.
+- A kill that depends on another mutated file. Stryker reruns a changed file's own mutants, not the mutants of other files whose tests reach it.
+- A file named as a test that is fixture data, such as a golden's `*.test.ts`, is not a test Stryker runs.
+- Reuse is per test file, not per test. Stryker's Vitest runner 10.0.0 reports no test position, so the differ gives every test a range from the file's start to its end, and any change to a test file changes every test in it. Example: the second round on this pull request reused 1 of 170 results. Its fix pass had added tests to `mutation-static.test.ts`, which kills most of the check's mutants.
+
 ## What it gives up, beyond the rerun decision
 
-- A kill that depends on another mutated file. Stryker reruns a mutated file's own mutants when it changes, not the mutants of other files whose tests reach it. Example: `a.test.ts` kills a mutant of `a.ts` only through what `b.ts` returns; a later head that changes `b.ts` so the test would pass with the guard removed reruns `b.ts`'s mutants and reuses `a.ts`'s kill. Starting cold on every production change would close it, and would also make every fix pass that touches code run cold, which is what the maintainer asked to stop. This is Stryker's own model, the one the rerun decision chose; [readiness question 16](../readiness-check-questions.md)'s cold final run, or a review of the bare head commit, is the remedy until the maintainer rules.
-
-- Reuse is per test file, not per test. Stryker's Vitest runner 10.0.0 reports no test position, so the differ gives every test a range from the file's start to its end, and any change to a test file changes every test in it. Example: the second round on this pull request reused 1 of 170 results. Its fix pass had added tests to `mutation-static.test.ts`, which kills most of the check's mutants. A fix pass that adds its test to a small file, or a new one, keeps the rest.
-
 - A pull request reads policy from its base branch's tip, which moves whenever `main` takes a commit. Keying by the base-policy commit, as the rerun decision requires, makes the next push after such a move cold even when the merge base is unchanged. A branch range reads policy at its merge base and is not affected.
-- Concurrent runs of one target each publish their own head, and the last to finish wins, with one exception. Problem: a run of an older head, such as one a crash left pending that a later review resumed, could finish after a newer head's run and put the older results back, so the next head reran everything the newer one had judged. Solution: a run never publishes over a partition whose head has its own head in its history, as the rerun decision requires. The cost falls on a branch rewound to an exact older commit. Its run starts cold and is not stored, so the next push after it starts cold too, once. The read and the rename are not atomic, so two runs finishing in the same instant can still interleave.
+- The cold final run costs a full run per pull request. On a branch the size of [pull request #98](https://github.com/melian-agent/melian/pull/98)'s, that sits near the 7,200-second timeout.
+- Concurrent runs of one target each publish their own head, with one rule. Problem: a run of an older head, such as one a crash left pending that a later review resumed, could finish after a newer head's run and put the older results back, so the next head reran everything the newer one had judged. Solution: a run never publishes over a partition whose head has its own head in its history, as the rerun decision requires. The read of the held head, the check and the rename happen under one lock, a directory made with `mkdir` beside the partition, so a newer head cannot publish between them. A lock older than two minutes is a crashed holder's, and the next publish removes it. The cost falls on a branch rewound to an exact older commit: its run is not stored, so the next push after it starts cold too, once.
 
 ## The mutation decision's other clauses, restated
 
