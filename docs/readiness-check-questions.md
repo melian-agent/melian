@@ -54,8 +54,7 @@ Question 8, whether `acknowledge` should fail the status, has no answer from the
 
 ## Raised by the review loop's lessons
 
-These start at 14, because [pull request #98](https://github.com/melian-agent/melian/pull/98) adds questions 11 to 13, on fork heads and the mutation check.
+These follow questions 11 to 13, which [pull request #98](https://github.com/melian-agent/melian/pull/98) added.
 
-14. **Does a delta round set the required status?** [Delta re-review](decisions/2026-10-15-delta-re-review.md) makes the last round before the queue a full one, which the caller marks. A delta round between could still publish `melian/review` as passed on a sample of the change. Decide whether only a full round sets the status, or whether a delta round sets it and the queue rule alone demands the full one.
-15. **How strict is the supersession check?** [The check](decisions/2026-10-15-supersession-drop-check.md) reports a dropped clause at P2, which the default table resolves `acknowledge`, so a decision that retires another whole needs a dismissal with a reason. Decide whether it starts at P2, or as an advisory until a live measure shows its noise.
-16. **When does the review outcome task run?** [`melian learn`](decisions/2026-10-15-review-outcome-task.md) drafts guidance after a merge. Decide whether the coordinator runs it after every merge and turns each draft into a docs pull request, or runs it on demand, such as after a pull request that took more than four rounds.
+14. **How strict is the supersession check?** [The check](decisions/2026-10-15-supersession-drop-check.md) reports a dropped clause at P2, which the default table resolves `acknowledge`, so a decision that retires another whole needs a dismissal with a reason. Decide whether it starts at P2, or as an advisory until a live measure shows its noise.
+15. **When does the review outcome task run?** [`melian learn`](decisions/2026-10-15-review-outcome-task.md) drafts guidance after a merge. Decide whether the coordinator runs it after every merge and turns each draft into a docs pull request, or runs it on demand, such as after a pull request that took more than four rounds.

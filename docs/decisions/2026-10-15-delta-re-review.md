@@ -8,7 +8,8 @@ Choice: a delta round.
 
 - A delta round's lenses review the diff from the last reviewed head to the new head. The full range, base to new head, is their context: they may read any of it, and the change prompt names both.
 - Prior findings are carried. A prior open finding whose cause lines the delta did not touch stays open. One whose cause lines the delta changed goes to the verifier against the new head: confirmed or plausible keeps it open, refuted marks it resolved. Publication already tracks new, still open, and resolved findings by ID, as [cross-revision diffing](../design.md#cross-revision-diffing) sets out, so the ledger and the inline comments need no new state.
-- A full round runs at the start of a pull request and as the last round before the queue. A rebase or a base change also forces a full round, since the old head is no longer an ancestor.
+- A full round runs at the start of a pull request and as the last round before the queue, which the caller asks for. A rebase or a base change also forces a full round, since the old head is no longer an ancestor.
+- A delta round never sets `melian/review` to passed. Its findings publish as any round's do, and its status says a full round is owed, as a status that is not passing. Only a full round can pass the required check, so the queue cannot take a pull request on a sampled review. The round record of [the compare decision](2026-10-15-compare-addresses-revisions-by-head.md) stores which kind of round ran.
 - Deterministic checks run as they do today. The mutation check reruns only later changes, as [its own decision](2026-10-15-mutation-reruns-later-changes-only.md) sets out.
 
 Why the full round stays: a delta round cannot see a defect that sits in unchanged code and only now interacts with the fix. The full round before the queue is the sample that decides readiness, and the delta rounds between are the cheap ones.
