@@ -38,6 +38,7 @@ describe("the production verifier version", () => {
 			"A claim may cite other instances of one shape beside the one it reports.",
 			"Judge it at its own file and line, and confirm it when that instance traces.",
 			"Name in the correction each cited instance that code you read prevents; that instance does not refute the claim.",
+			"When code prevents the reported instance but not a cited one, answer plausible, not refuted, and name the instance that stands in the correction.",
 		]) {
 			expect(verifierInstructions).toContain(sentence);
 			expect(computeVerifierVersion(verifierInstructions.replace(sentence, ""))).not.toBe(verifierVersion);
