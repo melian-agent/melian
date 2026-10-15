@@ -1,6 +1,8 @@
 # How the mutation check reruns only later changes, as built
 
-Supersedes: [the mutation decision](2026-10-08-mutation-testing-as-a-static-check.md), only for its incremental cache: the `incremental: true` setting's line, and the paragraphs "Incremental results across runs" and "Cost". [The rerun decision](2026-10-15-mutation-reruns-later-changes-only.md) replaces that clause, and what the clause said that still holds is restated below. Every other clause of the mutation decision stands as written. This file records the choices the rerun decision leaves open.
+Supersedes: [the mutation decision](2026-10-08-mutation-testing-as-a-static-check.md), only for its incremental cache: the `incremental: true` setting's line, and the paragraphs "Incremental results across runs" and "Cost". Every other clause of the mutation decision stands as written.
+
+The rerun decision, `2026-10-15-mutation-reruns-later-changes-only.md` from [pull request #122](https://github.com/melian-agent/melian/pull/122), replaces that clause. What the clause said that still holds is restated below. This file records the choices the rerun decision leaves open.
 
 Problem: the rerun decision says what may be reused and when, not where the review target comes from, what the partition stores, or how a whole-suite repeat and the notes behave once results carry across heads.
 
