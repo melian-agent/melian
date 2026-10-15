@@ -127,10 +127,13 @@ export class MutationCache {
 			temporary,
 			`{"version":3,"head":${JSON.stringify(judged.head)},"trust":${JSON.stringify(judged.trust)},"cold":${judged.cold},"report":${report}}`,
 		);
-		await this.#locked(async () => {
-			if (await this.#replaces(judged.head, seen, ancestor)) await rename(temporary, this.file);
-		});
-		await rm(temporary, { force: true });
+		try {
+			await this.#locked(async () => {
+				if (await this.#replaces(judged.head, seen, ancestor)) await rename(temporary, this.file);
+			});
+		} finally {
+			await rm(temporary, { force: true });
+		}
 	}
 
 	// A directory made with mkdir is the lock: making it fails while another holds it. A lock older than `staleLockMs`
@@ -144,8 +147,8 @@ export class MutationCache {
 			} catch (error) {
 				if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
 				// A lock gone between the two calls reads as just made, and the next attempt takes it.
-				const made = (await stat(lock).catch(() => undefined))?.mtimeMs ?? Date.now();
-				if (Date.now() - made > staleLockMs) await rmdir(lock).catch(() => undefined);
+				const made = await stat(lock).catch(() => undefined);
+				if (made !== undefined && Date.now() - made.mtimeMs > staleLockMs) await this.#takeOver(lock, made.ino);
 				else await sleep(lockPollMs);
 			}
 		}
@@ -154,6 +157,14 @@ export class MutationCache {
 		} finally {
 			await rmdir(lock);
 		}
+	}
+
+	// Removes a stale lock only while it is still the one inspected, by its inode, so a waiter that was slower to look does
+	// not remove a lock another waiter has made since. The second look and the removal are two calls; a lock made in the
+	// moment between them can still go, which costs speed only, since the partition never decides approval.
+	async #takeOver(lock: string, inode: number): Promise<void> {
+		const now = await stat(lock).catch(() => undefined);
+		if (now?.ino === inode) await rmdir(lock).catch(() => undefined);
 	}
 
 	// Whether a run of `head` may replace what the partition holds: nothing, its own head, or a head in its history. A

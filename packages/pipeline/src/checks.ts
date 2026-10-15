@@ -592,7 +592,7 @@ async function runIdentity(input: RunChecksInput, tier: string): Promise<Omit<Ru
 		: undefined;
 	const writer = mutating ? (input.writer ?? null) : undefined;
 	// A cold run is another run of the check: a provisional result of the same head must not stand in for it.
-	const cold = mutating && input.cold === true ? true : undefined;
+	const cold = mutating ? input.cold === true : undefined;
 	const policy = createHash("sha256")
 		.update(canonical({ config: input.config, source: input.source, tools, stryker, writer, cold }))
 		.digest("hex")

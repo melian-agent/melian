@@ -304,7 +304,8 @@ export class MutationRun {
 		entries: readonly string[],
 		changed: readonly string[],
 		{ staged: incremental, earlier }: { staged: string; earlier: string },
-		// Whether Melian staged an earlier head's report. Decided here, not by the file: a cold run's head tests could write one.
+		// Whether a whole-suite repeat starts from the earlier head's report: only for a provisional run. Decided here, not
+		// by the file, which the head's tests could write.
 		reused: boolean,
 	): Promise<string> {
 		const require = createRequire(posix.join(this.#run.input.repoRoot, "node_modules/vitest/package.json"));
@@ -426,7 +427,8 @@ process.exitCode = result.code;
 		);
 		const log = posix.join(this.#scratch, "stryker.log");
 		// A report the revision committed must not stand in for the one this run writes.
-		const runner = await this.#runner(entries, changed, incremental, "report" in earlier);
+		// A run that keeps cold standing repeats from nothing: the head's tests ran beside the copy a repeat would restore.
+		const runner = await this.#runner(entries, changed, incremental, !cold);
 		const command = [
 			`cd ${quote(this.#root)}`,
 			`ulimit -f ${mutationFileLimit / 1024}`,

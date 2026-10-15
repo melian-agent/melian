@@ -27,7 +27,7 @@ import { MutationCache as MutationCacheV2 } from "./fixtures/mutation-cache-v2.t
 
 vi.mock("node:fs/promises", async (importOriginal) => {
 	const original = await importOriginal<typeof filesystem>();
-	return { ...original, open: vi.fn(original.open), mkdir: vi.fn(original.mkdir) };
+	return { ...original, open: vi.fn(original.open), mkdir: vi.fn(original.mkdir), stat: vi.fn(original.stat) };
 });
 
 const key = (changes: Partial<MutationCacheKey> = {}): MutationCacheKey => ({
@@ -358,6 +358,61 @@ it.each([
 	expect(JSON.parse(await readFile(cache.file, "utf8")).report).toEqual({ report: true });
 });
 
+it("leaves neither the lock nor the temporary file behind when the check throws", async () => {
+	const cache = await MutationCache.open(root, key());
+	await writeFile(cache.file, partition({ old: true }));
+	const staged = join(root, "staged.json");
+	await writeFile(staged, '{"report":true}');
+	await expect(
+		cache.publish(staged, writer(B), undefined, async () => {
+			throw new Error("git failed");
+		}),
+	).rejects.toThrow("git failed");
+	expect((await readdir(cache.directory)).filter((name) => name.endsWith(".tmp") || name.endsWith(".lock"))).toEqual(
+		[],
+	);
+	expect(JSON.parse(await readFile(cache.file, "utf8")).report).toEqual({ old: true });
+});
+
+it.each([
+	["takes the lock when it is gone between the failed make and the look", "gone"],
+	["leaves a stale lock another waiter replaced since the look", "replaced"],
+])("%s", async (_, race) => {
+	const cache = await MutationCache.open(root, key());
+	const lock = join(cache.directory, "partition.lock");
+	await mkdir(lock);
+	const made = await stat(lock);
+	const actual = vi.mocked(stat).getMockImplementation()!;
+	let looks = 0;
+	vi.mocked(stat).mockImplementation(async (path, options) => {
+		if (String(path) !== lock) return actual(path, options);
+		looks++;
+		if (race === "gone" && looks === 1) {
+			await rm(lock, { recursive: true, force: true });
+			throw Object.assign(new Error("gone"), { code: "ENOENT" });
+		}
+		// The first look sees a stale lock; by the second, another waiter has made a new one in its place.
+		if (race === "replaced" && looks === 1) return { ...made, mtimeMs: made.mtimeMs - staleLockMs - 1 } as never;
+		if (race === "replaced" && looks === 2) return { ...made, ino: made.ino + 1 } as never;
+		return actual(path, options);
+	});
+	const staged = join(root, "staged.json");
+	await writeFile(staged, '{"report":true}');
+	let released = false;
+	const release = sleep(300).then(async () => {
+		released = true;
+		await rm(lock, { recursive: true, force: true });
+	});
+	try {
+		await cache.publish(staged, writer(A), undefined, never);
+	} finally {
+		vi.mocked(stat).mockImplementation(actual);
+	}
+	expect(released).toBe(race === "replaced");
+	await release;
+	expect(JSON.parse(await readFile(cache.file, "utf8")).report).toEqual({ report: true });
+});
+
 it("fails rather than wait when the partition's lock cannot be made", async () => {
 	const cache = await MutationCache.open(root, key());
 	const staged = join(root, "staged.json");
@@ -411,7 +466,8 @@ it("keeps the partition when the staged report is corrupt, missing, a symlink, o
 	await writeFile(cache.file, partition({ old: true }));
 	await mkdir(join(root, "work"));
 	const staged = join(root, "work", "incremental.json");
-	const publish = () => cache.publish(staged, writer(B), undefined, never);
+	// B descends from A, so only the staged report's own faults can keep it out.
+	const publish = () => cache.publish(staged, writer(B), undefined, lineOf(A, B));
 	await writeFile(staged, "{corrupt");
 	await publish();
 	await rm(staged);

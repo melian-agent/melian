@@ -542,6 +542,22 @@ describe("Adjudication.adjudicate", () => {
 			expect(verdict.render()).not.toContain("did not run");
 		});
 
+		it("lists a provisional check apart from one that failed beside it", () => {
+			const failed = { name: "lens.security", status: "failed", reason: "the lens did not finish" } as const;
+			const verdict = new Adjudication({
+				findings: [],
+				manifest: [...manifest, "static.mutation", "lens.security"],
+				checks: [...checks, provisional, failed],
+				config: defaultConfig,
+			}).adjudicate();
+			const text = verdict.render();
+			expect(text).toContain(`Provisional:\n  static.mutation  ${reason}`);
+			expect(text).toContain("1 check did not run:\n  lens.security  failed: the lens did not finish");
+			expect(verdict.reviewStatus().description).toBe(
+				`Not reviewed: static.mutation provisional (${reason}); lens.security failed (the lens did not finish)`,
+			);
+		});
+
 		it("keeps the findings the run made, and a blocking one still blocks", () => {
 			const verdict = judged([blocker]);
 			expect(verdict).toMatchObject({ status: "not-reviewed", blocking: true });

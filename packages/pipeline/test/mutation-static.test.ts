@@ -862,6 +862,24 @@ printf '{"schemaVersion":"1.0","files":{"packages/p/src/a.ts":{"language":"types
 			expect(result.provisional).toBeUndefined();
 		});
 
+		it("starts the repeat of a plain review of a cold-judged head from nothing, so the head's tests cannot feed it", async () => {
+			const seen = join(artifacts, "seen.txt");
+			const run =
+				relatedRun(`while [ "$#" -gt 0 ]; do if [ "$1" = "--incrementalFile" ]; then shift; incremental="$1"; fi; shift; done
+{ cat "$incremental" 2> /dev/null || printf none; echo; } >> '${seen}'
+printf '{"attempt":%s}' "$attempt" > "$incremental"
+printf '%s' '{"planted":true}' > "$(dirname "$incremental")/earlier.json"
+status=Killed; [ "$attempt" = 2 ] && status=NoCoverage
+mkdir -p reports/mutation
+printf '{"schemaVersion":"1.0","files":{"packages/p/src/a.ts":{"language":"typescript","source":"","mutants":[{"id":"1","status":"%s","mutatorName":"EqualityOperator","replacement":"x > 0","location":{"start":{"line":2,"column":0},"end":{"line":2,"column":5}}}]}}}' "$status" > reports/mutation/mutation.json`);
+			await mutate(run.base, run.head, { target: "range-feature", cold: true });
+			const again = await mutate(run.base, run.head, { target: "range-feature" });
+			expect(run.attempts()).toBe(3);
+			expect(readFileSync(seen, "utf8").trim().split("\n")).toEqual(["none", '{"attempt":1}', "none"]);
+			if (again.status !== "ran") throw new Error("skipped");
+			expect(again.provisional).toBeUndefined();
+		});
+
 		it("starts a whole-suite repeat from the last judged head's results, not the related run's", async () => {
 			const seen = join(artifacts, "seen.txt");
 			const run =
@@ -2146,6 +2164,25 @@ cp '${canned}' reports/mutation/mutation.json`,
 			expect(cold.identity.policy).not.toBe(provisional.identity.policy);
 			expect(cold.records).toMatchObject([{ name: "static.mutation", status: "ran" }]);
 			expect(reads()).toHaveLength(1);
+		});
+
+		it("leaves a run's identity alone for --cold when the tier runs no mutation check", async () => {
+			const base = commit(repo, {
+				"melian.yaml": lines("tiers:", "  full: [guardrails]"),
+				"packages/p/src/a.ts": a,
+			});
+			commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 0") });
+			const { harness, root } = await open();
+			const source: RepositorySource = { kind: "revision", commit: base };
+			const { config: loaded } = await loadConfig(repo, source, "");
+			const changeset = await Changeset.resolve(repo, `${base}...main`);
+			const judge = (cold: boolean) =>
+				runChecks(
+					harness,
+					{ rootConversationId: root.id, changeset, config: loaded, source, tier: "full", cold },
+					context,
+				);
+			expect((await judge(true)).identity).toEqual((await judge(false)).identity);
 		});
 
 		it("records the finding and the Stryker version, and does not mutate the base", async () => {
