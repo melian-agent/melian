@@ -178,10 +178,11 @@ async function mutate(
 		maxLines?: number;
 		timeout?: number;
 		revision?: boolean;
-		headCode?: "trusted" | undefined;
+		headCode?: "writer" | "reviewer" | undefined;
 		policyCommit?: string;
 		env?: ExecutionEnv;
 		holdsAuthority?: () => Promise<boolean>;
+		target?: string;
 	} = {},
 ) {
 	const revision = await revisionOf(base, head);
@@ -192,9 +193,10 @@ async function mutate(
 			base,
 			commit: head,
 			tool: "mutation",
-			headCode: "headCode" in extra ? extra.headCode : "trusted",
+			headCode: "headCode" in extra ? extra.headCode : "writer",
 			policyCommit: extra.policyCommit,
 			...(extra.holdsAuthority === undefined ? {} : { holdsAuthority: extra.holdsAuthority }),
+			...(extra.target === undefined ? {} : { target: extra.target }),
 			settings: {
 				...defaultConfig.static.mutation,
 				timeout: extra.timeout ?? 120,
@@ -424,16 +426,19 @@ printf '%s' '{"schemaVersion":"1.0","files":{}}' > reports/mutation/mutation.jso
 	}
 	const partitions = () => {
 		const root = join(repo, ".git", "melian", "mutation");
-		return existsSync(root) ? readdirSync(root).map((name) => join(root, name, "incremental.json")) : [];
+		return existsSync(root) ? readdirSync(root).map((name) => join(root, name, "partition.json")) : [];
 	};
 
-	it("keys the cache by the review's policy commit, or by the base when it names none", async () => {
+	it("keys the cache by the base, the policy commit or else the base, and the review target or else the head", async () => {
 		const cache = vi.spyOn(MutationCache, "open");
 		const { base, head } = twoCommits();
 		incrementalTool();
 		await mutate(base, head);
-		await mutate(base, head, { policyCommit: head });
-		expect(cache.mock.calls.map(([, key]) => key.policy)).toEqual([base, head]);
+		await mutate(base, head, { policyCommit: head, target: "pull-7" });
+		expect(cache.mock.calls.map(([, key]) => [key.base, key.policy, key.target])).toEqual([
+			[base, base, head],
+			[base, head, "pull-7"],
+		]);
 	});
 
 	it("reuses identities for the same head and inputs only", async () => {
@@ -475,6 +480,135 @@ printf '%s' '{"schemaVersion":"1.0","files":{}}' > reports/mutation/mutation.jso
 		);
 		await mutate(base, head, { maxLines: 100 });
 		expect(partitions()).toHaveLength(2);
+	});
+
+	it("hands a later head of the same review target the last judged head's results", async () => {
+		const { base, head } = twoCommits();
+		const reads = incrementalTool();
+		await mutate(base, head, { target: "range-feature" });
+		// A later head that changes other lines too, so the mutate ranges differ and still the partition is shared.
+		const next = commit(repo, {
+			"packages/p/src/a.ts": a.replace("x > 0", "x >= 1").replace("return 0", "return -1"),
+		});
+		await mutate(base, next, { target: "range-feature" });
+		expect(reads()).toEqual(['{"stamp":"written"}']);
+	});
+
+	it("starts cold when the last judged head is not in the new head's history, as after a force-push", async () => {
+		const { base, head } = twoCommits();
+		const reads = incrementalTool();
+		const result = await mutate(base, head, { target: "range-feature" });
+		gitIn(repo, "reset", "--quiet", "--hard", base);
+		const rewritten = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 2") });
+		const next = await mutate(base, rewritten, { target: "range-feature" });
+		expect(reads()).toEqual([]);
+		if (result.status !== "ran" || next.status !== "ran") throw new Error("skipped");
+		expect(next.notes).toContain(
+			`Stryker started cold: the last judged head ${head.slice(0, 12)} is not in this head's history, which was rewritten.`,
+		);
+	});
+
+	it("starts cold when the base changes under the same review target", async () => {
+		const { base, head } = twoCommits();
+		const reads = incrementalTool();
+		await mutate(base, head, { target: "range-feature" });
+		const next = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 1") });
+		await mutate(head, next, { target: "range-feature" });
+		expect(reads()).toEqual([]);
+		await mutate(base, next, { target: "range-feature" });
+		expect(reads()).toEqual(['{"stamp":"written"}']);
+	});
+
+	it("starts cold when the installation changes between two heads of the same review target", async () => {
+		const { base, head } = twoCommits();
+		const reads = incrementalTool();
+		writeFileSync(join(repo, "package-lock.json"), "{}");
+		await mutate(base, head, { target: "range-feature" });
+		writeFileSync(join(repo, "package-lock.json"), '{"packages":{"new":{}}}');
+		const next = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 1") });
+		await mutate(base, next, { target: "range-feature" });
+		expect(reads()).toEqual([]);
+	});
+
+	it("records the leave the head's tests ran under, and reuses a run only under the same leave", async () => {
+		const { base, head } = twoCommits();
+		const reads = incrementalTool();
+		await mutate(base, head, { target: "range-feature", headCode: "reviewer" });
+		const [file] = readdirSync(join(repo, ".git", "melian", "mutation")).map((name) =>
+			join(repo, ".git", "melian", "mutation", name, "partition.json"),
+		);
+		expect(JSON.parse(readFileSync(file!, "utf8"))).toMatchObject({ head, trust: "reviewer" });
+		const next = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 1") });
+		const writer = await mutate(base, next, { target: "range-feature", headCode: "writer" });
+		expect(reads()).toEqual([]);
+		if (writer.status !== "ran") throw new Error("skipped");
+		expect(writer.notes).toContain(
+			`Stryker started cold: the run that judged ${head.slice(0, 12)} was trusted as reviewer, not as writer.`,
+		);
+		expect(JSON.parse(readFileSync(file!, "utf8"))).toMatchObject({ head: next, trust: "writer" });
+		const last = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 2") });
+		await mutate(base, last, { target: "range-feature", headCode: "writer" });
+		expect(reads()).toEqual(['{"stamp":"written"}']);
+	});
+
+	it("says how many results Stryker reused from the last judged head and how many mutants it ran", async () => {
+		const { base, head } = twoCommits();
+		fakeTool(
+			repo,
+			"stryker",
+			`
+if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = "--incrementalFile" ]; then shift; incremental="$1"; fi
+  shift
+done
+if [ -e "$incremental" ]; then printf 'Incremental report:\\n\\tResult:\\t\\t\\033[93m3\\033[39m of 5 mutant result(s) are reused.\\n'; fi
+printf '%s' '{"schemaVersion":"1.0","files":{}}' > "$incremental"
+mkdir -p reports/mutation
+cp "$incremental" reports/mutation/mutation.json`,
+		);
+		const first = await mutate(base, head, { target: "range-feature" });
+		const next = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 1") });
+		const second = await mutate(base, next, { target: "range-feature" });
+		if (first.status !== "ran" || second.status !== "ran") throw new Error("skipped");
+		expect(first.notes).toContain("Stryker started cold: this review target has no earlier judged head.");
+		expect(second.notes).toContain(
+			`Stryker reused 3 of 5 mutant result(s) from ${head.slice(0, 12)}, the last judged head, and ran 2.`,
+		);
+	});
+
+	it("says when Stryker was given earlier results but its log does not count them", async () => {
+		const { base, head } = twoCommits();
+		incrementalTool();
+		await mutate(base, head, { target: "range-feature" });
+		const next = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 1") });
+		const second = await mutate(base, next, { target: "range-feature" });
+		if (second.status !== "ran") throw new Error("skipped");
+		expect(second.notes).toContain(
+			`Stryker was given the results of ${head.slice(0, 12)}, the last judged head; its log does not say how many it reused.`,
+		);
+	});
+
+	it("refuses to run head code without the host's leave even when called past runStaticTool's refusal", async () => {
+		const { base, head } = twoCommits();
+		const fake = stryker({ report: report({}) });
+		const run = new Run(
+			{
+				env: createNodeExecutionEnv(repo),
+				repoRoot: repo,
+				base,
+				commit: head,
+				tool: "mutation",
+				settings: { ...defaultConfig.static.mutation, timeout: 120 },
+				revision: await revisionOf(base, head),
+			},
+			context,
+		);
+		await expect(new MutationRun(run, repo, artifacts, "stryker", "10.0.0", []).check()).rejects.toMatchObject({
+			code: "toolFailed",
+			message: "mutation testing needs the host's leave to run head code",
+		});
+		expect(fake.calls()).toEqual([]);
 	});
 
 	it("publishes the run's identities only while the run still holds authority", async () => {
@@ -607,6 +741,28 @@ ${body}`,
 			);
 			return { ...commits, attempts: () => readFileSync(attempts, "utf8").trim().split("\n").length };
 		}
+
+		it("starts a whole-suite repeat from the last judged head's results, not the related run's", async () => {
+			const seen = join(artifacts, "seen.txt");
+			const run =
+				relatedRun(`while [ "$#" -gt 0 ]; do if [ "$1" = "--incrementalFile" ]; then shift; incremental="$1"; fi; shift; done
+{ cat "$incremental" 2> /dev/null || printf none; echo; } >> '${seen}'
+printf '{"attempt":%s}' "$attempt" > "$incremental"
+printf '%s of 9 mutant result(s) are reused.\\n' "$attempt"
+status=Killed; [ "$attempt" = 2 ] && status=NoCoverage
+mkdir -p reports/mutation
+printf '{"schemaVersion":"1.0","files":{"packages/p/src/a.ts":{"language":"typescript","source":"","mutants":[{"id":"1","status":"%s","mutatorName":"EqualityOperator","replacement":"x > 0","location":{"start":{"line":2,"column":0},"end":{"line":2,"column":5}}}]}}}' "$status" > reports/mutation/mutation.json`);
+			await mutate(run.base, run.head, { target: "range-feature" });
+			const next = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 1") });
+			const repeated = await mutate(run.base, next, { target: "range-feature" });
+			expect(run.attempts()).toBe(3);
+			if (repeated.status !== "ran") throw new Error("skipped");
+			// The count is the repeat's, which decided the result, not the related run's before it.
+			expect(repeated.notes).toContain(
+				`Stryker reused 3 of 9 mutant result(s) from ${run.head.slice(0, 12)}, the last judged head, and ran 6.`,
+			);
+			expect(readFileSync(seen, "utf8").trim().split("\n")).toEqual(["none", '{"attempt":1}', '{"attempt":1}']);
+		});
 
 		it.each(["mutation-runner.mjs", "tree/stryker.config.json"])(
 			"does not repeat with the whole suite once %s is gone, and says another process removed it",
@@ -1141,7 +1297,7 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 						base,
 						commit: head,
 						tool: "mutation",
-						headCode: "trusted",
+						headCode: "writer",
 						settings: { ...defaultConfig.static.mutation, timeout: 120 },
 						revision,
 					},
@@ -1625,7 +1781,7 @@ exit 0`,
 						base,
 						commit: head,
 						tool: "mutation",
-						headCode: "trusted",
+						headCode: "writer",
 						settings: { ...defaultConfig.static.mutation, timeout: 120 },
 						revision,
 					},
@@ -1784,6 +1940,39 @@ cp '${canned}' reports/mutation/mutation.json`,
 			"  mutation: { enabled: true, timeout: 120 }",
 		);
 
+		it("shares results across the heads of one review target, under the leave the head ran with", async () => {
+			const base = commit(repo, { "melian.yaml": policy, "stryker.config.json": config, "packages/p/src/a.ts": a });
+			const reads = incrementalTool();
+			const judge = async () => {
+				const { harness, root } = await open();
+				const source: RepositorySource = { kind: "revision", commit: base };
+				const { config: loaded } = await loadConfig(repo, source, "");
+				const changeset = await Changeset.resolve(repo, `${base}...main`);
+				await runChecks(
+					harness,
+					{
+						rootConversationId: root.id,
+						changeset,
+						config: loaded,
+						source,
+						tier: "full",
+						writer: { trusted: true, by: "reviewer" },
+					},
+					context,
+				);
+				return changeset;
+			};
+			commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 0") });
+			const first = await judge();
+			const head = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 1") });
+			const second = await judge();
+			expect(second.id).toBe(first.id);
+			expect(reads()).toEqual(['{"stamp":"written"}']);
+			expect(partitions().map((file) => JSON.parse(readFileSync(file, "utf8")))).toMatchObject([
+				{ head, trust: "reviewer" },
+			]);
+		});
+
 		it("records the finding and the Stryker version, and does not mutate the base", async () => {
 			const base = commit(repo, {
 				"melian.yaml": policy,
@@ -1801,6 +1990,7 @@ cp '${canned}' reports/mutation/mutation.json`,
 					findings: 1,
 					notes: [
 						"Mutation tests use the whole suite: Vitest related no test to packages/p/src/a.ts.",
+						"Stryker started cold: this review target has no earlier judged head.",
 						"Stryker mutated 1 changed lines in 1 file(s); the base was not mutated.",
 					],
 				},
@@ -1852,6 +2042,7 @@ cp '${canned}' reports/mutation/mutation.json`,
 					findings: 1,
 					notes: [
 						"Mutation tests use the whole suite: Vitest related no test to packages/p/src/a.ts.",
+						"Stryker started cold: this review target has no earlier judged head.",
 						"Stryker mutated 1 changed lines in 1 file(s); the base was not mutated.",
 						"packages/p/src/a.ts produced no mutants, so nothing on its changed lines was judged.",
 					],

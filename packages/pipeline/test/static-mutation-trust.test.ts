@@ -30,7 +30,7 @@ it("requires the host's leave at the exported boundary, before any worktree", as
 		reason: mutationSkips.headNotAllowed("the caller did not say this head's code may run here"),
 	});
 	expect(worktree).not.toHaveBeenCalled();
-	expect(await run({ tool: "mutation", headCode: "trusted" }, {})).toEqual({ status: "ran" });
+	expect(await run({ tool: "mutation", headCode: "writer" }, {})).toEqual({ status: "ran" });
 	expect(worktree).toHaveBeenCalledTimes(1);
 	// Biome and tsc read the head and never run it, so they need no leave.
 	expect(await run({ tool: "biome" }, {})).toEqual({ status: "ran" });

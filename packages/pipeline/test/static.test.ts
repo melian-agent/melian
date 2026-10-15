@@ -59,7 +59,7 @@ function input(tool: StaticRunInput["tool"], commitId: string, timeout = 120): S
 		repoRoot: repo,
 		commit: commitId,
 		tool,
-		headCode: "trusted",
+		headCode: "writer",
 		settings: { ...defaultConfig.static[tool], timeout },
 	};
 }

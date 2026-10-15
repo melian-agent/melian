@@ -15,7 +15,7 @@ import {
 	type ToolLog,
 	type UnmutatedFile,
 } from "@melian-agent/core";
-import { MutationCache } from "./mutation-cache.ts";
+import { type HeadTrust, type JudgedHead, MutationCache } from "./mutation-cache.ts";
 import { MutationProcess } from "./mutation-process.ts";
 import { mutationSelectionVersion, mutationVitestModule } from "./mutation-vitest.ts";
 import type { Run, StaticRun } from "./static.ts";
@@ -199,6 +199,20 @@ export function mutationInstallation(repoRoot: string): string {
 		.digest("hex");
 }
 
+// Stryker logs how many results its incremental mode reused. The head's tests write to the same log, so the count is a
+// note and decides nothing. chalk may colour the first number; the escape character is dropped before matching.
+const reusedCount = /(?:\[\d{1,3}m)?(\d{1,9})(?:\[\d{1,3}m)? of (\d{1,9}) mutant result\(s\) are reused\./;
+
+function reuseNote(earlier: { readonly judged: JudgedHead } | { readonly cold: string }, log: string): string {
+	if ("cold" in earlier) return `Stryker started cold: ${earlier.cold}.`;
+	const judged = earlier.judged.head.slice(0, 12);
+	const counted = reusedCount.exec(log.replaceAll(String.fromCharCode(27), ""));
+	if (counted === null)
+		return `Stryker was given the results of ${judged}, the last judged head; its log does not say how many it reused.`;
+	const [reused, total] = [Number(counted[1]), Number(counted[2])];
+	return `Stryker reused ${reused} of ${total} mutant result(s) from ${judged}, the last judged head, and ran ${total - reused}.`;
+}
+
 export class MutationRun {
 	readonly #run: Run;
 	readonly #root: string;
@@ -275,7 +289,11 @@ export class MutationRun {
 		return `a new ${candidates.at(-1)}`;
 	}
 
-	async #runner(entries: readonly string[], changed: readonly string[], incremental: string): Promise<string> {
+	async #runner(
+		entries: readonly string[],
+		changed: readonly string[],
+		{ staged: incremental, earlier }: { staged: string; earlier: string },
+	): Promise<string> {
 		const require = createRequire(posix.join(this.#run.input.repoRoot, "node_modules/vitest/package.json"));
 		const module = posix.join(this.#scratch, posix.basename(fileURLToPath(mutationVitestModule)));
 		await this.#write(module, readFileSync(fileURLToPath(mutationVitestModule), "utf8"));
@@ -286,7 +304,7 @@ export class MutationRun {
 		// minutes at or past Melian's leave the timeout the only one that ends the run.
 		const dryRunMinutes = Math.ceil(this.#run.input.settings.timeout / 60);
 		const text = `
-import { existsSync, readFileSync, rmSync, writeFileSync, writeSync } from "node:fs";
+import { copyFileSync, existsSync, readFileSync, rmSync, writeFileSync, writeSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { relative } from "node:path";
 import { createVitest } from ${JSON.stringify(pathToFileURL(require.resolve("vitest/node")).href)};
@@ -299,9 +317,11 @@ const selection = await MutationVitest.open(() => createVitest("test", {
   config: config.vitest?.configFile, dir: config.vitest?.dir, watch: false, coverage: { enabled: false }
 }), ${JSON.stringify(changed)});
 const result = await selection.execute(async (tests, fresh) => {
-  // A whole-suite fallback must not reuse the related run's coverage or mutant results.
+  // A whole-suite fallback must not reuse the related run's coverage or mutant results; it starts again from the
+  // earlier head's, when there were any.
   if (fresh) {
     rmSync(${JSON.stringify(incremental)}, { force: true });
+    if (existsSync(${JSON.stringify(earlier)})) copyFileSync(${JSON.stringify(earlier)}, ${JSON.stringify(incremental)});
     writeSync(1, ${JSON.stringify(`\n${repeatMarker}\n`)});
   }
   rmSync(${JSON.stringify(report)}, { force: true });
@@ -360,17 +380,34 @@ process.exitCode = result.code;
 
 	// The run executes the head's own test files, setup files, and Vitest configuration, as an ordinary child process with
 	// the environment every static tool gets. Nothing confines it: the caller decided this head's code may run here.
-	async #execute(entries: readonly string[], changed: readonly string[]): Promise<string | { skipped: string }> {
-		const { repoRoot, policyCommit, base, commit } = this.#run.input;
+	// Whether `judged` is in the head's history. git answers 1 for no, and anything else it says means no reuse either.
+	async #ancestor(judged: string): Promise<boolean> {
+		const { code } = await this.#run.shell(
+			this.#run.git(`merge-base --is-ancestor ${quote(judged)} ${quote(this.#run.input.commit)}`),
+		);
+		return code === 0;
+	}
+
+	async #execute(
+		entries: readonly string[],
+		changed: readonly string[],
+		trust: HeadTrust,
+	): Promise<string | { skipped: string }> {
+		const { repoRoot, base, commit, target, policyCommit } = this.#run.input;
 		const cache = await MutationCache.open((await CacheLocation.open(repoRoot)).root, {
+			base: base ?? commit,
 			policy: policyCommit ?? base ?? commit,
-			head: commit,
+			target: target ?? commit,
 			installation: mutationInstallation(repoRoot),
 			inputs: createHash("sha256")
-				.update(JSON.stringify({ version: this.#version, entries }))
+				.update(JSON.stringify({ version: this.#version }))
 				.digest("hex"),
 		});
-		const incremental = await cache.stage(posix.join(this.#scratch, "incremental"));
+		const earlier = await cache.earlier(trust, (judged) => this.#ancestor(judged));
+		const incremental = await cache.stage(
+			posix.join(this.#scratch, "incremental"),
+			"report" in earlier ? earlier.report : undefined,
+		);
 		const log = posix.join(this.#scratch, "stryker.log");
 		// A report the revision committed must not stand in for the one this run writes.
 		const runner = await this.#runner(entries, changed, incremental);
@@ -420,19 +457,23 @@ process.exitCode = result.code;
 			repeats.length === 0 ? tail(logText) : `${tail(related!)}\n${repeatMarker}\n${tail(repeats.at(-1)!)}`;
 		const notes = await this.#read(posix.join(this.#scratch, "test-selection.json"));
 		if (notes === undefined) throw this.#run.fail("invalidOutput", "mutation runner wrote no test-selection notes");
-		this.#notes.push(...(JSON.parse(notes) as string[]));
+		this.#notes.push(...(JSON.parse(notes) as string[]), reuseNote(earlier, repeats.at(-1) ?? related!));
 		if (result.code === 1) throw this.#run.fail("toolFailed", `Stryker exited 1: ${output}`);
 		if (result.code !== 0)
 			throw this.#run.fail("invalidOutput", `Stryker exited ${result.code}, which it does not document: ${output}`);
 		const text = await this.#read(posix.join(this.#root, report));
 		if (text === undefined) throw this.#run.fail("invalidOutput", `Stryker wrote no report at ${report}`);
 		// A run another review has retired may not leave identities for the next one to trust.
-		if ((await this.#run.input.holdsAuthority?.()) ?? true) await cache.publish(incremental);
+		if ((await this.#run.input.holdsAuthority?.()) ?? true)
+			await cache.publish(incremental.staged, { head: commit, trust });
 		return text;
 	}
 
 	async check(): Promise<StaticRun> {
-		const { revision, settings } = this.#run.input;
+		const { revision, settings, headCode } = this.#run.input;
+		// runStaticTool refuses first; this keeps the leave a partition records from ever being a guess.
+		if (headCode === undefined)
+			throw this.#run.fail("toolFailed", "mutation testing needs the host's leave to run head code");
 		if (revision === undefined) throw this.#run.fail("toolFailed", "mutation testing needs the revision it mutates");
 		const { changed, aside } = this.#targets(revision);
 		const total = Object.values(changed).reduce(
@@ -470,7 +511,7 @@ process.exitCode = result.code;
 		// Looked up before the head's tests run, which may move or remove a test file.
 		const tests: Record<string, string> = {};
 		for (const path of Object.keys(lines)) tests[path] = await this.#nearestTest(path);
-		const text = await this.#execute(entries, Object.keys(lines));
+		const text = await this.#execute(entries, Object.keys(lines), headCode);
 		if (typeof text !== "string") {
 			return {
 				status: "skipped",

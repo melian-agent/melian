@@ -31,6 +31,7 @@ import {
 	type Harness,
 	type TaskId,
 } from "./harness.ts";
+import type { HeadTrust } from "./mutation-cache.ts";
 import { type MutationProcessHooks, MutationTree, type MutationTreeRecord } from "./mutation-process.ts";
 import { MutationRun, mutationInstallation, strykerVersion } from "./mutation-static.ts";
 import { runStaticTool, staticToolSource } from "./static.ts";
@@ -164,6 +165,7 @@ async function runStatic(
 	const settings = input.config.static[tool];
 	if (!settings.enabled) return { status: "skipped", reason: `static.${tool}.enabled is false` };
 	const leaveNotes: string[] = [];
+	let headCode: HeadTrust | undefined;
 	if (tool === "mutation") {
 		// Asked first: a change with nothing to judge runs no head code, so it needs no leave and passes on any host.
 		if (!MutationRun.judges(Revision.from(input.changeset.revision)))
@@ -173,6 +175,7 @@ async function runStatic(
 			return { status: "skipped", reason: mutationSkips.headNotAllowed(leave.detail), cause: "headNotAllowed" };
 		}
 		if (leave.by === "reviewer") leaveNotes.push(trustedHeadNote);
+		headCode = leave.by;
 	}
 	if (env === undefined) {
 		throw new CheckError(
@@ -196,7 +199,7 @@ async function runStatic(
 				settings,
 				revision,
 				// Only mutation runs head code, and it reaches here only past the guard above.
-				headCode: "trusted",
+				...(headCode === undefined ? {} : { headCode, target: input.changeset.id }),
 				...(input.source.kind === "revision" ? { policyCommit: input.source.commit } : {}),
 			},
 			context,

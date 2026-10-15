@@ -103,7 +103,7 @@ cp '${join(artifacts, "report.json")}' reports/mutation/mutation.json`,
 
 const published = () => {
 	const root = join(repo, ".git", "melian", "mutation");
-	return existsSync(root) ? readdirSync(root).filter((name) => existsSync(join(root, name, "incremental.json"))) : [];
+	return existsSync(root) ? readdirSync(root).filter((name) => existsSync(join(root, name, "partition.json"))) : [];
 };
 
 const runs = () =>
