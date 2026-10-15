@@ -524,7 +524,7 @@ printf '%s' '{"schemaVersion":"1.0","files":{}}' > reports/mutation/mutation.jso
 		incrementalTool("older again");
 		await mutate(base, head, { target: "range-feature" });
 		expect(partitions().map((file) => JSON.parse(readFileSync(file, "utf8")))).toEqual([
-			{ version: 3, head: next, trust: "writer", cold: false, at: expect.any(Number), report: { stamp: "newer" } },
+			{ version: 3, head: next, trust: "writer", made: 0, report: { stamp: "newer" } },
 		]);
 	});
 
@@ -569,21 +569,43 @@ cp "$incremental" reports/mutation/mutation.json`,
 		expect(cold.notes).toContain("Stryker started cold: the review asked for a cold run with --cold.");
 	});
 
-	it("keeps a cold run's standing for a plain review of the same head, but not for a later one", async () => {
+	it("keeps any run that reused results provisional, even one that reused a cold run of the same head", async () => {
 		const { base, head } = twoCommits();
 		const reads = incrementalTool();
-		await mutate(base, head, { target: "range-feature", cold: true });
+		const cold = await mutate(base, head, { target: "range-feature", cold: true });
+		const again = await mutate(base, head, { target: "range-feature" });
+		if (cold.status !== "ran" || again.status !== "ran") throw new Error("skipped");
+		expect(reads()).toHaveLength(1);
+		expect(cold.provisional).toBeUndefined();
+		expect(again.provisional).toMatch(/^provisional: /);
+	});
+
+	it("takes nothing the partition file says as a cold run, so a head that writes it cannot approve itself", async () => {
+		const { base, head } = twoCommits();
+		incrementalTool();
+		await mutate(base, head, { target: "range-feature" });
+		// The head's tests run as the reviewer and can rewrite the partition to claim a cold run of this head.
+		for (const file of partitions()) {
+			const stored = JSON.parse(readFileSync(file, "utf8"));
+			writeFileSync(file, JSON.stringify({ ...stored, head, cold: true }));
+		}
 		const again = await mutate(base, head, { target: "range-feature" });
 		if (again.status !== "ran") throw new Error("skipped");
-		expect(reads()).toHaveLength(1);
-		expect(again.provisional).toBeUndefined();
-		// Built on a cold head, a later head is still provisional; a later plain review of it stays so.
-		const next = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 1") });
-		const later = await mutate(base, next, { target: "range-feature" });
-		const repeat = await mutate(base, next, { target: "range-feature" });
-		if (later.status !== "ran" || repeat.status !== "ran") throw new Error("skipped");
-		expect(later.provisional).toMatch(/^provisional: /);
-		expect(repeat.provisional).toMatch(/^provisional: /);
+		expect(again.provisional).toMatch(/^provisional: /);
+	});
+
+	it("records a cache it could not store and keeps the run's result", async () => {
+		const { base, head } = twoCommits();
+		stryker({ report: report({ "packages/p/src/a.ts": [{ status: "Survived", line: 2 }] }) });
+		vi.spyOn(MutationCache.prototype, "publish").mockRejectedValue(
+			Object.assign(new Error("the lock could not be removed"), { code: "EBUSY" }),
+		);
+		const result = await mutate(base, head, { target: "range-feature" });
+		if (result.status !== "ran") throw new Error("skipped");
+		expect(result.log.runs[0].results).toHaveLength(1);
+		expect(result.notes).toContain(
+			"The mutation results were not stored for later heads: the lock could not be removed.",
+		);
 	});
 
 	it("keeps a run provisional when its log says nothing of what Stryker reused", async () => {
@@ -876,24 +898,6 @@ printf '{"schemaVersion":"1.0","files":{"packages/p/src/a.ts":{"language":"types
 			expect(readFileSync(seen, "utf8").trim().split("\n")).toEqual(["none", "none"]);
 			if (result.status !== "ran") throw new Error("skipped");
 			expect(result.provisional).toBeUndefined();
-		});
-
-		it("starts the repeat of a plain review of a cold-judged head from nothing, so the head's tests cannot feed it", async () => {
-			const seen = join(artifacts, "seen.txt");
-			const run =
-				relatedRun(`while [ "$#" -gt 0 ]; do if [ "$1" = "--incrementalFile" ]; then shift; incremental="$1"; fi; shift; done
-{ cat "$incremental" 2> /dev/null || printf none; echo; } >> '${seen}'
-printf '{"attempt":%s}' "$attempt" > "$incremental"
-printf '%s' '{"planted":true}' > "$(dirname "$incremental")/earlier.json"
-status=Killed; [ "$attempt" = 2 ] && status=NoCoverage
-mkdir -p reports/mutation
-printf '{"schemaVersion":"1.0","files":{"packages/p/src/a.ts":{"language":"typescript","source":"","mutants":[{"id":"1","status":"%s","mutatorName":"EqualityOperator","replacement":"x > 0","location":{"start":{"line":2,"column":0},"end":{"line":2,"column":5}}}]}}}' "$status" > reports/mutation/mutation.json`);
-			await mutate(run.base, run.head, { target: "range-feature", cold: true });
-			const again = await mutate(run.base, run.head, { target: "range-feature" });
-			expect(run.attempts()).toBe(3);
-			expect(readFileSync(seen, "utf8").trim().split("\n")).toEqual(["none", '{"attempt":1}', "none"]);
-			if (again.status !== "ran") throw new Error("skipped");
-			expect(again.provisional).toBeUndefined();
 		});
 
 		it("starts a whole-suite repeat from the last judged head's results, not the related run's", async () => {

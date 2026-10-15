@@ -26,12 +26,10 @@ export interface MutationCacheKey {
 /** Whose leave ran a head's tests: a writer pushed it, or the reviewer vouched for it with `--trust-head`. */
 export type HeadTrust = "writer" | "reviewer";
 
-// The head whose results a partition holds, the leave its tests ran under, and whether they are a cold run's of that
-// head: a plain review of the same head may then keep the cold run's standing.
+// The head whose results a partition holds, and the leave its tests ran under.
 export interface JudgedHead {
 	readonly head: string;
 	readonly trust: HeadTrust;
-	readonly cold: boolean;
 }
 
 // The text of a file, read through one no-follow open: a regular file within `limit` that parses, or undefined. What was
@@ -91,7 +89,7 @@ export class MutationCache {
 			return { cold: `the run that judged ${judged} was trusted as ${String(stored.trust)}, not as ${trust}` };
 		if (!(await ancestor(stored.head)))
 			return { cold: `the last judged head ${judged} is not in this head's history, which was rewritten` };
-		return { judged: { head: stored.head, trust, cold: stored.cold }, report: stored.report };
+		return { judged: { head: stored.head, trust }, report: stored.report };
 	}
 
 	// Writes `report` where Stryker reads its incremental file, and a second copy a whole-suite repeat starts from, so the
@@ -125,7 +123,7 @@ export class MutationCache {
 		const temporary = scratch.file(this.file);
 		await writeFile(
 			temporary,
-			`{"version":3,"head":${JSON.stringify(judged.head)},"trust":${JSON.stringify(judged.trust)},"cold":${judged.cold},"at":${Date.now()},"report":${report}}`,
+			`{"version":3,"head":${JSON.stringify(judged.head)},"trust":${JSON.stringify(judged.trust)},"made":${since},"report":${report}}`,
 		);
 		try {
 			await this.#locked(async () => {
@@ -173,8 +171,8 @@ export class MutationCache {
 
 	// Whether a run of `head` may replace what the partition holds: nothing, its own head, or a head in its history. A
 	// newer head of its own line it never replaces, as a late run of an older head must not. A head of another line, after
-	// a force-push, it replaces only when that head was published before the run's task was made (`since`, durable in
-	// the task's input, so a task a crash left pending keeps its own). A task made earlier is a late run of the old line.
+	// a force-push, it replaces only when that head's task was made no later than its own (`since`, durable in the task's
+	// input, so a task a crash left pending keeps its own). Both are task creation times, so they compare alike.
 	async #replaces(
 		head: string,
 		since: number,
@@ -183,25 +181,24 @@ export class MutationCache {
 		const held = await this.#read();
 		if (held === undefined || held.head === head || (await ancestor(held.head, head))) return true;
 		if (await ancestor(head, held.head)) return false;
-		return held.at <= since;
+		return held.made <= since;
 	}
 
-	async #read(): Promise<{ head: string; trust: unknown; cold: boolean; at: number; report: string } | undefined> {
+	async #read(): Promise<{ head: string; trust: unknown; made: number; report: string } | undefined> {
 		const text = await jsonText(this.file, bound + wrapping);
 		if (text === undefined) return undefined;
 		// Any JSON but null destructures; a number or a string simply has none of these fields.
 		const parsed = JSON.parse(text) as {
 			head?: unknown;
 			trust?: unknown;
-			cold?: unknown;
-			at?: unknown;
+			made?: unknown;
 			report?: unknown;
 		} | null;
 		if (parsed === null) return undefined;
-		const { head, trust, cold, at, report } = parsed;
+		const { head, trust, made, report } = parsed;
 		if (typeof head !== "string" || !/^[0-9a-f]{40,64}$/.test(head)) return undefined;
 		if (typeof report !== "object" || report === null) return undefined;
-		// A partition from before publication times were kept reads as published at once, so any later task replaces it.
-		return { head, trust, cold: cold === true, at: typeof at === "number" ? at : 0, report: JSON.stringify(report) };
+		// A partition from before task times were kept reads as made at once, so any later task replaces it.
+		return { head, trust, made: typeof made === "number" ? made : 0, report: JSON.stringify(report) };
 	}
 }

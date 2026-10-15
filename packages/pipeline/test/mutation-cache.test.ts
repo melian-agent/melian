@@ -67,7 +67,7 @@ it("reopens what the previous run wrote without sharing across base, policy, tar
 	const second = await MutationCache.open(root, key());
 	expect(second.file).toBe(first.file);
 	expect(await second.earlier("writer", always)).toEqual({
-		judged: { head: judged, trust: "writer", cold: false },
+		judged: { head: judged, trust: "writer" },
 		report: JSON.stringify({ files: { a: { mutants: [] } } }),
 	});
 	for (const changed of [key({ base: "next-base" }), key({ policy: "next-policy" }), key({ target: "pull-other" })]) {
@@ -195,7 +195,7 @@ describe("the last judged head", () => {
 			return true;
 		});
 		expect(asked).toEqual([judged]);
-		expect(earlier).toEqual({ judged: { head: judged, trust: "reviewer", cold: false }, report: '{"files":{}}' });
+		expect(earlier).toEqual({ judged: { head: judged, trust: "reviewer" }, report: '{"files":{}}' });
 	});
 
 	it("is not handed on once the history no longer holds it", async () => {
@@ -252,33 +252,22 @@ const lineOf =
 	(...heads: string[]) =>
 	async (older: string, newer: string) =>
 		heads.includes(older) && heads.includes(newer) && heads.indexOf(older) <= heads.indexOf(newer);
-const writer = (head: string, cold = false) => ({ head, trust: "writer", cold }) as const;
+const writer = (head: string) => ({ head, trust: "writer" }) as const;
 
-it("publishes a readable staged report with the head that wrote it, its leave and whether it ran cold", async () => {
+it("publishes a readable staged report with the head that wrote it, its leave and when its task was made", async () => {
 	const cache = await MutationCache.open(root, key());
 	await writeFile(cache.file, partition({ old: true }));
 	const { staged } = await cache.stage(join(root, "work"), undefined);
 	await writeFile(staged, '{"new":true}');
-	await cache.publish(staged, writer(B, true), 0, lineOf(A, B));
+	await cache.publish(staged, writer(B), 1234, lineOf(A, B));
 	expect(JSON.parse(await readFile(cache.file, "utf8"))).toEqual({
 		version: 3,
 		head: B,
 		trust: "writer",
-		cold: true,
-		at: expect.any(Number),
+		made: 1234,
 		report: { new: true },
 	});
-	expect(await cache.earlier("writer", always)).toMatchObject({ judged: { head: B, cold: true } });
 	expect((await readdir(cache.directory)).filter((name) => name.endsWith(".tmp"))).toEqual([]);
-});
-
-it.each([
-	["no cold field", partition({})],
-	["a cold field that is not true", JSON.stringify({ version: 3, head: A, trust: "writer", cold: "yes", report: {} })],
-])("reads a partition with %s as a run that was not cold", async (_, text) => {
-	const cache = await MutationCache.open(root, key());
-	await writeFile(cache.file, text);
-	expect(await cache.earlier("writer", always)).toMatchObject({ judged: { cold: false } });
 });
 
 it("keeps a newer head's results when an older head's run finishes after it, even one that saw them", async () => {
@@ -291,15 +280,15 @@ it("keeps a newer head's results when an older head's run finishes after it, eve
 	expect((await readdir(cache.directory)).filter((name) => name.endsWith(".tmp"))).toEqual([]);
 });
 
-it("replaces a head of another line only when it was published before the run's task was made, as after a force-push", async () => {
+it("replaces a head of another line only when its task was made no later than the run's, as after a force-push", async () => {
 	const cache = await MutationCache.open(root, key());
 	await writeFile(
 		cache.file,
-		JSON.stringify({ version: 3, head: B, trust: "writer", cold: false, at: 1000, report: { old: true } }),
+		JSON.stringify({ version: 3, head: B, trust: "writer", made: 1000, report: { old: true } }),
 	);
 	const { staged } = await cache.stage(join(root, "work"), undefined);
 	await writeFile(staged, '{"rewritten":true}');
-	// C and B share only A: a task of C's line made before B was published is a late run, and leaves B's results.
+	// C and B share only A: a task of C's line made before B's is a late run, and leaves B's results.
 	const lines = async (older: string, newer: string) =>
 		(await lineOf(A, B)(older, newer)) || (await lineOf(A, C)(older, newer));
 	await cache.publish(staged, writer(C), 999, lines);
@@ -323,15 +312,16 @@ it.each([
 	expect(JSON.parse(await readFile(cache.file, "utf8"))).toMatchObject({ head: C });
 });
 
-it("stamps a published partition with the time it was published", async () => {
+it("replaces the same head's results whatever its task time, as a rerun after a timeout does", async () => {
 	const cache = await MutationCache.open(root, key());
+	await writeFile(
+		cache.file,
+		JSON.stringify({ version: 3, head: A, trust: "writer", made: 5000, report: { first: true } }),
+	);
 	const { staged } = await cache.stage(join(root, "work"), undefined);
-	await writeFile(staged, "{}");
-	const before = Date.now();
+	await writeFile(staged, '{"second":true}');
 	await cache.publish(staged, writer(A), 0, never);
-	const { at } = JSON.parse(await readFile(cache.file, "utf8"));
-	expect(at).toBeGreaterThanOrEqual(before);
-	expect(at).toBeLessThanOrEqual(Date.now());
+	expect(JSON.parse(await readFile(cache.file, "utf8")).report).toEqual({ second: true });
 });
 
 it("publishes into an empty partition without asking git", async () => {

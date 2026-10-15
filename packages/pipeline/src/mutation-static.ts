@@ -304,7 +304,7 @@ export class MutationRun {
 		entries: readonly string[],
 		changed: readonly string[],
 		{ staged: incremental, earlier }: { staged: string; earlier: string },
-		// Whether a whole-suite repeat starts from the earlier head's report: only for a provisional run. Decided here, not
+		// Whether a whole-suite repeat starts from the earlier head's report: only for a run handed one. Decided here, not
 		// by the file, which the head's tests could write.
 		reused: boolean,
 	): Promise<string> {
@@ -420,15 +420,15 @@ process.exitCode = result.code;
 		const earlier = this.#run.input.cold
 			? { cold: "the review asked for a cold run with --cold" }
 			: await cache.earlier(trust, (judged) => this.#ancestor(judged, commit));
-		// A plain review of a head a cold run judged reuses that run's results whole, and keeps its standing.
-		const cold = "cold" in earlier || (earlier.judged.head === commit && earlier.judged.cold);
+		// Only a run from nothing may approve. Melian knows that from what it staged, never from the partition file, which
+		// the head's tests can write.
+		const cold = "cold" in earlier;
 		const incremental = await cache.stage(
 			posix.join(this.#scratch, "incremental"),
 			"report" in earlier ? earlier.report : undefined,
 		);
 		const log = posix.join(this.#scratch, "stryker.log");
 		// A report the revision committed must not stand in for the one this run writes.
-		// A run that keeps cold standing repeats from nothing: the head's tests ran beside the copy a repeat would restore.
 		const runner = await this.#runner(entries, changed, incremental, !cold);
 		const command = [
 			`cd ${quote(this.#root)}`,
@@ -485,9 +485,16 @@ process.exitCode = result.code;
 		if (text === undefined) throw this.#run.fail("invalidOutput", `Stryker wrote no report at ${report}`);
 		// A run another review has retired may not leave identities for the next one to trust.
 		if ((await this.#run.input.holdsAuthority?.()) ?? true)
-			await cache.publish(incremental.staged, { head: commit, trust, cold }, created, (older, newer) =>
-				this.#ancestor(older, newer),
-			);
+			// The partition only speeds a later head, so a failure to store it leaves this run's result standing.
+			await cache
+				.publish(incremental.staged, { head: commit, trust }, created, (older, newer) =>
+					this.#ancestor(older, newer),
+				)
+				.catch((error: unknown) =>
+					this.#notes.push(
+						`The mutation results were not stored for later heads: ${error instanceof Error ? error.message : String(error)}.`,
+					),
+				);
 		return cold ? { text } : { text, provisional: provisionalReason(deciding) };
 	}
 
