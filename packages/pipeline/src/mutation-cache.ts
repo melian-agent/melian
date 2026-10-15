@@ -1,12 +1,17 @@
 import { createHash } from "node:crypto";
 import { constants } from "node:fs";
-import { mkdir, open, realpath, rename, rm, writeFile } from "node:fs/promises";
+import { mkdir, open, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { setTimeout as sleep } from "node:timers/promises";
 import { CacheScratch } from "./cache-scratch.ts";
 
 const bound = 16 * 1024 * 1024;
 // The partition's file wraps a report of up to `bound` with the head that wrote it and that run's leave.
 const wrapping = 1024;
+// How long a publish may hold the partition's lock before another takes it as a crashed holder's, and how often a waiting
+// publish looks again. A publish holds it for a read, a git ancestry check and a rename.
+export const staleLockMs = 120_000;
+const lockPollMs = 50;
 
 // What a partition is shared by: the heads of one review target, judged against one base under one base policy, with one
 // installation and one Stryker. The head is not part of it, so a later head reuses the last judged head's results.
@@ -106,18 +111,46 @@ export class MutationCache {
 	// run of an older head, such as one a crash left pending and a later review resumed, finishing after a newer head's
 	// run, must not put its results back in place of the newer ones: `ancestor` says whether this head is in the held
 	// head's history.
+	// The read of the held head, the check and the rename happen under one lock, so another run cannot publish a newer
+	// head between this run's check and its rename.
 	async publish(staged: string, judged: JudgedHead, ancestor: (held: string) => Promise<boolean>): Promise<void> {
 		const report = await jsonText(staged, bound);
 		if (report === undefined) return;
-		const held = (await this.#read())?.head;
-		if (held !== undefined && held !== judged.head && (await ancestor(held))) return;
 		const scratch = await CacheScratch.open(this.#root);
 		const temporary = scratch.file(this.file);
 		await writeFile(
 			temporary,
 			`{"version":3,"head":${JSON.stringify(judged.head)},"trust":${JSON.stringify(judged.trust)},"report":${report}}`,
 		);
-		await rename(temporary, this.file);
+		await this.#locked(async () => {
+			const held = (await this.#read())?.head;
+			if (held !== undefined && held !== judged.head && (await ancestor(held))) return;
+			await rename(temporary, this.file);
+		});
+		await rm(temporary, { force: true });
+	}
+
+	// A directory made with mkdir is the lock: making it fails while another holds it. A lock older than `staleLockMs`
+	// is a crashed holder's, and is removed.
+	async #locked(use: () => Promise<void>): Promise<void> {
+		const lock = join(this.directory, "partition.lock");
+		for (;;) {
+			try {
+				await mkdir(lock);
+				break;
+			} catch (error) {
+				if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+				const made = await stat(lock).catch(() => undefined);
+				if (made !== undefined && Date.now() - made.mtimeMs > staleLockMs)
+					await rm(lock, { recursive: true, force: true });
+				else await sleep(lockPollMs);
+			}
+		}
+		try {
+			await use();
+		} finally {
+			await rm(lock, { recursive: true, force: true });
+		}
 	}
 
 	async #read(): Promise<{ head: string; trust: unknown; report: string } | undefined> {

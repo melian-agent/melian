@@ -12,13 +12,15 @@ import {
 	rm,
 	stat,
 	symlink,
+	utimes,
 	writeFile,
 } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { setTimeout as sleep } from "node:timers/promises";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { MutationCache, type MutationCacheKey } from "../src/mutation-cache.ts";
+import { MutationCache, type MutationCacheKey, staleLockMs } from "../src/mutation-cache.ts";
 import { mutationInstallation } from "../src/mutation-static.ts";
 import { mutationSelectionVersion } from "../src/mutation-vitest.ts";
 import { MutationCache as MutationCacheV1 } from "./fixtures/mutation-cache-v1.ts";
@@ -278,6 +280,52 @@ it("publishes into an empty partition without asking about a held head", async (
 	await writeFile(staged, '{"first":true}');
 	await cache.publish(staged, { head: judged, trust: "writer" }, always);
 	expect(JSON.parse(await readFile(cache.file, "utf8")).report).toEqual({ first: true });
+});
+
+it("checks and replaces under one lock, so a newer head published meanwhile is not overwritten", async () => {
+	const cache = await MutationCache.open(root, key());
+	await writeFile(cache.file, partition({ oldest: true }, "c".repeat(40)));
+	const older = join(root, "older.json");
+	const newer = join(root, "newer.json");
+	await writeFile(older, '{"older":true}');
+	await writeFile(newer, '{"newer":true}');
+	let second: Promise<void> | undefined;
+	await cache.publish(older, { head: judged, trust: "writer" }, async () => {
+		// The newer head's run finishes while this one asks git about the held head.
+		second = cache.publish(newer, { head: "b".repeat(40), trust: "writer" }, never);
+		await sleep(200);
+		return false;
+	});
+	await second;
+	expect(JSON.parse(await readFile(cache.file, "utf8"))).toMatchObject({
+		head: "b".repeat(40),
+		report: { newer: true },
+	});
+	expect((await readdir(cache.directory)).filter((name) => name.endsWith(".tmp") || name.endsWith(".lock"))).toEqual(
+		[],
+	);
+});
+
+it.each([
+	["takes over a lock a crashed publish left past the stale age", staleLockMs + 1000, false],
+	["waits for a lock inside the stale age until its holder lets go", staleLockMs - 5000, true],
+])("%s", async (_, age, waits) => {
+	const cache = await MutationCache.open(root, key());
+	const lock = join(cache.directory, "partition.lock");
+	await mkdir(lock);
+	const then = new Date(Date.now() - age);
+	await utimes(lock, then, then);
+	const staged = join(root, "staged.json");
+	await writeFile(staged, '{"report":true}');
+	let released = false;
+	const release = sleep(300).then(async () => {
+		released = true;
+		await rm(lock, { recursive: true, force: true });
+	});
+	await cache.publish(staged, { head: judged, trust: "writer" }, never);
+	expect(released).toBe(waits);
+	await release;
+	expect(JSON.parse(await readFile(cache.file, "utf8")).report).toEqual({ report: true });
 });
 
 it("replaces the results of the same head, as a rerun after a timeout does", async () => {
