@@ -806,7 +806,7 @@ describe("recording a dismissal", () => {
 		async function dismissAfter(
 			files: Record<string, string>,
 			after: Record<string, string | null>,
-			options: { reviewWithFiles?: boolean } = {},
+			options: { reviewWithFiles?: boolean; from?: string } = {},
 		) {
 			const harness = await reviewHarness(createMemoryStorage());
 			scriptFinding();
@@ -815,8 +815,13 @@ describe("recording a dismissal", () => {
 			// The lenses as the working tree defines them at the root, so findings carry the override's version.
 			// A nested lens of the same name would keep the root lens off its folder, so clear that, as if the finding's
 			// file had moved there after the root lens reviewed it.
-			const ran = options.reviewWithFiles ? await Lens.load(repo, { kind: "worktree" }, ["."]) : lenses;
-			for (const lens of ran) Object.defineProperty(lens, "nearer", { value: undefined });
+			const ran = options.reviewWithFiles
+				? await Lens.load(repo, { kind: "worktree" }, [options.from ?? "."])
+				: lenses;
+			for (const lens of ran) {
+				Object.defineProperty(lens, "nearer", { value: undefined });
+				Object.defineProperty(lens, "scope", { value: "" });
+			}
 			const { findings } = await reviewChangeset({
 				harness,
 				changeset,
@@ -908,6 +913,17 @@ describe("recording a dismissal", () => {
 					},
 					{ ".melian/lenses/correctness/LENS.md": null },
 					{ reviewWithFiles: true },
+				),
+			).rejects.toMatchObject({ code: "adjudicationFailed" });
+		});
+
+		it("refuses when removing the variant a moved report carries drops the resolution it declared", async () => {
+			const declared = lensOverride(...budget, "resolution: { ceiling: advisory }");
+			await expect(
+				dismissAfter(
+					{ "docs/.melian/lenses/correctness/LENS.md": declared },
+					{ "docs/.melian/lenses/correctness/LENS.md": null },
+					{ reviewWithFiles: true, from: "docs" },
 				),
 			).rejects.toMatchObject({ code: "adjudicationFailed" });
 		});
