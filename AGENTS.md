@@ -78,7 +78,7 @@ A fix for a reported defect, whether a review finding, a failing run, or a user'
 
 ## Agents and the working tree
 
-Every linked worktree lives in one folder beside the checkout, `../melian-worktrees/<name>`, so the checkout's parent directory holds one entry, not one per branch. Never put a worktree inside the checkout: its own `biome.json` fails the gate, and the Learnings below say how. Remove a worktree with `git worktree remove` once its branch is pushed and nothing works in it.
+Every linked worktree lives in one folder beside the main checkout, `<checkout parent>/melian-worktrees/<name>` (`../melian-worktrees/<name>` from the checkout, not from another worktree), so the checkout's parent directory holds one entry, not one per branch. Never put a worktree inside the checkout: its own `biome.json` fails the gate, and the Learnings below say how. Remove a worktree with `git worktree remove` once its branch is pushed and nothing works in it.
 
 A delegated agent shares your checkout. Do not `git checkout`, `git pull`, `git stash`, or rebase in the orchestrating session while one is working. Use a throwaway worktree for concurrent work on another branch. Read-only agents are safe to overlap; writers are not.
 
