@@ -7,7 +7,7 @@ Example: [pull request #102](https://github.com/melian-agent/melian/pull/102) to
 Choice: six rules, which `AGENTS.md` states for the coordinator and every brief.
 
 1. Escalate a class, not an instance. When two consecutive rounds each find a new instance of one class of defect, stop fixing instances. Raise the class as a design question that names the authority, or the stricter rule, that would make the class impossible.
-2. Fix with the least new code. A fix that needs a new mechanism is a design question, raised before the pass. A brief names the files and lines a fix may touch. Once the mutation check is on `main`, the fix commits pass it before they are pushed.
+2. Fix with the least new code. A fix that needs a new mechanism is a design question, raised before the pass. A brief names the files and lines a fix may touch. The fix commits pass the mutation check before they are pushed.
 3. A ruling that changes trust or blocking behaviour gets a short attacking review before a fix pass implements it.
 4. Split a pull request over about 3,000 changed lines.
 5. A review of record on a trust surface attacks with probes and does not only read.
