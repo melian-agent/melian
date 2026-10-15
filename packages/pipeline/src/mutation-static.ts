@@ -12,6 +12,7 @@ import {
 	mutationUnmutatedLog,
 	normaliseMutationReport,
 	type Revision,
+	steersMutation,
 	type ToolLog,
 	type UnmutatedFile,
 } from "@melian-agent/core";
@@ -386,6 +387,26 @@ process.exitCode = result.code;
 		return code === 0;
 	}
 
+	// Stryker diffs the mutated files and the test files, not its own configuration or Vitest's, which decide what a kill
+	// is. A head that changed one since the last judged head starts cold.
+	async #steered(
+		earlier: { readonly judged: JudgedHead; readonly report: string } | { readonly cold: string },
+	): Promise<{ readonly judged: JudgedHead; readonly report: string } | { readonly cold: string }> {
+		if ("cold" in earlier) return earlier;
+		const judged = earlier.judged.head;
+		const listing = posix.join(this.#scratch, "since-judged");
+		const listed = await this.#run.shell(
+			`${this.#run.git(`diff --name-only -z ${quote(judged)} ${quote(this.#run.input.commit)}`)} > ${quote(listing)}`,
+		);
+		const names = listed.code === 0 ? await this.#run.readOutput(listing) : undefined;
+		if (names === undefined) return { cold: `git could not list what changed since ${judged.slice(0, 12)}` };
+		const steering = names.split("\0").find(steersMutation);
+		if (steering === undefined) return earlier;
+		return {
+			cold: `${steering} changed since the last judged head ${judged.slice(0, 12)}, and it decides what a kill is`,
+		};
+	}
+
 	async #execute(
 		entries: readonly string[],
 		changed: readonly string[],
@@ -401,7 +422,7 @@ process.exitCode = result.code;
 				.update(JSON.stringify({ version: this.#version }))
 				.digest("hex"),
 		});
-		const earlier = await cache.earlier(trust, (judged) => this.#ancestor(judged, commit));
+		const earlier = await this.#steered(await cache.earlier(trust, (judged) => this.#ancestor(judged, commit)));
 		const incremental = await cache.stage(
 			posix.join(this.#scratch, "incremental"),
 			"report" in earlier ? earlier.report : undefined,

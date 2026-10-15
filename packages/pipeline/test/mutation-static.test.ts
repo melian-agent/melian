@@ -522,6 +522,45 @@ printf '%s' '{"schemaVersion":"1.0","files":{}}' > reports/mutation/mutation.jso
 		]);
 	});
 
+	it.each(["stryker.config.json", "packages/p/vitest.config.ts", "vitest.setup.ts"])(
+		"starts cold when %s, which decides what a kill is, changed since the last judged head",
+		async (path) => {
+			const { base, head } = twoCommits();
+			const reads = incrementalTool();
+			await mutate(base, head, { target: "range-feature" });
+			const next = commit(repo, {
+				[path]: path.endsWith(".json")
+					? JSON.stringify({ testRunner: "vitest", timeoutMS: 1 })
+					: "export default {};\n",
+			});
+			const result = await mutate(base, next, { target: "range-feature" });
+			expect(reads()).toEqual([]);
+			if (result.status !== "ran") throw new Error("skipped");
+			expect(result.notes).toContain(
+				`Stryker started cold: ${path} changed since the last judged head ${head.slice(0, 12)}, and it decides what a kill is.`,
+			);
+		},
+	);
+
+	it("starts cold when git cannot say what changed since the last judged head", async () => {
+		const { base, head } = twoCommits();
+		const reads = incrementalTool();
+		await mutate(base, head, { target: "range-feature" });
+		const next = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 1") });
+		const shell = Run.prototype.shell;
+		// git lists nothing and fails, so an empty listing must not read as no change.
+		vi.spyOn(Run.prototype, "shell").mockImplementation(async function (this: Run, command, timeout) {
+			const result = await shell.call(this, command, timeout);
+			return command.includes("diff --name-only") ? { code: 128, output: "" } : result;
+		});
+		const result = await mutate(base, next, { target: "range-feature" });
+		expect(reads()).toEqual([]);
+		if (result.status !== "ran") throw new Error("skipped");
+		expect(result.notes).toContain(
+			`Stryker started cold: git could not list what changed since ${head.slice(0, 12)}.`,
+		);
+	});
+
 	it("starts cold when the base changes under the same review target", async () => {
 		const { base, head } = twoCommits();
 		const reads = incrementalTool();

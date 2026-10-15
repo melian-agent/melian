@@ -16,7 +16,9 @@ The changeset ID already names a review target independent of its head. A pull r
 
 The leave is the host's decision for the run, `StaticRunInput.headCode`, which the check task takes from `WriterTrust`. A run reuses the partition only when the recorded leave equals its own. A partition with any other value, or none, starts cold. The ancestor test is `git merge-base --is-ancestor <judged> <head>`; any exit but 0 starts cold.
 
-A run that starts cold says why in its notes: "this review target has no earlier judged head", "the run that judged ... was trusted as ..., not as ...", or "the last judged head ... is not in this head's history, which was rewritten".
+A run also starts cold when a file that decides what a kill is changed since the judged head: `stryker.config.*`, `vitest.config.*`, `vitest.stryker.config.*`, a Vitest or Stryker setup file, or `stryker-test-names.*`, by `git diff --name-only`. Problem: Stryker diffs the mutated files and the test files, not its own configuration or Vitest's. Example: a head that adds a setup file making every test pass would leave every earlier kill reused. A failed diff starts cold too. A test helper the tests import is not on that list: Stryker does not see a change to it, so a kill that depended on it stays reused. That is the stale `Killed` the rerun decision accepts; a branch that rewrites its helpers wants a cold run before the queue.
+
+A run that starts cold says why in its notes: "this review target has no earlier judged head", "the run that judged ... was trusted as ..., not as ...", or "the last judged head ... is not in this head's history, which was rewritten", or "... changed since the last judged head ..., and it decides what a kill is".
 
 ## What Stryker reruns, as read in its code
 

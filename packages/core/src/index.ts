@@ -18,7 +18,7 @@ export {
 	type VerdictFields,
 	type VerdictStatus,
 } from "./adjudication.ts";
-export { parseJsonc } from "./analyser.ts";
+export { parseJsonc, steersMutation } from "./analyser.ts";
 export type {
 	ChangeOverlap,
 	CodeLocation,
