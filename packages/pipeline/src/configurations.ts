@@ -17,8 +17,8 @@ const policyReview = "guardrail/policy-change-review";
 
 /**
  * The policy a review's findings resolve under, and a fingerprint of what decides resolution: every path's table,
- * layers, and aliases, and each lens variant's name, scope, and declared resolution. A budget, a model route, or
- * a tier changes none of those. Two reads that would resolve the findings alike give one fingerprint.
+ * layers, and aliases, and the declared resolution each lens report resolves through. A budget, a model route, or a
+ * tier changes none of those. Two reads that would resolve the findings alike give one fingerprint.
  */
 export type PolicyLookup = ConfigFor & { readonly fingerprint: string };
 
@@ -93,13 +93,22 @@ export async function configsFor(
 	const byPath = [...atPath]
 		.sort(([left], [right]) => (left < right ? -1 : 1))
 		.map(([path, { lensVariants: _, ...policy }]) => [path, policy]);
-	// A variant is named by its version in `lensVariants`, and a version hashes everything the lens runs with, its
-	// budget included. The fingerprint holds what decides resolution, so it lists each variant by name and scope.
-	const declared = variants
-		.map(({ name, scope, resolution }) => [name, scope, resolution ?? null])
-		.sort(([leftName, leftScope], [rightName, rightScope]) =>
-			`${leftName}\0${leftScope}` < `${rightName}\0${rightScope}` ? -1 : 1,
-		);
+	// A lens variant is named by its version in `lensVariants`, and a version hashes everything the lens runs with, its
+	// budget included. So the fingerprint holds what each lens report resolves through: the declared default its
+	// variant maps to, or the nearest lens's where that variant is no longer defined.
+	const declared = findings
+		.flatMap(({ properties: { path, source, reportedBy = [source] } }) =>
+			reportedBy
+				.filter(({ check }) => check.startsWith("lens."))
+				.map(({ check, version }) => {
+					const name = check.slice("lens.".length);
+					const variant = `${name}@${version}`;
+					const { lensDefaults } = atPath.get(path)!;
+					const entry = Object.hasOwn(lensVariants, variant) ? lensVariants[variant] : lensDefaults?.[name];
+					return JSON.stringify([path, check, entry ?? null]);
+				}),
+		)
+		.sort();
 	const fingerprint = createHash("sha256")
 		.update(JSON.stringify([byPath, declared]))
 		.digest("hex")

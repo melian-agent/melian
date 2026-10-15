@@ -803,16 +803,25 @@ describe("recording a dismissal", () => {
 		const budget = ["budget: { findings: 8, tokens: 600000, tools: 90 }"];
 
 		// Runs a review under `files`, replaces them with `after`, and dismisses the finding it reported.
-		async function dismissAfter(files: Record<string, string>, after: Record<string, string | null>) {
+		async function dismissAfter(
+			files: Record<string, string>,
+			after: Record<string, string | null>,
+			options: { reviewWithFiles?: boolean } = {},
+		) {
 			const harness = await reviewHarness(createMemoryStorage());
 			scriptFinding();
 			const changeset = await Changeset.resolve(repo, "main...feature");
 			writeFiles(repo, files);
+			// The lenses as the working tree defines them at the root, so findings carry the override's version.
+			// A nested lens of the same name would keep the root lens off its folder, so clear that, as if the finding's
+			// file had moved there after the root lens reviewed it.
+			const ran = options.reviewWithFiles ? await Lens.load(repo, { kind: "worktree" }, ["."]) : lenses;
+			for (const lens of ran) Object.defineProperty(lens, "nearer", { value: undefined });
 			const { findings } = await reviewChangeset({
 				harness,
 				changeset,
 				config,
-				lenses,
+				lenses: ran,
 				standards: [],
 				models: fake.review,
 				checks: [...deterministicRan],
@@ -871,21 +880,34 @@ describe("recording a dismissal", () => {
 			).rejects.toMatchObject({ code: "adjudicationFailed" });
 		});
 
-		it("refuses when a removed lens variant in another folder declared a resolution", async () => {
-			await expect(
-				dismissAfter(
-					{ "other/.melian/lenses/correctness/LENS.md": lensOverride("resolution: { ceiling: advisory }") },
-					{ "other/.melian/lenses/correctness/LENS.md": null },
-				),
-			).rejects.toMatchObject({ code: "adjudicationFailed" });
+		it("decides a dismissal again after a lens variant in a folder the finding is not under is removed", async () => {
+			const recorded = await dismissAfter(
+				{ "other/.melian/lenses/correctness/LENS.md": lensOverride("resolution: { ceiling: advisory }") },
+				{ "other/.melian/lenses/correctness/LENS.md": null },
+			);
+
+			expect(recorded.finding.properties.status).toBe("dismissed");
 		});
 
-		it("refuses when a lens variant's declared resolution moved to another folder", async () => {
-			const declared = lensOverride("resolution: { ceiling: advisory }");
+		it("decides a dismissal again after a budget-only override its findings carry the version of is removed", async () => {
+			const recorded = await dismissAfter(
+				{ ".melian/lenses/correctness/LENS.md": lensOverride(...budget) },
+				{ ".melian/lenses/correctness/LENS.md": null },
+				{ reviewWithFiles: true },
+			);
+
+			expect(recorded.finding.properties.status).toBe("dismissed");
+		});
+
+		it("refuses when removing a budget-only override moves its findings to a nearer lens that declares a resolution", async () => {
 			await expect(
 				dismissAfter(
-					{ "one/.melian/lenses/correctness/LENS.md": declared },
-					{ "one/.melian/lenses/correctness/LENS.md": null, "two/.melian/lenses/correctness/LENS.md": declared },
+					{
+						".melian/lenses/correctness/LENS.md": lensOverride(...budget),
+						"src/.melian/lenses/correctness/LENS.md": lensOverride("resolution: { ceiling: advisory }"),
+					},
+					{ ".melian/lenses/correctness/LENS.md": null },
+					{ reviewWithFiles: true },
 				),
 			).rejects.toMatchObject({ code: "adjudicationFailed" });
 		});
