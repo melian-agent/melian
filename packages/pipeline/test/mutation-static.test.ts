@@ -510,33 +510,41 @@ printf '%s' '{"schemaVersion":"1.0","files":{}}' > reports/mutation/mutation.jso
 
 	it("keeps the newer head's results when a run of an older head of the same target finishes last", async () => {
 		const { base, head } = twoCommits();
-		const next = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 1") });
 		incrementalTool("older");
-		// The newer head's run starts and finishes while the older one's tests run, as beside a resumed pending task.
-		await mutate(base, head, {
-			target: "range-feature",
-			holdsAuthority: async () => {
-				incrementalTool("newer");
-				await mutate(base, next, { target: "range-feature" });
-				return true;
-			},
-		});
+		await mutate(base, head, { target: "range-feature" });
+		const next = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 1") });
+		incrementalTool("newer");
+		await mutate(base, next, { target: "range-feature" });
+		incrementalTool("older again");
+		await mutate(base, head, { target: "range-feature" });
 		expect(partitions().map((file) => JSON.parse(readFileSync(file, "utf8")))).toEqual([
 			{ version: 3, head: next, trust: "writer", report: { stamp: "newer" } },
 		]);
 	});
 
-	it("replaces a newer head's results with a head the branch was rewound to", async () => {
-		const { base, head } = twoCommits();
-		const next = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 1") });
-		incrementalTool("newer");
-		await mutate(base, next, { target: "range-feature" });
-		incrementalTool("rewound");
-		await mutate(base, head, { target: "range-feature" });
-		expect(partitions().map((file) => JSON.parse(readFileSync(file, "utf8")))).toEqual([
-			{ version: 3, head, trust: "writer", report: { stamp: "rewound" } },
-		]);
-	});
+	it.each([
+		"stryker.config.json",
+		"vite.config.ts",
+		"packages/p/vitest.ci.config.ts",
+		"packages/p/test/setup.ts",
+		"packages/p/test/helpers/assert.ts",
+		"package.json",
+		"packages/core/src/git.ts",
+	])(
+		"starts cold when %s, which Stryker's incremental mode does not read, changed since the last judged head",
+		async (path) => {
+			const { base, head } = twoCommits();
+			const reads = incrementalTool();
+			await mutate(base, head, { target: "range-feature" });
+			const next = commit(repo, { [path]: path.endsWith(".json") ? "{}\n" : "export const changed = 1;\n" });
+			const result = await mutate(base, next, { target: "range-feature" });
+			expect(reads()).toEqual([]);
+			if (result.status !== "ran") throw new Error("skipped");
+			expect(result.notes).toContain(
+				`Stryker started cold: ${path} changed since the last judged head ${head.slice(0, 12)}, and Stryker's incremental mode does not read it.`,
+			);
+		},
+	);
 
 	it("reuses the last judged head's results across a new test file, a test file the report names, mutated files, and prose", async () => {
 		const { base, head } = twoCommits();

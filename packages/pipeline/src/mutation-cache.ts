@@ -71,13 +71,10 @@ export class MutationCache {
 		return cache;
 	}
 
-	// The head the partition holds now, which `publish` compares with what it holds when the run ends.
-	async held(): Promise<string | undefined> {
-		return (await this.#read())?.head;
-	}
-
-	// The last judged head's report, when a run under `trust` may build on it: that run was trusted the same way, and
-	// `ancestor` says the judged head is in this head's history. Otherwise why the run starts cold.
+	/**
+	 * The last judged head's report, when a run under `trust` may build on it: that run was trusted the same way, and
+	 * `ancestor` says the judged head is in this head's history. Otherwise why the run starts cold.
+	 */
 	async earlier(
 		trust: HeadTrust,
 		ancestor: (judged: string) => Promise<boolean>,
@@ -106,20 +103,14 @@ export class MutationCache {
 	}
 
 	// The head's tests ran beside the staged file, so it is taken only as a regular file within the bound that parses. A
-	// run of an older head, such as one a crash left pending and a later review resumed, that finishes after a newer
-	// head's run must not put its results back in place of the newer ones: `ancestor` says whether this head is in the
-	// held head's history. A newer head the run already saw when it started, `seen`, is one the branch was rewound from,
-	// and the run replaces it.
-	async publish(
-		staged: string,
-		judged: JudgedHead,
-		seen: string | undefined,
-		ancestor: (held: string) => Promise<boolean>,
-	): Promise<void> {
+	// run of an older head, such as one a crash left pending and a later review resumed, finishing after a newer head's
+	// run, must not put its results back in place of the newer ones: `ancestor` says whether this head is in the held
+	// head's history.
+	async publish(staged: string, judged: JudgedHead, ancestor: (held: string) => Promise<boolean>): Promise<void> {
 		const report = await jsonText(staged, bound);
 		if (report === undefined) return;
-		const held = await this.held();
-		if (held !== undefined && held !== judged.head && held !== seen && (await ancestor(held))) return;
+		const held = (await this.#read())?.head;
+		if (held !== undefined && held !== judged.head && (await ancestor(held))) return;
 		const scratch = await CacheScratch.open(this.#root);
 		const temporary = scratch.file(this.file);
 		await writeFile(

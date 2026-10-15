@@ -429,7 +429,6 @@ process.exitCode = result.code;
 				.update(JSON.stringify({ version: this.#version }))
 				.digest("hex"),
 		});
-		const seen = await cache.held();
 		const earlier = await this.#steered(
 			await cache.earlier(trust, (judged) => this.#ancestor(judged, commit)),
 			changed,
@@ -495,7 +494,7 @@ process.exitCode = result.code;
 		if (text === undefined) throw this.#run.fail("invalidOutput", `Stryker wrote no report at ${report}`);
 		// A run another review has retired may not leave identities for the next one to trust.
 		if ((await this.#run.input.holdsAuthority?.()) ?? true)
-			await cache.publish(incremental.staged, { head: commit, trust }, seen, (held) => this.#ancestor(commit, held));
+			await cache.publish(incremental.staged, { head: commit, trust }, (held) => this.#ancestor(commit, held));
 		return text;
 	}
 
