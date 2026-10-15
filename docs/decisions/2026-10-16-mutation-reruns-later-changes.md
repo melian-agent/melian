@@ -18,11 +18,20 @@ The leave is the host's decision for the run, `StaticRunInput.headCode`, which t
 
 A run also starts cold when a file that decides what a kill is changed since the judged head: `stryker.config.*`, `vitest.config.*`, `vitest.stryker.config.*`, a Vitest or Stryker setup file, or `stryker-test-names.*`, by `git diff --name-only`. Problem: Stryker diffs the mutated files and the test files, not its own configuration or Vitest's. Example: a head that adds a setup file making every test pass would leave every earlier kill reused. A failed diff starts cold too. A test helper the tests import is not on that list: Stryker does not see a change to it, so a kill that depended on it stays reused. That is the stale `Killed` the rerun decision accepts; a branch that rewrites its helpers wants a cold run before the queue.
 
-A run that starts cold says why in its notes: "this review target has no earlier judged head", "the run that judged ... was trusted as ..., not as ...", or "the last judged head ... is not in this head's history, which was rewritten", or "... changed since the last judged head ..., and it decides what a kill is".
+A run that starts cold says why in its notes. The reasons read:
+
+- "this review target has no earlier judged head";
+- "the run that judged ... was trusted as ..., not as ...";
+- "the last judged head ... is not in this head's history, which was rewritten";
+- "... changed since the last judged head ..., and it decides what a kill is".
 
 ## What Stryker reruns, as read in its code
 
-Melian still mutates the whole pull request's changed lines; Stryker's incremental mode decides which results stand. Stryker 10.0.0's `IncrementalDiffer`, in `node_modules/@stryker-mutator/core/dist/src/mutants/incremental-differ.js`, reuses a result when the mutant's code is unchanged by a text diff of the old and new file; for a killed mutant, when a test that killed it is unchanged by a diff of its test file, name and position; and for a survivor or an uncovered mutant, when no test was added to those that cover it. The dry run still runs the related tests to learn coverage, so only the mutant runs are saved.
+Melian still mutates the whole pull request's changed lines; Stryker's incremental mode decides which results stand. Stryker 10.0.0's `IncrementalDiffer` sits in `node_modules/@stryker-mutator/core/dist/src/mutants/incremental-differ.js`. It reuses a result only when all of these hold:
+
+- The mutant's code is unchanged, by a text diff of the old and new file.
+- For a killed mutant, a test that killed it is unchanged, by a diff of its test file, name and position.
+- For a survivor or an uncovered mutant, no test was added to those that cover it. The dry run still runs the related tests to learn coverage, so only the mutant runs are saved.
 
 A test with the real Stryker in `packages/pipeline/test/mutation-real.test.ts` proves it on four heads of one target. A change to line 50 runs line 50's two mutants and reuses line 10's survivor. A change to the test that kills line 50's mutants runs them again. A head that changes neither reuses all three. Each head still reports the line-10 survivor: Stryker reports reused mutants beside those it ran, so the review's result covers the whole pull request. A survivor whose line a later head takes out of the diff is dropped, because findings come only from changed lines.
 
