@@ -1943,7 +1943,7 @@ cp '${canned}' reports/mutation/mutation.json`,
 		it("shares results across the heads of one review target, under the leave the head ran with", async () => {
 			const base = commit(repo, { "melian.yaml": policy, "stryker.config.json": config, "packages/p/src/a.ts": a });
 			const reads = incrementalTool();
-			const judge = async () => {
+			const judge = async (by: "writer" | "reviewer" = "reviewer") => {
 				const { harness, root } = await open();
 				const source: RepositorySource = { kind: "revision", commit: base };
 				const { config: loaded } = await loadConfig(repo, source, "");
@@ -1956,7 +1956,7 @@ cp '${canned}' reports/mutation/mutation.json`,
 						config: loaded,
 						source,
 						tier: "full",
-						writer: { trusted: true, by: "reviewer" },
+						writer: { trusted: true, by },
 					},
 					context,
 				);
@@ -1970,6 +1970,13 @@ cp '${canned}' reports/mutation/mutation.json`,
 			expect(reads()).toEqual(['{"stamp":"written"}']);
 			expect(partitions().map((file) => JSON.parse(readFileSync(file, "utf8")))).toMatchObject([
 				{ head, trust: "reviewer" },
+			]);
+			// A writer's run of the next head takes nothing from the reviewer-vouched one, and records its own leave.
+			const third = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 2") });
+			await judge("writer");
+			expect(reads()).toEqual(['{"stamp":"written"}']);
+			expect(partitions().map((file) => JSON.parse(readFileSync(file, "utf8")))).toMatchObject([
+				{ head: third, trust: "writer" },
 			]);
 		});
 
