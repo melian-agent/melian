@@ -12,7 +12,6 @@ import {
 	mutationUnmutatedLog,
 	normaliseMutationReport,
 	type Revision,
-	steersMutation,
 	type ToolLog,
 	type UnmutatedFile,
 } from "@melian-agent/core";
@@ -42,6 +41,9 @@ const report = "reports/mutation/mutation.json";
 // or a declaration file is not. A `.config.ts` is production: it can hold logic. It is not mutated, though, because a tool
 // loads it to run the mutants, so a change to one is a file the run did not judge.
 const typescript = /\.[cm]?tsx?$/;
+// Files a test run can load, and names Vitest's defaults give test files.
+const code = /\.(?:[cm]?[jt]sx?|json)$/;
+const namedAsTest = /\.(?:test|spec)\.[cm]?[jt]sx?$/;
 const notProduction = /\.(?:d|test|spec)\.[cm]?tsx?$/;
 const configuration = /\.config\.[cm]?tsx?$/;
 const notProductionPrefix = "packages/evals/verifier/";
@@ -387,23 +389,28 @@ process.exitCode = result.code;
 		return code === 0;
 	}
 
-	// Stryker diffs the mutated files and the test files, not its own configuration or Vitest's, which decide what a kill
-	// is. A head that changed one since the last judged head starts cold.
+	// Stryker's incremental mode diffs only the files it mutated and the test files it ran. A change to any other code since
+	// the judged head, such as a configuration, a setup file, a test helper or a production file set aside, can change what
+	// a reused kill meant, so the run starts cold. A new file named as a test is a test Stryker will see.
 	async #steered(
 		earlier: { readonly judged: JudgedHead; readonly report: string } | { readonly cold: string },
+		mutated: readonly string[],
 	): Promise<{ readonly judged: JudgedHead; readonly report: string } | { readonly cold: string }> {
 		if ("cold" in earlier) return earlier;
 		const judged = earlier.judged.head;
 		const listing = posix.join(this.#scratch, "since-judged");
 		const listed = await this.#run.shell(
-			`${this.#run.git(`diff --name-only -z ${quote(judged)} ${quote(this.#run.input.commit)}`)} > ${quote(listing)}`,
+			`${this.#run.git(`diff --name-only --no-renames -z ${quote(judged)} ${quote(this.#run.input.commit)}`)} > ${quote(listing)}`,
 		);
 		const names = listed.code === 0 ? await this.#run.readOutput(listing) : undefined;
 		if (names === undefined) return { cold: `git could not list what changed since ${judged.slice(0, 12)}` };
-		const steering = names.split("\0").find(steersMutation);
-		if (steering === undefined) return earlier;
+		// A production file changed since is in the pull request's diff, so it is among the mutated ones.
+		const { testFiles } = JSON.parse(earlier.report) as { testFiles?: Record<string, unknown> };
+		const seen = new Set([...mutated, ...Object.keys(testFiles ?? {})]);
+		const unseen = names.split("\0").find((path) => code.test(path) && !seen.has(path) && !namedAsTest.test(path));
+		if (unseen === undefined) return earlier;
 		return {
-			cold: `${steering} changed since the last judged head ${judged.slice(0, 12)}, and it decides what a kill is`,
+			cold: `${unseen} changed since the last judged head ${judged.slice(0, 12)}, and Stryker's incremental mode does not read it`,
 		};
 	}
 
@@ -422,7 +429,10 @@ process.exitCode = result.code;
 				.update(JSON.stringify({ version: this.#version }))
 				.digest("hex"),
 		});
-		const earlier = await this.#steered(await cache.earlier(trust, (judged) => this.#ancestor(judged, commit)));
+		const earlier = await this.#steered(
+			await cache.earlier(trust, (judged) => this.#ancestor(judged, commit)),
+			changed,
+		);
 		const incremental = await cache.stage(
 			posix.join(this.#scratch, "incremental"),
 			"report" in earlier ? earlier.report : undefined,

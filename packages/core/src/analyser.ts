@@ -17,12 +17,6 @@ export function analyserOf(path: string): string | undefined {
 	return undefined;
 }
 
-/** Whether a repository-relative path configures Stryker or the Vitest run it drives, so it decides what a kill is. */
-export function steersMutation(path: string): boolean {
-	const analyser = analyserOf(path);
-	return analyser === "Stryker" || analyser === "the Vitest run Stryker drives";
-}
-
 /**
  * Parses JSON with comments and trailing commas, as `tsconfig.json` and `biome.jsonc` allow. Returns undefined when
  * the text is not even that.

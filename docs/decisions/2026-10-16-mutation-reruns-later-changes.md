@@ -16,14 +16,14 @@ The changeset ID already names a review target independent of its head. A pull r
 
 The leave is the host's decision for the run, `StaticRunInput.headCode`, which the check task takes from `WriterTrust`. A run reuses the partition only when the recorded leave equals its own. A partition with any other value, or none, starts cold. The ancestor test is `git merge-base --is-ancestor <judged> <head>`; any exit but 0 starts cold.
 
-A run also starts cold when a file that decides what a kill is changed since the judged head: `stryker.config.*`, `vitest.config.*`, `vitest.stryker.config.*`, a Vitest or Stryker setup file, or `stryker-test-names.*`, by `git diff --name-only`. Problem: Stryker diffs the mutated files and the test files, not its own configuration or Vitest's. Example: a head that adds a setup file making every test pass would leave every earlier kill reused. A failed diff starts cold too. A test helper the tests import is not on that list: Stryker does not see a change to it, so a kill that depended on it stays reused. That is the stale `Killed` the rerun decision accepts; a branch that rewrites its helpers wants a cold run before the queue.
+A run also starts cold when code Stryker's incremental mode does not read changed since the judged head. Stryker diffs only the files it mutates and the test files it ran, the report's `testFiles`. Problem: a change anywhere else can change what a reused kill meant, and Stryker would never see it. Example: a head that edits `vite.config.ts`, a setup file under any name, or a test helper so that a strong test no longer asserts leaves every earlier kill reused. The first version listed configuration and setup files by name, and the second round of review found three names it missed. Solution: list `git diff --name-only --no-renames` since the judged head, and start cold on any JavaScript, TypeScript or JSON file that is neither mutated in this run nor a test file in the report, unless it is named as a test (`.test.` or `.spec.`), which Stryker will see. A production file changed since is in the pull request's diff, so it is mutated, unless the check sets it aside, and then the run starts cold. Prose and other files do not count. A failed listing starts cold too.
 
 A run that starts cold says why in its notes. The reasons read:
 
 - "this review target has no earlier judged head";
 - "the run that judged ... was trusted as ..., not as ...";
 - "the last judged head ... is not in this head's history, which was rewritten";
-- "... changed since the last judged head ..., and it decides what a kill is".
+- "... changed since the last judged head ..., and Stryker's incremental mode does not read it".
 
 ## What Stryker reruns, as read in its code
 

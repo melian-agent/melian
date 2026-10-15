@@ -406,7 +406,7 @@ cp "$incremental" reports/mutation/mutation.json`,
 	});
 
 	// A fake Stryker that appends what it finds in its incremental file to a log, then writes one of its own.
-	function incrementalTool(stamp = "written") {
+	function incrementalTool(stamp = "written", written = JSON.stringify({ stamp })) {
 		const reads = join(artifacts, "incremental-reads.txt");
 		fakeTool(
 			repo,
@@ -418,7 +418,7 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 if [ -e "$incremental" ]; then cat "$incremental" >> '${reads}'; echo >> '${reads}'; fi
-printf '%s' '{"stamp":"${stamp}"}' > "$incremental"
+printf '%s' '${written}' > "$incremental"
 mkdir -p reports/mutation
 printf '%s' '{"schemaVersion":"1.0","files":{}}' > reports/mutation/mutation.json`,
 		);
@@ -522,25 +522,60 @@ printf '%s' '{"schemaVersion":"1.0","files":{}}' > reports/mutation/mutation.jso
 		]);
 	});
 
-	it.each(["stryker.config.json", "packages/p/vitest.config.ts", "vitest.setup.ts"])(
-		"starts cold when %s, which decides what a kill is, changed since the last judged head",
+	it.each([
+		"stryker.config.json",
+		"vite.config.ts",
+		"packages/p/vitest.ci.config.ts",
+		"packages/p/test/setup.ts",
+		"packages/p/test/helpers/assert.ts",
+		"package.json",
+		"packages/core/src/git.ts",
+	])(
+		"starts cold when %s, which Stryker's incremental mode does not read, changed since the last judged head",
 		async (path) => {
 			const { base, head } = twoCommits();
 			const reads = incrementalTool();
 			await mutate(base, head, { target: "range-feature" });
-			const next = commit(repo, {
-				[path]: path.endsWith(".json")
-					? JSON.stringify({ testRunner: "vitest", timeoutMS: 1 })
-					: "export default {};\n",
-			});
+			const next = commit(repo, { [path]: path.endsWith(".json") ? "{}\n" : "export const changed = 1;\n" });
 			const result = await mutate(base, next, { target: "range-feature" });
 			expect(reads()).toEqual([]);
 			if (result.status !== "ran") throw new Error("skipped");
 			expect(result.notes).toContain(
-				`Stryker started cold: ${path} changed since the last judged head ${head.slice(0, 12)}, and it decides what a kill is.`,
+				`Stryker started cold: ${path} changed since the last judged head ${head.slice(0, 12)}, and Stryker's incremental mode does not read it.`,
 			);
 		},
 	);
+
+	it("reuses the last judged head's results across a new test file, a test file the report names, mutated files, and prose", async () => {
+		const { base, head } = twoCommits();
+		const reads = incrementalTool("report", JSON.stringify({ testFiles: { "packages/p/test/checks/a.ts": {} } }));
+		await mutate(base, head, { target: "range-feature" });
+		const next = commit(repo, {
+			"packages/p/src/a.ts": a.replace("x > 0", "x >= 1"),
+			"packages/p/src/old.ts": "export const old = 2;\n",
+			"packages/p/test/checks/a.ts": lines("// tests a, changed"),
+			"packages/p/test/b.spec.ts": lines("// a new test"),
+			"NOTES.md": "prose\n",
+		});
+		await mutate(base, next, { target: "range-feature" });
+		expect(reads()).toHaveLength(1);
+	});
+
+	it("starts cold when a file Stryker does not read is renamed to a test's name", async () => {
+		const { base } = twoCommits();
+		const head = commit(repo, { "packages/p/test/helpers/assert.ts": "export const assert = 1;\n" });
+		const reads = incrementalTool();
+		await mutate(base, head, { target: "range-feature" });
+		const next = commitTo(repo, { "packages/p/test/assert.test.ts": "export const assert = 1;\n" }, [
+			"packages/p/test/helpers/assert.ts",
+		]);
+		const result = await mutate(base, next, { target: "range-feature" });
+		expect(reads()).toEqual([]);
+		if (result.status !== "ran") throw new Error("skipped");
+		expect(result.notes).toContain(
+			`Stryker started cold: packages/p/test/helpers/assert.ts changed since the last judged head ${head.slice(0, 12)}, and Stryker's incremental mode does not read it.`,
+		);
+	});
 
 	it("starts cold when git cannot say what changed since the last judged head", async () => {
 		const { base, head } = twoCommits();
