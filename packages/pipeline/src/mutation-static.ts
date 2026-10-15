@@ -380,11 +380,9 @@ process.exitCode = result.code;
 
 	// The run executes the head's own test files, setup files, and Vitest configuration, as an ordinary child process with
 	// the environment every static tool gets. Nothing confines it: the caller decided this head's code may run here.
-	// Whether `judged` is in the head's history. git answers 1 for no, and anything else it says means no reuse either.
-	async #ancestor(judged: string): Promise<boolean> {
-		const { code } = await this.#run.shell(
-			this.#run.git(`merge-base --is-ancestor ${quote(judged)} ${quote(this.#run.input.commit)}`),
-		);
+	// Whether `older` is in `newer`'s history. git answers 1 for no, and anything else it says counts as no.
+	async #ancestor(older: string, newer: string): Promise<boolean> {
+		const { code } = await this.#run.shell(this.#run.git(`merge-base --is-ancestor ${quote(older)} ${quote(newer)}`));
 		return code === 0;
 	}
 
@@ -403,7 +401,7 @@ process.exitCode = result.code;
 				.update(JSON.stringify({ version: this.#version }))
 				.digest("hex"),
 		});
-		const earlier = await cache.earlier(trust, (judged) => this.#ancestor(judged));
+		const earlier = await cache.earlier(trust, (judged) => this.#ancestor(judged, commit));
 		const incremental = await cache.stage(
 			posix.join(this.#scratch, "incremental"),
 			"report" in earlier ? earlier.report : undefined,
@@ -465,7 +463,7 @@ process.exitCode = result.code;
 		if (text === undefined) throw this.#run.fail("invalidOutput", `Stryker wrote no report at ${report}`);
 		// A run another review has retired may not leave identities for the next one to trust.
 		if ((await this.#run.input.holdsAuthority?.()) ?? true)
-			await cache.publish(incremental.staged, { head: commit, trust });
+			await cache.publish(incremental.staged, { head: commit, trust }, (held) => this.#ancestor(commit, held));
 		return text;
 	}
 

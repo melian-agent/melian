@@ -104,10 +104,15 @@ export class MutationCache {
 		return { staged, earlier };
 	}
 
-	// The head's tests ran beside the staged file, so it is taken only as a regular file within the bound that parses.
-	async publish(staged: string, judged: JudgedHead): Promise<void> {
+	// The head's tests ran beside the staged file, so it is taken only as a regular file within the bound that parses. A
+	// run of an older head, such as one a crash left pending and a later review resumed, finishing after a newer head's
+	// run, must not put its results back in place of the newer ones: `ancestor` says whether this head is in the held
+	// head's history.
+	async publish(staged: string, judged: JudgedHead, ancestor: (held: string) => Promise<boolean>): Promise<void> {
 		const report = await jsonText(staged, bound);
 		if (report === undefined) return;
+		const held = (await this.#read())?.head;
+		if (held !== undefined && held !== judged.head && (await ancestor(held))) return;
 		const scratch = await CacheScratch.open(this.#root);
 		const temporary = scratch.file(this.file);
 		await writeFile(

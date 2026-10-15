@@ -43,6 +43,7 @@ const judged = "a".repeat(40);
 const partition = (report: object, head: unknown = judged, trust: unknown = "writer") =>
 	JSON.stringify({ version: 3, head, trust, report });
 const always = async () => true;
+const never = async () => false;
 
 let root: string;
 beforeEach(async () => {
@@ -242,7 +243,7 @@ it("publishes a readable staged report with the head that wrote it and its leave
 	await writeFile(cache.file, partition({ old: true }));
 	const { staged } = await cache.stage(join(root, "work"), undefined);
 	await writeFile(staged, '{"new":true}');
-	await cache.publish(staged, { head: "b".repeat(40), trust: "writer" });
+	await cache.publish(staged, { head: "b".repeat(40), trust: "writer" }, never);
 	expect(JSON.parse(await readFile(cache.file, "utf8"))).toEqual({
 		version: 3,
 		head: "b".repeat(40),
@@ -250,6 +251,42 @@ it("publishes a readable staged report with the head that wrote it and its leave
 		report: { new: true },
 	});
 	expect((await readdir(cache.directory)).filter((name) => name.endsWith(".tmp"))).toEqual([]);
+});
+
+it("keeps a newer head's results when an older head's run finishes after it", async () => {
+	const cache = await MutationCache.open(root, key());
+	await writeFile(cache.file, partition({ newer: true }, "b".repeat(40)));
+	const { staged } = await cache.stage(join(root, "work"), undefined);
+	await writeFile(staged, '{"older":true}');
+	const asked: string[] = [];
+	await cache.publish(staged, { head: judged, trust: "writer" }, async (held) => {
+		asked.push(held);
+		return true;
+	});
+	expect(asked).toEqual(["b".repeat(40)]);
+	expect(JSON.parse(await readFile(cache.file, "utf8"))).toMatchObject({
+		head: "b".repeat(40),
+		report: { newer: true },
+	});
+	await cache.publish(staged, { head: judged, trust: "writer" }, never);
+	expect(JSON.parse(await readFile(cache.file, "utf8"))).toMatchObject({ head: judged, report: { older: true } });
+});
+
+it("publishes into an empty partition without asking about a held head", async () => {
+	const cache = await MutationCache.open(root, key());
+	const { staged } = await cache.stage(join(root, "work"), undefined);
+	await writeFile(staged, '{"first":true}');
+	await cache.publish(staged, { head: judged, trust: "writer" }, always);
+	expect(JSON.parse(await readFile(cache.file, "utf8")).report).toEqual({ first: true });
+});
+
+it("replaces the results of the same head, as a rerun after a timeout does", async () => {
+	const cache = await MutationCache.open(root, key());
+	await writeFile(cache.file, partition({ first: true }));
+	const { staged } = await cache.stage(join(root, "work"), undefined);
+	await writeFile(staged, '{"second":true}');
+	await cache.publish(staged, { head: judged, trust: "writer" }, always);
+	expect(JSON.parse(await readFile(cache.file, "utf8")).report).toEqual({ second: true });
 });
 
 it("publishes the bytes it checked, not what the path names after the check", async () => {
@@ -268,7 +305,7 @@ it("publishes the bytes it checked, not what the path names after the check", as
 		return handle;
 	});
 	try {
-		await cache.publish(staged, { head: judged, trust: "writer" });
+		await cache.publish(staged, { head: judged, trust: "writer" }, never);
 	} finally {
 		vi.mocked(open).mockImplementation(real);
 	}
@@ -280,7 +317,7 @@ it("keeps the partition when the staged report is corrupt, missing, a symlink, o
 	await writeFile(cache.file, partition({ old: true }));
 	await mkdir(join(root, "work"));
 	const staged = join(root, "work", "incremental.json");
-	const publish = () => cache.publish(staged, { head: "b".repeat(40), trust: "writer" });
+	const publish = () => cache.publish(staged, { head: "b".repeat(40), trust: "writer" }, never);
 	await writeFile(staged, "{corrupt");
 	await publish();
 	await rm(staged);
@@ -299,7 +336,7 @@ it("publishes a staged report of exactly the read bound, and the next run reads 
 	await mkdir(join(root, "work"));
 	const staged = join(root, "work", "incremental.json");
 	await writeFile(staged, "{}".padEnd(16 * 1024 * 1024, " "));
-	await cache.publish(staged, { head: judged, trust: "writer" });
+	await cache.publish(staged, { head: judged, trust: "writer" }, never);
 	expect(await (await MutationCache.open(root, key())).earlier("writer", always)).toMatchObject({ report: "{}" });
 });
 

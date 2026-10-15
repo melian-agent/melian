@@ -508,6 +508,20 @@ printf '%s' '{"schemaVersion":"1.0","files":{}}' > reports/mutation/mutation.jso
 		);
 	});
 
+	it("keeps the newer head's results when a run of an older head of the same target finishes last", async () => {
+		const { base, head } = twoCommits();
+		incrementalTool("older");
+		await mutate(base, head, { target: "range-feature" });
+		const next = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 1") });
+		incrementalTool("newer");
+		await mutate(base, next, { target: "range-feature" });
+		incrementalTool("older again");
+		await mutate(base, head, { target: "range-feature" });
+		expect(partitions().map((file) => JSON.parse(readFileSync(file, "utf8")))).toEqual([
+			{ version: 3, head: next, trust: "writer", report: { stamp: "newer" } },
+		]);
+	});
+
 	it("starts cold when the base changes under the same review target", async () => {
 		const { base, head } = twoCommits();
 		const reads = incrementalTool();

@@ -39,4 +39,4 @@ The head's tests never see the cache: the run writes staged copies in its scratc
 ## What it gives up, beyond the rerun decision
 
 - A pull request reads policy from its base branch's tip, which moves whenever `main` takes a commit. Keying by the base-policy commit, as the rerun decision requires, makes the next push after such a move cold even when the merge base is unchanged. A branch range reads policy at its merge base and is not affected.
-- Concurrent runs of one target each publish their own head; the last to finish wins.
+- Concurrent runs of one target each publish their own head, and the last to finish wins, with one exception. Problem: a run of an older head, such as one a crash left pending that a later review resumed, could finish after a newer head's run and put the older results back, so the next head reran everything the newer one had judged. Solution: a run does not publish over a partition whose head has its own head in its history. The read and the rename are not atomic, so two runs finishing in the same instant can still interleave.
