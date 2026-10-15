@@ -81,8 +81,13 @@ it.each([
 	["a head that is no commit", partition({}, "HEAD")],
 	["a head that is not text", partition({}, 42)],
 	["a head that is a list", partition({}, [judged])],
+	["a head with text before the commit", partition({}, `x${judged}`)],
+	["a head with text after the commit", partition({}, `${judged}x`)],
+	["a head one character short", partition({}, "a".repeat(39))],
+	["a head one character long", partition({}, "a".repeat(65))],
 	["a report that is no object", JSON.stringify({ version: 3, head: judged, trust: "writer", report: "{}" })],
 	["no report", JSON.stringify({ version: 3, head: judged, trust: "writer" })],
+	["a report that is null", JSON.stringify({ version: 3, head: judged, trust: "writer", report: null })],
 	["a document that is null", "null"],
 	["a document that is a number", "42"],
 ])("discards a partition with %s", async (_, text) => {
@@ -91,6 +96,14 @@ it.each([
 	const second = await MutationCache.open(root, key());
 	await expect(stat(second.file)).rejects.toMatchObject({ code: "ENOENT" });
 	expect(await second.earlier("writer", always)).toEqual({ cold: "this review target has no earlier judged head" });
+});
+
+it("reads a partition whose head is a SHA-256 commit of 64 characters", async () => {
+	const cache = await MutationCache.open(root, key());
+	await writeFile(cache.file, partition({}, "b".repeat(64)));
+	expect(await (await MutationCache.open(root, key())).earlier("writer", always)).toMatchObject({
+		judged: { head: "b".repeat(64) },
+	});
 });
 
 it.each(["valid", "corrupt", "oversized"])("closes the cache descriptor after reading %s output", async (kind) => {
