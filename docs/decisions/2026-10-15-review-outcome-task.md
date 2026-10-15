@@ -8,10 +8,10 @@ Choice: a review outcome task. The maintainer named it the review outcome lens, 
 
 `melian learn "#N"` runs it on a merged pull request. Its inputs, all read from the clone and GitHub, none from a model:
 
-- Every stored Melian round of the pull request, addressed by head commit as [the compare decision](2026-10-15-compare-addresses-revisions-by-head.md) sets out. From each: the verdict and status, the start and finish times, each check record with its outcome and the reason a check ended, failed or skipped, and each finding sighting with its ID, rule, lens, severity, cause, file, lines and title.
+- Every stored Melian round of the pull request, addressed by head commit as [the compare decision](2026-10-15-compare-addresses-revisions-by-head.md) sets out. From each: the verdict and status, the start and finish times from its round record, which step 23 adds and which reads as unknown for older rounds, each check record with its outcome and the reason a check ended, failed or skipped, and each finding sighting with its ID, rule, lens, severity, cause, file, lines and title.
 - The pull request's comparison: each external finding with its reviewer and the round head it was imported at, the matches, and each adjudication with its verdict, severity, miss reason, owed golden and lens, and rule tag.
 - Dismissals and their reasons.
-- The fix commits: the commits between consecutive round heads, with the files and line ranges each changed, from git.
+- The fix commits: for consecutive rounds whose earlier head is an ancestor of the later one, the commits between them, with the files and line ranges each changed, from git. Where a force-push rewrote history between two rounds, the task diffs the two heads instead, marks the pair as rewritten, and attributes no finding to a fix pass across it.
 - For recurrence only, every other comparison in the clone, as `melian compare stats` reads them.
 
 It computes four kinds of signal, deterministically:
@@ -19,7 +19,7 @@ It computes four kinds of signal, deterministically:
 - Repeated classes. A rule ID or adjudication tag that draws a new finding ID in two consecutive rounds. This is the shape `AGENTS.md` tells the coordinator to escalate as a class.
 - Recurring findings. A rule tag or normalised title cluster valid on two or more merged pull requests. Each is a candidate check, as `AGENTS.md` asks of a repeated finding.
 - Lens gaps. Valid findings adjudicated `no-owner`, grouped by tag, with the nearest lens named where an adjudication named one.
-- Process signals. Findings whose cause lines a fix commit added since the previous round. The round count and each round's duration. Rounds that read `not reviewed`, and why. Findings that resolved and came back.
+- Process signals. Findings whose cause lines a fix commit added since the previous round. The round count and each round's duration where its round record holds both times. Rounds that read `not reviewed`, and why. Findings that resolved and came back.
 
 Its output is a draft guidance change for a maintainer, never applied. Markdown by default, with a section per kind of signal, each signal citing its finding IDs, rounds and commits. A last section proposes entries for `AGENTS.md`'s Learnings in its form, symptom then cause then what to do, and candidate checks or lens rules. A model on the light tier drafts that prose from the computed signals, quoted as data, and a proposal that cites no signal is dropped. `--json` prints the signals alone and calls no model. `--out <path>` is its only file write, as for `melian compare export`. It never edits `AGENTS.md`, a lens, or a decision; [writing back](../design.md#writing-back) is a proposal by pull request, as for any knowledge.
 
