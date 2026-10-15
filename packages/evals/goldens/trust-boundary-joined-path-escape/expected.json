@@ -1,0 +1,32 @@
+{
+  "pr_title": "Let a pull request name its summary template",
+  "comments": [
+    {
+      "comment": "summarise joins the template name from the pull request's own .summary/settings.json onto the checkout and reads it on a runner that holds a write token; a name with .. escapes .summary/, reads the checkout's .git/config or the process environment, and posts it as the pull request's comment.",
+      "severity": "Critical",
+      "category": "security",
+      "file": "src/summary.ts",
+      "rule": "path-traversal",
+      "cause": "introduced",
+      "failureScenario": "A pull request adds .summary/settings.json holding {\"template\": \"../.git/config\"}. join(\"pr\", \".summary\", \"../.git/config\") normalises to pr/.git/config, where actions/checkout wrote the job's token in the http.https://github.com/.extraheader line, and main.ts posts the file as the pull request's comment, so a token that can write to the repository is published on the pull request. \"../../../../proc/self/environ\" posts GITHUB_TOKEN from the environment the same way.",
+      "evidence": [
+        {
+          "file": "src/summary.ts",
+          "line": 14,
+          "role": "cause"
+        },
+        {
+          "file": "src/main.ts",
+          "line": 5,
+          "role": "context"
+        },
+        {
+          "file": ".github/workflows/summary.yml",
+          "line": 12,
+          "role": "context",
+          "revision": "base"
+        }
+      ]
+    }
+  ]
+}

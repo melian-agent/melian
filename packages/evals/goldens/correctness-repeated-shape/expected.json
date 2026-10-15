@@ -1,0 +1,98 @@
+{
+  "pr_title": "Show the most recent log entries on the status page",
+  "comments": [
+    {
+      "comment": "recentErrors takes the last count entries with slice(-count), which returns every entry for count 0, the value that hides the section. One of three instances of one shape in this change.",
+      "severity": "High",
+      "category": "bug",
+      "file": "src/errors.ts",
+      "rule": "wrong-result",
+      "cause": "introduced",
+      "failureScenario": "recentErrors(log, 0) evaluates slice(-0), which is slice(0), and returns every entry rather than none, so a viewer who set the section to 0 to hide it sees the error history. It is one of three readers with this shape; recentMessages in src/messages.ts and recentWarnings in src/warnings.ts fail the same way.",
+      "evidence": [
+        {
+          "file": "src/errors.ts",
+          "line": 5,
+          "role": "cause"
+        },
+        {
+          "file": "src/messages.ts",
+          "line": 5,
+          "role": "context"
+        },
+        {
+          "file": "src/warnings.ts",
+          "line": 5,
+          "role": "context"
+        },
+        {
+          "file": "src/errors.ts",
+          "line": 3,
+          "role": "context"
+        }
+      ]
+    },
+    {
+      "comment": "recentMessages takes the last count entries with slice(-count), which returns every entry for count 0, the value that hides the section. One of three instances of one shape in this change.",
+      "severity": "High",
+      "category": "bug",
+      "file": "src/messages.ts",
+      "rule": "wrong-result",
+      "cause": "introduced",
+      "failureScenario": "recentMessages(log, 0) evaluates slice(-0), which is slice(0), and returns every entry rather than none, so a viewer who set the section to 0 to hide it sees the whole log. It is one of three readers with this shape; recentErrors in src/errors.ts and recentWarnings in src/warnings.ts fail the same way.",
+      "evidence": [
+        {
+          "file": "src/messages.ts",
+          "line": 5,
+          "role": "cause"
+        },
+        {
+          "file": "src/errors.ts",
+          "line": 5,
+          "role": "context"
+        },
+        {
+          "file": "src/warnings.ts",
+          "line": 5,
+          "role": "context"
+        },
+        {
+          "file": "src/messages.ts",
+          "line": 3,
+          "role": "context"
+        }
+      ]
+    },
+    {
+      "comment": "recentWarnings takes the last count entries with slice(-count), which returns every entry for count 0, the value that hides the section. One of three instances of one shape in this change.",
+      "severity": "High",
+      "category": "bug",
+      "file": "src/warnings.ts",
+      "rule": "wrong-result",
+      "cause": "introduced",
+      "failureScenario": "recentWarnings(log, 0) evaluates slice(-0), which is slice(0), and returns every entry rather than none, so a viewer who set the section to 0 to hide it sees the warning history. It is one of three readers with this shape; recentErrors in src/errors.ts and recentMessages in src/messages.ts fail the same way.",
+      "evidence": [
+        {
+          "file": "src/warnings.ts",
+          "line": 5,
+          "role": "cause"
+        },
+        {
+          "file": "src/errors.ts",
+          "line": 5,
+          "role": "context"
+        },
+        {
+          "file": "src/messages.ts",
+          "line": 5,
+          "role": "context"
+        },
+        {
+          "file": "src/warnings.ts",
+          "line": 3,
+          "role": "context"
+        }
+      ]
+    }
+  ]
+}

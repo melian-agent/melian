@@ -1,0 +1,18 @@
+src/summary.ts
+
+  P0  line 14  path-traversal  (introduced, new, block, confirmed)
+    Verified: faux/scripted: The scripted verifier traced the claim.
+  The template name comes from the pull request's own settings file and is joined onto the checkout unconfined, so a .. in it reads any file the runner can, and the action posts what it read.
+    What: The template name comes from the pull request's own settings file and is joined onto the checkout unconfined, so a .. in it reads any file the runner can, and the action posts what it read.
+    Why here: This change reads the name from .summary/settings.json, which the pull request supplies, where the base read a fixed template.md.
+    Failure scenario: A pull request adds .summary/settings.json holding {"template": "../.git/config"}. join("pr", ".summary", "../.git/config") normalises to pr/.git/config, where actions/checkout wrote the job's token in the http.https://github.com/.extraheader line, and main.ts posts the file as the pull request's comment, so a token that can write to the repository is published on the pull request. "../../../../proc/self/environ" posts GITHUB_TOKEN from the environment the same way.
+    Evidence:
+      cause: src/summary.ts:14
+          const template = await readFile(join(checkout, ".summary", settings.template ?? "template.md"), "utf8");
+      context: src/main.ts:5
+        await postComment(await summarise(checkout));
+      context: .github/workflows/summary.yml:12 at base
+                  ref: ${{ github.event.pull_request.head.sha }}
+    What to do: Resolve the joined path and refuse it unless it stays inside pr/.summary/, after following symlinks, or accept only a bare file name.
+
+1 finding in 1 file.
