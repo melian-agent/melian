@@ -304,6 +304,8 @@ export class MutationRun {
 		entries: readonly string[],
 		changed: readonly string[],
 		{ staged: incremental, earlier }: { staged: string; earlier: string },
+		// Whether Melian staged an earlier head's report. Decided here, not by the file: a cold run's head tests could write one.
+		reused: boolean,
 	): Promise<string> {
 		const require = createRequire(posix.join(this.#run.input.repoRoot, "node_modules/vitest/package.json"));
 		const module = posix.join(this.#scratch, posix.basename(fileURLToPath(mutationVitestModule)));
@@ -332,7 +334,7 @@ const result = await selection.execute(async (tests, fresh) => {
   // earlier head's, when there were any.
   if (fresh) {
     rmSync(${JSON.stringify(incremental)}, { force: true });
-    if (existsSync(${JSON.stringify(earlier)})) copyFileSync(${JSON.stringify(earlier)}, ${JSON.stringify(incremental)});
+    if (${JSON.stringify(reused)} && existsSync(${JSON.stringify(earlier)})) copyFileSync(${JSON.stringify(earlier)}, ${JSON.stringify(incremental)});
     writeSync(1, ${JSON.stringify(`\n${repeatMarker}\n`)});
   }
   rmSync(${JSON.stringify(report)}, { force: true });
@@ -412,16 +414,19 @@ process.exitCode = result.code;
 				.update(JSON.stringify({ version: this.#version }))
 				.digest("hex"),
 		});
+		const seen = await cache.held();
 		const earlier = this.#run.input.cold
 			? { cold: "the review asked for a cold run with --cold" }
 			: await cache.earlier(trust, (judged) => this.#ancestor(judged, commit));
+		// A plain review of a head a cold run judged reuses that run's results whole, and keeps its standing.
+		const cold = "cold" in earlier || (earlier.judged.head === commit && earlier.judged.cold);
 		const incremental = await cache.stage(
 			posix.join(this.#scratch, "incremental"),
 			"report" in earlier ? earlier.report : undefined,
 		);
 		const log = posix.join(this.#scratch, "stryker.log");
 		// A report the revision committed must not stand in for the one this run writes.
-		const runner = await this.#runner(entries, changed, incremental);
+		const runner = await this.#runner(entries, changed, incremental, "report" in earlier);
 		const command = [
 			`cd ${quote(this.#root)}`,
 			`ulimit -f ${mutationFileLimit / 1024}`,
@@ -477,8 +482,10 @@ process.exitCode = result.code;
 		if (text === undefined) throw this.#run.fail("invalidOutput", `Stryker wrote no report at ${report}`);
 		// A run another review has retired may not leave identities for the next one to trust.
 		if ((await this.#run.input.holdsAuthority?.()) ?? true)
-			await cache.publish(incremental.staged, { head: commit, trust }, (held) => this.#ancestor(commit, held));
-		return "cold" in earlier ? { text } : { text, provisional: provisionalReason(deciding) };
+			await cache.publish(incremental.staged, { head: commit, trust, cold }, seen, (older, newer) =>
+				this.#ancestor(older, newer),
+			);
+		return cold ? { text } : { text, provisional: provisionalReason(deciding) };
 	}
 
 	async check(): Promise<StaticRun> {
@@ -558,7 +565,7 @@ process.exitCode = result.code;
 			status: "ran",
 			log: read.log,
 			baseLog,
-			...(result.provisional === undefined ? {} : { provisional: result.provisional }),
+			provisional: result.provisional,
 			notes: [
 				...this.#notes,
 				`Stryker mutated ${count} changed lines in ${Object.keys(lines).length} file(s); the base was not mutated.`,

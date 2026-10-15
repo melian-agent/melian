@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { constants } from "node:fs";
-import { mkdir, open, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, open, realpath, rename, rm, rmdir, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { CacheScratch } from "./cache-scratch.ts";
@@ -26,10 +26,12 @@ export interface MutationCacheKey {
 /** Whose leave ran a head's tests: a writer pushed it, or the reviewer vouched for it with `--trust-head`. */
 export type HeadTrust = "writer" | "reviewer";
 
-// The head whose results a partition holds, and the leave its tests ran under.
+// The head whose results a partition holds, the leave its tests ran under, and whether they are a cold run's of that
+// head: a plain review of the same head may then keep the cold run's standing.
 export interface JudgedHead {
 	readonly head: string;
 	readonly trust: HeadTrust;
+	readonly cold: boolean;
 }
 
 // The text of a file, read through one no-follow open: a regular file within `limit` that parses, or undefined. What was
@@ -76,10 +78,8 @@ export class MutationCache {
 		return cache;
 	}
 
-	/**
-	 * The last judged head's report, when a run under `trust` may build on it: that run was trusted the same way, and
-	 * `ancestor` says the judged head is in this head's history. Otherwise why the run starts cold.
-	 */
+	// The last judged head's report, when a run under `trust` may build on it: that run was trusted the same way, and
+	// `ancestor` says the judged head is in this head's history. Otherwise why the run starts cold.
 	async earlier(
 		trust: HeadTrust,
 		ancestor: (judged: string) => Promise<boolean>,
@@ -91,7 +91,7 @@ export class MutationCache {
 			return { cold: `the run that judged ${judged} was trusted as ${String(stored.trust)}, not as ${trust}` };
 		if (!(await ancestor(stored.head)))
 			return { cold: `the last judged head ${judged} is not in this head's history, which was rewritten` };
-		return { judged: { head: stored.head, trust }, report: stored.report };
+		return { judged: { head: stored.head, trust, cold: stored.cold }, report: stored.report };
 	}
 
 	// Writes `report` where Stryker reads its incremental file, and a second copy a whole-suite repeat starts from, so the
@@ -113,19 +113,22 @@ export class MutationCache {
 	// head's history.
 	// The read of the held head, the check and the rename happen under one lock, so another run cannot publish a newer
 	// head between this run's check and its rename.
-	async publish(staged: string, judged: JudgedHead, ancestor: (held: string) => Promise<boolean>): Promise<void> {
+	async publish(
+		staged: string,
+		judged: JudgedHead,
+		seen: string | undefined,
+		ancestor: (older: string, newer: string) => Promise<boolean>,
+	): Promise<void> {
 		const report = await jsonText(staged, bound);
 		if (report === undefined) return;
 		const scratch = await CacheScratch.open(this.#root);
 		const temporary = scratch.file(this.file);
 		await writeFile(
 			temporary,
-			`{"version":3,"head":${JSON.stringify(judged.head)},"trust":${JSON.stringify(judged.trust)},"report":${report}}`,
+			`{"version":3,"head":${JSON.stringify(judged.head)},"trust":${JSON.stringify(judged.trust)},"cold":${judged.cold},"report":${report}}`,
 		);
 		await this.#locked(async () => {
-			const held = (await this.#read())?.head;
-			if (held !== undefined && held !== judged.head && (await ancestor(held))) return;
-			await rename(temporary, this.file);
+			if (await this.#replaces(judged.head, seen, ancestor)) await rename(temporary, this.file);
 		});
 		await rm(temporary, { force: true });
 	}
@@ -140,28 +143,49 @@ export class MutationCache {
 				break;
 			} catch (error) {
 				if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-				const made = await stat(lock).catch(() => undefined);
-				if (made !== undefined && Date.now() - made.mtimeMs > staleLockMs)
-					await rm(lock, { recursive: true, force: true });
+				// A lock gone between the two calls reads as just made, and the next attempt takes it.
+				const made = (await stat(lock).catch(() => undefined))?.mtimeMs ?? Date.now();
+				if (Date.now() - made > staleLockMs) await rmdir(lock).catch(() => undefined);
 				else await sleep(lockPollMs);
 			}
 		}
 		try {
 			await use();
 		} finally {
-			await rm(lock, { recursive: true, force: true });
+			await rmdir(lock);
 		}
 	}
 
-	async #read(): Promise<{ head: string; trust: unknown; report: string } | undefined> {
+	// Whether a run of `head` may replace what the partition holds: nothing, its own head, or a head in its history. A
+	// newer head of its own line it never replaces, as a late run of an older head must not. A head of another line, after
+	// a force-push, it replaces only when it already held that head when the run began (`seen`): the run then started
+	// cold because of it. Otherwise the other line is a late run's, as a run of the old line finishing after a force-push
+	// published the new one.
+	async #replaces(
+		head: string,
+		seen: string | undefined,
+		ancestor: (older: string, newer: string) => Promise<boolean>,
+	): Promise<boolean> {
+		const held = (await this.#read())?.head;
+		if (held === undefined || held === head || (await ancestor(held, head))) return true;
+		if (await ancestor(head, held)) return false;
+		return held === seen;
+	}
+
+	// The head the partition holds now, which `publish` compares with what it holds when the run ends.
+	async held(): Promise<string | undefined> {
+		return (await this.#read())?.head;
+	}
+
+	async #read(): Promise<{ head: string; trust: unknown; cold: boolean; report: string } | undefined> {
 		const text = await jsonText(this.file, bound + wrapping);
 		if (text === undefined) return undefined;
 		// Any JSON but null destructures; a number or a string simply has none of these fields.
-		const parsed = JSON.parse(text) as { head?: unknown; trust?: unknown; report?: unknown } | null;
+		const parsed = JSON.parse(text) as { head?: unknown; trust?: unknown; cold?: unknown; report?: unknown } | null;
 		if (parsed === null) return undefined;
-		const { head, trust, report } = parsed;
+		const { head, trust, cold, report } = parsed;
 		if (typeof head !== "string" || !/^[0-9a-f]{40,64}$/.test(head)) return undefined;
 		if (typeof report !== "object" || report === null) return undefined;
-		return { head, trust, report: JSON.stringify(report) };
+		return { head, trust, cold: cold === true, report: JSON.stringify(report) };
 	}
 }

@@ -47,7 +47,14 @@ import { ToolProvisioning } from "./tool-provisioning.ts";
  */
 export type CheckRunRecord =
 	| { name: string; status: "ran"; version?: string; findings: number; notes: string[]; snapshots?: EnolaSnapshot[] }
-	| { name: string; status: "provisional"; version?: string; findings: number; notes: string[]; reason: string }
+	| {
+			name: string;
+			status: "provisional";
+			version?: string | undefined;
+			findings: number;
+			notes: string[];
+			reason: string;
+	  }
 	| { name: string; status: "skipped"; reason: string; cause?: MutationSkipCause }
 	| { name: string; status: "failed"; reason: string; error: string };
 
@@ -81,7 +88,10 @@ export const ChecksDocument = defineDoc<Runs>({
 	initial: () => ({ runs: {}, tasks: {} }),
 	// Version 4 lets a mutation record be `provisional`; a version 3 document has none, and reads unchanged. An older
 	// Melian refuses version 4, so it never takes a provisional record for a run that may approve.
-	migrate: (value) => value as Runs,
+	migrate: (value, from) => {
+		if (from < 3) throw new Error(`the checks document needs migrating from version ${from}, which Melian cannot do`);
+		return value as Runs;
+	},
 });
 
 export const MutationProcesses = defineDoc<{ trees: Record<string, MutationTreeRecord> }>({
@@ -115,7 +125,7 @@ interface CheckInput {
 	readonly source: RepositorySource;
 	readonly writer?: WriterTrust | undefined;
 	// Whether the review asked for a mutation run that reuses no earlier head's results. Absent in an earlier build's input.
-	readonly cold?: boolean;
+	readonly cold?: boolean | undefined;
 	// The run identity, short of its task, that owns the revision's mutation check while it is the latest to ask. Absent in
 	// an input an earlier build stored.
 	readonly authority?: string;
@@ -127,7 +137,7 @@ type Outcome =
 			readonly report: CheckReport;
 			readonly version?: string;
 			readonly snapshots?: EnolaSnapshot[];
-			readonly provisional?: string;
+			readonly provisional?: string | undefined;
 	  }
 	| {
 			readonly status: "skipped";
@@ -242,7 +252,7 @@ async function runStatic(
 		report: { findings: report.findings, notes },
 		version: head.log.runs[0].tool.driver.version,
 		...(head.snapshots === undefined ? {} : { snapshots: head.snapshots }),
-		...(head.provisional === undefined ? {} : { provisional: head.provisional }),
+		provisional: head.provisional,
 	};
 }
 
@@ -360,7 +370,7 @@ const CheckTask = defineTask<CheckInput, { phase: "run" }, CheckRunRecord>({
 							? {
 									name: check,
 									status: "provisional",
-									...(outcome.version === undefined ? {} : { version: outcome.version }),
+									version: outcome.version,
 									findings: outcome.report.findings.length,
 									notes: [...outcome.report.notes],
 									reason: outcome.provisional,
@@ -461,7 +471,7 @@ const ChecksTask = defineTask<ChecksInput, ChecksState, CheckRunRecord[]>({
 								config,
 								source,
 								writer,
-								...(cold === true ? { cold } : {}),
+								cold,
 								authority: identityKey({ ...task.input.identity, task: runtime.taskId }),
 							},
 							{ ownership: { kind: "task", taskId: runtime.taskId } },

@@ -80,3 +80,17 @@ it("reads what version-3 checks and version-8 verdicts wrote after an SQLite reo
 		/newer version 9 than 8/,
 	);
 });
+
+it.each([1, 2])("refuses a version-%i checks document rather than read it as the current shape", async (version) => {
+	const path = join(dir, `v${version}.sqlite`);
+	const first = await open(await openSqliteStorage(path));
+	await first.root.commit(async (tx) => {
+		Object.assign(await tx.doc(legacy("melian.checks", version), first.root.id), { runs: {}, tasks: {} });
+	}, context);
+	await first.harness.close(context);
+	opened = [];
+	const second = await open(await openSqliteStorage(path));
+	await expect(second.harness.snapshot(ChecksDocument, second.root.id, context)).rejects.toThrow(
+		`the checks document needs migrating from version ${version}, which Melian cannot do`,
+	);
+});

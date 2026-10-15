@@ -66,7 +66,7 @@ export type StaticRun =
 			readonly status: "ran";
 			readonly log: ToolLog;
 			/** Why a mutation run that reused an earlier head's results cannot let the review pass. */
-			readonly provisional?: string;
+			readonly provisional?: string | undefined;
 			readonly notes: readonly string[];
 			readonly baseLog?: ToolLog;
 			readonly snapshots?: EnolaSnapshot[];

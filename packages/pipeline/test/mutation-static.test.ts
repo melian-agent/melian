@@ -508,6 +508,8 @@ printf '%s' '{"schemaVersion":"1.0","files":{}}' > reports/mutation/mutation.jso
 		expect(next.notes).toContain(
 			`Stryker started cold: the last judged head ${head.slice(0, 12)} is not in this head's history, which was rewritten.`,
 		);
+		// The rewritten line's run began from the old line's results, so it takes their place.
+		expect(partitions().map((file) => JSON.parse(readFileSync(file, "utf8")).head)).toEqual([rewritten]);
 	});
 
 	it("keeps the newer head's results when a run of an older head of the same target finishes last", async () => {
@@ -520,7 +522,7 @@ printf '%s' '{"schemaVersion":"1.0","files":{}}' > reports/mutation/mutation.jso
 		incrementalTool("older again");
 		await mutate(base, head, { target: "range-feature" });
 		expect(partitions().map((file) => JSON.parse(readFileSync(file, "utf8")))).toEqual([
-			{ version: 3, head: next, trust: "writer", report: { stamp: "newer" } },
+			{ version: 3, head: next, trust: "writer", cold: false, report: { stamp: "newer" } },
 		]);
 	});
 
@@ -563,6 +565,23 @@ cp "$incremental" reports/mutation/mutation.json`,
 		);
 		expect(cold.provisional).toBeUndefined();
 		expect(cold.notes).toContain("Stryker started cold: the review asked for a cold run with --cold.");
+	});
+
+	it("keeps a cold run's standing for a plain review of the same head, but not for a later one", async () => {
+		const { base, head } = twoCommits();
+		const reads = incrementalTool();
+		await mutate(base, head, { target: "range-feature", cold: true });
+		const again = await mutate(base, head, { target: "range-feature" });
+		if (again.status !== "ran") throw new Error("skipped");
+		expect(reads()).toHaveLength(1);
+		expect(again.provisional).toBeUndefined();
+		// Built on a cold head, a later head is still provisional; a later plain review of it stays so.
+		const next = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 1") });
+		const later = await mutate(base, next, { target: "range-feature" });
+		const repeat = await mutate(base, next, { target: "range-feature" });
+		if (later.status !== "ran" || repeat.status !== "ran") throw new Error("skipped");
+		expect(later.provisional).toMatch(/^provisional: /);
+		expect(repeat.provisional).toMatch(/^provisional: /);
 	});
 
 	it("keeps a run provisional when its log says nothing of what Stryker reused", async () => {
@@ -826,6 +845,22 @@ ${body}`,
 			);
 			return { ...commits, attempts: () => readFileSync(attempts, "utf8").trim().split("\n").length };
 		}
+
+		it("starts a cold run's whole-suite repeat from nothing, whatever the head's tests left in scratch", async () => {
+			const seen = join(artifacts, "seen.txt");
+			const run =
+				relatedRun(`while [ "$#" -gt 0 ]; do if [ "$1" = "--incrementalFile" ]; then shift; incremental="$1"; fi; shift; done
+{ cat "$incremental" 2> /dev/null || printf none; echo; } >> '${seen}'
+printf '%s' '{"planted":true}' > "$(dirname "$incremental")/earlier.json"
+status=Killed; [ "$attempt" = 1 ] && status=NoCoverage
+mkdir -p reports/mutation
+printf '{"schemaVersion":"1.0","files":{"packages/p/src/a.ts":{"language":"typescript","source":"","mutants":[{"id":"1","status":"%s","mutatorName":"EqualityOperator","replacement":"x > 0","location":{"start":{"line":2,"column":0},"end":{"line":2,"column":5}}}]}}}' "$status" > reports/mutation/mutation.json`);
+			const result = await mutate(run.base, run.head, { target: "range-feature" });
+			expect(run.attempts()).toBe(2);
+			expect(readFileSync(seen, "utf8").trim().split("\n")).toEqual(["none", "none"]);
+			if (result.status !== "ran") throw new Error("skipped");
+			expect(result.provisional).toBeUndefined();
+		});
 
 		it("starts a whole-suite repeat from the last judged head's results, not the related run's", async () => {
 			const seen = join(artifacts, "seen.txt");
@@ -2102,6 +2137,7 @@ cp '${canned}' reports/mutation/mutation.json`,
 					status: "provisional",
 					version: "10.0.0",
 					reason: expect.stringMatching(/^provisional: .*; a cold run decides approval$/),
+					notes: expect.arrayContaining([expect.stringMatching(/^Stryker was given the results of [0-9a-f]{12}/)]),
 				},
 			]);
 			// Asked again without --cold, the provisional run stands; with it, the check runs again from nothing.
