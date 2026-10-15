@@ -433,16 +433,18 @@ it("reopens a version-one cache without reusing its selection results", async ()
 	expect(await current.earlier("writer", always)).toEqual({ cold: "this review target has no earlier judged head" });
 });
 
-it("reopens a version-two cache, which kept one partition per head, without reusing it at a later head", async () => {
+it("never reads a version-two partition, whose key has another shape and whose file another name", async () => {
 	const keyV2 = { policy: "base", head: judged, inputs: "inputs", installation: "installation" };
 	const old = await MutationCacheV2.open(root, keyV2);
 	const staged = await old.stage(join(root, "v2-stage"));
 	await writeFile(staged, JSON.stringify({ files: { a: { mutants: [{ status: "Killed" }] } } }));
 	await old.publish(staged);
 	expect(await readFile((await MutationCacheV2.open(root, keyV2)).file, "utf8")).toContain("Killed");
-	const current = await MutationCache.open(root, key());
+	// The same values under version three's names: still another partition, and the version-two file is left alone.
+	const current = await MutationCache.open(root, key({ base: "base", policy: "base", target: judged }));
 	expect(current.directory).not.toBe(old.directory);
 	expect(await current.earlier("writer", always)).toEqual({ cold: "this review target has no earlier judged head" });
+	expect(await readFile(old.file, "utf8")).toContain("Killed");
 });
 
 it("changes the installation identity that the durable run key hashes after selection changes", () => {
