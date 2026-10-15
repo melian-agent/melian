@@ -20,7 +20,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { MutationCache, type MutationCacheKey, staleLockMs } from "../src/mutation-cache.ts";
+import { MutationCache, type MutationCacheKey, staleLockMs, unreadableLooks } from "../src/mutation-cache.ts";
 import { mutationInstallation } from "../src/mutation-static.ts";
 import { mutationSelectionVersion } from "../src/mutation-vitest.ts";
 import { MutationCache as MutationCacheV1 } from "./fixtures/mutation-cache-v1.ts";
@@ -479,6 +479,71 @@ it.each([
 		vi.mocked(rmdir).mockImplementation(actual);
 		vi.mocked(Date.now).mockRestore();
 	}
+});
+
+it("gives up on a lock that exists but can never be read, such as a dangling symlink", { timeout: 5_000 }, async () => {
+	const cache = await MutationCache.open(root, key());
+	await symlink(join(root, "nowhere"), join(cache.directory, "partition.lock"));
+	const staged = join(root, "staged.json");
+	await writeFile(staged, '{"report":true}');
+	await expect(cache.publish(staged, writer(A), 0, never)).rejects.toThrow(
+		`the partition's lock ${join(cache.directory, "partition.lock")} exists but cannot be read`,
+	);
+});
+
+it.each([
+	[unreadableLooks, false],
+	[unreadableLooks + 1, true],
+])("after %i unreadable looks at a held lock, gives up: %s", async (failures, givesUp) => {
+	const cache = await MutationCache.open(root, key());
+	const lock = join(cache.directory, "partition.lock");
+	await mkdir(lock);
+	const actual = vi.mocked(stat).getMockImplementation()!;
+	let looks = 0;
+	vi.mocked(stat).mockImplementation(async (path, options) => {
+		if (String(path) === lock && looks++ < failures) throw Object.assign(new Error("unreadable"), { code: "ENOENT" });
+		const seen = await actual(path, options);
+		// Readable again: the holder lets go, and the next attempt takes the lock.
+		if (String(path) === lock) await rm(lock, { recursive: true, force: true });
+		return seen;
+	});
+	const staged = join(root, "staged.json");
+	await writeFile(staged, '{"report":true}');
+	try {
+		const published = cache.publish(staged, writer(A), 0, never);
+		if (givesUp) await expect(published).rejects.toThrow("exists but cannot be read");
+		else await published;
+	} finally {
+		vi.mocked(stat).mockImplementation(actual);
+		await rm(lock, { recursive: true, force: true });
+	}
+	expect(existsSync(cache.file)).toBe(!givesUp);
+});
+
+it("counts only unreadable looks in a row, so a readable one between them starts the count again", async () => {
+	const cache = await MutationCache.open(root, key());
+	const lock = join(cache.directory, "partition.lock");
+	await mkdir(lock);
+	const actual = vi.mocked(stat).getMockImplementation()!;
+	let looks = 0;
+	vi.mocked(stat).mockImplementation(async (path, options) => {
+		if (String(path) !== lock) return actual(path, options);
+		looks++;
+		const half = unreadableLooks - 5;
+		if (looks <= half || (looks > half + 1 && looks <= 2 * half + 1))
+			throw Object.assign(new Error("unreadable"), { code: "ENOENT" });
+		const seen = await actual(path, options);
+		if (looks > 2 * half + 1) await rm(lock, { recursive: true, force: true });
+		return seen;
+	});
+	const staged = join(root, "staged.json");
+	await writeFile(staged, '{"report":true}');
+	try {
+		await cache.publish(staged, writer(A), 0, never);
+	} finally {
+		vi.mocked(stat).mockImplementation(actual);
+	}
+	expect(existsSync(cache.file)).toBe(true);
 });
 
 it("fails rather than wait when the partition's lock cannot be made", async () => {

@@ -36,7 +36,9 @@ import {
 	type ExecutionEnv,
 	type Harness,
 	openHarness,
+	openReviewHarness,
 	readFindings,
+	reviewChangeset,
 	revisionKey,
 	runChecks,
 	runStaticTool,
@@ -2197,6 +2199,41 @@ cp '${canned}' reports/mutation/mutation.json`,
 			const since = publish.mock.calls[0]![2];
 			expect(since).toBeGreaterThanOrEqual(before);
 			expect(since).toBeLessThanOrEqual(Date.now());
+		});
+
+		it("lets a library review ask for a cold run, which can pass, while a default one that reused results is provisional", async () => {
+			const base = commit(repo, { "melian.yaml": policy, "stryker.config.json": config, "packages/p/src/a.ts": a });
+			incrementalTool();
+			const fake = createFakeModels();
+			const review = await openReviewHarness(createMemoryStorage(), fake.review, { retry: false, checkout: repo });
+			const source: RepositorySource = { kind: "revision", commit: base };
+			const { config: loaded } = await loadConfig(repo, source, "");
+			const judge = async (cold?: boolean) =>
+				(
+					await reviewChangeset({
+						harness: review,
+						changeset: await Changeset.resolve(repo, `${base}...main`),
+						config: loaded,
+						policy: source,
+						tier: "full",
+						lenses: [],
+						standards: [],
+						models: fake.review,
+						writer: trusted,
+						...(cold === undefined ? {} : { cold }),
+					})
+				).verdict;
+			try {
+				commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 0") });
+				expect((await judge()).status).toBe("passed");
+				commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 1") });
+				const reused = await judge();
+				expect(reused.status).toBe("not-reviewed");
+				expect(reused.notRun).toMatchObject([{ name: "static.mutation", status: "provisional" }]);
+				expect((await judge(true)).status).toBe("passed");
+			} finally {
+				await review.close();
+			}
 		});
 
 		it("leaves a run's identity alone for --cold when the tier runs no mutation check", async () => {

@@ -12,6 +12,8 @@ const wrapping = 1024;
 // publish looks again. A publish holds it for a read, a git ancestry check and a rename.
 export const staleLockMs = 120_000;
 const lockPollMs = 50;
+// How many looks in a row may find the lock made yet unreadable, as a dangling symlink is, before publication gives up.
+export const unreadableLooks = 20;
 
 // What a partition is shared by: the heads of one review target, judged against one base under one base policy, with one
 // installation and one Stryker. The head is not part of it, so a later head reuses the last judged head's results.
@@ -138,7 +140,7 @@ export class MutationCache {
 	// is a crashed holder's, and is removed.
 	async #locked(use: () => Promise<void>): Promise<void> {
 		const lock = join(this.directory, "partition.lock");
-		for (;;) {
+		for (let unreadable = 0; ; ) {
 			try {
 				await mkdir(lock);
 				break;
@@ -146,6 +148,8 @@ export class MutationCache {
 				if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
 				// A lock gone between the two calls reads as just made, and the next attempt takes it.
 				const made = await stat(lock).catch(() => undefined);
+				unreadable = made === undefined ? unreadable + 1 : 0;
+				if (unreadable > unreadableLooks) throw new Error(`the partition's lock ${lock} exists but cannot be read`);
 				if (made !== undefined && Date.now() - made.mtimeMs > staleLockMs) await this.#takeOver(lock, made.ino);
 				else await sleep(lockPollMs);
 			}
