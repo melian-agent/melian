@@ -4,7 +4,7 @@ Which model finds, and which verifies, decides a lens's precision? Three cells a
 
 ## Cells
 
-Three cells ran on `main` at 69475b44, the merge of [pull request #121](https://github.com/melian-agent/melian/pull/121), with a Sol finder and a Terra verifier, a Sol finder and a Sonnet verifier, and an Opus finder and a Terra verifier. Two cells ran at 5d75fed3, before #121's lens-prompt change. Each invocation is the command below, with the finder in `MELIAN_EVAL_MODEL` and the verifier in `MELIAN_EVAL_VERIFIER_MODEL`:
+Three cells ran on `main` at 69475b44, the merge of [pull request #121](https://github.com/melian-agent/melian/pull/121). They paired a Sol finder with a Terra verifier, a Sol finder with a Sonnet verifier, and an Opus finder with a Terra verifier. Two cells ran at 5d75fed3, before [#121](https://github.com/melian-agent/melian/pull/121)'s lens-prompt change. Each invocation is the command below, with the finder in `MELIAN_EVAL_MODEL` and the verifier in `MELIAN_EVAL_VERIFIER_MODEL`:
 
 ```
 MELIAN_EVAL_LIVE=1 MELIAN_EVAL_MODEL=<finder> MELIAN_EVAL_VERIFIER_MODEL=<verifier> MELIAN_EVAL_GOLDEN=<golden> \
@@ -54,17 +54,17 @@ A cell reads precision / recall.
 | Opus, Terra | 1.00 / 1.00 | 1.00 / 1.00 | | 6, 6 |
 | Opus (5d75fed3) | 1.00 / 1.00 | 1.00 / 1.00 | | 3, 3 |
 
-The driver selects only goldens named `design-`, `durability-` or `correctness-`. Of the goldens #121 added, only `correctness-repeated-shape` falls in that set, with three expectations, so the 5d75fed3 correctness counts are smaller by construction. #121 also changed the prompts of the existing design and durability goldens' lenses.
+The driver selects only goldens named `design-`, `durability-` or `correctness-`. Of the goldens [#121](https://github.com/melian-agent/melian/pull/121) added, only `correctness-repeated-shape` falls in that set, with three expectations, so the 5d75fed3 correctness counts are smaller by construction. [#121](https://github.com/melian-agent/melian/pull/121) also changed the prompts of the existing design and durability goldens' lenses.
 
 ## What the evidence shows
 
 - The heavy finder decides design and durability precision. On design, Sol sits at 0.85 to 0.90 and Opus at 0.51 to 0.52, a lead of about 0.35, with a Terra or a Sonnet verifier alike. On durability Sol averages about 0.93 over its five passes and Opus 0.68 over two, a lead of about 0.25. Swapping the verifier moves Sol by less than the pass-to-pass spread.
 - Opus over-reports on design: 31 and 33 findings against 18 expected, where Sol reports 20 or 21. Its recall is no better than Sol's, so the extra reports do not buy coverage. Whether they are wrong or co-reports of one defect is unadjudicated.
 - Correctness ties. Every cell scores 1.00 and 1.00.
-- Sol with Terra at 69475b44 matches the earlier Sol runs, such as [the design run with the Terra verifier](2026-10-12-live-goldens-design-terra.md) at 0.76 to 0.83 precision over fewer goldens. No regression is observed in these samples. The earlier run is at another head over fewer goldens, so the comparison does not isolate #121.
+- Sol with Terra at 69475b44 matches the earlier Sol runs, such as [the design run with the Terra verifier](2026-10-12-live-goldens-design-terra.md) at 0.76 to 0.83 precision over fewer goldens. No regression is observed in these samples. The earlier run is at another head over fewer goldens, so the comparison does not isolate [#121](https://github.com/melian-agent/melian/pull/121).
 
 ## Confound
 
-The two 5d75fed3 cells ran before #121 changed the lens prompts, and on a different corpus: they miss `correctness-repeated-shape`. They also ran on the previous evening, their models are unrecorded, and the `Opus` cell's verifier is unknown. They show the Opus finder's behaviour on the old prompts only, if the coordinator's account of them holds. The Opus finder's weak design precision recurs at 69475b44 (Opus, Terra cell), so the finder explains it rather than the prompts, but the 5d75fed3 cells cannot be pooled with the rest. The control changes both the finder and the verifier against the others, so it isolates neither.
+The two 5d75fed3 cells ran before [#121](https://github.com/melian-agent/melian/pull/121) changed the lens prompts, and on a different corpus: they miss `correctness-repeated-shape`. They also ran on the previous evening, their models are unrecorded, and the `Opus` cell's verifier is unknown. They show the Opus finder's behaviour on the old prompts only, if the coordinator's account of them holds. The Opus finder's weak design precision recurs at 69475b44 (Opus, Terra cell), so the finder explains it rather than the prompts, but the 5d75fed3 cells cannot be pooled with the rest. The control changes both the finder and the verifier against the others, so it isolates neither.
 
 Two passes per cell, and three for one, is a small sample. Adjudicated precision was not measured: an extra finding may be a real defect or a co-report.
