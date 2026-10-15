@@ -3,11 +3,11 @@
     {
       "calls": [
         {
-          "name": "read_file",
+          "name": "search",
           "arguments": {
-            "path": "src/recent.ts"
+            "pattern": "slice(-count)"
           },
-          "expectToolResult": "slice(-count)"
+          "expectToolResult": "src/warnings.ts"
         }
       ]
     },
@@ -16,34 +16,34 @@
         {
           "name": "report_finding",
           "arguments": {
-            "file": "src/recent.ts",
-            "line": 6,
+            "file": "src/errors.ts",
+            "line": 5,
             "rule": "wrong-result",
             "severity": "P1",
             "explanation": {
-              "what": "All three readers this change adds take the last count entries with slice(-count), and each returns every entry for a count of 0: one shape, three instances.",
+              "what": "recentErrors takes the last count entries with slice(-count), and returns every entry for a count of 0. It is one of three instances of one shape, in src/errors.ts, src/messages.ts and src/warnings.ts.",
               "why": "This change wrote the three readers and declares 0 a count they accept, the one that hides the section.",
-              "fix": "Return an empty list when count is 0, or take log.entries.slice(Math.max(0, length - count)), in all three readers."
+              "fix": "Return an empty list when count is 0, or take entries.slice(Math.max(0, length - count)), in all three readers."
             },
-            "failureScenario": "recentErrors(log, 0) evaluates slice(-0), which is slice(0), and returns every error in the log rather than none, so a viewer who set the section to 0 to hide it sees the whole error history. recentWarnings(log, 0) and recentMessages(log, 0) do the same at lines 10 and 14: three readers, one shape.",
+            "failureScenario": "recentErrors(log, 0) evaluates slice(-0), which is slice(0), and returns every entry rather than none, so a viewer who set the section to 0 to hide it sees the error history. It is one of three readers with this shape; recentMessages in src/messages.ts and recentWarnings in src/warnings.ts fail the same way.",
             "evidence": [
               {
-                "file": "src/recent.ts",
-                "line": 6,
+                "file": "src/errors.ts",
+                "line": 5,
                 "role": "cause"
               },
               {
-                "file": "src/recent.ts",
-                "line": 10,
-                "role": "cause"
+                "file": "src/messages.ts",
+                "line": 5,
+                "role": "context"
               },
               {
-                "file": "src/recent.ts",
-                "line": 14,
-                "role": "cause"
+                "file": "src/warnings.ts",
+                "line": 5,
+                "role": "context"
               },
               {
-                "file": "src/recent.ts",
+                "file": "src/errors.ts",
                 "line": 3,
                 "role": "context"
               }
@@ -54,7 +54,91 @@
       ]
     },
     {
-      "text": "Reported 1 finding."
+      "calls": [
+        {
+          "name": "report_finding",
+          "arguments": {
+            "file": "src/messages.ts",
+            "line": 5,
+            "rule": "wrong-result",
+            "severity": "P1",
+            "explanation": {
+              "what": "recentMessages takes the last count entries with slice(-count), and returns every entry for a count of 0. It is one of three instances of one shape, in src/errors.ts, src/messages.ts and src/warnings.ts.",
+              "why": "This change wrote the three readers and declares 0 a count they accept, the one that hides the section.",
+              "fix": "Return an empty list when count is 0, or take entries.slice(Math.max(0, length - count)), in all three readers."
+            },
+            "failureScenario": "recentMessages(log, 0) evaluates slice(-0), which is slice(0), and returns every entry rather than none, so a viewer who set the section to 0 to hide it sees the whole log. It is one of three readers with this shape; recentErrors in src/errors.ts and recentWarnings in src/warnings.ts fail the same way.",
+            "evidence": [
+              {
+                "file": "src/messages.ts",
+                "line": 5,
+                "role": "cause"
+              },
+              {
+                "file": "src/errors.ts",
+                "line": 5,
+                "role": "context"
+              },
+              {
+                "file": "src/warnings.ts",
+                "line": 5,
+                "role": "context"
+              },
+              {
+                "file": "src/messages.ts",
+                "line": 3,
+                "role": "context"
+              }
+            ]
+          },
+          "expectToolResult": "as introduced"
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "report_finding",
+          "arguments": {
+            "file": "src/warnings.ts",
+            "line": 5,
+            "rule": "wrong-result",
+            "severity": "P1",
+            "explanation": {
+              "what": "recentWarnings takes the last count entries with slice(-count), and returns every entry for a count of 0. It is one of three instances of one shape, in src/errors.ts, src/messages.ts and src/warnings.ts.",
+              "why": "This change wrote the three readers and declares 0 a count they accept, the one that hides the section.",
+              "fix": "Return an empty list when count is 0, or take entries.slice(Math.max(0, length - count)), in all three readers."
+            },
+            "failureScenario": "recentWarnings(log, 0) evaluates slice(-0), which is slice(0), and returns every entry rather than none, so a viewer who set the section to 0 to hide it sees the warning history. It is one of three readers with this shape; recentErrors in src/errors.ts and recentMessages in src/messages.ts fail the same way.",
+            "evidence": [
+              {
+                "file": "src/warnings.ts",
+                "line": 5,
+                "role": "cause"
+              },
+              {
+                "file": "src/errors.ts",
+                "line": 5,
+                "role": "context"
+              },
+              {
+                "file": "src/messages.ts",
+                "line": 5,
+                "role": "context"
+              },
+              {
+                "file": "src/warnings.ts",
+                "line": 3,
+                "role": "context"
+              }
+            ]
+          },
+          "expectToolResult": "as introduced"
+        }
+      ]
+    },
+    {
+      "text": "Reported 3 findings."
     }
   ],
   "contracts": [

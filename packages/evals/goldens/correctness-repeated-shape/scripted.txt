@@ -1,20 +1,58 @@
-src/recent.ts
+src/errors.ts
 
-  P1  line 6  wrong-result  (introduced, new, block, confirmed)
+  P1  line 5  wrong-result  (introduced, new, block, confirmed)
     Verified: faux/scripted: The scripted verifier traced the claim.
-  All three readers this change adds take the last count entries with slice(-count), and each returns every entry for a count of 0: one shape, three instances.
-    What: All three readers this change adds take the last count entries with slice(-count), and each returns every entry for a count of 0: one shape, three instances.
+  recentErrors takes the last count entries with slice(-count), and returns every entry for a count of 0. It is one of three instances of one shape, in src/errors.ts, src/messages.ts and src/warnings.ts.
+    What: recentErrors takes the last count entries with slice(-count), and returns every entry for a count of 0. It is one of three instances of one shape, in src/errors.ts, src/messages.ts and src/warnings.ts.
     Why here: This change wrote the three readers and declares 0 a count they accept, the one that hides the section.
-    Failure scenario: recentErrors(log, 0) evaluates slice(-0), which is slice(0), and returns every error in the log rather than none, so a viewer who set the section to 0 to hide it sees the whole error history. recentWarnings(log, 0) and recentMessages(log, 0) do the same at lines 10 and 14: three readers, one shape.
+    Failure scenario: recentErrors(log, 0) evaluates slice(-0), which is slice(0), and returns every entry rather than none, so a viewer who set the section to 0 to hide it sees the error history. It is one of three readers with this shape; recentMessages in src/messages.ts and recentWarnings in src/warnings.ts fail the same way.
     Evidence:
-      cause: src/recent.ts:6
+      cause: src/errors.ts:5
           return log.entries.filter((entry) => entry.level === "error").slice(-count);
-      cause: src/recent.ts:10
-          return log.entries.filter((entry) => entry.level === "warn").slice(-count);
-      cause: src/recent.ts:14
+      context: src/messages.ts:5
           return log.entries.slice(-count);
-      context: src/recent.ts:3
-        // Each reader takes `count`, how many entries the viewer asked to see: from 0 to 50, where 0 hides the section.
-    What to do: Return an empty list when count is 0, or take log.entries.slice(Math.max(0, length - count)), in all three readers.
+      context: src/warnings.ts:5
+          return log.entries.filter((entry) => entry.level === "warn").slice(-count);
+      context: src/errors.ts:3
+        // `count` is how many entries the viewer asked to see: from 0 to 50, where 0 hides the section.
+    What to do: Return an empty list when count is 0, or take entries.slice(Math.max(0, length - count)), in all three readers.
 
-1 finding in 1 file.
+src/messages.ts
+
+  P1  line 5  wrong-result  (introduced, new, block, confirmed)
+    Verified: faux/scripted: The scripted verifier traced the claim.
+  recentMessages takes the last count entries with slice(-count), and returns every entry for a count of 0. It is one of three instances of one shape, in src/errors.ts, src/messages.ts and src/warnings.ts.
+    What: recentMessages takes the last count entries with slice(-count), and returns every entry for a count of 0. It is one of three instances of one shape, in src/errors.ts, src/messages.ts and src/warnings.ts.
+    Why here: This change wrote the three readers and declares 0 a count they accept, the one that hides the section.
+    Failure scenario: recentMessages(log, 0) evaluates slice(-0), which is slice(0), and returns every entry rather than none, so a viewer who set the section to 0 to hide it sees the whole log. It is one of three readers with this shape; recentErrors in src/errors.ts and recentWarnings in src/warnings.ts fail the same way.
+    Evidence:
+      cause: src/messages.ts:5
+          return log.entries.slice(-count);
+      context: src/errors.ts:5
+          return log.entries.filter((entry) => entry.level === "error").slice(-count);
+      context: src/warnings.ts:5
+          return log.entries.filter((entry) => entry.level === "warn").slice(-count);
+      context: src/messages.ts:3
+        // `count` is how many entries the viewer asked to see: from 0 to 50, where 0 hides the section.
+    What to do: Return an empty list when count is 0, or take entries.slice(Math.max(0, length - count)), in all three readers.
+
+src/warnings.ts
+
+  P1  line 5  wrong-result  (introduced, new, block, confirmed)
+    Verified: faux/scripted: The scripted verifier traced the claim.
+  recentWarnings takes the last count entries with slice(-count), and returns every entry for a count of 0. It is one of three instances of one shape, in src/errors.ts, src/messages.ts and src/warnings.ts.
+    What: recentWarnings takes the last count entries with slice(-count), and returns every entry for a count of 0. It is one of three instances of one shape, in src/errors.ts, src/messages.ts and src/warnings.ts.
+    Why here: This change wrote the three readers and declares 0 a count they accept, the one that hides the section.
+    Failure scenario: recentWarnings(log, 0) evaluates slice(-0), which is slice(0), and returns every entry rather than none, so a viewer who set the section to 0 to hide it sees the warning history. It is one of three readers with this shape; recentErrors in src/errors.ts and recentMessages in src/messages.ts fail the same way.
+    Evidence:
+      cause: src/warnings.ts:5
+          return log.entries.filter((entry) => entry.level === "warn").slice(-count);
+      context: src/errors.ts:5
+          return log.entries.filter((entry) => entry.level === "error").slice(-count);
+      context: src/messages.ts:5
+          return log.entries.slice(-count);
+      context: src/warnings.ts:3
+        // `count` is how many entries the viewer asked to see: from 0 to 50, where 0 hides the section.
+    What to do: Return an empty list when count is 0, or take entries.slice(Math.max(0, length - count)), in all three readers.
+
+3 findings in 3 files.

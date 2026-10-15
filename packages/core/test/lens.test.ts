@@ -115,17 +115,17 @@ describe("built-in lenses", () => {
 	it("keep their versions, and the version melian.yaml's tier and paths give one", async () => {
 		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
 		expect(Object.fromEntries(lenses.map((lens) => [lens.name, lens.version]))).toEqual({
-			contracts: "b8e5390cffd3",
-			conventions: "1f6c8c17c4ec",
-			correctness: "7b82f005cbac",
-			design: "bbacf6cc1ea9",
-			"removed-behaviour": "f325f2b63c8e",
-			tests: "d7c5c901d4fb",
-			"trust-boundary": "a82edf48639e",
+			contracts: "dd8fb36095b4",
+			conventions: "1815e2aee9b9",
+			correctness: "5e57d5dca9bd",
+			design: "5e3c0f70c270",
+			"removed-behaviour": "37aeab0038e3",
+			tests: "9eb5dbf32a98",
+			"trust-boundary": "24aa8e2540b4",
 		});
 		const tuned = { ...defaultConfig, lenses: { correctness: { tier: "light" as const, paths: ["src/**"] } } };
 		const [correctness] = Lens.select(named(lenses, "correctness"), tuned, ["src/index.ts"]);
-		expect(correctness!.lens.version).toBe("0f7d2d748c0e");
+		expect(correctness!.lens.version).toBe("44fd47e23eb7");
 	});
 
 	it("load the design lens heavy, over every path, reading whole functions at the one level it declares", async () => {
@@ -230,15 +230,15 @@ describe("built-in lenses", () => {
 		writeFiles(repo, Object.fromEntries(own.map((path) => [path, readFileSync(join(melian, path), "utf8")])));
 		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
 		expect(Object.fromEntries(lenses.map((lens) => [lens.name, lens.version]))).toMatchObject({
-			durability: "041d750f4bff",
-			correctness: "baa5df1a689f",
-			"removed-behaviour": "9e4c30889135",
+			durability: "cf27155ae0f7",
+			correctness: "732f94279c9f",
+			"removed-behaviour": "6eddfa91c6db",
 		});
 		const { config } = await loadConfig(repo, { kind: "worktree" }, ".");
 		const selected = Lens.select(lenses, config, ["src/index.ts"]);
 		expect(Object.fromEntries(selected.map(({ lens }) => [lens.name, lens.version]))).toMatchObject({
-			correctness: "594bf877ed16",
-			"removed-behaviour": "939a5fce32fc",
+			correctness: "80b67adbc505",
+			"removed-behaviour": "253e58f5075e",
 		});
 	});
 
@@ -297,8 +297,8 @@ describe("built-in lenses", () => {
 		}
 	});
 
-	// Rounds that found one instance of a class each serialised the fix; every lens reports the class once.
-	it("report the instances of one shape as one finding, Melian's durability lens too", async () => {
+	// Rounds that found one instance of a class each serialised the fix; every lens names the class in each finding.
+	it("report each instance of one shape as its own finding naming the class, Melian's durability lens too", async () => {
 		const melian = fileURLToPath(new URL("../../../", import.meta.url));
 		writeFiles(repo, {
 			".melian/lenses/durability/LENS.md": readFileSync(join(melian, ".melian/lenses/durability/LENS.md"), "utf8"),
@@ -307,11 +307,10 @@ describe("built-in lenses", () => {
 		expect(lenses.map((lens) => lens.name).sort()).toEqual([...builtins, "durability"].sort());
 		for (const lens of lenses) {
 			for (const sentence of [
-				"Instances of one shape are one strong finding, not several weak ones.",
-				"Say which in the explanation, and give the number of instances.",
-				"Report the finding once, at the first instance this change caused in file and line order, placed where your report instructions below put a finding, and trace your failure scenario through it.",
-				"Cite each other instance this change caused as a further evidence location, in the role the reported instance's own line has, as many as the evidence list holds.",
-				"Cite an instance that predates the change as `context`: it shows the shape, and never makes the finding the change's.",
+				"Instances of one shape are not several weak findings.",
+				"Report each instance this change caused as its own finding, so each keeps its own identity, dismissal, and verdict.",
+				"In each, say that it is one of a class and how many instances you found, and cite the others as `context` locations, as many as the evidence list holds.",
+				"When your findings budget runs short, report the instances it allows and name the rest in each finding's explanation.",
 				"For a shape closed case by case, name in the failure scenario every input you found that slips past, not only the first.",
 			])
 				expect(lens.instructions, lens.name).toContain(sentence);
