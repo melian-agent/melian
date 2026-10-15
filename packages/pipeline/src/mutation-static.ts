@@ -41,8 +41,7 @@ const report = "reports/mutation/mutation.json";
 // or a declaration file is not. A `.config.ts` is production: it can hold logic. It is not mutated, though, because a tool
 // loads it to run the mutants, so a change to one is a file the run did not judge.
 const typescript = /\.[cm]?tsx?$/;
-// Files a test run can load, and names Vitest's defaults give test files.
-const code = /\.(?:[cm]?[jt]sx?|json)$/;
+// Names Vitest's defaults give test files.
 const namedAsTest = /\.(?:test|spec)\.[cm]?[jt]sx?$/;
 const notProduction = /\.(?:d|test|spec)\.[cm]?tsx?$/;
 const configuration = /\.config\.[cm]?tsx?$/;
@@ -63,6 +62,17 @@ function production(path: string): boolean {
 		typescript.test(path) &&
 		!notProduction.test(path) &&
 		!path.startsWith(notProductionPrefix) &&
+		!posix
+			.dirname(path)
+			.split("/")
+			.some((segment) => notProductionDirectories.has(segment))
+	);
+}
+
+// Prose a test run does not load: Markdown outside the directories tests and their fixtures live in.
+function prose(path: string): boolean {
+	return (
+		path.endsWith(".md") &&
 		!posix
 			.dirname(path)
 			.split("/")
@@ -389,9 +399,10 @@ process.exitCode = result.code;
 		return code === 0;
 	}
 
-	// Stryker's incremental mode diffs only the files it mutated and the test files it ran. A change to any other code since
-	// the judged head, such as a configuration, a setup file, a test helper or a production file set aside, can change what
-	// a reused kill meant, so the run starts cold. A new file named as a test is a test Stryker will see.
+	// Stryker's incremental mode diffs only the files it mutated and the test files it ran. A change to any other file since
+	// the judged head, such as a configuration, a setup file, a test helper, a snapshot or a fixture, can change what a
+	// reused kill meant, so the run starts cold. A new file named as a test is one Stryker will see, and prose outside the
+	// test directories is one no test loads.
 	async #steered(
 		earlier: { readonly judged: JudgedHead; readonly report: string } | { readonly cold: string },
 		mutated: readonly string[],
@@ -407,7 +418,9 @@ process.exitCode = result.code;
 		// A production file changed since is in the pull request's diff, so it is among the mutated ones.
 		const { testFiles } = JSON.parse(earlier.report) as { testFiles?: Record<string, unknown> };
 		const seen = new Set([...mutated, ...Object.keys(testFiles ?? {})]);
-		const unseen = names.split("\0").find((path) => code.test(path) && !seen.has(path) && !namedAsTest.test(path));
+		const unseen = names
+			.split("\0")
+			.find((path) => path !== "" && !seen.has(path) && !namedAsTest.test(path) && !prose(path));
 		if (unseen === undefined) return earlier;
 		return {
 			cold: `${unseen} changed since the last judged head ${judged.slice(0, 12)}, and Stryker's incremental mode does not read it`,

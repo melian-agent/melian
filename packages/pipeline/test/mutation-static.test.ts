@@ -530,13 +530,20 @@ printf '%s' '{"schemaVersion":"1.0","files":{}}' > reports/mutation/mutation.jso
 		"packages/p/test/helpers/assert.ts",
 		"package.json",
 		"packages/core/src/git.ts",
+		"tsconfig.json",
+		"vitest.setup.mjs",
+		"packages/p/test/helpers/render.tsx",
+		"packages/p/test/__snapshots__/a.test.ts.snap",
+		"packages/p/test/fixtures/expected.txt",
+		"packages/p/test/fixtures/golden.md",
+		".env.test",
 	])(
 		"starts cold when %s, which Stryker's incremental mode does not read, changed since the last judged head",
 		async (path) => {
 			const { base, head } = twoCommits();
 			const reads = incrementalTool();
 			await mutate(base, head, { target: "range-feature" });
-			const next = commit(repo, { [path]: path.endsWith(".json") ? "{}\n" : "export const changed = 1;\n" });
+			const next = commit(repo, { [path]: path.endsWith(".json") ? "{}\n" : "changed\n" });
 			const result = await mutate(base, next, { target: "range-feature" });
 			expect(reads()).toEqual([]);
 			if (result.status !== "ran") throw new Error("skipped");
@@ -556,6 +563,7 @@ printf '%s' '{"schemaVersion":"1.0","files":{}}' > reports/mutation/mutation.jso
 			"packages/p/test/checks/a.ts": lines("// tests a, changed"),
 			"packages/p/test/b.spec.ts": lines("// a new test"),
 			"NOTES.md": "prose\n",
+			"docs/progress-log/entry.md": "prose\n",
 		});
 		await mutate(base, next, { target: "range-feature" });
 		expect(reads()).toHaveLength(1);
