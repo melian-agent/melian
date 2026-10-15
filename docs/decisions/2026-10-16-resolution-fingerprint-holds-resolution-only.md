@@ -10,10 +10,10 @@ Choice: the fingerprint covers only what the resolution walk reads.
 
 - every path's merged `resolution` table, each file's own `resolution` layer (so `checks`, `ceiling`, and `preExisting` among them), and `ruleAliases`;
 - each lens's declared `resolution` as effective at the path, after `extends`;
-- each lens variant the source defines, by name, scope, and declared `resolution`, in place of its version.
+- for each lens report, the declared `resolution` it resolves through: the one its variant maps to, or the nearest lens's where the variant is no longer defined. The variant's version is no part of the fingerprint.
 
 A budget, a model route, a tier, a lens body, or a band changes none of these, so a dismissal after such a change decides the verdict again. A `resolution` key in any layer, a rule alias, or a lens's declared resolution, wherever its file sits, still refuses.
 
-The cost: a report whose variant version no longer exists, because the lens file that made it was removed, resolves through the nearest lens's default. When the removed file changed only the budget, that default is the same. When it changed the declared resolution, the fingerprint differs and the dismissal still asks for a fresh review.
+The cost: a lens that no finding of the review reports through adds nothing beyond its default at the path, so a variant in a folder no finding sits under can change without refusing a dismissal, as it changes no resolution.
 
 The refusal message named the remedy twice, once in the task's error and once in `dismiss`. The task's error now states the cause alone and `dismiss` adds the remedy.
