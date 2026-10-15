@@ -1,0 +1,8 @@
+[Pull request #98](https://github.com/melian-agent/melian/pull/98): the maintainer's rulings of 2026-10-14, applied.
+
+- Timeout. `static.mutation.timeout` defaults to 7,200 seconds, and the schema allows no more; other tools keep 3,600. The decision marks it provisional, to be revisited with measurements on smaller pull requests. The runner sets Stryker's `dryRunTimeoutMinutes` from it, rounded up, so Stryker's own limit never ends the run first. Commit 3d1f3181.
+- Forks. The isolated-runner declaration is gone: the `--isolated-runner` flag, `MELIAN_ISOLATED_RUNNER`, its stored leave, its cache class and the sweep that ended tasks resting on it. A head from outside the repository's writers reads not reviewed until milestone 3's credential-free job runs it. The two-job design is in the unconfined decision and the plan's milestone 3. A fork's clean result will count as a fork's CI tests do. Readiness questions 12 and 13 are answered; question 11 is moot. Commit 48f98c2e.
+- No run-time recheck. The surviving leaves, `checkout` and `writer`, are facts about the head commit, not the host, so a resumed task runs the commit it was allowed for.
+- `MutationRun.judges` is no longer TSDoc, as Melian's fourth round advised.
+
+Mutations, each run by hand and each failing a test: the dry-run limit rounded down, removed, and one minute longer; the mutation ceiling at 7,199 and 7,201; the shared ceiling at 3,601; the default back at 1,800; `trust.writers` applied to the checkout; a refused writer let through; no leave passed for mutation; the retirement abort ignoring authority or revision.

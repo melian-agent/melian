@@ -205,6 +205,35 @@ async function staticCheck(cwd: string): Promise<Check | undefined> {
 	};
 }
 
+// Mutation testing runs only the checkout's own Stryker: Melian carries none, and without one the check records a skip
+// that leaves the review not reviewed. It runs the head's own tests unconfined, so doctor says which heads it runs for
+// on this host. Silent while the check is off.
+async function mutationCheck(cwd: string, env: NodeJS.ProcessEnv): Promise<Check | undefined> {
+	const root = await git(cwd, ["rev-parse", "--show-toplevel"]).catch(() => undefined);
+	if (root === undefined) return undefined;
+	try {
+		const { config } = await loadConfig(root, { kind: "worktree", preferences: userFiles(env).config }, ".");
+		if (!config.static.mutation.enabled) return undefined;
+		const source = staticToolSource(root, "mutation");
+		if (source.from !== "checkout") {
+			return {
+				name: "mutation",
+				state: "warn",
+				detail:
+					"static.mutation is on, but Stryker is not installed in the checkout and Melian carries none; add @stryker-mutator/core and @stryker-mutator/vitest-runner to its dev dependencies, or the check records a skip",
+			};
+		}
+		return {
+			name: "mutation",
+			state: "ok",
+			detail:
+				"static.mutation runs Stryker from the checkout for a pull request a writer pushed to the base repository, and for a range you pass --trust-head; any other head waits for the Actions host's credential-free job",
+		};
+	} catch (error) {
+		return { name: "mutation", state: "warn", detail: error instanceof Error ? error.message : String(error) };
+	}
+}
+
 async function standardsCheck(cwd: string): Promise<Check | undefined> {
 	const root = await git(cwd, ["rev-parse", "--show-toplevel"]).catch(() => undefined);
 	if (root === undefined) return undefined;
@@ -435,6 +464,7 @@ export async function doctor(io: Io, options: { readonly fetch?: typeof globalTh
 			await stateCheck(io.cwd, io.env),
 			await levelsCheck(io.cwd),
 			await staticCheck(io.cwd),
+			await mutationCheck(io.cwd, io.env),
 			await standardsCheck(io.cwd),
 		].filter((check) => check !== undefined),
 		...(await resolutionChecks(io.cwd, io.env)),

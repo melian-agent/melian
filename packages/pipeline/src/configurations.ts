@@ -16,10 +16,15 @@ import { lensSource } from "./lens-tools.ts";
 const policyReview = "guardrail/policy-change-review";
 
 /**
- * The policy a review's findings resolve under, and a fingerprint of all of it: every path's table, layers, aliases,
- * and lens defaults. Two reads that would resolve the findings alike give one fingerprint.
+ * The policy a review's findings resolve under, and a fingerprint of what decides resolution: every path's table,
+ * layers, and aliases, and the declared resolution each lens report resolves through. A budget, a model route, or a
+ * tier changes none of those. Two reads that would resolve the findings alike give one fingerprint.
  */
-export type PolicyLookup = ConfigFor & { readonly fingerprint: string };
+export type PolicyLookup = ConfigFor & {
+	readonly fingerprint: string;
+	/** The fingerprint a build before the recipe changed would give this policy, to read a task input that build stored. */
+	readonly legacyFingerprint: string;
+};
 
 /**
  * The policy each of `findings` resolves under, read from `policy`: the configuration at its path with each file's own
@@ -34,6 +39,7 @@ export async function configsFor(
 ): Promise<PolicyLookup> {
 	const lookup = configLookup(repoRoot, policy);
 	const atPath = new Map<string, PolicyAt>();
+	const defaultsAt = new Map<string, Record<string, ResolutionEntry>>();
 	const judging = new Map<string, PolicyAt>();
 	const lensPaths = new Set(
 		findings
@@ -71,6 +77,7 @@ export async function configsFor(
 				if (lens.resolution === undefined) delete lensDefaults[lens.name];
 				else lensDefaults[lens.name] = lens.resolution;
 			}
+			defaultsAt.set(path, lensDefaults);
 			atPath.set(path, {
 				resolution: config.resolution,
 				ruleAliases: config.ruleAliases,
@@ -89,8 +96,33 @@ export async function configsFor(
 		}
 	}
 	// What judges a notice is the layers above its file, which the file's own path already holds.
-	const byPath = [...atPath].sort(([left], [right]) => (left < right ? -1 : 1));
-	const fingerprint = createHash("sha256").update(JSON.stringify(byPath)).digest("hex").slice(0, 16);
+	const paths = [...atPath.keys()].sort();
+	const byPath = paths.map((path) => {
+		const { lensVariants: _, ...policy } = atPath.get(path)!;
+		return [path, policy];
+	});
+	// A lens variant is named by its version in `lensVariants`, and a version hashes everything the lens runs with, its
+	// budget included. So the fingerprint holds what each lens report resolves through: the declared default its
+	// variant maps to, or the nearest lens's where that variant is no longer defined.
+	const declared = findings
+		.flatMap(({ properties: { path, source, reportedBy = [source] } }) =>
+			reportedBy
+				.filter(({ check }) => check.startsWith("lens."))
+				.map(({ check, version }) => {
+					const name = check.slice("lens.".length);
+					const variant = `${name}@${version}`;
+					const entry = Object.hasOwn(lensVariants, variant) ? lensVariants[variant] : defaultsAt.get(path)![name];
+					return JSON.stringify([path, entry]);
+				}),
+		)
+		.sort();
+	const fingerprint = `2:${hash([byPath, declared])}`;
+	// The first recipe hashed the layers whole, lens variants keyed by version included.
+	const legacyFingerprint = hash(paths.map((path) => [path, atPath.get(path)]));
 	const policyFor: ConfigFor = (path, rule) => (rule === policyReview ? judging : atPath).get(path)!;
-	return Object.assign(policyFor, { fingerprint });
+	return Object.assign(policyFor, { fingerprint, legacyFingerprint });
+}
+
+function hash(value: unknown): string {
+	return createHash("sha256").update(JSON.stringify(value)).digest("hex").slice(0, 16);
 }

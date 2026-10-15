@@ -5,6 +5,7 @@ import {
 	ConfigError,
 	LensError,
 	type MelianConfig,
+	type MutationSkipCause,
 	type PreExistingCap,
 	type PublicationDetails,
 	type RepositorySource,
@@ -29,6 +30,7 @@ type StoredCheck = {
 	name: string;
 	status: CheckStatus;
 	reason?: string;
+	cause?: MutationSkipCause;
 	error?: string;
 	version?: string;
 	level?: ScrutinyLevel;
@@ -215,11 +217,15 @@ export const AdjudicationTask = defineTask<AdjudicationTaskInput, { phase: "adju
 				// The input names the policy the review read. A working tree can change before this phase runs, as after a
 				// dismissal a crash cut short, and a verdict decided under another policy must not sit under this input.
 				const { resolutionPolicy } = task.input;
-				if (policies !== undefined && resolutionPolicy !== undefined && policies.fingerprint !== resolutionPolicy) {
+				if (
+					policies !== undefined &&
+					resolutionPolicy !== undefined &&
+					![policies.fingerprint, policies.legacyFingerprint].includes(resolutionPolicy)
+				) {
 					throw new ConfigError(
 						"invalidValue",
 						repoRoot,
-						"the resolution policy changed since the review read it, so its verdict would be decided under another; run melian review again",
+						"the resolution policy changed since the review read it, so its verdict would be decided under another",
 					);
 				}
 				verdict = new Adjudication({
