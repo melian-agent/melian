@@ -203,7 +203,7 @@ Codex's own sandbox denies writes under `.git`, so a Codex task cannot commit or
 scripts/codex-sandboxed.sh <worktree> <model> <prompt-file> [log] [scratch]
 ```
 
-Run it from a linked worktree beside the checkout (`git worktree add`), as every Codex task here does. It exits 64 for the main checkout: the worktree allowance would cover `.git`, and a task could rename it and put its own in place.
+Run it from a linked worktree in a folder beside the checkout, such as `../melian-worktrees/<name>` (`git worktree add`), as every Codex task here does. It exits 64 for the main checkout: the worktree allowance would cover `.git`, and a task could rename it and put its own in place.
 
 Writes are allowed in:
 
