@@ -924,6 +924,8 @@ interface ReviewSettings {
 	readonly origin?: ReviewOrigin;
 	/** Whether the head's writer is trusted to have its own code run by `static.mutation`; see {@link WriterTrust}. */
 	readonly writer?: WriterTrust;
+	/** Run `static.mutation` from nothing in the automatic checks, as a review that may pass must; see `RunChecksInput`. */
+	readonly cold?: boolean;
 	readonly context?: Context;
 }
 
@@ -1548,6 +1550,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 						tier,
 						rerunFailed: request.rerun,
 						...(request.writer === undefined ? {} : { writer: request.writer }),
+						...(request.cold === true ? { cold: true } : {}),
 					},
 					request.context ?? backgroundContext,
 				)

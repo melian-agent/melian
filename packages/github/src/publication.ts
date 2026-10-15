@@ -322,8 +322,14 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 		lineage === undefined ? [] : [`- ${code(name)} ${inline(describeLineage(lineage))}`],
 	);
 	if (routed.length > 0) parts.push(["Checks that left the committed routes:", "", ...routed].join("\n"));
-	if (verdict.notRun.length > 0) {
-		const checks = verdict.notRun.map(({ name, status: ran, reason, budgetEnded }) => {
+	const provisional = verdict.notRun.filter((check) => check.status === "provisional");
+	if (provisional.length > 0) {
+		const checks = provisional.map(({ name, reason }) => `- ${code(name)}: ${inline(reason ?? "")}`);
+		parts.push(["Provisional, not yet approving:", "", ...checks].join("\n"));
+	}
+	const notRun = verdict.notRun.filter((check) => check.status !== "provisional");
+	if (notRun.length > 0) {
+		const checks = notRun.map(({ name, status: ran, reason, budgetEnded }) => {
 			const ended = budgetEnded === undefined ? [] : [describeBudgetEnd(budgetEnded)];
 			const why = [...ended, ...(reason === undefined ? [] : [reason])].join("; ") || undefined;
 			return `- ${code(name)} ${ran}${why === undefined ? "" : `: ${inline(why)}`}`;

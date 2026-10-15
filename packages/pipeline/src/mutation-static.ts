@@ -15,7 +15,7 @@ import {
 	type ToolLog,
 	type UnmutatedFile,
 } from "@melian-agent/core";
-import { MutationCache } from "./mutation-cache.ts";
+import { type HeadTrust, type JudgedHead, MutationCache } from "./mutation-cache.ts";
 import { MutationProcess } from "./mutation-process.ts";
 import { mutationSelectionVersion, mutationVitestModule } from "./mutation-vitest.ts";
 import type { Run, StaticRun } from "./static.ts";
@@ -199,6 +199,40 @@ export function mutationInstallation(repoRoot: string): string {
 		.digest("hex");
 }
 
+// Stryker logs how many results its incremental mode reused. The head's tests write to the same log, so the count is a
+// note and decides nothing. chalk may colour the first number; the escape character is dropped before matching.
+const reusedCount = /(?:\[\d{1,3}m)?(\d{1,9})(?:\[\d{1,3}m)? of (\d{1,9}) mutant result\(s\) are reused\./g;
+
+// The largest count of reused results the log states, as `[reused, total]`. The head's tests can print a count of their
+// own beside Stryker's, so the first is not to be trusted, and the largest is what the belt must see.
+function reusedOf(log: string): [number, number] | undefined {
+	let largest: [number, number] | undefined;
+	for (const [, reused, total] of log.replaceAll(String.fromCharCode(27), "").matchAll(reusedCount))
+		if (largest === undefined || Number(reused) > largest[0]) largest = [Number(reused), Number(total)];
+	return largest;
+}
+
+function reuseNote(earlier: { readonly judged: JudgedHead } | { readonly cold: string }, log: string): string {
+	if ("cold" in earlier) return `Stryker started cold: ${earlier.cold}.`;
+	const judged = earlier.judged.head.slice(0, 12);
+	const counted = reusedOf(log);
+	if (counted === undefined)
+		return `Stryker was given the results of ${judged}, the last judged head; its log does not say how many it reused.`;
+	const [reused, total] = counted;
+	return `Stryker reused ${reused} of ${total} mutant result(s) from ${judged}, the last judged head, and ran ${total - reused}.`;
+}
+
+// What a run that built on an earlier head says in place of approval. Whether it is provisional is Melian's own fact,
+// that it handed Stryker an earlier report; the count is the head-written log's and only words the reason.
+function provisionalReason(log: string): string {
+	const counted = reusedOf(log);
+	const reused =
+		counted === undefined
+			? "Stryker was handed an earlier head's results, and its log does not say how many it reused"
+			: `Stryker reused ${counted[0]} of ${counted[1]} results from an earlier head`;
+	return `provisional: ${reused}; a cold run decides approval`;
+}
+
 export class MutationRun {
 	readonly #run: Run;
 	readonly #root: string;
@@ -275,7 +309,14 @@ export class MutationRun {
 		return `a new ${candidates.at(-1)}`;
 	}
 
-	async #runner(entries: readonly string[], changed: readonly string[], incremental: string): Promise<string> {
+	async #runner(
+		entries: readonly string[],
+		changed: readonly string[],
+		{ staged: incremental, earlier }: { staged: string; earlier: string },
+		// Whether Melian handed the run an earlier head's report. Decided here, not by the file, which the head's tests could
+		// write: a run handed none passes `--force`, and a whole-suite repeat restores nothing.
+		reused: boolean,
+	): Promise<string> {
 		const require = createRequire(posix.join(this.#run.input.repoRoot, "node_modules/vitest/package.json"));
 		const module = posix.join(this.#scratch, posix.basename(fileURLToPath(mutationVitestModule)));
 		await this.#write(module, readFileSync(fileURLToPath(mutationVitestModule), "utf8"));
@@ -286,7 +327,7 @@ export class MutationRun {
 		// minutes at or past Melian's leave the timeout the only one that ends the run.
 		const dryRunMinutes = Math.ceil(this.#run.input.settings.timeout / 60);
 		const text = `
-import { existsSync, readFileSync, rmSync, writeFileSync, writeSync } from "node:fs";
+import { copyFileSync, existsSync, readFileSync, rmSync, writeFileSync, writeSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { relative } from "node:path";
 import { createVitest } from ${JSON.stringify(pathToFileURL(require.resolve("vitest/node")).href)};
@@ -299,9 +340,11 @@ const selection = await MutationVitest.open(() => createVitest("test", {
   config: config.vitest?.configFile, dir: config.vitest?.dir, watch: false, coverage: { enabled: false }
 }), ${JSON.stringify(changed)});
 const result = await selection.execute(async (tests, fresh) => {
-  // A whole-suite fallback must not reuse the related run's coverage or mutant results.
+  // A whole-suite fallback must not reuse the related run's coverage or mutant results; it starts again from the
+  // earlier head's, when there were any.
   if (fresh) {
     rmSync(${JSON.stringify(incremental)}, { force: true });
+    if (${JSON.stringify(reused)} && existsSync(${JSON.stringify(earlier)})) copyFileSync(${JSON.stringify(earlier)}, ${JSON.stringify(incremental)});
     writeSync(1, ${JSON.stringify(`\n${repeatMarker}\n`)});
   }
   rmSync(${JSON.stringify(report)}, { force: true });
@@ -313,7 +356,7 @@ const result = await selection.execute(async (tests, fresh) => {
     testFiles: tests?.map(file => relative(process.cwd(), file).replace(/[\\\\*?[\\]{}()!+@#]/g, "\\\\$&")) ?? []
   }));
   const run = spawn(${JSON.stringify(this.#binary)}, ["run", ${JSON.stringify(selectedConfig)},
-    "--reporters", "json", "--incremental", "--incrementalFile", ${JSON.stringify(incremental)},
+    "--reporters", "json", "--incremental", "--incrementalFile", ${JSON.stringify(incremental)},${reused ? "" : ` "--force",`}
     "--inPlace", "--mutate", ${JSON.stringify(entries.join(","))}],
     // The marker tells the head's tests a mutation run is running them, so one that starts Stryker itself can skip.
     { stdio: "inherit", env: { ...process.env, MELIAN_MUTATION: "1" } });
@@ -360,20 +403,42 @@ process.exitCode = result.code;
 
 	// The run executes the head's own test files, setup files, and Vitest configuration, as an ordinary child process with
 	// the environment every static tool gets. Nothing confines it: the caller decided this head's code may run here.
-	async #execute(entries: readonly string[], changed: readonly string[]): Promise<string | { skipped: string }> {
-		const { repoRoot, policyCommit, base, commit } = this.#run.input;
+	// Whether `older` is in `newer`'s history. git answers 1 for no, and anything else it says counts as no.
+	async #ancestor(older: string, newer: string): Promise<boolean> {
+		const { code } = await this.#run.shell(this.#run.git(`merge-base --is-ancestor ${quote(older)} ${quote(newer)}`));
+		return code === 0;
+	}
+
+	async #execute(
+		entries: readonly string[],
+		changed: readonly string[],
+		trust: HeadTrust,
+	): Promise<{ text: string; provisional?: string } | { skipped: string }> {
+		const { repoRoot, base, commit, target, policyCommit } = this.#run.input;
+		// A caller that does not say when its task was made never replaces another line's results.
+		const created = this.#run.input.created ?? 0;
 		const cache = await MutationCache.open((await CacheLocation.open(repoRoot)).root, {
+			base: base ?? commit,
 			policy: policyCommit ?? base ?? commit,
-			head: commit,
+			target: target ?? commit,
 			installation: mutationInstallation(repoRoot),
 			inputs: createHash("sha256")
-				.update(JSON.stringify({ version: this.#version, entries }))
+				.update(JSON.stringify({ version: this.#version }))
 				.digest("hex"),
 		});
-		const incremental = await cache.stage(posix.join(this.#scratch, "incremental"));
+		const earlier = this.#run.input.cold
+			? { cold: "the review asked for a cold run with --cold" }
+			: await cache.earlier(trust, (judged) => this.#ancestor(judged, commit));
+		// Only a run from nothing may approve. Melian knows that from what it staged, never from the partition file, which
+		// the head's tests can write.
+		const cold = "cold" in earlier;
+		const incremental = await cache.stage(
+			posix.join(this.#scratch, "incremental"),
+			"report" in earlier ? earlier.report : undefined,
+		);
 		const log = posix.join(this.#scratch, "stryker.log");
 		// A report the revision committed must not stand in for the one this run writes.
-		const runner = await this.#runner(entries, changed, incremental);
+		const runner = await this.#runner(entries, changed, incremental, !cold);
 		const command = [
 			`cd ${quote(this.#root)}`,
 			`ulimit -f ${mutationFileLimit / 1024}`,
@@ -420,19 +485,35 @@ process.exitCode = result.code;
 			repeats.length === 0 ? tail(logText) : `${tail(related!)}\n${repeatMarker}\n${tail(repeats.at(-1)!)}`;
 		const notes = await this.#read(posix.join(this.#scratch, "test-selection.json"));
 		if (notes === undefined) throw this.#run.fail("invalidOutput", "mutation runner wrote no test-selection notes");
-		this.#notes.push(...(JSON.parse(notes) as string[]));
+		const deciding = repeats.at(-1) ?? related!;
+		this.#notes.push(...(JSON.parse(notes) as string[]), reuseNote(earlier, deciding));
 		if (result.code === 1) throw this.#run.fail("toolFailed", `Stryker exited 1: ${output}`);
 		if (result.code !== 0)
 			throw this.#run.fail("invalidOutput", `Stryker exited ${result.code}, which it does not document: ${output}`);
 		const text = await this.#read(posix.join(this.#root, report));
 		if (text === undefined) throw this.#run.fail("invalidOutput", `Stryker wrote no report at ${report}`);
 		// A run another review has retired may not leave identities for the next one to trust.
-		if ((await this.#run.input.holdsAuthority?.()) ?? true) await cache.publish(incremental);
-		return text;
+		if ((await this.#run.input.holdsAuthority?.()) ?? true)
+			// The partition only speeds a later head, so a failure to store it leaves this run's result standing.
+			await cache
+				.publish(incremental.staged, { head: commit, trust }, created, (older, newer) =>
+					this.#ancestor(older, newer),
+				)
+				.catch((error: unknown) =>
+					this.#notes.push(
+						`The mutation results were not stored for later heads: ${error instanceof Error ? error.message : String(error)}.`,
+					),
+				);
+		// `--force` makes a cold run rerun every mutant; a log that still counts reused results means the run was not cold.
+		const reusedAnyway = (reusedOf(deciding)?.[0] ?? 0) > 0;
+		return cold && !reusedAnyway ? { text } : { text, provisional: provisionalReason(deciding) };
 	}
 
 	async check(): Promise<StaticRun> {
-		const { revision, settings } = this.#run.input;
+		const { revision, settings, headCode } = this.#run.input;
+		// runStaticTool refuses first; this keeps the leave a partition records from ever being a guess.
+		if (headCode === undefined)
+			throw this.#run.fail("toolFailed", "mutation testing needs the host's leave to run head code");
 		if (revision === undefined) throw this.#run.fail("toolFailed", "mutation testing needs the revision it mutates");
 		const { changed, aside } = this.#targets(revision);
 		const total = Object.values(changed).reduce(
@@ -470,11 +551,11 @@ process.exitCode = result.code;
 		// Looked up before the head's tests run, which may move or remove a test file.
 		const tests: Record<string, string> = {};
 		for (const path of Object.keys(lines)) tests[path] = await this.#nearestTest(path);
-		const text = await this.#execute(entries, Object.keys(lines));
-		if (typeof text !== "string") {
+		const result = await this.#execute(entries, Object.keys(lines), headCode);
+		if ("skipped" in result) {
 			return {
 				status: "skipped",
-				reason: text.skipped,
+				reason: result.skipped,
 				cause: "timeout",
 				log: mutationNotJudged(
 					{
@@ -485,12 +566,12 @@ process.exitCode = result.code;
 							...Object.fromEntries(binary.map((file) => [file.path, [[1, 1]] as [number, number][]])),
 						},
 					},
-					text.skipped,
+					result.skipped,
 				),
 			};
 		}
 		const firstOmitted = Object.entries(omitted)[0];
-		const read = normaliseMutationReport(text, {
+		const read = normaliseMutationReport(result.text, {
 			version: this.#version,
 			lines,
 			tests,
@@ -505,6 +586,7 @@ process.exitCode = result.code;
 			status: "ran",
 			log: read.log,
 			baseLog,
+			provisional: result.provisional,
 			notes: [
 				...this.#notes,
 				`Stryker mutated ${count} changed lines in ${Object.keys(lines).length} file(s); the base was not mutated.`,

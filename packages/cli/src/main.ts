@@ -62,6 +62,8 @@ Options:
                          stored; a completed triage decision is never asked again (review).
   --trust-head           Run the change's own tests, as the mutation check does, for a head that is not your own
                          checked-out work, such as a fork's; pass it only for code you have read (review).
+  --cold                 Run the mutation check without an earlier head's results; only a cold run can pass the
+                         review, so run it before the queue (review).
   --open, --all, --json  For findings.
   --reason <text>        Dismissal reason, or owned-missed, no-owner, needs-execution, out-of-scope (adjudicate).
   --only                 Dismiss the report the ID names alone, leaving the reports merged with it live (dismiss).
@@ -117,6 +119,7 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 				walkthrough: { type: "boolean", default: true },
 				rerun: { type: "boolean", default: false },
 				"trust-head": { type: "boolean", default: false },
+				cold: { type: "boolean", default: false },
 				all: { type: "boolean", default: false },
 				reason: { type: "string" },
 				verdict: { type: "string" },
@@ -154,6 +157,7 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 					rerun: values.rerun,
 					walkthrough: values.walkthrough,
 					trustHead: values["trust-head"],
+					cold: values.cold,
 				});
 			case "publish":
 				return await publish(scoped, one(rest, name, "pull request"), { walkthrough: values.walkthrough });

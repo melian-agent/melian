@@ -19,6 +19,7 @@ import {
 } from "@melian-agent/core";
 import { EnolaRun } from "./enola-static.ts";
 import { backgroundContext, type Context, type ExecutionEnv } from "./harness.ts";
+import type { HeadTrust } from "./mutation-cache.ts";
 import type { MutationProcessHooks } from "./mutation-process.ts";
 import { MutationRun, strykerNotInstalled } from "./mutation-static.ts";
 import { ToolProvisioning } from "./tool-provisioning.ts";
@@ -42,10 +43,22 @@ export interface StaticRunInput {
 	/** The change under review. Mutation testing mutates the lines it adds or edits, so `mutation` needs it. */
 	readonly revision?: Revision;
 	/**
-	 * The host's leave to run the head's own code, which mutation testing does through the head's tests: the head is the
-	 * reviewer's own, a writer's, or one the reviewer vouched for. Without it the mutation runner refuses before it touches the repository.
+	 * The host's leave to run the head's own code, which mutation testing does through the head's tests: a writer pushed
+	 * the head, or the reviewer vouched for it. Without it the mutation runner refuses before it touches the repository.
 	 */
-	readonly headCode?: "trusted";
+	readonly headCode?: HeadTrust;
+	/**
+	 * The review target whose heads share mutation results, such as a pull request's changeset ID. A head judged after
+	 * another of the same target reruns only what changed since. Without it, results are kept for this head alone.
+	 */
+	readonly target?: string;
+	/** Run the mutation check without any earlier head's results, as a run that may approve must. */
+	readonly cold?: boolean;
+	/**
+	 * When the task that runs the mutation check was made, in milliseconds since the epoch. A run replaces another line's
+	 * results only when they were published before it. Without it, the run never replaces them.
+	 */
+	readonly created?: number;
 	/** Records and clears supervised process identities for durable recovery. */
 	readonly mutationProcess?: MutationProcessHooks;
 	/** Whether the run still answers to the latest review of its revision; absence means it does. */
@@ -57,6 +70,8 @@ export type StaticRun =
 	| {
 			readonly status: "ran";
 			readonly log: ToolLog;
+			/** Why a mutation run that reused an earlier head's results cannot let the review pass. */
+			readonly provisional?: string | undefined;
 			readonly notes: readonly string[];
 			readonly baseLog?: ToolLog;
 			readonly snapshots?: EnolaSnapshot[];

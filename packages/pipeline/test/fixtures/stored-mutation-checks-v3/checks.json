@@ -1,0 +1,38 @@
+{
+	"records": [
+		{
+			"name": "static.mutation",
+			"status": "ran",
+			"version": "10.0.0",
+			"findings": 0,
+			"notes": [
+				"Mutation tests use the whole suite: Vitest related no test to packages/p/src/a.ts.",
+				"Stryker mutated 1 changed lines in 1 file(s); the base was not mutated.",
+				"packages/p/src/a.ts produced no mutants, so nothing on its changed lines was judged."
+			]
+		}
+	],
+	"checks": {
+		"runs": {
+			"a0d66c84715b3b03b3eddceeb8525c611c137ba7 8e83740c6c69c687fd1561d6dd7b6f82de96f1aa full 37940f6571f297e7 7": {
+				"static.mutation": {
+					"name": "static.mutation",
+					"status": "ran",
+					"version": "10.0.0",
+					"findings": 0,
+					"notes": [
+						"Mutation tests use the whole suite: Vitest related no test to packages/p/src/a.ts.",
+						"Stryker mutated 1 changed lines in 1 file(s); the base was not mutated.",
+						"packages/p/src/a.ts produced no mutants, so nothing on its changed lines was judged."
+					]
+				}
+			}
+		},
+		"tasks": {
+			"a0d66c84715b3b03b3eddceeb8525c611c137ba7 8e83740c6c69c687fd1561d6dd7b6f82de96f1aa full 37940f6571f297e7 0": 7
+		},
+		"owners": {
+			"a0d66c84715b3b03b3eddceeb8525c611c137ba7..8e83740c6c69c687fd1561d6dd7b6f82de96f1aa": "a0d66c84715b3b03b3eddceeb8525c611c137ba7 8e83740c6c69c687fd1561d6dd7b6f82de96f1aa full 37940f6571f297e7 7"
+		}
+	}
+}

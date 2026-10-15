@@ -245,6 +245,33 @@ describe("markers", () => {
 		);
 	});
 
+	it("lists a provisional mutation result apart from the checks that did not run, so it cannot read as approved", () => {
+		const reason = "provisional: Stryker reused 3 of 5 results from an earlier head; a cold run decides approval";
+		const body = renderReviewBody(
+			{
+				pullRequest: 7,
+				revision,
+				base,
+				fingerprint: "0123456789abcdef",
+				round: 1,
+				verdict: new Adjudication({
+					findings: [],
+					manifest: ["static.mutation"],
+					checks: [{ name: "static.mutation", status: "provisional", version: "10.0.0", reason }],
+					config: defaultConfig,
+				}).adjudicate(),
+				findings: [],
+				stillOpen: 0,
+				resolved: [],
+				secret,
+			},
+			links,
+		);
+		expect(body).toContain("**not reviewed**");
+		expect(body).toContain(`Provisional, not yet approving:\n\n- \`static.mutation\`: ${reason}`);
+		expect(body).not.toContain("Checks that did not run");
+	});
+
 	it("names an ended lens's budget first and its note after it, never the note alone", () => {
 		const ended = { budget: "tokens", limit: 50_000, tokens: 51_200, tools: 4 } as const;
 		const note = "escalation capped at quick, its ceiling: at quick it reported a P1 finding, at or above P1";

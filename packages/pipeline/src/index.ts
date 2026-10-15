@@ -63,6 +63,7 @@ export {
 	RouteTextModel,
 	unlockCredentials,
 } from "./models.ts";
+export type { HeadTrust } from "./mutation-cache.ts";
 export {
 	type AbandonedReview,
 	openPublishHarness,

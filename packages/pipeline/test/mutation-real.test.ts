@@ -83,7 +83,7 @@ describe.skipIf(inMutationRun)("the real backend", { timeout: 180_000 }, () => {
 				base,
 				commit: head,
 				tool: "mutation",
-				headCode: "trusted",
+				headCode: "writer",
 				settings: { ...defaultConfig.static.mutation, timeout: 60 },
 				revision,
 			},
@@ -100,5 +100,102 @@ describe.skipIf(inMutationRun)("the real backend", { timeout: 180_000 }, () => {
 		expect(judged.length).toBeGreaterThan(0);
 		expect(new Set(judged.map(String))).toEqual(new Set(["untested-behaviour,packages/p/src/c.ts"]));
 		expect(Date.now() - started).toBeLessThan(60_000);
+	});
+
+	// Line 10 is weakly tested, so its mutant survives; line 50 is well tested. Each head is judged with the one before it
+	// as the last judged head of the same review target.
+	it("reruns only the mutants a later head changes or whose killing test changed, and keeps the earlier survivor", async () => {
+		const padding = (from: number, to: number) =>
+			Array.from({ length: to - from + 1 }, (_, index) => `// line ${from + index}`);
+		const module = (weak: string, strong: string) =>
+			lines(
+				...padding(1, 7),
+				"export function weak(x: number) {",
+				"  if (x > 0) return 1;",
+				`  return ${weak};`,
+				"}",
+				...padding(12, 49),
+				`export function strong(x: number) { return ${strong}; }`,
+			);
+		const testOf = (name: string, body: string[]) =>
+			lines(
+				'import { describe, expect, it } from "vitest";',
+				`import { ${name} } from "../src/m.ts";`,
+				`describe("${name}", () => {`,
+				`  it("${name}", () => {`,
+				...body.map((line) => `    ${line}`),
+				"  });",
+				"});",
+			);
+		const base = commit(repo, {
+			".gitignore": "node_modules\n",
+			"package.json": '{"type":"module"}\n',
+			"tsconfig.json":
+				'{"compilerOptions":{"module":"esnext","moduleResolution":"bundler","target":"es2022","allowImportingTsExtensions":true,"noEmit":true}}\n',
+			"vitest.config.ts":
+				'import { defineConfig } from "vitest/config";\nexport default defineConfig({ test: { include: ["packages/*/test/**/*.test.ts"] } });\n',
+			"vitest.stryker.config.ts": own("vitest.stryker.config.ts"),
+			"scripts/stryker-test-names.mjs": own("scripts/stryker-test-names.mjs"),
+			"stryker.config.json": own("stryker.config.json"),
+			"packages/p/src/m.ts": module("0", "x"),
+			"packages/p/test/weak.test.ts": testOf("weak", ['expect(typeof weak(0)).toBe("number");']),
+			"packages/p/test/strong.test.ts": testOf("strong", ["expect(strong(3)).toBeGreaterThan(0);"]),
+		});
+		const clone = process.platform === "darwin" ? ["-cR"] : ["-R", "--reflink=auto"];
+		execFileSync("cp", [...clone, join(checkout, "node_modules"), join(repo, "node_modules")]);
+		rmSync(join(repo, "node_modules/@melian-agent"), { recursive: true, force: true });
+		const judge = async (head: string) => {
+			const revision = (await Changeset.resolve(repo, `${base}..${head}`)).revision;
+			const result = await runStaticTool(
+				{
+					env: createNodeExecutionEnv(repo),
+					repoRoot: repo,
+					base,
+					commit: head,
+					tool: "mutation",
+					headCode: "writer",
+					target: "range-feature",
+					settings: { ...defaultConfig.static.mutation, timeout: 120 },
+					revision,
+				},
+				backgroundContext,
+			);
+			if (result.status !== "ran") throw new Error(`skipped: ${result.reason}`);
+			const survivors = result.log.runs[0]!.results.map(
+				(each) => each.locations?.[0]?.physicalLocation?.region?.startLine,
+			);
+			const reuse = result.notes.find((note) => note.startsWith("Stryker reused"));
+			return { head, survivors, reuse, notes: result.notes };
+		};
+		const first = await judge(
+			commit(repo, {
+				"packages/p/src/m.ts": module("2 - 2", "x * 2"),
+				"packages/p/test/strong.test.ts": testOf("strong", ["expect(strong(3)).toBe(6);"]),
+			}),
+		);
+		expect(first.survivors).toEqual([10]);
+		expect(first.notes).toContain("Stryker started cold: this review target has no earlier judged head.");
+		// Line 10 has one mutant and line 50 two. Only line 50 changes, so only its mutants run; line 10's survivor is reused
+		// and is still a finding.
+		const reused = (count: number, from: string, ran: number) =>
+			`Stryker reused ${count} of 3 mutant result(s) from ${from.slice(0, 12)}, the last judged head, and ran ${ran}.`;
+		const second = await judge(commit(repo, { "packages/p/src/m.ts": module("2 - 2", "x + x") }));
+		expect(second.survivors).toEqual([10]);
+		expect(second.reuse).toBe(reused(1, first.head, 2));
+		// The test that kills line 50's mutants changes, so they run again; line 10's survivor is reused once more.
+		const third = await judge(
+			commit(repo, {
+				"packages/p/test/strong.test.ts": testOf("strong", [
+					"expect(strong(3)).toBe(6);",
+					"expect(strong(0)).toBe(0);",
+				]),
+			}),
+		);
+		expect(third.survivors).toEqual([10]);
+		expect(third.reuse).toBe(reused(1, second.head, 2));
+		// Neither a changed line nor a changed test: every result is reused.
+		const fourth = await judge(commit(repo, { "NOTES.md": "a later head that changes no code\n" }));
+		expect(fourth.survivors).toEqual([10]);
+		expect(fourth.reuse).toBe(reused(3, third.head, 0));
 	});
 });
