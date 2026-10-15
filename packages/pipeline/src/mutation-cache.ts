@@ -8,10 +8,8 @@ const bound = 16 * 1024 * 1024;
 // The partition's file wraps a report of up to `bound` with the head that wrote it and that run's leave.
 const wrapping = 1024;
 
-/**
- * What a partition is shared by: the heads of one review target, such as a pull request, judged against one base under
- * one base policy, with one installation and one Stryker. The head is not part of it: a later head reuses the last judged head's results.
- */
+// What a partition is shared by: the heads of one review target, judged against one base under one base policy, with one
+// installation and one Stryker. The head is not part of it, so a later head reuses the last judged head's results.
 export interface MutationCacheKey {
 	readonly base: string;
 	readonly policy: string;
@@ -23,7 +21,7 @@ export interface MutationCacheKey {
 /** Whose leave ran a head's tests: a writer pushed it, or the reviewer vouched for it with `--trust-head`. */
 export type HeadTrust = "writer" | "reviewer";
 
-/** The head whose results a partition holds, and the leave its tests ran under. */
+// The head whose results a partition holds, and the leave its tests ran under.
 export interface JudgedHead {
 	readonly head: string;
 	readonly trust: HeadTrust;
