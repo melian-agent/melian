@@ -16,8 +16,9 @@ import { lensSource } from "./lens-tools.ts";
 const policyReview = "guardrail/policy-change-review";
 
 /**
- * The policy a review's findings resolve under, and a fingerprint of all of it: every path's table, layers, aliases,
- * and lens defaults. Two reads that would resolve the findings alike give one fingerprint.
+ * The policy a review's findings resolve under, and a fingerprint of what decides resolution: every path's table,
+ * layers, and aliases, and each lens variant's name, scope, and declared resolution. A budget, a model route, or
+ * a tier changes none of those. Two reads that would resolve the findings alike give one fingerprint.
  */
 export type PolicyLookup = ConfigFor & { readonly fingerprint: string };
 
@@ -89,8 +90,20 @@ export async function configsFor(
 		}
 	}
 	// What judges a notice is the layers above its file, which the file's own path already holds.
-	const byPath = [...atPath].sort(([left], [right]) => (left < right ? -1 : 1));
-	const fingerprint = createHash("sha256").update(JSON.stringify(byPath)).digest("hex").slice(0, 16);
+	const byPath = [...atPath]
+		.sort(([left], [right]) => (left < right ? -1 : 1))
+		.map(([path, { lensVariants: _, ...policy }]) => [path, policy]);
+	// A variant is named by its version in `lensVariants`, and a version hashes everything the lens runs with, its
+	// budget included. The fingerprint holds what decides resolution, so it lists each variant by name and scope.
+	const declared = variants
+		.map(({ name, scope, resolution }) => [name, scope, resolution ?? null])
+		.sort(([leftName, leftScope], [rightName, rightScope]) =>
+			`${leftName}\0${leftScope}` < `${rightName}\0${rightScope}` ? -1 : 1,
+		);
+	const fingerprint = createHash("sha256")
+		.update(JSON.stringify([byPath, declared]))
+		.digest("hex")
+		.slice(0, 16);
 	const policyFor: ConfigFor = (path, rule) => (rule === policyReview ? judging : atPath).get(path)!;
 	return Object.assign(policyFor, { fingerprint });
 }

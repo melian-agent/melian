@@ -221,7 +221,7 @@ export const AdjudicationTask = defineTask<AdjudicationTaskInput, { phase: "adju
 					throw new ConfigError(
 						"invalidValue",
 						repoRoot,
-						"the resolution policy changed since the review read it, so its verdict would be decided under another; run melian review again",
+						"the resolution policy changed since the review read it, so its verdict would be decided under another",
 					);
 				}
 				verdict = new Adjudication({
