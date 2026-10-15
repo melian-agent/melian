@@ -965,12 +965,57 @@ describe("recording a dismissal", () => {
 			const index = await tx.doc(ReviewIndex, root.id);
 			const known = index.reviews[key]!.adjudication!;
 			const { resolutionPolicy, ...older } = JSON.parse(known.input) as AdjudicationTaskInput;
-			expect(resolutionPolicy).toMatch(/^[0-9a-f]{16}$/);
+			expect(resolutionPolicy).toMatch(/^2:[0-9a-f]{16}$/);
 			known.input = JSON.stringify(older);
 		}, context);
 
 		const { verdict } = await dismiss(harness, findings[0]!.properties.id);
 		expect(verdict.dismissed).toHaveLength(1);
+	});
+
+	describe("a review whose adjudication task a build before the fingerprint recipe change created", () => {
+		// The fingerprint main at 4471af34 stored in the task input for this repository, with no lens or preference file
+		// in the working tree. It hashes the policy, lens variants keyed by version included, so it changes only when a
+		// built-in lens or the stored policy shape does; record it again from that build if one does.
+		const recordedByPreviousBuild = "e6516af28ff6017a";
+
+		async function reviewedByPreviousBuild() {
+			const harness = await reviewHarness(createMemoryStorage());
+			scriptFinding();
+			const changeset = await Changeset.resolve(repo, "main...feature");
+			const { findings } = await reviewChangeset({
+				harness,
+				changeset,
+				config,
+				lenses,
+				standards: [],
+				models: fake.review,
+				checks: [...deterministicRan],
+				policy: { kind: "worktree" },
+			});
+			const root = await harness.root(context);
+			await root.commit(async (tx) => {
+				const known = (await tx.doc(ReviewIndex, root.id)).reviews[revisionKey(changeset.revision)]!.adjudication!;
+				const input = JSON.parse(known.input) as AdjudicationTaskInput;
+				known.input = JSON.stringify({ ...input, resolutionPolicy: recordedByPreviousBuild });
+			}, context);
+			return { harness, id: findings[0]!.properties.id };
+		}
+
+		it("decides a dismissal again when the policy is unchanged", async () => {
+			const { harness, id } = await reviewedByPreviousBuild();
+
+			const { verdict } = await dismiss(harness, id);
+
+			expect(verdict.dismissed.map((each) => each.id)).toEqual([id]);
+		});
+
+		it("still refuses when the policy changed", async () => {
+			const { harness, id } = await reviewedByPreviousBuild();
+			writeFiles(repo, { "src/melian.yaml": "resolution:\n  P1: advisory\n" });
+
+			await expect(dismiss(harness, id)).rejects.toMatchObject({ code: "adjudicationFailed" });
+		});
 	});
 
 	it("ends the adjudication, naming the lens file, when a lens the policy declares can no longer be read", async () => {

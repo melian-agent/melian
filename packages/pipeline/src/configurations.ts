@@ -20,7 +20,11 @@ const policyReview = "guardrail/policy-change-review";
  * layers, and aliases, and the declared resolution each lens report resolves through. A budget, a model route, or a
  * tier changes none of those. Two reads that would resolve the findings alike give one fingerprint.
  */
-export type PolicyLookup = ConfigFor & { readonly fingerprint: string };
+export type PolicyLookup = ConfigFor & {
+	readonly fingerprint: string;
+	/** The fingerprint a build before the recipe changed would give this policy, to read a task input that build stored. */
+	readonly legacyFingerprint: string;
+};
 
 /**
  * The policy each of `findings` resolves under, read from `policy`: the configuration at its path with each file's own
@@ -109,10 +113,13 @@ export async function configsFor(
 				}),
 		)
 		.sort();
-	const fingerprint = createHash("sha256")
-		.update(JSON.stringify([byPath, declared]))
-		.digest("hex")
-		.slice(0, 16);
+	const fingerprint = `2:${hash([byPath, declared])}`;
+	// The first recipe hashed the layers whole, lens variants keyed by version included.
+	const legacyFingerprint = hash([...atPath].sort(([left], [right]) => (left < right ? -1 : 1)));
 	const policyFor: ConfigFor = (path, rule) => (rule === policyReview ? judging : atPath).get(path)!;
-	return Object.assign(policyFor, { fingerprint });
+	return Object.assign(policyFor, { fingerprint, legacyFingerprint });
+}
+
+function hash(value: unknown): string {
+	return createHash("sha256").update(JSON.stringify(value)).digest("hex").slice(0, 16);
 }
