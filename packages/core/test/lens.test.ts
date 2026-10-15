@@ -115,17 +115,17 @@ describe("built-in lenses", () => {
 	it("keep their versions, and the version melian.yaml's tier and paths give one", async () => {
 		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
 		expect(Object.fromEntries(lenses.map((lens) => [lens.name, lens.version]))).toEqual({
-			contracts: "f0febf19f5c2",
-			conventions: "e6af24f1357e",
-			correctness: "8fab2587daa0",
-			design: "f528fcecf913",
-			"removed-behaviour": "a7e8f99fb8fc",
-			tests: "ab15d40cef63",
-			"trust-boundary": "140b36876ea7",
+			contracts: "160cf0f2655b",
+			conventions: "0d4d86a551fd",
+			correctness: "e1149bfc8eb8",
+			design: "13a857740fc7",
+			"removed-behaviour": "471ca3b025ea",
+			tests: "c0dd285a7d61",
+			"trust-boundary": "4d14d668490d",
 		});
 		const tuned = { ...defaultConfig, lenses: { correctness: { tier: "light" as const, paths: ["src/**"] } } };
 		const [correctness] = Lens.select(named(lenses, "correctness"), tuned, ["src/index.ts"]);
-		expect(correctness!.lens.version).toBe("7d0bfd6bbb88");
+		expect(correctness!.lens.version).toBe("e1eb635d9d02");
 	});
 
 	it("load the design lens heavy, over every path, reading whole functions at the one level it declares", async () => {
@@ -230,15 +230,15 @@ describe("built-in lenses", () => {
 		writeFiles(repo, Object.fromEntries(own.map((path) => [path, readFileSync(join(melian, path), "utf8")])));
 		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
 		expect(Object.fromEntries(lenses.map((lens) => [lens.name, lens.version]))).toMatchObject({
-			durability: "812be99f5c2a",
-			correctness: "43f517fc91eb",
-			"removed-behaviour": "4a46d102e18b",
+			durability: "c6af7443f788",
+			correctness: "742e8dbdbfc5",
+			"removed-behaviour": "5c275e0ddb0c",
 		});
 		const { config } = await loadConfig(repo, { kind: "worktree" }, ".");
 		const selected = Lens.select(lenses, config, ["src/index.ts"]);
 		expect(Object.fromEntries(selected.map(({ lens }) => [lens.name, lens.version]))).toMatchObject({
-			correctness: "36cc4a93479a",
-			"removed-behaviour": "116e3b6ce1ac",
+			correctness: "292f7c54ba79",
+			"removed-behaviour": "380152872889",
 		});
 	});
 
@@ -309,8 +309,9 @@ describe("built-in lenses", () => {
 			for (const sentence of [
 				"Instances of one shape are one strong finding, not several weak ones.",
 				"Say which in the explanation, and give the number of instances.",
-				"Report the finding once, at the instance your failure scenario traces.",
-				"Cite each other instance as a further evidence location, in the role the reported instance's own line has, as many as the evidence list holds.",
+				"Report the finding once, at an instance the change wrote that your failure scenario traces.",
+				"Cite each other instance the change wrote as a further evidence location, in the role the reported instance's own line has, as many as the evidence list holds.",
+				"Cite an instance the change did not write as `context`: it shows the shape, and never makes the finding the change's.",
 				"For a shape closed case by case, name in the failure scenario every input you found that slips past, not only the first.",
 			])
 				expect(lens.instructions, lens.name).toContain(sentence);
