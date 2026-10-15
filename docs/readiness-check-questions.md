@@ -33,6 +33,14 @@ The [implementation plan](design-implementation-plan.md) says the maintainer run
 
 10. **A nested file's severities and lens switches change what blocks, unseen.** A nested `melian.yaml` is judged under the directory above it, where a base file may switch `policy-change-review` off. Step 18 made a change to a `resolution` key draw the notice whatever that switch says. A nested file's `guardrails.*.severity` and `lenses.*.enabled` also decide what blocks, and a change to either still stays under the parent's switch. The review of record for [pull request #117](https://github.com/melian-agent/melian/pull/117) noted it. Decide whether those keys force the notice too.
 
+## Fork heads and the mutation check
+
+11. **Does a shared, long-lived review server count as an isolated runner, and who declares it?** Moot: the isolated-runner declaration was removed before it landed, by the ruling on question 13. No host declares itself isolated, and a head from outside the repository's writers runs its tests only in the Actions host's credential-free job.
+
+12. **Should a mutation check that ran a fork's head count toward approval?** Answered by the maintainer on 2026-10-14: it counts, "like CI tests". A clean result from a fork's tests is accepted as a fork's CI test results are. It is forgeable by the head, since the fork's tests write the report Stryker reads, and human review before merge is the control. Survivors it reports still count. [The unconfined decision](decisions/2026-10-14-static-checks-run-unconfined.md) records it.
+
+13. **Must a fork's mutation check run in a job of its own?** Answered by the maintainer on 2026-10-14: yes, "a separate job, no secrets". One job with no credentials and no publishing runs the fork's tests and the mutation check and hands on its result; a second job with credentials runs the lenses and publishes and never executes head code. That design belongs to milestone 3's Actions host. Until it exists, such a head runs no mutation check anywhere, and its pull request reads `not reviewed`. The `--isolated-runner` flag and `MELIAN_ISOLATED_RUNNER` were removed from [pull request #98](https://github.com/melian-agent/melian/pull/98) before it landed. [The unconfined decision](decisions/2026-10-14-static-checks-run-unconfined.md) records the planned shape.
+
 ## Answered by the maintainer since the list was written
 
 These were asked while the loop ran, outside this list. Each answer is the maintainer's, quoted where his words survive, with its date. [Pull request #98](https://github.com/melian-agent/melian/pull/98) records them in its decisions and documents.

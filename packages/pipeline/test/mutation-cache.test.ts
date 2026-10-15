@@ -1,0 +1,325 @@
+import { createHash } from "node:crypto";
+import { existsSync, readFileSync } from "node:fs";
+import type * as filesystem from "node:fs/promises";
+import {
+	type FileHandle,
+	mkdir,
+	mkdtemp,
+	open,
+	readdir,
+	readFile,
+	realpath,
+	rm,
+	stat,
+	symlink,
+	writeFile,
+} from "node:fs/promises";
+import { createRequire } from "node:module";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { MutationCache, type MutationCacheKey } from "../src/mutation-cache.ts";
+import { mutationInstallation } from "../src/mutation-static.ts";
+import { mutationSelectionVersion } from "../src/mutation-vitest.ts";
+import { MutationCache as MutationCacheV1 } from "./fixtures/mutation-cache-v1.ts";
+
+vi.mock("node:fs/promises", async (importOriginal) => {
+	const original = await importOriginal<typeof filesystem>();
+	return { ...original, open: vi.fn(original.open) };
+});
+
+const key = (changes: Partial<MutationCacheKey> = {}): MutationCacheKey => ({
+	policy: "policy",
+	head: "head",
+	inputs: "inputs",
+	installation: "installation",
+	...changes,
+});
+
+let root: string;
+beforeEach(async () => {
+	root = await realpath(await mkdtemp(join(tmpdir(), "melian-incremental-")));
+});
+afterEach(async () => {
+	await rm(root, { recursive: true, force: true });
+});
+
+it("reopens what the previous run wrote without sharing across policy or repository", async () => {
+	const first = await MutationCache.open(root, key());
+	await writeFile(first.file, JSON.stringify({ files: { a: { mutants: [] } } }));
+	const second = await MutationCache.open(root, key());
+	expect(second.file).toBe(first.file);
+	expect(JSON.parse(await readFile(second.file, "utf8"))).toEqual({ files: { a: { mutants: [] } } });
+	const changed = await MutationCache.open(root, key({ policy: "next-policy" }));
+	expect(changed.file).not.toBe(first.file);
+	await expect(stat(changed.file)).rejects.toMatchObject({ code: "ENOENT" });
+	const other = await MutationCache.open(join(root, "other-repository"), key());
+	expect(other.file).not.toBe(first.file);
+});
+
+it("discards corrupt output before the next run can read it", async () => {
+	const first = await MutationCache.open(root, key());
+	await writeFile(first.file, "{corrupt");
+	const second = await MutationCache.open(root, key());
+	await expect(stat(second.file)).rejects.toMatchObject({ code: "ENOENT" });
+});
+
+it.each(["valid", "corrupt", "oversized"])("closes the cache descriptor after reading %s output", async (kind) => {
+	const cache = await MutationCache.open(root, key());
+	const text = kind === "valid" ? "{}" : kind === "corrupt" ? "{corrupt" : "{}".padEnd(16 * 1024 * 1024 + 1, " ");
+	await writeFile(cache.file, text);
+	const actual = vi.mocked(open).getMockImplementation()!;
+	const files: FileHandle[] = [];
+	vi.mocked(open).mockImplementation(async (path, flags, mode) => {
+		const file = await actual(path, flags, mode);
+		vi.spyOn(file, "close");
+		files.push(file);
+		return file;
+	});
+	try {
+		await MutationCache.open(root, key());
+		expect(files).toHaveLength(1);
+		expect(files[0]!.close).toHaveBeenCalledTimes(1);
+	} finally {
+		vi.mocked(open).mockImplementation(actual);
+		for (const file of files) await file.close();
+		vi.restoreAllMocks();
+	}
+});
+
+it("refuses a symlink into another partition without removing its target", async () => {
+	const elsewhere = await MutationCache.open(root, key({ policy: "other-policy" }));
+	const cache = await MutationCache.open(root, key());
+	await writeFile(elsewhere.file, "{}");
+	await symlink(elsewhere.file, cache.file);
+	await MutationCache.open(root, key());
+	await expect(stat(cache.file)).rejects.toMatchObject({ code: "ENOENT" });
+	expect(await readFile(elsewhere.file, "utf8")).toBe("{}");
+});
+
+it("keeps a parsed report at the read bound and discards one byte past it", async () => {
+	const cache = await MutationCache.open(root, key());
+	const text = "{}".padEnd(16 * 1024 * 1024, " ");
+	await writeFile(cache.file, text);
+	await MutationCache.open(root, key());
+	expect((await readFile(cache.file)).length).toBe(text.length);
+	await writeFile(cache.file, `${text} `);
+	await MutationCache.open(root, key());
+	await expect(stat(cache.file)).rejects.toMatchObject({ code: "ENOENT" });
+});
+
+it("sweeps old partial cache writes while keeping the incremental report", async () => {
+	const cache = await MutationCache.open(root, key());
+	await writeFile(cache.file, "{}");
+	const stale = join(cache.directory, `incremental.json.2147483647.${crypto.randomUUID()}.tmp`);
+	await writeFile(stale, "partial");
+	await MutationCache.open(root, key());
+	await expect(readFile(stale)).rejects.toMatchObject({ code: "ENOENT" });
+	expect(await readFile(cache.file, "utf8")).toBe("{}");
+});
+
+it("discards a non-file occupying the report path", async () => {
+	const cache = await MutationCache.open(root, key());
+	await mkdir(cache.file);
+	await MutationCache.open(root, key());
+	await expect(stat(cache.file)).rejects.toMatchObject({ code: "ENOENT" });
+});
+
+it("keeps one partition per head commit and per run input", async () => {
+	const first = await MutationCache.open(root, key());
+	expect((await MutationCache.open(root, key())).file).toBe(first.file);
+	expect((await MutationCache.open(root, key({ head: "other-head" }))).file).not.toBe(first.file);
+	expect((await MutationCache.open(root, key({ inputs: "other-inputs" }))).file).not.toBe(first.file);
+});
+
+it.each(["package-lock.json", "pnpm-lock.yaml", "yarn.lock", "bun.lock", "bun.lockb"])(
+	"starts cold when %s changes at the same head",
+	async (name) => {
+		await writeFile(join(root, name), "first");
+		const first = await MutationCache.open(root, key({ installation: mutationInstallation(root) }));
+		await writeFile(first.file, '{"files":{"a":{"mutants":[{"status":"Killed"}]}}}');
+		const warm = await MutationCache.open(root, key({ installation: mutationInstallation(root) }));
+		expect(await readFile(warm.file, "utf8")).toContain("Killed");
+		await writeFile(join(root, name), "second");
+		const cold = await MutationCache.open(root, key({ installation: mutationInstallation(root) }));
+		await expect(stat(cold.file)).rejects.toMatchObject({ code: "ENOENT" });
+	},
+);
+
+it("does not reuse a partition written under the identity that hashed package-lock.json alone", async () => {
+	await writeFile(join(root, "package-lock.json"), "{}");
+	// The identity this pull request first shipped, copied as it was written.
+	const versions = ["unavailable", "unavailable", "unavailable"];
+	const lockfile = createHash("sha256").update("{}").digest("hex");
+	const old = createHash("sha256")
+		.update(
+			JSON.stringify({
+				lockfile,
+				versions,
+				node: process.versions.node,
+				selectionVersion: mutationSelectionVersion,
+			}),
+		)
+		.digest("hex");
+	expect(mutationInstallation(root)).not.toBe(old);
+});
+
+it("starts cold when the Node runtime changes with the same head and installation", async () => {
+	const descriptor = Object.getOwnPropertyDescriptor(process.versions, "node")!;
+	try {
+		const first = await MutationCache.open(root, key({ installation: mutationInstallation(root) }));
+		await writeFile(first.file, '{"files":{"a":{"mutants":[{"status":"Killed"}]}}}');
+		const warm = await MutationCache.open(root, key({ installation: mutationInstallation(root) }));
+		expect(await readFile(warm.file, "utf8")).toContain("Killed");
+		Object.defineProperty(process.versions, "node", { ...descriptor, value: "26.0.0" });
+		const cold = await MutationCache.open(root, key({ installation: mutationInstallation(root) }));
+		expect(cold.file).not.toBe(first.file);
+		await expect(stat(cold.file)).rejects.toMatchObject({ code: "ENOENT" });
+	} finally {
+		Object.defineProperty(process.versions, "node", descriptor);
+	}
+});
+
+it.each(["@stryker-mutator/core", "@stryker-mutator/vitest-runner", "vitest"])(
+	"starts cold when the resolved %s version changes with the same lockfile",
+	async (name) => {
+		await writeFile(join(root, "package-lock.json"), "{}");
+		const directory = join(root, "node_modules", name);
+		await mkdir(directory, { recursive: true });
+		await writeFile(join(directory, "package.json"), '{"version":"1.0.0"}');
+		const first = await MutationCache.open(root, key({ installation: mutationInstallation(root) }));
+		await writeFile(first.file, "{}");
+		await writeFile(join(directory, "package.json"), '{"version":"2.0.0"}');
+		const cold = await MutationCache.open(root, key({ installation: mutationInstallation(root) }));
+		await expect(stat(cold.file)).rejects.toMatchObject({ code: "ENOENT" });
+	},
+);
+
+it.each(['{"version":42}', "{corrupt"])("treats an invalid installed version as unavailable: %s", async (text) => {
+	const missing = mutationInstallation(root);
+	const directory = join(root, "node_modules/@stryker-mutator/core");
+	await mkdir(directory, { recursive: true });
+	await writeFile(join(directory, "package.json"), text);
+	expect(mutationInstallation(root)).toBe(missing);
+});
+
+it("stages a copy of the partition's report and leaves the partition alone while the run writes it", async () => {
+	const cache = await MutationCache.open(root, key());
+	await writeFile(cache.file, '{"a":1}');
+	const staged = await cache.stage(join(root, "work"));
+	expect(staged).not.toBe(cache.file);
+	expect(await readFile(staged, "utf8")).toBe('{"a":1}');
+	await writeFile(staged, '{"a":2}');
+	expect(await readFile(cache.file, "utf8")).toBe('{"a":1}');
+});
+
+it("stages nothing when the partition has no report, and replaces a stale staged file", async () => {
+	const cache = await MutationCache.open(root, key());
+	await mkdir(join(root, "work"));
+	await writeFile(join(root, "work", "incremental.json"), '{"stale":true}');
+	const staged = await cache.stage(join(root, "work"));
+	await expect(stat(staged)).rejects.toMatchObject({ code: "ENOENT" });
+});
+
+it("publishes a readable staged report into the partition", async () => {
+	const cache = await MutationCache.open(root, key());
+	await writeFile(cache.file, '{"old":true}');
+	const staged = await cache.stage(join(root, "work"));
+	await writeFile(staged, '{"new":true}');
+	await cache.publish(staged);
+	expect(await readFile(cache.file, "utf8")).toBe('{"new":true}');
+	expect((await readdir(cache.directory)).filter((name) => name.endsWith(".tmp"))).toEqual([]);
+});
+
+it("publishes the bytes it checked, not what the path names after the check", async () => {
+	const cache = await MutationCache.open(root, key());
+	await writeFile(cache.file, '{"old":true}');
+	const staged = await cache.stage(join(root, "work"));
+	await writeFile(staged, '{"checked":true}');
+	await writeFile(join(root, "forged.json"), '{"forged":true}');
+	const real = vi.mocked(open).getMockImplementation()!;
+	// The head's tests ran beside this file and may have left a process: it swaps the path the moment it is opened.
+	vi.mocked(open).mockImplementation(async (path, ...rest) => {
+		const handle = await real(path, ...rest);
+		if (path === staged) {
+			await rm(staged);
+			await symlink(join(root, "forged.json"), staged);
+		}
+		return handle;
+	});
+	try {
+		await cache.publish(staged);
+	} finally {
+		vi.mocked(open).mockImplementation(real);
+	}
+	expect(await readFile(cache.file, "utf8")).toBe('{"checked":true}');
+});
+
+it("keeps the partition's report when the staged one is corrupt, missing, a symlink, or past the bound", async () => {
+	const cache = await MutationCache.open(root, key());
+	await writeFile(cache.file, '{"old":true}');
+	await mkdir(join(root, "work"));
+	const staged = join(root, "work", "incremental.json");
+	await writeFile(staged, "{corrupt");
+	await cache.publish(staged);
+	await rm(staged);
+	await cache.publish(staged);
+	await writeFile(join(root, "target.json"), '{"forged":true}');
+	await symlink(join(root, "target.json"), staged);
+	await cache.publish(staged);
+	await rm(staged);
+	await writeFile(staged, "{}".padEnd(16 * 1024 * 1024 + 1, " "));
+	await cache.publish(staged);
+	expect(await readFile(cache.file, "utf8")).toBe('{"old":true}');
+});
+
+it("publishes a staged report of exactly the read bound", async () => {
+	const cache = await MutationCache.open(root, key());
+	await mkdir(join(root, "work"));
+	const staged = join(root, "work", "incremental.json");
+	await writeFile(staged, "{}".padEnd(16 * 1024 * 1024, " "));
+	await cache.publish(staged);
+	expect((await readFile(cache.file)).length).toBe(16 * 1024 * 1024);
+});
+
+it("reopens a version-one cache without reusing its selection results", async () => {
+	const old = await MutationCacheV1.open(root, { ...key(), trusted: false });
+	const staged = await old.stage(join(root, "v1-stage"));
+	await writeFile(staged, JSON.stringify({ files: { a: { mutants: [{ status: "NoCoverage" }] } } }));
+	await old.publish(staged, { read: (path) => readFile(path, "utf8") });
+	expect(
+		JSON.parse(await readFile((await MutationCacheV1.open(root, { ...key(), trusted: false })).file, "utf8")).files.a
+			.mutants[0].status,
+	).toBe("NoCoverage");
+	const current = await MutationCache.open(root, key());
+	expect(current.file).not.toBe(old.file);
+	await expect(readFile(await current.stage(join(root, "v2-stage")))).rejects.toMatchObject({ code: "ENOENT" });
+	await writeFile(current.file, "{}");
+	expect(await readFile((await MutationCache.open(root, key())).file, "utf8")).toBe("{}");
+});
+
+it("changes the installation identity that the durable run key hashes after selection changes", () => {
+	const checkout = process.cwd();
+	const require = createRequire(join(checkout, "package.json"));
+	const versions = ["@stryker-mutator/core", "@stryker-mutator/vitest-runner", "vitest"].map(
+		(name) =>
+			(JSON.parse(readFileSync(require.resolve(`${name}/package.json`), "utf8")) as { version: string }).version,
+	);
+	const lockfiles = Object.fromEntries(
+		["package-lock.json", "pnpm-lock.yaml", "yarn.lock", "bun.lock", "bun.lockb"].map((name) => [
+			name,
+			existsSync(join(checkout, name))
+				? createHash("sha256")
+						.update(readFileSync(join(checkout, name)))
+						.digest("hex")
+				: "unavailable",
+		]),
+	);
+	const identity = (selection: object) =>
+		createHash("sha256")
+			.update(JSON.stringify({ lockfiles, versions, node: process.versions.node, ...selection }))
+			.digest("hex");
+	// The same shape on both sides, so only the selection version can tell them apart.
+	expect(mutationInstallation(checkout)).toBe(identity({ selectionVersion: mutationSelectionVersion }));
+	expect(mutationInstallation(checkout)).not.toBe(identity({}));
+});

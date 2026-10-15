@@ -15,6 +15,7 @@ import {
 	maxEvidenceLocations,
 	maxFailureScenarioLength,
 	maxSnippetBytes,
+	mutationSkips,
 	Rendering,
 	type RepositorySource,
 	type Verdict,
@@ -55,6 +56,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AdjudicationTask, adjudicationInput } from "../src/adjudication.ts";
 import { EnclosingFunctions } from "../src/enclosing-functions.ts";
+import { strykerNotInstalled } from "../src/mutation-static.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines, writeFiles } from "./fixtures/repo.ts";
 import { twoLensTiers, withBudget } from "./fixtures/review-scenario.ts";
@@ -3013,6 +3015,104 @@ describe("adjudication", () => {
 			});
 		});
 
+		describe("a skipped static.mutation", () => {
+			const leave = [
+				["a change with no production lines", mutationSkips.noProductionLines, "noProductionLines"],
+			] as const;
+			// A configured check that did not run: the review is not reviewed, whatever kept it from running.
+			const noLeave = [
+				["a fork's head", mutationSkips.headNotAllowed("the head is from a fork"), "headNotAllowed"],
+				["a run past its timeout", mutationSkips.timeout(7200), "timeout"],
+				["production files it did not mutate", mutationSkips.unmutated(["src/a.config.ts"]), "unmutated"],
+			] as const;
+
+			it.each(leave)("passes, with the reason recorded, for %s", async (_name, reason, cause) => {
+				done();
+				const skipped: CheckRecord = { name: "static.mutation", status: "skipped", reason, cause };
+				const { verdict } = await reviewed({ config: tiered(...lensesOnly, "static.mutation"), checks: [skipped] });
+				expect(verdict.status).toBe("passed");
+				expect(verdict.notRun).toContainEqual(skipped);
+			});
+
+			it.each(noLeave)("is not reviewed, with the reason on the verdict, for %s", async (_name, reason, cause) => {
+				done();
+				const skipped: CheckRecord = { name: "static.mutation", status: "skipped", reason, cause };
+				const { verdict } = await reviewed({ config: tiered(...lensesOnly, "static.mutation"), checks: [skipped] });
+				expect(verdict.status).toBe("not-reviewed");
+				expect(verdict.notRun).toContainEqual(skipped);
+				expect(verdict.render(new Rendering({ color: false }))).toContain(`static.mutation  skipped: ${reason}`);
+				// The status a pull request shows is an error that names the check and why, never a success.
+				expect(verdict.reviewStatus()).toEqual({
+					state: "error",
+					description: `Not reviewed: static.mutation skipped (${reason})`,
+				});
+			});
+
+			it.each(leave)("gives no leave to the reason text of %s without its cause", async (_name, reason) => {
+				done();
+				const skipped: CheckRecord = { name: "static.mutation", status: "skipped", reason };
+				const { verdict } = await reviewed({ config: tiered(...lensesOnly, "static.mutation"), checks: [skipped] });
+				expect(verdict.status).toBe("not-reviewed");
+			});
+
+			it.each([
+				["its being disabled", "static.mutation.enabled is false"],
+				["a checkout with no Stryker", strykerNotInstalled],
+				["changed production files it did not mutate", mutationSkips.unmutated(["vitest.config.ts"])],
+			])("leaves the review not reviewed for %s", async (_name, reason) => {
+				done();
+				const skipped: CheckRecord = {
+					name: "static.mutation",
+					status: "skipped",
+					reason,
+					...(reason.startsWith("the change adds or edits lines") ? { cause: "unmutated" as const } : {}),
+				};
+				const { verdict } = await reviewed({ config: tiered(...lensesOnly, "static.mutation"), checks: [skipped] });
+				expect(verdict.status).toBe("not-reviewed");
+			});
+
+			// The rule is every configured static check's, not the mutation check's alone.
+			it.each(
+				(["static.biome", "static.tsc", "static.enola", "static.mutation"] as const).flatMap(
+					(name) =>
+						[
+							[name, { name, status: "skipped", reason: "it did not run" }],
+							[name, { name, status: "failed", reason: "toolFailed", error: "it crashed" }],
+						] as [string, CheckRecord][],
+				),
+			)("is not reviewed when %s is in the tier and its record is %o", async (name, record) => {
+				done();
+				const { verdict } = await reviewed({ config: tiered(...lensesOnly, name), checks: [record] });
+				expect(verdict.status).toBe("not-reviewed");
+				expect(verdict.reviewStatus().state).toBe("error");
+			});
+
+			it("gives no leave to another check that skips for the same reason", async () => {
+				done();
+				const skipped: CheckRecord = {
+					name: "static.tsc",
+					status: "skipped",
+					reason: mutationSkips.noProductionLines,
+					cause: "noProductionLines",
+				};
+				const { verdict } = await reviewed({ config: tiered(...lensesOnly, "static.tsc"), checks: [skipped] });
+				expect(verdict.status).toBe("not-reviewed");
+			});
+
+			it("gives no leave to a failed run", async () => {
+				done();
+				const failed: CheckRecord = {
+					name: "static.mutation",
+					status: "failed",
+					reason: mutationSkips.timeout(3600),
+					cause: "timeout",
+					error: "x",
+				};
+				const { verdict } = await reviewed({ config: tiered(...lensesOnly, "static.mutation"), checks: [failed] });
+				expect(verdict.status).toBe("not-reviewed");
+			});
+		});
+
 		it("passes on its other checks when every changed file is excluded from every lens, and says so", async () => {
 			const excluded = { paths: ["**", "!src/**"] };
 			const nothingCovered = { ...config, lenses: { correctness: excluded, contracts: excluded } };
@@ -3146,7 +3246,10 @@ describe("adjudication", () => {
 
 			const { verdict } = await reviewed({
 				config: { ...melian, models: config.models },
-				checks: [{ name: "static.enola", status: "ran" }],
+				checks: [
+					{ name: "static.enola", status: "ran" },
+					{ name: "static.mutation", status: "ran" },
+				],
 				lenses: await Lens.load(
 					repo,
 					base,

@@ -60,6 +60,8 @@ Options:
   --rerun                Run again the checks and lenses that failed in the last review of this base and head,
                          and ask triage again if its decision did not complete, rather than print what it
                          stored; a completed triage decision is never asked again (review).
+  --trust-head           Run the change's own tests, as the mutation check does, for a head that is not your own
+                         checked-out work, such as a fork's; pass it only for code you have read (review).
   --open, --all, --json  For findings.
   --reason <text>        Dismissal reason, or owned-missed, no-owner, needs-execution, out-of-scope (adjudicate).
   --only                 Dismiss the report the ID names alone, leaving the reports merged with it live (dismiss).
@@ -114,6 +116,7 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 				model: { type: "string" },
 				walkthrough: { type: "boolean", default: true },
 				rerun: { type: "boolean", default: false },
+				"trust-head": { type: "boolean", default: false },
 				all: { type: "boolean", default: false },
 				reason: { type: "string" },
 				verdict: { type: "string" },
@@ -150,6 +153,7 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 					...(values.model === undefined ? {} : { model: values.model }),
 					rerun: values.rerun,
 					walkthrough: values.walkthrough,
+					trustHead: values["trust-head"],
 				});
 			case "publish":
 				return await publish(scoped, one(rest, name, "pull request"), { walkthrough: values.walkthrough });

@@ -83,6 +83,7 @@ export {
 	type MelianYaml,
 	type ModelRoute,
 	type ModelTier,
+	type MutationSettings,
 	maxConfigBytes,
 	melianYamlSchema,
 	modelTiers,
@@ -403,6 +404,17 @@ export {
 	type ImportEdge,
 	type SymbolSite,
 } from "./graph-coverage.ts";
+export {
+	type MutationReportInput,
+	type MutationSkipCause,
+	mutationNotJudged,
+	mutationSkipHasLeave,
+	mutationSkips,
+	mutationUnmutated,
+	mutationUnmutatedLog,
+	normaliseMutationReport,
+	type UnmutatedFile,
+} from "./mutation.ts";
 export {
 	type ToolArtifact,
 	ToolManifest,
