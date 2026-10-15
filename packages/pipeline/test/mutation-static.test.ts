@@ -1943,11 +1943,11 @@ cp '${canned}' reports/mutation/mutation.json`,
 		it("shares results across the heads of one review target, under the leave the head ran with", async () => {
 			const base = commit(repo, { "melian.yaml": policy, "stryker.config.json": config, "packages/p/src/a.ts": a });
 			const reads = incrementalTool();
-			const judge = async (by: "writer" | "reviewer" = "reviewer") => {
+			const judge = async (by: "writer" | "reviewer" = "reviewer", range = `${base}...main`) => {
 				const { harness, root } = await open();
 				const source: RepositorySource = { kind: "revision", commit: base };
 				const { config: loaded } = await loadConfig(repo, source, "");
-				const changeset = await Changeset.resolve(repo, `${base}...main`);
+				const changeset = await Changeset.resolve(repo, range);
 				await runChecks(
 					harness,
 					{
@@ -1978,6 +1978,12 @@ cp '${canned}' reports/mutation/mutation.json`,
 			expect(partitions().map((file) => JSON.parse(readFileSync(file, "utf8")))).toMatchObject([
 				{ head: third, trust: "writer" },
 			]);
+			// Another review target of the same commits keeps a partition of its own.
+			commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 3") });
+			const other = await judge("writer", `${base}..main`);
+			expect(other.id).not.toBe(first.id);
+			expect(reads()).toEqual(['{"stamp":"written"}']);
+			expect(partitions()).toHaveLength(2);
 		});
 
 		it("records the finding and the Stryker version, and does not mutate the base", async () => {

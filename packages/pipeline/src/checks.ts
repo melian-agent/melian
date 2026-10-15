@@ -165,7 +165,8 @@ async function runStatic(
 	const settings = input.config.static[tool];
 	if (!settings.enabled) return { status: "skipped", reason: `static.${tool}.enabled is false` };
 	const leaveNotes: string[] = [];
-	let headCode: HeadTrust | undefined;
+	// Only mutation runs head code, and it gets its leave only past the guard below.
+	let mutationLeave: { headCode: HeadTrust; target: string } | Record<string, never> = {};
 	if (tool === "mutation") {
 		// Asked first: a change with nothing to judge runs no head code, so it needs no leave and passes on any host.
 		if (!MutationRun.judges(Revision.from(input.changeset.revision)))
@@ -175,7 +176,7 @@ async function runStatic(
 			return { status: "skipped", reason: mutationSkips.headNotAllowed(leave.detail), cause: "headNotAllowed" };
 		}
 		if (leave.by === "reviewer") leaveNotes.push(trustedHeadNote);
-		headCode = leave.by;
+		mutationLeave = { headCode: leave.by, target: input.changeset.id };
 	}
 	if (env === undefined) {
 		throw new CheckError(
@@ -198,8 +199,7 @@ async function runStatic(
 				tool,
 				settings,
 				revision,
-				// Only mutation runs head code, and it reaches here only past the guard above.
-				...(headCode === undefined ? {} : { headCode, target: input.changeset.id }),
+				...mutationLeave,
 				...(input.source.kind === "revision" ? { policyCommit: input.source.commit } : {}),
 			},
 			context,
