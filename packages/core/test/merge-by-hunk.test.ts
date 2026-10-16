@@ -375,8 +375,63 @@ describe("the design golden that supersedes its own decision", () => {
 			const [defect, ...rest] = new Adjudication(input).defects();
 			expect(rest).toEqual([]);
 			expect(defect!.speaker.properties).toMatchObject({ id: standing.properties.id, severity: "P2" });
+			expect(defect!.speaker.properties.originalSeverity).toBeUndefined();
 			expect(defect!.members.map((member) => member.id)).toEqual([refuted.properties.id]);
 		}
+	});
+
+	it("keeps a dismissed report apart from a live one the same hunk caused, and lists none it never absorbed", () => {
+		const live = report(revision, design);
+		const dismissed = Finding.from({
+			...report(revision, trustBoundary).toJSON(),
+			properties: { ...report(revision, trustBoundary).properties, status: "dismissed" },
+		});
+		expect(groups(revision, [live, dismissed])).toHaveLength(2);
+		const input = { findings: [live, dismissed], manifest: [], checks: [], config: defaultConfig, revision };
+		expect(new Adjudication(input).dedupe()[0]!.properties.alsoReportedAs).toBeUndefined();
+	});
+
+	it("names a dismissed report beside a hunk group, through any snippet group it holds", () => {
+		const [a, b] = [design, trustBoundary].map((spec) => report(revision, spec));
+		// Same lines as the design report, so it shares its snippet; the trust-boundary group opens the hunk group.
+		const gone = Finding.from({
+			...on("lens.correctness", [6, 7]).toJSON(),
+			properties: { ...on("lens.correctness", [6, 7]).properties, status: "dismissed" },
+		});
+		const input = { findings: [a!, b!, gone], manifest: [], checks: [], config: defaultConfig, revision };
+		const [speaker] = new Adjudication(input).dedupe();
+		expect(speaker!.properties.alsoReportedAs).toEqual(
+			expect.arrayContaining([expect.objectContaining({ id: gone.properties.id, dismissed: true })]),
+		);
+	});
+
+	it("keeps apart a finding that a deterministic check also sighted", () => {
+		const lens = report(revision, design);
+		const sighted = on("lens.trust-boundary", [5, 7]);
+		const shared = Finding.from({
+			...sighted.toJSON(),
+			properties: { ...sighted.properties, reportedBy: [sighted.properties.source, { check: "static.biome" }] },
+		});
+		expect(groups(revision, [lens, sighted])).toHaveLength(1);
+		expect(groups(revision, [lens, shared])).toHaveLength(2);
+	});
+
+	it("speaks through the most severe of a wholly refuted defect", () => {
+		const first = on("lens.trust-boundary", [5, 7], { verdict: "refuted" });
+		const second = on("lens.tests", [6, 7], { severity: "P2", verdict: "refuted" });
+		const input = { findings: [second, first], manifest: [], checks: [], config: defaultConfig, revision };
+		const [defect, ...rest] = new Adjudication(input).defects();
+		expect(rest).toEqual([]);
+		expect(defect!.speaker.properties).toMatchObject({ id: first.properties.id, severity: "P1" });
+	});
+
+	it("outlines the files the findings name, by their own path and their evidence's", () => {
+		const callerReport = report(revision, caller);
+		expect(revision.outline([callerReport]).map((file) => file.path)).toEqual(["src/cli.ts", "src/publish.ts"]);
+		const bare = report(revision, { ...caller, evidence: [["src/cli.ts", 8, 8, "cause"]] });
+		const outline = revision.outline([bare]);
+		expect(outline.map((file) => file.path)).toEqual(["src/cli.ts"]);
+		expect(outline[0]!.hunks.every((hunk) => hunk.text === "" && hunk.header === "")).toBe(true);
 	});
 
 	// The second attack's F4: a member's ID dismisses that report alone; the speaker's, the whole defect.
@@ -492,9 +547,58 @@ describe("an unchanged caller that two lenses report", () => {
 		);
 		const [a, b] = [
 			at("lens.correctness", "wrong-result", [4, 5], ["src/limit.ts", 2, 2, "cause"]),
-			at("lens.contracts", "broken-caller", [5, 5], ["src/limit.ts", 5, 5, "cause"]),
+			{
+				...at("lens.contracts", "broken-caller", [5, 5], ["src/limit.ts", 5, 5, "cause"]),
+				// Context on the other report's hunk proves nothing.
+				evidence: [
+					["src/limit.ts", 5, 5, "cause"],
+					["src/limit.ts", 2, 2, "context"],
+				] as Site[],
+			},
 		].map((spec) => report(revision, spec));
 		expect([a!.properties.cause, b!.properties.cause]).toEqual(["affected", "affected"]);
 		expect(groups(revision, [a!, b!])).toHaveLength(2);
+
+		// A sighting of the first report's ID by another lens cites the second hunk: every claim counts.
+		const [claim] = b!.claims();
+		const sighted = Finding.from({
+			...a!.toJSON(),
+			properties: {
+				...a!.properties,
+				reportedBy: [a!.properties.source, { check: "lens.security", version: "1" }],
+				otherClaims: [
+					{ ...claim!, id: a!.properties.id, ruleId: a!.ruleId, source: { check: "lens.security", version: "1" } },
+				],
+			},
+		});
+		expect(groups(revision, [sighted, b!])).toHaveLength(1);
+	});
+
+	it("keeps apart two reports that only a rename without an edit proves, which names no hunk", async () => {
+		const config = lines("export const port = 8080;");
+		const server = lines('import { port } from "./config.ts";', "", 'export const url = "http://localhost:" + port;');
+		const revision = await changeOf(
+			(root) => writeFiles(root, { "src/config.ts": config, "src/server.ts": server }),
+			(root) => {
+				rmSync(join(root, "src/config.ts"));
+				writeFiles(root, { "src/settings.ts": config });
+			},
+		);
+		expect(revision.files.find((file) => file.path === "src/settings.ts")).toMatchObject({
+			oldPath: "src/config.ts",
+		});
+		const [a, b] = [
+			{
+				...at("lens.contracts", "broken-import", [1, 1], ["src/config.ts", 1, 1, "cause", "base"]),
+				file: "src/server.ts",
+			},
+			{
+				...at("lens.correctness", "wrong-result", [1, 3], ["src/config.ts", 1, 1, "cause", "base"]),
+				file: "src/server.ts",
+			},
+		].map((spec) => report(revision, { ...spec, evidence: spec.evidence.slice(0, 1) }));
+		expect([a!.properties.cause, b!.properties.cause]).toEqual(["affected", "affected"]);
+		expect(groups(revision, [a!, b!])).toHaveLength(2);
+		expect(revision.outline([a!]).map((file) => file.path)).toEqual(["src/settings.ts"]);
 	});
 });

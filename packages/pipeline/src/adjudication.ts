@@ -194,7 +194,7 @@ export type AdjudicationTaskInput = {
 	// What the review ran, recorded in the commit that records the verdict.
 	details?: PublicationDetails;
 	// The changed files the findings name, with each hunk's ranges, so lens reports one hunk caused merge. Absent from a
-	// version 1 input, which merges by snippet alone; `[]` is a change whose findings name no changed file.
+	// version 1 input, which merges by snippet alone.
 	files?: ChangedFile[];
 };
 
@@ -248,8 +248,8 @@ export const AdjudicationTask = defineTask<AdjudicationTaskInput, { phase: "adju
 					allowSkip,
 					verificationRan: task.input.verificationRan,
 					seenBefore: carried,
-					revision:
-						task.input.files === undefined ? undefined : Revision.from({ base, head, files: task.input.files }),
+					// A version 1 input holds no files, so no hunk merges it and the snippet rule decides alone.
+					revision: Revision.from({ base, head, files: task.input.files ?? [] }),
 				}).adjudicate();
 			} catch (error) {
 				// A policy that cannot be read is the task's outcome rather than a fault. It may not fail the same way next

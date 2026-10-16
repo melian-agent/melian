@@ -648,6 +648,17 @@ describe("recording a dismissal", () => {
 			]);
 		});
 
+		it("asks the models as often as for a pair that shares a snippet, so the verifier judges one candidate", async () => {
+			const calls = async (script: () => void) => {
+				const harness = await reviewHarness(createMemoryStorage());
+				script();
+				const before = fake.provider.state.callCount;
+				await reviewed(harness);
+				return fake.provider.state.callCount - before;
+			};
+			expect(await calls(scriptHunkPair)).toBe(await calls(() => scriptFinding(true)));
+		});
+
 		it("decides a dismissal by snippet when the revision was indexed before the step", async () => {
 			const harness = await reviewHarness(createMemoryStorage());
 			scriptHunkPair();

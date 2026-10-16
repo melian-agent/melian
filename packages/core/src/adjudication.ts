@@ -1072,38 +1072,31 @@ export class Merge {
 		});
 		const joined: Finding[][][] = [];
 		for (const group of ordered) {
-			const lensOnly = group.every((finding) => finding.lensReport());
-			const into = lensOnly
-				? joined.find((parts) =>
-						parts.every((part) =>
-							part.every((member) => group.every((finding) => this.#meets(revision, member, finding))),
-						),
-					)
-				: undefined;
+			const into = joined.find((parts) =>
+				parts.every((part) =>
+					part.every((member) => group.every((finding) => this.#meets(revision, member, finding))),
+				),
+			);
 			if (into === undefined) joined.push([group]);
 			else into.push(group);
 		}
 		return joined;
 	}
 
-	// Whether two lens reports are one defect because the change caused both through one hunk.
+	// Whether two lens reports are one defect because the change caused both through one hunk. Two introduced reports
+	// over overlapping lines that overlap one hunk share lines on it, since intervals that meet pairwise share a point.
 	#meets(revision: Revision, left: Finding, right: Finding): boolean {
-		const { path, status, cause, source } = left.properties;
+		const { path, status, source } = left.properties;
 		if (!left.lensReport() || !right.lensReport()) return false;
 		if (right.properties.path !== path || right.properties.status !== status) return false;
-		if (right.properties.source.check === source.check) return false;
+		if (right.properties.source.check === source.check || !left.overlaps(right)) return false;
 		if (distinct(this.#configFor(path).ruleAliases, left.ruleId, right.ruleId)) return false;
-		const [[leftStart, leftEnd], [rightStart, rightEnd]] = [left.lines(), right.lines()];
-		const [start, end] = [Math.max(leftStart, rightStart), Math.min(leftEnd, rightEnd)];
-		if (start > end || cause === "pre-existing" || right.properties.cause === "pre-existing") return false;
-		if (cause === "introduced" && right.properties.cause === "introduced") {
-			return revision.changeOverlaps({ file: path, startLine: start, endLine: end }).length > 0;
-		}
 		const theirs = this.#hunks(revision, right);
 		return [...this.#hunks(revision, left)].some((hunk) => theirs.has(hunk));
 	}
 
-	// The hunks a report rests on: an introduced report's own lines, an affected one's proving causes in every claim.
+	// The hunks a report rests on: an introduced report's own lines, any other's `cause` locations in every claim, which
+	// for a pre-existing report fall on none.
 	#hunks(revision: Revision, finding: Finding): Set<string> {
 		const { path, cause, otherClaims = [] } = finding.properties;
 		const keys = (overlaps: readonly ChangeOverlap[]) =>
@@ -1112,12 +1105,9 @@ export class Merge {
 			const [startLine, endLine] = finding.lines();
 			return new Set(keys(revision.changeOverlaps({ file: path, startLine, endLine })));
 		}
-		const sites = [...finding.claims(), ...otherClaims].flatMap((claim) => {
-			const causes = (claim.evidence ?? []).filter((location) => location.role === "cause");
-			// A claim stored before Melian marked proving locations marks none, and any cause of it counts.
-			const marked = causes.some((location) => location.proves === true);
-			return causes.filter((location) => location.proves === true || !marked);
-		});
+		const sites = [...finding.claims(), ...otherClaims].flatMap((claim) =>
+			(claim.evidence ?? []).filter((location) => location.role === "cause"),
+		);
 		return new Set(sites.flatMap((site) => keys(revision.changeOverlaps(site, path))));
 	}
 

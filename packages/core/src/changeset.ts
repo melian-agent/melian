@@ -7,6 +7,7 @@ import {
 	type Cause,
 	canonicalPath,
 	type EvidenceRevision,
+	type Finding,
 	type FindingTrigger,
 	type LocationCause,
 } from "./findings.ts";
@@ -296,10 +297,18 @@ export class Revision {
 	}
 
 	/**
-	 * The changed files `paths` names, by head or base path, with each hunk's ranges and no text: what the merge reads,
-	 * small enough for a stored task input to hold.
+	 * The changed files `findings` name, by their own path or any evidence location's, head or base, with each hunk's
+	 * ranges and no text: what the merge reads, small enough for a stored task input to hold.
 	 */
-	outline(paths: ReadonlySet<string>): ChangedFile[] {
+	outline(findings: readonly Finding[]): ChangedFile[] {
+		const paths = new Set(
+			findings.flatMap((finding) => [
+				finding.properties.path,
+				...[...finding.claims(), ...(finding.properties.otherClaims ?? [])].flatMap((claim) =>
+					(claim.evidence ?? []).map((location) => location.file),
+				),
+			]),
+		);
 		return this.files
 			.filter((file) => paths.has(file.path) || (file.oldPath !== undefined && paths.has(file.oldPath)))
 			.map((file) => ({ ...file, hunks: file.hunks.map((hunk) => ({ ...hunk, header: "", text: "" })) }));

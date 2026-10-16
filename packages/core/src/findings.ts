@@ -1434,7 +1434,7 @@ export class Finding {
 	/** Whether lenses alone reported the finding: its check and every check that sighted it. */
 	lensReport(): boolean {
 		const { source, reportedBy = [source] } = this.properties;
-		return source.check.startsWith("lens.") && reportedBy.every(({ check }) => check.startsWith("lens."));
+		return reportedBy.every(({ check }) => check.startsWith("lens."));
 	}
 
 	/** Whether a verifier refuted every claim of the finding, and only lenses reported it. */
