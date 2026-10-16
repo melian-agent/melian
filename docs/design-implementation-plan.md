@@ -162,11 +162,11 @@ Steps 22 to 26 come from the review loop's lessons, which [design.md](design.md#
 
 Not yet scheduled, from the same research: the comparison importer counts a CodeRabbit thread the bot resolved, citing a fixing commit, as an accepted finding. It is a follow-up to step 15, as [decisions/2026-10-12-lens-roadmap-after-the-research.md](decisions/2026-10-12-lens-roadmap-after-the-research.md) records.
 
-31. `[~]` **Stage telemetry.** Phase 1 proposes [the decision](decisions/2026-10-16-stage-telemetry.md) and adds executable failing tests. Implementation waits for an attacking review and the coordinator's go-ahead. Steps 28 to 30 are reserved by [pull request #134](https://github.com/melian-agent/melian/pull/134). Unblocks explaining a slow round from stored evidence.
-    - Record Pi-contract spans for triage, every deterministic check, each lens level, verification per candidate and in total, adjudication, walkthrough and publication. Use the installed telemetry schemas and span helpers; Pi Durable currently emits none.
-    - Persist starts before work and finishes with results. Crash and resume keep wall time across the interruption; completed attachment keeps original timing and marks reuse.
-    - Expose records through review JSON, one terminal line naming slow stages, and `melian telemetry <range|#pr> [--json]`. Reads start no task or model request. Preserve existing tokens and cost without counting reused work twice.
-    - Phase 2 proves every changed guard by mutation, runs the mutation check and the whole gate, and adds a progress-log entry. Stored-shape changes require versioned reopen tests. Phase 1 deliberately leaves the new behavioural tests red.
+31. `[~]` **Stage telemetry.** [The decision](decisions/2026-10-16-stage-telemetry.md) adopts transcript intervals and task-scoped deterministic timings after the attacking review. Steps 28 to 30 are reserved by [pull request #134](https://github.com/melian-agent/melian/pull/134). Unblocks explaining a slow round from stored evidence.
+    - Derive lens, verifier-candidate and walkthrough intervals from durable transcripts. Memoise starts for triage, each check, adjudication and publication; record ends in each task's terminal commit. Pi task records supply fault ends.
+    - Preserve timing across crashes, attachments and partial check reruns. Keep timing out of inputs and attach keys. Store nothing per call. Defer pi-telemetry until Pi Durable passes a context.
+    - Expose review JSON, one slowest-stages line and detached `melian telemetry <range|#pr> [--json]` reads. Preserve spend without counting reused work twice.
+    - Prove changed guards by mutation, run the mutation check and whole gate, and add a progress-log entry. Version deterministic task checkpoints and reopen fixtures written by the preceding build.
 
 ### Milestone 2 in flight, 2026-10-13
 

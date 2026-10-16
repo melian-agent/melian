@@ -128,13 +128,15 @@ Pi Durable is pinned to an exact version and imported by one internal module, be
 
 ### Stage telemetry
 
-Proposed for milestone 2, step 31; implementation waits for an attacking review. Reviews record no stage duration today. A 240-line round took 64 minutes, with no way to split mutation, lens and verifier time. [The decision](decisions/2026-10-16-stage-telemetry.md) defines the span vocabulary, durable record and CLI contract.
+Milestone 2, step 31. A 240-line round took 64 minutes, with no way to split mutation, lens and verifier time. [The decision](decisions/2026-10-16-stage-telemetry.md) defines the timing authority and CLI contract.
 
-Instrument triage, each deterministic check, each lens level, verification per candidate and in total, adjudication, walkthrough and publication through pi-telemetry's typed span helpers. Pi Durable 1.0.0 accepts no telemetry context and emits no task spans. Melian owns the instrumentation and persists plain span projections in a separate root document. Pi's in-memory recorder has no timestamps and cannot survive a crash.
+Read lens, verifier-candidate and walkthrough timings from durable transcript timestamps. Deterministic triage, each check, adjudication and publication memoise their first start and copy it with an end into a task-scoped document in their terminal commit. Pi Durable 1.1.0 supplies a faulted task's end. No shared timing document, counters or per-call observations are stored. A check-source map preserves the producing task across reruns. Publication selects by revision, including after dismissal.
 
-Commit a stage's first start before work and its finish with its result. The interval measures wall time across a crash. Replay keeps both timestamps and never adds the duration twice. Each review observation references existing tasks' spans and marks completed stages it reuses. Quick and escalated lens runs remain separate. Spend comes from Pi's durable usage records. Telemetry changes no verdict, task attachment key or publication fingerprint.
+Replay preserves the first timestamps. Settled model runs retain their transcript end across a crash. Older deterministic tasks with no start say timing unavailable. Quick and escalated runs remain separate. Spend comes from Pi's durable usage records. Telemetry changes no verdict, task attachment key or publication fingerprint. Storage grows with stages, not calls.
 
-`melian review --json` adds telemetry beside the verdict fields. One standard-error line names the three slowest completed stages, marking reused work. `melian telemetry <range|#pr> [--json]` reads stored observations, including unfinished stages and later publication, without resuming tasks or asking a model. Older reviews report timing unavailable. Parallel intervals are never added as elapsed review time.
+`melian review --json` adds telemetry beside the verdict fields. One standard-error line names the three slowest ended stages, marking reused work and including timeouts. `melian telemetry <range|#pr> [--json]` reads storage through the detached API used by comparison exports. It opens no harness or scheduler, writes nothing and asks no model. Terminal text escapes control characters. Parallel intervals are never added as elapsed review time.
+
+pi-telemetry is deferred until Pi Durable passes a telemetry context. Callback-scoped spans cannot represent a stage that survives the process; Pi currently emits none.
 
 ## Findings
 
@@ -1037,7 +1039,7 @@ Match Pi's conventions unless there is a reason not to.
 | Storage | memory for tests, SQLite locally, SQLite on the server (planned), JSONL on the state branch for Actions (planned, milestone 3) |
 | Execution | Node environment locally, container environment for untrusted code (planned, milestone 3) |
 | GitHub | Octokit, GitHub App auth on server and Actions (planned), `gh` token locally; git by shelling out |
-| Telemetry | pi-telemetry contracts and typed stage spans with a durable Melian projection (proposed, milestone 2 step 31); exporters deferred |
+| Telemetry | Durable transcript intervals and task-scoped deterministic timings (milestone 2 step 31); pi-telemetry deferred until Pi Durable passes a context |
 | Code shape | Classes for objects with identity, state, or a lifecycle, and functions and readonly data for definitions, as in Pi; every query, change, and transform of a domain object is a method on it, and constructions are static factories, which departs from Pi's plain stored records because Melian's objects accumulate behaviour; `Finding`, `Defect`, `Verdict`, `Manifest`, `Lens`, `Revision`, and `Changeset` are classes over their stored JSON, so a document keeps its shape and the class is the runtime view; an outer package adapts a core object through a class of its own; the `free-domain-function` guardrail and Biome plugin enforce it, with no file excluded |
 
 ## Package layout

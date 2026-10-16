@@ -99,3 +99,9 @@ The wrapper sentence under the mapping table changed too: the wrapper quarantine
 **Mapping table, storage row, and "State storage".** From "The `Storage` interface: one atomic `commit(writes)` plus reads" to: "The `Storage` interface: one atomic `commit(writes)`, ID minting, thirteen reads, and `close()`. One process owns a storage at a time; Pi does no cross-process locking." The orphan-branch backend should wrap Pi's JSONL storage rather than implement the interface, and run Pi's `registerStorageConformance` suite. The Actions host serialises runs per changeset, because `--force-with-lease` detects a concurrent writer but cannot merge one into a harness already open.
 
 **Pipeline section, opening paragraph.** Add: "A phase reruns from its start after a crash, so work before its checkpoint is safe to repeat or memo-guarded."
+
+## Pi 1.1.0, stage telemetry
+
+The stage telemetry pass upgrades Chord, pi-ai and Pi Durable from 1.0.0 to 1.1.0. Pi Durable now stamps task records with the first running time and terminal time through its harness clock, including faults. `task-timing.test.ts` failed on 1.0.0 because both fields were absent and passes on 1.1.0. Model transcript timestamps remain the authority for lens and candidate intervals.
+
+The changelog adds scan order and widens `ExecutionEnv.exec` to string or argv. Static-tool fakes narrow strings before matching shell text. Melian uses no affected `TaskRuntime.context` cutoff call. No telemetry context reaches Pi Durable. The spike and package gate must run against the upgrade.
