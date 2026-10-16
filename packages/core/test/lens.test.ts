@@ -1107,4 +1107,17 @@ describe("Lens.renderInstructions", () => {
 			expect(policy).toContain("quotes the first line of each evidence location as Melian read it");
 		}
 	});
+
+	// Lenses that cited different ranges for one defect got different snippets, so the merge left it as several.
+	it("tells every lens, its own or a repository's, to put a finding on the lines that break", async () => {
+		writeFiles(repo, { ".melian/lenses/security/LENS.md": lensFile(security) });
+		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
+		expect(lenses.map((lens) => lens.name)).toContain("security");
+		expect(lenses.map((lens) => lens.name)).toContain("design");
+		for (const lens of lenses) {
+			expect(lens.renderInstructions([]).slice(lens.instructions.length)).toContain(
+				"Put `line` and `endLine` on the line or lines that break, and cite any wider span as evidence.",
+			);
+		}
+	});
 });
