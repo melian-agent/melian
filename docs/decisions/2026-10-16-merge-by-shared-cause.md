@@ -89,7 +89,7 @@ So a report posted alone and merged on a later push keeps its entry in `open`, a
 
 ### Grouping order
 
-The snippet pass takes reports by the severity the lens reported, `original()`, then by ID. It once took them by strength, which reads a lowered severity. Problem: one lens with two rules on one snippet, A at P1 and C at P2, beside B from another lens at P2. Before verification the groups were `{A, B}` and `{C}`. A verifier lowered A to P2, and at adjudication they became `{C, B}` and `{A}`, so the published defect was not the one verified. The speaker within a group is still chosen by strength.
+The snippet pass takes reports by the severity the lens reported, `original()`, then by ID. It once took them by strength, which reads a lowered severity. Problem: one lens with two rules on one snippet, A at P1 and C at P2, beside B from another lens at P2. Before verification the groups were `{A, B}` and `{C}`. A verifier lowered A to P2, and at adjudication they became `{C, B}` and `{A}`, so the published defect was not the one verified. The speaker within a group is chosen the same way, as the next section sets out.
 
 The hunk pass takes snippet groups in order of end line, then start line, then the lowest ID among a group's reports. The reports of a snippet group share their lines, so the group's lines are any member's. Each group joins the first hunk group, in the order the groups opened, whose every report it meets; otherwise it opens a new one.
 
@@ -99,9 +99,26 @@ The hunk pass takes snippet groups in order of end line, then start line, then t
 - No connected components are computed. The pass splits each component the same way every time, and a component whose every pair meets comes out whole.
 - The start-line key has no test that fails without it. A brute-force search over every set of three or four reports on hunk 1, from up to three lenses, found none that end line and ID alone group differently. It is kept because the ruling names it and it costs one comparison.
 
-### The speaker
+### Verdicts never decide grouping or the speaker
 
-The speaker is never a refuted report while any report of the defect stands. This holds sighting by sighting too. When two lenses sight one ID, a refuted sighting never wins it while another stands, so the finding takes the standing sighting's severity and prose. Problem: a refuted P1 and a confirmed P2 of one ID read as a P1 finding, with the refuted lens's prose and the confirmed verdict, which blocked. `#keeper` chooses among the reports that stand, and the speaker's severity is the highest among those, when any stand. The snippet merge had the same flaw: two lens reports at lines 5-7, a refuted P1 and a confirmed P2, gave a P1 headline marked confirmed, with the P2's reason. Both passes now pick the speaker through the same code. Blocking does not move, because `Defect.decision` already resolves each report on its own and leaves out refuted ones.
+Grouping and the speaker's identity read only what the lenses reported, never a verdict. That covers both passes of `Merge`, `#keeper`, the severity they order by, `original()`, and the verification candidate's key. A refuted claim is handled after grouping, at resolution and display.
+
+Problem: four findings across three reviews each let a verdict feed back into grouping or the speaker:
+- the attack's F4 and the record's F2, a lowering that regrouped;
+- the round's d19112ac, a refuted speaker replaced by a standing one;
+- the round's 9acf210b, a refuted sighting dropped from the severity the merge orders by.
+
+Each made a repeat review regroup, so the candidate keys changed, the stored judgements were cleared, and the verifier was paid to judge the same claims again. A failed request then left a finished review not reviewed. Example: A at P1 and B at P2 share a snippet, and A speaks. The verifier refutes A and confirms B. If the keeper skipped refuted reports, the repeat review's candidate was B, its key no longer matched, and verification ran again.
+
+Solution: one rule that makes the class impossible.
+
+- The speaker is chosen as it was before verification. `ruleAliases` names an owner first, and otherwise the most severe as reported (`compareReported`, the lens's severity, then ID).
+- A sighting merge orders by the highest severity any lens reported. `original()` counts every sighting, refuted ones included.
+- `readFindings` as reported, the read verification groups from, picks no winner by verdict. Read judged, for adjudication, a refuted sighting never wins its ID while another stands. The finding then takes the standing sighting's severity and prose, and keeps the same ID and the same grouping key.
+- A merged defect keeps its speaker's ID, and so its candidate key. What it resolves at is the highest standing severity. When the speaker was refuted, the message and explanation it shows come from the report that stands, the most severe as reported. `Defect.decision` resolves each report and leaves out refuted ones, so a refuted P1 beside a confirmed P2 never blocks as a P1.
+- A defect whose claims are all refuted keeps the refuted handling it had.
+
+The cost: `originalSeverity` counts a refuted sighting's severity. A finding that a refuted P1 and a confirmed P2 sighted reads as P2 with an original of P1. Membership of "Pre-existing, important" reads that original. A pre-existing finding is capped at `advisory` already, so this changes no resolution under the default table.
 
 ### Dismissing a member
 
