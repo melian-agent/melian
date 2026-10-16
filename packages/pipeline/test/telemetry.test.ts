@@ -103,6 +103,16 @@ it.each(["terminal", "completing"] as const)("projects %s outcomes and incomplet
 	expect(row.clockRegressed).toBeUndefined();
 });
 
+it("omits the end property when no end was recorded", async () => {
+	const fixture = new ReaderFixture();
+	fixture.triage(1);
+	fixture.task(1, { status: "running", checkpoint: { phase: "run" } });
+	fixture.document(TimingDocument, { startedAt: 0 }, "1");
+	const row = (await fixture.read()).stages[0]!;
+	expect(row).toMatchObject({ outcome: "running", timing: "available", startedAt: 0 });
+	expect(row).not.toHaveProperty("endedAt");
+});
+
 it.each([
 	[{ status: "completed", result: "superseded" }, "superseded"],
 	[{ status: "completed", result: { kind: "superseded" } }, "superseded"],
