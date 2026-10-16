@@ -270,6 +270,26 @@ describe("the design golden that supersedes its own decision", () => {
 		expect(listed(dismissedAt("lens.correctness", [5, 6]), false)).toBe(false);
 	});
 
+	// The round's 60c4c64d: the hunk pass needs no snippet.
+	it("merges two snippet-less lens reports on one hunk", () => {
+		const bare = (check: string, [startLine, endLine]: [number, number]) =>
+			Finding.create({
+				rule: `${check.slice(5)}-rule`,
+				message: `${check} without a snippet`,
+				file: "src/publish.ts",
+				startLine,
+				endLine,
+				discriminator: check,
+				cause: "introduced",
+				severity: "P1",
+				explanation: { what: "w", whyHere: "y", whatToDo: "t" },
+				source: { check, version: "1" },
+			});
+		const [a, b] = [bare("lens.design", [6, 7]), bare("lens.trust-boundary", [5, 7])];
+		expect([a.site(), b.site()]).toEqual([undefined, undefined]);
+		expect(groups(revision, [a, b])).toHaveLength(1);
+	});
+
 	it("keeps a deterministic report on the hunk apart from the lens defect", () => {
 		const lens = report(revision, design);
 		// At line 6 the mutant's group comes before the lens report's, at line 7 after it.
