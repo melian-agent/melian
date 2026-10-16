@@ -52,6 +52,8 @@ These were asked while the loop ran, outside this list. Each answer is the maint
 
 Question 8, whether `acknowledge` should fail the status, has no answer from the maintainer yet. A coordinator's belief that it already gated the merge cost [pull request #117](https://github.com/melian-agent/melian/pull/117) rounds before it was corrected.
 
+- **What happens when a provider is out**, 2026-10-16: fail over to Claude for every lens once plan step 27 lands, keep Sol first, and keep an admin bypass on the ruleset only for when both providers are out. A provider limit error now moves a lens, the verifier and every other routed task to the tier's next model; [the decision](decisions/2026-10-16-failover-on-provider-limit.md) records it. Until step 27 lands, Opus scores lower on design and durability, so a round that failed over reads those lenses with that in mind.
+
 ## Raised by the review loop's lessons
 
 These follow questions 11 to 13, which [pull request #98](https://github.com/melian-agent/melian/pull/98) added.
