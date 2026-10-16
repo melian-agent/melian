@@ -89,10 +89,12 @@ const authenticationFailure =
 	/no api key|api key auth failed|oauth|credential|run pi to refresh|authenticat|unauthori[sz]ed|forbidden|\b40[13]\b|invalid[ _-]?(x-)?(api[ _-]?key|token)/i;
 
 // pi-ai exports no classifier for provider limits, only `isRetryableAssistantError`, which refuses them because
-// retrying the same provider cannot help. Another provider is unaffected, so a lens moves on. These strings mirror
-// NON_RETRYABLE_PROVIDER_LIMIT_ERROR_PATTERN in pi-ai's dist/utils/retry.js.
+// retrying the same provider cannot help. Another provider is unaffected, so a lens moves on. The strings mirror
+// NON_RETRYABLE_PROVIDER_LIMIT_ERROR_PATTERN in pi-ai's dist/utils/retry.js, with two differences: a bare "billing"
+// would also match a malformed request that names a billing field, so it is narrowed to limit wording; and the
+// "usage limit" and "usage_limit_reached" forms are added, which pi's Codex adapter emits (api/openai-codex-responses.js).
 const providerLimit =
-	/GoUsageLimitError|FreeUsageLimitError|Monthly usage limit reached|available balance|insufficient_quota|out of budget|quota exceeded|billing|subscription_sharing_usage_limit_exceeded/i;
+	/GoUsageLimitError|FreeUsageLimitError|usage[ _]limit|available balance|insufficient_quota|out of budget|quota exceeded|billing[ _](hard[ _])?(limit|quota)|billing[ _]not[ _]active|check your billing|subscription_sharing_usage_limit_exceeded/i;
 
 /**
  * Whether a model failure, by its message, should move a lens to its tier's next model: a transient provider failure,
