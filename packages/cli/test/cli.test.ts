@@ -129,6 +129,42 @@ const verifierWarnings =
 	"melian: Plan: lenses verify, but the verifier tier routes no model of its own; verification falls back to lens tiers, heavy then medium then light\nmelian: Plan: every verification candidate would be judged by its finder's own family\n";
 
 describe("melian review and findings", { timeout: 60_000 }, () => {
+	it("renders a recorded review failure as visible terminal text", async () => {
+		const { repo, env } = goldenCheckout(goldens["clean-rename"]!);
+		vi.spyOn(pipelineTesting, "scriptLenses").mockImplementation((fake, lenses) =>
+			pipelineTesting.scriptConversations(
+				fake,
+				lenses.map((lens) => ({
+					match: lens.instructions,
+					replies: [
+						pipelineTesting.fauxAssistantMessage("", {
+							stopReason: "error",
+							errorMessage: "no api key head\u001b[2J",
+						}),
+					],
+				})),
+			),
+		);
+		let stderr = "";
+		const result = await reviewIn(
+			{
+				cwd: repo,
+				env: { ...process.env, ...gitEnv, XDG_CONFIG_HOME: noUserFiles, ...env },
+				color: false,
+				stdout: () => {},
+				stderr: (text) => {
+					stderr += text;
+				},
+			},
+			"main",
+			{ rerun: false },
+		);
+		expect(result).toBe(2);
+		expect(stderr).toContain("head\\u001b[2J");
+		expect(stderr).not.toContain("\u001b");
+	});
+
+
 	it("includes durable stage telemetry in review JSON", () => {
 		const { repo, env } = goldenCheckout(goldens["clean-rename"]!);
 		const result = melian(repo, ["review", "main", "--json"], env);

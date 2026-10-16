@@ -263,7 +263,7 @@ export async function review(
 			}));
 		} catch (error) {
 			if (!(error instanceof ReviewError) || error.verdict === undefined) throw error;
-			io.stderr(`melian: ${error.message}\n`);
+			io.stderr(`melian: ${visibleText(error.message)}\n`);
 			verdict = error.verdict;
 		}
 		if (target.kind === "pullRequest" && options.walkthrough !== false)
