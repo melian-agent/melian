@@ -31,7 +31,7 @@ The [implementation plan](design-implementation-plan.md) says the maintainer run
 
 ## Policy changes under a parent's switch
 
-10. **A nested file's severities and lens switches change what blocks, unseen.** A nested `melian.yaml` is judged under the directory above it, where a base file may switch `policy-change-review` off. Step 18 made a change to a `resolution` key draw the notice whatever that switch says. A nested file's `guardrails.*.severity` and `lenses.*.enabled` also decide what blocks, and a change to either still stays under the parent's switch. The review of record for [pull request #117](https://github.com/melian-agent/melian/pull/117) noted it. Decide whether those keys force the notice too.
+10. **A nested file's severities and lens switches change what blocks, unseen.** A nested `melian.yaml` is judged under the directory above it, where a base file may switch `policy-change-review` off. Step 18 made a change to a `resolution` key draw the notice whatever that switch says. A nested file's `guardrails.*.severity` and `lenses.*.enabled` also decide what blocks, and a change to either still stays under the parent's switch. The review of record for [pull request #117](https://github.com/melian-agent/melian/pull/117) noted it. Decide whether those keys force the notice too. Answered by the maintainer on 2026-10-16, taking the coordinator's recommendation: yes, both draw the notice, and so does every other key that decides what blocks. A `resolution` change already did, from step 18. [The decision](decisions/2026-10-16-nested-policy-keys-force-the-notice.md) records it; plan step 30 builds it.
 
 ## Fork heads and the mutation check
 
