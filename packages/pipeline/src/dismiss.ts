@@ -73,7 +73,8 @@ export interface DismissalOptions {
 	readonly dismissal: Dismissal;
 	/**
 	 * Dismiss the report `id` names alone, leaving every other report adjudication merged with it live. By default the
-	 * finding is dismissed as the verdict shows it, with every report merged into it.
+	 * ID of the finding that speaks dismisses it as the verdict shows it, with every report merged into it, and the ID of
+	 * a report merged into it dismisses that report alone.
 	 */
 	readonly only?: boolean;
 	/**
@@ -88,7 +89,7 @@ export interface DismissalOptions {
 export interface RecordedDismissal {
 	/** The dismissed finding as the new verdict holds it, or the dismissed finding that speaks for it after a merge. */
 	readonly finding: Finding;
-	/** The reports adjudication had merged into the finding, dismissed with it: none with `only`. */
+	/** The reports adjudication had merged into the finding, dismissed with it: none with `only`, or for a member's ID. */
 	readonly also: readonly AlsoReportedAs[];
 	/** The dismissal this one replaced, when the finding was dismissed already with another reason or dismisser. */
 	readonly replaced?: Dismissal;
@@ -124,9 +125,9 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 		}
 		// The finding as the verdict shows it: its own report and every report adjudication merged into it, so dismissing
 		// one defect never leaves another check's report of it live, unless the caller asked for the one report alone.
-		const reports = found.dismiss(options.only ? id : undefined);
+		const reports = found.dismiss(id, options.only);
 		const [own] = reports;
-		const members = options.only ? [] : found.members;
+		const members = reports.length === 1 ? [] : found.members;
 		const index = await tx.doc(ReviewIndex, root.id);
 		const entry = index.reviews[revision];
 		const known = entry?.adjudication;

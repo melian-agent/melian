@@ -1977,7 +1977,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			.flatMap((lens) => lens.rules.map((rule) => rule.id)),
 	);
 	let decisionsAtBase: string | undefined;
-	for (const defect of new Merge(storedFindings, configFor).defects()) {
+	for (const defect of new Merge(storedFindings, configFor, changeset.revision).defects()) {
 		if (defect.speaker.properties.status === "dismissed") continue;
 		const candidateState = VerificationState.from(defect.speaker).toJSON();
 		if (
@@ -2182,6 +2182,17 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		origin: options.origin ?? { kind: "range" },
 		lenses: settled.map(({ run }) => run.key),
 		plan: request.plan,
+		// Only the files the findings name, by location or evidence: the review index stores this input for every revision.
+		files: changeset.revision.outline(
+			new Set(
+				storedFindings.flatMap((finding) => [
+					finding.properties.path,
+					...[...finding.claims(), ...(finding.properties.otherClaims ?? [])].flatMap((claim) =>
+						(claim.evidence ?? []).map((location) => location.file),
+					),
+				]),
+			),
+		),
 	});
 	// Recorded with the verdict by the adjudication task, so a run that a later review replaced leaves none behind.
 	input.details = {
