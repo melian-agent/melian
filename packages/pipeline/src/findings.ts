@@ -199,13 +199,38 @@ function adjudicate(sightings: Readonly<Record<string, ProducerFinding>>, judged
 	return { winner: { ...ranked[0]!, locations, properties: { ...properties, ...lowered, ...claims } }, reportedBy };
 }
 
+// Whether a review that selected `producers` counts a sighting, stored under `key`; every sighting when absent.
+function selected(producers: readonly Producer[] | undefined) {
+	const wanted =
+		producers === undefined
+			? undefined
+			: new Map(producers.map((source) => [producerKey(source), source.ids] as const));
+	return (key: string, sighting: ProducerFinding) => {
+		if (wanted === undefined) return true;
+		return [key, producerKey({ check: sighting.properties.source.check })].some((producer) => {
+			if (!wanted.has(producer)) return false;
+			const ids = wanted.get(producer);
+			return ids === undefined || ids.includes(sighting.properties.id);
+		});
+	};
+}
+
 /**
- * Where the finding `id` sits at `revision` as grouping reads it: the site of the sighting the lenses ranked first, or
- * `undefined` when nothing sighted it there or it has no snippet.
+ * Where the finding `id` sits at `revision` as grouping reads it, among the sightings of `producers`, the review's
+ * selection: the site of the sighting the lenses ranked first, or `undefined` when none sighted it there or it has no
+ * snippet.
  */
-export function siteAt(state: FindingsState, id: string, revision: string): string | undefined {
-	const sightings = state.items[id]?.sightings[revision];
-	if (sightings === undefined || Object.keys(sightings).length === 0) return undefined;
+export function siteAt(
+	state: FindingsState,
+	id: string,
+	revision: string,
+	producers?: readonly Producer[],
+): string | undefined {
+	const counts = selected(producers);
+	const sightings = Object.fromEntries(
+		Object.entries(state.items[id]?.sightings[revision] ?? {}).filter(([key, sighting]) => counts(key, sighting)),
+	);
+	if (Object.keys(sightings).length === 0) return undefined;
 	const { winner } = adjudicate(sightings);
 	return Finding.from({ ...winner, properties: { ...winner.properties, status: "new" } }).site();
 }
@@ -544,18 +569,7 @@ export async function readFindings(
 	options: ReadFindingsOptions = {},
 ): Promise<readonly Finding[]> {
 	const items = (await reader.snapshot(FindingsDocument, rootConversationId, context))?.items ?? {};
-	const wanted =
-		options.producers === undefined
-			? undefined
-			: new Map(options.producers.map((source) => [producerKey(source), source.ids] as const));
-	const counts = (key: string, sighting: ProducerFinding) => {
-		if (wanted === undefined) return true;
-		return [key, producerKey({ check: sighting.properties.source.check })].some((producer) => {
-			if (!wanted.has(producer)) return false;
-			const ids = wanted.get(producer);
-			return ids === undefined || ids.includes(sighting.properties.id);
-		});
-	};
+	const counts = selected(options.producers);
 	return Object.keys(items)
 		.sort()
 		.flatMap((id) => {

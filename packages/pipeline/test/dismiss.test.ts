@@ -659,6 +659,52 @@ describe("recording a dismissal", () => {
 		expect(recorded.verdict.attention()).toEqual([]);
 	});
 
+	// The round's c8574ff9: a sighting outside the review's producers, such as a quick run its escalation restated, must
+	// not decide which members a dismissal reaches.
+	it("reads sites from the review's producers only, so a member joined through the hunk stays live", async () => {
+		const long = `export const table = [${Array.from({ length: 300 }, (_, index) => `"cell${index}"`).join(", ")}];`;
+		push("boss", unsafe, { "src/long.ts": lines("// a", "// b", "// c", "// d", "", long, "", "// h") });
+		lenses = await Lens.load(repo, { kind: "revision", commit: gitIn(repo, "rev-parse", "main") }, ["src/long.ts"]);
+		config = { ...config, ruleAliases: { "changed-return": ["null-dereference"] } };
+		const at = (line: number, endLine: number, rule: string) => ({
+			...nullDeref,
+			file: "src/long.ts",
+			line,
+			endLine,
+			rule,
+			evidence: [{ file: "src/long.ts", line, endLine, role: "cause" }],
+		});
+		// The cut snippets are alike, so their sites differ by lines alone, and only the hunk pass merges them.
+		scriptConversations(fake, [
+			{ match: correctness, replies: [report(at(6, 7, "null-dereference")), fauxAssistantMessage("Done.")] },
+			{ match: contracts, replies: [report(at(6, 6, "changed-return")), fauxAssistantMessage("Done.")] },
+		]);
+		const harness = await reviewHarness(createMemoryStorage());
+		const [shown] = (await reviewed(harness)).verdict.findings.block;
+		expect(shown).toMatchObject({ ruleId: "changed-return" });
+		const [member] = shown!.properties.alsoReportedAs!;
+		// A sighting of the speaker's ID by a producer the review did not select, on the member's lines.
+		const key = revisionKey(await revision());
+		const root = await harness.root(context);
+		await root.commit(async (tx) => {
+			const { items } = await tx.doc(FindingsDocument, root.id);
+			const sightings = items[shown!.properties.id]!.sightings[key]!;
+			const [own] = Object.values(sightings);
+			const memberSighting = Object.values(items[member!.id]!.sightings[key]!)[0]!;
+			sightings["lens.contracts@stale"] = {
+				...own!,
+				locations: JSON.parse(JSON.stringify(memberSighting.locations)),
+				// More severe than the selected sighting, so it would win the ID if it counted.
+				properties: { ...own!.properties, severity: "P0", source: { check: "lens.contracts", version: "stale" } },
+			};
+		}, context);
+
+		const recorded = await dismiss(harness, shown!.properties.id);
+
+		expect(recorded.live.map((other) => other.id)).toEqual([member!.id]);
+		expect(recorded.verdict).toMatchObject({ blocking: true });
+	});
+
 	describe("two lens reports one hunk caused, with different snippets", () => {
 		// Correctness reports line 8; contracts reports lines 7-8, the whole hunk, so the two share no snippet.
 		function scriptHunkPair(severity = "P2"): void {

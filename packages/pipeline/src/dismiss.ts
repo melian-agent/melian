@@ -128,11 +128,19 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 		if (found === undefined) {
 			throw new DismissError("unknownFinding", `the review of ${revision} has no finding ${id}`, where);
 		}
+		const index = await tx.doc(ReviewIndex, root.id);
+		const entry = index.reviews[revision];
+		const known = entry?.adjudication;
+		if (entry === undefined || known === undefined) {
+			throw new DismissError("notReviewed", `Melian has no adjudication of ${revision} to repeat; ${again}`, where);
+		}
+		const previous = JSON.parse(known.input) as AdjudicationTaskInput;
 		const findings = await tx.doc(FindingsDocument, root.id);
 		const recorded = findings.items;
-		// A report's site at this revision, as the snippet pass groups by. A member at another site joined the speaker only
-		// through a hunk, so its text was never the speaker's, and dismissing the speaker leaves it live.
-		const siteOf = (report: string) => siteAt(findings, report, revision);
+		// A report's site at this revision, as the snippet pass groups by, among the producers the review selected. A
+		// member at another site joined the speaker only through a hunk, so its text was never the speaker's, and
+		// dismissing the speaker leaves it live.
+		const siteOf = (report: string) => siteAt(findings, report, revision, previous.producers);
 		const site = siteOf(found.speaker.id);
 		// Only a static or guardrail report lacks a site, and one never has members: it merges by neither pass.
 		const apart = new Set(found.members.filter((other) => siteOf(other.id) !== site).map((other) => other.id));
@@ -141,12 +149,6 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 		// the one report alone.
 		const reports = found.dismiss(id, options.only, apart);
 		const [own] = reports;
-		const index = await tx.doc(ReviewIndex, root.id);
-		const entry = index.reviews[revision];
-		const known = entry?.adjudication;
-		if (entry === undefined || known === undefined) {
-			throw new DismissError("notReviewed", `Melian has no adjudication of ${revision} to repeat; ${again}`, where);
-		}
 		const dismissed = [...new Set(reports)].filter((report) => Object.hasOwn(recorded, report));
 		let replaced: Dismissal | undefined;
 		for (const report of dismissed) {
@@ -156,7 +158,6 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 		// The review's own input with the findings version the dismissal moved to, keeping its key order, so a later
 		// review that computes the same input attaches to this task. The review's checkout stays while it exists, since
 		// another worktree may hold another melian.yaml.
-		const previous = JSON.parse(known.input) as AdjudicationTaskInput;
 		const findingsVersion = (await tx.doc(FindingsDocument, root.id)).versions[revision] ?? 0;
 		const checkout = existsSync(previous.repoRoot) ? previous.repoRoot : repoRoot;
 		const input: AdjudicationTaskInput = { ...previous, repoRoot: checkout, findingsVersion };
