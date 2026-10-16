@@ -936,6 +936,34 @@ describe("lowered sightings", () => {
 		},
 	);
 
+	it("keeps the lines the lenses' winner reported after a lowering ties it with another sighting", async () => {
+		const { harness, root } = await open(createMemoryStorage());
+		const design = { check: "lens.design", version: "1" };
+		const tests = { check: "lens.tests", version: "1" };
+		const sighting = (start: number, text: string, severity: "P1" | "P2", from: FindingSource) =>
+			Finding.create({
+				...input,
+				startLine: start,
+				endLine: start + 1,
+				startColumn: undefined,
+				endColumn: undefined,
+				snippet: text,
+				severity,
+				source: from,
+				failureScenario: `${from.check} scenario.`,
+			});
+		// The tests lens reported the P1, so its lines stand, though the lowering ties it with design's, which sorts first.
+		const [first, second] = [sighting(5, "\nfoo()", "P2", design), sighting(6, "foo()\n", "P1", tests)];
+		expect(first.id).toBe(second.id);
+		await root.commit((tx) => upsertFinding(tx, root.id, first, "rev1"), context);
+		await root.commit((tx) => upsertFinding(tx, root.id, second, "rev1"), context);
+		await root.commit((tx) => upsertVerification(tx, root.id, "rev1", first.id, tests, lowered), context);
+		const [reported] = await readFindings(harness, root.id, "rev1", context, { asReported: true });
+		const [judged] = await readFindings(harness, root.id, "rev1", context);
+		expect(reported!.lines()).toEqual([6, 7]);
+		expect(judged!.lines()).toEqual([6, 7]);
+	});
+
 	it("reads a finding whose every sighting a verifier refuted, at the most severe of them", async () => {
 		const { harness, root } = await open(createMemoryStorage());
 		const other = { check: "lens.contracts", version: "1" };

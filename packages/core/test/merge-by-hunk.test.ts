@@ -756,6 +756,40 @@ describe("an unchanged caller that two lenses report", () => {
 		expect(groups(revision, [sighted, b!])).toHaveLength(1);
 	});
 
+	// The round's bff7949a: one cause citation that spans both hunks counts for each.
+	it("merges two callers through the second hunk a single cause spans", async () => {
+		const revision = await changeOf(
+			(root) =>
+				writeFiles(root, {
+					"src/page.ts": caller,
+					"src/limit.ts": lines(
+						"export function limit(size: number): number {",
+						"\treturn Math.max(size, 1);",
+						"}",
+						"",
+						"export const floor = 1;",
+					),
+				}),
+			(root) =>
+				writeFiles(root, {
+					"src/limit.ts": lines(
+						"export function limit(size: number): number {",
+						"\treturn Math.min(size, 0);",
+						"}",
+						"",
+						"export const floor = 0;",
+					),
+				}),
+		);
+		expect(revision.files.find((file) => file.path === "src/limit.ts")!.hunks).toHaveLength(2);
+		const [a, b] = [
+			at("lens.correctness", "wrong-result", [4, 5], ["src/limit.ts", 2, 5, "cause"]),
+			at("lens.contracts", "broken-caller", [5, 5], ["src/limit.ts", 5, 5, "cause"]),
+		].map((spec) => report(revision, spec));
+		expect([a!.properties.cause, b!.properties.cause]).toEqual(["affected", "affected"]);
+		expect(groups(revision, [a!, b!])).toHaveLength(1);
+	});
+
 	it("keeps apart two reports that only a rename without an edit proves, which names no hunk", async () => {
 		const config = lines("export const port = 8080;");
 		const server = lines('import { port } from "./config.ts";', "", 'export const url = "http://localhost:" + port;');
