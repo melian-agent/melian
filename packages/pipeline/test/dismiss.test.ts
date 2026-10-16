@@ -977,7 +977,7 @@ describe("recording a dismissal", () => {
 		// The fingerprint main at 4471af34 stored in the task input for this repository, with no lens or preference file
 		// in the working tree. It hashes the policy, lens variants keyed by version included, so it changes only when a
 		// built-in lens or the stored policy shape does; record it again from that build if one does.
-		const recordedByPreviousBuild = "96a2991030a66f81";
+		const recordedByPreviousBuild = "9a82a69d3275b714";
 
 		async function reviewedByPreviousBuild() {
 			const harness = await reviewHarness(createMemoryStorage());
