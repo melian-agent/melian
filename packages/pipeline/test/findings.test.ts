@@ -874,6 +874,20 @@ describe("lowered sightings", () => {
 		}
 	});
 
+	it("reads a finding whose every sighting a verifier refuted, at the most severe of them", async () => {
+		const { harness, root } = await open(createMemoryStorage());
+		const other = { check: "lens.contracts", version: "1" };
+		const claim = { failureScenario: "eval('1') runs." };
+		await root.commit((tx) => upsertFinding(tx, root.id, Finding.create({ ...input, ...claim }), "rev1"), context);
+		const second = Finding.create({ ...input, ...claim, severity: "P2", source: other });
+		await root.commit((tx) => upsertFinding(tx, root.id, second, "rev1"), context);
+		await judge(root, { ...record, verdict: "refuted" });
+		await judge(root, { ...record, verdict: "refuted" }, other);
+		const [finding] = await readFindings(harness, root.id, "rev1", context);
+		expect(finding!.properties).toMatchObject({ severity: "P1", source: input.source });
+		expect(finding!.refuted()).toBe(true);
+	});
+
 	it("drops the original severity when an unlowered sighting holds the finding at it", async () => {
 		const { harness, root } = await open(createMemoryStorage());
 		const other = { check: "lens.contracts", version: "1" };

@@ -473,6 +473,18 @@ describe("the design golden that supersedes its own decision", () => {
 		expect(groups(revision, [on("lens.design", [6, 7], { rule: "shared-rule" }), b])).toHaveLength(1);
 	});
 
+	// Two reports from one lens tie on the severity the lens reported; the lower ID joins the other lens's report.
+	it("breaks a tie in the snippet pass by ID, whatever the input order", () => {
+		const b = on("lens.trust-boundary", [6, 6]);
+		const [c1, c2] = [
+			on("lens.design", [6, 6], { rule: "rule-one" }),
+			on("lens.design", [6, 6], { rule: "rule-two" }),
+		];
+		const [low, high] = [c1, c2].sort((x, y) => x.properties.id.localeCompare(y.properties.id));
+		const expected = [[low!.properties.id, b.properties.id].sort(), [high!.properties.id]].sort();
+		for (const order of permutations([b, c1, c2])) expect(groups(undefined, order)).toEqual(expected);
+	});
+
 	// The review of record's F2: one lens with two rules on one snippet, and a lowering of the first.
 	it("groups the snippet pass by the severity the lens reported, so a lowering never regroups it", () => {
 		const a = on("lens.design", [6, 6], { rule: "rule-a" });
