@@ -169,11 +169,12 @@ function compareSources(a: FindingSource, b: FindingSource): number {
 // winner keeps its own claim and takes the strongest cause any sighting gave, with the cause locations that prove it,
 // and every other sighting's claim, so a P1 whose cause location overlaps the change, beside a P0 whose evidence proves
 // nothing, reads as an affected P0 that still carries the P1's scenario and evidence.
-function adjudicate(sightings: Readonly<Record<string, ProducerFinding>>) {
+function adjudicate(sightings: Readonly<Record<string, ProducerFinding>>, judged: boolean) {
 	// A sighting stores no lifecycle status, and merging claims reads none.
 	const refuted = (each: ProducerFinding) =>
-		Finding.from({ ...each, properties: { ...each.properties, status: "new" } }).refuted();
-	// A refuted sighting never wins while another stands, so it lends the finding neither its severity nor its prose.
+		judged && Finding.from({ ...each, properties: { ...each.properties, status: "new" } }).refuted();
+	// Judged, a refuted sighting never wins while another stands, so it lends the finding neither its severity nor its
+	// prose. As reported, no verdict picks the winner, so a repeat review's candidates are the ones verified.
 	const ranked = Object.values(sightings).sort(
 		(a, b) =>
 			Number(refuted(a)) - Number(refuted(b)) ||
@@ -184,8 +185,8 @@ function adjudicate(sightings: Readonly<Record<string, ProducerFinding>>) {
 	const { evidence: _, failureScenario: __, otherClaims: ___, ...properties } = ranked[0]!.properties;
 	const members = ranked.map((each) => Finding.from({ ...each, properties: { ...each.properties, status: "new" } }));
 	const claims = members[0]!.mergeClaims(members);
-	const standing = members.filter((member) => !member.refuted());
-	const original = (standing.length > 0 ? standing : members).map((member) => member.original()).reduce(stricter);
+	// Every sighting counts, refuted or not: the merge orders by it, and a verdict must not regroup.
+	const original = members.map((member) => member.original()).reduce(stricter);
 	// The winner is the highest after lowering, so its own original, when it has one, is never above this one.
 	const lowered = original === properties.severity ? {} : { originalSeverity: original };
 	return { winner: { ...ranked[0]!, properties: { ...properties, ...lowered, ...claims } }, reportedBy };
@@ -308,7 +309,7 @@ export async function upsertFinding(
 		lastSeen !== undefined &&
 		(proven
 			? standing.length < stored.length
-			: triggerCode(adjudicate(lastSeen).winner.properties.trigger) !== triggerCode(properties.trigger));
+			: triggerCode(adjudicate(lastSeen, false).winner.properties.trigger) !== triggerCode(properties.trigger));
 	const proof = unionOf([...(reopened ? [] : standing), ...proved]);
 	const tied = proof.length > 0 || kept.proof !== undefined ? { proof } : {};
 	const lifecycle: FindingLifecycle = reopened
@@ -553,7 +554,7 @@ export async function readFindings(
 					}),
 			);
 			if (Object.keys(atHead).length === 0) return [];
-			const { winner, reportedBy } = adjudicate(atHead);
+			const { winner, reportedBy } = adjudicate(atHead, options.asReported !== true);
 			const properties = { ...winner.properties, status: lifecycle.status, ...dismissalsOf(lifecycle), reportedBy };
 			return [Finding.from(structuredClone({ ...winner, properties }))];
 		});

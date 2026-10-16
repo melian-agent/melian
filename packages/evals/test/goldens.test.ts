@@ -817,12 +817,11 @@ describe("scoreGolden", () => {
 			),
 		).toMatchObject({ precision: 0, recall: 0 });
 	});
-	// The refuted design report never speaks while the trust-boundary one stands, whichever is more severe.
 	it.each([
-		{ speaker: "trust-boundary", designSeverity: "P0", trustSeverity: "P1" },
+		{ speaker: "design", designSeverity: "P0", trustSeverity: "P1" },
 		{ speaker: "trust-boundary", designSeverity: "P1", trustSeverity: "P0" },
 	] as const)(
-		"rejects a refuted design claim in a live merged defect, design at $designSeverity",
+		"rejects a refuted design claim in a live merged defect spoken by $speaker",
 		({ speaker, designSeverity, trustSeverity }) => {
 			const template = goldens.find((each) => each.name === "design-fail-open-default")!;
 			const comment = { ...template.expected.comments[0]!, source: "lens.design" };

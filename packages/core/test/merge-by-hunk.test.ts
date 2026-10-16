@@ -439,25 +439,28 @@ describe("the design golden that supersedes its own decision", () => {
 	it.each([
 		["by hunk", [5, 7], [6, 7]],
 		["by snippet", [5, 7], [5, 7]],
-	] as const)("keeps the reported speaker, with a standing report's severity and prose, merged %s", (_, first, second) => {
-		const refuted = on("lens.trust-boundary", [...first], { rule: "sql-injection", verdict: "refuted" });
-		const standing = on("lens.tests", [...second], {
-			rule: "untested-behaviour",
-			severity: "P2",
-			verdict: "confirmed",
-		});
-		for (const order of permutations([refuted, standing])) {
-			const input = { findings: order, manifest: [], checks: [], config: defaultConfig, revision };
-			const [defect, ...rest] = new Adjudication(input).defects();
-			expect(rest).toEqual([]);
-			// The speaker's identity comes from what the lenses reported; what it shows, from the report that stands.
-			expect(defect!.speaker.properties).toMatchObject({ id: refuted.properties.id, severity: "P2" });
-			expect(defect!.speaker.properties.originalSeverity).toBeUndefined();
-			expect(defect!.speaker.message.text).toBe(standing.message.text);
-			expect(defect!.speaker.properties.explanation).toEqual(standing.properties.explanation);
-			expect(defect!.members.map((member) => member.id)).toEqual([standing.properties.id]);
-		}
-	});
+	] as const)(
+		"keeps the reported speaker, with a standing report's severity and prose, merged %s",
+		(_, first, second) => {
+			const refuted = on("lens.trust-boundary", [...first], { rule: "sql-injection", verdict: "refuted" });
+			const standing = on("lens.tests", [...second], {
+				rule: "untested-behaviour",
+				severity: "P2",
+				verdict: "confirmed",
+			});
+			for (const order of permutations([refuted, standing])) {
+				const input = { findings: order, manifest: [], checks: [], config: defaultConfig, revision };
+				const [defect, ...rest] = new Adjudication(input).defects();
+				expect(rest).toEqual([]);
+				// The speaker's identity comes from what the lenses reported; what it shows, from the report that stands.
+				expect(defect!.speaker.properties).toMatchObject({ id: refuted.properties.id, severity: "P2" });
+				expect(defect!.speaker.properties.originalSeverity).toBeUndefined();
+				expect(defect!.speaker.message.text).toBe(standing.message.text);
+				expect(defect!.speaker.properties.explanation).toEqual(standing.properties.explanation);
+				expect(defect!.members.map((member) => member.id)).toEqual([standing.properties.id]);
+			}
+		},
+	);
 
 	// The review of record's F4: a hunk member dismissed by its own ID stays in the speaker's listing.
 	it("keeps a dismissed report apart from a live one the same hunk caused, and lists it as dismissed", () => {

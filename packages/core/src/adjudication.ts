@@ -140,11 +140,15 @@ export class Defect {
 			originalSeverity: ____,
 			...properties
 		} = keeper.properties;
+		// The speaker keeps its identity, but shows what a report that stands says, when it was refuted.
+		const shown = keeper.refuted() ? ([...counted].sort((a, b) => a.compareReported(b))[0] ?? keeper) : keeper;
 		const speaker = Finding.from({
 			...keeper.toJSON(),
+			message: { ...shown.toJSON().message },
 			level: levelForSeverity(severity),
 			properties: {
 				...properties,
+				explanation: { ...shown.properties.explanation },
 				...keeper.mergeClaims(findings),
 				severity,
 				...(original === severity ? {} : { originalSeverity: original }),
@@ -1118,16 +1122,14 @@ export class Merge {
 		return new Set(sites.flatMap((site) => keys(revision.changeOverlaps(site, path))));
 	}
 
-	// The finding that speaks for a defect: one that stands, while any does, whose rule `ruleAliases` names as the owner
-	// of another member's rule, else the most severe.
+	// The finding that speaks for a defect: one whose rule `ruleAliases` names as the owner of another member's rule,
+	// else the most severe as the lenses reported it. No verdict decides it, so a repeat review's candidate is unchanged.
 	#keeper(group: readonly Finding[]): Finding {
-		const standing = group.filter((finding) => !finding.refuted());
-		const candidates = standing.length > 0 ? standing : group;
 		const aliases = this.#configFor(group[0]!.properties.path).ruleAliases;
-		const owners = candidates.filter((finding) => {
+		const owners = group.filter((finding) => {
 			const entry = entryOf(aliases, finding.ruleId);
 			return !entry.distinct && entry.rules.some((alias) => group.some((other) => other.ruleId === alias));
 		});
-		return [...(owners.length > 0 ? owners : candidates)].sort((a, b) => a.compareStrength(b))[0]!;
+		return [...(owners.length > 0 ? owners : group)].sort((a, b) => a.compareReported(b))[0]!;
 	}
 }
