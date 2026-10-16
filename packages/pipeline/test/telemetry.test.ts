@@ -189,6 +189,24 @@ it.each(["running", "failed", "completed"] as const)(
 	},
 );
 
+it.each([
+	[
+		{ status: "failed", error: { message: "check fault" }, result: { status: "ran", findings: [] as JsonObject[] } },
+		{ outcome: "failed", error: "check fault" },
+	],
+	[{ status: "aborted", result: { status: "ran", findings: [] as JsonObject[] } }, { outcome: "aborted" }],
+] as const)("preserves check outcome %j over its partial result", async (outcome, expected) => {
+	const fixture = new ReaderFixture();
+	fixture.document(ChecksDocument, {
+		tasks: { "base head selected": 3 },
+		owners: { [revision]: "base head selected 3" },
+		runs: {},
+	});
+	fixture.document(CheckSources, { tasks: { "static.biome": 2 } }, "3");
+	fixture.task(2, { status: "terminal", outcome }, { owner: 3 as TaskId });
+	expect((await fixture.read()).stages).toEqual([expect.objectContaining(expected)]);
+});
+
 it("keeps exact rendered spacing when optional fields are absent", () => {
 	const telemetry = new StageTelemetry(revision, [
 		{
