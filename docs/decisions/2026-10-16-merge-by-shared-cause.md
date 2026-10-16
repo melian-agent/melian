@@ -26,7 +26,7 @@ A first ruling merged two checks' reports in one file over overlapping lines whe
 
 The attack's smaller points stand for step 27 too. `melian dismiss` lists the merged reports only after it records the dismissal, so the list is a notice, not a protection. Merges must not chain: reports at lines 1-5, 5-7 and 7-8 stay at least two defects. And a finding in another file, such as the caller at `src/cli.ts:8`, stays its own finding, because it needs its own fix where its comment sits.
 
-## Step 27's design, as built
+## Step 27, as built
 
 This section sets out the rule and how it meets each requirement above. A second attacking review, on [pull request #131](https://github.com/melian-agent/melian/pull/131), found seven gaps in the first proposal; the coordinator's ruling on them is folded in below. The tests are in `packages/core/test/merge-by-hunk.test.ts`, `packages/core/test/publication.test.ts`, `packages/pipeline/test/dismiss.test.ts` and `packages/cli/test/cli.test.ts`.
 
@@ -48,8 +48,8 @@ Two reports meet under the hunk rule when all of these hold:
 The causes decide it this way:
 
 - If either is `pre-existing`, they do not meet: a `pre-existing` finding falls on no hunk.
-- If both are `introduced`, the lines they share must overlap one hunk's new lines. Their own lines decide it. Their `cause` citations do not count, so a type line both cite elsewhere in the file widens nothing.
-- Otherwise, their hunk sets must meet. An `introduced` finding's set is every hunk whose new lines its own lines overlap. An `affected` finding's set is every hunk its proving `cause` locations fall on, through `Revision.changeOverlaps`: a head cause on a hunk's new lines, a base cause on its old lines. The locations are those of every claim the finding holds, its own and those in `otherClaims`, so which sighting of one ID won the severity does not change the set. A claim stored before Melian marked `proves` counts every `cause` location, as `causeRank` reads it.
+- If both are `introduced`, the lines they share must overlap one hunk's new lines. Their own lines decide it. Their `cause` citations do not count, so a type line both cite elsewhere in the file widens nothing. Two line ranges that overlap each other and one hunk share a line on it, so the code tests this as overlapping lines and a shared hunk.
+- Otherwise, their hunk sets must meet. An `introduced` finding's set is every hunk whose new lines its own lines overlap. An `affected` finding's set is every hunk its `cause` locations fall on, through `Revision.changeOverlaps`: a head cause on a hunk's new lines, a base cause on its old lines. Only a location on the change names a hunk, so the `proves` mark adds nothing here, and a claim stored before Melian marked it reads alike. The locations are those of every claim the finding holds, its own and those in `otherClaims`, so which sighting of one ID won the severity does not change the set.
 
 On the golden `design-supersedes-its-own-decision`, Melian's diff of `src/publish.ts` has two hunks: line 3, and lines 5-6 at the base becoming 5-7 at head. The three lens reports at lines 6-7, 5-7 and 3-8 share lines 6-7, 5-7 and 6-7, all inside hunk 1, so they are one defect, and the P0 speaks. The `dropped-guard` report spans both hunks, so its own lines decide it, whatever it cites. The correctness lens's report of the caller at `src/cli.ts:8` is in another file and stays its own finding.
 
@@ -69,15 +69,15 @@ The `affected` route reads `cause` citations, so it widens with what a lens choo
 The authority is `Revision`. Two methods are added:
 
 - `revision.changeOverlaps(location, findingFile)` returns every part of the change a location falls on. `changeOverlap` returns the first of them, so cause classification and proof do not change.
-- `revision.outline(paths)` returns the revision's fields for the files `paths` names, with each hunk's `header` and `text` emptied, as `report_finding` already builds it.
+- `revision.outline(findings)` returns the changed files the findings name, by their own path or an evidence location's, with each hunk's `header` and `text` emptied, as `report_finding` already builds it.
 
 `Merge` and `Adjudication` take an optional `revision`. Without one, the hunk pass does not run.
 
 - **Before verification.** `reviewChangeset` passes the changeset's `Revision`, which it holds in memory, to `new Merge(...)`. The verification tasks store the merge's output, the candidates, not its input, so no stored shape changes there.
-- **Adjudication.** `AdjudicationTaskInput` gains `files`: the outline of the files the review's findings name, by location or by evidence location, each hunk as its index and its old and new ranges. Only those files, because the review index stores the whole input as a string for every revision, and a change of 2,000 files would add a megabyte per push. A dismissal adds no finding, so the outline still covers every finding. The task rebuilds the `Revision` with `Revision.from({ base, head, files })`. `AdjudicationTask` goes from version 1 to version 2. Its `migrate` from version 1 passes the input through without `files`, so a task stored before the step decides by snippet, as it did. Only an absent `files` means version 1: `files: []` is a change whose findings name no changed file. The attach key is the input's JSON, so the first review after the upgrade starts a new task rather than attach to an old one.
+- **Adjudication.** `AdjudicationTaskInput` gains `files`: the outline of the files the review's findings name, by location or by evidence location, each hunk as its index and its old and new ranges. Only those files, because the review index stores the whole input as a string for every revision, and a change of 2,000 files would add a megabyte per push. A dismissal adds no finding, so the outline still covers every finding. The task rebuilds the `Revision` with `Revision.from({ base, head, files })`. `AdjudicationTask` goes from version 1 to version 2. Its `migrate` from version 1 passes the input through without `files`, and the task reads an absent `files` as none, so a task stored before the step decides by snippet, as it did. The attach key is the input's JSON, so the first review after the upgrade starts a new task rather than attach to an old one.
 - **Dismiss.** `recordDismissal` copies the stored input into a new version 2 task, with no `migrate`. A version 2 input keeps its `files`. A version 1 input keeps none and decides by snippet, the way the verdict being replaced was decided, so a dismissal never regroups a verdict.
 
-Two tests cover the stored shape. The reopen test stores a pending adjudication task through a version 1 definition, on SQLite, and closes the storage. It then reopens the storage under version 2 and checks that the task migrates, runs, and records the snippet grouping. The second test dismisses a finding of a revision indexed with a version 1 input, after the upgrade, and expects the snippet grouping. The fallback says nothing in the verdict. It only reproduces the grouping the stored verdict already had, so a note would explain no change.
+Two tests cover the stored shape. The reopen test stores a pending adjudication task on SQLite through a version 1 definition, which stores what version 1 stored: the task's name, its version, its first checkpoint, and an input without `files`. It closes the storage. It then reopens the storage under version 2 and checks that the task migrates, runs, and records the snippet grouping. The second test dismisses a finding of a revision indexed with a version 1 input, after the upgrade, and expects the snippet grouping. The fallback says nothing in the verdict. It only reproduces the grouping the stored verdict already had, so a note would explain no change.
 
 The first review of each revision after the upgrade groups again, so its verification candidates are new and the verifier runs again. `VerificationRecord.after` then keeps the stronger of the old and new verdicts for each claim.
 
@@ -97,6 +97,7 @@ The hunk pass takes snippet groups in order of end line, then start line, then t
 - Each member of a hunk group contains the end line of the group's first member. For reports whose shared lines fall in one hunk, this is greedy interval stabbing, which makes the fewest groups. Example: reports w at line 5, x at 5-6, y at 6-7 and z at 7, where only w-x, x-y and y-z meet, make two groups, `{w, x}` and `{y, z}`. In ID order they made three.
 - A report added on a later push moves only groups that open after its start. Example: a1 at line 5, a2 at 5-6 and a3 at 6-7 group as `{a1, a2}` and `{a3}`. A push that adds a0 at line 6 leaves `{a1, a2}` whole and gives `{a0, a3}`. In ID order, a1 split off and was posted fresh.
 - No connected components are computed. The pass splits each component the same way every time, and a component whose every pair meets comes out whole.
+- The start-line key has no test that fails without it. A brute-force search over every set of three or four reports on hunk 1, from up to three lenses, found none that end line and ID alone group differently. It is kept because the ruling names it and it costs one comparison.
 
 ### The speaker
 
