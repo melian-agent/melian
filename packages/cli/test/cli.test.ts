@@ -23,12 +23,14 @@ import {
 	Verdict,
 } from "@melian-agent/core";
 import { buildGoldenRepository, type Golden, loadGoldens } from "@melian-agent/evals";
+import { ReviewHarness, TelemetryReader } from "@melian-agent/pipeline";
 import * as pipelineTesting from "@melian-agent/pipeline/testing";
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import { fakeGitHub } from "../../github/test/fixtures/fake-github.ts";
 import { pullRequestState } from "../../github/test/fixtures/scenario.ts";
 import { review as reviewIn } from "../src/commands.ts";
 import { doctor as doctorIn } from "../src/doctor.ts";
+import { main } from "../src/main.ts";
 
 const root = fileURLToPath(new URL("../../../", import.meta.url));
 const bin = join(root, "packages/cli/bin/melian.js");
@@ -125,6 +127,10 @@ function staticCheckout(added: string) {
 	return { repo, env: scriptFile(Object.fromEntries(builtinLenses.map((name) => [name, quiet]))) };
 }
 
+function planWarnings(stderr: string): string {
+	return stderr.replace(/^melian: (?:Slowest stages:.*|Stage timings unavailable\.)\n/gm, "");
+}
+
 const verifierWarnings =
 	"melian: Plan: lenses verify, but the verifier tier routes no model of its own; verification falls back to lens tiers, heavy then medium then light\nmelian: Plan: every verification candidate would be judged by its finder's own family\n";
 
@@ -164,6 +170,80 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(stderr).not.toContain("\u001b");
 	});
 
+	it.each([new Error("review\u001b[2J"), "review\u001b[2J"])(
+		"prints one partial review JSON object after storage opens: %s",
+		async (error) => {
+			const { repo, env } = goldenCheckout(goldens["clean-rename"]!);
+			vi.spyOn(ReviewHarness.prototype, "resumedProviders").mockRejectedValue(error);
+			let stdout = "";
+			let stderr = "";
+			const result = await main(["review", "main", "--json"], {
+				cwd: repo,
+				env: { ...process.env, ...gitEnv, XDG_CONFIG_HOME: noUserFiles, ...env },
+				color: false,
+				stdout: (text) => {
+					stdout += text;
+				},
+				stderr: (text) => {
+					stderr += text;
+				},
+			});
+			expect(result).toBe(2);
+			expect(JSON.parse(stdout)).toMatchObject({
+				error: { message: "review\u001b[2J" },
+				telemetry: { revision: expect.stringContaining(".."), stages: [] },
+			});
+			expect(stderr).not.toContain("\u001b");
+		},
+	);
+
+	it.each([new Error("timing\u001b[2J"), "timing\u001b[2J"])(
+		"keeps the verdict when telemetry cannot be read: %s",
+		async (error) => {
+			const { repo, env } = goldenCheckout(goldens["clean-rename"]!);
+			vi.spyOn(TelemetryReader.prototype, "read").mockRejectedValue(error);
+			let stdout = "";
+			let stderr = "";
+			const result = await reviewIn(
+				{
+					cwd: repo,
+					env: { ...process.env, ...gitEnv, XDG_CONFIG_HOME: noUserFiles, ...env },
+					color: false,
+					stdout: (text) => {
+						stdout += text;
+					},
+					stderr: (text) => {
+						stderr += text;
+					},
+				},
+				"main",
+				{ rerun: false, json: true },
+			);
+			expect(result).toBe(0);
+			expect(JSON.parse(stdout)).toMatchObject({ status: "passed", telemetry: { stages: [] } });
+			expect(stderr).toContain("timing\\u001b[2J");
+			expect(stderr).not.toContain("\u001b");
+		},
+	);
+
+	it("reports missing stage telemetry and rejects invalid telemetry arguments", () => {
+		const { repo, env } = goldenCheckout(goldens["clean-rename"]!);
+		expect(melian(repo, ["telemetry", "main"], env)).toMatchObject({
+			status: 1,
+			stderr: expect.stringContaining("No stage telemetry"),
+		});
+		expect(melian(repo, ["telemetry"], env)).toMatchObject({ status: 64 });
+		expect(melian(repo, ["telemetry", "main", "feature"], env)).toMatchObject({ status: 64 });
+	});
+
+	it("prints review JSON with no fabricated telemetry when failure precedes storage", () => {
+		const { repo, env } = goldenCheckout(goldens["clean-rename"]!);
+		writeFileSync(join(repo, "melian.yaml"), "tiers: [broken\n");
+		const result = melian(repo, ["review", "main", "--json"], env);
+		expect(result.status).toBe(2);
+		expect(result.stdout).toContain('"telemetry":null');
+		expect(JSON.parse(result.stdout)).toMatchObject({ error: { message: expect.any(String) }, telemetry: null });
+	});
 
 	it("includes durable stage telemetry in review JSON", () => {
 		const { repo, env } = goldenCheckout(goldens["clean-rename"]!);
@@ -180,7 +260,7 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 			stages: expect.arrayContaining([
 				expect.objectContaining({
 					name: "melian.check",
-					attributes: expect.objectContaining({ "melian.check": "guardrails" }),
+					subject: "guardrails",
 				}),
 				expect.objectContaining({ name: "melian.adjudication" }),
 			]),
@@ -188,7 +268,18 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(result.stderr).toMatch(/^melian: Slowest stages: .+/m);
 		const stored = melian(repo, ["telemetry", "main", "--json"], env);
 		expect(stored.status).toBe(0);
-		expect(JSON.parse(stored.stdout)).toMatchObject({ reviews: [output.telemetry] });
+		expect(JSON.parse(stored.stdout)).toEqual(output.telemetry);
+		const shown = melian(repo, ["telemetry", "main"], env);
+		expect(shown.status).toBe(0);
+		expect(shown.stdout).toContain("melian.check guardrails completed");
+		const attached = melian(repo, ["review", "main", "--json"], env);
+		expect(attached.status).toBe(0);
+		const again = JSON.parse(attached.stdout) as { telemetry: { stages: { id: string; reused: boolean }[] } };
+		expect(again.telemetry.stages.map(({ id }) => id)).toEqual(
+			(output.telemetry.stages as { id: string }[]).map(({ id }) => id),
+		);
+		expect(again.telemetry.stages.every(({ reused }) => reused)).toBe(true);
+		expect(attached.stderr).toContain("(reused)");
 	});
 
 	it("triages through the decider the host hands it, and records the decision the lenses ran under", async () => {
@@ -318,7 +409,7 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 
 		const review = melian(repo, ["review", "main"], env);
 
-		expect(review).toMatchObject({ status: 0, stderr: verifierWarnings });
+		expect({ ...review, stderr: planWarnings(review.stderr) }).toMatchObject({ status: 0, stderr: verifierWarnings });
 		const stored = melian(repo, ["findings", "main", "--json"], env);
 		expect(stored.status).toBe(0);
 		const verdict = Verdict.from(JSON.parse(stored.stdout) as StoredVerdict);
@@ -337,7 +428,7 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		const review = melian(repo, ["review", "main"], env);
 
 		expect(review.status).toBe(2);
-		expect(review.stderr).toBe(
+		expect(planWarnings(review.stderr)).toBe(
 			"melian: melian.yaml sets decisions.provider to clef, and Melian has no adapter for a decision provider until milestone 4; remove the key, and triage runs on the LLM fallback\n",
 		);
 		expect(review.stdout).toBe("");
@@ -355,7 +446,7 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		const review = melian(repo, ["review", "main"], env);
 
 		expect(review.status).toBe(0);
-		expect(review.stderr).toBe(
+		expect(planWarnings(review.stderr)).toBe(
 			"melian: Plan: heavy runs faux/scripted, set by --model; the committed route wants anthropic/claude-opus-5-5, and does not accept faux/scripted\n" +
 				verifierWarnings,
 		);
@@ -402,7 +493,7 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		const review = melian(repo, ["review", "main"], xdg);
 
 		expect(review.status).toBe(0);
-		expect(review.stderr).toBe(verifierWarnings);
+		expect(planWarnings(review.stderr)).toBe(verifierWarnings);
 		expect(review.stdout).not.toContain("SENTINEL");
 	});
 
@@ -433,7 +524,7 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		const findings = melian(repo, ["findings", "main"], env);
 
 		expect(findings.status).toBe(0);
-		expect(findings.stderr).toBe(review.stderr);
+		expect(findings.stderr).toBe(planWarnings(review.stderr));
 		expect(findings.stderr).toContain("melian: Plan: heavy runs faux/scripted, set by --model");
 		expect(melian(repo, ["findings", "main", "--json"], env).stderr).toBe("");
 	});
@@ -550,7 +641,7 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 
 		const review = melian(repo, ["review", "main"], scriptFile({ pay: [{ text: "Reported 0 findings." }] }));
 
-		expect(review).toMatchObject({ status: 0, stderr: verifierWarnings });
+		expect({ ...review, stderr: planWarnings(review.stderr) }).toMatchObject({ status: 0, stderr: verifierWarnings });
 		expect(review.stdout).toContain("lens.pay  careful");
 	});
 
@@ -559,7 +650,7 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 
 		const review = melian(repo, ["review", "main"], env);
 
-		expect(review).toMatchObject({ status: 0, stderr: verifierWarnings });
+		expect({ ...review, stderr: planWarnings(review.stderr) }).toMatchObject({ status: 0, stderr: verifierWarnings });
 		const verdict = JSON.parse(melian(repo, ["findings", "main", "--json"], env).stdout) as StoredVerdict;
 		expect(verdict.notRun.map((check) => check.name)).toEqual(["decisions.fast"]);
 	});

@@ -8,7 +8,9 @@ A review records findings and spend, but no stage duration. A 240-line round too
 
 ## Decision
 
-Ask Pi for the facts it already stores. Derive lens, verifier-candidate and walkthrough intervals from their durable transcripts at read time. Add no records to those tasks. Each deterministic stage stores its first start through `runtime.memo("telemetry.start", runtime.now())`. Its own terminal commit copies that start and an end from `runtime.now()` into a task-scoped `melian.stage-timing` document. Triage, each check, adjudication and publication use this record. There is no shared root timing document, counter or per-call log.
+Ask Pi for the facts it already stores. Derive lens, verifier-candidate and walkthrough intervals from their durable transcripts at read time. Add no records to those tasks. Each deterministic stage stores its first start through `runtime.memo("telemetry.start", runtime.now())`. Its own terminal commit copies that start and an end from `runtime.now()` into its own `melian.stage-timing` document-family member, keyed by task ID. Triage, each check, adjudication and publication use this record. There is no shared root timing document, counter or per-call log.
+
+Pi retires literal `scope: "task"` documents in the terminal commit, including documents created in that commit. The storage probe and SQLite reopen tests reproduced their disappearance. Use conversation document families for timing and check sources, with a separate member per task ID. This scopes each value to its producing task without a shared root value or counter, and retains it after settlement. This is an implementation correction to the attack's proposed Pi scope.
 
 Pi Durable 1.0.0 has no task timestamps. Upgrade Pi Durable, pi-ai and Chord to 1.1.0, which introduced durable task `startedAt` and `endedAt`. The installed declarations and changelog define these as the first running transition and the terminal transition, using the harness clock. A faulted task's end comes from that task record: Melian has no terminal commit in which to record it. Never sample the read clock as a substitute.
 
@@ -16,7 +18,7 @@ Pi Durable 1.0.0 has no task timestamps. Upgrade Pi Durable, pi-ai and Chord to 
 
 The vocabulary is `melian.triage`, `melian.check`, `melian.lens`, `melian.verification.candidate`, `melian.adjudication`, `melian.walkthrough` and `melian.publication`. Each row names its task and, for a model stage, its conversation. A lens subject includes name, version and level. Quick and escalated runs have separate intervals. A verifier subject names its candidate. No synthetic parent interval is added to its children.
 
-Read the review, decisions, checks and summary indexes to select a revision's tasks. A task-scoped check-source map keeps each check's producing task, including checks kept across repeated `--rerun` calls. This map stays outside check records and inputs. Publication selects by its stored target revision, so review, dismiss, publish records publication even after dismissal replaces adjudication. Retired tasks cannot supply the current review's model stages.
+Read the review, decisions, checks and summary indexes to select a revision's tasks. A per-task check-source map keeps each check's producing task, including checks kept across repeated `--rerun` calls. This map stays outside check records and inputs. Publication selects by its stored target revision, so review, dismiss, publish records publication even after dismissal replaces adjudication. Retired tasks cannot supply the current review's model stages.
 
 Telemetry never enters task inputs, attach keys, findings, verdicts or publication fingerprints. Repeating a review attaches to the same tasks. No timing record grows when a caller attaches or reads. Storage grows with stages, not calls. One process owns each store at a time, as Pi requires; task-scoped records do not add cross-process locking.
 
@@ -30,7 +32,7 @@ Spend comes from Pi's `UsageDoc`, once per conversation, with model names, token
 
 A deterministic task's start is first-writer-wins. Its end and result share a terminal commit. The interval measures wall time until the result became durable, including interruption before settlement. The call marks an interval reused when its end precedes the call, and resumed when its start precedes the call and its end does not. Kept check sources are always marked reused.
 
-Instrumented deterministic task versions increase. Migration marks a legacy checkpoint; such a task never stamps a new start. Its row says timing unavailable, with a note explaining the older build. Completed old tasks without a start get the same note. Model transcripts already carry timestamps across upgrades.
+Instrumented deterministic task versions increase. Migration marks a legacy checkpoint; such a task never stamps a new start. Its first resumed phase records a legacy marker in its own timing member. That marker survives a fault, whose Pi outcome clears memos and checkpoints. Its row says timing unavailable, with a note explaining the older build. Completed old tasks without a start get the same note. Model transcripts already carry timestamps across upgrades.
 
 Retain both timestamps when the host clock regresses, clamp the duration to zero and mark `clockRegressed`. Intervals across hosts compare different clocks; a forward skew cannot be detected. Do not add overlapping intervals as total elapsed review time.
 

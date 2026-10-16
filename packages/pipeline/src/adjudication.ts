@@ -23,6 +23,7 @@ import { findingsVersion, type Producer, readFindings, revisionKey, seenBefore }
 import { type Context, type ConversationId, type DocumentReader, defineDoc, defineTask } from "./harness.ts";
 import type { StoredBudgetEnd } from "./lens-tools.ts";
 import { ReviewIndex } from "./review-index.ts";
+import { TaskTiming } from "./task-timing.ts";
 
 // Type aliases with mutable arrays, not core's interfaces: a document's value must satisfy Pi's JsonObject.
 type StoredAlias = string[] | { rules: string[]; distinct?: boolean };
@@ -200,12 +201,21 @@ export type AdjudicationResult = "recorded" | "superseded";
 // `VerdictDocument` under that revision. It reads, decides, and writes in one phase that ends in one commit, so a
 // rerun after a crash writes the same verdict again. It records nothing once the review index names another task for
 // the revision, so a crashed task that resumes late cannot overwrite a newer review's verdict.
-export const AdjudicationTask = defineTask<AdjudicationTaskInput, { phase: "adjudicate" }, AdjudicationResult>({
+export const AdjudicationTask = defineTask<
+	AdjudicationTaskInput,
+	{ phase: "adjudicate"; legacyTiming?: true },
+	AdjudicationResult
+>({
 	name: "melian.adjudication",
-	version: 1,
+	version: 2,
+	migrate: (input, checkpoint) => ({
+		input: input as AdjudicationTaskInput,
+		checkpoint: { ...(checkpoint as { phase: "adjudicate" }), legacyTiming: true },
+	}),
 	initial: () => ({ phase: "adjudicate" }),
 	phases: {
 		adjudicate: async (task, runtime, context) => {
+			const timing = await TaskTiming.start(runtime, task.state.checkpoint.legacyTiming, context);
 			const { root, repoRoot, base, head, policy, config, manifest, checks, allowSkip, producers } = task.input;
 			const revision = revisionKey({ base, head });
 			// Read before the findings, so a write that lands between the two reads makes the verdict look older, never
@@ -245,13 +255,14 @@ export const AdjudicationTask = defineTask<AdjudicationTaskInput, { phase: "adju
 				// A lens file is policy too: its declared resolution is read with the finding's configuration.
 				if (!(error instanceof ConfigError) && !(error instanceof LensError)) throw error;
 				const failure = { message: error.message };
-				await runtime.commit(
-					() => ({ status: "terminal", outcome: { status: "failed", error: failure } }),
-					context,
-				);
+				await runtime.commit(async (tx) => {
+					await timing.end(tx);
+					return { status: "terminal", outcome: { status: "failed", error: failure } };
+				}, context);
 				return;
 			}
 			await runtime.commit(async (tx) => {
+				await timing.end(tx);
 				const current = (await tx.doc(ReviewIndex, root)).reviews[revision]?.adjudication?.task;
 				// An entry without an adjudication task was replaced by a review that has not created one yet.
 				if (current !== runtime.taskId) {
@@ -268,7 +279,11 @@ export const AdjudicationTask = defineTask<AdjudicationTaskInput, { phase: "adju
 		},
 	},
 	abort: async (_task, runtime, context) => {
-		await runtime.commit(() => ({ status: "terminal", outcome: { status: "aborted" } }), context);
+		const timing = await TaskTiming.read(runtime, context);
+		await runtime.commit(async (tx) => {
+			await timing.end(tx);
+			return { status: "terminal", outcome: { status: "aborted" } };
+		}, context);
 	},
 });
 

@@ -34,7 +34,9 @@ import {
 	reviewChangeset,
 	revisionKey,
 	runChecks,
+	StageTelemetry,
 	summarizeReview,
+	TelemetryReader,
 	type WriterTrust,
 } from "@melian-agent/pipeline";
 import {
@@ -106,8 +108,10 @@ export async function review(
 		readonly walkthrough?: boolean;
 		readonly trustHead?: boolean;
 		readonly cold?: boolean;
+		readonly json?: boolean;
 	},
 ): Promise<number> {
+	const beganAt = Date.now();
 	const target = parseTarget(argument);
 	let changeset: Changeset;
 	let source: RepositorySource;
@@ -187,7 +191,8 @@ export async function review(
 	const path = await storagePath(repoRoot, changeset.id, io.env, isScripted(io.env));
 	// Without the publish extension, so a publication a crash interrupted waits for melian publish rather than posting
 	// from a review.
-	const reviewHarness = await openReviewHarness(await openStorage(path), models, {
+	const storage = await openStorage(path);
+	const reviewHarness = await openReviewHarness(storage, models, {
 		retry,
 		checkout: repoRoot,
 		...triage.harnessOptions(),
@@ -284,10 +289,47 @@ export async function review(
 				},
 			});
 		const outcome = new ReviewOutcome(verdict);
-		io.stdout(outcome.render(io.color));
+		const timings = await reviewTimings(storage, revisionKey(changeset.revision), beganAt, io);
+		io.stderr(timings.slowest());
+		io.stdout(
+			options.json
+				? `${JSON.stringify({ ...JSON.parse(verdict.renderJson()), telemetry: timings.toJSON() }, null, 2)}\n`
+				: outcome.render(io.color),
+		);
 		return outcome.exitCode();
+	} catch (error) {
+		const timings = await reviewTimings(storage, revisionKey(changeset.revision), beganAt, io);
+		io.stderr(timings.slowest());
+		if (options.json)
+			io.stdout(
+				`${JSON.stringify(
+					{
+						error: { message: error instanceof Error ? error.message : String(error) },
+						telemetry: timings.toJSON(),
+					},
+					null,
+					2,
+				)}\n`,
+			);
+		throw error;
 	} finally {
 		await reviewHarness.close(context);
+	}
+}
+
+async function reviewTimings(
+	storage: Awaited<ReturnType<typeof openStorage>>,
+	revision: string,
+	before: number,
+	io: Io,
+): Promise<StageTelemetry> {
+	try {
+		return await TelemetryReader.open(storage).read(revision, before);
+	} catch (error) {
+		io.stderr(
+			`melian: Stage timings unavailable: ${visibleText(error instanceof Error ? error.message : String(error))}\n`,
+		);
+		return new StageTelemetry(revision, []);
 	}
 }
 
@@ -529,5 +571,20 @@ export async function dismiss(
 		return 0;
 	} finally {
 		await dismissHarness.close(context);
+	}
+}
+
+export async function telemetry(io: Io, argument: string, options: { readonly json: boolean }): Promise<number> {
+	const stored = await StoredReview.open(io, argument);
+	const path = await storagePath(stored.changeset.repoRoot, stored.changeset.id, io.env, isScripted(io.env));
+	if (!existsSync(path)) throw new CliError("No stage telemetry is stored for this revision.");
+	const storage = await openStorage(path);
+	try {
+		const timings = await TelemetryReader.open(storage).read(revisionKey(stored.changeset.revision));
+		if (timings.stages.length === 0) throw new CliError("No stage telemetry is stored for this revision.");
+		io.stdout(options.json ? `${JSON.stringify(timings.toJSON(), null, 2)}\n` : timings.render());
+		return 0;
+	} finally {
+		await storage.close(context);
 	}
 }

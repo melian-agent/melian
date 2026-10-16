@@ -25,6 +25,7 @@ import {
 	type Context,
 	type ConversationId,
 	defineDoc,
+	defineDocFamily,
 	defineExtension,
 	defineTask,
 	type ExecutionEnv,
@@ -35,6 +36,7 @@ import type { HeadTrust } from "./mutation-cache.ts";
 import { type MutationProcessHooks, MutationTree, type MutationTreeRecord } from "./mutation-process.ts";
 import { MutationRun, mutationInstallation, strykerVersion } from "./mutation-static.ts";
 import { runStaticTool, staticToolSource } from "./static.ts";
+import { TaskTiming } from "./task-timing.ts";
 import { ToolProvisioning } from "./tool-provisioning.ts";
 
 // Type aliases, not interfaces: a document's value must satisfy Pi's JsonObject, which an interface never does.
@@ -92,6 +94,16 @@ export const ChecksDocument = defineDoc<Runs>({
 		if (from < 3) throw new Error(`the checks document needs migrating from version ${from}, which Melian cannot do`);
 		return value as Runs;
 	},
+});
+
+export const CheckSources = defineDocFamily<{ tasks: Record<string, number> }, null>({
+	kind: "melian.check-sources",
+	family: true,
+	version: 1,
+	scope: "conversation",
+	history: "latest",
+	fork: "current",
+	initial: () => ({ tasks: {} }),
 });
 
 export const MutationProcesses = defineDoc<{ trees: Record<string, MutationTreeRecord> }>({
@@ -325,12 +337,17 @@ function ownsMutation(input: CheckInput, owners: Readonly<Record<string, string>
 // One check on one revision. Rerunning it after a crash runs the tools again on the same commits and writes the same
 // findings, so the task is safe to replay. The check's findings at this base and head are replaced, not added to, in
 // the commit that records it, so a failed rerun leaves none of an earlier run's findings behind.
-const CheckTask = defineTask<CheckInput, { phase: "run" }, CheckRunRecord>({
+const CheckTask = defineTask<CheckInput, { phase: "run"; legacyTiming?: true }, CheckRunRecord>({
 	name: "melian.check",
-	version: 2,
+	version: 3,
+	migrate: (input, checkpoint) => ({
+		input: input as unknown as CheckInput,
+		checkpoint: { ...(checkpoint as { phase: "run" }), legacyTiming: true },
+	}),
 	initial: () => ({ phase: "run" }),
 	phases: {
 		run: async (task, runtime, context) => {
+			const timing = await TaskTiming.start(runtime, task.state.checkpoint.legacyTiming, context);
 			const { check, changeset, run } = task.input;
 			await terminateMutation(runtime, runtime.conversationId, runtime.taskId, await runtime.env(context), context);
 			await runtime.commit(async (tx) => {
@@ -338,7 +355,10 @@ const CheckTask = defineTask<CheckInput, { phase: "run" }, CheckRunRecord>({
 			}, context);
 			const current = await runtime.snapshot(ChecksDocument, runtime.conversationId, context);
 			if (!ownsMutation(task.input, current?.owners)) {
-				await runtime.commit(() => ({ status: "terminal", outcome: { status: "aborted" } }), context);
+				await runtime.commit(async (tx) => {
+					await timing.end(tx);
+					return { status: "terminal", outcome: { status: "aborted" } };
+				}, context);
 				return;
 			}
 			let outcome: Outcome | undefined;
@@ -395,6 +415,7 @@ const CheckTask = defineTask<CheckInput, { phase: "run" }, CheckRunRecord>({
 			await runtime.commit(async (tx) => {
 				const { runs, owners } = await tx.doc(ChecksDocument, runtime.conversationId);
 				// The run may have lost the revision while its tests ran; what it found then belongs to nobody.
+				await timing.end(tx);
 				if (!ownsMutation(task.input, owners)) return { status: "terminal", outcome: { status: "aborted" } };
 				const findings = outcome?.report?.findings ?? [];
 				await replaceCheckFindings(tx, runtime.conversationId, check, revision, findings);
@@ -404,6 +425,7 @@ const CheckTask = defineTask<CheckInput, { phase: "run" }, CheckRunRecord>({
 		},
 	},
 	abort: async (_task, runtime, context) => {
+		const timing = await TaskTiming.read(runtime, context);
 		await terminateMutation(
 			runtime,
 			runtime.conversationId,
@@ -413,6 +435,7 @@ const CheckTask = defineTask<CheckInput, { phase: "run" }, CheckRunRecord>({
 		);
 		await runtime.commit(async (tx) => {
 			delete (await tx.doc(MutationProcesses, runtime.conversationId)).trees[String(runtime.taskId)];
+			await timing.end(tx);
 			return { status: "terminal", outcome: { status: "aborted" } };
 		}, context);
 	},
@@ -458,6 +481,7 @@ const ChecksTask = defineTask<ChecksInput, ChecksState, CheckRunRecord[]>({
 			}
 			await runtime.commit(async (tx) => {
 				const { runs } = await tx.doc(ChecksDocument, runtime.conversationId);
+				const sources = await tx.doc(CheckSources, runtime.conversationId, String(runtime.taskId), null);
 				const records: Record<string, CheckRunRecord> = {};
 				const tasks: Record<string, number> = {};
 				for (const check of checks) {
@@ -482,6 +506,7 @@ const ChecksTask = defineTask<ChecksInput, ChecksState, CheckRunRecord[]>({
 							},
 							{ ownership: { kind: "task", taskId: runtime.taskId } },
 						);
+						sources.tasks[check] = tasks[check]!;
 						continue;
 					}
 					const reason = skippedReason(check);
@@ -675,6 +700,14 @@ export async function runChecks(harness: Harness, input: RunChecksInput, context
 			const created = await tx.createTask(ChecksTask, rerun === undefined ? task : { ...task, rerun }, {
 				ownership: { kind: "conversation" },
 			});
+			if (stale !== undefined) {
+				const previous = await tx.doc(CheckSources, root.id, String(stale), null);
+				const sources = await tx.doc(CheckSources, root.id, String(created), null);
+				for (const name of Object.keys(rerun?.kept ?? {})) {
+					const source = previous.tasks[name];
+					if (source !== undefined) sources.tasks[name] = source;
+				}
+			}
 			runs.tasks[key] = created;
 			if (knownTier) {
 				runs.owners ??= {};

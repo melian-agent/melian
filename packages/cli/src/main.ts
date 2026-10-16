@@ -7,7 +7,7 @@ import {
 	type StoredComparisonAdjudication,
 	visibleText,
 } from "@melian-agent/core";
-import { dismiss, findings, type Io, publish, review, reviewExitCodes } from "./commands.ts";
+import { dismiss, findings, type Io, publish, review, reviewExitCodes, telemetry } from "./commands.ts";
 import {
 	adjudicateComparison,
 	compare,
@@ -32,6 +32,7 @@ Commands:
   publish <#pr>          Post the stored review of the pull request's current head to GitHub.
   findings <range|#pr>   Print the stored review. --open prints only findings that need attention, --all silent and
                          dismissed findings too; --json prints JSON.
+  telemetry <range|#pr>  Read durable stage timings without running tasks. --json prints JSON.
   dismiss <range|#pr> <id> --reason <text> [--only]
                          Dismiss a finding of the stored review, with a reason, and decide its verdict again. It
                          dismisses every report merged into the finding unless --only names one report alone.
@@ -64,7 +65,7 @@ Options:
                          checked-out work, such as a fork's; pass it only for code you have read (review).
   --cold                 Run the mutation check without an earlier head's results; only a cold run can pass the
                          review, so run it before the queue (review).
-  --open, --all, --json  For findings.
+  --open, --all, --json  For findings; --json also applies to review and telemetry.
   --reason <text>        Dismissal reason, or owned-missed, no-owner, needs-execution, out-of-scope (adjudicate).
   --only                 Dismiss the report the ID names alone, leaving the reports merged with it live (dismiss).
   --from <source>        Where to import external findings from; repeat it for several (compare).
@@ -108,6 +109,8 @@ function one(positionals: readonly string[], command: string, what: string): str
  */
 export async function main(args: readonly string[], io: Io): Promise<number> {
 	let command: string | undefined;
+	let jsonReview = false;
+	let printed = false;
 	try {
 		const { values, positionals } = parseArgs({
 			args: [...args],
@@ -141,6 +144,7 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 		});
 		const [name, ...rest] = positionals;
 		command = name;
+		jsonReview = name === "review" && values.json;
 		if (values.help || name === "help") {
 			io.stdout(usage);
 			return 0;
@@ -152,13 +156,26 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 		const scoped: Io = { ...io, color: io.color && values.color };
 		switch (name) {
 			case "review":
-				return await review(scoped, one(rest, name, "range or pull request"), {
-					...(values.model === undefined ? {} : { model: values.model }),
-					rerun: values.rerun,
-					walkthrough: values.walkthrough,
-					trustHead: values["trust-head"],
-					cold: values.cold,
-				});
+				return await review(
+					values.json
+						? {
+								...scoped,
+								stdout: (text) => {
+									printed = true;
+									scoped.stdout(text);
+								},
+							}
+						: scoped,
+					one(rest, name, "range or pull request"),
+					{
+						...(values.model === undefined ? {} : { model: values.model }),
+						rerun: values.rerun,
+						walkthrough: values.walkthrough,
+						trustHead: values["trust-head"],
+						cold: values.cold,
+						...(values.json ? { json: true } : {}),
+					},
+				);
 			case "publish":
 				return await publish(scoped, one(rest, name, "pull request"), { walkthrough: values.walkthrough });
 			case "findings":
@@ -168,6 +185,8 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 					all: values.all,
 					json: values.json,
 				});
+			case "telemetry":
+				return await telemetry(scoped, one(rest, name, "range or pull request"), { json: values.json });
 			case "dismiss": {
 				if (rest.length !== 2) throw new UsageError("dismiss takes a range or pull request and a finding ID");
 				const [target, id] = rest as [string, string];
@@ -285,6 +304,10 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 			io.stderr("Run melian --help for usage.\n");
 			return usageExitCode;
 		}
+		if (jsonReview && !printed)
+			io.stdout(
+				`${JSON.stringify({ error: { message: error instanceof Error ? error.message : String(error) }, telemetry: null })}\n`,
+			);
 		return command === "review" ? reviewExitCodes.notReviewed : 1;
 	}
 }

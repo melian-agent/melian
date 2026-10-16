@@ -110,5 +110,6 @@ export { EnolaCoverage } from "./enola-coverage.ts";
 export { GraphCache } from "./graph-cache.ts";
 export { ReviewTranscript } from "./review-coverage.ts";
 export { summarizeReview } from "./summarize.ts";
+export { type Stage, StageTelemetry, TelemetryReader } from "./telemetry.ts";
 export { type ToolBinaryReceipt, ToolCache, ToolCacheError, type ToolFetch } from "./tool-cache.ts";
 export { CacheLocation, ToolProvisioning } from "./tool-provisioning.ts";

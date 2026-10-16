@@ -162,11 +162,11 @@ Steps 22 to 26 come from the review loop's lessons, which [design.md](design.md#
 
 Not yet scheduled, from the same research: the comparison importer counts a CodeRabbit thread the bot resolved, citing a fixing commit, as an accepted finding. It is a follow-up to step 15, as [decisions/2026-10-12-lens-roadmap-after-the-research.md](decisions/2026-10-12-lens-roadmap-after-the-research.md) records.
 
-31. `[~]` **Stage telemetry.** [The decision](decisions/2026-10-16-stage-telemetry.md) adopts transcript intervals and task-scoped deterministic timings after the attacking review. Steps 28 to 30 are reserved by [pull request #134](https://github.com/melian-agent/melian/pull/134). Unblocks explaining a slow round from stored evidence.
+31. `[~]` **Stage telemetry.** Built on the branch; host validation and review remain. [The decision](decisions/2026-10-16-stage-telemetry.md) adopts transcript intervals and per-task deterministic timings after the attacking review. Steps 28 to 30 are reserved by [pull request #134](https://github.com/melian-agent/melian/pull/134). Unblocks explaining a slow round from stored evidence.
     - Derive lens, verifier-candidate and walkthrough intervals from durable transcripts. Memoise starts for triage, each check, adjudication and publication; record ends in each task's terminal commit. Pi task records supply fault ends.
     - Preserve timing across crashes, attachments and partial check reruns. Keep timing out of inputs and attach keys. Store nothing per call. Defer pi-telemetry until Pi Durable passes a context.
     - Expose review JSON, one slowest-stages line and detached `melian telemetry <range|#pr> [--json]` reads. Preserve spend without counting reused work twice.
-    - Prove changed guards by mutation, run the mutation check and whole gate, and add a progress-log entry. Version deterministic task checkpoints and reopen fixtures written by the preceding build.
+    - Prove changed guards by mutation, run the mutation check and whole gate, and add a progress-log entry. Version deterministic task checkpoints and reopen fixtures written by the preceding build. Pi retires literal task-scoped documents at settlement, so each task owns a separate conversation-family member keyed by its ID.
 
 ### Milestone 2 in flight, 2026-10-13
 

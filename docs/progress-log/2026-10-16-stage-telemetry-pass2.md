@@ -1,0 +1,9 @@
+# Stage telemetry: pass 2
+
+[Pull request #135](https://github.com/melian-agent/melian/pull/135) implements the smaller design after its attack. Step 31 remains in review. `7740b828` upgrades Pi to 1.1.0 and adopts transcript timestamps and Pi’s fault times. `cd9debf5` fixes the existing recorded-review-error escaping defect. The implementation commit, “feat: explain slow reviews from durable stage times”, adds the reader, deterministic timings and CLI output.
+
+Lens, verifier-candidate and walkthrough intervals come from durable transcripts. Deterministic stages memoise their first start and record an end with their terminal result. Each task has its own document-family member: Pi retires literal task-scoped documents in the terminal commit. A per-parent check-source member preserves checks kept across reruns. Nothing grows per call or enters an attach key. A legacy marker survives faults without inventing a start.
+
+The tests cover real process kills before and after model settlement, faults, old-version reopening, three check runs, dismissal before publication, attachment, unchanged detached reads, timeout ranking, terminal escaping, spend and pagination. The CLI exposes `telemetry` and `review --json`. A timing read error cannot change the verdict’s exit code.
+
+Manual proof killed 107 distinct mutations, including all 14 terminal timing-write sites. The whole gate passed lint, types, dependency checks and its configured audit threshold. Vitest reported 4,360 passed, four failed and 53 skipped, with no timeout. All four failures require `ps`, which this sandbox denies. The report and full mutation inventory stay under `tmp/`. The sandbox denies `ps`, which the official mutation runner and four process tests require. The coordinator must run the full host gate and the mutation-only review. No live model or review round was run, and no comparison record was edited.
