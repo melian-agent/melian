@@ -504,7 +504,7 @@ export async function dismiss(
 			}
 			throw error;
 		});
-		const { finding, also, replaced, verdict } = recorded;
+		const { finding, also, live, replaced, verdict } = recorded;
 		const { ruleId } = finding;
 		const { path: file, id: shown } = finding.properties;
 		const line = finding.locations[0]!.physicalLocation.region.startLine;
@@ -520,6 +520,12 @@ export async function dismiss(
 			);
 			io.stdout(`Also dismissed, as reports adjudication merged into it:\n${reports.join("")}`);
 			io.stdout(`To dismiss one report alone, run melian dismiss with --only.\n`);
+		}
+		if (live.length > 0) {
+			const reports = live.map(
+				(other) => `  ${visibleText(other.ruleId)} from ${visibleText(other.check)} (${other.id})\n`,
+			);
+			io.stdout(`Still live, merged with it before:\n${reports.join("")}`);
 		}
 		io.stdout(`Verdict now: ${verdictWords[verdict.status]}${verdict.blocking ? ", blocking" : ""}.\n`);
 		const target = parseTarget(argument);

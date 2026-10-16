@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { type AlsoReportedAs, type Finding, Verdict } from "@melian-agent/core";
+import { type AlsoReportedAs, Finding, Verdict } from "@melian-agent/core";
 import {
 	type AdjudicationResult,
 	AdjudicationTask,
@@ -73,8 +73,8 @@ export interface DismissalOptions {
 	readonly dismissal: Dismissal;
 	/**
 	 * Dismiss the report `id` names alone, leaving every other report adjudication merged with it live. By default the
-	 * ID of the finding that speaks dismisses it as the verdict shows it, with every report merged into it, and the ID of
-	 * a report merged into it dismisses that report alone.
+	 * ID of the finding that speaks dismisses it with every report merged into it by snippet, a report that joined it
+	 * only through a hunk stays live, and the ID of a report merged into it dismisses that report alone.
 	 */
 	readonly only?: boolean;
 	/**
@@ -91,6 +91,11 @@ export interface RecordedDismissal {
 	readonly finding: Finding;
 	/** The reports adjudication had merged into the finding, dismissed with it: none with `only`, or for a member's ID. */
 	readonly also: readonly AlsoReportedAs[];
+	/**
+	 * The reports of the defect the dismissal left live: the speaker, for a member's ID or with `only`, and the members
+	 * that joined it only through a hunk.
+	 */
+	readonly live: readonly AlsoReportedAs[];
 	/** The dismissal this one replaced, when the finding was dismissed already with another reason or dismisser. */
 	readonly replaced?: Dismissal;
 	readonly verdict: Verdict;
@@ -115,7 +120,7 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 	const where = { revision, finding: id };
 	const root = await harness.root(context);
 	const again = "run melian review again";
-	const { replaced, also, task } = await root.commit(async (tx) => {
+	const { replaced, also, live, task } = await root.commit(async (tx) => {
 		// Read in the commit, so a review that recorded another verdict a moment before decides what the ID names.
 		const stored = (await tx.doc(VerdictDocument, root.id)).verdicts[revision];
 		if (stored === undefined) throw new DismissError("notReviewed", `Melian has no review of ${revision}`, where);
@@ -123,9 +128,21 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 		if (found === undefined) {
 			throw new DismissError("unknownFinding", `the review of ${revision} has no finding ${id}`, where);
 		}
-		// The finding as the verdict shows it: its own report and every report adjudication merged into it, so dismissing
-		// one defect never leaves another check's report of it live, unless the caller asked for the one report alone.
-		const reports = found.dismiss(id, options.only);
+		const recorded = (await tx.doc(FindingsDocument, root.id)).items;
+		// A report's site at this revision, as the snippet pass groups by. A member at another site joined the speaker only
+		// through a hunk, so its text was never the speaker's, and dismissing the speaker leaves it live.
+		const siteOf = (report: string) => {
+			const [sighting] = Object.values(recorded[report]?.sightings[revision] ?? {});
+			return sighting && Finding.from({ ...sighting, properties: { ...sighting.properties, status: "new" } }).site();
+		};
+		const site = siteOf(found.speaker.id);
+		const apart = new Set(
+			found.members.flatMap((other) => (site !== undefined && siteOf(other.id) === site ? [] : [other.id])),
+		);
+		// The finding as the verdict shows it: its own report and every report the snippet pass merged into it, so
+		// dismissing one defect never leaves another check's report of the same code live, unless the caller asked for
+		// the one report alone.
+		const reports = found.dismiss(id, options.only, apart);
 		const [own] = reports;
 		const index = await tx.doc(ReviewIndex, root.id);
 		const entry = index.reviews[revision];
@@ -133,7 +150,6 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 		if (entry === undefined || known === undefined) {
 			throw new DismissError("notReviewed", `Melian has no adjudication of ${revision} to repeat; ${again}`, where);
 		}
-		const recorded = (await tx.doc(FindingsDocument, root.id)).items;
 		const dismissed = [...new Set(reports)].filter((report) => Object.hasOwn(recorded, report));
 		let replaced: Dismissal | undefined;
 		for (const report of dismissed) {
@@ -152,14 +168,17 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 		const also = found.members
 			.filter((other) => other.id !== own && dismissed.includes(other.id))
 			.map((other) => ({ ...other }));
+		const live = [found.speaker.report(), ...found.members]
+			.filter((other) => !reports.includes(other.id))
+			.map((other) => ({ ...other }));
 		// The same dismissal again, as after a dismiss a crash cut short, waits for the adjudication it started, unless
 		// that ended without deciding, failed included, as a review would rerun it.
 		if (known.input === key && (await attachable(tx, known.task, [...undecided, "failed"]))) {
-			return { replaced, also, task: known.task as TaskId<AdjudicationResult> };
+			return { replaced, also, live, task: known.task as TaskId<AdjudicationResult> };
 		}
 		const task = await tx.createTask(AdjudicationTask, input, { ownership: { kind: "conversation" } });
 		index.reviews = { ...index.reviews, [revision]: { ...entry, adjudication: { task, input: key } } };
-		return { replaced, also, task };
+		return { replaced, also, live, task };
 	}, context);
 	harness.resume();
 	const blocked = (await harness.inspect(context)).tasks.some(
@@ -197,5 +216,5 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 			where,
 		);
 	}
-	return { finding, also, ...(replaced === undefined ? {} : { replaced }), verdict };
+	return { finding, also, live, ...(replaced === undefined ? {} : { replaced }), verdict };
 }
