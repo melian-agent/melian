@@ -2574,6 +2574,28 @@ describe("reviewChangeset", () => {
 			expect((error as Error).message).toContain("503 overloaded_error");
 		});
 
+		it("moves a lens on from a provider's usage limit, which only that provider hits", async () => {
+			const answeredBy: string[] = [];
+			scriptConversations(fake, [
+				{
+					match: correctness,
+					replies: [
+						fauxAssistantMessage("", {
+							stopReason: "error",
+							errorMessage: '429 {"error":{"type":"subscription_sharing_usage_limit_exceeded"}}',
+						}),
+						(_, model) => {
+							answeredBy.push(model);
+							return fauxAssistantMessage("Done.");
+						},
+					],
+				},
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+			expect(await review({ config: withBackup() })).toEqual([]);
+			expect(answeredBy).toEqual(["backup"]);
+		});
+
 		it("does not move on from a failure another model would not fix", async () => {
 			scriptConversations(fake, [
 				{
