@@ -103,7 +103,7 @@ describe("runStaticTool with Melian's own tools", () => {
 		const execute = env.exec.bind(env);
 		const cleanup: string[] = [];
 		vi.spyOn(env, "exec").mockImplementation(async (command, options, executionContext) => {
-			if (command.includes("worktree remove --force --force")) {
+			if (typeof command === "string" && command.includes("worktree remove --force --force")) {
 				cleanup.push(command);
 				if (cleanup.length === 1)
 					return { ok: false, error: { name: "ExecutionError", code: "timeout", message: "cleanup timed out" } };
@@ -384,7 +384,7 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 		const env = createNodeExecutionEnv(repo);
 		const execute = env.exec.bind(env);
 		vi.spyOn(env, "exec").mockImplementation(async (command, options, executionContext) => {
-			if (command.includes("worktree remove --force --force")) {
+			if (typeof command === "string" && command.includes("worktree remove --force --force")) {
 				return { ok: false, error: { name: "ExecutionError", code: "timeout", message: "cleanup timed out" } };
 			}
 			return execute(command, options, executionContext);
@@ -464,7 +464,11 @@ describe("runStaticTool and a stale worktree that cannot be removed", () => {
 		const execute = env.exec.bind(env);
 		const attempted: string[] = [];
 		vi.spyOn(env, "exec").mockImplementation(async (command, options, executionContext) => {
-			if (command.includes("worktree remove --force --force") && command.includes(owner)) {
+			if (
+				typeof command === "string" &&
+				command.includes("worktree remove --force --force") &&
+				command.includes(owner)
+			) {
 				attempted.push(command);
 				return { ok: false, error: { name: "ExecutionError", code: "timeout", message: "cleanup timed out" } };
 			}
