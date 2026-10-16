@@ -1433,10 +1433,10 @@ export class Finding {
 
 	/** Whether one check reported both findings, as the one that won either's ID or as one that sighted it. */
 	sharesReporter(other: Finding): boolean {
-		const checks = (finding: Finding) => {
-			const { source, reportedBy = [source] } = finding.properties;
-			return [source.check, ...reportedBy.map(({ check }) => check)];
-		};
+		const checks = ({ properties }: Finding) => [
+			properties.source.check,
+			...(properties.reportedBy ?? []).map(({ check }) => check),
+		];
 		const theirs = checks(other);
 		return checks(this).some((check) => theirs.includes(check));
 	}

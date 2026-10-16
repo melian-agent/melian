@@ -250,6 +250,26 @@ describe("the design golden that supersedes its own decision", () => {
 		}
 	});
 
+	it("names a dismissed report beside a hunk group only when it shares a part's snippet or meets every report", () => {
+		const [a, b] = [design, trustBoundary].map((spec) => report(revision, spec));
+		const dismissedAt = (check: string, range: [number, number]) => {
+			const each = on(check, range);
+			return Finding.from({ ...each.toJSON(), properties: { ...each.properties, status: "dismissed" } });
+		};
+		const listed = (gone: Finding, hunks = true) => {
+			const at = hunks ? revision : undefined;
+			const input = { findings: [a!, b!, gone], manifest: [], checks: [], config: defaultConfig, revision: at };
+			const live = new Adjudication(input).dedupe().find((each) => each.properties.status !== "dismissed")!;
+			return (live.properties.alsoReportedAs ?? []).some((other) => other.id === gone.properties.id);
+		};
+		// The trust-boundary lens reported b, so this one meets b by nothing, but it shares the design report's snippet.
+		expect(listed(dismissedAt("lens.trust-boundary", [6, 7]))).toBe(true);
+		// Line 5 meets b through the hunk, but not the design report at lines 6-7.
+		expect(listed(dismissedAt("lens.correctness", [5, 5]))).toBe(false);
+		// Without the revision there is no hunk to meet through.
+		expect(listed(dismissedAt("lens.correctness", [5, 6]), false)).toBe(false);
+	});
+
 	it("keeps a deterministic report on the hunk apart from the lens defect", () => {
 		const lens = report(revision, design);
 		// At line 6 the mutant's group comes before the lens report's, at line 7 after it.
