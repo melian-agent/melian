@@ -860,7 +860,9 @@ describe("lowered sightings", () => {
 		const { harness, root } = await open(createMemoryStorage());
 		const other = { check: "lens.contracts", version: "1" };
 		const standing = Finding.create({ ...input, severity: "P2", source: other, failureScenario: "It fails." });
-		await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
+		// A claim needs a failure scenario or evidence for a verdict to refute it.
+		const refuted = Finding.create({ ...input, failureScenario: "eval('1') runs." });
+		await root.commit((tx) => upsertFinding(tx, root.id, refuted, "rev1"), context);
 		await root.commit((tx) => upsertFinding(tx, root.id, standing, "rev1"), context);
 		await judge(root, { ...record, verdict: "refuted" });
 		await judge(root, record, other);

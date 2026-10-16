@@ -170,17 +170,22 @@ function compareSources(a: FindingSource, b: FindingSource): number {
 // and every other sighting's claim, so a P1 whose cause location overlaps the change, beside a P0 whose evidence proves
 // nothing, reads as an affected P0 that still carries the P1's scenario and evidence.
 function adjudicate(sightings: Readonly<Record<string, ProducerFinding>>) {
+	// A sighting stores no lifecycle status, and merging claims reads none.
+	const refuted = (each: ProducerFinding) =>
+		Finding.from({ ...each, properties: { ...each.properties, status: "new" } }).refuted();
+	// A refuted sighting never wins while another stands, so it lends the finding neither its severity nor its prose.
 	const ranked = Object.values(sightings).sort(
 		(a, b) =>
+			Number(refuted(a)) - Number(refuted(b)) ||
 			severityRank[a.properties.severity] - severityRank[b.properties.severity] ||
 			compareSources(a.properties.source, b.properties.source),
 	);
 	const reportedBy = ranked.map((each) => ({ ...each.properties.source })).sort(compareSources);
 	const { evidence: _, failureScenario: __, otherClaims: ___, ...properties } = ranked[0]!.properties;
-	// A sighting stores no lifecycle status, and merging claims reads none.
 	const members = ranked.map((each) => Finding.from({ ...each, properties: { ...each.properties, status: "new" } }));
 	const claims = members[0]!.mergeClaims(members);
-	const original = members.map((member) => member.original()).reduce(stricter);
+	const standing = members.filter((member) => !member.refuted());
+	const original = (standing.length > 0 ? standing : members).map((member) => member.original()).reduce(stricter);
 	// The winner is the highest after lowering, so its own original, when it has one, is never above this one.
 	const lowered = original === properties.severity ? {} : { originalSeverity: original };
 	return { winner: { ...ranked[0]!, properties: { ...properties, ...lowered, ...claims } }, reportedBy };
