@@ -6,7 +6,7 @@ import {
 	Finding,
 	type FindingInput,
 	Revision,
-	type Verdict,
+	Verdict,
 } from "@melian-agent/core";
 import { describe, expect, it } from "vitest";
 import { evalInput } from "./fixtures/findings.ts";
@@ -159,9 +159,24 @@ describe("Verdict.publication", () => {
 			},
 		});
 		const verdict = verdictOf([open, eslint, gone, fresh]);
-		expect([...verdict.held()].sort()).toEqual(
-			[open.properties.id, eslint.properties.id, fresh.properties.id].sort(),
-		);
+		const expected = [open.properties.id, eslint.properties.id, fresh.properties.id].sort();
+		expect([...verdict.held()].sort()).toEqual(expected);
+		// As a verdict recorded before Melian marked a dismissed report it lists: the report is named, unmarked.
+		const stored = verdict.toJSON();
+		const unmarked = Verdict.from({
+			...stored,
+			findings: {
+				...stored.findings,
+				block: stored.findings.block.map((each) => ({
+					...each,
+					properties: {
+						...each.properties,
+						alsoReportedAs: each.properties.alsoReportedAs?.map(({ dismissed: _, ...other }) => other),
+					},
+				})),
+			},
+		});
+		expect([...unmarked.held()].sort()).toEqual(expected);
 	});
 
 	it("resolves an open finding that was dismissed, with its dismissal, and never posts a dismissed one", () => {

@@ -247,16 +247,36 @@ describe("the design golden that supersedes its own decision", () => {
 
 	it("keeps a deterministic report on the hunk apart from the lens defect", () => {
 		const lens = report(revision, design);
-		const mutant = report(revision, {
-			check: "static.mutation",
-			rule: "untested-behaviour",
-			severity: "P2",
-			file: "src/publish.ts",
-			lines: [6, 6],
-			evidence: [],
-		});
-		expect(mutant.properties.trigger).toBeDefined();
-		expect(groups(revision, [lens, mutant])).toHaveLength(2);
+		// At line 6 the mutant's group comes before the lens report's, at line 7 after it.
+		for (const line of [6, 7]) {
+			const mutant = report(revision, {
+				check: "static.mutation",
+				rule: "untested-behaviour",
+				severity: "P2",
+				file: "src/publish.ts",
+				lines: [line, line],
+				evidence: [],
+			});
+			expect(mutant.properties.trigger).toBeDefined();
+			expect(groups(revision, [lens, mutant])).toHaveLength(2);
+		}
+	});
+
+	// Two reports from one lens on the same lines never meet, so the order between their groups decides which joins.
+	it("breaks a tie between groups on the same lines by their lowest ID, whatever the input order or severity", () => {
+		const opener = on("lens.correctness", [5, 7]);
+		// Merged by snippet; its strongest report, the P0, has the higher ID, and `second` sorts between the two.
+		const strongest = on("lens.design", [6, 7], { severity: "P0" });
+		const lowest = on("lens.trust-boundary", [6, 7], { rule: "trust-27", severity: "P2" });
+		const second = on("lens.design", [6, 7], { rule: "second-1" });
+		expect(lowest.properties.id < second.properties.id && second.properties.id < strongest.properties.id).toBe(true);
+		const expected = [
+			[opener, strongest, lowest].map((each) => each.properties.id).sort(),
+			[second.properties.id],
+		].sort();
+		for (const order of permutations([opener, strongest, lowest, second])) {
+			expect(groups(revision, order)).toEqual(expected);
+		}
 	});
 
 	it("keeps apart two reports from one lens, and two rules an alias marks distinct", () => {
@@ -332,6 +352,34 @@ describe("the design golden that supersedes its own decision", () => {
 				.find((defect) => [defect.speaker.id, ...defect.members.map((member) => member.id)].includes(a.id))!;
 			expect(holding.lensOnly()).toBe(false);
 		}
+	});
+
+	// Start order would put a, then b, together, and leave c alone; end order lets c, which ends first, join a.
+	it("takes groups by end line before start line", () => {
+		const a = on("lens.design", [5, 6], { rule: "first-3" });
+		const b = on("lens.trust-boundary", [5, 7]);
+		const c = on("lens.trust-boundary", [6, 6], { rule: "another-rule" });
+		expect(a.properties.id < b.properties.id).toBe(true);
+		const expected = [[a.properties.id, c.properties.id].sort(), [b.properties.id]].sort();
+		for (const order of permutations([a, b, c])) expect(groups(revision, order)).toEqual(expected);
+	});
+
+	it("orders two tied groups by ID, not by strength", () => {
+		const opener = on("lens.correctness", [5, 7]);
+		// One lens, so the two never meet; the weaker has the lower ID, and it joins the opener.
+		const weaker = on("lens.design", [6, 7], { rule: "trust-27", severity: "P2" });
+		const stronger = on("lens.design", [6, 7], { rule: "second-1", severity: "P0" });
+		expect(weaker.properties.id < stronger.properties.id).toBe(true);
+		const expected = [[opener.properties.id, weaker.properties.id].sort(), [stronger.properties.id]].sort();
+		for (const order of permutations([opener, weaker, stronger])) expect(groups(revision, order)).toEqual(expected);
+	});
+
+	it("joins a snippet group to a hunk group only when every report of it meets every report there", () => {
+		const opener = on("lens.design", [5, 7]);
+		// The design report of the pair shares the opener's lens, so it never meets it; the tests report would.
+		const [same, other] = [on("lens.design", [6, 7], { rule: "pair-rule" }), on("lens.tests", [6, 7])];
+		const expected = [[opener.properties.id], [same.properties.id, other.properties.id].sort()].sort();
+		for (const order of permutations([opener, same, other])) expect(groups(revision, order)).toEqual(expected);
 	});
 
 	// The second attack's F2, case 1: only w-x, x-y and y-z meet.
@@ -492,6 +540,35 @@ describe("an unchanged caller that two lenses report", () => {
 		].map((spec) => report(revision, spec));
 		expect([a!.properties.cause, b!.properties.cause]).toEqual(["affected", "affected"]);
 		expect(groups(revision, [a!, b!])).toHaveLength(1);
+	});
+
+	it("keeps apart two callers in different files on the same line numbers, though one hunk proves both", async () => {
+		const revision = await changeOf(
+			(root) =>
+				writeFiles(root, {
+					"src/page.ts": caller,
+					"src/list.ts": caller,
+					"src/limit.ts": lines(
+						"export function limit(size: number): number {",
+						"\treturn Math.max(size, 1);",
+						"}",
+					),
+				}),
+			(root) =>
+				writeFiles(root, {
+					"src/limit.ts": lines(
+						"export function limit(size: number): number {",
+						"\treturn Math.min(size, 0);",
+						"}",
+					),
+				}),
+		);
+		const [a, b] = [
+			at("lens.correctness", "wrong-result", [4, 5], ["src/limit.ts", 2, 2, "cause"]),
+			{ ...at("lens.contracts", "broken-caller", [5, 5], ["src/limit.ts", 2, 2, "cause"]), file: "src/list.ts" },
+		].map((spec) => report(revision, { ...spec, evidence: spec.evidence.slice(0, 1) }));
+		expect([a!.properties.cause, b!.properties.cause]).toEqual(["affected", "affected"]);
+		expect(groups(revision, [a!, b!])).toHaveLength(2);
 	});
 
 	it("merges the two when a deletion-only hunk removed the guard they both cite at the base", async () => {
