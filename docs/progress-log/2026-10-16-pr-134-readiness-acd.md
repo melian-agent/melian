@@ -1,4 +1,4 @@
-# Readiness answers A, C and D recorded (pull request 134)
+# Readiness answers A, C and D recorded ([pull request #134](https://github.com/melian-agent/melian/pull/134))
 
 [Pull request #134](https://github.com/melian-agent/melian/pull/134) records three of the maintainer's readiness answers of 2026-10-16 as decisions, with plan steps 28 to 30. It builds nothing.
 
