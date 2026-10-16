@@ -24,7 +24,7 @@ import {
 } from "@melian-agent/core";
 import { buildGoldenRepository, type Golden, loadGoldens } from "@melian-agent/evals";
 import * as pipelineTesting from "@melian-agent/pipeline/testing";
-import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { fakeGitHub } from "../../github/test/fixtures/fake-github.ts";
 import { pullRequestState } from "../../github/test/fixtures/scenario.ts";
 import { dismiss as dismissIn, review as reviewIn } from "../src/commands.ts";
@@ -706,6 +706,9 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 	// In process, so a mutation of the output reaches the code this test runs.
 	it("lists what stays live in process, and nothing when the dismissal took every report", async () => {
 		const { repo, env, id, member } = reviewedMerged();
+		// git reads the author from this process's environment, as it does in the spawned CLI's.
+		for (const [key, value] of Object.entries(gitEnv)) vi.stubEnv(key, value);
+		onTestFinished(() => vi.unstubAllEnvs());
 		const run = async (target: string, only = false) => {
 			let out = "";
 			const io = {
