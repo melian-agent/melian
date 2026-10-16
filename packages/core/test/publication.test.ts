@@ -132,6 +132,21 @@ describe("Verdict.publication", () => {
 		});
 	});
 
+	// Step 27, "Merge by shared cause": fails until the held step is built.
+	it("keeps the thread of a report posted alone open once a later revision merges it under another", () => {
+		const eslint = finding({ rule: "detect-eval", severity: "P3", source: { check: "static.eslint" } });
+		const previous = { [eslint.properties.id]: posted("104") };
+		const verdict = verdictOf([open, eslint]);
+		expect(verdict.findings.block.map((each) => each.properties.alsoReportedAs?.map((member) => member.id))).toEqual([
+			[eslint.properties.id],
+		]);
+
+		const plan = verdict.publication(previous, lines, head);
+
+		expect(plan.resolved).toEqual([]);
+		expect(plan.open[eslint.properties.id]).toEqual(posted("104"));
+	});
+
 	it("resolves an open finding that was dismissed, with its dismissal, and never posts a dismissed one", () => {
 		const dismissal = { by: "Tal <tal@melian.invalid>", reason: "Constant input.", at: "2026-10-04T00:00:00Z" };
 		const as = (each: Finding): Finding =>

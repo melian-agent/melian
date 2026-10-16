@@ -26,4 +26,63 @@ A first ruling merged two checks' reports in one file over overlapping lines whe
 
 The attack's smaller points stand for step 27 too. `melian dismiss` lists the merged reports only after it records the dismissal, so the list is a notice, not a protection. Merges must not chain: reports at lines 1-5, 5-7 and 7-8 stay at least two defects. And a finding in another file, such as the caller at `src/cli.ts:8`, stays its own finding, because it needs its own fix where its comment sits.
 
+## Step 27's design, proposed
+
+This section proposes the rule and how each requirement above is met. The failing tests are in `packages/core/test/merge-by-hunk.test.ts` and `packages/core/test/publication.test.ts`. The section is not built, and it waits for an attacking review.
+
+### The rule
+
+Two findings meet when all of these hold:
+
+- both are lens reports: the finding's check and every check in its `reportedBy` start with `lens.`;
+- different checks report them, in one file, with the same lifecycle status, and no `ruleAliases` entry marks their rules `distinct`;
+- their lines overlap at head;
+- the snippet rule holds, as today, or the hunk rule does.
+
+The hunk rule depends on each finding's cause:
+
+- If either is `pre-existing`, it does not apply: a `pre-existing` finding falls on no hunk.
+- If both are `introduced`, the lines they share must overlap one hunk's new lines. Their own lines decide it. Their `cause` citations do not count, so a type line both cite elsewhere in the file widens nothing.
+- Otherwise, their hunk sets must meet. An `introduced` finding's set is every hunk whose new lines its own lines overlap. An `affected` finding's set is every hunk its proving `cause` locations fall on: a head cause on a hunk's new lines, a base cause on its old lines.
+
+Deterministic reports keep the snippet rule alone, for any pair.
+
+On the golden `design-supersedes-its-own-decision`, Melian's diff of `src/publish.ts` has two hunks: line 3, and lines 5-6 at the base becoming 5-7 at head. The three lens reports at lines 6-7, 5-7 and 3-8 share lines 6-7, 5-7 and 6-7, all inside hunk 1, so they are one defect, and the P0 speaks. The `dropped-guard` report spans both hunks, so its own lines decide it, whatever it cites. The correctness lens's report of the caller at `src/cli.ts:8` is in another file and stays its own finding.
+
+### Callers and deletions, the sixth requirement
+
+Codex's adversarial review of [pull request #130](https://github.com/melian-agent/melian/pull/130) found that a rule on new lines alone misses two cases.
+
+- **An unchanged caller.** Two lenses report the caller of a changed callee, on overlapping lines. Both are `affected`, and the only thing tying them to the change is their proof. Their hunk sets are the hunks their proving causes fall on, so they merge when one hunk proves both, and stay apart when different hunks do.
+- **A deletion-only hunk.** It has no new lines, but its old lines are the deleted code. A report that cites the deleted guard as a base `cause` is `affected`, and the deletion hunk is in its set. Two such reports on overlapping lines of the caller merge. A report beside the deletion that cites nothing at the base is `pre-existing`, as `Revision.classifyCause` already says, and merges only by snippet.
+
+A file the change only renamed proves through the rename, which names no hunk, so its reports merge only by snippet. This is accepted: a rename with no edit has one defect class, the broken import, and its reports cite the same line.
+
+The `affected` route reads `cause` citations, so it widens with what a lens chooses to cite, as the attack's sixth finding says. It is kept because an `affected` finding has nothing else tying it to the change, and its lines must still overlap the other report's.
+
+### Where each merge site gets its hunks
+
+The authority is `Revision`. One method is added: `revision.changeOverlaps(location, findingFile)` returns every part of the change a location falls on. `changeOverlap` stays as the first of them, so cause classification and proof do not change. `revision.outline()` returns the revision's fields with each hunk's `header` and `text` emptied, as `report_finding` already builds it. `Merge` and `Adjudication` take an optional `revision`. Without one, the hunk rule does not apply and the snippet rule decides.
+
+- **Before verification.** `reviewChangeset` holds the changeset's `Revision` in memory and passes it to `new Merge(...)`. The verification tasks store the merge's output, the candidates, not its input, so no stored shape changes there.
+- **Adjudication.** `AdjudicationTaskInput` gains `files`: the outline's changed files, each hunk as its index and old and new ranges. The task rebuilds the `Revision` with `Revision.from({ base, head, files })`. `AdjudicationTask` goes from version 1 to version 2. Its `migrate` from version 1 passes the input through without `files`, so a task stored before the step decides by snippet, as it did. The attach key is the input's JSON, so the first review after the upgrade starts a new task rather than attach to an old one.
+- **Dismiss.** `recordDismissal` copies the stored input, so a version 2 input keeps its `files`. A version 1 input keeps none and decides by snippet, the way the verdict being replaced was decided, so a dismissal never regroups a verdict.
+
+The reopen test opens storage that the version 1 definition wrote, holding a pending adjudication task. The fixture is written by today's code through a committed script, never by hand. The test checks that the version 2 definition migrates the task, runs it, and records the snippet grouping. The fallback says nothing in the verdict. It only reproduces the grouping the stored verdict already had, so a note would explain no change.
+
+### Publication
+
+`Verdict.publication` holds every finding in a group that needs attention, and every silent one. It now also holds the IDs in each such finding's `alsoReportedAs` that are not marked `dismissed`. A report posted alone and merged on a later push keeps its entry in `open` and its thread stays open. It is not posted again and not counted as still open. If a later push splits the defect again, the report finds its own entry and is still open, not new. A report merged into a dismissed finding is still resolved with that dismissal, as today. The test is in `publication.test.ts`. It uses a snippet merge, because this gap exists today, whenever a merge changes between pushes.
+
+### Grouping
+
+`Merge.defects` groups by lifecycle status first, as now. Within a status, it takes findings in ID order, never in strength order. Each finding joins the first group, in the order groups were opened, whose every member it meets. Otherwise it opens a new group.
+
+- IDs do not depend on severity, input order, or a verifier's lowering, so the grouping before verification is the grouping at adjudication.
+- The speaker is still chosen by strength within a group, so a lowering can change who speaks, but never who is in the group.
+- The meets relation is symmetric. The greedy pass in ID order is a deterministic split of each connected component into groups whose members all meet. A component in which every pair meets comes out whole. One that does not splits the same way every time.
+- No connected components are computed: they would add a pass and change no group.
+
+The snippet rule now also needs every member to meet, rather than any. Reports that share a snippet at one occurrence sit on the same lines, so this changes no group the snippet rule makes today.
+
 No earlier decision file records the merge rule; [docs/guidelines/core.md](../guidelines/core.md#dedupe-across-sources) and [design.md](../design.md#the-pipeline) set it out, and both point here.
