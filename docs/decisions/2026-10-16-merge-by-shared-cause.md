@@ -32,7 +32,7 @@ This section sets out the rule and how it meets each requirement above. A second
 
 ### The rule, in two passes
 
-**The snippet pass** groups reports by the snippet rule, exactly as before: different checks, one file, the same normalised snippet at the same occurrence, and overlapping lines.
+**The snippet pass** groups reports by the snippet rule, as before: no check that reported both, one file, the same normalised snippet at the same occurrence, and overlapping lines. Problem: the rule once compared only the check that won each ID. When lens.design and lens.tests both sighted A, and lens.tests also reported B, design won A and the two merged, though lens.tests had said they were two defects.
 
 **The hunk pass** then joins whole snippet groups. It takes part only for a group whose every report is a lens report: the finding's check and every check in its `reportedBy` start with `lens.`. A snippet group that holds a static, guardrail, or mutation report never joins another group. Two groups join when every report of one meets every report of the other under the hunk rule.
 
@@ -40,7 +40,7 @@ Problem: one pass let the two rules compete. Example: on `src/publish.ts`, lens 
 
 Two reports meet under the hunk rule when all of these hold:
 
-- different checks report them, in one file, with the same lifecycle status;
+- no check reported both, counting the check that won each finding's ID and every check in its `reportedBy`, and they are in one file, with the same lifecycle status;
 - no `ruleAliases` entry marks their rules `distinct`;
 - their lines overlap at head;
 - the change caused both, as their causes set out below.
@@ -89,11 +89,11 @@ So a report posted alone and merged on a later push keeps its entry in `open`, a
 
 ### Grouping order
 
-The snippet pass keeps its order: by strength, as before.
+The snippet pass takes reports by the severity the lens reported, `original()`, then by ID. It once took them by strength, which reads a lowered severity. Problem: one lens with two rules on one snippet, A at P1 and C at P2, beside B from another lens at P2. Before verification the groups were `{A, B}` and `{C}`. A verifier lowered A to P2, and at adjudication they became `{C, B}` and `{A}`, so the published defect was not the one verified. The speaker within a group is still chosen by strength.
 
 The hunk pass takes snippet groups in order of end line, then start line, then the lowest ID among a group's reports. The reports of a snippet group share their lines, so the group's lines are any member's. Each group joins the first hunk group, in the order the groups opened, whose every report it meets; otherwise it opens a new one.
 
-- No order reads severity, so a verifier's lowering never regroups, and the grouping before verification is the grouping at adjudication.
+- Neither pass orders by a lowered severity, so a verifier's lowering never regroups, and the grouping before verification is the grouping at adjudication.
 - Each member of a hunk group contains the end line of the group's first member. For reports whose shared lines fall in one hunk, this is greedy interval stabbing, which makes the fewest groups. Example: reports w at line 5, x at 5-6, y at 6-7 and z at 7, where only w-x, x-y and y-z meet, make two groups, `{w, x}` and `{y, z}`. In ID order they made three.
 - A report added on a later push moves only groups that open after its start. Example: a1 at line 5, a2 at 5-6 and a3 at 6-7 group as `{a1, a2}` and `{a3}`. A push that adds a0 at line 6 leaves `{a1, a2}` whole and gives `{a0, a3}`. In ID order, a1 split off and was posted fresh.
 - No connected components are computed. The pass splits each component the same way every time, and a component whose every pair meets comes out whole.
@@ -101,11 +101,15 @@ The hunk pass takes snippet groups in order of end line, then start line, then t
 
 ### The speaker
 
-The speaker is never a refuted report while any report of the defect stands. `#keeper` chooses among the reports that stand, and the speaker's severity is the highest among those, when any stand. The snippet merge had the same flaw: two lens reports at lines 5-7, a refuted P1 and a confirmed P2, gave a P1 headline marked confirmed, with the P2's reason. Both passes now pick the speaker through the same code. Blocking does not move, because `Defect.decision` already resolves each report on its own and leaves out refuted ones.
+The speaker is never a refuted report while any report of the defect stands. This holds sighting by sighting too. When two lenses sight one ID, a refuted sighting never wins it while another stands, so the finding takes the standing sighting's severity and prose. Problem: a refuted P1 and a confirmed P2 of one ID read as a P1 finding, with the refuted lens's prose and the confirmed verdict, which blocked. `#keeper` chooses among the reports that stand, and the speaker's severity is the highest among those, when any stand. The snippet merge had the same flaw: two lens reports at lines 5-7, a refuted P1 and a confirmed P2, gave a P1 headline marked confirmed, with the P2's reason. Both passes now pick the speaker through the same code. Blocking does not move, because `Defect.decision` already resolves each report on its own and leaves out refuted ones.
 
 ### Dismissing a member
 
-The ID of a member, not the speaker, now dismisses that report alone. The speaker's ID still dismisses the whole defect. This applies to every merge, by snippet too. Problem: with the hunk pass, a report posted alone keeps its thread when a later push merges it under a P0. A maintainer who answers that thread with `melian dismiss` would have dismissed the P0, which they had not read. Dismissing less never hides a defect: the other reports stay live, and the output says so.
+The ID of a member, not the speaker, now dismisses that report alone. This applies to every merge, by snippet too. Problem: with the hunk pass, a report posted alone keeps its thread when a later push merges it under a P0. A maintainer who answers that thread with `melian dismiss` would have dismissed the P0, which they had not read.
+
+The speaker's ID dismisses the speaker and the reports the snippet pass merged with it, which share its code. A report that joined only through the hunk pass stays live, and forms its own defect when the verdict is decided again. Problem: on one hunk, correctness reported `null-dereference` P1 at line 8 and contracts `changed-return` P1 at lines 7-8. The hunk pass merged them and `changed-return` spoke. A maintainer who dismissed it as a false positive also dismissed the null dereference, whose text they had not read, and the verdict passed. `recordDismissal` tells a snippet member from a hunk member by the site of its sighting at the revision, the key the snippet pass groups by, so the stored verdict needs no new field.
+
+Dismissing less never hides a defect. `melian dismiss` prints every report of the defect it left live under "Still live, merged with it before:", by rule, check and ID: the speaker, for a member's ID or with `--only`, and each hunk member. Dismissing the golden's three fail-open reports takes one dismissal for each lens.
 
 A member that a dismissal of the speaker took stays dismissed if a later push splits it away. Lifecycle is per ID, and a dismissal holds until the finding's trigger changes. The dismissal named it by rule, check and ID when it was recorded.
 
