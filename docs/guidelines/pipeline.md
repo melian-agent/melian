@@ -278,6 +278,8 @@ A level's `budget.tokens` and `budget.tools` end a lens conversation once they a
 
 ## Adjudication
 
+`melian.adjudication` is version 3. Its migration preserves version-1 and version-2 inputs and adds `legacyTiming: true` to their checkpoints. Version 2 added `files`, which the hunk pass still reads after an upgrade. Version 1 has no files and decides by snippet alone. Neither older version supplies a timing start. SQLite reopen tests use tasks and findings recorded by each version’s own code.
+
 The adjudication task, `melian.adjudication`, reads the root conversation's findings at the revision under review through `readFindings` with the producers the review selected, runs core's `Adjudication`, and writes the verdict's JSON into `VerdictDocument` on the root under that revision. Like the findings document, the verdict document belongs to the root, is rewindable, and forks `asOf`, so a fork of the root at a revision carries that revision's verdict. Read it with `readVerdict(reader, rootConversationId, revision, context)`, where `revision` is a `revisionKey`, which returns a copy or `undefined`.
 
 The task has one phase. It reads, decides, and commits the verdict and the task's terminal outcome

@@ -13,12 +13,17 @@ import {
 	openHarness,
 	openSqliteStorage,
 	publishExtension,
+	readVerdict,
+	revisionKey,
+	TelemetryReader,
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, expect, it, vi } from "vitest";
 import { fakeGitHub } from "../../github/test/fixtures/fake-github.ts";
 import { pullRequestState } from "../../github/test/fixtures/scenario.ts";
+import type { AdjudicationTaskInput } from "../src/adjudication.ts";
 import { DecisionDocument, decisionExtension } from "../src/decisions.ts";
+import { FindingsDocument } from "../src/findings.ts";
 import { PublisherDocument } from "../src/publish.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import * as staticRunner from "../src/static.ts";
@@ -131,7 +136,9 @@ it.each(["melian.check", "melian.decision", "melian.adjudication", "melian.publi
 		const settled = await second.waitForTask(id, context);
 		expect(settled.state.outcome.status).toBe(kind === "melian.adjudication" ? "failed" : "completed");
 		const record = await storage.task(id, context);
-		expect(record!.version).toBe(previous.version + 1);
+		expect(record!.version).toBe(
+			{ "melian.check": 3, "melian.decision": 2, "melian.adjudication": 3, "melian.publish": 3 }[kind],
+		);
 		const timing = await storage.findDocument(
 			{
 				kind: TimingDocument.definition.kind,
@@ -145,6 +152,91 @@ it.each(["melian.check", "melian.decision", "melian.adjudication", "melian.publi
 		const value = (await storage.document(timing!.id, "current", context))!.value;
 		expect(value.startedAt).toBeUndefined();
 		expect(value.endedAt).toEqual(expect.any(Number));
+		expect(fake.provider.state.callCount).toBe(0);
+	},
+);
+
+it.each([
+	{ file: "adjudication-v1", version: 1, merge: "snippet", acknowledged: 1, mergedRules: [] },
+	{ file: "adjudication-v2", version: 2, merge: "hunk", acknowledged: 0, mergedRules: ["changed-return"] },
+])(
+	"reopens version $version adjudication with $merge merging and unavailable timing",
+	async ({ file, version, acknowledged, mergedRules }) => {
+		const previous = JSON.parse(
+			readFileSync(new URL(`./fixtures/stage-telemetry-previous/${file}.json`, import.meta.url), "utf8"),
+		) as {
+			task: {
+				kind: string;
+				version: number;
+				input: AdjudicationTaskInput;
+				state: { checkpoint: { phase: "adjudicate" } };
+			};
+			findings: JsonObject;
+		};
+		expect(previous.task.version).toBe(version);
+		expect(Object.hasOwn(previous.task.input, "files")).toBe(version === 2);
+		const directory = realpathSync(mkdtempSync(join(tmpdir(), "melian-adjudication-reopen-")));
+		directories.push(directory);
+		const path = join(directory, "state.sqlite");
+		const fake = createFakeModels();
+		const first = await openHarness(await openSqliteStorage(path), {
+			models: fake.models,
+			registry: createRegistry(),
+		});
+		closes.push(() => first.close(context));
+		const root = await first.root(context);
+		expect(root.id).toBe(previous.task.input.root);
+		const token = defineTask<AdjudicationTaskInput, { phase: "adjudicate" }, string>({
+			name: previous.task.kind,
+			version: previous.task.version,
+			initial: () => previous.task.state.checkpoint,
+			phases: {
+				adjudicate: async () => {
+					throw new Error("old task must not execute");
+				},
+			},
+			abort: async () => {
+				throw new Error("old task must not abort");
+			},
+		});
+		const revision = revisionKey(previous.task.input);
+		const id = await root.commit(async (tx) => {
+			Object.assign(await tx.doc(FindingsDocument, root.id), previous.findings);
+			const id = await tx.createTask(token, previous.task.input, { ownership: { kind: "conversation" } });
+			(await tx.doc(ReviewIndex, root.id)).reviews[revision] = {
+				lenses: [],
+				adjudication: { task: id, input: JSON.stringify(previous.task.input) },
+			};
+			return id;
+		}, context);
+		await first.close(context);
+		const storage = await openSqliteStorage(path);
+		const second = await openHarness(storage, { models: fake.models, registry: createReviewRegistry() });
+		closes.push(() => second.close(context));
+		expect((await second.waitForTask(id, context)).state.outcome).toEqual({
+			status: "completed",
+			result: "recorded",
+		});
+		const task = (await storage.task(id, context))!;
+		expect(task.version).toBe(3);
+		const verdict = await readVerdict(second, root.id, revision, context);
+		expect(verdict!.findings.block).toHaveLength(1);
+		expect(verdict!.findings.acknowledge).toHaveLength(acknowledged);
+		expect(verdict!.findings.block[0]!.properties.alsoReportedAs?.map(({ ruleId }) => ruleId) ?? []).toEqual(
+			mergedRules,
+		);
+		expect(task.input).toEqual(previous.task.input);
+		const telemetry = await TelemetryReader.open(storage).read(revision);
+		expect(telemetry.stages).toHaveLength(1);
+		expect(telemetry.stages[0]).toMatchObject({
+			task: id,
+			name: "melian.adjudication",
+			outcome: "completed",
+			timing: "unavailable",
+			endedAt: expect.any(Number),
+		});
+		expect(telemetry.stages[0]).not.toHaveProperty("startedAt");
+		expect(telemetry.stages[0]).not.toHaveProperty("durationMs");
 		expect(fake.provider.state.callCount).toBe(0);
 	},
 );
