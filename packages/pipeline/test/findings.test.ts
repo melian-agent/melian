@@ -866,11 +866,29 @@ describe("lowered sightings", () => {
 		await root.commit((tx) => upsertFinding(tx, root.id, standing, "rev1"), context);
 		await judge(root, { ...record, verdict: "refuted" });
 		await judge(root, record, other);
+		const [judged] = await readFindings(harness, root.id, "rev1", context);
+		expect(judged!.properties).toMatchObject({ severity: "P2", source: other, failureScenario: "It fails." });
+		expect(judged!.level).toBe("warning");
+		// The order grouping reads is the lenses' own, refuted or not.
+		expect(judged!.original()).toBe("P1");
+		// As reported, before anything judges it, no verdict picks the winner, so a repeat review's candidate is unchanged.
+		const [reported] = await readFindings(harness, root.id, "rev1", context, { asReported: true });
+		expect(reported!.properties).toMatchObject({ severity: "P1", source: input.source });
+	});
+
+	// The round's 9acf210b: refuting one lens's sighting must not change the severity the merge orders by.
+	it("keeps the severity the lenses reported, refuted sightings included, as the order grouping reads", async () => {
+		const { harness, root } = await open(createMemoryStorage());
+		const tests = { check: "lens.tests", version: "1" };
+		const claim = { failureScenario: "eval('1') runs." };
+		await root.commit((tx) => upsertFinding(tx, root.id, Finding.create({ ...input, ...claim }), "rev1"), context);
+		const low = Finding.create({ ...input, ...claim, severity: "P3", source: tests });
+		await root.commit((tx) => upsertFinding(tx, root.id, low, "rev1"), context);
+		await judge(root, { ...record, verdict: "refuted" });
+		await judge(root, record, tests);
 		for (const asReported of [false, true]) {
 			const [finding] = await readFindings(harness, root.id, "rev1", context, { asReported });
-			expect(finding!.properties).toMatchObject({ severity: "P2", source: other, failureScenario: "It fails." });
-			expect(finding!.properties.originalSeverity).toBeUndefined();
-			expect(finding!.level).toBe("warning");
+			expect(finding!.original()).toBe("P1");
 		}
 	});
 

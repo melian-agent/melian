@@ -439,7 +439,7 @@ describe("the design golden that supersedes its own decision", () => {
 	it.each([
 		["by hunk", [5, 7], [6, 7]],
 		["by snippet", [5, 7], [5, 7]],
-	] as const)("never speaks through a refuted report while another stands, merged %s", (_, first, second) => {
+	] as const)("keeps the reported speaker, with a standing report's severity and prose, merged %s", (_, first, second) => {
 		const refuted = on("lens.trust-boundary", [...first], { rule: "sql-injection", verdict: "refuted" });
 		const standing = on("lens.tests", [...second], {
 			rule: "untested-behaviour",
@@ -450,9 +450,12 @@ describe("the design golden that supersedes its own decision", () => {
 			const input = { findings: order, manifest: [], checks: [], config: defaultConfig, revision };
 			const [defect, ...rest] = new Adjudication(input).defects();
 			expect(rest).toEqual([]);
-			expect(defect!.speaker.properties).toMatchObject({ id: standing.properties.id, severity: "P2" });
+			// The speaker's identity comes from what the lenses reported; what it shows, from the report that stands.
+			expect(defect!.speaker.properties).toMatchObject({ id: refuted.properties.id, severity: "P2" });
 			expect(defect!.speaker.properties.originalSeverity).toBeUndefined();
-			expect(defect!.members.map((member) => member.id)).toEqual([refuted.properties.id]);
+			expect(defect!.speaker.message.text).toBe(standing.message.text);
+			expect(defect!.speaker.properties.explanation).toEqual(standing.properties.explanation);
+			expect(defect!.members.map((member) => member.id)).toEqual([standing.properties.id]);
 		}
 	});
 
