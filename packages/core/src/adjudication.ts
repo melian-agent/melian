@@ -207,11 +207,13 @@ export class Defect {
 	}
 
 	/**
-	 * The IDs of the reports a dismissal of `id` records: for the speaker's ID, the speaker's own and every member's; for
-	 * a member's, or with `only`, that report alone, leaving every other report live.
+	 * The IDs of the reports a dismissal of `id` records: for the speaker's ID, the speaker's own and every member's but
+	 * those `apart` names, the reports that joined it only through a hunk; for a member's, or with `only`, that report
+	 * alone. Every other report stays live.
 	 */
-	dismiss(id: string, only = false): string[] {
-		return only || id !== this.speaker.id ? [id] : [this.speaker.id, ...this.members.map((member) => member.id)];
+	dismiss(id: string, only = false, apart: ReadonlySet<string> = new Set()): string[] {
+		if (only || id !== this.speaker.id) return [id];
+		return [this.speaker.id, ...this.members.flatMap((member) => (apart.has(member.id) ? [] : [member.id]))];
 	}
 }
 
@@ -1009,13 +1011,14 @@ export class Merge {
 	/** The defects in speaker order, preserving each claim and separating lifecycle statuses. */
 	defects(): Defect[] {
 		const groups: Finding[][] = [];
-		for (const finding of [...this.findings].sort((a, b) => a.compareStrength(b))) {
+		for (const finding of [...this.findings].sort((a, b) => a.compareReported(b))) {
 			const into = groups.find(
 				(group) => group[0]!.properties.status === finding.properties.status && this.#joins(group, finding),
 			);
 			if (into === undefined) groups.push([finding]);
 			else into.push(finding);
 		}
+		const revision = this.#revision;
 		const dismissed = this.findings.filter((finding) => finding.properties.status === "dismissed");
 		const elsewhere = new Set(dismissed.flatMap((finding) => finding.reportIds()));
 		const defects = new Map<Finding, Defect>();
@@ -1026,7 +1029,11 @@ export class Merge {
 				group[0]!.properties.status === "dismissed"
 					? []
 					: dismissed
-							.filter((other) => parts.some((part) => this.#joins(part, other)))
+							.filter(
+								(other) =>
+									parts.some((part) => this.#joins(part, other)) ||
+									(revision !== undefined && group.every((member) => this.#meets(revision, member, other))),
+							)
 							.map((other) => ({ ...other.report(), dismissed: true as const }));
 			if (group.length === 1 && context.length === 0) {
 				const [alone] = group as [Finding];
@@ -1050,9 +1057,7 @@ export class Merge {
 			site !== undefined &&
 			group[0]!.site() === site &&
 			group.every(
-				(member) =>
-					member.properties.source.check !== finding.properties.source.check &&
-					!distinct(aliases, member.ruleId, finding.ruleId),
+				(member) => !member.sharesReporter(finding) && !distinct(aliases, member.ruleId, finding.ruleId),
 			) &&
 			group.some((member) => member.overlaps(finding))
 		);
@@ -1072,10 +1077,12 @@ export class Merge {
 		});
 		const joined: Finding[][][] = [];
 		for (const group of ordered) {
-			const into = joined.find((parts) =>
-				parts.every((part) =>
-					part.every((member) => group.every((finding) => this.#meets(revision, member, finding))),
-				),
+			const into = joined.find(
+				(parts) =>
+					parts[0]![0]!.properties.status === group[0]!.properties.status &&
+					parts.every((part) =>
+						part.every((member) => group.every((finding) => this.#meets(revision, member, finding))),
+					),
 			);
 			if (into === undefined) joined.push([group]);
 			else into.push(group);
@@ -1085,11 +1092,11 @@ export class Merge {
 
 	// Whether two lens reports are one defect because the change caused both through one hunk. Two introduced reports
 	// over overlapping lines that overlap one hunk share lines on it, since intervals that meet pairwise share a point.
+	// The caller compares statuses, so a dismissed report can be named beside a live defect it never joins.
 	#meets(revision: Revision, left: Finding, right: Finding): boolean {
-		const { path, status, source } = left.properties;
-		if (!left.lensReport() || !right.lensReport()) return false;
-		if (right.properties.path !== path || right.properties.status !== status) return false;
-		if (right.properties.source.check === source.check || !left.overlaps(right)) return false;
+		const { path } = left.properties;
+		if (!left.lensReport() || !right.lensReport() || right.properties.path !== path) return false;
+		if (left.sharesReporter(right) || !left.overlaps(right)) return false;
 		if (distinct(this.#configFor(path).ruleAliases, left.ruleId, right.ruleId)) return false;
 		const theirs = this.#hunks(revision, right);
 		return [...this.#hunks(revision, left)].some((hunk) => theirs.has(hunk));
