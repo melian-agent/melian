@@ -436,6 +436,226 @@ function reportOf(finding: Finding) {
 	return { id, ruleId: finding.ruleId, check: source.check, severity };
 }
 
+// The design goldens' shape: three lenses report one fail-open default in src/publish.ts, each citing other lines.
+describe("Adjudication.dedupe by a shared cause", () => {
+	const publish = [
+		"export type Policy = { writers: string[]; trustWriters: boolean };",
+		"",
+		"export type PublishOptions = { writersTrusted?: boolean };",
+		"",
+		"export function canPublish(policy: Policy, author: string, options: PublishOptions = {}): boolean {",
+		"\tconst trusted = options.writersTrusted ?? true;",
+		"\treturn trusted || policy.writers.includes(author);",
+		"}",
+	];
+	const cli = [
+		"import { canPublish, type Policy } from './publish.ts';",
+		"",
+		"export function publishCommand(policy: Policy, author: string): string {",
+		"\treturn canPublish(policy, author, { writersTrusted: policy.trustWriters }) ? 'published' : 'refused';",
+		"}",
+		"",
+		"export function republishCommand(policy: Policy, author: string): string {",
+		"\treturn canPublish(policy, author) ? 'republished' : 'refused';",
+		"}",
+	];
+	const text = (file: string, start: number, end: number) =>
+		(file === "src/cli.ts" ? cli : publish).slice(start - 1, end).join("\n");
+	const located = (
+		file: string,
+		startLine: number,
+		endLine: number,
+		role: "cause" | "context",
+		revision: "head" | "base" = "head",
+	) => ({ file, startLine, endLine, role, revision, snippet: text(file, startLine, endLine) });
+	const report = (
+		check: string,
+		rule: string,
+		severity: FindingInput["severity"],
+		[startLine, endLine]: [number, number],
+		evidence: ReturnType<typeof located>[],
+		extra: Partial<FindingInput> = {},
+	) =>
+		finding({
+			file: "src/publish.ts",
+			startLine,
+			endLine,
+			startColumn: undefined,
+			endColumn: undefined,
+			snippet: text(extra.file ?? "src/publish.ts", startLine, endLine),
+			occurrence: 0,
+			rule,
+			severity,
+			message: `${rule} in canPublish`,
+			failureScenario: `${check}: republishCommand(policy, "mallory") returns "republished".`,
+			evidence,
+			source: { check, version: "1" },
+			...extra,
+		});
+
+	const design = report(
+		"lens.design",
+		"fail-open-default",
+		"P0",
+		[5, 6],
+		[located("src/publish.ts", 5, 6, "cause"), located("src/cli.ts", 8, 8, "cause")],
+	);
+	const trustBoundary = report(
+		"lens.trust-boundary",
+		"fail-open",
+		"P1",
+		[5, 7],
+		[located("src/publish.ts", 5, 7, "cause"), located("src/cli.ts", 7, 9, "cause")],
+	);
+	const removedBehaviour = report(
+		"lens.removed-behaviour",
+		"dropped-guard",
+		"P1",
+		[3, 8],
+		[located("src/publish.ts", 6, 6, "cause"), located("src/publish.ts", 3, 6, "context", "base")],
+	);
+
+	it("merges three checks' reports of one defect whose snippets differ", () => {
+		expect(new Set([design, trustBoundary, removedBehaviour].map((each) => each.site())).size).toBe(3);
+		for (const order of [
+			[design, trustBoundary, removedBehaviour],
+			[removedBehaviour, trustBoundary, design],
+		]) {
+			const [kept, ...rest] = dedupe(order, () => defaultConfig);
+			expect(rest).toEqual([]);
+			expect(kept!.properties).toMatchObject({ id: design.properties.id, severity: "P0" });
+			expect(kept!.properties.alsoReportedAs).toEqual(
+				expect.arrayContaining([reportOf(trustBoundary), reportOf(removedBehaviour)]),
+			);
+			expect(kept!.properties.alsoReportedAs).toHaveLength(2);
+			expect(kept!.properties.otherClaims?.map((claim) => claim.id).sort()).toEqual(
+				[trustBoundary.properties.id, removedBehaviour.properties.id].sort(),
+			);
+		}
+	});
+
+	it("names a dismissed report of the defect beside the live one, and never merges them", () => {
+		const dismissed = report(
+			"lens.trust-boundary",
+			"fail-open",
+			"P1",
+			[5, 7],
+			[located("src/publish.ts", 5, 7, "cause")],
+			{ status: "dismissed" },
+		);
+		const deduped = dedupe([design, dismissed], () => defaultConfig);
+		expect(deduped).toHaveLength(2);
+		const live = deduped.find((each) => each.properties.status !== "dismissed")!;
+		expect(live.properties.alsoReportedAs).toEqual([{ ...reportOf(dismissed), dismissed: true }]);
+	});
+
+	it("keeps apart two reports from one check", () => {
+		const sameCheck = report("lens.design", "fail-open", "P1", [5, 7], [located("src/publish.ts", 5, 7, "cause")]);
+		expect(dedupe([design, sameCheck], () => defaultConfig)).toHaveLength(2);
+	});
+
+	it("keeps apart two rules an alias entry marks distinct, in either direction", () => {
+		const apart = { ruleAliases: { "fail-open-default": { rules: ["fail-open"], distinct: true } } };
+		expect(dedupe([design, trustBoundary], () => apart)).toHaveLength(2);
+		const reversed = { ruleAliases: { "fail-open": { rules: ["fail-open-default"], distinct: true } } };
+		expect(dedupe([trustBoundary, design], () => reversed)).toHaveLength(2);
+	});
+
+	it("keeps apart overlapping reports whose cause locations do not overlap", () => {
+		const typeOnly = report(
+			"lens.contracts",
+			"optional-option",
+			"P2",
+			[3, 5],
+			[located("src/publish.ts", 3, 3, "cause")],
+		);
+		const atDefault = report(
+			"lens.correctness",
+			"wrong-result",
+			"P1",
+			[5, 6],
+			[located("src/publish.ts", 6, 7, "cause")],
+		);
+		expect(dedupe([typeOnly, atDefault], () => defaultConfig)).toHaveLength(2);
+	});
+
+	it("keeps apart cause locations on the same lines of different files", () => {
+		const inCli = report("lens.correctness", "wrong-result", "P1", [5, 7], [located("src/cli.ts", 5, 6, "cause")]);
+		const inPublish = report(
+			"lens.design",
+			"fail-open-default",
+			"P0",
+			[5, 6],
+			[located("src/publish.ts", 1, 1, "cause"), located("src/cli.ts", 8, 8, "cause")],
+		);
+		expect(dedupe([inCli, inPublish], () => defaultConfig)).toHaveLength(2);
+	});
+
+	it("keeps apart a report that cites no cause at head", () => {
+		const contextOnly = report(
+			"lens.correctness",
+			"wrong-result",
+			"P1",
+			[5, 7],
+			[located("src/publish.ts", 5, 7, "context")],
+		);
+		expect(dedupe([design, contextOnly], () => defaultConfig)).toHaveLength(2);
+		const baseOnly = report(
+			"lens.removed-behaviour",
+			"dropped-guard",
+			"P1",
+			[3, 8],
+			[located("src/publish.ts", 5, 6, "cause", "base")],
+		);
+		const baseToo = report(
+			"lens.correctness",
+			"wrong-result",
+			"P1",
+			[5, 7],
+			[located("src/publish.ts", 5, 6, "cause", "base")],
+		);
+		expect(dedupe([baseOnly, baseToo], () => defaultConfig)).toHaveLength(2);
+	});
+
+	it("keeps apart reports whose lines do not overlap, though their causes do", () => {
+		const atType = report(
+			"lens.contracts",
+			"optional-option",
+			"P2",
+			[3, 3],
+			[located("src/publish.ts", 5, 7, "cause")],
+		);
+		const atReturn = report(
+			"lens.correctness",
+			"wrong-result",
+			"P1",
+			[6, 7],
+			[located("src/publish.ts", 5, 7, "cause")],
+		);
+		expect(dedupe([atType, atReturn], () => defaultConfig)).toHaveLength(2);
+	});
+
+	it("keeps apart the caller in another file that cites the same cause", () => {
+		const caller = report(
+			"lens.correctness",
+			"wrong-result",
+			"P1",
+			[8, 8],
+			[located("src/cli.ts", 8, 8, "cause"), located("src/publish.ts", 5, 7, "cause")],
+			{ file: "src/cli.ts" },
+		);
+		expect(dedupe([design, caller], () => defaultConfig)).toHaveLength(2);
+	});
+
+	it("keeps apart a static finding, which carries no evidence, on overlapping lines", () => {
+		const biome = report("static.biome", "lint/style/useDefaultParameterLast", "P3", [5, 5], [], {
+			evidence: undefined,
+			failureScenario: undefined,
+		});
+		expect(dedupe([design, biome], () => defaultConfig)).toHaveLength(2);
+	});
+});
+
 describe("Adjudication.defects", () => {
 	const listing = (each: Finding, alsoReportedAs: AlsoReportedAs[]) =>
 		Finding.from({ ...each.toJSON(), properties: { ...each.properties, alsoReportedAs } });
