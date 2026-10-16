@@ -1072,12 +1072,11 @@ export class Merge {
 	#byHunk(groups: readonly Finding[][]): Finding[][][] {
 		const revision = this.#revision;
 		if (revision === undefined) return groups.map((group) => [group]);
-		// A snippet group's reports share their lines, so its first by ID stands for it. IDs are lowercase hex.
-		const first = (group: readonly Finding[]) => group.reduce((low, each) => (each.id < low.id ? each : low));
+		// A snippet group's reports share their lines, and its lowest ID breaks a tie. IDs are lowercase hex.
+		const lowest = (group: readonly Finding[]) => group.map((finding) => finding.id).sort()[0]!;
 		const ordered = [...groups].sort((left, right) => {
-			const [a, b] = [first(left), first(right)];
-			const [[aStart, aEnd], [bStart, bEnd]] = [a.lines(), b.lines()];
-			return aEnd - bEnd || aStart - bStart || a.id.localeCompare(b.id);
+			const [[aStart, aEnd], [bStart, bEnd]] = [left[0]!.lines(), right[0]!.lines()];
+			return aEnd - bEnd || aStart - bStart || lowest(left).localeCompare(lowest(right));
 		});
 		const joined: Finding[][][] = [];
 		for (const group of ordered) {

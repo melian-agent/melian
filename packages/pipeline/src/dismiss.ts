@@ -137,7 +137,7 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 		};
 		const site = siteOf(found.speaker.id);
 		// Only a static or guardrail report lacks a site, and one never has members: it merges by neither pass.
-		const apart = new Set(found.members.flatMap((other) => (siteOf(other.id) === site ? [] : [other.id])));
+		const apart = new Set(found.members.filter((other) => siteOf(other.id) !== site).map((other) => other.id));
 		// The finding as the verdict shows it: its own report and every report the snippet pass merged into it, so
 		// dismissing one defect never leaves another check's report of the same code live, unless the caller asked for
 		// the one report alone.

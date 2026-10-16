@@ -677,6 +677,23 @@ describe("recording a dismissal", () => {
 			expect(recorded.verdict.findings.block.map((each) => each.properties.id)).toEqual([member!.id]);
 		});
 
+		it("leaves live a member the findings document no longer holds, and names no dismissal it replaced", async () => {
+			const harness = await reviewHarness(createMemoryStorage());
+			scriptHunkPair("P1");
+			const [shown] = (await reviewed(harness)).verdict.findings.block;
+			const [member] = shown!.properties.alsoReportedAs!;
+			// As after a rerun that cleared the member's sightings before the verdict was decided again.
+			const root = await harness.root(context);
+			await root.commit(async (tx) => {
+				delete (await tx.doc(FindingsDocument, root.id)).items[member!.id];
+			}, context);
+
+			const recorded = await dismiss(harness, shown!.properties.id);
+
+			expect(recorded.live.map((other) => other.id)).toEqual([member!.id]);
+			expect(Object.hasOwn(recorded, "replaced")).toBe(false);
+		});
+
 		it("merges them into one defect", async () => {
 			const harness = await reviewHarness(createMemoryStorage());
 			scriptHunkPair();
