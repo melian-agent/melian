@@ -1387,6 +1387,29 @@ describe("recording a dismissal", () => {
 		expect(recorded.finding.properties).toMatchObject({ id, status: "dismissed", dismissal });
 	});
 
+	it.each(["entry", "adjudication"] as const)(
+		"refuses a verdict whose review index holds no %s to repeat, and dismisses nothing",
+		async (missing) => {
+			const harness = await reviewHarness(createMemoryStorage());
+			scriptFinding();
+			const id = (await reviewed(harness)).findings[0]!.properties.id;
+			const key = revisionKey(await revision());
+			const root = await harness.root(context);
+			await root.commit(async (tx) => {
+				const index = await tx.doc(ReviewIndex, root.id);
+				if (missing === "entry") delete index.reviews[key];
+				else delete index.reviews[key]!.adjudication;
+			}, context);
+
+			await expect(dismiss(harness, id)).rejects.toMatchObject({
+				code: "notReviewed",
+				message: expect.stringContaining("no adjudication of"),
+			});
+			const state = await harness.snapshot(FindingsDocument, root.id, context);
+			expect(state!.items[id]!.lifecycle.status).not.toBe("dismissed");
+		},
+	);
+
 	it("refuses a revision with no stored review, and an ID its verdict does not hold", async () => {
 		const harness = await reviewHarness(createMemoryStorage());
 		await expect(dismiss(harness, "0123456789abcdef")).rejects.toMatchObject({

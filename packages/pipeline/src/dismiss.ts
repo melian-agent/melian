@@ -131,7 +131,7 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 		const index = await tx.doc(ReviewIndex, root.id);
 		const entry = index.reviews[revision];
 		const known = entry?.adjudication;
-		if (entry === undefined || known === undefined) {
+		if (known === undefined) {
 			throw new DismissError("notReviewed", `Melian has no adjudication of ${revision} to repeat; ${again}`, where);
 		}
 		const previous = JSON.parse(known.input) as AdjudicationTaskInput;
