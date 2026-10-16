@@ -129,6 +129,32 @@ const verifierWarnings =
 	"melian: Plan: lenses verify, but the verifier tier routes no model of its own; verification falls back to lens tiers, heavy then medium then light\nmelian: Plan: every verification candidate would be judged by its finder's own family\n";
 
 describe("melian review and findings", { timeout: 60_000 }, () => {
+	it("includes durable stage telemetry in review JSON", () => {
+		const { repo, env } = goldenCheckout(goldens["clean-rename"]!);
+		const result = melian(repo, ["review", "main", "--json"], env);
+		expect(result.status).toBe(0);
+		expect(result.stdout, "review --json must carry the stored telemetry record").toContain('"telemetry":');
+		const output = JSON.parse(result.stdout) as {
+			status: string;
+			telemetry: { revision: string; stages: unknown[] };
+		};
+		expect(output.status).toBe("passed");
+		expect(output.telemetry).toMatchObject({
+			revision: `${git(repo, "merge-base", "main", "HEAD")}..${git(repo, "rev-parse", "HEAD")}`,
+			stages: expect.arrayContaining([
+				expect.objectContaining({
+					name: "melian.check",
+					attributes: expect.objectContaining({ "melian.check": "guardrails" }),
+				}),
+				expect.objectContaining({ name: "melian.adjudication" }),
+			]),
+		});
+		expect(result.stderr).toMatch(/^melian: Slowest stages: .+/m);
+		const stored = melian(repo, ["telemetry", "main", "--json"], env);
+		expect(stored.status).toBe(0);
+		expect(JSON.parse(stored.stdout)).toMatchObject({ reviews: [output.telemetry] });
+	});
+
 	it("triages through the decider the host hands it, and records the decision the lenses ran under", async () => {
 		const { repo, env } = goldenCheckout(goldens["clean-rename"]!);
 		const requests: DecisionRequest[] = [];

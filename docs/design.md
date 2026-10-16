@@ -126,6 +126,16 @@ Only the publish and knowledge tasks hold write credentials. Lenses never see th
 
 Pi Durable is pinned to an exact version and imported by one internal module, because its API is declared experimental. That module re-exports Pi's API, so it quarantines import paths, not churn: a changed signature upstream still reaches its callers. A narrow Melian-owned facade grows in front of it as the pipeline gains callers, and Pi's types stay inside the pipeline package.
 
+### Stage telemetry
+
+Proposed for milestone 2, step 31; implementation waits for an attacking review. Reviews record no stage duration today. A 240-line round took 64 minutes, with no way to split mutation, lens and verifier time. [The decision](decisions/2026-10-16-stage-telemetry.md) defines the span vocabulary, durable record and CLI contract.
+
+Instrument triage, each deterministic check, each lens level, verification per candidate and in total, adjudication, walkthrough and publication through pi-telemetry's typed span helpers. Pi Durable 1.0.0 accepts no telemetry context and emits no task spans. Melian owns the instrumentation and persists plain span projections in a separate root document. Pi's in-memory recorder has no timestamps and cannot survive a crash.
+
+Commit a stage's first start before work and its finish with its result. The interval measures wall time across a crash. Replay keeps both timestamps and never adds the duration twice. Each review observation references existing tasks' spans and marks completed stages it reuses. Quick and escalated lens runs remain separate. Spend comes from Pi's durable usage records. Telemetry changes no verdict, task attachment key or publication fingerprint.
+
+`melian review --json` adds telemetry beside the verdict fields. One standard-error line names the three slowest completed stages, marking reused work. `melian telemetry <range|#pr> [--json]` reads stored observations, including unfinished stages and later publication, without resuming tasks or asking a model. Older reviews report timing unavailable. Parallel intervals are never added as elapsed review time.
+
 ## Findings
 
 Built in milestone 1, except the failure scenario, evidence, verification and `melian dismiss`, built in milestone 2 (review of record). Editing a resolved finding’s comment was built in milestone 2 in [pull request #73](https://github.com/melian-agent/melian/pull/73). Dismissal from a pull-request thread is planned for milestone 4 (comment commands).
@@ -1027,7 +1037,7 @@ Match Pi's conventions unless there is a reason not to.
 | Storage | memory for tests, SQLite locally, SQLite on the server (planned), JSONL on the state branch for Actions (planned, milestone 3) |
 | Execution | Node environment locally, container environment for untrusted code (planned, milestone 3) |
 | GitHub | Octokit, GitHub App auth on server and Actions (planned), `gh` token locally; git by shelling out |
-| Telemetry | pi-telemetry over OpenTelemetry (planned) |
+| Telemetry | pi-telemetry contracts and typed stage spans with a durable Melian projection (proposed, milestone 2 step 31); exporters deferred |
 | Code shape | Classes for objects with identity, state, or a lifecycle, and functions and readonly data for definitions, as in Pi; every query, change, and transform of a domain object is a method on it, and constructions are static factories, which departs from Pi's plain stored records because Melian's objects accumulate behaviour; `Finding`, `Defect`, `Verdict`, `Manifest`, `Lens`, `Revision`, and `Changeset` are classes over their stored JSON, so a document keeps its shape and the class is the runtime view; an outer package adapts a core object through a class of its own; the `free-domain-function` guardrail and Biome plugin enforce it, with no file excluded |
 
 ## Package layout

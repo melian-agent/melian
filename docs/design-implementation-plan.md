@@ -162,6 +162,12 @@ Steps 22 to 26 come from the review loop's lessons, which [design.md](design.md#
 
 Not yet scheduled, from the same research: the comparison importer counts a CodeRabbit thread the bot resolved, citing a fixing commit, as an accepted finding. It is a follow-up to step 15, as [decisions/2026-10-12-lens-roadmap-after-the-research.md](decisions/2026-10-12-lens-roadmap-after-the-research.md) records.
 
+31. `[~]` **Stage telemetry.** Phase 1 proposes [the decision](decisions/2026-10-16-stage-telemetry.md) and adds executable failing tests. Implementation waits for an attacking review and the coordinator's go-ahead. Steps 28 to 30 are reserved by [pull request #134](https://github.com/melian-agent/melian/pull/134). Unblocks explaining a slow round from stored evidence.
+    - Record Pi-contract spans for triage, every deterministic check, each lens level, verification per candidate and in total, adjudication, walkthrough and publication. Use the installed telemetry schemas and span helpers; Pi Durable currently emits none.
+    - Persist starts before work and finishes with results. Crash and resume keep wall time across the interruption; completed attachment keeps original timing and marks reuse.
+    - Expose records through review JSON, one terminal line naming slow stages, and `melian telemetry <range|#pr> [--json]`. Reads start no task or model request. Preserve existing tokens and cost without counting reused work twice.
+    - Phase 2 proves every changed guard by mutation, runs the mutation check and the whole gate, and adds a progress-log entry. Stored-shape changes require versioned reopen tests. Phase 1 deliberately leaves the new behavioural tests red.
+
 ### Milestone 2 in flight, 2026-10-13
 
 [The milestone 2 state entry](progress-log/2026-10-07-milestone-2-state.md) holds the numbers and the incidents behind this list. It dates from 2026-10-07 and predates several landings below.
