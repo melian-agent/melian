@@ -112,6 +112,11 @@ const groups = (revision: Revision | undefined, findings: readonly Finding[]) =>
 		.sort();
 };
 
+const reportOf = (finding: Finding) => {
+	const { id, source, severity } = finding.properties;
+	return { id, ruleId: finding.ruleId, check: source.check, severity };
+};
+
 const permutations = <T>(items: readonly T[]): T[][] =>
 	items.length <= 1
 		? [[...items]]
