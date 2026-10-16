@@ -19,6 +19,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { fakeGitHub } from "../../github/test/fixtures/fake-github.ts";
 import { pullRequestState } from "../../github/test/fixtures/scenario.ts";
 import { DecisionDocument, decisionExtension } from "../src/decisions.ts";
+import { PublisherDocument } from "../src/publish.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import * as staticRunner from "../src/static.ts";
 import { TimingDocument } from "../src/task-timing.ts";
@@ -147,3 +148,61 @@ it.each(["melian.check", "melian.decision", "melian.adjudication", "melian.publi
 		expect(fake.provider.state.callCount).toBe(0);
 	},
 );
+
+it.each([
+	["trustedWriters", true, "writer trust policy changed"],
+	["login", "other-user", "publisher login changed"],
+	["permission", "admin", "publisher permission changed"],
+	["authorPermission", "write", "publisher authorPermission changed"],
+])("supersedes a reopened version-2 publication when %s changes", async (field, value, reason) => {
+	const previous = JSON.parse(
+		readFileSync(new URL("./fixtures/stage-telemetry-previous/untrusted-publication.json", import.meta.url), "utf8"),
+	) as {
+		version: number;
+		input: JsonObject & { publishedBy: JsonObject };
+		state: { checkpoint: { phase: string } & JsonObject };
+	};
+	const directory = realpathSync(mkdtempSync(join(tmpdir(), "melian-publisher-reopen-")));
+	directories.push(directory);
+	const path = join(directory, "state.sqlite");
+	const fake = createFakeModels();
+	const first = await openHarness(await openSqliteStorage(path), { models: fake.models, registry: createRegistry() });
+	closes.push(() => first.close(context));
+	const root = await first.root(context);
+	const token = defineTask<JsonObject, { phase: string } & JsonObject, null>({
+		name: "melian.publish",
+		version: previous.version,
+		initial: () => previous.state.checkpoint,
+		phases: {
+			publish: async () => {
+				throw new Error("old task must not execute");
+			},
+		},
+		abort: async () => {
+			throw new Error("old task must not abort");
+		},
+	});
+	const id = await root.commit(async (tx) => {
+		const id = await tx.createTask(token, previous.input, { ownership: { kind: "conversation" } });
+		Object.assign(await tx.doc(PublisherDocument, root.id), {
+			target: previous.input.target,
+			publishedBy: { ...previous.input.publishedBy, [field]: value },
+		});
+		return id;
+	}, context);
+	await first.close(context);
+	const state = pullRequestState();
+	const fetch = vi.fn(fakeGitHub(state));
+	const registry = createRegistry();
+	registry.install(
+		publishExtension(createGitHubProvider({ owner: state.owner, repo: state.repo, token: "test-token", fetch })),
+	);
+	const storage = await openSqliteStorage(path);
+	const second = await openHarness(storage, { models: fake.models, registry });
+	closes.push(() => second.close(context));
+	const settled = await second.waitForTask(id, context);
+	expect(settled.state.outcome).toEqual({ status: "completed", result: { kind: "superseded", reason } });
+	expect((await storage.task(id, context))!.input).toEqual(previous.input);
+	expect(fetch).not.toHaveBeenCalled();
+	expect(fake.provider.state.callCount).toBe(0);
+});

@@ -467,8 +467,8 @@ function publishTask(provider: ReviewProvider) {
 	return defineTask<StoredPublishInput, { phase: "publish"; legacyTiming?: true }, PublishOutcome>({
 		name: publishTaskName,
 		version: 3,
-		migrate: (input, checkpoint) => ({
-			input: PublishInput.upgrade(input),
+		migrate: (input, checkpoint, fromVersion) => ({
+			input: fromVersion === 1 ? PublishInput.upgrade(input) : (input as StoredPublishInput),
 			checkpoint: { ...(checkpoint as { phase: "publish" }), legacyTiming: true },
 		}),
 		initial: () => ({ phase: "publish" }),
