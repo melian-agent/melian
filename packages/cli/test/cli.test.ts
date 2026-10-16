@@ -708,7 +708,9 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 		const { repo, env, id, member } = reviewedMerged();
 		// git reads the author from this process's environment, as it does in the spawned CLI's.
 		for (const [key, value] of Object.entries(gitEnv)) vi.stubEnv(key, value);
-		onTestFinished(() => vi.unstubAllEnvs());
+		onTestFinished(() => {
+			vi.unstubAllEnvs();
+		});
 		const run = async (target: string, only = false) => {
 			let out = "";
 			const io = {

@@ -189,7 +189,14 @@ function adjudicate(sightings: Readonly<Record<string, ProducerFinding>>, judged
 	const original = members.map((member) => member.original()).reduce(stricter);
 	// The winner is the highest after lowering, so its own original, when it has one, is never above this one.
 	const lowered = original === properties.severity ? {} : { originalSeverity: original };
-	return { winner: { ...ranked[0]!, properties: { ...properties, ...lowered, ...claims } }, reportedBy };
+	// The finding sits where the sighting the lenses ranked first put it, so no verdict moves its lines and regroups it.
+	const [located] = [...members].sort(
+		(a, b) =>
+			severityRank[a.original()] - severityRank[b.original()] ||
+			compareSources(a.properties.source, b.properties.source),
+	);
+	const { locations } = located!.toJSON();
+	return { winner: { ...ranked[0]!, locations, properties: { ...properties, ...lowered, ...claims } }, reportedBy };
 }
 
 /**
