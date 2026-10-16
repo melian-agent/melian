@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { type AlsoReportedAs, Finding, Verdict } from "@melian-agent/core";
+import { type AlsoReportedAs, type Finding, Verdict } from "@melian-agent/core";
 import {
 	type AdjudicationResult,
 	AdjudicationTask,
@@ -8,7 +8,7 @@ import {
 	VerdictDocument,
 } from "./adjudication.ts";
 import { DismissError } from "./errors.ts";
-import { type Dismissal, dismissFinding, FindingsDocument, revisionKey } from "./findings.ts";
+import { type Dismissal, dismissFinding, FindingsDocument, revisionKey, siteAt } from "./findings.ts";
 import {
 	backgroundContext,
 	type Context,
@@ -128,13 +128,11 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 		if (found === undefined) {
 			throw new DismissError("unknownFinding", `the review of ${revision} has no finding ${id}`, where);
 		}
-		const recorded = (await tx.doc(FindingsDocument, root.id)).items;
+		const findings = await tx.doc(FindingsDocument, root.id);
+		const recorded = findings.items;
 		// A report's site at this revision, as the snippet pass groups by. A member at another site joined the speaker only
 		// through a hunk, so its text was never the speaker's, and dismissing the speaker leaves it live.
-		const siteOf = (report: string) => {
-			const [sighting] = Object.values(recorded[report]?.sightings[revision] ?? {});
-			return sighting && Finding.from({ ...sighting, properties: { ...sighting.properties, status: "new" } }).site();
-		};
+		const siteOf = (report: string) => siteAt(findings, report, revision);
 		const site = siteOf(found.speaker.id);
 		// Only a static or guardrail report lacks a site, and one never has members: it merges by neither pass.
 		const apart = new Set(found.members.filter((other) => siteOf(other.id) !== site).map((other) => other.id));

@@ -200,6 +200,17 @@ function adjudicate(sightings: Readonly<Record<string, ProducerFinding>>, judged
 }
 
 /**
+ * Where the finding `id` sits at `revision` as grouping reads it: the site of the sighting the lenses ranked first, or
+ * `undefined` when nothing sighted it there or it has no snippet.
+ */
+export function siteAt(state: FindingsState, id: string, revision: string): string | undefined {
+	const sightings = state.items[id]?.sightings[revision];
+	if (sightings === undefined || Object.keys(sightings).length === 0) return undefined;
+	const { winner } = adjudicate(sightings);
+	return Finding.from({ ...winner, properties: { ...winner.properties, status: "new" } }).site();
+}
+
+/**
  * Marks `revision` as the newest the changeset has been reviewed at, moving it last if it was reviewed before. Call it
  * in the commit that starts a review, so a review of an older revision that resumes afterwards counts as older.
  * `revision` is a {@link revisionKey}, as every revision this module takes is.

@@ -616,6 +616,49 @@ describe("recording a dismissal", () => {
 		expect(live.map((each) => each.properties.id)).toEqual([shown!.properties.id]);
 	});
 
+	// The round's abb7ee15: dismissal must read a report's site where grouping read it, through the lenses' winner.
+	it("dismisses a snippet member of a cut snippet with its speaker, though another sighting cites wider lines", async () => {
+		const long = `export const table = [${Array.from({ length: 300 }, (_, index) => `"cell${index}"`).join(", ")}];`;
+		push("boss", unsafe, { "src/long.ts": lines("// a", "// b", "// c", "// d", "", long, "", "// h") });
+		lenses = await Lens.load(repo, { kind: "revision", commit: gitIn(repo, "rev-parse", "main") }, ["src/long.ts"]);
+		config = { ...config, tiers: { ...config.tiers, full: [...config.tiers.full!, "lens.trust-boundary"] } };
+		const at = (line: number, endLine: number, rule: string, severity: string) => ({
+			...nullDeref,
+			file: "src/long.ts",
+			line,
+			endLine,
+			rule,
+			severity,
+			evidence: [{ file: "src/long.ts", line, endLine, role: "cause" }],
+		});
+		scriptConversations(fake, [
+			{
+				match: correctness,
+				replies: [report(at(5, 7, "melian/injection-attempt", "P2")), fauxAssistantMessage("Done.")],
+			},
+			{
+				match: contracts,
+				replies: [report(at(6, 6, "melian/injection-attempt", "P1")), fauxAssistantMessage("Done.")],
+			},
+			{
+				match: "You are the trust-boundary reviewer",
+				replies: [report(at(6, 6, "head-controls-judge", "P2")), fauxAssistantMessage("Done.")],
+			},
+		]);
+		const harness = await reviewHarness(createMemoryStorage());
+		const { verdict } = await reviewed(harness);
+		const [shown, ...rest] = verdict.attention();
+		expect(rest).toEqual([]);
+		const [member] = shown!.properties.alsoReportedAs!;
+		expect(member).toMatchObject({ ruleId: "head-controls-judge" });
+
+		const recorded = await dismiss(harness, shown!.properties.id);
+
+		expect(recorded.also.map((other) => other.id)).toEqual([member!.id]);
+		expect(recorded.live).toEqual([]);
+		expect(recorded.verdict.attention()).toEqual([]);
+	});
+
 	describe("two lens reports one hunk caused, with different snippets", () => {
 		// Correctness reports line 8; contracts reports lines 7-8, the whole hunk, so the two share no snippet.
 		function scriptHunkPair(severity = "P2"): void {
