@@ -23,7 +23,7 @@ The [implementation plan](design-implementation-plan.md) says the maintainer run
 
 ## Resolution and the status
 
-8. **Should an `acknowledge` finding fail the published status?** No `acknowledge` finding fails `melian/review` today, pre-existing or not. Decide whether one should, repository-wide; step 18 built no gate for `resolution.preExisting`.
+8. **Should an `acknowledge` finding fail the published status?** No `acknowledge` finding fails `melian/review` today, pre-existing or not. Decide whether one should, repository-wide; step 18 built no gate for `resolution.preExisting`. Answered by the maintainer on 2026-10-16, taking the coordinator's recommendation: yes. An unresolved `acknowledge` finding fails the status, and a maintainer dismisses it with a reason to pass, so a policy notice needs a dismissal on every policy change. [The decision](decisions/2026-10-16-acknowledge-fails-the-status.md) records it; plan step 28 builds it.
 
 ## Recurring extra sightings in the design goldens
 
@@ -50,7 +50,7 @@ These were asked while the loop ran, outside this list. Each answer is the maint
 - **The mutation check's guard**, 2026-10-14: no sandbox. The check runs a head's tests only when the head is trusted. In the maintainer's words: "as long as when a check is configured, the melian review is not considered fully approved without all static checks that are configured for the repo have been run correctly. So it would mean, fork code run locally -- skipped, but then when run in github PR build, will run -- otherwise we need to not approve that PR." A fork's mutation result counts "like CI tests", and a fork's check runs in a separate job with no secrets once the Actions host exists.
 - **The mutation check's timeout**, 2026-10-14: "longer timeout everywhere, we'll make the call later on whether the return is worth it. I want to see how it works in practice with smaller PRs." The default is 7,200 seconds, provisional.
 
-Question 8, whether `acknowledge` should fail the status, has no answer from the maintainer yet. A coordinator's belief that it already gated the merge cost [pull request #117](https://github.com/melian-agent/melian/pull/117) rounds before it was corrected.
+Question 8, whether `acknowledge` should fail the status, was answered on 2026-10-16: it should, from plan step 28. Until that lands, no `acknowledge` finding fails it. A coordinator's belief that it already gated the merge cost [pull request #117](https://github.com/melian-agent/melian/pull/117) rounds before it was corrected.
 
 - **What happens when a provider is out**, 2026-10-16: fail over to Claude for every lens once plan step 27 lands, keep Sol first, and keep an admin bypass on the ruleset only for when both providers are out. A provider limit error now moves a lens, the verifier and every other routed task to the tier's next model; [the decision](decisions/2026-10-16-failover-on-provider-limit.md) records it. Until step 27 lands, Opus scores lower on design and durability, so a round that failed over reads those lenses with that in mind.
 
