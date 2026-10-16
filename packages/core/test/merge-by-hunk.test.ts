@@ -269,12 +269,15 @@ describe("the design golden that supersedes its own decision", () => {
 		const strongest = on("lens.design", [6, 7], { severity: "P0" });
 		const lowest = on("lens.trust-boundary", [6, 7], { rule: "trust-27", severity: "P2" });
 		const second = on("lens.design", [6, 7], { rule: "second-1" });
+		// The weakest of the snippet group comes last in it, with an ID above `second`'s.
+		const weakest = on("lens.contracts", [6, 7], { rule: "last-1", severity: "P3" });
 		expect(lowest.properties.id < second.properties.id && second.properties.id < strongest.properties.id).toBe(true);
+		expect(weakest.properties.id > second.properties.id).toBe(true);
 		const expected = [
-			[opener, strongest, lowest].map((each) => each.properties.id).sort(),
+			[opener, strongest, lowest, weakest].map((each) => each.properties.id).sort(),
 			[second.properties.id],
 		].sort();
-		for (const order of permutations([opener, strongest, lowest, second])) {
+		for (const order of permutations([opener, strongest, lowest, weakest, second])) {
 			expect(groups(revision, order)).toEqual(expected);
 		}
 	});

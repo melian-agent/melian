@@ -1063,12 +1063,12 @@ export class Merge {
 	#byHunk(groups: readonly Finding[][]): Finding[][][] {
 		const revision = this.#revision;
 		if (revision === undefined) return groups.map((group) => [group]);
-		const first = (group: readonly Finding[]) =>
-			[...group].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))[0]!;
+		// A snippet group's reports share their lines, so its first by ID stands for it. IDs are lowercase hex.
+		const first = (group: readonly Finding[]) => group.reduce((low, each) => (each.id < low.id ? each : low));
 		const ordered = [...groups].sort((left, right) => {
 			const [a, b] = [first(left), first(right)];
 			const [[aStart, aEnd], [bStart, bEnd]] = [a.lines(), b.lines()];
-			return aEnd - bEnd || aStart - bStart || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+			return aEnd - bEnd || aStart - bStart || a.id.localeCompare(b.id);
 		});
 		const joined: Finding[][][] = [];
 		for (const group of ordered) {

@@ -127,7 +127,6 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 		// one defect never leaves another check's report of it live, unless the caller asked for the one report alone.
 		const reports = found.dismiss(id, options.only);
 		const [own] = reports;
-		const members = reports.length === 1 ? [] : found.members;
 		const index = await tx.doc(ReviewIndex, root.id);
 		const entry = index.reviews[revision];
 		const known = entry?.adjudication;
@@ -150,7 +149,9 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 		const input: AdjudicationTaskInput = { ...previous, repoRoot: checkout, findingsVersion };
 		const key = JSON.stringify(input);
 		// Copies: the stored verdict is the commit's own view, unusable once the commit settles.
-		const also = members.filter((other) => dismissed.includes(other.id)).map((other) => ({ ...other }));
+		const also = found.members
+			.filter((other) => other.id !== own && dismissed.includes(other.id))
+			.map((other) => ({ ...other }));
 		// The same dismissal again, as after a dismiss a crash cut short, waits for the adjudication it started, unless
 		// that ended without deciding, failed included, as a review would rerun it.
 		if (known.input === key && (await attachable(tx, known.task, [...undecided, "failed"]))) {

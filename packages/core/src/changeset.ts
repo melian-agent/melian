@@ -301,7 +301,7 @@ export class Revision {
 	 * ranges and no text: what the merge reads, small enough for a stored task input to hold.
 	 */
 	outline(findings: readonly Finding[]): ChangedFile[] {
-		const paths = new Set(
+		const paths = new Set<string | undefined>(
 			findings.flatMap((finding) => [
 				finding.properties.path,
 				...[...finding.claims(), ...(finding.properties.otherClaims ?? [])].flatMap((claim) =>
@@ -310,7 +310,7 @@ export class Revision {
 			]),
 		);
 		return this.files
-			.filter((file) => paths.has(file.path) || (file.oldPath !== undefined && paths.has(file.oldPath)))
+			.filter((file) => paths.has(file.path) || paths.has(file.oldPath))
 			.map((file) => ({ ...file, hunks: file.hunks.map((hunk) => ({ ...hunk, header: "", text: "" })) }));
 	}
 
