@@ -28,4 +28,4 @@ The pre-existing paragraph under "Resolution" drops "It sets no gate of its own"
 
 Who may dismiss on each host: the CLI publishes with the dismisser's own token, and the Actions host needs a writer check. The step settles it against the trust rules for the status, and writes the test that a non-writer's dismissal does not pass.
 
-Amends one clause of [2026-10-13-resolution-as-built.md](2026-10-13-resolution-as-built.md), "The step builds no gate of its own". That decision stays active for everything else.
+This file contradicts one clause of [2026-10-13-resolution-as-built.md](2026-10-13-resolution-as-built.md), "The step builds no gate of its own", and the decision log recognises only a `Supersedes:` line, so that decision stays active with the old clause until step 28 lands. Step 28 writes the decision that supersedes it and restates every other clause that survives, since the log retires a superseded file whole. Not done here: the file is long, and restating it unbuilt would pin text the step may need to change. The same gap is readiness question 5.

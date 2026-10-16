@@ -18,7 +18,7 @@ The same forced notice, by the same comparison of parsed values at base and head
 
 - `guardrails`, the whole subtree: `enabled`, `severity`, `analyserSeverity`, `rules` and `files`. Changing `policy-change-review.enabled` is one of them.
 - `lenses.<name>.enabled`, `paths` and `level`, which decide whether a lens runs on a path.
-- `static.<tool>.enabled` and `severity`.
+- Every `static.<tool>` key: `enabled`, `severity`, and the keys that narrow coverage, such as `tsc.project` and `mutation.maxLines`. A key is in the set when changing it can reduce what a check reports.
 - `tiers` and `stages`, which decide what runs at all.
 
 The notice carries its class, so resolution keys it apart from the `resolution` notice. It never falls below `acknowledge`, and no entry under `guardrails` lowers it, as for the `resolution` notice. A key that changes no blocking, such as `publish.walkthrough`, `models` and `knowledge`, keeps its place under the parent's switch. The step writes the exact list from the schema and fails a test when a new key lands unclassified.
