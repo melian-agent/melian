@@ -462,6 +462,20 @@ describe("the design golden that supersedes its own decision", () => {
 		},
 	);
 
+	it("shows the prose of the most severe standing report when the speaker was refuted", () => {
+		const refuted = on("lens.trust-boundary", [5, 7], { rule: "sql-injection", severity: "P0", verdict: "refuted" });
+		// The lesser report ends first, so it comes first in the group.
+		const lesser = on("lens.tests", [6, 6], { rule: "untested-behaviour", severity: "P2", verdict: "confirmed" });
+		const greater = on("lens.contracts", [6, 7], { rule: "broken-caller", verdict: "confirmed" });
+		for (const order of permutations([refuted, lesser, greater])) {
+			const input = { findings: order, manifest: [], checks: [], config: defaultConfig, revision };
+			const [defect, ...rest] = new Adjudication(input).defects();
+			expect(rest).toEqual([]);
+			expect(defect!.speaker.properties).toMatchObject({ id: refuted.properties.id, severity: "P1" });
+			expect(defect!.speaker.message.text).toBe(greater.message.text);
+		}
+	});
+
 	// The review of record's F4: a hunk member dismissed by its own ID stays in the speaker's listing.
 	it("keeps a dismissed report apart from a live one the same hunk caused, and lists it as dismissed", () => {
 		const live = report(revision, design);

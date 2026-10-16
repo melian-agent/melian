@@ -141,7 +141,7 @@ export class Defect {
 			...properties
 		} = keeper.properties;
 		// The speaker keeps its identity, but shows what a report that stands says, when it was refuted.
-		const shown = keeper.refuted() ? ([...counted].sort((a, b) => a.compareReported(b))[0] ?? keeper) : keeper;
+		const shown = keeper.refuted() ? [...counted].sort((a, b) => a.compareReported(b))[0]! : keeper;
 		const speaker = Finding.from({
 			...keeper.toJSON(),
 			message: { ...shown.toJSON().message },

@@ -169,7 +169,7 @@ function compareSources(a: FindingSource, b: FindingSource): number {
 // winner keeps its own claim and takes the strongest cause any sighting gave, with the cause locations that prove it,
 // and every other sighting's claim, so a P1 whose cause location overlaps the change, beside a P0 whose evidence proves
 // nothing, reads as an affected P0 that still carries the P1's scenario and evidence.
-function adjudicate(sightings: Readonly<Record<string, ProducerFinding>>, judged: boolean) {
+function adjudicate(sightings: Readonly<Record<string, ProducerFinding>>, judged = false) {
 	// A sighting stores no lifecycle status, and merging claims reads none.
 	const refuted = (each: ProducerFinding) =>
 		judged && Finding.from({ ...each, properties: { ...each.properties, status: "new" } }).refuted();
@@ -309,7 +309,7 @@ export async function upsertFinding(
 		lastSeen !== undefined &&
 		(proven
 			? standing.length < stored.length
-			: triggerCode(adjudicate(lastSeen, false).winner.properties.trigger) !== triggerCode(properties.trigger));
+			: triggerCode(adjudicate(lastSeen).winner.properties.trigger) !== triggerCode(properties.trigger));
 	const proof = unionOf([...(reopened ? [] : standing), ...proved]);
 	const tied = proof.length > 0 || kept.proof !== undefined ? { proof } : {};
 	const lifecycle: FindingLifecycle = reopened
