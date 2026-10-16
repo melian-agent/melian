@@ -855,6 +855,23 @@ describe("lowered sightings", () => {
 		expect(tied!.lowered()).toEqual({ from: "P1", reason: "One caller validates." });
 	});
 
+	// Codex's H1 on pull request 131: the refuted sighting must not speak through the one that stands.
+	it("speaks through a standing sighting of one ID, with its own severity and prose, never a refuted one", async () => {
+		const { harness, root } = await open(createMemoryStorage());
+		const other = { check: "lens.contracts", version: "1" };
+		const standing = Finding.create({ ...input, severity: "P2", source: other, failureScenario: "It fails." });
+		await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
+		await root.commit((tx) => upsertFinding(tx, root.id, standing, "rev1"), context);
+		await judge(root, { ...record, verdict: "refuted" });
+		await judge(root, record, other);
+		for (const asReported of [false, true]) {
+			const [finding] = await readFindings(harness, root.id, "rev1", context, { asReported });
+			expect(finding!.properties).toMatchObject({ severity: "P2", source: other, failureScenario: "It fails." });
+			expect(finding!.properties.originalSeverity).toBeUndefined();
+			expect(finding!.level).toBe("warning");
+		}
+	});
+
 	it("drops the original severity when an unlowered sighting holds the finding at it", async () => {
 		const { harness, root } = await open(createMemoryStorage());
 		const other = { check: "lens.contracts", version: "1" };

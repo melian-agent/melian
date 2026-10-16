@@ -431,7 +431,8 @@ describe("the design golden that supersedes its own decision", () => {
 		}
 	});
 
-	it("keeps a dismissed report apart from a live one the same hunk caused, and lists none it never absorbed", () => {
+	// The review of record's F4: a hunk member dismissed by its own ID stays in the speaker's listing.
+	it("keeps a dismissed report apart from a live one the same hunk caused, and lists it as dismissed", () => {
 		const live = report(revision, design);
 		const dismissed = Finding.from({
 			...report(revision, trustBoundary).toJSON(),
@@ -439,7 +440,49 @@ describe("the design golden that supersedes its own decision", () => {
 		});
 		expect(groups(revision, [live, dismissed])).toHaveLength(2);
 		const input = { findings: [live, dismissed], manifest: [], checks: [], config: defaultConfig, revision };
-		expect(new Adjudication(input).dedupe()[0]!.properties.alsoReportedAs).toBeUndefined();
+		const speaker = new Adjudication(input).dedupe().find((each) => each.properties.status !== "dismissed")!;
+		expect(speaker.properties.alsoReportedAs).toEqual([{ ...reportOf(dismissed), dismissed: true }]);
+	});
+
+	// Codex's H2 on pull request 131: a finding one lens also sighted never merges with that lens's other report.
+	it("keeps apart reports whose sets of reporting checks share one, in either pass, whichever source won", () => {
+		const b = on("lens.tests", [5, 7]);
+		const sightedBy = (check: string, range: [number, number]) => {
+			const a = on(check, range, { rule: "shared-rule" });
+			return Finding.from({
+				...a.toJSON(),
+				properties: {
+					...a.properties,
+					reportedBy: [
+						{ check: "lens.design", version: "1" },
+						{ check: "lens.tests", version: "1" },
+					],
+				},
+			});
+		};
+		// Before a lowering, design's sighting wins; after, the tests sighting does.
+		for (const check of ["lens.design", "lens.tests"]) {
+			expect(groups(revision, [sightedBy(check, [6, 7]), b])).toHaveLength(2);
+			expect(groups(revision, [sightedBy(check, [5, 7]), b])).toHaveLength(2);
+		}
+		expect(groups(revision, [on("lens.design", [6, 7], { rule: "shared-rule" }), b])).toHaveLength(1);
+	});
+
+	// The review of record's F2: one lens with two rules on one snippet, and a lowering of the first.
+	it("groups the snippet pass by the severity the lens reported, so a lowering never regroups it", () => {
+		const a = on("lens.design", [6, 6], { rule: "rule-a" });
+		const b = on("lens.trust-boundary", [6, 6], { severity: "P2" });
+		const lowered = Finding.from({
+			...a.toJSON(),
+			level: "warning",
+			properties: { ...a.properties, severity: "P2", originalSeverity: "P1" },
+		});
+		for (let index = 0; index < 6; index++) {
+			const c = on("lens.design", [6, 6], { rule: `rule-c${index}`, severity: "P2" });
+			const before = groups(revision, [a, b, c]);
+			expect(before).toEqual([[a.properties.id, b.properties.id].sort(), [c.properties.id]].sort());
+			expect(groups(revision, [lowered, b, c])).toEqual(before);
+		}
 	});
 
 	it("names a dismissed report beside a hunk group, through any snippet group it holds", () => {
@@ -494,6 +537,8 @@ describe("the design golden that supersedes its own decision", () => {
 		expect(defect!.dismiss(member!)).toEqual([member]);
 		expect(defect!.dismiss(speaker!).sort()).toEqual([speaker, member, other].sort());
 		expect(defect!.dismiss(speaker!, true)).toEqual([speaker]);
+		// The review of record's F1: reports that joined only through a hunk stay live.
+		expect(defect!.dismiss(speaker!, false, new Set([other!])).sort()).toEqual([speaker, member].sort());
 	});
 });
 

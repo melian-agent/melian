@@ -695,6 +695,8 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 		expect(dismissed.stdout).toBe(
 			[
 				`Dismissed changed-return in src/user.ts line 7 (${member}) as Melian Test <test@melian.invalid>.`,
+				"Still live, merged with it before:",
+				`  null-dereference from lens.correctness (${id})`,
 				"Verdict now: findings, blocking.",
 				"",
 			].join("\n"),
