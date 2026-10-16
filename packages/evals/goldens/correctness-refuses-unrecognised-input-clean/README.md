@@ -1,0 +1,3 @@
+# correctness-refuses-unrecognised-input-clean
+
+The negative golden of the `correctness` lens's sentence that code refusing an input it does not recognise reads nothing wrong for it. The head compares the running Node with the `engines.node` range through a regex that reads one narrow shape of version and answers false for every other, so it fails closed. A six-digit cap on the minor and patch parts refuses a longer version; it does not read one wrongly. A review must report nothing. It shares its change with `design-reimplements-an-authority-clean`, which pins the same case on `design`; a live run of this one measures `correctness` alone.

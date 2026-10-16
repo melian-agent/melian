@@ -117,7 +117,7 @@ describe("built-in lenses", () => {
 		expect(Object.fromEntries(lenses.map((lens) => [lens.name, lens.version]))).toEqual({
 			contracts: "dd8fb36095b4",
 			conventions: "1815e2aee9b9",
-			correctness: "5e57d5dca9bd",
+			correctness: "18c49f913df8",
 			design: "5e3c0f70c270",
 			"removed-behaviour": "37aeab0038e3",
 			tests: "9eb5dbf32a98",
@@ -125,7 +125,7 @@ describe("built-in lenses", () => {
 		});
 		const tuned = { ...defaultConfig, lenses: { correctness: { tier: "light" as const, paths: ["src/**"] } } };
 		const [correctness] = Lens.select(named(lenses, "correctness"), tuned, ["src/index.ts"]);
-		expect(correctness!.lens.version).toBe("44fd47e23eb7");
+		expect(correctness!.lens.version).toBe("318f7d84afe5");
 	});
 
 	it("load the design lens heavy, over every path, reading whole functions at the one level it declares", async () => {
@@ -231,13 +231,13 @@ describe("built-in lenses", () => {
 		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
 		expect(Object.fromEntries(lenses.map((lens) => [lens.name, lens.version]))).toMatchObject({
 			durability: "cf27155ae0f7",
-			correctness: "732f94279c9f",
+			correctness: "9ba643be97c6",
 			"removed-behaviour": "6eddfa91c6db",
 		});
 		const { config } = await loadConfig(repo, { kind: "worktree" }, ".");
 		const selected = Lens.select(lenses, config, ["src/index.ts"]);
 		expect(Object.fromEntries(selected.map(({ lens }) => [lens.name, lens.version]))).toMatchObject({
-			correctness: "80b67adbc505",
+			correctness: "a2c6e73e6d78",
 			"removed-behaviour": "253e58f5075e",
 		});
 	});
