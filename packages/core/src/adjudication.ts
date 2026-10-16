@@ -914,9 +914,11 @@ export class Adjudication {
 	 *
 	 * One finding speaks for each defect. `ruleAliases` in the configuration at its path decides first: a finding whose
 	 * rule is a key listing another member's rule is preferred, so a repository can say the defect belongs to the
-	 * contracts lens. Otherwise the most severe speaks, the lower ID on a tie, as {@link Defect.merge} merges them, and
-	 * never a refuted report while another stands. A finding without a snippet merges only through the hunk pass: given
-	 * the input's `revision`, groups of lens reports alone also join when the change caused them through one hunk.
+	 * contracts lens. Otherwise the most severe as the lenses reported it speaks, the lower ID on a tie, as
+	 * {@link Defect.merge} merges them. No verdict picks the speaker: a refuted claim changes only what the defect
+	 * resolves at and the prose it shows, which come from the reports that stand. Given the input's `revision`, groups of
+	 * lens reports alone also join when the change caused them through one hunk, and a finding without a snippet merges
+	 * only that way.
 	 *
 	 * Only findings with the same lifecycle status merge. A dismissed finding never absorbs a live one: a live finding
 	 * beside a dismissed report of the same defect stays live, and blocks if it blocks, listing the dismissed one in

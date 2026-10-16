@@ -7,7 +7,7 @@ import {
 	defaultConfig,
 	type EvidenceLocation,
 	Finding,
-	type Revision,
+	Revision,
 	type Severity,
 	snippetOccurrence,
 } from "@melian-agent/core";
@@ -701,6 +701,9 @@ describe("an unchanged caller that two lenses report", () => {
 		].map((spec) => report(revision, spec));
 		expect([a!.properties.cause, b!.properties.cause]).toEqual(["affected", "affected"]);
 		expect(groups(revision, [a!, b!])).toHaveLength(1);
+		// The round's 8d781b2a: adjudication rebuilds the revision from the stored outline, which keeps the base ranges.
+		const stored = Revision.from({ base: revision.base, head: revision.head, files: revision.outline([a!, b!]) });
+		expect(groups(stored, [a!, b!])).toHaveLength(1);
 	});
 
 	it("keeps the two apart when different hunks prove them", async () => {

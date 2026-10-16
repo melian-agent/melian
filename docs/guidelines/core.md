@@ -451,7 +451,7 @@ ruleAliases:
   no-eval: [security/detect-eval-with-expression, lint/security/noGlobalEval]
 ```
 
-With that table, the contracts lens's `broken-caller` speaks for the defect above. Without an owner among the defect's rules, the most severe finding speaks, the lower ID on a tie. A finding without a snippet never merges, and there is no fuzzy matching: a static tool that flags `eval(input)` and a lens that flags the three lines around it have different snippets and stay two findings.
+With that table, the contracts lens's `broken-caller` speaks for the defect above. Without an owner among the defect's rules, the most severe finding speaks, the lower ID on a tie. A finding without a snippet merges only through the hunk pass below, and there is no fuzzy matching: a static tool that flags `eval(input)` and a lens that flags the three lines around it have different snippets and stay two findings, since a static report never joins the hunk pass.
 
 Lens reports also merge when one hunk caused them, built in step 27, "Merge by shared cause". Problem: the snippet depends on which lines a model cites. Example: on the design golden `design-supersedes-its-own-decision`, three lenses reported one fail-open default in `src/publish.ts` at lines 6-7, 5-7 and 3-8, and stayed three findings. An instruction to cite the lines that break was measured and did not change that. Solution: `Merge` takes the `Revision` and runs a second pass over the snippet groups. It joins whole groups of lens reports alone when every report of one meets every report of the other. Two reports meet when different checks report them in one file, with one status, over overlapping lines, with no `distinct` alias between their rules, and the change caused both:
 
