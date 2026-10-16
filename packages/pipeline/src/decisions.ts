@@ -8,6 +8,8 @@ import {
 	defineTask,
 } from "./harness.ts";
 
+import { TaskTiming } from "./task-timing.ts";
+
 // Type aliases, not interfaces: a document's value must satisfy Pi's JsonObject, which an interface never does.
 
 // One question set's decision for a revision: the task that decides it, what it was asked as `key`, and, once the task
@@ -58,12 +60,17 @@ const maxFailure = 200;
 // task's outcome, so a crash before the commit asks again and a repeat call attaches to the task: replay safe. A
 // decider that throws, times out, or answers what was not asked is recorded as a failure, and the caller fails closed.
 export function decisionTask(decider: Decider, timeout = decisionTimeout) {
-	return defineTask<DecisionTaskInput, { phase: "decide" }, DecisionResult>({
+	return defineTask<DecisionTaskInput, { phase: "decide"; legacyTiming?: true }, DecisionResult>({
 		name: decisionTaskName,
-		version: 1,
+		version: 2,
+		migrate: (input, checkpoint) => ({
+			input: input as DecisionTaskInput,
+			checkpoint: { ...(checkpoint as { phase: "decide" }), legacyTiming: true },
+		}),
 		initial: () => ({ phase: "decide" }),
 		phases: {
 			decide: async (task, runtime, context) => {
+				const timing = await TaskTiming.start(runtime, task.state.checkpoint.legacyTiming, context);
 				const { root, revision, key, request } = task.input;
 				const timedOut = AbortSignal.timeout(timeout);
 				const signal = AbortSignal.any([runtime.signal, timedOut]);
@@ -84,7 +91,10 @@ export function decisionTask(decider: Decider, timeout = decisionTimeout) {
 				// record another decider's answer under this key.
 				const named = (JSON.parse(key) as { decider?: unknown }).decider;
 				if (named !== decider.name) {
-					await runtime.commit(() => ({ status: "terminal", outcome: { status: "aborted" } }), context);
+					await runtime.commit(async (tx) => {
+						await timing.end(tx);
+						return { status: "terminal", outcome: { status: "aborted" } };
+					}, context);
 					return;
 				}
 				try {
@@ -96,6 +106,7 @@ export function decisionTask(decider: Decider, timeout = decisionTimeout) {
 					answer = { failure: failure.length <= maxFailure ? failure : `${failure.slice(0, maxFailure - 1)}…` };
 				}
 				await runtime.commit(async (tx) => {
+					await timing.end(tx);
 					const document = await tx.doc(DecisionDocument, root);
 					const entries = document.decisions[revision] ?? {};
 					const entry = entries[request.questionSet.name];
@@ -109,7 +120,11 @@ export function decisionTask(decider: Decider, timeout = decisionTimeout) {
 			},
 		},
 		abort: async (_task, runtime, context) => {
-			await runtime.commit(() => ({ status: "terminal", outcome: { status: "aborted" } }), context);
+			const timing = await TaskTiming.read(runtime, context);
+			await runtime.commit(async (tx) => {
+				await timing.end(tx);
+				return { status: "terminal", outcome: { status: "aborted" } };
+			}, context);
 		},
 	});
 }

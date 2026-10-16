@@ -227,3 +227,48 @@ describe("the --cold flag", () => {
 		}
 	});
 });
+
+describe("review JSON and model arguments", () => {
+	it.each([new Error("before\u001b[2J"), "before\u001b[2J"])(
+		"prints a JSON failure before the command writes: %s",
+		async (failure) => {
+			const io = output();
+			const review = vi.spyOn(commands, "review").mockRejectedValue(failure);
+			try {
+				expect(await main(["review", "main", "--json"], io)).toBe(2);
+				expect(io.stdout).toHaveBeenCalledTimes(1);
+				expect(JSON.parse(io.stdout.mock.calls[0]![0] as string)).toEqual({
+					error: { message: "before\u001b[2J" },
+					telemetry: null,
+				});
+			} finally {
+				review.mockRestore();
+			}
+		},
+	);
+	it("keeps text errors out of JSON mode", async () => {
+		const io = output();
+		const review = vi.spyOn(commands, "review").mockRejectedValue(new Error("before storage"));
+		try {
+			expect(await main(["review", "main"], io)).toBe(2);
+			expect(io.stdout).not.toHaveBeenCalled();
+		} finally {
+			review.mockRestore();
+		}
+	});
+	it.each([{ flags: [] }, { flags: ["--model", "faux/chosen"] }])(
+		"passes only an explicit model override: %j",
+		async ({ flags }) => {
+			const io = output();
+			const review = vi.spyOn(commands, "review").mockResolvedValue(0);
+			try {
+				expect(await main(["review", "main", ...flags], io)).toBe(0);
+				const options = review.mock.calls[0]![2];
+				if (flags.length === 0) expect(options).not.toHaveProperty("model");
+				else expect(options.model).toBe("faux/chosen");
+			} finally {
+				review.mockRestore();
+			}
+		},
+	);
+});

@@ -1,0 +1,41 @@
+{
+  "id": 38,
+  "conversationId": 1,
+  "kind": "melian.publish",
+  "version": 2,
+  "input": {
+    "publishedBy": {
+      "trustedWriters": false,
+      "login": "melian-user",
+      "permission": "write",
+      "authorPermission": "read"
+    },
+    "root": 1,
+    "target": {
+      "repository": "melian-agent/example",
+      "pullRequest": 7,
+      "baseRef": "main",
+      "baseTip": "478fa1f4c8634955f61e4c66c994b4f70147cee9",
+      "base": "478fa1f4c8634955f61e4c66c994b4f70147cee9",
+      "head": "2f17fc8da0bbfdf36193a5cb1a7ec030f676602c",
+      "revision": "478fa1f4c8634955f61e4c66c994b4f70147cee9..2f17fc8da0bbfdf36193a5cb1a7ec030f676602c"
+    },
+    "lines": {
+      "src/user.ts": [
+        [
+          7,
+          7
+        ]
+      ]
+    }
+  },
+  "background": false,
+  "abortRequested": false,
+  "state": {
+    "status": "running",
+    "checkpoint": {
+      "phase": "publish"
+    }
+  },
+  "startedAt": 1792173309047
+}

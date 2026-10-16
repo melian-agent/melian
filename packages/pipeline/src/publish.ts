@@ -46,6 +46,7 @@ import {
 } from "./harness.ts";
 import { modelsOf, type ReviewModels } from "./models.ts";
 import { ReviewIndex } from "./review-index.ts";
+import { TaskTiming } from "./task-timing.ts";
 
 // Type aliases with mutable arrays, not core's interfaces: a document's value must satisfy Pi's JsonObject.
 // `dismissal` is set on a finding resolved because someone dismissed it, so its reply says why.
@@ -461,16 +462,17 @@ const untrustedWriterStatus: ReviewStatus = {
 // post is recorded in its own commit, and before posting anything the phase reads Melian's markers back from the pull
 // request, so a rerun after a crash between a post and its record finds the post instead of repeating it.
 function publishTask(provider: ReviewProvider) {
-	return defineTask<StoredPublishInput, { phase: "publish" }, PublishOutcome>({
+	return defineTask<StoredPublishInput, { phase: "publish"; legacyTiming?: true }, PublishOutcome>({
 		name: publishTaskName,
-		version: 2,
-		migrate: (input, checkpoint) => ({
-			input: PublishInput.upgrade(input),
-			checkpoint: checkpoint as { phase: "publish" },
+		version: 3,
+		migrate: (input, checkpoint, fromVersion) => ({
+			input: fromVersion === 1 ? PublishInput.upgrade(input) : (input as StoredPublishInput),
+			checkpoint: { ...(checkpoint as { phase: "publish" }), legacyTiming: true },
 		}),
 		initial: () => ({ phase: "publish" }),
 		phases: {
 			publish: async (task, runtime, context) => {
+				const timing = await TaskTiming.start(runtime, task.state.checkpoint.legacyTiming, context);
 				const { root, lines, publishedBy } = task.input;
 				// A task created before targets were recorded has none, and is superseded like any other stale one.
 				const target = task.input.target as PublishTarget | undefined;
@@ -490,13 +492,13 @@ function publishTask(provider: ReviewProvider) {
 						: attributionChanged !== undefined
 							? `publisher ${attributionChanged} changed`
 							: (change ?? "the task recorded no target");
-					await runtime.commit(
-						() => ({
+					await runtime.commit(async (tx) => {
+						await timing.end(tx);
+						return {
 							status: "terminal",
 							outcome: { status: "completed", result: { kind: "superseded", reason } },
-						}),
-						context,
-					);
+						};
+					}, context);
 					return;
 				}
 				const { pullRequest, base, head, revision } = target;
@@ -789,7 +791,8 @@ function publishTask(provider: ReviewProvider) {
 						}, context);
 					}
 					await postStatus(status);
-					await runtime.commit(() => {
+					await runtime.commit(async (tx) => {
+						await timing.end(tx);
 						const abandoned = structuredClone(record.abandoned ?? []);
 						const done: PublishOutcome = {
 							kind: "published",
@@ -804,10 +807,10 @@ function publishTask(provider: ReviewProvider) {
 					if (runtime.signal.aborted) throw error;
 					if (error instanceof TargetMoved) {
 						const stale: PublishOutcome = { kind: "staleTarget", reason: error.message };
-						await runtime.commit(
-							() => ({ status: "terminal", outcome: { status: "completed", result: stale } }),
-							context,
-						);
+						await runtime.commit(async (tx) => {
+							await timing.end(tx);
+							return { status: "terminal", outcome: { status: "completed", result: stale } };
+						}, context);
 						return;
 					}
 					// Everything posted so far is recorded, so the outcome is the failure, and publishing again resumes. A round
@@ -841,6 +844,7 @@ function publishTask(provider: ReviewProvider) {
 						} catch {}
 					}
 					await runtime.commit(async (tx) => {
+						await timing.end(tx);
 						const record = posting ? (await tx.doc(PublishedDocument, root)).revisions[head] : undefined;
 						const pending = record?.pending;
 						if (record !== undefined && pending !== undefined) {
@@ -862,7 +866,11 @@ function publishTask(provider: ReviewProvider) {
 			},
 		},
 		abort: async (_task, runtime, context) => {
-			await runtime.commit(() => ({ status: "terminal", outcome: { status: "aborted" } }), context);
+			const timing = await TaskTiming.read(runtime, context);
+			await runtime.commit(async (tx) => {
+				await timing.end(tx);
+				return { status: "terminal", outcome: { status: "aborted" } };
+			}, context);
 		},
 	});
 }

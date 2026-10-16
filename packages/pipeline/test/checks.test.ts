@@ -30,7 +30,7 @@ import {
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ChecksDocument } from "../src/checks.ts";
+import { CheckSources, ChecksDocument } from "../src/checks.ts";
 import { findingsVersion } from "../src/findings.ts";
 import * as staticRunner from "../src/static.ts";
 import { ToolProvisioning } from "../src/tool-provisioning.ts";
@@ -541,4 +541,39 @@ describe("runChecks feeding reviewChangeset", () => {
 			["guardrail/policy-change-review", "docs/melian.yaml"],
 		]);
 	});
+});
+
+it.each([false, true])("copies only recorded check sources on rerun (missing=%s)", async (missing) => {
+	const base = commit(repo, {
+		"melian.yaml": "tiers:\n  fast: [guardrails, static.biome]\n",
+		"a.ts": "export const a = 1;\n",
+	});
+	const head = commit(repo, { "a.ts": "export const a = 2;\n" });
+	let fail = true;
+	vi.spyOn(staticRunner, "runStaticTool").mockImplementation(async (request) => {
+		expect(request.tool).toBe("biome");
+		expect(request.repoRoot).toBe(repo);
+		expect(request.commit).toBe(head);
+		if (fail) throw new Error("tool failed");
+		const log = {
+			version: "2.1.0" as const,
+			runs: [{ tool: { driver: { name: "biome", version: "test" } }, results: [] }],
+		};
+		return { status: "ran", log, baseLog: log, notes: [] };
+	});
+	const { harness, root, input, run } = await checks(base, head);
+	expect(run.records.map(({ status }) => status)).toEqual(["ran", "failed"]);
+	expect(await harness.snapshot(CheckSources, root.id, "undefined", context)).toBeUndefined();
+	const before = (await harness.snapshot(CheckSources, root.id, String(run.identity.task), context))!;
+	expect(before.tasks.guardrails).toEqual(expect.any(Number));
+	if (missing)
+		await root.commit(async (tx) => {
+			delete (await tx.doc(CheckSources, root.id, String(run.identity.task), null)).tasks.guardrails;
+		}, context);
+	fail = false;
+	const rerun = await runChecks(harness, { ...input, rerunFailed: true }, context);
+	expect(rerun.records.map(({ status }) => status)).toEqual(["ran", "ran"]);
+	const after = (await harness.snapshot(CheckSources, root.id, String(rerun.identity.task), context))!;
+	expect(after.tasks.guardrails).toBe(missing ? undefined : before.tasks.guardrails);
+	expect(Object.keys(after.tasks)).toEqual(missing ? ["static.biome"] : ["guardrails", "static.biome"]);
 });
