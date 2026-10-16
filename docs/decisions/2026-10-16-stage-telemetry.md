@@ -24,7 +24,7 @@ Telemetry never enters task inputs, attach keys, findings, verdicts or publicati
 
 ### Transcript authority
 
-A conversation's first admitted input message supplies the start timestamp. Its final settled submission's answer supplies the end. A settled unanswered run uses its last timestamped transcript entry. An active submission has no end. Admission is idempotent by request ID, and replay does not restamp entries. A crash after Pi settles a submission cannot stretch its end to the resume time. Provider failover stays inside that conversation's interval. A faulted owning task supplies its durable fault end only when the conversation has no settled end of its own.
+A conversation's first admitted input message supplies the start timestamp. Its final settled submission's answer supplies the end: `timestamp + (durationMs ?? 0)` for an assistant message. Pi defines `timestamp` as request start and `durationMs` as milliseconds until the response ended. If duration is absent, use the timestamp and note that response duration is unavailable. A settled unanswered run uses its last timestamped transcript entry. An active submission has no end. Admission is idempotent by request ID, and replay does not restamp entries. A crash after Pi settles a submission cannot stretch its end to the resume time. Provider failover stays inside that conversation's interval. A faulted owning task supplies its durable fault end only when the conversation has no settled end of its own.
 
 Spend comes from Pi's `UsageDoc`, once per conversation, with model names, tokens and USD cost. Absent usage stays absent. Nothing infers spend from duration or calls a model to measure it.
 

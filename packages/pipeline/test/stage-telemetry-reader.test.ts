@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import {
+	type Context,
 	type ConversationId,
 	configure,
 	backgroundContext as context,
@@ -8,6 +9,7 @@ import {
 	defineDoc,
 	defineExtension,
 	defineTask,
+	type EntryId,
 	type Harness,
 	type JsonObject,
 	openHarness,
@@ -45,7 +47,8 @@ it.each([200, 201])("reads every stage and settled input across %i-record pages"
 					for (let childIndex = 0; childIndex < count; childIndex++) {
 						const child = await tx.createConversation({ ownership: { kind: "task", taskId: runtime.taskId } });
 						if (childIndex === count - 1) continue;
-						if (childIndex === count - 4) {
+						if (childIndex === count - 4 || childIndex === count - 5) {
+							if (childIndex === count - 4) await tx.appendEntry(child.id, { kind: "test.no-model" });
 							await tx.createSubmission({
 								type: "input",
 								status: "unanswered",
@@ -85,7 +88,12 @@ it.each([200, 201])("reads every stage and settled input across %i-record pages"
 							});
 							const answer = await tx.appendEntry(child.id, {
 								kind: "pi.assistant",
-								model: [fauxAssistantMessage("done", { timestamp: attempt + 1 })],
+								model: [
+									{
+										...fauxAssistantMessage("done", { timestamp: attempt + 1 }),
+										...(childIndex === 2 ? { durationMs: 0 } : childIndex === 3 ? { durationMs: 2 } : {}),
+									},
+								],
 							});
 							await tx.createSubmission({
 								type: "input",
@@ -165,15 +173,22 @@ it.each([200, 201])("reads every stage and settled input across %i-record pages"
 	const walkthroughs = telemetry.stages.filter(({ name }) => name === "melian.walkthrough");
 	expect(walkthroughs).toHaveLength(count);
 	expect(walkthroughs[0]).toMatchObject({ startedAt: 0, endedAt: count, durationMs: count, outcome: "completed" });
+	expect(walkthroughs[0]!.note).toBe("Response duration unavailable; end uses the request timestamp.");
+	expect(telemetry.render()).toContain("Response duration unavailable; end uses the request timestamp.");
 	expect(walkthroughs[0]!.usage).toEqual({ models: [], tokens: 0, cost: 0 });
 	expect(walkthroughs[1]!.outcome).toBe("ended");
 	expect(walkthroughs[2]!.outcome).toBe("ended");
+	expect(walkthroughs[2]).toMatchObject({ endedAt: 1, durationMs: 1 });
+	expect(walkthroughs[2]!.note).toBeUndefined();
+	expect(walkthroughs[3]).toMatchObject({ endedAt: 3, durationMs: 3 });
+	expect(walkthroughs[3]!.note).toBeUndefined();
 	expect(walkthroughs[count - 1]).toMatchObject({
 		timing: "unavailable",
 		note: expect.stringContaining("not started"),
 	});
 	expect(walkthroughs[count - 2]).toMatchObject({ outcome: "failed", error: "error\u001b[2J" });
 	expect(walkthroughs[count - 2]!.endedAt).toBe(1);
+	expect(walkthroughs[count - 2]!.note).toBeUndefined();
 	expect(walkthroughs[count - 3]).toMatchObject({
 		outcome: "failed",
 		endedAt: 0,
@@ -181,7 +196,9 @@ it.each([200, 201])("reads every stage and settled input across %i-record pages"
 		clockRegressed: false,
 	});
 	expect(walkthroughs[count - 3]!.error).toBeUndefined();
+	expect(walkthroughs[count - 3]!.note).toBeUndefined();
 	expect(walkthroughs[count - 4]).toMatchObject({ outcome: "failed", timing: "unavailable" });
+	expect(walkthroughs[count - 5]).toMatchObject({ outcome: "failed", timing: "unavailable" });
 	expect(telemetry.render()).toContain("No start recorded by the older build, or stage not started.");
 	expect(telemetry.render()).toContain("error\\u001b[2J");
 	const find = storage.findDocument.bind(storage);
@@ -190,6 +207,23 @@ it.each([200, 201])("reads every stage and settled input across %i-record pages"
 		return find(address, at, readContext);
 	});
 	expect((await TelemetryReader.open(storage).read(revision)).stages[0]!.usage).toBeUndefined();
+	const settledInputs = await storage.scanSubmissions(
+		{ conversationId: walkthroughs[3]!.conversation! as ConversationId },
+		1,
+		undefined,
+		context,
+	);
+	const submission = settledInputs.items[0]!;
+	if (submission.type !== "input" || submission.status !== "done") throw new Error("expected answered input");
+	const entry = storage.entry.bind(storage);
+	const entryStorage: { entry(id: EntryId, context: Context): ReturnType<typeof storage.entry> } = storage;
+	vi.spyOn(entryStorage, "entry").mockImplementation((id, readContext) =>
+		id === submission.answer ? Promise.resolve(undefined) : entry(id, readContext),
+	);
+	const missingAnswer = (await TelemetryReader.open(storage).read(revision)).stages[3]!;
+	expect(missingAnswer.endedAt).toBeUndefined();
+	expect(missingAnswer.durationMs).toBeUndefined();
+	expect(missingAnswer.note).toBeUndefined();
 	expect(telemetry.stages.filter(({ name }) => name === "melian.publication")).toHaveLength(1);
 	expect(commit).not.toHaveBeenCalled();
 	expect(fake.provider.state.callCount).toBe(0);
@@ -439,4 +473,78 @@ it.each(["done", "unanswered"] as const)(
 		const row = (await TelemetryReader.open(storage).read("base..head")).stages[0]!;
 		expect(row).toEqual(settled);
 	},
+);
+
+it.each(["done", "unanswered"] as const)(
+	"counts the final generation of a slow %s response",
+	async (status) => {
+		const fake = createFakeModels({ tokensPerSecond: 40, tokenSize: { min: 4, max: 4 } });
+		fake.provider.setResponses([
+			() =>
+				fauxAssistantMessage(
+					"word ".repeat(60),
+					status === "done" ? {} : { stopReason: "error", errorMessage: "model failed" },
+				),
+		]);
+		const storage = createMemoryStorage();
+		const registry = createRegistry();
+		let settledAt = 0;
+		const task = defineTask<null, { phase: "spawn" } | { phase: "run"; child: ConversationId }, null>({
+			name: "test.response-duration",
+			version: 1,
+			initial: () => ({ phase: "spawn" }),
+			phases: {
+				spawn: async (_task, runtime, taskContext) => {
+					await runtime.commit(async (tx) => {
+						const child = await tx.createConversation({ ownership: { kind: "task", taskId: runtime.taskId } });
+						await configure(tx, child.id, { model: fake.ref(), tools: [] });
+						return { status: "running", checkpoint: { phase: "run", child: child.id } };
+					}, taskContext);
+				},
+				run: async (task, runtime, taskContext) => {
+					const child = (await runtime.conversation(task.state.checkpoint.child, taskContext))!;
+					const submission = await (
+						await child.submit({ type: "input", content: "stream the answer" }, taskContext)
+					).wait(taskContext);
+					settledAt = Date.now();
+					expect(submission.status).toBe(status);
+					await runtime.commit(
+						() => ({ status: "terminal", outcome: { status: "completed", result: null } }),
+						taskContext,
+					);
+				},
+			},
+			abort: async (_task, runtime, taskContext) => {
+				await runtime.commit(() => ({ status: "terminal", outcome: { status: "aborted" } }), taskContext);
+			},
+		});
+		registry.install(defineExtension({ name: "test.response-duration", tasks: [task] }));
+		harness = await openHarness(storage, { models: fake.models, registry, settings: { retry: { enabled: false } } });
+		const root = await harness.root(context);
+		const id = await root.commit(async (tx) => {
+			const id = await tx.createTask(task, null, { ownership: { kind: "conversation" } });
+			(await tx.doc(SummaryIndex, root.id)).tasks["base..head"] = id;
+			return id;
+		}, context);
+		expect((await harness.waitForTask(id, context)).state.outcome.status).toBe("completed");
+		const telemetry = await TelemetryReader.open(storage).read("base..head");
+		const row = telemetry.stages[0]!;
+		const entries = await storage.scanEntries(
+			{ conversationId: row.conversation! as ConversationId },
+			1,
+			undefined,
+			context,
+		);
+		const answer = (await storage.entry(entries.items[0]!.id, context))!.entry.model![0]!;
+		if (answer.role !== "assistant") throw new Error("expected an assistant answer");
+		expect(answer.durationMs).toBeGreaterThanOrEqual(1500);
+		expect(
+			row.endedAt,
+			JSON.stringify({ row, settledAt, answerTimestamp: answer.timestamp, answerDurationMs: answer.durationMs }),
+		).toBe(answer.timestamp + answer.durationMs!);
+		expect(Math.abs(row.endedAt! - settledAt)).toBeLessThan(200);
+		expect(row.outcome).toBe(status === "done" ? "completed" : "failed");
+		expect(row.note).toBeUndefined();
+	},
+	15000,
 );

@@ -113,21 +113,20 @@ async function setup(database?: string) {
 		}
 		return { status: "ran", log, notes: [] };
 	});
-	const calls = scriptConversations(
-		fake,
-		[
-			{
-				match: "You are the correctness reviewer",
-				replies: [
-					fauxAssistantMessage(fauxToolCall("report_finding", crashFinding), { stopReason: "toolUse" }),
-					fauxAssistantMessage("Quick run finished."),
-					fauxAssistantMessage(fauxToolCall("report_finding", crashFinding), { stopReason: "toolUse" }),
-					fauxAssistantMessage("Careful run finished."),
-				],
-			},
-			{
-				match: "You write Melian's walkthrough",
-				replies: [
+	const calls = scriptConversations(fake, [
+		{
+			match: "You are the correctness reviewer",
+			replies: [
+				() => fauxAssistantMessage(fauxToolCall("report_finding", crashFinding), { stopReason: "toolUse" }),
+				() => fauxAssistantMessage("Quick run finished."),
+				() => fauxAssistantMessage(fauxToolCall("report_finding", crashFinding), { stopReason: "toolUse" }),
+				() => fauxAssistantMessage("Careful run finished."),
+			],
+		},
+		{
+			match: "You write Melian's walkthrough",
+			replies: [
+				() =>
 					fauxAssistantMessage(
 						fauxToolCall("record_walkthrough", {
 							summary: "Changes manager name lookup.",
@@ -135,16 +134,9 @@ async function setup(database?: string) {
 						}),
 						{ stopReason: "toolUse" },
 					),
-				],
-			},
-		].map((script) => ({
-			...script,
-			replies: script.replies.map((reply) => () => ({
-				...reply,
-				timestamp: Date.now(),
-			})),
-		})),
-	);
+			],
+		},
+	]);
 	const options = {
 		harness: reviewHarness,
 		changeset,
@@ -510,7 +502,7 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 		expect(last.status).toBe("done");
 		if (last.status !== "done" || last.type !== "input") throw new Error("expected answered input");
 		const answer = (await storage.entry(last.answer, context))!.entry.model![0]!;
-		expect(lens.endedAt).toBe("timestamp" in answer ? answer.timestamp : undefined);
+		expect(lens.endedAt).toBe(answer.role === "assistant" ? answer.timestamp + (answer.durationMs ?? 0) : undefined);
 		await storage.close(context);
 		await sleep(30);
 		const fake = createFakeModels();

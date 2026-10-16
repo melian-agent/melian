@@ -345,21 +345,21 @@ export class TelemetryReader {
 		const first = submissions[0];
 		const last = submissions.at(-1);
 		const start = first?.entry === undefined ? undefined : await this.timestamp(first.entry, context);
-		let end: number | undefined;
+		let ending: Pick<Stage, "endedAt" | "note"> = {};
 		let result = outcome(task);
 		if (last?.status === "done") {
-			end = await this.timestamp(last.answer, context);
+			ending = await this.ending(last.answer, context);
 			result = { outcome: "completed" };
 		} else if (last?.status === "unanswered") {
 			const entries = await this.storage.scanEntries({ conversationId: id }, 1, undefined, context);
 			const latest = entries.items[0];
-			end = latest === undefined ? undefined : await this.timestamp(latest.id, context);
+			ending = latest === undefined ? {} : await this.ending(latest.id, context);
 			result = { outcome: "failed", ...(typeof last.detail === "string" ? { error: last.detail } : {}) };
 		}
 		const policy = await this.document(LensDocument, { kind: "conversation", conversationId: id }, context);
 		if (policy?.spend?.ended !== undefined || policy?.spend?.capped !== undefined) result = { outcome: "ended" };
-		if (end === undefined && task.state.status === "terminal" && task.state.outcome.status === "faulted") {
-			end = task.endedAt;
+		if (ending.endedAt === undefined && task.state.status === "terminal" && task.state.outcome.status === "faulted") {
+			ending = { endedAt: task.endedAt };
 			result = outcome(task);
 		}
 		const usage = await this.document(UsageDoc, { kind: "conversation", conversationId: id }, context);
@@ -370,8 +370,9 @@ export class TelemetryReader {
 			task: task.id,
 			conversation: id,
 			...result,
-			...interval(start, end),
-			...this.attachment(start, end, before),
+			...interval(start, ending.endedAt),
+			...ending,
+			...this.attachment(start, ending.endedAt, before),
 			...(usage === undefined
 				? {}
 				: {
@@ -381,6 +382,17 @@ export class TelemetryReader {
 							cost: Object.values(usage.models).reduce((sum, item) => sum + item.cost.total, 0),
 						},
 					}),
+		};
+	}
+
+	private async ending(id: EntryId, context: Context): Promise<Pick<Stage, "endedAt" | "note">> {
+		const message = (await this.storage.entry(id, context))?.entry.model?.[0];
+		const durationMs = message?.role === "assistant" ? message.durationMs : 0;
+		return {
+			endedAt: message === undefined ? undefined : message.timestamp + (durationMs ?? 0),
+			...(durationMs === undefined
+				? { note: "Response duration unavailable; end uses the request timestamp." }
+				: {}),
 		};
 	}
 
