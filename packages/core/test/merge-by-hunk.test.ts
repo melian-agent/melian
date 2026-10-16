@@ -14,7 +14,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { gitIn, isolatedGitEnv, lines, removeDirectory, temporaryDirectory, writeFiles } from "./fixtures/repo.ts";
 
-// Step 27, "Merge by shared cause": these tests describe the held step and fail until it is built.
+// Step 27, "Merge by shared cause": lens reports that one hunk caused merge, on real zero-context diffs.
 
 type Site = [file: string, startLine: number, endLine: number, role: "cause" | "context", revision?: "head" | "base"];
 type Spec = {
@@ -25,6 +25,7 @@ type Spec = {
 	lines: [number, number];
 	evidence: Site[];
 	trigger?: boolean;
+	verdict?: "confirmed" | "refuted";
 };
 
 let repo: string;
@@ -86,6 +87,17 @@ function report(revision: Revision, spec: Spec): Finding {
 			: {}),
 		...(trigger === undefined ? {} : { trigger }),
 		severity: spec.severity,
+		...(spec.verdict === undefined
+			? {}
+			: {
+					verification: {
+						verdict: spec.verdict,
+						reason: `The verifier read ${spec.rule}.`,
+						executor: "llm" as const,
+						model: "openai-codex/gpt-5.6-terra",
+						version: "1",
+					},
+				}),
 		explanation: { what: spec.rule, whyHere: "The change.", whatToDo: "Fix it." },
 		source: { check: spec.check, version: "1" },
 	});
@@ -274,6 +286,97 @@ describe("the design golden that supersedes its own decision", () => {
 			{ ...trustBoundary, lines: [7, 7] as [number, number] },
 		].map((spec) => report(revision, spec));
 		expect(groups(revision, [a!, b!])).toHaveLength(2);
+	});
+
+	// One line-range report on hunk 1 of src/publish.ts, from `check`.
+	const on = (check: string, range: [number, number], extra: Partial<Spec> = {}) =>
+		report(revision, {
+			check,
+			rule: `${check.slice(5)}-rule`,
+			severity: "P1",
+			file: "src/publish.ts",
+			lines: range,
+			evidence: [["src/publish.ts", range[0], range[1], "cause"]],
+			...extra,
+		});
+
+	// The second attack's F1: A and S share a snippet, and B meets A through the hunk alone.
+	it("keeps a lens report with its deterministic co-report, whatever the order", () => {
+		const a = on("lens.correctness", [6, 6]);
+		const s = report(revision, {
+			check: "static.mutation",
+			rule: "untested-behaviour",
+			severity: "P2",
+			file: "src/publish.ts",
+			lines: [6, 6],
+			evidence: [],
+		});
+		const b = on("lens.trust-boundary", [5, 7]);
+		const expected = [[a.properties.id, s.properties.id].sort(), [b.properties.id]].sort();
+		for (const order of permutations([a, s, b])) {
+			expect(groups(revision, order)).toEqual(expected);
+			const input = { findings: order, manifest: [], checks: [], config: defaultConfig, revision };
+			const holding = new Adjudication(input)
+				.defects()
+				.find((defect) => [defect.speaker.id, ...defect.members.map((member) => member.id)].includes(a.id))!;
+			expect(holding.lensOnly()).toBe(false);
+		}
+	});
+
+	// The second attack's F2, case 1: only w-x, x-y and y-z meet.
+	it("makes the fewest groups, by end line", () => {
+		const w = on("lens.design", [5, 5]);
+		const x = on("lens.trust-boundary", [5, 6]);
+		const y = on("lens.correctness", [6, 7]);
+		const z = on("lens.contracts", [7, 7]);
+		const expected = [[w.properties.id, x.properties.id].sort(), [y.properties.id, z.properties.id].sort()].sort();
+		for (const order of permutations([w, x, y, z])) expect(groups(revision, order)).toEqual(expected);
+	});
+
+	// The second attack's F2, case 2: a push adds one report, and the reports it does not meet keep their group.
+	it("leaves untouched reports grouped as they were when a push adds a report", () => {
+		const a1 = on("lens.design", [5, 5]);
+		const a2 = on("lens.trust-boundary", [5, 6], { severity: "P0" });
+		const a3 = on("lens.correctness", [6, 7]);
+		const before = [[a1.properties.id, a2.properties.id].sort(), [a3.properties.id]].sort();
+		expect(groups(revision, [a1, a2, a3])).toEqual(before);
+		const a0 = on("lens.contracts", [6, 6]);
+		expect(groups(revision, [a1, a2, a3, a0])).toEqual(
+			[[a1.properties.id, a2.properties.id].sort(), [a0.properties.id, a3.properties.id].sort()].sort(),
+		);
+		const elsewhere = on("lens.removed-behaviour", [3, 3]);
+		expect(groups(revision, [a1, a2, a3, elsewhere])).toEqual([...before, [elsewhere.properties.id]].sort());
+	});
+
+	// The second attack's F3: a refuted P1 and a confirmed P2 of one defect.
+	it.each([
+		["by hunk", [5, 7], [6, 7]],
+		["by snippet", [5, 7], [5, 7]],
+	] as const)("never speaks through a refuted report while another stands, merged %s", (_, first, second) => {
+		const refuted = on("lens.trust-boundary", [...first], { rule: "sql-injection", verdict: "refuted" });
+		const standing = on("lens.tests", [...second], {
+			rule: "untested-behaviour",
+			severity: "P2",
+			verdict: "confirmed",
+		});
+		for (const order of permutations([refuted, standing])) {
+			const input = { findings: order, manifest: [], checks: [], config: defaultConfig, revision };
+			const [defect, ...rest] = new Adjudication(input).defects();
+			expect(rest).toEqual([]);
+			expect(defect!.speaker.properties).toMatchObject({ id: standing.properties.id, severity: "P2" });
+			expect(defect!.members.map((member) => member.id)).toEqual([refuted.properties.id]);
+		}
+	});
+
+	// The second attack's F4: a member's ID dismisses that report alone; the speaker's, the whole defect.
+	it("dismisses a member alone by its ID, and the whole defect by the speaker's", () => {
+		const findings = [design, trustBoundary, droppedGuard].map((spec) => report(revision, spec));
+		const input = { findings, manifest: [], checks: [], config: defaultConfig, revision };
+		const [defect] = new Adjudication(input).defects();
+		const [speaker, member, other] = findings.map((each) => each.properties.id);
+		expect(defect!.dismiss(member!)).toEqual([member]);
+		expect(defect!.dismiss(speaker!).sort()).toEqual([speaker, member, other].sort());
+		expect(defect!.dismiss(speaker!, true)).toEqual([speaker]);
 	});
 });
 

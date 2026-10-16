@@ -41,6 +41,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AdjudicationTask, type AdjudicationTaskInput } from "../src/adjudication.ts";
 import { ComparisonDocument } from "../src/compare.ts";
 import { FindingsDocument } from "../src/findings.ts";
+import { defineTask } from "../src/harness.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines, writeFiles } from "./fixtures/repo.ts";
 import { twoLensTiers } from "./fixtures/review-scenario.ts";
@@ -598,6 +599,108 @@ describe("recording a dismissal", () => {
 		expect(live[0]!.properties.alsoReportedAs).toEqual([
 			expect.objectContaining({ id: shown!.properties.id, dismissed: true }),
 		]);
+	});
+
+	// Step 27: a member's thread can stay open after a later push merges it, so its ID must not reach the speaker.
+	it("dismisses a merged report alone when its own ID names it, leaving the finding it merged into live", async () => {
+		const harness = await reviewHarness(createMemoryStorage());
+		scriptFinding(true);
+		const [shown] = (await reviewed(harness)).verdict.findings.block;
+		const member = shown!.properties.alsoReportedAs![0]!.id;
+
+		const recorded = await dismiss(harness, member);
+
+		expect(recorded.also).toEqual([]);
+		expect(recorded.finding.properties).toMatchObject({ id: member, status: "dismissed" });
+		const live = Object.values(recorded.verdict.findings).flat();
+		expect(live.map((each) => each.properties.id)).toEqual([shown!.properties.id]);
+	});
+
+	describe("two lens reports one hunk caused, with different snippets", () => {
+		// Correctness reports line 8; contracts reports lines 7-8, the whole hunk, so the two share no snippet.
+		function scriptHunkPair(): void {
+			const changedReturn = { ...nullDeref, line: 7, endLine: 8, rule: "changed-return", severity: "P2" };
+			scriptConversations(fake, [
+				{ match: correctness, replies: [report(nullDeref), fauxAssistantMessage("Done.")] },
+				{ match: contracts, replies: [report(changedReturn), fauxAssistantMessage("Done.")] },
+			]);
+		}
+
+		// Rewrites the review's indexed adjudication input as a build before step 27 stored it: with no `files`.
+		async function asIndexedBeforeTheStep(harness: Harness): Promise<AdjudicationTaskInput> {
+			const root = await harness.root(context);
+			return await root.commit(async (tx) => {
+				const known = (await tx.doc(ReviewIndex, root.id)).reviews[revisionKey(await revision())]!.adjudication!;
+				const { files, ...older } = JSON.parse(known.input) as AdjudicationTaskInput;
+				expect(files).toEqual([expect.objectContaining({ path: "src/user.ts" })]);
+				known.input = JSON.stringify(older);
+				return older;
+			}, context);
+		}
+
+		it("merges them into one defect", async () => {
+			const harness = await reviewHarness(createMemoryStorage());
+			scriptHunkPair();
+			const { verdict } = await reviewed(harness);
+			expect(verdict.findings.block).toHaveLength(1);
+			expect(verdict.findings.block[0]!.properties.alsoReportedAs).toEqual([
+				expect.objectContaining({ ruleId: "changed-return" }),
+			]);
+		});
+
+		it("decides a dismissal by snippet when the revision was indexed before the step", async () => {
+			const harness = await reviewHarness(createMemoryStorage());
+			scriptHunkPair();
+			const [shown] = (await reviewed(harness)).verdict.findings.block;
+			await asIndexedBeforeTheStep(harness);
+
+			const recorded = await dismiss(harness, shown!.properties.id);
+
+			expect(recorded.verdict.dismissed).toHaveLength(2);
+			expect(recorded.verdict.dismissed.every((each) => each.properties.alsoReportedAs === undefined)).toBe(true);
+		});
+
+		it("runs a version 1 adjudication task stored before the upgrade, deciding by snippet", async () => {
+			const path = join(dir, "changeset.sqlite");
+			const first = await reviewHarness(await openSqliteStorage(path));
+			scriptHunkPair();
+			await reviewed(first);
+			const older = await asIndexedBeforeTheStep(first);
+			// The version 1 definition as it stores a task: its name, its version, and its first checkpoint.
+			const versionOne = defineTask<AdjudicationTaskInput, { phase: "adjudicate" }, string>({
+				name: AdjudicationTask.definition.name,
+				version: 1,
+				initial: () => ({ phase: "adjudicate" }),
+				phases: { adjudicate: async () => {} },
+				abort: async () => {},
+			});
+			const root = await first.root(context);
+			const task = await root.commit(async (tx) => {
+				const created = await tx.createTask(versionOne, older, { ownership: { kind: "conversation" } });
+				const index = await tx.doc(ReviewIndex, root.id);
+				const key = revisionKey(await revision());
+				index.reviews[key] = {
+					...index.reviews[key]!,
+					adjudication: { task: created, input: JSON.stringify(older) },
+				};
+				return created;
+			}, context);
+			await first.close(context);
+
+			const reopened = await reviewHarness(await openSqliteStorage(path));
+			reopened.resume();
+			const { outcome } = (await reopened.waitForTask(task as unknown as TaskId<string>, context)).state;
+
+			expect(outcome).toEqual({ status: "completed", result: "recorded" });
+			const verdict = await readVerdict(
+				reopened,
+				(await reopened.root(context)).id,
+				revisionKey(await revision()),
+				context,
+			);
+			expect(verdict!.findings.block).toHaveLength(1);
+			expect(verdict!.findings.acknowledge).toHaveLength(1);
+		});
 	});
 
 	it("dismisses again only the report an ID names, never a live finding that lists it as dismissed context", async () => {

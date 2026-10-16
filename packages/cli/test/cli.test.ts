@@ -684,6 +684,23 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 		);
 	});
 
+	it("dismisses a merged report alone when its own ID names it, and leaves the finding it merged into live", () => {
+		const { repo, env, id, member } = reviewedMerged();
+
+		const dismissed = melian(repo, ["dismiss", range, member, "--reason", reason], env);
+		const live = JSON.parse(melian(repo, ["findings", range, "--json"], env).stdout) as StoredVerdict;
+		expect(live.findings.block.map((each) => each.properties.id)).toEqual([id]);
+
+		expect(dismissed).toMatchObject({ status: 0, stderr: "" });
+		expect(dismissed.stdout).toBe(
+			[
+				`Dismissed changed-return in src/user.ts line 7 (${member}) as Melian Test <test@melian.invalid>.`,
+				"Verdict now: findings, blocking.",
+				"",
+			].join("\n"),
+		);
+	});
+
 	it("says in one line that git has no author to record as the dismisser", () => {
 		const { repo, env, id } = reviewedNullDeref();
 		const {
