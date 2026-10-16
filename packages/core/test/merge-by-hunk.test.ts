@@ -271,13 +271,24 @@ describe("the design golden that supersedes its own decision", () => {
 		expect(new Adjudication(input).defects()).toHaveLength(2);
 	});
 
-	it("keeps apart two reports whose shared lines fall on no hunk", () => {
-		// Lines 7-8 share line 8, the unchanged closing brace.
+	it("keeps apart two introduced reports whose shared lines fall on no hunk", () => {
+		// Lines 3-4 and 4-5 share line 4, the unchanged blank line between hunk 0 and hunk 1.
+		const [a, b] = [
+			{ ...design, lines: [3, 4] as [number, number] },
+			{ ...trustBoundary, lines: [4, 5] as [number, number] },
+		].map((spec) => report(revision, spec));
+		expect([a!.properties.cause, b!.properties.cause]).toEqual(["introduced", "introduced"]);
+		expect(groups(revision, [a!, b!])).toHaveLength(2);
+	});
+
+	it("merges an introduced report with an affected one that the same hunk proves, on a shared unchanged line", () => {
+		// Line 8, the closing brace, is unchanged; the trust-boundary report there cites hunk 1 as its cause.
 		const [a, b] = [
 			{ ...design, lines: [7, 8] as [number, number] },
 			{ ...trustBoundary, lines: [8, 8] as [number, number], evidence: [["src/publish.ts", 5, 7, "cause"] as Site] },
 		].map((spec) => report(revision, spec));
-		expect(groups(revision, [a!, b!])).toHaveLength(2);
+		expect([a!.properties.cause, b!.properties.cause]).toEqual(["introduced", "affected"]);
+		expect(groups(revision, [a!, b!])).toHaveLength(1);
 	});
 
 	it("keeps apart two reports whose lines overlap the same hunk but not each other", () => {

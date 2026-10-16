@@ -296,6 +296,16 @@ export class Revision {
 	}
 
 	/**
+	 * The changed files `paths` names, by head or base path, with each hunk's ranges and no text: what the merge reads,
+	 * small enough for a stored task input to hold.
+	 */
+	outline(paths: ReadonlySet<string>): ChangedFile[] {
+		return this.files
+			.filter((file) => paths.has(file.path) || (file.oldPath !== undefined && paths.has(file.oldPath)))
+			.map((file) => ({ ...file, hunks: file.hunks.map((hunk) => ({ ...hunk, header: "", text: "" })) }));
+	}
+
+	/**
 	 * The part of the change a location falls on, whatever its role, or `undefined` when it falls on nothing the change
 	 * did. At head: a hunk's new lines in a file the change keeps. At the base: a hunk's old lines in a file the base
 	 * had, named by its base path, so deleted lines count as changed code. On either side, any line of a file the change
@@ -308,6 +318,14 @@ export class Revision {
 		location: CodeLocation & { readonly revision?: EvidenceRevision },
 		findingFile?: string,
 	): ChangeOverlap | undefined {
+		return this.changeOverlaps(location, findingFile)[0];
+	}
+
+	/** Every part of the change a location falls on, as {@link Revision.changeOverlap} reads each, in diff order. */
+	changeOverlaps(
+		location: CodeLocation & { readonly revision?: EvidenceRevision },
+		findingFile?: string,
+	): ChangeOverlap[] {
 		const path = canonicalPath(location.file, "/evidence/file");
 		const end = location.endLine ?? location.startLine;
 		const base = location.revision === "base";
@@ -316,18 +334,19 @@ export class Revision {
 				? (file.oldPath ?? file.path) === path && file.status !== "added"
 				: file.path === path && file.status !== "deleted",
 		);
-		if (changed === undefined) return undefined;
+		if (changed === undefined) return [];
 		if (onlyMoved(changed)) {
 			const findingPath = findingFile === undefined ? undefined : canonicalPath(findingFile, "/file");
 			const findingMoved = this.files.some((file) => file.path === findingPath && onlyMoved(file));
-			return findingMoved ? undefined : { kind: "rename", file: changed };
+			return findingMoved ? [] : [{ kind: "rename", file: changed }];
 		}
-		const hunk = changed.hunks.find((each) =>
-			base
-				? overlaps(location.startLine, end, each.oldStart, each.oldLines)
-				: overlaps(location.startLine, end, each.newStart, each.newLines),
-		);
-		return hunk === undefined ? undefined : { kind: "hunk", hunk };
+		return changed.hunks
+			.filter((each) =>
+				base
+					? overlaps(location.startLine, end, each.oldStart, each.oldLines)
+					: overlaps(location.startLine, end, each.newStart, each.newLines),
+			)
+			.map((hunk): ChangeOverlap => ({ kind: "hunk", hunk }));
 	}
 
 	/**
