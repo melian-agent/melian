@@ -169,21 +169,70 @@ function compareSources(a: FindingSource, b: FindingSource): number {
 // winner keeps its own claim and takes the strongest cause any sighting gave, with the cause locations that prove it,
 // and every other sighting's claim, so a P1 whose cause location overlaps the change, beside a P0 whose evidence proves
 // nothing, reads as an affected P0 that still carries the P1's scenario and evidence.
-function adjudicate(sightings: Readonly<Record<string, ProducerFinding>>) {
+function adjudicate(sightings: Readonly<Record<string, ProducerFinding>>, judged = false) {
+	// A sighting stores no lifecycle status, and merging claims reads none.
+	const refuted = (each: ProducerFinding) =>
+		judged && Finding.from({ ...each, properties: { ...each.properties, status: "new" } }).refuted();
+	// Judged, a refuted sighting never wins while another stands, so it lends the finding neither its severity nor its
+	// prose. As reported, no verdict picks the winner, so a repeat review's candidates are the ones verified.
 	const ranked = Object.values(sightings).sort(
 		(a, b) =>
+			Number(refuted(a)) - Number(refuted(b)) ||
 			severityRank[a.properties.severity] - severityRank[b.properties.severity] ||
 			compareSources(a.properties.source, b.properties.source),
 	);
 	const reportedBy = ranked.map((each) => ({ ...each.properties.source })).sort(compareSources);
 	const { evidence: _, failureScenario: __, otherClaims: ___, ...properties } = ranked[0]!.properties;
-	// A sighting stores no lifecycle status, and merging claims reads none.
 	const members = ranked.map((each) => Finding.from({ ...each, properties: { ...each.properties, status: "new" } }));
 	const claims = members[0]!.mergeClaims(members);
+	// Every sighting counts, refuted or not: the merge orders by it, and a verdict must not regroup.
 	const original = members.map((member) => member.original()).reduce(stricter);
 	// The winner is the highest after lowering, so its own original, when it has one, is never above this one.
 	const lowered = original === properties.severity ? {} : { originalSeverity: original };
-	return { winner: { ...ranked[0]!, properties: { ...properties, ...lowered, ...claims } }, reportedBy };
+	// The finding sits where the sighting the lenses ranked first put it, so no verdict moves its lines and regroups it.
+	const [located] = [...members].sort(
+		(a, b) =>
+			severityRank[a.original()] - severityRank[b.original()] ||
+			compareSources(a.properties.source, b.properties.source),
+	);
+	const { locations } = located!.toJSON();
+	return { winner: { ...ranked[0]!, locations, properties: { ...properties, ...lowered, ...claims } }, reportedBy };
+}
+
+// Whether a review that selected `producers` counts a sighting, stored under `key`; every sighting when absent.
+function selected(producers: readonly Producer[] | undefined) {
+	const wanted =
+		producers === undefined
+			? undefined
+			: new Map(producers.map((source) => [producerKey(source), source.ids] as const));
+	return (key: string, sighting: ProducerFinding) => {
+		if (wanted === undefined) return true;
+		return [key, producerKey({ check: sighting.properties.source.check })].some((producer) => {
+			if (!wanted.has(producer)) return false;
+			const ids = wanted.get(producer);
+			return ids === undefined || ids.includes(sighting.properties.id);
+		});
+	};
+}
+
+/**
+ * Where the finding `id` sits at `revision` as grouping reads it, among the sightings of `producers`, the review's
+ * selection: the site of the sighting the lenses ranked first, or `undefined` when none sighted it there or it has no
+ * snippet.
+ */
+export function siteAt(
+	state: FindingsState,
+	id: string,
+	revision: string,
+	producers?: readonly Producer[],
+): string | undefined {
+	const counts = selected(producers);
+	const sightings = Object.fromEntries(
+		Object.entries(state.items[id]?.sightings[revision] ?? {}).filter(([key, sighting]) => counts(key, sighting)),
+	);
+	if (Object.keys(sightings).length === 0) return undefined;
+	const { winner } = adjudicate(sightings);
+	return Finding.from({ ...winner, properties: { ...winner.properties, status: "new" } }).site();
 }
 
 /**
@@ -520,18 +569,7 @@ export async function readFindings(
 	options: ReadFindingsOptions = {},
 ): Promise<readonly Finding[]> {
 	const items = (await reader.snapshot(FindingsDocument, rootConversationId, context))?.items ?? {};
-	const wanted =
-		options.producers === undefined
-			? undefined
-			: new Map(options.producers.map((source) => [producerKey(source), source.ids] as const));
-	const counts = (key: string, sighting: ProducerFinding) => {
-		if (wanted === undefined) return true;
-		return [key, producerKey({ check: sighting.properties.source.check })].some((producer) => {
-			if (!wanted.has(producer)) return false;
-			const ids = wanted.get(producer);
-			return ids === undefined || ids.includes(sighting.properties.id);
-		});
-	};
+	const counts = selected(options.producers);
 	return Object.keys(items)
 		.sort()
 		.flatMap((id) => {
@@ -548,7 +586,7 @@ export async function readFindings(
 					}),
 			);
 			if (Object.keys(atHead).length === 0) return [];
-			const { winner, reportedBy } = adjudicate(atHead);
+			const { winner, reportedBy } = adjudicate(atHead, options.asReported !== true);
 			const properties = { ...winner.properties, status: lifecycle.status, ...dismissalsOf(lifecycle), reportedBy };
 			return [Finding.from(structuredClone({ ...winner, properties }))];
 		});

@@ -1431,6 +1431,27 @@ export class Finding {
 		);
 	}
 
+	/** Whether one check reported both findings, as the one that won either's ID or as one that sighted it. */
+	sharesReporter(other: Finding): boolean {
+		const checks = ({ properties }: Finding) => [
+			properties.source.check,
+			...(properties.reportedBy ?? []).map(({ check }) => check),
+		];
+		const theirs = checks(other);
+		return checks(this).some((check) => theirs.includes(check));
+	}
+
+	/** Orders by the severity the lens reported, then by ID: an order a verifier's lowering never changes. */
+	compareReported(other: Finding): number {
+		return severityRank[this.original()] - severityRank[other.original()] || this.id.localeCompare(other.id);
+	}
+
+	/** Whether lenses alone reported the finding: its check and every check that sighted it. */
+	lensReport(): boolean {
+		const { source, reportedBy = [source] } = this.properties;
+		return reportedBy.every(({ check }) => check.startsWith("lens."));
+	}
+
 	/** Whether a verifier refuted every claim of the finding, and only lenses reported it. */
 	refuted(): boolean {
 		const { source, reportedBy = [source] } = this.properties;

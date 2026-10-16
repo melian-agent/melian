@@ -1,4 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
+import type { ChangeOverlap } from "./cause.ts";
+import type { Revision } from "./changeset.ts";
 import {
 	type MelianConfig,
 	type Resolution,
@@ -126,8 +128,11 @@ export class Defect {
 				.flatMap((member) => [member.report(), ...(member.properties.alsoReportedAs ?? [])]),
 		];
 		const alsoReportedAs = [...members, ...context];
-		const severity = [...findings].sort((a, b) => a.compareStrength(b))[0]!.properties.severity;
-		const original = findings.map((member) => member.original()).reduce(stricter);
+		// A refuted report never sets the headline while another stands; `decision` already leaves it out.
+		const standing = findings.filter((member) => !member.refuted());
+		const counted = standing.length > 0 ? standing : findings;
+		const severity = [...counted].sort((a, b) => a.compareStrength(b))[0]!.properties.severity;
+		const original = counted.map((member) => member.original()).reduce(stricter);
 		const {
 			evidence: _,
 			failureScenario: __,
@@ -135,11 +140,15 @@ export class Defect {
 			originalSeverity: ____,
 			...properties
 		} = keeper.properties;
+		// The speaker keeps its identity, but shows what a report that stands says, when it was refuted.
+		const shown = keeper.refuted() ? [...counted].sort((a, b) => a.compareReported(b))[0]! : keeper;
 		const speaker = Finding.from({
 			...keeper.toJSON(),
+			message: { ...shown.toJSON().message },
 			level: levelForSeverity(severity),
 			properties: {
 				...properties,
+				explanation: { ...shown.properties.explanation },
 				...keeper.mergeClaims(findings),
 				severity,
 				...(original === severity ? {} : { originalSeverity: original }),
@@ -202,11 +211,13 @@ export class Defect {
 	}
 
 	/**
-	 * The IDs of the reports a dismissal records: the speaker's own and every member's, or the one report `only` names
-	 * alone, leaving every other report live.
+	 * The IDs of the reports a dismissal of `id` records: for the speaker's ID, the speaker's own and every member's but
+	 * those `apart` names, the reports that joined it only through a hunk; for a member's, or with `only`, that report
+	 * alone. Every other report stays live.
 	 */
-	dismiss(only?: string): string[] {
-		return only !== undefined ? [only] : [this.speaker.id, ...this.members.map((member) => member.id)];
+	dismiss(id: string, only = false, apart: ReadonlySet<string> = new Set()): string[] {
+		if (only || id !== this.speaker.id) return [id];
+		return [this.speaker.id, ...this.members.flatMap((member) => (apart.has(member.id) ? [] : [member.id]))];
 	}
 }
 
@@ -515,6 +526,19 @@ export class Verdict {
 		return [...Object.values(this.findings).flat(), ...this.dismissed, ...(this.refuted ?? [])];
 	}
 
+	/**
+	 * The IDs of every finding the verdict holds live, with the live members of each as {@link Defect.of} reads them, so a
+	 * report merged into another keeps its thread.
+	 */
+	held(): Set<string> {
+		const dismissed = new Set(this.dismissed.flatMap((each) => each.reportIds()));
+		return new Set(
+			Object.values(this.findings)
+				.flat()
+				.flatMap((finding) => [finding.id, ...Defect.of(finding, dismissed).members.map((member) => member.id)]),
+		);
+	}
+
 	/** Counts each sighting's judgement once, including refuted and dismissed findings. */
 	verificationCounts(): Record<"confirmed" | "plausible" | "refuted" | "unverified", number> {
 		const counts = { confirmed: 0, plausible: 0, refuted: 0, unverified: 0 };
@@ -576,7 +600,7 @@ export class Verdict {
 				dismissals[id] ??= { ...dismissal };
 			}
 		}
-		const held = new Set([...attention, ...this.findings.silent].map((finding) => finding.properties.id));
+		const held = this.held();
 		// A member only its floor lifted keeps its thread and is in no tally, so "still open" counts as the summary does.
 		const counted = new Set(this.counted().map((finding) => finding.properties.id));
 		const post: PlacedFinding[] = [];
@@ -850,6 +874,8 @@ export interface AdjudicationInput {
 	readonly verificationRan?: boolean;
 	/** The IDs of findings an earlier revision of the changeset sighted, so an important one reads as carried. */
 	readonly seenBefore?: readonly string[];
+	/** The revision the findings are of, whose hunks let lens reports one hunk caused merge; without it, snippets alone. */
+	readonly revision?: Revision | undefined;
 }
 
 /** A review's findings, the checks it accounts for, and the configuration that decides them, ready to decide. */
@@ -859,6 +885,7 @@ export class Adjudication {
 	readonly #configFor: ConfigFor;
 	readonly #verificationRan: boolean;
 	readonly #seenBefore: ReadonlySet<string>;
+	readonly #revision: Revision | undefined;
 
 	constructor({
 		findings,
@@ -868,8 +895,10 @@ export class Adjudication {
 		allowSkip = [],
 		verificationRan = false,
 		seenBefore = [],
+		revision,
 	}: AdjudicationInput) {
 		this.findings = findings;
+		this.#revision = revision;
 		this.manifest = new Manifest(manifest, checks, allowSkip);
 		this.#verificationRan = verificationRan;
 		this.#seenBefore = new Set(seenBefore);
@@ -885,15 +914,18 @@ export class Adjudication {
 	 *
 	 * One finding speaks for each defect. `ruleAliases` in the configuration at its path decides first: a finding whose
 	 * rule is a key listing another member's rule is preferred, so a repository can say the defect belongs to the
-	 * contracts lens. Otherwise the most severe speaks, the lower ID on a tie, as {@link Defect.merge} merges them. A
-	 * finding without a snippet is never merged.
+	 * contracts lens. Otherwise the most severe as the lenses reported it speaks, the lower ID on a tie, as
+	 * {@link Defect.merge} merges them. No verdict picks the speaker: a refuted claim changes only what the defect
+	 * resolves at and the prose it shows, which come from the reports that stand. Given the input's `revision`, groups of
+	 * lens reports alone also join when the change caused them through one hunk, and a finding without a snippet merges
+	 * only that way.
 	 *
 	 * Only findings with the same lifecycle status merge. A dismissed finding never absorbs a live one: a live finding
 	 * beside a dismissed report of the same defect stays live, and blocks if it blocks, listing the dismissed one in
 	 * `alsoReportedAs` with `dismissed: true`.
 	 */
 	defects(): Defect[] {
-		return new Merge(this.findings, this.#configFor).defects();
+		return new Merge(this.findings, this.#configFor, this.#revision).defects();
 	}
 
 	/** The finding that speaks for each of {@link Adjudication.defects}, in input order. */
@@ -967,36 +999,47 @@ export class Adjudication {
 	}
 }
 
-/** A review's findings grouped mechanically, before verification and again at adjudication. */
+/**
+ * A review's findings grouped mechanically, before verification and again at adjudication: first by snippet, then, given
+ * the revision, whole snippet groups of lens reports alone that one hunk caused.
+ */
 export class Merge {
 	readonly findings: readonly Finding[];
 	readonly #configFor: ConfigFor;
+	readonly #revision: Revision | undefined;
 
-	constructor(findings: readonly Finding[], config: PolicyAt | ConfigFor) {
+	constructor(findings: readonly Finding[], config: PolicyAt | ConfigFor, revision?: Revision) {
 		this.findings = findings;
 		this.#configFor = typeof config === "function" ? config : () => config;
+		this.#revision = revision;
 	}
 
 	/** The defects in speaker order, preserving each claim and separating lifecycle statuses. */
 	defects(): Defect[] {
 		const groups: Finding[][] = [];
-		for (const finding of [...this.findings].sort((a, b) => a.compareStrength(b))) {
+		for (const finding of [...this.findings].sort((a, b) => a.compareReported(b))) {
 			const into = groups.find(
 				(group) => group[0]!.properties.status === finding.properties.status && this.#joins(group, finding),
 			);
 			if (into === undefined) groups.push([finding]);
 			else into.push(finding);
 		}
+		const revision = this.#revision;
 		const dismissed = this.findings.filter((finding) => finding.properties.status === "dismissed");
 		const elsewhere = new Set(dismissed.flatMap((finding) => finding.reportIds()));
 		const defects = new Map<Finding, Defect>();
-		for (const group of groups) {
+		for (const parts of this.#byHunk(groups)) {
+			const group = parts.flat();
 			// A live defect names the dismissed reports of it, for context, and is never absorbed by them.
 			const context =
 				group[0]!.properties.status === "dismissed"
 					? []
 					: dismissed
-							.filter((other) => this.#joins(group, other))
+							.filter(
+								(other) =>
+									parts.some((part) => this.#joins(part, other)) ||
+									(revision !== undefined && group.every((member) => this.#meets(revision, member, other))),
+							)
 							.map((other) => ({ ...other.report(), dismissed: true as const }));
 			if (group.length === 1 && context.length === 0) {
 				const [alone] = group as [Finding];
@@ -1020,22 +1063,74 @@ export class Merge {
 			site !== undefined &&
 			group[0]!.site() === site &&
 			group.every(
-				(member) =>
-					member.properties.source.check !== finding.properties.source.check &&
-					!distinct(aliases, member.ruleId, finding.ruleId),
+				(member) => !member.sharesReporter(finding) && !distinct(aliases, member.ruleId, finding.ruleId),
 			) &&
 			group.some((member) => member.overlaps(finding))
 		);
 	}
 
+	// Snippet groups of lens reports alone join a hunk group whose every report meets every one of theirs. They are taken
+	// by end line, then start line, then lowest ID, never by severity, so a verifier's lowering never regroups them.
+	#byHunk(groups: readonly Finding[][]): Finding[][][] {
+		const revision = this.#revision;
+		if (revision === undefined) return groups.map((group) => [group]);
+		// A snippet group's reports share their lines, and its lowest ID breaks a tie. IDs are lowercase hex.
+		const lowest = (group: readonly Finding[]) => group.map((finding) => finding.id).sort()[0]!;
+		const ordered = [...groups].sort((left, right) => {
+			const [[aStart, aEnd], [bStart, bEnd]] = [left[0]!.lines(), right[0]!.lines()];
+			return aEnd - bEnd || aStart - bStart || lowest(left).localeCompare(lowest(right));
+		});
+		const joined: Finding[][][] = [];
+		for (const group of ordered) {
+			const into = joined.find(
+				(parts) =>
+					parts[0]![0]!.properties.status === group[0]!.properties.status &&
+					parts.every((part) =>
+						part.every((member) => group.every((finding) => this.#meets(revision, member, finding))),
+					),
+			);
+			if (into === undefined) joined.push([group]);
+			else into.push(group);
+		}
+		return joined;
+	}
+
+	// Whether two lens reports are one defect because the change caused both through one hunk. Two introduced reports
+	// over overlapping lines that overlap one hunk share lines on it, since intervals that meet pairwise share a point.
+	// The caller compares statuses, so a dismissed report can be named beside a live defect it never joins.
+	#meets(revision: Revision, left: Finding, right: Finding): boolean {
+		const { path } = left.properties;
+		if (!left.lensReport() || !right.lensReport() || right.properties.path !== path) return false;
+		if (left.sharesReporter(right) || !left.overlaps(right)) return false;
+		if (distinct(this.#configFor(path).ruleAliases, left.ruleId, right.ruleId)) return false;
+		const theirs = this.#hunks(revision, right);
+		return [...this.#hunks(revision, left)].some((hunk) => theirs.has(hunk));
+	}
+
+	// The hunks a report rests on: an introduced report's own lines, any other's `cause` locations in every claim, which
+	// for a pre-existing report fall on none.
+	#hunks(revision: Revision, finding: Finding): Set<string> {
+		const { path, cause, otherClaims = [] } = finding.properties;
+		const keys = (overlaps: readonly ChangeOverlap[]) =>
+			overlaps.flatMap((overlap) => (overlap.kind === "hunk" ? [`${overlap.hunk.file}#${overlap.hunk.index}`] : []));
+		if (cause === "introduced") {
+			const [startLine, endLine] = finding.lines();
+			return new Set(keys(revision.changeOverlaps({ file: path, startLine, endLine })));
+		}
+		const sites = [...finding.claims(), ...otherClaims].flatMap((claim) =>
+			(claim.evidence ?? []).filter((location) => location.role === "cause"),
+		);
+		return new Set(sites.flatMap((site) => keys(revision.changeOverlaps(site, path))));
+	}
+
 	// The finding that speaks for a defect: one whose rule `ruleAliases` names as the owner of another member's rule,
-	// else the most severe.
+	// else the most severe as the lenses reported it. No verdict decides it, so a repeat review's candidate is unchanged.
 	#keeper(group: readonly Finding[]): Finding {
 		const aliases = this.#configFor(group[0]!.properties.path).ruleAliases;
 		const owners = group.filter((finding) => {
 			const entry = entryOf(aliases, finding.ruleId);
 			return !entry.distinct && entry.rules.some((alias) => group.some((other) => other.ruleId === alias));
 		});
-		return [...(owners.length > 0 ? owners : group)].sort((a, b) => a.compareStrength(b))[0]!;
+		return [...(owners.length > 0 ? owners : group)].sort((a, b) => a.compareReported(b))[0]!;
 	}
 }

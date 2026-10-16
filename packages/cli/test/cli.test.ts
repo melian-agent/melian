@@ -24,10 +24,10 @@ import {
 } from "@melian-agent/core";
 import { buildGoldenRepository, type Golden, loadGoldens } from "@melian-agent/evals";
 import * as pipelineTesting from "@melian-agent/pipeline/testing";
-import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { fakeGitHub } from "../../github/test/fixtures/fake-github.ts";
 import { pullRequestState } from "../../github/test/fixtures/scenario.ts";
-import { review as reviewIn } from "../src/commands.ts";
+import { dismiss as dismissIn, review as reviewIn } from "../src/commands.ts";
 import { doctor as doctorIn } from "../src/doctor.ts";
 
 const root = fileURLToPath(new URL("../../../", import.meta.url));
@@ -682,6 +682,53 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 		expect(melian(repo, ["findings", range], env).stdout).toContain(
 			`changed-return  (introduced, new, acknowledge, confirmed)  ${member}\n    Also reported, dismissed: P1 null-dereference from lens.correctness  ${id}\n`,
 		);
+	});
+
+	it("dismisses a merged report alone when its own ID names it, and leaves the finding it merged into live", () => {
+		const { repo, env, id, member } = reviewedMerged();
+
+		const dismissed = melian(repo, ["dismiss", range, member, "--reason", reason], env);
+		const live = JSON.parse(melian(repo, ["findings", range, "--json"], env).stdout) as StoredVerdict;
+		expect(live.findings.block.map((each) => each.properties.id)).toEqual([id]);
+
+		expect(dismissed).toMatchObject({ status: 0, stderr: "" });
+		expect(dismissed.stdout).toBe(
+			[
+				`Dismissed changed-return in src/user.ts line 7 (${member}) as Melian Test <test@melian.invalid>.`,
+				"Still live, merged with it before:",
+				`  null-dereference from lens.correctness (${id})`,
+				"Verdict now: findings, blocking.",
+				"",
+			].join("\n"),
+		);
+	});
+
+	// In process, so a mutation of the output reaches the code this test runs.
+	it("lists what stays live in process, and nothing when the dismissal took every report", async () => {
+		const { repo, env, id, member } = reviewedMerged();
+		// git reads the author from this process's environment, as it does in the spawned CLI's.
+		for (const [key, value] of Object.entries(gitEnv)) vi.stubEnv(key, value);
+		onTestFinished(() => {
+			vi.unstubAllEnvs();
+		});
+		const run = async (target: string, only = false) => {
+			let out = "";
+			const io = {
+				cwd: repo,
+				env: { ...process.env, ...gitEnv, NO_COLOR: "1", XDG_CONFIG_HOME: noUserFiles, ...env },
+				stdout: (text: string) => {
+					out += text;
+				},
+				stderr: () => undefined,
+				color: false,
+			};
+			expect(await dismissIn(io, range, target, reason, { only })).toBe(0);
+			return out;
+		};
+		expect(await run(member)).toContain(
+			`Still live, merged with it before:\n  null-dereference from lens.correctness (${id})\nVerdict now:`,
+		);
+		expect(await run(id)).not.toContain("Still live");
 	});
 
 	it("says in one line that git has no author to record as the dismisser", () => {
