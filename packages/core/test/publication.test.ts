@@ -6,7 +6,7 @@ import {
 	Finding,
 	type FindingInput,
 	Revision,
-	type Verdict,
+	Verdict,
 } from "@melian-agent/core";
 import { describe, expect, it } from "vitest";
 import { evalInput } from "./fixtures/findings.ts";
@@ -130,6 +130,53 @@ describe("Verdict.publication", () => {
 			[open.properties.id]: posted("101"),
 			[fresh.properties.id]: { ruleId: "no-eval", path: "src/api.ts", line: 50, revision: head },
 		});
+	});
+
+	// Step 27, "Merge by shared cause": a later push can merge what an earlier one posted alone.
+	it("keeps the thread of a report posted alone open once a later revision merges it under another", () => {
+		const eslint = finding({ rule: "detect-eval", severity: "P3", source: { check: "static.eslint" } });
+		const previous = { [eslint.properties.id]: posted("104") };
+		const verdict = verdictOf([open, eslint]);
+		expect(verdict.findings.block.map((each) => each.properties.alsoReportedAs?.map((member) => member.id))).toEqual([
+			[eslint.properties.id],
+		]);
+
+		const plan = verdict.publication(previous, lines, head);
+
+		expect(plan.resolved).toEqual([]);
+		expect(plan.open[eslint.properties.id]).toEqual(posted("104"));
+	});
+
+	it("holds every live finding with its live members, never a dismissed report it lists", () => {
+		const eslint = finding({ rule: "detect-eval", severity: "P3", source: { check: "static.eslint" } });
+		const dismissal = { by: "Tal <tal@melian.invalid>", reason: "Constant input.", at: "2026-10-04T00:00:00Z" };
+		const gone = Finding.from({
+			...finding({ rule: "eval-call", source: { check: "lens.security-two" } }).toJSON(),
+			properties: {
+				...finding({ rule: "eval-call", source: { check: "lens.security-two" } }).properties,
+				status: "dismissed",
+				dismissal,
+			},
+		});
+		const verdict = verdictOf([open, eslint, gone, fresh]);
+		const expected = [open.properties.id, eslint.properties.id, fresh.properties.id].sort();
+		expect([...verdict.held()].sort()).toEqual(expected);
+		// As a verdict recorded before Melian marked a dismissed report it lists: the report is named, unmarked.
+		const stored = verdict.toJSON();
+		const unmarked = Verdict.from({
+			...stored,
+			findings: {
+				...stored.findings,
+				block: stored.findings.block.map((each) => ({
+					...each,
+					properties: {
+						...each.properties,
+						alsoReportedAs: each.properties.alsoReportedAs?.map(({ dismissed: _, ...other }) => other),
+					},
+				})),
+			},
+		});
+		expect([...unmarked.held()].sort()).toEqual(expected);
 	});
 
 	it("resolves an open finding that was dismissed, with its dismissal, and never posts a dismissed one", () => {

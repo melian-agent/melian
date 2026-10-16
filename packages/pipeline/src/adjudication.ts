@@ -1,5 +1,6 @@
 import {
 	Adjudication,
+	type ChangedFile,
 	type CheckRecord,
 	type CheckStatus,
 	ConfigError,
@@ -11,6 +12,7 @@ import {
 	type RepositorySource,
 	type Resolution,
 	type ReviewPlan,
+	Revision,
 	type ScrutinyLevel,
 	type Severity,
 	type StoredPlan,
@@ -192,6 +194,9 @@ export type AdjudicationTaskInput = {
 	verificationRan?: boolean;
 	// What the review ran, recorded in the commit that records the verdict.
 	details?: PublicationDetails;
+	// The changed files the findings name, with each hunk's ranges, so lens reports one hunk caused merge. Absent from a
+	// version 1 input, which merges by snippet alone.
+	files?: ChangedFile[];
 };
 
 // `superseded` when a later review of the revision created another adjudication task before this one recorded.
@@ -207,12 +212,14 @@ export const AdjudicationTask = defineTask<
 	AdjudicationResult
 >({
 	name: "melian.adjudication",
-	version: 2,
+	// Version 2 added `files`, and version 3 marks a task created before stage timing. A version 1 input holds no files,
+	// so its task decides by snippet, as it did.
+	version: 3,
+	initial: () => ({ phase: "adjudicate" }),
 	migrate: (input, checkpoint) => ({
-		input: input as AdjudicationTaskInput,
+		input: input as unknown as AdjudicationTaskInput,
 		checkpoint: { ...(checkpoint as { phase: "adjudicate" }), legacyTiming: true },
 	}),
-	initial: () => ({ phase: "adjudicate" }),
 	phases: {
 		adjudicate: async (task, runtime, context) => {
 			const timing = await TaskTiming.start(runtime, task.state.checkpoint.legacyTiming, context);
@@ -248,6 +255,8 @@ export const AdjudicationTask = defineTask<
 					allowSkip,
 					verificationRan: task.input.verificationRan,
 					seenBefore: carried,
+					// A version 1 input holds no files, so no hunk merges it and the snippet rule decides alone.
+					revision: Revision.from({ base, head, files: task.input.files ?? [] }),
 				}).adjudicate();
 			} catch (error) {
 				// A policy that cannot be read is the task's outcome rather than a fault. It may not fail the same way next
@@ -305,6 +314,7 @@ export function adjudicationInput(options: {
 	plan?: ReviewPlan | undefined;
 	verifierVersion?: string;
 	verificationRan?: boolean;
+	files?: readonly ChangedFile[];
 }): AdjudicationTaskInput {
 	const { root, repoRoot, base, head, policy, config, manifest, checks, findingsVersion, allowSkip, producers } =
 		options;
@@ -346,6 +356,7 @@ export function adjudicationInput(options: {
 		})),
 		provenance,
 		...(options.verificationRan === undefined ? {} : { verificationRan: options.verificationRan }),
+		...(options.files === undefined ? {} : { files: structuredClone([...options.files]) }),
 	};
 }
 

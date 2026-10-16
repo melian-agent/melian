@@ -41,6 +41,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AdjudicationTask, type AdjudicationTaskInput } from "../src/adjudication.ts";
 import { ComparisonDocument } from "../src/compare.ts";
 import { FindingsDocument } from "../src/findings.ts";
+import { defineTask } from "../src/harness.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines, writeFiles } from "./fixtures/repo.ts";
 import { twoLensTiers } from "./fixtures/review-scenario.ts";
@@ -600,6 +601,264 @@ describe("recording a dismissal", () => {
 		]);
 	});
 
+	// Step 27: a member's thread can stay open after a later push merges it, so its ID must not reach the speaker.
+	it("dismisses a merged report alone when its own ID names it, leaving the finding it merged into live", async () => {
+		const harness = await reviewHarness(createMemoryStorage());
+		scriptFinding(true);
+		const [shown] = (await reviewed(harness)).verdict.findings.block;
+		const member = shown!.properties.alsoReportedAs![0]!.id;
+
+		const recorded = await dismiss(harness, member);
+
+		expect(recorded.also).toEqual([]);
+		expect(recorded.finding.properties).toMatchObject({ id: member, status: "dismissed" });
+		const live = Object.values(recorded.verdict.findings).flat();
+		expect(live.map((each) => each.properties.id)).toEqual([shown!.properties.id]);
+	});
+
+	// The round's abb7ee15: dismissal must read a report's site where grouping read it, through the lenses' winner.
+	it("dismisses a snippet member of a cut snippet with its speaker, though another sighting cites wider lines", async () => {
+		const long = `export const table = [${Array.from({ length: 300 }, (_, index) => `"cell${index}"`).join(", ")}];`;
+		push("boss", unsafe, { "src/long.ts": lines("// a", "// b", "// c", "// d", "", long, "", "// h") });
+		lenses = await Lens.load(repo, { kind: "revision", commit: gitIn(repo, "rev-parse", "main") }, ["src/long.ts"]);
+		config = { ...config, tiers: { ...config.tiers, full: [...config.tiers.full!, "lens.trust-boundary"] } };
+		const at = (line: number, endLine: number, rule: string, severity: string) => ({
+			...nullDeref,
+			file: "src/long.ts",
+			line,
+			endLine,
+			rule,
+			severity,
+			evidence: [{ file: "src/long.ts", line, endLine, role: "cause" }],
+		});
+		scriptConversations(fake, [
+			{
+				match: correctness,
+				replies: [report(at(5, 7, "melian/injection-attempt", "P2")), fauxAssistantMessage("Done.")],
+			},
+			{
+				match: contracts,
+				replies: [report(at(6, 6, "melian/injection-attempt", "P1")), fauxAssistantMessage("Done.")],
+			},
+			{
+				match: "You are the trust-boundary reviewer",
+				replies: [report(at(6, 6, "head-controls-judge", "P2")), fauxAssistantMessage("Done.")],
+			},
+		]);
+		const harness = await reviewHarness(createMemoryStorage());
+		const { verdict } = await reviewed(harness);
+		const [shown, ...rest] = verdict.attention();
+		expect(rest).toEqual([]);
+		const [member] = shown!.properties.alsoReportedAs!;
+		expect(member).toMatchObject({ ruleId: "head-controls-judge" });
+
+		const recorded = await dismiss(harness, shown!.properties.id);
+
+		expect(recorded.also.map((other) => other.id)).toEqual([member!.id]);
+		expect(recorded.live).toEqual([]);
+		expect(recorded.verdict.attention()).toEqual([]);
+	});
+
+	// The round's c8574ff9: a sighting outside the review's producers, such as a quick run its escalation restated, must
+	// not decide which members a dismissal reaches.
+	it("reads sites from the review's producers only, so a member joined through the hunk stays live", async () => {
+		const long = `export const table = [${Array.from({ length: 300 }, (_, index) => `"cell${index}"`).join(", ")}];`;
+		push("boss", unsafe, { "src/long.ts": lines("// a", "// b", "// c", "// d", "", long, "", "// h") });
+		lenses = await Lens.load(repo, { kind: "revision", commit: gitIn(repo, "rev-parse", "main") }, ["src/long.ts"]);
+		config = { ...config, ruleAliases: { "changed-return": ["null-dereference"] } };
+		const at = (line: number, endLine: number, rule: string) => ({
+			...nullDeref,
+			file: "src/long.ts",
+			line,
+			endLine,
+			rule,
+			evidence: [{ file: "src/long.ts", line, endLine, role: "cause" }],
+		});
+		// The cut snippets are alike, so their sites differ by lines alone, and only the hunk pass merges them.
+		scriptConversations(fake, [
+			{ match: correctness, replies: [report(at(6, 7, "null-dereference")), fauxAssistantMessage("Done.")] },
+			{ match: contracts, replies: [report(at(6, 6, "changed-return")), fauxAssistantMessage("Done.")] },
+		]);
+		const harness = await reviewHarness(createMemoryStorage());
+		const [shown] = (await reviewed(harness)).verdict.findings.block;
+		expect(shown).toMatchObject({ ruleId: "changed-return" });
+		const [member] = shown!.properties.alsoReportedAs!;
+		// A sighting of the speaker's ID by a producer the review did not select, on the member's lines.
+		const key = revisionKey(await revision());
+		const root = await harness.root(context);
+		await root.commit(async (tx) => {
+			const { items } = await tx.doc(FindingsDocument, root.id);
+			const sightings = items[shown!.properties.id]!.sightings[key]!;
+			const [own] = Object.values(sightings);
+			const memberSighting = Object.values(items[member!.id]!.sightings[key]!)[0]!;
+			sightings["lens.contracts@stale"] = {
+				...own!,
+				locations: JSON.parse(JSON.stringify(memberSighting.locations)),
+				// More severe than the selected sighting, so it would win the ID if it counted.
+				properties: { ...own!.properties, severity: "P0", source: { check: "lens.contracts", version: "stale" } },
+			};
+		}, context);
+
+		const recorded = await dismiss(harness, shown!.properties.id);
+
+		expect(recorded.live.map((other) => other.id)).toEqual([member!.id]);
+		expect(recorded.verdict).toMatchObject({ blocking: true });
+	});
+
+	describe("two lens reports one hunk caused, with different snippets", () => {
+		// Correctness reports line 8; contracts reports lines 7-8, the whole hunk, so the two share no snippet.
+		function scriptHunkPair(severity = "P2"): void {
+			const changedReturn = { ...nullDeref, line: 7, endLine: 8, rule: "changed-return", severity };
+			scriptConversations(fake, [
+				{ match: correctness, replies: [report(nullDeref), fauxAssistantMessage("Done.")] },
+				{ match: contracts, replies: [report(changedReturn), fauxAssistantMessage("Done.")] },
+			]);
+		}
+
+		// Rewrites the review's indexed adjudication input as a build before step 27 stored it: with no `files`.
+		async function asIndexedBeforeTheStep(harness: Harness): Promise<AdjudicationTaskInput> {
+			const root = await harness.root(context);
+			return await root.commit(async (tx) => {
+				const known = (await tx.doc(ReviewIndex, root.id)).reviews[revisionKey(await revision())]!.adjudication!;
+				const { files, ...older } = JSON.parse(known.input) as AdjudicationTaskInput;
+				expect(files).toEqual([expect.objectContaining({ path: "src/user.ts" })]);
+				known.input = JSON.stringify(older);
+				return older;
+			}, context);
+		}
+
+		// The version 1 definition as it stores a task: its name, its version, and its first checkpoint. Indexes a pending
+		// task of it over `older`, as a build before the step left a review it had not decided yet.
+		async function storedByVersionOne(harness: Harness, older: AdjudicationTaskInput) {
+			const versionOne = defineTask<AdjudicationTaskInput, { phase: "adjudicate" }, string>({
+				name: AdjudicationTask.definition.name,
+				version: 1,
+				initial: () => ({ phase: "adjudicate" }),
+				phases: { adjudicate: async () => {} },
+				abort: async () => {},
+			});
+			const root = await harness.root(context);
+			return await root.commit(async (tx) => {
+				const created = await tx.createTask(versionOne, older, { ownership: { kind: "conversation" } });
+				const index = await tx.doc(ReviewIndex, root.id);
+				const key = revisionKey(await revision());
+				index.reviews[key] = {
+					...index.reviews[key]!,
+					adjudication: { task: created, input: JSON.stringify(older) },
+				};
+				return created;
+			}, context);
+		}
+
+		// The review of record's F1: the speaker's ID dismisses its snippet group, and a hunk member stays live.
+		it("leaves a report merged only through the hunk live when the speaker is dismissed, so the verdict still blocks", async () => {
+			const harness = await reviewHarness(createMemoryStorage());
+			scriptHunkPair("P1");
+			const { verdict: before } = await reviewed(harness);
+			const [shown] = before.findings.block;
+			const [member] = shown!.properties.alsoReportedAs!;
+
+			const recorded = await dismiss(harness, shown!.properties.id);
+
+			expect(recorded.also).toEqual([]);
+			expect(recorded.live).toEqual([expect.objectContaining({ id: member!.id })]);
+			expect(recorded.verdict).toMatchObject({ status: "findings", blocking: true });
+			expect(recorded.verdict.findings.block.map((each) => each.properties.id)).toEqual([member!.id]);
+		});
+
+		it.each(["deleted", "emptied"] as const)(
+			"leaves live a member whose record the findings document %s, and names no dismissal it replaced",
+			async (gone) => {
+				const harness = await reviewHarness(createMemoryStorage());
+				scriptHunkPair("P1");
+				const [shown] = (await reviewed(harness)).verdict.findings.block;
+				const [member] = shown!.properties.alsoReportedAs!;
+				// As after a rerun that cleared the member's sightings before the verdict was decided again.
+				const key = revisionKey(await revision());
+				const root = await harness.root(context);
+				await root.commit(async (tx) => {
+					const { items } = await tx.doc(FindingsDocument, root.id);
+					if (gone === "deleted") delete items[member!.id];
+					else items[member!.id]!.sightings[key] = {};
+				}, context);
+
+				const recorded = await dismiss(harness, shown!.properties.id);
+
+				expect(recorded.live.map((other) => other.id)).toEqual([member!.id]);
+				expect(Object.hasOwn(recorded, "replaced")).toBe(false);
+			},
+		);
+
+		it("merges them into one defect", async () => {
+			const harness = await reviewHarness(createMemoryStorage());
+			scriptHunkPair();
+			const { verdict } = await reviewed(harness);
+			expect(verdict.findings.block).toHaveLength(1);
+			expect(verdict.findings.block[0]!.properties.alsoReportedAs).toEqual([
+				expect.objectContaining({ ruleId: "changed-return" }),
+			]);
+		});
+
+		it("asks the models as often as for a pair that shares a snippet, so the verifier judges one candidate", async () => {
+			const calls = async (script: () => void) => {
+				const harness = await reviewHarness(createMemoryStorage());
+				script();
+				const before = fake.provider.state.callCount;
+				await reviewed(harness);
+				return fake.provider.state.callCount - before;
+			};
+			expect(await calls(scriptHunkPair)).toBe(await calls(() => scriptFinding(true)));
+		});
+
+		// The review of record's F6: a verdict and an input as version 1 wrote them, side by side.
+		it("decides a dismissal by snippet when the revision was decided before the step", async () => {
+			const harness = await reviewHarness(createMemoryStorage());
+			scriptHunkPair();
+			await reviewed(harness);
+			const task = await storedByVersionOne(harness, await asIndexedBeforeTheStep(harness));
+			harness.resume();
+			await harness.waitForTask(task as unknown as TaskId<string>, context);
+			const decided = await readVerdict(
+				harness,
+				(await harness.root(context)).id,
+				revisionKey(await revision()),
+				context,
+			);
+			const [shown] = decided!.findings.block;
+			expect(shown!.properties.alsoReportedAs).toBeUndefined();
+			expect(decided!.findings.acknowledge).toHaveLength(1);
+
+			const recorded = await dismiss(harness, shown!.properties.id);
+
+			expect(recorded.verdict.dismissed.map((each) => each.properties.id)).toEqual([shown!.properties.id]);
+			expect(recorded.verdict.findings.acknowledge).toHaveLength(1);
+			expect(recorded.verdict.findings.acknowledge[0]!.properties.alsoReportedAs).toBeUndefined();
+		});
+
+		it("runs a version 1 adjudication task stored before the upgrade, deciding by snippet", async () => {
+			const path = join(dir, "changeset.sqlite");
+			const first = await reviewHarness(await openSqliteStorage(path));
+			scriptHunkPair();
+			await reviewed(first);
+			const task = await storedByVersionOne(first, await asIndexedBeforeTheStep(first));
+			await first.close(context);
+
+			const reopened = await reviewHarness(await openSqliteStorage(path));
+			reopened.resume();
+			const { outcome } = (await reopened.waitForTask(task as unknown as TaskId<string>, context)).state;
+
+			expect(outcome).toEqual({ status: "completed", result: "recorded" });
+			const verdict = await readVerdict(
+				reopened,
+				(await reopened.root(context)).id,
+				revisionKey(await revision()),
+				context,
+			);
+			expect(verdict!.findings.block).toHaveLength(1);
+			expect(verdict!.findings.acknowledge).toHaveLength(1);
+		});
+	});
+
 	it("dismisses again only the report an ID names, never a live finding that lists it as dismissed context", async () => {
 		const harness = await reviewHarness(createMemoryStorage());
 		const changedReturn = { ...nullDeref, rule: "changed-return", severity: "P2" };
@@ -1127,6 +1386,29 @@ describe("recording a dismissal", () => {
 		expect(recorded.verdict).toMatchObject({ status: "not-reviewed", blocking: false });
 		expect(recorded.finding.properties).toMatchObject({ id, status: "dismissed", dismissal });
 	});
+
+	it.each(["entry", "adjudication"] as const)(
+		"refuses a verdict whose review index holds no %s to repeat, and dismisses nothing",
+		async (missing) => {
+			const harness = await reviewHarness(createMemoryStorage());
+			scriptFinding();
+			const id = (await reviewed(harness)).findings[0]!.properties.id;
+			const key = revisionKey(await revision());
+			const root = await harness.root(context);
+			await root.commit(async (tx) => {
+				const index = await tx.doc(ReviewIndex, root.id);
+				if (missing === "entry") delete index.reviews[key];
+				else delete index.reviews[key]!.adjudication;
+			}, context);
+
+			await expect(dismiss(harness, id)).rejects.toMatchObject({
+				code: "notReviewed",
+				message: expect.stringContaining("no adjudication of"),
+			});
+			const state = await harness.snapshot(FindingsDocument, root.id, context);
+			expect(state!.items[id]!.lifecycle.status).not.toBe("dismissed");
+		},
+	);
 
 	it("refuses a revision with no stored review, and an ID its verdict does not hold", async () => {
 		const harness = await reviewHarness(createMemoryStorage());

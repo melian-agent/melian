@@ -109,8 +109,8 @@ describe("adjudicating verification", () => {
 		const confirmed = finding("lens.b", verification);
 		const upheld = decide([refuted, confirmed]);
 		expect(upheld.findings.block).toHaveLength(1);
+		// The speaker is chosen by what the lenses reported, so the refuted report still speaks, beside the upheld claim.
 		expect(upheld.all()[0]!.claims()[0]!.verification?.verdict).toBe("refuted");
-		expect(upheld.all()[0]!.properties.verification?.verdict).toBe("confirmed");
 	});
 	it("preserves deterministic co-reports and old reviews, and never raises a silent resolution", () => {
 		const plain = finding("lens.a");

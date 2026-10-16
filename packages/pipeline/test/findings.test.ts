@@ -855,6 +855,129 @@ describe("lowered sightings", () => {
 		expect(tied!.lowered()).toEqual({ from: "P1", reason: "One caller validates." });
 	});
 
+	// Codex's H1 on pull request 131: the refuted sighting must not speak through the one that stands.
+	it("speaks through a standing sighting of one ID, with its own severity and prose, never a refuted one", async () => {
+		const { harness, root } = await open(createMemoryStorage());
+		const other = { check: "lens.contracts", version: "1" };
+		const standing = Finding.create({ ...input, severity: "P2", source: other, failureScenario: "It fails." });
+		// A claim needs a failure scenario or evidence for a verdict to refute it.
+		const refuted = Finding.create({ ...input, failureScenario: "eval('1') runs." });
+		await root.commit((tx) => upsertFinding(tx, root.id, refuted, "rev1"), context);
+		await root.commit((tx) => upsertFinding(tx, root.id, standing, "rev1"), context);
+		await judge(root, { ...record, verdict: "refuted" });
+		await judge(root, record, other);
+		const [judged] = await readFindings(harness, root.id, "rev1", context);
+		expect(judged!.properties).toMatchObject({ severity: "P2", source: other, failureScenario: "It fails." });
+		expect(judged!.level).toBe("warning");
+		// The order grouping reads is the lenses' own, refuted or not.
+		expect(judged!.original()).toBe("P1");
+		// As reported, before anything judges it, no verdict picks the winner, so a repeat review's candidate is unchanged.
+		const [reported] = await readFindings(harness, root.id, "rev1", context, { asReported: true });
+		expect(reported!.properties).toMatchObject({ severity: "P1", source: input.source });
+	});
+
+	// The round's 9acf210b: refuting one lens's sighting must not change the severity the merge orders by.
+	it("keeps the severity the lenses reported, refuted sightings included, as the order grouping reads", async () => {
+		const { harness, root } = await open(createMemoryStorage());
+		const tests = { check: "lens.tests", version: "1" };
+		const claim = { failureScenario: "eval('1') runs." };
+		await root.commit((tx) => upsertFinding(tx, root.id, Finding.create({ ...input, ...claim }), "rev1"), context);
+		const low = Finding.create({ ...input, ...claim, severity: "P3", source: tests });
+		await root.commit((tx) => upsertFinding(tx, root.id, low, "rev1"), context);
+		await judge(root, { ...record, verdict: "refuted" });
+		await judge(root, record, tests);
+		for (const asReported of [false, true]) {
+			const [finding] = await readFindings(harness, root.id, "rev1", context, { asReported });
+			expect(finding!.original()).toBe("P1");
+		}
+	});
+
+	// The round's faabb218 and 3448ebab: one ID, two sightings on different lines. A refutation must not move the finding.
+	it.each([
+		{ scenario: "a blank line on either side", design: [5, 6], tests: [6, 7], snippet: ["\nfoo()", "foo()\n"] },
+		{ scenario: "one added hunk", design: [6, 6], tests: [5, 6], snippet: ["return value;", "\nreturn value;"] },
+	] as const)(
+		"keeps the lines the lenses' winner reported after a refutation, with $scenario",
+		async ({ design, tests, snippet }) => {
+			const { harness, root } = await open(createMemoryStorage());
+			const source = { check: "lens.design", version: "1" };
+			const other = { check: "lens.tests", version: "1" };
+			const sighting = (
+				lines: readonly [number, number],
+				text: string,
+				severity: "P1" | "P2",
+				from: FindingSource,
+			) =>
+				Finding.create({
+					...input,
+					startLine: lines[0],
+					endLine: lines[1],
+					startColumn: undefined,
+					endColumn: undefined,
+					snippet: text,
+					severity,
+					source: from,
+					failureScenario: `${from.check} scenario.`,
+				});
+			const [first, second] = [sighting(design, snippet[0], "P1", source), sighting(tests, snippet[1], "P2", other)];
+			expect(first.id).toBe(second.id);
+			await root.commit((tx) => upsertFinding(tx, root.id, first, "rev1"), context);
+			await root.commit((tx) => upsertFinding(tx, root.id, second, "rev1"), context);
+			const verdictOn = (verification: Verification, from: FindingSource) =>
+				root.commit((tx) => upsertVerification(tx, root.id, "rev1", first.id, from, verification), context);
+			await verdictOn({ ...record, verdict: "refuted" }, source);
+			await verdictOn(record, other);
+			const [reported] = await readFindings(harness, root.id, "rev1", context, { asReported: true });
+			const [judged] = await readFindings(harness, root.id, "rev1", context);
+			expect(reported!.lines()).toEqual([...design]);
+			expect(judged!.lines()).toEqual(reported!.lines());
+			// The refutation still decides what it resolves at and says.
+			expect(judged!.properties).toMatchObject({ severity: "P2", failureScenario: "lens.tests scenario." });
+		},
+	);
+
+	it("keeps the lines the lenses' winner reported after a lowering ties it with another sighting", async () => {
+		const { harness, root } = await open(createMemoryStorage());
+		const design = { check: "lens.design", version: "1" };
+		const tests = { check: "lens.tests", version: "1" };
+		const sighting = (start: number, text: string, severity: "P1" | "P2", from: FindingSource) =>
+			Finding.create({
+				...input,
+				startLine: start,
+				endLine: start + 1,
+				startColumn: undefined,
+				endColumn: undefined,
+				snippet: text,
+				severity,
+				source: from,
+				failureScenario: `${from.check} scenario.`,
+			});
+		// The tests lens reported the P1, so its lines stand, though the lowering ties it with design's, which sorts first.
+		const [first, second] = [sighting(5, "\nfoo()", "P2", design), sighting(6, "foo()\n", "P1", tests)];
+		expect(first.id).toBe(second.id);
+		await root.commit((tx) => upsertFinding(tx, root.id, first, "rev1"), context);
+		await root.commit((tx) => upsertFinding(tx, root.id, second, "rev1"), context);
+		await root.commit((tx) => upsertVerification(tx, root.id, "rev1", first.id, tests, lowered), context);
+		const [reported] = await readFindings(harness, root.id, "rev1", context, { asReported: true });
+		const [judged] = await readFindings(harness, root.id, "rev1", context);
+		expect(reported!.lines()).toEqual([6, 7]);
+		expect(judged!.lines()).toEqual([6, 7]);
+	});
+
+	it("reads a finding whose every sighting a verifier refuted, at the most severe of them", async () => {
+		const { harness, root } = await open(createMemoryStorage());
+		const other = { check: "lens.contracts", version: "1" };
+		const claim = { failureScenario: "eval('1') runs." };
+		await root.commit((tx) => upsertFinding(tx, root.id, Finding.create({ ...input, ...claim }), "rev1"), context);
+		const second = Finding.create({ ...input, ...claim, severity: "P2", source: other });
+		await root.commit((tx) => upsertFinding(tx, root.id, second, "rev1"), context);
+		await judge(root, { ...record, verdict: "refuted" });
+		await judge(root, { ...record, verdict: "refuted" }, other);
+		const [finding] = await readFindings(harness, root.id, "rev1", context);
+		expect(finding!.properties).toMatchObject({ severity: "P1", source: input.source });
+		expect(finding!.refuted()).toBe(true);
+	});
+
 	it("drops the original severity when an unlowered sighting holds the finding at it", async () => {
 		const { harness, root } = await open(createMemoryStorage());
 		const other = { check: "lens.contracts", version: "1" };

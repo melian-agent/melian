@@ -1978,7 +1978,8 @@ describe("lowering a severity through report_verdict", () => {
 				explanation: { what: "w", whyHere: "y", whatToDo: "t" },
 				source: { check: "lens.any" },
 			}).id;
-		// The claim with the higher ID is lowered to a tie, so the other one speaks for the defect afterwards.
+		// The claim with the higher ID is lowered to a tie. The speaker is chosen by what the lenses reported, so it still
+		// speaks, and the repeat review's candidate is the one verified.
 		const [low, high] = ["first-rule", "second-rule"].sort((a, b) => (idOf(a) < idOf(b) ? -1 : 1)) as [
 			string,
 			string,
@@ -2025,12 +2026,95 @@ describe("lowering a severity through report_verdict", () => {
 		]);
 		const once = await review();
 		expect(once.verdict.attention()).toHaveLength(1);
-		expect(once.verdict.attention()[0]!.id).toBe(idOf(low));
+		expect(once.verdict.attention()[0]!.id).toBe(idOf(high));
 		expect(once.verdict.attention()[0]!.properties).toMatchObject({ severity: "P2", originalSeverity: "P1" });
 		const asked = requests[verifierMarker]!.length;
 		const again = await review();
 		expect(requests[verifierMarker]).toHaveLength(asked);
+		expect(again.verdict.attention()[0]!.id).toBe(idOf(high));
 		expect(again.verdict.attention()[0]!.properties).toMatchObject({ severity: "P2", originalSeverity: "P1" });
+	});
+
+	// The round's d19112ac: a refuted P1 and a confirmed P2 on one snippet, reviewed twice.
+	it("keeps the verified speaker and attaches a repeat review when the speaker's claim was refuted", async () => {
+		const idOf = (rule: string) =>
+			Finding.create({
+				rule,
+				message: "m",
+				file: "src/user.ts",
+				startLine: 7,
+				snippet: "\treturn user.manager.name;",
+				occurrence: 0,
+				cause: "introduced",
+				severity: "P1",
+				explanation: { what: "w", whyHere: "y", whatToDo: "t" },
+				source: { check: "lens.any" },
+			}).id;
+		const first = lenses[0]!.toJSON();
+		lenses = [
+			Lens.from({
+				...first,
+				name: "trust-boundary",
+				instructions: "Finder of the refuted claim",
+				rules: [{ id: "refuted-rule", description: "A guess." }],
+			}),
+			Lens.from({
+				...first,
+				name: "contracts",
+				instructions: "Finder of the standing claim",
+				rules: [{ id: "standing-rule", description: "The failure." }],
+			}),
+		];
+		const what = { refuted: "The refuted lens's reading.", standing: "The standing lens's reading." };
+		const requests = scriptConversations(fake, [
+			...[
+				{ lens: lenses[0]!, severity: "P1", what: what.refuted },
+				{ lens: lenses[1]!, severity: "P2", what: what.standing },
+			].map(({ lens, severity, what }) => ({
+				match: lens.instructions,
+				replies: [
+					fauxAssistantMessage(
+						fauxToolCall("report_finding", {
+							...crashFinding,
+							rule: lens.rules[0]!.id,
+							severity,
+							explanation: { ...crashFinding.explanation, what },
+						}),
+						{ stopReason: "toolUse" },
+					),
+					fauxAssistantMessage("Done."),
+				],
+			})),
+			{
+				match: verifierMarker,
+				replies: [
+					(messages) =>
+						scriptVerifier(messages, {
+							[idOf("refuted-rule")]: {
+								verdict: "refuted",
+								reason: "The guard holds.",
+								evidence: [{ file: "src/user.ts", line: 7, role: "context" as const }],
+							},
+							[idOf("standing-rule")]: { verdict: "confirmed", reason: "Traced it." },
+						}),
+					(messages) => scriptVerifier(messages),
+				],
+			},
+		]);
+		const once = await review();
+		const asked = requests[verifierMarker]!.length;
+		const again = await review();
+		expect(requests[verifierMarker]).toHaveLength(asked);
+		for (const { verdict } of [once, again]) {
+			expect(verdict.blocking).toBe(false);
+			const [shown, ...rest] = verdict.attention();
+			expect(rest).toEqual([]);
+			// The speaker the verifier judged, with the standing claim's severity and prose.
+			expect(shown!.id).toBe(idOf("refuted-rule"));
+			expect(shown!.properties.severity).toBe("P2");
+			expect(shown!.message.text).toBe(what.standing);
+			expect(shown!.properties.alsoReportedAs?.map((other) => other.id)).toEqual([idOf("standing-rule")]);
+		}
 	});
 
 	it("refuses the report when the claim's sighting is gone by the time it commits", async () => {

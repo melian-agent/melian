@@ -337,9 +337,7 @@ function planRound(
 		]),
 	);
 	if (own === undefined) {
-		const held = new Set(
-			[...Object.values(verdict.findings).flat(), ...verdict.dismissed].map((finding) => finding.properties.id),
-		);
+		const held = new Set([...verdict.held(), ...verdict.dismissed.map((finding) => finding.properties.id)]);
 
 		// A resolution still owed is carried as its reply would read now: with the dismissal of the finding that holds its
 		// ID dismissed, itself or merged, and otherwise as it was owed, while no finding with the ID is held. A dismissal

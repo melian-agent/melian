@@ -205,7 +205,8 @@ describe("a merged defect resolves each report under its own check, rule, and se
 			verification: confirmed,
 		});
 		const defect = only([wrong, right], policy({}));
-		expect(defect.properties).toMatchObject({ severity: "P1", resolution: "advisory" });
+		// The refuted P1 never sets the headline while the P3 stands.
+		expect(defect.properties).toMatchObject({ severity: "P3", resolution: "advisory" });
 		expect(defect.properties.decidedBy?.check).toBe("lens.security");
 		const verdict = decide([wrong], policy({}));
 		expect(verdict.refuted?.[0]?.properties.resolution).toBe("block");
