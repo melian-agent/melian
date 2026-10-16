@@ -358,7 +358,7 @@ export class TelemetryReader {
 		}
 		const policy = await this.document(LensDocument, { kind: "conversation", conversationId: id }, context);
 		if (policy?.spend?.ended !== undefined || policy?.spend?.capped !== undefined) result = { outcome: "ended" };
-		if (task.state.status === "terminal" && task.state.outcome.status === "faulted") {
+		if (end === undefined && task.state.status === "terminal" && task.state.outcome.status === "faulted") {
 			end = task.endedAt;
 			result = outcome(task);
 		}

@@ -1,5 +1,7 @@
 import { readFileSync } from "node:fs";
 import {
+	type ConversationId,
+	configure,
 	backgroundContext as context,
 	createMemoryStorage,
 	createRegistry,
@@ -9,6 +11,7 @@ import {
 	type Harness,
 	type JsonObject,
 	openHarness,
+	type Stage,
 	TelemetryReader,
 	UsageDoc,
 } from "@melian-agent/pipeline";
@@ -366,3 +369,74 @@ it.each([true, false])("ends a faulted model stage at Pi's task time (input=%s)"
 		expect(row.durationMs).toBeUndefined();
 	}
 });
+
+it.each(["done", "unanswered"] as const)(
+	"keeps a %s conversation settled when its owning task faults an hour later",
+	async (status) => {
+		const fake = createFakeModels();
+		fake.provider.setResponses([
+			fauxAssistantMessage(
+				"settled",
+				status === "done" ? {} : { stopReason: "error", errorMessage: "model failed" },
+			),
+		]);
+		const storage = createMemoryStorage();
+		const registry = createRegistry();
+		let now = Date.now();
+		let settled: Stage | undefined;
+		const task = defineTask<
+			null,
+			{ phase: "spawn" } | { phase: "run"; child: ConversationId } | { phase: "fail" },
+			null
+		>({
+			name: "test.settled-model-fault",
+			version: 1,
+			initial: () => ({ phase: "spawn" }),
+			phases: {
+				spawn: async (_task, runtime, taskContext) => {
+					await runtime.commit(async (tx) => {
+						const child = await tx.createConversation({ ownership: { kind: "task", taskId: runtime.taskId } });
+						await configure(tx, child.id, { model: fake.ref(), tools: [] });
+						return { status: "running", checkpoint: { phase: "run", child: child.id } };
+					}, taskContext);
+				},
+				run: async (task, runtime, taskContext) => {
+					const child = (await runtime.conversation(task.state.checkpoint.child, taskContext))!;
+					const submission = await (
+						await child.submit({ type: "input", content: "settle this run" }, taskContext)
+					).wait(taskContext);
+					expect(submission.status).toBe(status);
+					settled = (await TelemetryReader.open(storage).read("base..head")).stages[0];
+					await runtime.commit(() => ({ status: "running", checkpoint: { phase: "fail" } }), taskContext);
+				},
+				fail: async () => {
+					now += 3_600_000;
+					throw new Error("a later bug in the same task");
+				},
+			},
+			abort: async (_task, runtime, taskContext) => {
+				await runtime.commit(() => ({ status: "terminal", outcome: { status: "aborted" } }), taskContext);
+			},
+		});
+		registry.install(defineExtension({ name: "test.settled-model-fault", tasks: [task] }));
+		harness = await openHarness(storage, {
+			models: fake.models,
+			registry,
+			now: () => now,
+			settings: { retry: { enabled: false } },
+		});
+		const root = await harness.root(context);
+		const id = await root.commit(async (tx) => {
+			const id = await tx.createTask(task, null, { ownership: { kind: "conversation" } });
+			(await tx.doc(SummaryIndex, root.id)).tasks["base..head"] = id;
+			return id;
+		}, context);
+		expect((await harness.waitForTask(id, context)).state.outcome.status).toBe("faulted");
+		expect(settled).toMatchObject({
+			outcome: status === "done" ? "completed" : "failed",
+			endedAt: expect.any(Number),
+		});
+		const row = (await TelemetryReader.open(storage).read("base..head")).stages[0]!;
+		expect(row).toEqual(settled);
+	},
+);
