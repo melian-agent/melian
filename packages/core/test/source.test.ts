@@ -134,6 +134,18 @@ describe("revision source reader", () => {
 });
 
 describe("worktree source reader", () => {
+	it("reports a submodule-marker lookup failure instead of entering the directory", async () => {
+		const reader = await openSource(repo, { kind: "worktree" });
+		const stats = await fs.lstat(join(repo, "docs"));
+		const failure = Object.assign(new Error("marker lookup failed"), { code: "EIO" });
+		vi.spyOn(fs, "lstat").mockResolvedValueOnce(stats).mockRejectedValueOnce(failure);
+		expect(await rejection(reader.exists("docs"), SourceError)).toMatchObject({
+			code: "unreadable",
+			path: "docs",
+			cause: failure,
+		});
+	});
+
 	it.each(["ENOENT", "ENOTDIR"])("treats a directory read's %s as absence", async (code) => {
 		const reader = await openSource(repo, { kind: "worktree" });
 		vi.spyOn(fs, "readdir").mockRejectedValueOnce(Object.assign(new Error("gone"), { code }));
@@ -216,7 +228,7 @@ describe("worktree source reader", () => {
 			const reader = await openSource(repo, { kind: "worktree" });
 			expect(await rejection(reader.exists("docs/rules.md"), SourceError)).toMatchObject({
 				code: "unreadable",
-				path: "docs/rules.md",
+				path: "docs",
 			});
 		} finally {
 			chmodSync(join(repo, "docs"), 0o700);

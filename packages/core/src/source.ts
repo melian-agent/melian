@@ -48,7 +48,7 @@ export class SourceError extends Error {
 // Paths are repository-relative with forward slashes, "" for the root, and already checked to stay inside it.
 // Neither implementation follows a symlink: a symlink is refused with `symlink`, and a path beneath a symlinked
 // directory does not exist, as in git's own trees.
-/** A bounded reader over a single repository source, without following symlinks. */
+/** A bounded reader over a single repository source, without following symlinks or entering submodules. */
 export interface SourceReader {
 	readonly commit?: string;
 	// Names a file for messages: the path for the working tree, git's `<commit>:<path>` for a revision.
@@ -134,7 +134,7 @@ class WorktreeSource implements SourceReader {
 				isAbsence(error) ? undefined : unreadable(prefix)(error),
 			);
 			if (stats === undefined) return undefined;
-			const kind = kindOfStats(stats);
+			const kind = await this.entryKind(prefix, kindOfStats(stats));
 			if (i === parts.length) return kind;
 			if (kind !== "directory") return undefined;
 		}
@@ -175,7 +175,20 @@ class WorktreeSource implements SourceReader {
 		if (kind === "symlink") throw symlink(directory);
 		if (kind !== "directory") return undefined;
 		const entries = await readdir(join(this.root, directory), { withFileTypes: true }).catch(unreadable(directory));
-		return entries.map((entry) => ({ name: entry.name, kind: kindOfStats(entry) }));
+		return Promise.all(
+			entries.map(async (entry) => ({
+				name: entry.name,
+				kind: await this.entryKind(posix.join(directory, entry.name), kindOfStats(entry)),
+			})),
+		);
+	}
+
+	private async entryKind(path: string, kind: EntryKind): Promise<EntryKind> {
+		if (kind !== "directory") return kind;
+		const marker = await lstat(join(this.root, path, ".git")).catch((error: NodeJS.ErrnoException) =>
+			isAbsence(error) ? undefined : unreadable(path)(error),
+		);
+		return marker === undefined ? kind : "other";
 	}
 
 	// Tracked and untracked files git does not ignore, so an uncommitted lens counts and node_modules is not walked.
