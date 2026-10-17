@@ -1348,6 +1348,7 @@ describe("documents stored before evidence became a list", () => {
 					return { id: String(200 + posted.length), threads: {} };
 				},
 				replyResolved: async () => undefined,
+				isThreadOpen: async () => true,
 				resolveThread: async () => false,
 				setStatus: async () => undefined,
 				getStatus: async () => undefined,

@@ -185,15 +185,18 @@ Static analysis gets the same split for free by running on base and head and dif
 
 Publication, built in milestone 1, diffs each revision's findings by `id` against those of the revision published before. New findings are posted. Still-open findings are not reposted. When a finding resolves, milestone 1 replies in its thread that the revision no longer reports it, through `renderResolvedReply` in `packages/github/src/publication.ts`, and leaves the thread open. From milestone 2, with the [ledger](#the-ledger), Melian instead edits the original inline comment to name the commit that addressed the finding, and resolves the thread. `melian dismiss`, built in milestone 2, records a dismissal with its reason in the findings document, and dismissal from a thread is planned for milestone 4. A finding posted earlier and then dismissed gets a reply in its thread saying it was dismissed and why, or, posted in a review's body, a line in the next body, and leaves the set of findings open on the pull request; the reply never names the dismisser. Dismissing a dismissed finding replaces its reason and keeps the old one in its history, and publication answers the thread again with the new reason. A resolution whose reply failed stays owed. A finding that returns before the reply goes through reuses its own thread, alone or merged under another report. Dismissed findings stay dismissed unless the triggering hunk changes materially, which for now means the normalised code of the finding's trigger differs, compared whole through its hash even when the stored snippet is cut; a reopened finding keeps its old dismissal in its history and, if it was posted before, is posted again in a new thread.
 
-Publication's provider-state design awaits an attacking review in [pull request #145](https://github.com/melian-agent/melian/pull/145).
-Before planning, each publish attempt reads actual thread state and signed answers once from the provider.
-A resolved thread gets no reply, and an exact dismissal already posted gets no repeat.
-Reusing an open thread cancels its older resolution; only the current plan may resolve it.
-A failed read stops publication before writes rather than trusting stored flags.
-The normal preflight costs two calls, with pagination; existing marker and resolution reads can supply both.
-Stored thread maps remain recovery candidates and caches, never proof of current provider state.
-[The decision](decisions/2026-10-18-publication-provider-thread-state.md) defines the read, pending-round recovery, call cost and all three failure cases.
-This is designed, not implemented.
+Publication retires every resolution still owed against a thread in the commit that reuses it for a live finding.
+Signed answer discovery spans every head, so a reply accepted before a lost checkpoint is not repeated on the next push.
+Either the journal or GitHub proves an answer present.
+An addressed root still owes thread resolution even when its finding returns in a new thread.
+A human-resolved live thread stays resolved: its finding still counts and appears in review bodies without another inline post.
+A returning finding cannot reuse it. Owed answers may still be posted there without reopening it.
+GraphQL thread reads stay lazy, before reuse, reply or resolution; an unchanged live thread needs no read.
+A root absent from GraphQL but present in REST has unknown state; publication waits rather than reusing or replacing it.
+Publication sets the verdict's status before any thread or marker read, including recovery of an older pending round.
+Bad or partial pages fail closed; listings stop at 50 pages, and malformed or repeated GraphQL cursors fail.
+[The decision](decisions/2026-10-18-publication-provider-thread-state.md) records the smaller design accepted after the attack.
+Built in [pull request #145](https://github.com/melian-agent/melian/pull/145).
 
 A policy-change notice uses the file's Git blob identity at head as its trigger, hashed into the existing SHA-256 field.
 Any change to that blob reopens its dismissal, including an analyser configuration that later switches a check off.

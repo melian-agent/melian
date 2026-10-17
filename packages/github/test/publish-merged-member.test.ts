@@ -262,3 +262,185 @@ describe("a report that returns while its resolution is owed", () => {
 		expect(state.resolvedThreads).toContain(thread.id);
 	});
 });
+
+describe("thread recovery after the attacking review", () => {
+	async function session() {
+		const fake = scenarioModels();
+		const state = pullRequestState();
+		const github = createGitHubProvider({
+			owner: state.owner,
+			repo: state.repo,
+			token: "t",
+			fetch: fakeGitHub(state),
+		});
+		harness = await openPublishHarness(createMemoryStorage(), fake, github);
+		const publish = async (changeset: Changeset) =>
+			publishReview({
+				harness: harness!,
+				provider: github,
+				changeset,
+				pullRequest: await github.pullRequest(7),
+				base: changeset.revision.base,
+				trustedWriters: true,
+			});
+		const review = async (calls: LensScript, rerun = false) => {
+			const result = await reviewScenario(repo, harness!, fake, calls, rerun);
+			const { verdict } = await result.review;
+			moveTo(state, result.changeset);
+			return { changeset: result.changeset, verdict };
+		};
+		return { fake, state, github, publish, review };
+	}
+
+	it("finds a dismissal reply across heads after its journal record was lost", async () => {
+		const { state, review, publish } = await session();
+		const first = await review(script([b], []));
+		await publish(first.changeset);
+		const thread = state.comments[0]!;
+		await recordDismissal({
+			harness: harness!,
+			revision: first.changeset.revision,
+			id: first.verdict.findings.acknowledge[0]!.id,
+			dismissal: { by: "Melian Test", reason: "Safe.", at: "2026-10-17T00:00:00.000Z" },
+			repoRoot: repo,
+		});
+		push();
+		const second = await review(script([b], []));
+		expect(second.verdict.dismissed).toHaveLength(1);
+		await publish(second.changeset);
+		expect(state.comments.filter((comment) => comment.in_reply_to_id === thread.id)).toHaveLength(1);
+		const root = await harness!.root(context);
+		await root.commit(async (tx) => {
+			for (const record of Object.values((await tx.doc(PublishedDocument, root.id)).revisions)) {
+				record.replies = {};
+				record.threadResolutions = {};
+			}
+		}, context);
+		push();
+		const third = await review(script([b], []));
+		expect(third.verdict.dismissed).toHaveLength(1);
+		await publish(third.changeset);
+		expect(state.comments.filter((comment) => comment.in_reply_to_id === thread.id)).toHaveLength(1);
+	});
+
+	it("reuses a thread when only this head owes its resolution", async () => {
+		const { fake, state, review, publish } = await session();
+		const first = await review(script([], [a]));
+		await publish(first.changeset);
+		const thread = state.comments[0]!;
+		push();
+		const failed = await reviewScenario(repo, harness!, fake, {
+			correctness: [{ text: "Done." }],
+		});
+		await expect(failed.review).rejects.toMatchObject({ code: "lensFailed" });
+		moveTo(state, failed.changeset);
+		state.failReplies = true;
+		await expect(publish(failed.changeset)).rejects.toMatchObject({ code: "publishFailed" });
+		state.failReplies = false;
+		const root = await harness!.root(context);
+		const stored = await harness!.snapshot(PublishedDocument, root.id, context);
+		expect(Object.keys(stored!.revisions[first.changeset.revision.head]!.resolved)).toEqual([]);
+		const again = await review(script([], [a]), true);
+		expect(again.changeset.revision.head).toBe(failed.changeset.revision.head);
+		expect(again.verdict.findings.block[0]!.id).toBe(first.verdict.findings.block[0]!.id);
+		await publish(again.changeset);
+		expect(state.comments.map((comment) => comment.id)).toEqual([thread.id]);
+		expect(thread.body).not.toContain("Addressed in commit");
+		expect(state.resolvedThreads).toEqual([]);
+	});
+
+	it("resolves an addressed old thread when its finding returns after resolve failed", async () => {
+		const { state, review, publish } = await session();
+		await publish((await review(script([b], []))).changeset);
+		const old = state.comments[0]!;
+		push();
+		state.failResolve = true;
+		await expect(publish((await review(script([], []))).changeset)).rejects.toMatchObject({ code: "publishFailed" });
+		expect(old.body).toContain("Addressed in commit");
+		expect(state.resolvedThreads).toEqual([]);
+		state.failResolve = false;
+		push();
+		await publish((await review(script([b], []))).changeset);
+		const roots = state.comments.filter((comment) => comment.in_reply_to_id === undefined);
+		expect(roots).toHaveLength(2);
+		expect(state.resolvedThreads).toContain(old.id);
+		expect(state.resolvedThreads).not.toContain(roots[1]!.id);
+		expect(old.body.match(/Addressed in commit/g)).toHaveLength(1);
+	});
+
+	it("writes the current status before a failed read of an obsolete pending round", async () => {
+		const { state, review, publish } = await session();
+		const first = await review(script([], [a]));
+		state.failReviews = true;
+		await expect(publish(first.changeset)).rejects.toMatchObject({ code: "publishFailed" });
+		const root = await harness!.root(context);
+		await root.commit(async (tx) => {
+			const pending = (await tx.doc(PublishedDocument, root.id)).revisions[first.changeset.revision.head]!.pending!;
+			pending.revision = `${"e".repeat(40)}..${first.changeset.revision.head}`;
+		}, context);
+		state.statuses.push({
+			sha: first.changeset.revision.head,
+			state: "success",
+			description: "old base",
+			context: "melian/review",
+		});
+		state.failCommentPage = 1;
+		const start = state.calls.length;
+		await expect(publish(first.changeset)).rejects.toMatchObject({ code: "publishFailed" });
+		expect(state.statuses.at(-1)?.state).toBe("failure");
+		const calls = state.calls.slice(start);
+		expect(calls.findIndex((call) => call.path.includes("/statuses/") && call.method === "POST")).toBeLessThan(
+			calls.findIndex((call) => call.path.endsWith("/comments")),
+		);
+	});
+
+	it("keeps a human-resolved live finding in the status and review body without reposting its thread", async () => {
+		const { state, review, publish } = await session();
+		await publish((await review(script([b], []))).changeset);
+		const thread = state.comments[0]!;
+		state.resolvedThreads.push(thread.id);
+		push();
+		const start = state.calls.length;
+		await publish((await review(script([b], []))).changeset);
+		expect(state.comments).toHaveLength(1);
+		expect(state.resolvedThreads).toContain(thread.id);
+		expect(state.statuses.at(-1)?.state).toBe("failure");
+		expect(state.reviews.at(-1)?.body).toContain("null-dereference");
+		expect(state.calls.slice(start).filter((call) => call.path === "/graphql")).toEqual([]);
+	});
+
+	it("does not reuse a human-resolved thread for a returning finding", async () => {
+		const { state, review, publish } = await session();
+		await publish((await review(script([b], []))).changeset);
+		const thread = state.comments[0]!;
+		push();
+		state.failReplies = true;
+		await expect(publish((await review(script([], []))).changeset)).rejects.toMatchObject({ code: "publishFailed" });
+		state.failReplies = false;
+		state.resolvedThreads.push(thread.id);
+		push();
+		await publish((await review(script([b], []))).changeset);
+		expect(state.comments.filter((comment) => comment.in_reply_to_id === undefined)).toHaveLength(2);
+		expect(state.resolvedThreads).toEqual([thread.id]);
+	});
+
+	it("does not repeat a journalled dismissal when a human deleted its reply", async () => {
+		const { state, review, publish } = await session();
+		const first = await review(script([b], []));
+		await publish(first.changeset);
+		await recordDismissal({
+			harness: harness!,
+			revision: first.changeset.revision,
+			id: first.verdict.findings.acknowledge[0]!.id,
+			dismissal: { by: "Melian Test", reason: "Safe.", at: "2026-10-17T00:00:00.000Z" },
+			repoRoot: repo,
+		});
+		await publish(first.changeset);
+		expect(state.comments).toHaveLength(2);
+		state.comments.splice(1, 1);
+		state.calls = [];
+		await publish(first.changeset);
+		expect(state.comments).toHaveLength(1);
+		expect(state.calls.filter((call) => call.path.endsWith("/comments") || call.path === "/graphql")).toEqual([]);
+	});
+});

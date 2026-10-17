@@ -373,7 +373,14 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 		finding.dismissal === undefined ? [] : [`${named(finding)}: ${inline(finding.dismissal.reason)}`],
 	);
 	if (dismissed.length > 0) parts.push(["Dismissed since the last review:", "", ...dismissed].join("\n"));
-	const inBody = draft.findings.filter((placed) => placed.placement.kind === "body");
+	const posted = new Set(draft.findings.flatMap(({ finding }) => finding.reportIds()));
+	const inBody = [
+		...draft.findings.filter((placed) => placed.placement.kind === "body"),
+		...verdict
+			.attention()
+			.filter((finding) => !posted.has(finding.id))
+			.map((finding) => ({ finding })),
+	];
 	const sections = inBody.map(({ finding }) =>
 		ReviewComment.from(finding, { kind: "body" }, verdict.importance(finding.id)).render({
 			revision,
@@ -384,7 +391,7 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 	);
 	const heading = options.inlineRefused
 		? "### Findings\n\nGitHub refused this review's inline comments, so every finding is listed here."
-		: "### In files this change does not touch";
+		: "### Findings carried or outside the diff";
 	const assemble = (kept: number, note?: string) =>
 		[
 			...parts,
