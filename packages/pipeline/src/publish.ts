@@ -330,12 +330,12 @@ function planRound(
 	const own = postedAt(head) ? state.revisions[head] : undefined;
 	const previous = state.order.filter((each) => each !== head && postedAt(each)).at(-1);
 	const base = { ...(own?.open ?? (previous === undefined ? {} : state.revisions[previous]!.open)) };
-	const owed = own === undefined ? unanswered(state, head) : {};
+	const owed = unanswered(state, head);
 	// A finding the verdict holds again, while the reply that resolved its thread is owed, goes back to that thread
 	// rather than starting a second one the first would outlive.
-	const held = verdict.held();
+	const returned = verdict.held();
 	for (const [id, { dismissal: _, addressedIn: __, ...entry }] of Object.entries(owed)) {
-		if (held.has(id) && !Object.hasOwn(base, id)) base[id] = entry;
+		if (returned.has(id) && !Object.hasOwn(base, id)) base[id] = entry;
 	}
 	const plan = verdict.publication(base, lines, head);
 	const resolved: Record<string, PublishedEntry> = Object.fromEntries(
@@ -345,7 +345,7 @@ function planRound(
 		]),
 	);
 	if (own === undefined) {
-		const holding = new Set([...held, ...verdict.dismissed.map((finding) => finding.properties.id)]);
+		const held = new Set([...verdict.held(), ...verdict.dismissed.map((finding) => finding.properties.id)]);
 
 		// A resolution still owed is carried as its reply would read now: with the dismissal of the finding that holds its
 		// ID dismissed, itself or merged, and otherwise as it was owed, while no finding with the ID is held. A dismissal
@@ -358,7 +358,7 @@ function planRound(
 			const carried =
 				now !== undefined
 					? { ...structuredClone(entry), dismissal: { ...now } }
-					: holding.has(id)
+					: held.has(id)
 						? undefined
 						: structuredClone(entry);
 			if (carried !== undefined && !answered.has(replyKeyOf(id, carried))) resolved[id] ??= carried;
