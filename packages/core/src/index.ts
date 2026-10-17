@@ -261,6 +261,7 @@ export {
 	ReviewPlan,
 	type StoredPlan,
 	type TierStatus,
+	type UnknownModel,
 } from "./plan.ts";
 export {
 	type ClosedFinding,
