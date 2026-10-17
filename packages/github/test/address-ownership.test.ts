@@ -21,14 +21,14 @@ function fixture(unknown: boolean, signed: boolean, body: string) {
 	state.failUser = unknown;
 	state.reviews.push({
 		id: 1,
-		user: { login: state.login },
+		user: { login: state.login, type: "Bot" },
 		body: signed ? marker(revision, "verdict", "0123456789abcdef", secret, { round: 1 }) : "Human review",
 		commit_id: revision,
 		event: "COMMENT",
 	});
 	state.comments.push({
 		id: 2,
-		user: { login: state.login },
+		user: { login: state.login, type: "Bot" },
 		body,
 		path: "src/a.ts",
 		line: 1,

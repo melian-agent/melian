@@ -140,14 +140,14 @@ describe("root review ownership", () => {
 		const head = state.pull.head.sha;
 		const review = {
 			id: 1,
-			user: { login: state.login },
+			user: { login: state.login, type: "Bot" },
 			body: marker(head, "verdict", wanted.fingerprint, secret, { round: 1 }),
 			commit_id: head,
 			event: "COMMENT",
 		};
 		const root: FakeComment = {
 			id: 2,
-			user: { login: state.login },
+			user: { login: state.login, type: "Bot" },
 			body: marker(head, "finding", finding, secret),
 			path: "src/a.ts",
 			line: 1,
@@ -189,6 +189,129 @@ describe("root review ownership", () => {
 		root.user = { login: "human" };
 		root.pull_request_review_id = 3;
 		expect(await provider.findPublished(7, head, wanted, secret)).toEqual({ review: "1", threads: {}, replies: {} });
+	});
+
+	it("recovers H2 after an H1 personal review without learning a viewer from either scan", async () => {
+		const { state, provider, head, root, review } = ownership();
+		state.login = "melian[bot]";
+		review.id = 5;
+		review.user = { login: state.login, type: "Bot" };
+		root.user = review.user;
+		root.pull_request_review_id = review.id;
+		state.reviews.unshift({
+			...review,
+			id: 1,
+			user: { login: "alice", type: "User" },
+			body: marker("a".repeat(40), "verdict", wanted.fingerprint, secret, { round: 1 }),
+			commit_id: "a".repeat(40),
+		});
+		expect(await provider.findPublished(7, head, wanted, secret)).toEqual({
+			review: "5",
+			threads: { [finding]: "2" },
+			replies: {},
+		});
+		expect(await provider.login()).toBeUndefined();
+		expect(state.calls.filter(({ path }) => path === "/user")).toHaveLength(1);
+		expect(state.calls.every(({ method }) => method === "GET")).toBe(true);
+	});
+
+	it("ignores a lower-id human copy of the bot's signed key", async () => {
+		const { state, provider, head, root, review } = ownership();
+		review.id = 5;
+		root.pull_request_review_id = review.id;
+		state.reviews.unshift({ ...review, id: 3, user: { login: "alice", type: "User" } });
+		state.comments.unshift({ ...root, id: 4, pull_request_review_id: 3, user: { login: "alice", type: "User" } });
+		expect(await provider.findPublished(7, head, wanted, secret)).toEqual({
+			review: "5",
+			threads: { [finding]: "2" },
+			replies: {},
+		});
+	});
+
+	it("ignores a later bot copy and its root even when the copy is listed first", async () => {
+		const { state, provider, head, root, review } = ownership();
+		state.reviews.unshift({ ...review, id: 3, user: { login: "other[bot]", type: "Bot" } });
+		state.comments.unshift({
+			...root,
+			id: 4,
+			pull_request_review_id: 3,
+			user: { login: "other[bot]", type: "Bot" },
+		});
+		expect(await provider.findPublished(7, head, wanted, secret)).toEqual({
+			review: "1",
+			threads: { [finding]: "2" },
+			replies: {},
+		});
+	});
+
+	it("refuses to address a root in a human copy of a signed review without /user", async () => {
+		const { state, provider, head, root, review } = ownership();
+		state.reviews.push({ ...review, id: 3, user: { login: "alice", type: "User" } });
+		root.user = { login: "alice", type: "User" };
+		root.pull_request_review_id = 3;
+		expect(
+			await provider.replyResolved(
+				7,
+				{ id: finding, ruleId: "unsafe", path: root.path, line: 1, revision: head, thread: String(root.id) },
+				head,
+				secret,
+			),
+		).toBeUndefined();
+		expect(root.body).not.toContain("Addressed in commit");
+		expect(state.resolvedThreads).toEqual([]);
+		expect(state.calls.map(({ path }) => path)).toEqual([
+			"/graphql",
+			"/repos/owner/repo/pulls/comments/2",
+			"/repos/owner/repo/pulls/7/reviews/3",
+			"/user",
+		]);
+	});
+
+	it.each(["revision", "fingerprint", "round"])("keeps bot reviews with a distinct signed %s", async (field) => {
+		const { state, provider, head, root, review } = ownership();
+		review.id = 5;
+		root.pull_request_review_id = review.id;
+		state.reviews.unshift({
+			...review,
+			id: 1,
+			user: { login: "earlier[bot]", type: "Bot" },
+			body: marker(
+				field === "revision" ? "c".repeat(40) : head,
+				"verdict",
+				field === "fingerprint" ? "aaaaaaaaaaaaaaaa" : wanted.fingerprint,
+				secret,
+				{ round: field === "round" ? 2 : wanted.round },
+			),
+		});
+		expect(await provider.findPublished(7, head, wanted, secret)).toEqual({
+			review: "5",
+			threads: { [finding]: "2" },
+			replies: {},
+		});
+	});
+
+	it("keeps the known personal author filter when a foreign bot copies the signature", async () => {
+		const { state, provider, head, root, review } = ownership();
+		state.failUser = false;
+		review.user = { login: state.login, type: "User" };
+		state.reviews.unshift({ ...review, id: 3, user: { login: "other[bot]", type: "Bot" } });
+		state.comments.unshift({ ...root, id: 4, pull_request_review_id: 3, user: { login: "other[bot]", type: "Bot" } });
+		expect(await provider.findPublished(7, head, wanted, secret)).toEqual({
+			review: "1",
+			threads: { [finding]: "2" },
+			replies: {},
+		});
+	});
+
+	it("keeps list order and repeated signed keys when /user is known", async () => {
+		const { state, provider, head, review } = ownership();
+		state.failUser = false;
+		state.reviews.unshift({ ...review, id: 3 });
+		expect(await provider.findPublished(7, head, wanted, secret)).toEqual({
+			review: "3",
+			threads: { [finding]: "2" },
+			replies: {},
+		});
 	});
 
 	it("keeps the first signed review when its author repeats the marker", async () => {

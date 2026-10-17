@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import type { Changeset } from "@melian-agent/core";
-import { createGitHubProvider, statusContext } from "@melian-agent/github";
+import { createGitHubProvider, marker, statusContext } from "@melian-agent/github";
 import {
 	backgroundContext as context,
 	defineDoc,
@@ -19,7 +19,7 @@ import {
 	revisionKey,
 } from "@melian-agent/pipeline";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { LedgerDocument, PublishedDocument } from "../../pipeline/src/publish.ts";
+import { LedgerDocument, PublishedDocument, PublisherDocument } from "../../pipeline/src/publish.ts";
 import { TimingDocument } from "../../pipeline/src/task-timing.ts";
 import { type FakeState, fakeGitHub, posts } from "./fixtures/fake-github.ts";
 import {
@@ -527,6 +527,64 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 			]);
 		},
 	);
+
+	it("recovers H2 after a crash past an H1 personal review with /user refused", async () => {
+		const database = join(dir, "review.sqlite");
+		const stateFile = join(dir, "github.json");
+		const log = join(dir, "publish.log");
+		const fake = scenarioModels();
+		const reviewing = pullRequestState();
+		reviewing.failUser = true;
+		reviewing.login = "melian[bot]";
+		harness = await openPublishHarness(await openSqliteStorage(database), fake, providerFor(reviewing));
+		const { changeset, review } = await reviewScenario(
+			repo,
+			harness,
+			fake,
+			lensScript(unsafeManager, emptyName, nanRetries),
+		);
+		await review;
+		await harness.close(context);
+		harness = undefined;
+		moveTo(reviewing, changeset);
+		writeFileSync(stateFile, JSON.stringify(reviewing));
+		await killAtReview(database, stateFile, log);
+
+		const state = JSON.parse(readFileSync(stateFile, "utf8")) as FakeState;
+		expect(state.reviews).toHaveLength(1);
+		const accepted = state.reviews[0]!;
+		const github = providerFor(state);
+		harness = await openPublishHarness(await openSqliteStorage(database), scenarioModels(), github);
+		const publisher = await harness.snapshot(PublisherDocument, (await harness.root(context)).id, context);
+		state.reviews.unshift({
+			...accepted,
+			id: 1,
+			user: { login: "alice", type: "User" },
+			commit_id: changeset.revision.base,
+			body: marker(changeset.revision.base, "verdict", "0123456789abcdef", publisher!.secret!, { round: 1 }),
+		});
+		state.calls = [];
+		const result = await publishReview({
+			trustedWriters: true,
+			harness,
+			provider: github,
+			changeset,
+			pullRequest: await github.pullRequest(7),
+			base: changeset.revision.base,
+		});
+		expect(result).toMatchObject({ review: String(accepted.id), posted: 0 });
+		expect(state.reviews).toHaveLength(2);
+		expect(posts(state).map(({ path }) => path)).toEqual([
+			"/repos/melian-agent/example/issues/7/comments",
+			`/repos/melian-agent/example/statuses/${changeset.revision.head}`,
+		]);
+		expect(await github.login()).toBeUndefined();
+		const recorded = await readPublished(harness, (await harness.root(context)).id, changeset.revision.head, context);
+		expect(recorded?.review).toBe(String(accepted.id));
+		expect(Object.values(recorded!.threads).sort()).toEqual(
+			state.comments.map((comment) => String(comment.id)).sort(),
+		);
+	});
 
 	it("ends a publication a crash left from before a retarget without posting, and posts the new review once", async () => {
 		stackOnParent(repo);

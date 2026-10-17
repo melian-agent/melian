@@ -131,6 +131,7 @@ describe("reading markers back", () => {
 		const state = pullRequestState();
 		state.failUser = true;
 		state.reviews.push(review(1, state.login, marker(head, "verdict", fingerprint, secret, { round: 1 })));
+		state.reviews[0]!.user!.type = "Bot";
 		state.comments.push(comment(2, state.login, marker(head, "finding", finding, secret)));
 		state.comments.push(comment(3, state.login, marker(head, "resolved", finding, secret), 2));
 		const version = "00112233aabbccdd";
@@ -179,6 +180,7 @@ describe("reading markers back", () => {
 		state.failUser = true;
 		const signed = marker(head, "finding", finding, secret);
 		state.reviews.push(review(1, state.login, marker(head, "verdict", fingerprint, secret, { round: 1 })));
+		state.reviews[0]!.user!.type = "Bot";
 		state.comments.push(comment(1, state.login, signed), comment(2, "pull-request-author", signed));
 		expect(await providerFor(state).findPublished(7, head, wanted, secret)).toMatchObject({
 			threads: { [finding]: "1" },
@@ -1121,7 +1123,7 @@ describe("cross-head answer discovery", () => {
 		const state = pullRequestState();
 		state.reviews.push({
 			id: 1,
-			user: { login: state.login },
+			user: { login: state.login, type: "Bot" },
 			body: marker(old, "verdict", "9999999999999999", secret, { round: 1 }),
 			commit_id: old,
 			event: "COMMENT",
@@ -1150,7 +1152,7 @@ describe("cross-head answer discovery", () => {
 		const state = pullRequestState();
 		state.reviews.push({
 			id: 1,
-			user: { login: state.login },
+			user: { login: state.login, type: "Bot" },
 			body: marker(old, "verdict", "9999999999999999", secret, { round: 1 }),
 			commit_id: old,
 			event: "COMMENT",
@@ -1375,7 +1377,7 @@ describe("cross-head answer discovery", () => {
 		const state = pullRequestState();
 		state.reviews.push({
 			id: 1,
-			user: { login: state.login },
+			user: { login: state.login, type: "Bot" },
 			body: marker(old, "verdict", "9999999999999999", secret, { round: 1 }),
 			commit_id: old,
 			event: "COMMENT",

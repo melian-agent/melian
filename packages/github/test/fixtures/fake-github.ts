@@ -4,7 +4,7 @@ import type { DiffLines } from "@melian-agent/core";
 
 export type Call = { method: string; path: string; body?: unknown };
 
-type User = { login: string };
+type User = { login: string; type?: string };
 
 export type FakeReview = { id: number; user: User | null; body: string; commit_id: string; event: string };
 
@@ -140,7 +140,7 @@ export function fakeGitHub(
 		const call: Call = { method, path: url.pathname, ...(body === undefined ? {} : { body }) };
 		state.calls.push(call);
 		const path = url.pathname;
-		const user = { login: state.login };
+		const user = { login: state.login, type: "Bot" };
 		if (method === "GET" && path === `${repoPath}/events`)
 			return state.failEvents ? json({ message: "Forbidden" }, 403) : json(state.pushEvents ?? []);
 		if (method === "POST" || method === "PATCH") await beforeWrite(call);

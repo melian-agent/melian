@@ -619,9 +619,14 @@ export class GitHubProvider implements ReviewProvider {
 		]);
 		let review: string | undefined;
 		const owners = new Map<string, { marker: Marker; author: string }>();
+		const keys = new Set<string>();
+		if (reviews.length > 0 && (await this.login()) === undefined) reviews.sort((a, b) => a.id - b.id);
 		for (const each of reviews) {
 			const opening = await this.reviewMarker(each, secret);
 			if (opening === undefined) continue;
+			const key = `${opening.revision}|${opening.id}|${opening.round}`;
+			if (this.viewer === undefined && keys.has(key)) continue;
+			keys.add(key);
 			owners.set(String(each.id), { marker: opening, author: each.user!.login });
 			if (opening.revision === revision && opening.id === wanted.fingerprint && opening.round === wanted.round)
 				review ??= String(each.id);
@@ -698,14 +703,13 @@ export class GitHubProvider implements ReviewProvider {
 	}
 
 	private async reviewMarker(
-		review: { body?: string | null; user: { login: string } | null },
+		review: { body?: string | null; user: { login: string; type: string } | null },
 		secret: string,
 	): Promise<Marker | undefined> {
 		const opening = parseMarker(firstLine(review.body));
 		if (opening?.kind !== "verdict" || !verifyMarker(opening, secret) || review.user === null) return undefined;
 		const me = await this.login();
-		if (me !== undefined && review.user.login !== me) return undefined;
-		this.viewer ??= review.user.login;
+		if (me === undefined ? review.user.type !== "Bot" : review.user.login !== me) return undefined;
 		return opening;
 	}
 }
