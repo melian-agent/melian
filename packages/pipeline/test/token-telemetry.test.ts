@@ -3,7 +3,7 @@ import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { UsageObserver } from "@melian-agent/core";
+import type { Decider, UsageObserver } from "@melian-agent/core";
 import { FallbackDecider } from "@melian-agent/decisions";
 import {
 	backgroundContext as context,
@@ -174,6 +174,101 @@ it("reopens a settled decision without another model call or usage write", async
 		rmSync(dir, { recursive: true, force: true });
 	}
 });
+
+it.each([
+	{ lost: 0, incomplete: undefined },
+	{ lost: 1, incomplete: 1 },
+])(
+	"counts two response receipts in one decision with $lost lost requests after reopen",
+	async ({ lost, incomplete }) => {
+		const dir = realpathSync(mkdtempSync(join(tmpdir(), "melian-token-receipts-")));
+		try {
+			const request = {
+				questionSet: { name: "triage", version: "1" },
+				state: "change",
+				questions: [{ id: "lens", text: "level?", options: ["careful"] }],
+			};
+			const decider: Decider = {
+				name: "two-responses",
+				calibrated: false,
+				decide: vi.fn<Decider["decide"]>(async (asked, _signal, observe) => {
+					expect(asked).toEqual(request);
+					await observe!.started!();
+					observe!("faux/triage", usage);
+					await observe!.started!();
+					observe!("faux/triage", usage);
+					for (let index = 0; index < lost; index++) await observe!.started!();
+					return { answers: [{ question: "lens", distribution: { careful: 1 } }] };
+				}),
+			};
+			const registry = createRegistry();
+			registry.install(decisionExtension(decider));
+			const database = join(dir, "state.sqlite");
+			const storage = await openSqliteStorage(database);
+			const fake = createFakeModels();
+			const harness = await openHarness(storage, {
+				models: fake.models,
+				registry,
+				settings: { retry: { enabled: false } },
+			});
+			let settled: ReturnType<StageTelemetry["toJSON"]>;
+			try {
+				const root = await harness.root(context);
+				const id = await root.commit(async (tx) => {
+					const id = await tx.createTask(
+						decisionTask(decider),
+						{ root: root.id, revision, key: JSON.stringify({ decider: decider.name }), request },
+						{ ownership: { kind: "conversation" } },
+					);
+					(await tx.doc(DecisionDocument, root.id)).decisions[revision] = { triage: { task: id, key: "test" } };
+					return id;
+				}, context);
+				await harness.waitForTask(id, context);
+				expect(decider.decide).toHaveBeenCalledOnce();
+				expect(
+					(await harness.snapshot(DecisionDocument, root.id, context))!.decisions[revision]!.triage,
+				).toMatchObject({
+					decision: { answers: [{ question: "lens", distribution: { careful: 1 }, chosen: "careful" }] },
+				});
+				expect(await harness.snapshot(ModelAttemptsDocument, root.id, String(id), context)).toEqual({
+					started: 2 + lost,
+					unmeasured: lost,
+				});
+				settled = (await TelemetryReader.open(storage).read(revision)).toJSON();
+			} finally {
+				await harness.close(context);
+			}
+			const reopened = await openSqliteStorage(database);
+			try {
+				const telemetry = await TelemetryReader.open(reopened).read(revision);
+				expect(telemetry.toJSON()).toEqual(settled);
+				const total = {
+					input: 22,
+					output: 14,
+					cacheRead: 26,
+					cacheWrite: 10,
+					cacheWrite1h: 4,
+					reasoning: 6,
+					totalTokens: 72,
+					cost: { input: 0.02, output: 0.04, cacheRead: 0.06, cacheWrite: 0.08, total: 0.2 },
+				};
+				expect(settled.stages).toHaveLength(1);
+				expect(settled.stages[0]!.usage).toEqual({ models: { "faux/triage": total }, total });
+				expect(settled.total).toEqual(settled.stages[0]!.usage);
+				expect(settled.usageUnavailable).toEqual([]);
+				expect(settled.stages[0]!.usageIncomplete).toBe(incomplete);
+				expect(settled.usageIncomplete).toBe(incomplete);
+				expect(telemetry.spend()).toBe(
+					["72 tokens, $0.2", "72 tokens, $0.2 (usage incomplete: 1 request(s) not measured)"][lost],
+				);
+			} finally {
+				await reopened.close(context);
+			}
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	},
+);
 
 it("does not report zero usage when an older model stage has no usage record", () => {
 	const telemetry = new StageTelemetry(revision, [
