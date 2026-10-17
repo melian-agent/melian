@@ -30,6 +30,12 @@ const provider = createGitHubProvider({
 });
 const storage = createMemoryStorage();
 const harness = await openPublishHarness(storage, scenarioModels(), provider);
+let task: Awaited<ReturnType<typeof storage.scanTasks>>["items"][number] | undefined;
+const post = provider.postReview.bind(provider);
+provider.postReview = async (draft) => {
+	task = (await storage.scanTasks({}, 100, undefined, context)).items.find((each) => each.kind === "melian.publish");
+	return post(draft);
+};
 try {
 	const root = await harness.root(context);
 	const key = revisionKey(revision);
@@ -95,11 +101,10 @@ try {
 	} catch (error) {
 		if (!(error instanceof Error) || !error.message.includes("refused")) throw error;
 	}
-	const task = (await storage.scanTasks({}, 100, undefined, context)).items.find(
-		(task) => task.kind === "melian.publish",
-	)!;
+	if (task === undefined || task.state.status !== "running")
+		throw new Error("No running publish checkpoint was recorded");
 	process.stdout.write(
-		`${JSON.stringify({ writtenBy: "8aca01e4", kind: task.kind, version: task.version, input: task.input, checkpoint: { phase: "publish" } }, null, 2)}\n`,
+		`${JSON.stringify({ writtenBy: "8aca01e4", kind: task.kind, version: task.version, input: task.input, checkpoint: task.state.checkpoint }, null, 2)}\n`,
 	);
 } finally {
 	await harness.close(context);

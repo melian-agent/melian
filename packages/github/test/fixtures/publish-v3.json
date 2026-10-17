@@ -14,10 +14,10 @@
       "repository": "melian-agent/example",
       "pullRequest": 7,
       "baseRef": "main",
-      "baseTip": "c2fcbe2f2fda7b715f2b3cc5efa31fc4ad4a98bf",
-      "base": "c2fcbe2f2fda7b715f2b3cc5efa31fc4ad4a98bf",
-      "head": "58e4885f4a09de2e00ccaf525e02f9b3d1e6a367",
-      "revision": "c2fcbe2f2fda7b715f2b3cc5efa31fc4ad4a98bf..58e4885f4a09de2e00ccaf525e02f9b3d1e6a367"
+      "baseTip": "6056cf23af10cfb205ef073ee71dba1e1de4683f",
+      "base": "6056cf23af10cfb205ef073ee71dba1e1de4683f",
+      "head": "777f3109ed8a8b769dbab86a31a2228c313ce9d8",
+      "revision": "6056cf23af10cfb205ef073ee71dba1e1de4683f..777f3109ed8a8b769dbab86a31a2228c313ce9d8"
     },
     "lines": {
       "AGENTS.md": [
