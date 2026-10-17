@@ -2,7 +2,12 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Changeset } from "@melian-agent/core";
 import { revisionKey, StageTelemetry, TokenUsage } from "@melian-agent/pipeline";
-import { createFakeModels } from "@melian-agent/pipeline/testing";
+import {
+	createFakeModels,
+	fauxAssistantMessage,
+	scriptConversations,
+	scriptVerifier,
+} from "@melian-agent/pipeline/testing";
 import { describe, expect, it, vi } from "vitest";
 import { loadGoldens, runGolden } from "../src/goldens.ts";
 import {
@@ -303,6 +308,116 @@ it("keeps verifier telemetry when a refused planted finding makes the run fail",
 	expect(failure).toBeInstanceOf(GoldenRunError);
 	expect((failure as GoldenRunError).telemetry.total!.total.totalTokens).toBeGreaterThan(0);
 }, 60_000);
+
+it("prints the detached usage returned by a successful scripted verifier golden", async () => {
+	const golden = loadVerifierGoldens().find((golden) => golden.name === "guarded-null-dereference")!;
+	const run = await runVerifierGolden(golden, { kind: "scripted" });
+	expect(run.verification?.verdict).toBe("refuted");
+	const record = run.telemetry;
+	expect(record.total).toBeDefined();
+	expect(Object.keys(record.total!.models).sort()).toEqual([
+		"verifier-eval-finder/finder",
+		"verifier-eval-finder/judge",
+	]);
+	for (const usage of Object.values(record.total!.models)) expect(usage.totalTokens).toBeGreaterThan(0);
+	expect(record.total!.total.cost.total).toBe(0);
+	expect(record.usageUnavailable).toEqual([]);
+	const lines: string[] = [];
+	const report = await reportVerifierGoldens(
+		[golden],
+		async () => run,
+		{},
+		(line) => lines.push(line),
+	);
+	expect(report.status).toBe(0);
+	expect(lines).toEqual([
+		`guarded-null-dereference: refuted, passed (decoy), ${record.total!.total.totalTokens} tokens, $0`,
+		"verifier corpus: 1/1 passed",
+	]);
+}, 60_000);
+
+it.each([
+	{
+		outcome: "judged",
+		replies: [
+			(messages: Parameters<typeof scriptVerifier>[0]) => scriptVerifier(messages),
+			(messages: Parameters<typeof scriptVerifier>[0]) => scriptVerifier(messages),
+		],
+		verdict: "confirmed",
+		requests: 2,
+		status: 0,
+		label: "confirmed, passed (needs-execution)",
+		corpus: "verifier corpus: 1/1 passed",
+	},
+	{
+		outcome: "unjudged",
+		replies: [fauxAssistantMessage("Done without reporting a verdict.")],
+		verdict: undefined,
+		requests: 1,
+		status: 1,
+		label: "unjudged (the verifier left a claim unjudged), failed (needs-execution)",
+		corpus: "verifier corpus: 0/1 passed",
+	},
+])(
+	"prints the detached usage returned by a separately routed $outcome verifier golden",
+	async (expected) => {
+		const golden = loadVerifierGoldens().find((golden) => golden.name === "circular-import-tdz")!;
+		const judge = createFakeModels({ provider: "eval-judge", models: [{ id: "separate" }] });
+		const requests = scriptConversations(judge, [
+			{ match: "Melian adversarial verifier", replies: expected.replies },
+		]);
+		const resolving = vi.spyOn(Changeset, "resolve");
+		try {
+			const run = await runVerifierGolden(golden, {
+				kind: "live",
+				models: judge.review,
+				verifierModel: "eval-judge/separate",
+			});
+			expect(run.verification?.verdict).toBe(expected.verdict);
+			expect(requests["Melian adversarial verifier"]).toHaveLength(expected.requests);
+			const record = run.telemetry;
+			expect(
+				record.stages
+					.filter((stage) => stage.usage !== undefined)
+					.map((stage) => stage.name)
+					.sort(),
+			).toEqual(["melian.lens", "melian.verification.candidate"]);
+			const finder = record.stages.find((stage) => stage.name === "melian.lens")!;
+			const verifier = record.stages.find((stage) => stage.name === "melian.verification.candidate")!;
+			expect(Object.keys(finder.usage!.models)).toEqual(["verifier-eval-finder/finder"]);
+			expect(Object.keys(verifier.usage!.models)).toEqual(["eval-judge/separate"]);
+			expect(finder.usage!.total.totalTokens).toBeGreaterThan(0);
+			expect(verifier.usage!.total.totalTokens).toBeGreaterThan(0);
+			expect(resolving).toHaveBeenCalledExactlyOnceWith(expect.any(String), "main...feature");
+			const changeset = await resolving.mock.results[0]!.value;
+			expect(record.revision).toBe(revisionKey(changeset.revision));
+			expect(Object.keys(record.total!.models).sort()).toEqual([
+				"eval-judge/separate",
+				"verifier-eval-finder/finder",
+			]);
+			expect(record.total!.total.totalTokens).toBe(
+				finder.usage!.total.totalTokens + verifier.usage!.total.totalTokens,
+			);
+			expect(record.total!.total.cost.total).toBe(0);
+			expect(record.usageUnavailable).toEqual([]);
+			const lines: string[] = [];
+			const report = await reportVerifierGoldens(
+				[golden],
+				async () => run,
+				{},
+				(line) => lines.push(line),
+			);
+			expect(report.status).toBe(expected.status);
+			expect(lines).toEqual([
+				`circular-import-tdz: ${expected.label}, ${record.total!.total.totalTokens} tokens, $0`,
+				expected.corpus,
+			]);
+		} finally {
+			resolving.mockRestore();
+		}
+	},
+	60_000,
+);
 
 it("escapes golden names on successful lens and verifier score lines", async () => {
 	const golden = loadGoldens().find((golden) => golden.name === "clean-rename")!;
