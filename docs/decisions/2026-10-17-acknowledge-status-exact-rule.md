@@ -114,7 +114,10 @@ Publication returns each posted or recovered round’s dismissal snapshot and th
 The CLI prints these instead of rereading only the current verdict; identical snapshots appear once.
 A failed publication keeps posted rounds’ attestations in Pi’s optional error detail.
 PublishError carries them to the CLI, including a failed resumed task followed by a fresh task.
-The CLI prints them before rethrowing the failure. No task input, checkpoint or result schema changes.
+The CLI prints them before rethrowing the failure. That failed-task path changes no input, checkpoint or result schema.
+Version 5 adds the accumulated snapshots to the stale-target result and carries resumed stale-task snapshots into PublishError.
+The error says publication stopped, since an earlier review may already have posted.
+Migration keeps version-3 and version-4 timing. A fixture written by version 4 at `3207a611` proves SQLite reopen.
 The ledger’s dismissal section reads Verdict.dismissals(), sharing the review body’s legacy-member fallback and report enumeration.
 SQLite tests cover a pending older round with different dismissal membership and a version-3 task recorded by its own code.
 The coordinator runs `static.mutation` on the host before the first full round.

@@ -460,7 +460,7 @@ type PublishResult = {
 type PublishOutcome =
 	| ({ kind: "published" } & PublishResult)
 	| { kind: "superseded"; reason: string }
-	| { kind: "staleTarget"; reason: string };
+	| { kind: "staleTarget"; reason: string; attestations: AttestedRound[] };
 
 const publishTaskName = "melian.publish";
 
@@ -475,11 +475,11 @@ const untrustedWriterStatus: ReviewStatus = {
 function publishTask(provider: ReviewProvider) {
 	return defineTask<StoredPublishInput, { phase: "publish"; legacyTiming?: true }, PublishOutcome>({
 		name: publishTaskName,
-		version: 4,
+		version: 5,
 		migrate: (input, checkpoint, fromVersion) => ({
 			input: fromVersion === 1 ? PublishInput.upgrade(input) : (input as StoredPublishInput),
 			checkpoint:
-				fromVersion === 3
+				fromVersion >= 3
 					? (checkpoint as { phase: "publish"; legacyTiming?: true })
 					: { ...(checkpoint as { phase: "publish" }), legacyTiming: true },
 		}),
@@ -851,7 +851,7 @@ function publishTask(provider: ReviewProvider) {
 				} catch (error) {
 					if (runtime.signal.aborted) throw error;
 					if (error instanceof TargetMoved) {
-						const stale: PublishOutcome = { kind: "staleTarget", reason: error.message };
+						const stale: PublishOutcome = { kind: "staleTarget", reason: error.message, attestations };
 						await runtime.commit(async (tx) => {
 							await timing.end(tx);
 							return { status: "terminal", outcome: { status: "completed", result: stale } };
@@ -1247,7 +1247,7 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 		const { outcome } = (await harness.waitForTask(each.record.id, context)).state;
 		const result = outcome.status === "completed" ? (outcome.result as PublishOutcome) : undefined;
 		if (result?.kind === "superseded") superseded.push({ task: String(each.record.id), reason: result.reason });
-		if (result?.kind === "published") resumed.push(...result.attestations);
+		if (result?.kind === "published" || result?.kind === "staleTarget") resumed.push(...result.attestations);
 		if (outcome.status === "failed") resumed.push(...failedAttestations(outcome.error.detail));
 	}
 	const input = new PublishInput({
@@ -1291,8 +1291,8 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 		}
 		throw new PublishError(
 			"staleTarget",
-			`pull request #${pullRequest.number} changed while Melian published it, so it stopped before posting: ${result.reason}; ${again}`,
-			where,
+			`pull request #${pullRequest.number} changed while Melian published it, so publication stopped: ${result.reason}; ${again}`,
+			{ ...where, attestations: [...resumed, ...(result.kind === "staleTarget" ? result.attestations : [])] },
 		);
 	}
 	const why = outcome.status === "failed" ? outcome.error.message : outcome.status;

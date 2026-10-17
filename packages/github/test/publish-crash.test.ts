@@ -114,7 +114,7 @@ async function killAtReview(
 }
 
 describe("publishing across a crash", { timeout: 30_000 }, () => {
-	it.each(["publish-v1.json", "publish-v3.json"])("resumes an unfinished task from SQLite: %s", async (file) => {
+	it.each(["publish-v1.json", "publish-v3.json", "publish-v4.json"])("resumes a SQLite task: %s", async (file) => {
 		const database = join(dir, "review.sqlite");
 		const fake = scenarioModels();
 		const state = pullRequestState();
@@ -196,7 +196,7 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 		});
 		expect(result.superseded).toEqual([]);
 		expect(await harness.getTask(task, context)).toMatchObject({
-			version: 4,
+			version: 5,
 			input: { publishedBy: { trustedWriters: true } },
 			state: {
 				status: "terminal",
@@ -216,7 +216,7 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 			context,
 		);
 		const value = (await storage.document(timing!.id, "current", context))!.value;
-		if (fixture.version === 3) {
+		if (fixture.version >= 3) {
 			expect(value.startedAt).toEqual(expect.any(Number));
 			expect(value.legacy).toBeUndefined();
 		} else {
