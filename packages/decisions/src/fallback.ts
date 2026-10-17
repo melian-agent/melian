@@ -5,6 +5,7 @@ import {
 	type DecisionRequest,
 	type TextModel,
 	type ToolRequest,
+	type UsageObserver,
 } from "@melian-agent/core";
 import Type, { type Static } from "typebox";
 import Value from "typebox/value";
@@ -59,7 +60,7 @@ export class FallbackDecider implements Decider {
 	 * Asks the model every question of `request` in one request. Throws {@link DecisionError} `invalidAnswer` when the
 	 * tool call's arguments do not match the tool's schema, and whatever the model throws when it fails or calls no tool.
 	 */
-	async decide(request: DecisionRequest, signal?: AbortSignal): Promise<DeciderAnswer> {
+	async decide(request: DecisionRequest, signal?: AbortSignal, usage?: UsageObserver): Promise<DeciderAnswer> {
 		const prompt = [
 			request.state,
 			"## Questions",
@@ -68,7 +69,7 @@ export class FallbackDecider implements Decider {
 					`### ${question.id}\n\n${question.text}\n\nOptions: ${question.options.map((option) => `\`${option}\``).join(", ")}`,
 			),
 		].join("\n\n");
-		const called = await this.#model.answer({ system: instructions, prompt, tool: answerTool }, signal);
+		const called = await this.#model.answer({ system: instructions, prompt, tool: answerTool }, signal, usage);
 		if (!Value.Check(answerParameters, called)) {
 			throw new DecisionError(
 				"invalidAnswer",

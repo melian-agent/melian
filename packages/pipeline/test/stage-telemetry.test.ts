@@ -29,6 +29,7 @@ import {
 	StageTelemetry,
 	summarizeReview,
 	TelemetryReader,
+	TokenUsage,
 	UsageDoc,
 } from "@melian-agent/pipeline";
 import {
@@ -202,6 +203,10 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 		const revision = revisionKey(options.changeset.revision);
 		const before = await TelemetryReader.open(storage).read(revision, beganAt);
 		const stages = before.stages;
+		for (const stage of stages.filter((stage) => stage.conversation !== undefined)) {
+			const stored = await harness.snapshot(UsageDoc, stage.conversation! as ConversationId, context);
+			expect(stage.usage!.models).toEqual(stored!.models);
+		}
 		expect(stages).toHaveLength(11);
 		expect(stages.map(({ name }) => name)).toEqual(
 			expect.arrayContaining([
@@ -233,17 +238,19 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 		}
 		for (const lens of lenses)
 			expect(lens.usage).toMatchObject({
-				models: [expect.any(String)],
-				tokens: expect.any(Number),
-				cost: expect.any(Number),
+				models: expect.any(Object),
+				total: { totalTokens: expect.any(Number), cost: { total: expect.any(Number) } },
 			});
 		const details = (await harness.snapshot(VerdictDocument, (await harness.root(context)).id, context))!.details![
 			revision
 		]!;
-		expect(lenses.find(({ subject }) => subject.endsWith("@careful"))!.usage!.cost).toBe(0);
-		expect(lenses.find(({ subject }) => subject.endsWith("@careful"))!.usage).toEqual(
-			details.lenses.find(({ level }) => level === "careful")!.usage,
-		);
+		expect(lenses.find(({ subject }) => subject.endsWith("@careful"))!.usage!.total.cost.total).toBe(0);
+		const detailed = lenses.find(({ subject }) => subject.endsWith("@careful"))!.usage!;
+		expect({
+			models: Object.keys(detailed.models),
+			tokens: detailed.total.totalTokens,
+			cost: detailed.total.cost.total,
+		}).toEqual(details.lenses.find(({ level }) => level === "careful")!.usage);
 		await recordDismissal({
 			harness,
 			revision: options.changeset.revision,
@@ -407,7 +414,16 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 			{
 				...stage("5", "bad\u001b[2J", "subject\u001b[2J", 5),
 				error: "failure\u001b[2J",
-				usage: { models: ["model\u001b[2J"], tokens: 1, cost: 0 },
+				usage: new TokenUsage({
+					"model\u001b[2J": {
+						input: 1,
+						output: 0,
+						cacheRead: 0,
+						cacheWrite: 0,
+						totalTokens: 1,
+						cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+					},
+				}).toJSON(),
 			},
 			{
 				id: "6",
@@ -422,7 +438,7 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 			stage("7", "melian.check", "zzzz", 10),
 		]);
 		expect(telemetry.slowest()).toBe(
-			"melian: Slowest stages: melian.check static.mutation 100ms (reused); melian.check zzzz 10ms; melian.lens a 10ms.\n",
+			"melian: Slowest stages: melian.check static.mutation 100ms (reused); melian.check zzzz 10ms; melian.lens a 10ms. Total: 1 tokens, $0 (usage unavailable for 2 stages).\n",
 		);
 		const text = telemetry.render();
 		expect(text).not.toContain("\u001b");
@@ -764,7 +780,10 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 		const after = await TelemetryReader.open(storage).read(revision, Date.now() + 1);
 		expect(after.stages.find(({ id }) => id === lens.id)).toMatchObject({
 			reused: true,
-			usage: { models: [...lens.usage!.models, "faux/other"], tokens: lens.usage!.tokens + 11, cost: 1.25 },
+			usage: {
+				models: { "faux/other": { totalTokens: 11, cost: { total: 0.75 } } },
+				total: { totalTokens: lens.usage!.total.totalTokens + 11, cost: { total: 1.25 } },
+			},
 		});
 	});
 	it("renders a lens whose stored level is absent as legacy", async () => {
