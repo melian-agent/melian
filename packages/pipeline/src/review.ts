@@ -77,6 +77,7 @@ import {
 	type Producer,
 	readFindings,
 	recordRevision,
+	reopenDismissals,
 	revisionKey,
 	type SightedFinding,
 	sightedBy,
@@ -108,6 +109,7 @@ import {
 	lensPolicyHook,
 	lensReadTools,
 	lensSource,
+	provingHunk,
 	type ReviewState,
 	reportFinding,
 	reportVerdict,
@@ -1955,6 +1957,16 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					}),
 		},
 		options,
+	);
+	await (await harness.root(context)).commit(
+		(tx) =>
+			reopenDismissals(
+				tx,
+				root,
+				reviewed,
+				state.files.flatMap((file) => file.hunks.map(provingHunk)),
+			),
+		context,
 	);
 	// As the lenses reported them: a lowering stored by a verification this review attaches to must not change which
 	// finding speaks for a defect, or the candidates would read as new input and the stored judgements be cleared.

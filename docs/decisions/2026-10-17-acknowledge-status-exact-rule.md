@@ -92,7 +92,15 @@ The CLI publication section describes failure, dismissal attestation, resumed pu
 Core and GitHub guidelines state the mapping; CLI guidance and all three skills relay dismissal output.
 
 The producer fills the existing optional `FindingTrigger.hash`, a SHA-256 field, from Git's blob identity.
-No finding or document shape, document version or verdict fingerprint algorithm changes.
+Finding identity and the verdict fingerprint algorithm stay unchanged.
+Findings document version 9 adds the accepted trigger hash and affected proof hashes to each new dismissal.
+The dismissal accepts content at its own revision. Different content reopens it regardless of revision order.
+Matching content stays dismissed. Affected findings retain their proof-union comparison against the revision’s hunks; changed citations alone do not reopen them.
+A version-8 dismissal has no accepted trigger and retains the earlier behaviour.
+The migration branches on the source version and never invents that field.
+An SQLite fixture recorded by main’s own code at `e0a9d00f` proves the legacy migration and a new dismissal across a second reopen.
+Attached review tasks also recheck their stored sightings before verification and adjudication.
+The real review and dismissal regression runs A, B dismissed, then A, and requires failure at the second A.
 The publish task advances from version 3 to 4 to return attested dismissal snapshots with revision and round identity.
 Its migration keeps version-3 timing and preserves the earlier versions’ legacy timing marker.
 Old and new readers already compare that hash opaquely.

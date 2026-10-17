@@ -313,6 +313,8 @@ describe("the findings document", () => {
 				dismissedBy: "tal",
 				dismissedReason: "eval input is a constant here",
 				dismissedAt: "2026-10-03T00:00:00.000Z",
+				dismissedTrigger: { hash: snippetHash("eval(input)"), proof: [] },
+				proof: [],
 				firstSeenRevision: "rev1",
 				lastSeenRevision: "rev2",
 				history: [],
@@ -350,6 +352,7 @@ describe("the findings document", () => {
 				status: "new",
 				firstSeenRevision: "rev1",
 				lastSeenRevision: "rev2",
+				proof: [],
 				history: [
 					{
 						dismissedBy: "tal",
@@ -578,7 +581,7 @@ describe("the findings document", () => {
 			expect(await readFindings(harness, root.id, "rev2", context)).toEqual([seen(evalFinding)]);
 		});
 
-		it("never lets a resumed review of an old head change what the newer head reads", async () => {
+		it("keeps newer sightings and last-seen order when an older sighting reopens a dismissal", async () => {
 			const { harness, root } = await open(createMemoryStorage());
 			const dismissal = { by: "tal", reason: "constant input", at: "2026-10-03T00:00:00.000Z" };
 			const old = Finding.create({
@@ -597,7 +600,7 @@ describe("the findings document", () => {
 
 			const [atNew] = await readFindings(harness, root.id, "new", context);
 			expect(atNew!.message.text).toBe(input.message);
-			expect(atNew!.properties.status).toBe("dismissed");
+			expect(atNew!.properties.status).toBe("new");
 			const record = (await harness.snapshot(FindingsDocument, root.id, context))?.items[current.properties.id];
 			expect(record?.lifecycle.lastSeenRevision).toBe("new");
 			expect((await readFindings(harness, root.id, "old", context))[0]!.message.text).toBe("old head");
@@ -780,11 +783,11 @@ describe("version 7 findings and verdicts", () => {
 		}
 	}
 
-	it("refuses a version-8 findings document opened by a version-7 definition", async () => {
+	it("refuses a version-9 findings document opened by a version-7 definition", async () => {
 		const { harness, root } = await open(createMemoryStorage());
 		await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
 		await expect(harness.snapshot(legacy("melian.findings"), root.id, context)).rejects.toThrow(
-			/newer version 8 than 7/,
+			/newer version 9 than 7/,
 		);
 	});
 
