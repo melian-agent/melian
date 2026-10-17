@@ -137,7 +137,12 @@ export async function reportTriageGoldens(
 		(golden, record) => runTriageGolden(golden, { kind: "live", models, model }, passes, record),
 		printError,
 	);
-	const results = TriageResults.measure(goldens, chosen, { model, fingerprint, telemetry });
+	const results = TriageResults.measure(goldens, chosen, {
+		model,
+		fingerprint,
+		telemetry,
+		complete: failed === undefined,
+	});
 	if (out !== undefined && out !== "") writeFileSync(out, `${JSON.stringify(results.toJSON(), null, 2)}\n`);
 	if (failed !== undefined) throw new Error(`${visibleText(failed)}: triage measurement failed`);
 	print(

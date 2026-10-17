@@ -216,6 +216,8 @@ export interface TriageComparison {
 
 /** The stored shape of {@link TriageResults}. */
 export interface StoredTriageResults {
+	readonly version?: 2;
+	readonly complete?: boolean;
 	readonly questionSet: QuestionSet;
 	readonly fingerprint: string;
 	readonly model: string;
@@ -233,6 +235,7 @@ const comparisonTolerance = 0.005;
  * and pass. A choice off by a level costs one, and one the decider never gave costs the widest distance.
  */
 export class TriageResults {
+	readonly complete: boolean;
 	readonly questionSet: QuestionSet;
 	readonly fingerprint: string;
 	readonly model: string;
@@ -242,6 +245,7 @@ export class TriageResults {
 	readonly telemetry?: Readonly<Record<string, readonly ReturnType<StageTelemetry["toJSON"]>[]>>;
 
 	private constructor(stored: StoredTriageResults) {
+		this.complete = stored.complete ?? true;
 		this.questionSet = stored.questionSet;
 		this.fingerprint = stored.fingerprint;
 		this.model = stored.model;
@@ -258,6 +262,7 @@ export class TriageResults {
 		measured: {
 			readonly model: string;
 			readonly fingerprint: string;
+			readonly complete?: boolean;
 			readonly telemetry?: Readonly<Record<string, readonly StageTelemetry[]>>;
 		},
 	): TriageResults {
@@ -278,6 +283,7 @@ export class TriageResults {
 		);
 
 		return new TriageResults({
+			complete: measured.complete,
 			questionSet: triageQuestionSet,
 			passes,
 			choices,
@@ -294,8 +300,10 @@ export class TriageResults {
 	}
 
 	toJSON(): StoredTriageResults {
-		const { questionSet, fingerprint, model, goldens, passes, choices } = this;
+		const { questionSet, fingerprint, model, goldens, passes, choices, complete } = this;
 		return {
+			version: 2,
+			complete,
 			questionSet,
 			fingerprint,
 			model,
@@ -362,10 +370,12 @@ export class TriageResults {
 	/**
 	 * Whether this measurement chooses better than `baseline`: a lower mean distance is better, and at the same distance
 	 * a higher exact share, each read within a small tolerance. Refuses, as incomparable, a baseline measured with
-	 * another decider model or golden set. Says so when the questions changed without their version, which the question
-	 * set's version exists to prevent, and when the version moved but the questions did not.
+	 * another decider model or golden set, or an incomplete baseline. Says so when the questions changed without their
+	 * version, which the question set's version exists to prevent, and when the version moved but the questions did not.
 	 */
 	compare(baseline: TriageResults): TriageComparison {
+		if (!baseline.complete)
+			return { verdict: "incomparable", lines: ["incomparable: the baseline measurement is incomplete"] };
 		const lines = [
 			`version ${baseline.questionSet.version} -> ${this.questionSet.version}`,
 			`mean distance ${baseline.meanDistance().toFixed(2)} -> ${this.meanDistance().toFixed(2)}`,

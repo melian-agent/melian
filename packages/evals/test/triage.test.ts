@@ -245,6 +245,14 @@ describe("TriageResults", () => {
 		expect(results.questionSet).toEqual(triageQuestionSet);
 	});
 
+	it("reopens a version-1 measurement written at f6c53e38 as a complete version-2 baseline", () => {
+		const text = readFileSync(new URL("./fixtures/triage-results-v1.json", import.meta.url), "utf8");
+		const legacy = JSON.parse(text);
+		const reopened = TriageResults.parse(text);
+		expect(reopened.toJSON()).toEqual({ ...legacy, version: 2, complete: true });
+		expect(TriageResults.parse(JSON.stringify(reopened.toJSON())).compare(reopened).verdict).toBe("same");
+	});
+
 	it("round-trips through JSON", () => {
 		const results = measured([choice("deep", "careful")]);
 		expect(TriageResults.parse(JSON.stringify(results.toJSON())).toJSON()).toEqual(results.toJSON());

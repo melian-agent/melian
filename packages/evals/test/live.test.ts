@@ -10,7 +10,7 @@ import {
 } from "@melian-agent/pipeline/testing";
 import { expect, it, vi } from "vitest";
 import { reportTriageGoldens } from "../src/live-output.ts";
-import { loadTriageGoldens, type StoredTriageResults } from "../src/triage.ts";
+import { loadTriageGoldens, type StoredTriageResults, TriageResults } from "../src/triage.ts";
 
 it("prints escaped triage scores and retains each pass's telemetry from the selected fake model", async () => {
 	const source = loadTriageGoldens().find((golden) => golden.name === "docs-typo")!;
@@ -162,3 +162,79 @@ it.each([undefined, ""])("keeps triage output optional for path %j", async (out)
 	expect(results.toJSON().telemetry).toEqual({});
 	expect(printed).toHaveLength(1);
 });
+
+it("refuses a saved baseline when golden B fails on its second pass after golden A completes", async () => {
+	const [first, second] = loadTriageGoldens();
+	const goldens = [first!, second!];
+	const fake = createFakeModels({ provider: "baseline-eval", models: [{ id: "judge" }] });
+	const requests = scriptConversations(fake, [
+		{
+			match: "You answer typed questions about a code change",
+			replies: [first!, first!, second!, second!, first!, first!, second!, second!].map(
+				(golden, index) => (messages) => {
+					const asked = [
+						...messages
+							.map(textOf)
+							.join("\n")
+							.matchAll(/^### (.+)$/gm),
+					].map((match) => match[1]!);
+					expect(asked).toEqual(Object.keys(golden.expected.levels));
+					if (index === 3)
+						return fauxAssistantMessage("", { stopReason: "error", errorMessage: "B pass two failed" });
+					return fauxAssistantMessage(
+						fauxToolCall("answer", {
+							answers: asked.map((question) => ({
+								question,
+								probabilities: [
+									{ option: index >= 6 ? "quick" : golden.expected.levels[question], probability: 1 },
+								],
+							})),
+						}),
+						{ stopReason: "toolUse" },
+					);
+				},
+			),
+		},
+	]);
+	const directory = mkdtempSync(join(realpathSync(tmpdir()), "melian-incomplete-baseline-"));
+	const out = join(directory, "results.json");
+	try {
+		await expect(
+			reportTriageGoldens(
+				goldens,
+				fake.review,
+				"baseline-eval/judge",
+				2,
+				"questions",
+				() => {},
+				() => {},
+				out,
+			),
+		).rejects.toThrow("triage measurement failed");
+		const text = readFileSync(out, "utf8");
+		const baseline = TriageResults.parse(text);
+		expect(baseline.goldens).toEqual(goldens.map((golden) => golden.name));
+		expect(new Set(baseline.choices.map((choice) => choice.golden))).toEqual(new Set([first!.name]));
+		expect(baseline.toJSON().telemetry![second!.name]).toHaveLength(2);
+		const complete = await reportTriageGoldens(
+			goldens,
+			fake.review,
+			"baseline-eval/judge",
+			2,
+			"questions",
+			() => {},
+			() => {},
+		);
+		expect(Object.values(requests).flat()).toHaveLength(8);
+		expect(complete.meanDistance()).toBeGreaterThan(baseline.meanDistance());
+		expect(complete.compare(baseline)).toEqual({
+			verdict: "incomparable",
+			lines: ["incomparable: the baseline measurement is incomplete"],
+		});
+		expect(JSON.parse(text)).toMatchObject({ version: 2, complete: false });
+		expect(complete.toJSON()).toMatchObject({ version: 2, complete: true });
+		expect(complete.compare(TriageResults.parse(JSON.stringify(complete.toJSON()))).verdict).toBe("same");
+	} finally {
+		rmSync(directory, { recursive: true, force: true });
+	}
+}, 60_000);
