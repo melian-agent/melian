@@ -1,7 +1,7 @@
 import { rmSync } from "node:fs";
-import { Adjudication, Changeset, defaultConfig, Finding } from "@melian-agent/core";
-import { createGitHubProvider } from "@melian-agent/github";
-import { afterEach, expect, it, vi } from "vitest";
+import { Adjudication, Changeset, defaultConfig, dismissalVersion, Finding, replyKey } from "@melian-agent/core";
+import { createGitHubProvider, marker } from "@melian-agent/github";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeGitHub } from "../../github/test/fixtures/fake-github.ts";
 import previous from "../../github/test/fixtures/publish-v4.json" with { type: "json" };
 import { moveTo, pullRequestState } from "../../github/test/fixtures/scenario.ts";
@@ -9,6 +9,7 @@ import { VerdictDocument } from "../src/adjudication.ts";
 import { PublishError } from "../src/errors.ts";
 import { revisionKey } from "../src/findings.ts";
 import {
+	type Conversation,
 	backgroundContext as context,
 	createMemoryStorage,
 	createRegistry,
@@ -17,7 +18,14 @@ import {
 	openHarness,
 	type TaskId,
 } from "../src/harness.ts";
-import { failedAttestations, PublisherDocument, publishExtension, publishReview } from "../src/publish.ts";
+import {
+	failedAttestations,
+	PublishedDocument,
+	PublisherDocument,
+	type PublishOptions,
+	publishExtension,
+	publishReview,
+} from "../src/publish.ts";
 import { TaskTiming } from "../src/task-timing.ts";
 import { createFakeModels } from "../src/testing.ts";
 import { baseAndHead, isolatedGitEnv } from "./fixtures/repo.ts";
@@ -32,6 +40,234 @@ afterEach(async () => {
 	repo = undefined;
 	vi.restoreAllMocks();
 	vi.unstubAllEnvs();
+});
+
+describe("publication planning recovery", () => {
+	let options: PublishOptions;
+	let root: Conversation;
+	let state: ReturnType<typeof pullRequestState>;
+	let provider: ReturnType<typeof createGitHubProvider>;
+	let finding: Finding;
+	let revision: string;
+	const old = "c".repeat(40);
+
+	beforeEach(async () => {
+		for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
+		repo = baseAndHead({ "src/a.ts": "old\n" }, { "src/a.ts": "new\n" });
+		const changeset = await Changeset.resolve(repo, "main...feature");
+		revision = revisionKey(changeset.revision);
+		state = pullRequestState();
+		moveTo(state, changeset);
+		provider = createGitHubProvider({
+			owner: state.owner,
+			repo: state.repo,
+			token: "test",
+			fetch: fakeGitHub(state),
+		});
+		const fake = createFakeModels();
+		const registry = createRegistry();
+		registry.install(publishExtension(provider));
+		harness = await openHarness(createMemoryStorage(), { models: fake.models, registry });
+		root = await harness.root(context, { agent: { model: fake.ref() } });
+		finding = Finding.create({
+			rule: "unsafe",
+			file: "src/a.ts",
+			startLine: 1,
+			snippet: "new",
+			occurrence: 0,
+			severity: "P2",
+			cause: "introduced",
+			message: "Unsafe input",
+			source: { check: "static.example" },
+			explanation: { what: "Unsafe", whyHere: "New", whatToDo: "Validate" },
+		});
+		await root.commit(async (tx) => {
+			const doc = await tx.doc(VerdictDocument, root.id);
+			doc.verdicts[revision] = new Adjudication({ findings: [], manifest: [], checks: [], config: defaultConfig })
+				.adjudicate()
+				.toJSON();
+			doc.provenance = {
+				[revision]: {
+					kind: "pull-request",
+					manifest: [],
+					lenses: [],
+					repository: { owner: state.owner, name: state.repo },
+					pullRequest: 7,
+					base: changeset.revision.base,
+					head: changeset.revision.head,
+					policy: `revision:${changeset.revision.base}`,
+				},
+			};
+		}, context);
+		options = {
+			harness,
+			provider,
+			changeset,
+			pullRequest: await provider.pullRequest(7),
+			base: changeset.revision.base,
+			trustedWriters: true,
+		};
+	});
+
+	it.each([
+		{ rounds: undefined, next: 1 },
+		{ rounds: 2, next: 3 },
+	])("asks only for round $next after $rounds planned rounds", async ({ rounds, next }) => {
+		if (rounds !== undefined)
+			await root.commit(async (tx) => {
+				const doc = await tx.doc(PublishedDocument, root.id);
+				doc.revisions[state.pull.head.sha] = { rounds, reviews: [], open: {}, resolved: {}, replies: {} };
+			}, context);
+		const discovery = vi.spyOn(provider, "findPublished");
+		await publishReview(options);
+		expect(discovery.mock.calls.map(([, , wanted]) => wanted.round)).toEqual([next]);
+		expect(state.reviews).toHaveLength(1);
+		expect(state.reviews[0]!.body).toContain(`round=${next}`);
+	});
+
+	it("does not carry or count an owed dismissal whose current answer is already journalled", async () => {
+		const past = { by: "Maintainer", reason: "Old reason", at: "2026-10-17T00:00:00Z" };
+		const dismissal = { ...past, reason: "Current reason" };
+		const dismissed = Finding.from({
+			...finding.toJSON(),
+			properties: { ...finding.properties, status: "dismissed", dismissal },
+		});
+		await root.commit(async (tx) => {
+			(await tx.doc(VerdictDocument, root.id)).verdicts[revision] = new Adjudication({
+				findings: [dismissed],
+				manifest: [],
+				checks: [],
+				config: defaultConfig,
+			})
+				.adjudicate()
+				.toJSON();
+			const doc = await tx.doc(PublishedDocument, root.id);
+			doc.order = [old];
+			doc.revisions[old] = {
+				reviews: ["old-review"],
+				open: {},
+				resolved: {
+					[finding.id]: {
+						ruleId: finding.ruleId,
+						path: "src/a.ts",
+						line: 1,
+						revision: old,
+						thread: "1",
+						dismissal: past,
+					},
+				},
+				replies: { [replyKey(finding.id, "1", dismissalVersion(dismissal))]: "2" },
+			};
+		}, context);
+		const result = await publishReview(options);
+		expect(result.dismissed).toBe(0);
+		expect(result.replies).toBe(0);
+		expect(
+			(await harness!.snapshot(PublishedDocument, root.id, context))!.revisions[state.pull.head.sha]!.resolved,
+		).toEqual({});
+	});
+
+	it("keeps a reopened merged member's old dismissal out of the carry", async () => {
+		const speaker = Finding.create({
+			rule: "second",
+			file: "src/a.ts",
+			startLine: 1,
+			snippet: "new",
+			occurrence: 0,
+			severity: "P1",
+			cause: "introduced",
+			message: "Unsafe input",
+			source: { check: "static.other" },
+			explanation: { what: "Unsafe", whyHere: "New", whatToDo: "Validate" },
+		});
+		const verdict = new Adjudication({
+			findings: [finding, speaker],
+			manifest: [],
+			checks: [],
+			config: defaultConfig,
+		}).adjudicate();
+		expect(verdict.findings.block[0]!.properties.alsoReportedAs?.map(({ id }) => id)).toEqual([finding.id]);
+		const secret = "11".repeat(32);
+		state.comments.push({
+			id: 1,
+			user: { login: state.login },
+			body: marker(old, "finding", finding.id, secret),
+			path: "src/a.ts",
+			line: 1,
+			side: "RIGHT",
+			pull_request_review_id: 1,
+		});
+		await root.commit(async (tx) => {
+			(await tx.doc(VerdictDocument, root.id)).verdicts[revision] = verdict.toJSON();
+			(await tx.doc(PublisherDocument, root.id)).secret = secret;
+			const doc = await tx.doc(PublishedDocument, root.id);
+			doc.order = [old];
+			doc.revisions[old] = {
+				reviews: ["old-review"],
+				open: {},
+				resolved: {
+					[finding.id]: {
+						ruleId: finding.ruleId,
+						path: "src/a.ts",
+						line: 1,
+						revision: old,
+						thread: "1",
+						dismissal: { by: "Maintainer", reason: "Old trigger", at: "2026-10-17T00:00:00Z" },
+					},
+				},
+				replies: {},
+			};
+		}, context);
+		await publishReview(options);
+		expect(state.comments).toHaveLength(2);
+		expect(state.comments[0]!.body).not.toContain("resolved=");
+		expect(state.resolvedThreads).toEqual([]);
+		expect(
+			(await harness!.snapshot(PublishedDocument, root.id, context))!.revisions[state.pull.head.sha]!.resolved,
+		).toEqual({});
+	});
+
+	it("leaves an unrelated owed thread unread until after the review posts", async () => {
+		const secret = "11".repeat(32);
+		state.comments.push({
+			id: 1,
+			user: { login: state.login },
+			body: marker(old, "finding", finding.id, secret),
+			path: "src/a.ts",
+			line: 1,
+			side: "RIGHT",
+			pull_request_review_id: 1,
+		});
+		await root.commit(async (tx) => {
+			(await tx.doc(PublisherDocument, root.id)).secret = secret;
+			const doc = await tx.doc(PublishedDocument, root.id);
+			doc.order = [old];
+			doc.revisions[old] = {
+				reviews: ["old-review"],
+				open: {},
+				resolved: {
+					[finding.id]: {
+						ruleId: finding.ruleId,
+						path: "src/a.ts",
+						line: 1,
+						revision: old,
+						thread: "1",
+						addressedIn: old,
+					},
+				},
+				replies: {},
+			};
+		}, context);
+		const threadState = vi.spyOn(provider, "isThreadOpen");
+		const postReview = provider.postReview.bind(provider);
+		vi.spyOn(provider, "postReview").mockImplementation(async (draft) => {
+			expect(threadState).not.toHaveBeenCalled();
+			return postReview(draft);
+		});
+		await publishReview(options);
+		expect(threadState).toHaveBeenCalledExactlyOnceWith(7, "1");
+		expect(state.resolvedThreads).toEqual([1]);
+	});
 });
 
 it.each(["current", "pending", "failed task"])(
