@@ -25,7 +25,8 @@ Review and finding-root recovery still match the requested head; answers are key
 An answer counts when either the durable journal or GitHub records it.
 A deleted reply is not repeated when its journal entry survives.
 An addressed edit counts only on its own signed finding root.
-A reply counts only when its author matches its signed root's author, even when an installation token cannot read `/user`.
+A root must belong to a signed Melian review through its `pull_request_review_id`, with the same revision and author.
+A reply counts only when its author matches that root's author, even when an installation token cannot read `/user`.
 Signature verification remains mandatory, and a known token author remains an additional filter.
 
 Read GraphQL thread state lazily, when publication will reuse, answer or resolve that thread.
@@ -86,3 +87,18 @@ Planning, pending rounds and closing preserve every owed thread.
 Current resolutions run before carried work, so one failed older thread cannot hide a newer thread's resolution.
 The migration rekeys both recorded and pending resolutions and leaves the pending review payload intact.
 A version-7 fixture written through that version's publisher proves SQLite reopening and a second version-8 reopen.
+
+## As built: parent-review ownership
+
+A copied finding marker in a human-started review no longer establishes a Melian root.
+Discovery binds each root's `pull_request_review_id` to a verified verdict marker and that review's author and revision.
+A known token author still filters reviews.
+When `/user` is unavailable, the first valid signed review establishes the publisher; later copies by another author fail that filter.
+An unavailable identity never approves every author.
+
+Addressed edits read the root's parent review and verify the same binding before editing or resolving a signed root.
+A missing, unsigned or foreign parent cannot authorise either action.
+This adds one REST review read per addressed edit; marker discovery still uses its existing paginated listings.
+A removed finding marker retains the earlier skip-edit and resolve behaviour for a recorded thread.
+The ownership tests cover copied roots, copied reviews, author and revision mismatches, invalid signatures and deleted authors.
+Installation-token recovery and addressed edits still work through valid signed reviews.

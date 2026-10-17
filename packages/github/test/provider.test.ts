@@ -1,6 +1,6 @@
 import { createGitHubProvider, marker } from "@melian-agent/github";
-import { describe, expect, it } from "vitest";
-import { fakeGitHub, fakeState } from "./fixtures/fake-github.ts";
+import { describe, expect, it, vi } from "vitest";
+import { type FakeComment, fakeGitHub, fakeState } from "./fixtures/fake-github.ts";
 
 function fixture() {
 	const state = fakeState(
@@ -94,12 +94,20 @@ describe("publication response gaps", () => {
 			pull_request_review_id: 1,
 		};
 		const answer = marker(head, "resolved", finding, secret);
+		state.reviews.push({
+			id: 1,
+			user: { login: state.login },
+			body: marker(head, "verdict", "0123456789abcdef", secret, { round: 1 }),
+			commit_id: head,
+			event: "COMMENT",
+		});
 		state.comments.push(
 			root,
 			{ ...root, id: 2, body: answer, in_reply_to_id: 1, user: null },
 			{ ...root, id: 3, body: answer, in_reply_to_id: 1 },
 		);
 		expect(await provider.findPublished(7, head, { fingerprint: "0123456789abcdef", round: 1 }, secret)).toEqual({
+			review: "1",
 			threads: { [finding]: "1" },
 			replies: { [`${finding} 1`]: "3" },
 		});
@@ -119,6 +127,151 @@ describe("publication response gaps", () => {
 			"/repos/owner/repo/pulls/7/reviews",
 			"/repos/owner/repo/pulls/7/comments",
 		]);
+	});
+});
+
+describe("root review ownership", () => {
+	const secret = "11".repeat(32);
+	const finding = "fedcba9876543210";
+	const wanted = { fingerprint: "0123456789abcdef", round: 1 };
+	function ownership() {
+		const { state, provider } = fixture();
+		state.failUser = true;
+		const head = state.pull.head.sha;
+		const review = {
+			id: 1,
+			user: { login: state.login },
+			body: marker(head, "verdict", wanted.fingerprint, secret, { round: 1 }),
+			commit_id: head,
+			event: "COMMENT",
+		};
+		const root: FakeComment = {
+			id: 2,
+			user: { login: state.login },
+			body: marker(head, "finding", finding, secret),
+			path: "src/a.ts",
+			line: 1,
+			side: "RIGHT",
+			pull_request_review_id: 1,
+		};
+		state.reviews.push(review);
+		state.comments.push(root);
+		return { state, provider, head, review, root };
+	}
+
+	it.each([
+		"human review",
+		"missing review",
+		"wrong author",
+		"wrong revision",
+		"bad signature",
+		"finding review marker",
+	])("rejects a copied root attached to a %s when /user is unavailable", async (kind) => {
+		const { state, provider, head, root, review } = ownership();
+		if (kind === "human review") {
+			state.reviews.push({ ...review, id: 3, user: { login: "human" }, body: "Human review" });
+			root.pull_request_review_id = 3;
+			root.user = { login: "human" };
+		} else if (kind === "missing review") root.pull_request_review_id = 99;
+		else if (kind === "wrong author") root.user = { login: "human" };
+		else if (kind === "wrong revision")
+			review.body = marker("c".repeat(40), "verdict", wanted.fingerprint, secret, { round: 1 });
+		else if (kind === "finding review marker") review.body = marker(head, "finding", wanted.fingerprint, secret);
+		else review.body = marker(head, "verdict", wanted.fingerprint, "22".repeat(32), { round: 1 });
+		const found = await provider.findPublished(7, head, wanted, secret);
+		expect(found.threads).toEqual({});
+		expect(found.replies).toEqual({});
+	});
+
+	it("rejects a later review copying the signed review and root while /user is unavailable", async () => {
+		const { state, provider, head, root, review } = ownership();
+		state.reviews.push({ ...review, id: 3, user: { login: "human" } });
+		root.user = { login: "human" };
+		root.pull_request_review_id = 3;
+		expect(await provider.findPublished(7, head, wanted, secret)).toEqual({ review: "1", threads: {}, replies: {} });
+	});
+
+	it("keeps the first signed review when its author repeats the marker", async () => {
+		const { state, provider, head, review } = ownership();
+		state.reviews.push({ ...review, id: 3 });
+		expect(await provider.findPublished(7, head, wanted, secret)).toEqual({
+			review: "1",
+			threads: { [finding]: "2" },
+			replies: {},
+		});
+	});
+
+	it("skips a deleted review author and still recovers the owned root", async () => {
+		const { state, provider, head, review } = ownership();
+		state.reviews.unshift({ ...review, id: 9, user: null });
+		expect(await provider.findPublished(7, head, wanted, secret)).toEqual({
+			review: "1",
+			threads: { [finding]: "2" },
+			replies: {},
+		});
+	});
+
+	it.each([true, false])(
+		"checks the parent review before addressing a copied root (unknown user: %s)",
+		async (unknown) => {
+			const { state, provider, head, root, review } = ownership();
+			state.failUser = unknown;
+			review.body = "Human-started review with a copied finding marker";
+			expect(
+				await provider.replyResolved(
+					7,
+					{ id: finding, ruleId: "unsafe", path: root.path, line: 1, revision: head, thread: String(root.id) },
+					head,
+					secret,
+				),
+			).toBeUndefined();
+			expect(root.body).not.toContain("Addressed in commit");
+			expect(state.resolvedThreads).toEqual([]);
+			expect(state.calls.filter(({ method }) => method === "PATCH")).toEqual([]);
+		},
+	);
+
+	it.each(["wrong author", "wrong revision", "reply", "missing review", "bad signature", "null review"])(
+		"refuses an addressed edit with %s",
+		async (kind) => {
+			const { state, provider, head, root, review } = ownership();
+			if (kind === "wrong author") root.user = { login: "human" };
+			else if (kind === "wrong revision")
+				review.body = marker("c".repeat(40), "verdict", wanted.fingerprint, secret, { round: 1 });
+			else if (kind === "bad signature")
+				review.body = marker(head, "verdict", wanted.fingerprint, "22".repeat(32), { round: 1 });
+			else if (kind === "missing review") root.pull_request_review_id = 99;
+			else if (kind === "null review") root.pull_request_review_id = null;
+			else {
+				root.in_reply_to_id = 3;
+				vi.spyOn(provider, "isThreadOpen").mockResolvedValue(true);
+			}
+			expect(
+				await provider.replyResolved(
+					7,
+					{ id: finding, ruleId: "unsafe", path: root.path, line: 1, revision: head, thread: String(root.id) },
+					head,
+					secret,
+				),
+			).toBeUndefined();
+			expect(state.calls.filter(({ method }) => method === "PATCH")).toEqual([]);
+			expect(state.resolvedThreads).toEqual([]);
+			if (kind === "null review") expect(state.calls.filter(({ path }) => path.includes("/reviews"))).toEqual([]);
+		},
+	);
+
+	it("addresses a root in its signed review without /user", async () => {
+		const { state, provider, head, root } = ownership();
+		expect(
+			await provider.replyResolved(
+				7,
+				{ id: finding, ruleId: "unsafe", path: root.path, line: 1, revision: head, thread: String(root.id) },
+				head,
+				secret,
+			),
+		).toBe(String(root.id));
+		expect(root.body).toContain("Addressed in commit");
+		expect(state.resolvedThreads).toEqual([root.id]);
 	});
 });
 

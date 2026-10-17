@@ -429,7 +429,27 @@ export class GitHubProvider implements ReviewProvider {
 			}),
 		);
 		const opening = signedMarker(data.body, "finding", finding.revision, secret);
-		const editable = opening?.id === finding.id && (await this.ours(data.user));
+		let editable = false;
+		if (opening?.id === finding.id) {
+			const reviewId = data.pull_request_review_id;
+			if (reviewId === null) return undefined;
+			const { data: review } = await call("read the finding's review", () =>
+				this.octokit.rest.pulls.getReview({
+					owner: this.owner,
+					repo: this.repo,
+					pull_number: pullRequest,
+					review_id: reviewId,
+				}),
+			);
+			const published = await this.reviewMarker(review, secret);
+			if (
+				published?.revision !== opening.revision ||
+				data.user?.login !== review.user?.login ||
+				data.in_reply_to_id != null
+			)
+				return undefined;
+			editable = true;
+		}
 		const closed = marker(finding.addressedIn ?? revision, "resolved", finding.id, secret);
 		if (editable && !data.body.split(/\r?\n/).includes(closed)) {
 			const suffix = `\n\nAddressed in commit ${(finding.addressedIn ?? revision).slice(0, 12)}.\n${closed}`;
@@ -581,15 +601,14 @@ export class GitHubProvider implements ReviewProvider {
 				this.publicationPages(this.octokit.rest.pulls.listReviewComments, page),
 			),
 		]);
-		// The first post carrying a marker is Melian's: anyone can copy a signed marker, but only after Melian posted it.
 		let review: string | undefined;
+		const owners = new Map<string, { marker: Marker; author: string }>();
 		for (const each of reviews) {
-			const opening = signedMarker(each.body, "verdict", revision, secret);
-			// The round as well as the verdict: a verdict that recurs at a head must not find its earlier review.
-			if (opening?.id === wanted.fingerprint && opening.round === wanted.round && (await this.ours(each.user))) {
-				review = String(each.id);
-				break;
-			}
+			const opening = await this.reviewMarker(each, secret);
+			if (opening === undefined) continue;
+			owners.set(String(each.id), { marker: opening, author: each.user!.login });
+			if (opening.revision === revision && opening.id === wanted.fingerprint && opening.round === wanted.round)
+				review ??= String(each.id);
 		}
 		const threads: Record<string, string> = {};
 		const replies: Record<string, string> = {};
@@ -597,14 +616,15 @@ export class GitHubProvider implements ReviewProvider {
 		for (const comment of comments) {
 			if (typeof comment.in_reply_to_id === "number") continue;
 			const opening = parseMarker(firstLine(comment.body));
+			const owner = owners.get(String(comment.pull_request_review_id));
 			if (
 				opening?.kind !== "finding" ||
 				!verifyMarker(opening, secret) ||
-				!(await this.ours(comment.user)) ||
-				!comment.user
+				owner?.marker.revision !== opening.revision ||
+				comment.user?.login !== owner.author
 			)
 				continue;
-			roots.set(comment.id, { id: opening.id, author: comment.user.login });
+			roots.set(comment.id, { id: opening.id, author: owner.author });
 			if (opening.revision === revision) threads[opening.id] ??= String(comment.id);
 		}
 		for (const comment of comments) {
@@ -660,11 +680,16 @@ export class GitHubProvider implements ReviewProvider {
 		return this.viewer;
 	}
 
-	// A filter, never the proof: the signature is. An installation token cannot read /user, and a crash between a post
-	// and its record must still find the post.
-	private async ours(author: { login: string } | null | undefined): Promise<boolean> {
+	private async reviewMarker(
+		review: { body?: string | null; user: { login: string } | null },
+		secret: string,
+	): Promise<Marker | undefined> {
+		const opening = parseMarker(firstLine(review.body));
+		if (opening?.kind !== "verdict" || !verifyMarker(opening, secret) || review.user === null) return undefined;
 		const me = await this.login();
-		return me === undefined || author?.login === me;
+		if (me !== undefined && review.user.login !== me) return undefined;
+		this.viewer ??= review.user.login;
+		return opening;
 	}
 }
 

@@ -178,6 +178,7 @@ describe("reading markers back", () => {
 		const state = pullRequestState();
 		state.failUser = true;
 		const signed = marker(head, "finding", finding, secret);
+		state.reviews.push(review(1, state.login, marker(head, "verdict", fingerprint, secret, { round: 1 })));
 		state.comments.push(comment(1, state.login, signed), comment(2, "pull-request-author", signed));
 		expect(await providerFor(state).findPublished(7, head, wanted, secret)).toMatchObject({
 			threads: { [finding]: "1" },
@@ -1118,6 +1119,13 @@ describe("cross-head answer discovery", () => {
 
 	it("finds only signed, root-anchored answers across heads when user lookup fails", async () => {
 		const state = pullRequestState();
+		state.reviews.push({
+			id: 1,
+			user: { login: state.login },
+			body: marker(old, "verdict", "9999999999999999", secret, { round: 1 }),
+			commit_id: old,
+			event: "COMMENT",
+		});
 		state.failUser = true;
 		state.restPageSize = 1;
 		const first = root(1);
@@ -1140,6 +1148,13 @@ describe("cross-head answer discovery", () => {
 
 	it("rejects a copied signed reply from a human at the requested head without /user", async () => {
 		const state = pullRequestState();
+		state.reviews.push({
+			id: 1,
+			user: { login: state.login },
+			body: marker(old, "verdict", "9999999999999999", secret, { round: 1 }),
+			commit_id: old,
+			event: "COMMENT",
+		});
 		state.failUser = true;
 		const finding = "fedcba9876543210";
 		state.comments.push(root(1), {
@@ -1156,6 +1171,13 @@ describe("cross-head answer discovery", () => {
 
 	it("reads open and human-resolved state lazily and resets it between attempts", async () => {
 		const state = pullRequestState();
+		state.reviews.push({
+			id: 1,
+			user: { login: state.login },
+			body: marker(old, "verdict", "9999999999999999", secret, { round: 1 }),
+			commit_id: old,
+			event: "COMMENT",
+		});
 		state.comments.push(root(1));
 		const github = providerFor(state);
 		expect(state.calls).toEqual([]);
@@ -1172,6 +1194,13 @@ describe("cross-head answer discovery", () => {
 
 	it("refuses reuse and resolution while a REST root has no GraphQL state", async () => {
 		const state = pullRequestState();
+		state.reviews.push({
+			id: 1,
+			user: { login: state.login },
+			body: marker(old, "verdict", "9999999999999999", secret, { round: 1 }),
+			commit_id: old,
+			event: "COMMENT",
+		});
 		state.comments.push(root(1));
 		state.hiddenThreads = [1];
 		state.resolvedThreads = [1];
@@ -1189,6 +1218,13 @@ describe("cross-head answer discovery", () => {
 
 	it("propagates an unavailable REST root lookup rather than treating it as deleted", async () => {
 		const state = pullRequestState();
+		state.reviews.push({
+			id: 1,
+			user: { login: state.login },
+			body: marker(old, "verdict", "9999999999999999", secret, { round: 1 }),
+			commit_id: old,
+			event: "COMMENT",
+		});
 		state.comments.push(root(1));
 		state.hiddenThreads = [1];
 		state.commentReadStatus = 403;
@@ -1197,6 +1233,13 @@ describe("cross-head answer discovery", () => {
 
 	it.each(["verdict", "resolved"] as const)("does not treat a signed %s marker as a finding root", async (kind) => {
 		const state = pullRequestState();
+		state.reviews.push({
+			id: 1,
+			user: { login: state.login },
+			body: marker(old, "verdict", "9999999999999999", secret, { round: 1 }),
+			commit_id: old,
+			event: "COMMENT",
+		});
 		state.failUser = true;
 		state.comments.push({ ...root(1), body: marker(old, kind, "fedcba9876543210", secret) });
 		expect(await providerFor(state).findPublished(7, old, wanted, secret)).toEqual({ threads: {}, replies: {} });
@@ -1204,12 +1247,26 @@ describe("cross-head answer discovery", () => {
 
 	it("filters signed roots from a foreign known author", async () => {
 		const state = pullRequestState();
+		state.reviews.push({
+			id: 1,
+			user: { login: state.login },
+			body: marker(old, "verdict", "9999999999999999", secret, { round: 1 }),
+			commit_id: old,
+			event: "COMMENT",
+		});
 		state.comments.push({ ...root(1), user: { login: "human" } });
 		expect(await providerFor(state).findPublished(7, old, wanted, secret)).toEqual({ threads: {}, replies: {} });
 	});
 
 	it("recognises deletion only after GraphQL and REST both lack the root", async () => {
 		const state = pullRequestState();
+		state.reviews.push({
+			id: 1,
+			user: { login: state.login },
+			body: marker(old, "verdict", "9999999999999999", secret, { round: 1 }),
+			commit_id: old,
+			event: "COMMENT",
+		});
 		const github = providerFor(state);
 		expect(await github.isThreadOpen(7, "1")).toBe(false);
 		expect(await github.resolveThread(7, "1")).toBe(false);
@@ -1218,6 +1275,13 @@ describe("cross-head answer discovery", () => {
 
 	it("fails rather than returning the first comment page when the second page fails", async () => {
 		const state = pullRequestState();
+		state.reviews.push({
+			id: 1,
+			user: { login: state.login },
+			body: marker(old, "verdict", "9999999999999999", secret, { round: 1 }),
+			commit_id: old,
+			event: "COMMENT",
+		});
 		state.restPageSize = 1;
 		state.failCommentPage = 2;
 		state.comments.push(root(1), root(2));
@@ -1231,6 +1295,13 @@ describe("cross-head answer discovery", () => {
 		{ name: "conflict", body: { message: "Conflict" }, page: 1, status: 409 },
 	])("fails closed on a $name comment page", async (response) => {
 		const state = pullRequestState();
+		state.reviews.push({
+			id: 1,
+			user: { login: state.login },
+			body: marker(old, "verdict", "9999999999999999", secret, { round: 1 }),
+			commit_id: old,
+			event: "COMMENT",
+		});
 		state.restPageSize = 1;
 		state.comments.push(root(1), root(2));
 		state.commentPageResponse = response;
@@ -1283,6 +1354,13 @@ describe("cross-head answer discovery", () => {
 		["empty cursor", { nodes: [], pageInfo: { hasNextPage: true, endCursor: "" } }],
 	])("rejects a partial GraphQL page: %s", async (name, response) => {
 		const state = pullRequestState();
+		state.reviews.push({
+			id: 1,
+			user: { login: state.login },
+			body: marker(old, "verdict", "9999999999999999", secret, { round: 1 }),
+			commit_id: old,
+			event: "COMMENT",
+		});
 		state.comments.push(root(1));
 		state.threadPageResponse = response;
 		await expect(providerFor(state).resolveThread(7, "1")).rejects.toMatchObject({
@@ -1295,6 +1373,13 @@ describe("cross-head answer discovery", () => {
 
 	it("ignores a dismissal marker pasted into a root and a signed root with no author", async () => {
 		const state = pullRequestState();
+		state.reviews.push({
+			id: 1,
+			user: { login: state.login },
+			body: marker(old, "verdict", "9999999999999999", secret, { round: 1 }),
+			commit_id: old,
+			event: "COMMENT",
+		});
 		state.failUser = true;
 		const first = root(1);
 		first.body += `\n${marker(old, "resolved", "fedcba9876543210", secret, { dismissal: "00112233aabbccdd" })}`;
@@ -1307,6 +1392,13 @@ describe("cross-head answer discovery", () => {
 
 	it.each([50, 51])("bounds the comment listing at 50 pages with %i pages", async (pages) => {
 		const state = pullRequestState();
+		state.reviews.push({
+			id: 1,
+			user: { login: state.login },
+			body: marker(old, "verdict", "9999999999999999", secret, { round: 1 }),
+			commit_id: old,
+			event: "COMMENT",
+		});
 		state.restPageSize = 1;
 		state.comments.push(
 			...Array.from({ length: pages }, (_, index) => root(index + 1, index.toString(16).padStart(16, "0"))),
@@ -1320,6 +1412,13 @@ describe("cross-head answer discovery", () => {
 		"refuses a %s thread read before resolution",
 		async (failure) => {
 			const state = pullRequestState();
+			state.reviews.push({
+				id: 1,
+				user: { login: state.login },
+				body: marker(old, "verdict", "9999999999999999", secret, { round: 1 }),
+				commit_id: old,
+				event: "COMMENT",
+			});
 			state.comments.push(root(1));
 			state.threadReadFailure = failure;
 			await expect(providerFor(state).resolveThread(7, "1")).rejects.toMatchObject({ code: "failed" });
@@ -1332,6 +1431,13 @@ describe("cross-head answer discovery", () => {
 
 	it("does not mistake a refused thread read for a deleted reply target", async () => {
 		const state = pullRequestState();
+		state.reviews.push({
+			id: 1,
+			user: { login: state.login },
+			body: marker(old, "verdict", "9999999999999999", secret, { round: 1 }),
+			commit_id: old,
+			event: "COMMENT",
+		});
 		state.comments.push(root(1));
 		state.threadReadStatus = 404;
 		await expect(
@@ -1355,6 +1461,13 @@ describe("cross-head answer discovery", () => {
 
 	it.each([50, 51])("bounds the GraphQL listing at 50 pages with %i pages", async (pages) => {
 		const state = pullRequestState();
+		state.reviews.push({
+			id: 1,
+			user: { login: state.login },
+			body: marker(old, "verdict", "9999999999999999", secret, { round: 1 }),
+			commit_id: old,
+			event: "COMMENT",
+		});
 		state.threadPageSize = 1;
 		state.comments.push(...Array.from({ length: pages }, (_, index) => root(index + 1)));
 		const result = providerFor(state).resolveThread(7, String(pages));

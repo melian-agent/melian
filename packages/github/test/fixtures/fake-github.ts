@@ -6,7 +6,7 @@ export type Call = { method: string; path: string; body?: unknown };
 
 type User = { login: string };
 
-export type FakeReview = { id: number; user: User; body: string; commit_id: string; event: string };
+export type FakeReview = { id: number; user: User | null; body: string; commit_id: string; event: string };
 
 export type FakeComment = {
 	id: number;
@@ -18,7 +18,7 @@ export type FakeComment = {
 	start_line?: number;
 	start_side?: string;
 	in_reply_to_id?: number;
-	pull_request_review_id: number;
+	pull_request_review_id: number | null;
 };
 
 export type FakeStatus = { sha: string; state: string; description: string; context: string; target_url?: string };

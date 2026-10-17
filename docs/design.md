@@ -188,6 +188,8 @@ Publication, built in milestone 1, diffs each revision's findings by `id` agains
 Publication retires every resolution still owed against a thread in the commit that reuses it for a live finding.
 Signed answer discovery spans every head, so a reply accepted before a lost checkpoint is not repeated on the next push.
 Either the journal or GitHub proves an answer present.
+A recovered root must belong to a signed Melian review, with the same revision and author.
+A refused `/user` lookup grants no ownership by itself. Addressed edits verify the parent review again.
 An addressed root still owes thread resolution even when its finding returns in a new thread.
 Owed work and pending rounds keep every thread for a finding, keyed by finding, thread and dismissal version.
 Published-document version 8 upgrades older resolution maps, including pending rounds, without changing their review payload.

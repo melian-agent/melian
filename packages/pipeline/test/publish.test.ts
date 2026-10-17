@@ -275,6 +275,13 @@ describe("publication planning recovery", () => {
 		}).adjudicate();
 		expect(verdict.findings.block[0]!.properties.alsoReportedAs?.map(({ id }) => id)).toEqual([finding.id]);
 		const secret = "11".repeat(32);
+		state.reviews.push({
+			id: 1,
+			user: { login: state.login },
+			body: marker(old, "verdict", "0123456789abcdef", secret, { round: 1 }),
+			commit_id: old,
+			event: "COMMENT",
+		});
 		state.comments.push({
 			id: 1,
 			user: { login: state.login },
@@ -317,6 +324,13 @@ describe("publication planning recovery", () => {
 
 	it("leaves an unrelated owed thread unread until after the review posts", async () => {
 		const secret = "11".repeat(32);
+		state.reviews.push({
+			id: 1,
+			user: { login: state.login },
+			body: marker(old, "verdict", "0123456789abcdef", secret, { round: 1 }),
+			commit_id: old,
+			event: "COMMENT",
+		});
 		state.comments.push({
 			id: 1,
 			user: { login: state.login },

@@ -407,7 +407,7 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 			expect(persisted.reviews).toHaveLength(1);
 			expect(persisted.ledgers).toHaveLength(1);
 			if (changedPublisher) {
-				expect(persisted.reviews[0]?.user.login).toBe("new-publisher");
+				expect(persisted.reviews[0]?.user?.login).toBe("new-publisher");
 				expect(persisted.ledgers[0]?.user.login).toBe("new-publisher");
 				expect(persisted.ledgers[0]?.body).toContain("new-publisher");
 			}
