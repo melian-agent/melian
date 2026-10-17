@@ -1367,11 +1367,44 @@ export class Finding {
 	): FindingDecision {
 		const decision = this.capped(source, options);
 		const claims = this.trustFloor(source, options.defect);
+		const protectedClaims = new Set(
+			claims.map((claim) => JSON.stringify([claim.id, claim.source.check, claim.source.version])),
+		);
+		const scope = options.defect ?? this;
+		const standing = [
+			...VerificationState.from(this)
+				.claims.filter(
+					(claim) =>
+						claim.verification?.verdict !== "refuted" &&
+						!protectedClaims.has(JSON.stringify([claim.id, claim.source.check, claim.source.version])),
+				)
+				.map((claim) => {
+					const original = this.#claim(claim, scope);
+					return claim.verification === undefined ? original : original.verifiedAs(claim.verification);
+				}),
+			...(this.properties.reportedBy ?? [this.properties.source])
+				.filter((producer) => !producer.check.startsWith("lens."))
+				.map((producer) =>
+					Finding.from({
+						...this.toJSON(),
+						properties: {
+							...this.properties,
+							cause: scope.properties.cause,
+							evidence: scope.properties.evidence,
+							source: producer,
+							reportedBy: [producer],
+							verification: undefined,
+							otherClaims: undefined,
+						},
+					}),
+				),
+		];
 		const lifted =
 			claims.some((claim) => claim.lifted && lesser(decision.resolution, claim.minimum) === decision.resolution) &&
-			VerificationState.from(this).claims.every(
-				(claim) => claim.verification?.verdict === "refuted" || claim.verification?.lowered !== undefined,
-			);
+			standing.every((report) => {
+				const outcome = report.decision(source);
+				return outcome.resolution === "silent" || outcome.lifted === true;
+			});
 
 		return this.floored(
 			this.refuted() && claims.length > 0 ? { ...decision, resolution: "silent" } : { ...decision, lifted },
@@ -1459,22 +1492,12 @@ export class Finding {
 				return [];
 			if (verification === undefined || (verification.verdict !== "refuted" && verification.lowered === undefined))
 				return [];
-			const severity = claim.severity ?? verification.lowered?.from ?? this.original();
-			const original = Finding.from({
-				...this.toJSON(),
-				ruleId,
-				properties: {
-					...this.properties,
-					cause: defect.properties.cause,
-					evidence: defect.properties.evidence,
-					verification: { ...verification, verdict: "confirmed", lowered: undefined },
-					otherClaims: undefined,
-					severity,
-					originalSeverity: severity,
-					source: producer,
-					reportedBy: [producer],
-				},
+			const original = this.#claim(claim, defect).verifiedAs({
+				...verification,
+				verdict: "confirmed",
+				lowered: undefined,
 			});
+			const severity = original.properties.severity;
 			const ordinary = original.decision(source);
 			return [
 				{
@@ -1489,6 +1512,25 @@ export class Finding {
 					verification,
 				},
 			];
+		});
+	}
+
+	#claim(claim: MemberClaim, defect: Finding): Finding {
+		const severity = claim.severity ?? claim.verification?.lowered?.from ?? this.original();
+		return Finding.from({
+			...this.toJSON(),
+			ruleId: claim.ruleId,
+			properties: {
+				...this.properties,
+				cause: defect.properties.cause,
+				evidence: defect.properties.evidence,
+				verification: undefined,
+				otherClaims: undefined,
+				severity,
+				originalSeverity: severity,
+				source: claim.source,
+				reportedBy: [claim.source],
+			},
 		});
 	}
 

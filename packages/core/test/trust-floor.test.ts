@@ -483,6 +483,106 @@ describe("step 29: lowered and refuted trust objections", () => {
 		expect(verdict.findings.advisory[0]?.properties.decidedBy?.check).toBe("lens.trust-boundary");
 		expect(verdict.counted()).toEqual([]);
 	});
+	it.each(["P1", "P3"] as const)(
+		"keeps a display-only lowering beside an uncounted %s sighting of the same ID",
+		(severity) => {
+			const raw = report(
+				{ severity: "P1", cause: "pre-existing", source: { check: "lens.trust-boundary", version: "1@quick" } },
+				{ ...lowered, lowered: { from: "P1", to: "P2", reason: "Narrow." } },
+			);
+			const standing = report({ severity, cause: "pre-existing" }, plausible);
+			const merged = Finding.from({
+				...raw.toJSON(),
+				properties: { ...raw.properties, ...raw.mergeClaims([raw, standing]) },
+			});
+			const config = {
+				...defaultConfig,
+				resolution: { ...defaultConfig.resolution, P1: "silent" as const, P3: "silent" as const },
+			};
+			const verdict = new Adjudication({ findings: [merged], config, manifest: [], checks: [] }).adjudicate();
+			expect(merged.lifted(config)).toBe(true);
+			expect(verdict.counted()).toEqual([]);
+			expect(verdict.status).toBe("passed");
+		},
+	);
+	it("counts an unprotected lowered sighting under its own current policy", () => {
+		const judgement = { ...lowered, lowered: { from: "P1" as const, to: "P2" as const, reason: "Narrow." } };
+		const raw = report({ severity: "P1", cause: "pre-existing" }, judgement);
+		const ordinary = report({ severity: "P1", cause: "pre-existing", source: { check: "lens.correctness" } }, judgement);
+		const merged = Finding.from({ ...raw.toJSON(), properties: { ...raw.properties, ...raw.mergeClaims([raw, ordinary]) } });
+		const config = { ...defaultConfig, resolution: { ...defaultConfig.resolution, P1: "silent" as const } };
+		expect(merged.lifted(config)).toBe(false);
+	});
+	it("reads an unjudged sighting without a historical severity", () => {
+		const raw = report({ severity: "P1", cause: "pre-existing", source: { check: "lens.trust-boundary", version: "1@quick" } }, { ...lowered, lowered: { from: "P1", to: "P2", reason: "Narrow." } });
+		const { severity: _, ...claim } = Finding.create({ ...input, severity: "P3", cause: "pre-existing" }).claims()[0]!;
+		const merged = Finding.from({ ...raw.toJSON(), properties: { ...raw.properties, otherClaims: [claim] } });
+		const config = { ...defaultConfig, resolution: { ...defaultConfig.resolution, P1: "silent" as const, P3: "silent" as const } };
+		expect(merged.lifted(config)).toBe(true);
+	});
+	it("keeps a display-only lowering beside an unprotected refuted sighting", () => {
+		const raw = report(
+			{ severity: "P1", cause: "pre-existing" },
+			{ ...lowered, lowered: { from: "P1", to: "P2", reason: "Narrow." } },
+		);
+		const wrong = report({ severity: "P2", cause: "pre-existing", source: { check: "lens.correctness" } }, refuted);
+		const merged = Finding.from({
+			...raw.toJSON(),
+			properties: { ...raw.properties, ...raw.mergeClaims([raw, wrong]) },
+		});
+		const config = { ...defaultConfig, resolution: { ...defaultConfig.resolution, P1: "silent" as const } };
+		expect(merged.lifted(config)).toBe(true);
+	});
+	it.each(["silent", "advisory"] as const)(
+		"asks the deterministic co-report's own policy whether it counts (%s)",
+		(resolution) => {
+			const raw = report(
+				{ severity: "P1", cause: "pre-existing" },
+				{ ...lowered, lowered: { from: "P1", to: "P2", reason: "Narrow." } },
+			);
+			const merged = Finding.from({
+				...raw.toJSON(),
+				properties: {
+					...raw.properties,
+					reportedBy: [raw.properties.source, { check: "static.example", version: "1" }],
+				},
+			});
+			const config = {
+				...defaultConfig,
+				resolution: {
+					...defaultConfig.resolution,
+					P1: "silent" as const,
+					checks: { "static.example": { P1: resolution, P2: resolution } },
+				},
+			};
+			const verdict = new Adjudication({ findings: [merged], config, manifest: [], checks: [] }).adjudicate();
+			expect(merged.lifted(config)).toBe(resolution === "silent");
+			expect(verdict.counted()).toHaveLength(resolution === "silent" ? 0 : 1);
+		},
+	);
+	it("counts a deterministic co-report beside a protected display-only refutation", () => {
+		const raw = report({ severity: "P1", cause: "pre-existing" }, refuted);
+		const merged = Finding.from({
+			...raw.toJSON(),
+			properties: {
+				...raw.properties,
+				reportedBy: [raw.properties.source, { check: "static.example", version: "1" }],
+			},
+		});
+		const config = {
+			...defaultConfig,
+			resolution: {
+				...defaultConfig.resolution,
+				P1: "silent" as const,
+				checks: { "static.example": { P1: "advisory" as const } },
+			},
+		};
+		const verdict = new Adjudication({ findings: [merged], config, manifest: [], checks: [] }).adjudicate();
+		expect(merged.lifted(config)).toBe(false);
+		expect(verdict.counted()).toHaveLength(1);
+		expect(verdict.status).toBe("findings");
+	});
+
 	it("counts a standing advisory beside a protected lift when trust speaks", () => {
 		const trust = report(
 			{ severity: "P1", cause: "pre-existing" },
