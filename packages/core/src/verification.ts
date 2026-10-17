@@ -158,6 +158,10 @@ export class VerificationState {
 
 	/** The candidate as JSON for a durable task. */
 	toJSON(): StoredVerificationState {
-		return { speaker: structuredClone(this.speaker), claims: structuredClone([...this.claims]) };
+		// Severity belongs on the verifier's trusted labels, outside the quoted claim data.
+		return {
+			speaker: structuredClone(this.speaker),
+			claims: structuredClone(this.claims.map(({ severity: _, ...claim }) => claim)),
+		};
 	}
 }

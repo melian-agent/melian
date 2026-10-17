@@ -8,11 +8,11 @@ import {
 	Lowering,
 	Rendering,
 	type Verification,
+	VerificationState,
 } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { gitIn, isolatedGitEnv, removeDirectory, temporaryDirectory, writeFiles } from "./fixtures/repo.ts";
 
-// Phase 1 contract tests intentionally fail until step 29's rule has survived an attacking review.
 const input: FindingInput = {
 	rule: "fail-open",
 	message: "A cold run can reuse a planted kill.",
@@ -87,15 +87,15 @@ describe("step 29: lowered and refuted trust objections", () => {
 		expect(report({}, { ...lowered, verdict }).resolve(defaultConfig)).toBe("acknowledge");
 	});
 
-	it.each(["introduced", "pre-existing", "affected"] as const)("applies after the %s cap", (cause) => {
-		expect(report({ cause }).resolve(defaultConfig)).toBe("acknowledge");
+	it.each(["introduced", "pre-existing", "affected"] as const)("respects the %s cap", (cause) => {
+		expect(report({ cause }).resolve(defaultConfig)).toBe(cause === "pre-existing" ? "advisory" : "acknowledge");
 	});
 
-	it.each(["advisory", "silent"] as const)("overrides a %s check ceiling", (ceiling) => {
+	it.each(["advisory", "silent"] as const)("respects a %s check ceiling", (ceiling) => {
 		const config = {
 			resolution: { ...defaultConfig.resolution, checks: { "lens.trust-boundary": { ceiling } } },
 		};
-		expect(report().resolve(config)).toBe("acknowledge");
+		expect(report().resolve(config)).toBe(ceiling);
 	});
 
 	it("holds a P1 lowered to P2 above a lenient P2 mapping", () => {
@@ -111,7 +111,9 @@ describe("step 29: lowered and refuted trust objections", () => {
 	});
 
 	it("leaves a standing unlowered trust P3 advisory", () => {
-		expect(report({ severity: "P3" }, plausible).resolve(defaultConfig)).toBe("advisory");
+		const finding = report({ severity: "P3" }, plausible).resolved(defaultConfig);
+		expect(finding.properties.resolution).toBe("advisory");
+		expect(finding.properties.decidedBy?.trustFloor).toBeUndefined();
 	});
 
 	it("leaves a lowered correctness finding advisory", () => {
@@ -242,44 +244,329 @@ describe("step 29: lowered and refuted trust objections", () => {
 		expect(text).toContain("The plant needs hostile Vitest configuration.");
 		expect(text).toContain("Trust floor: acknowledge required; maintainer dismissal needed.");
 	});
+	it("keeps an unjudged protected claim at the existing cap", () => {
+		const finding = Finding.create(input);
+		const verdict = new Adjudication({
+			findings: [finding],
+			config: defaultConfig,
+			manifest: [],
+			checks: [],
+			verificationRan: true,
+		}).adjudicate();
+		expect(verdict.findings.advisory[0]?.properties.decidedBy?.trustFloor).toBeUndefined();
+		expect(verdict.findings.advisory.map((each) => each.id)).toEqual([finding.id]);
+	});
+	it("keeps a standing blocker beside a protected refutation", () => {
+		const trust = report({}, refuted);
+		const blocker = report(
+			{ rule: "unhandled-error", severity: "P0", source: { check: "lens.correctness" } },
+			plausible,
+		);
+		const verdict = new Adjudication({
+			findings: [trust, blocker],
+			config: defaultConfig,
+			manifest: [],
+			checks: [],
+		}).adjudicate();
+		expect(verdict.findings.block).toHaveLength(1);
+		expect(verdict.counted()).toHaveLength(1);
+		expect(verdict.findings.block[0]?.properties.decidedBy?.trustFloor).toHaveLength(1);
+	});
+	it("uses each sighting's reported severity after merging", () => {
+		const trust = report({ severity: "P3" }, refuted);
+		const correctness = report({ source: { check: "lens.correctness" }, severity: "P1" }, refuted);
+		const merged = Finding.from({
+			...correctness.toJSON(),
+			properties: {
+				...correctness.properties,
+				...correctness.mergeClaims([correctness, trust]),
+				reportedBy: [correctness.properties.source, trust.properties.source],
+			},
+		});
+		const verdict = new Adjudication({
+			findings: [merged],
+			config: defaultConfig,
+			manifest: [],
+			checks: [],
+		}).adjudicate();
+		expect(verdict.findings.advisory[0]?.properties.decidedBy?.trustFloor).toMatchObject([
+			{ severity: "P3", minimum: "advisory" },
+		]);
+		expect(verdict.findings.acknowledge).toEqual([]);
+	});
+	it("preserves the winning sighting's severity beside a refuted stronger sighting", () => {
+		const trust = report();
+		const correctness = report({ severity: "P1", source: { check: "lens.correctness" } }, refuted);
+		const merged = Finding.from({
+			...trust.toJSON(),
+			properties: {
+				...trust.properties,
+				...trust.mergeClaims([trust, correctness]),
+				originalSeverity: "P1",
+				reportedBy: [trust.properties.source, correctness.properties.source],
+			},
+		});
+		const config = { ...defaultConfig, resolution: { ...defaultConfig.resolution, P2: "advisory" as const } };
+		const verdict = new Adjudication({ findings: [merged], config, manifest: [], checks: [] }).adjudicate();
+		expect(verdict.findings.advisory[0]?.properties.decidedBy?.trustFloor).toMatchObject([
+			{ severity: "P2", minimum: "advisory" },
+		]);
+		expect(verdict.findings.acknowledge).toEqual([]);
+	});
+	it.each([true, false])("reads legacy claim severity without inventing it (lowered: %s)", (lowering) => {
+		const finding = report({}, lowering ? lowered : refuted);
+		const { severity: _, ...claim } = finding.claims()[0]!;
+		const legacy = Finding.from({ ...finding.toJSON(), properties: { ...finding.properties, otherClaims: [claim] } });
+		expect(legacy.trustFloor(defaultConfig)).toMatchObject([
+			{ severity: "P2", action: lowering ? "lowered" : "refuted" },
+		]);
+	});
+	it("respects the unproved affected cap", () => {
+		const sighting = report();
+		const finding = Finding.from({
+			...sighting.toJSON(),
+			properties: {
+				...sighting.properties,
+				cause: "affected",
+				evidence: input.evidence!.map((each) => ({ ...each, role: "context" as const })),
+			},
+		});
+		expect(finding.resolve(defaultConfig)).toBe("advisory");
+	});
+	it("uses the reporting lens variant's default", () => {
+		const config = {
+			resolution: defaultConfig.resolution,
+			layers: [],
+			lensDefaults: { "trust-boundary": { P2: "block" as const } },
+			lensVariants: { "trust-boundary@1@careful": { ceiling: "advisory" as const } },
+		};
+		expect(report().resolve(config)).toBe("advisory");
+	});
+	it("keeps a non-lens untested-behaviour out of the protected set", () => {
+		expect(
+			report({ rule: "untested-behaviour", source: { check: "static.tests" } }).trustFloor(defaultConfig),
+		).toEqual([]);
+	});
+	it("resolves a protected refuted P1 directly at acknowledge", () => {
+		expect(report({ severity: "P1" }, refuted).resolve(defaultConfig)).toBe("acknowledge");
+	});
+	it("renders a non-speaking member's lowering target and reason", () => {
+		const trust = report();
+		const ordinary = report(
+			{ rule: "unhandled-error", severity: "P3", source: { check: "lens.correctness" } },
+			plausible,
+		);
+		const verdict = new Adjudication({
+			findings: [trust, ordinary],
+			config: { ...defaultConfig, ruleAliases: { "unhandled-error": ["fail-open"] } },
+			manifest: [],
+			checks: [],
+		}).adjudicate();
+		expect(verdict.render()).toContain("Lowered from P2 to P3: The plant needs hostile Vitest configuration.");
+	});
+	it("reads the original report's policy instead of the speaker's", () => {
+		const trust = report();
+		const ordinary = report(
+			{ rule: "unhandled-error", severity: "P3", source: { check: "lens.correctness" } },
+			plausible,
+		);
+		const config = (_path: string, rule?: string) => ({
+			...defaultConfig,
+			ruleAliases: { "unhandled-error": ["fail-open"] },
+			resolution: {
+				...defaultConfig.resolution,
+				P2: rule === "unhandled-error" ? ("advisory" as const) : ("acknowledge" as const),
+			},
+		});
+		const verdict = new Adjudication({ findings: [trust, ordinary], config, manifest: [], checks: [] }).adjudicate();
+		expect(verdict.findings.acknowledge).toHaveLength(1);
+		expect(verdict.findings.acknowledge[0]?.id).toBe(ordinary.id);
+	});
+	it("uses the merged cause for each original counterpart's cap", () => {
+		const trust = report({ cause: "pre-existing" });
+		const ordinary = report(
+			{ rule: "unhandled-error", severity: "P3", source: { check: "lens.correctness" } },
+			plausible,
+		);
+		const verdict = new Adjudication({
+			findings: [trust, ordinary],
+			config: defaultConfig,
+			manifest: [],
+			checks: [],
+		}).adjudicate();
+		expect(verdict.findings.acknowledge).toHaveLength(1);
+	});
+	it("keeps a legacy sighting's lowering source ahead of the merged original severity", () => {
+		const finding = report();
+		const { severity: _, ...claim } = finding.claims()[0]!;
+		const legacy = Finding.from({
+			...finding.toJSON(),
+			properties: { ...finding.properties, originalSeverity: "P1", otherClaims: [claim] },
+		});
+		expect(legacy.trustFloor(defaultConfig)).toMatchObject([{ severity: "P2" }]);
+	});
+	it("counts a protected minimum even when the important-pre-existing floor already met it", () => {
+		const finding = report({ cause: "pre-existing", severity: "P1" }, refuted);
+		const config = { ...defaultConfig, resolution: { ...defaultConfig.resolution, P1: "silent" as const } };
+		const verdict = new Adjudication({ findings: [finding], config, manifest: [], checks: [] }).adjudicate();
+		expect(verdict.counted().map((each) => each.id)).toEqual([finding.id]);
+		expect(finding.lifted(config)).toBe(false);
+		expect(verdict.status).toBe("findings");
+		expect(verdict.preExistingImportant).toMatchObject([{ id: finding.id, originalSeverity: "P1" }]);
+	});
+	it("keeps a display-only important lift when a merged protected minimum is silent", () => {
+		const trust = report({ cause: "pre-existing" }, refuted);
+		const ordinary = report(
+			{ cause: "pre-existing", severity: "P1", rule: "unhandled-error", source: { check: "lens.correctness" } },
+			plausible,
+		);
+		const config = {
+			...defaultConfig,
+			ruleAliases: { "unhandled-error": ["fail-open"] },
+			resolution: { ...defaultConfig.resolution, P1: "silent" as const, P2: "silent" as const },
+		};
+		const verdict = new Adjudication({ findings: [trust, ordinary], config, manifest: [], checks: [] }).adjudicate();
+		expect(verdict.findings.advisory).toHaveLength(1);
+		expect(verdict.findings.advisory[0]!.lifted(config)).toBe(true);
+		expect(verdict.counted()).toEqual([]);
+		expect(verdict.status).toBe("passed");
+	});
+	it.each([lowered, refuted])("names the deciding floor for $verdict in decision details", (judgement) => {
+		const finding = report({}, judgement).resolved(defaultConfig);
+		expect(Finding.parse(finding).properties.decidedBy?.trustFloor).toHaveLength(1);
+		expect(finding.render(new Rendering({ decided: true }))).toContain(
+			`held for a maintainer after a protected ${judgement.verdict === "refuted" ? "refutation" : "lowering"}`,
+		);
+	});
+	it("rejects an empty stored trust-floor diagnostic list", () => {
+		const finding = report().resolved(defaultConfig);
+		expect(() =>
+			Finding.parse({
+				...finding.toJSON(),
+				properties: { ...finding.properties, decidedBy: { ...finding.properties.decidedBy, trustFloor: [] } },
+			}),
+		).toThrow();
+	});
+	it("keeps reported severity in the domain claim and out of verifier transport", () => {
+		const state = VerificationState.from(report());
+		expect(state.claims[0]?.severity).toBe("P2");
+		expect(state.toJSON().claims[0]).not.toHaveProperty("severity");
+	});
+	it("deduplicates diagnostics and sorts them independently of the input", () => {
+		const a = report();
+		const b = report({ rule: "vacuous-test", source: { check: "lens.tests" } }, refuted);
+		const claims = [...a.trustFloor(defaultConfig), ...b.trustFloor(defaultConfig)];
+		const forward = a.floored(a.capped(defaultConfig), [], [...claims, ...claims]);
+		const reverse = a.floored(a.capped(defaultConfig), [], [...claims].reverse());
+		expect(forward.decidedBy.trustFloor).toEqual(reverse.decidedBy.trustFloor);
+		expect(forward.decidedBy.trustFloor).toHaveLength(2);
+		expect(forward.decidedBy.trustFloor?.map((claim) => claim.id)).toEqual([a.id, b.id].sort());
+		expect(Finding.parse(a.decided(forward)).properties.decidedBy).toEqual(forward.decidedBy);
+	});
+	it("shows member judgements and escapes them in terminal output", () => {
+		const reason = "A guard.\u001b[2J\nNew line.";
+		const trust = report({}, { ...refuted, reason });
+		const ordinary = report(
+			{ rule: "unhandled-error", severity: "P3", source: { check: "lens.correctness" } },
+			plausible,
+		);
+		const verdict = new Adjudication({
+			findings: [trust, ordinary],
+			config: { ...defaultConfig, ruleAliases: { "unhandled-error": ["fail-open"] } },
+			manifest: [],
+			checks: [],
+		}).adjudicate();
+		const text = verdict.render(new Rendering());
+		expect(text).toContain(`${trust.id} lens.trust-boundary fail-open: refuted, reported P2, minimum acknowledge.`);
+		expect(text).toContain("Verifier refuted this claim; maintainer review still required.");
+		expect(text).toContain("A guard.\\u001b[2J\n      New line.");
+		expect(
+			JSON.parse(verdict.renderJson()).findings.acknowledge[0].properties.decidedBy.trustFloor[0].verification
+				.reason,
+		).toBe(reason);
+	});
+	it("retains an advisory explanation without demanding acknowledgement", () => {
+		const finding = report().resolved({ resolution: { ...defaultConfig.resolution, P2: "advisory" } });
+		expect(finding.render()).toContain("Trust floor: reported-severity policy requires no acknowledgement.");
+		expect(finding.render()).not.toContain("acknowledge required");
+	});
 });
 
-describe("step 29: approval test gaps use trusted path policy", () => {
-	const gap = { rule: "untested-behaviour", source: { check: "lens.tests" } };
-	const policy = {
-		...defaultConfig,
-		approvalPaths: ["packages/*/src/**", ".github/**"],
-	};
-
-	it("protects test gaps in approval paths", () => {
-		expect(report(gap).resolve(policy)).toBe("acknowledge");
+describe("step 29: protected claims use stored checks and rules at every path", () => {
+	it.each([
+		"untested-behaviour",
+		"vacuous-test",
+		"weakened-assertion",
+		"disabled-test",
+		"fake-answers-unasked",
+		"new-rule",
+	])("protects tests rule %s", (rule) => {
+		for (const judgement of [lowered, refuted]) {
+			const finding = report({ rule, file: "docs/example.ts", source: { check: "lens.tests" } }, judgement);
+			const verdict = new Adjudication({
+				findings: [finding],
+				config: defaultConfig,
+				manifest: [],
+				checks: [],
+			}).adjudicate();
+			expect(verdict.findings.acknowledge.map((each) => each.id)).toEqual([finding.id]);
+		}
 	});
-
-	it("leaves a test gap outside approval paths advisory", () => {
-		expect(report({ ...gap, file: "docs/example.ts", evidence: undefined }).resolve(policy)).toBe("advisory");
-	});
-
-	it("does not enrol a report through an approval path cited as evidence", () => {
-		expect(report({ ...gap, file: "docs/example.ts" }).resolve(policy)).toBe("advisory");
-	});
-
-	it("protects all paths when an older caller supplies no approval list", () => {
-		expect(report({ ...gap, file: "docs/example.ts" }).resolve(defaultConfig)).toBe("acknowledge");
-	});
-
-	it("protects an untested-behaviour report from a repository lens", () => {
-		expect(report({ rule: "untested-behaviour", source: { check: "lens.durability" } }).resolve(policy)).toBe(
+	it("protects untested-behaviour from a repository lens", () => {
+		expect(report({ rule: "untested-behaviour", source: { check: "lens.durability" } }).resolve(defaultConfig)).toBe(
 			"acknowledge",
 		);
 	});
-
-	it("leaves other tests rules advisory after lowering", () => {
-		expect(report({ rule: "vacuous-test", source: { check: "lens.tests" } }).resolve(policy)).toBe("advisory");
+	it.each(["lens.correctness", "static.mutation"])(
+		"does not classify other checks by prose or rule substrings: %s",
+		(check) => {
+			expect(report({ rule: "mutation/untested-behaviour", source: { check } }).resolve(defaultConfig)).toBe(
+				"advisory",
+			);
+		},
+	);
+	it("retains a refuted injection-attempt from another lens", () => {
+		const finding = report(
+			{ rule: "melian/injection-attempt", source: { check: "lens.contracts" }, severity: "P1" },
+			refuted,
+		);
+		const verdict = new Adjudication({
+			findings: [finding],
+			config: defaultConfig,
+			manifest: [],
+			checks: [],
+		}).adjudicate();
+		expect(verdict.findings.acknowledge.map((each) => each.id)).toEqual([finding.id]);
 	});
-
-	it("holds a trust lowering under a table that silences both severities", () => {
+	it("leaves a lowered trust P2 advisory under an advisory P2 table (attack F1)", () => {
+		const config = { resolution: { ...defaultConfig.resolution, P2: "advisory" as const } };
+		expect(Finding.create(input).resolve(config)).toBe("advisory");
+		expect(report().resolve(config)).toBe("advisory");
+	});
+	it("keeps silence when both reported and lowered severity are silent", () => {
 		const resolution: FileResolution = { ...defaultConfig.resolution, P2: "silent", P3: "silent" };
-		expect(report().resolve({ resolution })).toBe("acknowledge");
+		expect(report().resolve({ resolution })).toBe("silent");
+	});
+	it("resolves a refuted P3 test gap as the same claim confirmed would", () => {
+		const gap = { rule: "untested-behaviour", severity: "P3" as const, source: { check: "lens.tests" } };
+		const finding = report(gap, refuted);
+		const verdict = new Adjudication({
+			findings: [finding],
+			config: defaultConfig,
+			manifest: [],
+			checks: [],
+		}).adjudicate();
+		expect(verdict.findings.advisory.map((each) => each.id)).toEqual([finding.id]);
+		expect(finding.resolve(defaultConfig)).toBe(
+			report(gap, { ...plausible, verdict: "confirmed" }).resolve(defaultConfig),
+		);
+	});
+	it("leaves a protected silent refutation hidden", () => {
+		const finding = report({}, refuted);
+		const config = { ...defaultConfig, resolution: { ...defaultConfig.resolution, P2: "silent" as const } };
+		const verdict = new Adjudication({ findings: [finding], config, manifest: [], checks: [] }).adjudicate();
+		expect(verdict.refuted?.map((each) => each.id)).toEqual([finding.id]);
+		expect(verdict.counted()).toEqual([]);
 	});
 });
 

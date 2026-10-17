@@ -236,6 +236,7 @@ export class ReviewComment {
 			...heading,
 			...judged,
 			...moved,
+			...finding.trustFloorNotes().flatMap((line) => [inline(line), ""]),
 			...this.#text(context),
 		].join("\n");
 	}

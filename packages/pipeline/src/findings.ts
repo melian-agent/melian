@@ -76,7 +76,8 @@ type FindingsState = { revisions: string[]; items: Record<string, FindingRecord>
 // records. Version 5 made evidence a list of locations; a sighting stored before reads with its one location as a cause.
 export const FindingsDocument = defineDoc<FindingsState>({
 	kind: "melian.findings",
-	version: 8,
+	version: 9,
+	// Version 9 permits each merged claim to retain its reported severity; older claims stay unchanged.
 	scope: "conversation",
 	history: "rewindable",
 	fork: "asOf",

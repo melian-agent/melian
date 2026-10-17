@@ -167,7 +167,7 @@ export class Defect {
 	 * result, the speaker's on a tie, and the floors then apply to the defect ({@link Finding.floored}). So the answer
 	 * does not depend on which report speaks. With `unverified`, a lens report no verifier judged is capped at
 	 * `advisory`, alone: a static report beside it is not. A lens report whose every claim a verifier refuted is left
-	 * out, unless every report is one.
+	 * out. With only refuted reports and a protected minimum, ordinary resolution starts at silent.
 	 */
 	decision(policyFor: ConfigFor, unverified: boolean): FindingDecision {
 		// A report a verifier refuted asks for nothing beside one that stands.
@@ -179,7 +179,14 @@ export class Defect {
 			.reduce((kept, each) =>
 				resolutionOrder.indexOf(each.resolution) < resolutionOrder.indexOf(kept.resolution) ? each : kept,
 			);
-		return this.speaker.floored(strictest, [this.speaker.ruleId, ...this.members.map((member) => member.ruleId)]);
+		const claims = this.reports.flatMap((report) =>
+			report.trustFloor(policyFor(report.properties.path, report.ruleId), this.speaker),
+		);
+		return this.speaker.floored(
+			standing.length === 0 && claims.length > 0 ? { ...strictest, resolution: "silent" } : strictest,
+			[this.speaker.ruleId, ...this.members.map((member) => member.ruleId)],
+			claims,
+		);
 	}
 
 	/**
@@ -943,7 +950,7 @@ export class Adjudication {
 	 */
 	adjudicate(): Verdict {
 		const defects = this.defects();
-		const refutedIds = new Set(defects.filter((defect) => defect.refuted()).map((defect) => defect.speaker.id));
+		const refutedIds = new Set<string>();
 		// A defect's own reports, without the dismissed ones it only lists beside it.
 		const memberIds = new Map(
 			defects.map((defect) => [
@@ -955,7 +962,10 @@ export class Adjudication {
 		const resolved = defects
 			.map((defect) => {
 				const decision = defect.decision(this.#configFor, this.#verificationRan);
-				if (decision.decidedBy.floor === "pre-existing-important") lifted.add(defect.speaker.id);
+				const protectedMinimum = decision.decidedBy.trustFloor?.some((claim) => claim.minimum !== "silent");
+				if (defect.refuted() && !protectedMinimum) refutedIds.add(defect.speaker.id);
+				if (decision.decidedBy.floor === "pre-existing-important" && !protectedMinimum)
+					lifted.add(defect.speaker.id);
 				return defect.speaker.decided(decision);
 			})
 			.sort((a, b) => a.compareReading(b));

@@ -235,6 +235,7 @@ describe("Adjudication.dedupe", () => {
 		});
 
 		const claimOf = (each: Finding) => ({
+			severity: each.original(),
 			id: each.properties.id,
 			ruleId: each.ruleId,
 			source: each.properties.source,
