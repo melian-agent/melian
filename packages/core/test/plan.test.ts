@@ -112,6 +112,7 @@ describe("ReviewPlan.resolve", () => {
 			status: "routed",
 			wanted: opus,
 			accept: [opus, "nowhere/model", "openai/gpt-5.4-mini", gpt],
+			unknown: [{ model: "nowhere/model", by: "melian.yaml", provider: "nowhere" }],
 			models: [
 				{ model: opus, credential: "ANTHROPIC_API_KEY", family: "claude" },
 				{ model: "openai/gpt-5.4-mini", credential: "work-openai in melian.secrets.yaml", family: "gpt" },
@@ -121,6 +122,7 @@ describe("ReviewPlan.resolve", () => {
 		expect(resolved.routes()).toEqual({ heavy: { model: opus, fallbacks: ["openai/gpt-5.4-mini", gpt] } });
 		expect(resolved.lineage("heavy")).toBeUndefined();
 		expect(resolved.warnings()).toEqual([
+			"heavy: nowhere/model, set by melian.yaml, is not a model the catalogue holds; it knows no provider nowhere",
 			fallbackWarning,
 			`${opus} could be judged by ${opus} (same family) if openai/gpt-5.4-mini fails`,
 			`openai/gpt-5.4-mini could be judged by openai/gpt-5.4-mini and ${gpt} (same family) if ${opus} fails and ${opus} fails`,
@@ -1036,5 +1038,69 @@ describe("verifier routing", () => {
 		);
 		expect(resolved.refusal("verifier")).toContain("unavailable is fail");
 		expect(resolved.verifierRoute(gpt)).toEqual([]);
+	});
+});
+
+describe("a route naming a model the catalogue does not hold", () => {
+	const credentials = { anthropic: "ANTHROPIC_API_KEY", openai: "OPENAI_API_KEY" };
+
+	it("warns, naming the file and the model, for a misspelt model ID in melian.yaml", () => {
+		const resolved = plan({ heavy: { model: "anthropic/claude-opus-5-55", fallbacks: [gpt] } }, credentials);
+		expect(resolved.tier("heavy")).toMatchObject({ status: "routed", models: [{ model: gpt }] });
+		const text =
+			"heavy: anthropic/claude-opus-5-55, set by melian.yaml, is not a model the catalogue holds; a newer pi-ai may hold it";
+		expect(resolved.warnings()).toContain(text);
+		expect(resolved.lines()).toContainEqual({ state: "warn", text });
+		expect(resolved.summary()).toContain(`Plan: ${text}\n`);
+	});
+
+	it("also names the provider when the catalogue holds none of that name", () => {
+		const old = "azure-openai-responses/gpt-5.5";
+		const resolved = plan({ heavy: { model: old, fallbacks: [opus] } }, credentials);
+		expect(resolved.warnings()).toContain(
+			`heavy: ${old}, set by melian.yaml, is not a model the catalogue holds; it knows no provider azure-openai-responses`,
+		);
+	});
+
+	it("warns for an unknown model inside accept", () => {
+		const resolved = plan({ heavy: { model: opus, accept: [opus, "openai/gpt-9"] } }, credentials);
+		expect(resolved.warnings()).toContain(
+			"heavy: openai/gpt-9, set by melian.yaml, is not a model the catalogue holds; a newer pi-ai may hold it",
+		);
+	});
+
+	it("names the preference file that set an unknown fallback, and says it once", () => {
+		const resolved = plan({ heavy: { model: opus } }, credentials, {
+			preferences: { heavy: { fallbacks: ["openai/gpt-9"] } },
+		});
+		const hits = resolved.warnings().filter((line) => line.includes("openai/gpt-9"));
+		expect(hits).toEqual([expect.stringContaining("set by melian.local.yaml")]);
+	});
+
+	it("names --model for an unknown model the flag routes a lens tier to", () => {
+		const resolved = plan({ heavy: { model: opus } }, credentials, { model: "anthropic/typo" });
+		expect(resolved.warnings()).toContain(
+			"medium: anthropic/typo, set by --model, is not a model the catalogue holds; a newer pi-ai may hold it",
+		);
+	});
+
+	it("escapes the model name", () => {
+		const resolved = plan({ heavy: { model: opus, fallbacks: ["openai/x\u001b[31my"] } }, credentials);
+		const [line] = resolved.warnings().filter((each) => each.includes("openai/x"));
+		expect(line).not.toContain("\u001b");
+	});
+
+	it("says nothing when every route model is in the catalogue", () => {
+		const resolved = plan({ heavy: { model: opus, fallbacks: [gpt] } }, credentials);
+		expect(resolved.warnings().filter((line) => line.includes("catalogue"))).toEqual([]);
+	});
+
+	it("reads a plan stored before the plan kept them as having none", () => {
+		const stored = plan({ heavy: { model: opus } }, credentials).toJSON();
+		expect(
+			ReviewPlan.from(stored)
+				.warnings()
+				.filter((line) => line.includes("catalogue")),
+		).toEqual([]);
 	});
 });
