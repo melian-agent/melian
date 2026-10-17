@@ -92,7 +92,7 @@ function publicationRecord(value: unknown, kind: "review" | "comment"): boolean 
 		(author === null ||
 			(typeof author === "object" && typeof author.login === "string" && author.login.length > 0)) &&
 		(kind === "review" ||
-			(publicationId(record.pull_request_review_id) &&
+			((record.pull_request_review_id === null || publicationId(record.pull_request_review_id)) &&
 				(record.in_reply_to_id === undefined || publicationId(record.in_reply_to_id))))
 	);
 }
