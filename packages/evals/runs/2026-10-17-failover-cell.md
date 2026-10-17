@@ -1,10 +1,10 @@
 # Live golden run, the Codex-out failover cell, 2026-10-17
 
-When Codex is out, which reviews run? Since [pull request #133](https://github.com/melian-agent/melian/pull/133), a provider usage limit fails over to each tier's next model. On the committed routes that puts an Opus finder on the heavy tier. Terra is a Codex model, so the verifier fails over too, to Sonnet. [The run on main after step 27](2026-10-17-main-after-step-27.md) measured an Opus finder with a Terra verifier, which is not that path. This run measures the path itself: an Opus finder with a Sonnet verifier, three passes each of the design, durability and correctness goldens. Each pass is scored as a corpus. A lens is judged by its worst pass, as [the evals guideline](../../../docs/guidelines/evals.md) requires: worst precision at least 0.8, worst recall at least 0.6.
+When Codex is out, which pairing reviews a change? Since [pull request #133](https://github.com/melian-agent/melian/pull/133), a provider usage limit fails over to each tier's next model. The committed routes in `melian.yaml` then put an Opus finder on the heavy tier, after Sol, and a Sonnet finder on the medium tier, after Terra. The verifier route is Sonnet, then Opus, whether Codex is up or not; Terra is only in its `accept` list. [The run on main after step 27](2026-10-17-main-after-step-27.md) used a Terra verifier, which the committed routes never pick. This run measures the heavy-tier pairing an outage reaches: an Opus finder with a Sonnet verifier, three passes each of the design, durability and correctness goldens. Each pass is scored as a corpus. A lens is judged by its worst pass, as [the evals guideline](../../../docs/guidelines/evals.md) requires: worst precision at least 0.8, worst recall at least 0.6.
 
 ## Cell
 
-The cell ran at `16bc5737`, the head of `main` the earlier run used. Each invocation is the command below.
+The run pins both models directly, so it measures the pairing's quality, not that failover reaches it; [pull request #133](https://github.com/melian-agent/melian/pull/133)'s tests cover the failover itself. The cell ran at `16bc5737`, the head of `main` the earlier run used. Each invocation is the command below.
 
 ```
 MELIAN_EVAL_LIVE=1 MELIAN_EVAL_MODEL=anthropic/claude-opus-5-5 MELIAN_EVAL_VERIFIER_MODEL=anthropic/claude-sonnet-5-5 MELIAN_EVAL_GOLDEN=<golden> \
@@ -25,7 +25,7 @@ Each cell reads precision / recall.
 
 ## What the evidence shows
 
-On the failover path, correctness meets the bar in every pass. Design and durability miss it, at worst precision 0.73 and 0.75. Recall clears the bar on all three lenses.
+With this pairing, correctness meets the bar in every pass. Design and durability miss it, at worst precision 0.73 and 0.75. Recall clears the bar on all three lenses.
 
 The Opus finder with a Terra verifier read much the same: design worst 0.70, durability worst 0.73, correctness worst 0.86. So the verifier changes little here, as [the cross-cells run](2026-10-16-finder-verifier-cross-cells.md) found before step 27. The finder sets the precision.
 
