@@ -58,6 +58,7 @@ Problem: a loader that reads the checkout reviews a pull request under the pull 
 Both sources are classes implementing one interface, `SourceReader`, with `readText`, `readBytes`, `list`, `exists`, `isIgnored`, and `findPaths` over repository-relative paths. `openSource` returns a `WorktreeSource` over the checkout, or a `RevisionSource` from `RevisionSource.open`, which resolves the commit once and refuses a directory below the repository root. They share these rules:
 
 - Never follow a symlink. `readText` throws `symlink` for one; a path beneath a symlinked directory does not exist. The worktree source checks each component with `lstat` and opens with `O_NOFOLLOW`; the revision source reads the mode from `ls-tree`. `loadConfig` turns a symlinked `melian.yaml` into a `ConfigError`. `loadStandards` skips a symlinked standards file, so a `CLAUDE.md` linked to `AGENTS.md` costs nothing; the target is read under its own name if it is a standards file.
+- A worktree read compares every component with its actual directory entry name before opening it. Case and Unicode aliases read as absent, for lenses and standards too. Never derive filesystem folding in JavaScript. Revision reads already use exact Git names. Policy classification still ignores case, so a refused policy spelling retains its notice. [The exact-spelling decision](../decisions/2026-10-18-worktree-exact-spelling.md) records the rule.
 - Only absence is silent. A missing file is `undefined`; any other failure is `unreadable`, carried into `ConfigError` or `StandardsError` with the path.
 - Pass repository-relative names to `git check-ignore` with a `./` prefix. It rejects both filename pathspec magic and `--literal-pathspecs`'s literal magic.
 - Keep the clone's local exclusions, including `core.excludesFile`, when checking imports from either source. The maintainer controls them; selected-source `.gitignore` files supply the repository's rules.
@@ -571,7 +572,7 @@ Every such notice has an acknowledgement floor. Its explanation says when it ove
 `isPolicyFile` recognises `melian.yaml`, `AGENTS.md` and `CLAUDE.md` in any case, as local and secrets files already were.
 The forced rule, judging-policy lookup and floor also recognise case variants of `melian.yaml`.
 Lens classification ignores case in `.melian`, `.agents`, `lenses` and `LENS.md`, so aliases retain the forced notice and acknowledgement floor.
-The lens scope scan recognises those directory aliases without rejecting them or changing the readers' lookup rules.
+The lens scope scan recognises those directory aliases, but the worktree reader refuses a mismatched component.
 It asks the source whether the canonical lens file exists before marking a nearer scope; an unresolved alias must not hide a farther lens.
 Symlinked lens entries still reach the loader's refusal.
 Policy membership beneath `.melian`, analyser names and package-manifest checks also ignore case.

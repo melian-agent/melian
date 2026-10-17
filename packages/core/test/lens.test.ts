@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, symlinkSync } from "node:fs";
+import { mkdirSync, readFileSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -473,25 +473,18 @@ describe("scrutiny levels", () => {
 	});
 });
 
-it.for([".Agents", ".Melian"])(
-	"loads case-variant %s lens paths on a case-insensitive filesystem",
-	async (owner, context) => {
-		writeFiles(repo, {
-			[`services/pay/${owner}/Lenses/correctness/lens.md`]: lensFile([
-				"name: correctness",
-				"extends: correctness",
-				"paths: [nothing/**]",
-			]),
-		});
-		if (!existsSync(join(repo, "services/pay", owner.toLowerCase(), "lenses/correctness/LENS.md"))) context.skip();
-		const lenses = await Lens.load(repo, { kind: "worktree" }, ["services/pay/api.ts"]);
-		expect(named(lenses, "correctness")).toHaveLength(1);
-		expect(named(lenses, "correctness")[0]).toMatchObject({
-			scope: "services/pay",
-			paths: ["services/pay/nothing/**"],
-		});
-	},
-);
+it.for([".Agents", ".Melian"])("refuses case-variant %s lens paths", async (owner) => {
+	writeFiles(repo, {
+		[`services/pay/${owner}/Lenses/correctness/lens.md`]: lensFile([
+			"name: correctness",
+			"extends: correctness",
+			"paths: [nothing/**]",
+		]),
+	});
+	const lenses = await Lens.load(repo, { kind: "worktree" }, ["services/pay/api.ts"]);
+	expect(named(lenses, "correctness")).toHaveLength(1);
+	expect(named(lenses, "correctness")[0]).toMatchObject({ scope: "", paths: ["**"] });
+});
 
 it.each([
 	".Agents/Lenses/correctness/LENS.md",

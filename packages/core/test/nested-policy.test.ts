@@ -1,5 +1,3 @@
-import { existsSync } from "node:fs";
-import { join } from "node:path";
 import { Changeset, ConfigError, configLookup, Lens, snippetHash } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { evaluateGuardrails } from "../src/guardrails.ts";
@@ -41,8 +39,8 @@ async function review(baseFiles: Record<string, string>, headFiles: Record<strin
 
 describe("nested policy blob changes", () => {
 	it.for([".Agents", ".Melian"])(
-		"requires acknowledgement for a loadable %s lens alias beneath a disabled parent",
-		async (owner, context) => {
+		"requires acknowledgement for a refused %s lens alias beneath a disabled parent",
+		async (owner) => {
 			const path = `services/pay/${owner}/Lenses/correctness/lens.md`;
 			const companion = `services/pay/${owner === ".Agents" ? ".melian" : ".agents"}/lenses/marker/LENS.md`;
 			const { findings } = await review(
@@ -53,9 +51,8 @@ describe("nested policy blob changes", () => {
 				},
 				{ [path]: lens("nothing/**") },
 			);
-			if (!existsSync(join(repo, "services/pay", owner.toLowerCase(), "lenses/correctness/LENS.md"))) context.skip();
 			const loaded = await Lens.load(repo, { kind: "worktree" }, ["services/pay/api.ts"]);
-			expect(loaded.find((entry) => entry.name === "correctness")?.paths).toEqual(["services/pay/nothing/**"]);
+			expect(loaded.find((entry) => entry.name === "correctness")?.paths).toEqual(["**"]);
 			expect(findings.map((finding) => finding.properties.path)).toEqual([path]);
 			expect(findings[0]!.resolve({ resolution: { P2: "silent" } })).toBe("acknowledge");
 		},

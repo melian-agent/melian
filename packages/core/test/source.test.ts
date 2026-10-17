@@ -134,6 +134,23 @@ describe("revision source reader", () => {
 });
 
 describe("worktree source reader", () => {
+	it.each(["ENOENT", "ENOTDIR"])("treats a directory read's %s as absence", async (code) => {
+		const reader = await openSource(repo, { kind: "worktree" });
+		vi.spyOn(fs, "readdir").mockRejectedValueOnce(Object.assign(new Error("gone"), { code }));
+		expect(await reader.exists("docs/rules.md")).toBeUndefined();
+	});
+
+	it("reports a directory-name lookup failure instead of dropping the path", async () => {
+		const reader = await openSource(repo, { kind: "worktree" });
+		const failure = Object.assign(new Error("directory read failed"), { code: "EIO" });
+		vi.spyOn(fs, "readdir").mockRejectedValueOnce(failure);
+		expect(await rejection(reader.exists("docs/rules.md"), SourceError)).toMatchObject({
+			code: "unreadable",
+			path: "docs",
+			cause: failure,
+		});
+	});
+
 	it("refuses a regular file as the repository root", async () => {
 		const root = join(repo, "rules.md");
 		expect(await rejection(openSource(root, { kind: "worktree" }), SourceError)).toMatchObject({

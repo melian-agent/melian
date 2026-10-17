@@ -120,12 +120,16 @@ class WorktreeSource implements SourceReader {
 		return result.code === 0;
 	}
 
-	// lstat each component, so that a symlinked directory partway down hides what lies beneath it.
+	// Compare directory names exactly before lstat: the filesystem may open a Unicode or case alias.
 	async exists(path: string): Promise<EntryKind | undefined> {
 		if (path === "") return "directory";
 		const parts = path.split("/");
 		for (let i = 1; i <= parts.length; i++) {
 			const prefix = parts.slice(0, i).join("/");
+			const names = await readdir(join(this.root, ...parts.slice(0, i - 1))).catch((error: NodeJS.ErrnoException) =>
+				isAbsence(error) ? undefined : unreadable(prefix)(error),
+			);
+			if (!names?.includes(parts[i - 1]!)) return undefined;
 			const stats = await lstat(join(this.root, prefix)).catch((error: NodeJS.ErrnoException) =>
 				isAbsence(error) ? undefined : unreadable(prefix)(error),
 			);
