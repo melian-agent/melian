@@ -1,8 +1,8 @@
 import { visibleText } from "@melian-agent/core";
-import type { StageTelemetry } from "@melian-agent/pipeline";
+import type { ReviewModels, StageTelemetry } from "@melian-agent/pipeline";
 import { type Golden, type GoldenRun, type GoldenScore, scoreCorpus, scoreGolden } from "./goldens.ts";
 import { GoldenRunError } from "./run-error.ts";
-import type { TriageChosen, TriageGolden } from "./triage.ts";
+import { runTriageGolden, type TriageChosen, type TriageGolden, TriageResults } from "./triage.ts";
 import { scoreVerifierGolden, type VerifierGolden, type VerifierRun } from "./verifier.ts";
 
 type Print = (line: string) => void;
@@ -116,4 +116,29 @@ export async function measureTriageGoldens(
 		chosen[golden.name] = result;
 	}
 	return { chosen, telemetry };
+}
+
+export async function reportTriageGoldens(
+	goldens: readonly TriageGolden[],
+	models: ReviewModels,
+	model: string,
+	passes: number,
+	fingerprint: string,
+	print: Print,
+	printError: Print,
+): Promise<TriageResults> {
+	const { chosen, telemetry } = await measureTriageGoldens(
+		goldens,
+		(golden, record) => runTriageGolden(golden, { kind: "live", models, model }, passes, record),
+		printError,
+	);
+	const results = TriageResults.measure(goldens, chosen, { model, fingerprint, telemetry });
+	print(
+		results
+			.render()
+			.split("\n")
+			.map((line) => visibleText(line))
+			.join("\n"),
+	);
+	return results;
 }
