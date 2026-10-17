@@ -31,6 +31,36 @@ const input: FindingInput = {
 	source: { check: "lens.security", version: "1" },
 };
 
+describe("unresolved acknowledge status", () => {
+	it("explains the failed status and dismissal in the review body without calling it blocking", () => {
+		const verdict = new Adjudication({
+			findings: [Finding.create({ ...input, severity: "P2" })],
+			manifest: [],
+			checks: [],
+			config: defaultConfig,
+		}).adjudicate();
+		expect(verdict.findings.acknowledge).toHaveLength(1);
+		const body = renderReviewBody(
+			{
+				pullRequest: 7,
+				revision,
+				base,
+				fingerprint: verdict.fingerprint(),
+				round: 1,
+				verdict,
+				findings: [],
+				stillOpen: 0,
+				resolved: [],
+				secret,
+			},
+			links,
+		);
+		expect(body).toContain("**findings**.");
+		expect(body).toContain("melian/review: failure (1 finding, 0 blocking, 1 unresolved acknowledgement).");
+		expect(body).toContain("Dismiss unresolved acknowledgements with a reason, then publish.");
+	});
+});
+
 describe("links", () => {
 	it("percent-encodes every character of a path outside the unreserved set, so a link cannot end early", () => {
 		const url = blobUrl(links, revision, "src/a)b (c)/it's*!.ts", 3, 5);
