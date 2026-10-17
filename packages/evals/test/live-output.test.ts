@@ -45,15 +45,14 @@ describe("shownOutput", () => {
 
 describe("reportGoldens", { timeout: 60_000 }, () => {
 	const goldens = named(loadGoldens(), "correctness-null-deref", "pre-existing-beside-change", "clean-rename");
-	const scripted = (golden: (typeof goldens)[number]) => runGolden(golden, { kind: "scripted" });
+	const scripted = async (golden: (typeof goldens)[number]) => ({
+		...(await runGolden(golden, { kind: "scripted" })),
+		telemetry: golden.name === "clean-rename" ? twicePaid : paid,
+	});
 	const scores = [
-		expect.stringMatching(
-			/^correctness-null-deref: precision 1\.00, recall 1\.00 \(1 reported, 1 expected\), \d+ tokens, \$0$/,
-		),
+		"correctness-null-deref: precision 1.00, recall 1.00 (1 reported, 1 expected), 14 tokens, $1",
 		"pre-existing-beside-change: skipped, live: false",
-		expect.stringMatching(
-			/^clean-rename: precision 1\.00, recall 1\.00 \(0 reported, 0 expected\), \d+ tokens, \$0$/,
-		),
+		"clean-rename: precision 1.00, recall 1.00 (0 reported, 0 expected), 28 tokens, $2",
 	];
 	const corpus = "corpus: precision 1.00, recall 1.00";
 
@@ -117,17 +116,20 @@ describe("reportVerifierGoldens", { timeout: 60_000 }, () => {
 		...design!,
 		script: { ...design!.script, expectInstructions: [...design!.script.expectInstructions!, missing] },
 	};
-	const scripted = (golden: VerifierGolden) => runVerifierGolden(golden, { kind: "scripted" });
+	const scripted = async (golden: VerifierGolden) => ({
+		...(await runVerifierGolden(golden, { kind: "scripted" })),
+		telemetry: golden.name === decoy!.name ? paid : twicePaid,
+	});
 
 	it("prints each verdict, and an unjudged golden with the reason its verifier check recorded", async () => {
 		const lines: string[] = [];
 		const report = await reportVerifierGoldens([decoy!, unjudged], scripted, {}, (line) => lines.push(line));
 		expect(lines).toHaveLength(3);
-		expect(lines[0]).toMatch(/^guarded-null-dereference: refuted, passed \(decoy\), \d+ tokens, \$0$/);
+		expect(lines[0]).toBe("guarded-null-dereference: refuted, passed (decoy), 14 tokens, $1");
 		expect(lines[2]).toBe("verifier corpus: 1/2 passed");
 		expect(report.status).toBe(1);
 		expect(lines[1]).toMatch(/^design-supersedes-its-own-decision: unjudged \(.*Missing verifier instruction: This/);
-		expect(lines[1]).toMatch(/\), failed \(design\), \d+ tokens, \$0$/);
+		expect(lines[1]).toMatch(/\), failed \(design\), 28 tokens, \$2$/);
 		expect(report.scores.map((score) => score.passed)).toEqual([true, false]);
 		expect(report.failed).toEqual([]);
 	});
@@ -152,7 +154,7 @@ describe("reportVerifierGoldens", { timeout: 60_000 }, () => {
 		);
 		expect(lines).toEqual([
 			"design-supersedes-its-own-decision: no score (no route)",
-			expect.stringMatching(/^guarded-null-dereference: refuted, passed \(decoy\), \d+ tokens, \$0$/),
+			"guarded-null-dereference: refuted, passed (decoy), 14 tokens, $1",
 			"verifier corpus: 1/1 passed",
 		]);
 		expect(report.status).toBe(1);
@@ -183,6 +185,8 @@ const paid = new StageTelemetry("base..head", [
 		}).toJSON(),
 	},
 ]);
+
+const twicePaid = new StageTelemetry("base..head", [paid.stages[0]!, { ...paid.stages[0]!, id: "second" }]);
 
 it("keeps each triage pass's usage with its choices and prints spend for a failed pass", async () => {
 	const golden = loadTriageGoldens()[0]!;
