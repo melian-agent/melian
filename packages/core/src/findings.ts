@@ -411,6 +411,7 @@ export type FindingStatus = Static<typeof findingStatusSchema>;
  * changes, not when the hunk moves. An `affected` finding's trigger names the first hunk that proves its cause, by file
  * then index, with that hunk's added lines as its `snippet`, and has no `hash`: its `proof` lists every proving hunk
  * as a {@link ProvingHunk}, and its dismissal reopens only when one of those hunks changes.
+ * A policy notice instead hashes `blob:` followed by Git's head blob ID, with index zero, so any blob change reopens it.
  */
 export type FindingTrigger = Static<typeof findingTriggerSchema>;
 

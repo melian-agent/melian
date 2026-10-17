@@ -1,5 +1,9 @@
 Verdict: findings
 
+melian/review: failure (1 finding, 0 blocking, 1 unresolved acknowledgement).
+
+Dismiss unresolved acknowledgements with a reason, then publish. Use melian dismiss "#N" <id> --reason <text> for the pull request.
+
 Acknowledge: 1 finding
 
 services/melian.yaml
