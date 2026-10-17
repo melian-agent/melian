@@ -69,10 +69,11 @@ const causeOf = (c: (typeof causes)[number]) => (c === "unproven" ? "affected" :
 const evidenceOf = (c: (typeof causes)[number]) => (c === "unproven" ? { evidence: unprovenEvidence } : {});
 
 describe("step 29: confirmed outcomes bound protected judgements", () => {
-	it("reuses confirmed resolution and count behaviour across the review grid", () => {
-		let cases = 0;
-		const failures: string[] = [];
-		for (const [kind, over] of protectedKinds)
+	it.each(protectedKinds)(
+		"reuses confirmed resolution and count behaviour across the review grid (%s)",
+		(kind, over) => {
+			let cases = 0;
+			const failures: string[] = [];
 			for (const [tname, table] of tables)
 				for (const ceiling of ceilings)
 					for (const cause of causes)
@@ -128,96 +129,96 @@ describe("step 29: confirmed outcomes bound protected judgements", () => {
 									failures.push(`${id}: count differs from confirmed outcome`);
 							}
 						}
-		expect(cases).toBe(2304);
-		expect(failures).toEqual([]);
-	});
-	it("reuses the confirmed claim at the merged cause in both report orders", () => {
+			expect(cases).toBe(768);
+			expect(failures).toEqual([]);
+		},
+	);
+	it.each(tables)("reuses the confirmed claim at the merged cause in both report orders (%s)", (tname, table) => {
 		let cases = 0;
 		const failures: string[] = [];
-		for (const [tname, table] of tables)
-			for (const ceiling of ceilings)
-				for (const tcause of causes)
-					for (const ocause of causes)
-						for (const tsev of ["P0", "P1", "P2", "P3"] as const)
-							for (const osev of ["P1", "P3"] as const) {
-								const config = {
-									...defaultConfig,
-									ruleAliases: { "unhandled-error": ["fail-open"] },
-									resolution: {
-										...defaultConfig.resolution,
-										...table,
-										...(ceiling === undefined ? {} : { checks: { "lens.trust-boundary": { ceiling } } }),
-									},
-								};
-								const trust = Finding.create({
-									...base,
-									cause: causeOf(tcause),
-									severity: tsev,
-									...evidenceOf(tcause),
-								});
-								const other = Finding.create({
-									...base,
-									rule: "unhandled-error",
-									source: { check: "lens.correctness", version: "1" },
-									cause: causeOf(ocause),
-									severity: osev,
-									...evidenceOf(ocause),
-								}).verifiedAs(judge("confirmed"));
-								const variants: [string, Finding][] = [["refuted", trust.verifiedAs(judge("refuted"))]];
-								const to = next[tsev];
-								if (to !== undefined)
-									variants.push([
-										"lowered",
-										trust.verifiedAs(judge("plausible", { from: tsev, to, reason: "Narrow." })),
-									]);
-								for (const [label, judged] of variants) {
-									cases++;
-									for (const reports of [
-										[judged, other],
-										[other, judged],
-									]) {
-										const adjudication = new Adjudication({
-											findings: reports,
-											config,
-											manifest: [],
-											checks: [],
-										});
-										const defect = adjudication.defects()[0]!;
-										const confirmed = Finding.from({
-											...trust.toJSON(),
-											properties: {
-												...trust.properties,
-												cause: defect.speaker.properties.cause,
-												evidence: defect.speaker.properties.evidence,
-											},
-										}).verifiedAs(judge("confirmed"));
-										const ordinary = confirmed.decision(config);
-										const minimum = judged.trustFloor(config, defect.speaker)[0]!;
-										const id = `${tname}|${ceiling}|${tcause}/${tsev}|${ocause}/${osev}|${label}`;
-										if (
-											minimum.minimum !== lesser("acknowledge", ordinary.resolution) ||
-											Boolean(minimum.lifted) !== confirmed.lifted(config)
-										)
-											failures.push(`${id}: minimum differs from confirmed outcome`);
-										const baseline = new Adjudication({
-											findings: [trust.verifiedAs(judge("confirmed")), other],
-											config,
-											manifest: [],
-											checks: [],
-										}).adjudicate();
-										const got = adjudication.adjudicate();
-										if (
-											baseline.status === "passed" &&
-											(got.status !== "passed" ||
-												got.counted().length !== baseline.counted().length ||
-												got.reviewStatus().state !== baseline.reviewStatus().state) &&
-											confirmed.lifted(config)
-										)
-											failures.push(`${id}: display-only claim now counts`);
-									}
+		for (const ceiling of ceilings)
+			for (const tcause of causes)
+				for (const ocause of causes)
+					for (const tsev of ["P0", "P1", "P2", "P3"] as const)
+						for (const osev of ["P1", "P3"] as const) {
+							const config = {
+								...defaultConfig,
+								ruleAliases: { "unhandled-error": ["fail-open"] },
+								resolution: {
+									...defaultConfig.resolution,
+									...table,
+									...(ceiling === undefined ? {} : { checks: { "lens.trust-boundary": { ceiling } } }),
+								},
+							};
+							const trust = Finding.create({
+								...base,
+								cause: causeOf(tcause),
+								severity: tsev,
+								...evidenceOf(tcause),
+							});
+							const other = Finding.create({
+								...base,
+								rule: "unhandled-error",
+								source: { check: "lens.correctness", version: "1" },
+								cause: causeOf(ocause),
+								severity: osev,
+								...evidenceOf(ocause),
+							}).verifiedAs(judge("confirmed"));
+							const variants: [string, Finding][] = [["refuted", trust.verifiedAs(judge("refuted"))]];
+							const to = next[tsev];
+							if (to !== undefined)
+								variants.push([
+									"lowered",
+									trust.verifiedAs(judge("plausible", { from: tsev, to, reason: "Narrow." })),
+								]);
+							for (const [label, judged] of variants) {
+								cases++;
+								for (const reports of [
+									[judged, other],
+									[other, judged],
+								]) {
+									const adjudication = new Adjudication({
+										findings: reports,
+										config,
+										manifest: [],
+										checks: [],
+									});
+									const defect = adjudication.defects()[0]!;
+									const confirmed = Finding.from({
+										...trust.toJSON(),
+										properties: {
+											...trust.properties,
+											cause: defect.speaker.properties.cause,
+											evidence: defect.speaker.properties.evidence,
+										},
+									}).verifiedAs(judge("confirmed"));
+									const ordinary = confirmed.decision(config);
+									const minimum = judged.trustFloor(config, defect.speaker)[0]!;
+									const id = `${tname}|${ceiling}|${tcause}/${tsev}|${ocause}/${osev}|${label}`;
+									if (
+										minimum.minimum !== lesser("acknowledge", ordinary.resolution) ||
+										Boolean(minimum.lifted) !== confirmed.lifted(config)
+									)
+										failures.push(`${id}: minimum differs from confirmed outcome`);
+									const baseline = new Adjudication({
+										findings: [trust.verifiedAs(judge("confirmed")), other],
+										config,
+										manifest: [],
+										checks: [],
+									}).adjudicate();
+									const got = adjudication.adjudicate();
+									if (
+										baseline.status === "passed" &&
+										(got.status !== "passed" ||
+											got.counted().length !== baseline.counted().length ||
+											got.reviewStatus().state !== baseline.reviewStatus().state) &&
+										confirmed.lifted(config)
+									)
+										failures.push(`${id}: display-only claim now counts`);
 								}
 							}
-		expect(cases).toBe(6144);
+						}
+		expect(cases).toBe(768);
 		expect(failures).toEqual([]);
 	});
 });

@@ -508,16 +508,32 @@ describe("step 29: lowered and refuted trust objections", () => {
 	it("counts an unprotected lowered sighting under its own current policy", () => {
 		const judgement = { ...lowered, lowered: { from: "P1" as const, to: "P2" as const, reason: "Narrow." } };
 		const raw = report({ severity: "P1", cause: "pre-existing" }, judgement);
-		const ordinary = report({ severity: "P1", cause: "pre-existing", source: { check: "lens.correctness" } }, judgement);
-		const merged = Finding.from({ ...raw.toJSON(), properties: { ...raw.properties, ...raw.mergeClaims([raw, ordinary]) } });
+		const ordinary = report(
+			{ severity: "P1", cause: "pre-existing", source: { check: "lens.correctness" } },
+			judgement,
+		);
+		const merged = Finding.from({
+			...raw.toJSON(),
+			properties: { ...raw.properties, ...raw.mergeClaims([raw, ordinary]) },
+		});
 		const config = { ...defaultConfig, resolution: { ...defaultConfig.resolution, P1: "silent" as const } };
 		expect(merged.lifted(config)).toBe(false);
 	});
 	it("reads an unjudged sighting without a historical severity", () => {
-		const raw = report({ severity: "P1", cause: "pre-existing", source: { check: "lens.trust-boundary", version: "1@quick" } }, { ...lowered, lowered: { from: "P1", to: "P2", reason: "Narrow." } });
-		const { severity: _, ...claim } = Finding.create({ ...input, severity: "P3", cause: "pre-existing" }).claims()[0]!;
+		const raw = report(
+			{ severity: "P1", cause: "pre-existing", source: { check: "lens.trust-boundary", version: "1@quick" } },
+			{ ...lowered, lowered: { from: "P1", to: "P2", reason: "Narrow." } },
+		);
+		const { severity: _, ...claim } = Finding.create({
+			...input,
+			severity: "P3",
+			cause: "pre-existing",
+		}).claims()[0]!;
 		const merged = Finding.from({ ...raw.toJSON(), properties: { ...raw.properties, otherClaims: [claim] } });
-		const config = { ...defaultConfig, resolution: { ...defaultConfig.resolution, P1: "silent" as const, P3: "silent" as const } };
+		const config = {
+			...defaultConfig,
+			resolution: { ...defaultConfig.resolution, P1: "silent" as const, P3: "silent" as const },
+		};
 		expect(merged.lifted(config)).toBe(true);
 	});
 	it("keeps a display-only lowering beside an unprotected refuted sighting", () => {

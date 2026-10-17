@@ -1023,7 +1023,7 @@ export class Adjudication {
 				(finding): ImportantFinding => ({
 					id: finding.id,
 					state: memberIds.get(finding.id)!.some((id) => this.#seenBefore.has(id)) ? "carried" : "new",
-					originalSeverity: (finding.properties.decidedBy?.trustFloor ?? [])
+					originalSeverity: (finding.properties.decidedBy!.trustFloor ?? [])
 						.map((claim) => claim.severity)
 						.reduce(stricter, finding.original()),
 					...(lifted.has(finding.id) ? { lifted: true as const } : {}),
