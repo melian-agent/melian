@@ -32,6 +32,71 @@ const input: FindingInput = {
 };
 
 describe("unresolved acknowledge status", () => {
+	it("names legacy dismissals that have no stored reason", () => {
+		const dismissed = Finding.create({ ...input, status: "dismissed" });
+		const verdict = new Adjudication({
+			findings: [dismissed],
+			manifest: [],
+			checks: [],
+			config: defaultConfig,
+		}).adjudicate();
+		const body = renderReviewBody(
+			{
+				pullRequest: 7,
+				revision,
+				base,
+				fingerprint: verdict.fingerprint(),
+				round: 1,
+				verdict,
+				findings: [],
+				stillOpen: 0,
+				resolved: [],
+				secret,
+			},
+			links,
+		);
+		expect(body).toContain(`- \`${dismissed.id}\` \`no-eval\` in \`src/run.ts\`: No reason stored.`);
+	});
+	it("names carried dismissals and their reasons in the review body without exposing git identities", () => {
+		const created = Finding.create({ ...input, status: "dismissed" });
+		const dismissed = Finding.from({
+			...created.toJSON(),
+			properties: {
+				...created.properties,
+				dismissal: {
+					by: "Maintainer <private@example.invalid>",
+					at: "2026-10-17T00:00:00Z",
+					reason: "Reviewed @stranger [link](bad).",
+				},
+			},
+		});
+		const verdict = new Adjudication({
+			findings: [dismissed],
+			manifest: [],
+			checks: [],
+			config: defaultConfig,
+		}).adjudicate();
+		const body = renderReviewBody(
+			{
+				pullRequest: 7,
+				revision,
+				base,
+				fingerprint: verdict.fingerprint(),
+				round: 1,
+				verdict,
+				findings: [],
+				stillOpen: 0,
+				resolved: [],
+				secret,
+			},
+			links,
+		);
+		expect(body).toContain("Dismissals attested by this publication:");
+		expect(body).toContain(
+			`- \`${dismissed.id}\` \`no-eval\` in \`src/run.ts\`: Reviewed @\u2060stranger \\[link\\]\\(bad\\).`,
+		);
+		expect(body).not.toContain("private@example.invalid");
+	});
 	it("explains the failed status and dismissal in the review body without calling it blocking", () => {
 		const verdict = new Adjudication({
 			findings: [Finding.create({ ...input, severity: "P2" })],
@@ -58,6 +123,7 @@ describe("unresolved acknowledge status", () => {
 		expect(body).toContain("**findings**.");
 		expect(body).toContain("melian/review: failure (1 finding, 0 blocking, 1 unresolved acknowledgement).");
 		expect(body).toContain("Dismiss unresolved acknowledgements with a reason, then publish.");
+		expect(body).toContain('`melian dismiss "#7" <id> --reason <text>`');
 	});
 });
 

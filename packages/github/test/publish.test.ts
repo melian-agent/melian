@@ -327,11 +327,16 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(review!.body).toContain(`https://github.com/melian-agent/example/blob/${head}/src/config.ts#L1`);
 
 		expect(state.statuses).toEqual([
-			{ sha: head, state: "failure", description: "3 findings, 1 blocking", context: statusContext },
 			{
 				sha: head,
 				state: "failure",
-				description: "3 findings, 1 blocking",
+				description: "3 findings, 1 blocking, 0 unresolved acknowledgements",
+				context: statusContext,
+			},
+			{
+				sha: head,
+				state: "failure",
+				description: "3 findings, 1 blocking, 0 unresolved acknowledgements",
 				context: statusContext,
 				target_url: state.ledgers[0]!.html_url,
 			},
@@ -409,8 +414,8 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(state.statuses.at(-1)).toEqual({
 			target_url: state.ledgers[0]!.html_url,
 			sha: head,
-			state: "success",
-			description: "2 findings, none blocking",
+			state: "failure",
+			description: "2 findings, 0 blocking, 1 unresolved acknowledgement",
 			context: statusContext,
 		});
 		// Counts cover the run: publishing the head again resolves nothing more.
@@ -470,7 +475,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		// The new verdict takes a review of its own, which posts no comment and repeats no finding.
 		expect(state.reviews).toHaveLength(2);
 		expect(state.comments.filter((comment) => comment.pull_request_review_id === state.reviews[1]!.id)).toEqual([]);
-		expect(state.reviews[1]!.body).toContain("1 dismissed finding not shown.");
+		expect(state.reviews[1]!.body).toContain("Dismissals attested by this publication:");
 		expect(await publish(github, changeset)).toMatchObject({ posted: 0, dismissed: 0, replies: 0 });
 	});
 
@@ -675,7 +680,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		const result = await publish(github, second.changeset);
 
 		expect(result).toMatchObject({ resolved: 1, replies: 0 });
-		expect(state.statuses.at(-1)).toMatchObject({ sha: second.changeset.revision.head, state: "success" });
+		expect(state.statuses.at(-1)).toMatchObject({ sha: second.changeset.revision.head, state: "failure" });
 		const root = (await harness!.root(context)).id;
 		const recorded = await readPublished(harness!, root, second.changeset.revision.head, context);
 		expect(Object.values(recorded!.replies)).toEqual([null]);
@@ -698,7 +703,10 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		const rules = state.comments.map((comment) => /`([a-z-]+)`/.exec(comment.body)?.[1]);
 		expect(rules.sort()).toEqual(["null-dereference", "wrong-result"]);
 		expect(state.reviews[1]!.body).toContain("src/config.ts");
-		expect(state.statuses.at(-1)).toMatchObject({ state: "failure", description: "3 findings, 1 blocking" });
+		expect(state.statuses.at(-1)).toMatchObject({
+			state: "failure",
+			description: "3 findings, 1 blocking, 0 unresolved acknowledgements",
+		});
 		const before = posts(state).length;
 		expect(await publish(github, changeset)).toMatchObject({ posted: 0 });
 		expect(posts(state)).toHaveLength(before);
@@ -728,7 +736,10 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(parseMarker(state.reviews[2]!.body.split("\n")[0]!)?.id).toBe(
 			parseMarker(state.reviews[0]!.body.split("\n")[0]!)?.id,
 		);
-		expect(state.statuses.at(-1)).toMatchObject({ state: "failure", description: "3 findings, 1 blocking" });
+		expect(state.statuses.at(-1)).toMatchObject({
+			state: "failure",
+			description: "3 findings, 1 blocking, 0 unresolved acknowledgements",
+		});
 	});
 
 	it("posts a refused round under its own verdict, then a round for the verdict the head has now", async () => {
@@ -747,7 +758,10 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(state.reviews).toHaveLength(2);
 		expect(state.reviews[0]!.body).toContain("**not reviewed, blocking**");
 		expect(state.reviews[1]!.body).toContain("**findings, blocking**");
-		expect(state.statuses.at(-1)).toMatchObject({ state: "failure", description: "3 findings, 1 blocking" });
+		expect(state.statuses.at(-1)).toMatchObject({
+			state: "failure",
+			description: "3 findings, 1 blocking, 0 unresolved acknowledgements",
+		});
 	});
 
 	it.each([true, false])(
@@ -796,7 +810,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 			expect(state.statuses.at(-1)).toMatchObject({
 				state: trustedWriters ? "failure" : "error",
 				description: trustedWriters
-					? "3 findings, 1 blocking"
+					? "3 findings, 1 blocking, 0 unresolved acknowledgements"
 					: "not reviewed here: writers are not trusted; a trusted host sets this status",
 			});
 		},

@@ -1,8 +1,36 @@
+import { Adjudication, defaultConfig, Finding } from "@melian-agent/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { gitAuthor } from "../src/commands.ts";
+import { gitAuthor, ReviewOutcome } from "../src/commands.ts";
 import * as repository from "../src/repository.ts";
 
 afterEach(() => vi.restoreAllMocks());
+
+it("renders no attestation without dismissals and names absent legacy metadata", () => {
+	const empty = new Adjudication({ findings: [], manifest: [], checks: [], config: defaultConfig }).adjudicate();
+	expect(new ReviewOutcome(empty).renderDismissals()).toBe("");
+	const legacy = Finding.create({
+		rule: "unsafe",
+		file: "src/a.ts",
+		startLine: 1,
+		snippet: "unsafe()",
+		occurrence: 0,
+		cause: "introduced",
+		severity: "P2",
+		status: "dismissed",
+		source: { check: "static.example" },
+		message: "Unsafe",
+		explanation: { what: "Unsafe", whyHere: "New", whatToDo: "Validate" },
+	});
+	const verdict = new Adjudication({
+		findings: [legacy],
+		manifest: [],
+		checks: [],
+		config: defaultConfig,
+	}).adjudicate();
+	expect(new ReviewOutcome(verdict).renderDismissals()).toBe(
+		`Attested dismissals:\n  ${legacy.id} unsafe in src/a.ts: by unknown at unknown: No reason stored.\n`,
+	);
+});
 
 describe("git author errors", () => {
 	it("names dismissal by default when git has no author", async () => {

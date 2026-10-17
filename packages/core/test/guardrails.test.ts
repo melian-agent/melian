@@ -10,6 +10,7 @@ import {
 	loadConfig,
 } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import * as gitClient from "../src/git.ts";
 import { maxProgram } from "../src/pattern.ts";
 import {
 	gitIn,
@@ -30,8 +31,23 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+	vi.restoreAllMocks();
 	vi.unstubAllEnvs();
 	removeDirectory(repo);
+});
+
+it("refuses a policy notice when Git cannot read its head blob identity", async () => {
+	const original = gitClient.git;
+	vi.spyOn(gitClient, "git").mockImplementation((root, args, options) =>
+		args.includes("--format=%(objectname)")
+			? Promise.resolve({ code: 1, stdout: "", stdoutBytes: Buffer.alloc(0), stderr: "blob lookup refused" })
+			: original(root, args, options),
+	);
+	await expect(guardrails({ "AGENTS.md": "Old.\n" }, { "AGENTS.md": "New.\n" })).rejects.toMatchObject({
+		code: "unreadable",
+		check: "guardrails",
+		message: expect.stringContaining("blob lookup refused"),
+	});
 });
 
 function commit(files: Record<string, string | Buffer>, message: string): string {

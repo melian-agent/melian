@@ -262,6 +262,47 @@ describe("Verdict.publication", () => {
 });
 
 describe("Verdict.reviewStatus", () => {
+	it("lists each merged dismissed report with its own reason, falling back to the speaker for older records", () => {
+		const primary = finding({ severity: "P2", status: "dismissed" });
+		const reason = { by: "Maintainer", at: "2026-10-17T00:00:00Z", reason: "Primary reason." };
+		const otherReason = { ...reason, reason: "Other reason." };
+		const member = finding({ rule: "other-rule", status: "dismissed" });
+		const shown = Finding.from({
+			...primary.toJSON(),
+			properties: {
+				...primary.properties,
+				dismissal: reason,
+				alsoReportedAs: [
+					{ ...member.report(), dismissal: otherReason },
+					{ ...member.report(), id: "b".repeat(16) },
+				],
+			},
+		});
+		expect(verdictOf([shown]).dismissals()).toEqual([
+			{ ...shown.report(), path: "src/run.ts" },
+			{ ...member.report(), path: "src/run.ts", dismissal: otherReason },
+			{ ...member.report(), id: "b".repeat(16), path: "src/run.ts", dismissal: reason },
+		]);
+		expect(verdictOf([]).dismissals()).toEqual([]);
+	});
+	it("derives every failure count from counted findings, including lifted-member exclusions", () => {
+		const acknowledgement = finding({ severity: "P2" });
+		const stored = verdictOf([acknowledgement]).toJSON();
+		const verdict = Verdict.from({
+			...stored,
+			preExistingImportant: [
+				{
+					id: acknowledgement.id,
+					originalSeverity: "P1",
+					state: "carried",
+					lifted: true,
+				},
+			],
+		});
+		expect(verdict.counted()).toEqual([]);
+		expect(verdict.reviewStatus()).toEqual({ state: "success", description: "Passed" });
+		expect(verdict.render()).not.toContain("Dismiss unresolved acknowledgements");
+	});
 	it("maps a passed review to success", () => {
 		expect(verdictOf([]).reviewStatus()).toEqual({ state: "success", description: "Passed" });
 	});
@@ -301,7 +342,7 @@ describe("Verdict.reviewStatus", () => {
 		const verdict = verdictOf(dismissed);
 		expect(verdict.dismissed).toHaveLength(2);
 		expect(verdict.findings.acknowledge).toEqual([]);
-		expect(verdict.reviewStatus()).toEqual({ state: "success", description: "Passed" });
+		expect(verdict.reviewStatus()).toEqual({ state: "success", description: "0 findings, 2 dismissed" });
 	});
 
 	it("still fails when one acknowledge remains after a dismissal", () => {

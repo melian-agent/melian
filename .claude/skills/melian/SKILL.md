@@ -144,3 +144,12 @@ Use `melian compare stats --last 10` to measure adjudicated recall, precision, r
 Use `melian compare backlog --markdown` to print the generated list of owed goldens by lens.
 
 Use `melian compare export "#N" --out <path>` to save the local record for review.
+
+An unresolved acknowledgement fails the published status, including a pre-existing opt-in.
+It still leaves an acknowledgement-only review at exit 3. A successful publication exits 0 even when the status fails.
+The user clears a finding by dismissing it with a reason on the same pull request, then publishing again.
+A policy notice reopens whenever its file changes.
+
+Publication prints every dismissal the publisher attests: ID, rule, file, who dismissed it, when and why.
+Relay each dismissal verbatim, including carried dismissals and merged reports, and the status line.
+An all-dismissed success reads “0 findings, N dismissed”. Never dismiss a finding yourself to obtain that status.

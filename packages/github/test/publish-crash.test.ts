@@ -481,15 +481,15 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 		// The crashed run set the old verdict's status before its post; the new verdict's replaces it.
 		const head = changeset.revision.head;
 		expect(state.statuses.map(({ description }) => description)).toEqual([
-			"3 findings, 1 blocking",
-			"1 finding, 1 blocking",
-			"1 finding, 1 blocking",
+			"3 findings, 1 blocking, 0 unresolved acknowledgements",
+			"1 finding, 1 blocking, 0 unresolved acknowledgements",
+			"1 finding, 1 blocking, 0 unresolved acknowledgements",
 		]);
 		expect(state.statuses.at(-1)).toEqual({
 			target_url: state.ledgers[0]!.html_url,
 			sha: head,
 			state: "failure",
-			description: "1 finding, 1 blocking",
+			description: "1 finding, 1 blocking, 0 unresolved acknowledgements",
 			context: statusContext,
 		});
 	});
