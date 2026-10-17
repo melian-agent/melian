@@ -8,6 +8,7 @@ import {
 	Finding,
 	isLensFile,
 	loadConfig,
+	snippetHash,
 } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as gitClient from "../src/git.ts";
@@ -36,18 +37,54 @@ afterEach(() => {
 	removeDirectory(repo);
 });
 
-it("refuses a policy notice when Git cannot read its head blob identity", async () => {
+it("refuses a policy notice with Git’s stderr, not its stdout", async () => {
 	const original = gitClient.git;
-	vi.spyOn(gitClient, "git").mockImplementation((root, args, options) =>
-		args.includes("--format=%(objectname)")
-			? Promise.resolve({ code: 1, stdout: "", stdoutBytes: Buffer.alloc(0), stderr: "blob lookup refused" })
-			: original(root, args, options),
-	);
+	vi.spyOn(gitClient, "git").mockImplementation((root, args, options) => {
+		if (!args.includes("--format=%(objectname)")) return original(root, args, options);
+		expect(root).toBe(repo);
+		expect(args).toEqual([
+			"--literal-pathspecs",
+			"ls-tree",
+			"--format=%(objectname)",
+			gitIn(repo, "rev-parse", "HEAD"),
+			"--",
+			"AGENTS.md",
+		]);
+		return Promise.resolve({
+			code: 1,
+			stdout: "partial blob output",
+			stdoutBytes: Buffer.from("partial blob output"),
+			stderr: "blob lookup refused",
+		});
+	});
 	await expect(guardrails({ "AGENTS.md": "Old.\n" }, { "AGENTS.md": "New.\n" })).rejects.toMatchObject({
 		code: "unreadable",
 		check: "guardrails",
-		message: expect.stringContaining("blob lookup refused"),
+		message: expect.stringMatching(/:AGENTS\.md: blob lookup refused$/),
 	});
+});
+
+it("hashes Git’s stdout blob ID rather than its stderr diagnostic", async () => {
+	const original = gitClient.git;
+	vi.spyOn(gitClient, "git").mockImplementation(async (root, args, options) => {
+		const result = await original(root, args, options);
+		if (!args.includes("--format=%(objectname)")) return result;
+		expect(root).toBe(repo);
+		expect(args).toEqual([
+			"--literal-pathspecs",
+			"ls-tree",
+			"--format=%(objectname)",
+			gitIn(repo, "rev-parse", "HEAD"),
+			"--",
+			"AGENTS.md",
+		]);
+		return { ...result, stderr: "a distinct diagnostic, not a blob ID" };
+	});
+	const { findings } = await guardrails({ "AGENTS.md": "Old.\n" }, { "AGENTS.md": "New.\n" });
+	expect(findings).toHaveLength(1);
+	expect(findings[0]!.properties.trigger?.hash).toBe(
+		snippetHash(`blob:${gitIn(repo, "rev-parse", "HEAD:AGENTS.md")}`),
+	);
 });
 
 function commit(files: Record<string, string | Buffer>, message: string): string {
