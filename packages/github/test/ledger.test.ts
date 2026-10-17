@@ -1535,7 +1535,7 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 				verdictRevision: revisionKey(second.changeset.revision),
 				rounds: 1,
 				open: {},
-				resolved: { [id]: entry },
+				resolved: { [id]: { ...entry, id } },
 				replies: { [version < 3 ? id : key]: "9000" },
 			};
 			const oldPublished = defineDoc<{ order: string[]; revisions: Record<string, typeof record> }>({

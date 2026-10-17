@@ -6,11 +6,11 @@ export type Call = { method: string; path: string; body?: unknown };
 
 type User = { login: string };
 
-export type FakeReview = { id: number; user: User; body: string; commit_id: string; event: string };
+export type FakeReview = { id: number; user: User | null; body: string; commit_id: string; event: string };
 
 export type FakeComment = {
 	id: number;
-	user: User;
+	user: User | null;
 	body: string;
 	path: string;
 	line: number;
@@ -18,7 +18,7 @@ export type FakeComment = {
 	start_line?: number;
 	start_side?: string;
 	in_reply_to_id?: number;
-	pull_request_review_id: number;
+	pull_request_review_id: number | null;
 };
 
 export type FakeStatus = { sha: string; state: string; description: string; context: string; target_url?: string };
@@ -40,6 +40,14 @@ export type FakeState = {
 	comments: FakeComment[];
 	ledgers: { id: number; user: User; body: string; html_url: string; created_at?: string }[];
 	threadPageSize?: number;
+	restPageSize?: number;
+	failCommentPage?: number;
+	commentPageResponse?: { page: number; body: unknown; status?: number };
+	threadPageResponse?: unknown;
+	threadReadStatus?: number;
+	commentReadStatus?: number;
+	threadReadFailure?: "errors" | "partial" | "missing-cursor" | "repeated-cursor";
+	hiddenThreads?: number[];
 	resolvedThreads: number[];
 	statuses: FakeStatus[];
 	nextId: number;
@@ -146,16 +154,44 @@ export function fakeGitHub(
 		if (method === "POST" && path === "/graphql") {
 			const query = body as { query: string; variables: { id?: string } };
 			if (query.query.includes("resolveReviewThread")) {
-				const id = Number(query.variables.id);
+				const root = state.comments.find((comment) => `thread-${comment.id}` === query.variables.id);
+				if (root === undefined || !query.query.includes("threadId: $id"))
+					return json({ errors: [{ message: "Unknown thread node ID" }] });
+				const id = root.id;
 				if (state.failReplies || state.failResolve) return json({ message: "Server Error" }, 500);
 				state.resolvedThreads.push(id);
 				await afterWrite(call);
-				return json({ data: { resolveReviewThread: { thread: { id: String(id), isResolved: true } } } });
+				return json({ data: { resolveReviewThread: { thread: { id: `thread-${id}`, isResolved: true } } } });
 			}
+			const variables = (body as { variables: { owner: string; repo: string; number: number } }).variables;
+			if (
+				variables.owner !== state.owner ||
+				variables.repo !== state.repo ||
+				variables.number !== state.pull.number ||
+				!query.query.includes("repository(owner: $owner, name: $repo)") ||
+				!query.query.includes("pullRequest(number: $number)") ||
+				!query.query.includes("reviewThreads(first: 100, after: $cursor)") ||
+				!query.query.includes("nodes { id isResolved comments(first: 1) { nodes { databaseId } } }") ||
+				!query.query.includes("pageInfo { hasNextPage endCursor }")
+			)
+				return json({ errors: [{ message: "Unsupported thread query" }] });
+			if (state.threadReadStatus !== undefined)
+				return json({ message: "Thread read refused" }, state.threadReadStatus);
+			if (state.threadPageResponse !== undefined)
+				return json({ data: { repository: { pullRequest: { reviewThreads: state.threadPageResponse } } } });
+			if (state.threadReadFailure === "errors")
+				return json({ data: { repository: null }, errors: [{ message: "Thread read failed" }] });
+			if (state.threadReadFailure === "partial")
+				return json({ data: { repository: { pullRequest: { reviewThreads: { nodes: [null] } } } } });
+			if (
+				state.threadReadFailure === "repeated-cursor" &&
+				state.calls.filter((call) => call.path === "/graphql").length > 2
+			)
+				return json({ errors: [{ message: "Repeated cursor in fake" }] });
 			const all = state.comments
-				.filter((comment) => comment.in_reply_to_id === undefined)
+				.filter((comment) => comment.in_reply_to_id == null && !state.hiddenThreads?.includes(comment.id))
 				.map((comment) => ({
-					id: String(comment.id),
+					id: `thread-${comment.id}`,
 					isResolved: state.resolvedThreads.includes(comment.id),
 					comments: { nodes: [{ databaseId: comment.id }] },
 				}));
@@ -168,7 +204,20 @@ export function fakeGitHub(
 						pullRequest: {
 							reviewThreads: {
 								nodes: all.slice(start, end),
-								pageInfo: { hasNextPage: end < all.length, endCursor: end < all.length ? String(end) : null },
+								pageInfo: {
+									hasNextPage:
+										state.threadReadFailure === "missing-cursor" ||
+										state.threadReadFailure === "repeated-cursor" ||
+										end < all.length,
+									endCursor:
+										state.threadReadFailure === "missing-cursor"
+											? null
+											: state.threadReadFailure === "repeated-cursor"
+												? "same"
+												: end < all.length
+													? String(end)
+													: null,
+								},
 							},
 						},
 					},
@@ -209,6 +258,8 @@ export function fakeGitHub(
 		const commentId = new RegExp(`^${repoPath}/pulls/comments/(\\d+)$`).exec(path);
 		if ((method === "GET" || method === "PATCH") && commentId !== null) {
 			const comment = state.comments.find((each) => each.id === Number(commentId[1]));
+			if (state.commentReadStatus !== undefined && method === "GET")
+				return json({ message: "Comment read refused" }, state.commentReadStatus);
 			if (comment === undefined) return json({ message: "Not Found" }, 404);
 			if (method === "PATCH") {
 				if (state.failReplies) return json({ message: "Server Error" }, 500);
@@ -221,8 +272,22 @@ export function fakeGitHub(
 		if (method === "GET" && path === "/user")
 			return state.failUser ? json({ message: "Forbidden" }, 403) : json(user);
 		if (method === "GET" && path === pulls) return json(pull());
-		if (method === "GET" && path === `${pulls}/reviews`) return json(state.reviews);
-		if (method === "GET" && path === `${pulls}/comments`) return json(state.comments);
+		if (method === "GET" && (path === `${pulls}/reviews` || path === `${pulls}/comments`)) {
+			const page = Number(url.searchParams.get("page") ?? 1);
+			if (path.endsWith("/comments") && page === state.failCommentPage)
+				return json({ message: "Server Error" }, 500);
+			if (path.endsWith("/comments") && page === state.commentPageResponse?.page)
+				return json(state.commentPageResponse.body, state.commentPageResponse.status ?? 200);
+			const items = path.endsWith("/reviews") ? state.reviews : state.comments;
+			const size = state.restPageSize ?? Number(url.searchParams.get("per_page") ?? 30);
+			const end = page * size;
+			const response = json(items.slice(end - size, end));
+			if (end < items.length) {
+				url.searchParams.set("page", String(page + 1));
+				response.headers.set("link", `<${url.href}>; rel="next"`);
+			}
+			return response;
+		}
 		const reviewId = new RegExp(`^${pulls}/reviews/(\\d+)$`).exec(path);
 		if (method === "GET" && reviewId !== null) {
 			const review = state.reviews.find((each) => each.id === Number(reviewId[1]));
@@ -260,6 +325,7 @@ export function fakeGitHub(
 			if (parent === undefined) return json({ message: "Not Found" }, 404);
 			const created: FakeComment = {
 				...parent,
+				user,
 				id: state.nextId++,
 				body: (body as { body: string }).body,
 				in_reply_to_id: parent.id,

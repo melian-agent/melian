@@ -31,6 +31,78 @@ const input: FindingInput = {
 	source: { check: "lens.security", version: "1" },
 };
 
+it("separates inline findings from findings rendered in the review body", () => {
+	const inline = Finding.create(input);
+	const outside = Finding.create({ ...input, file: "src/outside.ts" });
+	const verdict = new Adjudication({
+		findings: [inline, outside],
+		manifest: [],
+		checks: [],
+		config: defaultConfig,
+	}).adjudicate();
+	const body = renderReviewBody(
+		{
+			pullRequest: 7,
+			revision,
+			base,
+			fingerprint: verdict.fingerprint(),
+			round: 1,
+			verdict,
+			findings: [
+				{ finding: inline, placement: { kind: "lines", startLine: 12, line: 12 } },
+				{ finding: outside, placement: { kind: "body" } },
+			],
+			stillOpen: 0,
+			resolved: [],
+			secret,
+		},
+		links,
+	);
+	expect(
+		markersIn(body)
+			.filter(({ kind }) => kind === "finding")
+			.map(({ id }) => id),
+	).toEqual([outside.id]);
+});
+
+it("renders a newly dismissed body finding beside a resolved one", () => {
+	const verdict = new Adjudication({ findings: [], manifest: [], checks: [], config: defaultConfig }).adjudicate();
+	const body = renderReviewBody(
+		{
+			pullRequest: 7,
+			revision,
+			base,
+			fingerprint: verdict.fingerprint(),
+			round: 1,
+			verdict,
+			findings: [],
+			stillOpen: 0,
+			secret,
+			resolved: [
+				{ id: "0123456789abcdef", ruleId: "fixed-rule", path: "src/fixed.ts", line: 1, revision: base },
+				{
+					id: "fedcba9876543210",
+					ruleId: "dismissed-rule",
+					path: "src/dismissed.ts",
+					line: 2,
+					revision: base,
+					dismissal: {
+						by: "Private <identity@example.invalid>",
+						at: "2026-10-18T00:00:00Z",
+						reason: "Reviewed @human [link](bad).",
+					},
+				},
+			],
+		},
+		links,
+	);
+	expect(body).toContain("Resolved since the last review:\n\n- `fixed-rule` in `src/fixed.ts` line 1");
+	expect(body).toContain(
+		"Dismissed since the last review:\n\n- `dismissed-rule` in `src/dismissed.ts` line 2: Reviewed @\u2060human \\[link\\]\\(bad\\).",
+	);
+	expect(body).not.toContain("identity@example.invalid");
+});
+
 describe("unresolved acknowledge status", () => {
 	it("names legacy dismissals that have no stored reason", () => {
 		const dismissed = Finding.create({ ...input, status: "dismissed" });

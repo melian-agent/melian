@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -9,6 +9,7 @@ import {
 	type LedgerRound,
 	type PostedLedger,
 	type PublicationDetails,
+	replyKey,
 	type StoredVerdict,
 	Verdict,
 	type Walkthrough,
@@ -18,6 +19,7 @@ import {
 	createRegistry,
 	defineDoc,
 	type Harness,
+	type JsonObject,
 	openHarness,
 	openSqliteStorage,
 } from "@melian-agent/pipeline";
@@ -25,6 +27,7 @@ import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import { VerdictDocument } from "../src/adjudication.ts";
 import { LedgerDocument, PublishedDocument, PublisherDocument } from "../src/publish.ts";
+import publishedV7 from "./fixtures/published-v7.json" with { type: "json" };
 
 type OldPublication = {
 	order: string[];
@@ -66,6 +69,60 @@ afterEach(async () => {
 });
 
 describe("ledger document migration", () => {
+	it("rekeys version-7 owed and pending resolutions after reopening without changing the review payload", async () => {
+		dir = realpathSync(mkdtempSync(join(tmpdir(), "melian-published-v7-")));
+		const database = join(dir, "state.sqlite");
+		const fake = createFakeModels();
+		const open = async () =>
+			openHarness(
+				await openSqliteStorage(database),
+				{
+					models: fake.models,
+					registry: createRegistry(),
+				},
+				context,
+			);
+		const previous = defineDoc<JsonObject>({
+			kind: "melian.published",
+			version: publishedV7.version,
+			scope: "conversation",
+			history: "latest",
+			fork: "current",
+			initial: () => JSON.parse(JSON.stringify(publishedV7.state)) as JsonObject,
+		});
+		harness = await open();
+		let root = await harness.root(context);
+		await root.commit(async (tx) => {
+			await tx.doc(previous, root.id);
+		}, context);
+		await harness.close(context);
+		harness = await open();
+		root = await harness.root(context);
+		const migrated = (await harness.snapshot(PublishedDocument, root.id, context))!;
+		for (const [head, record] of Object.entries(publishedV7.state.revisions)) {
+			const expected = Object.fromEntries(
+				Object.entries(record.resolved).map(([id, entry]) => [replyKey(id, entry.thread), { ...entry, id }]),
+			);
+			expect(migrated.revisions[head]!.resolved).toEqual(expected);
+			if ("pending" in record) {
+				const pendingResolved = Object.fromEntries(
+					Object.entries(record.pending.resolved).map(([id, entry]) => [
+						replyKey(id, entry.thread),
+						{ ...entry, id },
+					]),
+				);
+				expect(migrated.revisions[head]!.pending).toEqual({ ...record.pending, resolved: pendingResolved });
+			}
+		}
+		await root.commit(async (tx) => {
+			await tx.doc(PublishedDocument, root.id);
+		}, context);
+		await harness.close(context);
+		harness = await open();
+		root = await harness.root(context);
+		expect(await harness.snapshot(PublishedDocument, root.id, context)).toEqual(migrated);
+	});
+
 	it("upgrades snapshots recorded by version-5 review and publication code after reopening", async () => {
 		type Recorded = {
 			recordedBy: string;
@@ -138,7 +195,7 @@ describe("ledger document migration", () => {
 		const round = (await harness.snapshot(PublishedDocument, root.id, context))!.ledgerRounds!.at(-1)!;
 		expect(round).toHaveProperty("details.lenses.0.standards", ["AGENTS.md"]);
 		await expect(harness.snapshot(oldVerdicts, root.id, context)).rejects.toThrow(/newer version 10 than 5/);
-		await expect(harness.snapshot(oldPublished, root.id, context)).rejects.toThrow(/newer version 8 than 5/);
+		await expect(harness.snapshot(oldPublished, root.id, context)).rejects.toThrow(/newer version 9 than 5/);
 	});
 
 	it.each([1, 2, 3, 4, 5])(
