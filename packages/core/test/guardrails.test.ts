@@ -4,7 +4,6 @@ import {
 	Changeset,
 	ConfigError,
 	configLookup,
-	evaluateGuardrails,
 	Finding,
 	isLensFile,
 	loadConfig,
@@ -12,6 +11,7 @@ import {
 } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as gitClient from "../src/git.ts";
+import { evaluateGuardrails } from "../src/guardrails.ts";
 import { maxProgram } from "../src/pattern.ts";
 import {
 	gitIn,
@@ -54,7 +54,7 @@ it("refuses a policy notice with Git’s stderr, not its stdout", async () => {
 			code: 1,
 			stdout: "partial blob output",
 			stdoutBytes: Buffer.from("partial blob output"),
-			stderr: "blob lookup refused",
+			stderr: "  blob lookup refused \n",
 		});
 	});
 	await expect(guardrails({ "AGENTS.md": "Old.\n" }, { "AGENTS.md": "New.\n" })).rejects.toMatchObject({
