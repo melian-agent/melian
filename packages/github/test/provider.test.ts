@@ -340,11 +340,10 @@ describe("publication record validation", () => {
 		...["pull_request_review_id", "in_reply_to_id"].flatMap((field) => [
 			{ name: `string ${field}`, field, value: "1", kind: "comment" },
 			{ name: `zero ${field}`, field, value: 0, kind: "comment" },
+			{ name: `negative ${field}`, field, value: -1, kind: "comment" },
 			{ name: `fractional ${field}`, field, value: 1.5, kind: "comment" },
 			{ name: `unsafe ${field}`, field, value: Number.MAX_SAFE_INTEGER + 1, kind: "comment" },
 		]),
-		{ name: "missing review link", field: "pull_request_review_id", kind: "comment" },
-		{ name: "null reply link", field: "in_reply_to_id", value: null, kind: "comment" },
 	];
 
 	it.each(cases)("rejects the whole $kind listing on $name", async ({ kind, ...bad }) => {
@@ -395,7 +394,50 @@ describe("publication record validation", () => {
 		expect(state.calls.every(({ method }) => method === "GET")).toBe(true);
 	});
 
-	it("accepts a documented null review link without granting ownership to that root", async () => {
+	it.each([null, undefined])("recovers roots and replies with a %s root reply link", async (link) => {
+		const { state } = fixture();
+		const head = state.pull.head.sha;
+		const finding = "fedcba9876543210";
+		state.reviews.push({
+			id: 1,
+			user: { login: state.login },
+			body: marker(head, "verdict", wanted.fingerprint, secret, { round: 1 }),
+			commit_id: head,
+			event: "COMMENT",
+		});
+		const root = {
+			id: 2,
+			user: { login: state.login },
+			body: marker(head, "finding", finding, secret),
+			path: "src/a.ts",
+			line: 1,
+			side: "RIGHT",
+			pull_request_review_id: 1,
+		};
+		state.comments.push(root, { ...root, id: 3, in_reply_to_id: 2, body: marker(head, "resolved", finding, secret) });
+		const transport = fakeGitHub(state);
+		const provider = createGitHubProvider({
+			owner: state.owner,
+			repo: state.repo,
+			token: "test",
+			fetch: async (input, init) => {
+				const response = await transport(input, init);
+				return new URL(String(input)).pathname === "/repos/owner/repo/pulls/7/comments"
+					? new Response(JSON.stringify([{ ...root, in_reply_to_id: link }, state.comments[1]]), {
+							status: response.status,
+							headers: response.headers,
+						})
+					: response;
+			},
+		});
+		expect(await provider.findPublished(7, head, wanted, secret)).toEqual({
+			review: "1",
+			threads: { [finding]: "2" },
+			replies: { [`${finding} 2`]: "3" },
+		});
+	});
+
+	it.each([null, undefined])("accepts a %s review link without granting ownership to that root", async (link) => {
 		const { state, provider } = fixture();
 		const head = state.pull.head.sha;
 		state.reviews.push({
@@ -415,6 +457,7 @@ describe("publication record validation", () => {
 			pull_request_review_id: 1,
 		};
 		state.comments.push({ ...root, id: 3, user: { login: "human" }, pull_request_review_id: null }, root);
+		if (link === undefined) Reflect.deleteProperty(state.comments[0]!, "pull_request_review_id");
 		expect(await provider.findPublished(7, head, wanted, secret)).toEqual({
 			review: "1",
 			threads: { fedcba9876543210: "2" },
