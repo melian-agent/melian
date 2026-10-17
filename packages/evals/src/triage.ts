@@ -170,7 +170,6 @@ export async function runTriageGolden(
 				}).catch((error: unknown) => {
 					if (!(error instanceof ReviewError)) throw error;
 				});
-				record?.(await TelemetryReader.open(storage).read(revisionKey(changeset.revision)));
 				const root = await reviewHarness.harness.root(backgroundContext);
 				const recorded = await readRecordedDecision(
 					reviewHarness.harness,
@@ -186,6 +185,7 @@ export async function runTriageGolden(
 				chosen.push(
 					Object.fromEntries(wanted.map((lens) => [lens, recorded?.decision?.chosen(lens) ?? "unanswered"])),
 				);
+				record?.(await TelemetryReader.open(storage).read(revisionKey(changeset.revision)));
 			} catch (error) {
 				throw new GoldenRunError(error, await TelemetryReader.open(storage).read(revisionKey(changeset.revision)));
 			} finally {

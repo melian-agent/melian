@@ -13,7 +13,7 @@
  *
  * @module
  */
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { liveModels } from "./credentials.ts";
 import { type Golden, loadGoldens, runGolden, selectGoldens } from "./goldens.ts";
 import { reportGoldens, reportTriageGoldens, reportVerifierGoldens } from "./live-output.ts";
@@ -64,9 +64,8 @@ if (process.env.MELIAN_EVAL_TRIAGE === "1") {
 		(await TriageQuestions.shipped(all[0]!)).fingerprint(),
 		console.log,
 		console.error,
+		process.env.MELIAN_EVAL_TRIAGE_OUT,
 	);
-	const out = process.env.MELIAN_EVAL_TRIAGE_OUT;
-	if (out !== undefined && out !== "") writeFileSync(out, `${JSON.stringify(results.toJSON(), null, 2)}\n`);
 	const baseline = process.env.MELIAN_EVAL_TRIAGE_BASELINE;
 	if (baseline === undefined || baseline === "") process.exit(0);
 	const compared = results.compare(TriageResults.parse(readFileSync(baseline, "utf8")));

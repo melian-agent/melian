@@ -1,3 +1,4 @@
+import { writeFileSync } from "node:fs";
 import { visibleText } from "@melian-agent/core";
 import type { ReviewModels, StageTelemetry } from "@melian-agent/pipeline";
 import { type Golden, type GoldenRun, type GoldenScore, scoreCorpus, scoreGolden } from "./goldens.ts";
@@ -99,21 +100,24 @@ export async function measureTriageGoldens(
 	goldens: readonly TriageGolden[],
 	run: (golden: TriageGolden, record: (telemetry: StageTelemetry) => void) => Promise<TriageChosen[]>,
 	print: Print,
-): Promise<{ chosen: Record<string, TriageChosen[]>; telemetry: Record<string, StageTelemetry[]> }> {
+): Promise<{ chosen: Record<string, TriageChosen[]>; telemetry: Record<string, StageTelemetry[]>; failed?: string }> {
 	const chosen: Record<string, TriageChosen[]> = {};
 	const telemetry: Record<string, StageTelemetry[]> = {};
 	for (const golden of goldens) {
 		telemetry[golden.name] = [];
-		const result = await attempt(
-			golden.name,
-			() =>
-				run(golden, (record) => {
-					telemetry[golden.name]!.push(record);
-				}),
-			print,
-		);
-		if (result === undefined) throw new Error(`${visibleText(golden.name)}: triage measurement failed`);
-		chosen[golden.name] = result;
+		try {
+			chosen[golden.name] = await run(golden, (record) => {
+				telemetry[golden.name]!.push(record);
+			});
+		} catch (error) {
+			if (error instanceof GoldenRunError) telemetry[golden.name]!.push(error.telemetry);
+			for (const [name, passes] of Object.entries(telemetry)) {
+				for (const [index, pass] of passes.entries())
+					print(visibleText(`${name}: pass ${index + 1}, ${pass.spend()}`));
+			}
+			print(visibleText(`${golden.name}: no score (${error instanceof Error ? error.message : String(error)})`));
+			return { chosen, telemetry, failed: golden.name };
+		}
 	}
 	return { chosen, telemetry };
 }
@@ -126,13 +130,16 @@ export async function reportTriageGoldens(
 	fingerprint: string,
 	print: Print,
 	printError: Print,
+	out?: string,
 ): Promise<TriageResults> {
-	const { chosen, telemetry } = await measureTriageGoldens(
+	const { chosen, telemetry, failed } = await measureTriageGoldens(
 		goldens,
 		(golden, record) => runTriageGolden(golden, { kind: "live", models, model }, passes, record),
 		printError,
 	);
 	const results = TriageResults.measure(goldens, chosen, { model, fingerprint, telemetry });
+	if (out !== undefined && out !== "") writeFileSync(out, `${JSON.stringify(results.toJSON(), null, 2)}\n`);
+	if (failed !== undefined) throw new Error(`${visibleText(failed)}: triage measurement failed`);
 	print(
 		results
 			.render()

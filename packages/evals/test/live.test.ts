@@ -1,3 +1,6 @@
+import { mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
 	createFakeModels,
 	fauxAssistantMessage,
@@ -5,9 +8,9 @@ import {
 	scriptConversations,
 	textOf,
 } from "@melian-agent/pipeline/testing";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { reportTriageGoldens } from "../src/live-output.ts";
-import { loadTriageGoldens } from "../src/triage.ts";
+import { loadTriageGoldens, type StoredTriageResults } from "../src/triage.ts";
 
 it("prints escaped triage scores and retains each pass's telemetry from the selected fake model", async () => {
 	const source = loadTriageGoldens().find((golden) => golden.name === "docs-typo")!;
@@ -56,4 +59,106 @@ it("prints escaped triage scores and retains each pass's telemetry from the sele
 			/^triage triage v\d+ on output-eval\/judge, 2 passes: exact 1\.00, mean distance 0\.00, 0 under\ndocs-typo\\u001b\[31m: exact 1\.00, \d+ tokens, \$0$/,
 		),
 	]);
+});
+
+it("saves both passes before a three-pass triage failure propagates", async () => {
+	const golden = loadTriageGoldens().find((golden) => golden.name === "docs-typo")!;
+	const fake = createFakeModels({ provider: "failed-eval", models: [{ id: "judge" }] });
+	const requests = scriptConversations(fake, [
+		{
+			match: "You answer typed questions about a code change",
+			replies: [false, true].map((failed) => (messages) => {
+				const asked = [
+					...messages
+						.map(textOf)
+						.join("\n")
+						.matchAll(/^### (.+)$/gm),
+				].map((match) => match[1]!);
+				expect(asked).toEqual(Object.keys(golden.expected.levels));
+				return failed
+					? fauxAssistantMessage("no decision", { stopReason: "error", errorMessage: "provider failed" })
+					: fauxAssistantMessage(
+							fauxToolCall("answer", {
+								answers: asked.map((question) => ({
+									question,
+									probabilities: [{ option: golden.expected.levels[question], probability: 1 }],
+								})),
+							}),
+							{ stopReason: "toolUse" },
+						);
+			}),
+		},
+	]);
+	const complete = fake.models.complete.bind(fake.models);
+	let calls = 0;
+	vi.spyOn(fake.models, "complete").mockImplementation(async (...args) => {
+		const response = await complete(...args);
+		const tokens = ++calls === 1 ? 100 : 10;
+		return {
+			...response,
+			usage: {
+				input: tokens,
+				output: 0,
+				cacheRead: 0,
+				cacheWrite: 0,
+				totalTokens: tokens,
+				cost: { input: tokens / 100, output: 0, cacheRead: 0, cacheWrite: 0, total: tokens / 100 },
+			},
+		};
+	});
+	const printed: string[] = [];
+	const errors: string[] = [];
+	const directory = mkdtempSync(join(realpathSync(tmpdir()), "melian-triage-output-"));
+	const out = join(directory, "results.json");
+	try {
+		await expect(
+			reportTriageGoldens(
+				[golden],
+				fake.review,
+				"failed-eval/judge",
+				3,
+				"questions",
+				(line) => printed.push(line),
+				(line) => errors.push(line),
+				out,
+			),
+		).rejects.toThrow("triage measurement failed");
+		expect(printed).toEqual([]);
+		expect(Object.values(requests).flat()).toHaveLength(2);
+		expect(errors).toEqual([
+			expect.stringMatching(new RegExp(`^${golden.name}: pass 1, \\d+ tokens, \\$1$`)),
+			expect.stringMatching(new RegExp(`^${golden.name}: pass 2, \\d+ tokens, \\$0\\.1$`)),
+			expect.stringContaining(`${golden.name}: no score (`),
+		]);
+		const saved = JSON.parse(readFileSync(out, "utf8")) as StoredTriageResults;
+		const passes = saved.telemetry![golden.name]!;
+		expect(passes).toHaveLength(2);
+		expect(
+			passes.map((pass) => pass.stages.find((stage) => stage.name === "melian.triage")!.usage!.total.totalTokens),
+		).toEqual([100, 10]);
+		expect(passes.map((pass) => pass.total!.total.cost.total)).toEqual([1, 0.1]);
+		expect(saved.choices).toEqual([]);
+	} finally {
+		rmSync(directory, { recursive: true, force: true });
+		vi.restoreAllMocks();
+	}
+}, 60_000);
+
+it.each([undefined, ""])("keeps triage output optional for path %j", async (out) => {
+	const fake = createFakeModels({ models: [{ id: "unused" }] });
+	const printed: string[] = [];
+	const results = await reportTriageGoldens(
+		[],
+		fake.review,
+		"fake/unused",
+		1,
+		"questions",
+		(line) => printed.push(line),
+		() => {
+			throw new Error("unexpected error output");
+		},
+		out,
+	);
+	expect(results.toJSON().telemetry).toEqual({});
+	expect(printed).toHaveLength(1);
 });

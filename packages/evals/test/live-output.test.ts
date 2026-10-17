@@ -12,7 +12,7 @@ import {
 	verdictLabel,
 } from "../src/live-output.ts";
 import { GoldenRunError } from "../src/run-error.ts";
-import { loadTriageGoldens } from "../src/triage.ts";
+import { loadTriageGoldens, TriageResults } from "../src/triage.ts";
 import { loadVerifierGoldens, runVerifierGolden, type VerifierGolden } from "../src/verifier.ts";
 
 const named = <Each extends { name: string }>(all: readonly Each[], ...names: string[]): Each[] =>
@@ -201,16 +201,15 @@ it("keeps each triage pass's usage with its choices and prints spend for a faile
 		telemetry: { [golden.name]: [paid, new StageTelemetry("base..head", [])] },
 	});
 	expect(lines).toEqual([]);
-	await expect(
-		measureTriageGoldens(
-			[golden],
-			async () => {
-				throw new GoldenRunError(new Error("bad\u001b[2J"), paid);
-			},
-			(line) => lines.push(line),
-		),
-	).rejects.toThrow("triage measurement failed");
-	expect(lines).toEqual([`${golden.name}: no score (bad\\u001b[2J), 14 tokens, $1`]);
+	const failed = await measureTriageGoldens(
+		[golden],
+		async () => {
+			throw new GoldenRunError(new Error("bad\u001b[2J"), paid);
+		},
+		(line) => lines.push(line),
+	);
+	expect(failed).toEqual({ chosen: {}, telemetry: { [golden.name]: [paid] }, failed: golden.name });
+	expect(lines).toEqual([`${golden.name}: pass 1, 14 tokens, $1`, `${golden.name}: no score (bad\\u001b[2J)`]);
 });
 
 it("prints the same telemetry record for a failed lens golden", async () => {
@@ -284,3 +283,77 @@ it("escapes golden names on successful lens and verifier score lines", async () 
 	expect(lines[0]).toContain("lens\\u001b[2J: precision");
 	expect(lines[2]).toContain("judge\\u001b[2J:");
 }, 60_000);
+
+it("retains completed goldens and every attempted pass when triage pass two fails", async () => {
+	const [first, second, last] = loadTriageGoldens();
+	const golden = { ...second!, name: "failed\u001b[2J" };
+	const pass = (tokens: number, dollars: number) =>
+		new StageTelemetry("base..head", [
+			{
+				...paid.stages[0]!,
+				usage: new TokenUsage({
+					model: {
+						input: tokens,
+						output: 0,
+						cacheRead: 0,
+						cacheWrite: 0,
+						totalTokens: tokens,
+						cost: { input: dollars, output: 0, cacheRead: 0, cacheWrite: 0, total: dollars },
+					},
+				}).toJSON(),
+			},
+		]);
+	const completed = pass(200, 2);
+	const success = pass(100, 1);
+	const failure = pass(10, 0.1);
+	const lines: string[] = [];
+	const visited: string[] = [];
+	const measured = await measureTriageGoldens(
+		[first!, golden, last!],
+		async (current, record) => {
+			visited.push(current.name);
+			if (current.name === first!.name) {
+				record(completed);
+				return [{ correctness: "quick" }];
+			}
+			expect(current.name).toBe(golden.name);
+			record(success);
+			throw new GoldenRunError(new Error("pass two failed"), failure);
+		},
+		(line) => lines.push(line),
+	);
+	expect(measured).toEqual({
+		chosen: { [first!.name]: [{ correctness: "quick" }] },
+		telemetry: { [first!.name]: [completed], [golden.name]: [success, failure] },
+		failed: golden.name,
+	});
+	expect(visited).toEqual([first!.name, golden.name]);
+	expect(lines).toEqual([
+		`${first!.name}: pass 1, 200 tokens, $2`,
+		"failed\\u001b[2J: pass 1, 100 tokens, $1",
+		"failed\\u001b[2J: pass 2, 10 tokens, $0.1",
+		"failed\\u001b[2J: no score (pass two failed)",
+	]);
+	const saved = TriageResults.measure([first!, golden, last!], measured.chosen, {
+		model: "fake/model",
+		fingerprint: "questions",
+		telemetry: measured.telemetry,
+	}).toJSON();
+	expect(saved.telemetry![first!.name]).toEqual([completed.toJSON()]);
+	expect(saved.telemetry![golden.name]).toEqual([success.toJSON(), failure.toJSON()]);
+});
+
+it("keeps earlier pass spend when triage fails without telemetry", async () => {
+	const golden = loadTriageGoldens()[0]!;
+	const lines: string[] = [];
+	const measured = await measureTriageGoldens(
+		[golden],
+		async (_golden, record) => {
+			record(paid);
+			throw "no receipt";
+		},
+		(line) => lines.push(line),
+	);
+	expect(measured).toEqual({ chosen: {}, telemetry: { [golden.name]: [paid] }, failed: golden.name });
+	expect(lines).toEqual([`${golden.name}: pass 1, 14 tokens, $1`, `${golden.name}: no score (no receipt)`]);
+});
