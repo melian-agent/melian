@@ -15,7 +15,13 @@ import {
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { expect, it } from "vitest";
-import { FindingsDocument, findingsVersion, reopenDismissals, upsertVerification } from "../src/findings.ts";
+import {
+	FindingsDocument,
+	findingsVersion,
+	reopenDismissals,
+	replaceCheckFindings,
+	upsertVerification,
+} from "../src/findings.ts";
 import recorded from "./fixtures/stored-v8/findings.json" with { type: "json" };
 
 const answer = { by: "Maintainer", at: "2026-10-17T00:00:00Z", reason: "Constant input." };
@@ -310,6 +316,122 @@ it("keeps every accumulated cause when a dismissal accepts a narrower citation",
 		expect(accepted.proof).toHaveLength(2);
 		expect(accepted.proof).toEqual(expect.arrayContaining([...x, ...y]));
 		expect(accepted.dismissedTrigger!.proof).toEqual(accepted.proof);
+	} finally {
+		await harness.close(context);
+	}
+});
+
+it.each(["introduced", "pre-existing"] as const)(
+	"compares the %s trigger when no affected proof governs it",
+	async (cause) => {
+		const fake = createFakeModels();
+		const harness = await openHarness(createMemoryStorage(), { models: fake.models, registry: createRegistry() });
+		try {
+			const root = await harness.root(context, { agent: { model: fake.ref() } });
+			const a = report("A", cause === "introduced");
+			const b = Finding.from({ ...report("B").toJSON(), properties: { ...report("B").properties, cause } });
+			await root.commit(async (tx) => {
+				await upsertFinding(tx, root.id, a, "A", a.properties.trigger!.proof ?? []);
+				await dismissFinding(tx, root.id, a.id, answer);
+				await upsertFinding(tx, root.id, b, "B", a.properties.trigger!.proof ?? []);
+			}, context);
+			expect((await readFindings(harness, root.id, "B", context))[0]!.properties.status).toBe("new");
+		} finally {
+			await harness.close(context);
+		}
+	},
+);
+
+it("keeps an affected dismissal when a pre-existing sighting supplies no hunks", async () => {
+	const fake = createFakeModels();
+	const harness = await openHarness(createMemoryStorage(), { models: fake.models, registry: createRegistry() });
+	try {
+		const root = await harness.root(context, { agent: { model: fake.ref() } });
+		const a = report("A", true);
+		const b = Finding.from({
+			...report("B").toJSON(),
+			properties: { ...report("B").properties, cause: "pre-existing" },
+		});
+		await root.commit(async (tx) => {
+			await upsertFinding(tx, root.id, a, "A", a.properties.trigger!.proof);
+			await dismissFinding(tx, root.id, a.id, answer);
+			await upsertFinding(tx, root.id, b, "B");
+		}, context);
+		expect((await readFindings(harness, root.id, "B", context))[0]!.properties.status).toBe("dismissed");
+	} finally {
+		await harness.close(context);
+	}
+});
+
+it("reopens when an accepted hash survives only in a different file", async () => {
+	const fake = createFakeModels();
+	const harness = await openHarness(createMemoryStorage(), { models: fake.models, registry: createRegistry() });
+	try {
+		const root = await harness.root(context, { agent: { model: fake.ref() } });
+		const a = report("A", true);
+		const b = Finding.from({
+			...report("A").toJSON(),
+			properties: { ...report("A").properties, cause: "pre-existing" },
+		});
+		await root.commit(async (tx) => {
+			await upsertFinding(tx, root.id, a, "A", a.properties.trigger!.proof);
+			await dismissFinding(tx, root.id, a.id, answer);
+			await upsertFinding(tx, root.id, b, "B", [{ file: "src/other.ts", hash: snippetHash("A") }]);
+		}, context);
+		expect((await readFindings(harness, root.id, "B", context))[0]!.properties.status).toBe("new");
+	} finally {
+		await harness.close(context);
+	}
+});
+
+it.each([
+	{ by: "Another maintainer", reason: answer.reason },
+	{ by: answer.by, reason: "A different acceptance." },
+])("records a new dismissal when only attribution changes: %j", async (changed) => {
+	const fake = createFakeModels();
+	const harness = await openHarness(createMemoryStorage(), { models: fake.models, registry: createRegistry() });
+	try {
+		const root = await harness.root(context, { agent: { model: fake.ref() } });
+		const a = report("A");
+		const next = { ...answer, ...changed, at: "2026-10-17T01:00:00Z" };
+		await root.commit(async (tx) => {
+			await upsertFinding(tx, root.id, a, "A");
+			await dismissFinding(tx, root.id, a.id, answer);
+		}, context);
+		const before = await findingsVersion(harness, root.id, "A", context);
+		const replaced = await root.commit((tx) => dismissFinding(tx, root.id, a.id, next), context);
+		expect(replaced).toEqual(answer);
+		const [stored] = await readFindings(harness, root.id, "A", context);
+		expect(stored!.properties.dismissal).toEqual(next);
+		expect(stored!.properties.pastDismissals).toEqual([{ ...answer, replacedAt: next.at }]);
+		expect(await findingsVersion(harness, root.id, "A", context)).toBe(before + 1);
+	} finally {
+		await harness.close(context);
+	}
+});
+
+it("keeps a legacy dismissal whose last sighting was pruned", async () => {
+	const fake = createFakeModels();
+	const harness = await openHarness(createMemoryStorage(), { models: fake.models, registry: createRegistry() });
+	try {
+		const root = await harness.root(context, { agent: { model: fake.ref() } });
+		const old = defineDoc({
+			kind: "melian.findings",
+			version: 8,
+			scope: "conversation",
+			history: "rewindable",
+			fork: "asOf",
+			initial: () => recorded.findings,
+		});
+		await root.commit(async (tx) => {
+			await tx.doc(old, root.id);
+		}, context);
+		const [a] = await readFindings(harness, root.id, "A", context);
+		await root.commit(async (tx) => {
+			await replaceCheckFindings(tx, root.id, a!.properties.source.check, "B", []);
+			await upsertFinding(tx, root.id, a!, "C");
+		}, context);
+		expect((await readFindings(harness, root.id, "C", context))[0]!.properties.status).toBe("dismissed");
 	} finally {
 		await harness.close(context);
 	}
