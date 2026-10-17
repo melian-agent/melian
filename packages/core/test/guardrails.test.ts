@@ -37,19 +37,14 @@ afterEach(() => {
 	removeDirectory(repo);
 });
 
-it("refuses a policy notice with Git’s stderr, not its stdout", async () => {
+it.each(["base", "head"])("refuses a policy notice when its %s blob lookup fails, using Git’s stderr", async (side) => {
 	const original = gitClient.git;
 	vi.spyOn(gitClient, "git").mockImplementation((root, args, options) => {
 		if (!args.includes("--format=%(objectname)")) return original(root, args, options);
+		const commit = gitIn(repo, "rev-parse", side === "base" ? "HEAD^" : "HEAD");
+		if (args[3] !== commit) return original(root, args, options);
 		expect(root).toBe(repo);
-		expect(args).toEqual([
-			"--literal-pathspecs",
-			"ls-tree",
-			"--format=%(objectname)",
-			gitIn(repo, "rev-parse", "HEAD"),
-			"--",
-			"AGENTS.md",
-		]);
+		expect(args).toEqual(["--literal-pathspecs", "ls-tree", "--format=%(objectname)", commit, "--", "AGENTS.md"]);
 		return Promise.resolve({
 			code: 1,
 			stdout: "partial blob output",
@@ -74,7 +69,7 @@ it("hashes Git’s stdout blob ID rather than its stderr diagnostic", async () =
 			"--literal-pathspecs",
 			"ls-tree",
 			"--format=%(objectname)",
-			gitIn(repo, "rev-parse", "HEAD"),
+			expect.stringMatching(/^[0-9a-f]{40}$/),
 			"--",
 			"AGENTS.md",
 		]);
@@ -83,7 +78,7 @@ it("hashes Git’s stdout blob ID rather than its stderr diagnostic", async () =
 	const { findings } = await guardrails({ "AGENTS.md": "Old.\n" }, { "AGENTS.md": "New.\n" });
 	expect(findings).toHaveLength(1);
 	expect(findings[0]!.properties.trigger?.hash).toBe(
-		snippetHash(`blob:${gitIn(repo, "rev-parse", "HEAD:AGENTS.md")}`),
+		snippetHash(`blob:${gitIn(repo, "rev-parse", "HEAD^:AGENTS.md")}:${gitIn(repo, "rev-parse", "HEAD:AGENTS.md")}`),
 	);
 });
 
@@ -209,7 +204,7 @@ describe("forbidden-paths", () => {
 			revision,
 			source: { kind: "revision", commit: baseCommit },
 		});
-		expect(findings.map((finding) => finding.properties.path)).toEqual(["server.pem"]);
+		expect(findings.map((finding) => finding.properties.path)).toEqual(["server.pem", "legacy/melian.yaml"]);
 	});
 
 	it("names the file that set an incomplete rule named constructor, not a nearer file with other rules", async () => {
@@ -1094,8 +1089,11 @@ describe("a change to what a finding requires", () => {
 				"docs/melian.yaml": lines("knowledge:", "  writeBack: true"),
 			},
 		);
-		expect(notices(findings)).toEqual([["services/melian.yaml", { notice: "policy", resolution: true }]]);
-		expect(findings[0]!.properties.explanation.what).toContain("changes the resolution the file declares");
+		expect(notices(findings)).toEqual([
+			["docs/melian.yaml", { notice: "policy" }],
+			["services/melian.yaml", { notice: "policy", resolution: true }],
+		]);
+		expect(findings[1]!.properties.explanation.what).toContain("services/melian.yaml");
 	});
 
 	it("holds that notice at acknowledge, whatever the table or a guardrails ceiling says", async () => {
@@ -1117,7 +1115,7 @@ describe("a change to what a finding requires", () => {
 		});
 	});
 
-	it("draws it for a changed lens resolution, and leaves a lens's other changes to the switch", async () => {
+	it("marks a changed lens resolution and also reports other lens changes", async () => {
 		const { findings } = await guardrails(
 			{
 				"melian.yaml": root,
@@ -1133,6 +1131,7 @@ describe("a change to what a finding requires", () => {
 		);
 		expect(notices(findings)).toEqual([
 			[".melian/lenses/cleanup/LENS.md", { notice: "policy", resolution: true }],
+			["docs/.melian/lenses/cleanup/LENS.md", { notice: "policy" }],
 			["services/.agents/lenses/cleanup/LENS.md", { notice: "policy", resolution: true }],
 		]);
 		expect(
@@ -1167,10 +1166,11 @@ describe("a change to what a finding requires", () => {
 		);
 		expect(notices(findings)).toEqual([
 			["new/.melian/lenses/strict/LENS.md", { notice: "policy", resolution: true }],
+			["same/.melian/lenses/strict/LENS.md", { notice: "policy" }],
 			["svc/.melian/lenses/strict/LENS.md", { notice: "policy", resolution: true }],
 		]);
 		const quiet = { resolution: { P2: "silent", checks: { guardrails: { ceiling: "silent" } } } } as const;
-		expect(findings.map((finding) => finding.resolve(quiet))).toEqual(["acknowledge", "acknowledge"]);
+		expect(findings.map((finding) => finding.resolve(quiet))).toEqual(["acknowledge", "acknowledge", "acknowledge"]);
 	});
 
 	it("leaves a lens file's notice unmarked when its resolution stands", async () => {
@@ -1182,7 +1182,7 @@ describe("a change to what a finding requires", () => {
 		expect(findings[0]!.properties.explanation.what).not.toContain("resolution");
 	});
 
-	it("counts an added or removed key as changed, and never a file that only reorders it", async () => {
+	it("marks added or removed resolution and reports reordered blobs too", async () => {
 		const { findings } = await guardrails(
 			{
 				"melian.yaml": root,
@@ -1201,7 +1201,9 @@ describe("a change to what a finding requires", () => {
 		expect(notices(findings).map(([path]) => path)).toEqual([
 			"added/melian.yaml",
 			"emptied/melian.yaml",
+			"plain/melian.yaml",
 			"removed/melian.yaml",
+			"reordered/melian.yaml",
 		]);
 	});
 

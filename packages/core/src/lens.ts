@@ -492,11 +492,7 @@ async function repositoryDefinitions(reader: SourceReader, scope: string): Promi
 	return definitions;
 }
 
-/** Whether `path` is a lens's own file: `<scope>/.melian/lenses/<name>/LENS.md`, or the same under `.agents/`. */
-export function isLensFile(path: string): boolean {
-	const [file, , directory, owner] = path.split("/").reverse();
-	return file === "LENS.md" && directory === "lenses" && (owner === ".melian" || owner === ".agents");
-}
+export { isLensFile } from "./paths.ts";
 
 // `<scope>/.melian/lenses/<name>/...` or `<scope>/.agents/lenses/<name>/...`, and the lens entry itself if it is a symlink.
 const lensEntry = /^(?:(.*)\/)?\.(?:melian|agents)\/lenses\/([^/]+)(?:\/|$)/s;
