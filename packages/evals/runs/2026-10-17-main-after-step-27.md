@@ -29,24 +29,24 @@ Each cell reads precision / recall.
 
 ### Design (18 expected)
 
-| Cell | Pass 1 | Pass 2 | Pass 3 | Worst | Mean precision |
+| Cell | Pass 1 | Pass 2 | Pass 3 | Worst | Mean |
 |---|---|---|---|---|---|
-| Opus, Terra | 0.89 / 0.94 | 0.70 / 0.89 | 0.85 / 0.94 | 0.70 / 0.89 | 0.81 |
-| Sol, Terra | 0.85 / 0.94 | 0.86 / 1.00 | 0.95 / 1.00 | 0.85 / 0.94 | 0.89 |
+| Opus, Terra | 0.89 / 0.94 | 0.70 / 0.89 | 0.85 / 0.94 | 0.70 / 0.89 | 0.81 / 0.92 |
+| Sol, Terra | 0.85 / 0.94 | 0.86 / 1.00 | 0.95 / 1.00 | 0.85 / 0.94 | 0.89 / 0.98 |
 
 ### Durability (10 expected)
 
-| Cell | Pass 1 | Pass 2 | Pass 3 | Worst | Mean precision |
+| Cell | Pass 1 | Pass 2 | Pass 3 | Worst | Mean |
 |---|---|---|---|---|---|
-| Opus, Terra | 0.75 / 1.00 | 0.82 / 1.00 | 0.73 / 0.90 | 0.73 / 0.90 | 0.77 |
-| Sol, Terra | 1.00 / 1.00 | 1.00 / 1.00 | 0.89 / 0.90 | 0.89 / 0.90 | 0.96 |
+| Opus, Terra | 0.75 / 1.00 | 0.82 / 1.00 | 0.73 / 0.90 | 0.73 / 0.90 | 0.77 / 0.97 |
+| Sol, Terra | 1.00 / 1.00 | 1.00 / 1.00 | 0.89 / 0.90 | 0.89 / 0.90 | 0.96 / 0.97 |
 
 ### Correctness (7 expected)
 
-| Cell | Pass 1 | Pass 2 | Pass 3 | Worst | Mean precision |
+| Cell | Pass 1 | Pass 2 | Pass 3 | Worst | Mean |
 |---|---|---|---|---|---|
-| Opus, Terra | 0.86 / 1.00 | 1.00 / 1.00 | 1.00 / 1.00 | 0.86 / 1.00 | 0.95 |
-| Sol, Terra | 1.00 / 1.00 | 1.00 / 1.00 | 1.00 / 1.00 | 1.00 / 1.00 | 1.00 |
+| Opus, Terra | 0.86 / 1.00 | 1.00 / 1.00 | 1.00 / 1.00 | 0.86 / 1.00 | 0.95 / 1.00 |
+| Sol, Terra | 1.00 / 1.00 | 1.00 / 1.00 | 1.00 / 1.00 | 1.00 / 1.00 | 1.00 / 1.00 |
 
 ## What the evidence shows
 
@@ -58,7 +58,7 @@ The clean golden `design-reimplements-an-authority-clean` scored clean in all th
 
 These results support three things:
 - **Routing:** Sol stays first on the heavy tier.
-- **Failover:** falling back to Opus when Codex is out is sound for correctness. For design and durability it gives a useful but noisier review, below the bar in some passes.
+- **Failover:** this run does not measure it. Every cell here used Terra as verifier, and a Codex outage removes Terra too; the committed route then verifies with Sonnet, then Opus. What the run shows is narrower: an Opus finder with a Terra verifier meets the bar on correctness and misses it on design and durability. The failover cell, an Opus finder with an Anthropic verifier, is still to be measured.
 - **What is not shown:** the run measures the design, durability and correctness lenses only, and says nothing about the others.
 
 The run does not separate the effect of step 27 from that of the Pi layout change, since both landed between the earlier runs and this one.
