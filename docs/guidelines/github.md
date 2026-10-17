@@ -38,6 +38,7 @@ The lowest numeric review ID owns each signed key of revision, verdict fingerpri
 Scanning reviews never sets the viewer. A known token author keeps the existing author filter and list order.
 With `/user` unknown, an unrecorded review posted earlier under a personal token is not recovered.
 A later copy by another bot is ignored through the lowest-ID rule, which `address()` does not apply.
+A copy by another bot with a lower ID wins: that bot can get one by editing an older review of its own, or by submitting a review it opened before Melian posted. Recovery then records that review as Melian's.
 A root must name that review through `pull_request_review_id`, carry its own valid finding marker and match the review's revision and author.
 A reply must match its root's author and finding ID. An addressed marker counts only in that root's body.
 A refused `/user` lookup alone approves no root or addressed edit.
