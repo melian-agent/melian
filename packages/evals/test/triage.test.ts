@@ -13,13 +13,14 @@ import {
 	triageDirectory,
 } from "@melian-agent/evals";
 import { StageTelemetry, TokenUsage } from "@melian-agent/pipeline";
+import * as testing from "@melian-agent/pipeline/testing";
 import {
 	createFakeModels,
 	fauxAssistantMessage,
 	fauxToolCall,
 	scriptConversations,
 } from "@melian-agent/pipeline/testing";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { GoldenRunError } from "../src/run-error.ts";
 
 const goldens = loadTriageGoldens();
@@ -172,6 +173,33 @@ describe("the triage corpus", { timeout: 60_000 }, () => {
 		await expect(
 			runTriageGolden(goldens[0]!, { kind: "live", models: fake.review, model: "nowhere/none" }),
 		).rejects.toThrow("nowhere/none has no credentials");
+	});
+
+	it("does not retry a failed fake lens while measuring triage", async () => {
+		const script = testing.scriptConversations;
+		const requests: ReturnType<typeof script>[] = [];
+		const scripted = vi.spyOn(testing, "scriptConversations").mockImplementation((fake, scripts) => {
+			const seen = script(
+				fake,
+				scripts.map((each) => ({
+					...each,
+					replies: [
+						fauxAssistantMessage("", { stopReason: "error", errorMessage: "HTTP 503 overloaded" }),
+						...each.replies,
+					],
+				})),
+			);
+			requests.push(seen);
+			return seen;
+		});
+		try {
+			const golden = goldens.find((each) => each.name === "docs-typo")!;
+			expect(await runTriageGolden(golden, { kind: "scripted" })).toEqual([golden.expected.levels]);
+			expect(requests).toHaveLength(1);
+			for (const seen of Object.values(requests[0]!)) expect(seen).toHaveLength(1);
+		} finally {
+			scripted.mockRestore();
+		}
 	});
 });
 
@@ -542,4 +570,15 @@ it("retains per-golden measurement cost through JSON reopening and prints it bes
 	expect(
 		TriageResults.parse(JSON.stringify({ ...result.toJSON(), telemetry: undefined })).toJSON(),
 	).not.toHaveProperty("telemetry");
+});
+
+it("scores each golden against its own choices beside its spend", () => {
+	const [correct, missed] = goldens;
+	const result = TriageResults.measure(
+		[correct!, missed!],
+		{ [correct!.name]: [correct!.expected.levels], [missed!.name]: [{}] },
+		{ model: "fake/judge", fingerprint: "test", telemetry: { [correct!.name]: [], [missed!.name]: [] } },
+	);
+	expect(result.render().split("\n")).toContain(`${correct!.name}: exact 1.00, Token usage unavailable`);
+	expect(result.render().split("\n")).toContain(`${missed!.name}: exact 0.00, Token usage unavailable`);
 });
