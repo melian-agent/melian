@@ -174,10 +174,13 @@ export class Defect {
 		const standing = this.reports.filter((report) => !report.refuted());
 		const strictest = (standing.length === 0 ? this.reports : standing)
 			.map((report) =>
-				report.capped(policyFor(report.properties.path, report.ruleId), { unverified, defect: this.speaker }),
+				report.decision(policyFor(report.properties.path, report.ruleId), { unverified, defect: this.speaker }),
 			)
 			.reduce((kept, each) =>
-				resolutionOrder.indexOf(each.resolution) < resolutionOrder.indexOf(kept.resolution) ? each : kept,
+				resolutionOrder.indexOf(each.resolution) < resolutionOrder.indexOf(kept.resolution) ||
+				(each.resolution === kept.resolution && kept.lifted && !each.lifted)
+					? each
+					: kept,
 			);
 		const claims = this.reports.flatMap((report) =>
 			report.trustFloor(policyFor(report.properties.path, report.ruleId), this.speaker),
@@ -993,8 +996,7 @@ export class Adjudication {
 				const decision = defect.decision(this.#configFor, this.#verificationRan);
 				const protectedMinimum = decision.decidedBy.trustFloor?.some((claim) => claim.minimum !== "silent");
 				if (defect.refuted() && !protectedMinimum) refutedIds.add(defect.speaker.id);
-				if (decision.decidedBy.floor === "pre-existing-important" && !protectedMinimum)
-					lifted.add(defect.speaker.id);
+				if (decision.lifted) lifted.add(defect.speaker.id);
 				return defect.speaker.decided(decision);
 			})
 			.sort((a, b) => a.compareReading(b));
@@ -1016,12 +1018,14 @@ export class Adjudication {
 			(finding) => finding.properties.resolution !== "silent" && !lifted.has(finding.id),
 		);
 		const important = counted
-			.filter((finding) => finding.important())
+			.filter((finding) => finding.important() || lifted.has(finding.id))
 			.map(
 				(finding): ImportantFinding => ({
 					id: finding.id,
 					state: memberIds.get(finding.id)!.some((id) => this.#seenBefore.has(id)) ? "carried" : "new",
-					originalSeverity: finding.original(),
+					originalSeverity: (finding.properties.decidedBy?.trustFloor ?? [])
+						.map((claim) => claim.severity)
+						.reduce(stricter, finding.original()),
 					...(lifted.has(finding.id) ? { lifted: true as const } : {}),
 				}),
 			);

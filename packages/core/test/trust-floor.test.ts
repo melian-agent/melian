@@ -433,6 +433,117 @@ describe("step 29: lowered and refuted trust objections", () => {
 			expect(judged.findings.advisory).toEqual([]);
 		},
 	);
+	it("keeps the lift's policy source ahead of a weaker silent standing report", () => {
+		const trust = report(
+			{ severity: "P1", cause: "pre-existing" },
+			{ ...lowered, lowered: { from: "P1", to: "P2", reason: "Narrow." } },
+		);
+		const ordinary = report(
+			{ severity: "P3", cause: "pre-existing", rule: "unhandled-error", source: { check: "lens.correctness" } },
+			plausible,
+		);
+		const config = {
+			...defaultConfig,
+			ruleAliases: { "fail-open": ["unhandled-error"] },
+			resolution: { ...defaultConfig.resolution, P1: "silent" as const, P3: "silent" as const },
+		};
+		const verdict = new Adjudication({ findings: [trust, ordinary], config, manifest: [], checks: [] }).adjudicate();
+		expect(verdict.findings.advisory[0]?.properties.decidedBy?.check).toBe("lens.trust-boundary");
+		expect(verdict.counted()).toEqual([]);
+	});
+	it("counts a standing advisory beside a protected lift when trust speaks", () => {
+		const trust = report(
+			{ severity: "P1", cause: "pre-existing" },
+			{ ...lowered, lowered: { from: "P1", to: "P2", reason: "Narrow." } },
+		);
+		const ordinary = report(
+			{ severity: "P3", cause: "pre-existing", rule: "unhandled-error", source: { check: "lens.correctness" } },
+			plausible,
+		);
+		const config = {
+			...defaultConfig,
+			ruleAliases: { "fail-open": ["unhandled-error"] },
+			resolution: { ...defaultConfig.resolution, P1: "silent" as const },
+		};
+		const verdict = new Adjudication({ findings: [trust, ordinary], config, manifest: [], checks: [] }).adjudicate();
+		expect(verdict.findings.advisory[0]?.id).toBe(trust.id);
+		expect(verdict.counted()).toHaveLength(1);
+		expect(verdict.status).toBe("findings");
+	});
+	it("keeps a lowered standing requirement counted when its confirmed minimum is silent", () => {
+		const finding = report({ severity: "P1" }, { ...lowered, lowered: { from: "P1", to: "P2", reason: "Narrow." } });
+		const config = {
+			...defaultConfig,
+			resolution: { ...defaultConfig.resolution, P1: "silent" as const, P2: "advisory" as const },
+		};
+		const verdict = new Adjudication({ findings: [finding], config, manifest: [], checks: [] }).adjudicate();
+		expect(finding.trustFloor(config)).toMatchObject([{ minimum: "silent" }]);
+		expect(finding.lifted(config)).toBe(false);
+		expect(verdict.counted()).toHaveLength(1);
+		expect(verdict.status).toBe("findings");
+		expect(verdict.preExistingImportant).toBeUndefined();
+	});
+	it("keeps a stricter pre-existing opt-in counted beside a display-only minimum", () => {
+		const finding = report(
+			{ severity: "P1", cause: "pre-existing" },
+			{ ...lowered, lowered: { from: "P1", to: "P2", reason: "Narrow." } },
+		);
+		const config = {
+			...defaultConfig,
+			resolution: {
+				...defaultConfig.resolution,
+				P1: "silent" as const,
+				preExisting: { P2: "acknowledge" as const },
+			},
+		};
+		const verdict = new Adjudication({ findings: [finding], config, manifest: [], checks: [] }).adjudicate();
+		expect(finding.trustFloor(config)).toMatchObject([{ minimum: "advisory", lifted: true }]);
+		expect(finding.lifted(config)).toBe(false);
+		expect(verdict.counted()).toHaveLength(1);
+		expect(verdict.findings.acknowledge).toHaveLength(1);
+	});
+	it("keeps a display-only lowering beside a silent refuted sighting of the same ID", () => {
+		const raw = report(
+			{ severity: "P1", cause: "pre-existing", source: { check: "lens.trust-boundary", version: "1@quick" } },
+			{ ...lowered, lowered: { from: "P1", to: "P2", reason: "Narrow." } },
+		);
+		const wrong = report({ severity: "P3", cause: "pre-existing" }, refuted);
+		const merged = Finding.from({
+			...raw.toJSON(),
+			properties: { ...raw.properties, ...raw.mergeClaims([raw, wrong]) },
+		});
+		const config = {
+			...defaultConfig,
+			resolution: { ...defaultConfig.resolution, P1: "silent" as const, P3: "silent" as const },
+		};
+		const verdict = new Adjudication({ findings: [merged], config, manifest: [], checks: [] }).adjudicate();
+		expect(merged.lifted(config)).toBe(true);
+		expect(verdict.counted()).toEqual([]);
+		expect(verdict.status).toBe("passed");
+	});
+
+	it.each(["plausible", "unjudged"] as const)(
+		"counts a %s sighting beside a display-only protected lowering of the same ID",
+		(judgement) => {
+			const raw = report(
+				{ severity: "P1", cause: "pre-existing", source: { check: "lens.trust-boundary", version: "1@quick" } },
+				{ ...lowered, lowered: { from: "P1", to: "P2", reason: "Narrow." } },
+			);
+			const sighting = Finding.create({ ...input, severity: "P2", cause: "pre-existing" });
+			const standing = judgement === "plausible" ? sighting.verifiedAs(plausible) : sighting;
+			const merged = Finding.from({
+				...raw.toJSON(),
+				properties: { ...raw.properties, ...raw.mergeClaims([raw, standing]) },
+			});
+			const config = { ...defaultConfig, resolution: { ...defaultConfig.resolution, P1: "silent" as const } };
+			const verdict = new Adjudication({ findings: [merged], config, manifest: [], checks: [] }).adjudicate();
+			expect(merged.trustFloor(config)).toMatchObject([{ minimum: "advisory", lifted: true }]);
+			expect(merged.lifted(config)).toBe(false);
+			expect(verdict.counted()).toHaveLength(1);
+			expect(verdict.status).toBe("findings");
+		},
+	);
+
 	it("keeps a legacy sighting's lowering source ahead of the merged original severity", () => {
 		const finding = report();
 		const { severity: _, ...claim } = finding.claims()[0]!;
@@ -442,15 +553,47 @@ describe("step 29: lowered and refuted trust objections", () => {
 		});
 		expect(legacy.trustFloor(defaultConfig)).toMatchObject([{ severity: "P2" }]);
 	});
-	it("counts a protected minimum even when the important-pre-existing floor already met it", () => {
-		const finding = report({ cause: "pre-existing", severity: "P1" }, refuted);
-		const config = { ...defaultConfig, resolution: { ...defaultConfig.resolution, P1: "silent" as const } };
-		const verdict = new Adjudication({ findings: [finding], config, manifest: [], checks: [] }).adjudicate();
-		expect(verdict.counted().map((each) => each.id)).toEqual([finding.id]);
-		expect(finding.lifted(config)).toBe(false);
-		expect(verdict.status).toBe("findings");
-		expect(verdict.preExistingImportant).toMatchObject([{ id: finding.id, originalSeverity: "P1" }]);
-	});
+	it.each(["table", "ceiling"] as const)(
+		"keeps a protected important lift display-only under a silent %s",
+		(policy) => {
+			const finding = report({ cause: "pre-existing", severity: "P1" }, refuted);
+			const config = {
+				...defaultConfig,
+				resolution: {
+					...defaultConfig.resolution,
+					...(policy === "table"
+						? { P1: "silent" as const }
+						: { checks: { "lens.trust-boundary": { ceiling: "silent" as const } } }),
+				},
+			};
+			const confirmed = new Adjudication({
+				findings: [report({ cause: "pre-existing", severity: "P1" }, { ...plausible, verdict: "confirmed" })],
+				config,
+				manifest: [],
+				checks: [],
+			}).adjudicate();
+			for (const judgement of [
+				refuted,
+				{ ...lowered, lowered: { from: "P1" as const, to: "P2" as const, reason: "Narrow." } },
+			]) {
+				const judged = report({ cause: "pre-existing", severity: "P1" }, judgement);
+				const verdict = new Adjudication({ findings: [judged], config, manifest: [], checks: [] }).adjudicate();
+				expect(verdict.findings.advisory).toHaveLength(1);
+				expect(
+					Finding.parse(verdict.findings.advisory[0]).properties.decidedBy?.trustFloor?.[0],
+				).not.toHaveProperty("lifted");
+				expect(verdict.counted()).toEqual(confirmed.counted());
+				expect(judged.lifted(config)).toBe(true);
+				expect(verdict.status).toBe(confirmed.status);
+				expect(verdict.reviewStatus().state).toBe("success");
+				expect(verdict.preExistingImportant).toMatchObject([
+					{ id: finding.id, originalSeverity: "P1", lifted: true },
+				]);
+			}
+			const verdict = confirmed;
+			expect(verdict.preExistingImportant).toMatchObject([{ id: finding.id, originalSeverity: "P1" }]);
+		},
+	);
 	it("keeps a display-only important lift when a merged protected minimum is silent", () => {
 		const trust = report({ cause: "pre-existing" }, refuted);
 		const ordinary = report(
@@ -553,6 +696,11 @@ describe("step 29: exact survivor regressions", () => {
 		expect(merged.claims()).toEqual(speaker.claims());
 	});
 
+	it("omits absent transient fields from ordinary decisions", () => {
+		const finding = report({ source: { check: "lens.correctness" } }, plausible);
+		expect(Object.keys(finding.decision(defaultConfig)).sort()).toEqual(["decidedBy", "resolution"]);
+	});
+
 	it("keeps ordinary resolution for a refutation with no protected claims", () => {
 		const finding = report({ severity: "P1", source: { check: "lens.correctness" } }, refuted);
 		expect(finding.trustFloor(defaultConfig)).toEqual([]);
@@ -567,7 +715,7 @@ describe("step 29: exact survivor regressions", () => {
 		expect(verdict.counted()).toEqual([]);
 	});
 
-	it("counts an important defect when only one of two protected minima is visible", () => {
+	it("keeps an important defect display-only when its only visible protected minimum is a lift", () => {
 		const trust = report({ cause: "pre-existing", severity: "P1" }, refuted);
 		const tests = report({ cause: "pre-existing", rule: "vacuous-test", source: { check: "lens.tests" } }, refuted);
 		const config = {
@@ -581,10 +729,10 @@ describe("step 29: exact survivor regressions", () => {
 			"advisory",
 			"silent",
 		]);
-		expect(finding.lifted(config)).toBe(false);
-		expect(verdict.counted().map((each) => each.id)).toEqual([trust.id]);
+		expect(finding.lifted(config)).toBe(true);
+		expect(verdict.counted()).toEqual([]);
 		expect(verdict.refuted ?? []).toEqual([]);
-		expect(verdict.status).toBe("findings");
+		expect(verdict.status).toBe("passed");
 	});
 
 	it("keeps a non-speaking claim's injection floor in its ordinary counterpart", () => {

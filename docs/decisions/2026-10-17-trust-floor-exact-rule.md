@@ -27,9 +27,9 @@ The tests lens owns vacuous, weakened and skipped tests, including ones guarding
 
 ## The minimum
 
-For each protected claim the verifier lowered or refuted, resolve that same claim at its reported severity, ignoring verification. Use its own check, rule, lens version, path policy, table and ceiling. Apply the same cause caps as ordinary resolution. As in step 27, those caps read the merged defect's cause and proof. Existing policy, injection and important-pre-existing floors still apply to this ordinary counterpart.
+For each protected claim the verifier lowered or refuted, resolve the same claim as confirmed at its reported severity. Call the existing decision path. It supplies the outcome whole: resolution and whether the claim counts. Keep every table, ceiling, cause cap, ordinary floor and display-only lift. Cause and proof come from the merged defect; the claim keeps its own check, rule, lens version and path policy.
 
-The claim's minimum is the lesser of `acknowledge` and that ordinary counterpart's resolution. Take the strictest of the standing reports' ordinary results and every protected minimum. A minimum never weakens a stricter result. The new floor cannot rate a judged claim above its ordinary counterpart.
+Cap that outcome's resolution at `acknowledge`. Take the strictest standing requirement or protected outcome. A minimum never weakens a stricter standing result. On equal resolutions, a counted outcome wins over a display-only lift. The floor cannot make a claim stricter than the same claim confirmed. It must not build a separate counterpart that reapplies floors.
 
 Thus a default introduced trust P2 lowered to P3 needs acknowledgement. Under `P2: advisory`, it stays advisory. An advisory ceiling or pre-existing cap also stays advisory; a silent counterpart supplies no visible obligation. A P1 refutation drops its ordinary block but keeps acknowledgement under default policy. A refuted P3 test gap advises, just as the same claim confirmed would. Unjudged and standing unlowered claims receive no new floor.
 
@@ -47,7 +47,7 @@ Step 27 still owns grouping, alias ownership, speaker IDs and ordering. Inspect 
 
 Dismissed context supplies no live minimum. Step 27 also owns dismissal: a member ID or `--only` dismisses that report alone; a speaker's dismissal includes snippet members but leaves members joined only by a hunk live. A remaining protected member can therefore ask again. Dismissed findings stay outside all counts. The existing lifecycle alone decides when a changed defect reopens.
 
-An unresolved floored defect counts once. A visible protected minimum still counts when the important-pre-existing floor already meets the same resolution; that floor’s label alone cannot make it a display-only lift. Unlike the display-only important-pre-existing lift, its protected minimum counts toward attention. [Step 28](2026-10-17-acknowledge-status-exact-rule.md), landed in [pull request #142](https://github.com/melian-agent/melian/pull/142), owns the status mapping and dismissal authority. A protected finding held at acknowledgement fails the published status until dismissed. Its dismissal accepts its trigger and affected proof; changed content reopens it. This step adds no status exemption, command, exit code or writer inference.
+An unresolved floored defect counts once when its confirmed outcome counts. A confirmed display-only important lift stays display-only after lowering or refutation, including under a silent table or ceiling. A standing counted report still counts beside that lift. [Step 28](2026-10-17-acknowledge-status-exact-rule.md), landed in [pull request #142](https://github.com/melian-agent/melian/pull/142), owns the status mapping and dismissal authority. A protected finding held at acknowledgement fails the published status until dismissed. Its dismissal accepts its trigger and affected proof; changed content reopens it. This step adds no status exemption, command, exit code or writer inference.
 
 ## Stored decision and outputs
 
@@ -61,7 +61,7 @@ A protected refutation in a counted group appears in comparisons through `Verdic
 
 ## As built
 
-`Finding.trustFloor` derives each minimum through the existing resolution walk, caps and ordinary floors. `Defect.decision` gathers them from its reports. `Finding.floored` applies them and stores their diagnostics. Adjudication retains all-refuted defects only when a protected minimum is visible. `Finding.trustFloorNotes` supplies plain text that terminal and GitHub renderers escape.
+`Finding.trustFloor` calls `Finding.decision` on the same claim confirmed at its reported severity, with the merged cause and proof. It reuses the returned resolution and lift, then caps the resolution at acknowledgement. `Defect.decision` resolves each report through that path and gathers its protected outcomes. Equal resolutions retain a counted outcome before a display-only lift. `Finding.floored` applies the outcomes and stores their diagnostics. Lift metadata stays in the transient decision and the existing verdict importance list; no stored shape changes. Adjudication retains all-refuted defects only when a protected minimum is visible. `Finding.trustFloorNotes` supplies plain text that terminal and GitHub renderers escape.
 
 A member claim gains optional `severity`; old stored claims leave it absent. The floor uses an old claim's lowering source severity when available, otherwise the report's original severity. Original producer sightings retain their severities, so reading them anew reconstructs exact claims. Nothing invents missing historical judgement or severity on a stored verdict.
 

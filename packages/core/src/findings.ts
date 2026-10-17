@@ -533,13 +533,17 @@ export type DecidedBy = Static<typeof decidedBySchema>;
 
 /**
  * What a finding requires, and what decided it. `resolvedAtOriginal` says a lowered report resolved at the lens's
- * severity, because its keys silence the lowered one and a lowering never silences a finding.
+ * severity, because its keys silence the lowered one and a lowering never silences a finding. `lifted` marks a
+ * display-only important outcome; it is not stored on the finding.
  */
 export interface FindingDecision {
 	readonly resolution: Resolution;
 	readonly decidedBy: DecidedBy;
 	readonly resolvedAtOriginal?: boolean;
+	readonly lifted?: boolean;
 }
+
+type ProtectedMinimum = NonNullable<DecidedBy["trustFloor"]>[number] & { readonly lifted?: boolean };
 
 /** Melian's extensions to a SARIF `result`, carried in its property bag. */
 export type FindingProperties = Static<typeof findingPropertiesSchema>;
@@ -1207,8 +1211,8 @@ export class Finding {
 	 * Whether the finding belongs under "Pre-existing, important": `pre-existing` with an original severity of P0 or
 	 * P1.
 	 */
-	important(): boolean {
-		return this.properties.cause === "pre-existing" && severityRank[this.original()] <= severityRank.P1;
+	important(defect: Finding = this): boolean {
+		return defect.properties.cause === "pre-existing" && severityRank[this.original()] <= severityRank.P1;
 	}
 
 	/**
@@ -1349,13 +1353,23 @@ export class Finding {
 	}
 
 	/** {@link Finding.resolve}, with the file and entry that decided. */
-	decision(source: ResolutionSource): FindingDecision {
-		const decision = this.capped(source);
-		const claims = this.trustFloor(source);
+	decision(
+		source: ResolutionSource,
+		options: { readonly unverified?: boolean; readonly defect?: Finding } = {},
+	): FindingDecision {
+		const decision = this.capped(source, options);
+		const claims = this.trustFloor(source, options.defect);
+		const lifted =
+			claims.some((claim) => claim.lifted && lesser(decision.resolution, claim.minimum) === decision.resolution) &&
+			VerificationState.from(this).claims.every(
+				(claim) => claim.verification?.verdict === "refuted" || claim.verification?.lowered !== undefined,
+			);
+
 		return this.floored(
-			this.refuted() && claims.length > 0 ? { ...decision, resolution: "silent" } : decision,
+			this.refuted() && claims.length > 0 ? { ...decision, resolution: "silent" } : { ...decision, lifted },
 			[this.ruleId],
 			claims,
+			options.defect,
 		);
 	}
 
@@ -1364,11 +1378,7 @@ export class Finding {
 	 * finding is listed and leaves the status as it was.
 	 */
 	lifted(source: ResolutionSource): boolean {
-		const { decidedBy } = this.decision(source);
-		return (
-			decidedBy.floor === "pre-existing-important" &&
-			!decidedBy.trustFloor?.some((claim) => claim.minimum !== "silent")
-		);
+		return this.decision(source).lifted === true;
 	}
 
 	/**
@@ -1426,8 +1436,8 @@ export class Finding {
 			);
 	}
 
-	/** Protected judgements and their minimum under this report's policy, capped by the reported severity's resolution. */
-	trustFloor(source: ResolutionSource, defect: Finding = this): NonNullable<DecidedBy["trustFloor"]> {
+	/** Protected judgements with the confirmed outcome's count behaviour and resolution, capped at acknowledgement. */
+	trustFloor(source: ResolutionSource, defect: Finding = this): ProtectedMinimum[] {
 		return VerificationState.from(this).claims.flatMap((claim) => {
 			const { source: producer, ruleId, verification } = claim;
 			if (
@@ -1448,13 +1458,16 @@ export class Finding {
 				properties: {
 					...this.properties,
 					cause: defect.properties.cause,
+					evidence: defect.properties.evidence,
+					verification: { ...verification, verdict: "confirmed", lowered: undefined },
+					otherClaims: undefined,
 					severity,
 					originalSeverity: severity,
 					source: producer,
 					reportedBy: [producer],
 				},
 			});
-			const ordinary = original.floored(original.capped(source, { defect }), [ruleId]);
+			const ordinary = original.decision(source);
 			return [
 				{
 					id: claim.id,
@@ -1464,6 +1477,7 @@ export class Finding {
 					severity,
 					action: verification.verdict === "refuted" ? ("refuted" as const) : ("lowered" as const),
 					minimum: lesser("acknowledge", ordinary.resolution),
+					...(ordinary.lifted ? { lifted: true } : {}),
 					verification,
 				},
 			];
@@ -1500,7 +1514,8 @@ export class Finding {
 	floored(
 		decision: FindingDecision,
 		rules: readonly string[] = [this.ruleId],
-		claims: NonNullable<DecidedBy["trustFloor"]> = [],
+		claims: readonly ProtectedMinimum[] = [],
+		defect: Finding = this,
 	): FindingDecision {
 		// The notice carries no snippet, so adjudication never merges it into a finding of another rule.
 		const notice =
@@ -1508,7 +1523,7 @@ export class Finding {
 			(posix.basename(this.properties.path) === melianPaths.config || this.#resolutionNotice());
 		const trustFloor = [
 			...new Map(
-				claims.map((claim) => [
+				claims.map(({ lifted: _, ...claim }) => [
 					JSON.stringify([claim.id, claim.source.check, claim.source.version, claim.ruleId, claim.action]),
 					claim,
 				]),
@@ -1521,7 +1536,7 @@ export class Finding {
 		const floors: [NonNullable<DecidedBy["floor"]>, Resolution | undefined][] = [
 			["policy-change", notice ? "acknowledge" : undefined],
 			["injection-attempt", rules.includes(injectionAttemptRuleId) ? "acknowledge" : undefined],
-			["pre-existing-important", this.important() ? "advisory" : undefined],
+			["pre-existing-important", this.important(defect) ? "advisory" : undefined],
 			...trustFloor.map((claim): [NonNullable<DecidedBy["floor"]>, Resolution] => [
 				claim.action === "refuted" ? "refuted-trust" : "lowered-trust",
 				claim.minimum,
@@ -1534,7 +1549,16 @@ export class Finding {
 					: { resolution: least, decidedBy: { ...result.decidedBy, floor } },
 			trustFloor.length === 0 ? decision : { ...decision, decidedBy: { ...decision.decidedBy, trustFloor } },
 		);
-		return decision.resolvedAtOriginal === true ? { ...floored, resolvedAtOriginal: true } : floored;
+		return withoutUndefined({
+			...floored,
+			resolvedAtOriginal: decision.resolvedAtOriginal,
+			lifted:
+				((floored.decidedBy.floor === "pre-existing-important" ||
+					decision.lifted === true ||
+					(decision.resolution === "silent" && claims.some((claim) => claim.lifted))) &&
+					!claims.some((claim) => claim.minimum !== "silent" && !claim.lifted)) ||
+				undefined,
+		}) as FindingDecision;
 	}
 
 	/**
