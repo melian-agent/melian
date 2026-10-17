@@ -4,15 +4,20 @@ import { createGitHubProvider } from "@melian-agent/github";
 import {
 	backgroundContext as context,
 	createRegistry,
+	defineTask,
 	openHarness,
+	openPublishHarness,
 	openSqliteStorage,
+	publishReview,
 	revisionKey,
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, expect, it, vi } from "vitest";
 import { fakeGitHub } from "../../github/test/fixtures/fake-github.ts";
+import taskV3 from "../../github/test/fixtures/publish-v3.json" with { type: "json" };
 import { moveTo, pullRequestState } from "../../github/test/fixtures/scenario.ts";
 import { VerdictDocument } from "../../pipeline/src/adjudication.ts";
+import { PublishedDocument, PublisherDocument } from "../../pipeline/src/publish.ts";
 import { baseAndHead, isolatedGitEnv } from "../../pipeline/test/fixtures/repo.ts";
 import { publish } from "../src/commands.ts";
 import { storagePath } from "../src/repository.ts";
@@ -23,7 +28,15 @@ afterEach(() => {
 	vi.unstubAllEnvs();
 });
 
-it.each([false, true])("prints every carried dismissal it attests, with installation token: %s", async (failUser) => {
+it.each([
+	{ failUser: false },
+	{ failUser: true },
+	{ failUser: false, legacy: true },
+	{ failUser: false, resume: "post" },
+	{ failUser: false, resume: "post", legacy: true },
+	{ failUser: false, resume: "task" },
+	{ failUser: false, resume: "recover" },
+])("prints every carried dismissal it attests: %j", async ({ failUser, resume, legacy }) => {
 	for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
 	const repo = baseAndHead({ "src/a.ts": "old\n" }, { "src/a.ts": "new\n" });
 	try {
@@ -60,17 +73,19 @@ it.each([false, true])("prints every carried dismissal it attests, with installa
 			status: "dismissed",
 			explanation: { what: "Unsafe", whyHere: "New", whatToDo: "Validate" },
 		});
-		const dismissed = Finding.from({
-			...created.toJSON(),
-			properties: {
-				...created.properties,
-				dismissal: {
-					by: "Maintainer <private@example.invalid>",
-					at: "2026-10-17T00:00:00Z",
-					reason: "Reviewed\u001b[31m input.",
-				},
-			},
-		});
+		const dismissed = legacy
+			? created
+			: Finding.from({
+					...created.toJSON(),
+					properties: {
+						...created.properties,
+						dismissal: {
+							by: "Maintainer <private@example.invalid>",
+							at: "2026-10-17T00:00:00Z",
+							reason: "Reviewed\u001b[31m input.",
+						},
+					},
+				});
 		try {
 			const root = await harness.root(context, { agent: { model: fake.ref() } });
 			await root.commit(async (tx) => {
@@ -100,25 +115,131 @@ it.each([false, true])("prints every carried dismissal it attests, with installa
 		} finally {
 			await harness.close(context);
 		}
+		let earlier: Finding | undefined;
+		if (resume !== undefined) {
+			earlier = Finding.create({
+				rule: "prior",
+				file: "src/a.ts",
+				startLine: 1,
+				snippet: "old",
+				occurrence: 0,
+				severity: "P2",
+				cause: "introduced",
+				message: "Earlier objection",
+				source: { check: "static.example" },
+				status: "dismissed",
+				explanation: { what: "Earlier", whyHere: "New", whatToDo: "Validate" },
+			});
+			earlier = legacy
+				? earlier
+				: Finding.from({
+						...earlier.toJSON(),
+						properties: {
+							...earlier.properties,
+							dismissal: {
+								by: "Earlier maintainer",
+								at: "2026-10-16T00:00:00Z",
+								reason: "Earlier reason.",
+							},
+						},
+					});
+			const opened = await openPublishHarness(await openSqliteStorage(path), fake.review, provider);
+			try {
+				const root = await opened.harness.root(context);
+				const key = revisionKey(changeset.revision);
+				const current = (await opened.harness.snapshot(VerdictDocument, root.id, context))!.verdicts[key]!;
+				await root.commit(async (tx) => {
+					(await tx.doc(VerdictDocument, root.id)).verdicts[key] = new Adjudication({
+						findings: [earlier!],
+						manifest: [],
+						checks: [],
+						config: defaultConfig,
+					})
+						.adjudicate()
+						.toJSON();
+				}, context);
+				const post = provider.postReview.bind(provider);
+				vi.spyOn(provider, "postReview").mockImplementationOnce(async (draft) => {
+					if (resume === "recover") await post(draft);
+					throw new Error("interrupted round");
+				});
+				await expect(
+					publishReview({
+						harness: opened.harness,
+						provider,
+						changeset,
+						pullRequest: await provider.pullRequest(7),
+						base: changeset.revision.base,
+						trustedWriters: true,
+					}),
+				).rejects.toThrow("interrupted round");
+				await root.commit(async (tx) => {
+					(await tx.doc(VerdictDocument, root.id)).verdicts[key] = current;
+					if (resume === "task") {
+						const recorded = await tx.doc(PublisherDocument, root.id);
+						const input = {
+							...taskV3.input,
+							root: root.id,
+							target: recorded.target!,
+							publishedBy: recorded.publishedBy!,
+						};
+						const token = defineTask<typeof input, { phase: "publish" }, never>({
+							name: taskV3.kind,
+							version: taskV3.version,
+							initial: () => ({ phase: "publish" }),
+							phases: {
+								publish: async () => {
+									throw new Error("must migrate");
+								},
+							},
+							abort: async () => {
+								throw new Error("must migrate");
+							},
+						});
+						await tx.createTask(token, input, { ownership: { kind: "conversation" } });
+					}
+				}, context);
+			} finally {
+				await opened.close(context);
+			}
+		}
 		const output: string[] = [];
 		const io = { cwd: repo, env, stdout: (text: string) => output.push(text), stderr: () => {}, color: false };
 		expect(await publish(io, "#7")).toBe(0);
 		expect(output.join("")).toContain("Attested dismissals:");
+		if (earlier !== undefined) {
+			expect(output.join("")).toContain(earlier.id);
+			expect(output.join("")).toContain(legacy ? "No reason stored." : "Earlier reason.");
+			expect(output.join("")).toContain(`Revision ${revisionKey(changeset.revision)}, round 1`);
+			expect(output.join("")).toContain(`Revision ${revisionKey(changeset.revision)}, round 2`);
+		}
 		for (const expected of [
 			dismissed.id,
 			"unsafe",
 			"src/a.ts",
-			"Maintainer <private@example.invalid>",
-			"2026-10-17T00:00:00Z",
-			"Reviewed\\u001b[31m input.",
+			...(legacy
+				? ["by unknown at unknown: No reason stored."]
+				: ["Maintainer <private@example.invalid>", "2026-10-17T00:00:00Z", "Reviewed\\u001b[31m input."]),
 		])
 			expect(output.join("")).toContain(expected);
 		expect(output.join("")).not.toContain("\u001b");
+		expect(output.join("").split(dismissed.id)).toHaveLength(2);
 		expect(output.join("")).toContain("Status success: 0 findings, 1 dismissed");
+		const reopened = await openPublishHarness(await openSqliteStorage(path), fake.review, provider);
+		try {
+			const root = await reopened.harness.root(context);
+			await root.commit(async (tx) => {
+				delete (await tx.doc(PublishedDocument, root.id)).revisions[changeset.revision.head]!.rounds;
+			}, context);
+		} finally {
+			await reopened.close(context);
+		}
 		output.length = 0;
 		expect(await publish(io, "#7")).toBe(0);
 		expect(output.join("")).toContain(dismissed.id);
-		expect(state.reviews).toHaveLength(1);
+		expect(output.join("")).toContain(`round ${resume === undefined ? 1 : 2}`);
+		expect(output.join("")).toContain(revisionKey(changeset.revision));
+		expect(state.reviews).toHaveLength(resume === undefined ? 1 : 2);
 	} finally {
 		rmSync(repo, { recursive: true, force: true });
 	}

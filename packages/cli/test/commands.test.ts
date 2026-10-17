@@ -1,13 +1,15 @@
 import { Adjudication, defaultConfig, Finding } from "@melian-agent/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { gitAuthor, ReviewOutcome } from "../src/commands.ts";
+import { gitAuthor, PublicationAttestations } from "../src/commands.ts";
 import * as repository from "../src/repository.ts";
 
 afterEach(() => vi.restoreAllMocks());
 
 it("renders no attestation without dismissals and names absent legacy metadata", () => {
 	const empty = new Adjudication({ findings: [], manifest: [], checks: [], config: defaultConfig }).adjudicate();
-	expect(new ReviewOutcome(empty).renderDismissals()).toBe("");
+	expect(
+		new PublicationAttestations([{ revision: "base..head", round: 1, dismissals: empty.dismissals() }]).render(),
+	).toBe("");
 	const legacy = Finding.create({
 		rule: "unsafe",
 		file: "src/a.ts",
@@ -27,8 +29,10 @@ it("renders no attestation without dismissals and names absent legacy metadata",
 		checks: [],
 		config: defaultConfig,
 	}).adjudicate();
-	expect(new ReviewOutcome(verdict).renderDismissals()).toBe(
-		`Attested dismissals:\n  ${legacy.id} unsafe in src/a.ts: by unknown at unknown: No reason stored.\n`,
+	expect(
+		new PublicationAttestations([{ revision: "base..head", round: 1, dismissals: verdict.dismissals() }]).render(),
+	).toBe(
+		`Attested dismissals:\n  Revision base..head, round 1\n  ${legacy.id} unsafe in src/a.ts: by unknown at unknown: No reason stored.\n`,
 	);
 });
 

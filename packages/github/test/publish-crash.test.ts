@@ -18,6 +18,7 @@ import {
 } from "@melian-agent/pipeline";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LedgerDocument } from "../../pipeline/src/publish.ts";
+import { TimingDocument } from "../../pipeline/src/task-timing.ts";
 import { type FakeState, fakeGitHub, posts } from "./fixtures/fake-github.ts";
 import {
 	emptyName,
@@ -113,7 +114,7 @@ async function killAtReview(
 }
 
 describe("publishing across a crash", { timeout: 30_000 }, () => {
-	it("resumes an unfinished version-1 task from SQLite with legacy writer trust", async () => {
+	it.each(["publish-v1.json", "publish-v3.json"])("resumes an unfinished task from SQLite: %s", async (file) => {
 		const database = join(dir, "review.sqlite");
 		const fake = scenarioModels();
 		const state = pullRequestState();
@@ -122,7 +123,7 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 		await review;
 		moveTo(state, changeset);
 		const root = await harness.root(context);
-		const fixture = JSON.parse(readFileSync(new URL("./fixtures/publish-v1.json", import.meta.url), "utf8")) as {
+		const fixture = JSON.parse(readFileSync(new URL(`./fixtures/${file}`, import.meta.url), "utf8")) as {
 			kind: string;
 			version: number;
 			input: {
@@ -182,7 +183,8 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 		await harness.close(context);
 		harness = undefined;
 		const provider = providerFor(state);
-		const publisher = await openPublisher(await openSqliteStorage(database), scenarioModels().review, provider);
+		const storage = await openSqliteStorage(database);
+		const publisher = await openPublisher(storage, scenarioModels().review, provider);
 		harness = publisher.harness;
 		const result = await publishReview({
 			harness,
@@ -194,7 +196,7 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 		});
 		expect(result.superseded).toEqual([]);
 		expect(await harness.getTask(task, context)).toMatchObject({
-			version: 3,
+			version: 4,
 			input: { publishedBy: { trustedWriters: true } },
 			state: {
 				status: "terminal",
@@ -204,6 +206,23 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 		expect((await readPublished(harness, root.id, changeset.revision.head, context))?.publishedBy).toMatchObject({
 			trustedWriters: true,
 		});
+		const timing = await storage.findDocument(
+			{
+				kind: TimingDocument.definition.kind,
+				scope: { kind: "conversation", conversationId: root.id },
+				key: String(task),
+			},
+			"current",
+			context,
+		);
+		const value = (await storage.document(timing!.id, "current", context))!.value;
+		if (fixture.version === 3) {
+			expect(value.startedAt).toEqual(expect.any(Number));
+			expect(value.legacy).toBeUndefined();
+		} else {
+			expect(value.startedAt).toBeUndefined();
+			expect(value.legacy).toBe(true);
+		}
 		expect(state.reviews).toHaveLength(1);
 		expect(state.ledgers).toHaveLength(1);
 	});

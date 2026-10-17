@@ -70,6 +70,7 @@ A review is keyed by its base and head, the merge base and the head commit, so `
 `origin` must name the GitHub repository. The token comes from `GITHUB_TOKEN`, then `GH_TOKEN`, then `gh auth token`; Melian prints where it came from, never the token.
 
 Publication prints the status and each dismissal the publisher attests: ID, rule, file, dismisser, time and reason.
+It groups snapshots by revision and round, including older pending rounds posted or recovered during this invocation.
 That includes carried dismissals and each merged report, even on a repeat publish with no new review.
 Terminal control characters are escaped. Skills relay this output.
 Blocks and unresolved acknowledgements fail melian/review; an acknowledgement-only review still exits 3, and a successful publish exits 0.

@@ -25,6 +25,7 @@ import {
 	DismissHarness,
 	openPublishHarness,
 	openReviewHarness,
+	type Publication,
 	publishReview,
 	ReviewError,
 	type ReviewOrigin,
@@ -94,18 +95,31 @@ export class ReviewOutcome {
 	render(color: boolean): string {
 		return this.verdict.render(new Rendering({ color, ids: true, decided: true }));
 	}
+}
 
-	renderDismissals(): string {
-		const dismissals = this.verdict.dismissals();
-		if (dismissals.length === 0) return "";
-		return [
-			"Attested dismissals:",
-			...dismissals.map(
-				({ id, ruleId, path, dismissal }) =>
-					`  ${visibleText(id)} ${visibleText(ruleId)} in ${visibleText(path)}: by ${visibleText(dismissal?.by ?? "unknown")} at ${visibleText(dismissal?.at ?? "unknown")}: ${visibleText(dismissal?.reason ?? "No reason stored.")}`,
-			),
-			"",
-		].join("\n");
+/** The dismissal snapshots a publication attested, grouped by round. */
+export class PublicationAttestations {
+	readonly rounds: Publication["attestations"];
+
+	constructor(rounds: Publication["attestations"]) {
+		this.rounds = rounds;
+	}
+
+	render(): string {
+		return this.rounds
+			.map(({ revision, round, dismissals }) => {
+				if (dismissals.length === 0) return "";
+				return [
+					"Attested dismissals:",
+					`  Revision ${visibleText(revision)}, round ${round}`,
+					...dismissals.map(
+						({ id, ruleId, path, dismissal }) =>
+							`  ${visibleText(id)} ${visibleText(ruleId)} in ${visibleText(path)}: by ${visibleText(dismissal?.by ?? "unknown")} at ${visibleText(dismissal?.at ?? "unknown")}: ${visibleText(dismissal?.reason ?? "No reason stored.")}`,
+					),
+					"",
+				].join("\n");
+			})
+			.join("");
 	}
 }
 
@@ -426,9 +440,7 @@ export async function publish(
 			`Published review ${published.review} of ${short(pullRequest.head.sha)} to ${pullRequest.url}: ${parts.join(", ")}.\n`,
 		);
 		io.stdout(`Status ${published.status.state}: ${published.status.description}\n`);
-		const root = (await harness.root(context)).id;
-		const verdict = (await readVerdict(harness, root, revisionKey(changeset.revision), context))!;
-		io.stdout(new ReviewOutcome(verdict).renderDismissals());
+		io.stdout(new PublicationAttestations(published.attestations).render());
 		for (const { reason } of published.superseded) {
 			io.stdout(`An interrupted publication for an earlier target was dropped without posting: ${reason}\n`);
 		}

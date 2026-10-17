@@ -430,7 +430,14 @@ class PublishInput {
 	}
 }
 
+type AttestedRound = {
+	revision: string;
+	round: number;
+	dismissals: { id: string; ruleId: string; path: string; dismissal?: FindingDismissal }[];
+};
+
 type PublishResult = {
+	attestations: AttestedRound[];
 	review: string;
 	posted: number;
 	stillOpen: number;
@@ -464,10 +471,13 @@ const untrustedWriterStatus: ReviewStatus = {
 function publishTask(provider: ReviewProvider) {
 	return defineTask<StoredPublishInput, { phase: "publish"; legacyTiming?: true }, PublishOutcome>({
 		name: publishTaskName,
-		version: 3,
+		version: 4,
 		migrate: (input, checkpoint, fromVersion) => ({
 			input: fromVersion === 1 ? PublishInput.upgrade(input) : (input as StoredPublishInput),
-			checkpoint: { ...(checkpoint as { phase: "publish" }), legacyTiming: true },
+			checkpoint:
+				fromVersion === 3
+					? (checkpoint as { phase: "publish"; legacyTiming?: true })
+					: { ...(checkpoint as { phase: "publish" }), legacyTiming: true },
 		}),
 		initial: () => ({ phase: "publish" }),
 		phases: {
@@ -534,7 +544,16 @@ function publishTask(provider: ReviewProvider) {
 						return undefined;
 					}, context);
 				};
-				const result = { posted: 0, stillOpen: 0, resolved: 0, dismissed: 0, replies: 0, recovered: 0 };
+				const attestations: AttestedRound[] = [];
+				const result = {
+					attestations,
+					posted: 0,
+					stillOpen: 0,
+					resolved: 0,
+					dismissed: 0,
+					replies: 0,
+					recovered: 0,
+				};
 				// Set while the provider is asked to post a round, so a refusal counts against that round.
 				let posting = false;
 				let writingLedger = false;
@@ -636,6 +655,18 @@ function publishTask(provider: ReviewProvider) {
 							posted = { id: found.review, threads: found.threads };
 							result.recovered++;
 						}
+						attestations.push({
+							revision: pending.revision,
+							round: pending.round,
+							dismissals: Verdict.from(pending.verdict)
+								.dismissals()
+								.map(({ id, ruleId, path, dismissal }) => ({
+									id,
+									ruleId,
+									path,
+									...(dismissal === undefined ? {} : { dismissal }),
+								})),
+						});
 						const open = Object.fromEntries(
 							Object.entries(pending.open).map(([id, entry]): [string, PublishedEntry] => {
 								const thread = entry.thread ?? (entry.revision === head ? posted.threads[id] : undefined);
@@ -790,6 +821,16 @@ function publishTask(provider: ReviewProvider) {
 							return undefined;
 						}, context);
 					}
+					attestations.push({
+						revision,
+						round: record.rounds ?? record.reviews.length,
+						dismissals: verdict.dismissals().map(({ id, ruleId, path, dismissal }) => ({
+							id,
+							ruleId,
+							path,
+							...(dismissal === undefined ? {} : { dismissal }),
+						})),
+					});
 					await postStatus(status);
 					await runtime.commit(async (tx) => {
 						await timing.end(tx);
@@ -959,6 +1000,8 @@ export interface PublishOptions {
  * `abandoned` covers the head.
  */
 export interface Publication {
+	/** Dismissal snapshots attested by posted or recovered rounds and the current ledger. */
+	readonly attestations: readonly AttestedRound[];
 	readonly review: string;
 	readonly posted: number;
 	readonly stillOpen: number;
@@ -1191,11 +1234,13 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 	const unfinished = async () =>
 		(await harness.inspect(context)).tasks.filter((each) => each.record.kind === publishTaskName);
 	const superseded: SupersededPublication[] = [];
+	const resumed: AttestedRound[] = [];
 	for (const each of await unfinished()) {
 		if (each.state.kind === "blocked") continue;
 		const { outcome } = (await harness.waitForTask(each.record.id, context)).state;
 		const result = outcome.status === "completed" ? (outcome.result as PublishOutcome) : undefined;
 		if (result?.kind === "superseded") superseded.push({ task: String(each.record.id), reason: result.reason });
+		if (result?.kind === "published") resumed.push(...result.attestations);
 	}
 	const input = new PublishInput({
 		publishedBy,
@@ -1225,7 +1270,16 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 		const { result } = outcome;
 		if (result.kind === "published") {
 			const { kind: _, ...published } = result;
-			return { ...published, dismissed: published.dismissed ?? 0, superseded };
+			return {
+				...published,
+				attestations: [
+					...new Map(
+						[...resumed, ...published.attestations].map((round) => [JSON.stringify(round), round]),
+					).values(),
+				],
+				dismissed: published.dismissed ?? 0,
+				superseded,
+			};
 		}
 		throw new PublishError(
 			"staleTarget",

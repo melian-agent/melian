@@ -92,11 +92,16 @@ The CLI publication section describes failure, dismissal attestation, resumed pu
 Core and GitHub guidelines state the mapping; CLI guidance and all three skills relay dismissal output.
 
 The producer fills the existing optional `FindingTrigger.hash`, a SHA-256 field, from Git's blob identity.
-No stored shape, document version, task version or verdict fingerprint algorithm changes.
+No finding or document shape, document version or verdict fingerprint algorithm changes.
+The publish task advances from version 3 to 4 to return attested dismissal snapshots with revision and round identity.
+Its migration keeps version-3 timing and preserves the earlier versions’ legacy timing marker.
 Old and new readers already compare that hash opaquely.
 The preceding-build fixture covers old triggerless dismissal state and pending publication across SQLite reopen.
 Check replacement upserts before pruning stale sightings, so reopening compares the preceding trigger even at the same revision.
 The replacement-path reopen test publishes the reopened notice and asserts a failed status.
+Publication returns each posted or recovered round’s dismissal snapshot and the current ledger’s snapshot.
+The CLI prints these instead of rereading only the current verdict; identical snapshots appear once.
+SQLite tests cover a pending older round with different dismissal membership and a version-3 task recorded by its own code.
 The coordinator runs `static.mutation` on the host before the first full round.
 
 ## Resolution contract carried forward

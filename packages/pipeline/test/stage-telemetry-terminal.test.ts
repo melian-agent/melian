@@ -113,7 +113,7 @@ it.each([
 	});
 	const token = defineTask<JsonObject, { phase: string }, null>({
 		name: kind,
-		version: { "melian.check": 3, "melian.decision": 2, "melian.adjudication": 3, "melian.publish": 3 }[kind]!,
+		version: { "melian.check": 3, "melian.decision": 2, "melian.adjudication": 3, "melian.publish": 4 }[kind]!,
 		initial: () => ({ phase: recorded.state.checkpoint.phase }),
 		phases: {
 			run: async () => {

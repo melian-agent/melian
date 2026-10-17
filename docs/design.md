@@ -683,6 +683,8 @@ A resumed publication applies this mapping to stored verdicts and recovers accep
 Explicit publication updates an older status and ledger, even when its fingerprint needs no new review.
 The publishing writer attests local dismissals; GitHub's status-write permission supplies the authority, with no extra login or permission gate.
 `melian publish` prints every attested dismissal's ID, rule, file, dismisser, time and reason, including merged reports.
+Publication returns snapshots from each posted or recovered round, with its revision and round number, and from the current ledger.
+The CLI prints those snapshots even when an older pending round and the current verdict dismiss different reports.
 The review body names those dismissals and reasons without the git identities.
 The event stays `COMMENT`: Melian never approves.
 The status links to the [ledger](#the-ledger).
