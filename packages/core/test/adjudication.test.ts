@@ -2,6 +2,7 @@ import {
 	Adjudication,
 	type AlsoReportedAs,
 	type CheckRecord,
+	Defect,
 	defaultConfig,
 	Finding,
 	type FindingInput,
@@ -84,6 +85,56 @@ describe("Finding.resolve", () => {
 	it("decides from severity and cause, never from a resolution the finding already carries", () => {
 		expect(finding({ severity: "P0", resolution: "silent" }).resolve(defaultConfig)).toBe("block");
 		expect(finding({ severity: "nit", resolution: "block" }).resolve(defaultConfig)).toBe("silent");
+	});
+});
+
+describe("Defect.decision", () => {
+	it("drops an ordinary refuted block beside a protected refuted advisory", () => {
+		const verification = {
+			verdict: "refuted",
+			reason: "The caller validates the input.",
+			executor: "llm",
+			model: "faux/judge",
+			version: "1",
+		} as const;
+		const ordinary = finding({ severity: "P1", failureScenario: "The request runs unchecked input.", verification });
+		const protectedReport = finding({
+			rule: "untested-behaviour",
+			severity: "P3",
+			source: { check: "lens.tests" },
+			failureScenario: "A test never exercises unchecked input.",
+			verification,
+		});
+		for (const reports of [
+			[ordinary, protectedReport],
+			[protectedReport, ordinary],
+		]) {
+			const verdict = new Adjudication({
+				findings: reports,
+				manifest: [],
+				checks: [],
+				config: defaultConfig,
+			}).adjudicate();
+			expect(verdict.all()).toHaveLength(1);
+			expect(verdict.findings.advisory).toHaveLength(1);
+			expect(verdict.blocking).toBe(false);
+			expect(verdict.verificationCounts().refuted).toBe(2);
+		}
+	});
+
+	it("keeps an injection floor from a stored member without separate reports", () => {
+		const injection = finding({ rule: "melian/injection-attempt" });
+		const ordinary = finding({ severity: "P3" });
+		const stored = Finding.from({
+			...ordinary.toJSON(),
+			properties: { ...ordinary.properties, alsoReportedAs: [injection.report()] },
+		});
+		const defect = Defect.of(stored, new Set());
+		expect(defect.reports).toEqual([stored]);
+		expect(defect.decision(() => defaultConfig, false)).toMatchObject({
+			resolution: "acknowledge",
+			decidedBy: { floor: "injection-attempt" },
+		});
 	});
 });
 
