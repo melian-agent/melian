@@ -64,6 +64,21 @@ describe("--model", () => {
 	});
 });
 
+describe("a scripted review", () => {
+	it("does not call the routes unknown because its stand-in catalogue holds only the fake model", async () => {
+		const directory = mkdtempSync(join(tmpdir(), "melian-scripted-"));
+		try {
+			const script = join(directory, "script.json");
+			writeFileSync(script, "{}");
+			const { plan } = await reviewModels({ MELIAN_TEST_SCRIPT: script }, routed, [], setup);
+			expect(plan.tier("heavy").unknown).toBeUndefined();
+			expect(plan.warnings().filter((line) => line.includes("catalogue"))).toEqual([]);
+		} finally {
+			rmSync(directory, { recursive: true, force: true });
+		}
+	});
+});
+
 describe("userFiles", () => {
 	it("keeps the user's own files in XDG_CONFIG_HOME/melian, or ~/.config/melian", () => {
 		expect(userFiles({ XDG_CONFIG_HOME: "/xdg" })).toEqual({
