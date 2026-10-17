@@ -97,6 +97,37 @@ describe("unresolved acknowledge status", () => {
 		);
 		expect(body).not.toContain("private@example.invalid");
 	});
+	it("keeps acknowledgement guidance beside a counted advisory", () => {
+		const verdict = new Adjudication({
+			findings: [
+				Finding.create({ ...input, severity: "P2" }),
+				Finding.create({ ...input, severity: "P3", file: "src/other.ts", snippet: "other()" }),
+			],
+			manifest: [],
+			checks: [],
+			config: defaultConfig,
+		}).adjudicate();
+		expect(verdict.counted().map((finding) => finding.properties.resolution)).toEqual(["acknowledge", "advisory"]);
+		const body = renderReviewBody(
+			{
+				pullRequest: 7,
+				revision,
+				base,
+				fingerprint: verdict.fingerprint(),
+				round: 1,
+				verdict,
+				findings: [],
+				stillOpen: 0,
+				resolved: [],
+				secret,
+			},
+			links,
+		);
+		expect(body).toContain("melian/review: failure (2 findings, 0 blocking, 1 unresolved acknowledgement).");
+		expect(body).toContain("Dismiss unresolved acknowledgements with a reason, then publish.");
+		expect(body).toContain('`melian dismiss "#7" <id> --reason <text>`');
+	});
+
 	it("explains the failed status and dismissal in the review body without calling it blocking", () => {
 		const verdict = new Adjudication({
 			findings: [Finding.create({ ...input, severity: "P2" })],
