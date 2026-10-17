@@ -5,6 +5,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { fakeGitHub } from "../../github/test/fixtures/fake-github.ts";
 import { moveTo, pullRequestState } from "../../github/test/fixtures/scenario.ts";
 import { VerdictDocument } from "../src/adjudication.ts";
+import { PublishError } from "../src/errors.ts";
 import { revisionKey } from "../src/findings.ts";
 import {
 	backgroundContext as context,
@@ -15,7 +16,7 @@ import {
 	openHarness,
 	type TaskId,
 } from "../src/harness.ts";
-import { publishExtension, publishReview } from "../src/publish.ts";
+import { failedAttestations, publishExtension, publishReview } from "../src/publish.ts";
 import { createFakeModels } from "../src/testing.ts";
 import { baseAndHead, isolatedGitEnv } from "./fixtures/repo.ts";
 
@@ -149,3 +150,12 @@ it.each(["current", "pending", "failed task"])(
 		expect(state.reviews).toHaveLength(1);
 	},
 );
+
+it("reads a failed task’s legacy diagnostics without inventing attestations", () => {
+	expect(failedAttestations(undefined)).toEqual([]);
+	expect(failedAttestations({})).toEqual([]);
+});
+
+it("carries no attestations on a refusal before a round posts", () => {
+	expect(new PublishError("notReviewed", "No review.", { pullRequest: 7, revision: "A" }).attestations).toEqual([]);
+});

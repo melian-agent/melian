@@ -436,6 +436,10 @@ type AttestedRound = {
 	dismissals: { id: string; ruleId: string; path: string; dismissal?: FindingDismissal }[];
 };
 
+export function failedAttestations(detail: unknown): AttestedRound[] {
+	return (detail as { attestations?: AttestedRound[] } | undefined)?.attestations ?? [];
+}
+
 type PublishResult = {
 	attestations: AttestedRound[];
 	review: string;
@@ -901,7 +905,10 @@ function publishTask(provider: ReviewProvider) {
 								message = `the provider refused the review of verdict ${refused} ${refusals} times, so Melian abandoned it and set the status to error; the next publish plans a new one: ${message}`;
 							}
 						}
-						return { status: "terminal", outcome: { status: "failed", error: { message } } };
+						return {
+							status: "terminal",
+							outcome: { status: "failed", error: { message, detail: { attestations } } },
+						};
 					}, context);
 				}
 			},
@@ -1241,6 +1248,7 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 		const result = outcome.status === "completed" ? (outcome.result as PublishOutcome) : undefined;
 		if (result?.kind === "superseded") superseded.push({ task: String(each.record.id), reason: result.reason });
 		if (result?.kind === "published") resumed.push(...result.attestations);
+		if (outcome.status === "failed") resumed.push(...failedAttestations(outcome.error.detail));
 	}
 	const input = new PublishInput({
 		publishedBy,
@@ -1288,5 +1296,8 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 		);
 	}
 	const why = outcome.status === "failed" ? outcome.error.message : outcome.status;
-	throw new PublishError("publishFailed", `publishing to pull request #${pullRequest.number} stopped: ${why}`, where);
+	throw new PublishError("publishFailed", `publishing to pull request #${pullRequest.number} stopped: ${why}`, {
+		...where,
+		attestations: [...resumed, ...(outcome.status === "failed" ? failedAttestations(outcome.error.detail) : [])],
+	});
 }

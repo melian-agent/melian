@@ -690,6 +690,7 @@ The publishing writer attests local dismissals; GitHub's status-write permission
 `melian publish` prints every attested dismissal's ID, rule, file, dismisser, time and reason, including merged reports.
 Publication returns snapshots from each posted or recovered round, with its revision and round number, and from the current ledger.
 The CLI prints those snapshots even when an older pending round and the current verdict dismiss different reports.
+If the current round is refused after an older round posts, the error carries the older round’s attestations and the CLI prints them before reporting failure.
 The review body names those dismissals and reasons without the git identities.
 The ledger’s dismissal section uses the same verdict projection, including legacy merged members that inherit the speaker’s reason.
 The event stays `COMMENT`: Melian never approves.

@@ -30,13 +30,18 @@ afterEach(() => {
 
 it.each([
 	{ failUser: false },
+	{ failUser: false, failPermission: true },
 	{ failUser: true },
 	{ failUser: false, legacy: true },
 	{ failUser: false, resume: "post" },
+	{ failUser: false, resume: "post", refuseCurrent: true },
+	{ failUser: true, resume: "post", refuseCurrent: true },
 	{ failUser: false, resume: "post", legacy: true },
 	{ failUser: false, resume: "task" },
+	{ failUser: false, resume: "task", refuseResumed: true },
 	{ failUser: false, resume: "recover" },
-])("prints every carried dismissal it attests: %j", async ({ failUser, resume, legacy }) => {
+])("prints every carried dismissal it attests: %j", async (scenario) => {
+	const { failUser, resume, legacy, refuseCurrent, refuseResumed, failPermission } = scenario;
 	for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
 	const repo = baseAndHead({ "src/a.ts": "old\n" }, { "src/a.ts": "new\n" });
 	try {
@@ -50,6 +55,7 @@ it.each([
 			token: "test-token",
 			fetch: fakeGitHub(state),
 		});
+		const originalPost = provider.postReview.bind(provider);
 		vi.spyOn(targets, "gitHubFor").mockResolvedValue(provider);
 		vi.spyOn(targets, "pullRequestChangeset").mockResolvedValue(changeset);
 		vi.spyOn(targets, "currentBase").mockResolvedValue(changeset.revision.base);
@@ -205,6 +211,25 @@ it.each([
 		}
 		const output: string[] = [];
 		const io = { cwd: repo, env, stdout: (text: string) => output.push(text), stderr: () => {}, color: false };
+		if (failPermission) {
+			vi.spyOn(provider, "permission").mockRejectedValueOnce(new Error("permission read failed"));
+			await expect(publish(io, "#7")).rejects.toThrow("permission read failed");
+			expect(output).toEqual([]);
+		}
+		if (refuseCurrent || refuseResumed) {
+			let posts = 0;
+			vi.spyOn(provider, "postReview").mockImplementation(async (draft) => {
+				if (++posts === 2) throw new Error("refused current round");
+				return originalPost(draft);
+			});
+		}
+		if (refuseCurrent) {
+			await expect(publish(io, "#7")).rejects.toThrow("refused current round");
+			expect(state.reviews).toHaveLength(1);
+			expect(state.reviews[0]!.body).toContain(earlier!.id);
+			expect(output.join("")).toContain(earlier!.id);
+			expect(output.join("")).toContain("Earlier reason.");
+		}
 		expect(await publish(io, "#7")).toBe(0);
 		expect(output.join("")).toContain("Attested dismissals:");
 		if (earlier !== undefined) {

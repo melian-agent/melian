@@ -26,6 +26,7 @@ import {
 	openPublishHarness,
 	openReviewHarness,
 	type Publication,
+	PublishError,
 	publishReview,
 	ReviewError,
 	type ReviewOrigin,
@@ -450,6 +451,9 @@ export async function publish(
 			);
 		}
 		return 0;
+	} catch (error) {
+		if (error instanceof PublishError) io.stdout(new PublicationAttestations(error.attestations).render());
+		throw error;
 	} finally {
 		await publishHarness.close(context);
 	}

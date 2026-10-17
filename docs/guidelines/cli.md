@@ -71,6 +71,7 @@ A review is keyed by its base and head, the merge base and the head commit, so `
 
 Publication prints the status and each dismissal the publisher attests: ID, rule, file, dismisser, time and reason.
 It groups snapshots by revision and round, including older pending rounds posted or recovered during this invocation.
+A refused current round still prints the dismissals of earlier rounds it posted, then reports the publication failure.
 That includes carried dismissals and each merged report, even on a repeat publish with no new review.
 Terminal control characters are escaped. Skills relay this output.
 Blocks and unresolved acknowledgements fail melian/review; an acknowledgement-only review still exits 3, and a successful publish exits 0.
