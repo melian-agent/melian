@@ -15,7 +15,7 @@ import {
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { expect, it } from "vitest";
-import { FindingsDocument, findingsVersion, reopenDismissals } from "../src/findings.ts";
+import { FindingsDocument, findingsVersion, reopenDismissals, upsertVerification } from "../src/findings.ts";
 import recorded from "./fixtures/stored-v8/findings.json" with { type: "json" };
 
 const answer = { by: "Maintainer", at: "2026-10-17T00:00:00Z", reason: "Constant input." };
@@ -202,5 +202,73 @@ it("keeps version-8 dismissal behaviour through SQLite migration and a second re
 		}
 	} finally {
 		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+it.each([false, true])(
+	"reopens cached sightings without clearing either producer’s verification (affected: %s)",
+	async (affected) => {
+		const fake = createFakeModels();
+		const harness = await openHarness(createMemoryStorage(), { models: fake.models, registry: createRegistry() });
+		try {
+			const root = await harness.root(context, { agent: { model: fake.ref() } });
+			const a = report("eval(input)", affected);
+			const other = Finding.from({
+				...a.toJSON(),
+				properties: { ...a.properties, source: { ...a.properties.source, version: "2" } },
+			});
+			const b = report("eval(constant)", affected);
+			const verification = {
+				verdict: "confirmed",
+				reason: "Traced code.",
+				executor: "llm",
+				model: "faux/judge",
+				version: "probe",
+			} as const;
+			await root.commit(async (tx) => {
+				await upsertFinding(tx, root.id, a, "A", a.properties.trigger!.proof ?? []);
+				await upsertFinding(tx, root.id, other, "A", a.properties.trigger!.proof ?? []);
+				await upsertFinding(tx, root.id, b, "B", b.properties.trigger!.proof ?? []);
+				await dismissFinding(tx, root.id, b.id, answer, "B");
+				await upsertVerification(tx, root.id, "A", a.id, a.properties.source, verification);
+				await upsertVerification(tx, root.id, "A", a.id, other.properties.source, verification);
+			}, context);
+			const before = structuredClone(
+				(await harness.snapshot(FindingsDocument, root.id, context))!.items[a.id]!.verifications,
+			);
+			const beforeA = await findingsVersion(harness, root.id, "A", context);
+			const beforeB = await findingsVersion(harness, root.id, "B", context);
+			await root.commit((tx) => reopenDismissals(tx, root.id, "A", a.properties.trigger!.proof ?? []), context);
+			const record = (await harness.snapshot(FindingsDocument, root.id, context))!.items[a.id]!;
+			expect(record.lifecycle.status).toBe("new");
+			expect(record.lifecycle.history).toHaveLength(1);
+			expect(record.verifications).toEqual(before);
+			expect(record.lifecycle.proof).toEqual(a.properties.trigger!.proof ?? []);
+			expect(record.lifecycle.dismissedTrigger).toBeUndefined();
+			expect(await findingsVersion(harness, root.id, "A", context)).toBe(beforeA + 1);
+			expect(await findingsVersion(harness, root.id, "B", context)).toBe(beforeB + 1);
+		} finally {
+			await harness.close(context);
+		}
+	},
+);
+
+it("keeps absent legacy dismissal attribution when reopening", async () => {
+	const fake = createFakeModels();
+	const harness = await openHarness(createMemoryStorage(), { models: fake.models, registry: createRegistry() });
+	try {
+		const root = await harness.root(context, { agent: { model: fake.ref() } });
+		const a = report("eval(input)");
+		const b = report("eval(constant)");
+		await root.commit(async (tx) => {
+			await upsertFinding(tx, root.id, a, "A");
+			(await tx.doc(FindingsDocument, root.id)).items[a.id]!.lifecycle.status = "dismissed";
+			await upsertFinding(tx, root.id, b, "B");
+		}, context);
+		expect((await readFindings(harness, root.id, "B", context))[0]!.properties.pastDismissals).toEqual([
+			{ by: "", reason: "", at: "", reopenedRevision: "B" },
+		]);
+	} finally {
+		await harness.close(context);
 	}
 });

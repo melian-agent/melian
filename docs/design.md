@@ -192,6 +192,7 @@ Check replacement compares the old sighting before removing stale reports, inclu
 A policy name whose non-UTF-8 bytes cannot be passed back to Git refuses the check, rather than reading as an absent blob.
 Finding IDs stay unchanged. Findings document version 9 records each new dismissal’s accepted trigger hash and affected proof hashes.
 A sighting with different accepted content reopens it, even at an older revision or through an attached review task.
+Reopening a cached sighting changes lifecycle alone and keeps its verification, so a confirmed code finding still blocks.
 Older dismissals have no accepted trigger and retain their earlier rules.
 
 The findings document keeps what a producer reports apart from Melian's lifecycle state: status, who dismissed a finding and why, and the first and last revisions that reported it. A lens or tool reporting a finding again replaces only its own record, so a dismissal survives every rerun.

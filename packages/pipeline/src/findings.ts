@@ -265,6 +265,23 @@ function unionOf(proof: readonly StoredProvingHunk[]): StoredProvingHunk[] {
 	return [...byKey.keys()].sort(compareText).map((key) => ({ ...byKey.get(key)! }));
 }
 
+function reopenedAt(lifecycle: FindingLifecycle, revision: string): FindingLifecycle {
+	const { dismissedBy, dismissedReason, dismissedAt, dismissedTrigger: _, ...kept } = lifecycle;
+	return {
+		...kept,
+		status: "new",
+		history: [
+			...kept.history,
+			{
+				dismissedBy: dismissedBy ?? "",
+				dismissedReason: dismissedReason ?? "",
+				dismissedAt: dismissedAt ?? "",
+				reopenedRevision: revision,
+			},
+		],
+	};
+}
+
 function dismissalChanged(
 	lifecycle: FindingLifecycle,
 	properties: ProducerFinding["properties"],
@@ -290,13 +307,12 @@ export async function reopenDismissals(
 		if (record.lifecycle.status !== "dismissed" || record.lifecycle.dismissedTrigger === undefined) continue;
 		for (const sighting of Object.values(record.sightings[revision] ?? {})) {
 			if (dismissalChanged(record.lifecycle, sighting.properties, hunks)) {
-				await upsertFinding(
-					tx,
-					root,
-					Finding.from({ ...sighting, properties: { ...sighting.properties, status: "dismissed" } }),
-					revision,
-					hunks,
-				);
+				record.lifecycle = {
+					...reopenedAt(record.lifecycle, revision),
+					proof: unionOf(proofOf(sighting.properties.cause, sighting.properties.trigger)),
+				};
+				bump(state, Object.keys(record.sightings));
+				break;
 			}
 		}
 	}
@@ -377,7 +393,7 @@ export async function upsertFinding(
 		state.items[properties.id] = { lifecycle: previous.lifecycle, sightings, ...verified };
 		return;
 	}
-	const { dismissedBy, dismissedReason, dismissedAt, dismissedTrigger, ...kept } = previous.lifecycle;
+	const { dismissedTrigger, ...kept } = previous.lifecycle;
 	const lastSeen = previous.sightings[last];
 	const stored =
 		kept.proof ??
@@ -400,23 +416,11 @@ export async function upsertFinding(
 	const lastSeenRevision = older ? last : revision;
 	const proof = unionOf([...(reopened ? [] : standing), ...proved]);
 	const tied = proof.length > 0 || kept.proof !== undefined ? { proof } : {};
-	const lifecycle: FindingLifecycle = reopened
-		? {
-				...kept,
-				status: "new",
-				lastSeenRevision,
-				history: [
-					...kept.history,
-					{
-						dismissedBy: dismissedBy ?? "",
-						dismissedReason: dismissedReason ?? "",
-						dismissedAt: dismissedAt ?? "",
-						reopenedRevision: revision,
-					},
-				],
-				...tied,
-			}
-		: { ...previous.lifecycle, lastSeenRevision, ...tied };
+	const lifecycle: FindingLifecycle = {
+		...(reopened ? reopenedAt(previous.lifecycle, revision) : previous.lifecycle),
+		lastSeenRevision,
+		...tied,
+	};
 	state.items[properties.id] = { lifecycle, sightings, ...verified };
 }
 

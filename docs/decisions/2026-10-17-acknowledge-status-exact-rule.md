@@ -100,6 +100,8 @@ A version-8 dismissal has no accepted trigger and retains the earlier behaviour.
 The migration branches on the source version and never invents that field.
 An SQLite fixture recorded by main’s own code at `e0a9d00f` proves the legacy migration and a new dismissal across a second reopen.
 Attached review tasks also recheck their stored sightings before verification and adjudication.
+That reopen changes lifecycle alone, keeping the cached sightings and verification intact.
+The real lens-and-verifier regression proves a code finding still fails when the head returns to A.
 The real review and dismissal regression runs A, B dismissed, then A, and requires failure at the second A.
 The publish task advances from version 3 to 4 to return attested dismissal snapshots with revision and round identity.
 Its migration keeps version-3 timing and preserves the earlier versions’ legacy timing marker.
