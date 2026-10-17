@@ -199,6 +199,7 @@ GraphQL thread reads stay lazy, before reuse, reply or resolution; an unchanged 
 A root absent from GraphQL but present in REST has unknown state; publication waits rather than reusing or replacing it.
 Publication sets the verdict's status before any thread or marker read, including recovery of an older pending round.
 Bad or partial pages fail closed; listings stop at 50 pages, and malformed or repeated GraphQL cursors fail.
+REST listings validate every record's IDs, author, body and comment links before consuming any page.
 [The decision](decisions/2026-10-18-publication-provider-thread-state.md) records the smaller design accepted after the attack.
 Built in [pull request #145](https://github.com/melian-agent/melian/pull/145).
 

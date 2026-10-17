@@ -78,6 +78,25 @@ function firstLine(body: string | null | undefined): string {
 	return (body ?? "").split(/\r?\n/, 1)[0]!;
 }
 
+function publicationId(value: unknown): boolean {
+	return Number.isSafeInteger(value) && (value as number) > 0;
+}
+
+function publicationRecord(value: unknown, kind: "review" | "comment"): boolean {
+	if (typeof value !== "object" || value === null) return false;
+	const record = value as Record<string, unknown>;
+	const author = record.user as { login?: unknown } | null | undefined;
+	return (
+		publicationId(record.id) &&
+		typeof record.body === "string" &&
+		(author === null ||
+			(typeof author === "object" && typeof author.login === "string" && author.login.length > 0)) &&
+		(kind === "review" ||
+			(publicationId(record.pull_request_review_id) &&
+				(record.in_reply_to_id === undefined || publicationId(record.in_reply_to_id))))
+	);
+}
+
 // The marker opening `body`, when it is of `kind`, names `revision`, and `secret` signed it.
 function signedMarker(
 	body: string | null | undefined,
@@ -595,10 +614,10 @@ export class GitHubProvider implements ReviewProvider {
 		const page = { owner: this.owner, repo: this.repo, pull_number: pullRequest, per_page: 100 };
 		const [reviews, comments] = await Promise.all([
 			call(`list reviews on pull request #${pullRequest}`, () =>
-				this.publicationPages(this.octokit.rest.pulls.listReviews, page),
+				this.publicationPages(this.octokit.rest.pulls.listReviews, page, "review"),
 			),
 			call(`list review comments on pull request #${pullRequest}`, () =>
-				this.publicationPages(this.octokit.rest.pulls.listReviewComments, page),
+				this.publicationPages(this.octokit.rest.pulls.listReviewComments, page, "comment"),
 			),
 		]);
 		let review: string | undefined;
@@ -646,11 +665,12 @@ export class GitHubProvider implements ReviewProvider {
 	>(
 		endpoint: R,
 		parameters: { owner: string; repo: string; pull_number: number; per_page: number },
+		kind: "review" | "comment",
 	): Promise<Awaited<ReturnType<R>>["data"]> {
 		const guarded = Object.assign(
 			async (options: Parameters<R>[0]) => {
 				const response = await endpoint(options);
-				if (!Array.isArray(response.data))
+				if (!Array.isArray(response.data) || !response.data.every((record) => publicationRecord(record, kind)))
 					throw new GitHubError("failed", "GitHub returned an incomplete publication page");
 				return response;
 			},
