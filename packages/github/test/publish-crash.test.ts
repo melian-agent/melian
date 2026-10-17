@@ -1,9 +1,10 @@
 import { spawn } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
+import type { Changeset } from "@melian-agent/core";
 import { createGitHubProvider, statusContext } from "@melian-agent/github";
 import {
 	backgroundContext as context,
@@ -13,15 +14,17 @@ import {
 	openPublishHarness as openPublisher,
 	openSqliteStorage,
 	publishReview,
+	ReviewError,
 	readPublished,
 	revisionKey,
 } from "@melian-agent/pipeline";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { LedgerDocument } from "../../pipeline/src/publish.ts";
+import { LedgerDocument, PublishedDocument } from "../../pipeline/src/publish.ts";
 import { TimingDocument } from "../../pipeline/src/task-timing.ts";
 import { type FakeState, fakeGitHub, posts } from "./fixtures/fake-github.ts";
 import {
 	emptyName,
+	gitIn,
 	isolatedGitEnv,
 	lensScript,
 	moveTo,
@@ -45,7 +48,7 @@ let harness: Harness | undefined;
 
 beforeEach(() => {
 	for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
-	dir = mkdtempSync(join(tmpdir(), "melian-publish-crash-"));
+	dir = realpathSync(mkdtempSync(join(tmpdir(), "melian-publish-crash-")));
 	repo = scenarioRepository();
 });
 
@@ -69,23 +72,26 @@ async function killAtReview(
 	event:
 		| "review-posted"
 		| "review-requested"
+		| "address-requested"
 		| "ledger-edited"
 		| "ledger-status-posted"
 		| "status-posted"
 		| "untrusted-status-posted" = "review-posted",
 ): Promise<void> {
 	const mode =
-		event === "status-posted"
-			? "after-status"
-			: event === "untrusted-status-posted"
-				? "after-untrusted-status"
-				: event === "review-posted"
-					? "after-review"
-					: event === "ledger-edited"
-						? "after-ledger-edit"
-						: event === "ledger-status-posted"
-							? "after-ledger-status"
-							: "before-review";
+		event === "address-requested"
+			? "before-address"
+			: event === "status-posted"
+				? "after-status"
+				: event === "untrusted-status-posted"
+					? "after-untrusted-status"
+					: event === "review-posted"
+						? "after-review"
+						: event === "ledger-edited"
+							? "after-ledger-edit"
+							: event === "ledger-status-posted"
+								? "after-ledger-status"
+								: "before-review";
 	// The condition resolves workspace packages to their sources, as Vitest does, rather than to a stale or absent build.
 	const child = spawn(
 		process.execPath,
@@ -114,6 +120,80 @@ async function killAtReview(
 }
 
 describe("publishing across a crash", { timeout: 30_000 }, () => {
+	it("keeps a reused thread open when a crash left an older resolution at the same head", async () => {
+		const database = join(dir, "review.sqlite");
+		const stateFile = join(dir, "github.json");
+		const log = join(dir, "publish.log");
+		const fake = scenarioModels();
+		let state = pullRequestState();
+		let github = providerFor(state);
+		harness = await openPublishHarness(await openSqliteStorage(database), fake, github);
+		const publish = async (changeset: Changeset) =>
+			publishReview({
+				trustedWriters: true,
+				harness: harness!,
+				provider: github,
+				changeset,
+				pullRequest: await github.pullRequest(7),
+				base: changeset.revision.base,
+			});
+		const first = await reviewScenario(repo, harness, fake, lensScript(unsafeManager));
+		const { verdict: initial } = await first.review;
+		const id = initial.findings.block[0]!.properties.id;
+		moveTo(state, first.changeset);
+		await publish(first.changeset);
+		const thread = state.comments[0]!;
+		writeFileSync(join(repo, "src/config.ts"), "export const retries = 2;\n");
+		gitIn(repo, "commit", "--quiet", "--all", "-m", "second head");
+		const second = await reviewScenario(repo, harness, fake, lensScript());
+		await second.review;
+		moveTo(state, second.changeset);
+		state.failReplies = true;
+		await expect(publish(second.changeset)).rejects.toMatchObject({ code: "publishFailed" });
+		state.failReplies = false;
+		await harness.close(context);
+		harness = await openReviewOnlyHarness(await openSqliteStorage(database), fake);
+		writeFileSync(join(repo, "src/config.ts"), "export const retries = 3;\n");
+		gitIn(repo, "commit", "--quiet", "--all", "-m", "third head");
+		const third = await reviewScenario(repo, harness, fake, { correctness: [{ text: "Done." }] });
+		await expect(third.review).rejects.toBeInstanceOf(ReviewError);
+		moveTo(state, third.changeset);
+		await harness.close(context);
+		harness = undefined;
+		writeFileSync(stateFile, JSON.stringify(state));
+
+		await killAtReview(database, stateFile, log, "address-requested");
+
+		state = JSON.parse(readFileSync(stateFile, "utf8")) as FakeState;
+		expect(state.reviews).toHaveLength(3);
+		expect(state.resolvedThreads).toEqual([]);
+		const again = scenarioModels();
+		harness = await openReviewOnlyHarness(await openSqliteStorage(database), again);
+		const root = await harness.root(context);
+		const interrupted = (await harness.snapshot(PublishedDocument, root.id, context))!.revisions[
+			third.changeset.revision.head
+		]!;
+		expect(interrupted.pending).toBeUndefined();
+		expect(interrupted.resolved[id]).toMatchObject({ thread: String(thread.id) });
+		const returned = await reviewScenario(repo, harness, again, lensScript(unsafeManager), true);
+		const { verdict: current } = await returned.review;
+		expect(returned.changeset.revision).toEqual(third.changeset.revision);
+		expect(current.findings.block.map((finding) => finding.properties.id)).toEqual([id]);
+		await harness.close(context);
+		github = providerFor(state);
+		harness = (await openPublisher(await openSqliteStorage(database), scenarioModels().review, github)).harness;
+		state.calls = [];
+
+		await publish(returned.changeset);
+
+		expect(state.comments.map((comment) => comment.id)).toEqual([thread.id]);
+		expect(state.resolvedThreads).not.toContain(thread.id);
+		expect(state.comments[0]!.body).not.toContain("Addressed in commit");
+		expect(
+			state.calls.filter((call) => call.method === "PATCH" && call.path.endsWith(`/comments/${thread.id}`)),
+		).toEqual([]);
+	});
+
 	it.each(["publish-v1.json", "publish-v3.json", "publish-v4.json"])("resumes a SQLite task: %s", async (file) => {
 		const database = join(dir, "review.sqlite");
 		const fake = scenarioModels();

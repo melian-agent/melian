@@ -1,8 +1,14 @@
-import { rmSync, writeFileSync } from "node:fs";
+import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Changeset, ReviewProvider } from "@melian-agent/core";
 import { createGitHubProvider } from "@melian-agent/github";
-import { backgroundContext as context, createMemoryStorage, type Harness, publishReview } from "@melian-agent/pipeline";
+import {
+	backgroundContext as context,
+	createMemoryStorage,
+	type Harness,
+	publishReview,
+	recordDismissal,
+} from "@melian-agent/pipeline";
 import type { LensScript } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PublishedDocument } from "../../pipeline/src/publish.ts";
@@ -116,6 +122,65 @@ describe("a report merged under another while its resolution is owed", () => {
 // A finding returns before the reply that resolves its thread went through. It goes back to its own thread, and the
 // thread is answered when the finding goes for good, whether it returns merged under another report or alone.
 describe("a report that returns while its resolution is owed", () => {
+	it("posts a reopened finding with the same ID afresh when its dismissal reply is owed", async () => {
+		const fake = scenarioModels();
+		const state = pullRequestState();
+		const github = createGitHubProvider({
+			owner: state.owner,
+			repo: state.repo,
+			token: "t",
+			fetch: fakeGitHub(state),
+		});
+		harness = await openPublishHarness(createMemoryStorage(), fake, github);
+		const publish = async (changeset: Changeset) =>
+			publishReview({
+				harness: harness!,
+				provider: github,
+				changeset,
+				pullRequest: await github.pullRequest(7),
+				base: changeset.revision.base,
+				trustedWriters: true,
+			});
+		const first = await reviewScenario(repo, harness, fake, script([b], []));
+		const { verdict } = await first.review;
+		const [finding] = verdict.findings.acknowledge;
+		expect(finding).toBeDefined();
+		moveTo(state, first.changeset);
+		await publish(first.changeset);
+		const [thread] = state.comments;
+		await recordDismissal({
+			harness,
+			revision: first.changeset.revision,
+			id: finding!.properties.id,
+			dismissal: { by: "Melian Test", reason: "Safe for current callers.", at: "2026-10-17T00:00:00.000Z" },
+			repoRoot: repo,
+		});
+		state.failReplies = true;
+		await expect(publish(first.changeset)).rejects.toMatchObject({ code: "publishFailed" });
+		state.failReplies = false;
+		expect(state.comments).toHaveLength(1);
+		const source = readFileSync(join(repo, "src/user.ts"), "utf8");
+		writeFileSync(
+			join(repo, "src/user.ts"),
+			source.replace("managerName(user: User)", 'managerName(user: User, fallback = "none")'),
+		);
+		gitIn(repo, "commit", "--quiet", "--all", "-m", "change the trigger without changing the finding snippet");
+		const reopened = await reviewScenario(repo, harness, fake, script([b], []));
+		const { verdict: current } = await reopened.review;
+		expect(current.dismissed).toEqual([]);
+		expect(current.findings.acknowledge.map((each) => each.properties.id)).toEqual([finding!.properties.id]);
+		expect(current.findings.acknowledge[0]!.properties.pastDismissals).toHaveLength(1);
+		moveTo(state, reopened.changeset);
+
+		await publish(reopened.changeset);
+
+		const roots = state.comments.filter((comment) => comment.in_reply_to_id === undefined);
+		expect(roots.map((comment) => comment.id)).toEqual([thread!.id, expect.any(Number)]);
+		expect(roots[1]!.id).not.toBe(thread!.id);
+		expect(roots[1]!.body).toContain("null-dereference");
+		expect(state.resolvedThreads).not.toContain(roots[1]!.id);
+	});
+
 	// With `lost`, the reply goes through and the crash that would have recorded it is simulated by forgetting it.
 	async function owedThread({ lost = false } = {}) {
 		const fake = scenarioModels();
