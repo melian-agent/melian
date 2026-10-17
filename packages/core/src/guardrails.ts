@@ -19,6 +19,7 @@ import {
 	type FindingTrigger,
 	type GuardrailMatch,
 	normaliseSnippet,
+	snippetHash,
 	snippetOccurrence,
 } from "./findings.ts";
 import { git } from "./git.ts";
@@ -267,6 +268,25 @@ async function policyChanges(input: GuardrailInput, paths: readonly string[], co
 			const added = matchesGlobs(guardrail.files, path);
 			const listed = revision.policyFiles.includes(path) && loadsManifest(path, workspaces);
 			if (!listed && !added && !forced) return undefined;
+			// Git's display name cannot round-trip a non-UTF-8 path through a string argument.
+			if (revision.files.some((file) => file.percentEncoded && [file.path, file.oldPath].includes(path))) {
+				throw new CheckError(
+					"unreadable",
+					check,
+					`${path}: cannot read its policy blob identity; the name is not UTF-8`,
+				);
+			}
+			const blob = await git(repoRoot, [
+				"--literal-pathspecs",
+				"ls-tree",
+				"--format=%(objectname)",
+				revision.head,
+				"--",
+				path,
+			]);
+			if (blob.code !== 0)
+				throw new CheckError("unreadable", check, `${revision.head}:${path}: ${blob.stderr.trim()}`);
+			const trigger = { file: path, index: 0, hash: snippetHash(`blob:${blob.stdout.trim()}`) };
 			const marked = forced ? { resolution: true as const } : {};
 			const analyser = analyserOf(path) ?? (added ? "an analyser this repository configures" : undefined);
 			if (analyser !== undefined) {
@@ -283,6 +303,7 @@ async function policyChanges(input: GuardrailInput, paths: readonly string[], co
 					file: path,
 					line: 1,
 					discriminator: "analyser",
+					trigger,
 					severity: guardrail.analyserSeverity,
 					match: { notice: "analyser", ...marked },
 					message: `Review the change to ${path}, which configures ${analyser}.`,
@@ -299,6 +320,7 @@ async function policyChanges(input: GuardrailInput, paths: readonly string[], co
 				file: path,
 				line: 1,
 				discriminator: "policy",
+				trigger,
 				severity: guardrail.severity,
 				match: { notice: "policy", ...marked },
 				message: "Review policy and standards changed in this revision.",

@@ -41,6 +41,7 @@ type FindingLifecycle = {
 	dismissedBy?: string;
 	dismissedReason?: string;
 	dismissedAt?: string;
+	dismissedTrigger?: { hash: string; proof: StoredProvingHunk[] };
 	firstSeenRevision: string;
 	lastSeenRevision: string;
 	history: StoredPastDismissal[];
@@ -69,6 +70,7 @@ type FindingRecord = {
 // lifecycle change of a finding sighted there. Adjudication's input carries it, so a dismissal decides afresh.
 type FindingsState = { revisions: string[]; items: Record<string, FindingRecord>; versions: Record<string, number> };
 
+// Version 9 ties new dismissals to the accepted trigger; version 8 dismissals keep their former reopen rules.
 // Version 8 lets a guardrail sighting name the configured rules it matched, or its notice class, outside its ID; a
 // version 7 sighting names neither, reads unchanged, and resolves under its whole guardrail.
 // Version 7 lets a verification record hold the verifier's answers, the evidence read back, and a lowered severity; a
@@ -76,12 +78,13 @@ type FindingsState = { revisions: string[]; items: Record<string, FindingRecord>
 // records. Version 5 made evidence a list of locations; a sighting stored before reads with its one location as a cause.
 export const FindingsDocument = defineDoc<FindingsState>({
 	kind: "melian.findings",
-	version: 8,
+	version: 9,
 	scope: "conversation",
 	history: "rewindable",
 	fork: "asOf",
 	initial: () => ({ revisions: [], items: {}, versions: {} }),
 	migrate: (value, from) => {
+		if (from === 8) return value as FindingsState;
 		if (from < 4)
 			throw new Error(`the findings document needs migrating from version ${from}, which Melian cannot do`);
 		const state = value as FindingsState;
@@ -262,6 +265,59 @@ function unionOf(proof: readonly StoredProvingHunk[]): StoredProvingHunk[] {
 	return [...byKey.keys()].sort(compareText).map((key) => ({ ...byKey.get(key)! }));
 }
 
+function reopenedAt(lifecycle: FindingLifecycle, revision: string): FindingLifecycle {
+	const { dismissedBy, dismissedReason, dismissedAt, dismissedTrigger: _, ...kept } = lifecycle;
+	return {
+		...kept,
+		status: "new",
+		history: [
+			...kept.history,
+			{
+				dismissedBy: dismissedBy ?? "",
+				dismissedReason: dismissedReason ?? "",
+				dismissedAt: dismissedAt ?? "",
+				reopenedRevision: revision,
+			},
+		],
+	};
+}
+
+function dismissalChanged(
+	lifecycle: FindingLifecycle,
+	properties: ProducerFinding["properties"],
+	hunks: readonly ProvingHunk[] | undefined,
+): boolean {
+	const accepted = lifecycle.dismissedTrigger!;
+	const proof = unionOf([...accepted.proof, ...(lifecycle.proof ?? [])]);
+	return proof.length > 0 && properties.cause !== "introduced"
+		? hunks !== undefined &&
+				proof.some((each) => !hunks.some((hunk) => hunk.file === each.file && hunk.hash === each.hash))
+		: accepted.hash !== triggerCode(properties.trigger);
+}
+
+// Attached tasks need no new reports, but their sightings must still meet the content the dismissal accepted.
+export async function reopenDismissals(
+	tx: Tx,
+	root: ConversationId,
+	revision: string,
+	hunks: readonly ProvingHunk[],
+): Promise<void> {
+	const state = await tx.doc(FindingsDocument, root);
+	for (const record of Object.values(state.items)) {
+		if (record.lifecycle.status !== "dismissed" || record.lifecycle.dismissedTrigger === undefined) continue;
+		for (const sighting of Object.values(record.sightings[revision] ?? {})) {
+			if (dismissalChanged(record.lifecycle, sighting.properties, hunks)) {
+				record.lifecycle = {
+					...reopenedAt(record.lifecycle, revision),
+					proof: unionOf(proofOf(sighting.properties.cause, sighting.properties.trigger)),
+				};
+				bump(state, Object.keys(record.sightings));
+				break;
+			}
+		}
+	}
+}
+
 /**
  * Records a sighting: the finding as its producer, named by `properties.source`, reported it at `revision`. Keeps
  * Melian's lifecycle record for its ID.
@@ -272,9 +328,9 @@ function unionOf(proof: readonly StoredProvingHunk[]): StoredProvingHunk[] {
  * A sighting replaces only the same producer's sighting of the same ID at the same revision, so a replay or a
  * correction rewrites its own report and never another producer's or another revision's. The lifecycle starts as `new`
  * when the ID is first seen, and `lastSeenRevision` moves to `revision` unless {@link recordRevision} marked a newer
- * revision. A dismissed finding stays dismissed unless a sighting at that revision or a newer one has a trigger whose
- * code changed materially, meaning its `trigger.hash`, or the hash of its normalised `trigger.snippet` when it has none,
- * differs from the last revision's; then it becomes `new` and the dismissal moves to `history`.
+ * revision. New dismissals compare every sighting with the trigger they accepted, regardless of revision order.
+ * Different content becomes `new` and moves the dismissal to `history`. Legacy dismissals retain their last-seen
+ * comparison and ignore older revisions. Hashes compare whole content, falling back to normalised snippets.
  *
  * An `affected` finding is tied instead to the hunks that proved its cause: the union of every `trigger.proof` its
  * sightings gave since it last reopened, so a lens citing one more cause adds to the proof rather than replacing it.
@@ -332,11 +388,12 @@ export async function upsertFinding(
 	if (verifications?.[revision] !== undefined) delete verifications[revision]![key];
 	const verified = verifications === undefined ? {} : { verifications };
 	const last = previous.lifecycle.lastSeenRevision;
-	if (state.revisions.indexOf(revision) < state.revisions.indexOf(last)) {
+	const older = state.revisions.indexOf(revision) < state.revisions.indexOf(last);
+	if (older && previous.lifecycle.dismissedTrigger === undefined) {
 		state.items[properties.id] = { lifecycle: previous.lifecycle, sightings, ...verified };
 		return;
 	}
-	const { dismissedBy, dismissedReason, dismissedAt, ...kept } = previous.lifecycle;
+	const { dismissedTrigger, ...kept } = previous.lifecycle;
 	const lastSeen = previous.sightings[last];
 	const stored =
 		kept.proof ??
@@ -349,29 +406,21 @@ export async function upsertFinding(
 	const proven = stored.length > 0 && properties.cause !== "introduced";
 	const reopened =
 		kept.status === "dismissed" &&
-		lastSeen !== undefined &&
-		(proven
-			? standing.length < stored.length
-			: triggerCode(adjudicate(lastSeen).winner.properties.trigger) !== triggerCode(properties.trigger));
+		(dismissedTrigger !== undefined
+			? dismissalChanged(previous.lifecycle, properties, hunks)
+			: lastSeen !== undefined &&
+				(proven
+					? standing.length < stored.length
+					: triggerCode(adjudicate(lastSeen).winner.properties.trigger) !== triggerCode(properties.trigger)));
+	if (reopened) bump(state, Object.keys(sightings));
+	const lastSeenRevision = older ? last : revision;
 	const proof = unionOf([...(reopened ? [] : standing), ...proved]);
 	const tied = proof.length > 0 || kept.proof !== undefined ? { proof } : {};
-	const lifecycle: FindingLifecycle = reopened
-		? {
-				...kept,
-				status: "new",
-				lastSeenRevision: revision,
-				history: [
-					...kept.history,
-					{
-						dismissedBy: dismissedBy ?? "",
-						dismissedReason: dismissedReason ?? "",
-						dismissedAt: dismissedAt ?? "",
-						reopenedRevision: revision,
-					},
-				],
-				...tied,
-			}
-		: { ...previous.lifecycle, lastSeenRevision: revision, ...tied };
+	const lifecycle: FindingLifecycle = {
+		...(reopened ? reopenedAt(previous.lifecycle, revision) : previous.lifecycle),
+		lastSeenRevision,
+		...tied,
+	};
 	state.items[properties.id] = { lifecycle, sightings, ...verified };
 }
 
@@ -389,13 +438,17 @@ export async function replaceCheckFindings(
 	findings: readonly Finding[],
 ): Promise<void> {
 	const state = await tx.doc(FindingsDocument, rootConversationId);
+	const reported = new Set(findings.map((finding) => `${finding.id}\0${producerKey(finding.properties.source)}`));
+	for (const finding of findings) await upsertFinding(tx, rootConversationId, finding, revision);
 	const { items } = state;
 	let removed = false;
 	for (const [id, record] of Object.entries(items)) {
 		const atRevision = record.sightings[revision];
 		if (atRevision === undefined) continue;
 		const left = Object.fromEntries(
-			Object.entries(atRevision).filter(([, sighting]) => sighting.properties.source.check !== check),
+			Object.entries(atRevision).filter(
+				([key, sighting]) => sighting.properties.source.check !== check || reported.has(`${id}\0${key}`),
+			),
 		);
 		if (Object.keys(left).length === Object.keys(atRevision).length) continue;
 		removed = true;
@@ -405,13 +458,13 @@ export async function replaceCheckFindings(
 		else items[id] = { ...record, sightings };
 	}
 	if (removed) bump(state, [revision]);
-	for (const finding of findings) await upsertFinding(tx, rootConversationId, finding, revision);
 }
 
 /**
  * Marks a finding dismissed, and returns the dismissal it replaced, if it was dismissed already. A replaced dismissal
  * moves to the finding's history, so its reason is not lost; the same dismisser giving the same reason again changes
- * nothing. The reason is stored without surrounding whitespace.
+ * nothing when the accepted content also matches. The reason is stored without surrounding whitespace.
+ * `revision` selects the accepted trigger, defaulting to the last sighting for direct callers.
  * Throws core's `FindingError`: `unknownFinding` if no finding has the ID, and `invalidDismissal` for a blank `by` or
  * `at`, or a reason core's `dismissalReason` refuses.
  */
@@ -420,6 +473,7 @@ export async function dismissFinding(
 	rootConversationId: ConversationId,
 	id: string,
 	{ by, reason, at }: Dismissal,
+	revision?: string,
 ): Promise<Dismissal | undefined> {
 	const why = dismissalReason(reason);
 	for (const [field, value] of [
@@ -439,14 +493,29 @@ export async function dismissFinding(
 		throw new FindingError("unknownFinding", `no finding has ID ${id}`, { path: "/properties/id" });
 	}
 	const { status, dismissedBy, dismissedReason, dismissedAt, history } = record.lifecycle;
-	// The same dismisser giving the same reason again changes nothing, so a retried dismiss adds no history.
-	if (status === "dismissed" && dismissedBy === by && dismissedReason === why) return undefined;
+	const atRevision = record.sightings[revision ?? record.lifecycle.lastSeenRevision]!;
+	const trigger = adjudicate(atRevision).winner.properties.trigger;
+	const proof = unionOf([
+		...(record.lifecycle.proof ?? []),
+		...Object.values(atRevision).flatMap((each) => proofOf(each.properties.cause, each.properties.trigger)),
+	]);
+	const dismissedTrigger = { hash: triggerCode(trigger), proof };
+	// Repeating the same dismissal of the same content adds no history.
+	if (
+		status === "dismissed" &&
+		dismissedBy === by &&
+		dismissedReason === why &&
+		JSON.stringify(record.lifecycle.dismissedTrigger) === JSON.stringify(dismissedTrigger)
+	)
+		return undefined;
 	const replaced =
 		status === "dismissed"
 			? { by: dismissedBy ?? "", reason: dismissedReason ?? "", at: dismissedAt ?? "" }
 			: undefined;
 	const lifecycle: FindingLifecycle = {
 		...record.lifecycle,
+		dismissedTrigger,
+		proof,
 		status: "dismissed",
 		dismissedBy: by,
 		dismissedReason: why,

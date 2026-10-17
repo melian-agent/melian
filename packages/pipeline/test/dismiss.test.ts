@@ -287,6 +287,27 @@ async function dismissCutShort(harness: Harness, id: string, with_ = dismissal):
 }
 
 describe("recording a dismissal", () => {
+	it("keeps a code finding verified when returning to an earlier dismissed revision", async () => {
+		const harness = await reviewHarness(createMemoryStorage());
+		scriptFinding();
+		const first = await reviewed(harness);
+		const a = gitIn(repo, "rev-parse", "HEAD");
+		expect(first.verdict.reviewStatus().state).toBe("failure");
+		expect(first.findings[0]!.properties.verification?.verdict).toBe("confirmed");
+		push("other-content", unsafe);
+		scriptFinding();
+		const second = await reviewed(harness);
+		const id = second.findings[0]!.id;
+		expect(id).toBe(first.findings[0]!.id);
+		expect((await dismiss(harness, id)).verdict.reviewStatus().state).toBe("success");
+		const calls = fake.provider.state.callCount;
+		gitIn(repo, "update-ref", "refs/heads/feature", a);
+		const again = await reviewed(harness);
+		expect(again.verdict.reviewStatus().state).toBe("failure");
+		expect(again.findings[0]!.properties.verification?.verdict).toBe("confirmed");
+		expect(fake.provider.state.callCount).toBe(calls);
+	});
+
 	it("counts a dismissed finding out of later reviews without more model calls", async () => {
 		const harness = await reviewHarness(createMemoryStorage());
 		scriptFinding();
@@ -751,6 +772,20 @@ describe("recording a dismissal", () => {
 		}
 
 		// The review of record's F1: the speaker's ID dismisses its snippet group, and a hunk member stays live.
+		it("keeps the status failed when dismissing a speaker leaves a P2 hunk member live", async () => {
+			const harness = await reviewHarness(createMemoryStorage());
+			scriptHunkPair("P2");
+			const before = (await reviewed(harness)).verdict.findings.block[0]!;
+			const member = before.properties.alsoReportedAs![0]!;
+			const recorded = await dismiss(harness, before.id);
+			expect(recorded.verdict.blocking).toBe(false);
+			expect(recorded.verdict.findings.acknowledge.map((finding) => finding.id)).toEqual([member.id]);
+			expect(recorded.verdict.reviewStatus()).toEqual({
+				state: "failure",
+				description: "1 finding, 0 blocking, 1 unresolved acknowledgement",
+			});
+		});
+
 		it("leaves a report merged only through the hunk live when the speaker is dismissed, so the verdict still blocks", async () => {
 			const harness = await reviewHarness(createMemoryStorage());
 			scriptHunkPair("P1");
@@ -973,8 +1008,8 @@ describe("recording a dismissal", () => {
 		await dismissing.close(context);
 		await publish();
 		expect(statuses).toEqual([
-			{ state: "success", description: "Passed" },
-			{ state: "success", description: "Passed" },
+			{ state: "success", description: "0 findings, 1 dismissed" },
+			{ state: "success", description: "0 findings, 1 dismissed" },
 		]);
 	});
 

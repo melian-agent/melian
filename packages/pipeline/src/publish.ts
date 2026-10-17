@@ -430,7 +430,18 @@ class PublishInput {
 	}
 }
 
+type AttestedRound = {
+	revision: string;
+	round: number;
+	dismissals: { id: string; ruleId: string; path: string; dismissal?: FindingDismissal }[];
+};
+
+export function failedAttestations(detail: unknown): AttestedRound[] {
+	return (detail as { attestations?: AttestedRound[] } | undefined)?.attestations ?? [];
+}
+
 type PublishResult = {
+	attestations: AttestedRound[];
 	review: string;
 	posted: number;
 	stillOpen: number;
@@ -449,7 +460,7 @@ type PublishResult = {
 type PublishOutcome =
 	| ({ kind: "published" } & PublishResult)
 	| { kind: "superseded"; reason: string }
-	| { kind: "staleTarget"; reason: string };
+	| { kind: "staleTarget"; reason: string; attestations: AttestedRound[] };
 
 const publishTaskName = "melian.publish";
 
@@ -464,10 +475,13 @@ const untrustedWriterStatus: ReviewStatus = {
 function publishTask(provider: ReviewProvider) {
 	return defineTask<StoredPublishInput, { phase: "publish"; legacyTiming?: true }, PublishOutcome>({
 		name: publishTaskName,
-		version: 3,
+		version: 5,
 		migrate: (input, checkpoint, fromVersion) => ({
 			input: fromVersion === 1 ? PublishInput.upgrade(input) : (input as StoredPublishInput),
-			checkpoint: { ...(checkpoint as { phase: "publish" }), legacyTiming: true },
+			checkpoint:
+				fromVersion >= 3
+					? (checkpoint as { phase: "publish"; legacyTiming?: true })
+					: { ...(checkpoint as { phase: "publish" }), legacyTiming: true },
 		}),
 		initial: () => ({ phase: "publish" }),
 		phases: {
@@ -534,7 +548,16 @@ function publishTask(provider: ReviewProvider) {
 						return undefined;
 					}, context);
 				};
-				const result = { posted: 0, stillOpen: 0, resolved: 0, dismissed: 0, replies: 0, recovered: 0 };
+				const attestations: AttestedRound[] = [];
+				const result = {
+					attestations,
+					posted: 0,
+					stillOpen: 0,
+					resolved: 0,
+					dismissed: 0,
+					replies: 0,
+					recovered: 0,
+				};
 				// Set while the provider is asked to post a round, so a refusal counts against that round.
 				let posting = false;
 				let writingLedger = false;
@@ -636,6 +659,18 @@ function publishTask(provider: ReviewProvider) {
 							posted = { id: found.review, threads: found.threads };
 							result.recovered++;
 						}
+						attestations.push({
+							revision: pending.revision,
+							round: pending.round,
+							dismissals: Verdict.from(pending.verdict)
+								.dismissals()
+								.map(({ id, ruleId, path, dismissal }) => ({
+									id,
+									ruleId,
+									path,
+									...(dismissal === undefined ? {} : { dismissal }),
+								})),
+						});
 						const open = Object.fromEntries(
 							Object.entries(pending.open).map(([id, entry]): [string, PublishedEntry] => {
 								const thread = entry.thread ?? (entry.revision === head ? posted.threads[id] : undefined);
@@ -790,6 +825,16 @@ function publishTask(provider: ReviewProvider) {
 							return undefined;
 						}, context);
 					}
+					attestations.push({
+						revision,
+						round: record.rounds ?? record.reviews.length,
+						dismissals: verdict.dismissals().map(({ id, ruleId, path, dismissal }) => ({
+							id,
+							ruleId,
+							path,
+							...(dismissal === undefined ? {} : { dismissal }),
+						})),
+					});
 					await postStatus(status);
 					await runtime.commit(async (tx) => {
 						await timing.end(tx);
@@ -806,7 +851,7 @@ function publishTask(provider: ReviewProvider) {
 				} catch (error) {
 					if (runtime.signal.aborted) throw error;
 					if (error instanceof TargetMoved) {
-						const stale: PublishOutcome = { kind: "staleTarget", reason: error.message };
+						const stale: PublishOutcome = { kind: "staleTarget", reason: error.message, attestations };
 						await runtime.commit(async (tx) => {
 							await timing.end(tx);
 							return { status: "terminal", outcome: { status: "completed", result: stale } };
@@ -860,7 +905,10 @@ function publishTask(provider: ReviewProvider) {
 								message = `the provider refused the review of verdict ${refused} ${refusals} times, so Melian abandoned it and set the status to error; the next publish plans a new one: ${message}`;
 							}
 						}
-						return { status: "terminal", outcome: { status: "failed", error: { message } } };
+						return {
+							status: "terminal",
+							outcome: { status: "failed", error: { message, detail: { attestations } } },
+						};
 					}, context);
 				}
 			},
@@ -959,6 +1007,8 @@ export interface PublishOptions {
  * `abandoned` covers the head.
  */
 export interface Publication {
+	/** Dismissal snapshots attested by posted or recovered rounds and the current ledger. */
+	readonly attestations: readonly AttestedRound[];
 	readonly review: string;
 	readonly posted: number;
 	readonly stillOpen: number;
@@ -1191,11 +1241,14 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 	const unfinished = async () =>
 		(await harness.inspect(context)).tasks.filter((each) => each.record.kind === publishTaskName);
 	const superseded: SupersededPublication[] = [];
+	const resumed: AttestedRound[] = [];
 	for (const each of await unfinished()) {
 		if (each.state.kind === "blocked") continue;
 		const { outcome } = (await harness.waitForTask(each.record.id, context)).state;
 		const result = outcome.status === "completed" ? (outcome.result as PublishOutcome) : undefined;
 		if (result?.kind === "superseded") superseded.push({ task: String(each.record.id), reason: result.reason });
+		if (result?.kind === "published" || result?.kind === "staleTarget") resumed.push(...result.attestations);
+		if (outcome.status === "failed") resumed.push(...failedAttestations(outcome.error.detail));
 	}
 	const input = new PublishInput({
 		publishedBy,
@@ -1225,14 +1278,26 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 		const { result } = outcome;
 		if (result.kind === "published") {
 			const { kind: _, ...published } = result;
-			return { ...published, dismissed: published.dismissed ?? 0, superseded };
+			return {
+				...published,
+				attestations: [
+					...new Map(
+						[...resumed, ...published.attestations].map((round) => [JSON.stringify(round), round]),
+					).values(),
+				],
+				dismissed: published.dismissed ?? 0,
+				superseded,
+			};
 		}
 		throw new PublishError(
 			"staleTarget",
-			`pull request #${pullRequest.number} changed while Melian published it, so it stopped before posting: ${result.reason}; ${again}`,
-			where,
+			`pull request #${pullRequest.number} changed while Melian published it, so publication stopped: ${result.reason}; ${again}`,
+			{ ...where, attestations: [...resumed, ...(result.kind === "staleTarget" ? result.attestations : [])] },
 		);
 	}
 	const why = outcome.status === "failed" ? outcome.error.message : outcome.status;
-	throw new PublishError("publishFailed", `publishing to pull request #${pullRequest.number} stopped: ${why}`, where);
+	throw new PublishError("publishFailed", `publishing to pull request #${pullRequest.number} stopped: ${why}`, {
+		...where,
+		attestations: [...resumed, ...(outcome.status === "failed" ? failedAttestations(outcome.error.detail) : [])],
+	});
 }

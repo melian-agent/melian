@@ -69,6 +69,16 @@ A review is keyed by its base and head, the merge base and the head commit, so `
 
 `origin` must name the GitHub repository. The token comes from `GITHUB_TOKEN`, then `GH_TOKEN`, then `gh auth token`; Melian prints where it came from, never the token.
 
+Publication prints the status and each dismissal the publisher attests: ID, rule, file, dismisser, time and reason.
+It groups snapshots by revision and round, including older pending rounds posted or recovered during this invocation.
+A refused current round still prints the dismissals of earlier rounds it posted, then reports the publication failure.
+That includes carried dismissals and each merged report, even on a repeat publish with no new review.
+Terminal control characters are escaped. Skills relay this output.
+Blocks and unresolved acknowledgements fail melian/review; an acknowledgement-only review still exits 3, and a successful publish exits 0.
+An all-dismissed success says “0 findings, N dismissed”. Writer trust off retains its trusted-host error.
+GitHub itself requires push access to write a status; no extra permission read gates an attested success.
+A policy notice reopens after any change to its file's blob. Use the same pull-request changeset for dismissal and publication.
+
 ## Checks, then lenses
 
 The review plan and scripts receive every loaded lens. Credential unlocking uses only lenses covering the changed paths, retaining their committed tiers for lineage. When no enabled lens is named by the checks, the CLI unlocks no model credentials and opens no triage decider.

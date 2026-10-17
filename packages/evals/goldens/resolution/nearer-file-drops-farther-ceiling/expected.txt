@@ -1,5 +1,7 @@
 Verdict: findings, blocking
 
+melian/review: failure (2 findings, 1 blocking, 0 unresolved acknowledgements).
+
 Block: 1 finding
 
 services/payments/src/total.ts

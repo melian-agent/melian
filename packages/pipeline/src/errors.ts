@@ -1,4 +1,5 @@
 import type { Finding, Verdict } from "@melian-agent/core";
+import type { Publication } from "./publish.ts";
 
 /** Why Pi's credential store could not serve a credential. */
 export type PiCredentialsErrorCode = "unreadable" | "invalid" | "readOnly";
@@ -54,17 +55,20 @@ export class PublishError extends Error {
 	readonly code: PublishErrorCode;
 	readonly pullRequest: number;
 	readonly revision: string;
+	/** Dismissals attested by rounds posted before the failure. */
+	readonly attestations: Publication["attestations"];
 
 	constructor(
 		code: PublishErrorCode,
 		message: string,
-		options: { pullRequest: number; revision: string; cause?: unknown },
+		options: { pullRequest: number; revision: string; cause?: unknown; attestations?: Publication["attestations"] },
 	) {
 		super(message, { cause: options.cause });
 		this.name = "PublishError";
 		this.code = code;
 		this.pullRequest = options.pullRequest;
 		this.revision = options.revision;
+		this.attestations = options.attestations ?? [];
 	}
 }
 
