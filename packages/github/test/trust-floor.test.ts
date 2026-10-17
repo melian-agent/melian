@@ -1,5 +1,5 @@
 import { Adjudication, defaultConfig, Finding, type Verification } from "@melian-agent/core";
-import { Ledger, renderReviewBody } from "@melian-agent/github";
+import { Ledger, ReviewComment, renderReviewBody } from "@melian-agent/github";
 import { describe, expect, it } from "vitest";
 
 describe("step 29: GitHub explains the trust floor", () => {
@@ -79,6 +79,16 @@ describe("step 29: GitHub explains the trust floor", () => {
 		expect.soft(entry).not.toContain("<script>");
 		if (verdict === "refuted")
 			expect.soft(entry).toContain("Verifier refuted this claim; maintainer review still required.");
+		if (judgement.lowered !== undefined) {
+			const inline = ReviewComment.from(review.findings.acknowledge[0]!, {
+				kind: "lines",
+				startLine: 3,
+				line: 3,
+			}).render({ revision: draft.revision, base: draft.base, links, secret: draft.secret });
+			expect.soft(inline.split(judgement.lowered.reason)).toHaveLength(2);
+			expect.soft(body.split(judgement.lowered.reason)).toHaveLength(2);
+			expect.soft(entry.split(judgement.lowered.reason)).toHaveLength(2);
+		}
 		expect(body).toContain("Trust floor: acknowledge required; maintainer dismissal needed.");
 		expect(body).toContain(`Verification: **${verdict}**`);
 		expect(body).toContain("1 acknowledge");

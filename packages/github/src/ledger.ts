@@ -262,7 +262,7 @@ export class Ledger {
 	// One finding as the ledger lists it, with the lens's severity and the verifier's reason when it was lowered.
 	private line(finding: ResolvedFinding): string {
 		const [start, end] = finding.lines();
-		const lowered = finding.lowered();
+		const lowered = finding.lowered({ includeTrustFloor: false });
 		const severity =
 			lowered === undefined
 				? ""

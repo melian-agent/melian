@@ -1138,6 +1138,7 @@ export class Finding {
 				? `line ${region.startLine}`
 				: `lines ${region.startLine}-${region.endLine}`;
 		const lowered = this.lowered();
+		const loweringNote = this.lowered({ includeTrustFloor: false });
 		return [
 			`  ${rendering.paint(severityColor[severity], severity)}${lowered === undefined ? "" : `, lowered from ${lowered.from}`}  ${lines}  ${visibleText(this.ruleId)}  (${cause}, ${status}, ${resolution ?? "unresolved"}${verification === undefined ? (source.check.startsWith("lens.") ? ", unverified" : "") : `, ${verification.verdict}`})${ids ? `  ${visibleText(id)}` : ""}`,
 			...reports,
@@ -1145,7 +1146,9 @@ export class Finding {
 			...(decidedBy === undefined || !rendering.decided
 				? []
 				: [`    Decided by: ${prose(describeDecision(decidedBy, own), "      ")}`]),
-			...(lowered === undefined ? [] : [`    Lowered from ${lowered.from}: ${prose(lowered.reason, "      ")}`]),
+			...(loweringNote === undefined
+				? []
+				: [`    Lowered from ${loweringNote.from}: ${prose(loweringNote.reason, "      ")}`]),
 			...(lowered === undefined || this.properties.resolvedAtOriginal !== true
 				? []
 				: [
@@ -1199,11 +1202,16 @@ export class Finding {
 		return this.properties.originalSeverity ?? this.properties.severity;
 	}
 
-	/** The lens's severity and the verifier's reason, when the finding stands at a severity the verifier lowered. */
-	lowered(): { from: Severity; reason: string } | undefined {
+	/** The lens's severity and lowering reason; `includeTrustFloor: false` omits one the trust-floor notes already explain. */
+	lowered(options: { readonly includeTrustFloor?: boolean } = {}): { from: Severity; reason: string } | undefined {
 		const { originalSeverity, severity } = this.properties;
 		const lowering = this.#verifications().find((each) => each.lowered?.to === severity)?.lowered;
 		if (originalSeverity === undefined || lowering === undefined) return undefined;
+		if (
+			options.includeTrustFloor === false &&
+			this.properties.decidedBy?.trustFloor?.some((claim) => claim.verification.lowered?.reason === lowering.reason)
+		)
+			return undefined;
 		return { from: originalSeverity, reason: lowering.reason };
 	}
 

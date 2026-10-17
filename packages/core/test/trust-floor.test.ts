@@ -238,10 +238,23 @@ describe("step 29: lowered and refuted trust objections", () => {
 		expect(verdict.dismissed.map((item) => item.id)).toEqual([trust.id]);
 	});
 
+	it.each([false, true])("keeps an ordinary lowering without trust-floor notes (resolved: %s)", (resolved) => {
+		const raw = report({ source: { check: "lens.correctness" } });
+		const finding = resolved ? raw.resolved(defaultConfig) : raw;
+		expect(finding.lowered({ includeTrustFloor: false })).toEqual({ from: "P2", reason: lowered.lowered!.reason });
+		expect(finding.render().split(lowered.lowered!.reason)).toHaveLength(2);
+	});
+
+	it("keeps lowering metadata while selecting an extra reason line", () => {
+		const finding = report().resolved(defaultConfig);
+		expect(finding.lowered()).toEqual({ from: "P2", reason: lowered.lowered!.reason });
+		expect(finding.lowered({ includeTrustFloor: false })).toBeUndefined();
+	});
+
 	it("shows the lowering and the floor without opting into decision details", () => {
 		const text = report().resolved(defaultConfig).render(new Rendering());
 		expect(text).toContain("lowered from P2");
-		expect(text).toContain("The plant needs hostile Vitest configuration.");
+		expect(text.split("The plant needs hostile Vitest configuration.")).toHaveLength(2);
 		expect(text).toContain("Trust floor: acknowledge required; maintainer dismissal needed.");
 	});
 	it("keeps an unjudged protected claim at the existing cap", () => {
@@ -362,8 +375,27 @@ describe("step 29: lowered and refuted trust objections", () => {
 			manifest: [],
 			checks: [],
 		}).adjudicate();
-		expect(verdict.render()).toContain("Lowered from P2 to P3: The plant needs hostile Vitest configuration.");
+		const text = verdict.render();
+		expect(text).toContain("Lowered from P2 to P3: The plant needs hostile Vitest configuration.");
+		expect(text.split("The plant needs hostile Vitest configuration.")).toHaveLength(2);
 	});
+	it.each([lowered, refuted])("keeps a standing speaker's lowering beside a protected $verdict claim", (judgement) => {
+		const trust = report({ severity: judgement.lowered?.from ?? "P3" }, judgement);
+		const ordinary = report(
+			{ rule: "unhandled-error", severity: "P1", source: { check: "lens.correctness" } },
+			{ ...plausible, lowered: { from: "P1", to: "P2", reason: "Only one caller." } },
+		);
+		const verdict = new Adjudication({
+			findings: [trust, ordinary],
+			config: defaultConfig,
+			manifest: [],
+			checks: [],
+		}).adjudicate();
+		const text = verdict.render();
+		expect(text).toContain("Lowered from P1: Only one caller.");
+		expect(text.split("Only one caller.")).toHaveLength(2);
+	});
+
 	it("reads the original report's policy instead of the speaker's", () => {
 		const trust = report();
 		const ordinary = report(
@@ -778,6 +810,7 @@ describe("step 29: exact survivor regressions", () => {
 				"Verifier refuted this claim; maintainer review still required.",
 			],
 		};
+		expect(finding.render().split(lowered.lowered!.reason)).toHaveLength(2);
 		expect(finding.trustFloorNotes()).toEqual([
 			"Trust floor: acknowledge required; maintainer dismissal needed.",
 			...[trust.id, tests.id].sort().flatMap((id) => notes[id]!),

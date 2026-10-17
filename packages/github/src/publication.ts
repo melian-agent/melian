@@ -221,7 +221,7 @@ export class ReviewComment {
 							? []
 							: [`**Correction:** ${inline(verification.correction)}`, ""]),
 					];
-		const lowered = finding.lowered();
+		const lowered = finding.lowered({ includeTrustFloor: false });
 		const moved = lowered === undefined ? [] : [`**Lowered from ${lowered.from}:** ${inline(lowered.reason)}`, ""];
 		const heading =
 			this.important === undefined
