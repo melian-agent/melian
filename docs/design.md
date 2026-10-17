@@ -201,6 +201,7 @@ What a producer reports is stored as immutable sightings, keyed by revision, its
 A new dismissal accepts the trigger at the revision dismissed, rather than at the last-seen revision.
 Different trigger content reopens it regardless of revision order; matching content stays dismissed.
 Affected findings still compare the accepted proof against the revision’s hunks, so changed citations alone never reopen them.
+A dismissal accepts the whole accumulated proof union, plus its revision’s cited proof. It never drops earlier causes when that revision cites fewer hunks.
 
 Local findings persist in the clone's `.git/melian/` directory, uncommitted. It sits in the git common directory, so every worktree of a clone shares one store and one set of dismissals. Until the state branch lands in milestone 3, a dismissal lives only there, and a second maintainer never sees it. Milestone 2 accepts that, because one maintainer reviews Melian. A range review and a pull-request review are separate changesets with separate storage, and never share findings. Whether a range review can seed a pull-request review, so the author is not told the same thing twice, is an [open question](#open-questions).
 

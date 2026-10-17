@@ -495,9 +495,10 @@ export async function dismissFinding(
 	const { status, dismissedBy, dismissedReason, dismissedAt, history } = record.lifecycle;
 	const atRevision = record.sightings[revision ?? record.lifecycle.lastSeenRevision]!;
 	const trigger = adjudicate(atRevision).winner.properties.trigger;
-	const proof = unionOf(
-		Object.values(atRevision).flatMap((each) => proofOf(each.properties.cause, each.properties.trigger)),
-	);
+	const proof = unionOf([
+		...(record.lifecycle.proof ?? []),
+		...Object.values(atRevision).flatMap((each) => proofOf(each.properties.cause, each.properties.trigger)),
+	]);
 	const dismissedTrigger = { hash: triggerCode(trigger), proof };
 	// Repeating the same dismissal of the same content adds no history.
 	if (

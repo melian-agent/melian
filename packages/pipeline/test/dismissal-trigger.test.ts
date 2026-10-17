@@ -109,9 +109,21 @@ it.each([false, true])(
 				await dismissFinding(tx, root.id, a.id, answer, "A");
 			}, context);
 			expect((await harness.snapshot(FindingsDocument, root.id, context))!.items[a.id]!.lifecycle).toMatchObject({
-				dismissedTrigger: { hash: snippetHash("eval(input)"), proof: a.properties.trigger!.proof ?? [] },
+				dismissedTrigger: {
+					hash: snippetHash("eval(input)"),
+					proof: [...(a.properties.trigger!.proof ?? []), ...(b.properties.trigger!.proof ?? [])].toSorted(
+						(left, right) => left.hash.localeCompare(right.hash),
+					),
+				},
 			});
-			await root.commit((tx) => upsertFinding(tx, root.id, a, "A", a.properties.trigger!.proof ?? []), context);
+			await root.commit(
+				(tx) =>
+					upsertFinding(tx, root.id, a, "A", [
+						...(a.properties.trigger!.proof ?? []),
+						...(b.properties.trigger!.proof ?? []),
+					]),
+				context,
+			);
 			expect((await readFindings(harness, root.id, "A", context))[0]!.properties.status).toBe("dismissed");
 			await root.commit((tx) => upsertFinding(tx, root.id, b, "B", b.properties.trigger!.proof ?? []), context);
 			expect((await readFindings(harness, root.id, "B", context))[0]!.properties.status).toBe("new");
@@ -268,6 +280,36 @@ it("keeps absent legacy dismissal attribution when reopening", async () => {
 		expect((await readFindings(harness, root.id, "B", context))[0]!.properties.pastDismissals).toEqual([
 			{ by: "", reason: "", at: "", reopenedRevision: "B" },
 		]);
+	} finally {
+		await harness.close(context);
+	}
+});
+
+it("keeps every accumulated cause when a dismissal accepts a narrower citation", async () => {
+	const fake = createFakeModels();
+	const harness = await openHarness(createMemoryStorage(), { models: fake.models, registry: createRegistry() });
+	try {
+		const root = await harness.root(context, { agent: { model: fake.ref() } });
+		const a = report("X", true);
+		const b = report("Y", true);
+		const c = report("X2", true);
+		const x = a.properties.trigger!.proof!;
+		const y = b.properties.trigger!.proof!;
+		await root.commit(async (tx) => {
+			await upsertFinding(tx, root.id, a, "A", x);
+			await upsertFinding(tx, root.id, b, "B", [...x, ...y]);
+			await dismissFinding(tx, root.id, b.id, answer, "B");
+		}, context);
+		const accepted = structuredClone(
+			(await harness.snapshot(FindingsDocument, root.id, context))!.items[a.id]!.lifecycle,
+		);
+		await root.commit((tx) => upsertFinding(tx, root.id, c, "C", [...c.properties.trigger!.proof!, ...y]), context);
+		const [reopened] = await readFindings(harness, root.id, "C", context);
+		expect(reopened!.properties.status).toBe("new");
+		expect(reopened!.properties.pastDismissals).toEqual([{ ...answer, reopenedRevision: "C" }]);
+		expect(accepted.proof).toHaveLength(2);
+		expect(accepted.proof).toEqual(expect.arrayContaining([...x, ...y]));
+		expect(accepted.dismissedTrigger!.proof).toEqual(accepted.proof);
 	} finally {
 		await harness.close(context);
 	}

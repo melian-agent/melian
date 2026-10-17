@@ -96,6 +96,7 @@ Finding identity and the verdict fingerprint algorithm stay unchanged.
 Findings document version 9 adds the accepted trigger hash and affected proof hashes to each new dismissal.
 The dismissal accepts content at its own revision. Different content reopens it regardless of revision order.
 Matching content stays dismissed. Affected findings retain their proof-union comparison against the revision’s hunks; changed citations alone do not reopen them.
+A dismissal accepts the whole accumulated proof union, plus its revision’s cited proof. It never drops earlier causes when that revision cites fewer hunks.
 A version-8 dismissal has no accepted trigger and retains the earlier behaviour.
 The migration branches on the source version and never invents that field.
 An SQLite fixture recorded by main’s own code at `e0a9d00f` proves the legacy migration and a new dismissal across a second reopen.
