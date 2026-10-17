@@ -121,6 +121,7 @@ export class RouteTextModel implements TextModel {
 
 	/** The arguments of the model's call to `request.tool`. Throws when the request fails or the model calls no tool. */
 	async answer(request: ToolRequest, signal?: AbortSignal, usage?: UsageObserver): Promise<unknown> {
+		if (usage?.started !== undefined) await usage.started();
 		const reply = await this.#models.complete(
 			this.#model,
 			{

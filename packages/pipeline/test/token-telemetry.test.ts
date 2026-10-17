@@ -3,6 +3,7 @@ import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { UsageObserver } from "@melian-agent/core";
 import { FallbackDecider } from "@melian-agent/decisions";
 import {
 	backgroundContext as context,
@@ -25,6 +26,7 @@ import {
 } from "@melian-agent/pipeline/testing";
 import { expect, it, vi } from "vitest";
 import { DecisionDocument, decisionExtension, decisionTask } from "../src/decisions.ts";
+import { ModelAttemptsDocument } from "../src/token-usage.ts";
 
 const revision = "base..head";
 const usage = {
@@ -86,6 +88,12 @@ async function decide(
 	]);
 	const complete = fake.models.complete.bind(fake.models);
 	vi.spyOn(fake.models, "complete").mockImplementation(async (...args) => {
+		const root = await harness.root(context);
+		const entry = (await harness.snapshot(DecisionDocument, root.id, context))!.decisions[revision]!.triage!;
+		expect(await harness.snapshot(ModelAttemptsDocument, root.id, String(entry.task), context)).toEqual({
+			started: 1,
+			unmeasured: 0,
+		});
 		if (stop === "throw") throw new Error("no assistant response");
 		return { ...(await complete(...args)), usage, ...identity };
 	});
@@ -186,7 +194,7 @@ it("does not report zero usage when an older model stage has no usage record", (
 });
 
 it.each(["before", "after"])(
-	"counts a triage result once after a crash %s its terminal commit",
+	"marks lost triage usage after a crash %s its terminal commit",
 	async (mode) => {
 		const dir = realpathSync(mkdtempSync(join(tmpdir(), "melian-token-crash-")));
 		const children: ReturnType<typeof spawn>[] = [];
@@ -232,6 +240,18 @@ it.each(["before", "after"])(
 			const stored = JSON.parse(readFileSync(output, "utf8")) as ReturnType<StageTelemetry["toJSON"]>;
 			expect(stored.stages[0]!.usage!.models["faux/triage"]!.totalTokens).toBeGreaterThan(0);
 			expect(stored.total).toEqual(stored.stages[0]!.usage);
+			const telemetry = new StageTelemetry(revision, stored.stages);
+			if (mode === "before") {
+				expect(stored.stages[0]!.usageIncomplete).toBe(1);
+				expect(stored.usageIncomplete).toBe(1);
+				expect(telemetry.spend()).toContain("usage incomplete: 1 request(s) not measured");
+				expect(telemetry.slowest()).toContain("usage incomplete: 1 request(s) not measured");
+				expect(telemetry.render().split("\n")[0]).toContain("usage incomplete: 1 request(s) not measured");
+			} else {
+				expect(stored.stages[0]!.usageIncomplete).toBeUndefined();
+				expect(stored.usageIncomplete).toBeUndefined();
+				expect(telemetry.spend()).not.toContain("incomplete");
+			}
 			expect(Object.keys(stored.total!.models)).toEqual(["faux/triage"]);
 			expect(readFileSync(log, "utf8").trim().split("\n")).toHaveLength(mode === "before" ? 2 : 1);
 		} finally {
@@ -334,6 +354,8 @@ it("leaves a failed request without an assistant usage record unavailable", asyn
 		expect(telemetry.stages[0]!.usage).toBeUndefined();
 		expect(telemetry.total).toBeUndefined();
 		expect(telemetry.usageUnavailable).toEqual([telemetry.stages[0]!.id]);
+		expect(telemetry.stages[0]!.usageIncomplete).toBe(1);
+		expect(telemetry.spend()).toBe("Token usage unavailable (usage incomplete: 1 request(s) not measured)");
 	} finally {
 		await harness.close(context);
 	}
@@ -399,7 +421,7 @@ it("uses the response's actual provider and model rather than the configured rou
 	}
 });
 
-it("lets a TextModel caller omit the usage observer", async () => {
+it.each(["absent", "response-only"] as const)("lets a TextModel caller use an %s observer", async (observer) => {
 	const fake = createFakeModels();
 	scriptConversations(fake, [
 		{
@@ -409,14 +431,74 @@ it("lets a TextModel caller omit the usage observer", async () => {
 	]);
 	const model = (await RouteTextModel.create(fake.review, [fake.ref()]))!;
 	await expect(
-		model.answer({
-			system: "optional usage",
-			prompt: "Return value 1",
-			tool: {
-				name: "answer",
-				description: "Answer",
-				parameters: { type: "object", properties: { value: { type: "number" } } },
+		model.answer(
+			{
+				system: "optional usage",
+				prompt: "Return value 1",
+				tool: {
+					name: "answer",
+					description: "Answer",
+					parameters: { type: "object", properties: { value: { type: "number" } } },
+				},
 			},
-		}),
+			undefined,
+			observer === "absent" ? undefined : vi.fn<UsageObserver>(),
+		),
 	).resolves.toEqual({ value: 1 });
+});
+
+it("carries every unmeasured request into the run total, even without any usage receipts", () => {
+	const stage = {
+		id: "task:1",
+		name: "melian.triage",
+		subject: "triage",
+		task: 1,
+		outcome: "completed",
+		timing: "unavailable" as const,
+		reused: false,
+		resumed: false,
+	};
+	const complete = new StageTelemetry(revision, [
+		{ ...stage, usageIncomplete: 0, usage: new TokenUsage({ model: usage }).toJSON() },
+	]);
+	expect(complete.toJSON().usageIncomplete).toBeUndefined();
+	expect(complete.render()).not.toContain("incomplete");
+	const empty = new StageTelemetry(revision, [{ ...stage, usageIncomplete: 1 }]);
+	expect(empty.spend()).toBe("Token usage unavailable (usage incomplete: 1 request(s) not measured)");
+	expect(empty.toJSON().usageIncomplete).toBe(1);
+	const partial = new StageTelemetry(revision, [
+		{ ...stage, usageIncomplete: 1, usage: new TokenUsage({ model: usage }).toJSON() },
+		{ ...stage, id: "task:2", usageIncomplete: 2 },
+	]);
+	expect(partial.toJSON().usageIncomplete).toBe(3);
+	expect(partial.spend()).toBe(
+		"36 tokens, $0.1 (usage unavailable for 1 stage) (usage incomplete: 3 request(s) not measured)",
+	);
+	expect(partial.render().split("\n")[1]).toContain("usage incomplete: 2 request(s) not measured");
+});
+
+it("awaits a request receipt before dispatch and propagates a receipt failure without calling the provider", async () => {
+	const fake = createFakeModels();
+	const model = (await RouteTextModel.create(fake.review, [fake.ref()]))!;
+	const complete = vi.spyOn(fake.models, "complete");
+	let rejectStart!: (error: Error) => void;
+	const pending = new Promise<void>((_, reject) => {
+		rejectStart = reject;
+	});
+	const observe = Object.assign(vi.fn<UsageObserver>(), { started: vi.fn(() => pending) });
+	const answer = model.answer(
+		{
+			system: "request receipt",
+			prompt: "Answer only after receipt",
+			tool: { name: "answer", description: "Answer", parameters: { type: "object" } },
+		},
+		undefined,
+		observe,
+	);
+	expect(observe.started).toHaveBeenCalledOnce();
+	expect(complete).not.toHaveBeenCalled();
+	rejectStart(new Error("cannot persist request start"));
+	await expect(answer).rejects.toThrow("cannot persist request start");
+	expect(complete).not.toHaveBeenCalled();
+	expect(observe).not.toHaveBeenCalled();
 });

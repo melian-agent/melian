@@ -1,4 +1,10 @@
-import { type Decider, Decision, type DecisionRequest, type StoredDecision } from "@melian-agent/core";
+import {
+	type Decider,
+	Decision,
+	type DecisionRequest,
+	type StoredDecision,
+	type UsageObserver,
+} from "@melian-agent/core";
 import {
 	type Context,
 	type ConversationId,
@@ -9,7 +15,7 @@ import {
 } from "./harness.ts";
 
 import { TaskTiming } from "./task-timing.ts";
-import { ModelUsageDocument, TokenUsage } from "./token-usage.ts";
+import { ModelAttemptsDocument, ModelUsageDocument, TokenUsage } from "./token-usage.ts";
 
 // Type aliases, not interfaces: a document's value must satisfy Pi's JsonObject, which an interface never does.
 
@@ -99,9 +105,19 @@ export function decisionTask(decider: Decider, timeout = decisionTimeout) {
 					return;
 				}
 				const usage = new TokenUsage();
+				let recorded = 0;
+				const observe: UsageObserver = (model, reported) => {
+					usage.add(model, reported);
+					recorded++;
+				};
+				observe.started = async () => {
+					await runtime.commit(async (tx) => {
+						(await tx.doc(ModelAttemptsDocument, runtime.conversationId, String(runtime.taskId), null)).started++;
+					}, context);
+				};
 				try {
 					const decided = await Promise.race([
-						decider.decide(request as DecisionRequest, signal, (model, reported) => usage.add(model, reported)),
+						decider.decide(request as DecisionRequest, signal, observe),
 						expired,
 					]);
 					answer = { decision: Decision.parse(request as DecisionRequest, decided, decider).toJSON() };
@@ -112,6 +128,13 @@ export function decisionTask(decider: Decider, timeout = decisionTimeout) {
 				}
 				await runtime.commit(async (tx) => {
 					await timing.end(tx);
+					const attempts = await tx.doc(
+						ModelAttemptsDocument,
+						runtime.conversationId,
+						String(runtime.taskId),
+						null,
+					);
+					attempts.unmeasured = attempts.started - recorded;
 					const reported = usage.toJSON();
 					if (Object.keys(reported.models).length > 0)
 						(await tx.doc(ModelUsageDocument, runtime.conversationId, String(runtime.taskId), null)).usage =

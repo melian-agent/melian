@@ -89,7 +89,11 @@ export type ModelUsage = {
 };
 
 /** Receives each assistant response's usage before the adapter validates its answer, including errors. */
-export type UsageObserver = (model: string, usage: ModelUsage) => void;
+export type UsageObserver = {
+	(model: string, usage: ModelUsage): void;
+	/** Await before each provider request so the caller can durably record its start. */
+	started?: () => Promise<void>;
+};
 
 /** A {@link Decision} as JSON, which a Pi Durable document can hold. */
 export type StoredDecision = {

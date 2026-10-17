@@ -17,7 +17,7 @@ import { LensDocument } from "./lens-tools.ts";
 import { ReviewIndex } from "./review-index.ts";
 import { SummaryIndex } from "./summarize.ts";
 import { TimingDocument } from "./task-timing.ts";
-import { ModelUsageDocument, TokenUsage, type UsageSummary } from "./token-usage.ts";
+import { ModelAttemptsDocument, ModelUsageDocument, TokenUsage, type UsageSummary } from "./token-usage.ts";
 
 type TaskRecord = NonNullable<Awaited<ReturnType<Storage["task"]>>>;
 type DocumentScope = DocumentRecord["scope"];
@@ -83,6 +83,7 @@ export type Stage = {
 	reused: boolean;
 	resumed: boolean;
 	usage?: UsageSummary;
+	usageIncomplete?: number;
 };
 
 function usageText(usage: UsageSummary): string {
@@ -94,16 +95,23 @@ function usageText(usage: UsageSummary): string {
 		.join("; ");
 }
 
+function incompleteUsage(count: number | undefined): string {
+	return count ? ` (usage incomplete: ${count} request(s) not measured)` : "";
+}
+
 /** The stages selected for one revision, with terminal renderings. */
 export class StageTelemetry {
 	readonly revision: string;
 	readonly stages: readonly Stage[];
 	readonly total?: UsageSummary;
 	readonly usageUnavailable: readonly string[];
+	readonly usageIncomplete?: number;
 
 	constructor(revision: string, stages: readonly Stage[]) {
 		this.revision = revision;
 		this.stages = stages;
+		const unmeasured = stages.reduce((sum, stage) => sum + (stage.usageIncomplete ?? 0), 0);
+		if (unmeasured > 0) this.usageIncomplete = unmeasured;
 		const usage = new TokenUsage();
 		for (const stage of stages) {
 			if (stage.usage !== undefined) usage.include(stage.usage);
@@ -120,19 +128,26 @@ export class StageTelemetry {
 	}
 
 	/** Plain JSON beside a verdict, never part of its identity. */
-	toJSON(): { revision: string; stages: readonly Stage[]; total?: UsageSummary; usageUnavailable: readonly string[] } {
+	toJSON(): {
+		revision: string;
+		stages: readonly Stage[];
+		total?: UsageSummary;
+		usageUnavailable: readonly string[];
+		usageIncomplete?: number;
+	} {
 		return {
 			revision: this.revision,
 			stages: this.stages,
 			...(this.total === undefined ? {} : { total: this.total }),
 			usageUnavailable: this.usageUnavailable,
+			...(this.usageIncomplete === undefined ? {} : { usageIncomplete: this.usageIncomplete }),
 		};
 	}
 
 	/** The recorded spend, with missing stages named as incomplete coverage. */
 	spend(): string {
-		if (this.total === undefined) return "Token usage unavailable";
-		return `${this.total.total.totalTokens} tokens, $${this.total.total.cost.total}${this.usageUnavailable.length === 0 ? "" : ` (usage unavailable for ${this.usageUnavailable.length} stage${this.usageUnavailable.length === 1 ? "" : "s"})`}`;
+		if (this.total === undefined) return `Token usage unavailable${incompleteUsage(this.usageIncomplete)}`;
+		return `${this.total.total.totalTokens} tokens, $${this.total.total.cost.total}${this.usageUnavailable.length === 0 ? "" : ` (usage unavailable for ${this.usageUnavailable.length} stage${this.usageUnavailable.length === 1 ? "" : "s"})`}${incompleteUsage(this.usageIncomplete)}`;
 	}
 
 	/** Up to three slowest ended intervals. */
@@ -164,6 +179,7 @@ export class StageTelemetry {
 						stage.note,
 						stage.error,
 						stage.usage === undefined ? "" : usageText(stage.usage),
+						incompleteUsage(stage.usageIncomplete).trim(),
 						stage.clockRegressed ? "clock regressed" : "",
 					]
 						.filter(Boolean)
@@ -343,6 +359,13 @@ export class TelemetryReader {
 			context,
 			String(task.id),
 		);
+		const attempts = await this.document(
+			ModelAttemptsDocument,
+			{ kind: "conversation", conversationId: task.conversationId },
+			context,
+			String(task.id),
+		);
+		const unmeasured = attempts === undefined ? 0 : attempts.unmeasured;
 		const faulted = result.outcome === "faulted";
 		const start = timing?.legacy === true ? undefined : faulted ? task.startedAt : startedAt;
 		const end = faulted ? task.endedAt : timing?.endedAt;
@@ -355,6 +378,7 @@ export class TelemetryReader {
 			...interval(start, end),
 			...this.attachment(start, end, before, kept),
 			...(usage?.usage === undefined ? {} : { usage: usage.usage }),
+			...(unmeasured > 0 ? { usageIncomplete: unmeasured } : {}),
 		};
 	}
 

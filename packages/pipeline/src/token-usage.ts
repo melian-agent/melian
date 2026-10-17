@@ -15,6 +15,16 @@ export const ModelUsageDocument = defineDocFamily<{ usage?: UsageSummary }, null
 	initial: () => ({}),
 });
 
+export const ModelAttemptsDocument = defineDocFamily<{ started: number; unmeasured: number }, null>({
+	kind: "melian.model-attempts",
+	family: true,
+	version: 1,
+	scope: "conversation",
+	history: "latest",
+	fork: "current",
+	initial: () => ({ started: 0, unmeasured: 0 }),
+});
+
 /** Accumulates provider counters without estimating tokens or recalculating prices. */
 export class TokenUsage {
 	private readonly models = new Map<string, ModelUsage>();
