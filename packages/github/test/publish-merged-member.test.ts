@@ -111,3 +111,67 @@ describe("a report merged under another while its resolution is owed", () => {
 		expect(state.resolvedThreads).not.toContain(thread!.id);
 	});
 });
+
+// A finding returns before the reply that resolves its thread went through. It goes back to its own thread, and the
+// thread is answered when the finding goes for good, whether it returns merged under another report or alone.
+describe("a report that returns while its resolution is owed", () => {
+	async function owedThread() {
+		const fake = scenarioModels();
+		const state = pullRequestState();
+		const github = createGitHubProvider({
+			owner: state.owner,
+			repo: state.repo,
+			token: "t",
+			fetch: fakeGitHub(state),
+		});
+		harness = await openPublishHarness(createMemoryStorage(), fake, github);
+		const publish = async (changeset: Changeset) =>
+			publishReview({
+				harness: harness!,
+				provider: github as ReviewProvider,
+				changeset,
+				pullRequest: await github.pullRequest(7),
+				base: changeset.revision.base,
+				trustedWriters: true,
+			});
+		const next = async (lenses: LensScript) => {
+			const { changeset, review } = await reviewScenario(repo, harness!, fake, lenses);
+			await review;
+			moveTo(state, changeset);
+			return publish(changeset);
+		};
+		await next(script([b], []));
+		const [thread] = state.comments.filter((comment) => comment.in_reply_to_id === undefined);
+		push();
+		state.failReplies = true;
+		await next(script([], [])).catch(() => undefined);
+		state.failReplies = false;
+		push();
+		const roots = () => state.comments.filter((comment) => comment.in_reply_to_id === undefined);
+		return { state, next, thread: thread!, roots };
+	}
+
+	it("answers the original thread when the report returns alone and is then fixed", async () => {
+		const { state, next, thread, roots } = await owedThread();
+		await next(script([b], []));
+		push();
+		await next(script([], []));
+
+		expect(roots().map((comment) => comment.id)).toEqual([thread.id]);
+		expect(state.resolvedThreads).toContain(thread.id);
+	});
+
+	it("answers the original thread when the report returns merged, then alone, and is then fixed", async () => {
+		const { state, next, thread, roots } = await owedThread();
+		await next(script([b], [a]));
+		push();
+		await next(script([b], []));
+		push();
+		await next(script([], []));
+
+		expect(roots().filter((comment) => comment.body.includes("null-dereference")).map((comment) => comment.id)).toEqual(
+			[thread.id],
+		);
+		expect(state.resolvedThreads).toContain(thread.id);
+	});
+});
