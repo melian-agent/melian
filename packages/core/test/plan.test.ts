@@ -1084,6 +1084,16 @@ describe("a route naming a model the catalogue does not hold", () => {
 		);
 	});
 
+	it("lists each distinct unknown name, and keeps no list when there is none", () => {
+		const two = plan({ heavy: { model: opus, fallbacks: ["openai/gpt-8", "openai/gpt-9"] } }, credentials);
+		expect(two.tier("heavy").unknown).toEqual([
+			{ model: "openai/gpt-8", by: "melian.yaml" },
+			{ model: "openai/gpt-9", by: "melian.yaml" },
+		]);
+		const none = plan({ heavy: { model: opus } }, credentials);
+		expect(Object.hasOwn(none.tier("heavy"), "unknown")).toBe(false);
+	});
+
 	it("escapes the model name", () => {
 		const resolved = plan({ heavy: { model: opus, fallbacks: ["openai/x\u001b[31my"] } }, credentials);
 		const [line] = resolved.warnings().filter((each) => each.includes("openai/x"));
