@@ -22,6 +22,7 @@ The github package implements core's `ReviewProvider` port for GitHub through Oc
 The published status fails for counted blocks or unresolved acknowledgements, including pre-existing opt-ins.
 Failure descriptions count both groups apart. An all-dismissed success says “0 findings, N dismissed”.
 The review body and ledger state the verdict's mapping and name the pull-request dismissal command.
+The ledger’s dismissal section uses `verdict.dismissals()`, including legacy merged members without their own dismissal metadata.
 Every publication lists attested dismissed report IDs, rules, files and reasons in its review body, including carried and merged reports.
 It omits git identities. The CLI shows those identities to the publishing maintainer.
 GitHub's status-write permission is the authority; installation tokens need no successful /user read to attest dismissals.

@@ -101,6 +101,7 @@ Check replacement upserts before pruning stale sightings, so reopening compares 
 The replacement-path reopen test publishes the reopened notice and asserts a failed status.
 Publication returns each posted or recovered round’s dismissal snapshot and the current ledger’s snapshot.
 The CLI prints these instead of rereading only the current verdict; identical snapshots appear once.
+The ledger’s dismissal section reads Verdict.dismissals(), sharing the review body’s legacy-member fallback and report enumeration.
 SQLite tests cover a pending older round with different dismissal membership and a version-3 task recorded by its own code.
 The coordinator runs `static.mutation` on the host before the first full round.
 

@@ -1,6 +1,6 @@
 import { rmSync } from "node:fs";
 import { join } from "node:path";
-import { Adjudication, defaultConfig, Finding, type LedgerRound, replyKey } from "@melian-agent/core";
+import { Adjudication, defaultConfig, Finding, type LedgerRound, replyKey, Verdict } from "@melian-agent/core";
 import { createGitHubProvider, Ledger, marker, maxBodyLength, parseMarker, verifyMarker } from "@melian-agent/github";
 import {
 	backgroundContext as context,
@@ -63,6 +63,31 @@ const round: LedgerRound = {
 const options = { pullRequest: 7, secret, walkthrough: { enabled: true, collapsed: true, diagrams: true } };
 
 describe("ledger rendering", () => {
+	it.each([undefined, "Input checked upstream."])(
+		"lists legacy merged dismissal members from a stored verdict: %s",
+		(reason) => {
+			const dismissed = Finding.from({
+				...finding.toJSON(),
+				properties: {
+					...finding.properties,
+					status: "dismissed",
+					...(reason === undefined ? {} : { dismissal: { by: "Private author", at: "2026-10-17", reason } }),
+					alsoReportedAs: [{ ...finding.report(), id: "legacy-member", ruleId: "legacy-rule" }],
+				},
+			});
+			const stored = {
+				...verdict.toJSON(),
+				findings: { block: [], acknowledge: [], advisory: [], silent: [] },
+				dismissed: [dismissed.toJSON()],
+			};
+			const reopened = Verdict.from(stored);
+			expect(reopened.dismissals()).toHaveLength(2);
+			const body = Ledger.from(reopened, { rounds: [{ ...round, verdict: stored }] }, options).render(links);
+			expect(body).toContain(`- legacy-member \`legacy-rule\`: ${reason ?? "No reason stored."}`);
+			expect(body).not.toContain("Private author");
+		},
+	);
+
 	it.each([undefined, true, false])("renders unknown attribution with writer trust %s", (trustedWriters) => {
 		const current = {
 			...round,

@@ -686,6 +686,7 @@ The publishing writer attests local dismissals; GitHub's status-write permission
 Publication returns snapshots from each posted or recovered round, with its revision and round number, and from the current ledger.
 The CLI prints those snapshots even when an older pending round and the current verdict dismiss different reports.
 The review body names those dismissals and reasons without the git identities.
+The ledger’s dismissal section uses the same verdict projection, including legacy merged members that inherit the speaker’s reason.
 The event stays `COMMENT`: Melian never approves.
 The status links to the [ledger](#the-ledger).
 [The as-built rule](decisions/2026-10-17-acknowledge-status-exact-rule.md) records the attack and dependencies on steps 29 and 30.
