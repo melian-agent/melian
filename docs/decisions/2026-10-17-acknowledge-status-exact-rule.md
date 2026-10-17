@@ -264,7 +264,7 @@ resolution:
 - A member of "Pre-existing, important" also has a floor of `advisory`, which [Trust](#trust) lists.
 
 A pre-existing finding never resolves `block`. By default it is advisory. A folder may cap a severity at `acknowledge`.
-It then takes the repository-wide acknowledgement gate below, with no separate gate for pre-existing findings.
+It then takes the repository-wide acknowledgement gate above, with no separate gate for pre-existing findings.
 
 A maintainer answers the finding with `melian dismiss` and a reason, as for every other `acknowledge` finding. The findings document keeps a finding's lifecycle by ID across revisions, so a carried finding that was acknowledged stays dismissed at the next revision. It leaves "Pre-existing, important" and the verdict, and is listed with the dismissed findings. No stored field was added.
 
