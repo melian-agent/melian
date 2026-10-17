@@ -268,6 +268,14 @@ async function policyChanges(input: GuardrailInput, paths: readonly string[], co
 			const added = matchesGlobs(guardrail.files, path);
 			const listed = revision.policyFiles.includes(path) && loadsManifest(path, workspaces);
 			if (!listed && !added && !forced) return undefined;
+			// Git's display name cannot round-trip a non-UTF-8 path through a string argument.
+			if (revision.files.some((file) => file.percentEncoded && [file.path, file.oldPath].includes(path))) {
+				throw new CheckError(
+					"unreadable",
+					check,
+					`${path}: cannot read its policy blob identity; the name is not UTF-8`,
+				);
+			}
 			const blob = await git(repoRoot, [
 				"--literal-pathspecs",
 				"ls-tree",

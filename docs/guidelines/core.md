@@ -583,6 +583,7 @@ Two guardrails hold Melian's documents to the writing rules in `AGENTS.md`. Each
 Policy-change notices keep stable IDs and use a trigger hash over Git's head blob ID, prefixed with “blob:”.
 The existing SHA-256 trigger field holds it; no stored version changes.
 An absent path hashes the prefix alone. Git lookup failure raises CheckError unreadable.
+A notice on a non-UTF-8 path raises the same error: its percent-encoded display name is not a Git path argument.
 A blob change reopens dismissal; unrelated pushes preserve it. Triggerless old notices reopen on their next report.
 
 ## Static analysis

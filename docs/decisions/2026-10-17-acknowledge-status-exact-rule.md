@@ -41,6 +41,8 @@ The maintainer accepts that work. The coordinator's former policy-notice excepti
 - Policy notice IDs stay stable. Each notice carries a trigger whose hash is SHA-256 of `blob:` followed by Git's head blob ID.
   Git supplies the ID; no file content is re-derived. An absent head path uses the empty ID after that prefix.
   This covers deletions and the old side of renames. A failed Git lookup refuses the check.
+  A non-UTF-8 policy path also refuses: its displayed name cannot be passed back to Git as its original bytes.
+  Treating that name as absent would keep one trigger hash across every file change.
   Any blob change reopens a dismissal; another file changing does not.
   A notice stored without a trigger reopens once when first reported by this build, failing closed.
 
