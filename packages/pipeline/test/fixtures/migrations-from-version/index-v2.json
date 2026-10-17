@@ -1,0 +1,46 @@
+{
+  "recordedBy": "4a60e4538c6243aad96cb9514f3adc5b0abbec85",
+  "version": 2,
+  "revision": {
+    "head": "df682990de658b3a2e39cd19a2249b42327feaec",
+    "base": "3a2abbe1f1382f29c7cc94ba05d7bf46602a60b5",
+    "files": [
+      {
+        "status": "modified",
+        "path": "notes.txt",
+        "oldMode": "100644",
+        "oldKind": "file",
+        "newMode": "100644",
+        "newKind": "file",
+        "binary": false,
+        "hunks": [
+          {
+            "file": "notes.txt",
+            "index": 0,
+            "oldStart": 1,
+            "oldLines": 1,
+            "newStart": 1,
+            "newLines": 1,
+            "header": "@@ -1 +1 @@",
+            "text": "-ready\n+done"
+          }
+        ]
+      }
+    ],
+    "policyFiles": []
+  },
+  "index": {
+    "reviews": {
+      "3a2abbe1f1382f29c7cc94ba05d7bf46602a60b5..df682990de658b3a2e39cd19a2249b42327feaec": {
+        "task": 8,
+        "lenses": [
+          "correctness@05037e7ba4a2 on faux/faux-1"
+        ],
+        "adjudication": {
+          "task": 20,
+          "input": "{\"root\":1,\"repoRoot\":\"/private/var/folders/db/mtn64lld7g971ck9kfq26xyc0000gn/T/codex-run.dX9Sfa/melian-review-80a5Km\",\"base\":\"3a2abbe1f1382f29c7cc94ba05d7bf46602a60b5\",\"head\":\"df682990de658b3a2e39cd19a2249b42327feaec\",\"config\":{\"resolution\":{\"P0\":\"block\",\"P1\":\"block\",\"P2\":\"acknowledge\",\"P3\":\"advisory\",\"nit\":\"silent\"},\"ruleAliases\":{}},\"manifest\":[\"lens.correctness\"],\"checks\":[{\"name\":\"lens.correctness\",\"status\":\"ran\",\"level\":\"careful\"}],\"findingsVersion\":0,\"allowSkip\":[],\"producers\":[{\"check\":\"lens.correctness\",\"version\":\"05037e7ba4a2\"}],\"provenance\":{\"kind\":\"range\",\"policy\":\"config\",\"manifest\":[\"lens.correctness\"],\"lenses\":[\"correctness@05037e7ba4a2\"]}}"
+        }
+      }
+    }
+  }
+}
