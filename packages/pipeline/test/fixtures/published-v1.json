@@ -1,0 +1,210 @@
+{
+  "recordedBy": "ef99429f39e4ec93766632936b9525818d9688ed, unchanged version-1 publisher through publishReview",
+  "version": 1,
+  "rounds": [
+    {
+      "phase": "pending",
+      "state": {
+        "order": [
+          "60ec4688611b55260769ce1f9bdc9092012e6c50"
+        ],
+        "revisions": {
+          "60ec4688611b55260769ce1f9bdc9092012e6c50": {
+            "reviews": [],
+            "open": {},
+            "resolved": {},
+            "replies": {},
+            "status": {
+              "state": "success",
+              "description": "1 finding, none blocking"
+            },
+            "rounds": 1,
+            "pending": {
+              "revision": "a6c8a7373c5f2e19e98b450b38225bfc900f556d..60ec4688611b55260769ce1f9bdc9092012e6c50",
+              "round": 1,
+              "fingerprint": "293cbef5d9555852",
+              "verdict": {
+                "status": "findings",
+                "blocking": false,
+                "findings": {
+                  "block": [],
+                  "acknowledge": [
+                    {
+                      "ruleId": "wrong-result",
+                      "level": "warning",
+                      "message": {
+                        "text": "An empty name yields no initials."
+                      },
+                      "partialFingerprints": {
+                        "melian/v1": "8404b1b24eec5b0b"
+                      },
+                      "locations": [
+                        {
+                          "physicalLocation": {
+                            "artifactLocation": {
+                              "uri": "src/user.ts"
+                            },
+                            "region": {
+                              "startLine": 19,
+                              "snippet": {
+                                "text": "\treturn user.name.split(\" \").map((part) => part[0]).join(\"\");"
+                              }
+                            }
+                          }
+                        }
+                      ],
+                      "properties": {
+                        "id": "8404b1b24eec5b0b",
+                        "path": "src/user.ts",
+                        "occurrence": 0,
+                        "cause": "affected",
+                        "severity": "P2",
+                        "explanation": {
+                          "what": "An empty name yields no initials.",
+                          "whyHere": "An empty name yields no initials. Why.",
+                          "whatToDo": "An empty name yields no initials. Fix."
+                        },
+                        "source": {
+                          "check": "lens.correctness",
+                          "version": "f0fb6be21fb0"
+                        },
+                        "evidence": {
+                          "file": "src/user.ts",
+                          "startLine": 7,
+                          "snippet": "\treturn (user.manager as User).name;"
+                        },
+                        "status": "new",
+                        "reportedBy": [
+                          {
+                            "check": "lens.correctness",
+                            "version": "f0fb6be21fb0"
+                          }
+                        ],
+                        "resolution": "acknowledge"
+                      }
+                    }
+                  ],
+                  "advisory": [],
+                  "silent": []
+                },
+                "dismissed": [],
+                "notRun": [
+                  {
+                    "name": "decisions.fast",
+                    "status": "skipped",
+                    "reason": "no decision provider is configured"
+                  }
+                ]
+              },
+              "post": [
+                {
+                  "finding": {
+                    "ruleId": "wrong-result",
+                    "level": "warning",
+                    "message": {
+                      "text": "An empty name yields no initials."
+                    },
+                    "partialFingerprints": {
+                      "melian/v1": "8404b1b24eec5b0b"
+                    },
+                    "locations": [
+                      {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "src/user.ts"
+                          },
+                          "region": {
+                            "startLine": 19,
+                            "snippet": {
+                              "text": "\treturn user.name.split(\" \").map((part) => part[0]).join(\"\");"
+                            }
+                          }
+                        }
+                      }
+                    ],
+                    "properties": {
+                      "id": "8404b1b24eec5b0b",
+                      "path": "src/user.ts",
+                      "occurrence": 0,
+                      "cause": "affected",
+                      "severity": "P2",
+                      "explanation": {
+                        "what": "An empty name yields no initials.",
+                        "whyHere": "An empty name yields no initials. Why.",
+                        "whatToDo": "An empty name yields no initials. Fix."
+                      },
+                      "source": {
+                        "check": "lens.correctness",
+                        "version": "f0fb6be21fb0"
+                      },
+                      "evidence": {
+                        "file": "src/user.ts",
+                        "startLine": 7,
+                        "snippet": "\treturn (user.manager as User).name;"
+                      },
+                      "status": "new",
+                      "reportedBy": [
+                        {
+                          "check": "lens.correctness",
+                          "version": "f0fb6be21fb0"
+                        }
+                      ],
+                      "resolution": "acknowledge"
+                    }
+                  },
+                  "placement": {
+                    "kind": "nearest",
+                    "line": 7
+                  }
+                }
+              ],
+              "stillOpen": 0,
+              "open": {
+                "8404b1b24eec5b0b": {
+                  "ruleId": "wrong-result",
+                  "path": "src/user.ts",
+                  "line": 19,
+                  "revision": "60ec4688611b55260769ce1f9bdc9092012e6c50"
+                }
+              },
+              "resolved": {},
+              "refusals": 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "phase": "completed",
+      "state": {
+        "order": [
+          "60ec4688611b55260769ce1f9bdc9092012e6c50"
+        ],
+        "revisions": {
+          "60ec4688611b55260769ce1f9bdc9092012e6c50": {
+            "reviews": [
+              "1001"
+            ],
+            "open": {
+              "8404b1b24eec5b0b": {
+                "ruleId": "wrong-result",
+                "path": "src/user.ts",
+                "line": 19,
+                "revision": "60ec4688611b55260769ce1f9bdc9092012e6c50",
+                "thread": "1002"
+              }
+            },
+            "resolved": {},
+            "replies": {},
+            "status": {
+              "state": "success",
+              "description": "1 finding, none blocking"
+            },
+            "rounds": 1,
+            "verdict": "293cbef5d9555852"
+          }
+        }
+      }
+    }
+  ]
+}
