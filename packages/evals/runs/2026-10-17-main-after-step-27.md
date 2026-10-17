@@ -58,7 +58,7 @@ The clean golden `design-reimplements-an-authority-clean` scored clean in all th
 
 These results bear on three questions:
 - **Routing:** Sol stays first on the heavy tier.
-- **Failover:** this run does not measure it. Every cell here used Terra as verifier, and a Codex outage removes Terra too; the committed route then verifies with Sonnet, then Opus. What the run shows is narrower: an Opus finder with a Terra verifier meets the bar on correctness and misses it on design and durability. The failover cell, an Opus finder with an Anthropic verifier, is still to be measured.
+- **Failover:** this run does not measure it. Every cell here used Terra as verifier, which the committed routes never pick: their verifier is Sonnet, then Opus, whether Codex is up or not. What the run shows is narrower: an Opus finder with a Terra verifier meets the bar on correctness and misses it on design and durability. The failover cell, an Opus finder with an Anthropic verifier, is still to be measured.
 - **What is not shown:** the run measures the design, durability and correctness lenses only, and says nothing about the others.
 
 The run does not separate the effect of step 27 from that of the Pi layout change, since both landed between the earlier runs and this one.
