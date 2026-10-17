@@ -1,7 +1,7 @@
 # An unresolved acknowledgement fails the status, as built
 
-Supersedes: [2026-10-16-acknowledge-fails-the-status.md](2026-10-16-acknowledge-fails-the-status.md),
-[2026-10-13-resolution-as-built.md](2026-10-13-resolution-as-built.md)
+Supersedes: [2026-10-16-acknowledge-fails-the-status.md](2026-10-16-acknowledge-fails-the-status.md)
+Supersedes: [2026-10-13-resolution-as-built.md](2026-10-13-resolution-as-built.md)
 
 Status: milestone 2, step 28, [pull request #142](https://github.com/melian-agent/melian/pull/142).
 The attack held with changes. This file records the coordinator's rulings and restates the surviving resolution contract below.
