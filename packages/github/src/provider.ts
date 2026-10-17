@@ -620,12 +620,13 @@ export class GitHubProvider implements ReviewProvider {
 		let review: string | undefined;
 		const owners = new Map<string, { marker: Marker; author: string }>();
 		const keys = new Set<string>();
-		if (reviews.length > 0 && (await this.login()) === undefined) reviews.sort((a, b) => a.id - b.id);
+		const me = reviews.length > 0 ? await this.login() : undefined;
+		if (reviews.length > 0 && me === undefined) reviews.sort((a, b) => a.id - b.id);
 		for (const each of reviews) {
 			const opening = await this.reviewMarker(each, secret);
 			if (opening === undefined) continue;
 			const key = `${opening.revision}|${opening.id}|${opening.round}`;
-			if (this.viewer === undefined && keys.has(key)) continue;
+			if (me === undefined && keys.has(key)) continue;
 			keys.add(key);
 			owners.set(String(each.id), { marker: opening, author: each.user!.login });
 			if (opening.revision === revision && opening.id === wanted.fingerprint && opening.round === wanted.round)
