@@ -635,6 +635,48 @@ describe("this repository's own Stryker disable policy scope", () => {
 });
 
 describe("policy-change-review", () => {
+	it("classifies case-variant analyser and standards paths without lowering analyser severity", async () => {
+		const paths = [
+			"web/BIOME.JSONC",
+			"web/TsConfig.app.Json",
+			"web/Package-Lock.Json",
+			"web/.ESLINTRC.json",
+			"web/ESLint.Config.js",
+			"web/Stryker.Config.json",
+			"web/Vitest.Config.ts",
+			"ENOLA.YAML",
+			"Enola/Constraints/layers.yaml",
+			".Enola/Suppressions.Yaml",
+		];
+		const standard = "web/.Melian/standards/usage.md";
+		const { findings } = await guardrails({}, Object.fromEntries([...paths, standard].map((path) => [path, "{}\n"])));
+		expect(
+			findings.map((finding) => [
+				finding.properties.path,
+				finding.properties.severity,
+				finding.properties.guardrail,
+			]),
+		).toEqual(
+			[...paths, standard]
+				.sort()
+				.map((path) => [
+					path,
+					path === standard ? "P2" : "P1",
+					{ notice: path === standard ? "policy" : "analyser" },
+				]),
+		);
+	});
+
+	it("checks workspace membership for case-variant package manifests", async () => {
+		const { findings } = await guardrails(
+			{ "package.json": '{"workspaces":["web"]}\n' },
+			{ "web/Package.Json": "{}\n", "examples/Package.Json": "{}\n" },
+		);
+		expect(findings.map((finding) => [finding.properties.path, finding.properties.severity])).toEqual([
+			["web/Package.Json", "P1"],
+		]);
+	});
+
 	it("reports each policy and standards file the revision changes", async () => {
 		const { findings } = await guardrails(
 			{ "src/a.ts": lines("a") },
@@ -1247,6 +1289,15 @@ describe("a change to what a finding requires", () => {
 });
 
 describe("isLensFile", () => {
+	it.each([
+		".Agents/lenses/cleanup/LENS.md",
+		".agents/Lenses/cleanup/LENS.md",
+		".agents/lenses/cleanup/lens.md",
+		"services/pay/.Melian/Lenses/cleanup/lens.md",
+	])("recognises the lens policy path %s in any case", (path) => {
+		expect(isLensFile(path)).toBe(true);
+	});
+
 	it("takes a LENS.md directly inside a lens's directory, under .melian or .agents, at any depth", () => {
 		expect(isLensFile(".melian/lenses/cleanup/LENS.md")).toBe(true);
 		expect(isLensFile("services/pay/.agents/lenses/cleanup/LENS.md")).toBe(true);

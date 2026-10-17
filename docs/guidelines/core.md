@@ -570,6 +570,12 @@ Equal blobs, including a mode-only change, draw no forced notice. There are no k
 Every such notice has an acknowledgement floor. Its explanation says when it overrides the parent's off switch.
 `isPolicyFile` recognises `melian.yaml`, `AGENTS.md` and `CLAUDE.md` in any case, as local and secrets files already were.
 The forced rule, judging-policy lookup and floor also recognise case variants of `melian.yaml`.
+Lens classification ignores case in `.melian`, `.agents`, `lenses` and `LENS.md`, so aliases retain the forced notice and acknowledgement floor.
+The lens scope scan recognises those directory aliases without rejecting them or changing the readers' lookup rules.
+It asks the source whether the canonical lens file exists before marking a nearer scope; an unresolved alias must not hide a farther lens.
+Symlinked lens entries still reach the loader's refusal.
+Policy membership beneath `.melian`, analyser names and package-manifest checks also ignore case.
+Keep original path spelling for blob reads, findings, scope names and configured globs; classification does not rewrite repository paths.
 Revision readers still use exact Git names. Invalid judging base policy fails the check; an unparseable head draws a notice.
 Analyser and standards files remain under the parent's switch, so fixture configurations stay quiet.
 Disabling that switch accepts the residual risk for real analyser and standards changes.

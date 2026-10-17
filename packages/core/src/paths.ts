@@ -58,21 +58,22 @@ const analyserConfig =
 
 // Whether a repository-relative path configures a static tool, by its name alone.
 export function isAnalyserConfig(path: string): boolean {
-	return analyserConfig.test(path.split("/").at(-1)!) || enolaPolicyPattern.test(path);
+	const lower = path.toLowerCase();
+	return analyserConfig.test(lower.split("/").at(-1)!) || enolaPolicyPattern.test(lower);
 }
 
 /** Whether `path` is a lens's own file: `<scope>/.melian/lenses/<name>/LENS.md`, or the same under `.agents/`. */
 export function isLensFile(path: string): boolean {
-	const [file, , directory, owner] = path.split("/").reverse();
-	return file === "LENS.md" && directory === "lenses" && (owner === ".melian" || owner === ".agents");
+	const [file, , directory, owner] = path.toLowerCase().split("/").reverse();
+	return file === "lens.md" && directory === "lenses" && (owner === ".melian" || owner === ".agents");
 }
 
 // Whether a repository-relative path steers Melian: a melian.yaml, a standards file, anything under a .melian/, or a
 // static tool's configuration.
 export function isPolicyFile(path: string): boolean {
-	const segments = path.split("/");
+	const segments = path.toLowerCase().split("/");
 	return (
-		policyNames.has(segments.at(-1)!.toLowerCase()) ||
+		policyNames.has(segments.at(-1)!) ||
 		isLensFile(path) ||
 		segments.slice(0, -1).includes(melianPaths.home) ||
 		isAnalyserConfig(path)

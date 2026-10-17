@@ -210,7 +210,7 @@ async function workspaceGlobs(repoRoot: string, revision: Revision): Promise<str
 // Biome and tsc load the root package.json and each workspace package's; any other is an ordinary file, such as a
 // package that ships alongside the code without being part of the build.
 function loadsManifest(path: string, workspaces: readonly string[] | undefined): boolean {
-	if (path.split("/").at(-1) !== "package.json") return true;
+	if (path.split("/").at(-1)!.toLowerCase() !== "package.json") return true;
 	const directory = path.split("/").slice(0, -1).join("/");
 	return directory === "" || workspaces === undefined || matchesGlobs(workspaces, directory);
 }
@@ -257,7 +257,7 @@ async function resolutionChanged(repoRoot: string, revision: Revision, path: str
 async function policyChanges(input: GuardrailInput, paths: readonly string[], configFor: ConfigLookup): Promise<Hit[]> {
 	const { revision, repoRoot } = input;
 	const changed = revision.files.map((file) => file.path);
-	const workspaces = revision.policyFiles.some((path) => path.split("/").at(-1) === "package.json")
+	const workspaces = revision.policyFiles.some((path) => path.split("/").at(-1)!.toLowerCase() === "package.json")
 		? await workspaceGlobs(repoRoot, revision)
 		: [];
 	return Promise.all(

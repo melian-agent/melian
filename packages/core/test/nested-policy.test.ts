@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { Changeset, ConfigError, configLookup, Lens, snippetHash } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { evaluateGuardrails } from "../src/guardrails.ts";
@@ -38,10 +40,39 @@ async function review(baseFiles: Record<string, string>, headFiles: Record<strin
 }
 
 describe("nested policy blob changes", () => {
+	it.for([".Agents", ".Melian"])(
+		"requires acknowledgement for a loadable %s lens alias beneath a disabled parent",
+		async (owner, context) => {
+			const path = `services/pay/${owner}/Lenses/correctness/lens.md`;
+			const companion = `services/pay/${owner === ".Agents" ? ".melian" : ".agents"}/lenses/marker/LENS.md`;
+			const { findings } = await review(
+				{
+					"melian.yaml": quiet,
+					[path]: lens("**"),
+					[companion]: lines("---", "name: marker", "extends: correctness", "---"),
+				},
+				{ [path]: lens("nothing/**") },
+			);
+			if (!existsSync(join(repo, "services/pay", owner.toLowerCase(), "lenses/correctness/LENS.md"))) context.skip();
+			const loaded = await Lens.load(repo, { kind: "worktree" }, ["services/pay/api.ts"]);
+			expect(loaded.find((entry) => entry.name === "correctness")?.paths).toEqual(["services/pay/nothing/**"]);
+			expect(findings.map((finding) => finding.properties.path)).toEqual([path]);
+			expect(findings[0]!.resolve({ resolution: { P2: "silent" } })).toBe("acknowledge");
+		},
+	);
+
 	it.each([
 		[file, "lenses: { correctness: { enabled: true } }\n", "lenses: { correctness: { enabled: false } }\n"],
 		["services/pay/.melian/lenses/correctness/LENS.md", lens("**"), lens("nothing/**")],
 		["services/pay/.agents/lenses/correctness/LENS.md", lens("**"), lens("nothing/**")],
+		["services/pay/.Agents/lenses/correctness/LENS.md", lens("**"), lens("nothing/**")],
+		["services/pay/.agents/Lenses/correctness/LENS.md", lens("**"), lens("nothing/**")],
+		["services/pay/.agents/lenses/correctness/lens.md", lens("**"), lens("nothing/**")],
+		["services/pay/.Melian/lenses/correctness/LENS.md", lens("**"), lens("nothing/**")],
+		["services/pay/.melian/Lenses/correctness/LENS.md", lens("**"), lens("nothing/**")],
+		["services/pay/.melian/lenses/correctness/lens.md", lens("**"), lens("nothing/**")],
+		["services/pay/.Agents/Lenses/correctness/lens.md", lens("**"), lens("nothing/**")],
+		["services/pay/.Melian/Lenses/correctness/lens.md", lens("**"), lens("nothing/**")],
 	])("reports %s despite the parent's off switch and silent ceiling", async (path, before, after) => {
 		const root = lines(quiet, "resolution:", "  P2: silent", "  checks:", "    guardrails: { ceiling: silent }");
 		const { findings, source, base, head, revision } = await review(
