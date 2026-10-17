@@ -1100,3 +1100,270 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(posts(state)).toEqual([]);
 	});
 });
+
+describe("cross-head answer discovery", () => {
+	const secret = "11".repeat(32);
+	const old = "a".repeat(40);
+	const head = "b".repeat(40);
+	const wanted = { fingerprint: "0123456789abcdef", round: 1 };
+	const root = (id: number, finding = "fedcba9876543210") => ({
+		id,
+		user: { login: "melian-user" },
+		body: marker(old, "finding", finding, secret),
+		path: "src/user.ts",
+		line: 7,
+		side: "RIGHT",
+		pull_request_review_id: 1,
+	});
+
+	it("finds only signed, root-anchored answers across heads when user lookup fails", async () => {
+		const state = pullRequestState();
+		state.failUser = true;
+		state.restPageSize = 1;
+		const first = root(1);
+		first.body += `\n${marker(old, "resolved", "fedcba9876543210", secret)}`;
+		state.comments.push(first, root(2, "0123456789abcdef"));
+		const answer = marker(old, "resolved", "0123456789abcdef", secret, { dismissal: "00112233aabbccdd" });
+		state.comments.push(
+			{ ...root(3), body: answer, in_reply_to_id: 2, user: { login: "human" } },
+			{ ...root(4), body: marker(old, "resolved", "0123456789abcdef", "22".repeat(32)), in_reply_to_id: 2 },
+			{ ...root(5), body: marker(old, "resolved", "fedcba9876543210", secret), in_reply_to_id: 2 },
+			{ ...root(6), body: answer, in_reply_to_id: 2 },
+			{ ...root(7), body: marker(old, "resolved", "fedcba9876543210", secret), in_reply_to_id: 99 },
+		);
+		const result = await providerFor(state).findPublished(7, head, wanted, secret);
+		expect(result).toEqual({
+			threads: {},
+			replies: { "fedcba9876543210 1": "1", "0123456789abcdef 2 00112233aabbccdd": "6" },
+		});
+	});
+
+	it("rejects a copied signed reply from a human at the requested head without /user", async () => {
+		const state = pullRequestState();
+		state.failUser = true;
+		const finding = "fedcba9876543210";
+		state.comments.push(root(1), {
+			...root(2),
+			body: marker(old, "resolved", finding, secret),
+			in_reply_to_id: 1,
+			user: { login: "human" },
+		});
+		expect(await providerFor(state).findPublished(7, old, wanted, secret)).toEqual({
+			threads: { [finding]: "1" },
+			replies: {},
+		});
+	});
+
+	it("reads open and human-resolved state lazily and resets it between attempts", async () => {
+		const state = pullRequestState();
+		state.comments.push(root(1));
+		const github = providerFor(state);
+		expect(state.calls).toEqual([]);
+		expect(await github.isThreadOpen(7, "1")).toBe(true);
+		expect(await github.isThreadOpen(7, "1")).toBe(true);
+		state.resolvedThreads.push(1);
+		github.beginPublish();
+		expect(await github.isThreadOpen(7, "1")).toBe(false);
+		state.resolvedThreads = [];
+		github.beginPublish();
+		expect(await github.isThreadOpen(7, "1")).toBe(true);
+		expect(state.calls.filter((call) => call.path === "/graphql")).toHaveLength(3);
+	});
+
+	it("refuses reuse and resolution while a REST root has no GraphQL state", async () => {
+		const state = pullRequestState();
+		state.comments.push(root(1));
+		state.hiddenThreads = [1];
+		state.resolvedThreads = [1];
+		const github = providerFor(state);
+		await expect(github.isThreadOpen(7, "1")).rejects.toMatchObject({ code: "failed" });
+		expect(state.calls.some((call) => call.path.endsWith("/pulls/comments/1"))).toBe(true);
+		await expect(github.resolveThread(7, "1")).rejects.toMatchObject({ code: "failed" });
+		expect(state.resolvedThreads).toEqual([1]);
+		state.hiddenThreads = [];
+		state.resolvedThreads = [];
+		github.beginPublish();
+		expect(await github.resolveThread(7, "1")).toBe(true);
+		expect(state.resolvedThreads).toEqual([1]);
+	});
+
+	it("propagates an unavailable REST root lookup rather than treating it as deleted", async () => {
+		const state = pullRequestState();
+		state.comments.push(root(1));
+		state.hiddenThreads = [1];
+		state.commentReadStatus = 403;
+		await expect(providerFor(state).isThreadOpen(7, "1")).rejects.toMatchObject({ code: "forbidden" });
+	});
+
+	it.each(["verdict", "resolved"] as const)("does not treat a signed %s marker as a finding root", async (kind) => {
+		const state = pullRequestState();
+		state.failUser = true;
+		state.comments.push({ ...root(1), body: marker(old, kind, "fedcba9876543210", secret) });
+		expect(await providerFor(state).findPublished(7, old, wanted, secret)).toEqual({ threads: {}, replies: {} });
+	});
+
+	it("filters signed roots from a foreign known author", async () => {
+		const state = pullRequestState();
+		state.comments.push({ ...root(1), user: { login: "human" } });
+		expect(await providerFor(state).findPublished(7, old, wanted, secret)).toEqual({ threads: {}, replies: {} });
+	});
+
+	it("recognises deletion only after GraphQL and REST both lack the root", async () => {
+		const state = pullRequestState();
+		const github = providerFor(state);
+		expect(await github.isThreadOpen(7, "1")).toBe(false);
+		expect(await github.resolveThread(7, "1")).toBe(false);
+		expect(state.calls.filter((call) => call.path.endsWith("/pulls/comments/1"))).toHaveLength(2);
+	});
+
+	it("fails rather than returning the first comment page when the second page fails", async () => {
+		const state = pullRequestState();
+		state.restPageSize = 1;
+		state.failCommentPage = 2;
+		state.comments.push(root(1), root(2));
+		await expect(providerFor(state).findPublished(7, head, wanted, secret)).rejects.toMatchObject({ code: "failed" });
+	});
+
+	it.each([
+		{ name: "null body", body: null, page: 1 },
+		{ name: "object body", body: { nodes: [] }, page: 1 },
+		{ name: "empty later page", body: [], page: 2 },
+		{ name: "conflict", body: { message: "Conflict" }, page: 1, status: 409 },
+	])("fails closed on a $name comment page", async (response) => {
+		const state = pullRequestState();
+		state.restPageSize = 1;
+		state.comments.push(root(1), root(2));
+		state.commentPageResponse = response;
+		await expect(providerFor(state).findPublished(7, old, wanted, secret)).rejects.toMatchObject({ code: "failed" });
+	});
+
+	it.each([
+		["missing nodes", { pageInfo: { hasNextPage: false, endCursor: null } }],
+		["missing pageInfo", { nodes: [] }],
+		[
+			"missing resolved state",
+			{
+				nodes: [{ id: "thread-1", comments: { nodes: [{ databaseId: 1 }] } }],
+				pageInfo: { hasNextPage: false, endCursor: null },
+			},
+		],
+		[
+			"missing node ID",
+			{
+				nodes: [{ isResolved: false, comments: { nodes: [{ databaseId: 1 }] } }],
+				pageInfo: { hasNextPage: false, endCursor: null },
+			},
+		],
+		["null node", { nodes: [null], pageInfo: { hasNextPage: false, endCursor: null } }],
+		[
+			"missing comments",
+			{ nodes: [{ id: "thread-1", isResolved: false }], pageInfo: { hasNextPage: false, endCursor: null } },
+		],
+		[
+			"two comments",
+			{
+				nodes: [{ id: "thread-1", isResolved: false, comments: { nodes: [{ databaseId: 1 }, { databaseId: 2 }] } }],
+				pageInfo: { hasNextPage: false, endCursor: null },
+			},
+		],
+		[
+			"empty comments",
+			{
+				nodes: [{ id: "thread-1", isResolved: false, comments: { nodes: [] } }],
+				pageInfo: { hasNextPage: false, endCursor: null },
+			},
+		],
+		[
+			"missing database ID",
+			{
+				nodes: [{ id: "thread-1", isResolved: false, comments: { nodes: [{}] } }],
+				pageInfo: { hasNextPage: false, endCursor: null },
+			},
+		],
+		["empty cursor", { nodes: [], pageInfo: { hasNextPage: true, endCursor: "" } }],
+	])("rejects a partial GraphQL page: %s", async (name, response) => {
+		const state = pullRequestState();
+		state.comments.push(root(1));
+		state.threadPageResponse = response;
+		await expect(providerFor(state).resolveThread(7, "1")).rejects.toMatchObject({
+			code: "failed",
+			message: expect.stringContaining(name === "empty cursor" ? "invalid" : "incomplete"),
+		});
+		expect(state.resolvedThreads).toEqual([]);
+		expect(state.calls.filter((call) => call.path === "/graphql")).toHaveLength(1);
+	});
+
+	it("ignores a dismissal marker pasted into a root and a signed root with no author", async () => {
+		const state = pullRequestState();
+		state.failUser = true;
+		const first = root(1);
+		first.body += `\n${marker(old, "resolved", "fedcba9876543210", secret, { dismissal: "00112233aabbccdd" })}`;
+		state.comments.push(first, { ...root(2), user: null });
+		expect(await providerFor(state).findPublished(7, old, wanted, secret)).toEqual({
+			threads: { fedcba9876543210: "1" },
+			replies: {},
+		});
+	});
+
+	it.each([50, 51])("bounds the comment listing at 50 pages with %i pages", async (pages) => {
+		const state = pullRequestState();
+		state.restPageSize = 1;
+		state.comments.push(
+			...Array.from({ length: pages }, (_, index) => root(index + 1, index.toString(16).padStart(16, "0"))),
+		);
+		const result = providerFor(state).findPublished(7, old, wanted, secret);
+		if (pages === 50) expect(Object.keys((await result).threads)).toHaveLength(50);
+		else await expect(result).rejects.toMatchObject({ code: "failed" });
+	});
+
+	it.each(["errors", "partial", "missing-cursor", "repeated-cursor"] as const)(
+		"refuses a %s thread read before resolution",
+		async (failure) => {
+			const state = pullRequestState();
+			state.comments.push(root(1));
+			state.threadReadFailure = failure;
+			await expect(providerFor(state).resolveThread(7, "1")).rejects.toMatchObject({ code: "failed" });
+			expect(state.resolvedThreads).toEqual([]);
+			expect(state.calls.filter((call) => call.path === "/graphql")).toHaveLength(
+				failure === "repeated-cursor" ? 2 : 1,
+			);
+		},
+	);
+
+	it("does not mistake a refused thread read for a deleted reply target", async () => {
+		const state = pullRequestState();
+		state.comments.push(root(1));
+		state.threadReadStatus = 404;
+		await expect(
+			providerFor(state).replyResolved(
+				7,
+				{
+					id: "fedcba9876543210",
+					thread: "1",
+					revision: old,
+					ruleId: "rule",
+					path: "src/user.ts",
+					line: 7,
+					dismissal: { by: "Test", reason: "Safe.", at: "2026-10-18T00:00:00.000Z" },
+				},
+				head,
+				secret,
+			),
+		).rejects.toMatchObject({ code: "notFound" });
+		expect(state.comments).toHaveLength(1);
+	});
+
+	it.each([50, 51])("bounds the GraphQL listing at 50 pages with %i pages", async (pages) => {
+		const state = pullRequestState();
+		state.threadPageSize = 1;
+		state.comments.push(...Array.from({ length: pages }, (_, index) => root(index + 1)));
+		const result = providerFor(state).resolveThread(7, String(pages));
+		if (pages === 50) {
+			expect(await result).toBe(true);
+			expect(state.resolvedThreads).toEqual([50]);
+		} else {
+			await expect(result).rejects.toMatchObject({ code: "failed" });
+			expect(state.resolvedThreads).toEqual([]);
+		}
+	});
+});
