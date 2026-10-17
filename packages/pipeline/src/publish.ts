@@ -322,6 +322,7 @@ function planRound(
 	revision: string,
 	verdict: Verdict,
 	lines: Record<string, [number, number][]>,
+	settled: ReadonlySet<string>,
 ): PendingRound {
 	// Only a head with a recorded post has an open set. One whose rounds all failed or were abandoned holds an empty
 	// placeholder, and planning against it reposted every open finding and never replied to the fixed ones.
@@ -331,10 +332,10 @@ function planRound(
 	const base = { ...(own?.open ?? (previous === undefined ? {} : state.revisions[previous]!.open)) };
 	const owed = unanswered(state, head);
 	// A finding the verdict holds again, while the reply that resolved its thread is owed, goes back to that thread
-	// rather than starting a second one the first would outlive.
+	// rather than starting a second one the first would outlive. The caller leaves out a reply the provider already shows.
 	const returned = verdict.held();
 	for (const [id, { dismissal: _, addressedIn: __, ...entry }] of Object.entries(owed)) {
-		if (returned.has(id) && !Object.hasOwn(base, id)) base[id] = entry;
+		if (returned.has(id) && !settled.has(id) && !Object.hasOwn(base, id)) base[id] = entry;
 	}
 	const plan = verdict.publication(base, lines, head);
 	const resolved: Record<string, PublishedEntry> = Object.fromEntries(
@@ -581,7 +582,21 @@ function publishTask(provider: ReviewProvider) {
 						if (before?.pending === undefined) {
 							if (await postedVerdictOf(before, revision, head, [current, legacy], runtime, root, context))
 								break;
-							const planned = planRound(state, head, revision, verdict, lines);
+							// A reply that reached the provider before a crash lost its record left the thread resolved, so a
+							// finding that returns gets a new thread.
+							const settled = new Set<string>();
+							const returning = verdict.held();
+							for (const [id, entry] of Object.entries(unanswered(state, head))) {
+								if (!returning.has(id) || entry.addressedIn === undefined) continue;
+								const found = await provider.findPublished(
+									pullRequest,
+									entry.addressedIn,
+									{ fingerprint: "", round: 0 },
+									secret,
+								);
+								if (found.replies[replyKeyOf(id, entry)] !== undefined) settled.add(id);
+							}
+							const planned = planRound(state, head, revision, verdict, lines, settled);
 							const storedVerdict = await runtime.snapshot(VerdictDocument, root, context);
 							const details = storedVerdict?.details?.[revision];
 							const walkthrough = storedVerdict?.walkthroughs?.[revision];
