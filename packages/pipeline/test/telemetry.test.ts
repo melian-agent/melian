@@ -19,6 +19,7 @@ import { ReviewIndex } from "../src/review-index.ts";
 import { SummaryIndex } from "../src/summarize.ts";
 import { TimingDocument } from "../src/task-timing.ts";
 import { StageTelemetry, TelemetryReader } from "../src/telemetry.ts";
+import { ModelAttemptsDocument } from "../src/token-usage.ts";
 
 type Task = NonNullable<Awaited<ReturnType<Storage["task"]>>>;
 type Snapshot = NonNullable<Awaited<ReturnType<Storage["document"]>>>;
@@ -457,4 +458,20 @@ it("sums the selected stages into a run total without altering their per-model r
 	]);
 	expect(telemetry.toJSON()).toMatchObject({ total: { models: { model: total }, total }, usageUnavailable: [] });
 	expect(telemetry.stages.map((stage) => stage.usage)).toEqual([base.usage, base.usage]);
+});
+
+it.each([0, 1, 2])("reads the missing-request count %i without inventing a zero marker", async (count) => {
+	const fixture = new ReaderFixture();
+	fixture.triage(1);
+	fixture.task(1, { status: "terminal", outcome: { status: "completed", result: "recorded" } });
+	fixture.document(ModelAttemptsDocument, { started: 3, unmeasured: count }, "1");
+	const telemetry = await fixture.read();
+	const row = telemetry.stages[0]!;
+	if (count === 0) {
+		expect(row).not.toHaveProperty("usageIncomplete");
+		expect(telemetry.toJSON()).not.toHaveProperty("usageIncomplete");
+	} else {
+		expect(row).toHaveProperty("usageIncomplete", count);
+		expect(telemetry.toJSON()).toHaveProperty("usageIncomplete", count);
+	}
 });
