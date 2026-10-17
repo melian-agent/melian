@@ -39,8 +39,8 @@ A known token author remains an additional filter.
 A root must name that review through `pull_request_review_id`, carry its own valid finding marker and match the review's revision and author.
 A reply must match its root's author and finding ID. An addressed marker counts only in that root's body.
 A refused `/user` lookup alone approves no root or addressed edit.
-Before editing an addressed root, the provider reads its parent review and verifies the same binding.
-A removed finding marker retains the existing skip-edit and resolve behaviour for a recorded thread.
+Before editing or resolving an addressed root, the provider reads its parent review and verifies the same binding.
+A removed finding marker retains the skip-edit and resolve behaviour within an owned review.
 Unsigned markers and copied roots in human reviews confer no ownership.
 The provider remembers a refused `/user` read, so an installation token asks only once.
 

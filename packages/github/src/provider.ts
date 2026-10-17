@@ -447,28 +447,25 @@ export class GitHubProvider implements ReviewProvider {
 				comment_id: Number(finding.thread),
 			}),
 		);
+		const reviewId = data.pull_request_review_id;
+		if (reviewId === null) return undefined;
+		const { data: review } = await call("read the finding's review", () =>
+			this.octokit.rest.pulls.getReview({
+				owner: this.owner,
+				repo: this.repo,
+				pull_number: pullRequest,
+				review_id: reviewId,
+			}),
+		);
+		const published = await this.reviewMarker(review, secret);
+		if (
+			published?.revision !== finding.revision ||
+			data.user?.login !== review.user?.login ||
+			data.in_reply_to_id != null
+		)
+			return undefined;
 		const opening = signedMarker(data.body, "finding", finding.revision, secret);
-		let editable = false;
-		if (opening?.id === finding.id) {
-			const reviewId = data.pull_request_review_id;
-			if (reviewId === null) return undefined;
-			const { data: review } = await call("read the finding's review", () =>
-				this.octokit.rest.pulls.getReview({
-					owner: this.owner,
-					repo: this.repo,
-					pull_number: pullRequest,
-					review_id: reviewId,
-				}),
-			);
-			const published = await this.reviewMarker(review, secret);
-			if (
-				published?.revision !== opening.revision ||
-				data.user?.login !== review.user?.login ||
-				data.in_reply_to_id != null
-			)
-				return undefined;
-			editable = true;
-		}
+		const editable = opening?.id === finding.id;
 		const closed = marker(finding.addressedIn ?? revision, "resolved", finding.id, secret);
 		if (editable && !data.body.split(/\r?\n/).includes(closed)) {
 			const suffix = `\n\nAddressed in commit ${(finding.addressedIn ?? revision).slice(0, 12)}.\n${closed}`;

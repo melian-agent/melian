@@ -96,9 +96,9 @@ A known token author still filters reviews.
 When `/user` is unavailable, the first valid signed review establishes the publisher; later copies by another author fail that filter.
 An unavailable identity never approves every author.
 
-Addressed edits read the root's parent review and verify the same binding before editing or resolving a signed root.
+Addressed work reads the root's parent review and verifies the same binding before editing or resolving it.
 A missing, unsigned or foreign parent cannot authorise either action.
-This adds one REST review read per addressed edit; marker discovery still uses its existing paginated listings.
-A removed finding marker retains the earlier skip-edit and resolve behaviour for a recorded thread.
+This adds one REST review read per addressed thread; marker discovery still uses its existing paginated listings.
+A removed finding marker retains the earlier skip-edit and resolve behaviour within an owned review.
 The ownership tests cover copied roots, copied reviews, author and revision mismatches, invalid signatures and deleted authors.
 Installation-token recovery and addressed edits still work through valid signed reviews.
