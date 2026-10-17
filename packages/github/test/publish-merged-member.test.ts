@@ -169,9 +169,11 @@ describe("a report that returns while its resolution is owed", () => {
 		push();
 		await next(script([], []));
 
-		expect(roots().filter((comment) => comment.body.includes("null-dereference")).map((comment) => comment.id)).toEqual(
-			[thread.id],
-		);
+		expect(
+			roots()
+				.filter((comment) => comment.body.includes("null-dereference"))
+				.map((comment) => comment.id),
+		).toEqual([thread.id]);
 		expect(state.resolvedThreads).toContain(thread.id);
 	});
 });
