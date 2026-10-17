@@ -51,7 +51,7 @@ Octokit's paginator normalises a null body to an empty array and converts HTTP 4
 Validate raw bodies and every record before pagination, then reject a page without a response URL.
 Otherwise those failures can look like an empty pull request.
 Review and comment IDs must be positive safe integers. Bodies are strings; authors are objects with a non-empty login, or null for deleted accounts.
-Comments require a valid parent-review ID. A reply link may be absent on a root; when present, it must be a positive safe integer.
+A comment's parent review ID may be null, as GitHub documents. It then confers no root ownership. A reply link may be absent on a root; when present, it must be a positive safe integer.
 A null or malformed record rejects the complete listing, including any earlier valid page.
 A settled rerun with nothing owed reads neither marker lists nor threads.
 The fake distinguishes thread node IDs from root database IDs, checks query selections and target variables, and supports failed or partial pages.

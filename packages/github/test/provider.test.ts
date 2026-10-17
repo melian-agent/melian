@@ -497,7 +497,6 @@ describe("publication record validation", () => {
 			{ name: `unsafe ${field}`, field, value: Number.MAX_SAFE_INTEGER + 1, kind: "comment" },
 		]),
 		{ name: "missing review link", field: "pull_request_review_id", kind: "comment" },
-		{ name: "null review link", field: "pull_request_review_id", value: null, kind: "comment" },
 		{ name: "null reply link", field: "in_reply_to_id", value: null, kind: "comment" },
 	];
 
@@ -547,6 +546,33 @@ describe("publication record validation", () => {
 			message: expect.stringContaining("incomplete publication page"),
 		});
 		expect(state.calls.every(({ method }) => method === "GET")).toBe(true);
+	});
+
+	it("accepts a documented null review link without granting ownership to that root", async () => {
+		const { state, provider } = fixture();
+		const head = state.pull.head.sha;
+		state.reviews.push({
+			id: 1,
+			user: { login: state.login },
+			body: marker(head, "verdict", wanted.fingerprint, secret, { round: 1 }),
+			commit_id: head,
+			event: "COMMENT",
+		});
+		const root = {
+			id: 2,
+			user: { login: state.login },
+			body: marker(head, "finding", "fedcba9876543210", secret),
+			path: "src/a.ts",
+			line: 1,
+			side: "RIGHT",
+			pull_request_review_id: 1,
+		};
+		state.comments.push({ ...root, id: 3, user: { login: "human" }, pull_request_review_id: null }, root);
+		expect(await provider.findPublished(7, head, wanted, secret)).toEqual({
+			review: "1",
+			threads: { fedcba9876543210: "2" },
+			replies: {},
+		});
 	});
 
 	it("accepts positive IDs at one and the safe-integer bound, optional root links and null deleted authors", async () => {
