@@ -447,7 +447,8 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 
 		expect(review.status).toBe(0);
 		expect(planWarnings(review.stderr)).toBe(
-			"melian: Plan: heavy runs faux/scripted, set by --model; the committed route wants anthropic/claude-opus-5-5, and does not accept faux/scripted\n" +
+			"melian: Plan: heavy: anthropic/claude-opus-5-5, set by melian.yaml, is not a model the catalogue holds; it knows no provider anthropic\n" +
+				"melian: Plan: heavy runs faux/scripted, set by --model; the committed route wants anthropic/claude-opus-5-5, and does not accept faux/scripted\n" +
 				verifierWarnings,
 		);
 		expect(review.stdout).toContain("left the committed routes:\n  lens.");
