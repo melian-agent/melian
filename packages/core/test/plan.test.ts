@@ -1096,6 +1096,20 @@ describe("a route naming a model the catalogue does not hold", () => {
 		]);
 	});
 
+	it("names melian.yaml for a committed model and fallback that accept does not list", () => {
+		const resolved = plan(
+			{ heavy: { model: "anthropic/typo", fallbacks: ["openai/gpt-8"], accept: [opus, "openai/gpt-7"] } },
+			credentials,
+			{ preferences: { heavy: { fallbacks: ["openai/gpt-8", "openai/gpt-9", "openai/gpt-7"] } } },
+		);
+		expect(resolved.tier("heavy").unknown).toEqual([
+			{ model: "anthropic/typo", by: "melian.yaml" },
+			{ model: "openai/gpt-8", by: "melian.yaml" },
+			{ model: "openai/gpt-9", by: "melian.local.yaml" },
+			{ model: "openai/gpt-7", by: "melian.yaml" },
+		]);
+	});
+
 	it("says nothing for a catalogue marked partial", () => {
 		const resolved = plan({ heavy: { model: "anthropic/typo" } }, credentials, { partialCatalog: true });
 		expect(resolved.tier("heavy").unknown).toBeUndefined();
