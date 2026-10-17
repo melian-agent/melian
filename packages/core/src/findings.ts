@@ -1447,6 +1447,7 @@ export class Finding {
 				ruleId,
 				properties: {
 					...this.properties,
+					cause: defect.properties.cause,
 					severity,
 					originalSeverity: severity,
 					source: producer,

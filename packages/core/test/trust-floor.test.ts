@@ -396,6 +396,43 @@ describe("step 29: lowered and refuted trust objections", () => {
 		}).adjudicate();
 		expect(verdict.findings.acknowledge).toHaveLength(1);
 	});
+	it.each(["P0", "P1"] as const)(
+		"keeps a silent introduced defect silent after refuting its pre-existing %s claim",
+		(severity) => {
+			const trust = Finding.create({ ...input, cause: "pre-existing", severity });
+			const ordinary = report(
+				{ rule: "unhandled-error", severity: "P3", source: { check: "lens.correctness" } },
+				plausible,
+			);
+			const config = {
+				...defaultConfig,
+				resolution: { ...defaultConfig.resolution, [severity]: "silent" as const, P3: "silent" as const },
+			};
+			const unjudged = new Adjudication({
+				findings: [trust, ordinary],
+				config,
+				manifest: [],
+				checks: [],
+			}).adjudicate();
+			const judged = new Adjudication({
+				findings: [trust.verifiedAs(refuted), ordinary],
+				config,
+				manifest: [],
+				checks: [],
+			}).adjudicate();
+			expect(unjudged.findings.silent).toHaveLength(1);
+			expect(unjudged.findings.silent[0]?.properties.cause).toBe("introduced");
+			expect(unjudged.status).toBe("passed");
+			expect(judged.status).toBe(unjudged.status);
+			expect(judged.findings.silent[0]?.properties.decidedBy?.trustFloor).toMatchObject([
+				{ id: trust.id, minimum: "silent" },
+			]);
+			expect(judged.findings.silent.map((finding) => finding.id)).toEqual(
+				unjudged.findings.silent.map((finding) => finding.id),
+			);
+			expect(judged.findings.advisory).toEqual([]);
+		},
+	);
 	it("keeps a legacy sighting's lowering source ahead of the merged original severity", () => {
 		const finding = report();
 		const { severity: _, ...claim } = finding.claims()[0]!;
