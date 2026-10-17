@@ -1,0 +1,1 @@
+[The run record for main after step 27](../../packages/evals/runs/2026-10-17-main-after-step-27.md) measures Opus and Sol finders three times each on one head of `main`, with the merge by shared cause and Pi 1.1.0. Sol meets the bar on design, durability and correctness. Opus meets it on correctness, and misses it on design and durability, at worst precision 0.70 and 0.73.
