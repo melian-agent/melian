@@ -21,7 +21,7 @@ MELIAN_EVAL_LIVE=1 MELIAN_EVAL_MODEL=<finder> MELIAN_EVAL_VERIFIER_MODEL=<verifi
 | Opus, Terra | `anthropic/claude-opus-5-5` | `openai-codex/gpt-5.6-terra` | 3 |
 | Sol, Terra | `openai-codex/gpt-6.1-sol` | `openai-codex/gpt-5.6-terra` | 3 |
 
-The cells ran on 2026-10-17. No invocation printed an unscored line. The correctness corpus includes `correctness-refuses-unrecognised-input-clean`, which #136 added.
+The cells ran on 2026-10-17. No invocation printed an unscored line. The correctness corpus includes `correctness-refuses-unrecognised-input-clean`, which [pull request #136](https://github.com/melian-agent/melian/pull/136) added.
 
 ## Corpus precision and recall
 
@@ -56,7 +56,7 @@ Opus meets it on correctness. On design and durability it misses it, with worst 
 
 The clean golden `design-reimplements-an-authority-clean` scored clean in all three Sol passes. A run with `MELIAN_EVAL_SHOW=1` showed no finding. The scorer and that output both leave out findings the verifier refuted, so this run cannot tell a silent correctness lens from one whose report the verifier caught.
 
-These results support three things:
+These results bear on three questions:
 - **Routing:** Sol stays first on the heavy tier.
 - **Failover:** this run does not measure it. Every cell here used Terra as verifier, and a Codex outage removes Terra too; the committed route then verifies with Sonnet, then Opus. What the run shows is narrower: an Opus finder with a Terra verifier meets the bar on correctness and misses it on design and durability. The failover cell, an Opus finder with an Anthropic verifier, is still to be measured.
 - **What is not shown:** the run measures the design, durability and correctness lenses only, and says nothing about the others.
