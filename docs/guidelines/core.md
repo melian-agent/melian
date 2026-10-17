@@ -567,8 +567,9 @@ A change to what a finding requires always draws the notice. Problem: a nested `
 Every changed nested `melian.yaml` and every lens file draws a notice despite the parent's off switch.
 Both `.melian/lenses/<name>/LENS.md` and `.agents/lenses/<name>/LENS.md` qualify at any depth, including the root.
 `isLensFile` lives with path recognition and is re-exported from the lens module; both callers use one rule without a schema import cycle.
-Git's base and head blob identities decide change: add, delete, rename, formatting and every key count.
-Equal blobs, including a mode-only change, draw no forced notice. There are no key exemptions or new notice classes.
+Git's base and head blob identities and symlink modes decide change: add, delete, rename, formatting and every key count.
+Equal blobs draw no forced notice for executable-bit-only changes. A mode change to or from a symlink does. There are no key exemptions or new notice classes.
+A regular or executable file's identity is its blob; a symlink's is `symlink:<blob>`. Both sides bind the dismissal, so a file-type change reopens it.
 Every such notice has an acknowledgement floor. Its explanation says when it overrides the parent's off switch.
 `isPolicyFile` recognises `melian.yaml`, `AGENTS.md` and `CLAUDE.md` in any case, as local and secrets files already were.
 The forced rule, judging-policy lookup and floor also recognise case variants of `melian.yaml`.
@@ -581,7 +582,7 @@ Keep original path spelling for blob reads, findings, scope names and configured
 Revision readers still use exact Git names. Invalid judging base policy fails the check; an unparseable head draws a notice.
 Analyser and standards files remain under the parent's switch, so fixture configurations stay quiet.
 Disabling that switch accepts the residual risk for real analyser and standards changes.
-[The step 30 decision](../decisions/2026-10-18-nested-policy-exact-rule.md) records the boundary.
+[The step 30 decision](../decisions/2026-10-18-policy-file-types.md) records the boundary.
 
 A policy-change-review finding on a `melian.yaml` resolves under the configuration that judged it, and never below `acknowledge`. Problem: resolved under the file's own configuration, a root that maps `P2` to `silent` passed a change to itself with no notice, and a nested file that did the same overrode the stricter resolution of the directory above it. All of this holds under the policy source the host chose. A pull-request review reads the base, so a head cannot hide a change to its own root policy. A review of a checked-out range reads the working tree by design, because its author is the maintainer: the head's own `melian.yaml` then also chooses the tier and the resolutions that review runs under.
 
@@ -609,12 +610,12 @@ Melian holds its own code to the rule that behaviour belongs to the object it is
 
 Two guardrails hold Melian's documents to the writing rules in `AGENTS.md`. Each is `P3`, which is advisory. Problem: Melian's own reviews raised both findings five or more times, and a lens spends model calls on what a pattern can see. `bare-issue-reference` reads a `#` and digits in every Markdown file but `.github/` and the goldens. The `#` must follow the start of a line, a space, or `(`, and no `]`, word character, or `-` may follow the digits. Example: a hash and digits after a space fire, and a number that a `]` follows, as in link text, does not. Without lookaround the rule cannot tell link text from prose. A number inside the text of a longer link fires. A number after a quote mark or a backtick, such as `melian review "#41"`, does not. `overlong-sentence` reads 45 or more words in a row on one line, in `docs/`, the comparison records, and `README.md`. A full stop, question mark, exclamation mark, or `|` ends the run. Example: a sentence of 60 words fires, and one of 24 does not. A word is a run of word characters, apostrophes, backticks, and hyphens. The pattern counts words instead of skipping up to 40 characters between them, because each repeat costs steps against the engine's 2,000-step cap. A line is the unit, so a list item that runs on with no mark fires. A table bar ends the run, so each cell is measured alone. A semicolon or colon does not end it, because clauses joined by either read as one sentence. An earlier version let a 100-word sentence of semicolons pass, and the conventions lens flagged it. A full stop inside a version number or a path ends it as well. Both rules sit in the root `melian.yaml` and carry a `severity`, which is why a rule can set one. `packages/core/test/doc-guardrails.test.ts` pins them, and the `guardrails-bare-issue-reference` and `guardrails-overlong-sentence` goldens run each through a review.
 
-Policy-change notices keep stable IDs and hash `blob:<base blob>:<head blob>` into their trigger.
+Policy-change notices keep stable IDs and hash `blob:<base identity>:<head identity>` into their trigger.
 The existing SHA-256 trigger field holds it; no stored version changes.
 An absent side contributes an empty identity. Git lookup failure raises CheckError unreadable.
 A notice on a non-UTF-8 path raises the same error: its percent-encoded display name is not a Git path argument.
-A change to either blob reopens dismissal; unrelated commits preserving both blobs preserve it.
-Old head-only triggers and triggerless notices reopen once on their next report, in the safe direction.
+A change to either identity reopens dismissal; unrelated commits preserving both identities preserve it.
+Old head-only triggers, older symlink identities and triggerless notices reopen once on their next report, in the safe direction.
 
 ## Static analysis
 

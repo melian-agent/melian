@@ -1,4 +1,6 @@
-import { Changeset, ConfigError, configLookup, Lens, snippetHash } from "@melian-agent/core";
+import { rmSync, symlinkSync } from "node:fs";
+import { join } from "node:path";
+import { Changeset, ConfigError, configLookup, Lens, loadConfig, snippetHash } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { evaluateGuardrails } from "../src/guardrails.ts";
 import { isPolicyFile } from "../src/paths.ts";
@@ -38,6 +40,64 @@ async function review(baseFiles: Record<string, string>, headFiles: Record<strin
 }
 
 describe("nested policy blob changes", () => {
+	it.each([
+		file,
+		"services/pay/.agents/lenses/correctness/LENS.md",
+		"services/pay/.melian/lenses/correctness/LENS.md",
+	])("reports %s becoming a same-blob symlink despite a disabled parent", async (path) => {
+		const text = path === file ? "lenses: { correctness: { enabled: true } }" : lens("**");
+		const base = commit({ "melian.yaml": quiet, [path]: text }, "base");
+		rmSync(join(repo, path));
+		symlinkSync(text, join(repo, path));
+		const head = commit({}, "same blob, symlink mode");
+		const blob = gitIn(repo, "rev-parse", `${base}:${path}`);
+		expect(gitIn(repo, "rev-parse", `${head}:${path}`)).toBe(blob);
+		const { revision } = await Changeset.resolve(repo, `${base}..${head}`);
+		expect(revision.files[0]).toMatchObject({ path, oldMode: "100644", newMode: "120000" });
+		const { findings } = await evaluateGuardrails({
+			repoRoot: repo,
+			revision,
+			source: { kind: "revision", commit: base },
+		});
+		expect(findings.map((finding) => finding.properties.path)).toEqual([path]);
+		expect(findings[0]!.properties.trigger?.hash).toBe(snippetHash(`blob:${blob}:symlink:${blob}`));
+		expect(findings[0]!.resolve({ resolution: { P2: "silent" } })).toBe("acknowledge");
+		if (path === file) {
+			await expect(
+				loadConfig(repo, { kind: "revision", commit: head }, "services/pay/api.ts"),
+			).rejects.toMatchObject({ code: "symlink" });
+		} else {
+			await expect(
+				Lens.load(repo, { kind: "revision", commit: head }, ["services/pay/api.ts"]),
+			).rejects.toMatchObject({ code: "symlink" });
+		}
+	});
+
+	it.each(["services/pay/.agents/lenses/correctness/LENS.md", "services/pay/.melian/lenses/correctness/LENS.md"])(
+		"reports %s returning from a same-blob symlink",
+		async (path) => {
+			const text = lens("**");
+			writeFiles(repo, { "melian.yaml": quiet, [path]: text });
+			rmSync(join(repo, path));
+			symlinkSync(text, join(repo, path));
+			const base = commit({}, "base symlink");
+			rmSync(join(repo, path));
+			const head = commit({ [path]: text }, "same blob, regular mode");
+			const blob = gitIn(repo, "rev-parse", `${base}:${path}`);
+			expect(gitIn(repo, "rev-parse", `${head}:${path}`)).toBe(blob);
+			const { revision } = await Changeset.resolve(repo, `${base}..${head}`);
+			expect(revision.files[0]).toMatchObject({ path, oldMode: "120000", newMode: "100644" });
+			const { findings } = await evaluateGuardrails({
+				repoRoot: repo,
+				revision,
+				source: { kind: "revision", commit: base },
+			});
+			expect(findings.map((finding) => finding.properties.path)).toEqual([path]);
+			expect(findings[0]!.properties.trigger?.hash).toBe(snippetHash(`blob:symlink:${blob}:${blob}`));
+			expect(findings[0]!.resolve({ resolution: { P2: "silent" } })).toBe("acknowledge");
+		},
+	);
+
 	it.for([".Agents", ".Melian"])(
 		"requires acknowledgement for a refused %s lens alias beneath a disabled parent",
 		async (owner) => {

@@ -252,7 +252,7 @@ async function resolutionChanged(repoRoot: string, revision: Revision, path: str
 
 // Every policy file the revision lists, and every touched path its own configuration adds to the list. A change to an
 // analyser's configuration blocks by default: the head's copy drives the run that judges the head, so a switched-off
-// check would otherwise read as a clean one. Every changed melian.yaml or lens blob draws the notice despite the
+// check would otherwise read as a clean one. Every changed melian.yaml or lens identity draws the notice despite the
 // parent's switch, since either file steers later reviews.
 async function policyChanges(input: GuardrailInput, paths: readonly string[], configFor: ConfigLookup): Promise<Hit[]> {
 	const { revision, repoRoot } = input;
@@ -276,23 +276,24 @@ async function policyChanges(input: GuardrailInput, paths: readonly string[], co
 					`${path}: cannot read its policy blob identity; the name is not UTF-8`,
 				);
 			}
-			const [baseBlob, headBlob] = await Promise.all(
+			const [baseIdentity, headIdentity] = await Promise.all(
 				[revision.base, revision.head].map(async (commit) => {
 					const blob = await git(repoRoot, [
 						"--literal-pathspecs",
 						"ls-tree",
-						"--format=%(objectname)",
+						"--format=%(objectmode) %(objectname)",
 						commit,
 						"--",
 						path,
 					]);
 					if (blob.code !== 0)
 						throw new CheckError("unreadable", check, `${commit}:${path}: ${blob.stderr.trim()}`);
-					return blob.stdout.trim();
+					const [mode, object = ""] = blob.stdout.trim().split(" ");
+					return mode === "120000" ? `symlink:${object}` : object;
 				}),
 			);
-			if (forced && baseBlob === headBlob) return undefined;
-			const trigger = { file: path, index: 0, hash: snippetHash(`blob:${baseBlob}:${headBlob}`) };
+			if (forced && baseIdentity === headIdentity) return undefined;
+			const trigger = { file: path, index: 0, hash: snippetHash(`blob:${baseIdentity}:${headIdentity}`) };
 			const marked = (await resolutionChanged(repoRoot, revision, path)) ? { resolution: true as const } : {};
 			const override = guardrail.enabled
 				? ""

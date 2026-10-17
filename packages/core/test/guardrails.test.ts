@@ -40,11 +40,18 @@ afterEach(() => {
 it.each(["base", "head"])("refuses a policy notice when its %s blob lookup fails, using Git’s stderr", async (side) => {
 	const original = gitClient.git;
 	vi.spyOn(gitClient, "git").mockImplementation((root, args, options) => {
-		if (!args.includes("--format=%(objectname)")) return original(root, args, options);
+		if (!args.includes("--format=%(objectmode) %(objectname)")) return original(root, args, options);
 		const commit = gitIn(repo, "rev-parse", side === "base" ? "HEAD^" : "HEAD");
 		if (args[3] !== commit) return original(root, args, options);
 		expect(root).toBe(repo);
-		expect(args).toEqual(["--literal-pathspecs", "ls-tree", "--format=%(objectname)", commit, "--", "AGENTS.md"]);
+		expect(args).toEqual([
+			"--literal-pathspecs",
+			"ls-tree",
+			"--format=%(objectmode) %(objectname)",
+			commit,
+			"--",
+			"AGENTS.md",
+		]);
 		return Promise.resolve({
 			code: 1,
 			stdout: "partial blob output",
@@ -63,12 +70,12 @@ it("hashes Git’s stdout blob ID rather than its stderr diagnostic", async () =
 	const original = gitClient.git;
 	vi.spyOn(gitClient, "git").mockImplementation(async (root, args, options) => {
 		const result = await original(root, args, options);
-		if (!args.includes("--format=%(objectname)")) return result;
+		if (!args.includes("--format=%(objectmode) %(objectname)")) return result;
 		expect(root).toBe(repo);
 		expect(args).toEqual([
 			"--literal-pathspecs",
 			"ls-tree",
-			"--format=%(objectname)",
+			"--format=%(objectmode) %(objectname)",
 			expect.stringMatching(/^[0-9a-f]{40}$/),
 			"--",
 			"AGENTS.md",
