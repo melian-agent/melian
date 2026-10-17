@@ -309,7 +309,6 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 		...(draft.stillOpen > 0
 			? [`${draft.stillOpen} of them ${draft.stillOpen === 1 ? "was" : "were"} posted on an earlier revision.`]
 			: []),
-		...(verdict.dismissed.length > 0 ? [`${plural(verdict.dismissed.length, "dismissed finding")} not shown.`] : []),
 	];
 	parts.push(
 		summary.join(" ") +
@@ -318,6 +317,27 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 				? ` Verification: ${verdict.verificationSummary()}; ${plural(verdict.refuted?.length ?? 0, "refuted finding")} not posted.`
 				: ""),
 	);
+	const reviewStatus = verdict.reviewStatus();
+	parts.push(`melian/review: ${reviewStatus.state} (${inline(reviewStatus.description)}).`);
+	if (verdict.counted().some((finding) => finding.properties.resolution === "acknowledge")) {
+		parts.push(
+			`Dismiss unresolved acknowledgements with a reason, then publish. Use ${code(`melian dismiss "#${draft.pullRequest}" <id> --reason <text>`)} for this pull request.`,
+		);
+	}
+	if (verdict.dismissed.length > 0) {
+		parts.push(
+			[
+				"Dismissals attested by this publication:",
+				"",
+				...verdict
+					.dismissals()
+					.map(
+						({ id, ruleId, path, dismissal }) =>
+							`- ${code(id)} ${code(ruleId)} in ${code(path)}: ${inline(dismissal?.reason ?? "No reason stored.")}`,
+					),
+			].join("\n"),
+		);
+	}
 	// A check off the committed routes ran under a maintainer's own choice, so it leads, before anything else said.
 	const routed = [...(verdict.ran ?? []), ...verdict.notRun].flatMap(({ name, lineage }) =>
 		lineage === undefined ? [] : [`- ${code(name)} ${inline(describeLineage(lineage))}`],

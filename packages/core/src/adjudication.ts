@@ -533,6 +533,18 @@ export class Verdict {
 		return [...Object.values(this.findings).flat(), ...this.dismissed, ...(this.refuted ?? [])];
 	}
 
+	/** Each dismissed report this verdict attests, including reports merged into a dismissed speaker. */
+	dismissals(): (AlsoReportedAs & { readonly path: string })[] {
+		return this.dismissed.flatMap((finding) => [
+			{ ...finding.report(), path: finding.properties.path },
+			...(finding.properties.alsoReportedAs ?? []).map((report) => ({
+				...report,
+				path: finding.properties.path,
+				dismissal: report.dismissal ?? finding.properties.dismissal,
+			})),
+		]);
+	}
+
 	/**
 	 * The IDs of every finding the verdict holds live, with the live members of each as {@link Defect.of} reads them, so a
 	 * report merged into another keeps its thread.
@@ -637,9 +649,8 @@ export class Verdict {
 	}
 
 	/**
-	 * The status a pull request's check shows for the verdict. A review that passed, or found nothing blocking, is
-	 * `success`, with the count of findings; one with a blocking finding is `failure`; one that did not complete is
-	 * `error`, naming what did not run. Melian never approves, so `success` means only that nothing blocks.
+	 * The published status: blocks and unresolved acknowledgements fail; an incomplete review errors. Success counts
+	 * findings and names dismissals when none remain. This does not change `blocking` or the review's exit code.
 	 */
 	reviewStatus(): ReviewStatus {
 		const count = (number: number, noun: string) => `${number} ${noun}${number === 1 ? "" : "s"}`;
@@ -652,10 +663,21 @@ export class Verdict {
 			});
 			return { state: "error", description: `Not reviewed: ${reasons.join("; ") || "the review did not complete"}` };
 		}
-		const shown = this.counted().length;
-		if (this.status === "passed" || shown === 0) return { state: "success", description: "Passed" };
-		if (this.blocking) {
-			return { state: "failure", description: `${count(shown, "finding")}, ${this.findings.block.length} blocking` };
+		const counted = this.counted();
+		const shown = counted.length;
+		const blocks = counted.filter((finding) => finding.properties.resolution === "block").length;
+		const acknowledges = counted.filter((finding) => finding.properties.resolution === "acknowledge").length;
+		if (blocks + acknowledges > 0) {
+			return {
+				state: "failure",
+				description: `${count(shown, "finding")}, ${blocks} blocking, ${count(acknowledges, "unresolved acknowledgement")}`,
+			};
+		}
+		if (shown === 0) {
+			return {
+				state: "success",
+				description: this.dismissed.length === 0 ? "Passed" : `0 findings, ${this.dismissed.length} dismissed`,
+			};
 		}
 		return { state: "success", description: `${count(shown, "finding")}, none blocking` };
 	}
@@ -769,6 +791,13 @@ export class Verdict {
 		const [color, label] = statusLabel[this.status];
 		const blocking = this.blocking ? `, ${rendering.paint("31", "blocking")}` : "";
 		const parts = [`Verdict: ${rendering.paint(color, label)}${blocking}`];
+		const status = this.reviewStatus();
+		parts.push(`melian/review: ${status.state} (${visibleText(status.description)}).`);
+		if (this.counted().some((finding) => finding.properties.resolution === "acknowledge")) {
+			parts.push(
+				'Dismiss unresolved acknowledgements with a reason, then publish. Use melian dismiss "#N" <id> --reason <text> for the pull request.',
+			);
+		}
 		const provisional = this.notRun.filter((check) => check.status === "provisional");
 		const notRun = this.notRun.filter((check) => check.status !== "provisional");
 		if (provisional.length > 0) {

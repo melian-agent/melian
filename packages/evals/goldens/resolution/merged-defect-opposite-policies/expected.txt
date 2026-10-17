@@ -1,5 +1,9 @@
 Verdict: findings
 
+melian/review: failure (3 findings, 0 blocking, 3 unresolved acknowledgements).
+
+Dismiss unresolved acknowledgements with a reason, then publish. Use melian dismiss "#N" <id> --reason <text> for the pull request.
+
 Acknowledge: 3 findings
 
 aliased/third.ts

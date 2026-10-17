@@ -1,5 +1,9 @@
 Verdict: not reviewed, blocking
 
+melian/review: error (Not reviewed: lens.security failed (the lens did not finish); lens.tests ended (its token budget of 50,000 ran out after 4 tool calls and 51,200 tokens); static.tsc skipped (no tsconfig.json at the base revision)).
+
+Dismiss unresolved acknowledgements with a reason, then publish. Use melian dismiss "#N" <id> --reason <text> for the pull request.
+
 3 checks did not run:
   lens.security  failed at deep: the lens did not finish
     Error: provider returned 529

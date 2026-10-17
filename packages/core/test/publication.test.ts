@@ -262,23 +262,184 @@ describe("Verdict.publication", () => {
 });
 
 describe("Verdict.reviewStatus", () => {
+	it("lists each merged dismissed report with its own reason, falling back to the speaker for older records", () => {
+		const primary = finding({ severity: "P2", status: "dismissed" });
+		const reason = { by: "Maintainer", at: "2026-10-17T00:00:00Z", reason: "Primary reason." };
+		const otherReason = { ...reason, reason: "Other reason." };
+		const member = finding({ rule: "other-rule", status: "dismissed" });
+		const shown = Finding.from({
+			...primary.toJSON(),
+			properties: {
+				...primary.properties,
+				dismissal: reason,
+				alsoReportedAs: [
+					{ ...member.report(), dismissal: otherReason },
+					{ ...member.report(), id: "b".repeat(16) },
+				],
+			},
+		});
+		expect(verdictOf([shown]).dismissals()).toEqual([
+			{ ...shown.report(), path: "src/run.ts" },
+			{ ...member.report(), path: "src/run.ts", dismissal: otherReason },
+			{ ...member.report(), id: "b".repeat(16), path: "src/run.ts", dismissal: reason },
+		]);
+		expect(verdictOf([]).dismissals()).toEqual([]);
+	});
+	it("derives every failure count from counted findings, including lifted-member exclusions", () => {
+		const acknowledgement = finding({ severity: "P2" });
+		const stored = verdictOf([acknowledgement]).toJSON();
+		const verdict = Verdict.from({
+			...stored,
+			preExistingImportant: [
+				{
+					id: acknowledgement.id,
+					originalSeverity: "P1",
+					state: "carried",
+					lifted: true,
+				},
+			],
+		});
+		expect(verdict.counted()).toEqual([]);
+		expect(verdict.reviewStatus()).toEqual({ state: "success", description: "Passed" });
+		expect(verdict.render()).not.toContain("Dismiss unresolved acknowledgements");
+	});
 	it("maps a passed review to success", () => {
 		expect(verdictOf([]).reviewStatus()).toEqual({ state: "success", description: "Passed" });
 	});
 
-	it("maps findings with nothing blocking to success, counting them", () => {
+	it("maps advisory findings to success, counting them", () => {
 		const advisory = finding({ severity: "P3" });
-		const acknowledge = finding({ severity: "P2", snippet: "eval(body)" });
-		expect(verdictOf([advisory, acknowledge]).reviewStatus()).toEqual({
+		expect(verdictOf([advisory]).reviewStatus()).toEqual({
 			state: "success",
-			description: "2 findings, none blocking",
+			description: "1 finding, none blocking",
+		});
+	});
+
+	it.each([1, 2])("fails the status for %i unresolved acknowledges without blocks", (number) => {
+		const acknowledges = Array.from({ length: number }, (_, occurrence) => finding({ severity: "P2", occurrence }));
+		const verdict = verdictOf(acknowledges);
+		expect(verdict.status).toBe("findings");
+		expect(verdict.blocking).toBe(false);
+		expect(verdict.findings.acknowledge).toHaveLength(number);
+		expect(verdict.reviewStatus()).toEqual({
+			state: "failure",
+			description: `${number} finding${number === 1 ? "" : "s"}, 0 blocking, ${number} unresolved acknowledgement${number === 1 ? "" : "s"}`,
+		});
+	});
+
+	it("passes when every acknowledge has a dismissal with a reason", () => {
+		const acknowledges = [0, 1].map((occurrence) => finding({ severity: "P2", occurrence }));
+		const dismissed = acknowledges.map((each) =>
+			Finding.from({
+				...each.toJSON(),
+				properties: {
+					...each.properties,
+					status: "dismissed",
+					dismissal: { by: "Tal <tal@melian.invalid>", reason: "Constant input.", at: "2026-10-17T00:00:00Z" },
+				},
+			}),
+		);
+		const verdict = verdictOf(dismissed);
+		expect(verdict.dismissed).toHaveLength(2);
+		expect(verdict.findings.acknowledge).toEqual([]);
+		expect(verdict.reviewStatus()).toEqual({ state: "success", description: "0 findings, 2 dismissed" });
+	});
+
+	it("still fails when one acknowledge remains after a dismissal", () => {
+		const answered = finding({ severity: "P2", occurrence: 0 });
+		const dismissed = Finding.from({
+			...answered.toJSON(),
+			properties: {
+				...answered.properties,
+				status: "dismissed",
+				dismissal: { by: "Tal <tal@melian.invalid>", reason: "Constant input.", at: "2026-10-17T00:00:00Z" },
+			},
+		});
+		const verdict = verdictOf([dismissed, finding({ severity: "P2", occurrence: 1 })]);
+		expect(verdict.dismissed).toHaveLength(1);
+		expect(verdict.findings.acknowledge).toHaveLength(1);
+		expect(verdict.reviewStatus()).toEqual({
+			state: "failure",
+			description: "1 finding, 0 blocking, 1 unresolved acknowledgement",
+		});
+	});
+
+	it("fails for an acknowledge policy notice on AGENTS.md", () => {
+		const notice = finding({
+			file: "AGENTS.md",
+			rule: "guardrail/policy-change-review",
+			severity: "P2",
+			source: { check: "guardrails" },
+		});
+		const verdict = verdictOf([notice]);
+		expect(verdict.findings.acknowledge.map((each) => each.id)).toEqual([notice.id]);
+		expect(verdict.reviewStatus()).toEqual({
+			state: "failure",
+			description: "1 finding, 0 blocking, 1 unresolved acknowledgement",
+		});
+	});
+
+	it("explains the status failure in the terminal without labelling acknowledges blocking", () => {
+		const text = verdictOf([finding({ severity: "P2" })]).render();
+		expect(text).toContain("Verdict: findings\n");
+		expect(text).toContain("melian/review: failure (1 finding, 0 blocking, 1 unresolved acknowledgement).");
+		expect(text).toContain("Dismiss unresolved acknowledgements with a reason, then publish.");
+	});
+
+	it.each(["new", "carried"] as const)("fails for a %s pre-existing acknowledge opt-in", (state) => {
+		const old = finding({ severity: "P0", cause: "pre-existing", source: { check: "static.tsc" } });
+		const verdict = new Adjudication({
+			findings: [old],
+			manifest: [],
+			checks: [],
+			config: {
+				...defaultConfig,
+				resolution: { ...defaultConfig.resolution, preExisting: { P0: "acknowledge" } },
+			},
+			seenBefore: state === "carried" ? [old.id] : [],
+		}).adjudicate();
+		expect(verdict.blocking).toBe(false);
+		expect(verdict.findings.acknowledge.map((each) => each.id)).toEqual([old.id]);
+		expect(verdict.preExistingImportant).toEqual([{ id: old.id, state, originalSeverity: "P0" }]);
+		expect(verdict.reviewStatus()).toEqual({
+			state: "failure",
+			description: "1 finding, 0 blocking, 1 unresolved acknowledgement",
+		});
+	});
+
+	it("passes for a pre-existing important member lifted only to advisory", () => {
+		const old = finding({ severity: "P0", cause: "pre-existing", source: { check: "static.tsc" } });
+		const verdict = new Adjudication({
+			findings: [old],
+			manifest: [],
+			checks: [],
+			config: { ...defaultConfig, resolution: { ...defaultConfig.resolution, P0: "silent" } },
+		}).adjudicate();
+		expect(verdict.status).toBe("passed");
+		expect(verdict.preExistingImportant).toEqual([
+			{ id: old.id, state: "new", originalSeverity: "P0", lifted: true },
+		]);
+		expect(verdict.findings.advisory.map((each) => each.id)).toEqual([old.id]);
+		expect(verdict.counted()).toEqual([]);
+		expect(verdict.reviewStatus()).toEqual({ state: "success", description: "Passed" });
+	});
+
+	it("counts blocks and unresolved acknowledges apart beside advisory findings", () => {
+		const verdict = verdictOf([
+			finding({ severity: "P1", occurrence: 0 }),
+			finding({ severity: "P2", occurrence: 1 }),
+			finding({ severity: "P3", occurrence: 2 }),
+		]);
+		expect(verdict.reviewStatus()).toEqual({
+			state: "failure",
+			description: "3 findings, 1 blocking, 1 unresolved acknowledgement",
 		});
 	});
 
 	it("maps a blocking finding to failure", () => {
 		expect(verdictOf([finding({ severity: "P0" })]).reviewStatus()).toEqual({
 			state: "failure",
-			description: "1 finding, 1 blocking",
+			description: "1 finding, 1 blocking, 0 unresolved acknowledgements",
 		});
 	});
 

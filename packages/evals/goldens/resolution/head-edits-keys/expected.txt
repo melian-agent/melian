@@ -1,5 +1,9 @@
 Verdict: findings, blocking
 
+melian/review: failure (2 findings, 1 blocking, 1 unresolved acknowledgement).
+
+Dismiss unresolved acknowledgements with a reason, then publish. Use melian dismiss "#N" <id> --reason <text> for the pull request.
+
 Block: 1 finding
 
 src/total.ts
