@@ -114,7 +114,45 @@
       ]
     },
     {
-      "text": "Reported 1 finding."
+      "calls": [
+        {
+          "name": "report_finding",
+          "arguments": {
+            "file": "src/cli.ts",
+            "line": 8,
+            "rule": "fail-open-default",
+            "severity": "P1",
+            "explanation": {
+              "what": "republishCommand calls canPublish without the writer-trust answer, so it publishes for a repository whose policy never set trust.",
+              "why": "The writer-trust decision says an absent answer reads as untrusted. republishCommand omits the answer, so it reaches the default of trusted that canPublish now applies.",
+              "fix": "Pass the policy's answer from republishCommand, as publishCommand does."
+            },
+            "failureScenario": "A repository's policy leaves trust.writers unset, so its writers are untrusted. A maintainer without write access runs republish: republishCommand calls canPublish with no options, so the default of trusted applies, and the command publishes where publishCommand, which passes the policy's answer, refuses. This is a separate fix in another file: the caller must pass the policy's answer.",
+            "evidence": [
+              {
+                "file": "src/cli.ts",
+                "line": 8,
+                "role": "cause"
+              },
+              {
+                "file": "src/publish.ts",
+                "line": 6,
+                "role": "context"
+              },
+              {
+                "file": "docs/decisions/2026-10-01-writer-trust.md",
+                "line": 5,
+                "role": "context",
+                "revision": "base"
+              }
+            ]
+          },
+          "expectToolResult": "as introduced"
+        }
+      ]
+    },
+    {
+      "text": "Reported 2 findings."
     }
   ],
   "durability": [
