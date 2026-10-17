@@ -31,6 +31,40 @@ const input: FindingInput = {
 	source: { check: "lens.security", version: "1" },
 };
 
+it("separates inline findings from findings rendered in the review body", () => {
+	const inline = Finding.create(input);
+	const outside = Finding.create({ ...input, file: "src/outside.ts" });
+	const verdict = new Adjudication({
+		findings: [inline, outside],
+		manifest: [],
+		checks: [],
+		config: defaultConfig,
+	}).adjudicate();
+	const body = renderReviewBody(
+		{
+			pullRequest: 7,
+			revision,
+			base,
+			fingerprint: verdict.fingerprint(),
+			round: 1,
+			verdict,
+			findings: [
+				{ finding: inline, placement: { kind: "lines", startLine: 12, line: 12 } },
+				{ finding: outside, placement: { kind: "body" } },
+			],
+			stillOpen: 0,
+			resolved: [],
+			secret,
+		},
+		links,
+	);
+	expect(
+		markersIn(body)
+			.filter(({ kind }) => kind === "finding")
+			.map(({ id }) => id),
+	).toEqual([outside.id]);
+});
+
 it("renders a newly dismissed body finding beside a resolved one", () => {
 	const verdict = new Adjudication({ findings: [], manifest: [], checks: [], config: defaultConfig }).adjudicate();
 	const body = renderReviewBody(
