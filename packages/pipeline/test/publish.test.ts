@@ -199,6 +199,58 @@ describe("publication planning recovery", () => {
 		).toEqual({});
 	});
 
+	it("retires only the assigned thread and preserves an unrelated owed resolution", async () => {
+		const secret = "11".repeat(32);
+		const unrelated = "0123456789abcdef";
+		const entry = { id: finding.id, ruleId: finding.ruleId, path: "src/a.ts", line: 1, revision: old, thread: "1" };
+		state.reviews.push({
+			id: 1,
+			user: { login: state.login },
+			body: marker(old, "verdict", "9999999999999999", secret, { round: 1 }),
+			commit_id: old,
+			event: "COMMENT",
+		});
+		state.comments.push(
+			...[finding.id, unrelated].map((id, index) => ({
+				id: index + 1,
+				user: { login: state.login },
+				body: marker(old, "finding", id, secret),
+				path: "src/a.ts",
+				line: 1,
+				side: "RIGHT",
+				pull_request_review_id: 1,
+			})),
+		);
+		await root.commit(async (tx) => {
+			(await tx.doc(PublisherDocument, root.id)).secret = secret;
+			(await tx.doc(VerdictDocument, root.id)).verdicts[revision] = new Adjudication({
+				findings: [finding],
+				manifest: [],
+				checks: [],
+				config: defaultConfig,
+			})
+				.adjudicate()
+				.toJSON();
+			const doc = await tx.doc(PublishedDocument, root.id);
+			doc.order = [old];
+			doc.revisions[old] = {
+				reviews: ["1"],
+				open: {},
+				replies: {},
+				resolved: {
+					[replyKey(finding.id, "1")]: entry,
+					[replyKey(unrelated, "2")]: { ...entry, id: unrelated, thread: "2" },
+				},
+			};
+		}, context);
+		await publishReview(options);
+		const prior = (await harness!.snapshot(PublishedDocument, root.id, context))!.revisions[old]!;
+		expect(prior.resolved).not.toHaveProperty(replyKey(finding.id, "1"));
+		expect(prior.resolved[replyKey(unrelated, "2")]).toMatchObject({ id: unrelated, thread: "2" });
+		expect(state.comments).toHaveLength(2);
+		expect(state.resolvedThreads).toEqual([2]);
+	});
+
 	it("redismisses the newest thread when the current record also carries an older resolution", async () => {
 		const past = { by: "Maintainer", reason: "Old reason", at: "2026-10-17T00:00:00Z" };
 		const dismissal = { ...past, reason: "New reason", at: "2026-10-18T00:00:00Z" };
