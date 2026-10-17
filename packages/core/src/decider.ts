@@ -55,7 +55,7 @@ export interface DeciderAnswer {
 export interface Decider {
 	readonly name: string;
 	readonly calibrated: boolean;
-	decide(request: DecisionRequest, signal?: AbortSignal): Promise<DeciderAnswer>;
+	decide(request: DecisionRequest, signal?: AbortSignal, usage?: UsageObserver): Promise<DeciderAnswer>;
 }
 
 /** What the LLM fallback adapter asks a text model: instructions, a prompt, and the one tool to answer through. */
@@ -73,8 +73,23 @@ export interface ToolRequest {
 export interface TextModel {
 	/** The model, as `provider/model-id`. */
 	readonly name: string;
-	answer(request: ToolRequest, signal?: AbortSignal): Promise<unknown>;
+	answer(request: ToolRequest, signal?: AbortSignal, usage?: UsageObserver): Promise<unknown>;
 }
+
+/** Provider-reported counters, in Pi's units. Reasoning is a subset of output; the one-hour cache is a subset of cacheWrite. */
+export type ModelUsage = {
+	input: number;
+	output: number;
+	cacheRead: number;
+	cacheWrite: number;
+	cacheWrite1h?: number;
+	reasoning?: number;
+	totalTokens: number;
+	cost: { input: number; output: number; cacheRead: number; cacheWrite: number; total: number };
+};
+
+/** Receives each assistant response's usage before the adapter validates its answer, including errors. */
+export type UsageObserver = (model: string, usage: ModelUsage) => void;
 
 /** A {@link Decision} as JSON, which a Pi Durable document can hold. */
 export type StoredDecision = {

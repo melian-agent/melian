@@ -12,6 +12,7 @@ import {
 	TriageResults,
 	triageDirectory,
 } from "@melian-agent/evals";
+import { StageTelemetry, TokenUsage } from "@melian-agent/pipeline";
 import {
 	createFakeModels,
 	fauxAssistantMessage,
@@ -19,6 +20,7 @@ import {
 	scriptConversations,
 } from "@melian-agent/pipeline/testing";
 import { describe, expect, it } from "vitest";
+import { GoldenRunError } from "../src/run-error.ts";
 
 const goldens = loadTriageGoldens();
 
@@ -131,7 +133,17 @@ describe("the triage corpus", { timeout: 60_000 }, () => {
 				replies: [answer(0.7), answer(0.2), answer(0.9)],
 			},
 		]);
-		const chosen = await runTriageGolden(golden, { kind: "live", models: fake.review, model: "live-eval/judge" }, 3);
+		const telemetry: unknown[] = [];
+		const chosen = await runTriageGolden(
+			golden,
+			{ kind: "live", models: fake.review, model: "live-eval/judge" },
+			3,
+			(record) => telemetry.push(record.toJSON()),
+		);
+		expect(telemetry).toHaveLength(3);
+		expect(telemetry[0]).toMatchObject({
+			total: { models: { "live-eval/judge": { totalTokens: expect.any(Number) } } },
+		});
 		expect(chosen.map((pass) => pass.correctness)).toEqual(["deep", "quick", "deep"]);
 		expect(Object.values(requests).flat()).toHaveLength(3);
 	});
@@ -145,9 +157,14 @@ describe("the triage corpus", { timeout: 60_000 }, () => {
 				replies: [fauxAssistantMessage("", { stopReason: "error", errorMessage: "HTTP 429 rate limited" })],
 			},
 		]);
-		await expect(
-			runTriageGolden(golden, { kind: "live", models: fake.review, model: "live-eval/judge" }),
-		).rejects.toThrow(/docs-typo.*HTTP 429 rate limited/);
+		const failure: unknown = await runTriageGolden(golden, {
+			kind: "live",
+			models: fake.review,
+			model: "live-eval/judge",
+		}).catch((error: unknown) => error);
+		expect(failure).toBeInstanceOf(GoldenRunError);
+		expect((failure as GoldenRunError).message).toMatch(/docs-typo.*HTTP 429 rate limited/);
+		expect((failure as GoldenRunError).telemetry.total!.models["live-eval/judge"]!.totalTokens).toBeGreaterThan(0);
 	});
 
 	it("refuses a live model with no credentials", async () => {
@@ -468,4 +485,61 @@ describe("the triage question set's version", () => {
 			rmSync(repo, { recursive: true, force: true });
 		}
 	});
+});
+
+it("retains per-golden measurement cost through JSON reopening and prints it beside the score", () => {
+	const golden = goldens[0]!;
+	const usage = new TokenUsage({
+		model: {
+			input: 2,
+			output: 3,
+			cacheRead: 4,
+			cacheWrite: 5,
+			totalTokens: 14,
+			cost: { input: 0.1, output: 0.2, cacheRead: 0.3, cacheWrite: 0.4, total: 1 },
+		},
+	}).toJSON();
+	expect(
+		TriageResults.measure(
+			[golden],
+			{ [golden.name]: [golden.expected.levels] },
+			{ model: "model", fingerprint: "test" },
+		).toJSON(),
+	).not.toHaveProperty("telemetry");
+	const result = TriageResults.measure(
+		[golden],
+		{ [golden.name]: [golden.expected.levels] },
+		{
+			model: "model",
+			fingerprint: "test",
+			telemetry: {
+				[golden.name]: [1, 2].map(
+					() =>
+						new StageTelemetry("base..head", [
+							{
+								id: "lens",
+								task: 1,
+								name: "melian.lens",
+								subject: "test",
+								outcome: "completed",
+								timing: "unavailable",
+								reused: false,
+								resumed: false,
+								usage,
+							},
+						]),
+				),
+			},
+		},
+	);
+	const reopened = TriageResults.parse(JSON.stringify(result.toJSON()));
+	expect(reopened.toJSON()).toMatchObject({
+		telemetry: {
+			[golden.name]: [expect.objectContaining({ total: usage }), expect.objectContaining({ total: usage })],
+		},
+	});
+	expect(reopened.render()).toContain(`${golden.name}: exact 1.00, 28 tokens, $2`);
+	expect(
+		TriageResults.parse(JSON.stringify({ ...result.toJSON(), telemetry: undefined })).toJSON(),
+	).not.toHaveProperty("telemetry");
 });

@@ -14,10 +14,11 @@
  * @module
  */
 import { readFileSync, writeFileSync } from "node:fs";
+import { visibleText } from "@melian-agent/core";
 import { liveModels } from "./credentials.ts";
 import { type Golden, loadGoldens, runGolden, selectGoldens } from "./goldens.ts";
-import { reportGoldens, reportVerifierGoldens } from "./live-output.ts";
-import { loadTriageGoldens, runTriageGolden, type TriageChosen, TriageQuestions, TriageResults } from "./triage.ts";
+import { measureTriageGoldens, reportGoldens, reportVerifierGoldens } from "./live-output.ts";
+import { loadTriageGoldens, runTriageGolden, TriageQuestions, TriageResults } from "./triage.ts";
 import { loadVerifierGoldens, runVerifierGolden } from "./verifier.ts";
 
 if (process.env.MELIAN_EVAL_LIVE !== "1") {
@@ -56,14 +57,24 @@ if (process.env.MELIAN_EVAL_TRIAGE === "1") {
 		process.exit(2);
 	}
 	const models = await liveModels(process.cwd());
-	const chosen: Record<string, TriageChosen[]> = {};
-	for (const golden of goldens)
-		chosen[golden.name] = await runTriageGolden(golden, { kind: "live", models, model }, passes);
+	const { chosen, telemetry } = await measureTriageGoldens(
+		goldens,
+		(golden, record) => runTriageGolden(golden, { kind: "live", models, model }, passes, record),
+		console.error,
+	);
+
 	const results = TriageResults.measure(goldens, chosen, {
 		model,
 		fingerprint: (await TriageQuestions.shipped(all[0]!)).fingerprint(),
+		telemetry,
 	});
-	console.log(results.render());
+	console.log(
+		results
+			.render()
+			.split("\n")
+			.map((line) => visibleText(line))
+			.join("\n"),
+	);
 	const out = process.env.MELIAN_EVAL_TRIAGE_OUT;
 	if (out !== undefined && out !== "") writeFileSync(out, `${JSON.stringify(results.toJSON(), null, 2)}\n`);
 	const baseline = process.env.MELIAN_EVAL_TRIAGE_BASELINE;

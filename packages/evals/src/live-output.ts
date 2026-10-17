@@ -1,4 +1,8 @@
+import { visibleText } from "@melian-agent/core";
+import type { StageTelemetry } from "@melian-agent/pipeline";
 import { type Golden, type GoldenRun, type GoldenScore, scoreCorpus, scoreGolden } from "./goldens.ts";
+import { GoldenRunError } from "./run-error.ts";
+import type { TriageChosen, TriageGolden } from "./triage.ts";
 import { scoreVerifierGolden, type VerifierGolden, type VerifierRun } from "./verifier.ts";
 
 type Print = (line: string) => void;
@@ -23,7 +27,11 @@ async function attempt<Run>(name: string, run: () => Promise<Run>, print: Print)
 	try {
 		return await run();
 	} catch (error) {
-		print(`${name}: no score (${error instanceof Error ? error.message : String(error)})`);
+		print(
+			visibleText(
+				`${name}: no score (${error instanceof Error ? error.message : String(error)})${error instanceof GoldenRunError ? `, ${error.telemetry.spend()}` : ""}`,
+			),
+		);
 		return undefined;
 	}
 }
@@ -38,7 +46,7 @@ export async function reportGoldens(
 	const failed: string[] = [];
 	for (const golden of goldens) {
 		if (!golden.live) {
-			print(`${golden.name}: skipped, live: false`);
+			print(visibleText(`${golden.name}: skipped, live: false`));
 			continue;
 		}
 		const ran = await attempt(golden.name, () => run(golden), print);
@@ -49,7 +57,9 @@ export async function reportGoldens(
 		const score = scoreGolden(golden, ran.findings);
 		scores.push(score);
 		print(
-			`${golden.name}: precision ${score.precision.toFixed(2)}, recall ${score.recall.toFixed(2)} (${score.reported} reported, ${score.expected} expected)`,
+			visibleText(
+				`${golden.name}: precision ${score.precision.toFixed(2)}, recall ${score.recall.toFixed(2)} (${score.reported} reported, ${score.expected} expected), ${ran.telemetry.spend()}`,
+			),
 		);
 		for (const line of shownOutput(ran.rendered, env)) print(line);
 	}
@@ -75,10 +85,35 @@ export async function reportVerifierGoldens(
 		const score = scoreVerifierGolden(golden, ran);
 		scores.push(score);
 		print(
-			`${golden.name}: ${verdictLabel(score.verdict, ran.unjudged)}, ${score.passed ? "passed" : "failed"} (${score.kind})`,
+			visibleText(
+				`${golden.name}: ${verdictLabel(score.verdict, ran.unjudged)}, ${score.passed ? "passed" : "failed"} (${score.kind}), ${ran.telemetry.spend()}`,
+			),
 		);
 		for (const line of shownOutput(ran.rendered, env)) print(line);
 	}
 	print(`verifier corpus: ${scores.filter((score) => score.passed).length}/${scores.length} passed`);
 	return { scores, failed, status: failed.length === 0 && scores.every((score) => score.passed) ? 0 : 1 };
+}
+
+export async function measureTriageGoldens(
+	goldens: readonly TriageGolden[],
+	run: (golden: TriageGolden, record: (telemetry: StageTelemetry) => void) => Promise<TriageChosen[]>,
+	print: Print,
+): Promise<{ chosen: Record<string, TriageChosen[]>; telemetry: Record<string, StageTelemetry[]> }> {
+	const chosen: Record<string, TriageChosen[]> = {};
+	const telemetry: Record<string, StageTelemetry[]> = {};
+	for (const golden of goldens) {
+		telemetry[golden.name] = [];
+		const result = await attempt(
+			golden.name,
+			() =>
+				run(golden, (record) => {
+					telemetry[golden.name]!.push(record);
+				}),
+			print,
+		);
+		if (result === undefined) throw new Error(`${visibleText(golden.name)}: triage measurement failed`);
+		chosen[golden.name] = result;
+	}
+	return { chosen, telemetry };
 }

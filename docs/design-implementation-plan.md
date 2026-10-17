@@ -181,7 +181,7 @@ Not yet scheduled, from the same research: the comparison importer counts a Code
     - Expose review JSON, one slowest-stages line and detached `melian telemetry <range|#pr> [--json]` reads. Preserve spend without counting reused work twice.
     - Prove changed guards by mutation, run the mutation check and whole gate, and add a progress-log entry. Version deterministic task checkpoints and reopen fixtures written by the preceding build. Pi retires literal task-scoped documents at settlement, so each task owns a separate conversation-family member keyed by its ID.
 
-32. `[ ]` **Token telemetry.** [The decision](decisions/2026-10-18-token-telemetry.md) audits every model path and extends stage usage to triage, per-model token kinds and run totals.
+32. `[x]` **Token telemetry.** [Pull request #146](https://github.com/melian-agent/melian/pull/146) built it. [The decision](decisions/2026-10-18-token-telemetry.md) audits every model path and extends stage usage to triage, per-model token kinds and run totals.
     - Commit out-of-conversation response usage with its result. Keep conversation UsageDoc as authority, including failover and compaction.
     - Show total tokens and cost in telemetry, review JSON and the terminal summary. Print each live golden's spend beside its score.
     - Preserve unavailable usage, detached reads, attachment identity and terminal escaping. Prove crashes on both sides of settlement and run the gate.

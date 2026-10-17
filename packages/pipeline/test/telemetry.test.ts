@@ -9,6 +9,7 @@ import {
 	type Storage,
 	type SubmissionId,
 	type TaskId,
+	UsageDoc,
 } from "@melian-agent/pipeline";
 import { afterEach, expect, it, vi } from "vitest";
 import { CheckSources, ChecksDocument } from "../src/checks.ts";
@@ -223,7 +224,9 @@ it("keeps exact rendered spacing when optional fields are absent", () => {
 			resumed: false,
 		},
 	]);
-	expect(telemetry.render()).toBe("triage test completed start=0 end=5 duration=5ms\n");
+	expect(telemetry.render()).toBe(
+		"triage test completed start=0 end=5 duration=5ms\nTotal: Token usage unavailable.\n",
+	);
 });
 
 it.each([false, true])("reads modern and legacy deterministic timing (legacy=%s)", async (legacy) => {
@@ -345,4 +348,110 @@ it("refuses an unsupported old checks document instead of treating it as current
 	fixture.document({ definition: { kind: ChecksDocument.definition.kind, version: 2 } }, { tasks: {}, runs: {} });
 	await expect(fixture.read()).rejects.toThrow("the checks document needs migrating from version 2");
 	expect(migrate).toHaveBeenCalledWith({ tasks: {}, runs: {} }, 2);
+});
+
+it("preserves every Pi counter per model and sums conversations once, including absent optional counters", async () => {
+	const fixture = new ReaderFixture();
+	fixture.document(SummaryIndex, { tasks: { [revision]: 1 }, counted: {} });
+	fixture.task(1, { status: "terminal", outcome: { status: "completed", result: null } });
+	vi.spyOn(fixture.storage, "scanConversations").mockImplementation(async (query) => {
+		expect(query).toEqual({ ownerTaskId: 1 });
+		return {
+			items: [{ id: 2 as ConversationId }, { id: 3 as ConversationId }] as Awaited<
+				ReturnType<Storage["scanConversations"]>
+			>["items"],
+		};
+	});
+	const one = {
+		input: 11,
+		output: 7,
+		cacheRead: 13,
+		cacheWrite: 5,
+		reasoning: 3,
+		cacheWrite1h: 2,
+		totalTokens: 36,
+		cost: { input: 1, output: 2, cacheRead: 3, cacheWrite: 4, total: 10 },
+	};
+	const two = {
+		input: 2,
+		output: 3,
+		cacheRead: 4,
+		cacheWrite: 1,
+		totalTokens: 10,
+		cost: { input: 0.1, output: 0.2, cacheRead: 0.3, cacheWrite: 0.4, total: 1 },
+	};
+	fixture.document(UsageDoc, { models: { "provider/model": one }, tools: {} }, undefined, 2 as ConversationId);
+	fixture.document(UsageDoc, { models: { "provider/model": two }, tools: {} }, undefined, 3 as ConversationId);
+	const telemetry = await fixture.read();
+	expect(telemetry.render()).toContain("provider/model: input=11 output=7");
+	expect(telemetry.render()).toContain("provider/model: input=2 output=3");
+	expect(telemetry.render()).toContain(
+		"provider/model: input=13 output=10 cache-read=17 cache-write=6 reasoning=3 cache-write-1h=2",
+	);
+	expect(telemetry.stages[0]!.usage).toMatchObject({ models: { "provider/model": one } });
+	expect(telemetry.toJSON()).toMatchObject({
+		total: {
+			models: {
+				"provider/model": {
+					input: 13,
+					output: 10,
+					cacheRead: 17,
+					cacheWrite: 6,
+					reasoning: 3,
+					cacheWrite1h: 2,
+					totalTokens: 46,
+					cost: { input: 1.1, output: 2.2, cacheRead: 3.3, cacheWrite: 4.4, total: 11 },
+				},
+			},
+			total: {
+				input: 13,
+				output: 10,
+				cacheRead: 17,
+				cacheWrite: 6,
+				totalTokens: 46,
+				reasoning: 3,
+				cost: { total: 11 },
+			},
+		},
+		usageUnavailable: [],
+	});
+});
+
+it("sums the selected stages into a run total without altering their per-model records", () => {
+	const one = {
+		input: 11,
+		output: 7,
+		cacheRead: 13,
+		cacheWrite: 5,
+		reasoning: 3,
+		cacheWrite1h: 2,
+		totalTokens: 97,
+		cost: { input: 1, output: 2, cacheRead: 3, cacheWrite: 4, total: 99 },
+	};
+	const total = {
+		input: 22,
+		output: 14,
+		cacheRead: 26,
+		cacheWrite: 10,
+		reasoning: 6,
+		cacheWrite1h: 4,
+		totalTokens: 194,
+		cost: { input: 2, output: 4, cacheRead: 6, cacheWrite: 8, total: 198 },
+	};
+	const base = {
+		task: 1,
+		subject: "test",
+		name: "melian.lens",
+		outcome: "completed",
+		timing: "unavailable" as const,
+		reused: false,
+		resumed: false,
+		usage: { models: { model: one }, total: one },
+	};
+	const telemetry = new StageTelemetry(revision, [
+		{ ...base, id: "first" },
+		{ ...base, id: "second", reused: true },
+	]);
+	expect(telemetry.toJSON()).toMatchObject({ total: { models: { model: total }, total }, usageUnavailable: [] });
+	expect(telemetry.stages.map((stage) => stage.usage)).toEqual([base.usage, base.usage]);
 });

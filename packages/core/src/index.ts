@@ -116,11 +116,13 @@ export {
 	type DeciderAnswer,
 	Decision,
 	type DecisionRequest,
+	type ModelUsage,
 	type QuestionSet,
 	questionFingerprint,
 	type StoredDecision,
 	type TextModel,
 	type ToolRequest,
+	type UsageObserver,
 } from "./decider.ts";
 export type { ChangedFile, FileKind, FileStatus, Hunk } from "./diff.ts";
 export {

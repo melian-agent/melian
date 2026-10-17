@@ -9,6 +9,7 @@ import {
 } from "./harness.ts";
 
 import { TaskTiming } from "./task-timing.ts";
+import { ModelUsageDocument, TokenUsage } from "./token-usage.ts";
 
 // Type aliases, not interfaces: a document's value must satisfy Pi's JsonObject, which an interface never does.
 
@@ -97,8 +98,12 @@ export function decisionTask(decider: Decider, timeout = decisionTimeout) {
 					}, context);
 					return;
 				}
+				const usage = new TokenUsage();
 				try {
-					const decided = await Promise.race([decider.decide(request as DecisionRequest, signal), expired]);
+					const decided = await Promise.race([
+						decider.decide(request as DecisionRequest, signal, (model, reported) => usage.add(model, reported)),
+						expired,
+					]);
 					answer = { decision: Decision.parse(request as DecisionRequest, decided, decider).toJSON() };
 				} catch (error) {
 					if (runtime.signal.aborted) throw error;
@@ -107,6 +112,10 @@ export function decisionTask(decider: Decider, timeout = decisionTimeout) {
 				}
 				await runtime.commit(async (tx) => {
 					await timing.end(tx);
+					const reported = usage.toJSON();
+					if (Object.keys(reported.models).length > 0)
+						(await tx.doc(ModelUsageDocument, runtime.conversationId, String(runtime.taskId), null)).usage =
+							reported;
 					const document = await tx.doc(DecisionDocument, root);
 					const entries = document.decisions[revision] ?? {};
 					const entry = entries[request.questionSet.name];

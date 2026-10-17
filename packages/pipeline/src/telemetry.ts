@@ -17,6 +17,7 @@ import { LensDocument } from "./lens-tools.ts";
 import { ReviewIndex } from "./review-index.ts";
 import { SummaryIndex } from "./summarize.ts";
 import { TimingDocument } from "./task-timing.ts";
+import { ModelUsageDocument, TokenUsage, type UsageSummary } from "./token-usage.ts";
 
 type TaskRecord = NonNullable<Awaited<ReturnType<Storage["task"]>>>;
 type DocumentScope = DocumentRecord["scope"];
@@ -81,22 +82,57 @@ export type Stage = {
 	clockRegressed?: boolean;
 	reused: boolean;
 	resumed: boolean;
-	usage?: { models: string[]; tokens: number; cost: number };
+	usage?: UsageSummary;
 };
+
+function usageText(usage: UsageSummary): string {
+	return Object.entries(usage.models)
+		.map(
+			([model, usage]) =>
+				`${model}: input=${usage.input} output=${usage.output} cache-read=${usage.cacheRead} cache-write=${usage.cacheWrite}${usage.reasoning === undefined ? "" : ` reasoning=${usage.reasoning}`}${usage.cacheWrite1h === undefined ? "" : ` cache-write-1h=${usage.cacheWrite1h}`} ${usage.totalTokens} tokens, $${usage.cost.total}`,
+		)
+		.join("; ");
+}
 
 /** The stages selected for one revision, with terminal renderings. */
 export class StageTelemetry {
 	readonly revision: string;
 	readonly stages: readonly Stage[];
+	readonly total?: UsageSummary;
+	readonly usageUnavailable: readonly string[];
 
 	constructor(revision: string, stages: readonly Stage[]) {
 		this.revision = revision;
 		this.stages = stages;
+		const usage = new TokenUsage();
+		for (const stage of stages) {
+			if (stage.usage !== undefined) usage.include(stage.usage);
+		}
+		if (stages.some((stage) => stage.usage !== undefined)) this.total = usage.toJSON();
+		this.usageUnavailable = stages
+			.filter(
+				(stage) =>
+					["melian.triage", "melian.lens", "melian.verification.candidate", "melian.walkthrough"].includes(
+						stage.name,
+					) && stage.usage === undefined,
+			)
+			.map((stage) => stage.id);
 	}
 
 	/** Plain JSON beside a verdict, never part of its identity. */
-	toJSON(): { revision: string; stages: readonly Stage[] } {
-		return { revision: this.revision, stages: this.stages };
+	toJSON(): { revision: string; stages: readonly Stage[]; total?: UsageSummary; usageUnavailable: readonly string[] } {
+		return {
+			revision: this.revision,
+			stages: this.stages,
+			...(this.total === undefined ? {} : { total: this.total }),
+			usageUnavailable: this.usageUnavailable,
+		};
+	}
+
+	/** The recorded spend, with missing stages named as incomplete coverage. */
+	spend(): string {
+		if (this.total === undefined) return "Token usage unavailable";
+		return `${this.total.total.totalTokens} tokens, $${this.total.total.cost.total}${this.usageUnavailable.length === 0 ? "" : ` (usage unavailable for ${this.usageUnavailable.length} stage${this.usageUnavailable.length === 1 ? "" : "s"})`}`;
 	}
 
 	/** Up to three slowest ended intervals. */
@@ -108,8 +144,8 @@ export class StageTelemetry {
 					b.durationMs! - a.durationMs! || a.name.localeCompare(b.name) || a.subject.localeCompare(b.subject),
 			)
 			.slice(0, 3);
-		if (ranked.length === 0) return "melian: Stage timings unavailable.\n";
-		return `melian: Slowest stages: ${ranked.map((stage) => `${visibleText(stage.name)} ${visibleText(stage.subject)} ${stage.durationMs}ms${stage.reused ? " (reused)" : stage.resumed ? " (resumed)" : ""}`).join("; ")}.\n`;
+		if (ranked.length === 0) return `melian: Stage timings unavailable. Total: ${this.spend()}.\n`;
+		return `melian: Slowest stages: ${ranked.map((stage) => `${visibleText(stage.name)} ${visibleText(stage.subject)} ${stage.durationMs}ms${stage.reused ? " (reused)" : stage.resumed ? " (resumed)" : ""}`).join("; ")}. Total: ${this.spend()}.\n`;
 	}
 
 	/** The full local timing view. */
@@ -127,16 +163,16 @@ export class StageTelemetry {
 						stage.reused ? "reused" : stage.resumed ? "resumed" : "",
 						stage.note,
 						stage.error,
-						stage.usage === undefined
-							? ""
-							: `${stage.usage.models.join(", ")}: ${stage.usage.tokens} tokens, $${stage.usage.cost}`,
+						stage.usage === undefined ? "" : usageText(stage.usage),
 						stage.clockRegressed ? "clock regressed" : "",
 					]
 						.filter(Boolean)
 						.join(" "),
 				),
 			)
-			.join("\n")}\n`;
+			.join(
+				"\n",
+			)}\nTotal: ${this.spend()}.\n${this.total === undefined ? "" : `${visibleText(usageText(this.total))}\n`}`;
 	}
 }
 
@@ -301,6 +337,12 @@ export class TelemetryReader {
 		const startedAt =
 			timing?.startedAt ??
 			(typeof task.memos?.["telemetry.start"] === "number" ? task.memos["telemetry.start"] : undefined);
+		const usage = await this.document(
+			ModelUsageDocument,
+			{ kind: "conversation", conversationId: task.conversationId },
+			context,
+			String(task.id),
+		);
 		const faulted = result.outcome === "faulted";
 		const start = timing?.legacy === true ? undefined : faulted ? task.startedAt : startedAt;
 		const end = faulted ? task.endedAt : timing?.endedAt;
@@ -312,6 +354,7 @@ export class TelemetryReader {
 			...result,
 			...interval(start, end),
 			...this.attachment(start, end, before, kept),
+			...(usage?.usage === undefined ? {} : { usage: usage.usage }),
 		};
 	}
 
@@ -373,15 +416,7 @@ export class TelemetryReader {
 			...interval(start, ending.endedAt),
 			...ending,
 			...this.attachment(start, ending.endedAt, before),
-			...(usage === undefined
-				? {}
-				: {
-						usage: {
-							models: Object.keys(usage.models),
-							tokens: Object.values(usage.models).reduce((sum, item) => sum + item.totalTokens, 0),
-							cost: Object.values(usage.models).reduce((sum, item) => sum + item.cost.total, 0),
-						},
-					}),
+			...(usage === undefined ? {} : { usage: new TokenUsage(usage.models).toJSON() }),
 		};
 	}
 
