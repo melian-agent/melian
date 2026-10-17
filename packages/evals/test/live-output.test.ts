@@ -1,8 +1,9 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { StageTelemetry, TokenUsage } from "@melian-agent/pipeline";
+import { Changeset } from "@melian-agent/core";
+import { revisionKey, StageTelemetry, TokenUsage } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { loadGoldens, runGolden } from "../src/goldens.ts";
 import {
 	measureTriageGoldens,
@@ -230,6 +231,42 @@ it("prints the same telemetry record for a failed lens golden", async () => {
 	expect(result.status).toBe(1);
 	expect(lines[0]).toBe(`${golden.name}: no score (provider error), 14 tokens, $1`);
 });
+
+it("prints the detached usage returned by a successful lens golden", async () => {
+	const golden = loadGoldens().find((golden) => golden.name === "clean-rename")!;
+	const resolving = vi.spyOn(Changeset, "resolve");
+	try {
+		const run = await runGolden(golden, { kind: "scripted" });
+		const record = run.telemetry;
+		const stages = record.stages.filter((stage) => stage.name === "melian.lens");
+		expect(stages.map((stage) => stage.subject.split("@")[0]).sort()).toEqual(Object.keys(golden.script).sort());
+		for (const stage of stages) {
+			expect(stage.outcome).toBe("completed");
+			expect(Object.keys(stage.usage!.models)).toEqual(["faux/scripted"]);
+			expect(stage.usage!.total.totalTokens).toBeGreaterThan(0);
+		}
+		expect(resolving).toHaveBeenCalledExactlyOnceWith(expect.any(String), "main...feature");
+		const changeset = await resolving.mock.results[0]!.value;
+		expect(record.revision).toBe(revisionKey(changeset.revision));
+		expect(record.total!.total.totalTokens).toBeGreaterThan(0);
+		expect(record.total!.total.cost.total).toBe(0);
+		expect(record.usageUnavailable).toEqual([]);
+		const lines: string[] = [];
+		const report = await reportGoldens(
+			[golden],
+			async () => run,
+			{},
+			(line) => lines.push(line),
+		);
+		expect(report.status).toBe(0);
+		expect(lines).toEqual([
+			`clean-rename: precision 1.00, recall 1.00 (0 reported, 0 expected), ${record.total!.total.totalTokens} tokens, $0`,
+			"corpus: precision 1.00, recall 1.00",
+		]);
+	} finally {
+		resolving.mockRestore();
+	}
+}, 60_000);
 
 it("keeps the detached usage when a fake provider makes an actual golden review fail", async () => {
 	const golden = loadGoldens().find((golden) => golden.name === "clean-rename")!;
