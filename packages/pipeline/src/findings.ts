@@ -389,13 +389,17 @@ export async function replaceCheckFindings(
 	findings: readonly Finding[],
 ): Promise<void> {
 	const state = await tx.doc(FindingsDocument, rootConversationId);
+	const reported = new Set(findings.map((finding) => `${finding.id}\0${producerKey(finding.properties.source)}`));
+	for (const finding of findings) await upsertFinding(tx, rootConversationId, finding, revision);
 	const { items } = state;
 	let removed = false;
 	for (const [id, record] of Object.entries(items)) {
 		const atRevision = record.sightings[revision];
 		if (atRevision === undefined) continue;
 		const left = Object.fromEntries(
-			Object.entries(atRevision).filter(([, sighting]) => sighting.properties.source.check !== check),
+			Object.entries(atRevision).filter(
+				([key, sighting]) => sighting.properties.source.check !== check || reported.has(`${id}\0${key}`),
+			),
 		);
 		if (Object.keys(left).length === Object.keys(atRevision).length) continue;
 		removed = true;
@@ -405,7 +409,6 @@ export async function replaceCheckFindings(
 		else items[id] = { ...record, sightings };
 	}
 	if (removed) bump(state, [revision]);
-	for (const finding of findings) await upsertFinding(tx, rootConversationId, finding, revision);
 }
 
 /**

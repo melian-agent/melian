@@ -95,6 +95,8 @@ The producer fills the existing optional `FindingTrigger.hash`, a SHA-256 field,
 No stored shape, document version, task version or verdict fingerprint algorithm changes.
 Old and new readers already compare that hash opaquely.
 The preceding-build fixture covers old triggerless dismissal state and pending publication across SQLite reopen.
+Check replacement upserts before pruning stale sightings, so reopening compares the preceding trigger even at the same revision.
+The replacement-path reopen test publishes the reopened notice and asserts a failed status.
 The coordinator runs `static.mutation` on the host before the first full round.
 
 ## Resolution contract carried forward

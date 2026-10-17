@@ -44,7 +44,13 @@ import {
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { VerdictDocument } from "../src/adjudication.ts";
-import { FindingsDocument, findingsVersion, seenBefore, upsertVerification } from "../src/findings.ts";
+import {
+	FindingsDocument,
+	findingsVersion,
+	replaceCheckFindings,
+	seenBefore,
+	upsertVerification,
+} from "../src/findings.ts";
 import { PublishedDocument, PublisherDocument } from "../src/publish.ts";
 import { baseAndHead, lines } from "./fixtures/repo.ts";
 
@@ -95,6 +101,23 @@ async function open(storage: Storage) {
 }
 
 describe("the findings document", () => {
+	it("replaces check versions while preserving current and other producers", async () => {
+		const { harness, root } = await open(createMemoryStorage());
+		const old = Finding.create({ ...input, source: { check: "static.example", version: "old" } });
+		const current = Finding.create({ ...input, severity: "P2", source: { check: "static.example", version: "new" } });
+		const gone = Finding.create({ ...input, rule: "gone", source: old.properties.source });
+		await root.commit(async (tx) => {
+			await upsertFinding(tx, root.id, old, "rev1");
+			await upsertFinding(tx, root.id, gone, "rev1");
+			await upsertFinding(tx, root.id, evalFinding, "rev1");
+		}, context);
+		await root.commit((tx) => replaceCheckFindings(tx, root.id, "static.example", "rev1", [current]), context);
+		const findings = await readFindings(harness, root.id, "rev1", context);
+		expect(findings).toHaveLength(1);
+		expect(findings[0]!.properties.reportedBy).toEqual([evalFinding.properties.source, current.properties.source]);
+		expect((await harness.snapshot(FindingsDocument, root.id, context))!.items[gone.id]).toBeUndefined();
+	});
+
 	it("reads as empty before anything is reported", async () => {
 		const { harness, root } = await open(createMemoryStorage());
 		expect(await readFindings(harness, root.id, "rev1", context)).toEqual([]);

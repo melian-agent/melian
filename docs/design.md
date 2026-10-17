@@ -188,6 +188,7 @@ Publication, built in milestone 1, diffs each revision's findings by `id` agains
 A policy-change notice uses the file's Git blob identity at head as its trigger, hashed into the existing SHA-256 field.
 Any change to that blob reopens its dismissal, including an analyser configuration that later switches a check off.
 An unrelated push preserves it. A notice stored without a trigger reopens once on its next report.
+Check replacement compares the old sighting before removing stale reports, including on a rerun of the same revision.
 A policy name whose non-UTF-8 bytes cannot be passed back to Git refuses the check, rather than reading as an absent blob.
 No finding ID or stored schema changes.
 
