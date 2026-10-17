@@ -94,6 +94,8 @@ An invalid base `melian.yaml` already fails the whole check when guardrails load
 That failure remains a failure; a dismissible notice must not replace it.
 If the comparison can proceed without loading that file as judging policy, its unreadable side draws the notice.
 No catch converts an authority failure into unchanged policy or an empty layer.
+Keep step 28's refusal for a Git path whose non-UTF-8 name cannot round-trip through the reader.
+It fails the check rather than being compared as an absent file.
 
 ## Forced notice, resolution and dismissal
 
