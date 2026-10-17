@@ -273,6 +273,37 @@ describe("root review ownership", () => {
 		expect(root.body).toContain("Addressed in commit");
 		expect(state.resolvedThreads).toEqual([root.id]);
 	});
+
+	it("skips an addressed root whose author was deleted without failing publication", async () => {
+		const { state, provider, head, root } = ownership();
+		root.user = null;
+		expect(
+			await provider.replyResolved(
+				7,
+				{ id: finding, ruleId: "unsafe", path: root.path, line: 1, revision: head, thread: String(root.id) },
+				head,
+				secret,
+			),
+		).toBeUndefined();
+		expect(state.resolvedThreads).toEqual([]);
+		expect(state.calls.filter(({ method }) => method === "PATCH")).toEqual([]);
+	});
+
+	it("ignores finding markers copied into replies even under the signed parent review", async () => {
+		const { state, provider, head, root } = ownership();
+		const copied = "aaaaaaaaaaaaaaaa";
+		state.comments.unshift({
+			...root,
+			id: 3,
+			body: marker(head, "finding", copied, secret),
+			in_reply_to_id: root.id,
+		});
+		expect(await provider.findPublished(7, head, wanted, secret)).toEqual({
+			review: "1",
+			threads: { [finding]: String(root.id) },
+			replies: {},
+		});
+	});
 });
 
 describe("provider identity", () => {
