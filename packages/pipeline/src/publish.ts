@@ -187,7 +187,8 @@ class PublishedState {
 // would post it twice.
 export const PublishedDocument = defineDoc<StoredPublishedState>({
 	kind: "melian.published",
-	version: 7,
+	version: 8,
+	// Version 8 permits trust-floor diagnostics in planned and published rounds.
 	scope: "conversation",
 	history: "latest",
 	fork: "current",

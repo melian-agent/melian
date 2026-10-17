@@ -82,6 +82,8 @@ const floorNames: Readonly<Record<NonNullable<DecidedBy["floor"]>, string>> = {
 	"policy-change": "held at acknowledge as a change to policy",
 	"injection-attempt": "held at acknowledge as an injection attempt",
 	"pre-existing-important": "held at advisory as pre-existing and important",
+	"lowered-trust": "held for a maintainer after a protected lowering",
+	"refuted-trust": "held for a maintainer after a protected refutation",
 };
 
 /**

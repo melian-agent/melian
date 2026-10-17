@@ -464,7 +464,16 @@ describe("the verifier", () => {
 		expect(speaker!.ruleId).toBe("fail-open");
 		expect(speaker!.properties.source.check).toBe("lens.trust-boundary");
 		expect(speaker!.properties.otherClaims).toEqual([
-			expect.objectContaining({ ruleId: rule, source: expect.objectContaining({ check: `lens.${name}` }) }),
+			expect.objectContaining({
+				ruleId: "fail-open",
+				severity: "P0",
+				source: expect.objectContaining({ check: "lens.trust-boundary" }),
+			}),
+			expect.objectContaining({
+				ruleId: rule,
+				severity: "P1",
+				source: expect.objectContaining({ check: `lens.${name}` }),
+			}),
 		]);
 		expect(requests[verifierMarker]).toHaveLength(2);
 		const instructions = systemPromptOf(requests[verifierMarker]![0]!);
