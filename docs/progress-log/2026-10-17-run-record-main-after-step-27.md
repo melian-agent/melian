@@ -1,0 +1,1 @@
+[The run record for main after step 27](../../packages/evals/runs/2026-10-17-main-after-step-27.md) measures Opus and Sol on one head of `main`, with the merge by shared cause and Pi 1.1.0's layout: Opus design precision 0.89 and 0.70, durability 0.75 and 0.82; Sol design 0.85 and 0.86, durability 1.00 and 1.00.
