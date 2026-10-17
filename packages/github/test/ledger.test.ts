@@ -63,6 +63,30 @@ const round: LedgerRound = {
 const options = { pullRequest: 7, secret, walkthrough: { enabled: true, collapsed: true, diagrams: true } };
 
 describe("ledger rendering", () => {
+	it("lists the full line range for a multi-line finding", () => {
+		const span = Finding.create({
+			rule: "unsafe",
+			message: "Unsafe input",
+			file: "src/run.ts",
+			startLine: 7,
+			endLine: 9,
+			snippet: "run(\n  input\n)",
+			occurrence: 0,
+			severity: "P1",
+			cause: "introduced",
+			source: { check: "static.example" },
+			explanation: finding.properties.explanation,
+		});
+		const decided = new Adjudication({
+			findings: [span],
+			manifest: [],
+			checks: [],
+			config: defaultConfig,
+		}).adjudicate();
+		const body = Ledger.from(decided, { rounds: [{ ...round, verdict: decided.toJSON() }] }, options).render(links);
+		expect(body).toContain(`- ${span.id}: \`src/run.ts\`:7-9 — \`unsafe\` (block): Unsafe input\n`);
+	});
+
 	it.each([undefined, "Input checked upstream."])(
 		"lists legacy merged dismissal members from a stored verdict: %s",
 		(reason) => {

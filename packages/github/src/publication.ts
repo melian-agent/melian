@@ -221,7 +221,7 @@ export class ReviewComment {
 							? []
 							: [`**Correction:** ${inline(verification.correction)}`, ""]),
 					];
-		const lowered = finding.lowered();
+		const lowered = finding.lowered({ includeTrustFloor: false });
 		const moved = lowered === undefined ? [] : [`**Lowered from ${lowered.from}:** ${inline(lowered.reason)}`, ""];
 		const heading =
 			this.important === undefined
@@ -236,6 +236,7 @@ export class ReviewComment {
 			...heading,
 			...judged,
 			...moved,
+			...finding.trustFloorNotes().flatMap((line) => [inline(line), ""]),
 			...this.#text(context),
 		].join("\n");
 	}
@@ -316,6 +317,7 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 				? ` Verification: ${verdict.verificationSummary()}; ${plural(verdict.refuted?.length ?? 0, "refuted finding")} not posted.`
 				: ""),
 	);
+	parts.push(...new Set(tallied.flatMap((finding) => finding.trustFloorNotes().slice(0, 1)).map(inline)));
 	const reviewStatus = verdict.reviewStatus();
 	parts.push(`melian/review: ${reviewStatus.state} (${inline(reviewStatus.description)}).`);
 	if (verdict.counted().some((finding) => finding.properties.resolution === "acknowledge")) {

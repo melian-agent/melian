@@ -167,19 +167,29 @@ export class Defect {
 	 * result, the speaker's on a tie, and the floors then apply to the defect ({@link Finding.floored}). So the answer
 	 * does not depend on which report speaks. With `unverified`, a lens report no verifier judged is capped at
 	 * `advisory`, alone: a static report beside it is not. A lens report whose every claim a verifier refuted is left
-	 * out, unless every report is one.
+	 * out. With only refuted reports and a protected minimum, ordinary resolution starts at silent.
 	 */
 	decision(policyFor: ConfigFor, unverified: boolean): FindingDecision {
 		// A report a verifier refuted asks for nothing beside one that stands.
 		const standing = this.reports.filter((report) => !report.refuted());
 		const strictest = (standing.length === 0 ? this.reports : standing)
 			.map((report) =>
-				report.capped(policyFor(report.properties.path, report.ruleId), { unverified, defect: this.speaker }),
+				report.decision(policyFor(report.properties.path, report.ruleId), { unverified, defect: this.speaker }),
 			)
 			.reduce((kept, each) =>
-				resolutionOrder.indexOf(each.resolution) < resolutionOrder.indexOf(kept.resolution) ? each : kept,
+				resolutionOrder.indexOf(each.resolution) < resolutionOrder.indexOf(kept.resolution) ||
+				(each.resolution === kept.resolution && kept.lifted && !each.lifted)
+					? each
+					: kept,
 			);
-		return this.speaker.floored(strictest, [this.speaker.ruleId, ...this.members.map((member) => member.ruleId)]);
+		const claims = this.reports.flatMap((report) =>
+			report.trustFloor(policyFor(report.properties.path, report.ruleId), this.speaker),
+		);
+		return this.speaker.floored(
+			standing.length === 0 && claims.length > 0 ? { ...strictest, resolution: "silent" } : strictest,
+			[this.speaker.ruleId, ...this.members.map((member) => member.ruleId)],
+			claims,
+		);
 	}
 
 	/**
@@ -972,7 +982,7 @@ export class Adjudication {
 	 */
 	adjudicate(): Verdict {
 		const defects = this.defects();
-		const refutedIds = new Set(defects.filter((defect) => defect.refuted()).map((defect) => defect.speaker.id));
+		const refutedIds = new Set<string>();
 		// A defect's own reports, without the dismissed ones it only lists beside it.
 		const memberIds = new Map(
 			defects.map((defect) => [
@@ -984,7 +994,9 @@ export class Adjudication {
 		const resolved = defects
 			.map((defect) => {
 				const decision = defect.decision(this.#configFor, this.#verificationRan);
-				if (decision.decidedBy.floor === "pre-existing-important") lifted.add(defect.speaker.id);
+				const protectedMinimum = decision.decidedBy.trustFloor?.some((claim) => claim.minimum !== "silent");
+				if (defect.refuted() && !protectedMinimum) refutedIds.add(defect.speaker.id);
+				if (decision.lifted) lifted.add(defect.speaker.id);
 				return defect.speaker.decided(decision);
 			})
 			.sort((a, b) => a.compareReading(b));
@@ -1006,12 +1018,14 @@ export class Adjudication {
 			(finding) => finding.properties.resolution !== "silent" && !lifted.has(finding.id),
 		);
 		const important = counted
-			.filter((finding) => finding.important())
+			.filter((finding) => finding.important() || lifted.has(finding.id))
 			.map(
 				(finding): ImportantFinding => ({
 					id: finding.id,
 					state: memberIds.get(finding.id)!.some((id) => this.#seenBefore.has(id)) ? "carried" : "new",
-					originalSeverity: finding.original(),
+					originalSeverity: (finding.properties.decidedBy!.trustFloor ?? [])
+						.map((claim) => claim.severity)
+						.reduce(stricter, finding.original()),
 					...(lifted.has(finding.id) ? { lifted: true as const } : {}),
 				}),
 			);

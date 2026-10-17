@@ -144,7 +144,8 @@ class VerdictState {
 
 export const VerdictDocument = defineDoc<StoredVerdictState>({
 	kind: "melian.verdicts",
-	version: 9,
+	version: 10,
+	// Version 10 permits protected-claim diagnostics; old verdicts keep their recorded resolutions.
 	scope: "conversation",
 	history: "rewindable",
 	fork: "asOf",

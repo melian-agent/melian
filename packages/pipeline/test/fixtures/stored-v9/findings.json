@@ -1,0 +1,224 @@
+{
+  "writtenBy": "748dfe37f634550f9aba8b8886aefa4e09984dab",
+  "version": 9,
+  "findings": {
+    "revisions": [
+      "base..accepted"
+    ],
+    "items": {
+      "864ea901525ced89": {
+        "lifecycle": {
+          "status": "dismissed",
+          "firstSeenRevision": "base..accepted",
+          "lastSeenRevision": "base..accepted",
+          "history": [],
+          "dismissedTrigger": {
+            "hash": "3f49b0a46399da9086fc2320bec25adaea2018cd38601ec64cc2c3b893ccbcc0",
+            "proof": []
+          },
+          "proof": [],
+          "dismissedBy": "Maintainer",
+          "dismissedReason": "Accepted this trigger and proof.",
+          "dismissedAt": "2026-10-18T00:00:00Z"
+        },
+        "sightings": {
+          "base..accepted": {
+            "lens.trust-boundary@1": {
+              "ruleId": "fail-open-introduced",
+              "level": "warning",
+              "message": {
+                "text": "A cold run reuses a planted kill."
+              },
+              "partialFingerprints": {
+                "melian/v1": "864ea901525ced89"
+              },
+              "locations": [
+                {
+                  "physicalLocation": {
+                    "artifactLocation": {
+                      "uri": "src/review.ts"
+                    },
+                    "region": {
+                      "startLine": 1,
+                      "snippet": {
+                        "text": "incremental: true"
+                      }
+                    }
+                  }
+                }
+              ],
+              "properties": {
+                "id": "864ea901525ced89",
+                "path": "src/review.ts",
+                "occurrence": 0,
+                "cause": "introduced",
+                "evidence": [
+                  {
+                    "file": "src/cache.ts",
+                    "startLine": 1,
+                    "role": "cause",
+                    "revision": "head",
+                    "proves": true,
+                    "snippet": "cache"
+                  }
+                ],
+                "trigger": {
+                  "file": "src/review.ts",
+                  "index": 0,
+                  "snippet": "incremental: true",
+                  "proof": [
+                    {
+                      "file": "src/cache.ts",
+                      "hash": "5e1ecee06a7fc06f305ae5c12acfe7a7f67b8ece7af76932ed3afab00c3c6921"
+                    }
+                  ]
+                },
+                "severity": "P2",
+                "explanation": {
+                  "what": "Cached kill",
+                  "whyHere": "Reused cache",
+                  "whatToDo": "Rerun"
+                },
+                "source": {
+                  "check": "lens.trust-boundary",
+                  "version": "1"
+                }
+              }
+            }
+          }
+        },
+        "verifications": {
+          "base..accepted": {
+            "lens.trust-boundary@1": {
+              "1": {
+                "verdict": "plausible",
+                "reason": "Needs hostile configuration.",
+                "executor": "llm",
+                "model": "faux/judge",
+                "version": "1",
+                "lowered": {
+                  "from": "P2",
+                  "to": "P3",
+                  "reason": "Needs hostile configuration."
+                }
+              }
+            }
+          }
+        }
+      },
+      "bd7b5f43e48e51c0": {
+        "lifecycle": {
+          "status": "dismissed",
+          "firstSeenRevision": "base..accepted",
+          "lastSeenRevision": "base..accepted",
+          "history": [],
+          "proof": [
+            {
+              "file": "src/cache.ts",
+              "hash": "5e1ecee06a7fc06f305ae5c12acfe7a7f67b8ece7af76932ed3afab00c3c6921"
+            }
+          ],
+          "dismissedTrigger": {
+            "hash": "3f49b0a46399da9086fc2320bec25adaea2018cd38601ec64cc2c3b893ccbcc0",
+            "proof": [
+              {
+                "file": "src/cache.ts",
+                "hash": "5e1ecee06a7fc06f305ae5c12acfe7a7f67b8ece7af76932ed3afab00c3c6921"
+              }
+            ]
+          },
+          "dismissedBy": "Maintainer",
+          "dismissedReason": "Accepted this trigger and proof.",
+          "dismissedAt": "2026-10-18T00:00:00Z"
+        },
+        "sightings": {
+          "base..accepted": {
+            "lens.trust-boundary@1": {
+              "ruleId": "fail-open-affected",
+              "level": "warning",
+              "message": {
+                "text": "A cold run reuses a planted kill."
+              },
+              "partialFingerprints": {
+                "melian/v1": "bd7b5f43e48e51c0"
+              },
+              "locations": [
+                {
+                  "physicalLocation": {
+                    "artifactLocation": {
+                      "uri": "src/review.ts"
+                    },
+                    "region": {
+                      "startLine": 1,
+                      "snippet": {
+                        "text": "incremental: true"
+                      }
+                    }
+                  }
+                }
+              ],
+              "properties": {
+                "id": "bd7b5f43e48e51c0",
+                "path": "src/review.ts",
+                "occurrence": 0,
+                "cause": "affected",
+                "evidence": [
+                  {
+                    "file": "src/cache.ts",
+                    "startLine": 1,
+                    "role": "cause",
+                    "revision": "head",
+                    "proves": true,
+                    "snippet": "cache"
+                  }
+                ],
+                "trigger": {
+                  "file": "src/review.ts",
+                  "index": 0,
+                  "snippet": "incremental: true",
+                  "proof": [
+                    {
+                      "file": "src/cache.ts",
+                      "hash": "5e1ecee06a7fc06f305ae5c12acfe7a7f67b8ece7af76932ed3afab00c3c6921"
+                    }
+                  ]
+                },
+                "severity": "P2",
+                "explanation": {
+                  "what": "Cached kill",
+                  "whyHere": "Reused cache",
+                  "whatToDo": "Rerun"
+                },
+                "source": {
+                  "check": "lens.trust-boundary",
+                  "version": "1"
+                }
+              }
+            }
+          }
+        },
+        "verifications": {
+          "base..accepted": {
+            "lens.trust-boundary@1": {
+              "1": {
+                "verdict": "plausible",
+                "reason": "Needs hostile configuration.",
+                "executor": "llm",
+                "model": "faux/judge",
+                "version": "1",
+                "lowered": {
+                  "from": "P2",
+                  "to": "P3",
+                  "reason": "Needs hostile configuration."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "versions": {
+      "base..accepted": 6
+    }
+  }
+}

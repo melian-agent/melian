@@ -1,0 +1,201 @@
+{
+  "recordedBy": "331c74d8db7696629652f641cef01065ae139c0d",
+  "versions": {
+    "findings": 8,
+    "verdicts": 9,
+    "published": 7
+  },
+  "findings": {
+    "revisions": [
+      "base..head"
+    ],
+    "items": {
+      "5f6da63e9f2ebcd0": {
+        "lifecycle": {
+          "status": "new",
+          "firstSeenRevision": "base..head",
+          "lastSeenRevision": "base..head",
+          "history": []
+        },
+        "sightings": {
+          "base..head": {
+            "lens.trust-boundary@1": {
+              "ruleId": "fail-open",
+              "level": "warning",
+              "message": {
+                "text": "A cold run reuses a kill."
+              },
+              "partialFingerprints": {
+                "melian/v1": "5f6da63e9f2ebcd0"
+              },
+              "locations": [
+                {
+                  "physicalLocation": {
+                    "artifactLocation": {
+                      "uri": "src/review.ts"
+                    },
+                    "region": {
+                      "startLine": 1,
+                      "snippet": {
+                        "text": "incremental: true"
+                      }
+                    }
+                  }
+                }
+              ],
+              "properties": {
+                "id": "5f6da63e9f2ebcd0",
+                "path": "src/review.ts",
+                "occurrence": 0,
+                "cause": "introduced",
+                "failureScenario": "A planted kill survives.",
+                "evidence": [
+                  {
+                    "file": "src/review.ts",
+                    "startLine": 1,
+                    "role": "cause",
+                    "revision": "head",
+                    "snippet": "incremental: true"
+                  }
+                ],
+                "severity": "P2",
+                "explanation": {
+                  "what": "A cold run reuses a kill.",
+                  "whyHere": "It loads the cache.",
+                  "whatToDo": "Rerun the mutant."
+                },
+                "source": {
+                  "check": "lens.trust-boundary",
+                  "version": "1"
+                }
+              }
+            }
+          }
+        },
+        "verifications": {
+          "base..head": {
+            "lens.trust-boundary@1": {
+              "1": {
+                "verdict": "plausible",
+                "reason": "The head can plant it.",
+                "executor": "llm",
+                "model": "faux/judge",
+                "version": "1",
+                "lowered": {
+                  "from": "P2",
+                  "to": "P3",
+                  "reason": "Needs hostile configuration."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "versions": {
+      "base..head": 2
+    }
+  },
+  "verdicts": {
+    "verdicts": {
+      "base..head": {
+        "status": "findings",
+        "blocking": false,
+        "findings": {
+          "block": [],
+          "acknowledge": [],
+          "advisory": [
+            {
+              "ruleId": "fail-open",
+              "level": "note",
+              "message": {
+                "text": "A cold run reuses a kill."
+              },
+              "partialFingerprints": {
+                "melian/v1": "5f6da63e9f2ebcd0"
+              },
+              "locations": [
+                {
+                  "physicalLocation": {
+                    "artifactLocation": {
+                      "uri": "src/review.ts"
+                    },
+                    "region": {
+                      "startLine": 1,
+                      "snippet": {
+                        "text": "incremental: true"
+                      }
+                    }
+                  }
+                }
+              ],
+              "properties": {
+                "id": "5f6da63e9f2ebcd0",
+                "path": "src/review.ts",
+                "occurrence": 0,
+                "cause": "introduced",
+                "severity": "P3",
+                "explanation": {
+                  "what": "A cold run reuses a kill.",
+                  "whyHere": "It loads the cache.",
+                  "whatToDo": "Rerun the mutant."
+                },
+                "source": {
+                  "check": "lens.trust-boundary",
+                  "version": "1"
+                },
+                "originalSeverity": "P2",
+                "verification": {
+                  "verdict": "plausible",
+                  "reason": "The head can plant it.",
+                  "executor": "llm",
+                  "model": "faux/judge",
+                  "version": "1",
+                  "lowered": {
+                    "from": "P2",
+                    "to": "P3",
+                    "reason": "Needs hostile configuration."
+                  }
+                },
+                "evidence": [
+                  {
+                    "file": "src/review.ts",
+                    "startLine": 1,
+                    "role": "cause",
+                    "revision": "head",
+                    "snippet": "incremental: true"
+                  }
+                ],
+                "failureScenario": "A planted kill survives.",
+                "status": "new",
+                "reportedBy": [
+                  {
+                    "check": "lens.trust-boundary",
+                    "version": "1"
+                  }
+                ],
+                "resolution": "advisory",
+                "decidedBy": {
+                  "check": "lens.trust-boundary",
+                  "rule": "fail-open",
+                  "requirement": {
+                    "entry": "table",
+                    "key": "resolution.P3"
+                  }
+                }
+              }
+            }
+          ],
+          "silent": []
+        },
+        "dismissed": [],
+        "notRun": [],
+        "ran": []
+      }
+    }
+  },
+  "published": {
+    "order": [],
+    "revisions": {}
+  }
+}

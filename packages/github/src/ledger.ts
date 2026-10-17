@@ -262,12 +262,15 @@ export class Ledger {
 	// One finding as the ledger lists it, with the lens's severity and the verifier's reason when it was lowered.
 	private line(finding: ResolvedFinding): string {
 		const [start, end] = finding.lines();
-		const lowered = finding.lowered();
+		const lowered = finding.lowered({ includeTrustFloor: false });
 		const severity =
 			lowered === undefined
 				? ""
 				: ` ${finding.properties.severity}, lowered from ${lowered.from}: ${prose(lowered.reason)}`;
-		return `${code(visibleText(finding.properties.path))}:${start}${end === start ? "" : `-${end}`} — ${code(visibleText(finding.ruleId))} (${finding.properties.resolution}): ${prose(finding.properties.explanation.what)}${severity}`;
+		return [
+			`${code(visibleText(finding.properties.path))}:${start}${end === start ? "" : `-${end}`} — ${code(visibleText(finding.ruleId))} (${finding.properties.resolution}): ${prose(finding.properties.explanation.what)}${severity}`,
+			...finding.trustFloorNotes().map(prose),
+		].join(" ");
 	}
 
 	private summary(round: LedgerRound, verdict: Verdict, links: RepositoryLinks): string {
