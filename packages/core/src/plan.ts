@@ -222,20 +222,13 @@ export class ReviewPlan {
 				...(entry(model) === undefined ? {} : { family: sameModel(entry(model)!.name).split(" ")[0]! }),
 			}));
 		const unknown: UnknownModel[] = [];
-		const committed = new Set([
-			...(policy?.model === undefined ? [] : [policy.model]),
-			...(policy?.fallbacks ?? []),
-			...accept,
-		]);
-		for (const [name, source] of input.partialCatalog === true
-			? []
-			: [
-					...route.map((each): [string, string] => [
-						each,
-						committed.has(each) ? "melian.yaml" : (by ?? "melian.yaml"),
-					]),
-					...accept.map((each): [string, string] => [each, "melian.yaml"]),
-				]) {
+		const committed = (name: string) =>
+			name === policy?.model || policy?.fallbacks?.includes(name) === true || accept.includes(name);
+		for (const [name, source] of [
+			...route.map((each): [string, string] => [each, committed(each) ? "melian.yaml" : (by ?? "melian.yaml")]),
+			...accept.map((each): [string, string] => [each, "melian.yaml"]),
+		]) {
+			if (input.partialCatalog === true) break;
 			const { provider } = parseModelReference(name, tier);
 			if (entry(name) !== undefined || unknown.some(({ model }) => model === name)) continue;
 			unknown.push({
