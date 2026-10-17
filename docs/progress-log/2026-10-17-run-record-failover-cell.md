@@ -1,0 +1,1 @@
+[The failover-cell run record](../../packages/evals/runs/2026-10-17-failover-cell.md) measures the path a Codex outage takes, an Opus finder with a Sonnet verifier, three passes each. Correctness meets the bar; design and durability miss it at worst precision 0.73 and 0.75, with recall at least 0.89.
