@@ -27,10 +27,14 @@ import {
 	openReviewHarness,
 	type ReviewModels,
 	reviewChangeset,
+	revisionKey,
+	type StageTelemetry,
+	TelemetryReader,
 } from "@melian-agent/pipeline";
 import { createFakeModels, scriptLenses } from "@melian-agent/pipeline/testing";
 import Type, { type Static, type TSchema } from "typebox";
 import Value from "typebox/value";
+import { GoldenRunError } from "./run-error.ts";
 
 const strict = { additionalProperties: false } as const;
 const text = Type.String({ minLength: 1 });
@@ -252,6 +256,7 @@ export type GoldenMode =
 
 /** A golden's review: the findings, and the terminal rendering an author would see. */
 export interface GoldenRun {
+	readonly telemetry: StageTelemetry;
 	readonly golden: Golden;
 	readonly findings: readonly Finding[];
 	readonly rendered: string;
@@ -313,7 +318,8 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 				config = { ...config, models: { ...config.models, verifier: { model: verifier } } };
 			models = mode.models;
 		}
-		const reviewHarness = await openReviewHarness(createMemoryStorage(), models, { retry: mode.kind !== "scripted" });
+		const storage = createMemoryStorage();
+		const reviewHarness = await openReviewHarness(storage, models, { retry: mode.kind !== "scripted" });
 		try {
 			const review = { harness: reviewHarness, changeset, config, lenses, standards, models, policy: source };
 			const reviewed = await reviewChangeset(review);
@@ -322,7 +328,15 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 				...(await guardrailFindings(golden, repo, changeset, source)),
 			];
 			const rendered = FindingsLog.of(findings).render();
-			return { golden, findings, rendered, toolMismatches };
+			return {
+				golden,
+				findings,
+				rendered,
+				toolMismatches,
+				telemetry: await TelemetryReader.open(storage).read(revisionKey(changeset.revision)),
+			};
+		} catch (error) {
+			throw new GoldenRunError(error, await TelemetryReader.open(storage).read(revisionKey(changeset.revision)));
 		} finally {
 			await reviewHarness.close(backgroundContext);
 		}

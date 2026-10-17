@@ -30,6 +30,7 @@ import { NodeExecutionEnv } from "@earendil-works/pi-durable/env/node";
 import { openNodeSqliteStorage } from "@earendil-works/pi-durable/storage/sqlite/node";
 
 export type { Context } from "@earendil-works/chord";
+export { copyJson } from "@earendil-works/chord";
 export {
 	type Api,
 	type AssistantMessage,

@@ -826,3 +826,5 @@ All Enola policy paths join analyser configuration in policy-change-review. A co
 `ReviewCoverage.compute` counts delivered read lines and search matches for each lens, revision and changed file. It records intersected hunks and supplied enclosing declarations. “Read” means some numbered lines were delivered, not the whole file. `TestCoverage.unavailable` records the container-isolation requirement and never executes tests. Both validate their stored JSON and hash it for check-record identities.
 
 StoredCheckRecord includes optional snapshots and coverage IDs. Verdict.upgrade preserves present fields and leaves older records without them: it never invents graph or transcript evidence. Receipts retain upstream timestamps and scratch paths as lineage, separate from graph identity.
+
+Decider and TextModel accept an optional usage observer after the abort signal. It receives each assistant response's provider/model and ModelUsage counters before answer validation. It stays outside DecisionRequest, ToolRequest and stored decision identity. ModelUsage copies Pi's units without importing Pi. Reasoning is part of output; cacheWrite1h is part of cacheWrite.

@@ -128,7 +128,7 @@ function staticCheckout(added: string) {
 }
 
 function planWarnings(stderr: string): string {
-	return stderr.replace(/^melian: (?:Slowest stages:.*|Stage timings unavailable\.)\n/gm, "");
+	return stderr.replace(/^melian: (?:Slowest stages:.*|Stage timings unavailable\..*)\n/gm, "");
 }
 
 const verifierWarnings =
@@ -255,6 +255,11 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 			telemetry: { revision: string; stages: unknown[] };
 		};
 		expect(output.status).toBe("passed");
+		expect(output.telemetry).toMatchObject({
+			total: { models: expect.any(Object), total: { totalTokens: expect.any(Number), cost: { total: 0 } } },
+			usageUnavailable: [],
+		});
+		expect(result.stderr).toMatch(/Total: [0-9]+ tokens, \$0/);
 		expect(output.telemetry).toMatchObject({
 			revision: `${git(repo, "merge-base", "main", "HEAD")}..${git(repo, "rev-parse", "HEAD")}`,
 			stages: expect.arrayContaining([
