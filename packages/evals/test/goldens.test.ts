@@ -44,6 +44,11 @@ const goldens = loadGoldens();
 const ofLensCorpus = (entry: { parentPath: string }) =>
 	relative(goldensDirectory, entry.parentPath).split(sep)[0] !== "resolution";
 
+// The writer-trust goldens expect the omitting caller beside the default; these tests score one finding.
+function defaultOnly(golden: Golden): Golden {
+	return { ...golden, expected: { ...golden.expected, comments: [golden.expected.comments[0]!] } };
+}
+
 describe("live design golden routing", { timeout: 60_000 }, () => {
 	it.each(["openai-codex/gpt-5.6-terra", undefined])(
 		"uses the subscription verifier route %s independently of the finder",
@@ -79,7 +84,7 @@ describe("live design golden routing", { timeout: 60_000 }, () => {
 					model: "openai-codex/finder",
 					...(verifierModel === undefined ? {} : { verifierModel }),
 				});
-				expect(run.findings).toHaveLength(1);
+				expect(run.findings).toHaveLength(2);
 				expect(run.findings[0]!.properties.verification).toMatchObject({
 					verdict: "confirmed",
 					model: verifierModel ?? "openai-codex/finder",
@@ -88,10 +93,9 @@ describe("live design golden routing", { timeout: 60_000 }, () => {
 					model: `${model.provider}/${model.id}`,
 					verifier: testing.systemPromptOf(context.messages).includes("Melian adversarial verifier"),
 				}));
-				expect(requests.filter(({ verifier }) => verifier).map(({ model }) => model)).toEqual([
-					verifierModel ?? "openai-codex/finder",
-					verifierModel ?? "openai-codex/finder",
-				]);
+				expect(requests.filter(({ verifier }) => verifier).map(({ model }) => model)).toEqual(
+					Array(4).fill(verifierModel ?? "openai-codex/finder"),
+				);
 				expect(
 					requests.filter(({ verifier }) => !verifier).every(({ model }) => model === "openai-codex/finder"),
 				).toBe(true);
@@ -688,7 +692,7 @@ describe("scriptedMismatches", () => {
 		expect(scriptedMismatches(golden, [finding])).toEqual([]);
 	});
 	it("skips refuted evidence before choosing an eligible claim with the same rule and source", () => {
-		const golden = goldens.find((each) => each.name === "design-fail-open-default")!;
+		const golden = defaultOnly(goldens.find((each) => each.name === "design-fail-open-default")!);
 		const comment = golden.expected.comments[0]!;
 		const evidence = comment.evidence.map(({ line, ...location }) => ({
 			...location,
@@ -773,7 +777,7 @@ describe("scoreGolden", () => {
 		}) as never;
 
 	it("matches alternative files and keeps a merged claim’s rule paired with its source", () => {
-		const golden = goldens.find((each) => each.name === "design-supersedes-its-own-decision")!;
+		const golden = defaultOnly(goldens.find((each) => each.name === "design-supersedes-its-own-decision")!);
 		const merged = {
 			ruleId: "fail-open",
 			locations: [{ physicalLocation: { artifactLocation: { uri: "src/publish.ts" } } }],
@@ -884,7 +888,7 @@ describe("scoreGolden", () => {
 		{ differing: "source", change: { source: { check: "lens.tests", version: "v" } } },
 		{ differing: "version", change: { source: { check: "lens.design", version: "v1" } } },
 	])("does not borrow a refutation from a claim with another $differing", ({ change }) => {
-		const golden = goldens.find((each) => each.name === "design-fail-open-default")!;
+		const golden = defaultOnly(goldens.find((each) => each.name === "design-fail-open-default")!);
 		const comment = golden.expected.comments[0]!;
 		const original = Finding.create({
 			rule: comment.rule,
@@ -921,7 +925,7 @@ describe("scoreGolden", () => {
 		expect(scoreGolden(golden, [finding])).toMatchObject({ precision: 1, recall: 1 });
 	});
 	it("keeps a prior version’s different rule from erasing a current reporter", () => {
-		const golden = goldens.find((each) => each.name === "design-supersedes-its-own-decision")!;
+		const golden = defaultOnly(goldens.find((each) => each.name === "design-supersedes-its-own-decision")!);
 		const expected = {
 			...golden,
 			expected: {
@@ -956,8 +960,8 @@ describe("scoreGolden", () => {
 			},
 		};
 		const run = await runGolden(duplicate, { kind: "scripted" });
-		expect(run.findings).toHaveLength(1);
-		expect(scoreGolden(duplicate, run.findings)).toMatchObject({ reported: 1, precision: 1, recall: 1 });
+		expect(run.findings).toHaveLength(2);
+		expect(scoreGolden(duplicate, run.findings)).toMatchObject({ reported: 2, precision: 1, recall: 1 });
 	});
 	it("matches on file and rule", () => {
 		expect(
