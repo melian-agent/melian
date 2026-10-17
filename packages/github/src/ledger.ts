@@ -231,16 +231,12 @@ export class Ledger {
 			parts.push(
 				[
 					"### Dismissals",
-					...verdict.dismissed.flatMap((finding) => [
-						`- ${prose(finding.properties.id)} ${code(visibleText(finding.ruleId))}: ${prose(finding.properties.dismissal?.reason ?? "No reason stored.")}`,
-						...(finding.properties.alsoReportedAs ?? []).flatMap((report) =>
-							report.dismissal === undefined
-								? []
-								: [
-										`- ${prose(report.id)} ${code(visibleText(report.ruleId))}: ${prose(report.dismissal.reason)}`,
-									],
+					...verdict
+						.dismissals()
+						.map(
+							({ id, ruleId, dismissal }) =>
+								`- ${prose(id)} ${code(visibleText(ruleId))}: ${prose(dismissal?.reason ?? "No reason stored.")}`,
 						),
-					]),
 				].join("\n\n"),
 			);
 		if (current.resolved.length > 0)

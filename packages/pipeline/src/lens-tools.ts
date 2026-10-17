@@ -610,7 +610,7 @@ function provingHunks(
 }
 
 // A hunk as the proof of an affected finding names it: its file, and its added and removed lines hashed whole.
-function provingHunk(hunk: ReviewHunk): ProvingHunk {
+export function provingHunk(hunk: ReviewHunk): ProvingHunk {
 	return { file: hunk.file, hash: snippetHash(hunk.changes ?? hunk.added) };
 }
 

@@ -1,0 +1,34 @@
+{
+  "writtenBy": "3207a611",
+  "kind": "melian.publish",
+  "version": 4,
+  "input": {
+    "publishedBy": {
+      "trustedWriters": true,
+      "login": "melian-user",
+      "permission": "write",
+      "authorPermission": "read"
+    },
+    "root": 1,
+    "target": {
+      "repository": "melian-agent/example",
+      "pullRequest": 7,
+      "baseRef": "main",
+      "baseTip": "1bc56cdcd3563f21ebadbd4127edc2a3e49c3a86",
+      "base": "1bc56cdcd3563f21ebadbd4127edc2a3e49c3a86",
+      "head": "3475f6438fdccf7e3783d1010d254ac45bbc7335",
+      "revision": "1bc56cdcd3563f21ebadbd4127edc2a3e49c3a86..3475f6438fdccf7e3783d1010d254ac45bbc7335"
+    },
+    "lines": {
+      "AGENTS.md": [
+        [
+          1,
+          1
+        ]
+      ]
+    }
+  },
+  "checkpoint": {
+    "phase": "publish"
+  }
+}

@@ -1,0 +1,124 @@
+{
+  "writtenBy": "e0a9d00f5ecd4bb25a642c815f921479bb4370c1",
+  "findings": {
+    "revisions": [
+      "A",
+      "B"
+    ],
+    "items": {
+      "c0dc5445aa6ee891": {
+        "lifecycle": {
+          "status": "dismissed",
+          "firstSeenRevision": "A",
+          "lastSeenRevision": "B",
+          "history": [],
+          "dismissedBy": "Maintainer",
+          "dismissedReason": "Constant input.",
+          "dismissedAt": "2026-10-17T00:00:00Z"
+        },
+        "sightings": {
+          "A": {
+            "lens.security@1": {
+              "ruleId": "no-eval",
+              "level": "error",
+              "message": {
+                "text": "Unsafe input"
+              },
+              "partialFingerprints": {
+                "melian/v1": "c0dc5445aa6ee891"
+              },
+              "locations": [
+                {
+                  "physicalLocation": {
+                    "artifactLocation": {
+                      "uri": "src/run.ts"
+                    },
+                    "region": {
+                      "startLine": 1,
+                      "snippet": {
+                        "text": "eval(input)"
+                      }
+                    }
+                  }
+                }
+              ],
+              "properties": {
+                "id": "c0dc5445aa6ee891",
+                "path": "src/run.ts",
+                "occurrence": 0,
+                "cause": "introduced",
+                "trigger": {
+                  "file": "src/run.ts",
+                  "index": 0,
+                  "snippet": "eval(input)"
+                },
+                "severity": "P1",
+                "explanation": {
+                  "what": "Unsafe",
+                  "whyHere": "New call",
+                  "whatToDo": "Validate"
+                },
+                "source": {
+                  "check": "lens.security",
+                  "version": "1"
+                }
+              }
+            }
+          },
+          "B": {
+            "lens.security@1": {
+              "ruleId": "no-eval",
+              "level": "error",
+              "message": {
+                "text": "Unsafe input"
+              },
+              "partialFingerprints": {
+                "melian/v1": "c0dc5445aa6ee891"
+              },
+              "locations": [
+                {
+                  "physicalLocation": {
+                    "artifactLocation": {
+                      "uri": "src/run.ts"
+                    },
+                    "region": {
+                      "startLine": 1,
+                      "snippet": {
+                        "text": "eval(input)"
+                      }
+                    }
+                  }
+                }
+              ],
+              "properties": {
+                "id": "c0dc5445aa6ee891",
+                "path": "src/run.ts",
+                "occurrence": 0,
+                "cause": "introduced",
+                "trigger": {
+                  "file": "src/run.ts",
+                  "index": 0,
+                  "snippet": "eval(constant)"
+                },
+                "severity": "P1",
+                "explanation": {
+                  "what": "Unsafe",
+                  "whyHere": "New call",
+                  "whatToDo": "Validate"
+                },
+                "source": {
+                  "check": "lens.security",
+                  "version": "1"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "versions": {
+      "A": 2,
+      "B": 2
+    }
+  }
+}

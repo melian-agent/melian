@@ -1,5 +1,7 @@
 Verdict: findings, blocking
 
+melian/review: failure (2 findings, 2 blocking, 0 unresolved acknowledgements).
+
 Block: 2 findings
 
 .melian/lenses/cleanup/LENS.md

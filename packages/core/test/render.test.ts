@@ -268,7 +268,7 @@ describe("Verdict.render", () => {
 			checks: [{ name: "lens.correctness", status: "ran" }],
 			config: defaultConfig,
 		}).adjudicate();
-		expect(passed.render()).toBe("Verdict: passed\n\nNo findings.\n");
+		expect(passed.render()).toBe("Verdict: passed\n\nmelian/review: success (Passed).\n\nNo findings.\n");
 	});
 
 	it("names both what moved a lens to another tier and what routed that tier", () => {
