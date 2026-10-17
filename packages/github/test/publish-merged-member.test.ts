@@ -368,6 +368,38 @@ describe("thread recovery after the attacking review", () => {
 		expect(old.body.match(/Addressed in commit/g)).toHaveLength(1);
 	});
 
+	it("resolves both threads for one finding when the older one fails until the newer succeeds", async () => {
+		const { state, github, review, publish } = await session();
+		await publish((await review(script([b], []))).changeset);
+		const older = state.comments[0]!;
+		const resolve = github.resolveThread.bind(github);
+		const attempts: string[] = [];
+		vi.spyOn(github, "resolveThread").mockImplementation(async (pull, thread) => {
+			attempts.push(thread);
+			if (thread === String(older.id) && state.resolvedThreads.length === 0)
+				throw new Error("older waits for newer");
+			return resolve(pull, thread);
+		});
+		push();
+		await expect(publish((await review(script([], []))).changeset)).rejects.toMatchObject({ code: "publishFailed" });
+		expect(older.body).toContain("Addressed in commit");
+		push();
+		await expect(publish((await review(script([b], []))).changeset)).rejects.toMatchObject({ code: "publishFailed" });
+		const newer = state.comments.filter((comment) => comment.in_reply_to_id === undefined)[1]!;
+		expect(newer.body.split("\n")[0]).toContain(older.body.split("finding=")[1]!.split(" ")[0]);
+		push();
+		state.failResolve = true;
+		await expect(publish((await review(script([], []))).changeset)).rejects.toMatchObject({ code: "publishFailed" });
+		state.failResolve = false;
+		push();
+		const last = await review(script([], []));
+		await publish(last.changeset);
+		await publish(last.changeset);
+		expect(state.resolvedThreads).toContain(newer.id);
+		expect(state.resolvedThreads).toContain(older.id);
+		expect(attempts.indexOf(String(newer.id))).toBeLessThan(attempts.lastIndexOf(String(older.id)));
+	});
+
 	it("writes the current status before a failed read of an obsolete pending round", async () => {
 		const { state, review, publish } = await session();
 		const first = await review(script([], [a]));

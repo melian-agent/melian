@@ -125,6 +125,37 @@ describe("publication planning recovery", () => {
 		expect(state.reviews[0]!.body).toContain(`round=${next}`);
 	});
 
+	it("keeps a body-only resolution keyed by its finding ID", async () => {
+		await root.commit(async (tx) => {
+			const doc = await tx.doc(PublishedDocument, root.id);
+			doc.order = [old];
+			doc.revisions[old] = {
+				reviews: ["old-review"],
+				resolved: {},
+				replies: {},
+				open: {
+					[finding.id]: { ruleId: finding.ruleId, path: "unplaced.ts", line: 1, revision: old },
+				},
+			};
+		}, context);
+		const post = vi.spyOn(provider, "postReview");
+		await publishReview(options);
+		expect(post.mock.calls[0]![0].resolved).toEqual([
+			{
+				id: finding.id,
+				ruleId: finding.ruleId,
+				path: "unplaced.ts",
+				line: 1,
+				revision: old,
+				addressedIn: state.pull.head.sha,
+			},
+		]);
+		const resolved = (await harness!.snapshot(PublishedDocument, root.id, context))!.revisions[state.pull.head.sha]!
+			.resolved;
+		expect(Object.keys(resolved)).toEqual([finding.id]);
+		expect(state.reviews[0]!.body).toContain("Resolved since the last review");
+	});
+
 	it("does not carry or count an owed dismissal whose current answer is already journalled", async () => {
 		const past = { by: "Maintainer", reason: "Old reason", at: "2026-10-17T00:00:00Z" };
 		const dismissal = { ...past, reason: "Current reason" };
@@ -147,7 +178,8 @@ describe("publication planning recovery", () => {
 				reviews: ["old-review"],
 				open: {},
 				resolved: {
-					[finding.id]: {
+					[replyKey(finding.id, "1", dismissalVersion(past))]: {
+						id: finding.id,
 						ruleId: finding.ruleId,
 						path: "src/a.ts",
 						line: 1,
@@ -165,6 +197,61 @@ describe("publication planning recovery", () => {
 		expect(
 			(await harness!.snapshot(PublishedDocument, root.id, context))!.revisions[state.pull.head.sha]!.resolved,
 		).toEqual({});
+	});
+
+	it("redismisses the newest thread when the current record also carries an older resolution", async () => {
+		const past = { by: "Maintainer", reason: "Old reason", at: "2026-10-17T00:00:00Z" };
+		const dismissal = { ...past, reason: "New reason", at: "2026-10-18T00:00:00Z" };
+		const dismissed = Finding.from({
+			...finding.toJSON(),
+			properties: { ...finding.properties, status: "dismissed", dismissal },
+		});
+		const verdict = new Adjudication({
+			findings: [dismissed],
+			manifest: [],
+			checks: [],
+			config: defaultConfig,
+		}).adjudicate();
+		const middle = "d".repeat(40);
+		const entry = { id: finding.id, ruleId: finding.ruleId, path: "src/a.ts", line: 1, revision: old, thread: "1" };
+		const newer = { ...entry, revision: middle, thread: "2", dismissal: past };
+		await root.commit(async (tx) => {
+			(await tx.doc(VerdictDocument, root.id)).verdicts[revision] = verdict.toJSON();
+			const doc = await tx.doc(PublishedDocument, root.id);
+			doc.order = [old, middle, state.pull.head.sha];
+			doc.revisions[state.pull.head.sha] = {
+				reviews: ["old-review"],
+				verdict: verdict.fingerprint(),
+				verdictRevision: revision,
+				open: {},
+				resolved: {
+					[replyKey(finding.id, "2", dismissalVersion(past))]: newer,
+					[replyKey(finding.id, "1")]: entry,
+					[replyKey("unrelated", "3", dismissalVersion(past))]: {
+						...newer,
+						id: "unrelated",
+						revision: state.pull.head.sha,
+						thread: "3",
+					},
+				},
+				replies: {
+					[replyKey(finding.id, "1")]: "1",
+					[replyKey(finding.id, "2", dismissalVersion(past))]: "3",
+					[replyKey("unrelated", "3", dismissalVersion(past))]: "4",
+				},
+				threadResolutions: { [replyKey(finding.id, "1")]: true },
+			};
+			doc.revisions[old] = { reviews: [], open: {}, resolved: {}, replies: {} };
+			doc.revisions[middle] = { reviews: [], open: {}, resolved: {}, replies: {} };
+		}, context);
+		const reply = vi.spyOn(provider, "replyResolved").mockResolvedValue("4");
+		await publishReview(options);
+		expect(reply).toHaveBeenCalledExactlyOnceWith(
+			7,
+			expect.objectContaining({ thread: "2", dismissal }),
+			state.pull.head.sha,
+			expect.any(String),
+		);
 	});
 
 	it("keeps a reopened merged member's old dismissal out of the carry", async () => {
@@ -207,6 +294,7 @@ describe("publication planning recovery", () => {
 				open: {},
 				resolved: {
 					[finding.id]: {
+						id: finding.id,
 						ruleId: finding.ruleId,
 						path: "src/a.ts",
 						line: 1,
@@ -247,6 +335,7 @@ describe("publication planning recovery", () => {
 				open: {},
 				resolved: {
 					[finding.id]: {
+						id: finding.id,
 						ruleId: finding.ruleId,
 						path: "src/a.ts",
 						line: 1,
@@ -262,6 +351,7 @@ describe("publication planning recovery", () => {
 		const postReview = provider.postReview.bind(provider);
 		vi.spyOn(provider, "postReview").mockImplementation(async (draft) => {
 			expect(threadState).not.toHaveBeenCalled();
+			expect(draft.resolved).toEqual([]);
 			return postReview(draft);
 		});
 		await publishReview(options);

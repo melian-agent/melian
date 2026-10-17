@@ -42,7 +42,7 @@ In the commit assigning a thread to the live plan, retire every outstanding reso
 Keep the reply journal and review attestations.
 Recover a pending review's immutable payload as before, then plan the current verdict before executing thread actions.
 Only the resolutions remaining after those assignments may execute.
-No ownership document or stored-shape change is needed.
+No ownership document is needed. The as-built section records the resolution-map upgrade.
 
 An addressed edit and thread resolution are separate effects.
 If the edit landed but resolution did not, resolve that old thread on the next publish, whether or not its finding is live.
@@ -73,3 +73,16 @@ The same-ID reopening regression proves a dismissal's thread is not reused.
 The SQLite kill regression covers H3's recorded resolution followed by a fresh finding at the same head.
 An edit-accepted, resolve-failed regression proves the old thread closes even when the finding returns.
 Status ordering, human resolution, reply deletion, author fallback and paginated failures have separate tests.
+
+## As built: several owed threads per finding
+
+Pass 4 found that the owed-work fold still kept one resolution per finding ID.
+An older addressed thread could fail to resolve until a newer thread for that finding resolved.
+Carrying only the newer thread then lost the older instruction.
+
+Published-document version 8 keys resolutions by finding, actual root comment and dismissal version, using `replyKey`.
+Each entry keeps its finding ID. Body-only resolutions retain the finding ID as their key.
+Planning, pending rounds and closing preserve every owed thread.
+Current resolutions run before carried work, so one failed older thread cannot hide a newer thread's resolution.
+The migration rekeys both recorded and pending resolutions and leaves the pending review payload intact.
+A version-7 fixture written through that version's publisher proves SQLite reopening and a second version-8 reopen.

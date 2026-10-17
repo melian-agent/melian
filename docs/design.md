@@ -189,6 +189,8 @@ Publication retires every resolution still owed against a thread in the commit t
 Signed answer discovery spans every head, so a reply accepted before a lost checkpoint is not repeated on the next push.
 Either the journal or GitHub proves an answer present.
 An addressed root still owes thread resolution even when its finding returns in a new thread.
+Owed work and pending rounds keep every thread for a finding, keyed by finding, thread and dismissal version.
+Published-document version 8 upgrades older resolution maps, including pending rounds, without changing their review payload.
 A human-resolved live thread stays resolved: its finding still counts and appears in review bodies without another inline post.
 A returning finding cannot reuse it. Owed answers may still be posted there without reopening it.
 GraphQL thread reads stay lazy, before reuse, reply or resolution; an unchanged live thread needs no read.

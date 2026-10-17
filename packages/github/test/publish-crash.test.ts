@@ -174,7 +174,9 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 			third.changeset.revision.head
 		]!;
 		expect(interrupted.pending).toBeUndefined();
-		expect(interrupted.resolved[id]).toMatchObject({ thread: String(thread.id) });
+		expect(Object.values(interrupted.resolved).find((entry) => entry.id === id)).toMatchObject({
+			thread: String(thread.id),
+		});
 		const returned = await reviewScenario(repo, harness, again, lensScript(unsafeManager), true);
 		const { verdict: current } = await returned.review;
 		expect(returned.changeset.revision).toEqual(third.changeset.revision);
