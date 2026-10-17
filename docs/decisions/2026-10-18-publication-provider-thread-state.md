@@ -81,12 +81,16 @@ Pass 4 found that the owed-work fold still kept one resolution per finding ID.
 An older addressed thread could fail to resolve until a newer thread for that finding resolved.
 Carrying only the newer thread then lost the older instruction.
 
-Published-document version 8 keys resolutions by finding, actual root comment and dismissal version, using `replyKey`.
+Published-document version 9 keys resolutions by finding, actual root comment and dismissal version, using `replyKey`.
 Each entry keeps its finding ID. Body-only resolutions retain the finding ID as their key.
 Planning, pending rounds and closing preserve every owed thread.
 Current resolutions run before carried work, so one failed older thread cannot hide a newer thread's resolution.
 The migration rekeys both recorded and pending resolutions and leaves the pending review payload intact.
-A version-7 fixture written through that version's publisher proves SQLite reopening and a second version-8 reopen.
+Version 8 was published by step 29 for trust-floor diagnostics before this change landed.
+Versions 7 and 8 both key resolutions by finding ID, so both take the same resolution conversion.
+The migration branches on `fromVersion`: version 1 also upgrades pending evidence; versions 1 and 2 also rekey replies.
+It preserves version 8's trust-floor diagnostics and publisher attribution.
+Fixtures written by the version-7 publisher and main at `942fe6c0` prove SQLite reopening and a second version-9 reopen.
 
 ## As built: parent-review ownership
 

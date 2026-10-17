@@ -1,0 +1,56 @@
+{
+  "recordedBy": "9367190cb48904b43e53b9804971189049439aab, unchanged version-2 publisher through publishReview",
+  "version": 2,
+  "state": {
+    "order": [
+      "c2fe8a23ef33fe54f43d6cb02176ac2423ff73b5"
+    ],
+    "revisions": {
+      "c2fe8a23ef33fe54f43d6cb02176ac2423ff73b5": {
+        "reviews": [
+          "1001",
+          "1005"
+        ],
+        "open": {
+          "2a0604e2d428931a": {
+            "ruleId": "unhandled-error",
+            "path": "src/config.ts",
+            "line": 1,
+            "revision": "c2fe8a23ef33fe54f43d6cb02176ac2423ff73b5"
+          },
+          "8404b1b24eec5b0b": {
+            "ruleId": "wrong-result",
+            "path": "src/user.ts",
+            "line": 19,
+            "revision": "c2fe8a23ef33fe54f43d6cb02176ac2423ff73b5",
+            "thread": "1003"
+          }
+        },
+        "resolved": {
+          "4998b25271b2fd2e": {
+            "ruleId": "null-dereference",
+            "path": "src/user.ts",
+            "line": 7,
+            "revision": "c2fe8a23ef33fe54f43d6cb02176ac2423ff73b5",
+            "thread": "1002",
+            "dismissal": {
+              "by": "Melian Test <test@melian.invalid>",
+              "reason": "Every user here has a manager; see @octocat's #12.",
+              "at": "2026-10-04T00:00:00.000Z"
+            }
+          }
+        },
+        "replies": {
+          "4998b25271b2fd2e": "1006"
+        },
+        "status": {
+          "state": "success",
+          "description": "2 findings, none blocking"
+        },
+        "rounds": 2,
+        "verdict": "bd421177c3d56084",
+        "verdictRevision": "2142aa6a80fe1df9aa611bd5074931ea223931f9..c2fe8a23ef33fe54f43d6cb02176ac2423ff73b5"
+      }
+    }
+  }
+}

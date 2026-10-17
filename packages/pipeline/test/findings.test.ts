@@ -783,11 +783,11 @@ describe("version 7 findings and verdicts", () => {
 		}
 	}
 
-	it("refuses a version-9 findings document opened by a version-7 definition", async () => {
+	it("refuses a version-10 findings document opened by a version-7 definition", async () => {
 		const { harness, root } = await open(createMemoryStorage());
 		await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
 		await expect(harness.snapshot(legacy("melian.findings"), root.id, context)).rejects.toThrow(
-			/newer version 9 than 7/,
+			/newer version 10 than 7/,
 		);
 	});
 

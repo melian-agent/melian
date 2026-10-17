@@ -101,6 +101,7 @@ export const memberClaimSchema = Type.Object(
 		id: idSchema,
 		ruleId: text,
 		source: findingSourceSchema,
+		severity: Type.Optional(severitySchema),
 		failureScenario: Type.Optional(text),
 		evidence: Type.Optional(findingEvidenceSchema),
 		verification: Type.Optional(verificationSchema),
@@ -149,6 +150,20 @@ const entryKey = Type.Object(
 	strict,
 );
 
+const trustFloorSchema = Type.Object(
+	{
+		id: idSchema,
+		source: findingSourceSchema,
+		ruleId: text,
+		path: text,
+		severity: severitySchema,
+		action: Type.Union([Type.Literal("lowered"), Type.Literal("refuted")]),
+		minimum: resolutionSchema,
+		verification: verificationSchema,
+	},
+	strict,
+);
+
 /** The JSON Schema of a {@link DecidedBy}. */
 export const decidedBySchema = Type.Object(
 	{
@@ -162,11 +177,14 @@ export const decidedBySchema = Type.Object(
 			Type.Union([Type.Literal("pre-existing"), Type.Literal("unproven-cause"), Type.Literal("unverified")]),
 		),
 		capBy: Type.Optional(Type.Object({ file: text, key: text }, strict)),
+		trustFloor: Type.Optional(Type.Array(trustFloorSchema, { minItems: 1 })),
 		floor: Type.Optional(
 			Type.Union([
 				Type.Literal("policy-change"),
 				Type.Literal("injection-attempt"),
 				Type.Literal("pre-existing-important"),
+				Type.Literal("lowered-trust"),
+				Type.Literal("refuted-trust"),
 			]),
 		),
 	},
@@ -515,13 +533,17 @@ export type DecidedBy = Static<typeof decidedBySchema>;
 
 /**
  * What a finding requires, and what decided it. `resolvedAtOriginal` says a lowered report resolved at the lens's
- * severity, because its keys silence the lowered one and a lowering never silences a finding.
+ * severity, because its keys silence the lowered one and a lowering never silences a finding. `lifted` marks a
+ * display-only important outcome; it is not stored on the finding.
  */
 export interface FindingDecision {
 	readonly resolution: Resolution;
 	readonly decidedBy: DecidedBy;
 	readonly resolvedAtOriginal?: boolean;
+	readonly lifted?: boolean;
 }
+
+type ProtectedMinimum = NonNullable<DecidedBy["trustFloor"]>[number] & { readonly lifted?: boolean };
 
 /** Melian's extensions to a SARIF `result`, carried in its property bag. */
 export type FindingProperties = Static<typeof findingPropertiesSchema>;
@@ -1116,13 +1138,17 @@ export class Finding {
 				? `line ${region.startLine}`
 				: `lines ${region.startLine}-${region.endLine}`;
 		const lowered = this.lowered();
+		const loweringNote = this.lowered({ includeTrustFloor: false });
 		return [
 			`  ${rendering.paint(severityColor[severity], severity)}${lowered === undefined ? "" : `, lowered from ${lowered.from}`}  ${lines}  ${visibleText(this.ruleId)}  (${cause}, ${status}, ${resolution ?? "unresolved"}${verification === undefined ? (source.check.startsWith("lens.") ? ", unverified" : "") : `, ${verification.verdict}`})${ids ? `  ${visibleText(id)}` : ""}`,
 			...reports,
+			...this.trustFloorNotes().map((line) => `    ${prose(line, "      ")}`),
 			...(decidedBy === undefined || !rendering.decided
 				? []
 				: [`    Decided by: ${prose(describeDecision(decidedBy, own), "      ")}`]),
-			...(lowered === undefined ? [] : [`    Lowered from ${lowered.from}: ${prose(lowered.reason, "      ")}`]),
+			...(loweringNote === undefined
+				? []
+				: [`    Lowered from ${loweringNote.from}: ${prose(loweringNote.reason, "      ")}`]),
 			...(lowered === undefined || this.properties.resolvedAtOriginal !== true
 				? []
 				: [
@@ -1176,11 +1202,16 @@ export class Finding {
 		return this.properties.originalSeverity ?? this.properties.severity;
 	}
 
-	/** The lens's severity and the verifier's reason, when the finding stands at a severity the verifier lowered. */
-	lowered(): { from: Severity; reason: string } | undefined {
+	/** The lens's severity and lowering reason; `includeTrustFloor: false` omits one the trust-floor notes already explain. */
+	lowered(options: { readonly includeTrustFloor?: boolean } = {}): { from: Severity; reason: string } | undefined {
 		const { originalSeverity, severity } = this.properties;
 		const lowering = this.#verifications().find((each) => each.lowered?.to === severity)?.lowered;
 		if (originalSeverity === undefined || lowering === undefined) return undefined;
+		if (
+			options.includeTrustFloor === false &&
+			this.properties.decidedBy?.trustFloor?.some((claim) => claim.verification.lowered?.reason === lowering.reason)
+		)
+			return undefined;
 		return { from: originalSeverity, reason: lowering.reason };
 	}
 
@@ -1188,8 +1219,8 @@ export class Finding {
 	 * Whether the finding belongs under "Pre-existing, important": `pre-existing` with an original severity of P0 or
 	 * P1.
 	 */
-	important(): boolean {
-		return this.properties.cause === "pre-existing" && severityRank[this.original()] <= severityRank.P1;
+	important(defect: Finding = this): boolean {
+		return defect.properties.cause === "pre-existing" && severityRank[this.original()] <= severityRank.P1;
 	}
 
 	/**
@@ -1248,6 +1279,7 @@ export class Finding {
 				id,
 				ruleId: this.ruleId,
 				source,
+				severity: this.original(),
 				...(failureScenario === undefined ? {} : { failureScenario }),
 				...(evidence === undefined ? {} : { evidence }),
 				...(verification === undefined ? {} : { verification }),
@@ -1289,7 +1321,11 @@ export class Finding {
 		const verification = [...members.flatMap((member) => member.claims()), ...otherClaims]
 			.flatMap((claim) => (claim.verification === undefined ? [] : [claim.verification]))
 			.sort((left, right) => rank[left.verdict] - rank[right.verdict])[0];
-		if (JSON.stringify(verification) !== JSON.stringify(this.claims()[0]?.verification) || proof.length > 0) {
+		if (
+			members.some((member) => member.original() !== this.original()) ||
+			JSON.stringify(verification) !== JSON.stringify(this.claims()[0]?.verification) ||
+			proof.length > 0
+		) {
 			for (const claim of this.claims())
 				if (
 					!otherClaims.some(
@@ -1325,8 +1361,57 @@ export class Finding {
 	}
 
 	/** {@link Finding.resolve}, with the file and entry that decided. */
-	decision(source: ResolutionSource): FindingDecision {
-		return this.floored(this.capped(source));
+	decision(
+		source: ResolutionSource,
+		options: { readonly unverified?: boolean; readonly defect?: Finding } = {},
+	): FindingDecision {
+		const decision = this.capped(source, options);
+		const claims = this.trustFloor(source, options.defect);
+		const protectedClaims = new Set(
+			claims.map((claim) => JSON.stringify([claim.id, claim.source.check, claim.source.version])),
+		);
+		const scope = options.defect ?? this;
+		const standing = [
+			...VerificationState.from(this)
+				.claims.filter(
+					(claim) =>
+						claim.verification?.verdict !== "refuted" &&
+						!protectedClaims.has(JSON.stringify([claim.id, claim.source.check, claim.source.version])),
+				)
+				.map((claim) => {
+					const original = this.#claim(claim, scope);
+					return claim.verification === undefined ? original : original.verifiedAs(claim.verification);
+				}),
+			...(this.properties.reportedBy ?? [this.properties.source])
+				.filter((producer) => !producer.check.startsWith("lens."))
+				.map((producer) =>
+					Finding.from({
+						...this.toJSON(),
+						properties: {
+							...this.properties,
+							cause: scope.properties.cause,
+							evidence: scope.properties.evidence,
+							source: producer,
+							reportedBy: [producer],
+							verification: undefined,
+							otherClaims: undefined,
+						},
+					}),
+				),
+		];
+		const lifted =
+			claims.some((claim) => claim.lifted && lesser(decision.resolution, claim.minimum) === decision.resolution) &&
+			standing.every((report) => {
+				const outcome = report.decision(source);
+				return outcome.resolution === "silent" || outcome.lifted === true;
+			});
+
+		return this.floored(
+			this.refuted() && claims.length > 0 ? { ...decision, resolution: "silent" } : { ...decision, lifted },
+			[this.ruleId],
+			claims,
+			options.defect,
+		);
 	}
 
 	/**
@@ -1334,7 +1419,7 @@ export class Finding {
 	 * finding is listed and leaves the status as it was.
 	 */
 	lifted(source: ResolutionSource): boolean {
-		return this.decision(source).decidedBy.floor === "pre-existing-important";
+		return this.decision(source).lifted === true;
 	}
 
 	/**
@@ -1392,31 +1477,138 @@ export class Finding {
 			);
 	}
 
+	/** Protected judgements with the confirmed outcome's count behaviour and resolution, capped at acknowledgement. */
+	trustFloor(source: ResolutionSource, defect: Finding = this): ProtectedMinimum[] {
+		return VerificationState.from(this).claims.flatMap((claim) => {
+			const { source: producer, ruleId, verification } = claim;
+			if (
+				!(
+					producer.check === "lens.trust-boundary" ||
+					producer.check === "lens.tests" ||
+					ruleId === "untested-behaviour" ||
+					ruleId === injectionAttemptRuleId
+				)
+			)
+				return [];
+			if (verification === undefined || (verification.verdict !== "refuted" && verification.lowered === undefined))
+				return [];
+			const original = this.#claim(claim, defect).verifiedAs({
+				...verification,
+				verdict: "confirmed",
+				lowered: undefined,
+			});
+			const severity = original.properties.severity;
+			const ordinary = original.decision(source);
+			return [
+				{
+					id: claim.id,
+					source: producer,
+					ruleId,
+					path: this.properties.path,
+					severity,
+					action: verification.verdict === "refuted" ? ("refuted" as const) : ("lowered" as const),
+					minimum: lesser("acknowledge", ordinary.resolution),
+					...(ordinary.lifted ? { lifted: true } : {}),
+					verification,
+				},
+			];
+		});
+	}
+
+	#claim(claim: MemberClaim, defect: Finding): Finding {
+		const severity = claim.severity ?? claim.verification?.lowered?.from ?? this.original();
+		return Finding.from({
+			...this.toJSON(),
+			ruleId: claim.ruleId,
+			properties: {
+				...this.properties,
+				cause: defect.properties.cause,
+				evidence: defect.properties.evidence,
+				verification: undefined,
+				otherClaims: undefined,
+				severity,
+				originalSeverity: severity,
+				source: claim.source,
+				reportedBy: [claim.source],
+			},
+		});
+	}
+
+	/** Plain text explanations of the protected judgements, for hosts to escape in their own format. */
+	trustFloorNotes(): string[] {
+		const claims = this.properties.decidedBy?.trustFloor ?? [];
+		if (claims.length === 0) return [];
+		return [
+			claims.some((claim) => claim.minimum === "acknowledge")
+				? "Trust floor: acknowledge required; maintainer dismissal needed."
+				: "Trust floor: reported-severity policy requires no acknowledgement.",
+			...claims.flatMap((claim) => [
+				`${claim.id} ${claim.source.check} ${claim.ruleId}: ${claim.verification.verdict}, reported ${claim.severity}, minimum ${claim.minimum}. ${claim.verification.reason}`,
+				...(claim.verification.lowered === undefined
+					? []
+					: [
+							`Lowered from ${claim.verification.lowered.from} to ${claim.verification.lowered.to}: ${claim.verification.lowered.reason}`,
+						]),
+				...(claim.action === "refuted" ? ["Verifier refuted this claim; maintainer review still required."] : []),
+			]),
+		];
+	}
+
 	/**
 	 * `decision` after the floors, for the defect this finding speaks for, whose reports carry `rules`. A
 	 * `guardrail/policy-change-review` notice on a `melian.yaml`, or one for a changed `resolution`, is never below
 	 * `acknowledge`, so no file silences the review of a change to itself. Neither is a defect a lens reported as
 	 * `melian/injection-attempt`, whatever a mapping, a ceiling, or a lens's default says. A member of "Pre-existing,
-	 * important" ({@link Finding.important}) is never below `advisory`.
+	 * important" ({@link Finding.important}) is never below `advisory`. Protected `claims` add their policy-bounded minima.
 	 */
-	floored(decision: FindingDecision, rules: readonly string[] = [this.ruleId]): FindingDecision {
+	floored(
+		decision: FindingDecision,
+		rules: readonly string[] = [this.ruleId],
+		claims: readonly ProtectedMinimum[] = [],
+		defect: Finding = this,
+	): FindingDecision {
 		// The notice carries no snippet, so adjudication never merges it into a finding of another rule.
 		const notice =
 			this.ruleId === "guardrail/policy-change-review" &&
 			(posix.basename(this.properties.path) === melianPaths.config || this.#resolutionNotice());
+		const trustFloor = [
+			...new Map(
+				claims.map(({ lifted: _, ...claim }) => [
+					JSON.stringify([claim.id, claim.source.check, claim.source.version, claim.ruleId, claim.action]),
+					claim,
+				]),
+			).values(),
+		].sort((left, right) =>
+			JSON.stringify([left.id, left.source.check, left.source.version, left.ruleId, left.action]).localeCompare(
+				JSON.stringify([right.id, right.source.check, right.source.version, right.ruleId, right.action]),
+			),
+		);
 		const floors: [NonNullable<DecidedBy["floor"]>, Resolution | undefined][] = [
 			["policy-change", notice ? "acknowledge" : undefined],
 			["injection-attempt", rules.includes(injectionAttemptRuleId) ? "acknowledge" : undefined],
-			["pre-existing-important", this.important() ? "advisory" : undefined],
+			["pre-existing-important", this.important(defect) ? "advisory" : undefined],
+			...trustFloor.map((claim): [NonNullable<DecidedBy["floor"]>, Resolution] => [
+				claim.action === "refuted" ? "refuted-trust" : "lowered-trust",
+				claim.minimum,
+			]),
 		];
 		const floored = floors.reduce<FindingDecision>(
 			(result, [floor, least]) =>
 				least === undefined || lesser(result.resolution, least) === least
 					? result
 					: { resolution: least, decidedBy: { ...result.decidedBy, floor } },
-			decision,
+			trustFloor.length === 0 ? decision : { ...decision, decidedBy: { ...decision.decidedBy, trustFloor } },
 		);
-		return decision.resolvedAtOriginal === true ? { ...floored, resolvedAtOriginal: true } : floored;
+		return withoutUndefined({
+			...floored,
+			resolvedAtOriginal: decision.resolvedAtOriginal,
+			lifted:
+				((floored.decidedBy.floor === "pre-existing-important" ||
+					decision.lifted === true ||
+					(decision.resolution === "silent" && claims.some((claim) => claim.lifted))) &&
+					!claims.some((claim) => claim.minimum !== "silent" && !claim.lifted)) ||
+				undefined,
+		}) as FindingDecision;
 	}
 
 	/**

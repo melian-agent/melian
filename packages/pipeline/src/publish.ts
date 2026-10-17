@@ -172,17 +172,17 @@ class PublishedState {
 		}
 	}
 
-	static upgrade(value: unknown, from: number): StoredPublishedState {
+	static upgrade(value: unknown, fromVersion: number): StoredPublishedState {
 		const state = value as StoredPublishedState;
 		const revisions = Object.fromEntries(
 			Object.entries(state.revisions).map(([head, record]): [string, StoredRevision] => {
 				const { pending } = record;
 				const upgraded =
-					pending === undefined || from >= 2 ? record : { ...record, pending: upgradePending(pending) };
+					pending === undefined || fromVersion >= 2 ? record : { ...record, pending: upgradePending(pending) };
 				return [
 					head,
 					{
-						...(from >= 3 ? upgraded : rekeyReplies(upgraded)),
+						...(fromVersion >= 3 ? upgraded : rekeyReplies(upgraded)),
 						resolved: upgradeResolutions(upgraded.resolved),
 						...(upgraded.pending === undefined
 							? {}
@@ -220,15 +220,16 @@ class PublishedState {
 // would post it twice.
 export const PublishedDocument = defineDoc<StoredPublishedState>({
 	kind: "melian.published",
-	version: 8,
+	version: 9,
 	scope: "conversation",
 	history: "latest",
 	fork: "current",
 	initial: () => new PublishedState({ order: [], revisions: {} }).toJSON(),
 	// Version 2 made a finding's evidence a list of locations, so a round left pending before it renders. Version 3 keys
 	// each reply by `replyKey`. Version 4 adds ledger snapshots; version 5 retains only one-line older rounds.
-	// Version 6 adds optional standards paths per lens; version 7 records the publisher; version 8 keys resolutions by thread.
-	migrate: (value, from) => PublishedState.upgrade(value, from),
+	// Version 6 adds optional standards paths per lens; version 7 records the publisher. Version 8 permits trust-floor
+	// diagnostics; version 9 rekeys resolutions from versions 1–8, preserving those snapshots.
+	migrate: (value, fromVersion) => PublishedState.upgrade(value, fromVersion),
 });
 
 export const LedgerDocument = defineDoc<{ comment?: PostedLedger }>({

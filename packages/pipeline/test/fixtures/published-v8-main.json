@@ -1,0 +1,1100 @@
+{
+  "recordedBy": "942fe6c0, unchanged main source through publishReview",
+  "version": 8,
+  "rounds": [
+    {
+      "phase": "resolved",
+      "state": {
+        "order": [
+          "c38e9d90b34eeb85608881ff32ec1a78dfd25e2a"
+        ],
+        "revisions": {
+          "c38e9d90b34eeb85608881ff32ec1a78dfd25e2a": {
+            "reviews": [
+              "1001",
+              "1005"
+            ],
+            "open": {
+              "fa3c12f8191dc05d": {
+                "ruleId": "fail-open",
+                "path": "guard.ts",
+                "line": 1,
+                "revision": "c38e9d90b34eeb85608881ff32ec1a78dfd25e2a"
+              }
+            },
+            "resolved": {
+              "01ada44fe13064c6": {
+                "ruleId": "outside",
+                "path": "outside.ts",
+                "line": 1,
+                "revision": "c38e9d90b34eeb85608881ff32ec1a78dfd25e2a",
+                "dismissal": {
+                  "by": "Maintainer",
+                  "reason": "Checked constant input",
+                  "at": "2026-10-18T00:00:00Z"
+                }
+              },
+              "2353339212df098d": {
+                "ruleId": "unsafe",
+                "path": "src/a.ts",
+                "line": 1,
+                "revision": "c38e9d90b34eeb85608881ff32ec1a78dfd25e2a",
+                "thread": "1002",
+                "dismissal": {
+                  "by": "Maintainer",
+                  "reason": "Checked constant input",
+                  "at": "2026-10-18T00:00:00Z"
+                }
+              }
+            },
+            "replies": {},
+            "publishedBy": {
+              "trustedWriters": false,
+              "login": "melian-user",
+              "permission": "write",
+              "authorPermission": "read"
+            },
+            "status": {
+              "state": "error",
+              "description": "not reviewed here: writers are not trusted; a trusted host sets this status"
+            },
+            "rounds": 2,
+            "verdict": "4c067931c3bcd43f",
+            "verdictRevision": "527f806948c4c611283b8debeaba0e64f634a4cc..c38e9d90b34eeb85608881ff32ec1a78dfd25e2a",
+            "ledgerUrl": "https://github.com/melian-agent/example/pull/7#issuecomment-1003"
+          }
+        },
+        "ledgerRounds": [
+          {
+            "base": "527f806948c4c611283b8debeaba0e64f634a4cc",
+            "head": "c38e9d90b34eeb85608881ff32ec1a78dfd25e2a",
+            "round": 1,
+            "status": "findings"
+          },
+          {
+            "publishedBy": {
+              "trustedWriters": false,
+              "login": "melian-user",
+              "permission": "write",
+              "authorPermission": "read"
+            },
+            "base": "527f806948c4c611283b8debeaba0e64f634a4cc",
+            "head": "c38e9d90b34eeb85608881ff32ec1a78dfd25e2a",
+            "round": 2,
+            "verdict": {
+              "status": "findings",
+              "blocking": false,
+              "findings": {
+                "block": [],
+                "acknowledge": [
+                  {
+                    "ruleId": "fail-open",
+                    "level": "note",
+                    "message": {
+                      "text": "Cache can hide a failure"
+                    },
+                    "partialFingerprints": {
+                      "melian/v1": "fa3c12f8191dc05d"
+                    },
+                    "locations": [
+                      {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "guard.ts"
+                          },
+                          "region": {
+                            "startLine": 1,
+                            "snippet": {
+                              "text": "cache: true"
+                            }
+                          }
+                        }
+                      }
+                    ],
+                    "properties": {
+                      "id": "fa3c12f8191dc05d",
+                      "path": "guard.ts",
+                      "occurrence": 0,
+                      "cause": "introduced",
+                      "failureScenario": "The head plants a cached kill.",
+                      "severity": "P3",
+                      "status": "new",
+                      "explanation": {
+                        "what": "Cache can hide a failure",
+                        "whyHere": "Head controls it",
+                        "whatToDo": "Rerun"
+                      },
+                      "source": {
+                        "check": "lens.trust-boundary",
+                        "version": "1"
+                      },
+                      "originalSeverity": "P2",
+                      "verification": {
+                        "verdict": "plausible",
+                        "reason": "Needs hostile input",
+                        "executor": "llm",
+                        "model": "faux/judge",
+                        "version": "1",
+                        "lowered": {
+                          "from": "P2",
+                          "to": "P3",
+                          "reason": "Needs hostile input"
+                        }
+                      },
+                      "resolution": "acknowledge",
+                      "decidedBy": {
+                        "check": "lens.trust-boundary",
+                        "rule": "fail-open",
+                        "requirement": {
+                          "entry": "table",
+                          "key": "resolution.P3"
+                        },
+                        "trustFloor": [
+                          {
+                            "id": "fa3c12f8191dc05d",
+                            "source": {
+                              "check": "lens.trust-boundary",
+                              "version": "1"
+                            },
+                            "ruleId": "fail-open",
+                            "path": "guard.ts",
+                            "severity": "P2",
+                            "action": "lowered",
+                            "minimum": "acknowledge",
+                            "verification": {
+                              "verdict": "plausible",
+                              "reason": "Needs hostile input",
+                              "executor": "llm",
+                              "model": "faux/judge",
+                              "version": "1",
+                              "lowered": {
+                                "from": "P2",
+                                "to": "P3",
+                                "reason": "Needs hostile input"
+                              }
+                            }
+                          }
+                        ],
+                        "floor": "lowered-trust"
+                      }
+                    }
+                  }
+                ],
+                "advisory": [],
+                "silent": []
+              },
+              "dismissed": [
+                {
+                  "ruleId": "outside",
+                  "level": "warning",
+                  "message": {
+                    "text": "Outside"
+                  },
+                  "partialFingerprints": {
+                    "melian/v1": "01ada44fe13064c6"
+                  },
+                  "locations": [
+                    {
+                      "physicalLocation": {
+                        "artifactLocation": {
+                          "uri": "outside.ts"
+                        },
+                        "region": {
+                          "startLine": 1,
+                          "snippet": {
+                            "text": "outside"
+                          }
+                        }
+                      }
+                    }
+                  ],
+                  "properties": {
+                    "id": "01ada44fe13064c6",
+                    "path": "outside.ts",
+                    "occurrence": 0,
+                    "cause": "introduced",
+                    "severity": "P2",
+                    "status": "dismissed",
+                    "explanation": {
+                      "what": "Outside",
+                      "whyHere": "New",
+                      "whatToDo": "Fix"
+                    },
+                    "source": {
+                      "check": "static.example"
+                    },
+                    "dismissal": {
+                      "by": "Maintainer",
+                      "reason": "Checked constant input",
+                      "at": "2026-10-18T00:00:00Z"
+                    },
+                    "resolution": "acknowledge",
+                    "decidedBy": {
+                      "check": "static.example",
+                      "rule": "outside",
+                      "requirement": {
+                        "entry": "table",
+                        "key": "resolution.P2"
+                      }
+                    }
+                  }
+                },
+                {
+                  "ruleId": "unsafe",
+                  "level": "warning",
+                  "message": {
+                    "text": "Unsafe input"
+                  },
+                  "partialFingerprints": {
+                    "melian/v1": "2353339212df098d"
+                  },
+                  "locations": [
+                    {
+                      "physicalLocation": {
+                        "artifactLocation": {
+                          "uri": "src/a.ts"
+                        },
+                        "region": {
+                          "startLine": 1,
+                          "snippet": {
+                            "text": "new"
+                          }
+                        }
+                      }
+                    }
+                  ],
+                  "properties": {
+                    "id": "2353339212df098d",
+                    "path": "src/a.ts",
+                    "occurrence": 0,
+                    "cause": "introduced",
+                    "severity": "P2",
+                    "status": "dismissed",
+                    "explanation": {
+                      "what": "Unsafe",
+                      "whyHere": "New",
+                      "whatToDo": "Validate"
+                    },
+                    "source": {
+                      "check": "static.example"
+                    },
+                    "dismissal": {
+                      "by": "Maintainer",
+                      "reason": "Checked constant input",
+                      "at": "2026-10-18T00:00:00Z"
+                    },
+                    "resolution": "acknowledge",
+                    "decidedBy": {
+                      "check": "static.example",
+                      "rule": "unsafe",
+                      "requirement": {
+                        "entry": "table",
+                        "key": "resolution.P2"
+                      }
+                    }
+                  }
+                }
+              ],
+              "notRun": [],
+              "ran": []
+            },
+            "resolved": [
+              {
+                "id": "01ada44fe13064c6",
+                "ruleId": "outside",
+                "path": "outside.ts",
+                "line": 1,
+                "commit": "c38e9d90b34eeb85608881ff32ec1a78dfd25e2a",
+                "reason": "Checked constant input"
+              },
+              {
+                "id": "2353339212df098d",
+                "ruleId": "unsafe",
+                "path": "src/a.ts",
+                "line": 1,
+                "commit": "c38e9d90b34eeb85608881ff32ec1a78dfd25e2a",
+                "reason": "Checked constant input"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "phase": "pending",
+      "state": {
+        "order": [
+          "c38e9d90b34eeb85608881ff32ec1a78dfd25e2a"
+        ],
+        "revisions": {
+          "c38e9d90b34eeb85608881ff32ec1a78dfd25e2a": {
+            "reviews": [
+              "1001"
+            ],
+            "open": {
+              "fa3c12f8191dc05d": {
+                "ruleId": "fail-open",
+                "path": "guard.ts",
+                "line": 1,
+                "revision": "c38e9d90b34eeb85608881ff32ec1a78dfd25e2a"
+              },
+              "01ada44fe13064c6": {
+                "ruleId": "outside",
+                "path": "outside.ts",
+                "line": 1,
+                "revision": "c38e9d90b34eeb85608881ff32ec1a78dfd25e2a"
+              },
+              "2353339212df098d": {
+                "ruleId": "unsafe",
+                "path": "src/a.ts",
+                "line": 1,
+                "revision": "c38e9d90b34eeb85608881ff32ec1a78dfd25e2a",
+                "thread": "1002"
+              }
+            },
+            "resolved": {},
+            "replies": {},
+            "publishedBy": {
+              "trustedWriters": false,
+              "login": "melian-user",
+              "permission": "write",
+              "authorPermission": "read"
+            },
+            "status": {
+              "state": "error",
+              "description": "not reviewed here: writers are not trusted; a trusted host sets this status"
+            },
+            "rounds": 2,
+            "verdict": "79a7800dea09672d",
+            "verdictRevision": "527f806948c4c611283b8debeaba0e64f634a4cc..c38e9d90b34eeb85608881ff32ec1a78dfd25e2a",
+            "ledgerUrl": "https://github.com/melian-agent/example/pull/7#issuecomment-1003",
+            "pending": {
+              "revision": "527f806948c4c611283b8debeaba0e64f634a4cc..c38e9d90b34eeb85608881ff32ec1a78dfd25e2a",
+              "round": 2,
+              "fingerprint": "4c067931c3bcd43f",
+              "verdict": {
+                "status": "findings",
+                "blocking": false,
+                "findings": {
+                  "block": [],
+                  "acknowledge": [
+                    {
+                      "ruleId": "fail-open",
+                      "level": "note",
+                      "message": {
+                        "text": "Cache can hide a failure"
+                      },
+                      "partialFingerprints": {
+                        "melian/v1": "fa3c12f8191dc05d"
+                      },
+                      "locations": [
+                        {
+                          "physicalLocation": {
+                            "artifactLocation": {
+                              "uri": "guard.ts"
+                            },
+                            "region": {
+                              "startLine": 1,
+                              "snippet": {
+                                "text": "cache: true"
+                              }
+                            }
+                          }
+                        }
+                      ],
+                      "properties": {
+                        "id": "fa3c12f8191dc05d",
+                        "path": "guard.ts",
+                        "occurrence": 0,
+                        "cause": "introduced",
+                        "failureScenario": "The head plants a cached kill.",
+                        "severity": "P3",
+                        "status": "new",
+                        "explanation": {
+                          "what": "Cache can hide a failure",
+                          "whyHere": "Head controls it",
+                          "whatToDo": "Rerun"
+                        },
+                        "source": {
+                          "check": "lens.trust-boundary",
+                          "version": "1"
+                        },
+                        "originalSeverity": "P2",
+                        "verification": {
+                          "verdict": "plausible",
+                          "reason": "Needs hostile input",
+                          "executor": "llm",
+                          "model": "faux/judge",
+                          "version": "1",
+                          "lowered": {
+                            "from": "P2",
+                            "to": "P3",
+                            "reason": "Needs hostile input"
+                          }
+                        },
+                        "resolution": "acknowledge",
+                        "decidedBy": {
+                          "check": "lens.trust-boundary",
+                          "rule": "fail-open",
+                          "requirement": {
+                            "entry": "table",
+                            "key": "resolution.P3"
+                          },
+                          "trustFloor": [
+                            {
+                              "id": "fa3c12f8191dc05d",
+                              "source": {
+                                "check": "lens.trust-boundary",
+                                "version": "1"
+                              },
+                              "ruleId": "fail-open",
+                              "path": "guard.ts",
+                              "severity": "P2",
+                              "action": "lowered",
+                              "minimum": "acknowledge",
+                              "verification": {
+                                "verdict": "plausible",
+                                "reason": "Needs hostile input",
+                                "executor": "llm",
+                                "model": "faux/judge",
+                                "version": "1",
+                                "lowered": {
+                                  "from": "P2",
+                                  "to": "P3",
+                                  "reason": "Needs hostile input"
+                                }
+                              }
+                            }
+                          ],
+                          "floor": "lowered-trust"
+                        }
+                      }
+                    }
+                  ],
+                  "advisory": [],
+                  "silent": []
+                },
+                "dismissed": [
+                  {
+                    "ruleId": "outside",
+                    "level": "warning",
+                    "message": {
+                      "text": "Outside"
+                    },
+                    "partialFingerprints": {
+                      "melian/v1": "01ada44fe13064c6"
+                    },
+                    "locations": [
+                      {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "outside.ts"
+                          },
+                          "region": {
+                            "startLine": 1,
+                            "snippet": {
+                              "text": "outside"
+                            }
+                          }
+                        }
+                      }
+                    ],
+                    "properties": {
+                      "id": "01ada44fe13064c6",
+                      "path": "outside.ts",
+                      "occurrence": 0,
+                      "cause": "introduced",
+                      "severity": "P2",
+                      "status": "dismissed",
+                      "explanation": {
+                        "what": "Outside",
+                        "whyHere": "New",
+                        "whatToDo": "Fix"
+                      },
+                      "source": {
+                        "check": "static.example"
+                      },
+                      "dismissal": {
+                        "by": "Maintainer",
+                        "reason": "Checked constant input",
+                        "at": "2026-10-18T00:00:00Z"
+                      },
+                      "resolution": "acknowledge",
+                      "decidedBy": {
+                        "check": "static.example",
+                        "rule": "outside",
+                        "requirement": {
+                          "entry": "table",
+                          "key": "resolution.P2"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "ruleId": "unsafe",
+                    "level": "warning",
+                    "message": {
+                      "text": "Unsafe input"
+                    },
+                    "partialFingerprints": {
+                      "melian/v1": "2353339212df098d"
+                    },
+                    "locations": [
+                      {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "src/a.ts"
+                          },
+                          "region": {
+                            "startLine": 1,
+                            "snippet": {
+                              "text": "new"
+                            }
+                          }
+                        }
+                      }
+                    ],
+                    "properties": {
+                      "id": "2353339212df098d",
+                      "path": "src/a.ts",
+                      "occurrence": 0,
+                      "cause": "introduced",
+                      "severity": "P2",
+                      "status": "dismissed",
+                      "explanation": {
+                        "what": "Unsafe",
+                        "whyHere": "New",
+                        "whatToDo": "Validate"
+                      },
+                      "source": {
+                        "check": "static.example"
+                      },
+                      "dismissal": {
+                        "by": "Maintainer",
+                        "reason": "Checked constant input",
+                        "at": "2026-10-18T00:00:00Z"
+                      },
+                      "resolution": "acknowledge",
+                      "decidedBy": {
+                        "check": "static.example",
+                        "rule": "unsafe",
+                        "requirement": {
+                          "entry": "table",
+                          "key": "resolution.P2"
+                        }
+                      }
+                    }
+                  }
+                ],
+                "notRun": [],
+                "ran": []
+              },
+              "post": [],
+              "stillOpen": 1,
+              "open": {
+                "fa3c12f8191dc05d": {
+                  "ruleId": "fail-open",
+                  "path": "guard.ts",
+                  "line": 1,
+                  "revision": "c38e9d90b34eeb85608881ff32ec1a78dfd25e2a"
+                }
+              },
+              "resolved": {
+                "01ada44fe13064c6": {
+                  "ruleId": "outside",
+                  "path": "outside.ts",
+                  "line": 1,
+                  "revision": "c38e9d90b34eeb85608881ff32ec1a78dfd25e2a",
+                  "dismissal": {
+                    "by": "Maintainer",
+                    "reason": "Checked constant input",
+                    "at": "2026-10-18T00:00:00Z"
+                  }
+                },
+                "2353339212df098d": {
+                  "ruleId": "unsafe",
+                  "path": "src/a.ts",
+                  "line": 1,
+                  "revision": "c38e9d90b34eeb85608881ff32ec1a78dfd25e2a",
+                  "thread": "1002",
+                  "dismissal": {
+                    "by": "Maintainer",
+                    "reason": "Checked constant input",
+                    "at": "2026-10-18T00:00:00Z"
+                  }
+                }
+              },
+              "refusals": 1,
+              "ledger": {
+                "publishedBy": {
+                  "trustedWriters": false,
+                  "login": "melian-user",
+                  "permission": "write",
+                  "authorPermission": "read"
+                },
+                "base": "527f806948c4c611283b8debeaba0e64f634a4cc",
+                "head": "c38e9d90b34eeb85608881ff32ec1a78dfd25e2a",
+                "round": 2,
+                "verdict": {
+                  "status": "findings",
+                  "blocking": false,
+                  "findings": {
+                    "block": [],
+                    "acknowledge": [
+                      {
+                        "ruleId": "fail-open",
+                        "level": "note",
+                        "message": {
+                          "text": "Cache can hide a failure"
+                        },
+                        "partialFingerprints": {
+                          "melian/v1": "fa3c12f8191dc05d"
+                        },
+                        "locations": [
+                          {
+                            "physicalLocation": {
+                              "artifactLocation": {
+                                "uri": "guard.ts"
+                              },
+                              "region": {
+                                "startLine": 1,
+                                "snippet": {
+                                  "text": "cache: true"
+                                }
+                              }
+                            }
+                          }
+                        ],
+                        "properties": {
+                          "id": "fa3c12f8191dc05d",
+                          "path": "guard.ts",
+                          "occurrence": 0,
+                          "cause": "introduced",
+                          "failureScenario": "The head plants a cached kill.",
+                          "severity": "P3",
+                          "status": "new",
+                          "explanation": {
+                            "what": "Cache can hide a failure",
+                            "whyHere": "Head controls it",
+                            "whatToDo": "Rerun"
+                          },
+                          "source": {
+                            "check": "lens.trust-boundary",
+                            "version": "1"
+                          },
+                          "originalSeverity": "P2",
+                          "verification": {
+                            "verdict": "plausible",
+                            "reason": "Needs hostile input",
+                            "executor": "llm",
+                            "model": "faux/judge",
+                            "version": "1",
+                            "lowered": {
+                              "from": "P2",
+                              "to": "P3",
+                              "reason": "Needs hostile input"
+                            }
+                          },
+                          "resolution": "acknowledge",
+                          "decidedBy": {
+                            "check": "lens.trust-boundary",
+                            "rule": "fail-open",
+                            "requirement": {
+                              "entry": "table",
+                              "key": "resolution.P3"
+                            },
+                            "trustFloor": [
+                              {
+                                "id": "fa3c12f8191dc05d",
+                                "source": {
+                                  "check": "lens.trust-boundary",
+                                  "version": "1"
+                                },
+                                "ruleId": "fail-open",
+                                "path": "guard.ts",
+                                "severity": "P2",
+                                "action": "lowered",
+                                "minimum": "acknowledge",
+                                "verification": {
+                                  "verdict": "plausible",
+                                  "reason": "Needs hostile input",
+                                  "executor": "llm",
+                                  "model": "faux/judge",
+                                  "version": "1",
+                                  "lowered": {
+                                    "from": "P2",
+                                    "to": "P3",
+                                    "reason": "Needs hostile input"
+                                  }
+                                }
+                              }
+                            ],
+                            "floor": "lowered-trust"
+                          }
+                        }
+                      }
+                    ],
+                    "advisory": [],
+                    "silent": []
+                  },
+                  "dismissed": [
+                    {
+                      "ruleId": "outside",
+                      "level": "warning",
+                      "message": {
+                        "text": "Outside"
+                      },
+                      "partialFingerprints": {
+                        "melian/v1": "01ada44fe13064c6"
+                      },
+                      "locations": [
+                        {
+                          "physicalLocation": {
+                            "artifactLocation": {
+                              "uri": "outside.ts"
+                            },
+                            "region": {
+                              "startLine": 1,
+                              "snippet": {
+                                "text": "outside"
+                              }
+                            }
+                          }
+                        }
+                      ],
+                      "properties": {
+                        "id": "01ada44fe13064c6",
+                        "path": "outside.ts",
+                        "occurrence": 0,
+                        "cause": "introduced",
+                        "severity": "P2",
+                        "status": "dismissed",
+                        "explanation": {
+                          "what": "Outside",
+                          "whyHere": "New",
+                          "whatToDo": "Fix"
+                        },
+                        "source": {
+                          "check": "static.example"
+                        },
+                        "dismissal": {
+                          "by": "Maintainer",
+                          "reason": "Checked constant input",
+                          "at": "2026-10-18T00:00:00Z"
+                        },
+                        "resolution": "acknowledge",
+                        "decidedBy": {
+                          "check": "static.example",
+                          "rule": "outside",
+                          "requirement": {
+                            "entry": "table",
+                            "key": "resolution.P2"
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "ruleId": "unsafe",
+                      "level": "warning",
+                      "message": {
+                        "text": "Unsafe input"
+                      },
+                      "partialFingerprints": {
+                        "melian/v1": "2353339212df098d"
+                      },
+                      "locations": [
+                        {
+                          "physicalLocation": {
+                            "artifactLocation": {
+                              "uri": "src/a.ts"
+                            },
+                            "region": {
+                              "startLine": 1,
+                              "snippet": {
+                                "text": "new"
+                              }
+                            }
+                          }
+                        }
+                      ],
+                      "properties": {
+                        "id": "2353339212df098d",
+                        "path": "src/a.ts",
+                        "occurrence": 0,
+                        "cause": "introduced",
+                        "severity": "P2",
+                        "status": "dismissed",
+                        "explanation": {
+                          "what": "Unsafe",
+                          "whyHere": "New",
+                          "whatToDo": "Validate"
+                        },
+                        "source": {
+                          "check": "static.example"
+                        },
+                        "dismissal": {
+                          "by": "Maintainer",
+                          "reason": "Checked constant input",
+                          "at": "2026-10-18T00:00:00Z"
+                        },
+                        "resolution": "acknowledge",
+                        "decidedBy": {
+                          "check": "static.example",
+                          "rule": "unsafe",
+                          "requirement": {
+                            "entry": "table",
+                            "key": "resolution.P2"
+                          }
+                        }
+                      }
+                    }
+                  ],
+                  "notRun": [],
+                  "ran": []
+                },
+                "resolved": [
+                  {
+                    "id": "01ada44fe13064c6",
+                    "ruleId": "outside",
+                    "path": "outside.ts",
+                    "line": 1,
+                    "commit": "c38e9d90b34eeb85608881ff32ec1a78dfd25e2a",
+                    "reason": "Checked constant input"
+                  },
+                  {
+                    "id": "2353339212df098d",
+                    "ruleId": "unsafe",
+                    "path": "src/a.ts",
+                    "line": 1,
+                    "commit": "c38e9d90b34eeb85608881ff32ec1a78dfd25e2a",
+                    "reason": "Checked constant input"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "ledgerRounds": [
+          {
+            "publishedBy": {
+              "trustedWriters": false,
+              "login": "melian-user",
+              "permission": "write",
+              "authorPermission": "read"
+            },
+            "base": "527f806948c4c611283b8debeaba0e64f634a4cc",
+            "head": "c38e9d90b34eeb85608881ff32ec1a78dfd25e2a",
+            "round": 1,
+            "verdict": {
+              "status": "findings",
+              "blocking": false,
+              "findings": {
+                "block": [],
+                "acknowledge": [
+                  {
+                    "ruleId": "fail-open",
+                    "level": "note",
+                    "message": {
+                      "text": "Cache can hide a failure"
+                    },
+                    "partialFingerprints": {
+                      "melian/v1": "fa3c12f8191dc05d"
+                    },
+                    "locations": [
+                      {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "guard.ts"
+                          },
+                          "region": {
+                            "startLine": 1,
+                            "snippet": {
+                              "text": "cache: true"
+                            }
+                          }
+                        }
+                      }
+                    ],
+                    "properties": {
+                      "id": "fa3c12f8191dc05d",
+                      "path": "guard.ts",
+                      "occurrence": 0,
+                      "cause": "introduced",
+                      "failureScenario": "The head plants a cached kill.",
+                      "severity": "P3",
+                      "status": "new",
+                      "explanation": {
+                        "what": "Cache can hide a failure",
+                        "whyHere": "Head controls it",
+                        "whatToDo": "Rerun"
+                      },
+                      "source": {
+                        "check": "lens.trust-boundary",
+                        "version": "1"
+                      },
+                      "originalSeverity": "P2",
+                      "verification": {
+                        "verdict": "plausible",
+                        "reason": "Needs hostile input",
+                        "executor": "llm",
+                        "model": "faux/judge",
+                        "version": "1",
+                        "lowered": {
+                          "from": "P2",
+                          "to": "P3",
+                          "reason": "Needs hostile input"
+                        }
+                      },
+                      "resolution": "acknowledge",
+                      "decidedBy": {
+                        "check": "lens.trust-boundary",
+                        "rule": "fail-open",
+                        "requirement": {
+                          "entry": "table",
+                          "key": "resolution.P3"
+                        },
+                        "trustFloor": [
+                          {
+                            "id": "fa3c12f8191dc05d",
+                            "source": {
+                              "check": "lens.trust-boundary",
+                              "version": "1"
+                            },
+                            "ruleId": "fail-open",
+                            "path": "guard.ts",
+                            "severity": "P2",
+                            "action": "lowered",
+                            "minimum": "acknowledge",
+                            "verification": {
+                              "verdict": "plausible",
+                              "reason": "Needs hostile input",
+                              "executor": "llm",
+                              "model": "faux/judge",
+                              "version": "1",
+                              "lowered": {
+                                "from": "P2",
+                                "to": "P3",
+                                "reason": "Needs hostile input"
+                              }
+                            }
+                          }
+                        ],
+                        "floor": "lowered-trust"
+                      }
+                    }
+                  },
+                  {
+                    "ruleId": "outside",
+                    "level": "warning",
+                    "message": {
+                      "text": "Outside"
+                    },
+                    "partialFingerprints": {
+                      "melian/v1": "01ada44fe13064c6"
+                    },
+                    "locations": [
+                      {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "outside.ts"
+                          },
+                          "region": {
+                            "startLine": 1,
+                            "snippet": {
+                              "text": "outside"
+                            }
+                          }
+                        }
+                      }
+                    ],
+                    "properties": {
+                      "id": "01ada44fe13064c6",
+                      "path": "outside.ts",
+                      "occurrence": 0,
+                      "cause": "introduced",
+                      "severity": "P2",
+                      "status": "new",
+                      "explanation": {
+                        "what": "Outside",
+                        "whyHere": "New",
+                        "whatToDo": "Fix"
+                      },
+                      "source": {
+                        "check": "static.example"
+                      },
+                      "resolution": "acknowledge",
+                      "decidedBy": {
+                        "check": "static.example",
+                        "rule": "outside",
+                        "requirement": {
+                          "entry": "table",
+                          "key": "resolution.P2"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "ruleId": "unsafe",
+                    "level": "warning",
+                    "message": {
+                      "text": "Unsafe input"
+                    },
+                    "partialFingerprints": {
+                      "melian/v1": "2353339212df098d"
+                    },
+                    "locations": [
+                      {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "src/a.ts"
+                          },
+                          "region": {
+                            "startLine": 1,
+                            "snippet": {
+                              "text": "new"
+                            }
+                          }
+                        }
+                      }
+                    ],
+                    "properties": {
+                      "id": "2353339212df098d",
+                      "path": "src/a.ts",
+                      "occurrence": 0,
+                      "cause": "introduced",
+                      "severity": "P2",
+                      "status": "new",
+                      "explanation": {
+                        "what": "Unsafe",
+                        "whyHere": "New",
+                        "whatToDo": "Validate"
+                      },
+                      "source": {
+                        "check": "static.example"
+                      },
+                      "resolution": "acknowledge",
+                      "decidedBy": {
+                        "check": "static.example",
+                        "rule": "unsafe",
+                        "requirement": {
+                          "entry": "table",
+                          "key": "resolution.P2"
+                        }
+                      }
+                    }
+                  }
+                ],
+                "advisory": [],
+                "silent": []
+              },
+              "dismissed": [],
+              "notRun": [],
+              "ran": []
+            },
+            "resolved": []
+          }
+        ]
+      }
+    }
+  ]
+}

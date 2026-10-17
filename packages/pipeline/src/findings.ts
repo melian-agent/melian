@@ -70,7 +70,8 @@ type FindingRecord = {
 // lifecycle change of a finding sighted there. Adjudication's input carries it, so a dismissal decides afresh.
 type FindingsState = { revisions: string[]; items: Record<string, FindingRecord>; versions: Record<string, number> };
 
-// Version 9 ties new dismissals to the accepted trigger; version 8 dismissals keep their former reopen rules.
+// Version 10 permits each merged claim to retain its reported severity. Version 9 ties dismissals to their accepted
+// trigger and proof; version 8 dismissals keep their former reopen rules.
 // Version 8 lets a guardrail sighting name the configured rules it matched, or its notice class, outside its ID; a
 // version 7 sighting names neither, reads unchanged, and resolves under its whole guardrail.
 // Version 7 lets a verification record hold the verifier's answers, the evidence read back, and a lowered severity; a
@@ -78,13 +79,13 @@ type FindingsState = { revisions: string[]; items: Record<string, FindingRecord>
 // records. Version 5 made evidence a list of locations; a sighting stored before reads with its one location as a cause.
 export const FindingsDocument = defineDoc<FindingsState>({
 	kind: "melian.findings",
-	version: 9,
+	version: 10,
 	scope: "conversation",
 	history: "rewindable",
 	fork: "asOf",
 	initial: () => ({ revisions: [], items: {}, versions: {} }),
 	migrate: (value, from) => {
-		if (from === 8) return value as FindingsState;
+		if (from >= 8) return value as FindingsState;
 		if (from < 4)
 			throw new Error(`the findings document needs migrating from version ${from}, which Melian cannot do`);
 		const state = value as FindingsState;

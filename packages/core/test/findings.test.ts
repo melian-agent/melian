@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import {
 	capSnippet,
+	defaultConfig,
 	dismissalReason,
 	Finding,
 	FindingError,
@@ -28,6 +29,43 @@ const sarifSchema = JSON.parse(
 ) as Schema.XSchema;
 
 const evalCall = { file: "src/run.ts", rule: "no-eval", snippet: "eval(input)", occurrence: 0 };
+
+describe("Finding.decision", () => {
+	it("counts the source check without reportedBy beside a protected display-only claim", () => {
+		const trust = Finding.create({
+			...evalInput,
+			cause: "pre-existing",
+			source: { check: "lens.trust-boundary", version: "1" },
+			failureScenario: "Unchecked input runs.",
+			verification: {
+				verdict: "refuted",
+				reason: "The caller checks the input.",
+				executor: "llm",
+				model: "faux/judge",
+				version: "1",
+			},
+		});
+		const deterministic = Finding.create({
+			...evalInput,
+			cause: "pre-existing",
+			source: { check: "static.example" },
+		});
+		const merged = Finding.from({
+			...deterministic.toJSON(),
+			properties: { ...deterministic.properties, otherClaims: trust.claims() },
+		});
+		const config = {
+			resolution: {
+				...defaultConfig.resolution,
+				checks: { "lens.trust-boundary": { P1: "silent" as const } },
+			},
+		};
+		expect(merged.properties.reportedBy).toBeUndefined();
+		expect(merged.trustFloor(config)).toMatchObject([{ id: trust.id, minimum: "advisory", lifted: true }]);
+		expect(merged.decision(config)).toMatchObject({ resolution: "advisory" });
+		expect(merged.lifted(config)).toBe(false);
+	});
+});
 
 function rejection(value: unknown): FindingError {
 	try {
