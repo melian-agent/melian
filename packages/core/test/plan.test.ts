@@ -64,6 +64,7 @@ function plan(
 		retier?: Record<string, LensTier>;
 		committedTiers?: Record<string, LensTier>;
 		catalog?: CatalogModel[];
+		partialCatalog?: boolean;
 		lenses?: Lens[];
 	} = {},
 ): ReviewPlan {
@@ -93,6 +94,7 @@ function plan(
 		},
 		...(options.model === undefined ? {} : { model: options.model }),
 		catalog: options.catalog ?? catalog,
+		...(options.partialCatalog === true ? { partialCatalog: true as const } : {}),
 		credentials,
 		lenses: options.lenses ?? lenses,
 		checks: options.checks ?? ["lens.correctness"],
@@ -112,6 +114,7 @@ describe("ReviewPlan.resolve", () => {
 			status: "routed",
 			wanted: opus,
 			accept: [opus, "nowhere/model", "openai/gpt-5.4-mini", gpt],
+			unknown: [{ model: "nowhere/model", by: "melian.yaml", provider: "nowhere" }],
 			models: [
 				{ model: opus, credential: "ANTHROPIC_API_KEY", family: "claude" },
 				{ model: "openai/gpt-5.4-mini", credential: "work-openai in melian.secrets.yaml", family: "gpt" },
@@ -121,6 +124,7 @@ describe("ReviewPlan.resolve", () => {
 		expect(resolved.routes()).toEqual({ heavy: { model: opus, fallbacks: ["openai/gpt-5.4-mini", gpt] } });
 		expect(resolved.lineage("heavy")).toBeUndefined();
 		expect(resolved.warnings()).toEqual([
+			"heavy: nowhere/model, set by melian.yaml, is not a model the catalogue holds; it knows no provider nowhere",
 			fallbackWarning,
 			`${opus} could be judged by ${opus} (same family) if openai/gpt-5.4-mini fails`,
 			`openai/gpt-5.4-mini could be judged by openai/gpt-5.4-mini and ${gpt} (same family) if ${opus} fails and ${opus} fails`,
@@ -1036,5 +1040,109 @@ describe("verifier routing", () => {
 		);
 		expect(resolved.refusal("verifier")).toContain("unavailable is fail");
 		expect(resolved.verifierRoute(gpt)).toEqual([]);
+	});
+});
+
+describe("a route naming a model the catalogue does not hold", () => {
+	const credentials = { anthropic: "ANTHROPIC_API_KEY", openai: "OPENAI_API_KEY" };
+
+	it("warns, naming the file and the model, for a misspelt model ID in melian.yaml", () => {
+		const resolved = plan({ heavy: { model: "anthropic/claude-opus-5-55", fallbacks: [gpt] } }, credentials);
+		expect(resolved.tier("heavy")).toMatchObject({ status: "routed", models: [{ model: gpt }] });
+		const text =
+			"heavy: anthropic/claude-opus-5-55, set by melian.yaml, is not a model the catalogue holds; a newer pi-ai may hold it";
+		expect(resolved.warnings()).toContain(text);
+		expect(resolved.lines()).toContainEqual({ state: "warn", text });
+		expect(resolved.summary()).toContain(`Plan: ${text}\n`);
+	});
+
+	it("also names the provider when the catalogue holds none of that name", () => {
+		const old = "azure-openai-responses/gpt-5.5";
+		const resolved = plan({ heavy: { model: old, fallbacks: [opus] } }, credentials);
+		expect(resolved.warnings()).toContain(
+			`heavy: ${old}, set by melian.yaml, is not a model the catalogue holds; it knows no provider azure-openai-responses`,
+		);
+	});
+
+	it("warns for an unknown model inside accept", () => {
+		const resolved = plan({ heavy: { model: opus, accept: [opus, "openai/gpt-9"] } }, credentials);
+		expect(resolved.warnings()).toContain(
+			"heavy: openai/gpt-9, set by melian.yaml, is not a model the catalogue holds; a newer pi-ai may hold it",
+		);
+	});
+
+	it("names the preference file that set an unknown fallback, and says it once", () => {
+		const resolved = plan({ heavy: { model: opus } }, credentials, {
+			preferences: { heavy: { fallbacks: ["openai/gpt-9"] } },
+		});
+		const hits = resolved.warnings().filter((line) => line.includes("openai/gpt-9"));
+		expect(hits).toEqual([expect.stringContaining("set by melian.local.yaml")]);
+	});
+
+	it("names --model for an unknown model the flag routes a lens tier to", () => {
+		const resolved = plan({ heavy: { model: opus } }, credentials, { model: "anthropic/typo" });
+		expect(resolved.warnings()).toContain(
+			"medium: anthropic/typo, set by --model, is not a model the catalogue holds; a newer pi-ai may hold it",
+		);
+	});
+
+	it("names melian.yaml for an unknown committed model when a preference file changed only the fallbacks", () => {
+		const resolved = plan({ heavy: { model: "anthropic/typo", fallbacks: [gpt] } }, credentials, {
+			preferences: { heavy: { fallbacks: ["openai/gpt-9"] } },
+		});
+		expect(resolved.tier("heavy").unknown).toEqual([
+			{ model: "anthropic/typo", by: "melian.yaml" },
+			{ model: "openai/gpt-9", by: "melian.local.yaml" },
+		]);
+	});
+
+	it("names melian.yaml for a committed model and fallback that accept does not list", () => {
+		const resolved = plan(
+			{ heavy: { model: "anthropic/typo", fallbacks: ["openai/gpt-8"], accept: [opus, "openai/gpt-7"] } },
+			credentials,
+			{ preferences: { heavy: { fallbacks: ["openai/gpt-8", "openai/gpt-9", "openai/gpt-7"] } } },
+		);
+		expect(resolved.tier("heavy").unknown).toEqual([
+			{ model: "anthropic/typo", by: "melian.yaml" },
+			{ model: "openai/gpt-8", by: "melian.yaml" },
+			{ model: "openai/gpt-9", by: "melian.local.yaml" },
+			{ model: "openai/gpt-7", by: "melian.yaml" },
+		]);
+	});
+
+	it("says nothing for a catalogue marked partial", () => {
+		const resolved = plan({ heavy: { model: "anthropic/typo" } }, credentials, { partialCatalog: true });
+		expect(resolved.tier("heavy").unknown).toBeUndefined();
+		expect(resolved.warnings().filter((line) => line.includes("catalogue"))).toEqual([]);
+	});
+
+	it("lists each distinct unknown name, and keeps no list when there is none", () => {
+		const two = plan({ heavy: { model: opus, fallbacks: ["openai/gpt-8", "openai/gpt-9"] } }, credentials);
+		expect(two.tier("heavy").unknown).toEqual([
+			{ model: "openai/gpt-8", by: "melian.yaml" },
+			{ model: "openai/gpt-9", by: "melian.yaml" },
+		]);
+		const none = plan({ heavy: { model: opus } }, credentials);
+		expect(Object.hasOwn(none.tier("heavy"), "unknown")).toBe(false);
+	});
+
+	it("escapes the model name", () => {
+		const resolved = plan({ heavy: { model: opus, fallbacks: ["openai/x\u001b[31my"] } }, credentials);
+		const [line] = resolved.warnings().filter((each) => each.includes("openai/x"));
+		expect(line).not.toContain("\u001b");
+	});
+
+	it("says nothing when every route model is in the catalogue", () => {
+		const resolved = plan({ heavy: { model: opus, fallbacks: [gpt] } }, credentials);
+		expect(resolved.warnings().filter((line) => line.includes("catalogue"))).toEqual([]);
+	});
+
+	it("reads a plan stored before the plan kept them as having none", () => {
+		const stored = plan({ heavy: { model: opus } }, credentials).toJSON();
+		expect(
+			ReviewPlan.from(stored)
+				.warnings()
+				.filter((line) => line.includes("catalogue")),
+		).toEqual([]);
 	});
 });

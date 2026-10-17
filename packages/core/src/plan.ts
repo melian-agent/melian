@@ -30,6 +30,8 @@ export interface PlanInput {
 	/** `--model`, which routes every lens tier to one model. */
 	readonly model?: string;
 	readonly catalog: readonly CatalogModel[];
+	/** Set when the catalogue is a stand-in, such as scripted mode's, so absence from it proves nothing. */
+	readonly partialCatalog?: true;
 	/** Each provider that holds credentials, to where they come from, such as `ANTHROPIC_API_KEY`. Never a value. */
 	readonly credentials: Readonly<Record<string, string>>;
 	/** The lenses loaded for the review, and the checks its tiers name: a lens runs only where a `lens.<name>` is named. */
@@ -67,7 +69,12 @@ export type PlannedTier = {
 	acceptOverridden?: false;
 	/** Why the tier is not routed, or why a check on it fails. */
 	reason?: string;
+	/** Route and accept entries the catalogue does not hold, with the file that set each. Absent when there are none. */
+	unknown?: UnknownModel[];
 };
+
+/** A route entry the catalogue does not hold; `provider` is its provider when the catalogue holds no model of it. */
+export type UnknownModel = { model: string; by: string; provider?: string };
 
 /**
  * One level of a lens: the tier it runs on, and, where a preference file moved it there, the tier the committed files
@@ -214,8 +221,25 @@ export class ReviewPlan {
 				credential: credentials[parseModelReference(model, tier).provider] ?? "none",
 				...(entry(model) === undefined ? {} : { family: sameModel(entry(model)!.name).split(" ")[0]! }),
 			}));
+		const unknown: UnknownModel[] = [];
+		const committed = (name: string) =>
+			name === policy?.model || policy?.fallbacks?.includes(name) === true || accept.includes(name);
+		for (const [name, source] of [
+			...route.map((each): [string, string] => [each, committed(each) ? "melian.yaml" : (by ?? "melian.yaml")]),
+			...accept.map((each): [string, string] => [each, "melian.yaml"]),
+		]) {
+			if (input.partialCatalog === true) break;
+			const { provider } = parseModelReference(name, tier);
+			if (entry(name) !== undefined || unknown.some(({ model }) => model === name)) continue;
+			unknown.push({
+				model: name,
+				by: source,
+				...(catalog.some((model) => model.provider === provider) ? {} : { provider }),
+			});
+		}
 		const base = {
 			tier,
+			...(unknown.length === 0 ? {} : { unknown }),
 			...(wanted === undefined ? {} : { wanted }),
 			...(accept.length === 0 ? {} : { accept: [...accept] }),
 			...(policy?.acceptOverridden === false ? { acceptOverridden: false as const } : {}),
@@ -532,7 +556,7 @@ export class ReviewPlan {
 			if (lineage === undefined) return [];
 			return [`${labelOf(lens)} runs ${lineage.model}, ${ReviewPlan.lineageText(lineage)}`];
 		});
-		const tiers = this.tiers.flatMap((planned): string[] => {
+		const notice = (planned: PlannedTier): string[] => {
 			const { tier, status, reason } = planned;
 			const lenses = used.get(tier);
 			const on = lenses === undefined ? "" : `, for ${listed(lenses)}`;
@@ -558,7 +582,14 @@ export class ReviewPlan {
 			return [
 				`${tier} runs ${model}, which the committed route accepts, since ${planned.wanted} has no credentials`,
 			];
-		});
+		};
+		const tiers = this.tiers.flatMap((planned) => [
+			...(planned.unknown ?? []).map(
+				({ model, by, provider }) =>
+					`${planned.tier}: ${model}, set by ${by}, is not a model the catalogue holds; ${provider === undefined ? "a newer pi-ai may hold it" : `it knows no provider ${provider}`}`,
+			),
+			...notice(planned),
+		]);
 		return [...tiers, ...moved];
 	}
 

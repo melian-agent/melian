@@ -175,6 +175,7 @@ export async function reviewModels(
 		routes: loaded.routes,
 		...(model === undefined ? {} : { model }),
 		catalog,
+		...(scripted ? { partialCatalog: true as const } : {}),
 		credentials,
 		lenses,
 		checks: options.checks,
