@@ -38,7 +38,11 @@ Review and review-comment listings use Octokit's pagination authority, capped at
 GraphQL thread pages have the same cap and reject missing or repeated next cursors, partial nodes and GraphQL errors.
 All pages must complete before their facts decide a write. The verdict's status is set before those reads.
 Octokit's paginator normalises a null body to an empty array and converts HTTP 409 into an empty synthetic page.
-Validate raw bodies before pagination and reject a page without a response URL, or those failures can look like an empty pull request.
+Validate raw bodies and every record before pagination, then reject a page without a response URL.
+Otherwise those failures can look like an empty pull request.
+Review and comment IDs must be positive safe integers. Bodies are strings; authors are objects with a non-empty login, or null for deleted accounts.
+Comments require a valid parent-review ID. A reply link may be absent on a root; when present, it must be a positive safe integer.
+A null or malformed record rejects the complete listing, including any earlier valid page.
 A settled rerun with nothing owed reads neither marker lists nor threads.
 The fake distinguishes thread node IDs from root database IDs, checks query selections and target variables, and supports failed or partial pages.
 Tests can change authors, resolve or unresolve threads, hide them from GraphQL and delete comments independently.

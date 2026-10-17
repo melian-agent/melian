@@ -308,3 +308,118 @@ it.each(["one page", "two pages"])("uses the newest matching push from %s", asyn
 	expect(await provider.permission(head.pusher!)).toBe("read");
 	expect(pages).toEqual(pagination === "one page" ? [1] : [1, 2]);
 });
+
+describe("publication record validation", () => {
+	const secret = "11".repeat(32);
+	const wanted = { fingerprint: "0123456789abcdef", round: 1 };
+	const common: { name: string; field?: string; value?: unknown; element?: unknown }[] = [
+		{ name: "null element", element: null },
+		{ name: "string element", element: "partial" },
+		{ name: "missing id", field: "id" },
+		{ name: "null id", field: "id", value: null },
+		{ name: "string id", field: "id", value: "1" },
+		{ name: "zero id", field: "id", value: 0 },
+		{ name: "negative id", field: "id", value: -1 },
+		{ name: "fractional id", field: "id", value: 1.5 },
+		{ name: "unsafe id", field: "id", value: Number.MAX_SAFE_INTEGER + 1 },
+		{ name: "missing author", field: "user" },
+		{ name: "string author", field: "user", value: "human" },
+		{ name: "missing login", field: "user", value: {} },
+		{ name: "null login", field: "user", value: { login: null } },
+		{ name: "array login", field: "user", value: { login: ["human"] } },
+		{ name: "empty login", field: "user", value: { login: "" } },
+		{ name: "missing body", field: "body" },
+		{ name: "null body", field: "body", value: null },
+		{ name: "object body", field: "body", value: {} },
+	];
+	const cases: { name: string; kind: string; field?: string; value?: unknown; element?: unknown }[] = [
+		...common.flatMap((each) => [
+			{ ...each, kind: "review" },
+			{ ...each, kind: "comment" },
+		]),
+		...["pull_request_review_id", "in_reply_to_id"].flatMap((field) => [
+			{ name: `string ${field}`, field, value: "1", kind: "comment" },
+			{ name: `zero ${field}`, field, value: 0, kind: "comment" },
+			{ name: `fractional ${field}`, field, value: 1.5, kind: "comment" },
+			{ name: `unsafe ${field}`, field, value: Number.MAX_SAFE_INTEGER + 1, kind: "comment" },
+		]),
+		{ name: "missing review link", field: "pull_request_review_id", kind: "comment" },
+		{ name: "null review link", field: "pull_request_review_id", value: null, kind: "comment" },
+		{ name: "null reply link", field: "in_reply_to_id", value: null, kind: "comment" },
+	];
+
+	it.each(cases)("rejects the whole $kind listing on $name", async ({ kind, ...bad }) => {
+		const { state } = fixture();
+		const head = state.pull.head.sha;
+		const review = {
+			id: 1,
+			user: { login: state.login },
+			body: marker(head, "verdict", wanted.fingerprint, secret, { round: 1 }),
+			commit_id: head,
+			event: "COMMENT",
+		};
+		const comment = {
+			id: 2,
+			user: { login: state.login },
+			body: marker(head, "finding", "fedcba9876543210", secret),
+			path: "src/a.ts",
+			line: 1,
+			side: "RIGHT",
+			pull_request_review_id: 1,
+		};
+		state.reviews.push(review);
+		state.comments.push(comment);
+		const valid = kind === "review" ? review : comment;
+		const malformed: Record<string, unknown> = { ...valid };
+		if (bad.field !== undefined) {
+			if (Object.hasOwn(bad, "value")) malformed[bad.field] = bad.value;
+			else delete malformed[bad.field];
+		}
+		const element = Object.hasOwn(bad, "element") ? bad.element : malformed;
+		const transport = fakeGitHub(state);
+		const provider = createGitHubProvider({
+			owner: state.owner,
+			repo: state.repo,
+			token: "test",
+			fetch: async (input, init) => {
+				const response = await transport(input, init);
+				const path = new URL(String(input)).pathname;
+				return path.endsWith(kind === "review" ? "/reviews" : "/comments")
+					? new Response(JSON.stringify([valid, element]), { status: 200, headers: response.headers })
+					: response;
+			},
+		});
+		await expect(provider.findPublished(7, head, wanted, secret)).rejects.toMatchObject({
+			code: "failed",
+			message: expect.stringContaining("incomplete publication page"),
+		});
+		expect(state.calls.every(({ method }) => method === "GET")).toBe(true);
+	});
+
+	it("accepts positive IDs at one and the safe-integer bound, optional root links and null deleted authors", async () => {
+		const { state, provider } = fixture();
+		const head = state.pull.head.sha;
+		state.reviews.push({
+			id: 1,
+			user: { login: state.login },
+			body: marker(head, "verdict", wanted.fingerprint, secret, { round: 1 }),
+			commit_id: head,
+			event: "COMMENT",
+		});
+		const root = {
+			id: Number.MAX_SAFE_INTEGER,
+			user: { login: state.login },
+			body: marker(head, "finding", "fedcba9876543210", secret),
+			path: "src/a.ts",
+			line: 1,
+			side: "RIGHT",
+			pull_request_review_id: 1,
+		};
+		state.comments.push(root, { ...root, id: 1, user: null, in_reply_to_id: root.id, body: "Deleted author" });
+		expect(await provider.findPublished(7, head, wanted, secret)).toEqual({
+			review: "1",
+			threads: { fedcba9876543210: String(root.id) },
+			replies: {},
+		});
+	});
+});
