@@ -317,6 +317,7 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 				? ` Verification: ${verdict.verificationSummary()}; ${plural(verdict.refuted?.length ?? 0, "refuted finding")} not posted.`
 				: ""),
 	);
+	parts.push(...new Set(tallied.flatMap((finding) => finding.trustFloorNotes().slice(0, 1)).map(inline)));
 	const reviewStatus = verdict.reviewStatus();
 	parts.push(`melian/review: ${reviewStatus.state} (${inline(reviewStatus.description)}).`);
 	if (verdict.counted().some((finding) => finding.properties.resolution === "acknowledge")) {
