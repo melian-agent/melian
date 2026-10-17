@@ -64,6 +64,7 @@ function plan(
 		retier?: Record<string, LensTier>;
 		committedTiers?: Record<string, LensTier>;
 		catalog?: CatalogModel[];
+		partialCatalog?: boolean;
 		lenses?: Lens[];
 	} = {},
 ): ReviewPlan {
@@ -93,6 +94,7 @@ function plan(
 		},
 		...(options.model === undefined ? {} : { model: options.model }),
 		catalog: options.catalog ?? catalog,
+		...(options.partialCatalog === true ? { partialCatalog: true as const } : {}),
 		credentials,
 		lenses: options.lenses ?? lenses,
 		checks: options.checks ?? ["lens.correctness"],
@@ -1082,6 +1084,22 @@ describe("a route naming a model the catalogue does not hold", () => {
 		expect(resolved.warnings()).toContain(
 			"medium: anthropic/typo, set by --model, is not a model the catalogue holds; a newer pi-ai may hold it",
 		);
+	});
+
+	it("names melian.yaml for an unknown committed model when a preference file changed only the fallbacks", () => {
+		const resolved = plan({ heavy: { model: "anthropic/typo", fallbacks: [gpt] } }, credentials, {
+			preferences: { heavy: { fallbacks: ["openai/gpt-9"] } },
+		});
+		expect(resolved.tier("heavy").unknown).toEqual([
+			{ model: "anthropic/typo", by: "melian.yaml" },
+			{ model: "openai/gpt-9", by: "melian.local.yaml" },
+		]);
+	});
+
+	it("says nothing for a catalogue marked partial", () => {
+		const resolved = plan({ heavy: { model: "anthropic/typo" } }, credentials, { partialCatalog: true });
+		expect(resolved.tier("heavy").unknown).toBeUndefined();
+		expect(resolved.warnings().filter((line) => line.includes("catalogue"))).toEqual([]);
 	});
 
 	it("lists each distinct unknown name, and keeps no list when there is none", () => {

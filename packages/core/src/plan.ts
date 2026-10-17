@@ -30,6 +30,8 @@ export interface PlanInput {
 	/** `--model`, which routes every lens tier to one model. */
 	readonly model?: string;
 	readonly catalog: readonly CatalogModel[];
+	/** Set when the catalogue is a stand-in, such as scripted mode's, so absence from it proves nothing. */
+	readonly partialCatalog?: true;
 	/** Each provider that holds credentials, to where they come from, such as `ANTHROPIC_API_KEY`. Never a value. */
 	readonly credentials: Readonly<Record<string, string>>;
 	/** The lenses loaded for the review, and the checks its tiers name: a lens runs only where a `lens.<name>` is named. */
@@ -220,10 +222,20 @@ export class ReviewPlan {
 				...(entry(model) === undefined ? {} : { family: sameModel(entry(model)!.name).split(" ")[0]! }),
 			}));
 		const unknown: UnknownModel[] = [];
-		for (const [name, source] of [
-			...route.map((each): [string, string] => [each, by ?? "melian.yaml"]),
-			...accept.map((each): [string, string] => [each, "melian.yaml"]),
-		]) {
+		const committed = new Set([
+			...(policy?.model === undefined ? [] : [policy.model]),
+			...(policy?.fallbacks ?? []),
+			...accept,
+		]);
+		for (const [name, source] of input.partialCatalog === true
+			? []
+			: [
+					...route.map((each): [string, string] => [
+						each,
+						committed.has(each) ? "melian.yaml" : (by ?? "melian.yaml"),
+					]),
+					...accept.map((each): [string, string] => [each, "melian.yaml"]),
+				]) {
 			const { provider } = parseModelReference(name, tier);
 			if (entry(name) !== undefined || unknown.some(({ model }) => model === name)) continue;
 			unknown.push({
