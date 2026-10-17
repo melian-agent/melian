@@ -529,6 +529,127 @@ describe("step 29: lowered and refuted trust objections", () => {
 	});
 });
 
+describe("step 29: exact survivor regressions", () => {
+	it("preserves the speaker's claim when only imported proof changes it", () => {
+		const speaker = report(
+			{ cause: "pre-existing", evidence: input.evidence!.map((each) => ({ ...each, role: "context" as const })) },
+			plausible,
+		);
+		const prover = report(
+			{
+				rule: "untested-behaviour",
+				cause: "affected",
+				source: { check: "lens.tests" },
+				evidence: input.evidence!.map((each) => ({ ...each, proves: true })),
+			},
+			plausible,
+		);
+		const merged = Finding.from({
+			...speaker.toJSON(),
+			properties: { ...speaker.properties, ...speaker.mergeClaims([speaker, prover]) },
+		});
+		expect(merged.properties.cause).toBe("affected");
+		expect(merged.properties.evidence).toContainEqual(prover.properties.evidence![0]);
+		expect(merged.claims()).toEqual(speaker.claims());
+	});
+
+	it("keeps ordinary resolution for a refutation with no protected claims", () => {
+		const finding = report({ severity: "P1", source: { check: "lens.correctness" } }, refuted);
+		expect(finding.trustFloor(defaultConfig)).toEqual([]);
+		expect(finding.decision(defaultConfig).resolution).toBe("block");
+		const verdict = new Adjudication({
+			findings: [finding],
+			config: defaultConfig,
+			manifest: [],
+			checks: [],
+		}).adjudicate();
+		expect(verdict.refuted?.map((each) => each.id)).toEqual([finding.id]);
+		expect(verdict.counted()).toEqual([]);
+	});
+
+	it("counts an important defect when only one of two protected minima is visible", () => {
+		const trust = report({ cause: "pre-existing", severity: "P1" }, refuted);
+		const tests = report({ cause: "pre-existing", rule: "vacuous-test", source: { check: "lens.tests" } }, refuted);
+		const config = {
+			...defaultConfig,
+			resolution: { ...defaultConfig.resolution, P1: "silent" as const, P2: "silent" as const },
+		};
+		const verdict = new Adjudication({ findings: [trust, tests], config, manifest: [], checks: [] }).adjudicate();
+		expect(verdict.findings.advisory).toHaveLength(1);
+		const finding = verdict.findings.advisory[0]!;
+		expect(finding.properties.decidedBy?.trustFloor?.map((claim) => claim.minimum).sort()).toEqual([
+			"advisory",
+			"silent",
+		]);
+		expect(finding.lifted(config)).toBe(false);
+		expect(verdict.counted().map((each) => each.id)).toEqual([trust.id]);
+		expect(verdict.refuted ?? []).toEqual([]);
+		expect(verdict.status).toBe("findings");
+	});
+
+	it("keeps a non-speaking claim's injection floor in its ordinary counterpart", () => {
+		const injection = report(
+			{ rule: "melian/injection-attempt", severity: "P1", source: { check: "lens.contracts" } },
+			refuted,
+		);
+		const ordinary = report(
+			{ rule: "unhandled-error", severity: "P1", source: { check: "lens.correctness" } },
+			plausible,
+		);
+		const speaker = Finding.from({
+			...ordinary.toJSON(),
+			properties: { ...ordinary.properties, ...ordinary.mergeClaims([ordinary, injection]) },
+		});
+		const config = { resolution: { ...defaultConfig.resolution, P1: "silent" as const } };
+		expect(speaker.trustFloor(config)).toMatchObject([
+			{ id: injection.id, ruleId: "melian/injection-attempt", minimum: "acknowledge" },
+		]);
+	});
+
+	it("renders exact notes when only one of two protected claims needs acknowledgement", () => {
+		const trust = report();
+		const tests = report({ rule: "vacuous-test", severity: "P3", source: { check: "lens.tests" } }, refuted);
+		const verdict = new Adjudication({
+			findings: [trust, tests],
+			config: defaultConfig,
+			manifest: [],
+			checks: [],
+		}).adjudicate();
+		const finding = verdict.findings.acknowledge[0]!;
+		expect(finding.properties.decidedBy?.trustFloor?.map((claim) => claim.minimum).sort()).toEqual([
+			"acknowledge",
+			"advisory",
+		]);
+		const notes = {
+			[trust.id]: [
+				`${trust.id} lens.trust-boundary fail-open: plausible, reported P2, minimum acknowledge. ${lowered.reason}`,
+				"Lowered from P2 to P3: The plant needs hostile Vitest configuration.",
+			],
+			[tests.id]: [
+				`${tests.id} lens.tests vacuous-test: refuted, reported P3, minimum advisory. ${refuted.reason}`,
+				"Verifier refuted this claim; maintainer review still required.",
+			],
+		};
+		expect(finding.trustFloorNotes()).toEqual([
+			"Trust floor: acknowledge required; maintainer dismissal needed.",
+			...[trust.id, tests.id].sort().flatMap((id) => notes[id]!),
+		]);
+	});
+
+	it("defaults ordinary rule floors to the finding's own rule", () => {
+		const finding = report(
+			{ rule: "melian/injection-attempt", severity: "P1", source: { check: "lens.contracts" } },
+			plausible,
+		);
+		const capped = finding.capped({ resolution: { ...defaultConfig.resolution, P1: "silent" } });
+		expect(capped.resolution).toBe("silent");
+		expect(finding.floored(capped)).toMatchObject({
+			resolution: "acknowledge",
+			decidedBy: { floor: "injection-attempt" },
+		});
+	});
+});
+
 describe("step 29: protected claims use stored checks and rules at every path", () => {
 	it.each([
 		"untested-behaviour",
