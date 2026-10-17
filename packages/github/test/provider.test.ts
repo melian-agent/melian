@@ -1,4 +1,4 @@
-import { createGitHubProvider } from "@melian-agent/github";
+import { createGitHubProvider, marker } from "@melian-agent/github";
 import { describe, expect, it } from "vitest";
 import { fakeGitHub, fakeState } from "./fixtures/fake-github.ts";
 
@@ -22,6 +22,105 @@ function fixture() {
 	});
 	return { state, provider };
 }
+
+describe("publication response gaps", () => {
+	it.each([
+		["missing repository", {}],
+		["deleted pull request", { repository: { pullRequest: null } }],
+		["missing thread page", { repository: { pullRequest: {} } }],
+		[
+			"empty thread comments",
+			{
+				repository: {
+					pullRequest: {
+						reviewThreads: {
+							nodes: [{ id: "thread-1", isResolved: false, comments: { nodes: [] } }],
+							pageInfo: { hasNextPage: false, endCursor: null },
+						},
+					},
+				},
+			},
+		],
+		[
+			"null first comment",
+			{
+				repository: {
+					pullRequest: {
+						reviewThreads: {
+							nodes: [{ id: "thread-1", isResolved: false, comments: { nodes: [null] } }],
+							pageInfo: { hasNextPage: false, endCursor: null },
+						},
+					},
+				},
+			},
+		],
+	])("fails closed on %s before resolving a thread", async (_, data) => {
+		const { state } = fixture();
+		const transport = fakeGitHub(state);
+		const provider = createGitHubProvider({
+			owner: state.owner,
+			repo: state.repo,
+			token: "test",
+			fetch: async (input, init) => {
+				const response = await transport(input, init);
+				expect(new URL(String(input)).pathname).toBe("/graphql");
+				return new Response(JSON.stringify({ data }), { status: response.status, headers: response.headers });
+			},
+		});
+		await expect(provider.resolveThread(7, "1")).rejects.toThrow();
+		expect(state.calls).toHaveLength(1);
+		expect(state.resolvedThreads).toEqual([]);
+		expect(state.comments).toEqual([]);
+	});
+
+	it("accepts an empty thread page and confirms the root is deleted through REST", async () => {
+		const { state, provider } = fixture();
+		expect(await provider.isThreadOpen(7, "1")).toBe(false);
+		expect(state.calls.map(({ path }) => path)).toEqual(["/graphql", "/repos/owner/repo/pulls/comments/1"]);
+	});
+
+	it("skips a ghost reply author and keeps reading signed answers", async () => {
+		const { state, provider } = fixture();
+		const head = state.pull.head.sha;
+		const secret = "11".repeat(32);
+		const finding = "fedcba9876543210";
+		const root = {
+			id: 1,
+			user: { login: state.login },
+			body: marker(head, "finding", finding, secret),
+			path: "src/a.ts",
+			line: 1,
+			side: "RIGHT",
+			pull_request_review_id: 1,
+		};
+		const answer = marker(head, "resolved", finding, secret);
+		state.comments.push(
+			root,
+			{ ...root, id: 2, body: answer, in_reply_to_id: 1, user: null },
+			{ ...root, id: 3, body: answer, in_reply_to_id: 1 },
+		);
+		expect(await provider.findPublished(7, head, { fingerprint: "0123456789abcdef", round: 1 }, secret)).toEqual({
+			threads: { [finding]: "1" },
+			replies: { [`${finding} 1`]: "3" },
+		});
+	});
+
+	it("returns no publication markers from empty review and comment listings", async () => {
+		const { state, provider } = fixture();
+		expect(
+			await provider.findPublished(
+				7,
+				state.pull.head.sha,
+				{ fingerprint: "0123456789abcdef", round: 1 },
+				"11".repeat(32),
+			),
+		).toEqual({ threads: {}, replies: {} });
+		expect(state.calls.map(({ path }) => path)).toEqual([
+			"/repos/owner/repo/pulls/7/reviews",
+			"/repos/owner/repo/pulls/7/comments",
+		]);
+	});
+});
 
 describe("provider identity", () => {
 	it("reads the pull request author and repository permission for each login", async () => {
