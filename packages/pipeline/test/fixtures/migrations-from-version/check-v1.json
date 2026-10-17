@@ -1,0 +1,145 @@
+{
+  "recordedBy": "2d20efd74106f8a9ba80368000d0390172dc6ae4",
+  "task": {
+    "id": 8,
+    "conversationId": 1,
+    "kind": "melian.check",
+    "version": 1,
+    "input": {
+      "run": "2aaa599dc71880733c207b318da4d72f51eb4644 25b6dce1f7491756b55006c15fa1023b60ca2f8d fast 822152b65316cddd 7",
+      "check": "guardrails",
+      "changeset": {
+        "kind": "range",
+        "id": "range-8fb67dfe2bac6ead",
+        "repoRoot": "/private/var/folders/db/mtn64lld7g971ck9kfq26xyc0000gn/T/codex-run.dX9Sfa/melian-review-xsUWNX",
+        "spec": {
+          "base": "main",
+          "head": "feature",
+          "mode": "threeDot"
+        },
+        "revision": {
+          "head": "25b6dce1f7491756b55006c15fa1023b60ca2f8d",
+          "base": "2aaa599dc71880733c207b318da4d72f51eb4644",
+          "files": [
+            {
+              "status": "modified",
+              "path": "notes.txt",
+              "oldMode": "100644",
+              "oldKind": "file",
+              "newMode": "100644",
+              "newKind": "file",
+              "binary": false,
+              "hunks": [
+                {
+                  "file": "notes.txt",
+                  "index": 0,
+                  "oldStart": 1,
+                  "oldLines": 1,
+                  "newStart": 1,
+                  "newLines": 1,
+                  "header": "@@ -1 +1 @@",
+                  "text": "-ready\n+TODO"
+                }
+              ]
+            }
+          ],
+          "policyFiles": []
+        }
+      },
+      "config": {
+        "tiers": {
+          "fast": [
+            "guardrails"
+          ],
+          "standard": [
+            "fast",
+            "lens.correctness"
+          ],
+          "full": [
+            "standard",
+            "lens.contracts"
+          ]
+        },
+        "stages": {
+          "pre-commit": "fast",
+          "pre-push": "standard",
+          "pull-request": "full",
+          "comment": "standard"
+        },
+        "resolution": {
+          "P0": "block",
+          "P1": "block",
+          "P2": "acknowledge",
+          "P3": "advisory",
+          "nit": "silent"
+        },
+        "lenses": {},
+        "models": {},
+        "static": {
+          "biome": {
+            "enabled": true,
+            "timeout": 300,
+            "severity": {}
+          },
+          "tsc": {
+            "enabled": true,
+            "timeout": 300,
+            "severity": {},
+            "project": "tsconfig.json"
+          }
+        },
+        "guardrails": {
+          "forbidden-paths": {
+            "enabled": true,
+            "severity": "P1",
+            "rules": {}
+          },
+          "required-files": {
+            "enabled": true,
+            "severity": "P2",
+            "rules": {}
+          },
+          "forbidden-patterns": {
+            "enabled": true,
+            "severity": "P2",
+            "rules": {
+              "todo": {
+                "pattern": "TODO",
+                "message": "Finish the TODO"
+              }
+            }
+          },
+          "policy-change-review": {
+            "enabled": true,
+            "severity": "P2",
+            "analyserSeverity": "P1",
+            "files": []
+          }
+        },
+        "knowledge": {
+          "writeBack": false
+        },
+        "decisions": {
+          "thresholds": {}
+        },
+        "ruleAliases": {},
+        "checks": {
+          "allowSkip": []
+        }
+      },
+      "source": {
+        "kind": "revision",
+        "commit": "2aaa599dc71880733c207b318da4d72f51eb4644"
+      }
+    },
+    "owner": 7,
+    "background": false,
+    "abortRequested": false,
+    "state": {
+      "status": "running",
+      "checkpoint": {
+        "phase": "run"
+      }
+    }
+  }
+}
