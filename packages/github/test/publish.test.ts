@@ -159,6 +159,7 @@ describe("reading markers back", () => {
 		const otherStorage = marker(head, "verdict", fingerprint, "22".repeat(32), { round: 1 });
 		state.reviews.push(review(1, state.login, unsigned), review(2, state.login, wrong));
 		state.reviews.push(review(3, state.login, otherStorage));
+		for (const each of state.reviews) each.user!.type = "Bot";
 		state.comments.push(comment(4, state.login, marker(head, "finding", finding, "22".repeat(32))));
 		// A thread's marker copied into a reply is not a reply's.
 		state.comments.push(comment(5, state.login, marker(head, "finding", finding, secret), 4));
@@ -1237,7 +1238,7 @@ describe("cross-head answer discovery", () => {
 		const state = pullRequestState();
 		state.reviews.push({
 			id: 1,
-			user: { login: state.login },
+			user: { login: state.login, type: "Bot" },
 			body: marker(old, "verdict", "9999999999999999", secret, { round: 1 }),
 			commit_id: old,
 			event: "COMMENT",
