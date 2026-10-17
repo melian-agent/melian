@@ -334,8 +334,10 @@ function planRound(
 	// A finding the verdict holds again, while the reply that resolved its thread is owed, goes back to that thread
 	// rather than starting a second one the first would outlive. The caller leaves out a reply the provider already shows.
 	const returned = verdict.held();
-	for (const [id, { dismissal: _, addressedIn: __, ...entry }] of Object.entries(owed)) {
-		if (returned.has(id) && !settled.has(id) && !Object.hasOwn(base, id)) base[id] = entry;
+	// A dismissal's thread is not restored: a finding that returns after its dismissal reopened is posted afresh.
+	for (const [id, { addressedIn: _, ...entry }] of Object.entries(owed)) {
+		if (entry.dismissal === undefined && returned.has(id) && !settled.has(id) && !Object.hasOwn(base, id))
+			base[id] = entry;
 	}
 	const plan = verdict.publication(base, lines, head);
 	const resolved: Record<string, PublishedEntry> = Object.fromEntries(
