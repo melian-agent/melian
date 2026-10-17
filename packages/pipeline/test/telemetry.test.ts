@@ -208,7 +208,7 @@ it.each([
 	expect((await fixture.read()).stages).toEqual([expect.objectContaining(expected)]);
 });
 
-it("keeps exact rendered spacing when optional fields are absent", () => {
+it.each([undefined, 0, 1])("keeps exact rendered spacing with %s incomplete requests", (count) => {
 	const telemetry = new StageTelemetry(revision, [
 		{
 			id: "task:1",
@@ -222,10 +222,13 @@ it("keeps exact rendered spacing when optional fields are absent", () => {
 			durationMs: 5,
 			reused: false,
 			resumed: false,
+			usageIncomplete: count,
 		},
 	]);
 	expect(telemetry.render()).toBe(
-		"triage test completed start=0 end=5 duration=5ms\nTotal: Token usage unavailable.\n",
+		count === 1
+			? "triage test completed start=0 end=5 duration=5ms (usage incomplete: 1 request(s) not measured)\nTotal: Token usage unavailable (usage incomplete: 1 request(s) not measured).\n"
+			: "triage test completed start=0 end=5 duration=5ms\nTotal: Token usage unavailable.\n",
 	);
 });
 
