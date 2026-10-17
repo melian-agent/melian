@@ -1,8 +1,16 @@
-import { rmSync, writeFileSync } from "node:fs";
+import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Changeset, ReviewProvider } from "@melian-agent/core";
 import { createGitHubProvider } from "@melian-agent/github";
-import { backgroundContext as context, createMemoryStorage, type Harness, publishReview } from "@melian-agent/pipeline";
+import {
+	backgroundContext as context,
+	createMemoryStorage,
+	type Harness,
+	publishReview,
+	readFindings,
+	recordDismissal,
+	revisionKey,
+} from "@melian-agent/pipeline";
 import type { LensScript } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeGitHub } from "./fixtures/fake-github.ts";
@@ -175,5 +183,103 @@ describe("a report that returns while its resolution is owed", () => {
 				.map((comment) => comment.id),
 		).toEqual([thread.id]);
 		expect(state.resolvedThreads).toContain(thread.id);
+	});
+
+	it("answers the original thread when the report returns at the head whose reply for it failed", async () => {
+		const fake = scenarioModels();
+		const state = pullRequestState();
+		const github = createGitHubProvider({
+			owner: state.owner,
+			repo: state.repo,
+			token: "t",
+			fetch: fakeGitHub(state),
+		});
+		harness = await openPublishHarness(createMemoryStorage(), fake, github);
+		const publish = async (changeset: Changeset) =>
+			publishReview({
+				harness: harness!,
+				provider: github as ReviewProvider,
+				changeset,
+				pullRequest: await github.pullRequest(7),
+				base: changeset.revision.base,
+				trustedWriters: true,
+			});
+		const first = await reviewScenario(repo, harness!, fake, script([b], []));
+		await first.review;
+		moveTo(state, first.changeset);
+		await publish(first.changeset);
+		const [thread] = state.comments.filter((comment) => comment.in_reply_to_id === undefined);
+		push();
+		const second = await reviewScenario(repo, harness!, fake, script([], []));
+		await second.review;
+		moveTo(state, second.changeset);
+		state.failReplies = true;
+		await publish(second.changeset).catch(() => undefined);
+		state.failReplies = false;
+		await (await reviewScenario(repo, harness!, fake, script([b], []), true)).review;
+		await publish(second.changeset);
+		push();
+		const last = await reviewScenario(repo, harness!, fake, script([], []));
+		await last.review;
+		moveTo(state, last.changeset);
+		await publish(last.changeset);
+
+		const roots = state.comments.filter((comment) => comment.in_reply_to_id === undefined);
+		expect(roots.map((comment) => comment.id)).toEqual([thread!.id]);
+		expect(state.resolvedThreads).toContain(thread!.id);
+	});
+
+	it("posts a reopened finding afresh when the reply to its dismissal was owed", async () => {
+		const fake = scenarioModels();
+		const state = pullRequestState();
+		const github = createGitHubProvider({
+			owner: state.owner,
+			repo: state.repo,
+			token: "t",
+			fetch: fakeGitHub(state),
+		});
+		harness = await openPublishHarness(createMemoryStorage(), fake, github);
+		const publish = async (changeset: Changeset) =>
+			publishReview({
+				harness: harness!,
+				provider: github as ReviewProvider,
+				changeset,
+				pullRequest: await github.pullRequest(7),
+				base: changeset.revision.base,
+				trustedWriters: true,
+			});
+		const first = await reviewScenario(repo, harness!, fake, script([b], []));
+		await first.review;
+		moveTo(state, first.changeset);
+		await publish(first.changeset);
+		push();
+		const second = await reviewScenario(repo, harness!, fake, script([b], []));
+		await second.review;
+		moveTo(state, second.changeset);
+		const root = (await harness.root(context)).id;
+		const [finding] = await readFindings(harness, root, revisionKey(second.changeset.revision), context);
+		await recordDismissal({
+			harness,
+			revision: second.changeset.revision,
+			id: finding!.properties.id,
+			dismissal: { by: "Melian Test <test@melian.invalid>", reason: "Safe here.", at: "2026-10-04T00:00:00.000Z" },
+			repoRoot: repo,
+		});
+		state.failReplies = true;
+		await publish(second.changeset).catch(() => undefined);
+		state.failReplies = false;
+		const source = readFileSync(join(repo, "src/user.ts"), "utf8");
+		writeFileSync(
+			join(repo, "src/user.ts"),
+			source.replace("(user.manager as User).name", "(user.manager as User).id"),
+		);
+		gitIn(repo, "commit", "--quiet", "--all", "-m", "change the trigger");
+		const third = await reviewScenario(repo, harness, fake, script([b], []));
+		await third.review;
+		moveTo(state, third.changeset);
+		await publish(third.changeset);
+
+		const roots = state.comments.filter((comment) => comment.in_reply_to_id === undefined);
+		expect(roots).toHaveLength(2);
 	});
 });
