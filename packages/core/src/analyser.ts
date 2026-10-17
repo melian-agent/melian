@@ -5,8 +5,9 @@ import { compileGlob, type LinearPattern, Refused } from "./pattern.ts";
 
 // Which analyser a configuration file steers, by its name.
 export function analyserOf(path: string): string | undefined {
-	if (enolaPolicyPattern.test(path)) return "Enola";
-	const name = posix.basename(path);
+	const lower = path.toLowerCase();
+	if (enolaPolicyPattern.test(lower)) return "Enola";
+	const name = posix.basename(lower);
 	if (/^biome\.jsonc?$/.test(name)) return "Biome";
 	if (/^tsconfig.*\.json$/.test(name)) return "tsc";
 	if (name === "package.json" || name === "package-lock.json") return "the packages Biome and tsc load";

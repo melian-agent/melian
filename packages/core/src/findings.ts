@@ -11,7 +11,7 @@ import {
 	evidenceRoleSchema,
 	findingEvidenceSchema,
 } from "./evidence.ts";
-import { melianPaths } from "./paths.ts";
+import { isLensFile, melianPaths } from "./paths.ts";
 import type { DiffLines, Placement } from "./publication.ts";
 import {
 	describeDecision,
@@ -1556,7 +1556,7 @@ export class Finding {
 
 	/**
 	 * `decision` after the floors, for the defect this finding speaks for, whose reports carry `rules`. A
-	 * `guardrail/policy-change-review` notice on a `melian.yaml`, or one for a changed `resolution`, is never below
+	 * `guardrail/policy-change-review` notice on a `melian.yaml` or `LENS.md`, or one for a changed `resolution`, is never below
 	 * `acknowledge`, so no file silences the review of a change to itself. Neither is a defect a lens reported as
 	 * `melian/injection-attempt`, whatever a mapping, a ceiling, or a lens's default says. A member of "Pre-existing,
 	 * important" ({@link Finding.important}) is never below `advisory`. Protected `claims` add their policy-bounded minima.
@@ -1570,7 +1570,9 @@ export class Finding {
 		// The notice carries no snippet, so adjudication never merges it into a finding of another rule.
 		const notice =
 			this.ruleId === "guardrail/policy-change-review" &&
-			(posix.basename(this.properties.path) === melianPaths.config || this.#resolutionNotice());
+			(posix.basename(this.properties.path).toLowerCase() === melianPaths.config ||
+				isLensFile(this.properties.path) ||
+				this.#resolutionNotice());
 		const trustFloor = [
 			...new Map(
 				claims.map(({ lifted: _, ...claim }) => [

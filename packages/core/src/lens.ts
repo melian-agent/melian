@@ -492,20 +492,24 @@ async function repositoryDefinitions(reader: SourceReader, scope: string): Promi
 	return definitions;
 }
 
-/** Whether `path` is a lens's own file: `<scope>/.melian/lenses/<name>/LENS.md`, or the same under `.agents/`. */
-export function isLensFile(path: string): boolean {
-	const [file, , directory, owner] = path.split("/").reverse();
-	return file === "LENS.md" && directory === "lenses" && (owner === ".melian" || owner === ".agents");
-}
+export { isLensFile } from "./paths.ts";
 
 // `<scope>/.melian/lenses/<name>/...` or `<scope>/.agents/lenses/<name>/...`, and the lens entry itself if it is a symlink.
-const lensEntry = /^(?:(.*)\/)?\.(?:melian|agents)\/lenses\/([^/]+)(?:\/|$)/s;
+const lensEntry = /^(?:(.*)\/)?(\.(?:melian|agents))\/lenses\/([^/]+)(?:\/|$)/is;
 
 // Every directory holding repository lenses, with the names it defines, from one listing of the source.
 async function lensScopes(reader: SourceReader): Promise<Map<string, Set<string>>> {
 	const scopes = new Map<string, Set<string>>();
 	for (const path of await reader.findPaths(lensEntry).catch(fromSource("."))) {
-		const [, scope = "", name] = lensEntry.exec(path)!;
+		const [, scope = "", owner, name] = lensEntry.exec(path)!;
+		const directory = posix.join(scope, owner!.toLowerCase(), "lenses", name!);
+		const file = posix.join(directory, "LENS.md");
+		// An alias shadows a farther lens only when this source can load it; symlinks must still reach refusal.
+		if (
+			(await reader.exists(directory).catch(fromSource(directory))) !== "symlink" &&
+			(await reader.exists(file).catch(fromSource(file))) === undefined
+		)
+			continue;
 		scopes.set(scope, (scopes.get(scope) ?? new Set()).add(name!));
 	}
 	return scopes;

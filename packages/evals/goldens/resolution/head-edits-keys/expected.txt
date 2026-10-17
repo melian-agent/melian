@@ -24,7 +24,7 @@ melian.yaml
   P2  line 1  guardrail/policy-change-review  (introduced, new, acknowledge)
     Decided by: the built-in table
   Review policy and standards changed in this revision.
-    What: This revision changes melian.yaml, which steers how Melian reviews this repository. It changes the resolution the file declares, which decides what a finding requires.
+    What: This revision changes melian.yaml, which steers how Melian reviews this repository.
     Why here: Melian reviewed the revision under the policy and standards it changes, so nothing it ran judged the new ones.
     What to do: Have a maintainer read the change to melian.yaml before merging.
 

@@ -210,7 +210,7 @@ async function workspaceGlobs(repoRoot: string, revision: Revision): Promise<str
 // Biome and tsc load the root package.json and each workspace package's; any other is an ordinary file, such as a
 // package that ships alongside the code without being part of the build.
 function loadsManifest(path: string, workspaces: readonly string[] | undefined): boolean {
-	if (path.split("/").at(-1) !== "package.json") return true;
+	if (path.split("/").at(-1)!.toLowerCase() !== "package.json") return true;
 	const directory = path.split("/").slice(0, -1).join("/");
 	return directory === "" || workspaces === undefined || matchesGlobs(workspaces, directory);
 }
@@ -222,7 +222,7 @@ function loadsManifest(path: string, workspaces: readonly string[] | undefined):
 // that cannot be read counts as changed, since nothing shows it left the keys alone.
 async function resolutionChanged(repoRoot: string, revision: Revision, path: string): Promise<boolean> {
 	let declared: (commit: string) => Promise<unknown>;
-	if (posix.basename(path) === melianPaths.config) {
+	if (posix.basename(path).toLowerCase() === melianPaths.config) {
 		declared = async (commit) => {
 			const blob = await blobText(repoRoot, commit, path);
 			if (blob.why === "absent") return undefined;
@@ -252,18 +252,18 @@ async function resolutionChanged(repoRoot: string, revision: Revision, path: str
 
 // Every policy file the revision lists, and every touched path its own configuration adds to the list. A change to an
 // analyser's configuration blocks by default: the head's copy drives the run that judges the head, so a switched-off
-// check would otherwise read as a clean one. A change to a `resolution` key, or to a lens's declared resolution, draws
-// the notice whatever switch the directory above sets: those keys decide what every other finding requires.
+// check would otherwise read as a clean one. Every changed melian.yaml or lens identity draws the notice despite the
+// parent's switch, since either file steers later reviews.
 async function policyChanges(input: GuardrailInput, paths: readonly string[], configFor: ConfigLookup): Promise<Hit[]> {
 	const { revision, repoRoot } = input;
 	const changed = revision.files.map((file) => file.path);
-	const workspaces = revision.policyFiles.some((path) => path.split("/").at(-1) === "package.json")
+	const workspaces = revision.policyFiles.some((path) => path.split("/").at(-1)!.toLowerCase() === "package.json")
 		? await workspaceGlobs(repoRoot, revision)
 		: [];
 	return Promise.all(
 		paths.map(async (path): Promise<Hit | undefined> => {
 			const guardrail = (await configFor.policyReview(path)).config.guardrails["policy-change-review"];
-			const forced = await resolutionChanged(repoRoot, revision, path);
+			const forced = posix.basename(path).toLowerCase() === melianPaths.config || isLensFile(path);
 			if (!guardrail.enabled && !forced) return undefined;
 			const added = matchesGlobs(guardrail.files, path);
 			const listed = revision.policyFiles.includes(path) && loadsManifest(path, workspaces);
@@ -276,18 +276,28 @@ async function policyChanges(input: GuardrailInput, paths: readonly string[], co
 					`${path}: cannot read its policy blob identity; the name is not UTF-8`,
 				);
 			}
-			const blob = await git(repoRoot, [
-				"--literal-pathspecs",
-				"ls-tree",
-				"--format=%(objectname)",
-				revision.head,
-				"--",
-				path,
-			]);
-			if (blob.code !== 0)
-				throw new CheckError("unreadable", check, `${revision.head}:${path}: ${blob.stderr.trim()}`);
-			const trigger = { file: path, index: 0, hash: snippetHash(`blob:${blob.stdout.trim()}`) };
-			const marked = forced ? { resolution: true as const } : {};
+			const [baseIdentity, headIdentity] = await Promise.all(
+				[revision.base, revision.head].map(async (commit) => {
+					const blob = await git(repoRoot, [
+						"--literal-pathspecs",
+						"ls-tree",
+						"--format=%(objectmode) %(objectname)",
+						commit,
+						"--",
+						path,
+					]);
+					if (blob.code !== 0)
+						throw new CheckError("unreadable", check, `${commit}:${path}: ${blob.stderr.trim()}`);
+					const [mode, object = ""] = blob.stdout.trim().split(" ");
+					return mode === "120000" ? `symlink:${object}` : object;
+				}),
+			);
+			if (forced && baseIdentity === headIdentity) return undefined;
+			const trigger = { file: path, index: 0, hash: snippetHash(`blob:${baseIdentity}:${headIdentity}`) };
+			const marked = (await resolutionChanged(repoRoot, revision, path)) ? { resolution: true as const } : {};
+			const override = guardrail.enabled
+				? ""
+				: " The directory above turns policy notices off; changes to a melian.yaml or lens file are reported regardless.";
 			const analyser = analyserOf(path) ?? (added ? "an analyser this repository configures" : undefined);
 			if (analyser !== undefined) {
 				const [base, head] = await Promise.all([
@@ -308,7 +318,8 @@ async function policyChanges(input: GuardrailInput, paths: readonly string[], co
 					match: { notice: "analyser", ...marked },
 					message: `Review the change to ${path}, which configures ${analyser}.`,
 					explanation: {
-						what: [`This revision changes ${path}, which configures ${analyser}.`, ...switched].join(" "),
+						what:
+							[`This revision changes ${path}, which configures ${analyser}.`, ...switched].join(" ") + override,
 						whyHere:
 							"The head's configuration drives the static run on the head, so this change decides how the head's own results are judged, and a switched-off check reads as a clean one.",
 						whatToDo: `Have a maintainer read the change to ${path}, or land it in its own pull request first.`,
@@ -325,7 +336,7 @@ async function policyChanges(input: GuardrailInput, paths: readonly string[], co
 				match: { notice: "policy", ...marked },
 				message: "Review policy and standards changed in this revision.",
 				explanation: {
-					what: `This revision changes ${path}, which steers how Melian reviews this repository.${forced ? " It changes the resolution the file declares, which decides what a finding requires." : ""}`,
+					what: `This revision changes ${path}, which steers how Melian reviews this repository.${override}`,
 					whyHere:
 						"Melian reviewed the revision under the policy and standards it changes, so nothing it ran judged the new ones.",
 					whatToDo: `Have a maintainer read the change to ${path} before merging.`,

@@ -48,7 +48,7 @@ export class SourceError extends Error {
 // Paths are repository-relative with forward slashes, "" for the root, and already checked to stay inside it.
 // Neither implementation follows a symlink: a symlink is refused with `symlink`, and a path beneath a symlinked
 // directory does not exist, as in git's own trees.
-/** A bounded reader over a single repository source, without following symlinks. */
+/** A bounded reader over a single repository source, without following symlinks or entering submodules. */
 export interface SourceReader {
 	readonly commit?: string;
 	// Names a file for messages: the path for the working tree, git's `<commit>:<path>` for a revision.
@@ -120,17 +120,21 @@ class WorktreeSource implements SourceReader {
 		return result.code === 0;
 	}
 
-	// lstat each component, so that a symlinked directory partway down hides what lies beneath it.
+	// Compare directory names exactly before lstat: the filesystem may open a Unicode or case alias.
 	async exists(path: string): Promise<EntryKind | undefined> {
 		if (path === "") return "directory";
 		const parts = path.split("/");
 		for (let i = 1; i <= parts.length; i++) {
 			const prefix = parts.slice(0, i).join("/");
+			const names = await readdir(join(this.root, ...parts.slice(0, i - 1))).catch((error: NodeJS.ErrnoException) =>
+				isAbsence(error) ? undefined : unreadable(prefix)(error),
+			);
+			if (!names?.includes(parts[i - 1]!)) return undefined;
 			const stats = await lstat(join(this.root, prefix)).catch((error: NodeJS.ErrnoException) =>
 				isAbsence(error) ? undefined : unreadable(prefix)(error),
 			);
 			if (stats === undefined) return undefined;
-			const kind = kindOfStats(stats);
+			const kind = await this.entryKind(prefix, kindOfStats(stats));
 			if (i === parts.length) return kind;
 			if (kind !== "directory") return undefined;
 		}
@@ -171,7 +175,20 @@ class WorktreeSource implements SourceReader {
 		if (kind === "symlink") throw symlink(directory);
 		if (kind !== "directory") return undefined;
 		const entries = await readdir(join(this.root, directory), { withFileTypes: true }).catch(unreadable(directory));
-		return entries.map((entry) => ({ name: entry.name, kind: kindOfStats(entry) }));
+		return Promise.all(
+			entries.map(async (entry) => ({
+				name: entry.name,
+				kind: await this.entryKind(posix.join(directory, entry.name), kindOfStats(entry)),
+			})),
+		);
+	}
+
+	private async entryKind(path: string, kind: EntryKind): Promise<EntryKind> {
+		if (kind !== "directory") return kind;
+		const marker = await lstat(join(this.root, path, ".git")).catch((error: NodeJS.ErrnoException) =>
+			isAbsence(error) ? undefined : unreadable(path)(error),
+		);
+		return marker === undefined ? kind : "other";
 	}
 
 	// Tracked and untracked files git does not ignore, so an uncommitted lens counts and node_modules is not walked.

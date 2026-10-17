@@ -1077,8 +1077,8 @@ export function configLookup(repoRoot: string, source: RepositorySource): Config
 		return layers.find(({ layer }) => layer.guardrails?.[guardrail]?.rules?.[rule] !== undefined)?.site.file ?? "";
 	};
 	lookup.policyReview = async (path: string) => {
-		if (posix.basename(path) !== melianPaths.config) return layered(path);
-		if (path !== melianPaths.config) return layered(posix.dirname(path));
+		if (posix.basename(path).toLowerCase() !== melianPaths.config) return layered(path);
+		if (path.toLowerCase() !== melianPaths.config) return layered(posix.dirname(path));
 		const { config, resolutionLayers } = await layered(path);
 		return { config: withReviewFloor(config), resolutionLayers };
 	};
