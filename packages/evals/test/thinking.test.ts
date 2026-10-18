@@ -1,0 +1,175 @@
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, realpathSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { defaultConfig } from "@melian-agent/core";
+import {
+	createFakeModels,
+	fauxAssistantMessage,
+	fauxToolCall,
+	scriptVerifier,
+	systemPromptOf,
+} from "@melian-agent/pipeline/testing";
+import { expect, it, vi } from "vitest";
+import { loadGoldens, runGolden } from "../src/goldens.ts";
+import { reportTriageGoldens } from "../src/live-output.ts";
+import { EvalThinking } from "../src/thinking.ts";
+import { loadTriageGoldens, runTriageGolden } from "../src/triage.ts";
+import { loadVerifierGoldens, runVerifierGolden } from "../src/verifier.ts";
+
+it("applies a per-run level over routes without losing their models or fallbacks", () => {
+	const config = {
+		...defaultConfig,
+		models: { heavy: { model: "faux/finder", fallbacks: ["faux/fallback"], thinking: "low" as const } },
+	};
+	const override = EvalThinking.parse("heavy=medium, verifier=high,light=off");
+	expect(override.apply(config).models).toEqual({
+		heavy: { model: "faux/finder", fallbacks: ["faux/fallback"], thinking: "medium" },
+		verifier: { thinking: "high" },
+		light: { thinking: "off" },
+	});
+	expect(config.models.heavy.thinking).toBe("low");
+	expect(override.level("heavy")).toBe("medium");
+	expect(override.level("decision")).toBeUndefined();
+});
+
+it.each([undefined, ""])("leaves routes unchanged for %s", (value) => {
+	expect(EvalThinking.parse(value).apply(defaultConfig)).toEqual(defaultConfig);
+});
+
+it.each(["bad=high", "heavy=none", "heavy", "heavy=high=low", "heavy=low,heavy=high", ",", "heavy="])(
+	"refuses an invalid override %s",
+	(value) => {
+		expect(() => EvalThinking.parse(value)).toThrow("MELIAN_EVAL_THINKING");
+	},
+);
+
+it("rejects an invalid environment override before opening live credentials", () => {
+	const directory = realpathSync(mkdtempSync(join(tmpdir(), "melian-thinking-env-")));
+	try {
+		const result = spawnSync(
+			process.execPath,
+			["--conditions=@melian-agent/source", fileURLToPath(new URL("../src/live.ts", import.meta.url))],
+			{
+				cwd: directory,
+				encoding: "utf8",
+				env: {
+					PATH: process.env.PATH,
+					XDG_CONFIG_HOME: directory,
+					PI_CODING_AGENT_DIR: directory,
+					MELIAN_EVAL_LIVE: "1",
+					MELIAN_EVAL_THINKING: "heavy=invalid",
+				},
+			},
+		);
+		expect(result.status).toBe(2);
+		expect(result.stderr.trim()).toBe(
+			'MELIAN_EVAL_THINKING needs distinct tier=level entries; invalid entry "heavy=invalid"',
+		);
+	} finally {
+		rmSync(directory, { recursive: true, force: true });
+	}
+});
+
+it("applies live lens, verifier and triage overrides to fake provider bodies and spend", async () => {
+	const fake = createFakeModels();
+	const received: unknown[] = [];
+	fake.provider.setResponses(
+		Array.from({ length: 20 }, () => async (request, options, _state, model) => {
+			const body = { reasoning: { effort: options?.reasoning } };
+			received.push(body);
+			await options?.onPayload?.(body, model);
+			if (systemPromptOf(request.messages).includes("Melian adversarial verifier"))
+				return scriptVerifier(request.messages);
+			if (systemPromptOf(request.messages).includes("You answer typed questions")) {
+				const prompt = request.messages
+					.filter((message) => message.role === "user")
+					.map((message) => message.content)
+					.join("\n");
+				const questions = [...prompt.matchAll(/^### (.+)$/gm)].map((match) => match[1]!);
+				return fauxAssistantMessage(
+					fauxToolCall("answer", {
+						answers: questions.map((question) => ({
+							question,
+							probabilities: [{ option: "careful", probability: 1 }],
+						})),
+					}),
+					{ stopReason: "toolUse" },
+				);
+			}
+			return fauxAssistantMessage("Done.");
+		}),
+	);
+	const mode = {
+		kind: "live" as const,
+		models: fake.review,
+		model: "faux/faux-1",
+		thinking: EvalThinking.parse("heavy=medium,light=minimal,verifier=high"),
+	};
+	const lens = await runGolden(loadGoldens().find((golden) => golden.name === "correctness-deleted-guard")!, mode);
+	expect(received.length).toBeGreaterThan(0);
+	expect(received).toEqual(received.map(() => ({ reasoning: { effort: "medium" } })));
+	expect(lens.telemetry.spend()).toContain("requested=medium");
+	received.length = 0;
+	const verifier = await runVerifierGolden(loadVerifierGoldens()[0]!, mode);
+	expect(received.length).toBeGreaterThan(0);
+	expect(received).toEqual(received.map(() => ({ reasoning: { effort: "high" } })));
+	expect(verifier.telemetry.spend()).toContain("requested=high");
+	expect(verifier.verification?.verdict).toBe("confirmed");
+	received.length = 0;
+	const triage = createFakeModels();
+	const direct = vi.spyOn(triage.models, "completeSimple").mockImplementation(async (_model, request, options) => {
+		received.push({ reasoning: { effort: options?.reasoning } });
+		const prompt = request.messages
+			.filter((message) => message.role === "user")
+			.map((message) => message.content)
+			.join("\n");
+		const questions = [...prompt.matchAll(/^### (.+)$/gm)].map((match) => match[1]!);
+		return fauxAssistantMessage(
+			fauxToolCall("answer", {
+				answers: questions.map((question) => ({
+					question,
+					probabilities: [{ option: "careful", probability: 1 }],
+				})),
+			}),
+			{ stopReason: "toolUse" },
+		);
+	});
+	try {
+		await runTriageGolden(loadTriageGoldens()[0]!, { ...mode, models: triage.review, model: "faux/faux-1" });
+		const printed: string[] = [];
+		await reportTriageGoldens(
+			[loadTriageGoldens()[0]!],
+			triage.review,
+			"faux/faux-1",
+			1,
+			"0".repeat(64),
+			(line) => {
+				printed.push(line);
+			},
+			() => {},
+			undefined,
+			mode.thinking,
+		);
+		expect(printed.join("\n")).toContain("requested=minimal");
+		const raw = vi.spyOn(triage.models, "complete").mockImplementation(async (model, request, options) => {
+			expect(options).not.toHaveProperty("reasoning");
+			return direct.getMockImplementation()!(model, request);
+		});
+		try {
+			await runTriageGolden(loadTriageGoldens()[0]!, { kind: "live", models: triage.review, model: "faux/faux-1" });
+			expect(raw).toHaveBeenCalledOnce();
+		} finally {
+			raw.mockRestore();
+		}
+	} finally {
+		direct.mockRestore();
+	}
+
+	expect(received).toEqual([
+		{ reasoning: { effort: "minimal" } },
+		{ reasoning: { effort: "minimal" } },
+		{ reasoning: { effort: undefined } },
+	]);
+}, 60_000);

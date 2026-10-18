@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { posix } from "node:path";
+import type { ModelThinkingLevel } from "@earendil-works/pi-ai";
 import Type, { type Static, type TSchema } from "typebox";
 import Value from "typebox/value";
 import { type Document, isMap, isScalar, parseDocument } from "yaml";
@@ -9,6 +10,17 @@ import { compileGlob, compilePattern, Refused } from "./pattern.ts";
 import { openSource, type RepositorySource, SourceError, type SourceReader } from "./source.ts";
 
 const strict = { additionalProperties: false } as const;
+
+/** Pi's accepted reasoning levels, checked exhaustively against its installed type. */
+export const thinkingLevelSchema = Type.Enum({
+	off: "off",
+	minimal: "minimal",
+	low: "low",
+	medium: "medium",
+	high: "high",
+	xhigh: "xhigh",
+	max: "max",
+} satisfies { [Level in ModelThinkingLevel]: Level });
 
 const name = Type.String({ minLength: 1 });
 /** The JSON Schema of a {@link Resolution}. */
@@ -38,6 +50,7 @@ const levelBand = Type.Object(
 const modelRoute = Type.Object(
 	{
 		model: Type.Optional(name),
+		thinking: Type.Optional(thinkingLevelSchema),
 		fallbacks: Type.Optional(Type.Array(name)),
 		accept: Type.Optional(Type.Array(name)),
 		unavailable: Type.Optional(Type.Union([Type.Literal("derive"), Type.Literal("fail")])),
@@ -531,6 +544,8 @@ export const defaultConfig: MelianConfig = {
 export interface RouteLineage {
 	readonly committed: MelianConfig["models"];
 	readonly overridden: Readonly<Partial<Record<ModelTier, string>>>;
+	/** The nearest file that set each tier's thinking level, independently of its model. */
+	readonly thinking?: Readonly<Partial<Record<ModelTier, string>>>;
 	/** Each lens tier the committed files set, by lens name; a lens they leave alone runs on its own tier. */
 	readonly lensTiers: Readonly<Record<string, LensTier>>;
 	/** Each lens a preference file moved to another tier, by name, to the nearest such file. */
@@ -770,7 +785,7 @@ function checkNested(site: Site, layer: MelianYaml): void {
 	}
 
 	for (const [tier, route] of Object.entries(layer.models ?? {})) {
-		const key = routePolicyKeys.find((each) => route?.[each] !== undefined);
+		const key = [...routePolicyKeys, "thinking" as const].find((each) => route?.[each] !== undefined);
 		if (key === undefined) continue;
 		throw configError(
 			"invalidValue",
@@ -1172,7 +1187,10 @@ async function loadLayers(
 		}
 	}
 	const overridden: Partial<Record<ModelTier, string>> = {};
+	const thinking: Partial<Record<ModelTier, string>> = {};
 	for (const tier of modelTiers) {
+		const setter = layers.find(({ layer }) => layer.models?.[tier]?.thinking !== undefined);
+		if (setter !== undefined) thinking[tier] = setter.site.file;
 		const nearest = layers
 			.slice(0, preferences)
 			.find(
@@ -1180,6 +1198,12 @@ async function loadLayers(
 			);
 		if (nearest !== undefined) overridden[tier] = nearest.site.file;
 	}
-	const routes = { committed: committed.models as MelianConfig["models"], overridden, lensTiers, retiered };
+	const routes = {
+		committed: committed.models as MelianConfig["models"],
+		overridden,
+		lensTiers,
+		retiered,
+		...(Object.keys(thinking).length === 0 ? {} : { thinking }),
+	};
 	return { config, sources: layers.map(({ site }) => site.file), routes, layers, resolutionLayers };
 }

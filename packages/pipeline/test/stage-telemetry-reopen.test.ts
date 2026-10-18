@@ -137,7 +137,7 @@ it.each(["melian.check", "melian.decision", "melian.adjudication", "melian.publi
 		expect(settled.state.outcome.status).toBe(kind === "melian.adjudication" ? "failed" : "completed");
 		const record = await storage.task(id, context);
 		expect(record!.version).toBe(
-			{ "melian.check": 3, "melian.decision": 2, "melian.adjudication": 3, "melian.publish": 5 }[kind],
+			{ "melian.check": 3, "melian.decision": 2, "melian.adjudication": 4, "melian.publish": 5 }[kind],
 		);
 		const timing = await storage.findDocument(
 			{
@@ -218,7 +218,7 @@ it.each([
 			result: "recorded",
 		});
 		const task = (await storage.task(id, context))!;
-		expect(task.version).toBe(3);
+		expect(task.version).toBe(4);
 		const verdict = await readVerdict(second, root.id, revision, context);
 		expect(verdict!.findings.block).toHaveLength(1);
 		expect(verdict!.findings.acknowledge).toHaveLength(acknowledged);

@@ -71,6 +71,17 @@ async function resolutionLines(): Promise<string[]> {
 }
 
 describe("doctor resolution overrides", { timeout: 60_000 }, () => {
+	it("prints each tier's thinking and the file that set it", async () => {
+		write({
+			"melian.yaml": "models: { heavy: { thinking: high }, verifier: { thinking: low } }\n",
+			"melian.local.yaml": "models: { heavy: { thinking: off } }\n",
+		});
+		await doctor(io);
+		expect(output).toContain("heavy thinking: off; set by melian.local.yaml");
+		expect(output).toContain("verifier thinking: low; set by melian.yaml");
+		for (const tier of ["light", "medium", "decision"])
+			expect(output).toContain(`${tier} thinking: unset; Pi default`);
+	});
 	it("says so when no file overrides anything, and prints nothing outside a repository", async () => {
 		expect(await resolutionLines()).toEqual([
 			"ok: no file overrides a lens's default or a farther file's resolution",

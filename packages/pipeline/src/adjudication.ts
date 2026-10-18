@@ -144,7 +144,7 @@ class VerdictState {
 
 export const VerdictDocument = defineDoc<StoredVerdictState>({
 	kind: "melian.verdicts",
-	version: 10,
+	version: 11,
 	// Version 10 permits protected-claim diagnostics; old verdicts keep their recorded resolutions.
 	scope: "conversation",
 	history: "rewindable",
@@ -215,11 +215,11 @@ export const AdjudicationTask = defineTask<
 	name: "melian.adjudication",
 	// Version 2 added `files`, and version 3 marks a task created before stage timing. A version 1 input holds no files,
 	// so its task decides by snippet, as it did.
-	version: 3,
+	version: 4,
 	initial: () => ({ phase: "adjudicate" }),
-	migrate: (input, checkpoint) => ({
+	migrate: (input, checkpoint, from) => ({
 		input: input as unknown as AdjudicationTaskInput,
-		checkpoint: { ...(checkpoint as { phase: "adjudicate" }), legacyTiming: true },
+		checkpoint: { ...(checkpoint as { phase: "adjudicate" }), ...(from < 3 ? { legacyTiming: true as const } : {}) },
 	}),
 	phases: {
 		adjudicate: async (task, runtime, context) => {

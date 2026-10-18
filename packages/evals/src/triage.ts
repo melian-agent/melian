@@ -33,6 +33,7 @@ import Type, { type Static, type TSchema } from "typebox";
 import Value from "typebox/value";
 import { buildGoldenRepository } from "./goldens.ts";
 import { GoldenRunError } from "./run-error.ts";
+import type { EvalThinking } from "./thinking.ts";
 
 const strict = { additionalProperties: false } as const;
 const level = Type.Union(scrutinyLevels.map((each) => Type.Literal(each)));
@@ -90,7 +91,7 @@ export function loadTriageGoldens(directory: string = triageDirectory): TriageGo
 /** How a triage golden is run: a scripted model answers, or a real one does. Either way the fallback decider asks. */
 export type TriageMode =
 	| { readonly kind: "scripted" }
-	| { readonly kind: "live"; readonly models: ReviewModels; readonly model: string };
+	| { readonly kind: "live"; readonly models: ReviewModels; readonly model: string; readonly thinking?: EvalThinking };
 
 /** What the fallback decider chose for each lens of a golden, in one pass. */
 export type TriageChosen = Readonly<Record<string, string>>;
@@ -138,7 +139,11 @@ export async function runTriageGolden(
 		const text =
 			mode.kind === "scripted"
 				? scriptedModel(golden)
-				: await RouteTextModel.create(mode.models, [parseModelReference(mode.model, "light")]);
+				: await RouteTextModel.create(
+						mode.models,
+						[parseModelReference(mode.model, "light")],
+						mode.thinking?.level("light"),
+					);
 		if (text === undefined) throw new Error(`${mode.kind === "live" ? mode.model : "the model"} has no credentials`);
 		const chosen: TriageChosen[] = [];
 		for (let pass = 0; pass < passes; pass++) {

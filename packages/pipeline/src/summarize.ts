@@ -2,6 +2,7 @@ import {
 	type Changeset,
 	type MelianConfig,
 	type ModelReference,
+	type ModelRoute,
 	ReviewPlan,
 	RevisionError,
 	readRevisionFile,
@@ -87,11 +88,22 @@ const recordWalkthrough = defineTool({
 	},
 });
 
-type SummaryInput = { root: ConversationId; revision: string; prompt: string; model: ModelReference; paths?: string[] };
+type SummaryInput = {
+	root: ConversationId;
+	revision: string;
+	prompt: string;
+	model: ModelReference;
+	thinking?: ModelRoute["thinking"];
+	paths?: string[];
+};
 type SummaryCheckpoint = { phase: "spawn" } | { phase: "summarize"; child: ConversationId };
 export const SummaryTask = defineTask<SummaryInput, SummaryCheckpoint, string>({
 	name: "melian.summarize",
-	version: 1,
+	version: 2,
+	migrate: (input, checkpoint) => ({
+		input: input as unknown as SummaryInput,
+		checkpoint: checkpoint as SummaryCheckpoint,
+	}),
 	initial: () => ({ phase: "spawn" }),
 	phases: {
 		spawn: async (task, runtime, context) => {
@@ -100,6 +112,7 @@ export const SummaryTask = defineTask<SummaryInput, SummaryCheckpoint, string>({
 				(await tx.doc(SummaryResult, child.id)).paths = task.input.paths ?? [];
 				await configure(tx, child.id, {
 					model: task.input.model,
+					thinkingLevel: task.input.thinking,
 					instructions,
 					tools: [recordWalkthrough],
 					extensions: [summarizeExtension],
@@ -264,7 +277,12 @@ export async function summarizeReview(options: {
 		)
 			return;
 		const routes = provenance.plan === undefined ? config.models : ReviewPlan.from(provenance.plan).routes();
-		const route = routes.light === undefined ? undefined : resolveModelForTier("light", routes);
+		const configured = routes.light;
+		const route =
+			configured === undefined ||
+			(configured.thinking !== undefined && configured.model === undefined && configured.accept === undefined)
+				? undefined
+				: resolveModelForTier("light", routes);
 		let model: ModelReference | undefined;
 		for (const candidate of route === undefined ? [] : [route.model, ...route.fallbacks]) {
 			if (
@@ -332,7 +350,14 @@ export async function summarizeReview(options: {
 			if (options.rerun) document.walkthroughAttempts = { ...document.walkthroughAttempts, [revision]: 0 };
 			const created = await tx.createTask(
 				SummaryTask,
-				{ root: conversation.id, revision, prompt, model, paths: changeset.revision.files.map(({ path }) => path) },
+				{
+					root: conversation.id,
+					revision,
+					prompt,
+					model,
+					...(routes.light?.thinking === undefined ? {} : { thinking: routes.light.thinking }),
+					paths: changeset.revision.files.map(({ path }) => path),
+				},
 				{ ownership: { kind: "conversation" } },
 			);
 			index.tasks[revision] = created;

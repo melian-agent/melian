@@ -44,6 +44,34 @@ const routed: LoadedConfig = {
 };
 const setup = { checks: ["lens.correctness"], credentials: [] };
 
+it("uses the chosen fallback tier's thinking for triage", async () => {
+	const fake = createFakeModels();
+	const received: unknown[] = [];
+	fake.provider.setResponses([
+		(_request, options) => {
+			received.push(options?.reasoning);
+			return fauxAssistantMessage(
+				fauxToolCall("answer", {
+					answers: [{ question: "correctness", probabilities: [{ option: "careful", probability: 1 }] }],
+				}),
+				{ stopReason: "toolUse" },
+			);
+		},
+	]);
+	const chosen = await fallbackDecider(
+		{ ...defaultConfig, models: { heavy: { model: "faux/faux-1", thinking: "high" } } },
+		fake.review,
+	);
+	expect("decider" in chosen).toBe(true);
+	if (!("decider" in chosen)) throw new Error(chosen.skipped);
+	await chosen.decider.decide({
+		questionSet: { name: "triage", version: "1" },
+		state: "Change",
+		questions: [{ id: "correctness", text: "How closely?", options: ["careful", "deep"] }],
+	});
+	expect(received).toEqual(["high"]);
+});
+
 describe("--model", () => {
 	it("routes every lens tier to the model named, over the routes melian.yaml sets and their fallbacks", async () => {
 		const { plan } = await reviewModels({}, routed, [], { ...setup, model: "amazon-bedrock/claude-opus" });

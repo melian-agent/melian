@@ -54,6 +54,9 @@ export type PlannedModel = { model: string; credential: string; family?: string 
 /** One tier of a {@link ReviewPlan}, as stored. */
 export type PlannedTier = {
 	tier: ModelTier;
+	/** The tier's requested reasoning level and the file that set it; absent when Pi keeps its default. */
+	thinking?: ModelRoute["thinking"];
+	thinkingBy?: string;
 	status: TierStatus;
 	/** The route a check on the tier tries, in order. */
 	models: PlannedModel[];
@@ -239,6 +242,9 @@ export class ReviewPlan {
 		}
 		const base = {
 			tier,
+			...(effective?.thinking === undefined
+				? {}
+				: { thinking: effective.thinking, thinkingBy: routes.thinking?.[tier] ?? "melian.yaml" }),
 			...(unknown.length === 0 ? {} : { unknown }),
 			...(wanted === undefined ? {} : { wanted }),
 			...(accept.length === 0 ? {} : { accept: [...accept] }),
@@ -356,10 +362,11 @@ export class ReviewPlan {
 	 */
 	routes(): MelianConfig["models"] {
 		const routes: Partial<Record<ModelTier, ModelRoute>> = {};
-		for (const { tier, status, models } of this.tiers) {
+		for (const { tier, status, models, thinking } of this.tiers) {
+			if (thinking !== undefined) routes[tier] = { thinking };
 			const [first, ...rest] = models.map((each) => each.model);
 			if (first === undefined || (status !== "routed" && status !== "uncredentialed")) continue;
-			routes[tier] = { model: first, fallbacks: rest };
+			routes[tier] = { ...routes[tier], model: first, fallbacks: rest };
 		}
 		return routes;
 	}
@@ -666,7 +673,14 @@ export class ReviewPlan {
 	 * then each lens with the tier and model of each level; then every warning.
 	 */
 	lines(): PlanLine[] {
-		const lines: PlanLine[] = [];
+		const lines: PlanLine[] = this.tiers.map(({ tier, thinking, thinkingBy }) => ({
+			state: "ok",
+			text: visibleText(
+				thinking === undefined
+					? `${tier} thinking: unset; Pi default`
+					: `${tier} thinking: ${thinking}; set by ${thinkingBy}`,
+			),
+		}));
 		for (const { tier, status, models, by } of this.tiers) {
 			if (status !== "routed") continue;
 			const route = models

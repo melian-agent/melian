@@ -35,6 +35,7 @@ import { createFakeModels, scriptLenses } from "@melian-agent/pipeline/testing";
 import Type, { type Static, type TSchema } from "typebox";
 import Value from "typebox/value";
 import { GoldenRunError } from "./run-error.ts";
+import type { EvalThinking } from "./thinking.ts";
 
 const strict = { additionalProperties: false } as const;
 const text = Type.String({ minLength: 1 });
@@ -252,6 +253,7 @@ export type GoldenMode =
 			readonly model?: string;
 			/** A separate verifier route for a live run. */
 			readonly verifierModel?: string;
+			readonly thinking?: EvalThinking;
 	  };
 
 /** A golden's review: the findings, and the terminal rendering an author would see. */
@@ -318,6 +320,7 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 				config = { ...config, models: { ...config.models, verifier: { model: verifier } } };
 			models = mode.models;
 		}
+		if (mode.kind === "live" && mode.thinking !== undefined) config = mode.thinking.apply(config);
 		const storage = createMemoryStorage();
 		const reviewHarness = await openReviewHarness(storage, models, { retry: mode.kind !== "scripted" });
 		try {

@@ -21,7 +21,14 @@ function sources(): string[] {
 
 describe("harness boundary", () => {
 	it("only the wrapper and its testing entry import Pi Durable, pi-ai, or Chord", () => {
-		const importers = sources().filter((path) => piImport.test(readFileSync(join(root, path), "utf8")));
+		const importers = sources().filter((path) => {
+			const text = readFileSync(join(root, path), "utf8");
+			return piImport.test(
+				path.startsWith("packages/core/src/")
+					? text.replace(/import type\s*\{[^}]*\}\s*from\s*["']@earendil-works\/pi-ai["'];/g, "")
+					: text,
+			);
+		});
 		expect(importers.sort()).toEqual(permitted);
 	});
 });

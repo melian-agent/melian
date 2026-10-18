@@ -107,6 +107,7 @@ export {
 	severitySchema,
 	stricter,
 	type TscSettings,
+	thinkingLevelSchema,
 } from "./config.ts";
 export {
 	type ChoiceAnswer,

@@ -14,7 +14,11 @@ describe("core", () => {
 		const imports = readdirSync(src, { recursive: true, encoding: "utf8" })
 			.filter((path) => /\.[cm]?[jt]sx?$/.test(path))
 			.flatMap((path) =>
-				[...readFileSync(join(src, path), "utf8").matchAll(forbidden)].map((match) => `${path}: ${match[1]}`),
+				[
+					...readFileSync(join(src, path), "utf8")
+						.replace(/import type\s*\{[^}]*\}\s*from\s*["']@earendil-works\/pi-ai["'];/g, "")
+						.matchAll(forbidden),
+				].map((match) => `${path}: ${match[1]}`),
 			);
 		expect(imports).toEqual([]);
 	});

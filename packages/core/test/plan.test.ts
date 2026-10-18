@@ -198,6 +198,10 @@ describe("ReviewPlan.resolve", () => {
 	it("tells doctor a derived route was derived, and an accept-only route that it left accept", () => {
 		const derived = plan({ verifier: { accept: [opus] } }, { "amazon-bedrock": "AWS_PROFILE" }, { checks: [] });
 		expect(derived.lines()).toEqual([
+			...["light", "medium", "heavy", "decision", "verifier"].map((tier) => ({
+				state: "ok",
+				text: `${tier} thinking: unset; Pi default`,
+			})),
 			{
 				state: "ok",
 				text: "verifier: amazon-bedrock/anthropic.claude-opus-5-5 (claude) with AWS_PROFILE; derived, since no model of the committed route has credentials",
@@ -657,6 +661,10 @@ describe("a resolved plan", () => {
 			{ checks: ["lens.correctness", "lens.tests"] },
 		);
 		expect(resolved.lines()).toEqual([
+			...["light", "medium", "heavy", "decision", "verifier"].map((tier) => ({
+				state: "ok",
+				text: `${tier} thinking: unset; Pi default`,
+			})),
 			{ state: "ok", text: "medium: anthropic/claude-sonnet-5-5 with ANTHROPIC_API_KEY; routed by melian.yaml" },
 			{ state: "ok", text: `heavy: ${opus} with ANTHROPIC_API_KEY; routed by melian.yaml` },
 			{

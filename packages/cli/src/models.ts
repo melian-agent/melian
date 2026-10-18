@@ -60,7 +60,11 @@ export async function fallbackDecider(
 			passed.push(error.message);
 			continue;
 		}
-		const text = await RouteTextModel.create(models, [route.model, ...route.fallbacks]);
+		const text = await RouteTextModel.create(
+			models,
+			[route.model, ...route.fallbacks],
+			config.models[tier]?.thinking,
+		);
 		if (text !== undefined) return { decider: new FallbackDecider(text), model: text.name };
 		passed.push(`no model of ${tier} has credentials`);
 	}

@@ -1,4 +1,4 @@
-import type { ModelReference, Severity, StoredVerificationState } from "@melian-agent/core";
+import type { ModelReference, ModelRoute, Severity, StoredVerificationState } from "@melian-agent/core";
 import { clearVerifications, FindingsDocument, revisionKey, sightingIn, sightingVerification } from "./findings.ts";
 import {
 	type Context,
@@ -28,6 +28,7 @@ export type VerificationCandidate = {
 	state: StoredVerificationState;
 	finder: string;
 	route: ModelReference[];
+	thinking?: ModelRoute["thinking"];
 	budget: { tokens: number; tools: number };
 	decisionsAtBase?: string;
 	// What a lowering of any claim is checked against; absent from a candidate an older Melian stored.
@@ -62,7 +63,11 @@ async function replaced(
 
 export const VerificationTask = defineTask<VerificationInput, Checkpoint, VerificationResult>({
 	name: "melian.verification",
-	version: 1,
+	version: 2,
+	migrate: (input, checkpoint) => ({
+		input: input as unknown as VerificationInput,
+		checkpoint: checkpoint as Checkpoint,
+	}),
 	initial: () => ({ phase: "spawn" }),
 	phases: {
 		spawn: async (task, runtime, context) => {
@@ -87,6 +92,7 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 					}));
 					await configure(tx, child.id, {
 						model: candidate.route[0],
+						thinkingLevel: candidate.thinking,
 						instructions: [
 							verifierInstructions,
 							...(candidate.decisionsAtBase === undefined

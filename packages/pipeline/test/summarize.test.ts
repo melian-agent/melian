@@ -78,6 +78,24 @@ function success(summary = "Changes a value.") {
 	);
 }
 describe("walkthrough summaries", () => {
+	it("applies thinking to a light route supplied through accept alone", async () => {
+		scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
+		const doc = await summarize({
+			config: { ...config, models: { light: { accept: ["faux/scripted"], thinking: "high" } } },
+		});
+		expect(doc?.walkthroughs?.[revisionKey(changeset.revision)]?.summary).toBe("Changes a value.");
+	});
+	it("distinguishes a thinking-only light route from an empty legacy route", async () => {
+		const revision = revisionKey(changeset.revision);
+		expect(
+			(await summarize({ config: { ...config, models: { light: { thinking: "high" } } } }))?.walkthroughNotes?.[
+				revision
+			],
+		).toContain("No light model is configured.");
+		expect((await summarize({ config: { ...config, models: { light: {} } } }))?.walkthroughNotes?.[revision]).toBe(
+			"No walkthrough available. The summariser failed.",
+		);
+	});
 	it("skips disabled walkthroughs and range reviews", async () => {
 		const auth = vi.spyOn(models.models, "checkAuth");
 		await summarize({
@@ -459,7 +477,7 @@ describe("walkthrough summaries", () => {
 		await harness.close(context);
 		const failure = defineTask<unknown, { phase: "fail" }, string>({
 			name: "melian.summarize",
-			version: 1,
+			version: 2,
 			initial: () => ({ phase: "fail" }),
 			phases: {
 				fail: async (_task, runtime, context) => {
@@ -496,7 +514,7 @@ describe("walkthrough summaries", () => {
 		const started: TaskId[] = [];
 		const failure = defineTask<unknown, { phase: "spawn" }, string>({
 			name: "melian.summarize",
-			version: 1,
+			version: 2,
 			initial: () => ({ phase: "spawn" }),
 			phases: {
 				spawn: async (_task, runtime, context) => {

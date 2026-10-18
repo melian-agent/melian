@@ -17,6 +17,7 @@ import { readFileSync } from "node:fs";
 import { liveModels } from "./credentials.ts";
 import { type Golden, loadGoldens, runGolden, selectGoldens } from "./goldens.ts";
 import { reportGoldens, reportTriageGoldens, reportVerifierGoldens } from "./live-output.ts";
+import { EvalThinking } from "./thinking.ts";
 import { loadTriageGoldens, TriageQuestions, TriageResults } from "./triage.ts";
 import { loadVerifierGoldens, runVerifierGolden } from "./verifier.ts";
 
@@ -26,6 +27,13 @@ if (process.env.MELIAN_EVAL_LIVE !== "1") {
 }
 
 const verifierModel = process.env.MELIAN_EVAL_VERIFIER_MODEL;
+let thinking: EvalThinking;
+try {
+	thinking = EvalThinking.parse(process.env.MELIAN_EVAL_THINKING);
+} catch (error) {
+	console.error(error instanceof Error ? error.message : String(error));
+	process.exit(2);
+}
 if (process.env.MELIAN_EVAL_VERIFIER === "1") {
 	const all = loadVerifierGoldens();
 	const selected = process.env.MELIAN_EVAL_GOLDEN;
@@ -38,7 +46,13 @@ if (process.env.MELIAN_EVAL_VERIFIER === "1") {
 	const verifier = await reportVerifierGoldens(
 		goldens,
 		(golden) =>
-			runVerifierGolden(golden, { kind: "live", models, model: process.env.MELIAN_EVAL_MODEL, verifierModel }),
+			runVerifierGolden(golden, {
+				kind: "live",
+				models,
+				model: process.env.MELIAN_EVAL_MODEL,
+				verifierModel,
+				thinking,
+			}),
 		process.env,
 		console.log,
 	);
@@ -65,6 +79,7 @@ if (process.env.MELIAN_EVAL_TRIAGE === "1") {
 		console.log,
 		console.error,
 		process.env.MELIAN_EVAL_TRIAGE_OUT,
+		thinking,
 	);
 	const baseline = process.env.MELIAN_EVAL_TRIAGE_BASELINE;
 	if (baseline === undefined || baseline === "") process.exit(0);
@@ -89,6 +104,7 @@ const lens = await reportGoldens(
 		runGolden(golden, {
 			kind: "live",
 			models,
+			thinking,
 			...(model === undefined ? {} : { model }),
 			...(verifierModel === undefined ? {} : { verifierModel }),
 		}),
