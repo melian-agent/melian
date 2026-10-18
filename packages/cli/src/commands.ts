@@ -291,6 +291,7 @@ export async function review(
 				policy: source,
 				tier,
 				checks: checks.records,
+				checkRun: checks.identity,
 				...(callers === undefined ? {} : { callers }),
 				rerun: options.rerun,
 				origin,

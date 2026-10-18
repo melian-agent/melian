@@ -56,7 +56,7 @@ import {
 	VerdictDocument,
 } from "./adjudication.ts";
 import { CallerContext, type CoverageSource } from "./callers.ts";
-import { checksExtension, runChecks, type WriterTrust } from "./checks.ts";
+import { checksExtension, type RunIdentity, runChecks, type WriterTrust } from "./checks.ts";
 import { configsFor } from "./configurations.ts";
 import {
 	DecisionDocument,
@@ -876,6 +876,8 @@ export type ReviewOptions = ReviewSettings &
 interface ReviewSettings {
 	readonly changeset: Changeset;
 	readonly config: MelianConfig;
+	/** The identity of checks the host ran upfront. Distinct runs mint rounds even when their records match. */
+	readonly checkRun?: RunIdentity;
 	/** Precomputed advisory callers; the host opens them after deterministic graph checks. */
 	readonly callers?: CallerContext;
 	/** The lenses that may run; configuration and the changed paths select among them. */
@@ -2233,7 +2235,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		input,
 		selectionOf(lenses, escalateAt),
 		verificationRefused,
-		checked === undefined ? undefined : JSON.stringify(checked.identity),
+		JSON.stringify(checked?.identity ?? request.checkRun),
 		context,
 	);
 	if (adjudication === undefined) {
