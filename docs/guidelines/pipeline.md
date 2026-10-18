@@ -343,10 +343,12 @@ Its migration preserves timing from versions 3 and 4; versions 1 and 2 retain le
 A version-4 fixture recorded by that version’s own code proves SQLite reopen and timing preservation.
 
 Version 6 adds the storage-local round ID to the task target; `PublisherDocument` version 3 records the same target.
-Both migrations assign an older target its revision's legacy round and preserve newer publisher attribution.
+Both migrations leave older targets unbound and preserve newer publisher attribution.
+The task binds an older target to its revision's legacy round transactionally only when no minted round exists at that revision.
+Otherwise it ends superseded and requires a fresh publish.
 The target commit preserves legacy state in its transaction before selecting the current round.
-A resumed minted target reads that round's verdict copy; a legacy target reads the revision's live verdict.
-An absent minted round or verdict refuses publication.
+Every bound target, legacy or minted, reads its round's saved verdict copy.
+A missing round or verdict copy refuses publication.
 
 
 `publishReview({ harness, provider, changeset, pullRequest, base, trustedWriters })` publishes the verdict recorded for a pull request's base and head through a `ReviewProvider` from core, such as `packages/github`'s. `trustedWriters` is required and comes from committed root base policy. Omission is refused before any write; only stored legacy migrations default to true. `base` is the merge base the pull request diffs from now, which the host reads with git, since the provider reports only the base branch's tip. The harness must hold `publishExtension(provider)`, which carries the publish task, `melian.publish`; install it again after a restart so an interrupted publication resumes. `openPublishHarness` opens a `PublishHarness`, whose `harness` holds nothing else, so a review a crash interrupted does not resume during a publish. Publication refuses stale reviews with `PublishError` `staleReview`. The changeset's head must match the pull request's head, and its base must match `base`. A missing or undecided verdict under their `revisionKey` is `notReviewed`. Publication also checks the verdict's provenance. It must describe a `pull-request` review of the same repository and number. Its provider-reported head must match the pull request's current head. Its policy source must be `revision:` of the provider-reported base. A mismatch is `notPublishable` and names what differs. A verdict recorded without provenance is refused too. A review of a range, of a working tree, of an older push, or of the pull request before a retarget is never posted.
