@@ -7,4 +7,4 @@ It published an inline finding, a body-only finding and a protected trust-bounda
 It then dismissed the first two and published again.
 The `resolved` run refused the dismissal reply after the review posted; the `pending` run refused the review.
 Each round's `state` is the snapshot verbatim, written as compact JSON.
-The recorder was `pass6-record.test.ts` from pull request #145, pointed at an absolute output path.
+The recorder, #145's pass-6 recorder pointed at a scratch output path, is kept outside the repository with its log.

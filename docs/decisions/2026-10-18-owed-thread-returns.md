@@ -1,16 +1,21 @@
-# Publication retires resolutions when a thread is reused
+# Publication returns an owed finding to its own thread
 
-Status: accepted after the attacking review, implementation in this change.
+Status: accepted, implementation in this change.
 
 This extends publication recovery without replacing signed markers, target checks, dismissal rules or status mapping.
-It addresses [issue #132](https://github.com/melian-agent/melian/issues/132) in [pull request #145](https://github.com/melian-agent/melian/pull/145).
+It addresses [issue #132](https://github.com/melian-agent/melian/issues/132) in [pull request #155](https://github.com/melian-agent/melian/pull/155).
+It takes the thread-state rules of [pull request #145](https://github.com/melian-agent/melian/pull/145) and leaves out its publisher-identity rules.
 
 ## Problem
 
-A reply may reach GitHub before a crash loses its checkpoint.
-An old resolution may remain owed after a finding returns to its thread.
-For example, H1 posts F in T, H2 plans its resolution, and H3 records that resolution before crashing.
-A new review of H3 reports F again.
+A resolution whose reply failed stays owed, and a finding can return before the reply goes through.
+For example, head 1 posts F in thread 1002, and head 2's edit of 1002 fails.
+Head 3 reports F again, and head 4 posts F afresh in thread 1009.
+Thread 1002 stays open for good, so a repository that requires resolved conversations cannot merge.
+
+A reply may also reach GitHub before a crash loses its checkpoint.
+Head 1 posts F in T, head 2 plans its resolution, and head 3 records that resolution before crashing.
+A new review of head 3 reports F again.
 Reusing T without retiring that instruction lets the closing pass resolve a live finding's thread.
 
 ## Decision
@@ -25,8 +30,7 @@ Review and finding-root recovery still match the requested head; answers are key
 An answer counts when either the durable journal or GitHub records it.
 A deleted reply is not repeated when its journal entry survives.
 An addressed edit counts only on its own signed finding root.
-A reply counts only when its author matches its signed root's author, even when an installation token cannot read `/user`.
-Signature verification remains mandatory, and a known token author remains an additional filter.
+A reply counts only when its author matches its signed root's author.
 
 Read GraphQL thread state lazily, when publication will reuse, answer or resolve that thread.
 Cache complete reads within one attempt and reset them on replay.
@@ -42,7 +46,6 @@ In the commit assigning a thread to the live plan, retire every outstanding reso
 Keep the reply journal and review attestations.
 Recover a pending review's immutable payload as before, then plan the current verdict before executing thread actions.
 Only the resolutions remaining after those assignments may execute.
-No ownership document is needed. The as-built section records the resolution-map upgrade.
 
 An addressed edit and thread resolution are separate effects.
 If the edit landed but resolution did not, resolve that old thread on the next publish, whether or not its finding is live.
@@ -50,10 +53,19 @@ A returning finding gets a new thread; the old thread's resolution depends on it
 A reopened dismissal also gets a new thread, even when the old dismissal reply is still owed.
 Dismissal replies keep their existing behaviour: they do not resolve threads.
 
+## Publisher identity stays as main has it
+
+Who counts as Melian is unchanged.
+A marker is ours when its signature verifies and its author is the token's login, or on its signature alone when the login is unknown.
+This change does not bind roots to signed reviews, prefer Bot authors or the lowest review ID, record the publisher across tokens, or change how `login()` treats a refusal.
+[Issue #154](https://github.com/melian-agent/melian/issues/154) holds those rules.
+Five rounds on #145 each found a new identity defect in code an earlier pass had added, so they get a design of their own.
+
 ## Complete reads and cost
 
 Bound each review, comment and GraphQL thread listing at 50 pages of at most 100 entries.
 Fail on a failed page, GraphQL errors, partial or malformed data, a missing next cursor, or a repeated cursor.
+Validate every REST record's IDs, author, body and comment links; a comment's parent review ID and reply link may be null or absent.
 Fetch all pages before using any results; never substitute stored flags for a failed read.
 The status is already current; subsequent thread, review and ledger work waits for a successful attempt.
 A root deleted between read and write still takes the existing 404 recovery.
@@ -64,25 +76,24 @@ A normal new round already lists reviews and comments; widening their interpreta
 GraphQL adds its paginated read only when there is a thread action, as resolution discovery did before.
 Reuse and dismissal-only attempts may therefore add that read.
 A settled rerun with nothing owed lists no publication markers and reads no threads.
-No unconditional snapshot preflight or new snapshot API is introduced.
+
+## Several owed threads per finding
+
+One resolution per finding ID is not enough.
+An older addressed thread could fail to resolve until a newer thread for that finding resolved, and carrying only the newer thread lost the older instruction.
+
+Published-document version 9 keys resolutions by finding, actual root comment and dismissal version, using `replyKey`.
+Each entry keeps its finding ID. Body-only resolutions keep the finding ID as their key.
+Planning, pending rounds and closing preserve every owed thread.
+Current resolutions run before carried work, so one failed older thread cannot hide a newer thread's resolution.
+The migration rekeys recorded and pending resolutions and leaves the pending review payload and trust-floor diagnostics intact.
+Versions 1 to 8 all key resolutions by finding ID, so all take the same conversion.
+Snapshots main wrote at `36122eb2` prove the SQLite reopen and a second reopen at version 9.
 
 ## Regression proofs
 
-The dismissal probe from the attack covers an H2 reply whose record is lost before H3.
+The dismissal probe from #145's attack covers a head-2 reply whose record is lost before head 3.
 The same-ID reopening regression proves a dismissal's thread is not reused.
-The SQLite kill regression covers H3's recorded resolution followed by a fresh finding at the same head.
+The SQLite kill regression covers head 3's recorded resolution followed by a fresh finding at the same head.
 An edit-accepted, resolve-failed regression proves the old thread closes even when the finding returns.
-Status ordering, human resolution, reply deletion, author fallback and paginated failures have separate tests.
-
-## As built: several owed threads per finding
-
-Pass 4 found that the owed-work fold still kept one resolution per finding ID.
-An older addressed thread could fail to resolve until a newer thread for that finding resolved.
-Carrying only the newer thread then lost the older instruction.
-
-Published-document version 8 keys resolutions by finding, actual root comment and dismissal version, using `replyKey`.
-Each entry keeps its finding ID. Body-only resolutions retain the finding ID as their key.
-Planning, pending rounds and closing preserve every owed thread.
-Current resolutions run before carried work, so one failed older thread cannot hide a newer thread's resolution.
-The migration rekeys both recorded and pending resolutions and leaves the pending review payload intact.
-A version-7 fixture written through that version's publisher proves SQLite reopening and a second version-8 reopen.
+Status ordering, human resolution, reply deletion, author matching and paginated failures have separate tests.

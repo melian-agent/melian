@@ -191,7 +191,7 @@ Signed answer discovery spans every head, so a reply accepted before a lost chec
 Either the journal or GitHub proves an answer present.
 An addressed root still owes thread resolution even when its finding returns in a new thread.
 Owed work and pending rounds keep every thread for a finding, keyed by finding, thread and dismissal version.
-Published-document version 8 upgrades older resolution maps, including pending rounds, without changing their review payload.
+Published-document version 9 upgrades older resolution maps, including pending rounds, without changing their review payload.
 A human-resolved live thread stays resolved: its finding still counts and appears in review bodies without another inline post.
 A returning finding cannot reuse it. Owed answers may still be posted there without reopening it.
 GraphQL thread reads stay lazy, before reuse, reply or resolution; an unchanged live thread needs no read.
@@ -199,8 +199,9 @@ A root absent from GraphQL but present in REST has unknown state; publication wa
 Publication sets the verdict's status before any thread or marker read, including recovery of an older pending round.
 Bad or partial pages fail closed; listings stop at 50 pages, and malformed or repeated GraphQL cursors fail.
 REST listings validate every record's IDs, author, body and comment links before consuming any page.
-[The decision](decisions/2026-10-18-publication-provider-thread-state.md) records the smaller design accepted after the attack.
-Built in [pull request #145](https://github.com/melian-agent/melian/pull/145).
+Publisher identity across tokens stays as before; [issue #154](https://github.com/melian-agent/melian/issues/154) holds it.
+[The decision](decisions/2026-10-18-owed-thread-returns.md) records the rules.
+Built in [pull request #155](https://github.com/melian-agent/melian/pull/155), from the thread-state work of [pull request #145](https://github.com/melian-agent/melian/pull/145).
 
 A policy-change notice hashes `blob:<base identity>:<head identity>` into the existing SHA-256 trigger field.
 Git supplies the mode and blob. Regular and executable files use the blob identity; a symlink uses `symlink:<blob>`.

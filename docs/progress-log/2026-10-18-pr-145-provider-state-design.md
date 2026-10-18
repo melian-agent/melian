@@ -4,7 +4,7 @@
 
 Merged main at `748dfe37`, preserving step 28's publication and findings changes.
 The class of defects is stored reply state disagreeing with the provider or with a later plan's ownership of a thread.
-[The decision](../decisions/2026-10-18-publication-provider-thread-state.md) specifies a provider snapshot before planning, failure before writes, and current-plan authority over resolutions.
+[The decision](../decisions/2026-10-18-owed-thread-returns.md) specifies a provider snapshot before planning, failure before writes, and current-plan authority over resolutions.
 It keeps dismissal publication, status mapping and attestations intact.
 Implementation waits for an attacking review.
 
