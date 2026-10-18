@@ -163,7 +163,7 @@ export class MarkdownDocument {
 				text += value;
 				mask +=
 					inline.type === "inlineCode"
-						? value.replace(/\p{Sentence_Terminal}/gu, (mark) => "x".repeat(mark.length))
+						? value.replace(/[^\p{L}\p{N}\p{M}\p{Cf}\s]/gu, (mark) => "x".repeat(mark.length))
 						: value;
 			} else if (inline.type === "break") {
 				text += " ";

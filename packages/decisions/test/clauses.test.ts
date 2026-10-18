@@ -70,6 +70,15 @@ describe("decision clause evidence", () => {
 		).toEqual([text]);
 	});
 
+	it("keeps Unicode NEXT LINE inside inline code from splitting a clause", () => {
+		const separator = String.fromCharCode(0x85);
+		expect(
+			DecisionFile.parse(path, `Keep \`First${separator}Next\` whole.`)
+				.clauses()
+				.map((clause) => clause.text),
+		).toEqual([`Keep First${separator}Next whole.`]);
+	});
+
 	it.each(["Supersedes", "Amends"])("excludes only the %s declaration line", (kind) => {
 		const decision = DecisionFile.parse(path, `Before.\n${kind}: none.\nKeep this rule.\nDate: 2026-10-18.`);
 		expect(decision.clauses().map((clause) => clause.text)).toEqual([
