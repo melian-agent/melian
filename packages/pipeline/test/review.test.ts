@@ -2919,6 +2919,12 @@ describe("adjudication", () => {
 				lenses: [],
 			});
 
+			const saved = structuredClone((await harness.snapshot(RoundsDocument, await rootId(), context))!);
+			expect(saved.items.r1).toMatchObject({
+				verdict: verdict.toJSON(),
+				provenance: { kind: "range" },
+				tasks: [await adjudicationTask()],
+			});
 			const task = await (await harness.root(context)).commit(
 				(tx) => tx.createTask(AdjudicationTask, stale, { ownership: { kind: "conversation" } }),
 				context,
@@ -2926,10 +2932,7 @@ describe("adjudication", () => {
 			const settled = await harness.waitForTask(task, context);
 
 			expect(settled.state.outcome).toEqual({ status: "completed", result: "superseded" });
-			expect((await harness.snapshot(RoundsDocument, await rootId(), context))?.sequence).toBe(1);
-			expect(Object.values((await harness.snapshot(RoundsDocument, await rootId(), context))!.items)).toHaveLength(
-				1,
-			);
+			expect(await harness.snapshot(RoundsDocument, await rootId(), context)).toEqual(saved);
 			expect(await readVerdict(harness, await rootId(), revision(), context)).toEqual(verdict);
 		});
 	});
