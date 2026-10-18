@@ -605,8 +605,17 @@ A mutated class or function must stay in its module when another context uses it
 
 Outside a conversation, forward the usage observer through Decider and TextModel. RouteTextModel emits each returned assistant's own model identity and usage before validating its answer. DecisionTask stores the collected usage in its task-keyed melian.model-usage family member in the terminal result commit. RouteTextModel awaits the observer's started callback before each request. DecisionTask durably increments its task-keyed melian.model-attempts started count there, and stores started minus the number of response receipts as unmeasured in the terminal commit. That count marks usageIncomplete on stages and run totals, including failed requests and crash replay. Text prints `usage incomplete: N request(s) not measured`. Failed decisions keep reported usage. No response usage means unavailable, never an invented zero. Telemetry never enters task inputs, attach keys, fingerprints or verdicts.
 
-StageTelemetry exposes per-stage usage, total and usageUnavailable stage IDs. The total covers the selected review's stages, including reused work once. A partial total says which model stages have no record. Detached TelemetryReader reads open no harness, start no scheduler and write nothing. Keep terminal values escaped through visibleText. No existing document version changes for this extension.
+StageTelemetry exposes per-stage usage, total and usageUnavailable stage IDs. The total covers the selected review's stages, including reused work once. A partial total says which model stages have no record. Detached TelemetryReader reads open no harness, start no scheduler and write nothing. Keep terminal values escaped through visibleText. The token-counter extension changed no existing document version. Reasoning capture below raises the usage family to version 2.
 
 Pi's faux provider estimates its own usage while streaming. A usage field in a scripted reply does not set the final counters. Tests needing exact counters inject them at the returned assistant boundary or read Pi's own ledger. A provider can leave optional counters explicitly undefined; copyJson with omitUndefinedProperties removes them before a strict JSON commit.
 
 Pi Durable 1.1.0 exposes no durable dispatch or resend count for GenerationTask or CompactionTask. Their attempt checkpoints count logical retries and survive recovery unchanged. UsageDoc covers settled responses. Lens, verifier and walkthrough totals cannot detect all pre-settlement losses; the decision names the checked APIs. Do not present them as complete provider billing.
+
+
+### Reasoning capture
+
+ReviewHarness decorates its host-supplied Models port with onPayload for generation and compaction. RouteTextModel observes direct completions. Retain requested, sent and provider-reported settings separately; never infer sent settings when the callback runs. A missing callback is derived, not observed. A body omitting reasoning says provider default.
+
+Model-usage document version 2 adds request receipts. Conversation receipts use conversation:<id> keys in that family. Pi's UsageDoc still supplies aggregate counters; the receipts commit before the model response returns to Pi. A crash can preserve a receipt before Pi settles its usage. Old records remain without reasoning. Detached reads combine the existing counters and receipts without writing or asking a model.
+
+A mutated pager can repeat resolved reads without yielding, so a test timeout may never fire. Pager fakes must reject a read past their terminal page. This makes a broken termination guard fail an assertion instead of hanging the runner.

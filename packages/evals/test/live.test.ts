@@ -56,7 +56,7 @@ it("prints escaped triage scores and retains each pass's telemetry from the sele
 	for (const record of records) expect(record.total!.models["output-eval/judge"]!.totalTokens).toBeGreaterThan(0);
 	expect(printed).toEqual([
 		expect.stringMatching(
-			/^triage triage v\d+ on output-eval\/judge, 2 passes: exact 1\.00, mean distance 0\.00, 0 under\ndocs-typo\\u001b\[31m: exact 1\.00, \d+ tokens, \$0$/,
+			/^triage triage v\d+ on output-eval\/judge, 2 passes: exact 1\.00, mean distance 0\.00, 0 under\ndocs-typo\\u001b\[31m: exact 1\.00, \d+ tokens, \$0; output-eval\/judge requested=unspecified catalogue=unavailable derived, not observed; triage-eval\/lens requested=off catalogue=unavailable derived, not observed$/,
 		),
 	]);
 });
@@ -126,8 +126,16 @@ it("saves both passes before a three-pass triage failure propagates", async () =
 		expect(printed).toEqual([]);
 		expect(Object.values(requests).flat()).toHaveLength(2);
 		expect(errors).toEqual([
-			expect.stringMatching(new RegExp(`^${golden.name}: pass 1, \\d+ tokens, \\$1$`)),
-			expect.stringMatching(new RegExp(`^${golden.name}: pass 2, \\d+ tokens, \\$0\\.1$`)),
+			expect.stringMatching(
+				new RegExp(
+					`^${golden.name}: pass 1, \\d+ tokens, \\$1; failed-eval/judge requested=unspecified catalogue=unavailable derived, not observed; triage-eval/lens requested=off catalogue=unavailable derived, not observed$`,
+				),
+			),
+			expect.stringMatching(
+				new RegExp(
+					`^${golden.name}: pass 2, \\d+ tokens, \\$0\\.1; failed-eval/judge requested=unspecified catalogue=unavailable derived, not observed; triage-eval/lens requested=off catalogue=unavailable derived, not observed$`,
+				),
+			),
 			expect.stringContaining(`${golden.name}: no score (`),
 		]);
 		const saved = JSON.parse(readFileSync(out, "utf8")) as StoredTriageResults;

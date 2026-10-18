@@ -851,3 +851,5 @@ All Enola policy paths join analyser configuration in policy-change-review. A co
 StoredCheckRecord includes optional snapshots and coverage IDs. Verdict.upgrade preserves present fields and leaves older records without them: it never invents graph or transcript evidence. Receipts retain upstream timestamps and scratch paths as lineage, separate from graph identity.
 
 Decider and TextModel accept an optional usage observer after the abort signal. It receives each assistant response's provider/model and ModelUsage counters before answer validation. It stays outside DecisionRequest, ToolRequest and stored decision identity. ModelUsage copies Pi's units without importing Pi. Reasoning is part of output; cacheWrite1h is part of cacheWrite.
+
+The usage observer also accepts optional RequestReasoning: the requested level, observed settings by request path, capture source and any provider-reported level. It stays outside decision identity. A missing payload observer carries only a labelled catalogue mapping.

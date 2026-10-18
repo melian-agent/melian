@@ -1,0 +1,38 @@
+{
+  "recordedBy": "a96c5447",
+  "version": 1,
+  "value": {
+    "usage": {
+      "models": {
+        "faux/triage": {
+          "input": 302,
+          "output": 24,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 326,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        }
+      },
+      "total": {
+        "input": 302,
+        "output": 24,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 326,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      }
+    }
+  }
+}

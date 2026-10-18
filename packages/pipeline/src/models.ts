@@ -1,6 +1,7 @@
 import type { CatalogModel, ModelReference, TextModel, ToolRequest, UsageObserver } from "@melian-agent/core";
 import type { MelianCredentialStore } from "./credentials.ts";
 import type { Api, Model, Models, MutableModels } from "./harness.ts";
+import { ReasoningCapture } from "./reasoning.ts";
 
 /**
  * The models a review runs on: an opaque handle over pi-ai's model collection, so callers outside the pipeline never
@@ -122,6 +123,7 @@ export class RouteTextModel implements TextModel {
 	/** The arguments of the model's call to `request.tool`. Throws when the request fails or the model calls no tool. */
 	async answer(request: ToolRequest, signal?: AbortSignal, usage?: UsageObserver): Promise<unknown> {
 		if (usage?.started !== undefined) await usage.started();
+		const capture = new ReasoningCapture(this.#model, "unspecified");
 		const reply = await this.#models.complete(
 			this.#model,
 			{
@@ -129,9 +131,9 @@ export class RouteTextModel implements TextModel {
 				messages: [{ role: "user", content: request.prompt, timestamp: Date.now() }],
 				tools: [request.tool],
 			},
-			signal === undefined ? {} : { signal },
+			{ ...capture.options(), ...(signal === undefined ? {} : { signal }) },
 		);
-		usage?.(`${reply.provider}/${reply.model}`, reply.usage);
+		usage?.(`${reply.provider}/${reply.model}`, reply.usage, capture.finish(reply));
 		if (reply.stopReason === "error" || reply.stopReason === "aborted") {
 			throw new Error(`${this.name} failed: ${reply.errorMessage ?? reply.stopReason}`);
 		}
