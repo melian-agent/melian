@@ -1,0 +1,13 @@
+{
+  "base": {
+    "docs/decisions/old.md": "# Old\n\nKeep the timeout. Keep the retry limit.\n"
+  },
+  "head": {
+    "docs/decisions/new.md": "# New\n\nSupersedes: [Old](old.md).\n\nKeep the timeout.\n"
+  },
+  "expect": {
+    "findings": 1,
+    "missing": 1,
+    "status": "ran"
+  }
+}

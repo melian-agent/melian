@@ -1,0 +1,12 @@
+{
+  "base": {
+    "docs/decisions/old.md": "# Old\n\nKeep the timeout. Keep the retry limit.\n"
+  },
+  "head": {
+    "docs/decisions/new.md": "# New\n\nAmends: [Old](old.md), for the timeout.\n\nChange the timeout.\n"
+  },
+  "expect": {
+    "findings": 0,
+    "status": "ran"
+  }
+}

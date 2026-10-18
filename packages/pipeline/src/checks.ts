@@ -36,6 +36,7 @@ import type { HeadTrust } from "./mutation-cache.ts";
 import { type MutationProcessHooks, MutationTree, type MutationTreeRecord } from "./mutation-process.ts";
 import { MutationRun, mutationInstallation, strykerVersion } from "./mutation-static.ts";
 import { runStaticTool, staticToolSource } from "./static.ts";
+import { SupersessionReview } from "./supersession.ts";
 import { TaskTiming } from "./task-timing.ts";
 import { ToolProvisioning } from "./tool-provisioning.ts";
 
@@ -282,7 +283,16 @@ async function runCheck(
 	if (input.check === "guardrails") {
 		const { repoRoot } = input.changeset;
 		const revision = Revision.from(input.changeset.revision);
-		return { status: "ran", report: await evaluateGuardrails({ repoRoot, revision, source: input.source }) };
+		const guardrailInput = { repoRoot, revision, source: input.source };
+		const ordinary = await evaluateGuardrails(guardrailInput);
+		const supersession = await new SupersessionReview(guardrailInput).report();
+		return {
+			status: "ran",
+			report: {
+				findings: [...ordinary.findings, ...supersession.findings],
+				notes: [...ordinary.notes, ...supersession.notes],
+			},
+		};
 	}
 	return runStatic(input, await env(), context, mutation);
 }

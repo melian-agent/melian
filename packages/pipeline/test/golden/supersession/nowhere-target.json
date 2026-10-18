@@ -1,0 +1,12 @@
+{
+  "base": {
+    "readme.md": "Base.\n"
+  },
+  "head": {
+    "docs/decisions/new.md": "# New\n\nSupersedes: absent.md.\n\nKeep the timeout.\n"
+  },
+  "expect": {
+    "findings": 0,
+    "status": "failed"
+  }
+}

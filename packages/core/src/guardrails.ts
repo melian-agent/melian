@@ -28,8 +28,13 @@ import { melianPaths } from "./paths.ts";
 import { compileGlob, compilePattern, type LinearPattern, matchesGlobs, Refused } from "./pattern.ts";
 import { openSource, type RepositorySource, SourceError, type SourceReader } from "./source.ts";
 
-/** The guardrails version one ships, each reporting under the rule ID `guardrail/<name>`. */
-export type GuardrailName = "forbidden-paths" | "required-files" | "forbidden-patterns" | "policy-change-review";
+/** Built-in guardrails, each reporting under the rule ID `guardrail/<name>`. */
+export type GuardrailName =
+	| "forbidden-paths"
+	| "required-files"
+	| "forbidden-patterns"
+	| "policy-change-review"
+	| "supersession-drop";
 
 /** What one check produced: its findings, and anything it could not look at, said in a sentence each. */
 export interface CheckReport {

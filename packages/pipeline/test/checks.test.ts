@@ -1,4 +1,4 @@
-import { readFileSync, rmSync } from "node:fs";
+import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import * as core from "@melian-agent/core";
 import {
@@ -94,6 +94,33 @@ const tsconfig = JSON.stringify({
 const fast = lines("tiers:", "  fast: [guardrails, static.biome, static.tsc]");
 
 describe("runChecks", () => {
+	it("preserves guardrail notes about binary files it cannot scan", async () => {
+		const base = commit(repo, {
+			"melian.yaml": lines(
+				"tiers:",
+				"  fast: [guardrails]",
+				"guardrails:",
+				"  forbidden-patterns:",
+				"    rules:",
+				"      todo:",
+				"        pattern: TODO",
+				"        message: finish it",
+			),
+		});
+		writeFileSync(join(repo, "binary.ts"), Buffer.from([0xff, 0x00, 0x0a]));
+		const head = commit(repo, {});
+		const { records, fake } = await checks(base, head, "fast");
+		expect(records).toEqual([
+			{
+				name: "guardrails",
+				status: "ran",
+				findings: 0,
+				notes: ["forbidden-patterns did not scan binary.ts, which git treats as binary and is not UTF-8 text."],
+			},
+		]);
+		expect(fake.provider.state.callCount).toBe(0);
+	});
+
 	it("records only the head's notes when the base had no project for the tool to run", {
 		timeout: 60_000,
 	}, async () => {

@@ -4,6 +4,89 @@ import { LocalDestination, MarkdownDocument } from "../src/markdown.ts";
 
 vi.mock("mdast-util-from-markdown", { spy: true });
 
+const decisionPath = "docs/decisions/new.md";
+
+describe("supersession mutation regressions", () => {
+	it("keeps nested headings retired until a shallower section starts", () => {
+		const document = MarkdownDocument.parse(
+			"## Retired\n\nGone.\n\n### Detail\n\nStill gone.\n\n### Retired\n\nGone too.\n\n### Sibling\n\nAlso gone.\n\n# Current\n\nKeep.",
+		);
+		expect(document.clauses(decisionPath)).toEqual([{ text: "Keep.", line: 19, endLine: 19 }]);
+	});
+
+	it.each(["<b>Retired</b>", "<b> Retired </b>"])("recognises the plain text of heading %s", (heading) => {
+		expect(MarkdownDocument.parse(`## ${heading}\n\nGone.\n\n## Current\n\nKeep.`).clauses(decisionPath)).toEqual([
+			{ text: "Keep.", line: 7, endLine: 7 },
+		]);
+	});
+
+	it.each(["Keep -|\nOther.", "-| prose\nOther."])("requires a complete table delimiter: %j", (source) => {
+		expect(MarkdownDocument.parse(source).clauses(decisionPath)).toEqual([
+			{ text: source.replace("\n", " "), line: 1, endLine: 2 },
+		]);
+	});
+
+	it.each(["---|---", ":---|---", "---:|---", "|---|---|", "  |  :---:  |  ---  |  "])(
+		"recognises table delimiter %j and normalises each row",
+		(delimiter) => {
+			const source = `Rule  | Choice  \n${delimiter}\nRetry | Stop. Never repeat.`;
+			expect(MarkdownDocument.parse(source).clauses(decisionPath)).toEqual([
+				{ text: "Rule | Choice", line: 1, endLine: 1 },
+				{ text: delimiter.replace(/\s+/g, " ").trim(), line: 2, endLine: 2 },
+				{ text: "Retry | Stop. Never repeat.", line: 3, endLine: 3 },
+			]);
+		},
+	);
+
+	it("aligns the sentence mask after omitting an initial image", () => {
+		expect(MarkdownDocument.parse("![ignored](image.png) Keep. End.").clauses(decisionPath)).toEqual([
+			{ text: "Keep.", line: 1, endLine: 1 },
+			{ text: "End.", line: 1, endLine: 1 },
+		]);
+	});
+
+	it("collapses repeated spaces in both prose and its sentence mask", () => {
+		expect(MarkdownDocument.parse("Keep   this rule. End.").clauses(decisionPath)).toEqual([
+			{ text: "Keep this rule.", line: 1, endLine: 1 },
+			{ text: "End.", line: 1, endLine: 1 },
+		]);
+	});
+
+	it.each(["\n", "\r\n", "\r"])("locates a declaration after context with %j endings", (ending) => {
+		const document = MarkdownDocument.parse(["# New", "", "Context.", "Supersedes: old.md"].join(ending));
+		expect(document.declarations(decisionPath)).toMatchObject([
+			{ line: 4, sourceLine: ending === "\r" ? 1 : 4, targets: ["docs/decisions/old.md"] },
+		]);
+	});
+
+	it("includes first-sentence destinations in declaration identity", () => {
+		const first = MarkdownDocument.parse("Supersedes: [Same](one.md). Context.").declarations(decisionPath)[0]!;
+		const second = MarkdownDocument.parse("Supersedes: [Same](two.md). Context.").declarations(decisionPath)[0]!;
+		expect(JSON.parse(first.text)).toEqual({
+			prose: "Supersedes: \u0000. ",
+			links: [{ offset: 12, destination: "one.md" }],
+		});
+		expect(first.text).not.toBe(second.text);
+	});
+
+	it("excludes a link at the next sentence boundary from declaration identity", () => {
+		const first = MarkdownDocument.parse("Supersedes: old.md. [Context](one.md)").declarations(decisionPath)[0]!;
+		const second = MarkdownDocument.parse("Supersedes: old.md. [Context](two.md)").declarations(decisionPath)[0]!;
+		expect(JSON.parse(first.text)).toEqual({ prose: "Supersedes: old.md. ", links: [] });
+		expect(first.text).toBe(second.text);
+	});
+
+	it.each([
+		"Supersedes: old.md. Next.md",
+		"Supersedes: [Old](old.md). [Next](Next.md)",
+		"Supersedes: [Old](old.md)!Next.md",
+	])("excludes second-sentence targets in %j", (source) => {
+		expect(MarkdownDocument.parse(source).declarations(decisionPath)).toMatchObject([
+			{ targets: ["docs/decisions/old.md"] },
+		]);
+	});
+});
+
 const slugCases = [
 	["formatting", "# Writer *trust* and `signed` [markers](policy.md)", ["writer-trust-and-signed-markers"]],
 	[

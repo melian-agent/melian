@@ -3794,6 +3794,35 @@ describe("the design baseline", () => {
 		expect((await reviewed()).verdict.status).toBe("passed");
 	});
 
+	it("delivers no amendment authority for a superseded amendment source", async () => {
+		rmSync(repo, { recursive: true, force: true });
+		const a = "docs/decisions/a.md";
+		const b = "docs/decisions/b.md";
+		const c = "docs/decisions/c.md";
+		repo = baseAndHead(
+			{
+				[a]: "# Original\n",
+				[b]: "# Amendment\n\nAmends: a.md, routing.\n",
+				[c]: "# Successor\n\nSupersedes: b.md\n",
+				"src/answer.ts": "export const answer = 42;\n",
+			},
+			{ "src/answer.ts": "export const answer = 43;\n" },
+		);
+		config = { ...config, tiers: { ...config.tiers, full: ["lens.design"] } };
+		const design = "You are the design reviewer";
+		const requests = scriptConversations(fake, [{ match: design, replies: [fauxAssistantMessage("Done.")] }]);
+		await review();
+		const messages = requests[design]![0]!;
+		const system = systemPromptOf(messages);
+		const listing = quoted(system, nonceOf(messages), "listing").join("\n");
+		expect(listing).toContain(`[ACTIVE] ${a} — Original`);
+		expect(listing).toContain(`[INACTIVE; superseded by ${c}] ${b} — Amendment`);
+		expect(listing).toContain(`[ACTIVE] ${c} — Successor`);
+		expect(listing).not.toContain("amended by");
+		expect(listing).not.toContain("the amendment wins");
+		expect(system).not.toContain(`[ACTIVE; amended by ${b}] ${a}`);
+	});
+
 	it("delivers active base decisions inside boundaries only to design, without head titles", async () => {
 		rmSync(repo, { recursive: true, force: true });
 		const a = "docs/decisions/2026-10-01-a.md";
@@ -3817,6 +3846,12 @@ describe("the design baseline", () => {
 		const system = systemPromptOf(messages);
 		const nonce = nonceOf(messages);
 		expect(system).toContain("Read this before step 1");
+		expect(system).toContain(
+			"For an ACTIVE decision marked amended by, read both files at base; where they conflict, the amendment wins.",
+		);
+		expect(system).toContain(
+			"Treat `Amends:` as a declaration when checking for an undeclared conflicting replacement.",
+		);
 		expect(quoted(system, nonce, "listing").join("\n")).toContain(`[INACTIVE; superseded by ${b}] ${a} — Original`);
 		expect(quoted(system, nonce, "listing").join("\n")).toContain(`[ACTIVE] ${b} — Successor`);
 		expect(system).not.toContain("Planted head title");
