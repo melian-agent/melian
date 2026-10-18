@@ -251,7 +251,7 @@ it.each([
 		readFileSync(new URL("./fixtures/stage-telemetry-previous/untrusted-publication.json", import.meta.url), "utf8"),
 	) as {
 		version: number;
-		input: JsonObject & { publishedBy: JsonObject };
+		input: JsonObject & { publishedBy: JsonObject; target: JsonObject };
 		state: { checkpoint: { phase: string } & JsonObject };
 	};
 	const directory = realpathSync(mkdtempSync(join(tmpdir(), "melian-publisher-reopen-")));
