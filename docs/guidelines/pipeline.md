@@ -284,7 +284,7 @@ A level's `budget.tokens` and `budget.tools` end a lens conversation once they a
 
 `startAdjudication` mints when it creates a task, deleting the live verdict, provenance and decision. Attachments and dismissals keep the current round. Check runs contribute their identity to attachment through the round record, so distinct cold runs or reruns with identical records still mint. A host that runs checks upfront, as the CLI does for caller context, passes their identity as `ReviewOptions.checkRun`. No adjudication task or verdict version changes. Only adjudication writes a round's verdict copy, behind the review index's supersession check. A task main left pending writes its key's legacy round. A legacy task without a check-run identity accepts the caller's identity when attaching. Minted tasks still require the same identity.
 
-`RoundReader` reads detached documents and synthesises unrecorded legacy verdict and comparison keys without writing. `Round.compare` orders legacy rounds by head commit date before minted rounds by mint time, breaking ties by ID. The host obtains commit dates from git.
+`RoundReader` reads detached documents and synthesises unrecorded legacy verdict and comparison keys without writing. `Round.compare` orders legacy rounds by head commit date before minted rounds by mint time, breaking ties by ID. The host obtains commit dates from git. Unreadable legacy heads have no date and sort last, breaking ties by ID.
 
 ## Adjudication
 

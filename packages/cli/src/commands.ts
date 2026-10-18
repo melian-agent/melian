@@ -512,23 +512,31 @@ export async function findings(
 			const rounds = await new RoundReader(storage).read(changeset.id);
 			const dates = new Map<string, number>();
 			for (const round of rounds.filter((round) => round.stored.mintedAt === undefined)) {
-				dates.set(
-					round.stored.head,
-					Number(await git(changeset.repoRoot, ["show", "-s", "--format=%ct", round.stored.head, "--"])),
-				);
+				try {
+					dates.set(
+						round.stored.head,
+						Number(await git(changeset.repoRoot, ["show", "-s", "--format=%ct", round.stored.head, "--"])),
+					);
+				} catch {}
 			}
 			rounds.sort((left, right) => left.compare(right, dates));
-			const listed = rounds.map((round) => ({
-				id: round.id,
-				base: round.stored.base,
-				head: round.stored.head,
-				mintedAt: round.stored.mintedAt,
-				status: round.verdict()?.status ?? "undecided",
-			}));
+			const listed = rounds.map((round) => {
+				const date = dates.get(round.stored.head);
+				return {
+					id: round.id,
+					base: round.stored.base,
+					head: round.stored.head,
+					mintedAt: round.stored.mintedAt,
+					date: round.stored.mintedAt ?? (date === undefined ? "unknown" : new Date(date * 1000).toISOString()),
+					status: round.verdict()?.status ?? "undecided",
+				};
+			});
 			io.stdout(
 				options.json
 					? `${JSON.stringify(listed, null, 2)}\n`
-					: listed.map((round) => `${round.id}  ${round.base}..${round.head}  ${round.status}\n`).join(""),
+					: listed
+							.map((round) => `${round.id}  ${round.base}..${round.head}  ${round.status}  ${round.date}\n`)
+							.join(""),
 			);
 			return 0;
 		} finally {

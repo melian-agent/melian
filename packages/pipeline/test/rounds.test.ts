@@ -572,28 +572,34 @@ it("preserves an undecided comparison-only legacy key before its first round wri
 	]);
 });
 
-it("orders legacy rounds by head commit date, then ID, before minted rounds ordered by mint time", () => {
-	const make = (id: string, head: string, mintedAt?: string) =>
-		new Round(id, { base: "base", head, tasks: [], ...(mintedAt === undefined ? {} : { mintedAt }) });
-	const rounds = [
-		make("r2", "head", "2026-10-18T02:00:00Z"),
-		make("kb", "old"),
-		make("ka", "old"),
-		make("kc", "older"),
-		make("r1", "head", "2026-10-18T01:00:00Z"),
-		make("r0", "head", "2026-10-18T01:00:00Z"),
-	];
-	rounds.sort((left, right) =>
-		left.compare(
-			right,
-			new Map([
-				["old", 2],
-				["older", 1],
-			]),
-		),
-	);
-	expect(rounds.map((round) => round.id)).toEqual(["kc", "ka", "kb", "r0", "r1", "r2"]);
-});
+it.each([false, true])(
+	"orders known round dates before unknown dates, breaking ties by ID (reversed=%s)",
+	(reversed) => {
+		const make = (id: string, head: string, mintedAt?: string) =>
+			new Round(id, { base: "base", head, tasks: [], ...(mintedAt === undefined ? {} : { mintedAt }) });
+		const rounds = [
+			make("kz", "missing"),
+			make("r2", "head", "2026-10-18T02:00:00Z"),
+			make("ky", "missing"),
+			make("kb", "old"),
+			make("ka", "old"),
+			make("kc", "older"),
+			make("r1", "head", "2026-10-18T01:00:00Z"),
+			make("r0", "head", "2026-10-18T01:00:00Z"),
+		];
+		if (reversed) rounds.reverse();
+		rounds.sort((left, right) =>
+			left.compare(
+				right,
+				new Map([
+					["old", 2],
+					["older", 1],
+				]),
+			),
+		);
+		expect(rounds.map((round) => round.id)).toEqual(["kc", "ka", "kb", "r0", "r1", "r2", "ky", "kz"]);
+	},
+);
 
 it.each([
 	{ left: undefined, right: "2026-10-18T01:00:00Z", expected: -1 },

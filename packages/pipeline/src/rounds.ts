@@ -143,17 +143,17 @@ export class Round {
 		return this.stored.verdict === undefined ? undefined : Verdict.from(structuredClone(this.stored.verdict));
 	}
 
-	/** Orders legacy rounds before minted rounds, with IDs breaking equal dates. */
+	/** Orders dated legacy rounds before minted rounds, with unknown dates last and IDs breaking ties. */
 	compare(other: Round, headDates: ReadonlyMap<string, number>): number {
 		const left = this.stored.mintedAt;
 		const right = other.stored.mintedAt;
+		const leftDate = left === undefined ? headDates.get(this.stored.head) : Date.parse(left);
+		const rightDate = right === undefined ? headDates.get(other.stored.head) : Date.parse(right);
+		if (leftDate === undefined) return rightDate === undefined ? this.id.localeCompare(other.id) : 1;
+		if (rightDate === undefined) return -1;
 		if (left === undefined && right !== undefined) return -1;
 		if (left !== undefined && right === undefined) return 1;
-		const delta =
-			left === undefined
-				? headDates.get(this.stored.head)! - headDates.get(other.stored.head)!
-				: Date.parse(left) - Date.parse(right!);
-		return delta || this.id.localeCompare(other.id);
+		return leftDate - rightDate || this.id.localeCompare(other.id);
 	}
 }
 

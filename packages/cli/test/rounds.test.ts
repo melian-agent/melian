@@ -146,6 +146,9 @@ it("lists main's legacy round before a minted undecided round and asks git for i
 	const output = JSON.parse(io.stdout.mock.calls.join(""));
 	expect(output).toHaveLength(2);
 	expect(output[0].id).toMatch(/\.k[0-9a-f]{16}$/);
+	expect(output[0].date).toBe(
+		new Date(Number(gitIn(repo, "show", "-s", "--format=%ct", oldHead, "--")) * 1000).toISOString(),
+	);
 	expect(output[1]).toMatchObject({ id: `${changeset.id}.r1`, status: "undecided" });
 	expect(git).toHaveBeenCalledWith(repo, ["show", "-s", "--format=%ct", oldHead, "--"]);
 	io.stdout.mockClear();
@@ -307,4 +310,42 @@ it("refuses missing and undecided rounds even when an earlier frozen verdict exi
 	}
 	expect(await main(["findings", "--round", `${changeset.id}.r1`], io)).toBe(0);
 	expect(io.stderr.mock.calls.join("")).toContain("no decided round");
+});
+
+it.each([false, true])("lists an unreadable legacy head last with an unknown date (json=%s)", async (json) => {
+	const path = await storagePath(repo, changeset.id, io.env, false);
+	copyFileSync(new URL("../../pipeline/test/fixtures/rounds-main/decided.sqlite", import.meta.url), path);
+	const fake = createFakeModels();
+	const harness = await openHarness(await openSqliteStorage(path), {
+		models: fake.models,
+		registry: createReviewRegistry(),
+	});
+	try {
+		const root = await harness.root(context);
+		await root.commit(
+			(tx) => new RoundWriter(tx, root.id).mint(revisionKey(changeset.revision), 999, "2020-01-01T00:00:00Z"),
+			context,
+		);
+	} finally {
+		await harness.close(context);
+	}
+	expect(await main(["findings", "main...feature", "--rounds", ...(json ? ["--json"] : [])], io)).toBe(0);
+	const output = io.stdout.mock.calls.join("");
+	if (json) {
+		const listed = JSON.parse(output);
+		expect(listed).toHaveLength(2);
+		expect(listed[0]).toMatchObject({ id: `${changeset.id}.r1`, date: "2020-01-01T00:00:00Z" });
+		expect(listed[1]).toMatchObject({
+			id: expect.stringMatching(/\.k[0-9a-f]{16}$/),
+			date: "unknown",
+			status: "passed",
+		});
+	} else {
+		const rows = output.trim().split("\n");
+		expect(rows).toHaveLength(2);
+		expect(rows[0]).toContain(`${changeset.id}.r1`);
+		expect(rows[0]).toContain("2020-01-01T00:00:00Z");
+		expect(rows[1]).toMatch(/\.k[0-9a-f]{16} .*unknown/);
+	}
+	expect(io.stderr).not.toHaveBeenCalled();
 });
