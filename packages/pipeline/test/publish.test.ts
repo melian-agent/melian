@@ -337,6 +337,12 @@ describe("publication planning recovery", () => {
 			state.pull.head.sha,
 			expect.any(String),
 		);
+		const stored = (await harness!.snapshot(PublishedDocument, root.id, context))!.revisions[state.pull.head.sha]!;
+		expect(stored.resolved[replyKey(finding.id, "2", dismissalVersion(dismissal))]).toMatchObject({
+			thread: "2",
+			dismissal,
+		});
+		expect(Object.hasOwn(stored.resolved, finding.id)).toBe(false);
 	});
 
 	it("redismisses an older finding past a newer record containing only another finding", async () => {
