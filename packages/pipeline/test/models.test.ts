@@ -66,3 +66,21 @@ it("chooses a route model with a command credential without running the command"
 		rmSync(dir, { recursive: true, force: true });
 	}
 });
+
+it("answers without cancellation when the caller supplies no signal", async () => {
+	const fake = createFakeModels();
+	const tool = { name: "answer", description: "Answer", parameters: Type.Object({}) };
+	fake.provider.setResponses([
+		(request, options) => {
+			expect(request.messages[0]).toMatchObject({ role: "system", toolsAdded: [tool] });
+			expect(options?.signal).toBeUndefined();
+			return fauxAssistantMessage(
+				[{ type: "toolCall", id: "answer-1", name: "answer", arguments: { choice: "run" } }],
+				{ stopReason: "toolUse" },
+			);
+		},
+	]);
+	const model = await RouteTextModel.create(fake.review, [fake.ref()]);
+	expect(await model!.answer({ system: "Use the answer tool.", prompt: "Choose.", tool })).toEqual({ choice: "run" });
+	expect(fake.provider.state.callCount).toBe(1);
+});
