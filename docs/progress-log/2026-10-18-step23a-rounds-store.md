@@ -1,6 +1,6 @@
 # Step 23a: rounds in the store
 
-Build-plan item 1 of [the rounds decision](../decisions/2026-10-18-compare-rounds-exact-rule.md), stacked on [pull request 148](https://github.com/melian-agent/melian/pull/148).
+[Pull request 152](https://github.com/melian-agent/melian/pull/152) builds item 1 of [the rounds decision](../decisions/2026-10-18-compare-rounds-exact-rule.md). It started on `c3d96b14`, stacked on [pull request 148](https://github.com/melian-agent/melian/pull/148). That parent merged during the gate and its branch was deleted, so the draft targets main.
 
 `melian.rounds` version 1 retains a round for each new adjudication. Minting clears the live verdict, provenance and decision. Attachments and dismissals keep the current round. Adjudication writes the verdict and provenance copy in its verdict commit. Superseded tasks write neither. Distinct automatic check runs mint even when their records are identical.
 
