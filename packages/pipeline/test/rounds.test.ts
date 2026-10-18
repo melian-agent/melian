@@ -303,6 +303,52 @@ it.each([
 	}
 });
 
+it("mints after a legacy attachment when the CLI supplies a distinct check run with identical records", async () => {
+	const { storage } = await oldStorage("decided");
+	const reopened = await openHarness(storage, { models: fake.models, registry: createReviewRegistry() });
+	try {
+		const root = await reopened.root(context);
+		const before = (await reopened.snapshot(ReviewIndex, root.id, context))!.reviews[legacy.key]!.adjudication!;
+		const input = JSON.parse(before.input) as AdjudicationTaskInput;
+		gitIn(
+			repo,
+			"fetch",
+			new URL("./fixtures/rounds-main/repo.bundle", import.meta.url).pathname,
+			"refs/heads/main:refs/heads/legacy-base",
+			"refs/heads/feature:refs/heads/legacy-head",
+		);
+		const resolved = await Changeset.resolve(repo, "legacy-base...legacy-head");
+		const changeset = Changeset.from({ ...resolved.toJSON(), id: legacy.changeset, repoRoot: input.repoRoot });
+		const checkRun = { base: input.base, head: input.head, tier: "full", policy: "cli-policy", task: 1 };
+		const options = {
+			harness: reopened,
+			changeset,
+			config: { ...defaultConfig, tiers: { full: ["static.mutation"] } },
+			lenses: [],
+			standards: [],
+			models: fake.review,
+			checks: [{ name: "static.mutation", status: "ran" as const }],
+			checkRun,
+		};
+		await reviewChangeset(options);
+		expect((await reopened.snapshot(ReviewIndex, root.id, context))!.reviews[legacy.key]!.adjudication!.task).toBe(
+			before.task,
+		);
+		const attached = structuredClone((await reopened.snapshot(rounds, root.id, context))!);
+		expect(attached.sequence).toBe(0);
+		await reviewChangeset({ ...options, checkRun: { ...checkRun, task: 2 } });
+		const minted = await reopened.snapshot(rounds, root.id, context);
+		expect(minted?.sequence).toBe(1);
+		expect(minted?.items.r1).toMatchObject({ verdict: { status: "passed" } });
+		expect(minted?.items[attached.current[legacy.key]!]).toEqual(attached.items[attached.current[legacy.key]!]);
+		expect(
+			(await reopened.snapshot(ReviewIndex, root.id, context))!.reviews[legacy.key]!.adjudication!.task,
+		).not.toBe(before.task);
+	} finally {
+		await reopened.close(context);
+	}
+});
+
 it("synthesises an undecided comparison-only legacy round without writing", async () => {
 	const storage = createMemoryStorage();
 	const comparison = await CompareHarness.open(storage, fake.review);
@@ -747,3 +793,15 @@ it.each([undefined, "stored-check-run"])(
 		}, context);
 	},
 );
+
+it("keeps the first accepted legacy check run when later writes supply another or none", async () => {
+	const root = await harness.root(context);
+	await root.commit(async (tx) => {
+		const writer = new RoundWriter(tx, root.id);
+		await writer.keep(legacy.key, 999, "accepted-check-run");
+		await writer.keep(legacy.key, 999, "another-check-run");
+		expect(await writer.checkRun(999, "caller-check-run")).toBe("accepted-check-run");
+		await writer.keep(legacy.key, 999);
+		expect(await writer.checkRun(999, "caller-check-run")).toBe("accepted-check-run");
+	}, context);
+});

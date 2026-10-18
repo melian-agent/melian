@@ -92,7 +92,7 @@ export class RoundWriter {
 	async checkRun(task: number, legacyCheckRun?: string): Promise<string | undefined> {
 		const state = await this.tx.doc(RoundsDocument, this.root);
 		const round = Object.values(state.items).find((round) => round.tasks.includes(task));
-		return round?.mintedAt === undefined ? legacyCheckRun : round.checkRun;
+		return round?.mintedAt === undefined ? (round?.checkRun ?? legacyCheckRun) : round.checkRun;
 	}
 
 	async mint(revision: string, task: number, at: string, checkRun?: string): Promise<void> {
@@ -111,12 +111,13 @@ export class RoundWriter {
 		if (live.decisions !== undefined) delete live.decisions[revision];
 	}
 
-	async keep(revision: string, task: number): Promise<StoredRound> {
+	async keep(revision: string, task: number, checkRun?: string): Promise<StoredRound> {
 		const state = await this.preserve(revision);
 		const key = state.current[revision] ?? legacyKey(revision);
 		state.current[revision] = key;
 		state.items[key] ??= legacyRound(revision);
 		const round = state.items[key];
+		round.checkRun ??= checkRun;
 		if (!round.tasks.includes(task)) round.tasks.push(task);
 		return round;
 	}

@@ -1184,7 +1184,7 @@ async function startAdjudication(
 			(await rounds.checkRun(known.adjudication.task, checkRun)) === checkRun &&
 			(await attachable(tx, known.adjudication.task, retry))
 		) {
-			await rounds.keep(revision, known.adjudication.task);
+			await rounds.keep(revision, known.adjudication.task, checkRun);
 			return known.adjudication.task as TaskId<AdjudicationResult>;
 		}
 		const created = await tx.createTask(AdjudicationTask, deciding, { ownership: { kind: "conversation" } });
