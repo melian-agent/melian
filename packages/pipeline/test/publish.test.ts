@@ -21,6 +21,7 @@ import { failedAttestations, PublisherDocument, publishExtension, publishReview 
 import { RoundWriter } from "../src/rounds.ts";
 import { TaskTiming } from "../src/task-timing.ts";
 import { createFakeModels } from "../src/testing.ts";
+import { RecordedReview, recordedReviewTask } from "./fixtures/recorded-review.ts";
 import { baseAndHead, isolatedGitEnv } from "./fixtures/repo.ts";
 
 let repo: string | undefined;
@@ -53,6 +54,7 @@ it.each(["current", "pending", "failed task"])(
 		const fake = createFakeModels();
 		const storage = createMemoryStorage();
 		const registry = createRegistry();
+		registry.install({ name: "test.recorded-review", tasks: [recordedReviewTask] });
 		harness = await openHarness(storage, { models: fake.models, registry });
 		const root = await harness.root(context, { agent: { model: fake.ref() } });
 		const dismissed = Finding.create({
@@ -91,6 +93,7 @@ it.each(["current", "pending", "failed task"])(
 				},
 			};
 		}, context);
+		await new RecordedReview(harness).record(revision);
 		let resumedTask: TaskId | undefined;
 		if (scenario === "failed task") {
 			const input = {
@@ -127,7 +130,11 @@ it.each(["current", "pending", "failed task"])(
 		}
 		if (scenario !== "current")
 			vi.spyOn(provider, "postReview").mockRejectedValueOnce(new Error("interrupted round"));
-		registry.install(publishExtension(provider));
+		const resume = harness.resume.bind(harness);
+		vi.spyOn(harness, "resume").mockImplementationOnce(() => {
+			registry.install(publishExtension(provider));
+			resume();
+		});
 		const options = {
 			harness,
 			provider,
@@ -202,6 +209,7 @@ it.each(["stale", "resumed stale", "failed", "resumed failed", "aborted", "super
 		});
 		const fake = createFakeModels();
 		const registry = createRegistry();
+		registry.install({ name: "test.recorded-review", tasks: [recordedReviewTask] });
 		harness = await openHarness(createMemoryStorage(), { models: fake.models, registry });
 		const root = await harness.root(context, { agent: { model: fake.ref() } });
 		const dismissal = { by: "Maintainer", reason: "Input is constant.", at: "2026-10-17T00:00:00Z" };
@@ -242,6 +250,7 @@ it.each(["stale", "resumed stale", "failed", "resumed failed", "aborted", "super
 				},
 			};
 		}, context);
+		await new RecordedReview(harness).record(revision);
 		if (mode.startsWith("resumed")) {
 			const input = {
 				...previous.input,
@@ -271,7 +280,11 @@ it.each(["stale", "resumed stale", "failed", "resumed failed", "aborted", "super
 			await root.commit((tx) => tx.createTask(token, input, { ownership: { kind: "conversation" } }), context);
 		}
 		state.failLedger = mode.endsWith("failed");
-		registry.install(publishExtension(provider));
+		const resume = harness.resume.bind(harness);
+		vi.spyOn(harness, "resume").mockImplementationOnce(() => {
+			registry.install(publishExtension(provider));
+			resume();
+		});
 		const options = {
 			harness,
 			provider,

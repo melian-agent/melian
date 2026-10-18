@@ -19,3 +19,11 @@ An absent round ID now reports "has no round". A stored round without a verdict 
 The missing-round diagnosis fix is commit `b7768f01`.
 
 The first whole gate stopped at TypeScript: the attachment regression passed a string instead of the public API's structured check-run identity. The test now uses base, head, tier, policy and task. Restoring the original attachment call again fails with task 14 instead of 9. Restoring the fix passes all 38 rounds tests.
+
+The typed identity correction is commit `cd0287a6`.
+
+The next whole gate exposed manually seeded publication fixtures without indexed adjudication. A shared test fixture now supplies completed tasks, preserving the publication assertions in pipeline, CLI and GitHub tests. Two resume fixtures install the publisher only when publication resumes after target validation: waiting for fixture authority already enabled scheduling. The standalone CLI error test now expects the requested "has no round" message. All 140 tests in the seven affected suites pass, and TypeScript passes.
+
+The triage test also covers an absent index document. Removing its optional access fails that case. The four legacy identity mutations fail again with the structured CLI identity. There are 24 distinct killed hand mutations, with four typed-input repeats.
+
+The second whole gate exits 1: 4,934 tests pass, 53 skip, and 33 fail. Twenty-nine failures were the fixture authority or requested message changes corrected above. Three tests report `ps failed: undefined`; the supervisor test reports `toolFailed` instead of `invalidOutput`. These four are the known sandbox failures. No timeout occurred. The whole gate is rerun after the fixture corrections.

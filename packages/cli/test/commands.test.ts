@@ -137,7 +137,7 @@ describe("stored round findings", () => {
 	it("reports a missing round with the CLI error and closes storage", async () => {
 		await expect(findings(io, "", { ...options, round: `${changesetId}.r2` })).rejects.toMatchObject({
 			name: "CliError",
-			message: `Melian has no decided round ${changesetId}.r2`,
+			message: `Melian has no round ${changesetId}.r2`,
 		});
 		expect(storage.close).toHaveBeenCalledExactlyOnceWith(context);
 	});

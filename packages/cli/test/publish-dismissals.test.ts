@@ -19,6 +19,7 @@ import { moveTo, pullRequestState } from "../../github/test/fixtures/scenario.ts
 import { VerdictDocument } from "../../pipeline/src/adjudication.ts";
 import { PublishedDocument, PublisherDocument } from "../../pipeline/src/publish.ts";
 import { RoundWriter } from "../../pipeline/src/rounds.ts";
+import { RecordedReview, recordedReviewTask } from "../../pipeline/test/fixtures/recorded-review.ts";
 import { baseAndHead, isolatedGitEnv } from "../../pipeline/test/fixtures/repo.ts";
 import { publish } from "../src/commands.ts";
 import { storagePath } from "../src/repository.ts";
@@ -63,9 +64,11 @@ it.each([
 		const fake = createFakeModels();
 		const env = { ...process.env, MELIAN_TEST_SCRIPT: undefined };
 		const path = await storagePath(repo, changeset.id, env, false);
+		const registry = createRegistry();
+		registry.install({ name: "test.recorded-review", tasks: [recordedReviewTask] });
 		const harness = await openHarness(await openSqliteStorage(path), {
 			models: fake.models,
-			registry: createRegistry(),
+			registry,
 		});
 		const created = Finding.create({
 			rule: "unsafe",
@@ -119,6 +122,7 @@ it.each([
 					},
 				};
 			}, context);
+			await new RecordedReview(harness).record(revisionKey(changeset.revision));
 		} finally {
 			await harness.close(context);
 		}

@@ -622,15 +622,18 @@ it.each(["main-36122eb2", "main-other-revision", "main-preserved", "build1-6bd29
 	},
 );
 
-it.each(["adjudication", "revision"])(
+it.each(["adjudication", "revision", "document"])(
 	"supersedes a resumed publication during triage without indexed %s",
 	async (missing) => {
 		const { harness, root, pending, state, provider, changeset, path } = await pendingPublication("minted", ["ran"]);
 		const revision = `${changeset.revision.base}..${changeset.revision.head}`;
 		await root.commit(async (tx) => {
-			const index = await tx.doc(ReviewIndex, root.id);
-			if (missing === "revision") delete index.reviews[revision];
-			else delete index.reviews[revision]!.adjudication;
+			if (missing === "document") await tx.retireDoc(ReviewIndex, root.id);
+			else {
+				const index = await tx.doc(ReviewIndex, root.id);
+				if (missing === "revision") delete index.reviews[revision];
+				else delete index.reviews[revision]!.adjudication;
+			}
 			const verdicts = await tx.doc(VerdictDocument, root.id);
 			await new RoundWriter(tx, root.id).preserve(revision);
 			delete verdicts.verdicts[revision];
@@ -643,6 +646,7 @@ it.each(["adjudication", "revision"])(
 		const statuses = vi.spyOn(provider, "setStatus");
 		const publisher = await PublishHarness.open(await openSqliteStorage(path), createFakeModels().review, provider);
 		opened.push(publisher.harness);
+		await publisher.harness.waitForIdle(context);
 		await expect(
 			publishReview({
 				harness: publisher.harness,
@@ -653,7 +657,6 @@ it.each(["adjudication", "revision"])(
 				trustedWriters: false,
 			}),
 		).rejects.toMatchObject({ code: "notReviewed" });
-		await publisher.harness.waitForIdle(context);
 		const done = await publisher.harness.waitForTask(pending.record.id, context);
 		expect(done.state.outcome).toMatchObject({
 			status: "completed",
