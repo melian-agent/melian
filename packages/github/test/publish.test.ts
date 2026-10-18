@@ -1147,6 +1147,13 @@ describe("cross-head answer discovery", () => {
 		});
 	});
 
+	it("never recovers a reply as a root, even when its root is gone", async () => {
+		const state = pullRequestState();
+		state.reviews.push(review);
+		state.comments.push({ ...root(2), in_reply_to_id: 1 });
+		expect((await providerFor(state).findPublished(7, old, wanted, secret)).threads).toEqual({});
+	});
+
 	it("recovers only the requested head's roots from the recovered review", async () => {
 		const state = pullRequestState();
 		state.reviews.push(review);
