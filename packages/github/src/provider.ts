@@ -624,7 +624,9 @@ export class GitHubProvider implements ReviewProvider {
 			)
 				continue;
 			roots.set(comment.id, { id: opening.id, author: comment.user.login });
-			if (opening.revision === revision) threads[opening.id] ??= String(comment.id);
+			// A finding can have roots in several reviews at one head; only the recovered review's own count.
+			if (opening.revision === revision && String(comment.pull_request_review_id) === review)
+				threads[opening.id] ??= String(comment.id);
 		}
 		for (const comment of comments) {
 			const root = roots.get(comment.in_reply_to_id ?? comment.id);

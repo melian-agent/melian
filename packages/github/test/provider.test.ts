@@ -94,12 +94,20 @@ describe("publication response gaps", () => {
 			pull_request_review_id: 1,
 		};
 		const answer = marker(head, "resolved", finding, secret);
+		state.reviews.push({
+			id: 1,
+			user: { login: state.login },
+			body: marker(head, "verdict", "0123456789abcdef", secret, { round: 1 }),
+			commit_id: head,
+			event: "COMMENT",
+		});
 		state.comments.push(
 			root,
 			{ ...root, id: 2, body: answer, in_reply_to_id: 1, user: null },
 			{ ...root, id: 3, body: answer, in_reply_to_id: 1 },
 		);
 		expect(await provider.findPublished(7, head, { fingerprint: "0123456789abcdef", round: 1 }, secret)).toEqual({
+			review: "1",
 			threads: { [finding]: "1" },
 			replies: { [`${finding} 1`]: "3" },
 		});

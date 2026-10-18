@@ -125,6 +125,46 @@ describe("publication planning recovery", () => {
 		expect(state.reviews[0]!.body).toContain(`round=${next}`);
 	});
 
+	it("recovers the root of the review it posted when an older review holds a root for the same finding", async () => {
+		const decide = (findings: Finding[]) =>
+			root.commit(async (tx) => {
+				(await tx.doc(VerdictDocument, root.id)).verdicts[revision] = new Adjudication({
+					findings,
+					manifest: [],
+					checks: [],
+					config: defaultConfig,
+				})
+					.adjudicate()
+					.toJSON();
+			}, context);
+		await decide([finding]);
+		await publishReview(options);
+		const older = state.comments[0]!.id;
+		await decide([]);
+		state.failReplies = true;
+		await expect(publishReview(options)).rejects.toBeInstanceOf(PublishError);
+		state.failReplies = false;
+		state.resolvedThreads.push(older);
+		await decide([finding]);
+		const post = provider.postReview.bind(provider);
+		const crash = vi.spyOn(provider, "postReview").mockImplementationOnce(async (review) => {
+			await post(review);
+			throw new Error("crashed before recording the review");
+		});
+		await expect(publishReview(options)).rejects.toThrow();
+		crash.mockRestore();
+		const roots = state.comments.filter((comment) => comment.in_reply_to_id === undefined);
+		expect(roots).toHaveLength(2);
+		const newer = roots[1]!.id;
+		await publishReview(options);
+		const head = state.pull.head.sha;
+		const recorded = (await harness!.snapshot(PublishedDocument, root.id, context))!.revisions[head]!;
+		expect(recorded.open[finding.id]?.thread).toBe(String(newer));
+		await decide([]);
+		await publishReview(options);
+		expect(state.resolvedThreads).toContain(newer);
+	});
+
 	it("keeps a body-only resolution keyed by its finding ID", async () => {
 		await root.commit(async (tx) => {
 			const doc = await tx.doc(PublishedDocument, root.id);

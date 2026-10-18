@@ -178,6 +178,7 @@ describe("reading markers back", () => {
 		const state = pullRequestState();
 		state.failUser = true;
 		const signed = marker(head, "finding", finding, secret);
+		state.reviews.push(review(1, state.login, marker(head, "verdict", fingerprint, secret, { round: 1 })));
 		state.comments.push(comment(1, state.login, signed), comment(2, "pull-request-author", signed));
 		expect(await providerFor(state).findPublished(7, head, wanted, secret)).toMatchObject({
 			threads: { [finding]: "1" },
@@ -1115,6 +1116,14 @@ describe("cross-head answer discovery", () => {
 		side: "RIGHT",
 		pull_request_review_id: 1,
 	});
+	// The review the roots at `old` belong to, which `wanted` names.
+	const review = {
+		id: 1,
+		user: { login: "melian-user" },
+		body: marker(old, "verdict", wanted.fingerprint, secret, { round: 1 }),
+		commit_id: old,
+		event: "COMMENT",
+	};
 
 	it("finds only signed, root-anchored answers across heads when user lookup fails", async () => {
 		const state = pullRequestState();
@@ -1138,10 +1147,23 @@ describe("cross-head answer discovery", () => {
 		});
 	});
 
+	it("recovers only the requested head's roots from the recovered review", async () => {
+		const state = pullRequestState();
+		state.reviews.push(review);
+		state.comments.push(root(1), {
+			...root(2, "0123456789abcdef"),
+			body: marker(head, "finding", "0123456789abcdef", secret),
+		});
+		expect((await providerFor(state).findPublished(7, old, wanted, secret)).threads).toEqual({
+			fedcba9876543210: "1",
+		});
+	});
+
 	it("rejects a copied signed reply from a human at the requested head without /user", async () => {
 		const state = pullRequestState();
 		state.failUser = true;
 		const finding = "fedcba9876543210";
+		state.reviews.push(review);
 		state.comments.push(root(1), {
 			...root(2),
 			body: marker(old, "resolved", finding, secret),
@@ -1149,6 +1171,7 @@ describe("cross-head answer discovery", () => {
 			user: { login: "human" },
 		});
 		expect(await providerFor(state).findPublished(7, old, wanted, secret)).toEqual({
+			review: "1",
 			threads: { [finding]: "1" },
 			replies: {},
 		});
@@ -1301,8 +1324,10 @@ describe("cross-head answer discovery", () => {
 		state.failUser = true;
 		const first = root(1);
 		first.body += `\n${marker(old, "resolved", "fedcba9876543210", secret, { dismissal: "00112233aabbccdd" })}`;
+		state.reviews.push(review);
 		state.comments.push(first, { ...root(2), user: null });
 		expect(await providerFor(state).findPublished(7, old, wanted, secret)).toEqual({
+			review: "1",
 			threads: { fedcba9876543210: "1" },
 			replies: {},
 		});
@@ -1311,6 +1336,7 @@ describe("cross-head answer discovery", () => {
 	it.each([50, 51])("bounds the comment listing at 50 pages with %i pages", async (pages) => {
 		const state = pullRequestState();
 		state.restPageSize = 1;
+		state.reviews.push(review);
 		state.comments.push(
 			...Array.from({ length: pages }, (_, index) => root(index + 1, index.toString(16).padStart(16, "0"))),
 		);
