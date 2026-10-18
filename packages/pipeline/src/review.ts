@@ -125,6 +125,7 @@ import {
 	type ReviewIndexState,
 	undecided,
 } from "./review-index.ts";
+import { RoundWriter } from "./rounds.ts";
 import { SummaryTask, summarizeExtension } from "./summarize.ts";
 import { injectionAttemptRule, quoteUntrusted, reviewNonce, triageBoundary } from "./untrusted.ts";
 import {
@@ -1153,6 +1154,7 @@ async function startAdjudication(
 	input: AdjudicationTaskInput,
 	selection: readonly string[],
 	verificationRefused: boolean,
+	checkRun: string | undefined,
 	context: Context,
 ): Promise<TaskId<AdjudicationResult> | undefined> {
 	const root = await harness.root(context);
@@ -1174,10 +1176,17 @@ async function startAdjudication(
 		// A failed adjudication is always rerun: it is cheap, and its failure, such as a base commit a shallow clone had
 		// not fetched yet, may have passed.
 		const retry = [...undecided, "failed"];
-		if (known?.adjudication?.input === key && (await attachable(tx, known.adjudication.task, retry))) {
+		const rounds = new RoundWriter(tx, root.id);
+		if (
+			known?.adjudication?.input === key &&
+			(await rounds.checkRun(known.adjudication.task)) === checkRun &&
+			(await attachable(tx, known.adjudication.task, retry))
+		) {
+			await rounds.keep(revision, known.adjudication.task);
 			return known.adjudication.task as TaskId<AdjudicationResult>;
 		}
 		const created = await tx.createTask(AdjudicationTask, deciding, { ownership: { kind: "conversation" } });
+		await rounds.mint(revision, created, new Date().toISOString(), checkRun);
 		const same = known !== undefined && known.lenses.join("\n") === selection.join("\n");
 		const entry = same ? known : { lenses: [...selection] };
 		index.reviews[revision] = { ...entry, adjudication: { task: created, input: key } };
@@ -1463,6 +1472,7 @@ async function triage(
 			else if (previous !== undefined)
 				index.reviews[revision] = omit(omit(previous, "adjudication"), "verification");
 			const verdicts = await tx.doc(VerdictDocument, root.id);
+			await new RoundWriter(tx, root.id).preserve(revision);
 			delete verdicts.verdicts[revision];
 			if (verdicts.provenance !== undefined) delete verdicts.provenance[revision];
 			if (verdicts.decisions !== undefined) delete verdicts.decisions[revision];
@@ -1540,25 +1550,23 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		});
 	}
 	const tier = request.tier ?? request.config.stages["pull-request"] ?? "full";
-	const supplied = automatic
-		? (
-				await runChecks(
-					harness,
-					{
-						rootConversationId: (await harness.root(request.context ?? backgroundContext)).id,
-						changeset: request.changeset,
-						config: request.config,
-						source: request.policy!,
-						tier,
-						rerunFailed: request.rerun,
-						...(request.writer === undefined ? {} : { writer: request.writer }),
-						...(request.cold === true ? { cold: true } : {}),
-					},
-					request.context ?? backgroundContext,
-				)
-			).records
-		: request.checks;
-	const options = planned({ ...request, checks: supplied ?? [] });
+	const checked = automatic
+		? await runChecks(
+				harness,
+				{
+					rootConversationId: (await harness.root(request.context ?? backgroundContext)).id,
+					changeset: request.changeset,
+					config: request.config,
+					source: request.policy!,
+					tier,
+					rerunFailed: request.rerun,
+					...(request.writer === undefined ? {} : { writer: request.writer }),
+					...(request.cold === true ? { cold: true } : {}),
+				},
+				request.context ?? backgroundContext,
+			)
+		: undefined;
+	const options = planned({ ...request, checks: checked?.records ?? request.checks ?? [] });
 	const { changeset, config, standards, models } = options;
 	const standardsSource =
 		standards instanceof Standards && (await standards.trustedBy(options.policy)) ? "revision" : "worktree";
@@ -2225,6 +2233,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		input,
 		selectionOf(lenses, escalateAt),
 		verificationRefused,
+		checked === undefined ? undefined : JSON.stringify(checked.identity),
 		context,
 	);
 	if (adjudication === undefined) {

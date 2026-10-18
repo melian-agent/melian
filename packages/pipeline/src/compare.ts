@@ -25,6 +25,7 @@ import {
 } from "./harness.ts";
 import { modelsOf, type ReviewModels } from "./models.ts";
 import { ReviewIndex } from "./review-index.ts";
+import { RoundWriter } from "./rounds.ts";
 
 // Each revision's comparison, keyed by `revisionKey` of the stored review it compares against, on the changeset's root
 // conversation beside the findings. It keeps its latest value, as the review index does: a comparison is the
@@ -218,6 +219,7 @@ export class CompareHarness {
 				rule: judgement.rule ?? previous?.rule,
 			});
 			round.comparison.record(judgement.at, revision.target);
+			await new RoundWriter(tx, root.id).preserve(round.key);
 			document.comparisons = { ...document.comparisons, [round.key]: round.comparison.toJSON() };
 			return round.comparison;
 		}, context);
@@ -275,6 +277,7 @@ export class CompareHarness {
 			comparison.compare(verdict);
 			change(comparison);
 			comparison.compare(verdict);
+			await new RoundWriter(tx, root.id).preserve(key);
 			document.comparisons = { ...document.comparisons, [key]: comparison.toJSON() };
 			return comparison;
 		}, context);

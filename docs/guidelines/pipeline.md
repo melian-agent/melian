@@ -278,6 +278,14 @@ A level's `budget.tokens` and `budget.tools` end a lens conversation once they a
 - tsc exits non-zero when it reports anything, including diagnostics Melian drops as outside the worktree or under `node_modules`, such as a broken `.d.ts` with `skipLibCheck` off. A non-zero exit whose every diagnostic was dropped is a run with no results and a note counting them; only a non-zero exit with no diagnostics at all is `toolFailed`.
 - Output goes to files, not the shell's stream. `Shell.exec` interleaves stdout and stderr, which would corrupt a JSON report, so the runner redirects each tool to a file in its scratch directory and reads that.
 
+## Stored rounds
+
+`melian.rounds`, version 1, keeps a storage-wide counter, the current round of each revision, owned adjudication tasks and verdict copies. Storage-local keys are `r<n>` or the legacy key hash; the public ID prefixes the key with the changeset ID. `RoundWriter` preserves a legacy verdict before the first write that touches its key, inside that writer's transaction. It also records comparison-only keys as undecided legacy rounds. The marker and the copy roll back with the write.
+
+`startAdjudication` mints when it creates a task, deleting the live verdict, provenance and decision. Attachments and dismissals keep the current round. Automatic checks contribute their run identity to attachment through the round record, so distinct cold runs or reruns with identical check records still mint. No existing task or verdict version changes. Only adjudication writes a round's verdict copy, behind the review index's supersession check. A task main left pending writes its key's legacy round.
+
+`RoundReader` reads detached documents and synthesises unrecorded legacy verdict and comparison keys without writing. `Round.compare` orders legacy rounds by head commit date before minted rounds by mint time, breaking ties by ID. The host obtains commit dates from git.
+
 ## Adjudication
 
 `melian.adjudication` is version 3. Its migration preserves version-1 and version-2 inputs and adds `legacyTiming: true` to their checkpoints. Version 2 added `files`, which the hunk pass still reads after an upgrade. Version 1 has no files and decides by snippet alone. Neither older version supplies a timing start. SQLite reopen tests use tasks and findings recorded by each version’s own code.

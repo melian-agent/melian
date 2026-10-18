@@ -25,6 +25,7 @@ import { findingsVersion, type Producer, readFindings, revisionKey, seenBefore }
 import { type Context, type ConversationId, type DocumentReader, defineDoc, defineTask } from "./harness.ts";
 import type { StoredBudgetEnd } from "./lens-tools.ts";
 import { ReviewIndex } from "./review-index.ts";
+import { RoundWriter } from "./rounds.ts";
 import { TaskTiming } from "./task-timing.ts";
 
 // Type aliases with mutable arrays, not core's interfaces: a document's value must satisfy Pi's JsonObject.
@@ -279,6 +280,7 @@ export const AdjudicationTask = defineTask<
 					return { status: "terminal", outcome: { status: "completed", result: "superseded" } };
 				}
 				const document = await tx.doc(VerdictDocument, root);
+				await new RoundWriter(tx, root).record(revision, runtime.taskId, verdict.toJSON(), task.input.provenance);
 				document.verdicts[revision] = structuredClone(verdict.toJSON());
 				document.provenance = { ...document.provenance, [revision]: structuredClone(task.input.provenance) };
 				if (task.input.details !== undefined)
