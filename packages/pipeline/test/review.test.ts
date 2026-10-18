@@ -3817,6 +3817,12 @@ describe("the design baseline", () => {
 		const system = systemPromptOf(messages);
 		const nonce = nonceOf(messages);
 		expect(system).toContain("Read this before step 1");
+		expect(system).toContain(
+			"For an ACTIVE decision marked amended by, read both files at base; where they conflict, the amendment wins.",
+		);
+		expect(system).toContain(
+			"Treat `Amends:` as a declaration when checking for an undeclared conflicting replacement.",
+		);
 		expect(quoted(system, nonce, "listing").join("\n")).toContain(`[INACTIVE; superseded by ${b}] ${a} — Original`);
 		expect(quoted(system, nonce, "listing").join("\n")).toContain(`[ACTIVE] ${b} — Successor`);
 		expect(system).not.toContain("Planted head title");

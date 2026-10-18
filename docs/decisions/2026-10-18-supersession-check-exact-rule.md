@@ -1,61 +1,45 @@
-# Supersession compares parsed prose and reports uncarried sentences
+# Amend narrow decisions; make whole retirement visible
 
 Supersedes: [2026-10-15-supersession-drop-check.md](2026-10-15-supersession-drop-check.md)
 
-Status: step 26, phase 1. Proposed for attack before implementation.
+The maintainer chose this rule on 2026-10-18 after the attack on [pull request #150](https://github.com/melian-agent/melian/pull/150).
 
-## Problem and surviving direction
+## Problem and choice
 
-`DecisionFiles.from` retires a target whole. The design lens uses only active base decisions. A replacement saying “only for X” therefore loses every other clause unless it restates them.
+The decision index retires a superseded target whole. A replacement saying “only for X” loses every other clause unless it restates them. Reviewers found such omissions on [pull request #116](https://github.com/melian-agent/melian/pull/116) and [pull request #117](https://github.com/melian-agent/melian/pull/117).
 
-On [pull request #116](https://github.com/melian-agent/melian/pull/116), reviewers found omitted reasons for lowering, the pre-existing acknowledgement case, strongest-cause merging and named goldens. [Pull request #117](https://github.com/melian-agent/melian/pull/117) repeated the omission across sampled rounds. Every surviving obligation must appear in the replacement. A deterministic check makes textual omissions visible; the design lens judges their significance. Its existing rule against conflicting decisions without `Supersedes:` remains. This check cannot discover an undeclared replacement, as [pull request #111](https://github.com/melian-agent/melian/pull/111) required.
+`Amends: <target link>, <scope>` declares a narrow change. The target stays active, rendered as `[ACTIVE; amended by Y]`. The design lens reads both files; where they conflict, the amendment wins. The rendered index and lens instructions state that precedence. Nothing is retired.
 
-## Authority and clauses
+`Supersedes:` means whole retirement. Restate every surviving clause in the replacement. Every new or changed edge draws one P3 `guardrail/supersession-drop` notice on the declaring file, even when every clause is restated. The notice says which target is retired and asks the author to restate what survives. Uncarried sentences are evidence, never the trigger. Exact text cannot distinguish a rewrite from a lost obligation.
 
-Use `MarkdownDocument` in the decisions package. Its authority is `mdast-util-from-markdown` 2.1.0, with the existing YAML/TOML front matter extensions. Reuse its Supersedes grammar and `LocalDestination`; do not reconstruct Markdown with line splitting. `DecisionFile` currently exposes only title and targets: clause extraction needs a new instance method over that same tree.
+The attack counted 36 partial Supersedes lines. They are a follow-up audit under plan step 26. Existing edges keep their whole-retirement meaning. This change edits no decision on main. Other repositories' layouts belong to [issue #151](https://github.com/melian-agent/melian/issues/151).
 
-A clause is one non-empty sentence segment from a mdast `paragraph`, including paragraphs inside lists. Render that paragraph with `mdast-util-to-string`, with `includeHtml: false` and `includeImageAlt: false`, then use `Intl.Segmenter("en-AU", { granularity: "sentence" })`. Segment before collapsing ECMAScript whitespace to one space and trimming. Preserve case, punctuation and decoded inline-code text. Retain the paragraph's parser-provided source range for evidence.
+## Declaration authority
 
-Exclude blockquote descendants, front matter, headings, definitions, HTML nodes and code blocks. Exclude an entire root paragraph containing a declaration recognised by the existing Supersedes grammar, including an absence sentinel. Declaration recognition must share the parser's implementation, not use a second recogniser.
+Use `MarkdownDocument` in the decisions package, backed by `mdast-util-from-markdown` 2.1.0 and its existing front matter extensions. `LocalDestination` resolves links. The parser decides what is a link; labels, code, HTML and images remain opaque for edges. Root paragraphs alone supply declarations. Both forms keep the existing absence sentinels and bare filenames.
 
-A root heading whose rendered, trimmed text is exactly `Retired` opens an excluded section until the next root heading of equal or lesser depth. Apply these exclusions to both files. Other headings organise prose but supply no clauses. CommonMark is the grammar; no GFM table extension is added.
+Only the first sentence of a declaration's physical line supplies targets. Later links are context. The golden copied from verifier-on-codex-subscription proves that verification-pass remains active. Both edge kinds participate in missing-target and cycle validation.
 
-## Kept, retired and unknown
+## Evidence authority and limits
 
-A target clause is mechanically “kept” when its normalised sentence equals a clause in the successor's included prose. Order and duplicate counts do not matter. Another file's restatement does not count. Links retain their labels, not destinations; changed destinations remain for design review.
+A clause is a non-empty sentence from a parsed paragraph, including a list paragraph. Collapse ECMAScript whitespace before `Intl.Segmenter("en-AU", { granularity: "sentence" })` segments it. Inline code stays whole during segmentation; preserve its decoded text in the result. Keep the parser's paragraph range for evidence. Links contribute labels, not destinations.
 
-This proves textual presence, never equivalence or continued force. A paraphrase, changed punctuation, an intentional replacement and a missing obligation all produce the same gap. Negation or contradictory surrounding prose can also defeat semantic preservation despite an exact match. The lens retains that work.
+Exclude front matter, headings, definitions, HTML nodes, code blocks and blockquotes. Exclude only a recognised declaration's physical line, including an absence declaration, never its whole paragraph. A root heading exactly `Retired` excludes its section until the next root heading of equal or lesser depth. Apply exclusions to both files.
 
-Quoting old text in a blockquote or under `Retired` does not count as keeping it. Retiring a decision whole has no wildcard exemption: it produces one advisory notice per target, just like partial retirement. The notice invites review of the stated retirement; it requires no dismissal under default policy. Deliberate retirement is a valid human answer, not a parser error.
+The repository has no GFM table extension. Until it has one, a table contributes one clause per source row, including its header and delimiter. Read rows only within parser-provided paragraph ranges. This fallback can include a pipe-delimited prose paragraph; it is evidence, never a reason to trigger or suppress a notice.
+
+A target sentence is carried when its normalised text equals a successor clause. Order and duplicates do not matter. Another successor's restatement does not count. Paraphrases and punctuation changes appear uncarried; negation and contradictory context can leave false matches. The design lens retains semantic judgement and the rule against undeclared conflicting replacements. These notices compare a successor with its direct target only. They cannot recover earlier losses in a chain.
 
 ## Scope, output and failure
 
-Run through `melian review`'s existing `guardrails` dispatch in the pipeline, which can depend on decisions without making core import its adapter. Use check `guardrails`, rule `guardrail/supersession-drop`, severity P3. The default resolution is advisory; existing per-rule policy may raise it. No model decides whether to emit it, and no verifier is needed.
+The pipeline adds the check to `melian review`'s guardrails dispatch, avoiding a core dependency on decisions. Core's `defaultConfig.guardrails` registers `supersession-drop`, with `enabled: true`. Its only setting is the enabled switch. The notice has fixed P3 severity; ordinary per-rule resolution can raise or silence its default advisory requirement.
 
-When any changed old or new path matches the existing decision discovery domain, validate the complete head graph. Resolve all declarations, including inactive decisions and multiple targets, with `DecisionFiles`. A target absent at head makes the graph invalid, even when it exists at base. A target existing nowhere is therefore diagnosed during its own review. Cycles, unreadable sources, symlinks, oversized files, unavailable segmentation and parser errors fail the check and leave the review `not reviewed`. They never become advisory successes. Retain the existing 256 KiB file bound; never truncate inputs.
+When an old or new changed path belongs to docs/decisions, validate the complete head graph through `DecisionFiles`. Missing targets, cycles, unreadable files, symlinks, files beyond 256 KiB, parser errors and unavailable segmentation fail the check. An absent target fails even when it existed at base. No model or verifier runs.
 
-After validation, compare each head edge whose declaring file or target changed. Use the target's base text, following Git's reported old path for a rename. Use head text only when neither base path exists. This covers targets added in the same change and prevents editing or renaming an old target to erase the baseline. Renames and deletions count through both paths. Unchanged historical edges create no recurring notices. Changes outside the decision tree do not invoke this check.
+Compare each head Supersedes edge with its declaring file's base declaration, following Git's old path for a rename. An added target or changed declaration draws one notice per direct target. Unchanged declarations do not recur when only their body or target changes. Amendment edges draw no retirement notice.
 
-For any missing clauses, emit one notice on the successor's declaration, discriminated by target path. Give the target, total missing count and first missing paragraph location; count everything before bounding display text. A target with no included clauses gets one advisory “no comparable prose” notice instead of a clean comparison. Whole retirement never creates a sentence-by-sentence finding list.
+Use the direct target's base text, following Git's old path for a rename. Use head text only when it did not exist at base. Count all uncarried clauses before bounding display text. The explanation names the target, the full missing count and the first missing paragraph location. No comparable prose is stated explicitly. Evidence never creates sentence-by-sentence findings or suppresses a whole-retirement notice.
 
-## Hand application and goldens
+## Goldens
 
-At `ac4e8c07`, the [census and adjudications](../progress-log/2026-10-18-step26-phase1-supersession-rule.md#hand-census) cover all 86 literal declaration lines: 85 real declarations and one fenced template. The parser resolves 80 edges; nine declarations use absence sentinels. All 80 edges have textual gaps and would advise in a whole-tree audit; none has an absent target or cycle. This proposal's own replacement also advises because it rewords the direction. Normal reviews inspect only affected edges. The table distinguishes useful omission warnings from expected rewrite noise. This cost is why gaps start at P3.
-
-Required goldens, one case each:
-
-- Dropped clause: one notice with the missing paragraph and count.
-- Every clause restated: clean, including reordering and duplicate sentences.
-- Whitespace, emphasis and entities changed: clean after normalisation.
-- Paraphrase or punctuation changed: advisory despite equivalent intent.
-- Whole retirement: one advisory, with surviving obligations restated.
-- Quotation or `Retired` section: excluded text cannot suppress a notice.
-- Heading, list, fence, HTML, metadata and declaration: exact inclusion boundaries.
-- Empty comparable target: advisory, never inferred preservation.
-- Target nowhere, or removed at head: failed check.
-- Same-change target: compare head; existing edited target: compare base.
-- Inactive target, multiple targets and contextual links: existing graph semantics.
-- Cyclic, unreadable, oversized or unparseable graph: failed check.
-- Unavailable segmenter: failed check, with no handwritten fallback.
-- Unchanged edge, changed target, rename and deletion: declared scope.
-- Conflicting replacement without a declaration: design lens alone.
+The deterministic suite covers a dropped clause, every clause restated, a target that exists nowhere, an amendment leaving its target active, and the late contextual link. It also covers evidence boundaries, whitespace, inline code, table rows, unchanged declarations, changed declarations, renames, base authority and invalid graphs. No live measurement is needed for this deterministic notice.

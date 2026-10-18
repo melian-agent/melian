@@ -16,6 +16,13 @@ const targetBoundary = /(?=$|[\s,;]|\.(?:$|\s))/.source;
 const absencePattern = new RegExp(`^(?:none|no decision file)${targetBoundary}`, "i");
 const bareTargetPattern = new RegExp(String.raw`(?:^|[\s,;])([^\s,;\u0000]+\.md)${targetBoundary}`, "g");
 
+export type DecisionDeclaration = {
+	kind: "Supersedes" | "Amends";
+	targets: string[];
+	line: number;
+	text: string;
+};
+
 export class MarkdownDocument {
 	readonly #content: string;
 	readonly #tree: Root;
@@ -61,19 +68,29 @@ export class MarkdownDocument {
 	}
 
 	supersedes(path: string): string[] {
-		const targets: string[] = [];
+		return [
+			...new Set(
+				this.declarations(path)
+					.filter((declaration) => declaration.kind === "Supersedes")
+					.flatMap((declaration) => declaration.targets),
+			),
+		];
+	}
+
+	declarations(path: string): DecisionDeclaration[] {
+		const declarations: DecisionDeclaration[] = [];
 		visit(this.#tree, "paragraph", (paragraph, _index, parent) => {
 			if (parent!.type !== "root") return SKIP;
-			targets.push(...this.paragraphTargets(paragraph, path));
+			declarations.push(...this.paragraphDeclarations(paragraph, path));
 		});
-		return [...new Set(targets)];
+		return declarations;
 	}
 
 	private destination(node: Link | LinkReference): string {
 		return node.type === "link" ? node.url : this.#definition(node.identifier)!.url;
 	}
 
-	private paragraphTargets(paragraph: Paragraph, path: string): string[] {
+	private paragraphDeclarations(paragraph: Paragraph, path: string): DecisionDeclaration[] {
 		const firstLine = paragraph.position!.start.line;
 		const lines: { prose: string; links: { offset: number; destination: string }[] }[] = Array.from(
 			{ length: paragraph.position!.end.line - firstLine + 1 },
@@ -106,24 +123,38 @@ export class MarkdownDocument {
 					return SKIP;
 			}
 		});
-		const targets: string[] = [];
-		for (const line of lines) {
-			if (!line.prose.startsWith("Supersedes:")) continue;
-			const prose = line.prose.slice("Supersedes:".length);
+		const declarations: DecisionDeclaration[] = [];
+		for (const [index, line] of lines.entries()) {
+			const kind = line.prose.startsWith("Supersedes:")
+				? "Supersedes"
+				: line.prose.startsWith("Amends:")
+					? "Amends"
+					: undefined;
+			if (kind === undefined) continue;
+			const declaration: DecisionDeclaration = {
+				kind,
+				targets: [],
+				line: firstLine + index,
+				text: JSON.stringify(line),
+			};
+			declarations.push(declaration);
+			const prose = line.prose.slice(`${kind}:`.length);
 			if (absencePattern.test(prose.trimStart())) continue;
+			const sentence = [...new Intl.Segmenter("en-AU", { granularity: "sentence" }).segment(line.prose)][0]!.segment;
 			const bare = [...prose.matchAll(bareTargetPattern)].map((match) => ({
-				offset: match.index + "Supersedes:".length,
+				offset: match.index + `${kind}:`.length,
 				destination: match[1]!,
 			}));
-			for (const { destination } of [...line.links, ...bare].sort((a, b) => a.offset - b.offset)) {
+			for (const { offset, destination } of [...line.links, ...bare].sort((a, b) => a.offset - b.offset)) {
+				if (offset >= sentence.length) continue;
 				const repositoryRelative = destination.startsWith("docs/decisions/") || destination.startsWith("/");
 				const input =
 					destination.startsWith("/") && !destination.startsWith("//") ? destination.slice(1) : destination;
 				const target = LocalDestination.resolve(`${posix.dirname(path)}/`, input, repositoryRelative);
-				if (target !== undefined && decisionPathPattern.test(target.path)) targets.push(target.path);
+				if (target !== undefined && decisionPathPattern.test(target.path)) declaration.targets.push(target.path);
 			}
 		}
-		return targets;
+		return declarations;
 	}
 }
 
