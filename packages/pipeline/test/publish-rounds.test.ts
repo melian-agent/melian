@@ -1,8 +1,11 @@
+import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
-import { copyFileSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
+import { copyFileSync, existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Changeset, defaultConfig } from "@melian-agent/core";
+import { setTimeout as sleep } from "node:timers/promises";
+import { fileURLToPath } from "node:url";
+import { Changeset, defaultConfig, Finding, type ReviewProvider } from "@melian-agent/core";
 import { createGitHubProvider } from "@melian-agent/github";
 import { afterEach, expect, it, vi } from "vitest";
 import { type FakeState, fakeGitHub } from "../../github/test/fixtures/fake-github.ts";
@@ -16,8 +19,9 @@ import {
 	openHarness,
 	openSqliteStorage,
 	type TaskId,
+	upsertFinding,
 } from "../src/index.ts";
-import { PublisherDocument, publishExtension, publishReview } from "../src/publish.ts";
+import { PublisherDocument, PublishHarness, publishExtension, publishReview } from "../src/publish.ts";
 import { reviewChangeset } from "../src/review.ts";
 import { RoundsDocument, RoundWriter } from "../src/rounds.ts";
 import { createFakeModels } from "../src/testing.ts";
@@ -32,7 +36,7 @@ afterEach(async () => {
 	vi.unstubAllEnvs();
 });
 
-async function pendingPublication(rounds = "minted") {
+async function pendingPublication(rounds = "minted", statuses: readonly ("ran" | "failed")[] = ["ran", "failed"]) {
 	for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
 	const repo = baseAndHead({ "a.ts": "export const n = 1;\n" }, { "a.ts": "export const n = 2;\n" });
 	directories.push(repo);
@@ -53,7 +57,7 @@ async function pendingPublication(rounds = "minted") {
 	let harness = await openHarness(await openSqliteStorage(path), { models: fake.models, registry });
 	opened.push(harness);
 	await harness.root(context, { agent: { model: fake.ref() } });
-	for (const status of ["ran", "failed"] as const)
+	for (const status of statuses)
 		await reviewChangeset({
 			harness,
 			changeset,
@@ -108,7 +112,7 @@ async function pendingPublication(rounds = "minted") {
 	resume.mockRestore();
 	wait.mockRestore();
 	const pending = (await harness.inspect(context)).tasks.find((each) => each.record.kind === "melian.publish")!;
-	return { harness, root, pending, state, provider, changeset };
+	return { harness, root, pending, state, provider, changeset, path };
 }
 
 it("supersedes a pending publication when its publisher has no target", async () => {
@@ -125,6 +129,124 @@ it("supersedes a pending publication when its publisher has no target", async ()
 	});
 	expect(posts).not.toHaveBeenCalled();
 	expect(state.reviews).toEqual([]);
+});
+
+it("supersedes a crashed passing publication after a review-only harness records a blocking round", async () => {
+	const { harness, root, pending, state, provider, changeset, path } = await pendingPublication("minted", ["ran"]);
+	const revision = `${changeset.revision.base}..${changeset.revision.head}`;
+	expect((await harness.snapshot(RoundsDocument, root.id, context))?.items.r1?.verdict?.status).toBe("passed");
+	await harness.close(context);
+	const log = join(changeset.repoRoot, "publish-crash.log");
+	const stateFile = join(changeset.repoRoot, "publish-state.json");
+	writeFileSync(stateFile, JSON.stringify(state));
+	const child = spawn(
+		process.execPath,
+		[
+			"--conditions=@melian-agent/source",
+			fileURLToPath(new URL("./fixtures/publish-round-crash.ts", import.meta.url)),
+			path,
+			stateFile,
+			log,
+		],
+		{ stdio: ["ignore", "ignore", "pipe"] },
+	);
+	let stderr = "";
+	child.stderr.on("data", (chunk) => {
+		stderr += chunk;
+	});
+	const exited = new Promise<string | number | null>((resolve) =>
+		child.on("exit", (code, signal) => resolve(signal ?? code)),
+	);
+	try {
+		const deadline = Date.now() + 15_000;
+		while (!existsSync(log) || !readFileSync(log, "utf8").includes("before-verdict\n")) {
+			if (child.exitCode !== null || child.signalCode !== null) throw new Error(`child exited: ${stderr}`);
+			if (Date.now() > deadline) throw new Error(`child missed crash point: ${stderr}`);
+			await sleep(20);
+		}
+	} finally {
+		child.kill("SIGKILL");
+		await exited;
+	}
+	expect(await exited).toBe("SIGKILL");
+	const fake = createFakeModels();
+	const reviewOnly = await openHarness(await openSqliteStorage(path), {
+		models: fake.models,
+		registry: createReviewRegistry(),
+	});
+	opened.push(reviewOnly);
+	const reviewing = await reviewOnly.root(context);
+	await reviewing.commit(
+		(tx) =>
+			upsertFinding(
+				tx,
+				reviewing.id,
+				Finding.create({
+					rule: "unsafe",
+					file: "a.ts",
+					startLine: 1,
+					snippet: "export const n = 2;",
+					occurrence: 0,
+					cause: "introduced",
+					severity: "P1",
+					source: { check: "static.mutation" },
+					message: "Blocking second review",
+					explanation: { what: "Unsafe", whyHere: "New code", whatToDo: "Validate" },
+				}),
+				revision,
+			),
+		context,
+	);
+	const reviewed = await reviewChangeset({
+		harness: reviewOnly,
+		changeset,
+		config: { ...defaultConfig, tiers: { full: ["static.mutation"] } },
+		lenses: [],
+		standards: [],
+		models: fake.review,
+		checks: [{ name: "static.mutation", status: "ran" }],
+		policy: { kind: "revision", commit: changeset.revision.base },
+		origin: {
+			kind: "pull-request",
+			repository: { owner: state.owner, name: state.repo },
+			pullRequest: 7,
+			base: changeset.revision.base,
+			head: changeset.revision.head,
+		},
+	});
+	expect(reviewed.verdict.blocking).toBe(true);
+	expect((await reviewOnly.snapshot(PublisherDocument, reviewing.id, context))?.target?.roundId).toBe("r1");
+	expect((await reviewOnly.snapshot(RoundsDocument, reviewing.id, context))?.current[revision]).toBe("r2");
+	expect(
+		(await reviewOnly.inspect(context)).tasks.find((each) => each.record.id === pending.record.id)?.state.kind,
+	).toBe("blocked");
+	await reviewOnly.close(context);
+	const begin = vi.spyOn(provider, "beginPublish");
+	const posts = vi.spyOn(provider, "postReview");
+	const statuses = vi.spyOn(provider, "setStatus");
+	const publisher = await PublishHarness.open(await openSqliteStorage(path), fake.review, provider);
+	opened.push(publisher.harness);
+	await publisher.harness.waitForIdle(context);
+	const done = await publisher.harness.waitForTask(pending.record.id, context);
+	expect(done.state.outcome).toMatchObject({
+		status: "completed",
+		result: { kind: "superseded", reason: expect.stringContaining("r2") },
+	});
+	expect(begin).not.toHaveBeenCalled();
+	expect(posts).not.toHaveBeenCalled();
+	expect(statuses).not.toHaveBeenCalled();
+	expect(state.reviews).toEqual([]);
+	expect(state.statuses).toEqual([]);
+}, 30_000);
+
+it("publishes without an optional provider session hook", async () => {
+	const { harness, pending, provider, state } = await pendingPublication();
+	const optional: ReviewProvider = provider;
+	optional.beginPublish = undefined;
+	harness.resume();
+	const done = await harness.waitForTask(pending.record.id, context);
+	expect(done.state.outcome).toMatchObject({ status: "completed", result: { kind: "published" } });
+	expect(state.reviews).toHaveLength(1);
 });
 
 it("records the current round in both the publisher target and its pending task", async () => {
@@ -250,12 +372,14 @@ it("supersedes a pending publication when only its recorded round changes", asyn
 });
 
 it.each(["minted", "legacy"])(
-	"publishes its recorded %s round after a later round deletes the live verdict",
+	"publishes its current %s round from the saved copy when the live verdict is deleted",
 	async (mode) => {
 		const { harness, root, pending, provider } = await pendingPublication(mode);
 		const state = (await harness.snapshot(RoundsDocument, root.id, context))!;
 		const revision = Object.keys(state.current)[0]!;
-		await root.commit((tx) => new RoundWriter(tx, root.id).mint(revision, 999, "2026-10-18T12:00:00Z"), context);
+		await root.commit(async (tx) => {
+			delete (await tx.doc(VerdictDocument, root.id)).verdicts[revision];
+		}, context);
 		const posted = vi.spyOn(provider, "postReview");
 		harness.resume();
 		const done = await harness.waitForTask(pending.record.id, context);
@@ -265,8 +389,27 @@ it.each(["minted", "legacy"])(
 	},
 );
 
-it.each(["round", "verdict"])(
-	"refuses a minted target whose %s is missing instead of using the live verdict",
+it.each(["minted", "legacy"])("supersedes its %s target when a newer round is undecided", async (mode) => {
+	const { harness, root, pending, provider, state, changeset } = await pendingPublication(mode);
+	const revision = `${changeset.revision.base}..${changeset.revision.head}`;
+	await root.commit((tx) => new RoundWriter(tx, root.id).mint(revision, 999, "2026-10-19T00:00:00Z"), context);
+	const current = (await harness.snapshot(RoundsDocument, root.id, context))!.current[revision]!;
+	const begin = vi.spyOn(provider, "beginPublish");
+	const status = vi.spyOn(provider, "setStatus");
+	harness.resume();
+	const done = await harness.waitForTask(pending.record.id, context);
+	expect(done.state.outcome).toMatchObject({
+		status: "completed",
+		result: { kind: "superseded", reason: expect.stringContaining(`current round is ${current}`) },
+	});
+	expect(begin).not.toHaveBeenCalled();
+	expect(status).not.toHaveBeenCalled();
+	expect(state.reviews).toEqual([]);
+	expect(state.statuses).toEqual([]);
+});
+
+it.each(["round", "verdict", "current"])(
+	"supersedes a minted target whose %s is missing instead of using the live verdict",
 	async (missing) => {
 		const { harness, root, pending, state, provider, changeset } = await pendingPublication();
 		const revision = `${changeset.revision.base}..${changeset.revision.head}`;
@@ -274,14 +417,18 @@ it.each(["round", "verdict"])(
 		await root.commit(async (tx) => {
 			const rounds = await tx.doc(RoundsDocument, root.id);
 			if (missing === "round") delete rounds.items.r2;
+			else if (missing === "current") delete rounds.current[revision];
 			else delete rounds.items.r2!.verdict;
 		}, context);
 		const posted = vi.spyOn(provider, "postReview");
 		harness.resume();
 		const done = await harness.waitForTask(pending.record.id, context);
 		expect(done.state.outcome).toMatchObject({
-			status: "failed",
-			error: { message: `no verdict is recorded for ${revision}` },
+			status: "completed",
+			result: {
+				kind: "superseded",
+				reason: `round r2 is superseded or undecided; current round is ${missing === "current" ? "missing" : "r2"}`,
+			},
 		});
 		expect(posted).not.toHaveBeenCalled();
 		expect(state.reviews).toEqual([]);

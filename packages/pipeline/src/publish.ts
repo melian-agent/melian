@@ -556,7 +556,6 @@ function publishTask(provider: ReviewProvider) {
 					return;
 				}
 				const { pullRequest, base, head, revision } = target;
-				provider.beginPublish?.();
 				const revalidate = async () => {
 					const moved = movedFrom(target, await provider.pullRequest(pullRequest));
 					if (moved !== undefined) throw new TargetMoved(moved);
@@ -612,9 +611,23 @@ function publishTask(provider: ReviewProvider) {
 							markers.set(key, await provider.findPublished(pullRequest, head, { fingerprint, round }, secret));
 						return markers.get(key)!;
 					};
-					const storedRound = (await runtime.snapshot(RoundsDocument, root, context))?.items[target.roundId];
-					const verdict = storedRound?.verdict === undefined ? undefined : Verdict.from(storedRound.verdict);
-					if (verdict === undefined) throw new Error(`no verdict is recorded for ${revision}`);
+					// The target-binding commit above materialises this document, including for legacy tasks.
+					const reviewRounds = (await runtime.snapshot(RoundsDocument, root, context))!;
+					const storedRound = reviewRounds.items[target.roundId];
+					const currentReviewRound = reviewRounds.current[revision];
+					if (currentReviewRound !== target.roundId || storedRound?.verdict === undefined) {
+						const reason = `round ${target.roundId} is superseded or undecided; current round is ${currentReviewRound ?? "missing"}`;
+						await runtime.commit(async (tx) => {
+							await timing.end(tx);
+							return {
+								status: "terminal",
+								outcome: { status: "completed", result: { kind: "superseded", reason } },
+							};
+						}, context);
+						return;
+					}
+					provider.beginPublish?.();
+					const verdict = Verdict.from(storedRound.verdict);
 					const current = verdict.fingerprint();
 					const legacy = verdict.legacyFingerprint();
 					// A pending round planned for another revision of this head, such as the pull request before a retarget,
