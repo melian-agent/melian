@@ -1,7 +1,7 @@
 import { copyFileSync, mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Changeset, defaultConfig, Finding, loadConfig, ReviewPlan } from "@melian-agent/core";
+import { Changeset, defaultConfig, Finding, loadConfig, pullRequestChangesetId, ReviewPlan } from "@melian-agent/core";
 import {
 	backgroundContext as context,
 	createReviewRegistry,
@@ -148,6 +148,42 @@ it("lists main's legacy round before a minted undecided round and asks git for i
 	expect(output[0].id).toMatch(/\.k[0-9a-f]{16}$/);
 	expect(output[1]).toMatchObject({ id: `${changeset.id}.r1`, status: "undecided" });
 	expect(git).toHaveBeenCalledWith(repo, ["show", "-s", "--format=%ct", oldHead, "--"]);
+	io.stdout.mockClear();
+	expect(await main(["findings", "--round", output[0].id, "--json"], io)).toBe(0);
+	expect(JSON.parse(io.stdout.mock.calls.join("")).status).toBe("passed");
+});
+
+it("reads a round from pull-request storage by its full ID", async () => {
+	const repository = { owner: "example", name: "melian" };
+	const id = pullRequestChangesetId("github", repository, 12);
+	const fake = createFakeModels();
+	const harness = await openHarness(await openSqliteStorage(await storagePath(repo, id, io.env, false)), {
+		models: fake.models,
+		registry: createReviewRegistry(),
+	});
+	try {
+		await harness.root(context, { agent: { model: fake.ref() } });
+		await reviewChangeset({
+			harness,
+			changeset: changeset.withId(id),
+			config: { ...defaultConfig, tiers: { full: [] } },
+			lenses: [],
+			standards: [],
+			models: fake.review,
+			checks: [],
+			origin: {
+				kind: "pull-request",
+				repository,
+				pullRequest: 12,
+				base: changeset.revision.base,
+				head: changeset.revision.head,
+			},
+		});
+	} finally {
+		await harness.close(context);
+	}
+	expect(await main(["findings", "--round", `${id}.r1`, "--json"], io)).toBe(0);
+	expect(JSON.parse(io.stdout.mock.calls.join("")).status).toBe("passed");
 });
 
 it.each([[], ["--json"], ["--open"], ["--open", "--json"], ["--all"]].map((flags) => ({ flags })))(
@@ -198,6 +234,9 @@ it.each([
 	"range-0123456789abcdef.r0",
 	"range-0123456789abcdef.r01",
 	"range-0123456789abcdef.kabc",
+	"range-0123456789abcdef0.r1",
+	"pull-0123456789abcdef0.r1",
+	"range-0123456789abcdef.k0123456789abcdef0",
 	"range-0123456789abcdef.r1/../../outside",
 ])("refuses an invalid round ID %s", async (id) => {
 	expect(await main(["findings", "--round", id], io)).toBe(1);
