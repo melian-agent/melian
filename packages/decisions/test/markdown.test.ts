@@ -75,6 +75,16 @@ describe("supersession mutation regressions", () => {
 		expect(JSON.parse(first.text)).toEqual({ prose: "Supersedes: old.md. ", links: [] });
 		expect(first.text).toBe(second.text);
 	});
+
+	it.each([
+		"Supersedes: old.md. Next.md",
+		"Supersedes: [Old](old.md). [Next](Next.md)",
+		"Supersedes: [Old](old.md)!Next.md",
+	])("excludes second-sentence targets in %j", (source) => {
+		expect(MarkdownDocument.parse(source).declarations(decisionPath)).toMatchObject([
+			{ targets: ["docs/decisions/old.md"] },
+		]);
+	});
 });
 
 const slugCases = [

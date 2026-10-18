@@ -15,7 +15,7 @@ export const decisionPathPattern = /^docs\/decisions\/.*\.md$/s;
 const lineEndingPattern = /\r\n|\r|\n/;
 const targetBoundary = /(?=$|[\s,;]|\.(?:$|\s))/.source;
 const absencePattern = new RegExp(`^(?:none|no decision file)${targetBoundary}`, "i");
-const bareTargetPattern = new RegExp(String.raw`(?:^|[\s,;])([^\s,;\u0000]+\.md)${targetBoundary}`, "g");
+const bareTargetPattern = new RegExp(String.raw`(?:^|[\s,;])([^\s,;\u0000]+\.md)${targetBoundary}`, "dg");
 
 /** One parsed declaration line, with direct local targets. */
 export type DecisionDeclaration = {
@@ -234,7 +234,7 @@ export class MarkdownDocument {
 				links: line.links.filter((link) => link.offset < sentence.length),
 			});
 			const bare = [...prose.matchAll(bareTargetPattern)].map((match) => ({
-				offset: match.index + `${kind}:`.length,
+				offset: match.indices![1]![0] + `${kind}:`.length,
 				destination: match[1]!,
 			}));
 			for (const { offset, destination } of [...line.links, ...bare].sort((a, b) => a.offset - b.offset)) {
