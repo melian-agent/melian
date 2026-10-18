@@ -294,10 +294,7 @@ it.each([
 	closes.push(() => second.close(context));
 	const settled = await second.waitForTask(id, context);
 	expect(settled.state.outcome).toEqual({ status: "completed", result: { kind: "superseded", reason } });
-	expect((await storage.task(id, context))!.input).toEqual({
-		...previous.input,
-		target: { ...previous.input.target, roundId: "kcfe031f465176585" },
-	});
+	expect((await storage.task(id, context))!.input).toEqual(previous.input);
 	expect(fetch).not.toHaveBeenCalled();
 	expect(fake.provider.state.callCount).toBe(0);
 });

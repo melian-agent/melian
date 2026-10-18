@@ -1,5 +1,4 @@
 import { spawn } from "node:child_process";
-import { createHash } from "node:crypto";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -198,7 +197,7 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 		expect(result.superseded).toEqual([
 			{
 				task: String(task),
-				reason: `its roundId was k${createHash("sha256").update(revisionKey(changeset.revision)).digest("hex").slice(0, 16)}, and is r1 now`,
+				reason: "its round cannot be proven because minted rounds exist at its revision; run melian publish again",
 			},
 		]);
 		expect(await harness.getTask(task, context)).toMatchObject({

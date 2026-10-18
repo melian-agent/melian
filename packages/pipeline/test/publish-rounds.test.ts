@@ -11,6 +11,7 @@ import { VerdictDocument } from "../src/adjudication.ts";
 import {
 	backgroundContext as context,
 	createReviewRegistry,
+	defineTask,
 	type Harness,
 	openHarness,
 	openSqliteStorage,
@@ -122,18 +123,21 @@ it("supersedes a pending publication when only its recorded round changes", asyn
 	expect(state.reviews).toEqual([]);
 });
 
-it("publishes its recorded round after a later round deletes the live verdict", async () => {
-	const { harness, root, pending, provider } = await pendingPublication();
-	const state = (await harness.snapshot(RoundsDocument, root.id, context))!;
-	const revision = Object.keys(state.current)[0]!;
-	await root.commit((tx) => new RoundWriter(tx, root.id).mint(revision, 999, "2026-10-18T12:00:00Z"), context);
-	const posted = vi.spyOn(provider, "postReview");
-	harness.resume();
-	const done = await harness.waitForTask(pending.record.id, context);
-	expect(done.state.outcome).toMatchObject({ status: "completed", result: { kind: "published" } });
-	expect(posted).toHaveBeenCalledOnce();
-	expect(posted.mock.calls[0]![0].verdict.toJSON()).toEqual(state.items.r2!.verdict);
-});
+it.each(["minted", "legacy"])(
+	"publishes its recorded %s round after a later round deletes the live verdict",
+	async (mode) => {
+		const { harness, root, pending, provider } = await pendingPublication(mode);
+		const state = (await harness.snapshot(RoundsDocument, root.id, context))!;
+		const revision = Object.keys(state.current)[0]!;
+		await root.commit((tx) => new RoundWriter(tx, root.id).mint(revision, 999, "2026-10-18T12:00:00Z"), context);
+		const posted = vi.spyOn(provider, "postReview");
+		harness.resume();
+		const done = await harness.waitForTask(pending.record.id, context);
+		expect(done.state.outcome).toMatchObject({ status: "completed", result: { kind: "published" } });
+		expect(posted).toHaveBeenCalledOnce();
+		expect(posted.mock.calls[0]![0].verdict.toJSON()).toEqual(state.items[state.current[revision]!]!.verdict);
+	},
+);
 
 it.each(["round", "verdict"])(
 	"refuses a minted target whose %s is missing instead of using the live verdict",
@@ -173,6 +177,60 @@ it.each(["legacy", "unselected"])("records a legacy target when the round state 
 	}
 });
 
+it("supersedes a bound task when its publisher target is unbound beside minted rounds", async () => {
+	const { harness, root, pending, state } = await pendingPublication();
+	await root.commit(async (tx) => {
+		Reflect.deleteProperty((await tx.doc(PublisherDocument, root.id)).target!, "roundId");
+	}, context);
+	harness.resume();
+	const done = await harness.waitForTask(pending.record.id, context);
+	expect(done.state.outcome).toMatchObject({
+		status: "completed",
+		result: { kind: "superseded", reason: expect.stringContaining("round cannot be proven") },
+	});
+	expect(state.statuses).toEqual([]);
+	expect(state.reviews).toEqual([]);
+});
+
+it.each(["task", "publisher"])("supersedes a publication with no %s target", async (missing) => {
+	const { harness, root, pending, state } = await pendingPublication();
+	let id = pending.record.id;
+	if (missing === "task") {
+		await harness.abortTask(id, context);
+		const publisher = (await harness.snapshot(PublisherDocument, root.id, context))!;
+		const input = { root: root.id, publishedBy: publisher.publishedBy!, lines: {} };
+		const previous = defineTask<typeof input, { phase: "publish" }, never>({
+			name: "melian.publish",
+			version: 5,
+			initial: () => ({ phase: "publish" }),
+			phases: {
+				publish: async () => {
+					throw new Error("must use the installed publisher");
+				},
+			},
+			abort: async () => {
+				throw new Error("must use the installed publisher");
+			},
+		});
+		id = await root.commit((tx) => tx.createTask(previous, input, { ownership: { kind: "conversation" } }), context);
+	} else {
+		await root.commit(async (tx) => {
+			delete (await tx.doc(PublisherDocument, root.id)).target;
+		}, context);
+	}
+	harness.resume();
+	const done = await harness.waitForTask(id, context);
+	expect(done.state.outcome).toMatchObject({
+		status: "completed",
+		result: {
+			kind: "superseded",
+			reason: missing === "task" ? "the task recorded no target" : "no target is recorded",
+		},
+	});
+	expect(state.statuses).toEqual([]);
+	expect(state.reviews).toEqual([]);
+});
+
 it("upgrades publisher trust only from version 1 and keeps absent targets absent", () => {
 	const migrate = PublisherDocument.definition.migrate!;
 	expect(migrate({}, 1)).toEqual({ publishedBy: { trustedWriters: true } });
@@ -206,10 +264,13 @@ it("upgrades targetless task inputs without losing newer attribution", () => {
 	for (const version of [2, 3, 4, 5]) expect(migrate(input, { phase: "publish" }, version).input).toEqual(input);
 });
 
-it.each(["main-36122eb2", "build1-6bd298c0"])(
-	"reopens %s's target and pending publication as its revision's legacy round",
+it.each(["main-36122eb2", "main-other-revision", "main-preserved", "build1-6bd298c0", "build1-later-6bd298c0"])(
+	"reopens %s without guessing an unbound publication round",
 	async (name) => {
-		const fixture = new URL(`./fixtures/publish-rounds/${name}/`, import.meta.url);
+		const fixture = new URL(
+			`./fixtures/publish-rounds/${name.startsWith("main-") ? "main-36122eb2" : name}/`,
+			import.meta.url,
+		);
 		const previous = JSON.parse(readFileSync(new URL("recorded.json", fixture), "utf8")) as {
 			pending: number;
 			changeset: { revision: { base: string; head: string } };
@@ -235,19 +296,46 @@ it.each(["main-36122eb2", "build1-6bd298c0"])(
 		const harness = await openHarness(storage, { models: fake.models, registry });
 		opened.push(harness);
 		const root = await harness.root(context);
+		if (name === "main-other-revision")
+			await root.commit(
+				(tx) => new RoundWriter(tx, root.id).mint(`${head}..${base}`, 999, "2026-10-18T12:00:00Z"),
+				context,
+			);
+		if (name === "main-preserved") await root.commit((tx) => new RoundWriter(tx, root.id).preserve(key), context);
 		const rounds = await harness.snapshot(RoundsDocument, root.id, context);
-		expect(rounds?.sequence ?? 0).toBe(name === "build1-6bd298c0" ? 2 : 0);
-		if (name === "build1-6bd298c0") {
-			expect(rounds?.current[key]).toBe("r2");
+		expect(rounds?.sequence ?? 0).toBe(
+			name === "main-36122eb2" || name === "main-preserved"
+				? 0
+				: name === "main-other-revision"
+					? 1
+					: name === "build1-6bd298c0"
+						? 2
+						: 3,
+		);
+		if (name.startsWith("build1")) {
+			expect(rounds?.current[key]).toBe(name === "build1-6bd298c0" ? "r2" : "r3");
 			expect(rounds?.items.r1).toMatchObject({ base, head });
 			expect(rounds?.items.r2).toMatchObject({ base, head });
 		}
 		const publisher = await harness.snapshot(PublisherDocument, root.id, context);
-		expect(publisher?.target).toMatchObject({ revision: key, roundId: legacy });
+		expect(publisher?.target).toMatchObject({ revision: key });
+		expect(publisher?.target).not.toHaveProperty("roundId");
 		expect(publisher?.publishedBy?.trustedWriters).toBe(false);
 		const done = await harness.waitForTask(previous.pending as TaskId, context);
+		expect(done.input).not.toHaveProperty("target.roundId");
+		if (name.startsWith("build1")) {
+			expect(done.state.outcome).toMatchObject({
+				status: "completed",
+				result: { kind: "superseded", reason: expect.stringContaining("round cannot be proven") },
+			});
+			expect(previous.state.reviews).toEqual([]);
+			expect(previous.state.statuses).toEqual([]);
+			expect(fake.provider.state.callCount).toBe(0);
+			return;
+		}
 		expect(done.state.outcome).toMatchObject({ status: "completed", result: { kind: "published" } });
-		expect(done.input).toMatchObject({ target: { roundId: legacy }, publishedBy: { trustedWriters: false } });
+		expect((await harness.snapshot(PublisherDocument, root.id, context))?.target?.roundId).toBe(legacy);
+		expect(done.input).toMatchObject({ publishedBy: { trustedWriters: false } });
 		expect(done.version).toBe(6);
 		expect(previous.state.reviews).toHaveLength(1);
 		expect(previous.state.statuses.at(-1)?.state).toBe("error");

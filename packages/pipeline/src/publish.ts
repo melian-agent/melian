@@ -228,12 +228,7 @@ class PublisherState {
 		const { trustedWriters, ...publisher } = stored;
 		const upgraded =
 			from === 1 ? { ...publisher, publishedBy: { trustedWriters: trustedWriters ?? true } } : publisher;
-		return new PublisherState({
-			...upgraded,
-			...(publisher.target === undefined
-				? {}
-				: { target: { ...publisher.target, roundId: legacyKey(publisher.target.revision) } }),
-		}).toJSON();
+		return new PublisherState(upgraded).toJSON();
 	}
 
 	toJSON(): StoredPublisherState {
@@ -444,9 +439,6 @@ class PublishInput {
 		return new PublishInput({
 			...stored,
 			...(from === 1 ? { publishedBy: { trustedWriters: true } } : {}),
-			...(stored.target === undefined
-				? {}
-				: { target: { ...stored.target, roundId: legacyKey(stored.target.revision) } }),
 		}).toJSON();
 	}
 
@@ -514,12 +506,38 @@ function publishTask(provider: ReviewProvider) {
 				const timing = await TaskTiming.start(runtime, task.state.checkpoint.legacyTiming, context);
 				const { root, lines, publishedBy } = task.input;
 				// A task created before targets were recorded has none, and is superseded like any other stale one.
-				const target = task.input.target as PublishTarget | undefined;
-				const publisher = await runtime.snapshot(PublisherDocument, root, context);
+				const target = task.input.target === undefined ? undefined : structuredClone(task.input.target);
+				let publisher: StoredPublisherState | undefined;
+				let migrationRefusal: string | undefined;
+				await runtime.commit(async (tx) => {
+					const stored = await tx.doc(PublisherDocument, root);
+					const unbound = [target, stored.target].filter(
+						(each): each is PublishTarget => each !== undefined && each.roundId === undefined,
+					);
+					const rounds = await tx.doc(RoundsDocument, root);
+					const ambiguous = unbound.some((each) =>
+						Object.entries(rounds.items).some(
+							([id, round]) =>
+								id !== legacyKey(each.revision) && `${round.base}..${round.head}` === each.revision,
+						),
+					);
+					if (ambiguous) {
+						migrationRefusal =
+							"its round cannot be proven because minted rounds exist at its revision; run melian publish again";
+					} else {
+						for (const each of unbound) {
+							await new RoundWriter(tx, root).preserve(each.revision);
+							each.roundId = legacyKey(each.revision);
+						}
+					}
+					publisher = JSON.parse(JSON.stringify(stored)) as StoredPublisherState;
+					return undefined;
+				}, context);
 				// Every publish records the target it validated before resuming any task, so a task a crash left behind for
 				// another base, head, or pull request ends here, before any post.
 				const change =
-					publisher?.target === undefined ? "no target is recorded" : targetChange(target, publisher.target);
+					migrationRefusal ??
+					(publisher?.target === undefined ? "no target is recorded" : targetChange(target, publisher.target));
 				const current = publisher?.publishedBy;
 				const trustChanged = publishedBy.trustedWriters !== current?.trustedWriters;
 				const attributionChanged = (["login", "permission", "authorPermission"] as const).find(
@@ -598,12 +616,7 @@ function publishTask(provider: ReviewProvider) {
 						return markers.get(key)!;
 					};
 					const storedRound = (await runtime.snapshot(RoundsDocument, root, context))?.items[target.roundId];
-					const verdict =
-						target.roundId === legacyKey(revision)
-							? await readVerdict(runtime, root, revision, context)
-							: storedRound?.verdict === undefined
-								? undefined
-								: Verdict.from(storedRound.verdict);
+					const verdict = storedRound?.verdict === undefined ? undefined : Verdict.from(storedRound.verdict);
 					if (verdict === undefined) throw new Error(`no verdict is recorded for ${revision}`);
 					const current = verdict.fingerprint();
 					const legacy = verdict.legacyFingerprint();

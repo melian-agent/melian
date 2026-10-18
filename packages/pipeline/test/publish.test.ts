@@ -18,6 +18,7 @@ import {
 	type TaskId,
 } from "../src/harness.ts";
 import { failedAttestations, PublisherDocument, publishExtension, publishReview } from "../src/publish.ts";
+import { RoundWriter } from "../src/rounds.ts";
 import { TaskTiming } from "../src/task-timing.ts";
 import { createFakeModels } from "../src/testing.ts";
 import { baseAndHead, isolatedGitEnv } from "./fixtures/repo.ts";
@@ -180,7 +181,8 @@ it.each(["stale", "resumed stale", "failed", "resumed failed", "aborted", "super
 					state.pull.head.sha = "a".repeat(40);
 				if (mode === "resumed published" && call.path.endsWith("/reviews") && call.method === "POST") {
 					await root.commit(async (tx) => {
-						(await tx.doc(VerdictDocument, root.id)).verdicts[revision] = new Adjudication({
+						const doc = await tx.doc(VerdictDocument, root.id);
+						doc.verdicts[revision] = new Adjudication({
 							findings: [],
 							manifest: [],
 							checks: [],
@@ -188,6 +190,12 @@ it.each(["stale", "resumed stale", "failed", "resumed failed", "aborted", "super
 						})
 							.adjudicate()
 							.toJSON();
+						await new RoundWriter(tx, root.id).record(
+							revision,
+							0,
+							doc.verdicts[revision]!,
+							doc.provenance![revision]!,
+						);
 					}, context);
 				}
 			}),
