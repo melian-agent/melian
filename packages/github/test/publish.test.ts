@@ -1234,7 +1234,10 @@ describe("cross-head answer discovery", () => {
 		state.restPageSize = 1;
 		state.comments.push(root(1), root(2));
 		state.commentPageResponse = response;
-		await expect(providerFor(state).findPublished(7, old, wanted, secret)).rejects.toMatchObject({ code: "failed" });
+		await expect(providerFor(state).findPublished(7, old, wanted, secret)).rejects.toMatchObject({
+			code: "failed",
+			...(response.status === undefined ? { message: expect.stringContaining("incomplete publication page") } : {}),
+		});
 	});
 
 	it.each([
