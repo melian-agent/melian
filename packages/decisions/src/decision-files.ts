@@ -97,8 +97,10 @@ export class DecisionFiles {
 		const amendments = new Map<string, string[]>();
 		for (const file of files) {
 			for (const target of new Set([...file.supersedes, ...file.amends])) {
-				if (!byPath.has(target))
-					throw new DecisionFilesError("invalid", `${file.path} supersedes absent ${target}`);
+				if (!byPath.has(target)) {
+					const verb = file.supersedes.includes(target) ? "supersedes" : "amends";
+					throw new DecisionFilesError("invalid", `${file.path} ${verb} absent ${target}`);
+				}
 				const edges = file.supersedes.includes(target) ? successors : amendments;
 				edges.set(target, [...(edges.get(target) ?? []), file.path]);
 			}
@@ -109,7 +111,7 @@ export class DecisionFiles {
 				(path) =>
 					![...byPath.get(path)!.supersedes, ...byPath.get(path)!.amends].some((target) => pending.has(target)),
 			);
-			if (leaves.length === 0) throw new DecisionFilesError("invalid", "The base Supersedes graph contains a cycle");
+			if (leaves.length === 0) throw new DecisionFilesError("invalid", "The base decision graph contains a cycle");
 			for (const path of leaves) pending.delete(path);
 		}
 		for (const [target, sources] of amendments) {
