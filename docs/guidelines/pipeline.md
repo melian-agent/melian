@@ -367,8 +367,8 @@ the dismissed finding. Solution: the task is read by its ID with `getTask`, its 
 recorded verdict, and the message names what it ended as. A verdict an older Melian recorded, with
 no decision beside it, takes the findings version from the task input the index holds. A revision
 whose index entry names no adjudication task, as after a crash between a review's new lens selection
-and its adjudication, publishes its stored verdict only while its findings version is the one that
-verdict was decided from.
+and its adjudication, ends the publish task superseded as review in progress. The user must publish
+again after adjudication finishes.
 
 The task is not replay-safe: a post and the commit recording it are two steps, and GitHub takes no idempotency key. Two records guard it instead of a memo, which would vanish with the task:
 

@@ -1166,8 +1166,8 @@ function unpublishable(provenance: VerdictProvenance | undefined, pullRequest: P
 // Why the verdict stored for `revision` may not be the one its findings decide now, or `undefined` when it is. The task
 // the review index names must have ended recording the stored verdict, from the findings as they are now. Pi's
 // inspection lists live tasks only, so a task that ended without deciding, aborted, failed, faulted, or orphaned, is
-// read by its ID, never inferred from its absence there. With no task named, as after a crash between a review's new
-// lens selection and its adjudication, the stored verdict stands only while its findings are unchanged.
+// read by its ID, never inferred from its absence there. With no indexed adjudication, the task-side guard ends
+// publication superseded as review in progress; the user must publish again after adjudication finishes.
 async function undecidedVerdict(
 	tx: Tx,
 	root: ConversationId,
