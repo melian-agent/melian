@@ -716,12 +716,13 @@ function publishTask(provider: ReviewProvider) {
 						if (found.review === undefined) {
 							if (pending.ledger?.publishedBy?.login !== publishedBy.login) {
 								await runtime.commit(async (tx) => {
-									const planned = (await tx.doc(PublishedDocument, root)).revisions[head]!.pending!;
+									const record = (await tx.doc(PublishedDocument, root)).revisions[head]!;
+									const planned = record.pending!;
 									if (planned.ledger === undefined)
 										planned.ledger = {
 											base,
 											head,
-											round: planned.round,
+											round: record.reviews.length + 1,
 											verdict: structuredClone(pending.verdict),
 											resolved: [],
 										};

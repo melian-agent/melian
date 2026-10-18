@@ -224,12 +224,23 @@ describe("publication planning recovery", () => {
 			).toBe("1");
 		},
 	);
-	it.each([false, true])(
-		"creates a missing pending ledger before a changed token posts (ledger exists: %s)",
-		async (exists) => {
+	it.each([
+		{ exists: false, posted: 0, round: 1 },
+		{ exists: true, posted: 0, round: 1 },
+		{ exists: false, posted: 1, round: 3 },
+	])(
+		"creates a missing pending ledger before a changed token posts (ledger exists: $exists, posted: $posted, round: $round)",
+		async ({ exists, posted, round }) => {
 			state.failReviews = true;
 			await expect(publishReview(options)).rejects.toThrow();
 			state.failReviews = false;
+			state.reviews = Array.from({ length: posted }, (_, index) => ({
+				id: index + 1,
+				user: { login: state.login, type: "Bot" },
+				body: "An earlier review",
+				commit_id: state.pull.head.sha,
+				event: "COMMENT",
+			}));
 			const resolved = [
 				{
 					id: finding.id,
@@ -240,7 +251,11 @@ describe("publication planning recovery", () => {
 				},
 			];
 			await root.commit(async (tx) => {
-				const pending = (await tx.doc(PublishedDocument, root.id)).revisions[state.pull.head.sha]!.pending!;
+				const record = (await tx.doc(PublishedDocument, root.id)).revisions[state.pull.head.sha]!;
+				record.reviews = state.reviews.map(({ id }) => String(id));
+				record.rounds = round;
+				const pending = record.pending!;
+				pending.round = round;
 				if (exists) {
 					delete pending.ledger!.publishedBy;
 					pending.ledger!.resolved = resolved;
@@ -251,10 +266,11 @@ describe("publication planning recovery", () => {
 				const pending = (await harness!.snapshot(PublishedDocument, root.id, context))!.revisions[
 					state.pull.head.sha
 				]!.pending!;
+				expect(pending.ledger?.round, "ledger round counts posted reviews").toBe(posted + 1);
 				expect(pending.ledger).toEqual({
 					base: options.base,
 					head: state.pull.head.sha,
-					round: pending.round,
+					round: posted + 1,
 					verdict: pending.verdict,
 					resolved: exists ? resolved : [],
 					publishedBy: {
@@ -274,7 +290,7 @@ describe("publication planning recovery", () => {
 				return write(draft);
 			});
 			await publishReview(options);
-			expect(state.reviews).toHaveLength(1);
+			expect(state.reviews).toHaveLength(posted + 1);
 		},
 	);
 	it("fails before journalling on a transient identity read", async () => {
