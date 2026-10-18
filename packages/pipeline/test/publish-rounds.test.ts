@@ -111,6 +111,22 @@ async function pendingPublication(rounds = "minted") {
 	return { harness, root, pending, state, provider, changeset };
 }
 
+it("supersedes a pending publication when its publisher has no target", async () => {
+	const { harness, root, pending, state, provider } = await pendingPublication();
+	await root.commit(async (tx) => {
+		delete (await tx.doc(PublisherDocument, root.id)).target;
+	}, context);
+	const posts = vi.spyOn(provider, "setStatus");
+	harness.resume();
+	const done = await harness.waitForTask(pending.record.id, context);
+	expect(done.state.outcome).toMatchObject({
+		status: "completed",
+		result: { kind: "superseded", reason: "no target is recorded" },
+	});
+	expect(posts).not.toHaveBeenCalled();
+	expect(state.reviews).toEqual([]);
+});
+
 it("records the current round in both the publisher target and its pending task", async () => {
 	const { harness, root, pending } = await pendingPublication();
 	expect((await harness.snapshot(RoundsDocument, root.id, context))?.sequence).toBe(2);
