@@ -581,7 +581,7 @@ async function roundFindings(
 		if (plan !== undefined && !options.json) {
 			for (const line of ReviewPlan.from(plan).summary().split("\n").filter(Boolean)) io.stderr(`melian: ${line}\n`);
 		}
-		const render = new Rendering({ color: io.color, ids: true, all: options.all, decided: true });
+		const render = new Rendering({ color: io.color, ids: true, all: options.all, decided: true, historical: true });
 		if (options.open) {
 			const open = FindingsLog.of(verdict.attention());
 			io.stdout(options.json ? open.renderJson() : open.render(render));

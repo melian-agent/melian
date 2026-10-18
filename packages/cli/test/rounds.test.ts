@@ -203,6 +203,14 @@ it.each([[], ["--json"], ["--open"], ["--open", "--json"], ["--all"]].map((flags
 	},
 );
 
+it.each([false, true])("keeps agent instructions in current text findings (open=%s)", async (open) => {
+	expect(await main(["findings", "main...feature", ...(open ? ["--open"] : [])], io)).toBe(0);
+	const text = io.stdout.mock.calls.map(([text]) => text).join("");
+	expect(text).toContain("Check each open finding against the code.");
+	expect(text).toContain("<quoted-");
+	expect(text).toContain("melian dismiss 'main...feature'");
+});
+
 it.each([false, true])("prints the round's stored plan warnings only in text (json=%s)", async (json) => {
 	const fake = createFakeModels();
 	const harness = await openHarness(await openSqliteStorage(await storagePath(repo, changeset.id, io.env, false)), {

@@ -125,6 +125,15 @@ describe("stored round findings", () => {
 		expect(storage.close).toHaveBeenCalledExactlyOnceWith(context);
 	});
 
+	it.each([false, true])("omits agent instructions from historical text (open=%s)", async (open) => {
+		expect(await findings(io, "", { ...options, open, round: roundId })).toBe(0);
+		const text = io.stdout.mock.calls.map(([text]) => text).join("");
+		expect(text).toContain(verdict.attention()[0]!.id);
+		expect(text).not.toContain("Check each open finding against the code.");
+		expect(text).not.toContain("<quoted-");
+		expect(text).not.toContain("melian dismiss");
+	});
+
 	it("reports a missing round with the CLI error and closes storage", async () => {
 		await expect(findings(io, "", { ...options, round: `${changesetId}.r2` })).rejects.toMatchObject({
 			name: "CliError",
