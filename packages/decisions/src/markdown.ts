@@ -9,6 +9,7 @@ import { frontmatter } from "micromark-extension-frontmatter";
 import { SKIP, visit } from "unist-util-visit";
 import { DecisionFilesError } from "./decision-files-error.ts";
 
+/** The shared discovery and declaration domain for written decisions. */
 export const decisionPathPattern = /^docs\/decisions\/.*\.md$/s;
 
 const lineEndingPattern = /\r\n|\r|\n/;
@@ -16,22 +17,36 @@ const targetBoundary = /(?=$|[\s,;]|\.(?:$|\s))/.source;
 const absencePattern = new RegExp(`^(?:none|no decision file)${targetBoundary}`, "i");
 const bareTargetPattern = new RegExp(String.raw`(?:^|[\s,;])([^\s,;\u0000]+\.md)${targetBoundary}`, "g");
 
+/** One parsed declaration line, with direct local targets. */
 export type DecisionDeclaration = {
 	kind: "Supersedes" | "Amends";
 	targets: string[];
+	/** CommonMark's physical line, used to exclude just the declaration. */
 	line: number;
+	/** LF coordinate shared with read_file and finding locations. */
+	sourceLine: number;
 	text: string;
 };
+
+/** One comparable clause and its source paragraph or table-row range. */
+export type DecisionClause = { text: string; line: number; endLine: number };
 
 export class MarkdownDocument {
 	readonly #content: string;
 	readonly #tree: Root;
 	readonly #definition: GetDefinition;
+	readonly #sourceLines: number[];
 
 	private constructor(content: string, tree: Root) {
 		this.#content = content;
 		this.#tree = tree;
 		this.#definition = definitions(tree);
+		this.#sourceLines = [1];
+		let sourceLine = 1;
+		for (const ending of content.matchAll(new RegExp(lineEndingPattern.source, "g"))) {
+			sourceLine += [...ending[0].matchAll(/\n/g)].length;
+			this.#sourceLines.push(sourceLine);
+		}
 	}
 
 	static parse(content: string): MarkdownDocument {
@@ -86,6 +101,78 @@ export class MarkdownDocument {
 		return declarations;
 	}
 
+	clauses(path: string): DecisionClause[] {
+		const segmenter = new Intl.Segmenter("en-AU", { granularity: "sentence" });
+		const declarations = new Set(this.declarations(path).map((declaration) => declaration.line));
+		const clauses: DecisionClause[] = [];
+		let retired: number | undefined;
+		visit(this.#tree, (node, _index, parent) => {
+			if (node.type === "blockquote") return SKIP;
+			if (node.type === "heading" && parent!.type === "root") {
+				if (retired !== undefined && node.depth <= retired) retired = undefined;
+				if (retired === undefined && markdownText(node, { includeHtml: false }).trim() === "Retired")
+					retired = node.depth;
+				return SKIP;
+			}
+			if (retired !== undefined) return SKIP;
+			if (node.type !== "paragraph") return;
+			const { start, end } = node.position!;
+			const rows = this.#content.slice(start.offset!, end.offset!).split(lineEndingPattern);
+			const kept = rows
+				.map((text, index) => ({ text, line: start.line + index }))
+				.filter((row) => !declarations.has(row.line));
+			// No GFM extension is installed; retain each source row rather than guessing table cells.
+			if (rows.some((row) => /^\s*\|?\s*:?-+:?\s*\|[\s|:-]*$/.test(row))) {
+				for (const row of kept)
+					clauses.push({
+						text: row.text.replace(/\s+/g, " ").trim(),
+						line: this.#sourceLines[row.line - 1]!,
+						endLine: this.#sourceLines[row.line - 1]!,
+					});
+				return SKIP;
+			}
+			const { text, mask } = this.prose(node, path, kept.length === rows.length ? new Set() : declarations);
+			for (const segment of segmenter.segment(mask)) {
+				clauses.push({
+					text: text.slice(segment.index, segment.index + segment.segment.length).trim(),
+					line: this.#sourceLines[start.line - 1]!,
+					endLine: this.#sourceLines[end.line - 1]!,
+				});
+			}
+			return SKIP;
+		});
+		return clauses;
+	}
+
+	private prose(node: Paragraph, path: string, declarations: ReadonlySet<number>): { text: string; mask: string } {
+		let text = "";
+		let mask = "";
+		visit(node, (inline) => {
+			if (inline.type === "text" || inline.type === "inlineCode") {
+				// mdast cooks code line endings into spaces, so a partial span has no decoded line map.
+				if (
+					inline.type === "inlineCode" &&
+					declarations.has(inline.position!.start.line) &&
+					inline.position!.start.line !== inline.position!.end.line
+				)
+					throw new DecisionFilesError("invalid", `${path}: code span crosses an excluded declaration line`);
+				const value = inline.value
+					.split(lineEndingPattern)
+					.map((piece, index) => (declarations.has(inline.position!.start.line + index) ? "" : piece))
+					.join("\n");
+				text += value;
+				mask +=
+					inline.type === "inlineCode"
+						? value.replace(/\p{Sentence_Terminal}/gu, (mark) => "x".repeat(mark.length))
+						: value;
+			} else if (inline.type === "break") {
+				text += " ";
+				mask += " ";
+			}
+		});
+		return { text: text.replace(/\s+/g, " ").trim(), mask: mask.replace(/\s+/g, " ").trim() };
+	}
+
 	private destination(node: Link | LinkReference): string {
 		return node.type === "link" ? node.url : this.#definition(node.identifier)!.url;
 	}
@@ -135,12 +222,17 @@ export class MarkdownDocument {
 				kind,
 				targets: [],
 				line: firstLine + index,
+				sourceLine: this.#sourceLines[firstLine + index - 1]!,
 				text: JSON.stringify(line),
 			};
 			declarations.push(declaration);
 			const prose = line.prose.slice(`${kind}:`.length);
 			if (absencePattern.test(prose.trimStart())) continue;
 			const sentence = [...new Intl.Segmenter("en-AU", { granularity: "sentence" }).segment(line.prose)][0]!.segment;
+			declaration.text = JSON.stringify({
+				prose: sentence,
+				links: line.links.filter((link) => link.offset < sentence.length),
+			});
 			const bare = [...prose.matchAll(bareTargetPattern)].map((match) => ({
 				offset: match.index + `${kind}:`.length,
 				destination: match[1]!,

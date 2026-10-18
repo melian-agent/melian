@@ -50,3 +50,11 @@ FallbackDecider forwards the optional usage observer to TextModel. The pipeline 
 `Amends: <target link>, <scope>` keeps its target active. The index names its amendments as `[ACTIVE; amended by Y]`. Read both files; where they conflict, the amendment wins. `Supersedes:` retires a whole decision. Existing partial declarations retain that meaning until the step 26 audit. Both edge kinds resolve missing targets and cycles before rendering.
 
 Only links and bare targets in the declaration's first sentence create edges. Later links on the physical line are context. `Intl.Segmenter` segments decoded paragraph text with Markdown links and inline examples kept opaque. The subscription-verifier golden keeps verification-pass active: its later link describes a preference that remains.
+
+DecisionFile.clauses supplies lexical evidence through the same Markdown tree. Collapse whitespace before sentence segmentation; mask inline-code sentence terminals without changing letter case or UTF-16 length. Exclude only declaration lines using the original text nodes’ decoded values and source positions. Keep the original tree: reparsing the retained source can turn an indented continuation into a code block. Lists supply prose; blockquotes, metadata, headings, HTML nodes and code blocks do not. A root `Retired` heading excludes its section through the next root heading of equal or lesser depth. Nested headings cannot reopen it.
+
+No GFM table extension is installed. A paragraph containing a table delimiter supplies one clause per source row, with its source line range. Other clauses retain the paragraph range. DecisionFile.uncarriedBy compares a direct target with its successor; textual equality proves presence alone, never continued force. The pipeline uses that list as evidence for whole-retirement notices.
+
+Declaration exclusion uses CommonMark physical lines. Finding locations and clause evidence use LF coordinates, matching read_file. Keep both: CR-only sources occupy one evidence line even when the parser sees several physical lines.
+
+A cooked inline-code span crossing a declaration line refuses evidence extraction. mdast has replaced its internal line endings with spaces, so there is no decoded line map for removing only that line. Code on an excluded line is omitted; code on other lines stays whole.

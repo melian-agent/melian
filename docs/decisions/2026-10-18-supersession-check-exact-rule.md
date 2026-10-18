@@ -24,7 +24,7 @@ Only the first sentence of a declaration's physical line supplies targets. Later
 
 A clause is a non-empty sentence from a parsed paragraph, including a list paragraph. Collapse ECMAScript whitespace before `Intl.Segmenter("en-AU", { granularity: "sentence" })` segments it. Inline code stays whole during segmentation; preserve its decoded text in the result. Keep the parser's paragraph range for evidence. Links contribute labels, not destinations.
 
-Exclude front matter, headings, definitions, HTML nodes, code blocks and blockquotes. Exclude only a recognised declaration's physical line, including an absence declaration, never its whole paragraph. A root heading exactly `Retired` excludes its section until the next root heading of equal or lesser depth. Apply exclusions to both files.
+Exclude front matter, headings, definitions, HTML nodes, code blocks and blockquotes. Exclude only a recognised declaration's physical line, including an absence declaration, never its whole paragraph. A root heading exactly `Retired` excludes its section until the next root heading of equal or lesser depth. Apply exclusions to both files. Keep the original parsed paragraph when removing a declaration line; reparsing can turn an indented continuation into a code block. A cooked inline-code span crossing an excluded line refuses extraction because mdast no longer supplies its decoded line map.
 
 The repository has no GFM table extension. Until it has one, a table contributes one clause per source row, including its header and delimiter. Read rows only within parser-provided paragraph ranges. This fallback can include a pipe-delimited prose paragraph; it is evidence, never a reason to trigger or suppress a notice.
 
@@ -34,7 +34,7 @@ A target sentence is carried when its normalised text equals a successor clause.
 
 The pipeline adds the check to `melian review`'s guardrails dispatch, avoiding a core dependency on decisions. Core's `defaultConfig.guardrails` registers `supersession-drop`, with `enabled: true`. Its only setting is the enabled switch. The notice has fixed P3 severity; ordinary per-rule resolution can raise or silence its default advisory requirement.
 
-When an old or new changed path belongs to docs/decisions, validate the complete head graph through `DecisionFiles`. Missing targets, cycles, unreadable files, symlinks, files beyond 256 KiB, parser errors and unavailable segmentation fail the check. An absent target fails even when it existed at base. No model or verifier runs.
+When an old or new changed path belongs to docs/decisions and any touched decision has the guardrail enabled, validate the complete head graph through `DecisionFiles`. Missing targets, cycles, unreadable files, symlinks, files beyond 256 KiB, parser errors and unavailable segmentation fail the check. An absent target fails even when it existed at base. No model or verifier runs.
 
 Compare each head Supersedes edge with its declaring file's base declaration, following Git's old path for a rename. An added target or changed declaration draws one notice per direct target. Unchanged declarations do not recur when only their body or target changes. Amendment edges draw no retirement notice.
 

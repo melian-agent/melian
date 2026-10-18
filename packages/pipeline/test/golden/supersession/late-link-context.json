@@ -1,0 +1,14 @@
+{
+  "base": {
+    "docs/decisions/old.md": "# Old\n\nKeep the timeout.\n",
+    "docs/decisions/context.md": "# Context\n\nKeep this preference.\n"
+  },
+  "head": {
+    "docs/decisions/new.md": "# New\n\nSupersedes: [Old](old.md), for routing only. The preference in [Context](context.md) remains.\n\nKeep the timeout.\n"
+  },
+  "expect": {
+    "findings": 1,
+    "missing": 0,
+    "status": "ran"
+  }
+}

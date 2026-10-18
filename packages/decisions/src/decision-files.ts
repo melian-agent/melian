@@ -1,6 +1,6 @@
 import { openSource, visibleText } from "@melian-agent/core";
 import { DecisionFilesError } from "./decision-files-error.ts";
-import { type DecisionDeclaration, decisionPathPattern, MarkdownDocument } from "./markdown.ts";
+import { type DecisionClause, type DecisionDeclaration, decisionPathPattern, MarkdownDocument } from "./markdown.ts";
 
 export { DecisionFilesError } from "./decision-files-error.ts";
 
@@ -11,11 +11,18 @@ export class DecisionFile {
 	readonly supersedes: readonly string[];
 	readonly amends: readonly string[];
 	readonly declarations: readonly DecisionDeclaration[];
+	readonly #document: MarkdownDocument;
 
-	private constructor(path: string, title: string, declarations: readonly DecisionDeclaration[]) {
+	private constructor(
+		path: string,
+		title: string,
+		declarations: readonly DecisionDeclaration[],
+		document: MarkdownDocument,
+	) {
 		this.path = path;
 		this.title = title;
 		this.declarations = declarations;
+		this.#document = document;
 		this.supersedes = [
 			...new Set(
 				declarations
@@ -32,11 +39,22 @@ export class DecisionFile {
 		];
 	}
 
-	/** Parses the heading and prose Supersedes lines, excluding code examples. */
+	/** Parses the heading and prose Supersedes and Amends lines, excluding code examples. */
 	static parse(path: string, content: string): DecisionFile {
 		const document = MarkdownDocument.parse(content);
 		const title = document.headings().find((heading) => heading.depth === 1)?.text ?? path;
-		return new DecisionFile(path, title, document.declarations(path));
+		return new DecisionFile(path, title, document.declarations(path), document);
+	}
+
+	/** Extracts sentence evidence without treating textual presence as continued policy. */
+	clauses(): DecisionClause[] {
+		return this.#document.clauses(this.path);
+	}
+
+	/** Lists this target's clauses absent verbatim from its direct successor. */
+	uncarriedBy(successor: DecisionFile): DecisionClause[] {
+		const carried = new Set(successor.clauses().map((clause) => clause.text));
+		return this.clauses().filter((clause) => !carried.has(clause.text));
 	}
 }
 
@@ -78,7 +96,7 @@ export class DecisionFiles {
 		const successors = new Map<string, string[]>();
 		const amendments = new Map<string, string[]>();
 		for (const file of files) {
-			for (const target of [...file.supersedes, ...file.amends]) {
+			for (const target of new Set([...file.supersedes, ...file.amends])) {
 				if (!byPath.has(target))
 					throw new DecisionFilesError("invalid", `${file.path} supersedes absent ${target}`);
 				const edges = file.supersedes.includes(target) ? successors : amendments;
@@ -99,6 +117,11 @@ export class DecisionFiles {
 			successors,
 			amendments,
 		);
+	}
+
+	/** Returns all parsed decisions after validating the complete graph. */
+	files(): readonly DecisionFile[] {
+		return this.#files;
 	}
 
 	/** Renders every path and title, refusing an index beyond its byte bound. */
