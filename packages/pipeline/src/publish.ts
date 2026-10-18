@@ -342,7 +342,12 @@ function redismissed(
 				? undefined
 				: Object.values(record.resolved)
 						.filter((entry) => entry.id === id)
-						.sort((left, right) => state.order.indexOf(left.revision) - state.order.indexOf(right.revision))
+						// GitHub's comment IDs only grow, so the larger root is the later thread at the same head.
+						.sort(
+							(left, right) =>
+								state.order.indexOf(left.revision) - state.order.indexOf(right.revision) ||
+								Number(left.thread ?? 0) - Number(right.thread ?? 0),
+						)
 						.at(-1);
 		if (entry?.thread === undefined || entry.dismissal === undefined) continue;
 		const now = { ...structuredClone(entry), thread: entry.thread, dismissal: { ...dismissal } };
