@@ -171,6 +171,33 @@ describe("supersession guardrail", { timeout: 60_000 }, () => {
 		expect((await review(base, head)).records[0]!.status).toBe("ran");
 	});
 
+	it("validates under the base's enabled switch when the head disables it", async () => {
+		const base = commit(repo, {
+			"melian.yaml": `${policy}guardrails:\n  supersession-drop: { enabled: true }\n`,
+		});
+		const head = commit(repo, {
+			"melian.yaml": `${policy}guardrails:\n  supersession-drop: { enabled: false }\n`,
+			[fresh]: "Supersedes: absent.md",
+		});
+		expect((await review(base, head)).records[0]).toMatchObject({
+			name: "guardrails",
+			status: "failed",
+			reason: "invalid",
+			error: expect.stringContaining("absent.md"),
+		});
+	});
+
+	it("skips validation under the base's disabled switch when the head enables it", async () => {
+		const base = commit(repo, {
+			"melian.yaml": `${policy}guardrails:\n  supersession-drop: { enabled: false }\n`,
+		});
+		const head = commit(repo, {
+			"melian.yaml": `${policy}guardrails:\n  supersession-drop: { enabled: true }\n`,
+			[fresh]: "Supersedes: absent.md",
+		});
+		expect((await review(base, head)).records[0]).toMatchObject({ name: "guardrails", status: "ran" });
+	});
+
 	it("applies the enabled switch per declaring path in a mixed change", async () => {
 		const base = commit(repo, {
 			"melian.yaml": policy,
