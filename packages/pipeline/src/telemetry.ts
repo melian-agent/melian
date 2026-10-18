@@ -92,6 +92,7 @@ function reasoningText(reasoning: RequestReasoning): string {
 		const effort =
 			(body.reasoning as { effort?: ReasoningValue } | undefined)?.effort ??
 			body["output_config.effort"] ??
+			body["additionalModelRequestFields.output_config.effort"] ??
 			body.reasoning_effort ??
 			body.reasoningEffort;
 		return effort === undefined ? `sent=${JSON.stringify(body)}` : `effort=${String(effort)}`;

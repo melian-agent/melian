@@ -47,6 +47,7 @@ export class ReasoningCapture {
 					["config", "thinkingConfig"],
 					["generationConfig", "thinkingConfig"],
 					["additionalModelRequestFields", "thinking"],
+					["additionalModelRequestFields", "output_config", "effort"],
 					["additionalModelRequestFields", "reasoning"],
 					["additionalModelRequestFields", "reasoning_effort"],
 					["options", "reasoning"],

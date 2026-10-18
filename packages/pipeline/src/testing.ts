@@ -21,7 +21,8 @@ import type { CredentialStore, ModelRef } from "./harness.ts";
 import { modelsOf, type ReviewModels, wrapModels } from "./models.ts";
 import { verifierMarker } from "./verification-instructions.ts";
 
-export { type FauxProviderHandle, fauxAssistantMessage, fauxToolCall } from "@earendil-works/pi-ai";
+export { type FauxProviderHandle, fauxAssistantMessage, fauxToolCall, normalizeContext } from "@earendil-works/pi-ai";
+export { builtinProviders } from "@earendil-works/pi-ai/providers/all";
 
 /** A scripted model provider for tests, registered in its own model collection. */
 export type FakeModels = {
