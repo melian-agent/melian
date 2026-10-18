@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { createHash } from "node:crypto";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -194,18 +195,39 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 			base: changeset.revision.base,
 			trustedWriters: true,
 		});
-		expect(result.superseded).toEqual([]);
+		expect(result.superseded).toEqual([
+			{
+				task: String(task),
+				reason: `its roundId was k${createHash("sha256").update(revisionKey(changeset.revision)).digest("hex").slice(0, 16)}, and is r1 now`,
+			},
+		]);
 		expect(await harness.getTask(task, context)).toMatchObject({
-			version: 5,
+			version: 6,
 			input: { publishedBy: { trustedWriters: true } },
 			state: {
 				status: "terminal",
-				outcome: { status: "completed", result: { kind: "published", review: String(state.reviews[0]!.id) } },
+				outcome: { status: "completed", result: { kind: "superseded", reason: result.superseded[0]!.reason } },
 			},
 		});
+		expect(
+			(await storage.scanTasks({ kind: "melian.publish", order: "descending" }, 1, undefined, context)).items,
+		).toEqual([
+			expect.objectContaining({
+				input: expect.objectContaining({ target: expect.objectContaining({ roundId: "r1" }) }),
+				state: {
+					status: "terminal",
+					outcome: {
+						status: "completed",
+						result: expect.objectContaining({ kind: "published", review: String(state.reviews[0]!.id) }),
+					},
+				},
+			}),
+		]);
+		expect(posts(state).filter((call) => call.path.endsWith("/pulls/7/reviews"))).toHaveLength(1);
 		expect((await readPublished(harness, root.id, changeset.revision.head, context))?.publishedBy).toMatchObject({
 			trustedWriters: true,
 		});
+		expect((await readPublished(harness, root.id, changeset.revision.head, context))?.review).toBe(result.review);
 		const timing = await storage.findDocument(
 			{
 				kind: TimingDocument.definition.kind,
