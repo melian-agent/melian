@@ -32,7 +32,7 @@ import {
 import { expect, it, vi } from "vitest";
 import { ProviderDoc } from "../src/harness.ts";
 import { ConversationUsageRecorder, ReasoningCapture } from "../src/reasoning.ts";
-import { ModelUsageDocument, type UsageSummary } from "../src/token-usage.ts";
+import { type ModelRequestUsage, ModelUsageDocument, type UsageSummary } from "../src/token-usage.ts";
 import { crashFinding, crashRepository } from "./fixtures/review-scenario.ts";
 
 it.each([
@@ -160,44 +160,71 @@ it("passes triage's observed body through its usage observer before rejecting pr
 	});
 });
 
-it("reopens a usage document written by main without inventing reasoning", async () => {
-	const recorded = JSON.parse(
-		readFileSync(new URL("./fixtures/model-usage-v1-main.json", import.meta.url), "utf8"),
-	) as { recordedBy: string; version: number; value: { usage?: UsageSummary } };
-	const directory = realpathSync(mkdtempSync(join(tmpdir(), "melian-reasoning-reopen-")));
-	try {
-		const file = join(directory, "state.sqlite");
-		const fake = createFakeModels();
-		const first = await openHarness(await openSqliteStorage(file), {
-			models: fake.models,
-			registry: createRegistry(),
-		});
-		const previous = defineDocFamily<{ usage?: UsageSummary }, null>({
-			kind: ModelUsageDocument.definition.kind,
-			family: true,
-			scope: "conversation",
-			history: "latest",
-			fork: "current",
-			version: recorded.version,
-			initial: () => recorded.value,
-		});
-		const root = await first.root(context);
-		await first.commit(async (tx) => {
-			await tx.doc(previous, root.id, "123", null);
-		}, context);
-		await first.close(context);
-		const storage = await openSqliteStorage(file);
-		const reopened = await openHarness(storage, { models: fake.models, registry: createRegistry() });
+it.each(["model-usage-v1-main.json", "model-usage-v2-pass3.json"])(
+	"preserves %s and a new capture across two reopens",
+	async (fixture) => {
+		const recorded = JSON.parse(readFileSync(new URL(`./fixtures/${fixture}`, import.meta.url), "utf8")) as {
+			recordedBy: string;
+			version: number;
+			value: { usage?: UsageSummary; requests?: ModelRequestUsage[] };
+		};
+		const directory = realpathSync(mkdtempSync(join(tmpdir(), "melian-reasoning-reopen-")));
 		try {
-			expect(ModelUsageDocument.definition.version).toBe(2);
-			expect(await reopened.snapshot(ModelUsageDocument, root.id, "123", context)).toEqual(recorded.value);
+			const file = join(directory, "state.sqlite");
+			const fake = createFakeModels();
+			const first = await openHarness(await openSqliteStorage(file), {
+				models: fake.models,
+				registry: createRegistry(),
+			});
+			const previous = defineDocFamily<{ usage?: UsageSummary; requests?: ModelRequestUsage[] }, null>({
+				kind: ModelUsageDocument.definition.kind,
+				family: true,
+				scope: "conversation",
+				history: "latest",
+				fork: "current",
+				version: recorded.version,
+				initial: () => recorded.value,
+			});
+			const root = await first.root(context);
+			await first.commit(async (tx) => {
+				await tx.doc(previous, root.id, "123", null);
+			}, context);
+			await first.close(context);
+			const capture = new ReasoningCapture(fake.provider.getModel(), "high");
+			await capture.options().onPayload!({ vendor: { reasoning: "private" } }, fake.provider.getModel());
+			const receipt = {
+				model: "faux/faux-1",
+				usage: fauxAssistantMessage("Done").usage,
+				reasoning: capture.finish(fauxAssistantMessage("Done")),
+			};
+			const expected = { ...recorded.value, requests: [...(recorded.value.requests ?? []), receipt] };
+			const storage = await openSqliteStorage(file);
+			const reopened = await openHarness(storage, { models: fake.models, registry: createRegistry() });
+
+			try {
+				expect(ModelUsageDocument.definition.version).toBe(3);
+				expect(await reopened.snapshot(ModelUsageDocument, root.id, "123", context)).toEqual(recorded.value);
+				await reopened.commit(async (tx) => {
+					const doc = await tx.doc(ModelUsageDocument, root.id, "123", null);
+					doc.requests = expected.requests;
+				}, context);
+			} finally {
+				await reopened.close(context);
+			}
+			const again = await openHarness(await openSqliteStorage(file), {
+				models: fake.models,
+				registry: createRegistry(),
+			});
+			try {
+				expect(await again.snapshot(ModelUsageDocument, root.id, "123", context)).toEqual(expected);
+			} finally {
+				await again.close(context);
+			}
 		} finally {
-			await reopened.close(context);
+			rmSync(directory, { recursive: true, force: true });
 		}
-	} finally {
-		rmSync(directory, { recursive: true, force: true });
-	}
-});
+	},
+);
 
 it.each(["melian.lens", "melian.verification.candidate", "melian.walkthrough", "melian.triage", "failover"])(
 	"records each actual %s request beside its own usage",

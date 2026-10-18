@@ -15,10 +15,44 @@ import {
 } from "./harness.ts";
 import { type ModelRequestUsage, ModelUsageDocument } from "./token-usage.ts";
 
+const requestDataFields = new Set([
+	"messages",
+	"input",
+	"contents",
+	"content",
+	"prompt",
+	"system",
+	"systemInstruction",
+	"instructions",
+	"tools",
+	"toolConfig",
+	"schema",
+	"json_schema",
+	"responseSchema",
+	"responseJsonSchema",
+	"parameters",
+	"metadata",
+	"headers",
+]);
+
+function hasUnrecognisedReasoning(value: unknown, capturedPaths: ReadonlySet<string>, path: string[] = []): boolean {
+	if (value === null || typeof value !== "object") return false;
+	return Object.entries(value).some(([key, child]) => {
+		const childPath = [...path, key];
+		if (child === undefined || requestDataFields.has(key) || capturedPaths.has(JSON.stringify(childPath)))
+			return false;
+		return (
+			/reasoning|thinking|effort|^prompt_?mode$|^chat_template_(?:args|kwargs)$/i.test(key) ||
+			hasUnrecognisedReasoning(child, capturedPaths, childPath)
+		);
+	});
+}
+
 export class ReasoningCapture {
 	private readonly model: Model<Api>;
 	private readonly requested: string;
 	private readonly sent: RequestReasoning["sent"] = [];
+	private unrecognised = false;
 
 	constructor(model: Model<Api>, requested: string) {
 		this.model = model;
@@ -61,7 +95,10 @@ export class ReasoningCapture {
 					),
 					{ omitUndefinedProperties: true },
 				) as ReasoningSettings;
-				this.sent.push(Object.keys(settings).length === 0 ? "provider default" : settings);
+				const capturedPaths = new Set(paths.map((path) => JSON.stringify(path)));
+				const unrecognised = hasUnrecognisedReasoning(observed, capturedPaths);
+				this.unrecognised ||= unrecognised;
+				this.sent.push(Object.keys(settings).length === 0 && !unrecognised ? "provider default" : settings);
 				return replacement;
 			},
 		};
@@ -72,7 +109,7 @@ export class ReasoningCapture {
 		const mapped = this.model.thinkingLevelMap?.[this.requested as keyof NonNullable<Model<Api>["thinkingLevelMap"]>];
 		return {
 			requested: this.requested,
-			source: this.sent.length === 0 ? "derived, not observed" : "observed",
+			source: this.unrecognised ? "unrecognised" : this.sent.length === 0 ? "derived, not observed" : "observed",
 			sent: structuredClone(this.sent),
 			...(this.sent.length === 0 && mapped !== undefined ? { catalogMapped: mapped } : {}),
 			...(message.providerThinkingLevel === undefined ? {} : { providerReported: message.providerThinkingLevel }),

@@ -10,7 +10,7 @@ export type UsageSummary = { models: Record<string, ModelUsage>; total: ModelUsa
 export const ModelUsageDocument = defineDocFamily<{ usage?: UsageSummary; requests?: ModelRequestUsage[] }, null>({
 	kind: "melian.model-usage",
 	family: true,
-	version: 2,
+	version: 3,
 	migrate: (value) => value as { usage?: UsageSummary; requests?: ModelRequestUsage[] },
 	scope: "conversation",
 	history: "latest",

@@ -97,7 +97,7 @@ export type ReasoningValue = string | number | boolean | null | ReasoningValue[]
 /** The requested level, sent settings for each payload callback, and any provider-reported level. */
 export type RequestReasoning = {
 	requested: string;
-	source: "observed" | "derived, not observed";
+	source: "observed" | "derived, not observed" | "unrecognised";
 	sent: (ReasoningSettings | "provider default")[];
 	catalogMapped?: string | null;
 	providerReported?: string;
