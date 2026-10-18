@@ -6,6 +6,7 @@ import {
 	ConfigError,
 	LensError,
 	type MelianConfig,
+	type ModelRoute,
 	type MutationSkipCause,
 	type PreExistingCap,
 	type PublicationDetails,
@@ -39,6 +40,11 @@ type StoredCheck = {
 	level?: ScrutinyLevel;
 	budgetEnded?: StoredBudgetEnd;
 	lineage?: {
+		thinking?: {
+			level: NonNullable<ModelRoute["thinking"]> | "unset";
+			wanted: NonNullable<ModelRoute["thinking"]> | "unset";
+			by: string;
+		};
 		model: string;
 		wanted?: string;
 		by: string;
@@ -144,7 +150,7 @@ class VerdictState {
 
 export const VerdictDocument = defineDoc<StoredVerdictState>({
 	kind: "melian.verdicts",
-	version: 11,
+	version: 12,
 	// Version 10 permits protected-claim diagnostics; old verdicts keep their recorded resolutions.
 	scope: "conversation",
 	history: "rewindable",
@@ -215,7 +221,7 @@ export const AdjudicationTask = defineTask<
 	name: "melian.adjudication",
 	// Version 2 added `files`, and version 3 marks a task created before stage timing. A version 1 input holds no files,
 	// so its task decides by snippet, as it did.
-	version: 4,
+	version: 5,
 	initial: () => ({ phase: "adjudicate" }),
 	migrate: (input, checkpoint, from) => ({
 		input: input as unknown as AdjudicationTaskInput,

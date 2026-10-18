@@ -77,7 +77,7 @@ it("reads what version-3 checks and version-8 verdicts wrote after an SQLite reo
 		/newer version 4 than 3/,
 	);
 	await expect(second.harness.snapshot(legacy("melian.verdicts", 8), second.root.id, context)).rejects.toThrow(
-		/newer version 11 than 8/,
+		/newer version 12 than 8/,
 	);
 });
 
