@@ -188,6 +188,7 @@ Publication, built in milestone 1, diffs each revision's findings by `id` agains
 
 Publication retires every resolution still owed against a thread in the commit that reuses it for a live finding.
 Signed answer discovery spans every head, so a reply accepted before a lost checkpoint is not repeated on the next push.
+Crash recovery takes a finding's root only from the review it recovered, by the comment's `pull_request_review_id`.
 Either the journal or GitHub proves an answer present.
 An addressed root still owes thread resolution even when its finding returns in a new thread.
 Owed work and pending rounds keep every thread for a finding, keyed by finding, thread and dismissal version.

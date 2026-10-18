@@ -27,6 +27,7 @@ Publication calls no model.
 
 Keep the existing provider port and widen `findPublished`'s answer markers to every head.
 Review and finding-root recovery still match the requested head; answers are keyed by finding, actual root comment and dismissal version.
+A recovered root belongs to the recovered review only when its `pull_request_review_id` names that review, since one head can hold roots for a finding in several reviews.
 An answer counts when either the durable journal or GitHub records it.
 A deleted reply is not repeated when its journal entry survives.
 An addressed edit counts only on its own signed finding root.
