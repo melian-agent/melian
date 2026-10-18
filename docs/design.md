@@ -193,9 +193,9 @@ Either the journal or GitHub proves an answer present.
 An addressed root still owes thread resolution even when its finding returns in a new thread.
 Owed work and pending rounds keep every thread for a finding, keyed by finding, thread and dismissal version.
 Published-document version 9 upgrades older resolution maps, including pending rounds, without changing their review payload.
-A human-resolved live thread stays resolved: its finding still counts and appears in review bodies without another inline post.
+A human-resolved live thread stays resolved: its finding still counts and appears in the next review body without another inline post. A finding whose thread is open is not repeated in the body.
 A returning finding cannot reuse it. Owed answers may still be posted there without reopening it.
-GraphQL thread reads stay lazy, before reuse, reply or resolution; an unchanged live thread needs no read.
+GraphQL thread reads stay lazy, before reuse, reply, resolution or a review over still-open threads.
 A root absent from GraphQL but present in REST has unknown state; publication waits rather than reusing or replacing it.
 Publication sets the verdict's status before any thread or marker read, including recovery of an older pending round.
 Bad or partial pages fail closed; listings stop at 50 pages, and malformed or repeated GraphQL cursors fail.

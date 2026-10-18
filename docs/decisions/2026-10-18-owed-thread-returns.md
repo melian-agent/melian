@@ -35,8 +35,9 @@ A reply counts only when its author matches its signed root's author.
 
 Read GraphQL thread state lazily, when publication will reuse, answer or resolve that thread.
 Cache complete reads within one attempt and reset them on replay.
-A still-open finding requires no thread read and is never reposted merely because a human resolved its thread.
-It continues to count in the status and appears in the next review body.
+A still-open finding is never reposted merely because a human resolved its thread, and it continues to count in the status.
+Before posting a review, publication reads the state of each still-open finding's thread.
+The review body lists a still-open finding again only when a human resolved its thread or the thread is gone; an open thread is not repeated.
 A returning finding cannot reuse a human-resolved thread.
 Answers still owed to a human-resolved thread are posted; resolving it again is a no-op.
 A known root absent from GraphQL but present in REST is not gone.
@@ -74,7 +75,7 @@ GitHub offers no atomic read-and-write transaction, so these reads cannot serial
 
 Reuse the cross-head answer listing for planning and closing, replacing per-entry, per-head probes.
 A normal new round already lists reviews and comments; widening their interpretation adds no REST call.
-GraphQL adds its paginated read only when there is a thread action, as resolution discovery did before.
+GraphQL adds its paginated read only when there is a thread action or a review to post over still-open threads.
 Reuse and dismissal-only attempts may therefore add that read.
 A settled rerun with nothing owed lists no publication markers and reads no threads.
 
