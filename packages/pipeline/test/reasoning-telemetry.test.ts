@@ -385,7 +385,7 @@ it.each(["none", "", null, undefined])("labels an unobserved catalogue mapping %
 		requested: "off",
 		source: "derived, not observed",
 		sent: [],
-		...(mapped === undefined ? {} : { catalogueMapped: mapped }),
+		...(mapped === undefined ? {} : { catalogMapped: mapped }),
 	});
 	const usage = new TokenUsage();
 	usage.add("faux/model", fauxAssistantMessage("Done").usage, recorded);
@@ -744,10 +744,10 @@ it("omits explicitly undefined capture fields before storing strict JSON", () =>
 		requested: "off",
 		source: "observed",
 		sent: ["provider default"],
-		catalogueMapped: undefined,
+		catalogMapped: undefined,
 		providerReported: undefined,
 	});
 	const record = usage.toJSON().requests![0]!.reasoning;
-	expect(record).not.toHaveProperty("catalogueMapped");
+	expect(record).not.toHaveProperty("catalogMapped");
 	expect(record).not.toHaveProperty("providerReported");
 });

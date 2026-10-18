@@ -73,7 +73,7 @@ export class ReasoningCapture {
 			requested: this.requested,
 			source: this.sent.length === 0 ? "derived, not observed" : "observed",
 			sent: structuredClone(this.sent),
-			...(this.sent.length === 0 && mapped !== undefined ? { catalogueMapped: mapped } : {}),
+			...(this.sent.length === 0 && mapped !== undefined ? { catalogMapped: mapped } : {}),
 			...(message.providerThinkingLevel === undefined ? {} : { providerReported: message.providerThinkingLevel }),
 		};
 	}

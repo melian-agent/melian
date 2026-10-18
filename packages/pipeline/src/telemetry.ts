@@ -96,8 +96,7 @@ function reasoningText(reasoning: RequestReasoning): string {
 			body.reasoningEffort;
 		return effort === undefined ? `sent=${JSON.stringify(body)}` : `effort=${String(effort)}`;
 	});
-	const mapped =
-		reasoning.catalogueMapped === null ? "provider default" : (reasoning.catalogueMapped ?? "unavailable");
+	const mapped = reasoning.catalogMapped === null ? "provider default" : (reasoning.catalogMapped ?? "unavailable");
 	return `requested=${reasoning.requested} ${sent.join(" / ") || `catalogue=${mapped}`} ${reasoning.source}${reasoning.providerReported === undefined ? "" : ` provider-reported=${reasoning.providerReported}`}`;
 }
 

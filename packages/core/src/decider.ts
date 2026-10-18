@@ -99,7 +99,7 @@ export type RequestReasoning = {
 	requested: string;
 	source: "observed" | "derived, not observed";
 	sent: (ReasoningSettings | "provider default")[];
-	catalogueMapped?: string | null;
+	catalogMapped?: string | null;
 	providerReported?: string;
 };
 
