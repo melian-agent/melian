@@ -89,9 +89,10 @@ export class RoundWriter {
 		return state;
 	}
 
-	async checkRun(task: number): Promise<string | undefined> {
+	async checkRun(task: number, legacyCheckRun?: string): Promise<string | undefined> {
 		const state = await this.tx.doc(RoundsDocument, this.root);
-		return Object.values(state.items).find((round) => round.tasks.includes(task))?.checkRun;
+		const round = Object.values(state.items).find((round) => round.tasks.includes(task));
+		return round?.mintedAt === undefined ? legacyCheckRun : round.checkRun;
 	}
 
 	async mint(revision: string, task: number, at: string, checkRun?: string): Promise<void> {

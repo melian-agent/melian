@@ -1181,7 +1181,7 @@ async function startAdjudication(
 		const rounds = new RoundWriter(tx, root.id);
 		if (
 			known?.adjudication?.input === key &&
-			(await rounds.checkRun(known.adjudication.task)) === checkRun &&
+			(await rounds.checkRun(known.adjudication.task, checkRun)) === checkRun &&
 			(await attachable(tx, known.adjudication.task, retry))
 		) {
 			await rounds.keep(revision, known.adjudication.task);
