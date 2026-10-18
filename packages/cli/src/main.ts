@@ -123,7 +123,7 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 			options: {
 				open: { type: "boolean", default: false },
 				round: { type: "string" },
-				rounds: { type: "boolean", default: false },
+				rounds: { type: "boolean" },
 				json: { type: "boolean", default: false },
 				model: { type: "string" },
 				walkthrough: { type: "boolean", default: true },
@@ -160,6 +160,8 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 			io.stderr(usage);
 			return usageExitCode;
 		}
+		if (name !== "findings" && (values.round !== undefined || values.rounds !== undefined))
+			throw new UsageError("--round and --rounds are only available for findings");
 		const scoped: Io = { ...io, color: io.color && values.color };
 		switch (name) {
 			case "review":

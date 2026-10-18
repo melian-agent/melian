@@ -264,6 +264,23 @@ it("refuses a standalone round ID combined with a listing", async () => {
 	expect(await main(["findings", "--round", `${changeset.id}.r1`, "--rounds"], io)).toBe(64);
 });
 
+it.each(["round", "rounds", "no-rounds"])(
+	"confines --%s to findings without writing a comparison",
+	async (option) => {
+		const flags = option === "round" ? ["--round", `${changeset.id}.r1`] : [`--${option}`];
+		expect(await main(["compare", "main...feature", ...flags], io)).toBe(64);
+		expect(io.stdout).not.toHaveBeenCalled();
+		expect(await main(["compare", "export", "main...feature", "--json"], io)).toBe(1);
+		expect(await main(["compare", "main...feature"], io)).toBe(0);
+	},
+	60_000,
+);
+
+it("keeps ordinary findings when --no-rounds is supplied", async () => {
+	expect(await main(["findings", "main...feature", "--no-rounds", "--json"], io)).toBe(0);
+	expect(JSON.parse(io.stdout.mock.calls.join("")).status).toBe("findings");
+});
+
 it("refuses missing and undecided rounds even when an earlier frozen verdict exists", async () => {
 	const path = await storagePath(repo, changeset.id, io.env, false);
 	const fake = createFakeModels();
