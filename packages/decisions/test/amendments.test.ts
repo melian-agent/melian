@@ -172,6 +172,38 @@ describe("decision amendments", () => {
 		).toThrow("cycle");
 	});
 
+	it("names the edge kind of a missing target", () => {
+		expect(() => DecisionFiles.from([DecisionFile.parse(fresh, "Amends: old.md, routing.")])).toThrow(
+			`${fresh} amends absent ${old}`,
+		);
+		expect(() => DecisionFiles.from([DecisionFile.parse(fresh, "Supersedes: old.md")])).toThrow(
+			`${fresh} supersedes absent ${old}`,
+		);
+	});
+
+	it("names the whole graph in a cycle error, whichever edge kinds form it", () => {
+		const cycle = (a: string, b: string) =>
+			DecisionFiles.from([DecisionFile.parse(fresh, a), DecisionFile.parse(old, b)]);
+		expect(() => cycle("Amends: old.md, routing.", "Amends: new.md, routing.")).toThrow(
+			"The base decision graph contains a cycle",
+		);
+		expect(() => cycle("Supersedes: old.md", "Supersedes: new.md")).toThrow(
+			"The base decision graph contains a cycle",
+		);
+	});
+
+	it("accepts an Amends declaration with no scope", () => {
+		const parsed = DecisionFile.parse(fresh, "Amends: old.md");
+		expect(parsed.amends).toEqual([old]);
+		expect(DecisionFiles.from([parsed, DecisionFile.parse(old, "Old.")]).render()).toContain("amended by");
+	});
+
+	it("records only the first sentence's edges when two declarations share a line", () => {
+		const parsed = DecisionFile.parse(fresh, "Supersedes: old.md. Amends: other.md, scope.");
+		expect(parsed.supersedes).toEqual([old]);
+		expect(parsed.amends).toEqual([]);
+	});
+
 	it("uses the existing Markdown grammar for amendment declarations", () => {
 		const parsed = DecisionFile.parse(
 			fresh,
