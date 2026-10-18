@@ -23,7 +23,7 @@ Object.assign(process.env, isolatedGitEnv);
 const isReview = (call: Call) => call.method === "POST" && call.path.endsWith("/reviews");
 const park = (event: string) => {
 	appendFileSync(log, `${event}\n`);
-	return new Promise<void>(() => setInterval(() => {}, 60_000));
+	return new Promise<void>(() => setTimeout(() => process.exit(1), 30_000));
 };
 
 const state = JSON.parse(readFileSync(stateFile, "utf8")) as FakeState;

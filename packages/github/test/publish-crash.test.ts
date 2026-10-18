@@ -120,6 +120,85 @@ async function killAtReview(
 }
 
 describe("publishing across a crash", { timeout: 30_000 }, () => {
+	it("recovers Bob after Alice crashes before posting and Bob crashes after posting", async () => {
+		const database = join(dir, "review.sqlite");
+		const stateFile = join(dir, "github.json");
+		const fake = scenarioModels();
+		let state = pullRequestState();
+		state.login = "alice";
+		harness = await openReviewOnlyHarness(await openSqliteStorage(database), fake);
+		const { changeset, review } = await reviewScenario(repo, harness, fake, lensScript(unsafeManager));
+		await review;
+		const root = await harness.root(context);
+		await harness.close(context);
+		harness = undefined;
+		moveTo(state, changeset);
+		writeFileSync(stateFile, JSON.stringify(state));
+		await killAtReview(database, stateFile, join(dir, "alice.log"), "review-requested");
+
+		const aliceStorage = await openSqliteStorage(database);
+		harness = await openReviewOnlyHarness(aliceStorage, scenarioModels());
+		expect(
+			(await harness.snapshot(PublishedDocument, root.id, context))!.revisions[changeset.revision.head]!.pending!
+				.ledger!.publishedBy!.login,
+		).toBe("alice");
+		const aliceTasks = await aliceStorage.scanTasks({ kind: "melian.publish" }, 10, undefined, context);
+		expect(aliceTasks.items).toHaveLength(1);
+		const aliceTask = aliceTasks.items[0]!.id;
+		await harness.close(context);
+		harness = undefined;
+		state = JSON.parse(readFileSync(stateFile, "utf8")) as FakeState;
+		expect(state.reviews).toEqual([]);
+		state.login = "bob";
+		state.calls = [];
+		writeFileSync(stateFile, JSON.stringify(state));
+		await killAtReview(database, stateFile, join(dir, "bob.log"));
+
+		const bobStorage = await openSqliteStorage(database);
+		harness = await openReviewOnlyHarness(bobStorage, scenarioModels());
+		expect(
+			(await harness.snapshot(PublishedDocument, root.id, context))!.revisions[changeset.revision.head]!.pending!
+				.ledger!.publishedBy!.login,
+		).toBe("bob");
+		expect(await harness.getTask(aliceTask, context)).toMatchObject({
+			state: {
+				status: "terminal",
+				outcome: { status: "completed", result: { kind: "superseded", reason: "publisher login changed" } },
+			},
+		});
+		const bobTasks = await bobStorage.scanTasks({ kind: "melian.publish" }, 10, undefined, context);
+		expect(bobTasks.items).toHaveLength(2);
+		const bobTask = bobTasks.items.find(({ id }) => id !== aliceTask)!.id;
+		await harness.close(context);
+		harness = undefined;
+		state = JSON.parse(readFileSync(stateFile, "utf8")) as FakeState;
+		expect(state.reviews).toHaveLength(1);
+		expect(state.reviews[0]!.user!.login).toBe("bob");
+		state.reviews[0]!.user!.type = "User";
+		for (const comment of state.comments) comment.user!.type = "User";
+		state.login = "carol";
+		const provider = providerFor(state);
+		harness = (await openPublisher(await openSqliteStorage(database), scenarioModels().review, provider)).harness;
+		const result = await publishReview({
+			harness,
+			provider,
+			changeset,
+			pullRequest: await provider.pullRequest(7),
+			base: changeset.revision.base,
+			trustedWriters: true,
+		});
+		expect(result).toMatchObject({ review: String(state.reviews[0]!.id), posted: 0, recovered: 1 });
+		expect(result.superseded).toEqual([{ task: String(bobTask), reason: "publisher login changed" }]);
+		expect(state.reviews).toHaveLength(1);
+		expect(state.calls.filter(({ method, path }) => method === "POST" && path.endsWith("/reviews"))).toHaveLength(1);
+		expect(await harness.getTask(bobTask, context)).toMatchObject({
+			state: { status: "terminal", outcome: { status: "completed", result: { kind: "superseded" } } },
+		});
+		expect((await readPublished(harness, root.id, changeset.revision.head, context))!.publishedBy.login).toBe(
+			"carol",
+		);
+	});
+
 	it("does not repost Alice's accepted review after a transient /user failure", async () => {
 		const database = join(dir, "review.sqlite");
 		const stateFile = join(dir, "github.json");
