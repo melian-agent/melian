@@ -11,3 +11,7 @@ A resumed publication now ends superseded while its revision has no indexed adju
 The triage publication fix is commit `6d357d4e`.
 
 Round listing retains unreadable legacy heads, sorts them last, and shows their date as `unknown`. Text and JSON include the commit or mint date. The fixture without its git bundle reproduced exit 1 before the fix. All 72 CLI and pipeline rounds tests now pass. Eleven hand mutations fail date-ordering, date-source or listing assertions, including the git-error fallback.
+
+The unreadable-head listing fix is commit `6eb0130f`.
+
+An absent round ID now reports "has no round". A stored round without a verdict still reports "has no decided round". The absent legacy-form key reproduced the wrong message before the fix. All 34 CLI rounds tests pass. Removing or inverting the new guard fails, as does removing the undecided-round guard.

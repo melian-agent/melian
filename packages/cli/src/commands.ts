@@ -583,9 +583,10 @@ async function roundFindings(
 	const storage = await openStorage(path);
 	try {
 		const round = (await new RoundReader(storage).read(match[1]!)).find((round) => round.id === id);
-		const verdict = round?.verdict();
+		if (round === undefined) throw new CliError(`Melian has no round ${id}`);
+		const verdict = round.verdict();
 		if (verdict === undefined) throw new CliError(`Melian has no decided round ${id}`);
-		const plan = round?.stored.provenance?.plan;
+		const plan = round.stored.provenance?.plan;
 		if (plan !== undefined && !options.json) {
 			for (const line of ReviewPlan.from(plan).summary().split("\n").filter(Boolean)) io.stderr(`melian: ${line}\n`);
 		}

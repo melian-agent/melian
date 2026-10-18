@@ -305,11 +305,17 @@ it("refuses missing and undecided rounds even when an earlier frozen verdict exi
 		delete (await tx.doc(ReviewIndex, root.id)).reviews[revisionKey(changeset.revision)];
 	}, context);
 	await harness.close(context);
-	for (const suffix of ["r2", "r3"]) {
-		expect(await main(["findings", "--round", `${changeset.id}.${suffix}`], io)).toBe(1);
+	for (const [suffix, message] of [
+		["r2", "has no decided round"],
+		["k0123456789abcdef", "has no round"],
+		["r3", "has no round"],
+	]) {
+		io.stderr.mockClear();
+		const id = `${changeset.id}.${suffix}`;
+		expect(await main(["findings", "--round", id], io)).toBe(1);
+		expect(io.stderr.mock.calls.join("")).toContain(`Melian ${message} ${id}`);
 	}
 	expect(await main(["findings", "--round", `${changeset.id}.r1`], io)).toBe(0);
-	expect(io.stderr.mock.calls.join("")).toContain("no decided round");
 });
 
 it.each([false, true])("lists an unreadable legacy head last with an unknown date (json=%s)", async (json) => {
