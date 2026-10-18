@@ -189,6 +189,7 @@ Not yet scheduled, from the same research: the comparison importer counts a Code
     - Commit out-of-conversation response usage with its result. Keep conversation UsageDoc as authority, including failover and compaction.
     - Show total tokens and cost in telemetry, review JSON and the terminal summary. Print each live golden's spend beside its score.
     - Preserve unavailable usage, detached reads, attachment identity and terminal escaping. Prove crashes on both sides of settlement and run the gate.
+    - `[x]` Capture requested, observed sent and provider-reported reasoning for each returned model request, without changing levels. [The capture decision](decisions/2026-10-18-reasoning-telemetry.md) extends the usage record to version 2. [Pull request #153](https://github.com/melian-agent/melian/pull/153).
 
 ### Milestone 2 in flight, 2026-10-17
 

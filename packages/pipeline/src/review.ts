@@ -117,6 +117,7 @@ import {
 	type StoredBudgetEnd,
 } from "./lens-tools.ts";
 import { hasCredentials, modelsOf, type ReviewModels } from "./models.ts";
+import { ConversationUsageRecorder } from "./reasoning.ts";
 import {
 	attachable,
 	type CallerRecord,
@@ -633,15 +634,17 @@ export class ReviewHarness {
 		if (checkout !== undefined) registry.install(checksExtension);
 		if (decider !== undefined) registry.install(decisionExtension(decider));
 		const env = checkout === undefined ? {} : { env: () => createNodeExecutionEnv(checkout) };
+		const recorder = new ConversationUsageRecorder(storage);
 		const harness = await openHarness(
 			storage,
-			{ models: modelsOf(models), registry, ...env, ...settings },
+			{ models: recorder.models(modelsOf(models)), registry, ...env, ...settings },
 			context,
 		).catch(async (error: unknown) => {
 			// Pi closes the storage only once it has built a harness; an open refused before that leaves it to us.
 			await storage.close(backgroundContext).catch(() => undefined);
 			throw error;
 		});
+		recorder.attach(harness);
 		await abortReplacedRuns(harness, context);
 		return new ReviewHarness(harness, checkout !== undefined);
 	}

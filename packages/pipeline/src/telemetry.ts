@@ -1,4 +1,4 @@
-import { deterministicChecks, visibleText } from "@melian-agent/core";
+import { deterministicChecks, type ReasoningValue, type RequestReasoning, visibleText } from "@melian-agent/core";
 import { type CheckRunRecord, CheckSources, ChecksDocument } from "./checks.ts";
 import { DecisionDocument } from "./decisions.ts";
 import {
@@ -86,6 +86,21 @@ export type Stage = {
 	usageIncomplete?: number;
 };
 
+function reasoningText(reasoning: RequestReasoning): string {
+	const sent = reasoning.sent.map((body) => {
+		if (body === "provider default") return body;
+		const effort =
+			(body.reasoning as { effort?: ReasoningValue } | undefined)?.effort ??
+			body["output_config.effort"] ??
+			body["additionalModelRequestFields.output_config.effort"] ??
+			body.reasoning_effort ??
+			body.reasoningEffort;
+		return effort === undefined ? `sent=${JSON.stringify(body)}` : `effort=${String(effort)}`;
+	});
+	const mapped = reasoning.catalogMapped === null ? "provider default" : (reasoning.catalogMapped ?? "unavailable");
+	return `requested=${reasoning.requested} ${sent.join(" / ") || `catalogue=${mapped}`} ${reasoning.source}${reasoning.providerReported === undefined ? "" : ` provider-reported=${reasoning.providerReported}`}`;
+}
+
 function usageText(usage: UsageSummary): string {
 	return Object.entries(usage.models)
 		.map(
@@ -147,7 +162,20 @@ export class StageTelemetry {
 	/** The recorded spend, with missing stages named as incomplete coverage. */
 	spend(): string {
 		if (this.total === undefined) return `Token usage unavailable${incompleteUsage(this.usageIncomplete)}`;
-		return `${this.total.total.totalTokens} tokens, $${this.total.total.cost.total}${this.usageUnavailable.length === 0 ? "" : ` (usage unavailable for ${this.usageUnavailable.length} stage${this.usageUnavailable.length === 1 ? "" : "s"})`}${incompleteUsage(this.usageIncomplete)}`;
+		const models = this.models();
+		return `${this.total.total.totalTokens} tokens, $${this.total.total.cost.total}${this.usageUnavailable.length === 0 ? "" : ` (usage unavailable for ${this.usageUnavailable.length} stage${this.usageUnavailable.length === 1 ? "" : "s"})`}${incompleteUsage(this.usageIncomplete)}${models === "" ? "" : `; ${models}`}`;
+	}
+
+	/** Recorded reasoning settings, grouped by actual model. */
+	models(): string {
+		const requests = this.total?.requests ?? [];
+		return [...new Set(requests.map((request) => request.model))]
+			.map((model) =>
+				visibleText(
+					`${model} ${[...new Set(requests.filter((request) => request.model === model).map((request) => reasoningText(request.reasoning)))].join("; ")}`,
+				),
+			)
+			.join("; ");
 	}
 
 	/** Up to three slowest ended intervals. */
@@ -179,6 +207,12 @@ export class StageTelemetry {
 						stage.note,
 						stage.error,
 						stage.usage === undefined ? "" : usageText(stage.usage),
+						(stage.usage?.requests ?? [])
+							.map(
+								(request) =>
+									`${request.model} ${reasoningText(request.reasoning)} sent=${JSON.stringify(request.reasoning.sent)}`,
+							)
+							.join("; "),
 						incompleteUsage(stage.usageIncomplete).trim(),
 						stage.clockRegressed ? "clock regressed" : "",
 					]
@@ -429,6 +463,12 @@ export class TelemetryReader {
 			ending = { endedAt: task.endedAt };
 			result = outcome(task);
 		}
+		const recorded = await this.document(
+			ModelUsageDocument,
+			{ kind: "conversation", conversationId: id },
+			context,
+			`conversation:${id}`,
+		);
 		const usage = await this.document(UsageDoc, { kind: "conversation", conversationId: id }, context);
 		return {
 			id: `conversation:${id}`,
@@ -440,7 +480,14 @@ export class TelemetryReader {
 			...interval(start, ending.endedAt),
 			...ending,
 			...this.attachment(start, ending.endedAt, before),
-			...(usage === undefined ? {} : { usage: new TokenUsage(usage.models).toJSON() }),
+			...(usage === undefined
+				? {}
+				: {
+						usage: {
+							...new TokenUsage(usage.models).toJSON(),
+							...(recorded?.requests === undefined ? {} : { requests: recorded.requests }),
+						},
+					}),
 		};
 	}
 

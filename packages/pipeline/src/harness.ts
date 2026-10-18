@@ -34,6 +34,7 @@ export { copyJson } from "@earendil-works/chord";
 export {
 	type Api,
 	type AssistantMessage,
+	type AssistantMessageEventStream,
 	type AuthContext,
 	type AuthOperationOptions,
 	type Credential,
@@ -43,7 +44,9 @@ export {
 	type Message,
 	type Model,
 	type Models,
+	type ModelsSimpleStreamOptions,
 	type MutableModels,
+	type ProviderRequestOptions,
 	type ToolCall,
 	Type,
 } from "@earendil-works/pi-ai";
@@ -70,6 +73,7 @@ export {
 	type JsonObject,
 	LiveDoc,
 	type ModelRef,
+	ProviderDoc,
 	type Registry,
 	ROOT_CONVERSATION_ID,
 	type Storage,
