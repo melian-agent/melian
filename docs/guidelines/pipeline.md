@@ -282,7 +282,7 @@ A level's `budget.tokens` and `budget.tools` end a lens conversation once they a
 
 `melian.rounds`, version 1, keeps a storage-wide counter, the current round of each revision, owned adjudication tasks and verdict copies. Storage-local keys are `r<n>` or the legacy key hash; the public ID prefixes the key with the changeset ID. `RoundWriter` preserves a legacy verdict before the first write that touches its key, inside that writer's transaction. It also records comparison-only keys as undecided legacy rounds. The marker and the copy roll back with the write.
 
-`startAdjudication` mints when it creates a task, deleting the live verdict, provenance and decision. Attachments and dismissals keep the current round. Check runs contribute their identity to attachment through the round record, so distinct cold runs or reruns with identical records still mint. A host that runs checks upfront, as the CLI does for caller context, passes their identity as `ReviewOptions.checkRun`. No existing task or verdict version changes. Only adjudication writes a round's verdict copy, behind the review index's supersession check. A task main left pending writes its key's legacy round.
+`startAdjudication` mints when it creates a task, deleting the live verdict, provenance and decision. Attachments and dismissals keep the current round. Check runs contribute their identity to attachment through the round record, so distinct cold runs or reruns with identical records still mint. A host that runs checks upfront, as the CLI does for caller context, passes their identity as `ReviewOptions.checkRun`. No adjudication task or verdict version changes. Only adjudication writes a round's verdict copy, behind the review index's supersession check. A task main left pending writes its key's legacy round.
 
 `RoundReader` reads detached documents and synthesises unrecorded legacy verdict and comparison keys without writing. `Round.compare` orders legacy rounds by head commit date before minted rounds by mint time, breaking ties by ID. The host obtains commit dates from git.
 
@@ -342,6 +342,12 @@ The version-5 publish task returns posted snapshots on stale-target exits too, i
 Its migration preserves timing from versions 3 and 4; versions 1 and 2 retain legacy timing.
 A version-4 fixture recorded by that version’s own code proves SQLite reopen and timing preservation.
 
+Version 6 adds the storage-local round ID to the task target; `PublisherDocument` version 3 records the same target.
+Both migrations assign an older target its revision's legacy round and preserve newer publisher attribution.
+The target commit preserves legacy state in its transaction before selecting the current round.
+A resumed minted target reads that round's verdict copy; a legacy target reads the revision's live verdict.
+An absent minted round or verdict refuses publication.
+
 
 `publishReview({ harness, provider, changeset, pullRequest, base, trustedWriters })` publishes the verdict recorded for a pull request's base and head through a `ReviewProvider` from core, such as `packages/github`'s. `trustedWriters` is required and comes from committed root base policy. Omission is refused before any write; only stored legacy migrations default to true. `base` is the merge base the pull request diffs from now, which the host reads with git, since the provider reports only the base branch's tip. The harness must hold `publishExtension(provider)`, which carries the publish task, `melian.publish`; install it again after a restart so an interrupted publication resumes. `openPublishHarness` opens a `PublishHarness`, whose `harness` holds nothing else, so a review a crash interrupted does not resume during a publish. Publication refuses stale reviews with `PublishError` `staleReview`. The changeset's head must match the pull request's head, and its base must match `base`. A missing or undecided verdict under their `revisionKey` is `notReviewed`. Publication also checks the verdict's provenance. It must describe a `pull-request` review of the same repository and number. Its provider-reported head must match the pull request's current head. Its policy source must be `revision:` of the provider-reported base. A mismatch is `notPublishable` and names what differs. A verdict recorded without provenance is refused too. A review of a range, of a working tree, of an older push, or of the pull request before a retarget is never posted.
 
@@ -398,7 +404,7 @@ request was retargeted onto `main`, keeping its head; a fresh review found less;
 resumed the old task, which posted the review of the old diff, and the pending round it left was
 posted by the new task too. Solution: each task records its target in its input: the repository, the
 number, the base branch and its tip as the provider reported them, the merge base, the head, and the
-`revisionKey` it publishes. Before resuming anything, `publishReview` commits the target it
+`revisionKey` and round ID it publishes. Before resuming anything, `publishReview` commits the target it
 validated to `PublisherDocument`, and a task whose target differs ends `completed` with `superseded`
 and the field that changed, writing nothing; `Publication.superseded` lists them. A pending round
 records its `revisionKey` as well, and one planned for another revision of the head is dropped
