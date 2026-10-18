@@ -14,3 +14,8 @@ Its reason says the round cannot be proven and asks for a fresh `melian publish`
 Minted rounds at other revisions do not prevent migration.
 
 Every publish task reads its bound round's verdict copy, including a legacy round.
+
+A fresh publication captures the current round ID with its live verdict, provenance and completed decision in one transaction.
+Permission reads can take long enough for another review to decide a later round.
+Before recording a target, that transaction requires the current round to retain the captured ID and saved verdict.
+Otherwise publication refuses, records no target and asks the maintainer to publish again.

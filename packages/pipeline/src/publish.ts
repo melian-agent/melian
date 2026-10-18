@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import { isDeepStrictEqual } from "node:util";
 import {
 	type Changeset,
 	dismissalVersion,
@@ -20,16 +21,9 @@ import {
 	type StoredVerdict,
 	Verdict,
 } from "@melian-agent/core";
-import {
-	type AdjudicationResult,
-	readDecision,
-	readProvenance,
-	readVerdict,
-	VerdictDocument,
-	type VerdictProvenance,
-} from "./adjudication.ts";
+import { VerdictDocument, type VerdictProvenance } from "./adjudication.ts";
 import { PublishError } from "./errors.ts";
-import { findingsVersion, revisionKey } from "./findings.ts";
+import { FindingsDocument, revisionKey } from "./findings.ts";
 import {
 	backgroundContext,
 	type Context,
@@ -43,6 +37,7 @@ import {
 	openHarness,
 	type Storage,
 	type TaskId,
+	type Tx,
 } from "./harness.ts";
 import { modelsOf, type ReviewModels } from "./models.ts";
 import { ReviewIndex } from "./review-index.ts";
@@ -506,7 +501,7 @@ function publishTask(provider: ReviewProvider) {
 				const timing = await TaskTiming.start(runtime, task.state.checkpoint.legacyTiming, context);
 				const { root, lines, publishedBy } = task.input;
 				// A task created before targets were recorded has none, and is superseded like any other stale one.
-				const target = task.input.target === undefined ? undefined : structuredClone(task.input.target);
+				const target = structuredClone(task.input.target) as PublishTarget | undefined;
 				let publisher: StoredPublisherState | undefined;
 				let migrationRefusal: string | undefined;
 				await runtime.commit(async (tx) => {
@@ -1155,20 +1150,20 @@ function unpublishable(provenance: VerdictProvenance | undefined, pullRequest: P
 // read by its ID, never inferred from its absence there. With no task named, as after a crash between a review's new
 // lens selection and its adjudication, the stored verdict stands only while its findings are unchanged.
 async function undecidedVerdict(
-	harness: Harness,
+	tx: Tx,
 	root: ConversationId,
 	revision: string,
-	context: Context,
+	decisions: ReturnType<typeof VerdictDocument.definition.initial>["decisions"],
 ): Promise<string | undefined> {
-	const deciding = (await harness.snapshot(ReviewIndex, root, context))?.reviews[revision]?.adjudication;
-	const decision = await readDecision(harness, root, revision, context);
-	const now = await findingsVersion(harness, root, revision, context);
+	const deciding = (await tx.doc(ReviewIndex, root)).reviews[revision]?.adjudication;
+	const decision = decisions?.[revision];
+	const now = (await tx.doc(FindingsDocument, root)).versions[revision] ?? 0;
 	if (deciding === undefined) {
 		return decision === undefined || decision.findingsVersion === now
 			? undefined
 			: "its findings changed after it was decided, and no adjudication is recorded since";
 	}
-	const task = await harness.getTask(deciding.task as TaskId<AdjudicationResult>, context);
+	const task = await tx.task(deciding.task as TaskId);
 	if (task === undefined) return `its adjudication task ${deciding.task} is gone`;
 	if (task.state.status !== "terminal") return "its adjudication has not finished";
 	const { outcome } = task.state;
@@ -1226,14 +1221,25 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 	}
 	const revision = revisionKey(changeset.revision);
 	const root = (await harness.root(context)).id;
-	if ((await readVerdict(harness, root, revision, context)) === undefined) {
+	const validated = await (await harness.root(context)).commit(async (tx) => {
+		const live = await tx.doc(VerdictDocument, root);
+		const rounds = await tx.doc(RoundsDocument, root);
+		const captured = {
+			roundId: rounds.current[revision] ?? legacyKey(revision),
+			verdict: live.verdicts[revision],
+			provenance: live.provenance?.[revision] as VerdictProvenance | undefined,
+			undecided: await undecidedVerdict(tx, root, revision, live.decisions),
+		};
+		return JSON.parse(JSON.stringify(captured)) as typeof captured;
+	}, context);
+	if (validated.verdict === undefined) {
 		throw new PublishError(
 			"notReviewed",
 			`Melian has no review of ${short(head)} from ${short(changeset.revision.base)}; ${again}`,
 			where,
 		);
 	}
-	const mismatch = unpublishable(await readProvenance(harness, root, revision, context), pullRequest);
+	const mismatch = unpublishable(validated.provenance, pullRequest);
 	if (mismatch !== undefined) {
 		throw new PublishError(
 			"notPublishable",
@@ -1241,7 +1247,7 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 			where,
 		);
 	}
-	const undecided = await undecidedVerdict(harness, root, revision, context);
+	const { undecided } = validated;
 	if (undecided !== undefined) {
 		throw new PublishError(
 			"notReviewed",
@@ -1276,7 +1282,17 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 	// Recorded before any earlier task resumes, so one a crash left for another target ends superseded, posting nothing.
 	const target = await (await harness.root(context)).commit(async (tx) => {
 		const rounds = await new RoundWriter(tx, root).preserve(revision);
-		const target: PublishTarget = { ...destination, roundId: rounds.current[revision] ?? legacyKey(revision) };
+		if (
+			(rounds.current[revision] ?? legacyKey(revision)) !== validated.roundId ||
+			!isDeepStrictEqual(rounds.items[validated.roundId]?.verdict, validated.verdict)
+		) {
+			throw new PublishError(
+				"notReviewed",
+				`a newer round exists or its verdict changed; run melian publish "#${pullRequest.number}" again`,
+				where,
+			);
+		}
+		const target: PublishTarget = { ...destination, roundId: validated.roundId };
 		const publisher = await tx.doc(PublisherDocument, root);
 		publisher.secret ??= randomBytes(32).toString("hex");
 		publisher.target = { ...target };

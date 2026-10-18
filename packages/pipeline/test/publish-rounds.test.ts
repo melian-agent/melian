@@ -81,6 +81,17 @@ async function pendingPublication(rounds = "minted") {
 			const stored = await tx.doc(RoundsDocument, root.id);
 			stored.current = {};
 			if (rounds === "legacy") Object.assign(stored, RoundsDocument.definition.initial());
+			else {
+				const revision = `${changeset.revision.base}..${changeset.revision.head}`;
+				const live = await tx.doc(VerdictDocument, root.id);
+				await new RoundWriter(tx, root.id).record(
+					revision,
+					0,
+					live.verdicts[revision]!,
+					live.provenance![revision]!,
+				);
+				stored.current = {};
+			}
 		}, context);
 	const resume = vi.spyOn(harness, "resume").mockImplementation(() => undefined);
 	const wait = vi.spyOn(harness, "waitForTask").mockRejectedValue(new Error("parked publication"));
@@ -106,6 +117,105 @@ it("records the current round in both the publisher target and its pending task"
 	expect((await harness.snapshot(PublisherDocument, root.id, context))?.target).toMatchObject({ roundId: "r2" });
 	expect(pending.record.input).toMatchObject({ target: { roundId: "r2" } });
 });
+
+it.each(["verdict", "provenance"])("refuses publication without live %s", async (missing) => {
+	const { harness, root, pending, state, provider, changeset } = await pendingPublication();
+	await harness.abortTask(pending.record.id, context);
+	await root.commit(async (tx) => {
+		delete (await tx.doc(PublisherDocument, root.id)).target;
+		const live = await tx.doc(VerdictDocument, root.id);
+		if (missing === "verdict") delete live.verdicts[`${changeset.revision.base}..${changeset.revision.head}`];
+		else delete live.provenance;
+	}, context);
+	await expect(
+		publishReview({
+			harness,
+			provider,
+			changeset,
+			pullRequest: await provider.pullRequest(7),
+			base: changeset.revision.base,
+			trustedWriters: false,
+		}),
+	).rejects.toMatchObject({
+		code: missing === "verdict" ? "notReviewed" : "notPublishable",
+		message: expect.stringContaining(
+			missing === "verdict" ? "Melian has no review" : "its review recorded no provenance",
+		),
+	});
+	expect(state.reviews).toEqual([]);
+	expect(state.statuses).toEqual([]);
+	expect((await harness.snapshot(PublisherDocument, root.id, context))?.target).toBeUndefined();
+});
+
+it.each(["round", "identical round", "verdict", "missing round", "missing verdict"])(
+	"refuses publication when its validated %s changes during permission reads",
+	async (changed) => {
+		const { harness, root, pending, state, provider, changeset } = await pendingPublication();
+		await harness.abortTask(pending.record.id, context);
+		await root.commit(async (tx) => {
+			delete (await tx.doc(PublisherDocument, root.id)).target;
+		}, context);
+		const reached = Promise.withResolvers<void>();
+		const release = Promise.withResolvers<void>();
+		const permission = provider.permission.bind(provider);
+		vi.spyOn(provider, "permission").mockImplementationOnce(async (login) => {
+			reached.resolve();
+			await release.promise;
+			return permission(login);
+		});
+		const publication = publishReview({
+			harness,
+			provider,
+			changeset,
+			pullRequest: await provider.pullRequest(7),
+			base: changeset.revision.base,
+			trustedWriters: false,
+		}).then(
+			(value) => ({ value }),
+			(error: unknown) => ({ error }),
+		);
+		await reached.promise;
+		if (changed === "round" || changed === "identical round") {
+			await reviewChangeset({
+				harness,
+				changeset,
+				config: { ...defaultConfig, tiers: { full: ["static.mutation"] } },
+				lenses: [],
+				standards: [],
+				models: createFakeModels().review,
+				checks: [{ name: "static.mutation", status: "ran" }],
+				policy: { kind: "revision", commit: changeset.revision.base },
+				origin: {
+					kind: "pull-request",
+					repository: { owner: state.owner, name: state.repo },
+					pullRequest: 7,
+					base: changeset.revision.base,
+					head: changeset.revision.head,
+				},
+			});
+			expect((await harness.snapshot(RoundsDocument, root.id, context))?.sequence).toBe(3);
+			if (changed === "identical round")
+				await root.commit(async (tx) => {
+					const rounds = await tx.doc(RoundsDocument, root.id);
+					rounds.items.r3!.verdict = rounds.items.r2!.verdict!;
+				}, context);
+		} else {
+			await root.commit(async (tx) => {
+				const rounds = await tx.doc(RoundsDocument, root.id);
+				if (changed === "verdict") rounds.items.r2!.verdict = rounds.items.r1!.verdict!;
+				else if (changed === "missing round") delete rounds.items.r2;
+				else delete rounds.items.r2!.verdict;
+			}, context);
+		}
+		release.resolve();
+		expect(await publication).toMatchObject({
+			error: { code: "notReviewed", message: expect.stringMatching(/newer round exists.*publish.*again/) },
+		});
+		expect(state.reviews).toEqual([]);
+		expect(state.statuses).toEqual([]);
+		expect((await harness.snapshot(PublisherDocument, root.id, context))?.target).toBeUndefined();
+	},
+);
 
 it("supersedes a pending publication when only its recorded round changes", async () => {
 	const { harness, root, pending, state, provider } = await pendingPublication();
