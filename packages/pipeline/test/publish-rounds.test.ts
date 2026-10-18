@@ -287,20 +287,25 @@ it.each(["legacy", "unselected"])("records a legacy target when the round state 
 	}
 });
 
-it("supersedes a bound task when its publisher target is unbound beside minted rounds", async () => {
-	const { harness, root, pending, state } = await pendingPublication();
-	await root.commit(async (tx) => {
-		Reflect.deleteProperty((await tx.doc(PublisherDocument, root.id)).target!, "roundId");
-	}, context);
-	harness.resume();
-	const done = await harness.waitForTask(pending.record.id, context);
-	expect(done.state.outcome).toMatchObject({
-		status: "completed",
-		result: { kind: "superseded", reason: expect.stringContaining("round cannot be proven") },
-	});
-	expect(state.statuses).toEqual([]);
-	expect(state.reviews).toEqual([]);
-});
+it.each([false, true])(
+	"supersedes an unbound publisher beside minted rounds when trust changed is %s",
+	async (trustChanged) => {
+		const { harness, root, pending, state } = await pendingPublication();
+		await root.commit(async (tx) => {
+			const publisher = await tx.doc(PublisherDocument, root.id);
+			Reflect.deleteProperty(publisher.target!, "roundId");
+			if (trustChanged) publisher.publishedBy!.trustedWriters = true;
+		}, context);
+		harness.resume();
+		const done = await harness.waitForTask(pending.record.id, context);
+		expect(done.state.outcome).toMatchObject({
+			status: "completed",
+			result: { kind: "superseded", reason: expect.stringContaining("round cannot be proven") },
+		});
+		expect(state.statuses).toEqual([]);
+		expect(state.reviews).toEqual([]);
+	},
+);
 
 it.each(["task", "publisher"])("supersedes a publication with no %s target", async (missing) => {
 	const { harness, root, pending, state } = await pendingPublication();

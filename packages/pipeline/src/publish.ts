@@ -539,11 +539,13 @@ function publishTask(provider: ReviewProvider) {
 					(field) => publishedBy[field] !== undefined && publishedBy[field] !== current?.[field],
 				);
 				if (target === undefined || change !== undefined || trustChanged || attributionChanged !== undefined) {
-					const reason = trustChanged
-						? "writer trust policy changed"
-						: attributionChanged !== undefined
-							? `publisher ${attributionChanged} changed`
-							: (change ?? "the task recorded no target");
+					const reason =
+						migrationRefusal ??
+						(trustChanged
+							? "writer trust policy changed"
+							: attributionChanged !== undefined
+								? `publisher ${attributionChanged} changed`
+								: (change ?? "the task recorded no target"));
 					await runtime.commit(async (tx) => {
 						await timing.end(tx);
 						return {
