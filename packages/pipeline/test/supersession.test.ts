@@ -67,6 +67,31 @@ type Golden = {
 };
 
 describe("supersession guardrail", { timeout: 60_000 }, () => {
+	it("does not associate an untouched successor with another file's rename", async () => {
+		const base = commit(repo, {
+			[old]: "Keep the rule.",
+			"docs/decisions/untouched.md": "Supersedes: old.md",
+			"a-before.md": "Unrelated text.",
+		});
+		gitIn(repo, "mv", "a-before.md", "a-after.md");
+		const head = commit(repo, { [fresh]: "Supersedes: old.md" });
+		const report = await direct(base, head);
+		expect(report.findings.map((finding) => finding.properties.path)).toEqual([fresh]);
+		expect(report.notes).toEqual([]);
+	});
+
+	it("does not use an unrelated rename as the target's baseline", async () => {
+		const base = commit(repo, { [old]: "Keep the target rule.", "a-before.md": "Unrelated text." });
+		gitIn(repo, "mv", "a-before.md", "a-after.md");
+		const head = commit(repo, { [fresh]: "Supersedes: old.md" });
+		const report = await direct(base, head);
+		expect(report.findings).toHaveLength(1);
+		expect(report.findings[0]!.properties.evidence).toMatchObject([
+			{ file: old, snippet: "Keep the target rule.", revision: "base" },
+		]);
+		expect(report.findings[0]!.properties.explanation.whyHere).toContain("Keep the target rule.");
+	});
+
 	it.each(["\r", "\r\n", "\n"])("places a declaration on its LF source line for %j endings", async (ending) => {
 		const base = commit(repo, { [old]: "Keep the rule." });
 		const head = commit(repo, { [fresh]: ["# New", "", "Supersedes: old.md"].join(ending) });
