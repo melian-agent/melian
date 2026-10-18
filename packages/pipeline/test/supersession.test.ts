@@ -6,12 +6,15 @@ import {
 	checksExtension,
 	backgroundContext as context,
 	createMemoryStorage,
+	createRegistry,
 	createReviewRegistry,
+	dismissFinding,
 	type Harness,
 	openHarness,
 	readFindings,
 	revisionKey,
 	runChecks,
+	upsertFinding,
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -219,6 +222,44 @@ describe("supersession guardrail", { timeout: 60_000 }, () => {
 		const base = commit(repo, { [old]: "Keep the rule.", [fresh]: `${kind}: old.md, for routing.` });
 		const head = commit(repo, { [fresh]: "Supersedes: old.md, whole retirement." });
 		expect((await direct(base, head)).findings).toHaveLength(1);
+	});
+
+	it("reopens a dismissed retirement notice after its declaration changes", async () => {
+		const base = commit(repo, { [old]: "Keep the rule." });
+		const head = commit(repo, { [fresh]: "Supersedes: old.md, for routing." });
+		const first = (await direct(base, head)).findings[0]!;
+		const firstRevision = revisionKey({ base, head });
+		const fake = createFakeModels();
+		const harness = await openHarness(createMemoryStorage(), { models: fake.models, registry: createRegistry() });
+		opened.push(harness);
+		const root = await harness.root(context, { agent: { model: fake.ref() } });
+		await root.commit((tx) => upsertFinding(tx, root.id, first, firstRevision), context);
+		const dismissal = { by: "Maintainer", at: "2026-10-18T00:00:00Z", reason: "Routing retirement accepted." };
+		await root.commit((tx) => dismissFinding(tx, root.id, first.id, dismissal, firstRevision), context);
+		expect((await readFindings(harness, root.id, firstRevision, context))[0]!.properties).toMatchObject({
+			status: "dismissed",
+			dismissal,
+		});
+
+		const unchangedHead = commit(repo, { "other.txt": "Unrelated push." });
+		const unchanged = (await direct(base, unchangedHead)).findings[0]!;
+		const unchangedRevision = revisionKey({ base, head: unchangedHead });
+		await root.commit((tx) => upsertFinding(tx, root.id, unchanged, unchangedRevision), context);
+		expect((await readFindings(harness, root.id, unchangedRevision, context))[0]!.properties.status).toBe(
+			"dismissed",
+		);
+
+		const editedHead = commit(repo, { [fresh]: "Supersedes: old.md, whole retirement." });
+		const edited = (await direct(base, editedHead)).findings[0]!;
+		const editedRevision = revisionKey({ base, head: editedHead });
+		expect(edited.id).toBe(first.id);
+		expect.soft(edited.properties.trigger!.hash).not.toBe(first.properties.trigger!.hash);
+		await root.commit((tx) => upsertFinding(tx, root.id, edited, editedRevision), context);
+		const reopened = (await readFindings(harness, root.id, editedRevision, context))[0]!;
+		expect(reopened.properties.status).toBe("new");
+		expect(reopened.properties.dismissal).toBeUndefined();
+		expect(reopened.properties.pastDismissals).toEqual([{ ...dismissal, reopenedRevision: editedRevision }]);
+		expect(fake.provider.state.callCount).toBe(0);
 	});
 
 	it("uses a same-change target's head text", async () => {
