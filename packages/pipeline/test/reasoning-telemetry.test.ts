@@ -24,6 +24,7 @@ import {
 } from "@melian-agent/pipeline";
 import {
 	createFakeModels,
+	type FakeModels,
 	fauxAssistantMessage,
 	fauxToolCall,
 	scriptVerifier,
@@ -35,6 +36,34 @@ import { ConversationUsageRecorder, ReasoningCapture } from "../src/reasoning.ts
 import { type ModelRequestUsage, ModelUsageDocument, type UsageSummary } from "../src/token-usage.ts";
 import { crashFinding, crashRepository } from "./fixtures/review-scenario.ts";
 
+function recordReplies(fake: FakeModels) {
+	const received: { model: string; body: unknown; usage: ModelRequestUsage["usage"] }[] = [];
+	for (const method of ["stream", "streamSimple"] as const) {
+		const stream = fake.models[method].bind(fake.models);
+		vi.spyOn(fake.models, method).mockImplementation((...args: Parameters<FakeModels["models"]["streamSimple"]>) => {
+			const [model, input, options] = args;
+			let body: unknown;
+			const events = stream(model, input, {
+				...options,
+				onPayload: async (payload, requestedModel) => {
+					const replacement = await options?.onPayload?.(payload, requestedModel);
+					body = replacement ?? payload;
+					return replacement;
+				},
+			});
+			const result = events.result.bind(events);
+			vi.spyOn(events, "result").mockImplementation(async () => {
+				const reply = await result();
+				const usage = { ...reply.usage, totalTokens: 101 + received.length };
+				received.push({ model: `${reply.provider}/${reply.model}`, body, usage: structuredClone(usage) });
+				return { ...reply, usage };
+			});
+			return events;
+		});
+	}
+	return received;
+}
+
 it.each([
 	{ body: { reasoning: { effort: "none" } }, expected: { reasoning: { effort: "none" } } },
 	{
@@ -44,13 +73,12 @@ it.each([
 	{ body: {}, expected: "provider default" },
 ])("records the body a generation provider received: $body", async ({ body, expected }) => {
 	const fake = createFakeModels();
-	const received: unknown[] = [];
+	const received = recordReplies(fake);
 	fake.provider.setResponses([
 		async (_request, options, _state, model) => {
 			expect(options?.reasoning).toBeUndefined();
 			const payload = { messages: [{ content: "must not be stored" }], ...body };
-			const replaced = await options?.onPayload?.(payload, model);
-			received.push(replaced ?? payload);
+			await options?.onPayload?.(payload, model);
 			return { ...fauxAssistantMessage("Done."), providerThinkingLevel: "provider-reported" };
 		},
 	]);
@@ -66,7 +94,7 @@ it.each([
 		const root = await harness.root(context, { agent: { model: fake.ref() } });
 		await (await root.submit({ type: "input", content: "Review the change" }, context)).wait(context);
 		const stored = await harness.snapshot(ModelUsageDocument, root.id, `conversation:${root.id}`, context);
-		expect(received).toEqual([{ messages: [{ content: "must not be stored" }], ...body }]);
+		expect(received.map((reply) => reply.body)).toEqual([{ messages: [{ content: "must not be stored" }], ...body }]);
 		expect(stored).toMatchObject({
 			requests: [
 				{
@@ -80,6 +108,7 @@ it.each([
 				},
 			],
 		});
+		expect(stored?.requests?.map((request) => request.usage)).toEqual(received.map((reply) => reply.usage));
 		expect(JSON.stringify(stored)).not.toContain("must not be stored");
 	} finally {
 		await harness.close(context);
@@ -88,12 +117,11 @@ it.each([
 
 it.each(["off", "high"] as const)("captures compaction beside generation requests at %s", async (thinkingLevel) => {
 	const fake = createFakeModels();
-	const received: unknown[] = [];
+	const received = recordReplies(fake);
 	fake.provider.setResponses(
 		Array.from({ length: 3 }, () => async (_request, options, _state, model) => {
 			expect(options?.reasoning).toBe(thinkingLevel === "off" ? undefined : thinkingLevel);
 			const body = { reasoning: { effort: options?.cacheRetention === "none" ? "low" : "none" } };
-			received.push(body);
 			await options?.onPayload?.(body, model);
 			return fauxAssistantMessage("A summary or answer.");
 		}),
@@ -112,16 +140,17 @@ it.each(["off", "high"] as const)("captures compaction beside generation request
 		await (await root.submit({ type: "input", content: "Second input" }, context)).wait(context);
 		await harness.waitForTask(await root.compact(undefined, context), context);
 		const stored = await harness.snapshot(ModelUsageDocument, root.id, `conversation:${root.id}`, context);
-		expect(received).toEqual([
+		expect(received.map((reply) => reply.body)).toEqual([
 			{ reasoning: { effort: "none" } },
 			{ reasoning: { effort: "none" } },
 			{ reasoning: { effort: "low" } },
 		]);
 		expect(stored).toMatchObject({
-			requests: received.map((body) => ({
+			requests: received.map(({ body }) => ({
 				reasoning: { requested: thinkingLevel, source: "observed", sent: [body] },
 			})),
 		});
+		expect(stored?.requests?.map((request) => request.usage)).toEqual(received.map((reply) => reply.usage));
 	} finally {
 		await harness.close(context);
 	}
@@ -233,12 +262,11 @@ it.each(["melian.lens", "melian.verification.candidate", "melian.walkthrough", "
 		const fake = createFakeModels({
 			models: [{ id: "finder" }, { id: "judge" }, { id: "summary" }, { id: "triage" }, { id: "unavailable" }],
 		});
-		const received: { model: string; body: { reasoning: { effort: string } } }[] = [];
+		const received = recordReplies(fake);
 		fake.provider.setResponses(
 			Array.from({ length: 12 }, () => async (request, options, _state, model) => {
 				const body = { reasoning: { effort: `${model.id}-effort` } };
 				await options?.onPayload?.(body, model);
-				received.push({ model: `${model.provider}/${model.id}`, body });
 				const prompt = systemPromptOf(request.messages);
 				let reply: ReturnType<typeof fauxAssistantMessage>;
 				if (model.id === "triage") {
@@ -324,14 +352,15 @@ it.each(["melian.lens", "melian.verification.candidate", "melian.walkthrough", "
 							"melian.triage": "faux/triage",
 						}[kind],
 			);
-			expect(requests.map((item) => ({ model: item.model, body: item.reasoning.sent[0] }))).toEqual(expected);
+			expect(
+				requests.map((item) => ({ model: item.model, body: item.reasoning.sent[0], usage: item.usage })),
+			).toEqual(expected);
 			for (const request of requests) {
 				expect(request.reasoning).toMatchObject({
 					requested: kind === "melian.triage" ? "unspecified" : "off",
 					source: "observed",
 					providerReported: `reported-${request.model.split("/")[1]}`,
 				});
-				expect(request.usage.totalTokens).toBeGreaterThanOrEqual(0);
 			}
 			if (kind === "failover")
 				expect(requests.map((item) => item.model)).toEqual(["faux/unavailable", "faux/finder", "faux/finder"]);
