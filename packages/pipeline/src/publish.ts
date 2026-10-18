@@ -46,6 +46,7 @@ import {
 } from "./harness.ts";
 import { modelsOf, type ReviewModels } from "./models.ts";
 import { ReviewIndex } from "./review-index.ts";
+import { legacyKey, RoundsDocument, RoundWriter } from "./rounds.ts";
 import { TaskTiming } from "./task-timing.ts";
 
 // Type aliases with mutable arrays, not core's interfaces: a document's value must satisfy Pi's JsonObject.
@@ -222,10 +223,17 @@ class PublisherState {
 		this.stored = stored;
 	}
 
-	static upgrade(value: unknown): StoredPublisherState {
+	static upgrade(value: unknown, from: number): StoredPublisherState {
 		const stored = value as { secret?: string; target?: PublishTarget; trustedWriters?: boolean };
 		const { trustedWriters, ...publisher } = stored;
-		return new PublisherState({ ...publisher, publishedBy: { trustedWriters: trustedWriters ?? true } }).toJSON();
+		const upgraded =
+			from === 1 ? { ...publisher, publishedBy: { trustedWriters: trustedWriters ?? true } } : publisher;
+		return new PublisherState({
+			...upgraded,
+			...(publisher.target === undefined
+				? {}
+				: { target: { ...publisher.target, roundId: legacyKey(publisher.target.revision) } }),
+		}).toJSON();
 	}
 
 	toJSON(): StoredPublisherState {
@@ -235,8 +243,8 @@ class PublisherState {
 
 export const PublisherDocument = defineDoc<StoredPublisherState>({
 	kind: "melian.publisher",
-	version: 2,
-	migrate: (value) => PublisherState.upgrade(value),
+	version: 3,
+	migrate: (value, from) => PublisherState.upgrade(value, from),
 	scope: "conversation",
 	history: "latest",
 	fork: "current",
@@ -381,12 +389,22 @@ type PublishTarget = {
 	base: string;
 	head: string;
 	revision: string;
+	roundId: string;
 };
 
 // The first way `current` differs from `recorded`, or `undefined` when they are the same target.
 function targetChange(recorded: PublishTarget | undefined, current: PublishTarget): string | undefined {
 	if (recorded === undefined) return "the task recorded no target";
-	for (const field of ["repository", "pullRequest", "baseRef", "baseTip", "base", "head", "revision"] as const) {
+	for (const field of [
+		"repository",
+		"pullRequest",
+		"baseRef",
+		"baseTip",
+		"base",
+		"head",
+		"revision",
+		"roundId",
+	] as const) {
 		if (recorded[field] !== current[field]) {
 			return `its ${field} was ${String(recorded[field])}, and is ${String(current[field])} now`;
 		}
@@ -421,9 +439,15 @@ class PublishInput {
 		this.stored = stored;
 	}
 
-	static upgrade(value: unknown): StoredPublishInput {
-		const stored = value as Omit<StoredPublishInput, "publishedBy">;
-		return new PublishInput({ ...stored, publishedBy: { trustedWriters: true } }).toJSON();
+	static upgrade(value: unknown, from: number): StoredPublishInput {
+		const stored = value as StoredPublishInput;
+		return new PublishInput({
+			...stored,
+			...(from === 1 ? { publishedBy: { trustedWriters: true } } : {}),
+			...(stored.target === undefined
+				? {}
+				: { target: { ...stored.target, roundId: legacyKey(stored.target.revision) } }),
+		}).toJSON();
 	}
 
 	toJSON(): StoredPublishInput {
@@ -476,9 +500,9 @@ const untrustedWriterStatus: ReviewStatus = {
 function publishTask(provider: ReviewProvider) {
 	return defineTask<StoredPublishInput, { phase: "publish"; legacyTiming?: true }, PublishOutcome>({
 		name: publishTaskName,
-		version: 5,
+		version: 6,
 		migrate: (input, checkpoint, fromVersion) => ({
-			input: fromVersion === 1 ? PublishInput.upgrade(input) : (input as StoredPublishInput),
+			input: PublishInput.upgrade(input, fromVersion),
 			checkpoint:
 				fromVersion >= 3
 					? (checkpoint as { phase: "publish"; legacyTiming?: true })
@@ -573,7 +597,13 @@ function publishTask(provider: ReviewProvider) {
 							markers.set(key, await provider.findPublished(pullRequest, head, { fingerprint, round }, secret));
 						return markers.get(key)!;
 					};
-					const verdict = await readVerdict(runtime, root, revision, context);
+					const storedRound = (await runtime.snapshot(RoundsDocument, root, context))?.items[target.roundId];
+					const verdict =
+						target.roundId === legacyKey(revision)
+							? await readVerdict(runtime, root, revision, context)
+							: storedRound?.verdict === undefined
+								? undefined
+								: Verdict.from(storedRound.verdict);
 					if (verdict === undefined) throw new Error(`no verdict is recorded for ${revision}`);
 					const current = verdict.fingerprint();
 					const legacy = verdict.legacyFingerprint();
@@ -1221,7 +1251,7 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 		...(authorPermission === undefined ? {} : { authorPermission }),
 	};
 
-	const target: PublishTarget = {
+	const destination = {
 		repository: `${pullRequest.repository.owner}/${pullRequest.repository.name}`,
 		pullRequest: pullRequest.number,
 		baseRef: pullRequest.base.ref,
@@ -1231,12 +1261,14 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 		revision,
 	};
 	// Recorded before any earlier task resumes, so one a crash left for another target ends superseded, posting nothing.
-	await (await harness.root(context)).commit(async (tx) => {
+	const target = await (await harness.root(context)).commit(async (tx) => {
+		const rounds = await new RoundWriter(tx, root).preserve(revision);
+		const target: PublishTarget = { ...destination, roundId: rounds.current[revision] ?? legacyKey(revision) };
 		const publisher = await tx.doc(PublisherDocument, root);
 		publisher.secret ??= randomBytes(32).toString("hex");
 		publisher.target = { ...target };
 		publisher.publishedBy = { ...publishedBy };
-		return undefined;
+		return target;
 	}, context);
 	harness.resume();
 	const unfinished = async () =>

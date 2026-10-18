@@ -50,7 +50,7 @@ export const RoundsDocument = defineDoc<RoundState>({
 	initial: () => ({ sequence: 0, current: {}, items: {}, recorded: {} }),
 });
 
-function legacyKey(revision: string): string {
+export function legacyKey(revision: string): string {
 	return `k${createHash("sha256").update(revision).digest("hex").slice(0, 16)}`;
 }
 
