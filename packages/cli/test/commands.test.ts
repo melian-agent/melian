@@ -134,6 +134,17 @@ describe("stored round findings", () => {
 		expect(text).not.toContain("melian dismiss");
 	});
 
+	it("refuses an absent round store before opening SQLite", async () => {
+		vi.spyOn(repository, "storagePath").mockResolvedValue("/round-test/missing.sqlite");
+		await expect(findings(io, "", { ...options, round: roundId })).rejects.toMatchObject({
+			name: "CliError",
+			message: `Melian has no round ${roundId}`,
+		});
+		expect(repository.storagePath).toHaveBeenCalledExactlyOnceWith(io.cwd, changesetId, io.env, false);
+		expect(repository.openStorage).not.toHaveBeenCalled();
+		expect(RoundReader.prototype.read).not.toHaveBeenCalled();
+	});
+
 	it("reports a missing round with the CLI error and closes storage", async () => {
 		await expect(findings(io, "", { ...options, round: `${changesetId}.r2` })).rejects.toMatchObject({
 			name: "CliError",
