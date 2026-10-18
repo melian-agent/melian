@@ -589,6 +589,56 @@ it("orders legacy rounds by head commit date, then ID, before minted rounds orde
 	expect(rounds.map((round) => round.id)).toEqual(["kc", "ka", "kb", "r0", "r1", "r2"]);
 });
 
+it.each([
+	{ left: undefined, right: "2026-10-18T01:00:00Z", expected: -1 },
+	{ left: "2026-10-18T01:00:00Z", right: undefined, expected: 1 },
+	{ left: undefined, right: undefined, expected: 10 },
+	{ left: "2026-10-18T01:00:00Z", right: "2026-10-18T02:00:00Z", expected: -3_600_000 },
+	{ left: "2026-10-18T02:00:00Z", right: "2026-10-18T01:00:00Z", expected: 3_600_000 },
+])("compares round dates directly: $left against $right", ({ left, right, expected }) => {
+	const first = new Round("a", { base: "base", head: "left", tasks: [], mintedAt: left });
+	const second = new Round("b", { base: "base", head: "right", tasks: [], mintedAt: right });
+	const dates = new Map([
+		["left", 20],
+		["right", 10],
+	]);
+	expect(first.compare(second, dates)).toBe(expected);
+	expect(second.compare(first, dates)).toBe(-expected);
+});
+
+it.each(["verdict", "comparison"])("reads a legacy %s without provenance", async (kind) => {
+	const storage = createMemoryStorage();
+	const opened = await openHarness(storage, { models: fake.models, registry: createReviewRegistry() });
+	try {
+		const root = await opened.root(context, { agent: { model: fake.ref() } });
+		await root.commit(async (tx) => {
+			if (kind === "verdict") {
+				const document = await tx.doc(VerdictDocument, root.id);
+				document.verdicts[legacy.key] = new Adjudication({
+					findings: [],
+					manifest: [],
+					checks: [],
+					config: defaultConfig,
+				})
+					.adjudicate()
+					.toJSON();
+			} else {
+				const [base, head] = legacy.key.split("..");
+				(await tx.doc(ComparisonDocument, root.id)).comparisons[legacy.key] = Comparison.of({
+					base: base!,
+					head: head!,
+				}).toJSON();
+			}
+		}, context);
+		const result = await new RoundReader(storage).read("range-test");
+		expect(result).toHaveLength(1);
+		expect(result[0]!.stored.provenance).toBeUndefined();
+		expect(result[0]!.verdict()?.status).toBe(kind === "verdict" ? "passed" : undefined);
+	} finally {
+		await opened.close(context);
+	}
+});
+
 it("returns independent frozen verdict views", async () => {
 	await review();
 	const stored = (await harness.snapshot(rounds, (await harness.root(context)).id, context))!.items.r1!;
