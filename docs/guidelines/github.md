@@ -6,6 +6,10 @@ The github package implements core's `ReviewProvider` port for GitHub through Oc
 
 `pullRequest` carries its author login. `login()` caches a successful `/user` answer or a 403 without rate-limit exhaustion; other failures throw and remain retryable. `permission(login)` reads the collaborator permission endpoint for that repository. A refused permission lookup or unknown role reads as absent. Pull-request metadata also carries the head repository and the pushing actor from the first exact head-SHA and branch match across GitHub’s event pages. An absent match permits author fallback. A failed event read or an event without an actor records a writer error; the CLI refuses trust. GitHub maps maintain to write and triage to read in that endpoint's permission field.
 
+Tests returning JSON through a custom fetch must set `content-type: application/json`.
+Otherwise Octokit reads text and `data.login` stays undefined.
+An empty-login test can then pass with its length guard removed.
+
 ## Posting
 
 - One review per revision, with the event `COMMENT`. Never `APPROVE` or `REQUEST_CHANGES`: Melian never approves, and the status, not the review, says whether a change may merge.
