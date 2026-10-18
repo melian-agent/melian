@@ -1,0 +1,178 @@
+{
+  "recordedBy": "c58d5311",
+  "version": 5,
+  "published": {
+    "order": [
+      "73062d5675aeb709c7bc51864514da826fcb618c"
+    ],
+    "revisions": {
+      "73062d5675aeb709c7bc51864514da826fcb618c": {
+        "reviews": [],
+        "open": {},
+        "resolved": {},
+        "replies": {},
+        "status": {
+          "state": "success",
+          "description": "Passed"
+        },
+        "rounds": 1,
+        "pending": {
+          "revision": "246677344a94a5f8b1d4f032193786b38c5a85b0..73062d5675aeb709c7bc51864514da826fcb618c",
+          "round": 1,
+          "fingerprint": "37deb30d1772a351",
+          "verdict": {
+            "status": "passed",
+            "blocking": false,
+            "findings": {
+              "block": [],
+              "acknowledge": [],
+              "advisory": [],
+              "silent": []
+            },
+            "dismissed": [],
+            "notRun": [],
+            "ran": []
+          },
+          "post": [],
+          "stillOpen": 0,
+          "open": {},
+          "resolved": {},
+          "refusals": 1,
+          "ledger": {
+            "base": "246677344a94a5f8b1d4f032193786b38c5a85b0",
+            "head": "73062d5675aeb709c7bc51864514da826fcb618c",
+            "round": 1,
+            "verdict": {
+              "status": "passed",
+              "blocking": false,
+              "findings": {
+                "block": [],
+                "acknowledge": [],
+                "advisory": [],
+                "silent": []
+              },
+              "dismissed": [],
+              "notRun": [],
+              "ran": []
+            },
+            "resolved": []
+          }
+        }
+      }
+    }
+  },
+  "publisher": {
+    "secret": "53bbcbfd505285171ab56cd3a78b41aa0e6ea93dc8d70436dde06a526c555bce",
+    "target": {
+      "repository": "melian-agent/example",
+      "pullRequest": 7,
+      "baseRef": "main",
+      "baseTip": "246677344a94a5f8b1d4f032193786b38c5a85b0",
+      "base": "246677344a94a5f8b1d4f032193786b38c5a85b0",
+      "head": "73062d5675aeb709c7bc51864514da826fcb618c",
+      "revision": "246677344a94a5f8b1d4f032193786b38c5a85b0..73062d5675aeb709c7bc51864514da826fcb618c"
+    }
+  },
+  "github": {
+    "owner": "melian-agent",
+    "repo": "example",
+    "login": "alice",
+    "pull": {
+      "number": 7,
+      "title": "Trim names",
+      "base": {
+        "ref": "main",
+        "sha": "246677344a94a5f8b1d4f032193786b38c5a85b0"
+      },
+      "head": {
+        "ref": "feature",
+        "sha": "73062d5675aeb709c7bc51864514da826fcb618c"
+      }
+    },
+    "lines": {
+      "src/user.ts": [
+        [
+          7,
+          7
+        ]
+      ]
+    },
+    "reviews": [
+      {
+        "id": 1001,
+        "user": {
+          "login": "alice",
+          "type": "Bot"
+        },
+        "body": "<!-- melian:revision=73062d5675aeb709c7bc51864514da826fcb618c verdict=37deb30d1772a351 round=1 sig=4c4f6e104de663c51209c1b6168f879a -->\nMelian reviewed `73062d5675ae`: **passed**.\n\nNo findings need attention.\n\nmelian/review: success (Passed).",
+        "commit_id": "73062d5675aeb709c7bc51864514da826fcb618c",
+        "event": "COMMENT"
+      }
+    ],
+    "comments": [],
+    "ledgers": [],
+    "resolvedThreads": [],
+    "statuses": [
+      {
+        "sha": "73062d5675aeb709c7bc51864514da826fcb618c",
+        "state": "success",
+        "description": "Passed",
+        "context": "melian/review"
+      }
+    ],
+    "nextId": 1002,
+    "calls": [
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/pulls/7"
+      },
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/events"
+      },
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/pulls/7"
+      },
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/events"
+      },
+      {
+        "method": "POST",
+        "path": "/repos/melian-agent/example/statuses/73062d5675aeb709c7bc51864514da826fcb618c",
+        "body": {
+          "state": "success",
+          "description": "Passed",
+          "context": "melian/review"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/pulls/7/reviews"
+      },
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/pulls/7/comments"
+      },
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/pulls/7"
+      },
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/events"
+      },
+      {
+        "method": "POST",
+        "path": "/repos/melian-agent/example/pulls/7/reviews",
+        "body": {
+          "commit_id": "73062d5675aeb709c7bc51864514da826fcb618c",
+          "event": "COMMENT",
+          "body": "<!-- melian:revision=73062d5675aeb709c7bc51864514da826fcb618c verdict=37deb30d1772a351 round=1 sig=4c4f6e104de663c51209c1b6168f879a -->\nMelian reviewed `73062d5675ae`: **passed**.\n\nNo findings need attention.\n\nmelian/review: success (Passed).",
+          "comments": []
+        }
+      }
+    ]
+  }
+}
