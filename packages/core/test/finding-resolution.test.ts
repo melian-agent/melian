@@ -306,20 +306,22 @@ describe("the floors", () => {
 		expect(finding({ ...notice, file: "melian.yaml" }).decision(defaultConfig).decidedBy.floor).toBeUndefined();
 	});
 
-	it("holds a notice of a changed lens resolution at acknowledge, and no other notice on a LENS.md", () => {
-		const file = ".melian/lenses/cleanup/LENS.md";
-		const changed = finding({ ...notice, file, guardrail: { notice: "policy", resolution: true } });
-		expect(changed.resolve(quiet)).toBe("acknowledge");
-		expect(finding({ ...notice, file, guardrail: { notice: "policy" } }).resolve(quiet)).toBe("silent");
-		expect(finding({ ...notice, file }).resolve(quiet)).toBe("silent");
-		const other = finding({
-			file,
-			severity: "P2",
-			source: { check: "guardrails" },
-			guardrail: { notice: "policy", resolution: true },
-		});
-		expect(other.resolve(quiet)).toBe("silent");
-	});
+	it.each([".melian/lenses/cleanup/LENS.md", "services/pay/.agents/lenses/cleanup/LENS.md"])(
+		"holds every policy notice on %s at acknowledge",
+		(file) => {
+			const changed = finding({ ...notice, file, guardrail: { notice: "policy", resolution: true } });
+			expect(changed.resolve(quiet)).toBe("acknowledge");
+			expect(finding({ ...notice, file, guardrail: { notice: "policy" } }).resolve(quiet)).toBe("acknowledge");
+			expect(finding({ ...notice, file }).resolve(quiet)).toBe("acknowledge");
+			const other = finding({
+				file,
+				severity: "P2",
+				source: { check: "guardrails" },
+				guardrail: { notice: "policy", resolution: true },
+			});
+			expect(other.resolve(quiet)).toBe("silent");
+		},
+	);
 
 	it("holds an injection attempt at acknowledge, whatever a mapping, a ceiling, or a lens's default says", () => {
 		const injection = finding({ rule: "melian/injection-attempt", severity: "P1" });

@@ -25,11 +25,14 @@ import {
 	readRecordedDecision,
 	reviewChangeset,
 	revisionKey,
+	StageTelemetry,
+	TelemetryReader,
 } from "@melian-agent/pipeline";
 import { createFakeModels, fauxAssistantMessage, scriptConversations } from "@melian-agent/pipeline/testing";
 import Type, { type Static, type TSchema } from "typebox";
 import Value from "typebox/value";
 import { buildGoldenRepository } from "./goldens.ts";
+import { GoldenRunError } from "./run-error.ts";
 
 const strict = { additionalProperties: false } as const;
 const level = Type.Union(scrutinyLevels.map((each) => Type.Literal(each)));
@@ -118,7 +121,12 @@ function scriptedModel(golden: TriageGolden): TextModel {
  * what the decider chose for each lens in each pass. The lenses run on a fake model that answers "Done.", so only the
  * decider's model spends tokens in a live run; the choice read is the decider's own, before the lens's band holds it.
  */
-export async function runTriageGolden(golden: TriageGolden, mode: TriageMode, passes = 1): Promise<TriageChosen[]> {
+export async function runTriageGolden(
+	golden: TriageGolden,
+	mode: TriageMode,
+	passes = 1,
+	record?: (telemetry: StageTelemetry) => void,
+): Promise<TriageChosen[]> {
 	const { repo, base } = buildGoldenRepository(golden);
 	try {
 		const source = { kind: "revision" as const, commit: base };
@@ -141,7 +149,8 @@ export async function runTriageGolden(golden: TriageGolden, mode: TriageMode, pa
 			);
 			const route = `${fake.ref("lens").provider}/lens`;
 			const decider = new FallbackDecider(text);
-			const reviewHarness = await openReviewHarness(createMemoryStorage(), fake.review, { retry: false, decider });
+			const storage = createMemoryStorage();
+			const reviewHarness = await openReviewHarness(storage, fake.review, { retry: false, decider });
 			try {
 				await reviewChangeset({
 					harness: reviewHarness,
@@ -176,6 +185,9 @@ export async function runTriageGolden(golden: TriageGolden, mode: TriageMode, pa
 				chosen.push(
 					Object.fromEntries(wanted.map((lens) => [lens, recorded?.decision?.chosen(lens) ?? "unanswered"])),
 				);
+				record?.(await TelemetryReader.open(storage).read(revisionKey(changeset.revision)));
+			} catch (error) {
+				throw new GoldenRunError(error, await TelemetryReader.open(storage).read(revisionKey(changeset.revision)));
 			} finally {
 				await reviewHarness.close(backgroundContext);
 			}
@@ -204,12 +216,15 @@ export interface TriageComparison {
 
 /** The stored shape of {@link TriageResults}. */
 export interface StoredTriageResults {
+	readonly version?: 2;
+	readonly complete?: boolean;
 	readonly questionSet: QuestionSet;
 	readonly fingerprint: string;
 	readonly model: string;
 	readonly goldens: readonly string[];
 	readonly passes: number;
 	readonly choices: readonly TriageChoice[];
+	readonly telemetry?: Readonly<Record<string, readonly ReturnType<StageTelemetry["toJSON"]>[]>>;
 }
 
 // Measures that print the same at two decimals, as the comparison's lines do, are not ordered.
@@ -220,27 +235,36 @@ const comparisonTolerance = 0.005;
  * and pass. A choice off by a level costs one, and one the decider never gave costs the widest distance.
  */
 export class TriageResults {
+	readonly complete: boolean;
 	readonly questionSet: QuestionSet;
 	readonly fingerprint: string;
 	readonly model: string;
 	readonly goldens: readonly string[];
 	readonly passes: number;
 	readonly choices: readonly TriageChoice[];
+	readonly telemetry?: Readonly<Record<string, readonly ReturnType<StageTelemetry["toJSON"]>[]>>;
 
 	private constructor(stored: StoredTriageResults) {
+		this.complete = stored.complete ?? true;
 		this.questionSet = stored.questionSet;
 		this.fingerprint = stored.fingerprint;
 		this.model = stored.model;
 		this.goldens = stored.goldens ?? [];
 		this.passes = stored.passes;
 		this.choices = stored.choices;
+		this.telemetry = stored.telemetry;
 	}
 
 	/** Measures `chosen`, each golden's passes, against the goldens' right levels. */
 	static measure(
 		goldens: readonly TriageGolden[],
 		chosen: Readonly<Record<string, readonly TriageChosen[]>>,
-		measured: { readonly model: string; readonly fingerprint: string },
+		measured: {
+			readonly model: string;
+			readonly fingerprint: string;
+			readonly complete?: boolean;
+			readonly telemetry?: Readonly<Record<string, readonly StageTelemetry[]>>;
+		},
 	): TriageResults {
 		const choices = goldens.flatMap((golden) =>
 			(chosen[golden.name] ?? []).flatMap((pass) =>
@@ -254,7 +278,20 @@ export class TriageResults {
 		);
 		const passes = Math.max(0, ...goldens.map((golden) => chosen[golden.name]?.length ?? 0));
 		const names = goldens.map((golden) => golden.name).sort();
-		return new TriageResults({ questionSet: triageQuestionSet, passes, choices, goldens: names, ...measured });
+		const telemetry = Object.fromEntries(
+			Object.entries(measured.telemetry ?? {}).map(([name, passes]) => [name, passes.map((pass) => pass.toJSON())]),
+		);
+
+		return new TriageResults({
+			complete: measured.complete,
+			questionSet: triageQuestionSet,
+			passes,
+			choices,
+			goldens: names,
+			model: measured.model,
+			fingerprint: measured.fingerprint,
+			...(measured.telemetry === undefined ? {} : { telemetry }),
+		});
 	}
 
 	/** Reads a measurement `toJSON` wrote. */
@@ -263,8 +300,18 @@ export class TriageResults {
 	}
 
 	toJSON(): StoredTriageResults {
-		const { questionSet, fingerprint, model, goldens, passes, choices } = this;
-		return { questionSet, fingerprint, model, goldens, passes, choices };
+		const { questionSet, fingerprint, model, goldens, passes, choices, complete } = this;
+		return {
+			version: 2,
+			complete,
+			questionSet,
+			fingerprint,
+			model,
+			goldens,
+			passes,
+			choices,
+			...(this.telemetry === undefined ? {} : { telemetry: this.telemetry }),
+		};
 	}
 
 	// How far a choice is from the right level, in levels; a choice the decider never gave is as far as it can be.
@@ -302,6 +349,15 @@ export class TriageResults {
 			.map((choice) => `  ${choice.golden} / ${choice.lens}: chose ${choice.chosen}, should be ${choice.expected}`);
 		return [
 			`triage ${this.questionSet.name} v${this.questionSet.version} on ${this.model}, ${this.passes} pass${this.passes === 1 ? "" : "es"}: exact ${this.exact().toFixed(2)}, mean distance ${this.meanDistance().toFixed(2)}, ${this.under()} under`,
+			...Object.entries(this.telemetry ?? {}).map(([golden, passes]) => {
+				const choices = this.choices.filter((choice) => choice.golden === golden);
+				const score = new TriageResults({ ...this.toJSON(), choices }).exact();
+				const total = new StageTelemetry(
+					golden,
+					passes.flatMap((pass) => pass.stages),
+				);
+				return `${golden}: exact ${score.toFixed(2)}, ${total.spend()}`;
+			}),
 			...misses,
 		].join("\n");
 	}
@@ -314,10 +370,12 @@ export class TriageResults {
 	/**
 	 * Whether this measurement chooses better than `baseline`: a lower mean distance is better, and at the same distance
 	 * a higher exact share, each read within a small tolerance. Refuses, as incomparable, a baseline measured with
-	 * another decider model or golden set. Says so when the questions changed without their version, which the question
-	 * set's version exists to prevent, and when the version moved but the questions did not.
+	 * another decider model or golden set, or an incomplete baseline. Says so when the questions changed without their
+	 * version, which the question set's version exists to prevent, and when the version moved but the questions did not.
 	 */
 	compare(baseline: TriageResults): TriageComparison {
+		if (!baseline.complete)
+			return { verdict: "incomparable", lines: ["incomparable: the baseline measurement is incomplete"] };
 		const lines = [
 			`version ${baseline.questionSet.version} -> ${this.questionSet.version}`,
 			`mean distance ${baseline.meanDistance().toFixed(2)} -> ${this.meanDistance().toFixed(2)}`,

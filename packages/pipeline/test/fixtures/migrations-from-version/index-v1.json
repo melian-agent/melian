@@ -1,0 +1,46 @@
+{
+  "recordedBy": "edbef2a81b3780c1a91974cad5a9c22d27ee1888",
+  "version": 1,
+  "revision": {
+    "head": "6bc63a65722fc0d16ca581b1fac2ae290343bc3d",
+    "base": "fc56c7f16fd94f0c69735ba49ebbbcd724405372",
+    "files": [
+      {
+        "status": "modified",
+        "path": "notes.txt",
+        "oldMode": "100644",
+        "oldKind": "file",
+        "newMode": "100644",
+        "newKind": "file",
+        "binary": false,
+        "hunks": [
+          {
+            "file": "notes.txt",
+            "index": 0,
+            "oldStart": 1,
+            "oldLines": 1,
+            "newStart": 1,
+            "newLines": 1,
+            "header": "@@ -1 +1 @@",
+            "text": "-ready\n+done"
+          }
+        ]
+      }
+    ],
+    "policyFiles": []
+  },
+  "index": {
+    "reviews": {
+      "6bc63a65722fc0d16ca581b1fac2ae290343bc3d": {
+        "task": 8,
+        "lenses": [
+          "correctness@b063604edeb0"
+        ],
+        "adjudication": {
+          "task": 20,
+          "input": "{\"root\":1,\"repoRoot\":\"/private/var/folders/db/mtn64lld7g971ck9kfq26xyc0000gn/T/codex-run.dX9Sfa/melian-review-m9u63x\",\"head\":\"6bc63a65722fc0d16ca581b1fac2ae290343bc3d\",\"config\":{\"resolution\":{\"P0\":\"block\",\"P1\":\"block\",\"P2\":\"acknowledge\",\"P3\":\"advisory\",\"nit\":\"silent\"},\"ruleAliases\":{}},\"manifest\":[\"lens.correctness\"],\"checks\":[{\"name\":\"lens.correctness\",\"status\":\"ran\"}],\"allowSkip\":[],\"producers\":[{\"check\":\"lens.correctness\",\"version\":\"b063604edeb0\"}]}"
+        }
+      }
+    }
+  }
+}

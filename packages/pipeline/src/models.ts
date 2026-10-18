@@ -1,4 +1,4 @@
-import type { CatalogModel, ModelReference, TextModel, ToolRequest } from "@melian-agent/core";
+import type { CatalogModel, ModelReference, TextModel, ToolRequest, UsageObserver } from "@melian-agent/core";
 import type { MelianCredentialStore } from "./credentials.ts";
 import type { Api, Model, Models, MutableModels } from "./harness.ts";
 
@@ -120,7 +120,8 @@ export class RouteTextModel implements TextModel {
 	}
 
 	/** The arguments of the model's call to `request.tool`. Throws when the request fails or the model calls no tool. */
-	async answer(request: ToolRequest, signal?: AbortSignal): Promise<unknown> {
+	async answer(request: ToolRequest, signal?: AbortSignal, usage?: UsageObserver): Promise<unknown> {
+		if (usage?.started !== undefined) await usage.started();
 		const reply = await this.#models.complete(
 			this.#model,
 			{
@@ -130,6 +131,7 @@ export class RouteTextModel implements TextModel {
 			},
 			signal === undefined ? {} : { signal },
 		);
+		usage?.(`${reply.provider}/${reply.model}`, reply.usage);
 		if (reply.stopReason === "error" || reply.stopReason === "aborted") {
 			throw new Error(`${this.name} failed: ${reply.errorMessage ?? reply.stopReason}`);
 		}

@@ -15,6 +15,7 @@ import {
 	openHarness,
 	type Stage,
 	TelemetryReader,
+	TokenUsage,
 	UsageDoc,
 } from "@melian-agent/pipeline";
 import { createFakeModels, fauxAssistantMessage } from "@melian-agent/pipeline/testing";
@@ -175,7 +176,7 @@ it.each([200, 201])("reads every stage and settled input across %i-record pages"
 	expect(walkthroughs[0]).toMatchObject({ startedAt: 0, endedAt: count, durationMs: count, outcome: "completed" });
 	expect(walkthroughs[0]!.note).toBe("Response duration unavailable; end uses the request timestamp.");
 	expect(telemetry.render()).toContain("Response duration unavailable; end uses the request timestamp.");
-	expect(walkthroughs[0]!.usage).toEqual({ models: [], tokens: 0, cost: 0 });
+	expect(walkthroughs[0]!.usage).toEqual(new TokenUsage().toJSON());
 	expect(walkthroughs[1]!.outcome).toBe("ended");
 	expect(walkthroughs[2]!.outcome).toBe("ended");
 	expect(walkthroughs[2]).toMatchObject({ endedAt: 1, durationMs: 1 });
@@ -233,8 +234,8 @@ it("reads an empty store without writing or making up a stage", async () => {
 	const storage = createMemoryStorage();
 	const commit = vi.spyOn(storage, "commit");
 	const telemetry = await TelemetryReader.open(storage).read("base..head");
-	expect(telemetry.toJSON()).toEqual({ revision: "base..head", stages: [] });
-	expect(telemetry.slowest()).toBe("melian: Stage timings unavailable.\n");
+	expect(telemetry.toJSON()).toEqual({ revision: "base..head", stages: [], usageUnavailable: [] });
+	expect(telemetry.slowest()).toBe("melian: Stage timings unavailable. Total: Token usage unavailable.\n");
 	expect(commit).not.toHaveBeenCalled();
 	await storage.close(context);
 });
@@ -329,7 +330,7 @@ it("reads an active memo and distinguishes the call-time boundary", async () => 
 		const active = await TelemetryReader.open(storage).read("base..head", 100);
 		expect(active.stages[0]).toMatchObject({ outcome: "running", startedAt: 100, reused: false, resumed: false });
 		expect(active.stages[0]!.endedAt).toBeUndefined();
-		expect(active.slowest()).toBe("melian: Stage timings unavailable.\n");
+		expect(active.slowest()).toBe("melian: Stage timings unavailable. Total: Token usage unavailable.\n");
 		const resumed = await TelemetryReader.open(storage).read("base..head", 101);
 		expect(resumed.stages[0]!.resumed).toBe(true);
 	} finally {

@@ -473,6 +473,32 @@ describe("scrutiny levels", () => {
 	});
 });
 
+it.for([".Agents", ".Melian"])("refuses case-variant %s lens paths", async (owner) => {
+	writeFiles(repo, {
+		[`services/pay/${owner}/Lenses/correctness/lens.md`]: lensFile([
+			"name: correctness",
+			"extends: correctness",
+			"paths: [nothing/**]",
+		]),
+	});
+	const lenses = await Lens.load(repo, { kind: "worktree" }, ["services/pay/api.ts"]);
+	expect(named(lenses, "correctness")).toHaveLength(1);
+	expect(named(lenses, "correctness")[0]).toMatchObject({ scope: "", paths: ["**"] });
+});
+
+it.each([
+	".Agents/Lenses/correctness/LENS.md",
+	".Agents/lenses/correctness/LENS.md",
+	".agents/lenses/correctness/lens.md",
+])("keeps built-in coverage when a revision reader cannot load the alias %s", async (alias) => {
+	writeFiles(repo, {
+		[`services/pay/${alias}`]: lensFile(["name: correctness", "extends: correctness", "paths: [nothing/**]"]),
+	});
+	const lenses = await Lens.load(repo, sourceFor(repo, "revision"), ["services/pay/api.ts"]);
+	const [selected] = Lens.select(named(lenses, "correctness"), defaultConfig, ["services/pay/api.ts"]);
+	expect(selected?.files).toEqual(["services/pay/api.ts"]);
+});
+
 describe.each(sourceKinds)("repository lenses from the %s", (kind) => {
 	const load = (paths: string[]) => Lens.load(repo, sourceFor(repo, kind), paths);
 

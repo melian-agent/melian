@@ -18,11 +18,14 @@ export const melianPaths = {
 	knowledge: ".melian/knowledge",
 } as const;
 
-const policyNames = new Set([melianPaths.config, "AGENTS.md", "CLAUDE.md"]);
-
-// A maintainer's own files, matched in any case: a case-insensitive filesystem opens a committed
-// `MELIAN.SECRETS.YAML` as `melian.secrets.yaml`, so a commit of either under another case is policy too.
-const ownNames = new Set<string>([melianPaths.localConfig, melianPaths.secrets]);
+// Case-insensitive filesystems open a committed case variant under the canonical policy name too.
+const policyNames = new Set<string>([
+	melianPaths.config,
+	"agents.md",
+	"claude.md",
+	melianPaths.localConfig,
+	melianPaths.secrets,
+]);
 
 /**
  * The names of the files that configure a static tool, in any directory. The head's copy drives the tool's run on the
@@ -55,16 +58,23 @@ const analyserConfig =
 
 // Whether a repository-relative path configures a static tool, by its name alone.
 export function isAnalyserConfig(path: string): boolean {
-	return analyserConfig.test(path.split("/").at(-1)!) || enolaPolicyPattern.test(path);
+	const lower = path.toLowerCase();
+	return analyserConfig.test(lower.split("/").at(-1)!) || enolaPolicyPattern.test(lower);
+}
+
+/** Whether `path` is a lens's own file: `<scope>/.melian/lenses/<name>/LENS.md`, or the same under `.agents/`. */
+export function isLensFile(path: string): boolean {
+	const [file, , directory, owner] = path.toLowerCase().split("/").reverse();
+	return file === "lens.md" && directory === "lenses" && (owner === ".melian" || owner === ".agents");
 }
 
 // Whether a repository-relative path steers Melian: a melian.yaml, a standards file, anything under a .melian/, or a
 // static tool's configuration.
 export function isPolicyFile(path: string): boolean {
-	const segments = path.split("/");
+	const segments = path.toLowerCase().split("/");
 	return (
 		policyNames.has(segments.at(-1)!) ||
-		ownNames.has(segments.at(-1)!.toLowerCase()) ||
+		isLensFile(path) ||
 		segments.slice(0, -1).includes(melianPaths.home) ||
 		isAnalyserConfig(path)
 	);

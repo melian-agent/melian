@@ -37,16 +37,18 @@ afterEach(() => {
 	removeDirectory(repo);
 });
 
-it("refuses a policy notice with Git’s stderr, not its stdout", async () => {
+it.each(["base", "head"])("refuses a policy notice when its %s blob lookup fails, using Git’s stderr", async (side) => {
 	const original = gitClient.git;
 	vi.spyOn(gitClient, "git").mockImplementation((root, args, options) => {
-		if (!args.includes("--format=%(objectname)")) return original(root, args, options);
+		if (!args.includes("--format=%(objectmode) %(objectname)")) return original(root, args, options);
+		const commit = gitIn(repo, "rev-parse", side === "base" ? "HEAD^" : "HEAD");
+		if (args[3] !== commit) return original(root, args, options);
 		expect(root).toBe(repo);
 		expect(args).toEqual([
 			"--literal-pathspecs",
 			"ls-tree",
-			"--format=%(objectname)",
-			gitIn(repo, "rev-parse", "HEAD"),
+			"--format=%(objectmode) %(objectname)",
+			commit,
 			"--",
 			"AGENTS.md",
 		]);
@@ -68,13 +70,13 @@ it("hashes Git’s stdout blob ID rather than its stderr diagnostic", async () =
 	const original = gitClient.git;
 	vi.spyOn(gitClient, "git").mockImplementation(async (root, args, options) => {
 		const result = await original(root, args, options);
-		if (!args.includes("--format=%(objectname)")) return result;
+		if (!args.includes("--format=%(objectmode) %(objectname)")) return result;
 		expect(root).toBe(repo);
 		expect(args).toEqual([
 			"--literal-pathspecs",
 			"ls-tree",
-			"--format=%(objectname)",
-			gitIn(repo, "rev-parse", "HEAD"),
+			"--format=%(objectmode) %(objectname)",
+			expect.stringMatching(/^[0-9a-f]{40}$/),
 			"--",
 			"AGENTS.md",
 		]);
@@ -83,7 +85,7 @@ it("hashes Git’s stdout blob ID rather than its stderr diagnostic", async () =
 	const { findings } = await guardrails({ "AGENTS.md": "Old.\n" }, { "AGENTS.md": "New.\n" });
 	expect(findings).toHaveLength(1);
 	expect(findings[0]!.properties.trigger?.hash).toBe(
-		snippetHash(`blob:${gitIn(repo, "rev-parse", "HEAD:AGENTS.md")}`),
+		snippetHash(`blob:${gitIn(repo, "rev-parse", "HEAD^:AGENTS.md")}:${gitIn(repo, "rev-parse", "HEAD:AGENTS.md")}`),
 	);
 });
 
@@ -209,7 +211,7 @@ describe("forbidden-paths", () => {
 			revision,
 			source: { kind: "revision", commit: baseCommit },
 		});
-		expect(findings.map((finding) => finding.properties.path)).toEqual(["server.pem"]);
+		expect(findings.map((finding) => finding.properties.path)).toEqual(["server.pem", "legacy/melian.yaml"]);
 	});
 
 	it("names the file that set an incomplete rule named constructor, not a nearer file with other rules", async () => {
@@ -640,6 +642,48 @@ describe("this repository's own Stryker disable policy scope", () => {
 });
 
 describe("policy-change-review", () => {
+	it("classifies case-variant analyser and standards paths without lowering analyser severity", async () => {
+		const paths = [
+			"web/BIOME.JSONC",
+			"web/TsConfig.app.Json",
+			"web/Package-Lock.Json",
+			"web/.ESLINTRC.json",
+			"web/ESLint.Config.js",
+			"web/Stryker.Config.json",
+			"web/Vitest.Config.ts",
+			"ENOLA.YAML",
+			"Enola/Constraints/layers.yaml",
+			".Enola/Suppressions.Yaml",
+		];
+		const standard = "web/.Melian/standards/usage.md";
+		const { findings } = await guardrails({}, Object.fromEntries([...paths, standard].map((path) => [path, "{}\n"])));
+		expect(
+			findings.map((finding) => [
+				finding.properties.path,
+				finding.properties.severity,
+				finding.properties.guardrail,
+			]),
+		).toEqual(
+			[...paths, standard]
+				.sort()
+				.map((path) => [
+					path,
+					path === standard ? "P2" : "P1",
+					{ notice: path === standard ? "policy" : "analyser" },
+				]),
+		);
+	});
+
+	it("checks workspace membership for case-variant package manifests", async () => {
+		const { findings } = await guardrails(
+			{ "package.json": '{"workspaces":["web"]}\n' },
+			{ "web/Package.Json": "{}\n", "examples/Package.Json": "{}\n" },
+		);
+		expect(findings.map((finding) => [finding.properties.path, finding.properties.severity])).toEqual([
+			["web/Package.Json", "P1"],
+		]);
+	});
+
 	it("reports each policy and standards file the revision changes", async () => {
 		const { findings } = await guardrails(
 			{ "src/a.ts": lines("a") },
@@ -1094,8 +1138,11 @@ describe("a change to what a finding requires", () => {
 				"docs/melian.yaml": lines("knowledge:", "  writeBack: true"),
 			},
 		);
-		expect(notices(findings)).toEqual([["services/melian.yaml", { notice: "policy", resolution: true }]]);
-		expect(findings[0]!.properties.explanation.what).toContain("changes the resolution the file declares");
+		expect(notices(findings)).toEqual([
+			["docs/melian.yaml", { notice: "policy" }],
+			["services/melian.yaml", { notice: "policy", resolution: true }],
+		]);
+		expect(findings[1]!.properties.explanation.what).toContain("services/melian.yaml");
 	});
 
 	it("holds that notice at acknowledge, whatever the table or a guardrails ceiling says", async () => {
@@ -1117,7 +1164,7 @@ describe("a change to what a finding requires", () => {
 		});
 	});
 
-	it("draws it for a changed lens resolution, and leaves a lens's other changes to the switch", async () => {
+	it("marks a changed lens resolution and also reports other lens changes", async () => {
 		const { findings } = await guardrails(
 			{
 				"melian.yaml": root,
@@ -1133,6 +1180,7 @@ describe("a change to what a finding requires", () => {
 		);
 		expect(notices(findings)).toEqual([
 			[".melian/lenses/cleanup/LENS.md", { notice: "policy", resolution: true }],
+			["docs/.melian/lenses/cleanup/LENS.md", { notice: "policy" }],
 			["services/.agents/lenses/cleanup/LENS.md", { notice: "policy", resolution: true }],
 		]);
 		expect(
@@ -1167,10 +1215,11 @@ describe("a change to what a finding requires", () => {
 		);
 		expect(notices(findings)).toEqual([
 			["new/.melian/lenses/strict/LENS.md", { notice: "policy", resolution: true }],
+			["same/.melian/lenses/strict/LENS.md", { notice: "policy" }],
 			["svc/.melian/lenses/strict/LENS.md", { notice: "policy", resolution: true }],
 		]);
 		const quiet = { resolution: { P2: "silent", checks: { guardrails: { ceiling: "silent" } } } } as const;
-		expect(findings.map((finding) => finding.resolve(quiet))).toEqual(["acknowledge", "acknowledge"]);
+		expect(findings.map((finding) => finding.resolve(quiet))).toEqual(["acknowledge", "acknowledge", "acknowledge"]);
 	});
 
 	it("leaves a lens file's notice unmarked when its resolution stands", async () => {
@@ -1182,7 +1231,7 @@ describe("a change to what a finding requires", () => {
 		expect(findings[0]!.properties.explanation.what).not.toContain("resolution");
 	});
 
-	it("counts an added or removed key as changed, and never a file that only reorders it", async () => {
+	it("marks added or removed resolution and reports reordered blobs too", async () => {
 		const { findings } = await guardrails(
 			{
 				"melian.yaml": root,
@@ -1201,7 +1250,9 @@ describe("a change to what a finding requires", () => {
 		expect(notices(findings).map(([path]) => path)).toEqual([
 			"added/melian.yaml",
 			"emptied/melian.yaml",
+			"plain/melian.yaml",
 			"removed/melian.yaml",
+			"reordered/melian.yaml",
 		]);
 	});
 
@@ -1245,6 +1296,15 @@ describe("a change to what a finding requires", () => {
 });
 
 describe("isLensFile", () => {
+	it.each([
+		".Agents/lenses/cleanup/LENS.md",
+		".agents/Lenses/cleanup/LENS.md",
+		".agents/lenses/cleanup/lens.md",
+		"services/pay/.Melian/Lenses/cleanup/lens.md",
+	])("recognises the lens policy path %s in any case", (path) => {
+		expect(isLensFile(path)).toBe(true);
+	});
+
 	it("takes a LENS.md directly inside a lens's directory, under .melian or .agents, at any depth", () => {
 		expect(isLensFile(".melian/lenses/cleanup/LENS.md")).toBe(true);
 		expect(isLensFile("services/pay/.agents/lenses/cleanup/LENS.md")).toBe(true);

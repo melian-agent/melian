@@ -26,6 +26,8 @@ import {
 	ReviewError,
 	reviewChangeset,
 	revisionKey,
+	type StageTelemetry,
+	TelemetryReader,
 	upsertFinding,
 } from "@melian-agent/pipeline";
 import {
@@ -40,6 +42,7 @@ import {
 import Type, { type Static, type TSchema } from "typebox";
 import Value from "typebox/value";
 import { buildGoldenRepository, commitGoldenTree, type GoldenMode, goldenEvidenceSchema } from "./goldens.ts";
+import { GoldenRunError } from "./run-error.ts";
 
 const strict = { additionalProperties: false } as const;
 const verdictSchema = Type.Union([Type.Literal("confirmed"), Type.Literal("plausible"), Type.Literal("refuted")]);
@@ -428,6 +431,7 @@ export function loadVerifierGoldens(directory: string = verifierDirectory): Veri
 
 /** One candidate's recorded judgement and review output. */
 export interface VerifierRun {
+	readonly telemetry: StageTelemetry;
 	readonly verification: Verification | undefined;
 	/** Why the verifier judged nothing, as its check recorded it: a provider's error, a spent budget, or a claim left out. */
 	readonly unjudged?: string;
@@ -494,7 +498,8 @@ export async function runVerifierGolden(golden: VerifierGolden, mode: GoldenMode
 				: []),
 		]);
 		// The judge retries a failed request with backoff, as a review does; one provider error would otherwise score unjudged.
-		const reviewHarness = await openReviewHarness(createMemoryStorage(), fake.review);
+		const storage = createMemoryStorage();
+		const reviewHarness = await openReviewHarness(storage, fake.review);
 		try {
 			const result = await reviewChangeset({
 				harness: reviewHarness.harness,
@@ -522,11 +527,14 @@ export async function runVerifierGolden(golden: VerifierGolden, mode: GoldenMode
 				throw new Error(`${golden.name}: expected one planted finding, got ${result.findings.length}`);
 			const reason = result.verdict!.notRun.find((check) => check.name === "verifier")?.reason;
 			return {
+				telemetry: await TelemetryReader.open(storage).read(revisionKey(changeset.revision)),
 				verification: result instanceof ReviewError ? undefined : result.findings[0]!.properties.verification,
 				...(reason === undefined ? {} : { unjudged: reason }),
 				rendered: result.verdict!.render(new Rendering({ all: true })),
 				verifierRequests: requests[marker]?.length ?? 0,
 			};
+		} catch (error) {
+			throw new GoldenRunError(error, await TelemetryReader.open(storage).read(revisionKey(changeset.revision)));
 		} finally {
 			await reviewHarness.close(backgroundContext);
 		}
