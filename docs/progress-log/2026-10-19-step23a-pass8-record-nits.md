@@ -15,3 +15,7 @@ Round listing retains unreadable legacy heads, sorts them last, and shows their 
 The unreadable-head listing fix is commit `6eb0130f`.
 
 An absent round ID now reports "has no round". A stored round without a verdict still reports "has no decided round". The absent legacy-form key reproduced the wrong message before the fix. All 34 CLI rounds tests pass. Removing or inverting the new guard fails, as does removing the undecided-round guard.
+
+The missing-round diagnosis fix is commit `b7768f01`.
+
+The first whole gate stopped at TypeScript: the attachment regression passed a string instead of the public API's structured check-run identity. The test now uses base, head, tier, policy and task. Restoring the original attachment call again fails with task 14 instead of 9. Restoring the fix passes all 38 rounds tests.

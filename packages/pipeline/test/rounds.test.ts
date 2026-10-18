@@ -261,47 +261,47 @@ it.each(["import", "adjudicate"])("records the legacy verdict before a compariso
 	}
 });
 
-it.each([undefined, "cli-check-run"])(
-	"keeps main's decided round when an unchanged range review attaches (checkRun=%s)",
-	async (checkRun) => {
-		const { storage } = await oldStorage("decided");
-		const reopened = await openHarness(storage, { models: fake.models, registry: createReviewRegistry() });
-		try {
-			const root = await reopened.root(context);
-			const before = (await reopened.snapshot(ReviewIndex, root.id, context))!.reviews[legacy.key]!.adjudication!;
-			const input = JSON.parse(before.input) as AdjudicationTaskInput;
-			gitIn(
-				repo,
-				"fetch",
-				new URL("./fixtures/rounds-main/repo.bundle", import.meta.url).pathname,
-				"refs/heads/main:refs/heads/legacy-base",
-				"refs/heads/feature:refs/heads/legacy-head",
-			);
-			const resolved = await Changeset.resolve(repo, "legacy-base...legacy-head");
-			const changeset = Changeset.from({ ...resolved.toJSON(), id: legacy.changeset, repoRoot: input.repoRoot });
-			const options = {
-				harness: reopened,
-				changeset,
-				config: { ...defaultConfig, tiers: { full: ["static.mutation"] } },
-				lenses: [],
-				standards: [],
-				models: fake.review,
-				checks: [{ name: "static.mutation", status: "ran" as const }],
-				checkRun,
-			};
-			await reviewChangeset(options);
-			await reviewChangeset(options);
-			expect((await reopened.snapshot(ReviewIndex, root.id, context))!.reviews[legacy.key]!.adjudication!.task).toBe(
-				before.task,
-			);
-			const state = await reopened.snapshot(rounds, root.id, context);
-			expect(state?.sequence).toBe(0);
-			expect(Object.values(state!.items)).toMatchObject([{ tasks: [before.task], verdict: { status: "passed" } }]);
-		} finally {
-			await reopened.close(context);
-		}
-	},
-);
+it.each([
+	undefined,
+	{ base: legacy.key.split("..")[0]!, head: legacy.key.split("..")[1]!, tier: "full", policy: "cli-policy", task: 1 },
+])("keeps main's decided round when an unchanged range review attaches (checkRun=%s)", async (checkRun) => {
+	const { storage } = await oldStorage("decided");
+	const reopened = await openHarness(storage, { models: fake.models, registry: createReviewRegistry() });
+	try {
+		const root = await reopened.root(context);
+		const before = (await reopened.snapshot(ReviewIndex, root.id, context))!.reviews[legacy.key]!.adjudication!;
+		const input = JSON.parse(before.input) as AdjudicationTaskInput;
+		gitIn(
+			repo,
+			"fetch",
+			new URL("./fixtures/rounds-main/repo.bundle", import.meta.url).pathname,
+			"refs/heads/main:refs/heads/legacy-base",
+			"refs/heads/feature:refs/heads/legacy-head",
+		);
+		const resolved = await Changeset.resolve(repo, "legacy-base...legacy-head");
+		const changeset = Changeset.from({ ...resolved.toJSON(), id: legacy.changeset, repoRoot: input.repoRoot });
+		const options = {
+			harness: reopened,
+			changeset,
+			config: { ...defaultConfig, tiers: { full: ["static.mutation"] } },
+			lenses: [],
+			standards: [],
+			models: fake.review,
+			checks: [{ name: "static.mutation", status: "ran" as const }],
+			checkRun,
+		};
+		await reviewChangeset(options);
+		await reviewChangeset(options);
+		expect((await reopened.snapshot(ReviewIndex, root.id, context))!.reviews[legacy.key]!.adjudication!.task).toBe(
+			before.task,
+		);
+		const state = await reopened.snapshot(rounds, root.id, context);
+		expect(state?.sequence).toBe(0);
+		expect(Object.values(state!.items)).toMatchObject([{ tasks: [before.task], verdict: { status: "passed" } }]);
+	} finally {
+		await reopened.close(context);
+	}
+});
 
 it("synthesises an undecided comparison-only legacy round without writing", async () => {
 	const storage = createMemoryStorage();
