@@ -700,6 +700,12 @@ function publishTask(provider: ReviewProvider) {
 						const found = await marked(pending);
 						let posted: PostedReview;
 						if (found.review === undefined) {
+							// A still-open finding whose thread a human resolved or deleted is otherwise hidden from the pull request.
+							const carried: string[] = [];
+							for (const [id, entry] of Object.entries(pending.open)) {
+								if (entry.thread !== undefined && !(await provider.isThreadOpen(pullRequest, entry.thread)))
+									carried.push(id);
+							}
 							await revalidate();
 							posting = true;
 							posted = await provider.postReview({
@@ -714,6 +720,7 @@ function publishTask(provider: ReviewProvider) {
 									placement,
 								})),
 								stillOpen: pending.stillOpen,
+								carried,
 								resolved: Object.values(pending.resolved).filter((entry) => entry.thread === undefined),
 								secret,
 							});

@@ -53,6 +53,7 @@ it("separates inline findings from findings rendered in the review body", () => 
 				{ finding: outside, placement: { kind: "body" } },
 			],
 			stillOpen: 0,
+			carried: [inline.id],
 			resolved: [],
 			secret,
 		},

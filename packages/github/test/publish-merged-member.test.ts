@@ -426,6 +426,16 @@ describe("thread recovery after the attacking review", { timeout: 60_000 }, () =
 		);
 	});
 
+	it("leaves a still-open finding out of the next review body while its thread is open", async () => {
+		const { state, review, publish } = await session();
+		await publish((await review(script([b], []))).changeset);
+		push();
+		await publish((await review(script([b], []))).changeset);
+		expect(state.reviews).toHaveLength(2);
+		expect(state.comments).toHaveLength(1);
+		expect(state.reviews.at(-1)?.body).not.toContain("null-dereference");
+	});
+
 	it("keeps a human-resolved live finding in the status and review body without reposting its thread", async () => {
 		const { state, review, publish } = await session();
 		await publish((await review(script([b], []))).changeset);
@@ -438,7 +448,9 @@ describe("thread recovery after the attacking review", { timeout: 60_000 }, () =
 		expect(state.resolvedThreads).toContain(thread.id);
 		expect(state.statuses.at(-1)?.state).toBe("failure");
 		expect(state.reviews.at(-1)?.body).toContain("null-dereference");
-		expect(state.calls.slice(start).filter((call) => call.path === "/graphql")).toEqual([]);
+		const reads = state.calls.slice(start).filter((call) => call.path === "/graphql");
+		expect(reads).toHaveLength(1);
+		expect(JSON.stringify(reads[0]!.body)).toContain("reviewThreads");
 	});
 
 	it("does not reuse a human-resolved thread for a returning finding", async () => {

@@ -156,6 +156,8 @@ export interface ReviewDraft {
 	readonly findings: readonly PlacedFinding[];
 	/** How many findings an earlier revision posted that still need attention. */
 	readonly stillOpen: number;
+	/** Still-open findings, by ID, whose thread a human resolved or deleted; the body lists them again. */
+	readonly carried?: readonly string[];
 	/** Resolved and dismissed findings that have no thread to reply in, so the body names them. */
 	readonly resolved: readonly ClosedFinding[];
 	/** The changeset's publisher secret, as hex, which signs every marker the review carries. Never printed. */

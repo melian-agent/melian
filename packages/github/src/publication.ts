@@ -376,11 +376,12 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 	);
 	if (dismissed.length > 0) parts.push(["Dismissed since the last review:", "", ...dismissed].join("\n"));
 	const posted = new Set(draft.findings.flatMap(({ finding }) => finding.reportIds()));
+	const carried = new Set(draft.carried);
 	const inBody = [
 		...draft.findings.filter((placed) => placed.placement.kind === "body"),
 		...verdict
 			.attention()
-			.filter((finding) => !posted.has(finding.id))
+			.filter((finding) => carried.has(finding.id) && !posted.has(finding.id))
 			.map((finding) => ({ finding })),
 	];
 	const sections = inBody.map(({ finding }) =>
