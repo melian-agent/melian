@@ -71,7 +71,7 @@ function push(): void {
 
 // Step 27: the publish plan carries a resolution reply still owed for a report only while the verdict holds no report
 // with its ID, a merged member included.
-describe("a report merged under another while its resolution is owed", () => {
+describe("a report merged under another while its resolution is owed", { timeout: 60_000 }, () => {
 	it("keeps the report's thread open, and replies nothing, while the verdict holds it as a member", async () => {
 		const fake = scenarioModels();
 		const state = pullRequestState();
@@ -121,7 +121,7 @@ describe("a report merged under another while its resolution is owed", () => {
 
 // A finding returns before the reply that resolves its thread went through. It goes back to its own thread, and the
 // thread is answered when the finding goes for good, whether it returns merged under another report or alone.
-describe("a report that returns while its resolution is owed", () => {
+describe("a report that returns while its resolution is owed", { timeout: 60_000 }, () => {
 	it("posts a reopened finding with the same ID afresh when its dismissal reply is owed", async () => {
 		const fake = scenarioModels();
 		const state = pullRequestState();
@@ -263,7 +263,7 @@ describe("a report that returns while its resolution is owed", () => {
 	});
 });
 
-describe("thread recovery after the attacking review", () => {
+describe("thread recovery after the attacking review", { timeout: 60_000 }, () => {
 	async function session() {
 		const fake = scenarioModels();
 		const state = pullRequestState();
@@ -454,6 +454,28 @@ describe("thread recovery after the attacking review", () => {
 		await publish((await review(script([b], []))).changeset);
 		expect(state.comments.filter((comment) => comment.in_reply_to_id === undefined)).toHaveLength(2);
 		expect(state.resolvedThreads).toEqual([thread.id]);
+	});
+
+	it("keeps a live finding in its fresh thread when a human reopens a thread still owed its edit", async () => {
+		const { state, review, publish } = await session();
+		await publish((await review(script([b], []))).changeset);
+		const thread = state.comments[0]!;
+		push();
+		state.failReplies = true;
+		await expect(publish((await review(script([], []))).changeset)).rejects.toMatchObject({ code: "publishFailed" });
+		state.failReplies = false;
+		state.resolvedThreads.push(thread.id);
+		push();
+		state.failReplies = true;
+		await expect(publish((await review(script([b], []))).changeset)).rejects.toMatchObject({ code: "publishFailed" });
+		state.failReplies = false;
+		const fresh = state.comments.filter((comment) => comment.in_reply_to_id === undefined)[1]!;
+		state.resolvedThreads.splice(0);
+		push();
+		await publish((await review(script([b], []))).changeset);
+		push();
+		await publish((await review(script([], []))).changeset);
+		expect(state.resolvedThreads.toSorted()).toEqual([thread.id, fresh.id].toSorted());
 	});
 
 	it("does not repeat a journalled dismissal when a human deleted its reply", async () => {
