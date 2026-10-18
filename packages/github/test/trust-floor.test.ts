@@ -54,7 +54,17 @@ describe("step 29: GitHub explains the trust floor", () => {
 		} satisfies Parameters<typeof renderReviewBody>[0];
 		const links = { web: "https://github.com/melian-agent/example" };
 		const body = renderReviewBody(draft, links);
-		const summary = renderReviewBody({ ...draft, findings: [] }, links);
+		const summary = renderReviewBody(
+			{
+				...draft,
+				findings: [
+					{ finding: review.findings.acknowledge[0]!, placement: { kind: "lines", startLine: 3, line: 3 } },
+				],
+			},
+			links,
+		);
+		const carried = renderReviewBody({ ...draft, findings: [] }, links);
+		expect.soft(carried).toContain("&lt;script&gt;guard");
 		expect.soft(summary).toContain("Trust floor: acknowledge required; maintainer dismissal needed.");
 		expect.soft(summary).not.toContain("&lt;script&gt;guard");
 		const ledger = Ledger.from(
