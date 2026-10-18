@@ -552,6 +552,88 @@ it.each(["replace", "mutate"])("observes a prior onPayload callback's %s before 
 	});
 });
 
+it("forwards a caller onPayload replacement through streamSimple", async () => {
+	const fake = createFakeModels();
+	const original = { reasoning: { effort: "none" } };
+	const replacement = { reasoning: { effort: "high" } };
+	const received: unknown[] = [];
+	fake.provider.setResponses([
+		async (_request, options, _state, model) => {
+			const replaced = await options!.onPayload!(original, model);
+			received.push(replaced ?? original);
+			return fauxAssistantMessage("Done");
+		},
+	]);
+	const onPayload = vi.fn(async (body: unknown) => {
+		expect(body).toBe(original);
+		return replacement;
+	});
+	const storage = createMemoryStorage();
+	const recorder = new ConversationUsageRecorder(storage);
+	const models = recorder.models(fake.models);
+	const harness = await openHarness(storage, { models, registry: createRegistry() });
+	recorder.attach(harness);
+	try {
+		const root = await harness.root(context);
+		const sessionId = (await harness.snapshot(ProviderDoc, root.id, context))!.sessionId;
+		await models
+			.streamSimple(
+				fake.provider.getModel(),
+				{ messages: [{ role: "user", content: "Ask", timestamp: 1 }] },
+				{ sessionId, onPayload },
+			)
+			.result();
+		expect(received).toEqual([replacement]);
+		expect(onPayload).toHaveBeenCalledTimes(1);
+		const stored = await harness.snapshot(ModelUsageDocument, root.id, `conversation:${root.id}`, context);
+		expect(stored?.requests?.map((request) => request.reasoning)).toEqual([
+			{ requested: "off", source: "observed", sent: [replacement] },
+		]);
+	} finally {
+		await harness.close(context);
+	}
+});
+
+it("forwards a caller onPayload replacement through completeSimple", async () => {
+	const fake = createFakeModels();
+	const original = { reasoning: { effort: "none" } };
+	const replacement = { reasoning: { effort: "high" } };
+	const received: unknown[] = [];
+	fake.provider.setResponses([
+		async (_request, options, _state, model) => {
+			const replaced = await options!.onPayload!(original, model);
+			received.push(replaced ?? original);
+			return fauxAssistantMessage("Done");
+		},
+	]);
+	const onPayload = vi.fn(async (body: unknown) => {
+		expect(body).toBe(original);
+		return replacement;
+	});
+	const storage = createMemoryStorage();
+	const recorder = new ConversationUsageRecorder(storage);
+	const models = recorder.models(fake.models);
+	const harness = await openHarness(storage, { models, registry: createRegistry() });
+	recorder.attach(harness);
+	try {
+		const root = await harness.root(context);
+		const sessionId = (await harness.snapshot(ProviderDoc, root.id, context))!.sessionId;
+		await models.completeSimple(
+			fake.provider.getModel(),
+			{ messages: [{ role: "user", content: "Ask", timestamp: 1 }] },
+			{ sessionId, onPayload },
+		);
+		expect(received).toEqual([replacement]);
+		expect(onPayload).toHaveBeenCalledTimes(1);
+		const stored = await harness.snapshot(ModelUsageDocument, root.id, `conversation:${root.id}`, context);
+		expect(stored?.requests?.map((request) => request.reasoning)).toEqual([
+			{ requested: "off", source: "observed", sent: [replacement] },
+		]);
+	} finally {
+		await harness.close(context);
+	}
+});
+
 it.each([undefined, "not-a-conversation"])(
 	"refuses to assign a receipt without a matching provider session: %s",
 	async (sessionId) => {
