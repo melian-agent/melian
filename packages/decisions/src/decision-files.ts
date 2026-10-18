@@ -112,6 +112,22 @@ export class DecisionFiles {
 			if (leaves.length === 0) throw new DecisionFilesError("invalid", "The base Supersedes graph contains a cycle");
 			for (const path of leaves) pending.delete(path);
 		}
+		for (const [target, sources] of amendments) {
+			const superseding = successors.get(target);
+			if (superseding !== undefined) {
+				const replacements = new Set(superseding);
+				for (const path of replacements)
+					for (const successor of successors.get(path) ?? []) replacements.add(successor);
+				const active = [...replacements].filter((path) => !successors.has(path));
+				throw new DecisionFilesError(
+					"invalid",
+					`${sources.join(", ")} amends inactive ${target}; amend active successors instead: ${active.join(", ")}`,
+				);
+			}
+			const active = sources.filter((path) => !successors.has(path));
+			if (active.length === 0) amendments.delete(target);
+			else amendments.set(target, active);
+		}
 		return new DecisionFiles(
 			[...files].sort((a, b) => a.path.localeCompare(b.path)),
 			successors,

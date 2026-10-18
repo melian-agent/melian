@@ -70,12 +70,85 @@ describe("decision amendments", () => {
 		expect(index).toContain(`[ACTIVE; amended by ${fresh}, ${other}] ${old} — Old`);
 	});
 
+	it("retires an amendment's effect when its source is superseded", () => {
+		const successor = "docs/decisions/successor.md";
+		const index = DecisionFiles.from([
+			DecisionFile.parse(successor, "# Successor\n\nSupersedes: new.md"),
+			DecisionFile.parse(fresh, "# Amendment\n\nAmends: old.md, routing."),
+			DecisionFile.parse(old, "# Old"),
+		]).render();
+		expect(index).toBe(
+			[
+				`[INACTIVE; superseded by ${successor}] ${fresh} — Amendment`,
+				`[ACTIVE] ${old} — Old`,
+				`[ACTIVE] ${successor} — Successor`,
+			].join("\n"),
+		);
+	});
+
+	it("keeps only active sources when another amendment is retired", () => {
+		const other = "docs/decisions/other.md";
+		const index = DecisionFiles.from([
+			DecisionFile.parse(old, "# Old"),
+			DecisionFile.parse(fresh, "Amends: old.md, routing."),
+			DecisionFile.parse(other, "Supersedes: new.md\n\nAmends: old.md, retries."),
+		]).render();
+		expect(index).toContain(`[ACTIVE; amended by ${other}] ${old} — Old`);
+		expect(index).toContain("Read both files; where they conflict, the amendment wins.");
+	});
+
+	it.each([false, true])("refuses an amendment of an inactive target, retired source: %s", (retired) => {
+		const successor = "docs/decisions/successor.md";
+		const files = [
+			DecisionFile.parse(fresh, "Amends: old.md, routing."),
+			DecisionFile.parse(old, "# Old"),
+			DecisionFile.parse(successor, `Supersedes: old.md${retired ? ", new.md" : ""}`),
+		];
+		expect(() => DecisionFiles.from(files)).toThrow(
+			expect.objectContaining({
+				code: "invalid",
+				message: `${fresh} amends inactive ${old}; amend active successors instead: ${successor}`,
+			}),
+		);
+	});
+
+	it("names every active successor of an inactive amendment target", () => {
+		const middle = "docs/decisions/middle.md";
+		const penultimate = "docs/decisions/penultimate.md";
+		const successor = "docs/decisions/successor.md";
+		const other = "docs/decisions/other.md";
+		expect(() =>
+			DecisionFiles.from([
+				DecisionFile.parse(old, "# Old"),
+				DecisionFile.parse(fresh, "Amends: old.md, routing."),
+				DecisionFile.parse(middle, "Supersedes: old.md"),
+				DecisionFile.parse(other, "Supersedes: old.md"),
+				DecisionFile.parse(penultimate, "Supersedes: middle.md"),
+				DecisionFile.parse(successor, "Supersedes: penultimate.md"),
+			]),
+		).toThrow(`${fresh} amends inactive ${old}; amend active successors instead: ${other}, ${successor}`);
+	});
+
+	it("retains both active amendments in a chain on one target", () => {
+		const other = "docs/decisions/other.md";
+		const index = DecisionFiles.from([
+			DecisionFile.parse(old, "# Old"),
+			DecisionFile.parse(fresh, "# First\n\nAmends: old.md, routing."),
+			DecisionFile.parse(other, "# Second\n\nAmends: old.md, new.md, retries."),
+		]).render();
+		expect(index).toContain(`[ACTIVE; amended by ${fresh}, ${other}] ${old} — Old`);
+		expect(index).toContain(`[ACTIVE; amended by ${other}] ${fresh} — First`);
+		expect(index).toContain(`[ACTIVE] ${other} — Second`);
+	});
+
 	it("names a whole-retirement successor once when it also declares an amendment", () => {
 		const index = DecisionFiles.from([
 			DecisionFile.parse(old, "# Old"),
 			DecisionFile.parse(fresh, "Supersedes: old.md\n\nAmends: old.md, routing."),
 		]).render();
 		expect(index).toContain(`[INACTIVE; superseded by ${fresh}] ${old} — Old`);
+		expect(index).not.toContain("amended by");
+		expect(index).not.toContain("the amendment wins");
 	});
 
 	it("counts amendment labels and precedence text within the 64 KiB bound", () => {

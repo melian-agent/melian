@@ -8,7 +8,11 @@ The maintainer chose this rule on 2026-10-18 after the attack on [pull request #
 
 The decision index retires a superseded target whole. A replacement saying “only for X” loses every other clause unless it restates them. Reviewers found such omissions on [pull request #116](https://github.com/melian-agent/melian/pull/116) and [pull request #117](https://github.com/melian-agent/melian/pull/117).
 
-`Amends: <target link>, <scope>` declares a narrow change. The target stays active, rendered as `[ACTIVE; amended by Y]`. The design lens reads both files; where they conflict, the amendment wins. The rendered index and lens instructions state that precedence. Nothing is retired.
+`Amends: <target link>, <scope>` declares a narrow change to an active target. Effective amendments are only its active Amends sources. The index renders the target as `[ACTIVE; amended by Y]`. The design lens reads the target and its effective amendments; where they conflict, the amendment wins. An amendment alone retires nothing.
+
+If B amends A and C supersedes B, A stays active without B as an amendment. B is history, and the lens receives no conflict authority for it. Two active amendments of one target both stand, including when one also amends the other.
+
+An Amends edge to an inactive target invalidates the graph, even when its source is inactive. Refuse it as a cycle is refused. Name the target, say it is inactive, and name every active successor reachable through Supersedes edges to amend instead. The graph already gives Supersedes precedence when one source declares both edge kinds to the same target; that pair creates no amendment edge. Separate sources amending and superseding one target still leave an invalid amendment target.
 
 `Supersedes:` means whole retirement. Restate every surviving clause in the replacement. Every new or changed edge draws one P3 `guardrail/supersession-drop` notice on the declaring file, even when every clause is restated. The notice says which target is retired and asks the author to restate what survives. Uncarried sentences are evidence, never the trigger. Exact text cannot distinguish a rewrite from a lost obligation.
 
@@ -18,7 +22,7 @@ The attack counted 36 partial Supersedes lines. They are a follow-up audit under
 
 Use `MarkdownDocument` in the decisions package, backed by `mdast-util-from-markdown` 2.1.0 and its existing front matter extensions. `LocalDestination` resolves links. The parser decides what is a link; labels, code, HTML and images remain opaque for edges. Root paragraphs alone supply declarations. Both forms keep the existing absence sentinels and bare filenames.
 
-Only the first sentence of a declaration's physical line supplies targets. Later links are context. The golden copied from verifier-on-codex-subscription proves that verification-pass remains active. Both edge kinds participate in missing-target and cycle validation.
+Only the first sentence of a declaration's physical line supplies targets. Later links are context. The golden copied from verifier-on-codex-subscription proves that verification-pass remains active. Both edge kinds participate in missing-target and cycle validation. After that validation, reject inactive amendment targets and remove inactive sources from effective amendments before rendering.
 
 ## Evidence authority and limits
 
@@ -34,7 +38,7 @@ A target sentence is carried when its normalised text equals a successor clause.
 
 The pipeline adds the check to `melian review`'s guardrails dispatch, avoiding a core dependency on decisions. Core's `defaultConfig.guardrails` registers `supersession-drop`, with `enabled: true`. Its only setting is the enabled switch. The notice has fixed P3 severity; ordinary per-rule resolution can raise or silence its default advisory requirement.
 
-When an old or new changed path belongs to docs/decisions and any touched decision has the guardrail enabled, validate the complete head graph through `DecisionFiles`. Missing targets, cycles, unreadable files, symlinks, files beyond 256 KiB, parser errors and unavailable segmentation fail the check. An absent target fails even when it existed at base. No model or verifier runs.
+When an old or new changed path belongs to docs/decisions and any touched decision has the guardrail enabled, validate the complete head graph through `DecisionFiles`. Missing targets, cycles, inactive amendment targets, unreadable files, symlinks, files beyond 256 KiB, parser errors and unavailable segmentation fail the check. An absent target fails even when it existed at base. No model or verifier runs.
 
 Compare each head Supersedes edge with its declaring file's base declaration, following Git's old path for a rename. An added target or changed declaration draws one notice per direct target. Unchanged declarations do not recur when only their body or target changes. Amendment edges draw no retirement notice.
 
