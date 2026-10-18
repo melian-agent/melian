@@ -437,7 +437,7 @@ describe("publication record validation", () => {
 		});
 	});
 
-	it.each([null, undefined])("accepts a %s review link without granting ownership to that root", async (link) => {
+	it.each([null, undefined])("accepts a %s review link on a copied root from another author", async (link) => {
 		const { state, provider } = fixture();
 		const head = state.pull.head.sha;
 		state.reviews.push({
