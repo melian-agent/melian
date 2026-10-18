@@ -1306,6 +1306,13 @@ describe("cross-head answer discovery", () => {
 				pageInfo: { hasNextPage: false, endCursor: null },
 			},
 		],
+		[
+			"null root comment",
+			{
+				nodes: [{ id: "thread-1", isResolved: false, comments: { nodes: [null] } }],
+				pageInfo: { hasNextPage: false, endCursor: null },
+			},
+		],
 		["empty cursor", { nodes: [], pageInfo: { hasNextPage: true, endCursor: "" } }],
 	])("rejects a partial GraphQL page: %s", async (name, response) => {
 		const state = pullRequestState();
@@ -1317,6 +1324,21 @@ describe("cross-head answer discovery", () => {
 		});
 		expect(state.resolvedThreads).toEqual([]);
 		expect(state.calls.filter((call) => call.path === "/graphql")).toHaveLength(1);
+	});
+
+	it.each([
+		["a null repository", { repository: null }],
+		["a null pull request", { repository: { pullRequest: null } }],
+		["no review threads", { repository: { pullRequest: {} } }],
+	])("rejects a GraphQL thread answer with %s", async (_, data) => {
+		const state = pullRequestState();
+		state.comments.push(root(1));
+		state.threadResponseData = data;
+		await expect(providerFor(state).resolveThread(7, "1")).rejects.toMatchObject({
+			code: "failed",
+			message: expect.stringContaining("incomplete finding-thread page"),
+		});
+		expect(state.resolvedThreads).toEqual([]);
 	});
 
 	it("ignores a dismissal marker pasted into a root and a signed root with no author", async () => {

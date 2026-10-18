@@ -44,6 +44,7 @@ export type FakeState = {
 	failCommentPage?: number;
 	commentPageResponse?: { page: number; body: unknown; status?: number };
 	threadPageResponse?: unknown;
+	threadResponseData?: unknown;
 	threadReadStatus?: number;
 	commentReadStatus?: number;
 	threadReadFailure?: "errors" | "partial" | "missing-cursor" | "repeated-cursor";
@@ -177,6 +178,7 @@ export function fakeGitHub(
 				return json({ errors: [{ message: "Unsupported thread query" }] });
 			if (state.threadReadStatus !== undefined)
 				return json({ message: "Thread read refused" }, state.threadReadStatus);
+			if (state.threadResponseData !== undefined) return json({ data: state.threadResponseData });
 			if (state.threadPageResponse !== undefined)
 				return json({ data: { repository: { pullRequest: { reviewThreads: state.threadPageResponse } } } });
 			if (state.threadReadFailure === "errors")
