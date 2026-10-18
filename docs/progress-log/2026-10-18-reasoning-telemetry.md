@@ -1,6 +1,6 @@
 # Reasoning telemetry
 
-Status: built; draft pull request pending.
+Status: built in [pull request #153](https://github.com/melian-agent/melian/pull/153), draft. Implementation: `15da661a` (feat(pipeline): record model request reasoning).
 
 Record each returned request's requested thinking level, observed sent reasoning settings and provider-reported level beside its usage. ReviewHarness observes generation and compaction through its host-supplied Models port. RouteTextModel forwards triage capture before validating the answer. Failover attempts retain separate receipts. No reasoning level changes.
 
