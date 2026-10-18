@@ -23,6 +23,7 @@ import {
 } from "../src/index.ts";
 import { PublisherDocument, PublishHarness, publishExtension, publishReview } from "../src/publish.ts";
 import { reviewChangeset } from "../src/review.ts";
+import { ReviewIndex } from "../src/review-index.ts";
 import { RoundsDocument, RoundWriter } from "../src/rounds.ts";
 import { createFakeModels } from "../src/testing.ts";
 import { baseAndHead, isolatedGitEnv } from "./fixtures/repo.ts";
@@ -618,5 +619,50 @@ it.each(["main-36122eb2", "main-other-revision", "main-preserved", "build1-6bd29
 		expect(previous.state.reviews).toHaveLength(1);
 		expect(previous.state.statuses.at(-1)?.state).toBe("error");
 		expect(fake.provider.state.callCount).toBe(0);
+	},
+);
+
+it.each(["adjudication", "revision"])(
+	"supersedes a resumed publication during triage without indexed %s",
+	async (missing) => {
+		const { harness, root, pending, state, provider, changeset, path } = await pendingPublication("minted", ["ran"]);
+		const revision = `${changeset.revision.base}..${changeset.revision.head}`;
+		await root.commit(async (tx) => {
+			const index = await tx.doc(ReviewIndex, root.id);
+			if (missing === "revision") delete index.reviews[revision];
+			else delete index.reviews[revision]!.adjudication;
+			const verdicts = await tx.doc(VerdictDocument, root.id);
+			await new RoundWriter(tx, root.id).preserve(revision);
+			delete verdicts.verdicts[revision];
+			delete verdicts.provenance![revision];
+			delete verdicts.decisions![revision];
+		}, context);
+		await harness.close(context);
+		const begin = vi.spyOn(provider, "beginPublish");
+		const posts = vi.spyOn(provider, "postReview");
+		const statuses = vi.spyOn(provider, "setStatus");
+		const publisher = await PublishHarness.open(await openSqliteStorage(path), createFakeModels().review, provider);
+		opened.push(publisher.harness);
+		await expect(
+			publishReview({
+				harness: publisher.harness,
+				provider,
+				changeset,
+				pullRequest: await provider.pullRequest(7),
+				base: changeset.revision.base,
+				trustedWriters: false,
+			}),
+		).rejects.toMatchObject({ code: "notReviewed" });
+		await publisher.harness.waitForIdle(context);
+		const done = await publisher.harness.waitForTask(pending.record.id, context);
+		expect(done.state.outcome).toMatchObject({
+			status: "completed",
+			result: { kind: "superseded", reason: `review is in progress for ${revision}; publish again` },
+		});
+		expect(begin).not.toHaveBeenCalled();
+		expect(posts).not.toHaveBeenCalled();
+		expect(statuses).not.toHaveBeenCalled();
+		expect(state.reviews).toEqual([]);
+		expect(state.statuses).toEqual([]);
 	},
 );

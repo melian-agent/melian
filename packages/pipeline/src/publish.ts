@@ -615,8 +615,12 @@ function publishTask(provider: ReviewProvider) {
 					const reviewRounds = (await runtime.snapshot(RoundsDocument, root, context))!;
 					const storedRound = reviewRounds.items[target.roundId];
 					const currentReviewRound = reviewRounds.current[revision];
-					if (currentReviewRound !== target.roundId || storedRound?.verdict === undefined) {
-						const reason = `round ${target.roundId} is superseded or undecided; current round is ${currentReviewRound ?? "missing"}`;
+					const reviewing =
+						(await runtime.snapshot(ReviewIndex, root, context))?.reviews[revision]?.adjudication === undefined;
+					if (reviewing || currentReviewRound !== target.roundId || storedRound?.verdict === undefined) {
+						const reason = reviewing
+							? `review is in progress for ${revision}; publish again`
+							: `round ${target.roundId} is superseded or undecided; current round is ${currentReviewRound ?? "missing"}`;
 						await runtime.commit(async (tx) => {
 							await timing.end(tx);
 							return {
