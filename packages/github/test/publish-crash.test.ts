@@ -120,6 +120,53 @@ async function killAtReview(
 }
 
 describe("publishing across a crash", { timeout: 30_000 }, () => {
+	it("does not repost Alice's accepted review after a transient /user failure", async () => {
+		const database = join(dir, "review.sqlite");
+		const stateFile = join(dir, "github.json");
+		const log = join(dir, "publish.log");
+		const fake = scenarioModels();
+		const state = pullRequestState();
+		state.login = "alice";
+		harness = await openReviewOnlyHarness(await openSqliteStorage(database), fake);
+		const { changeset, review } = await reviewScenario(repo, harness, fake, lensScript(unsafeManager));
+		await review;
+		await harness.close(context);
+		harness = undefined;
+		moveTo(state, changeset);
+		writeFileSync(stateFile, JSON.stringify(state));
+		await killAtReview(database, stateFile, log);
+		const accepted = JSON.parse(readFileSync(stateFile, "utf8")) as FakeState;
+		accepted.reviews[0]!.user!.type = "User";
+		const transport = fakeGitHub(accepted);
+		let calls = 0;
+		const provider = createGitHubProvider({
+			owner: state.owner,
+			repo: state.repo,
+			token: "test",
+			fetch: async (input, init) => {
+				if (new URL(String(input)).pathname === "/user" && calls++ === 0)
+					return new Response("{}", { status: 502 });
+				return transport(input, init);
+			},
+		});
+		harness = (await openPublisher(await openSqliteStorage(database), scenarioModels().review, provider)).harness;
+		const pullRequest = await provider.pullRequest(7);
+		const publish = () =>
+			publishReview({
+				trustedWriters: true,
+				harness: harness!,
+				provider,
+				changeset,
+				pullRequest,
+				base: changeset.revision.base,
+			});
+		await expect(publish()).rejects.toMatchObject({ status: 502 });
+		expect(accepted.reviews).toHaveLength(1);
+		const result = await publish();
+		expect(result).toMatchObject({ review: String(accepted.reviews[0]!.id), posted: 0 });
+		expect(accepted.reviews).toHaveLength(1);
+	});
+
 	it("keeps a reused thread open when a crash left an older resolution at the same head", async () => {
 		const database = join(dir, "review.sqlite");
 		const stateFile = join(dir, "github.json");
@@ -276,18 +323,39 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 			base: changeset.revision.base,
 			trustedWriters: true,
 		});
-		expect(result.superseded).toEqual([]);
+		expect(result.superseded).toEqual(
+			file === "publish-v1.json" ? [{ task: String(task), reason: "publisher login changed" }] : [],
+		);
 		expect(await harness.getTask(task, context)).toMatchObject({
 			version: 5,
 			input: { publishedBy: { trustedWriters: true } },
 			state: {
 				status: "terminal",
-				outcome: { status: "completed", result: { kind: "published", review: String(state.reviews[0]!.id) } },
+				outcome: {
+					status: "completed",
+					result:
+						file === "publish-v1.json"
+							? { kind: "superseded", reason: "publisher login changed" }
+							: { kind: "published", review: String(state.reviews[0]!.id) },
+				},
 			},
 		});
 		expect((await readPublished(harness, root.id, changeset.revision.head, context))?.publishedBy).toMatchObject({
 			trustedWriters: true,
 		});
+		if (file === "publish-v1.json") {
+			expect(state.calls.filter(({ method, path }) => method === "POST" && path.endsWith("/reviews"))).toHaveLength(
+				1,
+			);
+			const tasks = await storage.scanTasks({ conversationId: root.id, kind: fixture.kind }, 10, undefined, context);
+			expect(tasks.items).toHaveLength(2);
+			const fresh = tasks.items.find(({ id }) => id !== task)!;
+			expect(fresh.state).toMatchObject({
+				status: "terminal",
+				outcome: { status: "completed", result: { kind: "published", review: result.review } },
+			});
+			expect((await readPublished(harness, root.id, changeset.revision.head, context))?.review).toBe(result.review);
+		}
 		const timing = await storage.findDocument(
 			{
 				kind: TimingDocument.definition.kind,

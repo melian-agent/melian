@@ -554,7 +554,8 @@ function publishTask(provider: ReviewProvider) {
 				const current = publisher?.publishedBy;
 				const trustChanged = publishedBy.trustedWriters !== current?.trustedWriters;
 				const attributionChanged = (["login", "permission", "authorPermission"] as const).find(
-					(field) => publishedBy[field] !== undefined && publishedBy[field] !== current?.[field],
+					(field) =>
+						(field === "login" || publishedBy[field] !== undefined) && publishedBy[field] !== current?.[field],
 				);
 				if (target === undefined || change !== undefined || trustChanged || attributionChanged !== undefined) {
 					const reason = trustChanged
@@ -622,10 +623,16 @@ function publishTask(provider: ReviewProvider) {
 					if (secret === undefined) throw new Error("the changeset has no publisher secret");
 					const markers = new Map<string, PublishedMarkers>();
 					// Reviews and roots match this head; answers span every head.
-					const marked = async ({ fingerprint, round }: { fingerprint: string; round: number }) => {
-						const key = `${fingerprint} ${round}`;
+					const marked = async (
+						{ fingerprint, round }: { fingerprint: string; round: number },
+						login: string | undefined,
+					) => {
+						const key = JSON.stringify([fingerprint, round, login]);
 						if (!markers.has(key))
-							markers.set(key, await provider.findPublished(pullRequest, head, { fingerprint, round }, secret));
+							markers.set(
+								key,
+								await provider.findPublished(pullRequest, head, { fingerprint, round }, secret, login),
+							);
 						return markers.get(key)!;
 					};
 					const verdict = await readVerdict(runtime, root, revision, context);
@@ -637,7 +644,11 @@ function publishTask(provider: ReviewProvider) {
 					// A pending round planned for another revision of this head, such as the pull request before a retarget,
 					// is dropped unless the provider already shows it, in which case the loop below records it as posted.
 					const left = (await read()).revisions[head]?.pending;
-					if (left !== undefined && left.revision !== revision && (await marked(left)).review === undefined) {
+					if (
+						left !== undefined &&
+						left.revision !== revision &&
+						(await marked(left, left.ledger?.publishedBy?.login)).review === undefined
+					) {
 						await runtime.commit(async (tx) => {
 							delete (await tx.doc(PublishedDocument, root)).revisions[head]!.pending;
 							return undefined;
@@ -651,7 +662,10 @@ function publishTask(provider: ReviewProvider) {
 						if (before?.pending === undefined) {
 							if (await postedVerdictOf(before, revision, head, [current, legacy], runtime, root, context))
 								break;
-							const found = await marked({ fingerprint: current, round: (before?.rounds ?? 0) + 1 });
+							const found = await marked(
+								{ fingerprint: current, round: (before?.rounds ?? 0) + 1 },
+								publishedBy.login,
+							);
 							const settled = new Set<string>();
 							const returning = verdict.held();
 							for (const entry of Object.values(unanswered(state))) {
@@ -695,11 +709,27 @@ function publishTask(provider: ReviewProvider) {
 								return undefined;
 							}, context);
 						}
-						const pending = (await read()).revisions[head]!.pending!;
+						let pending = (await read()).revisions[head]!.pending!;
 						result.stillOpen = pending.stillOpen;
-						const found = await marked(pending);
+						const found = await marked(pending, pending.ledger?.publishedBy?.login);
 						let posted: PostedReview;
 						if (found.review === undefined) {
+							if (pending.ledger?.publishedBy?.login !== publishedBy.login) {
+								await runtime.commit(async (tx) => {
+									const planned = (await tx.doc(PublishedDocument, root)).revisions[head]!.pending!;
+									if (planned.ledger === undefined)
+										planned.ledger = {
+											base,
+											head,
+											round: planned.round,
+											verdict: structuredClone(pending.verdict),
+											resolved: [],
+										};
+									planned.ledger.publishedBy = { ...publishedBy };
+									return undefined;
+								}, context);
+								pending = (await read()).revisions[head]!.pending!;
+							}
 							await revalidate();
 							posting = true;
 							posted = await provider.postReview({
@@ -804,8 +834,12 @@ function publishTask(provider: ReviewProvider) {
 								continue;
 							}
 							// Replies do not depend on the round, so any round's lookup serves; the last one is likely cached.
-							const found = (await marked({ fingerprint: record.verdict ?? "", round: record.rounds ?? 0 }))
-								.replies[key];
+							const found = (
+								await marked(
+									{ fingerprint: record.verdict ?? "", round: record.rounds ?? 0 },
+									record.publishedBy?.login,
+								)
+							).replies[key];
 							let recorded: string | null;
 							// A resolution marker proves the edit or reply, but an older reply left the thread open.
 							if (found === undefined || found === entry.thread) {
@@ -815,6 +849,7 @@ function publishTask(provider: ReviewProvider) {
 									{ ...entry, thread: entry.thread },
 									head,
 									secret,
+									...(entry.dismissal === undefined ? [closing.revisions[entry.revision]?.reviews ?? []] : []),
 								);
 								recorded = reply ?? null;
 								if (reply !== undefined) result.replies++;

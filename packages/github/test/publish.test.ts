@@ -146,7 +146,7 @@ describe("reading markers back", () => {
 			threads: { [finding]: "2" },
 			replies: { [`${finding} 2`]: "3", [`${finding} 2 ${version}`]: "4" },
 		});
-		await github.findPublished(7, head, wanted, secret);
+		await github.findPublished(7, head, wanted, secret, await github.login());
 		// One refused /user for the provider, not one for every marker.
 		expect(state.calls.filter((call) => call.path === "/user")).toHaveLength(1);
 	});
@@ -164,16 +164,22 @@ describe("reading markers back", () => {
 		// A thread's marker copied into a reply is not a reply's.
 		state.comments.push(comment(5, state.login, marker(head, "finding", finding, secret), 4));
 
-		expect(await providerFor(state).findPublished(7, head, wanted, secret)).toEqual(none);
+		expect(
+			await providerFor(state).findPublished(7, head, wanted, secret, state.failUser ? undefined : state.login),
+		).toEqual(none);
 	});
 
 	it("also requires the token's own user when it knows who that is", async () => {
 		const state = pullRequestState();
 		const signed = marker(head, "verdict", fingerprint, secret, { round: 1 });
 		state.reviews.push(review(1, "pull-request-author", signed));
-		expect(await providerFor(state).findPublished(7, head, wanted, secret)).toEqual(none);
+		expect(
+			await providerFor(state).findPublished(7, head, wanted, secret, state.failUser ? undefined : state.login),
+		).toEqual(none);
 		state.reviews.push(review(2, state.login, signed));
-		expect(await providerFor(state).findPublished(7, head, wanted, secret)).toMatchObject({ review: "2" });
+		expect(
+			await providerFor(state).findPublished(7, head, wanted, secret, state.failUser ? undefined : state.login),
+		).toMatchObject({ review: "2" });
 	});
 
 	it("takes the first post carrying a marker, since a copy can only follow Melian's", async () => {
@@ -183,7 +189,9 @@ describe("reading markers back", () => {
 		state.reviews.push(review(1, state.login, marker(head, "verdict", fingerprint, secret, { round: 1 })));
 		state.reviews[0]!.user!.type = "Bot";
 		state.comments.push(comment(1, state.login, signed), comment(2, "pull-request-author", signed));
-		expect(await providerFor(state).findPublished(7, head, wanted, secret)).toMatchObject({
+		expect(
+			await providerFor(state).findPublished(7, head, wanted, secret, state.failUser ? undefined : state.login),
+		).toMatchObject({
 			threads: { [finding]: "1" },
 		});
 	});
@@ -1142,7 +1150,13 @@ describe("cross-head answer discovery", () => {
 			{ ...root(6), body: answer, in_reply_to_id: 2 },
 			{ ...root(7), body: marker(old, "resolved", "fedcba9876543210", secret), in_reply_to_id: 99 },
 		);
-		const result = await providerFor(state).findPublished(7, head, wanted, secret);
+		const result = await providerFor(state).findPublished(
+			7,
+			head,
+			wanted,
+			secret,
+			state.failUser ? undefined : state.login,
+		);
 		expect(result).toEqual({
 			threads: {},
 			replies: { "fedcba9876543210 1": "1", "0123456789abcdef 2 00112233aabbccdd": "6" },
@@ -1166,7 +1180,9 @@ describe("cross-head answer discovery", () => {
 			in_reply_to_id: 1,
 			user: { login: "human" },
 		});
-		expect(await providerFor(state).findPublished(7, old, wanted, secret)).toEqual({
+		expect(
+			await providerFor(state).findPublished(7, old, wanted, secret, state.failUser ? undefined : state.login),
+		).toEqual({
 			threads: { [finding]: "1" },
 			replies: {},
 		});
@@ -1245,7 +1261,9 @@ describe("cross-head answer discovery", () => {
 		});
 		state.failUser = true;
 		state.comments.push({ ...root(1), body: marker(old, kind, "fedcba9876543210", secret) });
-		expect(await providerFor(state).findPublished(7, old, wanted, secret)).toEqual({ threads: {}, replies: {} });
+		expect(
+			await providerFor(state).findPublished(7, old, wanted, secret, state.failUser ? undefined : state.login),
+		).toEqual({ threads: {}, replies: {} });
 	});
 
 	it("filters signed roots from a foreign known author", async () => {
@@ -1258,7 +1276,9 @@ describe("cross-head answer discovery", () => {
 			event: "COMMENT",
 		});
 		state.comments.push({ ...root(1), user: { login: "human" } });
-		expect(await providerFor(state).findPublished(7, old, wanted, secret)).toEqual({ threads: {}, replies: {} });
+		expect(
+			await providerFor(state).findPublished(7, old, wanted, secret, state.failUser ? undefined : state.login),
+		).toEqual({ threads: {}, replies: {} });
 	});
 
 	it("recognises deletion only after GraphQL and REST both lack the root", async () => {
@@ -1288,7 +1308,9 @@ describe("cross-head answer discovery", () => {
 		state.restPageSize = 1;
 		state.failCommentPage = 2;
 		state.comments.push(root(1), root(2));
-		await expect(providerFor(state).findPublished(7, head, wanted, secret)).rejects.toMatchObject({ code: "failed" });
+		await expect(
+			providerFor(state).findPublished(7, head, wanted, secret, state.failUser ? undefined : state.login),
+		).rejects.toMatchObject({ code: "failed" });
 	});
 
 	it.each([
@@ -1308,7 +1330,9 @@ describe("cross-head answer discovery", () => {
 		state.restPageSize = 1;
 		state.comments.push(root(1), root(2));
 		state.commentPageResponse = response;
-		await expect(providerFor(state).findPublished(7, old, wanted, secret)).rejects.toMatchObject({ code: "failed" });
+		await expect(
+			providerFor(state).findPublished(7, old, wanted, secret, state.failUser ? undefined : state.login),
+		).rejects.toMatchObject({ code: "failed" });
 	});
 
 	it.each([
@@ -1387,7 +1411,9 @@ describe("cross-head answer discovery", () => {
 		const first = root(1);
 		first.body += `\n${marker(old, "resolved", "fedcba9876543210", secret, { dismissal: "00112233aabbccdd" })}`;
 		state.comments.push(first, { ...root(2), user: null });
-		expect(await providerFor(state).findPublished(7, old, wanted, secret)).toEqual({
+		expect(
+			await providerFor(state).findPublished(7, old, wanted, secret, state.failUser ? undefined : state.login),
+		).toEqual({
 			threads: { fedcba9876543210: "1" },
 			replies: {},
 		});
@@ -1406,7 +1432,7 @@ describe("cross-head answer discovery", () => {
 		state.comments.push(
 			...Array.from({ length: pages }, (_, index) => root(index + 1, index.toString(16).padStart(16, "0"))),
 		);
-		const result = providerFor(state).findPublished(7, old, wanted, secret);
+		const result = providerFor(state).findPublished(7, old, wanted, secret, state.failUser ? undefined : state.login);
 		if (pages === 50) expect(Object.keys((await result).threads)).toHaveLength(50);
 		else await expect(result).rejects.toMatchObject({ code: "failed" });
 	});
@@ -1457,6 +1483,7 @@ describe("cross-head answer discovery", () => {
 				},
 				head,
 				secret,
+				["1"],
 			),
 		).rejects.toMatchObject({ code: "notFound" });
 		expect(state.comments).toHaveLength(1);

@@ -24,6 +24,24 @@ function fixture() {
 }
 
 describe("publication response gaps", () => {
+	it("validates review records without interpreting comment-only links", async () => {
+		const { state, provider } = fixture();
+		const head = state.pull.head.sha;
+		const secret = "11".repeat(32);
+		const wanted = { fingerprint: "0123456789abcdef", round: 1 };
+		const review = {
+			id: 1,
+			user: { login: state.login, type: "Bot" },
+			body: marker(head, "verdict", wanted.fingerprint, secret, { round: 1 }),
+			commit_id: head,
+			event: "COMMENT",
+			pull_request_review_id: "not a comment",
+			in_reply_to_id: "not a comment",
+		};
+		state.reviews.push(review);
+		expect((await provider.findPublished(7, head, wanted, secret, state.login)).review).toBe("1");
+	});
+
 	it.each([
 		["missing repository", {}],
 		["deleted pull request", { repository: { pullRequest: null } }],
@@ -106,7 +124,9 @@ describe("publication response gaps", () => {
 			{ ...root, id: 2, body: answer, in_reply_to_id: 1, user: null },
 			{ ...root, id: 3, body: answer, in_reply_to_id: 1 },
 		);
-		expect(await provider.findPublished(7, head, { fingerprint: "0123456789abcdef", round: 1 }, secret)).toEqual({
+		expect(
+			await provider.findPublished(7, head, { fingerprint: "0123456789abcdef", round: 1 }, secret, state.login),
+		).toEqual({
 			review: "1",
 			threads: { [finding]: "1" },
 			replies: { [`${finding} 1`]: "3" },
@@ -255,16 +275,12 @@ describe("root review ownership", () => {
 				{ id: finding, ruleId: "unsafe", path: root.path, line: 1, revision: head, thread: String(root.id) },
 				head,
 				secret,
+				["1", "99"],
 			),
 		).toBeUndefined();
 		expect(root.body).not.toContain("Addressed in commit");
 		expect(state.resolvedThreads).toEqual([]);
-		expect(state.calls.map(({ path }) => path)).toEqual([
-			"/graphql",
-			"/repos/owner/repo/pulls/comments/2",
-			"/repos/owner/repo/pulls/7/reviews/3",
-			"/user",
-		]);
+		expect(state.calls.map(({ path }) => path)).toEqual(["/graphql", "/repos/owner/repo/pulls/comments/2"]);
 	});
 
 	it.each(["revision", "fingerprint", "round"])("keeps bot reviews with a distinct signed %s", async (field) => {
@@ -296,7 +312,7 @@ describe("root review ownership", () => {
 		review.user = { login: state.login, type: "User" };
 		state.reviews.unshift({ ...review, id: 3, user: { login: "other[bot]", type: "Bot" } });
 		state.comments.unshift({ ...root, id: 4, pull_request_review_id: 3, user: { login: "other[bot]", type: "Bot" } });
-		expect(await provider.findPublished(7, head, wanted, secret)).toEqual({
+		expect(await provider.findPublished(7, head, wanted, secret, state.login)).toEqual({
 			review: "1",
 			threads: { [finding]: "2" },
 			replies: {},
@@ -307,7 +323,7 @@ describe("root review ownership", () => {
 		const { state, provider, head, review } = ownership();
 		state.failUser = false;
 		state.reviews.unshift({ ...review, id: 3 });
-		expect(await provider.findPublished(7, head, wanted, secret)).toEqual({
+		expect(await provider.findPublished(7, head, wanted, secret, state.login)).toEqual({
 			review: "3",
 			threads: { [finding]: "2" },
 			replies: {},
@@ -346,6 +362,7 @@ describe("root review ownership", () => {
 					{ id: finding, ruleId: "unsafe", path: root.path, line: 1, revision: head, thread: String(root.id) },
 					head,
 					secret,
+					["1", "99"],
 				),
 			).toBeUndefined();
 			expect(root.body).not.toContain("Addressed in commit");
@@ -375,6 +392,7 @@ describe("root review ownership", () => {
 					{ id: finding, ruleId: "unsafe", path: root.path, line: 1, revision: head, thread: String(root.id) },
 					head,
 					secret,
+					["1", "99"],
 				),
 			).toBeUndefined();
 			expect(state.calls.filter(({ method }) => method === "PATCH")).toEqual([]);
@@ -391,6 +409,7 @@ describe("root review ownership", () => {
 				{ id: finding, ruleId: "unsafe", path: root.path, line: 1, revision: head, thread: String(root.id) },
 				head,
 				secret,
+				["1", "99"],
 			),
 		).toBe(String(root.id));
 		expect(root.body).toContain("Addressed in commit");
@@ -406,6 +425,7 @@ describe("root review ownership", () => {
 				{ id: finding, ruleId: "unsafe", path: root.path, line: 1, revision: head, thread: String(root.id) },
 				head,
 				secret,
+				["1", "99"],
 			),
 		).toBeUndefined();
 		expect(state.resolvedThreads).toEqual([]);
@@ -430,6 +450,28 @@ describe("root review ownership", () => {
 });
 
 describe("provider identity", () => {
+	it.each([undefined, null, "", 42, {}])("retries a successful response with an invalid login: %j", async (login) => {
+		const { state } = fixture();
+		const transport = fakeGitHub(state);
+		let calls = 0;
+		const provider = createGitHubProvider({
+			owner: state.owner,
+			repo: state.repo,
+			token: "test",
+			fetch: async (input, init) => {
+				if (new URL(String(input)).pathname === "/user" && calls++ === 0)
+					return new Response(JSON.stringify({ login }), {
+						status: 200,
+						headers: { "content-type": "application/json" },
+					});
+				return transport(input, init);
+			},
+		});
+		await expect(provider.login()).rejects.toThrow("GitHub returned no publisher login");
+		expect(await provider.login()).toBe(state.login);
+		expect(calls).toBe(2);
+	});
+
 	it("reads the pull request author and repository permission for each login", async () => {
 		const { state, provider } = fixture();
 		state.author = "contributor";
@@ -694,7 +736,7 @@ describe("publication record validation", () => {
 					: response;
 			},
 		});
-		await expect(provider.findPublished(7, head, wanted, secret)).rejects.toMatchObject({
+		await expect(provider.findPublished(7, head, wanted, secret, state.login)).rejects.toMatchObject({
 			code: "failed",
 			message: expect.stringContaining("incomplete publication page"),
 		});
@@ -737,7 +779,7 @@ describe("publication record validation", () => {
 					: response;
 			},
 		});
-		expect(await provider.findPublished(7, head, wanted, secret)).toEqual({
+		expect(await provider.findPublished(7, head, wanted, secret, state.login)).toEqual({
 			review: "1",
 			threads: { [finding]: "2" },
 			replies: { [`${finding} 2`]: "3" },
@@ -765,7 +807,7 @@ describe("publication record validation", () => {
 		};
 		state.comments.push({ ...root, id: 3, user: { login: "human" }, pull_request_review_id: null }, root);
 		if (link === undefined) Reflect.deleteProperty(state.comments[0]!, "pull_request_review_id");
-		expect(await provider.findPublished(7, head, wanted, secret)).toEqual({
+		expect(await provider.findPublished(7, head, wanted, secret, state.login)).toEqual({
 			review: "1",
 			threads: { fedcba9876543210: "2" },
 			replies: {},
@@ -792,10 +834,141 @@ describe("publication record validation", () => {
 			pull_request_review_id: 1,
 		};
 		state.comments.push(root, { ...root, id: 1, user: null, in_reply_to_id: root.id, body: "Deleted author" });
-		expect(await provider.findPublished(7, head, wanted, secret)).toEqual({
+		expect(await provider.findPublished(7, head, wanted, secret, state.login)).toEqual({
 			review: "1",
 			threads: { fedcba9876543210: String(root.id) },
 			replies: {},
 		});
+	});
+});
+
+describe("recorded publisher authority", () => {
+	const secret = "11".repeat(32);
+	const wanted = { fingerprint: "0123456789abcdef", round: 1 };
+	it.each([502, 401, 404, 429])("throws on /user %s and retries identity on the next call", async (status) => {
+		const { state } = fixture();
+		state.login = "alice";
+		const transport = fakeGitHub(state);
+		let calls = 0;
+		const provider = createGitHubProvider({
+			owner: state.owner,
+			repo: state.repo,
+			token: "test",
+			fetch: async (input, init) => {
+				if (new URL(String(input)).pathname === "/user" && calls++ === 0) return new Response("{}", { status });
+				return transport(input, init);
+			},
+		});
+		await expect(provider.login()).rejects.toMatchObject({ status });
+		expect(await provider.login()).toBe("alice");
+		expect(calls).toBe(2);
+	});
+	it.each<Record<string, string>>([{ "x-ratelimit-remaining": "0" }, { "retry-after": "1" }])(
+		"does not cache a rate-limited 403: %j",
+		async (headers) => {
+			const { state } = fixture();
+			const transport = fakeGitHub(state);
+			let calls = 0;
+			const provider = createGitHubProvider({
+				owner: state.owner,
+				repo: state.repo,
+				token: "test",
+				fetch: async (input, init) => {
+					if (new URL(String(input)).pathname === "/user" && calls++ === 0)
+						return new Response("{}", { status: 403, headers });
+					return transport(input, init);
+				},
+			});
+			await expect(provider.login()).rejects.toMatchObject({ status: 403 });
+			expect(await provider.login()).toBe(state.login);
+		},
+	);
+	it("caches a definite installation-token refusal", async () => {
+		const { state, provider } = fixture();
+		state.failUser = true;
+		expect(await provider.login()).toBeUndefined();
+		expect(await provider.login()).toBeUndefined();
+		expect(state.calls.filter(({ path }) => path === "/user")).toHaveLength(1);
+	});
+	it("rejects a missing login rather than treating it as an installation token", async () => {
+		const { state } = fixture();
+		const provider = createGitHubProvider({
+			owner: state.owner,
+			repo: state.repo,
+			token: "test",
+			fetch: async () => new Response("{}", { status: 200 }),
+		});
+		await expect(provider.login()).rejects.toThrow();
+	});
+	it.each(["personal copy", "repeated bot key"])(
+		"uses Bot and lowest id without a recorded publisher: %s",
+		async (kind) => {
+			const { state, provider } = fixture();
+			const head = state.pull.head.sha;
+			const review = {
+				id: 1,
+				user: { login: state.login, type: kind === "personal copy" ? "User" : "Bot" },
+				body: marker(head, "verdict", wanted.fingerprint, secret, { round: 1 }),
+				commit_id: head,
+				event: "COMMENT",
+			};
+			state.reviews.push({ ...review, id: 3, user: { login: "other[bot]", type: "Bot" } }, review);
+			expect((await provider.findPublished(7, head, wanted, secret)).review).toBe(
+				kind === "personal copy" ? "3" : "1",
+			);
+			expect(state.calls.filter(({ path }) => path === "/user")).toEqual([]);
+		},
+	);
+	it("recovers a recorded personal publisher while /user is transiently unavailable", async () => {
+		const { state } = fixture();
+		const head = state.pull.head.sha;
+		state.reviews.push({
+			id: 1,
+			user: { login: "alice", type: "User" },
+			body: marker(head, "verdict", wanted.fingerprint, secret, { round: 1 }),
+			commit_id: head,
+			event: "COMMENT",
+		});
+		const transport = fakeGitHub(state);
+		const provider = createGitHubProvider({
+			owner: state.owner,
+			repo: state.repo,
+			token: "test",
+			fetch: async (input, init) =>
+				new URL(String(input)).pathname === "/user" ? new Response("{}", { status: 502 }) : transport(input, init),
+		});
+		expect((await provider.findPublished(7, head, wanted, secret, "alice")).review).toBe("1");
+	});
+	it("refuses an addressed root when its review id was not recorded", async () => {
+		const { state, provider } = fixture();
+		const head = state.pull.head.sha;
+		const finding = "fedcba9876543210";
+		state.reviews.push({
+			id: 1,
+			user: { login: state.login, type: "Bot" },
+			body: marker(head, "verdict", wanted.fingerprint, secret, { round: 1 }),
+			commit_id: head,
+			event: "COMMENT",
+		});
+		state.comments.push({
+			id: 2,
+			user: { login: state.login, type: "Bot" },
+			body: marker(head, "finding", finding, secret),
+			path: "src/a.ts",
+			line: 1,
+			side: "RIGHT",
+			pull_request_review_id: 1,
+		});
+		expect(
+			await provider.replyResolved(
+				7,
+				{ id: finding, ruleId: "unsafe", path: "src/a.ts", line: 1, revision: head, thread: "2" },
+				head,
+				secret,
+			),
+		).toBeUndefined();
+		expect(state.resolvedThreads).toEqual([]);
+		expect(state.calls.filter(({ method }) => method === "PATCH")).toEqual([]);
+		expect(state.calls.filter(({ path }) => path === "/user")).toEqual([]);
 	});
 });

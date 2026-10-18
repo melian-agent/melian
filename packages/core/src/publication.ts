@@ -210,6 +210,7 @@ export interface ReviewProvider {
 		finding: ClosedFinding & { readonly thread: string },
 		revision: string,
 		secret: string,
+		reviews?: readonly string[],
 	): Promise<string | undefined>;
 	/** Whether a thread can be reused; resolved or deleted threads return false. Read lazily before reuse. */
 	isThreadOpen(pullRequest: number, comment: string): Promise<boolean>;
@@ -237,6 +238,7 @@ export interface ReviewProvider {
 		revision: string,
 		review: { readonly fingerprint: string; readonly round: number },
 		secret: string,
+		publisher?: string,
 	): Promise<PublishedMarkers>;
 }
 

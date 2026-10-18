@@ -4,7 +4,7 @@ The github package implements core's `ReviewProvider` port for GitHub through Oc
 
 ## Identity reads
 
-`pullRequest` carries its author login. `login()` reads `/user` once and remembers a refusal. `permission(login)` reads the collaborator permission endpoint for that repository. A refused lookup or unknown role reads as absent. Pull-request metadata also carries the head repository and the pushing actor from the first exact head-SHA and branch match across GitHub’s event pages. An absent match permits author fallback. A failed event read or an event without an actor records a writer error; the CLI refuses trust. GitHub maps maintain to write and triage to read in that endpoint's permission field.
+`pullRequest` carries its author login. `login()` caches a successful `/user` answer or a 403 without rate-limit exhaustion; other failures throw and remain retryable. `permission(login)` reads the collaborator permission endpoint for that repository. A refused permission lookup or unknown role reads as absent. Pull-request metadata also carries the head repository and the pushing actor from the first exact head-SHA and branch match across GitHub’s event pages. An absent match permits author fallback. A failed event read or an event without an actor records a writer error; the CLI refuses trust. GitHub maps maintain to write and triage to read in that endpoint's permission field.
 
 ## Posting
 
@@ -33,19 +33,23 @@ Writer trust off still gives the existing trusted-host error.
 Every post opens with a hidden marker on a line of its own: `<!-- melian:revision=<sha> <kind>=<id> sig=<signature> -->`. The kind is `finding` on a finding's comment and on each finding in a review's body, `verdict` on a review's body, `ledger` on the ledger comment, and `resolved` appended to an addressed finding's edited original comment or opening a dismissal reply. A ledger marker's ID hashes its hidden stamp. A reply that gives a dismissal also carries the dismissal's version, `resolved=<id> dismissal=<version>`, core's `dismissalVersion`, so a second reason for one finding is a reply of its own. `findPublished` reads answers across every head, while review and finding-root recovery still match the requested head. It returns each answer under core's `replyKey` of its finding, the thread GitHub reports as `in_reply_to_id`, and that version. The ID is the finding's, or for `verdict` the fingerprint of the verdict the review posts, because a second review of one head can change its verdict, and the publication of the new verdict is a review of its own. A review's marker also carries its round at the head, `verdict=<fingerprint> round=<n>`, and `findPublished` matches a review by both. Problem: a verdict can recur. Example: a head's verdict went A, then B when a check failed, then A again once it passed. The third publish found the first A review by its marker, recorded it instead of posting, and set A's status while the newest review on the pull request said B. Solution: each round has a number that only grows, and a review counts only for its own round. The signature is the first 32 hex digits of HMAC-SHA256, keyed with the changeset's publisher secret, over `<sha>|` and everything between the revision and `sig=`, such as `<kind>=<id>`; [the pipeline guideline](pipeline.md#publishing) says where the secret lives.
 
 `findPublished` lists every review and review comment before consuming their facts.
-When `/user` cannot identify the token, recovery accepts only signed reviews whose author has `user.type === "Bot"`.
+`findPublished` takes the pending ledger's recorded publisher login and never calls `login()`.
+A recorded login filters reviews by that author and preserves list order.
+With no recorded login, recovery accepts only signed reviews whose author has `user.type === "Bot"`.
 The lowest numeric review ID owns each signed key of revision, verdict fingerprint and round; later copies and their roots are ignored.
-Scanning reviews never sets the viewer. A known token author keeps the existing author filter and list order.
-With `/user` unknown, an unrecorded review posted earlier under a personal token is not recovered.
-A later copy by another bot is ignored through the lowest-ID rule, which `address()` does not apply.
-A copy by another bot with a lower ID wins: that bot can get one by editing an older review of its own, or by submitting a review it opened before Melian posted. Recovery then records that review as Melian's.
-A root must name that review through `pull_request_review_id`, carry its own valid finding marker and match the review's revision and author.
+A bot can win this fallback by copying the signed body into a lower-ID review of its own.
+A personal review without a recorded publisher is not recovered. Versions 4 to 6 lack that record and use the Bot fallback.
+Scanning reviews never sets the viewer. The marker cache includes the recorded login, including for retarget recovery.
+A root must name an accepted review through `pull_request_review_id`, carry its own valid finding marker and match the review's revision and author.
 A reply must match its root's author and finding ID. An addressed marker counts only in that root's body.
-A refused `/user` lookup alone approves no root or addressed edit.
-Before editing or resolving an addressed root, the provider reads its parent review and verifies the same binding.
+Before editing or resolving an addressed root, the provider requires its parent review ID among the originating head's recorded reviews.
+It then reads the parent and verifies the signed verdict, revision and root author without a login check.
 A removed finding marker retains the skip-edit and resolve behaviour within an owned review.
 Unsigned markers and copied roots in human reviews confer no ownership.
-The provider remembers a refused `/user` read, so an installation token asks only once.
+`login()` caches a definite login or a 403 without rate-limit exhaustion, including installation-token refusals.
+Other failures throw and are never cached, so publication fails before journalling and can be retried.
+A missing login in a successful response is a failure, not an installation token.
+The supersede check compares logins in both directions. Before a changed token posts a pending round, its publisher is committed into that round's ledger.
 
 Review and review-comment listings use Octokit's pagination authority, capped at 50 pages.
 GraphQL thread pages have the same cap and reject missing or repeated next cursors, partial nodes and GraphQL errors.
@@ -97,7 +101,7 @@ ReviewComment.render shows verification, its model, reason and optional correcti
 
 `Ledger.from(verdict, publication, options)` projects the durable rounds into one comment. Its `render` bounds the body and its `diff` compares the public stamp. The signed ledger marker names a hash of the hidden JSON stamp. The stamp holds the base, head, round, verdict, counts, lens versions, plan fingerprint and projection fingerprint. It carries no dismissal identity. Run details show the publisher login and permission, author permission and writer trust. Unknown reads remain unknown; logins render through `code`. A repeat by the same publisher leaves the stamp unchanged.
 
-`findLedger` finds issue comments across every head. It verifies the marker and stamp before returning the first ledger. Discovery ignores markers from another publisher. It fetches the recorded comment ID first and checks its author; an installation token uses the recorded ID and author when `/user` cannot identify it. Without a recorded ID, discovery scans ledger-looking comments only from a known author. The login or recorded ledger supplies that author, or publication supplies its review ID so the provider can read the review's author. An edited older comment holding a copied signed body cannot displace that author's ledger. Without an author source, publication creates a fresh ledger; a crash before recording it leaves an orphan to delete by hand.
+`findLedger` finds issue comments across every head. It verifies the marker and stamp before returning the first ledger. Discovery ignores markers from another publisher. It fetches the recorded comment ID first and checks its author; an installation token uses the recorded ID and author when `/user` cannot identify it. Without a recorded ID, discovery scans ledger-looking comments only from a known author. The recorded ledger author takes precedence over the login and supplies that author, or publication supplies its review ID so the provider can read the review's author. An edited older comment holding a copied signed body cannot displace that author's ledger. Without an author source, publication creates a fresh ledger; a crash before recording it leaves an orphan to delete by hand.
 
 Run details name each lens's route, the model it finished on, the standards sections it received, and the lineage the plan recorded when it left the committed route. The walkthrough, run details and earlier rounds use details blocks. File summaries form a table. A diagram's participants and messages pass a syntax allowlist before becoming Mermaid; other text renders through the prose escape. All finding text, paths, notes and reasons remain inert. Bare URLs, `www.`, email addresses and `GH-123` forms in model prose cannot render as autolinks. Summary file paths must belong to the changed files. The current round's warning and note sections use `renderReviewBody`, including both route departures and lenses that ran with a note.
 

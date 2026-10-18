@@ -109,6 +109,230 @@ describe("publication planning recovery", () => {
 		};
 	});
 
+	it("supersedes a task journalled without a login when Alice resumes it", async () => {
+		const input = {
+			...previous.input,
+			root: root.id,
+			publishedBy: { trustedWriters: true },
+			target: {
+				repository: `${state.owner}/${state.repo}`,
+				pullRequest: 7,
+				baseRef: state.pull.base.ref,
+				baseTip: state.pull.base.sha,
+				base: options.base,
+				head: state.pull.head.sha,
+				revision,
+			},
+			lines: options.changeset.revision.diffLines(),
+		};
+		const task = defineTask<typeof input, { phase: "publish" }, never>({
+			name: "melian.publish",
+			version: 4,
+			initial: () => ({ phase: "publish" }),
+			phases: {
+				publish: async () => {
+					throw new Error("must use installed task");
+				},
+			},
+			abort: async () => {
+				throw new Error("must use installed task");
+			},
+		});
+		await root.commit((tx) => tx.createTask(task, input, { ownership: { kind: "conversation" } }), context);
+		const result = await publishReview(options);
+		expect(result.superseded).toEqual([expect.objectContaining({ reason: "publisher login changed" })]);
+		expect(state.reviews).toHaveLength(1);
+	});
+	it.each([false, true])("recovers Alice's pending review through its ledger (retargeted: %s)", async (retargeted) => {
+		state.login = "alice";
+		state.failReviews = true;
+		await expect(publishReview(options)).rejects.toThrow();
+		state.failReviews = false;
+		const doc = (await harness!.snapshot(PublishedDocument, root.id, context))!;
+		const pending = doc.revisions[state.pull.head.sha]!.pending!;
+		const publisher = (await harness!.snapshot(PublisherDocument, root.id, context))!;
+		expect(pending.ledger!.publishedBy!.login).toBe("alice");
+		state.reviews.push({
+			id: 1,
+			user: { login: "alice", type: "User" },
+			body: marker(state.pull.head.sha, "verdict", pending.fingerprint, publisher.secret!, { round: pending.round }),
+			commit_id: state.pull.head.sha,
+			event: "COMMENT",
+		});
+		if (retargeted)
+			await root.commit(async (tx) => {
+				(await tx.doc(PublishedDocument, root.id)).revisions[state.pull.head.sha]!.pending!.revision =
+					`${old}..${state.pull.head.sha}`;
+			}, context);
+		vi.spyOn(provider, "login").mockResolvedValue(undefined);
+		state.failUser = true;
+		await publishReview(options);
+		expect(state.reviews).toHaveLength(retargeted ? 2 : 1);
+		expect(
+			(await harness!.snapshot(PublishedDocument, root.id, context))!.revisions[state.pull.head.sha]!.reviews[0],
+		).toBe("1");
+	});
+	it("records Bob before he posts so the next attempt recovers his review", async () => {
+		state.login = "alice";
+		state.failReviews = true;
+		await expect(publishReview(options)).rejects.toThrow();
+		state.failReviews = false;
+		vi.spyOn(provider, "login").mockResolvedValue("bob");
+		state.login = "bob";
+		const post = provider.postReview.bind(provider);
+		const interrupted = vi.spyOn(provider, "postReview").mockImplementationOnce(async (draft) => {
+			const pending = (await harness!.snapshot(PublishedDocument, root.id, context))!.revisions[state.pull.head.sha]!
+				.pending!;
+			expect(pending.ledger!.publishedBy!.login).toBe("bob");
+			await post(draft);
+			throw new Error("crash after Bob posted");
+		});
+		await expect(publishReview(options)).rejects.toThrow("crash after Bob posted");
+		interrupted.mockRestore();
+		await publishReview(options);
+		expect(state.reviews).toHaveLength(1);
+		expect(state.reviews[0]!.user!.login).toBe("bob");
+	});
+	it.each(["ledger", "publisher"])(
+		"recovers a retargeted legacy round with no %s through the Bot fallback",
+		async (missing) => {
+			state.failReviews = true;
+			await expect(publishReview(options)).rejects.toThrow();
+			state.failReviews = false;
+			const publisher = (await harness!.snapshot(PublisherDocument, root.id, context))!;
+			await root.commit(async (tx) => {
+				const pending = (await tx.doc(PublishedDocument, root.id)).revisions[state.pull.head.sha]!.pending!;
+				pending.revision = `${old}..${state.pull.head.sha}`;
+				if (missing === "ledger") delete pending.ledger;
+				else delete pending.ledger!.publishedBy;
+			}, context);
+			const pending = (await harness!.snapshot(PublishedDocument, root.id, context))!.revisions[state.pull.head.sha]!
+				.pending!;
+			state.reviews.push({
+				id: 1,
+				user: { login: "legacy[bot]", type: "Bot" },
+				body: marker(state.pull.head.sha, "verdict", pending.fingerprint, publisher.secret!, {
+					round: pending.round,
+				}),
+				commit_id: state.pull.head.sha,
+				event: "COMMENT",
+			});
+			await publishReview(options);
+			expect(state.reviews).toHaveLength(2);
+			expect(
+				(await harness!.snapshot(PublishedDocument, root.id, context))!.revisions[state.pull.head.sha]!.reviews[0],
+			).toBe("1");
+		},
+	);
+	it.each([false, true])(
+		"creates a missing pending ledger before a changed token posts (ledger exists: %s)",
+		async (exists) => {
+			state.failReviews = true;
+			await expect(publishReview(options)).rejects.toThrow();
+			state.failReviews = false;
+			const resolved = [
+				{
+					id: finding.id,
+					ruleId: finding.ruleId,
+					path: finding.properties.path,
+					line: 1,
+					commit: state.pull.head.sha,
+				},
+			];
+			await root.commit(async (tx) => {
+				const pending = (await tx.doc(PublishedDocument, root.id)).revisions[state.pull.head.sha]!.pending!;
+				if (exists) {
+					delete pending.ledger!.publishedBy;
+					pending.ledger!.resolved = resolved;
+				} else delete pending.ledger;
+			}, context);
+			const post = provider.postReview.bind(provider);
+			vi.spyOn(provider, "postReview").mockImplementationOnce(async (draft) => {
+				const pending = (await harness!.snapshot(PublishedDocument, root.id, context))!.revisions[
+					state.pull.head.sha
+				]!.pending!;
+				expect(pending.ledger).toEqual({
+					base: options.base,
+					head: state.pull.head.sha,
+					round: pending.round,
+					verdict: pending.verdict,
+					resolved: exists ? resolved : [],
+					publishedBy: {
+						trustedWriters: true,
+						login: state.login,
+						permission: "write",
+						authorPermission: "read",
+					},
+				});
+				return post(draft);
+			});
+			const write = provider.writeLedger.bind(provider);
+			vi.spyOn(provider, "writeLedger").mockImplementationOnce(async (draft) => {
+				expect((await harness!.snapshot(PublishedDocument, root.id, context))!.ledgerRounds!.at(-1)).toMatchObject({
+					publishedBy: { login: state.login },
+				});
+				return write(draft);
+			});
+			await publishReview(options);
+			expect(state.reviews).toHaveLength(1);
+		},
+	);
+	it("fails before journalling on a transient identity read", async () => {
+		vi.spyOn(provider, "login").mockRejectedValue(new Error("identity unavailable"));
+		await expect(publishReview(options)).rejects.toThrow("identity unavailable");
+		expect(await harness!.snapshot(PublisherDocument, root.id, context)).toBeUndefined();
+		expect(await harness!.snapshot(PublishedDocument, root.id, context)).toBeUndefined();
+		expect(state.reviews).toEqual([]);
+	});
+	it("keeps pending attribution when the login still matches", async () => {
+		state.failReviews = true;
+		await expect(publishReview(options)).rejects.toThrow();
+		state.failReviews = false;
+		await root.commit(async (tx) => {
+			(await tx.doc(PublishedDocument, root.id)).revisions[state.pull.head.sha]!.pending!.ledger!
+				.publishedBy!.permission = "read";
+		}, context);
+		const post = provider.postReview.bind(provider);
+		vi.spyOn(provider, "postReview").mockImplementationOnce(async (draft) => {
+			const pending = (await harness!.snapshot(PublishedDocument, root.id, context))!.revisions[state.pull.head.sha]!
+				.pending!;
+			expect(pending.ledger!.publishedBy!.permission).toBe("read");
+			return post(draft);
+		});
+		await publishReview(options);
+		expect(state.reviews).toHaveLength(1);
+	});
+	it("passes no review authority when an owed root names an unrecorded head", async () => {
+		await root.commit(async (tx) => {
+			const doc = await tx.doc(PublishedDocument, root.id);
+			doc.order = [old];
+			doc.revisions[old] = {
+				reviews: ["1"],
+				open: {},
+				resolved: {
+					[finding.id]: {
+						id: finding.id,
+						ruleId: finding.ruleId,
+						path: finding.properties.path,
+						line: 1,
+						revision: "unrecorded",
+						thread: "2",
+					},
+				},
+				replies: {},
+			};
+		}, context);
+		const answer = vi
+			.spyOn(provider, "replyResolved")
+			.mockImplementation(async (_pr, _finding, _revision, _secret, reviews) => {
+				expect(reviews).toEqual([]);
+				return undefined;
+			});
+		await publishReview(options);
+		expect(answer).toHaveBeenCalledOnce();
+		expect(state.resolvedThreads).toEqual([]);
+	});
+
 	it.each([
 		{ rounds: undefined, next: 1 },
 		{ rounds: 2, next: 3 },
@@ -485,7 +709,7 @@ describe("publication planning recovery", () => {
 			const doc = await tx.doc(PublishedDocument, root.id);
 			doc.order = [old];
 			doc.revisions[old] = {
-				reviews: ["old-review"],
+				reviews: ["1"],
 				open: {},
 				resolved: {
 					[finding.id]: {
@@ -583,7 +807,7 @@ it.each(["current", "pending", "failed task"])(
 					head: changeset.revision.head,
 					revision,
 				},
-				publishedBy: { trustedWriters: true },
+				publishedBy: { trustedWriters: true, login: state.login },
 				lines: changeset.revision.diffLines(),
 			};
 			const task = defineTask<typeof input, { phase: "publish" }, never>({

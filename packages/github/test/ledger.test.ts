@@ -1608,6 +1608,31 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 		expect(second.id).toBe(String(state.ledgers[0]!.id));
 	});
 
+	it.each([true, false])(
+		"prefers the recorded ledger author after a token switch (recorded exists: %s)",
+		async (exists) => {
+			const state = pullRequestState();
+			const body = Ledger.from(verdict, { rounds: [round] }, options).render(links);
+			const comment = { id: 17, user: { login: "alice" }, body, html_url: "https://example.test/17" };
+			state.ledgers.push(comment);
+			state.login = "bob";
+			state.ledgers.push({ ...comment, id: 18, user: { login: "bob" } });
+			const provider = createGitHubProvider({
+				owner: state.owner,
+				repo: state.repo,
+				token: "test",
+				fetch: fakeGitHub(state),
+			});
+			const recorded = {
+				id: exists ? "17" : "16",
+				url: comment.html_url,
+				stamp: Ledger.readStamp(body)!,
+				author: "alice",
+			};
+			expect((await provider.findLedger(7, secret, recorded))?.id).toBe("17");
+		},
+	);
+
 	it("never adopts a stranger's copy of the ledger when the recorded comment is gone and the login is unknown", async () => {
 		const state = pullRequestState();
 		state.failUser = true;

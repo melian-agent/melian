@@ -123,9 +123,7 @@ export class GitHubProvider implements ReviewProvider {
 	readonly repo: string;
 	private readonly octokit: Octokit;
 	private readonly links: RepositoryLinks;
-	// Who Melian posts as: from /user, or from the author of a review it posted. /user is asked once per provider, its
-	// failure remembered too: an installation token always fails it, and asking again for every marker cost one request
-	// each. A review posted later still teaches the viewer.
+	// Cache only a definite identity or installation-token refusal; transient failures must be retried.
 	private viewer: string | undefined;
 	private asked: Promise<void> | undefined;
 	private threads: Promise<Map<string, { id: string; isResolved: boolean }>> | undefined;
@@ -285,10 +283,12 @@ export class GitHubProvider implements ReviewProvider {
 		finding: ClosedFinding & { thread: string },
 		revision: string,
 		secret: string,
+		reviews: readonly string[] = [],
 	): Promise<string | undefined> {
 		await this.isThreadOpen(pullRequest, finding.thread);
 		try {
-			if (finding.dismissal === undefined) return await this.address(pullRequest, finding, revision, secret);
+			if (finding.dismissal === undefined)
+				return await this.address(pullRequest, finding, revision, secret, reviews);
 			const { data } = await call(`reply on pull request #${pullRequest}`, () =>
 				this.octokit.rest.pulls.createReplyForReviewComment({
 					owner: this.owner,
@@ -317,7 +317,7 @@ export class GitHubProvider implements ReviewProvider {
 			const comment = await this.recordedLedger(recorded);
 			// A 404 means the recorded comment is gone; a ledger created since may not be recorded yet, so scan for it.
 			if (comment !== undefined) {
-				const author = login ?? recorded.author;
+				const author = recorded.author ?? login;
 				if (
 					author === undefined ||
 					comment.user?.login !== author ||
@@ -330,7 +330,7 @@ export class GitHubProvider implements ReviewProvider {
 				return this.readLedger(comment, secret);
 			}
 		}
-		let author = login ?? recorded?.author;
+		let author = recorded?.author ?? login;
 		if (author === undefined && review !== undefined) {
 			const { data } = await call("read the publisher's review", () =>
 				this.octokit.rest.pulls.getReview({
@@ -439,6 +439,7 @@ export class GitHubProvider implements ReviewProvider {
 		finding: ClosedFinding & { thread: string },
 		revision: string,
 		secret: string,
+		reviews: readonly string[] = [],
 	): Promise<string | undefined> {
 		const { data } = await call("read the finding to address", () =>
 			this.octokit.rest.pulls.getReviewComment({
@@ -448,18 +449,20 @@ export class GitHubProvider implements ReviewProvider {
 			}),
 		);
 		const reviewId = data.pull_request_review_id;
-		if (reviewId === null) return undefined;
+		if (!reviews.includes(String(reviewId))) return undefined;
 		const { data: review } = await call("read the finding's review", () =>
 			this.octokit.rest.pulls.getReview({
 				owner: this.owner,
 				repo: this.repo,
 				pull_number: pullRequest,
-				review_id: reviewId,
+				review_id: Number(reviewId),
 			}),
 		);
-		const published = await this.reviewMarker(review, secret);
+		const published = parseMarker(firstLine(review.body));
 		if (
-			published?.revision !== finding.revision ||
+			published?.kind !== "verdict" ||
+			!verifyMarker(published, secret) ||
+			published.revision !== finding.revision ||
 			data.user?.login !== review.user?.login ||
 			data.in_reply_to_id != null
 		)
@@ -607,6 +610,7 @@ export class GitHubProvider implements ReviewProvider {
 		revision: string,
 		wanted: { readonly fingerprint: string; readonly round: number },
 		secret: string,
+		publisher?: string,
 	): Promise<PublishedMarkers> {
 		const page = { owner: this.owner, repo: this.repo, pull_number: pullRequest, per_page: 100 };
 		const [reviews, comments] = await Promise.all([
@@ -620,13 +624,12 @@ export class GitHubProvider implements ReviewProvider {
 		let review: string | undefined;
 		const owners = new Map<string, { marker: Marker; author: string }>();
 		const keys = new Set<string>();
-		const me = reviews.length > 0 ? await this.login() : undefined;
-		if (reviews.length > 0 && me === undefined) reviews.sort((a, b) => a.id - b.id);
+		if (publisher === undefined) reviews.sort((a, b) => a.id - b.id);
 		for (const each of reviews) {
-			const opening = await this.reviewMarker(each, secret);
+			const opening = this.reviewMarker(each, secret, publisher);
 			if (opening === undefined) continue;
 			const key = `${opening.revision}|${opening.id}|${opening.round}`;
-			if (me === undefined && keys.has(key)) continue;
+			if (publisher === undefined && keys.has(key)) continue;
 			keys.add(key);
 			owners.set(String(each.id), { marker: opening, author: each.user!.login });
 			if (opening.revision === revision && opening.id === wanted.fingerprint && opening.round === wanted.round)
@@ -693,24 +696,41 @@ export class GitHubProvider implements ReviewProvider {
 	}
 
 	async login(): Promise<string | undefined> {
-		this.asked ??= this.octokit.rest.users.getAuthenticated().then(
-			({ data }) => {
-				this.viewer ??= data.login;
-			},
-			() => {},
-		);
+		this.asked ??= this.octokit.rest.users
+			.getAuthenticated()
+			.then(
+				({ data }) => {
+					if (typeof data.login !== "string" || data.login.length === 0)
+						throw new GitHubError("failed", "GitHub returned no publisher login");
+					this.viewer = data.login;
+				},
+				(error: unknown) => {
+					const response = (error as { response?: { headers?: Record<string, string> } }).response;
+					if (
+						statusOf(error) === 403 &&
+						response?.headers?.["x-ratelimit-remaining"] !== "0" &&
+						response?.headers?.["retry-after"] === undefined
+					)
+						return;
+					throw failure("read the publisher login", error);
+				},
+			)
+			.catch((error: unknown) => {
+				this.asked = undefined;
+				throw error;
+			});
 		await this.asked;
 		return this.viewer;
 	}
 
-	private async reviewMarker(
+	private reviewMarker(
 		review: { body?: string | null; user: { login: string; type: string } | null },
 		secret: string,
-	): Promise<Marker | undefined> {
+		publisher: string | undefined,
+	): Marker | undefined {
 		const opening = parseMarker(firstLine(review.body));
 		if (opening?.kind !== "verdict" || !verifyMarker(opening, secret) || review.user === null) return undefined;
-		const me = await this.login();
-		if (me === undefined ? review.user.type !== "Bot" : review.user.login !== me) return undefined;
+		if (publisher === undefined ? review.user.type !== "Bot" : review.user.login !== publisher) return undefined;
 		return opening;
 	}
 }

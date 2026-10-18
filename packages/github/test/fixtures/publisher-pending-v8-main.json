@@ -1,0 +1,631 @@
+{
+  "recordedBy": "ac4e8c07, unchanged main source through publishReview",
+  "version": 8,
+  "published": {
+    "order": [
+      "a408d0c800bf1708b79cfe6a20b4c33f0dda0f15"
+    ],
+    "revisions": {
+      "a408d0c800bf1708b79cfe6a20b4c33f0dda0f15": {
+        "reviews": [],
+        "open": {},
+        "resolved": {},
+        "replies": {},
+        "publishedBy": {
+          "trustedWriters": true,
+          "login": "alice",
+          "permission": "write",
+          "authorPermission": "read"
+        },
+        "status": {
+          "state": "failure",
+          "description": "1 finding, 1 blocking, 0 unresolved acknowledgements"
+        },
+        "rounds": 1,
+        "pending": {
+          "revision": "66606bf090911fc7eaef9a6dd9c9b3ff1b6892bc..a408d0c800bf1708b79cfe6a20b4c33f0dda0f15",
+          "round": 1,
+          "fingerprint": "f3a80ad42c370d63",
+          "verdict": {
+            "status": "findings",
+            "blocking": true,
+            "findings": {
+              "block": [
+                {
+                  "ruleId": "null-dereference",
+                  "level": "error",
+                  "message": {
+                    "text": "manager may be absent."
+                  },
+                  "partialFingerprints": {
+                    "melian/v1": "4998b25271b2fd2e"
+                  },
+                  "locations": [
+                    {
+                      "physicalLocation": {
+                        "artifactLocation": {
+                          "uri": "src/user.ts"
+                        },
+                        "region": {
+                          "startLine": 7,
+                          "snippet": {
+                            "text": "\treturn (user.manager as User).name;"
+                          }
+                        }
+                      }
+                    }
+                  ],
+                  "properties": {
+                    "id": "4998b25271b2fd2e",
+                    "path": "src/user.ts",
+                    "occurrence": 0,
+                    "cause": "introduced",
+                    "trigger": {
+                      "file": "src/user.ts",
+                      "index": 0,
+                      "snippet": "\treturn (user.manager as User).name;",
+                      "hash": "99e7eff9d8a63b8a1e62246f9b4ee1e0c099e42a13bfa8a74bfefa993f867fde"
+                    },
+                    "severity": "P1",
+                    "explanation": {
+                      "what": "manager may be absent.",
+                      "whyHere": "manager may be absent. Why.",
+                      "whatToDo": "manager may be absent. Fix."
+                    },
+                    "source": {
+                      "check": "lens.correctness",
+                      "version": "18c49f913df8@careful"
+                    },
+                    "verification": {
+                      "verdict": "confirmed",
+                      "reason": "The scripted verifier traced the claim.",
+                      "answers": {
+                        "code": "yes",
+                        "guard": "no",
+                        "base": "no"
+                      },
+                      "executor": "llm",
+                      "model": "faux/scripted",
+                      "version": "4190289e598badf0"
+                    },
+                    "evidence": [
+                      {
+                        "file": "src/user.ts",
+                        "startLine": 7,
+                        "role": "cause",
+                        "revision": "head",
+                        "proves": true,
+                        "snippet": "\treturn (user.manager as User).name;"
+                      }
+                    ],
+                    "failureScenario": "manager may be absent. Scenario.",
+                    "status": "new",
+                    "reportedBy": [
+                      {
+                        "check": "lens.correctness",
+                        "version": "18c49f913df8@careful"
+                      }
+                    ],
+                    "resolution": "block",
+                    "decidedBy": {
+                      "check": "lens.correctness",
+                      "rule": "null-dereference",
+                      "requirement": {
+                        "entry": "built-in"
+                      }
+                    }
+                  }
+                }
+              ],
+              "acknowledge": [],
+              "advisory": [],
+              "silent": []
+            },
+            "dismissed": [],
+            "notRun": [
+              {
+                "name": "decisions.fast",
+                "status": "skipped",
+                "reason": "no decision provider is configured"
+              }
+            ],
+            "ran": [
+              {
+                "name": "guardrails",
+                "status": "ran"
+              },
+              {
+                "name": "static.biome",
+                "status": "ran"
+              },
+              {
+                "name": "static.tsc",
+                "status": "ran"
+              },
+              {
+                "name": "lens.contracts",
+                "status": "ran",
+                "level": "careful"
+              },
+              {
+                "name": "lens.correctness",
+                "status": "ran",
+                "level": "careful"
+              },
+              {
+                "name": "verifier",
+                "status": "ran",
+                "version": "4190289e598badf0"
+              }
+            ]
+          },
+          "post": [
+            {
+              "finding": {
+                "ruleId": "null-dereference",
+                "level": "error",
+                "message": {
+                  "text": "manager may be absent."
+                },
+                "partialFingerprints": {
+                  "melian/v1": "4998b25271b2fd2e"
+                },
+                "locations": [
+                  {
+                    "physicalLocation": {
+                      "artifactLocation": {
+                        "uri": "src/user.ts"
+                      },
+                      "region": {
+                        "startLine": 7,
+                        "snippet": {
+                          "text": "\treturn (user.manager as User).name;"
+                        }
+                      }
+                    }
+                  }
+                ],
+                "properties": {
+                  "id": "4998b25271b2fd2e",
+                  "path": "src/user.ts",
+                  "occurrence": 0,
+                  "cause": "introduced",
+                  "trigger": {
+                    "file": "src/user.ts",
+                    "index": 0,
+                    "snippet": "\treturn (user.manager as User).name;",
+                    "hash": "99e7eff9d8a63b8a1e62246f9b4ee1e0c099e42a13bfa8a74bfefa993f867fde"
+                  },
+                  "severity": "P1",
+                  "explanation": {
+                    "what": "manager may be absent.",
+                    "whyHere": "manager may be absent. Why.",
+                    "whatToDo": "manager may be absent. Fix."
+                  },
+                  "source": {
+                    "check": "lens.correctness",
+                    "version": "18c49f913df8@careful"
+                  },
+                  "verification": {
+                    "verdict": "confirmed",
+                    "reason": "The scripted verifier traced the claim.",
+                    "answers": {
+                      "code": "yes",
+                      "guard": "no",
+                      "base": "no"
+                    },
+                    "executor": "llm",
+                    "model": "faux/scripted",
+                    "version": "4190289e598badf0"
+                  },
+                  "evidence": [
+                    {
+                      "file": "src/user.ts",
+                      "startLine": 7,
+                      "role": "cause",
+                      "revision": "head",
+                      "proves": true,
+                      "snippet": "\treturn (user.manager as User).name;"
+                    }
+                  ],
+                  "failureScenario": "manager may be absent. Scenario.",
+                  "status": "new",
+                  "reportedBy": [
+                    {
+                      "check": "lens.correctness",
+                      "version": "18c49f913df8@careful"
+                    }
+                  ],
+                  "resolution": "block",
+                  "decidedBy": {
+                    "check": "lens.correctness",
+                    "rule": "null-dereference",
+                    "requirement": {
+                      "entry": "built-in"
+                    }
+                  }
+                }
+              },
+              "placement": {
+                "kind": "lines",
+                "startLine": 7,
+                "line": 7
+              }
+            }
+          ],
+          "stillOpen": 0,
+          "open": {
+            "4998b25271b2fd2e": {
+              "ruleId": "null-dereference",
+              "path": "src/user.ts",
+              "line": 7,
+              "revision": "a408d0c800bf1708b79cfe6a20b4c33f0dda0f15"
+            }
+          },
+          "resolved": {},
+          "refusals": 1,
+          "ledger": {
+            "publishedBy": {
+              "trustedWriters": true,
+              "login": "alice",
+              "permission": "write",
+              "authorPermission": "read"
+            },
+            "base": "66606bf090911fc7eaef9a6dd9c9b3ff1b6892bc",
+            "head": "a408d0c800bf1708b79cfe6a20b4c33f0dda0f15",
+            "round": 1,
+            "verdict": {
+              "status": "findings",
+              "blocking": true,
+              "findings": {
+                "block": [
+                  {
+                    "ruleId": "null-dereference",
+                    "level": "error",
+                    "message": {
+                      "text": "manager may be absent."
+                    },
+                    "partialFingerprints": {
+                      "melian/v1": "4998b25271b2fd2e"
+                    },
+                    "locations": [
+                      {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "src/user.ts"
+                          },
+                          "region": {
+                            "startLine": 7,
+                            "snippet": {
+                              "text": "\treturn (user.manager as User).name;"
+                            }
+                          }
+                        }
+                      }
+                    ],
+                    "properties": {
+                      "id": "4998b25271b2fd2e",
+                      "path": "src/user.ts",
+                      "occurrence": 0,
+                      "cause": "introduced",
+                      "trigger": {
+                        "file": "src/user.ts",
+                        "index": 0,
+                        "snippet": "\treturn (user.manager as User).name;",
+                        "hash": "99e7eff9d8a63b8a1e62246f9b4ee1e0c099e42a13bfa8a74bfefa993f867fde"
+                      },
+                      "severity": "P1",
+                      "explanation": {
+                        "what": "manager may be absent.",
+                        "whyHere": "manager may be absent. Why.",
+                        "whatToDo": "manager may be absent. Fix."
+                      },
+                      "source": {
+                        "check": "lens.correctness",
+                        "version": "18c49f913df8@careful"
+                      },
+                      "verification": {
+                        "verdict": "confirmed",
+                        "reason": "The scripted verifier traced the claim.",
+                        "answers": {
+                          "code": "yes",
+                          "guard": "no",
+                          "base": "no"
+                        },
+                        "executor": "llm",
+                        "model": "faux/scripted",
+                        "version": "4190289e598badf0"
+                      },
+                      "evidence": [
+                        {
+                          "file": "src/user.ts",
+                          "startLine": 7,
+                          "role": "cause",
+                          "revision": "head",
+                          "proves": true,
+                          "snippet": "\treturn (user.manager as User).name;"
+                        }
+                      ],
+                      "failureScenario": "manager may be absent. Scenario.",
+                      "status": "new",
+                      "reportedBy": [
+                        {
+                          "check": "lens.correctness",
+                          "version": "18c49f913df8@careful"
+                        }
+                      ],
+                      "resolution": "block",
+                      "decidedBy": {
+                        "check": "lens.correctness",
+                        "rule": "null-dereference",
+                        "requirement": {
+                          "entry": "built-in"
+                        }
+                      }
+                    }
+                  }
+                ],
+                "acknowledge": [],
+                "advisory": [],
+                "silent": []
+              },
+              "dismissed": [],
+              "notRun": [
+                {
+                  "name": "decisions.fast",
+                  "status": "skipped",
+                  "reason": "no decision provider is configured"
+                }
+              ],
+              "ran": [
+                {
+                  "name": "guardrails",
+                  "status": "ran"
+                },
+                {
+                  "name": "static.biome",
+                  "status": "ran"
+                },
+                {
+                  "name": "static.tsc",
+                  "status": "ran"
+                },
+                {
+                  "name": "lens.contracts",
+                  "status": "ran",
+                  "level": "careful"
+                },
+                {
+                  "name": "lens.correctness",
+                  "status": "ran",
+                  "level": "careful"
+                },
+                {
+                  "name": "verifier",
+                  "status": "ran",
+                  "version": "4190289e598badf0"
+                }
+              ]
+            },
+            "details": {
+              "policy": "revision:66606bf090911fc7eaef9a6dd9c9b3ff1b6892bc",
+              "manifest": [
+                "guardrails",
+                "static.biome",
+                "static.tsc",
+                "decisions.fast",
+                "lens.correctness",
+                "lens.contracts",
+                "verifier"
+              ],
+              "lenses": [
+                {
+                  "name": "contracts",
+                  "version": "dd8fb36095b4",
+                  "level": "careful",
+                  "models": [
+                    "faux/scripted"
+                  ],
+                  "standards": [],
+                  "ran": "faux/scripted",
+                  "usage": {
+                    "models": [
+                      "faux/scripted"
+                    ],
+                    "tokens": 6421,
+                    "cost": 0
+                  },
+                  "budget": {
+                    "findings": 8,
+                    "tokens": 200000,
+                    "tools": 30
+                  }
+                },
+                {
+                  "name": "correctness",
+                  "version": "18c49f913df8",
+                  "level": "careful",
+                  "models": [
+                    "faux/scripted"
+                  ],
+                  "standards": [],
+                  "ran": "faux/scripted",
+                  "usage": {
+                    "models": [
+                      "faux/scripted"
+                    ],
+                    "tokens": 10538,
+                    "cost": 0
+                  },
+                  "budget": {
+                    "findings": 8,
+                    "tokens": 200000,
+                    "tools": 30
+                  }
+                }
+              ],
+              "standards": []
+            },
+            "resolved": []
+          }
+        }
+      }
+    }
+  },
+  "publisher": {
+    "secret": "a52d605d699921c04916ec99bb0d959d903395bcfbab3818004616ccb5236d4c",
+    "target": {
+      "repository": "melian-agent/example",
+      "pullRequest": 7,
+      "baseRef": "main",
+      "baseTip": "66606bf090911fc7eaef9a6dd9c9b3ff1b6892bc",
+      "base": "66606bf090911fc7eaef9a6dd9c9b3ff1b6892bc",
+      "head": "a408d0c800bf1708b79cfe6a20b4c33f0dda0f15",
+      "revision": "66606bf090911fc7eaef9a6dd9c9b3ff1b6892bc..a408d0c800bf1708b79cfe6a20b4c33f0dda0f15"
+    },
+    "publishedBy": {
+      "trustedWriters": true,
+      "login": "alice",
+      "permission": "write",
+      "authorPermission": "read"
+    }
+  },
+  "github": {
+    "owner": "melian-agent",
+    "repo": "example",
+    "login": "alice",
+    "pull": {
+      "number": 7,
+      "title": "Trim names",
+      "base": {
+        "ref": "main",
+        "sha": "66606bf090911fc7eaef9a6dd9c9b3ff1b6892bc"
+      },
+      "head": {
+        "ref": "feature",
+        "sha": "a408d0c800bf1708b79cfe6a20b4c33f0dda0f15"
+      }
+    },
+    "lines": {
+      "src/user.ts": [
+        [
+          7,
+          7
+        ]
+      ]
+    },
+    "reviews": [
+      {
+        "id": 1001,
+        "user": {
+          "login": "alice",
+          "type": "User"
+        },
+        "body": "<!-- melian:revision=a408d0c800bf1708b79cfe6a20b4c33f0dda0f15 verdict=f3a80ad42c370d63 round=1 sig=4ec4374acf0fcdb6b37e9792ab477c3d -->\nMelian reviewed `a408d0c800bf`: **findings, blocking**.\n\n1 finding needs attention: 1 block. Verification: 1 confirmed, 0 plausible, 0 refuted, 0 unverified; 0 refuted findings not posted.\n\nmelian/review: failure (1 finding, 1 blocking, 0 unresolved acknowledgements).\n\nChecks that did not run:\n\n- `decisions.fast` skipped: no decision provider is configured",
+        "commit_id": "a408d0c800bf1708b79cfe6a20b4c33f0dda0f15",
+        "event": "COMMENT"
+      }
+    ],
+    "comments": [
+      {
+        "path": "src/user.ts",
+        "line": 7,
+        "side": "RIGHT",
+        "body": "<!-- melian:revision=a408d0c800bf1708b79cfe6a20b4c33f0dda0f15 finding=4998b25271b2fd2e sig=912082b44ae5a04ce3728dcb85ecda1c -->\nVerification: **confirmed**\n\n**Verified:** `faux/scripted`: The scripted verifier traced the claim.\n\n**P1** `null-dereference` (introduced, block)\n\n**What:** manager may be absent.\n\n**Why here:** manager may be absent. Why.\n\n**Failure scenario:** manager may be absent. Scenario.\n\n**Evidence:**\n\n- cause: [`src/user.ts` line 7](https://github.com/melian-agent/example/blob/a408d0c800bf1708b79cfe6a20b4c33f0dda0f15/src/user.ts#L7)\n\n**What to do:** manager may be absent. Fix.",
+        "id": 1002,
+        "user": {
+          "login": "alice",
+          "type": "User"
+        },
+        "pull_request_review_id": 1001
+      }
+    ],
+    "ledgers": [],
+    "resolvedThreads": [],
+    "statuses": [
+      {
+        "sha": "a408d0c800bf1708b79cfe6a20b4c33f0dda0f15",
+        "state": "failure",
+        "description": "1 finding, 1 blocking, 0 unresolved acknowledgements",
+        "context": "melian/review"
+      }
+    ],
+    "nextId": 1003,
+    "calls": [
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/pulls/7"
+      },
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/events"
+      },
+      {
+        "method": "GET",
+        "path": "/user"
+      },
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/collaborators/alice/permission"
+      },
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/collaborators/pr-author/permission"
+      },
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/pulls/7"
+      },
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/events"
+      },
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/commits/a408d0c800bf1708b79cfe6a20b4c33f0dda0f15/statuses"
+      },
+      {
+        "method": "POST",
+        "path": "/repos/melian-agent/example/statuses/a408d0c800bf1708b79cfe6a20b4c33f0dda0f15",
+        "body": {
+          "state": "failure",
+          "description": "1 finding, 1 blocking, 0 unresolved acknowledgements",
+          "context": "melian/review"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/pulls/7/reviews"
+      },
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/pulls/7/comments"
+      },
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/pulls/7"
+      },
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/events"
+      },
+      {
+        "method": "POST",
+        "path": "/repos/melian-agent/example/pulls/7/reviews",
+        "body": {
+          "commit_id": "a408d0c800bf1708b79cfe6a20b4c33f0dda0f15",
+          "event": "COMMENT",
+          "body": "<!-- melian:revision=a408d0c800bf1708b79cfe6a20b4c33f0dda0f15 verdict=f3a80ad42c370d63 round=1 sig=4ec4374acf0fcdb6b37e9792ab477c3d -->\nMelian reviewed `a408d0c800bf`: **findings, blocking**.\n\n1 finding needs attention: 1 block. Verification: 1 confirmed, 0 plausible, 0 refuted, 0 unverified; 0 refuted findings not posted.\n\nmelian/review: failure (1 finding, 1 blocking, 0 unresolved acknowledgements).\n\nChecks that did not run:\n\n- `decisions.fast` skipped: no decision provider is configured",
+          "comments": [
+            {
+              "path": "src/user.ts",
+              "line": 7,
+              "side": "RIGHT",
+              "body": "<!-- melian:revision=a408d0c800bf1708b79cfe6a20b4c33f0dda0f15 finding=4998b25271b2fd2e sig=912082b44ae5a04ce3728dcb85ecda1c -->\nVerification: **confirmed**\n\n**Verified:** `faux/scripted`: The scripted verifier traced the claim.\n\n**P1** `null-dereference` (introduced, block)\n\n**What:** manager may be absent.\n\n**Why here:** manager may be absent. Why.\n\n**Failure scenario:** manager may be absent. Scenario.\n\n**Evidence:**\n\n- cause: [`src/user.ts` line 7](https://github.com/melian-agent/example/blob/a408d0c800bf1708b79cfe6a20b4c33f0dda0f15/src/user.ts#L7)\n\n**What to do:** manager may be absent. Fix."
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

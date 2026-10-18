@@ -57,6 +57,7 @@ describe.each([true, false])("ownership after a root's marker changes (unknown u
 					{ id: finding, ruleId: "unsafe", path: "src/a.ts", line: 1, revision, thread: "2" },
 					revision,
 					secret,
+					["1"],
 				),
 			).toBeUndefined();
 			expect(state.resolvedThreads).toEqual([]);
@@ -72,6 +73,7 @@ describe.each([true, false])("ownership after a root's marker changes (unknown u
 				{ id: finding, ruleId: "unsafe", path: "src/a.ts", line: 1, revision, thread: "2" },
 				revision,
 				secret,
+				["1"],
 			),
 		).toBeUndefined();
 		expect(state.resolvedThreads).toEqual([2]);

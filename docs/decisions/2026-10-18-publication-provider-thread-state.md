@@ -96,13 +96,25 @@ Fixtures written by the version-7 publisher and main at `942fe6c0` prove SQLite 
 
 A copied finding marker in a human-started review no longer establishes a Melian root.
 Discovery binds each root's `pull_request_review_id` to a verified verdict marker and that review's author and revision.
-A known token author still filters reviews.
-When `/user` is unavailable, the first valid signed review establishes the publisher; later copies by another author fail that filter.
-An unavailable identity never approves every author.
+Recovery takes its author from the pending round's `ledger.publishedBy.login`, including after a retarget.
+It never derives that author from the current token or the revision's latest status attribution.
+With no recorded login, only Bot reviews qualify; the lowest numeric review ID owns each signed revision, verdict and round key.
+A later copy and its roots are ignored. A lower-ID bot copy can still win this legacy fallback.
+Versions 4 to 6 have no recorded publisher and use that fallback.
+The marker cache includes the recorded login.
 
-Addressed work reads the root's parent review and verifies the same binding before editing or resolving it.
+`login()` caches a definite login or a 403 refusal without rate-limit exhaustion.
+Other failures throw before publication journals a task and remain retryable.
+An interrupted task is superseded when its login differs in either direction, undefined included.
+Legacy tasks with no recorded login are superseded once under a known login because they cannot prove who posted for them.
+Before posting a pending round under a changed token, publication commits the current publisher into its pending ledger.
+That record names the last token that might have posted, even if the next step crashes.
+
+Addressed work requires the root's parent review ID among the originating head's recorded reviews.
+It then verifies the signed parent verdict, revision and matching root author without consulting `/user`.
 A missing, unsigned or foreign parent cannot authorise either action.
 This adds one REST review read per addressed thread; marker discovery still uses its existing paginated listings.
+Ledger recovery prefers the recorded ledger author over the current token.
 A removed finding marker retains the earlier skip-edit and resolve behaviour within an owned review.
 The ownership tests cover copied roots, copied reviews, author and revision mismatches, invalid signatures and deleted authors.
 Installation-token recovery and addressed edits still work through valid signed reviews.
