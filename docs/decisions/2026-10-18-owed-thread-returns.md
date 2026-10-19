@@ -54,6 +54,7 @@ If the edit landed but resolution did not, resolve that old thread on the next p
 A returning finding gets a new thread; the old thread's resolution depends on its assignment, not the finding ID.
 A reopened dismissal also gets a new thread, even when the old dismissal reply is still owed.
 Dismissal replies keep their existing behaviour: they do not resolve threads.
+When a dismissal reason changes, the commit that queues the new reason on a thread drops every earlier reason for that thread that no reply carried, in the journal or on GitHub. An answered reason stays as history. Only the current reason reaches the reply loop, as when resolutions were keyed by finding.
 
 ## Publisher identity stays as main has it
 
