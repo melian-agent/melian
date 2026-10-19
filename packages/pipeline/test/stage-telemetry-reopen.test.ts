@@ -137,7 +137,7 @@ it.each(["melian.check", "melian.decision", "melian.adjudication", "melian.publi
 		expect(settled.state.outcome.status).toBe(kind === "melian.adjudication" ? "failed" : "completed");
 		const record = await storage.task(id, context);
 		expect(record!.version).toBe(
-			{ "melian.check": 3, "melian.decision": 2, "melian.adjudication": 5, "melian.publish": 5 }[kind],
+			{ "melian.check": 3, "melian.decision": 2, "melian.adjudication": 5, "melian.publish": 6 }[kind],
 		);
 		const timing = await storage.findDocument(
 			{
@@ -251,7 +251,7 @@ it.each([
 		readFileSync(new URL("./fixtures/stage-telemetry-previous/untrusted-publication.json", import.meta.url), "utf8"),
 	) as {
 		version: number;
-		input: JsonObject & { publishedBy: JsonObject };
+		input: JsonObject & { publishedBy: JsonObject; target: JsonObject };
 		state: { checkpoint: { phase: string } & JsonObject };
 	};
 	const directory = realpathSync(mkdtempSync(join(tmpdir(), "melian-publisher-reopen-")));

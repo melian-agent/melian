@@ -408,7 +408,7 @@ describe("ledger document migration", () => {
 		harness = await open();
 		root = await harness.root(context);
 		expect(await harness.snapshot(PublisherDocument, root.id, context)).toEqual(expected);
-		await expect(harness.snapshot(previous, root.id, context)).rejects.toThrow(/newer version 2 than 1/);
+		await expect(harness.snapshot(previous, root.id, context)).rejects.toThrow(/newer version 3 than 1/);
 	});
 
 	it("migrates version 4 fallback notes and prunes old ledger detail after reopening", async () => {

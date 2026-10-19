@@ -52,6 +52,7 @@ import {
 	upsertVerification,
 } from "../src/findings.ts";
 import { PublishedDocument, PublisherDocument } from "../src/publish.ts";
+import { RecordedReview, recordedReviewTask } from "./fixtures/recorded-review.ts";
 import { baseAndHead, lines } from "./fixtures/repo.ts";
 
 const input: FindingInput = {
@@ -93,9 +94,9 @@ afterEach(async () => {
 	rmSync(dir, { recursive: true, force: true });
 });
 
-async function open(storage: Storage) {
+async function open(storage: Storage, registry = createRegistry()) {
 	const fake = createFakeModels();
-	const harness = await openHarness(storage, { models: fake.models, registry: createRegistry() });
+	const harness = await openHarness(storage, { models: fake.models, registry });
 	opened.push(harness);
 	return { harness, root: await harness.root(context, { agent: { model: fake.ref() } }) };
 }
@@ -1279,6 +1280,11 @@ describe("documents stored before evidence became a list", () => {
 	});
 
 	describe("publishing a head once per revision, across the upgrade", () => {
+		function reviewRegistry() {
+			const registry = createRegistry();
+			registry.install({ name: "test.recorded-reviews", tasks: [recordedReviewTask] });
+			return registry;
+		}
 		const head = "a".repeat(40);
 		const baseA = "b".repeat(40);
 		const baseB = "c".repeat(40);
@@ -1360,7 +1366,7 @@ describe("documents stored before evidence became a list", () => {
 		// `reviewed`, then publishes `base`..H with the current Melian.
 		async function publishAfterUpgrade(reviewed: string[], base: string) {
 			const path = join(dir, "legacy-published.sqlite");
-			const first = await open(await openSqliteStorage(path));
+			const first = await open(await openSqliteStorage(path), reviewRegistry());
 			await first.root.commit(async (tx) => {
 				const verdicts = await tx.doc(LegacyVerdicts, first.root.id);
 				verdicts.verdicts = json(Object.fromEntries(reviewed.map((each) => [`${each}..${head}`, oldVerdict])));
@@ -1382,6 +1388,7 @@ describe("documents stored before evidence became a list", () => {
 				});
 				(await tx.doc(PublisherDocument, first.root.id)).secret = "11".repeat(32);
 			}, context);
+			for (const base of reviewed) await new RecordedReview(first.harness).record(`${base}..${head}`);
 			await first.harness.close(context);
 
 			const { provider, posted, pullRequest } = fakeProvider(base);
@@ -1417,7 +1424,7 @@ describe("documents stored before evidence became a list", () => {
 		it("posts a review of a retargeted revision whose verdict matches the one published under the old base", async () => {
 			const path = join(dir, "published.sqlite");
 			const verdict = Verdict.upgrade(oldVerdict as unknown as StoredVerdict);
-			const first = await open(await openSqliteStorage(path));
+			const first = await open(await openSqliteStorage(path), reviewRegistry());
 			await first.root.commit(async (tx) => {
 				const verdicts = await tx.doc(VerdictDocument, first.root.id);
 				for (const base of [baseA, baseB]) {
@@ -1429,6 +1436,7 @@ describe("documents stored before evidence became a list", () => {
 				}
 				(await tx.doc(PublisherDocument, first.root.id)).secret = "11".repeat(32);
 			}, context);
+			for (const base of [baseA, baseB]) await new RecordedReview(first.harness).record(`${base}..${head}`);
 			await first.harness.close(context);
 			const publishAt = async (base: string) => {
 				const { provider, posted, pullRequest } = fakeProvider(base);

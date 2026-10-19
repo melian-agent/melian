@@ -44,6 +44,7 @@ import { clearSightings } from "../src/findings.ts";
 import { lensReadTools, reviewFiles } from "../src/lens-tools.ts";
 import { hasCredentials } from "../src/models.ts";
 import { ReviewIndex } from "../src/review-index.ts";
+import { RoundsDocument } from "../src/rounds.ts";
 import { startVerification, type VerificationInput, VerificationTask } from "../src/verification.ts";
 import { verifierMarker, verifierVersion } from "../src/verification-instructions.ts";
 import { baseAndHead, gitIn } from "./fixtures/repo.ts";
@@ -1461,6 +1462,7 @@ describe("the verifier", () => {
 		const root = await harness.root(context);
 		const revision = revisionKey(changeset.revision);
 		const before = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!;
+		expect((await harness.snapshot(RoundsDocument, root.id, context))?.sequence).toBe(1);
 		await expect(review()).rejects.toMatchObject({ code: "verifierFailed" });
 		expect(requests[verifierMarker]).toHaveLength(2);
 		const rerunRequests = scripts();
@@ -1473,6 +1475,7 @@ describe("the verifier", () => {
 		expect(rerunRequests[verifierMarker]).toHaveLength(2);
 		expect(result.findings[0]!.properties.verification?.verdict).toBe("confirmed");
 		expect(result.verdict.ran?.find((check) => check.name === "verifier")?.status).toBe("ran");
+		expect((await harness.snapshot(RoundsDocument, root.id, context))?.sequence).toBe(2);
 	});
 	it("unlocks primary and cross-provider fallback credentials before the first verifier request", async () => {
 		const fallback = createFakeModels({ provider: "verifier-backup", models: [{ id: "backup" }] }, fake.review);

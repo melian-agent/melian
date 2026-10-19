@@ -58,6 +58,7 @@ import { AdjudicationTask, adjudicationInput } from "../src/adjudication.ts";
 import { EnclosingFunctions } from "../src/enclosing-functions.ts";
 import { strykerNotInstalled } from "../src/mutation-static.ts";
 import { ReviewIndex } from "../src/review-index.ts";
+import { RoundsDocument } from "../src/rounds.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines, writeFiles } from "./fixtures/repo.ts";
 import { twoLensTiers, withBudget } from "./fixtures/review-scenario.ts";
 
@@ -2692,7 +2693,9 @@ describe("adjudication", () => {
 		]);
 		await expect(reviewed()).rejects.toMatchObject({ code: "lensFailed" });
 		const calls = fake.provider.state.callCount;
+		expect((await harness.snapshot(RoundsDocument, await rootId(), context))?.sequence).toBe(1);
 		await expect(reviewed()).rejects.toMatchObject({ code: "lensFailed" });
+		expect((await harness.snapshot(RoundsDocument, await rootId(), context))?.sequence).toBe(1);
 		expect(fake.provider.state.callCount).toBe(calls);
 		scriptConversations(fake, [
 			{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
@@ -2702,6 +2705,7 @@ describe("adjudication", () => {
 		const { verdict } = await reviewed({ rerun: true });
 
 		expect(verdict).toMatchObject({ status: "passed", notRun: [allowedDecisionSkip] });
+		expect((await harness.snapshot(RoundsDocument, await rootId(), context))?.sequence).toBe(2);
 	});
 
 	it("decides again after a dismissal rather than return the verdict from before it", async () => {
@@ -2915,6 +2919,12 @@ describe("adjudication", () => {
 				lenses: [],
 			});
 
+			const saved = structuredClone((await harness.snapshot(RoundsDocument, await rootId(), context))!);
+			expect(saved.items.r1).toMatchObject({
+				verdict: verdict.toJSON(),
+				provenance: { kind: "range" },
+				tasks: [await adjudicationTask()],
+			});
 			const task = await (await harness.root(context)).commit(
 				(tx) => tx.createTask(AdjudicationTask, stale, { ownership: { kind: "conversation" } }),
 				context,
@@ -2922,6 +2932,7 @@ describe("adjudication", () => {
 			const settled = await harness.waitForTask(task, context);
 
 			expect(settled.state.outcome).toEqual({ status: "completed", result: "superseded" });
+			expect(await harness.snapshot(RoundsDocument, await rootId(), context)).toEqual(saved);
 			expect(await readVerdict(harness, await rootId(), revision(), context)).toEqual(verdict);
 		});
 	});

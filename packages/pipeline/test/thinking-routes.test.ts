@@ -10,6 +10,7 @@ import { type ConversationId, backgroundContext as context, createMemoryStorage,
 import { RouteTextModel } from "../src/models.ts";
 import { createReviewRegistry, openReviewHarness, reviewChangeset } from "../src/review.ts";
 import { ReviewIndex } from "../src/review-index.ts";
+import { RoundsDocument } from "../src/rounds.ts";
 import { summarizeReview } from "../src/summarize.ts";
 import { TelemetryReader } from "../src/telemetry.ts";
 import {
@@ -279,10 +280,17 @@ it("changes verifier identity without rerunning its cached finder", async () => 
 				.verification!.task;
 		await run("high");
 		const high = await task();
+		const firstRound = structuredClone((await opened.harness.snapshot(RoundsDocument, root.id, context))!);
+		expect(firstRound.sequence).toBe(1);
 		await run("high");
 		expect(await task()).toBe(high);
+		expect(await opened.harness.snapshot(RoundsDocument, root.id, context)).toEqual(firstRound);
 		await run("low");
 		expect(await task()).not.toBe(high);
+		const nextRound = (await opened.harness.snapshot(RoundsDocument, root.id, context))!;
+		expect(nextRound.sequence).toBe(2);
+		expect(nextRound.current[revisionKey(changeset.revision)]).toBe("r2");
+		expect(nextRound.items.r1).toEqual(firstRound.items.r1);
 		expect(received.filter(({ model }) => model === "finder")).toHaveLength(2);
 		expect(received.filter(({ model }) => model === "judge").map(({ thinking }) => thinking)).toEqual([
 			"high",
@@ -321,7 +329,9 @@ it("does not attach a triage decision made at another thinking level", async () 
 	});
 	try {
 		const changeset = await Changeset.resolve(repo, "main...feature");
-		for (const thinking of ["high", "high", "low"] as const) {
+		const root = await harness.root(context);
+		const roundTasks: number[][] = [];
+		for (const thinking of ["high", "high", "low", "low"] as const) {
 			const decider = new FallbackDecider((await RouteTextModel.create(fake.review, [fake.ref()], thinking))!);
 			registry.install(decisionExtension(decider));
 			await reviewChangeset({
@@ -338,7 +348,16 @@ it("does not attach a triage decision made at another thinking level", async () 
 					models: { heavy: { model: "faux/faux-1" } },
 				},
 			});
+			const state = (await harness.snapshot(RoundsDocument, root.id, context))!;
+			expect(state.sequence).toBe(thinking === "high" ? 1 : 2);
+			expect(state.current[revisionKey(changeset.revision)]).toBe(thinking === "high" ? "r1" : "r2");
+			roundTasks.push([...state.items[state.current[revisionKey(changeset.revision)]!]!.tasks]);
 		}
+		expect(roundTasks[0]).toHaveLength(1);
+		expect(roundTasks[1]).toEqual(roundTasks[0]);
+		expect(roundTasks[2]).toHaveLength(1);
+		expect(roundTasks[2]).not.toEqual(roundTasks[0]);
+		expect(roundTasks[3]).toEqual(roundTasks[2]);
 		expect(triage).toEqual(["high", "low"]);
 	} finally {
 		await harness.close(context);

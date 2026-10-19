@@ -31,6 +31,7 @@ import { createFakeModels, fauxAssistantMessage, scriptConversations } from "@me
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as checks from "../src/checks.ts";
 import { ChecksDocument } from "../src/checks.ts";
+import { RoundsDocument } from "../src/rounds.ts";
 import { commit, createRepository, fakeTool, lines, writeFiles } from "./fixtures/repo.ts";
 
 let repo: string;
@@ -66,6 +67,57 @@ async function setup(checkout = true) {
 }
 
 describe("review drives checks", { timeout: 60_000 }, () => {
+	it.each(["cold", "rerun", "policy", "tier"] as const)(
+		"mints for a new %s check run even when its records are identical",
+		async (change) => {
+			const options = await setup();
+			const config = { ...options.config, tiers: { full: ["static.mutation"], other: ["static.mutation"] } };
+			const automatic = vi.spyOn(checks, "runChecks").mockImplementation(async (_harness, request) => {
+				const changed =
+					request.cold === true ||
+					request.rerunFailed === true ||
+					request.tier === "other" ||
+					request.config.static.mutation.timeout !== config.static.mutation.timeout;
+				return {
+					identity: {
+						base: request.changeset.revision.base,
+						head: request.changeset.revision.head,
+						tier: request.tier!,
+						policy: changed ? "new" : "original",
+						task: changed ? 2 : 1,
+					},
+					records: [{ name: "static.mutation", status: "ran", findings: 0, notes: [] }],
+				};
+			});
+			await reviewChangeset({ ...options, config });
+			await reviewChangeset({ ...options, config });
+			const root = await options.harness.harness.root(context);
+			expect((await options.harness.harness.snapshot(RoundsDocument, root.id, context))?.sequence).toBe(1);
+			const changed = {
+				...options,
+				config,
+				...(change === "cold"
+					? { cold: true }
+					: change === "rerun"
+						? { rerun: true }
+						: change === "tier"
+							? { tier: "other" }
+							: {
+									config: {
+										...config,
+										static: {
+											...config.static,
+											mutation: { ...config.static.mutation, timeout: config.static.mutation.timeout + 1 },
+										},
+									},
+								}),
+			};
+			await reviewChangeset(changed);
+			await reviewChangeset(changed);
+			expect(automatic).toHaveBeenCalledTimes(4);
+			expect((await options.harness.harness.snapshot(RoundsDocument, root.id, context))?.sequence).toBe(2);
+		},
+	);
 	it("decides again when only a check's resolution entry changes in the working tree", async () => {
 		const policyFile = (requirement: string) =>
 			lines(
@@ -96,12 +148,18 @@ describe("review drives checks", { timeout: 60_000 }, () => {
 		const first = await reviewed();
 		expect(first.findings.advisory.map((finding) => finding.ruleId)).toEqual(["guardrail/forbidden-patterns"]);
 		expect((await reviewed()).fingerprint()).toBe(first.fingerprint());
+		const root = await harness.harness.root(context);
+		expect((await harness.harness.snapshot(RoundsDocument, root.id, context))?.sequence).toBe(1);
 
 		// The merged configuration holds no checks, so only the policy's fingerprint tells the task's input apart.
 		writeFiles(repo, { "melian.yaml": policyFile("block") });
 		const second = await reviewed();
 		expect(second.findings.block.map((finding) => finding.ruleId)).toEqual(["guardrail/forbidden-patterns"]);
 		expect(second.findings.advisory).toEqual([]);
+		const rounds = await harness.harness.snapshot(RoundsDocument, root.id, context);
+		expect(rounds?.sequence).toBe(2);
+		expect(rounds?.items.r1?.verdict?.findings.advisory).toHaveLength(1);
+		expect(rounds?.items.r2?.verdict?.findings.block).toHaveLength(1);
 	});
 
 	it("runs a clean change and attaches to the same check task after a model override", async () => {

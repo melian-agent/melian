@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { readFileSync, rmSync } from "node:fs";
 import { Changeset, type Decider } from "@melian-agent/core";
 import { createGitHubProvider } from "@melian-agent/github";
@@ -133,7 +134,10 @@ it.each([
 			};
 		if (kind === "melian.publish" && mode !== "superseded")
 			Object.assign(await tx.doc(PublisherDocument, root.id), {
-				target: input.target,
+				target: {
+					...(input.target as JsonObject),
+					roundId: `k${createHash("sha256").update(revision).digest("hex").slice(0, 16)}`,
+				},
 				publishedBy: input.publishedBy,
 			});
 		return id;

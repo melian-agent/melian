@@ -808,7 +808,7 @@ export class Verdict {
 		const parts = [`Verdict: ${rendering.paint(color, label)}${blocking}`];
 		const status = this.reviewStatus();
 		parts.push(`melian/review: ${status.state} (${visibleText(status.description)}).`);
-		if (this.counted().some((finding) => finding.properties.resolution === "acknowledge")) {
+		if (!rendering.historical && this.counted().some((finding) => finding.properties.resolution === "acknowledge")) {
 			parts.push(
 				'Dismiss unresolved acknowledgements with a reason, then publish. Use melian dismiss "#N" <id> --reason <text> for the pull request.',
 			);

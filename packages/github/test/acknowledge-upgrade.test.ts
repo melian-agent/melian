@@ -5,7 +5,6 @@ import { Adjudication, Changeset, defaultConfig, Finding, snippetHash } from "@m
 import { createGitHubProvider } from "@melian-agent/github";
 import {
 	backgroundContext as context,
-	openPublishHarness,
 	openSqliteStorage,
 	publishReview,
 	readFindings,
@@ -16,6 +15,7 @@ import { expect, it } from "vitest";
 import { VerdictDocument } from "../../pipeline/src/adjudication.ts";
 import { FindingsDocument, replaceCheckFindings } from "../../pipeline/src/findings.ts";
 import { PublishedDocument, PublisherDocument } from "../../pipeline/src/publish.ts";
+import { RecordedReview } from "../../pipeline/test/fixtures/recorded-review.ts";
 import { type FakeState, fakeGitHub } from "./fixtures/fake-github.ts";
 import { scenarioModels } from "./fixtures/scenario.ts";
 import fixture from "./fixtures/step28-before.json" with { type: "json" };
@@ -36,7 +36,7 @@ it.each([false, true])(
 			token: "test-token",
 			fetch: fakeGitHub(state),
 		});
-		let opened = await openPublishHarness(await openSqliteStorage(path), scenarioModels().review, provider);
+		let opened = await RecordedReview.open(await openSqliteStorage(path), scenarioModels().review, provider);
 		try {
 			const root = await opened.harness.root(context);
 			await root.commit(async (tx) => {
@@ -51,8 +51,11 @@ it.each([false, true])(
 					completed ? fixture.completed.publisher : fixture.publisher,
 				);
 			}, context);
+			await opened.record(
+				revisionKey(Changeset.from(fixture.changeset as Parameters<typeof Changeset.from>[0]).revision),
+			);
 			await opened.close(context);
-			opened = await openPublishHarness(await openSqliteStorage(path), scenarioModels().review, provider);
+			opened = await RecordedReview.open(await openSqliteStorage(path), scenarioModels().review, provider);
 			const changeset = Changeset.from(fixture.changeset as Parameters<typeof Changeset.from>[0]);
 			const revision = revisionKey(changeset.revision);
 			const reread = await opened.harness.root(context);
@@ -99,7 +102,7 @@ it.each([false, true])(
 			});
 			await reread.commit((tx) => upsertFinding(tx, reread.id, reported, revision), context);
 			await opened.close(context);
-			opened = await openPublishHarness(await openSqliteStorage(path), scenarioModels().review, provider);
+			opened = await RecordedReview.open(await openSqliteStorage(path), scenarioModels().review, provider);
 			const after = await readFindings(opened.harness, (await opened.harness.root(context)).id, revision, context);
 			expect(after.find((finding) => finding.id === notice.id)!.properties.status).toBe("new");
 		} finally {
@@ -125,7 +128,7 @@ it("reopens a preceding-build dismissal through check replacement and publishes 
 		token: "test-token",
 		fetch: fakeGitHub(state),
 	});
-	let opened = await openPublishHarness(await openSqliteStorage(path), scenarioModels().review, provider);
+	let opened = await RecordedReview.open(await openSqliteStorage(path), scenarioModels().review, provider);
 	try {
 		const root = await opened.harness.root(context);
 		await root.commit(async (tx) => {
@@ -133,7 +136,7 @@ it("reopens a preceding-build dismissal through check replacement and publishes 
 			Object.assign(await tx.doc(VerdictDocument, root.id), fixture.verdicts);
 		}, context);
 		await opened.close(context);
-		opened = await openPublishHarness(await openSqliteStorage(path), scenarioModels().review, provider);
+		opened = await RecordedReview.open(await openSqliteStorage(path), scenarioModels().review, provider);
 		const reopened = await opened.harness.root(context);
 		const before = await readFindings(opened.harness, reopened.id, revision, context);
 		const notice = before.find((finding) => finding.ruleId === "guardrail/policy-change-review")!;
@@ -163,6 +166,7 @@ it("reopens a preceding-build dismissal through check replacement and publishes 
 		await reopened.commit(async (tx) => {
 			(await tx.doc(VerdictDocument, reopened.id)).verdicts[revision] = verdict.toJSON();
 		}, context);
+		await opened.record(revision);
 		const result = await publishReview({
 			harness: opened.harness,
 			provider,

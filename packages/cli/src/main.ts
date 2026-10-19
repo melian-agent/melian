@@ -31,7 +31,8 @@ Commands:
                          Exits 0 passed, 1 blocking findings, 2 not reviewed, 3 findings with none blocking.
   publish <#pr>          Post the stored review of the pull request's current head to GitHub.
   findings <range|#pr>   Print the stored review. --open prints only findings that need attention, --all silent and
-                         dismissed findings too; --json prints JSON.
+                         dismissed findings too; --json prints JSON. --rounds lists the target's stored rounds.
+  findings --round <id>  Print a round's frozen verdict without resolving its former range.
   telemetry <range|#pr>  Read durable stage timings without running tasks. --json prints JSON.
   dismiss <range|#pr> <id> --reason <text> [--only]
                          Dismiss a finding of the stored review, with a reason, and decide its verdict again. It
@@ -68,6 +69,8 @@ Options:
   --cold                 Run the mutation check without an earlier head's results; only a cold run can pass the
                          review, so run it before the queue (review).
   --open, --all, --json  For findings; --json also applies to review and telemetry.
+  --round <id>          Read one stored round (findings).
+  --rounds              List a target's stored rounds (findings).
   --reason <text>        Dismissal reason, or owned-missed, no-owner, needs-execution, out-of-scope (adjudicate).
   --only                 Dismiss the report the ID names alone, leaving the reports merged with it live (dismiss).
   --from <source>        Where to import external findings from; repeat it for several (compare).
@@ -119,6 +122,8 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 			allowPositionals: true,
 			options: {
 				open: { type: "boolean", default: false },
+				round: { type: "string" },
+				rounds: { type: "boolean" },
 				json: { type: "boolean", default: false },
 				model: { type: "string" },
 				walkthrough: { type: "boolean", default: true },
@@ -155,6 +160,8 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 			io.stderr(usage);
 			return usageExitCode;
 		}
+		if (name !== "findings" && (values.round !== undefined || values.rounds !== undefined))
+			throw new UsageError("--round and --rounds are only available for findings");
 		const scoped: Io = { ...io, color: io.color && values.color };
 		switch (name) {
 			case "review":
@@ -182,10 +189,16 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 				return await publish(scoped, one(rest, name, "pull request"), { walkthrough: values.walkthrough });
 			case "findings":
 				if (values.open && values.all) throw new UsageError("findings takes --open or --all, not both");
-				return await findings(scoped, one(rest, name, "range or pull request"), {
+				if (values.round !== undefined && (values.rounds || rest.length > 0))
+					throw new UsageError("findings --round takes a round ID alone");
+				if (values.rounds && (values.open || values.all))
+					throw new UsageError("findings --rounds lists rounds alone");
+				return await findings(scoped, values.round === undefined ? one(rest, name, "range or pull request") : "", {
 					open: values.open,
 					all: values.all,
 					json: values.json,
+					round: values.round,
+					rounds: values.rounds,
 				});
 			case "telemetry":
 				return await telemetry(scoped, one(rest, name, "range or pull request"), { json: values.json });
