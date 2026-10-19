@@ -139,7 +139,7 @@ it("applies live lens, verifier and triage overrides to fake provider bodies and
 	try {
 		await runTriageGolden(loadTriageGoldens()[0]!, { ...mode, models: triage.review, model: "faux/faux-1" });
 		const printed: string[] = [];
-		await reportTriageGoldens(
+		const measurement = await reportTriageGoldens(
 			[loadTriageGoldens()[0]!],
 			triage.review,
 			"faux/faux-1",
@@ -152,6 +152,8 @@ it("applies live lens, verifier and triage overrides to fake provider bodies and
 			undefined,
 			mode.thinking,
 		);
+		expect(measurement.toJSON()).toMatchObject({ thinking: "minimal" });
+		expect(printed.join("\n")).toContain("thinking minimal");
 		expect(printed.join("\n")).toContain("requested=minimal");
 		const raw = vi.spyOn(triage.models, "complete").mockImplementation(async (model, request, options) => {
 			expect(options).not.toHaveProperty("reasoning");

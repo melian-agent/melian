@@ -147,6 +147,7 @@ export async function reportTriageGoldens(
 	);
 	const results = TriageResults.measure(goldens, chosen, {
 		model,
+		thinking: thinking?.level("light"),
 		fingerprint,
 		telemetry,
 		complete: failed === undefined,

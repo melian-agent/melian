@@ -245,11 +245,11 @@ describe("TriageResults", () => {
 		expect(results.questionSet).toEqual(triageQuestionSet);
 	});
 
-	it("reopens a version-1 measurement written at f6c53e38 as a complete version-2 baseline", () => {
+	it("reopens a version-1 measurement written at f6c53e38 as a complete version-3 baseline", () => {
 		const text = readFileSync(new URL("./fixtures/triage-results-v1.json", import.meta.url), "utf8");
 		const legacy = JSON.parse(text);
 		const reopened = TriageResults.parse(text);
-		expect(reopened.toJSON()).toEqual({ ...legacy, version: 2, complete: true });
+		expect(reopened.toJSON()).toEqual({ ...legacy, version: 3, complete: true });
 		expect(TriageResults.parse(JSON.stringify(reopened.toJSON())).compare(reopened).verdict).toBe("same");
 	});
 
@@ -589,4 +589,44 @@ it("scores each golden against its own choices beside its spend", () => {
 	);
 	expect(result.render().split("\n")).toContain(`${correct!.name}: exact 1.00, Token usage unavailable`);
 	expect(result.render().split("\n")).toContain(`${missed!.name}: exact 0.00, Token usage unavailable`);
+});
+
+it.each([
+	[undefined, "off", "incomparable"],
+	["off", undefined, "incomparable"],
+	["off", "high", "incomparable"],
+	["high", "high", "same"],
+	[undefined, undefined, "same"],
+] as const)("compares baseline thinking %s with current %s as %s", (baseline, current, verdict) => {
+	const stored = measured([choice("quick", "quick")]).toJSON();
+	const earlier = TriageResults.parse(JSON.stringify({ ...stored, thinking: baseline }));
+	const later = TriageResults.parse(JSON.stringify({ ...stored, thinking: current }));
+	expect(later.compare(earlier).verdict).toBe(verdict);
+	expect(later.render()).toContain(`thinking ${current ?? "unset"}`);
+	if (verdict === "incomparable")
+		expect(later.compare(earlier).lines).toContain(
+			`incomparable: the triage thinking differs, ${baseline ?? "unset"} -> ${current ?? "unset"}`,
+		);
+});
+
+it("retains the effective thinking level through measurement and JSON", () => {
+	const result = TriageResults.measure(
+		[goldens[0]!],
+		{ [goldens[0]!.name]: [goldens[0]!.expected.levels] },
+		{ model: "m", fingerprint: "f", thinking: "off" },
+	);
+	expect(result.toJSON()).toMatchObject({ version: 3, thinking: "off" });
+	expect(TriageResults.parse(JSON.stringify(result.toJSON())).toJSON()).toEqual(result.toJSON());
+	expect(result.render()).toContain("thinking off");
+});
+
+it("reopens the version-2 measurement with a distinct unset level", () => {
+	const previous = readFileSync(new URL("./fixtures/triage-results-v2.json", import.meta.url), "utf8");
+	const baseline = TriageResults.parse(previous);
+	const reopened = TriageResults.parse(JSON.stringify(baseline.toJSON()));
+	expect(reopened.toJSON()).toEqual({ ...JSON.parse(previous), version: 3 });
+	expect(reopened.toJSON()).not.toHaveProperty("thinking");
+	expect(reopened.compare(baseline).verdict).toBe("same");
+	const off = TriageResults.parse(JSON.stringify({ ...baseline.toJSON(), thinking: "off" }));
+	expect(off.compare(reopened).verdict).toBe("incomparable");
 });
