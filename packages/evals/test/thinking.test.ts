@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defaultConfig } from "@melian-agent/core";
+import * as pipelineTesting from "@melian-agent/pipeline/testing";
 import {
 	createFakeModels,
 	fauxAssistantMessage,
@@ -286,11 +287,26 @@ it("replaces a configured tier with the scripted model and leaves live thinking 
 		join(directory, "melian.golden.yaml"),
 		"tiers:\n  full: [lens.correctness]\nmodels:\n  heavy:\n    model: faux/configured\n    thinking: high\n",
 	);
+	const fake = createFakeModels({ models: [{ id: "scripted" }] });
+	const received: unknown[] = [];
+	const setResponses = fake.provider.setResponses;
+	vi.spyOn(fake.provider, "setResponses").mockImplementation((steps) => {
+		setResponses(
+			steps.map((step) => (request, options, state, model) => {
+				received.push(options?.reasoning);
+				return typeof step === "function" ? step(request, options, state, model) : step;
+			}),
+		);
+	});
+	const models = vi.spyOn(pipelineTesting, "createFakeModels").mockReturnValue(fake);
 	try {
 		const result = await runGolden({ ...original, directory }, { kind: "scripted" });
 		expect(result.findings).toHaveLength(1);
 		expect(result.toolMismatches).toEqual([]);
+		expect(received.length).toBeGreaterThan(0);
+		expect(received).toEqual(received.map(() => undefined));
 	} finally {
+		models.mockRestore();
 		rmSync(directory, { recursive: true, force: true });
 	}
 }, 60_000);
