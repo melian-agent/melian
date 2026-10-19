@@ -8,6 +8,13 @@ const a = "docs/decisions/2026-10-01-a.md";
 const b = "docs/decisions/2026-10-02-b.md";
 const c = "docs/decisions/2026-10-03-c.md";
 const parse = (path: string, text: string) => DecisionFile.parse(path, text);
+
+it("keeps whole retirement out of amendment targets", () => {
+	const decision = DecisionFile.parse(c, `Supersedes: ${a}\n\nAmends: ${b}, routing.`);
+	expect(decision.amends).toEqual([b]);
+	expect(decision.supersedes).toEqual([a]);
+});
+
 async function expectRepositoryIndex(repo: string): Promise<void> {
 	const commit = gitIn(repo, "rev-parse", "HEAD");
 

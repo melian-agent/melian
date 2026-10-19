@@ -88,9 +88,24 @@ export type ModelUsage = {
 	cost: { input: number; output: number; cacheRead: number; cacheWrite: number; total: number };
 };
 
+/** Reasoning fields observed in a provider request body, excluding prompts and credentials. */
+export type ReasoningSettings = Record<string, ReasoningValue>;
+
+/** JSON values in provider reasoning settings. */
+export type ReasoningValue = string | number | boolean | null | ReasoningValue[] | { [key: string]: ReasoningValue };
+
+/** The requested level, sent settings for each payload callback, and any provider-reported level. */
+export type RequestReasoning = {
+	requested: string;
+	source: "observed" | "derived, not observed" | "unrecognised";
+	sent: (ReasoningSettings | "provider default")[];
+	catalogMapped?: string | null;
+	providerReported?: string;
+};
+
 /** Receives each assistant response's usage before the adapter validates its answer, including errors. */
 export type UsageObserver = {
-	(model: string, usage: ModelUsage): void;
+	(model: string, usage: ModelUsage, reasoning?: RequestReasoning): void;
 	/** Await before each provider request so the caller can durably record its start. */
 	started?: () => Promise<void>;
 };

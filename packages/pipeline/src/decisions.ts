@@ -106,8 +106,8 @@ export function decisionTask(decider: Decider, timeout = decisionTimeout) {
 				}
 				const usage = new TokenUsage();
 				let recorded = 0;
-				const observe: UsageObserver = (model, reported) => {
-					usage.add(model, reported);
+				const observe: UsageObserver = (model, reported, reasoning) => {
+					usage.add(model, reported, reasoning);
 					recorded++;
 				};
 				observe.started = async () => {

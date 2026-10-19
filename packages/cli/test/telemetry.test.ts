@@ -7,6 +7,7 @@ import {
 	ReviewHarness,
 	StageTelemetry,
 	TelemetryReader,
+	TokenUsage,
 } from "@melian-agent/pipeline";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { commit, createRepository, removeRepository } from "../../pipeline/test/fixtures/repo.ts";
@@ -40,6 +41,19 @@ beforeEach(async () => {
 	path = join(repo, "state.sqlite");
 	writeFileSync(path, "");
 	storage = createMemoryStorage();
+	const usage = new TokenUsage();
+	usage.add(
+		"fake/gpt",
+		{
+			input: 1,
+			output: 2,
+			cacheRead: 0,
+			cacheWrite: 0,
+			totalTokens: 3,
+			cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+		},
+		{ requested: "off", source: "observed", sent: [{ reasoning: { effort: "none" } }], providerReported: "none" },
+	);
 	timings = new StageTelemetry(`${changeset.revision.base}..${changeset.revision.head}`, [
 		{
 			id: "task:1",
@@ -53,6 +67,7 @@ beforeEach(async () => {
 			timing: "available",
 			reused: false,
 			resumed: false,
+			usage: usage.toJSON(),
 		},
 	]);
 	vi.spyOn(repository, "storagePath").mockResolvedValue(path);
@@ -72,6 +87,7 @@ it.each([false, true])("reads detached telemetry in process (json=%s)", async (j
 	expect(io.stdout).toHaveBeenCalledExactlyOnceWith(
 		json ? `${JSON.stringify(timings.toJSON(), null, 2)}\n` : timings.render(),
 	);
+	expect(io.stdout.mock.calls[0]![0]).toContain(json ? '"requested": "off"' : "effort=none");
 	expect(io.stderr).not.toHaveBeenCalled();
 	expect(close).toHaveBeenCalledTimes(1);
 });

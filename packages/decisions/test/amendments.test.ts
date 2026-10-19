@@ -1,0 +1,232 @@
+import { readFileSync } from "node:fs";
+import { DecisionFile, DecisionFiles } from "@melian-agent/decisions";
+import { describe, expect, it } from "vitest";
+import { MarkdownDocument } from "../src/markdown.ts";
+
+const old = "docs/decisions/old.md";
+const fresh = "docs/decisions/new.md";
+
+describe("decision amendments", () => {
+	it("keeps the Markdown supersedes query limited to whole-retirement declarations", () => {
+		const document = MarkdownDocument.parse("Supersedes: old.md\n\nAmends: other.md, routing.");
+		expect(document.supersedes(fresh)).toEqual([old]);
+	});
+	it.each(["Supersedes", "Amends"])("distinguishes %s from context and absence sentinels", (kind) => {
+		const property = kind === "Supersedes" ? "supersedes" : "amends";
+		expect(DecisionFile.parse(fresh, "Context: [Old](old.md)")[property]).toEqual([]);
+		expect(DecisionFile.parse(fresh, "Context: [Old](old.md)").declarations).toEqual([]);
+		expect(DecisionFile.parse(fresh, `${kind}: none [Old](old.md)`)[property]).toEqual([]);
+		expect(DecisionFile.parse(fresh, `${kind}: no decision file; old.md`)[property]).toEqual([]);
+	});
+	it.each(["Supersedes", "Amends"])("limits %s edges to the first sentence", (kind) => {
+		const text = `${kind}: [Old](old.md), for routing only. The preference in [Context](context.md) remains.`;
+		const decision = DecisionFile.parse(fresh, text);
+		expect(decision[kind === "Supersedes" ? "supersedes" : "amends"]).toEqual([old]);
+		expect(DecisionFile.parse(fresh, `${kind}: [Old](old.md). [Context](first.md)`).declarations[0]!.text).toBe(
+			DecisionFile.parse(fresh, `${kind}: [Old](old.md). [Context](second.md)`).declarations[0]!.text,
+		);
+		expect(
+			DecisionFile.parse(fresh, `${kind}: [Old](old.md). [Context](context.md)`)[
+				kind === "Supersedes" ? "supersedes" : "amends"
+			],
+		).toEqual([old]);
+		expect(
+			DecisionFile.parse(fresh, `${kind}: old.md. Context context.md remains.`)[
+				kind === "Supersedes" ? "supersedes" : "amends"
+			],
+		).toEqual([old]);
+	});
+
+	it("keeps verification-pass active in the subscription-verifier golden", () => {
+		const path = "docs/decisions/2026-10-08-verifier-on-codex-subscription.md";
+		const content = readFileSync(new URL("golden/verifier-on-codex-subscription.md", import.meta.url), "utf8");
+		const declaration = DecisionFile.parse(path, content);
+		expect(declaration.supersedes).toEqual(["docs/decisions/2026-10-07-committed-routes.md"]);
+		const index = DecisionFiles.from([
+			declaration,
+			DecisionFile.parse("docs/decisions/2026-10-07-committed-routes.md", "# Routes"),
+			DecisionFile.parse("docs/decisions/2026-10-04-verification-pass.md", "# Verification"),
+		]).render();
+		expect(index).toContain("[ACTIVE] docs/decisions/2026-10-04-verification-pass.md — Verification");
+	});
+
+	it("keeps an amended target active and names the conflict authority", () => {
+		const amendment = DecisionFile.parse(fresh, "# New\n\nAmends: [Old](old.md), for routing only.");
+		expect(amendment.supersedes).toEqual([]);
+		expect(amendment.amends).toEqual([old]);
+		const index = DecisionFiles.from([DecisionFile.parse(old, "# Old"), amendment]).render();
+		expect(index).toContain(`[ACTIVE; amended by ${fresh}] ${old} — Old`);
+		expect(index).toContain(`[ACTIVE] ${fresh} — New`);
+		expect(index).toContain("Read both files; where they conflict, the amendment wins.");
+	});
+
+	it("retains every amendment on a shared target", () => {
+		const other = "docs/decisions/other.md";
+		const index = DecisionFiles.from([
+			DecisionFile.parse(old, "# Old"),
+			DecisionFile.parse(fresh, "Amends: old.md, routing."),
+			DecisionFile.parse(other, "Amends: old.md, retries."),
+		]).render();
+		expect(index).toContain(`[ACTIVE; amended by ${fresh}, ${other}] ${old} — Old`);
+	});
+
+	it("retires an amendment's effect when its source is superseded", () => {
+		const successor = "docs/decisions/successor.md";
+		const index = DecisionFiles.from([
+			DecisionFile.parse(successor, "# Successor\n\nSupersedes: new.md"),
+			DecisionFile.parse(fresh, "# Amendment\n\nAmends: old.md, routing."),
+			DecisionFile.parse(old, "# Old"),
+		]).render();
+		expect(index).toBe(
+			[
+				`[INACTIVE; superseded by ${successor}] ${fresh} — Amendment`,
+				`[ACTIVE] ${old} — Old`,
+				`[ACTIVE] ${successor} — Successor`,
+			].join("\n"),
+		);
+	});
+
+	it("keeps only active sources when another amendment is retired", () => {
+		const other = "docs/decisions/other.md";
+		const index = DecisionFiles.from([
+			DecisionFile.parse(old, "# Old"),
+			DecisionFile.parse(fresh, "Amends: old.md, routing."),
+			DecisionFile.parse(other, "Supersedes: new.md\n\nAmends: old.md, retries."),
+		]).render();
+		expect(index).toContain(`[ACTIVE; amended by ${other}] ${old} — Old`);
+		expect(index).toContain("Read both files; where they conflict, the amendment wins.");
+	});
+
+	it.each([false, true])("refuses an amendment of an inactive target, retired source: %s", (retired) => {
+		const successor = "docs/decisions/successor.md";
+		const files = [
+			DecisionFile.parse(fresh, "Amends: old.md, routing."),
+			DecisionFile.parse(old, "# Old"),
+			DecisionFile.parse(successor, `Supersedes: old.md${retired ? ", new.md" : ""}`),
+		];
+		expect(() => DecisionFiles.from(files)).toThrow(
+			expect.objectContaining({
+				code: "invalid",
+				message: `${fresh} amends inactive ${old}; amend active successors instead: ${successor}`,
+			}),
+		);
+	});
+
+	it("names every active successor of an inactive amendment target", () => {
+		const middle = "docs/decisions/middle.md";
+		const penultimate = "docs/decisions/penultimate.md";
+		const successor = "docs/decisions/successor.md";
+		const other = "docs/decisions/other.md";
+		expect(() =>
+			DecisionFiles.from([
+				DecisionFile.parse(old, "# Old"),
+				DecisionFile.parse(fresh, "Amends: old.md, routing."),
+				DecisionFile.parse(middle, "Supersedes: old.md"),
+				DecisionFile.parse(other, "Supersedes: old.md"),
+				DecisionFile.parse(penultimate, "Supersedes: middle.md"),
+				DecisionFile.parse(successor, "Supersedes: penultimate.md"),
+			]),
+		).toThrow(`${fresh} amends inactive ${old}; amend active successors instead: ${other}, ${successor}`);
+	});
+
+	it("retains both active amendments in a chain on one target", () => {
+		const other = "docs/decisions/other.md";
+		const index = DecisionFiles.from([
+			DecisionFile.parse(old, "# Old"),
+			DecisionFile.parse(fresh, "# First\n\nAmends: old.md, routing."),
+			DecisionFile.parse(other, "# Second\n\nAmends: old.md, new.md, retries."),
+		]).render();
+		expect(index).toContain(`[ACTIVE; amended by ${fresh}, ${other}] ${old} — Old`);
+		expect(index).toContain(`[ACTIVE; amended by ${other}] ${fresh} — First`);
+		expect(index).toContain(`[ACTIVE] ${other} — Second`);
+	});
+
+	it("names a whole-retirement successor once when it also declares an amendment", () => {
+		const index = DecisionFiles.from([
+			DecisionFile.parse(old, "# Old"),
+			DecisionFile.parse(fresh, "Supersedes: old.md\n\nAmends: old.md, routing."),
+		]).render();
+		expect(index).toContain(`[INACTIVE; superseded by ${fresh}] ${old} — Old`);
+		expect(index).not.toContain("amended by");
+		expect(index).not.toContain("the amendment wins");
+	});
+
+	it("counts amendment labels and precedence text within the 64 KiB bound", () => {
+		const index = (title: string) =>
+			DecisionFiles.from([
+				DecisionFile.parse(old, `# ${title}`),
+				DecisionFile.parse(fresh, "Amends: old.md, routing."),
+			]);
+		const padding = 65536 - Buffer.byteLength(index("X").render());
+		expect(Buffer.byteLength(index(`X${"x".repeat(padding)}`).render())).toBe(65536);
+		expect(() => index(`X${"x".repeat(padding + 1)}`).render()).toThrow("exceeds");
+	});
+
+	it.each(["Amends", "Supersedes"])("validates missing %s targets and mixed cycles", (kind) => {
+		expect(() => DecisionFiles.from([DecisionFile.parse(fresh, `${kind}: old.md`)])).toThrow("absent");
+		expect(() =>
+			DecisionFiles.from([
+				DecisionFile.parse(fresh, `${kind}: old.md`),
+				DecisionFile.parse(old, "Amends: new.md, routing."),
+			]),
+		).toThrow("cycle");
+	});
+
+	it("names the edge kind of a missing target", () => {
+		expect(() => DecisionFiles.from([DecisionFile.parse(fresh, "Amends: old.md, routing.")])).toThrow(
+			`${fresh} amends absent ${old}`,
+		);
+		expect(() => DecisionFiles.from([DecisionFile.parse(fresh, "Supersedes: old.md")])).toThrow(
+			`${fresh} supersedes absent ${old}`,
+		);
+	});
+
+	it("names the whole graph in a cycle error, whichever edge kinds form it", () => {
+		const cycle = (a: string, b: string) =>
+			DecisionFiles.from([DecisionFile.parse(fresh, a), DecisionFile.parse(old, b)]);
+		expect(() => cycle("Amends: old.md, routing.", "Amends: new.md, routing.")).toThrow(
+			"The base decision graph contains a cycle",
+		);
+		expect(() => cycle("Supersedes: old.md", "Supersedes: new.md")).toThrow(
+			"The base decision graph contains a cycle",
+		);
+	});
+
+	it("accepts an Amends declaration with no scope", () => {
+		const parsed = DecisionFile.parse(fresh, "Amends: old.md");
+		expect(parsed.amends).toEqual([old]);
+		expect(DecisionFiles.from([parsed, DecisionFile.parse(old, "Old.")]).render()).toContain("amended by");
+	});
+
+	it("records only the first sentence's edges when two declarations share a line", () => {
+		const parsed = DecisionFile.parse(fresh, "Supersedes: old.md. Amends: other.md, scope.");
+		expect(parsed.supersedes).toEqual([old]);
+		expect(parsed.amends).toEqual([]);
+	});
+
+	it("uses the existing Markdown grammar for amendment declarations", () => {
+		const parsed = DecisionFile.parse(
+			fresh,
+			[
+				"# New",
+				"",
+				"Amends&#58; [**Old**][target], routing.",
+				"",
+				"Amends: none. [Context](absent.md)",
+				"",
+				"> Amends: quoted.md",
+				"",
+				"- Amends: listed.md",
+				"",
+				"`Amends: code.md`",
+				"",
+				"~~~md",
+				"Amends: fenced.md",
+				"~~~",
+				"",
+				"[target]: old.md",
+			].join("\n"),
+		);
+		expect(parsed.amends).toEqual([old]);
+	});
+});

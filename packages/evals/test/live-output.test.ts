@@ -265,7 +265,7 @@ it("prints the detached usage returned by a successful lens golden", async () =>
 		);
 		expect(report.status).toBe(0);
 		expect(lines).toEqual([
-			`clean-rename: precision 1.00, recall 1.00 (0 reported, 0 expected), ${record.total!.total.totalTokens} tokens, $0`,
+			`clean-rename: precision 1.00, recall 1.00 (0 reported, 0 expected), ${record.total!.total.totalTokens} tokens, $0; faux/scripted requested=off catalogue=unavailable derived, not observed`,
 			"corpus: precision 1.00, recall 1.00",
 		]);
 	} finally {
@@ -331,7 +331,7 @@ it("prints the detached usage returned by a successful scripted verifier golden"
 	);
 	expect(report.status).toBe(0);
 	expect(lines).toEqual([
-		`guarded-null-dereference: refuted, passed (decoy), ${record.total!.total.totalTokens} tokens, $0`,
+		`guarded-null-dereference: refuted, passed (decoy), ${record.total!.total.totalTokens} tokens, $0; verifier-eval-finder/finder requested=off catalogue=unavailable derived, not observed; verifier-eval-finder/judge requested=off catalogue=unavailable derived, not observed`,
 		"verifier corpus: 1/1 passed",
 	]);
 }, 60_000);
@@ -409,7 +409,7 @@ it.each([
 			);
 			expect(report.status).toBe(expected.status);
 			expect(lines).toEqual([
-				`circular-import-tdz: ${expected.label}, ${record.total!.total.totalTokens} tokens, $0`,
+				`circular-import-tdz: ${expected.label}, ${record.total!.total.totalTokens} tokens, $0; verifier-eval-finder/finder requested=off catalogue=unavailable derived, not observed; eval-judge/separate requested=off catalogue=unavailable derived, not observed`,
 				expected.corpus,
 			]);
 		} finally {
@@ -512,4 +512,41 @@ it("keeps earlier pass spend when triage fails without telemetry", async () => {
 	);
 	expect(measured).toEqual({ chosen: {}, telemetry: { [golden.name]: [paid] }, failed: golden.name });
 	expect(lines).toEqual([`${golden.name}: pass 1, 14 tokens, $1`, `${golden.name}: no score (no receipt)`]);
+});
+
+it.each(["lens", "verifier", "triage"])("prints observed reasoning on each %s golden's spend line", async (kind) => {
+	const usage = new TokenUsage();
+	usage.add("fake/gpt", paid.total!.total, {
+		requested: "off",
+		source: "observed",
+		sent: [{ reasoning: { effort: "none" } }],
+	});
+	const telemetry = new StageTelemetry("base..head", [{ ...paid.stages[0]!, usage: usage.toJSON() }]);
+	const lines: string[] = [];
+	if (kind === "lens") {
+		const golden = loadGoldens().find((golden) => golden.name === "clean-rename")!;
+		await reportGoldens(
+			[golden],
+			async (golden) => ({ ...(await runGolden(golden, { kind: "scripted" })), telemetry }),
+			{},
+			(line) => lines.push(line),
+		);
+	} else if (kind === "verifier") {
+		const golden = loadVerifierGoldens().find((golden) => golden.name === "guarded-null-dereference")!;
+		await reportVerifierGoldens(
+			[golden],
+			async (golden) => ({ ...(await runVerifierGolden(golden, { kind: "scripted" })), telemetry }),
+			{},
+			(line) => lines.push(line),
+		);
+	} else {
+		const golden = loadTriageGoldens()[0]!;
+		const results = TriageResults.measure(
+			[golden],
+			{ [golden.name]: [golden.expected.levels] },
+			{ model: "fake/gpt", fingerprint: "test", telemetry: { [golden.name]: [telemetry] } },
+		);
+		lines.push(results.render());
+	}
+	expect(lines[0]).toContain("fake/gpt requested=off effort=none observed");
 });

@@ -40,6 +40,8 @@ const usage = {
 	cost: { input: 0.01, output: 0.02, cacheRead: 0.03, cacheWrite: 0.04, total: 0.1 },
 };
 
+const unobserved = { requested: "unspecified", source: "derived, not observed" as const, sent: [] };
+
 async function decide(
 	storage: Storage,
 	stop: "toolUse" | "error" | "aborted" | "prose" | "invalid" | "throw" = "toolUse",
@@ -133,7 +135,11 @@ it.each(["toolUse", "error", "aborted", "prose", "invalid"] as const)(
 		const { harness, model, calls } = await decide(storage, stop);
 		try {
 			const telemetry = await TelemetryReader.open(storage).read(revision);
-			expect(telemetry.stages[0]!.usage).toEqual({ models: { [model]: usage }, total: usage });
+			expect(telemetry.stages[0]!.usage).toEqual({
+				models: { [model]: usage },
+				total: usage,
+				requests: [{ model, usage, reasoning: unobserved }],
+			});
 			expect(telemetry.toJSON()).toMatchObject({
 				total: { models: { [model]: usage }, total: usage },
 				usageUnavailable: [],
@@ -141,7 +147,9 @@ it.each(["toolUse", "error", "aborted", "prose", "invalid"] as const)(
 			expect(calls["You answer typed questions"]).toHaveLength(1);
 			expect(telemetry.slowest()).toContain("Slowest stages:");
 			expect(telemetry.slowest()).toContain("36 tokens, $0.1");
-			expect(telemetry.spend()).toBe("36 tokens, $0.1");
+			expect(telemetry.spend()).toBe(
+				`36 tokens, $0.1; ${model} requested=unspecified catalogue=unavailable derived, not observed`,
+			);
 			expect(telemetry.render()).toContain("input=11 output=7 cache-read=13 cache-write=5 reasoning=3");
 		} finally {
 			await harness.close(context);
@@ -164,6 +172,7 @@ it("reopens a settled decision without another model call or usage write", async
 			expect((expected as unknown as { total: unknown }).total).toEqual({
 				models: { [initial.model]: usage },
 				total: usage,
+				requests: [{ model: initial.model, usage, reasoning: unobserved }],
 			});
 			expect(write).not.toHaveBeenCalled();
 			expect(initial.calls["You answer typed questions"]).toHaveLength(1);
@@ -510,6 +519,7 @@ it("uses the response's actual provider and model rather than the configured rou
 		expect((await TelemetryReader.open(storage).read(revision)).stages[0]!.usage).toEqual({
 			models: { "actual-provider/actual-model": usage },
 			total: usage,
+			requests: [{ model: "actual-provider/actual-model", usage, reasoning: unobserved }],
 		});
 	} finally {
 		await harness.close(context);

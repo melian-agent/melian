@@ -26,8 +26,10 @@ import {
 	publishExtension,
 	publishReview,
 } from "../src/publish.ts";
+import { RoundWriter } from "../src/rounds.ts";
 import { TaskTiming } from "../src/task-timing.ts";
 import { createFakeModels } from "../src/testing.ts";
+import { RecordedReview, recordedReviewTask } from "./fixtures/recorded-review.ts";
 import { baseAndHead, isolatedGitEnv } from "./fixtures/repo.ts";
 
 let repo: string | undefined;
@@ -50,6 +52,14 @@ describe("publication planning recovery", () => {
 	let finding: Finding;
 	let revision: string;
 	const old = "c".repeat(40);
+	// A review records the verdict it decided as the revision's current round; publication reads that round.
+	const publish = async () => {
+		await root.commit(async (tx) => {
+			const doc = await tx.doc(VerdictDocument, root.id);
+			await new RoundWriter(tx, root.id).record(revision, 0, doc.verdicts[revision]!, doc.provenance![revision]!);
+		}, context);
+		return publishReview(options);
+	};
 
 	beforeEach(async () => {
 		for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
@@ -67,6 +77,7 @@ describe("publication planning recovery", () => {
 		const fake = createFakeModels();
 		const registry = createRegistry();
 		registry.install(publishExtension(provider));
+		registry.install({ name: "test.recorded-review", tasks: [recordedReviewTask] });
 		harness = await openHarness(createMemoryStorage(), { models: fake.models, registry });
 		root = await harness.root(context, { agent: { model: fake.ref() } });
 		finding = Finding.create({
@@ -99,6 +110,7 @@ describe("publication planning recovery", () => {
 				},
 			};
 		}, context);
+		await new RecordedReview(harness).record(revision);
 		options = {
 			harness,
 			provider,
@@ -119,7 +131,7 @@ describe("publication planning recovery", () => {
 				doc.revisions[state.pull.head.sha] = { rounds, reviews: [], open: {}, resolved: {}, replies: {} };
 			}, context);
 		const discovery = vi.spyOn(provider, "findPublished");
-		await publishReview(options);
+		await publish();
 		expect(discovery.mock.calls.map(([, , wanted]) => wanted.round)).toEqual([next]);
 		expect(state.reviews).toHaveLength(1);
 		expect(state.reviews[0]!.body).toContain(`round=${next}`);
@@ -138,11 +150,11 @@ describe("publication planning recovery", () => {
 					.toJSON();
 			}, context);
 		await decide([finding]);
-		await publishReview(options);
+		await publish();
 		const older = state.comments[0]!.id;
 		await decide([]);
 		state.failReplies = true;
-		await expect(publishReview(options)).rejects.toBeInstanceOf(PublishError);
+		await expect(publish()).rejects.toBeInstanceOf(PublishError);
 		state.failReplies = false;
 		state.resolvedThreads.push(older);
 		await decide([finding]);
@@ -151,17 +163,17 @@ describe("publication planning recovery", () => {
 			await post(review);
 			throw new Error("crashed before recording the review");
 		});
-		await expect(publishReview(options)).rejects.toThrow();
+		await expect(publish()).rejects.toThrow();
 		crash.mockRestore();
 		const roots = state.comments.filter((comment) => comment.in_reply_to_id === undefined);
 		expect(roots).toHaveLength(2);
 		const newer = roots[1]!.id;
-		await publishReview(options);
+		await publish();
 		const head = state.pull.head.sha;
 		const recorded = (await harness!.snapshot(PublishedDocument, root.id, context))!.revisions[head]!;
 		expect(recorded.open[finding.id]?.thread).toBe(String(newer));
 		await decide([]);
-		await publishReview(options);
+		await publish();
 		expect(state.resolvedThreads).toContain(newer);
 	});
 
@@ -179,7 +191,7 @@ describe("publication planning recovery", () => {
 			};
 		}, context);
 		const post = vi.spyOn(provider, "postReview");
-		await publishReview(options);
+		await publish();
 		expect(post.mock.calls[0]![0].resolved).toEqual([
 			{
 				id: finding.id,
@@ -223,7 +235,7 @@ describe("publication planning recovery", () => {
 			doc.order = [old];
 			doc.revisions[old] = { reviews: ["old-review"], open: {}, resolved: { [finding.id]: entry }, replies: {} };
 		}, context);
-		await publishReview(options);
+		await publish();
 		const stored = (await harness!.snapshot(PublishedDocument, root.id, context))!;
 		expect(stored.revisions[state.pull.head.sha]!.open[live.id]).not.toHaveProperty("thread");
 		expect(stored.revisions[old]!.resolved).toEqual({ [finding.id]: entry });
@@ -264,7 +276,7 @@ describe("publication planning recovery", () => {
 				replies: { [replyKey(finding.id, "1", dismissalVersion(dismissal))]: "2" },
 			};
 		}, context);
-		const result = await publishReview(options);
+		const result = await publish();
 		expect(result.dismissed).toBe(0);
 		expect(result.replies).toBe(0);
 		expect(
@@ -316,7 +328,7 @@ describe("publication planning recovery", () => {
 				},
 			};
 		}, context);
-		await publishReview(options);
+		await publish();
 		const prior = (await harness!.snapshot(PublishedDocument, root.id, context))!.revisions[old]!;
 		expect(prior.resolved).not.toHaveProperty(replyKey(finding.id, "1"));
 		expect(prior.resolved[replyKey(unrelated, "2")]).toMatchObject({ id: unrelated, thread: "2" });
@@ -368,7 +380,7 @@ describe("publication planning recovery", () => {
 			};
 		}, context);
 		const reply = vi.spyOn(provider, "replyResolved").mockResolvedValue("1012");
-		await publishReview(options);
+		await publish();
 		expect(reply).toHaveBeenCalledExactlyOnceWith(
 			7,
 			expect.objectContaining({ thread: "1009", dismissal }),
@@ -411,7 +423,7 @@ describe("publication planning recovery", () => {
 			};
 		}, context);
 		const reply = vi.spyOn(provider, "replyResolved").mockResolvedValue("1012");
-		await publishReview(options);
+		await publish();
 		expect(reply).not.toHaveBeenCalled();
 	});
 
@@ -461,7 +473,7 @@ describe("publication planning recovery", () => {
 			doc.revisions[middle] = { reviews: [], open: {}, resolved: {}, replies: {} };
 		}, context);
 		const reply = vi.spyOn(provider, "replyResolved").mockResolvedValue("4");
-		await publishReview(options);
+		await publish();
 		expect(reply).toHaveBeenCalledExactlyOnceWith(
 			7,
 			expect.objectContaining({ thread: "2", dismissal }),
@@ -522,7 +534,7 @@ describe("publication planning recovery", () => {
 			};
 		}, context);
 		const reply = vi.spyOn(provider, "replyResolved").mockResolvedValue("5");
-		await publishReview(options);
+		await publish();
 		expect(reply).toHaveBeenCalledExactlyOnceWith(
 			7,
 			{ ...entry, dismissal },
@@ -583,7 +595,7 @@ describe("publication planning recovery", () => {
 				replies: {},
 			};
 		}, context);
-		await publishReview(options);
+		await publish();
 		expect(state.comments).toHaveLength(2);
 		expect(state.comments[0]!.body).not.toContain("resolved=");
 		expect(state.resolvedThreads).toEqual([]);
@@ -631,7 +643,7 @@ describe("publication planning recovery", () => {
 			expect(draft.resolved).toEqual([]);
 			return postReview(draft);
 		});
-		await publishReview(options);
+		await publish();
 		expect(threadState).toHaveBeenCalledExactlyOnceWith(7, "1");
 		expect(state.resolvedThreads).toEqual([1]);
 	});
@@ -655,6 +667,7 @@ it.each(["current", "pending", "failed task"])(
 		const fake = createFakeModels();
 		const storage = createMemoryStorage();
 		const registry = createRegistry();
+		registry.install({ name: "test.recorded-review", tasks: [recordedReviewTask] });
 		harness = await openHarness(storage, { models: fake.models, registry });
 		const root = await harness.root(context, { agent: { model: fake.ref() } });
 		const dismissed = Finding.create({
@@ -693,6 +706,7 @@ it.each(["current", "pending", "failed task"])(
 				},
 			};
 		}, context);
+		await new RecordedReview(harness).record(revision);
 		let resumedTask: TaskId | undefined;
 		if (scenario === "failed task") {
 			const input = {
@@ -729,7 +743,11 @@ it.each(["current", "pending", "failed task"])(
 		}
 		if (scenario !== "current")
 			vi.spyOn(provider, "postReview").mockRejectedValueOnce(new Error("interrupted round"));
-		registry.install(publishExtension(provider));
+		const resume = harness.resume.bind(harness);
+		vi.spyOn(harness, "resume").mockImplementationOnce(() => {
+			registry.install(publishExtension(provider));
+			resume();
+		});
 		const options = {
 			harness,
 			provider,
@@ -783,7 +801,8 @@ it.each(["stale", "resumed stale", "failed", "resumed failed", "aborted", "super
 					state.pull.head.sha = "a".repeat(40);
 				if (mode === "resumed published" && call.path.endsWith("/reviews") && call.method === "POST") {
 					await root.commit(async (tx) => {
-						(await tx.doc(VerdictDocument, root.id)).verdicts[revision] = new Adjudication({
+						const doc = await tx.doc(VerdictDocument, root.id);
+						doc.verdicts[revision] = new Adjudication({
 							findings: [],
 							manifest: [],
 							checks: [],
@@ -791,12 +810,19 @@ it.each(["stale", "resumed stale", "failed", "resumed failed", "aborted", "super
 						})
 							.adjudicate()
 							.toJSON();
+						await new RoundWriter(tx, root.id).record(
+							revision,
+							0,
+							doc.verdicts[revision]!,
+							doc.provenance![revision]!,
+						);
 					}, context);
 				}
 			}),
 		});
 		const fake = createFakeModels();
 		const registry = createRegistry();
+		registry.install({ name: "test.recorded-review", tasks: [recordedReviewTask] });
 		harness = await openHarness(createMemoryStorage(), { models: fake.models, registry });
 		const root = await harness.root(context, { agent: { model: fake.ref() } });
 		const dismissal = { by: "Maintainer", reason: "Input is constant.", at: "2026-10-17T00:00:00Z" };
@@ -837,6 +863,7 @@ it.each(["stale", "resumed stale", "failed", "resumed failed", "aborted", "super
 				},
 			};
 		}, context);
+		await new RecordedReview(harness).record(revision);
 		if (mode.startsWith("resumed")) {
 			const input = {
 				...previous.input,
@@ -866,7 +893,11 @@ it.each(["stale", "resumed stale", "failed", "resumed failed", "aborted", "super
 			await root.commit((tx) => tx.createTask(token, input, { ownership: { kind: "conversation" } }), context);
 		}
 		state.failLedger = mode.endsWith("failed");
-		registry.install(publishExtension(provider));
+		const resume = harness.resume.bind(harness);
+		vi.spyOn(harness, "resume").mockImplementationOnce(() => {
+			registry.install(publishExtension(provider));
+			resume();
+		});
 		const options = {
 			harness,
 			provider,

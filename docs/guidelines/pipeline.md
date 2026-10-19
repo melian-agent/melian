@@ -132,7 +132,7 @@ Everything that originates from the head revision reaches a lens inside a bounda
 
 ### Design baseline input
 
-Before a design conversation starts, reviewChangeset loads DecisionFiles from the comparison base. It reads every docs/decisions Markdown file and resolves all Supersedes edges before limiting the rendered list. The Decisions at base section names active candidates and inactive predecessors with their direct successors. It appears only for design and tells the lens to read it before step 1.
+Before a design conversation starts, reviewChangeset loads DecisionFiles from the comparison base. It reads every docs/decisions Markdown file and resolves all Supersedes and Amends edges before limiting the rendered list. The Decisions at base section names active candidates and inactive predecessors with their direct successors. It appears only for design and tells the lens to read it before step 1. An amended target stays active, with only its active amendment sources named. Superseding a source removes its amendment authority. An amendment of an inactive target refuses the graph and names reachable active Supersedes successors to amend instead. The instructions tell the lens to read the target and its effective base amendments, which take precedence on conflict. Amends is also a declaration for the undeclared-replacement rule.
 
 The section uses the review’s listing boundary and escapes controls in paths and titles. It lists every path and full title, with active status first. A 64 KiB UTF-8 bound refuses an oversized index and names how many decisions were omitted. The section joins the instruction fingerprint under the fixed nonce, so altered baseline input cannot attach to old work. Invalid graphs and incomplete reads refuse review rather than hide standards. Step 1 discovers candidates from base paths and titles, searches base with its own terms as well as head, and reads decision text at base when either search finds it.
 
@@ -249,6 +249,8 @@ A level's `budget.tokens` and `budget.tools` end a lens conversation once they a
 
 ## Check tasks
 
+The guardrails dispatch adds SupersessionReview to core's policies. It uses DecisionFiles to validate a changed decision graph, then reports each new or changed Supersedes edge once. Core registers its enabled switch and per-rule resolution key. With every touched decision disabled, it skips validation too. A changed target or body alone does not repeat an unchanged edge. Evidence compares the direct target's base prose with the successor, using Git's old target path for a rename and head prose only for a target absent at base. No model or verifier runs. Missing targets and unreadable or invalid graphs fail the check.
+
 `runChecks(harness, { rootConversationId, changeset, config, source, tier }, context)` runs a tier's checks on one revision. Core's `checksOfTier` expands the tier: a name that is a tier expands to its checks, and `static` to Biome and tsc; a tier names `static.enola` and `static.mutation` explicitly (see Enola static runs and Mutation static runs). The harness's registry must hold `checksExtension`, in every process that opens the storage, so a check task left pending by a crash resumes.
 
 `reviewChangeset` calls `runChecks` before lenses when given a `ReviewHarness` opened with `checkout`. Pi's public harness exposes neither its registry nor its environment, so the wrapper carries that capability. It takes the original configuration before the plan replaces routes, and maps `rerun` to `rerunFailed`. Supplying `options.checks`, even an empty array, opts out. A raw harness must supply records; absent records throw `ReviewError` `notInstalled` before any task starts. Pass the wrapper to request automatic checks. A wrapper without an environment leaves absent records not reviewed. Automatic checks require `policy`; a missing source throws `ReviewError` `missingPolicy` before any task starts. A `CheckError` propagates without adjudication. The existing checks document and task identity provide replay safety.
@@ -277,6 +279,14 @@ A level's `budget.tokens` and `budget.tools` end a lens conversation once they a
 - A solution-style `tsconfig.json`, with `references` and `files: []` and no `include`, checks nothing itself, so a run of it read as clean. The runner reads the project, as JSON with comments, and runs `tsc -p` on each referenced project in turn, recursing through nested solutions, and names the projects it checked in the check's notes. A project with an empty `files`, no `include`, and no references is a failed check, `nothingToCheck`. A project with neither `files` nor `include` checks every file below it, as tsc does. The runner reads the file itself, not what it `extends`.
 - tsc exits non-zero when it reports anything, including diagnostics Melian drops as outside the worktree or under `node_modules`, such as a broken `.d.ts` with `skipLibCheck` off. A non-zero exit whose every diagnostic was dropped is a run with no results and a note counting them; only a non-zero exit with no diagnostics at all is `toolFailed`.
 - Output goes to files, not the shell's stream. `Shell.exec` interleaves stdout and stderr, which would corrupt a JSON report, so the runner redirects each tool to a file in its scratch directory and reads that.
+
+## Stored rounds
+
+`melian.rounds`, version 1, keeps a storage-wide counter, the current round of each revision, owned adjudication tasks and verdict copies. Storage-local keys are `r<n>` or the legacy key hash; the public ID prefixes the key with the changeset ID. `RoundWriter` preserves a legacy verdict before the first write that touches its key, inside that writer's transaction. It also records comparison-only keys as undecided legacy rounds. The marker and the copy roll back with the write.
+
+`startAdjudication` mints when it creates a task, deleting the live verdict, provenance and decision. Attachments and dismissals keep the current round. Check runs contribute their identity to attachment through the round record, so distinct cold runs or reruns with identical records still mint. A host that runs checks upfront, as the CLI does for caller context, passes their identity as `ReviewOptions.checkRun`. No adjudication task or verdict version changes. Only adjudication writes a round's verdict copy, behind the review index's supersession check. A task main left pending writes its key's legacy round. A legacy task without a check-run identity stores the caller's identity on its first attachment. Later attachments require that stored identity. Minted tasks still require the same identity.
+
+`RoundReader` reads detached documents and synthesises unrecorded legacy verdict and comparison keys without writing. `Round.compare` orders legacy rounds by head commit date before minted rounds by mint time, breaking ties by ID. The host obtains commit dates from git. Unreadable legacy heads have no date and sort last, breaking ties by ID.
 
 ## Adjudication
 
@@ -334,6 +344,18 @@ The version-5 publish task returns posted snapshots on stale-target exits too, i
 Its migration preserves timing from versions 3 and 4; versions 1 and 2 retain legacy timing.
 A version-4 fixture recorded by that version’s own code proves SQLite reopen and timing preservation.
 
+Version 6 adds the storage-local round ID to the task target; `PublisherDocument` version 3 records the same target.
+Both migrations leave older targets unbound and preserve newer publisher attribution.
+The task binds an older target to its revision's legacy round transactionally only when no minted round exists at that revision.
+Otherwise it ends superseded and requires a fresh publish.
+The target commit preserves legacy state in its transaction before selecting the current round.
+Every bound target, legacy or minted, reads its round's saved verdict copy.
+A missing round or verdict copy refuses publication.
+Before starting a provider session or posting, the task checks that its bound round is current and decided.
+Otherwise it ends superseded, names the current round, and posts nothing.
+It also requires an indexed adjudication for the revision. An absent adjudication means a review is in progress.
+The task ends superseded before any external effect and asks for a fresh publish.
+
 
 `publishReview({ harness, provider, changeset, pullRequest, base, trustedWriters })` publishes the verdict recorded for a pull request's base and head through a `ReviewProvider` from core, such as `packages/github`'s. `trustedWriters` is required and comes from committed root base policy. Omission is refused before any write; only stored legacy migrations default to true. `base` is the merge base the pull request diffs from now, which the host reads with git, since the provider reports only the base branch's tip. The harness must hold `publishExtension(provider)`, which carries the publish task, `melian.publish`; install it again after a restart so an interrupted publication resumes. `openPublishHarness` opens a `PublishHarness`, whose `harness` holds nothing else, so a review a crash interrupted does not resume during a publish. Publication refuses stale reviews with `PublishError` `staleReview`. The changeset's head must match the pull request's head, and its base must match `base`. A missing or undecided verdict under their `revisionKey` is `notReviewed`. Publication also checks the verdict's provenance. It must describe a `pull-request` review of the same repository and number. Its provider-reported head must match the pull request's current head. Its policy source must be `revision:` of the provider-reported base. A mismatch is `notPublishable` and names what differs. A verdict recorded without provenance is refused too. A review of a range, of a working tree, of an older push, or of the pull request before a retarget is never posted.
 
@@ -347,8 +369,8 @@ the dismissed finding. Solution: the task is read by its ID with `getTask`, its 
 recorded verdict, and the message names what it ended as. A verdict an older Melian recorded, with
 no decision beside it, takes the findings version from the task input the index holds. A revision
 whose index entry names no adjudication task, as after a crash between a review's new lens selection
-and its adjudication, publishes its stored verdict only while its findings version is the one that
-verdict was decided from.
+and its adjudication, ends the publish task superseded as review in progress. The user must publish
+again after adjudication finishes.
 
 The task is not replay-safe: a post and the commit recording it are two steps, and GitHub takes no idempotency key. Two records guard it instead of a memo, which would vanish with the task:
 
@@ -392,7 +414,7 @@ request was retargeted onto `main`, keeping its head; a fresh review found less;
 resumed the old task, which posted the review of the old diff, and the pending round it left was
 posted by the new task too. Solution: each task records its target in its input: the repository, the
 number, the base branch and its tip as the provider reported them, the merge base, the head, and the
-`revisionKey` it publishes. Before resuming anything, `publishReview` commits the target it
+`revisionKey` and round ID it publishes. Before resuming anything, `publishReview` commits the target it
 validated to `PublisherDocument`, and a task whose target differs ends `completed` with `superseded`
 and the field that changed, writing nothing; `Publication.superseded` lists them. A pending round
 records its `revisionKey` as well, and one planned for another revision of the head is dropped
@@ -607,8 +629,17 @@ A mutated class or function must stay in its module when another context uses it
 
 Outside a conversation, forward the usage observer through Decider and TextModel. RouteTextModel emits each returned assistant's own model identity and usage before validating its answer. DecisionTask stores the collected usage in its task-keyed melian.model-usage family member in the terminal result commit. RouteTextModel awaits the observer's started callback before each request. DecisionTask durably increments its task-keyed melian.model-attempts started count there, and stores started minus the number of response receipts as unmeasured in the terminal commit. That count marks usageIncomplete on stages and run totals, including failed requests and crash replay. Text prints `usage incomplete: N request(s) not measured`. Failed decisions keep reported usage. No response usage means unavailable, never an invented zero. Telemetry never enters task inputs, attach keys, fingerprints or verdicts.
 
-StageTelemetry exposes per-stage usage, total and usageUnavailable stage IDs. The total covers the selected review's stages, including reused work once. A partial total says which model stages have no record. Detached TelemetryReader reads open no harness, start no scheduler and write nothing. Keep terminal values escaped through visibleText. No existing document version changes for this extension.
+StageTelemetry exposes per-stage usage, total and usageUnavailable stage IDs. The total covers the selected review's stages, including reused work once. A partial total says which model stages have no record. Detached TelemetryReader reads open no harness, start no scheduler and write nothing. Keep terminal values escaped through visibleText. The token-counter extension changed no existing document version. Reasoning capture below raises the usage family to version 3.
 
 Pi's faux provider estimates its own usage while streaming. A usage field in a scripted reply does not set the final counters. Tests needing exact counters inject them at the returned assistant boundary or read Pi's own ledger. A provider can leave optional counters explicitly undefined; copyJson with omitUndefinedProperties removes them before a strict JSON commit.
 
 Pi Durable 1.1.0 exposes no durable dispatch or resend count for GenerationTask or CompactionTask. Their attempt checkpoints count logical retries and survive recovery unchanged. UsageDoc covers settled responses. Lens, verifier and walkthrough totals cannot detect all pre-settlement losses; the decision names the checked APIs. Do not present them as complete provider billing.
+
+
+### Reasoning capture
+
+ReviewHarness decorates its host-supplied Models port with onPayload for generation and compaction. RouteTextModel observes direct completions. Retain requested, sent and provider-reported settings separately; never infer sent settings when the callback runs. A missing callback is derived, not observed. A body omitting reasoning says provider default. A reasoning-shaped parameter outside the captured paths sets source to unrecognised. Keep any recognised settings, with an empty settings object for an unknown-only payload. A later callback cannot clear that gap. Unknown values are never stored. Compare path segments, not joined names: a literal config.thinkingConfig key must not alias config → thinkingConfig. Prompts, tools, schemas, metadata and headers are opaque data.
+
+Model-usage document version 2 added request receipts. Version 3 permits source unrecognised and migrates versions 1 and 2 unchanged. The v2 fixture was written by 151ad84f through ConversationUsageRecorder before the version bump. Reopen tests preserve both earlier versions through a v3 write and another reopen. Conversation receipts use conversation:<id> keys in that family. Pi's UsageDoc still supplies aggregate counters; the receipts commit before the model response returns to Pi. A crash can preserve a receipt before Pi settles its usage. Old records remain without reasoning. Detached reads combine the existing counters and receipts without writing or asking a model.
+
+A mutated pager can repeat resolved reads without yielding, so a test timeout may never fire. Pager fakes must reject a read past their terminal page. This makes a broken termination guard fail an assertion instead of hanging the runner.

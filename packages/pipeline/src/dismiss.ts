@@ -21,6 +21,7 @@ import {
 } from "./harness.ts";
 import { modelsOf, type ReviewModels } from "./models.ts";
 import { attachable, ReviewIndex, undecided } from "./review-index.ts";
+import { RoundWriter } from "./rounds.ts";
 
 // The adjudication task alone, so a dismissal decides the verdict again without resuming a review a crash interrupted.
 const adjudicationExtension = defineExtension({ name: "melian.adjudication", tasks: [AdjudicationTask] });
@@ -175,6 +176,7 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 			return { replaced, also, live, task: known.task as TaskId<AdjudicationResult> };
 		}
 		const task = await tx.createTask(AdjudicationTask, input, { ownership: { kind: "conversation" } });
+		await new RoundWriter(tx, root.id).keep(revision, task);
 		index.reviews = { ...index.reviews, [revision]: { ...entry, adjudication: { task, input: key } } };
 		return { replaced, also, live, task };
 	}, context);

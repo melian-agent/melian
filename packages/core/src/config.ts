@@ -215,6 +215,7 @@ export const melianYamlSchema = Type.Object(
 		guardrails: Type.Optional(
 			Type.Object(
 				{
+					"supersession-drop": Type.Optional(Type.Object({ enabled: Type.Optional(Type.Boolean()) }, strict)),
 					"forbidden-paths": Type.Optional(
 						guardrail({ paths: Type.Optional(globs), message: Type.Optional(name) }),
 					),
@@ -413,6 +414,7 @@ export interface Guardrail<Rule> {
 
 /** The deterministic policies Melian evaluates. Each reports under the rule ID `guardrail/<name>`. */
 export interface GuardrailSettings {
+	readonly "supersession-drop": { readonly enabled: boolean };
 	readonly "forbidden-paths": Guardrail<ForbiddenPathRule>;
 	readonly "required-files": Guardrail<RequiredFileRule>;
 	readonly "forbidden-patterns": Guardrail<ForbiddenPatternRule>;
@@ -508,6 +510,7 @@ export const defaultConfig: MelianConfig = {
 		tsc: { enabled: true, timeout: 300, severity: {}, project: "tsconfig.json" },
 	},
 	guardrails: {
+		"supersession-drop": { enabled: true },
 		"forbidden-paths": { enabled: true, severity: "P1", rules: {} },
 		"required-files": { enabled: true, severity: "P2", rules: {} },
 		"forbidden-patterns": { enabled: true, severity: "P2", rules: { "forged-mutation-kill": forgedMutationKill } },

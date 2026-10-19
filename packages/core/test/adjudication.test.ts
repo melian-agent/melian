@@ -8,6 +8,7 @@ import {
 	type FindingInput,
 	loadConfig,
 	type MelianConfig,
+	Rendering,
 	type Resolution,
 	Verdict,
 } from "@melian-agent/core";
@@ -526,6 +527,20 @@ describe("Adjudication.adjudicate", () => {
 	const blocker = finding({ severity: "P1" });
 	const advisory = finding({ severity: "P3", rule: "naming" });
 	const silent = finding({ severity: "nit", rule: "prefer-const" });
+
+	it.each([undefined, false, true])(
+		"limits dismissal instructions to the current review (historical=%s)",
+		(historical) => {
+			const verdict = new Adjudication({
+				findings: [finding({ severity: "P2", source: { check: "static.example" } })],
+				manifest: [],
+				checks: [],
+				config: defaultConfig,
+			}).adjudicate();
+			const text = verdict.render(new Rendering({ historical }));
+			expect(text.includes("melian dismiss")).toBe(historical !== true);
+		},
+	);
 
 	it("passes when every check ran and nothing is above silent", () => {
 		const verdict = new Adjudication({ findings: [silent], manifest, checks, config: defaultConfig }).adjudicate();

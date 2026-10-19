@@ -109,6 +109,7 @@ export { CoverageCache } from "./coverage-cache.ts";
 export { EnolaCoverage } from "./enola-coverage.ts";
 export { GraphCache } from "./graph-cache.ts";
 export { ReviewTranscript } from "./review-coverage.ts";
+export { Round, RoundError, RoundReader } from "./rounds.ts";
 export { summarizeReview } from "./summarize.ts";
 export { type Stage, StageTelemetry, TelemetryReader } from "./telemetry.ts";
 export { TokenUsage, type UsageSummary } from "./token-usage.ts";
