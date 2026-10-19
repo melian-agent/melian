@@ -630,3 +630,11 @@ it("reopens the version-2 measurement with a distinct unset level", () => {
 	const off = TriageResults.parse(JSON.stringify({ ...baseline.toJSON(), thinking: "off" }));
 	expect(off.compare(reopened).verdict).toBe("incomparable");
 });
+
+it("renders one triage pass in the singular", () => {
+	const result = TriageResults.measure([], {}, { model: "faux/judge", fingerprint: "questions" });
+	expect(result.render()).toContain(", 0 passes:");
+	const single = TriageResults.parse(JSON.stringify({ ...result.toJSON(), passes: 1 }));
+	expect(single.render()).toContain(", 1 pass:");
+	expect(single.render()).not.toContain("1 passes:");
+});
