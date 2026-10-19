@@ -270,7 +270,19 @@ const tiers: readonly LensTier[] = ["light", "medium", "heavy"];
 
 function routeEveryTier(config: MelianConfig, model: string, override: boolean): MelianConfig {
 	const route: ModelRoute = { model };
-	const models = Object.fromEntries(tiers.map((tier) => [tier, override ? route : (config.models[tier] ?? route)]));
+	const models = Object.fromEntries(
+		tiers.map((tier) => {
+			const existing = config.models[tier];
+			return [
+				tier,
+				override
+					? route
+					: existing?.model !== undefined || existing?.accept !== undefined
+						? existing
+						: { ...existing, model },
+			];
+		}),
+	);
 	return { ...config, models: { ...config.models, ...models } };
 }
 

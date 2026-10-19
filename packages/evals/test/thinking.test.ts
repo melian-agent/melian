@@ -242,3 +242,55 @@ it.each([
 	},
 	60000,
 );
+
+it.each([
+	["    thinking: high\n", "finder"],
+	["    model: faux/configured\n    thinking: high\n", "configured"],
+	["    accept: [faux/configured]\n    thinking: high\n", "configured"],
+] as const)(
+	"fills an unrouted live tier while keeping configured routing: %s",
+	async (route, expectedModel) => {
+		const original = loadGoldens().find((golden) => golden.name === "correctness-null-deref")!;
+		const directory = realpathSync(mkdtempSync(join(tmpdir(), "melian-golden-tier-thinking-")));
+		cpSync(original.directory, directory, { recursive: true });
+		writeFileSync(
+			join(directory, "melian.golden.yaml"),
+			`tiers:\n  full: [lens.correctness]\nmodels:\n  heavy:\n${route}`,
+		);
+		const fake = createFakeModels({ models: [{ id: "finder" }, { id: "configured" }] });
+		const received: { model: string; body: object }[] = [];
+		fake.provider.setResponses([
+			async (request, options, _state, model) => {
+				expect(systemPromptOf(request.messages)).toContain("correctness reviewer");
+				const body = { reasoning: { effort: options?.reasoning } };
+				received.push({ model: model.id, body });
+				await options?.onPayload?.(body, model);
+				return fauxAssistantMessage("Done.");
+			},
+		]);
+		try {
+			await runGolden({ ...original, directory }, { kind: "live", models: fake.review, model: "faux/finder" });
+			expect(received).toEqual([{ model: expectedModel, body: { reasoning: { effort: "high" } } }]);
+		} finally {
+			rmSync(directory, { recursive: true, force: true });
+		}
+	},
+	60_000,
+);
+
+it("replaces a configured tier with the scripted model and leaves live thinking out", async () => {
+	const original = loadGoldens().find((golden) => golden.name === "correctness-null-deref")!;
+	const directory = realpathSync(mkdtempSync(join(tmpdir(), "melian-golden-scripted-route-")));
+	cpSync(original.directory, directory, { recursive: true });
+	writeFileSync(
+		join(directory, "melian.golden.yaml"),
+		"tiers:\n  full: [lens.correctness]\nmodels:\n  heavy:\n    model: faux/configured\n    thinking: high\n",
+	);
+	try {
+		const result = await runGolden({ ...original, directory }, { kind: "scripted" });
+		expect(result.findings).toHaveLength(1);
+		expect(result.toolMismatches).toEqual([]);
+	} finally {
+		rmSync(directory, { recursive: true, force: true });
+	}
+}, 60_000);
