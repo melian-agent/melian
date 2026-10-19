@@ -1228,8 +1228,37 @@ describe("cross-head answer discovery", () => {
 	it.each(["verdict", "resolved"] as const)("does not treat a signed %s marker as a finding root", async (kind) => {
 		const state = pullRequestState();
 		state.failUser = true;
+		state.reviews.push(review);
 		state.comments.push({ ...root(1), body: marker(old, kind, "fedcba9876543210", secret) });
-		expect(await providerFor(state).findPublished(7, old, wanted, secret)).toEqual({ threads: {}, replies: {} });
+		expect(await providerFor(state).findPublished(7, old, wanted, secret)).toEqual({
+			review: "1",
+			threads: {},
+			replies: {},
+		});
+	});
+
+	it("does not recover a root another secret signed from the recovered review", async () => {
+		const state = pullRequestState();
+		state.failUser = true;
+		state.reviews.push(review);
+		state.comments.push({ ...root(1), body: marker(old, "finding", "fedcba9876543210", "22".repeat(32)) });
+		expect(await providerFor(state).findPublished(7, old, wanted, secret)).toEqual({
+			review: "1",
+			threads: {},
+			replies: {},
+		});
+	});
+
+	it("does not recover a signed root whose author was deleted", async () => {
+		const state = pullRequestState();
+		state.failUser = true;
+		state.reviews.push(review);
+		state.comments.push({ ...root(1), user: null });
+		expect(await providerFor(state).findPublished(7, old, wanted, secret)).toEqual({
+			review: "1",
+			threads: {},
+			replies: {},
+		});
 	});
 
 	it("filters signed roots and their answers from a foreign known author", async () => {
