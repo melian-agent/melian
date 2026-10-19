@@ -4,7 +4,10 @@ import { liveModels } from "../src/credentials.ts";
 import { reportVerifierGoldens } from "../src/live-output.ts";
 import { EvalThinking } from "../src/thinking.ts";
 import { runVerifierGolden } from "../src/verifier.ts";
+// Vitest needs a static edge to select this entry for related mutation runs.
+import "../src/live.ts";
 
+vi.mock("../src/live.ts", () => ({}));
 vi.mock("../src/credentials.ts", () => ({ liveModels: vi.fn() }));
 vi.mock("../src/live-output.ts", () => ({
 	reportVerifierGoldens: vi.fn(),
