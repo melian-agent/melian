@@ -10,6 +10,7 @@ import {
 	defaultConfig,
 	Lens,
 	type LoadedConfig,
+	loadConfig,
 	type MelianConfig,
 	type NamedCredential,
 	ReviewPlan,
@@ -24,6 +25,7 @@ import {
 	fauxToolCall,
 	scriptConversations,
 	scriptVerifier,
+	systemPromptOf,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { count, crashFinding, crashRepository, readEvents } from "../../pipeline/test/fixtures/review-scenario.ts";
@@ -70,6 +72,85 @@ it("uses the chosen fallback tier's thinking for triage", async () => {
 		questions: [{ id: "correctness", text: "How closely?", options: ["careful", "deep"] }],
 	});
 	expect(received).toEqual(["high"]);
+});
+
+it("sends effort low in the lens and triage requests of the committed routes", async () => {
+	const root = fileURLToPath(new URL("../../..", import.meta.url));
+	const committed = (await loadConfig(root, { kind: "worktree" }, ".")).config.models;
+	expect(committed.heavy?.thinking).toBe("low");
+	expect(committed.light?.thinking).toBe("low");
+	expect(committed.medium?.thinking).toBeUndefined();
+	expect(committed.light).toMatchObject({ model: committed.medium?.model, fallbacks: committed.medium?.fallbacks });
+	const config = {
+		...defaultConfig,
+		tiers: { full: ["lens.correctness"] },
+		models: {
+			light: { ...committed.light, model: "faux/faux-1", fallbacks: [], accept: undefined },
+			medium: { model: "faux/faux-1" },
+			heavy: { ...committed.heavy, model: "faux/faux-1", fallbacks: [], accept: undefined },
+			verifier: { model: "faux/faux-1" },
+		},
+	};
+	const fake = createFakeModels();
+	fake.provider.setResponses(
+		Array.from({ length: 12 }, () => async (request, options, _state, model) => {
+			const prompt = systemPromptOf(request.messages);
+			const role = prompt.includes("You answer typed questions")
+				? "triage"
+				: prompt.includes("correctness reviewer")
+					? "lens"
+					: "verifier";
+			await options?.onPayload?.({ reasoning: { effort: options.reasoning ?? "none", role } }, model);
+			if (role === "triage")
+				return fauxAssistantMessage(
+					fauxToolCall("answer", {
+						answers: [{ question: "correctness", probabilities: [{ option: "careful", probability: 1 }] }],
+					}),
+					{ stopReason: "toolUse" },
+				);
+			if (role === "lens")
+				return request.messages.some((message) => message.role === "toolResult")
+					? fauxAssistantMessage("Done.")
+					: fauxAssistantMessage(fauxToolCall("report_finding", crashFinding), { stopReason: "toolUse" });
+			return scriptVerifier(request.messages);
+		}),
+	);
+	const chosen = await fallbackDecider(config, fake.review);
+	if (!("decider" in chosen)) throw new Error(chosen.skipped);
+	const repo = crashRepository();
+	const storage = pipeline.createMemoryStorage();
+	const opened = await pipeline.openReviewHarness(storage, fake.review, { decider: chosen.decider, retry: false });
+	try {
+		const changeset = await Changeset.resolve(repo, "main...feature");
+		await pipeline.reviewChangeset({
+			harness: opened,
+			changeset,
+			config,
+			lenses: await Lens.builtins(),
+			standards: [],
+			models: fake.review,
+			checks: [],
+			decider: chosen.decider,
+			policy: { kind: "revision", commit: changeset.revision.base },
+		});
+		const telemetry = await pipeline.TelemetryReader.open(storage).read(pipeline.revisionKey(changeset.revision));
+		const efforts = (stage: string) =>
+			telemetry.stages
+				.find((row) => row.name === stage)!
+				.usage!.requests!.map((request) => [request.reasoning.requested, request.reasoning.sent[0]]);
+		expect(efforts("melian.triage")).toEqual([["low", { reasoning: { effort: "low", role: "triage" } }]]);
+		expect(efforts("melian.lens").map(([requested]) => requested)).toEqual(["low", "low"]);
+		expect(efforts("melian.lens").map(([, sent]) => sent)).toEqual([
+			{ reasoning: { effort: "low", role: "lens" } },
+			{ reasoning: { effort: "low", role: "lens" } },
+		]);
+		const verifier = efforts("melian.verification.candidate");
+		expect(verifier.length).toBeGreaterThan(0);
+		expect(verifier.every(([requested]) => requested === "off")).toBe(true);
+	} finally {
+		await opened.close();
+		rmSync(repo, { recursive: true, force: true });
+	}
 });
 
 describe("--model", () => {
