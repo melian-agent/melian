@@ -7,6 +7,7 @@ import {
 	createReviewRegistry,
 	openHarness,
 	openSqliteStorage,
+	RoundReader,
 	reviewChangeset,
 	revisionKey,
 	upsertFinding,
@@ -105,6 +106,67 @@ afterEach(() => {
 	vi.restoreAllMocks();
 	rmSync(repo, { recursive: true, force: true });
 	rmSync(dir, { recursive: true, force: true });
+});
+
+it("keeps r1's passing verdict after r2 blocks the same revision", async () => {
+	io = { ...io, env: { ...io.env, MELIAN_STATE_DIR: join(dir, "history") } };
+	const path = await storagePath(repo, changeset.id, io.env, false);
+	const fake = createFakeModels();
+	const harness = await openHarness(await openSqliteStorage(path), {
+		models: fake.models,
+		registry: createReviewRegistry(),
+	});
+	try {
+		const root = await harness.root(context, { agent: { model: fake.ref() } });
+		const options = {
+			harness,
+			changeset,
+			config: { ...defaultConfig, tiers: { full: ["static.mutation"] } },
+			lenses: [],
+			standards: [],
+			models: fake.review,
+			checks: [{ name: "static.mutation", status: "ran" as const }],
+		};
+		expect((await reviewChangeset(options)).verdict).toMatchObject({ status: "passed", blocking: false });
+		await root.commit(
+			(tx) =>
+				upsertFinding(
+					tx,
+					root.id,
+					Finding.create({
+						rule: "null-dereference",
+						message: "n is wrong",
+						file: "a.ts",
+						startLine: 1,
+						snippet: "export const n = 2;",
+						occurrence: 0,
+						cause: "introduced",
+						severity: "P1",
+						explanation: { what: "wrong", whyHere: "here", whatToDo: "fix" },
+						source: { check: "static.mutation", version: "1" },
+					}),
+					revisionKey(changeset.revision),
+				),
+			context,
+		);
+		expect((await reviewChangeset(options)).verdict).toMatchObject({ status: "findings", blocking: true });
+	} finally {
+		await harness.close(context);
+	}
+	const storage = await openSqliteStorage(path);
+	try {
+		const rounds = await new RoundReader(storage).read(changeset.id, context);
+		expect(rounds.map((round) => ({ id: round.id, base: round.stored.base, head: round.stored.head }))).toEqual([
+			{ id: `${changeset.id}.r1`, base: changeset.revision.base, head: changeset.revision.head },
+			{ id: `${changeset.id}.r2`, base: changeset.revision.base, head: changeset.revision.head },
+		]);
+		expect.soft(rounds[0]!.verdict()).toMatchObject({ status: "passed", blocking: false });
+		expect(rounds[1]!.verdict()).toMatchObject({ status: "findings", blocking: true });
+	} finally {
+		await storage.close(context);
+	}
+	expect(await main(["findings", "--round", `${changeset.id}.r1`, "--json"], io)).toBe(0);
+	expect.soft(JSON.parse(io.stdout.mock.calls.join(""))).toMatchObject({ status: "passed", blocking: false });
 });
 
 it.each([false, true])("lists the range's rounds (json=%s)", async (json) => {
