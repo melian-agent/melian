@@ -413,6 +413,70 @@ describe("publication planning recovery", () => {
 		},
 	);
 
+	it("replaces the unanswered earlier reason of each of two findings whose reasons changed", async () => {
+		const reasonA = { by: "Maintainer", reason: "Reason A", at: "2026-10-17T00:00:00Z" };
+		const reasonB = { ...reasonA, reason: "Reason B", at: "2026-10-18T00:00:00Z" };
+		const second = Finding.create({
+			rule: "unsafe-two",
+			file: "src/a.ts",
+			startLine: 1,
+			snippet: "new",
+			occurrence: 0,
+			severity: "P2",
+			cause: "introduced",
+			message: "Unsafe output",
+			source: { check: "static.example" },
+			explanation: { what: "Unsafe", whyHere: "New", whatToDo: "Validate" },
+		});
+		const dismissed = (each: Finding) =>
+			Finding.from({
+				...each.toJSON(),
+				properties: { ...each.properties, status: "dismissed", dismissal: reasonB },
+			});
+		const verdict = new Adjudication({
+			findings: [dismissed(finding), dismissed(second)],
+			manifest: [],
+			checks: [],
+			config: defaultConfig,
+		}).adjudicate();
+		const head = state.pull.head.sha;
+		const owed = (each: Finding, thread: string) => ({
+			id: each.id,
+			ruleId: each.ruleId,
+			path: "src/a.ts",
+			line: 1,
+			revision: head,
+			thread,
+			dismissal: reasonA,
+		});
+		const keys = [
+			replyKey(finding.id, "1002", dismissalVersion(reasonA)),
+			replyKey(second.id, "2002", dismissalVersion(reasonA)),
+		];
+		await root.commit(async (tx) => {
+			(await tx.doc(VerdictDocument, root.id)).verdicts[revision] = verdict.toJSON();
+			const doc = await tx.doc(PublishedDocument, root.id);
+			doc.order = [head];
+			doc.revisions[head] = {
+				reviews: ["1"],
+				rounds: 1,
+				verdict: verdict.fingerprint(),
+				verdictRevision: revision,
+				open: {},
+				resolved: { [keys[0]!]: owed(finding, "1002"), [keys[1]!]: owed(second, "2002") },
+				replies: {},
+			};
+		}, context);
+		const reply = vi.spyOn(provider, "replyResolved").mockResolvedValue("1004");
+		await publish();
+		expect(reply.mock.calls.map(([, entry]) => [entry.thread, entry.dismissal?.reason]).sort()).toEqual([
+			["1002", "Reason B"],
+			["2002", "Reason B"],
+		]);
+		const stored = (await harness!.snapshot(PublishedDocument, root.id, context))!.revisions[head]!;
+		expect(keys.filter((key) => Object.hasOwn(stored.resolved, key))).toEqual([]);
+	});
+
 	it("keeps an unanswered reason owed on another thread when the reason changes", async () => {
 		const reasonA = { by: "Maintainer", reason: "Reason A", at: "2026-10-17T00:00:00Z" };
 		const reasonB = { ...reasonA, reason: "Reason B", at: "2026-10-18T00:00:00Z" };
