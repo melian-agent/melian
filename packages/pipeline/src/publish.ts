@@ -845,8 +845,18 @@ function publishTask(provider: ReviewProvider) {
 					const { dismissals } = verdict.publication({}, lines, head);
 					const again = redismissed(await read(), head, dismissals);
 					if (Object.keys(again).length > 0) {
+						const now = (await read()).revisions[head]!;
+						const shown = (await marked({ fingerprint: now.verdict ?? "", round: now.rounds ?? 0 })).replies;
 						await runtime.commit(async (tx) => {
-							const stored = (await tx.doc(PublishedDocument, root)).revisions[head]!;
+							const document = await tx.doc(PublishedDocument, root);
+							const stored = document.revisions[head]!;
+							// A reason no reply ever carried is superseded by the current one on the same thread.
+							const answered = repliedKeys(document);
+							for (const [key, entry] of Object.entries(stored.resolved)) {
+								// A root carries one finding's marker, so the thread alone names the finding.
+								const replaced = Object.values(again).some((current) => current.thread === entry.thread);
+								if (replaced && !answered.has(key) && shown[key] === undefined) delete stored.resolved[key];
+							}
 							stored.resolved = { ...stored.resolved, ...again };
 							return undefined;
 						}, context);
