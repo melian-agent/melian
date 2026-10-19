@@ -1232,10 +1232,23 @@ describe("cross-head answer discovery", () => {
 		expect(await providerFor(state).findPublished(7, old, wanted, secret)).toEqual({ threads: {}, replies: {} });
 	});
 
-	it("filters signed roots from a foreign known author", async () => {
+	it("filters signed roots and their answers from a foreign known author", async () => {
 		const state = pullRequestState();
-		state.comments.push({ ...root(1), user: { login: "human" } });
-		expect(await providerFor(state).findPublished(7, old, wanted, secret)).toEqual({ threads: {}, replies: {} });
+		state.reviews.push(review);
+		state.comments.push(
+			{ ...root(1), user: { login: "human" } },
+			{
+				...root(2),
+				body: marker(old, "resolved", "fedcba9876543210", secret),
+				in_reply_to_id: 1,
+				user: { login: "human" },
+			},
+		);
+		expect(await providerFor(state).findPublished(7, old, wanted, secret)).toEqual({
+			review: "1",
+			threads: {},
+			replies: {},
+		});
 	});
 
 	it("recognises deletion only after GraphQL and REST both lack the root", async () => {
