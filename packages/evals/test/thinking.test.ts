@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, realpathSync, rmSync } from "node:fs";
+import { cpSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -175,3 +175,70 @@ it("applies live lens, verifier and triage overrides to fake provider bodies and
 		{ reasoning: { effort: undefined } },
 	]);
 }, 60_000);
+
+it.each([
+	[undefined, true],
+	["faux/judge", true],
+	[undefined, false],
+] as const)(
+	"keeps configured verifier thinking when replacing its model with %s (configured=%s)",
+	async (verifierModel, configured) => {
+		const original = loadGoldens().find((golden) => golden.name === "correctness-null-deref")!;
+		const directory = realpathSync(mkdtempSync(join(tmpdir(), "melian-verifier-thinking-")));
+		cpSync(original.directory, directory, { recursive: true });
+		writeFileSync(
+			join(directory, "melian.golden.yaml"),
+			"tiers:\n  full: [lens.correctness]\nmodels:\n  heavy:\n    model: faux/finder\n" +
+				(configured ? "  verifier:\n    model: faux/configured\n    thinking: low\n" : ""),
+		);
+		const golden = { ...original, directory };
+		const finding = original.script
+			.correctness!.flatMap((reply) => ("calls" in reply ? reply.calls : []))
+			.find((call) => call.name === "report_finding")!.arguments;
+		const fake = createFakeModels({ models: [{ id: "finder" }, { id: "judge" }] });
+		const received: { role: string; model: string; body: object }[] = [];
+		fake.provider.setResponses(
+			Array.from({ length: 10 }, () => async (request, options, _state, model) => {
+				const prompt = systemPromptOf(request.messages);
+				const verifier = prompt.includes("Melian adversarial verifier");
+				const body = options?.reasoning === undefined ? {} : { reasoning: { effort: options.reasoning } };
+				received.push({ role: verifier ? "verifier" : "finder", model: model.id, body });
+				await options?.onPayload?.(body, model);
+				if (verifier) return scriptVerifier(request.messages);
+				expect(prompt).toContain("correctness reviewer");
+				return request.messages.some((message) => message.role === "toolResult")
+					? fauxAssistantMessage("Done.")
+					: fauxAssistantMessage(fauxToolCall("report_finding", finding as Parameters<typeof fauxToolCall>[1]), {
+							stopReason: "toolUse",
+						});
+			}),
+		);
+		try {
+			const run = await runGolden(golden, {
+				kind: "live",
+				models: fake.review,
+				model: "faux/finder",
+				...(verifierModel === undefined ? {} : { verifierModel }),
+				thinking: EvalThinking.parse("heavy=medium"),
+			});
+			const finder = received.filter((request) => request.role === "finder");
+			const verifier = received.filter((request) => request.role === "verifier");
+			expect(finder.length).toBeGreaterThan(0);
+			expect(verifier.length).toBeGreaterThan(0);
+			expect(finder).toEqual(
+				finder.map(() => ({ role: "finder", model: "finder", body: { reasoning: { effort: "medium" } } })),
+			);
+			expect(verifier).toEqual(
+				verifier.map(() => ({
+					role: "verifier",
+					model: verifierModel === undefined ? "finder" : "judge",
+					body: configured ? { reasoning: { effort: "low" } } : {},
+				})),
+			);
+			expect(run.findings).toHaveLength(1);
+		} finally {
+			rmSync(directory, { recursive: true, force: true });
+		}
+	},
+	60000,
+);

@@ -317,7 +317,10 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 			config = mode.model === undefined ? loaded : routeEveryTier(loaded, mode.model, false);
 			const verifier = mode.verifierModel ?? mode.model;
 			if (verifier !== undefined)
-				config = { ...config, models: { ...config.models, verifier: { model: verifier } } };
+				config = {
+					...config,
+					models: { ...config.models, verifier: { model: verifier, thinking: config.models.verifier?.thinking } },
+				};
 			models = mode.models;
 		}
 		if (mode.kind === "live" && mode.thinking !== undefined) config = mode.thinking.apply(config);
