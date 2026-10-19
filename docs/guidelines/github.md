@@ -46,6 +46,7 @@ A null or malformed record rejects the complete listing, including any earlier v
 A settled rerun with nothing owed reads neither marker lists nor threads.
 The fake distinguishes thread node IDs from root database IDs, checks query selections and target variables, and supports failed or partial pages.
 Tests can change authors, resolve or unresolve threads, hide them from GraphQL and delete comments independently.
+A `findPublished` test that rejects a root must supply the review the root points at. Without it, the review match hides the root by itself, and the test passes with its own guard deleted.
 
 Untrusted text must never forge a marker, even though a forged one now fails its signature. Problem: a lens writes finding text after reading a change its author controls, and the author also chooses file paths. Example: an explanation holding a copied `<!-- melian:revision=<next head> verdict=<fingerprint> sig=<signature> -->` on a line of its own would make the next revision's publication think its review was already posted, and post nothing. Solution: `renderProse` escapes `<`, `>`, and `&` in every piece of finding text, so no HTML survives; `code` shows control characters in paths and rule IDs as `\uXXXX`, so a path cannot start a line; and only a marker standing alone on a line counts.
 
