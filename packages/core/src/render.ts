@@ -12,6 +12,8 @@ export interface TerminalRenderOptions {
 	readonly all?: boolean;
 	/** Name, under each finding, the file and entry that decided its resolution. Off by default. */
 	readonly decided?: boolean;
+	/** Omit instructions that act on the current review when showing a saved round. Off by default. */
+	readonly historical?: boolean;
 }
 
 export const severityColor: Readonly<Record<Severity, string>> = { P0: "31", P1: "31", P2: "33", P3: "36", nit: "2" };
@@ -144,6 +146,8 @@ export class Rendering {
 	readonly all: boolean;
 	/** Name, under each finding, the file and entry that decided its resolution. */
 	readonly decided: boolean;
+	/** Render a saved round without current-review instructions. */
+	readonly historical: boolean;
 	readonly #color: boolean;
 
 	constructor(options: TerminalRenderOptions = {}) {
@@ -151,6 +155,7 @@ export class Rendering {
 		this.ids = options.ids === true;
 		this.all = options.all === true;
 		this.decided = options.decided === true;
+		this.historical = options.historical === true;
 	}
 
 	/** `text` coloured with the ANSI code `code`, or as it is when colour is off. */

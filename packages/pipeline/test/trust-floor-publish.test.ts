@@ -5,7 +5,6 @@ import {
 	backgroundContext as context,
 	createMemoryStorage,
 	dismissFinding,
-	openPublishHarness,
 	publishReview,
 	readFindings,
 	upsertFinding,
@@ -16,6 +15,8 @@ import { fakeGitHub } from "../../github/test/fixtures/fake-github.ts";
 import { moveTo, pullRequestState } from "../../github/test/fixtures/scenario.ts";
 import { VerdictDocument } from "../src/adjudication.ts";
 import { FindingsDocument, revisionKey, upsertVerification } from "../src/findings.ts";
+import { RoundWriter } from "../src/rounds.ts";
+import { RecordedReview } from "./fixtures/recorded-review.ts";
 import { baseAndHead, commit, isolatedGitEnv } from "./fixtures/repo.ts";
 
 it.each(["plausible", "refuted"] as const)(
@@ -31,7 +32,7 @@ it.each(["plausible", "refuted"] as const)(
 			fetch: fakeGitHub(state),
 		});
 		const fake = createFakeModels();
-		const opened = await openPublishHarness(createMemoryStorage(), fake.review, provider);
+		const opened = await RecordedReview.open(createMemoryStorage(), fake.review, provider);
 		try {
 			const root = await opened.harness.root(context);
 			const judgement: Verification = {
@@ -87,7 +88,9 @@ it.each(["plausible", "refuted"] as const)(
 							policy: `revision:${changeset.revision.base}`,
 						},
 					};
+					await new RoundWriter(tx, root.id).record(revision, 0, decided.toJSON(), document.provenance[revision]!);
 				}, context);
+				await opened.record(revision);
 				return decided;
 			};
 			const publish = async () => {

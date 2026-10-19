@@ -30,6 +30,7 @@ import {
 	publishReview,
 	ReviewError,
 	type ReviewOrigin,
+	RoundReader,
 	readProvenance,
 	readVerdict,
 	recordDismissal,
@@ -290,6 +291,7 @@ export async function review(
 				policy: source,
 				tier,
 				checks: checks.records,
+				checkRun: checks.identity,
 				...(callers === undefined ? {} : { callers }),
 				rerun: options.rerun,
 				origin,
@@ -490,13 +492,57 @@ export class StoredReview {
 export async function findings(
 	io: Io,
 	argument: string,
-	options: { readonly open: boolean; readonly all: boolean; readonly json: boolean },
+	options: {
+		readonly open: boolean;
+		readonly all: boolean;
+		readonly json: boolean;
+		readonly round?: string;
+		readonly rounds?: boolean;
+	},
 ): Promise<number> {
+	if (options.round !== undefined) return roundFindings(io, options.round, options);
 	const stored = await StoredReview.open(io, argument);
 	const { changeset } = stored;
 	const path = await storagePath(changeset.repoRoot, changeset.id, io.env, isScripted(io.env));
 	const missing = stored.missing();
 	if (!existsSync(path)) throw missing;
+	if (options.rounds) {
+		const storage = await openStorage(path);
+		try {
+			const rounds = await new RoundReader(storage).read(changeset.id);
+			const dates = new Map<string, number>();
+			for (const round of rounds.filter((round) => round.stored.mintedAt === undefined)) {
+				try {
+					dates.set(
+						round.stored.head,
+						Number(await git(changeset.repoRoot, ["show", "-s", "--format=%ct", round.stored.head, "--"])),
+					);
+				} catch {}
+			}
+			rounds.sort((left, right) => left.compare(right, dates));
+			const listed = rounds.map((round) => {
+				const date = dates.get(round.stored.head);
+				return {
+					id: round.id,
+					base: round.stored.base,
+					head: round.stored.head,
+					mintedAt: round.stored.mintedAt,
+					date: round.stored.mintedAt ?? (date === undefined ? "unknown" : new Date(date * 1000).toISOString()),
+					status: round.verdict()?.status ?? "undecided",
+				};
+			});
+			io.stdout(
+				options.json
+					? `${JSON.stringify(listed, null, 2)}\n`
+					: listed
+							.map((round) => `${round.id}  ${round.base}..${round.head}  ${round.status}  ${round.date}\n`)
+							.join(""),
+			);
+			return 0;
+		} finally {
+			await storage.close(context);
+		}
+	}
 	const reviewHarness = await openReviewHarness(await openStorage(path), idleModels(io.env));
 	const { harness } = reviewHarness;
 	try {
@@ -521,6 +567,37 @@ export async function findings(
 		return 0;
 	} finally {
 		await reviewHarness.close(context);
+	}
+}
+
+async function roundFindings(
+	io: Io,
+	id: string,
+	options: { readonly open: boolean; readonly all: boolean; readonly json: boolean },
+): Promise<number> {
+	const match = /^(range-[0-9a-f]{16}|pull-[0-9a-f]{16})\.(?:r[1-9][0-9]*|k[0-9a-f]{16})$/.exec(id);
+	if (match === null) throw new CliError(`invalid round ID ${id}`);
+	const repoRoot = await git(io.cwd, ["rev-parse", "--show-toplevel"]);
+	const path = await storagePath(repoRoot, match[1]!, io.env, isScripted(io.env));
+	if (!existsSync(path)) throw new CliError(`Melian has no round ${id}`);
+	const storage = await openStorage(path);
+	try {
+		const round = (await new RoundReader(storage).read(match[1]!)).find((round) => round.id === id);
+		if (round === undefined) throw new CliError(`Melian has no round ${id}`);
+		const verdict = round.verdict();
+		if (verdict === undefined) throw new CliError(`Melian has no decided round ${id}`);
+		const plan = round.stored.provenance?.plan;
+		if (plan !== undefined && !options.json) {
+			for (const line of ReviewPlan.from(plan).summary().split("\n").filter(Boolean)) io.stderr(`melian: ${line}\n`);
+		}
+		const render = new Rendering({ color: io.color, ids: true, all: options.all, decided: true, historical: true });
+		if (options.open) {
+			const open = FindingsLog.of(verdict.attention());
+			io.stdout(options.json ? open.renderJson() : open.render(render));
+		} else io.stdout(options.json ? verdict.renderJson() : verdict.render(render));
+		return 0;
+	} finally {
+		await storage.close(context);
 	}
 }
 
