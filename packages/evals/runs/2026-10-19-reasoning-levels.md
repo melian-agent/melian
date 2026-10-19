@@ -13,7 +13,7 @@ Every cell ran at `b10e7f67`, #157's head, except the pilot, which ran at `1ce6a
 | Terra | triage | `openai-codex/gpt-5.6-terra` | none | off, low, medium | 3, over 6 changes |
 | Sonnet, Opus | verifier | each | none | low, high | 1, over 9 verifier goldens |
 
-The Sol corpus holds correctness (5 goldens), design (24), durability (7), tests (7) and trust-boundary (10). All 212 Sol requests per level carried the requested level in the body (`requested=low effort=low observed`, and likewise for medium and high). The Opus telemetry reads `requested=low effort=high observed provider-reported=low`. Anthropic's managed-effort models open with `high` in the body, and the provider reports the level it applied, so the provider-reported level is the authority there. No invocation printed an unscored line.
+The Sol corpus holds correctness (5 goldens), design (24), durability (7), tests (7) and trust-boundary (10). Every Sol score line shows Sol's body carrying the requested level in the body (`requested=low effort=low observed`, and likewise for medium and high). The Opus telemetry reads `requested=low effort=high observed provider-reported=low`. Anthropic's managed-effort models open with `high` in the body, and the provider reports the level it applied, so the provider-reported level is the authority there. No invocation printed an unscored line.
 
 ## Finders
 
