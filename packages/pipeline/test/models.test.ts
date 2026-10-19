@@ -80,7 +80,10 @@ it("answers without cancellation when the caller supplies no signal", async () =
 			);
 		},
 	]);
+	const complete = vi.spyOn(fake.models, "complete");
 	const model = await RouteTextModel.create(fake.review, [fake.ref()]);
 	expect(await model!.answer({ system: "Use the answer tool.", prompt: "Choose.", tool })).toEqual({ choice: "run" });
 	expect(fake.provider.state.callCount).toBe(1);
+	expect(complete.mock.calls[0]![2]).not.toHaveProperty("signal");
+	complete.mockRestore();
 });
