@@ -27,12 +27,16 @@ import expected4 from "./fixtures/published-versions/v4-expected.json" with { ty
 import recorded6 from "./fixtures/published-versions/v6.json" with { type: "json" };
 import expected6 from "./fixtures/published-versions/v6-expected.json" with { type: "json" };
 
+import recorded7 from "./fixtures/published-versions/v7.json" with { type: "json" };
+import expected7 from "./fixtures/published-versions/v7-expected.json" with { type: "json" };
+
 const versions = [
 	{ recorded: recorded1, expected: expected1 },
 	{ recorded: recorded2, expected: expected2 },
 	{ recorded: recorded3, expected: expected3 },
 	{ recorded: recorded4, expected: expected4 },
 	{ recorded: recorded6, expected: expected6 },
+	{ recorded: recorded7, expected: expected7 },
 ];
 const cases = versions.flatMap(({ recorded, expected }) =>
 	recorded.rounds.map((round, index) => ({ ...round, version: recorded.version, expected: expected[index]!.state })),
