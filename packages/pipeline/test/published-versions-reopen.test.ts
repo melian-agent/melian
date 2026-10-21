@@ -13,11 +13,21 @@ import {
 } from "../src/harness.ts";
 import { PublishedDocument } from "../src/publish.ts";
 import { createFakeModels } from "../src/testing.ts";
-import recorded from "./fixtures/published-versions/v1.json" with { type: "json" };
-import expected from "./fixtures/published-versions/v1-expected.json" with { type: "json" };
+import recorded1 from "./fixtures/published-versions/v1.json" with { type: "json" };
+import expected1 from "./fixtures/published-versions/v1-expected.json" with { type: "json" };
+import recorded2 from "./fixtures/published-versions/v2.json" with { type: "json" };
+import expected2 from "./fixtures/published-versions/v2-expected.json" with { type: "json" };
 
-it.each(recorded.rounds.map((round, index) => ({ ...round, expected: expected[index]!.state })))(
-	"reopens version 1's recorded $phase publication and persists its upgraded value",
+const versions = [
+	{ recorded: recorded1, expected: expected1 },
+	{ recorded: recorded2, expected: expected2 },
+];
+const cases = versions.flatMap(({ recorded, expected }) =>
+	recorded.rounds.map((round, index) => ({ ...round, version: recorded.version, expected: expected[index]!.state })),
+);
+
+it.each(cases)(
+	"reopens version $version's recorded $phase publication and persists its upgraded value",
 	async (round) => {
 		const directory = realpathSync(mkdtempSync(join(tmpdir(), "melian-published-versions-")));
 		const database = join(directory, "state.sqlite");
@@ -28,7 +38,7 @@ it.each(recorded.rounds.map((round, index) => ({ ...round, expected: expected[in
 		try {
 			const previous = defineDoc<JsonObject>({
 				kind: "melian.published",
-				version: recorded.version,
+				version: round.version,
 				scope: "conversation",
 				history: "latest",
 				fork: "current",
@@ -48,7 +58,9 @@ it.each(recorded.rounds.map((round, index) => ({ ...round, expected: expected[in
 			await (await second.root(context)).commit(async (tx) => {
 				await tx.doc(PublishedDocument, root.id);
 			}, context);
-			await expect(second.snapshot(previous, root.id, context)).rejects.toThrow(/newer version 9 than 1/);
+			await expect(second.snapshot(previous, root.id, context)).rejects.toThrow(
+				`newer version 9 than ${round.version}`,
+			);
 			await second.close(context);
 			const third = await open();
 			harnesses.push(third);
