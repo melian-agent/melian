@@ -28,7 +28,7 @@ The command asks two authorities and requires them to agree:
 The links are judged by position:
 
 - The last link must equal `merge_group.head_sha`. Its entry is the group's own pull request.
-- An earlier link passes if it matches an entry's `headCommit` or is already an ancestor of current `main`. Problem: under ALLGREEN an earlier entry can merge and leave the list while a later group's job runs. Example: entry 1 lands, and group 2's walk still has two links from its old `base_sha`. An exact match on the leading entries would fail group 2 and eject an innocent pull request, on every rerun. Solution: a link that has landed passes.
+- An earlier link passes if it matches an entry's `headCommit` or is already an ancestor of current `main`. Problem: under ALLGREEN an earlier entry can merge and leave the list while a later group's job runs. Example: entry 1 lands, and group 2's walk still has two links from its old `base_sha`. An exact match on the leading entries would fail group 2 and eject an innocent pull request, on every rerun. Solution: a link that has landed passes. It is part of the trusted base, so the job excludes it from per-head status validation and needs no pull request number for it. Only links still in the queue go through head-status validation, and each takes its pull request number from its own queue entry.
 - A link that passes neither test fails the walk.
 
 The job posts `failure` only when the failing link is the group's own pull request. When an earlier link fails, it posts nothing: that link's own group ejects it, and a `failure` here would eject the innocent pull request behind it. A group whose job posts nothing waits out the queue's timeout, which also ejects. The job retries a failed API read once before it counts the read as failed.
@@ -92,9 +92,9 @@ When both model providers are out, no head gets `success`, and the job fails eve
 
 The bypass skips more than Melian. GitHub's documentation on merging with a queue says an admin may merge "without waiting for requirements to be met". It skips the queue, the required `check (…)` jobs, thread resolution, and any test of the merged result against current `main`.
 
-Procedure: before a bypass, the maintainer brings the head up to date with `main`, confirms green `check (…)` runs on that head, and comments why.
+A bypass merges outside the queue, so `main` can advance between the maintainer's check and the merge, and the merged tree is then untested. That is the race the queue exists to prevent. The procedure narrows the window and cannot close it: the maintainer brings the head up to date with `main`, confirms green `check (…)` runs on that head, comments why, and immediately before merging confirms that `main` still equals the base the green checks ran on. The merge happens only then.
 
-An option for the maintainer, not adopted: move `melian/review` into a second ruleset that alone carries the bypass, so CI stays mandatory. Whether a queue honours a bypass in a second ruleset is unproven, and it needs a read-only check before anyone relies on it.
+The only way to keep CI mandatory is a split: the `check (…)` jobs in a ruleset with no bypass, and `melian/review` in a second ruleset that alone carries the bypass. This is the preferred option, pending a live probe on the repository that the maintainer runs at step 10; it is not adopted. Whether a queue honours a bypass in a second ruleset is unproven until then, and no one relies on it before.
 
 ## Tests the build must have
 
@@ -110,14 +110,15 @@ Each uses a fake GitHub that answers only the SHA, number or query asked, and a 
 8. A description with no base SHA, an unparseable one, or a base that is not an ancestor of `base_sha`: `failure`.
 9. A group of three where the group's own head lacks a status: `failure` naming that one. Where an earlier head lacks one: no status posted.
 10. An earlier link absent from the queue but an ancestor of current `main`: passes. One that is neither: no status posted.
-11. A last link that differs from `merge_group.head_sha`: `failure`.
-12. A first entry whose `baseCommit` differs from `base_sha`: `failure`.
-13. A queue entry whose `headRefOid` differs from the merge commit's second parent: `failure`.
-14. A one-parent commit, or a first-parent walk that never reaches `base_sha`: `failure`.
-15. An API read that fails once and then answers: the second answer decides. One that fails twice: `failure` with the reason, within the command's deadline.
-16. The fake records every request: no status is ever written to any SHA but `head_sha`.
-17. Workflow lint: the workflow checks out `base_sha` with full history, sets `timeout-minutes`, and grants `statuses: write` and nothing broader.
-18. A workflow edit draws the policy notice. This pull request adds it to `packages/core/test/guardrails.test.ts`: under the root `melian.yaml`, an edit, an addition and a rename under `.github/workflows/` and an edit under `.github/actions/` each draw a P1 notice, and without the glob none does.
+11. An earlier entry merges and disappears before status validation: the group passes on its own pull request's status, and the landed link is not validated. The fake records no status read for the landed link's head and no pull request number lookup for it. The test asserts the whole result: the posted state, description and target SHA.
+12. A last link that differs from `merge_group.head_sha`: `failure`.
+13. A first entry whose `baseCommit` differs from `base_sha`: `failure`.
+14. A queue entry whose `headRefOid` differs from the merge commit's second parent: `failure`.
+15. A one-parent commit, or a first-parent walk that never reaches `base_sha`: `failure`.
+16. An API read that fails once and then answers: the second answer decides. One that fails twice: `failure` with the reason, within the command's deadline.
+17. The fake records every request: no status is ever written to any SHA but `head_sha`.
+18. Workflow lint: the workflow checks out `base_sha` with full history, sets `timeout-minutes`, and grants `statuses: write` and nothing broader.
+19. A workflow edit draws the policy notice. This pull request adds it to `packages/core/test/guardrails.test.ts`: under the root `melian.yaml`, an edit, an addition and a rename under `.github/workflows/` and an edit under `.github/actions/` each draw a P1 notice, and without the glob none does.
 
 The mutation check runs on the command before its first round.
 
