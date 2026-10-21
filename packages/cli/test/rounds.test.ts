@@ -222,6 +222,9 @@ it("lists main's legacy round before a minted undecided round and asks git for i
 	expect(JSON.parse(io.stdout.mock.calls.join("")).status).toBe("passed");
 	io.stdout.mockClear();
 	expect(await main(["compare", "main...feature", "--round", output[0].id], io)).toBe(0);
+	expect(existsSync(`${path}-wal`)).toBe(false);
+	expect(await main(["compare", "main...feature", "--round", output[1].id], io)).toBe(1);
+	expect(io.stderr.mock.calls.join("")).toContain(`Melian has no current, decided round ${output[1].id}`);
 });
 
 it("reads a pull-request round but refuses comparison writes through its full ID", async () => {
@@ -326,6 +329,7 @@ it.each([false, true])("prints the round's stored plan warnings only in text (js
 });
 
 it.each([
+	"xrange-0123456789abcdef.r1",
 	"../outside.r1",
 	"range-0123456789abcdef.r0",
 	"range-0123456789abcdef.r01",
@@ -526,6 +530,10 @@ it.each(["bad", "range-ffffffffffffffff.r1", "missing"])(
 	},
 );
 
+it("takes --round on a range whose base starts like a pull request", async () => {
+	expect(await main(["compare", "#7...feature", "--round", `${changeset.id}.r1`], io)).toBe(0);
+});
+
 it("comparison writes search only the selected state directory", async () => {
 	const elsewhere = { ...io, env: { ...io.env, MELIAN_STATE_DIR: join(dir, "elsewhere") } };
 	expect(await main(["compare", "main...feature", "--round", `${changeset.id}.r1`], elsewhere)).toBe(1);
@@ -537,6 +545,8 @@ it.each([
 	["compare", "stats"],
 	["compare", "backlog"],
 	["compare", "#7"],
+	["compare", "#12"],
+	["compare", "adjudicate", "#7", "a".repeat(16), "--verdict", "noise"],
 	["review", "main...feature"],
 ])("refuses --round outside range writes: %s", async (...args) => {
 	expect(await main([...args, "--round", `${changeset.id}.r1`], io)).toBe(64);
