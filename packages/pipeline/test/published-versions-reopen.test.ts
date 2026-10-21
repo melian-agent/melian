@@ -18,9 +18,13 @@ import expected1 from "./fixtures/published-versions/v1-expected.json" with { ty
 import recorded2 from "./fixtures/published-versions/v2.json" with { type: "json" };
 import expected2 from "./fixtures/published-versions/v2-expected.json" with { type: "json" };
 
+import recorded3 from "./fixtures/published-versions/v3.json" with { type: "json" };
+import expected3 from "./fixtures/published-versions/v3-expected.json" with { type: "json" };
+
 const versions = [
 	{ recorded: recorded1, expected: expected1 },
 	{ recorded: recorded2, expected: expected2 },
+	{ recorded: recorded3, expected: expected3 },
 ];
 const cases = versions.flatMap(({ recorded, expected }) =>
 	recorded.rounds.map((round, index) => ({ ...round, version: recorded.version, expected: expected[index]!.state })),
