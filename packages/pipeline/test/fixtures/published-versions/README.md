@@ -10,6 +10,7 @@ Only a recording test was added to each archived tree; production code stayed un
 | 1 | `3494ee887f0ad3ee4edefdcc1656debebba08c01` | Last main commit before version 2 |
 | 2 | `782f7f875d6ef1933969a88d9fe8b677f0cedcef` | Last main commit before version 3 |
 | 3 | `63a8710863da460a9e96f89ba5accc5d59573e6c` | Last main commit before the ledger |
+| 4 | `eb2fa24944651fe465927144e1678c28b201db04` | Last ledger-branch commit before version 5; version 4 never reached main |
 
 The recorder used the historical GitHub scenario helpers, fake models and `fakeGitHub`.
 It reviewed an inline finding and an affected finding with evidence outside the diff.
