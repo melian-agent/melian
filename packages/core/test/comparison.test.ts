@@ -1789,7 +1789,7 @@ describe("Comparison export", () => {
 		comparison.adjudicate(finding.id, judgement);
 		comparison.adjudicate(melian().id, { ...judgement, note: "The request is untrusted." });
 		const record = new ComparisonExport(
-			[{ changeset: "pull-7", comparison, verdict: verdictOf({ findings: [melian()] }) }],
+			[{ changeset: "pull-7", round: "pull-7.r1", comparison, verdict: verdictOf({ findings: [melian()] }) }],
 			"#7",
 			"https://github.com/melian-agent/example/pull/7",
 		);
@@ -1797,8 +1797,6 @@ describe("Comparison export", () => {
 		expect(record.render()).not.toContain("<script>");
 		expect(record.render()).not.toContain("\u001b");
 		expect(record.render()).toContain("\\| &lt;img&gt;");
-		expect(JSON.parse(record.renderJson()).comparisons[`${revision.base}..${revision.head}`]).toEqual(
-			comparison.toJSON(),
-		);
+		expect(JSON.parse(record.renderJson()).comparisons["pull-7.r1"]).toEqual(comparison.toJSON());
 	});
 });

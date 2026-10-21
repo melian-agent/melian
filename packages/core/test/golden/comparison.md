@@ -6,7 +6,7 @@ Reviewers: codex; Melian's own review, in 1 stored round.
 
 Adjudication records valid, noise, or duplicate, with severity and a miss reason where required. Pending findings await the maintainer.
 
-## A. codex, round 1
+## A. codex, round pull-7.r1
 
 1 finding at bbbbbbbbbbbb.
 
@@ -14,7 +14,7 @@ Adjudication records valid, noise, or duplicate, with severity and a miss reason
 |---|---|---|---|---|---|
 | A1 | codex | src/run.ts:12 | \[P1\] Input \| &lt;img&gt; @⁠team \#⁠12: A \*\*heading\*\* \`\`\` &lt;script&gt;bad&lt;/script&gt;\\u001b\[2J | valid, P1 | correctness |
 
-## B. Melian review, round 1
+## B. Melian review, round pull-7.r1
 
 1 finding at bbbbbbbbbbbb, verdict findings.
 
