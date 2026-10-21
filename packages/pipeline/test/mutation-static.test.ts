@@ -1,4 +1,5 @@
 import {
+	chmodSync,
 	existsSync,
 	mkdirSync,
 	mkdtempSync,
@@ -22,6 +23,7 @@ import {
 	mutationSkipHasLeave,
 	mutationSkips,
 	mutationUnmutated,
+	mutationUnmutatedLog,
 	type RepositorySource,
 	Revision,
 	staticFindings,
@@ -304,6 +306,66 @@ describe("static.mutation", { timeout: 60_000 }, () => {
 		if (result.status !== "ran") throw new Error("skipped");
 		expect(argumentsOf(fake.calls()[0]!).flag("--mutate")).toBe("packages/p/src/a.ts:2-2");
 		expect(result.notes).toContain(`${path} was not mutated: it sends process signals; prove its guards with fakes.`);
+	});
+
+	it("leaves a changed TypeScript symlink out of the real selector and reports it as unmutated", async () => {
+		const path = "packages/p/src/link.ts";
+		const base = commit(repo, { "stryker.config.json": config, "target.txt": a });
+		writeFiles(repo, { "packages/p/src/a.ts": a });
+		symlinkSync("../../../target.txt", join(repo, path));
+		const head = commit(repo, {});
+		const fake = stryker({ report: report({ "packages/p/src/a.ts": [{ status: "Killed", line: 2 }] }) });
+		const result = await mutate(base, head);
+		expect(argumentsOf(fake.calls()[0]!).flag("--mutate")).toBe("packages/p/src/a.ts:1-4");
+		if (result.status !== "ran") throw new Error("skipped");
+		expect(result.notes).toContain(
+			`${path} was not mutated: the head entry is symlink; only regular files are mutated.`,
+		);
+		expect(result.log.runs[0].results.map((each) => [each.ruleId, each.message.text])).toEqual([
+			[
+				"unmutated",
+				`Stryker did not judge line 1 of ${path}: the head entry is symlink; only regular files are mutated.`,
+			],
+		]);
+	});
+
+	it.each(["symlink", "submodule"] as const)(
+		"reports a %s-only change as unmutated without starting Stryker",
+		async (kind) => {
+			const path = "packages/p/src/link.ts";
+			const base = commit(repo, { "stryker.config.json": config, "target.txt": a });
+			mkdirSync(dirname(join(repo, path)), { recursive: true });
+			if (kind === "symlink") {
+				symlinkSync("../../../target.txt", join(repo, path));
+				gitIn(repo, "add", path);
+			} else gitIn(repo, "update-index", "--add", "--cacheinfo", `160000,${base},${path}`);
+			gitIn(repo, "commit", "-m", kind);
+			const head = gitIn(repo, "rev-parse", "HEAD");
+			const fake = stryker();
+			const result = await mutate(base, head);
+			expect(result.status).toBe("skipped");
+			if (result.status !== "skipped") throw new Error("ran");
+			expect(result.cause).toBe("unmutated");
+			expect(result.log?.runs[0].results.map((each) => [each.ruleId, each.message.text])).toEqual([
+				[
+					"unmutated",
+					`Stryker did not judge line 1 of ${path}: the head entry is ${kind}; only regular files are mutated.`,
+				],
+			]);
+			expect(fake.calls()).toEqual([]);
+		},
+	);
+
+	it("keeps an executable regular file in the real selector", async () => {
+		const path = "packages/p/src/executable.ts";
+		const base = commit(repo, { "stryker.config.json": config });
+		writeFiles(repo, { [path]: a });
+		chmodSync(join(repo, path), 0o755);
+		const head = commit(repo, {});
+		const fake = stryker({ report: report({}) });
+		const result = await mutate(base, head);
+		expect(result.status).toBe("ran");
+		expect(argumentsOf(fake.calls()[0]!).flag("--mutate")).toBe(`${path}:1-4`);
 	});
 
 	it("makes a survived mutant on a changed line a P2 untested-behaviour finding that names the mutator and the mutated text", async () => {
@@ -1335,6 +1397,7 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 					status: "skipped",
 					reason: mutationSkips.unmutated([path]),
 					cause: "unmutated",
+					log: mutationUnmutatedLog("10.0.0", [{ path, ranges: [[1, 1]], ...mutationUnmutated.configuration }]),
 				});
 				expect(result.status === "skipped" && mutationSkipHasLeave(result.cause)).toBe(false);
 				expect(result.status === "skipped" && result.reason).toContain(path);

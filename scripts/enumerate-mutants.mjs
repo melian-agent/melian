@@ -8,6 +8,7 @@ import { Changeset } from "../packages/core/src/changeset.ts";
 import { gitOutput } from "../packages/core/src/git.ts";
 import {
 	configuration,
+	nonRegularEntry,
 	productionWithExtensions as production,
 	signalFiles,
 } from "../packages/pipeline/src/mutation-paths.ts";
@@ -24,9 +25,15 @@ export async function enumerateMutants({
 	if (!Number.isSafeInteger(limit) || limit < 0) throw new Error("limit must be a non-negative safe integer");
 	const { repoRoot, revision } = await Changeset.resolve(cwd, range);
 	const files = [];
+	const unmutated = [];
 	for (const [name, ranges] of Object.entries(revision.diffLines())) {
-		if (!production(name, extensions) || configuration.test(name) || signalFiles.has(name) || name.includes(","))
+		if (!production(name, extensions)) continue;
+		const kind = revision.files.find((file) => file.path === name).newKind;
+		if (kind !== "file" && kind !== "executable") {
+			unmutated.push({ file: name, reason: nonRegularEntry(kind).why });
 			continue;
+		}
+		if (configuration.test(name) || signalFiles.has(name) || name.includes(",")) continue;
 		files.push({
 			name,
 			content: await gitOutput(repoRoot, ["show", `${revision.head}:${name}`]),
@@ -64,10 +71,10 @@ export async function enumerateMutants({
 		status,
 		statusReason,
 	}));
-	return { mutants: rows.slice(0, limit), total: rows.length, omitted: Math.max(0, rows.length - limit) };
+	return { mutants: rows.slice(0, limit), total: rows.length, omitted: Math.max(0, rows.length - limit), unmutated };
 }
 
-export function renderTable({ mutants, total, omitted }) {
+export function renderTable({ mutants, total, omitted, unmutated = [] }) {
 	const rows = mutants.map(({ file, line, column, mutatorName, replacement, status, statusReason }) =>
 		[
 			JSON.stringify(file),
@@ -81,6 +88,7 @@ export function renderTable({ mutants, total, omitted }) {
 	return [
 		"FILE\tLINE\tCOLUMN\tMUTATOR\tREPLACEMENT\tPOLICY",
 		...rows,
+		...unmutated.map(({ file, reason }) => `UNMUTATED\t${JSON.stringify(file)}\t${JSON.stringify(reason)}`),
 		"",
 		`${mutants.length} of ${total} mutants; ${omitted} omitted`,
 	].join("\n");

@@ -1,5 +1,15 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import {
+	chmodSync,
+	mkdirSync,
+	mkdtempSync,
+	readdirSync,
+	readFileSync,
+	realpathSync,
+	rmSync,
+	symlinkSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -88,6 +98,7 @@ describe("mutant enumeration", { timeout: 60_000 }, () => {
 			mutants: expected,
 			total: expected.length,
 			omitted: 0,
+			unmutated: [],
 		});
 		// Read committed head text, even when the working tree differs.
 		write("src/value.ts", "invalid head text!");
@@ -95,7 +106,47 @@ describe("mutant enumeration", { timeout: 60_000 }, () => {
 			mutants: expected,
 			total: expected.length,
 			omitted: 0,
+			unmutated: [],
 		});
+	});
+
+	it("reports a changed TypeScript symlink as unmutated, using its committed head kind", async () => {
+		write("target.txt", "export const target = (x: number) => x > 0;\n");
+		symlinkSync("../target.txt", join(root, "src/link.ts"));
+		git("add", ".");
+		git("commit", "-m", "symlink");
+		const result = await enumerateMutants({ cwd: root });
+		expect(result.unmutated).toEqual([
+			{ file: "src/link.ts", reason: "the head entry is symlink; only regular files are mutated" },
+		]);
+		expect(result.mutants.filter((mutant) => mutant.file === "src/link.ts")).toEqual([]);
+		rmSync(join(root, "src/link.ts"));
+		write("src/link.ts", "export const worktree = false;\n");
+		expect(await enumerateMutants({ cwd: root })).toEqual(result);
+		const child = spawnSync(process.execPath, [script], { cwd: root, encoding: "utf8" });
+		expect(child.status, child.stderr).toBe(0);
+		expect(child.stdout).toContain(
+			'UNMUTATED\t"src/link.ts"\t"the head entry is symlink; only regular files are mutated"',
+		);
+	});
+
+	it("reports a changed TypeScript submodule as unmutated", async () => {
+		git("update-index", "--add", "--cacheinfo", `160000,${git("rev-parse", "HEAD")},src/submodule.ts`);
+		git("commit", "-m", "submodule");
+		expect((await enumerateMutants({ cwd: root })).unmutated).toEqual([
+			{ file: "src/submodule.ts", reason: "the head entry is submodule; only regular files are mutated" },
+		]);
+	});
+
+	it("enumerates an executable regular file", async () => {
+		write("src/executable.ts", "export const executable = true;\n");
+		chmodSync(join(root, "src/executable.ts"), 0o755);
+		git("add", ".");
+		git("commit", "-m", "executable");
+		const result = await enumerateMutants({ cwd: root });
+		expect(result.mutants.filter((mutant) => mutant.file === "src/executable.ts")).toEqual([
+			{ file: "src/executable.ts", line: 1, column: 26, mutatorName: "BooleanLiteral", replacement: "false" },
+		]);
 	});
 
 	it("reads excluded mutations as data and reports generated ignored mutants", async () => {
@@ -135,6 +186,7 @@ describe("mutant enumeration", { timeout: 60_000 }, () => {
 				mutants: full.mutants.slice(0, limit),
 				total: full.total,
 				omitted: Math.max(0, full.total - limit),
+				unmutated: [],
 			});
 		}
 	});
@@ -149,8 +201,14 @@ describe("mutant enumeration", { timeout: 60_000 }, () => {
 			mutants: full.mutants.slice(0, 200),
 			total: full.total,
 			omitted: full.total - 200,
+			unmutated: [],
 		});
-		expect(await enumerateMutants({ cwd: root, range: "HEAD..HEAD" })).toEqual({ mutants: [], total: 0, omitted: 0 });
+		expect(await enumerateMutants({ cwd: root, range: "HEAD..HEAD" })).toEqual({
+			mutants: [],
+			total: 0,
+			omitted: 0,
+			unmutated: [],
+		});
 	});
 
 	it("prints valid JSON and an escaped text table without importing the enumerated source or running ps", () => {
@@ -164,7 +222,7 @@ describe("mutant enumeration", { timeout: 60_000 }, () => {
 			expect(child.stderr).toBe("");
 			if (args.includes("--json")) {
 				const result = JSON.parse(child.stdout);
-				if (args[0] === "HEAD..HEAD") expect(result).toEqual({ mutants: [], total: 0, omitted: 0 });
+				if (args[0] === "HEAD..HEAD") expect(result).toEqual({ mutants: [], total: 0, omitted: 0, unmutated: [] });
 				else {
 					expect(result.mutants).toHaveLength(1);
 					expect(result.omitted).toBe(result.total - 1);

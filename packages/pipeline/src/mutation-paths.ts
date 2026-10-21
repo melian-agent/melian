@@ -40,3 +40,10 @@ export const signalFiles = new Set([
 	"packages/pipeline/src/mutation-process.ts",
 	"packages/pipeline/src/static.ts",
 ]);
+
+export function nonRegularEntry(kind: string | undefined): { why: string; whatToDo: string } {
+	return {
+		why: `the head entry is ${kind}; only regular files are mutated`,
+		whatToDo: "Use a regular source file or prove the changed behaviour by hand.",
+	};
+}

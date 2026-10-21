@@ -16,7 +16,7 @@ import {
 	type UnmutatedFile,
 } from "@melian-agent/core";
 import { type HeadTrust, type JudgedHead, MutationCache } from "./mutation-cache.ts";
-import { configuration, production, signalFiles, typescript } from "./mutation-paths.ts";
+import { configuration, nonRegularEntry, production, signalFiles, typescript } from "./mutation-paths.ts";
 import { MutationProcess } from "./mutation-process.ts";
 import { mutationSelectionVersion, mutationVitestModule } from "./mutation-vitest.ts";
 import type { Run, StaticRun } from "./static.ts";
@@ -215,14 +215,19 @@ export class MutationRun {
 	}
 
 	// The changed production lines Stryker is asked about, and the production files set aside: a configuration file, a
-	// signal-sending file, and a path Stryker's comma-separated `--mutate` cannot name. Each file set aside is a note and,
+	// signal-sending file, a non-regular head entry, and a path Stryker's comma-separated `--mutate` cannot name. Each file set aside is a note and,
 	// when the run goes ahead on the others, an `unmutated` result: a well-tested neighbour must not hide it.
 	#targets(revision: Revision): { changed: Record<string, [number, number][]>; aside: UnmutatedFile[] } {
 		const changed: Record<string, [number, number][]> = {};
 		const aside: UnmutatedFile[] = [];
 		for (const [path, ranges] of Object.entries(revision.diffLines())) {
 			if (!production(path)) continue;
-			if (signalFiles.has(path)) {
+			const kind = revision.files.find((file) => file.path === path)!.newKind;
+			if (kind !== "file" && kind !== "executable") {
+				const reason = nonRegularEntry(kind);
+				this.#notes.push(`${path} was not mutated: ${reason.why}.`);
+				aside.push({ path, ranges, ...reason });
+			} else if (signalFiles.has(path)) {
 				this.#notes.push(`${path} was not mutated: it sends process signals; prove its guards with fakes.`);
 				aside.push({ path, ranges, ...mutationUnmutated.signals });
 			} else if (configuration.test(path)) {
@@ -489,6 +494,7 @@ process.exitCode = result.code;
 			ranges: [] as [number, number][],
 			...mutationUnmutated.binary,
 		}));
+		const unmutated = [...binary, ...aside];
 		if (total === 0) {
 			// A production file that was changed but not mutated, such as a `.config.ts`, a path with a comma, or a binary file,
 			// means the change did have behaviour to judge, so the skip has no leave.
@@ -500,7 +506,7 @@ process.exitCode = result.code;
 				status: "skipped",
 				reason: mutationSkips.unmutated(held),
 				cause: "unmutated",
-				...(binary.length === 0 ? {} : { log: mutationUnmutatedLog(this.#version, binary) }),
+				log: mutationUnmutatedLog(this.#version, unmutated),
 			};
 		}
 		const { maxLines } = settings as MutationSettings;

@@ -1,6 +1,7 @@
 import { expect, it } from "vitest";
 import {
 	configuration,
+	nonRegularEntry,
 	production,
 	productionWithExtensions,
 	signalFiles,
@@ -56,4 +57,11 @@ it("keeps static.mutation's TypeScript scope and permits JavaScript only on requ
 			"packages/pipeline/src/static.ts",
 		]),
 	);
+});
+
+it.each(["symlink", "submodule", undefined])("names a non-regular %s head entry", (kind) => {
+	expect(nonRegularEntry(kind)).toEqual({
+		why: `the head entry is ${kind}; only regular files are mutated`,
+		whatToDo: "Use a regular source file or prove the changed behaviour by hand.",
+	});
 });
