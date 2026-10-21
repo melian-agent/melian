@@ -1018,6 +1018,25 @@ describe("comparison review fixes", () => {
 			});
 		});
 
+		it("reports a rounds document newer than this Melian instead of calling the round unreviewed", async () => {
+			const storage = createMemoryStorage();
+			const harness = await CompareHarness.open(storage, createFakeModels().review, "change");
+			open.push(harness);
+			const root = await harness.harness.root(context);
+			await root.commit(async (tx) => {
+				const newer = defineDoc<{ [key: string]: Json }>({
+					kind: RoundsDocument.definition.kind,
+					version: 99,
+					scope: "conversation",
+					history: "latest",
+					fork: "current",
+					initial: () => ({}),
+				});
+				(await tx.doc(newer, root.id)).items = {};
+			}, context);
+			await expect(harness.reviewed(revision)).rejects.toThrow("newer version 99");
+		});
+
 		it("refuses a verdict document newer than this Melian", async () => {
 			const { storage, root } = await openRoot();
 			await root.commit(async (tx) => {

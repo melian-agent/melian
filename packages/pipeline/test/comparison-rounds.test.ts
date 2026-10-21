@@ -409,3 +409,65 @@ it("retries a detached SQLite read when mint commits between comparisons and rou
 		await storage.close(context);
 	}
 });
+
+const elsewhere = revisionKey({ base: "a".repeat(40), head: "c".repeat(40) });
+
+it("keeps a comparison unattributed when its own revision has a minted round beside rounds elsewhere", async () => {
+	const { harness } = await memory();
+	const root = await harness.harness.root(context);
+	await root.commit(async (tx) => {
+		await new RoundWriter(tx, root.id).mint(elsewhere, 1, at);
+		await new RoundWriter(tx, root.id).mint(key, 2, at);
+		(await tx.doc(ComparisonDocument, root.id)).unattributed[key] = Comparison.of(revision).toJSON();
+	}, context);
+	expect((await harness.all(changeset)).map((entry) => entry.unattributed)).toEqual([key]);
+});
+
+it("marks a pending comparison legacy when only another revision has a minted round", async () => {
+	const { harness } = await memory();
+	const root = await harness.harness.root(context);
+	await root.commit(async (tx) => {
+		await new RoundWriter(tx, root.id).mint(elsewhere, 1, at);
+		(await tx.doc(ComparisonDocument, root.id)).unattributed[key] = Comparison.of(revision).toJSON();
+		await new RoundWriter(tx, root.id).preserve(key);
+	}, context);
+	expect((await harness.harness.snapshot(ComparisonDocument, root.id, context))!.legacy).toEqual({ [key]: true });
+});
+
+it("marks a pending comparison legacy beside its revision's unminted legacy round", async () => {
+	const { harness } = await memory();
+	const root = await harness.harness.root(context);
+	await root.commit(async (tx) => {
+		(await tx.doc(VerdictDocument, root.id)).verdicts[key] = verdict;
+		await new RoundWriter(tx, root.id).preserve(key);
+	}, context);
+	await root.commit(async (tx) => {
+		(await tx.doc(ComparisonDocument, root.id)).unattributed[key] = Comparison.of(revision).toJSON();
+		await new RoundWriter(tx, root.id).preserve(key);
+	}, context);
+	expect((await harness.harness.snapshot(ComparisonDocument, root.id, context))!.legacy).toEqual({ [key]: true });
+});
+
+it("records no legacy round for a revision that only another revision's comparison names", async () => {
+	const { harness } = await memory();
+	const root = await harness.harness.root(context);
+	await root.commit(async (tx) => {
+		(await tx.doc(ComparisonDocument, root.id)).comparisons[`${changeset}.r1`] = Comparison.of({
+			base: "a".repeat(40),
+			head: "c".repeat(40),
+		}).toJSON();
+		await new RoundWriter(tx, root.id).preserve(key);
+	}, context);
+	expect((await harness.harness.snapshot(RoundsDocument, root.id, context))!.items).toEqual({});
+});
+
+it("names the requested round, or else the revision, when no decided round exists", async () => {
+	const { harness } = await memory();
+	const judgement = { verdict: "valid", by: "M", at } as const;
+	await expect(harness.adjudicate({ ...revision, round: `${changeset}.r9` }, finding.id, judgement)).rejects.toThrow(
+		`Melian has no decided round ${changeset}.r9 to compare against`,
+	);
+	await expect(harness.adjudicate(revision, finding.id, judgement)).rejects.toThrow(
+		`Melian has no decided round ${key} to compare against`,
+	);
+});
