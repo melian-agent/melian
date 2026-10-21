@@ -661,7 +661,7 @@ file fails the check with `CheckError` `unreadable`: only absence is silent, as 
 
 `src/publication.ts` holds the provider port and the decisions publication makes without a host. `packages/github` implements the port; the pipeline's publish task calls it. Nothing here talks to a network.
 
-`ReviewProvider` is the surface a code host offers Melian. It reads pull-request metadata, including the author, head repository, pushing identity and any writer-lookup failure, and exposes the viewer's login and repository permission. It posts reviews, closes addressed findings with an edit and thread resolution, and replies with dismissals. It finds and writes the ledger, sets the status with its ledger link, and reads back markers. A second host implements this port.
+`ReviewProvider` is the surface a code host offers Melian. It reads pull-request metadata, including the author, head repository, pushing identity and any writer-lookup failure, and exposes the viewer's login and repository permission. It posts reviews, closes addressed findings with an edit and thread resolution, and replies with dismissals. It finds and writes the ledger, sets the status with its ledger link, and reads back markers. `isThreadOpen` reads lazily before reuse. `findPublished` matches reviews and finding roots at the requested head, and answers across all heads. A second host implements this port.
 
 `verdict.publication(previous, lines, revision)` decides what one revision posts. A finding that
 resolves to `block`, `acknowledge`, or `advisory` and was not open after the previous revision is

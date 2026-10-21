@@ -156,6 +156,8 @@ export interface ReviewDraft {
 	readonly findings: readonly PlacedFinding[];
 	/** How many findings an earlier revision posted that still need attention. */
 	readonly stillOpen: number;
+	/** Still-open findings, by ID, whose thread a human resolved or deleted; the body lists them again. */
+	readonly carried?: readonly string[];
 	/** Resolved and dismissed findings that have no thread to reply in, so the body names them. */
 	readonly resolved: readonly ClosedFinding[];
 	/** The changeset's publisher secret, as hex, which signs every marker the review carries. Never printed. */
@@ -169,13 +171,13 @@ export interface PostedReview {
 	readonly threads: Readonly<Record<string, string>>;
 }
 
-/** What a pull request already shows of one revision's publication, read from Melian's markers. */
+/** The requested publication and answers across all heads, read from Melian's signed markers. */
 export interface PublishedMarkers {
 	/** The review posted for the revision's verdict in the round asked about. */
 	readonly review?: string;
-	/** The comment that starts each finding's thread, by finding ID. */
+	/** The comment that starts each finding's thread at the requested head, by finding ID. */
 	readonly threads: Readonly<Record<string, string>>;
-	/** The reply marking each finding resolved or dismissed at the revision, by {@link replyKey}. */
+	/** The reply marking each finding resolved or dismissed across all heads, by {@link replyKey}. */
 	readonly replies: Readonly<Record<string, string>>;
 }
 
@@ -211,6 +213,8 @@ export interface ReviewProvider {
 		revision: string,
 		secret: string,
 	): Promise<string | undefined>;
+	/** Whether a thread can be reused; resolved or deleted threads return false. Read lazily before reuse. */
+	isThreadOpen(pullRequest: number, comment: string): Promise<boolean>;
 	/** Resolves an addressed thread, including one whose reply was posted by an older Melian. */
 	resolveThread(pullRequest: number, comment: string): Promise<boolean>;
 	/** Finds the one signed ledger across all heads; refuses an orphaned marker. */
@@ -228,8 +232,7 @@ export interface ReviewProvider {
 	getStatus(revision: string): Promise<{ readonly state: string; readonly targetUrl?: string } | undefined>;
 	/**
 	 * What the pull request already shows of `revision`'s publication, from posts that carry Melian's markers signed
-	 * with `secret`: the review of `review`'s round, posting the verdict its fingerprint names, and every thread and
-	 * reply at `revision`.
+	 * with `secret`: the review of `review`'s round and finding roots at `revision`, and answers across all heads.
 	 */
 	findPublished(
 		pullRequest: number,

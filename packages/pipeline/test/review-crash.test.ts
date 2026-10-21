@@ -1207,6 +1207,7 @@ describe("a lens task from an earlier selection during triage", { timeout: 60_00
 			login: async () => undefined,
 			permission: async () => undefined,
 			name: "fake",
+			isThreadOpen: async () => true,
 			resolveThread: vi.fn(async () => false),
 			findLedger: vi.fn(async () => undefined),
 			writeLedger: vi.fn(async () => ({
