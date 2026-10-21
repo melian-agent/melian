@@ -217,6 +217,8 @@ it("lists main's legacy round before a minted undecided round and asks git for i
 	io.stdout.mockClear();
 	expect(await main(["findings", "--round", output[0].id, "--json"], io)).toBe(0);
 	expect(JSON.parse(io.stdout.mock.calls.join("")).status).toBe("passed");
+	io.stdout.mockClear();
+	expect(await main(["compare", "main...feature", "--round", output[0].id], io)).toBe(0);
 });
 
 it("reads a round from pull-request storage by its full ID", async () => {
@@ -250,6 +252,8 @@ it("reads a round from pull-request storage by its full ID", async () => {
 	}
 	expect(await main(["findings", "--round", `${id}.r1`, "--json"], io)).toBe(0);
 	expect(JSON.parse(io.stdout.mock.calls.join("")).status).toBe("passed");
+	io.stdout.mockClear();
+	expect(await main(["compare", "main...feature", "--round", `${id}.r1`], io)).toBe(0);
 });
 
 it.each([[], ["--json"], ["--open"], ["--open", "--json"], ["--all"]].map((flags) => ({ flags })))(
@@ -313,8 +317,11 @@ it.each([
 	"range-0123456789abcdef.k0123456789abcdef0",
 	"range-0123456789abcdef.r1/../../outside",
 ])("refuses an invalid round ID %s", async (id) => {
-	expect(await main(["findings", "--round", id], io)).toBe(1);
-	expect(io.stderr.mock.calls.join("")).toContain("invalid round ID");
+	for (const command of [["findings"], ["compare", "main...feature"]]) {
+		io.stderr.mockClear();
+		expect(await main([...command, "--round", id], io)).toBe(1);
+		expect(io.stderr.mock.calls.join("")).toContain("invalid round ID");
+	}
 });
 
 it.each(
