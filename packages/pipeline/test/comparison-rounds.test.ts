@@ -21,7 +21,7 @@ import {
 	revisionKey,
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { VerdictDocument } from "../src/adjudication.ts";
 import { ComparisonDocument } from "../src/compare.ts";
 import { legacyKey, RoundsDocument, RoundWriter } from "../src/rounds.ts";
@@ -57,6 +57,7 @@ const at = "2026-10-21T00:00:00Z";
 const opened: CompareHarness[] = [];
 const directories: string[] = [];
 afterEach(async () => {
+	vi.restoreAllMocks();
 	for (const harness of opened.splice(0)) await harness.close();
 	for (const directory of directories.splice(0)) rmSync(directory, { recursive: true, force: true });
 });
@@ -370,4 +371,41 @@ it("marks only pending legacy comparisons observed before a minted round exists"
 	}, context);
 	expect((await harness.harness.snapshot(ComparisonDocument, root.id, context))!.legacy).toEqual({});
 	expect((await harness.all(changeset))[0]!.unattributed).toBe(key);
+});
+
+it("retries a detached SQLite read when mint commits between comparisons and rounds", async () => {
+	const directory = realpathSync(mkdtempSync(join(tmpdir(), "melian-comparison-race-")));
+	directories.push(directory);
+	const base = join(import.meta.dirname, "fixtures/comparison-rounds/main-36122eb2");
+	const recorded = JSON.parse(readFileSync(join(base, "recorded.json"), "utf8")) as {
+		revisions: { base: string; head: string }[];
+	};
+	const path = join(directory, "copy.sqlite");
+	copyFileSync(join(base, "comparisons.sqlite"), path);
+	const harness = await CompareHarness.open(await openSqliteStorage(path), createFakeModels().review, changeset);
+	opened.push(harness);
+	const root = await harness.harness.root(context);
+	const revision = recorded.revisions[1]!;
+	const key = revisionKey(revision);
+	const storage = await openSqliteStorage(path);
+	const document = storage.document.bind(storage);
+	let interleaved = false;
+	let reads = 0;
+	vi.spyOn(storage, "document").mockImplementation(async (...args) => {
+		expect(++reads).toBeLessThan(40);
+		const stored = await document(...args);
+		if (stored?.record.kind === "melian.comparisons" && !interleaved) {
+			interleaved = true;
+			await root.commit((tx) => new RoundWriter(tx, root.id).mint(key, 999, at), context);
+		}
+		return stored;
+	});
+	try {
+		const entries = await ComparisonReader.open(storage).read(changeset);
+		expect(interleaved).toBe(true);
+		expect(entries.filter((entry) => entry.unattributed !== undefined)).toEqual([]);
+		expect(entries.map((entry) => entry.round)).toContain(`${changeset}.${legacyKey(key)}`);
+	} finally {
+		await storage.close(context);
+	}
 });

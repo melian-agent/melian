@@ -367,24 +367,45 @@ export class ComparisonReader {
 
 	/** Reads the root's comparisons and verdicts through storage's detached read API. The caller owns storage. */
 	async read(changeset: string, context: Context = backgroundContext): Promise<ComparisonEntry[]> {
-		const scope = { kind: "conversation", conversationId: ROOT_CONVERSATION_ID } as const;
+		// Pi's Storage API has no multi-document read transaction or generation token.
+		let generation = await this.roundsGeneration(context);
+		for (;;) {
+			const scope = { kind: "conversation", conversationId: ROOT_CONVERSATION_ID } as const;
+			const record = await this.storage.findDocument(
+				{ kind: ComparisonDocument.definition.kind, scope },
+				"current",
+				context,
+			);
+			if (record === undefined) return [];
+			const stored = await this.storage.document(record.id, "current", context);
+			if (stored === undefined) return [];
+			if (stored.version > ComparisonDocument.definition.version)
+				throw new CompareError("unreadable", `comparison document has newer version ${stored.version}`);
+			const state =
+				stored.version === ComparisonDocument.definition.version
+					? (stored.value as ComparisonState)
+					: ComparisonDocument.definition.migrate!(stored.value, stored.version);
+			const comparisons = StoredComparisons.from(state);
+			const rounds = await new RoundReader(this.storage).read(changeset, context);
+			const latest = await this.roundsGeneration(context);
+			const changed = generation !== latest;
+			generation = latest;
+			if (changed) continue;
+			comparisons.attribute(rounds, changeset);
+			return comparisons.entries(rounds, changeset);
+		}
+	}
+
+	private async roundsGeneration(context: Context): Promise<string | undefined> {
 		const record = await this.storage.findDocument(
-			{ kind: ComparisonDocument.definition.kind, scope },
+			{
+				kind: RoundsDocument.definition.kind,
+				scope: { kind: "conversation", conversationId: ROOT_CONVERSATION_ID },
+			},
 			"current",
 			context,
 		);
-		if (record === undefined) return [];
-		const stored = await this.storage.document(record.id, "current", context);
-		if (stored === undefined) return [];
-		if (stored.version > ComparisonDocument.definition.version)
-			throw new CompareError("unreadable", `comparison document has newer version ${stored.version}`);
-		const state =
-			stored.version === ComparisonDocument.definition.version
-				? (stored.value as ComparisonState)
-				: ComparisonDocument.definition.migrate!(stored.value, stored.version);
-		const comparisons = StoredComparisons.from(state);
-		const rounds = await new RoundReader(this.storage).read(changeset, context);
-		comparisons.attribute(rounds, changeset);
-		return comparisons.entries(rounds, changeset);
+		if (record === undefined) return undefined;
+		return JSON.stringify(await this.storage.document(record.id, "current", context));
 	}
 }

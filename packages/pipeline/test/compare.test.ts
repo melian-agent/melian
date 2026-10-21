@@ -1112,7 +1112,11 @@ describe("stored comparison guards", () => {
 
 	it("reads nothing when the stored document cannot be fetched", async () => {
 		const { storage } = await stored([round("b")]);
-		vi.spyOn(storage, "document").mockResolvedValueOnce(undefined);
+		const document = storage.document.bind(storage);
+		vi.spyOn(storage, "document").mockImplementation(async (...args) => {
+			const stored = await document(...args);
+			return stored?.record.kind === "melian.comparisons" ? undefined : stored;
+		});
 		expect(await ComparisonReader.open(storage).read("change")).toEqual([]);
 	});
 
