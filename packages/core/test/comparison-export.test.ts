@@ -37,6 +37,7 @@ function entry(
 		head?: string;
 		at?: string;
 		reviewers?: ExternalFinding["reviewer"][];
+		round?: string;
 	} = {},
 ): ComparisonEntry {
 	const { externals = [], findings = [] } = options;
@@ -52,7 +53,7 @@ function entry(
 	);
 	const verdict = verdictOf({ findings });
 	comparison.compare(verdict);
-	return { changeset: "c", comparison, verdict };
+	return { changeset: "c", round: options.round ?? "c.r1", comparison, verdict };
 }
 const render = (entries: ComparisonEntry[], target = "range", url?: string) =>
 	new ComparisonExport(entries, target, url).render();
@@ -116,18 +117,56 @@ describe("ComparisonExport header", () => {
 describe("ComparisonExport sections", () => {
 	it("orders rounds by first comparison time, then head, and letters every section", () => {
 		const entries = [
-			entry({ head: "d".repeat(40), at: "2026-10-06T00:00:00Z" }),
-			entry({ head: "c".repeat(40), at: "2026-10-05T00:00:00Z" }),
-			entry({ head: "b".repeat(40), at: "2026-10-05T00:00:00Z" }),
+			entry({ head: "d".repeat(40), at: "2026-10-06T00:00:00Z", round: "c.r3" }),
+			entry({ head: "c".repeat(40), at: "2026-10-05T00:00:00Z", round: "c.r2" }),
+			entry({ head: "b".repeat(40), at: "2026-10-05T00:00:00Z", round: "c.r1" }),
 		];
 		const text = render(entries);
 		expect(sections(text).filter((each) => each.includes("round"))).toEqual([
-			"A Melian review, round 1",
-			"B Melian review, round 2",
-			"C Melian review, round 3",
+			"A Melian review, round c.r1",
+			"B Melian review, round c.r2",
+			"C Melian review, round c.r3",
 		]);
 		const heads = [...text.matchAll(/^At ([0-9a-f]{12}):/gm)].map((each) => each[1]);
 		expect(heads).toEqual(["b".repeat(12), "c".repeat(12), "d".repeat(12)]);
+	});
+
+	it("names each section by its stored round, not its place, beside an earlier unattributed comparison", () => {
+		const { changeset, comparison } = entry({
+			head: "c".repeat(40),
+			at: "2026-10-05T00:00:00Z",
+			reviewers: [{ name: "codex" }],
+		});
+		const text = render([
+			entry({ head: "d".repeat(40), at: "2026-10-06T00:00:00Z", round: "range-0123456789abcdef.r1" }),
+			{ changeset, comparison, unattributed: `${base}..${"c".repeat(40)}` },
+		]);
+		expect(sections(text)).toEqual([
+			"A codex, unattributed comparison",
+			"B Melian review, unattributed comparison",
+			"C Melian review, round range-0123456789abcdef.r1",
+		]);
+		expect(text).toContain("in 1 stored round.");
+	});
+
+	it("keeps each round's own ID when r2 was compared before r1", () => {
+		const text = render([
+			entry({ head: "c".repeat(40), at: "2026-10-06T00:00:00Z", round: "range-0123456789abcdef.r1" }),
+			entry({ head: "c".repeat(40), at: "2026-10-05T00:00:00Z", round: "range-0123456789abcdef.r2" }),
+		]);
+		expect(sections(text)).toEqual([
+			"A Melian review, round range-0123456789abcdef.r2",
+			"B Melian review, round range-0123456789abcdef.r1",
+		]);
+	});
+
+	it("escapes a stored round ID in its heading", () => {
+		expect(sections(render([entry({ round: "c.r1_<b>" })]))).toEqual(["A Melian review, round c.r1\\_&lt;b&gt;"]);
+	});
+
+	it("names an attributed comparison without a stored round by its revision", () => {
+		const { round: _, ...bare } = entry({ head: "c".repeat(40) });
+		expect(sections(render([bare]))).toEqual([`A Melian review, revision ${"a".repeat(12)}..${"c".repeat(12)}`]);
 	});
 
 	it("letters past Z the way a spreadsheet does", () => {
@@ -154,9 +193,9 @@ describe("ComparisonExport sections", () => {
 		];
 		const text = render(entries);
 		expect(sections(text).slice(0, 3)).toEqual([
-			"A claude-code, round 1",
-			"B codex, round 1",
-			"C Melian review, round 1",
+			"A claude-code, round c.r1",
+			"B codex, round c.r1",
+			"C Melian review, round c.r1",
 		]);
 		expect(text).toContain("2 findings at");
 		expect(text).toContain("1 finding at");
@@ -166,7 +205,7 @@ describe("ComparisonExport sections", () => {
 
 	it("shows an empty section for a reviewer that reported nothing", () => {
 		const text = render([entry({ reviewers: [{ name: "claude-code" }] })]);
-		expect(text).toContain("## A. claude-code, round 1\n\n0 findings at");
+		expect(text).toContain("## A. claude-code, round c.r1\n\n0 findings at");
 	});
 
 	it("shows the Melian review's status, golden, location and dismissals, limited to the comparison", () => {

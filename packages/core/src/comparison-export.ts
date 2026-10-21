@@ -64,11 +64,15 @@ export class ComparisonExport {
 			"Adjudication records valid, noise, or duplicate, with severity and a miss reason where required. Pending findings await the maintainer.\n\n",
 		];
 		let section = 0;
-		for (const [round, { comparison, verdict }] of this.entries.entries()) {
-			if (this.entries[round]!.unattributed !== undefined)
+		for (const { comparison, verdict, round, unattributed } of this.entries) {
+			if (unattributed !== undefined)
 				out.push(`Unattributed comparison at ${comparison.head.slice(0, 12)}: no round can be proven.\n\n`);
 			const label =
-				this.entries[round]!.unattributed === undefined ? `round ${round + 1}` : "unattributed comparison";
+				unattributed !== undefined
+					? "unattributed comparison"
+					: round === undefined
+						? `revision ${comparison.base.slice(0, 12)}..${comparison.head.slice(0, 12)}`
+						: `round ${markdownText(round)}`;
 			const groups = new Map<string, ReturnType<typeof comparison.externalFindings>>();
 			for (const reviewer of Object.values(comparison.importsBySource()).flatMap((each) => each.reviewers ?? [])) {
 				const name = `${reviewer.name}${reviewer.version === undefined ? "" : ` ${reviewer.version}`}${reviewer.login === undefined ? "" : ` (${reviewer.login})`}`;

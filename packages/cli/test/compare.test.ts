@@ -675,8 +675,8 @@ describe("melian compare export", { timeout: 60_000 }, () => {
 			).toBe(0);
 		const stdout = melian(repo, ["compare", "export", range], env);
 		expect(stdout).toMatchObject({ status: 0, stderr: "" });
-		expect(stdout.stdout).toContain("## A. codex, round 1");
-		expect(stdout.stdout).toContain("## B. Melian review, round 1");
+		expect(stdout.stdout).toMatch(/^## A\. codex, round range-[0-9a-f]{16}\.r1$/m);
+		expect(stdout.stdout).toMatch(/^## B\. Melian review, round range-[0-9a-f]{16}\.r1$/m);
 		expect(stdout.stdout).toContain("Maintainer choice.");
 		expect(stdout.stdout).toContain("&lt;img&gt;");
 		const output = join(files, "comparison.md");
