@@ -52,6 +52,7 @@ const external = ExternalFinding.create({
 const verdict = new Adjudication({ findings: [finding], manifest: [], checks: [], config: defaultConfig })
 	.adjudicate()
 	.toJSON();
+const empty = new Adjudication({ findings: [], manifest: [], checks: [], config: defaultConfig }).adjudicate().toJSON();
 const sources = [{ source: "file:review.json", imported: { findings: [external], skippedBodies: 0 } }];
 const at = "2026-10-21T00:00:00Z";
 const opened: CompareHarness[] = [];
@@ -67,14 +68,14 @@ async function memory() {
 	opened.push(harness);
 	return { harness, storage };
 }
-async function mint(harness: CompareHarness, decided = true) {
+async function mint(harness: CompareHarness, decided = true, minted = verdict) {
 	const root = await harness.harness.root(context);
 	await root.commit(async (tx) => {
 		await new RoundWriter(tx, root.id).mint(key, 1, at);
 		if (decided) {
 			const rounds = await tx.doc(RoundsDocument, root.id);
-			rounds.items[rounds.current[key]!]!.verdict = verdict;
-			(await tx.doc(VerdictDocument, root.id)).verdicts[key] = verdict;
+			rounds.items[rounds.current[key]!]!.verdict = minted;
+			(await tx.doc(VerdictDocument, root.id)).verdicts[key] = minted;
 		}
 	}, context);
 }
@@ -84,9 +85,8 @@ it("keeps two comparisons at one revision and reads their own frozen verdicts", 
 	await mint(harness);
 	await harness.importFindings(revision, sources, at);
 	await harness.adjudicate(revision, finding.id, { verdict: "valid", by: "M", at });
-	await mint(harness);
+	await mint(harness, true, empty);
 	await harness.importFindings(revision, [], at);
-	await harness.adjudicate(revision, finding.id, { verdict: "valid", by: "M", at });
 	const entries = await ComparisonReader.open(storage).read(changeset);
 	expect(entries.map((entry) => entry.round)).toEqual([`${changeset}.r1`, `${changeset}.r2`]);
 	expect(entries.map((entry) => entry.comparison.externalFindings().length)).toEqual([1, 0]);
@@ -94,14 +94,14 @@ it("keeps two comparisons at one revision and reads their own frozen verdicts", 
 	await root.commit(async (tx) => {
 		(await tx.doc(VerdictDocument, root.id)).verdicts = {};
 	}, context);
-	expect((await ComparisonReader.open(storage).read(changeset)).map((entry) => entry.verdict?.all().length)).toEqual([
-		1, 1,
-	]);
+	const frozen = await ComparisonReader.open(storage).read(changeset);
+	expect(frozen.map((entry) => entry.verdict?.all().map((each) => each.id))).toEqual([[finding.id], []]);
+	expect(frozen.map((entry) => entry.comparison.melianFindings())).toEqual([[finding.id], []]);
 	expect(Object.keys(JSON.parse(new ComparisonExport(entries, "range").renderJson()).comparisons)).toEqual([
 		`${changeset}.r1`,
 		`${changeset}.r2`,
 	]);
-	expect(new ComparisonSet(entries).stats().reviewers.find((each) => each.reviewer === "melian")?.total).toBe(2);
+	expect(new ComparisonSet(entries).stats().reviewers.find((each) => each.reviewer === "melian")?.total).toBe(1);
 });
 
 it.each(["import", "match", "unmatch", "adjudicate"])(
