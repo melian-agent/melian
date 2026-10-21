@@ -212,7 +212,7 @@ Open:
 
 - Step 23, build pull requests 2 to 4: comparisons by round, membership, and `#N` writes.
 - Steps 20 (re-scope through the compiler), 21 (resolution per sighting), 24 (delta re-review) and 25 (review outcome task).
-- Migration reopen coverage. `melian.published` version 9 accepts versions 1 to 8, but [pull request #155](https://github.com/melian-agent/melian/pull/155) left out the version-1 reopen test, as [its progress entry](progress-log/2026-10-18-pr-155-orphan-thread-core.md) says.
+- Migration reopen coverage is under review in [pull request #163](https://github.com/melian-agent/melian/pull/163). It adds own-code recordings and SQLite reopens for the missing publication versions 1, 2, 3, 4 and 6, plus populated version-7 dismissals. Existing recorded tests cover versions 5 and 8. This closes the version-1 gap left by [pull request #155](https://github.com/melian-agent/melian/pull/155) once merged.
 - The comparison importer counts a CodeRabbit thread the bot resolved, citing a fixing commit, as an accepted finding. It is unscheduled (see the note after step 30) and can skew the statistics that step 10's retirement decision uses.
 - Step 26's audit of the 36 partial `Supersedes:` declarations.
 - Step 14's durability tuning round. Bedrock derivation stays deferred.
