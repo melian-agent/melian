@@ -58,8 +58,8 @@ export class ComparisonSet {
 	private readonly unattributed: number;
 
 	constructor(entries: readonly ComparisonEntry[]) {
-		this.entries = entries.filter((entry) => entry.unattributed === undefined);
-		this.unattributed = entries.length - this.entries.length;
+		this.entries = [...entries];
+		this.unattributed = entries.filter((entry) => entry.unattributed !== undefined).length;
 	}
 
 	/** Selects whole changesets by the time their first comparison was recorded, newest last. */
@@ -83,7 +83,7 @@ export class ComparisonSet {
 		let pendingMatches = 0;
 		let reasonlessMisses = 0;
 		const misses = Object.fromEntries(missReasons.map((reason) => [reason, 0])) as ComparisonStats["misses"];
-		for (const { comparison } of this.entries) {
+		for (const { comparison } of this.entries.filter((entry) => entry.unattributed === undefined)) {
 			const stats = comparison.stats();
 			pendingMatches += stats.pendingMatches;
 			reasonlessMisses += stats.reasonlessMisses;
@@ -200,7 +200,9 @@ export class ComparisonSet {
 
 	/** Every third changeset's comparison owes a drain while goldens remain; rounds never advance the counter. */
 	drain(): { comparisons: number; due: boolean; goldens: number; next: number } {
-		const comparisons = new Set(this.entries.map((entry) => entry.changeset)).size;
+		const comparisons = new Set(
+			this.entries.filter((entry) => entry.unattributed === undefined).map((entry) => entry.changeset),
+		).size;
 		const owed = this.backlog().length;
 		return {
 			comparisons,
