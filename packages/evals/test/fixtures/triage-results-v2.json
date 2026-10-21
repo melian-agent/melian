@@ -1,0 +1,28 @@
+{
+  "version": 2,
+  "complete": true,
+  "questionSet": {
+    "name": "triage",
+    "version": "1"
+  },
+  "fingerprint": "fixture-questions",
+  "model": "fixture/model",
+  "goldens": [
+    "add-test-only"
+  ],
+  "passes": 1,
+  "choices": [
+    {
+      "golden": "add-test-only",
+      "lens": "correctness",
+      "expected": "quick",
+      "chosen": "quick"
+    },
+    {
+      "golden": "add-test-only",
+      "lens": "trust-boundary",
+      "expected": "quick",
+      "chosen": "quick"
+    }
+  ]
+}

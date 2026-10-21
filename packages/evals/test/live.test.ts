@@ -56,7 +56,7 @@ it("prints escaped triage scores and retains each pass's telemetry from the sele
 	for (const record of records) expect(record.total!.models["output-eval/judge"]!.totalTokens).toBeGreaterThan(0);
 	expect(printed).toEqual([
 		expect.stringMatching(
-			/^triage triage v\d+ on output-eval\/judge, 2 passes: exact 1\.00, mean distance 0\.00, 0 under\ndocs-typo\\u001b\[31m: exact 1\.00, \d+ tokens, \$0; output-eval\/judge requested=unspecified catalogue=unavailable derived, not observed; triage-eval\/lens requested=off catalogue=unavailable derived, not observed$/,
+			/^triage triage v\d+ on output-eval\/judge, thinking unset, 2 passes: exact 1\.00, mean distance 0\.00, 0 under\ndocs-typo\\u001b\[31m: exact 1\.00, \d+ tokens, \$0; output-eval\/judge requested=unspecified catalogue=unavailable derived, not observed; triage-eval\/lens requested=off catalogue=unavailable derived, not observed$/,
 		),
 	]);
 });
@@ -239,8 +239,8 @@ it("refuses a saved baseline when golden B fails on its second pass after golden
 			verdict: "incomparable",
 			lines: ["incomparable: the baseline measurement is incomplete"],
 		});
-		expect(JSON.parse(text)).toMatchObject({ version: 2, complete: false });
-		expect(complete.toJSON()).toMatchObject({ version: 2, complete: true });
+		expect(JSON.parse(text)).toMatchObject({ version: 3, complete: false });
+		expect(complete.toJSON()).toMatchObject({ version: 3, complete: true });
 		expect(complete.compare(TriageResults.parse(JSON.stringify(complete.toJSON()))).verdict).toBe("same");
 	} finally {
 		rmSync(directory, { recursive: true, force: true });

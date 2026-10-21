@@ -26,6 +26,22 @@ import {
 
 let repo: string;
 
+it("overrides thinking locally without replacing the committed route or its derivation rules", async () => {
+	writeFiles(repo, {
+		"melian.yaml": "models: { heavy: { model: faux/finder, thinking: high } }\n",
+		"melian.local.yaml": "models: { heavy: { thinking: off } }\n",
+	});
+	const loaded = await loadConfig(repo, { kind: "worktree" }, ".");
+	expect(loaded.config.models.heavy).toEqual({ model: "faux/finder", thinking: "off" });
+	expect(loaded.routes.overridden).toEqual({});
+	expect(loaded.routes.thinking).toEqual({ heavy: "melian.local.yaml" });
+	gitIn(repo, "add", "melian.yaml");
+	gitIn(repo, "commit", "--quiet", "-m", "policy");
+	const committed = await loadConfig(repo, { kind: "revision", commit: "HEAD" }, ".");
+	expect(committed.config.models.heavy).toEqual({ model: "faux/finder", thinking: "high" });
+	expect(committed.routes.thinking).toEqual({ heavy: "melian.yaml" });
+});
+
 beforeEach(() => {
 	for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
 	repo = temporaryDirectory();
@@ -41,6 +57,32 @@ const rejection = (promise: Promise<unknown>) => rejectionOf(promise, ConfigErro
 
 describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 	const load = (path: string) => loadConfig(repo, sourceFor(repo, kind), path);
+
+	it.each(["off", "minimal", "low", "medium", "high", "xhigh", "max"])(
+		"loads the authority's thinking level %s beside a route",
+		async (thinking) => {
+			writeFiles(repo, { "melian.yaml": `models: { heavy: { model: faux/finder, thinking: ${thinking} } }\n` });
+			const loaded = await load("src/index.ts");
+			expect(loaded.config.models.heavy).toEqual({ model: "faux/finder", thinking });
+			expect(loaded.routes.thinking).toEqual({ heavy: "melian.yaml" });
+		},
+	);
+
+	it.each(["none", "HIGH", "true", "null", "1"])("refuses thinking: %s", async (thinking) => {
+		writeFiles(repo, { "melian.yaml": `models: { heavy: { thinking: ${thinking} } }\n` });
+		expect(await rejection(load("src/index.ts"))).toMatchObject({
+			code: "invalidValue",
+			key: "models.heavy.thinking",
+		});
+	});
+
+	it("refuses thinking in a nested route", async () => {
+		writeFiles(repo, { "src/melian.yaml": "models: { heavy: { thinking: high } }\n" });
+		expect(await rejection(load("src/index.ts"))).toMatchObject({
+			file: "src/melian.yaml",
+			key: "models.heavy.thinking",
+		});
+	});
 
 	it("returns the design's defaults when no melian.yaml exists", async () => {
 		const loaded = await load("src/index.ts");

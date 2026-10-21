@@ -43,6 +43,7 @@ import Type, { type Static, type TSchema } from "typebox";
 import Value from "typebox/value";
 import { buildGoldenRepository, commitGoldenTree, type GoldenMode, goldenEvidenceSchema } from "./goldens.ts";
 import { GoldenRunError } from "./run-error.ts";
+import { EvalThinking } from "./thinking.ts";
 
 const strict = { additionalProperties: false } as const;
 const verdictSchema = Type.Union([Type.Literal("confirmed"), Type.Literal("plausible"), Type.Literal("refuted")]);
@@ -509,7 +510,7 @@ export async function runVerifierGolden(golden: VerifierGolden, mode: GoldenMode
 				standards: [],
 				models: fake.review,
 				policy: source,
-				config: {
+				config: (mode.kind === "live" ? (mode.thinking ?? EvalThinking.parse()) : EvalThinking.parse()).apply({
 					...defaultConfig,
 					tiers: { full: [`lens.${lens.name}`] },
 					stages: { "pull-request": "full" },
@@ -517,7 +518,7 @@ export async function runVerifierGolden(golden: VerifierGolden, mode: GoldenMode
 						heavy: { model: `${finder.provider}/${finder.modelId}` },
 						verifier: { model: verifierModel ?? `${judge.provider}/${judge.modelId}` },
 					},
-				},
+				}),
 			}).catch((error: unknown) => {
 				if (!(error instanceof ReviewError) || error.code !== "verifierFailed" || error.verdict === undefined)
 					throw error;

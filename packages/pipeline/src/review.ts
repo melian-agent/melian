@@ -27,6 +27,7 @@ import {
 	type MelianConfig,
 	Merge,
 	type ModelReference,
+	type ModelRoute,
 	ModelRoutingError,
 	mutationSkipHasLeave,
 	parseModelReference,
@@ -150,6 +151,7 @@ interface LensRun {
 	readonly level: ScrutinyLevel;
 	// The level's tier's models that were known with credentials when the review started, in routing order.
 	readonly route: readonly ModelReference[];
+	readonly thinking?: ModelRoute["thinking"];
 	readonly verify?: boolean;
 	readonly instructions: string;
 	readonly instructionFingerprint?: string;
@@ -301,6 +303,7 @@ async function spawnLens(tx: Tx, taskId: TaskId, input: StoredLensTaskInput, len
 	const budget = typeof stored === "number" ? { findings: stored } : stored;
 	await configure(tx, created.id, {
 		model: lens.route[0],
+		thinkingLevel: lens.thinking,
 		instructions: lens.instructions,
 		tools,
 		extensions: [lensExtension],
@@ -404,7 +407,7 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 	// its findings name the lens's version alone, as its review's producers do, and never share a producer with a review
 	// after the upgrade that runs the lens at the same level.
 	// Version 3 records each run's standards paths; older runs leave them absent.
-	version: 3,
+	version: 4,
 	initial: () => ({ phase: "spawn" }),
 	migrate: (input, checkpoint, from) => ({
 		input: LensTaskInput.upgrade(input, from),
@@ -987,7 +990,7 @@ function omit<T extends object, K extends keyof T>(value: T, key: K): Omit<T, K>
 function escalatesTo(escalation: NonNullable<LensRun["escalation"]>): string {
 	const { next } = escalation;
 	if (next !== undefined)
-		return `escalates to ${next.key} (${next.route.map(modelName).join(", ")}) ${next.instructionFingerprint ?? ""}`;
+		return `escalates to ${next.key} (${next.route.map(modelName).join(", ")}) ${next.instructionFingerprint ?? ""}${next.thinking === undefined ? "" : ` thinking ${next.thinking}`}`;
 	return `capped ${escalation.cap ?? "at its ceiling"}`;
 }
 
@@ -996,6 +999,7 @@ function selectionOf(lenses: readonly LensRun[], escalateAt: Severity | undefine
 		.map((lens) =>
 			[
 				lens.key,
+				...(lens.thinking === undefined ? [] : [`thinking ${lens.thinking}`]),
 				...(lens.instructionFingerprint === undefined ? [] : [`instructions ${lens.instructionFingerprint}`]),
 				...(lens.band === undefined ? [] : [`band ${lens.band}`]),
 				...(escalateAt === undefined ? [] : [`escalateAt ${escalateAt}`]),
@@ -1771,6 +1775,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				name: lens.name,
 				version: lens.version,
 				level,
+				...(config.models[settings.tier]?.thinking === undefined
+					? {}
+					: { thinking: config.models[settings.tier]!.thinking! }),
 				route: [...(routes.get(settings.tier) as { route: ModelReference[] }).route],
 				verify: settings.verify,
 				instructions:
@@ -2044,7 +2051,10 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		let route = request.plan?.verifierRoute(finder).map(({ model }) => parseModelReference(model, "verifier"));
 		if (route === undefined) {
 			const configured = config.models.verifier;
-			if (configured !== undefined) {
+			if (
+				configured !== undefined &&
+				(configured.thinking === undefined || configured.model !== undefined || configured.accept !== undefined)
+			) {
 				const resolved = resolveModelForTier("verifier", config.models);
 				route = [resolved.model, ...resolved.fallbacks];
 			} else route = [...run.route];
@@ -2068,6 +2078,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			state: candidateState,
 			finder,
 			route: available,
+			...(config.models.verifier?.thinking === undefined ? {} : { thinking: config.models.verifier.thinking }),
 			budget: { ...verificationBudget },
 			fence: {
 				coReported: !defect.lensOnly(),

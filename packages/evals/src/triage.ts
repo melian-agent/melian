@@ -7,12 +7,14 @@ import {
 	defaultConfig,
 	Lens,
 	LevelBand,
+	type ModelRoute,
 	parseModelReference,
 	type QuestionSet,
 	type ScrutinyLevel,
 	scrutinyLevels,
 	type TextModel,
 	triageQuestionSet,
+	visibleText,
 } from "@melian-agent/core";
 import { FallbackDecider } from "@melian-agent/decisions";
 import {
@@ -33,6 +35,7 @@ import Type, { type Static, type TSchema } from "typebox";
 import Value from "typebox/value";
 import { buildGoldenRepository } from "./goldens.ts";
 import { GoldenRunError } from "./run-error.ts";
+import type { EvalThinking } from "./thinking.ts";
 
 const strict = { additionalProperties: false } as const;
 const level = Type.Union(scrutinyLevels.map((each) => Type.Literal(each)));
@@ -90,7 +93,7 @@ export function loadTriageGoldens(directory: string = triageDirectory): TriageGo
 /** How a triage golden is run: a scripted model answers, or a real one does. Either way the fallback decider asks. */
 export type TriageMode =
 	| { readonly kind: "scripted" }
-	| { readonly kind: "live"; readonly models: ReviewModels; readonly model: string };
+	| { readonly kind: "live"; readonly models: ReviewModels; readonly model: string; readonly thinking?: EvalThinking };
 
 /** What the fallback decider chose for each lens of a golden, in one pass. */
 export type TriageChosen = Readonly<Record<string, string>>;
@@ -138,7 +141,11 @@ export async function runTriageGolden(
 		const text =
 			mode.kind === "scripted"
 				? scriptedModel(golden)
-				: await RouteTextModel.create(mode.models, [parseModelReference(mode.model, "light")]);
+				: await RouteTextModel.create(
+						mode.models,
+						[parseModelReference(mode.model, "light")],
+						mode.thinking?.level("light"),
+					);
 		if (text === undefined) throw new Error(`${mode.kind === "live" ? mode.model : "the model"} has no credentials`);
 		const chosen: TriageChosen[] = [];
 		for (let pass = 0; pass < passes; pass++) {
@@ -216,11 +223,12 @@ export interface TriageComparison {
 
 /** The stored shape of {@link TriageResults}. */
 export interface StoredTriageResults {
-	readonly version?: 2;
+	readonly version?: 2 | 3;
 	readonly complete?: boolean;
 	readonly questionSet: QuestionSet;
 	readonly fingerprint: string;
 	readonly model: string;
+	readonly thinking?: ModelRoute["thinking"];
 	readonly goldens: readonly string[];
 	readonly passes: number;
 	readonly choices: readonly TriageChoice[];
@@ -239,6 +247,7 @@ export class TriageResults {
 	readonly questionSet: QuestionSet;
 	readonly fingerprint: string;
 	readonly model: string;
+	readonly thinking?: ModelRoute["thinking"];
 	readonly goldens: readonly string[];
 	readonly passes: number;
 	readonly choices: readonly TriageChoice[];
@@ -249,6 +258,7 @@ export class TriageResults {
 		this.questionSet = stored.questionSet;
 		this.fingerprint = stored.fingerprint;
 		this.model = stored.model;
+		this.thinking = stored.thinking;
 		this.goldens = stored.goldens ?? [];
 		this.passes = stored.passes;
 		this.choices = stored.choices;
@@ -261,6 +271,7 @@ export class TriageResults {
 		chosen: Readonly<Record<string, readonly TriageChosen[]>>,
 		measured: {
 			readonly model: string;
+			readonly thinking?: ModelRoute["thinking"];
 			readonly fingerprint: string;
 			readonly complete?: boolean;
 			readonly telemetry?: Readonly<Record<string, readonly StageTelemetry[]>>;
@@ -289,6 +300,7 @@ export class TriageResults {
 			choices,
 			goldens: names,
 			model: measured.model,
+			thinking: measured.thinking,
 			fingerprint: measured.fingerprint,
 			...(measured.telemetry === undefined ? {} : { telemetry }),
 		});
@@ -302,11 +314,12 @@ export class TriageResults {
 	toJSON(): StoredTriageResults {
 		const { questionSet, fingerprint, model, goldens, passes, choices, complete } = this;
 		return {
-			version: 2,
+			version: 3,
 			complete,
 			questionSet,
 			fingerprint,
 			model,
+			...(this.thinking === undefined ? {} : { thinking: this.thinking }),
 			goldens,
 			passes,
 			choices,
@@ -348,7 +361,7 @@ export class TriageResults {
 			.filter((choice) => choice.chosen !== choice.expected)
 			.map((choice) => `  ${choice.golden} / ${choice.lens}: chose ${choice.chosen}, should be ${choice.expected}`);
 		return [
-			`triage ${this.questionSet.name} v${this.questionSet.version} on ${this.model}, ${this.passes} pass${this.passes === 1 ? "" : "es"}: exact ${this.exact().toFixed(2)}, mean distance ${this.meanDistance().toFixed(2)}, ${this.under()} under`,
+			`triage ${this.questionSet.name} v${this.questionSet.version} on ${this.model}, thinking ${this.thinking ?? "unset"}, ${this.passes} pass${this.passes === 1 ? "" : "es"}: exact ${this.exact().toFixed(2)}, mean distance ${this.meanDistance().toFixed(2)}, ${this.under()} under`,
 			...Object.entries(this.telemetry ?? {}).map(([golden, passes]) => {
 				const choices = this.choices.filter((choice) => choice.golden === golden);
 				const score = new TriageResults({ ...this.toJSON(), choices }).exact();
@@ -370,7 +383,7 @@ export class TriageResults {
 	/**
 	 * Whether this measurement chooses better than `baseline`: a lower mean distance is better, and at the same distance
 	 * a higher exact share, each read within a small tolerance. Refuses, as incomparable, a baseline measured with
-	 * another decider model or golden set, or an incomplete baseline. Says so when the questions changed without their
+	 * another decider model, thinking level or golden set, or an incomplete baseline. Says so when the questions changed without their
 	 * version, which the question set's version exists to prevent, and when the version moved but the questions did not.
 	 */
 	compare(baseline: TriageResults): TriageComparison {
@@ -388,6 +401,14 @@ export class TriageResults {
 		if (!sameVersion && sameQuestions) lines.push("the version changed and the questions did not");
 		if (baseline.model !== this.model) {
 			lines.push(`incomparable: the decider model differs, ${baseline.model} -> ${this.model}`);
+			return { verdict: "incomparable", lines };
+		}
+		if (baseline.thinking !== this.thinking) {
+			lines.push(
+				visibleText(
+					`incomparable: the triage thinking differs, ${baseline.thinking ?? "unset"} -> ${this.thinking ?? "unset"}`,
+				),
+			);
 			return { verdict: "incomparable", lines };
 		}
 		if (baseline.goldens.join("\n") !== this.goldens.join("\n")) {

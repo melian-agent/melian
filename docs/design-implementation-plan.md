@@ -192,6 +192,8 @@ Not yet scheduled, from the same research: the comparison importer counts a Code
     - Preserve unavailable usage, detached reads, attachment identity and terminal escaping. Prove crashes on both sides of settlement and run the gate.
     - `[x]` Capture requested, observed sent and provider-reported reasoning for each returned model request, without changing levels. [The capture decision](decisions/2026-10-18-reasoning-telemetry.md) extends the usage record to version 2. [Pull request #153](https://github.com/melian-agent/melian/pull/153).
 
+33. `[x]` **A reasoning level per tier.** [Pull request #157](https://github.com/melian-agent/melian/pull/157). Optional `models.<tier>.thinking` reaches lens, verifier, triage, walkthrough, compaction and failover requests. Levels join reuse identities and telemetry; doctor prints each source. Live evals accept `MELIAN_EVAL_THINKING` after model overrides. Committed levels stay unset. [The decision](decisions/2026-10-19-tier-thinking-routes.md) records the contract and main-written reopen fixtures.
+
 ### Milestone 2 in flight, 2026-10-17
 
 [The milestone 2 state entry](progress-log/2026-10-07-milestone-2-state.md) holds the earlier numbers and incidents. The current state follows.

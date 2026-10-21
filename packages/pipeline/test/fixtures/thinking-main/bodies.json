@@ -1,0 +1,34 @@
+[
+  {
+    "model": "triage",
+    "body": {}
+  },
+  {
+    "model": "unavailable",
+    "body": {}
+  },
+  {
+    "model": "finder",
+    "body": {}
+  },
+  {
+    "model": "finder",
+    "body": {}
+  },
+  {
+    "model": "judge-unavailable",
+    "body": {}
+  },
+  {
+    "model": "judge",
+    "body": {}
+  },
+  {
+    "model": "judge",
+    "body": {}
+  },
+  {
+    "model": "summary",
+    "body": {}
+  }
+]

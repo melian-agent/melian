@@ -35,6 +35,7 @@ import { createFakeModels, scriptLenses } from "@melian-agent/pipeline/testing";
 import Type, { type Static, type TSchema } from "typebox";
 import Value from "typebox/value";
 import { GoldenRunError } from "./run-error.ts";
+import type { EvalThinking } from "./thinking.ts";
 
 const strict = { additionalProperties: false } as const;
 const text = Type.String({ minLength: 1 });
@@ -252,6 +253,7 @@ export type GoldenMode =
 			readonly model?: string;
 			/** A separate verifier route for a live run. */
 			readonly verifierModel?: string;
+			readonly thinking?: EvalThinking;
 	  };
 
 /** A golden's review: the findings, and the terminal rendering an author would see. */
@@ -268,7 +270,19 @@ const tiers: readonly LensTier[] = ["light", "medium", "heavy"];
 
 function routeEveryTier(config: MelianConfig, model: string, override: boolean): MelianConfig {
 	const route: ModelRoute = { model };
-	const models = Object.fromEntries(tiers.map((tier) => [tier, override ? route : (config.models[tier] ?? route)]));
+	const models = Object.fromEntries(
+		tiers.map((tier) => {
+			const existing = config.models[tier];
+			return [
+				tier,
+				override
+					? route
+					: existing?.model !== undefined || existing?.accept !== undefined
+						? existing
+						: { ...existing, model },
+			];
+		}),
+	);
 	return { ...config, models: { ...config.models, ...models } };
 }
 
@@ -315,9 +329,13 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 			config = mode.model === undefined ? loaded : routeEveryTier(loaded, mode.model, false);
 			const verifier = mode.verifierModel ?? mode.model;
 			if (verifier !== undefined)
-				config = { ...config, models: { ...config.models, verifier: { model: verifier } } };
+				config = {
+					...config,
+					models: { ...config.models, verifier: { model: verifier, thinking: config.models.verifier?.thinking } },
+				};
 			models = mode.models;
 		}
+		if (mode.kind === "live" && mode.thinking !== undefined) config = mode.thinking.apply(config);
 		const storage = createMemoryStorage();
 		const reviewHarness = await openReviewHarness(storage, models, { retry: mode.kind !== "scripted" });
 		try {

@@ -4,7 +4,7 @@
 
 ## Rules
 
-- Core never imports Pi Durable, Chord, or `@melian-agent/pipeline`. pi-ai types are the one permitted Pi import, and none is used yet.
+- Core never imports Pi Durable, Chord, or `@melian-agent/pipeline`. pi-ai types are the one permitted Pi import; configuration checks its reasoning schema against `ModelThinkingLevel`.
 - Read repositories by running `git` through `src/git.ts`. Pin every diff flag whose user configuration would change the output.
 - Read policy, standards, and repository lenses only through `src/source.ts`, from the source the caller passed. Never call `node:fs` or `realpath` on repository content from a loader, never follow a symlink, and never read past a bound.
 - Throw `ChangesetError`, `CheckError`, `ConfigError`, `StandardsError`, `FindingError`, `LensError`, `RevisionError`, `ModelRoutingError`, or `OutsideRepositoryError` with a code, never a bare `Error` or a string.

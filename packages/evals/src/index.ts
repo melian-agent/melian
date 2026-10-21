@@ -59,3 +59,5 @@ export {
 export const packageName = "@melian-agent/evals";
 
 export { EnolaCoverage } from "./enola-coverage.ts";
+
+export { EvalThinking } from "./thinking.ts";

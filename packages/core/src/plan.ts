@@ -43,7 +43,7 @@ export interface PlanInput {
  * How a tier resolved. `routed` runs `models`, each with credentials. `unrouted` names no model. `uncredentialed`
  * names models none of which has credentials, and nothing could be derived. `unavailable` is a route whose policy
  * says `unavailable: fail` and none of whose accepted models has credentials. `refused` is a route that left `accept`
- * where policy says `acceptOverridden: false`. A check on an `unavailable` or `refused` tier records `failed`.
+ * or changed its thinking where policy says `acceptOverridden: false`. A check on an `unavailable` or `refused` tier records `failed`.
  */
 export type TierStatus = "routed" | "unrouted" | "uncredentialed" | "unavailable" | "refused";
 
@@ -54,6 +54,11 @@ export type PlannedModel = { model: string; credential: string; family?: string 
 /** One tier of a {@link ReviewPlan}, as stored. */
 export type PlannedTier = {
 	tier: ModelTier;
+	/** The tier's requested reasoning level and the file that set it; absent when Pi keeps its default. */
+	thinking?: ModelRoute["thinking"];
+	thinkingBy?: string;
+	/** A level outside committed policy, absent on older plans and unchanged levels. */
+	thinkingOverride?: CheckLineage["thinking"];
 	status: TierStatus;
 	/** The route a check on the tier tries, in order. */
 	models: PlannedModel[];
@@ -237,8 +242,21 @@ export class ReviewPlan {
 				...(catalog.some((model) => model.provider === provider) ? {} : { provider }),
 			});
 		}
+		const thinkingChanged = effective?.thinking !== policy?.thinking;
 		const base = {
 			tier,
+			...(thinkingChanged
+				? {
+						thinkingOverride: {
+							level: effective?.thinking ?? "unset",
+							wanted: policy?.thinking ?? "unset",
+							by: routes.thinking?.[tier] ?? "melian.yaml",
+						} satisfies CheckLineage["thinking"],
+					}
+				: {}),
+			...(effective?.thinking === undefined
+				? {}
+				: { thinking: effective.thinking, thinkingBy: routes.thinking?.[tier] ?? "melian.yaml" }),
 			...(unknown.length === 0 ? {} : { unknown }),
 			...(wanted === undefined ? {} : { wanted }),
 			...(accept.length === 0 ? {} : { accept: [...accept] }),
@@ -283,15 +301,17 @@ export class ReviewPlan {
 			by = "derived";
 		}
 		if (policy?.acceptOverridden === false && accept.length > 0) {
-			const kept = chosen.filter((model) => accept.includes(model));
+			const kept = chosen.filter((model) => !thinkingChanged && accept.includes(model));
 			if (kept.length === 0) {
 				return {
 					...base,
 					status: "refused",
 					models: planned(chosen),
 					...(by === undefined ? {} : { by }),
-					outside: true,
-					reason: `models.${tier}.acceptOverridden is false, and ${by ?? "its route"} puts it on ${chosen[0]}, which models.${tier}.accept does not list`,
+					outside: !accept.includes(chosen[0]!),
+					reason: thinkingChanged
+						? `models.${tier}.acceptOverridden is false, and ${base.thinkingOverride!.by} sets thinking ${effective?.thinking ?? "unset"}; committed policy wants ${policy.thinking ?? "unset"}`
+						: `models.${tier}.acceptOverridden is false, and ${by ?? "its route"} puts it on ${chosen[0]}, which models.${tier}.accept does not list`,
 				};
 			}
 			chosen = kept;
@@ -356,10 +376,11 @@ export class ReviewPlan {
 	 */
 	routes(): MelianConfig["models"] {
 		const routes: Partial<Record<ModelTier, ModelRoute>> = {};
-		for (const { tier, status, models } of this.tiers) {
+		for (const { tier, status, models, thinking } of this.tiers) {
+			if (thinking !== undefined) routes[tier] = { thinking };
 			const [first, ...rest] = models.map((each) => each.model);
 			if (first === undefined || (status !== "routed" && status !== "uncredentialed")) continue;
-			routes[tier] = { model: first, fallbacks: rest };
+			routes[tier] = { ...routes[tier], model: first, fallbacks: rest };
 		}
 		return routes;
 	}
@@ -394,6 +415,7 @@ export class ReviewPlan {
 			model,
 			...(own.wanted === undefined ? {} : { wanted: own.wanted }),
 			by: `lens tiers${fallback?.by === undefined ? "" : ` via ${fallback.by}`}`,
+			...(own.thinkingOverride === undefined ? {} : { thinking: own.thinkingOverride }),
 			outside: (own.accept?.length ?? 0) > 0 && !own.accept!.includes(model),
 		};
 	}
@@ -416,12 +438,37 @@ export class ReviewPlan {
 	// The lineage of a check on `model` judged by `policy`'s route, `by` having put it there. Nothing when the committed
 	// route put it there inside its own accept, when it is the model policy wants, or when there was no committed route
 	// to leave. A model outside accept always records, the committed route's own fallback included.
-	private static leaving(policy: PlannedTier, model: string, by: string | undefined): CheckLineage | undefined {
+	private static leaving(
+		policy: PlannedTier,
+		model: string,
+		by: string | undefined,
+		planned = policy,
+	): CheckLineage | undefined {
 		const { wanted } = policy;
 		const accept = policy.accept ?? [];
 		const outside = accept.length > 0 && !accept.includes(model);
-		if (model === wanted || (by === undefined && !outside) || (wanted === undefined && !outside)) return undefined;
-		return { model, ...(wanted === undefined ? {} : { wanted }), by: by ?? "melian.yaml", outside };
+		const wantedThinking = policy.thinkingOverride?.wanted ?? policy.thinking ?? "unset";
+		const level = planned.thinking ?? "unset";
+		const thinking: CheckLineage["thinking"] =
+			level === wantedThinking
+				? undefined
+				: {
+						level,
+						wanted: wantedThinking,
+						by: planned.thinkingOverride?.by ?? planned.thinkingBy ?? "melian.yaml",
+					};
+		if (
+			thinking === undefined &&
+			(model === wanted || (by === undefined && !outside) || (wanted === undefined && !outside))
+		)
+			return undefined;
+		return {
+			model,
+			...(wanted === undefined ? {} : { wanted }),
+			by: by ?? thinking?.by ?? "melian.yaml",
+			outside,
+			...(thinking === undefined ? {} : { thinking }),
+		};
 	}
 
 	/**
@@ -450,16 +497,23 @@ export class ReviewPlan {
 				? undefined
 				: { by: entry.by ?? "a preference file", from: policyTier, to: entry.tier };
 		const by = moved === undefined ? planned.by : moved.by;
-		const left = model === undefined ? undefined : ReviewPlan.leaving(policy, model, by);
+		const left = model === undefined ? undefined : ReviewPlan.leaving(policy, model, by, planned);
 		const lineage: CheckLineage | undefined =
 			left === undefined || moved === undefined ? left : { ...left, by: planned.by ?? "melian.yaml", moved };
-		const outside = policy.acceptOverridden === false && lineage?.outside === true;
+		const outside =
+			policy.acceptOverridden === false && (lineage?.outside === true || lineage?.thinking !== undefined);
 		const unlisted = `which models.${policyTier}.accept does not list`;
 		const why =
 			entry.committed === undefined
 				? `models.${policyTier}.acceptOverridden is false, and ${by ?? "its route"} puts it on ${model}, ${unlisted}`
 				: `lenses.${name}.tier moves it from ${policyTier} to ${entry.tier}, and models.${policyTier}.acceptOverridden is false; ${entry.tier} runs ${model}, ${unlisted}`;
-		const refusal = this.refusal(entry.tier) ?? (outside ? why : undefined);
+		const refusal =
+			this.refusal(entry.tier) ??
+			(outside
+				? lineage?.thinking === undefined
+					? why
+					: `models.${policyTier}.acceptOverridden is false, and ${lineage.thinking.by} sets thinking ${lineage.thinking.level}; committed policy wants ${lineage.thinking.wanted}`
+				: undefined);
 		return { ...(refusal === undefined ? {} : { refusal }), ...(lineage === undefined ? {} : { lineage }) };
 	}
 
@@ -651,14 +705,19 @@ export class ReviewPlan {
 		return messages;
 	}
 
-	private static lineageText({ wanted, by, moved, outside, model }: CheckLineage): string {
+	private static lineageText({ wanted, by, moved, outside, model, thinking }: CheckLineage): string {
 		const routed = by === "derived" ? "derived since no model of its route has credentials" : `set by ${by}`;
 		const why =
 			moved === undefined
 				? routed
 				: `moved from ${moved.from} to ${moved.to} by ${moved.by}, whose route is ${routed}`;
-		if (wanted === undefined) return `${why}; the committed route does not accept ${model}`;
-		return `${why}; the committed route wants ${wanted}${outside ? `, and does not accept ${model}` : ""}`;
+		const reasoning =
+			thinking === undefined
+				? ""
+				: `; thinking ${thinking.level} set by ${thinking.by}; committed policy wants ${thinking.wanted}`;
+		if (wanted === undefined)
+			return `${why}; the committed route ${outside ? "does not accept" : "accepts"} ${model}${reasoning}`;
+		return `${why}; the committed route wants ${wanted}${outside ? `, and does not accept ${model}` : ""}${reasoning}`;
 	}
 
 	/**
@@ -666,7 +725,14 @@ export class ReviewPlan {
 	 * then each lens with the tier and model of each level; then every warning.
 	 */
 	lines(): PlanLine[] {
-		const lines: PlanLine[] = [];
+		const lines: PlanLine[] = this.tiers.map(({ tier, thinking, thinkingBy }) => ({
+			state: "ok",
+			text: visibleText(
+				thinking === undefined
+					? `${tier} thinking: unset; Pi default`
+					: `${tier} thinking: ${thinking}; set by ${thinkingBy}`,
+			),
+		}));
 		for (const { tier, status, models, by } of this.tiers) {
 			if (status !== "routed") continue;
 			const route = models

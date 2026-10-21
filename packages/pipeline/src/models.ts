@@ -1,4 +1,11 @@
-import type { CatalogModel, ModelReference, TextModel, ToolRequest, UsageObserver } from "@melian-agent/core";
+import type {
+	CatalogModel,
+	ModelReference,
+	ModelRoute,
+	TextModel,
+	ToolRequest,
+	UsageObserver,
+} from "@melian-agent/core";
 import type { MelianCredentialStore } from "./credentials.ts";
 import type { Api, Model, Models, MutableModels } from "./harness.ts";
 import { ReasoningCapture } from "./reasoning.ts";
@@ -100,22 +107,28 @@ export class RouteTextModel implements TextModel {
 	readonly name: string;
 	readonly #models: Models;
 	readonly #model: Model<Api>;
+	readonly #thinking: ModelRoute["thinking"];
 
-	private constructor(models: Models, model: Model<Api>) {
+	private constructor(models: Models, model: Model<Api>, thinking: ModelRoute["thinking"]) {
 		this.#models = models;
 		this.#model = model;
-		this.name = `${model.provider}/${model.id}`;
+		this.#thinking = thinking;
+		this.name = `${model.provider}/${model.id}${thinking === undefined ? "" : ` thinking=${thinking}`}`;
 	}
 
 	/** The first model of `route` that `models` knows and holds credentials for, or `undefined` when there is none. */
-	static async create(models: ReviewModels, route: readonly ModelReference[]): Promise<RouteTextModel | undefined> {
+	static async create(
+		models: ReviewModels,
+		route: readonly ModelReference[],
+		thinking?: ModelRoute["thinking"],
+	): Promise<RouteTextModel | undefined> {
 		const collection = modelsOf(models);
 		for (const reference of route) {
 			const model = collection.getModel(reference.provider, reference.modelId);
 			if (model === undefined) continue;
 			// A store that cannot be read passes the provider over, so a later tier with its own credential still serves.
 			if (await hasCredentials(models, reference.provider).catch(() => false))
-				return new RouteTextModel(collection, model);
+				return new RouteTextModel(collection, model, thinking);
 		}
 		return undefined;
 	}
@@ -123,16 +136,20 @@ export class RouteTextModel implements TextModel {
 	/** The arguments of the model's call to `request.tool`. Throws when the request fails or the model calls no tool. */
 	async answer(request: ToolRequest, signal?: AbortSignal, usage?: UsageObserver): Promise<unknown> {
 		if (usage?.started !== undefined) await usage.started();
-		const capture = new ReasoningCapture(this.#model, "unspecified");
-		const reply = await this.#models.complete(
-			this.#model,
-			{
-				systemPrompt: request.system,
-				messages: [{ role: "user", content: request.prompt, timestamp: Date.now() }],
-				tools: [request.tool],
-			},
-			{ ...capture.options(), ...(signal === undefined ? {} : { signal }) },
-		);
+		const capture = new ReasoningCapture(this.#model, this.#thinking ?? "unspecified");
+		const input = {
+			systemPrompt: request.system,
+			messages: [{ role: "user" as const, content: request.prompt, timestamp: Date.now() }],
+			tools: [request.tool],
+		};
+		const options = { ...capture.options(), ...(signal === undefined ? {} : { signal }) };
+		const reply =
+			this.#thinking === undefined
+				? await this.#models.complete(this.#model, input, options)
+				: await this.#models.completeSimple(this.#model, input, {
+						...options,
+						...(this.#thinking === "off" ? {} : { reasoning: this.#thinking }),
+					});
 		usage?.(`${reply.provider}/${reply.model}`, reply.usage, capture.finish(reply));
 		if (reply.stopReason === "error" || reply.stopReason === "aborted") {
 			throw new Error(`${this.name} failed: ${reply.errorMessage ?? reply.stopReason}`);

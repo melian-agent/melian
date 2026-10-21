@@ -198,6 +198,10 @@ describe("ReviewPlan.resolve", () => {
 	it("tells doctor a derived route was derived, and an accept-only route that it left accept", () => {
 		const derived = plan({ verifier: { accept: [opus] } }, { "amazon-bedrock": "AWS_PROFILE" }, { checks: [] });
 		expect(derived.lines()).toEqual([
+			...["light", "medium", "heavy", "decision", "verifier"].map((tier) => ({
+				state: "ok",
+				text: `${tier} thinking: unset; Pi default`,
+			})),
 			{
 				state: "ok",
 				text: "verifier: amazon-bedrock/anthropic.claude-opus-5-5 (claude) with AWS_PROFILE; derived, since no model of the committed route has credentials",
@@ -657,6 +661,10 @@ describe("a resolved plan", () => {
 			{ checks: ["lens.correctness", "lens.tests"] },
 		);
 		expect(resolved.lines()).toEqual([
+			...["light", "medium", "heavy", "decision", "verifier"].map((tier) => ({
+				state: "ok",
+				text: `${tier} thinking: unset; Pi default`,
+			})),
 			{ state: "ok", text: "medium: anthropic/claude-sonnet-5-5 with ANTHROPIC_API_KEY; routed by melian.yaml" },
 			{ state: "ok", text: `heavy: ${opus} with ANTHROPIC_API_KEY; routed by melian.yaml` },
 			{
@@ -1145,4 +1153,66 @@ describe("a route naming a model the catalogue does not hold", () => {
 				.filter((line) => line.includes("catalogue")),
 		).toEqual([]);
 	});
+});
+
+it("records removing the effective route's thinking under committed policy", () => {
+	const committed = { heavy: { model: opus, thinking: "high" as const, acceptOverridden: false } };
+	const resolved = ReviewPlan.resolve({
+		config: { ...defaultConfig, models: {} },
+		routes: { committed, overridden: {}, lensTiers: {}, retiered: {} },
+		catalog,
+		credentials: { anthropic: "test" },
+		lenses: [],
+		checks: [],
+	});
+	expect(resolved.tier("heavy").thinkingOverride).toStrictEqual({
+		level: "unset",
+		wanted: "high",
+		by: "melian.yaml",
+	});
+	expect(resolved.refusal("heavy")).toBe(
+		"models.heavy.acceptOverridden is false, and melian.yaml sets thinking unset; committed policy wants high",
+	);
+});
+
+it("records thinking on a route with no committed tier", () => {
+	const resolved = ReviewPlan.resolve({
+		config: { ...defaultConfig, models: { heavy: { model: opus, thinking: "high" } } },
+		routes: { committed: {}, overridden: {}, lensTiers: {}, retiered: {} },
+		catalog,
+		credentials: { anthropic: "test" },
+		lenses: [],
+		checks: [],
+	});
+	expect(resolved.tier("heavy").thinkingOverride).toStrictEqual({
+		level: "high",
+		wanted: "unset",
+		by: "melian.yaml",
+	});
+});
+
+it("omits absent wanted and thinking fields from fallback lineage", () => {
+	const resolved = plan({ heavy: { model: opus } }, { anthropic: "test" });
+	expect(resolved.verifierLineage(opus)).toStrictEqual({ model: opus, by: "lens tiers", outside: false });
+	const accepted = plan(
+		{ verifier: { accept: [opus] } },
+		{ anthropic: "test", openai: "test" },
+		{ preferences: { verifier: { model: gpt } } },
+	);
+	expect(accepted.verifierLineage(gpt)).toStrictEqual({
+		model: gpt,
+		by: "melian.local.yaml",
+		outside: true,
+	});
+});
+
+it("explains a retiered lens's model refusal when neither tier sets thinking", () => {
+	const resolved = plan(
+		{ heavy: { model: opus, acceptOverridden: false }, light: { model: gpt } },
+		{ anthropic: "test", openai: "test" },
+		{ retier: { correctness: "light" } },
+	);
+	expect(resolved.judge("correctness", "careful").refusal).toBe(
+		`lenses.correctness.tier moves it from heavy to light, and models.heavy.acceptOverridden is false; light runs ${gpt}, which models.heavy.accept does not list`,
+	);
 });

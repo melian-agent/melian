@@ -290,7 +290,7 @@ The guardrails dispatch adds SupersessionReview to core's policies. It uses Deci
 
 ## Adjudication
 
-`melian.adjudication` is version 3. Its migration preserves version-1 and version-2 inputs and adds `legacyTiming: true` to their checkpoints. Version 2 added `files`, which the hunk pass still reads after an upgrade. Version 1 has no files and decides by snippet alone. Neither older version supplies a timing start. SQLite reopen tests use tasks and findings recorded by each version’s own code.
+`melian.adjudication` is version 5. Versions 4 and 5 add tier reasoning and override lineage. Its migration preserves version-1 and version-2 inputs and adds `legacyTiming: true` to their checkpoints. Version 2 added `files`, which the hunk pass still reads after an upgrade. Version 1 has no files and decides by snippet alone. Neither older version supplies a timing start. SQLite reopen tests use tasks and findings recorded by each version’s own code.
 
 The adjudication task, `melian.adjudication`, reads the root conversation's findings at the revision under review through `readFindings` with the producers the review selected, runs core's `Adjudication`, and writes the verdict's JSON into `VerdictDocument` on the root under that revision. Like the findings document, the verdict document belongs to the root, is rewindable, and forks `asOf`, so a fork of the root at a revision carries that revision's verdict. Read it with `readVerdict(reader, rootConversationId, revision, context)`, where `revision` is a `revisionKey`, which returns a copy or `undefined`.
 
@@ -645,3 +645,9 @@ ReviewHarness decorates its host-supplied Models port with onPayload for generat
 Model-usage document version 2 added request receipts. Version 3 permits source unrecognised and migrates versions 1 and 2 unchanged. The v2 fixture was written by 151ad84f through ConversationUsageRecorder before the version bump. Reopen tests preserve both earlier versions through a v3 write and another reopen. Conversation receipts use conversation:<id> keys in that family. Pi's UsageDoc still supplies aggregate counters; the receipts commit before the model response returns to Pi. A crash can preserve a receipt before Pi settles its usage. Old records remain without reasoning. Detached reads combine the existing counters and receipts without writing or asking a model.
 
 A mutated pager can repeat resolved reads without yielding, so a test timeout may never fire. Pager fakes must reject a read past their terminal page. This makes a broken termination guard fail an assertion instead of hanging the runner.
+
+## Tier reasoning
+
+Lens tasks store optional `thinking` per run, including escalation; verifier candidates and walkthrough inputs store their tier's level. Configure the child agent's `thinkingLevel` once. Pi uses it for generation and compaction; failover changes only the model. Verifier thinking applies even when the model comes from lens routes. Direct `RouteTextModel` keeps raw completion when unset and uses simple completion for an explicit level. Its name includes that level for triage identity. Requested telemetry records it independently of observed provider mappings.
+
+Lens tasks are version 4, verification and summary tasks version 2, adjudication tasks version 5 and verdict documents version 12. Migrations preserve absent levels and prior timing. The main-written fixtures under `test/fixtures/thinking-main` cover pending inputs and two verdict reopens. The version-11 fixture under `test/fixtures/thinking-policy-v11` preserves configured levels without inventing override lineage. [The tier reasoning decision](../decisions/2026-10-19-tier-thinking-routes.md) gives the complete contract.

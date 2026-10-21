@@ -25,8 +25,11 @@ async function expectRepositoryIndex(repo: string): Promise<void> {
 	const active = files.filter((file) => !inactive.has(file.path));
 	expect(active.length).toBeGreaterThan(100);
 	const rendered = (await DecisionFiles.load(repo, commit)).render();
-	for (const file of active)
-		expect(rendered.split("\n")).toContain(visibleText(`[ACTIVE] ${file.path} — ${file.title}`));
+	for (const file of active) {
+		const ending = visibleText(`] ${file.path} — ${file.title}`);
+		const row = rendered.split("\n").find((line) => line.endsWith(ending));
+		expect(row).toMatch(/^\[ACTIVE(?:; amended by .+)?\] /);
+	}
 	expect(Buffer.byteLength(rendered)).toBeLessThan(49152);
 }
 
@@ -1066,6 +1069,43 @@ describe("written decisions", () => {
 			gitIn(repo, "commit", "--quiet", "-m", "snapshot");
 			expect(gitIn(repo, "for-each-ref", "--format=%(refname)")).toBe("refs/heads/snapshot");
 			await expectRepositoryIndex(repo);
+		} finally {
+			removeDirectory(repo);
+		}
+	}, 60_000);
+	it("checks an active decision with an amendment in the repository index", async () => {
+		const repo = temporaryDirectory();
+		try {
+			writeFiles(
+				repo,
+				Object.fromEntries(
+					Array.from({ length: 102 }, (_, index) => [
+						`docs/decisions/snapshot-${String(index).padStart(3, "0")}.md`,
+						`# Full title of snapshot decision ${index}\n`,
+					]),
+				),
+			);
+			writeFiles(repo, { "docs/decisions/amendment.md": "# Amendment\n\nAmends: snapshot-000.md, routing.\n" });
+			gitIn(repo, "init", "--quiet", "--initial-branch=snapshot");
+			gitIn(repo, "add", "--all");
+			gitIn(repo, "commit", "--quiet", "-m", "amended snapshot");
+			await expectRepositoryIndex(repo);
+			const rendered = (await DecisionFiles.load(repo, "HEAD")).render();
+			const target = rendered.split("\n").find((line) => line.includes("] docs/decisions/snapshot-000.md —"))!;
+			for (const replacement of [
+				target.replace("snapshot-000.md", "missing.md"),
+				target.replace("Full title of snapshot decision 0", "Wrong title"),
+				target.replace("[ACTIVE; amended by", "[INACTIVE; superseded by"),
+			]) {
+				const render = vi
+					.spyOn(DecisionFiles.prototype, "render")
+					.mockReturnValueOnce(rendered.replace(target, replacement));
+				try {
+					await expect(expectRepositoryIndex(repo)).rejects.toThrow();
+				} finally {
+					render.mockRestore();
+				}
+			}
 		} finally {
 			removeDirectory(repo);
 		}

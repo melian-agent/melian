@@ -23,7 +23,12 @@ import {
 	type TaskId,
 	upsertFinding,
 } from "@melian-agent/pipeline";
-import { createFakeModels, fauxAssistantMessage, scriptConversations } from "@melian-agent/pipeline/testing";
+import {
+	createFakeModels,
+	fauxAssistantMessage,
+	scriptConversations,
+	systemPromptOf,
+} from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { type AdjudicationTaskInput, VerdictDocument } from "../src/adjudication.ts";
 import { ComparisonDocument } from "../src/compare.ts";
@@ -88,6 +93,52 @@ it("keeps the current round when a repeat review attaches", async () => {
 	const root = await harness.root(context);
 	expect((await harness.snapshot(rounds, root.id, context))?.sequence).toBe(1);
 	expect((await harness.snapshot(rounds, root.id, context))?.items.r1?.tasks).toHaveLength(1);
+});
+
+it("mints a round for changed lens thinking and attaches at a fixed level", async () => {
+	const changeset = await Changeset.resolve(repo, "main...feature");
+	const lenses = await Lens.builtins();
+	fake.provider.setResponses([
+		(request, options) => {
+			expect(systemPromptOf(request.messages)).toContain("correctness");
+			expect(options?.reasoning).toBe("high");
+			return fauxAssistantMessage("Done.");
+		},
+		(request, options) => {
+			expect(systemPromptOf(request.messages)).toContain("correctness");
+			expect(options?.reasoning).toBe("low");
+			return fauxAssistantMessage("Done.");
+		},
+	]);
+	const root = await harness.root(context);
+	const revision = revisionKey(changeset.revision);
+	const tasks: number[][] = [];
+	for (const thinking of ["high", "high", "low", "low"] as const) {
+		await reviewChangeset({
+			harness,
+			changeset,
+			lenses,
+			standards: [],
+			models: fake.review,
+			checks: [],
+			config: {
+				...defaultConfig,
+				tiers: { full: ["lens.correctness"] },
+				models: { heavy: { model: "faux/faux-1", thinking } },
+			},
+		});
+		const state = (await harness.snapshot(rounds, root.id, context))!;
+		expect(state.sequence).toBe(thinking === "high" ? 1 : 2);
+		expect(state.current[revision]).toBe(thinking === "high" ? "r1" : "r2");
+		expect(Object.keys(state.items)).toHaveLength(state.sequence);
+		expect(state.items[state.current[revision]!]!.verdict?.status).toBe("passed");
+		tasks.push([...state.items[state.current[revision]!]!.tasks]);
+	}
+	expect(tasks[0]).toHaveLength(1);
+	expect(tasks[1]).toEqual(tasks[0]);
+	expect(tasks[2]).toHaveLength(1);
+	expect(tasks[2]).not.toEqual(tasks[0]);
+	expect(tasks[3]).toEqual(tasks[2]);
 });
 
 it("mints a model-free review on a host with no credentialed model", async () => {
@@ -737,7 +788,7 @@ it("reads empty storage and a document lost between detached reads as absent", a
 it.each([
 	{ kind: "melian.rounds", version: 2 },
 	{ kind: "melian.comparisons", version: 2 },
-	{ kind: "melian.verdicts", version: 11 },
+	{ kind: "melian.verdicts", version: 13 },
 ])("refuses newer $kind version $version", async ({ kind, version }) => {
 	const storage = createMemoryStorage();
 	const opened = await openHarness(storage, { models: fake.models, registry: createReviewRegistry() });

@@ -3,6 +3,7 @@ import type { ChangeOverlap } from "./cause.ts";
 import type { Revision } from "./changeset.ts";
 import {
 	type MelianConfig,
+	type ModelRoute,
 	type Resolution,
 	type RuleAlias,
 	resolutionOrder,
@@ -290,6 +291,12 @@ export interface CheckRecord {
  */
 export interface CheckLineage {
 	readonly model: string;
+	/** A reasoning level that differs from committed policy, with its source. */
+	readonly thinking?: {
+		readonly level: NonNullable<ModelRoute["thinking"]> | "unset";
+		readonly wanted: NonNullable<ModelRoute["thinking"]> | "unset";
+		readonly by: string;
+	};
 	readonly wanted?: string;
 	readonly by: string;
 	/** For a lens a preference file moved to another tier: that file, and the tiers it moved the lens from and to. */
@@ -391,6 +398,11 @@ export type StoredCheckRecord = {
 	level?: ScrutinyLevel;
 	budgetEnded?: { budget: "tokens" | "tools"; limit: number; tokens: number; tools: number };
 	lineage?: {
+		thinking?: {
+			level: NonNullable<ModelRoute["thinking"]> | "unset";
+			wanted: NonNullable<ModelRoute["thinking"]> | "unset";
+			by: string;
+		};
 		model: string;
 		wanted?: string;
 		by: string;
