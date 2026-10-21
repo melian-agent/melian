@@ -17,16 +17,12 @@ import recorded1 from "./fixtures/published-versions/v1.json" with { type: "json
 import expected1 from "./fixtures/published-versions/v1-expected.json" with { type: "json" };
 import recorded2 from "./fixtures/published-versions/v2.json" with { type: "json" };
 import expected2 from "./fixtures/published-versions/v2-expected.json" with { type: "json" };
-
 import recorded3 from "./fixtures/published-versions/v3.json" with { type: "json" };
 import expected3 from "./fixtures/published-versions/v3-expected.json" with { type: "json" };
-
 import recorded4 from "./fixtures/published-versions/v4.json" with { type: "json" };
 import expected4 from "./fixtures/published-versions/v4-expected.json" with { type: "json" };
-
 import recorded6 from "./fixtures/published-versions/v6.json" with { type: "json" };
 import expected6 from "./fixtures/published-versions/v6-expected.json" with { type: "json" };
-
 import recorded7 from "./fixtures/published-versions/v7.json" with { type: "json" };
 import expected7 from "./fixtures/published-versions/v7-expected.json" with { type: "json" };
 
@@ -58,7 +54,7 @@ it.each(cases)(
 				scope: "conversation",
 				history: "latest",
 				fork: "current",
-				initial: () => structuredClone(round.state) as JsonObject,
+				initial: () => JSON.parse(JSON.stringify(round.state)) as JsonObject,
 			});
 			const first = await open();
 			harnesses.push(first);
