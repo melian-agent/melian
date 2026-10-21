@@ -1,8 +1,9 @@
-import { copyFileSync, mkdtempSync, realpathSync, rmSync } from "node:fs";
+import { copyFileSync, existsSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Changeset, defaultConfig, Finding, loadConfig, pullRequestChangesetId, ReviewPlan } from "@melian-agent/core";
 import {
+	CompareHarness,
 	backgroundContext as context,
 	createReviewRegistry,
 	openHarness,
@@ -337,10 +338,10 @@ it("refuses a standalone round ID combined with a listing", async () => {
 	expect(await main(["findings", "--round", `${changeset.id}.r1`, "--rounds"], io)).toBe(64);
 });
 
-it.each(["round", "rounds", "no-rounds"])(
+it.each(["rounds", "no-rounds"])(
 	"confines --%s to findings without writing a comparison",
 	async (option) => {
-		const flags = option === "round" ? ["--round", `${changeset.id}.r1`] : [`--${option}`];
+		const flags = [`--${option}`];
 		expect(await main(["compare", "main...feature", ...flags], io)).toBe(64);
 		expect(io.stdout).not.toHaveBeenCalled();
 		expect(await main(["compare", "export", "main...feature", "--json"], io)).toBe(1);
@@ -416,4 +417,102 @@ it.each([false, true])("lists an unreadable legacy head last with an unknown dat
 		expect(rows[1]).toMatch(/\.k[0-9a-f]{16} .*unknown/);
 	}
 	expect(io.stderr).not.toHaveBeenCalled();
+});
+
+it.each(["import", "match", "unmatch", "adjudicate"])(
+	"routes comparison %s to an explicit round after the branch is deleted",
+	async (operation) => {
+		const path = await storagePath(repo, changeset.id, io.env, false);
+		const compare = await CompareHarness.open(await openSqliteStorage(path), createFakeModels().review, changeset.id);
+		let id: string;
+		try {
+			const comparison = await compare.importFindings(changeset.revision, [], "2026-10-21T00:00:00Z");
+			id = comparison.melianFindings()[0]!;
+		} finally {
+			await compare.close();
+		}
+		const externalFile = join(dir, "review.json");
+		writeFileSync(
+			externalFile,
+			JSON.stringify({
+				reviewer: { name: "codex" },
+				findings: [{ file: "a.ts", line: 999, title: "n is wrong", body: "wrong" }],
+			}),
+		);
+		const selected = ["--round", `${changeset.id}.r1`];
+		expect(await main(["compare", "main...feature", "--from", `file:${externalFile}`, ...selected], io)).toBe(0);
+		io.stdout.mockClear();
+		expect(await main(["compare", "export", "main...feature", "--json"], io)).toBe(0);
+		const exported = JSON.parse(io.stdout.mock.calls.join(""));
+		const external = Object.keys(exported.comparisons[`${changeset.id}.r1`].external)[0]!;
+		const pending = await CompareHarness.open(await openSqliteStorage(path), createFakeModels().review, changeset.id);
+		try {
+			const root = await pending.harness.root(context);
+			await root.commit(
+				(tx) => new RoundWriter(tx, root.id).mint(revisionKey(changeset.revision), 999, "later"),
+				context,
+			);
+		} finally {
+			await pending.close();
+		}
+
+		gitIn(repo, "checkout", "--quiet", "main");
+		gitIn(repo, "branch", "-D", "feature");
+		io.stdout.mockClear();
+		const args =
+			operation === "import"
+				? ["compare", "main...feature", "--from", `file:${externalFile}`]
+				: operation === "adjudicate"
+					? ["compare", "adjudicate", "main...feature", id!, "--verdict", "noise"]
+					: ["compare", operation, "main...feature", external, id!];
+		expect(await main([...args, ...selected], io)).toBe(0);
+		expect(io.stderr.mock.calls).toEqual([]);
+		if (operation === "import" || operation === "unmatch")
+			expect(io.stdout.mock.calls.join("")).toContain("null-dereference");
+		const reopened = await CompareHarness.open(
+			await openSqliteStorage(path),
+			createFakeModels().review,
+			changeset.id,
+		);
+		try {
+			const comparison = (await reopened.read({ ...changeset.revision, round: `${changeset.id}.r1` }))!;
+			if (operation === "import") expect(comparison.externalFindings()).toHaveLength(1);
+			if (operation === "match")
+				expect(comparison.effectiveMatches()).toContainEqual(
+					expect.objectContaining({ kind: "hand", external, melian: id! }),
+				);
+			if (operation === "unmatch") expect(comparison.effectiveMatches()).toEqual([]);
+			if (operation === "adjudicate") expect(comparison.adjudication(id!)?.current.verdict).toBe("noise");
+		} finally {
+			await reopened.close();
+		}
+	},
+);
+
+it.each(["bad", "range-ffffffffffffffff.r1", "missing"])(
+	"refuses comparison round %s without creating storage",
+	async (argument) => {
+		const id = argument === "missing" ? `${changeset.id}.r9` : argument;
+		expect(await main(["compare", "main...feature", "--round", id], io)).toBe(1);
+		expect(io.stderr.mock.calls.join("")).toContain(argument === "bad" ? "invalid round ID" : "has no round");
+		if (argument === "range-ffffffffffffffff.r1")
+			expect(existsSync(await storagePath(repo, "range-ffffffffffffffff", io.env, false))).toBe(false);
+		expect(io.stdout).not.toHaveBeenCalled();
+	},
+);
+
+it("comparison writes search only the selected state directory", async () => {
+	const elsewhere = { ...io, env: { ...io.env, MELIAN_STATE_DIR: join(dir, "elsewhere") } };
+	expect(await main(["compare", "main...feature", "--round", `${changeset.id}.r1`], elsewhere)).toBe(1);
+	expect(io.stderr.mock.calls.join("")).toContain("has no round");
+});
+
+it.each([
+	["compare", "export", "main...feature"],
+	["compare", "stats"],
+	["compare", "backlog"],
+	["compare", "#7"],
+	["review", "main...feature"],
+])("refuses --round outside range writes: %s", async (...args) => {
+	expect(await main([...args, "--round", `${changeset.id}.r1`], io)).toBe(64);
 });

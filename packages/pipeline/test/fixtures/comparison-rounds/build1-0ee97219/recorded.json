@@ -1,0 +1,62 @@
+{
+  "commit": "0ee97219",
+  "revisions": [
+    {
+      "head": "859528392bd4f0f4d9fd965f2cd21eb6dd561de2",
+      "base": "e332a8d418c648d86470475c1b18ec9e4804cb7c",
+      "files": [
+        {
+          "status": "modified",
+          "path": "a.ts",
+          "oldMode": "100644",
+          "oldKind": "file",
+          "newMode": "100644",
+          "newKind": "file",
+          "binary": false,
+          "hunks": [
+            {
+              "file": "a.ts",
+              "index": 0,
+              "oldStart": 1,
+              "oldLines": 1,
+              "newStart": 1,
+              "newLines": 1,
+              "header": "@@ -1 +1 @@",
+              "text": "-export const n = 1;\n+export const n = 2;"
+            }
+          ]
+        }
+      ],
+      "policyFiles": []
+    },
+    {
+      "head": "859528392bd4f0f4d9fd965f2cd21eb6dd561de2",
+      "base": "e332a8d418c648d86470475c1b18ec9e4804cb7c",
+      "files": [
+        {
+          "status": "modified",
+          "path": "a.ts",
+          "oldMode": "100644",
+          "oldKind": "file",
+          "newMode": "100644",
+          "newKind": "file",
+          "binary": false,
+          "hunks": [
+            {
+              "file": "a.ts",
+              "index": 0,
+              "oldStart": 1,
+              "oldLines": 1,
+              "newStart": 1,
+              "newLines": 1,
+              "header": "@@ -1 +1 @@",
+              "text": "-export const n = 1;\n+export const n = 2;"
+            }
+          ]
+        }
+      ],
+      "policyFiles": []
+    }
+  ],
+  "external": "494eaf510dfc2491"
+}

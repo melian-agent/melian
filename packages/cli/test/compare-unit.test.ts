@@ -40,7 +40,7 @@ beforeEach(async () => {
 	vi.spyOn(fs, "existsSync").mockReturnValue(true);
 	const storage = createMemoryStorage();
 	vi.spyOn(repository, "openStorage").mockResolvedValue(storage);
-	harness = await CompareHarness.open(storage, createFakeModels().review);
+	harness = await CompareHarness.open(storage, createFakeModels().review, "change");
 	vi.spyOn(CompareHarness, "open").mockResolvedValue(harness);
 	vi.spyOn(harness, "reviewed").mockResolvedValue(true);
 });

@@ -292,7 +292,7 @@ async function oldStorage(name = "pending") {
 
 it.each(["import", "adjudicate"])("records the legacy verdict before a comparison %s", async (command) => {
 	const { storage } = await oldStorage("decided");
-	const comparison = await CompareHarness.open(storage, fake.review);
+	const comparison = await CompareHarness.open(storage, fake.review, "change");
 	try {
 		const [base, head] = legacy.key.split("..");
 		if (command === "import")
@@ -402,12 +402,12 @@ it("mints after a legacy attachment when the CLI supplies a distinct check run w
 
 it("synthesises an undecided comparison-only legacy round without writing", async () => {
 	const storage = createMemoryStorage();
-	const comparison = await CompareHarness.open(storage, fake.review);
+	const comparison = await CompareHarness.open(storage, fake.review, "change");
 	try {
 		const root = await comparison.harness.root(context);
 		const [base, head] = legacy.key.split("..");
 		await root.commit(async (tx) => {
-			(await tx.doc(ComparisonDocument, root.id)).comparisons[legacy.key] = Comparison.of({
+			(await tx.doc(ComparisonDocument, root.id)).unattributed[legacy.key] = Comparison.of({
 				base: base!,
 				head: head!,
 			}).toJSON();
@@ -562,7 +562,7 @@ it("places a main task with no live verdict or comparison in its key's legacy ro
 		const root = await reopened.root(context);
 		await root.commit(async (tx) => {
 			delete (await tx.doc(VerdictDocument, root.id)).verdicts[legacy.key];
-			delete (await tx.doc(ComparisonDocument, root.id)).comparisons[legacy.key];
+			delete (await tx.doc(ComparisonDocument, root.id)).unattributed[legacy.key];
 		}, context);
 		await reopened.waitForTask(legacy.pending as TaskId, context);
 		const state = await reopened.snapshot(rounds, root.id, context);
@@ -657,7 +657,7 @@ it("preserves an undecided comparison-only legacy key before its first round wri
 	const root = await harness.root(context);
 	const [base, head] = legacy.key.split("..");
 	await root.commit(async (tx) => {
-		(await tx.doc(ComparisonDocument, root.id)).comparisons[legacy.key] = Comparison.of({
+		(await tx.doc(ComparisonDocument, root.id)).unattributed[legacy.key] = Comparison.of({
 			base: base!,
 			head: head!,
 		}).toJSON();
@@ -733,7 +733,7 @@ it.each(["verdict", "comparison"])("reads a legacy %s without provenance", async
 					.toJSON();
 			} else {
 				const [base, head] = legacy.key.split("..");
-				(await tx.doc(ComparisonDocument, root.id)).comparisons[legacy.key] = Comparison.of({
+				(await tx.doc(ComparisonDocument, root.id)).unattributed[legacy.key] = Comparison.of({
 					base: base!,
 					head: head!,
 				}).toJSON();
@@ -787,7 +787,7 @@ it("reads empty storage and a document lost between detached reads as absent", a
 
 it.each([
 	{ kind: "melian.rounds", version: 2 },
-	{ kind: "melian.comparisons", version: 2 },
+	{ kind: "melian.comparisons", version: 3 },
 	{ kind: "melian.verdicts", version: 13 },
 ])("refuses newer $kind version $version", async ({ kind, version }) => {
 	const storage = createMemoryStorage();

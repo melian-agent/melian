@@ -1,12 +1,10 @@
 import {
 	Comparison,
 	type ComparisonEntry,
-	ComparisonError,
 	type ExternalImport,
 	type StoredComparison,
 	type StoredComparisonAdjudication,
 	type StoredVerdict,
-	Verdict,
 } from "@melian-agent/core";
 import { VerdictDocument } from "./adjudication.ts";
 import { FindingsDocument, revisionKey } from "./findings.ts";
@@ -17,6 +15,7 @@ import {
 	createRegistry,
 	defineDoc,
 	type Harness,
+	type JsonObject,
 	openHarness,
 	ROOT_CONVERSATION_ID,
 	type Storage,
@@ -25,18 +24,68 @@ import {
 } from "./harness.ts";
 import { modelsOf, type ReviewModels } from "./models.ts";
 import { ReviewIndex } from "./review-index.ts";
-import { RoundWriter } from "./rounds.ts";
+import { legacyKey, Round, RoundReader, RoundsDocument, RoundWriter } from "./rounds.ts";
 
-// Each revision's comparison, keyed by `revisionKey` of the stored review it compares against, on the changeset's root
-// conversation beside the findings. It keeps its latest value, as the review index does: a comparison is the
-// maintainer's record of other reviewers, and a fork that forgot it would lose the hand matches.
-export const ComparisonDocument = defineDoc<{ comparisons: Record<string, StoredComparison> }>({
+type ComparisonState = {
+	legacy: Record<string, boolean>;
+	comparisons: Record<string, StoredComparison>;
+	unattributed: Record<string, StoredComparison>;
+};
+
+class StoredComparisons {
+	readonly state: ComparisonState;
+
+	private constructor(state: ComparisonState) {
+		this.state = state;
+	}
+
+	static from(state: ComparisonState): StoredComparisons {
+		return new StoredComparisons(structuredClone(state));
+	}
+
+	static upgrade(value: JsonObject): ComparisonState {
+		return { legacy: {}, comparisons: {}, unattributed: value.comparisons as Record<string, StoredComparison> };
+	}
+
+	attribute(rounds: readonly Round[], changeset: string): void {
+		for (const [key, stored] of Object.entries(this.state.unattributed)) {
+			if (
+				!this.state.legacy[key] &&
+				rounds.some((round) => revisionKey(round.stored) === key && round.stored.mintedAt !== undefined)
+			)
+				continue;
+			this.state.comparisons[`${changeset}.${legacyKey(key)}`] = stored;
+			delete this.state.unattributed[key];
+			delete this.state.legacy[key];
+		}
+	}
+
+	entries(rounds: readonly Round[], changeset: string): ComparisonEntry[] {
+		return [
+			...Object.entries(this.state.comparisons).map(([id, stored]) => {
+				const comparison = Comparison.from(stored);
+				const verdict = rounds.find((round) => round.id === id)?.verdict();
+				if (verdict !== undefined) comparison.compare(verdict);
+				return { changeset, round: id, comparison, ...(verdict === undefined ? {} : { verdict }) };
+			}),
+			...Object.entries(this.state.unattributed).map(([key, stored]) => ({
+				changeset,
+				unattributed: key,
+				comparison: Comparison.from(stored),
+			})),
+		];
+	}
+}
+
+export const ComparisonDocument = defineDoc<ComparisonState>({
 	kind: "melian.comparisons",
-	version: 1,
+	version: 2,
 	scope: "conversation",
 	history: "latest",
 	fork: "current",
-	initial: () => ({ comparisons: {} }),
+	initial: () => ({ legacy: {}, comparisons: {}, unattributed: {} }),
+	// Attribution needs the sibling rounds document, which Pi's migration callback cannot read.
+	migrate: (value) => StoredComparisons.upgrade(value),
 });
 
 /** Why a comparison could not be read or recorded. */
@@ -59,7 +108,7 @@ export interface ImportedSource {
 	readonly imported: ExternalImport;
 }
 
-type Revision = { readonly base: string; readonly head: string; readonly target?: string };
+type Revision = { readonly base: string; readonly head: string; readonly target?: string; readonly round?: string };
 
 /**
  * A durable harness over one changeset's storage that reads and records its comparisons with external reviewers. It
@@ -70,14 +119,20 @@ export class CompareHarness {
 	/** Pi's harness. */
 	readonly harness: Harness;
 
-	private constructor(harness: Harness) {
+	readonly changeset: string;
+	private readonly storage: Storage;
+
+	private constructor(harness: Harness, changeset: string, storage: Storage) {
 		this.harness = harness;
+		this.changeset = changeset;
+		this.storage = storage;
 	}
 
 	/** Opens one over `storage`. `models` may hold no credentials. A failed open closes `storage`. */
 	static async open(
 		storage: Storage,
 		models: ReviewModels,
+		changeset: string,
 		context: Context = backgroundContext,
 	): Promise<CompareHarness> {
 		const harness = await openHarness(
@@ -89,41 +144,44 @@ export class CompareHarness {
 			await storage.close(backgroundContext).catch(() => undefined);
 			throw error;
 		});
-		return new CompareHarness(harness);
+		return new CompareHarness(harness, changeset, storage);
 	}
 
 	/** Whether Melian has a current, decided review of `revision` to compare against. */
 	async reviewed(revision: Revision, context: Context = backgroundContext): Promise<boolean> {
 		const root = await this.harness.root(context);
-		return root.commit(
-			async (tx) => (await this.currentVerdict(tx, root.id, revisionKey(revision))) !== undefined,
-			context,
-		);
+		return root.commit(async (tx) => {
+			try {
+				await this.selected(tx, root.id, revision);
+				return true;
+			} catch (error) {
+				if (error instanceof CompareError && error.code === "notReviewed") return false;
+				throw error;
+			}
+		}, context);
 	}
 
-	/** The comparison recorded for `revision`, or `undefined` when there is none. */
+	/** The comparison recorded for the selected round, or undefined when there is none. */
 	async read(revision: Revision, context: Context = backgroundContext): Promise<Comparison | undefined> {
 		const root = await this.harness.root(context);
-		const comparisons = (await this.harness.snapshot(ComparisonDocument, root.id, context))?.comparisons;
-		const key = revisionKey(revision);
-		return comparisons === undefined || !Object.hasOwn(comparisons, key)
-			? undefined
-			: Comparison.from(comparisons[key]!);
+		const rounds = await new RoundReader(this.storage).read(this.changeset, context);
+		const state =
+			(await this.harness.snapshot(ComparisonDocument, root.id, context)) ?? ComparisonDocument.definition.initial();
+		const stored = StoredComparisons.from(state);
+		stored.attribute(rounds, this.changeset);
+		const stateOfRounds = await this.harness.snapshot(RoundsDocument, root.id, context);
+		const id =
+			revision.round ??
+			`${this.changeset}.${stateOfRounds?.current[revisionKey(revision)] ?? legacyKey(revisionKey(revision))}`;
+		return stored.state.comparisons[id] === undefined ? undefined : Comparison.from(stored.state.comparisons[id]);
 	}
 
-	/** Reads every comparison beside its stored verdict, refreshing matches without writing. */
+	/** Reads every comparison beside its round's verdict, without writing. */
 	async all(changeset: string, context: Context = backgroundContext): Promise<ComparisonEntry[]> {
-		const root = await this.harness.root(context);
-		const comparisons = (await this.harness.snapshot(ComparisonDocument, root.id, context))?.comparisons ?? {};
-		const verdicts = (await this.harness.snapshot(VerdictDocument, root.id, context))?.verdicts ?? {};
-		return Object.entries(comparisons).map(([key, stored]) => {
-			const comparison = Comparison.from(stored);
-			const verdict = Object.hasOwn(verdicts, key)
-				? Verdict.from(JSON.parse(JSON.stringify(verdicts[key])) as StoredVerdict)
-				: undefined;
-			if (verdict !== undefined) comparison.compare(verdict);
-			return { changeset, comparison, ...(verdict === undefined ? {} : { verdict }) };
-		});
+		return (await ComparisonReader.open(this.storage).read(this.changeset, context)).map((entry) => ({
+			...entry,
+			changeset,
+		}));
 	}
 
 	/**
@@ -186,43 +244,22 @@ export class CompareHarness {
 		judgement: StoredComparisonAdjudication,
 		context: Context = backgroundContext,
 	): Promise<Comparison> {
-		const root = await this.harness.root(context);
-		return root.commit(async (tx) => {
-			const document = await tx.doc(ComparisonDocument, root.id);
-			const verdicts = (await tx.doc(VerdictDocument, root.id)).verdicts;
-			const rounds = Object.entries(document.comparisons)
-				.map(([key, stored]) => {
-					const comparison = Comparison.from(stored);
-					if (Object.hasOwn(verdicts, key))
-						comparison.compare(Verdict.from(JSON.parse(JSON.stringify(verdicts[key])) as StoredVerdict));
-					return { key, comparison };
-				})
-				.reverse()
-				.sort(
-					(a, b) =>
-						(Date.parse(b.comparison.recordedAt() ?? "") || 0) -
-						(Date.parse(a.comparison.recordedAt() ?? "") || 0),
-				);
-			const round = rounds.find(
-				({ comparison }) =>
-					comparison.externalFinding(id) !== undefined || comparison.melianFindings().includes(id),
-			);
-			if (round === undefined)
-				throw new ComparisonError("unknownFinding", `the stored comparisons have no finding ${id}`);
-			const previous = rounds
-				.map(({ comparison }) => comparison.adjudication(id)?.current)
-				.filter((each) => each !== undefined)
-				.sort((a, b) => Date.parse(b.at) - Date.parse(a.at))[0];
-			round.comparison.adjudicate(id, {
-				...judgement,
-				golden: judgement.golden ?? previous?.golden,
-				rule: judgement.rule ?? previous?.rule,
-			});
-			round.comparison.record(judgement.at, revision.target);
-			await new RoundWriter(tx, root.id).preserve(round.key);
-			document.comparisons = { ...document.comparisons, [round.key]: round.comparison.toJSON() };
-			return round.comparison;
-		}, context);
+		return this.update(
+			revision,
+			(comparison, entries) => {
+				const previous = entries
+					.map((entry) => entry.comparison.adjudication(id)?.current)
+					.filter((each) => each !== undefined)
+					.sort((a, b) => Date.parse(b.at) - Date.parse(a.at))[0];
+				comparison.adjudicate(id, {
+					...judgement,
+					golden: judgement.golden ?? previous?.golden,
+					rule: judgement.rule ?? previous?.rule,
+				});
+				comparison.record(judgement.at, revision.target);
+			},
+			context,
+		);
 	}
 
 	/** Closes the harness and its storage. Idempotent. */
@@ -253,32 +290,63 @@ export class CompareHarness {
 		return JSON.parse(JSON.stringify(document.verdicts[key]!)) as StoredVerdict;
 	}
 
-	// Reads the stored review and the comparison in one commit, so a review that records another verdict a moment before
-	// is the one compared against; matches against the review after `change`, so a hand match names a finding it holds.
+	private async selected(tx: Tx, root: ConversationId, revision: Revision): Promise<Round> {
+		const key = revisionKey(revision);
+		const state = await tx.doc(RoundsDocument, root);
+		const local =
+			revision.round === undefined
+				? (state.current[key] ?? legacyKey(key))
+				: revision.round.slice(this.changeset.length + 1);
+		const live = await tx.doc(VerdictDocument, root);
+		const stored =
+			state.items[local] ??
+			(!state.recorded[key] && local === legacyKey(key)
+				? { base: revision.base, head: revision.head, tasks: [], verdict: live.verdicts[key] }
+				: undefined);
+		if (
+			(revision.round !== undefined && !revision.round.startsWith(`${this.changeset}.`)) ||
+			stored === undefined ||
+			stored.verdict === undefined
+		)
+			throw new CompareError(
+				"notReviewed",
+				`Melian has no decided round ${revision.round ?? key} to compare against; run melian review again`,
+			);
+		if (
+			(state.current[revisionKey(stored)] ?? legacyKey(revisionKey(stored))) === local &&
+			(await this.currentVerdict(tx, root, revisionKey(stored))) === undefined
+		)
+			throw new CompareError(
+				"notReviewed",
+				`Melian has no current, decided review of ${revisionKey(stored)} to compare against; run melian review again`,
+			);
+		return new Round(`${this.changeset}.${local}`, JSON.parse(JSON.stringify(stored)));
+	}
+
 	private async update(
 		revision: Revision,
-		change: (comparison: Comparison) => void,
+		change: (comparison: Comparison, entries: ComparisonEntry[]) => void,
 		context: Context,
 	): Promise<Comparison> {
 		const root = await this.harness.root(context);
-		const key = revisionKey(revision);
 		return root.commit(async (tx) => {
-			const storedVerdict = await this.currentVerdict(tx, root.id, key);
-			if (storedVerdict === undefined) {
-				throw new CompareError(
-					"notReviewed",
-					`Melian has no current, decided review of ${key} to compare against; run melian review again`,
-				);
-			}
-			const verdict = Verdict.from(storedVerdict);
+			const round = await this.selected(tx, root.id, revision);
 			const document = await tx.doc(ComparisonDocument, root.id);
-			const stored = document.comparisons[key];
-			const comparison = stored === undefined ? Comparison.of(revision) : Comparison.from(stored);
+			const state = await new RoundWriter(tx, root.id).preserve(revisionKey(round.stored));
+			const rounds = Object.entries(state.items).map(
+				([key, stored]) => new Round(`${this.changeset}.${key}`, JSON.parse(JSON.stringify(stored))),
+			);
+			const stored = StoredComparisons.from(JSON.parse(JSON.stringify(document)));
+			stored.attribute(rounds, this.changeset);
+			const previous = stored.state.comparisons[round.id];
+			const comparison = previous === undefined ? Comparison.of(round.stored) : Comparison.from(previous);
+			const verdict = round.verdict()!;
 			comparison.compare(verdict);
-			change(comparison);
+			change(comparison, stored.entries(rounds, this.changeset));
 			comparison.compare(verdict);
-			await new RoundWriter(tx, root.id).preserve(key);
-			document.comparisons = { ...document.comparisons, [key]: comparison.toJSON() };
+			document.comparisons = { ...stored.state.comparisons, [round.id]: comparison.toJSON() };
+			document.unattributed = stored.state.unattributed;
+			document.legacy = stored.state.legacy;
 			return comparison;
 		}, context);
 	}
@@ -310,28 +378,13 @@ export class ComparisonReader {
 		if (stored === undefined) return [];
 		if (stored.version > ComparisonDocument.definition.version)
 			throw new CompareError("unreadable", `comparison document has newer version ${stored.version}`);
-		const comparisons = stored.value as { comparisons: Record<string, StoredComparison> };
-		const verdictRecord = await this.storage.findDocument(
-			{ kind: VerdictDocument.definition.kind, scope },
-			"current",
-			context,
-		);
-		const storedVerdicts =
-			verdictRecord === undefined ? undefined : await this.storage.document(verdictRecord.id, "current", context);
-		if (storedVerdicts !== undefined && storedVerdicts.version > VerdictDocument.definition.version)
-			throw new CompareError("unreadable", `verdict document has newer version ${storedVerdicts.version}`);
-		const verdicts = (
-			storedVerdicts === undefined
-				? {}
-				: storedVerdicts.version === VerdictDocument.definition.version
-					? storedVerdicts.value
-					: VerdictDocument.definition.migrate!(storedVerdicts.value, storedVerdicts.version)
-		) as { verdicts?: Record<string, StoredVerdict> };
-		return Object.entries(comparisons.comparisons).map(([key, value]) => {
-			const comparison = Comparison.from(value);
-			const verdict = verdicts.verdicts?.[key] === undefined ? undefined : Verdict.from(verdicts.verdicts[key]);
-			if (verdict !== undefined) comparison.compare(verdict);
-			return { changeset, comparison, ...(verdict === undefined ? {} : { verdict }) };
-		});
+		const state =
+			stored.version === ComparisonDocument.definition.version
+				? (stored.value as ComparisonState)
+				: ComparisonDocument.definition.migrate!(stored.value, stored.version);
+		const comparisons = StoredComparisons.from(state);
+		const rounds = await new RoundReader(this.storage).read(changeset, context);
+		comparisons.attribute(rounds, changeset);
+		return comparisons.entries(rounds, changeset);
 	}
 }

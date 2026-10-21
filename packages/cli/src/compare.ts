@@ -10,6 +10,7 @@ import {
 	Lens,
 	LensError,
 	type StoredComparisonAdjudication,
+	type Verdict,
 	visibleText,
 } from "@melian-agent/core";
 import { coderabbitLogin, ReviewThreadImporter } from "@melian-agent/github";
@@ -19,6 +20,8 @@ import {
 	backgroundContext as context,
 	FileImporter,
 	type ImportedSource,
+	type Round,
+	RoundReader,
 	readVerdict,
 	revisionKey,
 } from "@melian-agent/pipeline";
@@ -41,27 +44,69 @@ export function parseImportSource(value: string): ImportSource | undefined {
 	return undefined;
 }
 
-async function openComparison(io: Io, argument: string, requireReview = true) {
-	const stored = await StoredReview.open(io, argument);
+type ComparisonTarget = {
+	changeset: {
+		repoRoot: string;
+		id: string;
+		revision: { base: string; head: string; round?: string };
+	};
+	missing: () => CliError;
+};
+
+async function openComparison(io: Io, argument: string, round?: string) {
+	let stored: ComparisonTarget;
+	let verdict: Verdict | undefined;
+	let path: string;
+	if (round === undefined) {
+		stored = await StoredReview.open(io, argument);
+		path = await storagePath(stored.changeset.repoRoot, stored.changeset.id, io.env, isScripted(io.env));
+	} else {
+		const match = /^(range-[0-9a-f]{16}|pull-[0-9a-f]{16})\.(?:r[1-9][0-9]*|k[0-9a-f]{16})$/.exec(round);
+		if (match === null) throw new CliError(`invalid round ID ${round}`);
+		const repoRoot = await git(io.cwd, ["rev-parse", "--show-toplevel"]);
+		path = await storagePath(repoRoot, match[1]!, io.env, isScripted(io.env));
+		if (!existsSync(path)) throw new CliError(`Melian has no round ${round}`);
+		const storage = await openStorage(path);
+		let selected: Round | undefined;
+		try {
+			selected = (await new RoundReader(storage).read(match[1]!)).find((each) => each.id === round);
+		} finally {
+			await storage.close(context);
+		}
+		if (selected === undefined) throw new CliError(`Melian has no round ${round}`);
+		verdict = selected.verdict();
+		stored = {
+			changeset: {
+				repoRoot,
+				id: match[1]!,
+				revision: { base: selected.stored.base, head: selected.stored.head, round },
+			},
+			missing: () => new CliError(`Melian has no current, decided round ${round}`),
+		};
+	}
 	const { changeset } = stored;
-	const path = await storagePath(changeset.repoRoot, changeset.id, io.env, isScripted(io.env));
 	if (!existsSync(path)) throw stored.missing();
-	const harness = await CompareHarness.open(await openStorage(path), idleModels(io.env));
+	const harness = await CompareHarness.open(await openStorage(path), idleModels(io.env), changeset.id);
 	const reviewed = await harness.reviewed(changeset.revision).catch(async (error: unknown) => {
 		await harness.close(context);
 		throw error;
 	});
-	if (requireReview && !reviewed) {
+	if (!reviewed) {
 		await harness.close(context);
 		throw stored.missing();
 	}
-	return { stored, harness };
+	return { stored, harness, verdict };
 }
 
 // Every source is read before anything is written, so a source that fails records nothing.
-export async function compare(io: Io, argument: string, sources: readonly ImportSource[]): Promise<number> {
+export async function compare(
+	io: Io,
+	argument: string,
+	sources: readonly ImportSource[],
+	round?: string,
+): Promise<number> {
 	const target = parseTarget(argument);
-	const { stored, harness } = await openComparison(io, argument);
+	const { stored, harness, verdict: frozen } = await openComparison(io, argument, round);
 	const { changeset } = stored;
 	const { revision } = changeset;
 	try {
@@ -99,7 +144,7 @@ export async function compare(io: Io, argument: string, sources: readonly Import
 			io.stdout(`Imported ${stored} from ${visibleText(source)}${skipped}.\n`);
 		}
 		const root = (await harness.harness.root(context)).id;
-		const verdict = await readVerdict(harness.harness, root, revisionKey(revision), context);
+		const verdict = frozen ?? (await readVerdict(harness.harness, root, revisionKey(revision), context));
 		const external = comparison.externalFindings().length;
 		const melian = comparison.melianFindings().length;
 		io.stdout(
@@ -121,8 +166,9 @@ export async function matchByHand(
 	argument: string,
 	pair: { readonly external: string; readonly melian: string },
 	matched: boolean,
+	round?: string,
 ): Promise<number> {
-	const { stored, harness } = await openComparison(io, argument);
+	const { stored, harness, verdict: frozen } = await openComparison(io, argument, round);
 	const { revision, repoRoot } = stored.changeset;
 	try {
 		const hand = { by: await gitAuthor(repoRoot, "matched a finding by hand"), at: new Date().toISOString() };
@@ -139,7 +185,7 @@ export async function matchByHand(
 		if (!matched && comparison.needsReason(pair.external))
 			io.stdout(`Finding ${pair.external} is pending until re-adjudicated with a miss reason.\n`);
 		const root = (await harness.harness.root(context)).id;
-		const verdict = await readVerdict(harness.harness, root, revisionKey(revision), context);
+		const verdict = frozen ?? (await readVerdict(harness.harness, root, revisionKey(revision), context));
 		io.stdout(comparison.render(verdict));
 		return 0;
 	} finally {
@@ -152,8 +198,9 @@ export async function adjudicateComparison(
 	argument: string,
 	id: string,
 	fields: Omit<StoredComparisonAdjudication, "by" | "at">,
+	round?: string,
 ): Promise<number> {
-	const { stored, harness } = await openComparison(io, argument, false);
+	const { stored, harness } = await openComparison(io, argument, round);
 	try {
 		if (fields.golden !== undefined && fields.golden !== "none") {
 			try {

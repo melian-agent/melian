@@ -724,7 +724,14 @@ describe("comparison review fixes", { timeout: 60_000 }, () => {
 		expect(melian(repo, ["review", range], env).status).toBe(0);
 		expect(melian(repo, ["compare", range], env).status).toBe(0);
 		expect(melian(repo, ["compare", "backlog"], env).stdout).toContain(id);
-		const cleared = melian(repo, ["compare", "adjudicate", range, id, "--verdict", "noise", "--golden", "none"], env);
+		const earlier = Object.keys(
+			JSON.parse(melian(repo, ["compare", "export", range, "--json"], env).stdout).comparisons,
+		)[0]!;
+		const cleared = melian(
+			repo,
+			["compare", "adjudicate", range, id, "--verdict", "noise", "--golden", "none", "--round", earlier],
+			env,
+		);
 		expect(cleared).toMatchObject({ status: 0, stderr: "", stdout: expect.stringContaining("does not dismiss") });
 		expect(melian(repo, ["compare", "backlog"], env).stdout).toBe("No goldens owed.\n");
 		const json = JSON.parse(melian(repo, ["compare", "export", range, "--json"], env).stdout) as {
@@ -780,7 +787,10 @@ describe("comparison review fixes", { timeout: 60_000 }, () => {
 		expect(melian(repo, ["compare", range, "--from", `file:${path}`], env).status).toBe(0);
 		git(repo, "commit", "--quiet", "--allow-empty", "-m", "next revision");
 		expect(melian(repo, ["findings", range], env).status).toBe(1);
-		const result = melian(repo, ["compare", "adjudicate", range, id, "--verdict", "valid"], env);
+		const earlier = Object.keys(
+			JSON.parse(melian(repo, ["compare", "export", range, "--json"], env).stdout).comparisons,
+		)[0]!;
+		const result = melian(repo, ["compare", "adjudicate", range, id, "--verdict", "valid", "--round", earlier], env);
 		expect(result).toMatchObject({ status: 0, stderr: "" });
 		const json = JSON.parse(melian(repo, ["compare", "export", range, "--json"], env).stdout) as {
 			comparisons: Record<string, { adjudications?: Record<string, { current: { verdict: string } }> }>;

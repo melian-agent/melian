@@ -58,6 +58,22 @@ const render = (entries: ComparisonEntry[], target = "range", url?: string) =>
 	new ComparisonExport(entries, target, url).render();
 const sections = (text: string) => [...text.matchAll(/^## ([A-Z]+)\. (.*)$/gm)].map((each) => `${each[1]} ${each[2]}`);
 
+it("keeps unattributed comparisons outside the round map and labels every section", () => {
+	const comparison = entry({ externals: [report()] });
+	const key = `${comparison.comparison.base}..${comparison.comparison.head}`;
+	const record = new ComparisonExport([{ ...comparison, unattributed: key, verdict: undefined }], "range");
+	expect(JSON.parse(record.renderJson())).toEqual({
+		comparisons: {},
+		unattributed: { [key]: comparison.comparison.toJSON() },
+	});
+	expect(record.render()).toContain("0 stored rounds");
+	expect(record.render()).toContain("codex, unattributed comparison");
+	expect(record.render()).not.toContain("round 1");
+	expect(record.render()).toContain("no round can be proven");
+	expect(record.render()).toContain("Comparisons: 0.");
+	expect(record.render()).toContain("Unattributed comparisons: 1.");
+});
+
 describe("ComparisonExport header", () => {
 	it("lists reviewers in order, with version and login, and links a pull request", () => {
 		const text = render(

@@ -41,14 +41,14 @@ Commands:
                          dismisses that report alone.
                          Exits 0 when recorded, 1 when the review or the finding is not found, or when the
                          dismissal was recorded but the verdict could not be decided again.
-  compare <range|#pr> [--from <source>]...
+  compare <range|#pr> [--from <source>]... [--round <id>]
                          Import other reviewers' findings and match them against the stored review of the head,
                          by site. A source is github for CodeRabbit's review threads, github:<login> for another
                          login's, or file:<path> for a reviewer's JSON file. Without --from, a pull request
                          imports github, and a range matches again.
-  compare match|unmatch <range|#pr> <external-id> <melian-id>
+  compare match|unmatch <range|#pr> <external-id> <melian-id> [--round <id>]
                          Match an external finding with a Melian finding by hand, or keep them apart.
-  compare adjudicate <range|#pr> <finding-id> --verdict valid|noise|duplicate
+  compare adjudicate <range|#pr> <finding-id> --verdict valid|noise|duplicate [--round <id>]
                          Record a local judgement, with --severity, --reason, --golden, --rule, --note, and --of.
   compare stats [--since <date>|--last <n>]
                          Show recall, precision, pending findings, miss reasons, candidate checks, and drain due.
@@ -69,7 +69,7 @@ Options:
   --cold                 Run the mutation check without an earlier head's results; only a cold run can pass the
                          review, so run it before the queue (review).
   --open, --all, --json  For findings; --json also applies to review and telemetry.
-  --round <id>          Read one stored round (findings).
+  --round <id>          Read a stored verdict, or select a range comparison write.
   --rounds              List a target's stored rounds (findings).
   --reason <text>        Dismissal reason, or owned-missed, no-owner, needs-execution, out-of-scope (adjudicate).
   --only                 Dismiss the report the ID names alone, leaving the reports merged with it live (dismiss).
@@ -160,8 +160,10 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 			io.stderr(usage);
 			return usageExitCode;
 		}
-		if (name !== "findings" && (values.round !== undefined || values.rounds !== undefined))
-			throw new UsageError("--round and --rounds are only available for findings");
+		if (name !== "findings" && values.rounds !== undefined)
+			throw new UsageError("--rounds is only available for findings");
+		if (name !== "findings" && name !== "compare" && values.round !== undefined)
+			throw new UsageError("--round is only available for findings and compare");
 		const scoped: Io = { ...io, color: io.color && values.color };
 		switch (name) {
 			case "review":
@@ -213,6 +215,11 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 			}
 			case "compare": {
 				const [first, ...others] = rest;
+				if (
+					values.round !== undefined &&
+					(["export", "stats", "backlog"].includes(first ?? "") || rest.some((target) => /^#\d+$/.test(target)))
+				)
+					throw new UsageError("--round is available for range comparison writes only");
 				if (first === "export") {
 					return await exportComparison(scoped, one(others, "compare export", "range or pull request"), {
 						json: values.json,
@@ -267,7 +274,7 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 						if (error instanceof ComparisonError) throw new UsageError(error.message);
 						throw error;
 					}
-					return await adjudicateComparison(scoped, target, id, fields);
+					return await adjudicateComparison(scoped, target, id, fields, values.round);
 				}
 				if (first === "match" || first === "unmatch") {
 					if (others.length !== 3) {
@@ -283,7 +290,7 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 							);
 						}
 					}
-					return await matchByHand(scoped, target, { external, melian }, first === "match");
+					return await matchByHand(scoped, target, { external, melian }, first === "match", values.round);
 				}
 				const target = one(rest, name, "range or pull request");
 				const sources = values.from.map((value) => {
@@ -298,7 +305,7 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 					throw new UsageError(`--from github reads a pull request's threads; name it as "#12", not a range`);
 				}
 				const fallback = pullRequest && sources.length === 0 ? [parseImportSource("github")!] : [];
-				return await compare(scoped, target, [...sources, ...fallback]);
+				return await compare(scoped, target, [...sources, ...fallback], values.round);
 			}
 			case "doctor":
 				if (rest.length > 0) throw new UsageError("doctor takes no arguments");
