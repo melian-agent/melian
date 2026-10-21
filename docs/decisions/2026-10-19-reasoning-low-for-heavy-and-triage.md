@@ -8,13 +8,13 @@ Amends: [2026-10-19-tier-thinking-routes.md](2026-10-19-tier-thinking-routes.md)
 
 A route can now set a reasoning level, and Melian's committed routes left every level to Pi's default. A default is not a measurement: Pi's unset level means no reasoning for Terra and a provider default for Sol.
 
-[The reasoning-levels run](../../packages/evals/runs/2026-10-19-reasoning-levels.md) measured the levels, each observed in the request body. For Sol on the heavy tier, high reasoning did not raise precision. Pooled over five corpora, the levels sit within 0.02 of one another, and tests precision falls as the level rises (0.89, 0.80, 0.73). Low costs 14% less than high and finishes 20% sooner. For triage on Terra, low raises exact agreement from 0.75 to 0.83 with no under-escalation, and medium adds nothing.
+[The reasoning-levels run](../../packages/evals/runs/2026-10-19-reasoning-levels.md) measured the levels, each observed in the request body, over three passes for Sol low, Sol medium and Opus low. Sol covered all eight heavy-tier lens corpora. Low and medium both clear the precision bar on every lens (worst 0.80, on tests, and 0.82 or above elsewhere) and score alike overall: mean precision 0.94 and recall 0.96 at low, 0.92 and 0.98 at medium. Low costs 6% less and finishes 10% sooner. Sol high, on two passes, scored tests precision 0.73 and no gain elsewhere. For triage on Terra, low raises exact agreement from 0.75 to 0.83 with no under-escalation, and medium adds nothing.
 
 ## Choice
 
 `melian.yaml` commits `thinking: low` on two routes:
 
-- `models.heavy`, which runs the `careful` and `deep` lens levels. The run is the evidence for Sol; the fallbacks Opus and GPT-5.5 take the same level, as the tier decision says, and Opus measured no better at low than at high.
+- `models.heavy`, which runs the `careful` and `deep` lens levels. The run is the evidence for Sol. The fallbacks Opus and GPT-5.5 take the same level, as the tier decision says; see the limits below.
 - `models.light`, which triage reads. Today no committed route names a light tier, and triage takes the first of light, medium and heavy that routes a model, so it resolves to the medium route's Terra. A level on `models.medium` would also move the `quick` lens level, which no cell measured. A thinking-only light route is passed over, as triage's choice needs a model. So the file adds a light route that copies medium's model, fallbacks and `accept`, and sets `thinking: low`. Triage keeps Terra and takes low. `melian doctor` shows heavy and light at low and medium unset.
 
 The medium tier is unchanged, because it was not measured. The verifier is unchanged until a verifier corpus tells levels apart: Sonnet and Opus each passed all nine goldens at low and at high.
@@ -25,4 +25,15 @@ A light route also gives the walkthrough a model. The walkthrough is the pull-re
 
 No lens level names the light tier, so lenses are unaffected. The verifier is routed, so it never falls back through light.
 
-The run is two passes of Sol over corpora of 5 to 24 goldens, one pass of Opus and three of triage over six changes. It supports low as a cost reduction at equal quality, not as a quality gain. Measure again after any lens prompt change, as the tier decision requires of a default.
+## Limits
+
+- Low is chosen for cost at equal quality, not for a quality gain. The run does not show low better than medium.
+- Contracts recall is 0.50 at both levels, below the 0.6 bar, in all three passes. It does not depend on the level. The corpus is one golden with two expected findings.
+- Opus low, the heavy tier's first fallback, is below the precision bar on design: worst 0.75, mean 0.81. The level applies per tier, fallbacks included, so a review that fails over from Sol runs Opus at low. Opus at high was no better on one pass.
+- `openai/gpt-5.5`, the second fallback, is unmeasured: there is no credential.
+- Sol high and Opus high have fewer passes than the cells above.
+- Corpora hold 1 to 24 goldens, so one finding moves a cell by 0.04 to 0.14. Measure again after any lens prompt change, as the tier decision requires of a default.
+
+## Walkthrough
+
+The maintainer decided to keep the walkthrough that the light route turns on, unmeasured as it is. Adding a model-dependent public summary was a reviewer's concern, and the maintainer accepted it.
