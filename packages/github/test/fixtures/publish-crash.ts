@@ -2,6 +2,7 @@
 // there. With `after-review`, the default, it parks once GitHub has accepted the review and before the publish task can
 // record it, logging `review-posted`; with `before-review`, it parks before GitHub has anything, logging
 // `review-requested`. The fake GitHub's state is written to a file after every write, so a post outlives the child.
+// `before-address` parks before the addressed edit, after the round's review-record commit has retired its pending plan.
 import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
 import { Changeset } from "@melian-agent/core";
 import { createGitHubProvider } from "@melian-agent/github";
@@ -49,6 +50,8 @@ const fetch = fakeGitHub(
 	},
 	async (call) => {
 		if (mode === "before-review" && isReview(call)) await park("review-requested");
+		if (mode === "before-address" && call.method === "PATCH" && call.path.includes("/pulls/comments/"))
+			await park("address-requested");
 	},
 );
 const provider = createGitHubProvider({ owner: state.owner, repo: state.repo, token: "test-token", fetch });

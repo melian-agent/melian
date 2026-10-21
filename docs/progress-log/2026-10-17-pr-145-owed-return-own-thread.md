@@ -1,0 +1,2 @@
+
+The fold skips a reply the provider already shows, as after a crash between the reply and its record, so that thread gets a new one, and skips an owed dismissal, so a reopened finding is posted afresh. Review found one new interaction of owed state with another each round, which marks a class: the plan restores a thread from stored state that the provider and later rounds can contradict. A design question, left to the coordinator, is whether the plan should read the provider's thread state rather than reuse stored threads.
