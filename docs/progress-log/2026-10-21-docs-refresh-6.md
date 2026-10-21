@@ -12,3 +12,5 @@ Design, guidelines, README and skills now match `main` at c29cbba8 for the work 
 `AGENTS.md` gains eight learnings from the reasoning, rounds and supersession passes.
 
 The maintainer took the coordinator's recommendation on questions 1, 3, 4, 5, 6, 7, 9, 14, 15 and 18 of `docs/readiness-check-questions.md` on 2026-10-21. Each now carries its answer. Plan step 10 notes that the readiness check was held and the rehearsal is next.
+
+[The readiness rulings](../decisions/2026-10-21-readiness-check-rulings.md) record the ten answers as a decision that amends the shadow-retirement window and the outcome task. The readiness questions are struck, plan step 25 and the design carry the on-demand rule, and the Rounds paragraph says question 3 is settled. For models whose adapter reports managed effort, pi-ai sent `output_config.effort: high` in the opening body and set the requested level in a mid-conversation system message on Sonnet and Opus 5.5; the AGENTS.md learning now states this by capability.
