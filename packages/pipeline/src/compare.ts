@@ -62,12 +62,17 @@ class StoredComparisons {
 
 	entries(rounds: readonly Round[], changeset: string): ComparisonEntry[] {
 		return [
-			...Object.entries(this.state.comparisons).map(([id, stored]) => {
-				const comparison = Comparison.from(stored);
-				const verdict = rounds.find((round) => round.id === id)?.verdict();
-				if (verdict !== undefined) comparison.compare(verdict);
-				return { changeset, round: id, comparison, ...(verdict === undefined ? {} : { verdict }) };
-			}),
+			...Object.entries(this.state.comparisons)
+				.sort(
+					([left], [right]) =>
+						rounds.findIndex((round) => round.id === left) - rounds.findIndex((round) => round.id === right),
+				)
+				.map(([id, stored]) => {
+					const comparison = Comparison.from(stored);
+					const verdict = rounds.find((round) => round.id === id)?.verdict();
+					if (verdict !== undefined) comparison.compare(verdict);
+					return { changeset, round: id, comparison, ...(verdict === undefined ? {} : { verdict }) };
+				}),
 			...Object.entries(this.state.unattributed).map(([key, stored]) => ({
 				changeset,
 				unattributed: key,

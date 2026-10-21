@@ -115,11 +115,11 @@ describe("ComparisonExport header", () => {
 });
 
 describe("ComparisonExport sections", () => {
-	it("orders rounds by first comparison time, then head, and letters every section", () => {
+	it("preserves the supplied stored round order and letters every section", () => {
 		const entries = [
-			entry({ head: "d".repeat(40), at: "2026-10-06T00:00:00Z", round: "c.r3" }),
+			entry({ head: "d".repeat(40), at: "2026-10-06T00:00:00Z", round: "c.r1" }),
 			entry({ head: "c".repeat(40), at: "2026-10-05T00:00:00Z", round: "c.r2" }),
-			entry({ head: "b".repeat(40), at: "2026-10-05T00:00:00Z", round: "c.r1" }),
+			entry({ head: "b".repeat(40), at: "2026-10-05T00:00:00Z", round: "c.r3" }),
 		];
 		const text = render(entries);
 		expect(sections(text).filter((each) => each.includes("round"))).toEqual([
@@ -128,7 +128,7 @@ describe("ComparisonExport sections", () => {
 			"C Melian review, round c.r3",
 		]);
 		const heads = [...text.matchAll(/^At ([0-9a-f]{12}):/gm)].map((each) => each[1]);
-		expect(heads).toEqual(["b".repeat(12), "c".repeat(12), "d".repeat(12)]);
+		expect(heads).toEqual(["d".repeat(12), "c".repeat(12), "b".repeat(12)]);
 	});
 
 	it("names each section by its stored round, not its place, beside an earlier unattributed comparison", () => {
@@ -142,9 +142,9 @@ describe("ComparisonExport sections", () => {
 			{ changeset, comparison, unattributed: `${base}..${"c".repeat(40)}` },
 		]);
 		expect(sections(text)).toEqual([
-			"A codex, unattributed comparison",
-			"B Melian review, unattributed comparison",
-			"C Melian review, round range-0123456789abcdef.r1",
+			"A Melian review, round range-0123456789abcdef.r1",
+			"B codex, unattributed comparison",
+			"C Melian review, unattributed comparison",
 		]);
 		expect(text).toContain("in 1 stored round.");
 	});
@@ -167,8 +167,8 @@ describe("ComparisonExport sections", () => {
 			entry({ head: "c".repeat(40), at: "2026-10-05T00:00:00Z", round: "range-0123456789abcdef.r2" }),
 		]);
 		expect(sections(text)).toEqual([
-			"A Melian review, round range-0123456789abcdef.r2",
-			"B Melian review, round range-0123456789abcdef.r1",
+			"A Melian review, round range-0123456789abcdef.r1",
+			"B Melian review, round range-0123456789abcdef.r2",
 		]);
 	});
 

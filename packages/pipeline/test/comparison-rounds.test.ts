@@ -557,3 +557,21 @@ it("refuses an absent unattributed comparison without creating one", async () =>
 	await expect(harness.importFindings(selected, [], at)).rejects.toMatchObject({ code: "notReviewed" });
 	expect(await harness.all(changeset)).toEqual([]);
 });
+
+it("exports stored round order when r2 is compared before r1", async () => {
+	const { harness, storage } = await memory();
+	await mint(harness);
+	await mint(harness);
+	await harness.importFindings({ ...revision, round: `${changeset}.r2` }, sources, at);
+	await harness.importFindings({ ...revision, round: `${changeset}.r1` }, sources, "2026-10-21T01:00:00Z");
+	const entries = await ComparisonReader.open(storage).read(changeset);
+	const record = new ComparisonExport(entries, "range");
+	expect(entries.map((entry) => entry.round)).toEqual([`${changeset}.r1`, `${changeset}.r2`]);
+	expect(Object.keys(JSON.parse(record.renderJson()).comparisons)).toEqual([`${changeset}.r1`, `${changeset}.r2`]);
+	expect([...record.render().matchAll(/^## [A-Z]+\. .*round (.*)$/gm)].map((match) => match[1])).toEqual([
+		`${changeset}.r1`,
+		`${changeset}.r1`,
+		`${changeset}.r2`,
+		`${changeset}.r2`,
+	]);
+});

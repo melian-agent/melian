@@ -10,11 +10,7 @@ export class ComparisonExport {
 	private readonly url: string | undefined;
 
 	constructor(entries: readonly ComparisonEntry[], target: string, url?: string) {
-		this.entries = [...entries].sort(
-			(a, b) =>
-				(a.comparison.recordedAt() ?? "").localeCompare(b.comparison.recordedAt() ?? "") ||
-				a.comparison.head.localeCompare(b.comparison.head),
-		);
+		this.entries = [...entries];
 		this.target = target;
 		this.url = url;
 	}
