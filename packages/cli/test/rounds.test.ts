@@ -17,7 +17,7 @@ import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { ReviewIndex } from "../../pipeline/src/review-index.ts";
 import { RoundsDocument, RoundWriter } from "../../pipeline/src/rounds.ts";
-import { baseAndHead, gitIn } from "../../pipeline/test/fixtures/repo.ts";
+import { baseAndHead, gitIn, isolatedGitEnv } from "../../pipeline/test/fixtures/repo.ts";
 import type { Io } from "../src/commands.ts";
 import { main } from "../src/main.ts";
 import * as repository from "../src/repository.ts";
@@ -31,6 +31,7 @@ let io: Io & {
 	stderr: ReturnType<typeof vi.fn<(text: string) => void>>;
 };
 beforeEach(async () => {
+	for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
 	repo = baseAndHead({ "a.ts": "export const n = 1;\n" }, { "a.ts": "export const n = 2;\n" });
 	dir = realpathSync(mkdtempSync(join(tmpdir(), "melian-round-cli-")));
 	changeset = await Changeset.resolve(repo, "main...feature");
@@ -105,6 +106,7 @@ beforeEach(async () => {
 });
 afterEach(() => {
 	vi.restoreAllMocks();
+	vi.unstubAllEnvs();
 	rmSync(repo, { recursive: true, force: true });
 	rmSync(dir, { recursive: true, force: true });
 });
@@ -472,7 +474,7 @@ it.each(["import", "match", "unmatch", "adjudicate"])(
 				: operation === "adjudicate"
 					? ["compare", "adjudicate", "main...feature", id!, "--verdict", "noise"]
 					: ["compare", operation, "main...feature", external, id!];
-		expect(await main([...args, ...selected], io)).toBe(0);
+		expect(await main([...args, ...selected], io), io.stderr.mock.calls.join("")).toBe(0);
 		expect(io.stderr.mock.calls).toEqual([]);
 		if (operation === "import" || operation === "unmatch")
 			expect(io.stdout.mock.calls.join("")).toContain("null-dereference");

@@ -184,3 +184,5 @@ A native module mocked with Vitest’s `spy: true` can retain its mocked return 
 Doctor checks a linked clone with `git status --porcelain --untracked-files=all --ignore-submodules=none`. Untracked files and dirty submodules warn even when Git configuration hides them. A clean clone names the commit whose code it runs.
 
 Doctor prints every model tier's thinking level and its setting file, independently of model-route lineage. Unset levels read `unset; Pi default`. Triage takes thinking from the lens tier supplying its chosen fallback model.
+
+A fixture’s commit helper gives an author only to its own git processes. A test that calls commands using `gitAuthor` also stubs `isolatedGitEnv` in the test process and restores it after each test. Otherwise it can pass on a configured host and fail in CI.
