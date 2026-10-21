@@ -14,6 +14,7 @@ import {
 	scrutinyLevels,
 	type TextModel,
 	triageQuestionSet,
+	visibleText,
 } from "@melian-agent/core";
 import { FallbackDecider } from "@melian-agent/decisions";
 import {
@@ -404,7 +405,9 @@ export class TriageResults {
 		}
 		if (baseline.thinking !== this.thinking) {
 			lines.push(
-				`incomparable: the triage thinking differs, ${baseline.thinking ?? "unset"} -> ${this.thinking ?? "unset"}`,
+				visibleText(
+					`incomparable: the triage thinking differs, ${baseline.thinking ?? "unset"} -> ${this.thinking ?? "unset"}`,
+				),
 			);
 			return { verdict: "incomparable", lines };
 		}

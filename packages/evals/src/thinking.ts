@@ -4,6 +4,7 @@ import {
 	type ModelTier,
 	modelTiers,
 	thinkingLevelSchema,
+	visibleText,
 } from "@melian-agent/core";
 import Value from "typebox/value";
 
@@ -27,7 +28,7 @@ export class EvalThinking {
 				Object.hasOwn(levels, tier!)
 			)
 				throw new Error(
-					`MELIAN_EVAL_THINKING needs distinct tier=level entries; invalid entry ${JSON.stringify(entry)}`,
+					`MELIAN_EVAL_THINKING needs distinct tier=level entries; invalid entry ${visibleText(JSON.stringify(entry))}`,
 				);
 			levels[tier as ModelTier] = level;
 		}

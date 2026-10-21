@@ -46,6 +46,17 @@ it.each(["bad=high", "heavy=none", "heavy", "heavy=high=low", "heavy=low,heavy=h
 	},
 );
 
+it.each([
+	[0x202e, "\\u202e"],
+	[0x2028, "\\u2028"],
+	[0x0085, "\\u0085"],
+] as const)("escapes rejected thinking text containing U+%s", (code, escaped) => {
+	const entry = `heavy=${String.fromCharCode(code)}fake`;
+	expect(() => EvalThinking.parse(entry)).toThrow(
+		`MELIAN_EVAL_THINKING needs distinct tier=level entries; invalid entry "heavy=${escaped}fake"`,
+	);
+});
+
 it("rejects an invalid environment override before opening live credentials", () => {
 	const directory = realpathSync(mkdtempSync(join(tmpdir(), "melian-thinking-env-")));
 	try {
