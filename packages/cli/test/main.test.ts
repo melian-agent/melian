@@ -33,6 +33,17 @@ describe("comparison arguments", () => {
 		}
 	});
 
+	it("passes --round on a range whose name ends like a pull request", async () => {
+		const io = output();
+		const compare = vi.spyOn(comparison, "compare").mockResolvedValue(0);
+		try {
+			expect(await main(["compare", "main...fix#7", "--round", "range-0123456789abcdef.r1"], io)).toBe(0);
+			expect(compare).toHaveBeenCalledExactlyOnceWith(io, "main...fix#7", [], "range-0123456789abcdef.r1");
+		} finally {
+			compare.mockRestore();
+		}
+	});
+
 	it.each(["match", "unmatch"])("passes a hand %s with both finding IDs", async (action) => {
 		const io = output();
 		const match = vi.spyOn(comparison, "matchByHand").mockResolvedValue(0);

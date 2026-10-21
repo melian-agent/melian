@@ -104,6 +104,19 @@ it("keeps two comparisons at one revision and reads their own frozen verdicts", 
 	expect(new ComparisonSet(entries).stats().reviewers.find((each) => each.reviewer === "melian")?.total).toBe(1);
 });
 
+it("reads comparisons in round order whatever order they were recorded in", async () => {
+	const { harness, storage } = await memory();
+	await mint(harness);
+	await mint(harness);
+	await harness.importFindings(revision, [], at);
+	await mint(harness);
+	await harness.importFindings(revision, [], at);
+	await harness.importFindings({ ...revision, round: `${changeset}.r1` }, [], at);
+	expect((await ComparisonReader.open(storage).read(changeset)).map((entry) => entry.round)).toEqual(
+		["r1", "r2", "r3"].map((round) => `${changeset}.${round}`),
+	);
+});
+
 it.each(["import", "match", "unmatch", "adjudicate"])(
 	"%s writes the explicitly named earlier round alone",
 	async (operation) => {

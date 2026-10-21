@@ -1,6 +1,7 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import {
 	chmodSync,
+	existsSync,
 	mkdirSync,
 	mkdtempSync,
 	readFileSync,
@@ -17,6 +18,7 @@ import { buildGoldenRepository, loadGoldens } from "@melian-agent/evals";
 import { ReviewThreadImporter } from "@melian-agent/github";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { compare } from "../src/compare.ts";
+import { storagePath } from "../src/repository.ts";
 
 const root = fileURLToPath(new URL("../../../", import.meta.url));
 const bin = join(root, "packages/cli/bin/melian.js");
@@ -255,6 +257,16 @@ describe("melian compare", { timeout: 60_000 }, () => {
 		expect(result.stderr).toContain(
 			`the comparison has no external finding 0123456789abcdef; melian compare ${range} lists the findings`,
 		);
+	});
+
+	it("refuses a round of a range that no longer resolves without creating its store", async () => {
+		const { repo, env } = checkout();
+		const io = { cwd: repo, env: { ...env, ...gitEnv }, color: false, stdout: () => {}, stderr: () => {} };
+		const path = await storagePath(repo, "range-ffffffffffffffff", io.env, true);
+
+		await expect(compare(io, "main...gone", [], "range-ffffffffffffffff.r1")).rejects.toThrow("has no round");
+
+		expect(existsSync(path)).toBe(false);
 	});
 
 	it.each([
