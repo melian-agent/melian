@@ -51,6 +51,10 @@ lenses:
   design: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**", "!packages/evals/triage/**"] }
 
 guardrails:
+  # A merge_group run uses the group commit's workflow files, so an edit to one changes the gate judging its own group.
+  policy-change-review:
+    files: [".github/**"]
+
   forbidden-paths:
     rules:
       build-output:
