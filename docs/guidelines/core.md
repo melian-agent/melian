@@ -698,7 +698,7 @@ The terminal, review body and ledger state the mapping and name `melian dismiss 
 
 ### The stored shape
 
-The pipeline's comparison document is at version 1. It keys a `StoredComparison` by the `revisionKey` of the stored review it compares against, and each one holds:
+The pipeline's comparison document is at version 2. Its state is `{ legacy, comparisons, unattributed }`. `comparisons` keys a `StoredComparison` by the full round ID of the review it compares against, `<changeset>.<round>`. `unattributed` holds version-1 records, still keyed by `revisionKey`, until a writer can attribute them to a round. `legacy` marks the revisions whose pending record keeps its legacy round ID, as [the pipeline guideline](pipeline.md#comparing-with-external-reviewers) sets out. Each `StoredComparison` holds:
 
 ```ts
 type StoredComparison = {
