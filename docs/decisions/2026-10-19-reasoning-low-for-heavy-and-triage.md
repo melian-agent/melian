@@ -6,9 +6,9 @@ Amends: [2026-10-19-tier-thinking-routes.md](2026-10-19-tier-thinking-routes.md)
 
 ## Problem
 
-A route can now set a reasoning level, and Melian's committed routes left every level to Pi's default. A default is not a measurement: Pi's unset level means no reasoning for Terra and a provider default for Sol.
+A route can now set a reasoning level, and Melian's committed routes left every level to Pi's default. A default is not a measurement. The triage cell at off observed Terra sending `effort: none`. Sol's behaviour when unset comes from [pull request #153](https://github.com/melian-agent/melian/pull/153)'s telemetry, not from this run: no cell measured Sol unset.
 
-[The reasoning-levels run](../../packages/evals/runs/2026-10-19-reasoning-levels.md) measured the levels, each observed in the request body, over three passes for Sol low, Sol medium and Opus low. Sol covered all eight heavy-tier lens corpora. Low and medium both clear the precision bar on every lens (worst 0.80, on tests, and 0.82 or above elsewhere) and score alike overall: mean precision 0.94 and recall 0.96 at low, 0.92 and 0.98 at medium. Low costs 6% less and finishes 10% sooner. Sol high, on two passes, scored tests precision 0.73 and no gain elsewhere. For triage on Terra, low raises exact agreement from 0.75 to 0.83 with no under-escalation, and medium adds nothing.
+[The reasoning-levels run](../../packages/evals/runs/2026-10-19-reasoning-levels.md) measured the levels, each observed in the request body, over three passes for Sol low, Sol medium and Opus low. Sol covered all eight heavy-tier lens corpora. Low and medium both clear the precision bar on every lens (worst 0.80, on tests, and 0.82 or above elsewhere) and score alike overall: mean precision 0.94 and recall 0.96 at low, 0.92 and 0.98 at medium. Low costs 6% less per golden and finishes 10% sooner over all 68 goldens, 13% over the five original corpora. Sol high, on two passes, scored tests precision 0.73 and no gain elsewhere. For triage on Terra, low raises exact agreement from 0.75 to 0.83 with no under-escalation, and medium adds nothing. The whole gain is one golden: `add-test-only`, which off over-escalated to `careful` in all three passes and low chose `quick`, as expected. Six changes are too few to call it more than that.
 
 ## Choice
 
@@ -32,7 +32,8 @@ No lens level names the light tier, so lenses are unaffected. The verifier is ro
 - Opus low, the heavy tier's first fallback, is below the precision bar on design: worst 0.75, mean 0.81. The level applies per tier, fallbacks included, so a review that fails over from Sol runs Opus at low. Opus at high was no better on one pass.
 - `openai/gpt-5.5`, the second fallback, is unmeasured: there is no credential.
 - Sol high and Opus high have fewer passes than the cells above.
-- Corpora hold 1 to 24 goldens, so one finding moves a cell by 0.04 to 0.14. Measure again after any lens prompt change, as the tier decision requires of a default.
+- Triage's gain is one golden of six, as above.
+- Corpora are small, and one finding moves a cell by 1 over the reported or expected count. Design (18 expected, about 20 reported) moves by 0.05; correctness (7) by 0.14; tests (8 expected) by 0.11 to 0.13; trust-boundary (7) by 0.14; durability (10) by 0.10. Contracts has two expected findings, so one finding moves its recall by 0.50. Measure again after any lens prompt change, as the tier decision requires of a default.
 
 ## Walkthrough
 
