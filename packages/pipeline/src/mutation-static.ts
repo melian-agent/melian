@@ -16,6 +16,7 @@ import {
 	type UnmutatedFile,
 } from "@melian-agent/core";
 import { type HeadTrust, type JudgedHead, MutationCache } from "./mutation-cache.ts";
+import { configuration, production, signalFiles, typescript } from "./mutation-paths.ts";
 import { MutationProcess } from "./mutation-process.ts";
 import { mutationSelectionVersion, mutationVitestModule } from "./mutation-vitest.ts";
 import type { Run, StaticRun } from "./static.ts";
@@ -36,43 +37,6 @@ function tail(text: string): string {
 // write is what this stops, so it is set above what a test suite writes. bash counts 1,024-byte blocks.
 const mutationFileLimit = 1024 * 1024 * 1024;
 const report = "reports/mutation/mutation.json";
-
-// Production TypeScript is what the tests are there to hold; a test, a fixture, a golden or verifier corpus, built output,
-// or a declaration file is not. A `.config.ts` is production: it can hold logic. It is not mutated, though, because a tool
-// loads it to run the mutants, so a change to one is a file the run did not judge.
-const typescript = /\.[cm]?tsx?$/;
-const notProduction = /\.(?:d|test|spec)\.[cm]?tsx?$/;
-const configuration = /\.config\.[cm]?tsx?$/;
-const notProductionPrefix = "packages/evals/verifier/";
-const notProductionDirectories: ReadonlySet<string> = new Set([
-	"test",
-	"tests",
-	"__tests__",
-	"__mocks__",
-	"fixtures",
-	"goldens",
-	"dist",
-	"node_modules",
-]);
-
-function production(path: string): boolean {
-	return (
-		typescript.test(path) &&
-		!notProduction.test(path) &&
-		!path.startsWith(notProductionPrefix) &&
-		!posix
-			.dirname(path)
-			.split("/")
-			.some((segment) => notProductionDirectories.has(segment))
-	);
-}
-
-const signalFiles = new Set([
-	"packages/core/src/git.ts",
-	"packages/pipeline/src/cache-scratch.ts",
-	"packages/pipeline/src/mutation-process.ts",
-	"packages/pipeline/src/static.ts",
-]);
 
 // Stryker reads each `--mutate` entry as a glob, so a file name with a glob character in it, such as `[id]` or `(group)`
 // in a Next.js route, names other files or none unless each character is escaped.
