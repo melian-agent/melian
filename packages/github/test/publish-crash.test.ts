@@ -530,6 +530,8 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 			});
 
 			expect(state.reviews).toHaveLength(1);
+			expect(state.comments).toHaveLength(1);
+			expect(state.reviews[0]!.body).toContain(`/blob/${changeset.revision.head}/src/user.ts#L19`);
 			// The recovered review is not reposted; the remaining ledger and status link are new writes.
 			expect(posts(state).map(({ path }) => path)).toEqual([
 				"/repos/melian-agent/example/issues/7/comments",
@@ -548,6 +550,69 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 			]);
 		},
 	);
+
+	it("retires an acknowledgement lowered to advisory after a crash before its addressed edit", async () => {
+		const database = join(dir, "advisory.sqlite");
+		const stateFile = join(dir, "advisory-github.json");
+		const log = join(dir, "advisory-publish.log");
+		const fake = scenarioModels();
+		const state = pullRequestState();
+		let github = providerFor(state);
+		harness = await openPublishHarness(await openSqliteStorage(database), fake, github);
+		const acknowledge = {
+			...emptyName,
+			arguments: { ...emptyName.arguments, evidence: [{ file: "src/user.ts", line: 7, role: "cause" }] },
+		};
+		const first = await reviewScenario(repo, harness, fake, lensScript(acknowledge));
+		await first.review;
+		moveTo(state, first.changeset);
+		await publishReview({
+			trustedWriters: true,
+			harness,
+			provider: github,
+			changeset: first.changeset,
+			pullRequest: await github.pullRequest(7),
+			base: first.changeset.revision.base,
+		});
+		const thread = state.comments[0]!.id;
+		await harness.close(context);
+		gitIn(repo, "commit", "--quiet", "--allow-empty", "-m", "lower finding");
+		harness = await openReviewOnlyHarness(await openSqliteStorage(database), fake);
+		const second = await reviewScenario(repo, harness, fake, lensScript(emptyName));
+		await second.review;
+		await harness.close(context);
+		harness = undefined;
+		moveTo(state, second.changeset);
+		writeFileSync(stateFile, JSON.stringify(state));
+		await killAtReview(database, stateFile, log, "address-requested");
+		const recovered = JSON.parse(readFileSync(stateFile, "utf8")) as FakeState;
+		expect(recovered.comments).toHaveLength(1);
+		expect(recovered.resolvedThreads).toEqual([]);
+		github = providerFor(recovered);
+		harness = (await openPublisher(await openSqliteStorage(database), fake.review, github)).harness;
+		await publishReview({
+			trustedWriters: true,
+			harness,
+			provider: github,
+			changeset: second.changeset,
+			pullRequest: await github.pullRequest(7),
+			base: second.changeset.revision.base,
+		});
+		expect(recovered.comments).toHaveLength(1);
+		expect(recovered.resolvedThreads).toEqual([thread]);
+		expect(recovered.reviews).toHaveLength(2);
+		expect(recovered.reviews[1]!.body).toContain(`/blob/${second.changeset.revision.head}/src/user.ts#L19`);
+		const before = posts(recovered).length;
+		await publishReview({
+			trustedWriters: true,
+			harness,
+			provider: github,
+			changeset: second.changeset,
+			pullRequest: await github.pullRequest(7),
+			base: second.changeset.revision.base,
+		});
+		expect(posts(recovered)).toHaveLength(before);
+	});
 
 	it("ends a publication a crash left from before a retarget without posting, and posts the new review once", async () => {
 		stackOnParent(repo);

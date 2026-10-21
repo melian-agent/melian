@@ -215,7 +215,7 @@ export class GitHubProvider implements ReviewProvider {
 	async postReview(draft: ReviewDraft): Promise<PostedReview> {
 		const comments = draft.findings.flatMap((placed) => {
 			const { placement, finding } = placed;
-			if (placement.kind === "body") return [];
+			if (placement.kind === "body" || finding.properties.resolution === "advisory") return [];
 			const range =
 				placement.kind === "lines" && placement.startLine < placement.line
 					? { start_line: placement.startLine, start_side: "RIGHT" as const }

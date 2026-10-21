@@ -674,6 +674,11 @@ wavers on severity reports one ID as `P3`, then `nit`, then `P3` again; dropping
 made the third revision post it in a second thread and leave the first unanswered. Solution: it
 keeps its thread while quiet.
 
+`verdict.publication` places advisories in the body before applying line placement.
+It retires their earlier threads, including merged reports' threads, as resolved findings.
+A body finding raised to acknowledge or block is posted afresh when it can take an inline placement.
+An existing actionable thread keeps the earlier placement rules.
+
 `finding.place(lines)` decides where a finding goes, given `revision.diffLines()`, the lines each changed file adds at head:
 
 - `lines`: the finding overlaps a hunk's new lines, so it goes on them, clipped to the hunk.

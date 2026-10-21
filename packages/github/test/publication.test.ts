@@ -1,6 +1,7 @@
 import { Adjudication, defaultConfig, Finding, type FindingInput } from "@melian-agent/core";
 import {
 	blobUrl,
+	createGitHubProvider,
 	marker,
 	markersIn,
 	maxBodyLength,
@@ -11,6 +12,7 @@ import {
 	verifyMarker,
 } from "@melian-agent/github";
 import { describe, expect, it } from "vitest";
+import { fakeGitHub, fakeState } from "./fixtures/fake-github.ts";
 
 const revision = "a".repeat(40);
 const base = "c".repeat(40);
@@ -64,6 +66,96 @@ it("separates inline findings from findings rendered in the review body", () => 
 			.filter(({ kind }) => kind === "finding")
 			.map(({ id }) => id),
 	).toEqual([outside.id]);
+});
+
+it("renders carried advisories as short, escaped entries even when a saved placement is inline", () => {
+	const finding = Finding.create({
+		...input,
+		resolution: "advisory",
+		severity: "P3",
+		file: "src/a)b.ts",
+		rule: "rule`name",
+		message: "[click](bad) @human <script>",
+	});
+	const verdict = new Adjudication({
+		findings: [finding],
+		manifest: [],
+		checks: [],
+		config: defaultConfig,
+	}).adjudicate();
+	const draft = {
+		pullRequest: 7,
+		revision,
+		base,
+		fingerprint: verdict.fingerprint(),
+		round: 1,
+		verdict,
+		findings: [],
+		stillOpen: 1,
+		carried: [],
+		resolved: [],
+		secret,
+	};
+	const advisory = verdict.findings.advisory[0]!;
+	const body = renderReviewBody(
+		{ ...draft, findings: [{ finding: advisory, placement: { kind: "lines", startLine: 12, line: 12 } }] },
+		links,
+	);
+	expect(body).toContain(
+		`[\`src/a)b.ts:12\`](https://github.com/melian-agent/example/blob/${revision}/src/a%29b.ts#L12) \`\`rule\`name\`\`: \\[click\\]\\(bad\\) @\u2060human &lt;script&gt;`,
+	);
+	expect(body).not.toContain("**What:**");
+	expect(body).toBe(renderReviewBody(draft, links));
+	expect(body).toBe(renderReviewBody({ ...draft, carried: [advisory.id] }, links));
+	expect(markersIn(body).filter(({ kind }) => kind === "finding")).toHaveLength(1);
+	expect(renderReviewBody(draft, links, { limit: body.length })).toBe(body);
+	const bounded = renderReviewBody(draft, links, { limit: body.length - 1 });
+	expect(bounded.length).toBeLessThan(body.length);
+	expect(bounded).toContain("1 finding did not fit");
+});
+
+it("refuses an inline advisory even when an older pending round saved an inline placement", async () => {
+	const finding = Finding.create({ ...input, severity: "P3" });
+	const outside = Finding.create({ ...input, file: "src/outside.ts", severity: "P2" });
+	const verdict = new Adjudication({
+		findings: [finding, outside],
+		manifest: [],
+		checks: [],
+		config: defaultConfig,
+	}).adjudicate();
+	const state = fakeState(
+		"melian-agent",
+		"example",
+		{ number: 7, title: "Change", base: { ref: "main", sha: base }, head: { ref: "feature", sha: revision } },
+		{ "src/run.ts": [[12, 12]] },
+	);
+	const provider = createGitHubProvider({
+		owner: state.owner,
+		repo: state.repo,
+		token: "t",
+		fetch: fakeGitHub(state),
+	});
+	const posted = await provider.postReview({
+		pullRequest: 7,
+		revision,
+		base,
+		fingerprint: verdict.fingerprint(),
+		round: 1,
+		verdict,
+		findings: [
+			{ finding: verdict.findings.advisory[0]!, placement: { kind: "lines", startLine: 12, line: 12 } },
+			{ finding: verdict.findings.acknowledge[0]!, placement: { kind: "body" } },
+		],
+		stillOpen: 0,
+		resolved: [],
+		secret,
+	});
+	expect(posted.threads).toEqual({});
+	expect(state.comments).toEqual([]);
+	expect(state.calls.filter(({ method, path }) => method === "POST" && path.endsWith("/reviews"))).toHaveLength(1);
+	expect(state.reviews[0]!.body).toContain(`/blob/${revision}/src/outside.ts#L12`);
+	expect(state.reviews[0]!.body).toContain(`/blob/${revision}/src/run.ts#L12`);
+	expect(state.reviews[0]!.body).toContain("`no-eval`: eval runs request input");
 });
 
 it("renders a newly dismissed body finding beside a resolved one", () => {

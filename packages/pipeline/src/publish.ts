@@ -377,6 +377,9 @@ function planRound(
 	// A finding the verdict holds again, while the reply that resolved its thread is owed, goes back to that thread
 	// rather than starting a second one the first would outlive. The caller leaves out a reply the provider already shows.
 	const returned = verdict.held();
+	for (const finding of verdict.findings.advisory) {
+		for (const id of finding.reportIds()) returned.delete(id);
+	}
 	// A dismissal's thread is not restored: a finding that returns after its dismissal reopened is posted afresh.
 	for (const { addressedIn: _, ...entry } of Object.values(owed)) {
 		const { id } = entry;
@@ -391,16 +394,15 @@ function planRound(
 		]),
 	);
 	if (own === undefined) {
-		const held = new Set([...verdict.held(), ...verdict.dismissed.map((finding) => finding.properties.id)]);
+		const held = new Set([...returned, ...verdict.dismissed.map((finding) => finding.properties.id)]);
 
 		// A resolution still owed is carried as its reply would read now: with the dismissal of the finding that holds its
-		// ID dismissed, itself or merged, and otherwise as it was owed, while no finding with the ID is held. A dismissal
-		// note owed for code a later head removed is still owed. One whose reply, as it would read now, is recorded is
-		// answered.
+		// ID dismissed, itself or merged, and otherwise as it was owed, while no non-advisory finding with the ID is held.
+		// A dismissal note owed for code a later head removed is still owed. One whose reply, as it would read now, is
+		// recorded is answered.
 		const answered = repliedKeys(state);
 		for (const entry of Object.values(owed).reverse()) {
 			const { id } = entry;
-			if (Object.hasOwn(plan.open, id)) continue;
 			const now = Object.hasOwn(plan.dismissals, id) ? plan.dismissals[id] : undefined;
 			const carried =
 				now !== undefined

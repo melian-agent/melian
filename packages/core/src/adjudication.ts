@@ -27,6 +27,7 @@ import type {
 	ClosedFinding,
 	DiffLines,
 	PlacedFinding,
+	Placement,
 	PublicationPlan,
 	PublishedFinding,
 	ReviewStatus,
@@ -620,6 +621,8 @@ export class Verdict {
 	 * is resolved with that dismissal, so its thread says why, and leaves `open`: if a changed trigger reopens it, it is
 	 * posted afresh. A dismissed finding is never posted. An open finding that turned silent stays in `open`, so if it
 	 * needs attention again it returns to its own thread rather than starting a second one.
+	 * Advisories go in the body and retire earlier threads. A body finding that becomes actionable is posted afresh
+	 * when it can take an inline placement.
 	 */
 	publication(
 		previous: Readonly<Record<string, PublishedFinding>>,
@@ -627,6 +630,10 @@ export class Verdict {
 		revision: string,
 	): PublicationPlan {
 		const attention = this.attention();
+		const advisory = new Set(this.findings.advisory.flatMap((finding) => finding.reportIds()));
+		const reusable = Object.fromEntries(
+			Object.entries(previous).filter(([id, entry]) => !advisory.has(id) || entry.thread === undefined),
+		);
 		const dismissals: Record<string, FindingDismissal> = {};
 		for (const { properties } of this.dismissed) {
 			if (properties.dismissal === undefined) continue;
@@ -642,20 +649,22 @@ export class Verdict {
 		const open: Record<string, PublishedFinding> = {};
 		for (const finding of attention) {
 			const { id, path } = finding.properties;
-			if (Object.hasOwn(previous, id)) {
+			const placement: Placement = advisory.has(id) ? { kind: "body" } : finding.place(lines);
+			const prior = reusable[id];
+			if (prior !== undefined && (prior.thread !== undefined || placement.kind === "body")) {
 				if (counted.has(id)) stillOpen.push(id);
-				open[id] = previous[id]!;
+				open[id] = prior;
 				continue;
 			}
-			post.push({ finding, placement: finding.place(lines) });
+			post.push({ finding, placement });
 			open[id] = { ruleId: finding.ruleId, path, line: finding.lines()[0], revision };
 		}
 		for (const id of held) {
-			if (!Object.hasOwn(open, id) && Object.hasOwn(previous, id)) open[id] = previous[id]!;
+			if (!Object.hasOwn(open, id) && Object.hasOwn(reusable, id)) open[id] = reusable[id]!;
 		}
 		const resolved = Object.keys(previous)
 			.sort()
-			.filter((id) => !held.has(id))
+			.filter((id) => !held.has(id) || (advisory.has(id) && previous[id]!.thread !== undefined))
 			.map((id): ClosedFinding => {
 				const dismissal = Object.hasOwn(dismissals, id) ? dismissals[id] : undefined;
 				return { id, ...previous[id]!, ...(dismissal === undefined ? {} : { dismissal: { ...dismissal } }) };

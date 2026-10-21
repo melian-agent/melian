@@ -1647,7 +1647,15 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 			fetch: fakeGitHub(state),
 		});
 		harness = await openPublishHarness(createMemoryStorage(), fake, provider);
-		const first = await reviewScenario(repo, harness, fake, lensScript(unsafeManager, emptyName));
+		const first = await reviewScenario(
+			repo,
+			harness,
+			fake,
+			lensScript(unsafeManager, {
+				...emptyName,
+				arguments: { ...emptyName.arguments, evidence: [{ file: "src/user.ts", line: 7, role: "cause" }] },
+			}),
+		);
 		await first.review;
 		moveTo(state, first.changeset);
 		const publish = async (changeset: typeof first.changeset) =>
@@ -1695,7 +1703,15 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 			fetch: fakeGitHub(state),
 		});
 		harness = await openPublishHarness(createMemoryStorage(), fake, provider);
-		const first = await reviewScenario(repo, harness, fake, lensScript(unsafeManager, emptyName));
+		const first = await reviewScenario(
+			repo,
+			harness,
+			fake,
+			lensScript(unsafeManager, {
+				...emptyName,
+				arguments: { ...emptyName.arguments, evidence: [{ file: "src/user.ts", line: 7, role: "cause" }] },
+			}),
+		);
 		await first.review;
 		moveTo(state, first.changeset);
 		const publish = async (changeset: typeof first.changeset) =>

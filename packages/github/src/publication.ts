@@ -163,7 +163,8 @@ export interface CommentContext {
 
 /**
  * A finding as a pull request shows it: an inline comment on the line its placement names, or, for a finding in a file
- * the change does not touch, a section of the review's body. Each opens with the finding's marker.
+ * the change does not touch, a section of the review's body. Advisories render as short body entries.
+ * Each opens with the finding's marker.
  */
 export class ReviewComment {
 	readonly finding: Finding;
@@ -230,6 +231,13 @@ export class ReviewComment {
 						`**Pre-existing, important**, ${this.important === "new" ? "new on this revision" : "carried from an earlier revision"}. It predates this change and does not block it.`,
 						"",
 					];
+		if (finding.properties.resolution === "advisory") {
+			return [
+				marker(revision, "finding", id, context.secret),
+				...heading,
+				`- [${code(`${path}:${start}`)}](${blobUrl(links, revision, path, start, end)}) ${code(finding.ruleId)}: ${inline(finding.message.text)}`,
+			].join("\n");
+		}
 		return [
 			marker(revision, "finding", id, context.secret),
 			...where,
@@ -284,8 +292,9 @@ const statusWords: Readonly<Record<Verdict["status"], string>> = {
 /**
  * The body of a revision's review: the verdict, the checks that left the committed routes and what put them there, the
  * checks that did not run, a lens its budget ended among them, any
- * lens its budget ended that its level counts as run, findings in files the change does not touch, each under its own
- * marker, and resolved and dismissed findings that had no thread to reply in, each dismissed one with its reason.
+ * lens its budget ended that its level counts as run, advisories and findings in files the change does not touch,
+ * each under its own marker, and resolved and dismissed findings that had no thread to reply in, each dismissed one
+ * with its reason.
  */
 export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, options: ReviewBodyOptions = {}): string {
 	const { verdict, revision, secret } = draft;
@@ -378,10 +387,16 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 	const posted = new Set(draft.findings.flatMap(({ finding }) => finding.reportIds()));
 	const carried = new Set(draft.carried);
 	const inBody = [
-		...draft.findings.filter((placed) => placed.placement.kind === "body"),
+		...draft.findings.filter(
+			({ finding, placement }) => placement.kind === "body" || finding.properties.resolution === "advisory",
+		),
+		...verdict.findings.advisory.filter((finding) => !posted.has(finding.id)).map((finding) => ({ finding })),
 		...verdict
 			.attention()
-			.filter((finding) => carried.has(finding.id) && !posted.has(finding.id))
+			.filter(
+				(finding) =>
+					carried.has(finding.id) && !posted.has(finding.id) && finding.properties.resolution !== "advisory",
+			)
 			.map((finding) => ({ finding })),
 	];
 	const sections = inBody.map(({ finding }) =>
@@ -394,7 +409,7 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 	);
 	const heading = options.inlineRefused
 		? "### Findings\n\nGitHub refused this review's inline comments, so every finding is listed here."
-		: "### Findings carried or outside the diff";
+		: "### Advisories and findings carried or outside the diff";
 	const assemble = (kept: number, note?: string) =>
 		[
 			...parts,
