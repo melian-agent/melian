@@ -63,6 +63,9 @@ async function openComparison(io: Io, argument: string, round?: string) {
 	} else {
 		const match = /^(range-[0-9a-f]{16}|pull-[0-9a-f]{16})\.(?:r[1-9][0-9]*|k[0-9a-f]{16})$/.exec(round);
 		if (match === null) throw new CliError(`invalid round ID ${round}`);
+		// Pull-request membership arrives with step 23's builds 3 and 4; until then its store takes no comparison writes.
+		if (match[1]!.startsWith("pull-"))
+			throw new CliError(`${round} is a pull request's round, and #N writes come later; name a range round`);
 		const repoRoot = await git(io.cwd, ["rev-parse", "--show-toplevel"]);
 		path = await storagePath(repoRoot, match[1]!, io.env, isScripted(io.env));
 		if (!existsSync(path)) throw new CliError(`Melian has no round ${round}`);

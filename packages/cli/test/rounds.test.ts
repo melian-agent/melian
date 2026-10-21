@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { Changeset, defaultConfig, Finding, loadConfig, pullRequestChangesetId, ReviewPlan } from "@melian-agent/core";
 import {
 	CompareHarness,
+	ComparisonReader,
 	backgroundContext as context,
 	createReviewRegistry,
 	openHarness,
@@ -223,7 +224,7 @@ it("lists main's legacy round before a minted undecided round and asks git for i
 	expect(await main(["compare", "main...feature", "--round", output[0].id], io)).toBe(0);
 });
 
-it("reads a round from pull-request storage by its full ID", async () => {
+it("reads a pull-request round but refuses comparison writes through its full ID", async () => {
 	const repository = { owner: "example", name: "melian" };
 	const id = pullRequestChangesetId("github", repository, 12);
 	const fake = createFakeModels();
@@ -255,7 +256,22 @@ it("reads a round from pull-request storage by its full ID", async () => {
 	expect(await main(["findings", "--round", `${id}.r1`, "--json"], io)).toBe(0);
 	expect(JSON.parse(io.stdout.mock.calls.join("")).status).toBe("passed");
 	io.stdout.mockClear();
-	expect(await main(["compare", "main...feature", "--round", `${id}.r1`], io)).toBe(0);
+	for (const args of [
+		["compare", "main...feature"],
+		["compare", "match", "main...feature", "a".repeat(16), "b".repeat(16)],
+		["compare", "unmatch", "main...feature", "a".repeat(16), "b".repeat(16)],
+		["compare", "adjudicate", "main...feature", "a".repeat(16), "--verdict", "noise"],
+	]) {
+		io.stderr.mockClear();
+		expect(await main([...args, "--round", `${id}.r1`], io)).toBe(1);
+		expect(io.stderr.mock.calls.join("")).toContain("#N writes come later");
+	}
+	const storage = await openSqliteStorage(await storagePath(repo, id, io.env, false));
+	try {
+		expect(await ComparisonReader.open(storage).read(id)).toEqual([]);
+	} finally {
+		await storage.close(context);
+	}
 });
 
 it.each([[], ["--json"], ["--open"], ["--open", "--json"], ["--all"]].map((flags) => ({ flags })))(
