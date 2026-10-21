@@ -299,7 +299,19 @@ describe.each(hosts)("skills/%s/SKILL.md", (host) => {
 		for (const command of names) expect(commands).toContain(command);
 		const passed = used.flatMap((each) => each.args.filter((arg) => arg.startsWith("--")));
 		expect(new Set(passed)).toEqual(
-			new Set(["--rerun", "--reason", "--from", "--verdict", "--golden", "--last", "--markdown", "--out", "--cold", "--rounds", "--round"]),
+			new Set([
+				"--rerun",
+				"--reason",
+				"--from",
+				"--verdict",
+				"--golden",
+				"--last",
+				"--markdown",
+				"--out",
+				"--cold",
+				"--rounds",
+				"--round",
+			]),
 		);
 		for (const option of [...passed, ...optionSpans(body)]) expect(options).toContain(option);
 	});

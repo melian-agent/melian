@@ -10,3 +10,5 @@ Design, guidelines, README and skills now match `main` at c29cbba8 for the work 
 - The README did not mention reasoning levels, and the three skills did not mention `melian findings --rounds` or `--round`, or doctor's reasoning level. `packages/cli/test/skills.test.ts` now expects both options.
 
 `AGENTS.md` gains eight learnings from the reasoning, rounds and supersession passes.
+
+The maintainer took the coordinator's recommendation on questions 1, 3, 4, 5, 6, 7, 9, 14, 15 and 18 of `docs/readiness-check-questions.md` on 2026-10-21. Each now carries its answer. Plan step 10 notes that the readiness check was held and the rehearsal is next.
