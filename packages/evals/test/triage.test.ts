@@ -609,6 +609,24 @@ it.each([
 		);
 });
 
+it.each([
+	[0x202e, "\\u202e"],
+	[0x2028, "\\u2028"],
+	[0x0085, "\\u0085"],
+] as const)("escapes both thinking values in baseline comparisons containing U+%s", (code, escaped) => {
+	const stored = measured([choice("quick", "quick")]).toJSON();
+	const unsafe = TriageResults.parse(
+		JSON.stringify({ ...stored, thinking: `heavy=${String.fromCharCode(code)}fake` }),
+	);
+	const safe = TriageResults.parse(JSON.stringify({ ...stored, thinking: "high" }));
+	expect(safe.compare(unsafe).lines).toContain(
+		`incomparable: the triage thinking differs, heavy=${escaped}fake -> high`,
+	);
+	expect(unsafe.compare(safe).lines).toContain(
+		`incomparable: the triage thinking differs, high -> heavy=${escaped}fake`,
+	);
+});
+
 it("retains the effective thinking level through measurement and JSON", () => {
 	const result = TriageResults.measure(
 		[goldens[0]!],

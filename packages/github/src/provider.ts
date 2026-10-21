@@ -34,6 +34,7 @@ export const statusContext = "melian/review";
 
 // GitHub refuses a commit status description longer than this.
 const maxDescription = 140;
+const maxPages = 50;
 
 /** How a {@link GitHubProvider} reaches a repository. */
 export interface GitHubProviderOptions {
@@ -75,6 +76,25 @@ async function call<T>(what: string, request: () => Promise<T>): Promise<T> {
 
 function firstLine(body: string | null | undefined): string {
 	return (body ?? "").split(/\r?\n/, 1)[0]!;
+}
+
+function publicationId(value: unknown): boolean {
+	return Number.isSafeInteger(value) && (value as number) > 0;
+}
+
+function publicationRecord(value: unknown, kind: "review" | "comment"): boolean {
+	if (typeof value !== "object" || value === null) return false;
+	const record = value as Record<string, unknown>;
+	const author = record.user as { login?: unknown } | null | undefined;
+	return (
+		publicationId(record.id) &&
+		typeof record.body === "string" &&
+		(author === null ||
+			(typeof author === "object" && typeof author.login === "string" && author.login.length > 0)) &&
+		(kind === "review" ||
+			((record.pull_request_review_id == null || publicationId(record.pull_request_review_id)) &&
+				(record.in_reply_to_id == null || publicationId(record.in_reply_to_id))))
+	);
 }
 
 // The marker opening `body`, when it is of `kind`, names `revision`, and `secret` signed it.
@@ -266,6 +286,7 @@ export class GitHubProvider implements ReviewProvider {
 		revision: string,
 		secret: string,
 	): Promise<string | undefined> {
+		await this.isThreadOpen(pullRequest, finding.thread);
 		try {
 			if (finding.dismissal === undefined) return await this.address(pullRequest, finding, revision, secret);
 			const { data } = await call(`reply on pull request #${pullRequest}`, () =>
@@ -444,10 +465,32 @@ export class GitHubProvider implements ReviewProvider {
 		return editable && resolved ? finding.thread : undefined;
 	}
 
+	async isThreadOpen(pullRequest: number, comment: string): Promise<boolean> {
+		this.threads ??= this.readThreads(pullRequest);
+		const thread = (await this.threads).get(comment);
+		if (thread !== undefined) return !thread.isResolved;
+		try {
+			await call("check a finding absent from the thread listing", () =>
+				this.octokit.rest.pulls.getReviewComment({
+					owner: this.owner,
+					repo: this.repo,
+					comment_id: Number(comment),
+				}),
+			);
+		} catch (error) {
+			if (error instanceof GitHubError && error.status === 404) return false;
+			throw error;
+		}
+		throw new GitHubError(
+			"failed",
+			"GitHub has the finding comment but has not listed its thread; publish again later",
+		);
+	}
+
 	async resolveThread(pullRequest: number, comment: string): Promise<boolean> {
 		this.threads ??= this.readThreads(pullRequest);
 		const thread = (await this.threads).get(comment);
-		if (thread === undefined) return false;
+		if (thread === undefined) return this.isThreadOpen(pullRequest, comment);
 		if (!thread.isResolved) {
 			await call("resolve the addressed finding's thread", () =>
 				this.octokit.graphql(
@@ -463,7 +506,8 @@ export class GitHubProvider implements ReviewProvider {
 	private async readThreads(pullRequest: number): Promise<Map<string, { id: string; isResolved: boolean }>> {
 		const threads = new Map<string, { id: string; isResolved: boolean }>();
 		let cursor: string | null = null;
-		do {
+		const seen = new Set<string>();
+		for (let pageNumber = 0; pageNumber < maxPages; pageNumber++) {
 			const response: {
 				repository: {
 					pullRequest: {
@@ -483,14 +527,29 @@ export class GitHubProvider implements ReviewProvider {
 					{ owner: this.owner, repo: this.repo, number: pullRequest, cursor },
 				),
 			);
-			const page = response.repository.pullRequest.reviewThreads;
+			const page = response.repository?.pullRequest?.reviewThreads;
+			if (!Array.isArray(page?.nodes) || typeof page.pageInfo?.hasNextPage !== "boolean")
+				throw new GitHubError("failed", "GitHub returned an incomplete finding-thread page");
 			for (const node of page.nodes) {
-				for (const comment of node.comments.nodes)
-					threads.set(String(comment.databaseId), { id: node.id, isResolved: node.isResolved });
+				if (
+					node === null ||
+					typeof node.id !== "string" ||
+					typeof node.isResolved !== "boolean" ||
+					!Array.isArray(node.comments?.nodes) ||
+					node.comments.nodes.length !== 1 ||
+					typeof node.comments.nodes[0]?.databaseId !== "number"
+				)
+					throw new GitHubError("failed", "GitHub returned an incomplete finding thread");
+				threads.set(String(node.comments.nodes[0].databaseId), { id: node.id, isResolved: node.isResolved });
 			}
-			cursor = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
-		} while (cursor !== null);
-		return threads;
+			if (!page.pageInfo.hasNextPage) return threads;
+			const next = page.pageInfo.endCursor;
+			if (typeof next !== "string" || next.length === 0 || seen.has(next))
+				throw new GitHubError("failed", "GitHub returned an invalid finding-thread cursor");
+			seen.add(next);
+			cursor = next;
+		}
+		throw new GitHubError("failed", `GitHub finding threads exceed ${maxPages} pages`);
 	}
 
 	async getStatus(revision: string): Promise<{ readonly state: string; readonly targetUrl?: string } | undefined> {
@@ -535,10 +594,10 @@ export class GitHubProvider implements ReviewProvider {
 		const page = { owner: this.owner, repo: this.repo, pull_number: pullRequest, per_page: 100 };
 		const [reviews, comments] = await Promise.all([
 			call(`list reviews on pull request #${pullRequest}`, () =>
-				this.octokit.paginate(this.octokit.rest.pulls.listReviews, page),
+				this.publicationPages(this.octokit.rest.pulls.listReviews, page, "review"),
 			),
 			call(`list review comments on pull request #${pullRequest}`, () =>
-				this.octokit.paginate(this.octokit.rest.pulls.listReviewComments, page),
+				this.publicationPages(this.octokit.rest.pulls.listReviewComments, page, "comment"),
 			),
 		]);
 		// The first post carrying a marker is Melian's: anyone can copy a signed marker, but only after Melian posted it.
@@ -553,23 +612,63 @@ export class GitHubProvider implements ReviewProvider {
 		}
 		const threads: Record<string, string> = {};
 		const replies: Record<string, string> = {};
+		const roots = new Map<number, { id: string; author: string }>();
 		for (const comment of comments) {
-			// GitHub may send a top-level comment's in_reply_to_id as null rather than leave it out.
-			for (const resolved of markersIn(comment.body).filter(
-				(found) => found.kind === "resolved" && found.revision === revision,
-			)) {
-				if (verifyMarker(resolved, secret) && (await this.ours(comment.user)))
-					replies[replyKey(resolved.id, String(comment.in_reply_to_id ?? comment.id), resolved.dismissal)] ??=
-						String(comment.id);
+			if (typeof comment.in_reply_to_id === "number") continue;
+			const opening = parseMarker(firstLine(comment.body));
+			if (
+				opening?.kind !== "finding" ||
+				!verifyMarker(opening, secret) ||
+				!(await this.ours(comment.user)) ||
+				!comment.user
+			)
+				continue;
+			roots.set(comment.id, { id: opening.id, author: comment.user.login });
+			// A finding can have roots in several reviews at one head; only the recovered review's own count.
+			if (opening.revision === revision && String(comment.pull_request_review_id) === review)
+				threads[opening.id] ??= String(comment.id);
+		}
+		for (const comment of comments) {
+			const root = roots.get(comment.in_reply_to_id ?? comment.id);
+			if (root === undefined || comment.user?.login !== root.author) continue;
+			for (const resolved of markersIn(comment.body)) {
+				if (resolved.kind !== "resolved" || resolved.id !== root.id || !verifyMarker(resolved, secret)) continue;
+				if (comment.in_reply_to_id == null && resolved.dismissal !== undefined) continue;
+				replies[replyKey(resolved.id, String(comment.in_reply_to_id ?? comment.id), resolved.dismissal)] ??= String(
+					comment.id,
+				);
 			}
-			const thread = comment.in_reply_to_id;
-			const reply = typeof thread === "number";
-			const found = signedMarker(comment.body, reply ? "resolved" : "finding", revision, secret);
-			if (found === undefined || !(await this.ours(comment.user))) continue;
-			if (reply) replies[replyKey(found.id, String(thread), found.dismissal)] ??= String(comment.id);
-			else threads[found.id] ??= String(comment.id);
 		}
 		return { ...(review === undefined ? {} : { review }), threads, replies };
+	}
+
+	private async publicationPages<
+		R extends Octokit["rest"]["pulls"]["listReviews"] | Octokit["rest"]["pulls"]["listReviewComments"],
+	>(
+		endpoint: R,
+		parameters: { owner: string; repo: string; pull_number: number; per_page: number },
+		kind: "review" | "comment",
+	): Promise<Awaited<ReturnType<R>>["data"]> {
+		const guarded = Object.assign(
+			async (options: Parameters<R>[0]) => {
+				const response = await endpoint(options);
+				if (!Array.isArray(response.data) || !response.data.every((record) => publicationRecord(record, kind)))
+					throw new GitHubError("failed", "GitHub returned an incomplete publication page");
+				return response;
+			},
+			{ endpoint: endpoint.endpoint, defaults: endpoint.defaults },
+		);
+		const all = [];
+		let count = 0;
+		for await (const page of this.octokit.paginate.iterator(guarded, parameters)) {
+			count++;
+			if (typeof page.url !== "string" || (count > 1 && page.data.length === 0))
+				throw new GitHubError("failed", "GitHub returned an incomplete publication page");
+			if (count >= maxPages && page.headers.link?.includes('rel="next"'))
+				throw new GitHubError("failed", `GitHub publication exceeds ${maxPages} pages`);
+			all.push(...page.data);
+		}
+		return all as Awaited<ReturnType<R>>["data"];
 	}
 
 	async login(): Promise<string | undefined> {
