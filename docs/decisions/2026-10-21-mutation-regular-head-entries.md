@@ -1,7 +1,7 @@
 # Mutation selectors accept regular head entries only
 
 Amends: [Builder mutant inventory](2026-10-21-builder-mutant-inventory.md), source entry selection
-Amends: [Mutation testing](2026-10-08-mutation-testing-as-a-static-check.md), source entry selection
+Amends: [Mutation reruns, as built](2026-10-16-mutation-reruns-later-changes.md), source entry selection
 
 Problem: Git stores a symlink’s target path as its blob. The enumerator parsed that text, while Stryker followed the checked-out link and read another file.
 
