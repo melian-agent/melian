@@ -152,7 +152,7 @@ export class CompareHarness {
 		return new CompareHarness(harness, changeset, storage);
 	}
 
-	/** Whether Melian has a current, decided review of `revision` to compare against. */
+	/** Whether the selected round is decided, or the requested unattributed comparison exists. */
 	async reviewed(revision: Revision, context: Context = backgroundContext): Promise<boolean> {
 		if (revision.round === "unattributed") return (await this.read(revision, context)) !== undefined;
 		const root = await this.harness.root(context);
@@ -167,7 +167,7 @@ export class CompareHarness {
 		}, context);
 	}
 
-	/** The comparison recorded for the selected round, or undefined when there is none. */
+	/** The comparison recorded for the selected round or unattributed revision, or undefined when absent. */
 	async read(revision: Revision, context: Context = backgroundContext): Promise<Comparison | undefined> {
 		const root = await this.harness.root(context);
 		const rounds = await new RoundReader(this.storage).read(this.changeset, context);

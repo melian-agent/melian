@@ -9,6 +9,7 @@ import {
 	loadConfig,
 	pullRequestChangesetId,
 	ReviewPlan,
+	type RevisionFields,
 } from "@melian-agent/core";
 import {
 	CompareHarness,
@@ -565,7 +566,10 @@ it.each(["import", "match", "unmatch", "adjudicate"])(
 	"CLI %s addresses the build-1 unattributed comparison",
 	async (operation) => {
 		const base = new URL("../../pipeline/test/fixtures/comparison-rounds/build1-0ee97219/", import.meta.url);
-		const recorded = JSON.parse(readFileSync(new URL("recorded.json", base), "utf8"));
+		const recorded = JSON.parse(readFileSync(new URL("recorded.json", base), "utf8")) as {
+			revisions: RevisionFields[];
+			external: string;
+		};
 		const path = await storagePath(repo, changeset.id, io.env, false);
 		copyFileSync(new URL("comparisons.sqlite", base), path);
 		const stored = Changeset.from({
@@ -573,7 +577,7 @@ it.each(["import", "match", "unmatch", "adjudicate"])(
 			id: changeset.id,
 			repoRoot: repo,
 			spec: changeset.spec,
-			revision: recorded.revisions[1],
+			revision: recorded.revisions[1]!,
 		});
 		vi.spyOn(StoredReview, "open").mockResolvedValue({
 			changeset: stored,

@@ -476,8 +476,11 @@ it("adjudicates build-1 finding 494eaf51 through its unattributed address and re
 	const directory = realpathSync(mkdtempSync(join(tmpdir(), "melian-unattributed-")));
 	directories.push(directory);
 	const base = join(import.meta.dirname, "fixtures/comparison-rounds/build1-0ee97219");
-	const recorded = JSON.parse(readFileSync(join(base, "recorded.json"), "utf8"));
-	const revision = recorded.revisions[1];
+	const recorded = JSON.parse(readFileSync(join(base, "recorded.json"), "utf8")) as {
+		revisions: { base: string; head: string }[];
+		external: string;
+	};
+	const revision = recorded.revisions[1]!;
 	const path = join(directory, "copy.sqlite");
 	copyFileSync(join(base, "comparisons.sqlite"), path);
 	const harness = await CompareHarness.open(await openSqliteStorage(path), createFakeModels().review, changeset);
@@ -574,4 +577,27 @@ it("exports stored round order when r2 is compared before r1", async () => {
 		`${changeset}.r2`,
 		`${changeset}.r2`,
 	]);
+});
+
+it("refreshes a comparison from its own round's replaced verdict without writing it", async () => {
+	const { harness, storage } = await memory();
+	await mint(harness);
+	await harness.importFindings(revision, sources, at);
+	const root = await harness.harness.root(context);
+	await root.commit(async (tx) => {
+		const rounds = await tx.doc(RoundsDocument, root.id);
+		rounds.items[rounds.current[key]!]!.verdict = new Adjudication({
+			findings: [],
+			checks: [],
+			manifest: [],
+			config: defaultConfig,
+		})
+			.adjudicate()
+			.toJSON();
+	}, context);
+	const entries = await ComparisonReader.open(storage).read(changeset);
+	expect(entries[0]!.comparison.melianFindings()).toEqual([]);
+	expect(entries[0]!.comparison.effectiveMatches()).toEqual([]);
+	const stored = await harness.harness.snapshot(ComparisonDocument, root.id, context);
+	expect(stored!.comparisons[`${changeset}.r1`]!.melian).toEqual([finding.id]);
 });
