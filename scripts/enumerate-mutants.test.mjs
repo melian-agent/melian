@@ -58,7 +58,10 @@ describe("mutant enumeration", { timeout: 60_000 }, () => {
 			"packages/core/src/git.ts",
 		])
 			write(path, "export const excluded = (x) => x > 1;\n");
-		write("src/script.mjs", "throw new Error('head code must never run');\nexport const value = (x) => x ?? [];\n");
+		write(
+			"src/script.mjs",
+			"throw new Error('enumerated source must not be imported');\nexport const value = (x) => x ?? [];\n",
+		);
 		git("add", ".");
 		git("commit", "-m", "head");
 		write("babel.config.cjs", "throw new Error('head Babel config must never run');\n");
@@ -88,6 +91,8 @@ describe("mutant enumeration", { timeout: 60_000 }, () => {
 			file: fileName,
 			line: location.start.line + 1,
 			column: location.start.column,
+			endLine: location.end.line + 1,
+			endColumn: location.end.column,
 			mutatorName,
 			replacement,
 			status,
@@ -145,8 +150,66 @@ describe("mutant enumeration", { timeout: 60_000 }, () => {
 		git("commit", "-m", "executable");
 		const result = await enumerateMutants({ cwd: root });
 		expect(result.mutants.filter((mutant) => mutant.file === "src/executable.ts")).toEqual([
-			{ file: "src/executable.ts", line: 1, column: 26, mutatorName: "BooleanLiteral", replacement: "false" },
+			{
+				file: "src/executable.ts",
+				line: 1,
+				column: 26,
+				endLine: 1,
+				endColumn: 30,
+				mutatorName: "BooleanLiteral",
+				replacement: "false",
+			},
 		]);
+	});
+
+	it("prints a reproducible sampling selection from a complete classified inventory", () => {
+		const mutant = {
+			file: "src/a.ts",
+			line: 1,
+			column: 0,
+			endLine: 1,
+			endColumn: 1,
+			mutatorName: "ConditionalExpression",
+			replacement: "true",
+			claim: "killed",
+			evidence: "value.test.ts > guard",
+			survivorClasses: ["compound-condition"],
+		};
+		write("claims.json", JSON.stringify({ mutants: [mutant], total: 1, omitted: 0, unmutated: [] }));
+		for (const args of [
+			["--sample", "claims.json"],
+			["--sample", "claims.json", "--json", "--limit", "0"],
+		]) {
+			const child = spawnSync(process.execPath, [script, ...args], { cwd: root, encoding: "utf8" });
+			expect(child.status, child.stderr).toBe(0);
+			const selected = JSON.parse(child.stdout);
+			expect(selected).toEqual({
+				selected: [{ ...mutant, sampleHash: "b4909d8c461235c8a78ce0dfbb445781394b1abfaf0b19858345fc019a01dbe8" }],
+				total: 1,
+				unmutated: [],
+			});
+		}
+	});
+
+	it("sampling rejects a range, an empty filename and unreadable or incomplete claims", () => {
+		for (const [args, text] of [
+			[["HEAD..HEAD", "--sample", "claims.json"], "use either a range or --sample FILE"],
+			[["--sample="], "ENOENT"],
+			[["--sample", "missing.json"], "ENOENT"],
+		]) {
+			const child = spawnSync(process.execPath, [script, ...args], { cwd: root, encoding: "utf8" });
+			expect(child.status, child.stderr).toBe(1);
+			expect(child.stderr).toContain(text);
+		}
+		for (const content of ['{"mutants":[],"total":1,"omitted":1}', "{"]) {
+			write("claims.json", content);
+			const child = spawnSync(process.execPath, [script, "--sample", "claims.json"], {
+				cwd: root,
+				encoding: "utf8",
+			});
+			expect(child.status, child.stderr).toBe(1);
+			expect(child.stderr.length).toBeGreaterThan(0);
+		}
 	});
 
 	it("reads excluded mutations as data and reports generated ignored mutants", async () => {
@@ -229,17 +292,27 @@ describe("mutant enumeration", { timeout: 60_000 }, () => {
 				}
 			} else
 				expect(child.stdout).toMatch(
-					/^FILE\s+LINE\s+COLUMN\s+MUTATOR\s+REPLACEMENT\s+POLICY\n\n0 of \d+ mutants; \d+ omitted\n$/,
+					/^FILE\s+LINE\s+COLUMN\s+END_LINE\s+END_COLUMN\s+MUTATOR\s+REPLACEMENT\s+POLICY\n\n0 of \d+ mutants; \d+ omitted\n$/,
 				);
 		}
 		expect(
 			renderTable({
-				mutants: [{ file: "a\nb.ts", line: 2, column: 3, mutatorName: "BlockStatement", replacement: "{\n}" }],
+				mutants: [
+					{
+						file: "a\nb.ts",
+						line: 2,
+						column: 3,
+						endLine: 4,
+						endColumn: 1,
+						mutatorName: "BlockStatement",
+						replacement: "{\n}",
+					},
+				],
 				total: 1,
 				omitted: 0,
 			}),
 		).toBe(
-			'FILE\tLINE\tCOLUMN\tMUTATOR\tREPLACEMENT\tPOLICY\n"a\\nb.ts"\t2\t3\tBlockStatement\t"{\\n}"\t{}\n\n1 of 1 mutants; 0 omitted',
+			'FILE\tLINE\tCOLUMN\tEND_LINE\tEND_COLUMN\tMUTATOR\tREPLACEMENT\tPOLICY\n"a\\nb.ts"\t2\t3\t4\t1\tBlockStatement\t"{\\n}"\t{}\n\n1 of 1 mutants; 0 omitted',
 		);
 	});
 
@@ -251,6 +324,8 @@ describe("mutant enumeration", { timeout: 60_000 }, () => {
 						file: "a.ts",
 						line: 1,
 						column: 0,
+						endLine: 1,
+						endColumn: 2,
 						mutatorName: "StringLiteral",
 						replacement: '""',
 						status: "Ignored",
@@ -261,7 +336,7 @@ describe("mutant enumeration", { timeout: 60_000 }, () => {
 				omitted: 0,
 			}),
 		).toBe(
-			'FILE\tLINE\tCOLUMN\tMUTATOR\tREPLACEMENT\tPOLICY\n"a.ts"\t1\t0\tStringLiteral\t"\\"\\""\t{"status":"Ignored","statusReason":"configured"}\n\n1 of 1 mutants; 0 omitted',
+			'FILE\tLINE\tCOLUMN\tEND_LINE\tEND_COLUMN\tMUTATOR\tREPLACEMENT\tPOLICY\n"a.ts"\t1\t0\t1\t2\tStringLiteral\t"\\"\\""\t{"status":"Ignored","statusReason":"configured"}\n\n1 of 1 mutants; 0 omitted',
 		);
 	});
 
@@ -284,7 +359,7 @@ describe("mutant enumeration", { timeout: 60_000 }, () => {
 	});
 
 	it("rejects extra arguments and invalid refs, and explains defaults in help", () => {
-		for (const args of [["--unknown"], ["HEAD", "HEAD"], ["--limit"], ["missing...HEAD"]]) {
+		for (const args of [["--unknown"], ["HEAD", "HEAD"], ["--limit"], ["--sample"], ["missing...HEAD"]]) {
 			const child = spawnSync(process.execPath, [script, ...args], { cwd: root, encoding: "utf8" });
 			expect(child.status).toBe(1);
 			expect(child.stderr.length).toBeGreaterThan(0);
@@ -293,7 +368,7 @@ describe("mutant enumeration", { timeout: 60_000 }, () => {
 		const help = spawnSync(process.execPath, [script, "--help"], { cwd: root, encoding: "utf8" });
 		expect(help.status).toBe(0);
 		expect(help.stdout).toBe(
-			"Usage: node scripts/enumerate-mutants.mjs [range] [--json] [--limit N]\nDefaults: range origin/main...HEAD; limit 200 (output rows).\nLines are 1-based; columns are 0-based. Replacements are JSON-escaped in the table.\nRuns the checkout's own code, like its tests: trusted heads only; never a fork's head.\nReads committed source and stryker.config.json; runs no tests or process listing.\nUses static.mutation's path exclusions, also accepts JavaScript, and applies no line budget.\nIncludes generated ignored mutants; static status needs the host's static.mutation run.\n",
+			"Usage: node scripts/enumerate-mutants.mjs [range] [--json] [--limit N] [--sample FILE]\nDefaults: range origin/main...HEAD; limit 200 (output rows).\nLines are 1-based; columns are 0-based. Replacements are JSON-escaped in the table.\nRuns the checkout's own code, like its tests: trusted heads only; never a fork's head.\nReads committed source and stryker.config.json; runs no tests or process listing.\nUses static.mutation's path exclusions, also accepts JavaScript, and applies no line budget.\nIncludes generated ignored mutants; static status needs the host's static.mutation run.\n--sample FILE prints JSON probes from a complete classified inventory; --limit applies only to enumeration.\nAdd claim (killed/new-test/equivalent), evidence, and survivorClasses to every mutant.\nSampling covers each class, mutator and file, then a hash-ordered fifth of remaining kills per file, rounded up.\n",
 		);
 	});
 });
