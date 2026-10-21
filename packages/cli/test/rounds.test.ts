@@ -1,7 +1,15 @@
-import { copyFileSync, existsSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Changeset, defaultConfig, Finding, loadConfig, pullRequestChangesetId, ReviewPlan } from "@melian-agent/core";
+import {
+	Changeset,
+	Comparison,
+	defaultConfig,
+	Finding,
+	loadConfig,
+	pullRequestChangesetId,
+	ReviewPlan,
+} from "@melian-agent/core";
 import {
 	CompareHarness,
 	ComparisonReader,
@@ -16,10 +24,11 @@ import {
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { ComparisonDocument } from "../../pipeline/src/compare.ts";
 import { ReviewIndex } from "../../pipeline/src/review-index.ts";
 import { RoundsDocument, RoundWriter } from "../../pipeline/src/rounds.ts";
 import { baseAndHead, gitIn, isolatedGitEnv } from "../../pipeline/test/fixtures/repo.ts";
-import type { Io } from "../src/commands.ts";
+import { type Io, StoredReview } from "../src/commands.ts";
 import { main } from "../src/main.ts";
 import * as repository from "../src/repository.ts";
 import { storagePath } from "../src/repository.ts";
@@ -550,4 +559,115 @@ it.each([
 	["review", "main...feature"],
 ])("refuses --round outside range writes: %s", async (...args) => {
 	expect(await main([...args, "--round", `${changeset.id}.r1`], io)).toBe(64);
+});
+
+it.each(["import", "match", "unmatch", "adjudicate"])(
+	"CLI %s addresses the build-1 unattributed comparison",
+	async (operation) => {
+		const base = new URL("../../pipeline/test/fixtures/comparison-rounds/build1-0ee97219/", import.meta.url);
+		const recorded = JSON.parse(readFileSync(new URL("recorded.json", base), "utf8"));
+		const path = await storagePath(repo, changeset.id, io.env, false);
+		copyFileSync(new URL("comparisons.sqlite", base), path);
+		const stored = Changeset.from({
+			kind: "range",
+			id: changeset.id,
+			repoRoot: repo,
+			spec: changeset.spec,
+			revision: recorded.revisions[1],
+		});
+		vi.spyOn(StoredReview, "open").mockResolvedValue({
+			changeset: stored,
+			argument: "main...feature",
+			missing: () => new repository.CliError("missing review"),
+		});
+		const external = recorded.external;
+		const args =
+			operation === "adjudicate"
+				? ["compare", "adjudicate", "main...feature", external, "--verdict", "noise"]
+				: operation === "import"
+					? ["compare", "main...feature"]
+					: ["compare", operation, "main...feature", external, external];
+		if (operation === "adjudicate") {
+			for (const round of [undefined, `${changeset.id}.r1`, `${changeset.id}.r2`]) {
+				expect(await main([...args, ...(round === undefined ? [] : ["--round", round])], io)).toBe(1);
+			}
+		}
+		const rendered = vi.spyOn(Comparison.prototype, "render");
+		const result = await main([...args, "--round", "unattributed"], io);
+		if (operation === "import") expect(rendered).toHaveBeenCalledExactlyOnceWith(undefined, 0);
+		if (operation === "match" || operation === "unmatch") {
+			expect(result).toBe(1);
+			expect(io.stderr.mock.calls.join("")).toContain("Melian's review has no finding");
+		} else {
+			expect(result, io.stderr.mock.calls.join("")).toBe(0);
+			const storage = await openSqliteStorage(path);
+			try {
+				const entries = await ComparisonReader.open(storage).read(changeset.id);
+				expect(entries).toHaveLength(1);
+				expect(entries[0]!.unattributed).toBe(revisionKey(stored.revision));
+				if (operation === "adjudicate")
+					expect(entries[0]!.comparison.adjudication(external)?.history).toHaveLength(2);
+			} finally {
+				await storage.close(context);
+			}
+		}
+	},
+);
+
+it.each(["match", "unmatch"])(
+	"CLI %s preserves the unattributed comparison's own Melian findings",
+	async (operation) => {
+		const path = await storagePath(repo, changeset.id, io.env, false);
+		const file = join(dir, "review.json");
+		writeFileSync(
+			file,
+			JSON.stringify({
+				reviewer: { name: "codex" },
+				findings: [{ file: "a.ts", line: 999, title: "wrong", body: "wrong" }],
+			}),
+		);
+		expect(await main(["compare", "main...feature", "--from", `file:${file}`], io)).toBe(0);
+		const harness = await CompareHarness.open(await openSqliteStorage(path), createFakeModels().review, changeset.id);
+		let external: string;
+		let melian: string;
+		try {
+			const comparison = (await harness.read(changeset.revision))!;
+			external = comparison.externalFindings()[0]!.id;
+			melian = comparison.melianFindings()[0]!;
+			const root = await harness.harness.root(context);
+			await root.commit(async (tx) => {
+				const document = await tx.doc(ComparisonDocument, root.id);
+				document.unattributed[revisionKey(changeset.revision)] = comparison.toJSON();
+				document.comparisons = {};
+			}, context);
+		} finally {
+			await harness.close();
+		}
+		const rendered = vi.spyOn(Comparison.prototype, "render");
+		expect(
+			await main(["compare", operation, "main...feature", external!, melian!, "--round", "unattributed"], io),
+			io.stderr.mock.calls.join(""),
+		).toBe(0);
+		expect(rendered).toHaveBeenCalledExactlyOnceWith(undefined);
+		const reopened = await CompareHarness.open(
+			await openSqliteStorage(path),
+			createFakeModels().review,
+			changeset.id,
+		);
+		try {
+			const comparison = (await reopened.read({ ...changeset.revision, round: "unattributed" }))!;
+			if (operation === "match")
+				expect(comparison.effectiveMatches()).toContainEqual(
+					expect.objectContaining({ kind: "hand", external: external!, melian: melian! }),
+				);
+			else expect(comparison.effectiveMatches()).toEqual([]);
+		} finally {
+			await reopened.close();
+		}
+	},
+);
+
+it("CLI refuses a missing unattributed comparison", async () => {
+	expect(await main(["compare", "main...feature", "--round", "unattributed"], io)).toBe(1);
+	expect(io.stderr.mock.calls.join("")).toContain("no unattributed comparison for main...feature");
 });

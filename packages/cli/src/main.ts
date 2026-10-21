@@ -41,14 +41,14 @@ Commands:
                          dismisses that report alone.
                          Exits 0 when recorded, 1 when the review or the finding is not found, or when the
                          dismissal was recorded but the verdict could not be decided again.
-  compare <range|#pr> [--from <source>]... [--round <id>]
+  compare <range|#pr> [--from <source>]... [--round <id|unattributed>]
                          Import other reviewers' findings and match them against the stored review of the head,
                          by site. A source is github for CodeRabbit's review threads, github:<login> for another
                          login's, or file:<path> for a reviewer's JSON file. Without --from, a pull request
                          imports github, and a range matches again.
-  compare match|unmatch <range|#pr> <external-id> <melian-id> [--round <id>]
+  compare match|unmatch <range|#pr> <external-id> <melian-id> [--round <id|unattributed>]
                          Match an external finding with a Melian finding by hand, or keep them apart.
-  compare adjudicate <range|#pr> <finding-id> --verdict valid|noise|duplicate [--round <id>]
+  compare adjudicate <range|#pr> <finding-id> --verdict valid|noise|duplicate [--round <id|unattributed>]
                          Record a local judgement, with --severity, --reason, --golden, --rule, --note, and --of.
   compare stats [--since <date>|--last <n>]
                          Show recall, precision, pending findings, miss reasons, candidate checks, and drain due.
@@ -69,7 +69,7 @@ Options:
   --cold                 Run the mutation check without an earlier head's results; only a cold run can pass the
                          review, so run it before the queue (review).
   --open, --all, --json  For findings; --json also applies to review and telemetry.
-  --round <id>          Read a stored verdict, or select a range comparison write.
+  --round <id>          Read a stored verdict; select a range comparison by ID or unattributed.
   --rounds              List a target's stored rounds (findings).
   --reason <text>        Dismissal reason, or owned-missed, no-owner, needs-execution, out-of-scope (adjudicate).
   --only                 Dismiss the report the ID names alone, leaving the reports merged with it live (dismiss).

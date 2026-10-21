@@ -57,8 +57,14 @@ async function openComparison(io: Io, argument: string, round?: string) {
 	let stored: ComparisonTarget;
 	let verdict: Verdict | undefined;
 	let path: string;
-	if (round === undefined) {
+	if (round === undefined || round === "unattributed") {
 		stored = await StoredReview.open(io, argument);
+		if (round === "unattributed")
+			stored = {
+				...stored,
+				changeset: { ...stored.changeset, revision: { ...stored.changeset.revision, round } },
+				missing: () => new CliError(`Melian has no unattributed comparison for ${argument}`),
+			};
 		path = await storagePath(stored.changeset.repoRoot, stored.changeset.id, io.env, isScripted(io.env));
 	} else {
 		const match = /^(range-[0-9a-f]{16}|pull-[0-9a-f]{16})\.(?:r[1-9][0-9]*|k[0-9a-f]{16})$/.exec(round);
@@ -147,7 +153,10 @@ export async function compare(
 			io.stdout(`Imported ${stored} from ${visibleText(source)}${skipped}.\n`);
 		}
 		const root = (await harness.harness.root(context)).id;
-		const verdict = frozen ?? (await readVerdict(harness.harness, root, revisionKey(revision), context));
+		const verdict =
+			round === "unattributed"
+				? undefined
+				: (frozen ?? (await readVerdict(harness.harness, root, revisionKey(revision), context)));
 		const external = comparison.externalFindings().length;
 		const melian = comparison.melianFindings().length;
 		io.stdout(
@@ -188,7 +197,10 @@ export async function matchByHand(
 		if (!matched && comparison.needsReason(pair.external))
 			io.stdout(`Finding ${pair.external} is pending until re-adjudicated with a miss reason.\n`);
 		const root = (await harness.harness.root(context)).id;
-		const verdict = frozen ?? (await readVerdict(harness.harness, root, revisionKey(revision), context));
+		const verdict =
+			round === "unattributed"
+				? undefined
+				: (frozen ?? (await readVerdict(harness.harness, root, revisionKey(revision), context)));
 		io.stdout(comparison.render(verdict));
 		return 0;
 	} finally {

@@ -471,3 +471,89 @@ it("names the requested round, or else the revision, when no decided round exist
 		`Melian has no decided round ${key} to compare against`,
 	);
 });
+
+it("adjudicates build-1 finding 494eaf51 through its unattributed address and reopens", async () => {
+	const directory = realpathSync(mkdtempSync(join(tmpdir(), "melian-unattributed-")));
+	directories.push(directory);
+	const base = join(import.meta.dirname, "fixtures/comparison-rounds/build1-0ee97219");
+	const recorded = JSON.parse(readFileSync(join(base, "recorded.json"), "utf8"));
+	const revision = recorded.revisions[1];
+	const path = join(directory, "copy.sqlite");
+	copyFileSync(join(base, "comparisons.sqlite"), path);
+	const harness = await CompareHarness.open(await openSqliteStorage(path), createFakeModels().review, changeset);
+	opened.push(harness);
+	for (const round of [
+		undefined,
+		`${changeset}.r1`,
+		`${changeset}.r2`,
+		`${changeset}.${legacyKey(revisionKey(revision))}`,
+	]) {
+		await expect(
+			harness.adjudicate({ ...revision, round }, recorded.external, { verdict: "noise", by: "M", at }),
+		).rejects.toThrow();
+	}
+	const selected = { ...revision, round: "unattributed" };
+	expect(await harness.reviewed(selected)).toBe(true);
+	await harness.adjudicate(selected, recorded.external, { verdict: "noise", by: "M", at: "2026-10-21T01:00:00Z" });
+	expect((await harness.read(selected))!.adjudication(recorded.external)?.history).toHaveLength(2);
+	await harness.close();
+	const storage = await openSqliteStorage(path);
+	try {
+		const entries = await ComparisonReader.open(storage).read(changeset);
+		expect(entries).toHaveLength(1);
+		expect(entries[0]!.unattributed).toBe(revisionKey(revision));
+		expect(entries[0]!.comparison.adjudication(recorded.external)).toMatchObject({
+			current: { verdict: "noise" },
+			history: [expect.anything(), expect.anything()],
+		});
+	} finally {
+		await storage.close(context);
+	}
+});
+
+it.each(["import", "match", "unmatch", "adjudicate"])(
+	"%s writes only the selected unattributed comparison",
+	async (operation) => {
+		const { harness } = await memory();
+		await mint(harness);
+		await harness.importFindings(revision, sources, at);
+		const root = await harness.harness.root(context);
+		const comparison = Comparison.of(revision);
+		comparison.import(sources[0]!.source, sources[0]!.imported, at);
+		comparison.compare(
+			new Adjudication({ findings: [finding], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
+		);
+		await root.commit(async (tx) => {
+			(await tx.doc(ComparisonDocument, root.id)).unattributed[key] = comparison.toJSON();
+		}, context);
+		const before = (await harness.read(revision))!.toJSON();
+		const selected = { ...revision, round: "unattributed" };
+		const pair = { external: external.id, melian: finding.id };
+		if (operation === "import")
+			await harness.importFindings(
+				selected,
+				[{ source: sources[0]!.source, imported: { findings: [], skippedBodies: 0 } }],
+				at,
+			);
+		if (operation === "match") await harness.match(selected, pair, { by: "M", at });
+		if (operation === "unmatch") await harness.unmatch(selected, pair, { by: "M", at });
+		if (operation === "adjudicate")
+			await harness.adjudicate(selected, external.id, { verdict: "noise", by: "M", at });
+		expect((await harness.read(revision))!.toJSON()).toEqual(before);
+		const changed = (await harness.read(selected))!;
+		if (operation === "import") expect(changed.externalFindings()).toEqual([]);
+		if (operation === "match")
+			expect(changed.effectiveMatches()).toContainEqual(expect.objectContaining({ kind: "hand", ...pair }));
+		if (operation === "unmatch") expect(changed.effectiveMatches()).toEqual([]);
+		if (operation === "adjudicate") expect(changed.adjudication(external.id)?.current.verdict).toBe("noise");
+	},
+);
+
+it("refuses an absent unattributed comparison without creating one", async () => {
+	const { harness } = await memory();
+	await mint(harness);
+	const selected = { ...revision, round: "unattributed" };
+	expect(await harness.reviewed(selected)).toBe(false);
+	await expect(harness.importFindings(selected, [], at)).rejects.toMatchObject({ code: "notReviewed" });
+	expect(await harness.all(changeset)).toEqual([]);
+});

@@ -149,6 +149,7 @@ export class CompareHarness {
 
 	/** Whether Melian has a current, decided review of `revision` to compare against. */
 	async reviewed(revision: Revision, context: Context = backgroundContext): Promise<boolean> {
+		if (revision.round === "unattributed") return (await this.read(revision, context)) !== undefined;
 		const root = await this.harness.root(context);
 		return root.commit(async (tx) => {
 			try {
@@ -169,6 +170,10 @@ export class CompareHarness {
 			(await this.harness.snapshot(ComparisonDocument, root.id, context)) ?? ComparisonDocument.definition.initial();
 		const stored = StoredComparisons.from(state);
 		stored.attribute(rounds, this.changeset);
+		if (revision.round === "unattributed") {
+			const previous = stored.state.unattributed[revisionKey(revision)];
+			return previous === undefined ? undefined : Comparison.from(previous);
+		}
 		const stateOfRounds = await this.harness.snapshot(RoundsDocument, root.id, context);
 		const id =
 			revision.round ??
@@ -330,21 +335,26 @@ export class CompareHarness {
 	): Promise<Comparison> {
 		const root = await this.harness.root(context);
 		return root.commit(async (tx) => {
-			const round = await this.selected(tx, root.id, revision);
+			const round = revision.round === "unattributed" ? undefined : await this.selected(tx, root.id, revision);
 			const document = await tx.doc(ComparisonDocument, root.id);
-			const state = await new RoundWriter(tx, root.id).preserve(revisionKey(round.stored));
+			const state = await new RoundWriter(tx, root.id).preserve(revisionKey(round?.stored ?? revision));
 			const rounds = Object.entries(state.items).map(
 				([key, stored]) => new Round(`${this.changeset}.${key}`, JSON.parse(JSON.stringify(stored))),
 			);
 			const stored = StoredComparisons.from(JSON.parse(JSON.stringify(document)));
 			stored.attribute(rounds, this.changeset);
-			const previous = stored.state.comparisons[round.id];
-			const comparison = previous === undefined ? Comparison.of(round.stored) : Comparison.from(previous);
-			const verdict = round.verdict()!;
-			comparison.compare(verdict);
+			const comparisons = round === undefined ? stored.state.unattributed : stored.state.comparisons;
+			const key = round?.id ?? revisionKey(revision);
+			const previous = comparisons[key];
+			if (round === undefined && previous === undefined)
+				throw new CompareError("notReviewed", `Melian has no unattributed comparison for ${key}`);
+			const comparison = previous === undefined ? Comparison.of(round!.stored) : Comparison.from(previous);
+			const verdict = round?.verdict();
+			if (verdict !== undefined) comparison.compare(verdict);
 			change(comparison, stored.entries(rounds, this.changeset));
-			comparison.compare(verdict);
-			document.comparisons = { ...stored.state.comparisons, [round.id]: comparison.toJSON() };
+			if (verdict !== undefined) comparison.compare(verdict);
+			comparisons[key] = comparison.toJSON();
+			document.comparisons = stored.state.comparisons;
 			document.unattributed = stored.state.unattributed;
 			document.legacy = stored.state.legacy;
 			return comparison;
