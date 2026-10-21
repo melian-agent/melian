@@ -57,6 +57,7 @@ async function openComparison(io: Io, argument: string, round?: string) {
 	let stored: ComparisonTarget;
 	let verdict: Verdict | undefined;
 	let path: string;
+	let target: string | undefined = argument;
 	if (round === undefined || round === "unattributed") {
 		stored = await StoredReview.open(io, argument);
 		if (round === "unattributed")
@@ -72,6 +73,10 @@ async function openComparison(io: Io, argument: string, round?: string) {
 		// Pull-request membership arrives with step 23's builds 3 and 4; until then its store takes no comparison writes.
 		if (match[1]!.startsWith("pull-"))
 			throw new CliError(`${round} is a pull request's round, and #N writes come later; name a range round`);
+		const named = await StoredReview.open(io, argument).catch(() => undefined);
+		if (named !== undefined && named.changeset.id !== match[1])
+			throw new CliError(`round ${round} belongs to ${match[1]}, but ${argument} names ${named.changeset.id}`);
+		if (named === undefined) target = undefined;
 		const repoRoot = await git(io.cwd, ["rev-parse", "--show-toplevel"]);
 		path = await storagePath(repoRoot, match[1]!, io.env, isScripted(io.env));
 		if (!existsSync(path)) throw new CliError(`Melian has no round ${round}`);
@@ -104,7 +109,7 @@ async function openComparison(io: Io, argument: string, round?: string) {
 		await harness.close(context);
 		throw stored.missing();
 	}
-	return { stored, harness, verdict };
+	return { stored, harness, verdict, target };
 }
 
 // Every source is read before anything is written, so a source that fails records nothing.
@@ -115,7 +120,7 @@ export async function compare(
 	round?: string,
 ): Promise<number> {
 	const target = parseTarget(argument);
-	const { stored, harness, verdict: frozen } = await openComparison(io, argument, round);
+	const { stored, harness, verdict: frozen, target: recordedTarget } = await openComparison(io, argument, round);
 	const { changeset } = stored;
 	const { revision } = changeset;
 	try {
@@ -142,7 +147,7 @@ export async function compare(
 			read.push({ source: importer.source, imported });
 		}
 		const comparison = await harness.importFindings(
-			{ ...revision, target: argument },
+			{ ...revision, target: recordedTarget },
 			read,
 			new Date().toISOString(),
 		);

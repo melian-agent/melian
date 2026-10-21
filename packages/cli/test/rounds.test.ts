@@ -459,6 +459,106 @@ it.each([false, true])("lists an unreadable legacy head last with an unknown dat
 });
 
 it.each(["import", "match", "unmatch", "adjudicate"])(
+	"refuses cross-changeset %s before opening either store or recording a target",
+	async (operation) => {
+		gitIn(repo, "branch", "other", "feature");
+		const other = await Changeset.resolve(repo, "main...other");
+		const otherPath = await storagePath(repo, other.id, io.env, false);
+		const fake = createFakeModels();
+		const harness = await openHarness(await openSqliteStorage(otherPath), {
+			models: fake.models,
+			registry: createReviewRegistry(),
+		});
+		try {
+			await harness.root(context, { agent: { model: fake.ref() } });
+			await reviewChangeset({
+				harness,
+				changeset: other,
+				config: { ...defaultConfig, tiers: { full: [] } },
+				lenses: [],
+				standards: [],
+				models: fake.review,
+				checks: [],
+			});
+		} finally {
+			await harness.close(context);
+		}
+		const paths = [await storagePath(repo, changeset.id, io.env, false), otherPath];
+		const before = paths.map((path) => readFileSync(path));
+		const open = vi.spyOn(repository, "openStorage");
+		const locate = vi.spyOn(repository, "storagePath");
+		const args =
+			operation === "import"
+				? ["compare", "main...other"]
+				: operation === "adjudicate"
+					? ["compare", "adjudicate", "main...other", "a".repeat(16), "--verdict", "noise"]
+					: ["compare", operation, "main...other", "a".repeat(16), "b".repeat(16)];
+		expect.soft(await main([...args, "--round", `${changeset.id}.r1`], io)).toBe(1);
+		expect.soft(io.stderr.mock.calls.join("")).toContain(other.id);
+		expect.soft(io.stderr.mock.calls.join("")).toContain(`${changeset.id}.r1`);
+		expect.soft(open).not.toHaveBeenCalled();
+		expect.soft(locate).not.toHaveBeenCalled();
+		for (const [index, path] of paths.entries()) expect.soft(readFileSync(path)).toEqual(before[index]);
+		for (const [index, path] of paths.entries()) {
+			const storage = await openSqliteStorage(path);
+			try {
+				const entries = await ComparisonReader.open(storage).read([changeset, other][index]!.id);
+				expect.soft(entries).toEqual([]);
+			} finally {
+				await storage.close(context);
+			}
+		}
+	},
+);
+
+it("records the target for a resolved alias of the round's changeset", async () => {
+	const argument = "heads/main...heads/feature";
+	expect(await main(["compare", argument, "--round", `${changeset.id}.r1`], io)).toBe(0);
+	const storage = await openSqliteStorage(await storagePath(repo, changeset.id, io.env, false));
+	try {
+		const entries = await ComparisonReader.open(storage).read(changeset.id);
+		expect(entries).toHaveLength(1);
+		expect(entries[0]!.comparison.toJSON().target).toBe(argument);
+	} finally {
+		await storage.close(context);
+	}
+});
+
+it.each([
+	{ previous: false, target: undefined },
+	{ previous: true, target: undefined },
+	{ previous: true, target: "main...feature" },
+])(
+	"does not record an unresolved range as the target (previous=$previous, target=$target)",
+	async ({ previous, target }) => {
+		const path = await storagePath(repo, changeset.id, io.env, false);
+		if (previous) {
+			const harness = await CompareHarness.open(
+				await openSqliteStorage(path),
+				createFakeModels().review,
+				changeset.id,
+			);
+			try {
+				await harness.importFindings({ ...changeset.revision, target }, [], "2026-10-21T00:00:00Z");
+			} finally {
+				await harness.close();
+			}
+		}
+		gitIn(repo, "checkout", "--quiet", "main");
+		gitIn(repo, "branch", "-D", "feature");
+		expect(await main(["compare", "main...deleted", "--round", `${changeset.id}.r1`], io)).toBe(0);
+		const storage = await openSqliteStorage(path);
+		try {
+			const entries = await ComparisonReader.open(storage).read(changeset.id);
+			expect(entries).toHaveLength(1);
+			expect(entries[0]!.comparison.toJSON().target).toBe(target);
+		} finally {
+			await storage.close(context);
+		}
+	},
+);
+
+it.each(["import", "match", "unmatch", "adjudicate"])(
 	"routes comparison %s to an explicit round after the branch is deleted",
 	async (operation) => {
 		const path = await storagePath(repo, changeset.id, io.env, false);
@@ -533,7 +633,13 @@ it.each(["bad", "range-ffffffffffffffff.r1", "missing"])(
 	async (argument) => {
 		const id = argument === "missing" ? `${changeset.id}.r9` : argument;
 		expect(await main(["compare", "main...feature", "--round", id], io)).toBe(1);
-		expect(io.stderr.mock.calls.join("")).toContain(argument === "bad" ? "invalid round ID" : "has no round");
+		expect(io.stderr.mock.calls.join("")).toContain(
+			argument === "bad"
+				? "invalid round ID"
+				: argument === "range-ffffffffffffffff.r1"
+					? `belongs to range-ffffffffffffffff, but main...feature names ${changeset.id}`
+					: "has no round",
+		);
 		if (argument === "range-ffffffffffffffff.r1")
 			expect(existsSync(await storagePath(repo, "range-ffffffffffffffff", io.env, false))).toBe(false);
 		expect(io.stdout).not.toHaveBeenCalled();
