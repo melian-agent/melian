@@ -138,7 +138,7 @@ A code branch never edits `packages/evals/comparisons/`. The record has its own 
 
 ### Briefs
 
-Every brief for a fix pass or an implementation step requires an inventory from `node scripts/enumerate-mutants.mjs <base>...HEAD --json --limit 10000`. Check the omitted count and raise the limit until every mutant is listed. Classify each as killed by a named existing test, needing a new test, or equivalent with a one-line reason. Run by hand every mutant needing a new test and every equivalence claim, plus at least one in five claims of an existing kill. Record each result as work proceeds. The host's `static.mutation` remains the authority; enumeration runs no tests.
+Every brief for a fix pass or an implementation step requires an inventory from `node scripts/enumerate-mutants.mjs <base>...HEAD --json --limit 10000`. Check the omitted count and raise the limit until every mutant is listed. Classify each as killed by a named existing test, needing a new test, or equivalent with a one-line reason. Run by hand every mutant needing a new test and every equivalence claim, plus at least one in five claims of an existing kill. Record each result as work proceeds. The script runs the checkout's own code, under the same trust as running its tests. Use it on trusted heads only, never a fork's head. The host's `static.mutation` remains the authority; enumeration runs no tests.
 
 A brief tells the task to push after each file's commit and append the inventory as it goes. Scope a large branch by package so a task limit leaves no unpushed commits or missing report.
 

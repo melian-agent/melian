@@ -97,7 +97,7 @@ async function main() {
 	});
 	if (values.help) {
 		console.log(
-			"Usage: node scripts/enumerate-mutants.mjs [range] [--json] [--limit N]\nDefaults: range origin/main...HEAD; limit 200 (output rows).\nLines are 1-based; columns are 0-based. Replacements are JSON-escaped in the table.\nReads committed source and stryker.config.json; runs no tests or head code.\nUses static.mutation's path exclusions, also accepts JavaScript, and applies no line budget.\nIncludes generated ignored mutants; static status needs the host's static.mutation run.",
+			"Usage: node scripts/enumerate-mutants.mjs [range] [--json] [--limit N]\nDefaults: range origin/main...HEAD; limit 200 (output rows).\nLines are 1-based; columns are 0-based. Replacements are JSON-escaped in the table.\nRuns the checkout's own code, like its tests: trusted heads only; never a fork's head.\nReads committed source and stryker.config.json; runs no tests or process listing.\nUses static.mutation's path exclusions, also accepts JavaScript, and applies no line budget.\nIncludes generated ignored mutants; static status needs the host's static.mutation run.",
 		);
 		return;
 	}

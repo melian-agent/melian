@@ -153,7 +153,7 @@ describe("mutant enumeration", { timeout: 60_000 }, () => {
 		expect(await enumerateMutants({ cwd: root, range: "HEAD..HEAD" })).toEqual({ mutants: [], total: 0, omitted: 0 });
 	});
 
-	it("prints valid JSON and an escaped text table without running head code or ps", () => {
+	it("prints valid JSON and an escaped text table without importing the enumerated source or running ps", () => {
 		for (const args of [
 			["--json", "--limit", "1"],
 			["origin/main...HEAD", "--limit=0"],
@@ -235,7 +235,7 @@ describe("mutant enumeration", { timeout: 60_000 }, () => {
 		const help = spawnSync(process.execPath, [script, "--help"], { cwd: root, encoding: "utf8" });
 		expect(help.status).toBe(0);
 		expect(help.stdout).toBe(
-			"Usage: node scripts/enumerate-mutants.mjs [range] [--json] [--limit N]\nDefaults: range origin/main...HEAD; limit 200 (output rows).\nLines are 1-based; columns are 0-based. Replacements are JSON-escaped in the table.\nReads committed source and stryker.config.json; runs no tests or head code.\nUses static.mutation's path exclusions, also accepts JavaScript, and applies no line budget.\nIncludes generated ignored mutants; static status needs the host's static.mutation run.\n",
+			"Usage: node scripts/enumerate-mutants.mjs [range] [--json] [--limit N]\nDefaults: range origin/main...HEAD; limit 200 (output rows).\nLines are 1-based; columns are 0-based. Replacements are JSON-escaped in the table.\nRuns the checkout's own code, like its tests: trusted heads only; never a fork's head.\nReads committed source and stryker.config.json; runs no tests or process listing.\nUses static.mutation's path exclusions, also accepts JavaScript, and applies no line budget.\nIncludes generated ignored mutants; static status needs the host's static.mutation run.\n",
 		);
 	});
 });
