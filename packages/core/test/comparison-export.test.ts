@@ -149,6 +149,18 @@ describe("ComparisonExport sections", () => {
 		expect(text).toContain("in 1 stored round.");
 	});
 
+	it("keeps attributed comparisons out of the unattributed JSON map and shortens the unattributed head", () => {
+		const attributed = entry({ head: "d".repeat(40), round: "c.r1" });
+		const { changeset, comparison } = entry({ head: "c".repeat(40) });
+		const key = `${base}..${"c".repeat(40)}`;
+		const record = new ComparisonExport([attributed, { changeset, comparison, unattributed: key }], "range");
+		expect(JSON.parse(record.renderJson())).toEqual({
+			comparisons: { "c.r1": attributed.comparison.toJSON() },
+			unattributed: { [key]: comparison.toJSON() },
+		});
+		expect(record.render()).toContain(`\nUnattributed comparison at ${"c".repeat(12)}: no round can be proven.\n`);
+	});
+
 	it("keeps each round's own ID when r2 was compared before r1", () => {
 		const text = render([
 			entry({ head: "c".repeat(40), at: "2026-10-06T00:00:00Z", round: "range-0123456789abcdef.r1" }),
