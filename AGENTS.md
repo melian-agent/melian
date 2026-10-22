@@ -57,6 +57,17 @@ A guard, branch, bound, or early return counts as tested only when a test fails 
 - A fallback test asserts that the request reached the fallback, not a stored label. A label records what the code meant to do.
 - The pass that writes a test runs its mutation and records it in its report. A later reviewer should not have to find the gap again.
 
+Before writing tests, check these recurring survivors:
+
+- `optional-chain`: Optional chaining on an always-present value survives. Remove the needless `?.`, or test the absent value it promises to handle.
+- `seeded-default`: Seeded defaults hide replacements of `[]` or `""`. Assert the exact result when the seed is used.
+- `nullish-logical`: Nullish and logical swaps (`??` and `&&`) survive truthy-only tests. Test absent, present, and present-but-falsy values.
+- `compound-condition`: Compound conditions hide a forced operand. Give each operand a test where it alone decides the result.
+- `some-every`: Array swaps (`some` and `every`) survive uniform collections. Test a collection with both matching and non-matching items.
+- `numeric-bound`: Loose bounds survive distant examples. Test at the bound and one past it.
+- `dropped-value`: Dropped fields or objects survive partial matches and `>= 0`. Assert the whole value with `toEqual`.
+- `negative-test`: Negative tests pass for the wrong reason when two inputs are invalid. Keep every other input valid so only the guard decides.
+
 The `static.mutation` check runs this proof on the changed lines of every pull request in the `full` tier. Lenses report `untested-behaviour` at their usual severity. When the maintainer adjudicates a round, a finding on code a fix pass wrote counts as advisory unless it guards a trust or durability property. A surviving mutant the check itself reports keeps its P2 severity.
 
 If you create or modify a test, run it and iterate until it passes. Tests use Vitest and the fake model from the pipeline's testing entry, `@melian-agent/pipeline/testing`; never real providers, keys, or paid tokens. Use Pi Durable's memory storage unless the test is about surviving a reopen or a crash; then use SQLite in a temporary directory.
@@ -127,7 +138,9 @@ A code branch never edits `packages/evals/comparisons/`. The record has its own 
 
 ### Briefs
 
-Every brief for a fix pass or an implementation step requires a mutation inventory: each guard, branch, bound, and early return on the changed lines, each proven by a test that fails with it removed. The inventory pass on [pull request #85](https://github.com/melian-agent/melian/pull/85) found 27 unproven guards, and the one on [pull request #68](https://github.com/melian-agent/melian/pull/68) found 56. A brief also tells the task to push after each file's commit and to append the inventory file as it goes. A whole-branch inventory on a large branch can pass the two-hour task limit, and a cut then leaves unpushed commits and no report. Scope one pass per package when the branch is large.
+Every brief for a fix pass or an implementation step requires an inventory from `node scripts/enumerate-mutants.mjs <base>...HEAD --json --limit 10000`. Check the omitted count and raise the limit until every mutant is listed. Classify each as killed by a named existing test, needing a new test, or equivalent with a one-line reason. Add `claim` (`killed`, `new-test` or `equivalent`), `evidence` (a named test or an equivalence reason), and `survivorClasses` (the checklist labels above, or `[]`) to every JSON mutant. Keep all identity fields, including end coordinates. Save the complete inventory and run `node scripts/enumerate-mutants.mjs --sample <inventory.json>`. Run every selected probe. Selection includes every new-test and equivalence claim, then at least one probe per represented survivor class, mutator and changed file. Those mandatory probes count towards that coverage. It then chooses 20% of the remaining killed-by claims in each file, rounding up even for groups smaller than five. SHA-256 orders the JSON tuple `[file, line, column, endLine, endColumn, mutatorName, replacement]`; the lowest hashes win. The command prints the selection with its hashes, so a reviewer can reproduce it. Class labels are the builder’s judgement, not a syntax guess. Record each result as work proceeds. The script runs the checkout's own code, under the same trust as running its tests. Use it on trusted heads only, never a fork's head. The host's `static.mutation` remains the authority; enumeration runs no tests.
+
+A brief tells the task to push after each file's commit and append the inventory as it goes. Scope a large branch by package so a task limit leaves no unpushed commits or missing report.
 
 A brief for a fix pass also requires a failing test first, as Validation says: for each finding, a test from its failure scenario that fails on the current head for the reported reason and passes after the fix, with both runs in the report. A finding no test can reproduce is named in the report, with the reason and what stands in for the test.
 
