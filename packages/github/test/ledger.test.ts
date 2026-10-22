@@ -1753,7 +1753,6 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 		await second.review;
 		moveTo(state, second.changeset);
 		state.failReviews = true;
-		state.reviewFailureMessage = "Error";
 		for (let i = 0; i < 3; i++) await expect(publish(second.changeset)).rejects.toThrow();
 		expect(state.statuses.at(-1)).toMatchObject({ state: "error", target_url: url });
 	});

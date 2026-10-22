@@ -834,7 +834,6 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		async (trustedWriters) => {
 			const { github, changeset, state } = await reviewedRevisionOne();
 			state.failReviews = true;
-			state.reviewFailureMessage = "Error";
 			const refusals = [];
 			for (let attempt = 0; attempt < 3; attempt++) {
 				refusals.push(await publish(github, changeset, trustedWriters).catch((error: unknown) => error));
@@ -848,7 +847,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 				sha: changeset.revision.head,
 				state: "error",
 				description: trustedWriters
-					? expect.stringMatching(/^review could not be posted: GitHub refused to post a review/)
+					? `Melian could not post its review; see the publish record; base ${changeset.revision.base}`
 					: `not reviewed here: writers are not trusted; a trusted host sets this status; base ${changeset.revision.base}`,
 			});
 			expect(state.statuses.at(-1)!.description).toMatch(new RegExp(`; base ${changeset.revision.base}$`));
@@ -883,6 +882,25 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 			});
 		},
 	);
+
+	it("names a refused error status when it abandons a round", async () => {
+		const { github, changeset, state } = await reviewedRevisionOne(lensScript());
+		state.failReviews = true;
+		const setStatus = github.setStatus.bind(github);
+		vi.spyOn(github, "setStatus").mockImplementation(async (revision, status, ...rest) => {
+			if (status.state === "error") throw new Error("status endpoint unavailable");
+			return setStatus(revision, status, ...rest);
+		});
+		for (let attempt = 0; attempt < 2; attempt++) await expect(publish(github, changeset)).rejects.toThrow();
+
+		const abandoned = publish(github, changeset);
+
+		await expect(abandoned).rejects.toBeInstanceOf(PublishError);
+		await expect(abandoned).rejects.toThrow(
+			"so Melian abandoned it and could not set the status to error (status endpoint unavailable); the next publish",
+		);
+		expect(state.statuses.at(-1)).toMatchObject({ state: "success" });
+	});
 
 	it("resolves the thread again at the same head when an accepted edit's resolution failed", async () => {
 		const { fake, github, changeset, state } = await reviewedRevisionOne();

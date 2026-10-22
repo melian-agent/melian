@@ -1007,9 +1007,10 @@ function publishTask(provider: ReviewProvider) {
 					// publish of the head, so its third refusal abandons it and the next publish plans a new round.
 					let message = error instanceof Error ? error.message : String(error);
 					const refused = posting ? (await read()).revisions[head]?.pending : undefined;
-					// An abandoned round leaves the head without a review, so its status says so: not reviewed, with why. The
-					// status is best effort here, since the provider has just refused a post.
+					// An abandoned round leaves the head without a review, so its status must replace any earlier success. The
+					// description is fixed because the provider's message can pass the status limit; the record keeps it.
 					let shown: ReviewStatus | undefined;
+					let unset: string | undefined;
 					if (writingLedger && error instanceof LedgerRefusal) {
 						try {
 							await postStatus({
@@ -1022,7 +1023,7 @@ function publishTask(provider: ReviewProvider) {
 						const failed: ReviewStatus = publishedBy.trustedWriters
 							? {
 									state: "error",
-									description: `review could not be posted: ${message}`,
+									description: "Melian could not post its review; see the publish record",
 								}
 							: untrustedWriterStatus;
 						try {
@@ -1030,7 +1031,9 @@ function publishTask(provider: ReviewProvider) {
 							const ledgerUrl = (await runtime.snapshot(LedgerDocument, root, context))?.comment?.url;
 							await provider.setStatus(head, failed, ledgerUrl, base);
 							shown = failed;
-						} catch {}
+						} catch (error) {
+							unset = error instanceof Error ? error.message : String(error);
+						}
 					}
 					await runtime.commit(async (tx) => {
 						await timing.end(tx);
@@ -1046,7 +1049,8 @@ function publishTask(provider: ReviewProvider) {
 								];
 								delete record.pending;
 								if (shown !== undefined) record.status = { ...shown };
-								message = `the provider refused the review of verdict ${refused} ${refusals} times, so Melian abandoned it and set the status to error; the next publish plans a new one: ${message}`;
+								const status = unset === undefined ? "set the status to error" : `could not set the status to error (${unset})`;
+								message = `the provider refused the review of verdict ${refused} ${refusals} times, so Melian abandoned it and ${status}; the next publish plans a new one: ${message}`;
 							}
 						}
 						return {
