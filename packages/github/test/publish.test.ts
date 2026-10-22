@@ -329,14 +329,16 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 			{
 				sha: head,
 				state: "failure",
-				description: "3 findings, 1 blocking, 0 unresolved acknowledgements",
+				description: `3 findings, 1 blocking, 0 unresolved acknowledgements; base ${changeset.revision.base}`,
 				context: statusContext,
+				creator: { login: state.login, type: "User" },
 			},
 			{
 				sha: head,
 				state: "failure",
-				description: "3 findings, 1 blocking, 0 unresolved acknowledgements",
+				description: `3 findings, 1 blocking, 0 unresolved acknowledgements; base ${changeset.revision.base}`,
 				context: statusContext,
+				creator: { login: state.login, type: "User" },
 				target_url: state.ledgers[0]!.html_url,
 			},
 		]);
@@ -414,8 +416,9 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 			target_url: state.ledgers[0]!.html_url,
 			sha: head,
 			state: "failure",
-			description: "2 findings, 0 blocking, 1 unresolved acknowledgement",
+			description: `2 findings, 0 blocking, 1 unresolved acknowledgement; base ${second.changeset.revision.base}`,
 			context: statusContext,
+			creator: { login: state.login, type: "User" },
 		});
 		// Counts cover the run: publishing the head again resolves nothing more.
 		expect(await publish(github, second.changeset)).toMatchObject({
@@ -455,8 +458,9 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 			target_url: state.ledgers[0]!.html_url,
 			sha: head,
 			state: "success",
-			description: "2 findings, none blocking",
+			description: `2 findings, none blocking; base ${changeset.revision.base}`,
 			context: statusContext,
+			creator: { login: state.login, type: "User" },
 		});
 		const replies = state.comments.filter((comment) => comment.in_reply_to_id !== undefined);
 		expect(replies).toHaveLength(1);
@@ -639,6 +643,65 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(state.statuses.at(-1)).toMatchObject({ target_url: copy.html_url });
 	});
 
+	it.each([
+		{ label: "bot", creator: { login: "some-app[bot]", type: "Bot" } },
+		{ label: "non-writer", creator: { login: "former-writer", type: "User" } },
+		{ label: "bot with matching login", creator: { login: "melian-user", type: "Bot" } },
+		{ label: "deleted creator", creator: null },
+	])("repairs an identical $label status over a settled publication", async ({ creator }) => {
+		const { github, changeset, state } = await reviewedRevisionOne(lensScript());
+		await publish(github, changeset);
+		state.permissions = { "former-writer": "read", [state.login]: "write" };
+		state.statuses.push({ ...state.statuses.at(-1)!, creator });
+		state.calls = [];
+		await publish(github, changeset);
+		expect(posts(state)).toEqual([
+			expect.objectContaining({ path: `/repos/melian-agent/example/statuses/${changeset.revision.head}` }),
+		]);
+		const latest = await github.mergeGroupReview(changeset.revision.head, new AbortController().signal);
+		expect(latest).toMatchObject({
+			state: "success",
+			creator: { login: state.login, type: "User" },
+			description: `Passed; base ${changeset.revision.base}`,
+			target_url: state.ledgers[0]!.html_url,
+		});
+		expect(await github.mergeGroupPermission(latest!.creator!.login, new AbortController().signal)).toBe("write");
+	});
+
+	it("keeps installation-token status deduplication after a review teaches its author", async () => {
+		const { github, changeset, state } = await reviewedRevisionOne(lensScript());
+		state.failUser = true;
+		state.login = "installation[bot]";
+		state.actorType = "Bot";
+		await publish(github, changeset);
+		state.calls = [];
+		await publish(github, changeset);
+		expect(posts(state)).toEqual([]);
+		expect(state.statuses.at(-1)!.creator).toEqual({ login: state.login, type: "Bot" });
+	});
+
+	it.each(["missing", "another base"])(
+		"refreshes a settled publication whose status has %s reviewed base",
+		async (kind) => {
+			const { github, changeset, state } = await reviewedRevisionOne(lensScript());
+			await publish(github, changeset);
+			state.statuses.at(-1)!.description = kind === "missing" ? "Passed" : `Passed; base ${"f".repeat(40)}`;
+			state.calls = [];
+			await publish(github, changeset);
+			expect(posts(state)).toEqual([
+				expect.objectContaining({
+					path: `/repos/melian-agent/example/statuses/${changeset.revision.head}`,
+					body: {
+						state: "success",
+						context: "melian/review",
+						description: `Passed; base ${changeset.revision.base}`,
+						target_url: state.ledgers[0]!.html_url,
+					},
+				}),
+			]);
+		},
+	);
+
 	it("repairs an unrecorded ledger-refusal status after publication succeeds", async () => {
 		const { github, changeset, state } = await reviewedRevisionOne(
 			lensScript(emptyName, nanRetries, trimmedGreeting),
@@ -653,6 +716,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 			state: "error",
 			description: "ledger unavailable; restore storage or delete the ledger comment by hand",
 			context: statusContext,
+			creator: { login: state.login, type: "User" },
 			target_url: state.ledgers[0]!.html_url,
 		});
 		expect((await readPublished(harness!, root, head, context))?.status).toEqual(recorded?.status);
@@ -662,7 +726,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(state.statuses.at(-1)).toMatchObject({
 			sha: head,
 			state: "success",
-			description: recorded!.status!.description,
+			description: `${recorded!.status!.description}; base ${changeset.revision.base}`,
 			target_url: state.ledgers[0]!.html_url,
 		});
 	});
@@ -705,7 +769,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(state.reviews[1]!.body).toContain("src/config.ts");
 		expect(state.statuses.at(-1)).toMatchObject({
 			state: "failure",
-			description: "3 findings, 1 blocking, 0 unresolved acknowledgements",
+			description: `3 findings, 1 blocking, 0 unresolved acknowledgements; base ${changeset.revision.base}`,
 		});
 		const before = posts(state).length;
 		expect(await publish(github, changeset)).toMatchObject({ posted: 0 });
@@ -738,7 +802,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		);
 		expect(state.statuses.at(-1)).toMatchObject({
 			state: "failure",
-			description: "3 findings, 1 blocking, 0 unresolved acknowledgements",
+			description: `3 findings, 1 blocking, 0 unresolved acknowledgements; base ${changeset.revision.base}`,
 		});
 	});
 
@@ -760,7 +824,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(state.reviews[1]!.body).toContain("**findings, blocking**");
 		expect(state.statuses.at(-1)).toMatchObject({
 			state: "failure",
-			description: "3 findings, 1 blocking, 0 unresolved acknowledgements",
+			description: `3 findings, 1 blocking, 0 unresolved acknowledgements; base ${changeset.revision.base}`,
 		});
 	});
 
@@ -782,16 +846,18 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 				sha: changeset.revision.head,
 				state: "error",
 				description: trustedWriters
-					? expect.stringMatching(/^review could not be posted: GitHub refused to post a review/)
-					: "not reviewed here: writers are not trusted; a trusted host sets this status",
+					? `Melian could not post its review; see the publish record; base ${changeset.revision.base}`
+					: `not reviewed here: writers are not trusted; a trusted host sets this status; base ${changeset.revision.base}`,
 			});
+			expect(state.statuses.at(-1)!.description).toMatch(new RegExp(`; base ${changeset.revision.base}$`));
 			if (!trustedWriters) {
 				expect(state.statuses).toHaveLength(2);
 				expect(
 					state.statuses.every(
 						({ state: value, description }) =>
 							value === "error" &&
-							description === "not reviewed here: writers are not trusted; a trusted host sets this status",
+							description ===
+								`not reviewed here: writers are not trusted; a trusted host sets this status; base ${changeset.revision.base}`,
 					),
 				).toBe(true);
 			}
@@ -810,11 +876,30 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 			expect(state.statuses.at(-1)).toMatchObject({
 				state: trustedWriters ? "failure" : "error",
 				description: trustedWriters
-					? "3 findings, 1 blocking, 0 unresolved acknowledgements"
-					: "not reviewed here: writers are not trusted; a trusted host sets this status",
+					? `3 findings, 1 blocking, 0 unresolved acknowledgements; base ${changeset.revision.base}`
+					: `not reviewed here: writers are not trusted; a trusted host sets this status; base ${changeset.revision.base}`,
 			});
 		},
 	);
+
+	it("names a refused error status when it abandons a round", async () => {
+		const { github, changeset, state } = await reviewedRevisionOne(lensScript());
+		state.failReviews = true;
+		const setStatus = github.setStatus.bind(github);
+		vi.spyOn(github, "setStatus").mockImplementation(async (revision, status, ...rest) => {
+			if (status.state === "error") throw new Error("status endpoint unavailable");
+			return setStatus(revision, status, ...rest);
+		});
+		for (let attempt = 0; attempt < 2; attempt++) await expect(publish(github, changeset)).rejects.toThrow();
+
+		const abandoned = publish(github, changeset);
+
+		await expect(abandoned).rejects.toBeInstanceOf(PublishError);
+		await expect(abandoned).rejects.toThrow(
+			"so Melian abandoned it and could not set the status to error (status endpoint unavailable); the next publish",
+		);
+		expect(state.statuses.at(-1)).toMatchObject({ state: "success" });
+	});
 
 	it("resolves the thread again at the same head when an accepted edit's resolution failed", async () => {
 		const { fake, github, changeset, state } = await reviewedRevisionOne();

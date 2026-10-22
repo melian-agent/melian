@@ -127,6 +127,8 @@ export class GitHubProvider implements ReviewProvider {
 	// failure remembered too: an installation token always fails it, and asking again for every marker cost one request
 	// each. A review posted later still teaches the viewer.
 	private viewer: string | undefined;
+	// A posted author may be an installation bot; /user establishes the user-account identity.
+	private viewerIsUser = false;
 	private asked: Promise<void> | undefined;
 	private threads: Promise<Map<string, { id: string; isResolved: boolean }>> | undefined;
 
@@ -140,6 +142,103 @@ export class GitHubProvider implements ReviewProvider {
 			...(options.fetch === undefined ? {} : { request: { fetch: options.fetch } }),
 		});
 		this.links = { web: `${options.webUrl ?? "https://github.com"}/${options.owner}/${options.repo}` };
+	}
+
+	private async mergeGroupRead<T>(what: string, request: (client: Octokit) => Promise<T>): Promise<T> {
+		try {
+			return await call(what, () => request(this.octokit));
+		} catch {
+			return call(what, () => request(this.octokit));
+		}
+	}
+
+	/** The effective branch rules, including inherited rulesets. */
+	async mergeGroupRules(signal: AbortSignal) {
+		return this.mergeGroupPages(
+			this.octokit.rest.repos.getBranchRules,
+			{
+				owner: this.owner,
+				repo: this.repo,
+				branch: "main",
+				per_page: 100,
+			},
+			signal,
+			"read main's merge queue rule",
+		);
+	}
+
+	/** Reads only the requested pull request's head, without push-event discovery. */
+	async mergeGroupHead(number: number, signal: AbortSignal): Promise<string> {
+		return this.mergeGroupRead(`read pull request #${number}`, async (client) => {
+			const { data } = await client.rest.pulls.get({
+				owner: this.owner,
+				repo: this.repo,
+				pull_number: number,
+				request: { signal },
+			});
+			return data.head.sha;
+		});
+	}
+
+	/** Reads the newest Melian status, including its creator and reviewed-base description. */
+	async mergeGroupReview(head: string, signal: AbortSignal) {
+		const statuses = await this.mergeGroupPages(
+			this.octokit.rest.repos.listCommitStatusesForRef,
+			{
+				owner: this.owner,
+				repo: this.repo,
+				ref: head,
+				per_page: 100,
+			},
+			signal,
+			`read statuses of ${head}`,
+		);
+		return statuses.find((status) => status.context === statusContext);
+	}
+
+	private async mergeGroupPages<
+		R extends Octokit["rest"]["repos"]["getBranchRules"] | Octokit["rest"]["repos"]["listCommitStatusesForRef"],
+	>(
+		endpoint: R,
+		parameters: Parameters<R>[0],
+		signal: AbortSignal,
+		what: string,
+	): Promise<Awaited<ReturnType<R>>["data"]> {
+		const guarded = Object.assign(
+			async (options: Parameters<R>[0]) => {
+				try {
+					return await this.mergeGroupRead(what, async () => {
+						// The paginator forwards only method, URL and headers to each page request.
+						const response = await endpoint({ ...options, request: { signal } } as Parameters<
+							Octokit["rest"]["repos"]["getBranchRules"]
+						>[0] &
+							Parameters<Octokit["rest"]["repos"]["listCommitStatusesForRef"]>[0]);
+						if (!Array.isArray(response.data)) throw new GitHubError("failed", "incomplete merge-group page");
+						return response;
+					});
+				} catch (error) {
+					// A raw HTTP 409 would become an empty synthetic page in Octokit's paginator.
+					throw new GitHubError("failed", (error as Error).message);
+				}
+			},
+			{ endpoint: endpoint.endpoint, defaults: endpoint.defaults },
+		) as unknown as R;
+		const all = [];
+		for await (const page of this.octokit.paginate.iterator(guarded, parameters)) all.push(...page.data);
+		return all as Awaited<ReturnType<R>>["data"];
+	}
+
+	/** Reads current collaborator permission without hiding a refused lookup. */
+	async mergeGroupPermission(login: string, signal: AbortSignal): Promise<string> {
+		return this.mergeGroupRead(`read permission for ${login}`, async (client) => {
+			const { data } = await client.rest.repos.getCollaboratorPermissionLevel({
+				owner: this.owner,
+				repo: this.repo,
+				username: login,
+				request: { signal },
+			});
+			return data.permission;
+		});
 	}
 
 	beginPublish(): void {
@@ -552,7 +651,10 @@ export class GitHubProvider implements ReviewProvider {
 		throw new GitHubError("failed", `GitHub finding threads exceed ${maxPages} pages`);
 	}
 
-	async getStatus(revision: string): Promise<{ readonly state: string; readonly targetUrl?: string } | undefined> {
+	async getStatus(
+		revision: string,
+		reviewedBase?: string,
+	): Promise<{ readonly state: string; readonly targetUrl?: string } | undefined> {
 		const statuses = await call(`read the status of ${revision}`, () =>
 			this.octokit.paginate(this.octokit.rest.repos.listCommitStatusesForRef, {
 				owner: this.owner,
@@ -562,16 +664,23 @@ export class GitHubProvider implements ReviewProvider {
 			}),
 		);
 		const status = statuses.find((each) => each.context === statusContext);
-		return status === undefined
+		const viewer = reviewedBase === undefined ? undefined : await this.login();
+		return status === undefined ||
+			(reviewedBase !== undefined && !status.description?.endsWith(`; base ${reviewedBase}`)) ||
+			(viewer !== undefined &&
+				this.viewerIsUser &&
+				(status.creator?.type !== "User" || status.creator.login !== viewer))
 			? undefined
 			: { state: status.state, ...(status.target_url === null ? {} : { targetUrl: status.target_url }) };
 	}
 
-	async setStatus(revision: string, status: ReviewStatus, ledgerUrl?: string): Promise<void> {
-		const description =
-			status.description.length <= maxDescription
-				? status.description
-				: `${status.description.slice(0, maxDescription - 1)}…`;
+	async setStatus(revision: string, status: ReviewStatus, ledgerUrl?: string, reviewedBase?: string): Promise<void> {
+		// Only the prose is cut: a cut suffix could leave a prefix git still accepts as the reviewed base.
+		const suffix = reviewedBase === undefined ? "" : `; base ${reviewedBase}`;
+		const room = maxDescription - suffix.length;
+		const prose =
+			status.description.length <= room ? status.description : `${status.description.slice(0, room - 1)}…`;
+		const description = `${prose}${suffix}`;
 		await call(`set the status of ${revision}`, () =>
 			this.octokit.rest.repos.createCommitStatus({
 				owner: this.owner,
@@ -675,6 +784,7 @@ export class GitHubProvider implements ReviewProvider {
 		this.asked ??= this.octokit.rest.users.getAuthenticated().then(
 			({ data }) => {
 				this.viewer ??= data.login;
+				this.viewerIsUser = data.type === "User";
 			},
 			() => {},
 		);

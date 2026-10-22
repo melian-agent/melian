@@ -227,9 +227,12 @@ export interface ReviewProvider {
 	/** Creates or edits the ledger, reading its stamp before a write. */
 	writeLedger(draft: LedgerDraft): Promise<PostedLedger>;
 	/** Sets the review's status on a commit. Setting it again replaces it. */
-	setStatus(revision: string, status: ReviewStatus, ledgerUrl?: string): Promise<void>;
-	/** Reads the latest review status on a commit. */
-	getStatus(revision: string): Promise<{ readonly state: string; readonly targetUrl?: string } | undefined>;
+	setStatus(revision: string, status: ReviewStatus, ledgerUrl?: string, reviewedBase?: string): Promise<void>;
+	/** Reads the latest status. A base-qualified lookup may treat another publisher’s status as absent. */
+	getStatus(
+		revision: string,
+		reviewedBase?: string,
+	): Promise<{ readonly state: string; readonly targetUrl?: string } | undefined>;
 	/**
 	 * What the pull request already shows of `revision`'s publication, from posts that carry Melian's markers signed
 	 * with `secret`: the review of `review`'s round and finding roots at `revision`, and answers across all heads.

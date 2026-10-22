@@ -18,6 +18,7 @@ import {
 	parseImportSource,
 } from "./compare.ts";
 import { doctor } from "./doctor.ts";
+import { MergeGroupStatus } from "./merge-group.ts";
 import { parseTarget } from "./target.ts";
 import { tools } from "./tools.ts";
 
@@ -29,6 +30,8 @@ export const usage = `Usage: melian <command> [options]
 Commands:
   review <range|#pr>     Review a git range, such as main or main...feature, or a pull request, such as "#12".
                          Exits 0 passed, 1 blocking findings, 2 not reviewed, 3 findings with none blocking.
+  status merge-group [--head <sha>] [--base <sha>]
+                         Copy the group’s own reviewed head status. Exits 0 success, 1 failure.
   publish <#pr>          Post the stored review of the pull request's current head to GitHub.
   findings <range|#pr>   Print the stored review. --open prints only findings that need attention, --all silent and
                          dismissed findings too; --json prints JSON. --rounds lists the target's stored rounds.
@@ -60,6 +63,7 @@ Commands:
   doctor                 Check Node, git, credentials, model routes, tool readiness, and GitHub access.
 
 Options:
+  --head, --base <sha>   Confirm the merge_group event SHAs (status merge-group).
   --model <provider/id>  Route every tier to this model, over any route melian.yaml sets (review).
   --rerun                Run again the checks and lenses that failed in the last review of this base and head,
                          and ask triage again if its decision did not complete, rather than print what it
@@ -121,6 +125,8 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 			args: [...args],
 			allowPositionals: true,
 			options: {
+				head: { type: "string" },
+				base: { type: "string" },
 				open: { type: "boolean", default: false },
 				round: { type: "string" },
 				rounds: { type: "boolean" },
@@ -187,6 +193,14 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 						...(values.json ? { json: true } : {}),
 					},
 				);
+			case "status":
+				if (one(rest, name, "subcommand") !== "merge-group") throw new UsageError("status takes merge-group");
+				return await (
+					await MergeGroupStatus.load(scoped, {
+						...(values.head === undefined ? {} : { head: values.head }),
+						...(values.base === undefined ? {} : { base: values.base }),
+					})
+				).post();
 			case "publish":
 				return await publish(scoped, one(rest, name, "pull request"), { walkthrough: values.walkthrough });
 			case "findings":

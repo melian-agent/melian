@@ -21,12 +21,22 @@ export type FakeComment = {
 	pull_request_review_id: number | null;
 };
 
-export type FakeStatus = { sha: string; state: string; description: string; context: string; target_url?: string };
+export type FakeStatus = {
+	sha: string;
+	state: string;
+	description: string;
+	context: string;
+	target_url?: string;
+	creator?: { login: string; type: string } | null;
+};
 
 export type FakeState = {
+	branchRules?: unknown[];
+	readFailures?: Record<string, number>;
 	owner: string;
 	repo: string;
 	login: string;
+	actorType?: "User" | "Bot";
 	author?: string;
 	permissions?: Record<string, string>;
 	headRepository?: { owner: string; name: string } | null;
@@ -142,6 +152,11 @@ export function fakeGitHub(
 		state.calls.push(call);
 		const path = url.pathname;
 		const user = { login: state.login };
+		if (method === "GET" && (state.readFailures?.[path] ?? 0) > 0) {
+			state.readFailures![path]!--;
+			return json({ message: "Read unavailable" }, 503);
+		}
+		if (method === "GET" && path === `${repoPath}/rules/branches/main`) return json(state.branchRules ?? []);
 		if (method === "GET" && path === `${repoPath}/events`)
 			return state.failEvents ? json({ message: "Forbidden" }, 403) : json(state.pushEvents ?? []);
 		if (method === "POST" || method === "PATCH") await beforeWrite(call);
@@ -272,7 +287,9 @@ export function fakeGitHub(
 		}
 		const pulls = `${repoPath}/pulls/${state.pull.number}`;
 		if (method === "GET" && path === "/user")
-			return state.failUser ? json({ message: "Forbidden" }, 403) : json(user);
+			return state.failUser
+				? json({ message: "Forbidden" }, 403)
+				: json({ ...user, type: state.actorType ?? "User" });
 		if (method === "GET" && path === pulls) return json(pull());
 		if (method === "GET" && (path === `${pulls}/reviews` || path === `${pulls}/comments`)) {
 			const page = Number(url.searchParams.get("page") ?? 1);
@@ -341,7 +358,10 @@ export function fakeGitHub(
 			return json(state.statuses.filter((each) => each.sha === statuses[1]).toReversed());
 		const status = new RegExp(`^${repoPath}/statuses/([0-9a-f]+)$`).exec(path);
 		if (method === "POST" && status !== null) {
-			const posted = body as Omit<FakeStatus, "sha">;
+			const posted = {
+				...(body as Omit<FakeStatus, "sha">),
+				creator: { login: state.login, type: state.actorType ?? "User" },
+			};
 			state.statuses.push({ sha: status[1]!, ...posted });
 			await afterWrite(call);
 			return json({ id: state.nextId++, ...posted }, 201);

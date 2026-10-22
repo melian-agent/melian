@@ -237,7 +237,11 @@ describe("CLI publish walkthrough settings", { timeout: 60_000 }, () => {
 				expect(state.statuses.every(({ state }) => state === (trustedWriters ? "success" : "error"))).toBe(true);
 				if (!trustedWriters) {
 					const description = "not reviewed here: writers are not trusted; a trusted host sets this status";
-					expect(state.statuses.every((status) => status.description === description)).toBe(true);
+					expect(
+						state.statuses.every(
+							(status) => status.description === `${description}; base ${changeset.revision.base}`,
+						),
+					).toBe(true);
 					expect(output).toContain(`Status error: ${description}`);
 				}
 			},

@@ -1,0 +1,31 @@
+name: melian review group
+
+on:
+  merge_group:
+    types: [checks_requested]
+
+permissions:
+  contents: read
+  statuses: write
+  pull-requests: read
+
+jobs:
+  copy-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.event.merge_group.base_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: node packages/cli/bin/melian.js status merge-group --head "$MERGE_GROUP_HEAD" --base "$MERGE_GROUP_BASE"
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          MERGE_GROUP_HEAD: ${{ github.event.merge_group.head_sha }}
+          MERGE_GROUP_BASE: ${{ github.event.merge_group.base_sha }}

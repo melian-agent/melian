@@ -1075,7 +1075,7 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 				state: "error",
 				description: trustedWriters
 					? expect.stringContaining("delete the ledger comment")
-					: "not reviewed here: writers are not trusted; a trusted host sets this status",
+					: `not reviewed here: writers are not trusted; a trusted host sets this status; base ${first.changeset.revision.base}`,
 			});
 			if (!trustedWriters) {
 				expect(state.statuses.slice(1)).toHaveLength(1);
@@ -1085,7 +1085,8 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 						.every(
 							({ state: value, description }) =>
 								value === "error" &&
-								description === "not reviewed here: writers are not trusted; a trusted host sets this status",
+								description ===
+									`not reviewed here: writers are not trusted; a trusted host sets this status; base ${first.changeset.revision.base}`,
 						),
 				).toBe(true);
 			}
