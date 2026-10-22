@@ -726,6 +726,60 @@ describe("policy-change-review", () => {
 		]);
 	});
 
+	describe("this repository's workflow files", () => {
+		const own = readFileSync(new URL("../../../melian.yaml", import.meta.url), "utf8");
+		const workflow = lines("on: merge_group", "jobs: {}");
+		const workflowNotices = async (policy: string) => {
+			const { findings } = await guardrails(
+				{
+					"melian.yaml": policy,
+					".github/workflows/check.yml": workflow,
+					".github/workflows/old.yml": lines("on: push", "jobs: { a: {} }"),
+				},
+				{
+					".github/workflows/check.yml": lines("on: pull_request", "jobs: {}"),
+					".github/workflows/melian-review-group.yml": workflow,
+					".github/actions/x/action.yml": lines("runs: { using: composite, steps: [] }"),
+					".github/workflows/renamed.yml": lines("on: push", "jobs: { a: {} }"),
+				},
+				[".github/workflows/old.yml"],
+			);
+			return findings
+				.filter((finding) => finding.ruleId === "guardrail/policy-change-review")
+				.map((finding) => [finding.properties.path, finding.properties.severity]);
+		};
+
+		it("raises a blocking notice for an edited, added, or renamed workflow and an action", async () => {
+			expect(await workflowNotices(own)).toEqual([
+				[".github/actions/x/action.yml", "P1"],
+				[".github/workflows/check.yml", "P1"],
+				[".github/workflows/melian-review-group.yml", "P1"],
+				[".github/workflows/old.yml", "P1"],
+				[".github/workflows/renamed.yml", "P1"],
+			]);
+		});
+
+		it("raises none without the glob", async () => {
+			const stripped = own.replace(/^ {2}policy-change-review:\n {4}files: \[".github\/\*\*"\]\n/m, "");
+			expect(stripped).not.toBe(own);
+			expect(await workflowNotices(stripped)).toEqual([]);
+		});
+
+		it("keeps the notice when the head strips the glob, because the base's policy decides", async () => {
+			const stripped = own.replace(/^ {2}policy-change-review:\n {4}files: \[".github\/\*\*"\]\n/m, "");
+			expect(stripped).not.toBe(own);
+			const { findings } = await guardrails(
+				{ "melian.yaml": own, ".github/workflows/check.yml": lines("on: pull_request", "jobs: {}") },
+				{ "melian.yaml": stripped, ".github/workflows/check.yml": workflow },
+			);
+			expect(
+				findings
+					.filter((finding) => finding.ruleId === "guardrail/policy-change-review")
+					.map((finding) => [finding.properties.path, finding.properties.severity]),
+			).toContainEqual([".github/workflows/check.yml", "P1"]);
+		});
+	});
+
 	it("covers a Stryker configuration at the root and in a package, whatever its extension", async () => {
 		const { findings } = await guardrails(
 			{ "src/a.ts": lines("a") },
