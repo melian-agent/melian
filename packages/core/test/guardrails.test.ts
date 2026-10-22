@@ -749,7 +749,7 @@ describe("policy-change-review", () => {
 				.map((finding) => [finding.properties.path, finding.properties.severity]);
 		};
 
-		it("raises a blocking notice for an edited, added, or renamed workflow and an action", async () => {
+		it("raises a blocking notice for an edited, added, or renamed workflow and an added action", async () => {
 			expect(await workflowNotices(own)).toEqual([
 				[".github/actions/x/action.yml", "P1"],
 				[".github/workflows/check.yml", "P1"],

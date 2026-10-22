@@ -64,6 +64,8 @@ Finding text is never live markdown either. Problem: Melian posts from the maint
 - Each finding records the commit its thread's first comment was written on, `originalCommit { oid }`, as `commit`, so core matches by site only a thread read at the compared head.
 - `import()` returns the first thread page's head, `headRefOid`, so the host can refuse a pull request that moved since Melian's review. A later page naming another head throws `GitHubError` `failed`, since placements from two heads cannot form one comparison.
 
+The paginator forwards only method, URL and headers to each page request. It drops a signal supplied in page parameters. Add the deadline inside the wrapped request, as `mergeGroupPages` does. Convert HTTP 409 before pagination. Otherwise Octokit turns a failed read into an empty page.
+
 ## Tokens
 
 `resolveGitHubToken` reads `GITHUB_TOKEN`, then `GH_TOKEN`, then `gh auth token`. Report where a token came from, never the token. `GitHubError` messages carry GitHub's status and message only; Octokit redacts the token from the request it attaches to its own error, and that error is never printed.
