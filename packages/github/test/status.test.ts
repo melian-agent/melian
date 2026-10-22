@@ -29,6 +29,7 @@ describe("reviewed base in the published status", () => {
 				sha: f.head,
 				state: "success",
 				context: "melian/review",
+				creator: { login: f.state.login, type: "User" },
 				description: `0 findings, none blocking; base ${f.base}`,
 				target_url: "https://github.com/owner/repo/pull/7#issuecomment-1",
 			},
@@ -56,6 +57,28 @@ describe("reviewed base in the published status", () => {
 		expect(await f.provider.getStatus(f.head, f.base)).toBeUndefined();
 		Reflect.set(f.state.statuses.at(-1)!, "description", null);
 		expect(await f.provider.getStatus(f.head, f.base)).toBeUndefined();
+	});
+
+	it("keeps raw status reads separate from publication identity", async () => {
+		const f = fixture();
+		await f.provider.setStatus(f.head, { state: "success", description: "Passed" }, undefined, f.base);
+		f.state.statuses[0]!.creator = { login: "app[bot]", type: "Bot" };
+		expect(await f.provider.getStatus(f.head)).toMatchObject({ state: "success" });
+		expect(await f.provider.getStatus(f.head, f.base)).toBeUndefined();
+	});
+	it("keeps installation-token deduplication when the user identity is unavailable", async () => {
+		const f = fixture();
+		f.state.failUser = true;
+		await f.provider.setStatus(f.head, { state: "success", description: "Passed" }, undefined, f.base);
+		f.state.statuses[0]!.creator = { login: "app[bot]", type: "Bot" };
+		expect(await f.provider.getStatus(f.head, f.base)).toMatchObject({ state: "success" });
+	});
+
+	it("keeps bot-account deduplication when the user endpoint names a bot", async () => {
+		const f = fixture();
+		f.state.actorType = "Bot";
+		await f.provider.setStatus(f.head, { state: "success", description: "Passed" }, undefined, f.base);
+		expect(await f.provider.getStatus(f.head, f.base)).toMatchObject({ state: "success" });
 	});
 
 	it("keeps the description unchanged when no reviewed base is supplied", async () => {

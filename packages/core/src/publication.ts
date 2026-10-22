@@ -228,7 +228,7 @@ export interface ReviewProvider {
 	writeLedger(draft: LedgerDraft): Promise<PostedLedger>;
 	/** Sets the review's status on a commit. Setting it again replaces it. */
 	setStatus(revision: string, status: ReviewStatus, ledgerUrl?: string, reviewedBase?: string): Promise<void>;
-	/** Reads the latest review status, optionally requiring its reviewed base. */
+	/** Reads the latest status. A base-qualified lookup may treat another publisher’s status as absent. */
 	getStatus(
 		revision: string,
 		reviewedBase?: string,

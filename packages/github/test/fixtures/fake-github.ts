@@ -36,6 +36,7 @@ export type FakeState = {
 	owner: string;
 	repo: string;
 	login: string;
+	actorType?: "User" | "Bot";
 	author?: string;
 	permissions?: Record<string, string>;
 	headRepository?: { owner: string; name: string } | null;
@@ -287,7 +288,9 @@ export function fakeGitHub(
 		}
 		const pulls = `${repoPath}/pulls/${state.pull.number}`;
 		if (method === "GET" && path === "/user")
-			return state.failUser ? json({ message: "Forbidden" }, 403) : json(user);
+			return state.failUser
+				? json({ message: "Forbidden" }, 403)
+				: json({ ...user, type: state.actorType ?? "User" });
 		if (method === "GET" && path === pulls) return json(pull());
 		if (method === "GET" && (path === `${pulls}/reviews` || path === `${pulls}/comments`)) {
 			const page = Number(url.searchParams.get("page") ?? 1);
@@ -356,7 +359,10 @@ export function fakeGitHub(
 			return json(state.statuses.filter((each) => each.sha === statuses[1]).toReversed());
 		const status = new RegExp(`^${repoPath}/statuses/([0-9a-f]+)$`).exec(path);
 		if (method === "POST" && status !== null) {
-			const posted = body as Omit<FakeStatus, "sha">;
+			const posted = {
+				...(body as Omit<FakeStatus, "sha">),
+				creator: { login: state.login, type: state.actorType ?? "User" },
+			};
 			state.statuses.push({ sha: status[1]!, ...posted });
 			await afterWrite(call);
 			return json({ id: state.nextId++, ...posted }, 201);

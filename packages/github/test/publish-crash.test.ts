@@ -613,6 +613,7 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 			state: "failure",
 			description: `1 finding, 1 blocking, 0 unresolved acknowledgements; base ${changeset.revision.base}`,
 			context: statusContext,
+			creator: { login: state.login, type: "User" },
 		});
 	});
 	it.each([false, true])(

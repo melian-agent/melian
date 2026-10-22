@@ -127,6 +127,8 @@ export class GitHubProvider implements ReviewProvider {
 	// failure remembered too: an installation token always fails it, and asking again for every marker cost one request
 	// each. A review posted later still teaches the viewer.
 	private viewer: string | undefined;
+	// A posted author may be an installation bot; /user establishes the user-account identity.
+	private viewerIsUser = false;
 	private asked: Promise<void> | undefined;
 	private threads: Promise<Map<string, { id: string; isResolved: boolean }>> | undefined;
 
@@ -662,8 +664,12 @@ export class GitHubProvider implements ReviewProvider {
 			}),
 		);
 		const status = statuses.find((each) => each.context === statusContext);
+		const viewer = reviewedBase === undefined ? undefined : await this.login();
 		return status === undefined ||
-			(reviewedBase !== undefined && !status.description?.endsWith(`; base ${reviewedBase}`))
+			(reviewedBase !== undefined && !status.description?.endsWith(`; base ${reviewedBase}`)) ||
+			(viewer !== undefined &&
+				this.viewerIsUser &&
+				(status.creator?.type !== "User" || status.creator.login !== viewer))
 			? undefined
 			: { state: status.state, ...(status.target_url === null ? {} : { targetUrl: status.target_url }) };
 	}
@@ -776,6 +782,7 @@ export class GitHubProvider implements ReviewProvider {
 		this.asked ??= this.octokit.rest.users.getAuthenticated().then(
 			({ data }) => {
 				this.viewer ??= data.login;
+				this.viewerIsUser = data.type === "User";
 			},
 			() => {},
 		);

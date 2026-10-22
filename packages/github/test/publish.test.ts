@@ -333,12 +333,14 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 				state: "failure",
 				description: `3 findings, 1 blocking, 0 unresolved acknowledgements; base ${changeset.revision.base}`,
 				context: statusContext,
+				creator: { login: state.login, type: "User" },
 			},
 			{
 				sha: head,
 				state: "failure",
 				description: `3 findings, 1 blocking, 0 unresolved acknowledgements; base ${changeset.revision.base}`,
 				context: statusContext,
+				creator: { login: state.login, type: "User" },
 				target_url: state.ledgers[0]!.html_url,
 			},
 		]);
@@ -418,6 +420,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 			state: "failure",
 			description: `2 findings, 0 blocking, 1 unresolved acknowledgement; base ${second.changeset.revision.base}`,
 			context: statusContext,
+			creator: { login: state.login, type: "User" },
 		});
 		// Counts cover the run: publishing the head again resolves nothing more.
 		expect(await publish(github, second.changeset)).toMatchObject({
@@ -459,6 +462,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 			state: "success",
 			description: `2 findings, none blocking; base ${changeset.revision.base}`,
 			context: statusContext,
+			creator: { login: state.login, type: "User" },
 		});
 		const replies = state.comments.filter((comment) => comment.in_reply_to_id !== undefined);
 		expect(replies).toHaveLength(1);
@@ -641,6 +645,43 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(state.statuses.at(-1)).toMatchObject({ target_url: copy.html_url });
 	});
 
+	it.each([
+		{ label: "bot", creator: { login: "some-app[bot]", type: "Bot" } },
+		{ label: "non-writer", creator: { login: "former-writer", type: "User" } },
+		{ label: "bot with matching login", creator: { login: "melian-user", type: "Bot" } },
+		{ label: "deleted creator", creator: null },
+	])("repairs an identical $label status over a settled publication", async ({ creator }) => {
+		const { github, changeset, state } = await reviewedRevisionOne(lensScript());
+		await publish(github, changeset);
+		state.permissions = { "former-writer": "read", [state.login]: "write" };
+		state.statuses.push({ ...state.statuses.at(-1)!, creator });
+		state.calls = [];
+		await publish(github, changeset);
+		expect(posts(state)).toEqual([
+			expect.objectContaining({ path: `/repos/melian-agent/example/statuses/${changeset.revision.head}` }),
+		]);
+		const latest = await github.mergeGroupReview(changeset.revision.head, new AbortController().signal);
+		expect(latest).toMatchObject({
+			state: "success",
+			creator: { login: state.login, type: "User" },
+			description: `Passed; base ${changeset.revision.base}`,
+			target_url: state.ledgers[0]!.html_url,
+		});
+		expect(await github.mergeGroupPermission(latest!.creator!.login, new AbortController().signal)).toBe("write");
+	});
+
+	it("keeps installation-token status deduplication after a review teaches its author", async () => {
+		const { github, changeset, state } = await reviewedRevisionOne(lensScript());
+		state.failUser = true;
+		state.login = "installation[bot]";
+		state.actorType = "Bot";
+		await publish(github, changeset);
+		state.calls = [];
+		await publish(github, changeset);
+		expect(posts(state)).toEqual([]);
+		expect(state.statuses.at(-1)!.creator).toEqual({ login: state.login, type: "Bot" });
+	});
+
 	it.each(["missing", "another base"])(
 		"refreshes a settled publication whose status has %s reviewed base",
 		async (kind) => {
@@ -677,6 +718,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 			state: "error",
 			description: "ledger unavailable; restore storage or delete the ledger comment by hand",
 			context: statusContext,
+			creator: { login: state.login, type: "User" },
 			target_url: state.ledgers[0]!.html_url,
 		});
 		expect((await readPublished(harness!, root, head, context))?.status).toEqual(recorded?.status);
