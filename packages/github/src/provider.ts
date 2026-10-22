@@ -678,10 +678,8 @@ export class GitHubProvider implements ReviewProvider {
 		// Only the prose is cut: a cut suffix could leave a prefix git still accepts as the reviewed base.
 		const suffix = reviewedBase === undefined ? "" : `; base ${reviewedBase}`;
 		const room = maxDescription - suffix.length;
-		const prose =
-			status.description.length <= room
-				? status.description
-				: `${status.description.slice(0, room - 1).replace(/[\ud800-\udbff]$/, "")}…`;
+		const text = status.description.toWellFormed();
+		const prose = text.length <= room ? text : `${text.slice(0, room - 1).replace(/[\ud800-\udbff]$/, "")}…`;
 		const description = `${prose}${suffix}`;
 		await call(`set the status of ${revision}`, () =>
 			this.octokit.rest.repos.createCommitStatus({
