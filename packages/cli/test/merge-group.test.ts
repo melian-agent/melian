@@ -118,6 +118,7 @@ describe("merge group's own pull request status", () => {
 			"GET /repos/owner/repo/collaborators/melian-user/permission",
 			`POST /repos/owner/repo/statuses/${f.group}`,
 		]);
+		expect(f.io.stdout.mock.calls).toEqual([["PR #7: reviewed head and base verified\n"]]);
 	});
 	it("2: rejects another event before any read", async () => {
 		const f = fixture();
@@ -386,9 +387,45 @@ describe("merge group's own pull request status", () => {
 		expect(f.posted()[0]).toMatchObject({ state: "failure", description: expect.stringContaining("read deadline") });
 	});
 
-	it.each(["missing", "newline", "uppercase"])("refuses a %s destination", async (kind) => {
+	it.each([
+		["pull request", "/pulls/7"],
+		["permission", "/permission"],
+	])("passes the command deadline to the %s read", async (_name, suffix) => {
+		const f = fixture();
+		const controller = new AbortController();
+		vi.spyOn(AbortSignal, "timeout").mockReturnValue(controller.signal);
+		const transport = fakeGitHub(f.state);
+		const provider = createGitHubProvider({
+			owner: "owner",
+			repo: "repo",
+			token: "fake",
+			fetch: async (input, init) => {
+				if (!new URL(String(input)).pathname.endsWith(suffix)) return transport(input, init);
+				const signal = init?.signal;
+				if (signal === undefined || signal === null) throw new Error("read without a deadline");
+				return new Promise((_resolve, reject) => {
+					if (signal.aborted) reject(new Error("read deadline"));
+					signal.addEventListener("abort", () => reject(new Error("read deadline")), { once: true });
+					controller.abort();
+				});
+			},
+		});
+		writeFileSync(f.env.GITHUB_EVENT_PATH, JSON.stringify(f.event));
+		expect(await (await MergeGroupStatus.load(f.io, { provider })).post()).toBe(1);
+		expect(f.posted()).toEqual([
+			expect.objectContaining({ state: "failure", description: expect.stringContaining("read deadline") }),
+		]);
+	});
+	it("returns exactly the rules and statuses GitHub lists", async () => {
+		const f = fixture();
+		const signal = new AbortController().signal;
+		expect(await f.provider.mergeGroupRules(signal)).toEqual([queueRule]);
+		expect(await f.provider.mergeGroupReview(f.head, signal)).toEqual(f.state.statuses[0]);
+	});
+	it.each(["missing", "newline", "uppercase", "groupless"])("refuses a %s destination", async (kind) => {
 		const f = fixture();
 		if (kind === "missing") Reflect.deleteProperty(f.event.merge_group, "head_sha");
+		if (kind === "groupless") Reflect.deleteProperty(f.event, "merge_group");
 		if (kind === "newline") f.event.merge_group.head_sha += "\n";
 		if (kind === "uppercase") f.event.merge_group.head_sha = "A".repeat(40);
 		await expect(f.post()).rejects.toThrow("full lowercase SHA");
