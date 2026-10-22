@@ -227,7 +227,7 @@ export interface ReviewProvider {
 	/** Creates or edits the ledger, reading its stamp before a write. */
 	writeLedger(draft: LedgerDraft): Promise<PostedLedger>;
 	/** Sets the review's status on a commit. Setting it again replaces it. */
-	setStatus(revision: string, status: ReviewStatus, ledgerUrl?: string): Promise<void>;
+	setStatus(revision: string, status: ReviewStatus, ledgerUrl?: string, reviewedBase?: string): Promise<void>;
 	/** Reads the latest review status on a commit. */
 	getStatus(revision: string): Promise<{ readonly state: string; readonly targetUrl?: string } | undefined>;
 	/**

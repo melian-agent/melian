@@ -634,7 +634,7 @@ function publishTask(provider: ReviewProvider) {
 						(await read()).revisions[head]?.status?.description !== status.description ||
 						shown.targetUrl !== ledgerUrl
 					)
-						await provider.setStatus(head, status, ledgerUrl);
+						await provider.setStatus(head, status, ledgerUrl, base);
 					await runtime.commit(async (tx) => {
 						const document = await tx.doc(PublishedDocument, root);
 						if (!document.order.includes(head)) document.order = [...document.order, head];
@@ -1028,7 +1028,7 @@ function publishTask(provider: ReviewProvider) {
 						try {
 							await revalidate();
 							const ledgerUrl = (await runtime.snapshot(LedgerDocument, root, context))?.comment?.url;
-							await provider.setStatus(head, failed, ledgerUrl);
+							await provider.setStatus(head, failed, ledgerUrl, base);
 							shown = failed;
 						} catch {}
 					}

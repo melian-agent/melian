@@ -331,13 +331,13 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 			{
 				sha: head,
 				state: "failure",
-				description: "3 findings, 1 blocking, 0 unresolved acknowledgements",
+				description: `3 findings, 1 blocking, 0 unresolved acknowledgements; base ${changeset.revision.base}`,
 				context: statusContext,
 			},
 			{
 				sha: head,
 				state: "failure",
-				description: "3 findings, 1 blocking, 0 unresolved acknowledgements",
+				description: `3 findings, 1 blocking, 0 unresolved acknowledgements; base ${changeset.revision.base}`,
 				context: statusContext,
 				target_url: state.ledgers[0]!.html_url,
 			},
@@ -416,7 +416,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 			target_url: state.ledgers[0]!.html_url,
 			sha: head,
 			state: "failure",
-			description: "2 findings, 0 blocking, 1 unresolved acknowledgement",
+			description: `2 findings, 0 blocking, 1 unresolved acknowledgement; base ${second.changeset.revision.base}`,
 			context: statusContext,
 		});
 		// Counts cover the run: publishing the head again resolves nothing more.
@@ -457,7 +457,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 			target_url: state.ledgers[0]!.html_url,
 			sha: head,
 			state: "success",
-			description: "2 findings, none blocking",
+			description: `2 findings, none blocking; base ${changeset.revision.base}`,
 			context: statusContext,
 		});
 		const replies = state.comments.filter((comment) => comment.in_reply_to_id !== undefined);
@@ -664,7 +664,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(state.statuses.at(-1)).toMatchObject({
 			sha: head,
 			state: "success",
-			description: recorded!.status!.description,
+			description: `${recorded!.status!.description}; base ${changeset.revision.base}`,
 			target_url: state.ledgers[0]!.html_url,
 		});
 	});
@@ -706,7 +706,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(state.reviews[1]!.body).toContain("src/config.ts");
 		expect(state.statuses.at(-1)).toMatchObject({
 			state: "failure",
-			description: "3 findings, 1 blocking, 0 unresolved acknowledgements",
+			description: `3 findings, 1 blocking, 0 unresolved acknowledgements; base ${changeset.revision.base}`,
 		});
 		const before = posts(state).length;
 		expect(await publish(github, changeset)).toMatchObject({ posted: 0 });
@@ -739,7 +739,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		);
 		expect(state.statuses.at(-1)).toMatchObject({
 			state: "failure",
-			description: "3 findings, 1 blocking, 0 unresolved acknowledgements",
+			description: `3 findings, 1 blocking, 0 unresolved acknowledgements; base ${changeset.revision.base}`,
 		});
 	});
 
@@ -761,7 +761,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(state.reviews[1]!.body).toContain("**findings, blocking**");
 		expect(state.statuses.at(-1)).toMatchObject({
 			state: "failure",
-			description: "3 findings, 1 blocking, 0 unresolved acknowledgements",
+			description: `3 findings, 1 blocking, 0 unresolved acknowledgements; base ${changeset.revision.base}`,
 		});
 	});
 
@@ -770,6 +770,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		async (trustedWriters) => {
 			const { github, changeset, state } = await reviewedRevisionOne();
 			state.failReviews = true;
+			state.reviewFailureMessage = "Error";
 			const refusals = [];
 			for (let attempt = 0; attempt < 3; attempt++) {
 				refusals.push(await publish(github, changeset, trustedWriters).catch((error: unknown) => error));
@@ -784,15 +785,17 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 				state: "error",
 				description: trustedWriters
 					? expect.stringMatching(/^review could not be posted: GitHub refused to post a review/)
-					: "not reviewed here: writers are not trusted; a trusted host sets this status",
+					: `not reviewed here: writers are not trusted; a trusted host sets this status; base ${changeset.revision.base}`,
 			});
+			expect(state.statuses.at(-1)!.description).toMatch(new RegExp(`; base ${changeset.revision.base}$`));
 			if (!trustedWriters) {
 				expect(state.statuses).toHaveLength(2);
 				expect(
 					state.statuses.every(
 						({ state: value, description }) =>
 							value === "error" &&
-							description === "not reviewed here: writers are not trusted; a trusted host sets this status",
+							description ===
+								`not reviewed here: writers are not trusted; a trusted host sets this status; base ${changeset.revision.base}`,
 					),
 				).toBe(true);
 			}
@@ -811,8 +814,8 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 			expect(state.statuses.at(-1)).toMatchObject({
 				state: trustedWriters ? "failure" : "error",
 				description: trustedWriters
-					? "3 findings, 1 blocking, 0 unresolved acknowledgements"
-					: "not reviewed here: writers are not trusted; a trusted host sets this status",
+					? `3 findings, 1 blocking, 0 unresolved acknowledgements; base ${changeset.revision.base}`
+					: `not reviewed here: writers are not trusted; a trusted host sets this status; base ${changeset.revision.base}`,
 			});
 		},
 	);

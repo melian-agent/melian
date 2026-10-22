@@ -664,11 +664,11 @@ export class GitHubProvider implements ReviewProvider {
 			: { state: status.state, ...(status.target_url === null ? {} : { targetUrl: status.target_url }) };
 	}
 
-	async setStatus(revision: string, status: ReviewStatus, ledgerUrl?: string): Promise<void> {
+	async setStatus(revision: string, status: ReviewStatus, ledgerUrl?: string, reviewedBase?: string): Promise<void> {
 		const description =
-			status.description.length <= maxDescription
-				? status.description
-				: `${status.description.slice(0, maxDescription - 1)}…`;
+			reviewedBase === undefined ? status.description : `${status.description}; base ${reviewedBase}`;
+		if (description.length > maxDescription)
+			throw new GitHubError("failed", "commit status description exceeds 140 characters; refusing to cut it");
 		await call(`set the status of ${revision}`, () =>
 			this.octokit.rest.repos.createCommitStatus({
 				owner: this.owner,

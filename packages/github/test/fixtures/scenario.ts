@@ -222,7 +222,7 @@ export async function reviewScenario(
 	const ref = fake.ref("scripted");
 	const route = { model: `${ref.provider}/${ref.modelId}` };
 	// The scenarios script correctness and contracts; the default full tier's other lenses have goldens of their own.
-	const tiers = { ...loaded.tiers, full: ["standard", "lens.contracts"] };
+	const tiers = { ...loaded.tiers, fast: ["guardrails", "static"], full: ["standard", "lens.contracts"] };
 	const config: MelianConfig = { ...loaded, tiers, models: { light: route, medium: route, heavy: route } };
 	const review = reviewChangeset({
 		harness,
