@@ -32,7 +32,7 @@ afterEach(async () => {
 	rmSync(repo, { recursive: true, force: true });
 });
 
-it("a passing head whose review is abandoned after three refusals cannot enter a merge group", async () => {
+async function scenario(how: Parameters<typeof reviewScenario>[5] = {}) {
 	const fake = scenarioModels();
 	const state = pullRequestState();
 	state.branchRules = [{ type: "merge_queue", parameters: { grouping_strategy: "ALLGREEN", merge_method: "MERGE" } }];
@@ -43,7 +43,7 @@ it("a passing head whose review is abandoned after three refusals cannot enter a
 		fetch: fakeGitHub(state),
 	});
 	harness = await openPublishHarness(createMemoryStorage(), fake, provider);
-	const { changeset, review } = await reviewScenario(repo, harness, fake, lensScript());
+	const { changeset, review } = await reviewScenario(repo, harness, fake, lensScript(), false, how);
 	await review;
 	moveTo(state, changeset);
 	const { base, head } = changeset.revision;
@@ -82,6 +82,11 @@ it("a passing head whose review is abandoned after three refusals cannot enter a
 		color: false,
 	};
 	const mergeGroup = async () => (await MergeGroupStatus.load(io, { provider })).post();
+	return { state, base, head, group, publish, mergeGroup };
+}
+
+it("a passing head whose review is abandoned after three refusals cannot enter a merge group", async () => {
+	const { state, base, head, group, publish, mergeGroup } = await scenario();
 
 	state.failReviews = true;
 	await expect(publish()).rejects.toThrow("Server Error");
@@ -105,4 +110,35 @@ it("a passing head whose review is abandoned after three refusals cannot enter a
 	await publish();
 	expect(state.statuses.at(-1)).toMatchObject({ sha: head, state: "success" });
 	expect(await mergeGroup()).toBe(0);
+});
+
+it("a not-reviewed head whose description must be cut replaces an earlier success", async () => {
+	const reasonFor = (length: number) => "x".repeat(length - "Not reviewed: static.biome failed ()".length);
+	const { state, base, head, group, publish, mergeGroup } = await scenario({
+		checks: [
+			{ name: "guardrails", status: "ran" },
+			{ name: "static.biome", status: "failed", reason: reasonFor(112) },
+			{ name: "static.tsc", status: "ran" },
+		],
+	});
+	state.statuses.push({
+		sha: head,
+		state: "success",
+		context: "melian/review",
+		creator: { login: state.login, type: "User" },
+		description: `Passed; base ${base}`,
+		target_url: "https://github.com/melian-agent/example/pull/7",
+	});
+	expect(await mergeGroup()).toBe(0);
+
+	await publish();
+
+	const description = `Not reviewed: static.biome failed (${reasonFor(112)})`;
+	expect(description).toHaveLength(112);
+	expect(state.statuses.filter((status) => status.sha === head).at(-1)).toMatchObject({
+		state: "error",
+		description: `${description.slice(0, 92)}…; base ${base}`,
+	});
+	expect(await mergeGroup()).toBe(1);
+	expect(state.statuses.at(-1)).toMatchObject({ sha: group, state: "failure" });
 });

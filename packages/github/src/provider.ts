@@ -675,10 +675,12 @@ export class GitHubProvider implements ReviewProvider {
 	}
 
 	async setStatus(revision: string, status: ReviewStatus, ledgerUrl?: string, reviewedBase?: string): Promise<void> {
-		const description =
-			reviewedBase === undefined ? status.description : `${status.description}; base ${reviewedBase}`;
-		if (description.length > maxDescription)
-			throw new GitHubError("failed", "commit status description exceeds 140 characters; refusing to cut it");
+		// Only the prose is cut: a cut suffix could leave a prefix git still accepts as the reviewed base.
+		const suffix = reviewedBase === undefined ? "" : `; base ${reviewedBase}`;
+		const room = maxDescription - suffix.length;
+		const prose =
+			status.description.length <= room ? status.description : `${status.description.slice(0, room - 1)}…`;
+		const description = `${prose}${suffix}`;
 		await call(`set the status of ${revision}`, () =>
 			this.octokit.rest.repos.createCommitStatus({
 				owner: this.owner,

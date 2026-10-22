@@ -35,17 +35,22 @@ describe("reviewed base in the published status", () => {
 			},
 		]);
 	});
-	it.each([140, 141])("17: accepts exactly 140 characters and refuses %i without cutting", async (length) => {
+	it.each([93, 94])(
+		"17: cuts a %i-character prose prefix to fit 140 and keeps the base suffix whole",
+		async (length) => {
+			const f = fixture();
+			const description = "x".repeat(length);
+			await f.provider.setStatus(f.head, { state: "failure", description }, undefined, f.base);
+			const posted = f.state.statuses[0]!.description;
+			expect(posted).toBe(`${length === 93 ? description : `${"x".repeat(92)}…`}; base ${f.base}`);
+			expect(posted).toHaveLength(140);
+		},
+	);
+	it.each([140, 141])("cuts a %i-character description without a reviewed base to 140", async (length) => {
 		const f = fixture();
-		const description = "x".repeat(length - 47);
-		const posting = f.provider.setStatus(f.head, { state: "failure", description }, undefined, f.base);
-		if (length === 140) {
-			await posting;
-			expect(f.state.statuses[0]!.description).toBe(`${description}; base ${f.base}`);
-		} else {
-			await expect(posting).rejects.toMatchObject({ code: "failed", message: expect.stringContaining("140") });
-			expect(f.state.calls).toEqual([]);
-		}
+		const description = "x".repeat(length);
+		await f.provider.setStatus(f.head, { state: "failure", description });
+		expect(f.state.statuses[0]!.description).toBe(length === 140 ? description : `${"x".repeat(139)}…`);
 	});
 	it("reads only the latest status for an optional reviewed base", async () => {
 		const f = fixture();

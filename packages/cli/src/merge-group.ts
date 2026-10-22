@@ -63,7 +63,7 @@ export class MergeGroupStatus {
 		const run = `${this.io.env.GITHUB_SERVER_URL ?? "https://github.com"}/${this.provider.owner}/${this.provider.repo}/actions/runs/${this.io.env.GITHUB_RUN_ID}`;
 		await this.provider.setStatus(
 			this.head,
-			{ state: reason === undefined ? "success" : "failure", description: description.slice(0, 140) },
+			{ state: reason === undefined ? "success" : "failure", description },
 			run,
 		);
 		this.io.stdout(`${description}\n`);

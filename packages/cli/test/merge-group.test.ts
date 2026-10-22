@@ -543,7 +543,8 @@ describe("merge group's own pull request status", () => {
 		});
 		writeFileSync(f.env.GITHUB_EVENT_PATH, JSON.stringify(f.event));
 		expect(await (await MergeGroupStatus.load(f.io, { provider })).post()).toBe(1);
-		expect(f.posted()[0]!.description).toBe((prefix + message).slice(0, 140));
+		const whole = prefix + message;
+		expect(f.posted()[0]!.description).toBe(length === 140 ? whole : `${whole.slice(0, 139)}…`);
 	});
 
 	it("dispatches the command and requires merge-group as its subcommand", async () => {
