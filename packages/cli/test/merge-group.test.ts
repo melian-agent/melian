@@ -250,26 +250,37 @@ describe("merge group's own pull request status", () => {
 		f.state.statuses[0]!.target_url = "https://github.com/owner/repo/pull/7";
 		expect(await f.post()).toBe(0);
 	});
-	it.each(["no base", "short SHA", "uppercase", "ref", "two SHAs", "text after", "cut", "newline", "wrong separator"])(
-		"15: rejects reviewed base with %s",
-		async (kind) => {
-			const f = fixture();
-			const sha = f.reviewed;
-			const descriptions: Record<string, string> = {
-				"no base": "0 findings",
-				"short SHA": `0 findings; base ${sha.slice(0, 39)}`,
-				uppercase: `0 findings; base ${"A".repeat(40)}`,
-				ref: "0 findings; base HEAD~1",
-				"two SHAs": `0 findings; base ${sha} ${sha}`,
-				"text after": `0 findings; base ${sha} extra`,
-				cut: `0 findings; base ${sha}…`,
-				newline: `0 findings; base ${sha}\n`,
-				"wrong separator": `0 findings base ${sha}`,
-			};
-			f.state.statuses[0]!.description = descriptions[kind]!;
-			await f.fails("exact reviewed base suffix");
-		},
-	);
+	it.each([
+		"no base",
+		"short SHA",
+		"uppercase",
+		"ref",
+		"two SHAs",
+		"text after",
+		"cut",
+		"newline",
+		"wrong separator",
+		"a head suffix before it",
+		"a doubled suffix",
+	])("15: rejects reviewed base with %s", async (kind) => {
+		const f = fixture();
+		const sha = f.reviewed;
+		const descriptions: Record<string, string> = {
+			"no base": "0 findings",
+			"short SHA": `0 findings; base ${sha.slice(0, 39)}`,
+			uppercase: `0 findings; base ${"A".repeat(40)}`,
+			ref: "0 findings; base HEAD~1",
+			"two SHAs": `0 findings; base ${sha} ${sha}`,
+			"text after": `0 findings; base ${sha} extra`,
+			cut: `0 findings; base ${sha}…`,
+			newline: `0 findings; base ${sha}\n`,
+			"wrong separator": `0 findings base ${sha}`,
+			"a head suffix before it": `0 findings; base ${f.head}; base ${sha}`,
+			"a doubled suffix": `0 findings; base ${sha}; base ${sha}`,
+		};
+		f.state.statuses[0]!.description = descriptions[kind]!;
+		await f.fails("exact reviewed base suffix");
+	});
 	it("16: rejects a known reviewed base outside the group's ancestry", async () => {
 		const f = fixture();
 		f.state.statuses[0]!.description = `0 findings; base ${f.head}`;

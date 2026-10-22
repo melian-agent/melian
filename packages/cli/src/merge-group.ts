@@ -107,8 +107,10 @@ export class MergeGroupStatus {
 		const pull = `https://github.com/${this.provider.owner}/${this.provider.repo}/pull/${this.number}`;
 		if (target !== pull && !target.startsWith(`${pull}#`))
 			throw new CliError("head status target names another pull request");
-		const reviewed = /; base ([0-9a-f]{40})$/.exec(status.description ?? "");
-		if (reviewed === null) throw new CliError("head status lacks the exact reviewed base suffix");
+		const description = status.description ?? "";
+		const reviewed = /; base ([0-9a-f]{40})$/.exec(description);
+		if (reviewed === null || description.indexOf("; base ") !== reviewed.index)
+			throw new CliError("head status lacks the exact reviewed base suffix");
 		await git(this.io.cwd, ["merge-base", "--is-ancestor", reviewed[1]!, this.base]).catch(() => {
 			throw new CliError("reviewed base is not a known ancestor of base_sha");
 		});
