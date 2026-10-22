@@ -4,6 +4,6 @@ An attacking review of [pull request #168](https://github.com/melian-agent/melia
 
 `setStatus` now drops a trailing high surrogate from the cut prose before it adds "…". The result stays within 140 UTF-16 units, which is never fewer than GitHub's count of code points. The test puts a non-BMP character exactly at the cut, with and without a reviewed base, and a third keeps an earlier whole emoji.
 
-The same review found test 15 ambiguous. [A new decision](../decisions/2026-10-23-status-cut-by-code-point.md) amends it: only a cut suffix fails, not cut prose.
+The same review found test 15 ambiguous. [A new decision](../decisions/2026-10-23-status-description-well-formed.md) amends it: only a cut suffix fails, not cut prose.
 
 A review of that fix found a lone surrogate already in the input still reached GitHub: on the no-cut path, or earlier in cut prose. `setStatus` now calls `toWellFormed()` on the description before it measures and cuts it, and keeps the trailing-surrogate step for a cut inside a valid pair.
