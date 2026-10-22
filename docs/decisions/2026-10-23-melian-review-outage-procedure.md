@@ -10,7 +10,7 @@ Why: the bypass the earlier decision describes does not work, and the alternativ
 
 The earlier decision lets an admin merge directly when no head can get `success`. It prefers a split, with the `check (…)` jobs in one ruleset and `melian/review` in a second that alone carries the bypass, and leaves the split unproven.
 
-A test on a scratch repository ([report](../../tmp/m2/option-b-test.md)) ran both layouts.
+A test on a scratch repository on 2026-10-22 ran both layouts.
 
 ## Evidence
 
