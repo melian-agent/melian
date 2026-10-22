@@ -383,7 +383,12 @@ function planRound(
 	// A dismissal's thread is not restored: a finding that returns after its dismissal reopened is posted afresh.
 	for (const { addressedIn: _, ...entry } of Object.values(owed)) {
 		const { id } = entry;
-		if (entry.dismissal === undefined && returned.has(id) && !settled.has(entry.thread) && !Object.hasOwn(base, id))
+		if (
+			entry.dismissal === undefined &&
+			returned.has(id) &&
+			!settled.has(entry.thread) &&
+			(!Object.hasOwn(base, id) || base[id]!.thread === undefined)
+		)
 			base[id] = entry;
 	}
 	const plan = verdict.publication(base, lines, head);

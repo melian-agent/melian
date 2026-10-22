@@ -129,4 +129,27 @@ describe("advisory publication", { timeout: 60_000 }, () => {
 			expect(posts(state)).toHaveLength(before);
 		},
 	);
+
+	it.each(["advisory", "gone"] as const)(
+		"restores an owed thread when the finding is raised again after %s",
+		async (interrupted) => {
+			const { state, review, publish } = await session();
+			await publish((await review("acknowledge")).changeset);
+			const thread = state.comments[0]!.id;
+			state.failReplies = true;
+			await expect(publish((await review(interrupted)).changeset)).rejects.toMatchObject({ code: "publishFailed" });
+			state.failReplies = false;
+			const raised = await review("acknowledge");
+			await publish(raised.changeset);
+			const roots = () =>
+				state.comments.filter((comment) => comment.in_reply_to_id === undefined).map((each) => each.id);
+			expect(roots()).toEqual([thread]);
+			expect(state.resolvedThreads).toEqual([]);
+			expect(state.comments.map((each) => each.body).join("\n")).not.toContain("Addressed in");
+			const before = posts(state).length;
+			await publish(raised.changeset);
+			expect(posts(state)).toHaveLength(before);
+			expect(roots()).toEqual([thread]);
+		},
+	);
 });
