@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
-import type { Changeset } from "@melian-agent/core";
+import { Changeset } from "@melian-agent/core";
 import { createGitHubProvider, statusContext } from "@melian-agent/github";
 import {
 	backgroundContext as context,
@@ -19,8 +19,12 @@ import {
 	revisionKey,
 } from "@melian-agent/pipeline";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { LedgerDocument, PublishedDocument } from "../../pipeline/src/publish.ts";
+import { VerdictDocument } from "../../pipeline/src/adjudication.ts";
+import { FindingsDocument } from "../../pipeline/src/findings.ts";
+import { LedgerDocument, PublishedDocument, PublisherDocument } from "../../pipeline/src/publish.ts";
 import { TimingDocument } from "../../pipeline/src/task-timing.ts";
+import { RecordedReview } from "../../pipeline/test/fixtures/recorded-review.ts";
+import advisoryCrash from "./fixtures/advisory-crash-main.json" with { type: "json" };
 import { type FakeState, fakeGitHub, posts } from "./fixtures/fake-github.ts";
 import {
 	emptyName,
@@ -530,13 +534,15 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 			});
 
 			expect(state.reviews).toHaveLength(1);
+			expect(state.comments).toHaveLength(1);
+			expect(state.reviews[0]!.body).toContain(`/blob/${changeset.revision.head}/src/user.ts#L19`);
 			// The recovered review is not reposted; the remaining ledger and status link are new writes.
 			expect(posts(state).map(({ path }) => path)).toEqual([
 				"/repos/melian-agent/example/issues/7/comments",
 				`/repos/melian-agent/example/statuses/${head}`,
 			]);
 			expect(state.ledgers).toHaveLength(1);
-			expect(result).toMatchObject({ review: String(state.reviews[0]!.id), posted: 0 });
+			expect(result).toMatchObject({ review: String(state.reviews[0]!.id), posted: 0, resolved: 0 });
 			const recorded = await readPublished(harness, (await harness.root(context)).id, head, context);
 			expect(recorded?.review).toBe(String(state.reviews[0]!.id));
 			expect(Object.values(recorded!.threads).sort()).toEqual(
@@ -548,6 +554,69 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 			]);
 		},
 	);
+
+	it("retires an acknowledgement lowered to advisory after a crash before its addressed edit", async () => {
+		const database = join(dir, "advisory.sqlite");
+		const stateFile = join(dir, "advisory-github.json");
+		const log = join(dir, "advisory-publish.log");
+		const fake = scenarioModels();
+		const state = pullRequestState();
+		let github = providerFor(state);
+		harness = await openPublishHarness(await openSqliteStorage(database), fake, github);
+		const acknowledge = {
+			...emptyName,
+			arguments: { ...emptyName.arguments, evidence: [{ file: "src/user.ts", line: 7, role: "cause" }] },
+		};
+		const first = await reviewScenario(repo, harness, fake, lensScript(acknowledge));
+		await first.review;
+		moveTo(state, first.changeset);
+		await publishReview({
+			trustedWriters: true,
+			harness,
+			provider: github,
+			changeset: first.changeset,
+			pullRequest: await github.pullRequest(7),
+			base: first.changeset.revision.base,
+		});
+		const thread = state.comments[0]!.id;
+		await harness.close(context);
+		gitIn(repo, "commit", "--quiet", "--allow-empty", "-m", "lower finding");
+		harness = await openReviewOnlyHarness(await openSqliteStorage(database), fake);
+		const second = await reviewScenario(repo, harness, fake, lensScript(emptyName));
+		await second.review;
+		await harness.close(context);
+		harness = undefined;
+		moveTo(state, second.changeset);
+		writeFileSync(stateFile, JSON.stringify(state));
+		await killAtReview(database, stateFile, log, "address-requested");
+		const recovered = JSON.parse(readFileSync(stateFile, "utf8")) as FakeState;
+		expect(recovered.comments).toHaveLength(1);
+		expect(recovered.resolvedThreads).toEqual([]);
+		github = providerFor(recovered);
+		harness = (await openPublisher(await openSqliteStorage(database), fake.review, github)).harness;
+		await publishReview({
+			trustedWriters: true,
+			harness,
+			provider: github,
+			changeset: second.changeset,
+			pullRequest: await github.pullRequest(7),
+			base: second.changeset.revision.base,
+		});
+		expect(recovered.comments).toHaveLength(1);
+		expect(recovered.resolvedThreads).toEqual([thread]);
+		expect(recovered.reviews).toHaveLength(2);
+		expect(recovered.reviews[1]!.body).toContain(`/blob/${second.changeset.revision.head}/src/user.ts#L19`);
+		const before = posts(recovered).length;
+		await publishReview({
+			trustedWriters: true,
+			harness,
+			provider: github,
+			changeset: second.changeset,
+			pullRequest: await github.pullRequest(7),
+			base: second.changeset.revision.base,
+		});
+		expect(posts(recovered)).toHaveLength(before);
+	});
 
 	it("ends a publication a crash left from before a retarget without posting, and posts the new review once", async () => {
 		stackOnParent(repo);
@@ -671,4 +740,67 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 			expect(recorded?.comment).toMatchObject({ id: String(id), stamp: { head: second.changeset.revision.head } });
 		},
 	);
+
+	it("resolves the advisory thread the previous build posted before a crash, rather than keeping it open", async () => {
+		const changeset = Changeset.from(advisoryCrash.changeset as Parameters<typeof Changeset.from>[0]);
+		const head = changeset.revision.head;
+		const state: FakeState = { ...structuredClone(advisoryCrash.state), lines: changeset.revision.diffLines() };
+		const [advisory] = state.comments;
+		const github = providerFor(state);
+		const path = join(dir, "advisory-main.sqlite");
+		let opened = await RecordedReview.open(await openSqliteStorage(path), scenarioModels().review, github);
+		try {
+			const root = await opened.harness.root(context);
+			await root.commit(async (tx) => {
+				Object.assign(await tx.doc(FindingsDocument, root.id), advisoryCrash.findings);
+				// The recorded decision names the review's adjudication task, which RecordedReview's task stands in for.
+				const { decisions: _, ...verdicts } = advisoryCrash.verdicts;
+				Object.assign(await tx.doc(VerdictDocument, root.id), verdicts);
+				Object.assign(await tx.doc(PublishedDocument, root.id), advisoryCrash.published);
+				Object.assign(await tx.doc(PublisherDocument, root.id), advisoryCrash.publisher);
+			}, context);
+			await opened.record(revisionKey(changeset.revision));
+			await opened.close(context);
+			opened = await RecordedReview.open(await openSqliteStorage(path), scenarioModels().review, github);
+			const publish = async () =>
+				publishReview({
+					trustedWriters: true,
+					harness: opened.harness,
+					provider: github,
+					changeset,
+					pullRequest: await github.pullRequest(7),
+					base: changeset.revision.base,
+				});
+
+			const result = await publish();
+
+			const stored = await opened.harness.snapshot(
+				PublishedDocument,
+				(await opened.harness.root(context)).id,
+				context,
+			);
+			const id = Object.values(advisoryCrash.verdicts.verdicts)[0]!.findings.advisory[0]!.properties.id;
+			expect(stored!.revisions[head]!.open[id]).not.toHaveProperty("thread");
+			expect(Object.values(stored!.revisions[head]!.resolved)).toEqual([
+				{
+					id,
+					ruleId: "wrong-result",
+					path: "src/user.ts",
+					line: 19,
+					revision: head,
+					thread: String(advisory!.id),
+					addressedIn: head,
+				},
+			]);
+			expect(state.resolvedThreads).toEqual([advisory!.id]);
+			expect(result).toMatchObject({ review: String(state.reviews[0]!.id), posted: 0, resolved: 1 });
+			expect(state.reviews).toHaveLength(1);
+			const writes = posts(state).length;
+			await publish();
+			expect(state.resolvedThreads).toEqual([advisory!.id]);
+			expect(posts(state)).toHaveLength(writes);
+		} finally {
+			await opened.close(context);
+		}
+	});
 });

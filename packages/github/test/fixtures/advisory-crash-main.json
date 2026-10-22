@@ -1,0 +1,968 @@
+{
+  "writtenBy": "9923246b7814e487f7cc102db68551a7017c9242",
+  "changeset": {
+    "kind": "range",
+    "id": "range-8fb67dfe2bac6ead",
+    "repoRoot": "/private/var/folders/db/mtn64lld7g971ck9kfq26xyc0000gn/T/melian-publish-ZvgcPC",
+    "spec": {
+      "base": "main",
+      "head": "feature",
+      "mode": "threeDot"
+    },
+    "revision": {
+      "head": "35d9c12ceffff2bc29910e101084785251da255c",
+      "base": "bdf57d4a49fd9929d9ec15114236bd5846f57ede",
+      "files": [
+        {
+          "status": "modified",
+          "path": "src/user.ts",
+          "oldMode": "100644",
+          "oldKind": "file",
+          "newMode": "100644",
+          "newKind": "file",
+          "binary": false,
+          "hunks": [
+            {
+              "file": "src/user.ts",
+              "index": 0,
+              "oldStart": 7,
+              "oldLines": 1,
+              "newStart": 7,
+              "newLines": 1,
+              "header": "@@ -7 +7 @@ export function managerName(user: User): string {",
+              "text": "-\treturn user.manager?.name ?? \"none\";\n+\treturn (user.manager as User).name;"
+            }
+          ]
+        }
+      ],
+      "policyFiles": []
+    }
+  },
+  "state": {
+    "owner": "melian-agent",
+    "repo": "example",
+    "login": "melian-user",
+    "pull": {
+      "number": 7,
+      "title": "Trim names",
+      "base": {
+        "ref": "main",
+        "sha": "bdf57d4a49fd9929d9ec15114236bd5846f57ede"
+      },
+      "head": {
+        "ref": "feature",
+        "sha": "35d9c12ceffff2bc29910e101084785251da255c"
+      }
+    },
+    "lines": {
+      "src/user.ts": [
+        [
+          7,
+          7
+        ]
+      ]
+    },
+    "reviews": [
+      {
+        "id": 1001,
+        "user": {
+          "login": "melian-user"
+        },
+        "body": "<!-- melian:revision=35d9c12ceffff2bc29910e101084785251da255c verdict=70558ea5685f2e19 round=1 sig=aacd7032259cd2518a0830c18f12a68d -->\nMelian reviewed `35d9c12cefff`: **findings**.\n\n1 finding needs attention: 1 advisory. Verification: 1 confirmed, 0 plausible, 0 refuted, 0 unverified; 0 refuted findings not posted.\n\nmelian/review: success (1 finding, none blocking).\n\nChecks that did not run:\n\n- `decisions.fast` skipped: no decision provider is configured",
+        "commit_id": "35d9c12ceffff2bc29910e101084785251da255c",
+        "event": "COMMENT"
+      }
+    ],
+    "comments": [
+      {
+        "path": "src/user.ts",
+        "line": 7,
+        "side": "RIGHT",
+        "body": "<!-- melian:revision=35d9c12ceffff2bc29910e101084785251da255c finding=8404b1b24eec5b0b sig=25d2826e3c7670f91fd68c6a4f247af7 -->\nThis finding is at [`src/user.ts` line 19](https://github.com/melian-agent/example/blob/35d9c12ceffff2bc29910e101084785251da255c/src/user.ts#L19), outside the diff, so it is anchored to the nearest changed line.\n\nVerification: **confirmed**\n\n**Verified:** `faux/scripted`: The scripted verifier traced the claim.\n\n**P2** `wrong-result` (pre-existing, advisory)\n\n**What:** An empty name yields no initials.\n\n**Why here:** An empty name yields no initials. Why.\n\n**Failure scenario:** An empty name yields no initials. Scenario.\n\n**Evidence:**\n\n- cause: [`src/user.ts` line 19](https://github.com/melian-agent/example/blob/35d9c12ceffff2bc29910e101084785251da255c/src/user.ts#L19)\n\n**What to do:** An empty name yields no initials. Fix.",
+        "id": 1002,
+        "user": {
+          "login": "melian-user"
+        },
+        "pull_request_review_id": 1001
+      }
+    ],
+    "ledgers": [],
+    "resolvedThreads": [],
+    "statuses": [
+      {
+        "sha": "35d9c12ceffff2bc29910e101084785251da255c",
+        "state": "success",
+        "description": "1 finding, none blocking",
+        "context": "melian/review"
+      }
+    ],
+    "nextId": 1003,
+    "calls": [
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/pulls/7"
+      },
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/events"
+      },
+      {
+        "method": "GET",
+        "path": "/user"
+      },
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/collaborators/melian-user/permission"
+      },
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/collaborators/pr-author/permission"
+      },
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/pulls/7"
+      },
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/events"
+      },
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/commits/35d9c12ceffff2bc29910e101084785251da255c/statuses"
+      },
+      {
+        "method": "POST",
+        "path": "/repos/melian-agent/example/statuses/35d9c12ceffff2bc29910e101084785251da255c",
+        "body": {
+          "state": "success",
+          "description": "1 finding, none blocking",
+          "context": "melian/review"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/pulls/7/reviews"
+      },
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/pulls/7/comments"
+      },
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/pulls/7"
+      },
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/events"
+      },
+      {
+        "method": "POST",
+        "path": "/repos/melian-agent/example/pulls/7/reviews",
+        "body": {
+          "commit_id": "35d9c12ceffff2bc29910e101084785251da255c",
+          "event": "COMMENT",
+          "body": "<!-- melian:revision=35d9c12ceffff2bc29910e101084785251da255c verdict=70558ea5685f2e19 round=1 sig=aacd7032259cd2518a0830c18f12a68d -->\nMelian reviewed `35d9c12cefff`: **findings**.\n\n1 finding needs attention: 1 advisory. Verification: 1 confirmed, 0 plausible, 0 refuted, 0 unverified; 0 refuted findings not posted.\n\nmelian/review: success (1 finding, none blocking).\n\nChecks that did not run:\n\n- `decisions.fast` skipped: no decision provider is configured",
+          "comments": [
+            {
+              "path": "src/user.ts",
+              "line": 7,
+              "side": "RIGHT",
+              "body": "<!-- melian:revision=35d9c12ceffff2bc29910e101084785251da255c finding=8404b1b24eec5b0b sig=25d2826e3c7670f91fd68c6a4f247af7 -->\nThis finding is at [`src/user.ts` line 19](https://github.com/melian-agent/example/blob/35d9c12ceffff2bc29910e101084785251da255c/src/user.ts#L19), outside the diff, so it is anchored to the nearest changed line.\n\nVerification: **confirmed**\n\n**Verified:** `faux/scripted`: The scripted verifier traced the claim.\n\n**P2** `wrong-result` (pre-existing, advisory)\n\n**What:** An empty name yields no initials.\n\n**Why here:** An empty name yields no initials. Why.\n\n**Failure scenario:** An empty name yields no initials. Scenario.\n\n**Evidence:**\n\n- cause: [`src/user.ts` line 19](https://github.com/melian-agent/example/blob/35d9c12ceffff2bc29910e101084785251da255c/src/user.ts#L19)\n\n**What to do:** An empty name yields no initials. Fix."
+            }
+          ]
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/pulls/7/reviews/1001/comments"
+      }
+    ]
+  },
+  "findings": {
+    "revisions": [
+      "bdf57d4a49fd9929d9ec15114236bd5846f57ede..35d9c12ceffff2bc29910e101084785251da255c"
+    ],
+    "items": {
+      "8404b1b24eec5b0b": {
+        "lifecycle": {
+          "status": "new",
+          "firstSeenRevision": "bdf57d4a49fd9929d9ec15114236bd5846f57ede..35d9c12ceffff2bc29910e101084785251da255c",
+          "lastSeenRevision": "bdf57d4a49fd9929d9ec15114236bd5846f57ede..35d9c12ceffff2bc29910e101084785251da255c",
+          "history": []
+        },
+        "sightings": {
+          "bdf57d4a49fd9929d9ec15114236bd5846f57ede..35d9c12ceffff2bc29910e101084785251da255c": {
+            "lens.correctness@18c49f913df8@careful": {
+              "ruleId": "wrong-result",
+              "level": "warning",
+              "message": {
+                "text": "An empty name yields no initials."
+              },
+              "partialFingerprints": {
+                "melian/v1": "8404b1b24eec5b0b"
+              },
+              "locations": [
+                {
+                  "physicalLocation": {
+                    "artifactLocation": {
+                      "uri": "src/user.ts"
+                    },
+                    "region": {
+                      "startLine": 19,
+                      "snippet": {
+                        "text": "\treturn user.name.split(\" \").map((part) => part[0]).join(\"\");"
+                      }
+                    }
+                  }
+                }
+              ],
+              "properties": {
+                "id": "8404b1b24eec5b0b",
+                "path": "src/user.ts",
+                "occurrence": 0,
+                "cause": "pre-existing",
+                "failureScenario": "An empty name yields no initials. Scenario.",
+                "evidence": [
+                  {
+                    "file": "src/user.ts",
+                    "startLine": 19,
+                    "role": "cause",
+                    "revision": "head",
+                    "snippet": "\treturn user.name.split(\" \").map((part) => part[0]).join(\"\");"
+                  }
+                ],
+                "severity": "P2",
+                "explanation": {
+                  "what": "An empty name yields no initials.",
+                  "whyHere": "An empty name yields no initials. Why.",
+                  "whatToDo": "An empty name yields no initials. Fix."
+                },
+                "source": {
+                  "check": "lens.correctness",
+                  "version": "18c49f913df8@careful"
+                }
+              }
+            }
+          }
+        },
+        "verifications": {
+          "bdf57d4a49fd9929d9ec15114236bd5846f57ede..35d9c12ceffff2bc29910e101084785251da255c": {
+            "lens.correctness@18c49f913df8@careful": {
+              "4190289e598badf0": {
+                "verdict": "confirmed",
+                "reason": "The scripted verifier traced the claim.",
+                "answers": {
+                  "code": "yes",
+                  "guard": "no",
+                  "base": "no"
+                },
+                "executor": "llm",
+                "model": "faux/scripted",
+                "version": "4190289e598badf0"
+              }
+            }
+          }
+        }
+      }
+    },
+    "versions": {
+      "bdf57d4a49fd9929d9ec15114236bd5846f57ede..35d9c12ceffff2bc29910e101084785251da255c": 2
+    }
+  },
+  "verdicts": {
+    "verdicts": {
+      "bdf57d4a49fd9929d9ec15114236bd5846f57ede..35d9c12ceffff2bc29910e101084785251da255c": {
+        "status": "findings",
+        "blocking": false,
+        "findings": {
+          "block": [],
+          "acknowledge": [],
+          "advisory": [
+            {
+              "ruleId": "wrong-result",
+              "level": "warning",
+              "message": {
+                "text": "An empty name yields no initials."
+              },
+              "partialFingerprints": {
+                "melian/v1": "8404b1b24eec5b0b"
+              },
+              "locations": [
+                {
+                  "physicalLocation": {
+                    "artifactLocation": {
+                      "uri": "src/user.ts"
+                    },
+                    "region": {
+                      "startLine": 19,
+                      "snippet": {
+                        "text": "\treturn user.name.split(\" \").map((part) => part[0]).join(\"\");"
+                      }
+                    }
+                  }
+                }
+              ],
+              "properties": {
+                "id": "8404b1b24eec5b0b",
+                "path": "src/user.ts",
+                "occurrence": 0,
+                "cause": "pre-existing",
+                "severity": "P2",
+                "explanation": {
+                  "what": "An empty name yields no initials.",
+                  "whyHere": "An empty name yields no initials. Why.",
+                  "whatToDo": "An empty name yields no initials. Fix."
+                },
+                "source": {
+                  "check": "lens.correctness",
+                  "version": "18c49f913df8@careful"
+                },
+                "verification": {
+                  "verdict": "confirmed",
+                  "reason": "The scripted verifier traced the claim.",
+                  "answers": {
+                    "code": "yes",
+                    "guard": "no",
+                    "base": "no"
+                  },
+                  "executor": "llm",
+                  "model": "faux/scripted",
+                  "version": "4190289e598badf0"
+                },
+                "evidence": [
+                  {
+                    "file": "src/user.ts",
+                    "startLine": 19,
+                    "role": "cause",
+                    "revision": "head",
+                    "snippet": "\treturn user.name.split(\" \").map((part) => part[0]).join(\"\");"
+                  }
+                ],
+                "failureScenario": "An empty name yields no initials. Scenario.",
+                "status": "new",
+                "reportedBy": [
+                  {
+                    "check": "lens.correctness",
+                    "version": "18c49f913df8@careful"
+                  }
+                ],
+                "resolution": "advisory",
+                "decidedBy": {
+                  "check": "lens.correctness",
+                  "rule": "wrong-result",
+                  "requirement": {
+                    "entry": "built-in"
+                  },
+                  "cap": "pre-existing"
+                }
+              }
+            }
+          ],
+          "silent": []
+        },
+        "dismissed": [],
+        "notRun": [
+          {
+            "name": "decisions.fast",
+            "status": "skipped",
+            "reason": "no decision provider is configured"
+          }
+        ],
+        "ran": [
+          {
+            "name": "guardrails",
+            "status": "ran"
+          },
+          {
+            "name": "static.biome",
+            "status": "ran"
+          },
+          {
+            "name": "static.tsc",
+            "status": "ran"
+          },
+          {
+            "name": "lens.contracts",
+            "status": "ran",
+            "level": "careful"
+          },
+          {
+            "name": "lens.correctness",
+            "status": "ran",
+            "level": "careful"
+          },
+          {
+            "name": "verifier",
+            "status": "ran",
+            "version": "4190289e598badf0"
+          }
+        ]
+      }
+    },
+    "provenance": {
+      "bdf57d4a49fd9929d9ec15114236bd5846f57ede..35d9c12ceffff2bc29910e101084785251da255c": {
+        "verifierVersion": "4190289e598badf0",
+        "kind": "pull-request",
+        "repository": {
+          "owner": "melian-agent",
+          "name": "example"
+        },
+        "pullRequest": 7,
+        "base": "bdf57d4a49fd9929d9ec15114236bd5846f57ede",
+        "head": "35d9c12ceffff2bc29910e101084785251da255c",
+        "policy": "revision:bdf57d4a49fd9929d9ec15114236bd5846f57ede",
+        "manifest": [
+          "guardrails",
+          "static.biome",
+          "static.tsc",
+          "decisions.fast",
+          "lens.correctness",
+          "lens.contracts",
+          "verifier"
+        ],
+        "lenses": [
+          "contracts@dd8fb36095b4@careful",
+          "correctness@18c49f913df8@careful"
+        ]
+      }
+    },
+    "details": {
+      "bdf57d4a49fd9929d9ec15114236bd5846f57ede..35d9c12ceffff2bc29910e101084785251da255c": {
+        "policy": "revision:bdf57d4a49fd9929d9ec15114236bd5846f57ede",
+        "manifest": [
+          "guardrails",
+          "static.biome",
+          "static.tsc",
+          "decisions.fast",
+          "lens.correctness",
+          "lens.contracts",
+          "verifier"
+        ],
+        "lenses": [
+          {
+            "name": "contracts",
+            "version": "dd8fb36095b4",
+            "level": "careful",
+            "models": [
+              "faux/scripted"
+            ],
+            "standards": [],
+            "ran": "faux/scripted",
+            "usage": {
+              "models": [
+                "faux/scripted"
+              ],
+              "tokens": 6421,
+              "cost": 0
+            },
+            "budget": {
+              "findings": 8,
+              "tokens": 200000,
+              "tools": 30
+            }
+          },
+          {
+            "name": "correctness",
+            "version": "18c49f913df8",
+            "level": "careful",
+            "models": [
+              "faux/scripted"
+            ],
+            "standards": [],
+            "ran": "faux/scripted",
+            "usage": {
+              "models": [
+                "faux/scripted"
+              ],
+              "tokens": 10682,
+              "cost": 0
+            },
+            "budget": {
+              "findings": 8,
+              "tokens": 200000,
+              "tools": 30
+            }
+          }
+        ],
+        "standards": []
+      }
+    },
+    "decisions": {
+      "bdf57d4a49fd9929d9ec15114236bd5846f57ede..35d9c12ceffff2bc29910e101084785251da255c": {
+        "task": 55,
+        "findingsVersion": 2
+      }
+    }
+  },
+  "published": {
+    "order": [
+      "35d9c12ceffff2bc29910e101084785251da255c"
+    ],
+    "revisions": {
+      "35d9c12ceffff2bc29910e101084785251da255c": {
+        "reviews": [],
+        "open": {},
+        "resolved": {},
+        "replies": {},
+        "publishedBy": {
+          "trustedWriters": true,
+          "login": "melian-user",
+          "permission": "write",
+          "authorPermission": "read"
+        },
+        "status": {
+          "state": "success",
+          "description": "1 finding, none blocking"
+        },
+        "rounds": 1,
+        "pending": {
+          "revision": "bdf57d4a49fd9929d9ec15114236bd5846f57ede..35d9c12ceffff2bc29910e101084785251da255c",
+          "round": 1,
+          "fingerprint": "70558ea5685f2e19",
+          "verdict": {
+            "status": "findings",
+            "blocking": false,
+            "findings": {
+              "block": [],
+              "acknowledge": [],
+              "advisory": [
+                {
+                  "ruleId": "wrong-result",
+                  "level": "warning",
+                  "message": {
+                    "text": "An empty name yields no initials."
+                  },
+                  "partialFingerprints": {
+                    "melian/v1": "8404b1b24eec5b0b"
+                  },
+                  "locations": [
+                    {
+                      "physicalLocation": {
+                        "artifactLocation": {
+                          "uri": "src/user.ts"
+                        },
+                        "region": {
+                          "startLine": 19,
+                          "snippet": {
+                            "text": "\treturn user.name.split(\" \").map((part) => part[0]).join(\"\");"
+                          }
+                        }
+                      }
+                    }
+                  ],
+                  "properties": {
+                    "id": "8404b1b24eec5b0b",
+                    "path": "src/user.ts",
+                    "occurrence": 0,
+                    "cause": "pre-existing",
+                    "severity": "P2",
+                    "explanation": {
+                      "what": "An empty name yields no initials.",
+                      "whyHere": "An empty name yields no initials. Why.",
+                      "whatToDo": "An empty name yields no initials. Fix."
+                    },
+                    "source": {
+                      "check": "lens.correctness",
+                      "version": "18c49f913df8@careful"
+                    },
+                    "verification": {
+                      "verdict": "confirmed",
+                      "reason": "The scripted verifier traced the claim.",
+                      "answers": {
+                        "code": "yes",
+                        "guard": "no",
+                        "base": "no"
+                      },
+                      "executor": "llm",
+                      "model": "faux/scripted",
+                      "version": "4190289e598badf0"
+                    },
+                    "evidence": [
+                      {
+                        "file": "src/user.ts",
+                        "startLine": 19,
+                        "role": "cause",
+                        "revision": "head",
+                        "snippet": "\treturn user.name.split(\" \").map((part) => part[0]).join(\"\");"
+                      }
+                    ],
+                    "failureScenario": "An empty name yields no initials. Scenario.",
+                    "status": "new",
+                    "reportedBy": [
+                      {
+                        "check": "lens.correctness",
+                        "version": "18c49f913df8@careful"
+                      }
+                    ],
+                    "resolution": "advisory",
+                    "decidedBy": {
+                      "check": "lens.correctness",
+                      "rule": "wrong-result",
+                      "requirement": {
+                        "entry": "built-in"
+                      },
+                      "cap": "pre-existing"
+                    }
+                  }
+                }
+              ],
+              "silent": []
+            },
+            "dismissed": [],
+            "notRun": [
+              {
+                "name": "decisions.fast",
+                "status": "skipped",
+                "reason": "no decision provider is configured"
+              }
+            ],
+            "ran": [
+              {
+                "name": "guardrails",
+                "status": "ran"
+              },
+              {
+                "name": "static.biome",
+                "status": "ran"
+              },
+              {
+                "name": "static.tsc",
+                "status": "ran"
+              },
+              {
+                "name": "lens.contracts",
+                "status": "ran",
+                "level": "careful"
+              },
+              {
+                "name": "lens.correctness",
+                "status": "ran",
+                "level": "careful"
+              },
+              {
+                "name": "verifier",
+                "status": "ran",
+                "version": "4190289e598badf0"
+              }
+            ]
+          },
+          "post": [
+            {
+              "finding": {
+                "ruleId": "wrong-result",
+                "level": "warning",
+                "message": {
+                  "text": "An empty name yields no initials."
+                },
+                "partialFingerprints": {
+                  "melian/v1": "8404b1b24eec5b0b"
+                },
+                "locations": [
+                  {
+                    "physicalLocation": {
+                      "artifactLocation": {
+                        "uri": "src/user.ts"
+                      },
+                      "region": {
+                        "startLine": 19,
+                        "snippet": {
+                          "text": "\treturn user.name.split(\" \").map((part) => part[0]).join(\"\");"
+                        }
+                      }
+                    }
+                  }
+                ],
+                "properties": {
+                  "id": "8404b1b24eec5b0b",
+                  "path": "src/user.ts",
+                  "occurrence": 0,
+                  "cause": "pre-existing",
+                  "severity": "P2",
+                  "explanation": {
+                    "what": "An empty name yields no initials.",
+                    "whyHere": "An empty name yields no initials. Why.",
+                    "whatToDo": "An empty name yields no initials. Fix."
+                  },
+                  "source": {
+                    "check": "lens.correctness",
+                    "version": "18c49f913df8@careful"
+                  },
+                  "verification": {
+                    "verdict": "confirmed",
+                    "reason": "The scripted verifier traced the claim.",
+                    "answers": {
+                      "code": "yes",
+                      "guard": "no",
+                      "base": "no"
+                    },
+                    "executor": "llm",
+                    "model": "faux/scripted",
+                    "version": "4190289e598badf0"
+                  },
+                  "evidence": [
+                    {
+                      "file": "src/user.ts",
+                      "startLine": 19,
+                      "role": "cause",
+                      "revision": "head",
+                      "snippet": "\treturn user.name.split(\" \").map((part) => part[0]).join(\"\");"
+                    }
+                  ],
+                  "failureScenario": "An empty name yields no initials. Scenario.",
+                  "status": "new",
+                  "reportedBy": [
+                    {
+                      "check": "lens.correctness",
+                      "version": "18c49f913df8@careful"
+                    }
+                  ],
+                  "resolution": "advisory",
+                  "decidedBy": {
+                    "check": "lens.correctness",
+                    "rule": "wrong-result",
+                    "requirement": {
+                      "entry": "built-in"
+                    },
+                    "cap": "pre-existing"
+                  }
+                }
+              },
+              "placement": {
+                "kind": "nearest",
+                "line": 7
+              }
+            }
+          ],
+          "stillOpen": 0,
+          "open": {
+            "8404b1b24eec5b0b": {
+              "ruleId": "wrong-result",
+              "path": "src/user.ts",
+              "line": 19,
+              "revision": "35d9c12ceffff2bc29910e101084785251da255c"
+            }
+          },
+          "resolved": {},
+          "refusals": 0,
+          "ledger": {
+            "publishedBy": {
+              "trustedWriters": true,
+              "login": "melian-user",
+              "permission": "write",
+              "authorPermission": "read"
+            },
+            "base": "bdf57d4a49fd9929d9ec15114236bd5846f57ede",
+            "head": "35d9c12ceffff2bc29910e101084785251da255c",
+            "round": 1,
+            "verdict": {
+              "status": "findings",
+              "blocking": false,
+              "findings": {
+                "block": [],
+                "acknowledge": [],
+                "advisory": [
+                  {
+                    "ruleId": "wrong-result",
+                    "level": "warning",
+                    "message": {
+                      "text": "An empty name yields no initials."
+                    },
+                    "partialFingerprints": {
+                      "melian/v1": "8404b1b24eec5b0b"
+                    },
+                    "locations": [
+                      {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "src/user.ts"
+                          },
+                          "region": {
+                            "startLine": 19,
+                            "snippet": {
+                              "text": "\treturn user.name.split(\" \").map((part) => part[0]).join(\"\");"
+                            }
+                          }
+                        }
+                      }
+                    ],
+                    "properties": {
+                      "id": "8404b1b24eec5b0b",
+                      "path": "src/user.ts",
+                      "occurrence": 0,
+                      "cause": "pre-existing",
+                      "severity": "P2",
+                      "explanation": {
+                        "what": "An empty name yields no initials.",
+                        "whyHere": "An empty name yields no initials. Why.",
+                        "whatToDo": "An empty name yields no initials. Fix."
+                      },
+                      "source": {
+                        "check": "lens.correctness",
+                        "version": "18c49f913df8@careful"
+                      },
+                      "verification": {
+                        "verdict": "confirmed",
+                        "reason": "The scripted verifier traced the claim.",
+                        "answers": {
+                          "code": "yes",
+                          "guard": "no",
+                          "base": "no"
+                        },
+                        "executor": "llm",
+                        "model": "faux/scripted",
+                        "version": "4190289e598badf0"
+                      },
+                      "evidence": [
+                        {
+                          "file": "src/user.ts",
+                          "startLine": 19,
+                          "role": "cause",
+                          "revision": "head",
+                          "snippet": "\treturn user.name.split(\" \").map((part) => part[0]).join(\"\");"
+                        }
+                      ],
+                      "failureScenario": "An empty name yields no initials. Scenario.",
+                      "status": "new",
+                      "reportedBy": [
+                        {
+                          "check": "lens.correctness",
+                          "version": "18c49f913df8@careful"
+                        }
+                      ],
+                      "resolution": "advisory",
+                      "decidedBy": {
+                        "check": "lens.correctness",
+                        "rule": "wrong-result",
+                        "requirement": {
+                          "entry": "built-in"
+                        },
+                        "cap": "pre-existing"
+                      }
+                    }
+                  }
+                ],
+                "silent": []
+              },
+              "dismissed": [],
+              "notRun": [
+                {
+                  "name": "decisions.fast",
+                  "status": "skipped",
+                  "reason": "no decision provider is configured"
+                }
+              ],
+              "ran": [
+                {
+                  "name": "guardrails",
+                  "status": "ran"
+                },
+                {
+                  "name": "static.biome",
+                  "status": "ran"
+                },
+                {
+                  "name": "static.tsc",
+                  "status": "ran"
+                },
+                {
+                  "name": "lens.contracts",
+                  "status": "ran",
+                  "level": "careful"
+                },
+                {
+                  "name": "lens.correctness",
+                  "status": "ran",
+                  "level": "careful"
+                },
+                {
+                  "name": "verifier",
+                  "status": "ran",
+                  "version": "4190289e598badf0"
+                }
+              ]
+            },
+            "details": {
+              "policy": "revision:bdf57d4a49fd9929d9ec15114236bd5846f57ede",
+              "manifest": [
+                "guardrails",
+                "static.biome",
+                "static.tsc",
+                "decisions.fast",
+                "lens.correctness",
+                "lens.contracts",
+                "verifier"
+              ],
+              "lenses": [
+                {
+                  "name": "contracts",
+                  "version": "dd8fb36095b4",
+                  "level": "careful",
+                  "models": [
+                    "faux/scripted"
+                  ],
+                  "standards": [],
+                  "ran": "faux/scripted",
+                  "usage": {
+                    "models": [
+                      "faux/scripted"
+                    ],
+                    "tokens": 6421,
+                    "cost": 0
+                  },
+                  "budget": {
+                    "findings": 8,
+                    "tokens": 200000,
+                    "tools": 30
+                  }
+                },
+                {
+                  "name": "correctness",
+                  "version": "18c49f913df8",
+                  "level": "careful",
+                  "models": [
+                    "faux/scripted"
+                  ],
+                  "standards": [],
+                  "ran": "faux/scripted",
+                  "usage": {
+                    "models": [
+                      "faux/scripted"
+                    ],
+                    "tokens": 10682,
+                    "cost": 0
+                  },
+                  "budget": {
+                    "findings": 8,
+                    "tokens": 200000,
+                    "tools": 30
+                  }
+                }
+              ],
+              "standards": []
+            },
+            "resolved": []
+          }
+        }
+      }
+    }
+  },
+  "publisher": {
+    "secret": "89046f091693eb875ad3ad772a017b04cb6cb7f244a98640994fad70fcd8f72f",
+    "target": {
+      "repository": "melian-agent/example",
+      "pullRequest": 7,
+      "baseRef": "main",
+      "baseTip": "bdf57d4a49fd9929d9ec15114236bd5846f57ede",
+      "base": "bdf57d4a49fd9929d9ec15114236bd5846f57ede",
+      "head": "35d9c12ceffff2bc29910e101084785251da255c",
+      "revision": "bdf57d4a49fd9929d9ec15114236bd5846f57ede..35d9c12ceffff2bc29910e101084785251da255c",
+      "roundId": "r1"
+    },
+    "publishedBy": {
+      "trustedWriters": true,
+      "login": "melian-user",
+      "permission": "write",
+      "authorPermission": "read"
+    }
+  }
+}

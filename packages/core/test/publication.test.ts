@@ -245,7 +245,7 @@ describe("Verdict.publication", () => {
 
 	it("keeps a finding that turned silent on its thread, so it never gets a second one", () => {
 		const quiet = finding({ severity: "nit" });
-		const loud = finding({ severity: "P3" });
+		const loud = finding({ severity: "P2" });
 		const previous = { [loud.properties.id]: posted("101") };
 
 		const silent = verdictOf([quiet]).publication(previous, lines, head);
@@ -253,6 +253,34 @@ describe("Verdict.publication", () => {
 
 		expect(silent).toMatchObject({ post: [], resolved: [], open: previous });
 		expect(again).toMatchObject({ post: [], stillOpen: [loud.properties.id], resolved: [] });
+	});
+
+	it("places advisories in the body and retires every former thread, including merged reports", () => {
+		const advisory = finding({ severity: "P3" });
+		const member = finding({ rule: "detect-eval", severity: "P3", source: { check: "static.eslint" } });
+		const verdict = verdictOf([advisory, member]);
+		const previous = { [advisory.id]: posted("101"), [member.id]: posted("102") };
+		const plan = verdict.publication(previous, lines, head);
+		expect(plan.post.map(({ placement }) => placement)).toEqual([{ kind: "body" }]);
+		expect(plan.resolved).toEqual(
+			[
+				{ id: advisory.id, ...posted("101") },
+				{ id: member.id, ...posted("102") },
+			].sort((left, right) => left.id.localeCompare(right.id)),
+		);
+		expect(Object.values(plan.open).every((entry) => entry.thread === undefined)).toBe(true);
+		const again = verdict.publication(plan.open, lines, head);
+		expect(again.post).toEqual([]);
+		expect(again.resolved).toEqual([]);
+		expect(again.stillOpen).toEqual(verdict.attention().map((finding) => finding.id));
+	});
+
+	it("starts a thread when a body finding becomes actionable on a changed line", () => {
+		const acknowledge = finding({ severity: "P2" });
+		const plan = verdictOf([acknowledge]).publication({ [acknowledge.id]: posted() }, lines, head);
+		expect(plan.post.map(({ placement }) => placement)).toEqual([{ kind: "lines", startLine: 12, line: 12 }]);
+		expect(plan.stillOpen).toEqual([]);
+		expect(plan.resolved).toEqual([]);
 	});
 
 	it("posts nothing for silent findings", () => {

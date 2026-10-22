@@ -377,10 +377,18 @@ function planRound(
 	// A finding the verdict holds again, while the reply that resolved its thread is owed, goes back to that thread
 	// rather than starting a second one the first would outlive. The caller leaves out a reply the provider already shows.
 	const returned = verdict.held();
+	for (const finding of verdict.findings.advisory) {
+		for (const id of finding.reportIds()) returned.delete(id);
+	}
 	// A dismissal's thread is not restored: a finding that returns after its dismissal reopened is posted afresh.
 	for (const { addressedIn: _, ...entry } of Object.values(owed)) {
 		const { id } = entry;
-		if (entry.dismissal === undefined && returned.has(id) && !settled.has(entry.thread) && !Object.hasOwn(base, id))
+		if (
+			entry.dismissal === undefined &&
+			returned.has(id) &&
+			!settled.has(entry.thread) &&
+			(!Object.hasOwn(base, id) || base[id]!.thread === undefined)
+		)
 			base[id] = entry;
 	}
 	const plan = verdict.publication(base, lines, head);
@@ -391,16 +399,15 @@ function planRound(
 		]),
 	);
 	if (own === undefined) {
-		const held = new Set([...verdict.held(), ...verdict.dismissed.map((finding) => finding.properties.id)]);
+		const held = new Set([...returned, ...verdict.dismissed.map((finding) => finding.properties.id)]);
 
 		// A resolution still owed is carried as its reply would read now: with the dismissal of the finding that holds its
-		// ID dismissed, itself or merged, and otherwise as it was owed, while no finding with the ID is held. A dismissal
-		// note owed for code a later head removed is still owed. One whose reply, as it would read now, is recorded is
-		// answered.
+		// ID dismissed, itself or merged, and otherwise as it was owed, while no non-advisory finding with the ID is held.
+		// A dismissal note owed for code a later head removed is still owed. One whose reply, as it would read now, is
+		// recorded is answered.
 		const answered = repliedKeys(state);
 		for (const entry of Object.values(owed).reverse()) {
 			const { id } = entry;
-			if (Object.hasOwn(plan.open, id)) continue;
 			const now = Object.hasOwn(plan.dismissals, id) ? plan.dismissals[id] : undefined;
 			const carried =
 				now !== undefined
@@ -804,12 +811,20 @@ function publishTask(provider: ReviewProvider) {
 									...(dismissal === undefined ? {} : { dismissal }),
 								})),
 						});
-						const open = Object.fromEntries(
-							Object.entries(pending.open).map(([id, entry]): [string, PublishedEntry] => {
-								const thread = entry.thread ?? (entry.revision === head ? posted.threads[id] : undefined);
-								return [id, { ...entry, ...(thread === undefined ? {} : { thread }) }];
-							}),
+						// A round planned by an earlier build may give an advisory a thread; it is resolved, as the plan resolves one.
+						const advisory = new Set(
+							Verdict.from(pending.verdict).findings.advisory.flatMap((finding) => finding.reportIds()),
 						);
+						const resolved = { ...pending.resolved };
+						const open: Record<string, PublishedEntry> = {};
+						for (const [id, { thread: planned, ...entry }] of Object.entries(pending.open)) {
+							const thread = planned ?? (entry.revision === head ? posted.threads[id] : undefined);
+							if (advisory.has(id) && thread !== undefined) {
+								const closing = { ...entry, thread, id, addressedIn: head };
+								resolved[resolutionKey(closing)] = closing;
+								open[id] = entry;
+							} else open[id] = { ...entry, ...(thread === undefined ? {} : { thread }) };
+						}
 						await runtime.commit(async (tx) => {
 							const document = await tx.doc(PublishedDocument, root);
 							const record = document.revisions[head]!;
@@ -831,12 +846,12 @@ function publishTask(provider: ReviewProvider) {
 							record.verdict = pending.fingerprint;
 							record.verdictRevision = pending.revision;
 							record.open = open;
-							record.resolved = { ...record.resolved, ...pending.resolved };
+							record.resolved = { ...record.resolved, ...resolved };
 							new PublishedState(document).retire(open);
 							delete record.pending;
 							return undefined;
 						}, context);
-						const closed = Object.values(pending.resolved);
+						const closed = Object.values(resolved);
 						result.dismissed += closed.filter((entry) => entry.dismissal !== undefined).length;
 						result.resolved += closed.filter((entry) => entry.dismissal === undefined).length;
 					}

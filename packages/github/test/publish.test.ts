@@ -280,7 +280,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(latest).toHaveProperty("publishedBy.trustedWriters", true);
 	});
 
-	it("posts one commenting review, each finding on its line, its nearest changed line, or the body, all marked", async () => {
+	it("posts one marked review with actionable threads and advisories in its body", async () => {
 		const { github, changeset, state } = await reviewedRevisionOne();
 		const head = changeset.revision.head;
 
@@ -306,13 +306,11 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(comments).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({ path: "src/user.ts", line: 7, side: "RIGHT", rule: "null-dereference" }),
-				expect.objectContaining({ path: "src/user.ts", line: 7, side: "RIGHT", rule: "wrong-result" }),
 			]),
 		);
-		expect(comments).toHaveLength(2);
+		expect(comments).toHaveLength(1);
 		for (const comment of comments) expect(comment.marker?.revision).toBe(head);
-		const outside = state.comments.find((comment) => comment.body.includes("wrong-result"))!;
-		expect(outside.body).toContain(`https://github.com/melian-agent/example/blob/${head}/src/user.ts#L19`);
+		expect(review!.body).toContain(`https://github.com/melian-agent/example/blob/${head}/src/user.ts#L19`);
 
 		// The finding in a file the change does not touch sits in the body, under a marker of its own.
 		const findings = await readFindings(
@@ -702,7 +700,8 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(result).toMatchObject({ posted: 2, stillOpen: 1 });
 		expect(state.reviews).toHaveLength(2);
 		const rules = state.comments.map((comment) => /`([a-z-]+)`/.exec(comment.body)?.[1]);
-		expect(rules.sort()).toEqual(["null-dereference", "wrong-result"]);
+		expect(rules.sort()).toEqual(["null-dereference"]);
+		expect(state.reviews[1]!.body).toContain("`wrong-result`");
 		expect(state.reviews[1]!.body).toContain("src/config.ts");
 		expect(state.statuses.at(-1)).toMatchObject({
 			state: "failure",
@@ -962,7 +961,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(result).toMatchObject({ posted: 0, stillOpen: 2, resolved: 1, replies: 1 });
 		expect(state.reviews).toHaveLength(2);
 		const threads = state.comments.filter((comment) => comment.in_reply_to_id === undefined);
-		expect(threads).toHaveLength(2);
+		expect(threads).toHaveLength(1);
 	});
 
 	it("does not repost open findings after a head's round was abandoned", async () => {
