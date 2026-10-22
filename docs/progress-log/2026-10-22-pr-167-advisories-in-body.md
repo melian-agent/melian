@@ -29,3 +29,8 @@ Biome, type checking, dependency checks and the audit gate passed.
 A whole-gate rerun follows on the delivered head. The host must run the gate and automated mutation-only round outside the seatbelt.
 The brief forbids live model calls, so model-backed review rounds remain with the coordinator.
 The pull request stays draft and is not queued.
+
+Fix pass 1, `ba54b332`: Codex's adversarial review found that crash recovery re-adopted an advisory thread the previous build had posted.
+Recovery now keeps the advisory in the body and resolves its thread, as the plan does.
+The regression resumes state recorded by main's publisher at `9923246b`, written by `write-advisory-crash-main.ts`.
+Reconciling advisory threads recorded on earlier, completed verdicts is out of scope. The only such thread is the rehearsal's on [pull request #164](https://github.com/melian-agent/melian/pull/164), which is resolved and merged.
