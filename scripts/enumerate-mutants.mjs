@@ -6,6 +6,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 import { Changeset } from "../packages/core/src/changeset.ts";
 import { gitOutput } from "../packages/core/src/git.ts";
+import { mutationUnmutated } from "../packages/core/src/mutation.ts";
 import {
 	configuration,
 	nonRegularEntry,
@@ -35,7 +36,17 @@ export async function enumerateMutants({
 			unmutated.push({ file: name, reason: nonRegularEntry(kind).why });
 			continue;
 		}
-		if (configuration.test(name) || signalFiles.has(name) || name.includes(",")) continue;
+		const aside = signalFiles.has(name)
+			? mutationUnmutated.signals
+			: configuration.test(name)
+				? mutationUnmutated.configuration
+				: name.includes(",")
+					? mutationUnmutated.comma
+					: undefined;
+		if (aside !== undefined) {
+			unmutated.push({ file: name, reason: aside.why });
+			continue;
+		}
 		files.push({
 			name,
 			content: await gitOutput(repoRoot, ["show", `${revision.head}:${name}`]),

@@ -15,7 +15,15 @@ import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { Instrumenter } from "@stryker-mutator/instrumenter";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { mutationUnmutated } from "../packages/core/src/mutation.ts";
 import { enumerateMutants, renderTable } from "./enumerate-mutants.mjs";
+
+const excluded = [
+	{ file: "packages/core/src/git.ts", reason: mutationUnmutated.signals.why },
+	{ file: "src/a,b.ts", reason: mutationUnmutated.comma.why },
+	{ file: "tool.config.mjs", reason: mutationUnmutated.configuration.why },
+	{ file: "tool.config.ts", reason: mutationUnmutated.configuration.why },
+];
 
 describe("mutant enumeration", { timeout: 60_000 }, () => {
 	const script = fileURLToPath(new URL("./enumerate-mutants.mjs", import.meta.url));
@@ -103,7 +111,7 @@ describe("mutant enumeration", { timeout: 60_000 }, () => {
 			mutants: expected,
 			total: expected.length,
 			omitted: 0,
-			unmutated: [],
+			unmutated: excluded,
 		});
 		// Read committed head text, even when the working tree differs.
 		write("src/value.ts", "invalid head text!");
@@ -111,18 +119,20 @@ describe("mutant enumeration", { timeout: 60_000 }, () => {
 			mutants: expected,
 			total: expected.length,
 			omitted: 0,
-			unmutated: [],
+			unmutated: excluded,
 		});
 	});
 
 	it("reports a changed TypeScript symlink as unmutated, using its committed head kind", async () => {
 		write("target.txt", "export const target = (x: number) => x > 0;\n");
 		symlinkSync("../target.txt", join(root, "src/link.ts"));
-		git("add", ".");
+		git("add", "target.txt", "src/link.ts");
 		git("commit", "-m", "symlink");
 		const result = await enumerateMutants({ cwd: root });
 		expect(result.unmutated).toEqual([
+			...excluded.slice(0, 2),
 			{ file: "src/link.ts", reason: "the head entry is symlink; only regular files are mutated" },
+			...excluded.slice(2),
 		]);
 		expect(result.mutants.filter((mutant) => mutant.file === "src/link.ts")).toEqual([]);
 		rmSync(join(root, "src/link.ts"));
@@ -139,7 +149,9 @@ describe("mutant enumeration", { timeout: 60_000 }, () => {
 		git("update-index", "--add", "--cacheinfo", `160000,${git("rev-parse", "HEAD")},src/submodule.ts`);
 		git("commit", "-m", "submodule");
 		expect((await enumerateMutants({ cwd: root })).unmutated).toEqual([
+			...excluded.slice(0, 2),
 			{ file: "src/submodule.ts", reason: "the head entry is submodule; only regular files are mutated" },
+			...excluded.slice(2),
 		]);
 	});
 
@@ -249,7 +261,7 @@ describe("mutant enumeration", { timeout: 60_000 }, () => {
 				mutants: full.mutants.slice(0, limit),
 				total: full.total,
 				omitted: Math.max(0, full.total - limit),
-				unmutated: [],
+				unmutated: excluded,
 			});
 		}
 	});
@@ -264,7 +276,7 @@ describe("mutant enumeration", { timeout: 60_000 }, () => {
 			mutants: full.mutants.slice(0, 200),
 			total: full.total,
 			omitted: full.total - 200,
-			unmutated: [],
+			unmutated: excluded,
 		});
 		expect(await enumerateMutants({ cwd: root, range: "HEAD..HEAD" })).toEqual({
 			mutants: [],
@@ -289,11 +301,16 @@ describe("mutant enumeration", { timeout: 60_000 }, () => {
 				else {
 					expect(result.mutants).toHaveLength(1);
 					expect(result.omitted).toBe(result.total - 1);
+					expect(result.unmutated).toEqual(excluded);
 				}
-			} else
+			} else {
 				expect(child.stdout).toMatch(
-					/^FILE\s+LINE\s+COLUMN\s+END_LINE\s+END_COLUMN\s+MUTATOR\s+REPLACEMENT\s+POLICY\n\n0 of \d+ mutants; \d+ omitted\n$/,
+					/^FILE\s+LINE\s+COLUMN\s+END_LINE\s+END_COLUMN\s+MUTATOR\s+REPLACEMENT\s+POLICY\n(?:UNMUTATED\t.*\n){4}\n0 of \d+ mutants; \d+ omitted\n$/,
 				);
+				expect(child.stdout.split("\n").slice(1, 5)).toEqual(
+					excluded.map(({ file, reason }) => `UNMUTATED\t${JSON.stringify(file)}\t${JSON.stringify(reason)}`),
+				);
+			}
 		}
 		expect(
 			renderTable({
