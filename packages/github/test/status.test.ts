@@ -52,6 +52,47 @@ describe("reviewed base in the published status", () => {
 		await f.provider.setStatus(f.head, { state: "failure", description });
 		expect(f.state.statuses[0]!.description).toBe(length === 140 ? description : `${"x".repeat(139)}…`);
 	});
+	it.each([
+		["with a reviewed base", 91, true],
+		["without a reviewed base", 138, false],
+	])("cuts prose %s whole at a non-BMP character", async (_name, before, withBase) => {
+		const f = fixture();
+		const description = `${"x".repeat(before)}\u{1F600}xxxx`;
+		await f.provider.setStatus(f.head, { state: "failure", description }, undefined, withBase ? f.base : undefined);
+		const posted = f.state.statuses[0]!.description!;
+		expect(posted.isWellFormed()).toBe(true);
+		expect(posted.length).toBeLessThanOrEqual(140);
+		expect(posted).toBe(`${"x".repeat(before)}\u2026${withBase ? `; base ${f.base}` : ""}`);
+	});
+	it("keeps a whole non-BMP character earlier in the cut prose", async () => {
+		const f = fixture();
+		await f.provider.setStatus(
+			f.head,
+			{ state: "failure", description: `\u{1F600}${"x".repeat(200)}` },
+			undefined,
+			f.base,
+		);
+		expect(f.state.statuses[0]!.description).toBe(`\u{1F600}${"x".repeat(90)}\u2026; base ${f.base}`);
+	});
+	it.each([
+		["a lone high surrogate", "\ud800"],
+		["a lone low surrogate", "\udc00"],
+	])("replaces %s below the limit and in cut prose, with and without a base", async (_name, lone) => {
+		for (const withBase of [true, false]) {
+			for (const tail of [20, 300]) {
+				const f = fixture();
+				const description = `ab${lone}${"x".repeat(tail)}`;
+				const base = withBase ? f.base : undefined;
+				await f.provider.setStatus(f.head, { state: "failure", description }, undefined, base);
+				const posted = f.state.statuses[0]!.description!;
+				const suffix = withBase ? `; base ${f.base}` : "";
+				expect(posted.isWellFormed()).toBe(true);
+				expect(posted.length).toBeLessThanOrEqual(140);
+				expect(posted.endsWith(suffix)).toBe(true);
+				expect(posted.startsWith("ab\ufffdx")).toBe(true);
+			}
+		}
+	});
 	it("reads only the latest status for an optional reviewed base", async () => {
 		const f = fixture();
 		expect(await f.provider.getStatus(f.head, f.base)).toBeUndefined();
