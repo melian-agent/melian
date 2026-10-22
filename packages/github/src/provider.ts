@@ -679,7 +679,9 @@ export class GitHubProvider implements ReviewProvider {
 		const suffix = reviewedBase === undefined ? "" : `; base ${reviewedBase}`;
 		const room = maxDescription - suffix.length;
 		const prose =
-			status.description.length <= room ? status.description : `${status.description.slice(0, room - 1)}…`;
+			status.description.length <= room
+				? status.description
+				: `${status.description.slice(0, room - 1).replace(/[\ud800-\udbff]$/, "")}…`;
 		const description = `${prose}${suffix}`;
 		await call(`set the status of ${revision}`, () =>
 			this.octokit.rest.repos.createCommitStatus({
