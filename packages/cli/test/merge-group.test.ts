@@ -69,7 +69,7 @@ function fixture() {
 	const provider = createGitHubProvider({ owner: "owner", repo: "repo", token: "fake", fetch: fakeGitHub(state) });
 	const post = async (options: { head?: string; base?: string } = {}) => {
 		writeFileSync(env.GITHUB_EVENT_PATH, JSON.stringify(event));
-		return (await MergeGroupStatus.open(io, { provider, ...options })).post();
+		return (await MergeGroupStatus.load(io, { provider, ...options })).post();
 	};
 	const posted = () =>
 		state.calls
@@ -372,7 +372,7 @@ describe("merge group's own pull request status", () => {
 			},
 		});
 		writeFileSync(f.env.GITHUB_EVENT_PATH, JSON.stringify(f.event));
-		const group = await MergeGroupStatus.open(f.io, { provider });
+		const group = await MergeGroupStatus.load(f.io, { provider });
 		const posting = group.post();
 		controller.abort();
 		expect(await posting).toBe(1);
@@ -399,7 +399,7 @@ describe("merge group's own pull request status", () => {
 		const create = vi.spyOn(github, "createGitHubProvider").mockReturnValue(f.provider);
 		const env = { ...f.env, GITHUB_TOKEN: "test-token", GITHUB_SERVER_URL: "https://github.example" };
 		writeFileSync(env.GITHUB_EVENT_PATH, JSON.stringify(f.event));
-		expect(await (await MergeGroupStatus.open({ ...f.io, env })).post()).toBe(0);
+		expect(await (await MergeGroupStatus.load({ ...f.io, env })).post()).toBe(0);
 		expect(create).toHaveBeenCalledWith({ owner: "owner", repo: "repo", token: "test-token" });
 		expect(f.posted()[0]!.target_url).toBe("https://github.example/owner/repo/actions/runs/123");
 	});
@@ -431,7 +431,7 @@ describe("merge group's own pull request status", () => {
 			},
 		});
 		writeFileSync(f.env.GITHUB_EVENT_PATH, JSON.stringify(f.event));
-		expect(await (await MergeGroupStatus.open(f.io, { provider })).post()).toBe(1);
+		expect(await (await MergeGroupStatus.load(f.io, { provider })).post()).toBe(1);
 		expect(reads).toBe(2);
 		expect(f.posted()[0]!.description).toContain("refused page");
 	});
@@ -451,7 +451,7 @@ describe("merge group's own pull request status", () => {
 			},
 		});
 		writeFileSync(f.env.GITHUB_EVENT_PATH, JSON.stringify(f.event));
-		expect(await (await MergeGroupStatus.open(f.io, { provider })).post()).toBe(0);
+		expect(await (await MergeGroupStatus.load(f.io, { provider })).post()).toBe(0);
 		expect(reads).toBe(2);
 	});
 	it("reads all rule pages and retries each page independently", async () => {
@@ -480,7 +480,7 @@ describe("merge group's own pull request status", () => {
 			},
 		});
 		writeFileSync(f.env.GITHUB_EVENT_PATH, JSON.stringify(f.event));
-		expect(await (await MergeGroupStatus.open(f.io, { provider })).post()).toBe(1);
+		expect(await (await MergeGroupStatus.load(f.io, { provider })).post()).toBe(1);
 		expect(f.posted()[0]!.description).toContain("exactly one");
 		expect(counts).toEqual([2, 2]);
 	});
@@ -500,18 +500,18 @@ describe("merge group's own pull request status", () => {
 			},
 		});
 		writeFileSync(f.env.GITHUB_EVENT_PATH, JSON.stringify(f.event));
-		expect(await (await MergeGroupStatus.open(f.io, { provider })).post()).toBe(1);
+		expect(await (await MergeGroupStatus.load(f.io, { provider })).post()).toBe(1);
 		expect(f.posted()[0]!.description).toBe((prefix + message).slice(0, 140));
 	});
 
 	it("dispatches the command and requires merge-group as its subcommand", async () => {
 		const f = fixture();
-		const open = vi.spyOn(MergeGroupStatus, "open");
+		const load = vi.spyOn(MergeGroupStatus, "load");
 		writeFileSync(f.env.GITHUB_EVENT_PATH, JSON.stringify(f.event));
-		const group = await MergeGroupStatus.open(f.io, { provider: f.provider });
-		open.mockResolvedValue(group);
+		const group = await MergeGroupStatus.load(f.io, { provider: f.provider });
+		load.mockResolvedValue(group);
 		expect(await main(["status", "merge-group", "--head", f.group, "--base", f.base], f.io)).toBe(0);
-		expect(open).toHaveBeenLastCalledWith(f.io, { head: f.group, base: f.base });
+		expect(load).toHaveBeenLastCalledWith(f.io, { head: f.group, base: f.base });
 		expect(await main(["status", "other"], f.io)).toBe(64);
 		expect(await main(["status"], f.io)).toBe(64);
 	});

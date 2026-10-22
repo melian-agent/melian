@@ -18,7 +18,7 @@ import {
 	parseImportSource,
 } from "./compare.ts";
 import { doctor } from "./doctor.ts";
-import { mergeGroupStatus } from "./merge-group.ts";
+import { MergeGroupStatus } from "./merge-group.ts";
 import { parseTarget } from "./target.ts";
 import { tools } from "./tools.ts";
 
@@ -193,10 +193,12 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 				);
 			case "status":
 				if (one(rest, name, "subcommand") !== "merge-group") throw new UsageError("status takes merge-group");
-				return await mergeGroupStatus(scoped, {
-					...(values.head === undefined ? {} : { head: values.head }),
-					...(values.base === undefined ? {} : { base: values.base }),
-				});
+				return await (
+					await MergeGroupStatus.load(scoped, {
+						...(values.head === undefined ? {} : { head: values.head }),
+						...(values.base === undefined ? {} : { base: values.base }),
+					})
+				).post();
 			case "publish":
 				return await publish(scoped, one(rest, name, "pull request"), { walkthrough: values.walkthrough });
 			case "findings":

@@ -10,7 +10,6 @@ type GroupEvent = {
 	merge_group?: { head_sha?: string; base_sha?: string; base_ref?: string; head_ref?: string };
 };
 
-/** One merge group's evidence and the status it owes on its own commit. */
 export class MergeGroupStatus {
 	private readonly io: Io;
 	private readonly provider: GitHubProvider;
@@ -38,8 +37,7 @@ export class MergeGroupStatus {
 		this.expected = expected;
 	}
 
-	/** Reads the Actions event; a missing status destination refuses any write. */
-	static async open(
+	static async load(
 		io: Io,
 		options: { head?: string; base?: string; provider?: GitHubProvider } = {},
 	): Promise<MergeGroupStatus> {
@@ -53,7 +51,6 @@ export class MergeGroupStatus {
 		return new MergeGroupStatus(io, provider, event, head, base, options);
 	}
 
-	/** Posts exactly one status, naming the first failed check, and returns its shell exit code. */
 	async post(): Promise<number> {
 		let reason: string | undefined;
 		try {
@@ -116,8 +113,4 @@ export class MergeGroupStatus {
 			throw new CliError("reviewed base is not a known ancestor of base_sha");
 		});
 	}
-}
-
-export async function mergeGroupStatus(io: Io, options: { head?: string; base?: string }): Promise<number> {
-	return (await MergeGroupStatus.open(io, options)).post();
 }
