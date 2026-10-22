@@ -21,9 +21,18 @@ export type FakeComment = {
 	pull_request_review_id: number | null;
 };
 
-export type FakeStatus = { sha: string; state: string; description: string; context: string; target_url?: string };
+export type FakeStatus = {
+	sha: string;
+	state: string;
+	description: string;
+	context: string;
+	target_url?: string;
+	creator?: { login: string; type: string } | null;
+};
 
 export type FakeState = {
+	branchRules?: unknown[];
+	readFailures?: Record<string, number>;
 	owner: string;
 	repo: string;
 	login: string;
@@ -142,6 +151,11 @@ export function fakeGitHub(
 		state.calls.push(call);
 		const path = url.pathname;
 		const user = { login: state.login };
+		if (method === "GET" && (state.readFailures?.[path] ?? 0) > 0) {
+			state.readFailures![path]!--;
+			return json({ message: "Read unavailable" }, 503);
+		}
+		if (method === "GET" && path === `${repoPath}/rules/branches/main`) return json(state.branchRules ?? []);
 		if (method === "GET" && path === `${repoPath}/events`)
 			return state.failEvents ? json({ message: "Forbidden" }, 403) : json(state.pushEvents ?? []);
 		if (method === "POST" || method === "PATCH") await beforeWrite(call);

@@ -142,6 +142,103 @@ export class GitHubProvider implements ReviewProvider {
 		this.links = { web: `${options.webUrl ?? "https://github.com"}/${options.owner}/${options.repo}` };
 	}
 
+	private async mergeGroupRead<T>(what: string, request: (client: Octokit) => Promise<T>): Promise<T> {
+		try {
+			return await call(what, () => request(this.octokit));
+		} catch {
+			return call(what, () => request(this.octokit));
+		}
+	}
+
+	/** The effective branch rules, including inherited rulesets. */
+	async mergeGroupRules(signal: AbortSignal) {
+		return this.mergeGroupPages(
+			this.octokit.rest.repos.getBranchRules,
+			{
+				owner: this.owner,
+				repo: this.repo,
+				branch: "main",
+				per_page: 100,
+			},
+			signal,
+			"read main's merge queue rule",
+		);
+	}
+
+	/** Reads only the requested pull request's head, without push-event discovery. */
+	async mergeGroupHead(number: number, signal: AbortSignal): Promise<string> {
+		return this.mergeGroupRead(`read pull request #${number}`, async (client) => {
+			const { data } = await client.rest.pulls.get({
+				owner: this.owner,
+				repo: this.repo,
+				pull_number: number,
+				request: { signal },
+			});
+			return data.head.sha;
+		});
+	}
+
+	/** Reads the newest Melian status, including its creator and reviewed-base description. */
+	async mergeGroupReview(head: string, signal: AbortSignal) {
+		const statuses = await this.mergeGroupPages(
+			this.octokit.rest.repos.listCommitStatusesForRef,
+			{
+				owner: this.owner,
+				repo: this.repo,
+				ref: head,
+				per_page: 100,
+			},
+			signal,
+			`read statuses of ${head}`,
+		);
+		return statuses.find((status) => status.context === statusContext);
+	}
+
+	private async mergeGroupPages<
+		R extends Octokit["rest"]["repos"]["getBranchRules"] | Octokit["rest"]["repos"]["listCommitStatusesForRef"],
+	>(
+		endpoint: R,
+		parameters: Parameters<R>[0],
+		signal: AbortSignal,
+		what: string,
+	): Promise<Awaited<ReturnType<R>>["data"]> {
+		const guarded = Object.assign(
+			async (options: Parameters<R>[0]) => {
+				try {
+					return await this.mergeGroupRead(what, async () => {
+						// The paginator forwards only method, URL and headers to each page request.
+						const response = await endpoint({ ...options, request: { signal } } as Parameters<
+							Octokit["rest"]["repos"]["getBranchRules"]
+						>[0] &
+							Parameters<Octokit["rest"]["repos"]["listCommitStatusesForRef"]>[0]);
+						if (!Array.isArray(response.data)) throw new GitHubError("failed", "incomplete merge-group page");
+						return response;
+					});
+				} catch (error) {
+					// A raw HTTP 409 would become an empty synthetic page in Octokit's paginator.
+					throw new GitHubError("failed", (error as Error).message);
+				}
+			},
+			{ endpoint: endpoint.endpoint, defaults: endpoint.defaults },
+		) as unknown as R;
+		const all = [];
+		for await (const page of this.octokit.paginate.iterator(guarded, parameters)) all.push(...page.data);
+		return all as Awaited<ReturnType<R>>["data"];
+	}
+
+	/** Reads current collaborator permission without hiding a refused lookup. */
+	async mergeGroupPermission(login: string, signal: AbortSignal): Promise<string> {
+		return this.mergeGroupRead(`read permission for ${login}`, async (client) => {
+			const { data } = await client.rest.repos.getCollaboratorPermissionLevel({
+				owner: this.owner,
+				repo: this.repo,
+				username: login,
+				request: { signal },
+			});
+			return data.permission;
+		});
+	}
+
 	beginPublish(): void {
 		this.threads = undefined;
 	}
