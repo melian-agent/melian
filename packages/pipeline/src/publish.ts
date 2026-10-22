@@ -806,12 +806,20 @@ function publishTask(provider: ReviewProvider) {
 									...(dismissal === undefined ? {} : { dismissal }),
 								})),
 						});
-						const open = Object.fromEntries(
-							Object.entries(pending.open).map(([id, entry]): [string, PublishedEntry] => {
-								const thread = entry.thread ?? (entry.revision === head ? posted.threads[id] : undefined);
-								return [id, { ...entry, ...(thread === undefined ? {} : { thread }) }];
-							}),
+						// A round planned by an earlier build may give an advisory a thread; it is resolved, as the plan resolves one.
+						const advisory = new Set(
+							Verdict.from(pending.verdict).findings.advisory.flatMap((finding) => finding.reportIds()),
 						);
+						const resolved = { ...pending.resolved };
+						const open: Record<string, PublishedEntry> = {};
+						for (const [id, { thread: planned, ...entry }] of Object.entries(pending.open)) {
+							const thread = planned ?? (entry.revision === head ? posted.threads[id] : undefined);
+							if (advisory.has(id) && thread !== undefined) {
+								const closing = { ...entry, thread, id, addressedIn: head };
+								resolved[resolutionKey(closing)] = closing;
+								open[id] = entry;
+							} else open[id] = { ...entry, ...(thread === undefined ? {} : { thread }) };
+						}
 						await runtime.commit(async (tx) => {
 							const document = await tx.doc(PublishedDocument, root);
 							const record = document.revisions[head]!;
@@ -833,12 +841,12 @@ function publishTask(provider: ReviewProvider) {
 							record.verdict = pending.fingerprint;
 							record.verdictRevision = pending.revision;
 							record.open = open;
-							record.resolved = { ...record.resolved, ...pending.resolved };
+							record.resolved = { ...record.resolved, ...resolved };
 							new PublishedState(document).retire(open);
 							delete record.pending;
 							return undefined;
 						}, context);
-						const closed = Object.values(pending.resolved);
+						const closed = Object.values(resolved);
 						result.dismissed += closed.filter((entry) => entry.dismissal !== undefined).length;
 						result.resolved += closed.filter((entry) => entry.dismissal === undefined).length;
 					}
