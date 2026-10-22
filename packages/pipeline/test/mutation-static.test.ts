@@ -1598,6 +1598,45 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 				expect(result).toMatchObject({ status: "skipped", cause: "unmutated" });
 			});
 
+			it("notes each file set aside and raises an unmutated finding for it and for a binary file", async () => {
+				const base = commit(repo, { "stryker.config.json": config });
+				const head = commit(repo, {
+					[path]: binary,
+					"packages/p/src/a.ts": a,
+					"packages/p/src/a,b.ts": lines("export const x = 1;"),
+					"packages/p/src/rules.config.ts": lines("export const x = 1;"),
+					"packages/pipeline/src/static.ts": lines("export const x = 1;"),
+				});
+				stryker({ report: report({ "packages/p/src/a.ts": [{ status: "Killed", line: 2 }] }) });
+				const result = await mutate(base, head);
+				if (result.status !== "ran") throw new Error("skipped");
+				expect(result.notes.filter((note) => note.includes(" was not mutated: "))).toEqual([
+					"packages/p/src/a,b.ts was not mutated: Stryker cannot take a path with a comma.",
+					"packages/p/src/rules.config.ts was not mutated: a tool loads a configuration file to run the mutants.",
+					"packages/pipeline/src/static.ts was not mutated: it sends process signals; prove its guards with fakes.",
+				]);
+				expect(result.log.runs[0].results.map((each) => each.message.text)).toEqual([
+					`Stryker did not judge line 1 of packages/p/src/a,b.ts: ${mutationUnmutated.comma.why}.`,
+					`Stryker did not judge the changed lines of ${path}: ${mutationUnmutated.binary.why}.`,
+					`Stryker did not judge line 1 of packages/p/src/rules.config.ts: ${mutationUnmutated.configuration.why}.`,
+					`Stryker did not judge line 1 of packages/pipeline/src/static.ts: ${mutationUnmutated.signals.why}.`,
+				]);
+			});
+
+			it("lists a binary file before a file set aside when it mutates nothing", async () => {
+				const base = commit(repo, { "stryker.config.json": config });
+				const head = commit(repo, { [path]: binary, "packages/p/src/a,b.ts": lines("export const x = 1;") });
+				const fake = stryker({ report: report({}) });
+				const result = await mutate(base, head);
+				expect(fake.calls()).toEqual([]);
+				if (result.status !== "skipped") throw new Error("ran");
+				expect(result.reason).toBe(mutationSkips.unmutated(["packages/p/src/a,b.ts", path]));
+				expect(result.log?.runs[0].results.map((each) => each.message.text)).toEqual([
+					`Stryker did not judge the changed lines of ${path}: ${mutationUnmutated.binary.why}.`,
+					`Stryker did not judge line 1 of packages/p/src/a,b.ts: ${mutationUnmutated.comma.why}.`,
+				]);
+			});
+
 			it("names the file when the run passes its timeout", async () => {
 				const base = commit(repo, { "stryker.config.json": config });
 				const head = commit(repo, { [path]: binary, "packages/p/src/a.ts": a });

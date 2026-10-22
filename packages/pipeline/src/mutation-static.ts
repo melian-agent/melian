@@ -13,10 +13,9 @@ import {
 	normaliseMutationReport,
 	type Revision,
 	type ToolLog,
-	type UnmutatedFile,
 } from "@melian-agent/core";
 import { type HeadTrust, type JudgedHead, MutationCache } from "./mutation-cache.ts";
-import { configuration, nonRegularEntry, production, signalFiles, typescript } from "./mutation-paths.ts";
+import { MutationTargets, production, typescript } from "./mutation-paths.ts";
 import { MutationProcess } from "./mutation-process.ts";
 import { mutationSelectionVersion, mutationVitestModule } from "./mutation-vitest.ts";
 import type { Run, StaticRun } from "./static.ts";
@@ -214,52 +213,10 @@ export class MutationRun {
 		this.#notes = notes;
 	}
 
-	// The changed production lines Stryker is asked about, and the production files set aside: a configuration file, a
-	// signal-sending file, a non-regular head entry, and a path Stryker's comma-separated `--mutate` cannot name. Each file set aside is a note and,
-	// when the run goes ahead on the others, an `unmutated` result: a well-tested neighbour must not hide it.
-	#targets(revision: Revision): { changed: Record<string, [number, number][]>; aside: UnmutatedFile[] } {
-		const changed: Record<string, [number, number][]> = {};
-		const aside: UnmutatedFile[] = [];
-		for (const [path, ranges] of Object.entries(revision.diffLines())) {
-			if (!production(path)) continue;
-			const kind = revision.files.find((file) => file.path === path)!.newKind;
-			if (kind !== "file" && kind !== "executable") {
-				const reason = nonRegularEntry(kind);
-				this.#notes.push(`${path} was not mutated: ${reason.why}.`);
-				aside.push({ path, ranges, ...reason });
-			} else if (signalFiles.has(path)) {
-				this.#notes.push(`${path} was not mutated: it sends process signals; prove its guards with fakes.`);
-				aside.push({ path, ranges, ...mutationUnmutated.signals });
-			} else if (configuration.test(path)) {
-				this.#notes.push(`${path} was not mutated: a tool loads a configuration file to run the mutants.`);
-				aside.push({ path, ranges, ...mutationUnmutated.configuration });
-			} else if (path.includes(",")) {
-				this.#notes.push(`${path} was not mutated: Stryker cannot take a path with a comma.`);
-				aside.push({ path, ranges, ...mutationUnmutated.comma });
-			} else changed[path] = ranges;
-		}
-		return { changed, aside };
-	}
-
-	// The production files the revision changes that `diffLines` cannot address: git calls them binary, or their names are not
-	// UTF-8. They hold no line Stryker can be asked about, so the check cannot read them as having no production code.
-	#unaddressable(revision: Revision): string[] {
-		return revision.files
-			.filter((file) => file.status !== "deleted" && (file.binary || file.percentEncoded === true))
-			.map((file) => file.path)
-			.filter(production);
-	}
-
 	// Whether `revision` changes any production TypeScript, mutable or not, binary or not. Read from the diff alone, so a
 	// caller asks it before deciding whether the head's code may run: a change with nothing to judge needs no leave.
 	static judges(revision: Revision): boolean {
-		return (
-			Object.keys(revision.diffLines()).some(production) ||
-			revision.files.some(
-				(file) =>
-					file.status !== "deleted" && (file.binary || file.percentEncoded === true) && production(file.path),
-			)
-		);
+		return MutationTargets.select(revision, production, mutationUnmutated).judges;
 	}
 
 	// The test file that tests `path`, found beside it or under its package's `test` directory, and otherwise the one to add.
@@ -484,17 +441,13 @@ process.exitCode = result.code;
 		if (headCode === undefined)
 			throw this.#run.fail("toolFailed", "mutation testing needs the host's leave to run head code");
 		if (revision === undefined) throw this.#run.fail("toolFailed", "mutation testing needs the revision it mutates");
-		const { changed, aside } = this.#targets(revision);
+		const targets = MutationTargets.select(revision, production, mutationUnmutated);
+		const { changed, aside, binary, unmutated } = targets;
+		this.#notes.push(...targets.notes);
 		const total = Object.values(changed).reduce(
 			(sum, ranges) => sum + ranges.reduce((count, [first, last]) => count + last - first + 1, 0),
 			0,
 		);
-		const binary = this.#unaddressable(revision).map((path) => ({
-			path,
-			ranges: [] as [number, number][],
-			...mutationUnmutated.binary,
-		}));
-		const unmutated = [...binary, ...aside];
 		if (total === 0) {
 			// A production file that was changed but not mutated, such as a `.config.ts`, a path with a comma, or a binary file,
 			// means the change did have behaviour to judge, so the skip has no leave.
@@ -545,7 +498,7 @@ process.exitCode = result.code;
 			version: this.#version,
 			lines,
 			tests,
-			unmutated: [...binary, ...aside],
+			unmutated,
 			...(total > maxLines
 				? { budget: { count: total - count, maxLines, path: firstOmitted![0], line: firstOmitted![1][0]![0] } }
 				: {}),

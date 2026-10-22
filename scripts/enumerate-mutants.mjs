@@ -7,12 +7,7 @@ import { parseArgs } from "node:util";
 import { Changeset } from "../packages/core/src/changeset.ts";
 import { gitOutput } from "../packages/core/src/git.ts";
 import { mutationUnmutated } from "../packages/core/src/mutation.ts";
-import {
-	configuration,
-	nonRegularEntry,
-	productionWithExtensions as production,
-	signalFiles,
-} from "../packages/pipeline/src/mutation-paths.ts";
+import { MutationTargets, productionWithExtensions } from "../packages/pipeline/src/mutation-paths.ts";
 
 import { sampleMutants } from "./mutant-sample.mjs";
 
@@ -27,26 +22,13 @@ export async function enumerateMutants({
 } = {}) {
 	if (!Number.isSafeInteger(limit) || limit < 0) throw new Error("limit must be a non-negative safe integer");
 	const { repoRoot, revision } = await Changeset.resolve(cwd, range);
+	const targets = MutationTargets.select(
+		revision,
+		(path) => productionWithExtensions(path, extensions),
+		mutationUnmutated,
+	);
 	const files = [];
-	const unmutated = [];
-	for (const [name, ranges] of Object.entries(revision.diffLines())) {
-		if (!production(name, extensions)) continue;
-		const kind = revision.files.find((file) => file.path === name).newKind;
-		if (kind !== "file" && kind !== "executable") {
-			unmutated.push({ file: name, reason: nonRegularEntry(kind).why });
-			continue;
-		}
-		const aside = signalFiles.has(name)
-			? mutationUnmutated.signals
-			: configuration.test(name)
-				? mutationUnmutated.configuration
-				: name.includes(",")
-					? mutationUnmutated.comma
-					: undefined;
-		if (aside !== undefined) {
-			unmutated.push({ file: name, reason: aside.why });
-			continue;
-		}
+	for (const [name, ranges] of Object.entries(targets.changed))
 		files.push({
 			name,
 			content: await gitOutput(repoRoot, ["show", `${revision.head}:${name}`]),
@@ -55,7 +37,7 @@ export async function enumerateMutants({
 				end: { line: last - 1, column: Number.MAX_SAFE_INTEGER },
 			})),
 		});
-	}
+	const unmutated = targets.unmutated.map(({ path, why }) => ({ file: path, reason: why }));
 	const config = JSON.parse(await gitOutput(repoRoot, ["show", `${revision.head}:stryker.config.json`]));
 	const scratch = mkdtempSync(join(tmpdir(), `melian-enumerate-${process.pid}-`));
 	let mutants;

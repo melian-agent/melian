@@ -155,6 +155,32 @@ describe("mutant enumeration", { timeout: 60_000 }, () => {
 		]);
 	});
 
+	it("reports a binary production file and one whose name is not UTF-8 as unmutated", async () => {
+		write(".gitattributes", "src/a.ts -diff\n");
+		write("src/a.ts", "export const a = (x: number) => x > 0;\n");
+		git("add", ".gitattributes", "src/a.ts");
+		git("commit", "-m", "attributes");
+		git("update-ref", "refs/remotes/origin/main", "HEAD");
+		write("src/a.ts", "export const a = (x: number) => x >= 0;\n");
+		git("add", "src/a.ts");
+		const blob = git("rev-parse", "HEAD:src/a.ts");
+		const name = Buffer.concat([Buffer.from("src/caf"), Buffer.from([0xe9]), Buffer.from(".ts")]);
+		execFileSync("git", ["update-index", "--index-info"], {
+			cwd: root,
+			input: Buffer.concat([Buffer.from(`100644 ${blob}\t`), name, Buffer.from("\n")]),
+		});
+		git("commit", "-m", "binary");
+		expect(await enumerateMutants({ cwd: root })).toEqual({
+			mutants: [],
+			total: 0,
+			omitted: 0,
+			unmutated: [
+				{ file: "src/a.ts", reason: mutationUnmutated.binary.why },
+				{ file: "src/caf%E9.ts", reason: mutationUnmutated.binary.why },
+			],
+		});
+	});
+
 	it("enumerates an executable regular file", async () => {
 		write("src/executable.ts", "export const executable = true;\n");
 		chmodSync(join(root, "src/executable.ts"), 0o755);
