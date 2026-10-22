@@ -47,15 +47,19 @@ export interface RepeatedFinding {
 export interface ComparisonEntry {
 	readonly changeset: string;
 	readonly comparison: Comparison;
+	readonly round?: string;
+	readonly unattributed?: string;
 	readonly verdict?: Verdict;
 }
 
 /** Several changesets' local comparisons, including their earlier rounds. */
 export class ComparisonSet {
 	private readonly entries: readonly ComparisonEntry[];
+	private readonly unattributed: number;
 
 	constructor(entries: readonly ComparisonEntry[]) {
 		this.entries = [...entries];
+		this.unattributed = entries.filter((entry) => entry.unattributed !== undefined).length;
 	}
 
 	/** Selects whole changesets by the time their first comparison was recorded, newest last. */
@@ -79,7 +83,7 @@ export class ComparisonSet {
 		let pendingMatches = 0;
 		let reasonlessMisses = 0;
 		const misses = Object.fromEntries(missReasons.map((reason) => [reason, 0])) as ComparisonStats["misses"];
-		for (const { comparison } of this.entries) {
+		for (const { comparison } of this.entries.filter((entry) => entry.unattributed === undefined)) {
 			const stats = comparison.stats();
 			pendingMatches += stats.pendingMatches;
 			reasonlessMisses += stats.reasonlessMisses;
@@ -196,7 +200,9 @@ export class ComparisonSet {
 
 	/** Every third changeset's comparison owes a drain while goldens remain; rounds never advance the counter. */
 	drain(): { comparisons: number; due: boolean; goldens: number; next: number } {
-		const comparisons = new Set(this.entries.map((entry) => entry.changeset)).size;
+		const comparisons = new Set(
+			this.entries.filter((entry) => entry.unattributed === undefined).map((entry) => entry.changeset),
+		).size;
 		const owed = this.backlog().length;
 		return {
 			comparisons,
@@ -219,6 +225,7 @@ export class ComparisonSet {
 				? `Comparisons: ${selected.drain().comparisons}.\n`
 				: `Comparisons: ${selected.drain().comparisons}. Pending matches: ${stats.pendingMatches}.\n`,
 		];
+		if (this.unattributed > 0) out.push(`Unattributed comparisons: ${this.unattributed}.\n`);
 		for (const each of metrics.reviewers)
 			out.push(
 				`${visibleText(each.reviewer)}: recall ${each.found}/${each.total} (${each.recall.toFixed(3)}), precision ${each.valid}/${each.valid + each.noise + each.duplicate} (${each.precision.toFixed(3)}), pending ${each.pending}.\n`,

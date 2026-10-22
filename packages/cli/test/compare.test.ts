@@ -1,6 +1,7 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import {
 	chmodSync,
+	existsSync,
 	mkdirSync,
 	mkdtempSync,
 	readFileSync,
@@ -17,6 +18,7 @@ import { buildGoldenRepository, loadGoldens } from "@melian-agent/evals";
 import { ReviewThreadImporter } from "@melian-agent/github";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { compare } from "../src/compare.ts";
+import { storagePath } from "../src/repository.ts";
 
 const root = fileURLToPath(new URL("../../../", import.meta.url));
 const bin = join(root, "packages/cli/bin/melian.js");
@@ -255,6 +257,16 @@ describe("melian compare", { timeout: 60_000 }, () => {
 		expect(result.stderr).toContain(
 			`the comparison has no external finding 0123456789abcdef; melian compare ${range} lists the findings`,
 		);
+	});
+
+	it("refuses a round of a range that no longer resolves without creating its store", async () => {
+		const { repo, env } = checkout();
+		const io = { cwd: repo, env: { ...env, ...gitEnv }, color: false, stdout: () => {}, stderr: () => {} };
+		const path = await storagePath(repo, "range-ffffffffffffffff", io.env, true);
+
+		await expect(compare(io, "main...gone", [], "range-ffffffffffffffff.r1")).rejects.toThrow("has no round");
+
+		expect(existsSync(path)).toBe(false);
 	});
 
 	it.each([
@@ -675,8 +687,8 @@ describe("melian compare export", { timeout: 60_000 }, () => {
 			).toBe(0);
 		const stdout = melian(repo, ["compare", "export", range], env);
 		expect(stdout).toMatchObject({ status: 0, stderr: "" });
-		expect(stdout.stdout).toContain("## A. codex, round 1");
-		expect(stdout.stdout).toContain("## B. Melian review, round 1");
+		expect(stdout.stdout).toMatch(/^## A\. codex, round range-[0-9a-f]{16}\.r1$/m);
+		expect(stdout.stdout).toMatch(/^## B\. Melian review, round range-[0-9a-f]{16}\.r1$/m);
 		expect(stdout.stdout).toContain("Maintainer choice.");
 		expect(stdout.stdout).toContain("&lt;img&gt;");
 		const output = join(files, "comparison.md");
@@ -724,7 +736,14 @@ describe("comparison review fixes", { timeout: 60_000 }, () => {
 		expect(melian(repo, ["review", range], env).status).toBe(0);
 		expect(melian(repo, ["compare", range], env).status).toBe(0);
 		expect(melian(repo, ["compare", "backlog"], env).stdout).toContain(id);
-		const cleared = melian(repo, ["compare", "adjudicate", range, id, "--verdict", "noise", "--golden", "none"], env);
+		const earlier = Object.keys(
+			JSON.parse(melian(repo, ["compare", "export", range, "--json"], env).stdout).comparisons,
+		)[0]!;
+		const cleared = melian(
+			repo,
+			["compare", "adjudicate", range, id, "--verdict", "noise", "--golden", "none", "--round", earlier],
+			env,
+		);
 		expect(cleared).toMatchObject({ status: 0, stderr: "", stdout: expect.stringContaining("does not dismiss") });
 		expect(melian(repo, ["compare", "backlog"], env).stdout).toBe("No goldens owed.\n");
 		const json = JSON.parse(melian(repo, ["compare", "export", range, "--json"], env).stdout) as {
@@ -780,7 +799,10 @@ describe("comparison review fixes", { timeout: 60_000 }, () => {
 		expect(melian(repo, ["compare", range, "--from", `file:${path}`], env).status).toBe(0);
 		git(repo, "commit", "--quiet", "--allow-empty", "-m", "next revision");
 		expect(melian(repo, ["findings", range], env).status).toBe(1);
-		const result = melian(repo, ["compare", "adjudicate", range, id, "--verdict", "valid"], env);
+		const earlier = Object.keys(
+			JSON.parse(melian(repo, ["compare", "export", range, "--json"], env).stdout).comparisons,
+		)[0]!;
+		const result = melian(repo, ["compare", "adjudicate", range, id, "--verdict", "valid", "--round", earlier], env);
 		expect(result).toMatchObject({ status: 0, stderr: "" });
 		const json = JSON.parse(melian(repo, ["compare", "export", range, "--json"], env).stdout) as {
 			comparisons: Record<string, { adjudications?: Record<string, { current: { verdict: string } }> }>;

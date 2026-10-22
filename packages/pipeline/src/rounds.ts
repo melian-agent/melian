@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { type StoredVerdict, Verdict } from "@melian-agent/core";
 import { VerdictDocument } from "./adjudication.ts";
 import { ComparisonDocument } from "./compare.ts";
+import { revisionKey } from "./findings.ts";
 import {
 	backgroundContext,
 	type Context,
@@ -77,10 +78,19 @@ export class RoundWriter {
 
 	async preserve(revision: string): Promise<RoundState> {
 		const state = await this.tx.doc(RoundsDocument, this.root);
+		const comparisons = await this.tx.doc(ComparisonDocument, this.root);
+		if (
+			Object.hasOwn(comparisons.unattributed, revision) &&
+			!Object.values(state.items).some((round) => revisionKey(round) === revision && round.mintedAt !== undefined)
+		)
+			comparisons.legacy[revision] = true;
 		if (state.recorded[revision]) return state;
 		const live = await this.tx.doc(VerdictDocument, this.root);
-		const comparisons = await this.tx.doc(ComparisonDocument, this.root);
-		if (Object.hasOwn(live.verdicts, revision) || Object.hasOwn(comparisons.comparisons, revision)) {
+		if (
+			Object.hasOwn(live.verdicts, revision) ||
+			Object.hasOwn(comparisons.unattributed, revision) ||
+			Object.values(comparisons.comparisons).some((comparison) => revisionKey(comparison) === revision)
+		) {
 			const key = legacyKey(revision);
 			state.items[key] = legacyRound(revision, live.verdicts[revision], live.provenance?.[revision]);
 			state.current[revision] = key;
@@ -192,7 +202,8 @@ export class RoundReader {
 		const items = structuredClone(state.items);
 		for (const key of new Set([
 			...Object.keys(live?.verdicts ?? {}),
-			...Object.keys(comparisons?.comparisons ?? {}),
+			...Object.values(comparisons?.comparisons ?? {}).map((comparison) => revisionKey(comparison)),
+			...Object.keys(comparisons?.unattributed ?? {}),
 		])) {
 			if (state.recorded[key]) continue;
 			items[legacyKey(key)] = legacyRound(key, live?.verdicts[key], live?.provenance?.[key]);

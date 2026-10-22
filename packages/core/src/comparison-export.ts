@@ -10,11 +10,7 @@ export class ComparisonExport {
 	private readonly url: string | undefined;
 
 	constructor(entries: readonly ComparisonEntry[], target: string, url?: string) {
-		this.entries = [...entries].sort(
-			(a, b) =>
-				(a.comparison.recordedAt() ?? "").localeCompare(b.comparison.recordedAt() ?? "") ||
-				a.comparison.head.localeCompare(b.comparison.head),
-		);
+		this.entries = [...entries];
 		this.target = target;
 		this.url = url;
 	}
@@ -24,7 +20,17 @@ export class ComparisonExport {
 		const json = JSON.stringify(
 			{
 				comparisons: Object.fromEntries(
-					this.entries.map(({ comparison }) => [`${comparison.base}..${comparison.head}`, comparison.toJSON()]),
+					this.entries
+						.filter((entry) => entry.unattributed === undefined)
+						.map(({ comparison, round }) => [
+							round ?? `${comparison.base}..${comparison.head}`,
+							comparison.toJSON(),
+						]),
+				),
+				unattributed: Object.fromEntries(
+					this.entries
+						.filter((entry) => entry.unattributed !== undefined)
+						.map((entry) => [entry.unattributed!, entry.comparison.toJSON()]),
 				),
 			},
 			null,
@@ -45,15 +51,24 @@ export class ComparisonExport {
 					`${reviewer.name}${reviewer.version === undefined ? "" : ` ${reviewer.version}`}${reviewer.login === undefined ? "" : ` (${reviewer.login})`}`,
 				);
 		}
+		const attributed = this.entries.filter((entry) => entry.unattributed === undefined).length;
 		const link = this.url === undefined ? markdownText(this.target) : `[${markdownText(this.target)}](${this.url})`;
 		const out = [
 			`# Comparison review: ${/^#\d+$/.test(this.target) ? `pull request ${link}` : markdownText(this.target)}\n\n`,
 			`Target: ${link}.\n\n`,
-			`Reviewers: ${[...reviewers].sort().map(markdownText).join("; ")}${reviewers.size === 0 ? "" : "; "}Melian's own review, in ${this.entries.length} stored ${this.entries.length === 1 ? "round" : "rounds"}.\n\n`,
+			`Reviewers: ${[...reviewers].sort().map(markdownText).join("; ")}${reviewers.size === 0 ? "" : "; "}Melian's own review, in ${attributed} stored ${attributed === 1 ? "round" : "rounds"}.\n\n`,
 			"Adjudication records valid, noise, or duplicate, with severity and a miss reason where required. Pending findings await the maintainer.\n\n",
 		];
 		let section = 0;
-		for (const [round, { comparison, verdict }] of this.entries.entries()) {
+		for (const { comparison, verdict, round, unattributed } of this.entries) {
+			if (unattributed !== undefined)
+				out.push(`Unattributed comparison at ${comparison.head.slice(0, 12)}: no round can be proven.\n\n`);
+			const label =
+				unattributed !== undefined
+					? "unattributed comparison"
+					: round === undefined
+						? `revision ${comparison.base.slice(0, 12)}..${comparison.head.slice(0, 12)}`
+						: `round ${markdownText(round)}`;
 			const groups = new Map<string, ReturnType<typeof comparison.externalFindings>>();
 			for (const reviewer of Object.values(comparison.importsBySource()).flatMap((each) => each.reviewers ?? [])) {
 				const name = `${reviewer.name}${reviewer.version === undefined ? "" : ` ${reviewer.version}`}${reviewer.login === undefined ? "" : ` (${reviewer.login})`}`;
@@ -66,7 +81,7 @@ export class ComparisonExport {
 			for (const [name, findings] of [...groups].sort(([a], [b]) => a.localeCompare(b))) {
 				const letter = sectionLetter(section++);
 				out.push(
-					`## ${letter}. ${markdownText(name)}, round ${round + 1}\n\n`,
+					`## ${letter}. ${markdownText(name)}, ${label}\n\n`,
 					`${findings.length} ${findings.length === 1 ? "finding" : "findings"} at ${comparison.head.slice(0, 12)}.\n\n`,
 					tableHeader,
 				);
@@ -86,7 +101,7 @@ export class ComparisonExport {
 			const dismissed = new Set((verdict?.dismissed ?? []).map((finding) => finding.id));
 			const findings = (verdict?.all() ?? []).filter((finding) => comparison.melianFindings().includes(finding.id));
 			out.push(
-				`## ${letter}. Melian review, round ${round + 1}\n\n`,
+				`## ${letter}. Melian review, ${label}\n\n`,
 				`${findings.length} ${findings.length === 1 ? "finding" : "findings"} at ${comparison.head.slice(0, 12)}, verdict ${verdict?.status ?? "not recorded"}.\n\n`,
 				tableHeader,
 			);

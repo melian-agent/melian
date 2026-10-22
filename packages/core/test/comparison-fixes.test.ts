@@ -471,14 +471,14 @@ describe("comparison review fixes", () => {
 			{ findings: [], skippedBodies: 0, reviewers: [{ name: "codex", version: "6.1" }] },
 			by.at,
 		);
-		const output = new ComparisonExport([{ changeset: "a", comparison }], "range").render();
+		const output = new ComparisonExport([{ changeset: "a", round: "a.r1", comparison }], "range").render();
 		expect(output).toContain("Reviewers: claude-code; codex 6.1; Melian's own review");
 		expect(output).toContain(
-			"## B. codex 6.1, round 1\n\n0 findings at bbbbbbbbbbbb.\n\n" +
+			"## B. codex 6.1, round a.r1\n\n0 findings at bbbbbbbbbbbb.\n\n" +
 				"| # | Reviewer | File | Summary | Adjudication | Golden |\n|---|---|---|---|---|---|\n\n",
 		);
-		expect(output).toContain("## A. claude-code, round 1\n\n1 finding");
-		expect(output).toContain("## C. Melian review, round 1");
+		expect(output).toContain("## A. claude-code, round a.r1\n\n1 finding");
+		expect(output).toContain("## C. Melian review, round a.r1");
 	});
 
 	it("exports golden debt while an unmatched valid finding awaits a miss reason", () => {

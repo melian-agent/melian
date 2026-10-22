@@ -27,7 +27,18 @@ describe("comparison arguments", () => {
 		const compare = vi.spyOn(comparison, "compare").mockResolvedValue(0);
 		try {
 			expect(await main(["compare", ...(args as string[])], io)).toBe(0);
-			expect(compare).toHaveBeenCalledExactlyOnceWith(io, args[0], sources);
+			expect(compare).toHaveBeenCalledExactlyOnceWith(io, args[0], sources, undefined);
+		} finally {
+			compare.mockRestore();
+		}
+	});
+
+	it("passes --round on a range whose name ends like a pull request", async () => {
+		const io = output();
+		const compare = vi.spyOn(comparison, "compare").mockResolvedValue(0);
+		try {
+			expect(await main(["compare", "main...fix#7", "--round", "range-0123456789abcdef.r1"], io)).toBe(0);
+			expect(compare).toHaveBeenCalledExactlyOnceWith(io, "main...fix#7", [], "range-0123456789abcdef.r1");
 		} finally {
 			compare.mockRestore();
 		}
@@ -43,6 +54,7 @@ describe("comparison arguments", () => {
 				"#7",
 				{ external: "a".repeat(16), melian: "b".repeat(16) },
 				action === "match",
+				undefined,
 			);
 		} finally {
 			match.mockRestore();
@@ -164,12 +176,18 @@ describe("comparison report arguments", () => {
 		const adjudicate = vi.spyOn(comparison, "adjudicateComparison").mockResolvedValue(0);
 		try {
 			await main(["compare", "adjudicate", "#7", id, "--verdict", "valid", "--reason", "no-owner"], io);
-			expect(adjudicate).toHaveBeenCalledExactlyOnceWith(io, "#7", id, {
-				verdict: "valid",
-				by: "CLI",
-				at: expect.any(String),
-				reason: "no-owner",
-			});
+			expect(adjudicate).toHaveBeenCalledExactlyOnceWith(
+				io,
+				"#7",
+				id,
+				{
+					verdict: "valid",
+					by: "CLI",
+					at: expect.any(String),
+					reason: "no-owner",
+				},
+				undefined,
+			);
 			const failure = new TypeError("not a refusal");
 			const create = vi.spyOn(ComparisonAdjudication, "create").mockImplementation(() => {
 				throw failure;

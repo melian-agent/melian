@@ -698,7 +698,7 @@ The terminal, review body and ledger state the mapping and name `melian dismiss 
 
 ### The stored shape
 
-The pipeline's comparison document is at version 1. It keys a `StoredComparison` by the `revisionKey` of the stored review it compares against, and each one holds:
+The pipeline's comparison document is at version 2. Its state is `{ legacy, comparisons, unattributed }`. `comparisons` keys a `StoredComparison` by the full round ID of the review it compares against, `<changeset>.<round>`. `unattributed` holds version-1 records, still keyed by `revisionKey`, until a writer can attribute them to a round. `legacy` marks the revisions whose pending record keeps its legacy round ID, as [the pipeline guideline](pipeline.md#comparing-with-external-reviewers) sets out. Each `StoredComparison` holds:
 
 ```ts
 type StoredComparison = {
@@ -801,7 +801,7 @@ The comparison module's `Adjudication` is exported as `ComparisonAdjudication`, 
 
 `comparison.adjudicate(id, judgement)` records valid, noise, or duplicate for an external or Melian finding. A valid external-only finding needs a miss reason. A duplicate names another finding through `--of <id>`; it costs its reviewer recall as well as precision. Omitting `--golden` preserves existing debt. `adjudication(id)` reads its current judgement and history; `adjudications()` lists judgements of findings still present. Each record holds `current` and `history`, oldest first. A replacement keeps the prior author, time, and fields. Replaying identical input changes nothing. Withdrawing a finding keeps its judgement in storage but removes it from summaries.
 
-The optional `adjudications` field is additive. The comparison document stays at version 1; older comparisons read with no judgements. Unknown top-level fields still survive writes. Notes hold at most 1,000 characters. Judging a Melian finding noise never dismisses it or changes its verdict.
+The optional `adjudications` field was additive at version 1; older comparisons read with no judgements. Round-keyed comparisons use version 2, as [the pipeline guideline](pipeline.md#comparing-with-external-reviewers) records. Unknown top-level fields still survive writes. Notes hold at most 1,000 characters. Judging a Melian finding noise never dismisses it or changes its verdict.
 
 ### Statistics and export
 
@@ -811,7 +811,7 @@ The optional `adjudications` field is additive. The comparison document stays at
 
 The optional `createdAt` records when comparison began; `target` keeps the CLI range or pull request argument. Older documents use the earliest import time and abbreviated revision as fallbacks. `record()` never moves the first time on a rerun.
 
-`ComparisonExport` owns markdown and JSON rendering over the comparisons and their stored verdicts. It uses one round per stored revision. Each imported participant gets a reviewer section, including a review with zero findings. A valid external finding awaiting a miss reason shows that pending reason beside its recorded golden lens. Reviewer text, paths, notes, and titles render as inert prose, with controls visible and markdown escaped. Markdown uses the six-column hand-written form, with no fix-commit column or drain notice. Summary cells hold a title and at most 300 characters of the first body paragraph, with newlines as spaces. Maintainer notes print names without author emails. JSON preserves the whole stored document. Its differences section carries the terminal match listing as escaped prose, including dismissal labels. Its fixed-record snapshot is `test/golden/comparison.md`.
+`ComparisonExport` owns markdown and JSON rendering over the comparisons and their stored verdicts. It preserves the round order and IDs supplied by the pipeline, rather than sorting by comparison time. JSON keys comparisons by round ID; unattributed version-1 records keep their revision keys in a separate map. Markdown labels them as unattributed comparisons, and statistics excludes them from round metrics and the comparison counter. Uncertain round identity does not discharge recorded golden debt or erase candidate-check evidence. Each imported participant gets a reviewer section, including a review with zero findings. A valid external finding awaiting a miss reason shows that pending reason beside its recorded golden lens. Reviewer text, paths, notes, and titles render as inert prose, with controls visible and markdown escaped. Markdown uses the six-column hand-written form, with no fix-commit column or drain notice. Summary cells hold a title and at most 300 characters of the first body paragraph, with newlines as spaces. Maintainer notes print names without author emails. JSON preserves the whole stored document. Its differences section carries the terminal match listing as escaped prose, including dismissal labels. Its fixed-record snapshot is `test/golden/comparison.md`.
 
 ## Tests
 

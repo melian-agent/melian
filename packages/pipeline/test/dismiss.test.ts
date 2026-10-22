@@ -948,7 +948,7 @@ describe("recording a dismissal", () => {
 		const pending = await adjudicationTask(killed.harness);
 		await killed.close(context);
 		const calls = fake.provider.state.callCount;
-		const compared = await CompareHarness.open(await openSqliteStorage(path), fake.review);
+		const compared = await CompareHarness.open(await openSqliteStorage(path), fake.review, "change");
 		opened.push(compared);
 		const rev = await revision();
 		const key = revisionKey(rev);
@@ -977,7 +977,7 @@ describe("recording a dismissal", () => {
 		const recorded = await dismiss(dismissing.harness, id);
 		expect(await adjudicationTask(dismissing.harness)).toBe(pending);
 		await dismissing.close(context);
-		const repaired = await CompareHarness.open(await openSqliteStorage(path), fake.review);
+		const repaired = await CompareHarness.open(await openSqliteStorage(path), fake.review, "change");
 		opened.push(repaired);
 		expect(await repaired.reviewed(rev)).toBe(true);
 		const comparison = await repaired.importFindings(rev, [], "t");

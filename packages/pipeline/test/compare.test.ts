@@ -32,6 +32,7 @@ import { ComparisonDocument } from "../src/compare.ts";
 import { FindingsDocument } from "../src/findings.ts";
 import { defineDoc, defineTask } from "../src/harness.ts";
 import { ReviewIndex } from "../src/review-index.ts";
+import { legacyKey, RoundsDocument } from "../src/rounds.ts";
 
 vi.mock("node:fs/promises", { spy: true });
 
@@ -64,6 +65,9 @@ async function storeReview(harness: CompareHarness, reviewFindings: readonly Fin
 	await root.commit(async (tx) => {
 		const document = await tx.doc(VerdictDocument, root.id);
 		document.verdicts = { ...document.verdicts, [revisionKey(revision)]: verdict.toJSON() };
+		const state = await tx.doc(RoundsDocument, root.id);
+		if (state.current[revisionKey(revision)] !== undefined)
+			state.items[state.current[revisionKey(revision)]!]!.verdict = verdict.toJSON();
 	}, context);
 }
 
@@ -93,7 +97,7 @@ afterEach(async () => {
 });
 
 async function memoryHarness(): Promise<CompareHarness> {
-	const harness = await CompareHarness.open(createMemoryStorage(), createFakeModels().review);
+	const harness = await CompareHarness.open(createMemoryStorage(), createFakeModels().review, "change");
 	open.push(harness);
 	return harness;
 }
@@ -219,7 +223,7 @@ describe("CompareHarness", () => {
 				delete (await tx.doc(VerdictDocument, root.id)).decisions![key];
 			}, context);
 			await deciding.close(context);
-			const harness = await CompareHarness.open(await openSqliteStorage(path), createFakeModels().review);
+			const harness = await CompareHarness.open(await openSqliteStorage(path), createFakeModels().review, "change");
 			open.push(harness);
 
 			expect(await harness.reviewed(revision)).toBe(false);
@@ -236,7 +240,7 @@ describe("CompareHarness", () => {
 			await point(second);
 			expect(await run(second)).toMatchObject({ outcome: { result: "recorded" } });
 			await deciding.close(context);
-			const control = await CompareHarness.open(await openSqliteStorage(path), createFakeModels().review);
+			const control = await CompareHarness.open(await openSqliteStorage(path), createFakeModels().review, "change");
 			open.push(control);
 			expect(await control.reviewed(revision)).toBe(true);
 			await control.close(context);
@@ -247,7 +251,7 @@ describe("CompareHarness", () => {
 			}, context);
 			await stale.close(context);
 			expect(root.id).toBe(staleRoot.id);
-			const harness = await CompareHarness.open(await openSqliteStorage(path), createFakeModels().review);
+			const harness = await CompareHarness.open(await openSqliteStorage(path), createFakeModels().review, "change");
 			open.push(harness);
 
 			expect(await harness.reviewed(revision)).toBe(false);
@@ -272,7 +276,11 @@ describe("CompareHarness", () => {
 					delete (await tx.doc(VerdictDocument, root.id)).decisions![key];
 				}, context);
 				await deciding.close(context);
-				const harness = await CompareHarness.open(await openSqliteStorage(path), createFakeModels().review);
+				const harness = await CompareHarness.open(
+					await openSqliteStorage(path),
+					createFakeModels().review,
+					"change",
+				);
 				open.push(harness);
 
 				expect(await harness.reviewed(revision)).toBe(accepted);
@@ -285,7 +293,7 @@ describe("CompareHarness", () => {
 		const controller = new AbortController();
 		controller.abort();
 		const cancelled = { abortSignal: controller.signal, value: () => undefined, toString: () => "cancelled" };
-		await expect(CompareHarness.open(storage, createFakeModels().review, cancelled)).rejects.toThrow();
+		await expect(CompareHarness.open(storage, createFakeModels().review, "change", cancelled)).rejects.toThrow();
 		await expect(storage.mintId()).rejects.toThrow("MemoryStorage is closed");
 	});
 
@@ -297,7 +305,7 @@ describe("CompareHarness", () => {
 		const closeFailure = new Error("close failed");
 		const close = vi.spyOn(storage, "close").mockRejectedValueOnce(closeFailure);
 		try {
-			await expect(CompareHarness.open(storage, createFakeModels().review, cancelled)).rejects.toBe(
+			await expect(CompareHarness.open(storage, createFakeModels().review, "change", cancelled)).rejects.toBe(
 				controller.signal.reason,
 			);
 			expect(close).toHaveBeenCalledExactlyOnceWith(context);
@@ -466,7 +474,7 @@ describe("CompareHarness", () => {
 		const path = join(directory, "changeset.sqlite");
 		const near = codex(13, 0);
 		const far = codex(90, 1);
-		const first = await CompareHarness.open(await openSqliteStorage(path), createFakeModels().review);
+		const first = await CompareHarness.open(await openSqliteStorage(path), createFakeModels().review, "change");
 		open.push(first);
 		await storeReview(first);
 		await first.importFindings(
@@ -479,7 +487,7 @@ describe("CompareHarness", () => {
 		await first.match(revision, { external: far.id, melian: findings[1]!.id }, hand);
 		await first.close(context);
 
-		const second = await CompareHarness.open(await openSqliteStorage(path), createFakeModels().review);
+		const second = await CompareHarness.open(await openSqliteStorage(path), createFakeModels().review, "change");
 		open.push(second);
 		const again = await second.importFindings(
 			revision,
@@ -747,7 +755,11 @@ describe("comparison review fixes", () => {
 		await harness.importFindings(next, [], "2026-10-06T00:00:00Z");
 		expect(new ComparisonSet(await harness.all("change")).backlog()).toHaveLength(1);
 		const discharged = { ...debt, at: "2026-10-07T00:00:00Z", golden: "none" } as const;
-		const round = await harness.adjudicate(next, findings[0]!.id, discharged);
+		const round = await harness.adjudicate(
+			{ ...next, round: `change.${legacyKey(revisionKey(revision))}` },
+			findings[0]!.id,
+			discharged,
+		);
 		expect(round.head).toBe(revision.head);
 		expect(round.adjudication(findings[0]!.id)).toEqual({ current: discharged, history: [debt] });
 		expect(new ComparisonSet(await harness.all("change")).backlog()).toEqual([]);
@@ -770,7 +782,7 @@ describe("comparison review fixes", () => {
 			document.verdicts = { ...document.verdicts, [revisionKey(next)]: document.verdicts[revisionKey(revision)]! };
 		}, context);
 		await harness.importFindings(next, [], "2026-10-06T00:00:00Z");
-		const round = await harness.adjudicate(revision, findings[0]!.id, {
+		const round = await harness.adjudicate(next, findings[0]!.id, {
 			verdict: "valid",
 			by: "M",
 			at: "2026-10-07T00:00:00Z",
@@ -799,7 +811,7 @@ describe("comparison review fixes", () => {
 			document.verdicts = { ...document.verdicts, [revisionKey(next)]: document.verdicts[revisionKey(revision)]! };
 		}, context);
 		await harness.importFindings(next, [], "2026-10-06T00:00:00Z");
-		const updated = await harness.adjudicate(revision, id, {
+		const updated = await harness.adjudicate(next, id, {
 			verdict: "valid",
 			by: "M",
 			at: "2026-10-07T00:00:00Z",
@@ -834,12 +846,12 @@ describe("comparison review fixes", () => {
 			(await tx.doc(VerdictDocument, root.id)).verdicts = Object.fromEntries(
 				rounds.map((round) => [revisionKey(round), verdict.toJSON()]),
 			);
-			(await tx.doc(ComparisonDocument, root.id)).comparisons = Object.fromEntries(
+			(await tx.doc(ComparisonDocument, root.id)).unattributed = Object.fromEntries(
 				rounds.map((round) => [revisionKey(round), round.toJSON()]),
 			);
 		}, context);
 		const judgement = { verdict: "valid", by: "N", at: "2026-10-07T00:00:00Z" } as const;
-		const updated = await harness.adjudicate(revision, id, judgement);
+		const updated = await harness.adjudicate({ base: rounds[2]!.base, head: rounds[2]!.head }, id, judgement);
 		expect(updated.head).toBe(rounds[2]!.head);
 		expect(updated.adjudication(id)).toEqual({
 			current: { ...judgement, golden },
@@ -869,7 +881,7 @@ describe("comparison review fixes", () => {
 
 	it("reads documents without committing or changing pending tasks", async () => {
 		const storage = createMemoryStorage();
-		const harness = await CompareHarness.open(storage, createFakeModels().review);
+		const harness = await CompareHarness.open(storage, createFakeModels().review, "change");
 		open.push(harness);
 		await storeReview(harness);
 		await harness.importFindings(revision, [], "2026-10-05T00:00:00Z");
@@ -906,7 +918,7 @@ describe("comparison review fixes", () => {
 
 	it("refreshes detached comparisons and drops stale matches and debt after a clean review", async () => {
 		const storage = createMemoryStorage();
-		const harness = await CompareHarness.open(storage, createFakeModels().review);
+		const harness = await CompareHarness.open(storage, createFakeModels().review, "change");
 		open.push(harness);
 		await storeReview(harness);
 		const external = codex(13, 0);
@@ -927,6 +939,7 @@ describe("comparison review fixes", () => {
 		const clean = new Adjudication({ findings: [], manifest: [], checks: [], config: defaultConfig }).adjudicate();
 		await root.commit(async (tx) => {
 			(await tx.doc(VerdictDocument, root.id)).verdicts[revisionKey(revision)] = clean.toJSON();
+			(await tx.doc(RoundsDocument, root.id)).items[legacyKey(revisionKey(revision))]!.verdict = clean.toJSON();
 		}, context);
 
 		const entries = await ComparisonReader.open(storage).read("change");
@@ -966,7 +979,7 @@ describe("comparison review fixes", () => {
 
 		async function openRoot() {
 			const storage = createMemoryStorage();
-			const harness = await CompareHarness.open(storage, createFakeModels().review);
+			const harness = await CompareHarness.open(storage, createFakeModels().review, "change");
 			open.push(harness);
 			return { storage, root: await harness.harness.root(context) };
 		}
@@ -985,7 +998,7 @@ describe("comparison review fixes", () => {
 			json.findings.block[0]!.properties.evidence = [cause];
 			const { storage, root } = await openRoot();
 			await root.commit(async (tx) => {
-				(await tx.doc(ComparisonDocument, root.id)).comparisons = comparisons();
+				(await tx.doc(ComparisonDocument, root.id)).unattributed = comparisons();
 				const old = await tx.doc(legacy(VerdictDocument.definition.kind, 2), root.id);
 				old.verdicts = JSON.parse(JSON.stringify(oldEvidence({ [revisionKey(revision)]: json })));
 			}, context);
@@ -1005,14 +1018,33 @@ describe("comparison review fixes", () => {
 			});
 		});
 
+		it("reports a rounds document newer than this Melian instead of calling the round unreviewed", async () => {
+			const storage = createMemoryStorage();
+			const harness = await CompareHarness.open(storage, createFakeModels().review, "change");
+			open.push(harness);
+			const root = await harness.harness.root(context);
+			await root.commit(async (tx) => {
+				const newer = defineDoc<{ [key: string]: Json }>({
+					kind: RoundsDocument.definition.kind,
+					version: 99,
+					scope: "conversation",
+					history: "latest",
+					fork: "current",
+					initial: () => ({}),
+				});
+				(await tx.doc(newer, root.id)).items = {};
+			}, context);
+			await expect(harness.reviewed(revision)).rejects.toThrow("newer version 99");
+		});
+
 		it("refuses a verdict document newer than this Melian", async () => {
 			const { storage, root } = await openRoot();
 			await root.commit(async (tx) => {
-				(await tx.doc(ComparisonDocument, root.id)).comparisons = comparisons();
+				(await tx.doc(ComparisonDocument, root.id)).unattributed = comparisons();
 				(await tx.doc(legacy(VerdictDocument.definition.kind, 99), root.id)).verdicts = {};
 			}, context);
 			await expect(ComparisonReader.open(storage).read("change")).rejects.toMatchObject({
-				message: "verdict document has newer version 99",
+				message: "melian.verdicts has newer version 99",
 			});
 		});
 	});
@@ -1056,11 +1088,11 @@ describe("stored comparison guards", () => {
 	};
 	async function stored(rounds: Round[], options: { verdicts?: boolean; verdict?: typeof clean } = {}) {
 		const storage = createMemoryStorage();
-		const harness = await CompareHarness.open(storage, createFakeModels().review);
+		const harness = await CompareHarness.open(storage, createFakeModels().review, "change");
 		open.push(harness);
 		const root = await harness.harness.root(context);
 		await root.commit(async (tx) => {
-			(await tx.doc(ComparisonDocument, root.id)).comparisons = Object.fromEntries(
+			(await tx.doc(ComparisonDocument, root.id)).unattributed = Object.fromEntries(
 				rounds.map((each) => [revisionKey(each.revision), each.comparison.toJSON()]),
 			);
 			if (options.verdicts === false) return;
@@ -1099,7 +1131,11 @@ describe("stored comparison guards", () => {
 
 	it("reads nothing when the stored document cannot be fetched", async () => {
 		const { storage } = await stored([round("b")]);
-		vi.spyOn(storage, "document").mockResolvedValueOnce(undefined);
+		const document = storage.document.bind(storage);
+		vi.spyOn(storage, "document").mockImplementation(async (...args) => {
+			const stored = await document(...args);
+			return stored?.record.kind === "melian.comparisons" ? undefined : stored;
+		});
 		expect(await ComparisonReader.open(storage).read("change")).toEqual([]);
 	});
 
@@ -1133,13 +1169,13 @@ describe("stored comparison guards", () => {
 		});
 	});
 
-	it("prefers the later stored round when two rounds share a time", async () => {
+	it("uses the requested revision when two comparisons share a time", async () => {
 		const { harness } = await stored([
 			round("b", { at: "2026-10-05T00:00:00Z" }),
 			round("c", { at: "2026-10-05T00:00:00Z" }),
 		]);
 		expect((await harness.adjudicate({ base: "a".repeat(40), head: "b".repeat(40) }, id, judgement)).head).toBe(
-			"c".repeat(40),
+			"b".repeat(40),
 		);
 	});
 

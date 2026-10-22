@@ -56,6 +56,18 @@ const owing = (
 	return entry(changeset, comparison, [finding]);
 };
 
+it("keeps unattributed golden debt apart from round metrics", () => {
+	const finding = own();
+	const record = owing("a", finding, "correctness");
+	const set = new ComparisonSet([
+		{ ...record, verdict: undefined, unattributed: `${revision.base}..${revision.head}` },
+	]);
+	expect(set.backlog()).toMatchObject([{ id: finding.id, lens: "correctness" }]);
+	expect(set.stats().reviewers).toEqual([]);
+	expect(set.drain().comparisons).toBe(0);
+	expect(set.renderStats()).toContain("Unattributed comparisons: 1.");
+});
+
 describe("ComparisonSet selection", () => {
 	it("selects a changeset by the earliest of its rounds", () => {
 		const late = round({ findings: [own(1)], at: "2026-03-05T00:00:00Z" });
@@ -318,6 +330,13 @@ describe("ComparisonSet candidate checks", () => {
 	};
 	const tagged = (changeset: string, rule: string) =>
 		judged(changeset, rule, [report({ line: 90, title: `${rule} one` }), report({ line: 95, title: `${rule} two` })]);
+
+	it("retains candidate evidence from an unattributed comparison", () => {
+		const unknown = { ...tagged("c1", "zz"), verdict: undefined, unattributed: `${revision.base}..${revision.head}` };
+		expect(new ComparisonSet([unknown, tagged("c2", "zz")]).candidates()).toMatchObject([
+			{ key: "rule:zz", changesets: ["c1", "c2"] },
+		]);
+	});
 
 	it("lists clusters seen on two changesets with sorted keys, IDs and changesets", () => {
 		const late = judged("c2", "zz", [pool[3]!, pool[2]!]);
