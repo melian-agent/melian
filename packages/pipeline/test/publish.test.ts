@@ -284,6 +284,38 @@ describe("publication planning recovery", () => {
 		).toEqual({});
 	});
 
+	it("does not carry an owed resolution whose ID a dismissed finding without a recorded dismissal holds", async () => {
+		const dismissed = Finding.from({
+			...finding.toJSON(),
+			properties: { ...finding.properties, status: "dismissed" },
+		});
+		const entry = { id: finding.id, ruleId: finding.ruleId, path: "src/a.ts", line: 1, revision: old, thread: "1" };
+		await root.commit(async (tx) => {
+			(await tx.doc(VerdictDocument, root.id)).verdicts[revision] = new Adjudication({
+				findings: [dismissed],
+				manifest: [],
+				checks: [],
+				config: defaultConfig,
+			})
+				.adjudicate()
+				.toJSON();
+			const doc = await tx.doc(PublishedDocument, root.id);
+			doc.order = [old];
+			doc.revisions[old] = {
+				reviews: ["old-review"],
+				open: {},
+				resolved: { [replyKey(finding.id, "1")]: entry },
+				replies: {},
+			};
+		}, context);
+		const result = await publish();
+		expect(result).toMatchObject({ posted: 0, stillOpen: 0, resolved: 0, dismissed: 0, replies: 0, recovered: 0 });
+		expect(state.comments).toEqual([]);
+		expect(
+			(await harness!.snapshot(PublishedDocument, root.id, context))!.revisions[state.pull.head.sha]!.resolved,
+		).toEqual({});
+	});
+
 	it("retires only the assigned thread and preserves an unrelated owed resolution", async () => {
 		const secret = "11".repeat(32);
 		const unrelated = "0123456789abcdef";
