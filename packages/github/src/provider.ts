@@ -649,7 +649,10 @@ export class GitHubProvider implements ReviewProvider {
 		throw new GitHubError("failed", `GitHub finding threads exceed ${maxPages} pages`);
 	}
 
-	async getStatus(revision: string): Promise<{ readonly state: string; readonly targetUrl?: string } | undefined> {
+	async getStatus(
+		revision: string,
+		reviewedBase?: string,
+	): Promise<{ readonly state: string; readonly targetUrl?: string } | undefined> {
 		const statuses = await call(`read the status of ${revision}`, () =>
 			this.octokit.paginate(this.octokit.rest.repos.listCommitStatusesForRef, {
 				owner: this.owner,
@@ -659,7 +662,8 @@ export class GitHubProvider implements ReviewProvider {
 			}),
 		);
 		const status = statuses.find((each) => each.context === statusContext);
-		return status === undefined
+		return status === undefined ||
+			(reviewedBase !== undefined && !status.description?.endsWith(`; base ${reviewedBase}`))
 			? undefined
 			: { state: status.state, ...(status.target_url === null ? {} : { targetUrl: status.target_url }) };
 	}

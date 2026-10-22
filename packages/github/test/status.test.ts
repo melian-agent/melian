@@ -46,6 +46,18 @@ describe("reviewed base in the published status", () => {
 			expect(f.state.calls).toEqual([]);
 		}
 	});
+	it("reads only the latest status for an optional reviewed base", async () => {
+		const f = fixture();
+		expect(await f.provider.getStatus(f.head, f.base)).toBeUndefined();
+		await f.provider.setStatus(f.head, { state: "success", description: "Passed" }, undefined, f.base);
+		expect(await f.provider.getStatus(f.head, f.base)).toMatchObject({ state: "success" });
+		await f.provider.setStatus(f.head, { state: "success", description: "Passed" });
+		expect(await f.provider.getStatus(f.head)).toMatchObject({ state: "success" });
+		expect(await f.provider.getStatus(f.head, f.base)).toBeUndefined();
+		Reflect.set(f.state.statuses.at(-1)!, "description", null);
+		expect(await f.provider.getStatus(f.head, f.base)).toBeUndefined();
+	});
+
 	it("keeps the description unchanged when no reviewed base is supplied", async () => {
 		const f = fixture();
 		await f.provider.setStatus(f.head, { state: "success", description: "merge group verified" });

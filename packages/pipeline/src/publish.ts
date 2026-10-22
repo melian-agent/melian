@@ -628,7 +628,7 @@ function publishTask(provider: ReviewProvider) {
 					const ledgerUrl =
 						(await runtime.snapshot(LedgerDocument, root, context))?.comment?.url ??
 						(await read()).revisions[head]?.ledgerUrl;
-					const shown = await provider.getStatus(head);
+					const shown = await provider.getStatus(head, base);
 					if (
 						shown?.state !== status.state ||
 						(await read()).revisions[head]?.status?.description !== status.description ||

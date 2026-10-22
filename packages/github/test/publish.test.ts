@@ -641,6 +641,28 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(state.statuses.at(-1)).toMatchObject({ target_url: copy.html_url });
 	});
 
+	it.each(["missing", "another base"])(
+		"refreshes a settled publication whose status has %s reviewed base",
+		async (kind) => {
+			const { github, changeset, state } = await reviewedRevisionOne(lensScript());
+			await publish(github, changeset);
+			state.statuses.at(-1)!.description = kind === "missing" ? "Passed" : `Passed; base ${"f".repeat(40)}`;
+			state.calls = [];
+			await publish(github, changeset);
+			expect(posts(state)).toEqual([
+				expect.objectContaining({
+					path: `/repos/melian-agent/example/statuses/${changeset.revision.head}`,
+					body: {
+						state: "success",
+						context: "melian/review",
+						description: `Passed; base ${changeset.revision.base}`,
+						target_url: state.ledgers[0]!.html_url,
+					},
+				}),
+			]);
+		},
+	);
+
 	it("repairs an unrecorded ledger-refusal status after publication succeeds", async () => {
 		const { github, changeset, state } = await reviewedRevisionOne(
 			lensScript(emptyName, nanRetries, trimmedGreeting),
