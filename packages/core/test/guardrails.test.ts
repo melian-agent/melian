@@ -764,6 +764,20 @@ describe("policy-change-review", () => {
 			expect(stripped).not.toBe(own);
 			expect(await workflowNotices(stripped)).toEqual([]);
 		});
+
+		it("keeps the notice when the head strips the glob, because the base's policy decides", async () => {
+			const stripped = own.replace(/^ {2}policy-change-review:\n {4}files: \[".github\/\*\*"\]\n/m, "");
+			expect(stripped).not.toBe(own);
+			const { findings } = await guardrails(
+				{ "melian.yaml": own, ".github/workflows/check.yml": lines("on: pull_request", "jobs: {}") },
+				{ "melian.yaml": stripped, ".github/workflows/check.yml": workflow },
+			);
+			expect(
+				findings
+					.filter((finding) => finding.ruleId === "guardrail/policy-change-review")
+					.map((finding) => [finding.properties.path, finding.properties.severity]),
+			).toContainEqual([".github/workflows/check.yml", "P1"]);
+		});
 	});
 
 	it("covers a Stryker configuration at the root and in a package, whatever its extension", async () => {
