@@ -116,13 +116,17 @@ describe("advisory publication", { timeout: 60_000 }, () => {
 			await publish((await review("acknowledge")).changeset);
 			const thread = state.comments[0]!.id;
 			state.failReplies = true;
-			await expect(publish((await review(interrupted)).changeset)).rejects.toMatchObject({ code: "publishFailed" });
+			const lowered = await review(interrupted);
+			await expect(publish(lowered.changeset)).rejects.toMatchObject({ code: "publishFailed" });
 			expect(state.resolvedThreads).toEqual([]);
 			state.failReplies = false;
 			const returned = await review("advisory");
 			await publish(returned.changeset);
 			expect(state.resolvedThreads).toEqual([thread]);
 			expect(state.comments).toHaveLength(1);
+			expect(state.comments[0]!.body).toContain(
+				`Addressed in commit ${lowered.changeset.revision.head.slice(0, 12)}`,
+			);
 			expect(state.reviews.at(-1)!.body).toContain(`/blob/${returned.changeset.revision.head}/src/user.ts#L19`);
 			const before = posts(state).length;
 			await publish(returned.changeset);
