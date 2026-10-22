@@ -1049,7 +1049,10 @@ function publishTask(provider: ReviewProvider) {
 								];
 								delete record.pending;
 								if (shown !== undefined) record.status = { ...shown };
-								const status = unset === undefined ? "set the status to error" : `could not set the status to error (${unset})`;
+								const status =
+									unset === undefined
+										? "set the status to error"
+										: `could not set the status to error (${unset})`;
 								message = `the provider refused the review of verdict ${refused} ${refusals} times, so Melian abandoned it and ${status}; the next publish plans a new one: ${message}`;
 							}
 						}

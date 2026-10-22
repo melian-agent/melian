@@ -35,9 +35,7 @@ afterEach(async () => {
 it("a passing head whose review is abandoned after three refusals cannot enter a merge group", async () => {
 	const fake = scenarioModels();
 	const state = pullRequestState();
-	state.branchRules = [
-		{ type: "merge_queue", parameters: { grouping_strategy: "ALLGREEN", merge_method: "MERGE" } },
-	];
+	state.branchRules = [{ type: "merge_queue", parameters: { grouping_strategy: "ALLGREEN", merge_method: "MERGE" } }];
 	const provider = createGitHubProvider({
 		owner: state.owner,
 		repo: state.repo,
