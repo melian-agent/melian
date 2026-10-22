@@ -74,11 +74,15 @@ function fixture() {
 	const posted = () =>
 		state.calls
 			.filter((call) => call.method === "POST")
-			.map((call) => ({ sha: event.merge_group.head_sha, ...(call.body as Omit<FakeStatus, "sha">) }));
+			.map((call) => ({ sha: call.path.split("/").at(-1)!, ...(call.body as Omit<FakeStatus, "sha">) }));
 	const fails = async (reason: string) => {
 		expect(await post()).toBe(1);
 		expect(posted()).toEqual([
-			expect.objectContaining({ state: "failure", description: expect.stringContaining(reason) }),
+			expect.objectContaining({
+				sha: event.merge_group.head_sha,
+				state: "failure",
+				description: expect.stringContaining(reason),
+			}),
 		]);
 	};
 	return { reviewed, base, head, group, state, event, env, io, provider, post, posted, fails };
@@ -191,10 +195,11 @@ describe("merge group's own pull request status", () => {
 		f.state.branchRules!.push({ type: "required_status_checks" });
 		expect(await f.post()).toBe(0);
 	});
-	it("9: rejects a missing status and names the pull request", async () => {
+	it("9: rejects a missing status and names the pull request and head", async () => {
 		const f = fixture();
 		f.state.statuses[0]!.context = "unrelated";
-		await f.fails("PR #7: head has no melian/review");
+		await f.fails(`PR #7: head ${f.head} has no melian/review`);
+		expect(f.posted()[0]!.description).toContain(f.head);
 	});
 	it("10: uses the newest matching status, never an older success", async () => {
 		const f = fixture();

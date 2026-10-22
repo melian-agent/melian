@@ -97,7 +97,7 @@ export class MergeGroupStatus {
 		const head = await this.provider.mergeGroupHead(Number(this.number), this.signal);
 		if (parents[1] !== head) throw new CliError("second parent differs from pull request head");
 		const status = await this.provider.mergeGroupReview(head, this.signal);
-		if (status === undefined) throw new CliError("head has no melian/review status");
+		if (status === undefined) throw new CliError(`head ${head} has no melian/review status`);
 		if (status.state !== "success") throw new CliError("latest head status is not success");
 		if (status.creator?.type !== "User") throw new CliError("head status creator is not a user");
 		const permission = await this.provider.mergeGroupPermission(status.creator.login, this.signal);
