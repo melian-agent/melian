@@ -4,4 +4,4 @@ An attacking review of [pull request #168](https://github.com/melian-agent/melia
 
 `setStatus` now drops a trailing high surrogate from the cut prose before it adds "…". The result stays within 140 UTF-16 units, which is never fewer than GitHub's count of code points. The test puts a non-BMP character exactly at the cut, with and without a reviewed base, and a third keeps an earlier whole emoji.
 
-The same review found test 15 ambiguous. [The cut decision](../decisions/2026-10-22-status-description-cut.md) now amends it: only a cut suffix fails, not cut prose.
+The same review found test 15 ambiguous. [A new decision](../decisions/2026-10-23-status-cut-by-code-point.md) amends it: only a cut suffix fails, not cut prose.
