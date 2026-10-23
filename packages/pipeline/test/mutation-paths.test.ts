@@ -1,5 +1,6 @@
 import { type ChangedFile, type FileKind, mutationUnmutated, Revision } from "@melian-agent/core";
 import { describe, expect, it, vi } from "vitest";
+
 // The module builds its patterns and sets when it loads, so each test reloads it to put that code under the test. The
 // import must be literal: Stryker picks test files through Vitest's `related` filter, which sees no `vi.importActual`.
 async function load() {
