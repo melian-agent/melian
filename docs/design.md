@@ -834,7 +834,7 @@ Version one on a developer's own machine reviews the developer's own code and ne
 
 ### Writers are trusted
 
-The CLI records writer trust and publication identity. Enabling the required status remains a maintainer step. Milestone 3 binds it to the GitHub App.
+The CLI records writer trust and publication identity. The maintainer enabled the required status on 2026-10-23, in a ruleset of its own with no bypass actors. Milestone 3 binds it to the GitHub App.
 
 Problem: milestone 2 makes `melian/review` a required status, and the CLI sets it with a user's token. GitHub lets anyone with write permission set any status context on any commit. Example: a writer, or a bot with write access, sets `melian/review` to `success` on a head Melian never reviewed, and the merge goes through. The same writer could push a forged local review record for the Actions host to rely on.
 
