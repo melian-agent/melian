@@ -28,4 +28,4 @@ Its verdict carries a provisional check record, `review.delta`, which Melian wri
 
 ## When rounds run in full
 
-By default, every round. With `--delta`, the first round of a changeset, after a base change, a force push or rebase, a merge of `main`, a policy or standards change, a change of review identity, a failed lens in the anchor, or a delta over 1,000 changed lines or half the pull request. `--cold` and `--delta` together are refused. The coordinator marks the last round by running it full and cold.
+By default, every round. With `--delta`, the first round of a changeset runs in full. So does a round after a base change, a force push or rebase, or a merge of `main`. So does one after a policy or standards change, or a change of review identity. So does one whose anchor had a failed lens, or whose delta is over 1,000 changed lines or half the pull request. `--cold` and `--delta` together are refused. The coordinator marks the last round by running it full and cold.
