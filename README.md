@@ -181,7 +181,7 @@ Melian is licensed under the MIT License, the same as Pi.
 
 ## Project status
 
-Melian has a working CLI review and publication loop. Milestone 2 makes it the review of record for this repository. The required-status code is built; the maintainer's rehearsal and ruleset switch remain pending. Once `melian/review` is required on `main`, every pull request head needs `melian review "#N"` and `melian publish "#N"` before it can merge.
+Melian has a working CLI review and publication loop. Milestone 2 makes it the review of record for this repository. The required-status code is built, and since 2026-10-23 `main` requires `melian/review`, so every pull request head needs `melian review "#N"` and `melian publish "#N"` before it can merge.
 
 The opt-in `static.mutation` check runs Stryker on Vitest over changed production TypeScript lines. Surviving mutants and code no test covers raise findings. It runs the head's tests unconfined, for the heads the host guard allows, and belongs in the `full` tier. Melian enables it for its own reviews.
 
