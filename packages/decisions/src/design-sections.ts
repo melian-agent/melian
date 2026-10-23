@@ -49,7 +49,9 @@ export class DesignSections {
 
 	/** Indexes headings with their base file and line, excluding fenced examples. */
 	static from(files: readonly { path: string; content: string }[]): DesignSections {
-		return DesignSections.index(files.map((file) => ({ path: file.path, document: MarkdownDocument.parse(file.content) })));
+		return DesignSections.index(
+			files.map((file) => ({ path: file.path, document: MarkdownDocument.parse(file.content) })),
+		);
 	}
 
 	private static index(documents: readonly { path: string; document: MarkdownDocument }[]): DesignSections {

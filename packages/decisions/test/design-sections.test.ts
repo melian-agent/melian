@@ -1526,11 +1526,7 @@ const tables: { name: string; cases: Pair[] }[] = [
 					error: { code: "incomplete", message: `${rowsPastIndexBound()} headings omitted; review refused` },
 				},
 			],
-			[
-				"aggregate: exactly 1048576 bytes across design.md and two linked files",
-				aggregate(0),
-				aggregate(1),
-			],
+			["aggregate: exactly 1048576 bytes across design.md and two linked files", aggregate(0), aggregate(1)],
 			["empty index", policy, heading("", "")],
 			["no files", policy, { kind: "headings", files: [], expected: "" }],
 		],
@@ -1589,7 +1585,13 @@ async function checkCase(row: SectionCase): Promise<void> {
 	expect(designIndexLimits).toEqual({ bytes: 65536 });
 	expect(designFileLimits).toEqual({ bytes: 524288, totalBytes: 1048576 });
 	if (row.kind === "headings") {
-		if (row.error) expect(() => DesignSections.from(row.files)).toThrow(row.error.message);
+		if (row.error)
+			expect(() => DesignSections.from(row.files)).toThrow(
+				expect.objectContaining({
+					code: row.error.code,
+					message: expect.stringContaining(row.error.message ?? ""),
+				}),
+			);
 		else expect(DesignSections.from(row.files).render()).toBe(row.expected);
 		return;
 	}
