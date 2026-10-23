@@ -17,6 +17,8 @@ const mutant = Type.Object({
 const settings = Type.Object({
 	ignoreStatic: Type.Optional(Type.Boolean()),
 	mutator: Type.Optional(Type.Object({ excludedMutations: Type.Optional(Type.Array(Type.String())) })),
+	vitest: Type.Optional(Type.Object({ related: Type.Optional(Type.Boolean()) })),
+	testFiles: Type.Optional(Type.Array(Type.String())),
 });
 const report = Type.Object({
 	config: Type.Optional(settings),
@@ -51,6 +53,7 @@ function reachedOutsideTests(
 	each: Static<typeof mutant>,
 	test: string | undefined,
 	testFiles: Static<typeof report>["testFiles"],
+	config: Static<typeof settings> | undefined,
 ): string {
 	const covering = Object.entries(testFiles ?? {})
 		.filter(([, file]) => file.tests.some(({ id }) => each.coveredBy?.includes(id)))
@@ -65,7 +68,12 @@ function reachedOutsideTests(
 		testFiles !== undefined && test !== undefined && !test.startsWith("a new ") && !Object.hasOwn(testFiles, test)
 			? ` ${test} was not among the test files it ran.`
 			: "";
-	return `Stryker also reached this line outside any test, such as at module load or in a beforeAll hook or a describe body, so it ran only the tests that reach it inside one${named}. It picks test files through Vitest's \`related\` filter, which follows only static imports and literal dynamic imports, so no other test file ran for this mutant.${missing} Run the code inside a test: move a call out of a hook or a describe body, and reload a module with \`vi.resetModules()\` and a literal \`await import()\`.`;
+	const reached = `Stryker also reached this line outside any test, such as at module load or in a beforeAll hook or a describe body, so it ran only the tests that reach it inside one${named}.`;
+	// Melian's runner narrows a run by passing Vitest's related test files as `testFiles`, and passes none for the whole
+	// suite; Stryker's own `vitest.related` narrows a run started without Melian.
+	if (config?.vitest?.related === true || (config?.testFiles?.length ?? 0) > 0)
+		return `${reached} It picks test files through Vitest's \`related\` filter, which follows only static imports and literal dynamic imports, so no other test file ran for this mutant.${missing} Run the code inside a test: move a call out of a hook or a describe body, and reload a module with \`vi.resetModules()\` and a literal dynamic import of the module.`;
+	return `${reached} This run used the whole suite, so every test file was a candidate: the tests that reach this line do not assert on what the mutant changed, or assert on it only from a hook or a describe body.${missing} Move such a call into the test.`;
 }
 
 const longestCode = 160;
@@ -337,7 +345,7 @@ function collectMutants(
 					? "A mutant of this changed line survived the test run, so no test fails when this behaviour changes."
 					: "No test runs this changed line, so no test fails when this behaviour changes.",
 				whatToDo: `Add or tighten a test in ${test ?? "a test file"} so it fails when this code is changed as the mutant changed it, then restore the code.${
-					survived && each.static === true ? ` ${reachedOutsideTests(each, test, testFiles)}` : ""
+					survived && each.static === true ? ` ${reachedOutsideTests(each, test, testFiles, config)}` : ""
 				}`,
 			},
 			locations: [

@@ -209,6 +209,45 @@ describe("normaliseMutationReport", () => {
 		});
 	});
 
+	describe("a survivor Stryker reached outside any test, in a whole-suite run", () => {
+		// Trimmed from the report the host's runner wrote for a probe whose changed files included one no test relates to,
+		// so Melian ran the whole suite: the report's config has `testFiles: []` and `vitest.related: false`.
+		const recorded = readFileSync(
+			new URL("./fixtures/stryker/whole-suite-static-survivor.json", import.meta.url),
+			"utf8",
+		);
+		const path = "packages/core/src/probe-static.ts";
+		const own = "packages/core/test/probe-static.test.ts";
+		const advice = normaliseMutationReport(recorded, {
+			version: "10.0.0",
+			lines: { [path]: [[2, 2]] },
+			tests: { [path]: own },
+		}).log.runs[0].results.map((result) => result.advice!.whatToDo);
+
+		it("keeps the related-filter advice for the runner's narrowed run, which passes its test files", () => {
+			// Trimmed from the host runner's report for the same probe without the unrelated file: `vitest.related` is false,
+			// and the related test files Vitest chose arrive as `testFiles`.
+			const related = readFileSync(
+				new URL("./fixtures/stryker/related-static-survivor.json", import.meta.url),
+				"utf8",
+			);
+			const narrowed = normaliseMutationReport(related, {
+				version: "10.0.0",
+				lines: { [path]: [[2, 2]] },
+				tests: { [path]: own },
+			}).log.runs[0].results.map((result) => result.advice!.whatToDo);
+			expect(narrowed).toEqual([
+				`Add or tighten a test in ${own} so it fails when this code is changed as the mutant changed it, then restore the code. Stryker also reached this line outside any test, such as at module load or in a beforeAll hook or a describe body, so it ran only the tests that reach it inside one: those in ${own}. It picks test files through Vitest's \`related\` filter, which follows only static imports and literal dynamic imports, so no other test file ran for this mutant. Run the code inside a test: move a call out of a hook or a describe body, and reload a module with \`vi.resetModules()\` and a literal dynamic import of the module.`,
+			]);
+		});
+
+		it("names the covering tests and calls the survivor an assertion gap, not a filtered test", () => {
+			expect(advice).toEqual([
+				`Add or tighten a test in ${own} so it fails when this code is changed as the mutant changed it, then restore the code. Stryker also reached this line outside any test, such as at module load or in a beforeAll hook or a describe body, so it ran only the tests that reach it inside one: those in ${own}. This run used the whole suite, so every test file was a candidate: the tests that reach this line do not assert on what the mutant changed, or assert on it only from a hook or a describe body. Move such a call into the test.`,
+			]);
+		});
+	});
+
 	describe("a survivor Stryker reached outside any test, read from a recorded report", () => {
 		// Trimmed from a Stryker 10.0.0 run on mutation-paths.ts (issue #169): the four line-7 mutants, the test files that
 		// cover them, and one that does not. The file's own test is absent, because Vitest's `related` filter dropped it.
@@ -216,6 +255,7 @@ describe("normaliseMutationReport", () => {
 		const path = "packages/pipeline/src/mutation-paths.ts";
 		const own = "packages/pipeline/test/mutation-paths.test.ts";
 		type Recorded = {
+			config?: Record<string, unknown>;
 			files: Record<string, { mutants: { coveredBy: string[] }[] }>;
 			testFiles: Record<string, { tests: { id: string; name: string }[] }>;
 		};
@@ -238,7 +278,7 @@ describe("normaliseMutationReport", () => {
 			" It picks test files through Vitest's `related` filter, which follows only static imports and literal dynamic imports, so no other test file ran for this mutant.";
 		const missing = ` ${own} was not among the test files it ran.`;
 		const remedy =
-			" Run the code inside a test: move a call out of a hook or a describe body, and reload a module with `vi.resetModules()` and a literal `await import()`.";
+			" Run the code inside a test: move a call out of a hook or a describe body, and reload a module with `vi.resetModules()` and a literal dynamic import of the module.";
 		const evals =
 			"packages/evals/test/live-entry.test.ts, packages/evals/test/live-lens-entry.test.ts, packages/evals/test/live-triage-entry.test.ts";
 
@@ -294,9 +334,22 @@ describe("normaliseMutationReport", () => {
 			const unnamed = edit((report) => {
 				(report.testFiles[own] as unknown) = { tests: [{ id: 7, name: "a numbered test" }] };
 			});
-			for (const text of [listless, unnamed])
+			const relatedText = edit((report) => {
+				report.config!.vitest = { related: "yes" };
+			});
+			const selectionText = edit((report) => {
+				report.config!.testFiles = "all";
+			});
+			for (const text of [listless, unnamed, relatedText, selectionText])
 				expect(() => parse(text)).toThrow(expect.objectContaining({ code: "invalidOutput" }));
 			expect(() => parse(edit(() => {}))).not.toThrow();
+		});
+
+		it("reads a report with no configuration as a whole-suite run", () => {
+			const unconfigured = edit((report) => {
+				delete report.config;
+			});
+			expect(adviceOf(unconfigured)[0]).toContain("This run used the whole suite");
 		});
 
 		it("names no files when the mutant lists no covering tests", () => {

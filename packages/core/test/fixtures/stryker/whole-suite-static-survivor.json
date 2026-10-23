@@ -1,0 +1,61 @@
+{
+	"schemaVersion": "1.0",
+	"config": {
+		"ignoreStatic": true,
+		"mutator": {
+			"excludedMutations": [
+				"StringLiteral"
+			]
+		},
+		"vitest": {
+			"related": false
+		},
+		"testFiles": []
+	},
+	"files": {
+		"packages/core/src/probe-static.ts": {
+			"language": "typescript",
+			"mutants": [
+				{
+					"id": "61",
+					"mutatorName": "ArithmeticOperator",
+					"replacement": "x / 2",
+					"status": "Survived",
+					"static": true,
+					"testsCompleted": 1,
+					"coveredBy": [
+						"5804"
+					],
+					"location": {
+						"end": {
+							"column": 14,
+							"line": 2
+						},
+						"start": {
+							"column": 9,
+							"line": 2
+						}
+					}
+				}
+			]
+		}
+	},
+	"testFiles": {
+		"packages/core/test/probe-static.test.ts": {
+			"tests": [
+				{
+					"id": "5804",
+					"name": "returns numbers"
+				}
+			]
+		},
+		"packages/core/test/mutation.test.ts": {
+			"tests": [
+				{
+					"id": "2884",
+					"name": "normaliseMutationReport turns a survived mutant on a changed line into an untested-behaviour result with the mutator and the mutated text"
+				}
+			]
+		}
+	}
+}
