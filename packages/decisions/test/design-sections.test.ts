@@ -1413,15 +1413,15 @@ const tables: { name: string; cases: Pair[] }[] = [
 				},
 			],
 			[
-				"docs/design.md: read 1048576 bytes",
+				"docs/design.md: read 524288 bytes",
 				section(
-					`# Bound\n${"x".repeat(1048568)}`,
+					`# Bound\n${"x".repeat(524280)}`,
 					{ "docs/design/trust.md": "# Trust" },
 					"docs/design.md:1 — Bound",
 				),
 				{
 					kind: "revision",
-					files: { "docs/design.md": `# Bound\n${"x".repeat(1048568)}`, "docs/design/trust.md": "# Trust" },
+					files: { "docs/design.md": `# Bound\n${"x".repeat(524280)}`, "docs/design/trust.md": "# Trust" },
 					revision: "missing-revision",
 					error: { code: "unknownCommit" },
 				},
@@ -1432,9 +1432,9 @@ const tables: { name: string; cases: Pair[] }[] = [
 				policy,
 			],
 			[
-				"docs/design.md: read 1048577 bytes",
+				"docs/design.md: read 524289 bytes",
 				policy,
-				section(`# Bound\n${"x".repeat(1048569)}`, { "docs/design/trust.md": "# Trust" }, { code: "tooLarge" }),
+				section(`# Bound\n${"x".repeat(524281)}`, { "docs/design/trust.md": "# Trust" }, { code: "tooLarge" }),
 			],
 			[
 				"docs/design/trust.md: symlink refused",
@@ -1451,11 +1451,11 @@ const tables: { name: string; cases: Pair[] }[] = [
 				},
 			],
 			[
-				"docs/design/trust.md: read 1048576 bytes",
+				"docs/design/trust.md: read 524288 bytes",
 				section(
 					"# Design\n[Trust](design/trust.md)",
 					{
-						"docs/design/trust.md": `# Bound\n${"x".repeat(1048568)}`,
+						"docs/design/trust.md": `# Bound\n${"x".repeat(524280)}`,
 					},
 					"docs/design.md:1 — Design\ndocs/design/trust.md:1 — Bound",
 				),
@@ -1463,19 +1463,19 @@ const tables: { name: string; cases: Pair[] }[] = [
 					kind: "revision",
 					files: {
 						"docs/design.md": "# Design\n[Trust](design/trust.md)",
-						"docs/design/trust.md": `# Bound\n${"x".repeat(1048568)}`,
+						"docs/design/trust.md": `# Bound\n${"x".repeat(524280)}`,
 					},
 					revision: "missing-revision",
 					error: { code: "unknownCommit" },
 				},
 			],
 			[
-				"docs/design/trust.md: read 1048577 bytes",
+				"docs/design/trust.md: read 524289 bytes",
 				policy,
 				section(
 					"# Design\n[Trust](design/trust.md)",
 					{
-						"docs/design/trust.md": `# Bound\n${"x".repeat(1048569)}`,
+						"docs/design/trust.md": `# Bound\n${"x".repeat(524281)}`,
 					},
 					{ code: "tooLarge" },
 				),
@@ -1517,6 +1517,20 @@ const tables: { name: string; cases: Pair[] }[] = [
 					error: { code: "incomplete", message: "2 headings omitted; review refused" },
 				},
 			],
+			[
+				"heading-dense file at the per-file bound stops at the index bound",
+				policy,
+				{
+					kind: "headings",
+					files: [{ path: "docs/design.md", content: "# a\n".repeat(131072) }],
+					error: { code: "incomplete", message: `${rowsPastIndexBound()} headings omitted; review refused` },
+				},
+			],
+			[
+				"aggregate: exactly 1048576 bytes across design.md and two linked files",
+				aggregate(0),
+				aggregate(1),
+			],
 			["empty index", policy, heading("", "")],
 			["no files", policy, { kind: "headings", files: [], expected: "" }],
 		],
@@ -1526,6 +1540,28 @@ const tables: { name: string; cases: Pair[] }[] = [
 function heading(content: string, expected: string): SectionCase {
 	return { kind: "headings", files: [{ path: "docs/design.md", content }], expected };
 }
+function rowsPastIndexBound(): number {
+	let bytes = 0;
+	for (let line = 1; ; line++) {
+		bytes += Buffer.byteLength(`docs/design.md:${line} — a`, "utf8") + (line === 1 ? 0 : 1);
+		if (bytes > designIndexLimits.bytes) return line;
+	}
+}
+
+function aggregate(extra: number): SectionCase {
+	const design = "# D\n[a](design/a.md) [b](design/b.md)\n";
+	const first = `# A\n${"x".repeat(524288 - 4)}`;
+	const second = `# B\n${"x".repeat(524288 - Buffer.byteLength(design, "utf8") - 4 + extra)}`;
+	const files = { "docs/design/a.md": first, "docs/design/b.md": second };
+	return section(
+		design,
+		files,
+		extra === 0
+			? "docs/design.md:1 — D\ndocs/design/a.md:1 — A\ndocs/design/b.md:1 — B"
+			: { code: "incomplete", message: "Design files total 1048577 bytes by docs/design/b.md" },
+	);
+}
+
 function section(
 	content: string,
 	files: Record<string, string>,
@@ -1551,11 +1587,10 @@ describe.each(tables.map((table) => [table.name, table.cases] as const))(
 
 async function checkCase(row: SectionCase): Promise<void> {
 	expect(designIndexLimits).toEqual({ bytes: 65536 });
-	expect(designFileLimits).toEqual({ bytes: 1048576 });
+	expect(designFileLimits).toEqual({ bytes: 524288, totalBytes: 1048576 });
 	if (row.kind === "headings") {
-		const index = DesignSections.from(row.files);
-		if (row.error) expect(() => index.render()).toThrow(row.error.message);
-		else expect(index.render()).toBe(row.expected);
+		if (row.error) expect(() => DesignSections.from(row.files)).toThrow(row.error.message);
+		else expect(DesignSections.from(row.files).render()).toBe(row.expected);
 		return;
 	}
 	const repo = temporaryDirectory();

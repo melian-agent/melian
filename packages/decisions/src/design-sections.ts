@@ -5,8 +5,8 @@ import { LocalDestination, MarkdownDocument } from "./markdown.ts";
 /** The largest complete design-heading index sent to a reviewer. */
 export const designIndexLimits = { bytes: 64 * 1024 } as const;
 
-/** The largest design file read from the trusted base; the index bound above is the real budget. */
-export const designFileLimits = { bytes: 1024 * 1024 } as const;
+/** The largest design file, and the most bytes all design files together, read from the trusted base. */
+export const designFileLimits = { bytes: 512 * 1024, totalBytes: 1024 * 1024 } as const;
 
 /** Base vocabulary from the design and the local sections it links. */
 export class DesignSections {
@@ -21,9 +21,11 @@ export class DesignSections {
 		const source = await openSource(repoRoot, { kind: "revision", commit: base });
 		const content = await source.readText("docs/design.md", designFileLimits.bytes);
 		if (content === undefined) return DesignSections.from([]);
-		const files = [{ path: "docs/design.md", content }];
+		const design = MarkdownDocument.parse(content);
+		const documents = [{ path: "docs/design.md", document: design }];
+		let total = Buffer.byteLength(content, "utf8");
 		const paths = new Set<string>();
-		for (const destination of MarkdownDocument.parse(content).links()) {
+		for (const destination of design.links()) {
 			const target = LocalDestination.resolve("docs/design.md", destination);
 			if (target === undefined || !target.path.endsWith(".md")) continue;
 			if (target.fragment === "" && !target.path.startsWith("docs/design/")) continue;
@@ -34,30 +36,45 @@ export class DesignSections {
 			const linked = await source.readText(path, designFileLimits.bytes);
 			if (linked === undefined)
 				throw new DecisionFilesError("incomplete", `The base design section ${path} is absent`);
-			files.push({ path, content: linked });
+			total += Buffer.byteLength(linked, "utf8");
+			if (total > designFileLimits.totalBytes)
+				throw new DecisionFilesError(
+					"incomplete",
+					`Design files total ${total} bytes by ${path}; the limit is ${designFileLimits.totalBytes}; review refused`,
+				);
+			documents.push({ path, document: MarkdownDocument.parse(linked) });
 		}
-		return DesignSections.from(files);
+		return DesignSections.index(documents);
 	}
 
 	/** Indexes headings with their base file and line, excluding fenced examples. */
 	static from(files: readonly { path: string; content: string }[]): DesignSections {
+		return DesignSections.index(files.map((file) => ({ path: file.path, document: MarkdownDocument.parse(file.content) })));
+	}
+
+	private static index(documents: readonly { path: string; document: MarkdownDocument }[]): DesignSections {
 		const rows: string[] = [];
-		for (const file of files) {
-			for (const heading of MarkdownDocument.parse(file.content).headings()) {
-				rows.push(visibleText(`${file.path}:${heading.line} — ${heading.text}`));
+		let bytes = 0;
+		for (const { path, document } of documents) {
+			for (const heading of document.headings()) {
+				const row = visibleText(`${path}:${heading.line} — ${heading.text}`);
+				bytes += Buffer.byteLength(row, "utf8") + (rows.length === 0 ? 0 : 1);
+				rows.push(row);
+				if (bytes > designIndexLimits.bytes) throw DesignSections.indexTooLarge(rows.length);
 			}
 		}
 		return new DesignSections(rows);
 	}
 
-	/** Renders the complete heading index or refuses review above its byte bound. */
+	private static indexTooLarge(headings: number): DecisionFilesError {
+		return new DecisionFilesError(
+			"incomplete",
+			`Design index exceeds ${designIndexLimits.bytes} bytes; ${headings} headings omitted; review refused`,
+		);
+	}
+
+	/** Renders the complete heading index. */
 	render(): string {
-		const rendered = this.#rows.join("\n");
-		if (Buffer.byteLength(rendered, "utf8") > designIndexLimits.bytes)
-			throw new DecisionFilesError(
-				"incomplete",
-				`Design index exceeds ${designIndexLimits.bytes} bytes; ${this.#rows.length} headings omitted; review refused`,
-			);
-		return rendered;
+		return this.#rows.join("\n");
 	}
 }
