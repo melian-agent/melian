@@ -5,6 +5,9 @@ import { LocalDestination, MarkdownDocument } from "./markdown.ts";
 /** The largest complete design-heading index sent to a reviewer. */
 export const designIndexLimits = { bytes: 64 * 1024 } as const;
 
+/** The largest design file read from the trusted base; the index bound above is the real budget. */
+export const designFileLimits = { bytes: 1024 * 1024 } as const;
+
 /** Base vocabulary from the design and the local sections it links. */
 export class DesignSections {
 	readonly #rows: readonly string[];
@@ -16,7 +19,7 @@ export class DesignSections {
 	/** Loads headings from base design text and Markdown section links. */
 	static async load(repoRoot: string, base: string): Promise<DesignSections> {
 		const source = await openSource(repoRoot, { kind: "revision", commit: base });
-		const content = await source.readText("docs/design.md", 256 * 1024);
+		const content = await source.readText("docs/design.md", designFileLimits.bytes);
 		if (content === undefined) return DesignSections.from([]);
 		const files = [{ path: "docs/design.md", content }];
 		const paths = new Set<string>();
@@ -28,7 +31,7 @@ export class DesignSections {
 		}
 		paths.delete("docs/design.md");
 		for (const path of [...paths].sort()) {
-			const linked = await source.readText(path, 256 * 1024);
+			const linked = await source.readText(path, designFileLimits.bytes);
 			if (linked === undefined)
 				throw new DecisionFilesError("incomplete", `The base design section ${path} is absent`);
 			files.push({ path, content: linked });
