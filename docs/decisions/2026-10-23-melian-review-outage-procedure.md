@@ -1,4 +1,4 @@
-# When Melian cannot run, the maintainer overrides one pull request and the ruleset stays active
+# When Melian cannot run, the maintainer overrides one commit and the ruleset stays active
 
 Amends: [the merge-group decision](2026-10-22-melian-review-on-merge-groups.md), the admin bypass and its procedure
 
@@ -25,7 +25,7 @@ The split enforces the right things, but its bypass is dead weight. Disabling th
 
 ## The procedure
 
-The maintainer overrides one pull request, with the ruleset active. For a pull request with head `<head sha>` and base `<base sha>`, they post:
+The maintainer overrides one commit, with the ruleset active. A status binds to a commit SHA and a context. `target_url` is display metadata and binds nothing. For a pull request with head `<head sha>` and base `<base sha>`, they post:
 
 ```
 gh api repos/melian-agent/melian/statuses/<head sha> \
@@ -34,7 +34,17 @@ gh api repos/melian-agent/melian/statuses/<head sha> \
   -f description="Maintainer override: Melian could not run; base <base sha, 40 lowercase hex>"
 ```
 
-The merge-group job accepts this as it accepts any writer's status: the creator has write permission, `target_url` names the pull request, and the reviewed base in the suffix is an ancestor of the group's base. It copies the status to the group commit. CI, thread resolution and the queue stay enforced, and no other pull request is affected. The status is recorded under the maintainer's name on the head, and the job's copy on the group commit names the pull request.
+The merge-group job accepts this as it accepts any writer's status: the creator has write permission, `target_url` names the pull request, and the reviewed base in the suffix is an ancestor of the group's base. It copies the status to the group commit. CI, thread resolution and the queue stay enforced. The override covers the commit it names, and every pull request or group that reaches that commit. The status is recorded under the maintainer's name on the head, and the job's copy on the group commit names the pull request.
+
+## Before posting
+
+The maintainer checks all of these immediately before posting, for the head override and the group-commit override alike. If any check fails, they do not override.
+
+1. **Queue mode.** The effective rules hold exactly one merge-queue rule, with `grouping_strategy` ALLGREEN and `merge_method` MERGE: `gh api repos/melian-agent/melian/rules/branches/main`. Under HEADGREEN, one status on a group's head commit lets every entry in that group land.
+2. **No shared head.** No other open pull request has the same head SHA: `gh pr list --state open --limit 1000 --json number,headRefOid`. Both would inherit the status.
+3. **Current group commit.** For a group-commit override, re-read the entry's `headCommit.oid` just before posting and post only on that SHA.
+
+A validated command will replace this hand procedure: [issue #173](https://github.com/melian-agent/melian/issues/173), `melian status override`.
 
 ## When the merge-group workflow cannot run
 
@@ -44,7 +54,7 @@ If the job itself cannot run, no override reaches the group commit. The maintain
 gh api graphql -f query='{ repository(owner:"melian-agent",name:"melian"){ pullRequest(number:<n>){ mergeQueueEntry { state headCommit { oid } } } } }'
 ```
 
-Then they post `melian/review` `success` on `headCommit.oid`, with the same `target_url` and description as the head's override. Each override covers one entry. Every other entry still needs its own, so nothing else changes.
+Then they post `melian/review` `success` on `headCommit.oid`, with the same `target_url` and description as the head's override. With checks 1 to 3 passing, the override covers that one entry, and every other entry still needs its own.
 
 Never disable the `melian-review` ruleset as an outage procedure. Removing the ruleset is the step-10 undo, a decision for the maintainer, not a way to get through an outage.
 
