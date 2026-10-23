@@ -105,7 +105,7 @@ A `#N` write with no `--round` goes to the newest decided member round at GitHub
 
 ## Sharing, for milestone 3
 
-The ledger is why the state branch exists. The CLI pushes a changeset's storage to `melian/state` when it publishes, as [the design](../design.md#github-actions) planned; the Actions host opens it, computes the delta from the ledger, runs that, and publishes under the GitHub App.
+The ledger is why the state branch exists. The CLI pushes a changeset's storage to `melian/state` when it publishes, as [the design](../design/hosts.md#github-actions) planned; the Actions host opens it, computes the delta from the ledger, runs that, and publishes under the GitHub App.
 
 - **Who may write the branch.** Writers, by push permission on the repository, and the App. Nobody else can push to it, and a fork's workflow has a read-only token.
 - **What a writer's local run records there.** Everything its storage holds for the changeset: rounds, sightings, verifications, check records, the ledger, dismissals, the signing secret and the ledger comment ID. A local run records no status and no acceptance. **What only the agent records:** for each local round it relied on, the head writer and permission it verified and the policy fingerprint it recomputed; and the published status under the App.
