@@ -1455,8 +1455,7 @@ const tables: { name: string; cases: Pair[] }[] = [
 				section(
 					"# Design\n[Trust](design/trust.md)",
 					{
-						"docs/design/trust.md":
-							`# Bound\n${"x".repeat(1048568)}`,
+						"docs/design/trust.md": `# Bound\n${"x".repeat(1048568)}`,
 					},
 					"docs/design.md:1 — Design\ndocs/design/trust.md:1 — Bound",
 				),
@@ -1476,8 +1475,7 @@ const tables: { name: string; cases: Pair[] }[] = [
 				section(
 					"# Design\n[Trust](design/trust.md)",
 					{
-						"docs/design/trust.md":
-							`# Bound\n${"x".repeat(1048569)}`,
+						"docs/design/trust.md": `# Bound\n${"x".repeat(1048569)}`,
 					},
 					{ code: "tooLarge" },
 				),
