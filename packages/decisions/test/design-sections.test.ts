@@ -1518,15 +1518,41 @@ const tables: { name: string; cases: Pair[] }[] = [
 				},
 			],
 			[
-				"heading-dense file at the per-file bound stops at the index bound",
+				"heading-dense file at the line bound stops at the index bound",
 				policy,
 				{
 					kind: "headings",
-					files: [{ path: "docs/design.md", content: "# a\n".repeat(131072) }],
+					files: [{ path: "docs/design.md", content: "# a\n".repeat(20000) }],
 					error: { code: "incomplete", message: `${rowsPastIndexBound()} headings omitted; review refused` },
 				},
 			],
 			["aggregate: exactly 1048576 bytes across design.md and two linked files", aggregate(0), aggregate(1)],
+			...[
+				["LF", "\n", true],
+				["CRLF", "\r\n", true],
+				["CR", "\r", true],
+				["no final newline", "\n", false],
+			].map(
+				([name, ending, final]): Pair => [
+					`lines: 20000 with ${name}`,
+					lines(20000, ending as string, final as boolean),
+					lines(20001, ending as string, final as boolean),
+				],
+			),
+			[
+				"lines: a linked file counts too",
+				section(
+					"# D\n[a](design/a.md)",
+					{ "docs/design/a.md": "# A\n" + "x\n".repeat(19999) },
+					"docs/design.md:1 — D\ndocs/design/a.md:1 — A",
+				),
+				section(
+					"# D\n[a](design/a.md)",
+					{ "docs/design/a.md": "# A\n" + "x\n".repeat(20000) },
+					{ code: "incomplete", message: "Design file docs/design/a.md has 20001 lines" },
+				),
+			],
+			["linked files: 64", linked(64), linked(65)],
 			["empty index", policy, heading("", "")],
 			["no files", policy, { kind: "headings", files: [], expected: "" }],
 		],
@@ -1558,6 +1584,28 @@ function aggregate(extra: number): SectionCase {
 	);
 }
 
+function lines(count: number, ending: string, final: boolean): SectionCase {
+	const body = ["# D", ...Array.from({ length: count - 1 }, () => "x")].join(ending) + (final ? ending : "");
+	return section(
+		body,
+		{},
+		count > 20000
+			? { code: "incomplete", message: `Design file docs/design.md has ${count} lines; the limit is 20000` }
+			: "docs/design.md:1 — D",
+	);
+}
+
+function linked(count: number): SectionCase {
+	const names = Array.from({ length: count }, (_, i) => `f${String(i).padStart(2, "0")}`);
+	return section(
+		`# D\n${names.map((name) => `[${name}](design/${name}.md)`).join(" ")}\n`,
+		Object.fromEntries(names.map((name) => [`docs/design/${name}.md`, ""])),
+		count > 64
+			? { code: "incomplete", message: `Design links ${count} section files; the limit is 64` }
+			: "docs/design.md:1 — D",
+	);
+}
+
 function section(
 	content: string,
 	files: Record<string, string>,
@@ -1583,7 +1631,7 @@ describe.each(tables.map((table) => [table.name, table.cases] as const))(
 
 async function checkCase(row: SectionCase): Promise<void> {
 	expect(designIndexLimits).toEqual({ bytes: 65536 });
-	expect(designFileLimits).toEqual({ bytes: 524288, totalBytes: 1048576 });
+	expect(designFileLimits).toEqual({ bytes: 524288, totalBytes: 1048576, lines: 20000, linkedFiles: 64 });
 	if (row.kind === "headings") {
 		if (row.error)
 			expect(() => DesignSections.from(row.files)).toThrow(

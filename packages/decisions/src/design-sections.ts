@@ -6,7 +6,7 @@ import { LocalDestination, MarkdownDocument } from "./markdown.ts";
 export const designIndexLimits = { bytes: 64 * 1024 } as const;
 
 /** The largest design file, and the most bytes all design files together, read from the trusted base. */
-export const designFileLimits = { bytes: 512 * 1024, totalBytes: 1024 * 1024 } as const;
+export const designFileLimits = { bytes: 512 * 1024, totalBytes: 1024 * 1024, lines: 20_000, linkedFiles: 64 } as const;
 
 /** Base vocabulary from the design and the local sections it links. */
 export class DesignSections {
@@ -21,7 +21,7 @@ export class DesignSections {
 		const source = await openSource(repoRoot, { kind: "revision", commit: base });
 		const content = await source.readText("docs/design.md", designFileLimits.bytes);
 		if (content === undefined) return DesignSections.from([]);
-		const design = MarkdownDocument.parse(content);
+		const design = DesignSections.parse("docs/design.md", content);
 		const documents = [{ path: "docs/design.md", document: design }];
 		let total = Buffer.byteLength(content, "utf8");
 		const paths = new Set<string>();
@@ -32,6 +32,11 @@ export class DesignSections {
 			paths.add(target.path);
 		}
 		paths.delete("docs/design.md");
+		if (paths.size > designFileLimits.linkedFiles)
+			throw new DecisionFilesError(
+				"incomplete",
+				`Design links ${paths.size} section files; the limit is ${designFileLimits.linkedFiles}; review refused`,
+			);
 		for (const path of [...paths].sort()) {
 			const linked = await source.readText(path, designFileLimits.bytes);
 			if (linked === undefined)
@@ -42,7 +47,7 @@ export class DesignSections {
 					"incomplete",
 					`Design files total ${total} bytes by ${path}; the limit is ${designFileLimits.totalBytes}; review refused`,
 				);
-			documents.push({ path, document: MarkdownDocument.parse(linked) });
+			documents.push({ path, document: DesignSections.parse(path, linked) });
 		}
 		return DesignSections.index(documents);
 	}
@@ -50,8 +55,18 @@ export class DesignSections {
 	/** Indexes headings with their base file and line, excluding fenced examples. */
 	static from(files: readonly { path: string; content: string }[]): DesignSections {
 		return DesignSections.index(
-			files.map((file) => ({ path: file.path, document: MarkdownDocument.parse(file.content) })),
+			files.map((file) => ({ path: file.path, document: DesignSections.parse(file.path, file.content) })),
 		);
+	}
+
+	private static parse(path: string, content: string): MarkdownDocument {
+		const lines = lineCount(content);
+		if (lines > designFileLimits.lines)
+			throw new DecisionFilesError(
+				"incomplete",
+				`Design file ${path} has ${lines} lines; the limit is ${designFileLimits.lines}; review refused`,
+			);
+		return MarkdownDocument.parse(content);
 	}
 
 	private static index(documents: readonly { path: string; document: MarkdownDocument }[]): DesignSections {
@@ -79,4 +94,15 @@ export class DesignSections {
 	render(): string {
 		return this.#rows.join("\n");
 	}
+}
+
+function lineCount(text: string): number {
+	let lines = 0;
+	let ended = true;
+	for (let i = 0; i < text.length; i++) {
+		const code = text.charCodeAt(i);
+		ended = code === 10 || code === 13;
+		if (code === 10 || (code === 13 && text.charCodeAt(i + 1) !== 10)) lines++;
+	}
+	return ended ? lines : lines + 1;
 }
