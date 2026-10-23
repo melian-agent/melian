@@ -5,14 +5,15 @@ import { SummaryTask } from "../src/summarize.ts";
 import { VerificationTask } from "../src/verification.ts";
 
 it.each([
-	["melian.summarize", SummaryTask, "../src/summarize.ts", "SummaryTask"],
-	["melian.verification", VerificationTask, "../src/verification.ts", "VerificationTask"],
+	["melian.summarize", SummaryTask, () => import("../src/summarize.ts"), "SummaryTask"],
+	["melian.verification", VerificationTask, () => import("../src/verification.ts"), "VerificationTask"],
 ] as const)(
 	"preserves the captured version-1 %s input and checkpoint directly",
-	async (kind, definition, path, name) => {
-		// Stryker covers the migration arrow when the definition loads, before the callback runs.
+	async (kind, definition, load, name) => {
+		// Stryker covers the migration arrow when the definition loads, so the test reloads it, by a literal path that
+		// Vitest's `related` filter can see.
 		vi.resetModules();
-		const current = await vi.importActual<Record<string, typeof definition>>(path);
+		const current: Record<string, typeof definition> = await load();
 		const task = current[name]!;
 		const fixture = JSON.parse(
 			readFileSync(new URL("./fixtures/thinking-main/recorded.json", import.meta.url), "utf8"),

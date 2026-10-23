@@ -1,10 +1,7 @@
 import { createFakeModels, fauxAssistantMessage, systemPromptOf } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { liveModels } from "../src/credentials.ts";
-// Vitest needs a static edge to select this entry for related mutation runs.
-import "../src/live.ts";
 
-vi.mock("../src/live.ts", () => ({}));
 vi.mock("../src/credentials.ts", () => ({ liveModels: vi.fn() }));
 
 const stopped = new Error("stopped at process.exit");
@@ -45,7 +42,7 @@ it("forwards environment thinking through the live lens entry to the fake reques
 			return fauxAssistantMessage("Done.");
 		},
 	]);
-	await expect(vi.importActual("../src/live.ts")).rejects.toBe(stopped);
+	await expect(import("../src/live.ts")).rejects.toBe(stopped);
 	expect(process.exit).toHaveBeenCalledExactlyOnceWith(0);
 	expect(liveModels).toHaveBeenCalledOnce();
 	expect(received).toEqual([{ reasoning: { effort: "medium" } }]);
