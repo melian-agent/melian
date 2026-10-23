@@ -167,7 +167,7 @@ Details: [docs/design/checks-tiers-and-stages.md](design/checks-tiers-and-stages
 
 A `melian.yaml` may exist at any folder level, and the nearest file applies to a touched path; this section covers layering, resolution per lens and per rule, and the files a user owns.
 
-Details: [docs/design/configuration-and-layering.md](design/configuration-and-layering.md).
+Details: [docs/design/configuration-and-layering.md](design/configuration-and-layering.md). The acknowledge-status rule is in [its decision](decisions/2026-10-17-acknowledge-status-exact-rule.md#resolution-contract-carried-forward).
 
 ## Standards and knowledge
 
@@ -288,7 +288,7 @@ User documentation says that whether a subscription may be used in automation, o
 
 The CLI and the skills were built in milestone 1, and `melian dismiss` in milestone 2. The Actions host is planned for milestone 3. The Pi extension's `/melian` command, the server host, Slack, and other git providers are not yet scheduled.
 
-Details: [docs/design/hosts.md](design/hosts.md).
+Details: [docs/design/hosts.md](design/hosts.md). The skills follow [the CLI guideline](guidelines/cli.md#skills).
 
 ### CLI
 
@@ -432,7 +432,7 @@ The same file also shows what a team does when a static rule cannot express a co
 
 Built in milestone 1, with the golden corpus still growing. Goldens for the five backlog lenses were written in milestone 2 (review of record). Comparison with external reviewers is built in milestone 2: importing and matching were added in [pull request #68](https://github.com/melian-agent/melian/pull/68). [Pull request #72](https://github.com/melian-agent/melian/pull/72) adds adjudication, statistics, the backlog, and export. Calibration measurement is planned for milestone 4 (calibration). Lens tests in the lens directory are not yet scheduled.
 
-Details: [docs/design/evals-and-testing.md](design/evals-and-testing.md).
+Details: [docs/design/evals-and-testing.md](design/evals-and-testing.md). The scoring and comparison forms are in [the evals guideline](guidelines/evals.md#comparisons).
 
 ### Comparison with external reviewers
 
