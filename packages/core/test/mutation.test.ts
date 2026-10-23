@@ -10,7 +10,7 @@ import {
 	toolLogSchema,
 } from "@melian-agent/core";
 import Value from "typebox/value";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 interface Mutant {
 	status: string;
@@ -278,7 +278,16 @@ describe("normaliseMutationReport", () => {
 			expect(adviceOf(bare)).toEqual([`${opening}.${related}${remedy}`]);
 		});
 
-		it("refuses a report whose test files are not lists of tests with string IDs", () => {
+		it("refuses a report whose test files are not lists of tests with string IDs", async () => {
+			// The report schema is built when the module loads, so the test reloads it to put the schema under this test.
+			vi.resetModules();
+			const reloaded = await import("../src/mutation.ts");
+			const parse = (text: string) =>
+				reloaded.normaliseMutationReport(text, {
+					version: "10.0.0",
+					lines: { [path]: [[7, 7]] },
+					tests: { [path]: own },
+				});
 			const listless = edit((report) => {
 				(report.testFiles[own] as unknown) = { tests: "none" };
 			});
@@ -286,8 +295,8 @@ describe("normaliseMutationReport", () => {
 				(report.testFiles[own] as unknown) = { tests: [{ id: 7, name: "a numbered test" }] };
 			});
 			for (const text of [listless, unnamed])
-				expect(() => adviceOf(text)).toThrow(expect.objectContaining({ code: "invalidOutput" }));
-			expect(() => adviceOf(edit(() => {}))).not.toThrow();
+				expect(() => parse(text)).toThrow(expect.objectContaining({ code: "invalidOutput" }));
+			expect(() => parse(edit(() => {}))).not.toThrow();
 		});
 
 		it("names no files when the mutant lists no covering tests", () => {
