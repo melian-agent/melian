@@ -278,6 +278,18 @@ describe("normaliseMutationReport", () => {
 			expect(adviceOf(bare)).toEqual([`${opening}.${related}${remedy}`]);
 		});
 
+		it("refuses a report whose test files are not lists of tests with string IDs", () => {
+			const listless = edit((report) => {
+				(report.testFiles[own] as unknown) = { tests: "none" };
+			});
+			const unnamed = edit((report) => {
+				(report.testFiles[own] as unknown) = { tests: [{ id: 7, name: "a numbered test" }] };
+			});
+			for (const text of [listless, unnamed])
+				expect(() => adviceOf(text)).toThrow(expect.objectContaining({ code: "invalidOutput" }));
+			expect(() => adviceOf(edit(() => {}))).not.toThrow();
+		});
+
 		it("names no files when the mutant lists no covering tests", () => {
 			const unlisted = edit((report) => {
 				for (const mutant of report.files[path]!.mutants) delete (mutant as { coveredBy?: string[] }).coveredBy;
