@@ -1,8 +1,9 @@
 import { rmSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { DesignSections, designFileLimits, designIndexLimits } from "@melian-agent/decisions";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { gitIn, removeDirectory, temporaryDirectory, writeFiles } from "../../core/test/fixtures/repo.ts";
+import { MarkdownDocument } from "../src/markdown.ts";
 
 type Expected = { expected: string; error?: never } | { expected?: never; error: { code: string; message?: string } };
 type SectionCase = Expected &
@@ -1633,6 +1634,33 @@ describe.each(tables.map((table) => [table.name, table.cases] as const))(
 		});
 	},
 );
+
+describe("line cap runs before parsing", () => {
+	const lineFile = (path: string, count: number) => ({ path, content: `# D\n${"x\n".repeat(count - 1)}` });
+	const parses = (files: { path: string; content: string }[]) => {
+		const parse = vi.spyOn(MarkdownDocument, "parse");
+		try {
+			DesignSections.from(files);
+		} catch {
+			// the refusal is asserted by the line-bound table
+		}
+		const calls = parse.mock.calls.length;
+		parse.mockRestore();
+		return calls;
+	};
+
+	it("does not parse an oversized docs/design.md", () => {
+		expect(parses([lineFile("docs/design.md", 20001)])).toBe(0);
+	});
+
+	it("does not parse an oversized linked file", () => {
+		expect(parses([lineFile("docs/design.md", 2), lineFile("docs/design/a.md", 20001)])).toBe(1);
+	});
+
+	it("parses a file at the line bound", () => {
+		expect(parses([lineFile("docs/design.md", 20000)])).toBe(1);
+	});
+});
 
 async function checkCase(row: SectionCase): Promise<void> {
 	expect(designIndexLimits).toEqual({ bytes: 65536 });
