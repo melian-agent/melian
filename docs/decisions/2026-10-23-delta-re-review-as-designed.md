@@ -25,7 +25,7 @@ Why: the convergence rule already says the last round before the queue is a full
 The anchor is the newest decided round in the changeset's storage that meets every rule below. When none does, the review runs in full and prints the reason of the newest round it rejected. A fallback is always to a full round, never to a delta of narrower scope.
 
 1. Its base is the new revision's base, the exact commit. A merge of `main` into a branch moves a three-dot range's merge base, so it runs in full.
-2. Its head is a proper ancestor of the new head: `git merge-base --is-ancestor <anchor head> <head>` exits 0 and the heads differ. Any other exit, as after a force push or a rebase, runs in full. A head equal to the anchor's has nothing to review: `--delta` refuses with "round rK already reviewed this head".
+2. Its head is a proper ancestor of the new head: `git merge-base --is-ancestor <anchor head> <head>` exits 0 and the heads differ. Any other exit, as after a force push or a rebase, runs in full. When a decided round already sits at the new base and head, there is nothing to review: `--delta` refuses with "round rK already reviewed this head".
 3. `git rev-list --merges <anchor head>..<head>` is empty. A merge commit in the delta brings in work its author did not write as a fix, so it runs in full.
 4. Its chain roots in a full round at the same base. A delta round records its anchor and its root, the full round its chain started from.
 5. Every lens record in the anchor's verdict ran, or was skipped with leave. A lens that failed or that a budget ended left findings unread, so carrying from it would hide them.
@@ -63,9 +63,9 @@ Git maps each location from the anchor's head to the new head: Melian diffs the 
 
 A carried finding keeps its ID, its producer, its severity as reported, and its lifecycle, so a dismissal stays dismissed. Melian computes its cause and trigger again against the full range at the new head, through `Revision.classifyCause`, so the dismissal reopen rule compares the right hunk. The carry never lowers, drops or reopens a finding by itself; only a lens, the verifier or the reopen rule does.
 
-A carried sighting is stored at the delta key under the producer `carried@<anchor round key>`, holding the anchor's merged finding with its other claims. The delta round's merge step treats it as one more sighting: the highest severity wins, so a carried finding never loses to a weaker new one. Its sighting records `carriedFrom: <anchor round ID>`, and the findings document rises to version 11.
+A carried sighting is stored at the delta key under the producer `carried@<anchor round key>`, holding the anchor's merged finding with its other claims. The delta round's merge step treats an untouched carried sighting as one more sighting: when a delta lens sights the same ID, the highest severity wins, so an untouched finding never loses to a weaker new one. Its sighting records `carriedFrom: <anchor round ID>`, and the findings document rises to version 11.
 
-Re-judging a changed finding reuses escalation's hand-off. The delta run of the lens that reported it is given the finding with its file, lines and rule. The lens restates it, which counts the new sighting; refutes it by ID, which drops it; or does neither, and it counts at the new side of the hunk it overlapped until the verifier judges it against the new head. A changed finding whose lens does not run in the delta goes straight to the verifier. A refuted changed finding, from either, follows the existing trust floor.
+Re-judging a changed finding reuses escalation's hand-off. The delta run of the lens that reported it is given the finding with its file, lines and rule. The lens restates it, the same ID or the same file and rule on overlapping lines, and it counts once, from the delta run; refutes it by ID, which drops it; or does neither, and only then is it stored as carried, at the new side of the hunk it overlapped, until the verifier judges it against the new head. A changed finding whose lens does not run in the delta goes straight to the verifier. A refuted changed finding, from either, follows the existing trust floor.
 
 ## The inputs
 
@@ -134,7 +134,7 @@ Trust and blocking rules, each to be attacked before any build:
 2. `publish` takes a decided full round over any delta round at one base and head, and `--delta` refuses at a head a round already reviewed.
 3. Each anchor rule, 1 to 8, falls back to a full round.
 4. The carry: untouched, changed and gone, with locations mapped by git and cause recomputed against the full range.
-5. A carried finding is never lowered, dropped or reopened by the carry, and the highest severity wins its merge.
+5. A carried finding is never lowered, dropped or reopened by the carry; an untouched one keeps the highest severity in its merge, and a changed one counts once, from the delta run, when restated.
 6. Cause comes from the full range, never the delta.
 7. Levels come from the root, and triage does not run.
 8. A delta's mutation run is provisional and publishes no partition.
