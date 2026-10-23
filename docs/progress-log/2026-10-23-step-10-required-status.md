@@ -11,4 +11,4 @@ The prerequisites landed first:
 
 The merge groups of #174 and #172 were the first live `success` runs of the workflow: "reviewed head and base verified", posted by `github-actions[bot]`. The readiness check (2026-10-21) and the rehearsal on [pull request #164](https://github.com/melian-agent/melian/pull/164) are done. The scratch-repository test of the two ruleset layouts is the decision #172 records.
 
-Still open from step 10: the retirement line in `melian compare stats`, and [issue #173](https://github.com/melian-agent/melian/issues/173), a validated `melian status override`.
+Outside step 10: the retirement line in `melian compare stats` stays under step 15, and [issue #173](https://github.com/melian-agent/melian/issues/173), a validated `melian status override`.
