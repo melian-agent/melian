@@ -47,15 +47,17 @@ Each `melian.rounds` record gains an optional `scope`: `{ kind: "delta", anchor,
 
 Minting, keeping and freezing follow [the rounds decision](2026-10-18-compare-rounds-exact-rule.md), per key. A dismissal re-decides only the round `melian findings` shows, below; every other round's copy stays frozen.
 
+A full round retires every delta round at its base and head. Problem: the keys are apart, so a delta that a crash left pending could resume after a full round passed, report a blocker, and stay hidden behind the full round's `success`. Solution: the commit that mints a full round at `<base>..<head>` removes from the review index every delta entry whose key starts `<base>..<head>@`, so their adjudications record no verdict, as [review attachment](2026-10-03-review-attachment.md) already rules for an adjudication the index no longer names. The review then aborts their tasks before it waits, as triage's replacement does. A delta round refuses to start at a base and head where a full round has been minted, decided or not. So no delta round decides at a base and head after a full round was minted there.
+
 What `melian findings <range|#N>` shows: the full round at the revision's base and head when one is decided, else the newest decided delta round there. Its first line names the scope: "Delta round r5 since e1a7 (anchor r3, full root r1)". JSON adds `round: { id, scope, anchor, root, since }`. `--round` reads any round, and `--rounds` lists the scope beside each.
 
 What `melian compare` writes: a range write with no `--round` goes to the round `findings` shows. A delta round stores the pull request's base and head, so rule 2 of the rounds decision makes it a member of `#N` like any round at that head. The rule's words "which excludes a delta round" assumed a delta stored its anchor's head as its base; that no longer holds, and they are withdrawn. Export and stats label each member's scope. A carried finding counts once per pull request, at the round that first sighted it, so carrying never adds a Melian finding to recall.
 
 ## Carried sightings
 
-The carry reads the anchor round's frozen verdict, never the anchor's live sightings: a rerun at the anchor's revision can replace those after the anchor froze. Lens and mutation findings carry. Guardrail, static, decision-model and policy findings do not, because their checks run again over the whole range.
+The carry reads the anchor's own sightings and verifications at the anchor's key, one per producer, never its merged verdict. Problem: a verdict merges reports into one speaker and keeps only part of the others, so a carry built from it could not resolve each report on its own, and a lens speaker merged with a stricter mutation report could lose that report's block. Solution: the carry copies the sightings of the producers the anchor counted, its selected lenses and `static.mutation` at the version its record names, inside the commit that creates the delta lens task, and only while the anchor is still the current round at its key. A later round at that key makes the delta choose its anchor again, under a new key. Lens and mutation sightings carry. Guardrail, static, decision-model and policy sightings do not, because their checks run again over the whole range; a defect a lens and a static check both reported carries its lens report, and the rerun decides the static one.
 
-Git maps each location from the anchor's head to the new head: Melian diffs the two with the review's own diff flags and rename detection, and moves a line by the hunks before it. Every location a finding cites at head counts, its own and each evidence location's. A base-side evidence location names the unchanged base and does not move. Each carried finding falls into one of three cases:
+Git maps each location from the anchor's head to the new head: Melian diffs the two with the review's own diff flags and rename detection, and moves a line by the hunks before it. Every location a finding cites at head counts, its own and each evidence location's. A base-side evidence location names the unchanged base and does not move. Each carried sighting falls into one of three cases:
 
 - **Untouched**: no cited line overlaps a delta hunk's old lines, and no insertion falls inside a cited range. It carries to the new head with its lines moved, its file renamed where git says so, and the anchor's verification copied beside it.
 - **Changed**: a cited line overlaps a delta hunk. It is re-judged, as below.
@@ -63,7 +65,7 @@ Git maps each location from the anchor's head to the new head: Melian diffs the 
 
 A carried finding keeps its ID, its producer, its severity as reported, and its lifecycle, so a dismissal stays dismissed. Melian computes its cause and trigger again against the full range at the new head, through `Revision.classifyCause`, so the dismissal reopen rule compares the right hunk. The carry never lowers, drops or reopens a finding by itself; only a lens, the verifier or the reopen rule does.
 
-A carried sighting is stored at the delta key under the producer `carried@<anchor round key>`, holding the anchor's merged finding with its other claims. The delta round's merge step treats an untouched carried sighting as one more sighting: when a delta lens sights the same ID, the highest severity wins, so an untouched finding never loses to a weaker new one. Its sighting records `carriedFrom: <anchor round ID>`, and the findings document rises to version 11.
+A carried sighting is stored at the delta key under its own producer with the prefix `carried/`, as `carried/lens.correctness@<version>@careful`, beside its copied verifications. It keeps its source check and rule, so adjudication resolves it by its own path, and a delta lens's new sighting never replaces it. The delta round's merge step treats an untouched carried sighting as one more sighting: when a delta lens sights the same ID, the highest severity wins, so an untouched finding never loses to a weaker new one. Its sighting records `carriedFrom: <anchor round ID>`, and the findings document rises to version 11.
 
 Re-judging a changed finding reuses escalation's hand-off. The delta run of the lens that reported it is given the finding with its file, lines and rule. The lens restates it, the same ID or the same file and rule on overlapping lines, and it counts once, from the delta run; refutes it by ID, which drops it; or does neither, and only then is it stored as carried, at the new side of the hunk it overlapped, until the verifier judges it against the new head. A changed finding whose lens does not run in the delta goes straight to the verifier. A refuted changed finding, from either, follows the existing trust floor.
 
@@ -131,9 +133,9 @@ The coordinator still marks the last round, by leaving out `--delta` and adding 
 Trust and blocking rules, each to be attacked before any build:
 
 1. A delta verdict can never be `passed`, and its `review.delta` record comes only from Melian's intake.
-2. `publish` takes a decided full round over any delta round at one base and head, and `--delta` refuses at a head a round already reviewed.
+2. `publish` takes a decided full round over any delta round at one base and head; minting a full round retires every delta round there; `--delta` refuses where a full round was minted or a round already reviewed the head.
 3. Each anchor rule, 1 to 8, falls back to a full round.
-4. The carry: untouched, changed and gone, with locations mapped by git and cause recomputed against the full range.
+4. The carry: per-producer sightings copied while the anchor is current; untouched, changed and gone, with locations mapped by git and cause recomputed against the full range.
 5. A carried finding is never lowered, dropped or reopened by the carry; an untouched one keeps the highest severity in its merge, and a changed one counts once, from the delta run, when restated.
 6. Cause comes from the full range, never the delta.
 7. Levels come from the root, and triage does not run.

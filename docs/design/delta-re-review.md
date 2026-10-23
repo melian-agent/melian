@@ -11,10 +11,10 @@ Solution: `melian review <range|#N> --delta`. The round builds on the newest dec
 ## What a delta round does
 
 1. **Picks its anchor.** Same base, an ancestor head, no merge commit or policy change in between, the same review identity, a full round at the root of its chain, every lens of the anchor run, and a delta inside its bound. Git answers the ancestry and merge questions. Failing any rule runs a full round and prints why.
-2. **Carries the anchor's findings.** From the anchor's frozen verdict, each lens or mutation finding is mapped by git from the anchor's head to the new head. One whose cited lines the delta left alone carries, with its lines moved and its verification kept. One whose lines the delta changed is re-judged. One whose file the delta deleted is gone.
+2. **Carries the anchor's findings.** From the anchor's own sightings, one per producer, copied while the anchor is still its key's current round, each lens or mutation sighting is mapped by git from the anchor's head to the new head. One whose cited lines the delta left alone carries, with its lines moved and its verification kept. One whose lines the delta changed is re-judged. One whose file the delta deleted is gone.
 3. **Runs lenses on the delta.** Each lens whose paths the delta touches runs at the level the root round chose, without triage. Its prompt holds the delta's diff and the pull request's file list. It is handed its own changed findings, as escalation hands a quick run's findings to the next level: it restates, refutes, or leaves each to the verifier.
 4. **Runs the checks.** Guardrails and static tools run over the whole range, as in a full round. Stryker mutates only the delta's lines, and the run is provisional.
-5. **Adjudicates under its own key**, `<base>..<head>@<anchor round>`, so it never shares a task, a sighting or a verdict with the full round that may follow at the same base and head.
+5. **Adjudicates under its own key**, `<base>..<head>@<anchor round>`, so it never shares a task, a sighting or a verdict with the full round that may follow at the same base and head. Minting that full round retires every delta round at its base and head, so a delta a crash left pending can never decide after it.
 
 Cause is always classified against the pull request's whole diff, base to new head. Location in the delta never makes a finding `introduced` by itself.
 
