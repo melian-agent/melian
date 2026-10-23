@@ -1,0 +1,219 @@
+{
+	"schemaVersion": "1.0",
+	"config": {
+		"ignoreStatic": true,
+		"mutator": {
+			"excludedMutations": [
+				"StringLiteral"
+			]
+		},
+		"vitest": {
+			"related": true
+		}
+	},
+	"files": {
+		"packages/pipeline/src/mutation-paths.ts": {
+			"language": "typescript",
+			"mutants": [
+				{
+					"id": "0",
+					"mutatorName": "Regex",
+					"replacement": "/\\.[cm]?tsx?/",
+					"status": "Survived",
+					"static": true,
+					"testsCompleted": 11,
+					"coveredBy": [
+						"2783",
+						"2784",
+						"2785",
+						"2786",
+						"2787",
+						"2788",
+						"2789",
+						"2790",
+						"2817",
+						"2848",
+						"2851"
+					],
+					"location": {
+						"end": {
+							"column": 41,
+							"line": 7
+						},
+						"start": {
+							"column": 27,
+							"line": 7
+						}
+					}
+				},
+				{
+					"id": "1",
+					"mutatorName": "Regex",
+					"replacement": "/\\.[cm]tsx?$/",
+					"status": "Survived",
+					"static": true,
+					"testsCompleted": 11,
+					"coveredBy": [
+						"2783",
+						"2784",
+						"2785",
+						"2786",
+						"2787",
+						"2788",
+						"2789",
+						"2790",
+						"2817",
+						"2848",
+						"2851"
+					],
+					"location": {
+						"end": {
+							"column": 41,
+							"line": 7
+						},
+						"start": {
+							"column": 27,
+							"line": 7
+						}
+					}
+				},
+				{
+					"id": "2",
+					"mutatorName": "Regex",
+					"replacement": "/\\.[^cm]?tsx?$/",
+					"status": "Survived",
+					"static": true,
+					"testsCompleted": 11,
+					"coveredBy": [
+						"2783",
+						"2784",
+						"2785",
+						"2786",
+						"2787",
+						"2788",
+						"2789",
+						"2790",
+						"2817",
+						"2848",
+						"2851"
+					],
+					"location": {
+						"end": {
+							"column": 41,
+							"line": 7
+						},
+						"start": {
+							"column": 27,
+							"line": 7
+						}
+					}
+				},
+				{
+					"id": "3",
+					"mutatorName": "Regex",
+					"replacement": "/\\.[cm]?tsx$/",
+					"status": "Survived",
+					"static": true,
+					"testsCompleted": 11,
+					"coveredBy": [
+						"2783",
+						"2784",
+						"2785",
+						"2786",
+						"2787",
+						"2788",
+						"2789",
+						"2790",
+						"2817",
+						"2848",
+						"2851"
+					],
+					"location": {
+						"end": {
+							"column": 41,
+							"line": 7
+						},
+						"start": {
+							"column": 27,
+							"line": 7
+						}
+					}
+				}
+			]
+		}
+	},
+	"testFiles": {
+		"packages/evals/test/live-entry.test.ts": {
+			"tests": [
+				{
+					"id": "2783",
+					"name": "parses thinking and passes the complete live mode to the verifier callback"
+				},
+				{
+					"id": "2784",
+					"name": "prints escaped invalid thinking verifier=invalid before opening credentials"
+				},
+				{
+					"id": "2785",
+					"name": "prints escaped invalid thinking heavy=‮fake before opening credentials"
+				},
+				{
+					"id": "2786",
+					"name": "prints escaped invalid thinking heavy= fake before opening credentials"
+				},
+				{
+					"id": "2787",
+					"name": "prints escaped invalid thinking heavy=fake before opening credentials"
+				},
+				{
+					"id": "2788",
+					"name": "prints escaped baseline thinking containing U+8238"
+				},
+				{
+					"id": "2789",
+					"name": "prints escaped baseline thinking containing U+8232"
+				},
+				{
+					"id": "2790",
+					"name": "prints escaped baseline thinking containing U+133"
+				}
+			]
+		},
+		"packages/evals/test/live-triage-entry.test.ts": {
+			"tests": [
+				{
+					"id": "2817",
+					"name": "forwards environment thinking through the live triage entry to the fake request body"
+				}
+			]
+		},
+		"packages/evals/test/live-lens-entry.test.ts": {
+			"tests": [
+				{
+					"id": "2848",
+					"name": "forwards environment thinking through the live lens entry to the fake request body"
+				}
+			]
+		},
+		"packages/pipeline/test/thinking-task-migrations.test.ts": {
+			"tests": [
+				{
+					"id": "2850",
+					"name": "preserves the captured version-1 melian.summarize input and checkpoint directly"
+				},
+				{
+					"id": "2851",
+					"name": "preserves the captured version-1 melian.verification input and checkpoint directly"
+				}
+			]
+		},
+		"packages/pipeline/test/mutation-static.test.ts": {
+			"tests": [
+				{
+					"id": "158",
+					"name": "static.mutation reads the report where Stryker writes it, whatever reporter settings the head's configuration names"
+				}
+			]
+		}
+	}
+}
