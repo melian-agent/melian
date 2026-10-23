@@ -1128,6 +1128,8 @@ Planned, not built, to make the loop cheaper and teach Melian from it:
 - **Comparison after a merge.** A merged pull request's stored rounds stay reachable, so its record is exported from the store, and thread import keeps its head rule. [The rounds decision](decisions/2026-10-18-compare-rounds-exact-rule.md) sets the exact rule, which **Rounds** under [Comparison with external reviewers](#comparison-with-external-reviewers) summarises; it supersedes the direction-only decision. Plan step 23 has it attacked before building.
 - **The review outcome task.** `melian learn "#N"` reads a merged pull request's stored review history and drafts guidance from it: classes repeated across rounds, findings that recur across pull requests, lens gaps, and process signals such as findings in code a fix pass just added. It never applies what it drafts. [The outcome decision](decisions/2026-10-15-review-outcome-task.md) records the direction, the inputs and output in outline, and the open questions. It runs on demand, after a pull request that took more than four rounds, as [the readiness rulings](decisions/2026-10-21-readiness-check-rulings.md) decide. Plan step 25 writes the full decision against the code after step 23's, and has it attacked before building.
 
+Step 24 designs delta re-review in [design/delta-re-review.md](design/delta-re-review.md).
+
 ## Tech stack
 
 In use since milestone 1, except what a row marks as planned.
