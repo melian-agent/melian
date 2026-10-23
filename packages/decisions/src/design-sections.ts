@@ -6,7 +6,7 @@ import { LocalDestination, MarkdownDocument } from "./markdown.ts";
 export const designIndexLimits = { bytes: 64 * 1024 } as const;
 
 /** The largest design file, and the most bytes all design files together, read from the trusted base. */
-export const designFileLimits = { bytes: 512 * 1024, totalBytes: 1024 * 1024, lines: 20_000, linkedFiles: 64 } as const;
+export const designFileLimits = { bytes: 320 * 1024, totalBytes: 1024 * 1024, lines: 20_000, linkedFiles: 64 } as const;
 
 /** Base vocabulary from the design and the local sections it links. */
 export class DesignSections {

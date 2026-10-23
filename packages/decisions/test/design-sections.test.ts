@@ -1413,15 +1413,15 @@ const tables: { name: string; cases: Pair[] }[] = [
 				},
 			],
 			[
-				"docs/design.md: read 524288 bytes",
+				"docs/design.md: read 327680 bytes",
 				section(
-					`# Bound\n${"x".repeat(524280)}`,
+					`# Bound\n${"x".repeat(327672)}`,
 					{ "docs/design/trust.md": "# Trust" },
 					"docs/design.md:1 — Bound",
 				),
 				{
 					kind: "revision",
-					files: { "docs/design.md": `# Bound\n${"x".repeat(524280)}`, "docs/design/trust.md": "# Trust" },
+					files: { "docs/design.md": `# Bound\n${"x".repeat(327672)}`, "docs/design/trust.md": "# Trust" },
 					revision: "missing-revision",
 					error: { code: "unknownCommit" },
 				},
@@ -1432,9 +1432,9 @@ const tables: { name: string; cases: Pair[] }[] = [
 				policy,
 			],
 			[
-				"docs/design.md: read 524289 bytes",
+				"docs/design.md: read 327681 bytes",
 				policy,
-				section(`# Bound\n${"x".repeat(524281)}`, { "docs/design/trust.md": "# Trust" }, { code: "tooLarge" }),
+				section(`# Bound\n${"x".repeat(327673)}`, { "docs/design/trust.md": "# Trust" }, { code: "tooLarge" }),
 			],
 			[
 				"docs/design/trust.md: symlink refused",
@@ -1451,11 +1451,11 @@ const tables: { name: string; cases: Pair[] }[] = [
 				},
 			],
 			[
-				"docs/design/trust.md: read 524288 bytes",
+				"docs/design/trust.md: read 327680 bytes",
 				section(
 					"# Design\n[Trust](design/trust.md)",
 					{
-						"docs/design/trust.md": `# Bound\n${"x".repeat(524280)}`,
+						"docs/design/trust.md": `# Bound\n${"x".repeat(327672)}`,
 					},
 					"docs/design.md:1 — Design\ndocs/design/trust.md:1 — Bound",
 				),
@@ -1463,19 +1463,19 @@ const tables: { name: string; cases: Pair[] }[] = [
 					kind: "revision",
 					files: {
 						"docs/design.md": "# Design\n[Trust](design/trust.md)",
-						"docs/design/trust.md": `# Bound\n${"x".repeat(524280)}`,
+						"docs/design/trust.md": `# Bound\n${"x".repeat(327672)}`,
 					},
 					revision: "missing-revision",
 					error: { code: "unknownCommit" },
 				},
 			],
 			[
-				"docs/design/trust.md: read 524289 bytes",
+				"docs/design/trust.md: read 327681 bytes",
 				policy,
 				section(
 					"# Design\n[Trust](design/trust.md)",
 					{
-						"docs/design/trust.md": `# Bound\n${"x".repeat(524281)}`,
+						"docs/design/trust.md": `# Bound\n${"x".repeat(327673)}`,
 					},
 					{ code: "tooLarge" },
 				),
@@ -1526,7 +1526,7 @@ const tables: { name: string; cases: Pair[] }[] = [
 					error: { code: "incomplete", message: `${rowsPastIndexBound()} headings omitted; review refused` },
 				},
 			],
-			["aggregate: exactly 1048576 bytes across design.md and two linked files", aggregate(0), aggregate(1)],
+			["aggregate: exactly 1048576 bytes across design.md and four linked files", aggregate(0), aggregate(1)],
 			...[
 				["LF", "\n", true],
 				["CRLF", "\r\n", true],
@@ -1571,16 +1571,21 @@ function rowsPastIndexBound(): number {
 }
 
 function aggregate(extra: number): SectionCase {
-	const design = "# D\n[a](design/a.md) [b](design/b.md)\n";
-	const first = `# A\n${"x".repeat(524288 - 4)}`;
-	const second = `# B\n${"x".repeat(524288 - Buffer.byteLength(design, "utf8") - 4 + extra)}`;
-	const files = { "docs/design/a.md": first, "docs/design/b.md": second };
+	const design = "# D\n[a](design/a.md) [b](design/b.md) [c](design/c.md) [d](design/d.md)\n";
+	const full = (heading: string) => `# ${heading}\n${"x".repeat(327680 - 4)}`;
+	const last = `# E\n${"x".repeat(1048576 - 3 * 327680 - Buffer.byteLength(design, "utf8") - 4 + extra)}`;
+	const files = {
+		"docs/design/a.md": full("A"),
+		"docs/design/b.md": full("B"),
+		"docs/design/c.md": full("C"),
+		"docs/design/d.md": last,
+	};
 	return section(
 		design,
 		files,
 		extra === 0
-			? "docs/design.md:1 — D\ndocs/design/a.md:1 — A\ndocs/design/b.md:1 — B"
-			: { code: "incomplete", message: "Design files total 1048577 bytes by docs/design/b.md" },
+			? "docs/design.md:1 — D\ndocs/design/a.md:1 — A\ndocs/design/b.md:1 — B\ndocs/design/c.md:1 — C\ndocs/design/d.md:1 — E"
+			: { code: "incomplete", message: "Design files total 1048577 bytes by docs/design/d.md" },
 	);
 }
 
@@ -1631,7 +1636,7 @@ describe.each(tables.map((table) => [table.name, table.cases] as const))(
 
 async function checkCase(row: SectionCase): Promise<void> {
 	expect(designIndexLimits).toEqual({ bytes: 65536 });
-	expect(designFileLimits).toEqual({ bytes: 524288, totalBytes: 1048576, lines: 20000, linkedFiles: 64 });
+	expect(designFileLimits).toEqual({ bytes: 327680, totalBytes: 1048576, lines: 20000, linkedFiles: 64 });
 	if (row.kind === "headings") {
 		if (row.error)
 			expect(() => DesignSections.from(row.files)).toThrow(
