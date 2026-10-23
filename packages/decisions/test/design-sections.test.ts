@@ -1657,6 +1657,24 @@ describe("line cap runs before parsing", () => {
 		expect(parses([lineFile("docs/design.md", 2), lineFile("docs/design/a.md", 20001)])).toBe(1);
 	});
 
+	it("refuses 65 links before reading any linked file", async () => {
+		const names = Array.from({ length: 65 }, (_, i) => `f${String(i).padStart(2, "0")}`);
+		const design = `# D\n${names.map((name) => `[${name}](design/${name}.md)`).join(" ")}\n`;
+		await checkCase(
+			section(design, {}, { code: "incomplete", message: "Design links 65 section files; the limit is 64" }),
+		);
+	});
+
+	it("refuses the file that passes the total before parsing it", async () => {
+		const parse = vi.spyOn(MarkdownDocument, "parse");
+		try {
+			await checkCase(aggregate(1));
+			expect(parse).toHaveBeenCalledTimes(4);
+		} finally {
+			parse.mockRestore();
+		}
+	});
+
 	it("parses a file at the line bound", () => {
 		expect(parses([lineFile("docs/design.md", 20000)])).toBe(1);
 	});
