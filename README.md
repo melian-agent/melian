@@ -171,7 +171,7 @@ One full round on [pull request #184](https://github.com/melian-agent/melian/pul
 
 ## Built for large monorepos
 
-Every setting Melian has, from which lenses run to what severity blocks a merge, can be overridden at the folder level. The nearest configuration wins and merges upward, in the same way `CODEOWNERS` works.
+Settings that layer by path, such as which lenses run and what severity blocks a merge, can be overridden at the folder level. The nearest configuration wins and merges upward, in the same way `CODEOWNERS` works. Settings that apply to the whole review are root-only, and a nested file that sets one is refused: `trust`, `comparison`, `triage`, route policy, and `thinking`.
 
 What a finding requires can be set per lens and per rule too. A folder may say that one lens only advises there, or that one rule blocks, and may cap a lens with a ceiling. For that one key the nearest file that mentions the finding decides it whole, and `melian doctor` lists what each file overrides.
 
@@ -196,7 +196,7 @@ Milestone 2 makes Melian the review of record for its own repository. Built so f
 - **Lenses.** Six built-in lenses run in the default `full` tier: `correctness`, `contracts`, `trust-boundary`, `removed-behaviour`, `tests`, and `conventions`. A seventh, `design`, checks a change against the decisions in force at the base, and a repository adds it to a tier. This repository also adds `durability`, a lens of its own for Pi Durable's replay rules, and extends `correctness` and `removed-behaviour` to hand it crash and replay defects.
 - **The verifier.** A second model judges every lens claim as confirmed, plausible, or refuted, and may lower a severity one step. A trust floor holds a lowered or refuted trust-boundary or test claim at the requirement it would carry if confirmed, up to acknowledgement.
 - **Triage and scrutiny levels.** Each lens declares `quick`, `careful`, and `deep`, with its own budgets. Triage picks a level within the band policy sets, and a severe quick finding escalates.
-- **Static checks.** Biome and tsc, with Enola and mutation testing as opt-in checks. Each compares base and head, so only what the change introduced counts.
+- **Static checks.** Biome and tsc, with Enola and mutation testing as opt-in checks. Biome, tsc, and Enola compare base and head, so only what the change introduced counts. Mutation testing runs at the head alone, over the production lines the change added or edited.
 - **Guardrails.** Forbidden paths and patterns, required files, and a notice whenever a change edits the policy that judges it.
 - **Durable, resumable reviews.** Every stage is a Pi Durable task. A review killed mid-way resumes without repeating finished work.
 - **Publication.** One review per head, inline comments, a commit status, and a ledger comment edited in place. Resolved findings close their threads, and dismissals are answered in theirs.
@@ -210,8 +210,7 @@ Milestone 2 makes Melian the review of record for its own repository. Built so f
 In design now:
 
 - Delta review over a coverage ledger, so a pull request's later rounds review only what no earlier round covered ([pull request #185](https://github.com/melian-agent/melian/pull/185)).
-- Mutation evidence by enumerating mutants and verifying them, which extends to any language ([issue #177](https://github.com/melian-agent/melian/issues/177)).
-- A parser-backed enumerator for languages without a mutation tool ([issue #170](https://github.com/melian-agent/melian/issues/170)).
+- Mutation evidence by enumerating mutants and verifying them. Milestone 2 plans the TypeScript enumeration and verification ([issue #177](https://github.com/melian-agent/melian/issues/177)). Adapters for other languages and a parser-backed fallback for languages without a mutation tool are milestone 3 ([issue #170](https://github.com/melian-agent/melian/issues/170)).
 
 Milestone 3 runs Melian on GitHub Actions, with review state shared on a branch of your repository. Milestone 4 teaches it to remember and learn: comment commands, knowledge write-back, and decision models.
 
