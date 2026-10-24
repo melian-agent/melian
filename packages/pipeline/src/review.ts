@@ -1580,8 +1580,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		: undefined;
 	const options = planned({ ...request, checks: checked?.records ?? request.checks ?? [] });
 	const { changeset, config, standards, models } = options;
-	// A host that keeps no spans gets a recorder nobody stores, so each step below times itself the same way.
-	const spans = options.spans ?? PrepareSpans.start("review", Date.now());
+	// A host that keeps no spans gets a recorder nobody stores, on a clock that reads nothing.
+	const spans = options.spans ?? PrepareSpans.start("review", 0, () => 0);
 	spans.step("standards.trust");
 	const standardsSource =
 		standards instanceof Standards && (await standards.trustedBy(options.policy)) ? "revision" : "worktree";

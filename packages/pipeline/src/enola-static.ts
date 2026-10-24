@@ -221,7 +221,7 @@ export class EnolaRun {
 	async callers(
 		files: readonly ChangedFile[],
 		changedPaths: readonly string[],
-		spans: PrepareSpans = PrepareSpans.start("callers", Date.now()),
+		spans: PrepareSpans = PrepareSpans.start("callers", 0, () => 0),
 	): Promise<CallerData> {
 		const output = posix.join(this.#scratch, "head-output");
 		const facts = await spans.time("callers.graph", async () => {

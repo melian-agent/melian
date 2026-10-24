@@ -87,6 +87,7 @@ it.each([true, false])(
 			[expect.objectContaining({ path: "src/a.ts" })],
 			expect.anything(),
 			["src/a.ts"],
+			expect.anything(),
 		);
 		expect(vi.mocked(CallerContext.open).mock.calls[0]?.[0].policyCommit).toBe(checkedOut ? undefined : base);
 		expect(systemPromptOf(requests["You are the correctness reviewer"]![0]!)).toContain("OutsideCaller");

@@ -50,7 +50,7 @@ export class CallerContext {
 		files: readonly ChangedFile[],
 		context: Context,
 		changedPaths: readonly string[] = files.map((file) => file.path),
-		spans: PrepareSpans = PrepareSpans.start("callers", Date.now()),
+		spans: PrepareSpans = PrepareSpans.start("callers", 0, () => 0),
 	): Promise<CallerContext> {
 		if (files.length === 0) return CallerContext.unavailable("No changed files selected by lenses");
 		try {

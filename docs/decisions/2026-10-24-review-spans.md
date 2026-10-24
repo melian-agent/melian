@@ -1,6 +1,6 @@
 # Spans time a review's work between tasks
 
-Amends: [stage telemetry](2026-10-16-stage-telemetry.md), for the orchestrator's own work between durable tasks.
+Amends: [reasoning capture](2026-10-18-reasoning-telemetry.md), which restates the stage timing contract, for the orchestrator's own work between durable tasks.
 
 Choice: the host opens a `PrepareSpans` recorder at its process's start, from `performance.timeOrigin`, and the review's steps between tasks join it. Each span is `{ name, startedAt, endedAt, durationMs, parent? }`. One step is open at a time: `step(name)` ends the open step and opens the next, `end()` closes it before a wait that a task's own timing covers, and `time(name, work)` times nested work, such as unlocking credentials or the Enola graph and query, with the open step as its parent. Before the verdict prints, the host stores the record as one `melian.prepare` document-family member, version 1, in the root conversation, keyed by revision. The next review of the revision replaces it. `melian telemetry` and review JSON show the record beside the stages, list the spans in time order, and name every stretch over a second that neither a span nor a stage covers. Each model stage also carries `modelMs`, the summed response time of its answers, read from the transcript; the rest of its duration is tools and orchestration.
 
