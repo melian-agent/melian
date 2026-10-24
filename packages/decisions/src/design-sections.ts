@@ -8,6 +8,9 @@ export const designIndexLimits = { bytes: 64 * 1024 } as const;
 /** The largest design file, and the most bytes all design files together, read from the trusted base. */
 export const designFileLimits = { bytes: 320 * 1024, totalBytes: 1024 * 1024, lines: 20_000, linkedFiles: 64 } as const;
 
+/** Where the design lives: the entry file, and the folder its section files must sit in. */
+export const designLocations = { file: "docs/design.md", folder: "docs/design/" } as const;
+
 /** Base vocabulary from the design and the local sections it links. */
 export class DesignSections {
 	readonly #rows: readonly string[];
@@ -19,19 +22,19 @@ export class DesignSections {
 	/** Loads headings from base design text and Markdown section links. */
 	static async load(repoRoot: string, base: string): Promise<DesignSections> {
 		const source = await openSource(repoRoot, { kind: "revision", commit: base });
-		const content = await source.readText("docs/design.md", designFileLimits.bytes);
+		const content = await source.readText(designLocations.file, designFileLimits.bytes);
 		if (content === undefined) return DesignSections.from([]);
-		const design = DesignSections.parse("docs/design.md", content);
-		const documents = [{ path: "docs/design.md", document: design }];
+		const design = DesignSections.parse(designLocations.file, content);
+		const documents = [{ path: designLocations.file, document: design }];
 		let total = Buffer.byteLength(content, "utf8");
 		const paths = new Set<string>();
 		for (const destination of design.links()) {
-			const target = LocalDestination.resolve("docs/design.md", destination);
+			const target = LocalDestination.resolve(designLocations.file, destination);
 			if (target === undefined || !target.path.endsWith(".md")) continue;
-			if (target.fragment === "" && !target.path.startsWith("docs/design/")) continue;
+			if (target.fragment === "" && !target.path.startsWith(designLocations.folder)) continue;
 			paths.add(target.path);
 		}
-		paths.delete("docs/design.md");
+		paths.delete(designLocations.file);
 		if (paths.size > designFileLimits.linkedFiles)
 			throw new DecisionFilesError(
 				"incomplete",

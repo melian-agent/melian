@@ -1,6 +1,6 @@
-import { rmSync, symlinkSync } from "node:fs";
+import { readFileSync, rmSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
-import { DesignSections, designFileLimits, designIndexLimits } from "@melian-agent/decisions";
+import { DesignSections, designFileLimits, designIndexLimits, designLocations } from "@melian-agent/decisions";
 import { describe, expect, it, vi } from "vitest";
 import { gitIn, removeDirectory, temporaryDirectory, writeFiles } from "../../core/test/fixtures/repo.ts";
 import { MarkdownDocument } from "../src/markdown.ts";
@@ -1723,3 +1723,13 @@ async function checkCase(row: SectionCase): Promise<void> {
 		removeDirectory(repo);
 	}
 }
+
+describe("the design lens's search instruction", () => {
+	const lens = readFileSync(join(import.meta.dirname, "../../core/lenses/design/LENS.md"), "utf8");
+	const sentence = /Search both base and head over ([^:]+):/.exec(lens)?.[1] ?? "";
+	const named = [...sentence.matchAll(/`(docs\/[^`]+)`/g)].map((match) => match[1]);
+
+	it("names exactly the locations the design index reads, plus the decisions folder", () => {
+		expect(named.sort()).toEqual(["docs/decisions/", designLocations.file, designLocations.folder].sort());
+	});
+});
