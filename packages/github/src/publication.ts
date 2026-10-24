@@ -9,6 +9,7 @@ import {
 	Rendering,
 	type ReviewDraft,
 	type Verdict,
+	type Verification,
 	verifierMark,
 	visibleText,
 } from "@melian-agent/core";
@@ -226,10 +227,22 @@ export class ReviewComment {
 			.map((segment) => renderProse(segment))
 			.join(" | ");
 		if (finding.properties.resolution === "advisory") {
+			// A protected refutation held at an advisory floor keeps the verifier's reason and its floor note, so the
+			// entry says why a refuted finding still posts.
+			const notes = finding.trustFloorNotes();
+			const verification = finding.properties.verification;
+			const held =
+				notes.length === 0
+					? []
+					: [
+							...(verification === undefined ? [] : [this.#verifier(verification, rendering)]),
+							...notes.map(inline),
+						].map((line) => `  ${line}`);
 			return [
 				marker(revision, "finding", id, context.secret),
 				...heading,
 				`- ${status}: [${code(`${path}:${start}`)}](${blobUrl(links, revision, path, start, end)}) ${code(finding.ruleId)}: ${inline(finding.message.text)}`,
+				...held,
 			].join("\n");
 		}
 		return [
@@ -257,11 +270,10 @@ export class ReviewComment {
 			`**Why here:** ${renderProse(explanation.whyHere)}`,
 			...(failureScenario === undefined ? [] : [`**Failure scenario:** ${renderProse(failureScenario)}`]),
 			...this.#evidence(context),
-			// The verifier writes its reasons from code the author controls, so each is one inert line, as in the ledger.
 			...(verification === undefined
 				? []
 				: [
-						`${rendering.emoji ? `${verifierMark.emoji} ` : ""}**${verifierMark.word}:** ${inline(verification.reason)}`,
+						this.#verifier(verification, rendering),
 						...(verification.correction === undefined
 							? []
 							: [`**Correction:** ${inline(verification.correction)}`]),
@@ -269,6 +281,11 @@ export class ReviewComment {
 			`**What to do:** ${renderProse(explanation.whatToDo)}`,
 		];
 		return paragraphs.flatMap((paragraph) => [paragraph, ""]);
+	}
+
+	// The verifier writes its reasons from code the author controls, so each is one inert line, as in the ledger.
+	#verifier(verification: Verification, rendering: Rendering): string {
+		return `${rendering.emoji ? `${verifierMark.emoji} ` : ""}**${verifierMark.word}:** ${inline(verification.reason)}`;
 	}
 
 	// Each evidence location's role and a link to its lines at the commit it was read from, rather than quoting the

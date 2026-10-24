@@ -234,8 +234,41 @@ describe("a refuted protected finding as a pull request shows it", () => {
 	it("posts an advisory floor as an advisory, with the note that asks no acknowledgement", () => {
 		const text = body("P3");
 		expect(text).toContain("- \u{1F535} P3 | \u{1F4AC} Advisory | \u{1F9EA} Tests | \u{2716}\u{FE0F} Refuted | ");
+		const lines = text.split("\n");
+		const entry = lines.findIndex((line) => line.startsWith("- \u{1F535} P3 | "));
+		expect(lines.slice(entry + 1, entry + 3)).toEqual([
+			"  \u{2696}\u{FE0F} **Verifier:** Another test counts.",
+			"  Trust floor: reported-severity policy requires no acknowledgement.",
+		]);
 		expect(text).toContain("Trust floor: reported-severity policy requires no acknowledgement.");
 		expect(text).not.toContain("acknowledge required");
+	});
+
+	it("keeps an ordinary advisory to one line", () => {
+		const verdict = new Adjudication({
+			findings: [
+				Finding.create({ ...gap, rule: "docs-match-code", severity: "P3", source: { check: "lens.conventions" } }),
+			],
+			manifest: [],
+			checks: [],
+			config: defaultConfig,
+		}).adjudicate();
+		const draft = {
+			pullRequest: 7,
+			revision,
+			base,
+			round: 1,
+			verdict,
+			findings: [],
+			stillOpen: 0,
+			resolved: [],
+			secret,
+		};
+		const text = renderReviewBody({ ...draft, fingerprint: verdict.fingerprint() }, links);
+		const lines = text.split("\n");
+		const entry = lines.findIndex((line) => line.startsWith("- \u{1F535} P3 | "));
+		expect(entry).toBeGreaterThan(0);
+		expect(lines[entry + 1] ?? "").not.toMatch(/^ {2}/);
 	});
 
 	it("posts nothing of a silent floor", () => {
