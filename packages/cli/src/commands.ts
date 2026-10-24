@@ -723,7 +723,8 @@ export async function telemetry(io: Io, argument: string, options: { readonly js
 	const storage = await openStorage(path);
 	try {
 		const timings = await TelemetryReader.open(storage).read(revisionKey(stored.changeset.revision));
-		if (timings.stages.length === 0) throw new CliError("No stage telemetry is stored for this revision.");
+		if (timings.stages.length === 0 && timings.prepare === undefined)
+			throw new CliError("No stage telemetry is stored for this revision.");
 		io.stdout(options.json ? `${JSON.stringify(timings.toJSON(), null, 2)}\n` : timings.render());
 		return 0;
 	} finally {
