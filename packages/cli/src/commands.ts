@@ -97,9 +97,15 @@ export class ReviewOutcome {
 	 * entry that decided what it requires; with emojis when `emoji` is set, each lens's from `lenses`.
 	 */
 	render(color: boolean, emoji: boolean, lenses: readonly Lens[]): string {
-		const lensEmojis = Object.fromEntries(
-			lenses.flatMap((lens) => (lens.emoji === undefined ? [] : [[`lens.${lens.name}`, lens.emoji]])),
-		);
+		// Each variant by its version; a name alone only when its variants agree, so a report naming no version shows
+		// no variant's emoji as another's.
+		const declared = lenses.flatMap((lens) => (lens.emoji === undefined ? [] : [lens]));
+		const lensEmojis = Object.fromEntries([
+			...declared.map((lens) => [`lens.${lens.name}@${lens.version}`, lens.emoji!]),
+			...declared
+				.filter((lens) => lenses.every((other) => other.name !== lens.name || other.emoji === lens.emoji))
+				.map((lens) => [`lens.${lens.name}`, lens.emoji!]),
+		]);
 		return this.verdict.render(new Rendering({ color, emoji, lensEmojis, ids: true, decided: true }));
 	}
 }

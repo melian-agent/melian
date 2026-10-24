@@ -120,4 +120,16 @@ describe("Rendering marks", () => {
 		expect(rendering.show(rendering.check("lens.cleanup", "dead-code"))).toBe("\u{1F9FD} cleanup");
 		expect(rendering.show(rendering.check("lens.other", "dead-code"))).toBe("\u{1F50E} other");
 	});
+
+	it("picks a variant's emoji by the finding's lens version, and falls back to the name, then the magnifying glass", () => {
+		const rendering = new Rendering({
+			emoji: true,
+			lensEmojis: { "lens.cleanup@aaaaaaaaaaaa": "\u{1F9FD}", "lens.tidy": "\u{1F980}" },
+		});
+		expect(rendering.check("lens.cleanup", "x", "aaaaaaaaaaaa@careful").emoji).toBe("\u{1F9FD}");
+		expect(rendering.check("lens.cleanup", "x", "bbbbbbbbbbbb@careful").emoji).toBe("\u{1F50E}");
+		expect(rendering.check("lens.cleanup", "x").emoji).toBe("\u{1F50E}");
+		expect(rendering.check("lens.tidy", "x", "cccccccccccc@deep").emoji).toBe("\u{1F980}");
+		expect(rendering.check("lens.tidy", "x").emoji).toBe("\u{1F980}");
+	});
 });

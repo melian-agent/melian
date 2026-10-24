@@ -123,4 +123,62 @@ describe("ReviewOutcome.render", () => {
 		expect(outcome.render(false, true, [base!])).toContain(" | \u{1F50E} cleanup | ");
 		expect(outcome.render(false, false, [cleanup])).toContain(" | cleanup | ");
 	});
+
+	it("gives each folder variant of a lens the emoji it declares, by the finding's lens version", async () => {
+		const [base] = await Lens.builtins();
+		const root = Lens.from({ ...base!.toJSON(), name: "cleanup", version: "aaaaaaaaaaaa", emoji: "\u{1F9FD}" });
+		const docs = Lens.from({
+			...base!.toJSON(),
+			name: "cleanup",
+			version: "bbbbbbbbbbbb",
+			scope: "docs",
+			emoji: "\u{1F980}",
+		});
+		const finding = (file: string, version: string) =>
+			Finding.create({
+				rule: "dead-code",
+				message: `Nothing calls it in ${file}.`,
+				file,
+				startLine: 3,
+				discriminator: file,
+				cause: "introduced",
+				severity: "P3",
+				source: { check: "lens.cleanup", version: `${version}@careful` },
+				explanation: { what: "Nothing calls it.", whyHere: "This change adds it.", whatToDo: "Delete it." },
+			});
+		const verdict = new Adjudication({
+			findings: [finding("src/a.ts", "aaaaaaaaaaaa"), finding("docs/a.ts", "bbbbbbbbbbbb")],
+			manifest: [],
+			checks: [],
+			config: defaultConfig,
+		}).adjudicate();
+		const text = new ReviewOutcome(verdict).render(false, true, [root, docs]);
+		const status = (file: string) => {
+			const lines = text.split("\n");
+			const headline = lines.indexOf(`  Nothing calls it in ${file}.`);
+			return lines.slice(0, headline).findLast((line) => /^ {2}\S/.test(line));
+		};
+		expect(status("src/a.ts")).toContain(" | \u{1F9FD} cleanup | ");
+		expect(status("docs/a.ts")).toContain(" | \u{1F980} cleanup | ");
+		const agreeing = Lens.from({ ...docs.toJSON(), emoji: "\u{1F9FD}" });
+		const unnamed = Finding.create({
+			rule: "dead-code",
+			message: "Nothing calls it anywhere.",
+			file: "lib/a.ts",
+			startLine: 3,
+			discriminator: "lib",
+			cause: "introduced",
+			severity: "P3",
+			source: { check: "lens.cleanup" },
+			explanation: { what: "Nothing calls it.", whyHere: "This change adds it.", whatToDo: "Delete it." },
+		});
+		const lone = new Adjudication({
+			findings: [unnamed],
+			manifest: [],
+			checks: [],
+			config: defaultConfig,
+		}).adjudicate();
+		expect(new ReviewOutcome(lone).render(false, true, [root, docs])).toContain(" | \u{1F50E} cleanup | ");
+		expect(new ReviewOutcome(lone).render(false, true, [root, agreeing])).toContain(" | \u{1F9FD} cleanup | ");
+	});
 });

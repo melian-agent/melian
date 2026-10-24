@@ -1138,7 +1138,7 @@ export class Finding {
 		return [
 			`${rendering.show(severityMarks[severity])}${lowered === undefined ? "" : `, lowered from ${lowered.from}`}`,
 			resolution === undefined ? "Unresolved" : rendering.show(resolutionMarks[resolution]),
-			visibleText(rendering.show(rendering.check(source.check, this.ruleId))),
+			visibleText(rendering.show(rendering.check(source.check, this.ruleId, source.version))),
 			...(verifier === undefined ? [] : [rendering.show(verifier)]),
 			causeWords[cause],
 		];
