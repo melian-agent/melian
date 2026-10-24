@@ -433,11 +433,13 @@ export async function publish(
 		throw new CliError(`publish takes a pull request, such as "#12"; Melian never posts a review of a range`);
 	}
 	if (isScripted(io.env)) throw new CliError(`publish refuses to run under ${scriptVariable}`);
-	const provider = await gitHubFor(io.cwd, io.env);
-	const pullRequest = await provider.pullRequest(target.number);
+	const reader = await gitHubFor(io.cwd, io.env);
+	const pullRequest = await reader.pullRequest(target.number);
 	const changeset = await pullRequestChangeset(io.cwd, target.number);
 	const base = await currentBase(io.cwd, pullRequest);
 	const { config } = await loadConfig(changeset.repoRoot, { kind: "revision", commit: pullRequest.base.sha }, ".");
+	// `publish.emoji` is the base's to say, and the base is known only once the pull request is read.
+	const provider = config.publish.emoji === "on" ? reader : await gitHubFor(io.cwd, io.env, { emoji: false });
 	const path = await storagePath(changeset.repoRoot, changeset.id, io.env, false);
 	// Only the publish task: a review a crash interrupted must not resume here and spend tokens on real models.
 	const publishHarness = await openPublishHarness(await openStorage(path), idleModels(io.env), provider);

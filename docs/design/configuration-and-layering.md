@@ -92,7 +92,7 @@ Policy names `melian.yaml`, `AGENTS.md` and `CLAUDE.md` are recognised case-inse
 
 ### Language and emojis
 
-Planned in step 35, [issue #197](https://github.com/melian-agent/melian/issues/197). [The findings guideline](../guidelines/findings.md) sets how a finding reads. Three keys set its English and its emojis, and [the decision](../decisions/2026-10-24-finding-register.md) records why.
+Step 35, [issue #197](https://github.com/melian-agent/melian/issues/197), builds these keys: `output.emoji` and `publish.emoji` are built, and `language` is planned. [The findings guideline](../guidelines/findings.md) sets how a finding reads. Three keys set its English and its emojis, and [the decision](../decisions/2026-10-24-finding-register.md) records why.
 
 ```yaml
 language: en-AU   # en-AU (default) | en-GB | en-US
@@ -104,7 +104,7 @@ publish:
 
 - `language` sets the English of finding prose, of one line in each lens's and the verifier's instructions, and of Melian's own labels, as [the guideline](../guidelines/findings.md#language) lists. Only the committed root `melian.yaml` sets it. A nested file or a preference file that sets it is refused, as `trust` and `comparison` are. A lens writes one conversation's prose over many paths, so a nested value would apply nowhere it claims to. A preference would let one maintainer's machine choose the spelling of prose a pull request shows everyone. The language stays out of the plan fingerprint, the policy fingerprint, each lens's version, a lens run's instruction identity and the verifier's candidate identity, so changing it reruns nothing and changes no finding. A review reused from storage keeps the spelling it ran under.
 - `output.emoji` sets the terminal. `auto` prints plain text when standard output is not a TTY, or when the locale is not UTF-8, read from `LC_ALL`, `LC_CTYPE` and `LANG` in that order. The root `melian.yaml` or a preference file may set it, since it changes only how one machine shows a review. A nested file is refused, as it is for `triage`. JSON output never carries emojis.
-- `publish.emoji` sets pull-request comments, the review body and the ledger, the status lines in them included. Only the committed root `melian.yaml` sets it, since it changes what everyone reading the pull request sees; a nested or preference file is refused. The `melian/review` commit status keeps its plain description, which the merge-group job reads back.
+- `publish.emoji` sets pull-request comments and the review body, the status lines in them included; the ledger keeps words alone until the second part of step 35 renders it in the register. `melian publish` reads it from the base, as it reads the rest of its policy. Only the committed root `melian.yaml` sets it, since it changes what everyone reading the pull request sees; a nested or preference file is refused. The `melian/review` commit status keeps its plain description, which the merge-group job reads back.
 
 ### Files a user owns
 

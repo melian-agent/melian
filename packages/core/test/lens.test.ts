@@ -1191,7 +1191,9 @@ describe("a lens's emoji", () => {
 		writeFiles(repo, { "services/.melian/lenses/style/LENS.md": lensFile([...style, `emoji: ${sponge}`]) });
 		const error = await rejection(load(["src/a.ts", "services/a.ts"]), LensError);
 		expect(error).toMatchObject({ code: "invalidValue", field: "emoji" });
-		expect(error.message).toContain('services/.melian/lenses/style/LENS.md: "emoji" is the one lens security declares in');
+		expect(error.message).toContain(
+			'services/.melian/lenses/style/LENS.md: "emoji" is the one lens security declares in',
+		);
 		writeFiles(repo, { "services/.melian/lenses/style/LENS.md": lensFile([...style, `emoji: ${crab}`]) });
 		expect((await load(["services/a.ts"])).map((lens) => lens.emoji).filter(Boolean)).toEqual([sponge, crab]);
 	});

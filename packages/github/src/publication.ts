@@ -6,8 +6,10 @@ import {
 	dismissalVersion,
 	type Finding,
 	type Placement,
+	Rendering,
 	type ReviewDraft,
 	type Verdict,
+	verifierMark,
 	visibleText,
 } from "@melian-agent/core";
 
@@ -159,6 +161,8 @@ export interface CommentContext {
 	readonly base: string;
 	readonly links: RepositoryLinks;
 	readonly secret: string;
+	/** Show each mark's emoji beside its word, as `publish.emoji: on` asks. On by default. */
+	readonly emoji?: boolean;
 }
 
 /**
@@ -206,22 +210,6 @@ export class ReviewComment {
 				: placement.kind === "nearest"
 					? [`This finding is at ${link}, outside the diff, so it is anchored to the nearest changed line.`, ""]
 					: [];
-		const verification = finding.properties.verification;
-		const judged =
-			verification === undefined
-				? finding.properties.source.check.startsWith("lens.")
-					? ["Verification: unverified", ""]
-					: []
-				: [
-						`Verification: **${verification.verdict}**`,
-						"",
-						// The verifier writes its reasons from code the author controls, so each is one inert line, as in the ledger.
-						`**Verified:** ${code(verification.model)}: ${inline(verification.reason)}`,
-						"",
-						...(verification.correction === undefined
-							? []
-							: [`**Correction:** ${inline(verification.correction)}`, ""]),
-					];
 		const lowered = finding.lowered({ includeTrustFloor: false });
 		const moved = lowered === undefined ? [] : [`**Lowered from ${lowered.from}:** ${inline(lowered.reason)}`, ""];
 		const heading =
@@ -231,55 +219,75 @@ export class ReviewComment {
 						`**Pre-existing, important**, ${this.important === "new" ? "new on this revision" : "carried from an earlier revision"}. It predates this change and does not block it.`,
 						"",
 					];
+		const rendering = new Rendering({ emoji: context.emoji !== false });
+		// Check names come from the change's own lenses, so the status line is inert text like the rest.
+		const status = finding
+			.statusSegments(rendering)
+			.map((segment) => renderProse(segment))
+			.join(" | ");
 		if (finding.properties.resolution === "advisory") {
 			return [
 				marker(revision, "finding", id, context.secret),
 				...heading,
-				`- [${code(`${path}:${start}`)}](${blobUrl(links, revision, path, start, end)}) ${code(finding.ruleId)}: ${inline(finding.message.text)}`,
+				`- ${status}: [${code(`${path}:${start}`)}](${blobUrl(links, revision, path, start, end)}) ${code(finding.ruleId)}: ${inline(finding.message.text)}`,
 			].join("\n");
 		}
 		return [
 			marker(revision, "finding", id, context.secret),
 			...where,
 			...heading,
-			...judged,
+			status,
+			"",
+			...this.#text(context, rendering),
 			...moved,
 			...finding.trustFloorNotes().flatMap((line) => [inline(line), ""]),
-			...this.#text(context),
+			`Rule ${code(finding.ruleId)} | Finding ${code(id)}`,
 		].join("\n");
 	}
 
-	#text(context: CommentContext): string[] {
+	// The register's parts in order, each a paragraph, leaving out a part the finding does not have: a deterministic
+	// finding has no failure scenario, evidence or verifier.
+	#text(context: CommentContext, rendering: Rendering): string[] {
 		const { finding } = this;
-		const { severity, cause, resolution, explanation, failureScenario } = finding.properties;
-		const lowered = finding.lowered();
-		return [
-			`**${severity}**${lowered === undefined ? "" : `, lowered from ${lowered.from},`} ${code(finding.ruleId)} (${cause}, ${resolution ?? "unresolved"})`,
-			"",
-			// A lens's message is its explanation's first part, which would otherwise print twice.
-			...(finding.message.text === explanation.what ? [] : [renderProse(finding.message.text), ""]),
-			`**What:** ${renderProse(explanation.what)}`,
-			"",
+		const { explanation, failureScenario, verification } = finding.properties;
+		const { headline, what } = finding.headline();
+		const paragraphs = [
+			`**${renderProse(headline)}**`,
+			...(what === undefined ? [] : [`**What:** ${renderProse(what)}`]),
 			`**Why here:** ${renderProse(explanation.whyHere)}`,
-			...(failureScenario === undefined ? [] : ["", `**Failure scenario:** ${renderProse(failureScenario)}`]),
+			...(failureScenario === undefined ? [] : [`**Failure scenario:** ${renderProse(failureScenario)}`]),
 			...this.#evidence(context),
-			"",
+			// The verifier writes its reasons from code the author controls, so each is one inert line, as in the ledger.
+			...(verification === undefined
+				? []
+				: [
+						`${rendering.emoji ? `${verifierMark.emoji} ` : ""}**${verifierMark.word}:** ${inline(verification.reason)}`,
+						...(verification.correction === undefined
+							? []
+							: [`**Correction:** ${inline(verification.correction)}`]),
+					]),
 			`**What to do:** ${renderProse(explanation.whatToDo)}`,
 		];
+		return paragraphs.flatMap((paragraph) => [paragraph, ""]);
 	}
 
-	// Each evidence location links to its lines at the commit it was read from, rather than quoting the code. A base
-	// location says the change deleted its lines only when Melian found so when it read them.
+	// Each evidence location's role and a link to its lines at the commit it was read from, rather than quoting the
+	// code. A base location says the change deleted its lines only when Melian found so when it read them.
 	#evidence({ revision, base, links }: CommentContext): string[] {
 		const { evidence } = this.finding.properties;
 		if (evidence === undefined) return [];
 		const items = evidence.map(({ file, startLine, endLine = startLine, role, revision: side, deleted }) => {
 			const at = side === "base" ? base : revision;
 			const link = `[${code(file)} ${lineSpan(startLine, endLine)}](${blobUrl(links, at, file, startLine, endLine)})`;
-			const where = side === "base" ? (deleted === true ? ", deleted by this change" : ", at the base") : "";
-			return `- ${role}: ${link}${where}`;
+			const where =
+				side === "base"
+					? deleted === true
+						? " at the base, deleted by this change"
+						: " at the base"
+					: " at the head";
+			return `${role}, ${link}${where}`;
 		});
-		return ["", "**Evidence:**", "", ...items];
+		return [`**Evidence:** ${items.join("; ")}.`];
 	}
 }
 
@@ -405,6 +413,7 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 			base: draft.base,
 			links,
 			secret,
+			...(options.emoji === undefined ? {} : { emoji: options.emoji }),
 		}),
 	);
 	const heading = options.inlineRefused
@@ -439,6 +448,8 @@ export interface ReviewBodyOptions {
 	readonly inlineRefused?: boolean;
 	/** The longest body to render; GitHub's {@link maxBodyLength} by default. */
 	readonly limit?: number;
+	/** Show each finding's emojis, as `publish.emoji: on` asks. On by default. */
+	readonly emoji?: boolean;
 }
 
 /**

@@ -90,7 +90,9 @@ describe("step 29: GitHub explains the trust floor", () => {
 			expect.soft(entry.split(judgement.lowered.reason)).toHaveLength(2);
 		}
 		expect(body).toContain("Trust floor: acknowledge required; maintainer dismissal needed.");
-		expect(body).toContain(`Verification: **${verdict}**`);
+		expect(body).toContain(
+			` | ${verdict === "refuted" ? "\u{2716}\u{FE0F} Refuted" : "\u{26A0}\u{FE0F} Verifier plausible"} | `,
+		);
 		expect(body).toContain("1 acknowledge");
 	});
 });
