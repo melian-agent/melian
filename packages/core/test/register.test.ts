@@ -421,6 +421,16 @@ describe("the register keeps every element the terminal printed", () => {
 		expect(legacy.render(plain).split("\n").at(-1)).toBe(
 			"    Merged report: double-charge from lens.contracts  0123456789abcdef",
 		);
+		const unknown = Finding.from({
+			...stored,
+			properties: {
+				...stored.properties,
+				alsoReportedAs: [{ id: "0123456789abcdef", ruleId: "q", check: "decisions.fast", severity: "P3" }],
+			},
+		});
+		expect(unknown.render(emoji).split("\n").at(-1)).toBe(
+			"    Merged report: P3 q from decisions.fast  0123456789abcdef",
+		);
 	});
 
 	it("trust floor: a note's later lines sit inside the finding", () => {
