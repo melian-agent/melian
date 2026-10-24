@@ -1,0 +1,57 @@
+{
+	"schemaVersion": "1.0",
+	"config": {
+		"ignoreStatic": true,
+		"mutator": {
+			"excludedMutations": [
+				"StringLiteral"
+			]
+		},
+		"vitest": {
+			"related": false
+		},
+		"testFiles": [
+			"packages/core/test/probe-static.test.ts",
+			"scripts/enumerate-mutants.test.mjs",
+			"packages/cli/test/caller-review.test.ts"
+		]
+	},
+	"files": {
+		"packages/core/src/probe-static.ts": {
+			"language": "typescript",
+			"mutants": [
+				{
+					"id": "56",
+					"mutatorName": "ArithmeticOperator",
+					"replacement": "x / 2",
+					"status": "Survived",
+					"static": true,
+					"testsCompleted": 1,
+					"coveredBy": [
+						"5376"
+					],
+					"location": {
+						"end": {
+							"column": 14,
+							"line": 2
+						},
+						"start": {
+							"column": 9,
+							"line": 2
+						}
+					}
+				}
+			]
+		}
+	},
+	"testFiles": {
+		"packages/core/test/probe-static.test.ts": {
+			"tests": [
+				{
+					"id": "5376",
+					"name": "returns numbers"
+				}
+			]
+		}
+	}
+}

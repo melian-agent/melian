@@ -1,0 +1,7 @@
+# A static survivor's finding names the test files that ran
+
+Amends: [the mutation-reruns decision](2026-10-16-mutation-reruns-later-changes.md), the advice for a survivor that code outside a test also reaches.
+
+Choice: the finding for a `Survived` mutant marked `static: true` names the test files that cover it, read from the report's `coveredBy` and `testFiles`: the first three in path order, and a count of the rest. When the report's `config` shows a narrowed run, a non-empty `testFiles` from Melian's runner or `vitest.related`, it says that no other test file ran, because the tests were picked through Vitest's `related` filter, which follows only static and literal dynamic imports. After a whole-suite run, including each fallback the runner takes, it says every test file was a candidate, so the survivor is an assertion gap. When the report lists test files and the changed file's nearest test file exists but is not among them, the finding says so. The remedy names both moves: take a call out of a hook or a `describe` body, and reload a module with `vi.resetModules()` and a literal `await import()`.
+
+Why: the old advice said to move the call into the test. On [pull request #165](https://github.com/melian-agent/melian/pull/165) the call was already inside the test, and the test file never ran, because it reached its module only through `vi.importActual`. [Issue #169](https://github.com/melian-agent/melian/issues/169) found the cause. The report already says which tests ran, so the finding reports that rather than guessing.

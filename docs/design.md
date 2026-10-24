@@ -348,6 +348,8 @@ Built in milestone 1: policy and standards read from a chosen revision, prompt b
 
 Details: [docs/design/trust-and-isolation.md](design/trust-and-isolation.md).
 
+[Prompt injection](design/prompt-injection.md) gathers every layer that keeps a change's author from steering its reviewers, and what is still open.
+
 ### Writers are trusted
 
 The CLI records writer trust and publication identity. The maintainer enabled the required status on 2026-10-23, in a ruleset of its own with no bypass actors. Milestone 3 binds it to the GitHub App.
