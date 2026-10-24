@@ -8,10 +8,7 @@ import { reportTriageGoldens, reportVerifierGoldens } from "../src/live-output.t
 import { EvalThinking } from "../src/thinking.ts";
 import { TriageResults } from "../src/triage.ts";
 import { runVerifierGolden } from "../src/verifier.ts";
-// Vitest needs a static edge to select this entry for related mutation runs.
-import "../src/live.ts";
 
-vi.mock("../src/live.ts", () => ({}));
 vi.mock("../src/credentials.ts", () => ({ liveModels: vi.fn() }));
 vi.mock("../src/live-output.ts", () => ({
 	reportVerifierGoldens: vi.fn(),
@@ -55,7 +52,7 @@ afterEach(() => {
 });
 
 it("parses thinking and passes the complete live mode to the verifier callback", async () => {
-	await expect(vi.importActual("../src/live.ts")).rejects.toBe(requested);
+	await expect(import("../src/live.ts")).rejects.toBe(requested);
 	expect(liveModels).toHaveBeenCalledOnce();
 	expect(runVerifierGolden).toHaveBeenCalledOnce();
 	const mode = vi.mocked(runVerifierGolden).mock.calls[0]![1];
@@ -75,7 +72,7 @@ it.each([
 	[`heavy=${String.fromCharCode(0x0085)}fake`, "heavy=\\u0085fake"],
 ])("prints escaped invalid thinking %s before opening credentials", async (entry, escaped) => {
 	vi.stubEnv("MELIAN_EVAL_THINKING", entry);
-	await expect(vi.importActual("../src/live.ts")).rejects.toBe(stopped);
+	await expect(import("../src/live.ts")).rejects.toBe(stopped);
 	expect(console.error).toHaveBeenCalledExactlyOnceWith(
 		`MELIAN_EVAL_THINKING needs distinct tier=level entries; invalid entry "${escaped}"`,
 	);
@@ -99,7 +96,7 @@ it.each([
 	vi.stubEnv("MELIAN_EVAL_THINKING", "");
 	vi.mocked(reportTriageGoldens).mockResolvedValue(current);
 	try {
-		await expect(vi.importActual("../src/live.ts")).rejects.toBe(stopped);
+		await expect(import("../src/live.ts")).rejects.toBe(stopped);
 		expect(console.log).toHaveBeenCalledExactlyOnceWith(
 			`incomparable: version ${current.questionSet.version} -> ${current.questionSet.version}; mean distance 0.00 -> 0.00; exact 0.00 -> 0.00; under 0 -> 0; incomparable: the triage thinking differs, heavy=${escaped}fake -> unset`,
 		);

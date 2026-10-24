@@ -1,12 +1,11 @@
 import { type ChangedFile, type FileKind, mutationUnmutated, Revision } from "@melian-agent/core";
 import { describe, expect, it, vi } from "vitest";
-import type * as Paths from "../src/mutation-paths.ts";
 
-// The module's patterns and sets are built when it loads. Loading it inside each test gives Stryker per-test coverage of
-// them; a load at import time counts as outside any test, and Stryker then runs only an unrelated test that reloads it.
-async function load(): Promise<typeof Paths> {
+// The module builds its patterns and sets when it loads, so each test reloads it to put that code under the test. The
+// import must be literal: Stryker picks test files through Vitest's `related` filter, which sees no `vi.importActual`.
+async function load() {
 	vi.resetModules();
-	return vi.importActual<typeof Paths>("../src/mutation-paths.ts");
+	return await import("../src/mutation-paths.ts");
 }
 
 const scripts = /\.[cm]?[jt]sx?$/;
