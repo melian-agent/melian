@@ -579,8 +579,8 @@ async function searchFiles(review: ReviewState, commit: string, search: Revision
 		if (file.missing) rows.push(`${visibleText(file.path)}: [no file at this revision]`);
 		else if (file.truncated) rows.push(`${visibleText(file.path)}: [more matches not shown; search it alone]`);
 	}
-	const searched = files.filter((file) => !file.missing).length;
-	if (rows.length === 0) return text(`No matches in ${searched} files.`);
+	// A missing file has a row of its own, so no rows means every file was searched.
+	if (rows.length === 0) return text(`No matches in ${files.length} files.`);
 	const { body, count } = fitting(rows);
 	const notes = count < rows.length ? [`[${rows.length - count} more lines not shown; search fewer files]`] : [];
 	return text([quoteUntrusted("search", body, review.nonce), ...notes].join("\n"));
