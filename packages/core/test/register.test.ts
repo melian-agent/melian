@@ -70,7 +70,8 @@ describe("a finding in the terminal, in the register", () => {
 		expect(finding.render(emoji)).toBe(
 			[
 				"  \u{1F7E0} P1 | \u{26D4} Blocks merge | \u{1F3AF} Correctness | \u{2705} Verifier confirmed | New in this change",
-				"  Lines 31-44: A retry after a lost response charges the card twice.",
+				"    \u{2696}\u{FE0F} Verified: faux/judge: The second call creates a new intent.",
+				"  A retry after a lost response charges the card twice.",
 				"    What: `submitPayment` creates a new payment intent on every attempt, and `chargeCard` sends no idempotency key.",
 				"    Why here: At the base, `submitPayment` reused the open intent through `findOpenIntent`. This change removes that call.",
 				"    Failure scenario: The processor accepts a $40 charge, and the response times out. The customer presses Pay again. A second intent and a second $40 charge follow.",
@@ -79,9 +80,8 @@ describe("a finding in the terminal, in the register", () => {
 				"        x",
 				"      context: payments/submit.ts:28-35 at base",
 				"        y",
-				"    \u{2696}\u{FE0F} Verifier (faux/judge): The second call creates a new intent.",
 				"    What to do: Restore `findOpenIntent`, or pass the intent ID as the idempotency key. Add a test that times out the first charge and asserts one charge in all.",
-				`    Rule payment-idempotency | Status new | Finding ${finding.id}`,
+				`    Rule payment-idempotency | Lines 31-44 | Finding ${finding.id} | Status new`,
 			].join("\n"),
 		);
 	});
@@ -111,10 +111,10 @@ describe("a finding in the terminal, in the register", () => {
 		const text = finding.render(plain);
 		expect(text.split("\n").slice(0, 6)).toEqual([
 			"  P2 | Needs acknowledgement | Correctness | Verifier plausible | New in this change",
-			`  Line 18: ${what}`,
+			"    Verified: faux/judge: It did not read the cache client, which may swallow write errors itself.",
+			`  ${what}`,
 			'    Why here: The description says "a cache outage never stops a sync". This new write does not keep it.',
 			"    Failure scenario: The cache is down. `cache.set` rejects, the rejection leaves `syncItems`, and no item syncs.",
-			"    Verifier (faux/judge): It did not read the cache client, which may swallow write errors itself.",
 			"    What to do: Catch and log the error, as `readRecord` does.",
 		]);
 		expect(text.split(what)).toHaveLength(2);
@@ -133,7 +133,7 @@ describe("a finding in the terminal, in the register", () => {
 		});
 		expect(finding.render(emoji).split("\n").slice(0, 2)).toEqual([
 			"  \u{1F535} P3 | \u{1F4AC} Advisory | \u{1F4CF} Conventions | \u{2754} Not verified | New in this change",
-			"  Lines 31-44: The guide says half-hour slots; the list builds quarter-hours.",
+			"  The guide says half-hour slots; the list builds quarter-hours.",
 		]);
 	});
 
@@ -172,6 +172,22 @@ describe("a finding in the terminal, in the register", () => {
 		);
 	});
 
+	it("holds an unverified injection attempt at acknowledgement, the unverified cap before the floor", () => {
+		const finding = new Adjudication({
+			findings: [Finding.create({ ...injection, source: { check: "lens.correctness" } })],
+			manifest: ["verifier"],
+			checks: [{ name: "verifier", status: "ran" }],
+			config: defaultConfig,
+			verificationRan: true,
+		})
+			.adjudicate()
+			.all()[0]!;
+		expect(finding.properties.decidedBy).toMatchObject({ cap: "unverified", floor: "injection-attempt" });
+		expect(finding.render(emoji).split("\n")[0]).toBe(
+			"  \u{1F7E0} P1 | \u{270B} Needs acknowledgement | \u{1F3AF} Correctness | \u{2754} Not verified | New in this change",
+		);
+	});
+
 	it("posts a wholly refuted injection attempt at its trust floor, with its obligation and the verifier's reason", () => {
 		const finding = decided(injection, judged("refuted", "The comment is documentation."));
 		expect(finding.properties.resolution).toBe("acknowledge");
@@ -179,7 +195,7 @@ describe("a finding in the terminal, in the register", () => {
 		expect(lines[0]).toBe(
 			"  \u{1F7E0} P1 | \u{270B} Needs acknowledgement | \u{1F6E1}\u{FE0F} Trust boundary | \u{2716}\u{FE0F} Refuted | New in this change",
 		);
-		expect(lines).toContain("    \u{2696}\u{FE0F} Verifier (faux/judge): The comment is documentation.");
+		expect(lines).toContain("    \u{2696}\u{FE0F} Verified: faux/judge: The comment is documentation.");
 		expect(lines).toContain("    Trust floor: acknowledge required; maintainer dismissal needed.");
 	});
 });
@@ -209,7 +225,7 @@ describe("a refuted protected finding in the terminal", () => {
 			"  \u{1F7E1} P2 | \u{270B} Needs acknowledgement | \u{1F9EA} Tests | \u{2716}\u{FE0F} Refuted | New in this change",
 		);
 		expect(lines).toContain("    Trust floor: acknowledge required; maintainer dismissal needed.");
-		expect(lines).toContain("    \u{2696}\u{FE0F} Verifier (faux/judge): Another test counts the calls.");
+		expect(lines).toContain("    \u{2696}\u{FE0F} Verified: faux/judge: Another test counts the calls.");
 	});
 
 	it("shows a P3 test gap at its advisory floor, with the note that asks no acknowledgement", () => {
@@ -253,11 +269,11 @@ describe("a deterministic finding in the terminal", () => {
 		expect(finding.render(emoji)).toBe(
 			[
 				"  \u{1F7E0} P1 | \u{26D4} Blocks merge | \u{1F9E9} tsc | New in this change",
-				"  Line 9: Type 'string' is not assignable to type 'number'.",
+				"  Type 'string' is not assignable to type 'number'.",
 				"    What: tsc reports TS2322 here.",
 				"    Why here: The change introduced this diagnostic.",
 				"    What to do: Fix the type error.",
-				`    Rule TS2322 | Status new | Finding ${finding.id}`,
+				`    Rule TS2322 | Line 9 | Finding ${finding.id} | Status new`,
 			].join("\n"),
 		);
 	});
@@ -285,9 +301,9 @@ describe("a deterministic finding in the terminal", () => {
 		const text = finding.render(plain);
 		expect(text.split("\n").slice(0, 2)).toEqual([
 			"  P1 | Blocks merge | Guardrails: forbidden-paths | New in this change",
-			"  Line 1: The change adds a file under secrets/.",
+			"  The change adds a file under secrets/.",
 		]);
-		expect(text).not.toMatch(/Failure scenario|Evidence|Verifier/);
+		expect(text).not.toMatch(/Failure scenario|Evidence|Verified/);
 	});
 
 	it("says a pre-existing finding predates the change, and an affected one that the change caused it", () => {
@@ -312,14 +328,14 @@ describe("the register keeps every element the terminal printed", () => {
 		lowered: { from: "P1" as const, to: "P2" as const, reason: "Only the admin path reaches it." },
 	};
 
-	it("lowering: ordinary, reason once, after the verifier's line", () => {
+	it("lowering: ordinary, reason once, where the terminal printed it, before the verifier's line", () => {
 		const finding = decided(retriedCharge, lowering);
 		const lines = finding.render(emoji).split("\n");
 		expect(lines[0]).toBe(
 			"  \u{1F7E1} P2, lowered from P1 | \u{270B} Needs acknowledgement | \u{1F3AF} Correctness | \u{2705} Verifier confirmed | New in this change",
 		);
-		const verifier = lines.indexOf("    \u{2696}\u{FE0F} Verifier (faux/judge): One caller reaches it.");
-		expect(lines[verifier + 1]).toBe("    Lowered from P1: Only the admin path reaches it.");
+		const verifier = lines.indexOf("    \u{2696}\u{FE0F} Verified: faux/judge: One caller reaches it.");
+		expect(lines[verifier - 1]).toBe("    Lowered from P1: Only the admin path reaches it.");
 		expect(finding.render(emoji).split("Only the admin path reaches it.")).toHaveLength(2);
 	});
 
@@ -334,7 +350,7 @@ describe("the register keeps every element the terminal printed", () => {
 		expect(text.split("Only the admin path reaches it.")).toHaveLength(2);
 		const lines = text.split("\n");
 		expect(lines.findIndex((line) => line.startsWith("    Trust floor:"))).toBeLessThan(
-			lines.findIndex((line) => line.startsWith("    What to do:")),
+			lines.findIndex((line) => line.startsWith("    Verified:")),
 		);
 	});
 
@@ -349,7 +365,7 @@ describe("the register keeps every element the terminal printed", () => {
 		);
 	});
 
-	it("terminal and comment: merged and dismissed reports under the footer, each check with its emoji", () => {
+	it("terminal: merged and dismissed reports under the status line, where the terminal printed them, each check with its emoji", () => {
 		const speaker = Finding.create(retriedCharge);
 		const merged = Finding.create({
 			...retriedCharge,
@@ -372,8 +388,7 @@ describe("the register keeps every element the terminal printed", () => {
 		}).adjudicate();
 		const shown = verdict.all().find((each) => each.ruleId === "payment-idempotency")!;
 		const lines = shown.render(emoji).split("\n");
-		const footer = lines.findIndex((line) => line.startsWith("    Rule payment-idempotency | "));
-		expect(lines.slice(footer + 1)).toEqual([
+		expect(lines.slice(1, 3)).toEqual([
 			`    Merged report: P2 double-charge from \u{1F91D} lens.contracts  ${merged.id}`,
 			`    Also reported, dismissed: P3 unsafe-call from \u{1F9F9} static.biome  ${answered.id}`,
 		]);
@@ -406,7 +421,7 @@ describe("the register keeps every element the terminal printed", () => {
 		});
 		const lines = finding.render(emoji).split("\n");
 		expect(lines[0]).toContain(" | \u{1F50E} x\\u001b[31m | ");
-		expect(lines[1]).toBe("  Lines 31-44: Charges twice\\u001b[2J");
+		expect(lines[1]).toBe("  Charges twice\\u001b[2J");
 	});
 
 	it("merged reports: no emoji when emojis are off, and no severity a stored report lacks", () => {
@@ -418,7 +433,7 @@ describe("the register keeps every element the terminal printed", () => {
 				alsoReportedAs: [{ id: "0123456789abcdef", ruleId: "double-charge", check: "lens.contracts" }],
 			},
 		});
-		expect(legacy.render(plain).split("\n").at(-1)).toBe(
+		expect(legacy.render(plain).split("\n")[1]).toBe(
 			"    Merged report: double-charge from lens.contracts  0123456789abcdef",
 		);
 		const unknown = Finding.from({
@@ -428,7 +443,7 @@ describe("the register keeps every element the terminal printed", () => {
 				alsoReportedAs: [{ id: "0123456789abcdef", ruleId: "q", check: "decisions.fast", severity: "P3" }],
 			},
 		});
-		expect(unknown.render(emoji).split("\n").at(-1)).toBe(
+		expect(unknown.render(emoji).split("\n")[1]).toBe(
 			"    Merged report: P3 q from decisions.fast  0123456789abcdef",
 		);
 	});

@@ -1,7 +1,8 @@
 src/comment.ts
 
   P3 | Advisory | Conventions | Verifier confirmed | New in this change
-  Lines 4-5: commentLine is a free function whose first parameter is a Finding.
+    Verified: faux/scripted: The scripted verifier traced the claim.
+  commentLine is a free function whose first parameter is a Finding.
     Why here: AGENTS.md says "Behaviour belongs to the object it is about. A function whose first parameter is a `Finding` is a method of `Finding`, whether it asks the finding something, changes it, or formats it.", and this change added the function.
     Failure scenario: commentLine takes a Finding as its first parameter and formats it, so it is a free function where AGENTS.md asks for a method. AGENTS.md says "Behaviour belongs to the object it is about. A function whose first parameter is a `Finding` is a method of `Finding`, whether it asks the finding something, changes it, or formats it.", so a reader looking on Finding for how a finding is shown in a comment does not find commentLine, and the next formatter is written beside it in another file.
     Evidence:
@@ -12,8 +13,7 @@ src/comment.ts
         export class Finding {
       context: AGENTS.md:7
         - Behaviour belongs to the object it is about. A function whose first parameter is a `Finding` is a method of `Finding`, whether it asks the finding something, changes it, or formats it.
-    Verifier (faux/scripted): The scripted verifier traced the claim.
     What to do: Make it a method of Finding, such as finding.commentLine(repository), and call it on the finding.
-    Rule quoted-rule-violation | Status new
+    Rule quoted-rule-violation | Lines 4-5 | Status new
 
 1 finding in 1 file.

@@ -1,7 +1,8 @@
 src/publish.ts
 
   P1 | Blocks merge | Removed behaviour | Verifier confirmed | New in this change
-  Line 9: publish sets the status only after postReview resolves, so any refusal of the review leaves the head without one.
+    Verified: faux/scripted: The scripted verifier traced the claim.
+  publish sets the status only after postReview resolves, so any refusal of the review leaves the head without one.
     Why here: This change moved the setStatus call from before postReview into finish, after it, and deleted the comment saying why it went first.
     Failure scenario: GitHub refuses postReview with a 422 for a comment outside the diff. publish rejects before finish runs, publishStored prints "publish failed", and the head carries no status at all, so a branch rule that requires it waits on that head. The base set failure or success first, whatever happened to the review.
     Evidence:
@@ -18,8 +19,7 @@ src/publish.ts
           } catch (error) {
             console.error(`publish failed: ${error instanceof Error ? error.message : String(error)}; run it again`);
             return 1;
-    Verifier (faux/scripted): The scripted verifier traced the claim.
     What to do: Call finish before postReview, as the base set the status first.
-    Rule moved-code-lost-anchor | Status new
+    Rule moved-code-lost-anchor | Line 9 | Status new
 
 1 finding in 1 file.

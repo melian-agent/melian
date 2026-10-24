@@ -307,7 +307,7 @@ it.each([[], ["--json"], ["--open"], ["--open", "--json"], ["--all"]].map((flags
 it("prints a frozen round's text with each finding's ID and what decided it", async () => {
 	expect(await main(["findings", "--round", `${changeset.id}.r1`], io)).toBe(0);
 	const text = io.stdout.mock.calls.map(([text]) => text).join("");
-	expect(text).toMatch(/\| Finding [0-9a-f]{16}\n/);
+	expect(text).toMatch(/\| Finding [0-9a-f]{16} \| Status \w+\n/);
 	expect(text).toContain("    Decided by: ");
 });
 

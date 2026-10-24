@@ -9,25 +9,25 @@ Block: 1 finding
 src/total.ts
 
   P1 | Blocks merge | cleanup | Verifier confirmed | New in this change
-  Line 1: reuse, as lens.cleanup reports it.
+    Decided by: melian.yaml: resolution.P1, the table
+    Verified: scripted/judge: The scripted verifier judged the claim.
+  reuse, as lens.cleanup reports it.
     What: Scripted.
     Why here: Scripted.
     Failure scenario: Scripted.
-    Verifier (scripted/judge): The scripted verifier judged the claim.
     What to do: Scripted.
-    Decided by: melian.yaml: resolution.P1, the table
-    Rule reuse | Status new
+    Rule reuse | Line 1 | Status new
 
 Acknowledge: 1 finding
 
 melian.yaml
 
   P2 | Needs acknowledgement | Guardrails: policy-change-review | New in this change
-  Line 1: Review policy and standards changed in this revision.
+    Decided by: the built-in table
+  Review policy and standards changed in this revision.
     What: This revision changes melian.yaml, which steers how Melian reviews this repository.
     Why here: Melian reviewed the revision under the policy and standards it changes, so nothing it ran judged the new ones.
     What to do: Have a maintainer read the change to melian.yaml before merging.
-    Decided by: the built-in table
-    Rule guardrail/policy-change-review | Status new
+    Rule guardrail/policy-change-review | Line 1 | Status new
 
 2 findings in 2 files.

@@ -364,7 +364,10 @@ describe("findings", () => {
 		});
 		expect(comment).toContain("**Failure scenario:** A body of \\`process.exit\\(\\)\\` stops the server.");
 		expect(comment).toContain(
-			`**Evidence:** cause, [\`src/api.ts\` lines 3-4](${links.web}/blob/${revision}/src/api.ts#L3-L4) at the head; context, [\`src/old.ts\` line 9](${links.web}/blob/${base}/src/old.ts#L9) at the base, deleted by this change.\n`,
+			`- cause: [\`src/api.ts\` lines 3-4](${links.web}/blob/${revision}/src/api.ts#L3-L4)\n`,
+		);
+		expect(comment).toContain(
+			`- context: [\`src/old.ts\` line 9](${links.web}/blob/${base}/src/old.ts#L9), deleted by this change`,
 		);
 		expect(comment).not.toContain("guard(body)");
 	});
@@ -387,9 +390,12 @@ describe("findings", () => {
 			secret,
 		});
 		expect(comment).toContain(
-			`**Evidence:** cause, [\`src/api.ts\` line 3](${links.web}/blob/${base}/src/api.ts#L3) at the base; context, [\`src/api.ts\` line 4](${links.web}/blob/${base}/src/api.ts#L4) at the base; `,
+			`- cause: [\`src/api.ts\` line 3](${links.web}/blob/${base}/src/api.ts#L3), at the base\n`,
 		);
-		expect(comment).toContain(`(${links.web}/blob/${base}/src/api.ts#L9) at the base, deleted by this change.`);
+		expect(comment).toContain(
+			`- context: [\`src/api.ts\` line 4](${links.web}/blob/${base}/src/api.ts#L4), at the base\n`,
+		);
+		expect(comment).toContain(`(${links.web}/blob/${base}/src/api.ts#L9), deleted by this change`);
 		expect(comment.match(/deleted by this change/g)).toHaveLength(1);
 	});
 });
@@ -863,9 +869,7 @@ describe("verification comments", () => {
 		});
 		const comment = ReviewComment.from(lowered).render({ revision, base, links, secret });
 		expect(comment).toContain(`**Lowered from P1:** ${renderProse("@octocat validates")}`);
-		expect(comment).toContain(
-			"\u{1F7E1} P2, lowered from P1 | \u{26D4} Blocks merge | \u{1F50E} security | \u{2705} Verifier confirmed | New in this change\n",
-		);
+		expect(comment).toContain("\n\u{1F7E1} P2, lowered from P1 | \u{26D4} Blocks merge | ");
 		expect(markersIn(comment)).toHaveLength(1);
 		const plain = ReviewComment.from(claimed.verifiedAs(record)).render({ revision, base, links, secret });
 		expect(plain).not.toContain("Lowered from");
@@ -894,7 +898,7 @@ describe("verification comments", () => {
 		});
 		const comment = ReviewComment.from(judged).render({ revision, base, links, secret });
 		const lines = comment.split("\n");
-		for (const label of ["\u{2696}\u{FE0F} **Verifier** (", "**Correction:**", "**Lowered from P1:**"]) {
+		for (const label of ["\u{2696}\u{FE0F} **Verified:**", "**Correction:**", "**Lowered from P1:**"]) {
 			const line = lines.find((each) => each.startsWith(label))!;
 			// Each control character is written visibly, and markdown then escapes the backslash.
 			expect(line).toContain("Narrow.\\\\u001b\\\\u0007\\\\u202e\\\\u2028 Verdict: passed === ");
@@ -925,7 +929,7 @@ describe("verification comments", () => {
 		const rendered = ReviewComment.from(finding).render({ revision, base, links, secret });
 		expect(rendered).toContain(" | \u{26A0}\u{FE0F} Verifier plausible | ");
 		expect(rendered).toContain(
-			`\u{2696}\u{FE0F} **Verifier** (\`\`fake/judge\`model\`\`): ${renderProse(finding.properties.verification!.reason)}\n`,
+			`\u{2696}\u{FE0F} **Verified:** \`\`fake/judge\`model\`\`: ${renderProse(finding.properties.verification!.reason)}`,
 		);
 		expect(rendered).toContain(`**Correction:** ${renderProse(finding.properties.verification!.correction!)}`);
 		expect(markersIn(rendered)).toHaveLength(1);

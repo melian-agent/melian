@@ -7,28 +7,28 @@ Block: 1 finding
 src/receipt.ts
 
   P1 | Blocks merge | Correctness | Verifier confirmed | New in this change
-  Line 1: wrong-result, as lens.correctness reports it.
+    Decided by: melian.yaml: resolution.P1, the table
+    Verified: scripted/judge: The scripted verifier judged the claim.
+  wrong-result, as lens.correctness reports it.
     What: Scripted.
     Why here: Scripted.
     Failure scenario: Scripted.
-    Verifier (scripted/judge): The scripted verifier judged the claim.
     What to do: Scripted.
-    Decided by: melian.yaml: resolution.P1, the table
-    Rule wrong-result | Status new
+    Rule wrong-result | Line 1 | Status new
 
 Advisory: 1 finding
 
 src/parse.ts
 
   P2, lowered from P1 | Advisory | Correctness | Verifier confirmed | New in this change
-  Line 1: unchecked-index, as lens.correctness reports it.
+    Decided by: melian.yaml: resolution.checks.lens.correctness.P2, the check entry
+    Lowered from P1: The only caller returns early for a record without a comma.
+    Verified: scripted/judge: The scripted verifier judged the claim.
+  unchecked-index, as lens.correctness reports it.
     What: Scripted.
     Why here: Scripted.
     Failure scenario: Scripted.
-    Verifier (scripted/judge): The scripted verifier judged the claim.
-    Lowered from P1: The only caller returns early for a record without a comma.
     What to do: Scripted.
-    Decided by: melian.yaml: resolution.checks.lens.correctness.P2, the check entry
-    Rule unchecked-index | Status new
+    Rule unchecked-index | Line 1 | Status new
 
 2 findings in 2 files.

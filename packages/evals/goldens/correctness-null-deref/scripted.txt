@@ -1,7 +1,8 @@
 src/user.ts
 
   P1 | Blocks merge | Correctness | Verifier confirmed | New in this change
-  Lines 7-8: managerName casts user.manager to User and reads its name, but manager is optional.
+    Verified: faux/scripted: The scripted verifier traced the claim.
+  managerName casts user.manager to User and reads its name, but manager is optional.
     Why here: The base guarded with ?. and fell back to "none"; this change removes the guard, so describe() throws for any user without a manager.
     Failure scenario: describe({ name: "Ada" }) in src/org-chart.ts calls managerName on a user without a manager, which reads name of undefined and throws a TypeError, where the base returned "Ada reports to none".
     Evidence:
@@ -12,8 +13,7 @@ src/user.ts
           return `${user.name} reports to ${managerName(user)}`;
       context: src/user.ts:7 at base
           return user.manager?.name ?? "none";
-    Verifier (faux/scripted): The scripted verifier traced the claim.
     What to do: Keep the optional chain: return user.manager?.name.trim() ?? "none".
-    Rule null-dereference | Status new
+    Rule null-dereference | Lines 7-8 | Status new
 
 1 finding in 1 file.

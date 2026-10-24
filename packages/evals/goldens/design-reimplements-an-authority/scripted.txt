@@ -1,7 +1,8 @@
 src/note.ts
 
   P1 | Blocks merge | Design | Verifier confirmed | New in this change
-  Line 6: readHeader parses a note's YAML header by splitting each line at its first colon, though the repository already depends on yaml, whose parse reads that format.
+    Verified: faux/scripted: The scripted verifier traced the claim.
+  readHeader parses a note's YAML header by splitting each line at its first colon, though the repository already depends on yaml, whose parse reads that format.
     Why here: The hand-written loop reads only a plain scalar on one line. Quoted values, lists, and every other YAML shape come back as raw text, and each one found later is one more special case.
     Failure scenario: A note opens with a header whose title line is `title: "Plans: 2027"` and whose tags line is `tags: [work, home]`. readHeader returns the title with its quotation marks kept, `"Plans: 2027"`, and tags as the text `[work, home]`. yaml's parse, which loadConfig already calls, returns the title Plans: 2027 and a list of two tags.
     Evidence:
@@ -14,8 +15,7 @@ src/note.ts
           "dependencies": { "yaml": "2.9.1" }
       context: src/config.ts:2 at base
         import { parse } from "yaml";
-    Verifier (faux/scripted): The scripted verifier traced the claim.
     What to do: Parse the header block with yaml's parse, as loadConfig does.
-    Rule reimplements-an-authority | Status new
+    Rule reimplements-an-authority | Line 6 | Status new
 
 1 finding in 1 file.

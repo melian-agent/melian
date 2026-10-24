@@ -9,11 +9,11 @@ Acknowledge: 1 finding
 services/melian.yaml
 
   P2 | Needs acknowledgement | Guardrails: policy-change-review | New in this change
-  Line 1: Review policy and standards changed in this revision.
+    Decided by: melian.yaml: resolution.P2, the table; held at acknowledge as a change to policy
+  Review policy and standards changed in this revision.
     What: This revision changes services/melian.yaml, which steers how Melian reviews this repository. The directory above turns policy notices off; changes to a melian.yaml or lens file are reported regardless.
     Why here: Melian reviewed the revision under the policy and standards it changes, so nothing it ran judged the new ones.
     What to do: Have a maintainer read the change to services/melian.yaml before merging.
-    Decided by: melian.yaml: resolution.P2, the table; held at acknowledge as a change to policy
-    Rule guardrail/policy-change-review | Status new
+    Rule guardrail/policy-change-review | Line 1 | Status new
 
 1 finding in 1 file.

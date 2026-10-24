@@ -7,21 +7,21 @@ Block: 2 findings
 .melian/lenses/cleanup/LENS.md
 
   P1 | Blocks merge | Guardrails: policy-change-review | New in this change
-  Line 1: Review policy and standards changed in this revision.
+    Decided by: the built-in table
+  Review policy and standards changed in this revision.
     What: This revision changes .melian/lenses/cleanup/LENS.md, which steers how Melian reviews this repository. The directory above turns policy notices off; changes to a melian.yaml or lens file are reported regardless.
     Why here: Melian reviewed the revision under the policy and standards it changes, so nothing it ran judged the new ones.
     What to do: Have a maintainer read the change to .melian/lenses/cleanup/LENS.md before merging.
-    Decided by: the built-in table
-    Rule guardrail/policy-change-review | Status new
+    Rule guardrail/policy-change-review | Line 1 | Status new
 
 services/melian.yaml
 
   P1 | Blocks merge | Guardrails: policy-change-review | New in this change
-  Line 1: Review policy and standards changed in this revision.
+    Decided by: the built-in table
+  Review policy and standards changed in this revision.
     What: This revision changes services/melian.yaml, which steers how Melian reviews this repository. The directory above turns policy notices off; changes to a melian.yaml or lens file are reported regardless.
     Why here: Melian reviewed the revision under the policy and standards it changes, so nothing it ran judged the new ones.
     What to do: Have a maintainer read the change to services/melian.yaml before merging.
-    Decided by: the built-in table
-    Rule guardrail/policy-change-review | Status new
+    Rule guardrail/policy-change-review | Line 1 | Status new
 
 2 findings in 2 files.

@@ -9,14 +9,14 @@ Block: 1 finding
 services/payments/src/total.ts
 
   P0 | Blocks merge | Correctness | Verifier confirmed | New in this change
-  Line 1: wrong-result, as lens.correctness reports it.
+    Decided by: services/payments/melian.yaml: resolution.P0, the table
+    Verified: scripted/judge: The scripted verifier judged the claim.
+  wrong-result, as lens.correctness reports it.
     What: Scripted.
     Why here: Scripted.
     Failure scenario: Scripted.
-    Verifier (scripted/judge): The scripted verifier judged the claim.
     What to do: Scripted.
-    Decided by: services/payments/melian.yaml: resolution.P0, the table
-    Rule wrong-result | Status new
+    Rule wrong-result | Line 1 | Status new
 
 Pre-existing, important: 2 findings
   ae2fafb2cfdf7bd4  new
@@ -25,25 +25,25 @@ Pre-existing, important: 2 findings
 docs/guide.md
 
   P0 | Advisory | Correctness | Verifier confirmed | Predates this change
-  Line 1: wrong-result, as lens.correctness reports it.
+    Decided by: docs/melian.yaml: resolution.P0, the table
+    Verified: scripted/judge: The scripted verifier judged the claim.
+  wrong-result, as lens.correctness reports it.
     What: Scripted.
     Why here: Scripted.
     Failure scenario: Scripted.
-    Verifier (scripted/judge): The scripted verifier judged the claim.
     What to do: Scripted.
-    Decided by: docs/melian.yaml: resolution.P0, the table
-    Rule wrong-result | Status new
+    Rule wrong-result | Line 1 | Status new
 
 services/payments/src/ledger.ts
 
   P0 | Needs acknowledgement | Correctness | Verifier confirmed | Predates this change
-  Line 1: wrong-result, as lens.correctness reports it.
+    Decided by: services/payments/melian.yaml: resolution.P0, the table; capped as pre-existing by melian.yaml's resolution.preExisting.P0
+    Verified: scripted/judge: The scripted verifier judged the claim.
+  wrong-result, as lens.correctness reports it.
     What: Scripted.
     Why here: Scripted.
     Failure scenario: Scripted.
-    Verifier (scripted/judge): The scripted verifier judged the claim.
     What to do: Scripted.
-    Decided by: services/payments/melian.yaml: resolution.P0, the table; capped as pre-existing by melian.yaml's resolution.preExisting.P0
-    Rule wrong-result | Status new
+    Rule wrong-result | Line 1 | Status new
 
 3 findings in 3 files.

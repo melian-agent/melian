@@ -1,7 +1,8 @@
 src/standards.ts
 
   P2 | Needs acknowledgement | Removed behaviour | Verifier confirmed | New in this change
-  Line 9: readStandards returns undefined for any error, so a standard that exists but cannot be read is treated as absent.
+    Verified: faux/scripted: The scripted verifier traced the claim.
+  readStandards returns undefined for any error, so a standard that exists but cannot be read is treated as absent.
     Why here: This change replaced the catch that returned undefined only for ENOENT and rethrew the rest with one that swallows everything.
     Failure scenario: A repository's AGENTS.md is a directory, or a file with mode 000. readFileSync throws EISDIR or EACCES, readStandards now returns undefined, and instructions tells the reviewer "This repository has written no standards.", so the review ignores them without a word. The base rethrew anything but ENOENT, and the review failed.
     Evidence:
@@ -17,8 +18,7 @@ src/standards.ts
           return standards === undefined
             ? "Review the change. This repository has written no standards."
             : `Review the change against these standards:\n\n${standards}`;
-    Verifier (faux/scripted): The scripted verifier traced the claim.
     What to do: Restore the ENOENT check and rethrow every other error.
-    Rule dropped-error-path | Status new
+    Rule dropped-error-path | Line 9 | Status new
 
 1 finding in 1 file.

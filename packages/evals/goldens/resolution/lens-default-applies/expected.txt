@@ -7,41 +7,41 @@ Block: 1 finding
 src/ledger.ts
 
   P1 | Blocks merge | Correctness | Verifier confirmed | New in this change
-  Line 1: wrong-result, as lens.correctness reports it.
+    Decided by: the built-in table
+    Verified: scripted/judge: The scripted verifier judged the claim.
+  wrong-result, as lens.correctness reports it.
     What: Scripted.
     Why here: Scripted.
     Failure scenario: Scripted.
-    Verifier (scripted/judge): The scripted verifier judged the claim.
     What to do: Scripted.
-    Decided by: the built-in table
-    Rule wrong-result | Status new
+    Rule wrong-result | Line 1 | Status new
 
 Advisory: 1 finding
 
 src/total.ts
 
   P1 | Advisory | cleanup | Verifier confirmed | New in this change
-  Line 1: reuse, as lens.cleanup reports it.
+    Decided by: lens cleanup's default: the built-in table, under the ceiling resolution.ceiling
+    Verified: scripted/judge: The scripted verifier judged the claim.
+  reuse, as lens.cleanup reports it.
     What: Scripted.
     Why here: Scripted.
     Failure scenario: Scripted.
-    Verifier (scripted/judge): The scripted verifier judged the claim.
     What to do: Scripted.
-    Decided by: lens cleanup's default: the built-in table, under the ceiling resolution.ceiling
-    Rule reuse | Status new
+    Rule reuse | Line 1 | Status new
 
 Silent: 1 finding
 
 src/receipt.ts
 
   P3 | Silent | cleanup | Verifier confirmed | New in this change
-  Line 1: altitude, as lens.cleanup reports it.
+    Decided by: lens cleanup's default: resolution.P3, the lens's default, under the ceiling resolution.ceiling
+    Verified: scripted/judge: The scripted verifier judged the claim.
+  altitude, as lens.cleanup reports it.
     What: Scripted.
     Why here: Scripted.
     Failure scenario: Scripted.
-    Verifier (scripted/judge): The scripted verifier judged the claim.
     What to do: Scripted.
-    Decided by: lens cleanup's default: resolution.P3, the lens's default, under the ceiling resolution.ceiling
-    Rule altitude | Status new
+    Rule altitude | Line 1 | Status new
 
 2 findings in 2 files.

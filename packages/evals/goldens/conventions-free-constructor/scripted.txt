@@ -1,7 +1,8 @@
 src/store.ts
 
   P3 | Advisory | Conventions | Verifier confirmed | New in this change
-  Lines 11-13: invoiceOf is a free function that constructs an Invoice from an InvoiceRow.
+    Verified: faux/scripted: The scripted verifier traced the claim.
+  invoiceOf is a free function that constructs an Invoice from an InvoiceRow.
     Why here: AGENTS.md says "`Invoice` is the domain object. Building an `Invoice` from anything else, such as a request body or a stored row, is a static factory on `Invoice`, as `Invoice.from(id, body)` is, never a free function. A free function is for a module-private helper that touches no domain object." This change added invoiceOf, and its exemption for module-private helpers covers only those that touch no domain object.
     Failure scenario: invoiceOf builds an Invoice from an InvoiceRow as a free function in store.ts. AGENTS.md says "`Invoice` is the domain object. Building an `Invoice` from anything else, such as a request body or a stored row, is a static factory on `Invoice`, as `Invoice.from(id, body)` is, never a free function. A free function is for a module-private helper that touches no domain object." invoiceOf is module-private but constructs an Invoice, so the exemption does not cover it. A reader looking on Invoice for the ways to build one finds Invoice.from and not invoiceOf, and the next reader of rows writes a third.
     Evidence:
@@ -13,8 +14,7 @@ src/store.ts
           static from(id: string, body: InvoiceBody): Invoice {
       context: AGENTS.md:7
         - `Invoice` is the domain object. Building an `Invoice` from anything else, such as a request body or a stored row, is a static factory on `Invoice`, as `Invoice.from(id, body)` is, never a free function. A free function is for a module-private helper that touches no domain object.
-    Verifier (faux/scripted): The scripted verifier traced the claim.
     What to do: Make it a static factory on Invoice, such as Invoice.fromRow(row), and call that from get and unpaid.
-    Rule quoted-rule-violation | Status new
+    Rule quoted-rule-violation | Lines 11-13 | Status new
 
 1 finding in 1 file.

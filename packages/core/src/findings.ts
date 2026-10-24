@@ -1155,13 +1155,13 @@ export class Finding {
 	}
 
 	/**
-	 * The finding as one block of terminal text, in the register's order: the status line, the lines and headline,
-	 * What unless the headline is it, Why here, the failure scenario, each evidence location with the code read there,
-	 * the verifier's reason and correction, a lowering's reason and a resolution held at the original severity, the trust
-	 * floor's notes, and What to do. With the rendering's `decided`, a line names the file and entry that decided its
-	 * resolution, as {@link describeDecision} says it. A footer names the rule, the status, and, with the rendering's
-	 * `ids`, the ID `melian dismiss` takes. Under it come each other report of its defect, merged into it or dismissed
-	 * beside it, and who dismissed it and why. A part with nothing to say is left out.
+	 * The finding as one block of terminal text: its status line; each other report of its defect, merged into it or
+	 * dismissed beside it, with its severity, rule, and check; its trust floor; with the rendering's `decided`, the file
+	 * and entry that decided its resolution, as {@link describeDecision} says it; a lowering and a resolution held at the
+	 * original severity; the verifier's reason and correction; who dismissed it and why, and each earlier dismissal; then
+	 * the headline, What unless the headline is it, Why here, the failure scenario, each evidence location with the code
+	 * read there, and What to do. A footer names the rule, the lines, the ID `melian dismiss` takes when the rendering's
+	 * `ids` is set, and the lifecycle status. A part the finding does not have is left out.
 	 */
 	render(rendering: Rendering = new Rendering()): string {
 		const { ids } = rendering;
@@ -1185,21 +1185,14 @@ export class Finding {
 		const { headline, what } = this.headline();
 		const lowered = this.lowered();
 		const loweringNote = this.lowered({ includeTrustFloor: false });
+		const verified = `${rendering.emoji ? `${verifierMark.emoji} ` : ""}Verified`;
 		return [
 			`  ${[rendering.paint(severityColor[severity], first!), ...rest].join(" | ")}`,
-			`  ${lines}: ${prose(headline, messageContinuation)}`,
-			...(what === undefined ? [] : [`    What: ${prose(what, "      ")}`]),
-			`    Why here: ${prose(explanation.whyHere, "      ")}`,
-			...(failureScenario === undefined ? [] : [`    Failure scenario: ${prose(failureScenario, "      ")}`]),
-			...(evidence === undefined ? [] : ["    Evidence:", ...evidenceLines(evidence)]),
-			...(verification === undefined
+			...reports,
+			...this.trustFloorNotes().map((line) => `    ${prose(line, "      ")}`),
+			...(decidedBy === undefined || !rendering.decided
 				? []
-				: [
-						`    ${rendering.show(verifierMark)} (${visibleText(verification.model)}): ${prose(verification.reason, "      ")}`,
-						...(verification.correction === undefined
-							? []
-							: [`    Correction: ${prose(verification.correction, "      ")}`]),
-					]),
+				: [`    Decided by: ${prose(describeDecision(decidedBy, own), "      ")}`]),
 			...(loweringNote === undefined
 				? []
 				: [`    Lowered from ${loweringNote.from}: ${prose(loweringNote.reason, "      ")}`]),
@@ -1208,14 +1201,22 @@ export class Finding {
 				: [
 						`    Resolved at ${lowered.from}: the table in force resolves ${severity} silent, and a lowering never silences a finding.`,
 					]),
-			...this.trustFloorNotes().map((line) => `    ${prose(line, "      ")}`),
-			`    What to do: ${prose(explanation.whatToDo, "      ")}`,
-			...(decidedBy === undefined || !rendering.decided
+			...(verification === undefined
 				? []
-				: [`    Decided by: ${prose(describeDecision(decidedBy, own), "      ")}`]),
-			`    Rule ${visibleText(this.ruleId)} | Status ${status}${ids ? ` | Finding ${visibleText(id)}` : ""}`,
-			...reports,
+				: [
+						`    ${verified}: ${visibleText(verification.model)}: ${prose(verification.reason, "      ")}`,
+						...(verification.correction === undefined
+							? []
+							: [`    Correction: ${prose(verification.correction, "      ")}`]),
+					]),
 			...this.#dismissals(rendering),
+			`  ${prose(headline, messageContinuation)}`,
+			...(what === undefined ? [] : [`    What: ${prose(what, "      ")}`]),
+			`    Why here: ${prose(explanation.whyHere, "      ")}`,
+			...(failureScenario === undefined ? [] : [`    Failure scenario: ${prose(failureScenario, "      ")}`]),
+			...(evidence === undefined ? [] : ["    Evidence:", ...evidenceLines(evidence)]),
+			`    What to do: ${prose(explanation.whatToDo, "      ")}`,
+			`    Rule ${visibleText(this.ruleId)} | ${lines}${ids ? ` | Finding ${visibleText(id)}` : ""} | Status ${status}`,
 		].join("\n");
 	}
 

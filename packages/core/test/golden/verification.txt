@@ -9,14 +9,14 @@ Refuted: 1 finding
 src/run.ts
 
   P1 | Blocks merge | security | Refuted | New in this change
-  Line 12: eval runs request input
+    Verified: fake/judge: A guard prevents it.\u001b[2J
+      More proof.
+    Correction: Use the guarded value.
+  eval runs request input
     What: The handler passes the request body to eval.
     Why here: This change routes the body into run() without parsing it.
     Failure scenario: The input fails.
-    Verifier (fake/judge): A guard prevents it.\u001b[2J
-      More proof.
-    Correction: Use the guarded value.
     What to do: Parse the body with JSON.parse and validate it.
-    Rule no-eval | Status new
+    Rule no-eval | Line 12 | Status new
 
 No findings.

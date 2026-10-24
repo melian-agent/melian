@@ -245,66 +245,67 @@ export class ReviewComment {
 				...held,
 			].join("\n");
 		}
+		const verification = finding.properties.verification;
+		const judged =
+			verification === undefined
+				? []
+				: [
+						this.#verifier(verification, rendering),
+						"",
+						...(verification.correction === undefined
+							? []
+							: [`**Correction:** ${inline(verification.correction)}`, ""]),
+					];
 		return [
 			marker(revision, "finding", id, context.secret),
 			...where,
 			...heading,
 			status,
 			"",
-			...this.#text(context, rendering, moved),
-			`Rule ${code(finding.ruleId)} | Finding ${code(id)}`,
+			...judged,
+			...moved.flatMap((line) => [line, ""]),
+			...finding.trustFloorNotes().flatMap((line) => [inline(line), ""]),
+			...this.#text(context),
+			"",
+			`Rule ${code(finding.ruleId)} | Finding ${code(id)} | Status ${code(finding.properties.status)}`,
 		].join("\n");
 	}
 
-	// The register's parts in order, each a paragraph, leaving out a part the finding does not have: a deterministic
-	// finding has no failure scenario, evidence or verifier.
-	#text(context: CommentContext, rendering: Rendering, moved: readonly string[]): string[] {
+	// The headline once, then the parts the finding has, leaving out one it does not: a deterministic finding has no
+	// failure scenario or evidence.
+	#text(context: CommentContext): string[] {
 		const { finding } = this;
-		const { explanation, failureScenario, verification } = finding.properties;
+		const { explanation, failureScenario } = finding.properties;
 		const { headline, what } = finding.headline();
-		const paragraphs = [
+		return [
 			`**${renderProse(headline)}**`,
-			...(what === undefined ? [] : [`**What:** ${renderProse(what)}`]),
+			"",
+			...(what === undefined ? [] : [`**What:** ${renderProse(what)}`, ""]),
 			`**Why here:** ${renderProse(explanation.whyHere)}`,
-			...(failureScenario === undefined ? [] : [`**Failure scenario:** ${renderProse(failureScenario)}`]),
+			...(failureScenario === undefined ? [] : ["", `**Failure scenario:** ${renderProse(failureScenario)}`]),
 			...this.#evidence(context),
-			...(verification === undefined
-				? []
-				: [
-						this.#verifier(verification, rendering),
-						...(verification.correction === undefined
-							? []
-							: [`**Correction:** ${inline(verification.correction)}`]),
-					]),
-			...moved,
-			...finding.trustFloorNotes().map(inline),
+			"",
 			`**What to do:** ${renderProse(explanation.whatToDo)}`,
 		];
-		return paragraphs.flatMap((paragraph) => [paragraph, ""]);
 	}
 
 	// The verifier writes its reasons from code the author controls, so each is one inert line, as in the ledger.
 	#verifier(verification: Verification, rendering: Rendering): string {
-		return `${rendering.emoji ? `${verifierMark.emoji} ` : ""}**${verifierMark.word}** (${code(verification.model)}): ${inline(verification.reason)}`;
+		return `${rendering.emoji ? `${verifierMark.emoji} ` : ""}**Verified:** ${code(verification.model)}: ${inline(verification.reason)}`;
 	}
 
-	// Each evidence location's role and a link to its lines at the commit it was read from, rather than quoting the
-	// code. A base location says the change deleted its lines only when Melian found so when it read them.
+	// Each evidence location links to its lines at the commit it was read from, rather than quoting the code. A base
+	// location says the change deleted its lines only when Melian found so when it read them.
 	#evidence({ revision, base, links }: CommentContext): string[] {
 		const { evidence } = this.finding.properties;
 		if (evidence === undefined) return [];
 		const items = evidence.map(({ file, startLine, endLine = startLine, role, revision: side, deleted }) => {
 			const at = side === "base" ? base : revision;
 			const link = `[${code(file)} ${lineSpan(startLine, endLine)}](${blobUrl(links, at, file, startLine, endLine)})`;
-			const where =
-				side === "base"
-					? deleted === true
-						? " at the base, deleted by this change"
-						: " at the base"
-					: " at the head";
-			return `${role}, ${link}${where}`;
+			const where = side === "base" ? (deleted === true ? ", deleted by this change" : ", at the base") : "";
+			return `- ${role}: ${link}${where}`;
 		});
-		return [`**Evidence:** ${items.join("; ")}.`];
+		return ["", "**Evidence:**", "", ...items];
 	}
 }
 
