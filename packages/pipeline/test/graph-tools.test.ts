@@ -427,7 +427,7 @@ describe("graph tools", { timeout: 60_000 }, () => {
 		expect(quiet).toContain("No calls.");
 	});
 
-	it("stop the walk at 200 declarations and cut the rows at the output bound, saying both", async () => {
+	it("stop the walk at 200 callers and cut the rows at the output bound, saying both", async () => {
 		const callers = Array.from({ length: 201 }, (_, index) => ({
 			id: `c${index}`,
 			name: `src.caller${String(index).padStart(3, "0")}${"x".repeat(240)}`,
@@ -455,7 +455,7 @@ describe("graph tools", { timeout: 60_000 }, () => {
 			],
 		]);
 		const [impact, references] = toolResults(requests[correctness]![1]!);
-		expect(impact).toContain("[the walk stopped at 200 declarations]");
+		expect(impact).toContain("[the walk stopped at 200 callers]");
 		expect(references).not.toContain("the walk stopped");
 		const shown = (result: string) => (result.match(/src\.caller\d{3}/g) ?? []).length;
 		expect(shown(impact!)).toBeLessThan(200);
