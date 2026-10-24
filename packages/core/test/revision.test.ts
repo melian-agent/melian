@@ -321,6 +321,12 @@ describe("searchRevisionFiles", () => {
 			{ path: "docs/absent.md", matches: [], truncated: false, missing: true },
 			{ path: "docs/design", matches: [], truncated: false, missing: true },
 		]);
+		expect(await searchRevisionFiles(repo, commit, search, ["src/sub/link.ts"])).toEqual([
+			{ path: "src/sub/link.ts", matches: [], truncated: false, missing: true },
+		]);
+		const [kept] = await searchRevisionFiles(repo, commit, search, [paths[0]!, "docs/absent.md"], 4);
+		expect(kept).toMatchObject({ truncated: true });
+		expect(kept!.matches).toHaveLength(4);
 		expect(await searchRevisionFiles(repo, commit, search, ["docs/absent.md"])).toEqual([
 			{ path: "docs/absent.md", matches: [], truncated: false, missing: true },
 		]);
@@ -338,7 +344,7 @@ describe("searchRevisionFiles", () => {
 		])
 			await expect(
 				searchRevisionFiles(repo, revision!, { ...search, attributesFrom: attributesFrom! }, [paths[1]!]),
-			).rejects.toBeInstanceOf(RevisionError);
+			).rejects.toThrow('"--output=x" is not a revision');
 		expect(
 			await searchRevisionFiles(
 				repo,
