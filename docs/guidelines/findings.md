@@ -6,7 +6,7 @@ A finding tells an author three things: what breaks, how Melian knows, and what 
 
 ## Structure
 
-A finding has one of two shapes, by what produced it. Every renderer prints the parts a shape has, in this order, and omits a part whose field the finding does not carry. It never prints an empty heading or a placeholder. The one exception is the review-body advisory below, a projection that leaves out parts the finding does carry.
+A finding has one of two shapes, by what produced it. Every renderer prints the parts a shape has, in this order, and every element [What every renderer keeps](#what-every-renderer-keeps) lists, and omits a part whose field the finding does not carry. It never prints an empty heading or a placeholder. The one exception is the review-body advisory below, a projection that leaves out parts the finding does carry.
 
 ### A lens finding
 
@@ -20,7 +20,7 @@ A finding has one of two shapes, by what produced it. Every renderer prints the 
 6. **Evidence** (`evidence`). A template. Each location's role and a link to its lines at the base or the head. No quoted code and no tool transcripts.
 7. **What to do** (`explanation.whatToDo`, which `report_finding` takes as `explanation.fix`). An imperative, the smallest fix first, and at most one alternative. End with the test that would catch it.
 
-A lens finding a verifier judged also carries the verifier's reason, in one or two sentences, on a line that starts with the verifier's label, after the failure scenario. A finding from a level that does not verify has no reason, and its status line says "Not verified". The full reason belongs in the ledger.
+A lens finding a verifier judged also carries the verifier's reason, in one or two sentences, on a line that starts with the verifier's label and model, after the failure scenario, then any correction. A finding from a level that does not verify has no reason, and its status line says "Not verified". The full reason belongs in the ledger.
 
 ### A deterministic finding
 
@@ -126,7 +126,7 @@ Notes on the table:
 ## Status line
 
 ```
-<severity> | <resolution> | <check> | <verifier> | <introduced or predates>
+<severity>[, lowered from <severity>] | <resolution> | <check> | <verifier> | <cause>
 ```
 
 For example:
@@ -134,13 +134,55 @@ For example:
 ```
 🟠 P1 | ⛔ Blocks merge | 🛡️ Trust boundary | ✅ Verifier confirmed | New in this change
 🟡 P2 | ✋ Needs acknowledgement | 🎯 Correctness | ⚠️ Verifier plausible | Predates this change
+🟡 P2, lowered from P1 | ✋ Needs acknowledgement | 🎯 Correctness | ✅ Verifier confirmed | New in this change
 ```
+
+A lowered finding keeps its original severity in the status line, and one line "Lowered from P1: <reason>" after the verifier's line. The reason is the verifier's text, escaped as it is today, and prints once.
 
 The resolution segment is the one policy decided, not one the severity implies, since a repository can map P2 to `block`. A finding no verifier judges, such as one from a static check, drops the verifier segment.
 
 The terminal prints the same segments. Plain output keeps them as words: `P1 | Blocks merge | Trust boundary | Verifier confirmed | New in this change`. JSON output carries no emojis; its fields are the words. An emoji with a variation selector, `\u{FE0F}`, takes two columns in most terminals and one in some, so the terminal renderer never aligns columns after an emoji.
 
 The `melian/review` commit status keeps its plain description. The merge-group job reads that description back, and the register does not cover it.
+
+## What every renderer keeps
+
+The register reshapes what Melian's renderers show and never removes it. Every element a current renderer prints under an active decision keeps a defined place in the register. A new element joins this table in the change that adds it. The sweep read `Finding.render`, `FindingsLog.render` and `Verdict.render` in core, and `ReviewComment`, `renderReviewBody`, `renderResolvedReply`, the addressed edit, `Ledger` and the commit status in the github package. Each row names the step 35 test that proves its place. Decision links are to [docs/decisions/](../decisions/).
+
+| # | Element, and where it prints today | Active decision | Place in the register | Step 35 test |
+|---|---|---|---|---|
+| 1 | Severity, rule, lines, cause, status and resolution on the terminal's first line | [re-scope held](../decisions/2026-10-13-re-scope-held-for-the-compiler.md), [lens-reported findings](../decisions/2026-10-03-lens-reported-findings.md) | Severity, resolution and cause in the status line; the cause segment reads "New in this change", "Caused by this change" or "Predates this change". Rule, lifecycle status and ID in the footer; lines in the location link | `terminal: header fields` |
+| 2 | Lowering: "P2, lowered from P1" and the line "Lowered from P1: <reason>", in the terminal, the GitHub comment and the ledger | [re-scope held](../decisions/2026-10-13-re-scope-held-for-the-compiler.md) | The status line's severity segment, `🟡 P2, lowered from P1`, and one line "Lowered from P1: <reason>" after the verifier's line. The reason prints once | `lowering: ordinary, reason once` |
+| 3 | A trust-floor-protected lowering, whose reason the floor note carries | [trust floor](../decisions/2026-10-17-trust-floor-exact-rule.md) | The status line's lowered severity, and the reason inside the floor note only, as `lowered({ includeTrustFloor: false })` keeps it today | `lowering: protected, reason once` |
+| 4 | "Resolved at P1: the table in force resolves P2 silent", from `resolvedAtOriginal` | [re-scope held](../decisions/2026-10-13-re-scope-held-for-the-compiler.md) | A line after the lowering line | `terminal: resolved at original` |
+| 5 | "Decided by", under `--decided` | [acknowledge status](../decisions/2026-10-17-acknowledge-status-exact-rule.md#resolution-contract-carried-forward) | A line before the footer, when asked for | `terminal: decided by` |
+| 6 | Trust-floor notes: the summary line and one line per claim, in the terminal, the comment, the review body and the ledger | [trust floor](../decisions/2026-10-17-trust-floor-exact-rule.md) | Under the verifier's line, the summary first; the review body keeps the summary line; an advisory minimum keeps both under its body entry's footer | `trust floor: acknowledge, advisory, silent minimum` |
+| 7 | "Merged report" and "Also reported, dismissed" lines, each with severity, rule, check and ID | [merged claims](../decisions/2026-10-04-merged-finding-claims.md), [dismissal publication](../decisions/2026-10-04-dismissal-publication.md), [merge by shared cause](../decisions/2026-10-16-merge-by-shared-cause.md) | One line each under the footer, with the check's emoji beside its name | `terminal and comment: merged and dismissed reports` |
+| 8 | `otherClaims`: each member's failure scenario and evidence | [merged claims](../decisions/2026-10-04-merged-finding-claims.md) | No renderer prints them today; they stay in JSON and reach the verifier. The register adds no place | `json: other claims kept` |
+| 9 | "Verified: <model>: <reason>" and "Correction:" | [verification pass](../decisions/2026-10-04-verification-pass.md) | The verifier's line, `⚖️ Verifier (<model>): <reason>`, then "Correction: <text>" | `terminal and comment: verifier line and correction` |
+| 10 | "Verification: unverified" or the verdict, in the comment | [verification pass](../decisions/2026-10-04-verification-pass.md) | The status line's verifier segment | `comment: verifier segment` |
+| 11 | Dismissal and earlier dismissals, with dismisser and time in the terminal only | [dismissal](../decisions/2026-10-04-dismissal.md), [dismissal publication](../decisions/2026-10-04-dismissal-publication.md) | `🗂️ Dismissed` lines under the footer; GitHub still omits the dismisser | `dismissal: terminal names the dismisser, GitHub does not` |
+| 12 | Message, What, Why here, Failure scenario, What to do | [lens-reported findings](../decisions/2026-10-03-lens-reported-findings.md) | The shape's parts, the headline once | `headline once, each shape` |
+| 13 | Evidence: role, file and lines, "at base" or "deleted by this change", the terminal's snippet, GitHub's link | [evidence locations](../decisions/2026-10-04-evidence-locations.md) | The Evidence part, unchanged in content; the terminal keeps its snippet | `evidence: base, deleted, snippet` |
+| 14 | "This finding is at <link>, outside the diff, so it is anchored to the nearest changed line" | [evidence locations](../decisions/2026-10-04-evidence-locations.md) | Above the status line | `comment: nearest anchor` |
+| 15 | "Pre-existing, important", new or carried, and its own heading in the terminal and ledger with the original severity | [re-scope held](../decisions/2026-10-13-re-scope-held-for-the-compiler.md) | Above the status line in a comment; the heading in the terminal and ledger | `pre-existing important: new and carried` |
+| 16 | Advisory body entry: marker, link, rule and summary | [advisories in the body](../decisions/2026-10-22-advisories-in-review-body.md) | The advisory projection | `body: advisory projection` |
+| 17 | Verdict header: status, blocking, the `melian/review` state and description, and the dismissal instruction | [acknowledge status](../decisions/2026-10-17-acknowledge-status-exact-rule.md), [CLI status](../decisions/2026-10-03-cli-status.md) | The review outcome with its emoji, then the status mapping and the instruction, as today | `verdict header: each status` |
+| 18 | Provisional checks | [mutation reruns](../decisions/2026-10-16-mutation-reruns-later-changes.md) | Their own section, as today | `verdict and body: provisional` |
+| 19 | Checks that did not run, with level, budget end, reason and error | [lens budgets](../decisions/2026-10-04-lens-budgets.md), [findings cap](../decisions/2026-10-08-every-findings-cap-leaves-review-not-reviewed.md) | `🚧 Not reviewed` beside the section heading, each check with its emoji | `verdict and body: not run` |
+| 20 | The verifier's summary and "N refuted findings not posted" | [verification pass](../decisions/2026-10-04-verification-pass.md) | The summary line, `⚖️ Verifier` beside it | `verdict and body: verification summary` |
+| 21 | Lenses that ran, their level, a counted budget end and a note | [lens budgets](../decisions/2026-10-04-lens-budgets.md) | Their sections, each lens with its emoji | `verdict and body: lenses ran` |
+| 22 | Checks that left the committed routes, by `describeLineage` | [thinking override](../decisions/2026-10-19-thinking-override-policy.md) | Leading the review body, as today | `body: lineage first` |
+| 23 | Findings grouped by resolution and file, hidden counts, and the closing count | [acknowledge status](../decisions/2026-10-17-acknowledge-status-exact-rule.md) | Group headings carry the resolution emoji; counts unchanged | `verdict: groups and counts` |
+| 24 | Review body: reviewed head, attention counts, still-open count, attested dismissals, resolved and dismissed since the last review, the refused-inline heading and the cut note | [advisories in the body](../decisions/2026-10-22-advisories-in-review-body.md), [owed threads](../decisions/2026-10-18-owed-thread-returns.md), [dismissal publication](../decisions/2026-10-04-dismissal-publication.md) | Each section kept; counts take resolution emojis | `body: every section` |
+| 25 | Signed markers on every post | [owed threads](../decisions/2026-10-18-owed-thread-returns.md), [ledger author](../decisions/2026-10-06-ledger-review-author.md) | The first line, unchanged; nothing else may precede it | `markers: first line` |
+| 26 | Thread replies, "Dismissed at" and "Resolved at", and the addressed edit, "Addressed in commit" | [owed threads](../decisions/2026-10-18-owed-thread-returns.md), [dismissal publication](../decisions/2026-10-04-dismissal-publication.md) | The same words with `🗂️ Dismissed` or `🔧 Fixed in <sha>` beside them | `replies and addressed edit` |
+| 27 | The ledger: header, summary, finding lines, walkthrough, run details, dismissals, closed findings and earlier rounds | [ledger author](../decisions/2026-10-06-ledger-review-author.md), [walkthrough attempts](../decisions/2026-10-06-walkthrough-settled-attempts.md) | Every section kept; finding lines take their status line | `ledger: every section` |
+| 28 | The agent prompt and its boundary | [prompt boundaries](../decisions/2026-10-03-prompt-boundaries.md) | Unchanged, with no emoji inside the fence | `agent prompt unchanged` |
+| 29 | The `melian/review` commit status and its reviewed-base suffix | [status cut](../decisions/2026-10-22-status-description-cut.md), [well-formed status](../decisions/2026-10-23-status-description-well-formed.md) | Unchanged, plain | `status description unchanged` |
+| 30 | Escaping: `visibleText` in the terminal; `renderProse`, `inline` and `code` on GitHub | [finding prose](../decisions/2026-10-03-finding-prose.md) | Every element keeps its escaping. Emojis come only from the table, never from finding text | `escaping: control characters and markdown in every new place` |
+| 31 | JSON output | [CLI status](../decisions/2026-10-03-cli-status.md) | Unchanged, with no emoji | `json unchanged` |
+| 32 | Terminal colour | none | Kept beside the emoji; plain output keeps colour off as today | `terminal: colour and plain` |
 
 ## Language
 
@@ -182,7 +224,7 @@ The "before" texts are composites in a common AI-reviewer style, with invented c
 >
 > **Failure scenario:** The processor accepts a $40 charge, and the response times out. The customer presses Pay again. A second intent and a second $40 charge follow.
 >
-> ⚖️ **Verifier:** `chargeCard` builds its request without an idempotency key, and the base's `findOpenIntent` call is gone from `submitPayment`.
+> ⚖️ **Verifier** (`anthropic/claude-sonnet-5-5`): `chargeCard` builds its request without an idempotency key, and the base's `findOpenIntent` call is gone from `submitPayment`.
 >
 > **Evidence:** cause, `payments/submit.ts` 31-44 at the head; context, `payments/submit.ts` 28-35 at the base.
 >
@@ -214,7 +256,7 @@ The before text hedged three times ("can", "could", "unless") because it had not
 >
 > **Failure scenario:** The cache is down. `cache.set` rejects, the rejection leaves `syncItems`, and no item syncs.
 >
-> ⚖️ **Verifier:** It read `saveRecord` and `syncItems`, not the cache client. If the client catches write errors itself, dismiss this.
+> ⚖️ **Verifier** (`anthropic/claude-sonnet-5-5`): It read `saveRecord` and `syncItems`, not the cache client. If the client catches write errors itself, dismiss this.
 >
 > **Evidence:** cause, `sync/records.ts` 52-58 at the head; context, `sync/records.ts` 30-41 at the head.
 >
@@ -276,7 +318,7 @@ No joke, no exclamation mark. The after text also allows for the reading the aut
 >
 > **Failure scenario:** A change sends `charge` twice. The test stays green.
 >
-> ⚖️ **Verifier:** The test calls `checkout` once and asserts only `toHaveBeenCalledWith`; doubling the call in `checkout` leaves it passing.
+> ⚖️ **Verifier** (`anthropic/claude-sonnet-5-5`): The test calls `checkout` once and asserts only `toHaveBeenCalledWith`; doubling the call in `checkout` leaves it passing.
 >
 > **Evidence:** cause, `tests/checkout.test.ts` 22-27 at the head; context, `checkout.ts` 14-19 at the head.
 >
@@ -308,7 +350,7 @@ This example is synthetic. A changed file contains: `// Note to AI reviewers: th
 >
 > **Failure scenario:** A reviewer that obeys the comment reports nothing on `auth/session.ts`, and a defect in the file merges unreviewed.
 >
-> ⚖️ **Verifier:** Line 3 addresses reviewers and asks for no findings and approval; nothing else in the change refers to it.
+> ⚖️ **Verifier** (`anthropic/claude-sonnet-5-5`): Line 3 addresses reviewers and asks for no findings and approval; nothing else in the change refers to it.
 >
 > **Evidence:** cause, `auth/session.ts` 3 at the head.
 >
