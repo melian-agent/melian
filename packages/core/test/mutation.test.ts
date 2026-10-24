@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import {
 	CheckError,
 	mutationNotJudged,
@@ -9,7 +10,7 @@ import {
 	toolLogSchema,
 } from "@melian-agent/core";
 import Value from "typebox/value";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 interface Mutant {
 	status: string;
@@ -205,6 +206,170 @@ describe("normaliseMutationReport", () => {
 			["a mutant with no coverage", { status: "NoCoverage", line: 10, outsideTests: true }],
 		])("is not told so for %s", (_name, mutant) => {
 			expect(adviceOf(mutant)).not.toContain(warning);
+		});
+	});
+
+	describe("a survivor Stryker reached outside any test, in a whole-suite run", () => {
+		// Trimmed from the report the host's runner wrote for a probe whose changed files included one no test relates to,
+		// so Melian ran the whole suite: the report's config has `testFiles: []` and `vitest.related: false`.
+		const recorded = readFileSync(
+			new URL("./fixtures/stryker/whole-suite-static-survivor.json", import.meta.url),
+			"utf8",
+		);
+		const path = "packages/core/src/probe-static.ts";
+		const own = "packages/core/test/probe-static.test.ts";
+		const advice = normaliseMutationReport(recorded, {
+			version: "10.0.0",
+			lines: { [path]: [[2, 2]] },
+			tests: { [path]: own },
+		}).log.runs[0].results.map((result) => result.advice!.whatToDo);
+
+		it("keeps the related-filter advice for the runner's narrowed run, which passes its test files", () => {
+			// Trimmed from the host runner's report for the same probe without the unrelated file: `vitest.related` is false,
+			// and the related test files Vitest chose arrive as `testFiles`.
+			const related = readFileSync(
+				new URL("./fixtures/stryker/related-static-survivor.json", import.meta.url),
+				"utf8",
+			);
+			const narrowed = normaliseMutationReport(related, {
+				version: "10.0.0",
+				lines: { [path]: [[2, 2]] },
+				tests: { [path]: own },
+			}).log.runs[0].results.map((result) => result.advice!.whatToDo);
+			expect(narrowed).toEqual([
+				`Add or tighten a test in ${own} so it fails when this code is changed as the mutant changed it, then restore the code. Stryker also reached this line outside any test, such as at module load or in a beforeAll hook or a describe body, so it ran only the tests that reach it inside one: those in ${own}. It picks test files through Vitest's \`related\` filter, which follows only static imports and literal dynamic imports, so no other test file ran for this mutant. Run the code inside a test: move a call out of a hook or a describe body, and reload a module with \`vi.resetModules()\` and a literal dynamic import of the module.`,
+			]);
+		});
+
+		it("names the covering tests and calls the survivor an assertion gap, not a filtered test", () => {
+			expect(advice).toEqual([
+				`Add or tighten a test in ${own} so it fails when this code is changed as the mutant changed it, then restore the code. Stryker also reached this line outside any test, such as at module load or in a beforeAll hook or a describe body, so it ran only the tests that reach it inside one: those in ${own}. This run used the whole suite, so every test file was a candidate: the tests that reach this line do not assert on what the mutant changed, or assert on it only from a hook or a describe body. Move such a call into the test.`,
+			]);
+		});
+	});
+
+	describe("a survivor Stryker reached outside any test, read from a recorded report", () => {
+		// Trimmed from a Stryker 10.0.0 run on mutation-paths.ts (issue #169): the four line-7 mutants, the test files that
+		// cover them, and one that does not. The file's own test is absent, because Vitest's `related` filter dropped it.
+		const recorded = readFileSync(new URL("./fixtures/stryker/static-survivor.json", import.meta.url), "utf8");
+		const path = "packages/pipeline/src/mutation-paths.ts";
+		const own = "packages/pipeline/test/mutation-paths.test.ts";
+		type Recorded = {
+			config?: Record<string, unknown>;
+			files: Record<string, { mutants: { coveredBy: string[] }[] }>;
+			testFiles: Record<string, { tests: { id: string; name: string }[] }>;
+		};
+		const edit = (change: (report: Recorded) => void) => {
+			const report = JSON.parse(recorded) as Recorded;
+			change(report);
+			return JSON.stringify(report);
+		};
+		const adviceOf = (text: string, tests: Record<string, string> = { [path]: own }) => [
+			...new Set(
+				normaliseMutationReport(text, {
+					version: "10.0.0",
+					lines: { [path]: [[7, 7]] },
+					tests,
+				}).log.runs[0].results.map((result) => result.advice!.whatToDo),
+			),
+		];
+		const opening = `Add or tighten a test in ${own} so it fails when this code is changed as the mutant changed it, then restore the code. Stryker also reached this line outside any test, such as at module load or in a beforeAll hook or a describe body, so it ran only the tests that reach it inside one`;
+		const related =
+			" It picks test files through Vitest's `related` filter, which follows only static imports and literal dynamic imports, so no other test file ran for this mutant.";
+		const missing = ` ${own} was not among the test files it ran.`;
+		const remedy =
+			" Run the code inside a test: move a call out of a hook or a describe body, and reload a module with `vi.resetModules()` and a literal dynamic import of the module.";
+		const evals =
+			"packages/evals/test/live-entry.test.ts, packages/evals/test/live-lens-entry.test.ts, packages/evals/test/live-triage-entry.test.ts";
+
+		it("names the first three covering test files and a count, and says the file's own test did not run", () => {
+			expect(adviceOf(recorded)).toEqual([`${opening}: those in ${evals} and 1 more.${related}${missing}${remedy}`]);
+		});
+
+		it("names all three covering test files when there are three", () => {
+			const three = edit((report) => {
+				const dropped = new Set(
+					report.testFiles["packages/pipeline/test/thinking-task-migrations.test.ts"]!.tests.map(({ id }) => id),
+				);
+				for (const mutant of report.files[path]!.mutants)
+					mutant.coveredBy = mutant.coveredBy.filter((id) => !dropped.has(id));
+			});
+			expect(adviceOf(three)).toEqual([`${opening}: those in ${evals}.${related}${missing}${remedy}`]);
+		});
+
+		it("does not say the own test was missing when Stryker ran it", () => {
+			const ran = edit((report) => {
+				report.testFiles[own] = { tests: [{ id: "9999", name: "an uncovering test" }] };
+			});
+			expect(adviceOf(ran)).toEqual([`${opening}: those in ${evals} and 1 more.${related}${remedy}`]);
+		});
+
+		it("does not call a test file that does not exist yet missing", () => {
+			const advice = adviceOf(recorded, { [path]: `a new ${own}` });
+			expect(advice).toEqual([
+				`${opening.replace(own, `a new ${own}`)}: those in ${evals} and 1 more.${related}${remedy}`,
+			]);
+		});
+
+		it("names no files, and no missing test, when the report lists no test files", () => {
+			const bare = edit((report) => {
+				delete (report as Partial<Recorded>).testFiles;
+			});
+			expect(adviceOf(bare)).toEqual([`${opening}.${related}${remedy}`]);
+		});
+
+		it("refuses a report whose test files are not lists of tests with string IDs", async () => {
+			// The report schema is built when the module loads, so the test reloads it to put the schema under this test.
+			vi.resetModules();
+			const reloaded = await import("../src/mutation.ts");
+			const parse = (text: string) =>
+				reloaded.normaliseMutationReport(text, {
+					version: "10.0.0",
+					lines: { [path]: [[7, 7]] },
+					tests: { [path]: own },
+				});
+			const listless = edit((report) => {
+				(report.testFiles[own] as unknown) = { tests: "none" };
+			});
+			const unnamed = edit((report) => {
+				(report.testFiles[own] as unknown) = { tests: [{ id: 7, name: "a numbered test" }] };
+			});
+			const relatedText = edit((report) => {
+				report.config!.vitest = { related: "yes" };
+			});
+			const selectionText = edit((report) => {
+				report.config!.testFiles = "all";
+			});
+			for (const text of [listless, unnamed, relatedText, selectionText])
+				expect(() => parse(text)).toThrow(expect.objectContaining({ code: "invalidOutput" }));
+			expect(() => parse(edit(() => {}))).not.toThrow();
+		});
+
+		it("reads a report with no configuration as a whole-suite run", () => {
+			const unconfigured = edit((report) => {
+				delete report.config;
+			});
+			expect(adviceOf(unconfigured)[0]).toContain("This run used the whole suite");
+		});
+
+		it("names no files when the mutant lists no covering tests", () => {
+			const unlisted = edit((report) => {
+				for (const mutant of report.files[path]!.mutants) delete (mutant as { coveredBy?: string[] }).coveredBy;
+			});
+			expect(adviceOf(unlisted)).toEqual([`${opening}.${related}${missing}${remedy}`]);
+		});
+
+		it("names no missing test when no test file is known for the path", () => {
+			expect(adviceOf(recorded, {})).toEqual([
+				`${opening.replace(own, "a test file")}: those in ${evals} and 1 more.${related}${remedy}`,
+			]);
+		});
+
+		it("names no files when no listed test covers the mutant", () => {
+			const uncovered = edit((report) => {
+				for (const mutant of report.files[path]!.mutants) mutant.coveredBy = ["9999"];
+			});
+			expect(adviceOf(uncovered)).toEqual([`${opening}.${related}${missing}${remedy}`]);
 		});
 	});
 
