@@ -241,7 +241,7 @@ export class ReviewComment {
 			return [
 				marker(revision, "finding", id, context.secret),
 				...heading,
-				`- ${status}: [${code(`${path}:${start}`)}](${blobUrl(links, revision, path, start, end)}) ${code(finding.ruleId)}: ${inline(finding.message.text)}`,
+				`- ${status}: [${code(`${path}:${start}`)}](${blobUrl(links, revision, path, start, end)}) ${code(finding.ruleId)}: ${inline(finding.message.text)} | Finding ${code(id)} | Status ${code(finding.properties.status)}`,
 				...held,
 			].join("\n");
 		}

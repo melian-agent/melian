@@ -156,7 +156,7 @@ describe("a finding as a pull request shows it, in the register", () => {
 			failureScenario: undefined,
 		});
 		expect(comment(finding, true, { kind: "body" })).toBe(
-			`- \u{1F535} P3 | \u{1F4AC} Advisory | \u{1F4CF} Conventions | \u{2754} Not verified | New in this change: [\`payments/submit.ts:31\`](${links.web}/blob/${revision}/payments/submit.ts#L31-L44) \`docs-match-code\`: The guide says half-hour slots; the list builds quarter-hours.`,
+			`- \u{1F535} P3 | \u{1F4AC} Advisory | \u{1F4CF} Conventions | \u{2754} Not verified | New in this change: [\`payments/submit.ts:31\`](${links.web}/blob/${revision}/payments/submit.ts#L31-L44) \`docs-match-code\`: The guide says half-hour slots; the list builds quarter-hours. | Finding \`${finding.id}\` | Status \`new\``,
 		);
 	});
 
@@ -240,6 +240,7 @@ describe("a refuted protected finding as a pull request shows it", () => {
 		expect(text).toContain("- \u{1F535} P3 | \u{1F4AC} Advisory | \u{1F9EA} Tests | \u{2716}\u{FE0F} Refuted | ");
 		const lines = text.split("\n");
 		const entry = lines.findIndex((line) => line.startsWith("- \u{1F535} P3 | "));
+		expect(lines[entry]).toMatch(/ \| Finding `[0-9a-f]{16}` \| Status `new`$/);
 		expect(lines.slice(entry + 1, entry + 3)).toEqual([
 			"  \u{2696}\u{FE0F} **Verified:** `faux/judge`: Another test counts.",
 			"  Trust floor: reported-severity policy requires no acknowledgement.",
