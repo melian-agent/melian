@@ -14,37 +14,43 @@ afterEach(() => {
 });
 
 it.each([
-	["", 1],
-	["publish:\n  emoji: on\n", 1],
-	["publish:\n  emoji: off\n", 2],
-])("posts through a provider without emojis only when the base's melian.yaml says %j", async (policy, calls) => {
-	for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
-	const repo = baseAndHead({ "melian.yaml": `${policy}tiers: { full: [guardrails] }\n` }, { "src/a.ts": "new\n" });
-	try {
-		const changeset = await Changeset.resolve(repo, "main...feature");
-		const state = pullRequestState();
-		moveTo(state, changeset);
-		const provider = createGitHubProvider({
-			owner: state.owner,
-			repo: state.repo,
-			token: "t",
-			fetch: fakeGitHub(state),
-		});
-		const gitHubFor = vi.spyOn(targets, "gitHubFor").mockResolvedValue(provider);
-		vi.spyOn(targets, "pullRequestChangeset").mockResolvedValue(changeset);
-		vi.spyOn(targets, "currentBase").mockResolvedValue(changeset.revision.base);
-		const io = {
-			cwd: repo,
-			env: { ...process.env, MELIAN_TEST_SCRIPT: undefined, MELIAN_STATE_DIR: `${repo}/.state` },
-			stdout: () => {},
-			stderr: () => {},
-			color: false,
-		};
-		await publish(io, "#7").catch(() => undefined);
-		expect(gitHubFor.mock.calls.map((call) => call[2])).toEqual(
-			calls === 1 ? [undefined] : [undefined, { emoji: false }],
+	["", "publish:\n  emoji: off\n", 1],
+	["publish:\n  emoji: on\n", "publish:\n  emoji: off\n", 1],
+	["publish:\n  emoji: off\n", "publish:\n  emoji: on\n", 2],
+])(
+	"posts through a provider without emojis only when the base's melian.yaml says %j, whatever the head's says",
+	async (policy, headPolicy, calls) => {
+		for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
+		const repo = baseAndHead(
+			{ "melian.yaml": `${policy}tiers: { full: [guardrails] }\n` },
+			{ "melian.yaml": `${headPolicy}tiers: { full: [guardrails] }\n`, "src/a.ts": "new\n" },
 		);
-	} finally {
-		rmSync(repo, { recursive: true, force: true });
-	}
-});
+		try {
+			const changeset = await Changeset.resolve(repo, "main...feature");
+			const state = pullRequestState();
+			moveTo(state, changeset);
+			const provider = createGitHubProvider({
+				owner: state.owner,
+				repo: state.repo,
+				token: "t",
+				fetch: fakeGitHub(state),
+			});
+			const gitHubFor = vi.spyOn(targets, "gitHubFor").mockResolvedValue(provider);
+			vi.spyOn(targets, "pullRequestChangeset").mockResolvedValue(changeset);
+			vi.spyOn(targets, "currentBase").mockResolvedValue(changeset.revision.base);
+			const io = {
+				cwd: repo,
+				env: { ...process.env, MELIAN_TEST_SCRIPT: undefined, MELIAN_STATE_DIR: `${repo}/.state` },
+				stdout: () => {},
+				stderr: () => {},
+				color: false,
+			};
+			await publish(io, "#7").catch(() => undefined);
+			expect(gitHubFor.mock.calls.map((call) => call[2])).toEqual(
+				calls === 1 ? [undefined] : [undefined, { emoji: false }],
+			);
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	},
+);
