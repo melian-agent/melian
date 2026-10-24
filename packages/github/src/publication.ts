@@ -413,7 +413,7 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 			base: draft.base,
 			links,
 			secret,
-			...(options.emoji === undefined ? {} : { emoji: options.emoji }),
+			emoji: options.emoji,
 		}),
 	);
 	const heading = options.inlineRefused

@@ -49,6 +49,7 @@ describe("the emoji table", () => {
 
 	it("shows the word alone when emojis are off, and a mark without an emoji as its word either way", () => {
 		expect(severityMarks.P1.show(false)).toBe("P1");
+		expect(Object.values(severityMarks).map((mark) => mark.show(false))).toEqual(["P0", "P1", "P2", "P3", "nit"]);
 		expect(severityMarks.P1.show(true)).toBe("\u{1F7E0} P1");
 		expect(resolutionMarks.silent.show(true)).toBe("Silent");
 	});

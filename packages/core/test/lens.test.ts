@@ -556,6 +556,14 @@ describe.each(sourceKinds)("repository lenses from the %s", (kind) => {
 		expect(lensCovers(selected!.coverage, "src/other.ts")).toBe(true);
 	});
 
+	it("returns its lenses sorted by name, a repository lens among the built-ins", async () => {
+		writeFiles(repo, {
+			".melian/lenses/aaa/LENS.md": lensFile([...security.slice(1), "name: aaa"]),
+			".melian/lenses/zzz/LENS.md": lensFile([...security.slice(1), "name: zzz"]),
+		});
+		expect((await load(["src/index.ts"])).map((lens) => lens.name)).toEqual(["aaa", ...builtins, "zzz"]);
+	});
+
 	it("loads the root's lenses, and no folder's, when a change has no paths", async () => {
 		writeFiles(repo, {
 			".melian/lenses/security/LENS.md": lensFile(security),

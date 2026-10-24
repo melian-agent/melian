@@ -436,7 +436,7 @@ function resolve(definition: Definition, base: Layered | undefined): Layered {
 		instructions: [base?.lens.instructions, body].filter((part) => part !== undefined && part !== "").join("\n\n"),
 		file,
 		resolution,
-		...(emoji === undefined ? {} : { emoji }),
+		emoji,
 	});
 	return { lens, declared };
 }

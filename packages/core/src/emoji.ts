@@ -100,6 +100,7 @@ export const tableEmojis: ReadonlySet<string> = new Set(
 		...Object.values(outcomeMarks),
 		...Object.values(checkMarks),
 		verifierMark,
-		new Mark(lensFallback, ""),
-	].flatMap((mark) => (mark.emoji === undefined ? [] : [mark.emoji])),
+	]
+		.flatMap((mark) => (mark.emoji === undefined ? [] : [mark.emoji]))
+		.concat(lensFallback),
 );

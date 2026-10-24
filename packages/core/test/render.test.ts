@@ -123,6 +123,25 @@ describe("FindingsLog.render", () => {
 		expect(text).toContain("    What: The handler passes the body to eval.\n      That runs any code.\n");
 	});
 
+	it("indents the later lines of every part, and of the verifier's reason and correction, inside the finding", () => {
+		const finding = Finding.create({
+			...evalInput,
+			explanation: { ...evalInput.explanation, whyHere: "First.\nSecond." },
+			verification: {
+				verdict: "confirmed",
+				reason: "Traced.\nAgain.",
+				correction: "Use it.\nThen this.",
+				executor: "llm",
+				model: "fake/judge",
+				version: "v1",
+			},
+		});
+		const text = finding.render();
+		expect(text).toContain("    Why here: First.\n      Second.\n");
+		expect(text).toContain("    Verifier (fake/judge): Traced.\n      Again.\n");
+		expect(text).toContain("    Correction: Use it.\n      Then this.\n");
+	});
+
 	it.each([false, true])("escapes ESC, BEL, newline, tab, and bidi overrides in a path, colour %s", (color) => {
 		const file = "src/\u001b[2Jrun\u0007\nfake.ts\tx\u202egnp.ts";
 		const hostile = Finding.create({ ...evalInput, file, trigger: undefined });

@@ -308,6 +308,18 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 		expect(config.publish).toEqual({ ...defaultConfig.publish, emoji: "off" });
 	});
 
+	it("takes every word an emoji switch allows", async () => {
+		for (const [output, publish] of [
+			["auto", "on"],
+			["on", "off"],
+			["off", "on"],
+		]) {
+			writeFiles(repo, { "melian.yaml": lines("output:", `  emoji: ${output}`, "publish:", `  emoji: ${publish}`) });
+			const { config } = await load(".");
+			expect([config.output.emoji, config.publish.emoji]).toEqual([output, publish]);
+		}
+	});
+
 	it("refuses an emoji switch that is not one of its words", async () => {
 		writeFiles(repo, { "melian.yaml": lines("output:", "  emoji: yes") });
 		expect(await rejection(load("."))).toMatchObject({ code: "invalidValue", file: "melian.yaml" });

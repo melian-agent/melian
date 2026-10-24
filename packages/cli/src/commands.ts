@@ -1,7 +1,6 @@
 import { existsSync } from "node:fs";
 import {
 	Changeset,
-	ConfigError,
 	checksOfTier,
 	FindingsLog,
 	Lens,
@@ -97,7 +96,7 @@ export class ReviewOutcome {
 	 * The verdict as the terminal shows it, with each finding's ID, which `melian dismiss` takes, and the file and
 	 * entry that decided what it requires; with emojis when `emoji` is set, each lens's from `lenses`.
 	 */
-	render(color: boolean, emoji = false, lenses: readonly Lens[] = []): string {
+	render(color: boolean, emoji: boolean, lenses: readonly Lens[]): string {
 		const lensEmojis = Object.fromEntries(
 			lenses.flatMap((lens) => (lens.emoji === undefined ? [] : [[`lens.${lens.name}`, lens.emoji]])),
 		);
@@ -106,16 +105,14 @@ export class ReviewOutcome {
 }
 
 // Whether the terminal shows emojis. `output.emoji` is display alone, so it comes from the working tree and the
-// preference files, and a configuration that does not load leaves it at `auto`. `auto` shows them on a terminal whose
+// preference files, and a configuration that does not load leaves it at `auto`: the command's own work reads its
+// policy separately and fails there. `auto` shows them on a terminal whose
 // locale, the first of `LC_ALL`, `LC_CTYPE` and `LANG` that is set, is UTF-8.
 async function terminalEmoji(io: Io, repoRoot: string): Promise<boolean> {
 	const source = { kind: "worktree", preferences: userFiles(io.env).config } as const;
 	const setting = await loadConfig(repoRoot, source, ".").then(
 		({ config }) => config.output.emoji,
-		(error: unknown) => {
-			if (error instanceof ConfigError) return "auto" as const;
-			throw error;
-		},
+		() => "auto" as const,
 	);
 	if (setting !== "auto") return setting === "on";
 	const locale = io.env.LC_ALL || io.env.LC_CTYPE || io.env.LANG || "";

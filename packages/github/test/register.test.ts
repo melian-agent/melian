@@ -339,4 +339,49 @@ describe("publish.emoji", () => {
 		expect(state.comments.map((each) => each.body.includes(status))).toEqual([true]);
 		expect(state.reviews[0]!.body).toContain(status);
 	});
+
+	it("reaches the body a provider posts when GitHub refuses its inline comments", async () => {
+		const inlined = decided({
+			...retriedCharge,
+			file: "src/run.ts",
+			startLine: 12,
+			endLine: 12,
+			evidence: undefined,
+		});
+		const verdict = new Adjudication({
+			findings: [inlined],
+			manifest: [],
+			checks: [],
+			config: defaultConfig,
+		}).adjudicate();
+		const state = fakeState(
+			"melian-agent",
+			"example",
+			{ number: 7, title: "Change", base: { ref: "main", sha: base }, head: { ref: "feature", sha: revision } },
+			{},
+		);
+		const provider = createGitHubProvider({
+			owner: state.owner,
+			repo: state.repo,
+			token: "t",
+			fetch: fakeGitHub(state),
+			emoji: false,
+		});
+		await provider.postReview({
+			pullRequest: 7,
+			revision,
+			base,
+			fingerprint: verdict.fingerprint(),
+			round: 1,
+			verdict,
+			findings: [{ finding: verdict.findings.block[0]!, placement: { kind: "lines", startLine: 12, line: 12 } }],
+			stillOpen: 0,
+			resolved: [],
+			secret,
+		});
+		const body = state.reviews[0]!.body;
+		expect(body).toContain("GitHub refused this review's inline comments");
+		expect(body).toContain("\nP1 | Blocks merge | Correctness | Not verified | New in this change\n");
+		expect(body).not.toMatch(/\p{Emoji_Presentation}|\u{FE0F}/u);
+	});
 });
