@@ -225,7 +225,7 @@ it("separates model wait from the rest of a model stage", async () => {
 		phases: {
 			run: async (_task, runtime, taskContext) => {
 				await runtime.commit(async (tx) => {
-					for (const durations of [[30, undefined, 50], [], Array<number>(201).fill(1)]) {
+					for (const durations of [[30, 50], [30, undefined, 50], [], Array<number>(201).fill(1)]) {
 						const child = await tx.createConversation({ ownership: { kind: "task", taskId: runtime.taskId } });
 						const input = await tx.appendEntry(child.id, {
 							kind: "pi.user",
@@ -289,9 +289,13 @@ it("separates model wait from the rest of a model stage", async () => {
 	}, context);
 	const settled = (await harness.waitForTask(id, context)).state;
 	expect(settled, JSON.stringify(settled)).toMatchObject({ outcome: { status: "completed" } });
-	const [waited, unanswered, paged] = (await TelemetryReader.open(storage).read("base..head")).stages;
-	expect(waited).toMatchObject({ startedAt: 0, endedAt: 350, durationMs: 350, modelMs: 80 });
-	expect(new StageTelemetry("base..head", [waited!]).render()).toContain(" duration=350ms model=80ms\n");
+	const [waited, unmeasured, unanswered, paged] = (await TelemetryReader.open(storage).read("base..head")).stages;
+	expect(waited).toMatchObject({ startedAt: 0, endedAt: 250, durationMs: 250, modelMs: 80 });
+	expect(new StageTelemetry("base..head", [waited!]).render()).toContain(" duration=250ms model=80ms\n");
+	// An answer without a duration leaves the model wait unknown, not short.
+	expect(unmeasured).toMatchObject({ endedAt: 350, durationMs: 350 });
+	expect(unmeasured).not.toHaveProperty("modelMs");
+	expect(new StageTelemetry("base..head", [unmeasured!]).render()).toContain(" duration=350ms\n");
 	expect(unanswered!.modelMs).toBe(0);
 	expect(paged!.modelMs).toBe(201);
 });

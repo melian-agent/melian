@@ -521,12 +521,17 @@ export class TelemetryReader {
 			`conversation:${id}`,
 		);
 		const usage = await this.document(UsageDoc, { kind: "conversation", conversationId: id }, context);
-		let modelMs = 0;
+		// An answer without a duration leaves the wait unknown, so the stage reports none rather than a short one.
+		let modelMs: number | undefined = 0;
 		let entries = await this.storage.scanEntries({ conversationId: id }, 200, undefined, context);
 		for (;;) {
 			for (const entry of entries.items)
 				for (const message of entry.model ?? [])
-					if (message.role === "assistant") modelMs += message.durationMs ?? 0;
+					if (message.role === "assistant")
+						modelMs =
+							modelMs === undefined || message.durationMs === undefined
+								? undefined
+								: modelMs + message.durationMs;
 			if (entries.next === undefined) break;
 			entries = await this.storage.scanEntries({ conversationId: id }, 200, entries.next, context);
 		}
@@ -540,7 +545,7 @@ export class TelemetryReader {
 			...interval(start, ending.endedAt),
 			...ending,
 			...this.attachment(start, ending.endedAt, before),
-			modelMs,
+			...(modelMs === undefined ? {} : { modelMs }),
 			...(usage === undefined
 				? {}
 				: {
