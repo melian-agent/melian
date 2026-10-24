@@ -180,5 +180,7 @@ describe("ReviewOutcome.render", () => {
 		}).adjudicate();
 		expect(new ReviewOutcome(lone).render(false, true, [root, docs])).toContain(" | \u{1F50E} cleanup | ");
 		expect(new ReviewOutcome(lone).render(false, true, [root, agreeing])).toContain(" | \u{1F9FD} cleanup | ");
+		const other = Lens.from({ ...base!.toJSON(), name: "tidy", emoji: "\u{1F9F4}" });
+		expect(new ReviewOutcome(lone).render(false, true, [root, other])).toContain(" | \u{1F9FD} cleanup | ");
 	});
 });
