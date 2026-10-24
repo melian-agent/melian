@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -40,6 +41,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AdjudicationTask, type AdjudicationTaskInput } from "../src/adjudication.ts";
 import { ComparisonDocument } from "../src/compare.ts";
+import { configsFor } from "../src/configurations.ts";
 import { FindingsDocument } from "../src/findings.ts";
 import { defineTask } from "../src/harness.ts";
 import { ReviewIndex } from "../src/review-index.ts";
@@ -1282,12 +1284,19 @@ describe("recording a dismissal", () => {
 			checks: [...deterministicRan],
 			policy: { kind: "worktree" },
 		});
+		// The retired first recipe, kept here only to build the fixture: each finding path's whole policy, lens variants
+		// keyed by version included. Computed at this head, since it changes with every built-in lens edit.
+		const policies = await configsFor(repo, { kind: "worktree" }, findings);
+		const paths = [...new Set(findings.map((finding) => finding.properties.path))].sort();
+		const retired = createHash("sha256")
+			.update(JSON.stringify(paths.map((path) => [path, policies(path, "any-rule")])))
+			.digest("hex")
+			.slice(0, 16);
 		const root = await harness.root(context);
 		await root.commit(async (tx) => {
 			const known = (await tx.doc(ReviewIndex, root.id)).reviews[revisionKey(changeset.revision)]!.adjudication!;
 			const input = JSON.parse(known.input) as AdjudicationTaskInput;
-			// What main's first recipe stored for this repository before the retirement.
-			known.input = JSON.stringify({ ...input, resolutionPolicy: "9a82a69d3275b714" });
+			known.input = JSON.stringify({ ...input, resolutionPolicy: retired });
 		}, context);
 
 		await expect(dismiss(harness, findings[0]!.properties.id)).rejects.toMatchObject({
