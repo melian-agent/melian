@@ -25,7 +25,9 @@ export class DesignSections {
 		const content = await source.readText(designLocations.file, designFileLimits.bytes);
 		if (content === undefined) return DesignSections.from([]);
 		const design = DesignSections.parse(designLocations.file, content);
-		const documents = [{ path: designLocations.file, document: design }];
+		const documents: { path: string; document: MarkdownDocument }[] = [
+			{ path: designLocations.file, document: design },
+		];
 		let total = Buffer.byteLength(content, "utf8");
 		const paths = new Set<string>();
 		for (const destination of design.links()) {
