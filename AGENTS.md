@@ -68,7 +68,7 @@ Before writing tests, check these recurring survivors:
 - `dropped-value`: Dropped fields or objects survive partial matches and `>= 0`. Assert the whole value with `toEqual`.
 - `negative-test`: Negative tests pass for the wrong reason when two inputs are invalid. Keep every other input valid so only the guard decides.
 
-Until `melian mutants verify` lands, the proof is the builder's enumeration-first inventory, and its sampled probes are run by hand and recorded. [The decision](docs/decisions/2026-10-24-stryker-off-the-hot-path.md) took `static.mutation` off this repository's tiers. Lenses report `untested-behaviour` at their usual severity. When the maintainer adjudicates a round, a finding on code a fix pass wrote counts as advisory unless it guards a trust or durability property. A surviving mutant the check itself reports keeps its P2 severity.
+Until `melian mutants verify` lands, the proof is the builder's enumeration-first inventory with every claimed mutant run by hand, a scratch script applying each mutant and running its named test, and each result recorded in the inventory. `--sample` is a reviewer's spot check, not the builder's proof. [The decision](docs/decisions/2026-10-24-stryker-off-the-hot-path.md) took `static.mutation` off this repository's tiers. Lenses report `untested-behaviour` at their usual severity. When the maintainer adjudicates a round, a finding on code a fix pass wrote counts as advisory unless it guards a trust or durability property. A surviving mutant the check itself reports keeps its P2 severity.
 
 If you create or modify a test, run it and iterate until it passes. Tests use Vitest and the fake model from the pipeline's testing entry, `@melian-agent/pipeline/testing`; never real providers, keys, or paid tokens. Use Pi Durable's memory storage unless the test is about surviving a reopen or a crash; then use SQLite in a temporary directory.
 
@@ -152,7 +152,7 @@ A pull request that does not converge costs more rounds with every fix. [The con
 
 - Escalate a class, not an instance. When two consecutive rounds each find a new instance of one class of defect, stop fixing instances. Raise the class as a design question that names the authority, or the stricter rule, that would make the class impossible.
 - Fix with the least new code. A fix that needs a new mechanism is a design question, raised before the pass. A brief names the files and lines a fix may touch.
-- A fix pass enumerates its own commits' mutants and runs every sampled probe before pushing.
+- A fix pass enumerates its own commits' mutants and runs every claimed mutant by hand before pushing, recording each result.
 - A ruling that changes trust or blocking behaviour gets a short attacking review before a fix pass implements it: a reviewer who tries to break the rule as written, with probes.
 - Split a pull request over about 3,000 changed lines before its first round.
 - On a trust surface, the review of record attacks with probes and runs them; it does not only read.
