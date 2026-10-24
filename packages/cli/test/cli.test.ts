@@ -329,6 +329,10 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(prepare.startedAt).toBeGreaterThanOrEqual(spawned);
 		// Node and the module graph load before the command starts, which a start taken in the command would miss.
 		expect(startup!.durationMs).toBeGreaterThan(10);
+		// A range has no walkthrough; its stages are the checks, the lenses and adjudication.
+		expect(new Set(telemetry.stages.map(({ name }) => name))).toEqual(
+			new Set(["melian.check", "melian.lens", "melian.adjudication"]),
+		);
 		for (const stage of telemetry.stages) {
 			expect(stage.startedAt!).toBeGreaterThanOrEqual(prepare.startedAt);
 			for (const span of prepare.spans)

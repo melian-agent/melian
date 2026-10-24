@@ -7,6 +7,7 @@ import {
 	type Harness,
 	openHarness,
 	PrepareSpans,
+	ROOT_CONVERSATION_ID,
 	type Stage,
 	StageTelemetry,
 	TelemetryReader,
@@ -85,6 +86,18 @@ it("stores one record per revision, which the next review replaces, and reads it
 		spans: [{ name: "resolve", startedAt: 7, endedAt: 9, durationMs: 2 }],
 	});
 	expect((await TelemetryReader.open(storage).read("none..head")).prepare).toBeUndefined();
+	// The kind, key and history are the stored shape an older or newer build reads.
+	expect(
+		await storage.findDocument(
+			{
+				kind: "melian.prepare",
+				scope: { kind: "conversation", conversationId: ROOT_CONVERSATION_ID },
+				key: "base..head",
+			},
+			"current",
+			context,
+		),
+	).toMatchObject({ kind: "melian.prepare", key: "base..head", history: "latest", fork: "current" });
 });
 
 const stage = (id: string, startedAt?: number, endedAt?: number, name = "melian.check"): Stage => ({
@@ -193,10 +206,11 @@ it("lists spans in time order after the stages, then the untimed gaps", () => {
 		endedAt: 4000,
 		spans: [
 			{ name: "child\u001b[2J", startedAt: 20, endedAt: 30, durationMs: 10, parent: "resolve" },
-			{ name: "resolve", startedAt: 10, endedAt: 100, durationMs: 90 },
+			{ name: "whole", startedAt: 10, endedAt: 50, durationMs: 40 },
 			{ name: "startup", startedAt: 0, endedAt: 10, durationMs: 10 },
 			{ name: "verdict", startedAt: 3900, endedAt: 4000, durationMs: 100 },
-			{ name: "whole", startedAt: 10, endedAt: 50, durationMs: 40 },
+			{ name: "resolve", startedAt: 10, endedAt: 100, durationMs: 90 },
+			{ name: "late", startedAt: 2000, endedAt: 2100, durationMs: 100 },
 		],
 	});
 	expect(telemetry.render()).toBe(
@@ -207,8 +221,10 @@ it("lists spans in time order after the stages, then the untimed gaps", () => {
 			"span resolve start=10 end=100 duration=90ms",
 			"span whole start=10 end=50 duration=40ms",
 			"span child\\u001b[2J start=20 end=30 duration=10ms parent=resolve",
+			"span late start=2000 end=2100 duration=100ms",
 			"span verdict start=3900 end=4000 duration=100ms",
-			"untimed start=200 end=3900 duration=3700ms",
+			"untimed start=200 end=2000 duration=1800ms",
+			"untimed start=2100 end=3900 duration=1800ms",
 			"",
 		].join("\n"),
 	);
