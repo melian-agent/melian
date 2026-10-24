@@ -316,6 +316,21 @@ describe("graph tools", { timeout: 60_000 }, () => {
 		expect(none).toBe("No matches in 64 files.");
 	});
 
+	it("search a set of files at the base when asked, as the single-path search does", async () => {
+		const requests = await reviewWith(undefined, [
+			[
+				["search", { pattern: '"none"', paths: ["src/user.ts"], revision: "base" }],
+				["search", { pattern: '"none"', paths: ["src/user.ts"] }],
+			],
+		]);
+		const nonce = nonceOf(requests[correctness]![0]!);
+		const [base, head] = toolResults(requests[correctness]![1]!);
+		expect(base).toBe(
+			`<untrusted-${nonce} label="search">\nsrc/user.ts:2: \treturn user.manager?.name ?? "none";\n</untrusted-${nonce}>`,
+		);
+		expect(head).toBe("No matches in 1 files.");
+	});
+
 	it("cut the deepest matches of every file before it drops a file, and say how many lines it cut", async () => {
 		const paths = Array.from({ length: 2 }, (_, index) => `docs/long${index}.md`);
 		writeFiles(
