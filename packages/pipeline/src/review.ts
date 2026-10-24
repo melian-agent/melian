@@ -1562,6 +1562,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		});
 	}
 	const tier = request.tier ?? request.config.stages["pull-request"] ?? "full";
+	// The host's open step ends before any check runs, so it never covers a check task.
+	request.spans?.end();
 	const checked = automatic
 		? await runChecks(
 				harness,

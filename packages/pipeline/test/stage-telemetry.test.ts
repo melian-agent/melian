@@ -291,8 +291,8 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 
 	it("joins the host's spans with its own steps between tasks, none of them over a task", async () => {
 		const { options, storage, harness } = await setup();
+		// The host's step is still open when the review runs its checks, which must end it first.
 		const spans = PrepareSpans.start("host", Date.now());
-		spans.end();
 		await reviewChangeset({ ...options, spans });
 		const revision = revisionKey(options.changeset.revision);
 		await spans.record(harness, revision, context);
