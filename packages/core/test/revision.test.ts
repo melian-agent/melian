@@ -293,6 +293,24 @@ describe("searchRevisionFiles", () => {
 		expect(fewest!.matches).toHaveLength(1);
 	});
 
+	it("marks every file as having more when the output passes its byte bound", async () => {
+		writeFiles(repo, {
+			"docs/long.md": lines(...Array.from({ length: 150 }, (_, line) => `needle ${line} ${"x".repeat(2000)}`)),
+		});
+		gitIn(repo, "add", ".");
+		gitIn(repo, "commit", "--quiet", "-m", "long");
+		const commit = gitIn(repo, "rev-parse", "HEAD");
+		const [long] = await searchRevisionFiles(repo, commit, { attributesFrom: commit, pattern: "needle" }, [
+			"docs/long.md",
+		]);
+		expect(long!.truncated).toBe(true);
+		expect(long!.matches.length).toBeLessThan(150);
+		const [short] = await searchRevisionFiles(repo, commit, { attributesFrom: commit, pattern: "needle 1 " }, [
+			"docs/long.md",
+		]);
+		expect(short).toMatchObject({ truncated: false, matches: [{ line: 2 }] });
+	});
+
 	it("names each file once, marks one absent at the revision, and refuses more than 64", async () => {
 		const { paths, commit } = designFiles();
 		const search = { attributesFrom: commit, pattern: "needle" };
@@ -312,13 +330,34 @@ describe("searchRevisionFiles", () => {
 		expect((await searchRevisionFiles(repo, commit, search, [...paths, paths[0]!])).length).toBe(64);
 		await expect(searchRevisionFiles(repo, commit, search, [...paths, "docs/readme.md"])).rejects.toMatchObject({
 			code: "tooManyFiles",
+			message: "at most 64 files, not 65",
 		});
+		for (const [revision, attributesFrom] of [
+			["--output=x", commit],
+			[commit, "--output=x"],
+		])
+			await expect(
+				searchRevisionFiles(repo, revision!, { ...search, attributesFrom: attributesFrom! }, [paths[1]!]),
+			).rejects.toBeInstanceOf(RevisionError);
+		expect(
+			await searchRevisionFiles(
+				repo,
+				commit,
+				{ ...search, pattern: "needle in .*f0[12]\\.md$", regex: true },
+				paths.slice(0, 4),
+			),
+		).toEqual([
+			{ path: paths[0], matches: [], truncated: false },
+			{ path: paths[1], truncated: false, matches: [{ path: paths[1], line: 2, text: `needle in ${paths[1]}` }] },
+			{ path: paths[2], truncated: false, matches: [{ path: paths[2], line: 3, text: `needle in ${paths[2]}` }] },
+			{ path: paths[3], matches: [], truncated: false },
+		]);
 		await expect(searchRevisionFiles(repo, commit, search, ["../outside.md"])).rejects.toBeInstanceOf(
 			OutsideRepositoryError,
 		);
-		await expect(
-			searchRevisionFiles(repo, commit, { ...search, pattern: "(", regex: true }, [paths[1]!]),
-		).rejects.toMatchObject({ code: "invalidPattern" });
+		const invalid = searchRevisionFiles(repo, commit, { ...search, pattern: "(", regex: true }, [paths[1]!]);
+		await expect(invalid).rejects.toMatchObject({ code: "invalidPattern" });
+		await expect(invalid).rejects.toThrow(/^"\(" is not a valid regular expression: \S(.*\S)?$/s);
 		expect(
 			await searchRevisionFiles(repo, commit, { ...search, pattern: "NEEDLE IN", ignoreCase: true }, [paths[2]!]),
 		).toEqual([

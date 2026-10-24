@@ -310,7 +310,7 @@ describe("graph tools", { timeout: 60_000 }, () => {
 		expect(rows.indexOf(`${paths[62]}:63: needle in ${paths[62]}`)).toBeLessThan(
 			rows.indexOf(`${paths[0]}:2: needle distractor 1`),
 		);
-		expect(all).not.toContain("more lines not shown");
+		expect(all!.endsWith(`</untrusted-${nonce}>`)).toBe(true);
 		expect(both).toContain("search takes path or paths, not both");
 		expect(none).toBe("No matches in 64 files.");
 	});
@@ -329,7 +329,35 @@ describe("graph tools", { timeout: 60_000 }, () => {
 		const [result] = toolResults(requests[correctness]![1]!);
 		const shown = (path: string) => (result!.match(new RegExp(`${path}:\\d+:`, "g")) ?? []).length;
 		expect(Math.abs(shown(paths[0]!) - shown(paths[1]!))).toBeLessThanOrEqual(1);
-		expect(result).toMatch(/\[\d+ more lines not shown; search fewer files\]$/);
+		const rows = 202 - shown(paths[0]!) - shown(paths[1]!);
+		expect(
+			result!.endsWith(
+				`</untrusted-${nonceOf(requests[correctness]![0]!)}>\n[${rows} more lines not shown; search fewer files]`,
+			),
+		).toBe(true);
+	});
+
+	it("describe the search over a set of files to the model", async () => {
+		const requests = await reviewWith(undefined, []);
+		const tools = requests[correctness]![0]!.flatMap((message) =>
+			message.role === "system" ? (message.toolsAdded ?? []) : [],
+		);
+		expect(tools.find((each) => each.name === "search")).toMatchObject({
+			description: expect.stringContaining(
+				"To search a set of files in one call, such as every design file, name them in paths",
+			),
+			parameters: {
+				properties: {
+					paths: {
+						type: "array",
+						minItems: 1,
+						maxItems: 64,
+						items: { type: "string", minLength: 1 },
+						description: "Search exactly these files, at most 64, in place of path",
+					},
+				},
+			},
+		});
 	});
 
 	it("replay safely after a crash, since none writes", () => {
