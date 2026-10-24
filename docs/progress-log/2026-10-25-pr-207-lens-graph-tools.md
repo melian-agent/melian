@@ -1,0 +1,7 @@
+# 2026-10-25: lenses explore Enola's graph
+
+[Pull request #207](https://github.com/melian-agent/melian/pull/207) adds four read-only lens tools over the head's verified Enola snapshot: `graph_definitions`, `graph_references`, `graph_impact` and `graph_callees`. Melian's design lens lists them. `search` takes `paths`, up to 64 exact files sharing its 200 matches, which closes [issue #204](https://github.com/melian-agent/melian/issues/204). Decision: [lenses explore Enola's graph through Pi tools over the snapshot](../decisions/2026-10-24-lens-graph-tools.md).
+
+All 468 enumerated mutants were run by hand: 444 killed, 24 equivalent with reasons. One kill test found a file-set search that threw when its output passed the byte bound; cd9efcc2 fixed it.
+
+Codex's reviews and four Melian rounds then found eight defects, each fixed in its own commit. The graph tools now check the snapshot's tree against the head's. Each file of a set is grepped with its own byte bound, and the set's status rows lead the block. A file git skips as binary is marked. One search takes design.md and its 64 linked files. Tools that take a declaration also take its `file`. An empty graph walk reads as unknown, not none. Each snapshot is parsed once per round. The round 4 design finding, that `graph_impact` walks facts rather than ask Enola's own impact query, is answered by the unknown-not-none reply and the decision's measured gap; it stays for the maintainer.

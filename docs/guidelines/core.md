@@ -157,7 +157,7 @@ A lens is a directory holding `LENS.md`: YAML front matter between `---` lines, 
 | `name` | Must match the directory name | required |
 | `description` | One line | required, or inherited through `extends` |
 | `tier` | `light`, `medium`, or `heavy`; each level that names none runs on it | required, or inherited |
-| `tools` | Read-only tools from `lensToolNames`: `read_file`, `search`, `list_files` | all three |
+| `tools` | Read-only tools from `lensToolNames`, `read_file`, `search` and `list_files`, and from `lensGraphToolNames`, `graph_definitions`, `graph_references`, `graph_impact` and `graph_callees` | the three in `lensToolNames` |
 | `severities` | The severities the lens may report; the pipeline also accepts `melian/injection-attempt` at P1 from every lens | all five |
 | `rules` | `id` and one-line `description` for each rule the lens reports under. An ID is lower-case letters, digits, dots, and hyphens; the prefix `melian/` marks a rule Melian defines for every lens, such as `melian/injection-attempt` | required, or inherited |
 | `paths` | Globs relative to the directory holding the lens's `.melian/` or `.agents/`, normalised like a `melian.yaml`'s; `!` excludes. A glob that leaves the repository, holds braces or a character class, ends in `/`, or passes the engine's step limit is a `LensError` `invalidValue` naming the file and the glob | `**` |

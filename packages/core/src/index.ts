@@ -246,6 +246,7 @@ export {
 	type LensToolName,
 	lensCovers,
 	lensFrontMatterSchema,
+	lensGraphToolNames,
 	lensLimits,
 	lensReadScopes,
 	lensRuleSchema,
@@ -315,12 +316,15 @@ export {
 	type RevisionEntry,
 	type RevisionEntryKind,
 	type RevisionFile,
+	type RevisionFileMatches,
 	type RevisionMatch,
 	type RevisionSearch,
 	readRevisionFile,
 	repositoryPath,
 	revisionLimits,
+	revisionTree,
 	searchRevision,
+	searchRevisionFiles,
 } from "./revision.ts";
 export {
 	type CredentialValue,
@@ -390,7 +394,15 @@ export {
 	type TestCoverageState,
 } from "./coverage-artifacts.ts";
 export { EnolaPolicy, type EnolaPolicyState, type EnolaSnapshot, normaliseEnolaSarif } from "./enola.ts";
-export { type EnolaFact, EnolaFacts, EnolaImpact, type EnolaImpactState, EnolaQueryError } from "./enola-graph.ts";
+export {
+	type EnolaFact,
+	EnolaFacts,
+	EnolaImpact,
+	type EnolaImpactState,
+	EnolaQueryError,
+	type EnolaReach,
+	type EnolaReference,
+} from "./enola-graph.ts";
 export { enolaPolicyPattern } from "./enola-paths.ts";
 export {
 	type GraphEntryState,
