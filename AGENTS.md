@@ -19,7 +19,7 @@ For chat, comments, docs, commit messages, and anything an author will read, fol
 - Use active verbs and name who did what. Passive voice only when the actor does not matter.
 - Use concrete words and specific examples. "Three callers" beats "several places".
 - Cut hedges and throat-clearing. State the claim. Start with the thing itself.
-- No jargon, clichés, or corporate-speak. No emojis in commits, issues, pull requests, or code.
+- No jargon, clichés, or corporate-speak. No emojis in your own commits, issues, pull requests, or code comments; Melian's rendered output is exempt, and its emojis live in source only as `\u{...}` escapes beside their Unicode names in the one table module [the findings guideline](docs/guidelines/findings.md#emojis) names, where step 34's check rejects a literal emoji anywhere else in source.
 - One thought per sentence, one idea per paragraph. Trust the reader; do not restate or pre-summarise.
 - Explain non-trivial designs and problems as problem, concrete example, then solution. Say why the solution is necessary and separate it from optional complexity.
 - Prose uses Australian English. Code and identifiers use US English, matching the ecosystem.
