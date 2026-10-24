@@ -280,14 +280,18 @@ class StoredComparisons {
 
 export async function comparisonStats(
 	io: Io,
-	options: { readonly since?: string; readonly last?: number; readonly lens?: string; readonly against?: string },
+	options: {
+		readonly since?: string;
+		readonly last?: number;
+		readonly against?: { readonly check: string; readonly reviewer: string };
+	},
 ): Promise<number> {
 	const { comparisons } = await StoredComparisons.read(io);
-	const { lens, against, ...selection } = options;
+	const { against, ...selection } = options;
 	io.stdout(
-		lens === undefined
+		against === undefined
 			? comparisons.renderStats(selection)
-			: comparisons.renderAgainst(`lens.${lens}`, against ?? "codex", selection),
+			: comparisons.renderAgainst(against.check, against.reviewer, selection),
 	);
 	return 0;
 }

@@ -272,7 +272,9 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 					return await comparisonStats(scoped, {
 						...(values.since === undefined ? {} : { since: values.since }),
 						...(values.last === undefined ? {} : { last: Number(values.last) }),
-						...(values.lens === undefined ? {} : { lens: values.lens, against: values.against ?? "codex" }),
+						...(values.lens === undefined
+							? {}
+							: { against: { check: `lens.${values.lens}`, reviewer: values.against ?? "codex" } }),
 					});
 				}
 				if (first === "backlog") {
