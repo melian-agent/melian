@@ -61,7 +61,7 @@ When Melian is unsure, it says what it read and what it did not find, then how t
 
 ## Emojis
 
-Emojis let a reader glance down a review and see each finding's weight. Each emoji has one meaning and appears in one row. Each sits beside its word, never alone, so a colour-blind reader tells the levels apart by the word, and a search finds the word with or without the emoji. The source holds each emoji once, in the table module `packages/core/src/emoji.ts`, as the escape below beside its Unicode name. A check rejects a literal emoji anywhere else in TypeScript or JavaScript source.
+Emojis let a reader glance down a review and see each finding's weight. Each emoji has one meaning and appears in one row. Each sits beside its word, never alone, so a colour-blind reader tells the levels apart by the word, and a search finds the word with or without the emoji. The source holds each emoji once, in the table module `packages/core/src/emoji.ts`, as the escape below beside its Unicode name. A check, the Biome plugin `biome/literal-emoji.grit`, rejects a literal emoji anywhere else in TypeScript or JavaScript source. It reads literals, not comments, which Grit cannot see; the emoji rule in `AGENTS.md` covers those.
 
 | Group | Value | Emoji and word | Escape | Unicode name |
 |---|---|---|---|---|

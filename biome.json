@@ -24,7 +24,8 @@
 		{
 			"path": "./biome/free-domain-function.grit",
 			"includes": ["**/packages/*/src/**"]
-		}
+		},
+		"./biome/literal-emoji.grit"
 	],
 	"formatter": {
 		"enabled": true,
