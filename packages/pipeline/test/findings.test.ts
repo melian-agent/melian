@@ -1335,13 +1335,15 @@ describe("documents stored before evidence became a list", () => {
 		}
 
 		// Writes what the older Melian left: A..H's review posted under its verdict's fingerprint, and the verdicts of
-		// `reviewed`, then publishes `base`..H with the current Melian.
-		async function publishAfterUpgrade(reviewed: string[], base: string) {
+		// `reviewed`, then publishes `base`..H with the current Melian. `other` replaces B..H's verdict.
+		async function publishAfterUpgrade(reviewed: string[], base: string, other: object = oldVerdict) {
 			const path = join(dir, "legacy-published.sqlite");
 			const first = await open(await openSqliteStorage(path), reviewRegistry());
 			await first.root.commit(async (tx) => {
 				const verdicts = await tx.doc(LegacyVerdicts, first.root.id);
-				verdicts.verdicts = json(Object.fromEntries(reviewed.map((each) => [`${each}..${head}`, oldVerdict])));
+				verdicts.verdicts = json(
+					Object.fromEntries(reviewed.map((each) => [`${each}..${head}`, each === baseB ? other : oldVerdict])),
+				);
 				verdicts.provenance = json(
 					Object.fromEntries(reviewed.map((each) => [`${each}..${head}`, provenance(each)])),
 				);
@@ -1383,6 +1385,15 @@ describe("documents stored before evidence became a list", () => {
 
 		it("posts nothing again for the revision that review was of", async () => {
 			const { publication, posted } = await publishAfterUpgrade([baseA], baseA);
+			expect(posted).toEqual([]);
+			expect(publication.review).toBe("101");
+		});
+
+		it("posts nothing again when another revision of the head has a different verdict", async () => {
+			const { publication, posted } = await publishAfterUpgrade([baseA, baseB], baseA, {
+				...oldVerdict,
+				blocking: false,
+			});
 			expect(posted).toEqual([]);
 			expect(publication.review).toBe("101");
 		});
