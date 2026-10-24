@@ -6,7 +6,7 @@ A finding tells an author three things: what breaks, how Melian knows, and what 
 
 ## Structure
 
-A finding has one of two shapes, by what produced it. Every renderer prints the parts a shape has, in this order, and omits a part whose field the finding does not carry. It never prints an empty heading or a placeholder.
+A finding has one of two shapes, by what produced it. Every renderer prints the parts a shape has, in this order, and omits a part whose field the finding does not carry. It never prints an empty heading or a placeholder. The one exception is the review-body advisory below, a projection that leaves out parts the finding does carry.
 
 ### A lens finding
 
@@ -30,7 +30,7 @@ A static check or a guardrail reports a rule, a severity, a location and an expl
 
 A footer line gives the rule and the finding ID, for search and for `melian dismiss`: ``Rule `payment-idempotency` | Finding `3c7c2e81` ``.
 
-In the review body, an advisory shows only its status line, headline, location link and footer, as [the advisory decision](../decisions/2026-10-22-advisories-in-review-body.md) sets. The terminal and `melian findings` show every part its shape has.
+In the review body, an advisory is a projection: its status line, headline, location link and footer, as [the advisory decision](../decisions/2026-10-22-advisories-in-review-body.md) sets. A protected refutation whose minimum is `advisory` keeps two more lines in that body entry, under the footer: the verifier's reason, then the floor note. The terminal and `melian findings` show every part its shape has.
 
 Length: aim for 60 to 120 words across What, Why here and Failure scenario. A P0 or P1 may take 200. A P3 takes 40. Sentences average about 12 words, and none passes 25.
 
@@ -42,7 +42,7 @@ Length: aim for 60 to 120 words across What, Why here and Failure scenario. A P0
 - No praise, thanks, apology or persona.
 - Emojis go only where [Emojis](#emojis) puts them. Never in a headline, in prose, or in What to do.
 - Prose follows the repository's `language`, as [Language](#language) says. Identifiers stay as the code spells them.
-- One finding per instance. When the change repeats one shape, each instance is its own finding, with its own ID, trigger, verdict and dismissal, as [the shape decision](../decisions/2026-10-15-each-finding-names-its-shape.md) requires. Each names the class and cites the other instances as `context` evidence. Folding them into one finding would let one refutation or dismissal hide the rest. A renderer may print "one of 3 instances of <class>" on each, and never merges them.
+- One finding per instance. When the change repeats one shape, each instance is its own finding, with its own ID, trigger, verdict and dismissal, as [the shape decision](../decisions/2026-10-15-each-finding-names-its-shape.md) requires. Each names the class and gives the full instance count. `report_finding` accepts at most ten evidence locations, so each finding lists its own proof first, its `cause` locations included, then as many other instances as `context` locations as fit in ten; its explanation names each instance it could not cite. Folding them into one finding would let one refutation or dismissal hide the rest. A renderer may print "one of 3 instances of <class>" on each, and never merges them.
 
 Friendliness comes from three habits, not adjectives:
 
@@ -60,7 +60,7 @@ Melian states certainty with the verifier's word and nothing else.
 | plausible | ⚠️ Verifier plausible | Say what is missing: "It did not establish that a caller reaches this line." |
 | no verdict | ❔ Not verified | Advisory at most, as policy already caps it. |
 | refuted, protected, minimum `acknowledge` | ✖️ Refuted | Posted, with the verifier's reason and "Trust floor: acknowledge required; maintainer dismissal needed." |
-| refuted, protected, minimum `advisory` | ✖️ Refuted | Posted as an advisory, with the verifier's reason and "Trust floor: reported-severity policy requires no acknowledgement." |
+| refuted, protected, minimum `advisory` | ✖️ Refuted | Posted as an advisory in the review body. Its entry keeps the verifier's reason and "Trust floor: reported-severity policy requires no acknowledgement." under the footer. |
 | refuted, protected, minimum `silent`, or unprotected | ✖️ Refuted | Not posted. The ledger lists it with this marker. |
 
 A refutation is protected when the refuted claim came from `lens.trust-boundary` or `lens.tests`, or reports `untested-behaviour` or `melian/injection-attempt` from any lens. `Finding.trustFloor` replays such a claim's confirmed outcome, capped at `acknowledge`, as [Lowering a severity](../design.md#lowering-a-severity) sets out. The minimum is whatever that outcome resolves to: `acknowledge` for a wholly refuted injection attempt, which still fails the status until a maintainer dismisses it; `advisory` for a refuted P3 test gap; and `silent` where the table hides the confirmed outcome, which stays hidden. Only a protected refutation with a visible minimum posts, and its note comes from `trustFloorNotes`, which reads that minimum. The finding states the refutation and the obligation together.
@@ -328,5 +328,5 @@ Calm, specific, no alarm. It quotes the instruction only as data, says what Meli
 - Does the scenario use real values?
 - Does the finding contradict the description? If so, does it say so?
 - Is it pre-existing? Then it says so first.
-- Does the change repeat this shape? Then this finding names the class and cites every other instance as `context` evidence, and each instance is a finding of its own.
+- Does the change repeat this shape? Then each instance is a finding of its own. This one names the class and the full instance count, lists its own proof first, cites as many other instances as `context` locations as fit in ten, and names in its explanation each instance it could not cite.
 - No emoji outside the status line, labels and outcome markers; no hedging words, praise or jokes.
