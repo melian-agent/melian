@@ -29,6 +29,7 @@ import {
 	type Stage,
 	StageTelemetry,
 	summarizeReview,
+	type TaskId,
 	TelemetryReader,
 	TokenUsage,
 	UsageDoc,
@@ -44,11 +45,13 @@ import { fakeGitHub } from "../../github/test/fixtures/fake-github.ts";
 import { moveTo, pullRequestState } from "../../github/test/fixtures/scenario.ts";
 import { VerdictDocument } from "../src/adjudication.ts";
 import { CheckSources, ChecksDocument } from "../src/checks.ts";
+import { DecisionDocument } from "../src/decisions.ts";
 import { LensDocument } from "../src/lens-tools.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import * as staticRunner from "../src/static.ts";
 import { TaskTiming } from "../src/task-timing.ts";
 import { isolatedGitEnv } from "./fixtures/repo.ts";
+import { resumedTask } from "./fixtures/resumed-task.ts";
 import { count, crashFinding, crashRepository, readEvents } from "./fixtures/review-scenario.ts";
 
 let repo: string;
@@ -532,6 +535,41 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 			}),
 		]);
 		expect(timings.render()).toContain("fault\\u001b[2J");
+	});
+
+	it("reports a gap that a task resumed after a crash would otherwise cover", async () => {
+		const database = join(repo, "resumed.sqlite");
+		const log = join(repo, "resumed.jsonl");
+		await killed(
+			fileURLToPath(new URL("./fixtures/prepare-spans-crash.ts", import.meta.url)),
+			[database, log],
+			log,
+			"started",
+		);
+		const spans = PrepareSpans.start("startup", Date.now());
+		spans.end();
+		await sleep(1200);
+		const registry = createRegistry();
+		registry.install(defineExtension({ name: "test.resumed", tasks: [resumedTask(async () => {})] }));
+		const storage = await openSqliteStorage(database);
+		const harness = await openHarness(storage, { models: createFakeModels().models, registry });
+		opened.push({ close: () => harness.close(context) });
+		const root = await harness.root(context);
+		const id = (await harness.snapshot(DecisionDocument, root.id, context))!.decisions["base..head"]!.triage!.task;
+		expect((await harness.waitForTask(id as TaskId, context)).state).toMatchObject({
+			outcome: { status: "completed" },
+		});
+		spans.step("verdict");
+		await spans.record(harness, "base..head", context);
+		const telemetry = await TelemetryReader.open(storage).read("base..head");
+		const [resumed] = telemetry.stages;
+		expect(resumed!.startedAt!).toBeLessThan(telemetry.prepare!.startedAt);
+		expect(resumed!.endedAt!).toBeGreaterThan(telemetry.prepare!.startedAt + 1200);
+		const [startup] = telemetry.prepare!.spans;
+		expect(telemetry.untimed()).toEqual([
+			expect.objectContaining({ startedAt: startup!.endedAt, durationMs: expect.any(Number) }),
+		]);
+		expect(telemetry.untimed()[0]!.durationMs).toBeGreaterThan(1000);
 	});
 
 	it("keeps settled transcript ends after a kill before the parent records its result", async () => {

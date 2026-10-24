@@ -179,10 +179,11 @@ export class StageTelemetry {
 		const { startedAt, endedAt, spans } = this.prepare;
 		const timed = [
 			...spans,
-			// Publication runs in another command, so it covers none of this review's time.
+			// Publication runs in another command, and a stage that started before this process resumed across a crash and
+			// restart, so neither covers this review's time.
 			...this.stages.filter(
 				(stage) =>
-					stage.name !== "melian.publication" && stage.startedAt !== undefined && stage.endedAt !== undefined,
+					stage.name !== "melian.publication" && stage.startedAt! >= startedAt && stage.endedAt !== undefined,
 			),
 		].toSorted((a, b) => a.startedAt! - b.startedAt!);
 		const gaps: Untimed[] = [];
