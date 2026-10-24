@@ -87,9 +87,9 @@ it("stores one record per revision, which the next review replaces, and reads it
 	expect((await TelemetryReader.open(storage).read("none..head")).prepare).toBeUndefined();
 });
 
-const stage = (id: string, startedAt?: number, endedAt?: number): Stage => ({
+const stage = (id: string, startedAt?: number, endedAt?: number, name = "melian.check"): Stage => ({
 	id,
-	name: "melian.check",
+	name,
 	subject: id,
 	task: 1,
 	outcome: "completed",
@@ -145,6 +145,16 @@ it.each([
 		stages: [stage("publication", 9000, 9500)],
 		endedAt: 4000,
 		untimed: [],
+	},
+	{
+		name: "a publication, which runs in another command, over a gap",
+		spans: [
+			[0, 1000],
+			[4000, 5000],
+		],
+		stages: [stage("publication", 1500, 4500, "melian.publication")],
+		endedAt: 5000,
+		untimed: [{ startedAt: 1000, endedAt: 4000, durationMs: 3000 }],
 	},
 	{
 		name: "a stage still running",
