@@ -361,9 +361,9 @@ describe("graph tools", { timeout: 60_000 }, () => {
 					paths: {
 						type: "array",
 						minItems: 1,
-						maxItems: 64,
+						maxItems: 65,
 						items: { type: "string", minLength: 1 },
-						description: "Search exactly these files, at most 64, in place of path",
+						description: "Search exactly these files, at most 65, in place of path",
 					},
 				},
 			},
