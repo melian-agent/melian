@@ -42,7 +42,7 @@ export interface CheckAgainstReviewer {
 	/** The check's valid defects, and how many the reviewer also found. */
 	readonly checkValid: number;
 	readonly reviewerFound: number;
-	/** Defects left out because a report in them waits for a judgement or a hand match. */
+	/** Findings, the reviewer's and the check's, left out while one of their reports waits for a judgement or a hand match. */
 	readonly pending: number;
 }
 
@@ -154,40 +154,51 @@ export class ComparisonSet {
 		let comparisons = 0;
 		for (const { comparison, verdict, unattributed } of this.entries) {
 			if (verdict === undefined || unattributed !== undefined) continue;
+			// A round the reviewer took no part in says nothing about what it would have found.
+			const imported = Object.values(comparison.importsBySource()).flatMap((each) => each.reviewers ?? []);
+			if (!imported.some((each) => each.name === reviewer)) continue;
 			comparisons++;
 			const mine = new Set(
 				verdict
 					.all()
-					.filter(
-						(finding) =>
-							finding.properties.source.check === check ||
-							(finding.properties.alsoReportedAs ?? []).some((other) => other.check === check),
-					)
+					.filter((finding) => {
+						const { source, reportedBy = [source], alsoReportedAs = [] } = finding.properties;
+						return [...reportedBy, ...alsoReportedAs].some((each) => each.check === check);
+					})
 					.map((finding) => finding.id),
 			);
 			const ambiguous = new Set(comparison.ambiguous().map((each) => each.external.id));
-			for (const group of comparison.groups()) {
-				const theirs = group.external
-					.filter((finding) => finding.reviewer.name === reviewer)
-					.map((each) => each.id);
-				const ours = group.melian.filter((id) => mine.has(id));
-				const reports = [...group.melian, ...group.external.map((each) => each.id)];
-				if (reports.some((id) => ambiguous.has(id) || comparison.judgement(id) === undefined)) {
-					if (theirs.length > 0 || ours.length > 0) counts.pending++;
+			const matches = comparison.effectiveMatches();
+			const settled = (id: string) => !ambiguous.has(id) && comparison.judgement(id) !== undefined;
+			const valid = (id: string) => comparison.judgement(id)?.verdict === "valid";
+			const theirs = comparison.externalFindings().filter((finding) => finding.reviewer.name === reviewer);
+			const theirIds = new Set(theirs.map((finding) => finding.id));
+			// Each finding counts once, whatever groups it sits in: an external finding matched with two of Melian's sits
+			// beside each of them.
+			for (const { id } of theirs) {
+				const melian = matches.filter((match) => match.external === id).map((match) => match.melian);
+				if (![id, ...melian].every(settled)) {
+					counts.pending++;
 					continue;
 				}
-				const valid = (ids: readonly string[]) => ids.some((id) => comparison.judgement(id)?.verdict === "valid");
-				const reviewerHas = valid(theirs);
-				const checkHas = valid(ours);
-				if (reviewerHas) {
-					counts.reviewerValid++;
-					if (checkHas) counts.checkFound++;
-					else if (valid(group.melian)) counts.othersFound++;
+				if (!valid(id)) continue;
+				if (melian.length === 0 && comparison.adjudication(id)?.current.reason === "out-of-scope") continue;
+				counts.reviewerValid++;
+				if (melian.some((each) => mine.has(each) && valid(each))) counts.checkFound++;
+				else if (melian.some(valid)) counts.othersFound++;
+			}
+			for (const id of new Set(comparison.groups().flatMap((group) => group.melian))) {
+				if (!mine.has(id)) continue;
+				const external = matches
+					.filter((match) => match.melian === id && theirIds.has(match.external))
+					.map((match) => match.external);
+				if (![id, ...external].every(settled)) {
+					counts.pending++;
+					continue;
 				}
-				if (checkHas) {
-					counts.checkValid++;
-					if (reviewerHas) counts.reviewerFound++;
-				}
+				if (!valid(id)) continue;
+				counts.checkValid++;
+				if (external.some(valid)) counts.reviewerFound++;
 			}
 		}
 		return { check, reviewer, comparisons, ...counts };
@@ -331,7 +342,7 @@ export class ComparisonSet {
 			`${name} against ${them}, over ${stats.comparisons} comparisons with a stored review.\n`,
 			`${them}'s valid defects: ${stats.reviewerValid}. ${name} found ${stats.checkFound}${share(stats.checkFound, stats.reviewerValid)}; only Melian's other checks found ${stats.othersFound}; no check found ${missed}.\n`,
 			`${name}'s valid defects: ${stats.checkValid}. ${them} found ${stats.reviewerFound}${share(stats.reviewerFound, stats.checkValid)}.\n`,
-			`Defects left out while a report waits for a judgement or a hand match: ${stats.pending}.\n`,
+			`Findings left out while a report waits for a judgement or a hand match: ${stats.pending}.\n`,
 		].join("");
 	}
 
