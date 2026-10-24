@@ -316,7 +316,10 @@ describe("searchRevisionFiles", () => {
 
 	it("names a revision's tree, and refuses one that is no commit", async () => {
 		expect(await revisionTree(repo, head)).toBe(gitIn(repo, "rev-parse", "HEAD^{tree}"));
-		await expect(revisionTree(repo, "0".repeat(40))).rejects.toMatchObject({ code: "invalidRevision" });
+		await expect(revisionTree(repo, "0".repeat(40))).rejects.toMatchObject({
+			code: "invalidRevision",
+			message: `${"0".repeat(40)} does not name a commit`,
+		});
 		await expect(revisionTree(repo, "--all")).rejects.toThrow('"--all" is not a revision');
 	});
 
