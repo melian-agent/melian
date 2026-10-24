@@ -25,7 +25,9 @@
 			"path": "./biome/free-domain-function.grit",
 			"includes": ["**/packages/*/src/**"]
 		},
-		{ "path": "./biome/literal-emoji.grit" }
+		{
+			"path": "./biome/literal-emoji.grit"
+		}
 	],
 	"formatter": {
 		"enabled": true,
@@ -36,12 +38,19 @@
 	},
 	"files": {
 		"includes": [
-			"packages/*/src/**/*.ts",
-			"packages/*/test/**/*.ts",
-			"scripts/**/*.mjs",
-			"vitest.config.ts",
+			"**/*.ts",
+			"**/*.tsx",
+			"**/*.mts",
+			"**/*.cts",
+			"**/*.js",
+			"**/*.jsx",
+			"**/*.mjs",
+			"**/*.cjs",
 			"!**/node_modules/**/*",
-			"!**/dist/**/*"
+			"!**/dist/**/*",
+			"!packages/evals/goldens/**/*",
+			"!packages/evals/triage/**/*",
+			"!packages/evals/verifier/**/*"
 		]
 	}
 }

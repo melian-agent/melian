@@ -56,4 +56,24 @@ describe("the literal-emoji Biome plugin", { timeout: 30_000 }, () => {
 		const source = 'export const a = "\\u{1F534} \\u{26A0}\\u{FE0F}";\nexport const b = "© ™ ⚠";\n';
 		expect(lint("packages/core/src/scratch.ts", source)).toEqual([]);
 	});
+
+	it.each([
+		"packages/cli/bin/scratch.js",
+		"scratch.config.ts",
+		"packages/core/src/scratch.tsx",
+		"packages/core/test/scratch.mjs",
+	])("reaches %s under the repository's own biome.json", (path) => {
+		const file = join(root, path);
+		writeFileSync(file, `export const a = "${red}";\n`);
+		try {
+			const result = spawnSync(process.execPath, [biome, "lint", "--reporter=github", path], {
+				cwd: root,
+				encoding: "utf8",
+			});
+			if (result.error) throw result.error;
+			expect(result.stdout).toMatch(/^::error title=plugin,file=[^,]+,line=1/m);
+		} finally {
+			rmSync(file, { force: true });
+		}
+	});
 });
