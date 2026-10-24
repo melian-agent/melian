@@ -51,6 +51,7 @@ export interface RevisionSearch {
 export const revisionLimits = {
 	fileBytes: 8 * 1024 * 1024,
 	searchMatches: 200,
+	searchFiles: 64,
 	matchChars: 300,
 	listEntries: 1000,
 } as const;
@@ -183,6 +184,86 @@ function grepMatches(output: string, prefix: string): RevisionMatch[] {
 		start = textEnd + 1;
 	}
 	return matches;
+}
+
+/** One file of {@link searchRevisionFiles}: its matches, whether it had more, or that it is no file at the revision. */
+export type RevisionFileMatches = {
+	readonly path: string;
+	readonly matches: RevisionMatch[];
+	readonly truncated: boolean;
+	readonly missing?: true;
+};
+
+/**
+ * Searches an exact set of files at `revision` in one `git grep`, as {@link searchRevision} searches one path, with an
+ * equal share of `maxMatches` for each file, so a term common in one file cannot crowd out the others. Returns the
+ * files in the order asked, each named once, a path that is no file at the revision marked `missing`.
+ *
+ * Throws {@link RevisionError} `tooManyFiles` past {@link revisionLimits} `searchFiles`, and as {@link searchRevision}
+ * does otherwise.
+ */
+export async function searchRevisionFiles(
+	repoRoot: string,
+	revision: string,
+	search: RevisionSearch,
+	paths: readonly string[],
+	maxMatches: number = revisionLimits.searchMatches,
+): Promise<RevisionFileMatches[]> {
+	checkRevision(revision);
+	checkRevision(search.attributesFrom);
+	const targets = [...new Set(paths.map(repositoryPath))];
+	if (targets.length > revisionLimits.searchFiles)
+		throw new RevisionError("tooManyFiles", `at most ${revisionLimits.searchFiles} files, not ${targets.length}`);
+	await requireGitVersion(repoRoot);
+	const { entries } = await lsTree(repoRoot, revision, [revision, "--", ...targets]);
+	const files = new Set(entries.filter((entry) => entry.kind === "file").map((entry) => entry.path));
+	const present = targets.filter((path) => files.has(path));
+	const share = Math.max(1, Math.floor(maxMatches / Math.max(1, present.length)));
+	let matches: RevisionMatch[] = [];
+	let cut = false;
+	if (present.length > 0) {
+		// One more than the share per file tells a file that had more from one that had exactly its share.
+		const args = [
+			`--attr-source=${search.attributesFrom}`,
+			"-c",
+			"grep.column=false",
+			"--literal-pathspecs",
+			"grep",
+			"-z",
+			"-n",
+			"-I",
+			"--no-color",
+			"--full-name",
+			`--max-count=${share + 1}`,
+			search.regex ? "-E" : "-F",
+			...(search.ignoreCase ? ["-i"] : []),
+			"-e",
+			search.pattern,
+			revision,
+			"--",
+			...present,
+		];
+		const result = await git(repoRoot, args, {
+			maxBytes: present.length * (share + 1) * (revisionLimits.matchChars + 1024),
+		});
+		if (result.code !== 0 && !(result.code === 1 && result.stderr === "")) {
+			const message = result.stderr.trim();
+			if (search.regex)
+				throw new RevisionError(
+					"invalidPattern",
+					`"${search.pattern}" is not a valid regular expression: ${message}`,
+				);
+			throw new RevisionError("gitFailed", `git grep failed: ${message}`);
+		}
+		matches = grepMatches(result.stdout, `${revision}:`);
+		// Output cut at the byte bound may have dropped any file's last matches, so every file may have more.
+		cut = result.truncated === true;
+	}
+	return targets.map((path) => {
+		if (!files.has(path)) return { path, matches: [], truncated: false, missing: true as const };
+		const found = matches.filter((match) => match.path === path);
+		return { path, matches: found.slice(0, share), truncated: cut || found.length > share };
+	});
 }
 
 /**

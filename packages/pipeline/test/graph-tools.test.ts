@@ -24,7 +24,7 @@ import {
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { lensListedTools } from "../src/lens-tools.ts";
-import { baseAndHead, gitIn, isolatedGitEnv, lines } from "./fixtures/repo.ts";
+import { baseAndHead, gitIn, isolatedGitEnv, lines, writeFiles } from "./fixtures/repo.ts";
 import { twoLensTiers } from "./fixtures/review-scenario.ts";
 
 const correctness = "You are the correctness reviewer";
@@ -265,6 +265,71 @@ describe("graph tools", { timeout: 60_000 }, () => {
 				note,
 			].join("\n"),
 		]);
+	});
+
+	it("search the most design files a design index links in one call, past 200 distractor matches", async () => {
+		const paths = Array.from({ length: 64 }, (_, index) => `docs/design/f${String(index).padStart(2, "0")}.md`);
+		writeFiles(
+			repo,
+			Object.fromEntries(
+				paths.map((path, index) => [
+					path,
+					index === 0
+						? lines(...Array.from({ length: 300 }, (_, line) => `needle distractor ${line}`))
+						: lines(...Array.from({ length: index }, () => "filler"), `needle in ${path}`),
+				]),
+			),
+		);
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "design files");
+		const requests = await reviewWith(undefined, [
+			[
+				["search", { pattern: "needle", paths: [...paths.slice(1, 63), "docs/absent.md", paths[0]!] }],
+				["search", { pattern: "needle", paths: [paths[1]!], path: "docs" }],
+				["search", { pattern: "nowhere", paths }],
+			],
+		]);
+		const nonce = nonceOf(requests[correctness]![0]!);
+		const [all, both, none] = toolResults(requests[correctness]![1]!);
+		const body = new RegExp(`<untrusted-${nonce} label="search">\\n([\\s\\S]*?)\\n</untrusted-${nonce}>`).exec(
+			all!,
+		)![1]!;
+		const rows = body.split("\n");
+		for (const [index, path] of paths.slice(1, 63).entries())
+			expect(rows).toContain(`${path}:${index + 2}: needle in ${path}`);
+		expect(rows.filter((row) => row.startsWith(`${paths[0]}:`))).toEqual([
+			`${paths[0]}:1: needle distractor 0`,
+			`${paths[0]}:2: needle distractor 1`,
+			`${paths[0]}:3: needle distractor 2`,
+			`${paths[0]}: [more matches not shown; search it alone]`,
+		]);
+		expect(rows).toContain("docs/absent.md: [no file at this revision]");
+		expect(rows.indexOf(`${paths[0]}:1: needle distractor 0`)).toBeLessThan(
+			rows.indexOf(`${paths[0]}:2: needle distractor 1`),
+		);
+		expect(rows.indexOf(`${paths[62]}:63: needle in ${paths[62]}`)).toBeLessThan(
+			rows.indexOf(`${paths[0]}:2: needle distractor 1`),
+		);
+		expect(all).not.toContain("more lines not shown");
+		expect(both).toContain("search takes path or paths, not both");
+		expect(none).toBe("No matches in 64 files.");
+	});
+
+	it("cut the deepest matches of every file before it drops a file, and say how many lines it cut", async () => {
+		const paths = Array.from({ length: 2 }, (_, index) => `docs/long${index}.md`);
+		writeFiles(
+			repo,
+			Object.fromEntries(
+				paths.map((path) => [path, lines(...Array.from({ length: 200 }, () => `needle ${"x".repeat(290)}`))]),
+			),
+		);
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "long lines");
+		const requests = await reviewWith(undefined, [[["search", { pattern: "needle", paths }]]]);
+		const [result] = toolResults(requests[correctness]![1]!);
+		const shown = (path: string) => (result!.match(new RegExp(`${path}:\\d+:`, "g")) ?? []).length;
+		expect(Math.abs(shown(paths[0]!) - shown(paths[1]!))).toBeLessThanOrEqual(1);
+		expect(result).toMatch(/\[\d+ more lines not shown; search fewer files\]$/);
 	});
 
 	it("replay safely after a crash, since none writes", () => {

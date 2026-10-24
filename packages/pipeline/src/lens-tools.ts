@@ -21,12 +21,15 @@ import {
 	Revision,
 	type RevisionEntry,
 	RevisionError,
+	type RevisionSearch,
 	readRevisionFile,
 	reportFindingInputSchema,
 	repositoryPath,
+	revisionLimits,
 	type ScrutinyLevel,
 	type Severity,
 	searchRevision,
+	searchRevisionFiles,
 	snippetHash,
 	snippetOccurrence,
 	visibleText,
@@ -519,7 +522,7 @@ const readFile = defineTool({
 const search = defineTool({
 	name: "search",
 	description:
-		"Search files at head by default, or at base with revision base, like git grep. Returns path:line: text for each matching line.",
+		"Search files at head by default, or at base with revision base, like git grep. Returns path:line: text for each matching line. To search a set of files in one call, such as every design file, name them in paths: each file gets an equal share of the 200 matches, so a term common in one cannot hide the others.",
 	parameters: Type.Object({
 		pattern: Type.String({ minLength: 1 }),
 		revision: Type.Optional(
@@ -530,15 +533,26 @@ const search = defineTool({
 		regex: Type.Optional(Type.Boolean({ description: "Read pattern as an extended regular expression" })),
 		ignoreCase: Type.Optional(Type.Boolean()),
 		path: Type.Optional(Type.String({ description: "Search only this file or directory" })),
+		paths: Type.Optional(
+			Type.Array(Type.String({ minLength: 1 }), {
+				minItems: 1,
+				maxItems: revisionLimits.searchFiles,
+				description: `Search exactly these files, at most ${revisionLimits.searchFiles}, in place of path`,
+			}),
+		),
 	}),
 	replay: "safe",
 	outputLimits,
 	execute: (args, api, context) =>
 		budgeted(api, context, "search", async (review) => {
 			// The base's attributes decide what is binary, as they do for the diff, so a head cannot hide its files.
-			const { revision = "head", ...query } = args;
+			const { revision = "head", paths, ...query } = args;
 			const commit = revision === "base" ? review.base : review.head;
 			const search = { ...query, attributesFrom: review.base };
+			if (paths !== undefined) {
+				if (query.path !== undefined) throw new Error("search takes path or paths, not both");
+				return searchFiles(review, commit, search, paths);
+			}
 			const { matches, truncated } = await searchRevision(review.repoRoot, commit, search);
 			// A single matching line longer than the output bound leaves nothing whole to show; that is not "no matches".
 			if (matches.length === 0 && truncated)
@@ -550,6 +564,27 @@ const search = defineTool({
 			return text([quoteUntrusted("search", body, review.nonce), ...notes].join("\n"));
 		}),
 });
+
+// Each file's matches in turn, its first match, then each file's second, so the output bound cuts the deepest matches
+// of every file before it drops any file. A file with more than it was shown says so inside the boundary, by its path.
+async function searchFiles(review: ReviewState, commit: string, search: RevisionSearch, paths: readonly string[]) {
+	const files = await searchRevisionFiles(review.repoRoot, commit, search, paths);
+	const rows: string[] = [];
+	for (let depth = 0; files.some((file) => depth < file.matches.length); depth++)
+		for (const file of files) {
+			const match = file.matches[depth];
+			if (match !== undefined) rows.push(`${visibleText(match.path)}:${match.line}: ${match.text}`);
+		}
+	for (const file of files) {
+		if (file.missing) rows.push(`${visibleText(file.path)}: [no file at this revision]`);
+		else if (file.truncated) rows.push(`${visibleText(file.path)}: [more matches not shown; search it alone]`);
+	}
+	const searched = files.filter((file) => !file.missing).length;
+	if (rows.length === 0) return text(`No matches in ${searched} files.`);
+	const { body, count } = fitting(rows);
+	const notes = count < rows.length ? [`[${rows.length - count} more lines not shown; search fewer files]`] : [];
+	return text([quoteUntrusted("search", body, review.nonce), ...notes].join("\n"));
+}
 
 function describeEntry(entry: RevisionEntry): string {
 	const path = visibleText(entry.path);

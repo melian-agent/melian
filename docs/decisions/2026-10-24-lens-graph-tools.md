@@ -47,3 +47,10 @@ The built-in lenses keep their tool lists until a live run measures the change. 
 - The lens policy on each lens conversation gains an optional `graph`: the cache root and key parts the lens task input already stored. A lens an older Melian created has none, and its graph tools say the graph is unavailable. The lens task's input is unchanged.
 - A tool parses the snapshot's facts on each call: about 130 milliseconds for Melian's own snapshot of 10,000 facts and 6 MB, and under 10 milliseconds for the queries.
 - Enola's facts cover what its extractors resolve. On Melian's own graph, `visibleText` has 73 resolved references and 133 declarations within two calls. A method called through an instance, such as `run.callers()`, or a static method called through its class, such as `GraphSnapshot.create`, has none: Enola records those calls by the text the code wrote, not the declaration. The tools say an absent caller proves nothing, and `search` stays the way to find those.
+
+## Searching a set of files
+
+[Issue #204](https://github.com/melian-agent/melian/issues/204): `search` took one path and returned at most 200 matches. The design index links up to 64 files, so searching each at base and head could take 128 calls of the design lens's 45, and a term common in one file cut the search off before the file that mattered.
+
+`search` now also takes `paths`, an exact set of up to 64 files, searched in one `git grep` with `--max-count`, so each file gets an equal share of the 200 matches. The rows interleave the files' first matches, then their second, so the output bound cuts every file's deepest matches before it drops a file. A file with more than its share, or no file at the revision, says so inside the boundary. `path` and `paths` together are refused. Core's `searchRevisionFiles` does the search; a test runs it over 64 files, one holding 300 distractor matches.
+

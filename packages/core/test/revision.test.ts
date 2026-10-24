@@ -7,6 +7,7 @@ import {
 	readRevisionFile,
 	repositoryPath,
 	searchRevision,
+	searchRevisionFiles,
 } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -225,5 +226,103 @@ describe("searchRevision", () => {
 
 	it("treats a pattern that looks like an option as text", async () => {
 		expect((await searchRevision(repo, head, { attributesFrom: head, pattern: "--output=x" })).matches).toEqual([]);
+	});
+});
+
+describe("searchRevisionFiles", () => {
+	// 64 design files, the most a design index links: the first holds 300 distractor matches, the rest one match each,
+	// on a line that differs per file.
+	function designFiles(): { paths: string[]; commit: string } {
+		const paths = Array.from({ length: 64 }, (_, index) => `docs/design/f${String(index).padStart(2, "0")}.md`);
+		writeFiles(
+			repo,
+			Object.fromEntries(
+				paths.map((path, index) => [
+					path,
+					index === 0
+						? lines(...Array.from({ length: 300 }, (_, line) => `needle distractor ${line}`))
+						: lines(...Array.from({ length: index }, () => "filler"), `needle in ${path}`),
+				]),
+			),
+		);
+		gitIn(repo, "add", ".");
+		gitIn(repo, "commit", "--quiet", "-m", "design");
+		return { paths, commit: gitIn(repo, "rev-parse", "HEAD") };
+	}
+
+	it("gives every file of the most dispersed set its share, whatever one file's distractors", async () => {
+		const { paths, commit } = designFiles();
+		const files = await searchRevisionFiles(repo, commit, { attributesFrom: commit, pattern: "needle" }, paths);
+		expect(files.map((file) => file.path)).toEqual(paths);
+		expect(files[0]).toEqual({
+			path: paths[0],
+			truncated: true,
+			matches: [0, 1, 2].map((line) => ({ path: paths[0], line: line + 1, text: `needle distractor ${line}` })),
+		});
+		for (const [index, file] of files.slice(1).entries())
+			expect(file, file.path).toEqual({
+				path: paths[index + 1],
+				truncated: false,
+				matches: [{ path: paths[index + 1], line: index + 2, text: `needle in ${paths[index + 1]}` }],
+			});
+		// A single path does not get far: its 200 matches end inside the first file.
+		const one = await searchRevision(repo, commit, {
+			attributesFrom: commit,
+			pattern: "needle",
+			path: "docs/design",
+		});
+		expect(one.truncated).toBe(true);
+		expect(new Set(one.matches.map((match) => match.path))).toEqual(new Set([paths[0]]));
+	});
+
+	it("shares the matches out at the bound, and marks a file with one more", async () => {
+		const { paths, commit } = designFiles();
+		const search = { attributesFrom: commit, pattern: "needle" };
+		const [alone] = await searchRevisionFiles(repo, commit, search, [paths[0]!], 300);
+		expect(alone).toMatchObject({ truncated: false });
+		expect(alone!.matches).toHaveLength(300);
+		const [cut] = await searchRevisionFiles(repo, commit, search, [paths[0]!], 299);
+		expect(cut).toMatchObject({ truncated: true });
+		expect(cut!.matches).toHaveLength(299);
+		const pair = await searchRevisionFiles(repo, commit, search, [paths[0]!, paths[1]!], 7);
+		expect(pair.map((file) => [file.matches.length, file.truncated])).toEqual([
+			[3, true],
+			[1, false],
+		]);
+		const [fewest] = await searchRevisionFiles(repo, commit, search, [paths[0]!, paths[1]!], 1);
+		expect(fewest!.matches).toHaveLength(1);
+	});
+
+	it("names each file once, marks one absent at the revision, and refuses more than 64", async () => {
+		const { paths, commit } = designFiles();
+		const search = { attributesFrom: commit, pattern: "needle" };
+		expect(
+			await searchRevisionFiles(repo, commit, search, [paths[1]!, `./${paths[1]}`, "docs/absent.md", "docs/design"]),
+		).toEqual([
+			{ path: paths[1], truncated: false, matches: [{ path: paths[1], line: 2, text: `needle in ${paths[1]}` }] },
+			{ path: "docs/absent.md", matches: [], truncated: false, missing: true },
+			{ path: "docs/design", matches: [], truncated: false, missing: true },
+		]);
+		expect(await searchRevisionFiles(repo, commit, search, ["docs/absent.md"])).toEqual([
+			{ path: "docs/absent.md", matches: [], truncated: false, missing: true },
+		]);
+		expect(await searchRevisionFiles(repo, commit, { ...search, pattern: "nowhere" }, [paths[1]!])).toEqual([
+			{ path: paths[1], matches: [], truncated: false },
+		]);
+		expect((await searchRevisionFiles(repo, commit, search, [...paths, paths[0]!])).length).toBe(64);
+		await expect(searchRevisionFiles(repo, commit, search, [...paths, "docs/readme.md"])).rejects.toMatchObject({
+			code: "tooManyFiles",
+		});
+		await expect(searchRevisionFiles(repo, commit, search, ["../outside.md"])).rejects.toBeInstanceOf(
+			OutsideRepositoryError,
+		);
+		await expect(
+			searchRevisionFiles(repo, commit, { ...search, pattern: "(", regex: true }, [paths[1]!]),
+		).rejects.toMatchObject({ code: "invalidPattern" });
+		expect(
+			await searchRevisionFiles(repo, commit, { ...search, pattern: "NEEDLE IN", ignoreCase: true }, [paths[2]!]),
+		).toEqual([
+			{ path: paths[2], truncated: false, matches: [{ path: paths[2], line: 3, text: `needle in ${paths[2]}` }] },
+		]);
 	});
 });
