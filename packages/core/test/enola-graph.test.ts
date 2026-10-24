@@ -205,3 +205,80 @@ it("lists what a declaration calls, resolved targets as facts and the rest once 
 	const [c] = facts.definitions("src.c");
 	expect(facts.callees(c!)).toEqual({ resolved: [], unresolved: [] });
 });
+
+it("sorts references by file, line and name, and callees' unresolved names, whatever order the facts come in", () => {
+	const facts = EnolaFacts.parse(
+		[
+			{ id: "t", name: "src.t", kind: "symbol", file: "src/t.ts", line: 1 },
+			{
+				id: "z",
+				name: "src.z",
+				kind: "symbol",
+				file: "src/z.ts",
+				line: 1,
+				relations: [{ kind: "calls", target: "src.t", target_id: "t" }],
+			},
+			{
+				id: "a1",
+				name: "src.a1",
+				kind: "symbol",
+				file: "src/a.ts",
+				line: 20,
+				relations: [{ kind: "calls", target: "src.t", target_id: "t" }],
+			},
+			{
+				id: "ab",
+				name: "src.ab",
+				kind: "symbol",
+				file: "src/a.ts-b",
+				line: 1,
+				relations: [{ kind: "calls", target: "src.t", target_id: "t" }],
+			},
+			{
+				id: "a2",
+				name: "src.a2",
+				kind: "symbol",
+				file: "src/a.ts",
+				line: 3,
+				relations: [
+					{ kind: "names", target: "src.t", target_id: "t" },
+					{ kind: "calls", target: "src.t", target_id: "t" },
+				],
+			},
+			{
+				id: "s",
+				name: "src.s",
+				kind: "symbol",
+				relations: [
+					{ kind: "calls", target: "lib.zeta" },
+					{ kind: "calls", target: "lib.alpha" },
+				],
+			},
+		]
+			.map((fact) => JSON.stringify(fact))
+			.join("\n"),
+	);
+	const [t] = facts.definitions("src.t");
+	expect(facts.references(t!).references.map(({ kind, fact }) => `${fact.id} ${kind}`)).toEqual([
+		"a2 calls",
+		"a2 names",
+		"a1 calls",
+		"ab calls",
+		"z calls",
+	]);
+	const [s] = facts.definitions("src.s");
+	expect(facts.callees(s!).unresolved).toEqual(["lib.alpha", "lib.zeta"]);
+});
+
+it("counts no unresolved declares edge as a use", () => {
+	const facts = EnolaFacts.parse(
+		[
+			{ id: "t", name: "src.t", kind: "symbol" },
+			{ id: "m", name: "src", kind: "module", relations: [{ kind: "declares", target: "src.t" }] },
+		]
+			.map((fact) => JSON.stringify(fact))
+			.join("\n"),
+	);
+	const [t] = facts.definitions("src.t");
+	expect(facts.references(t!)).toEqual({ references: [], unresolved: 0 });
+});
