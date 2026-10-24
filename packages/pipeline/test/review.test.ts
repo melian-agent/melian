@@ -179,7 +179,6 @@ async function reviewed(options: ReviewWith = {}): Promise<Review> {
 	});
 }
 
-// The spans a review timed inside a host's step, by name and the step they ran in.
 async function nested(spans: PrepareSpans): Promise<(string | undefined)[][]> {
 	const { spans: recorded } = await spans.record(harness, "test..spans", context);
 	return recorded.filter((span) => span.parent !== undefined).map(({ name, parent }) => [name, parent]);
