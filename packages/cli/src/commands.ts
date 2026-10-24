@@ -23,7 +23,6 @@ import {
 	createNodeExecutionEnv,
 	DismissError,
 	DismissHarness,
-	type Harness,
 	openPublishHarness,
 	openReviewHarness,
 	PrepareSpans,
@@ -31,6 +30,7 @@ import {
 	PublishError,
 	publishReview,
 	ReviewError,
+	type ReviewHarness,
 	type ReviewOrigin,
 	RoundReader,
 	readProvenance,
@@ -342,7 +342,7 @@ export async function review(
 		}
 		spans.step("output");
 		const outcome = new ReviewOutcome(verdict);
-		const timings = await reviewTimings(harness, storage, spans, revisionKey(changeset.revision), beganAt, io);
+		const timings = await reviewTimings(reviewHarness, storage, spans, revisionKey(changeset.revision), beganAt, io);
 		io.stderr(timings.slowest());
 		io.stdout(
 			options.json
@@ -351,7 +351,7 @@ export async function review(
 		);
 		return outcome.exitCode();
 	} catch (error) {
-		const timings = await reviewTimings(harness, storage, spans, revisionKey(changeset.revision), beganAt, io);
+		const timings = await reviewTimings(reviewHarness, storage, spans, revisionKey(changeset.revision), beganAt, io);
 		io.stderr(timings.slowest());
 		if (options.json)
 			io.stdout(
@@ -372,7 +372,7 @@ export async function review(
 
 // The spans end where the record is stored, just before the verdict prints, so the record covers the whole review.
 async function reviewTimings(
-	harness: Harness,
+	reviewHarness: ReviewHarness,
 	storage: Awaited<ReturnType<typeof openStorage>>,
 	spans: PrepareSpans,
 	revision: string,
@@ -380,7 +380,7 @@ async function reviewTimings(
 	io: Io,
 ): Promise<StageTelemetry> {
 	try {
-		await spans.record(harness, revision, context);
+		await spans.record(reviewHarness.harness, revision, context);
 		return await TelemetryReader.open(storage).read(revision, before);
 	} catch (error) {
 		io.stderr(
