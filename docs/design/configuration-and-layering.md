@@ -92,7 +92,7 @@ Policy names `melian.yaml`, `AGENTS.md` and `CLAUDE.md` are recognised case-inse
 
 ### Language and emojis
 
-Planned in step 34, [issue #197](https://github.com/melian-agent/melian/issues/197). [The findings guideline](../guidelines/findings.md) sets how a finding reads. Three keys set its English and its emojis, and [the decision](../decisions/2026-10-24-finding-register.md) records why.
+Planned in step 35, [issue #197](https://github.com/melian-agent/melian/issues/197). [The findings guideline](../guidelines/findings.md) sets how a finding reads. Three keys set its English and its emojis, and [the decision](../decisions/2026-10-24-finding-register.md) records why.
 
 ```yaml
 language: en-AU   # en-AU (default) | en-GB | en-US

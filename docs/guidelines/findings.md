@@ -1,6 +1,6 @@
 # Findings guidelines
 
-This guideline sets how a Melian finding reads: its parts, its voice, how it states certainty, and where emojis go. Lens instructions, the guidance `report_finding` gives a model, and every renderer take their wording from here: the terminal in core, and the pull-request comments and ledger in the github package. Plan step 34, [issue #197](https://github.com/melian-agent/melian/issues/197), builds it. Until then, findings render as [findings.md](../design/findings.md) describes. [The decision](../decisions/2026-10-24-finding-register.md) records why.
+This guideline sets how a Melian finding reads: its parts, its voice, how it states certainty, and where emojis go. Lens instructions, the guidance `report_finding` gives a model, and every renderer take their wording from here: the terminal in core, and the pull-request comments and ledger in the github package. Plan step 35, [issue #197](https://github.com/melian-agent/melian/issues/197), builds it. Until then, findings render as [findings.md](../design/findings.md) describes. [The decision](../decisions/2026-10-24-finding-register.md) records why.
 
 A finding tells an author three things: what breaks, how Melian knows, and what to do. It says them in that order, in plain words, with the evidence one click away. It is factual, and it is friendly because it respects the author's time. It never flatters, apologises or jokes.
 
@@ -9,7 +9,7 @@ A finding tells an author three things: what breaks, how Melian knows, and what 
 Every acknowledge or block finding has seven parts. Each maps to a field Melian stores.
 
 1. **Status line.** A template. Severity, what the finding asks of the author, the check that found it, the verifier's outcome, and whether the change introduced it. [Status line](#status-line) gives the template.
-2. **Headline** (`message`). The defect as a fact, in the present tense, in at most 12 words: "A failed cache write aborts the whole sync." It names what breaks; the fix comes last. A P3 or nit may use an imperative instead. Today `report_finding` stores a copy of What as the message, so the terminal prints the same sentence twice. Step 34 gives `report_finding` a headline of its own, and each renderer prints it once.
+2. **Headline** (`message`). The defect as a fact, in the present tense, in at most 12 words: "A failed cache write aborts the whole sync." It names what breaks; the fix comes last. A P3 or nit may use an imperative instead. Today `report_finding` stores a copy of What as the message, so the terminal prints the same sentence twice. Step 35 gives `report_finding` a headline of its own, and each renderer prints it once.
 3. **What** (`explanation.what`). Up to three sentences. Name the code as the actor: "`saveRecord` calls `cache.set` without a `catch`." Do not repeat the headline.
 4. **Why here** (`explanation.whyHere`, which `report_finding` takes as `explanation.why`). One or two sentences that tie the defect to this change. Say what the base did and what the head does. When a rule applies, quote it word for word and name its file.
 5. **Failure scenario** (`failureScenario`). One concrete run: the input, the state, the sequence and the wrong outcome, with real values. "A $20 order with a $5 discount bills $25."

@@ -20,7 +20,7 @@ Example: a P2 on an unguarded cache write reads, in Melian's terminal, as the se
 
 ## Decision
 
-[The findings guideline](../guidelines/findings.md) is the register for every finding: seven parts in a fixed order, length targets, no hedging, certainty stated through the verifier's word, and a status line of emojis beside words. Lens instructions, `report_finding`'s guidance and every renderer follow it. Plan step 34 builds it.
+[The findings guideline](../guidelines/findings.md) is the register for every finding: seven parts in a fixed order, length targets, no hedging, certainty stated through the verifier's word, and a status line of emojis beside words. Lens instructions, `report_finding`'s guidance and every renderer follow it. Plan step 35 builds it.
 
 1. **Language.** `language: en-AU | en-GB | en-US` in the root `melian.yaml` only, `en-AU` by default. A nested or preference file that sets it is refused. It governs finding prose, one line in each lens's and the verifier's instructions, and Melian's own labels. It stays out of the plan fingerprint, the policy fingerprint, each lens's version, a lens run's instruction identity and the verifier's candidate identity, and it must not change what Melian finds. A review reused from storage may therefore keep the spelling of the language it ran under.
 2. **Emojis.** The guideline's table gives each emoji one meaning, and every emoji sits beside a word, never alone. Separators are ` | `.
