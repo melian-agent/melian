@@ -741,35 +741,6 @@ export class Verdict {
 	}
 
 	/**
-	 * The fingerprint the verdict had before it was migrated from version 2 of the verdict document, when it could have
-	 * been one: each finding's evidence is the single cause at head that the migration made of its one location, and no
-	 * finding has a failure scenario. A head published before the upgrade then reads as published, rather than taking a
-	 * second review of the same verdict. `undefined` for a verdict no older Melian could have recorded.
-	 */
-	legacyFingerprint(): string | undefined {
-		const legacy = (finding: Finding) => {
-			const { evidence, failureScenario, otherClaims } = finding.properties;
-			if (failureScenario !== undefined || otherClaims !== undefined) return false;
-			if (evidence === undefined) return true;
-			return evidence.length === 1 && evidence[0]!.role === "cause" && evidence[0]!.revision === "head";
-		};
-		if (!this.all().every(legacy)) return undefined;
-		// What decided a finding, and what its guardrail matched, are fields no older Melian wrote.
-		const downgrade = (finding: Finding) => {
-			const { decidedBy: _, guardrail: __, ...properties } = finding.properties;
-			const [location] = properties.evidence ?? [];
-			if (location === undefined) return { ...finding.toJSON(), properties };
-			const { role: ___, revision: ____, ...old } = location;
-			return { ...finding.toJSON(), properties: { ...properties, evidence: old } };
-		};
-		const groups = Object.fromEntries(
-			Object.entries(this.findings).map(([resolution, group]) => [resolution, group.map(downgrade)]),
-		);
-		const old = { ...this.toJSON(), findings: groups, dismissed: this.dismissed.map(downgrade) };
-		return createHash("sha256").update(JSON.stringify(old)).digest("hex").slice(0, 16);
-	}
-
-	/**
 	 * A pasteable agent prompt. Every finding value remains untrusted data inside a boundary labelled with a random
 	 * nonce, or with `nonce` where the caller needs the same prompt on every render and keeps the value secret.
 	 */

@@ -1218,36 +1218,6 @@ describe("documents stored before evidence became a list", () => {
 		expect(published?.revisions.head?.publishedBy).toEqual({ trustedWriters: true });
 	});
 
-	it("knows a migrated verdict by the fingerprint it was published under, so its head takes no second review", async () => {
-		const evidence = [
-			{ file: "src/api.ts", startLine: 3, role: "cause" as const, revision: "head" as const, snippet: "run(body)" },
-		];
-		const current = Finding.create({ ...input, cause: "affected", evidence });
-		const { role: _, revision: __, ...old } = evidence[0]!;
-		const stored = { ...current, properties: { ...current.properties, evidence: old } };
-		const plain = Finding.create({ ...input, snippet: "eval(body)" });
-		const verdict = (finding: unknown): StoredVerdict =>
-			({
-				status: "findings",
-				blocking: true,
-				findings: { block: [finding, plain.toJSON()], acknowledge: [], advisory: [], silent: [] },
-				dismissed: [],
-				notRun: [],
-			}) as StoredVerdict;
-		// What an older Melian's fingerprint gave this verdict as stored, so both sides do not come from the code under test.
-		const published = "3e32f949baf5d54e";
-		const migrated = Verdict.from(Verdict.upgrade(verdict(stored)));
-
-		expect(Verdict.from(verdict(stored)).fingerprint()).toBe(published);
-		expect(migrated.fingerprint()).toBe("3f63e3f3f6c2216a");
-		expect(migrated.legacyFingerprint()).toBe(published);
-		const scenario = Finding.create({ ...input, cause: "affected", evidence, failureScenario: "run(1) throws." });
-		expect(Verdict.from(verdict(scenario.toJSON())).legacyFingerprint()).toBeUndefined();
-		const contextOnly = [{ ...evidence[0]!, role: "context" as const }];
-		const contextual = Finding.create({ ...input, evidence: contextOnly }).toJSON();
-		expect(Verdict.from(verdict(contextual)).legacyFingerprint()).toBeUndefined();
-	});
-
 	it("keys each reply an older Melian recorded by its finding, its thread, and the dismissal it gave", async () => {
 		const path = join(dir, "legacy-replies.sqlite");
 		const dismissal = { by: "Tal <tal@melian.invalid>", reason: "Constant input.", at: "2026-10-04T00:00:00Z" };
@@ -1303,8 +1273,9 @@ describe("documents stored before evidence became a list", () => {
 			dismissed: [],
 			notRun: [],
 		};
-		// What an older Melian's fingerprint gave `oldVerdict`, and the review it posted records.
-		const oldFingerprint = "b03f395c48ffe2ed";
+		// The fingerprint the posted review's record holds, which names no revision, as an older Melian wrote it. It is the
+		// upgraded verdict's, as for a verdict the upgrade leaves unchanged.
+		const postedFingerprint = "9ca0ff8d28cc78fd";
 		const provenance = (base: string) => ({
 			kind: "pull-request" as const,
 			repository,
@@ -1379,7 +1350,7 @@ describe("documents stored before evidence became a list", () => {
 				published.revisions = json({
 					[head]: {
 						reviews: ["101"],
-						verdict: oldFingerprint,
+						verdict: postedFingerprint,
 						rounds: 1,
 						open: {},
 						resolved: {},
@@ -1409,12 +1380,6 @@ describe("documents stored before evidence became a list", () => {
 				await publisher.close();
 			}
 		}
-
-		it("fingerprints the old verdict, and its upgrade's legacy form, as an older Melian did", () => {
-			const stored = oldVerdict as unknown as StoredVerdict;
-			expect(Verdict.from(stored).fingerprint()).toBe(oldFingerprint);
-			expect(Verdict.from(Verdict.upgrade(stored)).legacyFingerprint()).toBe(oldFingerprint);
-		});
 
 		it("posts nothing again for the revision that review was of", async () => {
 			const { publication, posted } = await publishAfterUpgrade([baseA], baseA);

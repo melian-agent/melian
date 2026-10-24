@@ -266,9 +266,6 @@ describe("configsFor", { timeout: 60_000 }, () => {
 			const none = await fingerprintOf(sha, []);
 			expect(none).toMatch(/^2:[0-9a-f]{16}$/);
 			expect(await fingerprintOf(sha, [])).toBe(none);
-			expect((await configsFor(repo, { kind: "revision", commit: sha }, [])).legacyFingerprint).toMatch(
-				/^[0-9a-f]{16}$/,
-			);
 		});
 	});
 
@@ -302,14 +299,7 @@ describe("configsFor", { timeout: 60_000 }, () => {
 		const first = await read();
 		expect(first).toMatch(/^2:[0-9a-f]{16}$/);
 		expect(await read()).toBe(first);
-		const legacy = (await configsFor(repo, policy, findings)).legacyFingerprint;
-		expect(legacy).toMatch(/^[0-9a-f]{16}$/);
-		writeFiles(repo, { "melian.yaml": root("block") });
-		expect((await configsFor(repo, policy, findings)).legacyFingerprint).not.toBe(legacy);
-		writeFiles(repo, { "melian.yaml": root("advisory") });
 		expect(await read([...findings].reverse())).toBe(first);
-		const legacyOf = async (order: Finding[]) => (await configsFor(repo, policy, order)).legacyFingerprint;
-		expect(await legacyOf([...findings].reverse())).toBe(await legacyOf(findings));
 		// Only a check entry changes: the merged table, which holds no checks, reads the same.
 		writeFiles(repo, { "melian.yaml": root("block") });
 		const edited = await read();
