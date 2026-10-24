@@ -2,7 +2,7 @@
 
 Status: accepted on 2026-10-24 by the maintainer, who chose option B now and option C as its own plan step.
 
-Amends: [2026-10-07-committed-routes.md](2026-10-07-committed-routes.md), the `medium` route in Melian's own `melian.yaml`.
+Amends: [2026-10-08-verifier-on-codex-subscription.md](2026-10-08-verifier-on-codex-subscription.md), the `medium` route in Melian's own `melian.yaml`.
 Amends: [2026-10-19-reasoning-low-for-heavy-and-triage.md](2026-10-19-reasoning-low-for-heavy-and-triage.md), which left `medium` unset and named no light lens level.
 
 ## Problem
