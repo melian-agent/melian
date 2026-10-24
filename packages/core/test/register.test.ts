@@ -182,6 +182,51 @@ describe("a finding in the terminal, in the register", () => {
 	});
 });
 
+describe("a refuted protected finding in the terminal", () => {
+	const gap: FindingInput = {
+		...retriedCharge,
+		rule: "untested-behaviour",
+		message: "The test passes when the charge is sent twice.",
+		source: { check: "lens.tests" },
+	};
+	const refuted = judged("refuted", "Another test counts the calls.");
+	const verdict = (input: FindingInput, config = defaultConfig) =>
+		new Adjudication({
+			findings: [Finding.create(input).verifiedAs(refuted)],
+			manifest: [],
+			checks: [{ name: "verifier", status: "ran" }],
+			config,
+			verificationRan: true,
+		}).adjudicate();
+
+	it("shows a P2 test gap at its acknowledge floor, with that floor's note", () => {
+		const shown = verdict({ ...gap, severity: "P2" });
+		const [finding] = shown.findings.acknowledge;
+		const lines = finding!.render(emoji).split("\n");
+		expect(lines[0]).toBe(
+			"  \u{1F7E1} P2 | \u{270B} Needs acknowledgement | \u{1F9EA} Tests | \u{2716}\u{FE0F} Refuted | New in this change",
+		);
+		expect(lines).toContain("    Trust floor: acknowledge required; maintainer dismissal needed.");
+		expect(lines).toContain("    \u{2696}\u{FE0F} Verifier (faux/judge): Another test counts the calls.");
+	});
+
+	it("shows a P3 test gap at its advisory floor, with the note that asks no acknowledgement", () => {
+		const shown = verdict({ ...gap, severity: "P3" });
+		const [finding] = shown.findings.advisory;
+		const lines = finding!.render(plain).split("\n");
+		expect(lines[0]).toBe("  P3 | Advisory | Tests | Refuted | New in this change");
+		expect(lines).toContain("    Trust floor: reported-severity policy requires no acknowledgement.");
+		expect(lines).not.toContain("    Trust floor: acknowledge required; maintainer dismissal needed.");
+	});
+
+	it("hides a test gap whose floor is silent", () => {
+		const config = { ...defaultConfig, resolution: { ...defaultConfig.resolution, P2: "silent" as const } };
+		const hidden = verdict({ ...gap, severity: "P2" }, config);
+		expect(hidden.counted()).toEqual([]);
+		expect(hidden.render()).not.toContain("The test passes when the charge is sent twice.");
+	});
+});
+
 describe("a deterministic finding in the terminal", () => {
 	it("renders a static finding with only the parts it has and no verifier segment", () => {
 		const finding = decided(

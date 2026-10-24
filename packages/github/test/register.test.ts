@@ -202,6 +202,50 @@ describe("a finding as a pull request shows it, in the register", () => {
 	});
 });
 
+describe("a refuted protected finding as a pull request shows it", () => {
+	const gap: FindingInput = {
+		...retriedCharge,
+		rule: "untested-behaviour",
+		message: "The test passes when the charge is sent twice.",
+		source: { check: "lens.tests" },
+	};
+	const body = (severity: "P2" | "P3", config = defaultConfig) => {
+		const verdict = new Adjudication({
+			findings: [Finding.create({ ...gap, severity }).verifiedAs(judged("refuted", "Another test counts."))],
+			manifest: [],
+			checks: [{ name: "verifier", status: "ran" }],
+			config,
+			verificationRan: true,
+		}).adjudicate();
+		const findings = verdict.counted().map((finding) => ({ finding, placement: { kind: "body" as const } }));
+		const draft = { pullRequest: 7, revision, base, round: 1, verdict, findings, stillOpen: 0, resolved: [], secret };
+		return renderReviewBody({ ...draft, fingerprint: verdict.fingerprint() }, links);
+	};
+
+	it("posts an acknowledge floor with its status line, its note and the verifier's reason", () => {
+		const text = body("P2");
+		expect(text).toContain(
+			"\u{1F7E1} P2 | \u{270B} Needs acknowledgement | \u{1F9EA} Tests | \u{2716}\u{FE0F} Refuted | New in this change\n",
+		);
+		expect(text).toContain("Trust floor: acknowledge required; maintainer dismissal needed.");
+		expect(text).toContain("\u{2696}\u{FE0F} **Verifier:** Another test counts.");
+	});
+
+	it("posts an advisory floor as an advisory, with the note that asks no acknowledgement", () => {
+		const text = body("P3");
+		expect(text).toContain("- \u{1F535} P3 | \u{1F4AC} Advisory | \u{1F9EA} Tests | \u{2716}\u{FE0F} Refuted | ");
+		expect(text).toContain("Trust floor: reported-severity policy requires no acknowledgement.");
+		expect(text).not.toContain("acknowledge required");
+	});
+
+	it("posts nothing of a silent floor", () => {
+		const config = { ...defaultConfig, resolution: { ...defaultConfig.resolution, P2: "silent" as const } };
+		const text = body("P2", config);
+		expect(text).not.toContain("The test passes when the charge is sent twice.");
+		expect(text).not.toContain("Trust floor");
+	});
+});
+
 describe("a deterministic finding as a pull request shows it", () => {
 	it("posts a blocking guardrail finding with only the parts it has", () => {
 		const finding = decided({
