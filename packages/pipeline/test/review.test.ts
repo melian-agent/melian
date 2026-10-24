@@ -3774,6 +3774,26 @@ describe("the design baseline", () => {
 			rendered.mockRestore();
 		}
 	});
+	it("tells the lens to search a linked design section outside docs/design/", async () => {
+		rmSync(repo, { recursive: true, force: true });
+		repo = baseAndHead(
+			{
+				"docs/design.md": "# Design\n[Skills](guidelines/cli.md#skills)\n",
+				"docs/guidelines/cli.md": "# Skills\n",
+				"src/answer.ts": "export const answer = 42;\n",
+			},
+			{ "src/answer.ts": "export const answer = 43;\n" },
+		);
+		config = { ...config, tiers: { ...config.tiers, full: ["lens.design"] } };
+		const design = "You are the design reviewer";
+		const requests = scriptConversations(fake, [{ match: design, replies: [fauxAssistantMessage("Done.")] }]);
+		await review();
+		const messages = requests[design]![0]!;
+		const prompt = systemPromptOf(messages);
+		expect(quoted(prompt, nonceOf(messages), "listing").join("\n")).toContain("docs/guidelines/cli.md:1 — Skills");
+		const scope = /Search both base and head over ([^:]+):/.exec(prompt)?.[1];
+		expect(scope).toBe('`docs/decisions/` and every file named under "Design sections at base"');
+	});
 	it.each([
 		"[Section](missing.md#section)",
 		"[Trust][policy]\n\n[policy]: design/trust.md#writer-trust",
