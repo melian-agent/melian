@@ -12,6 +12,7 @@ import { CoverageCache } from "./coverage-cache.ts";
 import { EnolaRun } from "./enola-static.ts";
 import type { Context, ConversationId, Harness } from "./harness.ts";
 import { ReviewTranscript } from "./review-coverage.ts";
+import { PrepareSpans } from "./spans.ts";
 import { Run, type StaticRunInput } from "./static.ts";
 import { ToolProvisioning } from "./tool-provisioning.ts";
 import { quoteUntrusted } from "./untrusted.ts";
@@ -49,15 +50,18 @@ export class CallerContext {
 		files: readonly ChangedFile[],
 		context: Context,
 		changedPaths: readonly string[] = files.map((file) => file.path),
+		spans: PrepareSpans = PrepareSpans.start("callers", Date.now()),
 	): Promise<CallerContext> {
 		if (files.length === 0) return CallerContext.unavailable("No changed files selected by lenses");
 		try {
-			const tools = input.tools ?? (await ToolProvisioning.open(input.repoRoot));
-			const readiness = await tools.cache.readiness(tools.tool("enola"), tools.platform);
+			const { tools, readiness } = await spans.time("callers.provision", async () => {
+				const tools = input.tools ?? (await ToolProvisioning.open(input.repoRoot));
+				return { tools, readiness: await tools.cache.readiness(tools.tool("enola"), tools.platform) };
+			});
 			if (readiness !== "verified") return CallerContext.unavailable(`Enola executable ${readiness}`);
 			const run = new Run({ ...input, tool: "enola", tools }, context);
 			const data = await run.inWorktree(async (root, scratch) =>
-				(await EnolaRun.open(run, root, scratch, tools)).callers(files, changedPaths),
+				(await EnolaRun.open(run, root, scratch, tools)).callers(files, changedPaths, spans),
 			);
 			return new CallerContext(data, tools.cache.root);
 		} catch (error) {
