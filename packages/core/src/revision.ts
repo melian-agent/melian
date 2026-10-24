@@ -246,7 +246,7 @@ export async function searchRevisionFiles(
 		const result = await git(repoRoot, args, {
 			maxBytes: present.length * (share + 1) * (revisionLimits.matchChars + 1024),
 		});
-		if (result.code !== 0 && !(result.code === 1 && result.stderr === "")) {
+		if (result.code !== 0 && !result.truncated && !(result.code === 1 && result.stderr === "")) {
 			const message = result.stderr.trim();
 			if (search.regex)
 				throw new RevisionError(
