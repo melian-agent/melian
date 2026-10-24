@@ -6,7 +6,13 @@ scripts/node-range.mjs
     Failure scenario: supported in scripts/node-range.mjs compares the running Node with the engines range through two patterns and a numeric comparison. AGENTS.md says "Compare versions and version ranges with the `semver` package. Never compare version strings by hand." The file states why semver cannot be asked before install, and the standard states no exception for that. A contributor relying on the rule expects every version comparison to go through semver, and this one does not.
     Evidence:
       cause: scripts/node-range.mjs:5-9
+        export function supported(range, version) {
+          const wanted = /^>=([1-9]\d*)$/.exec(range);
+          const running = /^v([1-9]\d{0,3})\.(?:0|[1-9]\d{0,5})\.(?:0|[1-9]\d{0,5})$/.exec(version);
+          return wanted !== null && running !== null && Number(running[1]) >= Number(wanted[1]);
+        }
       context: AGENTS.md:7
+        - Compare versions and version ranges with the `semver` package. Never compare version strings by hand.
     Verifier (faux/scripted): The scripted verifier traced the claim.
     What to do: Compare with semver where it is installed, or change the standard to allow a check that runs before install.
     Rule quoted-rule-violation | Status new

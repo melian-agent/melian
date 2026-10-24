@@ -6,8 +6,11 @@ src/receipt.ts
     Failure scenario: add is exported neither from src/receipt.ts nor from the package entry, src/index.ts, yet the change documents it with TSDoc. AGENTS.md says "TSDoc only on exported package API. Nothing on internals.", so a contributor reading the file takes add for public API, and the next internal helper copies the block.
     Evidence:
       cause: src/receipt.ts:11
+        /** Adds one item's price to a running sum of cents. */
       context: src/index.ts:2
+        export { type Item, total } from "./receipt.ts";
       context: AGENTS.md:7
+        - TSDoc only on exported package API. Nothing on internals.
     Verifier (faux/scripted): The scripted verifier traced the claim.
     What to do: Delete the TSDoc block on add; its name says what it does.
     Rule quoted-rule-violation | Status new

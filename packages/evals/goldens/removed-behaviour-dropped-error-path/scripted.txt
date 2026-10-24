@@ -6,8 +6,17 @@ src/standards.ts
     Failure scenario: A repository's AGENTS.md is a directory, or a file with mode 000. readFileSync throws EISDIR or EACCES, readStandards now returns undefined, and instructions tells the reviewer "This repository has written no standards.", so the review ignores them without a word. The base rethrew anything but ENOENT, and the review failed.
     Evidence:
       cause: src/standards.ts:8-10 at base
+          } catch (error) {
+            if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+            throw error;
       context: src/standards.ts:8-9
+          } catch {
+            return undefined;
       context: src/prompt.ts:5-8
+          const standards = readStandards(root);
+          return standards === undefined
+            ? "Review the change. This repository has written no standards."
+            : `Review the change against these standards:\n\n${standards}`;
     Verifier (faux/scripted): The scripted verifier traced the claim.
     What to do: Restore the ENOENT check and rethrow every other error.
     Rule dropped-error-path | Status new

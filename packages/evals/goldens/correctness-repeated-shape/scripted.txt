@@ -6,9 +6,13 @@ src/errors.ts
     Failure scenario: recentErrors(log, 0) evaluates slice(-0), which is slice(0), and returns every entry rather than none, so a viewer who set the section to 0 to hide it sees the error history. It is one of three readers with this shape; recentMessages in src/messages.ts and recentWarnings in src/warnings.ts fail the same way.
     Evidence:
       cause: src/errors.ts:5
+          return log.entries.filter((entry) => entry.level === "error").slice(-count);
       context: src/messages.ts:5
+          return log.entries.slice(-count);
       context: src/warnings.ts:5
+          return log.entries.filter((entry) => entry.level === "warn").slice(-count);
       context: src/errors.ts:3
+        // `count` is how many entries the viewer asked to see: from 0 to 50, where 0 hides the section.
     Verifier (faux/scripted): The scripted verifier traced the claim.
     What to do: Return an empty list when count is 0, or take entries.slice(Math.max(0, length - count)), in all three readers.
     Rule wrong-result | Status new
@@ -21,9 +25,13 @@ src/messages.ts
     Failure scenario: recentMessages(log, 0) evaluates slice(-0), which is slice(0), and returns every entry rather than none, so a viewer who set the section to 0 to hide it sees the whole log. It is one of three readers with this shape; recentErrors in src/errors.ts and recentWarnings in src/warnings.ts fail the same way.
     Evidence:
       cause: src/messages.ts:5
+          return log.entries.slice(-count);
       context: src/errors.ts:5
+          return log.entries.filter((entry) => entry.level === "error").slice(-count);
       context: src/warnings.ts:5
+          return log.entries.filter((entry) => entry.level === "warn").slice(-count);
       context: src/messages.ts:3
+        // `count` is how many entries the viewer asked to see: from 0 to 50, where 0 hides the section.
     Verifier (faux/scripted): The scripted verifier traced the claim.
     What to do: Return an empty list when count is 0, or take entries.slice(Math.max(0, length - count)), in all three readers.
     Rule wrong-result | Status new
@@ -36,9 +44,13 @@ src/warnings.ts
     Failure scenario: recentWarnings(log, 0) evaluates slice(-0), which is slice(0), and returns every entry rather than none, so a viewer who set the section to 0 to hide it sees the warning history. It is one of three readers with this shape; recentErrors in src/errors.ts and recentMessages in src/messages.ts fail the same way.
     Evidence:
       cause: src/warnings.ts:5
+          return log.entries.filter((entry) => entry.level === "warn").slice(-count);
       context: src/errors.ts:5
+          return log.entries.filter((entry) => entry.level === "error").slice(-count);
       context: src/messages.ts:5
+          return log.entries.slice(-count);
       context: src/warnings.ts:3
+        // `count` is how many entries the viewer asked to see: from 0 to 50, where 0 hides the section.
     Verifier (faux/scripted): The scripted verifier traced the claim.
     What to do: Return an empty list when count is 0, or take entries.slice(Math.max(0, length - count)), in all three readers.
     Rule wrong-result | Status new

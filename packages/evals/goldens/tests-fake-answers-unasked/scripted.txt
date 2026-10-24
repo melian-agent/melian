@@ -6,7 +6,9 @@ src/triage.ts
     Failure scenario: downgrade({ title, body, priority: "P1" }, model) sends only the title and body, while its instructions ask for the priority one step below the ticket's own. The model cannot see that the ticket is P1, so it guesses from the text, and an answer of P3 for a ticket it judges less urgent lowers a P1 two steps, where the instructions allow one.
     Evidence:
       cause: src/triage.ts:20
+            input: { title: ticket.title, body: ticket.body },
       context: src/triage.ts:19
+              "If the ticket is less urgent than its priority says, answer with the priority one step lower. Otherwise answer with its priority.",
     Verifier (faux/scripted): The scripted verifier traced the claim.
     What to do: Send ticket.priority in the input, as input.priority.
     Rule wrong-result | Status new
@@ -19,8 +21,11 @@ test/triage.test.ts
     Failure scenario: downgrade sends only { title, body }, while its instructions ask for the priority one step below the ticket's priority, which the request never carries. The test's fake answers "P3" to every request, so the test passes whatever the request holds: send a P1 ticket, or change the instructions to any other question, and it still returns P3. A real model shown only the title and body cannot know the ticket was P2, so it guesses, and a P1 ticket it judges less urgent can come back P3, two steps down.
     Evidence:
       cause: test/triage.test.ts:20
+            const model: Model = { ask: async () => "P3" };
       context: src/triage.ts:19
+              "If the ticket is less urgent than its priority says, answer with the priority one step lower. Otherwise answer with its priority.",
       context: src/triage.ts:20
+            input: { title: ticket.title, body: ticket.body },
     Verifier (faux/scripted): The scripted verifier traced the claim.
     What to do: Send the priority in downgrade's input, and give the fake an answer that reads request.input.priority, so a request without it fails the test.
     Rule fake-answers-unasked | Status new

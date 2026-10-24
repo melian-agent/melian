@@ -285,7 +285,7 @@ export class ReviewComment {
 
 	// The verifier writes its reasons from code the author controls, so each is one inert line, as in the ledger.
 	#verifier(verification: Verification, rendering: Rendering): string {
-		return `${rendering.emoji ? `${verifierMark.emoji} ` : ""}**${verifierMark.word}:** ${inline(verification.reason)}`;
+		return `${rendering.emoji ? `${verifierMark.emoji} ` : ""}**${verifierMark.word}:** ${code(verification.model)}: ${inline(verification.reason)}`;
 	}
 
 	// Each evidence location's role and a link to its lines at the commit it was read from, rather than quoting the

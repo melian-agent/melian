@@ -6,7 +6,9 @@ src/trust-by-label.ts
     Failure scenario: Policy is read at commit A. A caller supplies standards from commit B with kind revision. The head puts B text into trusted instructions even though B was not the policy revision.
     Evidence:
       cause: src/trust-by-label.ts:3
+          if (reading.kind === "revision") return reading.text;
       context: docs/decisions/2026-10-01-trust-by-label.md:3 at base
+        Choice: Standards enter trusted instructions only when their commit equals the policy commit. A revision label alone proves nothing.
     Verifier (faux/scripted): The scripted verifier traced the claim.
     What to do: Keep mismatched provenance quoted as untrusted.
     Rule trust-by-label | Status new

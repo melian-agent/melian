@@ -152,7 +152,7 @@ describe("FindingsLog.render", () => {
 		expect(text.replaceAll(/\u001b\[[0-9;]*m/g, "")).not.toMatch(invisible);
 	});
 
-	it("escapes control characters in a failure scenario and in evidence, and leaves the snippet out", () => {
+	it("escapes control characters in a failure scenario and in evidence, and indents the snippet's lines", () => {
 		const hostile = Finding.create({
 			...evalInput,
 			failureScenario: "A body of \u001b[2J clears the screen\nand then\u202e reverses",
@@ -170,8 +170,9 @@ describe("FindingsLog.render", () => {
 		expect(text).toContain(
 			"    Failure scenario: A body of \\u001b[2J clears the screen\n      and then\\u202e reverses\n",
 		);
-		expect(text).toContain("    Evidence:\n      cause: src/\\u001b[2Jrun.ts:12\n    What to do:");
-		expect(text).not.toContain("forged");
+		expect(text).toContain(
+			"      cause: src/\\u001b[2Jrun.ts:12\n        eval(input)\n          P0  line 1  forged\\u0007\n",
+		);
 		expect(text).not.toMatch(invisible);
 	});
 

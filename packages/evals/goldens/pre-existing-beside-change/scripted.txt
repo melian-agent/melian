@@ -6,7 +6,9 @@ src/receipt.ts
     Failure scenario: receipt([450]) prints "Total: 45.00" for a total of 4.50, because it divides cents by 10.
     Evidence:
       cause: src/receipt.ts:4
+          return `Total: ${(total(cents) / 10).toFixed(2)}`;
       context: src/total.ts:1
+        export function total(cents: readonly number[]): number {
     Verifier (faux/scripted): The scripted verifier traced the claim.
     What to do: Divide by 100.
     Rule wrong-result | Status new

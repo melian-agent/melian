@@ -6,7 +6,9 @@ packages/core/src/log-tail.ts
     Failure scenario: tail("a\nb\nc", 5) used to clamp the start to 0 and return all three lines; with the clamp deleted it returns ["b", "c"], breaking the doc comment's promise that a log shorter than count lines comes back whole.
     Evidence:
       cause: packages/core/src/tail.ts:7 at base
+          return lines.slice(Math.max(0, lines.length - count));
       context: packages/core/src/log-tail.ts:7
+          return lines.slice(lines.length - count);
     Verifier (faux/scripted): The scripted verifier traced the claim.
     What to do: Restore Math.max(0, lines.length - count).
     Merged report: P2 wrong-result from lens.correctness
@@ -20,8 +22,11 @@ packages/pipeline/src/lens-run.ts
     Failure scenario: Melian before this change reviews head H and stores lens task T's result as { "correctness@v1": { status: "done" } }. After the upgrade, a repeat review of H attaches to T, and failedLenses calls outcome.result.flatMap on that stored object, which throws TypeError: outcome.result.flatMap is not a function, so every repeat review of a head reviewed before the upgrade fails.
     Evidence:
       cause: packages/pipeline/src/lens-run.ts:7
+        export type LensResult = { key: string; outcome: LensOutcome }[];
       context: packages/pipeline/src/lens-run.ts:28
+          return outcome.result.flatMap(({ key, outcome: lens }) =>
       context: packages/pipeline/src/lens-run.ts:14
+          version: 1,
     Verifier (faux/scripted): The scripted verifier traced the claim.
     What to do: Give the new shape a task version of its own and read both shapes in failedLenses, or keep the record.
     Rule stored-shape | Status new

@@ -6,9 +6,17 @@ src/note.ts
     Failure scenario: A note opens with a header whose title line is `title: "Plans: 2027"`. title() in src/cli.ts calls readHeader, which returns the title with its quotation marks kept, `"Plans: 2027"`. yaml's parse returns Plans: 2027. The comment says the module runs before the dependencies are installed, but src/cli.ts imports it beside loadConfig, which calls yaml's parse in the same process, and package.json runs no script before install.
     Evidence:
       cause: src/note.ts:8-11
+          for (const line of block.split("\n")) {
+            const colon = line.indexOf(":");
+            if (colon === -1) continue;
+            header[line.slice(0, colon).trim()] = line.slice(colon + 1).trim();
       context: src/note.ts:2
+        // yaml cannot be asked here: this module runs before the dependencies are installed.
       context: src/cli.ts:2-3
+        import { loadConfig } from "./config.ts";
+        import { readHeader } from "./note.ts";
       context: package.json:5 at base
+          "dependencies": { "yaml": "2.9.1" }
     Verifier (faux/scripted): The scripted verifier traced the claim.
     What to do: Parse the header block with yaml's parse, as loadConfig does, and delete the comment.
     Rule reimplements-an-authority | Status new

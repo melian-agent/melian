@@ -6,7 +6,9 @@ src/cart.ts
     Failure scenario: summary([{ name: "Tea", cents: 450 }]) calls formatPrice(450) with no currency: tsc rejects the call, and at run time Intl.NumberFormat throws a TypeError because the currency style needs a currency code.
     Evidence:
       cause: src/price.ts:1
+        export function formatPrice(cents: number, currency: string): string {
       context: src/cart.ts:10
+          return `Total: ${formatPrice(total)}`;
     Verifier (faux/scripted): The scripted verifier traced the claim.
     What to do: Pass the cart's currency to formatPrice, or give currency a default.
     Rule broken-caller | Status new
@@ -19,7 +21,9 @@ src/price.ts
     Failure scenario: formatPrice(500, "JPY") divides by 100 and renders "JPY 5" for a 500 yen price, since yen has no minor unit.
     Evidence:
       cause: src/price.ts:2
+          return new Intl.NumberFormat("en-AU", { style: "currency", currency }).format(cents / 100);
       context: src/price.ts:2 at base
+          return `$${(cents / 100).toFixed(2)}`;
     Verifier (faux/scripted): The scripted verifier traced the claim.
     What to do: Divide by 10 to the power of the currency's minor units, read from the formatter's resolvedOptions().maximumFractionDigits.
     Rule wrong-result | Status new

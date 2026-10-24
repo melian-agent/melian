@@ -48,12 +48,11 @@ export function prose(text: string, indent: string): string {
 // reading `P0  line 1  forged` must not pass for another finding's header.
 export const messageContinuation = "    | ";
 
-// Each location's role and lines, never the code read there: the reader opens the file.
 export function evidenceLines(evidence: readonly EvidenceLocation[]): string[] {
-	return evidence.map(
-		({ file, startLine, endLine = startLine, role, revision }) =>
-			`      ${role}: ${visibleText(file)}:${startLine}${endLine === startLine ? "" : `-${endLine}`}${revision === "base" ? " at base" : ""}`,
-	);
+	return evidence.flatMap(({ file, startLine, endLine = startLine, role, revision, snippet }) => [
+		`      ${role}: ${visibleText(file)}:${startLine}${endLine === startLine ? "" : `-${endLine}`}${revision === "base" ? " at base" : ""}`,
+		`        ${prose(snippet, "        ")}`,
+	]);
 }
 
 export function plural(count: number, noun: string, nouns = `${noun}s`): string {

@@ -6,8 +6,11 @@ src/manifest.ts
     Failure scenario: A user installs the published package. The tarball holds dist and bin only, because manifest.json is not in the files list, so readManifest's readFileSync throws ENOENT on the first call to skills(). Every test in the checkout passes, since the file sits beside the source there.
     Evidence:
       cause: src/manifest.ts:6
+          const file = new URL("../manifest.json", import.meta.url);
       context: package.json:5
+          "files": ["dist", "bin"],
       context: docs/decisions/2026-10-01-package-files.md:3
+        Choice: the published package contains the `files` list of its `package.json` and nothing else. Code in the package reads only what that list ships.
     Verifier (faux/scripted): The scripted verifier traced the claim.
     What to do: Add manifest.json to the files list, and add a test that reads it from a packed tarball.
     Rule unshipped-artifact | Status new

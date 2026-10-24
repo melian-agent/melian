@@ -910,7 +910,7 @@ describe("verification comments", () => {
 		expect(markersIn(comment)).toHaveLength(1);
 	});
 
-	it("shows the judgement, escapes its reason and correction, and leaves the model to the ledger", () => {
+	it("shows the judgement and escapes its model, reason and correction", () => {
 		const finding = Finding.create({
 			...input,
 			verification: {
@@ -925,9 +925,8 @@ describe("verification comments", () => {
 		const rendered = ReviewComment.from(finding).render({ revision, base, links, secret });
 		expect(rendered).toContain(" | \u{26A0}\u{FE0F} Verifier plausible | ");
 		expect(rendered).toContain(
-			`\u{2696}\u{FE0F} **Verifier:** ${renderProse(finding.properties.verification!.reason)}\n`,
+			`\u{2696}\u{FE0F} **Verifier:** \`\`fake/judge\`model\`\`: ${renderProse(finding.properties.verification!.reason)}\n`,
 		);
-		expect(rendered).not.toContain("fake/judge");
 		expect(rendered).toContain(`**Correction:** ${renderProse(finding.properties.verification!.correction!)}`);
 		expect(markersIn(rendered)).toHaveLength(1);
 	});

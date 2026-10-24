@@ -96,7 +96,7 @@ describe("a finding as a pull request shows it, in the register", () => {
 				"",
 				`**Evidence:** cause, [\`payments/submit.ts\` lines 31-44](${links.web}/blob/${revision}/payments/submit.ts#L31-L44) at the head; context, [\`payments/submit.ts\` lines 28-35](${links.web}/blob/${base}/payments/submit.ts#L28-L35) at the base.`,
 				"",
-				"\u{2696}\u{FE0F} **Verifier:** The second call creates a new intent.",
+				"\u{2696}\u{FE0F} **Verifier:** `faux/judge`: The second call creates a new intent.",
 				"",
 				"**What to do:** Restore findOpenIntent, or pass the intent ID as the idempotency key.",
 				"",
@@ -133,7 +133,7 @@ describe("a finding as a pull request shows it, in the register", () => {
 				"",
 				"**Failure scenario:** The cache is down. cache.set rejects, and no item syncs.",
 				"",
-				"\u{2696}\u{FE0F} **Verifier:** It did not read the cache client, which may swallow write errors itself.",
+				"\u{2696}\u{FE0F} **Verifier:** `faux/judge`: It did not read the cache client, which may swallow write errors itself.",
 				"",
 				"**What to do:** Catch and log the error, as readRecord does.",
 				"",
@@ -197,7 +197,7 @@ describe("a finding as a pull request shows it, in the register", () => {
 		expect(lines[0]).toBe(
 			"\u{1F7E0} P1 | \u{270B} Needs acknowledgement | \u{1F6E1}\u{FE0F} Trust boundary | \u{2716}\u{FE0F} Refuted | New in this change",
 		);
-		expect(lines).toContain("\u{2696}\u{FE0F} **Verifier:** The comment is documentation.");
+		expect(lines).toContain("\u{2696}\u{FE0F} **Verifier:** `faux/judge`: The comment is documentation.");
 		expect(lines).toContain("Trust floor: acknowledge required; maintainer dismissal needed.");
 	});
 });
@@ -228,7 +228,7 @@ describe("a refuted protected finding as a pull request shows it", () => {
 			"\u{1F7E1} P2 | \u{270B} Needs acknowledgement | \u{1F9EA} Tests | \u{2716}\u{FE0F} Refuted | New in this change\n",
 		);
 		expect(text).toContain("Trust floor: acknowledge required; maintainer dismissal needed.");
-		expect(text).toContain("\u{2696}\u{FE0F} **Verifier:** Another test counts.");
+		expect(text).toContain("\u{2696}\u{FE0F} **Verifier:** `faux/judge`: Another test counts.");
 	});
 
 	it("posts an advisory floor as an advisory, with the note that asks no acknowledgement", () => {
@@ -237,7 +237,7 @@ describe("a refuted protected finding as a pull request shows it", () => {
 		const lines = text.split("\n");
 		const entry = lines.findIndex((line) => line.startsWith("- \u{1F535} P3 | "));
 		expect(lines.slice(entry + 1, entry + 3)).toEqual([
-			"  \u{2696}\u{FE0F} **Verifier:** Another test counts.",
+			"  \u{2696}\u{FE0F} **Verifier:** `faux/judge`: Another test counts.",
 			"  Trust floor: reported-severity policy requires no acknowledgement.",
 		]);
 		expect(text).toContain("Trust floor: reported-severity policy requires no acknowledgement.");
@@ -344,7 +344,7 @@ describe("publish.emoji", () => {
 		const finding = decided(retriedCharge, judged("confirmed", "Traced."));
 		const plain = comment(finding, false);
 		expect(plain.split("\n")[0]).toBe("P1 | Blocks merge | Correctness | Verifier confirmed | New in this change");
-		expect(plain).toContain("\n**Verifier:** Traced.\n");
+		expect(plain).toContain("\n**Verifier:** `faux/judge`: Traced.\n");
 		expect(plain).not.toMatch(/\p{Emoji_Presentation}|\u{FE0F}/u);
 	});
 

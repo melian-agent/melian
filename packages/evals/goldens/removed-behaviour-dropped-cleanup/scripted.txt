@@ -6,8 +6,16 @@ src/worktree.ts
     Failure scenario: lintCommit runs Biome with a two-minute timeout. On a commit where Biome runs longer, run rejects, the task throws, and inWorktree rejects before git worktree remove runs, so the review-* worktree stays in git worktree list and on disk; every timed-out lint adds one more. The base removed it in a finally block.
     Evidence:
       cause: src/worktree.ts:10-14 at base
+          try {
+            return await task(dir);
+          } finally {
+            execFileSync("git", ["worktree", "remove", "--force", dir], { cwd: repo });
+          }
       context: src/worktree.ts:10-11
+          const result = await task(dir);
+          execFileSync("git", ["worktree", "remove", "--force", dir], { cwd: repo });
       context: src/lint.ts:10
+            const { stdout } = await run("npx", ["--no", "biome", "lint", "."], { cwd: dir, timeout: 120_000 });
     Verifier (faux/scripted): The scripted verifier traced the claim.
     What to do: Restore the try and finally around await task(dir), with the removal in finally.
     Rule dropped-cleanup | Status new

@@ -6,7 +6,22 @@ src/overlap.ts
     Failure scenario: Every test in test/overlap.test.ts passes a location without revision, so none reaches the base branch. If it read hunk.newStart and hunk.newLines instead of the old ones, a base location on deleted line 12 of the edit hunk would no longer count, and a finding the deletion caused would read as unrelated, yet all three tests would still pass.
     Evidence:
       cause: src/overlap.ts:20-21
+            const start = location.revision === "base" ? hunk.oldStart : hunk.newStart;
+            const count = location.revision === "base" ? hunk.oldLines : hunk.newLines;
       context: test/overlap.test.ts:7-19
+        describe("overlapsChange", () => {
+          it("counts a location on a line the change wrote", () => {
+            expect(overlapsChange([edit], { line: 11 })).toBe(true);
+          });
+        
+          it("counts a range that reaches into the change", () => {
+            expect(overlapsChange([edit], { line: 5, endLine: 10 })).toBe(true);
+          });
+        
+          it("does not count a line just past the change", () => {
+            expect(overlapsChange([edit], { line: 12 })).toBe(false);
+          });
+        });
     Verifier (faux/scripted): The scripted verifier traced the claim.
     What to do: Add a test for a base location: { line: 12, revision: "base" } overlaps the edit hunk, and { line: 13, revision: "base" } does not.
     Rule untested-behaviour | Status new

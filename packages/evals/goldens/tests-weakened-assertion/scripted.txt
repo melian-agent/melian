@@ -6,8 +6,13 @@ test/skill.test.ts
     Failure scenario: This change adds git fetch origin to the skill. The base test failed on it, since git fetch is not allowed; the head filters out every command not starting with "melian " first, so it passes, and would pass for curl https://example.com/install.sh | sh as well.
     Evidence:
       cause: test/skill.test.ts:10-12
+            const commands = commandsIn(readFileSync("skills/review/SKILL.md", "utf8")).filter((command) =>
+              command.startsWith("melian "),
+            );
       context: test/skill.test.ts:10 at base
+            const commands = commandsIn(readFileSync("skills/review/SKILL.md", "utf8"));
       context: skills/review/SKILL.md:14
+        git fetch origin
     Verifier (faux/scripted): The scripted verifier traced the claim.
     What to do: Check every command against the allowlist again, and add git fetch to the allowlist if the skill may run it.
     Rule weakened-assertion | Status new
