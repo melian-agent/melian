@@ -170,6 +170,13 @@ it.each([
 		untimed: [{ startedAt: 1000, endedAt: 4000, durationMs: 3000 }],
 	},
 	{
+		name: "a stage that starts with the record",
+		spans: [],
+		stages: [stage("first", 0, 3000)],
+		endedAt: 3000,
+		untimed: [],
+	},
+	{
 		name: "a stage still running",
 		spans: [[0, 100]],
 		stages: [stage("running", 50)],
