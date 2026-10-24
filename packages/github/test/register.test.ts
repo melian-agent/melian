@@ -247,11 +247,17 @@ describe("a refuted protected finding as a pull request shows it", () => {
 	it("keeps an ordinary advisory to one line", () => {
 		const verdict = new Adjudication({
 			findings: [
-				Finding.create({ ...gap, rule: "docs-match-code", severity: "P3", source: { check: "lens.conventions" } }),
+				Finding.create({
+					...gap,
+					rule: "docs-match-code",
+					severity: "P3",
+					source: { check: "lens.conventions" },
+				}).verifiedAs(judged("confirmed", "The guide says 30.")),
 			],
 			manifest: [],
-			checks: [],
+			checks: [{ name: "verifier", status: "ran" }],
 			config: defaultConfig,
+			verificationRan: true,
 		}).adjudicate();
 		const draft = {
 			pullRequest: 7,
@@ -266,7 +272,9 @@ describe("a refuted protected finding as a pull request shows it", () => {
 		};
 		const text = renderReviewBody({ ...draft, fingerprint: verdict.fingerprint() }, links);
 		const lines = text.split("\n");
-		const entry = lines.findIndex((line) => line.startsWith("- \u{1F535} P3 | "));
+		const entry = lines.findIndex((line) =>
+			line.startsWith("- \u{1F535} P3 | \u{1F4AC} Advisory | \u{1F4CF} Conventions | \u{2705}"),
+		);
 		expect(entry).toBeGreaterThan(0);
 		expect(lines[entry + 1] ?? "").not.toMatch(/^ {2}/);
 	});
