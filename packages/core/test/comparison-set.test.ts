@@ -611,6 +611,45 @@ describe("one lens against one reviewer", () => {
 		});
 	});
 
+	it("sums every round the reviewer took part in, a stored one without participant records included", () => {
+		const round1 = (() => {
+			const found = design(12);
+			const codex = report({ line: 12, title: "Codex 12" });
+			const comparison = round({ externals: [codex], findings: [found] });
+			comparison.adjudicate(codex.id, { ...by, verdict: "valid" });
+			comparison.adjudicate(found.id, { ...by, verdict: "valid" });
+			return entry("one", comparison, [found]);
+		})();
+		const round2 = (() => {
+			const codex = report({ line: 30, title: "Codex 30" });
+			const comparison = round({ externals: [codex] });
+			comparison.adjudicate(codex.id, { ...by, verdict: "valid", reason: "owned-missed" });
+			// A comparison an older Melian stored records no participants on its import.
+			const stored = comparison.toJSON();
+			const legacy = Comparison.from({
+				...stored,
+				imports: Object.fromEntries(
+					Object.entries(stored.imports).map(([source, { reviewers: _, ...each }]) => [source, each]),
+				),
+			});
+			return entry("one", legacy, []);
+		})();
+		expect(new ComparisonSet([round1, round2]).againstReviewer("lens.design", "codex")).toEqual({
+			check: "lens.design",
+			reviewer: "codex",
+			comparisons: 2,
+			reviewerValid: 2,
+			checkFound: 1,
+			othersFound: 0,
+			checkValid: 1,
+			reviewerFound: 1,
+			pending: 0,
+		});
+		expect(new ComparisonSet([round1, round2]).renderAgainst("lens.design", "codex")).toContain(
+			"codex's valid defects: 2. lens.design found 1 (0.500); only Melian's other checks found 0; no check found 1.",
+		);
+	});
+
 	it("prints no share for an empty side, and selects changesets as the other statistics do", () => {
 		const { comparison, findings } = scenario();
 		const set = new ComparisonSet([entry("one", comparison, findings)]);

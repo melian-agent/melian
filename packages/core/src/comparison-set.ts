@@ -154,9 +154,11 @@ export class ComparisonSet {
 		let comparisons = 0;
 		for (const { comparison, verdict, unattributed } of this.entries) {
 			if (verdict === undefined || unattributed !== undefined) continue;
-			// A round the reviewer took no part in says nothing about what it would have found.
+			// A round the reviewer took no part in says nothing about what it would have found. An import an older Melian
+			// stored names no participants, so a finding of the reviewer's also shows it took part.
 			const imported = Object.values(comparison.importsBySource()).flatMap((each) => each.reviewers ?? []);
-			if (!imported.some((each) => each.name === reviewer)) continue;
+			const took = [...imported, ...comparison.externalFindings().map((finding) => finding.reviewer)];
+			if (!took.some((each) => each.name === reviewer)) continue;
 			comparisons++;
 			const mine = new Set(
 				verdict
