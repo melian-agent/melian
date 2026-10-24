@@ -126,7 +126,7 @@ describe("FindingsLog.render", () => {
 	it("indents the later lines of every part, and of the verifier's reason and correction, inside the finding", () => {
 		const finding = Finding.create({
 			...evalInput,
-			explanation: { ...evalInput.explanation, whyHere: "First.\nSecond." },
+			explanation: { ...evalInput.explanation, whyHere: "First.\nSecond.", whatToDo: "Do.\nThen." },
 			verification: {
 				verdict: "confirmed",
 				reason: "Traced.\nAgain.",
@@ -140,6 +140,7 @@ describe("FindingsLog.render", () => {
 		expect(text).toContain("    Why here: First.\n      Second.\n");
 		expect(text).toContain("    Verifier (fake/judge): Traced.\n      Again.\n");
 		expect(text).toContain("    Correction: Use it.\n      Then this.\n");
+		expect(text).toContain("    What to do: Do.\n      Then.\n");
 	});
 
 	it.each([false, true])("escapes ESC, BEL, newline, tab, and bidi overrides in a path, colour %s", (color) => {
