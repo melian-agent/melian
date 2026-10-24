@@ -6,26 +6,28 @@ Block: 1 finding
 
 services/payments/src/total.ts
 
-  P1  line 1  reuse  (introduced, new, block, confirmed)
-    Decided by: services/payments/melian.yaml: resolution.P1, the table
-    Verified: scripted/judge: The scripted verifier judged the claim.
-  reuse, as lens.cleanup reports it.
+  P1 | Blocks merge | cleanup | Verifier confirmed | New in this change
+  Line 1: reuse, as lens.cleanup reports it.
     What: Scripted.
     Why here: Scripted.
     Failure scenario: Scripted.
+    Verifier (scripted/judge): The scripted verifier judged the claim.
     What to do: Scripted.
+    Decided by: services/payments/melian.yaml: resolution.P1, the table
+    Rule reuse | Status new
 
 Advisory: 1 finding
 
 services/payments/src/ledger.ts
 
-  P2  line 1  reuse  (introduced, new, advisory, confirmed)
-    Decided by: melian.yaml: resolution.P2, the table, under the ceiling resolution.checks.lens.cleanup.ceiling
-    Verified: scripted/judge: The scripted verifier judged the claim.
-  reuse, as lens.cleanup reports it.
+  P2 | Advisory | cleanup | Verifier confirmed | New in this change
+  Line 1: reuse, as lens.cleanup reports it.
     What: Scripted.
     Why here: Scripted.
     Failure scenario: Scripted.
+    Verifier (scripted/judge): The scripted verifier judged the claim.
     What to do: Scripted.
+    Decided by: melian.yaml: resolution.P2, the table, under the ceiling resolution.checks.lens.cleanup.ceiling
+    Rule reuse | Status new
 
 2 findings in 2 files.

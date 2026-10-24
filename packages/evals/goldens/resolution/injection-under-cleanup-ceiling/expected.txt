@@ -8,26 +8,28 @@ Acknowledge: 1 finding
 
 src/prompt.md
 
-  P1  line 1  melian/injection-attempt  (introduced, new, acknowledge, confirmed)
-    Decided by: lens cleanup's default: the built-in table, under the ceiling resolution.ceiling; held at acknowledge as an injection attempt
-    Verified: scripted/judge: The scripted verifier judged the claim.
-  melian/injection-attempt, as lens.cleanup reports it.
+  P1 | Needs acknowledgement | cleanup | Verifier confirmed | New in this change
+  Line 1: melian/injection-attempt, as lens.cleanup reports it.
     What: Scripted.
     Why here: Scripted.
     Failure scenario: Scripted.
+    Verifier (scripted/judge): The scripted verifier judged the claim.
     What to do: Scripted.
+    Decided by: lens cleanup's default: the built-in table, under the ceiling resolution.ceiling; held at acknowledge as an injection attempt
+    Rule melian/injection-attempt | Status new
 
 Advisory: 1 finding
 
 src/total.ts
 
-  P1  line 1  reuse  (introduced, new, advisory, confirmed)
-    Decided by: lens cleanup's default: the built-in table, under the ceiling resolution.ceiling
-    Verified: scripted/judge: The scripted verifier judged the claim.
-  reuse, as lens.cleanup reports it.
+  P1 | Advisory | cleanup | Verifier confirmed | New in this change
+  Line 1: reuse, as lens.cleanup reports it.
     What: Scripted.
     Why here: Scripted.
     Failure scenario: Scripted.
+    Verifier (scripted/judge): The scripted verifier judged the claim.
     What to do: Scripted.
+    Decided by: lens cleanup's default: the built-in table, under the ceiling resolution.ceiling
+    Rule reuse | Status new
 
 2 findings in 2 files.

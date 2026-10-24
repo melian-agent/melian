@@ -6,25 +6,27 @@ Block: 1 finding
 
 src/total.ts
 
-  P1  line 1  reuse  (introduced, new, block, unverified)
-    Merged report: P1 biome/security/noGlobalEval from static.biome
-    Decided by: the built-in table; as static.biome reported it under biome/security/noGlobalEval
-  reuse, as lens.cleanup reports it.
+  P1 | Blocks merge | cleanup | Not verified | New in this change
+  Line 1: reuse, as lens.cleanup reports it.
     What: Scripted.
     Why here: Scripted.
     Failure scenario: Scripted.
     What to do: Scripted.
+    Decided by: the built-in table; as static.biome reported it under biome/security/noGlobalEval
+    Rule reuse | Status new
+    Merged report: P1 biome/security/noGlobalEval from static.biome
 
 Advisory: 1 finding
 
 src/receipt.ts
 
-  P1  line 1  reuse  (introduced, new, advisory, unverified)
-    Decided by: the built-in table; capped at advisory, since no verifier judged it
-  reuse, as lens.cleanup reports it.
+  P1 | Advisory | cleanup | Not verified | New in this change
+  Line 1: reuse, as lens.cleanup reports it.
     What: Scripted.
     Why here: Scripted.
     Failure scenario: Scripted.
     What to do: Scripted.
+    Decided by: the built-in table; capped at advisory, since no verifier judged it
+    Rule reuse | Status new
 
 2 findings in 2 files.

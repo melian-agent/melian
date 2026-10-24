@@ -48,6 +48,8 @@ export interface GitHubProviderOptions {
 	readonly webUrl?: string;
 	/** Replaces `fetch` for every request, so a test can answer them. */
 	readonly fetch?: typeof fetch;
+	/** Show emojis in the comments and review body it posts, as `publish.emoji: on` asks. On by default. */
+	readonly emoji?: boolean;
 }
 
 function statusOf(error: unknown): number | undefined {
@@ -123,6 +125,7 @@ export class GitHubProvider implements ReviewProvider {
 	readonly repo: string;
 	private readonly octokit: Octokit;
 	private readonly links: RepositoryLinks;
+	private readonly emoji: boolean;
 	// Who Melian posts as: from /user, or from the author of a review it posted. /user is asked once per provider, its
 	// failure remembered too: an installation token always fails it, and asking again for every marker cost one request
 	// each. A review posted later still teaches the viewer.
@@ -142,6 +145,7 @@ export class GitHubProvider implements ReviewProvider {
 			...(options.fetch === undefined ? {} : { request: { fetch: options.fetch } }),
 		});
 		this.links = { web: `${options.webUrl ?? "https://github.com"}/${options.owner}/${options.repo}` };
+		this.emoji = options.emoji !== false;
 	}
 
 	private async mergeGroupRead<T>(what: string, request: (client: Octokit) => Promise<T>): Promise<T> {
@@ -334,6 +338,7 @@ export class GitHubProvider implements ReviewProvider {
 						base: draft.base,
 						links: this.links,
 						secret: draft.secret,
+						emoji: this.emoji,
 					}),
 				},
 			];
@@ -352,13 +357,16 @@ export class GitHubProvider implements ReviewProvider {
 			);
 		let created: Awaited<ReturnType<typeof create>>;
 		try {
-			created = await create(renderReviewBody(draft, this.links), comments);
+			created = await create(renderReviewBody(draft, this.links, { emoji: this.emoji }), comments);
 		} catch (error) {
 			// GitHub refuses the whole review with a 422 when it cannot place one comment, such as on a line an
 			// outdated diff no longer has. Every finding then goes in the body, which has no line to refuse.
 			if (!(error instanceof GitHubError && error.status === 422 && comments.length > 0)) throw error;
 			const findings = draft.findings.map((placed) => ({ ...placed, placement: { kind: "body" as const } }));
-			created = await create(renderReviewBody({ ...draft, findings }, this.links, { inlineRefused: true }), []);
+			created = await create(
+				renderReviewBody({ ...draft, findings }, this.links, { inlineRefused: true, emoji: this.emoji }),
+				[],
+			);
 		}
 		const review = created.data;
 		this.viewer ??= review.user?.login;

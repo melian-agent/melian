@@ -1,9 +1,7 @@
 src/receipt.ts
 
-  P3  line 11  quoted-rule-violation  (introduced, new, advisory, confirmed)
-    Verified: faux/scripted: The scripted verifier traced the claim.
-  add carries a TSDoc block, and it is internal to src/receipt.ts.
-    What: add carries a TSDoc block, and it is internal to src/receipt.ts.
+  P3 | Advisory | Conventions | Verifier confirmed | New in this change
+  Line 11: add carries a TSDoc block, and it is internal to src/receipt.ts.
     Why here: AGENTS.md says "TSDoc only on exported package API. Nothing on internals.", and this change added the block.
     Failure scenario: add is exported neither from src/receipt.ts nor from the package entry, src/index.ts, yet the change documents it with TSDoc. AGENTS.md says "TSDoc only on exported package API. Nothing on internals.", so a contributor reading the file takes add for public API, and the next internal helper copies the block.
     Evidence:
@@ -13,6 +11,8 @@ src/receipt.ts
         export { type Item, total } from "./receipt.ts";
       context: AGENTS.md:7
         - TSDoc only on exported package API. Nothing on internals.
+    Verifier (faux/scripted): The scripted verifier traced the claim.
     What to do: Delete the TSDoc block on add; its name says what it does.
+    Rule quoted-rule-violation | Status new
 
 1 finding in 1 file.

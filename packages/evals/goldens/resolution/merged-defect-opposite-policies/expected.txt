@@ -8,37 +8,40 @@ Acknowledge: 3 findings
 
 aliased/third.ts
 
-  P1  line 1  reuse  (introduced, new, acknowledge, confirmed)
-    Merged report: P1 biome/style/useConst from static.biome
-    Decided by: melian.yaml: resolution.checks.static.biome.P1, the check entry; as static.biome reported it under biome/style/useConst
-    Verified: scripted/judge: The scripted verifier judged the claim.
-  reuse, as lens.cleanup reports it.
+  P1 | Needs acknowledgement | cleanup | Verifier confirmed | New in this change
+  Line 1: reuse, as lens.cleanup reports it.
     What: Scripted.
     Why here: Scripted.
     Failure scenario: Scripted.
+    Verifier (scripted/judge): The scripted verifier judged the claim.
     What to do: Scripted.
+    Decided by: melian.yaml: resolution.checks.static.biome.P1, the check entry; as static.biome reported it under biome/style/useConst
+    Rule reuse | Status new
+    Merged report: P1 biome/style/useConst from static.biome
 
 src/first.ts
 
-  P1  line 1  biome/style/useConst  (introduced, new, acknowledge, confirmed)
-    Merged report: P1 reuse from lens.cleanup
-    Decided by: melian.yaml: resolution.checks.static.biome.P1, the check entry
-    Verified: scripted/judge: The scripted verifier judged the claim.
-  biome/style/useConst, as static.biome reports it.
+  P1 | Needs acknowledgement | Biome | Verifier confirmed | New in this change
+  Line 1: biome/style/useConst, as static.biome reports it.
     What: Scripted.
     Why here: Scripted.
+    Verifier (scripted/judge): The scripted verifier judged the claim.
     What to do: Scripted.
+    Decided by: melian.yaml: resolution.checks.static.biome.P1, the check entry
+    Rule biome/style/useConst | Status new
+    Merged report: P1 reuse from lens.cleanup
 
 src/second.ts
 
-  P1  line 1  reuse  (introduced, new, acknowledge, confirmed)
-    Merged report: P1 biome/style/useConst from static.biome
-    Decided by: melian.yaml: resolution.checks.static.biome.P1, the check entry; as static.biome reported it under biome/style/useConst
-    Verified: scripted/judge: The scripted verifier judged the claim.
-  reuse, as lens.cleanup reports it.
+  P1 | Needs acknowledgement | cleanup | Verifier confirmed | New in this change
+  Line 1: reuse, as lens.cleanup reports it.
     What: Scripted.
     Why here: Scripted.
     Failure scenario: Scripted.
+    Verifier (scripted/judge): The scripted verifier judged the claim.
     What to do: Scripted.
+    Decided by: melian.yaml: resolution.checks.static.biome.P1, the check entry; as static.biome reported it under biome/style/useConst
+    Rule reuse | Status new
+    Merged report: P1 biome/style/useConst from static.biome
 
 3 findings in 3 files.

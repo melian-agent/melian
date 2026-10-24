@@ -299,6 +299,50 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 		expect(error.message).toContain("only the root melian.yaml may set it");
 	});
 
+	it("reads the emoji switches from the root, defaulting to auto in the terminal and on in pull requests", async () => {
+		expect(defaultConfig.output).toEqual({ emoji: "auto" });
+		expect(defaultConfig.publish.emoji).toBe("on");
+		writeFiles(repo, { "melian.yaml": lines("output:", "  emoji: off", "publish:", "  emoji: off") });
+		const { config } = await load("services/a.ts");
+		expect(config.output).toEqual({ emoji: "off" });
+		expect(config.publish).toEqual({ ...defaultConfig.publish, emoji: "off" });
+	});
+
+	it("takes every word an emoji switch allows", async () => {
+		for (const [output, publish] of [
+			["auto", "on"],
+			["on", "off"],
+			["off", "on"],
+		]) {
+			writeFiles(repo, { "melian.yaml": lines("output:", `  emoji: ${output}`, "publish:", `  emoji: ${publish}`) });
+			const { config } = await load(".");
+			expect([config.output.emoji, config.publish.emoji]).toEqual([output, publish]);
+		}
+	});
+
+	it("refuses an emoji switch that is not one of its words", async () => {
+		writeFiles(repo, { "melian.yaml": lines("output:", "  emoji: yes") });
+		expect(await rejection(load("."))).toMatchObject({ code: "invalidValue", file: "melian.yaml" });
+		writeFiles(repo, { "melian.yaml": lines("publish:", "  emoji: auto") });
+		expect(await rejection(load("."))).toMatchObject({ code: "invalidValue", file: "melian.yaml" });
+	});
+
+	it("refuses output in a nested melian.yaml, since a review reads it from the root alone", async () => {
+		writeFiles(repo, { "services/melian.yaml": lines("output:", "  emoji: on") });
+		const error = await rejection(load("services/a.ts"));
+		expect(error).toMatchObject({ code: "invalidValue", key: "output", file: "services/melian.yaml" });
+		expect(error.message).toContain("only the root melian.yaml may set it");
+	});
+
+	it("refuses publish.emoji in a nested melian.yaml, and leaves the walkthrough to it", async () => {
+		writeFiles(repo, { "services/melian.yaml": lines("publish:", "  emoji: off") });
+		const error = await rejection(load("services/a.ts"));
+		expect(error).toMatchObject({ code: "invalidValue", key: "publish.emoji", file: "services/melian.yaml" });
+		expect(error.message).toContain("only the committed root melian.yaml sets it");
+		writeFiles(repo, { "services/melian.yaml": lines("publish:", "  walkthrough: { diagrams: false }") });
+		expect((await load("services/a.ts")).config.publish.walkthrough.diagrams).toBe(false);
+	});
+
 	it("refuses a ceiling of skip, which would let triage switch a lens off past its floor", async () => {
 		writeFiles(repo, { "melian.yaml": lines("lenses:", "  tests:", "    level: { ceiling: skip }") });
 		const error = await rejection(load("."));
@@ -655,6 +699,14 @@ describe("melian.local.yaml", () => {
 		expect(config.triage).toEqual({ escalateAt: "P2" });
 	});
 
+	it("may set output.emoji, and refuses publish.emoji", async () => {
+		writeFiles(repo, { "melian.local.yaml": lines("output:", "  emoji: on") });
+		expect((await loadConfig(repo, { kind: "worktree" }, "a.ts")).config.output).toEqual({ emoji: "on" });
+		writeFiles(repo, { "melian.local.yaml": lines("publish:", "  emoji: off") });
+		const error = await rejection(loadConfig(repo, { kind: "worktree" }, "a.ts"));
+		expect(error).toMatchObject({ code: "invalidValue", key: "publish.emoji", file: "melian.local.yaml" });
+	});
+
 	it("is never read from a revision, even one that commits it", async () => {
 		commitLocalFile();
 		const { config, sources } = await loadConfig(repo, { kind: "revision", commit: "HEAD" }, "a.ts");
@@ -726,6 +778,17 @@ describe("the user-level preference file", () => {
 		writeFiles(home, { "config.yaml": lines("triage:", "  escalateAt: P2") });
 		const { config } = await loadConfig(repo, worktree(), "services/pay/a.ts");
 		expect(config.triage).toEqual({ escalateAt: "P2" });
+	});
+
+	it("may set output.emoji, and refuses publish.emoji", async () => {
+		writeFiles(home, { "config.yaml": lines("output:", "  emoji: off") });
+		expect((await loadConfig(repo, worktree(), "a.ts")).config.output).toEqual({ emoji: "off" });
+		writeFiles(home, { "config.yaml": lines("publish:", "  emoji: off") });
+		expect(await rejection(loadConfig(repo, worktree(), "a.ts"))).toMatchObject({
+			code: "invalidValue",
+			key: "publish.emoji",
+			file: preferences(),
+		});
 	});
 
 	it("layers under melian.local.yaml and over every melian.yaml, its globs anchored at the root", async () => {

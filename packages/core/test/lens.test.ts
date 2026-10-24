@@ -556,6 +556,14 @@ describe.each(sourceKinds)("repository lenses from the %s", (kind) => {
 		expect(lensCovers(selected!.coverage, "src/other.ts")).toBe(true);
 	});
 
+	it("returns its lenses sorted by name, a repository lens among the built-ins", async () => {
+		writeFiles(repo, {
+			".melian/lenses/aaa/LENS.md": lensFile([...security.slice(1), "name: aaa"]),
+			".melian/lenses/zzz/LENS.md": lensFile([...security.slice(1), "name: zzz"]),
+		});
+		expect((await load(["src/index.ts"])).map((lens) => lens.name)).toEqual(["aaa", ...builtins, "zzz"]);
+	});
+
 	it("loads the root's lenses, and no folder's, when a change has no paths", async () => {
 		writeFiles(repo, {
 			".melian/lenses/security/LENS.md": lensFile(security),
@@ -1132,5 +1140,73 @@ describe("Lens.renderInstructions", () => {
 			expect(policy).toContain('read the file with `read_file` and `revision: "base"`');
 			expect(policy).toContain("quotes the first line of each evidence location as Melian read it");
 		}
+	});
+});
+
+describe("a lens's emoji", () => {
+	const sponge = "\u{1F9FD}";
+	const crab = "\u{1F980}";
+	const load = (paths: string[] = ["."]) => Lens.load(repo, { kind: "worktree" }, paths);
+
+	it("reads the emoji a LENS.md declares, keeps it through toJSON, and leaves it out of the version", async () => {
+		writeFiles(repo, { ".melian/lenses/security/LENS.md": lensFile(security) });
+		const [plain] = named(await load(), "security");
+		expect(plain!.emoji).toBeUndefined();
+		expect("emoji" in plain!.toJSON()).toBe(false);
+		writeFiles(repo, { ".melian/lenses/security/LENS.md": lensFile([...security, `emoji: ${sponge}`]) });
+		const [lens] = named(await load(), "security");
+		expect(lens!.emoji).toBe(sponge);
+		expect(Lens.from(lens!.toJSON()).emoji).toBe(sponge);
+		expect(lens!.version).toBe(plain!.version);
+	});
+
+	it("inherits a base's emoji through extends, and takes the extending lens's own", async () => {
+		writeFiles(repo, {
+			".melian/lenses/security/LENS.md": lensFile([...security, `emoji: ${sponge}`]),
+			"services/.melian/lenses/security/LENS.md": lensFile(["name: security", "extends: security"]),
+			"docs/.melian/lenses/security/LENS.md": lensFile(["name: security", "extends: security", `emoji: ${crab}`]),
+		});
+		expect(named(await load(["services/a.ts"]), "security").map((lens) => lens.emoji)).toEqual([sponge]);
+		expect(named(await load(["docs/a.md"]), "security").map((lens) => lens.emoji)).toEqual([crab]);
+	});
+
+	it.each([
+		["two emojis", `${sponge}${crab}`, "must be one emoji"],
+		["a word", "x", "must be one emoji"],
+		["an emoji and a word", `${sponge} x`, "must be one emoji"],
+		["the table's emoji for the tests lens", "\u{1F9EA}", "already gives a meaning"],
+		["the table's severity emoji", "\u{1F534}", "already gives a meaning"],
+		["the magnifying glass", "\u{1F50E}", "already gives a meaning"],
+	])("refuses %s", async (_, emoji, problem) => {
+		writeFiles(repo, { ".melian/lenses/security/LENS.md": lensFile([...security, `emoji: "${emoji}"`]) });
+		const error = await rejection(load(), LensError);
+		expect(error).toMatchObject({ code: "invalidValue", field: "emoji", file: ".melian/lenses/security/LENS.md" });
+		expect(error.message).toContain(problem);
+	});
+
+	it("takes an emoji with a variation selector", async () => {
+		writeFiles(repo, { ".melian/lenses/security/LENS.md": lensFile([...security, 'emoji: "\u{2744}\u{FE0F}"']) });
+		expect(named(await load(), "security")[0]!.emoji).toBe("\u{2744}\u{FE0F}");
+	});
+
+	it("refuses an emoji another loaded lens declares, naming both, and lets one lens's variants share it", async () => {
+		const style = ["name: style", "description: Style.", "tier: light", "rules:", "  - id: s", "    description: S."];
+		writeFiles(repo, {
+			".melian/lenses/security/LENS.md": lensFile([...security, `emoji: ${sponge}`]),
+			"services/.melian/lenses/security/LENS.md": lensFile(["name: security", "extends: security", "tier: heavy"]),
+		});
+		expect(named(await load(["src/a.ts", "services/a.ts"]), "security")).toHaveLength(2);
+		writeFiles(repo, { "services/.melian/lenses/style/LENS.md": lensFile([...style, `emoji: ${sponge}`]) });
+		const error = await rejection(load(["src/a.ts", "services/a.ts"]), LensError);
+		expect(error).toMatchObject({ code: "invalidValue", field: "emoji" });
+		expect(error.message).toContain(
+			'services/.melian/lenses/style/LENS.md: "emoji" is the one lens security declares in',
+		);
+		writeFiles(repo, { "services/.melian/lenses/style/LENS.md": lensFile([...style, `emoji: ${crab}`]) });
+		expect((await load(["services/a.ts"])).map((lens) => lens.emoji).filter(Boolean)).toEqual([sponge, crab]);
+	});
+
+	it("declares no emoji on a shipped lens, which takes its row in the table", async () => {
+		expect((await Lens.builtins()).map((lens) => lens.emoji)).toEqual(builtins.map(() => undefined));
 	});
 });
