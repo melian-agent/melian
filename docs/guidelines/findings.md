@@ -58,7 +58,7 @@ Melian states certainty with the verifier's word and nothing else.
 |---|---|---|
 | confirmed | ✅ Verifier confirmed | The scenario is stated as fact. |
 | plausible | ⚠️ Verifier plausible | Say what is missing: "It did not establish that a caller reaches this line." |
-| no verdict | ❔ Not verified | Advisory at most, as policy already caps it. |
+| no verdict | ❔ Not verified | Advisory at most, as policy caps it, except where a floor applies. The unverified cap applies first, then the policy and trust floors, so an unverified `melian/injection-attempt` finding stays ✋ Needs acknowledgement. |
 | refuted, protected, minimum `acknowledge` | ✖️ Refuted | Posted, with the verifier's reason and "Trust floor: acknowledge required; maintainer dismissal needed." |
 | refuted, protected, minimum `advisory` | ✖️ Refuted | Posted as an advisory in the review body. Its entry keeps the verifier's reason and "Trust floor: reported-severity policy requires no acknowledgement." under the footer. |
 | refuted, protected, minimum `silent`, or unprotected | ✖️ Refuted | Not posted. The ledger lists it with this marker. |
@@ -195,7 +195,7 @@ The root `melian.yaml` sets `language` to `en-AU`, `en-GB` or `en-US`, and `en-A
 
 It does not govern code, rule IDs, check names, paths, quoted standards, the author's own words, CLI errors, help text, or Melian's documentation.
 
-A review reused from storage keeps the spelling it ran under. The language stays out of every identity that decides reuse, so changing it changes no finding and reruns nothing.
+Melian's own labels always render in the current `language`. A reused round's model-written prose, its findings, the verifier's reasons and the walkthrough, keeps the spelling it was written in; Melian stores no record of which language that was. The language stays out of every identity that decides reuse, so changing it changes no finding and reruns nothing.
 
 ## Five worked examples
 
