@@ -31,7 +31,7 @@ Enola 0.4.27 is an MCP server by default, with 22 tools. Melian does not use tha
 
 The snapshot is Enola's own answer. Its facts name each declaration and each edge Enola resolved, with the target's ID. Reading those edges asks the authority. The tools never resolve a name themselves: an edge Enola left unresolved stays unresolved and is listed by name, marked so.
 
-`graph_impact` walks resolved call and instantiation edges only. `enola impact` also follows imports and file references, and the review keeps calling it for the callers section of the prompt. The tool is narrower on purpose, and its description says so.
+`graph_impact` walks resolved call and instantiation edges only. That is narrower than Enola's own impact query: [the coverage spike](../spikes/enola-coverage.md) counted 824 call pairs in the facts, 807 from impact and 825 together, so one pair was impact's alone. A lens has no checkout of the head to run the query in, so an empty answer says it is unknown, not none, and points the lens at `search`. That is the safe-wide answer [the authority decision](2026-10-12-ask-the-authority.md) asks for where the authority cannot run. `enola impact` also follows imports and file references, and the review keeps calling it for the callers section of the prompt. The tool is narrower on purpose, and its description says so.
 
 ## Which lenses
 

@@ -703,11 +703,16 @@ const graphReferences = defineTool({
 			const { references, unresolved } = facts.references(target);
 			const rows = references.map(({ kind, fact }) => `${visibleText(kind)} from ${describeFact(fact)}`);
 			return graphRows(review, rows, [
-				...(rows.length === 0 ? ["No resolved references."] : []),
+				...(rows.length === 0 ? [unknownReferences] : []),
 				...(unresolved > 0 ? [`[${unresolved} more uses name it without a resolved edge; search finds them]`] : []),
 			]);
 		}),
 });
+
+const unknownCallers =
+	"No caller in the snapshot's resolved edges. That is unknown, not none: Enola's impact query resolves a few calls its facts do not. Search for the name before concluding nothing calls it.";
+const unknownReferences =
+	"No reference in the snapshot's resolved edges. That is unknown, not none: search for the name before concluding nothing uses it.";
 
 // Enola's own impact query caps its walk at 50 nodes; three levels and 200 callers keep a result readable.
 const maxImpactDepth = 3;
@@ -732,7 +737,10 @@ const graphImpact = defineTool({
 			const { reached, truncated } = facts.impact(target, args.depth ?? 2, maxImpactNodes);
 			const rows = reached.map(({ depth, fact }) => `${depth} ${describeFact(fact)}`);
 			return graphRows(review, rows, [
-				...(rows.length === 0 ? ["No resolved callers."] : []),
+				// Enola's impact query resolves a few calls its facts leave unresolved (the coverage spike counted 807 pairs
+				// from impact and 824 from facts, 825 together), and a lens has no checkout to run it in, so an empty walk is
+				// unknown, not none.
+				...(rows.length === 0 ? [unknownCallers] : []),
 				...(truncated ? [`[the walk stopped at ${maxImpactNodes} callers]`] : []),
 			]);
 		}),

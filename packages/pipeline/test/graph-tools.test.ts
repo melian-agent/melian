@@ -254,9 +254,15 @@ describe("graph tools", { timeout: 60_000 }, () => {
 		expect(toolResults(requests[correctness]![1]!)).toEqual([
 			[block("src/report.ts:2 src.line (symbol)"), note].join("\n"),
 			["No declarations found.", note].join("\n"),
-			["No resolved references.", note].join("\n"),
+			[
+				"No reference in the snapshot's resolved edges. That is unknown, not none: search for the name before concluding nothing uses it.",
+				note,
+			].join("\n"),
 			[block("calls from src/evil.ts:1 evil.probe sentinel (symbol)"), note].join("\n"),
-			["No resolved callers.", note].join("\n"),
+			[
+				"No caller in the snapshot's resolved edges. That is unknown, not none: Enola's impact query resolves a few calls its facts do not. Search for the name before concluding nothing calls it.",
+				note,
+			].join("\n"),
 			[block("1 src/evil.ts:1 evil.probe sentinel (symbol)"), note].join("\n"),
 			["No calls.", note].join("\n"),
 			[block(["calls src/user.ts:6 src.managerName (symbol)", "unresolved lib.format"].join("\n")), note].join("\n"),
@@ -486,7 +492,7 @@ describe("graph tools", { timeout: 60_000 }, () => {
 			"[2 declarations match; call again with one full name from the list, and its file when two share it]",
 		);
 		expect(b).toContain("calls from src/c.ts:3 src.caller (symbol)");
-		expect(a).toContain("No resolved callers.");
+		expect(a).toContain("No caller in the snapshot's resolved edges. That is unknown, not none");
 		expect(nowhere).toContain("No declaration in Enola's graph has that name.");
 	});
 
