@@ -428,3 +428,93 @@ describe("markdownText", () => {
 		expect(text).not.toMatch(/https:\/\/|www\./i);
 	});
 });
+
+describe("one lens against one reviewer", () => {
+	const design = (line: number) =>
+		Finding.create({
+			...evalInput,
+			snippet: `eval(design${line})`,
+			startLine: line,
+			endLine: line,
+			source: { check: "lens.design", version: "1" },
+		});
+	const merged = (line: number) => {
+		const finding = own(line);
+		return Finding.from({
+			...finding.toJSON(),
+			properties: {
+				...finding.toJSON().properties,
+				alsoReportedAs: [{ id: "f".repeat(16), ruleId: "x", check: "lens.design" }],
+			},
+		});
+	};
+
+	// Line 12: Codex and the design lens. 20: Codex and another lens. 30: Codex alone. 40: the design lens alone. 50:
+	// Codex's noise. 60: Codex, unjudged. 70: Claude Code and the design lens. 80: Codex and a merged report of the lens.
+	function scenario() {
+		const externals = [12, 20, 30, 50, 60, 80].map((line) => report({ line, title: `Codex ${line}` }));
+		const claude = report({ line: 70, title: "Claude 70", reviewer: { name: "claude-code" } });
+		const findings = [design(12), own(20), design(40), design(70), merged(80)];
+		const comparison = round({ externals: [...externals, claude], findings });
+		const judge = (id: string, extra: object = {}) =>
+			comparison.adjudicate(id, { ...by, verdict: "valid", ...extra });
+		for (const finding of findings) judge(finding.id);
+		for (const external of externals.filter((each) => ![30, 50, 60].includes(each.toJSON().line!)))
+			judge(external.id);
+		judge(claude.id);
+		judge(externals[2]!.id, { reason: "owned-missed" });
+		comparison.adjudicate(externals[3]!.id, { ...by, verdict: "noise" });
+		return { comparison, findings };
+	}
+
+	it("counts the reviewer's valid defects the lens found, those only other checks found, and the reverse", () => {
+		const { comparison, findings } = scenario();
+		const set = new ComparisonSet([
+			entry("one", comparison, findings),
+			{ changeset: "no-review", comparison: round({ externals: [report({ line: 99 })] }) },
+			{ ...entry("unattributed", round({ externals: [report({ line: 98 })] })), unattributed: "pr-1" },
+		]);
+		expect(set.againstReviewer("lens.design", "codex")).toEqual({
+			check: "lens.design",
+			reviewer: "codex",
+			comparisons: 1,
+			reviewerValid: 4,
+			checkFound: 2,
+			othersFound: 1,
+			checkValid: 4,
+			reviewerFound: 2,
+			pending: 1,
+		});
+		expect(set.againstReviewer("lens.design", "claude-code")).toMatchObject({
+			reviewerValid: 1,
+			checkFound: 1,
+			othersFound: 0,
+			checkValid: 4,
+			reviewerFound: 1,
+		});
+		expect(set.renderAgainst("lens.design", "codex")).toBe(
+			[
+				"lens.design against codex, over 1 comparisons with a stored review.",
+				"codex's valid defects: 4. lens.design found 2 (0.500); only Melian's other checks found 1; no check found 1.",
+				"lens.design's valid defects: 4. codex found 2 (0.500).",
+				"Defects left out while a report waits for a judgement or a hand match: 1.",
+				"",
+			].join("\n"),
+		);
+	});
+
+	it("prints no share for an empty side, and selects changesets as the other statistics do", () => {
+		const { comparison, findings } = scenario();
+		const set = new ComparisonSet([entry("one", comparison, findings)]);
+		expect(set.renderAgainst("lens.contracts", "copilot")).toBe(
+			[
+				"lens.contracts against copilot, over 1 comparisons with a stored review.",
+				"copilot's valid defects: 0. lens.contracts found 0; only Melian's other checks found 0; no check found 0.",
+				"lens.contracts's valid defects: 0. copilot found 0.",
+				"Defects left out while a report waits for a judgement or a hand match: 0.",
+				"",
+			].join("\n"),
+		);
+		expect(set.renderAgainst("lens.design", "codex", { since: "2027-01-01" })).toContain("over 0 comparisons");
+	});
+});

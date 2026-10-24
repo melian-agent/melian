@@ -546,6 +546,29 @@ describe("melian compare adjudicate", { timeout: 60_000 }, () => {
 	});
 });
 
+describe("melian compare with the Codex companion's output", { timeout: 60_000 }, () => {
+	it("imports the review inside the companion's --json payload as Codex's", () => {
+		const { repo, files, env } = reviewed();
+		const path = join(files, "codex-companion.json");
+		const review = {
+			verdict: "needs-attention",
+			summary: "s",
+			findings: [codexFinding(30, "Missed")],
+			next_steps: [],
+		};
+		writeFileSync(
+			path,
+			JSON.stringify({ review: "Adversarial Review", target: {}, result: review, parseError: null }),
+		);
+		const imported = melian(repo, ["compare", range, "--from", `file:${path}`], env);
+		expect(imported).toMatchObject({ status: 0, stdout: expect.stringMatching(/^ {2}[0-9a-f]{16} {2}codex/m) });
+		writeFileSync(path, JSON.stringify({ review: "Adversarial Review", result: null, parseError: "Unexpected end" }));
+		expect(melian(repo, ["compare", range, "--from", `file:${path}`], env).stderr).toContain(
+			"is the Codex companion's output with no parsed review: Unexpected end",
+		);
+	});
+});
+
 describe("melian compare stats and backlog", { timeout: 60_000 }, () => {
 	it("reads the clone's stored comparisons and lists current golden debt", () => {
 		const { repo, files, env } = reviewed();
@@ -575,6 +598,17 @@ describe("melian compare stats and backlog", { timeout: 60_000 }, () => {
 		expect(stats.stdout).toContain("melian: recall 0/1 (0.000), precision 0/0 (1.000), pending 1.");
 		expect(stats.stdout).toContain("needs-execution: 1.");
 		expect(stats.stdout).toContain("Drain not due; next comparison threshold: 3.\n");
+		for (const filter of [[], ["--against", "codex"], ["--last", "1"]]) {
+			const against = melian(repo, ["compare", "stats", "--lens", "correctness", ...filter], env);
+			expect(against).toMatchObject({ status: 0, stderr: "" });
+			expect(against.stdout).toContain("lens.correctness against codex, over 1 comparisons with a stored review.\n");
+			expect(against.stdout).toContain(
+				"codex's valid defects: 1. lens.correctness found 0 (0.000); only Melian's other checks found 0; no check found 1.\n",
+			);
+		}
+		expect(
+			melian(repo, ["compare", "stats", "--lens", "correctness", "--against", "coderabbit"], env).stdout,
+		).toContain("coderabbit's valid defects: 0.");
 		expect(melian(repo, ["compare", "stats", "--since", "2099-01-01"], env).stdout).toMatch(
 			/Comparisons: 0\.\nClone-wide, not narrowed by the filter:\nPending matches: \d+\./,
 		);
@@ -666,6 +700,10 @@ describe("melian compare stats and backlog", { timeout: 60_000 }, () => {
 	it.each([
 		[["compare", "stats", "--since", "2026-01-01", "--last", "1"], "--since or --last, not both"],
 		[["compare", "stats", range], "compare stats takes no target"],
+		[["compare", "stats", "--against", "codex"], "--against needs --lens"],
+		[["compare", "stats", "--lens", "Design"], "--lens takes a lens name"],
+		[["compare", "stats", "--lens", "design_lens"], "--lens takes a lens name"],
+		[["compare", "stats", "--lens", "design", "--against", "co dex"], "--against takes a reviewer name"],
 		[["compare", "backlog", range], "compare backlog takes no target"],
 	])("refuses %j", (args, message) => {
 		expect(melian(root, args)).toMatchObject({ status: 64, stderr: expect.stringContaining(message) });

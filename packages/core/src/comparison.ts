@@ -177,6 +177,18 @@ export const externalFindingsFileSchema = Type.Object(
 	strict,
 );
 
+// The Codex companion's `adversarial-review --json` wraps the review it parsed in a payload of its own, under `result`,
+// which is null when Codex's answer did not parse. A file holding that payload reads as the review inside it.
+function companionReview(value: unknown, path: string): unknown {
+	if (typeof value !== "object" || value === null || !("review" in value) || !("result" in value)) return value;
+	const { result, parseError } = value as { result: unknown; parseError?: unknown };
+	if (typeof result === "object" && result !== null) return result;
+	const why = typeof parseError === "string" && parseError !== "" ? `: ${visibleText(parseError).slice(0, 200)}` : "";
+	throw new ComparisonError("invalidFile", `${path} is the Codex companion's output with no parsed review${why}`, {
+		path,
+	});
+}
+
 /** The JSON Codex's adversarial review writes, under its own `review-output` schema. */
 export const codexReviewSchema = Type.Object(
 	{
@@ -330,11 +342,13 @@ export class ExternalFinding {
 
 	/**
 	 * The findings a reviewer's file holds, read from its parsed JSON: the external-finding file shape,
-	 * {@link externalFindingsFileSchema}, or Codex's adversarial review output, {@link codexReviewSchema}. `path` is how
+	 * {@link externalFindingsFileSchema}, or Codex's adversarial review output, {@link codexReviewSchema}, bare or inside
+	 * the payload the Codex companion's `adversarial-review --json` prints. `path` is how
 	 * the source reference names the file. Throws {@link ComparisonError} `invalidFile`, naming the path and what is
 	 * wrong, for JSON in neither shape.
 	 */
-	static fromFile(value: unknown, path: string): ExternalFinding[] {
+	static fromFile(read: unknown, path: string): ExternalFinding[] {
+		const value = companionReview(read, path);
 		const codex = typeof value === "object" && value !== null && "next_steps" in value;
 		const problem = schemaProblem(codex ? codexReviewSchema : externalFindingsFileSchema, value);
 		if (problem !== undefined) {
@@ -406,8 +420,9 @@ export class ExternalFinding {
 	}
 
 	/** Reads a file's findings and participant identity, even when its findings list is empty. */
-	static importFile(value: unknown, path: string): ExternalImport {
-		const findings = ExternalFinding.fromFile(value, path);
+	static importFile(read: unknown, path: string): ExternalImport {
+		const findings = ExternalFinding.fromFile(read, path);
+		const value = companionReview(read, path);
 		const reviewer: ExternalReviewer = Value.Check(codexReviewSchema, value)
 			? { name: "codex" }
 			: (value as ExternalFindingsFile).reviewer;

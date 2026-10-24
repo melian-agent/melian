@@ -24,6 +24,28 @@ export interface ComparisonStats {
 	readonly misses: Record<(typeof missReasons)[number], number>;
 }
 
+/**
+ * One check's findings against one external reviewer's, over the valid defects either found. A Melian finding is the
+ * check's when the check reported it or a report merged into it. A defect only another of Melian's checks found
+ * counts apart, so it is no miss of the check's.
+ */
+export interface CheckAgainstReviewer {
+	readonly check: string;
+	readonly reviewer: string;
+	/** Changesets with a stored review to attribute Melian's findings to. */
+	readonly comparisons: number;
+	/** The reviewer's valid defects, and how many the check also found. */
+	readonly reviewerValid: number;
+	readonly checkFound: number;
+	/** The reviewer's valid defects only Melian's other checks found. */
+	readonly othersFound: number;
+	/** The check's valid defects, and how many the reviewer also found. */
+	readonly checkValid: number;
+	readonly reviewerFound: number;
+	/** Defects left out because a report in them waits for a judgement or a hand match. */
+	readonly pending: number;
+}
+
 /** A golden the current maintainer judgement owes. */
 export interface OwedGolden {
 	readonly changeset: string;
@@ -121,6 +143,54 @@ export class ComparisonSet {
 				})),
 			misses,
 		};
+	}
+
+	/**
+	 * How `check`, such as `lens.design`, compares with `reviewer`, such as `codex`, over the comparisons with a stored
+	 * review: which of the reviewer's valid defects the check found, and which of the check's the reviewer found.
+	 */
+	againstReviewer(check: string, reviewer: string): CheckAgainstReviewer {
+		const counts = { reviewerValid: 0, checkFound: 0, othersFound: 0, checkValid: 0, reviewerFound: 0, pending: 0 };
+		let comparisons = 0;
+		for (const { comparison, verdict, unattributed } of this.entries) {
+			if (verdict === undefined || unattributed !== undefined) continue;
+			comparisons++;
+			const mine = new Set(
+				verdict
+					.all()
+					.filter(
+						(finding) =>
+							finding.properties.source.check === check ||
+							(finding.properties.alsoReportedAs ?? []).some((other) => other.check === check),
+					)
+					.map((finding) => finding.id),
+			);
+			const ambiguous = new Set(comparison.ambiguous().map((each) => each.external.id));
+			for (const group of comparison.groups()) {
+				const theirs = group.external
+					.filter((finding) => finding.reviewer.name === reviewer)
+					.map((each) => each.id);
+				const ours = group.melian.filter((id) => mine.has(id));
+				const reports = [...group.melian, ...group.external.map((each) => each.id)];
+				if (reports.some((id) => ambiguous.has(id) || comparison.judgement(id) === undefined)) {
+					if (theirs.length > 0 || ours.length > 0) counts.pending++;
+					continue;
+				}
+				const valid = (ids: readonly string[]) => ids.some((id) => comparison.judgement(id)?.verdict === "valid");
+				const reviewerHas = valid(theirs);
+				const checkHas = valid(ours);
+				if (reviewerHas) {
+					counts.reviewerValid++;
+					if (checkHas) counts.checkFound++;
+					else if (valid(group.melian)) counts.othersFound++;
+				}
+				if (checkHas) {
+					counts.checkValid++;
+					if (reviewerHas) counts.reviewerFound++;
+				}
+			}
+		}
+		return { check, reviewer, comparisons, ...counts };
 	}
 
 	/**
@@ -244,6 +314,25 @@ export class ComparisonSet {
 					: `Drain not due; next comparison threshold: ${drain.next}.\n`,
 			);
 		return out.join("");
+	}
+
+	/** {@link ComparisonSet.againstReviewer} as the CLI prints it, over the changesets `options` selects. */
+	renderAgainst(
+		check: string,
+		reviewer: string,
+		options: { readonly since?: string; readonly last?: number } = {},
+	): string {
+		const stats = this.select(options).againstReviewer(check, reviewer);
+		const name = visibleText(check);
+		const them = visibleText(reviewer);
+		const share = (part: number, whole: number) => (whole === 0 ? "" : ` (${(part / whole).toFixed(3)})`);
+		const missed = stats.reviewerValid - stats.checkFound - stats.othersFound;
+		return [
+			`${name} against ${them}, over ${stats.comparisons} comparisons with a stored review.\n`,
+			`${them}'s valid defects: ${stats.reviewerValid}. ${name} found ${stats.checkFound}${share(stats.checkFound, stats.reviewerValid)}; only Melian's other checks found ${stats.othersFound}; no check found ${missed}.\n`,
+			`${name}'s valid defects: ${stats.checkValid}. ${them} found ${stats.reviewerFound}${share(stats.reviewerFound, stats.checkValid)}.\n`,
+			`Defects left out while a report waits for a judgement or a hand match: ${stats.pending}.\n`,
+		].join("");
 	}
 
 	/** The generated section replacing generated entries after BACKLOG.md's frozen entries, or a terminal list. */
