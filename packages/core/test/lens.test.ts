@@ -53,7 +53,6 @@ const security = [
 	"    description: Input reaches a query unescaped.",
 ];
 
-// Every lens file Melian's own repository commits, which a test of its own lenses loads together.
 function melianLensFiles(melian: string): string[] {
 	return readdirSync(join(melian, ".melian/lenses"))
 		.sort()
