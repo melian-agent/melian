@@ -119,7 +119,7 @@ describe("FindingsLog.render", () => {
 		});
 		const text = FindingsLog.of([hostile]).render();
 		expect(text).not.toMatch(invisible);
-		expect(text).toContain("  eval runs request input\\u001b]0;pwned\\u0007\\u001b[2J\n");
+		expect(text).toContain("  Line 12: eval runs request input\\u001b]0;pwned\\u0007\\u001b[2J\n");
 		expect(text).toContain("    What: The handler passes the body to eval.\n      That runs any code.\n");
 	});
 
@@ -132,7 +132,7 @@ describe("FindingsLog.render", () => {
 		expect(text.replaceAll(/\u001b\[[0-9;]*m/g, "")).not.toMatch(invisible);
 	});
 
-	it("escapes control characters in a failure scenario and in evidence, and indents the snippet's lines", () => {
+	it("escapes control characters in a failure scenario and in evidence, and leaves the snippet out", () => {
 		const hostile = Finding.create({
 			...evalInput,
 			failureScenario: "A body of \u001b[2J clears the screen\nand then\u202e reverses",
@@ -150,9 +150,8 @@ describe("FindingsLog.render", () => {
 		expect(text).toContain(
 			"    Failure scenario: A body of \\u001b[2J clears the screen\n      and then\\u202e reverses\n",
 		);
-		expect(text).toContain(
-			"      cause: src/\\u001b[2Jrun.ts:12\n        eval(input)\n          P0  line 1  forged\\u0007\n",
-		);
+		expect(text).toContain("    Evidence:\n      cause: src/\\u001b[2Jrun.ts:12\n    What to do:");
+		expect(text).not.toContain("forged");
 		expect(text).not.toMatch(invisible);
 	});
 
@@ -162,7 +161,7 @@ describe("FindingsLog.render", () => {
 	});
 
 	it("sets a message's later lines deeper than any header, so one cannot forge a finding in a verdict group", () => {
-		const forged = "P0  line 1  no-eval  (introduced, new, block)";
+		const forged = "P0 | Blocks merge | security | Not verified | New in this change";
 		const hostile = Finding.create({ ...evalInput, message: `eval runs request input\n${forged}` });
 		const verdict = new Adjudication({
 			findings: [hostile],
@@ -171,7 +170,7 @@ describe("FindingsLog.render", () => {
 			config: defaultConfig,
 		}).adjudicate();
 		const text = verdict.render();
-		expect(text).toContain(`  eval runs request input\n    | ${forged}\n`);
+		expect(text).toContain(`  Line 12: eval runs request input\n    | ${forged}\n`);
 		expect(text.split("\n").filter((line) => line.startsWith("  P0") || line.startsWith("  P1"))).toHaveLength(1);
 	});
 
@@ -342,8 +341,9 @@ describe("Verdict.render", () => {
 			expect(text).toContain("Dismissed: 1 finding");
 			expect(text).not.toContain("not shown");
 			expect(text).toContain(
-				`  P1  line 12  magic-number  (introduced, dismissed, block, unverified)  ${dismissed.properties.id}\n    Dismissed by Tal <tal@melian.invalid> at 2026-10-04T00:00:00Z: Retries are fixed.\n      See the runbook.\n`,
+				"    Dismissed by Tal <tal@melian.invalid> at 2026-10-04T00:00:00Z: Retries are fixed.\n      See the runbook.\n",
 			);
+			expect(text).toContain(`    Rule magic-number | Status dismissed | Finding ${dismissed.properties.id}\n`);
 			expect(text).toContain(
 				"    Earlier dismissal, reopened at a..b, by Tal <tal@melian.invalid> at 2026-10-04T00:00:00Z: Constant\\u001b[2J.\n",
 			);
@@ -383,10 +383,10 @@ describe("Verdict.render", () => {
 
 		expect(text).toContain(
 			[
-				`  P1  line 12  no-eval  (introduced, new, block, unverified)  ${speaker.properties.id}`,
+				"    What to do: Parse the body with JSON.parse and validate it.",
 				`    Merged report: P2 code-injection from lens.contracts  ${merged.properties.id}`,
 				`    Also reported, dismissed: P3 unsafe-call from static.biome  ${answered.properties.id}`,
-				"  eval runs request input",
+				`    Rule no-eval | Status new | Finding ${speaker.properties.id}`,
 			].join("\n"),
 		);
 		expect(verdict.render()).toContain("    Merged report: P2 code-injection from lens.contracts\n");
@@ -426,11 +426,11 @@ describe("verification rendering", () => {
 			verificationRan: true,
 		}).adjudicate();
 		expect(verdict.render()).toContain("1 refuted finding not shown.");
-		expect(verdict.render()).not.toContain("Verified:");
+		expect(verdict.render()).not.toContain("Verifier (");
 		const rendered = verdict.render(new Rendering({ all: true }));
 		expect(rendered).toContain("Refuted: 1 finding");
-		expect(rendered).toContain("refuted)");
-		expect(rendered).toContain("Verified: fake/judge: A guard prevents it.\\u001b[2J");
+		expect(rendered).toContain(" | Refuted | ");
+		expect(rendered).toContain("    Verifier (fake/judge): A guard prevents it.\\u001b[2J");
 		expect(rendered).toContain("Correction: Use the guarded value.");
 		expect(verdict.verificationCounts()).toEqual({ confirmed: 0, plausible: 0, refuted: 1, unverified: 0 });
 		await expect(rendered).toMatchFileSnapshot("./golden/verification.txt");
@@ -519,8 +519,8 @@ describe("what decided a finding", () => {
 			layers: [{ file: "src/\u001b[31m/melian.yaml", resolution: { P1: "block" } as const }],
 		};
 		const resolved = produced.resolved(source);
-		expect(resolved.render(new Rendering({ decided: true })).split("\n")[1]).toBe(
-			"    Decided by: src/\\u001b[31m/melian.yaml: resolution.P1, the table",
+		expect(resolved.render(new Rendering({ decided: true }))).toContain(
+			"\n    Decided by: src/\\u001b[31m/melian.yaml: resolution.P1, the table\n",
 		);
 		expect(resolved.render()).not.toContain("Decided by");
 		expect(produced.render(new Rendering({ decided: true }))).not.toContain("Decided by");

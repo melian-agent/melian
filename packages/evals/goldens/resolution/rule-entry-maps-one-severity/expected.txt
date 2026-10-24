@@ -6,26 +6,28 @@ Block: 1 finding
 
 a/total.ts
 
-  P2  line 1  reuse  (introduced, new, block, confirmed)
-    Decided by: melian.yaml: resolution.P2, the table
-    Verified: scripted/judge: The scripted verifier judged the claim.
-  reuse, as lens.cleanup reports it.
+  P2 | Blocks merge | cleanup | Verifier confirmed | New in this change
+  Line 1: reuse, as lens.cleanup reports it.
     What: Scripted.
     Why here: Scripted.
     Failure scenario: Scripted.
+    Verifier (scripted/judge): The scripted verifier judged the claim.
     What to do: Scripted.
+    Decided by: melian.yaml: resolution.P2, the table
+    Rule reuse | Status new
 
 Silent: 1 finding
 
 a/receipt.ts
 
-  P1  line 1  reuse  (introduced, new, silent, confirmed)
-    Decided by: a/melian.yaml: resolution.checks.lens.cleanup.rules.reuse.P1, the rule entry
-    Verified: scripted/judge: The scripted verifier judged the claim.
-  reuse, as lens.cleanup reports it.
+  P1 | Silent | cleanup | Verifier confirmed | New in this change
+  Line 1: reuse, as lens.cleanup reports it.
     What: Scripted.
     Why here: Scripted.
     Failure scenario: Scripted.
+    Verifier (scripted/judge): The scripted verifier judged the claim.
     What to do: Scripted.
+    Decided by: a/melian.yaml: resolution.checks.lens.cleanup.rules.reuse.P1, the rule entry
+    Rule reuse | Status new
 
 1 finding in 1 file.

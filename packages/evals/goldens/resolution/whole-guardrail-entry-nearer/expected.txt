@@ -6,22 +6,24 @@ Block: 1 finding
 
 src/unit.txt
 
-  P2  line 2  guardrail/forbidden-patterns  (introduced, new, block)
-    Decided by: melian.yaml: resolution.checks.guardrails.rules.guardrail/forbidden-patterns/focused-test.P2, the rule entry
-  A focused test skips the rest of the suite.
+  P2 | Blocks merge | Guardrails: forbidden-patterns | New in this change
+  Line 2: A focused test skips the rest of the suite.
     What: This line matches the forbidden-patterns rule focused-test.
     Why here: A focused test skips the rest of the suite.
     What to do: Rewrite the line so it no longer matches.
+    Decided by: melian.yaml: resolution.checks.guardrails.rules.guardrail/forbidden-patterns/focused-test.P2, the rule entry
+    Rule guardrail/forbidden-patterns | Status new
 
 Advisory: 1 finding
 
 tests/unit.txt
 
-  P2  line 2  guardrail/forbidden-patterns  (introduced, new, advisory)
-    Decided by: tests/melian.yaml: the built-in table, under the ceiling resolution.checks.guardrails.rules.guardrail/forbidden-patterns.ceiling
-  A focused test skips the rest of the suite.
+  P2 | Advisory | Guardrails: forbidden-patterns | New in this change
+  Line 2: A focused test skips the rest of the suite.
     What: This line matches the forbidden-patterns rule focused-test.
     Why here: A focused test skips the rest of the suite.
     What to do: Rewrite the line so it no longer matches.
+    Decided by: tests/melian.yaml: the built-in table, under the ceiling resolution.checks.guardrails.rules.guardrail/forbidden-patterns.ceiling
+    Rule guardrail/forbidden-patterns | Status new
 
 2 findings in 2 files.

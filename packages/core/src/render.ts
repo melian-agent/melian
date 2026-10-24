@@ -1,5 +1,6 @@
 import type { BudgetEnd, CheckLineage, VerdictStatus } from "./adjudication.ts";
 import type { Severity } from "./config.ts";
+import { Mark } from "./emoji.ts";
 import type { DecidedBy, EvidenceLocation } from "./findings.ts";
 
 /** How a {@link Rendering} renders for a terminal. */
@@ -14,6 +15,10 @@ export interface TerminalRenderOptions {
 	readonly decided?: boolean;
 	/** Omit instructions that act on the current review when showing a saved round. Off by default. */
 	readonly historical?: boolean;
+	/** Print each mark's emoji beside its word. Off by default, which prints the words alone. */
+	readonly emoji?: boolean;
+	/** The emoji each repository lens declares, by its check name, `lens.<name>`. */
+	readonly lensEmojis?: Readonly<Record<string, string>>;
 }
 
 export const severityColor: Readonly<Record<Severity, string>> = { P0: "31", P1: "31", P2: "33", P3: "36", nit: "2" };
@@ -43,11 +48,12 @@ export function prose(text: string, indent: string): string {
 // reading `P0  line 1  forged` must not pass for another finding's header.
 export const messageContinuation = "    | ";
 
+// Each location's role and lines, never the code read there: the reader opens the file.
 export function evidenceLines(evidence: readonly EvidenceLocation[]): string[] {
-	return evidence.flatMap(({ file, startLine, endLine = startLine, role, revision, snippet }) => [
-		`      ${role}: ${visibleText(file)}:${startLine}${endLine === startLine ? "" : `-${endLine}`}${revision === "base" ? " at base" : ""}`,
-		`        ${prose(snippet, "        ")}`,
-	]);
+	return evidence.map(
+		({ file, startLine, endLine = startLine, role, revision }) =>
+			`      ${role}: ${visibleText(file)}:${startLine}${endLine === startLine ? "" : `-${endLine}`}${revision === "base" ? " at base" : ""}`,
+	);
 }
 
 export function plural(count: number, noun: string, nouns = `${noun}s`): string {
@@ -152,7 +158,10 @@ export class Rendering {
 	readonly decided: boolean;
 	/** Render a saved round without current-review instructions. */
 	readonly historical: boolean;
+	/** Print each mark's emoji beside its word. */
+	readonly emoji: boolean;
 	readonly #color: boolean;
+	readonly #lensEmojis: Readonly<Record<string, string>>;
 
 	constructor(options: TerminalRenderOptions = {}) {
 		this.#color = options.color === true;
@@ -160,6 +169,18 @@ export class Rendering {
 		this.all = options.all === true;
 		this.decided = options.decided === true;
 		this.historical = options.historical === true;
+		this.emoji = options.emoji === true;
+		this.#lensEmojis = options.lensEmojis ?? {};
+	}
+
+	/** `mark` as this rendering shows it: its word, after its emoji when emojis are on. */
+	show(mark: Mark): string {
+		return mark.show(this.emoji);
+	}
+
+	/** The mark of the check `check`, reporting under `rule`, with the emoji its lens declares. */
+	check(check: string, rule: string): Mark {
+		return Mark.check(check, rule, Object.hasOwn(this.#lensEmojis, check) ? this.#lensEmojis[check] : undefined);
 	}
 
 	/** `text` coloured with the ANSI code `code`, or as it is when colour is off. */

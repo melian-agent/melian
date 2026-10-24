@@ -8,42 +8,46 @@ Block: 1 finding
 
 notes/plan.txt
 
-  P2  line 2  guardrail/forbidden-patterns  (introduced, new, block)
-    Decided by: melian.yaml: resolution.checks.guardrails.rules.guardrail/forbidden-patterns/focused-test.P2, the rule entry
-  A focused test skips the rest of the suite.
+  P2 | Blocks merge | Guardrails: forbidden-patterns | New in this change
+  Line 2: A focused test skips the rest of the suite.
     What: This line matches the forbidden-patterns rule focused-test.
     Why here: A focused test skips the rest of the suite.
     What to do: Rewrite the line so it no longer matches.
+    Decided by: melian.yaml: resolution.checks.guardrails.rules.guardrail/forbidden-patterns/focused-test.P2, the rule entry
+    Rule guardrail/forbidden-patterns | Status new
 
 Acknowledge: 1 finding
 
 src/b.ts
 
-  P2  line 1  biome/correctness/noUnusedVariables  (introduced, new, acknowledge)
-    Decided by: the built-in table
-  biome/correctness/noUnusedVariables, as static.biome reports it.
+  P2 | Needs acknowledgement | Biome | New in this change
+  Line 1: biome/correctness/noUnusedVariables, as static.biome reports it.
     What: Scripted.
     Why here: Scripted.
     What to do: Scripted.
+    Decided by: the built-in table
+    Rule biome/correctness/noUnusedVariables | Status new
 
 Advisory: 2 findings
 
 notes/plan.txt
 
-  P2  line 3  guardrail/forbidden-patterns  (introduced, new, advisory)
-    Decided by: melian.yaml: resolution.checks.guardrails.rules.guardrail/forbidden-patterns/todo.P2, the rule entry
-  Finish it before merging.
+  P2 | Advisory | Guardrails: forbidden-patterns | New in this change
+  Line 3: Finish it before merging.
     What: This line matches the forbidden-patterns rule todo.
     Why here: Finish it before merging.
     What to do: Rewrite the line so it no longer matches.
+    Decided by: melian.yaml: resolution.checks.guardrails.rules.guardrail/forbidden-patterns/todo.P2, the rule entry
+    Rule guardrail/forbidden-patterns | Status new
 
 src/a.ts
 
-  P2  line 1  biome/suspicious/noExplicitAny  (introduced, new, advisory)
-    Decided by: melian.yaml: resolution.checks.static.biome.rules.biome/suspicious/noExplicitAny.P2, the rule entry
-  biome/suspicious/noExplicitAny, as static.biome reports it.
+  P2 | Advisory | Biome | New in this change
+  Line 1: biome/suspicious/noExplicitAny, as static.biome reports it.
     What: Scripted.
     Why here: Scripted.
     What to do: Scripted.
+    Decided by: melian.yaml: resolution.checks.static.biome.rules.biome/suspicious/noExplicitAny.P2, the rule entry
+    Rule biome/suspicious/noExplicitAny | Status new
 
 4 findings in 3 files.

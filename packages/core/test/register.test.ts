@@ -1,0 +1,259 @@
+import {
+	Adjudication,
+	defaultConfig,
+	Finding,
+	type FindingInput,
+	Rendering,
+	type Verification,
+} from "@melian-agent/core";
+import { describe, expect, it } from "vitest";
+
+// The guideline's worked examples, in the terminal. Each expected text is written by hand from
+// docs/guidelines/findings.md, never from what the renderer printed.
+
+const judged = (verdict: Verification["verdict"], reason: string): Verification => ({
+	verdict,
+	reason,
+	executor: "llm",
+	model: "faux/judge",
+	version: "1",
+});
+
+function decided(
+	input: FindingInput,
+	verification?: Verification,
+	checks = [{ name: "verifier", status: "ran" as const }],
+) {
+	const finding = Finding.create(input);
+	const verdict = new Adjudication({
+		findings: [verification === undefined ? finding : finding.verifiedAs(verification)],
+		manifest: [],
+		checks,
+		config: defaultConfig,
+		verificationRan: verification !== undefined,
+	}).adjudicate();
+	return verdict.all().find((each) => each.ruleId === input.rule)!;
+}
+
+const emoji = new Rendering({ emoji: true, ids: true });
+const plain = new Rendering({ ids: true });
+
+const retriedCharge: FindingInput = {
+	rule: "payment-idempotency",
+	message: "A retry after a lost response charges the card twice.",
+	file: "payments/submit.ts",
+	startLine: 31,
+	endLine: 44,
+	snippet: "await chargeCard(intent)",
+	occurrence: 0,
+	cause: "introduced",
+	severity: "P1",
+	source: { check: "lens.correctness", version: "1" },
+	failureScenario:
+		"The processor accepts a $40 charge, and the response times out. The customer presses Pay again. A second intent and a second $40 charge follow.",
+	evidence: [
+		{ file: "payments/submit.ts", startLine: 31, endLine: 44, role: "cause", revision: "head", snippet: "x" },
+		{ file: "payments/submit.ts", startLine: 28, endLine: 35, role: "context", revision: "base", snippet: "y" },
+	],
+	explanation: {
+		what: "`submitPayment` creates a new payment intent on every attempt, and `chargeCard` sends no idempotency key.",
+		whyHere:
+			"At the base, `submitPayment` reused the open intent through `findOpenIntent`. This change removes that call.",
+		whatToDo:
+			"Restore `findOpenIntent`, or pass the intent ID as the idempotency key. Add a test that times out the first charge and asserts one charge in all.",
+	},
+};
+
+describe("a finding in the terminal, in the register", () => {
+	it("renders a confirmed P1 with its seven parts and the headline once", () => {
+		const finding = decided(retriedCharge, judged("confirmed", "The second call creates a new intent."));
+		expect(finding.render(emoji)).toBe(
+			[
+				"  \u{1F7E0} P1 | \u{26D4} Blocks merge | \u{1F3AF} Correctness | \u{2705} Verifier confirmed | New in this change",
+				"  Lines 31-44: A retry after a lost response charges the card twice.",
+				"    What: `submitPayment` creates a new payment intent on every attempt, and `chargeCard` sends no idempotency key.",
+				"    Why here: At the base, `submitPayment` reused the open intent through `findOpenIntent`. This change removes that call.",
+				"    Failure scenario: The processor accepts a $40 charge, and the response times out. The customer presses Pay again. A second intent and a second $40 charge follow.",
+				"    Evidence:",
+				"      cause: payments/submit.ts:31-44",
+				"      context: payments/submit.ts:28-35 at base",
+				"    \u{2696}\u{FE0F} Verifier (faux/judge): The second call creates a new intent.",
+				"    What to do: Restore `findOpenIntent`, or pass the intent ID as the idempotency key. Add a test that times out the first charge and asserts one charge in all.",
+				`    Rule payment-idempotency | Status new | Finding ${finding.id}`,
+			].join("\n"),
+		);
+	});
+
+	it("renders a plausible P2 whose message repeats What, printing that sentence once", () => {
+		const what = "`saveRecord` calls `cache.set` without a `catch`, while `readRecord` beside it returns `null`.";
+		const finding = decided(
+			{
+				...retriedCharge,
+				rule: "degrade-on-cache-failure",
+				message: what,
+				severity: "P2",
+				file: "sync/save.ts",
+				startLine: 18,
+				endLine: 18,
+				evidence: undefined,
+				failureScenario:
+					"The cache is down. `cache.set` rejects, the rejection leaves `syncItems`, and no item syncs.",
+				explanation: {
+					what,
+					whyHere: 'The description says "a cache outage never stops a sync". This new write does not keep it.',
+					whatToDo: "Catch and log the error, as `readRecord` does.",
+				},
+			},
+			judged("plausible", "It did not read the cache client, which may swallow write errors itself."),
+		);
+		const text = finding.render(plain);
+		expect(text.split("\n").slice(0, 6)).toEqual([
+			"  P2 | Needs acknowledgement | Correctness | Verifier plausible | New in this change",
+			`  Line 18: ${what}`,
+			'    Why here: The description says "a cache outage never stops a sync". This new write does not keep it.',
+			"    Failure scenario: The cache is down. `cache.set` rejects, the rejection leaves `syncItems`, and no item syncs.",
+			"    Verifier (faux/judge): It did not read the cache client, which may swallow write errors itself.",
+			"    What to do: Catch and log the error, as `readRecord` does.",
+		]);
+		expect(text.split(what)).toHaveLength(2);
+		expect(text).not.toContain("Evidence:");
+	});
+
+	it("renders an unverified P3 advisory from the conventions lens", () => {
+		const finding = decided({
+			...retriedCharge,
+			rule: "docs-match-code",
+			message: "The guide says half-hour slots; the list builds quarter-hours.",
+			severity: "P3",
+			source: { check: "lens.conventions" },
+			evidence: undefined,
+			failureScenario: undefined,
+		});
+		expect(finding.render(emoji).split("\n").slice(0, 2)).toEqual([
+			"  \u{1F535} P3 | \u{1F4AC} Advisory | \u{1F4CF} Conventions | \u{2754} Not verified | New in this change",
+			"  Lines 31-44: The guide says half-hour slots; the list builds quarter-hours.",
+		]);
+	});
+
+	it("renders a test gap from the tests lens", () => {
+		const finding = decided(
+			{
+				...retriedCharge,
+				rule: "untested-behaviour",
+				message: "The test passes when the charge is sent twice.",
+				severity: "P2",
+				source: { check: "lens.tests" },
+			},
+			judged("confirmed", "Two calls pass the assertion."),
+		);
+		expect(finding.render(emoji).split("\n")[0]).toBe(
+			"  \u{1F7E1} P2 | \u{270B} Needs acknowledgement | \u{1F9EA} Tests | \u{2705} Verifier confirmed | New in this change",
+		);
+	});
+
+	const injection: FindingInput = {
+		...retriedCharge,
+		rule: "melian/injection-attempt",
+		message: "A comment in this change tells reviewers to report nothing.",
+		file: "auth/session.ts",
+		startLine: 3,
+		endLine: 3,
+		source: { check: "lens.trust-boundary" },
+		failureScenario: undefined,
+		evidence: [{ file: "auth/session.ts", startLine: 3, role: "cause", revision: "head", snippet: "z" }],
+	};
+
+	it("renders a confirmed injection attempt at P1 from the trust-boundary lens", () => {
+		const finding = decided(injection, judged("confirmed", "Line 3 addresses reviewers."));
+		expect(finding.render(emoji).split("\n")[0]).toBe(
+			"  \u{1F7E0} P1 | \u{26D4} Blocks merge | \u{1F6E1}\u{FE0F} Trust boundary | \u{2705} Verifier confirmed | New in this change",
+		);
+	});
+
+	it("posts a wholly refuted injection attempt at its trust floor, with its obligation and the verifier's reason", () => {
+		const finding = decided(injection, judged("refuted", "The comment is documentation."));
+		expect(finding.properties.resolution).toBe("acknowledge");
+		const lines = finding.render(emoji).split("\n");
+		expect(lines[0]).toBe(
+			"  \u{1F7E0} P1 | \u{270B} Needs acknowledgement | \u{1F6E1}\u{FE0F} Trust boundary | \u{2716}\u{FE0F} Refuted | New in this change",
+		);
+		expect(lines).toContain("    \u{2696}\u{FE0F} Verifier (faux/judge): The comment is documentation.");
+		expect(lines).toContain("    Trust floor: acknowledge required; maintainer dismissal needed.");
+	});
+});
+
+describe("a deterministic finding in the terminal", () => {
+	it("renders a static finding with only the parts it has and no verifier segment", () => {
+		const finding = decided(
+			{
+				rule: "TS2322",
+				message: "Type 'string' is not assignable to type 'number'.",
+				file: "src/total.ts",
+				startLine: 9,
+				discriminator: "TS2322",
+				cause: "introduced",
+				severity: "P1",
+				source: { check: "static.tsc" },
+				explanation: {
+					what: "tsc reports TS2322 here.",
+					whyHere: "The change introduced this diagnostic.",
+					whatToDo: "Fix the type error.",
+				},
+			},
+			undefined,
+			[],
+		);
+		expect(finding.render(emoji)).toBe(
+			[
+				"  \u{1F7E0} P1 | \u{26D4} Blocks merge | \u{1F9E9} tsc | New in this change",
+				"  Line 9: Type 'string' is not assignable to type 'number'.",
+				"    What: tsc reports TS2322 here.",
+				"    Why here: The change introduced this diagnostic.",
+				"    What to do: Fix the type error.",
+				`    Rule TS2322 | Status new | Finding ${finding.id}`,
+			].join("\n"),
+		);
+	});
+
+	it("renders a blocking guardrail finding under the guardrail its rule names", () => {
+		const finding = decided(
+			{
+				rule: "guardrail/forbidden-paths/no-secrets",
+				message: "The change adds a file under secrets/.",
+				file: "secrets/key.pem",
+				startLine: 1,
+				discriminator: "secrets/key.pem",
+				cause: "introduced",
+				severity: "P1",
+				source: { check: "guardrails" },
+				explanation: {
+					what: "secrets/key.pem matches the forbidden path secrets/**.",
+					whyHere: "This change adds the file.",
+					whatToDo: "Remove the file.",
+				},
+			},
+			undefined,
+			[],
+		);
+		const text = finding.render(plain);
+		expect(text.split("\n").slice(0, 2)).toEqual([
+			"  P1 | Blocks merge | Guardrails: forbidden-paths | New in this change",
+			"  Line 1: The change adds a file under secrets/.",
+		]);
+		expect(text).not.toMatch(/Failure scenario|Evidence|Verifier/);
+	});
+
+	it("says a pre-existing finding predates the change, and an affected one that the change affects it", () => {
+		const base = { ...retriedCharge, evidence: undefined, failureScenario: undefined };
+		expect(
+			decided({ ...base, cause: "pre-existing" })
+				.render(plain)
+				.split("\n")[0],
+		).toBe("  P1 | Advisory | Correctness | Not verified | Predates this change");
+		expect(
+			Finding.create({ ...retriedCharge, cause: "affected", resolution: undefined })
+				.render(plain)
+				.split("\n")[0],
+		).toBe("  P1 | Unresolved | Correctness | Not verified | Affected by this change");
+	});
+});

@@ -18,50 +18,52 @@ Block: 3 findings
 
 src/run.ts
 
-  P0  line 40  sql-injection  (introduced, new, block, unverified)
-  The query interpolates the user's name
+  P0 | Blocks merge | security | Not verified | New in this change
+  Line 40: The query interpolates the user's name
     What: The query splices the name into SQL text.
     Why here: This change passes the name straight from the request.
     What to do: Pass the name as a bound parameter.
+    Rule sql-injection | Status new
 
-  P1  line 12  no-eval  (introduced, new, block, unverified)
-  eval runs request input
+  P1 | Blocks merge | security | Not verified | New in this change
+  Line 12: eval runs request input
     What: The handler passes the request body to eval.
     Why here: This change routes the body into run() without parsing it.
     What to do: Parse the body with JSON.parse and validate it.
+    Rule no-eval | Status new
 
-  P1  line 50  no-eval  (introduced, new, block, unverified)
-  eval runs a stored template
+  P1 | Blocks merge | security | Not verified | New in this change
+  Line 50: eval runs a stored template
     What: The renderer evaluates a template from the database.
     Why here: This change lets users edit that template.
     What to do: Render the template with a sandboxed engine.
+    Rule no-eval | Status new
 
 Acknowledge: 1 finding
 
 src/total.ts
 
-  P2  line 9  missing-test  (introduced, new, acknowledge, unverified)
-  No test covers the new branch
+  P2 | Needs acknowledgement | security | Not verified | New in this change
+  Line 9: No test covers the new branch
     What: The new limit branch has no test.
     Why here: This change adds the branch.
     What to do: Add a test with a total above the limit.
+    Rule missing-test | Status new
 
 Advisory: 1 finding
 
 src/run.ts
 
-  P3  lines 30-32  unchecked-result  (affected, new, advisory, unverified)
-  The write's result is ignored
+  P3 | Advisory | security | Not verified | Affected by this change
+  Lines 30-32: The write's result is ignored
     What: fs.write can write fewer bytes than asked.
     Why here: The new caller passes larger buffers than before.
     Failure scenario: run() passes a 1 MiB chunk, fs.write writes 64 KiB of it, and the file ends short.
     Evidence:
       cause: src/run.ts:12
-          const chunk = Buffer.alloc(1 << 20);
       context: src/run.ts:14-15 at base
-          const chunk = Buffer.alloc(1 << 10);
-          fs.write(fd, chunk);
     What to do: Loop until every byte is written, or use fs.writeFile.
+    Rule unchecked-result | Status new
 
 1 silent finding and 1 dismissed finding not shown.
 
