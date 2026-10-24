@@ -8,6 +8,7 @@ import {
 	type FindingSource,
 	type FindingTrigger,
 	type GraphKeyParts,
+	GraphSnapshot,
 	type LensRule,
 	type LensToolName,
 	Lowering,
@@ -46,6 +47,7 @@ import {
 	upsertVerification,
 } from "./findings.ts";
 import { GraphCache } from "./graph-cache.ts";
+import { GraphMemo } from "./graph-memo.ts";
 import {
 	AssistantEntry,
 	type Context,
@@ -623,11 +625,18 @@ async function graphOf(lens: LensPolicy): Promise<EnolaFacts> {
 	// The key comes from the review's caller context; only the head's own tree makes it the head's graph.
 	if (lens.graph.parts.tree !== (await revisionTree(lens.revision.repoRoot, lens.revision.head)))
 		throw new Error("the Enola graph this review recorded is of another revision; use search and read_file instead");
-	const snapshot = await (await GraphCache.open(lens.graph.root)).read(lens.graph.parts);
-	if (snapshot === undefined)
-		throw new Error("the head's Enola graph is no longer in the cache; use search and read_file instead");
-	return EnolaFacts.parse(snapshot.files()["facts.jsonl"]);
+	const { root, parts } = lens.graph;
+	return graphs.get(`${root}\0${GraphSnapshot.key(parts)}`, async () => {
+		const snapshot = await (await GraphCache.open(root)).read(parts);
+		if (snapshot === undefined)
+			throw new Error("the head's Enola graph is no longer in the cache; use search and read_file instead");
+		return EnolaFacts.parse(snapshot.files()["facts.jsonl"]);
+	});
 }
+
+// Pi runs a round's tool calls in parallel, and a lens may make 150, so each snapshot is read and parsed once. Two
+// held graphs cover a review's head and a second review running in the same process.
+const graphs = new GraphMemo<EnolaFacts>(2);
 
 const graphNote =
 	"[from Enola's graph of the head: an edge it did not resolve is absent, so an absent caller proves nothing; confirm with read_file before citing]";

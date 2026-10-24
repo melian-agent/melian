@@ -1,7 +1,7 @@
 import { mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Changeset, defaultConfig, GraphSnapshot, Lens, type MelianConfig } from "@melian-agent/core";
+import { Changeset, defaultConfig, EnolaFacts, GraphSnapshot, Lens, type MelianConfig } from "@melian-agent/core";
 import {
 	CallerContext,
 	backgroundContext as context,
@@ -230,6 +230,20 @@ describe("graph tools", { timeout: 60_000 }, () => {
 		]);
 		for (const result of [definitions, references, near, far, callees])
 			expect(result).toContain("an absent caller proves nothing");
+	});
+
+	it("parse the snapshot once for a round of parallel graph calls", async () => {
+		await (await GraphCache.open(cacheRoot)).store(snapshot("probe"));
+		const parse = vi.spyOn(EnolaFacts, "parse");
+		await reviewWith(withGraph(), [
+			[
+				["graph_definitions", { name: "managerName" }],
+				["graph_references", { symbol: "src.managerName" }],
+				["graph_impact", { symbol: "src.managerName" }],
+			],
+		]);
+		// The snapshot's own validation parses it once when it is read from the cache; the tools parse it once more.
+		expect(parse).toHaveBeenCalledTimes(2);
 	});
 
 	it("render each answer whole: rows inside the boundary, Melian's notes after it, and no empty block", async () => {
