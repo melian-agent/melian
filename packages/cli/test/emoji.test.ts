@@ -213,4 +213,43 @@ describe("ReviewOutcome.render", () => {
 		expect(status("docs/a.ts")).toContain(" | \u{1F980} Tests | ");
 		expect(new ReviewOutcome(verdict).render(false, true, [tests])).toContain(" | \u{1F9EA} Tests | ");
 	});
+
+	it("gives each variant its emoji by the configured version the review ran it at, with a tier set", async () => {
+		const [base] = await Lens.builtins();
+		const root = Lens.from({ ...base!.toJSON(), name: "cleanup", version: "aaaaaaaaaaaa", emoji: "\u{1F9FD}" });
+		const docs = Lens.from({
+			...base!.toJSON(),
+			name: "cleanup",
+			version: "bbbbbbbbbbbb",
+			scope: "docs",
+			emoji: "\u{1F980}",
+		});
+		const config = { ...defaultConfig, lenses: { cleanup: { tier: "heavy" as const } } };
+		const paths = ["src/a.ts", "docs/a.ts"];
+		const [ranRoot, ranDocs] = [root, docs].map((lens) => lens.configured(config.lenses.cleanup));
+		expect(ranRoot!.version).not.toBe(root.version);
+		const finding = (file: string, version: string) =>
+			Finding.create({
+				rule: "dead-code",
+				message: `Nothing calls it in ${file}.`,
+				file,
+				startLine: 3,
+				discriminator: file,
+				cause: "introduced",
+				severity: "P3",
+				source: { check: "lens.cleanup", version: `${version}@careful` },
+				explanation: { what: "Nothing calls it.", whyHere: "This change adds it.", whatToDo: "Delete it." },
+			});
+		const verdict = new Adjudication({
+			findings: [finding("src/a.ts", ranRoot!.version), finding("docs/a.ts", ranDocs!.version)],
+			manifest: [],
+			checks: [],
+			config,
+		}).adjudicate();
+		const lines = new ReviewOutcome(verdict).render(false, true, [root, docs], { config, paths }).split("\n");
+		const status = (file: string) =>
+			lines.slice(0, lines.indexOf(`  Nothing calls it in ${file}.`)).findLast((line) => /^ {2}\S/.test(line));
+		expect(status("src/a.ts")).toContain(" | \u{1F9FD} cleanup | ");
+		expect(status("docs/a.ts")).toContain(" | \u{1F980} cleanup | ");
+	});
 });

@@ -6,6 +6,7 @@ import {
 	Lens,
 	loadConfig,
 	loadSecrets,
+	type MelianConfig,
 	type PullRequest,
 	Rendering,
 	type RepositoryPermission,
@@ -94,12 +95,20 @@ export class ReviewOutcome {
 
 	/**
 	 * The verdict as the terminal shows it, with each finding's ID, which `melian dismiss` takes, and the file and
-	 * entry that decided what it requires; with emojis when `emoji` is set, each lens's from `lenses`.
+	 * entry that decided what it requires; with emojis when `emoji` is set, each lens's from `lenses`. `ran` is the
+	 * configuration and paths the review selected them under, whose `tier` or `paths` give a lens the version its
+	 * findings carry.
 	 */
-	render(color: boolean, emoji: boolean, lenses: readonly Lens[]): string {
-		// Each variant by its version; a name alone only when its variants agree, so a report naming no version shows
-		// no variant's emoji as another's.
-		const declared = lenses.flatMap((lens) => (lens.emoji === undefined ? [] : [lens]));
+	render(
+		color: boolean,
+		emoji: boolean,
+		lenses: readonly Lens[],
+		ran?: { readonly config: MelianConfig; readonly paths: readonly string[] },
+	): string {
+		const selected = ran === undefined ? [] : Lens.select(lenses, ran.config, ran.paths).map(({ lens }) => lens);
+		// Each variant by its version, loaded or as the review ran it; a name alone only when its variants agree, so a
+		// report naming no version shows no variant's emoji as another's.
+		const declared = [...lenses, ...selected].flatMap((lens) => (lens.emoji === undefined ? [] : [lens]));
 		const lensEmojis = Object.fromEntries([
 			...declared.map((lens) => [`lens.${lens.name}@${lens.version}`, lens.emoji!]),
 			...declared
@@ -350,7 +359,7 @@ export async function review(
 		io.stdout(
 			options.json
 				? `${JSON.stringify({ ...JSON.parse(verdict.renderJson()), telemetry: timings.toJSON() }, null, 2)}\n`
-				: outcome.render(io.color, await terminalEmoji(io, repoRoot), lenses),
+				: outcome.render(io.color, await terminalEmoji(io, repoRoot), lenses, { config: loaded, paths }),
 		);
 		return outcome.exitCode();
 	} catch (error) {
