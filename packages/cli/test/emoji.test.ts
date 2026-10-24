@@ -183,4 +183,34 @@ describe("ReviewOutcome.render", () => {
 		const other = Lens.from({ ...base!.toJSON(), name: "tidy", emoji: "\u{1F9F4}" });
 		expect(new ReviewOutcome(lone).render(false, true, [root, other])).toContain(" | \u{1F9FD} cleanup | ");
 	});
+
+	it("prefers what two folder variants of a built-in lens declare over its row in the table", async () => {
+		const tests = (await Lens.builtins()).find((lens) => lens.name === "tests")!;
+		const root = Lens.from({ ...tests.toJSON(), version: "aaaaaaaaaaaa", emoji: "\u{1F9FD}" });
+		const docs = Lens.from({ ...tests.toJSON(), version: "bbbbbbbbbbbb", scope: "docs", emoji: "\u{1F980}" });
+		const finding = (file: string, version: string) =>
+			Finding.create({
+				rule: "untested-behaviour",
+				message: `No test covers ${file}.`,
+				file,
+				startLine: 3,
+				discriminator: file,
+				cause: "introduced",
+				severity: "P3",
+				source: { check: "lens.tests", version: `${version}@careful` },
+				explanation: { what: "No test covers it.", whyHere: "This change adds it.", whatToDo: "Test it." },
+			});
+		const verdict = new Adjudication({
+			findings: [finding("src/a.ts", "aaaaaaaaaaaa"), finding("docs/a.ts", "bbbbbbbbbbbb")],
+			manifest: [],
+			checks: [],
+			config: defaultConfig,
+		}).adjudicate();
+		const lines = new ReviewOutcome(verdict).render(false, true, [root, docs]).split("\n");
+		const status = (file: string) =>
+			lines.slice(0, lines.indexOf(`  No test covers ${file}.`)).findLast((line) => /^ {2}\S/.test(line));
+		expect(status("src/a.ts")).toContain(" | \u{1F9FD} Tests | ");
+		expect(status("docs/a.ts")).toContain(" | \u{1F980} Tests | ");
+		expect(new ReviewOutcome(verdict).render(false, true, [tests])).toContain(" | \u{1F9EA} Tests | ");
+	});
 });

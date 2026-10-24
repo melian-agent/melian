@@ -82,8 +82,9 @@ describe("the emoji table", () => {
 });
 
 describe("Mark.check", () => {
-	it("takes a lens's row, else the emoji it declares, else the magnifying glass, beside its name", () => {
-		expect(Mark.check("lens.tests", "untested-behaviour", "\u{1F600}").show(true)).toBe("\u{1F9EA} Tests");
+	it("takes the emoji a lens declares, else its row, else the magnifying glass, beside its label", () => {
+		expect(Mark.check("lens.tests", "untested-behaviour", "\u{1F600}").show(true)).toBe("\u{1F600} Tests");
+		expect(Mark.check("lens.tests", "untested-behaviour").show(true)).toBe("\u{1F9EA} Tests");
 		expect(Mark.check("lens.cleanup", "dead-code", "\u{1F9FD}").show(true)).toBe("\u{1F9FD} cleanup");
 		expect(Mark.check("lens.cleanup", "dead-code").show(true)).toBe("\u{1F50E} cleanup");
 		expect(Mark.check("lens.cleanup", "dead-code").show(false)).toBe("cleanup");

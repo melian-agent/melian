@@ -20,8 +20,8 @@ export class Mark {
 	}
 
 	/**
-	 * The mark for the check `check` names, as a status line shows it: its row in the table, or for a lens with no row
-	 * the lens's `declared` emoji, else the magnifying glass, beside its name. A guardrail names the guardrail its
+	 * The mark for the check `check` names, as a status line shows it. A lens shows its `declared` emoji, else its row
+	 * in the table, else the magnifying glass, beside its row's label or its name. A guardrail names the guardrail its
 	 * `rule` falls under. A check the table does not know shows its name alone.
 	 */
 	static check(check: string, rule: string, declared?: string): Mark {
@@ -29,8 +29,12 @@ export class Mark {
 			const guardrail = rule.split("/")[1];
 			return guardrail === undefined ? checkMarks.guardrails : new Mark(guardrails, `Guardrails: ${guardrail}`);
 		}
-		if (Object.hasOwn(checkMarks, check)) return checkMarks[check]!;
-		if (check.startsWith("lens.")) return new Mark(declared ?? lensFallback, check.slice("lens.".length));
+		const row = Object.hasOwn(checkMarks, check) ? checkMarks[check] : undefined;
+		if (check.startsWith("lens.")) {
+			// A lens's own declaration wins, so a folder's variant of a built-in lens shows the emoji it chose.
+			return new Mark(declared ?? row?.emoji ?? lensFallback, row?.word ?? check.slice("lens.".length));
+		}
+		if (row !== undefined) return row;
 		return new Mark(undefined, check);
 	}
 }
