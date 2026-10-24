@@ -1,8 +1,10 @@
 import { mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { Adjudication, defaultConfig, Finding, Lens } from "@melian-agent/core";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { baseAndHead } from "../../pipeline/test/fixtures/repo.ts";
+import { ReviewOutcome } from "../src/commands.ts";
 import { main } from "../src/main.ts";
 
 const policy = [
@@ -92,5 +94,33 @@ describe("output.emoji in the terminal", { timeout: 60_000 }, () => {
 		expect(await main(["review", "main...feature", "--no-walkthrough"], each)).toBe(1);
 		expect(each.stdout.mock.calls.join("")).toContain(`  ${red}\n`);
 		rmSync(join(repo, "melian.local.yaml"));
+	});
+});
+
+describe("ReviewOutcome.render", () => {
+	it("shows a repository lens beside the emoji its LENS.md declares, and only when emojis are on", async () => {
+		const [base] = await Lens.builtins();
+		const cleanup = Lens.from({ ...base!.toJSON(), name: "cleanup", emoji: "\u{1F9FD}" });
+		const finding = Finding.create({
+			rule: "dead-code",
+			message: "Nothing calls retryLater.",
+			file: "src/a.ts",
+			startLine: 3,
+			discriminator: "retryLater",
+			cause: "introduced",
+			severity: "P3",
+			source: { check: "lens.cleanup" },
+			explanation: { what: "Nothing calls retryLater.", whyHere: "This change adds it.", whatToDo: "Delete it." },
+		});
+		const verdict = new Adjudication({
+			findings: [finding],
+			manifest: [],
+			checks: [],
+			config: defaultConfig,
+		}).adjudicate();
+		const outcome = new ReviewOutcome(verdict);
+		expect(outcome.render(false, true, [cleanup])).toContain(" | \u{1F9FD} cleanup | ");
+		expect(outcome.render(false, true, [base!])).toContain(" | \u{1F50E} cleanup | ");
+		expect(outcome.render(false, false, [cleanup])).toContain(" | cleanup | ");
 	});
 });

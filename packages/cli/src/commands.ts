@@ -95,10 +95,13 @@ export class ReviewOutcome {
 
 	/**
 	 * The verdict as the terminal shows it, with each finding's ID, which `melian dismiss` takes, and the file and
-	 * entry that decided what it requires.
+	 * entry that decided what it requires; with emojis when `emoji` is set, each lens's from `lenses`.
 	 */
-	render(color: boolean, emoji = false): string {
-		return this.verdict.render(new Rendering({ color, emoji, ids: true, decided: true }));
+	render(color: boolean, emoji = false, lenses: readonly Lens[] = []): string {
+		const lensEmojis = Object.fromEntries(
+			lenses.flatMap((lens) => (lens.emoji === undefined ? [] : [[`lens.${lens.name}`, lens.emoji]])),
+		);
+		return this.verdict.render(new Rendering({ color, emoji, lensEmojis, ids: true, decided: true }));
 	}
 }
 
@@ -344,7 +347,7 @@ export async function review(
 		io.stdout(
 			options.json
 				? `${JSON.stringify({ ...JSON.parse(verdict.renderJson()), telemetry: timings.toJSON() }, null, 2)}\n`
-				: outcome.render(io.color, await terminalEmoji(io, repoRoot)),
+				: outcome.render(io.color, await terminalEmoji(io, repoRoot), lenses),
 		);
 		return outcome.exitCode();
 	} catch (error) {
