@@ -408,4 +408,26 @@ describe("the register keeps every element the terminal printed", () => {
 		expect(lines[0]).toContain(" | \u{1F50E} x\\u001b[31m | ");
 		expect(lines[1]).toBe("  Lines 31-44: Charges twice\\u001b[2J");
 	});
+
+	it("merged reports: no emoji when emojis are off, and no severity a stored report lacks", () => {
+		const stored = Finding.create(retriedCharge).toJSON();
+		const legacy = Finding.from({
+			...stored,
+			properties: {
+				...stored.properties,
+				alsoReportedAs: [{ id: "0123456789abcdef", ruleId: "double-charge", check: "lens.contracts" }],
+			},
+		});
+		expect(legacy.render(plain).split("\n").at(-1)).toBe(
+			"    Merged report: double-charge from lens.contracts  0123456789abcdef",
+		);
+	});
+
+	it("trust floor: a note's later lines sit inside the finding", () => {
+		const finding = decided(
+			{ ...retriedCharge, rule: "untested-behaviour", source: { check: "lens.tests" } },
+			{ ...lowering, lowered: { ...lowering.lowered, reason: "Only the admin path.\nNothing else." } },
+		);
+		expect(finding.render(plain)).toContain("Only the admin path.\n      Nothing else.");
+	});
 });
