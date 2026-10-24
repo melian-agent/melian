@@ -455,6 +455,52 @@ describe("graph tools", { timeout: 60_000 }, () => {
 		expect(quiet).toContain("No calls.");
 	});
 
+	it("walk two levels when no depth is given, and three when asked", async () => {
+		const link = (id: string, to: string) => ({
+			id,
+			name: `src.${id}`,
+			kind: "symbol",
+			file: `src/${id}.ts`,
+			line: 1,
+			relations: [{ kind: "calls", target: `src.${to}`, target_id: to }],
+		});
+		const facts = [
+			{ id: "t", name: "src.t", kind: "symbol", file: "src/t.ts", line: 1 },
+			link("b", "t"),
+			link("c", "b"),
+			link("d", "c"),
+		];
+		await (await GraphCache.open(cacheRoot)).store(
+			GraphSnapshot.create(parts, {
+				"facts.jsonl": facts.map((fact) => JSON.stringify(fact)).join("\n"),
+				"insights.json": "[]",
+				"receipt.json": JSON.stringify({
+					format_version: 1,
+					enola_version: "0.4.27",
+					snapshot_id: `sha256:${"d".repeat(64)}`,
+				}),
+			}),
+		);
+		const requests = await reviewWith(withGraph(), [
+			[
+				["graph_impact", { symbol: "src.t" }],
+				["graph_impact", { symbol: "src.t", depth: 3 }],
+			],
+		]);
+		const nonce = nonceOf(requests[correctness]![0]!);
+		const body = (result: string) =>
+			new RegExp(`<untrusted-${nonce} label="graph">\\n([\\s\\S]*?)\\n</untrusted-${nonce}>`)
+				.exec(result)![1]!
+				.split("\n");
+		const [two, three] = toolResults(requests[correctness]![1]!);
+		expect(body(two!)).toEqual(["1 src/b.ts:1 src.b (symbol)", "2 src/c.ts:1 src.c (symbol)"]);
+		expect(body(three!)).toEqual([
+			"1 src/b.ts:1 src.b (symbol)",
+			"2 src/c.ts:1 src.c (symbol)",
+			"3 src/d.ts:1 src.d (symbol)",
+		]);
+	});
+
 	it("tell two declarations that share a full name apart by their file", async () => {
 		const facts = [
 			{ id: "a", name: "src.compare", kind: "symbol", file: "src/a.ts", line: 1 },
