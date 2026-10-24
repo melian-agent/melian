@@ -262,7 +262,7 @@ describe("graph tools", { timeout: 60_000 }, () => {
 			[block(["calls src/user.ts:6 src.managerName (symbol)", "unresolved lib.format"].join("\n")), note].join("\n"),
 			[
 				block(["other/line.ts:1 other.line (symbol)", "src/report.ts:2 src.line (symbol)"].join("\n")),
-				"[2 declarations match; call again with one full name from the list]",
+				"[2 declarations match; call again with one full name from the list, and its file when two share it]",
 				note,
 			].join("\n"),
 		]);
@@ -436,10 +436,53 @@ describe("graph tools", { timeout: 60_000 }, () => {
 		]);
 		const [ambiguous, missing, none, quiet] = toolResults(requests[correctness]![1]!);
 		expect(ambiguous).toContain("src/report.ts:2 src.line (symbol)");
-		expect(ambiguous).toContain("[2 declarations match; call again with one full name from the list]");
+		expect(ambiguous).toContain(
+			"[2 declarations match; call again with one full name from the list, and its file when two share it]",
+		);
 		expect(missing).toContain("No declaration in Enola's graph has that name.");
 		expect(none).toContain("No declarations found.");
 		expect(quiet).toContain("No calls.");
+	});
+
+	it("tell two declarations that share a full name apart by their file", async () => {
+		const facts = [
+			{ id: "a", name: "src.compare", kind: "symbol", file: "src/a.ts", line: 1 },
+			{ id: "b", name: "src.compare", kind: "symbol", file: "src/b.ts", line: 2 },
+			{
+				id: "c",
+				name: "src.caller",
+				kind: "symbol",
+				file: "src/c.ts",
+				line: 3,
+				relations: [{ kind: "calls", target: "src.compare", target_id: "b" }],
+			},
+		];
+		await (await GraphCache.open(cacheRoot)).store(
+			GraphSnapshot.create(parts, {
+				"facts.jsonl": facts.map((fact) => JSON.stringify(fact)).join("\n"),
+				"insights.json": "[]",
+				"receipt.json": JSON.stringify({
+					format_version: 1,
+					enola_version: "0.4.27",
+					snapshot_id: `sha256:${"d".repeat(64)}`,
+				}),
+			}),
+		);
+		const requests = await reviewWith(withGraph(), [
+			[
+				["graph_references", { symbol: "src.compare" }],
+				["graph_references", { symbol: "src.compare", file: "src/b.ts" }],
+				["graph_impact", { symbol: "src.compare", file: "src/a.ts" }],
+				["graph_callees", { symbol: "src.caller", file: "src/a.ts" }],
+			],
+		]);
+		const [both, b, a, nowhere] = toolResults(requests[correctness]![1]!);
+		expect(both).toContain(
+			"[2 declarations match; call again with one full name from the list, and its file when two share it]",
+		);
+		expect(b).toContain("calls from src/c.ts:3 src.caller (symbol)");
+		expect(a).toContain("No resolved callers.");
+		expect(nowhere).toContain("No declaration in Enola's graph has that name.");
 	});
 
 	it("stop the walk at 200 callers and cut the rows at the output bound, saying both", async () => {

@@ -646,15 +646,25 @@ function graphRows(review: ReviewState, rows: readonly string[], notes: readonly
 }
 
 // The one declaration `symbol` names, or a result that lists the candidates to choose from.
-function named(facts: EnolaFacts, symbol: string, review: ReviewState): EnolaFact | ToolResult {
-	const found = facts.definitions(symbol);
+function named(
+	facts: EnolaFacts,
+	symbol: string,
+	file: string | undefined,
+	review: ReviewState,
+): EnolaFact | ToolResult {
+	// Enola names a declaration by its directory, so two files in one directory can declare the same full name.
+	const found = facts.definitions(symbol).filter((fact) => file === undefined || fact.file === file);
 	if (found.length === 1) return found[0]!;
 	if (found.length === 0)
 		return text("No declaration in Enola's graph has that name. graph_definitions finds a name's declarations.");
 	return graphRows(review, found.map(describeFact), [
-		`[${found.length} declarations match; call again with one full name from the list]`,
+		`[${found.length} declarations match; call again with one full name from the list, and its file when two share it]`,
 	]);
 }
+
+const fileParameter = Type.Optional(
+	Type.String({ minLength: 1, description: "The declaring file, when two declarations share the full name" }),
+);
 
 const symbolParameter = Type.String({
 	minLength: 1,
@@ -682,13 +692,13 @@ const graphReferences = defineTool({
 	name: "graph_references",
 	description:
 		"List what refers to one declaration at head, from Enola's graph: each call, construction, type use, import or implementation Enola resolved to it, with file, line and kind, and a count of the uses it named but did not resolve.",
-	parameters: Type.Object({ symbol: symbolParameter }),
+	parameters: Type.Object({ symbol: symbolParameter, file: fileParameter }),
 	replay: "safe",
 	outputLimits,
 	execute: (args, api, context) =>
 		budgeted(api, context, "graph_references", async (review, lens) => {
 			const facts = await graphOf(lens);
-			const target = named(facts, args.symbol, review);
+			const target = named(facts, args.symbol, args.file, review);
 			if (!("id" in target)) return target;
 			const { references, unresolved } = facts.references(target);
 			const rows = references.map(({ kind, fact }) => `${visibleText(kind)} from ${describeFact(fact)}`);
@@ -709,6 +719,7 @@ const graphImpact = defineTool({
 		"List what reaches one declaration at head through calls and constructions Enola resolved, declarations and top-level code alike, nearest first, up to depth levels away (1 to 3, 2 when absent) and 200 callers. Imports and type uses are not followed; graph_references lists those.",
 	parameters: Type.Object({
 		symbol: symbolParameter,
+		file: fileParameter,
 		depth: Type.Optional(Type.Integer({ minimum: 1, maximum: maxImpactDepth, description: "1 to 3; 2 when absent" })),
 	}),
 	replay: "safe",
@@ -716,7 +727,7 @@ const graphImpact = defineTool({
 	execute: (args, api, context) =>
 		budgeted(api, context, "graph_impact", async (review, lens) => {
 			const facts = await graphOf(lens);
-			const target = named(facts, args.symbol, review);
+			const target = named(facts, args.symbol, args.file, review);
 			if (!("id" in target)) return target;
 			const { reached, truncated } = facts.impact(target, args.depth ?? 2, maxImpactNodes);
 			const rows = reached.map(({ depth, fact }) => `${depth} ${describeFact(fact)}`);
@@ -731,13 +742,13 @@ const graphCallees = defineTool({
 	name: "graph_callees",
 	description:
 		"List what one declaration calls or constructs at head, from Enola's graph: each target Enola resolved, with file, line and kind, then each it did not, by the name the code uses.",
-	parameters: Type.Object({ symbol: symbolParameter }),
+	parameters: Type.Object({ symbol: symbolParameter, file: fileParameter }),
 	replay: "safe",
 	outputLimits,
 	execute: (args, api, context) =>
 		budgeted(api, context, "graph_callees", async (review, lens) => {
 			const facts = await graphOf(lens);
-			const source = named(facts, args.symbol, review);
+			const source = named(facts, args.symbol, args.file, review);
 			if (!("id" in source)) return source;
 			const { resolved, unresolved } = facts.callees(source);
 			const rows = [
