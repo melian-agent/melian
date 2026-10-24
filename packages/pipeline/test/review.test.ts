@@ -3792,7 +3792,28 @@ describe("the design baseline", () => {
 		const prompt = systemPromptOf(messages);
 		expect(quoted(prompt, nonceOf(messages), "listing").join("\n")).toContain("docs/guidelines/cli.md:1 — Skills");
 		const scope = /Search both base and head over ([^:]+):/.exec(prompt)?.[1];
-		expect(scope).toBe('`docs/decisions/` and every file named under "Design sections at base"');
+		expect(scope).toBe('`docs/decisions/` and every file listed under "Design files at base"');
+	});
+	it("lists a linked design file with no headings in the lens's search scope", async () => {
+		rmSync(repo, { recursive: true, force: true });
+		repo = baseAndHead(
+			{
+				"docs/design.md": "# Design\n[Trust](design/trust.md)\n",
+				"docs/design/trust.md": "Writers are trusted only by policy.\n",
+				"src/answer.ts": "export const answer = 42;\n",
+			},
+			{ "src/answer.ts": "export const answer = 43;\n" },
+		);
+		config = { ...config, tiers: { ...config.tiers, full: ["lens.design"] } };
+		const design = "You are the design reviewer";
+		const requests = scriptConversations(fake, [{ match: design, replies: [fauxAssistantMessage("Done.")] }]);
+		await review();
+		const messages = requests[design]![0]!;
+		const prompt = systemPromptOf(messages);
+		const files = prompt.split("## Design files at base")[1] ?? "";
+		expect(quoted(files, nonceOf(messages), "listing")[0]).toBe("docs/design.md\ndocs/design/trust.md");
+		const scope = /Search both base and head over ([^:]+):/.exec(prompt)?.[1];
+		expect(scope).toBe('`docs/decisions/` and every file listed under "Design files at base"');
 	});
 	it.each([
 		"[Section](missing.md#section)",
