@@ -8,6 +8,7 @@ import {
 	type FindingSource,
 	type FindingTrigger,
 	type GraphKeyParts,
+	GraphSnapshot,
 	type LensRule,
 	type LensToolName,
 	Lowering,
@@ -46,6 +47,7 @@ import {
 	upsertVerification,
 } from "./findings.ts";
 import { GraphCache } from "./graph-cache.ts";
+import { GraphMemo } from "./graph-memo.ts";
 import {
 	AssistantEntry,
 	type Context,
@@ -573,6 +575,7 @@ async function searchFiles(review: ReviewState, commit: string, search: Revision
 	const rows: string[] = [];
 	for (const file of files) {
 		if (file.missing) rows.push(`${visibleText(file.path)}: [no file at this revision]`);
+		else if (file.binary) rows.push(`${visibleText(file.path)}: [binary at this revision; not searched]`);
 		else if (file.truncated) rows.push(`${visibleText(file.path)}: [more matches not shown; search it alone]`);
 	}
 	for (let depth = 0; files.some((file) => depth < file.matches.length); depth++)
@@ -622,11 +625,18 @@ async function graphOf(lens: LensPolicy): Promise<EnolaFacts> {
 	// The key comes from the review's caller context; only the head's own tree makes it the head's graph.
 	if (lens.graph.parts.tree !== (await revisionTree(lens.revision.repoRoot, lens.revision.head)))
 		throw new Error("the Enola graph this review recorded is of another revision; use search and read_file instead");
-	const snapshot = await (await GraphCache.open(lens.graph.root)).read(lens.graph.parts);
-	if (snapshot === undefined)
-		throw new Error("the head's Enola graph is no longer in the cache; use search and read_file instead");
-	return EnolaFacts.parse(snapshot.files()["facts.jsonl"]);
+	const { root, parts } = lens.graph;
+	return graphs.get(`${root}\0${GraphSnapshot.key(parts)}`, async () => {
+		const snapshot = await (await GraphCache.open(root)).read(parts);
+		if (snapshot === undefined)
+			throw new Error("the head's Enola graph is no longer in the cache; use search and read_file instead");
+		return EnolaFacts.parse(snapshot.files()["facts.jsonl"]);
+	});
 }
+
+// Pi runs a round's tool calls in parallel, and a lens may make 150, so each snapshot is read and parsed once. Two
+// held graphs cover a review's head and a second review running in the same process.
+const graphs = new GraphMemo<EnolaFacts>(2);
 
 const graphNote =
 	"[from Enola's graph of the head: an edge it did not resolve is absent, so an absent caller proves nothing; confirm with read_file before citing]";
@@ -703,11 +713,16 @@ const graphReferences = defineTool({
 			const { references, unresolved } = facts.references(target);
 			const rows = references.map(({ kind, fact }) => `${visibleText(kind)} from ${describeFact(fact)}`);
 			return graphRows(review, rows, [
-				...(rows.length === 0 ? ["No resolved references."] : []),
+				...(rows.length === 0 ? [unknownReferences] : []),
 				...(unresolved > 0 ? [`[${unresolved} more uses name it without a resolved edge; search finds them]`] : []),
 			]);
 		}),
 });
+
+const unknownCallers =
+	"No caller in the snapshot's resolved edges. That is unknown, not none: Enola's impact query resolves a few calls its facts do not. Search for the name before concluding nothing calls it.";
+const unknownReferences =
+	"No reference in the snapshot's resolved edges. That is unknown, not none: search for the name before concluding nothing uses it.";
 
 // Enola's own impact query caps its walk at 50 nodes; three levels and 200 callers keep a result readable.
 const maxImpactDepth = 3;
@@ -732,7 +747,10 @@ const graphImpact = defineTool({
 			const { reached, truncated } = facts.impact(target, args.depth ?? 2, maxImpactNodes);
 			const rows = reached.map(({ depth, fact }) => `${depth} ${describeFact(fact)}`);
 			return graphRows(review, rows, [
-				...(rows.length === 0 ? ["No resolved callers."] : []),
+				// Enola's impact query resolves a few calls its facts leave unresolved (the coverage spike counted 807 pairs
+				// from impact and 824 from facts, 825 together), and a lens has no checkout to run it in, so an empty walk is
+				// unknown, not none.
+				...(rows.length === 0 ? [unknownCallers] : []),
 				...(truncated ? [`[the walk stopped at ${maxImpactNodes} callers]`] : []),
 			]);
 		}),

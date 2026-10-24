@@ -31,7 +31,7 @@ Enola 0.4.27 is an MCP server by default, with 22 tools. Melian does not use tha
 
 The snapshot is Enola's own answer. Its facts name each declaration and each edge Enola resolved, with the target's ID. Reading those edges asks the authority. The tools never resolve a name themselves: an edge Enola left unresolved stays unresolved and is listed by name, marked so.
 
-`graph_impact` walks resolved call and instantiation edges only. `enola impact` also follows imports and file references, and the review keeps calling it for the callers section of the prompt. The tool is narrower on purpose, and its description says so.
+`graph_impact` walks resolved call and instantiation edges only. That is narrower than Enola's own impact query: [the coverage spike](../spikes/enola-coverage.md) counted 824 call pairs in the facts, 807 from impact and 825 together, so one pair was impact's alone. A lens has no checkout of the head to run the query in, so an empty answer says it is unknown, not none, and points the lens at `search`. That is the safe-wide answer [the authority decision](2026-10-12-ask-the-authority.md) asks for where the authority cannot run. `enola impact` also follows imports and file references, and the review keeps calling it for the callers section of the prompt. The tool is narrower on purpose, and its description says so.
 
 ## Which lenses
 
@@ -45,12 +45,12 @@ The built-in lenses keep their tool lists until a live run measures the change. 
 ## Consequences
 
 - The lens policy on each lens conversation gains an optional `graph`: the cache root and key parts the lens task input already stored. A lens an older Melian created has none, and its graph tools say the graph is unavailable. The lens task's input is unchanged.
-- A tool parses the snapshot's facts on each call: about 130 milliseconds for Melian's own snapshot of 10,000 facts and 6 MB, and under 10 milliseconds for the queries.
+- A tool parses the snapshot's facts once per snapshot, through a memo of two held graphs keyed by their verified content, since Pi runs a round's calls in parallel. A parse takes about 130 milliseconds for Melian's own snapshot of 10,000 facts and 6 MB. A query takes under 10 milliseconds.
 - Enola's facts cover what its extractors resolve. On Melian's own graph, `visibleText` has 73 resolved references and 133 declarations within two calls. A method called through an instance, such as `run.callers()`, or a static method called through its class, such as `GraphSnapshot.create`, has none: Enola records those calls by the text the code wrote, not the declaration. The tools say an absent caller proves nothing, and `search` stays the way to find those.
 
 ## Searching a set of files
 
 [Issue #204](https://github.com/melian-agent/melian/issues/204): `search` took one path and returned at most 200 matches. The design index links up to 64 files, so searching each at base and head could take 128 calls of the design lens's 45, and a term common in one file cut the search off before the file that mattered.
 
-`search` now also takes `paths`: an exact set of up to 65 files, design.md and the 64 it may link. Each file is grepped on its own, with `--max-count` and a byte bound of its own. So each file gets an equal share of the 200 matches, and one file's long lines cannot spend another's. The block opens with each file that had more than its share or is no file at the revision. Then the files' first matches follow, then their second, so the output bound cuts deep matches before it drops a file. `path` and `paths` together are refused. Core's `searchRevisionFiles` does the search; a test runs it over 64 files, one holding 300 distractor matches.
+`search` now also takes `paths`: an exact set of up to 65 files, design.md and the 64 it may link. Each file is grepped on its own, with `--max-count` and a byte bound of its own. So each file gets an equal share of the 200 matches, and one file's long lines cannot spend another's. The block opens with each file that had more than its share, is no file at the revision, or that git skipped as binary. Then the files' first matches follow, then their second, so the output bound cuts deep matches before it drops a file. `path` and `paths` together are refused. Core's `searchRevisionFiles` does the search; a test runs it over 64 files, one holding 300 distractor matches.
 

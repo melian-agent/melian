@@ -201,6 +201,8 @@ export type RevisionFileMatches = {
 	readonly matches: RevisionMatch[];
 	readonly truncated: boolean;
 	readonly missing?: true;
+	/** Git skipped the file as binary, by the attribute source or its content, so it was not searched. */
+	readonly binary?: true;
 };
 
 /**
@@ -225,21 +227,36 @@ export async function searchRevisionFiles(
 		throw new RevisionError("tooManyFiles", `at most ${revisionLimits.searchFiles} files, not ${targets.length}`);
 	await requireGitVersion(repoRoot);
 	const { entries } = await lsTree(repoRoot, revision, [revision, "--", ...targets]);
-	const files = new Set(entries.filter((entry) => entry.kind === "file").map((entry) => entry.path));
+	const sizes = new Map(
+		entries.flatMap((entry) => (entry.kind === "file" ? [[entry.path, entry.size] as const] : [])),
+	);
+	const files = new Set(sizes.keys());
 	const present = targets.filter((path) => files.has(path));
 	const share = Math.max(1, Math.floor(maxMatches / Math.max(1, present.length)));
 	// One grep per file, so a long line in one file spends only that file's byte bound and never another's share.
-	const grepped = new Map<string, { matches: RevisionMatch[]; cut: boolean }>();
+	const grepped = new Map<string, { matches: RevisionMatch[]; cut: boolean; binary?: true }>();
 	for (let start = 0; start < present.length; start += 8)
 		await Promise.all(
 			present.slice(start, start + 8).map(async (path) => {
-				grepped.set(path, await grepFile(repoRoot, revision, search, path, share));
+				const found = await grepFile(repoRoot, revision, search, path, share);
+				// A file with content that matched nothing may be one git skipped: an empty pattern then matches nothing too.
+				const skipped =
+					found.matches.length === 0 &&
+					sizes.get(path)! > 0 &&
+					(await grepFile(repoRoot, revision, { ...search, pattern: "", regex: false }, path, 0)).matches
+						.length === 0;
+				grepped.set(path, { ...found, ...(skipped ? { binary: true as const } : {}) });
 			}),
 		);
 	return targets.map((path) => {
 		const found = grepped.get(path);
 		if (found === undefined) return { path, matches: [], truncated: false, missing: true as const };
-		return { path, matches: found.matches.slice(0, share), truncated: found.cut || found.matches.length > share };
+		return {
+			path,
+			matches: found.matches.slice(0, share),
+			truncated: found.cut || found.matches.length > share,
+			...(found.binary ? { binary: found.binary } : {}),
+		};
 	});
 }
 

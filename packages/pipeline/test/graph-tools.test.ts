@@ -1,7 +1,7 @@
 import { mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Changeset, defaultConfig, GraphSnapshot, Lens, type MelianConfig } from "@melian-agent/core";
+import { Changeset, defaultConfig, EnolaFacts, GraphSnapshot, Lens, type MelianConfig } from "@melian-agent/core";
 import {
 	CallerContext,
 	backgroundContext as context,
@@ -232,6 +232,20 @@ describe("graph tools", { timeout: 60_000 }, () => {
 			expect(result).toContain("an absent caller proves nothing");
 	});
 
+	it("parse the snapshot once for a round of parallel graph calls", async () => {
+		await (await GraphCache.open(cacheRoot)).store(snapshot("probe"));
+		const parse = vi.spyOn(EnolaFacts, "parse");
+		await reviewWith(withGraph(), [
+			[
+				["graph_definitions", { name: "managerName" }],
+				["graph_references", { symbol: "src.managerName" }],
+				["graph_impact", { symbol: "src.managerName" }],
+			],
+		]);
+		// The snapshot's own validation parses it once when it is read from the cache; the tools parse it once more.
+		expect(parse).toHaveBeenCalledTimes(2);
+	});
+
 	it("render each answer whole: rows inside the boundary, Melian's notes after it, and no empty block", async () => {
 		await (await GraphCache.open(cacheRoot)).store(snapshot("probe"));
 		const requests = await reviewWith(withGraph(), [
@@ -254,9 +268,15 @@ describe("graph tools", { timeout: 60_000 }, () => {
 		expect(toolResults(requests[correctness]![1]!)).toEqual([
 			[block("src/report.ts:2 src.line (symbol)"), note].join("\n"),
 			["No declarations found.", note].join("\n"),
-			["No resolved references.", note].join("\n"),
+			[
+				"No reference in the snapshot's resolved edges. That is unknown, not none: search for the name before concluding nothing uses it.",
+				note,
+			].join("\n"),
 			[block("calls from src/evil.ts:1 evil.probe sentinel (symbol)"), note].join("\n"),
-			["No resolved callers.", note].join("\n"),
+			[
+				"No caller in the snapshot's resolved edges. That is unknown, not none: Enola's impact query resolves a few calls its facts do not. Search for the name before concluding nothing calls it.",
+				note,
+			].join("\n"),
 			[block("1 src/evil.ts:1 evil.probe sentinel (symbol)"), note].join("\n"),
 			["No calls.", note].join("\n"),
 			[block(["calls src/user.ts:6 src.managerName (symbol)", "unresolved lib.format"].join("\n")), note].join("\n"),
@@ -329,6 +349,17 @@ describe("graph tools", { timeout: 60_000 }, () => {
 			`<untrusted-${nonce} label="search">\nsrc/user.ts:2: \treturn user.manager?.name ?? "none";\n</untrusted-${nonce}>`,
 		);
 		expect(head).toBe("No matches in 1 files.");
+	});
+
+	it("say which file of a set it could not search as binary", async () => {
+		writeFiles(repo, { "docs/blob.md": "needle\u0000needle\n" });
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "binary");
+		const requests = await reviewWith(undefined, [[["search", { pattern: "needle", paths: ["docs/blob.md"] }]]]);
+		const nonce = nonceOf(requests[correctness]![0]!);
+		expect(toolResults(requests[correctness]![1]!)[0]).toBe(
+			`<untrusted-${nonce} label="search">\ndocs/blob.md: [binary at this revision; not searched]\n</untrusted-${nonce}>`,
+		);
 	});
 
 	it("cut the deepest matches of every file before it drops a file, and say how many lines it cut", async () => {
@@ -449,6 +480,52 @@ describe("graph tools", { timeout: 60_000 }, () => {
 		expect(quiet).toContain("No calls.");
 	});
 
+	it("walk two levels when no depth is given, and three when asked", async () => {
+		const link = (id: string, to: string) => ({
+			id,
+			name: `src.${id}`,
+			kind: "symbol",
+			file: `src/${id}.ts`,
+			line: 1,
+			relations: [{ kind: "calls", target: `src.${to}`, target_id: to }],
+		});
+		const facts = [
+			{ id: "t", name: "src.t", kind: "symbol", file: "src/t.ts", line: 1 },
+			link("b", "t"),
+			link("c", "b"),
+			link("d", "c"),
+		];
+		await (await GraphCache.open(cacheRoot)).store(
+			GraphSnapshot.create(parts, {
+				"facts.jsonl": facts.map((fact) => JSON.stringify(fact)).join("\n"),
+				"insights.json": "[]",
+				"receipt.json": JSON.stringify({
+					format_version: 1,
+					enola_version: "0.4.27",
+					snapshot_id: `sha256:${"d".repeat(64)}`,
+				}),
+			}),
+		);
+		const requests = await reviewWith(withGraph(), [
+			[
+				["graph_impact", { symbol: "src.t" }],
+				["graph_impact", { symbol: "src.t", depth: 3 }],
+			],
+		]);
+		const nonce = nonceOf(requests[correctness]![0]!);
+		const body = (result: string) =>
+			new RegExp(`<untrusted-${nonce} label="graph">\\n([\\s\\S]*?)\\n</untrusted-${nonce}>`)
+				.exec(result)![1]!
+				.split("\n");
+		const [two, three] = toolResults(requests[correctness]![1]!);
+		expect(body(two!)).toEqual(["1 src/b.ts:1 src.b (symbol)", "2 src/c.ts:1 src.c (symbol)"]);
+		expect(body(three!)).toEqual([
+			"1 src/b.ts:1 src.b (symbol)",
+			"2 src/c.ts:1 src.c (symbol)",
+			"3 src/d.ts:1 src.d (symbol)",
+		]);
+	});
+
 	it("tell two declarations that share a full name apart by their file", async () => {
 		const facts = [
 			{ id: "a", name: "src.compare", kind: "symbol", file: "src/a.ts", line: 1 },
@@ -486,7 +563,7 @@ describe("graph tools", { timeout: 60_000 }, () => {
 			"[2 declarations match; call again with one full name from the list, and its file when two share it]",
 		);
 		expect(b).toContain("calls from src/c.ts:3 src.caller (symbol)");
-		expect(a).toContain("No resolved callers.");
+		expect(a).toContain("No caller in the snapshot's resolved edges. That is unknown, not none");
 		expect(nowhere).toContain("No declaration in Enola's graph has that name.");
 	});
 
