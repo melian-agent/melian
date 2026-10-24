@@ -117,7 +117,7 @@ export class EnolaFacts {
 		const references = (this.#incoming().get(target.id) ?? [])
 			.filter((edge) => edge.kind !== "declares")
 			.map((edge) => ({ kind: edge.kind, fact: structuredClone(edge.source) }))
-			.sort((a, b) => compare(place(a.fact), place(b.fact)));
+			.sort((a, b) => compare(place(a.fact), place(b.fact)) || compare(a.kind, b.kind));
 		let unresolved = 0;
 		for (const fact of this.#facts)
 			for (const relation of fact.relations ?? [])
