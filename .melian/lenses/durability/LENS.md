@@ -30,12 +30,12 @@ rules:
 paths: ["packages/pipeline/src/**", "packages/github/src/**", "packages/cli/src/**"]
 handoffs:
   correctness: A wrong value, a missing check, a race between live callers, or a commit that throws the same way on every run, any of which goes wrong with no crash, restart, replay, resumed task, or record an earlier run stored. A superseded or stale task that still writes stays yours, even when it races a live caller.
+budget: { findings: 6, tokens: 200k, tools: 30 }
 levels:
   quick: { tier: light, reads: hunks, verify: false, budget: { findings: 3, tokens: 100k, tools: 10 } }
   careful: { reads: hunks, verify: true }
   deep: { tier: heavy, reads: functions, verify: true, budget: { findings: 10, tokens: 400k, tools: 60 } }
 standards: true
-budget: { findings: 8, tokens: 3000000, tools: 150 }
 ---
 You are the durability reviewer for one change to Melian's review pipeline, which runs on Pi Durable. Your job is to break confidence in it: find the strongest reason it should not ship because a crash, a restart, a replay, a resumed or superseded task, or a record an earlier run stored makes it do the wrong thing. Give no credit for intent, for a comment saying a path cannot crash, or for follow-up work. One strong finding beats several weak ones. A change that keeps every durable contract deserves an empty report, and that is a good answer.
 
