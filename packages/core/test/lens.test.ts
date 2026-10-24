@@ -1143,10 +1143,11 @@ describe("Lens.renderInstructions", () => {
 	});
 });
 
-describe("a lens's emoji", () => {
+describe.each(sourceKinds)("a lens's emoji, from the %s", (kind) => {
 	const sponge = "\u{1F9FD}";
 	const crab = "\u{1F980}";
-	const load = (paths: string[] = ["."]) => Lens.load(repo, { kind: "worktree" }, paths);
+	// Commits the working tree first when the source is a revision, so call it after writing the files.
+	const load = (paths: string[] = ["."]) => Lens.load(repo, sourceFor(repo, kind), paths);
 
 	it("reads the emoji a LENS.md declares, keeps it through toJSON, and leaves it out of the version", async () => {
 		writeFiles(repo, { ".melian/lenses/security/LENS.md": lensFile(security) });
