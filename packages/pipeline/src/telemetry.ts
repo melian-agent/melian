@@ -15,6 +15,7 @@ import {
 } from "./harness.ts";
 import { LensDocument } from "./lens-tools.ts";
 import { ReviewIndex } from "./review-index.ts";
+import { PrepareDocument, type PrepareRecord } from "./spans.ts";
 import { SummaryIndex } from "./summarize.ts";
 import { TimingDocument } from "./task-timing.ts";
 import { ModelAttemptsDocument, ModelUsageDocument, TokenUsage, type UsageSummary } from "./token-usage.ts";
@@ -84,7 +85,15 @@ export type Stage = {
 	resumed: boolean;
 	usage?: UsageSummary;
 	usageIncomplete?: number;
+	/** For a model stage, the summed response time of its answers; the rest is tools and orchestration. */
+	modelMs?: number;
 };
+
+/** A stretch of a review's wall clock that no span or stage covers. */
+export type Untimed = { startedAt: number; endedAt: number; durationMs: number };
+
+// A gap this long between timed work is worth naming; shorter ones are the orchestrator's own bookkeeping.
+const untimedLimitMs = 1000;
 
 function reasoningText(reasoning: RequestReasoning): string {
 	const sent = reasoning.sent.map((body) => {
@@ -121,10 +130,12 @@ export class StageTelemetry {
 	readonly total?: UsageSummary;
 	readonly usageUnavailable: readonly string[];
 	readonly usageIncomplete?: number;
+	readonly prepare?: PrepareRecord;
 
-	constructor(revision: string, stages: readonly Stage[]) {
+	constructor(revision: string, stages: readonly Stage[], prepare?: PrepareRecord) {
 		this.revision = revision;
 		this.stages = stages;
+		if (prepare !== undefined) this.prepare = prepare;
 		const unmeasured = stages.reduce((sum, stage) => sum + (stage.usageIncomplete ?? 0), 0);
 		if (unmeasured > 0) this.usageIncomplete = unmeasured;
 		const usage = new TokenUsage();
@@ -149,6 +160,8 @@ export class StageTelemetry {
 		total?: UsageSummary;
 		usageUnavailable: readonly string[];
 		usageIncomplete?: number;
+		prepare?: PrepareRecord;
+		untimed?: Untimed[];
 	} {
 		return {
 			revision: this.revision,
@@ -156,7 +169,30 @@ export class StageTelemetry {
 			...(this.total === undefined ? {} : { total: this.total }),
 			usageUnavailable: this.usageUnavailable,
 			...(this.usageIncomplete === undefined ? {} : { usageIncomplete: this.usageIncomplete }),
+			...(this.prepare === undefined ? {} : { prepare: this.prepare, untimed: this.untimed() }),
 		};
+	}
+
+	/** Gaps over a second in the review's wall clock, from its process start to its verdict, that nothing timed. */
+	untimed(): Untimed[] {
+		if (this.prepare === undefined) return [];
+		const { startedAt, endedAt, spans } = this.prepare;
+		const timed = [
+			...spans,
+			...this.stages.filter((stage) => stage.startedAt !== undefined && stage.endedAt !== undefined),
+		].toSorted((a, b) => a.startedAt! - b.startedAt!);
+		const gaps: Untimed[] = [];
+		let covered = startedAt;
+		const gap = (until: number) => {
+			if (until - covered > untimedLimitMs)
+				gaps.push({ startedAt: covered, endedAt: until, durationMs: until - covered });
+		};
+		for (const interval of timed) {
+			gap(Math.min(interval.startedAt!, endedAt));
+			covered = Math.max(covered, interval.endedAt!);
+		}
+		gap(endedAt);
+		return gaps;
 	}
 
 	/** The recorded spend, with missing stages named as incomplete coverage. */
@@ -203,6 +239,7 @@ export class StageTelemetry {
 						`start=${stage.startedAt ?? "unavailable"}`,
 						`end=${stage.endedAt ?? "unavailable"}`,
 						`duration=${stage.durationMs ?? "unavailable"}ms`,
+						stage.modelMs === undefined ? "" : `model=${stage.modelMs}ms`,
 						stage.reused ? "reused" : stage.resumed ? "resumed" : "",
 						stage.note,
 						stage.error,
@@ -222,7 +259,17 @@ export class StageTelemetry {
 			)
 			.join(
 				"\n",
-			)}\nTotal: ${this.spend()}.\n${this.total === undefined ? "" : `${visibleText(usageText(this.total))}\n`}`;
+			)}\nTotal: ${this.spend()}.\n${this.total === undefined ? "" : `${visibleText(usageText(this.total))}\n`}${(
+			this.prepare?.spans ?? []
+		)
+			.toSorted((a, b) => a.startedAt - b.startedAt || b.endedAt - a.endedAt)
+			.map(
+				(span) =>
+					`${visibleText(`span ${span.name} start=${span.startedAt} end=${span.endedAt} duration=${span.durationMs}ms${span.parent === undefined ? "" : ` parent=${span.parent}`}`)}\n`,
+			)
+			.join("")}${this.untimed()
+			.map((gap) => `untimed start=${gap.startedAt} end=${gap.endedAt} duration=${gap.durationMs}ms\n`)
+			.join("")}`;
 	}
 }
 
@@ -350,7 +397,7 @@ export class TelemetryReader {
 			if (page.next === undefined) break;
 			page = await this.storage.scanTasks({ kind: "melian.publish" }, 200, page.next, context);
 		}
-		return new StageTelemetry(revision, rows);
+		return new StageTelemetry(revision, rows, await this.document(PrepareDocument, scope, context, revision));
 	}
 
 	private async document<T>(
@@ -470,6 +517,15 @@ export class TelemetryReader {
 			`conversation:${id}`,
 		);
 		const usage = await this.document(UsageDoc, { kind: "conversation", conversationId: id }, context);
+		let modelMs = 0;
+		let entries = await this.storage.scanEntries({ conversationId: id }, 200, undefined, context);
+		for (;;) {
+			for (const entry of entries.items)
+				for (const message of entry.model ?? [])
+					if (message.role === "assistant") modelMs += message.durationMs ?? 0;
+			if (entries.next === undefined) break;
+			entries = await this.storage.scanEntries({ conversationId: id }, 200, entries.next, context);
+		}
 		return {
 			id: `conversation:${id}`,
 			name,
@@ -480,6 +536,7 @@ export class TelemetryReader {
 			...interval(start, ending.endedAt),
 			...ending,
 			...this.attachment(start, ending.endedAt, before),
+			modelMs,
 			...(usage === undefined
 				? {}
 				: {
