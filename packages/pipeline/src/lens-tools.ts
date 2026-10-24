@@ -599,7 +599,7 @@ function describeFact(fact: EnolaFact): string {
 }
 
 // The rows a graph tool quotes, bounded like every other tool's, with how many it left out.
-function graphRows(review: ReviewState, rows: readonly string[], notes: readonly string[] = []) {
+function graphRows(review: ReviewState, rows: readonly string[], notes: readonly string[]) {
 	if (rows.length === 0) return text([...notes, graphNote].join("\n"));
 	const { body, count } = fitting(rows);
 	const cut = count < rows.length ? [`[${rows.length - count} more not shown]`] : [];
