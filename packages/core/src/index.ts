@@ -316,12 +316,15 @@ export {
 	type RevisionEntry,
 	type RevisionEntryKind,
 	type RevisionFile,
+	type RevisionFileMatches,
 	type RevisionMatch,
 	type RevisionSearch,
 	readRevisionFile,
 	repositoryPath,
 	revisionLimits,
+	revisionTree,
 	searchRevision,
+	searchRevisionFiles,
 } from "./revision.ts";
 export {
 	type CredentialValue,

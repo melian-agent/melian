@@ -181,6 +181,7 @@ export type RevisionErrorCode =
 	| "symlink"
 	| "binary"
 	| "invalidPattern"
+	| "tooManyFiles"
 	| "gitFailed";
 
 /** A path could not be read at a revision. `path` names it, where there is one. */

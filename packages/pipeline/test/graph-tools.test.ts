@@ -24,13 +24,13 @@ import {
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { lensListedTools } from "../src/lens-tools.ts";
-import { baseAndHead, gitIn, isolatedGitEnv, lines } from "./fixtures/repo.ts";
+import { baseAndHead, gitIn, isolatedGitEnv, lines, writeFiles } from "./fixtures/repo.ts";
 import { twoLensTiers } from "./fixtures/review-scenario.ts";
 
 const correctness = "You are the correctness reviewer";
 const contracts = "You are the contracts reviewer";
 const graphTools = ["graph_definitions", "graph_references", "graph_impact", "graph_callees"] as const;
-const parts = { tree: "a".repeat(40), version: "0.4.27", binary: "b".repeat(64), config: "c".repeat(64) };
+let parts = { tree: "a".repeat(40), version: "0.4.27", binary: "b".repeat(64), config: "c".repeat(64) };
 
 // `src.managerName` is called by `src.line` and named by an unresolved call; a head-written name tries to close the
 // boundary it is quoted in.
@@ -104,6 +104,7 @@ beforeEach(async () => {
 		{ "src/user.ts": lines("export function managerName(user) {", "\treturn user.manager.name;", "}") },
 	);
 	cacheRoot = realpathSync(mkdtempSync(join(tmpdir(), "melian-graph-tools-")));
+	parts = { ...parts, tree: gitIn(repo, "rev-parse", "feature^{tree}") };
 	fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }] });
 	const heavy = fake.ref("heavy");
 	config = {
@@ -267,6 +268,99 @@ describe("graph tools", { timeout: 60_000 }, () => {
 		]);
 	});
 
+	it("search the most design files a design index links in one call, past 200 distractor matches", async () => {
+		const paths = Array.from({ length: 64 }, (_, index) => `docs/design/f${String(index).padStart(2, "0")}.md`);
+		writeFiles(
+			repo,
+			Object.fromEntries(
+				paths.map((path, index) => [
+					path,
+					index === 0
+						? lines(...Array.from({ length: 300 }, (_, line) => `needle distractor ${line}`))
+						: lines(...Array.from({ length: index }, () => "filler"), `needle in ${path}`),
+				]),
+			),
+		);
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "design files");
+		const requests = await reviewWith(undefined, [
+			[
+				["search", { pattern: "needle", paths: [...paths.slice(1, 63), "docs/absent.md", paths[0]!] }],
+				["search", { pattern: "needle", paths: [paths[1]!], path: "docs" }],
+				["search", { pattern: "nowhere", paths }],
+			],
+		]);
+		const nonce = nonceOf(requests[correctness]![0]!);
+		const [all, both, none] = toolResults(requests[correctness]![1]!);
+		const body = new RegExp(`<untrusted-${nonce} label="search">\\n([\\s\\S]*?)\\n</untrusted-${nonce}>`).exec(
+			all!,
+		)![1]!;
+		const rows = body.split("\n");
+		for (const [index, path] of paths.slice(1, 63).entries())
+			expect(rows).toContain(`${path}:${index + 2}: needle in ${path}`);
+		expect(rows.filter((row) => row.startsWith(`${paths[0]}:`))).toEqual([
+			`${paths[0]}:1: needle distractor 0`,
+			`${paths[0]}:2: needle distractor 1`,
+			`${paths[0]}:3: needle distractor 2`,
+			`${paths[0]}: [more matches not shown; search it alone]`,
+		]);
+		expect(rows).toContain("docs/absent.md: [no file at this revision]");
+		expect(rows.indexOf(`${paths[0]}:1: needle distractor 0`)).toBeLessThan(
+			rows.indexOf(`${paths[0]}:2: needle distractor 1`),
+		);
+		expect(rows.indexOf(`${paths[62]}:63: needle in ${paths[62]}`)).toBeLessThan(
+			rows.indexOf(`${paths[0]}:2: needle distractor 1`),
+		);
+		expect(all!.endsWith(`</untrusted-${nonce}>`)).toBe(true);
+		expect(both).toContain("search takes path or paths, not both");
+		expect(none).toBe("No matches in 64 files.");
+	});
+
+	it("cut the deepest matches of every file before it drops a file, and say how many lines it cut", async () => {
+		const paths = Array.from({ length: 2 }, (_, index) => `docs/long${index}.md`);
+		writeFiles(
+			repo,
+			Object.fromEntries(
+				paths.map((path) => [path, lines(...Array.from({ length: 200 }, () => `needle ${"x".repeat(290)}`))]),
+			),
+		);
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "long lines");
+		const requests = await reviewWith(undefined, [[["search", { pattern: "needle", paths }]]]);
+		const [result] = toolResults(requests[correctness]![1]!);
+		const shown = (path: string) => (result!.match(new RegExp(`${path}:\\d+:`, "g")) ?? []).length;
+		expect(Math.abs(shown(paths[0]!) - shown(paths[1]!))).toBeLessThanOrEqual(1);
+		const rows = 202 - shown(paths[0]!) - shown(paths[1]!);
+		expect(
+			result!.endsWith(
+				`</untrusted-${nonceOf(requests[correctness]![0]!)}>\n[${rows} more lines not shown; search fewer files]`,
+			),
+		).toBe(true);
+	});
+
+	it("describe the search over a set of files to the model", async () => {
+		const requests = await reviewWith(undefined, []);
+		const tools = requests[correctness]![0]!.flatMap((message) =>
+			message.role === "system" ? (message.toolsAdded ?? []) : [],
+		);
+		expect(tools.find((each) => each.name === "search")).toMatchObject({
+			description: expect.stringContaining(
+				"To search a set of files in one call, such as every design file, name them in paths",
+			),
+			parameters: {
+				properties: {
+					paths: {
+						type: "array",
+						minItems: 1,
+						maxItems: 64,
+						items: { type: "string", minLength: 1 },
+						description: "Search exactly these files, at most 64, in place of path",
+					},
+				},
+			},
+		});
+	});
+
 	it("replay safely after a crash, since none writes", () => {
 		expect(graphTools.map((name) => lensListedTools[name].replay)).toEqual(["safe", "safe", "safe", "safe"]);
 	});
@@ -358,6 +452,15 @@ describe("graph tools", { timeout: 60_000 }, () => {
 		expect(shown(impact!)).toBeLessThan(200);
 		expect(impact).toContain(`[${200 - shown(impact!)} more not shown]`);
 		expect(references).toContain(`[${201 - shown(references!)} more not shown]`);
+	});
+
+	it("refuse a recorded graph of another tree than the head's, though its cache entry is sound", async () => {
+		parts = { ...parts, tree: gitIn(repo, "rev-parse", "main^{tree}") };
+		await (await GraphCache.open(cacheRoot)).store(snapshot("probe"));
+		const requests = await reviewWith(withGraph(), [[["graph_definitions", { name: "managerName" }]]]);
+		expect(toolResults(requests[correctness]![1]!)[0]).toContain(
+			"the Enola graph this review recorded is of another revision; use search and read_file instead",
+		);
 	});
 
 	it("say the graph is unavailable to a review that runs no Enola check", async () => {

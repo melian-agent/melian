@@ -237,7 +237,7 @@ describe("built-in lenses", () => {
 			contracts: "43fa057f7957",
 			conventions: "ab9fda3d360c",
 			correctness: "ac390a655d0e",
-			design: "c85a176632f5",
+			design: "494624139470",
 			durability: "910628aa27ee",
 			"removed-behaviour": "8e3474a4b315",
 			tests: "e6364f9cf7e6",
@@ -249,7 +249,7 @@ describe("built-in lenses", () => {
 			contracts: "61fa4ff978ef",
 			conventions: "7029ae04254f",
 			correctness: "d150d8ad1289",
-			design: "df70ed31a6d9",
+			design: "31e3056b5858",
 			"removed-behaviour": "1131ab311d50",
 			tests: "aea7f643ccac",
 			"trust-boundary": "4c55e242b68f",
@@ -320,7 +320,12 @@ describe("built-in lenses", () => {
 		expect(
 			lenses.filter((lens) => lens.tools.some((tool) => tool.startsWith("graph_"))).map((lens) => lens.name),
 		).toEqual(["design"]);
-		expect(config.models.medium).toMatchObject({ model: "openai-codex/gpt-5.6-sol", thinking: "high" });
+		expect(config.models.medium).toEqual({
+			model: "openai-codex/gpt-5.6-sol",
+			thinking: "high",
+			fallbacks: ["anthropic/claude-opus-5-5"],
+			accept: ["openai-codex/gpt-5.6-sol", "anthropic/claude-opus-5-5"],
+		});
 		expect(config.models.light).toMatchObject({ model: "openai-codex/gpt-5.6-terra" });
 	});
 
