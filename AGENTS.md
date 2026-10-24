@@ -103,7 +103,7 @@ Milestone 2 runs on three lanes of work and a fixed review loop. Read this befor
 - Small tasks go to Sonnet 5.5: a doc fix, a single test, a record fill-in, a merge chain.
 - Reviews of record go to Sonnet 5.5 on the host, which can run the tests. Opus 5.5 is held back for a lens round on a step with a new trust surface. The trial that decided this is in the record for [pull request #73](https://github.com/melian-agent/melian/pull/73). On a trust surface, the review of record goes to Opus 5.5 and attacks with probes, as Converging below says. When Anthropic usage is constrained, a Codex task through `scripts/codex-sandboxed.sh` with a review-only brief is the fallback.
 - Codex tasks that edit run through `scripts/codex-sandboxed.sh`, from a linked worktree in the worktrees folder. Its seatbelt lets the task commit to its own branch, and the Learnings below set out what it cannot do. Codex's companion `task --write` can edit and test but not commit, because its sandbox denies writes under `.git`.
-- The design lens is to replace Codex's adversarial review. Until the comparison of each round shows it finds what Codex finds, both run on the same head every round.
+- The design lens is to replace Codex's adversarial review. Both run on the same head every round until Codex's review meets [the shadow retirement rule](docs/decisions/2026-10-06-shadow-retirement-merged-window.md) and the maintainer retires it.
 - The coordinator session runs the Melian rounds, reads the verdicts, and queues. A lane agent opens a draft and reports; it neither marks a pull request ready nor queues it.
 
 ### The loop for one step
@@ -121,7 +121,7 @@ Independent lanes run in parallel, each in its own worktree. Watch the machine's
 
 Every pull request gets all three before it is marked ready:
 
-1. Codex's adversarial review, through its companion. It uses GPT-5.6 Sol at high effort by default. The design lens now runs on that model and effort, and is meant to replace this review once each round's comparison shows it finds what Codex finds; [the route decision](docs/decisions/2026-10-24-design-lens-on-codex-route.md) records why.
+1. Codex's adversarial review, through its companion. It uses GPT-5.6 Sol at high effort by default. The design lens now runs on that model and effort, so it can replace this review; [the route decision](docs/decisions/2026-10-24-design-lens-on-codex-route.md) records why. Codex's review keeps running until it meets [the shadow retirement rule](docs/decisions/2026-10-06-shadow-retirement-merged-window.md), ten merged pull requests at recall 0.75 or better, and the maintainer retires it.
 2. A Claude review of record. It runs the code and does not only read it.
 3. Melian's own review, from the branch's own build. Repeat it after each fix pass until only policy notices and advisories remain.
 
