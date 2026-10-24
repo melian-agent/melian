@@ -588,6 +588,29 @@ describe("one lens against one reviewer", () => {
 		expect(set.againstReviewer("lens.design", "claude-code")).toMatchObject({ comparisons: 1, reviewerValid: 1 });
 	});
 
+	it("credits a matched finding whatever miss reason it carries, and leaves the lens's noise out", () => {
+		const found = design(12);
+		const noise = design(40);
+		const codex12 = report({ line: 12, title: "Codex 12" });
+		const comparison = round({ externals: [codex12], findings: [found, noise] });
+		comparison.adjudicate(codex12.id, { ...by, verdict: "valid", reason: "out-of-scope" });
+		comparison.adjudicate(found.id, { ...by, verdict: "valid" });
+		comparison.adjudicate(noise.id, { ...by, verdict: "noise" });
+		expect(
+			new ComparisonSet([entry("one", comparison, [found, noise])]).againstReviewer("lens.design", "codex"),
+		).toEqual({
+			check: "lens.design",
+			reviewer: "codex",
+			comparisons: 1,
+			reviewerValid: 1,
+			checkFound: 1,
+			othersFound: 0,
+			checkValid: 1,
+			reviewerFound: 1,
+			pending: 0,
+		});
+	});
+
 	it("prints no share for an empty side, and selects changesets as the other statistics do", () => {
 		const { comparison, findings } = scenario();
 		const set = new ComparisonSet([entry("one", comparison, findings)]);
