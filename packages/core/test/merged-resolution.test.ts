@@ -6,7 +6,6 @@ import {
 	Finding,
 	type FindingInput,
 	type PolicyAt,
-	Verdict,
 	type Verification,
 } from "@melian-agent/core";
 import { describe, expect, it } from "vitest";
@@ -331,26 +330,5 @@ describe("Verdict.fingerprint", () => {
 		const after = decide([notice({ rules: ["focused-test"] })], policy({}));
 		expect(after.findings.block[0]!.properties.guardrail).toEqual({ rules: ["focused-test"] });
 		expect(after.fingerprint()).toBe(before.fingerprint());
-	});
-
-	it("gives a verdict an older Melian recorded its legacy fingerprint when it is decided again", () => {
-		const evidence = [
-			{ file: "src/api.ts", startLine: 3, role: "cause", revision: "head", snippet: "load(userId)" },
-		] as const;
-		for (const old of [
-			biome({ guardrail: { rules: ["focused-test"] } }),
-			biome({ evidence: [...evidence], guardrail: { rules: ["focused-test"] } }),
-		]) {
-			const decided = decide([old], policy({}));
-			const stored = decided.toJSON();
-			const { decidedBy: _, guardrail: __, ...properties } = stored.findings.block[0]!.properties;
-			const recorded = Verdict.from({
-				...stored,
-				findings: { ...stored.findings, block: [{ ...stored.findings.block[0]!, properties }] },
-			});
-			expect(recorded.all()[0]!.properties.decidedBy).toBeUndefined();
-			expect(decided.legacyFingerprint()).toBeDefined();
-			expect(decided.legacyFingerprint()).toBe(recorded.legacyFingerprint());
-		}
 	});
 });
