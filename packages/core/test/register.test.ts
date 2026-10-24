@@ -290,7 +290,7 @@ describe("a deterministic finding in the terminal", () => {
 		expect(text).not.toMatch(/Failure scenario|Evidence|Verifier/);
 	});
 
-	it("says a pre-existing finding predates the change, and an affected one that the change affects it", () => {
+	it("says a pre-existing finding predates the change, and an affected one that the change caused it", () => {
 		const base = { ...retriedCharge, evidence: undefined, failureScenario: undefined };
 		expect(
 			decided({ ...base, cause: "pre-existing" })
@@ -301,6 +301,111 @@ describe("a deterministic finding in the terminal", () => {
 			Finding.create({ ...retriedCharge, cause: "affected", resolution: undefined })
 				.render(plain)
 				.split("\n")[0],
-		).toBe("  P1 | Unresolved | Correctness | Not verified | Affected by this change");
+		).toBe("  P1 | Unresolved | Correctness | Not verified | Caused by this change");
+	});
+});
+
+// Rows of the guideline's table of what today's renderers print, each kept in its place in the register.
+describe("the register keeps every element the terminal printed", () => {
+	const lowering = {
+		...judged("confirmed", "One caller reaches it."),
+		lowered: { from: "P1" as const, to: "P2" as const, reason: "Only the admin path reaches it." },
+	};
+
+	it("lowering: ordinary, reason once, after the verifier's line", () => {
+		const finding = decided(retriedCharge, lowering);
+		const lines = finding.render(emoji).split("\n");
+		expect(lines[0]).toBe(
+			"  \u{1F7E1} P2, lowered from P1 | \u{270B} Needs acknowledgement | \u{1F3AF} Correctness | \u{2705} Verifier confirmed | New in this change",
+		);
+		const verifier = lines.indexOf("    \u{2696}\u{FE0F} Verifier (faux/judge): One caller reaches it.");
+		expect(lines[verifier + 1]).toBe("    Lowered from P1: Only the admin path reaches it.");
+		expect(finding.render(emoji).split("Only the admin path reaches it.")).toHaveLength(2);
+	});
+
+	it("lowering: protected, reason once, inside the floor note", () => {
+		const finding = decided(
+			{ ...retriedCharge, rule: "untested-behaviour", source: { check: "lens.tests" } },
+			lowering,
+		);
+		const text = finding.render(plain);
+		expect(text.split("\n")[0]).toMatch(/^ {2}P2, lowered from P1 \| /);
+		expect(text).not.toContain("Lowered from P1:");
+		expect(text.split("Only the admin path reaches it.")).toHaveLength(2);
+		const lines = text.split("\n");
+		expect(lines.findIndex((line) => line.startsWith("    Trust floor:"))).toBeLessThan(
+			lines.findIndex((line) => line.startsWith("    What to do:")),
+		);
+	});
+
+	it("terminal: resolved at original, after the lowering line", () => {
+		const lowered = Finding.create({ ...retriedCharge, resolution: "block" }).verifiedAs(lowering);
+		const stored = lowered.toJSON();
+		const held = Finding.from({ ...stored, properties: { ...stored.properties, resolvedAtOriginal: true } });
+		const lines = held.render(plain).split("\n");
+		const at = lines.indexOf("    Lowered from P1: Only the admin path reaches it.");
+		expect(lines[at + 1]).toBe(
+			"    Resolved at P1: the table in force resolves P2 silent, and a lowering never silences a finding.",
+		);
+	});
+
+	it("terminal and comment: merged and dismissed reports under the footer, each check with its emoji", () => {
+		const speaker = Finding.create(retriedCharge);
+		const merged = Finding.create({
+			...retriedCharge,
+			rule: "double-charge",
+			severity: "P2",
+			source: { check: "lens.contracts" },
+		});
+		const answered = Finding.create({
+			...retriedCharge,
+			rule: "unsafe-call",
+			severity: "P3",
+			source: { check: "static.biome" },
+			status: "dismissed",
+		});
+		const verdict = new Adjudication({
+			manifest: [],
+			checks: [],
+			config: defaultConfig,
+			findings: [speaker, merged, answered],
+		}).adjudicate();
+		const shown = verdict.all().find((each) => each.ruleId === "payment-idempotency")!;
+		const lines = shown.render(emoji).split("\n");
+		const footer = lines.findIndex((line) => line.startsWith("    Rule payment-idempotency | "));
+		expect(lines.slice(footer + 1)).toEqual([
+			`    Merged report: P2 double-charge from \u{1F91D} lens.contracts  ${merged.id}`,
+			`    Also reported, dismissed: P3 unsafe-call from \u{1F9F9} static.biome  ${answered.id}`,
+		]);
+	});
+
+	it("terminal: colour and plain, the colour around the severity segment and its emoji", () => {
+		const finding = decided(retriedCharge);
+		const coloured = finding.render(new Rendering({ color: true, emoji: true })).split("\n")[0];
+		expect(coloured).toBe(
+			"  \u001b[31m\u{1F7E0} P1\u001b[0m | \u{26D4} Blocks merge | \u{1F3AF} Correctness | \u{2754} Not verified | New in this change",
+		);
+		expect(finding.render(plain)).not.toContain("\u001b[");
+	});
+
+	it("json unchanged: a verdict's JSON carries no emoji", () => {
+		const verdict = new Adjudication({
+			findings: [Finding.create(retriedCharge)],
+			manifest: [],
+			checks: [],
+			config: defaultConfig,
+		}).adjudicate();
+		expect(verdict.renderJson()).not.toMatch(/\p{Emoji_Presentation}|\u{FE0F}/u);
+	});
+
+	it("escaping: a lens name and a headline from the change stay visible text in the status line and headline", () => {
+		const finding = Finding.create({
+			...retriedCharge,
+			message: "Charges twice\u001b[2J",
+			source: { check: "lens.x\u001b[31m" },
+		});
+		const lines = finding.render(emoji).split("\n");
+		expect(lines[0]).toContain(" | \u{1F50E} x\\u001b[31m | ");
+		expect(lines[1]).toBe("  Lines 31-44: Charges twice\\u001b[2J");
 	});
 });

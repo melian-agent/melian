@@ -15,7 +15,7 @@ src/config-files.ts
         for (const found of configFiles(root, dirname(join(root, file)))) console.log(found);
     Verifier (faux/scripted): The scripted verifier traced the claim.
     What to do: Restore the check: compute the parent, and break when it equals dir.
-    Merged report: P1 wrong-result from lens.correctness
     Rule dropped-guard | Status new
+    Merged report: P1 wrong-result from lens.correctness
 
 1 finding in 1 file.

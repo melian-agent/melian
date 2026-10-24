@@ -38,7 +38,7 @@ const idSchema = Type.String({ pattern: "^[0-9a-f]{16}$" });
 // Whether the change introduced the finding, as its status line says it.
 const causeWords: Readonly<Record<Cause, string>> = {
 	introduced: "New in this change",
-	affected: "Affected by this change",
+	affected: "Caused by this change",
 	"pre-existing": "Predates this change",
 };
 
@@ -1156,11 +1156,12 @@ export class Finding {
 
 	/**
 	 * The finding as one block of terminal text, in the register's order: the status line, the lines and headline,
-	 * What unless the headline is it, Why here, the failure scenario, each evidence location's role and lines, the
-	 * verifier's reason and correction, and What to do. Notes follow: each other report of its defect, merged into it or
-	 * dismissed beside it; its trust floor; with the rendering's `decided`, the file and entry that decided its
-	 * resolution, as {@link describeDecision} says it; a lowering; and who dismissed it and why. A footer names the rule,
-	 * the status, and, with the rendering's `ids`, the ID `melian dismiss` takes. A section with nothing to say is left out.
+	 * What unless the headline is it, Why here, the failure scenario, each evidence location with the code read there,
+	 * the verifier's reason and correction, a lowering's reason and a resolution held at the original severity, the trust
+	 * floor's notes, and What to do. With the rendering's `decided`, a line names the file and entry that decided its
+	 * resolution, as {@link describeDecision} says it. A footer names the rule, the status, and, with the rendering's
+	 * `ids`, the ID `melian dismiss` takes. Under it come each other report of its defect, merged into it or dismissed
+	 * beside it, and who dismissed it and why. A part with nothing to say is left out.
 	 */
 	render(rendering: Rendering = new Rendering()): string {
 		const { ids } = rendering;
@@ -1170,7 +1171,9 @@ export class Finding {
 		// The other reports of its defect: those adjudication merged into it, which a dismissal of it dismisses too, and
 		// the dismissed ones it lists beside it.
 		const reports = (this.properties.alsoReportedAs ?? []).map((other) => {
-			const what = `${other.severity === undefined ? "" : `${other.severity} `}${visibleText(other.ruleId)} from ${visibleText(other.check)}`;
+			const { emoji } = rendering.check(other.check, other.ruleId);
+			const check = `${rendering.emoji && emoji !== undefined ? `${emoji} ` : ""}${visibleText(other.check)}`;
+			const what = `${other.severity === undefined ? "" : `${other.severity} `}${visibleText(other.ruleId)} from ${check}`;
 			return `    ${other.dismissed ? "Also reported, dismissed" : "Merged report"}: ${what}${ids ? `  ${visibleText(other.id)}` : ""}`;
 		});
 		const { region } = this.locations[0]!.physicalLocation;
@@ -1197,12 +1200,6 @@ export class Finding {
 							? []
 							: [`    Correction: ${prose(verification.correction, "      ")}`]),
 					]),
-			`    What to do: ${prose(explanation.whatToDo, "      ")}`,
-			...reports,
-			...this.trustFloorNotes().map((line) => `    ${prose(line, "      ")}`),
-			...(decidedBy === undefined || !rendering.decided
-				? []
-				: [`    Decided by: ${prose(describeDecision(decidedBy, own), "      ")}`]),
 			...(loweringNote === undefined
 				? []
 				: [`    Lowered from ${loweringNote.from}: ${prose(loweringNote.reason, "      ")}`]),
@@ -1211,8 +1208,14 @@ export class Finding {
 				: [
 						`    Resolved at ${lowered.from}: the table in force resolves ${severity} silent, and a lowering never silences a finding.`,
 					]),
-			...this.#dismissals(rendering),
+			...this.trustFloorNotes().map((line) => `    ${prose(line, "      ")}`),
+			`    What to do: ${prose(explanation.whatToDo, "      ")}`,
+			...(decidedBy === undefined || !rendering.decided
+				? []
+				: [`    Decided by: ${prose(describeDecision(decidedBy, own), "      ")}`]),
 			`    Rule ${visibleText(this.ruleId)} | Status ${status}${ids ? ` | Finding ${visibleText(id)}` : ""}`,
+			...reports,
+			...this.#dismissals(rendering),
 		].join("\n");
 	}
 

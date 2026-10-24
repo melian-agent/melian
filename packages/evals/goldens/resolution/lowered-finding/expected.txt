@@ -26,9 +26,9 @@ src/parse.ts
     Why here: Scripted.
     Failure scenario: Scripted.
     Verifier (scripted/judge): The scripted verifier judged the claim.
+    Lowered from P1: The only caller returns early for a record without a comma.
     What to do: Scripted.
     Decided by: melian.yaml: resolution.checks.lens.correctness.P2, the check entry
-    Lowered from P1: The only caller returns early for a record without a comma.
     Rule unchecked-index | Status new
 
 2 findings in 2 files.

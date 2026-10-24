@@ -54,7 +54,7 @@ Dismiss unresolved acknowledgements with a reason, then publish. Use melian dism
 
 [1msrc/run.ts[0m
 
-  [36mP3[0m | Advisory | security | Not verified | Affected by this change
+  [36mP3[0m | Advisory | security | Not verified | Caused by this change
   Lines 30-32: The write's result is ignored
     What: fs.write can write fewer bytes than asked.
     Why here: The new caller passes larger buffers than before.

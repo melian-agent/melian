@@ -1,6 +1,6 @@
 src/port.ts
 
-  P1 | Blocks merge | Removed behaviour | Verifier confirmed | Affected by this change
+  P1 | Blocks merge | Removed behaviour | Verifier confirmed | Caused by this change
   Line 3: Nothing at head rejects a port that is not an integer from 1 to 65535: parsePort returns what Number makes of its input.
     Why here: This change deleted the guard that held that invariant, and neither parsePort nor its caller restores it.
     Failure scenario: start("") calls parsePort(""), which returns 0 now that nothing rejects a port outside 1 to 65535, and listen(0) binds a random free port. The base's guard threw "invalid port: ".
@@ -14,7 +14,7 @@ src/port.ts
           return createServer().listen(parsePort(value));
     Verifier (faux/scripted): The scripted verifier traced the claim.
     What to do: Restore the guard in parsePort.
-    Merged report: P1 wrong-result from lens.correctness
     Rule dropped-guard | Status new
+    Merged report: P1 wrong-result from lens.correctness
 
 1 finding in 1 file.

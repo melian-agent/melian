@@ -212,7 +212,7 @@ export class ReviewComment {
 					? [`This finding is at ${link}, outside the diff, so it is anchored to the nearest changed line.`, ""]
 					: [];
 		const lowered = finding.lowered({ includeTrustFloor: false });
-		const moved = lowered === undefined ? [] : [`**Lowered from ${lowered.from}:** ${inline(lowered.reason)}`, ""];
+		const moved = lowered === undefined ? [] : [`**Lowered from ${lowered.from}:** ${inline(lowered.reason)}`];
 		const heading =
 			this.important === undefined
 				? []
@@ -251,16 +251,14 @@ export class ReviewComment {
 			...heading,
 			status,
 			"",
-			...this.#text(context, rendering),
-			...moved,
-			...finding.trustFloorNotes().flatMap((line) => [inline(line), ""]),
+			...this.#text(context, rendering, moved),
 			`Rule ${code(finding.ruleId)} | Finding ${code(id)}`,
 		].join("\n");
 	}
 
 	// The register's parts in order, each a paragraph, leaving out a part the finding does not have: a deterministic
 	// finding has no failure scenario, evidence or verifier.
-	#text(context: CommentContext, rendering: Rendering): string[] {
+	#text(context: CommentContext, rendering: Rendering, moved: readonly string[]): string[] {
 		const { finding } = this;
 		const { explanation, failureScenario, verification } = finding.properties;
 		const { headline, what } = finding.headline();
@@ -278,6 +276,8 @@ export class ReviewComment {
 							? []
 							: [`**Correction:** ${inline(verification.correction)}`]),
 					]),
+			...moved,
+			...finding.trustFloorNotes().map(inline),
 			`**What to do:** ${renderProse(explanation.whatToDo)}`,
 		];
 		return paragraphs.flatMap((paragraph) => [paragraph, ""]);
@@ -285,7 +285,7 @@ export class ReviewComment {
 
 	// The verifier writes its reasons from code the author controls, so each is one inert line, as in the ledger.
 	#verifier(verification: Verification, rendering: Rendering): string {
-		return `${rendering.emoji ? `${verifierMark.emoji} ` : ""}**${verifierMark.word}:** ${code(verification.model)}: ${inline(verification.reason)}`;
+		return `${rendering.emoji ? `${verifierMark.emoji} ` : ""}**${verifierMark.word}** (${code(verification.model)}): ${inline(verification.reason)}`;
 	}
 
 	// Each evidence location's role and a link to its lines at the commit it was read from, rather than quoting the

@@ -96,7 +96,7 @@ describe("a finding as a pull request shows it, in the register", () => {
 				"",
 				`**Evidence:** cause, [\`payments/submit.ts\` lines 31-44](${links.web}/blob/${revision}/payments/submit.ts#L31-L44) at the head; context, [\`payments/submit.ts\` lines 28-35](${links.web}/blob/${base}/payments/submit.ts#L28-L35) at the base.`,
 				"",
-				"\u{2696}\u{FE0F} **Verifier:** `faux/judge`: The second call creates a new intent.",
+				"\u{2696}\u{FE0F} **Verifier** (`faux/judge`): The second call creates a new intent.",
 				"",
 				"**What to do:** Restore findOpenIntent, or pass the intent ID as the idempotency key.",
 				"",
@@ -133,7 +133,7 @@ describe("a finding as a pull request shows it, in the register", () => {
 				"",
 				"**Failure scenario:** The cache is down. cache.set rejects, and no item syncs.",
 				"",
-				"\u{2696}\u{FE0F} **Verifier:** `faux/judge`: It did not read the cache client, which may swallow write errors itself.",
+				"\u{2696}\u{FE0F} **Verifier** (`faux/judge`): It did not read the cache client, which may swallow write errors itself.",
 				"",
 				"**What to do:** Catch and log the error, as readRecord does.",
 				"",
@@ -197,7 +197,7 @@ describe("a finding as a pull request shows it, in the register", () => {
 		expect(lines[0]).toBe(
 			"\u{1F7E0} P1 | \u{270B} Needs acknowledgement | \u{1F6E1}\u{FE0F} Trust boundary | \u{2716}\u{FE0F} Refuted | New in this change",
 		);
-		expect(lines).toContain("\u{2696}\u{FE0F} **Verifier:** `faux/judge`: The comment is documentation.");
+		expect(lines).toContain("\u{2696}\u{FE0F} **Verifier** (`faux/judge`): The comment is documentation.");
 		expect(lines).toContain("Trust floor: acknowledge required; maintainer dismissal needed.");
 	});
 });
@@ -228,7 +228,7 @@ describe("a refuted protected finding as a pull request shows it", () => {
 			"\u{1F7E1} P2 | \u{270B} Needs acknowledgement | \u{1F9EA} Tests | \u{2716}\u{FE0F} Refuted | New in this change\n",
 		);
 		expect(text).toContain("Trust floor: acknowledge required; maintainer dismissal needed.");
-		expect(text).toContain("\u{2696}\u{FE0F} **Verifier:** `faux/judge`: Another test counts.");
+		expect(text).toContain("\u{2696}\u{FE0F} **Verifier** (`faux/judge`): Another test counts.");
 	});
 
 	it("posts an advisory floor as an advisory, with the note that asks no acknowledgement", () => {
@@ -237,7 +237,7 @@ describe("a refuted protected finding as a pull request shows it", () => {
 		const lines = text.split("\n");
 		const entry = lines.findIndex((line) => line.startsWith("- \u{1F535} P3 | "));
 		expect(lines.slice(entry + 1, entry + 3)).toEqual([
-			"  \u{2696}\u{FE0F} **Verifier:** `faux/judge`: Another test counts.",
+			"  \u{2696}\u{FE0F} **Verifier** (`faux/judge`): Another test counts.",
 			"  Trust floor: reported-severity policy requires no acknowledgement.",
 		]);
 		expect(text).toContain("Trust floor: reported-severity policy requires no acknowledgement.");
@@ -344,7 +344,7 @@ describe("publish.emoji", () => {
 		const finding = decided(retriedCharge, judged("confirmed", "Traced."));
 		const plain = comment(finding, false);
 		expect(plain.split("\n")[0]).toBe("P1 | Blocks merge | Correctness | Verifier confirmed | New in this change");
-		expect(plain).toContain("\n**Verifier:** `faux/judge`: Traced.\n");
+		expect(plain).toContain("\n**Verifier** (`faux/judge`): Traced.\n");
 		expect(plain).not.toMatch(/\p{Emoji_Presentation}|\u{FE0F}/u);
 	});
 
@@ -468,5 +468,76 @@ describe("publish.emoji", () => {
 		expect(body).toContain("GitHub refused this review's inline comments");
 		expect(body).toContain("\nP1 | Blocks merge | Correctness | Not verified | New in this change\n");
 		expect(body).not.toMatch(/\p{Emoji_Presentation}|\u{FE0F}/u);
+	});
+});
+
+// Rows of the guideline's table of what today's renderers print, each kept in its place in the comment.
+describe("the register keeps every element the comment printed", () => {
+	const lowering = {
+		...judged("confirmed", "One caller reaches it."),
+		correction: "Only the admin path.",
+		lowered: { from: "P1" as const, to: "P2" as const, reason: "Only the admin path reaches it." },
+	};
+
+	it("lowering: ordinary, reason once, after the verifier's line and its correction", () => {
+		const finding = decided(retriedCharge, lowering);
+		const text = ReviewComment.from(finding, inline).render({ revision, base, links, secret });
+		const lines = text.split("\n");
+		expect(lines[0]).toMatch(/^<!-- melian:revision=/);
+		expect(lines[1]).toBe(
+			"\u{1F7E1} P2, lowered from P1 | \u{270B} Needs acknowledgement | \u{1F3AF} Correctness | \u{2705} Verifier confirmed | New in this change",
+		);
+		const verifier = lines.indexOf("\u{2696}\u{FE0F} **Verifier** (`faux/judge`): One caller reaches it.");
+		expect(lines.slice(verifier, verifier + 5)).toEqual([
+			"\u{2696}\u{FE0F} **Verifier** (`faux/judge`): One caller reaches it.",
+			"",
+			"**Correction:** Only the admin path.",
+			"",
+			"**Lowered from P1:** Only the admin path reaches it.",
+		]);
+		expect(text.split("Only the admin path reaches it.")).toHaveLength(2);
+	});
+
+	it("lowering: protected, reason once, inside the floor note", () => {
+		const finding = decided(
+			{ ...retriedCharge, rule: "untested-behaviour", source: { check: "lens.tests" } },
+			lowering,
+		);
+		const text = comment(finding);
+		expect(text.split("\n")[0]).toMatch(/^\u{1F7E1} P2, lowered from P1 \| /u);
+		expect(text).not.toContain("**Lowered from P1:**");
+		expect(text.split("Only the admin path reaches it.")).toHaveLength(2);
+	});
+
+	it("comment: verifier segment, unverified for a lens finding no verifier judged", () => {
+		expect(comment(decided(retriedCharge)).split("\n")[0]).toBe(
+			"\u{1F7E0} P1 | \u{26D4} Blocks merge | \u{1F3AF} Correctness | \u{2754} Not verified | New in this change",
+		);
+	});
+
+	it("comment: nearest anchor and pre-existing important above the status line, the marker first", () => {
+		const finding = decided(retriedCharge);
+		const text = ReviewComment.from(finding, { kind: "nearest", line: 40 }, "carried").render({
+			revision,
+			base,
+			links,
+			secret,
+		});
+		const lines = text.split("\n");
+		expect(lines[0]).toMatch(/^<!-- melian:revision=[0-9a-f]+ finding=/);
+		expect(lines[1]).toMatch(/^This finding is at \[`payments\/submit\.ts` lines 31-44\]\(.+\), outside the diff/);
+		expect(lines[3]).toMatch(/^\*\*Pre-existing, important\*\*, carried from an earlier revision\./);
+		expect(lines[5]).toMatch(/^\u{1F7E0} P1 \| /u);
+	});
+
+	it("escaping: markdown in a headline and a lens name stays inert in the status line and headline", () => {
+		const finding = Finding.create({
+			...retriedCharge,
+			message: "Charges **twice** [here](https://evil.example)",
+			source: { check: "lens.x_[y]" },
+		});
+		const lines = comment(finding).split("\n");
+		expect(lines[0]).toContain(" | \u{1F50E} x\\_\\[y\\] | ");
+		expect(lines[2]).toBe("**Charges \\*\\*twice\\*\\* \\[here\\]\\(https:⁠//evil.example\\)**");
 	});
 });

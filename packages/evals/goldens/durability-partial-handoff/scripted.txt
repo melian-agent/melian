@@ -11,8 +11,8 @@ packages/core/src/log-tail.ts
           return lines.slice(lines.length - count);
     Verifier (faux/scripted): The scripted verifier traced the claim.
     What to do: Restore Math.max(0, lines.length - count).
-    Merged report: P2 wrong-result from lens.correctness
     Rule dropped-guard | Status new
+    Merged report: P2 wrong-result from lens.correctness
 
 packages/pipeline/src/lens-run.ts
 

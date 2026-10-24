@@ -12,9 +12,9 @@ src/total.ts
     Why here: Scripted.
     Failure scenario: Scripted.
     What to do: Scripted.
-    Merged report: P1 biome/security/noGlobalEval from static.biome
     Decided by: the built-in table; as static.biome reported it under biome/security/noGlobalEval
     Rule reuse | Status new
+    Merged report: P1 biome/security/noGlobalEval from static.biome
 
 Advisory: 1 finding
 

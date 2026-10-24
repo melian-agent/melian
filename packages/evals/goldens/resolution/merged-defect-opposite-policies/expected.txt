@@ -15,9 +15,9 @@ aliased/third.ts
     Failure scenario: Scripted.
     Verifier (scripted/judge): The scripted verifier judged the claim.
     What to do: Scripted.
-    Merged report: P1 biome/style/useConst from static.biome
     Decided by: melian.yaml: resolution.checks.static.biome.P1, the check entry; as static.biome reported it under biome/style/useConst
     Rule reuse | Status new
+    Merged report: P1 biome/style/useConst from static.biome
 
 src/first.ts
 
@@ -27,9 +27,9 @@ src/first.ts
     Why here: Scripted.
     Verifier (scripted/judge): The scripted verifier judged the claim.
     What to do: Scripted.
-    Merged report: P1 reuse from lens.cleanup
     Decided by: melian.yaml: resolution.checks.static.biome.P1, the check entry
     Rule biome/style/useConst | Status new
+    Merged report: P1 reuse from lens.cleanup
 
 src/second.ts
 
@@ -40,8 +40,8 @@ src/second.ts
     Failure scenario: Scripted.
     Verifier (scripted/judge): The scripted verifier judged the claim.
     What to do: Scripted.
-    Merged report: P1 biome/style/useConst from static.biome
     Decided by: melian.yaml: resolution.checks.static.biome.P1, the check entry; as static.biome reported it under biome/style/useConst
     Rule reuse | Status new
+    Merged report: P1 biome/style/useConst from static.biome
 
 3 findings in 3 files.

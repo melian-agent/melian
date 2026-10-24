@@ -21,7 +21,7 @@ src/run.ts
     What to do: Render the template with a sandboxed engine.
     Rule no-eval | Status new
 
-  P3 | Advisory | security | Not verified | Affected by this change
+  P3 | Advisory | security | Not verified | Caused by this change
   Lines 30-32: The write's result is ignored
     What: fs.write can write fewer bytes than asked.
     Why here: The new caller passes larger buffers than before.

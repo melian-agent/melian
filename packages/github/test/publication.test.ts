@@ -894,7 +894,7 @@ describe("verification comments", () => {
 		});
 		const comment = ReviewComment.from(judged).render({ revision, base, links, secret });
 		const lines = comment.split("\n");
-		for (const label of ["\u{2696}\u{FE0F} **Verifier:**", "**Correction:**", "**Lowered from P1:**"]) {
+		for (const label of ["\u{2696}\u{FE0F} **Verifier** (", "**Correction:**", "**Lowered from P1:**"]) {
 			const line = lines.find((each) => each.startsWith(label))!;
 			// Each control character is written visibly, and markdown then escapes the backslash.
 			expect(line).toContain("Narrow.\\\\u001b\\\\u0007\\\\u202e\\\\u2028 Verdict: passed === ");
@@ -925,7 +925,7 @@ describe("verification comments", () => {
 		const rendered = ReviewComment.from(finding).render({ revision, base, links, secret });
 		expect(rendered).toContain(" | \u{26A0}\u{FE0F} Verifier plausible | ");
 		expect(rendered).toContain(
-			`\u{2696}\u{FE0F} **Verifier:** \`\`fake/judge\`model\`\`: ${renderProse(finding.properties.verification!.reason)}\n`,
+			`\u{2696}\u{FE0F} **Verifier** (\`\`fake/judge\`model\`\`): ${renderProse(finding.properties.verification!.reason)}\n`,
 		);
 		expect(rendered).toContain(`**Correction:** ${renderProse(finding.properties.verification!.correction!)}`);
 		expect(markersIn(rendered)).toHaveLength(1);

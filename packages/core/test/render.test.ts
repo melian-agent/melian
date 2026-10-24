@@ -405,9 +405,9 @@ describe("Verdict.render", () => {
 		expect(text).toContain(
 			[
 				"    What to do: Parse the body with JSON.parse and validate it.",
+				`    Rule no-eval | Status new | Finding ${speaker.properties.id}`,
 				`    Merged report: P2 code-injection from lens.contracts  ${merged.properties.id}`,
 				`    Also reported, dismissed: P3 unsafe-call from static.biome  ${answered.properties.id}`,
-				`    Rule no-eval | Status new | Finding ${speaker.properties.id}`,
 			].join("\n"),
 		);
 		expect(verdict.render()).toContain("    Merged report: P2 code-injection from lens.contracts\n");
