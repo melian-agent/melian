@@ -566,20 +566,20 @@ const search = defineTool({
 		}),
 });
 
-// Each file's matches in turn, its first match, then each file's second, so the output bound cuts the deepest matches
-// of every file before it drops any file. A file with more than it was shown says so inside the boundary, by its path.
+// Each file's status first, then its matches in turn, its first match, then each file's second, so the output bound
+// cuts the deepest matches of every file before it drops any file or any file's status.
 async function searchFiles(review: ReviewState, commit: string, search: RevisionSearch, paths: readonly string[]) {
 	const files = await searchRevisionFiles(review.repoRoot, commit, search, paths);
 	const rows: string[] = [];
+	for (const file of files) {
+		if (file.missing) rows.push(`${visibleText(file.path)}: [no file at this revision]`);
+		else if (file.truncated) rows.push(`${visibleText(file.path)}: [more matches not shown; search it alone]`);
+	}
 	for (let depth = 0; files.some((file) => depth < file.matches.length); depth++)
 		for (const file of files) {
 			const match = file.matches[depth];
 			if (match !== undefined) rows.push(`${visibleText(match.path)}:${match.line}: ${match.text}`);
 		}
-	for (const file of files) {
-		if (file.missing) rows.push(`${visibleText(file.path)}: [no file at this revision]`);
-		else if (file.truncated) rows.push(`${visibleText(file.path)}: [more matches not shown; search it alone]`);
-	}
 	// A missing file has a row of its own, so no rows means every file was searched.
 	if (rows.length === 0) return text(`No matches in ${files.length} files.`);
 	const { body, count } = fitting(rows);
