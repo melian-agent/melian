@@ -404,9 +404,14 @@ describe("graph tools", { timeout: 60_000 }, () => {
 				properties: { name: { type: "string", minLength: 1, description: expect.stringContaining("Enola name") } },
 			},
 		});
+		const file = {
+			type: "string",
+			minLength: 1,
+			description: "The declaring file, when two declarations share the full name",
+		};
 		expect(tool("graph_references")).toMatchObject({
 			description: expect.stringContaining("List what refers to one declaration"),
-			parameters: { required: ["symbol"], properties: { symbol } },
+			parameters: { required: ["symbol"], properties: { symbol, file } },
 		});
 		expect(tool("graph_impact")).toMatchObject({
 			description: expect.stringContaining("up to depth levels away (1 to 3, 2 when absent)"),
