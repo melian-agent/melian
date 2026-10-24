@@ -505,10 +505,14 @@ const lensEntry = /^(?:(.*)\/)?(\.(?:melian|agents))\/lenses\/([^/]+)(?:\/|$)/is
 // Every directory holding repository lenses, with the names it defines, from one listing of the source.
 async function lensScopes(reader: SourceReader): Promise<Map<string, Set<string>>> {
 	const scopes = new Map<string, Set<string>>();
-	for (const path of await reader.findPaths(lensEntry).catch(fromSource("."))) {
+	const paths = await reader.findPaths(lensEntry).catch(fromSource("."));
+	const found = new Set(paths);
+	for (const path of paths) {
 		const [, scope = "", owner, name] = lensEntry.exec(path)!;
 		const directory = posix.join(scope, owner!.toLowerCase(), "lenses", name!);
 		const file = posix.join(directory, "LENS.md");
+		// A golden tree's LENS.golden.md matches too; asking the source about each one costs a walk of its path.
+		if (!found.has(file) && !found.has(directory)) continue;
 		// An alias shadows a farther lens only when this source can load it; symlinks must still reach refusal.
 		if (
 			(await reader.exists(directory).catch(fromSource(directory))) !== "symlink" &&
