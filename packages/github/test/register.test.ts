@@ -202,6 +202,7 @@ describe("a finding as a pull request shows it, in the register", () => {
 		);
 		expect(lines).toContain("\u{2696}\u{FE0F} **Verified:** `faux/judge`: The comment is documentation.");
 		expect(lines).toContain("Trust floor: acknowledge required; maintainer dismissal needed.");
+		expect(lines[lines.indexOf("Trust floor: acknowledge required; maintainer dismissal needed.") + 1]).toBe("");
 	});
 });
 
@@ -491,12 +492,13 @@ describe("the register keeps every element the comment printed", () => {
 			"\u{1F7E1} P2, lowered from P1 | \u{270B} Needs acknowledgement | \u{1F3AF} Correctness | \u{2705} Verifier confirmed | New in this change",
 		);
 		const verifier = lines.indexOf("\u{2696}\u{FE0F} **Verified:** `faux/judge`: One caller reaches it.");
-		expect(lines.slice(verifier, verifier + 5)).toEqual([
+		expect(lines.slice(verifier, verifier + 6)).toEqual([
 			"\u{2696}\u{FE0F} **Verified:** `faux/judge`: One caller reaches it.",
 			"",
 			"**Correction:** Only the admin path.",
 			"",
 			"**Lowered from P1:** Only the admin path reaches it.",
+			"",
 		]);
 		expect(text.split("Only the admin path reaches it.")).toHaveLength(2);
 	});
