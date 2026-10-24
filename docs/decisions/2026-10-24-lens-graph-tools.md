@@ -14,7 +14,7 @@ Four read-only Pi tools answer from the head's Enola snapshot, the one the revie
 
 - `graph_definitions`: the declarations whose name matches, with file, line and kind.
 - `graph_references`: every fact with a resolved edge to one declaration, by edge kind (calls, instantiates, names, imports, implements).
-- `graph_impact`: the declarations that reach one through resolved calls and instantiations, up to three levels and 200 nodes.
+- `graph_impact`: what reaches one declaration through resolved calls and instantiations, declarations and top-level code alike, up to three levels and 200 callers.
 - `graph_callees`: what one declaration calls, resolved targets with their location and unresolved ones by name.
 
 Each tool reads the snapshot through `GraphCache` at the graph key the lens task already stores for its callers section, which the lens's policy now carries, so it answers about exactly the snapshot whose callers the prompt lists. Before reading, the tool checks that the key's tree is the head's, and refuses a graph of another revision. No process starts. A review without a verified snapshot gives each tool a result saying so, and the lens falls back on `search`. The tools are bounded like the others, at 48 KiB of shown text under `outputLimits`, count against the tools budget, and quote every name and path inside the review's boundary, since a head writes them.
@@ -52,5 +52,5 @@ The built-in lenses keep their tool lists until a live run measures the change. 
 
 [Issue #204](https://github.com/melian-agent/melian/issues/204): `search` took one path and returned at most 200 matches. The design index links up to 64 files, so searching each at base and head could take 128 calls of the design lens's 45, and a term common in one file cut the search off before the file that mattered.
 
-`search` now also takes `paths`, an exact set of up to 64 files, each grepped on its own with `--max-count` and a byte bound of its own, so each file gets an equal share of the 200 matches and one file's long lines cannot spend another's. The rows interleave the files' first matches, then their second, so the output bound cuts every file's deepest matches before it drops a file. A file with more than its share, or no file at the revision, says so inside the boundary. `path` and `paths` together are refused. Core's `searchRevisionFiles` does the search; a test runs it over 64 files, one holding 300 distractor matches.
+`search` now also takes `paths`: an exact set of up to 65 files, design.md and the 64 it may link. Each file is grepped on its own, with `--max-count` and a byte bound of its own. So each file gets an equal share of the 200 matches, and one file's long lines cannot spend another's. The block opens with each file that had more than its share or is no file at the revision. Then the files' first matches follow, then their second, so the output bound cuts deep matches before it drops a file. `path` and `paths` together are refused. Core's `searchRevisionFiles` does the search; a test runs it over 64 files, one holding 300 distractor matches.
 

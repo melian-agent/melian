@@ -51,7 +51,8 @@ export interface RevisionSearch {
 export const revisionLimits = {
 	fileBytes: 8 * 1024 * 1024,
 	searchMatches: 200,
-	searchFiles: 64,
+	// A design index reads design.md and up to 64 files it links: one search covers all of them.
+	searchFiles: 65,
 	matchChars: 300,
 	listEntries: 1000,
 } as const;

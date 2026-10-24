@@ -299,10 +299,10 @@ describe("graph tools", { timeout: 60_000 }, () => {
 		for (const [index, path] of paths.slice(1, 63).entries())
 			expect(rows).toContain(`${path}:${index + 2}: needle in ${path}`);
 		expect(rows.filter((row) => row.startsWith(`${paths[0]}:`))).toEqual([
+			`${paths[0]}: [more matches not shown; search it alone]`,
 			`${paths[0]}:1: needle distractor 0`,
 			`${paths[0]}:2: needle distractor 1`,
 			`${paths[0]}:3: needle distractor 2`,
-			`${paths[0]}: [more matches not shown; search it alone]`,
 		]);
 		expect(rows).toContain("docs/absent.md: [no file at this revision]");
 		expect(rows.indexOf(`${paths[0]}:1: needle distractor 0`)).toBeLessThan(
@@ -326,11 +326,20 @@ describe("graph tools", { timeout: 60_000 }, () => {
 		);
 		gitIn(repo, "add", "--all");
 		gitIn(repo, "commit", "--quiet", "-m", "long lines");
-		const requests = await reviewWith(undefined, [[["search", { pattern: "needle", paths }]]]);
+		const requests = await reviewWith(undefined, [
+			[["search", { pattern: "needle", paths: [...paths, "docs/absent.md"] }]],
+		]);
 		const [result] = toolResults(requests[correctness]![1]!);
 		const shown = (path: string) => (result!.match(new RegExp(`${path}:\\d+:`, "g")) ?? []).length;
 		expect(Math.abs(shown(paths[0]!) - shown(paths[1]!))).toBeLessThanOrEqual(1);
-		const rows = 202 - shown(paths[0]!) - shown(paths[1]!);
+		// What each file's status is never falls to the output bound: it leads the block.
+		const body = result!.split("\n").slice(1, 4);
+		expect(body).toEqual([
+			"docs/long0.md: [more matches not shown; search it alone]",
+			"docs/long1.md: [more matches not shown; search it alone]",
+			"docs/absent.md: [no file at this revision]",
+		]);
+		const rows = 200 - shown(paths[0]!) - shown(paths[1]!);
 		expect(
 			result!.endsWith(
 				`</untrusted-${nonceOf(requests[correctness]![0]!)}>\n[${rows} more lines not shown; search fewer files]`,
@@ -352,9 +361,9 @@ describe("graph tools", { timeout: 60_000 }, () => {
 					paths: {
 						type: "array",
 						minItems: 1,
-						maxItems: 64,
+						maxItems: 65,
 						items: { type: "string", minLength: 1 },
-						description: "Search exactly these files, at most 64, in place of path",
+						description: "Search exactly these files, at most 65, in place of path",
 					},
 				},
 			},
@@ -418,7 +427,7 @@ describe("graph tools", { timeout: 60_000 }, () => {
 		expect(quiet).toContain("No calls.");
 	});
 
-	it("stop the walk at 200 declarations and cut the rows at the output bound, saying both", async () => {
+	it("stop the walk at 200 callers and cut the rows at the output bound, saying both", async () => {
 		const callers = Array.from({ length: 201 }, (_, index) => ({
 			id: `c${index}`,
 			name: `src.caller${String(index).padStart(3, "0")}${"x".repeat(240)}`,
@@ -446,7 +455,7 @@ describe("graph tools", { timeout: 60_000 }, () => {
 			],
 		]);
 		const [impact, references] = toolResults(requests[correctness]![1]!);
-		expect(impact).toContain("[the walk stopped at 200 declarations]");
+		expect(impact).toContain("[the walk stopped at 200 callers]");
 		expect(references).not.toContain("the walk stopped");
 		const shown = (result: string) => (result.match(/src\.caller\d{3}/g) ?? []).length;
 		expect(shown(impact!)).toBeLessThan(200);

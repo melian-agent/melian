@@ -566,20 +566,20 @@ const search = defineTool({
 		}),
 });
 
-// Each file's matches in turn, its first match, then each file's second, so the output bound cuts the deepest matches
-// of every file before it drops any file. A file with more than it was shown says so inside the boundary, by its path.
+// Each file's status first, then its matches in turn, its first match, then each file's second, so the output bound
+// cuts the deepest matches of every file before it drops any file or any file's status.
 async function searchFiles(review: ReviewState, commit: string, search: RevisionSearch, paths: readonly string[]) {
 	const files = await searchRevisionFiles(review.repoRoot, commit, search, paths);
 	const rows: string[] = [];
+	for (const file of files) {
+		if (file.missing) rows.push(`${visibleText(file.path)}: [no file at this revision]`);
+		else if (file.truncated) rows.push(`${visibleText(file.path)}: [more matches not shown; search it alone]`);
+	}
 	for (let depth = 0; files.some((file) => depth < file.matches.length); depth++)
 		for (const file of files) {
 			const match = file.matches[depth];
 			if (match !== undefined) rows.push(`${visibleText(match.path)}:${match.line}: ${match.text}`);
 		}
-	for (const file of files) {
-		if (file.missing) rows.push(`${visibleText(file.path)}: [no file at this revision]`);
-		else if (file.truncated) rows.push(`${visibleText(file.path)}: [more matches not shown; search it alone]`);
-	}
 	// A missing file has a row of its own, so no rows means every file was searched.
 	if (rows.length === 0) return text(`No matches in ${files.length} files.`);
 	const { body, count } = fitting(rows);
@@ -699,14 +699,14 @@ const graphReferences = defineTool({
 		}),
 });
 
-// Enola's own impact query caps its walk at 50 nodes; three levels and 200 declarations keep a result readable.
+// Enola's own impact query caps its walk at 50 nodes; three levels and 200 callers keep a result readable.
 const maxImpactDepth = 3;
 const maxImpactNodes = 200;
 
 const graphImpact = defineTool({
 	name: "graph_impact",
 	description:
-		"List the declarations at head that reach one through calls and constructions Enola resolved, nearest first, up to depth levels away (1 to 3, 2 when absent) and 200 declarations. Imports and type uses are not followed; graph_references lists those.",
+		"List what reaches one declaration at head through calls and constructions Enola resolved, declarations and top-level code alike, nearest first, up to depth levels away (1 to 3, 2 when absent) and 200 callers. Imports and type uses are not followed; graph_references lists those.",
 	parameters: Type.Object({
 		symbol: symbolParameter,
 		depth: Type.Optional(Type.Integer({ minimum: 1, maximum: maxImpactDepth, description: "1 to 3; 2 when absent" })),
@@ -722,7 +722,7 @@ const graphImpact = defineTool({
 			const rows = reached.map(({ depth, fact }) => `${depth} ${describeFact(fact)}`);
 			return graphRows(review, rows, [
 				...(rows.length === 0 ? ["No resolved callers."] : []),
-				...(truncated ? [`[the walk stopped at ${maxImpactNodes} declarations]`] : []),
+				...(truncated ? [`[the walk stopped at ${maxImpactNodes} callers]`] : []),
 			]);
 		}),
 });
@@ -761,7 +761,6 @@ export const injectionPolicySection = section("injection_policy", async (input, 
 // The read-only tools a lens may be offered, by the names `LENS.md` lists them under.
 export const lensReadTools = { read_file: readFile, search, list_files: listFiles } as const;
 
-// Every read-only tool a lens may list, the graph tools included, by name.
 export const lensListedTools = {
 	...lensReadTools,
 	graph_definitions: graphDefinitions,

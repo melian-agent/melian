@@ -223,6 +223,16 @@ describe("searchRevision", () => {
 		expect((await searchRevision(repo, hiding, { ...search, attributesFrom: head })).matches).toEqual([
 			{ path: "src/total.ts", line: 1, text: "export const total = 2;" },
 		]);
+		expect(await searchRevisionFiles(repo, hiding, { ...search, attributesFrom: hiding }, ["src/total.ts"])).toEqual([
+			{ path: "src/total.ts", matches: [], truncated: false },
+		]);
+		expect(await searchRevisionFiles(repo, hiding, { ...search, attributesFrom: head }, ["src/total.ts"])).toEqual([
+			{
+				path: "src/total.ts",
+				truncated: false,
+				matches: [{ path: "src/total.ts", line: 1, text: "export const total = 2;" }],
+			},
+		]);
 	});
 
 	it("treats a pattern that looks like an option as text", async () => {
@@ -341,7 +351,7 @@ describe("searchRevisionFiles", () => {
 		expect(short).toMatchObject({ truncated: false, matches: [{ line: 2 }] });
 	});
 
-	it("names each file once, marks one absent at the revision, and refuses more than 64", async () => {
+	it("names each file once, marks one absent at the revision, and refuses more than 65", async () => {
 		const { paths, commit } = designFiles();
 		const search = { attributesFrom: commit, pattern: "needle" };
 		expect(
@@ -364,10 +374,10 @@ describe("searchRevisionFiles", () => {
 			{ path: paths[1], matches: [], truncated: false },
 		]);
 		expect((await searchRevisionFiles(repo, commit, search, [...paths, paths[0]!])).length).toBe(64);
-		await expect(searchRevisionFiles(repo, commit, search, [...paths, "docs/readme.md"])).rejects.toMatchObject({
-			code: "tooManyFiles",
-			message: "at most 64 files, not 65",
-		});
+		expect(await searchRevisionFiles(repo, commit, search, [...paths, "docs/readme.md"])).toHaveLength(65);
+		await expect(
+			searchRevisionFiles(repo, commit, search, [...paths, "docs/readme.md", "src/total.ts"]),
+		).rejects.toMatchObject({ code: "tooManyFiles", message: "at most 65 files, not 66" });
 		for (const [revision, attributesFrom] of [
 			["--output=x", commit],
 			[commit, "--output=x"],
