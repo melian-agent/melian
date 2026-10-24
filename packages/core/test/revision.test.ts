@@ -223,6 +223,16 @@ describe("searchRevision", () => {
 		expect((await searchRevision(repo, hiding, { ...search, attributesFrom: head })).matches).toEqual([
 			{ path: "src/total.ts", line: 1, text: "export const total = 2;" },
 		]);
+		expect(await searchRevisionFiles(repo, hiding, { ...search, attributesFrom: hiding }, ["src/total.ts"])).toEqual([
+			{ path: "src/total.ts", matches: [], truncated: false },
+		]);
+		expect(await searchRevisionFiles(repo, hiding, { ...search, attributesFrom: head }, ["src/total.ts"])).toEqual([
+			{
+				path: "src/total.ts",
+				truncated: false,
+				matches: [{ path: "src/total.ts", line: 1, text: "export const total = 2;" }],
+			},
+		]);
 	});
 
 	it("treats a pattern that looks like an option as text", async () => {
