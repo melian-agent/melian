@@ -137,10 +137,10 @@ The design lens runs on Codex's model and effort so it can replace Codex's adver
 
 1. Run Codex's review with `--json` on the head the round reviews, and keep the file outside the worktree: `node <companion>/scripts/codex-companion.mjs adversarial-review --json --base <base> "<focus>" > tmp/m2/codex-<pr>-r<n>.json`. `melian compare` reads the companion's payload as it is.
 2. After the Melian round of that head, import it: `melian compare <base>...<head> --from file:tmp/m2/codex-<pr>-r<n>.json`.
-3. Before the next fix pass, adjudicate every Codex finding with `melian compare adjudicate`: valid, noise, or a duplicate of another. A valid one Melian missed takes a miss reason: `owned-missed`, `no-owner`, `needs-execution`, or `out-of-scope`.
+3. Before the next fix pass, adjudicate every Codex finding and every design-lens finding with `melian compare adjudicate`: valid, noise, or a duplicate of another. A valid Codex finding Melian missed takes a miss reason: `owned-missed`, `no-owner`, `needs-execution`, or `out-of-scope`. The count leaves out any finding still waiting for a judgement.
 4. `melian compare stats --lens design` prints the design lens against Codex: which of Codex's valid defects it found, which only other lenses found, and which of its own Codex found.
 
-The maintainer retires Codex's review from that count.
+The count is a diagnostic over the stored rounds, not the retirement test. It counts each round on its own and cannot see a merged pull request with no comparison. Codex's review keeps running until [the shadow retirement rule](docs/decisions/2026-10-06-shadow-retirement-merged-window.md) is met over its window of merged pull requests, and the maintainer retires it.
 
 ### The comparison record
 
