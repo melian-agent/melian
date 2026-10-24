@@ -503,6 +503,40 @@ describe("one lens against one reviewer", () => {
 		);
 	});
 
+	it("leaves out a defect while any report in it waits, its own or the reviewer's, or matches ambiguously", () => {
+		// 12: the lens alone, unjudged. 20: Codex judged, the lens unjudged. 30: Codex judged, matching two of the
+		// lens's findings by site, so the pairing waits for a hand match.
+		const lone = design(12);
+		const mixed = design(20);
+		const first = design(30);
+		const second = Finding.create({
+			...evalInput,
+			snippet: "eval(other30)",
+			startLine: 30,
+			endLine: 30,
+			source: { check: "lens.design", version: "1" },
+		});
+		const codex20 = report({ line: 20, title: "Codex 20" });
+		const codex30 = report({ line: 30, title: "Codex 30" });
+		const findings = [lone, mixed, first, second];
+		const comparison = round({ externals: [codex20, codex30], findings });
+		for (const id of [codex20.id, codex30.id, first.id, second.id])
+			comparison.adjudicate(id, { ...by, verdict: "valid" });
+		expect(comparison.ambiguous().map((each) => each.external.id)).toEqual([codex30.id]);
+		const stats = new ComparisonSet([entry("one", comparison, findings)]).againstReviewer("lens.design", "codex");
+		expect(stats).toEqual({
+			check: "lens.design",
+			reviewer: "codex",
+			comparisons: 1,
+			reviewerValid: 0,
+			checkFound: 0,
+			othersFound: 0,
+			checkValid: 0,
+			reviewerFound: 0,
+			pending: 4,
+		});
+	});
+
 	it("prints no share for an empty side, and selects changesets as the other statistics do", () => {
 		const { comparison, findings } = scenario();
 		const set = new ComparisonSet([entry("one", comparison, findings)]);
