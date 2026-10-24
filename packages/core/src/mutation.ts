@@ -10,16 +10,22 @@ const mutant = Type.Object({
 	status: Type.String(),
 	statusReason: Type.Optional(Type.String()),
 	static: Type.Optional(Type.Boolean()),
+	coveredBy: Type.Optional(Type.Array(Type.String())),
 	location: Type.Object({ start: position, end: position }),
 });
 // The options Stryker ran with, which it writes into its report.
 const settings = Type.Object({
 	ignoreStatic: Type.Optional(Type.Boolean()),
 	mutator: Type.Optional(Type.Object({ excludedMutations: Type.Optional(Type.Array(Type.String())) })),
+	vitest: Type.Optional(Type.Object({ related: Type.Optional(Type.Boolean()) })),
+	testFiles: Type.Optional(Type.Array(Type.String())),
 });
 const report = Type.Object({
 	config: Type.Optional(settings),
 	files: Type.Record(Type.String(), Type.Object({ mutants: Type.Array(mutant) })),
+	testFiles: Type.Optional(
+		Type.Record(Type.String(), Type.Object({ tests: Type.Array(Type.Object({ id: Type.String() })) })),
+	),
 });
 
 // Survived and NoCoverage are findings. These are set aside with a note: a mutant that hangs, or breaks the build or the
@@ -40,10 +46,35 @@ function ignoredByConfiguration(
 }
 
 // Under `ignoreStatic`, a mutant that code outside any test also reaches, such as a `beforeAll` hook, a `describe` body, or
-// module level, runs only the tests that reach it from inside a test. A test that asserts on that outside call is not run, so
-// the mutant reads as surviving though it is killed.
-const reachedOutsideTests =
-	"Stryker also reached this line outside any test, such as in a beforeAll hook or a describe body, and runs only the tests that reach it from inside one; if a test asserts on that call, move the call into the test.";
+// module level, runs only the tests that reach it from inside a test, and only among the test files Vitest's `related`
+// filter kept. A test that asserts on that outside call, or reaches the module only through `vi.importActual`, is not run,
+// so the mutant reads as surviving though it is killed.
+function reachedOutsideTests(
+	each: Static<typeof mutant>,
+	test: string | undefined,
+	testFiles: Static<typeof report>["testFiles"],
+	config: Static<typeof settings> | undefined,
+): string {
+	const covering = Object.entries(testFiles ?? {})
+		.filter(([, file]) => file.tests.some(({ id }) => each.coveredBy?.includes(id)))
+		.map(([path]) => path)
+		.sort(compare);
+	const named =
+		covering.length === 0
+			? ""
+			: `: those in ${covering.slice(0, 3).join(", ")}${covering.length > 3 ? ` and ${covering.length - 3} more` : ""}`;
+	// The pipeline names a test file that does not exist yet "a new <path>"; Stryker could not have run it.
+	const missing =
+		testFiles !== undefined && test !== undefined && !test.startsWith("a new ") && !Object.hasOwn(testFiles, test)
+			? ` ${test} was not among the test files it ran.`
+			: "";
+	const reached = `Stryker also reached this line outside any test, such as at module load or in a beforeAll hook or a describe body, so it ran only the tests that reach it inside one${named}.`;
+	// Melian's runner narrows a run by passing Vitest's related test files as `testFiles`, and passes none for the whole
+	// suite; Stryker's own `vitest.related` narrows a run started without Melian.
+	if (config?.vitest?.related === true || (config?.testFiles?.length ?? 0) > 0)
+		return `${reached} It picks test files through Vitest's \`related\` filter, which follows only static imports and literal dynamic imports, so no other test file ran for this mutant.${missing} Run the code inside a test: move a call out of a hook or a describe body, and reload a module with \`vi.resetModules()\` and a literal dynamic import of the module.`;
+	return `${reached} This run used the whole suite, so every test file was a candidate: the tests that reach this line do not assert on what the mutant changed, or assert on it only from a hook or a describe body.${missing} Move such a call into the test.`;
+}
 
 const longestCode = 160;
 
@@ -240,11 +271,11 @@ function readMutationReport(text: string): Static<typeof report> {
 	}
 	const problem = Value.Errors(report, parsed)[0];
 	if (problem !== undefined) throw invalid(`${problem.instancePath} ${problem.message}`);
-	const { files, config } = parsed as Static<typeof report>;
+	const { files, config, testFiles } = parsed as Static<typeof report>;
 	for (const file of Object.values(files))
 		for (const each of file.mutants)
 			if (!known.has(each.status)) throw invalid(`mutant status ${each.status} is not one Stryker ends a run with`);
-	return { files, config };
+	return { files, config, testFiles };
 }
 
 type CollectedMutants = {
@@ -263,6 +294,7 @@ function collectMutants(
 	config: Static<typeof settings> | undefined,
 	run: MutationReportInput,
 	groups: CollectedMutants,
+	testFiles: Static<typeof report>["testFiles"],
 ): void {
 	const { results, aside, ignored, configured, exempt } = groups;
 	const reportable: Static<typeof mutant>[] = [];
@@ -299,7 +331,7 @@ function collectMutants(
 		const start = each.location.start;
 		const end = { line: widest.get(start.line)! };
 		const survived = each.status === "Survived";
-		const test = run.tests[path] ?? "a test file";
+		const test: string | undefined = run.tests[path];
 		results.push({
 			ruleId: "untested-behaviour",
 			level: "error",
@@ -312,8 +344,8 @@ function collectMutants(
 				whyHere: survived
 					? "A mutant of this changed line survived the test run, so no test fails when this behaviour changes."
 					: "No test runs this changed line, so no test fails when this behaviour changes.",
-				whatToDo: `Add or tighten a test in ${test} so it fails when this code is changed as the mutant changed it, then restore the code.${
-					survived && each.static === true ? ` ${reachedOutsideTests}` : ""
+				whatToDo: `Add or tighten a test in ${test ?? "a test file"} so it fails when this code is changed as the mutant changed it, then restore the code.${
+					survived && each.static === true ? ` ${reachedOutsideTests(each, test, testFiles, config)}` : ""
 				}`,
 			},
 			locations: [
@@ -416,7 +448,7 @@ function mutationNotes(groups: CollectedMutants, lines: MutationReportInput["lin
  * not a report, or names a mutant status Stryker does not end a run with.
  */
 export function normaliseMutationReport(text: string, run: MutationReportInput): { log: ToolLog; notes: string[] } {
-	const { files, config } = readMutationReport(text);
+	const { files, config, testFiles } = readMutationReport(text);
 	const groups: CollectedMutants = {
 		results: [],
 		aside: new Map(),
@@ -429,7 +461,7 @@ export function normaliseMutationReport(text: string, run: MutationReportInput):
 		if (file.mutants.length > 0) groups.mutated.add(path);
 		const ranges = Object.hasOwn(run.lines, path) ? run.lines[path]! : undefined;
 		if (ranges === undefined) continue;
-		collectMutants(path, file.mutants, ranges, config, run, groups);
+		collectMutants(path, file.mutants, ranges, config, run, groups, testFiles);
 	}
 	reportIgnoredMutants(groups);
 	reportPolicyOmissions(groups, run);
