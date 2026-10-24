@@ -30,9 +30,10 @@ models:
 
 tiers:
   fast: [guardrails, static.biome, static.tsc, static.enola]
-  # The default full tier, plus mutation testing of the changed lines and Melian's own repository lenses under
-  # .melian/lenses/. Mutation testing runs Stryker over the whole test suite, so it stays out of the fast tiers.
-  full: [standard, static.mutation, lens.contracts, lens.trust-boundary, lens.removed-behaviour, lens.tests, lens.conventions, lens.durability, lens.design]
+  # The default full tier plus Melian's own repository lenses under .melian/lenses/. static.mutation is off this
+  # repository's rounds from 2026-10-24 (decisions/2026-10-24-stryker-off-the-hot-path.md); opt in with
+  # tiers: { full: [static.mutation] } in an uncommitted melian.local.yaml.
+  full: [standard, lens.contracts, lens.trust-boundary, lens.removed-behaviour, lens.tests, lens.conventions, lens.durability, lens.design]
 
 static:
   enola: { enabled: true }
