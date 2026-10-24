@@ -1268,6 +1268,34 @@ describe("recording a dismissal", () => {
 		expect(verdict.dismissed).toHaveLength(1);
 	});
 
+	it("refuses a dismissal on a review stored with a fingerprint of the retired recipe, under an unchanged policy", async () => {
+		const harness = await reviewHarness(createMemoryStorage());
+		scriptFinding();
+		const changeset = await Changeset.resolve(repo, "main...feature");
+		const { findings } = await reviewChangeset({
+			harness,
+			changeset,
+			config,
+			lenses,
+			standards: [],
+			models: fake.review,
+			checks: [...deterministicRan],
+			policy: { kind: "worktree" },
+		});
+		const root = await harness.root(context);
+		await root.commit(async (tx) => {
+			const known = (await tx.doc(ReviewIndex, root.id)).reviews[revisionKey(changeset.revision)]!.adjudication!;
+			const input = JSON.parse(known.input) as AdjudicationTaskInput;
+			// What main's first recipe stored for this repository before the retirement.
+			known.input = JSON.stringify({ ...input, resolutionPolicy: "9a82a69d3275b714" });
+		}, context);
+
+		await expect(dismiss(harness, findings[0]!.properties.id)).rejects.toMatchObject({
+			code: "adjudicationFailed",
+			message: expect.stringContaining("the resolution policy changed since the review read it"),
+		});
+	});
+
 	it("decides a dismissal when the input names a fingerprint but no policy source to compare it with", async () => {
 		const harness = await reviewHarness(createMemoryStorage());
 		scriptFinding();
