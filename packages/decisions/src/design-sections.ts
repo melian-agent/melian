@@ -11,9 +11,11 @@ export const designFileLimits = { bytes: 320 * 1024, totalBytes: 1024 * 1024, li
 /** Base vocabulary from the design and the local sections it links. */
 export class DesignSections {
 	readonly #rows: readonly string[];
+	readonly #paths: readonly string[];
 
-	private constructor(rows: readonly string[]) {
+	private constructor(rows: readonly string[], paths: readonly string[]) {
 		this.#rows = rows;
+		this.#paths = paths;
 	}
 
 	/** Loads headings from base design text and Markdown section links. */
@@ -80,7 +82,10 @@ export class DesignSections {
 				if (bytes > designIndexLimits.bytes) throw DesignSections.indexTooLarge(rows.length);
 			}
 		}
-		return new DesignSections(rows);
+		return new DesignSections(
+			rows,
+			documents.map(({ path }) => visibleText(path)),
+		);
 	}
 
 	private static indexTooLarge(headings: number): DecisionFilesError {
@@ -93,6 +98,11 @@ export class DesignSections {
 	/** Renders the complete heading index. */
 	render(): string {
 		return this.#rows.join("\n");
+	}
+
+	/** Renders every design file read, one path a line, including those with no headings. */
+	renderFiles(): string {
+		return this.#paths.join("\n");
 	}
 }
 

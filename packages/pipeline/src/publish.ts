@@ -274,26 +274,25 @@ export const PublisherDocument = defineDoc<StoredPublisherState>({
 	initial: () => new PublisherState({}).toJSON(),
 });
 
-// Whether the last review posted at `head`, as `record` holds it, posted this revision's verdict, by its current or
-// legacy fingerprint. A record an older Melian wrote names no revision; it counts only when no other revision reviewed
+// Whether the last review posted at `head`, as `record` holds it, posted this revision's verdict, by its fingerprint.
+// A record an older Melian wrote names no revision; it counts only when no other revision reviewed
 // at the head has a verdict with the same fingerprint, so an identical verdict after a retarget is never taken for the
 // one posted under the old base.
 async function postedVerdictOf(
 	record: StoredRevision | undefined,
 	revision: string,
 	head: string,
-	fingerprints: readonly (string | undefined)[],
+	fingerprint: string,
 	reader: Pick<DocumentReader, "snapshot">,
 	root: ConversationId,
 	context: Context,
 ): Promise<boolean> {
-	if (record?.verdict === undefined || !fingerprints.includes(record.verdict)) return false;
+	if (record?.verdict !== fingerprint) return false;
 	if (record.verdictRevision !== undefined) return record.verdictRevision === revision;
 	const verdicts = (await reader.snapshot(VerdictDocument, root, context))?.verdicts ?? {};
 	return !Object.entries(verdicts).some(([other, verdict]) => {
 		if (other === revision || !other.endsWith(`..${head}`)) return false;
-		const decided = Verdict.from(verdict);
-		return [decided.fingerprint(), decided.legacyFingerprint()].includes(record.verdict);
+		return Verdict.from(verdict).fingerprint() === fingerprint;
 	});
 }
 
@@ -700,7 +699,6 @@ function publishTask(provider: ReviewProvider) {
 					provider.beginPublish?.();
 					const verdict = Verdict.from(storedRound.verdict);
 					const current = verdict.fingerprint();
-					const legacy = verdict.legacyFingerprint();
 					const status = publishedBy.trustedWriters ? verdict.reviewStatus() : untrustedWriterStatus;
 					await postStatus(status);
 					// A pending round planned for another revision of this head, such as the pull request before a retarget,
@@ -718,8 +716,7 @@ function publishTask(provider: ReviewProvider) {
 						const state = await read();
 						const before = state.revisions[head];
 						if (before?.pending === undefined) {
-							if (await postedVerdictOf(before, revision, head, [current, legacy], runtime, root, context))
-								break;
+							if (await postedVerdictOf(before, revision, head, current, runtime, root, context)) break;
 							const found = await marked({ fingerprint: current, round: (before?.rounds ?? 0) + 1 });
 							const settled = new Set<string>();
 							const returning = verdict.held();

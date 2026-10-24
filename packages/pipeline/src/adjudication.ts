@@ -244,11 +244,7 @@ export const AdjudicationTask = defineTask<
 				// The input names the policy the review read. A working tree can change before this phase runs, as after a
 				// dismissal a crash cut short, and a verdict decided under another policy must not sit under this input.
 				const { resolutionPolicy } = task.input;
-				if (
-					policies !== undefined &&
-					resolutionPolicy !== undefined &&
-					![policies.fingerprint, policies.legacyFingerprint].includes(resolutionPolicy)
-				) {
+				if (policies !== undefined && resolutionPolicy !== undefined && policies.fingerprint !== resolutionPolicy) {
 					throw new ConfigError(
 						"invalidValue",
 						repoRoot,
