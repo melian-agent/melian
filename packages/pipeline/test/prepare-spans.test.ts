@@ -133,6 +133,13 @@ it.each([
 		untimed: [],
 	},
 	{
+		name: "a stage before the spans",
+		spans: [[3000, 4000]],
+		stages: [stage("early", 0, 2000)],
+		endedAt: 4000,
+		untimed: [],
+	},
+	{
 		name: "a publication after the record",
 		spans: [[0, 4000]],
 		stages: [stage("publication", 9000, 9500)],

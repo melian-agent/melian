@@ -329,7 +329,14 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(prepare.startedAt).toBeGreaterThanOrEqual(spawned);
 		// Node and the module graph load before the command starts, which a start taken in the command would miss.
 		expect(startup!.durationMs).toBeGreaterThan(10);
-		for (const stage of telemetry.stages) expect(stage.startedAt!).toBeGreaterThanOrEqual(prepare.startedAt);
+		for (const stage of telemetry.stages) {
+			expect(stage.startedAt!).toBeGreaterThanOrEqual(prepare.startedAt);
+			for (const span of prepare.spans)
+				expect(
+					span.endedAt <= stage.startedAt! || span.startedAt >= stage.endedAt!,
+					`${span.name} overlaps ${stage.name} ${stage.subject}`,
+				).toBe(true);
+		}
 		expect(prepare.endedAt).toBe(Math.max(...prepare.spans.map(({ endedAt }) => endedAt)));
 		const shown = melian(repo, ["telemetry", "main"], env);
 		expect(shown.status).toBe(0);
