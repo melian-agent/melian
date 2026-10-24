@@ -186,6 +186,14 @@ function grepMatches(output: string, prefix: string): RevisionMatch[] {
 	return matches;
 }
 
+/** The tree object `revision` names, as `git rev-parse <revision>^{tree}` answers. Throws {@link RevisionError} `invalidRevision`. */
+export async function revisionTree(repoRoot: string, revision: string): Promise<string> {
+	checkRevision(revision);
+	const result = await git(repoRoot, ["rev-parse", "--verify", "--quiet", `${revision}^{tree}`]);
+	if (result.code !== 0) throw new RevisionError("invalidRevision", `${revision} does not name a commit`);
+	return result.stdout.trim();
+}
+
 /** One file of {@link searchRevisionFiles}: its matches, whether it had more, or that it is no file at the revision. */
 export type RevisionFileMatches = {
 	readonly path: string;
@@ -195,7 +203,7 @@ export type RevisionFileMatches = {
 };
 
 /**
- * Searches an exact set of files at `revision` in one `git grep`, as {@link searchRevision} searches one path, with an
+ * Searches an exact set of files at `revision`, as {@link searchRevision} searches one path, with an
  * equal share of `maxMatches` for each file, so a term common in one file cannot crowd out the others. Returns the
  * files in the order asked, each named once, a path that is no file at the revision marked `missing`.
  *
@@ -219,51 +227,52 @@ export async function searchRevisionFiles(
 	const files = new Set(entries.filter((entry) => entry.kind === "file").map((entry) => entry.path));
 	const present = targets.filter((path) => files.has(path));
 	const share = Math.max(1, Math.floor(maxMatches / Math.max(1, present.length)));
-	let matches: RevisionMatch[] = [];
-	let cut = false;
-	if (present.length > 0) {
-		// One more than the share per file tells a file that had more from one that had exactly its share.
-		const args = [
-			`--attr-source=${search.attributesFrom}`,
-			"-c",
-			"grep.column=false",
-			"--literal-pathspecs",
-			"grep",
-			"-z",
-			"-n",
-			"-I",
-			"--no-color",
-			"--full-name",
-			`--max-count=${share + 1}`,
-			search.regex ? "-E" : "-F",
-			...(search.ignoreCase ? ["-i"] : []),
-			"-e",
-			search.pattern,
-			revision,
-			"--",
-			...present,
-		];
-		const result = await git(repoRoot, args, {
-			maxBytes: present.length * (share + 1) * (revisionLimits.matchChars + 1024),
-		});
-		if (result.code !== 0 && !result.truncated && !(result.code === 1 && result.stderr === "")) {
-			const message = result.stderr.trim();
-			if (search.regex)
-				throw new RevisionError(
-					"invalidPattern",
-					`"${search.pattern}" is not a valid regular expression: ${message}`,
-				);
-			throw new RevisionError("gitFailed", `git grep failed: ${message}`);
-		}
-		matches = grepMatches(result.stdout, `${revision}:`);
-		// Output cut at the byte bound may have dropped any file's last matches, so every file may have more.
-		cut = result.truncated === true;
-	}
+	// One grep per file, so a long line in one file spends only that file's byte bound and never another's share.
+	const grepped = new Map<string, { matches: RevisionMatch[]; cut: boolean }>();
+	for (let start = 0; start < present.length; start += 8)
+		await Promise.all(
+			present.slice(start, start + 8).map(async (path) => {
+				grepped.set(path, await grepFile(repoRoot, revision, search, path, share));
+			}),
+		);
 	return targets.map((path) => {
-		if (!files.has(path)) return { path, matches: [], truncated: false, missing: true as const };
-		const found = matches.filter((match) => match.path === path);
-		return { path, matches: found.slice(0, share), truncated: cut || found.length > share };
+		const found = grepped.get(path);
+		if (found === undefined) return { path, matches: [], truncated: false, missing: true as const };
+		return { path, matches: found.matches.slice(0, share), truncated: found.cut || found.matches.length > share };
 	});
+}
+
+// One more than the share tells a file that had more from one that had exactly its share.
+async function grepFile(repoRoot: string, revision: string, search: RevisionSearch, path: string, share: number) {
+	const args = [
+		`--attr-source=${search.attributesFrom}`,
+		"-c",
+		"grep.column=false",
+		"--literal-pathspecs",
+		"grep",
+		"-z",
+		"-n",
+		"-I",
+		"--no-color",
+		"--full-name",
+		`--max-count=${share + 1}`,
+		search.regex ? "-E" : "-F",
+		...(search.ignoreCase ? ["-i"] : []),
+		"-e",
+		search.pattern,
+		revision,
+		"--",
+		path,
+	];
+	const result = await git(repoRoot, args, { maxBytes: (share + 1) * (revisionLimits.matchChars + 1024) });
+	if (result.code !== 0 && !result.truncated && !(result.code === 1 && result.stderr === "")) {
+		const message = result.stderr.trim();
+		if (search.regex)
+			throw new RevisionError("invalidPattern", `"${search.pattern}" is not a valid regular expression: ${message}`);
+		throw new RevisionError("gitFailed", `git grep failed: ${message}`);
+	}
+	// Output cut at the byte bound may have dropped the file's last matches, so it may have more.
+	return { matches: grepMatches(result.stdout, `${revision}:`), cut: result.truncated === true };
 }
 
 /**

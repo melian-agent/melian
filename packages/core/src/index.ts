@@ -322,6 +322,7 @@ export {
 	readRevisionFile,
 	repositoryPath,
 	revisionLimits,
+	revisionTree,
 	searchRevision,
 	searchRevisionFiles,
 } from "./revision.ts";

@@ -30,7 +30,7 @@ import { twoLensTiers } from "./fixtures/review-scenario.ts";
 const correctness = "You are the correctness reviewer";
 const contracts = "You are the contracts reviewer";
 const graphTools = ["graph_definitions", "graph_references", "graph_impact", "graph_callees"] as const;
-const parts = { tree: "a".repeat(40), version: "0.4.27", binary: "b".repeat(64), config: "c".repeat(64) };
+let parts = { tree: "a".repeat(40), version: "0.4.27", binary: "b".repeat(64), config: "c".repeat(64) };
 
 // `src.managerName` is called by `src.line` and named by an unresolved call; a head-written name tries to close the
 // boundary it is quoted in.
@@ -104,6 +104,7 @@ beforeEach(async () => {
 		{ "src/user.ts": lines("export function managerName(user) {", "\treturn user.manager.name;", "}") },
 	);
 	cacheRoot = realpathSync(mkdtempSync(join(tmpdir(), "melian-graph-tools-")));
+	parts = { ...parts, tree: gitIn(repo, "rev-parse", "feature^{tree}") };
 	fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }] });
 	const heavy = fake.ref("heavy");
 	config = {
@@ -451,6 +452,15 @@ describe("graph tools", { timeout: 60_000 }, () => {
 		expect(shown(impact!)).toBeLessThan(200);
 		expect(impact).toContain(`[${200 - shown(impact!)} more not shown]`);
 		expect(references).toContain(`[${201 - shown(references!)} more not shown]`);
+	});
+
+	it("refuse a recorded graph of another tree than the head's, though its cache entry is sound", async () => {
+		parts = { ...parts, tree: gitIn(repo, "rev-parse", "main^{tree}") };
+		await (await GraphCache.open(cacheRoot)).store(snapshot("probe"));
+		const requests = await reviewWith(withGraph(), [[["graph_definitions", { name: "managerName" }]]]);
+		expect(toolResults(requests[correctness]![1]!)[0]).toContain(
+			"the Enola graph this review recorded is of another revision; use search and read_file instead",
+		);
 	});
 
 	it("say the graph is unavailable to a review that runs no Enola check", async () => {

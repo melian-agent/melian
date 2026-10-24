@@ -6,6 +6,7 @@ import {
 	RevisionError,
 	readRevisionFile,
 	repositoryPath,
+	revisionTree,
 	searchRevision,
 	searchRevisionFiles,
 } from "@melian-agent/core";
@@ -291,6 +292,32 @@ describe("searchRevisionFiles", () => {
 		]);
 		const [fewest] = await searchRevisionFiles(repo, commit, search, [paths[0]!, paths[1]!], 1);
 		expect(fewest!.matches).toHaveLength(1);
+	});
+
+	it("gives a later file its match when an earlier file's lines pass the byte bound", async () => {
+		writeFiles(repo, {
+			"docs/a.md": lines(...Array.from({ length: 300 }, () => `needle ${"x".repeat(50_000)}`)),
+			"docs/b.md": lines("needle in b"),
+		});
+		gitIn(repo, "add", ".");
+		gitIn(repo, "commit", "--quiet", "-m", "long first");
+		const commit = gitIn(repo, "rev-parse", "HEAD");
+		const [a, b] = await searchRevisionFiles(repo, commit, { attributesFrom: commit, pattern: "needle" }, [
+			"docs/a.md",
+			"docs/b.md",
+		]);
+		expect(a!.truncated).toBe(true);
+		expect(b).toEqual({
+			path: "docs/b.md",
+			truncated: false,
+			matches: [{ path: "docs/b.md", line: 1, text: "needle in b" }],
+		});
+	});
+
+	it("names a revision's tree, and refuses one that is no commit", async () => {
+		expect(await revisionTree(repo, head)).toBe(gitIn(repo, "rev-parse", "HEAD^{tree}"));
+		await expect(revisionTree(repo, "0".repeat(40))).rejects.toMatchObject({ code: "invalidRevision" });
+		await expect(revisionTree(repo, "--all")).rejects.toThrow('"--all" is not a revision');
 	});
 
 	it("marks every file as having more when the output passes its byte bound", async () => {

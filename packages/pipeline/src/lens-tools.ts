@@ -26,6 +26,7 @@ import {
 	reportFindingInputSchema,
 	repositoryPath,
 	revisionLimits,
+	revisionTree,
 	type ScrutinyLevel,
 	type Severity,
 	searchRevision,
@@ -618,6 +619,9 @@ const listFiles = defineTool({
 async function graphOf(lens: LensPolicy): Promise<EnolaFacts> {
 	if (lens.graph === undefined)
 		throw new Error("this review has no Enola graph of the head; use search and read_file instead");
+	// The key comes from the review's caller context; only the head's own tree makes it the head's graph.
+	if (lens.graph.parts.tree !== (await revisionTree(lens.revision.repoRoot, lens.revision.head)))
+		throw new Error("the Enola graph this review recorded is of another revision; use search and read_file instead");
 	const snapshot = await (await GraphCache.open(lens.graph.root)).read(lens.graph.parts);
 	if (snapshot === undefined)
 		throw new Error("the head's Enola graph is no longer in the cache; use search and read_file instead");
