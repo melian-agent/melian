@@ -224,7 +224,7 @@ describe("searchRevision", () => {
 			{ path: "src/total.ts", line: 1, text: "export const total = 2;" },
 		]);
 		expect(await searchRevisionFiles(repo, hiding, { ...search, attributesFrom: hiding }, ["src/total.ts"])).toEqual([
-			{ path: "src/total.ts", matches: [], truncated: false },
+			{ path: "src/total.ts", matches: [], truncated: false, binary: true },
 		]);
 		expect(await searchRevisionFiles(repo, hiding, { ...search, attributesFrom: head }, ["src/total.ts"])).toEqual([
 			{
@@ -232,6 +232,25 @@ describe("searchRevision", () => {
 				truncated: false,
 				matches: [{ path: "src/total.ts", line: 1, text: "export const total = 2;" }],
 			},
+		]);
+	});
+
+	it("marks a file-set search's binary file as unsearched, and an empty one as searched", async () => {
+		gitIn(repo, "checkout", "--quiet", "--", ".");
+		writeFiles(repo, { "docs/empty.md": "" });
+		gitIn(repo, "add", ".");
+		gitIn(repo, "commit", "--quiet", "-m", "empty");
+		const commit = gitIn(repo, "rev-parse", "HEAD");
+		expect(
+			await searchRevisionFiles(repo, commit, { attributesFrom: commit, pattern: "P" }, [
+				"image.bin",
+				"docs/empty.md",
+				"docs/readme.md",
+			]),
+		).toEqual([
+			{ path: "image.bin", matches: [], truncated: false, binary: true },
+			{ path: "docs/empty.md", matches: [], truncated: false },
+			{ path: "docs/readme.md", matches: [], truncated: false },
 		]);
 	});
 

@@ -337,6 +337,17 @@ describe("graph tools", { timeout: 60_000 }, () => {
 		expect(head).toBe("No matches in 1 files.");
 	});
 
+	it("say which file of a set it could not search as binary", async () => {
+		writeFiles(repo, { "docs/blob.md": "needle\u0000needle\n" });
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "binary");
+		const requests = await reviewWith(undefined, [[["search", { pattern: "needle", paths: ["docs/blob.md"] }]]]);
+		const nonce = nonceOf(requests[correctness]![0]!);
+		expect(toolResults(requests[correctness]![1]!)[0]).toBe(
+			`<untrusted-${nonce} label="search">\ndocs/blob.md: [binary at this revision; not searched]\n</untrusted-${nonce}>`,
+		);
+	});
+
 	it("cut the deepest matches of every file before it drops a file, and say how many lines it cut", async () => {
 		const paths = Array.from({ length: 2 }, (_, index) => `docs/long${index}.md`);
 		writeFiles(
