@@ -320,7 +320,12 @@ describe("built-in lenses", () => {
 		expect(
 			lenses.filter((lens) => lens.tools.some((tool) => tool.startsWith("graph_"))).map((lens) => lens.name),
 		).toEqual(["design"]);
-		expect(config.models.medium).toMatchObject({ model: "openai-codex/gpt-5.6-sol", thinking: "high" });
+		expect(config.models.medium).toEqual({
+			model: "openai-codex/gpt-5.6-sol",
+			thinking: "high",
+			fallbacks: ["anthropic/claude-opus-5-5"],
+			accept: ["openai-codex/gpt-5.6-sol", "anthropic/claude-opus-5-5"],
+		});
 		expect(config.models.light).toMatchObject({ model: "openai-codex/gpt-5.6-terra" });
 	});
 
