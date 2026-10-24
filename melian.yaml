@@ -6,8 +6,9 @@ trust: { writers: true }
 comparison: { retirement: { pullRequests: 10, recall: 0.75 } }
 
 models:
-  # Triage takes the first of light, medium and heavy that routes a model. Light carries medium's route so triage keeps
-  # its model and takes its own level; the committed lenses name no light tier.
+  # Triage takes the first of light, medium and heavy that routes a model, so light is triage's route. Every lens's
+  # quick level runs on light too, through the extensions under .melian/lenses/, which leaves medium to the design
+  # lens alone (decisions/2026-10-24-design-lens-on-codex-route.md).
   light:
     model: openai-codex/gpt-5.6-terra
     thinking: low
@@ -18,10 +19,12 @@ models:
     thinking: low
     fallbacks: [anthropic/claude-opus-5-5, openai/gpt-5.5]
     accept: [openai-codex/gpt-6.1-sol, anthropic/claude-opus-5-5, openai/gpt-5.5]
+  # The design lens alone: the model and effort Codex's adversarial review runs, so the two compare like for like.
   medium:
-    model: openai-codex/gpt-5.6-terra
-    fallbacks: [anthropic/claude-sonnet-5-5]
-    accept: [openai-codex/gpt-5.6-terra, anthropic/claude-sonnet-5-5]
+    model: openai-codex/gpt-5.6-sol
+    thinking: high
+    fallbacks: [anthropic/claude-opus-5-5]
+    accept: [openai-codex/gpt-5.6-sol, anthropic/claude-opus-5-5]
   # Sonnet checks across families by default; Terra permits verification through a ChatGPT subscription.
   verifier:
     model: anthropic/claude-sonnet-5-5

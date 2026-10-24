@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, symlinkSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -52,6 +52,13 @@ const security = [
 	"  - id: injection",
 	"    description: Input reaches a query unescaped.",
 ];
+
+// Every lens file Melian's own repository commits, which a test of its own lenses loads together.
+function melianLensFiles(melian: string): string[] {
+	return readdirSync(join(melian, ".melian/lenses"))
+		.sort()
+		.map((name) => `.melian/lenses/${name}/LENS.md`);
+}
 
 function named(lenses: readonly Lens[], name: string): Lens[] {
 	return lenses.filter((lens) => lens.name === name);
@@ -219,36 +226,40 @@ describe("built-in lenses", () => {
 		});
 	});
 
-	// Melian's own repository extends two built-ins with a hand-off to its durability lens, which changes their versions.
+	// Melian's own repository extends the built-ins with a hand-off to its durability lens and a route, which changes their versions.
 	it("give Melian's own durability lens and overrides their versions, under its root melian.yaml's paths too", async () => {
 		const melian = fileURLToPath(new URL("../../../", import.meta.url));
 		// The root melian.yaml narrows these lenses' paths, which changes the version every review of Melian records.
-		const own = [
-			"melian.yaml",
-			...["durability", "correctness", "removed-behaviour"].map((name) => `.melian/lenses/${name}/LENS.md`),
-		];
+		const own = ["melian.yaml", ...melianLensFiles(melian)];
 		writeFiles(repo, Object.fromEntries(own.map((path) => [path, readFileSync(join(melian, path), "utf8")])));
 		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
-		expect(Object.fromEntries(lenses.map((lens) => [lens.name, lens.version]))).toMatchObject({
-			durability: "cf27155ae0f7",
-			correctness: "9ba643be97c6",
-			"removed-behaviour": "6eddfa91c6db",
+		expect(Object.fromEntries(lenses.map((lens) => [lens.name, lens.version]))).toEqual({
+			contracts: "43fa057f7957",
+			conventions: "ab9fda3d360c",
+			correctness: "ac390a655d0e",
+			design: "c62924021908",
+			durability: "910628aa27ee",
+			"removed-behaviour": "8e3474a4b315",
+			tests: "e6364f9cf7e6",
+			"trust-boundary": "e21a19e886b1",
 		});
 		const { config } = await loadConfig(repo, { kind: "worktree" }, ".");
 		const selected = Lens.select(lenses, config, ["src/index.ts"]);
-		expect(Object.fromEntries(selected.map(({ lens }) => [lens.name, lens.version]))).toMatchObject({
-			correctness: "a2c6e73e6d78",
-			"removed-behaviour": "253e58f5075e",
+		expect(Object.fromEntries(selected.map(({ lens }) => [lens.name, lens.version]))).toEqual({
+			contracts: "61fa4ff978ef",
+			conventions: "7029ae04254f",
+			correctness: "d150d8ad1289",
+			design: "dbc739709ff0",
+			"removed-behaviour": "1131ab311d50",
+			tests: "aea7f643ccac",
+			"trust-boundary": "4c55e242b68f",
 		});
 	});
 
 	// A lens in the root tier with no `lenses` entry reviews its own default paths, and the golden corpus seeds defects on purpose.
 	it("gives every lens in Melian's root tier a `lenses` entry, unless the lens narrows its own paths", async () => {
 		const melian = fileURLToPath(new URL("../../../", import.meta.url));
-		const own = [
-			"melian.yaml",
-			...["durability", "correctness", "removed-behaviour"].map((name) => `.melian/lenses/${name}/LENS.md`),
-		];
+		const own = ["melian.yaml", ...melianLensFiles(melian)];
 		writeFiles(repo, Object.fromEntries(own.map((path) => [path, readFileSync(join(melian, path), "utf8")])));
 		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
 		const { config } = await loadConfig(repo, { kind: "worktree" }, ".");
@@ -274,6 +285,39 @@ describe("built-in lenses", () => {
 			);
 		});
 		expect(unexcluded).toEqual([]);
+	});
+
+	// Until a lens can name its own route, the design lens takes medium to itself: every other quick level moves to light.
+	it("leave the medium tier to Melian's design lens, on Codex's model and effort, and run every quick level on light", async () => {
+		const melian = fileURLToPath(new URL("../../../", import.meta.url));
+		const own = ["melian.yaml", ...melianLensFiles(melian)];
+		writeFiles(repo, Object.fromEntries(own.map((path) => [path, readFileSync(join(melian, path), "utf8")])));
+		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
+		const { config } = await loadConfig(repo, { kind: "worktree" }, ".");
+		const levels = lenses.flatMap((lens) =>
+			Object.entries(lens.configured(config.lenses[lens.name]).levels).map(([level, { tier }]) => [
+				`${lens.name}.${level}`,
+				tier,
+			]),
+		);
+		expect(levels.filter(([, tier]) => tier === "medium")).toEqual([["design.careful", "medium"]]);
+		const quick = levels.filter(([level]) => level!.endsWith(".quick"));
+		expect(quick.map(([level]) => level).sort()).toEqual(
+			["contracts", "conventions", "correctness", "durability", "removed-behaviour", "tests", "trust-boundary"].map(
+				(lens) => `${lens}.quick`,
+			),
+		);
+		expect(quick.filter(([, tier]) => tier !== "light")).toEqual([]);
+		expect(named(lenses, "design")[0]!.levels).toEqual({
+			careful: {
+				tier: "medium",
+				reads: "functions",
+				verify: true,
+				budget: { findings: 8, tokens: 3_000_000, tools: 150 },
+			},
+		});
+		expect(config.models.medium).toMatchObject({ model: "openai-codex/gpt-5.6-sol", thinking: "high" });
+		expect(config.models.light).toMatchObject({ model: "openai-codex/gpt-5.6-terra" });
 	});
 
 	it("load the lens backlog adversarial, over every path, with the standards and three levels", async () => {

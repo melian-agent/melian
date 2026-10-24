@@ -32,7 +32,7 @@ handoffs:
   correctness: A wrong value, a missing check, a race between live callers, or a commit that throws the same way on every run, any of which goes wrong with no crash, restart, replay, resumed task, or record an earlier run stored. A superseded or stale task that still writes stays yours, even when it races a live caller.
 budget: { findings: 6, tokens: 200k, tools: 30 }
 levels:
-  quick: { tier: medium, reads: hunks, verify: false, budget: { findings: 3, tokens: 100k, tools: 10 } }
+  quick: { tier: light, reads: hunks, verify: false, budget: { findings: 3, tokens: 100k, tools: 10 } }
   careful: { reads: hunks, verify: true }
   deep: { tier: heavy, reads: functions, verify: true, budget: { findings: 10, tokens: 400k, tools: 60 } }
 standards: true
