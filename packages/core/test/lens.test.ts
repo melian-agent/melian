@@ -315,7 +315,12 @@ describe("built-in lenses", () => {
 				budget: { findings: 8, tokens: 3_000_000, tools: 150 },
 			},
 		});
-		expect(config.models.medium).toMatchObject({ model: "openai-codex/gpt-5.6-sol", thinking: "high" });
+		expect(config.models.medium).toEqual({
+			model: "openai-codex/gpt-5.6-sol",
+			thinking: "high",
+			fallbacks: ["anthropic/claude-opus-5-5"],
+			accept: ["openai-codex/gpt-5.6-sol", "anthropic/claude-opus-5-5"],
+		});
 		expect(config.models.light).toMatchObject({ model: "openai-codex/gpt-5.6-terra" });
 	});
 
