@@ -282,3 +282,24 @@ it("counts no unresolved declares edge as a use", () => {
 	const [t] = facts.definitions("src.t");
 	expect(facts.references(t!)).toEqual({ references: [], unresolved: 0 });
 });
+
+it("puts a reference with no file before every file, even one named with a capital", () => {
+	const facts = EnolaFacts.parse(
+		[
+			{ id: "t", name: "src.t", kind: "symbol" },
+			{
+				id: "m",
+				name: "src.m",
+				kind: "symbol",
+				file: "Makefile",
+				line: 1,
+				relations: [{ kind: "calls", target: "src.t", target_id: "t" }],
+			},
+			{ id: "n", name: "src.n", kind: "symbol", relations: [{ kind: "calls", target: "src.t", target_id: "t" }] },
+		]
+			.map((fact) => JSON.stringify(fact))
+			.join("\n"),
+	);
+	const [t] = facts.definitions("src.t");
+	expect(facts.references(t!).references.map(({ fact }) => fact.id)).toEqual(["n", "m"]);
+});
