@@ -1,10 +1,13 @@
 import {
 	type ChangedFile,
 	capSnippet,
+	type EnolaFact,
+	EnolaFacts,
 	type EvidenceLocation,
 	Finding,
 	type FindingSource,
 	type FindingTrigger,
+	type GraphKeyParts,
 	type LensRule,
 	type LensToolName,
 	Lowering,
@@ -38,6 +41,7 @@ import {
 	upsertFinding,
 	upsertVerification,
 } from "./findings.ts";
+import { GraphCache } from "./graph-cache.ts";
 import {
 	AssistantEntry,
 	type Context,
@@ -160,6 +164,9 @@ export type LensPolicy = {
 	// Where the lens may report: its folder and paths, less any folder a nearer lens of its name covers, and the head
 	// path of each file the review moved out of them.
 	coverage: { scope: string; paths: string[]; nearer: string[]; moved?: string[] };
+	// The cache root and key of the head's verified Enola snapshot, which the graph tools read; absent when the review
+	// had none, and from a lens an older Melian created.
+	graph?: { root: string; parts: GraphKeyParts };
 };
 
 // What a lens has spent that Pi's usage document does not hold: the tool task of every call the tools budget counted,
@@ -412,7 +419,7 @@ async function budgeted(
 	api: ToolExecutionApi,
 	context: Context,
 	name: LensToolName,
-	read: (review: ReviewState) => Promise<ToolResult>,
+	read: (review: ReviewState, lens: LensPolicy) => Promise<ToolResult>,
 ) {
 	const lens = await lensOf(api, api.conversationId, context);
 	const { position, spent } = await meter(api, lens, "read", context);
@@ -430,7 +437,7 @@ async function budgeted(
 			`[not run: this lens may make ${toolCalls(tools)}, and this was call ${position}. The tools budget has ended this review: report what you have confirmed; another read ends the conversation.]`,
 		);
 	}
-	const result = await read(lens.revision).catch((error: unknown) =>
+	const result = await read(lens.revision, lens).catch((error: unknown) =>
 		failed(error, context, lens.role === "verifier" ? lens.revision.nonce : undefined),
 	);
 	if (tools === undefined || position < tools) return result;
@@ -572,6 +579,136 @@ const listFiles = defineTool({
 		}),
 });
 
+// The facts of the head's Enola snapshot this lens's review recorded, read and verified through the graph cache.
+async function graphOf(lens: LensPolicy): Promise<EnolaFacts> {
+	if (lens.graph === undefined)
+		throw new Error("this review has no Enola graph of the head; use search and read_file instead");
+	const snapshot = await (await GraphCache.open(lens.graph.root)).read(lens.graph.parts);
+	if (snapshot === undefined)
+		throw new Error("the head's Enola graph is no longer in the cache; use search and read_file instead");
+	return EnolaFacts.parse(snapshot.files()["facts.jsonl"]);
+}
+
+const graphNote =
+	"[from Enola's graph of the head: an edge it did not resolve is absent, so an absent caller proves nothing; confirm with read_file before citing]";
+
+function describeFact(fact: EnolaFact): string {
+	const at =
+		fact.file === undefined ? "" : `${visibleText(fact.file)}${fact.line === undefined ? "" : `:${fact.line}`} `;
+	return `${at}${visibleText(fact.name)} (${visibleText(fact.kind)})`;
+}
+
+// The rows a graph tool quotes, bounded like every other tool's, with how many it left out.
+function graphRows(review: ReviewState, rows: readonly string[], notes: readonly string[] = []) {
+	if (rows.length === 0) return text([...notes, graphNote].join("\n"));
+	const { body, count } = fitting(rows);
+	const cut = count < rows.length ? [`[${rows.length - count} more not shown]`] : [];
+	return text([quoteUntrusted("graph", body, review.nonce), ...cut, ...notes, graphNote].join("\n"));
+}
+
+// The one declaration `symbol` names, or a result that lists the candidates to choose from.
+function named(facts: EnolaFacts, symbol: string, review: ReviewState): EnolaFact | ToolResult {
+	const found = facts.definitions(symbol);
+	if (found.length === 1) return found[0]!;
+	if (found.length === 0)
+		return text("No declaration in Enola's graph has that name. graph_definitions finds a name's declarations.");
+	return graphRows(review, found.map(describeFact), [
+		`[${found.length} declarations match; call again with one full name from the list]`,
+	]);
+}
+
+const symbolParameter = Type.String({
+	minLength: 1,
+	description:
+		"A declaration's full Enola name, such as src.Store.open, or the end of one when only one declaration has it",
+});
+
+const graphDefinitions = defineTool({
+	name: "graph_definitions",
+	description:
+		"Find where a name is declared at head, from Enola's graph: each declaration whose full name is the name, or ends with it, with file, line and kind. Full names join the directory and the dotted path, such as src.Store.open.",
+	parameters: Type.Object({
+		name: Type.String({ minLength: 1, description: "A full Enola name, or its last parts" }),
+	}),
+	replay: "safe",
+	outputLimits,
+	execute: (args, api, context) =>
+		budgeted(api, context, "graph_definitions", async (review, lens) => {
+			const found = (await graphOf(lens)).definitions(args.name);
+			return graphRows(review, found.map(describeFact), found.length === 0 ? ["No declarations found."] : []);
+		}),
+});
+
+const graphReferences = defineTool({
+	name: "graph_references",
+	description:
+		"List what refers to one declaration at head, from Enola's graph: each call, construction, type use, import or implementation Enola resolved to it, with file, line and kind, and a count of the uses it named but did not resolve.",
+	parameters: Type.Object({ symbol: symbolParameter }),
+	replay: "safe",
+	outputLimits,
+	execute: (args, api, context) =>
+		budgeted(api, context, "graph_references", async (review, lens) => {
+			const facts = await graphOf(lens);
+			const target = named(facts, args.symbol, review);
+			if (!("id" in target)) return target;
+			const { references, unresolved } = facts.references(target);
+			const rows = references.map(({ kind, fact }) => `${visibleText(kind)} from ${describeFact(fact)}`);
+			return graphRows(review, rows, [
+				...(rows.length === 0 ? ["No resolved references."] : []),
+				...(unresolved > 0 ? [`[${unresolved} more uses name it without a resolved edge; search finds them]`] : []),
+			]);
+		}),
+});
+
+// Enola's own impact query caps its walk at 50 nodes; three levels and 200 declarations keep a result readable.
+const maxImpactDepth = 3;
+const maxImpactNodes = 200;
+
+const graphImpact = defineTool({
+	name: "graph_impact",
+	description:
+		"List the declarations at head that reach one through calls and constructions Enola resolved, nearest first, up to depth levels away (1 to 3, 2 when absent) and 200 declarations. Imports and type uses are not followed; graph_references lists those.",
+	parameters: Type.Object({
+		symbol: symbolParameter,
+		depth: Type.Optional(Type.Integer({ minimum: 1, maximum: maxImpactDepth, description: "1 to 3; 2 when absent" })),
+	}),
+	replay: "safe",
+	outputLimits,
+	execute: (args, api, context) =>
+		budgeted(api, context, "graph_impact", async (review, lens) => {
+			const facts = await graphOf(lens);
+			const target = named(facts, args.symbol, review);
+			if (!("id" in target)) return target;
+			const { reached, truncated } = facts.impact(target, args.depth ?? 2, maxImpactNodes);
+			const rows = reached.map(({ depth, fact }) => `${depth} ${describeFact(fact)}`);
+			return graphRows(review, rows, [
+				...(rows.length === 0 ? ["No resolved callers."] : []),
+				...(truncated ? [`[the walk stopped at ${maxImpactNodes} declarations]`] : []),
+			]);
+		}),
+});
+
+const graphCallees = defineTool({
+	name: "graph_callees",
+	description:
+		"List what one declaration calls or constructs at head, from Enola's graph: each target Enola resolved, with file, line and kind, then each it did not, by the name the code uses.",
+	parameters: Type.Object({ symbol: symbolParameter }),
+	replay: "safe",
+	outputLimits,
+	execute: (args, api, context) =>
+		budgeted(api, context, "graph_callees", async (review, lens) => {
+			const facts = await graphOf(lens);
+			const source = named(facts, args.symbol, review);
+			if (!("id" in source)) return source;
+			const { resolved, unresolved } = facts.callees(source);
+			const rows = [
+				...resolved.map(({ kind, fact }) => `${visibleText(kind)} ${describeFact(fact)}`),
+				...unresolved.map((name) => `unresolved ${visibleText(name)}`),
+			];
+			return graphRows(review, rows, rows.length === 0 ? ["No calls."] : []);
+		}),
+});
+
 // The `injection_policy` section: in a lens conversation, the rule that everything inside this review's boundaries is
 // data. Lens conversations select only the lens extension, so it renders first, ahead of the lens's instructions.
 export const injectionPolicySection = section("injection_policy", async (input, context) => {
@@ -584,6 +721,15 @@ export const injectionPolicySection = section("injection_policy", async (input, 
 
 // The read-only tools a lens may be offered, by the names `LENS.md` lists them under.
 export const lensReadTools = { read_file: readFile, search, list_files: listFiles } as const;
+
+// Every read-only tool a lens may list, the graph tools included, by name.
+export const lensListedTools = {
+	...lensReadTools,
+	graph_definitions: graphDefinitions,
+	graph_references: graphReferences,
+	graph_impact: graphImpact,
+	graph_callees: graphCallees,
+} as const;
 
 function overlapping(file: ReviewFile | undefined, startLine: number, endLine: number): ReviewHunk | undefined {
 	return file?.hunks.find(
@@ -902,7 +1048,7 @@ export const reportVerdict = defineTool({
 });
 
 // Every tool a lens may be offered, which `reaches` checks a call against as Pi would.
-const lensTools: readonly ToolRegistration[] = [...Object.values(lensReadTools), reportFinding, reportVerdict];
+const lensTools: readonly ToolRegistration[] = [...Object.values(lensListedTools), reportFinding, reportVerdict];
 
 // How many times a lens may correct one finding it reported.
 const maxCorrections = 3;

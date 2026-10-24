@@ -107,8 +107,8 @@ import {
 	findingsCapped,
 	injectionPolicySection,
 	LensDocument,
+	lensListedTools,
 	lensPolicyHook,
-	lensReadTools,
 	lensSource,
 	provingHunk,
 	type ReviewState,
@@ -297,7 +297,7 @@ async function spawnLens(tx: Tx, taskId: TaskId, input: StoredLensTaskInput, len
 	const created = await tx.createConversation({ ownership: { kind: "task", taskId } });
 	// An owned conversation starts with its owner's tools and extensions, so both are explicit. Selecting only the lens
 	// extension puts its injection policy section first, ahead of the instructions.
-	const tools = [...lens.tools.map((tool) => lensReadTools[tool]), reportFinding];
+	const tools = [...lens.tools.map((tool) => lensListedTools[tool]), reportFinding];
 	// A task an older Melian created and a crash left in this phase holds only the findings budget, as a number.
 	const stored = lens.budget as LensBudget | number;
 	const budget = typeof stored === "number" ? { findings: stored } : stored;
@@ -331,6 +331,9 @@ async function spawnLens(tx: Tx, taskId: TaskId, input: StoredLensTaskInput, len
 			nearer: [...lens.coverage.nearer],
 			...(lens.coverage.moved === undefined ? {} : { moved: [...lens.coverage.moved] }),
 		},
+		...(input.callers?.coverage === undefined
+			? {}
+			: { graph: { root: input.callers.coverage.root, parts: structuredClone(input.callers.coverage.parts) } }),
 	};
 	return created.id;
 }
@@ -581,7 +584,7 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
  */
 export const lensExtension = defineExtension({
 	name: "melian.lenses",
-	tools: [...Object.values(lensReadTools), reportFinding, reportVerdict],
+	tools: [...Object.values(lensListedTools), reportFinding, reportVerdict],
 	sections: [injectionPolicySection],
 	hooks: [lensPolicyHook],
 	tasks: [LensTask, VerificationTask, AdjudicationTask],

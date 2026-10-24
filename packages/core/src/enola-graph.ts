@@ -43,6 +43,8 @@ export class EnolaFacts {
 	readonly #facts: EnolaFact[];
 	readonly #byFile = new Map<string, EnolaFact[]>();
 	readonly #imports = new Map<string, Set<string>>();
+	#ids?: Map<string, EnolaFact>;
+	#edges?: Map<string, { kind: string; source: EnolaFact }[]>;
 	private constructor(facts: EnolaFact[]) {
 		this.#facts = facts;
 		for (const fact of facts) {
@@ -95,10 +97,102 @@ export class EnolaFacts {
 			(edge) => ["calls", "instantiates"].includes(edge.kind) && edge.target_id === callee.id,
 		);
 	}
+	/**
+	 * The declarations a query names: the one whose Enola name is `name` exactly, or else every declaration whose name
+	 * ends with `.name`, sorted by name. Enola names a declaration by its directory and its dotted path, such as
+	 * `src.Store.open`.
+	 */
+	definitions(name: string): EnolaFact[] {
+		const declarations = this.#facts.filter((fact) => fact.kind === "symbol");
+		const exact = declarations.filter((fact) => fact.name === name);
+		const found = exact.length > 0 ? exact : declarations.filter((fact) => fact.name.endsWith(`.${name}`));
+		return found.map((fact) => structuredClone(fact)).sort((a, b) => compare(a.name, b.name));
+	}
+	/**
+	 * Every fact with an edge Enola resolved to `target`, with the edge's kind, sorted by file and line. `declares` edges
+	 * are structure, not use, and are left out. `unresolved` counts the edges that name `target` but that Enola did not
+	 * resolve to it, which a grep would have to settle.
+	 */
+	references(target: EnolaFact): { references: EnolaReference[]; unresolved: number } {
+		const references = (this.#incoming().get(target.id) ?? [])
+			.filter((edge) => edge.kind !== "declares")
+			.map((edge) => ({ kind: edge.kind, fact: structuredClone(edge.source) }))
+			.sort((a, b) => compare(place(a.fact), place(b.fact)));
+		let unresolved = 0;
+		for (const fact of this.#facts)
+			for (const relation of fact.relations ?? [])
+				if (relation.target_id === undefined && relation.kind !== "declares" && relation.target === target.name)
+					unresolved++;
+		return { references, unresolved };
+	}
+	/**
+	 * The declarations that reach `target` through calls and constructions Enola resolved, nearest first, up to `depth`
+	 * levels and `maxNodes` declarations. `truncated` says the node cap stopped the walk.
+	 */
+	impact(target: EnolaFact, depth: number, maxNodes: number): { reached: EnolaReach[]; truncated: boolean } {
+		const incoming = this.#incoming();
+		const seen = new Set([target.id]);
+		const reached: EnolaReach[] = [];
+		let frontier = [target.id];
+		for (let level = 1; level <= depth && frontier.length > 0; level++) {
+			const next: string[] = [];
+			for (const id of frontier)
+				for (const edge of incoming.get(id) ?? []) {
+					if (!callEdges.includes(edge.kind) || seen.has(edge.source.id)) continue;
+					if (reached.length === maxNodes) return { reached, truncated: true };
+					seen.add(edge.source.id);
+					reached.push({ depth: level, fact: structuredClone(edge.source) });
+					next.push(edge.source.id);
+				}
+			frontier = next;
+		}
+		return { reached, truncated: false };
+	}
+	/** What `source` calls or constructs: each target Enola resolved, as its fact, and each it did not, by the name it wrote. */
+	callees(source: EnolaFact): { resolved: EnolaReference[]; unresolved: string[] } {
+		const byId = this.#byId();
+		const resolved: EnolaReference[] = [];
+		const unresolved: string[] = [];
+		for (const relation of source.relations ?? []) {
+			if (!callEdges.includes(relation.kind)) continue;
+			const target = relation.target_id === undefined ? undefined : byId.get(relation.target_id);
+			if (target === undefined) unresolved.push(relation.target);
+			else resolved.push({ kind: relation.kind, fact: structuredClone(target) });
+		}
+		return { resolved, unresolved: [...new Set(unresolved)].sort(compare) };
+	}
+	#byId(): Map<string, EnolaFact> {
+		this.#ids ??= new Map(this.#facts.map((fact) => [fact.id, fact]));
+		return this.#ids;
+	}
+	#incoming(): Map<string, { kind: string; source: EnolaFact }[]> {
+		if (this.#edges === undefined) {
+			this.#edges = new Map();
+			for (const source of this.#facts)
+				for (const relation of source.relations ?? []) {
+					if (relation.target_id === undefined) continue;
+					const edges = this.#edges.get(relation.target_id) ?? [];
+					edges.push({ kind: relation.kind, source });
+					this.#edges.set(relation.target_id, edges);
+				}
+		}
+		return this.#edges;
+	}
 	/** Returns a copy of all contract facts. */
 	toJSON(): EnolaFact[] {
 		return structuredClone(this.#facts);
 	}
+}
+/** A fact with an edge to or from the one a graph query named, and the edge's kind. */
+export type EnolaReference = { kind: string; fact: EnolaFact };
+/** A declaration that reaches the one a graph query named, and how many calls away it sits. */
+export type EnolaReach = { depth: number; fact: EnolaFact };
+const callEdges: readonly string[] = ["calls", "instantiates"];
+function compare(a: string, b: string): number {
+	return a < b ? -1 : a > b ? 1 : 0;
+}
+function place(fact: EnolaFact): string {
+	return `${fact.file ?? ""}\0${String(fact.line ?? 0).padStart(9, "0")}\0${fact.name}`;
 }
 /** A successful upstream query, never an exit-2 empty list. */
 export class EnolaImpact {
