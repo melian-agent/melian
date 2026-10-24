@@ -282,6 +282,7 @@ it.each(["snapshot facts", "caller tree", "file listing"] as const)("rejects una
 		});
 	}
 	await expect(f.enola.callers(f.files, ["src/a.ts"])).rejects.toMatchObject({
+		...(failure === "snapshot facts" ? { code: "invalidOutput" } : {}),
 		message: expect.stringContaining(
 			failure === "snapshot facts"
 				? "has no facts"

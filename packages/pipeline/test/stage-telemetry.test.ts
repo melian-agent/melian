@@ -18,6 +18,7 @@ import {
 	openPublishHarness,
 	openReviewHarness,
 	openSqliteStorage,
+	PrepareSpans,
 	publishReview,
 	type ReviewHarness,
 	type ROOT_CONVERSATION_ID,
@@ -286,6 +287,46 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 		expect(after.stages.find(({ name }) => name === "melian.adjudication")!.task).not.toBe(
 			stages.find(({ name }) => name === "melian.adjudication")!.task,
 		);
+	});
+
+	it("joins the host's spans with its own steps between tasks, none of them over a task", async () => {
+		const { options, storage, harness } = await setup();
+		// The host's step is still open when the review runs its checks, which must end it first.
+		const spans = PrepareSpans.start("host", Date.now());
+		await reviewChangeset({ ...options, spans });
+		const revision = revisionKey(options.changeset.revision);
+		await spans.record(harness, revision, context);
+		const telemetry = await TelemetryReader.open(storage).read(revision);
+		const spansOf = (top: boolean) =>
+			telemetry.prepare!.spans.filter((span) => (span.parent === undefined) === top).map(({ name }) => name);
+		expect(spansOf(true)).toEqual([
+			"host",
+			"standards.trust",
+			"abort.replaced",
+			"bands",
+			"routes",
+			"lenses.prepare",
+			"callers.coverage",
+			"verification.prepare",
+			"adjudication.prepare",
+			"verdict.read",
+		]);
+		expect(spansOf(false)).toEqual([]);
+		expect(new Set(telemetry.stages.map(({ name }) => name))).toEqual(
+			new Set([
+				"melian.check",
+				"melian.triage",
+				"melian.lens",
+				"melian.verification.candidate",
+				"melian.adjudication",
+			]),
+		);
+		for (const span of telemetry.prepare!.spans)
+			for (const stage of telemetry.stages)
+				expect(
+					span.endedAt <= stage.startedAt! || span.startedAt >= stage.endedAt!,
+					`${span.name} overlaps ${stage.name} ${stage.subject}`,
+				).toBe(true);
 	});
 
 	it("attaches to the same tasks and adds no timing records on repeated calls or detached reads", async () => {

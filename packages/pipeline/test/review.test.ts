@@ -36,6 +36,7 @@ import {
 	type Message,
 	openHarness,
 	openSqliteStorage,
+	PrepareSpans,
 	type Review,
 	ReviewError,
 	readVerdict,
@@ -140,6 +141,7 @@ type ReviewWith = {
 	range?: string;
 	unlockModels?: (providers: readonly string[]) => Promise<void>;
 	decider?: Decider;
+	spans?: PrepareSpans;
 };
 
 // The default tiers' checks that run without a model, recorded as ran: `static` expands to each static tool.
@@ -173,7 +175,13 @@ async function reviewed(options: ReviewWith = {}): Promise<Review> {
 		...(options.rerun === undefined ? {} : { rerun: options.rerun }),
 		...(options.unlockModels === undefined ? {} : { unlockModels: options.unlockModels }),
 		...(options.decider === undefined ? {} : { decider: options.decider }),
+		...(options.spans === undefined ? {} : { spans: options.spans }),
 	});
+}
+
+async function nested(spans: PrepareSpans): Promise<(string | undefined)[][]> {
+	const { spans: recorded } = await spans.record(harness, "test..spans", context);
+	return recorded.filter((span) => span.parent !== undefined).map(({ name, parent }) => [name, parent]);
 }
 
 async function review(options: ReviewWith = {}): Promise<readonly Finding[]> {
@@ -1508,6 +1516,21 @@ describe("reviewChangeset", () => {
 			expect(instructions).toContain(
 				'The change may carry the function around a hunk of a TypeScript file under "Enclosing functions". For every hunk with no such block, read the whole function',
 			);
+		});
+
+		it("times reading the functions inside the lenses' preparation, once for every lens", async () => {
+			script();
+			const spans = PrepareSpans.start("host", Date.now());
+
+			await reviewed({
+				config: {
+					...deep(),
+					lenses: { ...deep().lenses, contracts: { level: { floor: "deep", ceiling: "deep" } } },
+				},
+				spans,
+			});
+
+			expect(await nested(spans)).toEqual([["functions", "lenses.prepare"]]);
 		});
 
 		it("carries none at a level that reads hunks", async () => {
@@ -3764,6 +3787,14 @@ describe("the design baseline", () => {
 		);
 		expect(outside).not.toContain("Writer trust");
 		expect(prompt).not.toContain("docs/design.md:1 — Publisher eligibility");
+		const spans = PrepareSpans.start("host", Date.now());
+		scriptConversations(fake, [{ match: design, replies: [fauxAssistantMessage("Done.")] }]);
+		await review({ spans });
+		expect(await nested(spans)).toEqual([
+			["design.decisions", "lenses.prepare"],
+			["design.sections", "lenses.prepare"],
+			["functions", "lenses.prepare"],
+		]);
 		const before = fake.provider.state.callCount;
 		const rendered = vi.spyOn(DesignSections.prototype, "render").mockReturnValue("Changed base vocabulary");
 		scriptConversations(fake, [{ match: design, replies: [fauxAssistantMessage("Done.")] }]);
