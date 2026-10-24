@@ -110,7 +110,7 @@ Milestone 2 runs on three lanes of work and a fixed review loop. Read this befor
 
 1. The coordinator writes a brief and gives it to a builder, an Opus agent or Codex Sol, in its own linked worktree in the worktrees folder. The brief names the mutation inventory the Briefs section requires.
 2. The builder commits each discrete change, pushes, and opens a draft pull request. After a Codex pass, run the whole gate on the host; the sandbox skips some tests.
-3. The three reviews follow in this order: Codex's adversarial review, Melian's own round from the branch's build, then the Claude review of record. Each fix is its own commit from a builder, followed by another Melian round, until only policy notices and advisories remain.
+3. The three reviews follow in this order: Codex's adversarial review, Melian's own round from the branch's build, then the Claude review of record. Codex's review and each Melian round review the same head, and are compared before the next fix pass, as Measuring the design lens below says. Each fix is its own commit from a builder, followed by another Melian round, until only policy notices and advisories remain.
 4. The comparison record is written on its own branch and pull request, never on the code branch.
 5. The coordinator marks the pull request ready and queues it under "Ready and queued".
 6. After each merge, fast-forward the main checkout with `git pull --ff-only`, once it is clean and no agent works in it. The maintainer reads that checkout in an editor.
@@ -130,6 +130,17 @@ Melian reviews itself with `melian review main...HEAD`, run from a throwaway wor
 - Every lens in Melian's `full` tier has a committed file under `.melian/lenses/`. Edit its budget line in place, or add one; an `extends` directory must match the lens name, so a second extension cannot sit beside it.
 - Leave every `tier` in those files alone, and the `medium` route in `melian.yaml`. They give the design lens Codex's model and effort, and move every other `quick` level to `light`. A round that writes its own levels, or routes `medium` in `melian.local.yaml`, undoes that. The design lens's committed budget already exceeds the one above.
 - Restore the edited files before you commit anything.
+
+### Measuring the design lens against Codex
+
+The design lens runs on Codex's model and effort so it can replace Codex's adversarial review. Every round measures it:
+
+1. Run Codex's review with `--json` on the head the round reviews, and keep the file outside the worktree: `node <companion>/scripts/codex-companion.mjs adversarial-review --json --base <base> "<focus>" > tmp/m2/codex-<pr>-r<n>.json`. `melian compare` reads the companion's payload as it is.
+2. After the Melian round of that head, import it: `melian compare <base>...<head> --from file:tmp/m2/codex-<pr>-r<n>.json`.
+3. Before the next fix pass, adjudicate every Codex finding with `melian compare adjudicate`: valid, noise, or a duplicate of another. A valid one Melian missed takes a miss reason: `owned-missed`, `no-owner`, `needs-execution`, or `out-of-scope`.
+4. `melian compare stats --lens design` prints the design lens against Codex: which of Codex's valid defects it found, which only other lenses found, and which of its own Codex found.
+
+The maintainer retires Codex's review from that count.
 
 ### The comparison record
 
