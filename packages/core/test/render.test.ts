@@ -123,6 +123,26 @@ describe("FindingsLog.render", () => {
 		expect(text).toContain("    What: The handler passes the body to eval.\n      That runs any code.\n");
 	});
 
+	it("indents the later lines of every part, and of the verifier's reason and correction, inside the finding", () => {
+		const finding = Finding.create({
+			...evalInput,
+			explanation: { ...evalInput.explanation, whyHere: "First.\nSecond.", whatToDo: "Do.\nThen." },
+			verification: {
+				verdict: "confirmed",
+				reason: "Traced.\nAgain.",
+				correction: "Use it.\nThen this.",
+				executor: "llm",
+				model: "fake/judge",
+				version: "v1",
+			},
+		});
+		const text = finding.render();
+		expect(text).toContain("    Why here: First.\n      Second.\n");
+		expect(text).toContain("    Verified: fake/judge: Traced.\n      Again.\n");
+		expect(text).toContain("    Correction: Use it.\n      Then this.\n");
+		expect(text).toContain("    What to do: Do.\n      Then.\n");
+	});
+
 	it.each([false, true])("escapes ESC, BEL, newline, tab, and bidi overrides in a path, colour %s", (color) => {
 		const file = "src/\u001b[2Jrun\u0007\nfake.ts\tx\u202egnp.ts";
 		const hostile = Finding.create({ ...evalInput, file, trigger: undefined });
@@ -342,7 +362,10 @@ describe("Verdict.render", () => {
 			expect(text).toContain("Dismissed: 1 finding");
 			expect(text).not.toContain("not shown");
 			expect(text).toContain(
-				`  P1  line 12  magic-number  (introduced, dismissed, block, unverified)  ${dismissed.properties.id}\n    Dismissed by Tal <tal@melian.invalid> at 2026-10-04T00:00:00Z: Retries are fixed.\n      See the runbook.\n`,
+				"  P1 | Blocks merge | security | Not verified | New in this change\n    Dismissed by Tal <tal@melian.invalid> at 2026-10-04T00:00:00Z: Retries are fixed.\n      See the runbook.\n",
+			);
+			expect(text).toContain(
+				`    Rule magic-number | Line 12 | Finding ${dismissed.properties.id} | Status dismissed\n`,
 			);
 			expect(text).toContain(
 				"    Earlier dismissal, reopened at a..b, by Tal <tal@melian.invalid> at 2026-10-04T00:00:00Z: Constant\\u001b[2J.\n",
@@ -383,13 +406,14 @@ describe("Verdict.render", () => {
 
 		expect(text).toContain(
 			[
-				`  P1  line 12  no-eval  (introduced, new, block, unverified)  ${speaker.properties.id}`,
+				"  P1 | Blocks merge | security | Not verified | New in this change",
 				`    Merged report: P2 code-injection from lens.contracts  ${merged.properties.id}`,
 				`    Also reported, dismissed: P3 unsafe-call from static.biome  ${answered.properties.id}`,
 				"  eval runs request input",
 			].join("\n"),
 		);
 		expect(verdict.render()).toContain("    Merged report: P2 code-injection from lens.contracts\n");
+		expect(text).toContain(`    Rule no-eval | Line 12 | Finding ${speaker.properties.id} | Status new\n`);
 	});
 
 	it("escapes control characters in a check's name, reason, and error", () => {
@@ -429,7 +453,7 @@ describe("verification rendering", () => {
 		expect(verdict.render()).not.toContain("Verified:");
 		const rendered = verdict.render(new Rendering({ all: true }));
 		expect(rendered).toContain("Refuted: 1 finding");
-		expect(rendered).toContain("refuted)");
+		expect(rendered).toContain(" | Refuted | ");
 		expect(rendered).toContain("Verified: fake/judge: A guard prevents it.\\u001b[2J");
 		expect(rendered).toContain("Correction: Use the guarded value.");
 		expect(verdict.verificationCounts()).toEqual({ confirmed: 0, plausible: 0, refuted: 1, unverified: 0 });
