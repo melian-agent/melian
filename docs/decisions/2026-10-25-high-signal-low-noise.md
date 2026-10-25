@@ -14,24 +14,40 @@ Example: [pull request #201](https://github.com/melian-agent/melian/pull/201#pul
 
 The principle is **high signal, low noise**. It governs everything Melian shows a person, not only its findings: a pull-request comment, a review body, the `melian/review` status, the terminal's default output, a CLI message and a skill's reply. What Melian shows a person is what that person needs to act on the change or to judge how far to trust the verdict. Everything else is noise, however true.
 
-The rules that follow from it:
+"Every line earns its place" is the reason for what follows, not a test: a line earns it when its reader can act on it, or when it changes how far the reader can trust the verdict. Whether a line earns its place is judgement, and judgement is not something a lens or a verifier can check by reading. So this decision enforces three rules that they can, and nothing else.
 
-1. **Every line earns its place.** A line earns it when its reader can act on it, or when it changes how far the reader can trust the verdict.
-2. **A fact is stated once.** Once per surface, never per lens, per finding or per round. A note several lenses share prints once, naming the lenses where that matters. A finding prints once per instance, and never in two places of one comment; this keeps [the shape decision](2026-10-15-each-finding-names-its-shape.md), so each instance stays its own finding.
-3. **Diagnostics go to the ledger, `--json` or telemetry.** A line that explains how Melian ran, rather than what the reader must do or trust, goes to the ledger, `melian findings --json`, `melian telemetry` or a flag such as `--all`. The ledger is the record of what Melian did, which a reader opens to audit a round, so it keeps what the other surfaces leave out. Nothing Melian records is dropped.
-4. **A trust-changing note is one line.** A diagnostic reaches a reader's surface only when it changes how far the reader can trust the review, such as "callers unavailable for every changed site, so no lens saw the blast radius". It then prints once, as one line.
-5. **What the rule never cuts.** A blocking or acknowledge finding; the status line; the review outcome and its status mapping; attested dismissals; checks that did not run, provisional checks, and a lens a budget ended that its level counts as run; checks that left the committed routes; and the trust-floor notes the register keeps. Each changes what the reader must do or how far the verdict can be trusted, so each keeps its place.
+1. **A fact is stated once in one surface.** The same note, count or finding printed twice in one pull-request comment, one review body, one ledger or one terminal output breaks the rule: once per lens, once per finding, once per round, or once in each of two sections. A note several lenses share prints once, naming the lenses where that matters. Each instance of a repeated shape stays its own finding, as [the shape decision](2026-10-15-each-finding-names-its-shape.md) sets, and is printed once.
+2. **Named diagnostic classes stay out of the pull-request comment and the review body.** These lines explain how Melian ran, not what the reader must do or trust:
+   - caller-context notes: "Callers unavailable: …" and "Callers unavailable for <file>: …", from `CallerContext` in `packages/pipeline/src/callers.ts`, and "Callers unavailable: the host supplied no graph context", from `packages/pipeline/src/review.ts`;
+   - triage-input notes: "triage input was cut, so no lens could skip", "triage failed, so it ran at its default level: …", "triage did not run, so it ran at its default level: …" and "triage could not choose <level>, …", from `packages/pipeline/src/review.ts`;
+   - hand-off-size notes: "kept the defects it hands to …, whose files here would list past …", from `packages/pipeline/src/review.ts`.
 
-This amends the register decision where the two meet. The register says every element a current renderer prints keeps a defined place. Under this rule, that place may be the ledger, the JSON or telemetry rather than the comment or the terminal. Where the register's table, or a renderer's tests, keep a line on a reader's surface that this rule moves, this rule wins, and the change that moves it updates the table row and the tests together. Row 21's "note" is the first such element: [issue #212](https://github.com/melian-agent/melian/issues/212) moves it.
+   A new diagnostic joins this list in the change that adds it. One exception: a single line may summarise a diagnostic that reduces what the review covered, such as "callers unavailable for every changed site, so no lens saw the blast radius", printed once.
+3. **Each surface shows and omits what this table says.**
 
-The `design` lens enforces the rule through its fallback rule, `contradicts-documented-decision`: once this decision is active at the base, a change that contradicts it in words is a finding that quotes it. The rule is generic, so it reads each repository's own decisions and imposes this one on nobody else. The golden `design-contradicts-documented-decision-noise` and its clean twin cover a note repeated per lens.
+| Surface | Shows | Omits |
+|---|---|---|
+| Inline comment | One finding, in the register's parts | Diagnostics and every other finding |
+| Review body | The review outcome and status mapping, counts, advisories, attested dismissals, checks that did not run, provisional checks, lenses a budget ended that count as run, checks that left the committed routes, resolved and dismissed findings, trust-floor summaries, and at most one coverage line under rule 2 | The diagnostic classes of rule 2 |
+| `melian/review` status | Its plain description | Everything else |
+| Ledger | Every round's record, every diagnostic included | Nothing Melian recorded |
+| Terminal default | The verdict, the findings that need attention, checks that did not run and plan warnings | The diagnostic classes of rule 2, which a flag shows |
+| `--json` and `melian telemetry` | Everything stored | Nothing |
 
-A test holds a renderer to the rule by rendering a review whose lenses all share one note and asserting the line's count in the output: zero for a note that changes nothing, one for a note that changes trust.
+Nothing on the review body's list is ever cut: each changes what the reader must do or how far the verdict can be trusted. Nothing Melian records is dropped; a line that leaves a reader's surface stays in the ledger, the JSON or telemetry. Wording, tone and added context are never a finding under this decision. A line that rewords another, or adds context without repeating a fact or printing a named diagnostic, breaks none of the three rules.
+
+The table is the target. Today the review body still prints the rule-2 diagnostics under "Lenses that ran with a note"; [issue #212](https://github.com/melian-agent/melian/issues/212) moves them.
+
+This amends the register decision where the two meet. The register says every element a current renderer prints keeps a defined place. Under this rule, that place may be the ledger, the JSON or telemetry rather than the comment or the terminal. Where the register's table, or a renderer's tests, keep a line on a reader's surface that this rule moves, this rule wins, and the change that moves it updates the table row and the tests together. Row 21's "note" is the first such element.
+
+The `design` lens enforces the three rules through its fallback rule, `contradicts-documented-decision`, once this decision is active at the base. The verifier receives the same base decision and design index the lens does, and refutes a claim under that rule that cites inactive or head-only text, descriptive rather than prescriptive words, a wording change or added context, or a defect a more specific rule names. The rule is generic, so it reads each repository's own decisions and imposes this one on nobody else. The goldens `design-contradicts-documented-decision-noise`, `-noise-clean`, `-added-context-clean` and `-wording-clean` cover rule 1 and its limits.
+
+A test holds a renderer to rule 1 by rendering a review whose lenses all share one note and counting the note's lines in each surface's output. It holds a renderer to rule 2 by asserting that no line of a named class appears in the comment or the review body.
 
 ## Why
 
 A reader who meets 50 lines they cannot act on stops reading, and then misses the one line that matters. Each repeat looks harmless to the change that adds it, because it is one more line. Only a written rule makes the sum visible and gives a renderer's tests and a review something to hold a change to.
 
-The carve-outs follow the same test. A blocking finding, the status line and the checks that did not run are what a reader acts on. Attested dismissals, a counted budget end and the trust-floor notes say how far to trust a green verdict. Cutting them would make the output quieter by making it less honest.
+The rules stop at what reading can settle, because a rule a reviewer must judge produces findings two reviewers disagree on, and each disagreement is more noise. The carve-outs follow the principle. A blocking finding, the status line and the checks that did not run are what a reader acts on. Attested dismissals, a counted budget end and the trust-floor notes say how far to trust a green verdict. Cutting them would make the output quieter by making it less honest.
 
 Moving diagnostics to the ledger, the JSON and telemetry keeps everything for the person tuning Melian, where they already look, and away from the person reviewing the change.
