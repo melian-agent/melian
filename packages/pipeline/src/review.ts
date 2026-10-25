@@ -46,7 +46,6 @@ import {
 	type TriageChoice,
 	triageChoices,
 	triageQuestionSet,
-	type UnitField,
 	type Verdict,
 	VerificationState,
 	verificationBudget,

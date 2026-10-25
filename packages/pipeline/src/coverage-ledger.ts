@@ -502,7 +502,7 @@ export class CoverageLedger {
 			round: segment.round ?? since,
 			...(segment.level === undefined ? {} : { level: segment.level }),
 			head,
-			base: structuredClone(segment.base),
+			base: structuredClone(base),
 			units,
 		};
 	}
