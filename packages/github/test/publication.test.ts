@@ -1009,7 +1009,7 @@ describe("a quiet review body", () => {
 		const body = bodyOf([...group, own]);
 
 		expect(body).toContain(
-			"<details>\n<summary>4 dismissed, 2 reasons</summary>\n\nDismissals attested by this publication:",
+			"<details>\n<summary>4 dismissed, 2 reasons</summary>\n\nDismissals attested by this publication:\n\n- ",
 		);
 		expect(body.split(shared)).toHaveLength(2);
 		expect(body).toContain(
@@ -1034,6 +1034,8 @@ describe("a quiet review body", () => {
 		expect(folded).not.toContain(blocker.id);
 		expect(body).toContain(blocker.id);
 		for (const advisory of advisories) expect(folds[1]![2]).toContain(advisory.id);
+		// Each folded advisory keeps its marker on a line of its own, so a rerun still finds what it posted.
+		expect(markersIn(folds[1]![2]!).map(({ id }) => id)).toEqual(advisories.map(({ id }) => id));
 		for (const finding of dismissed) expect(folds[0]![2]).toContain(finding.id);
 	});
 
