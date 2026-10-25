@@ -1,3 +1,5 @@
+import { chmodSync } from "node:fs";
+import { join } from "node:path";
 import {
 	Adjudication,
 	Changeset,
@@ -275,5 +277,165 @@ describe("CoverageLedger.section", () => {
 		expect((await ledger().section(key, context)).summary.gaps[0]!.reason).toBe(
 			"r1 recorded no coverage, so it covers nothing",
 		);
+	});
+});
+
+describe("each check's entry in the record", () => {
+	async function written(overrides: (changeset: Changeset, adjudication: number) => Partial<LedgerRound>) {
+		const changeset = await head();
+		const adjudication = await mint(changeset, "2026-10-25T00:00:01.000Z");
+		await ledger().write(round(changeset, adjudication, overrides(changeset, adjudication)), context);
+		return record("r1");
+	}
+
+	it("needs the lines of the files the lens covers, a renamed file's under both paths, each side at its own level", async () => {
+		gitIn(repo, "mv", "src/gone.ts", "src/kept.ts");
+		commit(repo, {
+			"src/a.ts": numbered(20, "a").replace("a 3\n", "A 3\n"),
+			"src/kept.ts": numbered(4, "g").replace("g 2\n", "G 2\n"),
+		});
+		chmodSync(join(repo, "src/a.ts"), 0o755);
+		commit(repo, {});
+		const lens =
+			(covers: string[], required: LedgerLens["required"]) => (changeset: Changeset, adjudication: number) => ({
+				lenses: [{ ...round(changeset, adjudication).lenses[0]!, covers, required }],
+			});
+		const byOld = await written(lens(["src/gone.ts"], {}));
+		expect(byOld.checks["lens.correctness"]!.needs).toEqual({
+			head: { "src/kept.ts": [[2, 2]] },
+			base: { "src/gone.ts": [[2, 2]] },
+			units: {},
+		});
+		expect(byOld.checks["lens.correctness"]!.required).toEqual({
+			"src/kept.ts": "careful",
+			"src/gone.ts": "careful",
+		});
+		await harness.close(context);
+		const fake = createFakeModels();
+		harness = await openHarness(createMemoryStorage(), { models: fake.models, registry: createReviewRegistry() });
+		root = (await harness.root(context, { agent: { model: fake.ref() } })).id;
+		const sided = await written(
+			lens(["src/kept.ts", "src/a.ts"], { "src/kept.ts": "skip", "src/gone.ts": "quick", "src/a.ts": "deep" }),
+		);
+		const coverage = sided.checks["lens.correctness"]!;
+		expect(coverage.needs.head).toEqual({ "src/a.ts": [[3, 3]] });
+		expect(coverage.needs.base).toEqual({ "src/a.ts": [[3, 3]], "src/gone.ts": [[2, 2]] });
+		expect(Object.keys(coverage.needs.units)).toEqual(["src/a.ts"]);
+		expect(coverage.required).toEqual({ "src/a.ts": "deep", "src/gone.ts": "quick" });
+	});
+
+	it("takes a base side's level from its head path when only that is set", async () => {
+		gitIn(repo, "mv", "src/gone.ts", "src/kept.ts");
+		commit(repo, { "src/kept.ts": numbered(4, "g").replace("g 2\n", "G 2\n") });
+		const record = await written((changeset, adjudication) => ({
+			lenses: [
+				{
+					...round(changeset, adjudication).lenses[0]!,
+					covers: ["src/kept.ts"],
+					required: { "src/kept.ts": "skip" },
+				},
+			],
+		}));
+		expect(record.checks["lens.correctness"]!.needs).toEqual({ head: {}, base: {}, units: {} });
+	});
+
+	it("records a lens's status, leave, reason and standards as its record says", async () => {
+		commit(repo, { "src/a.ts": numbered(20, "a").replace("a 3\n", "A 3\n") });
+		const record = await written((changeset, adjudication) => {
+			const { record: _, level: __, ...base } = round(changeset, adjudication).lenses[0]!;
+			const lenses: LedgerLens[] = [
+				{
+					...base,
+					name: "skipped",
+					level: "careful",
+					record: { name: "lens.skipped", status: "skipped", reason: "triage skipped it" },
+				},
+				{ ...base, name: "unleaved", level: "careful", record: { name: "lens.unleaved", status: "skipped" } },
+				{
+					...base,
+					name: "failed",
+					level: "careful",
+					record: { name: "lens.failed", status: "failed", reason: "no model" },
+				},
+				{ ...base, name: "absent", level: "careful", standards: ["AGENTS.md"] },
+				{ ...base, name: "levelless", record: { name: "lens.levelless", status: "ran" } },
+			];
+			return { lenses, allowSkip: ["lens.skipped", "lens.failed"] };
+		});
+		const entry = (name: string) => {
+			const { needs: _, required: __, ...rest } = record.checks[`lens.${name}`]!;
+			return rest;
+		};
+		expect(entry("skipped")).toEqual({
+			kind: "lens",
+			version: "1",
+			status: "skipped",
+			leave: true,
+			reason: "triage skipped it",
+			covered: [],
+		});
+		expect(entry("unleaved")).toEqual({ kind: "lens", version: "1", status: "skipped", covered: [] });
+		expect(entry("failed")).toEqual({
+			kind: "lens",
+			version: "1",
+			status: "failed",
+			reason: "no model",
+			covered: [],
+		});
+		expect(entry("absent")).toEqual({
+			kind: "lens",
+			version: "1",
+			standards: ["AGENTS.md"],
+			status: "absent",
+			covered: [],
+		});
+		expect(entry("levelless")).toEqual({ kind: "lens", version: "1", status: "ran", covered: [] });
+	});
+
+	it("covers the whole range for a check that ran or skipped with leave, and leaves out a check the manifest does not name", async () => {
+		commit(repo, { "src/a.ts": numbered(20, "a").replace("a 3\n", "A 3\n") });
+		const record = await written(() => ({
+			checks: [
+				{ name: "guardrails", status: "ran" },
+				{ name: "static.tsc", status: "skipped", reason: "no TypeScript" },
+				{ name: "static.biome", status: "skipped", reason: "off" },
+				{ name: "static.enola", status: "ran" },
+			],
+			manifest: ["guardrails", "static.tsc", "static.biome", "lens.correctness"],
+			allowSkip: ["static.tsc"],
+		}));
+		const whole = { head: { "src/a.ts": [[3, 3]] }, base: { "src/a.ts": [[3, 3]] }, units: {} };
+		expect(record.checks.guardrails).toEqual({
+			kind: "range",
+			status: "ran",
+			required: {},
+			needs: whole,
+			covered: [whole],
+		});
+		expect(record.checks["static.tsc"]).toEqual({
+			kind: "range",
+			status: "skipped",
+			leave: true,
+			reason: "no TypeScript",
+			required: {},
+			needs: whole,
+			covered: [whole],
+		});
+		expect(record.checks["static.biome"]).toMatchObject({ status: "skipped", reason: "off", covered: [] });
+		expect(record.checks["static.biome"]!.leave).toBeUndefined();
+		expect(record.checks["static.enola"]).toBeUndefined();
+	});
+
+	it("records no omitted lines and no injected file when there are none", async () => {
+		commit(repo, { "src/a.ts": numbered(20, "a").replace("a 3\n", "A 3\n") });
+		const record = await written(() => ({}));
+		expect(Object.keys(record.checks["lens.correctness"]!).sort()).toEqual([
+			"covered",
+			"kind",
+			"needs",
+			"required",
+			"status",
+			"version",
+		]);
 	});
 });

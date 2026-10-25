@@ -383,3 +383,58 @@ describe("CoverageRecord", () => {
 		expect(copy.complete()).toBe(true);
 	});
 });
+
+describe("CoverageRecord's order and edges", () => {
+	it("orders gaps by check, then file by code unit, and units after lines", () => {
+		const coverage = (files: string[]) =>
+			lens({
+				covered: [],
+				needs: {
+					head: Object.fromEntries(files.map((file) => [file, [[1, 1]] as [number, number][]])),
+					base: {},
+					units: { "z/unit": ["status"], "a/unit": ["status"] },
+				},
+			});
+		const ordered = record({ "lens.b": coverage(["b.ts", "a.ts", "C.ts"]), "lens.a": coverage(["x.ts"]) })
+			.gaps()
+			.map((gap) => `${gap.check} ${gap.file}`);
+		expect(ordered).toEqual([
+			"lens.a x.ts",
+			"lens.a a/unit",
+			"lens.a z/unit",
+			"lens.b C.ts",
+			"lens.b a.ts",
+			"lens.b b.ts",
+			"lens.b a/unit",
+			"lens.b z/unit",
+		]);
+	});
+
+	it("names careful as the level a path needs when the record holds none for it", () => {
+		const gaps = record({
+			"lens.correctness": lens({ required: {}, covered: [{ ...lens().covered[0]!, level: "quick" }] }),
+		}).gaps();
+		expect(gaps[0]!.reason).toBe("covered below the careful level its paths require");
+	});
+
+	it("counts no lens segment that names no level", () => {
+		const { level: _, ...levelless } = lens().covered[0]!;
+		expect(record({ "lens.correctness": lens({ covered: [levelless] }) }).complete()).toBe(false);
+	});
+
+	it("names no unit kind the record does not hold", () => {
+		const gap = record(
+			{ "lens.correctness": lens({ covered: [{ ...lens().covered[0]!, units: {} }] }) },
+			{ units: {} },
+		).gaps()[0]!;
+		expect(Object.keys(gap)).not.toContain("unit");
+	});
+
+	it("renders a refused record with no covering round", () => {
+		expect(
+			record({ guardrails: range() }, { refused: "coverage is not recorded for a fork's head" }).render(),
+		).toMatch(
+			/^Coverage: incomplete\.\n {2}guardrails {2}src\/a\.ts 5 lines at 1-4, 9: coverage is not recorded for a fork's head\n/,
+		);
+	});
+});
