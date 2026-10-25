@@ -56,7 +56,7 @@ import {
 	readVerdict,
 	VerdictDocument,
 } from "./adjudication.ts";
-import { CallerContext, type CoverageSource } from "./callers.ts";
+import { blindCallers, CallerContext, type CoverageSource } from "./callers.ts";
 import { checksExtension, type RunIdentity, runChecks, type WriterTrust } from "./checks.ts";
 import { configsFor } from "./configurations.ts";
 import {
@@ -179,6 +179,8 @@ interface LensRun {
 // task an older Melian created, and from one a review without Enola created.
 interface StoredCallers {
 	readonly notes: Record<string, string[]>;
+	// Why no lens saw who calls the changed code, when none did; absent from a task an older Melian created.
+	readonly caveat?: string;
 	readonly coverage?: CoverageSource;
 }
 
@@ -407,8 +409,9 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 	// outcome's `escalation`. A version 1 task holds none of them, and runs as it did. Its runs lose their `level`, so
 	// its findings name the lens's version alone, as its review's producers do, and never share a producer with a review
 	// after the upgrade that runs the lens at the same level.
-	// Version 3 records each run's standards paths; older runs leave them absent.
-	version: 4,
+	// Version 3 records each run's standards paths; older runs leave them absent. Version 4 changed no stored shape.
+	// Version 5 lets the input's callers name a caveat; an older input names none.
+	version: 5,
 	initial: () => ({ phase: "spawn" }),
 	migrate: (input, checkpoint, from) => ({
 		input: LensTaskInput.upgrade(input, from),
@@ -1133,7 +1136,7 @@ async function callersFor(
 	input: StoredLensTaskInput,
 	task: number | undefined,
 	settledLenses: boolean,
-	notes: Record<string, string[]>,
+	{ notes, caveat }: Pick<StoredCallers, "notes" | "caveat">,
 	coverage: () => Promise<Pick<CallerRecord, "coverage" | "coverageUnavailable">>,
 	context: Context,
 ): Promise<CallerRecord> {
@@ -1147,7 +1150,7 @@ async function callersFor(
 	// A record names the lens task it was computed from. A rerun that replaced the task leaves a record of the old one.
 	const stored = (await entryOf())?.callers;
 	if (stored !== undefined && stored.task === task) return stored;
-	const fresh: CallerRecord = { notes, ...(await coverage()), task };
+	const fresh: CallerRecord = { notes, ...(caveat === undefined ? {} : { caveat }), ...(await coverage()), task };
 	if (!settledLenses || task === undefined) return fresh;
 	return root.commit(async (tx) => {
 		const index = await tx.doc(ReviewIndex, root.id);
@@ -1252,6 +1255,18 @@ function settle(first: LensRun, result: LensResult | undefined, rule: Escalation
 // each escalation. A record of a lens that did not finish carries them after the reason it did not, and an `ended`
 // record carries them as its reason, which renders after the budget's description, so neither ever replaces it.
 function lensCheck(
+	lens: LensRun,
+	outcome: LensOutcome | undefined,
+	completed: boolean,
+	notes: string[],
+	handedBy: readonly string[],
+	caveats: readonly string[],
+): CheckRecord {
+	const record = lensRecord(lens, outcome, completed, notes, handedBy);
+	return caveats.length === 0 ? record : { ...record, caveats: [...caveats] };
+}
+
+function lensRecord(
 	lens: LensRun,
 	outcome: LensOutcome | undefined,
 	completed: boolean,
@@ -1872,8 +1887,14 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	};
 	const { escalateAt } = config.triage;
 	const coverageSource = options.callers?.coverageSource();
+	const callerCaveat =
+		options.callers === undefined ? `${blindCallers}: the host supplied no graph context` : options.callers.caveat();
 	const callersInput: StoredCallers | undefined = config.static.enola.enabled
-		? { notes: callerNotes, ...(coverageSource ? { coverage: coverageSource } : {}) }
+		? {
+				notes: callerNotes,
+				...(callerCaveat === undefined ? {} : { caveat: callerCaveat }),
+				...(coverageSource ? { coverage: coverageSource } : {}),
+			}
 		: undefined;
 	const lensInput = new LensTaskInput(root, state, lenses, escalateAt, callersInput).toJSON();
 	spans.end();
@@ -1913,7 +1934,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		lensInput,
 		lensTask,
 		lenses.length > 0 && lensResult !== undefined,
-		rendered?.notes ?? callerNotes,
+		rendered ?? callersInput ?? { notes: callerNotes },
 		async () => {
 			try {
 				const source = rendered === undefined ? options.callers : CallerContext.restore(rendered.coverage);
@@ -1958,9 +1979,10 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			],
 		};
 	});
+	const caveats = [...(callers.caveat === undefined ? [] : [callers.caveat]), ...light];
 	const records = [
 		...settled.map(({ run, outcome, notes: noted }) =>
-			lensCheck(run, outcome, lensResult !== undefined, noted, handedBy.get(run.name) ?? []),
+			lensCheck(run, outcome, lensResult !== undefined, noted, handedBy.get(run.name) ?? [], caveats),
 		),
 		...skipped.map(
 			(name): CheckRecord => ({

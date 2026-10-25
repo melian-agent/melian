@@ -788,7 +788,7 @@ it("reads empty storage and a document lost between detached reads as absent", a
 it.each([
 	{ kind: "melian.rounds", version: 2 },
 	{ kind: "melian.comparisons", version: 3 },
-	{ kind: "melian.verdicts", version: 13 },
+	{ kind: "melian.verdicts", version: 14 },
 ])("refuses newer $kind version $version", async ({ kind, version }) => {
 	const storage = createMemoryStorage();
 	const opened = await openHarness(storage, { models: fake.models, registry: createReviewRegistry() });

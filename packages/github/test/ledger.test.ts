@@ -607,6 +607,32 @@ describe("ledger rendering", () => {
 		expect(body).not.toContain("one\\u000atwo");
 	});
 
+	it("keeps every lens note in the run details, each distinct note once with the lenses that carry it", () => {
+		const shared = "Callers unavailable for src/a.ts: line 1: directory-scoped name is ambiguous";
+		const own = "kept the defects it hands to `durability`, whose files here would list past 40 files or 4 KiB";
+		const noted = new Adjudication({
+			findings: [],
+			manifest: [],
+			checks: [
+				{ name: "lens.correctness", status: "ran", level: "careful", reason: shared },
+				{ name: "lens.contracts", status: "ran", level: "careful", reason: shared },
+				{ name: "lens.design", status: "ran", level: "careful", reason: own },
+				{ name: "lens.security", status: "ran", level: "careful" },
+			],
+			config: defaultConfig,
+		}).adjudicate();
+		const body = Ledger.from(noted, { rounds: [{ ...round, verdict: noted.toJSON() }] }, options).render(links);
+		const start = body.indexOf("<summary>Run details</summary>");
+		const runDetails = body.slice(start, body.indexOf("</details>", start));
+
+		expect(body.slice(0, start)).not.toContain("Callers unavailable");
+		expect(runDetails).toContain(
+			`Lens notes:\n\n- \`lens.correctness\`, \`lens.contracts\`: ${inline(shared)}\n- \`lens.design\`: ${inline(own)}`,
+		);
+		expect(runDetails.split(inline(shared))).toHaveLength(2);
+		expect(runDetails).not.toContain("`lens.security`");
+	});
+
 	it("renders a lens lineage in the run details", () => {
 		const current = {
 			...round,

@@ -211,7 +211,7 @@ describe("triage", () => {
 
 			const reviewed = await review({ decider });
 
-			const light = level === "quick" ? { reason: lightly } : {};
+			const light = level === "quick" ? { reason: lightly, caveats: [lightly] } : {};
 			expect(lensRecord(reviewed)).toEqual({ name: "lens.correctness", status: "ran", level, ...light });
 			expect(systemPromptOf(requests[correctness]![0]!)).toContain(statedBudget[level]);
 			const root = (await harness.root(context)).id;
@@ -259,6 +259,7 @@ describe("triage", () => {
 			status: "ran",
 			level: "quick",
 			reason: lightly,
+			caveats: [lightly],
 		});
 	});
 
@@ -1784,6 +1785,7 @@ describe("escalation", () => {
 			status: "ran",
 			level: "quick",
 			reason: `escalation capped at quick, its ceiling: at quick it reported a P1 finding, at or above P1; ${lightly}`,
+			caveats: [lightly],
 		});
 		expect(reviewed.findings.map((finding) => finding.ruleId)).toEqual(["null-dereference"]);
 	});
@@ -1840,6 +1842,7 @@ describe("escalation", () => {
 			status: "ran",
 			level: "quick",
 			reason: lightly,
+			caveats: [lightly],
 		});
 
 		await open(decider);
@@ -2210,7 +2213,7 @@ describe("reviews recorded before levels joined the keys", () => {
 
 		const upgraded = migrate(input, checkpoint, 1);
 
-		expect(definition.version).toBe(4);
+		expect(definition.version).toBe(5);
 		expect(upgraded.input).toMatchObject({
 			root: input.root,
 			revision: input.revision,

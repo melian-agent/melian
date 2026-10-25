@@ -594,24 +594,42 @@ describe("markers", () => {
 		);
 	});
 
-	it("names each lens that ran with a note, such as the hand-offs its instructions left out for size", () => {
-		const note = "kept the defects it hands to `durability`, whose files here would list past 40 files or 4 KiB";
-		const body = renderReviewBody(
+	// Pull request #201's body repeated seven caller notes and the triage note under each of eight lenses.
+	const pr201Notes = [
+		...Array.from(
+			{ length: 7 },
+			(_, index) =>
+				`Callers unavailable for packages/github/src/file${index}.ts: line ${index + 1}: directory-scoped name is ambiguous`,
+		),
+		"triage input was cut, so no lens could skip",
+	].join("; ");
+	const lensNames = [
+		"correctness",
+		"contracts",
+		"design",
+		"durability",
+		"security",
+		"tests",
+		"conventions",
+		"trust-boundary",
+	];
+	const noted = (caveats?: string[]) =>
+		lensNames.map((name) => ({
+			name: `lens.${name}`,
+			status: "ran" as const,
+			level: "careful" as const,
+			reason: pr201Notes,
+			...(caveats === undefined ? {} : { caveats }),
+		}));
+	const bodyOf = (checks: ReturnType<typeof noted>) =>
+		renderReviewBody(
 			{
 				pullRequest: 7,
 				revision,
 				base,
 				fingerprint: "0123456789abcdef",
 				round: 1,
-				verdict: new Adjudication({
-					findings: [],
-					manifest: [],
-					checks: [
-						{ name: "lens.correctness", status: "ran", level: "careful", reason: note },
-						{ name: "lens.contracts", status: "ran", level: "careful" },
-					],
-					config: defaultConfig,
-				}).adjudicate(),
+				verdict: new Adjudication({ findings: [], manifest: [], checks, config: defaultConfig }).adjudicate(),
 				findings: [],
 				stillOpen: 0,
 				resolved: [],
@@ -620,9 +638,22 @@ describe("markers", () => {
 			links,
 		);
 
-		// A reason renders as prose, so its backticks are escaped.
-		expect(body).toContain(`Lenses that ran with a note:\n\n- \`lens.correctness\`: ${note.replaceAll("`", "\\`")}`);
-		expect(body).not.toContain("`lens.contracts`:");
+	it("publishes a body without the notes of lenses that ran, though every lens carries them", () => {
+		const body = bodyOf(noted());
+
+		expect(body).not.toContain("Lenses that ran with a note");
+		expect(body).not.toContain("Callers unavailable");
+		expect(body).not.toContain("triage input was cut");
+		expect(body).toContain("**passed**");
+	});
+
+	it("states a note that lowers the review's reach once, however many lenses carry it", () => {
+		const caveat = "callers were unavailable for every changed site, so no lens saw who calls the changed code";
+		const body = bodyOf(noted([caveat]));
+
+		expect(body.split(caveat)).toHaveLength(2);
+		expect(body).toContain(`\n\nReach: ${caveat}.\n\nmelian/review:`);
+		expect(body).not.toContain("Callers unavailable for");
 	});
 
 	it("names each check that left the committed routes, before the checks that did not run", () => {

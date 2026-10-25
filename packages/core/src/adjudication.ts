@@ -282,6 +282,11 @@ export interface CheckRecord {
 	readonly budgetEnded?: BudgetEnd;
 	/** Why a lens ran, or was to run, on a model other than the one the committed routes chose. */
 	readonly lineage?: CheckLineage;
+	/**
+	 * Notes that change how far a reader can trust the whole review, such as no lens seeing who calls the changed code.
+	 * Every lens of the review carries the same ones, and a renderer states each once. `reason` keeps them too.
+	 */
+	readonly caveats?: readonly string[];
 }
 
 /**
@@ -410,13 +415,15 @@ export type StoredCheckRecord = {
 		moved?: { by: string; from: string; to: string };
 		outside: boolean;
 	};
+	caveats?: string[];
 };
 
 function storedCheck(record: CheckRecord): StoredCheckRecord {
-	const { snapshots, ...fields } = record;
+	const { snapshots, caveats, ...fields } = record;
 	return {
 		...fields,
 		...(snapshots === undefined ? {} : { snapshots: snapshots.map((snapshot) => ({ ...snapshot })) }),
+		...(caveats === undefined ? {} : { caveats: [...caveats] }),
 	};
 }
 
@@ -587,6 +594,17 @@ export class Verdict {
 			}
 		}
 		return counts;
+	}
+
+	/**
+	 * The notes of the checks that ran, each distinct note once with the checks that carry it, in record order. Eight
+	 * lenses with the same caller notes give one entry.
+	 */
+	lensNotes(): { reason: string; checks: string[] }[] {
+		const notes = new Map<string, string[]>();
+		for (const { name, reason } of this.ran ?? [])
+			if (reason !== undefined) notes.set(reason, [...(notes.get(reason) ?? []), name]);
+		return [...notes].map(([reason, checks]) => ({ reason, checks }));
 	}
 
 	/** The verification outcomes the CLI and ledger can show. */

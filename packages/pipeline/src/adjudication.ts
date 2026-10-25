@@ -52,6 +52,7 @@ type StoredCheck = {
 		moved?: { by: string; from: string; to: string };
 		outside: boolean;
 	};
+	caveats?: string[];
 };
 
 /**
@@ -151,7 +152,8 @@ class VerdictState {
 
 export const VerdictDocument = defineDoc<StoredVerdictState>({
 	kind: "melian.verdicts",
-	version: 12,
+	version: 13,
+	// Version 13 lets a check record carry caveats; a version 12 verdict has none and reads unchanged.
 	// Version 10 permits protected-claim diagnostics; old verdicts keep their recorded resolutions.
 	scope: "conversation",
 	history: "rewindable",
@@ -221,8 +223,8 @@ export const AdjudicationTask = defineTask<
 >({
 	name: "melian.adjudication",
 	// Version 2 added `files`, and version 3 marks a task created before stage timing. A version 1 input holds no files,
-	// so its task decides by snippet, as it did.
-	version: 5,
+	// so its task decides by snippet, as it did. Version 6 lets a check record carry caveats; an older one has none.
+	version: 6,
 	initial: () => ({ phase: "adjudicate" }),
 	migrate: (input, checkpoint, from) => ({
 		input: input as unknown as AdjudicationTaskInput,
@@ -352,7 +354,7 @@ export function adjudicationInput(options: {
 			ruleAliases: structuredClone(config.ruleAliases) as Record<string, StoredAlias>,
 		},
 		manifest: [...manifest],
-		checks: checks.map((check) => structuredClone(check)),
+		checks: checks.map((check) => structuredClone(check) as StoredCheck),
 		findingsVersion,
 		allowSkip: [...allowSkip],
 		producers: producers.map(({ ids, ...source }) => ({

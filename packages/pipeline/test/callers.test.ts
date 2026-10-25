@@ -320,3 +320,24 @@ it.each([
 		expect(lines.at(-1)).toBe(`${38 - kept} callers cut locally; upstream cap not reached.`);
 	},
 );
+
+const blind = "callers were unavailable for every changed site, so no lens saw who calls the changed code";
+
+it("names a caveat when no caller context reached the review", () => {
+	expect(CallerContext.unavailable("Enola executable not-fetched").caveat()).toBe(
+		`${blind}: Enola executable not-fetched`,
+	);
+});
+
+it("names a caveat when every caller query failed, and none when one answered or none was asked", () => {
+	const issues = [
+		{ file: "a.ts", reason: "line 1: directory-scoped name is ambiguous" },
+		{ file: "b.ts", reason: "line 2: caller-query time budget ended" },
+	];
+	const group = { file: "a.ts", symbol: "a", callers: [], truncated: false };
+	expect(CallerContext.from({ groups: [], issues, notes: [], paths: [] }).caveat()).toBe(
+		`${blind}: every caller query failed`,
+	);
+	expect(CallerContext.from({ groups: [group], issues, notes: [], paths: [] }).caveat()).toBeUndefined();
+	expect(CallerContext.from({ groups: [], issues: [], notes: [], paths: [] }).caveat()).toBeUndefined();
+});
