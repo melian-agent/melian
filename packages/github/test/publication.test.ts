@@ -657,6 +657,17 @@ describe("markers", () => {
 		expect(body).not.toContain("Callers unavailable for");
 	});
 
+	it("renders a caveat as inert prose on one line, since its reason can come from the change", () => {
+		const caveat =
+			"callers were unavailable for every changed site: @octocat [log in](https://evil.test)\n# Approved <b>";
+		const body = bodyOf(noted([caveat]));
+
+		expect(body).toContain(
+			"\n\nReach: callers were unavailable for every changed site: @\u2060octocat \\[log in\\]\\(https:\u2060//evil.test\\) \\# Approved &lt;b&gt;.\n\nmelian/review:",
+		);
+		expect(body).not.toContain("\n# Approved");
+	});
+
 	it("names each check that left the committed routes, before the checks that did not run", () => {
 		const lineage = { model: "openai/gpt-5.5", wanted: "anthropic/claude-opus-5-5", by: "--model", outside: true };
 		const body = renderReviewBody(
