@@ -280,6 +280,14 @@ export const melianYamlSchema = Type.Object(
 		ruleAliases: Type.Optional(Type.Record(Type.String(), ruleAliasSchema)),
 		checks: Type.Optional(Type.Object({ allowSkip: Type.Optional(Type.Array(name)) }, strict)),
 		triage: Type.Optional(Type.Object({ escalateAt: Type.Optional(severitySchema) }, strict)),
+		review: Type.Optional(
+			Type.Object(
+				{
+					delta: Type.Optional(Type.Object({ maxLines: Type.Optional(Type.Integer({ minimum: 0 })) }, strict)),
+				},
+				strict,
+			),
+		),
 	},
 	strict,
 );
@@ -489,6 +497,11 @@ export interface MelianConfig {
 	readonly checks: { readonly allowSkip: readonly string[] };
 	/** `escalateAt`: a lens at `quick` that reports a finding this severe or worse runs again at the next level. */
 	readonly triage: { readonly escalateAt: Severity };
+	/**
+	 * `delta.maxLines`: the most changed lines a fix pass may add to the diff since the last decided round before the
+	 * coverage ledger carries nothing from it and the next round reviews the whole diff.
+	 */
+	readonly review: { readonly delta: { readonly maxLines: number } };
 }
 
 // Stryker’s runtime marker lets a test fake kills by throwing only during a mutant.
@@ -498,6 +511,9 @@ const forgedMutationKill: ForbiddenPatternRule = {
 	message:
 		"Stryker's active-mutant variable lets a file behave differently under a mutant, so a test could throw only when one runs and every mutant would read as killed; a file here may not read it",
 };
+
+/** The check Melian writes from the coverage ledger, which joins every review and no file may name. */
+export const coverageCheck = "review.coverage";
 
 /** The built-in defaults every `melian.yaml` layers onto. */
 export const defaultConfig: MelianConfig = {
@@ -546,6 +562,7 @@ export const defaultConfig: MelianConfig = {
 	ruleAliases: {},
 	checks: { allowSkip: [] },
 	triage: { escalateAt: "P1" },
+	review: { delta: { maxLines: 1000 } },
 };
 
 /**
@@ -773,6 +790,7 @@ function parseLayer(text: string, site: Site, directory: string): MelianYaml {
 	checkRequire(site, value as MelianYaml);
 	checkResolutionKeys(site, value as MelianYaml);
 	checkRootOnly(site, value as MelianYaml);
+	checkCoverageCheck(site, value as MelianYaml);
 	if (site.preference === true) checkPreference(site, value as MelianYaml);
 	else if (site.file !== melianPaths.config) checkNested(site, value as MelianYaml);
 	return anchorPaths(site, directory, value as MelianYaml);
@@ -789,7 +807,7 @@ export function parseResolution(text: string, file: string): FileResolution | un
 // The review plan reads routes from the root's configuration alone until it plans per path, so a nested file's route
 // policy would never apply: a stricter nested policy would fail open. Refusing it says so where it is written.
 function checkNested(site: Site, layer: MelianYaml): void {
-	for (const key of ["trust", "comparison"] as const) {
+	for (const key of ["trust", "comparison", "review"] as const) {
 		if (layer[key] !== undefined)
 			throw configError("invalidValue", site, `"${key}" is policy, which only a committed root melian.yaml sets`, {
 				key,
@@ -812,7 +830,7 @@ function checkNested(site: Site, layer: MelianYaml): void {
 // A route's policy keys decide whether a check ran inside policy, so a preference file setting one could wave its own
 // override through.
 function checkPreference(site: Site, layer: MelianYaml): void {
-	for (const key of ["trust", "comparison"] as const) {
+	for (const key of ["trust", "comparison", "review"] as const) {
 		if (layer[key] !== undefined)
 			throw configError("invalidValue", site, `"${key}" is policy, which only a committed root melian.yaml sets`, {
 				key,
@@ -855,6 +873,31 @@ function checkRootOnly(site: Site, layer: MelianYaml): void {
 		`"${key}" applies to the whole review, so only the root melian.yaml may set it; move it there`,
 		{ key },
 	);
+}
+
+// Melian writes `review.coverage` from the coverage ledger and adds it to every review. A file that named it in a tier
+// or let it skip could make a review pass with lines no check covered, so every layer is refused where it is read.
+function checkCoverageCheck(site: Site, layer: MelianYaml): void {
+	const tier = Object.entries(layer.tiers ?? {}).find(
+		([name, checks]) => name === coverageCheck || checks.includes(coverageCheck),
+	);
+	if (tier !== undefined) {
+		const key = `tiers.${tier[0]}`;
+		throw configError(
+			"invalidValue",
+			site,
+			`"${key}" names ${coverageCheck}, which Melian adds to every review from the coverage ledger; remove it`,
+			{ key },
+		);
+	}
+	if (layer.checks?.allowSkip?.includes(coverageCheck)) {
+		throw configError(
+			"invalidValue",
+			site,
+			`"checks.allowSkip" names ${coverageCheck}, which no review may skip: a skip would pass lines no check covered`,
+			{ key: "checks.allowSkip" },
+		);
+	}
 }
 
 // Each `require` glob must be matched on its own, so an exclusion there would always count as missing.

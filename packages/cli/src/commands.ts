@@ -21,6 +21,7 @@ import {
 } from "@melian-agent/core";
 import {
 	CallerContext,
+	CoverageLedger,
 	backgroundContext as context,
 	createNodeExecutionEnv,
 	DismissError,
@@ -191,6 +192,8 @@ export async function review(
 	// it was fetched from, says whose code it is, so a range runs only on the reviewer's word. Any other head, such as a
 	// fork's, runs its tests only in a credential-free job of the Actions host.
 	let writer: WriterTrust = { trusted: false, detail: committedRange };
+	// The ledger records no coverage from a fork's head, whoever runs the round and whatever flag they pass.
+	let coverageRefused: string | undefined;
 	if (target.kind === "pullRequest") {
 		const provider = await gitHubFor(io.cwd, io.env);
 		const { pullRequest, changeset: fetched } = await fetchedPullRequest(io.cwd, provider, target.number);
@@ -204,6 +207,7 @@ export async function review(
 			head: pullRequest.head.sha,
 		};
 		writer = await writerTrust(provider, pullRequest);
+		if (!inBaseRepository(pullRequest)) coverageRefused = "coverage is not recorded for a fork's head";
 	} else {
 		changeset = await Changeset.resolve(io.cwd, target.spec);
 		const checkedOut = await git(changeset.repoRoot, ["rev-parse", "--verify", "--quiet", "HEAD"]).catch(() => "");
@@ -350,6 +354,8 @@ export async function review(
 				...(callers === undefined ? {} : { callers }),
 				rerun: options.rerun,
 				origin,
+				writer,
+				...(coverageRefused === undefined ? {} : { coverageRefused }),
 			}));
 		} catch (error) {
 			if (!(error instanceof ReviewError) || error.verdict === undefined) throw error;
@@ -377,12 +383,16 @@ export async function review(
 		}
 		spans.step("output");
 		const outcome = new ReviewOutcome(verdict);
+		const coverage = await new CoverageLedger(harness, rootConversationId).section(
+			Revision.key(changeset.revision),
+			context,
+		);
 		const timings = await reviewTimings(reviewHarness, storage, spans, Revision.key(changeset.revision), beganAt, io);
 		io.stderr(timings.slowest());
 		io.stdout(
 			options.json
-				? `${JSON.stringify({ ...JSON.parse(verdict.renderJson()), telemetry: timings.toJSON() }, null, 2)}\n`
-				: outcome.render(io.color, await terminalEmoji(io, repoRoot), lenses, { config: loaded, paths }),
+				? `${JSON.stringify({ ...JSON.parse(verdict.renderJson()), coverage: coverage.summary, telemetry: timings.toJSON() }, null, 2)}\n`
+				: `${outcome.render(io.color, await terminalEmoji(io, repoRoot), lenses, { config: loaded, paths })}\n${coverage.text}`,
 		);
 		return outcome.exitCode();
 	} catch (error) {
@@ -430,15 +440,20 @@ const committedRange =
 
 const writePermissions: readonly RepositoryPermission[] = ["write", "maintain", "admin"];
 
-async function writerTrust(provider: ReviewProvider, pullRequest: PullRequest): Promise<WriterTrust> {
+// Whether the provider names the pull request's head as a commit of the base repository itself.
+function inBaseRepository(pullRequest: PullRequest): boolean {
 	const head = pullRequest.head.repository;
-	if (head === undefined)
+	return (
+		head !== undefined &&
+		head.owner.toLowerCase() === pullRequest.repository.owner.toLowerCase() &&
+		head.name.toLowerCase() === pullRequest.repository.name.toLowerCase()
+	);
+}
+
+async function writerTrust(provider: ReviewProvider, pullRequest: PullRequest): Promise<WriterTrust> {
+	if (pullRequest.head.repository === undefined)
 		return { trusted: false, detail: "the provider names no repository for the pull request head" };
-	if (
-		head.owner.toLowerCase() !== pullRequest.repository.owner.toLowerCase() ||
-		head.name.toLowerCase() !== pullRequest.repository.name.toLowerCase()
-	)
-		return { trusted: false, detail: "the head is from a fork" };
+	if (!inBaseRepository(pullRequest)) return { trusted: false, detail: "the head is from a fork" };
 	if (pullRequest.head.writerError !== undefined) return { trusted: false, detail: pullRequest.head.writerError };
 	const writer = pullRequest.head.pusher ?? pullRequest.author;
 	if (writer === undefined)
@@ -623,12 +638,23 @@ export async function findings(
 		}
 		const emoji = await terminalEmoji(io, changeset.repoRoot);
 		const render = new Rendering({ color: io.color, emoji, ids: true, all: options.all, decided: true });
+		const coverage = await new CoverageLedger(harness, root).section(revision, context);
+		const withCoverage = (json: string) =>
+			`${JSON.stringify({ ...JSON.parse(json), coverage: coverage.summary }, null, 2)}\n`;
 		if (!options.open) {
-			io.stdout(options.json ? verdict.renderJson() : verdict.render(render) + verdict.agentPrompt(argument));
+			io.stdout(
+				options.json
+					? withCoverage(verdict.renderJson())
+					: `${verdict.render(render)}\n${coverage.text}${verdict.agentPrompt(argument)}`,
+			);
 			return 0;
 		}
 		const open = FindingsLog.of(verdict.attention());
-		io.stdout(options.json ? open.renderJson() : open.render(render) + verdict.agentPrompt(argument));
+		io.stdout(
+			options.json
+				? withCoverage(open.renderJson())
+				: `${open.render(render)}\n${coverage.text}${verdict.agentPrompt(argument)}`,
+		);
 		return 0;
 	} finally {
 		await reviewHarness.close(context);

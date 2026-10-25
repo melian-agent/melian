@@ -68,10 +68,12 @@ export class PrepareSpans {
 
 	/** Ends the open step and stores the record for `revision`, replacing an earlier review's. */
 	async record(harness: Harness, revision: string, context: Context): Promise<PrepareRecord> {
+		// The record ends where its open step does: a second clock read could land a millisecond later.
+		const open = this.#open !== undefined;
 		this.end();
 		const record: PrepareRecord = {
 			startedAt: this.startedAt,
-			endedAt: this.#now(),
+			endedAt: open ? this.#spans.at(-1)!.endedAt : this.#now(),
 			spans: structuredClone(this.#spans),
 		};
 		const root = await harness.root(context);

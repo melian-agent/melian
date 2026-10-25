@@ -68,6 +68,22 @@ it("times steps, nested work and the open step until the record", async () => {
 	});
 });
 
+it("ends the record when its open step ends, even on a clock that ticks between reads", async () => {
+	let tick = 0;
+	const spans = PrepareSpans.start("startup", 0, () => ++tick);
+	spans.step("output");
+	harness = await openHarness(createMemoryStorage(), {
+		models: createFakeModels().models,
+		registry: createRegistry(),
+	});
+	const record = await spans.record(harness, "base..head", context);
+	expect(record.endedAt).toBe(Math.max(...record.spans.map(({ endedAt }) => endedAt)));
+	const closed = PrepareSpans.start("startup", 0, () => ++tick);
+	closed.end();
+	const later = await closed.record(harness, "base..later", context);
+	expect(later.endedAt).toBeGreaterThan(later.spans[0]!.endedAt);
+});
+
 it("stores one record per revision, which the next review replaces, and reads it detached", async () => {
 	const storage = createMemoryStorage();
 	harness = await openHarness(storage, { models: createFakeModels().models, registry: createRegistry() });

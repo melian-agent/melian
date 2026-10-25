@@ -27,6 +27,7 @@ export type {
 export {
 	Changeset,
 	type ChangesetFields,
+	HeadMove,
 	parseRangeSpec,
 	pullRequestChangesetId,
 	type RangeMode,
@@ -69,6 +70,7 @@ export {
 	type Band,
 	type ConfigLookup,
 	configLookup,
+	coverageCheck,
 	defaultConfig,
 	type FileResolution,
 	type ForbiddenPathRule,
@@ -112,6 +114,30 @@ export {
 	type TscSettings,
 	thinkingLevelSchema,
 } from "./config.ts";
+export {
+	type CoverageLeave,
+	CoverageRecord,
+	type CoverageSummary,
+	coverageProducer,
+	type LedgerGap,
+	type StoredCheckCoverage,
+	type StoredCoverageLines,
+	type StoredCoverageRecord,
+	type StoredCoverageSegment,
+	type StoredCoverageVoid,
+} from "./coverage-ledger.ts";
+export {
+	countRanges,
+	type FileUnit,
+	type LineRanges,
+	type LinesByPath,
+	rangesOf,
+	subtractRanges,
+	type UnitField,
+	type UnitKind,
+	unionRanges,
+	unitFields,
+} from "./coverage-units.ts";
 export {
 	type ChoiceAnswer,
 	type ChoiceQuestion,
