@@ -24,6 +24,7 @@ import {
 	type Message,
 	openHarness,
 	openSqliteStorage,
+	type ReviewOptions,
 	type ReviewOrigin,
 	reviewChangeset,
 } from "@melian-agent/pipeline";
@@ -101,6 +102,7 @@ async function review(
 		readonly policy?: RepositorySource;
 		readonly origin?: ReviewOrigin;
 		readonly decider?: Decider;
+		readonly writer?: ReviewOptions["writer"];
 	} = {},
 ): Promise<{
 	summary: CoverageSummary;
@@ -127,6 +129,7 @@ async function review(
 			...(options.policy === undefined ? {} : { policy: options.policy }),
 			...(options.origin === undefined ? {} : { origin: options.origin }),
 			...(options.decider === undefined ? {} : { decider: options.decider }),
+			...(options.writer === undefined ? {} : { writer: options.writer }),
 		});
 	} catch {
 		// A lens that ended still decides the round; its coverage record says what it covered.
@@ -219,6 +222,14 @@ describe("the coverage ledger", () => {
 		commit(repo, { "src/x.ts": numbered(20, "x").replace("x 3\n", "X 3\n") });
 		const { record } = await review({ range: `${policy}..feature`, policy: { kind: "revision", commit: policy } });
 		expect(record.checks["lens.correctness"]!.required).toEqual({ "src/x.ts": "careful", "src/deep/x.ts": "deep" });
+		expect(record.source).toBe("revision");
+	});
+
+	it("records whose leave the head's code ran under", async () => {
+		commit(repo, { "src/a.ts": numbered(20, "a").replace("a 3\n", "A 3\n") });
+		expect((await review({ writer: { trusted: true, by: "writer" } })).record.leave).toBe("writer");
+		commit(repo, { "src/b.ts": numbered(20, "b").replace("b 9\n", "B 9\n") });
+		expect((await review({ writer: { trusted: false, detail: "a fork" } })).record.leave).toBe("none");
 	});
 
 	it("records a lens triage skipped beside one that ran, with the standards the one that ran received", async () => {
