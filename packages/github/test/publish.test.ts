@@ -468,6 +468,23 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(published?.ledgerRounds?.at(-1)).toMatchObject({ coverage: { complete: true, round: "r2" } });
 	});
 
+	it("posts a pending round an earlier build planned, which holds no ledger round, without coverage", async () => {
+		const { github, changeset, state } = await reviewedRevisionOne(lensScript(unsafeManager));
+		state.failReviews = true;
+		await expect(publish(github, changeset)).rejects.toThrow("Server Error");
+		state.failReviews = false;
+		const root = await harness!.root(context);
+		await root.commit(async (tx) => {
+			delete (await tx.doc(PublishedDocument, root.id)).revisions[changeset.revision.head]!.pending!.ledger;
+		}, context);
+
+		await publish(github, changeset);
+
+		expect(state.reviews).toHaveLength(1);
+		expect(state.reviews[0]!.body).not.toContain("Coverage:");
+		expect(state.ledgers[0]!.body).toContain("Coverage: complete, from rounds r1.");
+	});
+
 	it("answers a dismissed finding's thread with the reason, and counts it out of the status", async () => {
 		const { github, changeset, state } = await reviewedRevisionOne();
 		await publish(github, changeset);
