@@ -2210,7 +2210,15 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	};
 	for (const defect of new Merge(storedFindings, configFor, changeset.revision).defects()) {
 		if (defect.speaker.properties.status === "dismissed") continue;
-		const candidateState = VerificationState.from(defect.speaker).toJSON();
+		const judgedState = VerificationState.from(defect.speaker).toJSON();
+		// A carried claim the fix left alone, and its lens did not refute, keeps the judgement the carry copied.
+		const candidateState = {
+			...judgedState,
+			claims: judgedState.claims.filter(
+				(claim) => !claim.source.check.startsWith(carriedPrefix) || againFor(claim) !== undefined,
+			),
+		};
+		if (candidateState.claims.length === 0) continue;
 		if (
 			!candidateState.claims.some((claim) => {
 				const run =
