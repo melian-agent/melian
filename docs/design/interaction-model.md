@@ -23,7 +23,7 @@ Solution: publication maintains one comment Melian owns per pull request, the le
 1. Open findings, the verdict and its published status mapping.
 2. Override and not-reviewed warnings, uncollapsed.
 3. A walkthrough, collapsed: a paragraph, a table of file or layer to summary, and a sequence diagram where one applies. The [summarise task](../design.md#the-pipeline) writes it on the `light` model tier, reading head content inside prompt boundaries and holding no write credentials, and publish renders it through the same escaping as findings. It is labelled a summary, never a verdict.
-4. Run details, collapsed: the manifest, the plan with its models and levels, lineage, caps, timings, cost, the standards files each lens read, and each distinct lens note once with the lenses that carry it. The review body states only caveats, the notes that narrowed the whole review, as [the lens notes decision](../decisions/2026-10-25-lens-notes-leave-the-review-body.md) sets.
+4. Run details, collapsed: the manifest, the plan with its models and levels, lineage, caps, timings, cost, the standards files each lens read, and each distinct lens reason once with the lenses that carry it. The review body states only caveats, the notes that narrowed the whole review, as [the lens notes decision](../decisions/2026-10-25-lens-notes-leave-the-review-body.md) sets.
 
 Neither the hidden stamp nor the run details carries `dismissal.by`: the dismisser Melian records is a git identity whose email does not belong on a pull request, as [the dismissal publication decision](../decisions/2026-10-04-dismissal-publication.md) says, and the dismissals section gives only each reason.
 5. Verification outcomes.

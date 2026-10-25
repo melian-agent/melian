@@ -617,6 +617,7 @@ describe("ledger rendering", () => {
 				{ name: "lens.correctness", status: "ran", level: "careful", reason: shared },
 				{ name: "lens.contracts", status: "ran", level: "careful", reason: shared },
 				{ name: "lens.design", status: "ran", level: "careful", reason: own },
+				{ name: "lens.design", status: "ran", level: "quick", reason: own },
 				{ name: "lens.security", status: "ran", level: "careful" },
 			],
 			config: defaultConfig,
