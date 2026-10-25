@@ -811,7 +811,7 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 		expect(all.stdout).toContain("Dismissed: 1 finding");
 		expect(all.stdout).toMatch(
 			new RegExp(
-				`\\(introduced, dismissed, block, confirmed\\)  ${id}\\n    Decided by: the built-in table\\n    Verified:[^\\n]+\\n    Dismissed by Melian Test <test@melian\\.invalid> at \\d{4}-[^:]+:\\d\\d:[^:]+: ${reason}\\n`,
+				`P1 \\| Blocks merge \\| Correctness \\| Verifier confirmed \\| New in this change\\n    Decided by: the built-in table\\n    Verified:[^\\n]+\\n    Dismissed by Melian Test <test@melian\\.invalid> at \\d{4}-[^:]+:\\d\\d:[^:]+: ${reason}\\n[^]*?\\| Finding ${id} \\| Status dismissed\\n`,
 			),
 		);
 		const verdict = JSON.parse(melian(repo, ["findings", range, "--json"], env).stdout) as StoredVerdict;
@@ -871,8 +871,9 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 	it("prints a finding's merged reports, and names each one dismissing the finding dismisses with it", () => {
 		const { repo, env, review, id, member } = reviewedMerged();
 		expect(review.stdout).toContain(
-			`null-dereference  (introduced, new, block, confirmed)  ${id}\n    Merged report: P2 changed-return from lens.contracts  ${member}\n`,
+			`New in this change\n    Merged report: P2 changed-return from lens.contracts  ${member}\n`,
 		);
+		expect(review.stdout).toContain(`    Rule null-dereference | Lines 7-8 | Finding ${id} | Status new\n`);
 
 		const dismissed = melian(repo, ["dismiss", range, id, "--reason", reason], env);
 
@@ -902,7 +903,7 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 		const live = Object.values(verdict.findings).flat();
 		expect(live.map((each) => each.properties.id)).toEqual([member]);
 		expect(melian(repo, ["findings", range], env).stdout).toContain(
-			`changed-return  (introduced, new, acknowledge, confirmed)  ${member}\n    Also reported, dismissed: P1 null-dereference from lens.correctness  ${id}\n`,
+			`New in this change\n    Also reported, dismissed: P1 null-dereference from lens.correctness  ${id}\n`,
 		);
 	});
 

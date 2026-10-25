@@ -6,6 +6,7 @@ import {
 	Lens,
 	loadConfig,
 	loadSecrets,
+	type MelianConfig,
 	type PullRequest,
 	Rendering,
 	type RepositoryPermission,
@@ -65,6 +66,8 @@ export interface Io {
 	readonly stderr: (text: string) => void;
 	/** Whether standard output takes colour: a terminal, with `NO_COLOR` unset. */
 	readonly color: boolean;
+	/** Whether standard output is a terminal, which `output.emoji: auto` asks. */
+	readonly tty?: boolean;
 	/** The path the shell ran `melian` from, which `doctor` reports. */
 	readonly executable?: string;
 	/** A seam for tests: the decider triage asks, in place of the LLM fallback, which scripted mode never triages with. */
@@ -97,11 +100,43 @@ export class ReviewOutcome {
 
 	/**
 	 * The verdict as the terminal shows it, with each finding's ID, which `melian dismiss` takes, and the file and
-	 * entry that decided what it requires.
+	 * entry that decided what it requires; with emojis when `emoji` is set, each lens's from `lenses`. `ran` is the
+	 * configuration and paths the review selected them under, whose `tier` or `paths` give a lens the version its
+	 * findings carry.
 	 */
-	render(color: boolean): string {
-		return this.verdict.render(new Rendering({ color, ids: true, decided: true }));
+	render(
+		color: boolean,
+		emoji: boolean,
+		lenses: readonly Lens[],
+		ran?: { readonly config: MelianConfig; readonly paths: readonly string[] },
+	): string {
+		const selected = ran === undefined ? [] : Lens.select(lenses, ran.config, ran.paths).map(({ lens }) => lens);
+		// Each variant by its version, loaded or as the review ran it; a name alone only when its variants agree, so a
+		// report naming no version shows no variant's emoji as another's.
+		const declared = [...lenses, ...selected].flatMap((lens) => (lens.emoji === undefined ? [] : [lens]));
+		const lensEmojis = Object.fromEntries([
+			...declared.map((lens) => [`lens.${lens.name}@${lens.version}`, lens.emoji!]),
+			...declared
+				.filter((lens) => lenses.every((other) => other.name !== lens.name || other.emoji === lens.emoji))
+				.map((lens) => [`lens.${lens.name}`, lens.emoji!]),
+		]);
+		return this.verdict.render(new Rendering({ color, emoji, lensEmojis, ids: true, decided: true }));
 	}
+}
+
+// Whether the terminal shows emojis. `output.emoji` is display alone, so it comes from the working tree and the
+// preference files, and a configuration that does not load leaves it at `auto`: the command's own work reads its
+// policy separately and fails there. `auto` shows them on a terminal whose
+// locale, the first of `LC_ALL`, `LC_CTYPE` and `LANG` that is set, is UTF-8.
+async function terminalEmoji(io: Io, repoRoot: string): Promise<boolean> {
+	const source = { kind: "worktree", preferences: userFiles(io.env).config } as const;
+	const setting = await loadConfig(repoRoot, source, ".").then(
+		({ config }) => config.output.emoji,
+		() => "auto" as const,
+	);
+	if (setting !== "auto") return setting === "on";
+	const locale = io.env.LC_ALL || io.env.LC_CTYPE || io.env.LANG || "";
+	return io.tty === true && /utf-?8/i.test(locale);
 }
 
 /** The dismissal snapshots a publication attested, grouped by round. */
@@ -357,7 +392,7 @@ export async function review(
 		io.stdout(
 			options.json
 				? `${JSON.stringify({ ...JSON.parse(verdict.renderJson()), coverage: coverage.summary, telemetry: timings.toJSON() }, null, 2)}\n`
-				: `${outcome.render(io.color)}\n${coverage.text}`,
+				: `${outcome.render(io.color, await terminalEmoji(io, repoRoot), lenses, { config: loaded, paths })}\n${coverage.text}`,
 		);
 		return outcome.exitCode();
 	} catch (error) {
@@ -452,11 +487,13 @@ export async function publish(
 		throw new CliError(`publish takes a pull request, such as "#12"; Melian never posts a review of a range`);
 	}
 	if (isScripted(io.env)) throw new CliError(`publish refuses to run under ${scriptVariable}`);
-	const provider = await gitHubFor(io.cwd, io.env);
-	const pullRequest = await provider.pullRequest(target.number);
+	const reader = await gitHubFor(io.cwd, io.env);
+	const pullRequest = await reader.pullRequest(target.number);
 	const changeset = await pullRequestChangeset(io.cwd, target.number);
 	const base = await currentBase(io.cwd, pullRequest);
 	const { config } = await loadConfig(changeset.repoRoot, { kind: "revision", commit: pullRequest.base.sha }, ".");
+	// `publish.emoji` is the base's to say, and the base is known only once the pull request is read.
+	const provider = config.publish.emoji === "on" ? reader : await gitHubFor(io.cwd, io.env, { emoji: false });
 	const path = await storagePath(changeset.repoRoot, changeset.id, io.env, false);
 	// Only the publish task: a review a crash interrupted must not resume here and spend tokens on real models.
 	const publishHarness = await openPublishHarness(await openStorage(path), idleModels(io.env), provider);
@@ -599,7 +636,8 @@ export async function findings(
 			for (const line of ReviewPlan.from(stored).summary().split("\n").filter(Boolean))
 				io.stderr(`melian: ${line}\n`);
 		}
-		const render = new Rendering({ color: io.color, ids: true, all: options.all, decided: true });
+		const emoji = await terminalEmoji(io, changeset.repoRoot);
+		const render = new Rendering({ color: io.color, emoji, ids: true, all: options.all, decided: true });
 		const coverage = await new CoverageLedger(harness, root).section(revision, context);
 		const withCoverage = (json: string) =>
 			`${JSON.stringify({ ...JSON.parse(json), coverage: coverage.summary }, null, 2)}\n`;
@@ -643,7 +681,15 @@ async function roundFindings(
 		if (plan !== undefined && !options.json) {
 			for (const line of ReviewPlan.from(plan).summary().split("\n").filter(Boolean)) io.stderr(`melian: ${line}\n`);
 		}
-		const render = new Rendering({ color: io.color, ids: true, all: options.all, decided: true, historical: true });
+		const emoji = await terminalEmoji(io, repoRoot);
+		const render = new Rendering({
+			color: io.color,
+			emoji,
+			ids: true,
+			all: options.all,
+			decided: true,
+			historical: true,
+		});
 		if (options.open) {
 			const open = FindingsLog.of(verdict.attention());
 			io.stdout(options.json ? open.renderJson() : open.render(render));

@@ -257,7 +257,7 @@ describe("capSnippet", () => {
 	});
 
 	it("cuts a longer one at a character boundary and marks the cut", () => {
-		for (const unit of ["x", "€", "😀"]) {
+		for (const unit of ["x", "€", "\u{1F600}"]) {
 			const text = capSnippet(unit.repeat(maxSnippetBytes + 1));
 			const kept = text.slice(0, -" [cut at 2 KiB]".length);
 			expect(text.endsWith(" [cut at 2 KiB]")).toBe(true);

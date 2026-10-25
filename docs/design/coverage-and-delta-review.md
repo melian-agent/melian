@@ -36,7 +36,7 @@ Coverage from a round is void, whole or in part, after a base change, a force pu
 
 ## Round identity
 
-Every round's key comes from one method, `Revision.key(scope)`, whose one scope today is the whole diff and gives `<base>..<head>`; a scope it does not know is refused, and no caller, storage or display, builds the key by hand. The key carries no approval: a review passes only on an empty ledger delta, which no key can forge. Rounds at one head are told apart by their IDs, as step 23 built them. `melian.rounds` records each round's scope and ledger record, and the findings document holds carried sightings beside new ones.
+Every round's key comes from one method, core's `Revision.key(sides, scope)`, whose one scope today is the whole diff, `diff`, and gives `<base>..<head>`; a scope it does not know is `ChangesetError` `unknownScope`, and no caller, storage or display, builds the key by hand. It takes the base and head as a stored record names them, since most callers hold a record, not a `Revision`. `Revision.parseKey` reads a key back, and `Revision.display` cuts each side to twelve characters for a reader. The `hand-built-revision-key` guardrail in the root `melian.yaml` refuses a new `${...}..${...}` in package source. The key carries no approval: a review passes only on an empty ledger delta, which no key can forge. Rounds at one head are told apart by their IDs, as step 23 built them. `melian.rounds` records each round's scope and ledger record, and the findings document holds carried sightings beside new ones.
 
 ## Sharing, in milestone 3
 

@@ -159,6 +159,16 @@ export {
 } from "./decider.ts";
 export type { ChangedFile, FileKind, FileStatus, Hunk } from "./diff.ts";
 export {
+	checkMarks,
+	Mark,
+	outcomeMarks,
+	resolutionMarks,
+	severityMarks,
+	tableEmojis,
+	verifierMark,
+	verifierMarks,
+} from "./emoji.ts";
+export {
 	ChangesetError,
 	type ChangesetErrorCode,
 	CheckError,

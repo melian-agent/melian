@@ -292,6 +292,8 @@ describe("ledger rendering", () => {
 		const plain = Ledger.from(counted, { rounds: [{ ...round, verdict: counted.toJSON() }] }, options);
 		expect(plain.stamp.counts.open).toBe(1);
 		expect(plain.render(links)).toContain("1 finding needs attention: 1 advisory.");
+		expect(plain.render(links)).toContain(" | Advisory | ");
+		expect(plain.render(links)).not.toMatch(/\p{Emoji_Presentation}|\u{FE0F}/u);
 	});
 
 	it("names the heading in a member's inline comment when the provider posts it", async () => {
@@ -433,6 +435,14 @@ describe("ledger rendering", () => {
 		expect(Ledger.readStamp(body)).toEqual(ledger.stamp);
 		expect(ledger.diff(Ledger.readStamp(body))).toBe(false);
 		expect(Ledger.readStamp(body.replace('"round":1', '"round":2'))).toBeUndefined();
+	});
+
+	it("shows an earlier round whose findings were trimmed by its revision and status", () => {
+		const trimmed = { base: "a".repeat(40), head: "c".repeat(40), round: 1, status: "findings" as const };
+		const current = Ledger.from(verdict, { rounds: [trimmed, round] }, options);
+		expect(current.render(links)).toContain(
+			"<summary>Earlier round 1 at cccccccccccc</summary>\n\naaaaaaaaaaaa..cccccccccccc; findings.",
+		);
 	});
 
 	it("switches the walkthrough and keeps earlier rounds collapsed with their heads", () => {

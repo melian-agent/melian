@@ -1,0 +1,18 @@
+language js
+
+or {
+	JsStringLiteralExpression(),
+	JsTemplateChunkElement(),
+	JsRegexLiteralExpression(),
+	JsLiteralMemberName(),
+	TsStringLiteralType(),
+	JsModuleSource(),
+	JsxString(),
+	JsxText()
+} as $literal where {
+	$literal <: r"(?s).*[\p{Emoji_Presentation}\x{FE0F}].*",
+	register_diagnostic(
+		span = $literal,
+		message = "Write an emoji as an escape in packages/core/src/emoji.ts, beside its Unicode name, as docs/guidelines/findings.md sets out."
+	)
+}

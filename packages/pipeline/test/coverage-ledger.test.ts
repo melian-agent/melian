@@ -311,7 +311,9 @@ describe("the coverage ledger", () => {
 				lenses: ended,
 				replies: { correctness: [readCall("src/a.ts"), fauxAssistantMessage("Done.")] },
 			});
-			expect(next.record.voids).toEqual([{ reason: "r2 was recorded by coverage algorithm 0, so nothing carries from it" }]);
+			expect(next.record.voids).toEqual([
+				{ reason: "r2 was recorded by coverage algorithm 0, so nothing carries from it" },
+			]);
 			expect(next.record.checks["lens.correctness"]!.covered).toEqual([]);
 		});
 
