@@ -415,25 +415,24 @@ export class Revision {
 		const file = this.files.find((each) => (each.oldPath ?? each.path) === path && each.status !== "added");
 		if (file === undefined) return { path, first, last, changed: false };
 		if (file.status === "deleted" || file.binary) return undefined;
-		const start = this.mapLine(path, first);
-		const end = this.mapLine(path, last);
 		const touching = (hunk: (typeof file.hunks)[number]) =>
 			hunk.oldLines > 0
 				? hunk.oldStart <= last && hunk.oldStart + hunk.oldLines - 1 >= first
 				: hunk.oldStart >= first && hunk.oldStart < last;
 		const hunk = file.hunks.find(touching);
-		if (start !== undefined && end !== undefined && hunk === undefined)
-			return { path: start.path, first: start.line, last: end.line, changed: false };
-		const line =
-			hunk === undefined
-				? (start?.line ?? first)
-				: hunk.newLines > 0
-					? hunk.newStart + hunk.newLines
-					: hunk.newStart + 1;
+		// No hunk touches the range, so neither end sits in a hunk's old range, and both map.
+		if (hunk === undefined)
+			return {
+				path: file.path,
+				first: this.mapLine(path, first)!.line,
+				last: this.mapLine(path, last)!.line,
+				changed: false,
+			};
+		const line = hunk.newLines > 0 ? hunk.newStart + hunk.newLines : hunk.newStart + 1;
 		return { path: file.path, first: line, last: line, changed: true };
 	}
 
-	/** Whether the revision lists `path` at all, under its old path or its new one. */ /** Whether the revision lists `path` at all, under its old path or its new one. */
+	/** Whether the revision lists `path` at all, under its old path or its new one. */
 	lists(path: string): boolean {
 		return this.files.some((file) => file.path === path || file.oldPath === path);
 	}
@@ -487,7 +486,6 @@ export class Revision {
 	}
 
 	/**
-	 * The hunk that introduced lines `startLine` to `endLine`	/**
 	 * The hunk that introduced lines `startLine` to `endLine` of `path` at head, as a finding's trigger names it, with
 	 * its added lines as the snippet; `undefined` when no hunk adds any of them.
 	 */

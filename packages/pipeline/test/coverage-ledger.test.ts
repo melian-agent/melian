@@ -1,13 +1,15 @@
-import { chmodSync, copyFileSync, readFileSync } from "node:fs";
+import { chmodSync, copyFileSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
 	Changeset,
 	type CheckRecord,
 	type CoverageSummary,
+	type Decider,
 	defaultConfig,
 	Lens,
 	type MelianConfig,
+	type RepositorySource,
 	Revision,
 	type StoredCoverageRecord,
 } from "@melian-agent/core";
@@ -17,9 +19,13 @@ import {
 	backgroundContext as context,
 	createMemoryStorage,
 	createReviewRegistry,
+	decisionExtension,
 	type Harness,
+	type Message,
 	openHarness,
 	openSqliteStorage,
+	type ReviewOptions,
+	type ReviewOrigin,
 	reviewChangeset,
 } from "@melian-agent/pipeline";
 import {
@@ -93,9 +99,18 @@ async function review(
 		readonly config?: MelianConfig;
 		readonly refused?: string;
 		readonly harness?: Harness;
+		readonly policy?: RepositorySource;
+		readonly origin?: ReviewOrigin;
+		readonly decider?: Decider;
+		readonly writer?: ReviewOptions["writer"];
 	} = {},
-): Promise<{ summary: CoverageSummary; record: StoredCoverageRecord; text: string }> {
-	scriptConversations(fake, [
+): Promise<{
+	summary: CoverageSummary;
+	record: StoredCoverageRecord;
+	text: string;
+	requests: Record<string, Message[][]>;
+}> {
+	const requests = scriptConversations(fake, [
 		{ match: correctness, replies: options.replies?.correctness ?? [fauxAssistantMessage("Done.")] },
 		{ match: contracts, replies: options.replies?.contracts ?? [fauxAssistantMessage("Done.")] },
 	]);
@@ -111,6 +126,10 @@ async function review(
 			models: fake.review,
 			checks,
 			...(options.refused === undefined ? {} : { coverageRefused: options.refused }),
+			...(options.policy === undefined ? {} : { policy: options.policy }),
+			...(options.origin === undefined ? {} : { origin: options.origin }),
+			...(options.decider === undefined ? {} : { decider: options.decider }),
+			...(options.writer === undefined ? {} : { writer: options.writer }),
 		});
 	} catch {
 		// A lens that ended still decides the round; its coverage record says what it covered.
@@ -121,7 +140,7 @@ async function review(
 	const section = await ledger.section(key, context);
 	const id = (await used.snapshot(RoundsDocument, root, context))!.current[key]!;
 	const record = (await used.snapshot(CoverageDocument, root, context))!.records[id]!;
-	return { ...section, record };
+	return { ...section, record, requests };
 }
 
 const reasons = (summary: CoverageSummary) => [...new Set(summary.gaps.map((gap) => gap.reason))];
@@ -162,6 +181,150 @@ describe("the coverage ledger", () => {
 		]);
 		const rounds = (await harness.snapshot(RoundsDocument, (await harness.root(context)).id, context))!;
 		expect(rounds.items.r1).toMatchObject({ scope: { kind: "diff" }, coverage: "r1" });
+	});
+
+	it("counts a read of the base on the base side, where a prompt too small for the hunk leaves its lines owed", async () => {
+		const big = (label: string) =>
+			lines(...Array.from({ length: 6000 }, (_, index) => `export const ${label}${index} = "${"x".repeat(30)}";`));
+		const start = commit(repo, { "src/big.ts": big("old") });
+		commit(repo, { "src/big.ts": big("new") });
+		const read = fauxAssistantMessage(
+			fauxToolCall("read_file", { path: "src/big.ts", revision: "base", startLine: 1, maxLines: 10 }),
+			{ stopReason: "toolUse" },
+		);
+		const { record } = await review({
+			range: `${start}..feature`,
+			replies: { correctness: [read, fauxAssistantMessage("Done.")] },
+		});
+		const own = record.checks["lens.correctness"]!.covered[0]!;
+		expect(own.base["src/big.ts"]).toEqual([[1, 10]]);
+		expect(own.head["src/big.ts"]).toBeUndefined();
+		expect(record.checks["lens.contracts"]!.covered[0]!.base["src/big.ts"]).toBeUndefined();
+	});
+
+	it("needs quick from a review the reviewer trusts, and careful from a policy read at a revision", async () => {
+		commit(repo, { "src/a.ts": numbered(20, "a").replace("a 3\n", "A 3\n") });
+		expect((await review()).record.checks["lens.correctness"]!.required).toEqual({ "src/a.ts": "quick" });
+		commit(repo, { "src/b.ts": numbered(20, "b").replace("b 9\n", "B 9\n") });
+		const pinned = await review({ policy: { kind: "revision", commit: base } });
+		expect(pinned.record.checks["lens.correctness"]!.required).toEqual({
+			"src/a.ts": "careful",
+			"src/b.ts": "careful",
+		});
+		commit(repo, { "src/c.ts": numbered(2, "c") });
+		const changeset = await Changeset.resolve(repo, `${base}..feature`);
+		const origin: ReviewOrigin = {
+			kind: "pull-request",
+			repository: { owner: "melian-agent", name: "example" },
+			pullRequest: 7,
+			base: changeset.revision.base,
+			head: changeset.revision.head,
+		};
+		const pulled = await review({ origin });
+		expect(Object.values(pulled.record.checks["lens.correctness"]!.required)).toEqual([
+			"careful",
+			"careful",
+			"careful",
+		]);
+	});
+
+	it("needs quick under a calibrated decider, whatever the policy's source", async () => {
+		commit(repo, { "src/a.ts": numbered(20, "a").replace("a 3\n", "A 3\n") });
+		const decider: Decider = {
+			name: "ledger-test",
+			calibrated: true,
+			decide: async (request) => ({
+				answers: request.questions.map(({ id }) => ({ question: id, distribution: { careful: 1 } })),
+			}),
+		};
+		const registry = createReviewRegistry();
+		registry.install(decisionExtension(decider));
+		const deciding = await openHarness(createMemoryStorage(), {
+			models: fake.models,
+			registry,
+			settings: { retry: { enabled: false } },
+		});
+		await deciding.root(context, { agent: { model: fake.ref("orchestrator") } });
+		const { record } = await review({
+			policy: { kind: "revision", commit: base },
+			decider,
+			harness: deciding,
+		}).finally(() => deciding.close(context));
+		expect(record.checks["lens.correctness"]!.required).toEqual({ "src/a.ts": "quick" });
+	});
+
+	it("reads each path's level from the configuration that governs it, a renamed file's old path included", async () => {
+		const policy = commit(repo, {
+			"src/deep/melian.yaml": lines("lenses:", "  correctness:", "    level: { floor: deep }"),
+			"src/deep/x.ts": numbered(20, "x"),
+		});
+		gitIn(repo, "mv", "src/deep/x.ts", "src/x.ts");
+		commit(repo, { "src/x.ts": numbered(20, "x").replace("x 3\n", "X 3\n") });
+		const { record } = await review({ range: `${policy}..feature`, policy: { kind: "revision", commit: policy } });
+		expect(record.checks["lens.correctness"]!.required).toEqual({ "src/x.ts": "careful", "src/deep/x.ts": "deep" });
+		expect(record.source).toBe("revision");
+	});
+
+	it("records whose leave the head's code ran under", async () => {
+		commit(repo, { "src/a.ts": numbered(20, "a").replace("a 3\n", "A 3\n") });
+		expect((await review({ writer: { trusted: true, by: "writer" } })).record.leave).toBe("writer");
+		commit(repo, { "src/b.ts": numbered(20, "b").replace("b 9\n", "B 9\n") });
+		expect((await review({ writer: { trusted: false, detail: "a fork" } })).record.leave).toBe("none");
+	});
+
+	it("records a lens triage skipped beside one that ran, with the standards the one that ran received", async () => {
+		commit(repo, { "src/a.ts": numbered(20, "a").replace("a 3\n", "A 3\n") });
+		const decider: Decider = {
+			name: "ledger-test",
+			calibrated: true,
+			decide: async (request) => ({
+				answers: request.questions.map(({ id }) => ({
+					question: id,
+					distribution: { [id === "contracts" ? "skip" : "careful"]: 1 },
+				})),
+			}),
+		};
+		const registry = createReviewRegistry();
+		registry.install(decisionExtension(decider));
+		const deciding = await openHarness(createMemoryStorage(), {
+			models: fake.models,
+			registry,
+			settings: { retry: { enabled: false } },
+		});
+		await deciding.root(context, { agent: { model: fake.ref("orchestrator") } });
+		const skippable: MelianConfig = { ...config, lenses: { contracts: { level: { floor: "skip" } } } };
+		const { record } = await review({ decider, harness: deciding, config: skippable }).finally(() =>
+			deciding.close(context),
+		);
+		expect(record.checks["lens.contracts"]).toMatchObject({ status: "skipped", covered: [] });
+		expect(record.checks["lens.correctness"]).toMatchObject({ status: "ran", standards: ["AGENTS.md"] });
+	});
+
+	it("names each field a file's block delivered: an old path for a rename, and a binary file's flag", async () => {
+		writeFileSync(join(repo, "logo.png"), Buffer.from([0x89, 0x50, 0x00, 0x01]));
+		gitIn(repo, "mv", "src/b.ts", "src/renamed.ts");
+		commit(repo, { "src/a.ts": numbered(20, "a").replace("a 3\n", "A 3\n") });
+		const { record } = await review();
+		const modes = ["oldMode", "newMode", "oldKind", "newKind"];
+		expect(record.checks["lens.correctness"]!.covered[0]!.units).toEqual({
+			"logo.png": ["status", "path", "newMode", "newKind", "binary"],
+			"src/a.ts": ["status", "path", ...modes, "binary"],
+			"src/renamed.ts": ["status", "path", "oldPath", ...modes, "binary"],
+		});
+	});
+
+	it("owes the lines of the file that passed the prompt's limit and of every file after it, and says so once", async () => {
+		const big = (label: string) =>
+			lines(...Array.from({ length: 6000 }, (_, index) => `export const ${label}${index} = "${"x".repeat(30)}";`));
+		commit(repo, { "src/big1.ts": big("one"), "src/big2.ts": big("two") });
+		const { summary, requests } = await review();
+		const prompt = JSON.stringify(requests[correctness]?.[0] ?? []);
+		expect(prompt.split("These hunks were left out for size").length - 1).toBe(1);
+		const owed = summary.gaps.filter((gap) => gap.check === "lens.correctness" && gap.file.startsWith("src/big"));
+		expect(owed.map((gap) => [gap.file, gap.reason])).toEqual([
+			["src/big1.ts", "too large for the prompt; lines still owed"],
+			["src/big2.ts", "too large for the prompt; lines still owed"],
+		]);
 	});
 
 	it("carries a round's coverage to the next head and names the lines a lens that ended did not cover", async () => {

@@ -195,8 +195,14 @@ describe("the carry", () => {
 				verified: true,
 			},
 		]);
-		expect(firstPrompt(requests, correctness)).toContain("## Findings earlier rounds reported");
-		expect(firstPrompt(requests, correctness)).toContain(`${id} P1 null-dereference at src/a.ts:4-4`);
+		expect(firstPrompt(requests, correctness)).toContain(
+			"## Findings earlier rounds reported\n\nEarlier rounds of this review reported the findings below, at this head's lines. Each line gives the finding's ID, severity, rule, and file with its first and last lines. For each, if the code still has the defect, report it again with report_finding at the same file, lines, and rule, with its own failure scenario and evidence. If the change since fixed it, or the code shows it is not a defect, report it with refuted set to its ID, at the same file, lines, and rule, with a failureScenario saying why it cannot fail and evidence holding the code that prevents it; a refutation goes to the verifier. A finding you leave unanswered stays in the review as reported.\n\n<untrusted-",
+		);
+		expect(firstPrompt(requests, correctness)).toMatch(
+			new RegExp(
+				`label="findings">\\n${id} P1 null-dereference at src/a\\.ts:4-4: A 3 reads a missing value\\.\\n</untrusted-`,
+			),
+		);
 		expect(requests[verifierMarker] ?? []).toEqual([]);
 	});
 

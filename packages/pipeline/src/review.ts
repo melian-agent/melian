@@ -45,8 +45,6 @@ import {
 	Standards,
 	StandardsReading,
 	type StandardsSection,
-	type StoredCoverageRecord,
-	type StoredGapDismissal,
 	type TriageChoice,
 	triageChoices,
 	triageQuestionSet,
@@ -1534,6 +1532,9 @@ async function ledgerRound(
 		readonly manifest: readonly string[];
 		readonly allowSkip?: readonly string[];
 		readonly nonce: string;
+		// At intake the round reads no sighting at its head, so a resume or a repeat review computes the same delta as the
+		// round that ran first, whatever that round wrote there.
+		readonly intake?: true;
 	},
 	context: Context,
 ): Promise<LedgerRound> {
@@ -1577,33 +1578,11 @@ async function ledgerRound(
 		manifest: round.manifest,
 		allowSkip: round.allowSkip ?? [],
 		nonce: round.nonce,
-		findings: await readFindings(harness, root, Revision.key(changeset.revision), context),
+		findings:
+			round.intake === true ? [] : await readFindings(harness, root, Revision.key(changeset.revision), context),
 		tools: (await ToolProvisioning.manifest()).toJSON(),
 		...(request.cold === true ? { cold: true } : {}),
 	};
-}
-
-// The `review.coverage` record a round's coverage puts in its manifest: `ran` when every check covered everything it
-// must, and otherwise skipped without leave, naming the gaps, which leaves the review not reviewed.
-function coverageRecordOf(record: StoredCoverageRecord, dismissed: readonly StoredGapDismissal[]): CheckRecord {
-	const { complete, gaps } = CoverageRecord.from(record, dismissed).summary();
-	if (complete) return { name: coverageCheck, status: "ran" };
-	// A check whose own record did not run names itself in the verdict, so the coverage record only points at it.
-	const unrun = [...new Set(gaps.filter((gap) => gap.own === true).map((gap) => gap.check))];
-	const rest = [
-		...new Set(
-			gaps
-				.filter((gap) => gap.own !== true)
-				.map((gap) => `${gap.check}${gap.file === "" ? "" : ` ${visibleText(gap.file)}`}: ${gap.reason}`),
-		),
-	];
-	const said = unrun.length === 1 ? "its record says" : "their records say";
-	const parts = [
-		...(unrun.length === 0 ? [] : [`${unrun.join(", ")} did not cover the diff, as ${said}`]),
-		...rest.slice(0, 5),
-		...(rest.length > 5 ? [`and ${rest.length - 5} more gaps`] : []),
-	];
-	return { name: coverageCheck, status: "skipped", reason: `coverage is incomplete: ${parts.join("; ")}` };
 }
 
 export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
@@ -1700,15 +1679,14 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		await ledgerRound(
 			harness,
 			root,
-			{ request: options, tier, covering, standards: standardsPaths, manifest, nonce },
+			{ request: options, tier, covering, standards: standardsPaths, manifest, nonce, intake: true },
 			context,
 		),
 		context,
 	);
 	// A round after a decided one at an earlier head reviews only what no round covered, unless it runs cold. A repeat
-	// review of the same head is no delta: it attaches to the round that decided it, as any repeat review does.
-	const repeat = intake.prior?.head === head && intake.prior.base === revision.base;
-	const delta = options.cold !== true && !repeat && intake.carries();
+	// review of the same head computes the delta its decided round did, so it attaches to that round, as any repeat does.
+	const delta = options.cold !== true && intake.carries();
 	spans.step("routes");
 	const tiers = new Set(covering.flatMap(({ lens }) => lens.declaredLevels().map((level) => lens.level(level).tier)));
 	const routes = new Map(
@@ -2436,7 +2414,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		),
 		context,
 	);
-	const coverageRecord = coverageRecordOf(coverage, await ledger.dismissals(reviewed, context));
+	const coverageRecord = CoverageRecord.from(coverage, await ledger.dismissals(reviewed, context)).checkRecord();
 	const input = adjudicationInput({
 		root,
 		repoRoot,

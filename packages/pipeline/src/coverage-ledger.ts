@@ -174,8 +174,8 @@ export class CoverageLedger {
 	 * each selected lens has left to cover. Read before any lens runs, so the delta is fixed in the round's input.
 	 */
 	async intake(round: LedgerRound, context: Context): Promise<CoverageIntake> {
-		const record = await this.compute(round, context);
-		return new CoverageIntake(record, await this.#prior(context));
+		const prior = await this.#prior(context, round.changeset.revision);
+		return new CoverageIntake(await this.#record("", round, prior, context), prior);
 	}
 
 	/**
@@ -183,7 +183,7 @@ export class CoverageLedger {
 	 * head, what the round's own runs delivered, and what carries from the last decided round, by mint order.
 	 */
 	async compute(round: LedgerRound, context: Context): Promise<StoredCoverageRecord> {
-		return this.#record("", round, await this.#prior(context), context);
+		return this.#record("", round, await this.#prior(context, round.changeset.revision), context);
 	}
 
 	/**
@@ -303,8 +303,13 @@ export class CoverageLedger {
 	}
 
 	// The last decided round by mint order that wrote a record. A round that is still running has no verdict, so a round
-	// about to run never reads itself, and an earlier round decided after a later one does not stand.
-	async #prior(context: Context): Promise<StoredCoverageRecord | undefined> {
+	// about to run never reads itself, and an earlier round decided after a later one does not stand. When the last
+	// decided round reviewed the same base and head as `at`, the round about to run takes the round that one carried
+	// from, so a repeat review computes the same delta, renders the same input and attaches to the decided round.
+	async #prior(
+		context: Context,
+		at: { readonly base: string; readonly head: string },
+	): Promise<StoredCoverageRecord | undefined> {
 		const rounds = (await this.harness.snapshot(RoundsDocument, this.root, context))?.items ?? {};
 		const records = (await this.harness.snapshot(CoverageDocument, this.root, context))?.records ?? {};
 		const order = (key: string) => Number(key.slice(1));
@@ -314,7 +319,10 @@ export class CoverageLedger {
 				([a, left], [b, right]) => Date.parse(left.mintedAt!) - Date.parse(right.mintedAt!) || order(a) - order(b),
 			);
 		const decided = minted.filter(([key, each]) => each.verdict !== undefined && records[key] !== undefined).at(-1);
-		return decided === undefined ? undefined : records[decided[0]];
+		if (decided === undefined) return undefined;
+		const last = records[decided[0]]!;
+		if (last.base !== at.base || last.head !== at.head) return last;
+		return last.carriedFrom === undefined ? undefined : records[last.carriedFrom];
 	}
 
 	async #record(
@@ -426,7 +434,8 @@ export class CoverageLedger {
 			round.cold === true
 				? { voids: [{ reason: "a cold round reviews the whole diff from nothing" }], carried: {} }
 				: await this.#carry(round, prior, policy, checks, context);
-		for (const [check, segments] of Object.entries(carried)) checks[check]?.covered.push(...segments);
+		// The carry takes only lenses this round holds.
+		for (const [check, segments] of Object.entries(carried)) checks[check]!.covered.push(...segments);
 		return {
 			producer: { ...coverageProducer },
 			round: id,

@@ -1,4 +1,5 @@
-import type { CheckStatus } from "./adjudication.ts";
+import type { CheckRecord, CheckStatus } from "./adjudication.ts";
+import { coverageCheck } from "./config.ts";
 import {
 	countRanges,
 	type LineRanges,
@@ -377,6 +378,32 @@ export class CoverageRecord {
 		};
 	}
 
+	/**
+	 * The `review.coverage` record this record puts in a round's manifest: `ran` when every check covered everything it
+	 * must, and otherwise skipped without leave, naming the gaps, which leaves the review not reviewed. A check whose own
+	 * record did not run names itself in the verdict, so the reason only points at it; five other gaps are named, with a
+	 * count of the rest.
+	 */
+	checkRecord(): CheckRecord {
+		const { complete, gaps } = this.summary();
+		if (complete) return { name: coverageCheck, status: "ran" };
+		const unrun = [...new Set(gaps.filter((gap) => gap.own === true).map((gap) => gap.check))];
+		const rest = [
+			...new Set(
+				gaps
+					.filter((gap) => gap.own !== true)
+					.map((gap) => `${gap.check}${gap.file === "" ? "" : ` ${visibleText(gap.file)}`}: ${gap.reason}`),
+			),
+		];
+		const said = unrun.length === 1 ? "its record says" : "their records say";
+		const parts = [
+			...(unrun.length === 0 ? [] : [`${unrun.join(", ")} did not cover the diff, as ${said}`]),
+			...rest.slice(0, 5),
+			...(rest.length > 5 ? [`and ${rest.length - 5} more gaps`] : []),
+		];
+		return { name: coverageCheck, status: "skipped", reason: `coverage is incomplete: ${parts.join("; ")}` };
+	}
+
 	/** The `Coverage` section for a terminal. Paths pass through `visibleText`. */
 	render(): string {
 		const { complete, rounds, gaps, dismissed } = this.summary();
@@ -450,7 +477,7 @@ export class CoverageRecord {
 	}
 
 	#voidReason(check: string, file: string): string | undefined {
-		if (this.stored.checks[check]?.injected?.includes(file))
+		if (this.stored.checks[check]!.injected?.includes(file))
 			return "a melian/injection-attempt finding sits in the file, so no lens covers it until a round rereads it";
 		return this.stored.voids.find(
 			(each) =>

@@ -1,10 +1,11 @@
-import { symlinkSync } from "node:fs";
+import { rmSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import {
 	listRevisionFiles,
 	OutsideRepositoryError,
 	RevisionError,
 	readRevisionFile,
+	readRevisionLink,
 	repositoryPath,
 	searchRevision,
 } from "@melian-agent/core";
@@ -225,5 +226,41 @@ describe("searchRevision", () => {
 
 	it("treats a pattern that looks like an option as text", async () => {
 		expect((await searchRevision(repo, head, { attributesFrom: head, pattern: "--output=x" })).matches).toEqual([]);
+	});
+});
+
+describe("readRevisionLink", () => {
+	it("reads a symlink's target at the revision, cut at the bound and marked so", async () => {
+		expect(await readRevisionLink(repo, head, "src/sub/link.ts", 4096)).toEqual({
+			target: "../total.ts",
+			truncated: false,
+		});
+		expect(await readRevisionLink(repo, head, "src/sub/link.ts", 11)).toEqual({
+			target: "../total.ts",
+			truncated: false,
+		});
+		expect(await readRevisionLink(repo, head, "src/sub/link.ts", 3)).toEqual({ target: "../", truncated: true });
+	});
+
+	it("refuses a revision that is not a commit name", async () => {
+		await expect(readRevisionLink(repo, "-HEAD", "src/sub/link.ts", 4096)).rejects.toMatchObject({
+			code: "invalidRevision",
+		});
+	});
+
+	it("refuses an entry of another kind, naming the root as a dot", async () => {
+		const file = await rejection(readRevisionLink(repo, head, "src/total.ts", 4096), RevisionError);
+		expect(file).toMatchObject({ code: "notASymlink", path: "src/total.ts", message: "src/total.ts is a file" });
+		const root = await rejection(readRevisionLink(repo, head, ".", 4096), RevisionError);
+		expect(root).toMatchObject({ code: "notASymlink", path: "", message: ". is a directory" });
+	});
+
+	it("says git failed when the link's blob is gone from the object store", async () => {
+		const blob = gitIn(repo, "rev-parse", `${head}:src/sub/link.ts`);
+		rmSync(join(repo, ".git", "objects", blob.slice(0, 2), blob.slice(2)));
+		const failed = await rejection(readRevisionLink(repo, head, "src/sub/link.ts", 4096), RevisionError);
+		expect(failed).toMatchObject({ code: "gitFailed", path: "src/sub/link.ts" });
+		expect(failed.message).toMatch(/^git cat-file failed: \S/);
+		expect(failed.message).toBe(failed.message.trim());
 	});
 });
