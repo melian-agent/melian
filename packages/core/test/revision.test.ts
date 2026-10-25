@@ -258,20 +258,21 @@ describe("searchRevision", () => {
 	// A git on PATH that fails only the name-only binary probe, as a git that dies or warns would, and runs the rest.
 	it.each([
 		["dies", "128", "fatal: probe failed"],
-		["exits 1 but warns", "1", "warning: probe warned"],
+		["exits 1 but warns", "1", "warning: probe warned\n"],
+		["fails silently", "128", ""],
 	])("refuses a file-set search whose binary probe %s, never calling the file binary", async (_, code, stderr) => {
 		const bin = temporaryDirectory();
 		const real = execFileSync("sh", ["-c", "command -v git"], { encoding: "utf8" }).trim();
 		writeFileSync(
 			join(bin, "git"),
-			`#!/bin/sh\ncase " $* " in *" grep -l "*) echo "${stderr}" >&2; exit ${code};; esac\nexec "${real}" "$@"\n`,
+			`#!/bin/sh\ncase " $* " in *" grep -l "*) printf '%s' "${stderr}" >&2; exit ${code};; esac\nexec "${real}" "$@"\n`,
 			{ mode: 0o755 },
 		);
 		vi.stubEnv("PATH", `${bin}:${process.env.PATH}`);
 		try {
 			await expect(
 				searchRevisionFiles(repo, head, { attributesFrom: head, pattern: "absent" }, ["docs/readme.md"]),
-			).rejects.toMatchObject({ code: "gitFailed", message: `git grep failed: ${stderr}` });
+			).rejects.toMatchObject({ code: "gitFailed", message: `git grep failed: ${stderr.trim()}` });
 		} finally {
 			removeDirectory(bin);
 		}
