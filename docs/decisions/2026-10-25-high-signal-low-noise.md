@@ -24,6 +24,8 @@ The rules that follow from it:
 
 This amends the register decision where the two meet. The register says every element a current renderer prints keeps a defined place. Under this rule, that place may be the ledger, the JSON or telemetry rather than the comment or the terminal. Where the register's table, or a renderer's tests, keep a line on a reader's surface that this rule moves, this rule wins, and the change that moves it updates the table row and the tests together. Row 21's "note" is the first such element: [issue #212](https://github.com/melian-agent/melian/issues/212) moves it.
 
+The `design` lens enforces the rule through its fallback rule, `contradicts-documented-decision`: once this decision is active at the base, a change that contradicts it in words is a finding that quotes it. The rule is generic, so it reads each repository's own decisions and imposes this one on nobody else. The golden `design-contradicts-documented-decision-noise` and its clean twin cover a note repeated per lens.
+
 A test holds a renderer to the rule by rendering a review whose lenses all share one note and asserting the line's count in the output: zero for a note that changes nothing, one for a note that changes trust.
 
 ## Why

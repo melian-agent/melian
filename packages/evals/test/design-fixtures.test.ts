@@ -8,6 +8,14 @@ import { render as originalRender } from "../goldens/design-bound-on-wrong-measu
 import { render as badRender } from "../goldens/design-bound-on-wrong-measure/head/src/bound-on-wrong-measure.ts";
 import { render as TwinBaseRender } from "../goldens/design-bound-on-wrong-measure-clean/base/src/bound-on-wrong-measure.ts";
 import { render as cleanRender } from "../goldens/design-bound-on-wrong-measure-clean/head/src/bound-on-wrong-measure.ts";
+import { renderNotes as originalNotes } from "../goldens/design-contradicts-documented-decision-noise/base/src/comment.ts";
+import { renderNotes as badNotes } from "../goldens/design-contradicts-documented-decision-noise/head/src/comment.ts";
+import { renderNotes as twinBaseNotes } from "../goldens/design-contradicts-documented-decision-noise-clean/base/src/comment.ts";
+import { renderNotes as cleanNotes } from "../goldens/design-contradicts-documented-decision-noise-clean/head/src/comment.ts";
+import { stamp as originalStamp } from "../goldens/design-contradicts-documented-decision/base/src/timestamps.ts";
+import { stamp as badStamp } from "../goldens/design-contradicts-documented-decision/head/src/timestamps.ts";
+import { stamp as twinBaseStamp } from "../goldens/design-contradicts-documented-decision-clean/base/src/timestamps.ts";
+import { stamp as cleanStamp, stamps } from "../goldens/design-contradicts-documented-decision-clean/head/src/timestamps.ts";
 import { readHeader } from "../goldens/design-reimplements-an-authority/head/src/note.ts";
 import { seconds } from "../goldens/design-reimplements-an-authority-no-dependency-clean/head/src/remind.ts";
 import { readHeader as excusedReadHeader } from "../goldens/design-reimplements-an-authority-unsupported-gap/head/src/note.ts";
@@ -27,6 +35,28 @@ import { instructions as cleanInstructions } from "../goldens/design-trust-by-la
 const major = Number(process.versions.node.split(".")[0]);
 
 describe("design rule fixtures", () => {
+	const events = [new Date("2026-10-30T21:00:00Z"), new Date("2026-10-31T22:00:00Z")];
+	it.each([originalStamp, twinBaseStamp, cleanStamp])("stamps UTC ISO 8601 that sorts as text", (stamp) => {
+		expect(events.map(stamp)).toEqual(["2026-10-30T21:00:00.000Z", "2026-10-31T22:00:00.000Z"]);
+	});
+	it("stamps a list through the UTC stamp", () => {
+		expect(stamps(events)).toEqual(["2026-10-30T21:00:00.000Z", "2026-10-31T22:00:00.000Z"]);
+	});
+	it("demonstrates that Sydney local time sorts the earlier event second", () => {
+		const stamped = events.map(badStamp);
+		expect(stamped).toEqual(["31/10/2026, 8:00:00 am", "01/11/2026, 9:00:00 am"]);
+		expect([...stamped].sort()).toEqual(["01/11/2026, 9:00:00 am", "31/10/2026, 8:00:00 am"]);
+	});
+	const runs = Array.from({ length: 8 }, (_, index) => ({ name: `lens${index}`, notes: ["callers unavailable"] }));
+	it.each([originalNotes, twinBaseNotes])("states a shared note once", (renderNotes) => {
+		expect(renderNotes(runs)).toEqual(["- callers unavailable"]);
+	});
+	it("states a shared note once, naming the lenses that share it", () => {
+		expect(cleanNotes(runs.slice(0, 2))).toEqual(["- callers unavailable (lens0, lens1)"]);
+	});
+	it("demonstrates that a shared note prints once per lens", () => {
+		expect(badNotes(runs)).toHaveLength(8);
+	});
 	it.each([originalInstructions, TwinBaseInstructions, cleanInstructions])(
 		"trusts matching provenance and quotes mismatched provenance",
 		(instructions) => {

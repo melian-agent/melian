@@ -1,0 +1,28 @@
+{
+  "pr_title": "Show event times in Sydney time",
+  "comments": [
+    {
+      "comment": "stamp returns a Sydney local-time string, which the base decision forbids: every API timestamp is a UTC ISO 8601 string ending in Z.",
+      "severity": "High",
+      "category": "bug",
+      "file": "src/timestamps.ts",
+      "rule": "contradicts-documented-decision",
+      "source": "lens.design",
+      "cause": "introduced",
+      "failureScenario": "The API returns events at 2026-10-30T21:00:00Z and 2026-10-31T22:00:00Z. The head stamps them `31/10/2026, 8:00:00 am` and `01/11/2026, 9:00:00 am`, with no `Z`. A client that sorts the strings as text, as the decision says clients do, puts the earlier event second.",
+      "evidence": [
+        {
+          "file": "src/timestamps.ts",
+          "line": 2,
+          "role": "cause"
+        },
+        {
+          "file": "docs/decisions/2026-10-01-utc-timestamps.md",
+          "line": 3,
+          "role": "context",
+          "revision": "base"
+        }
+      ]
+    }
+  ]
+}

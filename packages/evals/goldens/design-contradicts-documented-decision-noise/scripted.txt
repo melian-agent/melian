@@ -1,0 +1,16 @@
+src/comment.ts
+
+  P2  line 4  contradicts-documented-decision  (introduced, new, acknowledge, confirmed)
+    Verified: faux/scripted: The scripted verifier traced the claim.
+  `renderNotes` prints each note once per lens that carries it, where the base printed each note once.
+    What: `renderNotes` prints each note once per lens that carries it, where the base printed each note once.
+    Why here: The base design's "High signal, low noise" section says: "A fact is stated once in the comment, never once per lens." The base de-duplicated notes through a `Set`; the head drops it.
+    Failure scenario: Eight lenses run, and each carries the note `callers unavailable for src/a.ts`. The base prints that note once. The head prints it eight times, once under each lens name, so the comment grows by seven lines that tell the reader nothing new.
+    Evidence:
+      cause: src/comment.ts:4
+          return runs.flatMap((run) => run.notes.map((note) => `- ${run.name}: ${note}`));
+      context: docs/design.md:5 at base
+        Every line the review comment shows earns its place: its reader can act on it, or it changes how far they can trust the verdict. A fact is stated once in the comment, never once per lens.
+    What to do: Keep one line per distinct note, naming the lenses that share it if that matters. Add a test that renders two lenses with one shared note and asserts one line.
+
+1 finding in 1 file.
