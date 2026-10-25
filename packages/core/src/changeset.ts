@@ -400,7 +400,38 @@ export class Revision {
 		return { path: file.path, line: line + shift };
 	}
 
-	/** Whether the revision lists `path` at all, under its old path or its new one. */
+	/**
+	 * Where lines `first` to `last` of `path` at this revision's base sit at its head, read as a move between two heads:
+	 * moved by the hunks before them, or, when a hunk changed them, at the first new line after that hunk, which is
+	 * changed, never gone. `undefined` for a file the move deleted or made binary, where no line stands for it.
+	 */
+	moveLines(
+		path: string,
+		first: number,
+		last: number,
+	): { readonly path: string; readonly first: number; readonly last: number; readonly changed: boolean } | undefined {
+		const file = this.files.find((each) => (each.oldPath ?? each.path) === path && each.status !== "added");
+		if (file === undefined) return { path, first, last, changed: false };
+		if (file.status === "deleted" || file.binary) return undefined;
+		const start = this.mapLine(path, first);
+		const end = this.mapLine(path, last);
+		const touching = (hunk: (typeof file.hunks)[number]) =>
+			hunk.oldLines > 0
+				? hunk.oldStart <= last && hunk.oldStart + hunk.oldLines - 1 >= first
+				: hunk.oldStart >= first && hunk.oldStart < last;
+		const hunk = file.hunks.find(touching);
+		if (start !== undefined && end !== undefined && hunk === undefined)
+			return { path: start.path, first: start.line, last: end.line, changed: false };
+		const line =
+			hunk === undefined
+				? (start?.line ?? first)
+				: hunk.newLines > 0
+					? hunk.newStart + hunk.newLines
+					: hunk.newStart + 1;
+		return { path: file.path, first: line, last: line, changed: true };
+	}
+
+	/** Whether the revision lists `path` at all, under its old path or its new one. */ /** Whether the revision lists `path` at all, under its old path or its new one. */
 	lists(path: string): boolean {
 		return this.files.some((file) => file.path === path || file.oldPath === path);
 	}

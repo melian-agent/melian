@@ -13,38 +13,6 @@ export function carriedSource(source: FindingSource): FindingSource {
 	};
 }
 
-// Where lines `first` to `last` of `path` at the earlier head sit at this one: moved by the hunks before them, or, when
-// a hunk changed them, at the first new line after that hunk, which is changed, never gone. `undefined` for a file the
-// move deleted or made binary, where no line stands for it.
-function moved(
-	map: Revision,
-	path: string,
-	first: number,
-	last: number,
-): { path: string; first: number; last: number; changed: boolean } | undefined {
-	const file = map.files.find((each) => (each.oldPath ?? each.path) === path && each.status !== "added");
-	if (file === undefined) return { path, first, last, changed: false };
-	if (file.status === "deleted" || file.binary) return undefined;
-	const start = map.mapLine(path, first);
-	const end = map.mapLine(path, last);
-	const inside = file.hunks.some(
-		(hunk) => hunk.oldLines > 0 && hunk.oldStart <= last && hunk.oldStart + hunk.oldLines - 1 >= first,
-	);
-	if (start !== undefined && end !== undefined && !inside)
-		return { path: start.path, first: start.line, last: end.line, changed: false };
-	const hunk =
-		file.hunks.find(
-			(each) => each.oldLines > 0 && each.oldStart <= last && each.oldStart + each.oldLines - 1 >= first,
-		) ?? file.hunks.find((each) => each.oldLines === 0 && each.oldStart >= first && each.oldStart < last);
-	const line =
-		hunk === undefined
-			? (start?.line ?? first)
-			: hunk.newLines > 0
-				? hunk.newStart + hunk.newLines
-				: hunk.newStart + 1;
-	return { path: file.path, first: line, last: line, changed: true };
-}
-
 /** One sighting the carry copied, and whether the move changed the lines it cites. */
 export interface CarriedSighting {
 	readonly id: string;
@@ -95,14 +63,18 @@ export class SightingCarry {
 					: source.check;
 				if (!check.startsWith("lens.")) continue;
 				const region = sighting.locations[0]!.physicalLocation.region;
-				const location = moved(map, sighting.properties.path, region.startLine, region.endLine ?? region.startLine);
+				const location = map.moveLines(
+					sighting.properties.path,
+					region.startLine,
+					region.endLine ?? region.startLine,
+				);
 				if (location === undefined) {
 					lost.push(id);
 					continue;
 				}
 				const evidence = (sighting.properties.evidence ?? []).flatMap((each) => {
 					if (each.revision === "base") return [each];
-					const target = moved(map, each.file, each.startLine, each.endLine ?? each.startLine);
+					const target = map.moveLines(each.file, each.startLine, each.endLine ?? each.startLine);
 					if (target === undefined) return [];
 					return [
 						{
