@@ -19,6 +19,7 @@ export {
 	type VerdictStatus,
 } from "./adjudication.ts";
 export { parseJsonc } from "./analyser.ts";
+export { carriedCheckPrefix, reportingCheck } from "./carried.ts";
 export type {
 	ChangeOverlap,
 	CodeLocation,

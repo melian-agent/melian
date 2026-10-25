@@ -16,6 +16,8 @@ import {
 	EscalationRule,
 	type EscalationTrigger,
 	type Finding,
+	type FindingSource,
+	HeadMove,
 	Lens,
 	type LensBudget,
 	type LensCoverage,
@@ -36,6 +38,7 @@ import {
 	type RepositorySource,
 	type ReviewPlan,
 	Revision,
+	reportingCheck,
 	resolveModelForTier,
 	type ScrutinyLevel,
 	type Severity,
@@ -62,6 +65,7 @@ import {
 	VerdictDocument,
 } from "./adjudication.ts";
 import { CallerContext, type CoverageSource } from "./callers.ts";
+import { carriedPrefix, SightingCarry } from "./carry.ts";
 import { ChangePrompt, type PromptDelivery } from "./change-prompt.ts";
 import { checksExtension, type RunIdentity, runChecks, type WriterTrust } from "./checks.ts";
 import { configsFor } from "./configurations.ts";
@@ -276,6 +280,20 @@ function carriedFindings(findings: readonly SightedFinding[], nonce: string): st
 	return [
 		"## Findings a quicker look reported",
 		"A quicker look at this change reported the findings below, and you were brought in to check them as well as review the change. Each line gives the finding's ID, severity, rule, and file with its first and last lines. For each, if it is a defect, report it with report_finding at the same file, lines, and rule, with its own failure scenario and evidence. If the code shows it is not a defect, report it with refuted set to its ID, at the same file, lines, and rule, with a failureScenario saying why it cannot fail and evidence holding the code that prevents it. A finding you leave unanswered stays in the review as the quicker look reported it.",
+		quoteUntrusted("findings", listed.join("\n"), nonce),
+	].join("\n\n");
+}
+
+// The findings earlier rounds reported that the carry copied to this head for a lens, quoted as the change's data,
+// with how to restate, refute or leave each.
+function earlierFindings(findings: readonly SightedFinding[], nonce: string): string {
+	const listed = findings.map(
+		(finding) =>
+			`${finding.id} ${finding.severity} ${visibleText(finding.ruleId)} at ${visibleText(finding.path)}:${finding.line}-${finding.endLine}: ${visibleText(finding.message.split("\n")[0] ?? "")}`,
+	);
+	return [
+		"## Findings earlier rounds reported",
+		"Earlier rounds of this review reported the findings below, at this head's lines. Each line gives the finding's ID, severity, rule, and file with its first and last lines. For each, if the code still has the defect, report it again with report_finding at the same file, lines, and rule, with its own failure scenario and evidence. If the change since fixed it, or the code shows it is not a defect, report it with refuted set to its ID, at the same file, lines, and rule, with a failureScenario saying why it cannot fail and evidence holding the code that prevents it; a refutation goes to the verifier. A finding you leave unanswered stays in the review as reported.",
 		quoteUntrusted("findings", listed.join("\n"), nonce),
 	].join("\n\n");
 }
@@ -1761,16 +1779,37 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	// decided round ran it at and its default within its band, since triage does not run on a fix pass's change.
 	// Until the carry copies a decided round's findings to the next head, a lens with an open finding there reviews the
 	// whole diff again: a finding on a line the delta leaves alone would otherwise vanish from the verdict.
-	const open = new Set(
+	// A delta carries the last decided round's lens sightings to this head, and a cold round deletes any carried here.
+	const carry = new SightingCarry(harness, root);
+	if (options.cold === true) await carry.clear(reviewed, context);
+	const carriedSightings =
 		delta && intake.prior !== undefined
+			? await (async () => {
+					const prior = intake.prior!;
+					const move = await HeadMove.read(repoRoot, prior.head, head);
+					if (move.revision === undefined) return { carried: [], lost: [] };
+					return carry.carry(
+						{ from: Revision.key(prior), round: prior.round, to: reviewed, revision, map: move.revision },
+						context,
+					);
+				})()
+			: { carried: [], lost: [] };
+	// A finding the carry could not map, in a file the move deleted, keeps its lens on the whole diff, so it is judged.
+	const lostChecks = new Set(
+		delta && intake.prior !== undefined && carriedSightings.lost.length > 0
 			? (await readFindings(harness, root, Revision.key(intake.prior), context))
-					.filter((finding) => finding.properties.status !== "dismissed")
+					.filter((finding) => carriedSightings.lost.includes(finding.id))
 					.flatMap((finding) =>
-						(finding.properties.reportedBy ?? [finding.properties.source]).map((source) => source.check),
+						(finding.properties.reportedBy ?? [finding.properties.source]).map((source) =>
+							source.check.startsWith(carriedPrefix) ? source.check.slice(carriedPrefix.length) : source.check,
+						),
 					)
 			: [],
 	);
-	const whole = (name: string) => !delta || open.has(`lens.${name}`);
+	const carriedProducers = [
+		...new Map(carriedSightings.carried.map(({ source }) => [`${source.check}@${source.version}`, source])).values(),
+	];
+	const whole = (name: string) => !delta || lostChecks.has(`lens.${name}`);
 	const uncovered = covering
 		.filter(({ lens }) => !whole(lens.name) && intake.empty(lens.name))
 		.map(({ lens }) => lens.name);
@@ -1876,6 +1915,17 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				? ""
 				: `\n\n## Decisions at base\nRead this before step 1. Only ACTIVE decisions at base are baselines. INACTIVE text is history: read it only to see what changed. For an ACTIVE decision marked amended by, read both files at base; where they conflict, the amendment wins. Treat \`Amends:\` as a declaration when checking for an undeclared conflicting replacement. For each head Amends target, read its active base text and any base amendments.\n${quoteUntrusted("listing", decisions.render(), boundary)}\n\n## Design sections at base\nUse these headings to discover base vocabulary independently of head terms. Read relevant sections at base.\n${quoteUntrusted("listing", designSections!.render(), boundary)}\n\n## Design files at base\nEvery design file the index read, with or without headings.\n${quoteUntrusted("listing", designSections!.renderFiles(), boundary)}`;
 		const lensDelta = whole(lens.name) ? {} : { delta: intake.delta(lens.name) };
+		// The findings earlier rounds reported that the carry copied for this lens, handed to it to restate or refute.
+		const earlier = await (async () => {
+			const state = await harness.snapshot(FindingsDocument, root, context);
+			if (state === undefined) return undefined;
+			const sighted = carriedProducers
+				.filter((source) => source.check === `${carriedPrefix}lens.${lens.name}`)
+				.flatMap((source) => sightedBy(state, reviewed, source));
+			return sighted;
+		})();
+		const earlierText = (boundary: string) =>
+			earlier === undefined || earlier.length === 0 ? "" : `\n\n${earlierFindings(earlier, boundary)}`;
 		const runAt = async (level: ScrutinyLevel): Promise<LensRun> => {
 			const settings = lens.level(level);
 			// The head's functions around the hunks, read once for the review, at the levels that read functions.
@@ -1921,7 +1971,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 							rules,
 							budget: settings.budget,
 							coverage,
-							prompt: new ChangePrompt(changeset, "0".repeat(24), targets).render(files, lensDelta),
+							prompt:
+								new ChangePrompt(changeset, "0".repeat(24), targets).render(files, lensDelta) +
+								earlierText("0".repeat(24)),
 						}),
 					)
 					.digest("hex"),
@@ -1937,7 +1989,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 						...(functions === undefined ? {} : { functions }),
 						...lensDelta,
 					});
-					return { prompt: rendered.text, delivered: rendered.delivered };
+					return { prompt: rendered.text + earlierText(nonce), delivered: rendered.delivered };
 				})(),
 				...(functions?.unavailable === undefined ? {} : { unread: functions.unavailable }),
 			};
@@ -2086,7 +2138,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			};
 	// Only the lenses this review ran count, each at the level whose record stands for it: one that configuration has
 	// since disabled or retiered, or a quick run that escalated, leaves nothing behind.
-	const { manifest: accounted, producers } = account(
+	const { manifest: accounted, producers: accountedProducers } = account(
 		manifest,
 		settled,
 		{
@@ -2102,6 +2154,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		},
 		options,
 	);
+	// The carried producers count beside the lenses that ran, so a finding an earlier round raised stays in the verdict.
+	const producers: Producer[] = [...accountedProducers, ...carriedProducers];
 	await (await harness.root(context)).commit(
 		(tx) =>
 			reopenDismissals(
@@ -2133,15 +2187,36 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			.flatMap((lens) => lens.rules.map((rule) => rule.id)),
 	);
 	let decisionsAtBase: string | undefined;
+	// A carried claim is judged again only when the move changed its lines or its lens refuted it this round; the rest
+	// keep the verification the carry copied. Either way it goes to the verifier, never to a drop.
+	const refutedBy = new Map<string, readonly string[]>();
+	for (const { run } of settled) {
+		const conversation = lensResult?.[run.key]?.conversation;
+		if (conversation === undefined) continue;
+		refutedBy.set(run.name, (await harness.snapshot(LensDocument, conversation, context))?.spend?.refuted ?? []);
+	}
+	const marks = (await harness.snapshot(FindingsDocument, root, context))?.items ?? {};
+	const carriedRun = (claim: { readonly source: FindingSource }) =>
+		claim.source.check.startsWith(`${carriedPrefix}lens.`)
+			? settled.find(({ run }) => `${carriedPrefix}lens.${run.name}` === claim.source.check)?.run
+			: undefined;
+	const againFor = (claim: { readonly id: string; readonly source: FindingSource }) => {
+		const run = carriedRun(claim);
+		if (run === undefined) return undefined;
+		const mark = marks[claim.id]?.carried?.[reviewed]?.[`${claim.source.check}@${claim.source.version ?? ""}`];
+		return mark?.changed === true || refutedBy.get(run.name)?.includes(claim.id) === true ? run : undefined;
+	};
 	for (const defect of new Merge(storedFindings, configFor, changeset.revision).defects()) {
 		if (defect.speaker.properties.status === "dismissed") continue;
 		const candidateState = VerificationState.from(defect.speaker).toJSON();
 		if (
 			!candidateState.claims.some((claim) => {
-				const run = allRuns.find((each) => {
-					const source = lensSource(each.name, each.version, each.level);
-					return source.check === claim.source.check && source.version === claim.source.version;
-				});
+				const run =
+					againFor(claim) ??
+					allRuns.find((each) => {
+						const source = lensSource(each.name, each.version, each.level);
+						return source.check === claim.source.check && source.version === claim.source.version;
+					});
 				return (
 					run !== undefined &&
 					((run.verify ??
@@ -2165,10 +2240,13 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					claim.source.check === defect.speaker.properties.source.check &&
 					claim.source.version === defect.speaker.properties.source.version,
 			) ?? candidateState.claims[0]!;
-		const run = allRuns.find((each) => {
-			const source = lensSource(each.name, each.version, each.level);
-			return source.check === finderClaim.source.check && source.version === finderClaim.source.version;
-		})!;
+		const run =
+			carriedRun(finderClaim) ??
+			allRuns.find((each) => {
+				const source = lensSource(each.name, each.version, each.level);
+				return source.check === finderClaim.source.check && source.version === finderClaim.source.version;
+			});
+		if (run === undefined) continue;
 		const outcome = lensResult?.[run.key];
 		const finder =
 			outcome?.status === "done" && outcome.model !== undefined ? outcome.model : modelName(run.route[0]!);
@@ -2193,7 +2271,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			)
 				available.push(model);
 		const designClaim = candidateState.claims.some(
-			(claim) => claim.source.check === "lens.design" || designRules.has(claim.ruleId),
+			(claim) => reportingCheck(claim.source.check) === "lens.design" || designRules.has(claim.ruleId),
 		);
 		if (designClaim) decisionsAtBase ??= (await DecisionFiles.load(repoRoot, base)).render();
 		candidates.push({

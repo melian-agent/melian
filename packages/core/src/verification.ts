@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import Type, { type Static } from "typebox";
+import { reportingCheck } from "./carried.ts";
 import { type Severity, severitySchema } from "./config.ts";
 import type { ChoiceQuestion, QuestionSet } from "./decider.ts";
 import { evidenceLocationSchema } from "./evidence.ts";
@@ -149,7 +150,7 @@ export class VerificationState {
 		const seen = new Set<string>();
 		const claims = [...speaker.claims(), ...(speaker.properties.otherClaims ?? [])].filter((claim) => {
 			const key = JSON.stringify([claim.id, claim.source.check, claim.source.version]);
-			if (!claim.source.check.startsWith("lens.") || seen.has(key)) return false;
+			if (!reportingCheck(claim.source.check).startsWith("lens.") || seen.has(key)) return false;
 			seen.add(key);
 			return true;
 		});

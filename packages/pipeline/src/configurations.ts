@@ -8,6 +8,7 @@ import {
 	type PolicyAt,
 	type RepositorySource,
 	type ResolutionEntry,
+	reportingCheck,
 	scrutinyLevels,
 } from "@melian-agent/core";
 
@@ -40,7 +41,7 @@ export async function configsFor(
 	const lensPaths = new Set(
 		findings
 			.filter(({ properties: { source, reportedBy = [source] } }) =>
-				reportedBy.some(({ check }) => check.startsWith("lens.")),
+				reportedBy.some(({ check }) => reportingCheck(check).startsWith("lens.")),
 			)
 			.map(({ properties }) => properties.path),
 	);
@@ -103,9 +104,9 @@ export async function configsFor(
 	const declared = findings
 		.flatMap(({ properties: { path, source, reportedBy = [source] } }) =>
 			reportedBy
-				.filter(({ check }) => check.startsWith("lens."))
+				.filter(({ check }) => reportingCheck(check).startsWith("lens."))
 				.map(({ check, version }) => {
-					const name = check.slice("lens.".length);
+					const name = reportingCheck(check).slice("lens.".length);
 					const variant = `${name}@${version}`;
 					const entry = Object.hasOwn(lensVariants, variant) ? lensVariants[variant] : defaultsAt.get(path)![name];
 					return JSON.stringify([path, entry]);
