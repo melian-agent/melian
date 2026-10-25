@@ -36,7 +36,7 @@ import {
 	selectGoldens,
 } from "@melian-agent/evals";
 import * as testing from "@melian-agent/pipeline/testing";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 
 const goldens = loadGoldens();
 
@@ -270,7 +270,7 @@ describe("a golden's standards and policy", () => {
 	});
 
 	// The builder reads Melian's repository lenses from the checkout, so no golden commits a copy to keep in step.
-	it("build every golden that names Melian's tier with the checkout's repository lenses, under their live names", () => {
+	it("build every golden that names Melian's tier with the checkout's repository lenses, or its own committed override, under their live names", () => {
 		const melian = join(goldensDirectory, "../../..");
 		const own = readdirSync(join(melian, ".melian/lenses")).sort();
 		expect(own).toEqual(expect.arrayContaining(["correctness", "design", "durability", "removed-behaviour"]));
@@ -280,18 +280,37 @@ describe("a golden's standards and policy", () => {
 		expect(tiered.map((golden) => golden.name)).toEqual(
 			expect.arrayContaining(["durability-clean-upsert", "design-clean"]),
 		);
-		for (const golden of tiered) {
+		// A golden with a genuine override in its base tree goes through the same parity check as the corpus.
+		const override = realpathSync(mkdtempSync(join(tmpdir(), "melian-golden-parity-")));
+		mkdirSync(join(override, "base/.melian/lenses/design"), { recursive: true });
+		mkdirSync(join(override, "head"), { recursive: true });
+		writeFileSync(
+			join(override, "base/.melian/lenses/design/LENS.golden.md"),
+			"---\nname: design\nextends: design\ntier: heavy\n---\n",
+		);
+		writeFileSync(join(override, "base/a.ts"), "export const a = 1;\n");
+		writeFileSync(join(override, "head/a.ts"), "export const a = 2;\n");
+		writeFileSync(join(override, "melian.golden.yaml"), "tiers:\n  full: [lens.design]\n");
+		onTestFinished(() => rmSync(override, { recursive: true, force: true }));
+		for (const golden of [...tiered, { name: "override", directory: override }]) {
 			const { repo } = buildGoldenRepository(golden);
 			try {
-				for (const ref of ["main", "feature"])
-					for (const name of own)
+				// Each tree's own committed lens is its override; every other lens is the checkout's.
+				for (const [ref, tree] of [
+					["main", "base"],
+					["feature", "head"],
+				] as const)
+					for (const name of own) {
+						const committed = join(golden.directory, tree, ".melian/lenses", name, "LENS.golden.md");
+						const expected = existsSync(committed) ? committed : join(melian, ".melian/lenses", name, "LENS.md");
 						expect(
 							execFileSync("git", ["show", `${ref}:.melian/lenses/${name}/LENS.md`], {
 								cwd: repo,
 								encoding: "utf8",
 							}),
 							`${golden.name} ${ref} ${name}`,
-						).toBe(readFileSync(join(melian, ".melian/lenses", name, "LENS.md"), "utf8"));
+						).toBe(readFileSync(expected, "utf8"));
+					}
 			} finally {
 				rmSync(repo, { recursive: true, force: true });
 			}
