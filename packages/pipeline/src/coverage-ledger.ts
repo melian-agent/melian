@@ -233,10 +233,19 @@ export class CoverageLedger {
 			.update(canonical({ config: round.config, source: round.policy ?? null, tools: round.tools }))
 			.digest("hex")
 			.slice(0, 16);
+		// A lens that met injected text may have been steered, so no lens covers the file in the round that first raised
+		// the attempt. A later round reads the file afresh, and its own reading counts, though the finding stands. A
+		// dismissed attempt voids nothing.
+		const raisedBefore = new Set(Object.values(prior?.checks ?? {}).flatMap((check) => check.injected ?? []));
 		const injected = [
 			...new Set(
 				round.findings
-					.filter((finding) => finding.ruleId === injectionAttemptRuleId)
+					.filter(
+						(finding) =>
+							finding.ruleId === injectionAttemptRuleId &&
+							finding.properties.status !== "dismissed" &&
+							!raisedBefore.has(finding.properties.path),
+					)
 					.map((finding) => finding.properties.path),
 			),
 		].sort();

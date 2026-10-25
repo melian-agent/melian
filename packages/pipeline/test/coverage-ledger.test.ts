@@ -177,13 +177,20 @@ describe("the coverage ledger", () => {
 		expect(summary.complete).toBe(false);
 		expect(summary.rounds).toEqual(["r1", "r2"]);
 		expect(summary.gaps).toEqual([
-			{ check: "lens.correctness", file: "src/b.ts", lines: [[9, 9]], reason: "lens ended at its budget in r2" },
+			{
+				check: "lens.correctness",
+				file: "src/b.ts",
+				lines: [[9, 9]],
+				reason: "lens ended at its budget in r2",
+				own: true,
+			},
 			{
 				check: "lens.correctness",
 				file: "src/b.ts",
 				revision: "base",
 				lines: [[9, 9]],
 				reason: "lens ended at its budget in r2",
+				own: true,
 			},
 		]);
 	});

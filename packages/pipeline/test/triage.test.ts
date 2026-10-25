@@ -448,7 +448,7 @@ describe("triage", () => {
 
 		const reviewed = await review({ decider, config: optional });
 
-		expect(decider.requests[0]!.state).toContain("[The diff continues; the remaining files are omitted.]");
+		expect(decider.requests[0]!.state).toContain("[The diff continues; the remaining hunks are omitted.]");
 		expect(lensRecord(reviewed)).toMatchObject({ status: "ran", level: "quick" });
 		expect(lensRecord(reviewed)!.reason).toContain("triage input was cut, so no lens could skip");
 		expect(sent[correctness]).toHaveLength(1);
@@ -2113,6 +2113,11 @@ describe("decision providers (issue #24)", () => {
 				name: "decisions.fast",
 				status: "skipped",
 				reason: "decisions.provider is clef, and Melian has no adapter for a decision provider yet",
+			},
+			{
+				name: "review.coverage",
+				status: "skipped",
+				reason: "coverage is incomplete: decisions.fast did not cover the diff, as its record says",
 			},
 		]);
 	});

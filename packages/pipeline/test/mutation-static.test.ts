@@ -2399,7 +2399,10 @@ cp '${canned}' reports/mutation/mutation.json`,
 				commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 1") });
 				const reused = await judge();
 				expect(reused.status).toBe("not-reviewed");
-				expect(reused.notRun).toMatchObject([{ name: "static.mutation", status: "provisional" }]);
+				expect(reused.notRun).toMatchObject([
+					{ name: "static.mutation", status: "provisional" },
+					{ name: "review.coverage", status: "skipped" },
+				]);
 				expect((await judge(true)).status).toBe("passed");
 			} finally {
 				await review.close();

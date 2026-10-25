@@ -306,11 +306,13 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 			"standards.trust",
 			"abort.replaced",
 			"bands",
+			"coverage.intake",
 			"routes",
 			"lenses.prepare",
 			"callers.coverage",
 			"verification.prepare",
 			"adjudication.prepare",
+			"coverage.compute",
 			"verdict.read",
 			"coverage.record",
 		]);

@@ -178,6 +178,8 @@ export interface ScenarioReview {
 	readonly policy?: "worktree";
 	/** The records of the checks that run without a model; all `ran` by default. */
 	readonly checks?: CheckRecord[];
+	/** Review the whole diff from nothing, as a scenario whose lens judges the same code anew at each head must. */
+	readonly cold?: boolean;
 }
 
 // Opens a harness that only reviews, as the CLI's review does, so a publish task a crash left stays put.
@@ -234,6 +236,7 @@ export async function reviewScenario(
 		policy: source,
 		rerun,
 		origin,
+		...(how.cold === true ? { cold: true } : {}),
 		// The default tiers' checks that run without a model, recorded as ran, as runChecks records them.
 		checks: how.checks ?? [
 			{ name: "guardrails", status: "ran" },

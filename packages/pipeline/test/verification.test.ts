@@ -963,7 +963,10 @@ describe("the verifier", () => {
 			verdict: {
 				status: "not-reviewed",
 				blocking: false,
-				notRun: [expect.objectContaining({ name: "verifier", status: "failed", reason })],
+				notRun: [
+					expect.objectContaining({ name: "verifier", status: "failed", reason }),
+					expect.objectContaining({ name: "review.coverage", status: "skipped" }),
+				],
 				findings: { advisory: [expect.anything()], block: [], acknowledge: [] },
 			},
 		});
@@ -1578,7 +1581,10 @@ describe("the verifier", () => {
 				status: "not-reviewed",
 				blocking: false,
 				findings: { advisory: [expect.anything()] },
-				notRun: [expect.objectContaining({ name: "verifier", status: "failed" })],
+				notRun: [
+					expect.objectContaining({ name: "verifier", status: "failed" }),
+					expect.objectContaining({ name: "review.coverage", status: "skipped" }),
+				],
 			},
 		});
 		await expect(review()).rejects.toMatchObject({ code: "verifierFailed" });

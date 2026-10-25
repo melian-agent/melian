@@ -3016,7 +3016,7 @@ describe("adjudication", () => {
 			expect(verdict).toMatchObject({
 				status: "not-reviewed",
 				blocking: false,
-				notRun: [{ name: "static.biome", status: "skipped", reason: "no record" }, coverageGap("static.biome")],
+				notRun: [coverageGap("static.biome"), { name: "static.biome", status: "skipped", reason: "no record" }],
 			});
 		});
 
