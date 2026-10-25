@@ -430,6 +430,18 @@ describe("CoverageRecord's order and edges", () => {
 		expect(Object.keys(gap)).not.toContain("unit");
 	});
 
+	it("renders every round that partly covers an incomplete diff", () => {
+		const partly = record({
+			"lens.correctness": lens({
+				covered: [
+					{ round: "r1", level: "careful", head: { "src/a.ts": [[1, 1]] }, base: {}, units: {} },
+					{ level: "careful", head: { "src/a.ts": [[2, 2]] }, base: {}, units: {} },
+				],
+			}),
+		});
+		expect(partly.render()).toMatch(/^Coverage: incomplete, partly from r1, r2\.\n/);
+	});
+
 	it("renders a refused record with no covering round", () => {
 		expect(
 			record({ guardrails: range() }, { refused: "coverage is not recorded for a fork's head" }).render(),

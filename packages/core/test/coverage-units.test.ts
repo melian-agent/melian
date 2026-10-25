@@ -284,6 +284,14 @@ describe("Revision.mapLine between two heads", () => {
 		expect(moved.filter((line) => line !== undefined).length).toBeLessThan(6);
 	});
 
+	it("gives up every line of a deleted empty file, which has no hunk", async () => {
+		writeFiles(repo, { "empty.json": "", "a.ts": numbered(2) });
+		const first = commit("first");
+		rmSync(join(repo, "empty.json"));
+		const second = commit("second");
+		expect((await between(first, second)).mapLine("empty.json", 1)).toBeUndefined();
+	});
+
 	it("gives up the lines of a changed binary file", async () => {
 		writeFiles(repo, { "logo.png": Buffer.from([0x89, 0x50, 0x00, 0x01]) });
 		const first = commit("first");
@@ -333,6 +341,8 @@ describe("line ranges at their edges", () => {
 		expect(subtractRanges([[5, 9]], [[5, 5]])).toEqual([[6, 9]]);
 		expect(subtractRanges([[5, 5]], [[5, 5]])).toEqual([]);
 		expect(subtractRanges([[5, 6]], [[6, 6]])).toEqual([[5, 5]]);
+		expect(subtractRanges([[5, 9]], [[12, 14]])).toEqual([[5, 9]]);
+		expect(subtractRanges([[5, 9]], [[5, 8]])).toEqual([[9, 9]]);
 	});
 });
 
