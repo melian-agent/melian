@@ -1,9 +1,8 @@
 src/triage.ts
 
-  P1  line 20  wrong-result  (introduced, new, block, confirmed)
+  P1 | Blocks merge | Correctness | Verifier confirmed | New in this change
     Verified: faux/scripted: The scripted verifier traced the claim.
   downgrade's instructions ask for the priority one step below the ticket's, and its request sends only the title and body.
-    What: downgrade's instructions ask for the priority one step below the ticket's, and its request sends only the title and body.
     Why here: This change wrote downgrade and its request.
     Failure scenario: downgrade({ title, body, priority: "P1" }, model) sends only the title and body, while its instructions ask for the priority one step below the ticket's own. The model cannot see that the ticket is P1, so it guesses from the text, and an answer of P3 for a ticket it judges less urgent lowers a P1 two steps, where the instructions allow one.
     Evidence:
@@ -12,13 +11,13 @@ src/triage.ts
       context: src/triage.ts:19
               "If the ticket is less urgent than its priority says, answer with the priority one step lower. Otherwise answer with its priority.",
     What to do: Send ticket.priority in the input, as input.priority.
+    Rule wrong-result | Line 20 | Status new
 
 test/triage.test.ts
 
-  P2  line 20  fake-answers-unasked  (introduced, new, acknowledge, confirmed)
+  P2 | Needs acknowledgement | Tests | Verifier confirmed | New in this change
     Verified: faux/scripted: The scripted verifier traced the claim.
   The fake answers P3 to every request, and the request downgrade builds never carries the ticket's priority, which its instructions ask the model to lower.
-    What: The fake answers P3 to every request, and the request downgrade builds never carries the ticket's priority, which its instructions ask the model to lower.
     Why here: This change added downgrade and its test together, and the test's fake answers a question the real request cannot answer.
     Failure scenario: downgrade sends only { title, body }, while its instructions ask for the priority one step below the ticket's priority, which the request never carries. The test's fake answers "P3" to every request, so the test passes whatever the request holds: send a P1 ticket, or change the instructions to any other question, and it still returns P3. A real model shown only the title and body cannot know the ticket was P2, so it guesses, and a P1 ticket it judges less urgent can come back P3, two steps down.
     Evidence:
@@ -29,5 +28,6 @@ test/triage.test.ts
       context: src/triage.ts:20
             input: { title: ticket.title, body: ticket.body },
     What to do: Send the priority in downgrade's input, and give the fake an answer that reads request.input.priority, so a request without it fails the test.
+    Rule fake-answers-unasked | Line 20 | Status new
 
 2 findings in 2 files.

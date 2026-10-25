@@ -259,7 +259,7 @@ describe("a finding as the verifier judged it", () => {
 		expect(judged.original()).toBe("P1");
 		expect(judged.lowered()).toEqual({ from: "P1", reason: "One caller validates." });
 		expect(Finding.parse(judged.toJSON()).id).toBe(finding("lens.a").id);
-		expect(judged.render()).toContain("P2, lowered from P1  line 12");
+		expect(judged.render()).toContain("  P2, lowered from P1 | ");
 		expect(judged.render()).toContain("    Lowered from P1: One caller validates.");
 	});
 

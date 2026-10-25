@@ -1,9 +1,8 @@
 src/errors.ts
 
-  P1  line 5  wrong-result  (introduced, new, block, confirmed)
+  P1 | Blocks merge | Correctness | Verifier confirmed | New in this change
     Verified: faux/scripted: The scripted verifier traced the claim.
   recentErrors takes the last count entries with slice(-count), and returns every entry for a count of 0. It is one of three instances of one shape, in src/errors.ts, src/messages.ts and src/warnings.ts.
-    What: recentErrors takes the last count entries with slice(-count), and returns every entry for a count of 0. It is one of three instances of one shape, in src/errors.ts, src/messages.ts and src/warnings.ts.
     Why here: This change wrote the three readers and declares 0 a count they accept, the one that hides the section.
     Failure scenario: recentErrors(log, 0) evaluates slice(-0), which is slice(0), and returns every entry rather than none, so a viewer who set the section to 0 to hide it sees the error history. It is one of three readers with this shape; recentMessages in src/messages.ts and recentWarnings in src/warnings.ts fail the same way.
     Evidence:
@@ -16,13 +15,13 @@ src/errors.ts
       context: src/errors.ts:3
         // `count` is how many entries the viewer asked to see: from 0 to 50, where 0 hides the section.
     What to do: Return an empty list when count is 0, or take entries.slice(Math.max(0, length - count)), in all three readers.
+    Rule wrong-result | Line 5 | Status new
 
 src/messages.ts
 
-  P1  line 5  wrong-result  (introduced, new, block, confirmed)
+  P1 | Blocks merge | Correctness | Verifier confirmed | New in this change
     Verified: faux/scripted: The scripted verifier traced the claim.
   recentMessages takes the last count entries with slice(-count), and returns every entry for a count of 0. It is one of three instances of one shape, in src/errors.ts, src/messages.ts and src/warnings.ts.
-    What: recentMessages takes the last count entries with slice(-count), and returns every entry for a count of 0. It is one of three instances of one shape, in src/errors.ts, src/messages.ts and src/warnings.ts.
     Why here: This change wrote the three readers and declares 0 a count they accept, the one that hides the section.
     Failure scenario: recentMessages(log, 0) evaluates slice(-0), which is slice(0), and returns every entry rather than none, so a viewer who set the section to 0 to hide it sees the whole log. It is one of three readers with this shape; recentErrors in src/errors.ts and recentWarnings in src/warnings.ts fail the same way.
     Evidence:
@@ -35,13 +34,13 @@ src/messages.ts
       context: src/messages.ts:3
         // `count` is how many entries the viewer asked to see: from 0 to 50, where 0 hides the section.
     What to do: Return an empty list when count is 0, or take entries.slice(Math.max(0, length - count)), in all three readers.
+    Rule wrong-result | Line 5 | Status new
 
 src/warnings.ts
 
-  P1  line 5  wrong-result  (introduced, new, block, confirmed)
+  P1 | Blocks merge | Correctness | Verifier confirmed | New in this change
     Verified: faux/scripted: The scripted verifier traced the claim.
   recentWarnings takes the last count entries with slice(-count), and returns every entry for a count of 0. It is one of three instances of one shape, in src/errors.ts, src/messages.ts and src/warnings.ts.
-    What: recentWarnings takes the last count entries with slice(-count), and returns every entry for a count of 0. It is one of three instances of one shape, in src/errors.ts, src/messages.ts and src/warnings.ts.
     Why here: This change wrote the three readers and declares 0 a count they accept, the one that hides the section.
     Failure scenario: recentWarnings(log, 0) evaluates slice(-0), which is slice(0), and returns every entry rather than none, so a viewer who set the section to 0 to hide it sees the warning history. It is one of three readers with this shape; recentErrors in src/errors.ts and recentMessages in src/messages.ts fail the same way.
     Evidence:
@@ -54,5 +53,6 @@ src/warnings.ts
       context: src/warnings.ts:3
         // `count` is how many entries the viewer asked to see: from 0 to 50, where 0 hides the section.
     What to do: Return an empty list when count is 0, or take entries.slice(Math.max(0, length - count)), in all three readers.
+    Rule wrong-result | Line 5 | Status new
 
 3 findings in 3 files.

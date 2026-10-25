@@ -1,5 +1,5 @@
 import { rmSync } from "node:fs";
-import { createGitHubProvider } from "@melian-agent/github";
+import { createGitHubProvider, markersIn, parseMarker } from "@melian-agent/github";
 import {
 	backgroundContext as context,
 	createMemoryStorage,
@@ -95,6 +95,13 @@ describe("advisory publication", { timeout: 60_000 }, () => {
 		expect(state.comments).toHaveLength(1);
 		expect(state.resolvedThreads).toEqual([thread]);
 		expect(state.comments[0]!.body).toContain(`Addressed in commit ${lowered.changeset.revision.head.slice(0, 12)}`);
+		// The finding marker stays first, and the resolved marker follows the sentence.
+		const edited = state.comments[0]!.body.split("\n");
+		expect(parseMarker(edited[0]!)).toMatchObject({ kind: "finding", id });
+		const sentence = edited.indexOf(`Addressed in commit ${lowered.changeset.revision.head.slice(0, 12)}.`);
+		expect(parseMarker(edited[sentence + 1]!)).toMatchObject({ kind: "resolved", id });
+		expect(edited.slice(sentence + 2)).toEqual([]);
+		expect(markersIn(state.comments[0]!.body).map((found) => found.kind)).toEqual(["finding", "resolved"]);
 		expect(state.reviews[2]!.body).toContain(`/blob/${lowered.changeset.revision.head}/src/user.ts#L19`);
 		const recorded = await readPublished(
 			harness!,

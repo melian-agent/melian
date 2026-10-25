@@ -1,9 +1,8 @@
 packages/pipeline/src/walkthrough.ts
 
-  P1  line 32  stale-task-write  (introduced, new, block, confirmed)
+  P1 | Blocks merge | Durability | Verifier confirmed | New in this change
     Verified: faux/scripted: The scripted verifier traced the claim.
   The walkthrough task's final commit stores its walkthrough for the revision whichever task the review index names for it now.
-    What: The walkthrough task's final commit stores its walkthrough for the revision whichever task the review index names for it now.
     Why here: This change records each walkthrough task in the index in place of the last, but a crashed task resumes whenever the harness does, and nothing stops it writing after its replacement. Adjudication guards the same case in its final commit.
     Failure scenario: writeWalkthrough for revision R creates task T1, and the process is killed while summarise waits on the model. A dismissal decides R's verdict again, and the next writeWalkthrough creates T2 and names it in the index. Its harness.resume() also restarts T1, which reruns with the old verdict in its input; when T1's model call returns after T2's, T1 commits the old walkthrough over T2's, and publish renders a walkthrough that still lists the dismissed finding.
     Evidence:
@@ -19,5 +18,6 @@ packages/pipeline/src/walkthrough.ts
                 if (index.revisions[revision]?.adjudication !== task.id)
                   return { status: "terminal", outcome: { status: "completed", result: { kind: "superseded" } } };
     What to do: In the final commit, read ReviewIndex and end the task superseded, writing nothing, unless the index names this task for the revision, as AdjudicationTask does.
+    Rule stale-task-write | Line 32 | Status new
 
 1 finding in 1 file.
