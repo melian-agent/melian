@@ -222,6 +222,7 @@ it("lists spans in time order after the stages, then the untimed gaps", () => {
 	});
 	expect(telemetry.render()).toBe(
 		[
+			"Run: 4.0 s · 0 tokens · $0.00",
 			"melian.check guardrails completed start=100 end=200 duration=100ms",
 			"Total: Token usage unavailable.",
 			"span startup start=0 end=10 duration=10ms",

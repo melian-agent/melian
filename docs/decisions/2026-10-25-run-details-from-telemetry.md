@@ -2,7 +2,7 @@
 
 Status: accepted by the maintainer, 2026-10-25, in [issue #213](https://github.com/melian-agent/melian/issues/213).
 
-Amends: [Ledger publication projection](2026-10-05-ledger-publication-projection.md), which values the visible run details render.
+Amends: [Ledger ownership from the posted review](2026-10-06-ledger-review-author.md), the values the visible run details render, which it carries from the ledger projection decision it succeeded.
 
 ## Problem
 
