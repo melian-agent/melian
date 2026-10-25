@@ -25,10 +25,12 @@ import {
 	DismissHarness,
 	openPublishHarness,
 	openReviewHarness,
+	PrepareSpans,
 	type Publication,
 	PublishError,
 	publishReview,
 	ReviewError,
+	type ReviewHarness,
 	type ReviewOrigin,
 	RoundReader,
 	readProvenance,
@@ -66,6 +68,8 @@ export interface Io {
 	readonly executable?: string;
 	/** A seam for tests: the decider triage asks, in place of the LLM fallback, which scripted mode never triages with. */
 	readonly decide?: typeof fallbackDecider;
+	/** When the process started, in epoch milliseconds, so a review's spans cover its startup. */
+	readonly startedAt?: number;
 }
 
 /**
@@ -141,6 +145,8 @@ export async function review(
 	},
 ): Promise<number> {
 	const beganAt = Date.now();
+	const spans = PrepareSpans.start("startup", io.startedAt ?? beganAt);
+	spans.step("resolve");
 	const target = parseTarget(argument);
 	let changeset: Changeset;
 	let source: RepositorySource;
@@ -174,10 +180,13 @@ export async function review(
 	if (options.trustHead === true) writer = { trusted: true, by: "reviewer" };
 	const { repoRoot } = changeset;
 	const paths = changeset.revision.paths();
+	spans.step("lenses.load");
 	const lenses = await Lens.load(repoRoot, source, paths);
+	spans.step("standards.load");
 	const standardsSource =
 		source.kind === "revision" ? source : ({ kind: "revision", commit: changeset.revision.head } as const);
 	const standards = await Standards.load(repoRoot, standardsSource, paths);
+	spans.step("config");
 	const policy = await loadConfig(repoRoot, source, ".");
 	const { config: loaded } = policy;
 	// Under --trust-head the reviewer has read the working tree's melian.yaml, so its mutation settings stand. Without the
@@ -195,16 +204,19 @@ export async function review(
 				}
 			: loaded;
 	const tier = loaded.stages["pull-request"] ?? "full";
+	spans.step("secrets");
 	const secrets = await loadSecrets(repoRoot, userFiles(io.env).secrets);
 	for (const warning of secrets.warnings) io.stderr(`melian: ${warning}\n`);
 	const refusal = decisionProviderRefusal(loaded);
 	if (refusal !== undefined) throw new CliError(refusal);
+	spans.step("models");
 	const { models, plan, retry } = await reviewModels(io.env, policy, lenses, {
 		model: options.model,
 		checks: checksOfTier(loaded, tier),
 		credentials: secrets.credentials,
 	});
 	for (const line of plan.summary().split("\n").filter(Boolean)) io.stderr(`melian: ${line}\n`);
+	spans.step("triage.create");
 	const selected = new Set(Lens.select(lenses, loaded, paths).map(({ lens }) => `${lens.name}\0${lens.scope}`));
 	const credentialPlan = plan.toJSON();
 	credentialPlan.lenses = credentialPlan.lenses.filter((lens) => selected.has(`${lens.name}\0${lens.scope ?? ""}`));
@@ -217,6 +229,8 @@ export async function review(
 		models,
 		...(io.decide === undefined ? {} : { decide: io.decide }),
 	});
+	const unlockModels = (providers: readonly string[]) => spans.time("unlock", () => triage.unlockModels(providers));
+	spans.step("storage.open");
 	const path = await storagePath(repoRoot, changeset.id, io.env, isScripted(io.env));
 	// Without the publish extension, so a publication a crash interrupted waits for melian publish rather than posting
 	// from a review.
@@ -228,11 +242,13 @@ export async function review(
 	});
 	const { harness } = reviewHarness;
 	try {
+		spans.step("resume");
 		// A task a crash left unfinished resumes at the first wait below, so its commands run before it.
 		const resumed = await reviewHarness.resumedProviders(context);
-		await triage.unlockModels(resumed);
+		await unlockModels(resumed);
 		// Caller context needs the graph that deterministic checks produce.
 		const rootConversationId = (await harness.root(context)).id;
+		spans.end();
 		const checks = await runChecks(
 			harness,
 			{
@@ -247,6 +263,7 @@ export async function review(
 			},
 			context,
 		);
+		spans.step("callers");
 		const callerLenses = new Set(
 			checksOfTier(loaded, tier)
 				.filter((name) => name.startsWith("lens."))
@@ -275,6 +292,7 @@ export async function review(
 					),
 					context,
 					changeset.revision.files.map((file) => file.path),
+					spans,
 				)
 			: undefined;
 		let verdict: Verdict;
@@ -288,6 +306,8 @@ export async function review(
 				models,
 				plan,
 				...triage.reviewOptions(),
+				unlockModels,
+				spans,
 				policy: source,
 				tier,
 				checks: checks.records,
@@ -301,7 +321,8 @@ export async function review(
 			io.stderr(`melian: ${visibleText(error.message)}\n`);
 			verdict = error.verdict;
 		}
-		if (target.kind === "pullRequest" && options.walkthrough !== false)
+		if (target.kind === "pullRequest" && options.walkthrough !== false) {
+			spans.end();
 			await summarizeReview({
 				harness,
 				changeset,
@@ -311,15 +332,17 @@ export async function review(
 				// The walkthrough is published, so it never names a credential; the terminal does.
 				unlockModels: async (providers) => {
 					try {
-						await triage.unlockModels(providers);
+						await unlockModels(providers);
 					} catch (error) {
 						io.stderr(`melian: ${visibleText(error instanceof Error ? error.message : String(error))}\n`);
 						throw error;
 					}
 				},
 			});
+		}
+		spans.step("output");
 		const outcome = new ReviewOutcome(verdict);
-		const timings = await reviewTimings(storage, revisionKey(changeset.revision), beganAt, io);
+		const timings = await reviewTimings(reviewHarness, storage, spans, revisionKey(changeset.revision), beganAt, io);
 		io.stderr(timings.slowest());
 		io.stdout(
 			options.json
@@ -328,7 +351,7 @@ export async function review(
 		);
 		return outcome.exitCode();
 	} catch (error) {
-		const timings = await reviewTimings(storage, revisionKey(changeset.revision), beganAt, io);
+		const timings = await reviewTimings(reviewHarness, storage, spans, revisionKey(changeset.revision), beganAt, io);
 		io.stderr(timings.slowest());
 		if (options.json)
 			io.stdout(
@@ -347,13 +370,17 @@ export async function review(
 	}
 }
 
+// The spans end where the record is stored, just before the verdict prints, so the record covers the whole review.
 async function reviewTimings(
+	reviewHarness: ReviewHarness,
 	storage: Awaited<ReturnType<typeof openStorage>>,
+	spans: PrepareSpans,
 	revision: string,
 	before: number,
 	io: Io,
 ): Promise<StageTelemetry> {
 	try {
+		await spans.record(reviewHarness.harness, revision, context);
 		return await TelemetryReader.open(storage).read(revision, before);
 	} catch (error) {
 		io.stderr(
@@ -696,7 +723,8 @@ export async function telemetry(io: Io, argument: string, options: { readonly js
 	const storage = await openStorage(path);
 	try {
 		const timings = await TelemetryReader.open(storage).read(revisionKey(stored.changeset.revision));
-		if (timings.stages.length === 0) throw new CliError("No stage telemetry is stored for this revision.");
+		if (timings.stages.length === 0 && timings.prepare === undefined)
+			throw new CliError("No stage telemetry is stored for this revision.");
 		io.stdout(options.json ? `${JSON.stringify(timings.toJSON(), null, 2)}\n` : timings.render());
 		return 0;
 	} finally {

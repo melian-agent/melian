@@ -128,6 +128,7 @@ import {
 	undecided,
 } from "./review-index.ts";
 import { RoundWriter } from "./rounds.ts";
+import { PrepareSpans } from "./spans.ts";
 import { SummaryTask, summarizeExtension } from "./summarize.ts";
 import { injectionAttemptRule, quoteUntrusted, reviewNonce, triageBoundary } from "./untrusted.ts";
 import {
@@ -937,6 +938,8 @@ interface ReviewSettings {
 	readonly writer?: WriterTrust;
 	/** Run `static.mutation` from nothing in the automatic checks, as a review that may pass must; see `RunChecksInput`. */
 	readonly cold?: boolean;
+	/** The host's spans, which the review's own steps between tasks join; the host stores them. */
+	readonly spans?: PrepareSpans;
 	readonly context?: Context;
 }
 
@@ -1559,6 +1562,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		});
 	}
 	const tier = request.tier ?? request.config.stages["pull-request"] ?? "full";
+	// The host's open step ends before any check runs, so it never covers a check task.
+	request.spans?.end();
 	const checked = automatic
 		? await runChecks(
 				harness,
@@ -1577,9 +1582,13 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		: undefined;
 	const options = planned({ ...request, checks: checked?.records ?? request.checks ?? [] });
 	const { changeset, config, standards, models } = options;
+	// A host that keeps no spans gets a recorder nobody stores, on a clock that reads nothing.
+	const spans = options.spans ?? PrepareSpans.start("review", 0, () => 0);
+	spans.step("standards.trust");
 	const standardsSource =
 		standards instanceof Standards && (await standards.trustedBy(options.policy)) ? "revision" : "worktree";
 	const context = options.context ?? backgroundContext;
+	spans.step("abort.replaced");
 	await abortReplacedRuns(harness, context);
 	const root = (await harness.root(context)).id;
 	// A file's old path too, so a move out of a lens's paths still runs the lens on what left them.
@@ -1593,7 +1602,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	);
 	const nonce = reviewNonce();
 	let headFunctions: Promise<EnclosingFunctions> | undefined;
-	const enclosing = () => (headFunctions ??= EnclosingFunctions.read(changeset));
+	const enclosing = () => (headFunctions ??= spans.time("functions", () => EnclosingFunctions.read(changeset)));
 	const { unlockModels } = options;
 	const prompt = new ChangePrompt(changeset, nonce);
 	const { repoRoot, revision } = changeset;
@@ -1607,7 +1616,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			.map((file) => file.path);
 		return { ...selection, moved, covers: [...files, ...moved] };
 	});
+	spans.step("bands");
 	const bands = await bandsOf(covering, options);
+	spans.step("routes");
 	const tiers = new Set(covering.flatMap(({ lens }) => lens.declaredLevels().map((level) => lens.level(level).tier)));
 	const routes = new Map(
 		await Promise.all([...tiers].map(async (tier) => [tier, await routeOf(tier, config, models)] as const)),
@@ -1652,6 +1663,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		}),
 	);
 	const triageInput = prompt.renderInput(undefined, { tools: false });
+	spans.end();
 	const triaged =
 		options.decider === undefined || covering.length === 0
 			? {}
@@ -1672,6 +1684,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					options.triageProviders ?? [],
 					unlockModels,
 				);
+	spans.step("lenses.prepare");
 	const choices = new Map(
 		covering.map(({ lens }) => {
 			const levels = runnable.get(lens)!;
@@ -1758,12 +1771,18 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			? lens.rules
 			: [...lens.rules, injectionAttemptRule];
 		const ruled = Lens.from({ ...lens.toJSON(), rules });
-		const decisions = lens.name === "design" ? await DecisionFiles.load(repoRoot, base) : undefined;
-		const designSections = lens.name === "design" ? await DesignSections.load(repoRoot, base) : undefined;
+		const decisions =
+			lens.name === "design"
+				? await spans.time("design.decisions", () => DecisionFiles.load(repoRoot, base))
+				: undefined;
+		const designSections =
+			lens.name === "design"
+				? await spans.time("design.sections", () => DesignSections.load(repoRoot, base))
+				: undefined;
 		const baseline = (boundary: string) =>
 			decisions === undefined
 				? ""
-				: `\n\n## Decisions at base\nRead this before step 1. Only ACTIVE decisions at base are baselines. INACTIVE text is history: read it only to see what changed. For an ACTIVE decision marked amended by, read both files at base; where they conflict, the amendment wins. Treat \`Amends:\` as a declaration when checking for an undeclared conflicting replacement. For each head Amends target, read its active base text and any base amendments.\n${quoteUntrusted("listing", decisions.render(), boundary)}\n\n## Design sections at base\nUse these headings to discover base vocabulary independently of head terms. Read relevant sections at base.\n${quoteUntrusted("listing", designSections!.render(), boundary)}`;
+				: `\n\n## Decisions at base\nRead this before step 1. Only ACTIVE decisions at base are baselines. INACTIVE text is history: read it only to see what changed. For an ACTIVE decision marked amended by, read both files at base; where they conflict, the amendment wins. Treat \`Amends:\` as a declaration when checking for an undeclared conflicting replacement. For each head Amends target, read its active base text and any base amendments.\n${quoteUntrusted("listing", decisions.render(), boundary)}\n\n## Design sections at base\nUse these headings to discover base vocabulary independently of head terms. Read relevant sections at base.\n${quoteUntrusted("listing", designSections!.render(), boundary)}\n\n## Design files at base\nEvery design file the index read, with or without headings.\n${quoteUntrusted("listing", designSections!.renderFiles(), boundary)}`;
 		const runAt = async (level: ScrutinyLevel): Promise<LensRun> => {
 			const settings = lens.level(level);
 			// The head's functions around the hunks, read once for the review, at the levels that read functions.
@@ -1857,6 +1876,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		? { notes: callerNotes, ...(coverageSource ? { coverage: coverageSource } : {}) }
 		: undefined;
 	const lensInput = new LensTaskInput(root, state, lenses, escalateAt, callersInput).toJSON();
+	spans.end();
 	const {
 		result: lensResult,
 		ran,
@@ -1885,6 +1905,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		triaged.decision !== undefined && settling.length > 0 && settling.every(({ run }) => run.level === "quick")
 			? ["triage chose quick for every lens, so the whole review looked lightly, at a change that can steer triage"]
 			: [];
+	spans.step("callers.coverage");
 	// The task's own input says what its lenses read, so a call that attached to another's task records that call's.
 	const rendered = ran.callers;
 	const callers = await callersFor(
@@ -1918,6 +1939,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		},
 		context,
 	);
+	spans.step("verification.prepare");
 	const settled = settling.map((settledLens) => {
 		const { run } = settledLens;
 		const key = `${run.name}@${run.version}`;
@@ -2119,6 +2141,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				version: verifierVersion,
 				candidates,
 			};
+			spans.end();
 			const verifying = await startVerification(
 				harness,
 				verificationInput,
@@ -2186,6 +2209,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			}
 		}
 	}
+	spans.step("adjudication.prepare");
 	const checks =
 		request.plan?.mark(
 			accounted.records(),
@@ -2244,6 +2268,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			})),
 		standards: [...new Set(settled.flatMap(({ run }) => run.standards ?? []))],
 	};
+	spans.end();
 	const adjudication = await startAdjudication(
 		harness,
 		input,
@@ -2267,6 +2292,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	};
 	await refuseIfBlocked(harness, adjudication, [], inIndex(forget), context);
 	const adjudicated = (await harness.waitForTask(adjudication, context)).state.outcome;
+	spans.step("verdict.read");
 	const findings = await readFindings(harness, root, reviewed, context, { producers });
 	const verdict = await readVerdict(harness, root, reviewed, context);
 	const superseded = adjudicated.status === "completed" && adjudicated.result === "superseded";

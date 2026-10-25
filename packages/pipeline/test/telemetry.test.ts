@@ -49,6 +49,7 @@ class ReaderFixture {
 			async (id) => this.documents.find(({ record }) => record.id === id)?.snapshot,
 		);
 		vi.spyOn(this.storage, "task").mockImplementation(async (id) => this.tasks.get(id));
+		vi.spyOn(this.storage, "scanEntries").mockResolvedValue({ items: [] });
 	}
 	document(
 		token: { definition: { kind: string; version: number } },
