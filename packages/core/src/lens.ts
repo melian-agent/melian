@@ -16,6 +16,7 @@ import {
 	severitySchema,
 } from "./config.ts";
 import type { ChoiceQuestion, Decision } from "./decider.ts";
+import { tableEmojis } from "./emoji.ts";
 import { LensError } from "./errors.ts";
 import { maxEvidenceLines, maxFailureScenarioLength } from "./findings.ts";
 import { anchorGlob, directoriesUpToRoot, globShapeProblem, melianPaths, repoPath } from "./paths.ts";
@@ -103,6 +104,7 @@ export const lensFrontMatterSchema = Type.Object(
 		standards: Type.Optional(Type.Boolean()),
 		handoffs: Type.Optional(Type.Record(lensName, text)),
 		resolution: Type.Optional(resolutionEntrySchema),
+		emoji: Type.Optional(text),
 	},
 	strict,
 );
@@ -171,6 +173,8 @@ export interface LensFields {
 	 * the whole source, whether or not a changed path reaches them. Not part of `version`.
 	 */
 	readonly nearer?: readonly string[];
+	/** The emoji shown beside the lens's name, as its `LENS.md` declares it. Display alone, so not part of `version`. */
+	readonly emoji?: string;
 }
 
 /**
@@ -307,7 +311,7 @@ function required<T>(file: string, field: string, value: T | undefined): T {
 // Hashes everything that shapes a lens's behaviour, in the order the fields are declared, never its file or nearer
 // scopes: a lens's version names the findings it produced, so this hash must not change for an unchanged lens.
 function versioned(lens: Omit<LensFields, "version">): LensFields {
-	const { file: _, nearer: __, resolution: ___, ...behaviour } = lens;
+	const { file: _, nearer: __, resolution: ___, emoji: ____, ...behaviour } = lens;
 	const version = createHash("sha256").update(JSON.stringify(behaviour)).digest("hex").slice(0, 12);
 	return { ...lens, version };
 }
@@ -416,6 +420,8 @@ function resolve(definition: Definition, base: Layered | undefined): Layered {
 	}
 	const declared = declare(own, base?.declared);
 	const resolution = own.resolution ?? base?.lens.resolution;
+	const emoji = own.emoji ?? base?.lens.emoji;
+	if (own.emoji !== undefined) checkEmoji(file, own.emoji);
 	const lens = versioned({
 		name: own.name,
 		description,
@@ -430,8 +436,34 @@ function resolve(definition: Definition, base: Layered | undefined): Layered {
 		instructions: [base?.lens.instructions, body].filter((part) => part !== undefined && part !== "").join("\n\n"),
 		file,
 		resolution,
+		emoji,
 	});
 	return { lens, declared };
+}
+
+// One emoji, which the findings guideline's table does not already give a meaning.
+function checkEmoji(file: string, emoji: string): void {
+	const problem = !/^\p{RGI_Emoji}$/v.test(emoji)
+		? "must be one emoji"
+		: tableEmojis.has(emoji)
+			? "is an emoji the findings guideline already gives a meaning"
+			: undefined;
+	if (problem !== undefined)
+		throw new LensError("invalidValue", file, `${file}: "emoji" ${problem}`, { field: "emoji" });
+}
+
+// Two lenses of different names that declare one emoji would read as one check in a status line.
+function checkEmojiClashes(lenses: readonly LensFields[]): void {
+	const owners = new Map<string, LensFields>();
+	for (const lens of lenses) {
+		if (lens.emoji === undefined) continue;
+		const owner = owners.get(lens.emoji);
+		if (owner !== undefined && owner.name !== lens.name) {
+			const message = `${lens.file}: "emoji" is the one lens ${owner.name} declares in ${owner.file}`;
+			throw new LensError("invalidValue", lens.file, message, { field: "emoji" });
+		}
+		owners.set(lens.emoji, lens);
+	}
 }
 
 interface Layered {
@@ -659,6 +691,7 @@ export class Lens {
 	readonly file: string;
 	readonly nearer?: readonly string[];
 	readonly resolution?: ResolutionEntry;
+	readonly emoji?: string;
 
 	private constructor(fields: LensFields) {
 		this.name = fields.name;
@@ -676,6 +709,7 @@ export class Lens {
 		this.file = fields.file;
 		this.nearer = fields.nearer;
 		this.resolution = fields.resolution;
+		this.emoji = fields.emoji;
 	}
 
 	/** The lens `fields` describe, as given: its version is not computed again. */
@@ -741,9 +775,9 @@ export class Lens {
 			const root = defined.has("") ? await definitionsIn("") : [];
 			for (const lens of layer([...builtins, ...root])) union.set(`${lens.name}\0${lens.version}`, withNearer(lens));
 		}
-		return [...union.values()]
-			.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
-			.map((lens) => new Lens(lens));
+		const loaded = [...union.values()].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+		checkEmojiClashes(loaded);
+		return loaded.map((lens) => new Lens(lens));
 	}
 
 	/**
@@ -972,7 +1006,7 @@ export class Lens {
 	/** The lens's fields, in their declared order. */
 	toJSON(): LensFields {
 		const { name, description, tools, severities, rules, paths, scope, levels, standards, handoffs } = this;
-		const { instructions, version, file, nearer, resolution } = this;
+		const { instructions, version, file, nearer, resolution, emoji } = this;
 		return {
 			name,
 			description,
@@ -989,6 +1023,7 @@ export class Lens {
 			file,
 			...(nearer === undefined ? {} : { nearer }),
 			...(resolution === undefined ? {} : { resolution }),
+			...(emoji === undefined ? {} : { emoji }),
 		};
 	}
 

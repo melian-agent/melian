@@ -6,8 +6,11 @@ import {
 	dismissalVersion,
 	type Finding,
 	type Placement,
+	Rendering,
 	type ReviewDraft,
 	type Verdict,
+	type Verification,
+	verifierMark,
 	visibleText,
 } from "@melian-agent/core";
 
@@ -159,6 +162,8 @@ export interface CommentContext {
 	readonly base: string;
 	readonly links: RepositoryLinks;
 	readonly secret: string;
+	/** Show each mark's emoji beside its word, as `publish.emoji: on` asks. On by default. */
+	readonly emoji?: boolean;
 }
 
 /**
@@ -206,24 +211,8 @@ export class ReviewComment {
 				: placement.kind === "nearest"
 					? [`This finding is at ${link}, outside the diff, so it is anchored to the nearest changed line.`, ""]
 					: [];
-		const verification = finding.properties.verification;
-		const judged =
-			verification === undefined
-				? finding.properties.source.check.startsWith("lens.")
-					? ["Verification: unverified", ""]
-					: []
-				: [
-						`Verification: **${verification.verdict}**`,
-						"",
-						// The verifier writes its reasons from code the author controls, so each is one inert line, as in the ledger.
-						`**Verified:** ${code(verification.model)}: ${inline(verification.reason)}`,
-						"",
-						...(verification.correction === undefined
-							? []
-							: [`**Correction:** ${inline(verification.correction)}`, ""]),
-					];
 		const lowered = finding.lowered({ includeTrustFloor: false });
-		const moved = lowered === undefined ? [] : [`**Lowered from ${lowered.from}:** ${inline(lowered.reason)}`, ""];
+		const moved = lowered === undefined ? [] : [`**Lowered from ${lowered.from}:** ${inline(lowered.reason)}`];
 		const heading =
 			this.important === undefined
 				? []
@@ -231,41 +220,78 @@ export class ReviewComment {
 						`**Pre-existing, important**, ${this.important === "new" ? "new on this revision" : "carried from an earlier revision"}. It predates this change and does not block it.`,
 						"",
 					];
+		const rendering = new Rendering({ emoji: context.emoji !== false });
+		// Check names come from the change's own lenses, so the status line is inert text like the rest.
+		const status = finding
+			.statusSegments(rendering)
+			.map((segment) => renderProse(segment))
+			.join(" | ");
 		if (finding.properties.resolution === "advisory") {
+			// A protected refutation held at an advisory floor keeps the verifier's reason and its floor note, so the
+			// entry says why a refuted finding still posts.
+			const notes = finding.trustFloorNotes();
+			const verification = finding.properties.verification;
+			const held =
+				notes.length === 0
+					? []
+					: [
+							...(verification === undefined ? [] : [this.#verifier(verification, rendering)]),
+							...notes.map(inline),
+						].map((line) => `  ${line}`);
 			return [
 				marker(revision, "finding", id, context.secret),
 				...heading,
-				`- [${code(`${path}:${start}`)}](${blobUrl(links, revision, path, start, end)}) ${code(finding.ruleId)}: ${inline(finding.message.text)}`,
+				`- ${status}: [${code(`${path}:${start}`)}](${blobUrl(links, revision, path, start, end)}) ${code(finding.ruleId)}: ${inline(finding.message.text)} | Finding ${code(id)} | Status ${code(finding.properties.status)}`,
+				...held,
 			].join("\n");
 		}
+		const verification = finding.properties.verification;
+		const judged =
+			verification === undefined
+				? []
+				: [
+						this.#verifier(verification, rendering),
+						"",
+						...(verification.correction === undefined
+							? []
+							: [`**Correction:** ${inline(verification.correction)}`, ""]),
+					];
 		return [
 			marker(revision, "finding", id, context.secret),
 			...where,
 			...heading,
+			status,
+			"",
 			...judged,
-			...moved,
+			...moved.flatMap((line) => [line, ""]),
 			...finding.trustFloorNotes().flatMap((line) => [inline(line), ""]),
 			...this.#text(context),
+			"",
+			`Rule ${code(finding.ruleId)} | Finding ${code(id)} | Status ${code(finding.properties.status)}`,
 		].join("\n");
 	}
 
+	// The headline once, then the parts the finding has, leaving out one it does not: a deterministic finding has no
+	// failure scenario or evidence.
 	#text(context: CommentContext): string[] {
 		const { finding } = this;
-		const { severity, cause, resolution, explanation, failureScenario } = finding.properties;
-		const lowered = finding.lowered();
+		const { explanation, failureScenario } = finding.properties;
+		const { headline, what } = finding.headline();
 		return [
-			`**${severity}**${lowered === undefined ? "" : `, lowered from ${lowered.from},`} ${code(finding.ruleId)} (${cause}, ${resolution ?? "unresolved"})`,
+			`**${renderProse(headline)}**`,
 			"",
-			// A lens's message is its explanation's first part, which would otherwise print twice.
-			...(finding.message.text === explanation.what ? [] : [renderProse(finding.message.text), ""]),
-			`**What:** ${renderProse(explanation.what)}`,
-			"",
+			...(what === undefined ? [] : [`**What:** ${renderProse(what)}`, ""]),
 			`**Why here:** ${renderProse(explanation.whyHere)}`,
 			...(failureScenario === undefined ? [] : ["", `**Failure scenario:** ${renderProse(failureScenario)}`]),
 			...this.#evidence(context),
 			"",
 			`**What to do:** ${renderProse(explanation.whatToDo)}`,
 		];
+	}
+
+	// The verifier writes its reasons from code the author controls, so each is one inert line, as in the ledger.
+	#verifier(verification: Verification, rendering: Rendering): string {
+		return `${rendering.emoji ? `${verifierMark.emoji} ` : ""}**Verified:** ${code(verification.model)}: ${inline(verification.reason)}`;
 	}
 
 	// Each evidence location links to its lines at the commit it was read from, rather than quoting the code. A base
@@ -405,6 +431,7 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 			base: draft.base,
 			links,
 			secret,
+			emoji: options.emoji,
 		}),
 	);
 	const heading = options.inlineRefused
@@ -439,6 +466,8 @@ export interface ReviewBodyOptions {
 	readonly inlineRefused?: boolean;
 	/** The longest body to render; GitHub's {@link maxBodyLength} by default. */
 	readonly limit?: number;
+	/** Show each finding's emojis, as `publish.emoji: on` asks. On by default. */
+	readonly emoji?: boolean;
 }
 
 /**

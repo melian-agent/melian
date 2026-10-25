@@ -4,6 +4,7 @@ import Type, { type Static } from "typebox";
 import Value from "typebox/value";
 import type { Revision } from "./changeset.ts";
 import { type Resolution, resolutionOrder, resolutionSchema, type Severity, severitySchema } from "./config.ts";
+import { outcomeMarks, resolutionMarks, severityMarks, verifierMark, verifierMarks } from "./emoji.ts";
 import { FindingError } from "./errors.ts";
 import {
 	evidenceLocationSchema,
@@ -33,6 +34,13 @@ const text = Type.String({ minLength: 1 });
 const line = Type.Integer({ minimum: 1 });
 const count = Type.Integer({ minimum: 0 });
 const idSchema = Type.String({ pattern: "^[0-9a-f]{16}$" });
+
+// Whether the change introduced the finding, as its status line says it.
+const causeWords: Readonly<Record<Cause, string>> = {
+	introduced: "New in this change",
+	affected: "Caused by this change",
+	"pre-existing": "Predates this change",
+};
 
 /** The `partialFingerprints` key under which a SARIF result carries Melian's stable ID. */
 export const fingerprintKey = "melian/v1";
@@ -1114,33 +1122,72 @@ export class Finding {
 	}
 
 	/**
-	 * The finding as one block of terminal text: its severity, lines, rule, cause, status, and resolution; each other
-	 * report of its defect, merged into it or dismissed beside it, with its severity, rule, and check; who dismissed it
-	 * and why, and each earlier dismissal; then the message, the explanation's three parts, its failure scenario, and
-	 * each evidence location with its role and the code read there. When the rendering's `decided` is set, a line names
-	 * the file and entry that decided its resolution, as {@link describeDecision} says it.
+	 * The finding's status line as segments, for a renderer to join with ` | `: its severity and any lowering, its
+	 * resolution, the check that found it, the verifier's outcome where a verifier judged it or a lens finding went
+	 * unjudged, and whether the change introduced it. Each segment is a mark as `rendering` shows it.
+	 */
+	statusSegments(rendering: Rendering): string[] {
+		const { severity, resolution, verification, source, cause } = this.properties;
+		const lowered = this.lowered();
+		const verifier =
+			verification === undefined
+				? source.check.startsWith("lens.")
+					? verifierMarks.unverified
+					: undefined
+				: verifierMarks[verification.verdict];
+		return [
+			`${rendering.show(severityMarks[severity])}${lowered === undefined ? "" : `, lowered from ${lowered.from}`}`,
+			resolution === undefined ? "Unresolved" : rendering.show(resolutionMarks[resolution]),
+			visibleText(rendering.show(rendering.check(source.check, this.ruleId, source.version))),
+			...(verifier === undefined ? [] : [rendering.show(verifier)]),
+			causeWords[cause],
+		];
+	}
+
+	/**
+	 * The headline: the message, unless it repeats What, as a lens's message does, which then stands as the headline
+	 * and What prints no more. Returns the headline and the What left to print, if any.
+	 */
+	headline(): { readonly headline: string; readonly what?: string } {
+		const { what } = this.properties.explanation;
+		const headline = this.message.text;
+		return headline === what ? { headline } : { headline, what };
+	}
+
+	/**
+	 * The finding as one block of terminal text: its status line; each other report of its defect, merged into it or
+	 * dismissed beside it, with its severity, rule, and check; its trust floor; with the rendering's `decided`, the file
+	 * and entry that decided its resolution, as {@link describeDecision} says it; a lowering and a resolution held at the
+	 * original severity; the verifier's reason and correction; who dismissed it and why, and each earlier dismissal; then
+	 * the headline, What unless the headline is it, Why here, the failure scenario, each evidence location with the code
+	 * read there, and What to do. A footer names the rule, the lines, the ID `melian dismiss` takes when the rendering's
+	 * `ids` is set, and the lifecycle status. A part the finding does not have is left out.
 	 */
 	render(rendering: Rendering = new Rendering()): string {
 		const { ids } = rendering;
-		const { severity, cause, evidence, failureScenario, status, explanation, resolution, id, verification, source } =
-			this.properties;
+		const { severity, evidence, failureScenario, status, explanation, id, verification, source } = this.properties;
 		const { decidedBy } = this.properties;
 		const own = { check: source.check, rule: this.ruleId };
 		// The other reports of its defect: those adjudication merged into it, which a dismissal of it dismisses too, and
 		// the dismissed ones it lists beside it.
 		const reports = (this.properties.alsoReportedAs ?? []).map((other) => {
-			const what = `${other.severity === undefined ? "" : `${other.severity} `}${visibleText(other.ruleId)} from ${visibleText(other.check)}`;
+			const { emoji } = rendering.check(other.check, other.ruleId);
+			const check = `${rendering.emoji && emoji !== undefined ? `${emoji} ` : ""}${visibleText(other.check)}`;
+			const what = `${other.severity === undefined ? "" : `${other.severity} `}${visibleText(other.ruleId)} from ${check}`;
 			return `    ${other.dismissed ? "Also reported, dismissed" : "Merged report"}: ${what}${ids ? `  ${visibleText(other.id)}` : ""}`;
 		});
 		const { region } = this.locations[0]!.physicalLocation;
 		const lines =
 			region.endLine === undefined || region.endLine === region.startLine
-				? `line ${region.startLine}`
-				: `lines ${region.startLine}-${region.endLine}`;
+				? `Line ${region.startLine}`
+				: `Lines ${region.startLine}-${region.endLine}`;
+		const [first, ...rest] = this.statusSegments(rendering);
+		const { headline, what } = this.headline();
 		const lowered = this.lowered();
 		const loweringNote = this.lowered({ includeTrustFloor: false });
+		const verified = `${rendering.emoji ? `${verifierMark.emoji} ` : ""}Verified`;
 		return [
-			`  ${rendering.paint(severityColor[severity], severity)}${lowered === undefined ? "" : `, lowered from ${lowered.from}`}  ${lines}  ${visibleText(this.ruleId)}  (${cause}, ${status}, ${resolution ?? "unresolved"}${verification === undefined ? (source.check.startsWith("lens.") ? ", unverified" : "") : `, ${verification.verdict}`})${ids ? `  ${visibleText(id)}` : ""}`,
+			`  ${[rendering.paint(severityColor[severity], first!), ...rest].join(" | ")}`,
 			...reports,
 			...this.trustFloorNotes().map((line) => `    ${prose(line, "      ")}`),
 			...(decidedBy === undefined || !rendering.decided
@@ -1157,28 +1204,29 @@ export class Finding {
 			...(verification === undefined
 				? []
 				: [
-						`    Verified: ${visibleText(verification.model)}: ${prose(verification.reason, "      ")}`,
+						`    ${verified}: ${visibleText(verification.model)}: ${prose(verification.reason, "      ")}`,
 						...(verification.correction === undefined
 							? []
 							: [`    Correction: ${prose(verification.correction, "      ")}`]),
 					]),
-			...this.#dismissals(),
-			`  ${prose(this.message.text, messageContinuation)}`,
-			`    What: ${prose(explanation.what, "      ")}`,
+			...this.#dismissals(rendering),
+			`  ${prose(headline, messageContinuation)}`,
+			...(what === undefined ? [] : [`    What: ${prose(what, "      ")}`]),
 			`    Why here: ${prose(explanation.whyHere, "      ")}`,
 			...(failureScenario === undefined ? [] : [`    Failure scenario: ${prose(failureScenario, "      ")}`]),
 			...(evidence === undefined ? [] : ["    Evidence:", ...evidenceLines(evidence)]),
 			`    What to do: ${prose(explanation.whatToDo, "      ")}`,
+			`    Rule ${visibleText(this.ruleId)} | ${lines}${ids ? ` | Finding ${visibleText(id)}` : ""} | Status ${status}`,
 		].join("\n");
 	}
 
 	// Who dismissed the finding and why, and each dismissal before that no longer stands.
-	#dismissals(): string[] {
+	#dismissals(rendering: Rendering): string[] {
 		const { dismissal, pastDismissals = [] } = this.properties;
 		const said = ({ by, at, reason }: { by: string; at: string; reason: string }) =>
 			`by ${visibleText(by)} at ${visibleText(at)}: ${prose(reason, "      ")}`;
 		return [
-			...(dismissal === undefined ? [] : [`    Dismissed ${said(dismissal)}`]),
+			...(dismissal === undefined ? [] : [`    ${rendering.show(outcomeMarks.dismissed)} ${said(dismissal)}`]),
 			...pastDismissals.map((past) => {
 				const ended =
 					past.replacedAt === undefined

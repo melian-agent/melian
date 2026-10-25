@@ -8,7 +8,7 @@ Acknowledge: 1 finding
 
 src/prompt.md
 
-  P1  line 1  melian/injection-attempt  (introduced, new, acknowledge, confirmed)
+  P1 | Needs acknowledgement | cleanup | Verifier confirmed | New in this change
     Decided by: lens cleanup's default: the built-in table, under the ceiling resolution.ceiling; held at acknowledge as an injection attempt
     Verified: scripted/judge: The scripted verifier judged the claim.
   melian/injection-attempt, as lens.cleanup reports it.
@@ -16,12 +16,13 @@ src/prompt.md
     Why here: Scripted.
     Failure scenario: Scripted.
     What to do: Scripted.
+    Rule melian/injection-attempt | Line 1 | Status new
 
 Advisory: 1 finding
 
 src/total.ts
 
-  P1  line 1  reuse  (introduced, new, advisory, confirmed)
+  P1 | Advisory | cleanup | Verifier confirmed | New in this change
     Decided by: lens cleanup's default: the built-in table, under the ceiling resolution.ceiling
     Verified: scripted/judge: The scripted verifier judged the claim.
   reuse, as lens.cleanup reports it.
@@ -29,5 +30,6 @@ src/total.ts
     Why here: Scripted.
     Failure scenario: Scripted.
     What to do: Scripted.
+    Rule reuse | Line 1 | Status new
 
 2 findings in 2 files.

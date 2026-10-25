@@ -6,7 +6,7 @@ Block: 1 finding
 
 services/payments/src/total.ts
 
-  P1  line 1  reuse  (introduced, new, block, confirmed)
+  P1 | Blocks merge | cleanup | Verifier confirmed | New in this change
     Decided by: services/payments/melian.yaml: resolution.P1, the table
     Verified: scripted/judge: The scripted verifier judged the claim.
   reuse, as lens.cleanup reports it.
@@ -14,12 +14,13 @@ services/payments/src/total.ts
     Why here: Scripted.
     Failure scenario: Scripted.
     What to do: Scripted.
+    Rule reuse | Line 1 | Status new
 
 Advisory: 1 finding
 
 services/payments/src/ledger.ts
 
-  P2  line 1  reuse  (introduced, new, advisory, confirmed)
+  P2 | Advisory | cleanup | Verifier confirmed | New in this change
     Decided by: melian.yaml: resolution.P2, the table, under the ceiling resolution.checks.lens.cleanup.ceiling
     Verified: scripted/judge: The scripted verifier judged the claim.
   reuse, as lens.cleanup reports it.
@@ -27,5 +28,6 @@ services/payments/src/ledger.ts
     Why here: Scripted.
     Failure scenario: Scripted.
     What to do: Scripted.
+    Rule reuse | Line 1 | Status new
 
 2 findings in 2 files.

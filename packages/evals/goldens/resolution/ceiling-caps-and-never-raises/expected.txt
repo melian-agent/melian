@@ -8,7 +8,7 @@ Acknowledge: 1 finding
 
 src/total.ts
 
-  P1  line 1  reuse  (introduced, new, acknowledge, confirmed)
+  P1 | Needs acknowledgement | cleanup | Verifier confirmed | New in this change
     Decided by: melian.yaml: resolution.P1, the table, under the ceiling resolution.checks.lens.cleanup.ceiling
     Verified: scripted/judge: The scripted verifier judged the claim.
   reuse, as lens.cleanup reports it.
@@ -16,12 +16,13 @@ src/total.ts
     Why here: Scripted.
     Failure scenario: Scripted.
     What to do: Scripted.
+    Rule reuse | Line 1 | Status new
 
 Advisory: 1 finding
 
 src/receipt.ts
 
-  P3  line 1  altitude  (introduced, new, advisory, confirmed)
+  P3 | Advisory | cleanup | Verifier confirmed | New in this change
     Decided by: melian.yaml: resolution.P3, the table, under the ceiling resolution.checks.lens.cleanup.ceiling
     Verified: scripted/judge: The scripted verifier judged the claim.
   altitude, as lens.cleanup reports it.
@@ -29,5 +30,6 @@ src/receipt.ts
     Why here: Scripted.
     Failure scenario: Scripted.
     What to do: Scripted.
+    Rule altitude | Line 1 | Status new
 
 2 findings in 2 files.

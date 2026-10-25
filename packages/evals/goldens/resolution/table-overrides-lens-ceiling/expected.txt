@@ -8,7 +8,7 @@ Acknowledge: 1 finding
 
 src/total.ts
 
-  P2  line 1  reuse  (introduced, new, acknowledge, confirmed)
+  P2 | Needs acknowledgement | cleanup | Verifier confirmed | New in this change
     Decided by: melian.yaml: resolution.P2, the table
     Verified: scripted/judge: The scripted verifier judged the claim.
   reuse, as lens.cleanup reports it.
@@ -16,12 +16,13 @@ src/total.ts
     Why here: Scripted.
     Failure scenario: Scripted.
     What to do: Scripted.
+    Rule reuse | Line 1 | Status new
 
 Advisory: 1 finding
 
 kept/total.ts
 
-  P2  line 1  reuse  (introduced, new, advisory, confirmed)
+  P2 | Advisory | cleanup | Verifier confirmed | New in this change
     Decided by: kept/melian.yaml: resolution.P2, the table, under the ceiling resolution.checks.lens.cleanup.ceiling
     Verified: scripted/judge: The scripted verifier judged the claim.
   reuse, as lens.cleanup reports it.
@@ -29,5 +30,6 @@ kept/total.ts
     Why here: Scripted.
     Failure scenario: Scripted.
     What to do: Scripted.
+    Rule reuse | Line 1 | Status new
 
 2 findings in 2 files.

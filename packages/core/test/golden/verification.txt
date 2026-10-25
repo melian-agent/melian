@@ -8,7 +8,7 @@ Refuted: 1 finding
 
 src/run.ts
 
-  P1  line 12  no-eval  (introduced, new, block, refuted)
+  P1 | Blocks merge | security | Refuted | New in this change
     Verified: fake/judge: A guard prevents it.\u001b[2J
       More proof.
     Correction: Use the guarded value.
@@ -17,5 +17,6 @@ src/run.ts
     Why here: This change routes the body into run() without parsing it.
     Failure scenario: The input fails.
     What to do: Parse the body with JSON.parse and validate it.
+    Rule no-eval | Line 12 | Status new
 
 No findings.
