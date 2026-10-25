@@ -176,7 +176,7 @@ describe("a delta round", () => {
 		expect(ids).toHaveLength(2);
 		commit(repo, { "src/b.ts": numbered(20, "b").replace("b 9\n", "B 9\n") });
 		const { requests } = await review();
-		const listed = /label="findings">\n([^]*?)\n<\/untrusted-/.exec(promptOf(requests, correctness))?.[1] ?? "";
+		const listed = /label="findings">\n([\s\S]*?)\n<\/untrusted-/.exec(promptOf(requests, correctness))?.[1] ?? "";
 		expect(
 			listed
 				.split("\n")
