@@ -774,3 +774,85 @@ describe("a finding the earlier round raised", () => {
 		]);
 	});
 });
+
+describe("the coverage a round carries", () => {
+	let at = 0;
+	const next = async (
+		overrides: (changeset: Changeset, adjudication: number) => Partial<LedgerRound> = () => ({}),
+	) => {
+		const changeset = await head();
+		const adjudication = await mint(changeset, `2026-10-25T00:02:${String(++at).padStart(2, "0")}.000Z`);
+		return record(
+			(await ledger().write(round(changeset, adjudication, overrides(changeset, adjudication)), context))!,
+		);
+	};
+	const carried = (stored: StoredCoverageRecord) =>
+		stored.checks["lens.correctness"]!.covered.filter((segment) => segment.round !== undefined);
+
+	it("drops a line the move changed, and a finding's location there, without voiding the file", async () => {
+		commit(repo, { "src/a.ts": numbered(20, "a").replace("a 3\n", "A 3\n").replace("a 9\n", "A 9\n") });
+		const first = await head();
+		const lost = Finding.create({
+			rule: "null-dereference",
+			message: "m",
+			file: "src/a.ts",
+			startLine: 3,
+			snippet: "A 3",
+			occurrence: 0,
+			cause: "introduced",
+			severity: "P1",
+			explanation: { what: "w", whyHere: "h", whatToDo: "t" },
+			source: { check: "lens.correctness", version: "1" },
+		});
+		await (await harness.root(context)).commit(
+			(tx) => upsertFinding(tx, root, lost, Revision.key(first.revision)),
+			context,
+		);
+		await next();
+		commit(repo, { "src/a.ts": numbered(20, "a").replace("a 3\n", "B 3\n").replace("a 9\n", "A 9\n") });
+		const second = await next((_, __) => ({
+			lenses: [{ ...round(first, 0).lenses[0]!, delivered: { hunks: {}, fields: {}, omitted: [] } }],
+		}));
+		expect(second.voids).toEqual([]);
+		expect(carried(second)).toEqual([
+			{
+				round: "r1",
+				level: "careful",
+				head: { "src/a.ts": [[9, 9]] },
+				base: {
+					"src/a.ts": [
+						[3, 3],
+						[9, 9],
+					],
+				},
+				units: {},
+			},
+		]);
+	});
+
+	it("carries a file unit the move left alone, and none the move lists or an injection attempt sits in", async () => {
+		chmodSync(join(repo, "src/gone.ts"), 0o755);
+		commit(repo, { "src/a.ts": numbered(20, "a").replace("a 3\n", "A 3\n").replace("a 9\n", "A 9\n") });
+		const fields = ["status", "path", "oldMode", "newMode", "oldKind", "newKind", "binary"];
+		const delivering = (changeset: Changeset, adjudication: number) => ({
+			lenses: [
+				{
+					...round(changeset, adjudication).lenses[0]!,
+					delivered: {
+						hunks: Object.fromEntries(
+							changeset.revision.files.map((file) => [file.path, file.hunks.map((hunk) => hunk.index)]),
+						),
+						fields: { "src/gone.ts": fields },
+						omitted: [],
+					},
+				},
+			],
+		});
+		await next(delivering);
+		commit(repo, { "src/a.ts": numbered(20, "a").replace("a 3\n", "A 3\n").replace("a 9\n", "B 9\n") });
+		expect(carried(await next(delivering))[0]!.units).toEqual({ "src/gone.ts": fields });
+		commit(repo, { "src/gone.ts": numbered(4, "g").replace("g 2\n", "G 2\n") });
+		const listed = await next();
+		expect(listed.checks["lens.correctness"]!.covered.find((segment) => segment.round === "r2")!.units).toEqual({});
+	});
+});
