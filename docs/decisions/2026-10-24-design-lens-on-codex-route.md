@@ -33,7 +33,7 @@ A sixth lens tier would also free a route, but it touches every tier order and s
 
 - `quick` changes effort. The old `medium` route set no level; `light` sets `low`. No cell measured `quick` at either level, so this is unmeasured, as the earlier decision's `quick` was.
 - The design lens costs more per round. Sol 5.6 lists at 4 and 20 dollars per million input and output tokens; Sol 6.1 lists at 2 and 10. The lens also runs at high effort, with ten times the built-in budget.
-- Each of the 64 golden trees that carries a repository lens carries all of them, as the corpus test requires. So a golden runs the lenses Melian runs. Step 37 removes the routing-only copies with the originals.
+- The golden builder adds Melian's repository lenses to every golden that names Melian's tier, at build time, so no golden commits a copy. This pull request's first form committed 512 copies, and the maintainer ruled on 2026-10-25 that it would not land with them.
 - The design lens's goldens and live measurements so far ran on `heavy`. A live rerun of the design corpus on the new route is owed before its numbers are quoted for this route.
 - `melian doctor` warns about no inverted levels: `quick` on `light` sits below `careful` and `deep` on `heavy`.
 - A round script that writes its own lens extensions, or routes `medium` in `melian.local.yaml`, undoes this. Rounds must leave the committed design extension and the `medium` route alone.
@@ -44,4 +44,4 @@ The maintainer confirmed three choices this pull request made:
 
 - `medium` falls back to `anthropic/claude-opus-5-5`, and accepts Sol 5.6 and Opus.
 - Every other lens's `quick` level runs Terra at `low`, the light route's level, where `medium` left it unset.
-- The fix that makes lens discovery skip a folder with no `LENS.md` rides in this pull request, since the golden copies it adds made `melian doctor` pass its CLI test's limit.
+- The fix that makes lens discovery skip a folder with no `LENS.md` rides in this pull request, since the golden copies its first form added made `melian doctor` pass its CLI test's limit.
