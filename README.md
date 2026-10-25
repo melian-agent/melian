@@ -10,7 +10,7 @@ It takes its name from Melian the Maia, queen of Doriath, whose Girdle held back
 - **Deep where it matters.** Adversarial agentic lenses, each with its own focus and its own model, hunt for what would break: security holes, breaking changes, departures from your standards. A verifier on a second model attacks each claim before it counts.
 - **Your subscriptions, your cost.** No per-seat pricing and no model markup. Bring the subscriptions and API keys you already pay for, and route each job to the cheapest model that does it well. Every review reports its tokens and cost.
 - **Durable.** A review survives crashes and restarts, and picks up where it left off without posting a review twice.
-- **Quiet.** Good changes pass without ceremony. Findings stay in scope, and a finding dismissed with a reason stays dismissed until the code it names changes.
+- **High signal, low noise.** Good changes pass without ceremony. Findings stay in scope, and a finding dismissed with a reason stays dismissed until the code it names changes. Every line Melian shows earns its place.
 - **Runs where you work.** Locally before a pull request exists, as a skill inside Claude Code, Codex, or Pi, and on pull requests through `melian publish`. A GitHub Actions host is planned for milestone 3.
 - **Built for monorepos.** Which lenses run, and what blocks a merge, is configurable per folder. A model route's `accept`, `unavailable`, and `acceptOverridden` are set once, in the root `melian.yaml`.
 - **Will remember, in your repository.** Planned for milestone 4: acquired knowledge goes to `AGENTS.md` and its siblings, by pull request, where every person and every agent inherits it, not into a proprietary product that locks you in.
