@@ -24,10 +24,13 @@ import {
 	fauxAssistantMessage,
 	fauxToolCall,
 	scriptConversations,
+	systemPromptOf,
 	textOf,
+	type VerifierScript,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { FindingsDocument } from "../src/findings.ts";
+import { verifierMarker } from "../src/verification-instructions.ts";
 import { commit, createRepository, gitIn, lines, removeRepository } from "./fixtures/repo.ts";
 import { twoLensTiers } from "./fixtures/review-scenario.ts";
 
@@ -111,19 +114,29 @@ const report = (file: string, line: number) =>
 	);
 
 async function review(
-	options: { readonly correctness?: Reply[]; readonly contracts?: Reply[]; readonly decide?: boolean } = {},
+	options: {
+		readonly correctness?: Reply[];
+		readonly contracts?: Reply[];
+		readonly decide?: boolean;
+		readonly config?: MelianConfig;
+		readonly verifier?: VerifierScript;
+	} = {},
 ): Promise<{ verdict: Verdict; requests: Record<string, Message[][]>; key: string }> {
-	const requests = scriptConversations(fake, [
-		{ match: correctness, replies: options.correctness ?? [fauxAssistantMessage("Done.")] },
-		{ match: contracts, replies: options.contracts ?? [fauxAssistantMessage("Done.")] },
-	]);
+	const requests = scriptConversations(
+		fake,
+		[
+			{ match: correctness, replies: options.correctness ?? [fauxAssistantMessage("Done.")] },
+			{ match: contracts, replies: options.contracts ?? [fauxAssistantMessage("Done.")] },
+		],
+		options.verifier ?? {},
+	);
 	const changeset = await Changeset.resolve(repo, `${base}..feature`);
 	let verdict: Verdict;
 	try {
 		({ verdict } = await reviewChangeset({
 			harness,
 			changeset,
-			config,
+			config: options.config ?? config,
 			lenses,
 			standards: [{ path: "AGENTS.md", content: "Be careful." }],
 			models: fake.review,
@@ -142,6 +155,16 @@ const promptOf = (requests: Record<string, Message[][]>, lens: string) =>
 		.filter((message) => message.role === "user")
 		.map(textOf)
 		.join("\n");
+const carriedAt = async (key: string) => {
+	const state = (await harness.snapshot(FindingsDocument, (await harness.root(context)).id, context))!;
+	return Object.values(state.items).flatMap((record) =>
+		Object.keys(record.sightings[key] ?? {}).filter((producer) => producer.startsWith("carried/")),
+	);
+};
+const judged = (requests: Record<string, Message[][]>) =>
+	[...systemPromptOf(requests[verifierMarker]?.[0] ?? []).matchAll(/Claim c[1-9][0-9]* finding ([0-9a-f]+)/g)].map(
+		(match) => match[1],
+	);
 const lensRecord = (verdict: Verdict, name: string) =>
 	[...(verdict.ran ?? []), ...verdict.notRun].filter((check) => check.name === `lens.${name}`);
 
@@ -208,5 +231,72 @@ describe("a delta round", () => {
 		const two = await review({ decide: true });
 		expect(promptOf(two.requests, correctness)).toContain("## The change under review");
 		expect(lensRecord(two.verdict, "correctness")[0]).toMatchObject({ status: "ran", level: now });
+	});
+
+	it("carries no sighting into a round that reviews the whole diff, as after a policy change", async () => {
+		commit(repo, first);
+		await review({ correctness: [report("src/a.ts", 3), fauxAssistantMessage("Done.")] });
+		commit(repo, { "src/b.ts": numbered(20, "b").replace("b 9\n", "B 9\n") });
+		// A changed configuration changes the policy fingerprint, which voids every earlier round's coverage.
+		const { key, requests } = await review({ config: { ...config, review: { delta: { maxLines: 1 } } } });
+		expect(promptOf(requests, correctness)).not.toContain("## The change under review");
+		expect(await carriedAt(key)).toEqual([]);
+	});
+
+	it("has a lens whose carried finding the move lost review the whole diff, a carried copy's lens by its own name", async () => {
+		commit(repo, { ...first, "src/b.ts": numbered(20, "b").replace("b 9\n", "B 9\n") });
+		await review({ correctness: [report("src/b.ts", 9), fauxAssistantMessage("Done.")] });
+		commit(repo, { "src/d.ts": numbered(20, "d") });
+		const two = await review();
+		expect(await carriedAt(two.key)).toEqual([expect.stringMatching(/^carried\/lens\.correctness@/)]);
+		gitIn(repo, "rm", "--quiet", "src/b.ts");
+		commit(repo, {});
+		const { requests } = await review();
+		expect(promptOf(requests, correctness)).not.toContain("## The change under review");
+		expect(promptOf(requests, contracts)).toContain("## The change under review");
+	});
+
+	it("hands each lens only the findings it carries", async () => {
+		commit(repo, first);
+		const one = await review({
+			correctness: [report("src/a.ts", 3), fauxAssistantMessage("Done.")],
+			contracts: [
+				fauxAssistantMessage(
+					fauxToolCall("report_finding", {
+						file: "src/c.ts",
+						line: 5,
+						rule: "broken-caller",
+						severity: "P1",
+						explanation: { what: "c 5 breaks a caller.", why: "The change made it.", fix: "Keep it." },
+						failureScenario: "A caller passes two arguments and gets a TypeError.",
+						evidence: [{ file: "src/c.ts", line: 5, role: "cause" }],
+					}),
+					{ stopReason: "toolUse" },
+				),
+				fauxAssistantMessage("Done."),
+			],
+		});
+		const byLens = (lens: string) =>
+			one.verdict.all().filter((finding) => finding.properties.source.check === lens)[0]!.id;
+		commit(repo, { "src/b.ts": numbered(20, "b").replace("b 9\n", "B 9\n") });
+		const { requests } = await review();
+		const listed = (lens: string) =>
+			(/label="findings">\n([\s\S]*?)\n<\/untrusted-/.exec(promptOf(requests, lens))?.[1] ?? "")
+				.split("\n")
+				.map((line) => line.split(" ")[0]);
+		expect(listed(correctness)).toEqual([byLens("lens.correctness")]);
+		expect(listed(contracts)).toEqual([byLens("lens.contracts")]);
+	});
+
+	it("has the verifier judge a restated finding's own claim, not the carried copy beside it", async () => {
+		commit(repo, first);
+		const one = await review({ correctness: [report("src/a.ts", 3), fauxAssistantMessage("Done.")] });
+		const [id] = one.verdict.findings.block.map((finding) => finding.id);
+		commit(repo, { "src/b.ts": numbered(20, "b").replace("b 9\n", "B 9\n") });
+		const { requests } = await review({
+			correctness: [report("src/a.ts", 3), fauxAssistantMessage("Done.")],
+			verifier: { [id!]: "confirmed" },
+		});
+		expect(judged(requests)).toEqual([id]);
 	});
 });

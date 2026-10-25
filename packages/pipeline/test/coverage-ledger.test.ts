@@ -296,7 +296,12 @@ describe("the coverage ledger", () => {
 		const { record } = await review({ decider, harness: deciding, config: skippable }).finally(() =>
 			deciding.close(context),
 		);
-		expect(record.checks["lens.contracts"]).toMatchObject({ status: "skipped", covered: [] });
+		expect(record.checks["lens.contracts"]).toMatchObject({
+			status: "skipped",
+			leave: true,
+			reason: "triage skipped it, as its floor allows",
+			covered: [],
+		});
 		expect(record.checks["lens.correctness"]).toMatchObject({ status: "ran", standards: ["AGENTS.md"] });
 	});
 
