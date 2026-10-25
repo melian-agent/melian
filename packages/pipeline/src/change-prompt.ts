@@ -117,6 +117,7 @@ export class ChangePrompt {
 		let size = Buffer.byteLength(header);
 		const delivered: PromptDelivery = { hunks: {}, fields: {}, omitted: [] };
 		const left: { file: ChangedFile; hunk: Hunk }[] = [];
+		const unfit = new Set<string>();
 		const deliver = (file: ChangedFile, fields: readonly UnitField[]) => {
 			delivered.fields[file.path] = [...new Set([...(delivered.fields[file.path] ?? []), ...fields])];
 		};
@@ -158,6 +159,7 @@ export class ChangePrompt {
 				const bytes = Buffer.byteLength(each.text) + 2;
 				if (size + bytes > promptLimits.bytes) {
 					for (const hunk of each.hunks) left.push({ file: each.file, hunk });
+					unfit.add(each.file.path);
 					continue;
 				}
 				size += bytes;
@@ -201,20 +203,24 @@ export class ChangePrompt {
 					? `These hunks were left out for size. Read each with read_file, in windows, before you finish:\n${quoteUntrusted("listing", owed.join("\n"), nonce)}`
 					: "[The diff continues; the remaining hunks are omitted.]",
 			);
-			// A file unit whose block the limit left out still reaches the lens by its fields alone, under a bound of its own.
-			const metadata: string[] = [];
-			let metadataSize = 0;
-			for (const file of files.filter((each) => units.has(each.path) && delivered.fields[each.path] === undefined)) {
-				const fact = facts(file);
-				const line = `${named(file)} (${file.status}): ${fact.text}`;
-				if (metadataSize + Buffer.byteLength(line) + 1 > promptLimits.metadataBytes) continue;
-				metadataSize += Buffer.byteLength(line) + 1;
-				metadata.push(line);
-				deliver(file, fact.fields);
-			}
-			if (metadata.length > 0)
-				parts.push(`File units left out of the diff:\n${quoteUntrusted("listing", metadata.join("\n"), nonce)}`);
 		}
+		// A file unit whose block the limit left out still reaches the lens by its fields alone, under a bound of its own,
+		// whether or not any hunk was left out with it.
+		const metadata: string[] = [];
+		let metadataSize = 0;
+		const unlisted = files.filter(
+			(each) => units.has(each.path) && unfit.has(each.path) && delivered.fields[each.path] === undefined,
+		);
+		for (const file of unlisted) {
+			const fact = facts(file);
+			const line = `${named(file)} (${file.status}): ${fact.text}`;
+			if (metadataSize + Buffer.byteLength(line) + 1 > promptLimits.metadataBytes) continue;
+			metadataSize += Buffer.byteLength(line) + 1;
+			metadata.push(line);
+			deliver(file, fact.fields);
+		}
+		if (metadata.length > 0)
+			parts.push(`File units left out of the diff:\n${quoteUntrusted("listing", metadata.join("\n"), nonce)}`);
 		// The functions follow the diff, past its limit, so a cut diff never costs a function, and a function never a hunk.
 		if (cut && options.functions !== undefined) parts.push(cutDiffNote);
 		if (!cut && options.functions !== undefined)
