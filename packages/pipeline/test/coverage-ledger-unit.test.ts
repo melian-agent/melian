@@ -64,7 +64,11 @@ async function mint(changeset: Changeset, at: string, decided = true): Promise<n
 	return id;
 }
 
-function round(changeset: Changeset, adjudication: number, overrides: Partial<LedgerRound> = {}): LedgerRound {
+function round(
+	changeset: Changeset,
+	adjudication: number,
+	overrides: Partial<LedgerRound> = {},
+): LedgerRound & { adjudication: number } {
 	const lens: LedgerLens = {
 		name: "correctness",
 		version: "1",
@@ -102,18 +106,23 @@ async function record(id: string): Promise<StoredCoverageRecord> {
 }
 
 const ledger = () => new CoverageLedger(harness, root);
+
+// Computes a round's record and writes it for the adjudication task that decided it.
+async function ledgerWrite({ adjudication, ...rest }: LedgerRound & { adjudication: number }) {
+	return ledger().write(await ledger().compute(rest, context), adjudication, context);
+}
 const head = async () => Changeset.resolve(repo, `${base}..feature`);
 
 describe("CoverageLedger.write", () => {
 	it("writes nothing for a task no round holds, and keeps a round's first record", async () => {
 		commit(repo, { "src/a.ts": numbered(20, "a").replace("a 3\n", "A 3\n") });
 		const changeset = await head();
-		expect(await ledger().write(round(changeset, 9999), context)).toBeUndefined();
+		expect(await ledgerWrite(round(changeset, 9999))).toBeUndefined();
 		expect((await harness.snapshot(CoverageDocument, root, context))?.records ?? {}).toEqual({});
 		const adjudication = await mint(changeset, "2026-10-25T00:00:01.000Z");
-		expect(await ledger().write(round(changeset, adjudication), context)).toBe("r1");
+		expect(await ledgerWrite(round(changeset, adjudication))).toBe("r1");
 		const first = await record("r1");
-		expect(await ledger().write(round(changeset, adjudication, { tier: "other" }), context)).toBe("r1");
+		expect(await ledgerWrite(round(changeset, adjudication, { tier: "other" }))).toBe("r1");
 		expect(await record("r1")).toEqual(first);
 		expect((await harness.snapshot(RoundsDocument, root, context))!.items.r1).toMatchObject({
 			scope: { kind: "diff" },
@@ -126,7 +135,7 @@ describe("CoverageLedger.write", () => {
 		const changeset = await head();
 		const fingerprint = async (overrides: Partial<LedgerRound>) => {
 			const adjudication = await mint(changeset, `2026-10-25T00:00:${String(task).slice(-2)}.000Z`);
-			const id = (await ledger().write(round(changeset, adjudication, overrides), context))!;
+			const id = (await ledgerWrite(round(changeset, adjudication, overrides)))!;
 			return (await record(id)).policy;
 		};
 		const plain = await fingerprint({ tools: { a: 1, b: [1, 2] } });
@@ -146,17 +155,18 @@ describe("the round a record carries from", () => {
 	async function decidedAt(at: string, overrides: Partial<LedgerRound> = {}, decided = true) {
 		const changeset = await head();
 		const adjudication = await mint(changeset, at, decided);
-		return ledger().write(round(changeset, adjudication, overrides), context);
+		return ledgerWrite(round(changeset, adjudication, overrides));
 	}
 
-	it("is the last decided round minted before it, by mint time and then by round number", async () => {
+	it("is the last decided round by mint time and then by round number", async () => {
 		commit(repo, { "src/a.ts": numbered(20, "a").replace("a 3\n", "A 3\n") });
 		expect(await decidedAt("2026-10-25T00:00:03.000Z")).toBe("r1");
 		expect(await decidedAt("2026-10-25T00:00:01.000Z")).toBe("r2");
 		expect(await decidedAt("2026-10-25T00:00:02.000Z")).toBe("r3");
 		expect((await record("r1")).carriedFrom).toBeUndefined();
-		expect((await record("r2")).carriedFrom).toBeUndefined();
-		expect((await record("r3")).carriedFrom).toBe("r2");
+		expect((await record("r2")).carriedFrom).toBe("r1");
+		// The last decided round by mint time, r1, stands, though r3 was minted later at an earlier time.
+		expect((await record("r3")).carriedFrom).toBe("r1");
 		expect(await decidedAt("2026-10-25T00:00:03.000Z")).toBe("r4");
 		expect((await record("r4")).carriedFrom).toBe("r1");
 		expect(await decidedAt("2026-10-25T00:00:09.000Z")).toBe("r5");
@@ -178,7 +188,7 @@ describe("what a lens's own run delivered", () => {
 		commit(repo, { "src/a.ts": numbered(20, "a").replace("a 3\n", "A 3\n").replace("a 9\n", "") }, ["src/gone.ts"]);
 		const changeset = await head();
 		const adjudication = await mint(changeset, "2026-10-25T00:00:01.000Z");
-		await ledger().write(round(changeset, adjudication), context);
+		await ledgerWrite(round(changeset, adjudication));
 		const own = (await record("r1")).checks["lens.correctness"]!.covered[0]!;
 		expect(own.head).toEqual({ "src/a.ts": [[3, 3]] });
 		expect(own.base).toEqual({
@@ -198,7 +208,7 @@ describe("what a lens's own run delivered", () => {
 			...round(changeset, adjudication).lenses[0]!,
 			delivered: { hunks: {}, fields: {}, omitted: ["src/a.ts", "src/missing.ts"] },
 		};
-		await ledger().write(round(changeset, adjudication, { lenses: [lens] }), context);
+		await ledgerWrite(round(changeset, adjudication, { lenses: [lens] }));
 		const coverage = (await record("r1")).checks["lens.correctness"]!;
 		expect(coverage.covered[0]!.head).toEqual({});
 		expect(coverage.omitted).toEqual({
@@ -222,7 +232,7 @@ describe("what a lens's own run delivered", () => {
 		commit(repo, { "src/a.ts": numbered(20, "a").replace("a 3\n", "A 3\n") });
 		const changeset = await head();
 		const adjudication = await mint(changeset, "2026-10-25T00:00:01.000Z");
-		await ledger().write(round(changeset, adjudication), context);
+		await ledgerWrite(round(changeset, adjudication));
 		expect(Object.keys((await record("r1")).checks["lens.correctness"]!.needs.head)).toEqual(["src/a.ts"]);
 	});
 
@@ -243,11 +253,10 @@ describe("what a lens's own run delivered", () => {
 				explanation: { what: "w", whyHere: "h", whatToDo: "t" },
 				source: { check: "lens.correctness", version: "1" },
 			});
-		await ledger().write(
+		await ledgerWrite(
 			round(changeset, adjudication, {
 				findings: [finding("melian/injection-attempt", "src/a.ts"), finding("null-dereference", "src/gone.ts")],
 			}),
-			context,
 		);
 		expect((await record("r1")).checks["lens.correctness"]!.injected).toEqual(["src/a.ts"]);
 	});
@@ -270,6 +279,7 @@ describe("CoverageLedger.section", () => {
 						reason: "this review recorded no coverage, so it covers nothing",
 					},
 				],
+				dismissed: [],
 			},
 			text: "Coverage: incomplete.\n  review.coverage: this review recorded no coverage, so it covers nothing\n",
 		});
@@ -284,7 +294,7 @@ describe("each check's entry in the record", () => {
 	async function written(overrides: (changeset: Changeset, adjudication: number) => Partial<LedgerRound>) {
 		const changeset = await head();
 		const adjudication = await mint(changeset, "2026-10-25T00:00:01.000Z");
-		await ledger().write(round(changeset, adjudication, overrides(changeset, adjudication)), context);
+		await ledgerWrite(round(changeset, adjudication, overrides(changeset, adjudication)));
 		return record("r1");
 	}
 
