@@ -8,6 +8,7 @@ import {
 	type MelianConfig,
 	Revision,
 	type StoredCoverageRecord,
+	type UnitField,
 } from "@melian-agent/core";
 import {
 	CoverageDocument,
@@ -833,7 +834,7 @@ describe("the coverage a round carries", () => {
 	it("carries a file unit the move left alone, and none the move lists or an injection attempt sits in", async () => {
 		chmodSync(join(repo, "src/gone.ts"), 0o755);
 		commit(repo, { "src/a.ts": numbered(20, "a").replace("a 3\n", "A 3\n").replace("a 9\n", "A 9\n") });
-		const fields = ["status", "path", "oldMode", "newMode", "oldKind", "newKind", "binary"];
+		const fields: UnitField[] = ["status", "path", "oldMode", "newMode", "oldKind", "newKind", "binary"];
 		const delivering = (changeset: Changeset, adjudication: number) => ({
 			lenses: [
 				{
