@@ -439,3 +439,194 @@ describe("each check's entry in the record", () => {
 		]);
 	});
 });
+
+describe("the ledger at its edges", () => {
+	const changed = () => numbered(20, "a").replace("a 3\n", "A 3\n").replace("a 9\n", "A 9\n");
+	const writeAt = async (changeset: Changeset, at: string, overrides: Partial<LedgerRound> = {}) =>
+		ledger().write(round(changeset, await mint(changeset, at), overrides), context);
+
+	it("stores its records under one durable kind, kept at their latest value and forked as they stand", () => {
+		expect(CoverageDocument.definition).toMatchObject({
+			kind: "melian.coverage",
+			version: 1,
+			history: "latest",
+			fork: "current",
+		});
+	});
+
+	it("tells apart tool pins and policy sources that differ only where a separator would sit", async () => {
+		commit(repo, { "src/a.ts": changed() });
+		const changeset = await head();
+		const policy = async (overrides: Partial<LedgerRound>) =>
+			(await record((await writeAt(changeset, `2026-10-25T00:00:${String(task).slice(-2)}.000Z`, overrides))!))
+				.policy;
+		expect(await policy({ tools: { b: [1, 23] } })).not.toBe(await policy({ tools: { b: [12, 3] } }));
+		expect(await policy({ policy: { kind: "revision", commit: "a".repeat(40) } })).not.toBe(
+			await policy({ policy: { kind: "revision", commit: "b".repeat(40) } }),
+		);
+	});
+
+	it("counts only the hunks the prompt rendered, of a file with several", async () => {
+		commit(repo, { "src/a.ts": changed() });
+		const changeset = await head();
+		const [first] = changeset.revision.files.find((file) => file.path === "src/a.ts")!.hunks;
+		const lens = (adjudication: number): LedgerLens => ({
+			...round(changeset, adjudication).lenses[0]!,
+			delivered: { hunks: { "src/a.ts": [first!.index], "src/missing.ts": [0] }, fields: {}, omitted: [] },
+		});
+		const adjudication = await mint(changeset, "2026-10-25T00:00:01.000Z");
+		await ledger().write(round(changeset, adjudication, { lenses: [lens(adjudication)] }), context);
+		expect((await record("r1")).checks["lens.correctness"]!.covered[0]).toEqual({
+			level: "careful",
+			head: { "src/a.ts": [[3, 3]] },
+			base: { "src/a.ts": [[3, 3]] },
+			units: {},
+		});
+	});
+
+	it("gives a pure insertion no base lines to need or cover", async () => {
+		commit(repo, { "src/a.ts": numbered(20, "a").replace("a 3\n", "a 3\nnew\n") });
+		const changeset = await head();
+		await writeAt(changeset, "2026-10-25T00:00:01.000Z");
+		const coverage = (await record("r1")).checks["lens.correctness"]!;
+		expect(coverage.needs).toEqual({ head: { "src/a.ts": [[4, 4]] }, base: {}, units: {} });
+		expect(coverage.covered[0]).toEqual({ level: "careful", head: { "src/a.ts": [[4, 4]] }, base: {}, units: {} });
+	});
+
+	it("carries from no round minted at the same time with a later number", async () => {
+		commit(repo, { "src/a.ts": changed() });
+		const changeset = await head();
+		const first = await mint(changeset, "2026-10-25T00:00:05.000Z");
+		const second = await mint(changeset, "2026-10-25T00:00:05.000Z");
+		expect(await ledger().write(round(changeset, second), context)).toBe("r2");
+		expect((await record("r2")).carriedFrom).toBeUndefined();
+		expect(await ledger().write(round(changeset, first), context)).toBe("r1");
+		expect((await record("r1")).carriedFrom).toBeUndefined();
+	});
+
+	it("carries from the highest-numbered of rounds minted at one time", async () => {
+		commit(repo, { "src/a.ts": changed() });
+		const changeset = await head();
+		for (let index = 0; index < 4; index++) await writeAt(changeset, "2026-10-25T00:00:05.000Z");
+		expect((await record("r4")).carriedFrom).toBe("r3");
+	});
+
+	it("carries from no undecided round, even one holding a record", async () => {
+		commit(repo, { "src/a.ts": changed() });
+		const changeset = await head();
+		await writeAt(changeset, "2026-10-25T00:00:01.000Z");
+		await mint(changeset, "2026-10-25T00:00:02.000Z", false);
+		await (await harness.root(context)).commit(async (tx) => {
+			const document = await tx.doc(CoverageDocument, root);
+			document.records.r2 = {
+				...(JSON.parse(JSON.stringify(document.records.r1)) as StoredCoverageRecord),
+				round: "r2",
+			};
+		}, context);
+		await writeAt(changeset, "2026-10-25T00:00:03.000Z");
+		expect((await record("r3")).carriedFrom).toBe("r1");
+	});
+
+	it("lists injected files in code-unit order, and needs a file unit's fields for a whole-range check", async () => {
+		commit(repo, { "src/a.ts": changed() });
+		chmodSync(join(repo, "src/gone.ts"), 0o755);
+		commit(repo, {});
+		const changeset = await head();
+		const finding = (file: string) =>
+			Finding.create({
+				rule: "melian/injection-attempt",
+				message: "m",
+				file,
+				startLine: 1,
+				snippet: "x",
+				occurrence: 0,
+				cause: "introduced",
+				severity: "P1",
+				explanation: { what: "w", whyHere: "h", whatToDo: "t" },
+				source: { check: "lens.correctness", version: "1" },
+			});
+		await writeAt(changeset, "2026-10-25T00:00:01.000Z", { findings: [finding("src/z.ts"), finding("src/a.ts")] });
+		const stored = await record("r1");
+		expect(stored.checks["lens.correctness"]!.injected).toEqual(["src/a.ts", "src/z.ts"]);
+		expect(stored.checks.guardrails!.needs.units).toEqual({
+			"src/gone.ts": ["status", "path", "oldMode", "newMode", "oldKind", "newKind", "binary"],
+		});
+	});
+
+	it("needs nothing of a renamed file a lens covers under neither path", async () => {
+		gitIn(repo, "mv", "src/gone.ts", "src/kept.ts");
+		commit(repo, { "src/kept.ts": numbered(4, "g").replace("g 2\n", "G 2\n") });
+		const changeset = await head();
+		const adjudication = await mint(changeset, "2026-10-25T00:00:01.000Z");
+		const lens = { ...round(changeset, adjudication).lenses[0]!, covers: ["src/a.ts"] };
+		await ledger().write(round(changeset, adjudication, { lenses: [lens] }), context);
+		expect((await record("r1")).checks["lens.correctness"]!.needs).toEqual({ head: {}, base: {}, units: {} });
+	});
+
+	it("owes only the omitted file's lines when the diff holds several", async () => {
+		commit(repo, { "src/a.ts": changed(), "src/gone.ts": numbered(4, "g").replace("g 2\n", "G 2\n") });
+		const changeset = await head();
+		const adjudication = await mint(changeset, "2026-10-25T00:00:01.000Z");
+		const lens: LedgerLens = {
+			...round(changeset, adjudication).lenses[0]!,
+			delivered: { hunks: {}, fields: {}, omitted: ["src/gone.ts"] },
+		};
+		await ledger().write(round(changeset, adjudication, { lenses: [lens] }), context);
+		expect((await record("r1")).checks["lens.correctness"]!.omitted).toEqual({
+			head: { "src/gone.ts": [[2, 2]] },
+			base: { "src/gone.ts": [[2, 2]] },
+			units: {},
+		});
+	});
+
+	it("records a lens that left no record as absent, and no leave for a check that ran", async () => {
+		commit(repo, { "src/a.ts": changed() });
+		const changeset = await head();
+		const adjudication = await mint(changeset, "2026-10-25T00:00:01.000Z");
+		const { record: _, ...lens } = round(changeset, adjudication).lenses[0]!;
+		await ledger().write(
+			round(changeset, adjudication, { lenses: [lens], allowSkip: ["guardrails", "lens.correctness"] }),
+			context,
+		);
+		const stored = await record("r1");
+		expect(stored.checks["lens.correctness"]!.status).toBe("absent");
+		expect(stored.checks["lens.correctness"]!.leave).toBeUndefined();
+		expect(stored.checks.guardrails).toMatchObject({ status: "ran" });
+		expect(stored.checks.guardrails!.leave).toBeUndefined();
+	});
+
+	it("carries nothing for a lens the earlier round ran and this one does not", async () => {
+		commit(repo, { "src/a.ts": changed() });
+		const changeset = await head();
+		const adjudication = await mint(changeset, "2026-10-25T00:00:01.000Z");
+		const correctness = round(changeset, adjudication).lenses[0]!;
+		await ledger().write(
+			round(changeset, adjudication, {
+				lenses: [
+					correctness,
+					{ ...correctness, name: "design", record: { ...correctness.record!, name: "lens.design" } },
+				],
+				manifest: ["guardrails", "lens.correctness", "lens.design"],
+			}),
+			context,
+		);
+		expect(await writeAt(changeset, "2026-10-25T00:00:02.000Z")).toBe("r2");
+		const stored = await record("r2");
+		expect(stored.carriedFrom).toBe("r1");
+		expect(stored.checks["lens.design"]).toBeUndefined();
+	});
+
+	it("counts a lens's prompt alone when its conversation is gone", async () => {
+		commit(repo, { "src/a.ts": changed() });
+		const changeset = await head();
+		const adjudication = await mint(changeset, "2026-10-25T00:00:01.000Z");
+		const lens = { ...round(changeset, adjudication).lenses[0]!, conversation: "c-missing" as never };
+		await ledger().write(round(changeset, adjudication, { lenses: [lens] }), context);
+		expect((await record("r1")).checks["lens.correctness"]!.covered[0]!.head).toEqual({
+			"src/a.ts": [
+				[3, 3],
+				[9, 9],
+			],
+		});
+	});
+});

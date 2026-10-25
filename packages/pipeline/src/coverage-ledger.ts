@@ -194,7 +194,8 @@ export class CoverageLedger {
 	// The last decided round minted before round `id`, by mint order, with its record.
 	async #prior(id: string, mintedAt: string | undefined, context: Context): Promise<StoredCoverageRecord | undefined> {
 		if (mintedAt === undefined) return undefined;
-		const rounds = (await this.harness.snapshot(RoundsDocument, this.root, context))?.items ?? {};
+		// The round being written holds a task, so the rounds document exists.
+		const rounds = (await this.harness.snapshot(RoundsDocument, this.root, context))!.items;
 		const records = (await this.harness.snapshot(CoverageDocument, this.root, context))?.records ?? {};
 		const order = (key: string) => Number(key.slice(1));
 		const earlier = Object.entries(rounds)
