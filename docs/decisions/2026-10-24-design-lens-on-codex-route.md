@@ -37,3 +37,11 @@ A sixth lens tier would also free a route, but it touches every tier order and s
 - The design lens's goldens and live measurements so far ran on `heavy`. A live rerun of the design corpus on the new route is owed before its numbers are quoted for this route.
 - `melian doctor` warns about no inverted levels: `quick` on `light` sits below `careful` and `deep` on `heavy`.
 - A round script that writes its own lens extensions, or routes `medium` in `melian.local.yaml`, undoes this. Rounds must leave the committed design extension and the `medium` route alone.
+
+## The maintainer's rulings, 2026-10-25
+
+The maintainer confirmed three choices this pull request made:
+
+- `medium` falls back to `anthropic/claude-opus-5-5`, and accepts Sol 5.6 and Opus.
+- Every other lens's `quick` level runs Terra at `low`, the light route's level, where `medium` left it unset.
+- The fix that makes lens discovery skip a folder with no `LENS.md` rides in this pull request, since the golden copies it adds made `melian doctor` pass its CLI test's limit.
