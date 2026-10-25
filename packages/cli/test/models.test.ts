@@ -80,8 +80,9 @@ it("sends effort low in the lens and triage requests of the committed routes", a
 	const committed = (await loadConfig(root, { kind: "worktree" }, ".")).config.models;
 	expect(committed.heavy?.thinking).toBe("low");
 	expect(committed.light?.thinking).toBe("low");
-	expect(committed.medium?.thinking).toBeUndefined();
-	expect(committed.light).toMatchObject({ model: committed.medium?.model, fallbacks: committed.medium?.fallbacks });
+	// Medium is the design lens's alone, on Codex's model and effort; light keeps the Terra route triage had.
+	expect(committed.medium).toMatchObject({ model: "openai-codex/gpt-5.6-sol", thinking: "high" });
+	expect(committed.light).toMatchObject({ model: "openai-codex/gpt-5.6-terra" });
 	const config = {
 		...defaultConfig,
 		tiers: { full: ["lens.correctness"] },
@@ -436,7 +437,8 @@ describe("Triage", () => {
 		const { triage, marker, lensMarker, plan } = await opened({ scripted: true, decide });
 
 		expect(plan.lenses).toHaveLength(1);
-		expect(plan.providers()).toEqual(["anthropic", "openai"]);
+		// Melian's own correctness lens runs quick on light, so light's provider comes first.
+		expect(plan.providers()).toEqual(["openai", "anthropic"]);
 		expect(triage.harnessOptions()).toEqual({});
 		expect(triage.reviewOptions()).toEqual({ triageProviders: [], unlockModels: expect.any(Function) });
 		expect(existsSync(lensMarker)).toBe(false);
