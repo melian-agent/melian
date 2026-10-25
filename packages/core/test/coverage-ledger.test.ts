@@ -4,6 +4,7 @@ import {
 	type LedgerGap,
 	type StoredCheckCoverage,
 	type StoredCoverageRecord,
+	type StoredGapDismissal,
 } from "@melian-agent/core";
 import { describe, expect, it } from "vitest";
 
@@ -439,5 +440,88 @@ describe("CoverageRecord's order and edges", () => {
 		).toMatch(
 			/^Coverage: incomplete\.\n {2}guardrails {2}src\/a\.ts 5 lines at 1-4, 9: coverage is not recorded for a fork's head\n/,
 		);
+	});
+});
+
+describe("CoverageRecord with a maintainer's dismissals", () => {
+	const unread = (check: string) => ({ [check]: lens({ covered: [] }) });
+	const dismissal = (overrides: Partial<StoredGapDismissal> = {}): StoredGapDismissal => ({
+		check: "lens.correctness",
+		file: "src/a.ts",
+		lines: [[1, 2]],
+		reason: "generated <code>",
+		by: "Ada\u001b",
+		at: "2026-10-25T00:00:00.000Z",
+		...overrides,
+	});
+	const at = (stored: CoverageRecord, dismissed: StoredGapDismissal[]) =>
+		CoverageRecord.from(stored.stored, dismissed);
+
+	it("answers only the named check, file and side, on the named lines, and lists the dismissal apart", () => {
+		const plain = record({ ...unread("lens.correctness"), ...unread("lens.design") });
+		const answered = at(plain, [
+			dismissal(),
+			dismissal({ lines: [[9, 9]] }),
+			dismissal({ file: "src/gone.ts", revision: "base", lines: [[1, 2]] }),
+			dismissal({ check: "lens.design", file: "src/gone.ts", lines: [[1, 2]] }),
+		]);
+		expect(only(answered.gaps().filter((gap) => gap.file !== "bin/run"))).toEqual([
+			{
+				check: "lens.correctness",
+				file: "src/a.ts",
+				revision: undefined,
+				lines: [[3, 4]],
+				reason: "never delivered",
+			},
+			{
+				check: "lens.design",
+				file: "src/a.ts",
+				revision: undefined,
+				lines: [
+					[1, 4],
+					[9, 9],
+				],
+				reason: "never delivered",
+			},
+			{ check: "lens.design", file: "src/gone.ts", revision: "base", lines: [[1, 2]], reason: "never delivered" },
+		]);
+		expect(
+			answered
+				.gaps()
+				.filter((gap) => gap.file === "bin/run")
+				.map((gap) => gap.check),
+		).toEqual(["lens.correctness", "lens.design"]);
+		expect(answered.summary().dismissed).toHaveLength(4);
+		expect(answered.render()).toContain(
+			[
+				"Dismissed gaps:",
+				"  lens.correctness  src/a.ts lines 1-2: generated <code> (Ada\\u001b)",
+				"  lens.correctness  src/a.ts lines 9: generated <code> (Ada\\u001b)",
+				"  lens.correctness  src/gone.ts (base) lines 1-2: generated <code> (Ada\\u001b)",
+				"  lens.design  src/gone.ts lines 1-2: generated <code> (Ada\\u001b)",
+				"",
+			].join("\n"),
+		);
+	});
+
+	it("lists a dismissal beside a complete ledger, and none when there is none", () => {
+		const covered = record({ guardrails: range() });
+		expect(at(covered, [dismissal({ check: "guardrails", lines: [[3, 3]] })]).render()).toBe(
+			"Coverage: complete, from r2.\nDismissed gaps:\n  guardrails  src/a.ts lines 3: generated <code> (Ada\\u001b)\n",
+		);
+		expect(covered.render()).toBe("Coverage: complete, from r2.\n");
+	});
+
+	it("names this round for a record not yet written, and marks a unit gap of a check that did not run as its own", () => {
+		const unwritten = record({ "lens.correctness": lens({ status: "ended", covered: [] }) }, { round: "" });
+		expect(new Set(unwritten.gaps().map((gap) => gap.reason))).toEqual(
+			new Set(["lens ended at its budget in this round"]),
+		);
+		expect(unwritten.gaps().find((gap) => gap.file === "bin/run")?.own).toBe(true);
+		expect(
+			record(unread("lens.correctness"))
+				.gaps()
+				.find((gap) => gap.file === "bin/run")?.own,
+		).toBeUndefined();
 	});
 });
