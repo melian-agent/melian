@@ -186,6 +186,44 @@ it("walks callers in file and line order, whatever order Enola wrote the facts a
 	}
 });
 
+it("walks callers that are top-level code, a file or a module, as it walks declarations", () => {
+	const graph = EnolaFacts.parse(
+		[
+			{ id: "t", name: "src.t", kind: "symbol", file: "src/t.ts", line: 1 },
+			{
+				id: "f",
+				name: "src/run.ts",
+				kind: "file_ref",
+				file: "src/run.ts",
+				relations: [{ kind: "calls", target: "src.t", target_id: "t" }],
+			},
+			{
+				id: "m",
+				name: "lib",
+				kind: "module",
+				file: "lib",
+				relations: [{ kind: "instantiates", target: "src.t", target_id: "t" }],
+			},
+			{
+				id: "s",
+				name: "src.s",
+				kind: "symbol",
+				file: "src/s.ts",
+				line: 4,
+				relations: [{ kind: "calls", target: "src/run.ts", target_id: "f" }],
+			},
+		]
+			.map((fact) => JSON.stringify(fact))
+			.join("\n"),
+	);
+	const [t] = graph.definitions("src.t");
+	expect(graph.impact(t!, 2, 10).reached.map(({ depth, fact }) => [depth, fact.id])).toEqual([
+		[1, "m"],
+		[1, "f"],
+		[2, "s"],
+	]);
+});
+
 it("counts a declaration once when two edges reach it, and never walks back to the target", () => {
 	const facts = EnolaFacts.parse(
 		[
