@@ -345,3 +345,79 @@ describe("a store main wrote at version 10 of the findings document", () => {
 		}
 	});
 });
+
+describe("rounds over the ledger, end to end", () => {
+	async function defectAt(line = 3) {
+		commit(repo, {
+			"src/a.ts": numbered(20, "a").replace(`a ${line}\n`, `A ${line}\n`),
+			"src/c.ts": numbered(20, "c"),
+		});
+		const first = await review({
+			correctness: [
+				report({ line, evidence: [{ file: "src/a.ts", line, role: "cause" }] }),
+				fauxAssistantMessage("Done."),
+			],
+		});
+		return first.verdict.findings.block[0]!.id;
+	}
+
+	it("lets a fix resolve a prior finding: its lens refutes it, the verifier agrees, and the review passes", async () => {
+		const id = await defectAt();
+		commit(repo, { "src/a.ts": numbered(20, "a").replace("a 3\n", "A 3 guarded\n"), "src/c.ts": numbered(20, "c") });
+		const { verdict } = await review({
+			correctness: [report({ refuted: id }), fauxAssistantMessage("Done.")],
+			verifier: {
+				[id]: {
+					verdict: "refuted",
+					reason: "The guard on line 3 returns before the read.",
+					evidence: [{ file: "src/a.ts", line: 3, role: "cause" }],
+				},
+			},
+		});
+		expect(blockIds(verdict)).not.toContain(id);
+		expect(verdict.status).toBe("passed");
+	});
+
+	it("keeps the prior finding and adds a new defect the fix brought in", async () => {
+		const id = await defectAt();
+		commit(repo, { "src/b.ts": numbered(20, "b").replace("b 9\n", "B 9\n") });
+		const { verdict } = await review({
+			correctness: [
+				report({ file: "src/b.ts", line: 9, evidence: [{ file: "src/b.ts", line: 9, role: "cause" }] }),
+				fauxAssistantMessage("Done."),
+			],
+		});
+		expect(blockIds(verdict)).toHaveLength(2);
+		expect(blockIds(verdict)).toContain(id);
+	});
+
+	it("leaves a defect in code no round's lens reported: the ledger reads complete, and only a cold round finds it", async () => {
+		commit(repo, { "src/a.ts": numbered(20, "a").replace("a 3\n", "A 3\n"), "src/c.ts": numbered(20, "c") });
+		const missed = await review();
+		expect(missed.verdict.status).toBe("passed");
+		commit(repo, { "src/b.ts": numbered(20, "b").replace("b 9\n", "B 9\n") });
+		const delta = await review();
+		expect(delta.verdict.status).toBe("passed");
+		expect(firstPrompt(delta.requests, correctness)).toContain("## The change under review");
+		const cold = await review({ cold: true, correctness: [report(), fauxAssistantMessage("Done.")] });
+		expect(firstPrompt(cold.requests, correctness)).not.toContain("## The change under review");
+		expect(cold.verdict.findings.block).toHaveLength(1);
+	});
+
+	it("shows a delta's lens the earlier hunks as context within the cap, and names those the cap left out", async () => {
+		commit(repo, { "src/a.ts": numbered(20, "a").replace("a 3\n", "A 3\n"), "src/c.ts": numbered(20, "c") });
+		await review();
+		commit(repo, { "src/b.ts": numbered(20, "b").replace("b 9\n", "B 9\n") });
+		const near = await review();
+		const [, context] = firstPrompt(near.requests, correctness).split("## Context");
+		expect(context).toContain("+A 3");
+		commit(repo, {
+			"src/b.ts": numbered(20, "b").replace("b 9\n", "B 9\n").replace("b 10\n", "B 10\n"),
+			"src/a.ts": lines(
+				...Array.from({ length: 6000 }, (_, index) => `export const value${index} = "${"x".repeat(30)}";`),
+			),
+		});
+		const far = await review({ cold: true });
+		expect(firstPrompt(far.requests, correctness)).toContain("These hunks were left out for size");
+	});
+});

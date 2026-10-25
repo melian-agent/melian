@@ -694,12 +694,23 @@ export async function seenBefore(
 		.filter((id) => items[id]!.lifecycle.firstSeenRevision !== revision);
 }
 
-export async function clearVerifications(tx: Tx, root: ConversationId, revision: string): Promise<void> {
+// Clears the verifications at `revision`, but those `keep` names by finding ID and producer key: a carried claim the
+// verifier is not judging again keeps the judgement the carry copied.
+export async function clearVerifications(
+	tx: Tx,
+	root: ConversationId,
+	revision: string,
+	keep: (id: string, producer: string) => boolean = () => false,
+): Promise<void> {
 	const state = await tx.doc(FindingsDocument, root);
 	let cleared = false;
-	for (const record of Object.values(state.items)) {
-		if (record.verifications?.[revision] === undefined) continue;
-		delete record.verifications[revision];
+	for (const [id, record] of Object.entries(state.items)) {
+		const at = record.verifications?.[revision];
+		if (at === undefined) continue;
+		const kept = Object.fromEntries(Object.entries(at).filter(([producer]) => keep(id, producer)));
+		if (Object.keys(kept).length === Object.keys(at).length) continue;
+		if (Object.keys(kept).length === 0) delete record.verifications![revision];
+		else record.verifications![revision] = kept;
 		cleared = true;
 	}
 	if (cleared) bump(state, [revision]);

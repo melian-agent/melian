@@ -1,6 +1,6 @@
 import type { ModelReference, ModelRoute, Severity, StoredVerificationState } from "@melian-agent/core";
-import { Revision } from "@melian-agent/core";
-import { clearVerifications, FindingsDocument, sightingIn, sightingVerification } from "./findings.ts";
+import { carriedCheckPrefix, Revision } from "@melian-agent/core";
+import { clearVerifications, FindingsDocument, producerKey, sightingIn, sightingVerification } from "./findings.ts";
 import {
 	type Context,
 	type ConversationId,
@@ -279,7 +279,18 @@ export async function startVerification(
 			if (record !== undefined && (record.state.status !== "terminal" || (results !== undefined && !failed)))
 				return previous.task as TaskId<VerificationResult>;
 		}
-		await clearVerifications(tx, input.root, Revision.key(input.revision));
+		// A carried claim this task does not judge again keeps the verification the carry copied.
+		const judged = new Set(
+			input.candidates.flatMap((candidate) =>
+				candidate.state.claims.map((claim) => `${claim.id}\0${producerKey(claim.source)}`),
+			),
+		);
+		await clearVerifications(
+			tx,
+			input.root,
+			Revision.key(input.revision),
+			(id, producer) => producer.startsWith(carriedCheckPrefix) && !judged.has(`${id}\0${producer}`),
+		);
 		const created = await tx.createTask(VerificationTask, input, { ownership: { kind: "conversation" } });
 		const { adjudication: __, ...entry } = known ?? { lenses: [...selection] };
 		index.reviews[Revision.key(input.revision)] = {

@@ -1134,7 +1134,7 @@ async function startAdjudication(
 		if (selection.length > 0 && known?.lenses.join("\n") !== selection.join("\n")) return undefined;
 		const deciding = { ...input };
 		if (verificationRefused) {
-			await clearVerifications(tx, input.root, revision);
+			await clearVerifications(tx, input.root, revision, (_id, producer) => producer.startsWith(carriedPrefix));
 			deciding.findingsVersion = (await tx.doc(FindingsDocument, input.root)).versions[revision] ?? 0;
 			if (known?.verification !== undefined) known = omit(omit(known, "verification"), "adjudication");
 		}
