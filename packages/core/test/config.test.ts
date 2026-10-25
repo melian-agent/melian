@@ -1120,3 +1120,102 @@ describe("same-family verifier policy", () => {
 		});
 	});
 });
+
+describe("review.coverage and review.delta", () => {
+	let home: string;
+	beforeEach(() => {
+		home = temporaryDirectory();
+	});
+	afterEach(() => removeDirectory(home));
+	const preferences = () => join(home, "config.yaml");
+	const worktree = () => ({ kind: "worktree" as const, preferences: preferences() });
+
+	it("bounds a delta at 1,000 lines by default, and reads the root's bound", async () => {
+		expect(defaultConfig.review).toEqual({ delta: { maxLines: 1000 } });
+		writeFiles(repo, { "melian.yaml": lines("review:", "  delta:", "    maxLines: 0") });
+		expect((await loadConfig(repo, { kind: "worktree" }, "a.ts")).config.review).toEqual({ delta: { maxLines: 0 } });
+	});
+
+	it("refuses a negative bound", async () => {
+		writeFiles(repo, { "melian.yaml": lines("review:", "  delta:", "    maxLines: -1") });
+		expect(await rejection(loadConfig(repo, { kind: "worktree" }, "a.ts"))).toMatchObject({ code: "invalidValue" });
+	});
+
+	it.each([
+		["a nested melian.yaml", "services/pay/melian.yaml"],
+		["melian.local.yaml", "melian.local.yaml"],
+	])("refuses the bound in %s, since only the root's policy sets it", async (_, file) => {
+		writeFiles(repo, { [file]: lines("review:", "  delta:", "    maxLines: 5000") });
+		expect(await rejection(loadConfig(repo, { kind: "worktree" }, "services/pay/a.ts"))).toMatchObject({
+			code: "invalidValue",
+			key: "review",
+			file,
+		});
+	});
+
+	it("refuses the bound in the user's preference file", async () => {
+		writeFiles(home, { "config.yaml": lines("review:", "  delta:", "    maxLines: 5000") });
+		expect(await rejection(loadConfig(repo, worktree(), "a.ts"))).toMatchObject({
+			code: "invalidValue",
+			key: "review",
+			file: preferences(),
+		});
+	});
+
+	const layers = [
+		["the root melian.yaml", "melian.yaml"],
+		["a nested melian.yaml", "services/pay/melian.yaml"],
+		["melian.local.yaml", "melian.local.yaml"],
+	] as const;
+
+	it.each(layers)("refuses review.coverage in a tier of %s", async (_, file) => {
+		writeFiles(repo, { [file]: lines("tiers:", "  full: [guardrails, review.coverage]") });
+		const error = await rejection(loadConfig(repo, { kind: "worktree" }, "services/pay/a.ts"));
+		expect(error).toMatchObject({ code: "invalidValue", key: "tiers.full", file });
+		expect(error.message).toContain("review.coverage");
+	});
+
+	it.each(layers)("refuses review.coverage in checks.allowSkip of %s", async (_, file) => {
+		writeFiles(repo, { [file]: lines("checks:", "  allowSkip: [static.tsc, review.coverage]") });
+		expect(await rejection(loadConfig(repo, { kind: "worktree" }, "services/pay/a.ts"))).toMatchObject({
+			code: "invalidValue",
+			key: "checks.allowSkip",
+			file,
+		});
+	});
+
+	it("refuses a tier named review.coverage", async () => {
+		writeFiles(repo, { "melian.yaml": lines("tiers:", "  review.coverage: [guardrails]") });
+		expect(await rejection(loadConfig(repo, { kind: "worktree" }, "a.ts"))).toMatchObject({
+			code: "invalidValue",
+			key: "tiers.review.coverage",
+		});
+	});
+
+	it("refuses review.coverage in the user's preference file", async () => {
+		writeFiles(home, { "config.yaml": lines("checks:", "  allowSkip: [review.coverage]") });
+		expect(await rejection(loadConfig(repo, worktree(), "a.ts"))).toMatchObject({
+			code: "invalidValue",
+			key: "checks.allowSkip",
+			file: preferences(),
+		});
+	});
+
+	it("refuses review.coverage in a base melian.yaml read from a revision", async () => {
+		writeFiles(repo, { "melian.yaml": lines("checks:", "  allowSkip: [review.coverage]") });
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "policy");
+		expect(await rejection(loadConfig(repo, { kind: "revision", commit: "HEAD" }, "a.ts"))).toMatchObject({
+			code: "invalidValue",
+			key: "checks.allowSkip",
+		});
+	});
+
+	it("loads tiers and skips that name other checks", async () => {
+		writeFiles(repo, {
+			"melian.yaml": lines("tiers:", "  full: [guardrails]", "checks:", "  allowSkip: [static.tsc]"),
+		});
+		const { config } = await loadConfig(repo, { kind: "worktree" }, "a.ts");
+		expect(config.checks.allowSkip).toEqual(["static.tsc"]);
+	});
+});

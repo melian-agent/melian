@@ -69,6 +69,7 @@ export {
 	type Band,
 	type ConfigLookup,
 	configLookup,
+	coverageCheck,
 	defaultConfig,
 	type FileResolution,
 	type ForbiddenPathRule,
