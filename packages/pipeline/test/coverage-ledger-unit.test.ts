@@ -564,7 +564,6 @@ describe("the ledger at its edges", () => {
 
 	it("carries from the highest-numbered of rounds minted at one time", async () => {
 		commit(repo, { "src/a.ts": changed() });
-		const changeset = await head();
 		for (let index = 0; index < 4; index++) await writeAt(await stepped(), "2026-10-25T00:00:05.000Z");
 		expect((await record("r4")).carriedFrom).toBe("r3");
 	});
