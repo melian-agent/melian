@@ -1,6 +1,14 @@
 import { chmodSync, rmSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
-import { Changeset, countRanges, type Revision, rangesOf, subtractRanges, unionRanges } from "@melian-agent/core";
+import {
+	Changeset,
+	countRanges,
+	HeadMove,
+	type Revision,
+	rangesOf,
+	subtractRanges,
+	unionRanges,
+} from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { gitIn, isolatedGitEnv, lines, removeDirectory, temporaryDirectory, writeFiles } from "./fixtures/repo.ts";
 
@@ -282,5 +290,32 @@ describe("Revision.mapLine between two heads", () => {
 		writeFiles(repo, { "logo.png": Buffer.from([0x89, 0x50, 0x00, 0x02]) });
 		const second = commit("second");
 		expect((await between(first, second)).mapLine("logo.png", 1)).toBeUndefined();
+	});
+});
+
+describe("HeadMove.read", () => {
+	it("reads a head that moved along its history, a rewritten one, a merged one, and one git cannot resolve", async () => {
+		writeFiles(repo, { "a.ts": numbered(2) });
+		const first = commit("first");
+		writeFiles(repo, { "a.ts": numbered(3) });
+		const second = commit("second");
+		const moved = await HeadMove.read(repo, first, second);
+		expect(moved.kind).toBe("moved");
+		expect(moved.revision?.files.map((file) => file.path)).toEqual(["a.ts"]);
+		gitIn(repo, "checkout", "--quiet", "-b", "side", first);
+		const side = commit("side");
+		expect((await HeadMove.read(repo, side, second)).kind).toBe("rewritten");
+		gitIn(repo, "checkout", "--quiet", "main");
+		gitIn(repo, "merge", "--quiet", "--no-ff", "--no-edit", "side");
+		const merged = gitIn(repo, "rev-parse", "HEAD");
+		expect((await HeadMove.read(repo, second, merged)).kind).toBe("merged");
+		expect((await HeadMove.read(repo, "f".repeat(40), second)).kind).toBe("unresolved");
+		expect((await HeadMove.read(join(repo, "gone"), first, second)).kind).toBe("unresolved");
+	});
+
+	it("says why coverage did not carry for each move off the history", async () => {
+		writeFiles(repo, { "a.ts": numbered(2) });
+		const first = commit("first");
+		expect((await HeadMove.read(repo, "f".repeat(40), first)).reason("r1")).toBe("r1's head cannot be resolved");
 	});
 });
