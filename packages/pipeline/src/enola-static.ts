@@ -16,6 +16,7 @@ import {
 import type { CallerData, CallerGroup } from "./callers.ts";
 import { CoverageCache } from "./coverage-cache.ts";
 import { GraphCache } from "./graph-cache.ts";
+import { PrepareSpans } from "./spans.ts";
 import { type Run, type StaticRun, staticOutputLimit } from "./static.ts";
 import type { ToolProvisioning } from "./tool-provisioning.ts";
 
@@ -217,12 +218,27 @@ export class EnolaRun {
 		return log;
 	}
 
-	async callers(files: readonly ChangedFile[], changedPaths: readonly string[]): Promise<CallerData> {
+	async callers(
+		files: readonly ChangedFile[],
+		changedPaths: readonly string[],
+		spans: PrepareSpans = PrepareSpans.start("callers", 0, () => 0),
+	): Promise<CallerData> {
 		const output = posix.join(this.#scratch, "head-output");
-		await this.#generate(this.#root, output, this.#run.input.commit, true);
-		const text = await this.#run.readOutput(posix.join(output, "facts.jsonl"));
-		if (text === undefined) throw this.#run.fail("invalidOutput", "Enola snapshot has no facts");
-		const facts = EnolaFacts.parse(text);
+		const facts = await spans.time("callers.graph", async () => {
+			await this.#generate(this.#root, output, this.#run.input.commit, true);
+			const text = await this.#run.readOutput(posix.join(output, "facts.jsonl"));
+			if (text === undefined) throw this.#run.fail("invalidOutput", "Enola snapshot has no facts");
+			return EnolaFacts.parse(text);
+		});
+		return spans.time("callers.query", () => this.#query(facts, files, changedPaths));
+	}
+
+	async #query(
+		facts: EnolaFacts,
+		files: readonly ChangedFile[],
+		changedPaths: readonly string[],
+	): Promise<CallerData> {
+		const output = posix.join(this.#scratch, "head-output");
 		const groups: CallerGroup[] = [];
 		const notes: string[] = [];
 		const issues: CallerData["issues"] = [];

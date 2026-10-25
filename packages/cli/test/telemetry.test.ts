@@ -112,6 +112,19 @@ it("refuses an empty timing result and closes its storage", async () => {
 	expect(close).toHaveBeenCalledTimes(1);
 });
 
+it("prints a review's spans when it stopped before any stage", async () => {
+	const prepare = {
+		startedAt: 0,
+		endedAt: 20,
+		spans: [{ name: "resume", startedAt: 0, endedAt: 20, durationMs: 20 }],
+	};
+	const stopped = new StageTelemetry(timings.revision, [], prepare);
+	vi.mocked(TelemetryReader.prototype.read).mockResolvedValue(stopped);
+	expect(await telemetry(io, "main...HEAD", { json: false })).toBe(0);
+	expect(io.stdout).toHaveBeenCalledExactlyOnceWith(stopped.render());
+	expect(stopped.render()).toContain("span resume start=0 end=20 duration=20ms");
+});
+
 it.each([false, true])("closes a failed detached read without review JSON (json=%s)", async (json) => {
 	vi.mocked(TelemetryReader.prototype.read).mockRejectedValue(new Error("unreadable\u001b[2J"));
 	const close = vi.spyOn(storage, "close");
