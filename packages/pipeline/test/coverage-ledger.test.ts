@@ -19,6 +19,7 @@ import {
 	backgroundContext as context,
 	createMemoryStorage,
 	createReviewRegistry,
+	decisionExtension,
 	type Harness,
 	type Message,
 	openHarness,
@@ -218,6 +219,34 @@ describe("the coverage ledger", () => {
 		commit(repo, { "src/x.ts": numbered(20, "x").replace("x 3\n", "X 3\n") });
 		const { record } = await review({ range: `${policy}..feature`, policy: { kind: "revision", commit: policy } });
 		expect(record.checks["lens.correctness"]!.required).toEqual({ "src/x.ts": "careful", "src/deep/x.ts": "deep" });
+	});
+
+	it("records a lens triage skipped beside one that ran, with the standards the one that ran received", async () => {
+		commit(repo, { "src/a.ts": numbered(20, "a").replace("a 3\n", "A 3\n") });
+		const decider: Decider = {
+			name: "ledger-test",
+			calibrated: true,
+			decide: async (request) => ({
+				answers: request.questions.map(({ id }) => ({
+					question: id,
+					distribution: { [id === "contracts" ? "skip" : "careful"]: 1 },
+				})),
+			}),
+		};
+		const registry = createReviewRegistry();
+		registry.install(decisionExtension(decider));
+		const deciding = await openHarness(createMemoryStorage(), {
+			models: fake.models,
+			registry,
+			settings: { retry: { enabled: false } },
+		});
+		await deciding.root(context, { agent: { model: fake.ref("orchestrator") } });
+		const skippable: MelianConfig = { ...config, lenses: { contracts: { level: { floor: "skip" } } } };
+		const { record } = await review({ decider, harness: deciding, config: skippable }).finally(() =>
+			deciding.close(context),
+		);
+		expect(record.checks["lens.contracts"]).toMatchObject({ status: "skipped", covered: [] });
+		expect(record.checks["lens.correctness"]).toMatchObject({ status: "ran", standards: ["AGENTS.md"] });
 	});
 
 	it("names each field a file's block delivered: an old path for a rename, and a binary file's flag", async () => {
