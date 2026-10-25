@@ -1073,6 +1073,27 @@ describe("a quiet review body", () => {
 		expect(cut).not.toContain(advisories[1]!.id);
 	});
 
+	it("closes the dismissals fold and keeps the cut note outside it when the body is cut, at the limit and one under", () => {
+		const dismissed = Array.from({ length: 6 }, (_, index) =>
+			dismissedAs(`src/f${index}.ts`, `Reason ${index}: ${"the deployment sets this value. ".repeat(6)}`),
+		);
+		const whole = bodyOf(dismissed);
+		expect(bodyOf(dismissed, [], whole.length)).toBe(whole);
+
+		const note = 'This review was cut to fit GitHub\'s limit; `melian findings "#7"` lists them all.';
+		const fold = whole.indexOf("<details>");
+		// From the smallest cut, which ends before the fold opens and must close nothing, to one under the whole body.
+		for (let limit = fold + note.length + "\n\n</details>".length + 2; limit < whole.length; limit++) {
+			const cut = bodyOf(dismissed, [], limit);
+			expect(cut.length).toBeLessThanOrEqual(limit);
+			expect(cut.split("<details>")).toHaveLength(cut.split("</details>").length);
+			expect(cut.endsWith(`\n\n${note}`)).toBe(true);
+			expect(cut.slice(0, -note.length)).toMatch(/(<\/details>|[^>])\n\n$/);
+		}
+		const first = bodyOf(dismissed, [], fold + note.length + "\n\n</details>".length + 2);
+		expect(first).not.toContain("<details>");
+	});
+
 	it("gives advisories alone no findings heading, since nothing in the body asks for action", () => {
 		const advisory = Finding.create({ ...input, severity: "P3", resolution: "advisory" });
 		const body = bodyOf([advisory]);

@@ -471,9 +471,13 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 		const body = assemble(kept, `${plural(cut, "finding")} did not fit in this review; ${all}`);
 		if (body.length <= limit) return body;
 	}
+	// A cut inside a fold closes it, so the note stays outside every fold; room for the close is kept either way.
 	const note = `This review was cut to fit GitHub's limit; ${all}`;
-	const room = assemble(0).slice(0, limit - note.length - 2);
-	return `${room.slice(0, Math.max(room.lastIndexOf("\n"), 0))}\n\n${note}`;
+	const close = "\n\n</details>";
+	const room = assemble(0).slice(0, limit - note.length - close.length - 2);
+	const kept = room.slice(0, Math.max(room.lastIndexOf("\n"), 0));
+	const unclosed = kept.lastIndexOf("<details>") > kept.lastIndexOf("</details>");
+	return `${kept}${unclosed ? close : ""}\n\n${note}`;
 }
 
 /** GitHub refuses a review body, or a comment, longer than this many characters. */
