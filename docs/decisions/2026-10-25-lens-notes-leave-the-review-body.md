@@ -1,8 +1,8 @@
-# Lens notes leave the review body; a caveat on the whole review stays
+# Quiet review body: lens notes out, caveats once, folded sections
 
 Status: accepted by the maintainer, 2026-10-25, in [issue #212](https://github.com/melian-agent/melian/issues/212).
 
-Amends: [Findings read in one register, with emojis and a set English](2026-10-24-finding-register.md), row 21 of "What every renderer keeps", the notes of lenses that ran.
+Amends: [Findings read in one register, with emojis and a set English](2026-10-24-finding-register.md), rows 21 and 24 of "What every renderer keeps", the notes of lenses that ran and the review body's sections.
 
 ## Problem
 
@@ -21,7 +21,9 @@ Example: [pull request #201](https://github.com/melian-agent/melian/pull/201)'s 
 4. A check record carries its caveats in a `caveats` field, so a renderer reads them rather than matching note text. The lens task's caller input and the review index carry the caller caveat beside the caller notes, so a repeat review keeps the first call's caveat as it keeps its notes.
 5. The caller query skips test files. Nothing calls a test's callbacks, so the query only produced ambiguity notes and spent Enola time ([issue #208](https://github.com/melian-agent/melian/issues/208)). It uses `testPath`, the predicate the mutation selector shares.
 
-Where this decision and row 21 of the register's table conflict, this decision wins. The terminal keeps every note, as row 21 says.
+6. A section stays open when it asks the reader to act, and folds into `<details>` when the reader needs it only to dig in; its summary is a count and a noun, never a sentence. The maintainer ruled it on 2026-10-25. In the review body, the verdict, the status mapping, the checks that did not run and every finding that blocks or needs an acknowledgement stay open. The advisories fold under "N advisories". The attested dismissals fold under "N dismissed, M reasons". [Pull request #202](https://github.com/melian-agent/melian/pull/202)'s review listed twelve dismissals, eight with one reason. Inside the fold, dismissals that share a reason are one decision, so the reason appears once, followed by the findings it covers, each with its ID, rule and file. A dismissal with its own reason keeps its line. Attestation is unchanged: the same dismissals, the same signed marker. Inline comments stay open, since each is one finding on its line.
+
+Where this decision and rows 21 and 24 of the register's table conflict, this decision wins. The terminal keeps every note, as row 21 says.
 
 ## Stored shapes
 

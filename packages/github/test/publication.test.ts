@@ -967,3 +967,77 @@ describe("verification comments", () => {
 		expect(markersIn(rendered)).toHaveLength(1);
 	});
 });
+
+describe("a quiet review body", () => {
+	const dismissedAs = (file: string, reason: string) => {
+		const created = Finding.create({ ...input, file, status: "dismissed" });
+		return Finding.from({
+			...created.toJSON(),
+			properties: {
+				...created.properties,
+				dismissal: { by: "M <m@example.invalid>", at: "2026-10-25T00:00:00Z", reason },
+			},
+		});
+	};
+	const bodyOf = (findings: Finding[], inBody: Finding[] = []) => {
+		const verdict = new Adjudication({ findings, manifest: [], checks: [], config: defaultConfig }).adjudicate();
+		return renderReviewBody(
+			{
+				pullRequest: 7,
+				revision,
+				base,
+				fingerprint: verdict.fingerprint(),
+				round: 1,
+				verdict,
+				findings: inBody.map((finding) => ({
+					finding: verdict.all().find((each) => each.id === finding.id)!,
+					placement: { kind: "body" as const },
+				})),
+				stillOpen: 0,
+				resolved: [],
+				secret,
+			},
+			links,
+		);
+	};
+	const shared = "The deployment always sets these values.";
+
+	it("lists dismissals that share a reason once, under the reason, and one with its own reason on its line", () => {
+		const group = ["src/a.ts", "src/b.ts", "src/c.ts"].map((file) => dismissedAs(file, shared));
+		const own = dismissedAs("src/d.ts", "Covered by the integration suite.");
+		const body = bodyOf([...group, own]);
+
+		expect(body).toContain(
+			"<details>\n<summary>4 dismissed, 2 reasons</summary>\n\nDismissals attested by this publication:",
+		);
+		expect(body.split(shared)).toHaveLength(2);
+		expect(body).toContain(
+			`- ${shared}\n${group.map((finding) => `  - \`${finding.id}\` \`no-eval\` in \`${finding.properties.path}\``).join("\n")}`,
+		);
+		expect(body).toContain(`- \`${own.id}\` \`no-eval\` in \`src/d.ts\`: Covered by the integration suite.`);
+	});
+
+	it("keeps a blocker open and folds the advisories and the dismissals, each under its count", () => {
+		const blocker = Finding.create({ ...input, file: "src/block.ts" });
+		const advisories = ["src/x.ts", "src/y.ts"].map((file) =>
+			Finding.create({ ...input, file, severity: "P3", resolution: "advisory" }),
+		);
+		const dismissed = ["src/a.ts", "src/b.ts", "src/c.ts"].map((file) => dismissedAs(file, shared));
+		const body = bodyOf([blocker, ...advisories, ...dismissed], [blocker]);
+
+		const folds = [...body.matchAll(/<details>\n<summary>([^<]*)<\/summary>([\s\S]*?)<\/details>/g)];
+		expect(folds.map(([, summary]) => summary)).toEqual(["3 dismissed, 1 reason", "2 advisories"]);
+		const folded = folds.map(([whole]) => whole).join("\n");
+		expect(folded).not.toContain(blocker.id);
+		expect(body).toContain(blocker.id);
+		for (const advisory of advisories) expect(folds[1]![2]).toContain(advisory.id);
+		for (const finding of dismissed) expect(folds[0]![2]).toContain(finding.id);
+	});
+
+	it("names one advisory and one reason in the singular", () => {
+		const advisory = Finding.create({ ...input, severity: "P3", resolution: "advisory" });
+		const body = bodyOf([advisory, dismissedAs("src/a.ts", shared)]);
+		expect(body).toContain("<summary>1 advisory</summary>");
+		expect(body).toContain("<summary>1 dismissed, 1 reason</summary>");
+	});
+});
