@@ -344,7 +344,7 @@ The version-5 publish task returns posted snapshots on stale-target exits too, i
 Its migration preserves timing from versions 3 and 4; versions 1 and 2 retain legacy timing.
 A version-4 fixture recorded by that version’s own code proves SQLite reopen and timing preservation.
 
-Version 6 adds the storage-local round ID to the task target; `PublisherDocument` version 3 records the same target.
+Version 6 adds the storage-local round ID to the task target; `PublisherDocument` version 3 records the same target. Version 7 lets the input carry the review's run, which `melian publish` reads from stage telemetry for the ledger's run details; a version-6 input has none.
 Both migrations leave older targets unbound and preserve newer publisher attribution.
 The task binds an older target to its revision's legacy round transactionally only when no minted round exists at that revision.
 Otherwise it ends superseded and requires a fresh publish.
