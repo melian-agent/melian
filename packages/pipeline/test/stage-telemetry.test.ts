@@ -311,6 +311,9 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 		await spans.record(harness, revision, context);
 		const telemetry = await TelemetryReader.open(storage).read(revision);
 		const json = JSON.parse(JSON.stringify(telemetry.toJSON())) as { stages: Stage[] };
+		// The review's own stages, read against its start, are none of them reused.
+		expect(await TelemetryReader.open(storage).runDetails(revision)).toEqual(telemetry.runDetails());
+		expect(await TelemetryReader.open(createMemoryStorage()).runDetails(revision)).toBeUndefined();
 		const lenses = json.stages.filter(({ name }) => name === "melian.lens");
 		expect(lenses.length).toBeGreaterThan(0);
 		for (const lens of lenses) {
