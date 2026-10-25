@@ -242,6 +242,12 @@ describe("readRevisionLink", () => {
 		expect(await readRevisionLink(repo, head, "src/sub/link.ts", 3)).toEqual({ target: "../", truncated: true });
 	});
 
+	it("refuses a revision that is not a commit name", async () => {
+		await expect(readRevisionLink(repo, "-HEAD", "src/sub/link.ts", 4096)).rejects.toMatchObject({
+			code: "invalidRevision",
+		});
+	});
+
 	it("refuses an entry of another kind, naming the root as a dot", async () => {
 		const file = await rejection(readRevisionLink(repo, head, "src/total.ts", 4096), RevisionError);
 		expect(file).toMatchObject({ code: "notASymlink", path: "src/total.ts", message: "src/total.ts is a file" });
@@ -255,5 +261,6 @@ describe("readRevisionLink", () => {
 		const failed = await rejection(readRevisionLink(repo, head, "src/sub/link.ts", 4096), RevisionError);
 		expect(failed).toMatchObject({ code: "gitFailed", path: "src/sub/link.ts" });
 		expect(failed.message).toMatch(/^git cat-file failed: \S/);
+		expect(failed.message).toBe(failed.message.trim());
 	});
 });

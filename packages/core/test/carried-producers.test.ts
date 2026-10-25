@@ -85,4 +85,17 @@ describe("a carried lens sighting", () => {
 		expect(finding!.render(rendering)).toMatch(/Decided by: /);
 		expect(finding!.render(rendering)).not.toMatch(/reported it/);
 	});
+
+	it("leaves a deterministic finding unmarked, and keeps a refuted lens claim's deterministic co-report standing", () => {
+		const [guardrail] = adjudicate(by("guardrails", { rule: "guardrail/no-eval/eval" })).all();
+		expect(guardrail!.statusSegments(new Rendering())).not.toContain("Not verified");
+		const mixed = reported(by("carried/lens.correctness"), "carried/lens.correctness", "static.tsc").verifiedAs(
+			refuted,
+		);
+		expect(
+			adjudicate(mixed)
+				.attention()
+				.map((finding) => finding.id),
+		).toEqual([mixed.id]);
+	});
 });

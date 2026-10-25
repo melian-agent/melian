@@ -477,6 +477,16 @@ describe("CoverageRecord with a maintainer's dismissals", () => {
 			dismissal({ file: "src/gone.ts", revision: "base", lines: [[1, 2]] }),
 			dismissal({ check: "lens.design", file: "src/gone.ts", lines: [[1, 2]] }),
 		]);
+		expect(
+			at(plain, [
+				dismissal({
+					lines: [
+						[1, 1],
+						[3, 4],
+					],
+				}),
+			]).render(),
+		).toContain("  lens.correctness  src/a.ts lines 1, 3-4: generated <code> (Ada\\u001b)\n");
 		expect(only(answered.gaps().filter((gap) => gap.file !== "bin/run"))).toEqual([
 			{
 				check: "lens.correctness",
