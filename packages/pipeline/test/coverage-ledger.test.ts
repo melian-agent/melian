@@ -164,6 +164,24 @@ describe("the coverage ledger", () => {
 		expect(rounds.items.r1).toMatchObject({ scope: { kind: "diff" }, coverage: "r1" });
 	});
 
+	it("counts a read of the base on the base side, where a prompt too small for the hunk leaves its lines owed", async () => {
+		const big = (label: string) =>
+			lines(...Array.from({ length: 6000 }, (_, index) => `export const ${label}${index} = "${"x".repeat(30)}";`));
+		const start = commit(repo, { "src/big.ts": big("old") });
+		commit(repo, { "src/big.ts": big("new") });
+		const read = fauxAssistantMessage(
+			fauxToolCall("read_file", { path: "src/big.ts", revision: "base", startLine: 1, maxLines: 10 }),
+			{ stopReason: "toolUse" },
+		);
+		const { record } = await review({
+			range: `${start}..feature`,
+			replies: { correctness: [read, fauxAssistantMessage("Done.")] },
+		});
+		const own = record.checks["lens.correctness"]!.covered[0]!;
+		expect(own.base["src/big.ts"]).toEqual([[1, 10]]);
+		expect(own.head["src/big.ts"]).toBeUndefined();
+	});
+
 	it("carries a round's coverage to the next head and names the lines a lens that ended did not cover", async () => {
 		commit(repo, { "src/a.ts": numbered(20, "a").replace("a 3\n", "A 3\n") });
 		await review();
