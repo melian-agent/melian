@@ -130,6 +130,19 @@ it("finds a declaration by its exact Enola name, or else by the end of its dotte
 	expect(facts.definitions("src")).toEqual([]);
 });
 
+it("takes the exact name alone when a longer name also ends with it", () => {
+	const facts = EnolaFacts.parse(
+		[
+			{ id: "c", name: "src.c", kind: "symbol", file: "src/c.ts", line: 1 },
+			{ id: "n", name: "nested.src.c", kind: "symbol", file: "nested/src/c.ts", line: 1 },
+		]
+			.map((fact) => JSON.stringify(fact))
+			.join("\n"),
+	);
+	expect(facts.definitions("src.c").map((fact) => fact.id)).toEqual(["c"]);
+	expect(facts.definitions("c").map((fact) => fact.id)).toEqual(["n", "c"]);
+});
+
 it("lists every resolved edge to a declaration but its declares edges, and counts the unresolved ones", () => {
 	const facts = graph();
 	const [c] = facts.definitions("src.c");

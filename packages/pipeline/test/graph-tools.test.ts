@@ -78,6 +78,8 @@ function snapshot(nonceProbe: string): GraphSnapshot {
 			line: 9,
 			relations: [{ kind: "calls", target: "src.managerName" }],
 		},
+		// Ends with src.unused, so a lookup that took suffix matches beside the exact name would ask which one.
+		{ id: "v", name: "nested.src.unused", kind: "symbol", file: "nested/src/user.ts", line: 3 },
 	];
 	return GraphSnapshot.create(parts, {
 		"facts.jsonl": facts.map((fact) => JSON.stringify(fact)).join("\n"),
