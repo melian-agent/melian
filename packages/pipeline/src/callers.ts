@@ -94,7 +94,7 @@ export class CallerContext {
 	caveat(): string | undefined {
 		if (this.#unavailable !== undefined) return `${blindCallers}: ${this.#unavailable}`;
 		const { groups, issues } = this.#data;
-		return groups.length === 0 && issues.length > 0 ? `${blindCallers}: every caller query failed` : undefined;
+		return groups.length === 0 && issues.length > 0 ? `${blindCallers}: each changed site was a test file or its caller query failed` : undefined;
 	}
 	/** The graph identity and cache a later coverage record needs, absent when no verified graph was read. */
 	coverageSource(): CoverageSource | undefined {

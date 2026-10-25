@@ -330,14 +330,14 @@ it("names a caveat when no caller context reached the review", () => {
 	);
 });
 
-it("names a caveat when every caller query failed, and none when one answered or none was asked", () => {
+it("names a caveat when each changed site was a test file or its caller query failed, and none when one answered or none was asked", () => {
 	const issues = [
 		{ file: "a.ts", reason: "line 1: directory-scoped name is ambiguous" },
 		{ file: "b.ts", reason: "line 2: caller-query time budget ended" },
 	];
 	const group = { file: "a.ts", symbol: "a", callers: [], truncated: false };
 	expect(CallerContext.from({ groups: [], issues, notes: [], paths: [] }).caveat()).toBe(
-		`${blind}: every caller query failed`,
+		`${blind}: each changed site was a test file or its caller query failed`,
 	);
 	expect(CallerContext.from({ groups: [group], issues, notes: [], paths: [] }).caveat()).toBeUndefined();
 	expect(CallerContext.from({ groups: [], issues: [], notes: [], paths: [] }).caveat()).toBeUndefined();
