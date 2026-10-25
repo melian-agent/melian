@@ -54,3 +54,9 @@ The built-in lenses keep their tool lists until a live run measures the change. 
 
 `search` now also takes `paths`: an exact set of up to 65 files, design.md and the 64 it may link. Each file is grepped on its own, with `--max-count` and a byte bound of its own. So each file gets an equal share of the 200 matches, and one file's long lines cannot spend another's. The block opens with each file that had more than its share, is no file at the revision, or that git skipped as binary. Then the files' first matches follow, then their second, so the output bound cuts deep matches before it drops a file. `path` and `paths` together are refused. Core's `searchRevisionFiles` does the search; a test runs it over 64 files, one holding 300 distractor matches.
 
+
+## The maintainer's rulings, 2026-10-25
+
+- `graph_impact` walks the snapshot's facts and does not ask Enola's impact query. A lens has no checkout of the head to run the query in. [The coverage spike](../spikes/enola-coverage.md) measured 824 call pairs in the facts against 807 from impact, 825 together. An empty answer says the callers are unknown, not none, and points the lens at `search`.
+- One `search` takes at most 65 exact files: design.md and the 64 a design index may link.
+- The graph tools hold at most two parsed snapshots in memory, keyed by their verified content.
