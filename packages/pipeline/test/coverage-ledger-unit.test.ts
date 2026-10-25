@@ -630,3 +630,97 @@ describe("the ledger at its edges", () => {
 		});
 	});
 });
+
+describe("what voids the carry", () => {
+	const changed = () => numbered(20, "a").replace("a 3\n", "A 3\n").replace("a 9\n", "A 9\n");
+	let at = 0;
+	const next = async (overrides: Partial<LedgerRound> = {}) => {
+		const changeset = await head();
+		const adjudication = await mint(changeset, `2026-10-25T00:01:${String(++at).padStart(2, "0")}.000Z`);
+		const id = (await ledger().write(round(changeset, adjudication, overrides), context))!;
+		return record(id);
+	};
+	const edit = async (id: string, change: (stored: StoredCoverageRecord) => void) =>
+		(await harness.root(context)).commit(async (tx) => {
+			change((await tx.doc(CoverageDocument, root)).records[id]!);
+		}, context);
+
+	beforeEach(() => {
+		commit(repo, { "src/a.ts": changed() });
+	});
+
+	it.each([
+		[
+			{ name: "melian.coverage", algorithm: 0 },
+			"r1 was recorded by coverage algorithm 0, so nothing carries from it",
+		],
+		[{ name: "other", algorithm: 1 }, "r1 was recorded by coverage algorithm 1, so nothing carries from it"],
+	])("carries nothing from a record another producer wrote: %o", async (producer, reason) => {
+		await next();
+		await edit("r1", (stored) => {
+			stored.producer = producer;
+		});
+		const second = await next();
+		expect(second.voids).toEqual([{ reason }]);
+		expect(second.checks["lens.correctness"]!.covered).toHaveLength(1);
+	});
+
+	it("carries nothing from a refused round, nor across a tier or policy change, and says why", async () => {
+		await next({ refused: "coverage is not recorded for a fork's head" });
+		expect((await next()).voids).toEqual([
+			{ reason: "r1 recorded no coverage: coverage is not recorded for a fork's head" },
+		]);
+		expect((await next({ tier: "fast" })).voids).toEqual([{ reason: "the tier changed since r2" }]);
+		expect((await next({ tier: "fast", tools: { pinned: 1 } })).voids).toEqual([
+			{ reason: "the policy changed since r3" },
+		]);
+		const carried = await next({ tier: "fast", tools: { pinned: 1 } });
+		expect(carried.voids).toEqual([]);
+		expect(carried.checks["lens.correctness"]!.covered.map((segment) => segment.round)).toEqual([undefined, "r4"]);
+	});
+
+	it("voids the lenses a changed standards file reaches: by name for a lens with none recorded, by path otherwise", async () => {
+		const lens = (changeset: Changeset, adjudication: number, name: string, standards?: string[]): LedgerLens => {
+			const base = round(changeset, adjudication).lenses[0]!;
+			return {
+				...base,
+				name,
+				record: { ...base.record!, name: `lens.${name}` },
+				...(standards === undefined ? {} : { standards }),
+			};
+		};
+		const three = async () => {
+			const changeset = await head();
+			const adjudication = await mint(changeset, `2026-10-25T00:01:${String(++at).padStart(2, "0")}.000Z`);
+			const id = (await ledger().write(
+				round(changeset, adjudication, {
+					lenses: [
+						lens(changeset, adjudication, "correctness"),
+						lens(changeset, adjudication, "contracts", []),
+						lens(changeset, adjudication, "design", ["docs/guide.md"]),
+					],
+					manifest: ["guardrails", "lens.correctness", "lens.contracts", "lens.design"],
+				}),
+				context,
+			))!;
+			return record(id);
+		};
+		commit(repo, { "docs/guide.md": lines("guide") });
+		await three();
+		commit(repo, { "pkg/Agents.MD": lines("be careful") });
+		expect((await three()).voids).toEqual([
+			{ reason: "pkg/Agents.MD changed since r1, a standard lens.correctness reads", lens: "correctness" },
+			{ reason: "pkg/Agents.MD changed since r1, a standard lens.contracts reads", lens: "contracts" },
+		]);
+		commit(repo, { "docs/guide.md": lines("guide, edited") });
+		expect((await three()).voids).toEqual([
+			{ reason: "docs/guide.md changed since r2, a standard lens.design reads", lens: "design" },
+		]);
+	});
+
+	it("lets a whole-range check that failed this round cover nothing, whatever an earlier round covered", async () => {
+		await next();
+		const failed = await next({ checks: [{ name: "guardrails", status: "failed", reason: "crashed" }] });
+		expect(failed.checks.guardrails!.covered).toEqual([]);
+	});
+});
