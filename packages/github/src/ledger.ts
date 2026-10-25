@@ -287,6 +287,7 @@ export class Ledger {
 				stillOpen: 0,
 				resolved: [],
 				secret: this.draft.secret,
+				...(round.coverage === undefined ? {} : { coverage: round.coverage }),
 			},
 			links,
 			// The ledger's register is the second part of step 35; until then it keeps words alone.
