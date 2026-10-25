@@ -1,5 +1,6 @@
 import type { BudgetEnd, CheckLineage, VerdictStatus } from "./adjudication.ts";
 import type { Severity } from "./config.ts";
+import { Mark } from "./emoji.ts";
 import type { DecidedBy, EvidenceLocation } from "./findings.ts";
 
 /** How a {@link Rendering} renders for a terminal. */
@@ -14,6 +15,13 @@ export interface TerminalRenderOptions {
 	readonly decided?: boolean;
 	/** Omit instructions that act on the current review when showing a saved round. Off by default. */
 	readonly historical?: boolean;
+	/** Print each mark's emoji beside its word. Off by default, which prints the words alone. */
+	readonly emoji?: boolean;
+	/**
+	 * The emoji each repository lens declares: by `lens.<name>@<version>` for one variant of a lens, and by
+	 * `lens.<name>` for every variant, when they declare one emoji between them.
+	 */
+	readonly lensEmojis?: Readonly<Record<string, string>>;
 }
 
 export const severityColor: Readonly<Record<Severity, string>> = { P0: "31", P1: "31", P2: "33", P3: "36", nit: "2" };
@@ -152,7 +160,10 @@ export class Rendering {
 	readonly decided: boolean;
 	/** Render a saved round without current-review instructions. */
 	readonly historical: boolean;
+	/** Print each mark's emoji beside its word. */
+	readonly emoji: boolean;
 	readonly #color: boolean;
+	readonly #lensEmojis: Readonly<Record<string, string>>;
 
 	constructor(options: TerminalRenderOptions = {}) {
 		this.#color = options.color === true;
@@ -160,6 +171,23 @@ export class Rendering {
 		this.all = options.all === true;
 		this.decided = options.decided === true;
 		this.historical = options.historical === true;
+		this.emoji = options.emoji === true;
+		this.#lensEmojis = options.lensEmojis ?? {};
+	}
+
+	/** `mark` as this rendering shows it: its word, after its emoji when emojis are on. */
+	show(mark: Mark): string {
+		return mark.show(this.emoji);
+	}
+
+	/**
+	 * The mark of the check `check`, reporting under `rule`, with the emoji its lens declares. `version`, a finding's
+	 * `source.version` such as `<lens version>@careful`, picks the variant of a lens that produced it.
+	 */
+	check(check: string, rule: string, version?: string): Mark {
+		const variant = version === undefined ? undefined : `${check}@${version.split("@")[0]}`;
+		const key = variant !== undefined && Object.hasOwn(this.#lensEmojis, variant) ? variant : check;
+		return Mark.check(check, rule, Object.hasOwn(this.#lensEmojis, key) ? this.#lensEmojis[key] : undefined);
 	}
 
 	/** `text` coloured with the ANSI code `code`, or as it is when colour is off. */

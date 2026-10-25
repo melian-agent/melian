@@ -1,10 +1,9 @@
 packages/core/src/log-tail.ts
 
-  P2  line 7  dropped-guard  (introduced, new, acknowledge, confirmed)
+  P2 | Needs acknowledgement | Removed behaviour | Verifier confirmed | New in this change
     Merged report: P2 wrong-result from lens.correctness
     Verified: faux/scripted: The scripted verifier traced the claim.
   The rename deleted the bound that kept the slice start at 0 or above.
-    What: The rename deleted the bound that kept the slice start at 0 or above.
     Why here: The bound held the doc comment's promise that a log shorter than count lines comes back whole, and nothing in log-tail.ts holds it now.
     Failure scenario: tail("a\nb\nc", 5) used to clamp the start to 0 and return all three lines; with the clamp deleted it returns ["b", "c"], breaking the doc comment's promise that a log shorter than count lines comes back whole.
     Evidence:
@@ -13,13 +12,13 @@ packages/core/src/log-tail.ts
       context: packages/core/src/log-tail.ts:7
           return lines.slice(lines.length - count);
     What to do: Restore Math.max(0, lines.length - count).
+    Rule dropped-guard | Line 7 | Status new
 
 packages/pipeline/src/lens-run.ts
 
-  P1  line 7  stored-shape  (introduced, new, block, confirmed)
+  P1 | Blocks merge | Durability | Verifier confirmed | New in this change
     Verified: faux/scripted: The scripted verifier traced the claim.
   The lens task's result changes shape while the task keeps version 1.
-    What: The lens task's result changes shape while the task keeps version 1.
     Why here: Pi Durable never migrates a finished task's result, and a repeat review attaches to the lens task an older Melian finished, so failedLenses reads the old object as an array.
     Failure scenario: Melian before this change reviews head H and stores lens task T's result as { "correctness@v1": { status: "done" } }. After the upgrade, a repeat review of H attaches to T, and failedLenses calls outcome.result.flatMap on that stored object, which throws TypeError: outcome.result.flatMap is not a function, so every repeat review of a head reviewed before the upgrade fails.
     Evidence:
@@ -30,5 +29,6 @@ packages/pipeline/src/lens-run.ts
       context: packages/pipeline/src/lens-run.ts:14
           version: 1,
     What to do: Give the new shape a task version of its own and read both shapes in failedLenses, or keep the record.
+    Rule stored-shape | Line 7 | Status new
 
 2 findings in 2 files.

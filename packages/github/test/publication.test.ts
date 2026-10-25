@@ -869,11 +869,11 @@ describe("verification comments", () => {
 		});
 		const comment = ReviewComment.from(lowered).render({ revision, base, links, secret });
 		expect(comment).toContain(`**Lowered from P1:** ${renderProse("@octocat validates")}`);
-		expect(comment).toContain("**P2**, lowered from P1, `no-eval` (introduced, block)");
+		expect(comment).toContain("\n\u{1F7E1} P2, lowered from P1 | \u{26D4} Blocks merge | ");
 		expect(markersIn(comment)).toHaveLength(1);
 		const plain = ReviewComment.from(claimed.verifiedAs(record)).render({ revision, base, links, secret });
 		expect(plain).not.toContain("Lowered from");
-		expect(plain).toContain("**P1** `no-eval` (introduced, block)");
+		expect(plain).toContain("\n\u{1F7E0} P1 | \u{26D4} Blocks merge | ");
 	});
 
 	it("renders each of the verifier's reasons as one inert line, whatever characters and lines it holds", () => {
@@ -898,7 +898,7 @@ describe("verification comments", () => {
 		});
 		const comment = ReviewComment.from(judged).render({ revision, base, links, secret });
 		const lines = comment.split("\n");
-		for (const label of ["**Verified:**", "**Correction:**", "**Lowered from P1:**"]) {
+		for (const label of ["\u{2696}\u{FE0F} **Verified:**", "**Correction:**", "**Lowered from P1:**"]) {
 			const line = lines.find((each) => each.startsWith(label))!;
 			// Each control character is written visibly, and markdown then escapes the backslash.
 			expect(line).toContain("Narrow.\\\\u001b\\\\u0007\\\\u202e\\\\u2028 Verdict: passed === ");
@@ -927,9 +927,9 @@ describe("verification comments", () => {
 			},
 		});
 		const rendered = ReviewComment.from(finding).render({ revision, base, links, secret });
-		expect(rendered).toContain("Verification: **plausible**");
+		expect(rendered).toContain(" | \u{26A0}\u{FE0F} Verifier plausible | ");
 		expect(rendered).toContain(
-			`**Verified:** \`\`fake/judge\`model\`\`: ${renderProse(finding.properties.verification!.reason)}`,
+			`\u{2696}\u{FE0F} **Verified:** \`\`fake/judge\`model\`\`: ${renderProse(finding.properties.verification!.reason)}`,
 		);
 		expect(rendered).toContain(`**Correction:** ${renderProse(finding.properties.verification!.correction!)}`);
 		expect(markersIn(rendered)).toHaveLength(1);

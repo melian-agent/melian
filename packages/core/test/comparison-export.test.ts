@@ -314,7 +314,7 @@ describe("ComparisonExport paragraphs", () => {
 	it("keeps 300 characters whole and cuts a longer paragraph there, by code point", () => {
 		expect(summary("x".repeat(300))).toBe("x".repeat(300));
 		expect(summary("x".repeat(301))).toBe(`${"x".repeat(300)}…`);
-		expect(summary("😀".repeat(400))).toBe(`${"😀".repeat(300)}…`);
+		expect(summary("\u{1F600}".repeat(400))).toBe(`${"\u{1F600}".repeat(300)}…`);
 	});
 });
 

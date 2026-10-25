@@ -73,4 +73,18 @@ describe("GitHub access", () => {
 
 		expect(create).toHaveBeenCalledExactlyOnceWith({ owner: "melian-agent", repo: "example", token: "test-token" });
 	});
+
+	it("forwards publish.emoji's choice to the provider", async () => {
+		vi.spyOn(github, "resolveGitHubToken").mockResolvedValue({ token: "test-token", source: "GITHUB_TOKEN" });
+		const create = vi.spyOn(github, "createGitHubProvider");
+
+		await gitHubFor(repo, {}, { emoji: false });
+
+		expect(create).toHaveBeenCalledExactlyOnceWith({
+			owner: "melian-agent",
+			repo: "example",
+			token: "test-token",
+			emoji: false,
+		});
+	});
 });

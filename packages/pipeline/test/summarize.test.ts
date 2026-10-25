@@ -99,7 +99,10 @@ describe("walkthrough summaries", () => {
 	it("skips disabled walkthroughs and range reviews", async () => {
 		const auth = vi.spyOn(models.models, "checkAuth");
 		await summarize({
-			config: { ...config, publish: { walkthrough: { ...config.publish.walkthrough, enabled: false } } },
+			config: {
+				...config,
+				publish: { ...config.publish, walkthrough: { ...config.publish.walkthrough, enabled: false } },
+			},
 		});
 		const root = await harness.root(context);
 		await root.commit(async (tx) => {
