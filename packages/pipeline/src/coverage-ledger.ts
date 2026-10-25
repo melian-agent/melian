@@ -311,7 +311,8 @@ export class CoverageLedger {
 			};
 		}
 		const { voids, carried } = await this.#carry(round, prior, policy, checks, context);
-		for (const [check, segments] of Object.entries(carried)) checks[check]?.covered.push(...segments);
+		// The carry takes only lenses this round holds.
+		for (const [check, segments] of Object.entries(carried)) checks[check]!.covered.push(...segments);
 		return {
 			producer: { ...coverageProducer },
 			round: id,
