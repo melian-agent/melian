@@ -19,6 +19,7 @@ import {
 	type ModelRoute,
 	type RepositorySource,
 	Standards,
+	verificationSchema,
 } from "@melian-agent/core";
 import {
 	backgroundContext,
@@ -117,6 +118,22 @@ const scriptReplySchema = Type.Union([
 /** The JSON Schema of a golden's `script.json`: each lens's replies, by lens name, for the scripted runner. */
 export const scriptSchema = Type.Record(Type.String(), Type.Array(scriptReplySchema));
 
+/**
+ * The JSON Schema of a golden's optional `verifier.json`: the scripted verifier's verdict on each finding, by finding
+ * ID, with its reason and the evidence that backs it. A finding it leaves out is confirmed.
+ */
+export const verifierScriptSchema = Type.Record(
+	Type.String({ pattern: "^[0-9a-f]{16}$" }),
+	Type.Object(
+		{
+			verdict: verificationSchema.properties.verdict,
+			reason: text,
+			evidence: Type.Optional(Type.Array(goldenEvidenceSchema, { minItems: 1 })),
+		},
+		strict,
+	),
+);
+
 /** One expected finding. */
 export type GoldenComment = Static<typeof goldenCommentSchema>;
 
@@ -126,12 +143,17 @@ export type Expected = Static<typeof expectedSchema>;
 /** A golden's `script.json`. */
 export type Script = Static<typeof scriptSchema>;
 
+/** A golden's `verifier.json`. */
+export type VerifierVerdicts = Static<typeof verifierScriptSchema>;
+
 /** One golden: a base and head tree, what a review of the change must find, and the lens replies that find it. */
 export interface Golden {
 	readonly name: string;
 	readonly directory: string;
 	readonly expected: Expected;
 	readonly script: Script;
+	/** The scripted verifier's verdicts from `verifier.json`, when the golden has one. */
+	readonly verifier?: VerifierVerdicts;
 	/** Whether live runs review it: false when its `expected.json` sets `live: false`. Scripted runs review every golden. */
 	readonly live: boolean;
 }
@@ -158,11 +180,13 @@ export function loadGoldens(directory: string = goldensDirectory): Golden[] {
 		.map((name) => {
 			const root = join(directory, name);
 			const expected = readJson<Expected>(join(root, "expected.json"), expectedSchema);
+			const verifier = join(root, "verifier.json");
 			return {
 				name,
 				directory: root,
 				expected,
 				script: readJson<Script>(join(root, "script.json"), scriptSchema),
+				...(existsSync(verifier) ? { verifier: readJson<VerifierVerdicts>(verifier, verifierScriptSchema) } : {}),
 				live: expected.live !== false,
 			};
 		});
@@ -324,7 +348,7 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 			config = routeEveryTier(loaded, `${ref.provider}/${ref.modelId}`, true);
 			config = { ...config, models: { ...config.models, verifier: { model: `${ref.provider}/${ref.modelId}` } } };
 			models = fake.review;
-			scriptLenses(fake, lenses, golden.script, toolMismatches);
+			scriptLenses(fake, lenses, { ...golden.script, verifier: golden.verifier ?? {} }, toolMismatches);
 		} else {
 			config = mode.model === undefined ? loaded : routeEveryTier(loaded, mode.model, false);
 			const verifier = mode.verifierModel ?? mode.model;

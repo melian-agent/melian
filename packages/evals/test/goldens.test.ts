@@ -125,9 +125,13 @@ describe("the golden corpus", () => {
 			"design-bound-on-wrong-measure-clean",
 			"design-clean",
 			"design-contradicts-documented-decision",
+			"design-contradicts-documented-decision-added-context-clean",
 			"design-contradicts-documented-decision-clean",
+			"design-contradicts-documented-decision-head-only-clean",
+			"design-contradicts-documented-decision-inactive-clean",
 			"design-contradicts-documented-decision-noise",
 			"design-contradicts-documented-decision-noise-clean",
+			"design-contradicts-documented-decision-wording-clean",
 			"design-decision-injection",
 			"design-fail-open-default",
 			"design-identity-missing-input",
@@ -442,6 +446,33 @@ describe("the live flag", () => {
 			const expected = JSON.parse(readFileSync(join(copy, "expected.json"), "utf8"));
 			writeFileSync(join(copy, "expected.json"), JSON.stringify({ ...expected, live: "no" }));
 			expect(() => loadGoldens(directory)).toThrow(/expected\.json: \/live /);
+		} finally {
+			rmSync(directory, { recursive: true, force: true });
+		}
+	});
+});
+
+describe("scripted verifier verdicts", () => {
+	it("load from verifier.json, and a golden without one has none", () => {
+		expect(goldens.find((each) => each.name === "clean-rename")!.verifier).toBeUndefined();
+		expect(
+			goldens.find((each) => each.name === "design-contradicts-documented-decision-wording-clean")!.verifier,
+		).toEqual({
+			ef9ed09f125d5a9d: expect.objectContaining({ verdict: "refuted" }),
+		});
+	});
+
+	it("rejects a verdict the verifier cannot give", () => {
+		const directory = mkdtempSync(join(tmpdir(), "melian-goldens-"));
+		try {
+			const golden = goldens.find((each) => each.name === "clean-rename")!;
+			const copy = join(directory, golden.name);
+			cpSync(golden.directory, copy, { recursive: true });
+			writeFileSync(
+				join(copy, "verifier.json"),
+				JSON.stringify({ ef9ed09f125d5a9d: { verdict: "maybe", reason: "r" } }),
+			);
+			expect(() => loadGoldens(directory)).toThrow(/verifier\.json: \/ef9ed09f125d5a9d\/verdict /);
 		} finally {
 			rmSync(directory, { recursive: true, force: true });
 		}

@@ -1,7 +1,7 @@
 src/comment.ts
 
   P2 | Needs acknowledgement | Design | Verifier confirmed | New in this change
-    Verified: faux/scripted: The scripted verifier traced the claim.
+    Verified: faux/scripted: The base design section says a fact is stated once, never once per lens. `renderNotes` now prints a shared note once per lens, which the words forbid, and no more specific design rule names it.
   `renderNotes` prints each note once per lens that carries it, where the base printed each note once.
     Why here: The base design's "High signal, low noise" section says: "A fact is stated once in the comment, never once per lens." The base de-duplicated notes through a `Set`; the head drops it.
     Failure scenario: Eight lenses run, and each carries the note `callers unavailable for src/a.ts`. The base prints that note once. The head prints it eight times, once under each lens name, so the comment grows by seven lines that tell the reader nothing new.
