@@ -79,6 +79,11 @@ describe("CoverageIntake", () => {
 			covered: [],
 		});
 		expect(new CoverageIntake(stored({ "lens.a": even }), undefined).empty("a")).toBe(false);
+		const lineAndUnit = lens({
+			needs: { head: { "a.ts": [[1, 1]] }, base: {}, units: { "bin/run": ["status"] } },
+			covered: [],
+		});
+		expect(new CoverageIntake(stored({ "lens.a": lineAndUnit }), undefined).empty("a")).toBe(false);
 		const unitOnly = lens({ needs: { head: {}, base: {}, units: { "bin/run": ["status"] } }, covered: [] });
 		expect(new CoverageIntake(stored({ "lens.a": unitOnly }), undefined).empty("a")).toBe(false);
 	});
@@ -206,6 +211,12 @@ describe("gap dismissals", () => {
 		await ledger().dismiss(key, dismissal([[3, 4]]), context);
 		await ledger().dismiss(key, dismissal([[3, 4]], { revision: "base" }), context);
 		expect((await items())[key]).toHaveLength(2);
+		commit(repo, { "src/a.ts": numbered(20, "a").replace("a 3\n", "A 3\n").replace("a 4\n", "A 4\na 4b\n") });
+		const inserted = await decided();
+		await expect(
+			ledger().dismiss(inserted.key, dismissal([[5, 5]], { revision: "base" }), context),
+		).rejects.toBeInstanceOf(GapDismissalError);
+		await ledger().dismiss(inserted.key, dismissal([[5, 5]]), context);
 	});
 
 	it("carries a dismissal to the next head when the move left its lines alone, moved, and drops one it changed", async () => {
@@ -244,5 +255,24 @@ describe("gap dismissals", () => {
 		const nothing = Revision.key({ base, head: "e".repeat(40) });
 		await ledger().carryDismissals(nothing, to, move, context);
 		expect((await items())[to]).toHaveLength(2);
+		const unseen = Revision.key({ base, head: "f".repeat(40) });
+		await ledger().carryDismissals(nothing, unseen, move, context);
+		expect(Object.hasOwn(await items(), unseen)).toBe(false);
+		gitIn(repo, "mv", "src/a.ts", "src/moved.ts");
+		commit(repo, {});
+		const third = await Changeset.resolve(repo, `${base}..feature`);
+		const renamed = Revision.from({
+			base: second.revision.head,
+			head: third.revision.head,
+			files: (
+				await Changeset.resolve(repo, { base: second.revision.head, head: third.revision.head, mode: "twoDot" })
+			).revision.files,
+		});
+		const after = Revision.key(third.revision);
+		await ledger().carryDismissals(to, after, renamed, context);
+		expect((await items())[after]).toEqual([
+			{ ...dismissal([[4, 4]], { file: "src/moved.ts" }) },
+			{ ...dismissal([[3, 3]], { revision: "base" }) },
+		]);
 	});
 });

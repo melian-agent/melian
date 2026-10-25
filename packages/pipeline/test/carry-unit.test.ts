@@ -108,6 +108,7 @@ describe("SightingCarry.carry", () => {
 					{ file: "src/a.ts", startLine: 6, endLine: 7, role: "context", revision: "head", snippet: "a 6" },
 					{ file: "src/a.ts", startLine: 3, role: "context", revision: "base", snippet: "a 3" },
 					{ file: "src/gone.ts", startLine: 2, role: "context", revision: "head", snippet: "g 2" },
+					{ file: "src/a.ts", startLine: 1, role: "context", revision: "head", snippet: "a 1" },
 				],
 			}),
 		);
@@ -128,8 +129,13 @@ describe("SightingCarry.carry", () => {
 		expect(copy.properties.evidence).toEqual([
 			{ file: "src/a.ts", startLine: 8, endLine: 9, role: "context", revision: "head", snippet: "a 6" },
 			{ file: "src/a.ts", startLine: 3, role: "context", revision: "base", snippet: "a 3" },
+			{ file: "src/a.ts", startLine: 1, role: "context", revision: "head", snippet: "a 1" },
 		]);
 		expect(copy.properties.trigger).toBeUndefined();
+		expect(copy.locations).toHaveLength(1);
+		expect(copy.locations[0]!.physicalLocation.artifactLocation).toEqual(
+			moved.toJSON().locations[0]!.physicalLocation.artifactLocation,
+		);
 		expect(record.carried?.["B..H2"]).toEqual({ "carried/lens.correctness@1@careful": { from: "r1" } });
 		expect(record.verifications?.["B..H2"]?.["carried/lens.correctness@1@careful"]).toEqual(
 			record.verifications?.["B..H1"]?.["lens.correctness@1@careful"],
@@ -219,5 +225,27 @@ describe("SightingCarry.clear", () => {
 		state = await document();
 		expect(state.versions["B..H2"]).toBe(before + 1);
 		expect(state.versions["B..H9"]).toBeUndefined();
+	});
+});
+
+describe("SightingCarry.carry at its edges", () => {
+	it("drops a trigger the head no longer gives, and carries from a revision with no marks or verdicts of its own", async () => {
+		const triggered = Finding.create(
+			input({
+				startLine: 5,
+				cause: "introduced",
+				trigger: { file: "src/a.ts", index: 0, snippet: "a 5", hash: "0".repeat(64) },
+			}),
+		);
+		await store([triggered], "B..H1");
+		await carry("B..H1", "B..H2");
+		const copy = (await document()).items[triggered.id]!.sightings["B..H2"]!["carried/lens.correctness@1@careful"]!;
+		expect(copy.properties.trigger).toBeUndefined();
+		await store([triggered], "B..H9", [triggered]);
+		await store([triggered], "B..H8");
+		await carry("B..H8", "B..H7", "r8", still);
+		const record = (await document()).items[triggered.id]!;
+		expect(record.carried?.["B..H7"]).toEqual({ "carried/lens.correctness@1@careful": { from: "r8" } });
+		expect(record.verifications?.["B..H7"]).toBeUndefined();
 	});
 });

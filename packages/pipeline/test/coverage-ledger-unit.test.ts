@@ -237,6 +237,23 @@ describe("what a lens's own run delivered", () => {
 		});
 	});
 
+	it("owes only the hunks of an omitted file the prompt did not render", async () => {
+		commit(repo, { "src/a.ts": numbered(20, "a").replace("a 3\n", "A 3\n").replace("a 9\n", "A 9\n") });
+		const changeset = await head();
+		const adjudication = await mint(changeset, "2026-10-25T00:00:01.000Z");
+		const [first] = changeset.revision.files.find((file) => file.path === "src/a.ts")!.hunks;
+		const lens: LedgerLens = {
+			...round(changeset, adjudication).lenses[0]!,
+			delivered: { hunks: { "src/a.ts": [first!.index] }, fields: {}, omitted: ["src/a.ts"] },
+		};
+		await ledgerWrite(round(changeset, adjudication, { lenses: [lens] }));
+		expect((await record("r1")).checks["lens.correctness"]!.omitted).toEqual({
+			head: { "src/a.ts": [[9, 9]] },
+			base: { "src/a.ts": [[9, 9]] },
+			units: {},
+		});
+	});
+
 	it("leaves a file with no lines out of a check's needs", async () => {
 		commit(repo, { "src/a.ts": numbered(20, "a").replace("a 3\n", "A 3\n") });
 		const changeset = await head();

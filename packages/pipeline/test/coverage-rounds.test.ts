@@ -167,6 +167,24 @@ describe("a delta round", () => {
 		expect(lensRecord(again.verdict, "correctness")).toEqual(lensRecord(two.verdict, "correctness"));
 	});
 
+	it("hands a lens every finding it carries, one to a line", async () => {
+		commit(repo, first);
+		const one = await review({
+			correctness: [report("src/a.ts", 3), report("src/c.ts", 5), fauxAssistantMessage("Done.")],
+		});
+		const ids = one.verdict.findings.block.map((finding) => finding.id).sort();
+		expect(ids).toHaveLength(2);
+		commit(repo, { "src/b.ts": numbered(20, "b").replace("b 9\n", "B 9\n") });
+		const { requests } = await review();
+		const listed = /label="findings">\n([^]*?)\n<\/untrusted-/.exec(promptOf(requests, correctness))?.[1] ?? "";
+		expect(
+			listed
+				.split("\n")
+				.map((line) => line.split(" ")[0])
+				.sort(),
+		).toEqual(ids);
+	});
+
 	it("has a lens whose finding the move lost review the whole diff, while another reviews the delta", async () => {
 		commit(repo, { ...first, "src/b.ts": numbered(20, "b").replace("b 9\n", "B 9\n") });
 		await review({ correctness: [report("src/b.ts", 9), fauxAssistantMessage("Done.")] });

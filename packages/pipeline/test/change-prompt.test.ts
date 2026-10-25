@@ -115,7 +115,9 @@ describe("ChangePrompt.renderInput", () => {
 		expect(prompt([a, renamed]).render(undefined, { delta: delta({}, units) })).toContain(
 			`## The change under review\n\nThese hunks are what this round reviews.\n\n${renamedBlock}`,
 		);
-		expect(prompt([a, renamed]).render(undefined, { delta: delta({}) })).not.toContain(renamedBlock);
+		const left = prompt([a, renamed]).render(undefined, { delta: delta({}) });
+		expect(left).not.toContain(renamedBlock);
+		expect(left).not.toContain("File units left out");
 	});
 
 	it.each<[string, [number, number][], number[]]>([
@@ -202,6 +204,17 @@ describe("ChangePrompt at its limits", () => {
 		);
 	});
 
+	it("names every left-out file unit that fits its bound, one per line", () => {
+		const other = changed("bin/tool", [], { newMode: "100755" });
+		const toolLine = "bin/tool (modified): mode 100644 (file) -> 100755 (file); text";
+		limits.bytes = 1;
+		limits.metadataBytes = Buffer.byteLength(runLine) + 1 + Buffer.byteLength(toolLine) + 1;
+		const both = prompt([run, other]).renderInput();
+		expect(both.text).toContain(`File units left out of the diff:\n${q("listing", `${runLine}\n${toolLine}`)}`);
+		limits.metadataBytes -= 1;
+		expect(Object.keys(prompt([run, other]).renderInput().delivered.fields)).toEqual(["bin/run"]);
+	});
+
 	it("names a left-out file unit within its own bound, and none past it", () => {
 		limits.bytes = 1;
 		limits.metadataBytes = Buffer.byteLength(runLine) + 1;
@@ -213,8 +226,10 @@ describe("ChangePrompt at its limits", () => {
 	});
 
 	it("follows a whole diff with its functions, and a cut one with the note that says why they are missing", () => {
-		const functions = { blocks: () => ["FUNCTIONS"] } as unknown as EnclosingFunctions;
-		expect(prompt([a]).render(undefined, { functions }).endsWith("\n\nFUNCTIONS")).toBe(true);
+		const functions = {
+			blocks: (only: readonly string[]) => [`FUNCTIONS ${only.join(", ")}`],
+		} as unknown as EnclosingFunctions;
+		expect(prompt([a]).render(undefined, { functions }).endsWith("\n\nFUNCTIONS src/a.ts")).toBe(true);
 		limits.bytes = 1;
 		const cut = prompt([a]).render(undefined, { functions });
 		expect(cut.endsWith(`\n\n${cutDiffNote}`)).toBe(true);
@@ -240,6 +255,11 @@ describe("a file's facts", () => {
 			expect(hidden.text).toContain(`${linkFacts}; symlink target not shown\n`);
 			expect(hidden.delivered.fields["src/link"]).not.toContain("target");
 		}
+	});
+
+	it("says a deleted file has no mode or kind at the head", () => {
+		const deleted = changed("gone.ts", [], { status: "deleted", newMode: undefined, newKind: undefined });
+		expect(prompt([deleted]).render()).toContain("gone.ts (deleted)\nmode 100644 (file) -> none (none); text");
 	});
 
 	it("says a file is binary, or empty", () => {
