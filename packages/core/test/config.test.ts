@@ -1282,3 +1282,17 @@ describe("review.coverage and review.delta", () => {
 		expect(config.checks.allowSkip).toEqual(["static.tsc"]);
 	});
 });
+
+describe("review.coverage and a checks key with no allowSkip", () => {
+	it("loads a checks key that names no skips", async () => {
+		writeFiles(repo, { "melian.yaml": lines("checks: {}") });
+		expect((await loadConfig(repo, { kind: "worktree" }, "a.ts")).config.checks.allowSkip).toEqual([]);
+	});
+
+	it("says a skip of review.coverage would pass lines no check covered", async () => {
+		writeFiles(repo, { "melian.yaml": lines("checks:", "  allowSkip: [review.coverage]") });
+		expect((await rejection(loadConfig(repo, { kind: "worktree" }, "a.ts"))).message).toContain(
+			'"checks.allowSkip" names review.coverage, which no review may skip: a skip would pass lines no check covered',
+		);
+	});
+});

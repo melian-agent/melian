@@ -317,5 +317,60 @@ describe("HeadMove.read", () => {
 		writeFiles(repo, { "a.ts": numbered(2) });
 		const first = commit("first");
 		expect((await HeadMove.read(repo, "f".repeat(40), first)).reason("r1")).toBe("r1's head cannot be resolved");
+		writeFiles(repo, { "a.ts": numbered(3) });
+		const second = commit("second");
+		const moved = await HeadMove.read(repo, first, second);
+		expect(moved.reason("r1")).toBe("the head moved along its history since r1");
+		expect((await HeadMove.read(repo, "f".repeat(40), first)).revision).toBeUndefined();
+	});
+});
+
+describe("line ranges at their edges", () => {
+	it("keeps a range a second set only touches at either side, and splits one it lies inside", () => {
+		expect(subtractRanges([[5, 9]], [[1, 4]])).toEqual([[5, 9]]);
+		expect(subtractRanges([[5, 9]], [[10, 12]])).toEqual([[5, 9]]);
+		expect(subtractRanges([[5, 9]], [[9, 12]])).toEqual([[5, 8]]);
+		expect(subtractRanges([[5, 9]], [[5, 5]])).toEqual([[6, 9]]);
+		expect(subtractRanges([[5, 5]], [[5, 5]])).toEqual([]);
+		expect(subtractRanges([[5, 6]], [[6, 6]])).toEqual([[5, 5]]);
+	});
+});
+
+describe("Revision.fileUnits and mapLine at their edges", () => {
+	it("makes a unit of a submodule or a symlink on one side alone", async () => {
+		writeFiles(repo, { link: lines("plain") });
+		const base = commit("base");
+		rmSync(join(repo, "link"));
+		symlinkSync("elsewhere", join(repo, "link"));
+		const pointed = commit("link");
+		gitIn(repo, "rm", "--quiet", "link");
+		gitIn(repo, "update-index", "--add", "--cacheinfo", `160000,${base},link`);
+		gitIn(repo, "commit", "--quiet", "-m", "submodule");
+		const sub = gitIn(repo, "rev-parse", "HEAD");
+		expect((await between(base, pointed)).fileUnits()).toMatchObject([{ path: "link", kind: "symlink" }]);
+		expect((await between(pointed, sub)).fileUnits()).toMatchObject([{ path: "link", kind: "submodule" }]);
+		expect((await between(sub, pointed)).fileUnits()).toMatchObject([{ path: "link", kind: "submodule" }]);
+		writeFiles(repo, {});
+		gitIn(repo, "checkout", "--quiet", pointed);
+		rmSync(join(repo, "link"));
+		writeFiles(repo, { link: lines("plain again") });
+		const plain = commit("back to a file");
+		const back = (await between(pointed, plain)).fileUnits();
+		expect(back).toMatchObject([{ path: "link", kind: "symlink" }]);
+		expect(back[0]).not.toHaveProperty("oldPath");
+	});
+
+	it("maps a line past a hunk's last old line, and gives up one a file added at the map's base cannot hold", async () => {
+		writeFiles(repo, { "a.ts": numbered(5) });
+		const first = commit("first");
+		writeFiles(repo, {
+			"a.ts": lines("line 1", "LINE 2", "two b", "line 3", "line 4", "line 5"),
+			"b.ts": numbered(2),
+		});
+		const second = commit("second");
+		const map = await between(first, second);
+		expect(map.mapLine("a.ts", 2)).toBeUndefined();
+		expect(map.mapLine("a.ts", 3)).toEqual({ path: "a.ts", line: 4 });
+		expect(map.mapLine("b.ts", 1)).toEqual({ path: "b.ts", line: 1 });
 	});
 });
