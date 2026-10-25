@@ -462,17 +462,25 @@ describe("scripted verifier verdicts", () => {
 		});
 	});
 
-	it("rejects a verdict the verifier cannot give", () => {
+	it("rejects a verdict, an ID or evidence the verifier cannot give, and keeps a valid one", () => {
 		const directory = mkdtempSync(join(tmpdir(), "melian-goldens-"));
 		try {
 			const golden = goldens.find((each) => each.name === "clean-rename")!;
 			const copy = join(directory, golden.name);
 			cpSync(golden.directory, copy, { recursive: true });
-			writeFileSync(
-				join(copy, "verifier.json"),
-				JSON.stringify({ ef9ed09f125d5a9d: { verdict: "maybe", reason: "r" } }),
+			const verdicts = (verdicts: unknown) => {
+				writeFileSync(join(copy, "verifier.json"), JSON.stringify(verdicts));
+				return () => loadGoldens(directory);
+			};
+			expect(verdicts({ ef9ed09f125d5a9d: { verdict: "maybe", reason: "r" } })).toThrow(
+				/verifier\.json: \/ef9ed09f125d5a9d\/verdict /,
 			);
-			expect(() => loadGoldens(directory)).toThrow(/verifier\.json: \/ef9ed09f125d5a9d\/verdict /);
+			expect(verdicts({ "not-an-id": { verdict: "refuted", reason: "r" } })).toThrow(/verifier\.json/);
+			expect(verdicts({ ef9ed09f125d5a9d: { verdict: "refuted", reason: "r", evidence: [] } })).toThrow(
+				/verifier\.json: \/ef9ed09f125d5a9d\/evidence /,
+			);
+			const [loaded] = verdicts({ ef9ed09f125d5a9d: { verdict: "refuted", reason: "r" } })();
+			expect(loaded!.verifier).toEqual({ ef9ed09f125d5a9d: { verdict: "refuted", reason: "r" } });
 		} finally {
 			rmSync(directory, { recursive: true, force: true });
 		}

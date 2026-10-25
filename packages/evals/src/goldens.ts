@@ -132,6 +132,7 @@ export const verifierScriptSchema = Type.Record(
 		},
 		strict,
 	),
+	strict,
 );
 
 /** One expected finding. */
