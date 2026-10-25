@@ -1,5 +1,6 @@
 import {
 	Adjudication,
+	type CheckRecord,
 	Comparison,
 	type ComparisonEntry,
 	ComparisonSet,
@@ -27,8 +28,10 @@ const report = (input: Partial<ExternalFindingInput> = {}) =>
 		source: { kind: "file", path: "codex.json", position: 0, ref: String(sequence++) },
 		...input,
 	});
-const verdictOf = ({ findings }: { findings: readonly Finding[] }) =>
-	new Adjudication({ findings, checks: [], manifest: [], config: defaultConfig }).adjudicate();
+// A review in which the design lens ran at its first version, as a stored verdict records it.
+const designRan: CheckRecord = { name: "lens.design", status: "ran", version: "1", level: "careful" };
+const verdictOf = ({ findings, checks = [designRan] }: { findings: readonly Finding[]; checks?: CheckRecord[] }) =>
+	new Adjudication({ findings, checks, manifest: [], config: defaultConfig }).adjudicate();
 
 function round(
 	options: { externals?: ExternalFinding[]; findings?: Finding[]; at?: string; target?: string } = {},
@@ -40,10 +43,15 @@ function round(
 	if (options.target !== undefined) comparison.record(options.at ?? at, options.target);
 	return comparison;
 }
-const entry = (changeset: string, comparison: Comparison, findings: Finding[] = []): ComparisonEntry => ({
+const entry = (
+	changeset: string,
+	comparison: Comparison,
+	findings: Finding[] = [],
+	checks: CheckRecord[] = [designRan],
+): ComparisonEntry => ({
 	changeset,
 	comparison,
-	verdict: verdictOf({ findings }),
+	verdict: verdictOf({ findings, checks }),
 });
 const owing = (
 	changeset: string,
@@ -703,6 +711,167 @@ describe("one lens against one reviewer", () => {
 			othersFound: 0,
 			checkValid: 0,
 		});
+	});
+
+	const refuted = {
+		verdict: "refuted",
+		reason: "The caller checks it.",
+		executor: "llm",
+		model: "faux/judge",
+		version: "1",
+	} as const;
+	const confirmed = { ...refuted, verdict: "confirmed", reason: "It does not." } as const;
+
+	it("credits no lens whose own claims the verifier refuted, though another check's claim keeps the finding valid", () => {
+		const finding = Finding.create({
+			...evalInput,
+			startLine: 12,
+			endLine: 12,
+			failureScenario: "run(body) evaluates the request body.",
+			verification: confirmed,
+		});
+		const json = finding.toJSON();
+		const shared = Finding.from({
+			...json,
+			properties: {
+				...json.properties,
+				reportedBy: [json.properties.source, { check: "lens.design", version: "1" }],
+				otherClaims: [
+					{
+						id: "e".repeat(16),
+						ruleId: "x",
+						source: { check: "lens.design", version: "1" },
+						verification: refuted,
+					},
+				],
+			},
+		});
+		const codex12 = report({ line: 12, title: "Codex 12" });
+		const comparison = round({ externals: [codex12], findings: [shared] });
+		comparison.adjudicate(codex12.id, { ...by, verdict: "valid" });
+		comparison.adjudicate(shared.id, { ...by, verdict: "valid" });
+		expect(
+			new ComparisonSet([entry("one", comparison, [shared])]).againstReviewer("lens.design", "codex"),
+		).toMatchObject({
+			reviewerValid: 1,
+			checkFound: 0,
+			othersFound: 1,
+			checkValid: 0,
+		});
+		const standing = Finding.from({
+			...shared.toJSON(),
+			properties: {
+				...shared.toJSON().properties,
+				otherClaims: [{ ...shared.toJSON().properties.otherClaims![0]!, verification: confirmed }],
+			},
+		});
+		const kept = round({ externals: [codex12], findings: [standing] });
+		kept.adjudicate(codex12.id, { ...by, verdict: "valid" });
+		kept.adjudicate(standing.id, { ...by, verdict: "valid" });
+		expect(new ComparisonSet([entry("one", kept, [standing])]).againstReviewer("lens.design", "codex")).toMatchObject(
+			{
+				checkFound: 1,
+				checkValid: 1,
+			},
+		);
+	});
+
+	it("selects rounds by their own time with --since, so a later round of an older pull request counts", () => {
+		const codexAt = (line: number, when: string) => {
+			const found = design(line);
+			const codex = report({ line, title: `Codex ${line}` });
+			const comparison = round({ externals: [codex], findings: [found], at: when });
+			comparison.record(when);
+			comparison.adjudicate(codex.id, { ...by, verdict: "valid" });
+			comparison.adjudicate(found.id, { ...by, verdict: "valid" });
+			return entry("pr", comparison, [found]);
+		};
+		const set = new ComparisonSet([codexAt(12, "2026-10-23T01:00:00Z"), codexAt(14, "2026-10-25T01:00:00Z")]);
+		expect(set.renderAgainst("lens.design", "codex", { since: "2026-10-24" })).toContain(
+			"lens.design against codex, over 1 comparisons with a stored review",
+		);
+		expect(set.renderAgainst("lens.design", "codex", { since: "2026-10-26" })).toContain("over 0 comparisons");
+		expect(set.renderAgainst("lens.design", "codex")).toContain("over 2 comparisons");
+	});
+
+	it("keys rounds by the lens's version, level and route, and prints each cohort apart", () => {
+		const at = (version: string, line: number) => {
+			const found = Finding.create({
+				...evalInput,
+				snippet: `eval(v${version}${line})`,
+				startLine: line,
+				endLine: line,
+				source: { check: "lens.design", version },
+			});
+			const codex = report({ line, title: `Codex ${line}` });
+			const comparison = round({ externals: [codex], findings: [found] });
+			comparison.adjudicate(codex.id, { ...by, verdict: "valid" });
+			comparison.adjudicate(found.id, { ...by, verdict: "valid" });
+			const [, level] = version.split("@");
+			return entry(
+				`pr-${version}`,
+				comparison,
+				[found],
+				[{ name: "lens.design", status: "ran", version: version.split("@")[0]!, level: level as "careful" }],
+			);
+		};
+		const set = new ComparisonSet([at("old@careful", 12), at("new@careful", 14), at("new@careful", 16)]);
+		expect(set.renderAgainst("lens.design", "codex")).toBe(
+			[
+				"lens.design against codex, by the lens's version, level and route.",
+				"",
+				"old@careful: over 1 comparisons with a stored review.",
+				"codex's valid defects: 1. lens.design found 1 (1.000); only Melian's other checks found 0; no check found 0.",
+				"lens.design's valid defects: 1. codex found 1 (1.000).",
+				"Findings left out while a report waits for a judgement or a hand match: 0.",
+				"",
+				"new@careful: over 2 comparisons with a stored review.",
+				"codex's valid defects: 2. lens.design found 2 (1.000); only Melian's other checks found 0; no check found 0.",
+				"lens.design's valid defects: 2. codex found 2 (1.000).",
+				"Findings left out while a report waits for a judgement or a hand match: 0.",
+				"",
+			].join("\n"),
+		);
+	});
+
+	it("names a round's route when it left the committed one, and falls back to the findings' version without a record", () => {
+		const round1 = (records: CheckRecord[], version = "1") => {
+			const found = Finding.create({
+				...evalInput,
+				snippet: `eval(${version}${records.length})`,
+				startLine: 12,
+				endLine: 12,
+				source: { check: "lens.design", version },
+			});
+			const codex = report({ line: 12, title: "Codex 12" });
+			const comparison = round({ externals: [codex], findings: [found] });
+			comparison.adjudicate(codex.id, { ...by, verdict: "valid" });
+			comparison.adjudicate(found.id, { ...by, verdict: "valid" });
+			return entry("pr", comparison, [found], records);
+		};
+		const moved: CheckRecord = {
+			...designRan,
+			lineage: {
+				model: "anthropic/claude-opus-5-5",
+				by: "melian.local.yaml",
+				outside: false,
+				thinking: { level: "high", wanted: "low", by: "melian.local.yaml" },
+			},
+		};
+		const plain: CheckRecord = { ...designRan, lineage: { model: "openai/gpt-5.5", by: "--model", outside: true } };
+		const text = new ComparisonSet([
+			round1([moved]),
+			round1([plain]),
+			round1([], "2@deep"),
+			round1([{ name: "lens.design", status: "ran" }]),
+		]).renderAgainst("lens.design", "codex");
+		for (const cohort of [
+			"1@careful on anthropic/claude-opus-5-5 at high: over 1 comparisons",
+			"1@careful on openai/gpt-5.5: over 1 comparisons",
+			"2@deep: over 1 comparisons",
+			"unversioned@careful: over 1 comparisons",
+		])
+			expect(text).toContain(cohort);
 	});
 
 	it("prints no share for an empty side, and selects changesets as the other statistics do", () => {

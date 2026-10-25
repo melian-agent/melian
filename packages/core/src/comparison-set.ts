@@ -2,6 +2,7 @@ import type { Verdict } from "./adjudication.ts";
 import type { Comparison } from "./comparison.ts";
 import { type ComparisonAdjudicationRecord, missReasons } from "./comparison-adjudication.ts";
 import { visibleText } from "./render.ts";
+import { VerificationState } from "./verification.ts";
 
 /** Counts for one reviewer; pending reports enter neither precision nor recall. */
 export interface ReviewerStats {
@@ -149,11 +150,12 @@ export class ComparisonSet {
 	 * How `check`, such as `lens.design`, compares with `reviewer`, such as `codex`, over the comparisons with a stored
 	 * review: which of the reviewer's valid defects the check found, and which of the check's the reviewer found.
 	 */
-	againstReviewer(check: string, reviewer: string): CheckAgainstReviewer {
+	againstReviewer(check: string, reviewer: string, cohort?: string): CheckAgainstReviewer {
 		const counts = { reviewerValid: 0, checkFound: 0, othersFound: 0, checkValid: 0, reviewerFound: 0, pending: 0 };
 		let comparisons = 0;
 		for (const { comparison, verdict, unattributed } of this.entries) {
 			if (verdict === undefined || unattributed !== undefined) continue;
+			if (cohort !== undefined && cohortOf({ comparison, verdict }, check) !== cohort) continue;
 			// A round the reviewer took no part in says nothing about what it would have found. An import an older Melian
 			// stored names no participants, so a finding of the reviewer's also shows it took part.
 			const imported = Object.values(comparison.importsBySource()).flatMap((each) => each.reviewers ?? []);
@@ -167,7 +169,10 @@ export class ComparisonSet {
 						// The verdict's defect names its live members: a dismissed co-report stays on the finding as context.
 						const { source, reportedBy = [source] } = finding.properties;
 						const members = verdict.defect(finding.id)?.members ?? [];
-						return [...reportedBy, ...members].some((each) => each.check === check);
+						if (![...reportedBy, ...members].some((each) => each.check === check)) return false;
+						// A lens whose every claim on the finding the verifier refuted did not find it, whoever else did.
+						const claims = VerificationState.from(finding).claims.filter((claim) => claim.source.check === check);
+						return claims.length === 0 || claims.some((claim) => claim.verification?.verdict !== "refuted");
 					})
 					.map((finding) => finding.id),
 			);
@@ -337,16 +342,41 @@ export class ComparisonSet {
 		reviewer: string,
 		options: { readonly since?: string; readonly last?: number } = {},
 	): string {
-		const stats = this.select(options).againstReviewer(check, reviewer);
+		// A round counts by its own time: a pull request whose first round predates `since` keeps its later rounds.
+		const rounds =
+			options.since === undefined
+				? this
+				: new ComparisonSet(
+						this.entries.filter(
+							(entry) => Date.parse(entry.comparison.recordedAt() ?? "") >= Date.parse(options.since!),
+						),
+					);
+		const selected = rounds.select({ ...(options.last === undefined ? {} : { last: options.last }) });
+		const cohorts = [
+			...new Set(
+				selected.entries
+					.filter((entry) => entry.verdict !== undefined && entry.unattributed === undefined)
+					.map((entry) => cohortOf(entry, check)),
+			),
+		];
 		const name = visibleText(check);
 		const them = visibleText(reviewer);
 		const share = (part: number, whole: number) => (whole === 0 ? "" : ` (${(part / whole).toFixed(3)})`);
-		const missed = stats.reviewerValid - stats.checkFound - stats.othersFound;
+		const block = (stats: CheckAgainstReviewer, lead: string) => {
+			const missed = stats.reviewerValid - stats.checkFound - stats.othersFound;
+			return [
+				`${lead}over ${stats.comparisons} comparisons with a stored review.\n`,
+				`${them}'s valid defects: ${stats.reviewerValid}. ${name} found ${stats.checkFound}${share(stats.checkFound, stats.reviewerValid)}; only Melian's other checks found ${stats.othersFound}; no check found ${missed}.\n`,
+				`${name}'s valid defects: ${stats.checkValid}. ${them} found ${stats.reviewerFound}${share(stats.reviewerFound, stats.checkValid)}.\n`,
+				`Findings left out while a report waits for a judgement or a hand match: ${stats.pending}.\n`,
+			].join("");
+		};
+		if (cohorts.length <= 1) return block(selected.againstReviewer(check, reviewer), `${name} against ${them}, `);
 		return [
-			`${name} against ${them}, over ${stats.comparisons} comparisons with a stored review.\n`,
-			`${them}'s valid defects: ${stats.reviewerValid}. ${name} found ${stats.checkFound}${share(stats.checkFound, stats.reviewerValid)}; only Melian's other checks found ${stats.othersFound}; no check found ${missed}.\n`,
-			`${name}'s valid defects: ${stats.checkValid}. ${them} found ${stats.reviewerFound}${share(stats.reviewerFound, stats.checkValid)}.\n`,
-			`Findings left out while a report waits for a judgement or a hand match: ${stats.pending}.\n`,
+			`${name} against ${them}, by the lens's version, level and route.\n`,
+			...cohorts.map(
+				(cohort) => `\n${block(selected.againstReviewer(check, reviewer, cohort), `${visibleText(cohort)}: `)}`,
+			),
 		].join("");
 	}
 
@@ -389,4 +419,21 @@ export function markdownText(text: string): string {
 		.replace(/:(?=\/\/)/g, ":\u2060")
 		.replace(/www\./gi, (match) => `${match.slice(0, -1)}\u2060.`)
 		.replace(/\bGH-(?=\d)/gi, (match) => `${match}\u2060`);
+}
+
+// The lens as it ran in a round: the version and level its check record names, with the route when the round left the
+// committed one, so rounds on a lens's earlier route never mix with its later ones. A round with no record of the lens
+// falls back to the version its findings name.
+function cohortOf(entry: Pick<ComparisonEntry, "comparison" | "verdict">, check: string): string {
+	const record = entry.verdict?.ran?.find((each) => each.name === check);
+	if (record === undefined) {
+		const versions = (entry.verdict?.all() ?? [])
+			.filter((finding) => finding.properties.source.check === check)
+			.map((finding) => finding.properties.source.version ?? "unversioned");
+		return [...new Set(versions)].sort().join(", ") || "no record of the lens";
+	}
+	const lineage = record.lineage;
+	const route =
+		lineage === undefined ? "" : ` on ${lineage.model}${lineage.thinking ? ` at ${lineage.thinking.level}` : ""}`;
+	return `${record.version ?? "unversioned"}@${record.level ?? "careful"}${route}`;
 }
