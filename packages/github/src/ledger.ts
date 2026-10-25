@@ -289,6 +289,8 @@ export class Ledger {
 				secret: this.draft.secret,
 			},
 			links,
+			// The ledger's register is the second part of step 35; until then it keeps words alone.
+			{ emoji: false },
 		);
 		return body.split("\n").slice(1).join("\n");
 	}

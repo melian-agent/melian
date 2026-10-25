@@ -159,9 +159,16 @@ export const melianYamlSchema = Type.Object(
 				strict,
 			),
 		),
+		output: Type.Optional(
+			Type.Object(
+				{ emoji: Type.Optional(Type.Union([Type.Literal("auto"), Type.Literal("on"), Type.Literal("off")])) },
+				strict,
+			),
+		),
 		publish: Type.Optional(
 			Type.Object(
 				{
+					emoji: Type.Optional(Type.Union([Type.Literal("on"), Type.Literal("off")])),
 					walkthrough: Type.Optional(
 						Type.Object(
 							{
@@ -450,7 +457,11 @@ export interface PolicyChangeReview {
 export interface MelianConfig {
 	readonly trust: { readonly writers: boolean };
 	readonly comparison: { readonly retirement: { readonly pullRequests: number; readonly recall: number } };
+	/** `emoji`: whether the terminal shows emojis, `auto` when standard output is a UTF-8 terminal. */
+	readonly output: { readonly emoji: "auto" | "on" | "off" };
+	/** `emoji`: whether pull-request comments show emojis. */
 	readonly publish: {
+		readonly emoji: "on" | "off";
 		readonly walkthrough: { readonly enabled: boolean; readonly collapsed: boolean; readonly diagrams: boolean };
 	};
 	readonly tiers: Readonly<Record<string, readonly string[]>>;
@@ -492,7 +503,8 @@ const forgedMutationKill: ForbiddenPatternRule = {
 export const defaultConfig: MelianConfig = {
 	trust: { writers: true },
 	comparison: { retirement: { pullRequests: 10, recall: 0.75 } },
-	publish: { walkthrough: { enabled: true, collapsed: true, diagrams: true } },
+	output: { emoji: "auto" },
+	publish: { emoji: "on", walkthrough: { enabled: true, collapsed: true, diagrams: true } },
 	tiers: {
 		fast: ["guardrails", "static", "decisions.fast"],
 		standard: ["fast", "lens.correctness"],
@@ -783,6 +795,7 @@ function checkNested(site: Site, layer: MelianYaml): void {
 				key,
 			});
 	}
+	checkPublishEmoji(site, layer);
 
 	for (const [tier, route] of Object.entries(layer.models ?? {})) {
 		const key = [...routePolicyKeys, "thinking" as const].find((each) => route?.[each] !== undefined);
@@ -805,6 +818,7 @@ function checkPreference(site: Site, layer: MelianYaml): void {
 				key,
 			});
 	}
+	checkPublishEmoji(site, layer);
 
 	for (const [tier, route] of Object.entries(layer.models ?? {})) {
 		const key = routePolicyKeys.find((each) => route?.[each] !== undefined);
@@ -818,15 +832,28 @@ function checkPreference(site: Site, layer: MelianYaml): void {
 	}
 }
 
-// A review reads `triage` from the root's configuration alone, so a nested file setting it would be silently ignored. A
-// preference file layers over the root's, so it may.
-function checkRootOnly(site: Site, layer: MelianYaml): void {
-	if (layer.triage === undefined || site.preference === true || site.file === melianPaths.config) return;
+// Pull-request comments show everyone the same emojis, so neither a nested file nor one maintainer's preference sets them.
+function checkPublishEmoji(site: Site, layer: MelianYaml): void {
+	if (layer.publish?.emoji === undefined) return;
 	throw configError(
 		"invalidValue",
 		site,
-		`"triage" applies to the whole review, so only the root melian.yaml may set it; move it there`,
-		{ key: "triage" },
+		`"publish.emoji" sets what everyone reading the pull request sees, so only the committed root melian.yaml sets it`,
+		{ key: "publish.emoji" },
+	);
+}
+
+// A review reads `triage` and `output` from the root's configuration alone, so a nested file setting either would be
+// silently ignored. A preference file layers over the root's, so it may.
+function checkRootOnly(site: Site, layer: MelianYaml): void {
+	if (site.preference === true || site.file === melianPaths.config) return;
+	const key = layer.triage !== undefined ? "triage" : layer.output !== undefined ? "output" : undefined;
+	if (key === undefined) return;
+	throw configError(
+		"invalidValue",
+		site,
+		`"${key}" applies to the whole review, so only the root melian.yaml may set it; move it there`,
+		{ key },
 	);
 }
 

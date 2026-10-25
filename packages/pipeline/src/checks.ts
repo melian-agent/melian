@@ -616,6 +616,16 @@ function canonical(value: unknown): string {
 	return JSON.stringify(value);
 }
 
+// The configuration without its display-only keys, which change how a review reads and never what a check finds, so a
+// change to one reuses the run. `language` joins them when it lands.
+function decisive(config: MelianConfig): Omit<MelianConfig, "output" | "publish"> & {
+	readonly publish: Omit<MelianConfig["publish"], "emoji">;
+} {
+	const { output: _, publish, ...rest } = config;
+	const { emoji: __, ...kept } = publish;
+	return { ...rest, publish: kept };
+}
+
 // What decides a run's results: both commits, the tier, and the policy it ran under, with Melian's own tool pins, so a
 // build that pins another Enola does not take the finished run of an older one. Mutation testing adds the Stryker
 // version it would run, whether the checkout has an executable for it and where, and the host's decision on the head, so a
@@ -635,7 +645,7 @@ async function runIdentity(input: RunChecksInput, tier: string): Promise<Omit<Ru
 	// A cold run is another run of the check: a provisional result of the same head must not stand in for it.
 	const cold = mutating ? input.cold === true : undefined;
 	const policy = createHash("sha256")
-		.update(canonical({ config: input.config, source: input.source, tools, stryker, writer, cold }))
+		.update(canonical({ config: decisive(input.config), source: input.source, tools, stryker, writer, cold }))
 		.digest("hex")
 		.slice(0, 16);
 	return { base, head, tier, policy };

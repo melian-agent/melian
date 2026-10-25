@@ -343,6 +343,23 @@ describe("runChecks", () => {
 		]);
 	});
 
+	it.each([
+		["output.emoji", { output: { emoji: "on" as const } }],
+		["publish.emoji", { publish: { ...defaultConfig.publish, emoji: "off" as const } }],
+	])("reuses the run when only the display setting %s changes", { timeout: 60_000 }, async (_, display) => {
+		const base = commit(repo, { "melian.yaml": lines("tiers:", "  fast: [guardrails]") });
+		const head = commit(repo, { "src/a.ts": lines("a") });
+		const { harness, input, run: first } = await checks(base, head);
+		const second = await runChecks(harness, { ...input, config: { ...input.config, ...display } }, context);
+		expect(second.identity).toEqual(first.identity);
+		const walkthrough = {
+			...input.config.publish,
+			walkthrough: { ...input.config.publish.walkthrough, enabled: false },
+		};
+		const other = await runChecks(harness, { ...input, config: { ...input.config, publish: walkthrough } }, context);
+		expect(other.identity.policy).not.toBe(first.identity.policy);
+	});
+
 	it("runs again when Melian's tool pins differ, rather than returning the earlier run", {
 		timeout: 60_000,
 	}, async () => {

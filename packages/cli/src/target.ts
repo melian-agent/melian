@@ -66,8 +66,12 @@ export async function gitHubAccess(cwd: string, env: NodeJS.ProcessEnv): Promise
 	return { owner, repo, token: found.token };
 }
 
-export async function gitHubFor(cwd: string, env: NodeJS.ProcessEnv): Promise<ReviewProvider> {
-	return createGitHubProvider(await gitHubAccess(cwd, env));
+export async function gitHubFor(
+	cwd: string,
+	env: NodeJS.ProcessEnv,
+	options: { readonly emoji?: boolean } = {},
+): Promise<ReviewProvider> {
+	return createGitHubProvider({ ...(await gitHubAccess(cwd, env)), ...options });
 }
 
 // The range over the refs Melian fetched, under the pull request's own changeset ID. A range review of the same refs
