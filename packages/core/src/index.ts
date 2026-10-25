@@ -357,6 +357,7 @@ export {
 	type RevisionMatch,
 	type RevisionSearch,
 	readRevisionFile,
+	readRevisionLink,
 	repositoryPath,
 	revisionLimits,
 	searchRevision,

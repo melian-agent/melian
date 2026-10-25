@@ -272,7 +272,8 @@ export class CoverageRecord {
 
 	// Why this round's own record covers nothing, when it does not.
 	#ownFault(coverage: StoredCheckCoverage): string | undefined {
-		const round = this.stored.round;
+		// A record not yet written names no round of its own.
+		const round = this.stored.round === "" ? "this round" : this.stored.round;
 		if (this.stored.refused !== undefined) return this.stored.refused;
 		switch (coverage.status) {
 			case "ran":

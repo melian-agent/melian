@@ -180,6 +180,7 @@ export type RevisionErrorCode =
 	| "notFound"
 	| "notAFile"
 	| "symlink"
+	| "notASymlink"
 	| "binary"
 	| "invalidPattern"
 	| "gitFailed";

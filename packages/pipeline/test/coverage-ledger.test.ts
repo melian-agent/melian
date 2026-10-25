@@ -391,20 +391,16 @@ describe("the coverage ledger", () => {
 		expect(reasons(summary)).toEqual(["coverage is not recorded for a fork's head"]);
 	});
 
-	it("keeps a file unit a gap until a lens receives every field, which no read delivers", async () => {
+	it("covers a file unit with the fields the prompt named, never with a read", async () => {
 		chmodSync(join(repo, "src/b.ts"), 0o755);
 		commit(repo, {});
-		const { summary } = await review({
+		const { summary, record } = await review({
 			replies: { correctness: [readCall("src/b.ts"), fauxAssistantMessage("Done.")] },
 		});
-		expect(summary.gaps).toContainEqual({
-			check: "lens.correctness",
-			file: "src/b.ts",
-			lines: [],
-			unit: "mode",
-			fields: ["oldMode", "newMode", "oldKind", "newKind", "binary"],
-			reason: "fields not delivered: oldMode, newMode, oldKind, newKind, binary",
-		});
+		expect(summary.complete).toBe(true);
+		const fields = ["status", "path", "oldMode", "newMode", "oldKind", "newKind", "binary"];
+		expect(record.checks["lens.correctness"]!.covered[0]!.units).toEqual({ "src/b.ts": fields });
+		expect(record.checks["lens.correctness"]!.covered[0]!.head).toEqual({});
 	});
 
 	it("counts the lines a lens read at head as delivered", async () => {
@@ -432,7 +428,7 @@ describe("a store main wrote before the ledger", () => {
 		head: string;
 	};
 
-	it("reads its version 1 round, and records a ledger whose old lens prompt covers nothing", async () => {
+	it("reads its version 1 round and its version 4 lens task, and records a whole ledger for the next round", async () => {
 		const clone = createRepository();
 		try {
 			gitIn(
@@ -458,7 +454,11 @@ describe("a store main wrote before the ledger", () => {
 				const before = await new CoverageLedger(reopened, root).section(recorded.key, context);
 				expect(before.summary.complete).toBe(false);
 				const mainLenses = await Lens.load(clone, { kind: "revision", commit: recorded.base }, ["src/user.ts"]);
-				scriptConversations(fake, []);
+				// The prompt now names each file's modes, so the review runs its lenses again rather than attach to the old task.
+				scriptConversations(fake, [
+					{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
+					{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+				]);
 				await reviewChangeset({
 					harness: reopened,
 					changeset: await Changeset.resolve(clone, "main...feature"),
@@ -468,27 +468,11 @@ describe("a store main wrote before the ledger", () => {
 					models: fake.review,
 					checks,
 				});
-				expect(fake.provider.state.callCount).toBe(0);
+				expect(fake.provider.state.callCount).toBe(2);
 				const after = (await reopened.snapshot(RoundsDocument, root, context))!;
 				expect(Object.values(after.items).map((round) => round.scope)).toEqual([undefined, { kind: "diff" }]);
 				const { summary } = await new CoverageLedger(reopened, root).section(recorded.key, context);
-				expect(summary.gaps).toEqual([
-					{ check: "lens.contracts", file: "src/user.ts", lines: [[7, 7]], reason: "never delivered" },
-					{
-						check: "lens.contracts",
-						file: "src/user.ts",
-						revision: "base",
-						lines: [[7, 7]],
-						reason: "never delivered",
-					},
-					{
-						check: "lens.correctness",
-						file: "src/user.ts",
-						revision: "base",
-						lines: [[7, 7]],
-						reason: "never delivered",
-					},
-				]);
+				expect(summary).toEqual({ complete: true, rounds: ["r2"], gaps: [] });
 			} finally {
 				await reopened.close(context);
 			}

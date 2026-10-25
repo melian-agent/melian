@@ -356,6 +356,7 @@ export async function review(
 				origin,
 				writer,
 				...(coverageRefused === undefined ? {} : { coverageRefused }),
+				...(options.cold === true ? { cold: true } : {}),
 			}));
 		} catch (error) {
 			if (!(error instanceof ReviewError) || error.verdict === undefined) throw error;

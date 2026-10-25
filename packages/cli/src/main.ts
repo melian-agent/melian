@@ -70,8 +70,8 @@ Options:
                          stored; a completed triage decision is never asked again (review).
   --trust-head           Run the change's own tests, as the mutation check does, for a head that is not your own
                          checked-out work, such as a fork's; pass it only for code you have read (review).
-  --cold                 Run the mutation check without an earlier head's results; only a cold run can pass the
-                         review, so run it before the queue (review).
+  --cold                 Review the whole diff from nothing: no coverage carries from earlier rounds, and the mutation
+                         check runs without an earlier head's results (review).
   --open, --all, --json  For findings; --json also applies to review and telemetry.
   --round <id>          Read a stored verdict; select a range comparison by ID or unattributed.
   --rounds              List a target's stored rounds (findings).

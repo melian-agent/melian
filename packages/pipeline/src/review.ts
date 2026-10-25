@@ -4,8 +4,10 @@ import {
 	type CheckRecord,
 	type ChoiceQuestion,
 	type ConfigFor,
+	CoverageRecord,
 	checksOfTier,
 	configLookup,
+	coverageCheck,
 	type Decider,
 	type Decision,
 	type DecisionRequest,
@@ -40,6 +42,7 @@ import {
 	Standards,
 	StandardsReading,
 	type StandardsSection,
+	type StoredCoverageRecord,
 	type TriageChoice,
 	triageChoices,
 	triageQuestionSet,
@@ -60,9 +63,10 @@ import {
 	VerdictDocument,
 } from "./adjudication.ts";
 import { CallerContext, type CoverageSource } from "./callers.ts";
+import { ChangePrompt, type PromptDelivery } from "./change-prompt.ts";
 import { checksExtension, type RunIdentity, runChecks, type WriterTrust } from "./checks.ts";
 import { configsFor } from "./configurations.ts";
-import { CoverageLedger } from "./coverage-ledger.ts";
+import { CoverageLedger, type LedgerRound } from "./coverage-ledger.ts";
 import {
 	DecisionDocument,
 	type DecisionResult,
@@ -72,7 +76,7 @@ import {
 	decisionTaskName,
 	readRecordedDecision,
 } from "./decisions.ts";
-import { cutDiffNote, EnclosingFunctions } from "./enclosing-functions.ts";
+import { EnclosingFunctions } from "./enclosing-functions.ts";
 import { ReviewError } from "./errors.ts";
 import {
 	clearSightings,
@@ -725,6 +729,8 @@ export class ReviewHarness {
 }
 
 /** Opens a {@link ReviewHarness} over `storage`, as {@link ReviewHarness.open} does. */
+export { ChangePrompt } from "./change-prompt.ts";
+
 export function openReviewHarness(
 	storage: Storage,
 	models: ReviewModels,
@@ -733,115 +739,6 @@ export function openReviewHarness(
 ): Promise<ReviewHarness> {
 	return ReviewHarness.open(storage, models, options, context);
 }
-
-const maxPromptBytes = 200 * 1024;
-
-/**
- * The input a lens receives: the revision, the files it changes, and its zero-context diff, bounded. Everything from
- * the head enters inside `quoteUntrusted` boundaries carrying the review's `nonce`: the file list as one listing, and
- * each file's diff as its own block whose first line is the file's path and status, so a changed line cannot pose as
- * another file's header. Paths are escaped with core's `visibleText`, so a newline in one cannot forge a line.
- */
-export class ChangePrompt {
-	readonly changeset: Changeset;
-	readonly nonce: string;
-
-	constructor(changeset: Changeset, nonce: string) {
-		this.changeset = changeset;
-		this.nonce = nonce;
-	}
-
-	/**
-	 * The prompt, limited to the files `only` names when given, matching a renamed file by its old path or its new one.
-	 * With `tools: false`, for a reader with no tools such as a decider, it does not tell the reader to read the head.
-	 */
-	render(
-		only?: readonly string[],
-		options: { readonly tools?: boolean; readonly functions?: EnclosingFunctions } = {},
-	): string {
-		return this.renderInput(only, options).text;
-	}
-
-	/**
-	 * The bounded prompt, whether its size limit omitted any file's diff, and what it delivered: by head path, the hunks
-	 * each file's block rendered and the fields of the file it named, and the files the limit left out.
-	 */
-	renderInput(
-		only?: readonly string[],
-		options: { readonly tools?: boolean; readonly functions?: EnclosingFunctions } = {},
-	): { readonly text: string; readonly cut: boolean; readonly delivered: PromptDelivery } {
-		const { nonce } = this;
-		const { base, head } = this.changeset.revision;
-		const files = this.changeset.revision.files.filter(
-			(file) =>
-				only === undefined ||
-				only.includes(file.path) ||
-				(file.oldPath !== undefined && only.includes(file.oldPath)),
-		);
-		const named = (file: (typeof files)[number]) =>
-			`${file.oldPath === undefined ? "" : `${visibleText(file.oldPath)} -> `}${visibleText(file.path)}`;
-		const header = [
-			`Review the change from ${base.slice(0, 12)} to ${head.slice(0, 12)}.`,
-			"",
-			"Files changed:",
-			quoteUntrusted("listing", files.map((file) => `${file.status} ${named(file)}`).join("\n"), nonce),
-			"",
-			`Each file's diff follows in its own block, whose first line names the file. The diff has no context lines.${options.tools === false ? "" : " Read the head revision with read_file for the code around each hunk."}`,
-		].join("\n");
-		const parts = [header];
-		let size = Buffer.byteLength(header);
-		let cut = false;
-		const delivered: PromptDelivery = { hunks: {}, fields: {}, omitted: [] };
-		for (const file of files) {
-			if (cut) {
-				delivered.omitted.push(file.path);
-				continue;
-			}
-			const hunks = file.binary ? ["(binary)"] : file.hunks.map((hunk) => `${hunk.header}\n${hunk.text}`);
-			const part = quoteUntrusted("diff", [`${named(file)} (${file.status})`, ...hunks].join("\n"), nonce);
-			size += Buffer.byteLength(part);
-			if (size > maxPromptBytes) {
-				cut = true;
-				delivered.omitted.push(file.path);
-				parts.push(
-					options.tools === false
-						? "[The diff continues; the remaining files are omitted.]"
-						: "[The diff continues; read the remaining files with read_file.]",
-				);
-				continue;
-			}
-			parts.push(part);
-			delivered.hunks[file.path] = file.binary ? [] : file.hunks.map((hunk) => hunk.index);
-			// The block's first line names the path, an old path, and the status, and a binary file says so.
-			delivered.fields[file.path] = [
-				"status",
-				"path",
-				...(file.oldPath === undefined ? [] : (["oldPath"] as const)),
-				...(file.binary ? (["binary"] as const) : []),
-			];
-		}
-		// The functions follow the diff, past its limit, so a cut diff never costs a function, and a function never a hunk.
-		if (cut && options.functions !== undefined) parts.push(cutDiffNote);
-		if (!cut && options.functions !== undefined)
-			parts.push(
-				...options.functions.blocks(
-					files.map((file) => file.path),
-					nonce,
-				),
-			);
-		return { text: parts.join("\n\n"), cut, delivered };
-	}
-}
-
-/**
- * What one lens prompt delivered, by head path: the hunk indexes each file's diff block rendered, the file fields its
- * first line named, and the files the size limit left out.
- */
-export type PromptDelivery = {
-	hunks: Record<string, number[]>;
-	fields: Record<string, UnitField[]>;
-	omitted: string[];
-};
 
 // A model tier's route as a review can run it: the tier's model and fallbacks that the collection knows and holds
 // credentials for, in routing order, or why there are none.
@@ -1603,25 +1500,25 @@ async function requiredLevels(
 	return levels;
 }
 
-// Writes the decided round's coverage record from what the round ran: each selected lens's standing run, its record,
-// what its prompt and reads delivered, and every other check's record. Nothing the head writes reaches it.
-async function recordCoverage(
+// What a round tells the ledger about itself: each selected lens's standing run, its record, what its prompt and reads
+// delivered, and every other check's record. Before any lens runs, the lenses carry no run and no record.
+async function ledgerRound(
 	harness: Harness,
 	root: ConversationId,
 	round: {
 		readonly request: ReviewOptions;
 		readonly tier: string;
 		readonly covering: readonly { readonly lens: Lens; readonly covers: readonly string[] }[];
-		readonly settled: readonly SettledLens[];
-		readonly lensResult: LensResult | undefined;
-		readonly checks: readonly CheckRecord[];
+		readonly standards: ReadonlyMap<Lens, readonly string[]>;
+		readonly settled?: readonly SettledLens[];
+		readonly lensResult?: LensResult;
+		readonly checks?: readonly CheckRecord[];
 		readonly manifest: readonly string[];
-		readonly allowSkip: readonly string[];
+		readonly allowSkip?: readonly string[];
 		readonly nonce: string;
-		readonly adjudication: number;
 	},
 	context: Context,
-): Promise<void> {
+): Promise<LedgerRound> {
 	const { request } = round;
 	const { changeset } = request;
 	const writer = request.writer;
@@ -1633,10 +1530,10 @@ async function recordCoverage(
 					file.oldPath !== undefined && covers.includes(file.path) ? [file.oldPath] : [],
 				),
 			];
-			const settledLens = round.settled.find(({ run }) => run.name === lens.name && run.version === lens.version);
-			const run = settledLens?.run;
-			const record = round.checks.find((check) => check.name === `lens.${lens.name}`);
+			const run = round.settled?.find(({ run }) => run.name === lens.name && run.version === lens.version)?.run;
+			const record = round.checks?.find((check) => check.name === `lens.${lens.name}`);
 			const conversation = run === undefined ? undefined : round.lensResult?.[run.key]?.conversation;
+			const standards = run?.standards ?? round.standards.get(lens);
 			return {
 				name: lens.name,
 				version: lens.version,
@@ -1646,29 +1543,39 @@ async function recordCoverage(
 				...(run?.level === undefined ? {} : { level: run.level }),
 				...(run?.delivered === undefined ? {} : { delivered: run.delivered }),
 				...(conversation === undefined ? {} : { conversation }),
-				...(run?.standards === undefined ? {} : { standards: run.standards }),
+				...(standards === undefined ? {} : { standards }),
 			};
 		}),
 	);
-	await new CoverageLedger(harness, root).write(
-		{
-			changeset,
-			config: request.config,
-			tier: round.tier,
-			...(request.policy === undefined ? {} : { policy: request.policy }),
-			leave: writer?.trusted === true ? writer.by : "none",
-			...(request.coverageRefused === undefined ? {} : { refused: request.coverageRefused }),
-			lenses,
-			checks: round.checks,
-			manifest: round.manifest,
-			allowSkip: round.allowSkip,
-			nonce: round.nonce,
-			adjudication: round.adjudication,
-			findings: await readFindings(harness, root, Revision.key(changeset.revision), context),
-			tools: (await ToolProvisioning.manifest()).toJSON(),
-		},
-		context,
-	);
+	return {
+		changeset,
+		config: request.config,
+		tier: round.tier,
+		...(request.policy === undefined ? {} : { policy: request.policy }),
+		leave: writer?.trusted === true ? writer.by : "none",
+		...(request.coverageRefused === undefined ? {} : { refused: request.coverageRefused }),
+		lenses,
+		checks: round.checks ?? [],
+		manifest: round.manifest,
+		allowSkip: round.allowSkip ?? [],
+		nonce: round.nonce,
+		findings: await readFindings(harness, root, Revision.key(changeset.revision), context),
+		tools: (await ToolProvisioning.manifest()).toJSON(),
+		...(request.cold === true ? { cold: true } : {}),
+	};
+}
+
+// The `review.coverage` record a round's coverage puts in its manifest: `ran` when every check covered everything it
+// must, and otherwise skipped without leave, naming the gaps, which leaves the review not reviewed.
+function coverageRecordOf(record: StoredCoverageRecord): CheckRecord {
+	const { complete, gaps } = CoverageRecord.from(record).summary();
+	if (complete) return { name: coverageCheck, status: "ran" };
+	const all = [
+		...new Set(gaps.map((gap) => `${gap.check}${gap.file === "" ? "" : ` ${visibleText(gap.file)}`}: ${gap.reason}`)),
+	];
+	const named = all.slice(0, 5);
+	const more = all.length > 5 ? `; and ${all.length - 5} more gaps` : "";
+	return { name: coverageCheck, status: "skipped", reason: `coverage is incomplete: ${named.join("; ")}${more}` };
 }
 
 export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
@@ -1730,7 +1637,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	let headFunctions: Promise<EnclosingFunctions> | undefined;
 	const enclosing = () => (headFunctions ??= spans.time("functions", () => EnclosingFunctions.read(changeset)));
 	const { unlockModels } = options;
-	const prompt = new ChangePrompt(changeset, nonce);
+	const targets = await ChangePrompt.readTargets(changeset);
+	const prompt = new ChangePrompt(changeset, nonce, targets);
 	const { repoRoot, revision } = changeset;
 	const { base, head } = revision;
 	const reviewed = Revision.key(revision);
@@ -1744,6 +1652,35 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	});
 	spans.step("bands");
 	const bands = await bandsOf(covering, options);
+	spans.step("coverage.intake");
+	const readingOf = (lens: Lens, covers: readonly string[]) => {
+		const standardsFiles = [
+			...covers,
+			...changeset.revision.files
+				.filter((file) => file.oldPath !== undefined && covers.includes(file.path))
+				.map((file) => file.oldPath!),
+		];
+		return lens.standards
+			? standards instanceof Standards
+				? standards.forFiles(standardsFiles)
+				: StandardsReading.from(standards)
+			: StandardsReading.from([]);
+	};
+	const standardsPaths = new Map(covering.map(({ lens, covers }) => [lens, readingOf(lens, covers).paths()] as const));
+	const ledger = new CoverageLedger(harness, root);
+	const intake = await ledger.intake(
+		await ledgerRound(
+			harness,
+			root,
+			{ request: options, tier, covering, standards: standardsPaths, manifest, nonce },
+			context,
+		),
+		context,
+	);
+	// A round after a decided one at an earlier head reviews only what no round covered, unless it runs cold. A repeat
+	// review of the same head is no delta: it attaches to the round that decided it, as any repeat review does.
+	const repeat = intake.prior?.head === head && intake.prior.base === revision.base;
+	const delta = options.cold !== true && !repeat && intake.carries();
 	spans.step("routes");
 	const tiers = new Set(covering.flatMap(({ lens }) => lens.declaredLevels().map((level) => lens.level(level).tier)));
 	const routes = new Map(
@@ -1791,7 +1728,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	const triageInput = prompt.renderInput(undefined, { tools: false });
 	spans.end();
 	const triaged =
-		options.decider === undefined || covering.length === 0
+		options.decider === undefined || covering.length === 0 || delta
 			? {}
 			: await triage(
 					harness,
@@ -1811,9 +1748,23 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					unlockModels,
 				);
 	spans.step("lenses.prepare");
+	// A lens with nothing uncovered is skipped with leave. On a delta, a lens runs at the higher of the level the last
+	// decided round ran it at and its default within its band, since triage does not run on a fix pass's change.
+	const uncovered = delta ? covering.filter(({ lens }) => intake.empty(lens.name)).map(({ lens }) => lens.name) : [];
 	const choices = new Map(
 		covering.map(({ lens }) => {
 			const levels = runnable.get(lens)!;
+			if (uncovered.includes(lens.name)) return [lens, "skip" as TriageChoice] as const;
+			if (delta) {
+				const band = bands.get(lens)!;
+				const fallback = band.bound(defaultScrutinyLevel, levels);
+				const before = intake.level(lens.name);
+				const higher =
+					before !== undefined && triageChoices.indexOf(before) > triageChoices.indexOf(fallback)
+						? before
+						: fallback;
+				return [lens, band.bound(higher, levels)] as const;
+			}
 			const choice = lens.triage(bands.get(lens)!, levels, triaged.decision);
 			return [lens, triageInput.cut && choice === "skip" ? levels[0]! : choice] as const;
 		}),
@@ -1834,7 +1785,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	}
 	// A lens triage skipped or the plan refused is not running, so no lens hands it a defect.
 	const running = covering.filter(({ lens }) => choices.get(lens) !== "skip" && !refused.has(lens));
-	const skipped = covering.filter(({ lens }) => choices.get(lens) === "skip").map(({ lens }) => lens.name);
+	const skipped = covering
+		.filter(({ lens }) => choices.get(lens) === "skip" && !uncovered.includes(lens.name))
+		.map(({ lens }) => lens.name);
 	const lenses: LensRun[] = [];
 	const notes = new Map<string, string[]>();
 	// Each running lens, by name, to the lenses whose instructions could have handed it defects: the hand-off that rendered.
@@ -1855,17 +1808,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			if (shared.length === 0) return [];
 			return [{ name, files: shared.length === covers.length ? "every" : shared }];
 		});
-		const standardsFiles = [
-			...covers,
-			...changeset.revision.files
-				.filter((file) => file.oldPath !== undefined && covers.includes(file.path))
-				.map((file) => file.oldPath!),
-		];
-		const reading = lens.standards
-			? standards instanceof Standards
-				? standards.forFiles(standardsFiles)
-				: StandardsReading.from(standards)
-			: StandardsReading.from([]);
+		const reading = readingOf(lens, covers);
 
 		const noted: string[] = [...(unrunnable.get(lens) ?? [])];
 		if (config.static.enola.enabled)
@@ -1909,6 +1852,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			decisions === undefined
 				? ""
 				: `\n\n## Decisions at base\nRead this before step 1. Only ACTIVE decisions at base are baselines. INACTIVE text is history: read it only to see what changed. For an ACTIVE decision marked amended by, read both files at base; where they conflict, the amendment wins. Treat \`Amends:\` as a declaration when checking for an undeclared conflicting replacement. For each head Amends target, read its active base text and any base amendments.\n${quoteUntrusted("listing", decisions.render(), boundary)}\n\n## Design sections at base\nUse these headings to discover base vocabulary independently of head terms. Read relevant sections at base.\n${quoteUntrusted("listing", designSections!.render(), boundary)}\n\n## Design files at base\nEvery design file the index read, with or without headings.\n${quoteUntrusted("listing", designSections!.renderFiles(), boundary)}`;
+		const lensDelta = delta ? { delta: intake.delta(lens.name) } : {};
 		const runAt = async (level: ScrutinyLevel): Promise<LensRun> => {
 			const settings = lens.level(level);
 			// The head's functions around the hunks, read once for the review, at the levels that read functions.
@@ -1954,7 +1898,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 							rules,
 							budget: settings.budget,
 							coverage,
-							prompt: new ChangePrompt(changeset, "0".repeat(24)).render(files),
+							prompt: new ChangePrompt(changeset, "0".repeat(24), targets).render(files, lensDelta),
 						}),
 					)
 					.digest("hex"),
@@ -1966,7 +1910,10 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				budget: settings.budget,
 				coverage,
 				...(() => {
-					const rendered = prompt.renderInput(files, { ...(functions === undefined ? {} : { functions }) });
+					const rendered = prompt.renderInput(files, {
+						...(functions === undefined ? {} : { functions }),
+						...lensDelta,
+					});
 					return { prompt: rendered.text, delivered: rendered.delivered };
 				})(),
 				...(functions?.unavailable === undefined ? {} : { unread: functions.unavailable }),
@@ -2098,6 +2045,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				reason: "triage skipped it, as its floor allows",
 			}),
 		),
+		...uncovered.map(
+			(name): CheckRecord => ({ name: `lens.${name}`, status: "skipped", reason: "nothing uncovered" }),
+		),
 		...refusals.values(),
 	];
 	if (callers.coverage)
@@ -2118,7 +2068,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		settled,
 		{
 			records,
-			skippable: skipped.map((name) => `lens.${name}`),
+			skippable: [...skipped, ...uncovered].map((name) => `lens.${name}`),
 			...(triaged.decision === undefined
 				? {}
 				: {
@@ -2353,6 +2303,29 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	};
 	const lineageOf = (name: string, level: ScrutinyLevel) =>
 		checks.find((check) => check.name === `lens.${name}` && check.level === level)?.lineage;
+	spans.step("coverage.compute");
+	const allowSkip = [...accounted.skippable(), ...config.checks.allowSkip];
+	const coverage = await ledger.compute(
+		await ledgerRound(
+			harness,
+			root,
+			{
+				request: options,
+				tier,
+				covering,
+				standards: standardsPaths,
+				settled,
+				...(lensResult === undefined ? {} : { lensResult }),
+				checks: verificationCheck === undefined ? checks : [...checks, verificationCheck],
+				manifest: verificationCheck === undefined ? manifest : [...manifest, "verifier"],
+				allowSkip,
+				nonce: ran.revision.nonce,
+			},
+			context,
+		),
+		context,
+	);
+	const coverageRecord = coverageRecordOf(coverage);
 	const input = adjudicationInput({
 		root,
 		repoRoot,
@@ -2361,8 +2334,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		policy: options.policy,
 		resolutionPolicy: policies?.fingerprint,
 		config,
-		manifest: verificationCheck === undefined ? manifest : [...manifest, "verifier"],
-		checks: verificationCheck === undefined ? checks : [...checks, verificationCheck],
+		manifest: [...manifest, ...(verificationCheck === undefined ? [] : ["verifier"]), coverageCheck],
+		checks: [...checks, ...(verificationCheck === undefined ? [] : [verificationCheck]), coverageRecord],
 		verifierVersion,
 		verificationRan: true,
 		findingsVersion: await findingsVersion(harness, root, reviewed, context),
@@ -2438,23 +2411,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		});
 	}
 	spans.step("coverage.record");
-	await recordCoverage(
-		harness,
-		root,
-		{
-			request: options,
-			tier,
-			covering,
-			settled,
-			lensResult,
-			checks: verificationCheck === undefined ? checks : [...checks, verificationCheck],
-			manifest: input.manifest,
-			allowSkip: [...accounted.skippable(), ...config.checks.allowSkip],
-			nonce: ran.revision.nonce,
-			adjudication,
-		},
-		context,
-	);
+	await ledger.write(coverage, adjudication, context);
 	spans.end();
 	const exhausted = settled.flatMap(({ run, outcome }) =>
 		outcome?.status === "exhausted" ? [{ lens: run.name, ...outcome }] : [],

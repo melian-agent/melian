@@ -85,9 +85,9 @@ export interface LedgerRound {
 	readonly manifest: readonly string[];
 	readonly allowSkip: readonly string[];
 	readonly nonce: string;
-	// The adjudication task that decided the round, which names its round in `melian.rounds`.
-	readonly adjudication: number;
 	readonly findings: readonly Finding[];
+	// A `--cold` round, which carries nothing from earlier rounds.
+	readonly cold?: boolean;
 	// Every tool pin, which the policy fingerprint holds.
 	readonly tools: unknown;
 }
@@ -147,25 +147,39 @@ export class CoverageLedger {
 	}
 
 	/**
-	 * Writes the coverage record of the round `round.adjudication` decided, once: a repeat review that attaches to the
-	 * round keeps the first record. Returns the round's ID, or `undefined` when no round holds the task.
+	 * What the round about to run finds at intake: the last decided round's coverage carried to this head, and what
+	 * each selected lens has left to cover. Read before any lens runs, so the delta is fixed in the round's input.
 	 */
-	async write(round: LedgerRound, context: Context): Promise<string | undefined> {
+	async intake(round: LedgerRound, context: Context): Promise<CoverageIntake> {
+		const record = await this.compute(round, context);
+		return new CoverageIntake(record, await this.#prior(context));
+	}
+
+	/**
+	 * The coverage record of the round `round` describes, before it has a round ID: what each check must cover at the
+	 * head, what the round's own runs delivered, and what carries from the last decided round, by mint order.
+	 */
+	async compute(round: LedgerRound, context: Context): Promise<StoredCoverageRecord> {
+		return this.#record("", round, await this.#prior(context), context);
+	}
+
+	/**
+	 * Writes `record` as the coverage record of the round the adjudication task `adjudication` decided, once: a repeat
+	 * review that attaches to the round keeps the first record. Returns the round's ID, or `undefined` when no round
+	 * holds the task.
+	 */
+	async write(record: StoredCoverageRecord, adjudication: number, context: Context): Promise<string | undefined> {
 		const rounds =
 			(await this.harness.snapshot(RoundsDocument, this.root, context)) ?? RoundsDocument.definition.initial();
-		const own = Object.entries(rounds.items).find(([, each]) => each.tasks.includes(round.adjudication));
+		const own = Object.entries(rounds.items).find(([, each]) => each.tasks.includes(adjudication));
 		if (own === undefined) return undefined;
-		const [id, stored] = own;
-		const existing = (await this.harness.snapshot(CoverageDocument, this.root, context))?.records[id];
-		if (existing !== undefined) return id;
-		const prior = await this.#prior(id, stored.mintedAt, context);
-		const record = await this.#record(id, round, prior, context);
+		const [id] = own;
 		const root = await this.harness.root(context);
 		await root.commit(async (tx: Tx) => {
 			const document = await tx.doc(CoverageDocument, this.root);
 			if (document.records[id] !== undefined) return;
-			document.records[id] = record;
-			await new RoundWriter(tx, this.root).cover(round.adjudication);
+			document.records[id] = { ...structuredClone(record), round: id };
+			await new RoundWriter(tx, this.root).cover(adjudication);
 		}, context);
 		return id;
 	}
@@ -191,27 +205,19 @@ export class CoverageLedger {
 		};
 	}
 
-	// The last decided round minted before round `id`, by mint order, with its record.
-	async #prior(id: string, mintedAt: string | undefined, context: Context): Promise<StoredCoverageRecord | undefined> {
-		if (mintedAt === undefined) return undefined;
+	// The last decided round by mint order that wrote a record. A round that is still running has no verdict, so a round
+	// about to run never reads itself, and an earlier round decided after a later one does not stand.
+	async #prior(context: Context): Promise<StoredCoverageRecord | undefined> {
 		const rounds = (await this.harness.snapshot(RoundsDocument, this.root, context))?.items ?? {};
 		const records = (await this.harness.snapshot(CoverageDocument, this.root, context))?.records ?? {};
 		const order = (key: string) => Number(key.slice(1));
-		const earlier = Object.entries(rounds)
-			.filter(
-				([key, each]) =>
-					key !== id &&
-					each.verdict !== undefined &&
-					each.mintedAt !== undefined &&
-					(Date.parse(each.mintedAt) < Date.parse(mintedAt) ||
-						(each.mintedAt === mintedAt && order(key) < order(id))) &&
-					records[key] !== undefined,
-			)
+		const minted = Object.entries(rounds)
+			.filter(([, each]) => each.mintedAt !== undefined)
 			.sort(
 				([a, left], [b, right]) => Date.parse(left.mintedAt!) - Date.parse(right.mintedAt!) || order(a) - order(b),
 			);
-		const last = earlier.at(-1);
-		return last === undefined ? undefined : records[last[0]];
+		const decided = minted.filter(([key, each]) => each.verdict !== undefined && records[key] !== undefined).at(-1);
+		return decided === undefined ? undefined : records[decided[0]];
 	}
 
 	async #record(
@@ -271,9 +277,10 @@ export class CoverageLedger {
 			for (const path of lens.delivered?.omitted ?? []) {
 				const file = revision.files.find((each) => each.path === path);
 				if (file === undefined) continue;
+				const rendered = lens.delivered?.hunks[path] ?? [];
 				const lines = hunkLines(
 					file,
-					file.hunks.map((hunk) => hunk.index),
+					file.hunks.filter((hunk) => !rendered.includes(hunk.index)).map((hunk) => hunk.index),
 				);
 				addLines(omitted.head, file.path, lines.head);
 				addLines(omitted.base, file.oldPath ?? file.path, lines.base);
@@ -305,7 +312,10 @@ export class CoverageLedger {
 				covered: record.status === "ran" || leave ? [structuredClone(allNeeds)] : [],
 			};
 		}
-		const { voids, carried } = await this.#carry(round, prior, policy, checks, context);
+		const { voids, carried } =
+			round.cold === true
+				? { voids: [{ reason: "a cold round reviews the whole diff from nothing" }], carried: {} }
+				: await this.#carry(round, prior, policy, checks, context);
 		for (const [check, segments] of Object.entries(carried)) checks[check]?.covered.push(...segments);
 		return {
 			producer: { ...coverageProducer },
@@ -413,9 +423,11 @@ export class CoverageLedger {
 				voids.push({ reason: `${standard} changed since ${since}, a standard ${check} reads`, lens });
 				continue;
 			}
+			// A file an injection attempt sat in was covered by no lens there, so nothing of it carries.
+			const injected = new Set(coverage.injected ?? []);
 			carried[check] = coverage.covered
 				.filter((segment) => segment.level !== undefined)
-				.map((segment) => this.#mapped(segment, since, map));
+				.map((segment) => this.#mapped(segment, since, map, injected));
 		}
 		// Every finding the prior round sighted must be sighted at this head, or dismissed, for its lines to stay covered.
 		const sighted = new Set(round.findings.map((finding) => finding.id));
@@ -460,9 +472,15 @@ export class CoverageLedger {
 
 	// A segment of the prior round's record in this head's coordinates: added lines moved by the hunks between the two
 	// heads, removed lines as they were, since the base is the same, and file units the move left alone.
-	#mapped(segment: StoredCoverageSegment, since: string, map: Revision): StoredCoverageSegment {
+	#mapped(
+		segment: StoredCoverageSegment,
+		since: string,
+		map: Revision,
+		injected: ReadonlySet<string>,
+	): StoredCoverageSegment {
 		const head: LinesByPath = {};
 		for (const [path, ranges] of Object.entries(segment.head)) {
+			if (injected.has(path)) continue;
 			const moved: Record<string, number[]> = {};
 			for (const [first, last] of ranges)
 				for (let line = first; line <= last; line++) {
@@ -472,7 +490,10 @@ export class CoverageLedger {
 				}
 			for (const [to, lines] of Object.entries(moved)) addLines(head, to, rangesOf(lines));
 		}
-		const units = Object.fromEntries(Object.entries(segment.units).filter(([path]) => !map.lists(path)));
+		const units = Object.fromEntries(
+			Object.entries(segment.units).filter(([path]) => !map.lists(path) && !injected.has(path)),
+		);
+		const base = Object.fromEntries(Object.entries(segment.base).filter(([path]) => !injected.has(path)));
 		return {
 			round: segment.round ?? since,
 			...(segment.level === undefined ? {} : { level: segment.level }),
@@ -480,5 +501,48 @@ export class CoverageLedger {
 			base: structuredClone(segment.base),
 			units,
 		};
+	}
+}
+
+/**
+ * A round's intake: the coverage record it would hold before any lens runs, which says what each lens has left to
+ * cover, and the last decided round it carried from.
+ */
+export class CoverageIntake {
+	readonly record: CoverageRecord;
+	readonly prior?: StoredCoverageRecord;
+
+	constructor(record: StoredCoverageRecord, prior: StoredCoverageRecord | undefined) {
+		this.record = CoverageRecord.from(record);
+		if (prior !== undefined) this.prior = prior;
+	}
+
+	/** Whether any earlier coverage carried, so the round reviews a delta rather than the whole diff. */
+	carries(): boolean {
+		return Object.values(this.record.stored.checks).some(
+			(check) => check.kind === "lens" && check.covered.some((segment) => segment.round !== undefined),
+		);
+	}
+
+	/** What lens `name` has left to cover at this head: its gaps' lines on each side and its file units' missing fields. */
+	delta(name: string): StoredCoverageLines {
+		const delta = emptyLines();
+		for (const gap of this.record.gaps()) {
+			if (gap.check !== `lens.${name}`) continue;
+			if (gap.fields !== undefined) delta.units[gap.file] = [...gap.fields];
+			else addLines(gap.revision === "base" ? delta.base : delta.head, gap.file, gap.lines);
+		}
+		return delta;
+	}
+
+	/** Whether lens `name` has nothing left to cover. */
+	empty(name: string): boolean {
+		const delta = this.delta(name);
+		return count(delta.head) + count(delta.base) + Object.keys(delta.units).length === 0;
+	}
+
+	/** The level lens `name` ran at in the round this one carried from, when that round's own run covered anything. */
+	level(name: string): ScrutinyLevel | undefined {
+		return this.prior?.checks[`lens.${name}`]?.covered.find((segment) => segment.round === undefined)?.level;
 	}
 }
