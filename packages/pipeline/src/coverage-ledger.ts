@@ -292,17 +292,21 @@ export class CoverageLedger {
 				...(injected.length > 0 ? { injected } : {}),
 			};
 		}
-		for (const record of round.checks) {
-			if (record.name.startsWith("lens.") || !round.manifest.includes(record.name)) continue;
-			const leave = record.status === "skipped" && round.allowSkip.includes(record.name);
-			checks[record.name] = {
+		// Every check the manifest names that is not a lens covers the whole range at its head, and one that left no
+		// record covers nothing.
+		for (const name of round.manifest) {
+			if (name.startsWith("lens.")) continue;
+			const record = round.checks.find((each) => each.name === name);
+			const status = record?.status ?? "absent";
+			const leave = status === "skipped" && round.allowSkip.includes(name);
+			checks[name] = {
 				kind: "range",
-				status: record.status,
+				status,
 				...(leave ? { leave: true } : {}),
-				...(record.reason === undefined ? {} : { reason: record.reason }),
+				...(record?.reason === undefined ? {} : { reason: record.reason }),
 				required: {},
 				needs: structuredClone(allNeeds),
-				covered: record.status === "ran" || leave ? [structuredClone(allNeeds)] : [],
+				covered: status === "ran" || leave ? [structuredClone(allNeeds)] : [],
 			};
 		}
 		const { voids, carried } = await this.#carry(round, prior, policy, checks, context);
@@ -413,9 +417,11 @@ export class CoverageLedger {
 				voids.push({ reason: `${standard} changed since ${since}, a standard ${check} reads`, lens });
 				continue;
 			}
+			// A file an injection attempt sat in was covered by no lens there, so nothing of it carries.
+			const injected = new Set(coverage.injected ?? []);
 			carried[check] = coverage.covered
 				.filter((segment) => segment.level !== undefined)
-				.map((segment) => this.#mapped(segment, since, map));
+				.map((segment) => this.#mapped(segment, since, map, injected));
 		}
 		// Every finding the prior round sighted must be sighted at this head, or dismissed, for its lines to stay covered.
 		const sighted = new Set(round.findings.map((finding) => finding.id));
@@ -460,9 +466,15 @@ export class CoverageLedger {
 
 	// A segment of the prior round's record in this head's coordinates: added lines moved by the hunks between the two
 	// heads, removed lines as they were, since the base is the same, and file units the move left alone.
-	#mapped(segment: StoredCoverageSegment, since: string, map: Revision): StoredCoverageSegment {
+	#mapped(
+		segment: StoredCoverageSegment,
+		since: string,
+		map: Revision,
+		injected: ReadonlySet<string>,
+	): StoredCoverageSegment {
 		const head: LinesByPath = {};
 		for (const [path, ranges] of Object.entries(segment.head)) {
+			if (injected.has(path)) continue;
 			const moved: Record<string, number[]> = {};
 			for (const [first, last] of ranges)
 				for (let line = first; line <= last; line++) {
@@ -472,12 +484,15 @@ export class CoverageLedger {
 				}
 			for (const [to, lines] of Object.entries(moved)) addLines(head, to, rangesOf(lines));
 		}
-		const units = Object.fromEntries(Object.entries(segment.units).filter(([path]) => !map.lists(path)));
+		const units = Object.fromEntries(
+			Object.entries(segment.units).filter(([path]) => !map.lists(path) && !injected.has(path)),
+		);
+		const base = Object.fromEntries(Object.entries(segment.base).filter(([path]) => !injected.has(path)));
 		return {
 			round: segment.round ?? since,
 			...(segment.level === undefined ? {} : { level: segment.level }),
 			head,
-			base: structuredClone(segment.base),
+			base: structuredClone(base),
 			units,
 		};
 	}
