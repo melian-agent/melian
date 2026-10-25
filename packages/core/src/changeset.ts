@@ -620,3 +620,45 @@ export class Changeset {
 		return { kind, id, repoRoot, spec, revision: this.revision.toJSON() };
 	}
 }
+
+/** How a head moved from an earlier round's head: along its history, or in a way no line map can follow. */
+export class HeadMove {
+	readonly kind: "moved" | "unresolved" | "rewritten" | "merged";
+	readonly revision?: Revision;
+
+	private constructor(kind: HeadMove["kind"], revision?: Revision) {
+		this.kind = kind;
+		if (revision !== undefined) this.revision = revision;
+	}
+
+	/**
+	 * Reads how `to` descends from `from` in the repository at `repoRoot`: `unresolved` when git cannot resolve `from`
+	 * as a commit, `rewritten` when `from` is not an ancestor of `to`, as after a force push or a rebase, `merged` when
+	 * a merge commit sits between them, and otherwise `moved`, with the diff between the two heads under the review's
+	 * own diff flags and rename detection.
+	 */
+	static async read(repoRoot: string, from: string, to: string): Promise<HeadMove> {
+		const resolved = await git(repoRoot, ["rev-parse", "--verify", "--quiet", `${from}^{commit}`]);
+		if (resolved.code !== 0) return new HeadMove("unresolved");
+		const ancestor = await git(repoRoot, ["merge-base", "--is-ancestor", from, to]);
+		if (ancestor.code !== 0) return new HeadMove("rewritten");
+		const merges = await gitOutput(repoRoot, ["rev-list", "--merges", `^${from}`, to]);
+		if (merges.trim() !== "") return new HeadMove("merged");
+		const root = await repositoryRoot(repoRoot);
+		return new HeadMove("moved", Revision.from({ base: from, head: to, files: await diff(root, from, to) }));
+	}
+
+	/** Why coverage from round `since` did not carry, for a move that is not along the history. */
+	reason(since: string): string {
+		switch (this.kind) {
+			case "unresolved":
+				return `${since}'s head cannot be resolved`;
+			case "rewritten":
+				return `${since}'s head is not an ancestor of this head, so the branch was rewritten`;
+			case "merged":
+				return `a merge commit sits between ${since}'s head and this head`;
+			default:
+				return `the head moved along its history since ${since}`;
+		}
+	}
+}

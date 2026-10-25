@@ -27,6 +27,7 @@ export type {
 export {
 	Changeset,
 	type ChangesetFields,
+	HeadMove,
 	parseRangeSpec,
 	pullRequestChangesetId,
 	type RangeMode,
