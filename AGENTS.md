@@ -135,10 +135,10 @@ Melian reviews itself with `melian review main...HEAD`, run from a throwaway wor
 
 The design lens runs on Codex's model and effort so it can replace Codex's adversarial review. Every round measures it:
 
-1. Run Codex's review with `--json` on the head the round reviews, and keep the file outside the worktree: `node <companion>/scripts/codex-companion.mjs adversarial-review --json --base <base> "<focus>" > tmp/m2/codex-<pr>-r<n>.json`. `melian compare` reads the companion's payload as it is.
-2. After the Melian round of that head, import it: `melian compare <base>...<head> --from file:tmp/m2/codex-<pr>-r<n>.json`.
+1. Run Codex's review with `--json` on the head the round reviews, and keep the file outside the worktree, named for that head: `node <companion>/scripts/codex-companion.mjs adversarial-review --json --base <base> "<focus>" > tmp/m2/codex-<pr>-<head>.json`. `melian compare` reads the companion's payload as it is. The payload names no head, so the file name is the only record of which head Codex read; import it only for that head.
+2. After the Melian round of that head, and before any new commit on the branch, import it: `melian compare <base>...HEAD --from file:tmp/m2/codex-<pr>-<head>.json`. A round run from a branch worktree stores the review under the branch's range, so once the branch moves, `melian compare` finds no review of the new head to compare with.
 3. Before the next fix pass, adjudicate every Codex finding and every design-lens finding with `melian compare adjudicate`: valid, noise, or a duplicate of another. A valid Codex finding Melian missed takes a miss reason: `owned-missed`, `no-owner`, `needs-execution`, or `out-of-scope`. The count leaves out any finding still waiting for a judgement.
-4. `melian compare stats --lens design` prints the design lens against Codex: which of Codex's valid defects it found, which only other lenses found, and which of its own Codex found.
+4. `melian compare stats --lens design --since 2026-10-24` prints the design lens against Codex since it moved to Codex's route: which of Codex's valid defects it found, which only other lenses found, and which of its own Codex found. Without `--since`, it sums rounds the lens ran on its earlier route.
 
 The count is a diagnostic over the stored rounds, not the retirement test. It counts each round on its own and cannot see a merged pull request with no comparison. Codex's review keeps running until [the shadow retirement rule](docs/decisions/2026-10-06-shadow-retirement-merged-window.md) is met over its window of merged pull requests, and the maintainer retires it.
 
