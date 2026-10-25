@@ -260,7 +260,10 @@ export async function searchRevisionFiles(
 
 async function isText(repoRoot: string, revision: string, search: RevisionSearch, path: string) {
 	const args = [`--attr-source=${search.attributesFrom}`, "--literal-pathspecs", "grep", "-l", "-I", "-e", ""];
-	return (await git(repoRoot, [...args, revision, "--", path])).code === 0;
+	const result = await git(repoRoot, [...args, revision, "--", path]);
+	if (result.code === 0) return true;
+	if (result.code === 1 && result.stderr === "") return false;
+	throw new RevisionError("gitFailed", `git grep failed: ${result.stderr.trim()}`);
 }
 
 // One more than the share tells a file that had more from one that had exactly its share.

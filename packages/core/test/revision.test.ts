@@ -1,4 +1,5 @@
-import { symlinkSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
 	listRevisionFiles,
@@ -252,6 +253,28 @@ describe("searchRevision", () => {
 			{ path: "docs/empty.md", matches: [], truncated: false },
 			{ path: "docs/readme.md", matches: [], truncated: false },
 		]);
+	});
+
+	// A git on PATH that fails only the name-only binary probe, as a git that dies or warns would, and runs the rest.
+	it.each([
+		["dies", "128", "fatal: probe failed"],
+		["exits 1 but warns", "1", "warning: probe warned"],
+	])("refuses a file-set search whose binary probe %s, never calling the file binary", async (_, code, stderr) => {
+		const bin = temporaryDirectory();
+		const real = execFileSync("sh", ["-c", "command -v git"], { encoding: "utf8" }).trim();
+		writeFileSync(
+			join(bin, "git"),
+			`#!/bin/sh\ncase " $* " in *" grep -l "*) echo "${stderr}" >&2; exit ${code};; esac\nexec "${real}" "$@"\n`,
+			{ mode: 0o755 },
+		);
+		vi.stubEnv("PATH", `${bin}:${process.env.PATH}`);
+		try {
+			await expect(
+				searchRevisionFiles(repo, head, { attributesFrom: head, pattern: "absent" }, ["docs/readme.md"]),
+			).rejects.toMatchObject({ code: "gitFailed", message: `git grep failed: ${stderr}` });
+		} finally {
+			removeDirectory(bin);
+		}
 	});
 
 	it("treats a pattern that looks like an option as text", async () => {
