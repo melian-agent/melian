@@ -214,8 +214,9 @@ export class CoverageRecord {
 		return this.current() && this.gaps().length === 0;
 	}
 
-	/** The rounds whose coverage this record holds, in round order. */
+	/** The rounds whose coverage this record holds, in round order; none for a refused record, which holds none. */
 	rounds(): string[] {
+		if (this.stored.refused !== undefined) return [];
 		const rounds = new Set(
 			Object.values(this.stored.checks).flatMap((coverage) =>
 				coverage.covered.map((segment) => segment.round ?? this.stored.round),

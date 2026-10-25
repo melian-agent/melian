@@ -153,6 +153,24 @@ describe("static.mutation and the writer of a pull request", { timeout: 60_000 }
 		expect(ran()).toBe(false);
 		expect(output()).toContain("the head is from a fork; the mutation check runs the head's own tests");
 	});
+	it.each([
+		{ repository: { owner: "fork-owner", name: "example" }, label: "a fork" },
+		{ repository: null, label: "no head repository" },
+	])("records no coverage for $label, even under --trust-head", async ({ repository }) => {
+		const { io, output } = await open("maintainer", { maintainer: "admin" }, {}, "static.mutation", { repository });
+		await review(io, "#7", { rerun: false, walkthrough: false, trustHead: true });
+		expect(output()).toContain("Coverage: incomplete.");
+		expect(output()).toContain("coverage is not recorded for a fork's head");
+	});
+
+	it("records coverage for a head in the base repository, whatever the case of its names", async () => {
+		const { io, output } = await open("maintainer", { maintainer: "admin" }, {}, "static.mutation", {
+			repository: { owner: "MELIAN-AGENT", name: "EXAMPLE" },
+		});
+		expect(await review(io, "#7", { rerun: false, walkthrough: false })).toBe(0);
+		expect(output()).toContain("Coverage: complete, from r1.");
+	});
+
 	it("refuses an absent head repository", async () => {
 		const { io, output } = await open("maintainer", { maintainer: "admin" }, {}, "static.mutation", {
 			repository: null,

@@ -1013,7 +1013,7 @@ describe("the verifier", () => {
 		}, context);
 		const requests = scripts();
 		const result = await review(false, undefined, true);
-		expect((await root.commit((tx) => tx.task(older), context))!.version).toBe(4);
+		expect((await root.commit((tx) => tx.task(older), context))!.version).toBe(5);
 		expect(requests[verifierMarker]).toHaveLength(2);
 		expect(result.findings[0]!.properties.verification?.verdict).toBe("confirmed");
 		expect(result.verdict.ran?.find((check) => check.name === "verifier")?.status).toBe("ran");

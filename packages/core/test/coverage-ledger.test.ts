@@ -316,6 +316,7 @@ describe("CoverageRecord", () => {
 	it("covers nothing for a refused record, saying why", () => {
 		const refused = record({ guardrails: range() }, { refused: "coverage is not recorded for a fork's head" });
 		expect(refused.complete()).toBe(false);
+		expect(refused.rounds()).toEqual([]);
 		expect(new Set(refused.gaps().map((gap) => gap.reason))).toEqual(
 			new Set(["coverage is not recorded for a fork's head"]),
 		);
