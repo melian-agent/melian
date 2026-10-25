@@ -16,10 +16,13 @@ import {
 	stamp as cleanStamp,
 	stamps,
 } from "../goldens/design-contradicts-documented-decision-clean/head/src/timestamps.ts";
+import { renderBody } from "../goldens/design-contradicts-documented-decision-collapse-clean/head/src/body.ts";
+import { render as renderWithCallers } from "../goldens/design-contradicts-documented-decision-diagnostic-clean/head/src/comment.ts";
 import { renderNotes as originalNotes } from "../goldens/design-contradicts-documented-decision-noise/base/src/comment.ts";
 import { renderNotes as badNotes } from "../goldens/design-contradicts-documented-decision-noise/head/src/comment.ts";
 import { renderNotes as twinBaseNotes } from "../goldens/design-contradicts-documented-decision-noise-clean/base/src/comment.ts";
 import { renderNotes as cleanNotes } from "../goldens/design-contradicts-documented-decision-noise-clean/head/src/comment.ts";
+import { ledger, statusLine } from "../goldens/design-contradicts-documented-decision-surface-clean/head/src/ledger.ts";
 import { renderNotes as wordedNotes } from "../goldens/design-contradicts-documented-decision-wording-clean/head/src/comment.ts";
 import { readHeader } from "../goldens/design-reimplements-an-authority/head/src/note.ts";
 import { seconds } from "../goldens/design-reimplements-an-authority-no-dependency-clean/head/src/remind.ts";
@@ -68,6 +71,40 @@ describe("design rule fixtures", () => {
 	});
 	it("states a shared note once, worded with a label", () => {
 		expect(wordedNotes(runs)).toEqual(["- Note: callers unavailable"]);
+	});
+	it("keeps caller notes in the ledger, with one comment line only when no lens saw callers", () => {
+		const blind = [
+			{ name: "a", callersSeen: false, notes: ["callers unavailable"] },
+			{ name: "b", callersSeen: false, notes: ["callers unavailable"] },
+		];
+		expect(renderWithCallers(["f"], blind)).toEqual({
+			comment: ["- f", "- Callers unavailable for every changed site, so no lens saw the blast radius."],
+			ledger: ["- callers unavailable"],
+		});
+		expect(renderWithCallers(["f"], [...blind, { name: "c", callersSeen: true, notes: [] }]).comment).toEqual([
+			"- f",
+		]);
+	});
+	it("adds notes to the ledger and leaves the status plain", () => {
+		const round = { head: "abc", status: "passed", notes: ["triage input was cut"] };
+		expect(ledger(round)).toEqual(["Round at abc: passed", "- triage input was cut"]);
+		expect(statusLine(round)).toBe("melian/review: passed");
+	});
+	it("leaves checks that did not run open and collapses advisories under a count", () => {
+		expect(renderBody({ blocking: ["b"], advisories: ["x", "y"], notRun: ["lens.tests"] })).toEqual([
+			"- b",
+			"Checks that did not run:",
+			"- lens.tests",
+			"<details><summary>2 advisories</summary>",
+			"",
+			"- x",
+			"- y",
+			"",
+			"</details>",
+		]);
+		expect(renderBody({ blocking: [], advisories: ["x"], notRun: [] })[0]).toBe(
+			"<details><summary>1 advisory</summary>",
+		);
 	});
 	it("demonstrates that a shared note prints once per lens", () => {
 		expect(badNotes(runs)).toHaveLength(8);
