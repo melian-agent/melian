@@ -1,4 +1,4 @@
-import { chmodSync, copyFileSync, readFileSync } from "node:fs";
+import { chmodSync, copyFileSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -8,6 +8,7 @@ import {
 	defaultConfig,
 	Lens,
 	type MelianConfig,
+	type RepositorySource,
 	Revision,
 	type StoredCoverageRecord,
 } from "@melian-agent/core";
@@ -18,6 +19,7 @@ import {
 	createMemoryStorage,
 	createReviewRegistry,
 	type Harness,
+	type Message,
 	openHarness,
 	openSqliteStorage,
 	reviewChangeset,
@@ -93,9 +95,15 @@ async function review(
 		readonly config?: MelianConfig;
 		readonly refused?: string;
 		readonly harness?: Harness;
+		readonly policy?: RepositorySource;
 	} = {},
-): Promise<{ summary: CoverageSummary; record: StoredCoverageRecord; text: string }> {
-	scriptConversations(fake, [
+): Promise<{
+	summary: CoverageSummary;
+	record: StoredCoverageRecord;
+	text: string;
+	requests: Record<string, Message[][]>;
+}> {
+	const requests = scriptConversations(fake, [
 		{ match: correctness, replies: options.replies?.correctness ?? [fauxAssistantMessage("Done.")] },
 		{ match: contracts, replies: options.replies?.contracts ?? [fauxAssistantMessage("Done.")] },
 	]);
@@ -111,6 +119,7 @@ async function review(
 			models: fake.review,
 			checks,
 			...(options.refused === undefined ? {} : { coverageRefused: options.refused }),
+			...(options.policy === undefined ? {} : { policy: options.policy }),
 		});
 	} catch {
 		// A lens that ended still decides the round; its coverage record says what it covered.
@@ -121,7 +130,7 @@ async function review(
 	const section = await ledger.section(key, context);
 	const id = (await used.snapshot(RoundsDocument, root, context))!.current[key]!;
 	const record = (await used.snapshot(CoverageDocument, root, context))!.records[id]!;
-	return { ...section, record };
+	return { ...section, record, requests };
 }
 
 const reasons = (summary: CoverageSummary) => [...new Set(summary.gaps.map((gap) => gap.reason))];
@@ -180,6 +189,43 @@ describe("the coverage ledger", () => {
 		const own = record.checks["lens.correctness"]!.covered[0]!;
 		expect(own.base["src/big.ts"]).toEqual([[1, 10]]);
 		expect(own.head["src/big.ts"]).toBeUndefined();
+	});
+
+	it("needs quick from a review the reviewer trusts, and careful from a policy read at a revision", async () => {
+		commit(repo, { "src/a.ts": numbered(20, "a").replace("a 3\n", "A 3\n") });
+		expect((await review()).record.checks["lens.correctness"]!.required).toEqual({ "src/a.ts": "quick" });
+		commit(repo, { "src/b.ts": numbered(20, "b").replace("b 9\n", "B 9\n") });
+		const pinned = await review({ policy: { kind: "revision", commit: base } });
+		expect(pinned.record.checks["lens.correctness"]!.required).toEqual({
+			"src/a.ts": "careful",
+			"src/b.ts": "careful",
+		});
+	});
+
+	it("names each field a file's block delivered: an old path for a rename, and a binary file's flag", async () => {
+		writeFileSync(join(repo, "logo.png"), Buffer.from([0x89, 0x50, 0x00, 0x01]));
+		gitIn(repo, "mv", "src/b.ts", "src/renamed.ts");
+		commit(repo, { "src/a.ts": numbered(20, "a").replace("a 3\n", "A 3\n") });
+		const { record } = await review();
+		expect(record.checks["lens.correctness"]!.covered[0]!.units).toEqual({
+			"logo.png": ["status", "path", "binary"],
+			"src/a.ts": ["status", "path"],
+			"src/renamed.ts": ["status", "path", "oldPath"],
+		});
+	});
+
+	it("owes the lines of the file that passed the prompt's limit and of every file after it, and says so once", async () => {
+		const big = (label: string) =>
+			lines(...Array.from({ length: 6000 }, (_, index) => `export const ${label}${index} = "${"x".repeat(30)}";`));
+		commit(repo, { "src/big1.ts": big("one"), "src/big2.ts": big("two") });
+		const { summary, requests } = await review();
+		const prompt = JSON.stringify(requests[correctness]?.[0] ?? []);
+		expect(prompt.split("The diff continues").length - 1).toBe(1);
+		const owed = summary.gaps.filter((gap) => gap.check === "lens.correctness" && gap.file.startsWith("src/big"));
+		expect(owed.map((gap) => [gap.file, gap.reason])).toEqual([
+			["src/big1.ts", "too large for the prompt; lines still owed"],
+			["src/big2.ts", "too large for the prompt; lines still owed"],
+		]);
 	});
 
 	it("carries a round's coverage to the next head and names the lines a lens that ended did not cover", async () => {
