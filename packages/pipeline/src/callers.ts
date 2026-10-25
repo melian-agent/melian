@@ -8,6 +8,7 @@ import {
 	ReviewCoverage,
 	visibleText,
 } from "@melian-agent/core";
+import { blindCallers } from "./caveats.ts";
 import { CoverageCache } from "./coverage-cache.ts";
 import { EnolaRun } from "./enola-static.ts";
 import type { Context, ConversationId, Harness } from "./harness.ts";
@@ -32,10 +33,6 @@ export type CallerData = {
 	paths: string[];
 	parts?: GraphKeyParts;
 };
-
-/** The start of the caveat a review states once when no lens saw who calls the changed code. */
-export const blindCallers =
-	"callers were unavailable for every changed site, so no lens saw who calls the changed code";
 
 /** What transcript coverage needs from a caller context, kept with the lens task that rendered its section. */
 export type CoverageSource = { parts: GraphKeyParts; paths: string[]; root: string };

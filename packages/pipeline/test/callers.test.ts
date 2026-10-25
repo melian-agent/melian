@@ -20,6 +20,7 @@ import {
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, expect, it, vi } from "vitest";
+import { legacyCaveats, lightTriage } from "../src/caveats.ts";
 import { coverageCompiler } from "../src/coverage-identity.ts";
 import { EnolaRun } from "../src/enola-static.ts";
 import { commit, createRepository, removeRepository } from "./fixtures/repo.ts";
@@ -340,4 +341,13 @@ it("names a caveat when every caller query failed, and none when one answered or
 	);
 	expect(CallerContext.from({ groups: [group], issues, notes: [], paths: [] }).caveat()).toBeUndefined();
 	expect(CallerContext.from({ groups: [], issues: [], notes: [], paths: [] }).caveat()).toBeUndefined();
+});
+
+it("reads the caveats a record written before caveats carried only as notes", () => {
+	expect(
+		legacyCaveats(["kept the defects it hands to `design`", "Callers unavailable: graph missing", lightTriage]),
+	).toEqual([`${blind}: graph missing`, lightTriage]);
+	expect(legacyCaveats(["Callers unavailable for a.ts: line 1: directory-scoped name is ambiguous"])).toEqual([]);
+	expect(legacyCaveats(["Callers unavailable: x", "Callers unavailable: x"])).toEqual([`${blind}: x`]);
+	expect(legacyCaveats([`${lightTriage}, said twice`])).toEqual([]);
 });

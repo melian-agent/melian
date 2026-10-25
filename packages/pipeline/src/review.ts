@@ -56,7 +56,8 @@ import {
 	readVerdict,
 	VerdictDocument,
 } from "./adjudication.ts";
-import { blindCallers, CallerContext, type CoverageSource } from "./callers.ts";
+import { CallerContext, type CoverageSource } from "./callers.ts";
+import { blindCallers, callersWithLegacyCaveat, lightTriage } from "./caveats.ts";
 import { checksExtension, type RunIdentity, runChecks, type WriterTrust } from "./checks.ts";
 import { configsFor } from "./configurations.ts";
 import {
@@ -218,7 +219,9 @@ class LensTaskInput {
 		const stored = input as StoredLensTaskInput;
 		const lenses =
 			from >= 2 ? stored.lenses : (stored.lenses.map(({ level: _, ...run }) => run) as unknown as LensRun[]);
-		return new LensTaskInput(stored.root, stored.revision, lenses, stored.escalateAt, stored.callers).toJSON();
+		const callers =
+			from >= 5 || stored.callers === undefined ? stored.callers : callersWithLegacyCaveat(stored.callers);
+		return new LensTaskInput(stored.root, stored.revision, lenses, stored.escalateAt, callers).toJSON();
 	}
 
 	toJSON(): StoredLensTaskInput {
@@ -1924,7 +1927,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	// The change triage reads can steer it, so a review in which every lens stayed at quick says so.
 	const light =
 		triaged.decision !== undefined && settling.length > 0 && settling.every(({ run }) => run.level === "quick")
-			? ["triage chose quick for every lens, so the whole review looked lightly, at a change that can steer triage"]
+			? [lightTriage]
 			: [];
 	spans.step("callers.coverage");
 	// The task's own input says what its lenses read, so a call that attached to another's task records that call's.
