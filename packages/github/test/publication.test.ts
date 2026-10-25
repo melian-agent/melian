@@ -935,3 +935,126 @@ describe("verification comments", () => {
 		expect(markersIn(rendered)).toHaveLength(1);
 	});
 });
+
+describe("the coverage a review body reports", () => {
+	const verdict = new Adjudication({ findings: [], manifest: [], checks: [], config: defaultConfig }).adjudicate();
+	const draft = {
+		pullRequest: 7,
+		revision,
+		base,
+		fingerprint: verdict.fingerprint(),
+		round: 2,
+		verdict,
+		findings: [],
+		stillOpen: 0,
+		resolved: [],
+		secret,
+	};
+	const reviewed = {
+		lines: 6,
+		of: 40,
+		files: [
+			{ file: "src/a.ts", lines: [[1, 4]] as [number, number][] },
+			{ file: "src/gone.ts", revision: "base" as const, lines: [[1, 2]] as [number, number][] },
+		],
+		more: 0,
+	};
+
+	it("names the lines the round reviewed and the rounds that cover the diff", () => {
+		const body = renderReviewBody(
+			{
+				...draft,
+				coverage: { complete: true, round: "r3", rounds: ["r1", "r3"], reviewed, gaps: [], more: 0, dismissed: 0 },
+			},
+			links,
+		);
+		expect(body).toContain(
+			[
+				"Coverage: complete, from rounds r1, r3.",
+				"",
+				"Round r3's lenses reviewed 6 of 40 changed lines:",
+				"",
+				"- `src/a.ts` lines 1-4",
+				"- `src/gone.ts` (base) lines 1-2",
+			].join("\n"),
+		);
+		expect(body).not.toContain("Gaps");
+	});
+
+	it("names each gap with its reason, counts those it leaves out, and escapes what a head wrote", () => {
+		const body = renderReviewBody(
+			{
+				...draft,
+				coverage: {
+					complete: false,
+					round: "r3",
+					rounds: ["r1"],
+					reviewed: { ...reviewed, files: reviewed.files.slice(0, 1), more: 2 },
+					gaps: [
+						{ check: "lens.correctness", file: "src/a`b.ts", lines: [[5, 9]], reason: "never delivered <b>" },
+						{ check: "lens.design", file: "bin/run", lines: [], unit: "mode", reason: "never delivered" },
+						{ check: "lens.design", file: "src/c.ts", lines: [[7, 7]], reason: "never delivered" },
+						{ check: "lens.design", file: "src/e.ts", lines: [], reason: "fields not delivered" },
+						{
+							check: "lens.design",
+							file: "src/d.ts",
+							lines: [
+								[1, 1],
+								[3, 4],
+							],
+							reason: "never delivered",
+						},
+					],
+					more: 3,
+					dismissed: 1,
+				},
+			},
+			links,
+		);
+		expect(body).toContain(
+			[
+				"Coverage: incomplete, partly from rounds r1.",
+				"",
+				"Round r3's lenses reviewed 6 of 40 changed lines:",
+				"",
+				"- `src/a.ts` lines 1-4",
+				"- 2 more files",
+				"",
+				"Gaps:",
+				"",
+				"- `lens.correctness` in ``src/a`b.ts`` lines 5-9: never delivered &lt;b&gt;",
+				"- `lens.design` in `bin/run` (mode): never delivered",
+				"- `lens.design` in `src/c.ts` line 7: never delivered",
+				"- `lens.design` in `src/e.ts`: fields not delivered",
+				"- `lens.design` in `src/d.ts` lines 1, 3-4: never delivered",
+				'- 3 more; `melian findings "#7"` lists them',
+				"- 1 dismissed by a maintainer, which covers nothing",
+			].join("\n"),
+		);
+	});
+
+	it("says a round with no covering round and no reviewed lines reviewed none", () => {
+		const body = renderReviewBody(
+			{
+				...draft,
+				coverage: {
+					complete: false,
+					round: "r3",
+					rounds: [],
+					reviewed: { lines: 0, of: 0, files: [], more: 0 },
+					gaps: [{ check: "review.coverage", file: "", lines: [], reason: "refused" }],
+					more: 0,
+					dismissed: 0,
+				},
+			},
+			links,
+		);
+		expect(body).toContain(
+			"Coverage: incomplete.\n\nRound r3's lenses reviewed 0 of 0 changed lines.\n\nGaps:\n\n- `review.coverage`: refused",
+		);
+	});
+
+	it("says nothing of coverage for a round an earlier build planned", () => {
+		expect(renderReviewBody(draft, links)).not.toContain("Coverage:");
+	});
+});

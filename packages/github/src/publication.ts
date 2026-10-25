@@ -6,6 +6,7 @@ import {
 	dismissalVersion,
 	type Finding,
 	type Placement,
+	type PublishedCoverage,
 	Rendering,
 	type ReviewDraft,
 	type Verdict,
@@ -141,6 +142,43 @@ function short(revision: string): string {
 
 function plural(count: number, noun: string): string {
 	return `${count} ${noun}${count === 1 ? "" : "s"}`;
+}
+
+function spans(lines: readonly (readonly [number, number])[]): string {
+	if (lines.length === 1 && lines[0]![0] === lines[0]![1]) return `line ${lines[0]![0]}`;
+	return `lines ${lines.map(([first, last]) => (first === last ? `${first}` : `${first}-${last}`)).join(", ")}`;
+}
+
+// The coverage paragraphs of a review body: whether the diff is covered and by which rounds, what this round's lenses
+// reviewed, and each gap with its reason.
+function coverageParts(coverage: PublishedCoverage, pullRequest: number): string[] {
+	const { complete, round, rounds, reviewed, gaps, more, dismissed } = coverage;
+	const from = rounds.length === 0 ? "" : `, ${complete ? "from" : "partly from"} rounds ${rounds.join(", ")}`;
+	const where = (file: string, revision?: "base") => `${code(file)}${revision === "base" ? " (base)" : ""}`;
+	const files = [
+		...reviewed.files.map(({ file, revision, lines }) => `- ${where(file, revision)} ${spans(lines)}`),
+		...(reviewed.more === 0 ? [] : [`- ${plural(reviewed.more, "more file")}`]),
+	];
+	const parts = [
+		`Coverage: ${complete ? "complete" : "incomplete"}${from}.`,
+		[
+			`Round ${inline(round)}'s lenses reviewed ${reviewed.lines} of ${plural(reviewed.of, "changed line")}${files.length === 0 ? "." : ":"}`,
+			...(files.length === 0 ? [] : ["", ...files]),
+		].join("\n"),
+	];
+	const listed = [
+		...gaps.map(({ check, file, revision, lines, unit, reason }) => {
+			const at =
+				file === ""
+					? ""
+					: ` in ${where(file, revision)}${lines.length > 0 ? ` ${spans(lines)}` : unit === undefined ? "" : ` (${unit})`}`;
+			return `- ${code(check)}${at}: ${inline(reason)}`;
+		}),
+		...(more === 0 ? [] : [`- ${more} more; ${code(`melian findings "#${pullRequest}"`)} lists them`]),
+		...(dismissed === 0 ? [] : [`- ${dismissed} dismissed by a maintainer, which covers nothing`]),
+	];
+	if (listed.length > 0) parts.push(["Gaps:", "", ...listed].join("\n"));
+	return parts;
 }
 
 function lineSpan(start: number, end: number): string {
@@ -355,6 +393,7 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 	parts.push(...new Set(tallied.flatMap((finding) => finding.trustFloorNotes().slice(0, 1)).map(inline)));
 	const reviewStatus = verdict.reviewStatus();
 	parts.push(`melian/review: ${reviewStatus.state} (${inline(reviewStatus.description)}).`);
+	if (draft.coverage !== undefined) parts.push(...coverageParts(draft.coverage, draft.pullRequest));
 	if (verdict.counted().some((finding) => finding.properties.resolution === "acknowledge")) {
 		parts.push(
 			`Dismiss unresolved acknowledgements with a reason, then publish. Use ${code(`melian dismiss "#${draft.pullRequest}" <id> --reason <text>`)} for this pull request.`,

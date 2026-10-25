@@ -428,6 +428,63 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		});
 	});
 
+	it("keeps a carried finding open in its thread, and says which lines the round reviewed and which rounds cover the diff", async () => {
+		const { fake, github, changeset, state } = await reviewedRevisionOne(lensScript(unsafeManager));
+		await publish(github, changeset);
+		const root = (await harness!.root(context)).id;
+		const [manager] = await readFindings(harness!, root, Revision.key(changeset.revision), context);
+		const thread = (await readPublished(harness!, root, changeset.revision.head, context))!.threads[
+			manager!.properties.id
+		]!;
+		writeFileSync(
+			join(repo, "src/config.ts"),
+			"export const retries = Number(process.env.RETRIES);\nexport const timeout = 60;\n",
+		);
+		gitIn(repo, "commit", "--quiet", "--all", "-m", "revision 2");
+		const second = await reviewScenario(repo, harness!, fake, lensScript());
+		await second.review.catch((error: unknown) => {
+			if (!(error instanceof ReviewError)) throw error;
+		});
+		moveTo(state, second.changeset);
+
+		const result = await publish(github, second.changeset);
+
+		expect(result).toMatchObject({ posted: 0, stillOpen: 1, resolved: 0 });
+		const published = await harness!.snapshot(PublishedDocument, root, context);
+		expect(published?.revisions[second.changeset.revision.head]?.open[manager!.properties.id]?.thread).toBe(thread);
+		expect(state.resolvedThreads).not.toContain(Number(thread));
+		const body = state.reviews.at(-1)!.body;
+		expect(body).toContain("1 of them was posted on an earlier revision.");
+		expect(body).toContain(
+			// The delta prompt delivers the earlier hunk as context, and a delivered line counts as reviewed.
+			"Coverage: complete, from rounds r1, r2.\n\nRound r2's lenses reviewed 4 of 4 changed lines:\n\n- `src/config.ts` line 2\n- `src/user.ts` line 7\n- `src/config.ts` (base) line 2\n- `src/user.ts` (base) line 7",
+		);
+		expect(body).not.toContain("dismissed by a maintainer");
+		expect(state.ledgers[0]!.body).toContain("Coverage: complete, from rounds r1, r2.");
+		expect(state.statuses.at(-1)).toMatchObject({
+			state: "failure",
+			description: `1 finding, 1 blocking, 0 unresolved acknowledgements; base ${second.changeset.revision.base}`,
+		});
+		expect(published?.ledgerRounds?.at(-1)).toMatchObject({ coverage: { complete: true, round: "r2" } });
+	});
+
+	it("posts a pending round an earlier build planned, which holds no ledger round, without coverage", async () => {
+		const { github, changeset, state } = await reviewedRevisionOne(lensScript(unsafeManager));
+		state.failReviews = true;
+		await expect(publish(github, changeset)).rejects.toThrow("Server Error");
+		state.failReviews = false;
+		const root = await harness!.root(context);
+		await root.commit(async (tx) => {
+			delete (await tx.doc(PublishedDocument, root.id)).revisions[changeset.revision.head]!.pending!.ledger;
+		}, context);
+
+		await publish(github, changeset);
+
+		expect(state.reviews).toHaveLength(1);
+		expect(state.reviews[0]!.body).not.toContain("Coverage:");
+		expect(state.ledgers[0]!.body).toContain("Coverage: complete, from rounds r1.");
+	});
+
 	it("answers a dismissed finding's thread with the reason, and counts it out of the status", async () => {
 		const { github, changeset, state } = await reviewedRevisionOne();
 		await publish(github, changeset);

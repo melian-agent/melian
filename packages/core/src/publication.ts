@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type { StoredVerdict, Verdict } from "./adjudication.ts";
+import type { PublishedCoverage } from "./coverage-ledger.ts";
 import type { Finding, FindingDismissal } from "./findings.ts";
 
 /** A repository role returned by a provider's permission lookup. */
@@ -160,6 +161,8 @@ export interface ReviewDraft {
 	readonly carried?: readonly string[];
 	/** Resolved and dismissed findings that have no thread to reply in, so the body names them. */
 	readonly resolved: readonly ClosedFinding[];
+	/** What the round reviewed and which rounds cover the diff; absent from a round an earlier build planned. */
+	readonly coverage?: PublishedCoverage;
 	/** The changeset's publisher secret, as hex, which signs every marker the review carries. Never printed. */
 	readonly secret: string;
 }
@@ -284,6 +287,8 @@ export type LedgerRound = {
 	details?: PublicationDetails;
 	walkthrough?: Walkthrough;
 	walkthroughNote?: string;
+	// Absent from a round an earlier build posted.
+	coverage?: PublishedCoverage;
 	resolved: { id: string; ruleId: string; path: string; line: number; commit: string; reason?: string }[];
 };
 

@@ -146,6 +146,38 @@ describe("ledger rendering", () => {
 		expect(body).toContain("Pull request author permission: `read`");
 	});
 
+	it("says which lines each round reviewed and which rounds cover the diff, the earlier round's too", () => {
+		const coverage = (at: string, rounds: string[], complete: boolean) => ({
+			complete,
+			round: at,
+			rounds,
+			reviewed: { lines: 3, of: 9, files: [{ file: "src/run.ts", lines: [[7, 9]] as [number, number][] }], more: 0 },
+			gaps: complete
+				? []
+				: [
+						{
+							check: "lens.security",
+							file: "src/run.ts",
+							lines: [[1, 6]] as [number, number][],
+							reason: "never delivered",
+						},
+					],
+			more: 0,
+			dismissed: 0,
+		});
+		const earlier = { ...round, coverage: coverage("r1", ["r1"], false) };
+		const current = { ...round, head: "c".repeat(40), round: 2, coverage: coverage("r2", ["r1", "r2"], true) };
+		const body = Ledger.from(verdict, { rounds: [earlier, current] }, options).render(links);
+		const [now, before] = body.split("<summary>Earlier round 1");
+		expect(now).toContain(
+			"Coverage: complete, from rounds r1, r2.\n\nRound r2's lenses reviewed 3 of 9 changed lines:",
+		);
+		expect(now).not.toContain("Gaps:");
+		expect(before).toContain("Coverage: incomplete, partly from rounds r1.");
+		expect(before).toContain("- `lens.security` in `src/run.ts` lines 1-6: never delivered");
+		expect(Ledger.from(verdict, { rounds: [round] }, options).render(links)).not.toContain("Coverage:");
+	});
+
 	it("renders publisher identity as inert text and keeps a repeat projection stable", () => {
 		const current = {
 			...round,

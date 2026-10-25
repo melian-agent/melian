@@ -71,7 +71,7 @@ it.each(cases)(
 				await tx.doc(PublishedDocument, root.id);
 			}, context);
 			await expect(second.snapshot(previous, root.id, context)).rejects.toThrow(
-				`newer version 9 than ${round.version}`,
+				`newer version 10 than ${round.version}`,
 			);
 			await second.close(context);
 			const third = await open();
