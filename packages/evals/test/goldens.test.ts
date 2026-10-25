@@ -1,6 +1,7 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import {
 	cpSync,
+	existsSync,
 	mkdirSync,
 	mkdtempSync,
 	readdirSync,
@@ -35,12 +36,13 @@ import {
 	selectGoldens,
 } from "@melian-agent/evals";
 import * as testing from "@melian-agent/pipeline/testing";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 
 const goldens = loadGoldens();
 
 // The resolution goldens run no lens and no tier: their lens files declare scripted lenses, and their policy holds only
 // the keys under test. So the rules that tie a golden's lenses and tiers to Melian's own leave them out.
+const readText = (path: string) => (existsSync(path) ? readFileSync(path, "utf8") : "");
 const ofLensCorpus = (entry: { parentPath: string }) =>
 	relative(goldensDirectory, entry.parentPath).split(sep)[0] !== "resolution";
 
@@ -275,32 +277,94 @@ describe("a golden's standards and policy", () => {
 		expect(beneath.filter((path) => !/^lenses\/[a-z0-9-]+\/LENS\.golden\.md$/.test(path))).toEqual([]);
 	});
 
-	it("carry each repository lens as an exact copy of Melian's own, so a golden measures the lens Melian runs", () => {
-		const melian = join(goldensDirectory, "../../..");
-		const copies = readdirSync(goldensDirectory, { recursive: true, withFileTypes: true }).filter(
-			(entry) => entry.name === "LENS.golden.md" && ofLensCorpus(entry),
-		);
-		expect(copies.length).toBeGreaterThan(0);
-		for (const copy of copies) {
-			const original = readFileSync(join(melian, ".melian/lenses", basename(copy.parentPath), "LENS.md"), "utf8");
-			expect(readFileSync(join(copy.parentPath, copy.name), "utf8"), join(copy.parentPath, copy.name)).toBe(
-				original,
-			);
-		}
-	});
-
-	it("carry every repository lens of Melian's in a tree that carries any, so a golden never runs half the hand-offs", () => {
+	// The builder reads Melian's repository lenses from the checkout, so no golden commits a copy to keep in step.
+	it("build every golden that names Melian's tier with the checkout's repository lenses, or its own committed override, under their live names", () => {
 		const melian = join(goldensDirectory, "../../..");
 		const own = readdirSync(join(melian, ".melian/lenses")).sort();
-		expect(own).toEqual(expect.arrayContaining(["correctness", "durability", "removed-behaviour"]));
-		const trees = new Map<string, string[]>();
-		for (const copy of readdirSync(goldensDirectory, { recursive: true, withFileTypes: true })) {
-			if (copy.name !== "LENS.golden.md" || !ofLensCorpus(copy)) continue;
-			const tree = join(copy.parentPath, "../../..");
-			trees.set(tree, [...(trees.get(tree) ?? []), basename(copy.parentPath)]);
+		expect(own).toEqual(expect.arrayContaining(["correctness", "design", "durability", "removed-behaviour"]));
+		const tiered = goldens.filter((golden) =>
+			/^tiers:/m.test(readText(join(golden.directory, "melian.golden.yaml"))),
+		);
+		expect(tiered.map((golden) => golden.name)).toEqual(
+			expect.arrayContaining(["durability-clean-upsert", "design-clean"]),
+		);
+		// A golden with a genuine override in its base tree goes through the same parity check as the corpus.
+		const override = realpathSync(mkdtempSync(join(tmpdir(), "melian-golden-parity-")));
+		mkdirSync(join(override, "base/.melian/lenses/design"), { recursive: true });
+		mkdirSync(join(override, "head"), { recursive: true });
+		writeFileSync(
+			join(override, "base/.melian/lenses/design/LENS.golden.md"),
+			"---\nname: design\nextends: design\ntier: heavy\n---\n",
+		);
+		writeFileSync(join(override, "base/a.ts"), "export const a = 1;\n");
+		writeFileSync(join(override, "head/a.ts"), "export const a = 2;\n");
+		writeFileSync(join(override, "melian.golden.yaml"), "tiers:\n  full: [lens.design]\n");
+		onTestFinished(() => rmSync(override, { recursive: true, force: true }));
+		for (const golden of [...tiered, { name: "override", directory: override }]) {
+			const { repo } = buildGoldenRepository(golden);
+			try {
+				// Each tree's own committed lens is its override; every other lens is the checkout's.
+				for (const [ref, tree] of [
+					["main", "base"],
+					["feature", "head"],
+				] as const)
+					for (const name of own) {
+						const committed = join(golden.directory, tree, ".melian/lenses", name, "LENS.golden.md");
+						const expected = existsSync(committed) ? committed : join(melian, ".melian/lenses", name, "LENS.md");
+						expect(
+							execFileSync("git", ["show", `${ref}:.melian/lenses/${name}/LENS.md`], {
+								cwd: repo,
+								encoding: "utf8",
+							}),
+							`${golden.name} ${ref} ${name}`,
+						).toBe(readFileSync(expected, "utf8"));
+					}
+			} finally {
+				rmSync(repo, { recursive: true, force: true });
+			}
 		}
-		expect(trees.size).toBeGreaterThan(0);
-		for (const [tree, names] of trees) expect(names.sort(), tree).toEqual(own);
+	}, 120_000);
+
+	it("give a golden with no Melian tier none of Melian's lenses, and keep a golden's own committed lens over the checkout's", () => {
+		// One with no policy at all, and a guardrail golden whose policy sets no tiers.
+		for (const plain of [
+			goldens.find((golden) => !existsSync(join(golden.directory, "melian.golden.yaml")))!,
+			goldens.find((golden) => golden.name === "guardrails-bare-issue-reference")!,
+		]) {
+			const built = buildGoldenRepository(plain);
+			try {
+				expect(existsSync(join(built.repo, ".melian")), plain.name).toBe(false);
+			} finally {
+				rmSync(built.repo, { recursive: true, force: true });
+			}
+		}
+		const directory = realpathSync(mkdtempSync(join(tmpdir(), "melian-golden-override-")));
+		const own = "---\nname: design\nextends: design\ntier: heavy\n---\n";
+		try {
+			mkdirSync(join(directory, "base/.melian/lenses/design"), { recursive: true });
+			mkdirSync(join(directory, "head"), { recursive: true });
+			writeFileSync(join(directory, "base/.melian/lenses/design/LENS.golden.md"), own);
+			writeFileSync(join(directory, "base/a.ts"), "export const a = 1;\n");
+			writeFileSync(join(directory, "head/a.ts"), "export const a = 2;\n");
+			writeFileSync(join(directory, "melian.golden.yaml"), "tiers:\n  full: [lens.design]\n");
+			const { repo } = buildGoldenRepository({ name: "override", directory });
+			try {
+				const show = (ref: string, name: string) =>
+					execFileSync("git", ["show", `${ref}:.melian/lenses/${name}/LENS.md`], { cwd: repo, encoding: "utf8" });
+				expect(show("main", "design")).toBe(own);
+				expect(show("main", "durability")).toBe(
+					readFileSync(join(goldensDirectory, "../../../.melian/lenses/durability/LENS.md"), "utf8"),
+				);
+				// The head tree carries no override of its own, so the checkout's lens reaches it.
+				expect(show("feature", "design")).toBe(
+					readFileSync(join(goldensDirectory, "../../../.melian/lenses/design/LENS.md"), "utf8"),
+				);
+			} finally {
+				rmSync(repo, { recursive: true, force: true });
+			}
+		} finally {
+			rmSync(directory, { recursive: true, force: true });
+		}
 	});
 
 	it("carry Melian's own full tier, which keeps every check of the default full tier", async () => {

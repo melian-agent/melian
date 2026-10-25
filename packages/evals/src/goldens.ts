@@ -35,6 +35,7 @@ import {
 import { createFakeModels, scriptLenses } from "@melian-agent/pipeline/testing";
 import Type, { type Static, type TSchema } from "typebox";
 import Value from "typebox/value";
+import { parse } from "yaml";
 import { GoldenRunError } from "./run-error.ts";
 import type { EvalThinking } from "./thinking.ts";
 
@@ -221,6 +222,24 @@ function git(repo: string, ...args: string[]): string {
 	return execFileSync("git", args, { cwd: repo, env: gitEnv, encoding: "utf8" }).trim();
 }
 
+// Melian's own repository lenses, read from the checkout the corpus sits in.
+const melianLenses = fileURLToPath(new URL("../../../.melian/lenses/", import.meta.url));
+
+// A golden whose policy sets tiers runs Melian's own tier, as a test holds, so its repository gets Melian's repository
+// lenses beside the built-ins: the prompts it scores are the ones Melian runs on itself, every hand-off with both sides.
+// A lens the golden's tree commits under the same name is its own override, and the checkout's never replaces it.
+function addMelianLenses(repo: string): void {
+	const policy = join(repo, "melian.yaml");
+	const value: unknown = existsSync(policy) ? parse(readFileSync(policy, "utf8")) : undefined;
+	if (typeof value !== "object" || value === null || !("tiers" in value)) return;
+	for (const name of readdirSync(melianLenses)) {
+		const target = join(repo, ".melian/lenses", name, "LENS.md");
+		if (existsSync(target)) continue;
+		mkdirSync(dirname(target), { recursive: true });
+		cpSync(join(melianLenses, name, "LENS.md"), target);
+	}
+}
+
 // `AGENTS.golden.md` is `AGENTS.md`, and `melian.golden.yaml` is `melian.yaml`.
 const inert = /\.golden(?=\.[^.]*$)/;
 
@@ -250,6 +269,7 @@ export function buildGoldenRepository(golden: Pick<Golden, "name" | "directory">
 	copyTree(join(golden.directory, "base"), repo);
 	if (existsSync(join(golden.directory, "melian.golden.yaml")))
 		cpSync(join(golden.directory, "melian.golden.yaml"), join(repo, "melian.yaml"));
+	addMelianLenses(repo);
 	git(repo, "add", "--all");
 	git(repo, "commit", "--quiet", "-m", "base");
 	const base = git(repo, "rev-parse", "HEAD");
@@ -263,6 +283,7 @@ export function commitGoldenTree(repo: string, tree: string, message: string): s
 	for (const entry of readdirSync(repo))
 		if (entry !== ".git" && entry !== "melian.yaml") rmSync(join(repo, entry), { recursive: true });
 	copyTree(tree, repo);
+	addMelianLenses(repo);
 	git(repo, "add", "--all");
 	git(repo, "commit", "--quiet", "--allow-empty", "-m", message);
 	return git(repo, "rev-parse", "HEAD");

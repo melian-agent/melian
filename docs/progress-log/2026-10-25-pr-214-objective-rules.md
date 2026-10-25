@@ -13,3 +13,5 @@ Goldens can now script the verifier's verdicts in `verifier.json`, by finding ID
 The two positive goldens now script `confirmed` with a reason. The two earlier clean twins report nothing, so no claim reaches their verifier.
 
 Failing first: the verifier tests failed on the missing instruction sentences and the missing design sections. With `verifier.json` still ignored, the four new goldens failed with precision 0. All pass after the change.
+
+Merging `main` brought Melian's repository extension of every lens, so the new goldens no longer carry lens copies, and the pinned versions of the repository's `design` extension move to `79434c8c7716` and `fc7506fe2b61` with the built-in body. `packages/pipeline/test/rounds.test.ts` pins the verifier version its fixtures recorded, since a changed verifier instruction re-reviews a stored round by design.

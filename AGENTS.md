@@ -104,6 +104,7 @@ Milestone 2 runs on three lanes of work and a fixed review loop. Read this befor
 - Small tasks go to Sonnet 5.5: a doc fix, a single test, a record fill-in, a merge chain.
 - Reviews of record go to Sonnet 5.5 on the host, which can run the tests. Opus 5.5 is held back for a lens round on a step with a new trust surface. The trial that decided this is in the record for [pull request #73](https://github.com/melian-agent/melian/pull/73). On a trust surface, the review of record goes to Opus 5.5 and attacks with probes, as Converging below says. When Anthropic usage is constrained, a Codex task through `scripts/codex-sandboxed.sh` with a review-only brief is the fallback.
 - Codex tasks that edit run through `scripts/codex-sandboxed.sh`, from a linked worktree in the worktrees folder. Its seatbelt lets the task commit to its own branch, and the Learnings below set out what it cannot do. Codex's companion `task --write` can edit and test but not commit, because its sandbox denies writes under `.git`.
+- The design lens is to replace Codex's adversarial review. Both run on the same head every round until Codex's review meets [the shadow retirement rule](docs/decisions/2026-10-06-shadow-retirement-merged-window.md) and the maintainer retires it.
 - The coordinator session runs the Melian rounds, reads the verdicts, and queues. A lane agent opens a draft and reports; it neither marks a pull request ready nor queues it.
 
 ### The loop for one step
@@ -121,15 +122,15 @@ Independent lanes run in parallel, each in its own worktree. Watch the machine's
 
 Every pull request gets all three before it is marked ready:
 
-1. Codex's adversarial review, through its companion. It uses GPT-5.6 Sol by default.
+1. Codex's adversarial review, through its companion. It uses GPT-5.6 Sol at high effort by default. The design lens now runs on that model and effort, so it can replace this review; [the route decision](docs/decisions/2026-10-24-design-lens-on-codex-route.md) records why. Codex's review keeps running until it meets [the shadow retirement rule](docs/decisions/2026-10-06-shadow-retirement-merged-window.md), ten merged pull requests at recall 0.75 or better, and the maintainer retires it.
 2. A Claude review of record. It runs the code and does not only read it.
 3. Melian's own review, from the branch's own build. Repeat it after each fix pass until only policy notices and advisories remain.
 
 Melian reviews itself with `melian review main...HEAD`, run from a throwaway worktree in the worktrees folder. Raise every lens's budget to `budget: { findings: 8, tokens: 600000, tools: 90 }`:
 
-- For a built-in lens, write an uncommitted `.melian/lenses/<name>/LENS.md` that `extends` it and sets that budget.
-- For a repository lens, such as `durability`, edit the budget line of its committed file in place. An `extends` directory must match the lens name, so an extension cannot sit beside it.
-- Remove the uncommitted files before you commit anything.
+- Every lens in Melian's `full` tier has a committed file under `.melian/lenses/`. Edit its budget line in place, or add one; an `extends` directory must match the lens name, so a second extension cannot sit beside it.
+- Leave every `tier` in those files alone, and the `medium` route in `melian.yaml`. They give the design lens Codex's model and effort, and move every other `quick` level to `light`. A round that writes its own levels, or routes `medium` in `melian.local.yaml`, undoes that. The design lens's committed budget already exceeds the one above.
+- Restore the edited files before you commit anything.
 
 ### The comparison record
 
@@ -291,4 +292,5 @@ Add important learnings here, newest last. Each entry names the symptom, the cau
 - `gh pr create --base <parent branch>` fails for a stacked branch after the parent merged. Cause: GitHub deletes a merged pull request's branch, so the base no longer exists. Check `git ls-remote --heads origin <parent branch>` first and open against `main`; the diff is the stacked work alone, because the parent's commits are already on `main`.
 - A round on a pull request still runs a check that `main` has dropped from its tiers. On [pull request #186](https://github.com/melian-agent/melian/pull/186), `static.mutation` ran after [pull request #187](https://github.com/melian-agent/melian/pull/187) removed it, and its Stryker dry run timed out and left the review not reviewed. Cause: Melian reads a pull request's policy from its base, the merge base with `main`, so a branch cut before a tier change keeps the old tiers. A local tier override cannot drop a base tier check. Merge `main` into the branch, never rebase, and push before the round.
 - A Biome Grit plugin that matches text never sees a comment, and `\p{Extended_Pictographic}` flags `©` and `™`. Cause: Grit matches syntax nodes, and comments are trivia that belong to none; the Extended_Pictographic property covers text symbols that render without colour. `biome/literal-emoji.grit` matches string, template, regex, member-name, type and JSX literals against `\p{Emoji_Presentation}` or a variation selector, `\u{FE0F}`. An emoji in a comment falls to the writing rules above, not to the plugin.
+- A commit changes every `.melian/lenses/*/LENS.md` by one budget line that nobody wrote. Cause: a Melian round was running in that worktree, and the round's overrides rewrite each lens file's budget until the round restores them, so `git add -A` staged them. Never commit in a worktree while a round runs there; stage named paths, and read `git show --stat HEAD` before pushing.
 - `packages/pipeline/test/rounds.test.ts` fails with `expected 13 to be 9` after an edit to the verifier's instructions, and passes on `main`. Cause: a verdict's provenance carries the verifier version, a hash of its instructions, report schema and questions, so a changed instruction reviews a stored round again, by design, and the round fixtures under `test/fixtures/rounds-main/` hold the version `main` had when it wrote them. The test file mocks `verifierVersion` to the fixtures' recorded value, `4190289e598badf0`; keep that mock when you change the instructions, and never re-record the fixtures by hand.
