@@ -14,6 +14,7 @@ import {
 	ReviewPlan,
 	type ReviewProvider,
 	Revision,
+	rangesOf,
 	Standards,
 	userFiles,
 	type Verdict,
@@ -26,6 +27,7 @@ import {
 	createNodeExecutionEnv,
 	DismissError,
 	DismissHarness,
+	GapDismissalError,
 	openPublishHarness,
 	openReviewHarness,
 	PrepareSpans,
@@ -722,6 +724,74 @@ const verdictWords: Readonly<Record<Verdict["status"], string>> = {
 
 // Dismisses a finding of the stored review in the changeset's storage, shared by every worktree of the clone, and
 // decides the verdict again. Like findings, it reads only local refs and storage.
+// Lines as a range list from `3`, `3-5` or `3-5,9`, the way the Coverage section prints them.
+function lineRanges(text: string): [number, number][] {
+	const ranges = text.split(",").map((part): [number, number] => {
+		const match = /^([1-9][0-9]*)(?:-([1-9][0-9]*))?$/.exec(part.trim());
+		if (match === null) throw new CliError(`--lines takes lines such as 3, 3-5 or 3-5,9, not ${visibleText(text)}`);
+		const first = Number(match[1]);
+		const last = match[2] === undefined ? first : Number(match[2]);
+		if (last < first) throw new CliError(`--lines ${visibleText(part)} ends before it starts`);
+		return [first, last];
+	});
+	return rangesOf(
+		ranges.flatMap(([first, last]) => Array.from({ length: last - first + 1 }, (_, index) => first + index)),
+	);
+}
+
+/**
+ * Records a maintainer's dismissal of a coverage gap the stored review names: the check and the lines, with a reason.
+ * It answers that check on those lines alone, and the next review decides the verdict with it.
+ */
+export async function dismissGap(
+	io: Io,
+	argument: string,
+	options: {
+		readonly check: string;
+		readonly file: string;
+		readonly lines: string;
+		readonly base: boolean;
+		readonly reason: string;
+	},
+): Promise<number> {
+	const { reason } = options;
+	const stored = await StoredReview.open(io, argument);
+	const { changeset } = stored;
+	const path = await storagePath(changeset.repoRoot, changeset.id, io.env, isScripted(io.env));
+	if (!existsSync(path)) throw stored.missing();
+	const by = await gitAuthor(changeset.repoRoot, "dismissed a coverage gap");
+	const lines = lineRanges(options.lines);
+	const reviewHarness = await openReviewHarness(await openStorage(path), idleModels(io.env));
+	const { harness } = reviewHarness;
+	try {
+		const root = (await harness.root(context)).id;
+		await new CoverageLedger(harness, root)
+			.dismiss(
+				Revision.key(changeset.revision),
+				{
+					check: options.check,
+					file: options.file,
+					...(options.base ? { revision: "base" as const } : {}),
+					lines,
+					reason,
+					by,
+					at: new Date().toISOString(),
+				},
+				context,
+			)
+			.catch((error: unknown) => {
+				if (error instanceof GapDismissalError) throw new CliError(error.message);
+				throw error;
+			});
+		io.stdout(
+			`Dismissed the ${visibleText(options.check)} gap at ${visibleText(options.file)}${options.base ? " (base)" : ""} lines ${options.lines} as ${visibleText(by)}. Run melian review ${shellQuote(argument)} again to decide the verdict with it.\n`,
+		);
+		return 0;
+	} finally {
+		await reviewHarness.close(context);
+	}
+}
+
 export async function dismiss(
 	io: Io,
 	argument: string,

@@ -105,7 +105,7 @@ export const packageName = "@melian-agent/pipeline";
 
 export { CallerContext, type CallerData, type CallerGroup } from "./callers.ts";
 export { CoverageCache } from "./coverage-cache.ts";
-export { CoverageDocument, CoverageLedger } from "./coverage-ledger.ts";
+export { CoverageDocument, CoverageLedger, GapDismissalError } from "./coverage-ledger.ts";
 export { EnolaCoverage } from "./enola-coverage.ts";
 export { GraphCache } from "./graph-cache.ts";
 export { ReviewTranscript } from "./review-coverage.ts";

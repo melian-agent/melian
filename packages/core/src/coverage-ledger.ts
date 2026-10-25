@@ -106,10 +106,29 @@ export interface CoverageSummary {
 	readonly complete: boolean;
 	readonly rounds: readonly string[];
 	readonly gaps: readonly LedgerGap[];
+	readonly dismissed: readonly StoredGapDismissal[];
 }
+
+/**
+ * A maintainer's dismissal of a coverage gap: the check and the lines it answers, on the head side or the base, with who
+ * dismissed it, when and why. It answers that check on those lines alone, and the lines stay uncovered.
+ */
+export type StoredGapDismissal = {
+	check: string;
+	file: string;
+	revision?: "base";
+	lines: LineRanges;
+	reason: string;
+	by: string;
+	at: string;
+};
 
 function byCodeUnit(a: string, b: string): number {
 	return a < b ? -1 : a > b ? 1 : 0;
+}
+
+function spans(lines: LineRanges): string {
+	return `lines ${lines.map(([first, last]) => (first === last ? `${first}` : `${first}-${last}`)).join(", ")}`;
 }
 
 function within(lines: LineRanges, set: LineRanges): LineRanges {
@@ -130,14 +149,16 @@ function plural(count: number, noun: string): string {
  */
 export class CoverageRecord {
 	readonly stored: StoredCoverageRecord;
+	readonly dismissed: readonly StoredGapDismissal[];
 
-	private constructor(stored: StoredCoverageRecord) {
+	private constructor(stored: StoredCoverageRecord, dismissed: readonly StoredGapDismissal[]) {
 		this.stored = stored;
+		this.dismissed = dismissed;
 	}
 
-	/** The record a stored one describes. */
-	static from(stored: StoredCoverageRecord): CoverageRecord {
-		return new CoverageRecord(structuredClone(stored));
+	/** The record a stored one describes, with the maintainer's dismissals of its gaps at the record's head. */
+	static from(stored: StoredCoverageRecord, dismissed: readonly StoredGapDismissal[] = []): CoverageRecord {
+		return new CoverageRecord(structuredClone(stored), structuredClone(dismissed));
 	}
 
 	/** Whether this build's coverage producer wrote the record, so its coverage counts. */
@@ -150,6 +171,23 @@ export class CoverageRecord {
 
 	/** What each check has not covered at the record's head, by check, then file, then side. */
 	gaps(): LedgerGap[] {
+		return this.#gaps().flatMap((gap) => {
+			if (gap.lines.length === 0) return [gap];
+			const answered = this.dismissed
+				.filter(
+					(each) =>
+						each.check === gap.check &&
+						each.file === gap.file &&
+						(each.revision ?? "head") === (gap.revision ?? "head"),
+				)
+				.reduce<LineRanges>((all, each) => unionRanges(all, each.lines), []);
+			const left = subtractRanges(gap.lines, answered);
+			return left.length === 0 ? [] : [{ ...gap, lines: left }];
+		});
+	}
+
+	/** Every gap before the maintainer's dismissals answer any. */
+	#gaps(): LedgerGap[] {
 		const gaps: LedgerGap[] = [];
 		for (const [check, coverage] of Object.entries(this.stored.checks).sort(([a], [b]) => byCodeUnit(a, b))) {
 			for (const side of ["head", "base"] as const) {
@@ -238,13 +276,18 @@ export class CoverageRecord {
 					},
 				]
 			: this.gaps();
-		return { complete: gaps.length === 0, rounds: stale ? [] : this.rounds(), gaps };
+		return { complete: gaps.length === 0, rounds: stale ? [] : this.rounds(), gaps, dismissed: [...this.dismissed] };
 	}
 
 	/** The `Coverage` section for a terminal. Paths pass through `visibleText`. */
 	render(): string {
-		const { complete, rounds, gaps } = this.summary();
-		if (complete) return `Coverage: complete, from ${rounds.join(", ")}.\n`;
+		const { complete, rounds, gaps, dismissed } = this.summary();
+		const answered = dismissed.map(
+			(each) =>
+				`  ${each.check}  ${visibleText(each.file)}${each.revision === "base" ? " (base)" : ""} ${spans(each.lines)}: ${visibleText(each.reason)} (${visibleText(each.by)})\n`,
+		);
+		const apart = answered.length === 0 ? "" : `Dismissed gaps:\n${answered.join("")}`;
+		if (complete) return `Coverage: complete, from ${rounds.join(", ")}.\n${apart}`;
 		const lines = gaps.map((gap) => {
 			const where = gap.file === "" ? "" : `${visibleText(gap.file)}${gap.revision === "base" ? " (base)" : ""}`;
 			const what =
@@ -260,7 +303,7 @@ export class CoverageRecord {
 						: ` (${gap.unit})`;
 			return `  ${gap.check}${where === "" ? "" : `  ${where}`}${what}: ${gap.reason}\n`;
 		});
-		return `Coverage: incomplete${rounds.length === 0 ? "" : `, partly from ${rounds.join(", ")}`}.\n${lines.join("")}`;
+		return `Coverage: incomplete${rounds.length === 0 ? "" : `, partly from ${rounds.join(", ")}`}.\n${lines.join("")}${apart}`;
 	}
 
 	// Lines of `file` that segments at or above the file's required level cover, or that any segment covers.

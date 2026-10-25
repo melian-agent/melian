@@ -46,6 +46,7 @@ import {
 	StandardsReading,
 	type StandardsSection,
 	type StoredCoverageRecord,
+	type StoredGapDismissal,
 	type TriageChoice,
 	triageChoices,
 	triageQuestionSet,
@@ -1584,8 +1585,8 @@ async function ledgerRound(
 
 // The `review.coverage` record a round's coverage puts in its manifest: `ran` when every check covered everything it
 // must, and otherwise skipped without leave, naming the gaps, which leaves the review not reviewed.
-function coverageRecordOf(record: StoredCoverageRecord): CheckRecord {
-	const { complete, gaps } = CoverageRecord.from(record).summary();
+function coverageRecordOf(record: StoredCoverageRecord, dismissed: readonly StoredGapDismissal[]): CheckRecord {
+	const { complete, gaps } = CoverageRecord.from(record, dismissed).summary();
 	if (complete) return { name: coverageCheck, status: "ran" };
 	// A check whose own record did not run names itself in the verdict, so the coverage record only points at it.
 	const unrun = [...new Set(gaps.filter((gap) => gap.own === true).map((gap) => gap.check))];
@@ -1788,6 +1789,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					const prior = intake.prior!;
 					const move = await HeadMove.read(repoRoot, prior.head, head);
 					if (move.revision === undefined) return { carried: [], lost: [] };
+					await ledger.carryDismissals(Revision.key(prior), reviewed, move.revision, context);
 					return carry.carry(
 						{ from: Revision.key(prior), round: prior.round, to: reviewed, revision, map: move.revision },
 						context,
@@ -2426,7 +2428,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		),
 		context,
 	);
-	const coverageRecord = coverageRecordOf(coverage);
+	const coverageRecord = coverageRecordOf(coverage, await ledger.dismissals(reviewed, context));
 	const input = adjudicationInput({
 		root,
 		repoRoot,

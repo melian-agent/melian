@@ -126,6 +126,7 @@ export {
 	type StoredCoverageRecord,
 	type StoredCoverageSegment,
 	type StoredCoverageVoid,
+	type StoredGapDismissal,
 } from "./coverage-ledger.ts";
 export {
 	countRanges,

@@ -18,6 +18,7 @@ import {
 	backgroundContext as context,
 	createMemoryStorage,
 	createReviewRegistry,
+	GapDismissalError,
 	type Harness,
 	type Message,
 	openHarness,
@@ -248,6 +249,48 @@ describe("a round over the ledger", () => {
 			config: { ...config, lenses: { correctness: { level: { floor: "deep" } } } },
 		});
 		expect(verdict.ran?.find((check) => check.name === "lens.correctness")?.level).toBe("deep");
+	});
+});
+
+describe("a maintainer's dismissal of a gap", () => {
+	const big = () =>
+		lines(...Array.from({ length: 6000 }, (_, index) => `export const value${index} = "${"x".repeat(30)}";`));
+
+	it("answers the named check on the named lines, apart from coverage, and a later change to one reopens it", async () => {
+		commit(repo, { "src/a.ts": numbered(20, "a").replace("a 3\n", "A 3\n"), "src/big.ts": big() });
+		const first = await review();
+		expect(first.verdict.status).toBe("not-reviewed");
+		const owed = first.summary.gaps.filter((gap) => gap.file === "src/big.ts");
+		expect(new Set(owed.map((gap) => gap.reason))).toEqual(new Set(["too large for the prompt; lines still owed"]));
+		const root = (await harness.root(context)).id;
+		const key = Revision.key((await Changeset.resolve(repo, `${base}..feature`)).revision);
+		const ledger = new CoverageLedger(harness, root);
+		await expect(
+			ledger.dismiss(
+				key,
+				{ check: "lens.correctness", file: "src/a.ts", lines: [[3, 3]], reason: "read", by: "Ada", at: "t" },
+				context,
+			),
+		).rejects.toBeInstanceOf(GapDismissalError);
+		for (const check of ["lens.correctness", "lens.contracts"])
+			await ledger.dismiss(
+				key,
+				{ check, file: "src/big.ts", lines: [[1, 6000]], reason: "generated constants", by: "Ada", at: "t" },
+				context,
+			);
+		const { summary } = await ledger.section(key, context);
+		expect(summary.gaps).toEqual([]);
+		expect(summary.dismissed.map((each) => each.check)).toEqual(["lens.correctness", "lens.contracts"]);
+		const again = await review();
+		expect(coverageCheckOf(again.verdict)).toEqual({ name: "review.coverage", status: "ran" });
+		expect(again.verdict.status).toBe("passed");
+		commit(repo, {
+			"src/big.ts": big().replace('value5999 = "', 'value5999 = "changed '),
+			"src/c.ts": lines(...Array.from({ length: 4000 }, (_, index) => `export const c${index} = ${index};`)),
+		});
+		const reopened = await review();
+		expect(reopened.summary.gaps.some((gap) => gap.file === "src/big.ts")).toBe(true);
+		expect(reopened.verdict.status).toBe("not-reviewed");
 	});
 });
 

@@ -23,6 +23,7 @@ import {
 	type StoredCoverageRecord,
 	type StoredCoverageSegment,
 	type StoredCoverageVoid,
+	type StoredGapDismissal,
 	subtractRanges,
 	type TriageChoice,
 	type UnitField,
@@ -44,6 +45,28 @@ export const CoverageDocument = defineDoc<CoverageState>({
 	fork: "current",
 	initial: () => ({ records: {} }),
 });
+
+/** The maintainer's dismissals of coverage gaps, by the revision key they answer at. */
+export type GapDismissalState = { items: Record<string, StoredGapDismissal[]> };
+
+export const GapDismissalDocument = defineDoc<GapDismissalState>({
+	kind: "melian.coverage-dismissals",
+	version: 1,
+	scope: "conversation",
+	history: "latest",
+	fork: "current",
+	initial: () => ({ items: {} }),
+});
+
+/** A gap dismissal names no gap the review holds, so recording it would answer nothing. */
+export class GapDismissalError extends Error {
+	readonly code = "notAGap";
+
+	constructor(message: string) {
+		super(message);
+		this.name = "GapDismissalError";
+	}
+}
 
 /** The Melian build that writes a coverage record, for diagnosis; it voids nothing. `test/coverage-ledger.test.ts` keeps it in step. */
 export const melianVersion = "0.0.0";
@@ -185,9 +208,78 @@ export class CoverageLedger {
 	}
 
 	/** The coverage record of round `id`, a local round ID such as `r2`, or `undefined` when it wrote none. */
-	async read(id: string, context: Context): Promise<CoverageRecord | undefined> {
+	async read(id: string, context: Context, revision?: string): Promise<CoverageRecord | undefined> {
 		const stored = (await this.harness.snapshot(CoverageDocument, this.root, context))?.records[id];
-		return stored === undefined ? undefined : CoverageRecord.from(stored);
+		if (stored === undefined) return undefined;
+		return CoverageRecord.from(stored, revision === undefined ? [] : await this.dismissals(revision, context));
+	}
+
+	/** The maintainer's dismissals of gaps at `revision`, a {@link Revision.key}. */
+	async dismissals(revision: string, context: Context): Promise<StoredGapDismissal[]> {
+		return structuredClone(
+			(await this.harness.snapshot(GapDismissalDocument, this.root, context))?.items[revision] ?? [],
+		);
+	}
+
+	/**
+	 * Records a maintainer's dismissal of the lines of a gap the current round at `revision` names for one check. It
+	 * answers that check on those lines alone, and the lines stay uncovered; the next review decides the verdict with
+	 * it. Throws {@link GapDismissalError} when the round names no such gap.
+	 */
+	async dismiss(revision: string, dismissal: StoredGapDismissal, context: Context): Promise<void> {
+		const id = (await this.harness.snapshot(RoundsDocument, this.root, context))?.current[revision];
+		const record = id === undefined ? undefined : await this.read(id, context, revision);
+		const gap = record
+			?.gaps()
+			.filter(
+				(each) =>
+					each.check === dismissal.check &&
+					each.file === dismissal.file &&
+					(each.revision ?? "head") === (dismissal.revision ?? "head"),
+			)
+			.reduce<LineRanges>((all, each) => unionRanges(all, each.lines), []);
+		if (gap === undefined || dismissal.lines.length === 0 || subtractRanges(dismissal.lines, gap).length > 0) {
+			throw new GapDismissalError(
+				`the review names no gap for ${dismissal.check} at those lines of ${dismissal.file}; melian findings lists its gaps`,
+			);
+		}
+		const root = await this.harness.root(context);
+		await root.commit(async (tx: Tx) => {
+			const document = await tx.doc(GapDismissalDocument, this.root);
+			document.items[revision] = [...(document.items[revision] ?? []), structuredClone(dismissal)];
+		}, context);
+	}
+
+	/**
+	 * Carries the dismissals at `from`, an earlier round's revision key, to `to`, across `map`, the move between the two
+	 * heads: a dismissal whose named lines the move left alone answers the same lines at the new head, and one any of
+	 * whose lines changed is reopened and left behind.
+	 */
+	async carryDismissals(from: string, to: string, map: Revision, context: Context): Promise<void> {
+		const earlier = await this.dismissals(from, context);
+		const carried = earlier.flatMap((each) => {
+			if (each.revision === "base") return [each];
+			const lines: number[] = [];
+			let path: string | undefined;
+			for (const [first, last] of each.lines)
+				for (let line = first; line <= last; line++) {
+					const moved = map.mapLine(each.file, line);
+					if (moved === undefined) return [];
+					path = moved.path;
+					lines.push(moved.line);
+				}
+			return [{ ...each, file: path ?? each.file, lines: rangesOf(lines) }];
+		});
+		if (carried.length === 0) return;
+		const root = await this.harness.root(context);
+		await root.commit(async (tx: Tx) => {
+			const document = await tx.doc(GapDismissalDocument, this.root);
+			const present = new Set((document.items[to] ?? []).map((each) => JSON.stringify(each)));
+			document.items[to] = [
+				...(document.items[to] ?? []),
+				...carried.filter((each) => !present.has(JSON.stringify(each))),
+			];
+		}, context);
 	}
 
 	/**
@@ -196,11 +288,16 @@ export class CoverageLedger {
 	 */
 	async section(revision: string, context: Context): Promise<{ summary: CoverageSummary; text: string }> {
 		const id = (await this.harness.snapshot(RoundsDocument, this.root, context))?.current[revision];
-		const record = id === undefined ? undefined : await this.read(id, context);
+		const record = id === undefined ? undefined : await this.read(id, context, revision);
 		if (record !== undefined) return { summary: record.summary(), text: record.render() };
 		const reason = `${id ?? "this review"} recorded no coverage, so it covers nothing`;
 		return {
-			summary: { complete: false, rounds: [], gaps: [{ check: coverageCheck, file: "", lines: [], reason }] },
+			summary: {
+				complete: false,
+				rounds: [],
+				gaps: [{ check: coverageCheck, file: "", lines: [], reason }],
+				dismissed: [],
+			},
 			text: `Coverage: incomplete.\n  ${coverageCheck}: ${reason}\n`,
 		};
 	}
