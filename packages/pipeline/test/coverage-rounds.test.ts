@@ -299,4 +299,54 @@ describe("a delta round", () => {
 		});
 		expect(judged(requests)).toEqual([id]);
 	});
+
+	it("keeps the copied verdict of a carried claim the verifier did not judge again, beside one it did", async () => {
+		commit(repo, first);
+		await review({ correctness: [report("src/a.ts", 3), report("src/c.ts", 5), fauxAssistantMessage("Done.")] });
+		commit(repo, { "src/a.ts": numbered(20, "a").replace("a 3\n", "A 3 again\n") });
+		const { key, requests } = await review();
+		expect(judged(requests)).toHaveLength(1);
+		const state = (await harness.snapshot(FindingsDocument, (await harness.root(context)).id, context))!;
+		const verified = Object.values(state.items).flatMap((record) =>
+			Object.keys(record.sightings[key] ?? {})
+				.filter((producer) => producer.startsWith("carried/"))
+				.map((producer) => [
+					record.sightings[key]![producer]!.properties.path,
+					record.verifications?.[key]?.[producer] !== undefined,
+				]),
+		);
+		expect(verified.sort()).toEqual([
+			["src/a.ts", true],
+			["src/c.ts", true],
+		]);
+	});
+
+	it("covers a file an injection attempt sat in once the next round reads it afresh, though the finding stands", async () => {
+		commit(repo, first);
+		const injection = fauxAssistantMessage(
+			fauxToolCall("report_finding", {
+				file: "src/a.ts",
+				line: 3,
+				rule: "melian/injection-attempt",
+				severity: "P1",
+				explanation: { what: "It asks to skip review.", why: "Head text steering a lens.", fix: "Remove it." },
+				failureScenario: "A lens that obeys it skips the file.",
+				evidence: [{ file: "src/a.ts", line: 3, role: "cause" }],
+			}),
+			{ stopReason: "toolUse" },
+		);
+		const one = await review({ correctness: [injection, fauxAssistantMessage("Done.")] });
+		expect(lensRecord(one.verdict, "correctness")).toHaveLength(1);
+		expect(
+			[...(one.verdict.ran ?? []), ...one.verdict.notRun].find((check) => check.name === "review.coverage")?.status,
+		).toBe("skipped");
+		commit(repo, { "src/b.ts": numbered(20, "b").replace("b 9\n", "B 9\n") });
+		const two = await review();
+		expect(
+			[...(two.verdict.ran ?? []), ...two.verdict.notRun].find((check) => check.name === "review.coverage"),
+		).toEqual({
+			name: "review.coverage",
+			status: "ran",
+		});
+	});
 });
