@@ -633,13 +633,16 @@ export class HeadMove {
 
 	/**
 	 * Reads how `to` descends from `from` in the repository at `repoRoot`: `unresolved` when git cannot resolve `from`
-	 * as a commit, `rewritten` when `from` is not an ancestor of `to`, as after a force push or a rebase, `merged` when
+	 * as a commit, or cannot run there at all, `rewritten` when `from` is not an ancestor of `to`, as after a force push or a rebase, `merged` when
 	 * a merge commit sits between them, and otherwise `moved`, with the diff between the two heads under the review's
 	 * own diff flags and rename detection.
 	 */
 	static async read(repoRoot: string, from: string, to: string): Promise<HeadMove> {
-		const resolved = await git(repoRoot, ["rev-parse", "--verify", "--quiet", `${from}^{commit}`]);
-		if (resolved.code !== 0) return new HeadMove("unresolved");
+		// A git that cannot start or a checkout that is gone resolves nothing, which voids as an unknown head does.
+		const resolved = await git(repoRoot, ["rev-parse", "--verify", "--quiet", `${from}^{commit}`]).catch(
+			() => undefined,
+		);
+		if (resolved?.code !== 0) return new HeadMove("unresolved");
 		const ancestor = await git(repoRoot, ["merge-base", "--is-ancestor", from, to]);
 		if (ancestor.code !== 0) return new HeadMove("rewritten");
 		const merges = await gitOutput(repoRoot, ["rev-list", "--merges", `^${from}`, to]);
