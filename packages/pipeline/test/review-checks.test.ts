@@ -171,6 +171,7 @@ describe("review drives checks", { timeout: 60_000 }, () => {
 			["guardrails", "ran"],
 			["static.biome", "ran"],
 			["static.tsc", "ran"],
+			["review.coverage", "ran"],
 		]);
 		const plan = ReviewPlan.resolve({
 			config: defaultConfig,
@@ -248,9 +249,11 @@ describe("review drives checks", { timeout: 60_000 }, () => {
 		const { policy: _, ...options } = await setup();
 		const result = await reviewChangeset({ ...options, checks: [] });
 		expect(result.verdict.status).toBe("not-reviewed");
-		expect(result.verdict.notRun.every((check) => check.status === "skipped" && check.reason === "no record")).toBe(
-			true,
-		);
+		expect(
+			result.verdict.notRun
+				.filter((check) => check.name !== "review.coverage")
+				.every((check) => check.status === "skipped" && check.reason === "no record"),
+		).toBe(true);
 		const root = await options.harness.harness.root(context);
 		expect((await options.harness.harness.snapshot(ChecksDocument, root.id, context))?.tasks ?? {}).toEqual({});
 	});
@@ -261,9 +264,11 @@ describe("review drives checks", { timeout: 60_000 }, () => {
 		const result = await reviewChangeset(options);
 		expect(automatic).not.toHaveBeenCalled();
 		expect(result.verdict.status).toBe("not-reviewed");
-		expect(result.verdict.notRun.every((check) => check.status === "skipped" && check.reason === "no record")).toBe(
-			true,
-		);
+		expect(
+			result.verdict.notRun
+				.filter((check) => check.name !== "review.coverage")
+				.every((check) => check.status === "skipped" && check.reason === "no record"),
+		).toBe(true);
 	});
 
 	it.each(["explicit", "stage", "default"] as const)(
@@ -288,7 +293,9 @@ describe("review drives checks", { timeout: 60_000 }, () => {
 				...(choice === "explicit" ? { tier: "fast" } : {}),
 			});
 			expect(result.verdict.status).toBe("passed");
-			expect(result.verdict.ran!.map(({ name }) => name)).toEqual(choice === "explicit" ? [] : ["guardrails"]);
+			expect(result.verdict.ran!.map(({ name }) => name)).toEqual(
+				choice === "explicit" ? ["review.coverage"] : ["guardrails", "review.coverage"],
+			);
 			expect(automatic).toHaveBeenCalledTimes(1);
 			const [calledHarness, request, calledContext] = automatic.mock.calls[0]!;
 			expect(calledHarness).toBe(options.harness.harness);
@@ -325,7 +332,9 @@ describe("review drives checks", { timeout: 60_000 }, () => {
 			const result = await reviewChangeset({ ...options, harness: raw, models: fake.review, checks: [] });
 			expect(result.verdict.status).toBe("not-reviewed");
 			expect(
-				result.verdict.notRun.every((check) => check.status === "skipped" && check.reason === "no record"),
+				result.verdict.notRun
+					.filter((check) => check.name !== "review.coverage")
+					.every((check) => check.status === "skipped" && check.reason === "no record"),
 			).toBe(true);
 		} finally {
 			await raw.close(context);

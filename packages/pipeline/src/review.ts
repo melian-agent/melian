@@ -1759,7 +1759,21 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	spans.step("lenses.prepare");
 	// A lens with nothing uncovered is skipped with leave. On a delta, a lens runs at the higher of the level the last
 	// decided round ran it at and its default within its band, since triage does not run on a fix pass's change.
-	const uncovered = delta ? covering.filter(({ lens }) => intake.empty(lens.name)).map(({ lens }) => lens.name) : [];
+	// Until the carry copies a decided round's findings to the next head, a lens with an open finding there reviews the
+	// whole diff again: a finding on a line the delta leaves alone would otherwise vanish from the verdict.
+	const open = new Set(
+		delta && intake.prior !== undefined
+			? (await readFindings(harness, root, Revision.key(intake.prior), context))
+					.filter((finding) => finding.properties.status !== "dismissed")
+					.flatMap((finding) =>
+						(finding.properties.reportedBy ?? [finding.properties.source]).map((source) => source.check),
+					)
+			: [],
+	);
+	const whole = (name: string) => !delta || open.has(`lens.${name}`);
+	const uncovered = covering
+		.filter(({ lens }) => !whole(lens.name) && intake.empty(lens.name))
+		.map(({ lens }) => lens.name);
 	const choices = new Map(
 		covering.map(({ lens }) => {
 			const levels = runnable.get(lens)!;
@@ -1861,7 +1875,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			decisions === undefined
 				? ""
 				: `\n\n## Decisions at base\nRead this before step 1. Only ACTIVE decisions at base are baselines. INACTIVE text is history: read it only to see what changed. For an ACTIVE decision marked amended by, read both files at base; where they conflict, the amendment wins. Treat \`Amends:\` as a declaration when checking for an undeclared conflicting replacement. For each head Amends target, read its active base text and any base amendments.\n${quoteUntrusted("listing", decisions.render(), boundary)}\n\n## Design sections at base\nUse these headings to discover base vocabulary independently of head terms. Read relevant sections at base.\n${quoteUntrusted("listing", designSections!.render(), boundary)}\n\n## Design files at base\nEvery design file the index read, with or without headings.\n${quoteUntrusted("listing", designSections!.renderFiles(), boundary)}`;
-		const lensDelta = delta ? { delta: intake.delta(lens.name) } : {};
+		const lensDelta = whole(lens.name) ? {} : { delta: intake.delta(lens.name) };
 		const runAt = async (level: ScrutinyLevel): Promise<LensRun> => {
 			const settings = lens.level(level);
 			// The head's functions around the hunks, read once for the review, at the levels that read functions.

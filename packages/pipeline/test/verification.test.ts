@@ -638,6 +638,7 @@ describe("the verifier", () => {
 						status: "failed",
 						reason: "the verifier left a claim unjudged",
 					}),
+					expect.objectContaining({ name: "review.coverage", status: "skipped" }),
 				],
 			},
 		});
@@ -869,6 +870,7 @@ describe("the verifier", () => {
 						reason: plan.tier("verifier").reason,
 						lineage: { model, wanted, by: "melian.local.yaml", outside: true },
 					}),
+					expect.objectContaining({ name: "review.coverage", status: "skipped" }),
 				],
 			},
 		});
@@ -1320,6 +1322,7 @@ describe("the verifier", () => {
 						status: "failed",
 						reason: "the verifier finished outside its guarded accepted route",
 					}),
+					expect.objectContaining({ name: "review.coverage", status: "skipped" }),
 				],
 			},
 		};
@@ -1437,6 +1440,7 @@ describe("the verifier", () => {
 						reason: "the verifier finished outside its guarded accepted route",
 						lineage: expect.objectContaining({ outside: true, model: backup }),
 					}),
+					expect.objectContaining({ name: "review.coverage", status: "skipped" }),
 				],
 			},
 		});
