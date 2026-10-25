@@ -352,7 +352,7 @@ export class CoverageRecord {
 	}
 
 	#voidReason(check: string, file: string): string | undefined {
-		if (this.stored.checks[check]?.injected?.includes(file))
+		if (this.stored.checks[check]!.injected?.includes(file))
 			return "a melian/injection-attempt finding sits in the file, so no lens covers it until a round rereads it";
 		return this.stored.voids.find(
 			(each) =>
