@@ -18,6 +18,7 @@ import {
 	type ReviewStatus,
 	replyKey,
 	type StoredFinding,
+	type StoredRunDetails,
 	type StoredVerdict,
 	Verdict,
 } from "@melian-agent/core";
@@ -486,6 +487,8 @@ type StoredPublishInput = {
 	target: PublishTarget;
 	lines: Record<string, [number, number][]>;
 	walkthrough?: { enabled: boolean; collapsed: boolean; diagrams: boolean };
+	// The review's run from its stage telemetry, which the ledger shows; absent from a task an older Melian created.
+	run?: StoredRunDetails;
 };
 
 class PublishInput {
@@ -553,7 +556,8 @@ const untrustedWriterStatus: ReviewStatus = {
 function publishTask(provider: ReviewProvider) {
 	return defineTask<StoredPublishInput, { phase: "publish"; legacyTiming?: true }, PublishOutcome>({
 		name: publishTaskName,
-		version: 6,
+		// Version 7 lets the input carry the review's run; an older input has none, and its ledger shows the plan alone.
+		version: 7,
 		migrate: (input, checkpoint, fromVersion) => ({
 			input: PublishInput.upgrade(input, fromVersion),
 			checkpoint:
@@ -971,6 +975,7 @@ function publishTask(provider: ReviewProvider) {
 						publication: { rounds },
 						walkthrough: task.input.walkthrough ?? { enabled: true, collapsed: true, diagrams: true },
 						secret,
+						...(task.input.run === undefined ? {} : { run: structuredClone(task.input.run) }),
 						...(previousLedger === undefined ? {} : { recorded: previousLedger }),
 					});
 					writingLedger = false;
@@ -1162,6 +1167,8 @@ export interface PublishOptions {
 	 */
 	readonly base: string;
 	readonly walkthrough?: { readonly enabled: boolean; readonly collapsed: boolean; readonly diagrams: boolean };
+	/** The review's run, from `StageTelemetry.runDetails`, which the ledger shows as its run details. */
+	readonly run?: StoredRunDetails;
 	readonly context?: Context;
 }
 
@@ -1442,6 +1449,7 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 		target,
 		lines: changeset.revision.diffLines(),
 		...(options.walkthrough === undefined ? {} : { walkthrough: { ...options.walkthrough } }),
+		...(options.run === undefined ? {} : { run: structuredClone(options.run) }),
 	}).toJSON();
 	const taskId = await (await harness.root(context)).commit(
 		(tx) => tx.createTask(publishTask(options.provider), input, { ownership: { kind: "conversation" } }),

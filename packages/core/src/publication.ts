@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import type { StoredVerdict, Verdict } from "./adjudication.ts";
 import type { Finding, FindingDismissal } from "./findings.ts";
+import type { StoredRunDetails } from "./run-details.ts";
 
 /** A repository role returned by a provider's permission lookup. */
 export type RepositoryPermission = "admin" | "maintain" | "write" | "triage" | "read" | "none";
@@ -316,4 +317,6 @@ export interface LedgerDraft {
 	readonly recorded?: PostedLedger;
 	/** The ID of Melian's posted or recovered review on this pull request. */
 	readonly review?: string;
+	/** The current round's run, from its stage telemetry; absent when the host read none. */
+	readonly run?: StoredRunDetails;
 }

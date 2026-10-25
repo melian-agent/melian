@@ -137,7 +137,7 @@ it.each(["melian.check", "melian.decision", "melian.adjudication", "melian.publi
 		expect(settled.state.outcome.status).toBe(kind === "melian.adjudication" ? "failed" : "completed");
 		const record = await storage.task(id, context);
 		expect(record!.version).toBe(
-			{ "melian.check": 3, "melian.decision": 2, "melian.adjudication": 6, "melian.publish": 6 }[kind],
+			{ "melian.check": 3, "melian.decision": 2, "melian.adjudication": 6, "melian.publish": 7 }[kind],
 		);
 		const timing = await storage.findDocument(
 			{

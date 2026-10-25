@@ -14,6 +14,7 @@ import {
 	ReviewPlan,
 	type ReviewProvider,
 	Standards,
+	type StoredRunDetails,
 	userFiles,
 	type Verdict,
 	visibleText,
@@ -480,10 +481,12 @@ export async function publish(
 	// `publish.emoji` is the base's to say, and the base is known only once the pull request is read.
 	const provider = config.publish.emoji === "on" ? reader : await gitHubFor(io.cwd, io.env, { emoji: false });
 	const path = await storagePath(changeset.repoRoot, changeset.id, io.env, false);
+	const storage = await openStorage(path);
 	// Only the publish task: a review a crash interrupted must not resume here and spend tokens on real models.
-	const publishHarness = await openPublishHarness(await openStorage(path), idleModels(io.env), provider);
+	const publishHarness = await openPublishHarness(storage, idleModels(io.env), provider);
 	const { harness } = publishHarness;
 	try {
+		const run = await reviewRun(storage, revisionKey(changeset.revision), io);
 		// A head that moved has no merge base here, and publishReview refuses it for the head before it reads this.
 		const published = await publishReview({
 			harness,
@@ -496,6 +499,7 @@ export async function publish(
 				...config.publish.walkthrough,
 				enabled: options.walkthrough !== false && config.publish.walkthrough.enabled,
 			},
+			...(run === undefined ? {} : { run }),
 		});
 		const parts = [
 			`${published.posted} new ${published.posted === 1 ? "finding" : "findings"}`,
@@ -522,6 +526,22 @@ export async function publish(
 		throw error;
 	} finally {
 		await publishHarness.close(context);
+	}
+}
+
+// The ledger is still worth posting without its run details, so an unreadable record leaves them out and says so.
+async function reviewRun(
+	storage: Awaited<ReturnType<typeof openStorage>>,
+	revision: string,
+	io: Io,
+): Promise<StoredRunDetails | undefined> {
+	try {
+		return await TelemetryReader.open(storage).runDetails(revision);
+	} catch (error) {
+		io.stderr(
+			`melian: Run details unavailable: ${visibleText(error instanceof Error ? error.message : String(error))}\n`,
+		);
+		return undefined;
 	}
 }
 
