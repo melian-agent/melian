@@ -1,4 +1,12 @@
-import { deterministicChecks, type ReasoningValue, type RequestReasoning, visibleText } from "@melian-agent/core";
+import {
+	deterministicChecks,
+	type ReasoningValue,
+	type RequestReasoning,
+	RunDetails,
+	type RunStage,
+	type StoredRunDetails,
+	visibleText,
+} from "@melian-agent/core";
 import { type CheckRunRecord, CheckSources, ChecksDocument } from "./checks.ts";
 import { DecisionDocument } from "./decisions.ts";
 import {
@@ -87,7 +95,61 @@ export type Stage = {
 	usageIncomplete?: number;
 	/** For a model stage, the summed response time of its answers; the rest is tools and orchestration. */
 	modelMs?: number;
+	/** For a lens, the tool calls its tools budget counted. */
+	tools?: number;
+	/** For a lens, its level's token and tool budgets. */
+	limits?: { tokens?: number; tools?: number };
+	/** For a lens, the budget that ended it. */
+	ended?: "tokens" | "tools";
 };
+
+// The run table's name for each stage kind; publication runs in another command, so the table leaves it out.
+const runNames: Readonly<Record<string, string>> = {
+	"melian.check": "check",
+	"melian.triage": "triage",
+	"melian.lens": "lens",
+	"melian.adjudication": "adjudication",
+	"melian.walkthrough": "walkthrough",
+};
+
+function runModels(stage: Stage): string[] {
+	const requests = stage.usage?.requests;
+	if (requests === undefined) return Object.keys(stage.usage?.models ?? {});
+	return [
+		...new Set(
+			requests.map(({ model, reasoning: { requested, providerReported } }) => {
+				const level = requested === "unset" ? "" : ` ${requested}`;
+				const reported =
+					providerReported === undefined || providerReported === requested
+						? ""
+						: ` (reported ${providerReported})`;
+				return `${model}${level}${reported}`;
+			}),
+		),
+	];
+}
+
+function runStage(name: string, stages: readonly Stage[]): RunStage {
+	const [first] = stages;
+	const usage = stages.flatMap((stage) => (stage.usage === undefined ? [] : [stage.usage.total]));
+	const timed = stages.filter((stage) => stage.durationMs !== undefined);
+	return {
+		name,
+		models: [...new Set(stages.flatMap(runModels))],
+		...(timed.length === 0 ? {} : { durationMs: timed.reduce((sum, stage) => sum + stage.durationMs!, 0) }),
+		...(usage.length === 0
+			? {}
+			: {
+					tokens: usage.reduce((sum, each) => sum + each.totalTokens, 0),
+					cacheRead: usage.reduce((sum, each) => sum + each.cacheRead, 0),
+					cost: usage.reduce((sum, each) => sum + each.cost.total, 0),
+				}),
+		outcome: first!.reused ? "reused" : first!.outcome === "completed" ? "ran" : first!.outcome,
+		...(first!.tools === undefined ? {} : { tools: first!.tools }),
+		...(first!.limits === undefined ? {} : { limits: { ...first!.limits } }),
+		...(first!.ended === undefined ? {} : { ended: first!.ended }),
+	};
+}
 
 /** A stretch of a review's wall clock that no span or stage covers. */
 export type Untimed = { startedAt: number; endedAt: number; durationMs: number };
@@ -173,6 +235,39 @@ export class StageTelemetry {
 		};
 	}
 
+	/**
+	 * The run the ledger shows: the review's wall clock, its preparation spans as one row, each check, triage, lens,
+	 * adjudication and walkthrough as a row, and every verification claim in one row.
+	 */
+	runDetails(): StoredRunDetails {
+		const top = (this.prepare?.spans ?? []).filter((span) => span.parent === undefined);
+		const preparation: RunStage[] =
+			top.length === 0
+				? []
+				: [
+						{
+							name: "preparation",
+							models: [],
+							durationMs: top.reduce((sum, span) => sum + span.durationMs, 0),
+							outcome: "ran",
+						},
+					];
+		const claims = this.stages.filter((stage) => stage.name === "melian.verification.candidate");
+		const count = claims.reduce((sum, stage) => sum + stage.subject.split(",").length, 0);
+		const rows = this.stages.flatMap((stage): RunStage[] => {
+			if (stage === claims[0]) return [runStage(`verification ${count} claims`, claims)];
+			const kind = runNames[stage.name];
+			if (kind === undefined) return [];
+			const [subject, , level] = stage.subject.split("@");
+			if (stage.name === "melian.lens") return [{ ...runStage(`lens ${subject}`, [stage]), level: level! }];
+			return [runStage(stage.name === "melian.check" ? `check ${stage.subject}` : kind, [stage])];
+		});
+		return {
+			...(this.prepare === undefined ? {} : { durationMs: this.prepare.endedAt - this.prepare.startedAt }),
+			stages: [...preparation, ...rows],
+		};
+	}
+
 	/** Gaps over a second in the review's wall clock, from its process start to its verdict, that nothing timed. */
 	untimed(): Untimed[] {
 		if (this.prepare === undefined) return [];
@@ -232,9 +327,9 @@ export class StageTelemetry {
 		return `melian: Slowest stages: ${ranked.map((stage) => `${visibleText(stage.name)} ${visibleText(stage.subject)} ${stage.durationMs}ms${stage.reused ? " (reused)" : stage.resumed ? " (resumed)" : ""}`).join("; ")}. Total: ${this.spend()}.\n`;
 	}
 
-	/** The full local timing view. */
+	/** The full local timing view, opening with the summary line the ledger shows. */
 	render(): string {
-		return `${this.stages
+		return `Run: ${visibleText(RunDetails.from(this.runDetails()).summary())}\n${this.stages
 			.map((stage) =>
 				visibleText(
 					[
@@ -289,6 +384,17 @@ export class TelemetryReader {
 	/** The caller owns and closes storage. */
 	static open(storage: Storage): TelemetryReader {
 		return new TelemetryReader(storage);
+	}
+
+	/**
+	 * The revision's run as its last review recorded it, a stage that ended before that review started counting as
+	 * reused; `undefined` when nothing is stored.
+	 */
+	async runDetails(revision: string, context: Context = backgroundContext): Promise<StoredRunDetails | undefined> {
+		const first = await this.read(revision, undefined, context);
+		if (first.stages.length === 0 && first.prepare === undefined) return undefined;
+		if (first.prepare === undefined) return first.runDetails();
+		return (await this.read(revision, first.prepare.startedAt, context)).runDetails();
 	}
 
 	/** Select the revision's stages, marking reuse against the optional call start. */
@@ -547,6 +653,13 @@ export class TelemetryReader {
 			...ending,
 			...this.attachment(start, ending.endedAt, before),
 			...(modelMs === undefined ? {} : { modelMs }),
+			...(name !== "melian.lens" || policy === undefined
+				? {}
+				: {
+						tools: policy.spend?.calls.length ?? 0,
+						...(policy.lens?.limits === undefined ? {} : { limits: { ...policy.lens.limits } }),
+						...(policy.spend?.ended === undefined ? {} : { ended: policy.spend.ended }),
+					}),
 			...(usage === undefined
 				? {}
 				: {
