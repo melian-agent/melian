@@ -657,6 +657,17 @@ describe("markers", () => {
 		expect(body).not.toContain("Callers unavailable for");
 	});
 
+	it("renders a caveat as inert prose on one line, since its reason can come from the change", () => {
+		const caveat =
+			"callers were unavailable for every changed site: @octocat [log in](https://evil.test)\n# Approved <b>";
+		const body = bodyOf(noted([caveat]));
+
+		expect(body).toContain(
+			"\n\nReach: callers were unavailable for every changed site: @\u2060octocat \\[log in\\]\\(https:\u2060//evil.test\\) \\# Approved &lt;b&gt;.\n\nmelian/review:",
+		);
+		expect(body).not.toContain("\n# Approved");
+	});
+
 	it("names each check that left the committed routes, before the checks that did not run", () => {
 		const lineage = { model: "openai/gpt-5.5", wanted: "anthropic/claude-opus-5-5", by: "--model", outside: true };
 		const body = renderReviewBody(
@@ -1060,6 +1071,27 @@ describe("a quiet review body", () => {
 		expect(cut).toContain("1 finding did not fit in this review");
 		expect(cut).toContain(advisories[0]!.id);
 		expect(cut).not.toContain(advisories[1]!.id);
+	});
+
+	it("closes the dismissals fold and keeps the cut note outside it when the body is cut, at the limit and one under", () => {
+		const dismissed = Array.from({ length: 6 }, (_, index) =>
+			dismissedAs(`src/f${index}.ts`, `Reason ${index}: ${"the deployment sets this value. ".repeat(6)}`),
+		);
+		const whole = bodyOf(dismissed);
+		expect(bodyOf(dismissed, [], whole.length)).toBe(whole);
+
+		const note = 'This review was cut to fit GitHub\'s limit; `melian findings "#7"` lists them all.';
+		const fold = whole.indexOf("<details>");
+		// From the smallest cut, which ends before the fold opens and must close nothing, to one under the whole body.
+		for (let limit = fold + note.length + "\n\n</details>".length + 2; limit < whole.length; limit++) {
+			const cut = bodyOf(dismissed, [], limit);
+			expect(cut.length).toBeLessThanOrEqual(limit);
+			expect(cut.split("<details>")).toHaveLength(cut.split("</details>").length);
+			expect(cut.endsWith(`\n\n${note}`)).toBe(true);
+			expect(cut.slice(0, -note.length)).toMatch(/(<\/details>|[^>])\n\n$/);
+		}
+		const first = bodyOf(dismissed, [], fold + note.length + "\n\n</details>".length + 2);
+		expect(first).not.toContain("<details>");
 	});
 
 	it("gives advisories alone no findings heading, since nothing in the body asks for action", () => {

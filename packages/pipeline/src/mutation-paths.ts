@@ -19,9 +19,15 @@ function inDirectory(path: string, directories: ReadonlySet<string>): boolean {
 		.some((segment) => directories.has(segment));
 }
 
-// A test, or a fixture or mock only tests load. The caller query shares it, since nothing calls a test's callbacks.
+// A file whose name marks it a test. The caller query reads only this: a directory name is no evidence that a file is
+// one, and Vitest, which knows, does not run there.
+export function testFileName(path: string): boolean {
+	return testSuffix.test(path);
+}
+
+// A test, or a fixture or mock only tests load, none of which is production code to mutate.
 export function testPath(path: string): boolean {
-	return testSuffix.test(path) || inDirectory(path, testDirectories);
+	return testFileName(path) || inDirectory(path, testDirectories);
 }
 
 export function production(path: string): boolean {

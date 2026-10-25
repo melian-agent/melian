@@ -21,7 +21,7 @@ import {
 	Verdict,
 	type Walkthrough,
 } from "@melian-agent/core";
-import { withLegacyCaveats } from "./caveats.ts";
+import { verdictWithLegacyCaveats, withLegacyCaveats } from "./caveats.ts";
 import { configsFor } from "./configurations.ts";
 import { findingsVersion, type Producer, readFindings, revisionKey, seenBefore } from "./findings.ts";
 import { type Context, type ConversationId, type DocumentReader, defineDoc, defineTask } from "./harness.ts";
@@ -138,15 +138,7 @@ class VerdictState {
 		const verdicts = Object.fromEntries(
 			Object.entries(state.verdicts).map(([revision, verdict]) => {
 				const upgraded = Verdict.upgrade(verdict);
-				if (from >= 13) return [revision, upgraded];
-				return [
-					revision,
-					{
-						...upgraded,
-						notRun: upgraded.notRun.map(withLegacyCaveats),
-						...(upgraded.ran === undefined ? {} : { ran: upgraded.ran.map(withLegacyCaveats) }),
-					},
-				];
+				return [revision, from >= 13 ? upgraded : verdictWithLegacyCaveats(upgraded)];
 			}),
 		);
 		return new VerdictState({

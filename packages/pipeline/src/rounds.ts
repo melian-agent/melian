@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { type StoredVerdict, Verdict } from "@melian-agent/core";
 import { VerdictDocument } from "./adjudication.ts";
+import { verdictWithLegacyCaveats } from "./caveats.ts";
 import { ComparisonDocument } from "./compare.ts";
 import { revisionKey } from "./findings.ts";
 import {
@@ -42,9 +43,20 @@ export class RoundError extends Error {
 }
 
 // Keys are local to this storage; the public ID prefixes them with the changeset ID of its SQLite file.
+// Version 2 reads each round's verdict copy as the verdict document's version 13 reads it, with its caveats.
 export const RoundsDocument = defineDoc<RoundState>({
 	kind: "melian.rounds",
-	version: 1,
+	version: 2,
+	migrate: (value) => {
+		const state = value as RoundState;
+		const items = Object.fromEntries(
+			Object.entries(state.items).map(([key, round]) => [
+				key,
+				round.verdict === undefined ? round : { ...round, verdict: verdictWithLegacyCaveats(round.verdict) },
+			]),
+		);
+		return { ...state, items };
+	},
 	scope: "conversation",
 	history: "latest",
 	fork: "current",
