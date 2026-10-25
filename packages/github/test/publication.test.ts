@@ -979,7 +979,7 @@ describe("a quiet review body", () => {
 			},
 		});
 	};
-	const bodyOf = (findings: Finding[], inBody: Finding[] = []) => {
+	const bodyOf = (findings: Finding[], inBody: Finding[] = [], limit?: number) => {
 		const verdict = new Adjudication({ findings, manifest: [], checks: [], config: defaultConfig }).adjudicate();
 		return renderReviewBody(
 			{
@@ -998,6 +998,7 @@ describe("a quiet review body", () => {
 				secret,
 			},
 			links,
+			limit === undefined ? {} : { limit },
 		);
 	};
 	const shared = "The deployment always sets these values.";
@@ -1015,6 +1016,8 @@ describe("a quiet review body", () => {
 			`- ${shared}\n${group.map((finding) => `  - \`${finding.id}\` \`no-eval\` in \`${finding.properties.path}\``).join("\n")}`,
 		);
 		expect(body).toContain(`- \`${own.id}\` \`no-eval\` in \`src/d.ts\`: Covered by the integration suite.`);
+		expect(body).not.toContain("advisor");
+		expect(body).not.toContain("### ");
 	});
 
 	it("keeps a blocker open and folds the advisories and the dismissals, each under its count", () => {
@@ -1039,5 +1042,28 @@ describe("a quiet review body", () => {
 		const body = bodyOf([advisory, dismissedAs("src/a.ts", shared)]);
 		expect(body).toContain("<summary>1 advisory</summary>");
 		expect(body).toContain("<summary>1 dismissed, 1 reason</summary>");
+	});
+
+	it("cuts the folded advisories before the open findings, and counts what it cut", () => {
+		const blocker = Finding.create({ ...input, file: "src/block.ts" });
+		const advisories = ["src/x.ts", "src/y.ts"].map((file) =>
+			Finding.create({ ...input, file, severity: "P3", resolution: "advisory" }),
+		);
+		const whole = bodyOf([blocker, ...advisories], [blocker]);
+		const last = whole.lastIndexOf("<!-- melian:revision=");
+		const cut = bodyOf([blocker, ...advisories], [blocker], last + 200);
+
+		expect(cut).toContain(blocker.id);
+		expect(cut).toContain("<summary>1 advisory</summary>");
+		expect(cut).toContain("1 finding did not fit in this review");
+		expect(cut).toContain(advisories[0]!.id);
+		expect(cut).not.toContain(advisories[1]!.id);
+	});
+
+	it("gives advisories alone no findings heading, since nothing in the body asks for action", () => {
+		const advisory = Finding.create({ ...input, severity: "P3", resolution: "advisory" });
+		const body = bodyOf([advisory]);
+		expect(body).not.toContain("### ");
+		expect(body).toContain("<summary>1 advisory</summary>");
 	});
 });
