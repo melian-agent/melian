@@ -1,7 +1,7 @@
 import {
-	type CoverageGap,
 	CoverageRecord,
 	coverageProducer,
+	type LedgerGap,
 	type StoredCheckCoverage,
 	type StoredCoverageRecord,
 } from "@melian-agent/core";
@@ -69,7 +69,7 @@ function record(
 	});
 }
 
-const only = (gaps: CoverageGap[]) =>
+const only = (gaps: LedgerGap[]) =>
 	gaps.map(({ check, file, revision, lines, reason }) => ({ check, file, revision, lines, reason }));
 
 describe("CoverageRecord", () => {

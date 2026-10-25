@@ -113,11 +113,11 @@ export {
 	thinkingLevelSchema,
 } from "./config.ts";
 export {
-	type CoverageGap,
 	type CoverageLeave,
 	CoverageRecord,
 	type CoverageSummary,
 	coverageProducer,
+	type LedgerGap,
 	type StoredCheckCoverage,
 	type StoredCoverageLines,
 	type StoredCoverageRecord,

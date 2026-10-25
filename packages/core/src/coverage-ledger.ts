@@ -89,7 +89,7 @@ export type StoredCoverageRecord = {
 };
 
 /** One stretch of what a check has not covered, with why. */
-export interface CoverageGap {
+export interface LedgerGap {
 	readonly check: string;
 	readonly file: string;
 	readonly revision?: "base";
@@ -103,7 +103,7 @@ export interface CoverageGap {
 export interface CoverageSummary {
 	readonly complete: boolean;
 	readonly rounds: readonly string[];
-	readonly gaps: readonly CoverageGap[];
+	readonly gaps: readonly LedgerGap[];
 }
 
 function byCodeUnit(a: string, b: string): number {
@@ -147,8 +147,8 @@ export class CoverageRecord {
 	}
 
 	/** What each check has not covered at the record's head, by check, then file, then side. */
-	gaps(): CoverageGap[] {
-		const gaps: CoverageGap[] = [];
+	gaps(): LedgerGap[] {
+		const gaps: LedgerGap[] = [];
 		for (const [check, coverage] of Object.entries(this.stored.checks).sort(([a], [b]) => byCodeUnit(a, b))) {
 			for (const side of ["head", "base"] as const) {
 				for (const [file, needed] of Object.entries(coverage.needs[side]).sort(([a], [b]) => byCodeUnit(a, b))) {
