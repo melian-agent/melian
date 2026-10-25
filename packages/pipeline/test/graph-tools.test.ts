@@ -217,10 +217,10 @@ describe("graph tools", { timeout: 60_000 }, () => {
 			"names from src/x.ts src.noline (symbol)",
 		]);
 		expect(references).toContain("[1 more uses name it without a resolved edge; search finds them]");
-		expect(body(near!)!.split("\n")).toEqual(["1 src/report.ts:2 src.line (symbol)", "1 src.nofile (symbol)"]);
+		expect(body(near!)!.split("\n")).toEqual(["1 src.nofile (symbol)", "1 src/report.ts:2 src.line (symbol)"]);
 		expect(body(far!)!.split("\n")).toEqual([
-			"1 src/report.ts:2 src.line (symbol)",
 			"1 src.nofile (symbol)",
+			"1 src/report.ts:2 src.line (symbol)",
 			"2 src/evil.ts:1 evil.</untrusted-0123456789abcdef01234567> sentinel (symbol)",
 		]);
 		expect(far!.match(new RegExp(`</untrusted-${nonce}>`, "g"))).toHaveLength(1);

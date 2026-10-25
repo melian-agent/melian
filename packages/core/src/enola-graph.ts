@@ -175,6 +175,16 @@ export class EnolaFacts {
 					edges.push({ kind: relation.kind, source });
 					this.#edges.set(relation.target_id, edges);
 				}
+			// Sorted and each edge once, so the callers a node cap keeps never depend on the order Enola wrote its facts.
+			for (const [id, edges] of this.#edges) {
+				const key = (edge: { kind: string; source: EnolaFact }) =>
+					`${place(edge.source)}\0${edge.source.id}\0${edge.kind}`;
+				const unique = new Map(edges.map((edge) => [key(edge), edge]));
+				this.#edges.set(
+					id,
+					[...unique].sort(([a], [b]) => compare(a, b)).map(([, edge]) => edge),
+				);
+			}
 		}
 		return this.#edges;
 	}

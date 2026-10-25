@@ -166,6 +166,26 @@ it("walks resolved calls and constructions outward to a depth and a node cap", (
 	expect(facts.impact(c!, 0, 10)).toEqual({ reached: [], truncated: false });
 });
 
+it("walks callers in file and line order, whatever order Enola wrote the facts and relations in", () => {
+	const calls = (...ids: string[]) => ids.map((id) => ({ kind: "calls", target: `src.${id}`, target_id: id }));
+	const facts = [
+		{ id: "t", name: "src.t", kind: "symbol", file: "src/t.ts", line: 1 },
+		{ id: "p", name: "src.p", kind: "symbol", file: "src/z.ts", line: 1, relations: calls("t") },
+		{ id: "q", name: "src.q", kind: "symbol", file: "src/a.ts", line: 5, relations: calls("t", "t") },
+		{ id: "r", name: "src.r", kind: "symbol", file: "src/a.ts", line: 2, relations: calls("q", "t") },
+		{ id: "s", name: "src.s", kind: "symbol", file: "src/m.ts", line: 3, relations: calls("t") },
+	];
+	const permuted = facts.map((fact) => ({ ...fact, relations: [...(fact.relations ?? [])].reverse() })).reverse();
+	for (const order of [facts, permuted]) {
+		const graph = EnolaFacts.parse(order.map((fact) => JSON.stringify(fact)).join("\n"));
+		const [t] = graph.definitions("src.t");
+		const ids = (cap: number) => graph.impact(t!, 2, cap).reached.map(({ fact }) => fact.id);
+		expect(ids(2)).toEqual(["r", "q"]);
+		expect(ids(10)).toEqual(["r", "q", "s", "p"]);
+		expect(graph.references(t!).references.map(({ fact }) => fact.id)).toEqual(["r", "q", "s", "p"]);
+	}
+});
+
 it("counts a declaration once when two edges reach it, and never walks back to the target", () => {
 	const facts = EnolaFacts.parse(
 		[
