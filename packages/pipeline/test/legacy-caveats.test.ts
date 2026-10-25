@@ -3,6 +3,7 @@ import { AdjudicationTask, VerdictDocument } from "../src/adjudication.ts";
 import { blindCallers, callersWithLegacyCaveat, lightTriage, withLegacyCaveats } from "../src/caveats.ts";
 import { createReviewRegistry } from "../src/review.ts";
 import { ReviewIndex } from "../src/review-index.ts";
+import { RoundsDocument } from "../src/rounds.ts";
 
 const blind = `${blindCallers}: graph missing`;
 
@@ -93,4 +94,15 @@ it("upgrades a version-5 adjudication input's checks", () => {
 	) => { input: { checks: unknown[] } };
 	const checks = [{ name: "lens.correctness", status: "ran", reason: "Callers unavailable: graph missing" }];
 	expect(migrate({ checks }, { phase: "adjudicate" }, 5).input.checks).toEqual([{ ...checks[0], caveats: [blind] }]);
+});
+
+it("upgrades a version-1 round whose verdict was not yet decided as it was", () => {
+	const migrate = RoundsDocument.definition.migrate!;
+	const undecided = { base: "a", head: "b" };
+	expect(migrate({ sequence: 1, current: {}, items: { one: undecided }, recorded: {} }, 1)).toEqual({
+		sequence: 1,
+		current: {},
+		items: { one: undecided },
+		recorded: {},
+	});
 });

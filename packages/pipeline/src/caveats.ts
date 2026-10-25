@@ -1,3 +1,5 @@
+import type { StoredVerdict } from "@melian-agent/core";
+
 /** The start of the caveat a review states once when no lens saw who calls the changed code. */
 export const blindCallers =
 	"callers were unavailable for every changed site, so no lens saw who calls the changed code";
@@ -41,4 +43,14 @@ export function callersWithLegacyCaveat<
 	if (callers.caveat !== undefined) return callers;
 	const caveat = legacyCaveats(Object.values(callers.notes).flat()).find((each) => each.startsWith(blindCallers));
 	return caveat === undefined ? callers : { ...callers, caveat };
+}
+
+// A verdict stored before caveats, with each check record's caveats read from its notes. The verdict document and each
+// round's copy upgrade through it, since publish refuses a round whose copy differs from the verdict document's.
+export function verdictWithLegacyCaveats(verdict: StoredVerdict): StoredVerdict {
+	return {
+		...verdict,
+		notRun: verdict.notRun.map(withLegacyCaveats),
+		...(verdict.ran === undefined ? {} : { ran: verdict.ran.map(withLegacyCaveats) }),
+	};
 }

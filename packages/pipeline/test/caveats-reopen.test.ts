@@ -1,7 +1,8 @@
 import { copyFileSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Changeset } from "@melian-agent/core";
+import { Changeset, Verdict } from "@melian-agent/core";
+import { renderReviewBody } from "@melian-agent/github";
 import { expect, it } from "vitest";
 import { VerdictDocument } from "../src/adjudication.ts";
 import {
@@ -15,6 +16,7 @@ import {
 } from "../src/harness.ts";
 import { createReviewRegistry } from "../src/review.ts";
 import { ReviewIndex } from "../src/review-index.ts";
+import { RoundsDocument } from "../src/rounds.ts";
 import { createFakeModels, fauxAssistantMessage } from "../src/testing.ts";
 import { crashRepository } from "./fixtures/review-scenario.ts";
 
@@ -182,3 +184,47 @@ function upgraded(kind: string, previous: JsonObject): JsonObject {
 	expect(kind === "melian.verdicts" ? value.verdicts : value.reviews).toBeDefined();
 	return value as JsonObject;
 }
+
+it("reopens main's version-1 rounds with each round's verdict upgraded as the verdict document is", async () => {
+	const directory = realpathSync(mkdtempSync(join(tmpdir(), "melian-caveats-rounds-")));
+	const file = join(directory, "state.sqlite");
+	copyFileSync(new URL("previous.sqlite", fixture), file);
+	const fake = createFakeModels();
+	try {
+		const opened = await openHarness(await openSqliteStorage(file), {
+			models: fake.models,
+			registry: createReviewRegistry(),
+		});
+		try {
+			const root = await opened.root(context);
+			const rounds = (await opened.snapshot(RoundsDocument, root.id, context))!;
+			const verdicts = (await opened.snapshot(VerdictDocument, root.id, context))!;
+			const items = Object.values(rounds.items).filter((round) => round.verdict !== undefined);
+			expect(items.length).toBeGreaterThan(0);
+			for (const round of items) {
+				// Publish refuses a round whose copy differs from the verdict document's, so the two must upgrade alike.
+				expect(Object.values(verdicts.verdicts)).toContainEqual(round.verdict);
+				const body = renderReviewBody(
+					{
+						pullRequest: 7,
+						revision: round.head,
+						base: round.base,
+						fingerprint: "0123456789abcdef",
+						round: 1,
+						verdict: Verdict.from(round.verdict!),
+						findings: [],
+						stillOpen: 0,
+						resolved: [],
+						secret: "11".repeat(32),
+					},
+					{ web: "https://github.com/melian-agent/example" },
+				);
+				expect(body).toContain(`Reach: ${blindHost}.`);
+			}
+		} finally {
+			await opened.close(context);
+		}
+	} finally {
+		rmSync(directory, { recursive: true, force: true });
+	}
+});
