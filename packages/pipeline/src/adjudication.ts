@@ -22,7 +22,7 @@ import {
 	type Walkthrough,
 } from "@melian-agent/core";
 import { configsFor } from "./configurations.ts";
-import { findingsVersion, type Producer, readFindings, revisionKey, seenBefore } from "./findings.ts";
+import { findingsVersion, type Producer, readFindings, seenBefore } from "./findings.ts";
 import { type Context, type ConversationId, type DocumentReader, defineDoc, defineTask } from "./harness.ts";
 import type { StoredBudgetEnd } from "./lens-tools.ts";
 import { ReviewIndex } from "./review-index.ts";
@@ -101,7 +101,7 @@ type StoredProvenance = {
 // recorded before Melian kept it.
 type StoredDecision = { task: number; findingsVersion: number };
 
-// Each revision's verdict, keyed by `revisionKey` of its base and head, on the changeset's root conversation, with what
+// Each revision's verdict, keyed by `Revision.key` of its base and head, on the changeset's root conversation, with what
 // it was decided from and the task that decided it under the same key.
 type StoredVerdictState = {
 	verdicts: Record<string, StoredVerdict>;
@@ -232,7 +232,7 @@ export const AdjudicationTask = defineTask<
 		adjudicate: async (task, runtime, context) => {
 			const timing = await TaskTiming.start(runtime, task.state.checkpoint.legacyTiming, context);
 			const { root, repoRoot, base, head, policy, config, manifest, checks, allowSkip, producers } = task.input;
-			const revision = revisionKey({ base, head });
+			const revision = Revision.key({ base, head });
 			// Read before the findings, so a write that lands between the two reads makes the verdict look older, never
 			// newer, than what it was decided from.
 			const seen = await findingsVersion(runtime, root, revision, context);
@@ -397,7 +397,7 @@ export async function readDecision(
 
 /**
  * The verdict recorded for `revision` on the changeset's root conversation, or `undefined` when that revision has none.
- * `revision` is the {@link revisionKey} of the base and head reviewed, so a pull request retargeted onto another base
+ * `revision` is the {@link Revision.key} of the base and head reviewed, so a pull request retargeted onto another base
  * has a verdict of its own. A copy, so changing it cannot reach the harness's cached document.
  */
 export async function readVerdict(

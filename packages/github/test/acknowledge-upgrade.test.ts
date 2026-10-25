@@ -1,14 +1,13 @@
 import { mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Adjudication, Changeset, defaultConfig, Finding, snippetHash } from "@melian-agent/core";
+import { Adjudication, Changeset, defaultConfig, Finding, Revision, snippetHash } from "@melian-agent/core";
 import { createGitHubProvider } from "@melian-agent/github";
 import {
 	backgroundContext as context,
 	openSqliteStorage,
 	publishReview,
 	readFindings,
-	revisionKey,
 	upsertFinding,
 } from "@melian-agent/pipeline";
 import { expect, it } from "vitest";
@@ -52,12 +51,12 @@ it.each([false, true])(
 				);
 			}, context);
 			await opened.record(
-				revisionKey(Changeset.from(fixture.changeset as Parameters<typeof Changeset.from>[0]).revision),
+				Revision.key(Changeset.from(fixture.changeset as Parameters<typeof Changeset.from>[0]).revision),
 			);
 			await opened.close(context);
 			opened = await RecordedReview.open(await openSqliteStorage(path), scenarioModels().review, provider);
 			const changeset = Changeset.from(fixture.changeset as Parameters<typeof Changeset.from>[0]);
-			const revision = revisionKey(changeset.revision);
+			const revision = Revision.key(changeset.revision);
 			const reread = await opened.harness.root(context);
 			const before = await readFindings(opened.harness, reread.id, revision, context);
 			const notice = before.find((finding) => finding.ruleId === "guardrail/policy-change-review")!;
@@ -116,7 +115,7 @@ it("reopens a preceding-build dismissal through check replacement and publishes 
 	const dir = realpathSync(mkdtempSync(join(tmpdir(), "melian-check-upgrade-")));
 	const path = join(dir, "review.sqlite");
 	const changeset = Changeset.from(fixture.changeset as Parameters<typeof Changeset.from>[0]);
-	const revision = revisionKey(changeset.revision);
+	const revision = Revision.key(changeset.revision);
 	const state: FakeState = {
 		...structuredClone(fixture.state),
 		lines: changeset.revision.diffLines(),

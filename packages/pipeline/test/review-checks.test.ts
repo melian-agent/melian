@@ -11,6 +11,7 @@ import {
 	loadConfig,
 	type MelianConfig,
 	ReviewPlan,
+	Revision,
 } from "@melian-agent/core";
 import {
 	type Context,
@@ -25,7 +26,6 @@ import {
 	type ReviewOptions,
 	readVerdict,
 	reviewChangeset,
-	revisionKey,
 } from "@melian-agent/pipeline";
 import { createFakeModels, fauxAssistantMessage, scriptConversations } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -360,7 +360,7 @@ describe("review drives checks", { timeout: 60_000 }, () => {
 		const raw = options.harness.harness;
 		expect((await raw.inspect(context)).tasks).toEqual([]);
 		expect(
-			await readVerdict(raw, (await raw.root(context)).id, revisionKey(options.changeset.revision), context),
+			await readVerdict(raw, (await raw.root(context)).id, Revision.key(options.changeset.revision), context),
 		).toBeUndefined();
 	});
 	it("resumes after checks committed without running a tool twice", async () => {

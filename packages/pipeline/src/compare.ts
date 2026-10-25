@@ -2,12 +2,13 @@ import {
 	Comparison,
 	type ComparisonEntry,
 	type ExternalImport,
+	Revision,
 	type StoredComparison,
 	type StoredComparisonAdjudication,
 	type StoredVerdict,
 } from "@melian-agent/core";
 import { VerdictDocument } from "./adjudication.ts";
-import { FindingsDocument, revisionKey } from "./findings.ts";
+import { FindingsDocument } from "./findings.ts";
 import {
 	backgroundContext,
 	type Context,
@@ -51,7 +52,7 @@ class StoredComparisons {
 		for (const [key, stored] of Object.entries(this.state.unattributed)) {
 			if (
 				!this.state.legacy[key] &&
-				rounds.some((round) => revisionKey(round.stored) === key && round.stored.mintedAt !== undefined)
+				rounds.some((round) => Revision.key(round.stored) === key && round.stored.mintedAt !== undefined)
 			)
 				continue;
 			this.state.comparisons[`${changeset}.${legacyKey(key)}`] = stored;
@@ -113,7 +114,12 @@ export interface ImportedSource {
 	readonly imported: ExternalImport;
 }
 
-type Revision = { readonly base: string; readonly head: string; readonly target?: string; readonly round?: string };
+type ComparedRevision = {
+	readonly base: string;
+	readonly head: string;
+	readonly target?: string;
+	readonly round?: string;
+};
 
 /**
  * A durable harness over one changeset's storage that reads and records its comparisons with external reviewers. It
@@ -153,7 +159,7 @@ export class CompareHarness {
 	}
 
 	/** Whether the selected round is decided, or the requested unattributed comparison exists. */
-	async reviewed(revision: Revision, context: Context = backgroundContext): Promise<boolean> {
+	async reviewed(revision: ComparedRevision, context: Context = backgroundContext): Promise<boolean> {
 		if (revision.round === "unattributed") return (await this.read(revision, context)) !== undefined;
 		const root = await this.harness.root(context);
 		return root.commit(async (tx) => {
@@ -168,7 +174,7 @@ export class CompareHarness {
 	}
 
 	/** The comparison recorded for the selected round or unattributed revision, or undefined when absent. */
-	async read(revision: Revision, context: Context = backgroundContext): Promise<Comparison | undefined> {
+	async read(revision: ComparedRevision, context: Context = backgroundContext): Promise<Comparison | undefined> {
 		const root = await this.harness.root(context);
 		const rounds = await new RoundReader(this.storage).read(this.changeset, context);
 		const state =
@@ -176,13 +182,13 @@ export class CompareHarness {
 		const stored = StoredComparisons.from(state);
 		stored.attribute(rounds, this.changeset);
 		if (revision.round === "unattributed") {
-			const previous = stored.state.unattributed[revisionKey(revision)];
+			const previous = stored.state.unattributed[Revision.key(revision)];
 			return previous === undefined ? undefined : Comparison.from(previous);
 		}
 		const stateOfRounds = await this.harness.snapshot(RoundsDocument, root.id, context);
 		const id =
 			revision.round ??
-			`${this.changeset}.${stateOfRounds?.current[revisionKey(revision)] ?? legacyKey(revisionKey(revision))}`;
+			`${this.changeset}.${stateOfRounds?.current[Revision.key(revision)] ?? legacyKey(Revision.key(revision))}`;
 		return stored.state.comparisons[id] === undefined ? undefined : Comparison.from(stored.state.comparisons[id]);
 	}
 
@@ -201,7 +207,7 @@ export class CompareHarness {
 	 * Throws {@link CompareError} `notReviewed` when Melian has no review of the revision.
 	 */
 	importFindings(
-		revision: Revision,
+		revision: ComparedRevision,
 		sources: readonly ImportedSource[],
 		at: string,
 		context: Context = backgroundContext,
@@ -221,7 +227,7 @@ export class CompareHarness {
 	 * ID the comparison does not hold, and {@link CompareError} `notReviewed` when Melian has no review of the revision.
 	 */
 	match(
-		revision: Revision,
+		revision: ComparedRevision,
 		pair: { readonly external: string; readonly melian: string },
 		hand: { readonly by: string; readonly at: string },
 		context: Context = backgroundContext,
@@ -235,7 +241,7 @@ export class CompareHarness {
 
 	/** Records that an external finding and a Melian finding are not one defect, as {@link CompareHarness.match} does. */
 	unmatch(
-		revision: Revision,
+		revision: ComparedRevision,
 		pair: { readonly external: string; readonly melian: string },
 		hand: { readonly by: string; readonly at: string },
 		context: Context = backgroundContext,
@@ -249,7 +255,7 @@ export class CompareHarness {
 
 	/** Records a local comparison judgement in one commit; never changes the verdict or lifecycle. */
 	async adjudicate(
-		revision: Revision,
+		revision: ComparedRevision,
 		id: string,
 		judgement: StoredComparisonAdjudication,
 		context: Context = backgroundContext,
@@ -300,8 +306,8 @@ export class CompareHarness {
 		return JSON.parse(JSON.stringify(document.verdicts[key]!)) as StoredVerdict;
 	}
 
-	private async selected(tx: Tx, root: ConversationId, revision: Revision): Promise<Round> {
-		const key = revisionKey(revision);
+	private async selected(tx: Tx, root: ConversationId, revision: ComparedRevision): Promise<Round> {
+		const key = Revision.key(revision);
 		const state = await tx.doc(RoundsDocument, root);
 		const local =
 			revision.round === undefined
@@ -323,18 +329,18 @@ export class CompareHarness {
 				`Melian has no decided round ${revision.round ?? key} to compare against; run melian review again`,
 			);
 		if (
-			(state.current[revisionKey(stored)] ?? legacyKey(revisionKey(stored))) === local &&
-			(await this.currentVerdict(tx, root, revisionKey(stored))) === undefined
+			(state.current[Revision.key(stored)] ?? legacyKey(Revision.key(stored))) === local &&
+			(await this.currentVerdict(tx, root, Revision.key(stored))) === undefined
 		)
 			throw new CompareError(
 				"notReviewed",
-				`Melian has no current, decided review of ${revisionKey(stored)} to compare against; run melian review again`,
+				`Melian has no current, decided review of ${Revision.key(stored)} to compare against; run melian review again`,
 			);
 		return new Round(`${this.changeset}.${local}`, JSON.parse(JSON.stringify(stored)));
 	}
 
 	private async update(
-		revision: Revision,
+		revision: ComparedRevision,
 		change: (comparison: Comparison, entries: ComparisonEntry[]) => void,
 		context: Context,
 	): Promise<Comparison> {
@@ -342,14 +348,14 @@ export class CompareHarness {
 		return root.commit(async (tx) => {
 			const round = revision.round === "unattributed" ? undefined : await this.selected(tx, root.id, revision);
 			const document = await tx.doc(ComparisonDocument, root.id);
-			const state = await new RoundWriter(tx, root.id).preserve(revisionKey(round?.stored ?? revision));
+			const state = await new RoundWriter(tx, root.id).preserve(Revision.key(round?.stored ?? revision));
 			const rounds = Object.entries(state.items).map(
 				([key, stored]) => new Round(`${this.changeset}.${key}`, JSON.parse(JSON.stringify(stored))),
 			);
 			const stored = StoredComparisons.from(JSON.parse(JSON.stringify(document)));
 			stored.attribute(rounds, this.changeset);
 			const comparisons = round === undefined ? stored.state.unattributed : stored.state.comparisons;
-			const key = round?.id ?? revisionKey(revision);
+			const key = round?.id ?? Revision.key(revision);
 			const previous = comparisons[key];
 			if (round === undefined && previous === undefined)
 				throw new CompareError("notReviewed", `Melian has no unattributed comparison for ${key}`);

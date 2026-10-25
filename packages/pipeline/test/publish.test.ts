@@ -1,5 +1,13 @@
 import { rmSync } from "node:fs";
-import { Adjudication, Changeset, defaultConfig, dismissalVersion, Finding, replyKey } from "@melian-agent/core";
+import {
+	Adjudication,
+	Changeset,
+	defaultConfig,
+	dismissalVersion,
+	Finding,
+	Revision,
+	replyKey,
+} from "@melian-agent/core";
 import { createGitHubProvider, marker } from "@melian-agent/github";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeGitHub } from "../../github/test/fixtures/fake-github.ts";
@@ -7,7 +15,6 @@ import previous from "../../github/test/fixtures/publish-v4.json" with { type: "
 import { moveTo, pullRequestState } from "../../github/test/fixtures/scenario.ts";
 import { VerdictDocument } from "../src/adjudication.ts";
 import { PublishError } from "../src/errors.ts";
-import { revisionKey } from "../src/findings.ts";
 import {
 	type Conversation,
 	backgroundContext as context,
@@ -65,7 +72,7 @@ describe("publication planning recovery", () => {
 		for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
 		repo = baseAndHead({ "src/a.ts": "old\n" }, { "src/a.ts": "new\n" });
 		const changeset = await Changeset.resolve(repo, "main...feature");
-		revision = revisionKey(changeset.revision);
+		revision = Revision.key(changeset.revision);
 		state = pullRequestState();
 		moveTo(state, changeset);
 		provider = createGitHubProvider({
@@ -872,7 +879,7 @@ it.each(["current", "pending", "failed task"])(
 		for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
 		repo = baseAndHead({ "src/a.ts": "old\n" }, { "src/a.ts": "new\n" });
 		const changeset = await Changeset.resolve(repo, "main...feature");
-		const revision = revisionKey(changeset.revision);
+		const revision = Revision.key(changeset.revision);
 		const state = pullRequestState();
 		moveTo(state, changeset);
 		const provider = createGitHubProvider({
@@ -1006,7 +1013,7 @@ it.each(["stale", "resumed stale", "failed", "resumed failed", "aborted", "super
 		for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
 		repo = baseAndHead({ "src/a.ts": "old\n" }, { "src/a.ts": "new\n" });
 		const changeset = await Changeset.resolve(repo, "main...feature");
-		const revision = revisionKey(changeset.revision);
+		const revision = Revision.key(changeset.revision);
 		const state = pullRequestState();
 		moveTo(state, changeset);
 		const provider = createGitHubProvider({

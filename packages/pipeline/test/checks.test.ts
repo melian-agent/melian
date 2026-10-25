@@ -10,6 +10,7 @@ import {
 	loadConfig,
 	normaliseEnolaSarif,
 	type RepositorySource,
+	Revision,
 	ToolManifest,
 } from "@melian-agent/core";
 import {
@@ -25,7 +26,6 @@ import {
 	readFindings,
 	readVerdict,
 	reviewChangeset,
-	revisionKey,
 	runChecks,
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
@@ -248,7 +248,7 @@ describe("runChecks", () => {
 			"src/fixed.ts": lines("export const fixed: number = 1;"),
 		});
 		const { harness, root, run, records } = await checks(base, head);
-		const findings = await readFindings(harness, root.id, revisionKey({ base, head }), context);
+		const findings = await readFindings(harness, root.id, Revision.key({ base, head }), context);
 		// Each static record names the tool version its findings name, so a review counts only that version's sightings.
 		const versionOf = (prefix: string) =>
 			findings.find((finding) => finding.ruleId.startsWith(prefix))!.properties.source.version;
@@ -304,7 +304,7 @@ describe("runChecks", () => {
 			["static.biome", "failed", "timeout"],
 			["static.tsc", "failed", "toolFailed"],
 		]);
-		const findings = await readFindings(harness, root.id, revisionKey({ base, head }), context);
+		const findings = await readFindings(harness, root.id, Revision.key({ base, head }), context);
 		expect(findings.map((finding) => finding.ruleId)).toEqual(["guardrail/forbidden-paths"]);
 		// Asking again finds the run already done instead of running the tools a second time.
 		expect((await runChecks(harness, input, context)).records).toEqual(records);
@@ -391,7 +391,7 @@ describe("runChecks", () => {
 		const head = commit(repo, { "dist/a.js": lines("built") });
 		const broken = commit(repo, { "melian.yaml": lines(rule, "unknown: key") });
 		const { harness, root, input } = await checks(base, head);
-		const revision = revisionKey({ base, head });
+		const revision = Revision.key({ base, head });
 		expect((await readFindings(harness, root.id, revision, context)).map((finding) => finding.ruleId)).toEqual([
 			"guardrail/forbidden-paths",
 		]);
@@ -496,7 +496,7 @@ describe("runChecks feeding reviewChangeset", () => {
 			});
 			expect(verdict.status).toBe("passed");
 			expect(verdict.ran).toEqual([record]);
-			const stored = await readVerdict(harness, root.id, revisionKey({ base, head }), context);
+			const stored = await readVerdict(harness, root.id, Revision.key({ base, head }), context);
 			expect(stored?.toJSON().ran).toEqual([record]);
 		} finally {
 			runner.mockRestore();

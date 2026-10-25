@@ -1,8 +1,7 @@
 import { createHash } from "node:crypto";
-import { type StoredVerdict, Verdict } from "@melian-agent/core";
+import { Revision, type StoredVerdict, Verdict } from "@melian-agent/core";
 import { VerdictDocument } from "./adjudication.ts";
 import { ComparisonDocument } from "./compare.ts";
-import { revisionKey } from "./findings.ts";
 import {
 	backgroundContext,
 	type Context,
@@ -56,10 +55,11 @@ export function legacyKey(revision: string): string {
 }
 
 function legacyRound(key: string, verdict?: StoredVerdict, provenance?: Provenance): StoredRound {
-	const [base, head] = key.split("..");
+	// A head-only key from before revisions had bases names no base round.
+	const sides = Revision.parseKey(key) ?? { base: key, head: "" };
 	return {
-		base: base!,
-		head: head!,
+		base: sides.base,
+		head: sides.head,
 		tasks: [],
 		...(verdict === undefined ? {} : { verdict }),
 		...(provenance === undefined ? {} : { provenance }),
@@ -81,7 +81,7 @@ export class RoundWriter {
 		const comparisons = await this.tx.doc(ComparisonDocument, this.root);
 		if (
 			Object.hasOwn(comparisons.unattributed, revision) &&
-			!Object.values(state.items).some((round) => revisionKey(round) === revision && round.mintedAt !== undefined)
+			!Object.values(state.items).some((round) => Revision.key(round) === revision && round.mintedAt !== undefined)
 		)
 			comparisons.legacy[revision] = true;
 		if (state.recorded[revision]) return state;
@@ -89,7 +89,7 @@ export class RoundWriter {
 		if (
 			Object.hasOwn(live.verdicts, revision) ||
 			Object.hasOwn(comparisons.unattributed, revision) ||
-			Object.values(comparisons.comparisons).some((comparison) => revisionKey(comparison) === revision)
+			Object.values(comparisons.comparisons).some((comparison) => Revision.key(comparison) === revision)
 		) {
 			const key = legacyKey(revision);
 			state.items[key] = legacyRound(revision, live.verdicts[revision], live.provenance?.[revision]);
@@ -202,7 +202,7 @@ export class RoundReader {
 		const items = structuredClone(state.items);
 		for (const key of new Set([
 			...Object.keys(live?.verdicts ?? {}),
-			...Object.values(comparisons?.comparisons ?? {}).map((comparison) => revisionKey(comparison)),
+			...Object.values(comparisons?.comparisons ?? {}).map((comparison) => Revision.key(comparison)),
 			...Object.keys(comparisons?.unattributed ?? {}),
 		])) {
 			if (state.recorded[key]) continue;

@@ -1,7 +1,7 @@
 import { mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Changeset } from "@melian-agent/core";
+import { Changeset, Revision } from "@melian-agent/core";
 import {
 	checksExtension,
 	backgroundContext as context,
@@ -12,7 +12,6 @@ import {
 	openHarness,
 	openSqliteStorage,
 	readFindings,
-	revisionKey,
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, expect, it, vi } from "vitest";
@@ -93,7 +92,7 @@ it("reopens a version-1 check with its input intact and no invented timing start
 	expect((await second.snapshot(ChecksDocument, root.id, context))!.runs[input.run]).toEqual({
 		guardrails: { name: "guardrails", status: "ran", findings: 1, notes: [] },
 	});
-	const findings = await readFindings(second, root.id, revisionKey(changeset.revision), context);
+	const findings = await readFindings(second, root.id, Revision.key(changeset.revision), context);
 	expect(findings).toHaveLength(1);
 	expect(findings[0]!.ruleId).toBe("guardrail/forbidden-patterns");
 	const timing = await second.snapshot(TimingDocument, root.id, String(id), context);

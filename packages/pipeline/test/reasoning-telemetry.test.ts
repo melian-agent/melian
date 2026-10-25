@@ -1,7 +1,7 @@
 import { mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Changeset, defaultConfig, Lens, type ReasoningSettings } from "@melian-agent/core";
+import { Changeset, defaultConfig, Lens, type ReasoningSettings, Revision } from "@melian-agent/core";
 import { FallbackDecider } from "@melian-agent/decisions";
 import {
 	type ConversationId,
@@ -15,7 +15,6 @@ import {
 	openSqliteStorage,
 	RouteTextModel,
 	reviewChangeset,
-	revisionKey,
 	StageTelemetry,
 	summarizeReview,
 	TelemetryReader,
@@ -337,7 +336,7 @@ it.each(["melian.lens", "melian.verification.candidate", "melian.walkthrough", "
 			};
 			await reviewChangeset(options);
 			await summarizeReview({ ...options, harness: opened.harness });
-			const telemetry = await TelemetryReader.open(storage).read(revisionKey(changeset.revision));
+			const telemetry = await TelemetryReader.open(storage).read(Revision.key(changeset.revision));
 			const row = telemetry.stages.find((stage) => stage.name === (kind === "failover" ? "melian.lens" : kind))!;
 			expect(row).toBeDefined();
 			expect(row.usage?.requests?.length).toBeGreaterThan(0);
@@ -374,7 +373,7 @@ it.each(["melian.lens", "melian.verification.candidate", "melian.walkthrough", "
 			const count = received.length;
 			await reviewChangeset(options);
 			expect(received).toHaveLength(count);
-			expect((await TelemetryReader.open(storage).read(revisionKey(changeset.revision))).total).toEqual(
+			expect((await TelemetryReader.open(storage).read(Revision.key(changeset.revision))).total).toEqual(
 				telemetry.total,
 			);
 		} finally {
@@ -861,7 +860,7 @@ it("reads older conversation usage without manufacturing reasoning", async () =>
 				models: { heavy: { model: `${ref.provider}/${ref.modelId}` } },
 			},
 		});
-		const telemetry = await TelemetryReader.open(storage).read(revisionKey(changeset.revision));
+		const telemetry = await TelemetryReader.open(storage).read(Revision.key(changeset.revision));
 		const lens = telemetry.stages.find((stage) => stage.name === "melian.lens")!;
 		const conversation = lens.conversation! as ConversationId;
 		expect(

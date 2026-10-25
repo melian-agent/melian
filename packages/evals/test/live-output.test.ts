@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { Changeset } from "@melian-agent/core";
-import { revisionKey, StageTelemetry, TokenUsage } from "@melian-agent/pipeline";
+import { Changeset, Revision } from "@melian-agent/core";
+import { StageTelemetry, TokenUsage } from "@melian-agent/pipeline";
 import {
 	createFakeModels,
 	fauxAssistantMessage,
@@ -252,7 +252,7 @@ it("prints the detached usage returned by a successful lens golden", async () =>
 		}
 		expect(resolving).toHaveBeenCalledExactlyOnceWith(expect.any(String), "main...feature");
 		const changeset = await resolving.mock.results[0]!.value;
-		expect(record.revision).toBe(revisionKey(changeset.revision));
+		expect(record.revision).toBe(Revision.key(changeset.revision));
 		expect(record.total!.total.totalTokens).toBeGreaterThan(0);
 		expect(record.total!.total.cost.total).toBe(0);
 		expect(record.usageUnavailable).toEqual([]);
@@ -390,7 +390,7 @@ it.each([
 			expect(verifier.usage!.total.totalTokens).toBeGreaterThan(0);
 			expect(resolving).toHaveBeenCalledExactlyOnceWith(expect.any(String), "main...feature");
 			const changeset = await resolving.mock.results[0]!.value;
-			expect(record.revision).toBe(revisionKey(changeset.revision));
+			expect(record.revision).toBe(Revision.key(changeset.revision));
 			expect(Object.keys(record.total!.models).sort()).toEqual([
 				"eval-judge/separate",
 				"verifier-eval-finder/finder",

@@ -6,6 +6,7 @@ import {
 	Finding,
 	Lens,
 	ReviewPlan,
+	Revision,
 	type Verification,
 	VerificationState,
 } from "@melian-agent/core";
@@ -23,7 +24,6 @@ import {
 	type Review,
 	readFindings,
 	reviewChangeset,
-	revisionKey,
 	type TaskId,
 	unlockCredentials,
 	upsertFinding,
@@ -644,7 +644,7 @@ describe("the verifier", () => {
 		expect(requests[verifierMarker]).toHaveLength(2);
 		expect(systemPromptOf(requests[verifierMarker]![0]!)).toContain("Claim c2 finding");
 		const root = await harness.root(context);
-		const revision = revisionKey(changeset.revision);
+		const revision = Revision.key(changeset.revision);
 		const findings = await readFindings(harness, root.id, revision, context);
 		expect(findings).toHaveLength(2);
 		expect(findings.filter((finding) => finding.properties.verification?.verdict === "refuted")).toHaveLength(1);
@@ -760,7 +760,7 @@ describe("the verifier", () => {
 		expect(textOf(results[0]!)).toContain(reason);
 		const root = await harness.root(context);
 		expect(
-			(await readFindings(harness, root.id, revisionKey(changeset.revision), context))[0]!.properties.verification,
+			(await readFindings(harness, root.id, Revision.key(changeset.revision), context))[0]!.properties.verification,
 		).toBeUndefined();
 	});
 	it("quotes evidence-read errors for instruction-like repository paths", async () => {
@@ -917,7 +917,7 @@ describe("the verifier", () => {
 		scripts(verdict);
 		await review();
 		const root = await harness.root(context);
-		const revision = revisionKey(changeset.revision);
+		const revision = Revision.key(changeset.revision);
 		const previous = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!;
 		expect(previous.verification).toBeDefined();
 		expect((await readFindings(harness, root.id, revision, context))[0]!.properties.verification?.verdict).toBe(
@@ -989,7 +989,7 @@ describe("the verifier", () => {
 		scripts();
 		await review(false, undefined, true);
 		const root = await harness.root(context);
-		const revision = revisionKey(changeset.revision);
+		const revision = Revision.key(changeset.revision);
 		const entry = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!;
 		const original = await root.commit((tx) => tx.task(entry.task as TaskId), context);
 		const stored = structuredClone(original!.input) as {
@@ -1023,7 +1023,7 @@ describe("the verifier", () => {
 		expect(requests[verifierMarker]).toHaveLength(2);
 		const root = await harness.root(context);
 		const index = await harness.snapshot(ReviewIndex, root.id, context);
-		expect(index?.reviews[revisionKey(changeset.revision)]?.verification).toBeDefined();
+		expect(index?.reviews[Revision.key(changeset.revision)]?.verification).toBeDefined();
 	});
 	it("builds the verifier route of a repeat review without running a named credential's command", async () => {
 		scripts();
@@ -1086,7 +1086,7 @@ describe("the verifier", () => {
 		]);
 		await expect(review()).rejects.toMatchObject({ code: "verifierFailed" });
 		const root = await harness.root(context);
-		const revision = revisionKey(changeset.revision);
+		const revision = Revision.key(changeset.revision);
 		const previous = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.verification!;
 		expect((await readFindings(harness, root.id, revision, context))[0]!.properties.verification?.verdict).toBe(
 			"confirmed",
@@ -1156,7 +1156,7 @@ describe("the verifier", () => {
 		try {
 			await adjudicationEntered.promise;
 			const root = await harness.root(context);
-			const revision = revisionKey(changeset.revision);
+			const revision = Revision.key(changeset.revision);
 			const before = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!;
 			const old = await harness.getTask(before.adjudication!.task as TaskId, context);
 			expect(old!.state.status).not.toBe("terminal");
@@ -1202,7 +1202,7 @@ describe("the verifier", () => {
 		]);
 		await expect(review()).rejects.toMatchObject({ code: "verifierFailed" });
 		const root = await harness.root(context);
-		const revision = revisionKey(changeset.revision);
+		const revision = Revision.key(changeset.revision);
 		const findings = await readFindings(harness, root.id, revision, context);
 		await root.commit(
 			(tx) =>
@@ -1325,7 +1325,7 @@ describe("the verifier", () => {
 		};
 		await expect(review(false, plan)).rejects.toMatchObject(failure);
 		const root = await harness.root(context);
-		const revision = revisionKey(changeset.revision);
+		const revision = Revision.key(changeset.revision);
 		const before = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!;
 		const finished = await harness.getTask(before.verification!.task as TaskId, context);
 		expect(finished!.state).toMatchObject({
@@ -1414,7 +1414,7 @@ describe("the verifier", () => {
 			failure = error;
 		}
 		const root = await harness.root(context);
-		const revision = revisionKey(changeset.revision);
+		const revision = Revision.key(changeset.revision);
 		const entry = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!;
 		const finished = await harness.getTask(entry.verification!.task as TaskId, context);
 		if (finished?.state.status !== "terminal" || finished.state.outcome.status !== "completed")
@@ -1460,7 +1460,7 @@ describe("the verifier", () => {
 		]);
 		await expect(review()).rejects.toMatchObject({ code: "verifierFailed" });
 		const root = await harness.root(context);
-		const revision = revisionKey(changeset.revision);
+		const revision = Revision.key(changeset.revision);
 		const before = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!;
 		expect((await harness.snapshot(RoundsDocument, root.id, context))?.sequence).toBe(1);
 		await expect(review()).rejects.toMatchObject({ code: "verifierFailed" });
@@ -1581,7 +1581,7 @@ describe("the verifier", () => {
 		expect(requests[verifierMarker]).toHaveLength(2);
 		const root = await harness.root(context);
 		expect(
-			(await readFindings(harness, root.id, revisionKey(changeset.revision), context))[0]!.properties.verification,
+			(await readFindings(harness, root.id, Revision.key(changeset.revision), context))[0]!.properties.verification,
 		).toBeUndefined();
 	});
 });
@@ -2145,7 +2145,7 @@ describe("lowering a severity through report_verdict", () => {
 				replies: [
 					async (messages) => {
 						const root = await harness.root(context);
-						const revision = revisionKey(changeset.revision);
+						const revision = Revision.key(changeset.revision);
 						const [seen] = await readFindings(harness, root.id, revision, context);
 						await root.commit((tx) => clearSightings(tx, root.id, revision, [seen!.properties.source]), context);
 						return scriptVerifier(messages);
@@ -2227,7 +2227,7 @@ describe("verification ownership and budgets", () => {
 			},
 		]);
 		const root = await harness.root(context);
-		const revision = revisionKey(changeset.revision);
+		const revision = Revision.key(changeset.revision);
 		const selection = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.lenses;
 		const task = (await startVerification(harness, stored, selection, true, context))!;
 		expect((await harness.waitForTask(task, context)).state.outcome).toMatchObject({ status: "completed" });
@@ -2249,7 +2249,7 @@ describe("verification ownership and budgets", () => {
 			{ match: verifierMarker, replies: [(messages) => scriptVerifier(messages), fauxAssistantMessage("Done.")] },
 		]);
 		const root = await harness.root(context);
-		const revision = revisionKey(changeset.revision);
+		const revision = Revision.key(changeset.revision);
 		const selection = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.lenses;
 		const task = (await startVerification(harness, stored, selection, true, context))!;
 		await harness.waitForTask(task, context);
@@ -2277,7 +2277,7 @@ describe("verification ownership and budgets", () => {
 			}),
 		);
 		const root = await harness.root(context);
-		const revision = revisionKey(changeset.revision);
+		const revision = Revision.key(changeset.revision);
 		await root.commit(async (tx) => {
 			for (const finding of findings) await upsertFinding(tx, root.id, finding, revision);
 		}, context);
@@ -2331,7 +2331,7 @@ describe("verification ownership and budgets", () => {
 		const stored = await input();
 		stored.version = "v1";
 		stored.candidates[0]!.budget.tools = 20;
-		const revision = revisionKey(changeset.revision);
+		const revision = Revision.key(changeset.revision);
 		const selection = (await harness.snapshot(ReviewIndex, stored.root, context))!.reviews[revision]!.lenses;
 		scripts("refuted");
 		// The review that built the input left a verification task under the verifier's own version.
@@ -2369,7 +2369,7 @@ describe("verification ownership and budgets", () => {
 		const stored = await input();
 		stored.version = "v1";
 		stored.candidates[0]!.budget.tools = 20;
-		const revision = revisionKey(changeset.revision);
+		const revision = Revision.key(changeset.revision);
 		const selection = (await harness.snapshot(ReviewIndex, stored.root, context))!.reviews[revision]!.lenses;
 		scripts();
 		const first = (await startVerification(harness, stored, selection, false, context))!;
@@ -2389,7 +2389,7 @@ describe("verification ownership and budgets", () => {
 		const stored = await input();
 		stored.version = "v1";
 		stored.candidates[0]!.budget.tools = 20;
-		const revision = revisionKey(changeset.revision);
+		const revision = Revision.key(changeset.revision);
 		const selection = (await harness.snapshot(ReviewIndex, stored.root, context))!.reviews[revision]!.lenses;
 		const release = Promise.withResolvers<void>();
 		scriptConversations(fake, [
@@ -2419,7 +2419,7 @@ describe("verification ownership and budgets", () => {
 		const stored = await input();
 		stored.version = "v1";
 		stored.candidates[0]!.budget.tools = 20;
-		const revision = revisionKey(changeset.revision);
+		const revision = Revision.key(changeset.revision);
 		const selection = (await harness.snapshot(ReviewIndex, stored.root, context))!.reviews[revision]!.lenses;
 		const firstRequests = scripts("refuted");
 		const first = (await startVerification(harness, stored, selection, false, context))!;
@@ -2450,7 +2450,7 @@ describe("verification ownership and budgets", () => {
 			const stored = await input();
 			stored.candidates[0]!.budget.tools = 20;
 			const root = await harness.root(context);
-			const revision = revisionKey(changeset.revision);
+			const revision = Revision.key(changeset.revision);
 			const selection = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.lenses;
 			scripts();
 			const first = (await startVerification(harness, stored, selection, false, context))!;
@@ -2535,7 +2535,7 @@ describe("verification ownership and budgets", () => {
 			},
 		]);
 		const root = await harness.root(context);
-		const revision = revisionKey(changeset.revision);
+		const revision = Revision.key(changeset.revision);
 		const selection = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.lenses;
 		const first = (await startVerification(harness, stored, selection, false, context))!;
 		const firstFinished = harness.waitForTask(first, context);
@@ -2581,7 +2581,7 @@ describe("verification ownership and budgets", () => {
 			},
 		]);
 		const root = await harness.root(context);
-		const revision = revisionKey(changeset.revision);
+		const revision = Revision.key(changeset.revision);
 		const selection = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.lenses;
 		const id = (await startVerification(harness, stored, selection, false, context))!;
 		expect((await harness.waitForTask(id, context)).state.outcome).toMatchObject({
@@ -2624,7 +2624,7 @@ describe("verification ownership and budgets", () => {
 			},
 		]);
 		const root = await harness.root(context);
-		const revision = revisionKey(changeset.revision);
+		const revision = Revision.key(changeset.revision);
 		const selection = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.lenses;
 		const id = (await startVerification(harness, stored, selection, false, context))!;
 		expect((await harness.waitForTask(id, context)).state.outcome).toMatchObject({
@@ -2653,7 +2653,7 @@ describe("verification ownership and budgets", () => {
 		const root = await harness.root(context);
 		const id = await root.commit(async (tx) => {
 			const created = await tx.createTask(VerificationTask, stored, { ownership: { kind: "conversation" } });
-			const entry = (await tx.doc(ReviewIndex, root.id)).reviews[revisionKey(changeset.revision)]!;
+			const entry = (await tx.doc(ReviewIndex, root.id)).reviews[Revision.key(changeset.revision)]!;
 			entry.verification = { task: created, input: "budget" };
 			return created;
 		}, context);

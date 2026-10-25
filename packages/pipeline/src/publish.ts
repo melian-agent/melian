@@ -16,6 +16,7 @@ import {
 	type PullRequest,
 	type ReviewProvider,
 	type ReviewStatus,
+	Revision,
 	replyKey,
 	type StoredFinding,
 	type StoredVerdict,
@@ -23,7 +24,7 @@ import {
 } from "@melian-agent/core";
 import { VerdictDocument, type VerdictProvenance } from "./adjudication.ts";
 import { PublishError } from "./errors.ts";
-import { FindingsDocument, revisionKey } from "./findings.ts";
+import { FindingsDocument } from "./findings.ts";
 import {
 	backgroundContext,
 	type Context,
@@ -61,7 +62,7 @@ type ResolvedEntry = PublishedEntry & { id: string };
 // What one round of a revision will post, committed before posting so a rerun posts exactly this: the verdict it
 // renders as well as its findings, since the head's verdict can change before a failed round is posted again.
 type PendingRound = {
-	// The revisionKey of the review the round publishes: a retarget keeps the head and changes it.
+	// The `Revision.key` of the review the round publishes: a retarget keeps the head and changes it.
 	revision: string;
 	// The round's number at the head, from the head's `rounds`, which only grows. Its review's marker carries it.
 	round: number;
@@ -85,7 +86,7 @@ type StoredRevision = {
 	publishedBy?: PublishedBy;
 	// One review per verdict published at this head: a second review of the same head can change the verdict.
 	reviews: string[];
-	// The fingerprint of the verdict the last review posted, and the revisionKey of the review that verdict is of. A
+	// The fingerprint of the verdict the last review posted, and the `Revision.key` of the review that verdict is of. A
 	// retarget keeps the head, so a fingerprint alone matches an identical verdict of another base. An older Melian
 	// recorded no revision.
 	verdict?: string;
@@ -291,7 +292,7 @@ async function postedVerdictOf(
 	if (record.verdictRevision !== undefined) return record.verdictRevision === revision;
 	const verdicts = (await reader.snapshot(VerdictDocument, root, context))?.verdicts ?? {};
 	return !Object.entries(verdicts).some(([other, verdict]) => {
-		if (other === revision || !other.endsWith(`..${head}`)) return false;
+		if (other === revision || Revision.parseKey(other)?.head !== head) return false;
 		return Verdict.from(verdict).fingerprint() === fingerprint;
 	});
 }
@@ -436,7 +437,7 @@ function planRound(
 
 // What one publish task posts to, validated against the provider before the task was created: the repository and pull
 // request, the base branch and its tip as the provider reported them, the merge base the host computed, the head, and
-// the revisionKey of the review whose verdict it publishes.
+// the `Revision.key` of the review whose verdict it publishes.
 type PublishTarget = {
 	repository: string;
 	pullRequest: number;
@@ -578,8 +579,7 @@ function publishTask(provider: ReviewProvider) {
 					const rounds = await tx.doc(RoundsDocument, root);
 					const ambiguous = unbound.some((each) =>
 						Object.entries(rounds.items).some(
-							([id, round]) =>
-								id !== legacyKey(each.revision) && `${round.base}..${round.head}` === each.revision,
+							([id, round]) => id !== legacyKey(each.revision) && Revision.key(round) === each.revision,
 						),
 					);
 					if (ambiguous) {
@@ -1310,7 +1310,7 @@ async function undecidedVerdict(
  * recorded in {@link PublishedDocument}, so publishing a revision again posts nothing, and a publication a crash
  * interrupted resumes, finding what it already posted by Melian's markers.
  *
- * The verdict is the one recorded for the changeset's base and head, its {@link revisionKey}, so a review of the pull
+ * The verdict is the one recorded for the changeset's base and head, its {@link Revision.key}, so a review of the pull
  * request before its base branch moved under it, or before it was retargeted, is never posted as a review of what it
  * shows now.
  *
@@ -1343,7 +1343,7 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 			where,
 		);
 	}
-	const revision = revisionKey(changeset.revision);
+	const revision = Revision.key(changeset.revision);
 	const root = (await harness.root(context)).id;
 	const validated = await (await harness.root(context)).commit(async (tx) => {
 		const live = await tx.doc(VerdictDocument, root);

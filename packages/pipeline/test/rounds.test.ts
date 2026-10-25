@@ -1,7 +1,16 @@
 import { copyFileSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Adjudication, Changeset, Comparison, ConfigError, defaultConfig, Finding, Lens } from "@melian-agent/core";
+import {
+	Adjudication,
+	Changeset,
+	Comparison,
+	ConfigError,
+	defaultConfig,
+	Finding,
+	Lens,
+	Revision,
+} from "@melian-agent/core";
 import {
 	CompareHarness,
 	backgroundContext as context,
@@ -19,7 +28,6 @@ import {
 	RoundReader,
 	recordDismissal,
 	reviewChangeset,
-	revisionKey,
 	type TaskId,
 	upsertFinding,
 } from "@melian-agent/pipeline";
@@ -111,7 +119,7 @@ it("mints a round for changed lens thinking and attaches at a fixed level", asyn
 		},
 	]);
 	const root = await harness.root(context);
-	const revision = revisionKey(changeset.revision);
+	const revision = Revision.key(changeset.revision);
 	const tasks: number[][] = [];
 	for (const thinking of ["high", "high", "low", "low"] as const) {
 		await reviewChangeset({
@@ -214,7 +222,7 @@ it("mints nothing when startAdjudication finds the lens selection replaced", asy
 		const config = await original(...args);
 		const root = await harness.root(context);
 		await root.commit(async (tx) => {
-			(await tx.doc(ReviewIndex, root.id)).reviews[revisionKey(changeset.revision)] = { lenses: ["replacement"] };
+			(await tx.doc(ReviewIndex, root.id)).reviews[Revision.key(changeset.revision)] = { lenses: ["replacement"] };
 		}, context);
 		return config;
 	});
@@ -239,7 +247,7 @@ it("mints nothing when startAdjudication finds the lens selection replaced", asy
 
 it("keeps the current round on dismissal and repeat dismissal, and freezes it on the next review", async () => {
 	const changeset = await Changeset.resolve(repo, "main...feature");
-	const key = revisionKey(changeset.revision);
+	const key = Revision.key(changeset.revision);
 	const finding = Finding.create({
 		rule: "static-defect",
 		message: "bad",

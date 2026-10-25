@@ -1,6 +1,6 @@
 import { rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { Changeset, pullRequestChangesetId, type ReviewProvider } from "@melian-agent/core";
+import { Changeset, pullRequestChangesetId, type ReviewProvider, Revision } from "@melian-agent/core";
 import { createGitHubProvider, marker, parseMarker, statusContext } from "@melian-agent/github";
 import {
 	backgroundContext as context,
@@ -13,7 +13,6 @@ import {
 	readFindings,
 	readPublished,
 	recordDismissal,
-	revisionKey,
 } from "@melian-agent/pipeline";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PublishedDocument } from "../../pipeline/src/publish.ts";
@@ -316,7 +315,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		const findings = await readFindings(
 			harness!,
 			(await harness!.root(context)).id,
-			revisionKey(changeset.revision),
+			Revision.key(changeset.revision),
 			context,
 		);
 		const retries = findings.find((finding) => finding.properties.path === "src/config.ts")!;
@@ -365,7 +364,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		const { fake, github, changeset, state } = await reviewedRevisionOne();
 		await publish(github, changeset);
 		const root = (await harness!.root(context)).id;
-		const first = await readFindings(harness!, root, revisionKey(changeset.revision), context);
+		const first = await readFindings(harness!, root, Revision.key(changeset.revision), context);
 		const retries = first.find((finding) => finding.properties.path === "src/config.ts")!;
 		const manager = first.find((finding) => finding.ruleId === "null-dereference")!;
 		await (await harness!.root(context)).commit(
@@ -433,7 +432,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		const { github, changeset, state } = await reviewedRevisionOne();
 		await publish(github, changeset);
 		const root = (await harness!.root(context)).id;
-		const manager = (await readFindings(harness!, root, revisionKey(changeset.revision), context)).find(
+		const manager = (await readFindings(harness!, root, Revision.key(changeset.revision), context)).find(
 			(finding) => finding.ruleId === "null-dereference",
 		)!;
 		const thread = (await readPublished(harness!, root, changeset.revision.head, context))!.threads[
@@ -486,7 +485,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		const { github, changeset, state } = await reviewedRevisionOne();
 		await publish(github, changeset);
 		const root = (await harness!.root(context)).id;
-		const manager = (await readFindings(harness!, root, revisionKey(changeset.revision), context)).find(
+		const manager = (await readFindings(harness!, root, Revision.key(changeset.revision), context)).find(
 			(finding) => finding.ruleId === "null-dereference",
 		)!;
 		const thread = (await readPublished(harness!, root, changeset.revision.head, context))!.threads[
@@ -542,7 +541,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 			await review;
 			moveTo(state, changeset);
 			await publish(github, changeset);
-			const findings = await readFindings(harness!, root, revisionKey(changeset.revision), context);
+			const findings = await readFindings(harness!, root, Revision.key(changeset.revision), context);
 			const idOf = (rule: string) => findings.find((finding) => finding.ruleId === rule)!.properties.id;
 			const { threads } = (await readPublished(harness!, root, changeset.revision.head, context))!;
 			return { changeset, idOf, threadOf: (rule: string) => threads[idOf(rule)]! };
@@ -597,7 +596,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 			await review;
 			moveTo(state, changeset);
 			await publish(github, changeset);
-			const manager = (await readFindings(harness!, root, revisionKey(changeset.revision), context)).find(
+			const manager = (await readFindings(harness!, root, Revision.key(changeset.revision), context)).find(
 				(finding) => finding.ruleId === "null-dereference",
 			)!;
 			const thread = (await readPublished(harness!, root, changeset.revision.head, context))!.threads[
@@ -978,7 +977,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		const { fake, github, changeset, state } = await reviewedRevisionOne();
 		await publish(github, changeset);
 		const root = (await harness!.root(context)).id;
-		const manager = (await readFindings(harness!, root, revisionKey(changeset.revision), context)).find(
+		const manager = (await readFindings(harness!, root, Revision.key(changeset.revision), context)).find(
 			(finding) => finding.ruleId === "null-dereference",
 		)!;
 		const thread = (await readPublished(harness!, root, changeset.revision.head, context))!.threads[

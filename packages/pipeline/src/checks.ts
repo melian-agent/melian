@@ -19,7 +19,7 @@ import {
 	staticFindings,
 	type ToolLog,
 } from "@melian-agent/core";
-import { replaceCheckFindings, revisionKey } from "./findings.ts";
+import { replaceCheckFindings } from "./findings.ts";
 import {
 	backgroundContext,
 	type Context,
@@ -306,7 +306,7 @@ async function abortRetiredMutation(harness: Harness, revision: string, key: str
 		const input = record.input as unknown as CheckInput;
 		if (
 			input.check === "static.mutation" &&
-			revisionKey(input.changeset.revision) === revision &&
+			Revision.key(input.changeset.revision) === revision &&
 			input.authority !== key
 		) {
 			await harness.abortTask(record.id, context);
@@ -340,7 +340,7 @@ function failure(name: string, error: unknown): CheckRunRecord {
 // created under; they must not run the head's tests after the newer review decided not to.
 function ownsMutation(input: CheckInput, owners: Readonly<Record<string, string>> | undefined): boolean {
 	if (input.check !== "static.mutation") return true;
-	const owner = owners?.[revisionKey(input.changeset.revision)];
+	const owner = owners?.[Revision.key(input.changeset.revision)];
 	return owner === undefined || owner === input.authority;
 }
 
@@ -421,7 +421,7 @@ const CheckTask = defineTask<CheckInput, { phase: "run"; legacyTiming?: true }, 
 			} catch (error) {
 				record = failure(check, error);
 			}
-			const revision = revisionKey(changeset.revision);
+			const revision = Revision.key(changeset.revision);
 			await runtime.commit(async (tx) => {
 				const { runs, owners } = await tx.doc(ChecksDocument, runtime.conversationId);
 				// The run may have lost the revision while its tests ran; what it found then belongs to nobody.
@@ -699,7 +699,7 @@ export async function runChecks(harness: Harness, input: RunChecksInput, context
 		if (!(error instanceof CheckError)) throw error;
 		knownTier = false;
 	}
-	const revision = revisionKey(input.changeset.revision);
+	const revision = Revision.key(input.changeset.revision);
 	// Starts a run unless one with this key exists, or replaces `stale` with a rerun when it is still the key's task. A task
 	// whose run lost the revision's mutation authority ended aborted, so `restart` replaces it too.
 	const start = (rerun: ChecksInput["rerun"] | undefined, stale: number | undefined, restart: boolean) =>

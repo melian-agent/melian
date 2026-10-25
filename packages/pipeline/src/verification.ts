@@ -1,5 +1,6 @@
 import type { ModelReference, ModelRoute, Severity, StoredVerificationState } from "@melian-agent/core";
-import { clearVerifications, FindingsDocument, revisionKey, sightingIn, sightingVerification } from "./findings.ts";
+import { Revision } from "@melian-agent/core";
+import { clearVerifications, FindingsDocument, sightingIn, sightingVerification } from "./findings.ts";
 import {
 	type Context,
 	type ConversationId,
@@ -56,7 +57,7 @@ async function replaced(
 	context: Context,
 ): Promise<boolean> {
 	return (
-		(await reader.snapshot(ReviewIndex, input.root, context))?.reviews[revisionKey(input.revision)]?.verification
+		(await reader.snapshot(ReviewIndex, input.root, context))?.reviews[Revision.key(input.revision)]?.verification
 			?.task !== task
 	);
 }
@@ -73,7 +74,7 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 		spawn: async (task, runtime, context) => {
 			await runtime.commit(async (tx) => {
 				if (
-					(await tx.doc(ReviewIndex, task.input.root)).reviews[revisionKey(task.input.revision)]?.verification
+					(await tx.doc(ReviewIndex, task.input.root)).reviews[Revision.key(task.input.revision)]?.verification
 						?.task !== runtime.taskId
 				)
 					return { status: "terminal", outcome: { status: "completed", result: {} } };
@@ -101,7 +102,7 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 										`## Decisions at base\n${quoteUntrusted("listing", candidate.decisionsAtBase, task.input.revision.nonce)}`,
 									]),
 							...claims.map(({ label, id, source }) => {
-								const at = revisionKey(task.input.revision);
+								const at = Revision.key(task.input.revision);
 								const severity = sightingIn(findings, at, id, source)?.properties.severity;
 								return `Claim ${label} finding ${id}${severity === undefined ? "" : `, reported at ${severity}`}`;
 							}),
@@ -161,7 +162,7 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 								sightingVerification(
 									runtime,
 									task.input.root,
-									revisionKey(task.input.revision),
+									Revision.key(task.input.revision),
 									claim.id,
 									claim.source,
 									task.input.version,
@@ -181,7 +182,7 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 					if (next === undefined) return { status: "exhausted", reason };
 					await runtime.commit(async (tx, current) => {
 						if (
-							(await tx.doc(ReviewIndex, task.input.root)).reviews[revisionKey(task.input.revision)]
+							(await tx.doc(ReviewIndex, task.input.root)).reviews[Revision.key(task.input.revision)]
 								?.verification?.task !== runtime.taskId
 						)
 							return undefined;
@@ -234,7 +235,7 @@ export async function startVerification(
 	const key = JSON.stringify({ root: input.root, revision, version: input.version, candidates });
 	if (unlockModels !== undefined) {
 		// Live tasks were unlocked from their checkpoints before resume; finished tasks ask no model.
-		const previous = (await harness.snapshot(ReviewIndex, root.id, context))?.reviews[revisionKey(input.revision)]
+		const previous = (await harness.snapshot(ReviewIndex, root.id, context))?.reviews[Revision.key(input.revision)]
 			?.verification;
 		const record = previous === undefined ? undefined : await harness.getTask(previous.task as TaskId, context);
 		const results =
@@ -258,7 +259,7 @@ export async function startVerification(
 	}
 	return root.commit(async (tx) => {
 		const index = await tx.doc(ReviewIndex, root.id);
-		const known = index.reviews[revisionKey(input.revision)];
+		const known = index.reviews[Revision.key(input.revision)];
 		if (known !== undefined && known.lenses.join("\n") !== selection.join("\n")) return undefined;
 		const previous = known?.verification;
 		const record = previous === undefined ? undefined : await tx.task(previous.task as TaskId);
@@ -278,10 +279,10 @@ export async function startVerification(
 			if (record !== undefined && (record.state.status !== "terminal" || (results !== undefined && !failed)))
 				return previous.task as TaskId<VerificationResult>;
 		}
-		await clearVerifications(tx, input.root, revisionKey(input.revision));
+		await clearVerifications(tx, input.root, Revision.key(input.revision));
 		const created = await tx.createTask(VerificationTask, input, { ownership: { kind: "conversation" } });
 		const { adjudication: __, ...entry } = known ?? { lenses: [...selection] };
-		index.reviews[revisionKey(input.revision)] = {
+		index.reviews[Revision.key(input.revision)] = {
 			...entry,
 			verification: { task: created, input: key },
 		};

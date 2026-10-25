@@ -12,7 +12,6 @@ import {
 	type Harness,
 	openHarness,
 	readFindings,
-	revisionKey,
 	runChecks,
 	upsertFinding,
 } from "@melian-agent/pipeline";
@@ -50,7 +49,7 @@ async function review(base: string, head: string) {
 	expect(fake.provider.state.callCount).toBe(0);
 	return {
 		records: run.records,
-		findings: await readFindings(harness, root.id, revisionKey(changeset.revision), context),
+		findings: await readFindings(harness, root.id, Revision.key(changeset.revision), context),
 	};
 }
 
@@ -255,7 +254,7 @@ describe("supersession guardrail", { timeout: 60_000 }, () => {
 		const base = commit(repo, { [old]: "Keep the rule." });
 		const head = commit(repo, { [fresh]: "Supersedes: old.md, for routing." });
 		const first = (await direct(base, head)).findings[0]!;
-		const firstRevision = revisionKey({ base, head });
+		const firstRevision = Revision.key({ base, head });
 		const fake = createFakeModels();
 		const harness = await openHarness(createMemoryStorage(), { models: fake.models, registry: createRegistry() });
 		opened.push(harness);
@@ -270,7 +269,7 @@ describe("supersession guardrail", { timeout: 60_000 }, () => {
 
 		const unchangedHead = commit(repo, { "other.txt": "Unrelated push." });
 		const unchanged = (await direct(base, unchangedHead)).findings[0]!;
-		const unchangedRevision = revisionKey({ base, head: unchangedHead });
+		const unchangedRevision = Revision.key({ base, head: unchangedHead });
 		await root.commit((tx) => upsertFinding(tx, root.id, unchanged, unchangedRevision), context);
 		expect((await readFindings(harness, root.id, unchangedRevision, context))[0]!.properties.status).toBe(
 			"dismissed",
@@ -278,7 +277,7 @@ describe("supersession guardrail", { timeout: 60_000 }, () => {
 
 		const editedHead = commit(repo, { [fresh]: "Supersedes: old.md, whole retirement." });
 		const edited = (await direct(base, editedHead)).findings[0]!;
-		const editedRevision = revisionKey({ base, head: editedHead });
+		const editedRevision = Revision.key({ base, head: editedHead });
 		expect(edited.id).toBe(first.id);
 		expect.soft(edited.properties.trigger!.hash).not.toBe(first.properties.trigger!.hash);
 		await root.commit((tx) => upsertFinding(tx, root.id, edited, editedRevision), context);

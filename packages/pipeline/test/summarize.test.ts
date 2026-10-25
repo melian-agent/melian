@@ -1,7 +1,7 @@
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Changeset, defaultConfig, type MelianConfig } from "@melian-agent/core";
+import { Changeset, defaultConfig, type MelianConfig, Revision } from "@melian-agent/core";
 import {
 	backgroundContext as context,
 	createMemoryStorage,
@@ -12,7 +12,6 @@ import {
 	defineTask,
 	type Harness,
 	openHarness,
-	revisionKey,
 	summarizeReview,
 } from "@melian-agent/pipeline";
 import {
@@ -47,7 +46,7 @@ beforeEach(async () => {
 	const root = await harness.root(context);
 	await root.commit(async (tx) => {
 		(await tx.doc(VerdictDocument, root.id)).provenance = {
-			[revisionKey(changeset.revision)]: {
+			[Revision.key(changeset.revision)]: {
 				kind: "pull-request",
 				policy: `revision:${changeset.revision.base}`,
 				manifest: [],
@@ -83,10 +82,10 @@ describe("walkthrough summaries", () => {
 		const doc = await summarize({
 			config: { ...config, models: { light: { accept: ["faux/scripted"], thinking: "high" } } },
 		});
-		expect(doc?.walkthroughs?.[revisionKey(changeset.revision)]?.summary).toBe("Changes a value.");
+		expect(doc?.walkthroughs?.[Revision.key(changeset.revision)]?.summary).toBe("Changes a value.");
 	});
 	it("distinguishes a thinking-only light route from an empty legacy route", async () => {
-		const revision = revisionKey(changeset.revision);
+		const revision = Revision.key(changeset.revision);
 		expect(
 			(await summarize({ config: { ...config, models: { light: { thinking: "high" } } } }))?.walkthroughNotes?.[
 				revision
@@ -103,7 +102,7 @@ describe("walkthrough summaries", () => {
 		});
 		const root = await harness.root(context);
 		await root.commit(async (tx) => {
-			(await tx.doc(VerdictDocument, root.id)).provenance![revisionKey(changeset.revision)]!.kind = "range";
+			(await tx.doc(VerdictDocument, root.id)).provenance![Revision.key(changeset.revision)]!.kind = "range";
 		}, context);
 		await summarize();
 		expect(auth).not.toHaveBeenCalled();
@@ -111,7 +110,7 @@ describe("walkthrough summaries", () => {
 		expect((await stored())?.walkthroughNotes).toBeUndefined();
 	});
 	it("distinguishes no route from no credentials and retries after credentials arrive", async () => {
-		const revision = revisionKey(changeset.revision);
+		const revision = Revision.key(changeset.revision);
 		expect((await summarize({ config: { ...config, models: {} } }))?.walkthroughNotes?.[revision]).toContain(
 			"No light model is configured.",
 		);
@@ -124,7 +123,7 @@ describe("walkthrough summaries", () => {
 		expect(doc?.walkthroughNotes?.[revision]).toBeUndefined();
 	});
 	it("resolves the light model through the review's stored plan, not the configuration", async () => {
-		const revision = revisionKey(changeset.revision);
+		const revision = Revision.key(changeset.revision);
 		const ref = models.ref("scripted");
 		const withPlan = async (light: {
 			status: "routed" | "unrouted";
@@ -176,7 +175,7 @@ describe("walkthrough summaries", () => {
 				],
 			},
 		]);
-		const revision = revisionKey(changeset.revision);
+		const revision = Revision.key(changeset.revision);
 		const result = await summarize({
 			config: {
 				...config,
@@ -213,7 +212,7 @@ describe("walkthrough summaries", () => {
 		}, context);
 	});
 	it("stores fixed notes for provider errors and no tool call, then stops after two attempts", async () => {
-		const revision = revisionKey(changeset.revision);
+		const revision = Revision.key(changeset.revision);
 		for (const reply of [
 			fauxAssistantMessage("", { stopReason: "error", errorMessage: "private provider detail" }),
 			fauxAssistantMessage("No tool used."),
@@ -235,7 +234,7 @@ describe("walkthrough summaries", () => {
 	});
 	it("summarises once across two reviews and reads the stored walkthrough the second time", async () => {
 		const captured = scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
-		const revision = revisionKey(changeset.revision);
+		const revision = Revision.key(changeset.revision);
 		expect((await summarize())?.walkthroughs?.[revision]?.summary).toBe("Changes a value.");
 		const result = await summarize();
 		expect(result?.walkthroughs?.[revision]?.summary).toBe("Changes a value.");
@@ -247,7 +246,7 @@ describe("walkthrough summaries", () => {
 		const unlock = vi.fn(async () => {
 			before.push(models.provider.state.callCount);
 		});
-		const revision = revisionKey(changeset.revision);
+		const revision = Revision.key(changeset.revision);
 		expect((await summarize({ unlockModels: unlock }))?.walkthroughs?.[revision]?.summary).toBe("Changes a value.");
 		expect(before).toEqual([0]);
 		expect(unlock).toHaveBeenCalledWith([models.ref().provider]);
@@ -326,7 +325,7 @@ describe("walkthrough summaries", () => {
 		const captured = scriptConversations(models, [
 			{ match: "You write Melian's walkthrough", replies: [fail, fail, fail] },
 		]);
-		const revision = revisionKey(changeset.revision);
+		const revision = Revision.key(changeset.revision);
 		const root = await harness.root(context);
 		await summarize();
 		const first = (await harness.snapshot(SummaryIndex, root.id, context))!.tasks[revision]!;
@@ -350,7 +349,7 @@ describe("walkthrough summaries", () => {
 		expect(rerun).toHaveBeenCalledOnce();
 	});
 	it("catches credential, prompt and missing-extension failures without failing review", async () => {
-		const revision = revisionKey(changeset.revision);
+		const revision = Revision.key(changeset.revision);
 		const unlock = vi.fn().mockRejectedValue(new Error("private credential error"));
 		expect((await summarize({ unlockModels: unlock }))?.walkthroughNotes?.[revision]).toBe(
 			"No walkthrough available. The summariser failed.",
@@ -381,7 +380,7 @@ describe("walkthrough summaries", () => {
 		const registry = createRegistry();
 		harness = await openHarness(createMemoryStorage(), { models: models.models, registry });
 		const root = await harness.root(context);
-		const revision = revisionKey(changeset.revision);
+		const revision = Revision.key(changeset.revision);
 		const oldIndex = defineDoc<{ tasks: Record<string, number> }>({
 			kind: "melian.summaries",
 			version: 1,
@@ -424,7 +423,7 @@ describe("walkthrough summaries", () => {
 		const registry = createRegistry();
 		harness = await openHarness(createMemoryStorage(), { models: models.models, registry });
 		const root = await harness.root(context);
-		const revision = revisionKey(changeset.revision);
+		const revision = Revision.key(changeset.revision);
 		await root.commit(async (tx) => {
 			(await tx.doc(VerdictDocument, root.id)).provenance = {
 				[revision]: { kind: "pull-request", policy: "config", manifest: [], lenses: [] },
@@ -445,7 +444,7 @@ describe("walkthrough summaries", () => {
 		const registry = createRegistry();
 		harness = await openHarness(createMemoryStorage(), { models: models.models, registry });
 		const root = await harness.root(context);
-		const revision = revisionKey(changeset.revision);
+		const revision = Revision.key(changeset.revision);
 		await root.commit(async (tx) => {
 			(await tx.doc(VerdictDocument, root.id)).provenance = {
 				[revision]: { kind: "pull-request", policy: "config", manifest: [], lenses: [] },
@@ -463,13 +462,13 @@ describe("walkthrough summaries", () => {
 	it("records a task failure as a fixed note and retries a new task", async () => {
 		const wait = vi.spyOn(harness, "waitForTask").mockRejectedValueOnce(new Error("task failed with private detail"));
 		scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
-		expect((await summarize())?.walkthroughNotes?.[revisionKey(changeset.revision)]).toContain(
+		expect((await summarize())?.walkthroughNotes?.[Revision.key(changeset.revision)]).toContain(
 			"The summariser failed.",
 		);
 		wait.mockRestore();
 		await harness.waitForIdle(context);
 		scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success("Recovered.")] }]);
-		expect((await summarize({ rerun: true }))?.walkthroughs?.[revisionKey(changeset.revision)]?.summary).toBe(
+		expect((await summarize({ rerun: true }))?.walkthroughs?.[Revision.key(changeset.revision)]?.summary).toBe(
 			"Recovered.",
 		);
 	});
@@ -500,11 +499,11 @@ describe("walkthrough summaries", () => {
 		const root = await harness.root(context);
 		await root.commit(async (tx) => {
 			(await tx.doc(VerdictDocument, root.id)).provenance = {
-				[revisionKey(changeset.revision)]: { kind: "pull-request", policy: "config", manifest: [], lenses: [] },
+				[Revision.key(changeset.revision)]: { kind: "pull-request", policy: "config", manifest: [], lenses: [] },
 			};
 		}, context);
 		const doc = await summarize();
-		expect(doc?.walkthroughNotes?.[revisionKey(changeset.revision)]).toBe(
+		expect(doc?.walkthroughNotes?.[Revision.key(changeset.revision)]).toBe(
 			"No walkthrough available. The summariser failed.",
 		);
 		expect(JSON.stringify(doc)).not.toContain("private task detail");
@@ -533,7 +532,7 @@ describe("walkthrough summaries", () => {
 		registry.install(defineExtension({ name: "summary-failure", tasks: [failure] }));
 		harness = await openHarness(createMemoryStorage(), { models: models.models, registry });
 		const root = await harness.root(context);
-		const revision = revisionKey(changeset.revision);
+		const revision = Revision.key(changeset.revision);
 		await root.commit(async (tx) => {
 			(await tx.doc(VerdictDocument, root.id)).provenance = {
 				[revision]: { kind: "pull-request", policy: "config", manifest: [], lenses: [] },
@@ -568,7 +567,7 @@ describe("walkthrough summaries", () => {
 		const root = await harness.root(context);
 		await root.commit(async (tx) => {
 			(await tx.doc(VerdictDocument, root.id)).provenance = {
-				[revisionKey(changeset.revision)]: { kind: "pull-request", policy: "config", manifest: [], lenses: [] },
+				[Revision.key(changeset.revision)]: { kind: "pull-request", policy: "config", manifest: [], lenses: [] },
 			};
 		}, context);
 		const captured = scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
@@ -616,7 +615,7 @@ describe("walkthrough summaries", () => {
 			},
 		]);
 		const doc = await summarize();
-		const walkthrough = doc?.walkthroughs?.[revisionKey(changeset.revision)];
+		const walkthrough = doc?.walkthroughs?.[Revision.key(changeset.revision)];
 		expect(walkthrough).toBeDefined();
 		expect(walkthrough?.files.every(({ path }) => path === "src/a.ts")).toBe(true);
 		expect(JSON.stringify(walkthrough).length).toBeLessThan(17_000);

@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
-import { Changeset, type Decider, defaultConfig, Lens, type ReviewProvider } from "@melian-agent/core";
+import { Changeset, type Decider, defaultConfig, Lens, type ReviewProvider, Revision } from "@melian-agent/core";
 import { RecordedDecider } from "@melian-agent/decisions";
 import {
 	type ConversationId,
@@ -21,7 +21,6 @@ import {
 	readFindings,
 	readVerdict,
 	reviewChangeset,
-	revisionKey,
 	type TaskId,
 	unlockCredentials,
 } from "@melian-agent/pipeline";
@@ -130,7 +129,7 @@ async function killWhen(
 
 // The revision `main...feature` reviews, as the findings and verdict documents key it.
 function reviewedRevision(): string {
-	return revisionKey({
+	return Revision.key({
 		base: gitIn(repo, "merge-base", "main", "feature"),
 		head: gitIn(repo, "rev-parse", "feature"),
 	});
@@ -1235,7 +1234,7 @@ describe("a lens task from an earlier selection during triage", { timeout: 60_00
 		const publisher = await openPublishHarness(await openSqliteStorage(database), fake.review, provider);
 		harness = publisher.harness;
 		const root = (await harness.root(context)).id;
-		const revision = revisionKey(changeset.revision);
+		const revision = Revision.key(changeset.revision);
 		expect((await harness.snapshot(ReviewIndex, root, context))!.reviews[revision]!.adjudication).toBeUndefined();
 		expect(await readVerdict(harness, root, revision, context)).toBeUndefined();
 		await expect(

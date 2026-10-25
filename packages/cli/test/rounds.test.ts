@@ -9,6 +9,7 @@ import {
 	loadConfig,
 	pullRequestChangesetId,
 	ReviewPlan,
+	Revision,
 	type RevisionFields,
 } from "@melian-agent/core";
 import {
@@ -20,7 +21,6 @@ import {
 	openSqliteStorage,
 	RoundReader,
 	reviewChangeset,
-	revisionKey,
 	upsertFinding,
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
@@ -77,7 +77,7 @@ beforeEach(async () => {
 						explanation: { what: "wrong", whyHere: "here", whatToDo: "fix" },
 						source: { check: "static.mutation", version: "1" },
 					}),
-					revisionKey(changeset.revision),
+					Revision.key(changeset.revision),
 				),
 			context,
 		);
@@ -98,7 +98,7 @@ beforeEach(async () => {
 						explanation: { what: "small", whyHere: "here", whatToDo: "fix" },
 						source: { check: "static.mutation", version: "1" },
 					}),
-					revisionKey(changeset.revision),
+					Revision.key(changeset.revision),
 				),
 			context,
 		);
@@ -159,7 +159,7 @@ it("keeps r1's passing verdict after r2 blocks the same revision", async () => {
 						explanation: { what: "wrong", whyHere: "here", whatToDo: "fix" },
 						source: { check: "static.mutation", version: "1" },
 					}),
-					revisionKey(changeset.revision),
+					Revision.key(changeset.revision),
 				),
 			context,
 		);
@@ -213,7 +213,7 @@ it("lists main's legacy round before a minted undecided round and asks git for i
 	});
 	const root = await harness.root(context);
 	await root.commit(
-		(tx) => new RoundWriter(tx, root.id).mint(revisionKey(changeset.revision), 999, "2020-01-01T00:00:00Z"),
+		(tx) => new RoundWriter(tx, root.id).mint(Revision.key(changeset.revision), 999, "2020-01-01T00:00:00Z"),
 		context,
 	);
 	await harness.close(context);
@@ -403,8 +403,8 @@ it("refuses missing and undecided rounds even when an earlier frozen verdict exi
 	});
 	const root = await harness.root(context);
 	await root.commit(async (tx) => {
-		await new RoundWriter(tx, root.id).mint(revisionKey(changeset.revision), 999, "2026-10-18T00:00:00Z");
-		delete (await tx.doc(ReviewIndex, root.id)).reviews[revisionKey(changeset.revision)];
+		await new RoundWriter(tx, root.id).mint(Revision.key(changeset.revision), 999, "2026-10-18T00:00:00Z");
+		delete (await tx.doc(ReviewIndex, root.id)).reviews[Revision.key(changeset.revision)];
 	}, context);
 	await harness.close(context);
 	for (const [suffix, message] of [
@@ -431,7 +431,7 @@ it.each([false, true])("lists an unreadable legacy head last with an unknown dat
 	try {
 		const root = await harness.root(context);
 		await root.commit(
-			(tx) => new RoundWriter(tx, root.id).mint(revisionKey(changeset.revision), 999, "2020-01-01T00:00:00Z"),
+			(tx) => new RoundWriter(tx, root.id).mint(Revision.key(changeset.revision), 999, "2020-01-01T00:00:00Z"),
 			context,
 		);
 	} finally {
@@ -588,7 +588,7 @@ it.each(["import", "match", "unmatch", "adjudicate"])(
 		try {
 			const root = await pending.harness.root(context);
 			await root.commit(
-				(tx) => new RoundWriter(tx, root.id).mint(revisionKey(changeset.revision), 999, "later"),
+				(tx) => new RoundWriter(tx, root.id).mint(Revision.key(changeset.revision), 999, "later"),
 				context,
 			);
 		} finally {
@@ -714,7 +714,7 @@ it.each(["import", "match", "unmatch", "adjudicate"])(
 			try {
 				const entries = await ComparisonReader.open(storage).read(changeset.id);
 				expect(entries).toHaveLength(1);
-				expect(entries[0]!.unattributed).toBe(revisionKey(stored.revision));
+				expect(entries[0]!.unattributed).toBe(Revision.key(stored.revision));
 				if (operation === "adjudicate")
 					expect(entries[0]!.comparison.adjudication(external)?.history).toHaveLength(2);
 			} finally {
@@ -747,7 +747,7 @@ it.each(["match", "unmatch"])(
 			const root = await harness.harness.root(context);
 			await root.commit(async (tx) => {
 				const document = await tx.doc(ComparisonDocument, root.id);
-				document.unattributed[revisionKey(changeset.revision)] = comparison.toJSON();
+				document.unattributed[Revision.key(changeset.revision)] = comparison.toJSON();
 				document.comparisons = {};
 			}, context);
 		} finally {

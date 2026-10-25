@@ -10,6 +10,7 @@ import {
 	defaultConfig,
 	ExternalFinding,
 	Finding,
+	Revision,
 } from "@melian-agent/core";
 import {
 	CompareError,
@@ -22,7 +23,6 @@ import {
 	type ImportedSource,
 	maxReviewerFileBytes,
 	openSqliteStorage,
-	revisionKey,
 	type TaskId,
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
@@ -64,10 +64,10 @@ async function storeReview(harness: CompareHarness, reviewFindings: readonly Fin
 	const root = await harness.harness.root(context);
 	await root.commit(async (tx) => {
 		const document = await tx.doc(VerdictDocument, root.id);
-		document.verdicts = { ...document.verdicts, [revisionKey(revision)]: verdict.toJSON() };
+		document.verdicts = { ...document.verdicts, [Revision.key(revision)]: verdict.toJSON() };
 		const state = await tx.doc(RoundsDocument, root.id);
-		if (state.current[revisionKey(revision)] !== undefined)
-			state.items[state.current[revisionKey(revision)]!]!.verdict = verdict.toJSON();
+		if (state.current[Revision.key(revision)] !== undefined)
+			state.items[state.current[Revision.key(revision)]!]!.verdict = verdict.toJSON();
 	}, context);
 }
 
@@ -146,7 +146,7 @@ describe("CompareHarness", () => {
 			await harness.importFindings(revision, [], "before");
 			const before = (await harness.read(revision))!.toJSON();
 			const root = await harness.harness.root(context);
-			const key = revisionKey(revision);
+			const key = Revision.key(revision);
 			await root.commit(async (tx) => {
 				if (stale === "changed findings") {
 					(await tx.doc(VerdictDocument, root.id)).decisions = { [key]: { task: 999, findingsVersion: 0 } };
@@ -170,7 +170,7 @@ describe("CompareHarness", () => {
 			const deciding = await DismissHarness.open(await openSqliteStorage(path), createFakeModels().review);
 			const { harness } = deciding;
 			const root = await harness.root(context);
-			const key = revisionKey(revision);
+			const key = Revision.key(revision);
 			const input = (findingsVersion: number) =>
 				adjudicationInput({
 					root: root.id,
@@ -404,7 +404,7 @@ describe("CompareHarness", () => {
 		const harness = await memoryHarness();
 		await storeReview(harness);
 		const root = await harness.harness.root(context);
-		const key = revisionKey(revision);
+		const key = Revision.key(revision);
 		await root.commit(async (tx) => {
 			const document = await tx.doc(VerdictDocument, root.id);
 			document.provenance = {
@@ -747,7 +747,7 @@ describe("comparison review fixes", () => {
 			const document = await tx.doc(VerdictDocument, root.id);
 			document.verdicts = {
 				...document.verdicts,
-				[revisionKey(next)]: new Adjudication({ findings: [], manifest: [], checks: [], config: defaultConfig })
+				[Revision.key(next)]: new Adjudication({ findings: [], manifest: [], checks: [], config: defaultConfig })
 					.adjudicate()
 					.toJSON(),
 			};
@@ -756,7 +756,7 @@ describe("comparison review fixes", () => {
 		expect(new ComparisonSet(await harness.all("change")).backlog()).toHaveLength(1);
 		const discharged = { ...debt, at: "2026-10-07T00:00:00Z", golden: "none" } as const;
 		const round = await harness.adjudicate(
-			{ ...next, round: `change.${legacyKey(revisionKey(revision))}` },
+			{ ...next, round: `change.${legacyKey(Revision.key(revision))}` },
 			findings[0]!.id,
 			discharged,
 		);
@@ -779,7 +779,7 @@ describe("comparison review fixes", () => {
 		const root = await harness.harness.root(context);
 		await root.commit(async (tx) => {
 			const document = await tx.doc(VerdictDocument, root.id);
-			document.verdicts = { ...document.verdicts, [revisionKey(next)]: document.verdicts[revisionKey(revision)]! };
+			document.verdicts = { ...document.verdicts, [Revision.key(next)]: document.verdicts[Revision.key(revision)]! };
 		}, context);
 		await harness.importFindings(next, [], "2026-10-06T00:00:00Z");
 		const round = await harness.adjudicate(next, findings[0]!.id, {
@@ -808,7 +808,7 @@ describe("comparison review fixes", () => {
 		const root = await harness.harness.root(context);
 		await root.commit(async (tx) => {
 			const document = await tx.doc(VerdictDocument, root.id);
-			document.verdicts = { ...document.verdicts, [revisionKey(next)]: document.verdicts[revisionKey(revision)]! };
+			document.verdicts = { ...document.verdicts, [Revision.key(next)]: document.verdicts[Revision.key(revision)]! };
 		}, context);
 		await harness.importFindings(next, [], "2026-10-06T00:00:00Z");
 		const updated = await harness.adjudicate(next, id, {
@@ -844,10 +844,10 @@ describe("comparison review fixes", () => {
 		const root = await harness.harness.root(context);
 		await root.commit(async (tx) => {
 			(await tx.doc(VerdictDocument, root.id)).verdicts = Object.fromEntries(
-				rounds.map((round) => [revisionKey(round), verdict.toJSON()]),
+				rounds.map((round) => [Revision.key(round), verdict.toJSON()]),
 			);
 			(await tx.doc(ComparisonDocument, root.id)).unattributed = Object.fromEntries(
-				rounds.map((round) => [revisionKey(round), round.toJSON()]),
+				rounds.map((round) => [Revision.key(round), round.toJSON()]),
 			);
 		}, context);
 		const judgement = { verdict: "valid", by: "N", at: "2026-10-07T00:00:00Z" } as const;
@@ -938,8 +938,8 @@ describe("comparison review fixes", () => {
 		const root = await harness.harness.root(context);
 		const clean = new Adjudication({ findings: [], manifest: [], checks: [], config: defaultConfig }).adjudicate();
 		await root.commit(async (tx) => {
-			(await tx.doc(VerdictDocument, root.id)).verdicts[revisionKey(revision)] = clean.toJSON();
-			(await tx.doc(RoundsDocument, root.id)).items[legacyKey(revisionKey(revision))]!.verdict = clean.toJSON();
+			(await tx.doc(VerdictDocument, root.id)).verdicts[Revision.key(revision)] = clean.toJSON();
+			(await tx.doc(RoundsDocument, root.id)).items[legacyKey(Revision.key(revision))]!.verdict = clean.toJSON();
 		}, context);
 
 		const entries = await ComparisonReader.open(storage).read("change");
@@ -983,7 +983,7 @@ describe("comparison review fixes", () => {
 			open.push(harness);
 			return { storage, root: await harness.harness.root(context) };
 		}
-		const comparisons = () => ({ [revisionKey(revision)]: Comparison.of(revision).toJSON() });
+		const comparisons = () => ({ [Revision.key(revision)]: Comparison.of(revision).toJSON() });
 
 		it("migrates a version 2 verdict document through the reader", async () => {
 			const verdict = new Adjudication({ findings, manifest: [], checks: [], config: defaultConfig }).adjudicate();
@@ -1000,7 +1000,7 @@ describe("comparison review fixes", () => {
 			await root.commit(async (tx) => {
 				(await tx.doc(ComparisonDocument, root.id)).unattributed = comparisons();
 				const old = await tx.doc(legacy(VerdictDocument.definition.kind, 2), root.id);
-				old.verdicts = JSON.parse(JSON.stringify(oldEvidence({ [revisionKey(revision)]: json })));
+				old.verdicts = JSON.parse(JSON.stringify(oldEvidence({ [Revision.key(revision)]: json })));
 			}, context);
 			const entries = await ComparisonReader.open(storage).read("change");
 			expect(entries).toHaveLength(1);
@@ -1093,13 +1093,13 @@ describe("stored comparison guards", () => {
 		const root = await harness.harness.root(context);
 		await root.commit(async (tx) => {
 			(await tx.doc(ComparisonDocument, root.id)).unattributed = Object.fromEntries(
-				rounds.map((each) => [revisionKey(each.revision), each.comparison.toJSON()]),
+				rounds.map((each) => [Revision.key(each.revision), each.comparison.toJSON()]),
 			);
 			if (options.verdicts === false) return;
 			(await tx.doc(VerdictDocument, root.id)).verdicts = Object.fromEntries(
 				rounds
 					.filter((each) => each.verdict)
-					.map((each) => [revisionKey(each.revision), (options.verdict ?? clean).toJSON()]),
+					.map((each) => [Revision.key(each.revision), (options.verdict ?? clean).toJSON()]),
 			);
 		}, context);
 		return { storage, harness };

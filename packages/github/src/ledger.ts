@@ -4,6 +4,7 @@ import {
 	type LedgerHistory,
 	type LedgerRound,
 	type ResolvedFinding,
+	Revision,
 	type LedgerStamp as StoredLedgerStamp,
 	Verdict,
 	visibleText,
@@ -155,7 +156,7 @@ export class Ledger {
 			if (!("verdict" in round)) continue;
 			history[i] = details(
 				`Earlier round ${round.round} at ${round.head.slice(0, 12)}`,
-				`${round.base.slice(0, 12)}..${round.head.slice(0, 12)}; ${round.verdict.status}. Details trimmed.`,
+				`${Revision.display(round)}; ${round.verdict.status}. Details trimmed.`,
 			);
 			cut = true;
 		}
@@ -318,7 +319,7 @@ export class Ledger {
 		if (!("verdict" in round))
 			return details(
 				`Earlier round ${round.round} at ${round.head.slice(0, 12)}`,
-				`${round.base.slice(0, 12)}..${round.head.slice(0, 12)}; ${round.status}.`,
+				`${Revision.display(round)}; ${round.status}.`,
 			);
 		const verdict = Verdict.from(round.verdict);
 		const prior = new Ledger({ ...this.draft, verdict, publication: { rounds: [round] } }, this.stamp);

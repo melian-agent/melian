@@ -4,13 +4,13 @@ import {
 	type ModelReference,
 	type ModelRoute,
 	ReviewPlan,
+	Revision,
 	RevisionError,
 	readRevisionFile,
 	resolveModelForTier,
 	type Walkthrough,
 } from "@melian-agent/core";
 import { VerdictDocument } from "./adjudication.ts";
-import { revisionKey } from "./findings.ts";
 import {
 	backgroundContext,
 	type Context,
@@ -264,7 +264,7 @@ export async function summarizeReview(options: {
 	if (!config.publish.walkthrough.enabled) return;
 	const context = options.context ?? backgroundContext;
 	let root: Conversation | undefined;
-	const revision = revisionKey(changeset.revision);
+	const revision = Revision.key(changeset.revision);
 	let note = "No walkthrough available. The summariser failed.";
 	try {
 		const conversation = await harness.root(context);

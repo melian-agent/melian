@@ -14,6 +14,7 @@ import {
 	type MelianConfig,
 	type NamedCredential,
 	ReviewPlan,
+	Revision,
 	userFiles,
 } from "@melian-agent/core";
 import { buildGoldenRepository, loadGoldens } from "@melian-agent/evals";
@@ -133,7 +134,7 @@ it("sends effort low in the lens and triage requests of the committed routes", a
 			decider: chosen.decider,
 			policy: { kind: "revision", commit: changeset.revision.base },
 		});
-		const telemetry = await pipeline.TelemetryReader.open(storage).read(pipeline.revisionKey(changeset.revision));
+		const telemetry = await pipeline.TelemetryReader.open(storage).read(Revision.key(changeset.revision));
 		const efforts = (stage: string) =>
 			telemetry.stages
 				.find((row) => row.name === stage)!

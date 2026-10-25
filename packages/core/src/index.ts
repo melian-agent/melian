@@ -34,6 +34,9 @@ export {
 	type ResolveRangeOptions,
 	Revision,
 	type RevisionFields,
+	type RevisionKeyParts,
+	type RevisionScope,
+	type RevisionSides,
 } from "./changeset.ts";
 export { checksOfTier, type DeterministicCheck, deterministicChecks } from "./checks.ts";
 export {

@@ -1,12 +1,11 @@
 import { rmSync } from "node:fs";
-import { Changeset, defaultConfig, Lens, Standards, standardsLimits } from "@melian-agent/core";
+import { Changeset, defaultConfig, Lens, Revision, Standards, standardsLimits } from "@melian-agent/core";
 import {
 	backgroundContext as context,
 	createMemoryStorage,
 	openReviewHarness,
 	type ReviewHarness,
 	reviewChangeset,
-	revisionKey,
 } from "@melian-agent/pipeline";
 import {
 	createFakeModels,
@@ -102,7 +101,7 @@ describe("per-lens standards", () => {
 				await options.harness.harness.root(context)
 			).id,
 			context,
-		))!.details![revisionKey(options.changeset.revision)]!;
+		))!.details![Revision.key(options.changeset.revision)]!;
 		expect(details.lenses.map(({ name, standards }) => ({ name, standards }))).toEqual([
 			{ name: "contracts", standards: ["packages/github/AGENTS.md", "AGENTS.md"] },
 			{ name: "correctness", standards: ["packages/core/AGENTS.md", "docs/core.md", "AGENTS.md"] },
@@ -184,7 +183,7 @@ describe("per-lens standards", () => {
 					: options.changeset;
 			expect(lenses.map(({ version }) => version)).toEqual(options.lenses.map(({ version }) => version));
 			const root = await options.harness.harness.root(context);
-			const revision = revisionKey(changeset.revision);
+			const revision = Revision.key(changeset.revision);
 			const before = (await options.harness.harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!
 				.task;
 
@@ -284,7 +283,7 @@ describe("per-lens standards", () => {
 		const { options, requests } = await setup("worktree");
 		await reviewChangeset(options);
 		const root = await options.harness.harness.root(context);
-		const revision = revisionKey(options.changeset.revision);
+		const revision = Revision.key(options.changeset.revision);
 		const before = (await options.harness.harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.task;
 		expect(before).toBeDefined();
 		expect(systemPromptOf(requests["You are the correctness reviewer"]![0]!)).toContain(`ID: ${zeros}`);
@@ -323,7 +322,7 @@ describe("per-lens standards", () => {
 		await reviewChangeset(options);
 		expect(requests["You are the correctness reviewer"]).toHaveLength(1);
 		const root = await options.harness.harness.root(context);
-		const revision = revisionKey(options.changeset.revision);
+		const revision = Revision.key(options.changeset.revision);
 		const before = (await options.harness.harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.task;
 		const lenses = options.lenses.map((lens) =>
 			lens.name === "correctness"
@@ -357,7 +356,7 @@ describe("per-lens standards", () => {
 			const config = { ...options.config, tiers: { full: ["lens.correctness"] } };
 			await reviewChangeset({ ...options, config, standards });
 			const root = await options.harness.harness.root(context);
-			const revision = revisionKey(options.changeset.revision);
+			const revision = Revision.key(options.changeset.revision);
 			const before = (await options.harness.harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!
 				.task;
 			const sections = standards.forFiles(["packages/core/src/a.ts"]).sections;
@@ -398,7 +397,7 @@ describe("per-lens standards", () => {
 		};
 		await reviewChangeset({ ...options, lenses, config });
 		const root = await options.harness.harness.root(context);
-		const revision = revisionKey(options.changeset.revision);
+		const revision = Revision.key(options.changeset.revision);
 		const before = (await options.harness.harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.task;
 
 		await reviewChangeset({ ...options, lenses, config, policy: undefined });
@@ -422,7 +421,7 @@ describe("per-lens standards", () => {
 		const first = await reviewChangeset(options);
 		expect(first.verdict.status).toBe("passed");
 		const root = await options.harness.harness.root(context);
-		const revision = revisionKey(options.changeset.revision);
+		const revision = Revision.key(options.changeset.revision);
 		const before = (await options.harness.harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.task;
 		expect(before).toBeDefined();
 		writeFiles(repo, { "packages/core/src/AGENTS.md": "x".repeat(300 * 1024) });
@@ -538,7 +537,7 @@ describe("per-lens standards", () => {
 				await options.harness.harness.root(context)
 			).id,
 			context,
-		))!.details![revisionKey(options.changeset.revision)]!;
+		))!.details![Revision.key(options.changeset.revision)]!;
 		expect(details.lenses.find(({ name }) => name === reviewer)!.standards).toEqual(paths);
 	});
 

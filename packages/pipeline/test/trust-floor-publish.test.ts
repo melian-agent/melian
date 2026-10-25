@@ -1,5 +1,13 @@
 import { rmSync } from "node:fs";
-import { Adjudication, Changeset, defaultConfig, Finding, snippetHash, type Verification } from "@melian-agent/core";
+import {
+	Adjudication,
+	Changeset,
+	defaultConfig,
+	Finding,
+	Revision,
+	snippetHash,
+	type Verification,
+} from "@melian-agent/core";
 import { createGitHubProvider } from "@melian-agent/github";
 import {
 	backgroundContext as context,
@@ -14,7 +22,7 @@ import { expect, it, vi } from "vitest";
 import { fakeGitHub } from "../../github/test/fixtures/fake-github.ts";
 import { moveTo, pullRequestState } from "../../github/test/fixtures/scenario.ts";
 import { VerdictDocument } from "../src/adjudication.ts";
-import { FindingsDocument, revisionKey, upsertVerification } from "../src/findings.ts";
+import { FindingsDocument, upsertVerification } from "../src/findings.ts";
 import { RoundWriter } from "../src/rounds.ts";
 import { RecordedReview } from "./fixtures/recorded-review.ts";
 import { baseAndHead, commit, isolatedGitEnv } from "./fixtures/repo.ts";
@@ -64,7 +72,7 @@ it.each(["plausible", "refuted"] as const)(
 			let changeset = await Changeset.resolve(repo, "main...feature");
 			const first = report("cache: A");
 			const decide = async () => {
-				const revision = revisionKey(changeset.revision);
+				const revision = Revision.key(changeset.revision);
 				const findings = await readFindings(opened.harness, root.id, revision, context);
 				const decided = new Adjudication({
 					findings,
@@ -105,11 +113,11 @@ it.each(["plausible", "refuted"] as const)(
 				});
 			};
 			await root.commit(async (tx) => {
-				await upsertFinding(tx, root.id, first, revisionKey(changeset.revision));
+				await upsertFinding(tx, root.id, first, Revision.key(changeset.revision));
 				await upsertVerification(
 					tx,
 					root.id,
-					revisionKey(changeset.revision),
+					Revision.key(changeset.revision),
 					first.id,
 					first.properties.source,
 					judgement,
@@ -127,7 +135,7 @@ it.each(["plausible", "refuted"] as const)(
 						root.id,
 						first.id,
 						{ by: "Maintainer", at: "2026-10-18T00:00:00Z", reason: "Accepted cache A." },
-						revisionKey(changeset.revision),
+						Revision.key(changeset.revision),
 					),
 				context,
 			);
@@ -139,11 +147,11 @@ it.each(["plausible", "refuted"] as const)(
 			commit(repo, { "unrelated.txt": "same accepted content\n" });
 			changeset = await Changeset.resolve(repo, "main...feature");
 			await root.commit(async (tx) => {
-				await upsertFinding(tx, root.id, first, revisionKey(changeset.revision));
+				await upsertFinding(tx, root.id, first, Revision.key(changeset.revision));
 				await upsertVerification(
 					tx,
 					root.id,
-					revisionKey(changeset.revision),
+					Revision.key(changeset.revision),
 					first.id,
 					first.properties.source,
 					judgement,
@@ -156,11 +164,11 @@ it.each(["plausible", "refuted"] as const)(
 			const changed = report("cache: B");
 			expect(changed.id).toBe(first.id);
 			await root.commit(async (tx) => {
-				await upsertFinding(tx, root.id, changed, revisionKey(changeset.revision));
+				await upsertFinding(tx, root.id, changed, Revision.key(changeset.revision));
 				await upsertVerification(
 					tx,
 					root.id,
-					revisionKey(changeset.revision),
+					Revision.key(changeset.revision),
 					changed.id,
 					changed.properties.source,
 					judgement,

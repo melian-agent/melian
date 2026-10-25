@@ -32,7 +32,6 @@ import Value from "typebox/value";
 import {
 	FindingsDocument,
 	hasSighting,
-	revisionKey,
 	sightingCount,
 	sightingIn,
 	upsertFinding,
@@ -839,7 +838,7 @@ export const reportVerdict = defineTool({
 				})),
 			});
 			const evidence = await evidenceFrom(args.evidence ?? [], review, revision, args.evidence?.[0]?.file ?? "");
-			const at = revisionKey(review);
+			const at = Revision.key(review);
 			const notes = await api.commit(async (tx) => {
 				const entry = (await tx.doc(ReviewIndex, lens.review)).reviews[at];
 				if (entry?.verification?.task !== lens.task)
@@ -921,7 +920,7 @@ async function recordFinding(args: ReportFindingInput, api: ToolExecutionApi, le
 		const runner = lens.task ?? (await tx.conversation(api.conversationId))?.owner?.taskId;
 		const state = await tx.doc(FindingsDocument, lens.review);
 		const { source } = finding.properties;
-		const at = revisionKey(review);
+		const at = Revision.key(review);
 		// A later review of the revision replaced this lens's run, and cleared its sightings; one written now would
 		// count in a verdict whose record says the replacement ran.
 		const entry = (await tx.doc(ReviewIndex, lens.review)).reviews[at];

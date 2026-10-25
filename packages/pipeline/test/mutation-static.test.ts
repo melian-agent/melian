@@ -41,7 +41,6 @@ import {
 	openReviewHarness,
 	readFindings,
 	reviewChangeset,
-	revisionKey,
 	runChecks,
 	runStaticTool,
 	type WriterTrust,
@@ -2448,7 +2447,7 @@ cp '${canned}' reports/mutation/mutation.json`,
 					],
 				},
 			]);
-			const findings = await readFindings(harness, root.id, revisionKey({ base, head }), context);
+			const findings = await readFindings(harness, root.id, Revision.key({ base, head }), context);
 			expect(findings.map((finding) => finding.ruleId)).toEqual(["mutation/untested-behaviour"]);
 			expect(fake.calls()).toHaveLength(1);
 			expect(fake.heads()).toEqual([head]);
@@ -2465,7 +2464,7 @@ cp '${canned}' reports/mutation/mutation.json`,
 			});
 			const { harness, root, run } = await checks(base, head);
 			expect(run.records).toMatchObject([{ status: "ran", findings: 1 }]);
-			const findings = await readFindings(harness, root.id, revisionKey({ base, head }), context);
+			const findings = await readFindings(harness, root.id, Revision.key({ base, head }), context);
 			expect(findings).toHaveLength(1);
 			expect(findings[0]!.resolved(defaultConfig).properties.resolution).toBe("advisory");
 			expect(findings[0]).toMatchObject({
@@ -2501,7 +2500,7 @@ cp '${canned}' reports/mutation/mutation.json`,
 					],
 				},
 			]);
-			const [left] = await readFindings(harness, root.id, revisionKey({ base, head }), context);
+			const [left] = await readFindings(harness, root.id, Revision.key({ base, head }), context);
 			expect(left).toMatchObject({
 				ruleId: "mutation/unmutated",
 				properties: { path: "packages/p/src/a.ts", severity: "P3" },
@@ -2534,7 +2533,7 @@ cp '${canned}' reports/mutation/mutation.json`,
 					cause: "timeout",
 				},
 			]);
-			const findings = await readFindings(harness, root.id, revisionKey({ base, head }), context);
+			const findings = await readFindings(harness, root.id, Revision.key({ base, head }), context);
 			expect(
 				findings.map((finding) => [finding.ruleId, finding.properties.severity, finding.properties.path]),
 			).toEqual([["mutation/unmutated", "P2", "packages/p/src/a.ts"]]);
