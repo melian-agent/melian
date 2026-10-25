@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 import {
 	type Changeset,
+	CoverageRecord,
 	dismissalVersion,
 	Finding,
 	type FindingDismissal,
@@ -12,6 +13,7 @@ import {
 	type PostedLedger,
 	type PostedReview,
 	type PublishedBy,
+	type PublishedCoverage,
 	type PublishedMarkers,
 	type PullRequest,
 	type ReviewProvider,
@@ -23,6 +25,7 @@ import {
 	Verdict,
 } from "@melian-agent/core";
 import { VerdictDocument, type VerdictProvenance } from "./adjudication.ts";
+import { CoverageDocument, GapDismissalDocument } from "./coverage-ledger.ts";
 import { PublishError } from "./errors.ts";
 import { FindingsDocument } from "./findings.ts";
 import {
@@ -217,7 +220,7 @@ class PublishedState {
 // would post it twice.
 export const PublishedDocument = defineDoc<StoredPublishedState>({
 	kind: "melian.published",
-	version: 9,
+	version: 10,
 	scope: "conversation",
 	history: "latest",
 	fork: "current",
@@ -225,7 +228,8 @@ export const PublishedDocument = defineDoc<StoredPublishedState>({
 	// Version 2 made a finding's evidence a list of locations, so a round left pending before it renders. Version 3 keys
 	// each reply by `replyKey`. Version 4 adds ledger snapshots; version 5 retains only one-line older rounds.
 	// Version 6 adds optional standards paths per lens; version 7 records the publisher. Version 8 permits trust-floor
-	// diagnostics; version 9 keys resolutions by thread.
+	// diagnostics; version 9 keys resolutions by thread. Version 10 adds each ledger round's coverage, which an earlier
+	// round lacks and renders without.
 	migrate: (value, from) => PublishedState.upgrade(value, from),
 });
 
@@ -274,6 +278,21 @@ export const PublisherDocument = defineDoc<StoredPublisherState>({
 	fork: "current",
 	initial: () => new PublisherState({}).toJSON(),
 });
+
+// What the published round says of coverage, from the record its round wrote and the dismissals at its revision; a
+// round that wrote none, such as one an earlier build decided, says nothing.
+async function coverageOf(
+	reader: Pick<DocumentReader, "snapshot">,
+	root: ConversationId,
+	round: string,
+	revision: string,
+	context: Context,
+): Promise<PublishedCoverage | undefined> {
+	const stored = (await reader.snapshot(CoverageDocument, root, context))?.records[round];
+	if (stored === undefined) return undefined;
+	const dismissed = (await reader.snapshot(GapDismissalDocument, root, context))?.items[revision] ?? [];
+	return CoverageRecord.from(stored, dismissed).published();
+}
 
 // Whether the last review posted at `head`, as `record` holds it, posted this revision's verdict, by its fingerprint.
 // A record an older Melian wrote names no revision; it counts only when no other revision reviewed
@@ -697,6 +716,7 @@ function publishTask(provider: ReviewProvider) {
 						return;
 					}
 					provider.beginPublish?.();
+					const coverage = await coverageOf(runtime, root, target.roundId, revision, context);
 					const verdict = Verdict.from(storedRound.verdict);
 					const current = verdict.fingerprint();
 					const status = publishedBy.trustedWriters ? verdict.reviewStatus() : untrustedWriterStatus;
@@ -741,6 +761,7 @@ function publishTask(provider: ReviewProvider) {
 								verdict: structuredClone(planned.verdict),
 								...(details === undefined ? {} : { details: structuredClone(details) }),
 								...(walkthrough === undefined ? {} : { walkthrough: structuredClone(walkthrough) }),
+								...(coverage === undefined ? {} : { coverage }),
 								resolved: Object.values(planned.resolved).map((entry) => ({
 									id: entry.id,
 									ruleId: entry.ruleId,
@@ -788,6 +809,7 @@ function publishTask(provider: ReviewProvider) {
 								stillOpen: pending.stillOpen,
 								carried,
 								resolved: Object.values(pending.resolved).filter((entry) => entry.thread === undefined),
+								...(pending.ledger?.coverage === undefined ? {} : { coverage: pending.ledger.coverage }),
 								secret,
 							});
 							posting = false;
@@ -957,6 +979,8 @@ function publishTask(provider: ReviewProvider) {
 						currentRound.details = structuredClone(storedVerdict.details[revision]);
 					delete currentRound.walkthrough;
 					delete currentRound.walkthroughNote;
+					delete currentRound.coverage;
+					if (coverage !== undefined) currentRound.coverage = structuredClone(coverage);
 					if (storedVerdict?.walkthroughs?.[revision] !== undefined)
 						currentRound.walkthrough = structuredClone(storedVerdict.walkthroughs[revision]);
 					if (storedVerdict?.walkthroughNotes?.[revision] !== undefined)
