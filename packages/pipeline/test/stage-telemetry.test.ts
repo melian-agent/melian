@@ -347,7 +347,7 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 				.filter((line) => line.startsWith("| ") && !line.startsWith("| Stage") && !line.startsWith("| ---"))
 				.map((line) => {
 					const cells = line.slice(2, -2).split(" | ");
-					return [`${cells[0]} ${cells[1]}`, cells] as const;
+					return [`${cells[0]} ${cells[1]}` as string, cells] as const;
 				}),
 		);
 		const named = (stage: Stage) => {
