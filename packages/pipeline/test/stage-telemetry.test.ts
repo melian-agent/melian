@@ -355,6 +355,18 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 		});
 		expect(state.ledgers).toHaveLength(1);
 		expect(state.ledgers[0]!.body).toBe(body);
+		// One that reads a newer run, such as after a later walkthrough, shows it.
+		await publishReview({
+			harness: publication.harness,
+			provider,
+			changeset: options.changeset,
+			pullRequest: await provider.pullRequest(7),
+			base: options.changeset.revision.base,
+			trustedWriters: true,
+			run: { ...telemetry.runDetails(), durationMs: 600_000 },
+		});
+		expect(state.ledgers[0]!.body).toContain("<summary>Run details: 10.0 min · ");
+		expect(state.ledgers).toHaveLength(1);
 		const rows = new Map(
 			body
 				.split("\n")
