@@ -6,7 +6,7 @@ Block: 1 finding
 
 src/receipt.ts
 
-  P2  line 1  wrong-result  (introduced, new, block, confirmed)
+  P2 | Blocks merge | Correctness | Verifier confirmed | New in this change
     Decided by: melian.yaml: resolution.P2, the table
     Verified: scripted/judge: The scripted verifier judged the claim.
   wrong-result, as lens.correctness reports it.
@@ -14,12 +14,13 @@ src/receipt.ts
     Why here: Scripted.
     Failure scenario: Scripted.
     What to do: Scripted.
+    Rule wrong-result | Line 1 | Status new
 
 Advisory: 1 finding
 
 src/total.ts
 
-  P2  line 1  reuse  (introduced, new, advisory, confirmed)
+  P2 | Advisory | cleanup | Verifier confirmed | New in this change
     Decided by: melian.yaml: resolution.checks.lens.cleanup.P2, the check entry
     Verified: scripted/judge: The scripted verifier judged the claim.
   reuse, as lens.cleanup reports it.
@@ -27,5 +28,6 @@ src/total.ts
     Why here: Scripted.
     Failure scenario: Scripted.
     What to do: Scripted.
+    Rule reuse | Line 1 | Status new
 
 2 findings in 2 files.

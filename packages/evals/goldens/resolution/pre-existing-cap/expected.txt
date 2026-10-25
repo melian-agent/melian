@@ -8,7 +8,7 @@ Block: 1 finding
 
 services/payments/src/total.ts
 
-  P0  line 1  wrong-result  (introduced, new, block, confirmed)
+  P0 | Blocks merge | Correctness | Verifier confirmed | New in this change
     Decided by: services/payments/melian.yaml: resolution.P0, the table
     Verified: scripted/judge: The scripted verifier judged the claim.
   wrong-result, as lens.correctness reports it.
@@ -16,6 +16,7 @@ services/payments/src/total.ts
     Why here: Scripted.
     Failure scenario: Scripted.
     What to do: Scripted.
+    Rule wrong-result | Line 1 | Status new
 
 Pre-existing, important: 2 findings
   ae2fafb2cfdf7bd4  new
@@ -23,7 +24,7 @@ Pre-existing, important: 2 findings
 
 docs/guide.md
 
-  P0  line 1  wrong-result  (pre-existing, new, advisory, confirmed)
+  P0 | Advisory | Correctness | Verifier confirmed | Predates this change
     Decided by: docs/melian.yaml: resolution.P0, the table
     Verified: scripted/judge: The scripted verifier judged the claim.
   wrong-result, as lens.correctness reports it.
@@ -31,10 +32,11 @@ docs/guide.md
     Why here: Scripted.
     Failure scenario: Scripted.
     What to do: Scripted.
+    Rule wrong-result | Line 1 | Status new
 
 services/payments/src/ledger.ts
 
-  P0  line 1  wrong-result  (pre-existing, new, acknowledge, confirmed)
+  P0 | Needs acknowledgement | Correctness | Verifier confirmed | Predates this change
     Decided by: services/payments/melian.yaml: resolution.P0, the table; capped as pre-existing by melian.yaml's resolution.preExisting.P0
     Verified: scripted/judge: The scripted verifier judged the claim.
   wrong-result, as lens.correctness reports it.
@@ -42,5 +44,6 @@ services/payments/src/ledger.ts
     Why here: Scripted.
     Failure scenario: Scripted.
     What to do: Scripted.
+    Rule wrong-result | Line 1 | Status new
 
 3 findings in 3 files.

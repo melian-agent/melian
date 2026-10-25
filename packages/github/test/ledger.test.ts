@@ -285,6 +285,8 @@ describe("ledger rendering", () => {
 		const plain = Ledger.from(counted, { rounds: [{ ...round, verdict: counted.toJSON() }] }, options);
 		expect(plain.stamp.counts.open).toBe(1);
 		expect(plain.render(links)).toContain("1 finding needs attention: 1 advisory.");
+		expect(plain.render(links)).toContain(" | Advisory | ");
+		expect(plain.render(links)).not.toMatch(/\p{Emoji_Presentation}|\u{FE0F}/u);
 	});
 
 	it("names the heading in a member's inline comment when the provider posts it", async () => {
