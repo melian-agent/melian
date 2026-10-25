@@ -118,7 +118,7 @@ describe("built-in lenses", () => {
 			contracts: "dd8fb36095b4",
 			conventions: "1815e2aee9b9",
 			correctness: "18c49f913df8",
-			design: "b0b07baf52ca",
+			design: "768a63490995",
 			"removed-behaviour": "37aeab0038e3",
 			tests: "9eb5dbf32a98",
 			"trust-boundary": "24aa8e2540b4",
@@ -168,6 +168,9 @@ describe("built-in lenses", () => {
 		);
 		expect(design!.instructions).toContain(
 			'quote the documented words as `context` evidence with `revision: "base"`',
+		);
+		expect(design!.instructions).toContain(
+			"Nor is a change that only rewords a line or adds context, unless the documented words forbid that.",
 		);
 		expect(design!.instructions).toContain(
 			"a package the manifest at base declares, or a tool the base's code already runs",
