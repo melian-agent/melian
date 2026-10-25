@@ -860,7 +860,7 @@ describe("one lens against one reviewer", () => {
 		};
 		const plain: CheckRecord = { ...designRan, lineage: { model: "openai/gpt-5.5", by: "--model", outside: true } };
 		const text = new ComparisonSet([
-			round1([moved]),
+			round1([{ name: "lens.correctness", status: "ran", version: "7", level: "deep" }, moved]),
 			round1([plain]),
 			round1([], "2@deep"),
 			round1([{ name: "lens.design", status: "ran" }]),
@@ -872,6 +872,7 @@ describe("one lens against one reviewer", () => {
 			"unversioned@careful: over 1 comparisons",
 		])
 			expect(text).toContain(cohort);
+		expect(text).not.toContain("7@deep");
 	});
 
 	it("credits a lens with one standing claim of two, or with a claim no verifier judged", () => {
