@@ -115,6 +115,12 @@ async function ledgerWrite({ adjudication, ...rest }: LedgerRound & { adjudicati
 	return ledger().write(await ledger().compute(rest, context), adjudication, context);
 }
 const head = async () => Changeset.resolve(repo, `${base}..feature`);
+let steps = 0;
+// Moves the head by one line, so a round about to run sits at a head no decided round reviewed, and carries from it.
+const stepped = async () => {
+	commit(repo, { "src/step.ts": lines(`step ${++steps}`) });
+	return head();
+};
 
 describe("CoverageLedger.write", () => {
 	it("writes nothing for a task no round holds, and keeps a round's first record", async () => {
@@ -156,7 +162,7 @@ describe("CoverageLedger.write", () => {
 
 describe("the round a record carries from", () => {
 	async function decidedAt(at: string, overrides: Partial<LedgerRound> = {}, decided = true) {
-		const changeset = await head();
+		const changeset = await stepped();
 		const adjudication = await mint(changeset, at, decided);
 		return ledgerWrite(round(changeset, adjudication, overrides));
 	}
@@ -506,7 +512,7 @@ describe("the ledger at its edges", () => {
 		expect(coverage.covered[0]).toEqual({ level: "careful", head: { "src/a.ts": [[4, 4]] }, base: {}, units: {} });
 	});
 
-	it("carries from the last decided round by mint order, a round minted at the same time with a later number included", async () => {
+	it("takes, at the head of the last decided round, what that round carried from", async () => {
 		commit(repo, { "src/a.ts": changed() });
 		const changeset = await head();
 		const first = await mint(changeset, "2026-10-25T00:00:05.000Z");
@@ -514,14 +520,24 @@ describe("the ledger at its edges", () => {
 		expect(await ledgerWrite(round(changeset, second))).toBe("r2");
 		expect((await record("r2")).carriedFrom).toBeUndefined();
 		expect(await ledgerWrite(round(changeset, first))).toBe("r1");
-		// Intake reads the last decided round by mint order, which here is r2, whichever round asks.
-		expect((await record("r1")).carriedFrom).toBe("r2");
+		// The last decided round, r2, reviewed this head too, so r1 carries from what r2 carried from: nothing.
+		expect((await record("r1")).carriedFrom).toBeUndefined();
+	});
+
+	it("carries a round at a decided round's head from the round that one carried from", async () => {
+		commit(repo, { "src/a.ts": changed() });
+		await writeAt(await stepped(), "2026-10-25T00:00:01.000Z");
+		const second = await stepped();
+		await writeAt(second, "2026-10-25T00:00:02.000Z");
+		expect((await record("r2")).carriedFrom).toBe("r1");
+		await writeAt(second, "2026-10-25T00:00:03.000Z");
+		expect((await record("r3")).carriedFrom).toBe("r1");
 	});
 
 	it("carries from the highest-numbered of rounds minted at one time", async () => {
 		commit(repo, { "src/a.ts": changed() });
 		const changeset = await head();
-		for (let index = 0; index < 4; index++) await writeAt(changeset, "2026-10-25T00:00:05.000Z");
+		for (let index = 0; index < 4; index++) await writeAt(await stepped(), "2026-10-25T00:00:05.000Z");
 		expect((await record("r4")).carriedFrom).toBe("r3");
 	});
 
@@ -537,7 +553,7 @@ describe("the ledger at its edges", () => {
 				round: "r2",
 			};
 		}, context);
-		await writeAt(changeset, "2026-10-25T00:00:03.000Z");
+		await writeAt(await stepped(), "2026-10-25T00:00:03.000Z");
 		expect((await record("r3")).carriedFrom).toBe("r1");
 	});
 
@@ -622,7 +638,7 @@ describe("the ledger at its edges", () => {
 				manifest: ["guardrails", "lens.correctness", "lens.design"],
 			}),
 		);
-		expect(await writeAt(changeset, "2026-10-25T00:00:02.000Z")).toBe("r2");
+		expect(await writeAt(await stepped(), "2026-10-25T00:00:02.000Z")).toBe("r2");
 		const stored = await record("r2");
 		expect(stored.carriedFrom).toBe("r1");
 		expect(stored.checks["lens.design"]).toBeUndefined();
@@ -647,7 +663,7 @@ describe("what voids the carry", () => {
 	const changed = () => numbered(20, "a").replace("a 3\n", "A 3\n").replace("a 9\n", "A 9\n");
 	let at = 0;
 	const next = async (overrides: Partial<LedgerRound> = {}) => {
-		const changeset = await head();
+		const changeset = await stepped();
 		const adjudication = await mint(changeset, `2026-10-25T00:01:${String(++at).padStart(2, "0")}.000Z`);
 		const id = (await ledgerWrite(round(changeset, adjudication, overrides)))!;
 		return record(id);

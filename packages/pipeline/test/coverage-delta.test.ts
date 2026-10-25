@@ -191,6 +191,9 @@ describe("a round over the ledger", () => {
 			status: "skipped",
 			reason: "nothing uncovered",
 		});
+		expect(
+			[...(verdict.ran ?? []), ...verdict.notRun].filter((check) => check.name === "lens.contracts"),
+		).toHaveLength(1);
 		expect(requests[contracts]).toEqual([]);
 		expect(verdict.status).toBe("passed");
 	});
