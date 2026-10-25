@@ -164,8 +164,10 @@ export class ComparisonSet {
 				verdict
 					.all()
 					.filter((finding) => {
-						const { source, reportedBy = [source], alsoReportedAs = [] } = finding.properties;
-						return [...reportedBy, ...alsoReportedAs].some((each) => each.check === check);
+						// The verdict's defect names its live members: a dismissed co-report stays on the finding as context.
+						const { source, reportedBy = [source] } = finding.properties;
+						const members = verdict.defect(finding.id)?.members ?? [];
+						return [...reportedBy, ...members].some((each) => each.check === check);
 					})
 					.map((finding) => finding.id),
 			);

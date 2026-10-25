@@ -650,6 +650,45 @@ describe("one lens against one reviewer", () => {
 		);
 	});
 
+	it("credits no dismissed co-report, and counts a round whose reviewer imported nothing", () => {
+		const shared = (() => {
+			const finding = own(12);
+			const json = finding.toJSON();
+			return Finding.from({
+				...json,
+				properties: {
+					...json.properties,
+					alsoReportedAs: [{ id: "f".repeat(16), ruleId: "x", check: "lens.design", dismissed: true }],
+				},
+			});
+		})();
+		const codex12 = report({ line: 12, title: "Codex 12" });
+		const matched = round({ externals: [codex12], findings: [shared] });
+		matched.adjudicate(codex12.id, { ...by, verdict: "valid" });
+		matched.adjudicate(shared.id, { ...by, verdict: "valid" });
+		const lone = design(40);
+		const empty = Comparison.of(revision);
+		empty.import("file:codex.json", { findings: [], skippedBodies: 0, reviewers: [{ name: "codex" }] }, at);
+		empty.compare(verdictOf({ findings: [lone] }));
+		empty.adjudicate(lone.id, { ...by, verdict: "valid" });
+		expect(
+			new ComparisonSet([entry("one", matched, [shared]), entry("two", empty, [lone])]).againstReviewer(
+				"lens.design",
+				"codex",
+			),
+		).toEqual({
+			check: "lens.design",
+			reviewer: "codex",
+			comparisons: 2,
+			reviewerValid: 1,
+			checkFound: 0,
+			othersFound: 1,
+			checkValid: 1,
+			reviewerFound: 0,
+			pending: 0,
+		});
+	});
+
 	it("prints no share for an empty side, and selects changesets as the other statistics do", () => {
 		const { comparison, findings } = scenario();
 		const set = new ComparisonSet([entry("one", comparison, findings)]);
