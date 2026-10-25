@@ -644,6 +644,7 @@ describe("markers", () => {
 		expect(body).not.toContain("Lenses that ran with a note");
 		expect(body).not.toContain("Callers unavailable");
 		expect(body).not.toContain("triage input was cut");
+		expect(body).not.toContain("Reach:");
 		expect(body).toContain("**passed**");
 	});
 

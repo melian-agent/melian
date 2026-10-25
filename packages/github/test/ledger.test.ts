@@ -631,6 +631,9 @@ describe("ledger rendering", () => {
 		);
 		expect(runDetails.split(inline(shared))).toHaveLength(2);
 		expect(runDetails).not.toContain("`lens.security`");
+		const quiet = Ledger.from(verdict, { rounds: [round] }, options).render(links);
+		expect(quiet).toContain("<summary>Run details</summary>");
+		expect(quiet).not.toContain("Lens notes");
 	});
 
 	it("renders a lens lineage in the run details", () => {
