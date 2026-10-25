@@ -47,6 +47,14 @@ describe("the literal-emoji Biome plugin", { timeout: 30_000 }, () => {
 		expect(lint("packages/core/src/scratch.ts", source.join("\n"))).toEqual([1, 2, 3, 4, 5]);
 	});
 
+	it.each([
+		["JSX text", "packages/core/src/scratch.tsx", `export const a = <span>${red}</span>;\n`],
+		["a JSX attribute string", "packages/core/src/scratch.tsx", `export const a = <span title="${red}" />;\n`],
+		["an import path", "packages/core/src/scratch.ts", `import "./${red}.js";\n`],
+	])("reports an emoji in %s", (_, path, source) => {
+		expect(lint(path, source)).toEqual([1]);
+	});
+
 	it("reports an emoji in a script and a test as well as in source", () => {
 		expect(lint("scripts/scratch.mjs", `export const a = "${red}";\n`)).toEqual([1]);
 		expect(lint("packages/cli/test/scratch.test.ts", `export const a = "${red}";\n`)).toEqual([1]);
