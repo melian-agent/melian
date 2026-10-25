@@ -21,6 +21,7 @@ import {
 	Verdict,
 	type Walkthrough,
 } from "@melian-agent/core";
+import { withLegacyCaveats } from "./caveats.ts";
 import { configsFor } from "./configurations.ts";
 import { findingsVersion, type Producer, readFindings, revisionKey, seenBefore } from "./findings.ts";
 import { type Context, type ConversationId, type DocumentReader, defineDoc, defineTask } from "./harness.ts";
@@ -135,7 +136,18 @@ class VerdictState {
 			}
 		}
 		const verdicts = Object.fromEntries(
-			Object.entries(state.verdicts).map(([revision, verdict]) => [revision, Verdict.upgrade(verdict)]),
+			Object.entries(state.verdicts).map(([revision, verdict]) => {
+				const upgraded = Verdict.upgrade(verdict);
+				if (from >= 13) return [revision, upgraded];
+				return [
+					revision,
+					{
+						...upgraded,
+						notRun: upgraded.notRun.map(withLegacyCaveats),
+						...(upgraded.ran === undefined ? {} : { ran: upgraded.ran.map(withLegacyCaveats) }),
+					},
+				];
+			}),
 		);
 		return new VerdictState({
 			...state,
@@ -227,7 +239,13 @@ export const AdjudicationTask = defineTask<
 	version: 6,
 	initial: () => ({ phase: "adjudicate" }),
 	migrate: (input, checkpoint, from) => ({
-		input: input as unknown as AdjudicationTaskInput,
+		input:
+			from >= 6
+				? (input as unknown as AdjudicationTaskInput)
+				: {
+						...(input as unknown as AdjudicationTaskInput),
+						checks: (input as unknown as AdjudicationTaskInput).checks.map(withLegacyCaveats),
+					},
 		checkpoint: { ...(checkpoint as { phase: "adjudicate" }), ...(from < 3 ? { legacyTiming: true as const } : {}) },
 	}),
 	phases: {

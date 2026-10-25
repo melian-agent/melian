@@ -603,7 +603,7 @@ export class Verdict {
 	lensNotes(): { reason: string; checks: string[] }[] {
 		const notes = new Map<string, string[]>();
 		for (const { name, reason } of this.ran ?? [])
-			if (reason !== undefined) notes.set(reason, [...(notes.get(reason) ?? []), name]);
+			if (reason !== undefined) notes.set(reason, [...new Set([...(notes.get(reason) ?? []), name])]);
 		return [...notes].map(([reason, checks]) => ({ reason, checks }));
 	}
 
@@ -749,8 +749,13 @@ export class Verdict {
 		const findings = Object.fromEntries(
 			Object.entries(this.findings).map(([resolution, group]) => [resolution, group.map(bare)]),
 		);
+		// Caveats restate notes the reason already holds, so a verdict upgraded to carry them hashes as it did.
+		const plain = ({ caveats: _, ...check }: StoredCheckRecord) => check;
+		const stored = this.toJSON();
 		const kept = {
-			...this.toJSON(),
+			...stored,
+			notRun: stored.notRun.map(plain),
+			...(stored.ran === undefined ? {} : { ran: stored.ran.map(plain) }),
 			findings,
 			dismissed: this.dismissed.map(bare),
 			...(this.refuted === undefined ? {} : { refuted: this.refuted.map(bare) }),

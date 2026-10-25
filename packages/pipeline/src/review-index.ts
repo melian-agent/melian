@@ -1,4 +1,5 @@
 import type { CoverageIds } from "@melian-agent/core";
+import { callersWithLegacyCaveat } from "./caveats.ts";
 import { defineDoc, type TaskId, type Tx } from "./harness.ts";
 
 // Type aliases, not interfaces: a document's value must satisfy Pi's JsonObject, which an interface never does.
@@ -44,7 +45,17 @@ export const ReviewIndex = defineDoc<ReviewIndexState>({
 	history: "latest",
 	fork: "current",
 	initial: () => ({ reviews: {} }),
-	migrate: (value) => value as ReviewIndexState,
+	migrate: (value, from) => {
+		const state = value as ReviewIndexState;
+		if (from >= 4) return state;
+		const reviews = Object.fromEntries(
+			Object.entries(state.reviews).map(([revision, entry]) => [
+				revision,
+				entry.callers === undefined ? entry : { ...entry, callers: callersWithLegacyCaveat(entry.callers) },
+			]),
+		);
+		return { ...state, reviews };
+	},
 });
 
 // Outcomes that decided nothing: a cancelled task, one that broke the task contract, and one whose definition is gone.
