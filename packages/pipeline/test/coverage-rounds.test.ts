@@ -299,4 +299,25 @@ describe("a delta round", () => {
 		});
 		expect(judged(requests)).toEqual([id]);
 	});
+
+	it("keeps the copied verdict of a carried claim the verifier did not judge again, beside one it did", async () => {
+		commit(repo, first);
+		await review({ correctness: [report("src/a.ts", 3), report("src/c.ts", 5), fauxAssistantMessage("Done.")] });
+		commit(repo, { "src/a.ts": numbered(20, "a").replace("a 3\n", "A 3 again\n") });
+		const { key, requests } = await review();
+		expect(judged(requests)).toHaveLength(1);
+		const state = (await harness.snapshot(FindingsDocument, (await harness.root(context)).id, context))!;
+		const verified = Object.values(state.items).flatMap((record) =>
+			Object.keys(record.sightings[key] ?? {})
+				.filter((producer) => producer.startsWith("carried/"))
+				.map((producer) => [
+					record.sightings[key]![producer]!.properties.path,
+					record.verifications?.[key]?.[producer] !== undefined,
+				]),
+		);
+		expect(verified.sort()).toEqual([
+			["src/a.ts", true],
+			["src/c.ts", true],
+		]);
+	});
 });
