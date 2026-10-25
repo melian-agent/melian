@@ -756,6 +756,29 @@ it.each(["verdict", "comparison"])("reads a legacy %s without provenance", async
 	}
 });
 
+it("reads a verdict an older Melian keyed by head alone as a round with no base round", async () => {
+	const storage = createMemoryStorage();
+	const opened = await openHarness(storage, { models: fake.models, registry: createReviewRegistry() });
+	try {
+		const root = await opened.root(context, { agent: { model: fake.ref() } });
+		const headOnly = "d".repeat(40);
+		await root.commit(async (tx) => {
+			(await tx.doc(VerdictDocument, root.id)).verdicts[headOnly] = new Adjudication({
+				findings: [],
+				manifest: [],
+				checks: [],
+				config: defaultConfig,
+			})
+				.adjudicate()
+				.toJSON();
+		}, context);
+		const [round] = await new RoundReader(storage).read("range-test");
+		expect(round!.stored).toMatchObject({ base: headOnly, head: "", tasks: [] });
+	} finally {
+		await opened.close(context);
+	}
+});
+
 it("returns independent frozen verdict views", async () => {
 	await review();
 	const stored = (await harness.snapshot(rounds, (await harness.root(context)).id, context))!.items.r1!;

@@ -1341,14 +1341,16 @@ describe("documents stored before evidence became a list", () => {
 			base: string,
 			other: object = oldVerdict,
 			recorded = postedFingerprint,
+			elsewhere: string[] = [],
 		) {
 			const path = join(dir, "legacy-published.sqlite");
 			const first = await open(await openSqliteStorage(path), reviewRegistry());
 			await first.root.commit(async (tx) => {
 				const verdicts = await tx.doc(LegacyVerdicts, first.root.id);
-				verdicts.verdicts = json(
-					Object.fromEntries(reviewed.map((each) => [`${each}..${head}`, each === baseB ? other : oldVerdict])),
-				);
+				verdicts.verdicts = json({
+					...Object.fromEntries(reviewed.map((each) => [`${each}..${head}`, each === baseB ? other : oldVerdict])),
+					...Object.fromEntries(elsewhere.map((key) => [key, oldVerdict])),
+				});
 				verdicts.provenance = json(
 					Object.fromEntries(reviewed.map((each) => [`${each}..${head}`, provenance(each)])),
 				);
@@ -1390,6 +1392,15 @@ describe("documents stored before evidence became a list", () => {
 
 		it("posts nothing again for the revision that review was of", async () => {
 			const { publication, posted } = await publishAfterUpgrade([baseA], baseA);
+			expect(posted).toEqual([]);
+			expect(publication.review).toBe("101");
+		});
+
+		it("reads an identical verdict at another head, or under a head-only key, as no other revision of this head", async () => {
+			const { publication, posted } = await publishAfterUpgrade([baseA], baseA, oldVerdict, postedFingerprint, [
+				`${baseB}..${"f".repeat(40)}`,
+				"e".repeat(40),
+			]);
 			expect(posted).toEqual([]);
 			expect(publication.review).toBe("101");
 		});

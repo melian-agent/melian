@@ -435,6 +435,14 @@ describe("ledger rendering", () => {
 		expect(Ledger.readStamp(body.replace('"round":1', '"round":2'))).toBeUndefined();
 	});
 
+	it("shows an earlier round whose findings were trimmed by its revision and status", () => {
+		const trimmed = { base: "a".repeat(40), head: "c".repeat(40), round: 1, status: "findings" as const };
+		const current = Ledger.from(verdict, { rounds: [trimmed, round] }, options);
+		expect(current.render(links)).toContain(
+			"<summary>Earlier round 1 at cccccccccccc</summary>\n\naaaaaaaaaaaa..cccccccccccc; findings.",
+		);
+	});
+
 	it("switches the walkthrough and keeps earlier rounds collapsed with their heads", () => {
 		const earlier = {
 			...round,
