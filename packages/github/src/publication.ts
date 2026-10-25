@@ -7,7 +7,6 @@ import {
 	type Finding,
 	type Placement,
 	Rendering,
-	type ResolvedFinding,
 	type ReviewDraft,
 	type Verdict,
 	type Verification,
