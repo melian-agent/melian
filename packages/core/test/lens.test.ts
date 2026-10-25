@@ -166,7 +166,9 @@ describe("built-in lenses", () => {
 		expect(design!.instructions).toContain(
 			"`contradicts-documented-decision` is the fallback: report under it only when no other rule above names the defect.",
 		);
-		expect(design!.instructions).toContain("quote the documented words as `context` evidence with `revision: \"base\"`");
+		expect(design!.instructions).toContain(
+			'quote the documented words as `context` evidence with `revision: "base"`',
+		);
 		expect(design!.instructions).toContain(
 			"a package the manifest at base declares, or a tool the base's code already runs",
 		);

@@ -8,14 +8,17 @@ import { render as originalRender } from "../goldens/design-bound-on-wrong-measu
 import { render as badRender } from "../goldens/design-bound-on-wrong-measure/head/src/bound-on-wrong-measure.ts";
 import { render as TwinBaseRender } from "../goldens/design-bound-on-wrong-measure-clean/base/src/bound-on-wrong-measure.ts";
 import { render as cleanRender } from "../goldens/design-bound-on-wrong-measure-clean/head/src/bound-on-wrong-measure.ts";
+import { stamp as originalStamp } from "../goldens/design-contradicts-documented-decision/base/src/timestamps.ts";
+import { stamp as badStamp } from "../goldens/design-contradicts-documented-decision/head/src/timestamps.ts";
+import { stamp as twinBaseStamp } from "../goldens/design-contradicts-documented-decision-clean/base/src/timestamps.ts";
+import {
+	stamp as cleanStamp,
+	stamps,
+} from "../goldens/design-contradicts-documented-decision-clean/head/src/timestamps.ts";
 import { renderNotes as originalNotes } from "../goldens/design-contradicts-documented-decision-noise/base/src/comment.ts";
 import { renderNotes as badNotes } from "../goldens/design-contradicts-documented-decision-noise/head/src/comment.ts";
 import { renderNotes as twinBaseNotes } from "../goldens/design-contradicts-documented-decision-noise-clean/base/src/comment.ts";
 import { renderNotes as cleanNotes } from "../goldens/design-contradicts-documented-decision-noise-clean/head/src/comment.ts";
-import { stamp as originalStamp } from "../goldens/design-contradicts-documented-decision/base/src/timestamps.ts";
-import { stamp as badStamp } from "../goldens/design-contradicts-documented-decision/head/src/timestamps.ts";
-import { stamp as twinBaseStamp } from "../goldens/design-contradicts-documented-decision-clean/base/src/timestamps.ts";
-import { stamp as cleanStamp, stamps } from "../goldens/design-contradicts-documented-decision-clean/head/src/timestamps.ts";
 import { readHeader } from "../goldens/design-reimplements-an-authority/head/src/note.ts";
 import { seconds } from "../goldens/design-reimplements-an-authority-no-dependency-clean/head/src/remind.ts";
 import { readHeader as excusedReadHeader } from "../goldens/design-reimplements-an-authority-unsupported-gap/head/src/note.ts";
