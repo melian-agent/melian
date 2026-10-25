@@ -871,7 +871,7 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 			...verdict,
 			ran: verdict.ran?.filter((check) => check.name !== "verifier"),
 			// The rerun decided a round of its own, which covers the diff beside the first.
-			coverage: { complete: true, rounds: ["r1", "r2"], gaps: [] },
+			coverage: { complete: true, rounds: ["r1", "r2"], gaps: [], dismissed: [] },
 		});
 	});
 

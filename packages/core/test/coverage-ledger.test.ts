@@ -86,7 +86,7 @@ describe("CoverageRecord", () => {
 		expect(covered.gaps()).toEqual([]);
 		expect(covered.complete()).toBe(true);
 		expect(covered.rounds()).toEqual(["r1", "r2"]);
-		expect(covered.summary()).toEqual({ complete: true, rounds: ["r1", "r2"], gaps: [] });
+		expect(covered.summary()).toEqual({ complete: true, rounds: ["r1", "r2"], gaps: [], dismissed: [] });
 		expect(covered.render()).toBe("Coverage: complete, from r1, r2.\n");
 	});
 
@@ -339,6 +339,7 @@ describe("CoverageRecord", () => {
 					reason: "recorded by coverage algorithm 0, not 1, so it counts for nothing",
 				},
 			],
+			dismissed: [],
 		});
 		expect(record({ guardrails: range() }, { producer: { name: "other", algorithm: 1 } }).current()).toBe(false);
 		expect(stale.render()).toBe(

@@ -2,15 +2,17 @@ import { createHash } from "node:crypto";
 import { stat } from "node:fs/promises";
 import type { ChangeOverlap, CodeLocation, EvidenceSite } from "./cause.ts";
 import { type FileUnit, type LinesByPath, type UnitField, type UnitKind, unionRanges } from "./coverage-units.ts";
-import { type ChangedFile, joinDiff, parseNumstatBinary, parsePatchHunks, parseRaw } from "./diff.ts";
+import { type ChangedFile, type Hunk, joinDiff, parseNumstatBinary, parsePatchHunks, parseRaw } from "./diff.ts";
 import { ChangesetError, FindingError } from "./errors.ts";
 import {
 	type Cause,
 	canonicalPath,
+	capSnippet,
 	type EvidenceRevision,
 	type Finding,
 	type FindingTrigger,
 	type LocationCause,
+	snippetHash,
 } from "./findings.ts";
 import { git, gitFailure, gitOutput, gitOutputBytes, isNotARepository, requireGitVersion } from "./git.ts";
 import { isPolicyFile } from "./paths.ts";
@@ -437,6 +439,55 @@ export class Revision {
 	}
 
 	/**
+	 * The trigger a finding at `location` carries at this revision, as `report_finding` builds it: for an `introduced`
+	 * finding, the hunk it sits in, its added lines hashed whole; for an `affected` one, the first hunk a proving `cause`
+	 * location falls on, with every such hunk, by file then index, as its proof; and none otherwise.
+	 */
+	triggerOf(
+		location: CodeLocation,
+		evidence: readonly (EvidenceSite & { readonly proves?: true })[],
+		cause: Cause,
+	): FindingTrigger | undefined {
+		const lines = (hunk: Hunk) => hunk.text.split("\n").filter((row) => row.startsWith("+") || row.startsWith("-"));
+		const added = (hunk: Hunk) =>
+			lines(hunk)
+				.filter((row) => row.startsWith("+"))
+				.map((row) => row.slice(1))
+				.join("\n");
+		if (cause === "introduced") {
+			const end = location.endLine ?? location.startLine;
+			const hunk = this.files
+				.find((file) => file.path === location.file)
+				?.hunks.find(
+					(each) =>
+						each.newLines > 0 && location.startLine < each.newStart + each.newLines && end >= each.newStart,
+				);
+			return hunk === undefined
+				? undefined
+				: { file: hunk.file, index: hunk.index, snippet: capSnippet(added(hunk)), hash: snippetHash(added(hunk)) };
+		}
+		if (cause !== "affected") return undefined;
+		const proving = evidence
+			.flatMap((site) => {
+				const overlap = site.proves === true ? this.causeOverlap(site, location.file) : undefined;
+				return overlap?.kind === "hunk" ? [overlap.hunk] : [];
+			})
+			.filter(
+				(hunk, at, all) => all.findIndex((each) => each.file === hunk.file && each.index === hunk.index) === at,
+			)
+			.sort((a, b) => (a.file === b.file ? a.index - b.index : a.file < b.file ? -1 : 1));
+		const [first] = proving;
+		if (first === undefined) return undefined;
+		return {
+			file: first.file,
+			index: first.index,
+			snippet: capSnippet(added(first)),
+			proof: proving.map((hunk) => ({ file: hunk.file, hash: snippetHash(lines(hunk).join("\n")) })),
+		};
+	}
+
+	/**
+	 * The hunk that introduced lines `startLine` to `endLine`	/**
 	 * The hunk that introduced lines `startLine` to `endLine` of `path` at head, as a finding's trigger names it, with
 	 * its added lines as the snippet; `undefined` when no hunk adds any of them.
 	 */

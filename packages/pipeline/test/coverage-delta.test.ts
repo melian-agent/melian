@@ -173,7 +173,7 @@ describe("a round over the ledger", () => {
 		expect(underReview).not.toContain("+A 3");
 		expect(context).toContain("+A 3");
 		expect(record.carriedFrom).toBe("r1");
-		expect(summary).toEqual({ complete: true, rounds: ["r1", "r2"], gaps: [] });
+		expect(summary).toEqual({ complete: true, rounds: ["r1", "r2"], gaps: [], dismissed: [] });
 		expect(verdict.status).toBe("passed");
 	});
 

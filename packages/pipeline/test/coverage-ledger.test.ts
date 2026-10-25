@@ -134,7 +134,7 @@ describe("the coverage ledger", () => {
 	it("records a full round as complete, from the hunks each lens's prompt rendered and every check that ran", async () => {
 		commit(repo, { "src/a.ts": numbered(20, "a").replace("a 3\n", "A 3\n") });
 		const { summary, record, text } = await review();
-		expect(summary).toEqual({ complete: true, rounds: ["r1"], gaps: [] });
+		expect(summary).toEqual({ complete: true, rounds: ["r1"], gaps: [], dismissed: [] });
 		expect(text).toBe("Coverage: complete, from r1.\n");
 		expect(record).toMatchObject({
 			producer: { name: "melian.coverage", algorithm: 1 },
@@ -535,7 +535,7 @@ describe("a store main wrote before the ledger", () => {
 				const after = (await reopened.snapshot(RoundsDocument, root, context))!;
 				expect(Object.values(after.items).map((round) => round.scope)).toEqual([undefined, { kind: "diff" }]);
 				const { summary } = await new CoverageLedger(reopened, root).section(recorded.key, context);
-				expect(summary).toEqual({ complete: true, rounds: ["r2"], gaps: [] });
+				expect(summary).toEqual({ complete: true, rounds: ["r2"], gaps: [], dismissed: [] });
 			} finally {
 				await reopened.close(context);
 			}

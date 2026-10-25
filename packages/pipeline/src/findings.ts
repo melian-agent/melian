@@ -1,5 +1,6 @@
 import {
 	type Cause,
+	carriedCheckPrefix,
 	dismissalReason,
 	Finding,
 	type FindingDismissal,
@@ -163,8 +164,10 @@ function compareText(a: string, b: string): number {
 	return a < b ? -1 : a > b ? 1 : 0;
 }
 
+// A producer's own sighting comes before a carried copy, so a lens that restates a finding speaks for it on a tie.
 function compareSources(a: FindingSource, b: FindingSource): number {
-	return compareText(a.check, b.check) || compareText(a.version ?? "", b.version ?? "");
+	const carried = (source: FindingSource) => (source.check.startsWith(carriedCheckPrefix) ? 1 : 0);
+	return carried(a) - carried(b) || compareText(a.check, b.check) || compareText(a.version ?? "", b.version ?? "");
 }
 
 // The highest severity wins, after any lowering a verifier's record applied, and a tie goes to the producer whose name

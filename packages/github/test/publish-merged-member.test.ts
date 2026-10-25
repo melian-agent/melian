@@ -61,7 +61,8 @@ const script = (correctness: unknown[], contracts: unknown[]): LensScript =>
 		contracts: [...(contracts.length > 0 ? [{ calls: contracts }] : []), { text: "Done." }],
 	}) as LensScript;
 
-// A push that leaves src/user.ts and its hunk alone, so only the head moves.
+// A push that leaves src/user.ts and its hunk alone, so only the head moves. Each head's lens judges that same code
+// anew, so these scenarios review cold rather than carry the last round's findings.
 let pushes = 0;
 function push(): void {
 	pushes++;
@@ -92,7 +93,7 @@ describe("a report merged under another while its resolution is owed", { timeout
 				trustedWriters: true,
 			});
 		const head = async (lenses: LensScript) => {
-			const { changeset, review } = await reviewScenario(repo, harness!, fake, lenses);
+			const { changeset, review } = await reviewScenario(repo, harness!, fake, lenses, false, { cold: true });
 			const { verdict } = await review;
 			moveTo(state, changeset);
 			return { changeset, verdict };
@@ -141,7 +142,7 @@ describe("a report that returns while its resolution is owed", { timeout: 60_000
 				base: changeset.revision.base,
 				trustedWriters: true,
 			});
-		const first = await reviewScenario(repo, harness, fake, script([b], []));
+		const first = await reviewScenario(repo, harness, fake, script([b], []), false, { cold: true });
 		const { verdict } = await first.review;
 		const [finding] = verdict.findings.acknowledge;
 		expect(finding).toBeDefined();
@@ -165,7 +166,7 @@ describe("a report that returns while its resolution is owed", { timeout: 60_000
 			source.replace("managerName(user: User)", 'managerName(user: User, fallback = "none")'),
 		);
 		gitIn(repo, "commit", "--quiet", "--all", "-m", "change the trigger without changing the finding snippet");
-		const reopened = await reviewScenario(repo, harness, fake, script([b], []));
+		const reopened = await reviewScenario(repo, harness, fake, script([b], []), false, { cold: true });
 		const { verdict: current } = await reopened.review;
 		expect(current.dismissed).toEqual([]);
 		expect(current.findings.acknowledge.map((each) => each.properties.id)).toEqual([finding!.properties.id]);
@@ -202,7 +203,7 @@ describe("a report that returns while its resolution is owed", { timeout: 60_000
 				trustedWriters: true,
 			});
 		const next = async (lenses: LensScript) => {
-			const { changeset, review } = await reviewScenario(repo, harness!, fake, lenses);
+			const { changeset, review } = await reviewScenario(repo, harness!, fake, lenses, false, { cold: true });
 			await review;
 			moveTo(state, changeset);
 			return publish(changeset);
@@ -284,7 +285,7 @@ describe("thread recovery after the attacking review", { timeout: 60_000 }, () =
 				trustedWriters: true,
 			});
 		const review = async (calls: LensScript, rerun = false) => {
-			const result = await reviewScenario(repo, harness!, fake, calls, rerun);
+			const result = await reviewScenario(repo, harness!, fake, calls, rerun, { cold: true });
 			const { verdict } = await result.review;
 			moveTo(state, result.changeset);
 			return { changeset: result.changeset, verdict };
@@ -329,8 +330,8 @@ describe("thread recovery after the attacking review", { timeout: 60_000 }, () =
 		await publish(first.changeset);
 		const thread = state.comments[0]!;
 		push();
-		const failed = await reviewScenario(repo, harness!, fake, {
-			correctness: [{ text: "Done." }],
+		const failed = await reviewScenario(repo, harness!, fake, { correctness: [{ text: "Done." }] }, false, {
+			cold: true,
 		});
 		await expect(failed.review).rejects.toMatchObject({ code: "lensFailed" });
 		moveTo(state, failed.changeset);

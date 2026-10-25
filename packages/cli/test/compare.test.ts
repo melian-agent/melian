@@ -755,7 +755,8 @@ describe("comparison review fixes", { timeout: 60_000 }, () => {
 			Object.keys(golden.script).map((lens) => [lens, [{ text: "Reported 0 findings." }]]),
 		);
 		writeFileSync(join(files, "script.json"), JSON.stringify(clean));
-		expect(melian(repo, ["review", range], env).status).toBe(0);
+		// The empty commit leaves the finding's code alone, so only a cold review lets the lens judge it anew.
+		expect(melian(repo, ["review", range, "--cold"], env).status).toBe(0);
 		expect(melian(repo, ["compare", range], env).status).toBe(0);
 		expect(melian(repo, ["compare", "backlog"], env).stdout).toContain(id);
 		const earlier = Object.keys(

@@ -905,7 +905,8 @@ describe("reviewChangeset", () => {
 		const findings = await review({ lenses: tight });
 
 		expect(toolResults(requests[correctness]![1]!)[0]).toMatch(/^recorded finding/);
-		expect(findings.map((finding) => finding.ruleId)).toEqual(["wrong-result"]);
+		// The first push's finding carries to this head, under its own producer, so the budget never counts it.
+		expect(findings.map((finding) => finding.ruleId)).toEqual(["null-dereference", "wrong-result"]);
 	});
 
 	it("classifies cause by location, with a cause location overlapping the change the only route to affected", async () => {

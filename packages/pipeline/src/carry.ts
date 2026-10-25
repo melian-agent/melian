@@ -89,10 +89,12 @@ export class SightingCarry {
 					{ file: location.path, startLine: location.first, endLine: location.last },
 					evidence,
 				);
-				const trigger =
-					cause === "introduced"
-						? revision.trigger(location.path, location.first, location.last)
-						: sighting.properties.trigger;
+				// The trigger is the head's own hunk now, so a dismissal reopens by what changed at this head, never the last one.
+				const trigger = revision.triggerOf(
+					{ file: location.path, startLine: location.first, endLine: location.last },
+					evidence,
+					cause,
+				);
 				const next = carriedSource(source);
 				const physical = sighting.locations[0]!.physicalLocation;
 				const copy: StoredSighting = {
