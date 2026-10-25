@@ -1,4 +1,5 @@
-import type { CheckStatus } from "./adjudication.ts";
+import type { CheckRecord, CheckStatus } from "./adjudication.ts";
+import { coverageCheck } from "./config.ts";
 import {
 	type LineRanges,
 	type LinesByPath,
@@ -97,6 +98,8 @@ export interface LedgerGap {
 	readonly unit?: UnitKind;
 	readonly fields?: readonly UnitField[];
 	readonly reason: string;
+	// Set when the round's own record of the check did not run, which the verdict already names.
+	readonly own?: true;
 }
 
 /** The coverage section of a review, as `melian findings` and `melian review` print it and JSON carries it. */
@@ -104,10 +107,29 @@ export interface CoverageSummary {
 	readonly complete: boolean;
 	readonly rounds: readonly string[];
 	readonly gaps: readonly LedgerGap[];
+	readonly dismissed: readonly StoredGapDismissal[];
 }
+
+/**
+ * A maintainer's dismissal of a coverage gap: the check and the lines it answers, on the head side or the base, with who
+ * dismissed it, when and why. It answers that check on those lines alone, and the lines stay uncovered.
+ */
+export type StoredGapDismissal = {
+	check: string;
+	file: string;
+	revision?: "base";
+	lines: LineRanges;
+	reason: string;
+	by: string;
+	at: string;
+};
 
 function byCodeUnit(a: string, b: string): number {
 	return a < b ? -1 : a > b ? 1 : 0;
+}
+
+function spans(lines: LineRanges): string {
+	return `lines ${lines.map(([first, last]) => (first === last ? `${first}` : `${first}-${last}`)).join(", ")}`;
 }
 
 function within(lines: LineRanges, set: LineRanges): LineRanges {
@@ -128,14 +150,16 @@ function plural(count: number, noun: string): string {
  */
 export class CoverageRecord {
 	readonly stored: StoredCoverageRecord;
+	readonly dismissed: readonly StoredGapDismissal[];
 
-	private constructor(stored: StoredCoverageRecord) {
+	private constructor(stored: StoredCoverageRecord, dismissed: readonly StoredGapDismissal[]) {
 		this.stored = stored;
+		this.dismissed = dismissed;
 	}
 
-	/** The record a stored one describes. */
-	static from(stored: StoredCoverageRecord): CoverageRecord {
-		return new CoverageRecord(structuredClone(stored));
+	/** The record a stored one describes, with the maintainer's dismissals of its gaps at the record's head. */
+	static from(stored: StoredCoverageRecord, dismissed: readonly StoredGapDismissal[] = []): CoverageRecord {
+		return new CoverageRecord(structuredClone(stored), structuredClone(dismissed));
 	}
 
 	/** Whether this build's coverage producer wrote the record, so its coverage counts. */
@@ -148,6 +172,23 @@ export class CoverageRecord {
 
 	/** What each check has not covered at the record's head, by check, then file, then side. */
 	gaps(): LedgerGap[] {
+		return this.#gaps().flatMap((gap) => {
+			if (gap.lines.length === 0) return [gap];
+			const answered = this.dismissed
+				.filter(
+					(each) =>
+						each.check === gap.check &&
+						each.file === gap.file &&
+						(each.revision ?? "head") === (gap.revision ?? "head"),
+				)
+				.reduce<LineRanges>((all, each) => unionRanges(all, each.lines), []);
+			const left = subtractRanges(gap.lines, answered);
+			return left.length === 0 ? [] : [{ ...gap, lines: left }];
+		});
+	}
+
+	/** Every gap before the maintainer's dismissals answer any. */
+	#gaps(): LedgerGap[] {
 		const gaps: LedgerGap[] = [];
 		for (const [check, coverage] of Object.entries(this.stored.checks).sort(([a], [b]) => byCodeUnit(a, b))) {
 			for (const side of ["head", "base"] as const) {
@@ -155,7 +196,12 @@ export class CoverageRecord {
 					const left = subtractRanges(needed, this.#covered(coverage, side, file));
 					if (left.length === 0) continue;
 					const at = side === "base" ? { revision: "base" as const } : {};
-					const fault = this.#ownFault(coverage) ?? this.#voidReason(check, file);
+					const own = this.#ownFault(coverage);
+					if (own !== undefined) {
+						gaps.push({ check, file, ...at, lines: left, reason: own, ...this.#own() });
+						continue;
+					}
+					const fault = this.#voidReason(check, file);
 					if (fault !== undefined) {
 						gaps.push({ check, file, ...at, lines: left, reason: fault });
 						continue;
@@ -185,7 +231,8 @@ export class CoverageRecord {
 				);
 				const missing = unitFields.filter((field) => fields.includes(field) && !delivered.has(field));
 				if (missing.length === 0) continue;
-				const fault = this.#ownFault(coverage) ?? this.#voidReason(check, file);
+				const own = this.#ownFault(coverage);
+				const fault = own ?? this.#voidReason(check, file);
 				gaps.push({
 					check,
 					file,
@@ -194,6 +241,7 @@ export class CoverageRecord {
 					fields: missing,
 					reason:
 						fault ?? (delivered.size === 0 ? "never delivered" : `fields not delivered: ${missing.join(", ")}`),
+					...(own === undefined ? {} : this.#own()),
 				});
 			}
 		}
@@ -229,13 +277,44 @@ export class CoverageRecord {
 					},
 				]
 			: this.gaps();
-		return { complete: gaps.length === 0, rounds: stale ? [] : this.rounds(), gaps };
+		return { complete: gaps.length === 0, rounds: stale ? [] : this.rounds(), gaps, dismissed: [...this.dismissed] };
+	}
+
+	/**
+	 * The `review.coverage` record this record puts in a round's manifest: `ran` when every check covered everything it
+	 * must, and otherwise skipped without leave, naming the gaps, which leaves the review not reviewed. A check whose own
+	 * record did not run names itself in the verdict, so the reason only points at it; five other gaps are named, with a
+	 * count of the rest.
+	 */
+	checkRecord(): CheckRecord {
+		const { complete, gaps } = this.summary();
+		if (complete) return { name: coverageCheck, status: "ran" };
+		const unrun = [...new Set(gaps.filter((gap) => gap.own === true).map((gap) => gap.check))];
+		const rest = [
+			...new Set(
+				gaps
+					.filter((gap) => gap.own !== true)
+					.map((gap) => `${gap.check}${gap.file === "" ? "" : ` ${visibleText(gap.file)}`}: ${gap.reason}`),
+			),
+		];
+		const said = unrun.length === 1 ? "its record says" : "their records say";
+		const parts = [
+			...(unrun.length === 0 ? [] : [`${unrun.join(", ")} did not cover the diff, as ${said}`]),
+			...rest.slice(0, 5),
+			...(rest.length > 5 ? [`and ${rest.length - 5} more gaps`] : []),
+		];
+		return { name: coverageCheck, status: "skipped", reason: `coverage is incomplete: ${parts.join("; ")}` };
 	}
 
 	/** The `Coverage` section for a terminal. Paths pass through `visibleText`. */
 	render(): string {
-		const { complete, rounds, gaps } = this.summary();
-		if (complete) return `Coverage: complete, from ${rounds.join(", ")}.\n`;
+		const { complete, rounds, gaps, dismissed } = this.summary();
+		const answered = dismissed.map(
+			(each) =>
+				`  ${each.check}  ${visibleText(each.file)}${each.revision === "base" ? " (base)" : ""} ${spans(each.lines)}: ${visibleText(each.reason)} (${visibleText(each.by)})\n`,
+		);
+		const apart = answered.length === 0 ? "" : `Dismissed gaps:\n${answered.join("")}`;
+		if (complete) return `Coverage: complete, from ${rounds.join(", ")}.\n${apart}`;
 		const lines = gaps.map((gap) => {
 			const where = gap.file === "" ? "" : `${visibleText(gap.file)}${gap.revision === "base" ? " (base)" : ""}`;
 			const what =
@@ -251,7 +330,7 @@ export class CoverageRecord {
 						: ` (${gap.unit})`;
 			return `  ${gap.check}${where === "" ? "" : `  ${where}`}${what}: ${gap.reason}\n`;
 		});
-		return `Coverage: incomplete${rounds.length === 0 ? "" : `, partly from ${rounds.join(", ")}`}.\n${lines.join("")}`;
+		return `Coverage: incomplete${rounds.length === 0 ? "" : `, partly from ${rounds.join(", ")}`}.\n${lines.join("")}${apart}`;
 	}
 
 	// Lines of `file` that segments at or above the file's required level cover, or that any segment covers.
@@ -273,7 +352,8 @@ export class CoverageRecord {
 
 	// Why this round's own record covers nothing, when it does not.
 	#ownFault(coverage: StoredCheckCoverage): string | undefined {
-		const round = this.stored.round;
+		// A record not yet written names no round of its own.
+		const round = this.stored.round === "" ? "this round" : this.stored.round;
 		if (this.stored.refused !== undefined) return this.stored.refused;
 		switch (coverage.status) {
 			case "ran":
@@ -291,6 +371,11 @@ export class CoverageRecord {
 			default:
 				return `did not run in ${round}`;
 		}
+	}
+
+	// A refused record's gaps are the record's own, not a check's that did not run.
+	#own(): { own?: true } {
+		return this.stored.refused === undefined ? { own: true } : {};
 	}
 
 	#voidReason(check: string, file: string): string | undefined {

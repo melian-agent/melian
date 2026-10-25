@@ -512,9 +512,9 @@ describe("runChecks feeding reviewChangeset", () => {
 				checks: run.records,
 			});
 			expect(verdict.status).toBe("passed");
-			expect(verdict.ran).toEqual([record]);
+			expect(verdict.ran).toEqual([record, { name: "review.coverage", status: "ran" }]);
 			const stored = await readVerdict(harness, root.id, Revision.key({ base, head }), context);
-			expect(stored?.toJSON().ran).toEqual([record]);
+			expect(stored?.toJSON().ran).toEqual([record, { name: "review.coverage", status: "ran" }]);
 		} finally {
 			runner.mockRestore();
 		}

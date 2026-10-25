@@ -25,7 +25,7 @@
 	],
 	"expected": [
 		{
-			"status": "findings",
+			"status": "not-reviewed",
 			"blocking": true,
 			"severity": "P1",
 			"cause": "introduced",

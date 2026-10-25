@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
+import { reportingCheck } from "./carried.ts";
 import type { ChangeOverlap } from "./cause.ts";
 import type { Revision } from "./changeset.ts";
 import {
@@ -213,7 +214,7 @@ export class Defect {
 			...(this.speaker.properties.reportedBy ?? []).map((source) => source.check),
 			...this.members.map((member) => member.check),
 		];
-		return checks.every((check) => check.startsWith("lens."));
+		return checks.every((check) => reportingCheck(check).startsWith("lens."));
 	}
 
 	/** Whether every lens claim was refuted, with no deterministic co-report. */

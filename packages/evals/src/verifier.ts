@@ -82,7 +82,8 @@ const scenarioReportSchema = Type.Object(
 );
 const scenarioExpectationSchema = Type.Object(
 	{
-		status: Type.Union([Type.Literal("passed"), Type.Literal("findings")]),
+		// Not reviewed, for a scenario whose finding leaves a coverage gap, such as an injection attempt.
+		status: Type.Union([Type.Literal("passed"), Type.Literal("findings"), Type.Literal("not-reviewed")]),
 		blocking: Type.Boolean(),
 		severity: severitySchema,
 		originalSeverity: Type.Optional(severitySchema),

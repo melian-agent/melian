@@ -2,15 +2,17 @@ import { createHash } from "node:crypto";
 import { stat } from "node:fs/promises";
 import type { ChangeOverlap, CodeLocation, EvidenceSite } from "./cause.ts";
 import { type FileUnit, type LinesByPath, type UnitField, type UnitKind, unionRanges } from "./coverage-units.ts";
-import { type ChangedFile, joinDiff, parseNumstatBinary, parsePatchHunks, parseRaw } from "./diff.ts";
+import { type ChangedFile, type Hunk, joinDiff, parseNumstatBinary, parsePatchHunks, parseRaw } from "./diff.ts";
 import { ChangesetError, FindingError } from "./errors.ts";
 import {
 	type Cause,
 	canonicalPath,
+	capSnippet,
 	type EvidenceRevision,
 	type Finding,
 	type FindingTrigger,
 	type LocationCause,
+	snippetHash,
 } from "./findings.ts";
 import { git, gitFailure, gitOutput, gitOutputBytes, isNotARepository, requireGitVersion } from "./git.ts";
 import { isPolicyFile } from "./paths.ts";
@@ -400,9 +402,87 @@ export class Revision {
 		return { path: file.path, line: line + shift };
 	}
 
+	/**
+	 * Where lines `first` to `last` of `path` at this revision's base sit at its head, read as a move between two heads:
+	 * moved by the hunks before them, or, when a hunk changed them, at the first new line after that hunk, which is
+	 * changed, never gone. `undefined` for a file the move deleted or made binary, where no line stands for it.
+	 */
+	moveLines(
+		path: string,
+		first: number,
+		last: number,
+	): { readonly path: string; readonly first: number; readonly last: number; readonly changed: boolean } | undefined {
+		const file = this.files.find((each) => (each.oldPath ?? each.path) === path && each.status !== "added");
+		if (file === undefined) return { path, first, last, changed: false };
+		if (file.status === "deleted" || file.binary) return undefined;
+		const touching = (hunk: (typeof file.hunks)[number]) =>
+			hunk.oldLines > 0
+				? hunk.oldStart <= last && hunk.oldStart + hunk.oldLines - 1 >= first
+				: hunk.oldStart >= first && hunk.oldStart < last;
+		const hunk = file.hunks.find(touching);
+		// No hunk touches the range, so neither end sits in a hunk's old range, and both map.
+		if (hunk === undefined)
+			return {
+				path: file.path,
+				first: this.mapLine(path, first)!.line,
+				last: this.mapLine(path, last)!.line,
+				changed: false,
+			};
+		const line = hunk.newLines > 0 ? hunk.newStart + hunk.newLines : hunk.newStart + 1;
+		return { path: file.path, first: line, last: line, changed: true };
+	}
+
 	/** Whether the revision lists `path` at all, under its old path or its new one. */
 	lists(path: string): boolean {
 		return this.files.some((file) => file.path === path || file.oldPath === path);
+	}
+
+	/**
+	 * The trigger a finding at `location` carries at this revision, as `report_finding` builds it: for an `introduced`
+	 * finding, the hunk it sits in, its added lines hashed whole; for an `affected` one, the first hunk a proving `cause`
+	 * location falls on, with every such hunk, by file then index, as its proof; and none otherwise.
+	 */
+	triggerOf(
+		location: CodeLocation,
+		evidence: readonly (EvidenceSite & { readonly proves?: true })[],
+		cause: Cause,
+	): FindingTrigger | undefined {
+		const lines = (hunk: Hunk) => hunk.text.split("\n").filter((row) => row.startsWith("+") || row.startsWith("-"));
+		const added = (hunk: Hunk) =>
+			lines(hunk)
+				.filter((row) => row.startsWith("+"))
+				.map((row) => row.slice(1))
+				.join("\n");
+		if (cause === "introduced") {
+			const end = location.endLine ?? location.startLine;
+			const hunk = this.files
+				.find((file) => file.path === location.file)
+				?.hunks.find(
+					(each) =>
+						each.newLines > 0 && location.startLine < each.newStart + each.newLines && end >= each.newStart,
+				);
+			return hunk === undefined
+				? undefined
+				: { file: hunk.file, index: hunk.index, snippet: capSnippet(added(hunk)), hash: snippetHash(added(hunk)) };
+		}
+		if (cause !== "affected") return undefined;
+		const proving = evidence
+			.flatMap((site) => {
+				const overlap = site.proves === true ? this.causeOverlap(site, location.file) : undefined;
+				return overlap?.kind === "hunk" ? [overlap.hunk] : [];
+			})
+			.filter(
+				(hunk, at, all) => all.findIndex((each) => each.file === hunk.file && each.index === hunk.index) === at,
+			)
+			.sort((a, b) => (a.file === b.file ? a.index - b.index : a.file < b.file ? -1 : 1));
+		const [first] = proving;
+		if (first === undefined) return undefined;
+		return {
+			file: first.file,
+			index: first.index,
+			snippet: capSnippet(added(first)),
+			proof: proving.map((hunk) => ({ file: hunk.file, hash: snippetHash(lines(hunk).join("\n")) })),
+		};
 	}
 
 	/**

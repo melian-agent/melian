@@ -581,7 +581,8 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 		await harness.close(context);
 		gitIn(repo, "commit", "--quiet", "--allow-empty", "-m", "lower finding");
 		harness = await openReviewOnlyHarness(await openSqliteStorage(database), fake);
-		const second = await reviewScenario(repo, harness, fake, lensScript(emptyName));
+		// The empty commit leaves the code alone, so the lens judges it anew only in a cold round.
+		const second = await reviewScenario(repo, harness, fake, lensScript(emptyName), false, { cold: true });
 		await second.review;
 		await harness.close(context);
 		harness = undefined;

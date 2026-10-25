@@ -604,7 +604,18 @@ describe("per-lens standards", () => {
 							lenses: { ...options.config.lenses, correctness: { paths: ["vendor/**"] } },
 						};
 			const result = await reviewChangeset({ ...options, lenses, config });
-			expect(result.verdict.status).toBe(mode === "covered" ? "not-reviewed" : "passed");
+			// The carrier's 300 KiB hunk does not fit the prompt, so a lens it reaches owes its lines until it reads them.
+			expect(result.verdict.status).toBe(mode === "uncovered" ? "passed" : "not-reviewed");
+			if (mode === "opt-out") {
+				expect(result.verdict.notRun).toEqual([
+					{
+						name: "review.coverage",
+						status: "skipped",
+						reason:
+							"coverage is incomplete: lens.correctness vendor/x/AGENTS.md: too large for the prompt; lines still owed",
+					},
+				]);
+			}
 			if (mode === "covered") {
 				expect(result.verdict.notRun.find(({ name }) => name === "lens.correctness")!.reason).toContain(
 					"vendor/x/AGENTS.md",

@@ -1,5 +1,6 @@
 import {
 	type Cause,
+	carriedCheckPrefix,
 	dismissalReason,
 	Finding,
 	type FindingDismissal,
@@ -63,13 +64,21 @@ type FindingRecord = {
 	lifecycle: FindingLifecycle;
 	sightings: Record<string, Record<string, ProducerFinding>>;
 	verifications?: Record<string, Record<string, Record<string, Verification>>>;
+	// By revision, then by a `carried/` producer: the round that first sighted what the carry copied there, and whether
+	// the move to that revision changed the lines it cites.
+	carried?: Record<string, Record<string, CarriedMark>>;
 };
+
+/** What the carry records beside a copied sighting: the first round that sighted it, and whether its lines changed. */
+export type CarriedMark = { from: string; changed?: true };
 
 // `revisions` lists the revisions reviewed, oldest first, so a resumed review of an old one cannot move a lifecycle back.
 // `versions` counts, per revision, the writes that could change what a read of it returns: a sighting there, or a
 // lifecycle change of a finding sighted there. Adjudication's input carries it, so a dismissal decides afresh.
 type FindingsState = { revisions: string[]; items: Record<string, FindingRecord>; versions: Record<string, number> };
 
+// Version 11 records, beside each sighting the coverage ledger's carry copied, the round that first sighted it; a
+// version 10 record carries none and reads unchanged.
 // Version 10 permits each merged claim to retain its reported severity. Version 9 ties dismissals to their accepted
 // trigger and proof; version 8 dismissals keep their former reopen rules.
 // Version 8 lets a guardrail sighting name the configured rules it matched, or its notice class, outside its ID; a
@@ -79,7 +88,7 @@ type FindingsState = { revisions: string[]; items: Record<string, FindingRecord>
 // records. Version 5 made evidence a list of locations; a sighting stored before reads with its one location as a cause.
 export const FindingsDocument = defineDoc<FindingsState>({
 	kind: "melian.findings",
-	version: 10,
+	version: 11,
 	scope: "conversation",
 	history: "rewindable",
 	fork: "asOf",
@@ -106,7 +115,8 @@ export const FindingsDocument = defineDoc<FindingsState>({
 	},
 });
 
-function producerKey(source: FindingSource): string {
+/** The key a sighting is stored under: its producer's check and version. */
+export function producerKey(source: FindingSource): string {
 	return `${source.check}@${source.version ?? ""}`;
 }
 
@@ -154,8 +164,10 @@ function compareText(a: string, b: string): number {
 	return a < b ? -1 : a > b ? 1 : 0;
 }
 
+// A producer's own sighting comes before a carried copy, so a lens that restates a finding speaks for it on a tie.
 function compareSources(a: FindingSource, b: FindingSource): number {
-	return compareText(a.check, b.check) || compareText(a.version ?? "", b.version ?? "");
+	const carried = (source: FindingSource) => (source.check.startsWith(carriedCheckPrefix) ? 1 : 0);
+	return carried(a) - carried(b) || compareText(a.check, b.check) || compareText(a.version ?? "", b.version ?? "");
 }
 
 // The highest severity wins, after any lowering a verifier's record applied, and a tie goes to the producer whose name
@@ -685,12 +697,23 @@ export async function seenBefore(
 		.filter((id) => items[id]!.lifecycle.firstSeenRevision !== revision);
 }
 
-export async function clearVerifications(tx: Tx, root: ConversationId, revision: string): Promise<void> {
+// Clears the verifications at `revision`, but those `keep` names by finding ID and producer key: a carried claim the
+// verifier is not judging again keeps the judgement the carry copied.
+export async function clearVerifications(
+	tx: Tx,
+	root: ConversationId,
+	revision: string,
+	keep: (id: string, producer: string) => boolean = () => false,
+): Promise<void> {
 	const state = await tx.doc(FindingsDocument, root);
 	let cleared = false;
-	for (const record of Object.values(state.items)) {
-		if (record.verifications?.[revision] === undefined) continue;
-		delete record.verifications[revision];
+	for (const [id, record] of Object.entries(state.items)) {
+		const at = record.verifications?.[revision];
+		if (at === undefined) continue;
+		const kept = Object.fromEntries(Object.entries(at).filter(([producer]) => keep(id, producer)));
+		if (Object.keys(kept).length === Object.keys(at).length) continue;
+		if (Object.keys(kept).length === 0) delete record.verifications![revision];
+		else record.verifications![revision] = kept;
 		cleared = true;
 	}
 	if (cleared) bump(state, [revision]);

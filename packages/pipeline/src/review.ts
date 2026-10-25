@@ -4,8 +4,10 @@ import {
 	type CheckRecord,
 	type ChoiceQuestion,
 	type ConfigFor,
+	CoverageRecord,
 	checksOfTier,
 	configLookup,
+	coverageCheck,
 	type Decider,
 	type Decision,
 	type DecisionRequest,
@@ -14,6 +16,8 @@ import {
 	EscalationRule,
 	type EscalationTrigger,
 	type Finding,
+	type FindingSource,
+	HeadMove,
 	Lens,
 	type LensBudget,
 	type LensCoverage,
@@ -34,6 +38,7 @@ import {
 	type RepositorySource,
 	type ReviewPlan,
 	Revision,
+	reportingCheck,
 	resolveModelForTier,
 	type ScrutinyLevel,
 	type Severity,
@@ -43,7 +48,6 @@ import {
 	type TriageChoice,
 	triageChoices,
 	triageQuestionSet,
-	type UnitField,
 	type Verdict,
 	VerificationState,
 	verificationBudget,
@@ -60,9 +64,11 @@ import {
 	VerdictDocument,
 } from "./adjudication.ts";
 import { CallerContext, type CoverageSource } from "./callers.ts";
+import { carriedPrefix, SightingCarry } from "./carry.ts";
+import { ChangePrompt, type PromptDelivery } from "./change-prompt.ts";
 import { checksExtension, type RunIdentity, runChecks, type WriterTrust } from "./checks.ts";
 import { configsFor } from "./configurations.ts";
-import { CoverageLedger } from "./coverage-ledger.ts";
+import { CoverageLedger, type LedgerRound } from "./coverage-ledger.ts";
 import {
 	DecisionDocument,
 	type DecisionResult,
@@ -72,7 +78,7 @@ import {
 	decisionTaskName,
 	readRecordedDecision,
 } from "./decisions.ts";
-import { cutDiffNote, EnclosingFunctions } from "./enclosing-functions.ts";
+import { EnclosingFunctions } from "./enclosing-functions.ts";
 import { ReviewError } from "./errors.ts";
 import {
 	clearSightings,
@@ -273,6 +279,20 @@ function carriedFindings(findings: readonly SightedFinding[], nonce: string): st
 	return [
 		"## Findings a quicker look reported",
 		"A quicker look at this change reported the findings below, and you were brought in to check them as well as review the change. Each line gives the finding's ID, severity, rule, and file with its first and last lines. For each, if it is a defect, report it with report_finding at the same file, lines, and rule, with its own failure scenario and evidence. If the code shows it is not a defect, report it with refuted set to its ID, at the same file, lines, and rule, with a failureScenario saying why it cannot fail and evidence holding the code that prevents it. A finding you leave unanswered stays in the review as the quicker look reported it.",
+		quoteUntrusted("findings", listed.join("\n"), nonce),
+	].join("\n\n");
+}
+
+// The findings earlier rounds reported that the carry copied to this head for a lens, quoted as the change's data,
+// with how to restate, refute or leave each.
+function earlierFindings(findings: readonly SightedFinding[], nonce: string): string {
+	const listed = findings.map(
+		(finding) =>
+			`${finding.id} ${finding.severity} ${visibleText(finding.ruleId)} at ${visibleText(finding.path)}:${finding.line}-${finding.endLine}: ${visibleText(finding.message.split("\n")[0] ?? "")}`,
+	);
+	return [
+		"## Findings earlier rounds reported",
+		"Earlier rounds of this review reported the findings below, at this head's lines. Each line gives the finding's ID, severity, rule, and file with its first and last lines. For each, if the code still has the defect, report it again with report_finding at the same file, lines, and rule, with its own failure scenario and evidence. If the change since fixed it, or the code shows it is not a defect, report it with refuted set to its ID, at the same file, lines, and rule, with a failureScenario saying why it cannot fail and evidence holding the code that prevents it; a refutation goes to the verifier. A finding you leave unanswered stays in the review as reported.",
 		quoteUntrusted("findings", listed.join("\n"), nonce),
 	].join("\n\n");
 }
@@ -725,6 +745,8 @@ export class ReviewHarness {
 }
 
 /** Opens a {@link ReviewHarness} over `storage`, as {@link ReviewHarness.open} does. */
+export { ChangePrompt } from "./change-prompt.ts";
+
 export function openReviewHarness(
 	storage: Storage,
 	models: ReviewModels,
@@ -733,115 +755,6 @@ export function openReviewHarness(
 ): Promise<ReviewHarness> {
 	return ReviewHarness.open(storage, models, options, context);
 }
-
-const maxPromptBytes = 200 * 1024;
-
-/**
- * The input a lens receives: the revision, the files it changes, and its zero-context diff, bounded. Everything from
- * the head enters inside `quoteUntrusted` boundaries carrying the review's `nonce`: the file list as one listing, and
- * each file's diff as its own block whose first line is the file's path and status, so a changed line cannot pose as
- * another file's header. Paths are escaped with core's `visibleText`, so a newline in one cannot forge a line.
- */
-export class ChangePrompt {
-	readonly changeset: Changeset;
-	readonly nonce: string;
-
-	constructor(changeset: Changeset, nonce: string) {
-		this.changeset = changeset;
-		this.nonce = nonce;
-	}
-
-	/**
-	 * The prompt, limited to the files `only` names when given, matching a renamed file by its old path or its new one.
-	 * With `tools: false`, for a reader with no tools such as a decider, it does not tell the reader to read the head.
-	 */
-	render(
-		only?: readonly string[],
-		options: { readonly tools?: boolean; readonly functions?: EnclosingFunctions } = {},
-	): string {
-		return this.renderInput(only, options).text;
-	}
-
-	/**
-	 * The bounded prompt, whether its size limit omitted any file's diff, and what it delivered: by head path, the hunks
-	 * each file's block rendered and the fields of the file it named, and the files the limit left out.
-	 */
-	renderInput(
-		only?: readonly string[],
-		options: { readonly tools?: boolean; readonly functions?: EnclosingFunctions } = {},
-	): { readonly text: string; readonly cut: boolean; readonly delivered: PromptDelivery } {
-		const { nonce } = this;
-		const { base, head } = this.changeset.revision;
-		const files = this.changeset.revision.files.filter(
-			(file) =>
-				only === undefined ||
-				only.includes(file.path) ||
-				(file.oldPath !== undefined && only.includes(file.oldPath)),
-		);
-		const named = (file: (typeof files)[number]) =>
-			`${file.oldPath === undefined ? "" : `${visibleText(file.oldPath)} -> `}${visibleText(file.path)}`;
-		const header = [
-			`Review the change from ${base.slice(0, 12)} to ${head.slice(0, 12)}.`,
-			"",
-			"Files changed:",
-			quoteUntrusted("listing", files.map((file) => `${file.status} ${named(file)}`).join("\n"), nonce),
-			"",
-			`Each file's diff follows in its own block, whose first line names the file. The diff has no context lines.${options.tools === false ? "" : " Read the head revision with read_file for the code around each hunk."}`,
-		].join("\n");
-		const parts = [header];
-		let size = Buffer.byteLength(header);
-		let cut = false;
-		const delivered: PromptDelivery = { hunks: {}, fields: {}, omitted: [] };
-		for (const file of files) {
-			if (cut) {
-				delivered.omitted.push(file.path);
-				continue;
-			}
-			const hunks = file.binary ? ["(binary)"] : file.hunks.map((hunk) => `${hunk.header}\n${hunk.text}`);
-			const part = quoteUntrusted("diff", [`${named(file)} (${file.status})`, ...hunks].join("\n"), nonce);
-			size += Buffer.byteLength(part);
-			if (size > maxPromptBytes) {
-				cut = true;
-				delivered.omitted.push(file.path);
-				parts.push(
-					options.tools === false
-						? "[The diff continues; the remaining files are omitted.]"
-						: "[The diff continues; read the remaining files with read_file.]",
-				);
-				continue;
-			}
-			parts.push(part);
-			delivered.hunks[file.path] = file.binary ? [] : file.hunks.map((hunk) => hunk.index);
-			// The block's first line names the path, an old path, and the status, and a binary file says so.
-			delivered.fields[file.path] = [
-				"status",
-				"path",
-				...(file.oldPath === undefined ? [] : (["oldPath"] as const)),
-				...(file.binary ? (["binary"] as const) : []),
-			];
-		}
-		// The functions follow the diff, past its limit, so a cut diff never costs a function, and a function never a hunk.
-		if (cut && options.functions !== undefined) parts.push(cutDiffNote);
-		if (!cut && options.functions !== undefined)
-			parts.push(
-				...options.functions.blocks(
-					files.map((file) => file.path),
-					nonce,
-				),
-			);
-		return { text: parts.join("\n\n"), cut, delivered };
-	}
-}
-
-/**
- * What one lens prompt delivered, by head path: the hunk indexes each file's diff block rendered, the file fields its
- * first line named, and the files the size limit left out.
- */
-export type PromptDelivery = {
-	hunks: Record<string, number[]>;
-	fields: Record<string, UnitField[]>;
-	omitted: string[];
-};
 
 // A model tier's route as a review can run it: the tier's model and fallbacks that the collection knows and holds
 // credentials for, in routing order, or why there are none.
@@ -1219,7 +1132,7 @@ async function startAdjudication(
 		if (selection.length > 0 && known?.lenses.join("\n") !== selection.join("\n")) return undefined;
 		const deciding = { ...input };
 		if (verificationRefused) {
-			await clearVerifications(tx, input.root, revision);
+			await clearVerifications(tx, input.root, revision, (_id, producer) => producer.startsWith(carriedPrefix));
 			deciding.findingsVersion = (await tx.doc(FindingsDocument, input.root)).versions[revision] ?? 0;
 			if (known?.verification !== undefined) known = omit(omit(known, "verification"), "adjudication");
 		}
@@ -1603,25 +1516,28 @@ async function requiredLevels(
 	return levels;
 }
 
-// Writes the decided round's coverage record from what the round ran: each selected lens's standing run, its record,
-// what its prompt and reads delivered, and every other check's record. Nothing the head writes reaches it.
-async function recordCoverage(
+// What a round tells the ledger about itself: each selected lens's standing run, its record, what its prompt and reads
+// delivered, and every other check's record. Before any lens runs, the lenses carry no run and no record.
+async function ledgerRound(
 	harness: Harness,
 	root: ConversationId,
 	round: {
 		readonly request: ReviewOptions;
 		readonly tier: string;
 		readonly covering: readonly { readonly lens: Lens; readonly covers: readonly string[] }[];
-		readonly settled: readonly SettledLens[];
-		readonly lensResult: LensResult | undefined;
-		readonly checks: readonly CheckRecord[];
+		readonly standards: ReadonlyMap<Lens, readonly string[]>;
+		readonly settled?: readonly SettledLens[];
+		readonly lensResult?: LensResult;
+		readonly checks?: readonly CheckRecord[];
 		readonly manifest: readonly string[];
-		readonly allowSkip: readonly string[];
+		readonly allowSkip?: readonly string[];
 		readonly nonce: string;
-		readonly adjudication: number;
+		// At intake the round reads no sighting at its head, so a resume or a repeat review computes the same delta as the
+		// round that ran first, whatever that round wrote there.
+		readonly intake?: true;
 	},
 	context: Context,
-): Promise<void> {
+): Promise<LedgerRound> {
 	const { request } = round;
 	const { changeset } = request;
 	const writer = request.writer;
@@ -1633,10 +1549,10 @@ async function recordCoverage(
 					file.oldPath !== undefined && covers.includes(file.path) ? [file.oldPath] : [],
 				),
 			];
-			const settledLens = round.settled.find(({ run }) => run.name === lens.name && run.version === lens.version);
-			const run = settledLens?.run;
-			const record = round.checks.find((check) => check.name === `lens.${lens.name}`);
+			const run = round.settled?.find(({ run }) => run.name === lens.name && run.version === lens.version)?.run;
+			const record = round.checks?.find((check) => check.name === `lens.${lens.name}`);
 			const conversation = run === undefined ? undefined : round.lensResult?.[run.key]?.conversation;
+			const standards = run?.standards ?? round.standards.get(lens);
 			return {
 				name: lens.name,
 				version: lens.version,
@@ -1646,29 +1562,27 @@ async function recordCoverage(
 				...(run?.level === undefined ? {} : { level: run.level }),
 				...(run?.delivered === undefined ? {} : { delivered: run.delivered }),
 				...(conversation === undefined ? {} : { conversation }),
-				...(run?.standards === undefined ? {} : { standards: run.standards }),
+				...(standards === undefined ? {} : { standards }),
 			};
 		}),
 	);
-	await new CoverageLedger(harness, root).write(
-		{
-			changeset,
-			config: request.config,
-			tier: round.tier,
-			...(request.policy === undefined ? {} : { policy: request.policy }),
-			leave: writer?.trusted === true ? writer.by : "none",
-			...(request.coverageRefused === undefined ? {} : { refused: request.coverageRefused }),
-			lenses,
-			checks: round.checks,
-			manifest: round.manifest,
-			allowSkip: round.allowSkip,
-			nonce: round.nonce,
-			adjudication: round.adjudication,
-			findings: await readFindings(harness, root, Revision.key(changeset.revision), context),
-			tools: (await ToolProvisioning.manifest()).toJSON(),
-		},
-		context,
-	);
+	return {
+		changeset,
+		config: request.config,
+		tier: round.tier,
+		...(request.policy === undefined ? {} : { policy: request.policy }),
+		leave: writer?.trusted === true ? writer.by : "none",
+		...(request.coverageRefused === undefined ? {} : { refused: request.coverageRefused }),
+		lenses,
+		checks: round.checks ?? [],
+		manifest: round.manifest,
+		allowSkip: round.allowSkip ?? [],
+		nonce: round.nonce,
+		findings:
+			round.intake === true ? [] : await readFindings(harness, root, Revision.key(changeset.revision), context),
+		tools: (await ToolProvisioning.manifest()).toJSON(),
+		...(request.cold === true ? { cold: true } : {}),
+	};
 }
 
 export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
@@ -1730,7 +1644,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	let headFunctions: Promise<EnclosingFunctions> | undefined;
 	const enclosing = () => (headFunctions ??= spans.time("functions", () => EnclosingFunctions.read(changeset)));
 	const { unlockModels } = options;
-	const prompt = new ChangePrompt(changeset, nonce);
+	const targets = await ChangePrompt.readTargets(changeset);
+	const prompt = new ChangePrompt(changeset, nonce, targets);
 	const { repoRoot, revision } = changeset;
 	const { base, head } = revision;
 	const reviewed = Revision.key(revision);
@@ -1744,6 +1659,34 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	});
 	spans.step("bands");
 	const bands = await bandsOf(covering, options);
+	spans.step("coverage.intake");
+	const readingOf = (lens: Lens, covers: readonly string[]) => {
+		const standardsFiles = [
+			...covers,
+			...changeset.revision.files
+				.filter((file) => file.oldPath !== undefined && covers.includes(file.path))
+				.map((file) => file.oldPath!),
+		];
+		return lens.standards
+			? standards instanceof Standards
+				? standards.forFiles(standardsFiles)
+				: StandardsReading.from(standards)
+			: StandardsReading.from([]);
+	};
+	const standardsPaths = new Map(covering.map(({ lens, covers }) => [lens, readingOf(lens, covers).paths()] as const));
+	const ledger = new CoverageLedger(harness, root);
+	const intake = await ledger.intake(
+		await ledgerRound(
+			harness,
+			root,
+			{ request: options, tier, covering, standards: standardsPaths, manifest, nonce, intake: true },
+			context,
+		),
+		context,
+	);
+	// A round after a decided one at an earlier head reviews only what no round covered, unless it runs cold. A repeat
+	// review of the same head computes the delta its decided round did, so it attaches to that round, as any repeat does.
+	const delta = options.cold !== true && intake.carries();
 	spans.step("routes");
 	const tiers = new Set(covering.flatMap(({ lens }) => lens.declaredLevels().map((level) => lens.level(level).tier)));
 	const routes = new Map(
@@ -1791,7 +1734,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	const triageInput = prompt.renderInput(undefined, { tools: false });
 	spans.end();
 	const triaged =
-		options.decider === undefined || covering.length === 0
+		options.decider === undefined || covering.length === 0 || delta
 			? {}
 			: await triage(
 					harness,
@@ -1811,9 +1754,59 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					unlockModels,
 				);
 	spans.step("lenses.prepare");
+	// A lens with nothing uncovered is skipped with leave. On a delta, a lens runs at the higher of the level the last
+	// decided round ran it at and its default within its band, since triage does not run on a fix pass's change.
+	// Until the carry copies a decided round's findings to the next head, a lens with an open finding there reviews the
+	// whole diff again: a finding on a line the delta leaves alone would otherwise vanish from the verdict.
+	// A delta carries the last decided round's lens sightings to this head, and a cold round deletes any carried here.
+	const carry = new SightingCarry(harness, root);
+	if (options.cold === true) await carry.clear(reviewed, context);
+	const carriedSightings =
+		delta && intake.prior !== undefined
+			? await (async () => {
+					const prior = intake.prior!;
+					const move = await HeadMove.read(repoRoot, prior.head, head);
+					if (move.revision === undefined) return { carried: [], lost: [] };
+					await ledger.carryDismissals(Revision.key(prior), reviewed, move.revision, context);
+					return carry.carry(
+						{ from: Revision.key(prior), round: prior.round, to: reviewed, revision, map: move.revision },
+						context,
+					);
+				})()
+			: { carried: [], lost: [] };
+	// A finding the carry could not map, in a file the move deleted, keeps its lens on the whole diff, so it is judged.
+	const lostChecks = new Set(
+		delta && intake.prior !== undefined && carriedSightings.lost.length > 0
+			? (await readFindings(harness, root, Revision.key(intake.prior), context))
+					.filter((finding) => carriedSightings.lost.includes(finding.id))
+					.flatMap((finding) =>
+						(finding.properties.reportedBy ?? [finding.properties.source]).map((source) =>
+							source.check.startsWith(carriedPrefix) ? source.check.slice(carriedPrefix.length) : source.check,
+						),
+					)
+			: [],
+	);
+	const carriedProducers = [
+		...new Map(carriedSightings.carried.map(({ source }) => [`${source.check}@${source.version}`, source])).values(),
+	];
+	const whole = (name: string) => !delta || lostChecks.has(`lens.${name}`);
+	const uncovered = covering
+		.filter(({ lens }) => !whole(lens.name) && intake.empty(lens.name))
+		.map(({ lens }) => lens.name);
 	const choices = new Map(
 		covering.map(({ lens }) => {
 			const levels = runnable.get(lens)!;
+			if (uncovered.includes(lens.name)) return [lens, "skip" as TriageChoice] as const;
+			if (delta) {
+				const band = bands.get(lens)!;
+				const fallback = band.bound(defaultScrutinyLevel, levels);
+				const before = intake.level(lens.name);
+				const higher =
+					before !== undefined && triageChoices.indexOf(before) > triageChoices.indexOf(fallback)
+						? before
+						: fallback;
+				return [lens, band.bound(higher, levels)] as const;
+			}
 			const choice = lens.triage(bands.get(lens)!, levels, triaged.decision);
 			return [lens, triageInput.cut && choice === "skip" ? levels[0]! : choice] as const;
 		}),
@@ -1834,7 +1827,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	}
 	// A lens triage skipped or the plan refused is not running, so no lens hands it a defect.
 	const running = covering.filter(({ lens }) => choices.get(lens) !== "skip" && !refused.has(lens));
-	const skipped = covering.filter(({ lens }) => choices.get(lens) === "skip").map(({ lens }) => lens.name);
+	const skipped = covering
+		.filter(({ lens }) => choices.get(lens) === "skip" && !uncovered.includes(lens.name))
+		.map(({ lens }) => lens.name);
 	const lenses: LensRun[] = [];
 	const notes = new Map<string, string[]>();
 	// Each running lens, by name, to the lenses whose instructions could have handed it defects: the hand-off that rendered.
@@ -1855,17 +1850,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			if (shared.length === 0) return [];
 			return [{ name, files: shared.length === covers.length ? "every" : shared }];
 		});
-		const standardsFiles = [
-			...covers,
-			...changeset.revision.files
-				.filter((file) => file.oldPath !== undefined && covers.includes(file.path))
-				.map((file) => file.oldPath!),
-		];
-		const reading = lens.standards
-			? standards instanceof Standards
-				? standards.forFiles(standardsFiles)
-				: StandardsReading.from(standards)
-			: StandardsReading.from([]);
+		const reading = readingOf(lens, covers);
 
 		const noted: string[] = [...(unrunnable.get(lens) ?? [])];
 		if (config.static.enola.enabled)
@@ -1909,6 +1894,18 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			decisions === undefined
 				? ""
 				: `\n\n## Decisions at base\nRead this before step 1. Only ACTIVE decisions at base are baselines. INACTIVE text is history: read it only to see what changed. For an ACTIVE decision marked amended by, read both files at base; where they conflict, the amendment wins. Treat \`Amends:\` as a declaration when checking for an undeclared conflicting replacement. For each head Amends target, read its active base text and any base amendments.\n${quoteUntrusted("listing", decisions.render(), boundary)}\n\n## Design sections at base\nUse these headings to discover base vocabulary independently of head terms. Read relevant sections at base.\n${quoteUntrusted("listing", designSections!.render(), boundary)}\n\n## Design files at base\nEvery design file the index read, with or without headings.\n${quoteUntrusted("listing", designSections!.renderFiles(), boundary)}`;
+		const lensDelta = whole(lens.name) ? {} : { delta: intake.delta(lens.name) };
+		// The findings earlier rounds reported that the carry copied for this lens, handed to it to restate or refute.
+		const earlier = await (async () => {
+			const state = await harness.snapshot(FindingsDocument, root, context);
+			if (state === undefined) return undefined;
+			const sighted = carriedProducers
+				.filter((source) => source.check === `${carriedPrefix}lens.${lens.name}`)
+				.flatMap((source) => sightedBy(state, reviewed, source));
+			return sighted;
+		})();
+		const earlierText = (boundary: string) =>
+			earlier === undefined || earlier.length === 0 ? "" : `\n\n${earlierFindings(earlier, boundary)}`;
 		const runAt = async (level: ScrutinyLevel): Promise<LensRun> => {
 			const settings = lens.level(level);
 			// The head's functions around the hunks, read once for the review, at the levels that read functions.
@@ -1954,7 +1951,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 							rules,
 							budget: settings.budget,
 							coverage,
-							prompt: new ChangePrompt(changeset, "0".repeat(24)).render(files),
+							prompt:
+								new ChangePrompt(changeset, "0".repeat(24), targets).render(files, lensDelta) +
+								earlierText("0".repeat(24)),
 						}),
 					)
 					.digest("hex"),
@@ -1966,8 +1965,11 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				budget: settings.budget,
 				coverage,
 				...(() => {
-					const rendered = prompt.renderInput(files, { ...(functions === undefined ? {} : { functions }) });
-					return { prompt: rendered.text, delivered: rendered.delivered };
+					const rendered = prompt.renderInput(files, {
+						...(functions === undefined ? {} : { functions }),
+						...lensDelta,
+					});
+					return { prompt: rendered.text + earlierText(nonce), delivered: rendered.delivered };
 				})(),
 				...(functions?.unavailable === undefined ? {} : { unread: functions.unavailable }),
 			};
@@ -2098,6 +2100,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				reason: "triage skipped it, as its floor allows",
 			}),
 		),
+		...uncovered.map(
+			(name): CheckRecord => ({ name: `lens.${name}`, status: "skipped", reason: "nothing uncovered" }),
+		),
 		...refusals.values(),
 	];
 	if (callers.coverage)
@@ -2113,12 +2118,12 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			};
 	// Only the lenses this review ran count, each at the level whose record stands for it: one that configuration has
 	// since disabled or retiered, or a quick run that escalated, leaves nothing behind.
-	const { manifest: accounted, producers } = account(
+	const { manifest: accounted, producers: accountedProducers } = account(
 		manifest,
 		settled,
 		{
 			records,
-			skippable: skipped.map((name) => `lens.${name}`),
+			skippable: [...skipped, ...uncovered].map((name) => `lens.${name}`),
 			...(triaged.decision === undefined
 				? {}
 				: {
@@ -2129,6 +2134,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		},
 		options,
 	);
+	// The carried producers count beside the lenses that ran, so a finding an earlier round raised stays in the verdict.
+	const producers: Producer[] = [...accountedProducers, ...carriedProducers];
 	await (await harness.root(context)).commit(
 		(tx) =>
 			reopenDismissals(
@@ -2160,15 +2167,44 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			.flatMap((lens) => lens.rules.map((rule) => rule.id)),
 	);
 	let decisionsAtBase: string | undefined;
+	// A carried claim is judged again only when the move changed its lines or its lens refuted it this round; the rest
+	// keep the verification the carry copied. Either way it goes to the verifier, never to a drop.
+	const refutedBy = new Map<string, readonly string[]>();
+	for (const { run } of settled) {
+		const conversation = lensResult?.[run.key]?.conversation;
+		if (conversation === undefined) continue;
+		refutedBy.set(run.name, (await harness.snapshot(LensDocument, conversation, context))?.spend?.refuted ?? []);
+	}
+	const marks = (await harness.snapshot(FindingsDocument, root, context))?.items ?? {};
+	const carriedRun = (claim: { readonly source: FindingSource }) =>
+		claim.source.check.startsWith(`${carriedPrefix}lens.`)
+			? settled.find(({ run }) => `${carriedPrefix}lens.${run.name}` === claim.source.check)?.run
+			: undefined;
+	const againFor = (claim: { readonly id: string; readonly source: FindingSource }) => {
+		const run = carriedRun(claim);
+		if (run === undefined) return undefined;
+		const mark = marks[claim.id]?.carried?.[reviewed]?.[`${claim.source.check}@${claim.source.version ?? ""}`];
+		return mark?.changed === true || refutedBy.get(run.name)?.includes(claim.id) === true ? run : undefined;
+	};
 	for (const defect of new Merge(storedFindings, configFor, changeset.revision).defects()) {
 		if (defect.speaker.properties.status === "dismissed") continue;
-		const candidateState = VerificationState.from(defect.speaker).toJSON();
+		const judgedState = VerificationState.from(defect.speaker).toJSON();
+		// A carried claim the fix left alone, and its lens did not refute, keeps the judgement the carry copied.
+		const candidateState = {
+			...judgedState,
+			claims: judgedState.claims.filter(
+				(claim) => !claim.source.check.startsWith(carriedPrefix) || againFor(claim) !== undefined,
+			),
+		};
+		if (candidateState.claims.length === 0) continue;
 		if (
 			!candidateState.claims.some((claim) => {
-				const run = allRuns.find((each) => {
-					const source = lensSource(each.name, each.version, each.level);
-					return source.check === claim.source.check && source.version === claim.source.version;
-				});
+				const run =
+					againFor(claim) ??
+					allRuns.find((each) => {
+						const source = lensSource(each.name, each.version, each.level);
+						return source.check === claim.source.check && source.version === claim.source.version;
+					});
 				return (
 					run !== undefined &&
 					((run.verify ??
@@ -2192,10 +2228,13 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					claim.source.check === defect.speaker.properties.source.check &&
 					claim.source.version === defect.speaker.properties.source.version,
 			) ?? candidateState.claims[0]!;
-		const run = allRuns.find((each) => {
-			const source = lensSource(each.name, each.version, each.level);
-			return source.check === finderClaim.source.check && source.version === finderClaim.source.version;
-		})!;
+		const run =
+			carriedRun(finderClaim) ??
+			allRuns.find((each) => {
+				const source = lensSource(each.name, each.version, each.level);
+				return source.check === finderClaim.source.check && source.version === finderClaim.source.version;
+			});
+		if (run === undefined) continue;
 		const outcome = lensResult?.[run.key];
 		const finder =
 			outcome?.status === "done" && outcome.model !== undefined ? outcome.model : modelName(run.route[0]!);
@@ -2220,7 +2259,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			)
 				available.push(model);
 		const designClaim = candidateState.claims.some(
-			(claim) => claim.source.check === "lens.design" || designRules.has(claim.ruleId),
+			(claim) => reportingCheck(claim.source.check) === "lens.design" || designRules.has(claim.ruleId),
 		);
 		if (designClaim) decisionsAtBase ??= (await DecisionFiles.load(repoRoot, base)).render();
 		candidates.push({
@@ -2353,6 +2392,29 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	};
 	const lineageOf = (name: string, level: ScrutinyLevel) =>
 		checks.find((check) => check.name === `lens.${name}` && check.level === level)?.lineage;
+	spans.step("coverage.compute");
+	const allowSkip = [...accounted.skippable(), ...config.checks.allowSkip];
+	const coverage = await ledger.compute(
+		await ledgerRound(
+			harness,
+			root,
+			{
+				request: options,
+				tier,
+				covering,
+				standards: standardsPaths,
+				settled,
+				...(lensResult === undefined ? {} : { lensResult }),
+				checks: verificationCheck === undefined ? checks : [...checks, verificationCheck],
+				manifest: verificationCheck === undefined ? manifest : [...manifest, "verifier"],
+				allowSkip,
+				nonce: ran.revision.nonce,
+			},
+			context,
+		),
+		context,
+	);
+	const coverageRecord = CoverageRecord.from(coverage, await ledger.dismissals(reviewed, context)).checkRecord();
 	const input = adjudicationInput({
 		root,
 		repoRoot,
@@ -2361,8 +2423,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		policy: options.policy,
 		resolutionPolicy: policies?.fingerprint,
 		config,
-		manifest: verificationCheck === undefined ? manifest : [...manifest, "verifier"],
-		checks: verificationCheck === undefined ? checks : [...checks, verificationCheck],
+		manifest: [...manifest, ...(verificationCheck === undefined ? [] : ["verifier"]), coverageCheck],
+		checks: [...checks, ...(verificationCheck === undefined ? [] : [verificationCheck]), coverageRecord],
 		verifierVersion,
 		verificationRan: true,
 		findingsVersion: await findingsVersion(harness, root, reviewed, context),
@@ -2438,23 +2500,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		});
 	}
 	spans.step("coverage.record");
-	await recordCoverage(
-		harness,
-		root,
-		{
-			request: options,
-			tier,
-			covering,
-			settled,
-			lensResult,
-			checks: verificationCheck === undefined ? checks : [...checks, verificationCheck],
-			manifest: input.manifest,
-			allowSkip: [...accounted.skippable(), ...config.checks.allowSkip],
-			nonce: ran.revision.nonce,
-			adjudication,
-		},
-		context,
-	);
+	await ledger.write(coverage, adjudication, context);
 	spans.end();
 	const exhausted = settled.flatMap(({ run, outcome }) =>
 		outcome?.status === "exhausted" ? [{ lens: run.name, ...outcome }] : [],

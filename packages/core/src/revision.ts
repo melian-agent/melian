@@ -140,6 +140,28 @@ export async function readRevisionFile(
 }
 
 /**
+ * The target a symbolic link holds at `revision`, read from its blob through git's object database, cut at `maxBytes`
+ * with `truncated` set. Throws {@link RevisionError} `notFound`, or `notASymlink` for an entry of another kind.
+ */
+export async function readRevisionLink(
+	repoRoot: string,
+	revision: string,
+	path: string,
+	maxBytes: number,
+): Promise<{ readonly target: string; readonly truncated: boolean }> {
+	checkRevision(revision);
+	const target = repositoryPath(path);
+	const entry = await entryAt(repoRoot, revision, target);
+	if (entry.kind !== "symlink")
+		throw new RevisionError("notASymlink", `${target || "."} is a ${entry.kind}`, { path: target });
+	const result = await git(repoRoot, ["cat-file", "blob", entry.object], { maxBytes });
+	if (result.code !== 0 && !result.truncated) {
+		throw new RevisionError("gitFailed", `git cat-file failed: ${result.stderr.trim()}`, { path: target });
+	}
+	return { target: result.stdout, truncated: result.truncated === true };
+}
+
+/**
  * Lists a directory as it is at `revision`: its direct entries, or every file beneath it when `recursive` is set. A
  * path naming a file lists that file alone. At most `maxEntries` entries are returned, with `truncated` set when more
  * exist. Throws as {@link readRevisionFile} does.

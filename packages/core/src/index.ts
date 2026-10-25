@@ -19,6 +19,7 @@ export {
 	type VerdictStatus,
 } from "./adjudication.ts";
 export { parseJsonc } from "./analyser.ts";
+export { carriedCheckPrefix, reportingCheck } from "./carried.ts";
 export type {
 	ChangeOverlap,
 	CodeLocation,
@@ -125,6 +126,7 @@ export {
 	type StoredCoverageRecord,
 	type StoredCoverageSegment,
 	type StoredCoverageVoid,
+	type StoredGapDismissal,
 } from "./coverage-ledger.ts";
 export {
 	countRanges,
@@ -357,6 +359,7 @@ export {
 	type RevisionMatch,
 	type RevisionSearch,
 	readRevisionFile,
+	readRevisionLink,
 	repositoryPath,
 	revisionLimits,
 	searchRevision,

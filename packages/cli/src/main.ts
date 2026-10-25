@@ -7,7 +7,7 @@ import {
 	type StoredComparisonAdjudication,
 	visibleText,
 } from "@melian-agent/core";
-import { dismiss, findings, type Io, publish, review, reviewExitCodes, telemetry } from "./commands.ts";
+import { dismiss, dismissGap, findings, type Io, publish, review, reviewExitCodes, telemetry } from "./commands.ts";
 import {
 	adjudicateComparison,
 	compare,
@@ -44,6 +44,10 @@ Commands:
                          dismisses that report alone.
                          Exits 0 when recorded, 1 when the review or the finding is not found, or when the
                          dismissal was recorded but the verdict could not be decided again.
+  dismiss-gap <range|#pr> --check <name> --file <path> --lines <lines> [--side base] --reason <text>
+                         Dismiss lines of a coverage gap the stored review names, for one check, with a reason. It
+                         answers that check on those lines alone, never as coverage; a later change to a named line
+                         reopens it. Run review again to decide the verdict with it. Exits 0 when recorded.
   compare <range|#pr> [--from <source>]... [--round <id|unattributed>]
                          Import other reviewers' findings and match them against the stored review of the head,
                          by site. A source is github for CodeRabbit's review threads, github:<login> for another
@@ -70,8 +74,8 @@ Options:
                          stored; a completed triage decision is never asked again (review).
   --trust-head           Run the change's own tests, as the mutation check does, for a head that is not your own
                          checked-out work, such as a fork's; pass it only for code you have read (review).
-  --cold                 Run the mutation check without an earlier head's results; only a cold run can pass the
-                         review, so run it before the queue (review).
+  --cold                 Review the whole diff from nothing: no coverage carries from earlier rounds, and the mutation
+                         check runs without an earlier head's results (review).
   --open, --all, --json  For findings; --json also applies to review and telemetry.
   --round <id>          Read a stored verdict; select a range comparison by ID or unattributed.
   --rounds              List a target's stored rounds (findings).
@@ -149,6 +153,10 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 				rule: { type: "string" },
 				note: { type: "string" },
 				only: { type: "boolean", default: false },
+				check: { type: "string" },
+				file: { type: "string" },
+				lines: { type: "string" },
+				side: { type: "string" },
 				from: { type: "string", multiple: true, default: [] },
 				color: { type: "boolean", default: true },
 				help: { type: "boolean", short: "h", default: false },
@@ -226,6 +234,21 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 				}
 				if (values.reason === undefined) throw new UsageError("dismiss needs --reason <text>");
 				return await dismiss(scoped, target, id, readableReason(values.reason), { only: values.only });
+			}
+			case "dismiss-gap": {
+				const target = one(rest, "dismiss-gap", "range or pull request");
+				if (values.check === undefined || values.file === undefined || values.lines === undefined)
+					throw new UsageError("dismiss-gap needs --check <name>, --file <path> and --lines <lines>");
+				if (values.side !== undefined && values.side !== "head" && values.side !== "base")
+					throw new UsageError("--side takes head or base");
+				if (values.reason === undefined) throw new UsageError("dismiss-gap needs --reason <text>");
+				return await dismissGap(scoped, target, {
+					check: values.check,
+					file: values.file,
+					lines: values.lines,
+					base: values.side === "base",
+					reason: readableReason(values.reason),
+				});
 			}
 			case "compare": {
 				const [first, ...others] = rest;

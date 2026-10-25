@@ -312,12 +312,14 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 			"standards.trust",
 			"abort.replaced",
 			"bands",
+			"coverage.intake",
 			"routes",
 			"lenses.prepare",
 			"unlock",
 			"callers.coverage",
 			"verification.prepare",
 			"adjudication.prepare",
+			"coverage.compute",
 			"verdict.read",
 			"coverage.record",
 			"output",
@@ -469,6 +471,46 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(result.stderr).toContain("exceed 1048576 bytes");
 		expect(result.stderr).toContain(`unsafe${escaped}`);
 		expect(result.stderr).not.toContain(control);
+	});
+
+	it("refuses a gap dismissal the stored review does not name, and one missing its options", () => {
+		const { repo, env } = goldenCheckout(goldens["clean-rename"]!);
+		expect(melian(repo, ["review", "main"], env).status).toBe(0);
+		const missing = melian(repo, ["dismiss-gap", "main", "--check", "lens.correctness"], env);
+		expect(missing.status).toBe(64);
+		expect(missing.stderr).toContain("dismiss-gap needs --check <name>, --file <path> and --lines <lines>");
+		const side = melian(
+			repo,
+			[
+				"dismiss-gap",
+				"main",
+				"--check",
+				"lens.correctness",
+				"--file",
+				"a.ts",
+				"--lines",
+				"1",
+				"--side",
+				"left",
+				"--reason",
+				"read",
+			],
+			env,
+		);
+		expect(side.status).toBe(64);
+		const none = melian(
+			repo,
+			["dismiss-gap", "main", "--check", "lens.correctness", "--file", "a.ts", "--lines", "1-2", "--reason", "read"],
+			env,
+		);
+		expect(none.status).toBe(1);
+		expect(none.stderr).toContain("the review names no gap for lens.correctness at those lines of a.ts");
+		const bad = melian(
+			repo,
+			["dismiss-gap", "main", "--check", "lens.correctness", "--file", "a.ts", "--lines", "3-1", "--reason", "read"],
+			env,
+		);
+		expect(bad.stderr).toContain("--lines 3-1 ends before it starts");
 	});
 
 	it("exits 0 for a review that passed, and prints the terminal rendering of its verdict", () => {
@@ -828,8 +870,9 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 		expect(JSON.parse(melian(repo, ["findings", range, "--json"], env).stdout)).toEqual({
 			...verdict,
 			ran: verdict.ran?.filter((check) => check.name !== "verifier"),
-			// The rerun decided a round of its own, which covers the diff beside the first.
-			coverage: { complete: true, rounds: ["r1", "r2"], gaps: [] },
+			// The rerun decided a round of its own at the same head, which covers the diff from the lens runs it attached
+			// to, and carries from what the first round carried from: nothing.
+			coverage: { complete: true, rounds: ["r2"], gaps: [], dismissed: [] },
 		});
 	});
 

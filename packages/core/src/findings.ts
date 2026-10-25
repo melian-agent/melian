@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { posix } from "node:path";
 import Type, { type Static } from "typebox";
 import Value from "typebox/value";
+import { reportingCheck } from "./carried.ts";
 import type { Revision } from "./changeset.ts";
 import { type Resolution, resolutionOrder, resolutionSchema, type Severity, severitySchema } from "./config.ts";
 import { outcomeMarks, resolutionMarks, severityMarks, verifierMark, verifierMarks } from "./emoji.ts";
@@ -1131,7 +1132,7 @@ export class Finding {
 		const lowered = this.lowered();
 		const verifier =
 			verification === undefined
-				? source.check.startsWith("lens.")
+				? reportingCheck(source.check).startsWith("lens.")
 					? verifierMarks.unverified
 					: undefined
 				: verifierMarks[verification.verdict];
@@ -1167,7 +1168,7 @@ export class Finding {
 		const { ids } = rendering;
 		const { severity, evidence, failureScenario, status, explanation, id, verification, source } = this.properties;
 		const { decidedBy } = this.properties;
-		const own = { check: source.check, rule: this.ruleId };
+		const own = { check: reportingCheck(source.check), rule: this.ruleId };
 		// The other reports of its defect: those adjudication merged into it, which a dismissal of it dismisses too, and
 		// the dismissed ones it lists beside it.
 		const reports = (this.properties.alsoReportedAs ?? []).map((other) => {
@@ -1431,7 +1432,7 @@ export class Finding {
 					return claim.verification === undefined ? original : original.verifiedAs(claim.verification);
 				}),
 			...(this.properties.reportedBy ?? [this.properties.source])
-				.filter((producer) => !producer.check.startsWith("lens."))
+				.filter((producer) => !reportingCheck(producer.check).startsWith("lens."))
 				.map((producer) =>
 					Finding.from({
 						...this.toJSON(),
@@ -1531,8 +1532,8 @@ export class Finding {
 			const { source: producer, ruleId, verification } = claim;
 			if (
 				!(
-					producer.check === "lens.trust-boundary" ||
-					producer.check === "lens.tests" ||
+					reportingCheck(producer.check) === "lens.trust-boundary" ||
+					reportingCheck(producer.check) === "lens.tests" ||
 					ruleId === "untested-behaviour" ||
 					ruleId === injectionAttemptRuleId
 				)
@@ -1669,7 +1670,7 @@ export class Finding {
 		const { source, reportedBy = [source] } = this.properties;
 		const claims = VerificationState.from(this).claims;
 		return (
-			reportedBy.every(({ check }) => check.startsWith("lens.")) &&
+			reportedBy.every(({ check }) => reportingCheck(check).startsWith("lens.")) &&
 			(claims.length === 0 || claims.some((claim) => claim.verification === undefined))
 		);
 	}
@@ -1692,7 +1693,7 @@ export class Finding {
 	/** Whether lenses alone reported the finding: its check and every check that sighted it. */
 	lensReport(): boolean {
 		const { source, reportedBy = [source] } = this.properties;
-		return reportedBy.every(({ check }) => check.startsWith("lens."));
+		return reportedBy.every(({ check }) => reportingCheck(check).startsWith("lens."));
 	}
 
 	/** Whether a verifier refuted every claim of the finding, and only lenses reported it. */
@@ -1700,7 +1701,7 @@ export class Finding {
 		const { source, reportedBy = [source] } = this.properties;
 		const claims = VerificationState.from(this).claims;
 		return (
-			reportedBy.every(({ check }) => check.startsWith("lens.")) &&
+			reportedBy.every(({ check }) => reportingCheck(check).startsWith("lens.")) &&
 			claims.length > 0 &&
 			claims.every((claim) => claim.verification?.verdict === "refuted")
 		);
@@ -1723,7 +1724,12 @@ export class Finding {
 		if (source.check !== "guardrails") {
 			return reportedBy.map(
 				({ check, version }) =>
-					withoutUndefined({ check, rule: this.ruleId, severity, variant: version }) as ResolutionClaim,
+					withoutUndefined({
+						check: reportingCheck(check),
+						rule: this.ruleId,
+						severity,
+						variant: version,
+					}) as ResolutionClaim,
 			);
 		}
 		const whole = { check: source.check, group: this.ruleId, severity };

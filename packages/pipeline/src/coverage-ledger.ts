@@ -23,6 +23,7 @@ import {
 	type StoredCoverageRecord,
 	type StoredCoverageSegment,
 	type StoredCoverageVoid,
+	type StoredGapDismissal,
 	subtractRanges,
 	type TriageChoice,
 	type UnitField,
@@ -44,6 +45,28 @@ export const CoverageDocument = defineDoc<CoverageState>({
 	fork: "current",
 	initial: () => ({ records: {} }),
 });
+
+/** The maintainer's dismissals of coverage gaps, by the revision key they answer at. */
+export type GapDismissalState = { items: Record<string, StoredGapDismissal[]> };
+
+export const GapDismissalDocument = defineDoc<GapDismissalState>({
+	kind: "melian.coverage-dismissals",
+	version: 1,
+	scope: "conversation",
+	history: "latest",
+	fork: "current",
+	initial: () => ({ items: {} }),
+});
+
+/** A gap dismissal names no gap the review holds, so recording it would answer nothing. */
+export class GapDismissalError extends Error {
+	readonly code = "notAGap";
+
+	constructor(message: string) {
+		super(message);
+		this.name = "GapDismissalError";
+	}
+}
 
 /** The Melian build that writes a coverage record, for diagnosis; it voids nothing. `test/coverage-ledger.test.ts` keeps it in step. */
 export const melianVersion = "0.0.0";
@@ -85,9 +108,9 @@ export interface LedgerRound {
 	readonly manifest: readonly string[];
 	readonly allowSkip: readonly string[];
 	readonly nonce: string;
-	// The adjudication task that decided the round, which names its round in `melian.rounds`.
-	readonly adjudication: number;
 	readonly findings: readonly Finding[];
+	// A `--cold` round, which carries nothing from earlier rounds.
+	readonly cold?: boolean;
 	// Every tool pin, which the policy fingerprint holds.
 	readonly tools: unknown;
 }
@@ -147,33 +170,116 @@ export class CoverageLedger {
 	}
 
 	/**
-	 * Writes the coverage record of the round `round.adjudication` decided, once: a repeat review that attaches to the
-	 * round keeps the first record. Returns the round's ID, or `undefined` when no round holds the task.
+	 * What the round about to run finds at intake: the last decided round's coverage carried to this head, and what
+	 * each selected lens has left to cover. Read before any lens runs, so the delta is fixed in the round's input.
 	 */
-	async write(round: LedgerRound, context: Context): Promise<string | undefined> {
+	async intake(round: LedgerRound, context: Context): Promise<CoverageIntake> {
+		const prior = await this.#prior(context, round.changeset.revision);
+		return new CoverageIntake(await this.#record("", round, prior, context), prior);
+	}
+
+	/**
+	 * The coverage record of the round `round` describes, before it has a round ID: what each check must cover at the
+	 * head, what the round's own runs delivered, and what carries from the last decided round, by mint order.
+	 */
+	async compute(round: LedgerRound, context: Context): Promise<StoredCoverageRecord> {
+		return this.#record("", round, await this.#prior(context, round.changeset.revision), context);
+	}
+
+	/**
+	 * Writes `record` as the coverage record of the round the adjudication task `adjudication` decided, once: a repeat
+	 * review that attaches to the round keeps the first record. Returns the round's ID, or `undefined` when no round
+	 * holds the task.
+	 */
+	async write(record: StoredCoverageRecord, adjudication: number, context: Context): Promise<string | undefined> {
 		const rounds =
 			(await this.harness.snapshot(RoundsDocument, this.root, context)) ?? RoundsDocument.definition.initial();
-		const own = Object.entries(rounds.items).find(([, each]) => each.tasks.includes(round.adjudication));
+		const own = Object.entries(rounds.items).find(([, each]) => each.tasks.includes(adjudication));
 		if (own === undefined) return undefined;
-		const [id, stored] = own;
-		const existing = (await this.harness.snapshot(CoverageDocument, this.root, context))?.records[id];
-		if (existing !== undefined) return id;
-		const prior = await this.#prior(id, stored.mintedAt, context);
-		const record = await this.#record(id, round, prior, context);
+		const [id] = own;
 		const root = await this.harness.root(context);
 		await root.commit(async (tx: Tx) => {
 			const document = await tx.doc(CoverageDocument, this.root);
 			if (document.records[id] !== undefined) return;
-			document.records[id] = record;
-			await new RoundWriter(tx, this.root).cover(round.adjudication);
+			document.records[id] = { ...structuredClone(record), round: id };
+			await new RoundWriter(tx, this.root).cover(adjudication);
 		}, context);
 		return id;
 	}
 
 	/** The coverage record of round `id`, a local round ID such as `r2`, or `undefined` when it wrote none. */
-	async read(id: string, context: Context): Promise<CoverageRecord | undefined> {
+	async read(id: string, context: Context, revision?: string): Promise<CoverageRecord | undefined> {
 		const stored = (await this.harness.snapshot(CoverageDocument, this.root, context))?.records[id];
-		return stored === undefined ? undefined : CoverageRecord.from(stored);
+		if (stored === undefined) return undefined;
+		return CoverageRecord.from(stored, revision === undefined ? [] : await this.dismissals(revision, context));
+	}
+
+	/** The maintainer's dismissals of gaps at `revision`, a {@link Revision.key}. */
+	async dismissals(revision: string, context: Context): Promise<StoredGapDismissal[]> {
+		return structuredClone(
+			(await this.harness.snapshot(GapDismissalDocument, this.root, context))?.items[revision] ?? [],
+		);
+	}
+
+	/**
+	 * Records a maintainer's dismissal of the lines of a gap the current round at `revision` names for one check. It
+	 * answers that check on those lines alone, and the lines stay uncovered; the next review decides the verdict with
+	 * it. Throws {@link GapDismissalError} when the round names no such gap.
+	 */
+	async dismiss(revision: string, dismissal: StoredGapDismissal, context: Context): Promise<void> {
+		const id = (await this.harness.snapshot(RoundsDocument, this.root, context))?.current[revision];
+		const record = id === undefined ? undefined : await this.read(id, context, revision);
+		const gap = record
+			?.gaps()
+			.filter(
+				(each) =>
+					each.check === dismissal.check &&
+					each.file === dismissal.file &&
+					(each.revision ?? "head") === (dismissal.revision ?? "head"),
+			)
+			.reduce<LineRanges>((all, each) => unionRanges(all, each.lines), []);
+		if (gap === undefined || dismissal.lines.length === 0 || subtractRanges(dismissal.lines, gap).length > 0) {
+			throw new GapDismissalError(
+				`the review names no gap for ${dismissal.check} at those lines of ${dismissal.file}; melian findings lists its gaps`,
+			);
+		}
+		const root = await this.harness.root(context);
+		await root.commit(async (tx: Tx) => {
+			const document = await tx.doc(GapDismissalDocument, this.root);
+			document.items[revision] = [...(document.items[revision] ?? []), structuredClone(dismissal)];
+		}, context);
+	}
+
+	/**
+	 * Carries the dismissals at `from`, an earlier round's revision key, to `to`, across `map`, the move between the two
+	 * heads: a dismissal whose named lines the move left alone answers the same lines at the new head, and one any of
+	 * whose lines changed is reopened and left behind.
+	 */
+	async carryDismissals(from: string, to: string, map: Revision, context: Context): Promise<void> {
+		const earlier = await this.dismissals(from, context);
+		const carried = earlier.flatMap((each) => {
+			if (each.revision === "base") return [each];
+			const lines: number[] = [];
+			let path: string | undefined;
+			for (const [first, last] of each.lines)
+				for (let line = first; line <= last; line++) {
+					const moved = map.mapLine(each.file, line);
+					if (moved === undefined) return [];
+					path = moved.path;
+					lines.push(moved.line);
+				}
+			return [{ ...each, file: path ?? each.file, lines: rangesOf(lines) }];
+		});
+		if (carried.length === 0) return;
+		const root = await this.harness.root(context);
+		await root.commit(async (tx: Tx) => {
+			const document = await tx.doc(GapDismissalDocument, this.root);
+			const present = new Set((document.items[to] ?? []).map((each) => JSON.stringify(each)));
+			document.items[to] = [
+				...(document.items[to] ?? []),
+				...carried.filter((each) => !present.has(JSON.stringify(each))),
+			];
+		}, context);
 	}
 
 	/**
@@ -182,37 +288,41 @@ export class CoverageLedger {
 	 */
 	async section(revision: string, context: Context): Promise<{ summary: CoverageSummary; text: string }> {
 		const id = (await this.harness.snapshot(RoundsDocument, this.root, context))?.current[revision];
-		const record = id === undefined ? undefined : await this.read(id, context);
+		const record = id === undefined ? undefined : await this.read(id, context, revision);
 		if (record !== undefined) return { summary: record.summary(), text: record.render() };
 		const reason = `${id ?? "this review"} recorded no coverage, so it covers nothing`;
 		return {
-			summary: { complete: false, rounds: [], gaps: [{ check: coverageCheck, file: "", lines: [], reason }] },
+			summary: {
+				complete: false,
+				rounds: [],
+				gaps: [{ check: coverageCheck, file: "", lines: [], reason }],
+				dismissed: [],
+			},
 			text: `Coverage: incomplete.\n  ${coverageCheck}: ${reason}\n`,
 		};
 	}
 
-	// The last decided round minted before round `id`, by mint order, with its record.
-	async #prior(id: string, mintedAt: string | undefined, context: Context): Promise<StoredCoverageRecord | undefined> {
-		if (mintedAt === undefined) return undefined;
-		// The round being written holds a task, so the rounds document exists.
-		const rounds = (await this.harness.snapshot(RoundsDocument, this.root, context))!.items;
+	// The last decided round by mint order that wrote a record. A round that is still running has no verdict, so a round
+	// about to run never reads itself, and an earlier round decided after a later one does not stand. When the last
+	// decided round reviewed the same base and head as `at`, the round about to run takes the round that one carried
+	// from, so a repeat review computes the same delta, renders the same input and attaches to the decided round.
+	async #prior(
+		context: Context,
+		at: { readonly base: string; readonly head: string },
+	): Promise<StoredCoverageRecord | undefined> {
+		const rounds = (await this.harness.snapshot(RoundsDocument, this.root, context))?.items ?? {};
 		const records = (await this.harness.snapshot(CoverageDocument, this.root, context))?.records ?? {};
 		const order = (key: string) => Number(key.slice(1));
-		const earlier = Object.entries(rounds)
-			.filter(
-				([key, each]) =>
-					key !== id &&
-					each.verdict !== undefined &&
-					each.mintedAt !== undefined &&
-					(Date.parse(each.mintedAt) < Date.parse(mintedAt) ||
-						(each.mintedAt === mintedAt && order(key) < order(id))) &&
-					records[key] !== undefined,
-			)
+		const minted = Object.entries(rounds)
+			.filter(([, each]) => each.mintedAt !== undefined)
 			.sort(
 				([a, left], [b, right]) => Date.parse(left.mintedAt!) - Date.parse(right.mintedAt!) || order(a) - order(b),
 			);
-		const last = earlier.at(-1);
-		return last === undefined ? undefined : records[last[0]];
+		const decided = minted.filter(([key, each]) => each.verdict !== undefined && records[key] !== undefined).at(-1);
+		if (decided === undefined) return undefined;
+		const last = records[decided[0]]!;
+		if (last.base !== at.base || last.head !== at.head) return last;
+		return last.carriedFrom === undefined ? undefined : records[last.carriedFrom];
 	}
 
 	async #record(
@@ -228,10 +338,19 @@ export class CoverageLedger {
 			.update(canonical({ config: round.config, source: round.policy ?? null, tools: round.tools }))
 			.digest("hex")
 			.slice(0, 16);
+		// A lens that met injected text may have been steered, so no lens covers the file in the round that first raised
+		// the attempt. A later round reads the file afresh, and its own reading counts, though the finding stands. A
+		// dismissed attempt voids nothing.
+		const raisedBefore = new Set(Object.values(prior?.checks ?? {}).flatMap((check) => check.injected ?? []));
 		const injected = [
 			...new Set(
 				round.findings
-					.filter((finding) => finding.ruleId === injectionAttemptRuleId)
+					.filter(
+						(finding) =>
+							finding.ruleId === injectionAttemptRuleId &&
+							finding.properties.status !== "dismissed" &&
+							!raisedBefore.has(finding.properties.path),
+					)
 					.map((finding) => finding.properties.path),
 			),
 		].sort();
@@ -272,9 +391,10 @@ export class CoverageLedger {
 			for (const path of lens.delivered?.omitted ?? []) {
 				const file = revision.files.find((each) => each.path === path);
 				if (file === undefined) continue;
+				const rendered = lens.delivered?.hunks[path] ?? [];
 				const lines = hunkLines(
 					file,
-					file.hunks.map((hunk) => hunk.index),
+					file.hunks.filter((hunk) => !rendered.includes(hunk.index)).map((hunk) => hunk.index),
 				);
 				addLines(omitted.head, file.path, lines.head);
 				addLines(omitted.base, file.oldPath ?? file.path, lines.base);
@@ -310,7 +430,10 @@ export class CoverageLedger {
 				covered: status === "ran" || leave ? [structuredClone(allNeeds)] : [],
 			};
 		}
-		const { voids, carried } = await this.#carry(round, prior, policy, checks, context);
+		const { voids, carried } =
+			round.cold === true
+				? { voids: [{ reason: "a cold round reviews the whole diff from nothing" }], carried: {} }
+				: await this.#carry(round, prior, policy, checks, context);
 		// The carry takes only lenses this round holds.
 		for (const [check, segments] of Object.entries(carried)) checks[check]!.covered.push(...segments);
 		return {
@@ -497,5 +620,48 @@ export class CoverageLedger {
 			base: structuredClone(base),
 			units,
 		};
+	}
+}
+
+/**
+ * A round's intake: the coverage record it would hold before any lens runs, which says what each lens has left to
+ * cover, and the last decided round it carried from.
+ */
+export class CoverageIntake {
+	readonly record: CoverageRecord;
+	readonly prior?: StoredCoverageRecord;
+
+	constructor(record: StoredCoverageRecord, prior: StoredCoverageRecord | undefined) {
+		this.record = CoverageRecord.from(record);
+		if (prior !== undefined) this.prior = prior;
+	}
+
+	/** Whether any earlier coverage carried, so the round reviews a delta rather than the whole diff. */
+	carries(): boolean {
+		return Object.values(this.record.stored.checks).some(
+			(check) => check.kind === "lens" && check.covered.some((segment) => segment.round !== undefined),
+		);
+	}
+
+	/** What lens `name` has left to cover at this head: its gaps' lines on each side and its file units' missing fields. */
+	delta(name: string): StoredCoverageLines {
+		const delta = emptyLines();
+		for (const gap of this.record.gaps()) {
+			if (gap.check !== `lens.${name}`) continue;
+			if (gap.fields !== undefined) delta.units[gap.file] = [...gap.fields];
+			else addLines(gap.revision === "base" ? delta.base : delta.head, gap.file, gap.lines);
+		}
+		return delta;
+	}
+
+	/** Whether lens `name` has nothing left to cover. */
+	empty(name: string): boolean {
+		const delta = this.delta(name);
+		return count(delta.head) + count(delta.base) + Object.keys(delta.units).length === 0;
+	}
+
+	/** The level lens `name` ran at in the round this one carried from, when that round's own run covered anything. */
+	level(name: string): ScrutinyLevel | undefined {
+		return this.prior?.checks[`lens.${name}`]?.covered.find((segment) => segment.round === undefined)?.level;
 	}
 }

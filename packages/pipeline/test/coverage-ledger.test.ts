@@ -153,7 +153,7 @@ describe("the coverage ledger", () => {
 	it("records a full round as complete, from the hunks each lens's prompt rendered and every check that ran", async () => {
 		commit(repo, { "src/a.ts": numbered(20, "a").replace("a 3\n", "A 3\n") });
 		const { summary, record, text } = await review();
-		expect(summary).toEqual({ complete: true, rounds: ["r1"], gaps: [] });
+		expect(summary).toEqual({ complete: true, rounds: ["r1"], gaps: [], dismissed: [] });
 		expect(text).toBe("Coverage: complete, from r1.\n");
 		expect(record).toMatchObject({
 			producer: { name: "melian.coverage", algorithm: 1 },
@@ -296,7 +296,12 @@ describe("the coverage ledger", () => {
 		const { record } = await review({ decider, harness: deciding, config: skippable }).finally(() =>
 			deciding.close(context),
 		);
-		expect(record.checks["lens.contracts"]).toMatchObject({ status: "skipped", covered: [] });
+		expect(record.checks["lens.contracts"]).toMatchObject({
+			status: "skipped",
+			leave: true,
+			reason: "triage skipped it, as its floor allows",
+			covered: [],
+		});
 		expect(record.checks["lens.correctness"]).toMatchObject({ status: "ran", standards: ["AGENTS.md"] });
 	});
 
@@ -305,10 +310,11 @@ describe("the coverage ledger", () => {
 		gitIn(repo, "mv", "src/b.ts", "src/renamed.ts");
 		commit(repo, { "src/a.ts": numbered(20, "a").replace("a 3\n", "A 3\n") });
 		const { record } = await review();
+		const modes = ["oldMode", "newMode", "oldKind", "newKind"];
 		expect(record.checks["lens.correctness"]!.covered[0]!.units).toEqual({
-			"logo.png": ["status", "path", "binary"],
-			"src/a.ts": ["status", "path"],
-			"src/renamed.ts": ["status", "path", "oldPath"],
+			"logo.png": ["status", "path", "newMode", "newKind", "binary"],
+			"src/a.ts": ["status", "path", ...modes, "binary"],
+			"src/renamed.ts": ["status", "path", "oldPath", ...modes, "binary"],
 		});
 	});
 
@@ -318,7 +324,7 @@ describe("the coverage ledger", () => {
 		commit(repo, { "src/big1.ts": big("one"), "src/big2.ts": big("two") });
 		const { summary, requests } = await review();
 		const prompt = JSON.stringify(requests[correctness]?.[0] ?? []);
-		expect(prompt.split("The diff continues").length - 1).toBe(1);
+		expect(prompt.split("These hunks were left out for size").length - 1).toBe(1);
 		const owed = summary.gaps.filter((gap) => gap.check === "lens.correctness" && gap.file.startsWith("src/big"));
 		expect(owed.map((gap) => [gap.file, gap.reason])).toEqual([
 			["src/big1.ts", "too large for the prompt; lines still owed"],
@@ -339,13 +345,20 @@ describe("the coverage ledger", () => {
 		expect(summary.complete).toBe(false);
 		expect(summary.rounds).toEqual(["r1", "r2"]);
 		expect(summary.gaps).toEqual([
-			{ check: "lens.correctness", file: "src/b.ts", lines: [[9, 9]], reason: "lens ended at its budget in r2" },
+			{
+				check: "lens.correctness",
+				file: "src/b.ts",
+				lines: [[9, 9]],
+				reason: "lens ended at its budget in r2",
+				own: true,
+			},
 			{
 				check: "lens.correctness",
 				file: "src/b.ts",
 				revision: "base",
 				lines: [[9, 9]],
 				reason: "lens ended at its budget in r2",
+				own: true,
 			},
 		]);
 	});
@@ -609,20 +622,16 @@ describe("the coverage ledger", () => {
 		expect(reasons(summary)).toEqual(["coverage is not recorded for a fork's head"]);
 	});
 
-	it("keeps a file unit a gap until a lens receives every field, which no read delivers", async () => {
+	it("covers a file unit with the fields the prompt named, never with a read", async () => {
 		chmodSync(join(repo, "src/b.ts"), 0o755);
 		commit(repo, {});
-		const { summary } = await review({
+		const { summary, record } = await review({
 			replies: { correctness: [readCall("src/b.ts"), fauxAssistantMessage("Done.")] },
 		});
-		expect(summary.gaps).toContainEqual({
-			check: "lens.correctness",
-			file: "src/b.ts",
-			lines: [],
-			unit: "mode",
-			fields: ["oldMode", "newMode", "oldKind", "newKind", "binary"],
-			reason: "fields not delivered: oldMode, newMode, oldKind, newKind, binary",
-		});
+		expect(summary.complete).toBe(true);
+		const fields = ["status", "path", "oldMode", "newMode", "oldKind", "newKind", "binary"];
+		expect(record.checks["lens.correctness"]!.covered[0]!.units).toEqual({ "src/b.ts": fields });
+		expect(record.checks["lens.correctness"]!.covered[0]!.head).toEqual({});
 	});
 
 	it("counts the lines a lens read at head as delivered", async () => {
@@ -650,7 +659,7 @@ describe("a store main wrote before the ledger", () => {
 		head: string;
 	};
 
-	it("reads its version 1 round, and records a ledger whose old lens prompt covers nothing", async () => {
+	it("reads its version 1 round and its version 4 lens task, and records a whole ledger for the next round", async () => {
 		const clone = createRepository();
 		try {
 			gitIn(
@@ -676,7 +685,11 @@ describe("a store main wrote before the ledger", () => {
 				const before = await new CoverageLedger(reopened, root).section(recorded.key, context);
 				expect(before.summary.complete).toBe(false);
 				const mainLenses = await Lens.load(clone, { kind: "revision", commit: recorded.base }, ["src/user.ts"]);
-				scriptConversations(fake, []);
+				// The prompt now names each file's modes, so the review runs its lenses again rather than attach to the old task.
+				scriptConversations(fake, [
+					{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
+					{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+				]);
 				await reviewChangeset({
 					harness: reopened,
 					changeset: await Changeset.resolve(clone, "main...feature"),
@@ -686,27 +699,11 @@ describe("a store main wrote before the ledger", () => {
 					models: fake.review,
 					checks,
 				});
-				expect(fake.provider.state.callCount).toBe(0);
+				expect(fake.provider.state.callCount).toBe(2);
 				const after = (await reopened.snapshot(RoundsDocument, root, context))!;
 				expect(Object.values(after.items).map((round) => round.scope)).toEqual([undefined, { kind: "diff" }]);
 				const { summary } = await new CoverageLedger(reopened, root).section(recorded.key, context);
-				expect(summary.gaps).toEqual([
-					{ check: "lens.contracts", file: "src/user.ts", lines: [[7, 7]], reason: "never delivered" },
-					{
-						check: "lens.contracts",
-						file: "src/user.ts",
-						revision: "base",
-						lines: [[7, 7]],
-						reason: "never delivered",
-					},
-					{
-						check: "lens.correctness",
-						file: "src/user.ts",
-						revision: "base",
-						lines: [[7, 7]],
-						reason: "never delivered",
-					},
-				]);
+				expect(summary).toEqual({ complete: true, rounds: ["r2"], gaps: [], dismissed: [] });
 			} finally {
 				await reopened.close(context);
 			}

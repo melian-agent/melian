@@ -56,7 +56,8 @@ async function session() {
 							},
 						},
 					];
-		const result = await reviewScenario(repo, harness!, fake, lensScript(...calls));
+		// Each head is an empty commit whose lens judges the same code anew, so the scenario reviews it cold.
+		const result = await reviewScenario(repo, harness!, fake, lensScript(...calls), false, { cold: true });
 		const { verdict } = await result.review;
 		moveTo(state, result.changeset);
 		return { changeset: result.changeset, verdict };
