@@ -1,0 +1,5 @@
+# A review before the coverage ledger
+
+`main.sqlite` was written by main at `73e7a399`, before plan step 24's ledger, using its own review, lens and adjudication code with fake models. It holds one decided round at version 1 of `melian.rounds` and one finished lens task at version 4 of `melian.lenses`, whose runs record no prompt delivery. The correctness lens read `src/user.ts` once; the contracts lens read nothing. `recorded.json` names the changeset, the revision key, the base, the head and the lens task. `repo.bundle` holds the review's commits, so a test can resolve the same range. No stored field was assembled by hand.
+
+`capture.mjs` reproduces the capture when copied to the root of the `73e7a399` source tree. It ran from `git archive 73e7a399`, extracted in a scratch directory with a fresh `npm ci`, under Node 24 with `--conditions=@melian-agent/source`, git's global and system configuration off, and an absolute output directory. Reopen tests copy `main.sqlite` to a temporary directory before writing.

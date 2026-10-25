@@ -40,8 +40,10 @@ import {
 	Standards,
 	StandardsReading,
 	type StandardsSection,
+	type TriageChoice,
 	triageChoices,
 	triageQuestionSet,
+	type UnitField,
 	type Verdict,
 	VerificationState,
 	verificationBudget,
@@ -60,6 +62,7 @@ import {
 import { CallerContext, type CoverageSource } from "./callers.ts";
 import { checksExtension, type RunIdentity, runChecks, type WriterTrust } from "./checks.ts";
 import { configsFor } from "./configurations.ts";
+import { CoverageLedger } from "./coverage-ledger.ts";
 import {
 	DecisionDocument,
 	type DecisionResult,
@@ -130,6 +133,7 @@ import {
 import { RoundWriter } from "./rounds.ts";
 import { PrepareSpans } from "./spans.ts";
 import { SummaryTask, summarizeExtension } from "./summarize.ts";
+import { ToolProvisioning } from "./tool-provisioning.ts";
 import { injectionAttemptRule, quoteUntrusted, reviewNonce, triageBoundary } from "./untrusted.ts";
 import {
 	startVerification,
@@ -167,6 +171,8 @@ interface LensRun {
 	// the instruction fingerprint and so the attach key: reading them is best effort, and a repeat call attaches to
 	// the first call's prompt whether or not it could read them.
 	readonly prompt: string;
+	// What the prompt delivered, which the coverage ledger reads; absent from a task an older Melian created.
+	readonly delivered?: PromptDelivery;
 	// Why the first call could not read the head's functions for this run, when it could not; absent from a task an
 	// older Melian created, whose records carry no such note.
 	readonly unread?: string;
@@ -407,8 +413,9 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 	// outcome's `escalation`. A version 1 task holds none of them, and runs as it did. Its runs lose their `level`, so
 	// its findings name the lens's version alone, as its review's producers do, and never share a producer with a review
 	// after the upgrade that runs the lens at the same level.
-	// Version 3 records each run's standards paths; older runs leave them absent.
-	version: 4,
+	// Version 3 records each run's standards paths; older runs leave them absent. Version 5 records what each run's
+	// prompt delivered, which the coverage ledger reads; a version 4 run has none, so its prompt covers nothing.
+	version: 5,
 	initial: () => ({ phase: "spawn" }),
 	migrate: (input, checkpoint, from) => ({
 		input: LensTaskInput.upgrade(input, from),
@@ -755,11 +762,14 @@ export class ChangePrompt {
 		return this.renderInput(only, options).text;
 	}
 
-	/** The bounded prompt and whether its size limit omitted any file's diff. */
+	/**
+	 * The bounded prompt, whether its size limit omitted any file's diff, and what it delivered: by head path, the hunks
+	 * each file's block rendered and the fields of the file it named, and the files the limit left out.
+	 */
 	renderInput(
 		only?: readonly string[],
 		options: { readonly tools?: boolean; readonly functions?: EnclosingFunctions } = {},
-	): { readonly text: string; readonly cut: boolean } {
+	): { readonly text: string; readonly cut: boolean; readonly delivered: PromptDelivery } {
 		const { nonce } = this;
 		const { base, head } = this.changeset.revision;
 		const files = this.changeset.revision.files.filter(
@@ -781,20 +791,34 @@ export class ChangePrompt {
 		const parts = [header];
 		let size = Buffer.byteLength(header);
 		let cut = false;
+		const delivered: PromptDelivery = { hunks: {}, fields: {}, omitted: [] };
 		for (const file of files) {
+			if (cut) {
+				delivered.omitted.push(file.path);
+				continue;
+			}
 			const hunks = file.binary ? ["(binary)"] : file.hunks.map((hunk) => `${hunk.header}\n${hunk.text}`);
 			const part = quoteUntrusted("diff", [`${named(file)} (${file.status})`, ...hunks].join("\n"), nonce);
 			size += Buffer.byteLength(part);
 			if (size > maxPromptBytes) {
 				cut = true;
+				delivered.omitted.push(file.path);
 				parts.push(
 					options.tools === false
 						? "[The diff continues; the remaining files are omitted.]"
 						: "[The diff continues; read the remaining files with read_file.]",
 				);
-				break;
+				continue;
 			}
 			parts.push(part);
+			delivered.hunks[file.path] = file.binary ? [] : file.hunks.map((hunk) => hunk.index);
+			// The block's first line names the path, an old path, and the status, and a binary file says so.
+			delivered.fields[file.path] = [
+				"status",
+				"path",
+				...(file.oldPath === undefined ? [] : (["oldPath"] as const)),
+				...(file.binary ? (["binary"] as const) : []),
+			];
 		}
 		// The functions follow the diff, past its limit, so a cut diff never costs a function, and a function never a hunk.
 		if (cut && options.functions !== undefined) parts.push(cutDiffNote);
@@ -805,9 +829,19 @@ export class ChangePrompt {
 					nonce,
 				),
 			);
-		return { text: parts.join("\n\n"), cut };
+		return { text: parts.join("\n\n"), cut, delivered };
 	}
 }
+
+/**
+ * What one lens prompt delivered, by head path: the hunk indexes each file's diff block rendered, the file fields its
+ * first line named, and the files the size limit left out.
+ */
+export type PromptDelivery = {
+	hunks: Record<string, number[]>;
+	fields: Record<string, UnitField[]>;
+	omitted: string[];
+};
 
 // A model tier's route as a review can run it: the tier's model and fallbacks that the collection knows and holds
 // credentials for, in routing order, or why there are none.
@@ -938,6 +972,11 @@ interface ReviewSettings {
 	readonly writer?: WriterTrust;
 	/** Run `static.mutation` from nothing in the automatic checks, as a review that may pass must; see `RunChecksInput`. */
 	readonly cold?: boolean;
+	/**
+	 * Why the review's round may record no coverage, such as a pull request whose head is not a commit in the base
+	 * repository. The round still runs and decides; its coverage record covers nothing and says why.
+	 */
+	readonly coverageRefused?: string;
 	/** The host's spans, which the review's own steps between tasks join; the host stores them. */
 	readonly spans?: PrepareSpans;
 	readonly context?: Context;
@@ -1545,6 +1584,93 @@ async function triage(
  * failed, naming them, and `lensFailed` when a lens did not finish for another reason. The last two carry the findings
  * reported so far and the `not-reviewed` verdict already recorded.
  */
+// The required level at each path a lens covers: its band's floor there, `careful` for a review whose head the host
+// does not trust until a calibrated decider answers triage, as the band triage holds the lens to.
+async function requiredLevels(
+	name: string,
+	covers: readonly string[],
+	options: Pick<ReviewOptions, "config" | "policy" | "changeset" | "origin" | "decider">,
+): Promise<Record<string, TriageChoice>> {
+	const untrusted = options.origin?.kind === "pull-request" || options.policy?.kind === "revision";
+	const floor = untrusted && options.decider?.calibrated !== true ? "careful" : "quick";
+	const lookup = options.policy === undefined ? undefined : configLookup(options.changeset.repoRoot, options.policy);
+	const levels: Record<string, TriageChoice> = {};
+	for (const path of covers) {
+		const config = lookup === undefined ? options.config : await lookup(path);
+		const settings = Object.hasOwn(config.lenses, name) ? config.lenses[name] : undefined;
+		levels[path] = LevelBand.of(settings?.level, floor).floor;
+	}
+	return levels;
+}
+
+// Writes the decided round's coverage record from what the round ran: each selected lens's standing run, its record,
+// what its prompt and reads delivered, and every other check's record. Nothing the head writes reaches it.
+async function recordCoverage(
+	harness: Harness,
+	root: ConversationId,
+	round: {
+		readonly request: ReviewOptions;
+		readonly tier: string;
+		readonly covering: readonly { readonly lens: Lens; readonly covers: readonly string[] }[];
+		readonly settled: readonly SettledLens[];
+		readonly lensResult: LensResult | undefined;
+		readonly checks: readonly CheckRecord[];
+		readonly manifest: readonly string[];
+		readonly allowSkip: readonly string[];
+		readonly nonce: string;
+		readonly adjudication: number;
+	},
+	context: Context,
+): Promise<void> {
+	const { request } = round;
+	const { changeset } = request;
+	const writer = request.writer;
+	const lenses = await Promise.all(
+		round.covering.map(async ({ lens, covers }) => {
+			const paths = [
+				...covers,
+				...changeset.revision.files.flatMap((file) =>
+					file.oldPath !== undefined && covers.includes(file.path) ? [file.oldPath] : [],
+				),
+			];
+			const settledLens = round.settled.find(({ run }) => run.name === lens.name && run.version === lens.version);
+			const run = settledLens?.run;
+			const record = round.checks.find((check) => check.name === `lens.${lens.name}`);
+			const conversation = run === undefined ? undefined : round.lensResult?.[run.key]?.conversation;
+			return {
+				name: lens.name,
+				version: lens.version,
+				covers: paths,
+				required: await requiredLevels(lens.name, paths, request),
+				...(record === undefined ? {} : { record }),
+				...(run?.level === undefined ? {} : { level: run.level }),
+				...(run?.delivered === undefined ? {} : { delivered: run.delivered }),
+				...(conversation === undefined ? {} : { conversation }),
+				...(run?.standards === undefined ? {} : { standards: run.standards }),
+			};
+		}),
+	);
+	await new CoverageLedger(harness, root).write(
+		{
+			changeset,
+			config: request.config,
+			tier: round.tier,
+			...(request.policy === undefined ? {} : { policy: request.policy }),
+			leave: writer?.trusted === true ? writer.by : "none",
+			...(request.coverageRefused === undefined ? {} : { refused: request.coverageRefused }),
+			lenses,
+			checks: round.checks,
+			manifest: round.manifest,
+			allowSkip: round.allowSkip,
+			nonce: round.nonce,
+			adjudication: round.adjudication,
+			findings: await readFindings(harness, root, Revision.key(changeset.revision), context),
+			tools: (await ToolProvisioning.manifest()).toJSON(),
+		},
+		context,
+	);
+}
+
 export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	if (request.checks === undefined && !(request.harness instanceof ReviewHarness)) {
 		throw new ReviewError(
@@ -1839,7 +1965,10 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				rules,
 				budget: settings.budget,
 				coverage,
-				prompt: prompt.render(files, { ...(functions === undefined ? {} : { functions }) }),
+				...(() => {
+					const rendered = prompt.renderInput(files, { ...(functions === undefined ? {} : { functions }) });
+					return { prompt: rendered.text, delivered: rendered.delivered };
+				})(),
 				...(functions?.unavailable === undefined ? {} : { unread: functions.unavailable }),
 			};
 		};
@@ -2308,6 +2437,25 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			findings,
 		});
 	}
+	spans.step("coverage.record");
+	await recordCoverage(
+		harness,
+		root,
+		{
+			request: options,
+			tier,
+			covering,
+			settled,
+			lensResult,
+			checks: verificationCheck === undefined ? checks : [...checks, verificationCheck],
+			manifest: input.manifest,
+			allowSkip: [...accounted.skippable(), ...config.checks.allowSkip],
+			nonce: ran.revision.nonce,
+			adjudication,
+		},
+		context,
+	);
+	spans.end();
 	const exhausted = settled.flatMap(({ run, outcome }) =>
 		outcome?.status === "exhausted" ? [{ lens: run.name, ...outcome }] : [],
 	);
