@@ -352,7 +352,11 @@ describe("searchRevisionFiles", () => {
 		const commit = gitIn(repo, "rev-parse", "HEAD");
 		const search = { attributesFrom: commit, pattern: "needle" };
 		expect(await searchRevisionFiles(repo, commit, search, ["docs/a.md"], 1)).toEqual([
-			{ path: "docs/a.md", truncated: false, matches: [{ path: "docs/a.md", line: 1, text: atBound.slice(0, 300) }] },
+			{
+				path: "docs/a.md",
+				truncated: false,
+				matches: [{ path: "docs/a.md", line: 1, text: atBound.slice(0, 300) }],
+			},
 		]);
 		expect(await searchRevisionFiles(repo, commit, search, ["docs/b.md"], 1)).toEqual([
 			{ path: "docs/b.md", truncated: true, matches: [] },
