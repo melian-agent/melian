@@ -299,17 +299,21 @@ export class CoverageLedger {
 				...(injected.length > 0 ? { injected } : {}),
 			};
 		}
-		for (const record of round.checks) {
-			if (record.name.startsWith("lens.") || !round.manifest.includes(record.name)) continue;
-			const leave = record.status === "skipped" && round.allowSkip.includes(record.name);
-			checks[record.name] = {
+		// Every check the manifest names that is not a lens covers the whole range at its head, and one that left no
+		// record covers nothing.
+		for (const name of round.manifest) {
+			if (name.startsWith("lens.")) continue;
+			const record = round.checks.find((each) => each.name === name);
+			const status = record?.status ?? "absent";
+			const leave = status === "skipped" && round.allowSkip.includes(name);
+			checks[name] = {
 				kind: "range",
-				status: record.status,
+				status,
 				...(leave ? { leave: true } : {}),
-				...(record.reason === undefined ? {} : { reason: record.reason }),
+				...(record?.reason === undefined ? {} : { reason: record.reason }),
 				required: {},
 				needs: structuredClone(allNeeds),
-				covered: record.status === "ran" || leave ? [structuredClone(allNeeds)] : [],
+				covered: status === "ran" || leave ? [structuredClone(allNeeds)] : [],
 			};
 		}
 		const { voids, carried } =

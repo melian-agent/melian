@@ -204,7 +204,7 @@ describe("a round over the ledger", () => {
 		expect(verdict.status).toBe("not-reviewed");
 		expect(coverageCheckOf(verdict)).toMatchObject({ status: "skipped" });
 		expect(coverageCheckOf(verdict)?.reason).toContain(
-			"coverage is incomplete: lens.correctness src/b.ts: lens ended at its budget in this round",
+			"coverage is incomplete: lens.correctness did not cover the diff, as its record says",
 		);
 	});
 

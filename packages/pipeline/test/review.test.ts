@@ -151,6 +151,18 @@ const deterministicRan: CheckRecord[] = [
 	{ name: "static.tsc", status: "ran" },
 ];
 
+// review.coverage, which joins every manifest: ran when the ledger shows nothing left, and otherwise skipped, pointing
+// at the checks whose own records did not run.
+const coverageRan: CheckRecord = { name: "review.coverage", status: "ran" };
+function coverageGap(...checks: string[]): CheckRecord {
+	const said = checks.length === 1 ? "its record says" : "their records say";
+	return {
+		name: "review.coverage",
+		status: "skipped",
+		reason: `coverage is incomplete: ${checks.join(", ")} did not cover the diff, as ${said}`,
+	};
+}
+
 // The default fast tier names decisions.fast, and with no decision provider configured its skip is allowed.
 const allowedDecisionSkip: CheckRecord = {
 	name: "decisions.fast",
@@ -467,8 +479,9 @@ describe("reviewChangeset", () => {
 		const prompt = textOf(first!.find((message) => message.role === "user")!);
 		const nonce = nonceOf(first!);
 		const [diff] = quoted(prompt, nonce, "diff");
-		expect(diff!.split("\n").slice(0, 2)).toEqual([
+		expect(diff!.split("\n").slice(0, 3)).toEqual([
 			"src/user.ts (modified)",
+			"mode 100644 (file) -> 100644 (file); text",
 			"@@ -7 +7 @@ export function managerName(user: User): string {",
 		]);
 		expect(quoted(toolResults(second!)[0]!, nonce, "file")).toEqual([
@@ -1048,8 +1061,11 @@ describe("reviewChangeset", () => {
 		const withTools = prompt.render();
 		const withoutTools = prompt.render(undefined, { tools: false });
 
-		expect(withTools).toContain("[The diff continues; read the remaining files with read_file.]");
-		expect(withoutTools).toContain("[The diff continues; the remaining files are omitted.]");
+		expect(withTools).toContain(
+			"These hunks were left out for size. Read each with read_file, in windows, before you finish:",
+		);
+		expect(withTools).toContain("src/b.ts lines 1-4000");
+		expect(withoutTools).toContain("[The diff continues; the remaining hunks are omitted.]");
 		expect(withoutTools).not.toContain("read_file");
 	});
 
@@ -1429,6 +1445,7 @@ describe("reviewChangeset", () => {
 			notRun: [
 				{ name: "lens.correctness", status: "failed", reason: "the lens did not finish" },
 				allowedDecisionSkip,
+				coverageGap("lens.correctness"),
 			],
 		});
 		const root = (await harness.root(context)).id;
@@ -1447,6 +1464,7 @@ describe("reviewChangeset", () => {
 			...deterministicRan,
 			{ name: "lens.contracts", status: "ran", level: "careful" },
 			{ name: "lens.correctness", status: "ran", level: "careful" },
+			coverageRan,
 		]);
 		const prompt = systemPromptOf(requests[correctness]![0]!);
 		expect(prompt).toContain(
@@ -2919,7 +2937,10 @@ describe("adjudication", () => {
 
 			const { verdict } = await reviewed({ checks: [failed] });
 			expect(await adjudicationTask()).not.toBe(task);
-			expect(verdict).toMatchObject({ status: "not-reviewed", notRun: [failed, allowedDecisionSkip] });
+			expect(verdict).toMatchObject({
+				status: "not-reviewed",
+				notRun: [failed, allowedDecisionSkip, coverageGap("static.biome")],
+			});
 			expect(await readVerdict(harness, await rootId(), revision(), context)).toEqual(verdict);
 		});
 
@@ -2995,7 +3016,7 @@ describe("adjudication", () => {
 			expect(verdict).toMatchObject({
 				status: "not-reviewed",
 				blocking: false,
-				notRun: [{ name: "static.biome", status: "skipped", reason: "no record" }],
+				notRun: [{ name: "static.biome", status: "skipped", reason: "no record" }, coverageGap("static.biome")],
 			});
 		});
 
@@ -3003,7 +3024,11 @@ describe("adjudication", () => {
 			done();
 			const failed: CheckRecord = { name: "static.biome", status: "failed", reason: "biome exited 2" };
 			const { verdict } = await reviewed({ config: tiered(...lensesOnly, "static.biome"), checks: [failed] });
-			expect(verdict).toMatchObject({ status: "not-reviewed", blocking: false, notRun: [failed] });
+			expect(verdict).toMatchObject({
+				status: "not-reviewed",
+				blocking: false,
+				notRun: [failed, coverageGap("static.biome")],
+			});
 		});
 
 		it("counts a static tool's stored sighting, merged with a lens's report of the same line", async () => {
@@ -3100,7 +3125,7 @@ describe("adjudication", () => {
 				// The status a pull request shows is an error that names the check and why, never a success.
 				expect(verdict.reviewStatus()).toEqual({
 					state: "error",
-					description: `Not reviewed: static.mutation skipped (${reason})`,
+					description: `Not reviewed: static.mutation skipped (${reason}); review.coverage skipped (${coverageGap("static.mutation").reason})`,
 				});
 			});
 

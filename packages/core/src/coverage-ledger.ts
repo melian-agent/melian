@@ -97,6 +97,8 @@ export interface LedgerGap {
 	readonly unit?: UnitKind;
 	readonly fields?: readonly UnitField[];
 	readonly reason: string;
+	// Set when the round's own record of the check did not run, which the verdict already names.
+	readonly own?: true;
 }
 
 /** The coverage section of a review, as `melian findings` and `melian review` print it and JSON carries it. */
@@ -155,7 +157,12 @@ export class CoverageRecord {
 					const left = subtractRanges(needed, this.#covered(coverage, side, file));
 					if (left.length === 0) continue;
 					const at = side === "base" ? { revision: "base" as const } : {};
-					const fault = this.#ownFault(coverage) ?? this.#voidReason(check, file);
+					const own = this.#ownFault(coverage);
+					if (own !== undefined) {
+						gaps.push({ check, file, ...at, lines: left, reason: own, own: true });
+						continue;
+					}
+					const fault = this.#voidReason(check, file);
 					if (fault !== undefined) {
 						gaps.push({ check, file, ...at, lines: left, reason: fault });
 						continue;
@@ -185,7 +192,8 @@ export class CoverageRecord {
 				);
 				const missing = unitFields.filter((field) => fields.includes(field) && !delivered.has(field));
 				if (missing.length === 0) continue;
-				const fault = this.#ownFault(coverage) ?? this.#voidReason(check, file);
+				const own = this.#ownFault(coverage);
+				const fault = own ?? this.#voidReason(check, file);
 				gaps.push({
 					check,
 					file,
@@ -194,6 +202,7 @@ export class CoverageRecord {
 					fields: missing,
 					reason:
 						fault ?? (delivered.size === 0 ? "never delivered" : `fields not delivered: ${missing.join(", ")}`),
+					...(own === undefined ? {} : { own: true as const }),
 				});
 			}
 		}

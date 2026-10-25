@@ -1570,12 +1570,22 @@ async function ledgerRound(
 function coverageRecordOf(record: StoredCoverageRecord): CheckRecord {
 	const { complete, gaps } = CoverageRecord.from(record).summary();
 	if (complete) return { name: coverageCheck, status: "ran" };
-	const all = [
-		...new Set(gaps.map((gap) => `${gap.check}${gap.file === "" ? "" : ` ${visibleText(gap.file)}`}: ${gap.reason}`)),
+	// A check whose own record did not run names itself in the verdict, so the coverage record only points at it.
+	const unrun = [...new Set(gaps.filter((gap) => gap.own === true).map((gap) => gap.check))];
+	const rest = [
+		...new Set(
+			gaps
+				.filter((gap) => gap.own !== true)
+				.map((gap) => `${gap.check}${gap.file === "" ? "" : ` ${visibleText(gap.file)}`}: ${gap.reason}`),
+		),
 	];
-	const named = all.slice(0, 5);
-	const more = all.length > 5 ? `; and ${all.length - 5} more gaps` : "";
-	return { name: coverageCheck, status: "skipped", reason: `coverage is incomplete: ${named.join("; ")}${more}` };
+	const said = unrun.length === 1 ? "its record says" : "their records say";
+	const parts = [
+		...(unrun.length === 0 ? [] : [`${unrun.join(", ")} did not cover the diff, as ${said}`]),
+		...rest.slice(0, 5),
+		...(rest.length > 5 ? [`and ${rest.length - 5} more gaps`] : []),
+	];
+	return { name: coverageCheck, status: "skipped", reason: `coverage is incomplete: ${parts.join("; ")}` };
 }
 
 export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
