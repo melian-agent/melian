@@ -462,7 +462,7 @@ describe("CoverageRecord's publication", () => {
 			}),
 			guardrails: range(),
 		});
-		expect(covered.published()).toEqual({
+		expect(covered.published()).toStrictEqual({
 			complete: false,
 			round: "r2",
 			rounds: ["r1", "r2"],
@@ -530,7 +530,10 @@ describe("CoverageRecord's publication", () => {
 	});
 
 	it("reviews nothing for a refused record, and counts the gaps a maintainer dismissed", () => {
-		const refused = record({ guardrails: range() }, { refused: "coverage is not recorded for a fork's head" });
+		const refused = record(
+			{ "lens.correctness": lens(), guardrails: range() },
+			{ refused: "coverage is not recorded for a fork's head" },
+		);
 		expect(refused.published()).toMatchObject({
 			complete: false,
 			rounds: [],
@@ -549,8 +552,11 @@ describe("CoverageRecord's publication", () => {
 	});
 
 	it("publishes a record another coverage algorithm wrote as one gap that covers nothing", () => {
-		const stale = record({ guardrails: range() }, { producer: { name: "melian.coverage", algorithm: 0 } });
-		expect(stale.published()).toEqual({
+		const stale = record(
+			{ "lens.correctness": lens(), guardrails: range() },
+			{ producer: { name: "melian.coverage", algorithm: 0 } },
+		);
+		expect(stale.published()).toStrictEqual({
 			complete: false,
 			round: "r2",
 			rounds: [],
@@ -558,6 +564,29 @@ describe("CoverageRecord's publication", () => {
 			gaps: [stale.summary().gaps[0]],
 			more: 0,
 			dismissed: 0,
+		});
+	});
+
+	it("counts a segment the record names as its own round, lists no file it reviewed nothing in, and sorts by code unit", () => {
+		const mine = record({
+			"lens.correctness": lens({
+				needs: { head: { "x+y": [[1, 2]], x: [[1, 1]], untouched: [[5, 5]] }, base: {}, units: {} },
+				required: {},
+				covered: [
+					{ round: "r2", level: "careful", head: { "x+y": [[1, 2]] }, base: {}, units: {} },
+					{ level: "careful", head: { x: [[1, 1]] }, base: {}, units: {} },
+					{ round: "r1", level: "careful", head: { untouched: [[5, 5]] }, base: {}, units: {} },
+				],
+			}),
+		});
+		expect(mine.published().reviewed).toStrictEqual({
+			lines: 3,
+			of: 4,
+			files: [
+				{ file: "x", lines: [[1, 1]] },
+				{ file: "x+y", lines: [[1, 2]] },
+			],
+			more: 0,
 		});
 	});
 });
