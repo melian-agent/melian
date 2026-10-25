@@ -481,3 +481,23 @@ it.each([
 	f.shell.mockImplementation(async (text) => ({ code: text.includes(command) ? 2 : 0, output: "a".repeat(40) }));
 	await expect(f.enola.check()).rejects.toMatchObject({ code: "toolFailed", message: `${prefix}${"x".repeat(4096)}` });
 });
+
+it.each(["src/a.test.ts", "src/a.spec.tsx", "test/a.ts", "src/__tests__/a.ts", "src/fixtures/a.ts"])(
+	"asks Enola for no callers of %s, a test file nothing calls",
+	async (path) => {
+		const f = await fixture();
+		f.artifacts["facts.jsonl"] = [
+			{ id: "alpha", kind: "symbol", name: "Alpha", file: "src/a.ts", line: 1 },
+			{ id: "spec", kind: "symbol", name: "Spec", file: path, line: 1 },
+		]
+			.map((fact) => JSON.stringify(fact))
+			.join("\n");
+		const test = { ...f.files[0]!, path, hunks: [{ ...f.files[0]!.hunks[0]!, file: path }] };
+		const data = await f.enola.callers([...f.files, test], []);
+		const queries = f.shell.mock.calls.filter(([command]) => command.includes("impact --json"));
+		expect(queries).toHaveLength(1);
+		expect(queries[0]![0]).toContain("file:src/a.ts Alpha");
+		expect(data.groups.map((group) => group.file)).toEqual(["src/a.ts"]);
+		expect(data.issues).toEqual([]);
+	},
+);

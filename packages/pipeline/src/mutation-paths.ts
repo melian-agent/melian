@@ -5,19 +5,24 @@ import type { Revision, UnmutatedFile } from "@melian-agent/core";
 // or a declaration file is not. A `.config.ts` is production: it can hold logic. It is not mutated, though, because a tool
 // loads it to run the mutants, so a change to one is a file the run did not judge.
 export const typescript = /\.[cm]?tsx?$/;
-const notProduction = /\.(?:d|test|spec)\.[cm]?[jt]sx?$/;
+const testSuffix = /\.(?:test|spec)\.[cm]?[jt]sx?$/;
+const declaration = /\.d\.[cm]?[jt]sx?$/;
 export const configuration = /\.config\.[cm]?[jt]sx?$/;
 const notProductionPrefix = "packages/evals/verifier/";
-const notProductionDirectories: ReadonlySet<string> = new Set([
-	"test",
-	"tests",
-	"__tests__",
-	"__mocks__",
-	"fixtures",
-	"goldens",
-	"dist",
-	"node_modules",
-]);
+const testDirectories: ReadonlySet<string> = new Set(["test", "tests", "__tests__", "__mocks__", "fixtures"]);
+const notProductionDirectories: ReadonlySet<string> = new Set(["goldens", "dist", "node_modules"]);
+
+function inDirectory(path: string, directories: ReadonlySet<string>): boolean {
+	return posix
+		.dirname(path)
+		.split("/")
+		.some((segment) => directories.has(segment));
+}
+
+// A test, or a fixture or mock only tests load. The caller query shares it, since nothing calls a test's callbacks.
+export function testPath(path: string): boolean {
+	return testSuffix.test(path) || inDirectory(path, testDirectories);
+}
 
 export function production(path: string): boolean {
 	return productionWithExtensions(path, typescript);
@@ -26,12 +31,10 @@ export function production(path: string): boolean {
 export function productionWithExtensions(path: string, extensions: RegExp): boolean {
 	return (
 		extensions.test(path) &&
-		!notProduction.test(path) &&
+		!testPath(path) &&
+		!declaration.test(path) &&
 		!path.startsWith(notProductionPrefix) &&
-		!posix
-			.dirname(path)
-			.split("/")
-			.some((segment) => notProductionDirectories.has(segment))
+		!inDirectory(path, notProductionDirectories)
 	);
 }
 

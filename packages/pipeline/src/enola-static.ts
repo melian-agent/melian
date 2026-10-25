@@ -16,6 +16,7 @@ import {
 import type { CallerData, CallerGroup } from "./callers.ts";
 import { CoverageCache } from "./coverage-cache.ts";
 import { GraphCache } from "./graph-cache.ts";
+import { testPath } from "./mutation-paths.ts";
 import { PrepareSpans } from "./spans.ts";
 import { type Run, type StaticRun, staticOutputLimit } from "./static.ts";
 import type { ToolProvisioning } from "./tool-provisioning.ts";
@@ -248,7 +249,8 @@ export class EnolaRun {
 		const deadline = Date.now() + this.#run.input.settings.timeout * 1000;
 		let omitted = 0;
 		let attempted = 0;
-		const queues = files.map((file) => {
+		const queried = files.filter((file) => !testPath(file.path));
+		const queues = queried.map((file) => {
 			const symbols = facts
 				.inFile(file.path)
 				.filter((fact) => fact.line !== undefined)
