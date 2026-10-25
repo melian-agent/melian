@@ -211,6 +211,46 @@ describe("the coverage ledger", () => {
 			"src/a.ts": "careful",
 			"src/b.ts": "careful",
 		});
+		commit(repo, { "src/c.ts": numbered(2, "c") });
+		const changeset = await Changeset.resolve(repo, `${base}..feature`);
+		const origin: ReviewOrigin = {
+			kind: "pull-request",
+			repository: { owner: "melian-agent", name: "example" },
+			pullRequest: 7,
+			base: changeset.revision.base,
+			head: changeset.revision.head,
+		};
+		const pulled = await review({ origin });
+		expect(Object.values(pulled.record.checks["lens.correctness"]!.required)).toEqual([
+			"careful",
+			"careful",
+			"careful",
+		]);
+	});
+
+	it("needs quick under a calibrated decider, whatever the policy's source", async () => {
+		commit(repo, { "src/a.ts": numbered(20, "a").replace("a 3\n", "A 3\n") });
+		const decider: Decider = {
+			name: "ledger-test",
+			calibrated: true,
+			decide: async (request) => ({
+				answers: request.questions.map(({ id }) => ({ question: id, distribution: { careful: 1 } })),
+			}),
+		};
+		const registry = createReviewRegistry();
+		registry.install(decisionExtension(decider));
+		const deciding = await openHarness(createMemoryStorage(), {
+			models: fake.models,
+			registry,
+			settings: { retry: { enabled: false } },
+		});
+		await deciding.root(context, { agent: { model: fake.ref("orchestrator") } });
+		const { record } = await review({
+			policy: { kind: "revision", commit: base },
+			decider,
+			harness: deciding,
+		}).finally(() => deciding.close(context));
+		expect(record.checks["lens.correctness"]!.required).toEqual({ "src/a.ts": "quick" });
 	});
 
 	it("reads each path's level from the configuration that governs it, a renamed file's old path included", async () => {

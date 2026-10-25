@@ -622,6 +622,10 @@ describe("the ledger at its edges", () => {
 		expect(stored.checks["lens.correctness"]!.leave).toBeUndefined();
 		expect(stored.checks.guardrails).toMatchObject({ status: "ran" });
 		expect(stored.checks.guardrails!.leave).toBeUndefined();
+		const moved = await stepped();
+		const unrecorded = await mint(moved, "2026-10-25T00:00:02.000Z");
+		await ledgerWrite(round(moved, unrecorded, { manifest: ["guardrails", "static.tsc", "lens.correctness"] }));
+		expect((await record("r2")).checks["static.tsc"]).toMatchObject({ status: "absent", covered: [] });
 	});
 
 	it("carries nothing for a lens the earlier round ran and this one does not", async () => {
@@ -734,14 +738,16 @@ describe("what voids the carry", () => {
 		};
 		commit(repo, { "docs/guide.md": lines("guide") });
 		await three();
-		commit(repo, { "pkg/Agents.MD": lines("be careful") });
+		commit(repo, { "pkg/sub/Agents.MD": lines("be careful") });
 		expect((await three()).voids).toEqual([
-			{ reason: "pkg/Agents.MD changed since r1, a standard lens.correctness reads", lens: "correctness" },
-			{ reason: "pkg/Agents.MD changed since r1, a standard lens.contracts reads", lens: "contracts" },
+			{ reason: "pkg/sub/Agents.MD changed since r1, a standard lens.correctness reads", lens: "correctness" },
+			{ reason: "pkg/sub/Agents.MD changed since r1, a standard lens.contracts reads", lens: "contracts" },
 		]);
+		commit(repo, { "CLAUDE.md": lines("@AGENTS.md") });
+		expect((await three()).voids.map((each) => each.lens)).toEqual(["correctness", "contracts"]);
 		commit(repo, { "docs/guide.md": lines("guide, edited") });
 		expect((await three()).voids).toEqual([
-			{ reason: "docs/guide.md changed since r2, a standard lens.design reads", lens: "design" },
+			{ reason: "docs/guide.md changed since r3, a standard lens.design reads", lens: "design" },
 		]);
 	});
 
@@ -769,11 +775,13 @@ describe("a finding the earlier round raised", () => {
 		});
 
 	it("takes its lines and evidence out of the carried coverage until it is sighted again or dismissed", async () => {
-		commit(repo, { "src/a.ts": numbered(20, "a").replace("a 3\n", "A 3\n").replace("a 9\n", "A 9\n") });
+		const changed = numbered(20, "a").replace("a 3\n", "A 3\n").replace("a 9\n", "A 9\n").replace("a 15\n", "A 15\n");
+		commit(repo, { "src/a.ts": changed });
 		const first = await head();
 		const lost = finding(3, "null-dereference", [
 			{ file: "src/a.ts", startLine: 9, role: "cause", revision: "base", snippet: "a 9" },
-			{ file: "src/a.ts", startLine: 3, endLine: 4, role: "context", revision: "head", snippet: "A 3" },
+			{ file: "src/a.ts", startLine: 14, endLine: 15, role: "context", revision: "head", snippet: "a 14" },
+			{ file: "src/0.ts", startLine: 1, role: "context", revision: "base", snippet: "z" },
 		]);
 		const dismissed = finding(9, "wrong-result");
 		const kept = finding(9, "unhandled-error");
@@ -788,11 +796,22 @@ describe("a finding the earlier round raised", () => {
 		await ledgerWrite(round(second, await mint(second, "2026-10-25T00:00:02.000Z"), { findings: [kept] }));
 		const stored = await record("r2");
 		expect(stored.voids).toEqual([
-			{ reason: "a finding r1 raised has no sighting at this head", files: ["src/a.ts"] },
+			{ reason: "a finding r1 raised has no sighting at this head", files: ["src/0.ts", "src/a.ts"] },
 		]);
 		const carried = stored.checks["lens.correctness"]!.covered.filter((segment) => segment.round === "r1");
 		expect(carried).toEqual([
-			{ round: "r1", level: "careful", head: { "src/a.ts": [[9, 9]] }, base: { "src/a.ts": [[3, 3]] }, units: {} },
+			{
+				round: "r1",
+				level: "careful",
+				head: { "src/a.ts": [[9, 9]] },
+				base: {
+					"src/a.ts": [
+						[3, 3],
+						[15, 15],
+					],
+				},
+				units: {},
+			},
 		]);
 	});
 });
