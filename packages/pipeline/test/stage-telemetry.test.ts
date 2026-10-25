@@ -3,7 +3,16 @@ import { rmSync } from "node:fs";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
-import { Changeset, type Decider, defaultConfig, Lens, type ToolLog } from "@melian-agent/core";
+import {
+	Changeset,
+	costText,
+	type Decider,
+	defaultConfig,
+	durationText,
+	Lens,
+	type ToolLog,
+	tokenText,
+} from "@melian-agent/core";
 import { RecordedDecider } from "@melian-agent/decisions";
 import { createGitHubProvider } from "@melian-agent/github";
 import {
@@ -289,6 +298,79 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 		]);
 		expect(after.stages.find(({ name }) => name === "melian.adjudication")!.task).not.toBe(
 			stages.find(({ name }) => name === "melian.adjudication")!.task,
+		);
+	});
+
+	it("publishes a run table whose every number is what melian telemetry --json reports", async () => {
+		const database = join(repo, "run-details.sqlite");
+		const { options, fake, harness, storage } = await setup(database);
+		const spans = PrepareSpans.start("host", Date.now());
+		await reviewChangeset({ ...options, spans });
+		await summarizeReview({ ...options, harness });
+		const revision = revisionKey(options.changeset.revision);
+		await spans.record(harness, revision, context);
+		const telemetry = await TelemetryReader.open(storage).read(revision);
+		const json = JSON.parse(JSON.stringify(telemetry.toJSON())) as { stages: Stage[] };
+		const lenses = json.stages.filter(({ name }) => name === "melian.lens");
+		expect(lenses.length).toBeGreaterThan(0);
+		for (const lens of lenses) {
+			expect(lens.tools).toBeGreaterThan(0);
+			expect([
+				{ tokens: 100_000, tools: 10 },
+				{ tokens: 200_000, tools: 30 },
+			]).toContainEqual(lens.limits);
+		}
+		const state = pullRequestState();
+		moveTo(state, options.changeset);
+		const provider = createGitHubProvider({
+			owner: state.owner,
+			repo: state.repo,
+			token: "test-token",
+			fetch: fakeGitHub(state),
+		});
+		await options.harness.close();
+		const publication = await openPublishHarness(await openSqliteStorage(database), fake.review, provider);
+		opened.push(publication);
+		await publishReview({
+			harness: publication.harness,
+			provider,
+			changeset: options.changeset,
+			pullRequest: await provider.pullRequest(7),
+			base: options.changeset.revision.base,
+			trustedWriters: true,
+			run: telemetry.runDetails(),
+		});
+		const body = state.ledgers[0]!.body;
+		const rows = new Map(
+			body
+				.split("\n")
+				.filter((line) => line.startsWith("| ") && !line.startsWith("| Stage") && !line.startsWith("| ---"))
+				.map((line) => {
+					const cells = line.slice(2, -2).split(" | ");
+					return [`${cells[0]} ${cells[1]}`, cells] as const;
+				}),
+		);
+		const named = (stage: Stage) => {
+			const [lens, , level] = stage.subject.split("@");
+			return stage.name === "melian.lens" ? `lens ${lens} ${level}` : `${stage.name.replace("melian.", "")} `;
+		};
+		const checked = json.stages.filter(({ name }) =>
+			["melian.lens", "melian.triage", "melian.walkthrough"].includes(name),
+		);
+		expect(checked.length).toBeGreaterThan(2);
+		for (const stage of checked) {
+			const cells = rows.get(named(stage))!;
+			expect(cells, named(stage)).toBeDefined();
+			expect(cells[3]).toBe(durationText(stage.durationMs!));
+			const usage = stage.usage?.total;
+			expect(cells[4]).toBe(usage === undefined ? "—" : tokenText(usage.totalTokens));
+			expect(cells[5]).toBe(usage === undefined ? "—" : costText(usage.cost.total));
+		}
+		const total = json.stages
+			.filter((stage) => stage.name !== "melian.publication")
+			.reduce((sum, stage) => sum + (stage.usage?.total.totalTokens ?? 0), 0);
+		expect(body).toContain(
+			`<summary>Run details: ${durationText(telemetry.prepare!.endedAt - telemetry.prepare!.startedAt)} · ${tokenText(total)} tokens`,
 		);
 	});
 
