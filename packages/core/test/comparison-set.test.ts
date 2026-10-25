@@ -689,6 +689,22 @@ describe("one lens against one reviewer", () => {
 		});
 	});
 
+	it("credits no lens finding judged noise, though a valid reviewer finding matches it", () => {
+		const noise = design(12);
+		const codex12 = report({ line: 12, title: "Codex 12" });
+		const comparison = round({ externals: [codex12], findings: [noise] });
+		comparison.adjudicate(codex12.id, { ...by, verdict: "valid" });
+		comparison.adjudicate(noise.id, { ...by, verdict: "noise" });
+		expect(
+			new ComparisonSet([entry("one", comparison, [noise])]).againstReviewer("lens.design", "codex"),
+		).toMatchObject({
+			reviewerValid: 1,
+			checkFound: 0,
+			othersFound: 0,
+			checkValid: 0,
+		});
+	});
+
 	it("prints no share for an empty side, and selects changesets as the other statistics do", () => {
 		const { comparison, findings } = scenario();
 		const set = new ComparisonSet([entry("one", comparison, findings)]);
