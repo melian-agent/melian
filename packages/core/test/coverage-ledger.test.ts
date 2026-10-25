@@ -441,3 +441,123 @@ describe("CoverageRecord's order and edges", () => {
 		);
 	});
 });
+
+describe("CoverageRecord's publication", () => {
+	it("says how many changed lines the round's own lenses reviewed, of all they must, apart from carried coverage", () => {
+		const covered = record({
+			"lens.correctness": lens({
+				covered: [
+					{ ...lens().covered[0]!, head: { "src/a.ts": [[1, 4]] }, units: {} },
+					{
+						round: "r1",
+						level: "deep",
+						head: { "src/a.ts": [[9, 9]] },
+						base: {},
+						units: { "bin/run": [...needs.units["bin/run"]] },
+					},
+				],
+			}),
+			"lens.contracts": lens({
+				covered: [{ level: "careful", head: { "src/a.ts": [[3, 4]] }, base: {}, units: {} }],
+			}),
+			guardrails: range(),
+		});
+		expect(covered.published()).toEqual({
+			complete: false,
+			round: "r2",
+			rounds: ["r1", "r2"],
+			reviewed: {
+				lines: 6,
+				of: 7,
+				files: [
+					{ file: "src/a.ts", lines: [[1, 4]] },
+					{ file: "src/gone.ts", revision: "base", lines: [[1, 2]] },
+				],
+				more: 0,
+			},
+			gaps: [
+				{
+					check: "lens.contracts",
+					file: "src/a.ts",
+					lines: [
+						[1, 2],
+						[9, 9],
+					],
+					reason: "never delivered",
+				},
+				{
+					check: "lens.contracts",
+					file: "src/gone.ts",
+					revision: "base",
+					lines: [[1, 2]],
+					reason: "never delivered",
+				},
+				{ check: "lens.contracts", file: "bin/run", lines: [], unit: "mode", reason: "never delivered" },
+			],
+			more: 0,
+			dismissed: 0,
+		});
+	});
+
+	it("lists twenty gaps and twenty reviewed files, and counts the rest, so the body stays bounded", () => {
+		const files = (count: number): Record<string, [number, number][]> =>
+			Object.fromEntries(Array.from({ length: count }, (_, index) => [`src/f${index + 10}.ts`, [[1, 1]]]));
+		const at = (count: number) =>
+			record({
+				"lens.correctness": lens({
+					needs: { head: files(count), base: {}, units: {} },
+					covered: [],
+					required: {},
+				}),
+			}).published();
+		expect(at(20).gaps).toHaveLength(20);
+		expect(at(20).more).toBe(0);
+		expect(at(21).gaps).toHaveLength(20);
+		expect(at(21).gaps.at(-1)?.file).toBe("src/f29.ts");
+		expect(at(21).more).toBe(1);
+		const reviewed = (count: number) =>
+			record({
+				"lens.correctness": lens({
+					needs: { head: files(count), base: {}, units: {} },
+					covered: [{ level: "careful", head: files(count), base: {}, units: {} }],
+					required: {},
+				}),
+			}).published().reviewed;
+		expect(reviewed(20)).toMatchObject({ lines: 20, of: 20, more: 0 });
+		expect(reviewed(20).files).toHaveLength(20);
+		expect(reviewed(21)).toMatchObject({ lines: 21, of: 21, more: 1 });
+		expect(reviewed(21).files.at(-1)?.file).toBe("src/f29.ts");
+	});
+
+	it("reviews nothing for a refused record, and counts the gaps a maintainer dismissed", () => {
+		const refused = record({ guardrails: range() }, { refused: "coverage is not recorded for a fork's head" });
+		expect(refused.published()).toMatchObject({
+			complete: false,
+			rounds: [],
+			reviewed: { lines: 0, of: 0, files: [], more: 0 },
+		});
+		const dismissed = CoverageRecord.from(
+			{ ...refused.stored, refused: undefined, checks: { "lens.correctness": lens({ covered: [] }) } },
+			[{ check: "lens.correctness", file: "src/a.ts", lines: [[1, 4]], reason: "generated", by: "tal", at: "now" }],
+		).published();
+		expect(dismissed.dismissed).toBe(1);
+		expect(dismissed.gaps.map((gap) => [gap.file, gap.lines])).toEqual([
+			["src/a.ts", [[9, 9]]],
+			["src/gone.ts", [[1, 2]]],
+			["bin/run", []],
+		]);
+	});
+
+	it("publishes a record another coverage algorithm wrote as one gap that covers nothing", () => {
+		const stale = record({ guardrails: range() }, { producer: { name: "melian.coverage", algorithm: 0 } });
+		expect(stale.published()).toEqual({
+			complete: false,
+			round: "r2",
+			rounds: [],
+			reviewed: { lines: 0, of: 0, files: [], more: 0 },
+			gaps: [stale.summary().gaps[0]],
+			more: 0,
+			dismissed: 0,
+		});
+	});
+});

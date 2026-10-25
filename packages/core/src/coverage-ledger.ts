@@ -1,5 +1,6 @@
 import type { CheckStatus } from "./adjudication.ts";
 import {
+	countRanges,
 	type LineRanges,
 	type LinesByPath,
 	subtractRanges,
@@ -108,6 +109,37 @@ export interface CoverageSummary {
 	readonly gaps: readonly LedgerGap[];
 	readonly dismissed: readonly StoredGapDismissal[];
 }
+
+/** Lines of one file on one side, as a publication stores them. */
+export type PublishedLines = { file: string; revision?: "base"; lines: LineRanges };
+
+/** One gap as a publication stores and renders it. */
+export type PublishedGap = {
+	check: string;
+	file: string;
+	revision?: "base";
+	lines: LineRanges;
+	unit?: UnitKind;
+	reason: string;
+};
+
+/**
+ * What a published round says of coverage: whether the diff is covered and by which rounds, how many changed lines the
+ * round's own lenses reviewed of all they must, and the first gaps, with a count of the rest.
+ */
+export type PublishedCoverage = {
+	complete: boolean;
+	round: string;
+	rounds: string[];
+	reviewed: { lines: number; of: number; files: PublishedLines[]; more: number };
+	gaps: PublishedGap[];
+	more: number;
+	dismissed: number;
+};
+
+// A publication lists this many gaps, and this many reviewed files, and counts the rest, so the review body and the
+// ledger stay bounded.
+const publishedGaps = 20;
 
 /**
  * A maintainer's dismissal of a coverage gap: the check and the lines it answers, on the head side or the base, with who
@@ -277,6 +309,72 @@ export class CoverageRecord {
 				]
 			: this.gaps();
 		return { complete: gaps.length === 0, rounds: stale ? [] : this.rounds(), gaps, dismissed: [...this.dismissed] };
+	}
+
+	/** What a publication of this record's round says of coverage, with its gaps bounded. */
+	published(): PublishedCoverage {
+		const { complete, rounds, gaps, dismissed } = this.summary();
+		const listed = gaps.slice(0, publishedGaps).map(
+			({ check, file, revision, lines, unit, reason }): PublishedGap => ({
+				check,
+				file,
+				...(revision === undefined ? {} : { revision }),
+				lines: structuredClone(lines) as LineRanges,
+				...(unit === undefined ? {} : { unit }),
+				reason,
+			}),
+		);
+		return {
+			complete,
+			round: this.stored.round,
+			rounds: [...rounds],
+			reviewed: this.#reviewed(),
+			gaps: listed,
+			more: gaps.length - listed.length,
+			dismissed: dismissed.length,
+		};
+	}
+
+	// The changed lines this round's own lens runs delivered, of all its lenses must cover, and the files they sit in.
+	#reviewed(): PublishedCoverage["reviewed"] {
+		const own = { head: {} as LinesByPath, base: {} as LinesByPath };
+		const needed = { head: {} as LinesByPath, base: {} as LinesByPath };
+		if (!this.current() || this.stored.refused !== undefined) return { lines: 0, of: 0, files: [], more: 0 };
+		for (const coverage of Object.values(this.stored.checks)) {
+			if (coverage.kind !== "lens") continue;
+			const segments = coverage.covered.filter(
+				(segment) => segment.round === undefined || segment.round === this.stored.round,
+			);
+			for (const side of ["head", "base"] as const) {
+				for (const [file, lines] of Object.entries(coverage.needs[side])) {
+					needed[side][file] = unionRanges(needed[side][file] ?? [], lines);
+					const delivered = segments.reduce<LineRanges>(
+						(all, segment) => unionRanges(all, segment[side][file] ?? []),
+						[],
+					);
+					own[side][file] = unionRanges(own[side][file] ?? [], within(lines, delivered));
+				}
+			}
+		}
+		const total = (lines: { head: LinesByPath; base: LinesByPath }) =>
+			[...Object.values(lines.head), ...Object.values(lines.base)].reduce(
+				(sum, ranges) => sum + countRanges(ranges),
+				0,
+			);
+		const files = (["head", "base"] as const).flatMap((side) =>
+			Object.entries(own[side])
+				.filter(([, ranges]) => ranges.length > 0)
+				.sort(([a], [b]) => byCodeUnit(a, b))
+				.map(
+					([file, lines]): PublishedLines => ({ file, ...(side === "base" ? { revision: "base" } : {}), lines }),
+				),
+		);
+		return {
+			lines: total(own),
+			of: total(needed),
+			files: files.slice(0, publishedGaps),
+			more: Math.max(0, files.length - publishedGaps),
+		};
 	}
 
 	/** The `Coverage` section for a terminal. Paths pass through `visibleText`. */
