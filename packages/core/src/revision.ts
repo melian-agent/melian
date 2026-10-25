@@ -239,12 +239,10 @@ export async function searchRevisionFiles(
 		await Promise.all(
 			present.slice(start, start + 8).map(async (path) => {
 				const found = await grepFile(repoRoot, revision, search, path, share);
-				// A file with content that matched nothing may be one git skipped: an empty pattern then matches nothing too.
+				// A file with content that matched nothing may be one git skipped. Ask for its name alone, so a long line
+				// cannot cut the answer: a text file with content always matches an empty pattern.
 				const skipped =
-					found.matches.length === 0 &&
-					sizes.get(path)! > 0 &&
-					(await grepFile(repoRoot, revision, { ...search, pattern: "", regex: false }, path, 0)).matches
-						.length === 0;
+					found.matches.length === 0 && sizes.get(path)! > 0 && !(await isText(repoRoot, revision, search, path));
 				grepped.set(path, { ...found, ...(skipped ? { binary: true as const } : {}) });
 			}),
 		);
@@ -258,6 +256,11 @@ export async function searchRevisionFiles(
 			...(found.binary ? { binary: found.binary } : {}),
 		};
 	});
+}
+
+async function isText(repoRoot: string, revision: string, search: RevisionSearch, path: string) {
+	const args = [`--attr-source=${search.attributesFrom}`, "--literal-pathspecs", "grep", "-l", "-I", "-e", ""];
+	return (await git(repoRoot, [...args, revision, "--", path])).code === 0;
 }
 
 // One more than the share tells a file that had more from one that had exactly its share.

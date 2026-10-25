@@ -576,6 +576,8 @@ async function searchFiles(review: ReviewState, commit: string, search: Revision
 	for (const file of files) {
 		if (file.missing) rows.push(`${visibleText(file.path)}: [no file at this revision]`);
 		else if (file.binary) rows.push(`${visibleText(file.path)}: [binary at this revision; not searched]`);
+		else if (file.truncated && file.matches.length === 0)
+			rows.push(`${visibleText(file.path)}: [matches found, but their lines are too long to show]`);
 		else if (file.truncated) rows.push(`${visibleText(file.path)}: [more matches not shown; search it alone]`);
 	}
 	for (let depth = 0; files.some((file) => depth < file.matches.length); depth++)

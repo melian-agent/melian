@@ -362,6 +362,17 @@ describe("graph tools", { timeout: 60_000 }, () => {
 		);
 	});
 
+	it("say that a file of a set matched on a line too long to show, not that it is binary", async () => {
+		writeFiles(repo, { "docs/long.md": lines(`needle ${"x".repeat(300_000)}`) });
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "one long line");
+		const requests = await reviewWith(undefined, [[["search", { pattern: "needle", paths: ["docs/long.md"] }]]]);
+		const nonce = nonceOf(requests[correctness]![0]!);
+		expect(toolResults(requests[correctness]![1]!)[0]).toBe(
+			`<untrusted-${nonce} label="search">\ndocs/long.md: [matches found, but their lines are too long to show]\n</untrusted-${nonce}>`,
+		);
+	});
+
 	it("cut the deepest matches of every file before it drops a file, and say how many lines it cut", async () => {
 		const paths = Array.from({ length: 2 }, (_, index) => `docs/long${index}.md`);
 		writeFiles(

@@ -343,6 +343,22 @@ describe("searchRevisionFiles", () => {
 		});
 	});
 
+	// One match per file allows 2 * 1324 bytes: a record of `<commit>:docs/a.md\0` (51), `1\0` (2), its text and `\n`.
+	it("keeps a file whose one matching line passes the byte bound text, not binary", async () => {
+		const atBound = `needle ${"x".repeat(2594 - 7)}`;
+		writeFiles(repo, { "docs/a.md": lines(atBound), "docs/b.md": lines(`${atBound}x`) });
+		gitIn(repo, "add", ".");
+		gitIn(repo, "commit", "--quiet", "-m", "one long line");
+		const commit = gitIn(repo, "rev-parse", "HEAD");
+		const search = { attributesFrom: commit, pattern: "needle" };
+		expect(await searchRevisionFiles(repo, commit, search, ["docs/a.md"], 1)).toEqual([
+			{ path: "docs/a.md", truncated: false, matches: [{ path: "docs/a.md", line: 1, text: atBound.slice(0, 300) }] },
+		]);
+		expect(await searchRevisionFiles(repo, commit, search, ["docs/b.md"], 1)).toEqual([
+			{ path: "docs/b.md", truncated: true, matches: [] },
+		]);
+	});
+
 	it("names a revision's tree, and refuses one that is no commit", async () => {
 		expect(await revisionTree(repo, head)).toBe(gitIn(repo, "rev-parse", "HEAD^{tree}"));
 		await expect(revisionTree(repo, "0".repeat(40))).rejects.toMatchObject({
