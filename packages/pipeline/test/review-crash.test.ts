@@ -1411,7 +1411,13 @@ describe("a lens task from an earlier selection during triage", { timeout: 60_00
 		expect(verdict).toMatchObject({
 			status: "passed",
 			ran: expect.arrayContaining([
-				{ name: "lens.correctness", status: "ran", level: "quick", reason: expect.any(String) },
+				{
+					name: "lens.correctness",
+					status: "ran",
+					level: "quick",
+					reason: expect.any(String),
+					caveats: [expect.stringContaining("triage chose quick for every lens")],
+				},
 			]),
 		});
 		expect(await readVerdict(harness, root, revision, context)).toEqual(verdict);
