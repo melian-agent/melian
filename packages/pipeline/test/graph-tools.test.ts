@@ -230,6 +230,10 @@ describe("graph tools", { timeout: 60_000 }, () => {
 		]);
 		for (const result of [definitions, references, near, far, callees])
 			expect(result).toContain("an absent caller proves nothing");
+		for (const result of [near, far])
+			expect(result).toContain(
+				"[the walk follows resolved calls and constructions only; Enola's impact query can find callers it misses, so search for the name too]",
+			);
 	});
 
 	it("parse the snapshot once for a round of parallel graph calls", async () => {
@@ -277,7 +281,11 @@ describe("graph tools", { timeout: 60_000 }, () => {
 				"No caller in the snapshot's resolved edges. That is unknown, not none: Enola's impact query resolves a few calls its facts do not. Search for the name before concluding nothing calls it.",
 				note,
 			].join("\n"),
-			[block("1 src/evil.ts:1 evil.probe sentinel (symbol)"), note].join("\n"),
+			[
+				block("1 src/evil.ts:1 evil.probe sentinel (symbol)"),
+				"[the walk follows resolved calls and constructions only; Enola's impact query can find callers it misses, so search for the name too]",
+				note,
+			].join("\n"),
 			["No calls.", note].join("\n"),
 			[block(["calls src/user.ts:6 src.managerName (symbol)", "unresolved lib.format"].join("\n")), note].join("\n"),
 			[
