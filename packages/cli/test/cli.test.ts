@@ -870,8 +870,9 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 		expect(JSON.parse(melian(repo, ["findings", range, "--json"], env).stdout)).toEqual({
 			...verdict,
 			ran: verdict.ran?.filter((check) => check.name !== "verifier"),
-			// The rerun decided a round of its own, which covers the diff beside the first.
-			coverage: { complete: true, rounds: ["r1", "r2"], gaps: [], dismissed: [] },
+			// The rerun decided a round of its own at the same head, which covers the diff from the lens runs it attached
+			// to, and carries from what the first round carried from: nothing.
+			coverage: { complete: true, rounds: ["r2"], gaps: [], dismissed: [] },
 		});
 	});
 
