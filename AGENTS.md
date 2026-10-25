@@ -111,7 +111,7 @@ Milestone 2 runs on three lanes of work and a fixed review loop. Read this befor
 
 1. The coordinator writes a brief and gives it to a builder, an Opus agent or Codex Sol, in its own linked worktree in the worktrees folder. The brief names the mutation inventory the Briefs section requires.
 2. The builder commits each discrete change, pushes, and opens a draft pull request. After a Codex pass, run the whole gate on the host; the sandbox skips some tests.
-3. The three reviews follow in this order: Codex's adversarial review, Melian's own round from the branch's build, then the Claude review of record. Each fix is its own commit from a builder, followed by another Melian round, until only policy notices and advisories remain.
+3. The three reviews follow in this order: Codex's adversarial review, Melian's own round from the branch's build, then the Claude review of record. Codex's review and each Melian round review the same head, and are compared before the next fix pass, as Measuring the design lens below says. Each fix is its own commit from a builder, followed by another Melian round, until only policy notices and advisories remain.
 4. The comparison record is written on its own branch and pull request, never on the code branch.
 5. The coordinator marks the pull request ready and queues it under "Ready and queued".
 6. After each merge, fast-forward the main checkout with `git pull --ff-only`, once it is clean and no agent works in it. The maintainer reads that checkout in an editor.
@@ -131,6 +131,17 @@ Melian reviews itself with `melian review main...HEAD`, run from a throwaway wor
 - Every lens in Melian's `full` tier has a committed file under `.melian/lenses/`. Edit its budget line in place, or add one; an `extends` directory must match the lens name, so a second extension cannot sit beside it.
 - Leave every `tier` in those files alone, and the `medium` route in `melian.yaml`. They give the design lens Codex's model and effort, and move every other `quick` level to `light`. A round that writes its own levels, or routes `medium` in `melian.local.yaml`, undoes that. The design lens's committed budget already exceeds the one above.
 - Restore the edited files before you commit anything.
+
+### Measuring the design lens against Codex
+
+The design lens runs on Codex's model and effort so it can replace Codex's adversarial review. Every round measures it:
+
+1. Run Codex's review with `--json` on the head the round reviews, and keep the file outside the worktree, named for that head: `node <companion>/scripts/codex-companion.mjs adversarial-review --json --base <base> "<focus>" > tmp/m2/codex-<pr>-<head>.json`. `melian compare` reads the companion's payload as it is. The payload names no head, so the file name is the only record of which head Codex read; import it only for that head.
+2. After the Melian round of that head, and before any new commit on the branch, import it: `melian compare <base>...HEAD --from file:tmp/m2/codex-<pr>-<head>.json`. A round run from a branch worktree stores the review under the branch's range, so once the branch moves, `melian compare` finds no review of the new head to compare with.
+3. Before the next fix pass, adjudicate every Codex finding and every design-lens finding with `melian compare adjudicate`: valid, noise, or a duplicate of another. A valid Codex finding Melian missed takes a miss reason: `owned-missed`, `no-owner`, `needs-execution`, or `out-of-scope`. The count leaves out any finding still waiting for a judgement.
+4. `melian compare stats --lens design --since 2026-10-24` prints the design lens against Codex since it moved to Codex's route: which of Codex's valid defects it found, which only other lenses found, and which of its own Codex found. Without `--since`, it sums rounds the lens ran on its earlier route.
+
+The count is a diagnostic over the stored rounds, not the retirement test. It counts each round on its own and cannot see a merged pull request with no comparison. Codex's review keeps running until [the shadow retirement rule](docs/decisions/2026-10-06-shadow-retirement-merged-window.md) is met over its window of merged pull requests, and the maintainer retires it.
 
 ### The comparison record
 
@@ -294,3 +305,4 @@ Add important learnings here, newest last. Each entry names the symptom, the cau
 - A Biome Grit plugin that matches text never sees a comment, and `\p{Extended_Pictographic}` flags `©` and `™`. Cause: Grit matches syntax nodes, and comments are trivia that belong to none; the Extended_Pictographic property covers text symbols that render without colour. `biome/literal-emoji.grit` matches string, template, regex, member-name, type and JSX literals against `\p{Emoji_Presentation}` or a variation selector, `\u{FE0F}`. An emoji in a comment falls to the writing rules above, not to the plugin.
 - `node scripts/enumerate-mutants.mjs` fails with `EAGAIN: resource temporarily unavailable, read` at `instrument-mutants.mjs:4`, and writes no inventory. Cause: the enumerator pipes every changed file to the instrumenter in one `execFileSync` input, and the instrumenter reads it with `readFileSync(0)`, which on macOS fails once the input outgrows the pipe's buffer, here about 130 KB across four files. Until the script is fixed, read standard input as a stream in a local, uncommitted copy of `instrument-mutants.mjs` (`for await (const chunk of process.stdin)`), and restore the file before committing.
 - A commit changes every `.melian/lenses/*/LENS.md` by one budget line that nobody wrote. Cause: a Melian round was running in that worktree, and the round's overrides rewrite each lens file's budget until the round restores them, so `git add -A` staged them. Never commit in a worktree while a round runs there; stage named paths, and read `git show --stat HEAD` before pushing.
+- Every gate waits for an hour behind a Vitest that nobody is running, and three node workers sit at 100% CPU with parent pid 1. Cause: a hand mutation probe ran a mutant that loops forever, and its timeout killed `npx` but not the Vitest workers below it. A probe script records each descendant pid of the command it starts, and on timeout stops those recorded pids, never a pattern. Check for orphans with `ps -Ao pid,ppid,command` after a probe run that timed out.

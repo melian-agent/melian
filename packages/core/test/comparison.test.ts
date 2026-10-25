@@ -438,6 +438,68 @@ describe("ExternalFinding", () => {
 		});
 	});
 
+	it("reads the review inside the Codex companion's --json payload, and refuses one whose review did not parse", () => {
+		const review = {
+			verdict: "needs-attention",
+			summary: "One problem.",
+			findings: [
+				{
+					severity: "high",
+					title: "Key leaks",
+					body: "The diagnostic quotes the line.",
+					file: "packages/core/src/config.ts",
+					line_start: 40,
+					line_end: 42,
+					confidence: 0.8,
+					recommendation: "",
+				},
+			],
+			next_steps: [],
+		};
+		const payload = { review: "Adversarial Review", target: {}, result: review, rawOutput: "{}", parseError: null };
+		expect(ExternalFinding.fromFile(payload, "codex.json").map((finding) => finding.toJSON())).toEqual(
+			ExternalFinding.fromFile(review, "codex.json").map((finding) => finding.toJSON()),
+		);
+		expect(ExternalFinding.importFile(payload, "codex.json").reviewers).toEqual([{ name: "codex" }]);
+		expect(ExternalFinding.importFile({ ...payload, result: { ...review, findings: [] } }, "codex.json")).toEqual({
+			findings: [],
+			skippedBodies: 0,
+			reviewers: [{ name: "codex" }],
+		});
+		expect(() =>
+			ExternalFinding.fromFile({ ...payload, result: null, parseError: "Unexpected token" }, "codex.json"),
+		).toThrow("codex.json is the Codex companion's output with no parsed review: Unexpected token");
+		expect(() => ExternalFinding.fromFile({ ...payload, result: null, parseError: null }, "codex.json")).toThrow(
+			/^codex\.json is the Codex companion's output with no parsed review$/,
+		);
+		for (const parseError of ["", 7])
+			expect(() => ExternalFinding.fromFile({ ...payload, result: null, parseError }, "codex.json")).toThrow(
+				/^codex\.json is the Codex companion's output with no parsed review$/,
+			);
+		expect(() => ExternalFinding.fromFile({ ...payload, result: "{}" }, "codex.json")).toThrow(
+			/^codex\.json is the Codex companion's output with no parsed review/,
+		);
+		const failed = (parseError: string) => {
+			try {
+				ExternalFinding.fromFile({ ...payload, result: null, parseError }, "codex.json");
+			} catch (error) {
+				return error as ComparisonError;
+			}
+			throw new Error("expected a refusal");
+		};
+		expect(failed("bad\u001b[2Jtoken")).toMatchObject({ code: "invalidFile", path: "codex.json" });
+		expect(failed("bad\u001b[2Jtoken").message).not.toContain("\u001b");
+		const prefix = "codex.json is the Codex companion's output with no parsed review: ";
+		expect(failed("x".repeat(200)).message).toBe(`${prefix}${"x".repeat(200)}`);
+		expect(failed("x".repeat(201)).message).toBe(`${prefix}${"x".repeat(200)}`);
+		expect(() => ExternalFinding.fromFile({ review: "Adversarial Review" }, "codex.json")).toThrow(
+			"codex.json is not an external-finding file",
+		);
+		expect(() => ExternalFinding.fromFile({ result: review }, "codex.json")).toThrow(
+			"codex.json is not an external-finding file",
+		);
+	});
+
 	it.each(["x", "\u{10400}"])("bounds Codex's body and recommendation on a %s boundary", (character) => {
 		const suffix = "\n\nRecommendation: Fix it";
 		for (const length of [maxExternalBodyLength - suffix.length, maxExternalBodyLength]) {

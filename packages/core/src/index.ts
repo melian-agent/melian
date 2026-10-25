@@ -388,6 +388,7 @@ export {
 } from "./comparison-adjudication.ts";
 export { ComparisonExport } from "./comparison-export.ts";
 export {
+	type CheckAgainstReviewer,
 	type ComparisonEntry,
 	ComparisonSet,
 	type ComparisonStats,

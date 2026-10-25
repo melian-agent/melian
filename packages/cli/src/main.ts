@@ -53,8 +53,10 @@ Commands:
                          Match an external finding with a Melian finding by hand, or keep them apart.
   compare adjudicate <range|#pr> <finding-id> --verdict valid|noise|duplicate [--round <id|unattributed>]
                          Record a local judgement, with --severity, --reason, --golden, --rule, --note, and --of.
-  compare stats [--since <date>|--last <n>]
+  compare stats [--since <date>|--last <n>] [--lens <name> [--against <reviewer>]]
                          Show recall, precision, pending findings, miss reasons, candidate checks, and drain due.
+                         With --lens, compare that lens alone with one reviewer, codex by default: which of the
+                         reviewer's valid defects the lens found, and which of the lens's the reviewer found.
   compare backlog [--markdown]
                          List owed goldens by lens; --markdown prints BACKLOG.md's generated section.
   compare export <range|#pr> [--out <path>] [--json]
@@ -86,6 +88,8 @@ Options:
   --note <text>         Maintainer decision, at most 1000 characters (compare adjudicate).
   --since <date>        Comparisons recorded since this ISO date (compare stats).
   --last <n>            The last n changesets compared (compare stats).
+  --lens <name>         Compare one lens with one reviewer (compare stats).
+  --against <reviewer>  The reviewer --lens compares with, codex by default (compare stats).
   --markdown            Print BACKLOG.md's generated section (compare backlog).
   --out <path>          Write the export to this path (compare export).
   --no-walkthrough       Omit the walkthrough (review, publish).
@@ -143,6 +147,8 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 				out: { type: "string" },
 				since: { type: "string" },
 				last: { type: "string" },
+				lens: { type: "string" },
+				against: { type: "string" },
 				markdown: { type: "boolean", default: false },
 				golden: { type: "string" },
 				of: { type: "string" },
@@ -257,9 +263,18 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 						(!/^[1-9]\d*$/.test(values.last) || !Number.isSafeInteger(Number(values.last)))
 					)
 						throw new UsageError("--last takes a positive integer");
+					if (values.against !== undefined && values.lens === undefined)
+						throw new UsageError("--against needs --lens");
+					if (values.lens !== undefined && !/^[a-z0-9][a-z0-9-]*$/.test(values.lens))
+						throw new UsageError("--lens takes a lens name, such as design");
+					if (values.against !== undefined && !/^[a-z0-9][a-z0-9-]*$/.test(values.against))
+						throw new UsageError("--against takes a reviewer name, such as codex");
 					return await comparisonStats(scoped, {
 						...(values.since === undefined ? {} : { since: values.since }),
 						...(values.last === undefined ? {} : { last: Number(values.last) }),
+						...(values.lens === undefined
+							? {}
+							: { against: { check: `lens.${values.lens}`, reviewer: values.against ?? "codex" } }),
 					});
 				}
 				if (first === "backlog") {
