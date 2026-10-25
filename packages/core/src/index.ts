@@ -433,6 +433,15 @@ export {
 	type UnmutatedFile,
 } from "./mutation.ts";
 export {
+	costText,
+	durationText,
+	RunDetails,
+	type RunRow,
+	type RunStage,
+	type StoredRunDetails,
+	tokenText,
+} from "./run-details.ts";
+export {
 	type ToolArtifact,
 	ToolManifest,
 	ToolManifestError,
