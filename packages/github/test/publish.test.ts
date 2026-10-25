@@ -459,6 +459,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 			// The delta prompt delivers the earlier hunk as context, and a delivered line counts as reviewed.
 			"Coverage: complete, from rounds r1, r2.\n\nRound r2's lenses reviewed 4 of 4 changed lines:\n\n- `src/config.ts` line 2\n- `src/user.ts` line 7\n- `src/config.ts` (base) line 2\n- `src/user.ts` (base) line 7",
 		);
+		expect(body).not.toContain("dismissed by a maintainer");
 		expect(state.ledgers[0]!.body).toContain("Coverage: complete, from rounds r1, r2.");
 		expect(state.statuses.at(-1)).toMatchObject({
 			state: "failure",

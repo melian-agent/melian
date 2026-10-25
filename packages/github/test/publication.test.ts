@@ -994,6 +994,7 @@ describe("the coverage a review body reports", () => {
 						{ check: "lens.correctness", file: "src/a`b.ts", lines: [[5, 9]], reason: "never delivered <b>" },
 						{ check: "lens.design", file: "bin/run", lines: [], unit: "mode", reason: "never delivered" },
 						{ check: "lens.design", file: "src/c.ts", lines: [[7, 7]], reason: "never delivered" },
+						{ check: "lens.design", file: "src/e.ts", lines: [], reason: "fields not delivered" },
 						{
 							check: "lens.design",
 							file: "src/d.ts",
@@ -1024,6 +1025,7 @@ describe("the coverage a review body reports", () => {
 				"- `lens.correctness` in ``src/a`b.ts`` lines 5-9: never delivered &lt;b&gt;",
 				"- `lens.design` in `bin/run` (mode): never delivered",
 				"- `lens.design` in `src/c.ts` line 7: never delivered",
+				"- `lens.design` in `src/e.ts`: fields not delivered",
 				"- `lens.design` in `src/d.ts` lines 1, 3-4: never delivered",
 				'- 3 more; `melian findings "#7"` lists them',
 				"- 1 dismissed by a maintainer, which covers nothing",
