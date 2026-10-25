@@ -537,3 +537,50 @@ describe("CoverageRecord with a maintainer's dismissals", () => {
 		).toBeUndefined();
 	});
 });
+
+describe("CoverageRecord.checkRecord", () => {
+	const files = (count: number): Record<string, [number, number][]> =>
+		Object.fromEntries(Array.from({ length: count }, (_, index) => [`src/f${index}.ts`, [[1, 1]]]));
+	const unread = (count: number) =>
+		lens({ needs: { head: files(count), base: {}, units: {} }, covered: [], required: {} });
+
+	it("passes a complete record", () => {
+		expect(record({ guardrails: range() }).checkRecord()).toEqual({ name: "review.coverage", status: "ran" });
+	});
+
+	it("points at each check whose own record did not run, in one sentence or the other", () => {
+		const one = record({ "lens.a": lens({ status: "failed", covered: [] }) });
+		expect(one.checkRecord()).toEqual({
+			name: "review.coverage",
+			status: "skipped",
+			reason: "coverage is incomplete: lens.a did not cover the diff, as its record says",
+		});
+		const two = record({
+			"lens.a": lens({ status: "failed", covered: [] }),
+			"lens.b": lens({ status: "ended", covered: [] }),
+		});
+		expect(two.checkRecord().reason).toBe(
+			"coverage is incomplete: lens.a, lens.b did not cover the diff, as their records say",
+		);
+	});
+
+	it("names five other gaps, each once, and counts the rest past five", () => {
+		expect(record({ "lens.a": unread(5) }).checkRecord().reason).toBe(
+			`coverage is incomplete: ${[0, 1, 2, 3, 4].map((index) => `lens.a src/f${index}.ts: never delivered`).join("; ")}`,
+		);
+		expect(record({ "lens.a": unread(6) }).checkRecord().reason).toBe(
+			`coverage is incomplete: ${[0, 1, 2, 3, 4].map((index) => `lens.a src/f${index}.ts: never delivered`).join("; ")}; and 1 more gaps`,
+		);
+		const twoSides = lens({ needs: { head: files(1), base: files(1), units: {} }, covered: [], required: {} });
+		expect(record({ "lens.a": twoSides }).checkRecord().reason).toBe(
+			"coverage is incomplete: lens.a src/f0.ts: never delivered",
+		);
+	});
+
+	it("names a gap with no file, as a record another algorithm wrote has, by its check alone", () => {
+		const stale = record({ guardrails: range() }, { producer: { name: "melian.coverage", algorithm: 0 } });
+		expect(stale.checkRecord().reason).toBe(
+			"coverage is incomplete: review.coverage: recorded by coverage algorithm 0, not 1, so it counts for nothing",
+		);
+	});
+});
