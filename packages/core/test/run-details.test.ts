@@ -183,6 +183,21 @@ describe("RunDetails", () => {
 		expect(RunDetails.from({ stages: [lens({ limits: { tools: 3 } }), lens({})] }).hasTokenBudget()).toBe(false);
 	});
 
+	it("names both budgets when both are near, and every model of a stage", () => {
+		const [row] = RunDetails.from({
+			stages: [
+				lens({
+					models: ["a/one low", "b/two"],
+					tokens: 170_000,
+					cacheRead: 0,
+					tools: 25,
+					limits: { tools: 30, tokens: 200_000 },
+				}),
+			],
+		}).rows();
+		expect(row).toMatchObject({ model: "a/one low, b/two", budget: "tools 25 / 30; tokens 170k / 200k" });
+	});
+
 	it("counts a token budget without cache reads, as the budget does", () => {
 		const [row] = RunDetails.from({
 			stages: [lens({ tokens: 1_540_000, cacheRead: 1_380_000, limits: { tokens: 200_000 } })],

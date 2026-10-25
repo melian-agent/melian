@@ -91,7 +91,7 @@ it("projects each stage into a run row, with the preparation spans and the verif
 		},
 	);
 
-	expect(telemetry.runDetails()).toEqual({
+	expect(telemetry.runDetails()).toStrictEqual({
 		durationMs: 142_000,
 		stages: [
 			{ name: "preparation", models: [], durationMs: 3_200, outcome: "ran" },
@@ -147,7 +147,7 @@ it("projects each stage into a run row, with the preparation spans and the verif
 
 it("leaves out a review time and a preparation row it has no spans for", () => {
 	const telemetry = new StageTelemetry("base..head", [stage({ name: "melian.triage", subject: "triage" })]);
-	expect(telemetry.runDetails()).toEqual({
+	expect(telemetry.runDetails()).toStrictEqual({
 		stages: [{ name: "triage", models: [], durationMs: 1_000, outcome: "ran" }],
 	});
 });
@@ -161,7 +161,7 @@ it("names a model without a request record, and a stage with no duration", () =>
 			usage: { models: { "openai/gpt-5.6-terra": usage(5, 0, 0) }, total: usage(5, 0, 0) },
 		}),
 	]);
-	expect(telemetry.runDetails().stages).toEqual([
+	expect(telemetry.runDetails().stages).toStrictEqual([
 		{ name: "walkthrough", models: ["openai/gpt-5.6-terra"], tokens: 5, cacheRead: 0, cost: 0, outcome: "ran" },
 	]);
 });

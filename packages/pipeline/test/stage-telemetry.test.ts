@@ -377,6 +377,31 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 		);
 	});
 
+	it("names the budget that ended a lens on its stage and in its run row", async () => {
+		const { options, storage } = await setup();
+		const lenses = options.lenses.map((lens) =>
+			lens.name !== "correctness"
+				? lens
+				: Lens.from({
+						...lens.toJSON(),
+						levels: Object.fromEntries(
+							Object.entries(lens.levels).map(([level, settings]) => [
+								level,
+								{ ...settings, budget: { ...settings.budget, tokens: 1 } },
+							]),
+						) as typeof lens.levels,
+					}),
+		);
+		await reviewChangeset({ ...options, lenses });
+		const telemetry = await TelemetryReader.open(storage).read(revisionKey(options.changeset.revision));
+		const lens = telemetry.stages.find(({ name }) => name === "melian.lens")!;
+		expect(lens).toMatchObject({ outcome: "ended", ended: "tokens", limits: { tokens: 1 } });
+		const row = telemetry.runDetails().stages.find(({ name }) => name === "lens correctness")!;
+		expect(row).toMatchObject({ outcome: "ended", ended: "tokens", limits: { tokens: 1 } });
+		const others = telemetry.stages.filter(({ name }) => name !== "melian.lens");
+		for (const stage of others) expect(stage).not.toHaveProperty("ended");
+	});
+
 	it("joins the host's spans with its own steps between tasks, none of them over a task", async () => {
 		const { options, storage, harness } = await setup();
 		// The host's step is still open when the review runs its checks, which must end it first.

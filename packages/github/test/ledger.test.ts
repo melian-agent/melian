@@ -746,6 +746,16 @@ describe("ledger rendering", () => {
 		expect(body).not.toContain("Manifest:");
 	});
 
+	it("says so when a round holds neither a run nor a plan", () => {
+		const body = Ledger.from(verdict, { rounds: [round] }, options).render(links);
+		expect(body).toContain("<summary>Run details</summary>\n\nPublished by `unknown`");
+		expect(body).toContain("No run details were stored by the older reviewer.");
+		const run: StoredRunDetails = { stages: [{ name: "triage", models: [], outcome: "ran" }] };
+		expect(Ledger.from(verdict, { rounds: [round] }, { ...options, run }).render(links)).not.toContain(
+			"No run details were stored",
+		);
+	});
+
 	it("keeps an earlier round's history free of the current round's run", () => {
 		const run: StoredRunDetails = { durationMs: 1_000, stages: [{ name: "triage", models: [], outcome: "ran" }] };
 		const earlier: LedgerRound = { ...round, head: "c".repeat(40), round: 1 };
