@@ -46,7 +46,7 @@ import { hasCredentials } from "../src/models.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { RoundsDocument } from "../src/rounds.ts";
 import { startVerification, type VerificationInput, VerificationTask } from "../src/verification.ts";
-import { verifierMarker, verifierVersion } from "../src/verification-instructions.ts";
+import { verifierInstructions, verifierMarker, verifierVersion } from "../src/verification-instructions.ts";
 import { baseAndHead, gitIn } from "./fixtures/repo.ts";
 import { crashFinding, crashRepository } from "./fixtures/review-scenario.ts";
 
@@ -407,8 +407,9 @@ describe("the verifier", () => {
 			expect(instructions).toContain("## Decisions at base");
 			expect(instructions).toContain("## Design sections at base");
 			expect(instructions).toContain("## Design files at base");
-			expect(instructions).toMatch(/label="listing"/);
+			expect(instructions.match(/label="listing"/g)).toHaveLength(3);
 		} else {
+			expect(instructions).toContain(`${verifierInstructions}\n\nClaim c1 finding`);
 			expect(decisions).not.toHaveBeenCalled();
 			expect(sections).not.toHaveBeenCalled();
 			expect(instructions).not.toContain("## Decisions at base");
