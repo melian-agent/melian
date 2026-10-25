@@ -21,7 +21,7 @@ For now, option B: free `medium` for the design lens in Melian's own repository,
 - `.melian/lenses/design/LENS.md` extends `design` with `tier: medium` and a budget of 8 findings, 3,000,000 tokens and 150 tool calls. Those are the numbers Melian's rounds already raised the lens to. Codex has no budget, and a lens needs one.
 - A test in `packages/core/test/lens.test.ts` holds the shape: under Melian's own files, `design.careful` is the only level on `medium`, and all seven `quick` levels run on `light`.
 
-Then option C, plan step 35: a lens names its own model route. That step is done when these extension files are gone. The design extension keeps its budget.
+Then option C, plan step 37: a lens names its own model route. That step is done when these extension files are gone. The design extension keeps its budget.
 
 ## Why
 
@@ -33,7 +33,7 @@ A sixth lens tier would also free a route, but it touches every tier order and s
 
 - `quick` changes effort. The old `medium` route set no level; `light` sets `low`. No cell measured `quick` at either level, so this is unmeasured, as the earlier decision's `quick` was.
 - The design lens costs more per round. Sol 5.6 lists at 4 and 20 dollars per million input and output tokens; Sol 6.1 lists at 2 and 10. The lens also runs at high effort, with ten times the built-in budget.
-- Each of the 64 golden trees that carries a repository lens carries all of them, as the corpus test requires. So a golden runs the lenses Melian runs. Step 35 removes the routing-only copies with the originals.
+- Each of the 64 golden trees that carries a repository lens carries all of them, as the corpus test requires. So a golden runs the lenses Melian runs. Step 37 removes the routing-only copies with the originals.
 - The design lens's goldens and live measurements so far ran on `heavy`. A live rerun of the design corpus on the new route is owed before its numbers are quoted for this route.
 - `melian doctor` warns about no inverted levels: `quick` on `light` sits below `careful` and `deep` on `heavy`.
 - A round script that writes its own lens extensions, or routes `medium` in `melian.local.yaml`, undoes this. Rounds must leave the committed design extension and the `medium` route alone.
