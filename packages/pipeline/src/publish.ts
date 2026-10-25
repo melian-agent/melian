@@ -745,7 +745,6 @@ function publishTask(provider: ReviewProvider) {
 								verdict: structuredClone(planned.verdict),
 								...(details === undefined ? {} : { details: structuredClone(details) }),
 								...(walkthrough === undefined ? {} : { walkthrough: structuredClone(walkthrough) }),
-								...(task.input.run === undefined ? {} : { run: structuredClone(task.input.run) }),
 								resolved: Object.values(planned.resolved).map((entry) => ({
 									id: entry.id,
 									ruleId: entry.ruleId,

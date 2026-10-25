@@ -187,7 +187,7 @@ it("charges only a verification claim this review ran, and keeps an outcome othe
 			...fields,
 		});
 	const mixed = new StageTelemetry("base..head", [
-		claim("a", { reused: true, durationMs: 7_000 }),
+		claim("a", { reused: true, durationMs: 7_000, usage: model("x/earlier", 1_000, 0, 0.1, reasoning("unset")) }),
 		claim("b", { outcome: "ended", durationMs: 2_000 }),
 		claim("c", { durationMs: 3_000 }),
 	]);
@@ -203,7 +203,11 @@ it("charges only a verification claim this review ran, and keeps an outcome othe
 		},
 	]);
 	const reused = new StageTelemetry("base..head", [claim("a", { reused: true }), claim("b", { reused: true })]);
-	expect(reused.runDetails().stages[0]).toMatchObject({ outcome: "reused" });
+	expect(reused.runDetails().stages[0]).toStrictEqual({
+		name: "verification 2 claims",
+		models: ["anthropic/claude-sonnet-5-5"],
+		outcome: "reused",
+	});
 });
 
 it("marks a model stage whose usage was not all measured, and a check that needs none as complete", () => {
@@ -216,12 +220,14 @@ it("marks a model stage whose usage was not all measured, and a check that needs
 			usageIncomplete: 1,
 		}),
 		stage({ name: "melian.walkthrough", subject: "walkthrough", usage: model("m", 1, 0, 0, reasoning("unset")) }),
+		stage({ name: "melian.verification.candidate", subject: "a" }),
 		stage({ name: "melian.check", subject: "guardrails" }),
 	]);
 	expect(telemetry.runDetails().stages.map(({ usageIncomplete }) => usageIncomplete)).toEqual([
 		true,
 		true,
 		undefined,
+		true,
 		undefined,
 	]);
 });
