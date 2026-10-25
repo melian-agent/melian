@@ -9,7 +9,7 @@ Status: accepted on 2026-10-25 by the maintainer.
 ## Choice
 
 - With `--lens`, `--since` selects rounds by their own time, not by a pull request's first round. `--last` still selects the newest pull requests.
-- The statistic keys each round by the lens as it ran: the version and level its check record names, with the model and reasoning level when the round left the committed route. Each cohort prints on its own, so the low-effort rounds never mix with the parity rounds. A round with no record of the lens falls back to the version its findings name.
+- The statistic keys each round by the lens as it ran: the version and level its check record names, with the model and reasoning level when the round left the committed route. Each cohort prints on its own, so the low-effort rounds never mix with the parity rounds. A round with no record of the lens counts in a cohort of its own.
 - A lens earns no credit for a finding when the verifier refuted every one of that lens's claims on it, even when another check's claim keeps the finding valid.
 - A Codex payload stays tied to its head by its file name alone, as AGENTS.md says to name it. The companion's payload records no head commit. A recorded head is tracked in its own issue.
 
