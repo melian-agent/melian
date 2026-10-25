@@ -22,7 +22,13 @@ type StoredRound = {
 	tasks: number[];
 	verdict?: StoredVerdict;
 	provenance?: Provenance;
+	// What the round reviewed, and the `melian.coverage` record it wrote; absent from a version 1 round, whose scope is
+	// unknown, so it covers nothing.
+	scope?: RoundScope;
+	coverage?: string;
 };
+// The one scope today: the whole diff from the base to the head.
+type RoundScope = { kind: "diff" };
 type RoundState = {
 	sequence: number;
 	current: Record<string, string>;
@@ -43,11 +49,13 @@ export class RoundError extends Error {
 // Keys are local to this storage; the public ID prefixes them with the changeset ID of its SQLite file.
 export const RoundsDocument = defineDoc<RoundState>({
 	kind: "melian.rounds",
-	version: 1,
+	// Version 2 adds each round's `scope` and `coverage`. A version 1 round has neither and reads unchanged.
+	version: 2,
 	scope: "conversation",
 	history: "latest",
 	fork: "current",
 	initial: () => ({ sequence: 0, current: {}, items: {}, recorded: {} }),
+	migrate: (value) => value as unknown as RoundState,
 });
 
 export function legacyKey(revision: string): string {
@@ -130,6 +138,20 @@ export class RoundWriter {
 		round.checkRun ??= checkRun;
 		if (!round.tasks.includes(task)) round.tasks.push(task);
 		return round;
+	}
+
+	/**
+	 * Records that the round holding `task` reviewed the whole diff and wrote the coverage record named by its own ID,
+	 * returning that ID, or `undefined` when no round holds the task.
+	 */
+	async cover(task: number): Promise<string | undefined> {
+		const state = await this.tx.doc(RoundsDocument, this.root);
+		const found = Object.entries(state.items).find(([, round]) => round.tasks.includes(task));
+		if (found === undefined) return undefined;
+		const [key, round] = found;
+		round.scope = { kind: "diff" };
+		round.coverage = key;
+		return key;
 	}
 
 	async record(revision: string, task: number, verdict: StoredVerdict, provenance: Provenance): Promise<void> {
