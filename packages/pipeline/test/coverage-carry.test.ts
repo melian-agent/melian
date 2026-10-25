@@ -1,3 +1,6 @@
+import { copyFileSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
 	Changeset,
 	type CheckRecord,
@@ -14,6 +17,7 @@ import {
 	type Harness,
 	type Message,
 	openHarness,
+	openSqliteStorage,
 	reviewChangeset,
 } from "@melian-agent/pipeline";
 import {
@@ -273,5 +277,71 @@ describe("the carry", () => {
 		const cold = await review({ cold: true });
 		expect(await carriedAt(cold.key)).toEqual([]);
 		expect(cold.verdict.findings.block).toEqual([]);
+	});
+});
+
+describe("a store main wrote at version 10 of the findings document", () => {
+	const fixtures = fileURLToPath(new URL("./fixtures/findings-v10-main/", import.meta.url));
+	const recorded = JSON.parse(readFileSync(join(fixtures, "recorded.json"), "utf8")) as {
+		key: string;
+		base: string;
+		finding: string;
+	};
+
+	it("reads main's finding, and carries it to the next head once a round records coverage", async () => {
+		const clone = createRepository();
+		try {
+			gitIn(
+				clone,
+				"fetch",
+				"--quiet",
+				"--update-head-ok",
+				join(fixtures, "repo.bundle"),
+				"refs/heads/*:refs/heads/*",
+			);
+			gitIn(clone, "checkout", "--quiet", "feature");
+			const path = join(clone, "store.sqlite");
+			copyFileSync(join(fixtures, "main.sqlite"), path);
+			const reopened = await openHarness(await openSqliteStorage(path), {
+				models: fake.models,
+				registry: createReviewRegistry(),
+				settings: { retry: { enabled: false } },
+			});
+			try {
+				const at = async (range: string, replies: Reply[]) => {
+					scriptConversations(fake, [
+						{ match: correctness, replies },
+						{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+					]);
+					const changeset = await Changeset.resolve(clone, range);
+					const { verdict } = await reviewChangeset({
+						harness: reopened,
+						changeset,
+						config,
+						lenses: await Lens.load(clone, { kind: "revision", commit: recorded.base }, ["src/a.ts"]),
+						standards: [{ path: "AGENTS.md", content: "Be careful." }],
+						models: fake.review,
+						checks,
+					});
+					return { verdict, key: Revision.key(changeset.revision) };
+				};
+				// The prompt now names each file's modes, so the upgraded review runs its lenses again, and the lens reports
+				// main's finding again, under the producer main stored it under.
+				const upgraded = await at(`${recorded.base}..feature`, [report(), fauxAssistantMessage("Done.")]);
+				expect(upgraded.key).toBe(recorded.key);
+				expect(blockIds(upgraded.verdict)).toEqual([recorded.finding]);
+				commit(clone, { "src/b.ts": numbered(20, "b").replace("b 9\n", "B 9\n") });
+				const next = await at(`${recorded.base}..feature`, [fauxAssistantMessage("Done.")]);
+				expect(blockIds(next.verdict)).toEqual([recorded.finding]);
+				const state = (await reopened.snapshot(FindingsDocument, (await reopened.root(context)).id, context))!;
+				expect(Object.keys(state.items[recorded.finding]!.carried?.[next.key] ?? {})).toEqual([
+					expect.stringMatching(/^carried\/lens\.correctness@/),
+				]);
+			} finally {
+				await reopened.close(context);
+			}
+		} finally {
+			removeRepository(clone);
+		}
 	});
 });
