@@ -32,7 +32,7 @@ Coverage from a round is void, whole or in part, after a base change, a force pu
 
 ## The status
 
-`melian/review` passes when the ledger shows an empty delta and nothing above advisory is open. An incomplete ledger leaves the review not reviewed and the status `error`, naming the gaps. The merge-group job is unchanged. `melian publish` posts the current decided round; its body and the ledger comment say which lines the round reviewed and which rounds cover the diff. A carried finding has a sighting at the head, so it stays open with its thread.
+`melian/review` passes when the ledger shows an empty delta and nothing above advisory is open. An incomplete ledger leaves the review not reviewed and the status `error`, naming the gaps. The merge-group job is unchanged. `melian publish` posts the current decided round; its body and the ledger comment say which lines the round reviewed and which rounds cover the diff. A round reviewed the changed lines its own lenses received, context hunks included, since the ledger counts a delivered line as covered. The body lists twenty gaps and twenty reviewed files and counts the rest, and `melian.published` version 10 keeps each ledger round's coverage. A round an earlier build decided wrote no ledger record and shows no coverage. A carried finding has a sighting at the head, so it stays open with its thread.
 
 ## Round identity
 
