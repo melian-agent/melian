@@ -73,7 +73,7 @@ describe("Revision.triggerOf", () => {
 		hunk("a.ts", 1, [9, 1], [10, 0], text("-gone 9")),
 	]);
 	const b = changed("b.ts", [
-		hunk("b.ts", 0, [1, 1], [1, 1], text("-b 1", "+B 1")),
+		hunk("b.ts", 0, [1, 1], [1, 1], text("-b 1", "+B 1", "\\ No newline at end of file")),
 		hunk("b.ts", 1, [7, 0], [8, 1], text("+B 8")),
 	]);
 	const revision = move(a, b);
@@ -115,6 +115,21 @@ describe("Revision.triggerOf", () => {
 				{ file: "a.ts", hash: snippetHash(text("-old 3", "+new 3", "+new 4")) },
 				{ file: "b.ts", hash: snippetHash(text("-b 1", "+B 1")) },
 				{ file: "b.ts", hash: snippetHash("+B 8") },
+			],
+		});
+		expect(
+			revision.triggerOf(
+				{ file: "c.ts", startLine: 5 },
+				[cause("b.ts", 1), { ...cause("a.ts", 9), revision: "base" as const }],
+				"affected",
+			),
+		).toEqual({
+			file: "a.ts",
+			index: 1,
+			snippet: "",
+			proof: [
+				{ file: "a.ts", hash: snippetHash("-gone 9") },
+				{ file: "b.ts", hash: snippetHash(text("-b 1", "+B 1")) },
 			],
 		});
 		expect(revision.triggerOf({ file: "c.ts", startLine: 5 }, [cause("b.ts", 8, false)], "affected")).toBeUndefined();

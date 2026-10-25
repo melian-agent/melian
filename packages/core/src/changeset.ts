@@ -415,21 +415,20 @@ export class Revision {
 		const file = this.files.find((each) => (each.oldPath ?? each.path) === path && each.status !== "added");
 		if (file === undefined) return { path, first, last, changed: false };
 		if (file.status === "deleted" || file.binary) return undefined;
-		const start = this.mapLine(path, first);
-		const end = this.mapLine(path, last);
 		const touching = (hunk: (typeof file.hunks)[number]) =>
 			hunk.oldLines > 0
 				? hunk.oldStart <= last && hunk.oldStart + hunk.oldLines - 1 >= first
 				: hunk.oldStart >= first && hunk.oldStart < last;
 		const hunk = file.hunks.find(touching);
-		if (start !== undefined && end !== undefined && hunk === undefined)
-			return { path: start.path, first: start.line, last: end.line, changed: false };
-		const line =
-			hunk === undefined
-				? (start?.line ?? first)
-				: hunk.newLines > 0
-					? hunk.newStart + hunk.newLines
-					: hunk.newStart + 1;
+		// No hunk touches the range, so neither end sits in a hunk's old range, and both map.
+		if (hunk === undefined)
+			return {
+				path: file.path,
+				first: this.mapLine(path, first)!.line,
+				last: this.mapLine(path, last)!.line,
+				changed: false,
+			};
+		const line = hunk.newLines > 0 ? hunk.newStart + hunk.newLines : hunk.newStart + 1;
 		return { path: file.path, first: line, last: line, changed: true };
 	}
 
