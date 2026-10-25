@@ -20,9 +20,11 @@ import {
 	backgroundContext as context,
 	createMemoryStorage,
 	createNodeExecutionEnv,
+	createRegistry,
 	createReviewRegistry,
 	decisionExtension,
 	openHarness,
+	PrepareSpans,
 	readFindings,
 	reviewChangeset,
 	revisionKey,
@@ -163,8 +165,30 @@ describe("static.enola", { timeout: 60_000 }, () => {
 			tools,
 		};
 		expect((await runStaticTool(input, context)).status).toBe("ran");
-		const callers = await CallerContext.open(input, changeset.revision.files, context);
+		const spans = PrepareSpans.start("callers", Date.now());
+		const callers = await CallerContext.open(
+			input,
+			changeset.revision.files,
+			context,
+			changeset.revision.files.map((file) => file.path),
+			spans,
+		);
 		expect(callers.callers(["src/a.ts"])).toHaveLength(1);
+		const harness = await openHarness(createMemoryStorage(), {
+			models: createFakeModels().models,
+			registry: createRegistry(),
+		});
+		try {
+			const { spans: recorded } = await spans.record(harness, "base..head", context);
+			expect(recorded.map(({ name, parent }) => [name, parent])).toEqual([
+				["callers.provision", "callers"],
+				["callers.graph", "callers"],
+				["callers.query", "callers"],
+				["callers", undefined],
+			]);
+		} finally {
+			await harness.close(context);
+		}
 	});
 	it.each([
 		[0, "careful", "Alpha"],
