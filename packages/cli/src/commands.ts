@@ -357,7 +357,7 @@ export async function review(
 		io.stdout(
 			options.json
 				? `${JSON.stringify({ ...JSON.parse(verdict.renderJson()), coverage: coverage.summary, telemetry: timings.toJSON() }, null, 2)}\n`
-				: outcome.render(io.color) + coverage.text,
+				: `${outcome.render(io.color)}\n${coverage.text}`,
 		);
 		return outcome.exitCode();
 	} catch (error) {
@@ -607,7 +607,7 @@ export async function findings(
 			io.stdout(
 				options.json
 					? withCoverage(verdict.renderJson())
-					: verdict.render(render) + coverage.text + verdict.agentPrompt(argument),
+					: `${verdict.render(render)}\n${coverage.text}${verdict.agentPrompt(argument)}`,
 			);
 			return 0;
 		}
@@ -615,7 +615,7 @@ export async function findings(
 		io.stdout(
 			options.json
 				? withCoverage(open.renderJson())
-				: open.render(render) + coverage.text + verdict.agentPrompt(argument),
+				: `${open.render(render)}\n${coverage.text}${verdict.agentPrompt(argument)}`,
 		);
 		return 0;
 	} finally {

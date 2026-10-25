@@ -312,6 +312,7 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 			"verification.prepare",
 			"adjudication.prepare",
 			"verdict.read",
+			"coverage.record",
 		]);
 		expect(spansOf(false)).toEqual([]);
 		expect(new Set(telemetry.stages.map(({ name }) => name))).toEqual(

@@ -319,6 +319,7 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 			"verification.prepare",
 			"adjudication.prepare",
 			"verdict.read",
+			"coverage.record",
 			"output",
 		]);
 		expect(
@@ -480,7 +481,7 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(stored.status).toBe(0);
 		const verdict = Verdict.from(JSON.parse(stored.stdout) as StoredVerdict);
 		expect(verdict.status).toBe("passed");
-		expect(review.stdout).toBe(verdict.render(new Rendering({ ids: true })));
+		expect(review.stdout).toBe(`${verdict.render(new Rendering({ ids: true }))}\nCoverage: complete, from r1.\n`);
 		expect(review.stdout).toMatch(/^Verdict: passed\n/);
 	});
 
@@ -827,6 +828,8 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 		expect(JSON.parse(melian(repo, ["findings", range, "--json"], env).stdout)).toEqual({
 			...verdict,
 			ran: verdict.ran?.filter((check) => check.name !== "verifier"),
+			// The rerun decided a round of its own, which covers the diff beside the first.
+			coverage: { complete: true, rounds: ["r1", "r2"], gaps: [] },
 		});
 	});
 
