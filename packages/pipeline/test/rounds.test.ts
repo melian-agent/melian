@@ -86,7 +86,7 @@ it("mints a mutation-only round without triage and freezes its verdict on a late
 	expect(first?.items.r1?.provenance).toMatchObject({
 		kind: "range",
 		policy: "config",
-		manifest: ["static.mutation"],
+		manifest: ["static.mutation", "review.coverage"],
 	});
 	await review("failed");
 	const next = await harness.snapshot(rounds, root.id, context);
@@ -349,14 +349,20 @@ it.each([
 			checks: [{ name: "static.mutation", status: "ran" as const }],
 			checkRun,
 		};
+		// Every manifest gained review.coverage, so the first review after the upgrade adjudicates once more and mints a
+		// round, which the repeat review then attaches to; main's round keeps its verdict beside it.
 		await reviewChangeset(options);
+		const once = (await reopened.snapshot(ReviewIndex, root.id, context))!.reviews[legacy.key]!.adjudication!.task;
 		await reviewChangeset(options);
-		expect((await reopened.snapshot(ReviewIndex, root.id, context))!.reviews[legacy.key]!.adjudication!.task).toBe(
-			before.task,
-		);
+		const again = (await reopened.snapshot(ReviewIndex, root.id, context))!.reviews[legacy.key]!.adjudication!.task;
+		expect(once).not.toBe(before.task);
+		expect(again).toBe(once);
 		const state = await reopened.snapshot(rounds, root.id, context);
-		expect(state?.sequence).toBe(0);
-		expect(Object.values(state!.items)).toMatchObject([{ tasks: [before.task], verdict: { status: "passed" } }]);
+		expect(state?.sequence).toBe(1);
+		expect(Object.values(state!.items)).toMatchObject([
+			{ tasks: [], verdict: { status: "passed" } },
+			{ tasks: [once], verdict: { status: "passed" } },
+		]);
 	} finally {
 		await reopened.close(context);
 	}
@@ -389,16 +395,17 @@ it("mints after a legacy attachment when the CLI supplies a distinct check run w
 			checks: [{ name: "static.mutation", status: "ran" as const }],
 			checkRun,
 		};
+		// The manifest gained review.coverage, so the first review after the upgrade mints a round of its own.
 		await reviewChangeset(options);
-		expect((await reopened.snapshot(ReviewIndex, root.id, context))!.reviews[legacy.key]!.adjudication!.task).toBe(
-			before.task,
-		);
+		expect(
+			(await reopened.snapshot(ReviewIndex, root.id, context))!.reviews[legacy.key]!.adjudication!.task,
+		).not.toBe(before.task);
 		const attached = structuredClone((await reopened.snapshot(rounds, root.id, context))!);
-		expect(attached.sequence).toBe(0);
+		expect(attached.sequence).toBe(1);
 		await reviewChangeset({ ...options, checkRun: { ...checkRun, task: 2 } });
 		const minted = await reopened.snapshot(rounds, root.id, context);
-		expect(minted?.sequence).toBe(1);
-		expect(minted?.items.r1).toMatchObject({ verdict: { status: "passed" } });
+		expect(minted?.sequence).toBe(2);
+		expect(minted?.items.r2).toMatchObject({ verdict: { status: "passed" } });
 		expect(minted?.items[attached.current[legacy.key]!]).toEqual(attached.items[attached.current[legacy.key]!]);
 		expect(
 			(await reopened.snapshot(ReviewIndex, root.id, context))!.reviews[legacy.key]!.adjudication!.task,
