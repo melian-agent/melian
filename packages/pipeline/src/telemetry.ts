@@ -129,13 +129,28 @@ function runModels(stage: Stage): string[] {
 	];
 }
 
+// The model stages, whose usage a run must have measured to be complete.
+const modelStages: readonly string[] = [
+	"melian.triage",
+	"melian.lens",
+	"melian.verification.candidate",
+	"melian.walkthrough",
+];
+
+// One row from one stage, or from every verification claim. A claim an earlier run judged cost this run nothing, so
+// only the claims this run judged count, and any outcome but completed among them is the row's.
 function runStage(name: string, stages: readonly Stage[]): RunStage {
 	const [first] = stages;
-	const usage = stages.flatMap((stage) => (stage.usage === undefined ? [] : [stage.usage.total]));
-	const timed = stages.filter((stage) => stage.durationMs !== undefined);
+	const own = stages.filter((stage) => !stage.reused);
+	const usage = own.flatMap((stage) => (stage.usage === undefined ? [] : [stage.usage.total]));
+	const timed = own.filter((stage) => stage.durationMs !== undefined);
+	const unmeasured = own.some(
+		(stage) => modelStages.includes(stage.name) && (stage.usage === undefined || (stage.usageIncomplete ?? 0) > 0),
+	);
+	const outcome = own.length === 0 ? "reused" : (own.find((stage) => stage.outcome !== "completed")?.outcome ?? "ran");
 	return {
 		name,
-		models: [...new Set(stages.flatMap(runModels))],
+		models: [...new Set((own.length === 0 ? stages : own).flatMap(runModels))],
 		...(timed.length === 0 ? {} : { durationMs: timed.reduce((sum, stage) => sum + stage.durationMs!, 0) }),
 		...(usage.length === 0
 			? {}
@@ -144,10 +159,11 @@ function runStage(name: string, stages: readonly Stage[]): RunStage {
 					cacheRead: usage.reduce((sum, each) => sum + each.cacheRead, 0),
 					cost: usage.reduce((sum, each) => sum + each.cost.total, 0),
 				}),
-		outcome: first!.reused ? "reused" : first!.outcome === "completed" ? "ran" : first!.outcome,
+		outcome,
 		...(first!.tools === undefined ? {} : { tools: first!.tools }),
 		...(first!.limits === undefined ? {} : { limits: { ...first!.limits } }),
 		...(first!.ended === undefined ? {} : { ended: first!.ended }),
+		...(unmeasured ? { usageIncomplete: true as const } : {}),
 	};
 }
 

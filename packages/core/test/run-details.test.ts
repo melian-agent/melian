@@ -209,4 +209,22 @@ describe("RunDetails", () => {
 		const stored = { durationMs: 1, stages: [lens({ tools: 2, limits: { tools: 3 }, ended: "tokens" as const })] };
 		expect(RunDetails.from(stored).toJSON()).toEqual(stored);
 	});
+
+	it("says a total is incomplete when a stage's usage was not all measured", () => {
+		const details = RunDetails.from({
+			stages: [
+				lens({ tokens: 1_000, cacheRead: 0, cost: 1 }),
+				lens({ name: "lens tests", tokens: 1_000, cacheRead: 500, cost: 1, usageIncomplete: true }),
+			],
+		});
+		expect(details.summary()).toBe("2.0k tokens (25% cached, incomplete) · $2.00 · openai/gpt-6.1-sol low");
+		expect(details.rows().map(({ tokens }) => tokens)).toEqual(["1.0k", "1.0k, incomplete"]);
+		const none = RunDetails.from({
+			stages: [lens({ tokens: undefined, cacheRead: undefined, cost: undefined, usageIncomplete: true })],
+		});
+		expect(none.summary()).toBe("0 tokens (incomplete) · $0.00 · openai/gpt-6.1-sol low");
+		expect(none.rows()[0]!.tokens).toBe("incomplete");
+		const reused = RunDetails.from({ stages: [lens({ outcome: "reused", usageIncomplete: true })] });
+		expect(reused.summary()).toBe("0 tokens · $0.00");
+	});
 });

@@ -285,6 +285,8 @@ export type LedgerRound = {
 	details?: PublicationDetails;
 	walkthrough?: Walkthrough;
 	walkthroughNote?: string;
+	/** The round's run, from its stage telemetry; absent when no publish of the round read one. */
+	run?: StoredRunDetails;
 	resolved: { id: string; ruleId: string; path: string; line: number; commit: string; reason?: string }[];
 };
 
@@ -317,6 +319,4 @@ export interface LedgerDraft {
 	readonly recorded?: PostedLedger;
 	/** The ID of Melian's posted or recovered review on this pull request. */
 	readonly review?: string;
-	/** The current round's run, from its stage telemetry; absent when the host read none. */
-	readonly run?: StoredRunDetails;
 }

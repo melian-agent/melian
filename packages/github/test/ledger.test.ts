@@ -736,7 +736,7 @@ describe("ledger rendering", () => {
 				],
 			},
 		};
-		const body = Ledger.from(verdict, { rounds: [current] }, { ...options, run }).render(links);
+		const body = Ledger.from(verdict, { rounds: [{ ...current, run }] }, options).render(links);
 		const start = body.indexOf("<details>\n<summary>Run details");
 		const block = body.slice(start, body.indexOf("</details>", start) + "</details>".length);
 
@@ -751,18 +751,23 @@ describe("ledger rendering", () => {
 		expect(body).toContain("<summary>Run details</summary>\n\nPublished by `unknown`");
 		expect(body).toContain("No run details were stored by the older reviewer.");
 		const run: StoredRunDetails = { stages: [{ name: "triage", models: [], outcome: "ran" }] };
-		expect(Ledger.from(verdict, { rounds: [round] }, { ...options, run }).render(links)).not.toContain(
+		expect(Ledger.from(verdict, { rounds: [{ ...round, run }] }, options).render(links)).not.toContain(
 			"No run details were stored",
 		);
 	});
 
-	it("keeps an earlier round's history free of the current round's run", () => {
-		const run: StoredRunDetails = { durationMs: 1_000, stages: [{ name: "triage", models: [], outcome: "ran" }] };
-		const earlier: LedgerRound = { ...round, head: "c".repeat(40), round: 1 };
-		const body = Ledger.from(verdict, { rounds: [earlier, { ...round, round: 2 }] }, { ...options, run }).render(
+	it("renders each round's own run, an earlier round's in its history", () => {
+		const run = (durationMs: number): StoredRunDetails => ({
+			durationMs,
+			stages: [{ name: "triage", models: [], outcome: "ran" }],
+		});
+		const earlier: LedgerRound = { ...round, head: "c".repeat(40), round: 1, run: run(1_000) };
+		const body = Ledger.from(verdict, { rounds: [earlier, { ...round, round: 2, run: run(2_000) }] }, options).render(
 			links,
 		);
 		expect(body.split("<summary>Run details: 1.0 s")).toHaveLength(2);
+		expect(body.split("<summary>Run details: 2.0 s")).toHaveLength(2);
+		expect(body.indexOf("Run details: 2.0 s")).toBeLessThan(body.indexOf("Run details: 1.0 s"));
 	});
 
 	it("renders a lens lineage in the run details", () => {

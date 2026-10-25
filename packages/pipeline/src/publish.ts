@@ -217,7 +217,7 @@ class PublishedState {
 // would post it twice.
 export const PublishedDocument = defineDoc<StoredPublishedState>({
 	kind: "melian.published",
-	version: 9,
+	version: 10,
 	scope: "conversation",
 	history: "latest",
 	fork: "current",
@@ -225,7 +225,7 @@ export const PublishedDocument = defineDoc<StoredPublishedState>({
 	// Version 2 made a finding's evidence a list of locations, so a round left pending before it renders. Version 3 keys
 	// each reply by `replyKey`. Version 4 adds ledger snapshots; version 5 retains only one-line older rounds.
 	// Version 6 adds optional standards paths per lens; version 7 records the publisher. Version 8 permits trust-floor
-	// diagnostics; version 9 keys resolutions by thread.
+	// diagnostics; version 9 keys resolutions by thread. Version 10 lets a ledger round hold its run.
 	migrate: (value, from) => PublishedState.upgrade(value, from),
 });
 
@@ -745,6 +745,7 @@ function publishTask(provider: ReviewProvider) {
 								verdict: structuredClone(planned.verdict),
 								...(details === undefined ? {} : { details: structuredClone(details) }),
 								...(walkthrough === undefined ? {} : { walkthrough: structuredClone(walkthrough) }),
+								...(task.input.run === undefined ? {} : { run: structuredClone(task.input.run) }),
 								resolved: Object.values(planned.resolved).map((entry) => ({
 									id: entry.id,
 									ruleId: entry.ruleId,
@@ -965,6 +966,8 @@ function publishTask(provider: ReviewProvider) {
 						currentRound.walkthrough = structuredClone(storedVerdict.walkthroughs[revision]);
 					if (storedVerdict?.walkthroughNotes?.[revision] !== undefined)
 						currentRound.walkthroughNote = storedVerdict.walkthroughNotes[revision];
+					// A publish that could not read the run keeps the one an earlier publish of the round stored.
+					if (task.input.run !== undefined) currentRound.run = structuredClone(task.input.run);
 					const previousLedger = (await runtime.snapshot(LedgerDocument, root, context))?.comment;
 					await revalidate();
 					writingLedger = true;
@@ -975,7 +978,6 @@ function publishTask(provider: ReviewProvider) {
 						publication: { rounds },
 						walkthrough: task.input.walkthrough ?? { enabled: true, collapsed: true, diagrams: true },
 						secret,
-						...(task.input.run === undefined ? {} : { run: structuredClone(task.input.run) }),
 						...(previousLedger === undefined ? {} : { recorded: previousLedger }),
 					});
 					writingLedger = false;

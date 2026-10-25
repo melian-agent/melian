@@ -18,6 +18,8 @@ export type RunStage = {
 	limits?: { tokens?: number; tools?: number };
 	/** The budget that ended a lens. */
 	ended?: "tokens" | "tools";
+	/** A model stage some of whose requests left no usage, so its tokens and cost are a floor. */
+	usageIncomplete?: true;
 };
 
 /** A review's run as the ledger stores it: the review's wall clock, when its spans recorded one, and its stages. */
@@ -59,6 +61,12 @@ export function durationText(ms: number): string {
 // A budget is worth naming from four fifths of its limit.
 const near = (used: number, limit: number | undefined) => limit !== undefined && used * 5 >= limit * 4;
 
+function tokensOf(stage: RunStage): string {
+	const counted = stage.tokens === undefined ? [] : [tokenText(stage.tokens)];
+	const parts = [...counted, ...(stage.usageIncomplete ? ["incomplete"] : [])];
+	return parts.length === 0 ? "—" : parts.join(", ");
+}
+
 function budgetOf(stage: RunStage): string {
 	const tools = stage.tools ?? 0;
 	const tokens = (stage.tokens ?? 0) - (stage.cacheRead ?? 0);
@@ -96,9 +104,13 @@ export class RunDetails {
 		const cached = own.reduce((sum, stage) => sum + (stage.cacheRead ?? 0), 0);
 		const cost = own.reduce((sum, stage) => sum + (stage.cost ?? 0), 0);
 		const models = [...new Set(own.flatMap((stage) => stage.models))];
+		const qualified = [
+			...(tokens === 0 ? [] : [`${Math.round((cached / tokens) * 100)}% cached`]),
+			...(own.some((stage) => stage.usageIncomplete) ? ["incomplete"] : []),
+		];
 		return [
 			...(this.durationMs === undefined ? [] : [durationText(this.durationMs)]),
-			`${tokenText(tokens)} tokens${tokens === 0 ? "" : ` (${Math.round((cached / tokens) * 100)}% cached)`}`,
+			`${tokenText(tokens)} tokens${qualified.length === 0 ? "" : ` (${qualified.join(", ")})`}`,
 			costText(cost),
 			...(models.length === 0 ? [] : [models.join(", ")]),
 		].join(" · ");
@@ -113,7 +125,7 @@ export class RunDetails {
 				level: stage.level ?? "",
 				model: stage.models.join(", "),
 				time: reused || stage.durationMs === undefined ? "—" : durationText(stage.durationMs),
-				tokens: reused || stage.tokens === undefined ? "—" : tokenText(stage.tokens),
+				tokens: reused ? "—" : tokensOf(stage),
 				cost: reused ? "$0.00" : stage.cost === undefined ? "—" : costText(stage.cost),
 				outcome: stage.outcome,
 				budget: reused ? "" : budgetOf(stage),

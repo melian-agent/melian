@@ -96,7 +96,7 @@ it("projects each stage into a run row, with the preparation spans and the verif
 		stages: [
 			{ name: "preparation", models: [], durationMs: 3_200, outcome: "ran" },
 			{ name: "check static.tsc", models: [], durationMs: 12_000, outcome: "ran" },
-			{ name: "check guardrails", models: [], durationMs: 1_000, outcome: "reused" },
+			{ name: "check guardrails", models: [], outcome: "reused" },
 			{ name: "check static.mutation", models: [], durationMs: 1_000, outcome: "timed-out" },
 			{
 				name: "triage",
@@ -140,7 +140,7 @@ it("projects each stage into a run row, with the preparation spans and the verif
 				outcome: "ran",
 			},
 			{ name: "adjudication", models: [], durationMs: 50, outcome: "ran" },
-			{ name: "walkthrough", models: [], durationMs: 1_000, outcome: "ran" },
+			{ name: "walkthrough", models: [], durationMs: 1_000, outcome: "ran", usageIncomplete: true },
 		],
 	});
 });
@@ -148,7 +148,7 @@ it("projects each stage into a run row, with the preparation spans and the verif
 it("leaves out a review time and a preparation row it has no spans for", () => {
 	const telemetry = new StageTelemetry("base..head", [stage({ name: "melian.triage", subject: "triage" })]);
 	expect(telemetry.runDetails()).toStrictEqual({
-		stages: [{ name: "triage", models: [], durationMs: 1_000, outcome: "ran" }],
+		stages: [{ name: "triage", models: [], durationMs: 1_000, outcome: "ran", usageIncomplete: true }],
 	});
 });
 
@@ -176,4 +176,52 @@ it("opens the terminal view with the summary line the ledger shows", () => {
 		}),
 	]);
 	expect(telemetry.render().split("\n")[0]).toBe("Run: 12k tokens (25% cached) · $0.03 · openai/gpt-5.6-terra low");
+});
+
+it("charges only a verification claim this review ran, and keeps an outcome other than ran", () => {
+	const claim = (subject: string, fields: Partial<Stage>) =>
+		stage({
+			name: "melian.verification.candidate",
+			subject,
+			usage: model("anthropic/claude-sonnet-5-5", 1_000, 0, 0.1, reasoning("unset")),
+			...fields,
+		});
+	const mixed = new StageTelemetry("base..head", [
+		claim("a", { reused: true, durationMs: 7_000 }),
+		claim("b", { outcome: "ended", durationMs: 2_000 }),
+		claim("c", { durationMs: 3_000 }),
+	]);
+	expect(mixed.runDetails().stages).toStrictEqual([
+		{
+			name: "verification 3 claims",
+			models: ["anthropic/claude-sonnet-5-5"],
+			durationMs: 5_000,
+			tokens: 2_000,
+			cacheRead: 0,
+			cost: 0.2,
+			outcome: "ended",
+		},
+	]);
+	const reused = new StageTelemetry("base..head", [claim("a", { reused: true }), claim("b", { reused: true })]);
+	expect(reused.runDetails().stages[0]).toMatchObject({ outcome: "reused" });
+});
+
+it("marks a model stage whose usage was not all measured, and a check that needs none as complete", () => {
+	const telemetry = new StageTelemetry("base..head", [
+		stage({ name: "melian.lens", subject: "a@1@careful" }),
+		stage({
+			name: "melian.triage",
+			subject: "triage",
+			usage: model("m", 1, 0, 0, reasoning("unset")),
+			usageIncomplete: 1,
+		}),
+		stage({ name: "melian.walkthrough", subject: "walkthrough", usage: model("m", 1, 0, 0, reasoning("unset")) }),
+		stage({ name: "melian.check", subject: "guardrails" }),
+	]);
+	expect(telemetry.runDetails().stages.map(({ usageIncomplete }) => usageIncomplete)).toEqual([
+		true,
+		true,
+		undefined,
+		undefined,
+	]);
 });

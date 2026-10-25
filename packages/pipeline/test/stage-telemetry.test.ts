@@ -344,6 +344,17 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 			run: telemetry.runDetails(),
 		});
 		const body = state.ledgers[0]!.body;
+		// A later publish that reads no run keeps the one the round stored, so the ledger does not lose its table.
+		await publishReview({
+			harness: publication.harness,
+			provider,
+			changeset: options.changeset,
+			pullRequest: await provider.pullRequest(7),
+			base: options.changeset.revision.base,
+			trustedWriters: true,
+		});
+		expect(state.ledgers).toHaveLength(1);
+		expect(state.ledgers[0]!.body).toBe(body);
 		const rows = new Map(
 			body
 				.split("\n")
@@ -366,7 +377,10 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 			expect(cells, named(stage)).toBeDefined();
 			expect(cells[3]).toBe(durationText(stage.durationMs!));
 			const usage = stage.usage?.total;
-			expect(cells[4]).toBe(usage === undefined ? "—" : tokenText(usage.totalTokens));
+			// A model stage without usage, or with requests left unmeasured, says its count is incomplete.
+			const counted = usage === undefined ? [] : [tokenText(usage.totalTokens)];
+			const short = usage === undefined || (stage.usageIncomplete ?? 0) > 0 ? ["incomplete"] : [];
+			expect(cells[4]).toBe([...counted, ...short].join(", "));
 			expect(cells[5]).toBe(usage === undefined ? "—" : costText(usage.cost.total));
 		}
 		const total = json.stages

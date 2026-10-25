@@ -310,7 +310,7 @@ export class Ledger {
 
 	private runDetails(round: LedgerRound): string {
 		const plan = round.details;
-		const run = this.draft.run === undefined ? undefined : RunDetails.from(this.draft.run);
+		const run = round.run === undefined ? undefined : RunDetails.from(round.run);
 		const lines =
 			run !== undefined
 				? [
@@ -358,8 +358,7 @@ export class Ledger {
 				`${round.base.slice(0, 12)}..${round.head.slice(0, 12)}; ${round.status}.`,
 			);
 		const verdict = Verdict.from(round.verdict);
-		const { run: _, ...earlier } = this.draft;
-		const prior = new Ledger({ ...earlier, verdict, publication: { rounds: [round] } }, this.stamp);
+		const prior = new Ledger({ ...this.draft, verdict, publication: { rounds: [round] } }, this.stamp);
 		return details(
 			`Earlier round ${round.round} at ${round.head.slice(0, 12)}`,
 			prior.sections(links, false).join("\n\n"),
