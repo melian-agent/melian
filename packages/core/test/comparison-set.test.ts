@@ -868,10 +868,67 @@ describe("one lens against one reviewer", () => {
 		for (const cohort of [
 			"1@careful on anthropic/claude-opus-5-5 at high: over 1 comparisons",
 			"1@careful on openai/gpt-5.5: over 1 comparisons",
-			"2@deep: over 1 comparisons",
+			"no record of the lens: over 1 comparisons",
 			"unversioned@careful: over 1 comparisons",
 		])
 			expect(text).toContain(cohort);
+	});
+
+	it("credits a lens with one standing claim of two, or with a claim no verifier judged", () => {
+		const credited = (claims: { verification?: typeof refuted | typeof confirmed }[]) => {
+			const finding = Finding.create({
+				...evalInput,
+				startLine: 12,
+				endLine: 12,
+				failureScenario: "run(body) evaluates the request body.",
+				verification: confirmed,
+			});
+			const json = finding.toJSON();
+			const shared = Finding.from({
+				...json,
+				properties: {
+					...json.properties,
+					reportedBy: [json.properties.source, { check: "lens.design", version: "1" }],
+					otherClaims: claims.map((claim, index) => ({
+						id: String(index).repeat(16),
+						ruleId: "x",
+						source: { check: "lens.design", version: `${index + 1}` },
+						...claim,
+					})),
+				},
+			});
+			const codex12 = report({ line: 12, title: "Codex 12" });
+			const comparison = round({ externals: [codex12], findings: [shared] });
+			comparison.adjudicate(codex12.id, { ...by, verdict: "valid" });
+			comparison.adjudicate(shared.id, { ...by, verdict: "valid" });
+			return new ComparisonSet([entry("one", comparison, [shared])]).againstReviewer("lens.design", "codex")
+				.checkFound;
+		};
+		expect(credited([{ verification: refuted }, { verification: confirmed }])).toBe(1);
+		expect(credited([{}])).toBe(1);
+	});
+
+	it("selects a round recorded at the --since instant, and keeps --last and unattributed rounds as the statistics do", () => {
+		const roundAt = (changeset: string, when: string, version = "1") => {
+			const found = design(12);
+			const codex = report({ line: 12, title: "Codex 12" });
+			const comparison = round({ externals: [codex], findings: [found], at: when });
+			comparison.record(when);
+			comparison.adjudicate(codex.id, { ...by, verdict: "valid" });
+			comparison.adjudicate(found.id, { ...by, verdict: "valid" });
+			return entry(changeset, comparison, [found], [{ ...designRan, version }]);
+		};
+		const set = new ComparisonSet([
+			roundAt("a", "2026-10-24T00:00:00Z"),
+			roundAt("b", "2026-10-25T00:00:00Z"),
+			{ ...roundAt("c", "2026-10-26T00:00:00Z", "9"), unattributed: "pr-1" },
+		]);
+		expect(set.renderAgainst("lens.design", "codex", { since: "2026-10-24T00:00:00Z" })).toMatch(
+			/^lens\.design against codex, over 2 comparisons/,
+		);
+		expect(set.renderAgainst("lens.design", "codex", { last: 2 })).toMatch(
+			/^lens\.design against codex, over 1 comparisons/,
+		);
 	});
 
 	it("prints no share for an empty side, and selects changesets as the other statistics do", () => {

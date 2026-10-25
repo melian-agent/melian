@@ -1,4 +1,4 @@
-import type { Verdict } from "./adjudication.ts";
+import type { CheckRecord, Verdict } from "./adjudication.ts";
 import type { Comparison } from "./comparison.ts";
 import { type ComparisonAdjudicationRecord, missReasons } from "./comparison-adjudication.ts";
 import { visibleText } from "./render.ts";
@@ -155,7 +155,7 @@ export class ComparisonSet {
 		let comparisons = 0;
 		for (const { comparison, verdict, unattributed } of this.entries) {
 			if (verdict === undefined || unattributed !== undefined) continue;
-			if (cohort !== undefined && cohortOf({ comparison, verdict }, check) !== cohort) continue;
+			if (cohort !== undefined && cohortOf(verdict.ran, check) !== cohort) continue;
 			// A round the reviewer took no part in says nothing about what it would have found. An import an older Melian
 			// stored names no participants, so a finding of the reviewer's also shows it took part.
 			const imported = Object.values(comparison.importsBySource()).flatMap((each) => each.reviewers ?? []);
@@ -354,9 +354,9 @@ export class ComparisonSet {
 		const selected = rounds.select({ ...(options.last === undefined ? {} : { last: options.last }) });
 		const cohorts = [
 			...new Set(
-				selected.entries
-					.filter((entry) => entry.verdict !== undefined && entry.unattributed === undefined)
-					.map((entry) => cohortOf(entry, check)),
+				selected.entries.flatMap(({ verdict, unattributed }) =>
+					verdict === undefined || unattributed !== undefined ? [] : [cohortOf(verdict.ran, check)],
+				),
 			),
 		];
 		const name = visibleText(check);
@@ -422,16 +422,10 @@ export function markdownText(text: string): string {
 }
 
 // The lens as it ran in a round: the version and level its check record names, with the route when the round left the
-// committed one, so rounds on a lens's earlier route never mix with its later ones. A round with no record of the lens
-// falls back to the version its findings name.
-function cohortOf(entry: Pick<ComparisonEntry, "comparison" | "verdict">, check: string): string {
-	const record = entry.verdict?.ran?.find((each) => each.name === check);
-	if (record === undefined) {
-		const versions = (entry.verdict?.all() ?? [])
-			.filter((finding) => finding.properties.source.check === check)
-			.map((finding) => finding.properties.source.version ?? "unversioned");
-		return [...new Set(versions)].sort().join(", ") || "no record of the lens";
-	}
+// committed one, so rounds on a lens's earlier route never mix with its later ones.
+function cohortOf(ran: readonly CheckRecord[] | undefined, check: string): string {
+	const record = (ran ?? []).find((each) => each.name === check);
+	if (record === undefined) return "no record of the lens";
 	const lineage = record.lineage;
 	const route =
 		lineage === undefined ? "" : ` on ${lineage.model}${lineage.thinking ? ` at ${lineage.thinking.level}` : ""}`;
