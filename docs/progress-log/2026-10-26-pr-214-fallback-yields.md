@@ -1,0 +1,3 @@
+# 2026-10-26: the fallback rule yields to every other design rule
+
+Live passes of [pull request #214](https://github.com/melian-agent/melian/pull/214) at `fa437fb8` showed `contradicts-documented-decision` taking defects a more specific rule owns. On `design-terminology-change-in-design`, the lens filed the expected `criterion-selection-bias` defect under the fallback in 6 of 6 passes. The rule's description, which the lens reads with the rule list, and step 3 of the lens body now say it is the fallback. It applies only when no other rule names the defect; when one does, the lens reports under that rule. The built-in design lens's version moves to `2107c1dcda26`, and the repository extension's pins to `8a2249b0f9e0` and `658bafe9892c`.

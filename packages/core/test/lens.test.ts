@@ -124,7 +124,7 @@ describe("built-in lenses", () => {
 			contracts: "dd8fb36095b4",
 			conventions: "1815e2aee9b9",
 			correctness: "18c49f913df8",
-			design: "768a63490995",
+			design: "2107c1dcda26",
 			"removed-behaviour": "37aeab0038e3",
 			tests: "9eb5dbf32a98",
 			"trust-boundary": "24aa8e2540b4",
@@ -167,7 +167,7 @@ describe("built-in lenses", () => {
 			"melian/injection-attempt",
 		]);
 		expect(design!.rules.find((rule) => rule.id === "contradicts-documented-decision")!.description).toBe(
-			"A change contradicts what the repository's decisions, design or stated principles say in words, and no more specific rule names the defect.",
+			"The fallback. A change contradicts what the repository's decisions, design or stated principles say in words. Use it only when no other rule in this list names the defect; when one does, report under that rule.",
 		);
 		expect(design!.instructions).toContain(
 			"`contradicts-documented-decision` is the fallback: report under it only when no other rule above names the defect.",
@@ -249,7 +249,7 @@ describe("built-in lenses", () => {
 			contracts: "43fa057f7957",
 			conventions: "ab9fda3d360c",
 			correctness: "ac390a655d0e",
-			design: "79434c8c7716",
+			design: "8a2249b0f9e0",
 			durability: "910628aa27ee",
 			"removed-behaviour": "8e3474a4b315",
 			tests: "e6364f9cf7e6",
@@ -261,7 +261,7 @@ describe("built-in lenses", () => {
 			contracts: "61fa4ff978ef",
 			conventions: "7029ae04254f",
 			correctness: "d150d8ad1289",
-			design: "fc7506fe2b61",
+			design: "658bafe9892c",
 			"removed-behaviour": "1131ab311d50",
 			tests: "aea7f643ccac",
 			"trust-boundary": "4c55e242b68f",
