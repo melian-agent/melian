@@ -1,6 +1,6 @@
 # Coverage and delta review
 
-Planned for milestone 2, plan step 24, with the shared ledger in milestone 3. [The decision](../decisions/2026-10-23-coverage-ledger-and-delta-review.md) holds the exact rules, the voids, and the numbered list to attack before any build.
+Being built in milestone 2, plan step 24, with the shared ledger in milestone 3. [The decision](../decisions/2026-10-23-coverage-ledger-and-delta-review.md) holds the exact rules, the voids, and the numbered list to attack before any build.
 
 Problem: a round after a fix pass reviews the whole pull request again. On [pull request #174](https://github.com/melian-agent/melian/pull/174), five fixes of under 50 lines each took five rounds of about 35 minutes: lenses, the verifier and Stryker over every changed line, each time. The rounds also sample, so a full round can miss the lines the fix changed, and the rule that the last round before the queue is full costs a whole round at the end of every pull request.
 
@@ -45,3 +45,7 @@ The ledger is why the state branch exists. A writer's `melian publish` pushes th
 ## What it costs
 
 The residual, in degree: N full rounds sample unchanged context N times, delta rounds once, then as context within the cap. A defect whose cause spans a delta hunk and an earlier-covered line is read together only when that line reaches the prompt as context or a read fetches it; a cross-round golden demonstrates this. A defect in unchanged code that no round reached waits for a maintainer or a `--cold` round. The whole-range static checks run every round. Each head needs its mutants verified again, minutes a head, since no record carries. An oversized lockfile hunk costs each lens its chunked reads or a maintainer's dismissal. `--cold` remains the reviewer's choice for lenses.
+
+## As built so far
+
+Build 1 writes a `melian.coverage` record for every decided round and prints the `Coverage` section in `melian findings` and `melian review`, text and JSON; nothing gates on it yet. [The build 1 decision](../decisions/2026-10-25-coverage-ledger-build-1.md) records four choices the design left open: the review writes the record after the verdict, once per round; a whole-range check, `static.mutation` included, covers only the head it ran on; a record of another coverage algorithm is void; and the policy fingerprint leaves out the mutation run's own identity. Every round still reviews the whole diff, so carried coverage shows only where a lens ended, failed or was skipped. Every file unit stays a gap until build 2 renders its fields.

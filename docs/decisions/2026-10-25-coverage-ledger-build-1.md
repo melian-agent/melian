@@ -1,0 +1,16 @@
+# The coverage ledger's first build records every round and settles four questions the design left to the build
+
+Amends: [the coverage decision](2026-10-23-coverage-ledger-and-delta-review.md), its build 1: where the record is written, what a whole-range check covers, what a record of another algorithm does, and the policy fingerprint
+
+For plan step 24, build 1. [The coverage decision](2026-10-23-coverage-ledger-and-delta-review.md) sets the rules; this file records four choices its text left to the build. Each is stricter than, or equal to, what the decision allows. [Melian's flow]
+
+## Choices
+
+1. **The record is written after the verdict, by the review.** Problem: the adjudication task's input is its attach key, so carrying the record there would make a repeat review mint a new round whenever a transcript differed. Solution: `reviewChangeset` writes the round's `melian.coverage` record in its own commit once the verdict is recorded, and only once per round; a repeat review that attaches keeps the first record. A crash between the two leaves a decided round with no record, which covers nothing, as the decision says of a crashed round. The next review of the head writes it.
+2. **A whole-range check never carries, `static.mutation` included.** Guardrails, Biome, tsc, Enola and decision questions cover the whole diff only at the head they ran on, as the decision says. A repository that audits with `static.mutation` gets the same rule: its record covers its head when it `ran`, and covers nothing when `provisional`. Voids 7 and 8 then hold without a production-file list, since nothing from another head counts. Mutation evidence from verification records waits for plan step 34; until those records exist, no ledger check reads them.
+3. **A record of another coverage algorithm is void.** The decision allows a void or a recompute. The build voids: the next round's own delivery covers the lines again, and a recompute would need every earlier transcript to have been rendered by the same prompt rules.
+4. **The policy fingerprint is the configuration, the policy source and the tool pins.** It leaves out the parts the check run's identity adds for `static.mutation`, the head's writer, `--cold` and the Stryker install, so a round under `--trust-head` and one without it share their lens coverage.
+
+## What the record holds
+
+Per round: the producer `melian.coverage` at algorithm 1, the base, head, tier, policy fingerprint and source, Melian's version, the writer leave, the round it carried from and every void with its reason, and each file unit's kind. Per check: its kind, a lens's version and recorded standards, the round's own status and leave, each path's required level, what it must cover, the segments that cover it, each with its round and level, the lines the prompt left out, and the files an injection attempt sits in. A lens's own segment holds the hunks its prompt rendered, as the lens task now records them, and the head and base lines its `read_file` and `search` results returned, read from its transcript. A file unit's fields come only from the prompt's file block, which today names the path, an old path, the status and `(binary)`. Until build 2 renders the rest, every file unit is a gap.

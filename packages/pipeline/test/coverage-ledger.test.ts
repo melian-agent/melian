@@ -287,6 +287,34 @@ describe("the coverage ledger", () => {
 			expect(record.voids).toEqual([{ reason: "lens.correctness changed version since r1", lens: "correctness" }]);
 		});
 
+		it("voids everything when a lens file changes", async () => {
+			const { record } = await voidsAfter(() =>
+				commit(repo, { ".melian/lenses/extra/LENS.md": "---\nname: extra\n---\nLook.\n" }),
+			);
+			expect(record.voids).toEqual([{ reason: ".melian/lenses/extra/LENS.md changed since r1" }]);
+			expect(record.checks["lens.correctness"]!.covered).toEqual([]);
+		});
+
+		it("carries nothing from a record another coverage algorithm wrote", async () => {
+			const { record } = await voidsAfter(() => {
+				commit(repo, { "src/b.ts": numbered(20, "b").replace("b 9\n", "B 9\n") });
+			});
+			expect(record.voids).toEqual([]);
+			// No earlier algorithm exists yet, so the test rewrites r2's producer as one would have written it.
+			const root = (await harness.root(context)).id;
+			await (await harness.root(context)).commit(async (tx) => {
+				(await tx.doc(CoverageDocument, root)).records.r2!.producer.algorithm = 0;
+			}, context);
+			commit(repo, { "src/b.ts": numbered(20, "b").replace("b 9\n", "B 9\n").replace("b 11\n", "B 11\n") });
+			const ended = lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { tokens: 1 }) : lens));
+			const next = await review({
+				lenses: ended,
+				replies: { correctness: [readCall("src/a.ts"), fauxAssistantMessage("Done.")] },
+			});
+			expect(next.record.voids).toEqual([{ reason: "r2 was recorded by coverage algorithm 0, so nothing carries from it" }]);
+			expect(next.record.checks["lens.correctness"]!.covered).toEqual([]);
+		});
+
 		it("carries nothing past the delta bound, at the bound and one past it", async () => {
 			const bounded = { ...config, review: { delta: { maxLines: 2 } } };
 			commit(repo, { "src/a.ts": numbered(20, "a").replace("a 3\n", "A 3\n").replace("a 4\n", "A 4\n") });
