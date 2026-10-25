@@ -5,6 +5,7 @@ import {
 	Changeset,
 	type CheckRecord,
 	type CoverageSummary,
+	type Decider,
 	defaultConfig,
 	Lens,
 	type MelianConfig,
@@ -22,6 +23,7 @@ import {
 	type Message,
 	openHarness,
 	openSqliteStorage,
+	type ReviewOrigin,
 	reviewChangeset,
 } from "@melian-agent/pipeline";
 import {
@@ -96,6 +98,8 @@ async function review(
 		readonly refused?: string;
 		readonly harness?: Harness;
 		readonly policy?: RepositorySource;
+		readonly origin?: ReviewOrigin;
+		readonly decider?: Decider;
 	} = {},
 ): Promise<{
 	summary: CoverageSummary;
@@ -120,6 +124,8 @@ async function review(
 			checks,
 			...(options.refused === undefined ? {} : { coverageRefused: options.refused }),
 			...(options.policy === undefined ? {} : { policy: options.policy }),
+			...(options.origin === undefined ? {} : { origin: options.origin }),
+			...(options.decider === undefined ? {} : { decider: options.decider }),
 		});
 	} catch {
 		// A lens that ended still decides the round; its coverage record says what it covered.
