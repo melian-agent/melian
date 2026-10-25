@@ -195,6 +195,7 @@ describe("the coverage ledger", () => {
 		const own = record.checks["lens.correctness"]!.covered[0]!;
 		expect(own.base["src/big.ts"]).toEqual([[1, 10]]);
 		expect(own.head["src/big.ts"]).toBeUndefined();
+		expect(record.checks["lens.contracts"]!.covered[0]!.base["src/big.ts"]).toBeUndefined();
 	});
 
 	it("needs quick from a review the reviewer trusts, and careful from a policy read at a revision", async () => {
@@ -206,6 +207,17 @@ describe("the coverage ledger", () => {
 			"src/a.ts": "careful",
 			"src/b.ts": "careful",
 		});
+	});
+
+	it("reads each path's level from the configuration that governs it, a renamed file's old path included", async () => {
+		const policy = commit(repo, {
+			"src/deep/melian.yaml": lines("lenses:", "  correctness:", "    level: { floor: deep }"),
+			"src/deep/x.ts": numbered(20, "x"),
+		});
+		gitIn(repo, "mv", "src/deep/x.ts", "src/x.ts");
+		commit(repo, { "src/x.ts": numbered(20, "x").replace("x 3\n", "X 3\n") });
+		const { record } = await review({ range: `${policy}..feature`, policy: { kind: "revision", commit: policy } });
+		expect(record.checks["lens.correctness"]!.required).toEqual({ "src/x.ts": "careful", "src/deep/x.ts": "deep" });
 	});
 
 	it("names each field a file's block delivered: an old path for a rename, and a binary file's flag", async () => {
