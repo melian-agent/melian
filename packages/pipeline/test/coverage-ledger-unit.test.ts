@@ -15,8 +15,10 @@ import {
 	backgroundContext as context,
 	createMemoryStorage,
 	createReviewRegistry,
+	dismissFinding,
 	type Harness,
 	openHarness,
+	upsertFinding,
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -722,5 +724,53 @@ describe("what voids the carry", () => {
 		await next();
 		const failed = await next({ checks: [{ name: "guardrails", status: "failed", reason: "crashed" }] });
 		expect(failed.checks.guardrails!.covered).toEqual([]);
+	});
+});
+
+describe("a finding the earlier round raised", () => {
+	const finding = (line: number, rule: string, evidence?: Parameters<typeof Finding.create>[0]["evidence"]) =>
+		Finding.create({
+			rule,
+			message: `m ${rule}`,
+			file: "src/a.ts",
+			startLine: line,
+			snippet: `A ${line}`,
+			occurrence: 0,
+			cause: "introduced",
+			severity: "P1",
+			explanation: { what: "w", whyHere: "h", whatToDo: "t" },
+			source: { check: "lens.correctness", version: "1" },
+			...(evidence === undefined ? {} : { evidence }),
+		});
+
+	it("takes its lines and evidence out of the carried coverage until it is sighted again or dismissed", async () => {
+		commit(repo, { "src/a.ts": numbered(20, "a").replace("a 3\n", "A 3\n").replace("a 9\n", "A 9\n") });
+		const first = await head();
+		const lost = finding(3, "null-dereference", [
+			{ file: "src/a.ts", startLine: 9, role: "cause", revision: "base", snippet: "a 9" },
+			{ file: "src/a.ts", startLine: 3, endLine: 4, role: "context", revision: "head", snippet: "A 3" },
+		]);
+		const dismissed = finding(9, "wrong-result");
+		const kept = finding(9, "unhandled-error");
+		const key = Revision.key(first.revision);
+		await (await harness.root(context)).commit(async (tx) => {
+			for (const each of [lost, dismissed, kept]) await upsertFinding(tx, root, each, key);
+			await dismissFinding(tx, root, dismissed.id, { by: "Ada", reason: "fine", at: "2026-10-25T00:00:00.000Z" });
+		}, context);
+		await ledger().write(round(first, await mint(first, "2026-10-25T00:00:01.000Z")), context);
+		commit(repo, { "src/gone.ts": numbered(4, "g").replace("g 2\n", "G 2\n") });
+		const second = await head();
+		await ledger().write(
+			round(second, await mint(second, "2026-10-25T00:00:02.000Z"), { findings: [kept] }),
+			context,
+		);
+		const stored = await record("r2");
+		expect(stored.voids).toEqual([
+			{ reason: "a finding r1 raised has no sighting at this head", files: ["src/a.ts"] },
+		]);
+		const carried = stored.checks["lens.correctness"]!.covered.filter((segment) => segment.round === "r1");
+		expect(carried).toEqual([
+			{ round: "r1", level: "careful", head: { "src/a.ts": [[9, 9]] }, base: { "src/a.ts": [[3, 3]] }, units: {} },
+		]);
 	});
 });
