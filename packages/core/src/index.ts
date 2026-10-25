@@ -113,6 +113,30 @@ export {
 	thinkingLevelSchema,
 } from "./config.ts";
 export {
+	type CoverageGap,
+	type CoverageLeave,
+	CoverageRecord,
+	type CoverageSummary,
+	coverageProducer,
+	type StoredCheckCoverage,
+	type StoredCoverageLines,
+	type StoredCoverageRecord,
+	type StoredCoverageSegment,
+	type StoredCoverageVoid,
+} from "./coverage-ledger.ts";
+export {
+	countRanges,
+	type FileUnit,
+	type LineRanges,
+	type LinesByPath,
+	rangesOf,
+	subtractRanges,
+	type UnitField,
+	type UnitKind,
+	unionRanges,
+	unitFields,
+} from "./coverage-units.ts";
+export {
 	type ChoiceAnswer,
 	type ChoiceQuestion,
 	type DecidedAnswer,

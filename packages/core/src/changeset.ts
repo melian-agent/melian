@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { stat } from "node:fs/promises";
 import type { ChangeOverlap, CodeLocation, EvidenceSite } from "./cause.ts";
+import { type FileUnit, type LinesByPath, type UnitField, type UnitKind, unionRanges } from "./coverage-units.ts";
 import { type ChangedFile, joinDiff, parseNumstatBinary, parsePatchHunks, parseRaw } from "./diff.ts";
 import { ChangesetError, FindingError } from "./errors.ts";
 import {
@@ -189,6 +190,10 @@ export function pullRequestChangesetId(
 	return `pull-${createHash("sha256").update(identity.join("\0")).digest("hex").slice(0, 16)}`;
 }
 
+function submodule(file: ChangedFile): boolean {
+	return file.oldKind === "submodule" || file.newKind === "submodule";
+}
+
 function onlyMoved(file: ChangedFile): boolean {
 	return file.status === "renamed" && file.hunks.length === 0;
 }
@@ -314,6 +319,90 @@ export class Revision {
 			if (ranges.length > 0) lines[file.path] = ranges;
 		}
 		return lines;
+	}
+
+	/**
+	 * The lines the revision adds, by head path, and the lines it removes from the base, by base path, as coverage counts
+	 * them: a renamed file's removed lines sit under its old path. A binary file and a submodule pointer have none, since
+	 * no lens tool reads either; they are file units.
+	 */
+	changedLines(): { readonly head: LinesByPath; readonly base: LinesByPath } {
+		const head: LinesByPath = {};
+		const base: LinesByPath = {};
+		for (const file of this.files) {
+			if (file.binary || submodule(file)) continue;
+			const added = file.hunks
+				.filter((hunk) => hunk.newLines > 0)
+				.map((hunk): [number, number] => [hunk.newStart, hunk.newStart + hunk.newLines - 1]);
+			const removed = file.hunks
+				.filter((hunk) => hunk.oldLines > 0)
+				.map((hunk): [number, number] => [hunk.oldStart, hunk.oldStart + hunk.oldLines - 1]);
+			if (added.length > 0) head[file.path] = unionRanges(added, []);
+			if (removed.length > 0) base[file.oldPath ?? file.path] = unionRanges(removed, []);
+		}
+		return { head, base };
+	}
+
+	/**
+	 * Every changed file whose change lines cannot describe, as a coverage unit of its own: a file with no hunks, such as
+	 * a binary update, a mode-only change, an empty file added or deleted, or a pure rename; every submodule pointer,
+	 * whatever its hunks say; and a file whose mode or kind changes beside its hunks. A unit is keyed by its head path, or its base path when deleted,
+	 * and lists every field a lens must receive: those its `ChangedFile` holds, a symlink's target and an empty file's
+	 * emptiness.
+	 */
+	fileUnits(): FileUnit[] {
+		return this.files.flatMap((file): FileUnit[] => {
+			const modeChanged = file.oldMode !== undefined && file.newMode !== undefined && file.oldMode !== file.newMode;
+			if (file.hunks.length > 0 && !modeChanged && !submodule(file)) return [];
+			const kind: UnitKind = file.binary
+				? "binary"
+				: submodule(file)
+					? "submodule"
+					: file.oldKind === "symlink" || file.newKind === "symlink"
+						? "symlink"
+						: file.status === "added" || file.status === "deleted"
+							? "empty"
+							: file.status === "renamed" && !modeChanged
+								? "rename"
+								: "mode";
+			const present: Record<UnitField, boolean> = {
+				status: true,
+				path: true,
+				oldPath: file.oldPath !== undefined,
+				oldMode: file.oldMode !== undefined,
+				newMode: file.newMode !== undefined,
+				oldKind: file.oldKind !== undefined,
+				newKind: file.newKind !== undefined,
+				binary: true,
+				target: file.newKind === "symlink",
+				empty: kind === "empty",
+			};
+			const fields = (Object.keys(present) as UnitField[]).filter((field) => present[field]);
+			return [{ path: file.path, ...(file.oldPath === undefined ? {} : { oldPath: file.oldPath }), kind, fields }];
+		});
+	}
+
+	/**
+	 * Where line `line` of `path` at this revision's base sits at its head, read as a map between two heads of one
+	 * changeset: moved by the hunks before it and renamed with its file. `undefined` when a hunk's old range holds the
+	 * line or the file is deleted or binary, since nothing then says the line is the same line.
+	 */
+	mapLine(path: string, line: number): { readonly path: string; readonly line: number } | undefined {
+		const file = this.files.find((each) => (each.oldPath ?? each.path) === path && each.status !== "added");
+		if (file === undefined) return { path, line };
+		if (file.status === "deleted" || file.binary) return undefined;
+		let shift = 0;
+		for (const hunk of file.hunks) {
+			const last = hunk.oldStart + hunk.oldLines - 1;
+			if (hunk.oldLines > 0 && line >= hunk.oldStart && line <= last) return undefined;
+			if (hunk.oldLines > 0 ? last < line : hunk.oldStart < line) shift += hunk.newLines - hunk.oldLines;
+		}
+		return { path: file.path, line: line + shift };
+	}
+
+	/** Whether the revision lists `path` at all, under its old path or its new one. */
+	lists(path: string): boolean {
+		return this.files.some((file) => file.path === path || file.oldPath === path);
 	}
 
 	/**
