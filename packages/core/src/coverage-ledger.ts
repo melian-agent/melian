@@ -159,7 +159,7 @@ export class CoverageRecord {
 					const at = side === "base" ? { revision: "base" as const } : {};
 					const own = this.#ownFault(coverage);
 					if (own !== undefined) {
-						gaps.push({ check, file, ...at, lines: left, reason: own, own: true });
+						gaps.push({ check, file, ...at, lines: left, reason: own, ...this.#own() });
 						continue;
 					}
 					const fault = this.#voidReason(check, file);
@@ -202,7 +202,7 @@ export class CoverageRecord {
 					fields: missing,
 					reason:
 						fault ?? (delivered.size === 0 ? "never delivered" : `fields not delivered: ${missing.join(", ")}`),
-					...(own === undefined ? {} : { own: true as const }),
+					...(own === undefined ? {} : this.#own()),
 				});
 			}
 		}
@@ -301,6 +301,11 @@ export class CoverageRecord {
 			default:
 				return `did not run in ${round}`;
 		}
+	}
+
+	// A refused record's gaps are the record's own, not a check's that did not run.
+	#own(): { own?: true } {
+		return this.stored.refused === undefined ? { own: true } : {};
 	}
 
 	#voidReason(check: string, file: string): string | undefined {

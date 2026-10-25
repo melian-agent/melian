@@ -90,6 +90,7 @@ async function review(
 		readonly lenses?: Lens[];
 		readonly config?: MelianConfig;
 		readonly cold?: boolean;
+		readonly refused?: string;
 	} = {},
 ): Promise<{
 	verdict: Verdict;
@@ -114,6 +115,7 @@ async function review(
 			models: fake.review,
 			checks,
 			...(options.cold === true ? { cold: true } : {}),
+			...(options.refused === undefined ? {} : { coverageRefused: options.refused }),
 		}));
 	} catch (error) {
 		verdict = (error as { verdict: Verdict }).verdict;
@@ -206,6 +208,13 @@ describe("a round over the ledger", () => {
 		expect(coverageCheckOf(verdict)?.reason).toContain(
 			"coverage is incomplete: lens.correctness did not cover the diff, as its record says",
 		);
+	});
+
+	it("leaves a fork's head not reviewed, naming why its coverage is not recorded", async () => {
+		commit(repo, { "src/a.ts": numbered(20, "a").replace("a 3\n", "A 3\n") });
+		const { verdict } = await review({ refused: "coverage is not recorded for a fork's head" });
+		expect(verdict.status).toBe("not-reviewed");
+		expect(coverageCheckOf(verdict)?.reason).toContain("coverage is not recorded for a fork's head");
 	});
 
 	it("reviews the whole diff from nothing under --cold", async () => {

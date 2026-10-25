@@ -331,7 +331,16 @@ describe('melian compare "#N"', { timeout: 60_000 }, () => {
 						owner: { login: "melian-agent" },
 					},
 				},
-				head: { ref: "feature", sha: head },
+				// The head is a branch of the base repository, so its round records coverage.
+				head: {
+					ref: "feature",
+					sha: head,
+					repo: {
+						clone_url: "https://github.com/melian-agent/example.git",
+						name: "example",
+						owner: { login: "melian-agent" },
+					},
+				},
 			},
 		};
 		const path = join(files, "github.json");
