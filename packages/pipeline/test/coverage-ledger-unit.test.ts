@@ -281,7 +281,18 @@ describe("what a lens's own run delivered", () => {
 			});
 		await ledgerWrite(
 			round(changeset, adjudication, {
-				findings: [finding("melian/injection-attempt", "src/a.ts"), finding("null-dereference", "src/gone.ts")],
+				findings: [
+					finding("melian/injection-attempt", "src/a.ts"),
+					finding("null-dereference", "src/gone.ts"),
+					Finding.from({
+						...finding("melian/injection-attempt", "src/gone.ts").toJSON(),
+						properties: {
+							...finding("melian/injection-attempt", "src/gone.ts").properties,
+							status: "dismissed",
+							dismissal: { by: "Ada", reason: "a test fixture", at: "2026-10-25T00:00:00.000Z" },
+						},
+					}),
+				],
 			}),
 		);
 		expect((await record("r1")).checks["lens.correctness"]!.injected).toEqual(["src/a.ts"]);

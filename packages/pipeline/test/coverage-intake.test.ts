@@ -101,6 +101,10 @@ describe("CoverageIntake", () => {
 		expect(intake.level("a")).toBe("quick");
 		expect(intake.level("b")).toBeUndefined();
 		expect(new CoverageIntake(stored({}), undefined).level("a")).toBeUndefined();
+		const carriedOnly = stored({
+			"lens.a": lens({ covered: [{ round: "r0", level: "deep", head: {}, base: {}, units: {} }] }),
+		});
+		expect(new CoverageIntake(stored({}), carriedOnly).level("a")).toBeUndefined();
 	});
 });
 
