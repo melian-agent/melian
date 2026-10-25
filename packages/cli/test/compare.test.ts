@@ -16,6 +16,7 @@ import { fileURLToPath } from "node:url";
 import type { StoredVerdict } from "@melian-agent/core";
 import { buildGoldenRepository, loadGoldens } from "@melian-agent/evals";
 import { ReviewThreadImporter } from "@melian-agent/github";
+import type { PrepareRecord, Stage } from "@melian-agent/pipeline";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { compare } from "../src/compare.ts";
 import { storagePath } from "../src/repository.ts";
@@ -342,6 +343,18 @@ describe('melian compare "#N"', { timeout: 60_000 }, () => {
 		const { repo, env } = pullRequest();
 		const review = melian(repo, ["review", "#7"], env);
 		expect(review, review.stdout + review.stderr).toMatchObject({ status: 1 });
+		const { prepare, stages } = JSON.parse(melian(repo, ["telemetry", "#7", "--json"], env).stdout) as {
+			prepare: PrepareRecord;
+			stages: Stage[];
+		};
+		const walkthrough = stages.find(({ name }) => name === "melian.walkthrough")!;
+		expect(walkthrough.endedAt).toBeDefined();
+		// The walkthrough is a task; the review's own steps stop while it runs.
+		for (const span of prepare.spans)
+			expect(
+				span.endedAt <= walkthrough.startedAt! || span.startedAt >= walkthrough.endedAt!,
+				`${span.name} overlaps the walkthrough`,
+			).toBe(true);
 
 		// A pull request imports CodeRabbit's threads when no source is named.
 		const result = melian(repo, ["compare", "#7"], env);

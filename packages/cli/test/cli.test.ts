@@ -23,7 +23,7 @@ import {
 	Verdict,
 } from "@melian-agent/core";
 import { buildGoldenRepository, type Golden, loadGoldens } from "@melian-agent/evals";
-import { ReviewHarness, TelemetryReader } from "@melian-agent/pipeline";
+import { type PrepareRecord, ReviewHarness, type Stage, TelemetryReader, type Untimed } from "@melian-agent/pipeline";
 import * as pipelineTesting from "@melian-agent/pipeline/testing";
 import { afterAll, afterEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { fakeGitHub } from "../../github/test/fixtures/fake-github.ts";
@@ -285,6 +285,67 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		);
 		expect(again.telemetry.stages.every(({ reused }) => reused)).toBe(true);
 		expect(attached.stderr).toContain("(reused)");
+	});
+
+	it("times a review from its process start to its verdict, with no untimed gap over a second", () => {
+		const { repo, env } = goldenCheckout(goldens["clean-rename"]!);
+		const spawned = Date.now();
+		const result = melian(repo, ["review", "main", "--json"], env);
+		expect(result.status, result.stderr).toBe(0);
+		const { telemetry } = JSON.parse(result.stdout) as {
+			telemetry: { prepare: PrepareRecord; untimed: Untimed[]; stages: Stage[] };
+		};
+		const { prepare } = telemetry;
+		expect(telemetry.untimed).toEqual([]);
+		expect(prepare.spans.filter((span) => span.parent === undefined).map(({ name }) => name)).toEqual([
+			"startup",
+			"resolve",
+			"lenses.load",
+			"standards.load",
+			"config",
+			"secrets",
+			"models",
+			"triage.create",
+			"storage.open",
+			"resume",
+			"callers",
+			"standards.trust",
+			"abort.replaced",
+			"bands",
+			"routes",
+			"lenses.prepare",
+			"unlock",
+			"callers.coverage",
+			"verification.prepare",
+			"adjudication.prepare",
+			"verdict.read",
+			"output",
+		]);
+		expect(
+			prepare.spans.filter((span) => span.parent !== undefined).map(({ name, parent }) => [name, parent]),
+		).toEqual([["unlock", "resume"]]);
+		const [startup] = prepare.spans;
+		expect(startup!.startedAt).toBe(prepare.startedAt);
+		expect(prepare.startedAt).toBeGreaterThanOrEqual(spawned);
+		// Node and the module graph load before the command starts, which a start taken in the command would miss.
+		expect(startup!.durationMs).toBeGreaterThan(10);
+		// A range has no walkthrough; its stages are the checks, the lenses and adjudication.
+		expect(new Set(telemetry.stages.map(({ name }) => name))).toEqual(
+			new Set(["melian.check", "melian.lens", "melian.adjudication"]),
+		);
+		for (const stage of telemetry.stages) {
+			expect(stage.startedAt!).toBeGreaterThanOrEqual(prepare.startedAt);
+			for (const span of prepare.spans)
+				expect(
+					span.endedAt <= stage.startedAt! || span.startedAt >= stage.endedAt!,
+					`${span.name} overlaps ${stage.name} ${stage.subject}`,
+				).toBe(true);
+		}
+		expect(prepare.endedAt).toBe(Math.max(...prepare.spans.map(({ endedAt }) => endedAt)));
+		const shown = melian(repo, ["telemetry", "main"], env);
+		expect(shown.status).toBe(0);
+		expect(shown.stdout).toMatch(/^span startup start=[0-9]+ end=[0-9]+ duration=[0-9]+ms$/m);
+		expect(shown.stdout).toMatch(/^span output start=[0-9]+ end=[0-9]+ duration=[0-9]+ms$/m);
 	});
 
 	it("triages through the decider the host hands it, and records the decision the lenses ran under", async () => {

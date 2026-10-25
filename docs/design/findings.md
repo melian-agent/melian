@@ -18,7 +18,7 @@ A finding is a SARIF `result` plus Melian extension properties. SARIF because se
 - `resolution`: what this finding requires, after per-path configuration is applied. Only adjudication writes it, and it caps at advisory a `pre-existing` finding and a lens finding no verifier judged; a producer stores none, and a finding without one is unresolved. Problem: `report_finding` copied the severity's configured resolution, so a pre-existing P1 was stored as `block`. Solution: no tool decides what blocks.
 - `status`: `new`, `open`, `resolved`, `dismissed`, `stale`.
 - `dismissal`: who dismissed the finding, why, and when, while its status is `dismissed`; `pastDismissals` lists the dismissals that no longer stand, each reopened by a revision or replaced by a later dismissal. Both come from Melian's lifecycle record, never from a producer.
-- `explanation`: what, why here, what to do. Written for the author.
+- `explanation`: what, why here, what to do. Written for the author, in the register [the findings guideline](../guidelines/findings.md) sets.
 - `source`: which check produced it, and the lens or question-set version.
 
 Problem: a finding that names a line and a worry gives a verifier nothing to attack. Example: a lens reports that a parse call "may throw" and names no input that reaches it; a verifier can neither confirm nor refute that, so it survives as plausible and costs the author a reply. Solution: `report_finding` requires a failure scenario and at least one evidence location, and refuses a call without them, saying what each must be.

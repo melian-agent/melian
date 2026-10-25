@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -40,6 +41,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AdjudicationTask, type AdjudicationTaskInput } from "../src/adjudication.ts";
 import { ComparisonDocument } from "../src/compare.ts";
+import { configsFor } from "../src/configurations.ts";
 import { FindingsDocument } from "../src/findings.ts";
 import { defineTask } from "../src/harness.ts";
 import { ReviewIndex } from "../src/review-index.ts";
@@ -1268,63 +1270,68 @@ describe("recording a dismissal", () => {
 		expect(verdict.dismissed).toHaveLength(1);
 	});
 
-	describe("a review whose adjudication task a build before the fingerprint recipe change created", () => {
-		// The fingerprint main at 4471af34 stored in the task input for this repository, with no lens or preference file
-		// in the working tree. It hashes the policy, lens variants keyed by version included, so it changes only when a
-		// built-in lens or the stored policy shape does; record it again from that build if one does.
-		const recordedByPreviousBuild = "9a82a69d3275b714";
-
-		async function reviewedByPreviousBuild() {
-			const harness = await reviewHarness(createMemoryStorage());
-			scriptFinding();
-			const changeset = await Changeset.resolve(repo, "main...feature");
-			const { findings } = await reviewChangeset({
-				harness,
-				changeset,
-				config,
-				lenses,
-				standards: [],
-				models: fake.review,
-				checks: [...deterministicRan],
-				policy: { kind: "worktree" },
-			});
-			const root = await harness.root(context);
-			await root.commit(async (tx) => {
-				const known = (await tx.doc(ReviewIndex, root.id)).reviews[revisionKey(changeset.revision)]!.adjudication!;
-				const input = JSON.parse(known.input) as AdjudicationTaskInput;
-				known.input = JSON.stringify({ ...input, resolutionPolicy: recordedByPreviousBuild });
-			}, context);
-			return { harness, id: findings[0]!.properties.id };
-		}
-
-		it("decides a dismissal again when the policy is unchanged", async () => {
-			const { harness, id } = await reviewedByPreviousBuild();
-
-			const { verdict } = await dismiss(harness, id);
-
-			expect(verdict.dismissed.map((each) => each.id)).toEqual([id]);
+	it("refuses a dismissal on a review stored with a fingerprint of the retired recipe, under an unchanged policy", async () => {
+		const harness = await reviewHarness(createMemoryStorage());
+		scriptFinding();
+		const changeset = await Changeset.resolve(repo, "main...feature");
+		const { findings } = await reviewChangeset({
+			harness,
+			changeset,
+			config,
+			lenses,
+			standards: [],
+			models: fake.review,
+			checks: [...deterministicRan],
+			policy: { kind: "worktree" },
 		});
+		// The retired first recipe, kept here only to build the fixture: each finding path's whole policy, lens variants
+		// keyed by version included. Computed at this head, since it changes with every built-in lens edit.
+		const policies = await configsFor(repo, { kind: "worktree" }, findings);
+		const paths = [...new Set(findings.map((finding) => finding.properties.path))].sort();
+		const retired = createHash("sha256")
+			.update(JSON.stringify(paths.map((path) => [path, policies(path, "any-rule")])))
+			.digest("hex")
+			.slice(0, 16);
+		const root = await harness.root(context);
+		await root.commit(async (tx) => {
+			const known = (await tx.doc(ReviewIndex, root.id)).reviews[revisionKey(changeset.revision)]!.adjudication!;
+			const input = JSON.parse(known.input) as AdjudicationTaskInput;
+			known.input = JSON.stringify({ ...input, resolutionPolicy: retired });
+		}, context);
 
-		it("decides a dismissal when the input names a fingerprint but no policy source to compare it with", async () => {
-			const { harness, id } = await reviewedByPreviousBuild();
-			const root = await harness.root(context);
-			await root.commit(async (tx) => {
-				const [entry] = Object.values((await tx.doc(ReviewIndex, root.id)).reviews);
-				const { policy: _, ...input } = JSON.parse(entry!.adjudication!.input) as AdjudicationTaskInput;
-				entry!.adjudication!.input = JSON.stringify(input);
-			}, context);
-
-			const { verdict } = await dismiss(harness, id);
-
-			expect(verdict.dismissed.map((each) => each.id)).toEqual([id]);
+		await expect(dismiss(harness, findings[0]!.properties.id)).rejects.toMatchObject({
+			code: "adjudicationFailed",
+			message: expect.stringContaining("the resolution policy changed since the review read it"),
 		});
+	});
 
-		it("still refuses when the policy changed", async () => {
-			const { harness, id } = await reviewedByPreviousBuild();
-			writeFiles(repo, { "src/melian.yaml": "resolution:\n  P1: advisory\n" });
-
-			await expect(dismiss(harness, id)).rejects.toMatchObject({ code: "adjudicationFailed" });
+	it("decides a dismissal when the input names a fingerprint but no policy source to compare it with", async () => {
+		const harness = await reviewHarness(createMemoryStorage());
+		scriptFinding();
+		const changeset = await Changeset.resolve(repo, "main...feature");
+		const { findings } = await reviewChangeset({
+			harness,
+			changeset,
+			config,
+			lenses,
+			standards: [],
+			models: fake.review,
+			checks: [...deterministicRan],
+			policy: { kind: "worktree" },
 		});
+		const root = await harness.root(context);
+		await root.commit(async (tx) => {
+			const known = (await tx.doc(ReviewIndex, root.id)).reviews[revisionKey(changeset.revision)]!.adjudication!;
+			const { policy: _, ...input } = JSON.parse(known.input) as AdjudicationTaskInput;
+			expect(input.resolutionPolicy).toMatch(/^2:[0-9a-f]{16}$/);
+			known.input = JSON.stringify(input);
+		}, context);
+		writeFiles(repo, { "src/melian.yaml": "resolution:\n  P1: advisory\n" });
+
+		const id = findings[0]!.properties.id;
+		const { verdict } = await dismiss(harness, id);
+
+		expect(verdict.dismissed.map((each) => each.id)).toEqual([id]);
 	});
 
 	it("ends the adjudication, naming the lens file, when a lens the policy declares can no longer be read", async () => {
