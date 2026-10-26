@@ -1,4 +1,4 @@
-import { execFile, spawnSync } from "node:child_process";
+import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdtemp, readFile, realpath, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
@@ -7,6 +7,7 @@ import { dirname, isAbsolute, join, relative, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
 	Changeset,
+	gitOutput,
 	type MutationAdapterIdentity,
 	MutationInventory,
 	type MutationInventoryV2,
@@ -69,13 +70,16 @@ export class TypeScriptMutationAdapter implements MutationAdapter {
 	}
 
 	static async open(repoRoot: string): Promise<TypeScriptMutationAdapter> {
-		const tracked = spawnSync("git", ["-C", repoRoot, "ls-files", "--", "node_modules"], { encoding: "utf8" });
-		if (tracked.status !== 0)
+		let tracked: string;
+		try {
+			tracked = await gitOutput(repoRoot, ["ls-files", "--", "node_modules"]);
+		} catch {
 			throw new MutationEnumerationError(
 				"instrumenter",
 				"cannot establish whether git tracks the installed instrumenter",
 			);
-		const trackedInstall = tracked.stdout !== "";
+		}
+		const trackedInstall = tracked !== "";
 		const root = await realpath(repoRoot);
 		const install = join(root, "node_modules");
 		for (const [from, source] of [

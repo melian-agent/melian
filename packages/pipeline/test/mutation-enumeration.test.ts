@@ -271,6 +271,42 @@ describe("mutation enumeration", { timeout: 60_000 }, () => {
 		await rm(join(repo, "node_modules/@stryker-mutator"), { recursive: true });
 		expect(await readFile(join(repo, "node_modules/.keep"), "utf8")).toBe("");
 	});
+	it.each(["repository", "index"])(
+		"ignores a foreign Git %s when rejecting tracked install code",
+		async (redirect) => {
+			const marker = join(repo, "executed");
+			const instrumenter = nodeModule.createRequire(import.meta.url).resolve("@stryker-mutator/instrumenter");
+			writeFiles(repo, {
+				"node_modules/@stryker-mutator/instrumenter/package.json": JSON.stringify({
+					name: "@stryker-mutator/instrumenter",
+					version: "10.0.0",
+					type: "module",
+					main: "index.js",
+				}),
+				"node_modules/@stryker-mutator/instrumenter/index.js": `import {writeFileSync} from 'node:fs'; writeFileSync(${JSON.stringify(marker)}, 'tracked instrumenter executed'); export {Instrumenter} from ${JSON.stringify(pathToFileURL(instrumenter).href)};`,
+			});
+			gitIn(repo, "add", "-f", "node_modules");
+			gitIn(repo, "commit", "-qm", "tracked instrumenter");
+			const foreign = createRepository();
+			try {
+				commit(foreign, { "README.md": "clean repository\n" });
+				if (redirect === "repository") {
+					vi.stubEnv("GIT_DIR", join(foreign, ".git"));
+					vi.stubEnv("GIT_WORK_TREE", foreign);
+				} else {
+					vi.stubEnv("GIT_INDEX_FILE", join(foreign, ".git/index"));
+				}
+				const adapter = await TypeScriptMutationAdapter.open(repo);
+				expect(
+					await adapter.enumerate([{ name: "src/a.ts", content: "export const a=true;", ranges: [[1, 1]] }], []),
+				).not.toEqual([]);
+				expect(await readdir(repo)).not.toContain("executed");
+				expect(adapter.source).toBe("melian");
+			} finally {
+				removeRepository(foreign);
+			}
+		},
+	);
 	it("refuses parent and workspace-linked instrumenters without executing tracked code", async () => {
 		const packageJson = JSON.stringify({
 			name: "@stryker-mutator/instrumenter",
@@ -397,16 +433,18 @@ import {writeFileSync} from 'node:fs'; writeFileSync(${JSON.stringify(marker)}, 
 			inventory.mutants.find((row) => row.file === "src/value.ts" && row.mutatorName === "StringLiteral")?.status,
 		).toBe("generated");
 	});
-	it("refuses a failed git inspection", async () => {
-		vi.mocked(childProcess.spawnSync).mockReturnValue({
-			pid: 0,
-			output: [],
-			stdout: "",
-			stderr: "git failed",
-			status: 1,
-			signal: null,
-		});
-		await expect(TypeScriptMutationAdapter.open(repo)).rejects.toMatchObject({ code: "instrumenter" });
+	it.each(["command", "spawn"])("refuses a failed git inspection: %s", async (failure) => {
+		const directory = await mkdtemp(join(tmpdir(), "melian-git-failure-"));
+		try {
+			if (failure === "spawn") vi.stubEnv("PATH", directory);
+			await expect(TypeScriptMutationAdapter.open(failure === "command" ? directory : repo)).rejects.toMatchObject({
+				name: "MutationEnumerationError",
+				code: "instrumenter",
+				message: "cannot establish whether git tracks the installed instrumenter",
+			});
+		} finally {
+			await rm(directory, { recursive: true, force: true });
+		}
 	});
 	it("reports corrupt untracked installation metadata and skips corrupt tracked installs", async () => {
 		writeFiles(repo, {

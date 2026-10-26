@@ -402,6 +402,7 @@ export {
 export { EnolaPolicy, type EnolaPolicyState, type EnolaSnapshot, normaliseEnolaSarif } from "./enola.ts";
 export { type EnolaFact, EnolaFacts, EnolaImpact, type EnolaImpactState, EnolaQueryError } from "./enola-graph.ts";
 export { enolaPolicyPattern } from "./enola-paths.ts";
+export { gitOutput } from "./git.ts";
 export {
 	type GraphEntryState,
 	GraphError,
