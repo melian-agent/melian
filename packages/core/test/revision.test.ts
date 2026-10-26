@@ -347,6 +347,30 @@ describe("searchRevisionFiles", () => {
 		expect(fewest!.matches).toHaveLength(1);
 	});
 
+	it.each([
+		{ fileCount: 1, maxMatches: 1 },
+		{ fileCount: 2, maxMatches: 1 },
+		{ fileCount: 10, maxMatches: 10 },
+		{ fileCount: 11, maxMatches: 10 },
+		{ fileCount: 65, maxMatches: 10 },
+		{ fileCount: 2, maxMatches: 0 },
+	])("caps $fileCount matching files at $maxMatches total matches", async ({ fileCount, maxMatches }) => {
+		const paths = Array.from({ length: fileCount }, (_, index) => `docs/match${index}.md`);
+		writeFiles(repo, Object.fromEntries(paths.map((path) => [path, lines(`needle in ${path}`)])));
+		gitIn(repo, "add", ".");
+		gitIn(repo, "commit", "--quiet", "-m", "matching files");
+		const commit = gitIn(repo, "rev-parse", "HEAD");
+		expect(
+			await searchRevisionFiles(repo, commit, { attributesFrom: commit, pattern: "needle" }, paths, maxMatches),
+		).toEqual(
+			paths.map((path, index) => ({
+				path,
+				matches: index < maxMatches ? [{ path, line: 1, text: `needle in ${path}` }] : [],
+				truncated: index >= maxMatches,
+			})),
+		);
+	});
+
 	it("gives a later file its match when an earlier file's lines pass the byte bound", async () => {
 		writeFiles(repo, {
 			"docs/a.md": lines(...Array.from({ length: 300 }, () => `needle ${"x".repeat(50_000)}`)),

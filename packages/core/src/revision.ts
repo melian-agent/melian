@@ -207,8 +207,9 @@ export type RevisionFileMatches = {
 
 /**
  * Searches an exact set of files at `revision`, as {@link searchRevision} searches one path, with an
- * equal share of `maxMatches` for each file, so a term common in one file cannot crowd out the others. Returns the
- * files in the order asked, each named once, a path that is no file at the revision marked `missing`.
+ * equal share of `maxMatches` for each file, so a term common in one file cannot crowd out the others.
+ * Returns at most `maxMatches` matching lines in total, favouring earlier files when the bound is smaller than the file count.
+ * Files follow the requested order, each named once, a path that is no file at the revision marked `missing`.
  *
  * Throws {@link RevisionError} `tooManyFiles` past {@link revisionLimits} `searchFiles`, and as {@link searchRevision}
  * does otherwise.
@@ -246,13 +247,16 @@ export async function searchRevisionFiles(
 				grepped.set(path, { ...found, ...(skipped ? { binary: true as const } : {}) });
 			}),
 		);
+	let remaining = maxMatches;
 	return targets.map((path) => {
 		const found = grepped.get(path);
 		if (found === undefined) return { path, matches: [], truncated: false, missing: true as const };
+		const matches = found.matches.slice(0, Math.min(share, remaining));
+		remaining -= matches.length;
 		return {
 			path,
-			matches: found.matches.slice(0, share),
-			truncated: found.cut || found.matches.length > share,
+			matches,
+			truncated: found.cut || found.matches.length > matches.length,
 			...(found.binary ? { binary: found.binary } : {}),
 		};
 	});
