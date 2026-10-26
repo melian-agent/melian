@@ -99,14 +99,22 @@ export class EnolaFacts {
 	}
 	/**
 	 * The declarations a query names: the one whose Enola name is `name` exactly, or else every declaration whose name
-	 * ends with `.name`, sorted by name. Enola names a declaration by its directory and its dotted path, such as
-	 * `src.Store.open`.
+	 * ends with `.name`, sorted by name, file, line and ID.
+	 * Enola names declarations by directory and dotted path, such as `src.Store.open`.
 	 */
 	definitions(name: string): EnolaFact[] {
 		const declarations = this.#facts.filter((fact) => fact.kind === "symbol");
 		const exact = declarations.filter((fact) => fact.name === name);
 		const found = exact.length > 0 ? exact : declarations.filter((fact) => fact.name.endsWith(`.${name}`));
-		return found.map((fact) => structuredClone(fact)).sort((a, b) => compare(a.name, b.name));
+		return found
+			.map((fact) => structuredClone(fact))
+			.sort(
+				(a, b) =>
+					compare(a.name, b.name) ||
+					compare(a.file ?? "", b.file ?? "") ||
+					(a.line ?? 0) - (b.line ?? 0) ||
+					compare(a.id, b.id),
+			);
 	}
 	/**
 	 * Every fact with an edge Enola resolved to `target`, with the edge's kind, sorted by file and line. `declares` edges

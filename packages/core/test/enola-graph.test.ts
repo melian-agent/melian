@@ -374,3 +374,18 @@ it("puts a reference with no file before every file, even one named with a capit
 	const [t] = facts.definitions("src.t");
 	expect(facts.references(t!).references.map(({ fact }) => fact.id)).toEqual(["n", "m"]);
 });
+
+it.each([
+	["name", { id: "z", name: "a.same", file: "z.ts", line: 10 }, { id: "a", name: "z.same", file: "a.ts", line: 1 }],
+	["file", { id: "z", file: "f0.ts", line: 10 }, { id: "a", file: "f1.ts", line: 1 }],
+	["line", { id: "z", file: "f0.ts", line: 2 }, { id: "a", file: "f0.ts", line: 10 }],
+	["ID", { id: "a", file: "f0.ts", line: 1 }, { id: "z", file: "f0.ts", line: 1 }],
+	["absent file", { id: "z", line: 10 }, { id: "a", file: "A.ts", line: 1 }],
+	["absent line", { id: "z", file: "f0.ts" }, { id: "a", file: "f0.ts", line: 1 }],
+] as const)("orders declarations by %s in both fact orders", (_key, first, second) => {
+	const expected = [first, second].map((fact) => ({ name: "src.same", kind: "symbol", ...fact }));
+	for (const rows of [expected, [...expected].reverse()]) {
+		const facts = EnolaFacts.parse(rows.map((fact) => JSON.stringify(fact)).join("\n"));
+		expect(facts.definitions("same")).toEqual(expected);
+	}
+});
