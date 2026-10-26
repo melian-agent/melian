@@ -142,6 +142,8 @@ The section uses the review’s listing boundary and escapes controls in paths a
 
 Pi Durable cuts a tool's result at 50 KB or 2000 lines unless the tool sets `outputLimits`, keeping the head. That cut dropped a boundary's closing tag and Melian's notes. The shared `text` constructor bounds every lens tool body, errors included, at 48 KiB and 2000 lines before adding boundary tags and notes. Each tool sets `outputLimits` above those bounds, so Pi keeps the closing tag and continuation notes. A cut result says how many lines it omitted and marks a shortened line. Error values are shortened and quoted. A new tool uses the same constructor. They find the head through the calling conversation's `LensDocument`. All three are replay-safe because they only read.
 
+The seven read tools share a `prepareArguments` guard. It refuses calls above 8 KiB of serialised arguments and preflights the schema with Pi’s validator. Any schema failure, including excess array items, gets one fixed reply that quotes no input. Pi’s later validation sees only arguments its own validator accepted, so nested error echoes cannot bypass `outputLimits`. [Issue #248](https://github.com/melian-agent/melian/issues/248) tracks bounding validation errors in Pi.
+
 `report_finding` takes a file, a line, an optional end line, a rule, a severity, an explanation (what, why, fix), a failure scenario, and evidence locations. The model supplies nothing else:
 
 - The snippet is the head revision's text at those lines, read by Melian, so the finding's ID does not depend on how the model quoted the code. Its occurrence among identical snippets in the file comes from core's `snippetOccurrence`.

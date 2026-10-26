@@ -292,10 +292,12 @@ describe("graph tools", { timeout: 60_000 }, () => {
 		]);
 		const nonce = nonceOf(requests[correctness]![0]!);
 		const [file, diagnostic] = toolResults(requests[correctness]![1]!);
-		expect(diagnostic).toContain(`<untrusted-${nonce} label="findings">`);
+		expect(diagnostic).toBe(
+			"<harness>\n[error] Tool arguments are too large or do not match the schema.\n</harness>",
+		);
 		expect(file).not.toContain("\uFFFD");
 		expect(file).toContain(`1\t${"\u{10000}".repeat(12271)} [line cut]`);
-		for (const result of [file!, diagnostic!]) {
+		for (const result of [file!]) {
 			expect(Buffer.byteLength(result)).toBeLessThanOrEqual(lensListedTools.read_file.outputLimits!.maxBytes!);
 			expect(result.split("\n").length).toBeLessThanOrEqual(lensListedTools.read_file.outputLimits!.maxLines!);
 			expect(result).toContain("truncated");
@@ -310,16 +312,12 @@ describe("graph tools", { timeout: 60_000 }, () => {
 			"not a valid regular expression",
 		],
 		["5000-newline path", { pattern: "needle", paths: [`../${"INJECTED\n".repeat(5000)}`] }, "outside"],
-	] as const)("bounds search errors with a %s", async (_name, args, reason) => {
+	] as const)("refuses search arguments with a %s", async (_name, args, _reason) => {
 		const requests = await reviewWith(undefined, [[["search", args]]]);
 		const result = toolResults(requests[correctness]![1]!)[0]!;
-		const nonce = nonceOf(requests[correctness]![0]!);
 		expect(Buffer.byteLength(result)).toBeLessThanOrEqual(lensListedTools.search.outputLimits!.maxBytes!);
 		expect(result.split("\n").length).toBeLessThanOrEqual(lensListedTools.search.outputLimits!.maxLines!);
-		expect(result).toContain("truncated");
-		expect(result).toContain(`</untrusted-${nonce}>`);
-		expect(result).toContain(reason);
-		expect(result).not.toContain("x".repeat(100_000));
+		expect(result).toBe("<harness>\n[error] Tool arguments are too large or do not match the schema.\n</harness>");
 	});
 
 	it("renders read continuation, file truncation and past-end notes exactly", async () => {

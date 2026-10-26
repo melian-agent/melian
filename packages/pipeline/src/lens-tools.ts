@@ -36,6 +36,7 @@ import {
 	snippetOccurrence,
 	visibleText,
 } from "@melian-agent/core";
+import type { TSchema } from "typebox";
 import Value from "typebox/value";
 import {
 	FindingsDocument,
@@ -204,6 +205,28 @@ const maxReadLines = 2000;
 // Pi's limits leave room above the bounded body for boundary tags, continuation notes and budget messages.
 const maxShownBytes = 48 * 1024;
 const outputLimits = { maxBytes: 64 * 1024, maxLines: maxReadLines + 50 } as const;
+
+function defineLensTool<T extends TSchema>(tool: ToolRegistration<T>) {
+	return defineTool({
+		...tool,
+		prepareArguments: (args: unknown) => {
+			// 8 KiB caps input work; preflight with Pi's validator replaces every schema error with a fixed refusal below
+			// outputLimits, including nested JSON whose pretty-printed echo grows quadratically: https://github.com/melian-agent/melian/issues/248.
+			const refusal = "Tool arguments are too large or do not match the schema.";
+			if (Buffer.byteLength(JSON.stringify(args)) > 8192) throw new Error(refusal);
+			try {
+				return validateToolArguments(tool, {
+					type: "toolCall",
+					id: "",
+					name: tool.name,
+					arguments: args as ToolCall["arguments"],
+				});
+			} catch {
+				throw new Error(refusal);
+			}
+		},
+	});
+}
 
 function fitting(rows: readonly string[]): { body: string; count: number; cut: boolean } {
 	const shown: string[] = [];
@@ -476,7 +499,7 @@ export async function findingsCapped(
 // Core's BudgetEnd as a JSON type, for task results and stored check records.
 export type StoredBudgetEnd = { budget: "tokens" | "tools"; limit: number; tokens: number; tools: number };
 
-const readFile = defineTool({
+const readFile = defineLensTool({
 	name: "read_file",
 	description:
 		'Read a file as it is at the head revision under review, or at the base with revision "base", with line numbers: up to maxLines lines, at most 2000, from startLine. Any line of the file can be reached by startLine.',
@@ -519,7 +542,7 @@ const readFile = defineTool({
 		}),
 });
 
-const search = defineTool({
+const search = defineLensTool({
 	name: "search",
 	description:
 		"Search files at head by default, or at base with revision base, like git grep. Returns path:line: text for each matching line. To search a set of files in one call, such as every design file, name them in paths: each file gets an equal share of the 200 matches, so a term common in one cannot hide the others.",
@@ -598,7 +621,7 @@ function describeEntry(entry: RevisionEntry): string {
 	return `${path} (${entry.kind})`;
 }
 
-const listFiles = defineTool({
+const listFiles = defineLensTool({
 	name: "list_files",
 	description: "List a directory at the head revision under review, or every file beneath it with recursive.",
 	parameters: Type.Object({
@@ -685,7 +708,7 @@ const symbolParameter = Type.String({
 		"A declaration's full Enola name, such as src.Store.open, or the end of one when only one declaration has it",
 });
 
-const graphDefinitions = defineTool({
+const graphDefinitions = defineLensTool({
 	name: "graph_definitions",
 	description:
 		"Find where a name is declared at head, from Enola's graph: each declaration whose full name is the name, or ends with it, with file, line and kind. Full names join the directory and the dotted path, such as src.Store.open.",
@@ -701,7 +724,7 @@ const graphDefinitions = defineTool({
 		}),
 });
 
-const graphReferences = defineTool({
+const graphReferences = defineLensTool({
 	name: "graph_references",
 	description:
 		"List what refers to one declaration at head, from Enola's graph: each call, construction, type use, import or implementation Enola resolved to it, with file, line and kind, and a count of the uses it named but did not resolve.",
@@ -733,7 +756,7 @@ const unknownReferences =
 const maxImpactDepth = 3;
 const maxImpactNodes = 200;
 
-const graphImpact = defineTool({
+const graphImpact = defineLensTool({
 	name: "graph_impact",
 	description:
 		"List what reaches one declaration at head through calls and constructions Enola resolved, declarations and top-level code alike, nearest first, up to depth levels away (1 to 3, 2 when absent) and 200 callers. Imports and type uses are not followed; graph_references lists those.",
@@ -761,7 +784,7 @@ const graphImpact = defineTool({
 		}),
 });
 
-const graphCallees = defineTool({
+const graphCallees = defineLensTool({
 	name: "graph_callees",
 	description:
 		"List what one declaration calls or constructs at head, from Enola's graph: each target Enola resolved, with file, line and kind, then each it did not, by the name the code uses.",
