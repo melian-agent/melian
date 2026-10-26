@@ -594,7 +594,7 @@ describe("markers", () => {
 		);
 	});
 
-	// Pull request #201's body repeated seven caller notes and the triage note under each of eight lenses.
+	// [Pull request #201](https://github.com/melian-agent/melian/pull/201)'s body repeated seven caller notes and the triage note under each of eight lenses.
 	const pr201Notes = [
 		...Array.from(
 			{ length: 7 },
