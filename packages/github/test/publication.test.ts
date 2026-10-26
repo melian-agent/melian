@@ -1050,6 +1050,25 @@ describe("a quiet review body", () => {
 		for (const finding of dismissed) expect(folds[0]![2]).toContain(finding.id);
 	});
 
+	it("counts every dismissed report the fold lists, merged members included", () => {
+		const primary = dismissedAs("src/a.ts", shared);
+		const member = Finding.create({ ...input, rule: "other-rule" });
+		const merged = Finding.from({
+			...primary.toJSON(),
+			properties: {
+				...primary.properties,
+				alsoReportedAs: [
+					{
+						...member.report(),
+						dismissal: { by: "M <m@example.invalid>", at: "2026-10-25T00:00:00Z", reason: "Other." },
+					},
+					{ ...member.report(), id: "b".repeat(16) },
+				],
+			},
+		});
+		expect(bodyOf([merged])).toContain("<summary>3 dismissed, 2 reasons</summary>");
+	});
+
 	it("names one advisory and one reason in the singular", () => {
 		const advisory = Finding.create({ ...input, severity: "P3", resolution: "advisory" });
 		const body = bodyOf([advisory, dismissedAs("src/a.ts", shared)]);

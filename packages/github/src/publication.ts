@@ -366,7 +366,8 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 	if (verdict.dismissed.length > 0) {
 		// Dismissals that share a reason are one decision, so the reason is said once, above the findings it covers.
 		const reasons = new Map<string, { id: string; ruleId: string; path: string }[]>();
-		for (const { id, ruleId, path, dismissal } of verdict.dismissals()) {
+		const dismissals = verdict.dismissals();
+		for (const { id, ruleId, path, dismissal } of dismissals) {
 			const reason = dismissal?.reason ?? "No reason stored.";
 			reasons.set(reason, [...(reasons.get(reason) ?? []), { id, ruleId, path }]);
 		}
@@ -378,7 +379,7 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 		});
 		parts.push(
 			folded(
-				`${verdict.dismissed.length} dismissed, ${plural(reasons.size, "reason")}`,
+				`${dismissals.length} dismissed, ${plural(reasons.size, "reason")}`,
 				["Dismissals attested by this publication:", "", ...lines].join("\n"),
 			),
 		);
