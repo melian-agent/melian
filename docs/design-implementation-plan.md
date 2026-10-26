@@ -2,7 +2,7 @@
 
 Sister to [design.md](design.md). The design document says what Melian is and why. This document says what is being built in what order, what is deliberately deferred, and how far along it is. Update it in the same commit as the work it tracks.
 
-Status legend: `[ ]` not started, `[~]` in progress, `[x]` done. Each step names what it unblocks, so the order is not arbitrary.
+Status legend: `[ ]` not started, `[~]` in progress, `[x]` done. From 2026-10-26, each open step is an issue in its GitHub milestone, labelled `plan step`, and the issue holds its status and order, as [the decision](decisions/2026-10-26-plan-as-issues.md) records. [Milestone 2](https://github.com/melian-agent/melian/milestone/2) lists its steps. Each step names what it unblocks, so the order is not arbitrary.
 
 A fix pass adds a progress-log entry and leaves this plan alone. The plan changes when a step's status flips, and gets a refresh after every two or three landings.
 
