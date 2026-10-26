@@ -423,7 +423,7 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 		const lens = telemetry.stages.find(({ name }) => name === "melian.lens")!;
 		expect(lens).toMatchObject({ outcome: "ended", ended: "tokens", limits: { tokens: 1 } });
 		const row = telemetry.runDetails().stages.find(({ name }) => name === "lens correctness")!;
-		expect(row).toMatchObject({ outcome: "ended", ended: "tokens", limits: { tokens: 1 } });
+		expect(row).toMatchObject({ outcome: "ran", ended: "tokens", limits: { tokens: 1 } });
 		const others = telemetry.stages.filter(({ name }) => name !== "melian.lens");
 		for (const stage of others) expect(stage).not.toHaveProperty("ended");
 	});

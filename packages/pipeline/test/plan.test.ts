@@ -23,6 +23,7 @@ import {
 	reviewChangeset,
 	revisionKey,
 	type TaskId,
+	TelemetryReader,
 } from "@melian-agent/pipeline";
 import {
 	createFakeModels,
@@ -56,6 +57,7 @@ const contracts = "You are the contracts reviewer";
 let repo: string;
 let fake: FakeModels;
 let harness: Harness;
+let storage: ReturnType<typeof createMemoryStorage>;
 let lenses: Lens[];
 let heavy: string;
 let backup: string;
@@ -66,7 +68,8 @@ beforeEach(async () => {
 	fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }, { id: "backup" }] });
 	heavy = `${fake.ref("heavy").provider}/heavy`;
 	backup = `${fake.ref("backup").provider}/backup`;
-	harness = await openHarness(createMemoryStorage(), {
+	storage = createMemoryStorage();
+	harness = await openHarness(storage, {
 		models: fake.models,
 		registry: createReviewRegistry(),
 		settings: { retry: { enabled: false } },
@@ -211,6 +214,17 @@ describe("reviewChangeset with a plan", () => {
 			{ name: "lens.contracts", status: "failed", level: "careful", reason, lineage },
 			{ name: "lens.correctness", status: "failed", level: "careful", reason, lineage },
 		]);
+		const changeset = await Changeset.resolve(repo, "main...feature");
+		expect(
+			(await TelemetryReader.open(storage).read(revisionKey(changeset.revision)))
+				.runDetails()
+				.stages.filter(({ name }) => name.startsWith("lens "))
+				.map(({ name, outcome }) => ({ name, outcome }))
+				.sort((a, b) => a.name.localeCompare(b.name)),
+		).toEqual([
+			{ name: "lens contracts", outcome: "failed" },
+			{ name: "lens correctness", outcome: "failed" },
+		]);
 	});
 
 	it("fails every lens on a tier whose accepted models have no credentials under unavailable: fail, asking no model", async () => {
@@ -309,6 +323,17 @@ describe("reviewChangeset with a plan", () => {
 		});
 		// The stored outcome says done, but the plan refuses the model it finished on, so --rerun does not reuse it.
 		expect([...again.answered].sort()).toEqual(["backup", "backup", "heavy", "heavy"]);
+		const changeset = await Changeset.resolve(repo, "main...feature");
+		expect(
+			(await TelemetryReader.open(storage).read(revisionKey(changeset.revision)))
+				.runDetails()
+				.stages.filter(({ name }) => name.startsWith("lens "))
+				.map(({ name, outcome }) => ({ name, outcome }))
+				.sort((a, b) => a.name.localeCompare(b.name)),
+		).toEqual([
+			{ name: "lens contracts", outcome: "failed" },
+			{ name: "lens correctness", outcome: "failed" },
+		]);
 	});
 
 	it("reads only the sightings of the run on the route the review ran, not an earlier run's", async () => {

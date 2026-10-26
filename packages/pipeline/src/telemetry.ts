@@ -1,4 +1,5 @@
 import {
+	type CheckRecord,
 	deterministicChecks,
 	type ReasoningValue,
 	type RequestReasoning,
@@ -61,7 +62,7 @@ function outcome(task: TaskRecord): { outcome: string; error?: string } {
 	return { outcome: "completed" };
 }
 
-function checkOutcome(record: CheckRunRecord): { outcome: string; error?: string } {
+function checkOutcome(record: CheckRecord): { outcome: string; error?: string } {
 	switch (record.status) {
 		case "ran":
 			return { outcome: "completed" };
@@ -69,6 +70,8 @@ function checkOutcome(record: CheckRunRecord): { outcome: string; error?: string
 			return { outcome: record.cause === "timeout" ? "timed-out" : "skipped" };
 		case "failed":
 			return { outcome: "failed", error: record.error };
+		case "ended":
+			return { outcome: "ended" };
 		case "provisional":
 			return { outcome: "provisional" };
 	}
@@ -82,6 +85,8 @@ export type Stage = {
 	task: number;
 	conversation?: number;
 	outcome: string;
+	/** The check record’s outcome, which the run table uses ahead of the conversation status. */
+	checkOutcome?: string;
 	startedAt?: number;
 	endedAt?: number;
 	durationMs?: number;
@@ -109,6 +114,7 @@ const runNames: Readonly<Record<string, string>> = {
 	"melian.triage": "triage",
 	"melian.lens": "lens",
 	"melian.adjudication": "adjudication",
+	"melian.verification": "verification",
 	"melian.walkthrough": "walkthrough",
 };
 
@@ -147,7 +153,9 @@ function runStage(name: string, stages: readonly Stage[]): RunStage {
 	const unmeasured = own.some(
 		(stage) => modelStages.includes(stage.name) && (stage.usage === undefined || (stage.usageIncomplete ?? 0) > 0),
 	);
-	const outcome = own.length === 0 ? "reused" : (own.find((stage) => stage.outcome !== "completed")?.outcome ?? "ran");
+	const outcome =
+		stages.map((stage) => stage.checkOutcome ?? stage.outcome).find((outcome) => outcome !== "completed") ??
+		(own.length === 0 ? "reused" : "ran");
 	return {
 		name,
 		models: [...new Set((own.length === 0 ? stages : own).flatMap(runModels))],
@@ -513,7 +521,34 @@ export class TelemetryReader {
 		if (selected?.adjudication !== undefined) {
 			const task = (await this.storage.task(selected.adjudication.task as TaskId, context))!;
 			rows.push(await this.deterministic(task, "melian.adjudication", "adjudication", before, false, context));
+			for (const check of (task.input as { checks?: CheckRecord[] } | null)?.checks ?? []) {
+				const name = check.name.startsWith("lens.")
+					? "melian.lens"
+					: check.name === "verifier"
+						? "melian.verification.candidate"
+						: "melian.check";
+				const matching = rows.filter(
+					(stage) =>
+						stage.name === name &&
+						(name === "melian.verification.candidate" ||
+							stage.subject.split("@")[0] === check.name.replace(/^lens\./, "")),
+				);
+				const result = checkOutcome(check);
+				for (const stage of matching) if (stage.outcome !== result.outcome) stage.checkOutcome = result.outcome;
+				if (matching.length === 0)
+					rows.push({
+						id: `check:${task.id}:${check.name}`,
+						task: task.id,
+						name: name === "melian.verification.candidate" ? "melian.verification" : name,
+						subject: name === "melian.lens" ? `${check.name.slice(5)}@@${check.level}` : check.name,
+						...result,
+						...interval(undefined, undefined),
+						reused: false,
+						resumed: false,
+					});
+			}
 		}
+
 		let page = await this.storage.scanTasks({ kind: "melian.publish" }, 200, undefined, context);
 		for (;;) {
 			for (const task of page.items) {
