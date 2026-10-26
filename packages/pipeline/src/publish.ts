@@ -171,6 +171,7 @@ class PublishedState {
 
 	static upgrade(value: unknown, from: number): StoredPublishedState {
 		const state = value as StoredPublishedState;
+		if (from >= 9) return state;
 		const revisions = Object.fromEntries(
 			Object.entries(state.revisions).map(([head, record]): [string, StoredRevision] => {
 				const { pending } = record;

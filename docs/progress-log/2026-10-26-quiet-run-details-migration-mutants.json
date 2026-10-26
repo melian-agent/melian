@@ -1,0 +1,95 @@
+{
+  "mutants": [
+    {
+      "file": "packages/pipeline/src/publish.ts",
+      "line": 174,
+      "column": 6,
+      "endLine": 174,
+      "endColumn": 15,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "claim": "killed",
+      "survivorClasses": [
+        "numeric-bound"
+      ],
+      "tests": [
+        "packages/pipeline/test/published-v8-reopen.test.ts"
+      ],
+      "evidence": "reopens main\u2019s version-8 resolutions",
+      "result": {
+        "exitCode": 1,
+        "killed": true,
+        "log": "tmp/quiet-run-details/migration-mutants-0.log"
+      }
+    },
+    {
+      "file": "packages/pipeline/src/publish.ts",
+      "line": 174,
+      "column": 6,
+      "endLine": 174,
+      "endColumn": 15,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "claim": "killed",
+      "survivorClasses": [
+        "numeric-bound"
+      ],
+      "tests": [
+        "packages/pipeline/test/published-v9-reopen.test.ts"
+      ],
+      "evidence": "reopens main\u2019s version-9 pending/resolved/answered resolutions and receipts unchanged",
+      "result": {
+        "exitCode": 1,
+        "killed": true,
+        "log": "tmp/quiet-run-details/migration-mutants-1.log"
+      }
+    },
+    {
+      "file": "packages/pipeline/src/publish.ts",
+      "line": 174,
+      "column": 6,
+      "endLine": 174,
+      "endColumn": 15,
+      "mutatorName": "EqualityOperator",
+      "replacement": "from > 9",
+      "claim": "killed",
+      "survivorClasses": [
+        "numeric-bound"
+      ],
+      "tests": [
+        "packages/pipeline/test/published-v9-reopen.test.ts"
+      ],
+      "evidence": "reopens main\u2019s version-9 pending/resolved/answered resolutions and receipts unchanged",
+      "result": {
+        "exitCode": 1,
+        "killed": true,
+        "log": "tmp/quiet-run-details/migration-mutants-2.log"
+      }
+    },
+    {
+      "file": "packages/pipeline/src/publish.ts",
+      "line": 174,
+      "column": 6,
+      "endLine": 174,
+      "endColumn": 15,
+      "mutatorName": "EqualityOperator",
+      "replacement": "from < 9",
+      "claim": "killed",
+      "survivorClasses": [
+        "numeric-bound"
+      ],
+      "tests": [
+        "packages/pipeline/test/published-v9-reopen.test.ts"
+      ],
+      "evidence": "reopens main\u2019s version-9 pending/resolved/answered resolutions and receipts unchanged",
+      "result": {
+        "exitCode": 1,
+        "killed": true,
+        "log": "tmp/quiet-run-details/migration-mutants-3.log"
+      }
+    }
+  ],
+  "total": 4,
+  "omitted": 0,
+  "unmutated": []
+}

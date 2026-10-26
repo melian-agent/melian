@@ -1,0 +1,363 @@
+{
+  "commit": "460f68f0",
+  "version": 9,
+  "rounds": [
+    {
+      "phase": "pending",
+      "state": {
+        "order": [
+          "02219c0373bd70414eca0d23c0b54f19003ddaea"
+        ],
+        "revisions": {
+          "02219c0373bd70414eca0d23c0b54f19003ddaea": {
+            "reviews": [
+              "1001"
+            ],
+            "open": {
+              "2353339212df098d": {
+                "ruleId": "unsafe",
+                "path": "src/a.ts",
+                "line": 1,
+                "revision": "02219c0373bd70414eca0d23c0b54f19003ddaea",
+                "thread": "1002"
+              }
+            },
+            "resolved": {},
+            "replies": {},
+            "publishedBy": {
+              "trustedWriters": true,
+              "login": "melian-user",
+              "permission": "write",
+              "authorPermission": "read"
+            },
+            "status": {
+              "state": "success",
+              "description": "Passed"
+            },
+            "rounds": 2,
+            "verdict": "971dd4088a7de3ad",
+            "verdictRevision": "786e87f4368f739f1345bb4c514b497dfee85d64..02219c0373bd70414eca0d23c0b54f19003ddaea",
+            "ledgerUrl": "https://github.com/melian-agent/example/pull/7#issuecomment-1003",
+            "pending": {
+              "revision": "786e87f4368f739f1345bb4c514b497dfee85d64..02219c0373bd70414eca0d23c0b54f19003ddaea",
+              "round": 2,
+              "fingerprint": "37deb30d1772a351",
+              "verdict": {
+                "status": "passed",
+                "blocking": false,
+                "findings": {
+                  "block": [],
+                  "acknowledge": [],
+                  "advisory": [],
+                  "silent": []
+                },
+                "dismissed": [],
+                "notRun": [],
+                "ran": []
+              },
+              "post": [],
+              "stillOpen": 0,
+              "open": {},
+              "resolved": {
+                "2353339212df098d 1002": {
+                  "id": "2353339212df098d",
+                  "ruleId": "unsafe",
+                  "path": "src/a.ts",
+                  "line": 1,
+                  "revision": "02219c0373bd70414eca0d23c0b54f19003ddaea",
+                  "thread": "1002",
+                  "addressedIn": "02219c0373bd70414eca0d23c0b54f19003ddaea"
+                }
+              },
+              "refusals": 1,
+              "ledger": {
+                "publishedBy": {
+                  "trustedWriters": true,
+                  "login": "melian-user",
+                  "permission": "write",
+                  "authorPermission": "read"
+                },
+                "base": "786e87f4368f739f1345bb4c514b497dfee85d64",
+                "head": "02219c0373bd70414eca0d23c0b54f19003ddaea",
+                "round": 2,
+                "verdict": {
+                  "status": "passed",
+                  "blocking": false,
+                  "findings": {
+                    "block": [],
+                    "acknowledge": [],
+                    "advisory": [],
+                    "silent": []
+                  },
+                  "dismissed": [],
+                  "notRun": [],
+                  "ran": []
+                },
+                "resolved": [
+                  {
+                    "id": "2353339212df098d",
+                    "ruleId": "unsafe",
+                    "path": "src/a.ts",
+                    "line": 1,
+                    "commit": "02219c0373bd70414eca0d23c0b54f19003ddaea"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "ledgerRounds": [
+          {
+            "publishedBy": {
+              "trustedWriters": true,
+              "login": "melian-user",
+              "permission": "write",
+              "authorPermission": "read"
+            },
+            "base": "786e87f4368f739f1345bb4c514b497dfee85d64",
+            "head": "02219c0373bd70414eca0d23c0b54f19003ddaea",
+            "round": 1,
+            "verdict": {
+              "status": "findings",
+              "blocking": false,
+              "findings": {
+                "block": [],
+                "acknowledge": [
+                  {
+                    "ruleId": "unsafe",
+                    "level": "warning",
+                    "message": {
+                      "text": "Unsafe input"
+                    },
+                    "partialFingerprints": {
+                      "melian/v1": "2353339212df098d"
+                    },
+                    "locations": [
+                      {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "src/a.ts"
+                          },
+                          "region": {
+                            "startLine": 1,
+                            "snippet": {
+                              "text": "new"
+                            }
+                          }
+                        }
+                      }
+                    ],
+                    "properties": {
+                      "id": "2353339212df098d",
+                      "path": "src/a.ts",
+                      "occurrence": 0,
+                      "cause": "introduced",
+                      "severity": "P2",
+                      "status": "new",
+                      "explanation": {
+                        "what": "Unsafe",
+                        "whyHere": "New",
+                        "whatToDo": "Validate"
+                      },
+                      "source": {
+                        "check": "static.example"
+                      },
+                      "resolution": "acknowledge",
+                      "decidedBy": {
+                        "check": "static.example",
+                        "rule": "unsafe",
+                        "requirement": {
+                          "entry": "table",
+                          "key": "resolution.P2"
+                        }
+                      }
+                    }
+                  }
+                ],
+                "advisory": [],
+                "silent": []
+              },
+              "dismissed": [],
+              "notRun": [],
+              "ran": []
+            },
+            "resolved": []
+          }
+        ]
+      }
+    },
+    {
+      "phase": "resolved",
+      "state": {
+        "order": [
+          "02219c0373bd70414eca0d23c0b54f19003ddaea"
+        ],
+        "revisions": {
+          "02219c0373bd70414eca0d23c0b54f19003ddaea": {
+            "reviews": [
+              "1001",
+              "1006"
+            ],
+            "open": {},
+            "resolved": {
+              "2353339212df098d 1002": {
+                "id": "2353339212df098d",
+                "ruleId": "unsafe",
+                "path": "src/a.ts",
+                "line": 1,
+                "revision": "02219c0373bd70414eca0d23c0b54f19003ddaea",
+                "thread": "1002",
+                "addressedIn": "02219c0373bd70414eca0d23c0b54f19003ddaea"
+              }
+            },
+            "replies": {},
+            "publishedBy": {
+              "trustedWriters": true,
+              "login": "melian-user",
+              "permission": "write",
+              "authorPermission": "read"
+            },
+            "status": {
+              "state": "success",
+              "description": "Passed"
+            },
+            "rounds": 2,
+            "verdict": "37deb30d1772a351",
+            "verdictRevision": "786e87f4368f739f1345bb4c514b497dfee85d64..02219c0373bd70414eca0d23c0b54f19003ddaea",
+            "ledgerUrl": "https://github.com/melian-agent/example/pull/7#issuecomment-1003"
+          }
+        },
+        "ledgerRounds": [
+          {
+            "base": "786e87f4368f739f1345bb4c514b497dfee85d64",
+            "head": "02219c0373bd70414eca0d23c0b54f19003ddaea",
+            "round": 1,
+            "status": "findings"
+          },
+          {
+            "publishedBy": {
+              "trustedWriters": true,
+              "login": "melian-user",
+              "permission": "write",
+              "authorPermission": "read"
+            },
+            "base": "786e87f4368f739f1345bb4c514b497dfee85d64",
+            "head": "02219c0373bd70414eca0d23c0b54f19003ddaea",
+            "round": 2,
+            "verdict": {
+              "status": "passed",
+              "blocking": false,
+              "findings": {
+                "block": [],
+                "acknowledge": [],
+                "advisory": [],
+                "silent": []
+              },
+              "dismissed": [],
+              "notRun": [],
+              "ran": []
+            },
+            "resolved": [
+              {
+                "id": "2353339212df098d",
+                "ruleId": "unsafe",
+                "path": "src/a.ts",
+                "line": 1,
+                "commit": "02219c0373bd70414eca0d23c0b54f19003ddaea"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "phase": "answered",
+      "state": {
+        "order": [
+          "02219c0373bd70414eca0d23c0b54f19003ddaea"
+        ],
+        "revisions": {
+          "02219c0373bd70414eca0d23c0b54f19003ddaea": {
+            "reviews": [
+              "1001",
+              "1006"
+            ],
+            "open": {},
+            "resolved": {
+              "2353339212df098d 1002": {
+                "id": "2353339212df098d",
+                "ruleId": "unsafe",
+                "path": "src/a.ts",
+                "line": 1,
+                "revision": "02219c0373bd70414eca0d23c0b54f19003ddaea",
+                "thread": "1002",
+                "addressedIn": "02219c0373bd70414eca0d23c0b54f19003ddaea"
+              }
+            },
+            "replies": {
+              "2353339212df098d 1002": "1002"
+            },
+            "publishedBy": {
+              "trustedWriters": true,
+              "login": "melian-user",
+              "permission": "write",
+              "authorPermission": "read"
+            },
+            "status": {
+              "state": "success",
+              "description": "Passed"
+            },
+            "rounds": 2,
+            "verdict": "37deb30d1772a351",
+            "verdictRevision": "786e87f4368f739f1345bb4c514b497dfee85d64..02219c0373bd70414eca0d23c0b54f19003ddaea",
+            "ledgerUrl": "https://github.com/melian-agent/example/pull/7#issuecomment-1003",
+            "threadResolutions": {
+              "2353339212df098d 1002": true
+            }
+          }
+        },
+        "ledgerRounds": [
+          {
+            "base": "786e87f4368f739f1345bb4c514b497dfee85d64",
+            "head": "02219c0373bd70414eca0d23c0b54f19003ddaea",
+            "round": 1,
+            "status": "findings"
+          },
+          {
+            "publishedBy": {
+              "trustedWriters": true,
+              "login": "melian-user",
+              "permission": "write",
+              "authorPermission": "read"
+            },
+            "base": "786e87f4368f739f1345bb4c514b497dfee85d64",
+            "head": "02219c0373bd70414eca0d23c0b54f19003ddaea",
+            "round": 2,
+            "verdict": {
+              "status": "passed",
+              "blocking": false,
+              "findings": {
+                "block": [],
+                "acknowledge": [],
+                "advisory": [],
+                "silent": []
+              },
+              "dismissed": [],
+              "notRun": [],
+              "ran": []
+            },
+            "resolved": [
+              {
+                "id": "2353339212df098d",
+                "ruleId": "unsafe",
+                "path": "src/a.ts",
+                "line": 1,
+                "commit": "02219c0373bd70414eca0d23c0b54f19003ddaea"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
