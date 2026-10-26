@@ -52,7 +52,7 @@ class StoredComparisons {
 		for (const [key, stored] of Object.entries(this.state.unattributed)) {
 			if (
 				!this.state.legacy[key] &&
-				rounds.some((round) => Revision.key(round.stored) === key && round.stored.mintedAt !== undefined)
+				rounds.some((round) => round.revisionKey() === key && round.stored.mintedAt !== undefined)
 			)
 				continue;
 			this.state.comparisons[`${changeset}.${legacyKey(key)}`] = stored;
@@ -328,15 +328,16 @@ export class CompareHarness {
 				"notReviewed",
 				`Melian has no decided round ${revision.round ?? key} to compare against; run melian review again`,
 			);
+		const round = new Round(`${this.changeset}.${local}`, JSON.parse(JSON.stringify(stored)));
 		if (
-			(state.current[Revision.key(stored)] ?? legacyKey(Revision.key(stored))) === local &&
-			(await this.currentVerdict(tx, root, Revision.key(stored))) === undefined
+			(state.current[round.revisionKey()] ?? legacyKey(round.revisionKey())) === local &&
+			(await this.currentVerdict(tx, root, round.revisionKey())) === undefined
 		)
 			throw new CompareError(
 				"notReviewed",
-				`Melian has no current, decided review of ${Revision.key(stored)} to compare against; run melian review again`,
+				`Melian has no current, decided review of ${round.revisionKey()} to compare against; run melian review again`,
 			);
-		return new Round(`${this.changeset}.${local}`, JSON.parse(JSON.stringify(stored)));
+		return round;
 	}
 
 	private async update(
@@ -348,7 +349,7 @@ export class CompareHarness {
 		return root.commit(async (tx) => {
 			const round = revision.round === "unattributed" ? undefined : await this.selected(tx, root.id, revision);
 			const document = await tx.doc(ComparisonDocument, root.id);
-			const state = await new RoundWriter(tx, root.id).preserve(Revision.key(round?.stored ?? revision));
+			const state = await new RoundWriter(tx, root.id).preserve(round?.revisionKey() ?? Revision.key(revision));
 			const rounds = Object.entries(state.items).map(
 				([key, stored]) => new Round(`${this.changeset}.${key}`, JSON.parse(JSON.stringify(stored))),
 			);

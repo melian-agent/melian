@@ -54,6 +54,8 @@ A pull request is `#` and its number. Quote it, `melian review "#12"`: an unquot
 
 `publish` passes `trust.writers` from the committed root policy at the pull request base. With trust off, it posts the review and ledger but sets an error status naming the need for a trusted host. It prints the reason and exits `0`. Unknown viewer reads do not block publication. An author without write permission does not block a maintainer publishing a full review; the record and ledger retain that permission for milestone 3.
 
+`findings --rounds` displays a legacy head-only key unchanged. Its JSON keeps that commit in `head`, with an empty `base`; its date comes from that head commit.
+
 ## Where policy comes from
 
 - A pull request reads `melian.yaml`, standards, and lenses from the base commit GitHub reports, so the head cannot rewrite its own review.

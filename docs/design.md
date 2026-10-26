@@ -342,6 +342,8 @@ The orphan-branch backend, the default for Actions, wraps Pi's JSONL storage on 
 
 Alternative backends behind the same interface: SQLite in the Actions cache, object storage, Postgres, Cloudflare Durable Objects.
 
+Stored rounds expose their identity through `Round.revisionKey()`. A verdict written under a head-only key keeps that key explicitly, with no invented base. Round document version 2 restores the head and key from version 1's empty-head representation, preserving the round ID and verdict.
+
 ## Trust and isolation
 
 Built in milestone 1: policy and standards read from a chosen revision, prompt boundaries, static tools in a temporary worktree with no secrets, and signed markers. [Tool provisioning](#tool-provisioning) with Enola as its first tool, the rule on command sources, override lineage, and [trusting writers](#writers-are-trusted) are planned for milestone 2 (review of record), and comment commands for milestone 4.

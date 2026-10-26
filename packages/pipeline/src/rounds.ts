@@ -17,6 +17,7 @@ type Provenance = NonNullable<ReturnType<typeof VerdictDocument.definition.initi
 type StoredRound = {
 	base: string;
 	head: string;
+	legacyKey?: string;
 	mintedAt?: string;
 	checkRun?: string;
 	tasks: number[];
@@ -43,11 +44,18 @@ export class RoundError extends Error {
 // Keys are local to this storage; the public ID prefixes them with the changeset ID of its SQLite file.
 export const RoundsDocument = defineDoc<RoundState>({
 	kind: "melian.rounds",
-	version: 1,
+	version: 2,
 	scope: "conversation",
 	history: "latest",
 	fork: "current",
 	initial: () => ({ sequence: 0, current: {}, items: {}, recorded: {} }),
+	migrate: (value) => {
+		const state = value as RoundState;
+		return {
+			...state,
+			items: Object.fromEntries(Object.entries(state.items).map(([key, stored]) => [key, Round.upgrade(stored)])),
+		};
+	},
 });
 
 export function legacyKey(revision: string): string {
@@ -55,11 +63,11 @@ export function legacyKey(revision: string): string {
 }
 
 function legacyRound(key: string, verdict?: StoredVerdict, provenance?: Provenance): StoredRound {
-	// A head-only key from before revisions had bases names no base round.
-	const sides = Revision.parseKey(key) ?? { base: key, head: "" };
+	const sides = Revision.parseKey(key) ?? { base: "", head: key, legacyKey: key };
 	return {
 		base: sides.base,
 		head: sides.head,
+		...("legacyKey" in sides ? { legacyKey: sides.legacyKey } : {}),
 		tasks: [],
 		...(verdict === undefined ? {} : { verdict }),
 		...(provenance === undefined ? {} : { provenance }),
@@ -81,7 +89,11 @@ export class RoundWriter {
 		const comparisons = await this.tx.doc(ComparisonDocument, this.root);
 		if (
 			Object.hasOwn(comparisons.unattributed, revision) &&
-			!Object.values(state.items).some((round) => Revision.key(round) === revision && round.mintedAt !== undefined)
+			!Object.values(state.items).some(
+				(round) =>
+					new Round("", JSON.parse(JSON.stringify(round))).revisionKey() === revision &&
+					round.mintedAt !== undefined,
+			)
 		)
 			comparisons.legacy[revision] = true;
 		if (state.recorded[revision]) return state;
@@ -147,6 +159,16 @@ export class Round {
 	constructor(id: string, stored: StoredRound) {
 		this.id = id;
 		this.stored = structuredClone(stored);
+	}
+
+	/** Restores the head-only identity that version 1 represented with an empty head. */
+	static upgrade(stored: StoredRound): StoredRound {
+		return stored.head === "" ? { ...stored, base: "", head: stored.base, legacyKey: stored.base } : stored;
+	}
+
+	/** The original head-only key for a legacy round, or the complete revision key. */
+	revisionKey(): string {
+		return this.stored.legacyKey ?? Revision.key(this.stored);
 	}
 
 	/** The frozen verdict, absent until this round decides. */

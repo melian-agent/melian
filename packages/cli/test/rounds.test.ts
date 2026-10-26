@@ -195,6 +195,30 @@ it.each([false, true])("lists the range's rounds (json=%s)", async (json) => {
 		});
 });
 
+it.each(["main", "rounds-v1"])("displays main's head-only key unchanged after a %s reopen", async (name) => {
+	const fixture = new URL("../../pipeline/test/fixtures/rounds-head-only/", import.meta.url);
+	const recorded = JSON.parse(readFileSync(new URL("recorded.json", fixture), "utf8")) as { key: string };
+	const path = await storagePath(repo, changeset.id, io.env, false);
+	copyFileSync(new URL(`${name}.sqlite`, fixture), path);
+	gitIn(repo, "fetch", new URL("repo.bundle", fixture).pathname, "refs/heads/feature:refs/heads/legacy-head");
+	const date = new Date(Number(gitIn(repo, "show", "-s", "--format=%ct", recorded.key)) * 1000).toISOString();
+	expect(await main(["findings", "main...feature", "--rounds"], io)).toBe(0);
+	expect(io.stdout.mock.calls.join("")).toContain(`  ${recorded.key}  passed  `);
+	io.stdout.mockClear();
+	expect(await main(["findings", "main...feature", "--rounds", "--json"], io)).toBe(0);
+	const [round] = JSON.parse(io.stdout.mock.calls.join(""));
+	expect(round).toEqual({
+		id: expect.stringMatching(/\.k[0-9a-f]{16}$/),
+		base: "",
+		head: recorded.key,
+		date,
+		status: "passed",
+	});
+	io.stdout.mockClear();
+	expect(await main(["findings", "main...feature", "--rounds"], io)).toBe(0);
+	expect(io.stdout.mock.calls.join("")).toBe(`${round.id}  ${recorded.key}  passed  ${date}\n`);
+});
+
 it("lists main's legacy round before a minted undecided round and asks git for its head date", async () => {
 	const path = await storagePath(repo, changeset.id, io.env, false);
 	copyFileSync(new URL("../../pipeline/test/fixtures/rounds-main/decided.sqlite", import.meta.url), path);
@@ -227,6 +251,16 @@ it("lists main's legacy round before a minted undecided round and asks git for i
 	);
 	expect(output[1]).toMatchObject({ id: `${changeset.id}.r1`, status: "undecided" });
 	expect(git).toHaveBeenCalledWith(repo, ["show", "-s", "--format=%ct", oldHead, "--"]);
+	io.stdout.mockClear();
+	expect(await main(["findings", "main...feature", "--rounds"], io)).toBe(0);
+	expect(io.stdout.mock.calls.join("")).toBe(
+		output
+			.map(
+				(round: { id: string; base: string; head: string; status: string; date: string }) =>
+					`${round.id}  ${Revision.key(round)}  ${round.status}  ${round.date}\n`,
+			)
+			.join(""),
+	);
 	io.stdout.mockClear();
 	expect(await main(["findings", "--round", output[0].id, "--json"], io)).toBe(0);
 	expect(JSON.parse(io.stdout.mock.calls.join("")).status).toBe("passed");

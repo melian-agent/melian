@@ -1,0 +1,13 @@
+# Preserve head-only round keys
+
+Fix pass for [issue #233](https://github.com/melian-agent/melian/issues/233) and [pull request #215](https://github.com/melian-agent/melian/pull/215), starting at `2181eceae26f8ce3a4cbec516da2271cbdb40328`.
+
+`fix(pipeline): preserve legacy round keys` stores the original head-only key explicitly. `Round.revisionKey()` returns it, or delegates complete revisions to `Revision.key`. Round readers, comparison attribution and CLI display now use one identity. Version 2 of `melian.rounds` upgrades version 1's empty-head representation without changing round IDs, ownership or verdicts. The ledger build must take the next available document version rather than its planned version 2. No plan status changed in this fix pass.
+
+The regression reopens a SQLite store written by main at `edbef2a8`, using that commit's real review code and locked dependencies. A second fixture records this branch's version-1 `RoundWriter` at the starting head. The tests retain each key through detached reads, text and JSON display, attribution, a persisted migration and another reopen. The fixture directory records both capture scripts and the reviewed commits.
+
+Before the fix, four regressions failed on the starting head. Text printed `H..` instead of the stored `H`, with an unknown date; the stored round put `H` in its base and left its head empty. The failing output is `tmp/delta-fix233/before-key.log`.
+
+The first targeted run passed 186 tests across five files. Mutation probes then exposed gaps in multiple-row text output, stale current-verdict refusal and preservation of an explicitly selected round's revision. The added assertions kill those mutants. A later parallel run stalled for about 90 seconds and timed out; all affected cases passed alone. The final serial run covers 188 tests in those five files. Logs live under `tmp/delta-fix233/`. Type checking, targeted Biome checks and `git diff --check` pass. The full gate was not run in the sandbox; the host must run `npm run check`.
+
+The enumeration-first inventory contains 62 mutants, with none omitted. A scratch script applied every mutant and ran its named targeted tests. All 61 non-equivalent mutants failed tests; none relies on a timeout. The remaining mutant changes a temporary `Round` ID that `revisionKey()` never reads. Its run passes, as the equivalence claim predicts. The ten policy-ignored string mutants were also run. The complete inventory, commands, failed test names and results are in `tmp/delta-fix233/mutants.json`; `run-mutants.py` and the per-mutant logs sit beside it. Enumeration before committing used an unreferenced tree snapshot; the final inventory is checked against the required starting-head-to-HEAD enumeration after committing.

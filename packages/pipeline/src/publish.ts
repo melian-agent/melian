@@ -42,7 +42,7 @@ import {
 } from "./harness.ts";
 import { modelsOf, type ReviewModels } from "./models.ts";
 import { ReviewIndex } from "./review-index.ts";
-import { legacyKey, RoundsDocument, RoundWriter } from "./rounds.ts";
+import { legacyKey, Round, RoundsDocument, RoundWriter } from "./rounds.ts";
 import { TaskTiming } from "./task-timing.ts";
 
 // Type aliases with mutable arrays, not core's interfaces: a document's value must satisfy Pi's JsonObject.
@@ -579,7 +579,9 @@ function publishTask(provider: ReviewProvider) {
 					const rounds = await tx.doc(RoundsDocument, root);
 					const ambiguous = unbound.some((each) =>
 						Object.entries(rounds.items).some(
-							([id, round]) => id !== legacyKey(each.revision) && Revision.key(round) === each.revision,
+							([id, round]) =>
+								id !== legacyKey(each.revision) &&
+								new Round(id, JSON.parse(JSON.stringify(round))).revisionKey() === each.revision,
 						),
 					);
 					if (ambiguous) {

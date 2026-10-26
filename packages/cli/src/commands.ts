@@ -586,7 +586,7 @@ export async function findings(
 			rounds.sort((left, right) => left.compare(right, dates));
 			const listed = rounds.map((round) => {
 				const date = dates.get(round.stored.head);
-				return {
+				const listed = {
 					id: round.id,
 					base: round.stored.base,
 					head: round.stored.head,
@@ -594,14 +594,9 @@ export async function findings(
 					date: round.stored.mintedAt ?? (date === undefined ? "unknown" : new Date(date * 1000).toISOString()),
 					status: round.verdict()?.status ?? "undecided",
 				};
+				return options.json ? listed : `${listed.id}  ${round.revisionKey()}  ${listed.status}  ${listed.date}\n`;
 			});
-			io.stdout(
-				options.json
-					? `${JSON.stringify(listed, null, 2)}\n`
-					: listed
-							.map((round) => `${round.id}  ${Revision.key(round)}  ${round.status}  ${round.date}\n`)
-							.join(""),
-			);
+			io.stdout(options.json ? `${JSON.stringify(listed, null, 2)}\n` : listed.join(""));
 			return 0;
 		} finally {
 			await storage.close(context);

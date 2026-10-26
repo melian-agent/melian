@@ -104,6 +104,29 @@ it("keeps two comparisons at one revision and reads their own frozen verdicts", 
 	expect(new ComparisonSet(entries).stats().reviewers.find((each) => each.reviewer === "melian")?.total).toBe(1);
 });
 
+it("keeps the selected round's revision when request sides name another revision", async () => {
+	const { harness } = await memory();
+	await mint(harness);
+	const root = await harness.harness.root(context);
+	const before = structuredClone(await harness.harness.snapshot(RoundsDocument, root.id, context));
+	await harness.importFindings({ base: "c".repeat(40), head: "d".repeat(40), round: `${changeset}.r1` }, sources, at);
+	expect(await harness.harness.snapshot(RoundsDocument, root.id, context)).toEqual(before);
+});
+
+it("refuses a current frozen verdict whose live verdict disappeared, naming its key", async () => {
+	const { harness } = await memory();
+	await mint(harness);
+	const root = await harness.harness.root(context);
+	await root.commit(async (tx) => {
+		delete (await tx.doc(VerdictDocument, root.id)).verdicts[key];
+	}, context);
+	const before = structuredClone(await harness.harness.snapshot(ComparisonDocument, root.id, context));
+	await expect(harness.importFindings(revision, sources, at)).rejects.toThrow(
+		`Melian has no current, decided review of ${key} to compare against; run melian review again`,
+	);
+	expect(await harness.harness.snapshot(ComparisonDocument, root.id, context)).toEqual(before);
+});
+
 it("reads comparisons in round order whatever order they were recorded in", async () => {
 	const { harness, storage } = await memory();
 	await mint(harness);

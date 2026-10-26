@@ -773,7 +773,7 @@ it("reads a verdict an older Melian keyed by head alone as a round with no base 
 				.toJSON();
 		}, context);
 		const [round] = await new RoundReader(storage).read("range-test");
-		expect(round!.stored).toMatchObject({ base: headOnly, head: "", tasks: [] });
+		expect(round!.stored).toMatchObject({ base: "", head: headOnly, legacyKey: headOnly, tasks: [] });
 	} finally {
 		await opened.close(context);
 	}
@@ -817,7 +817,7 @@ it("reads empty storage and a document lost between detached reads as absent", a
 });
 
 it.each([
-	{ kind: "melian.rounds", version: 2 },
+	{ kind: "melian.rounds", version: 3 },
 	{ kind: "melian.comparisons", version: 3 },
 	{ kind: "melian.verdicts", version: 13 },
 ])("refuses newer $kind version $version", async ({ kind, version }) => {
