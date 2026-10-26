@@ -224,7 +224,9 @@ export class RoundReader {
 		const items = structuredClone(state.items);
 		for (const key of new Set([
 			...Object.keys(live?.verdicts ?? {}),
-			...Object.values(comparisons?.comparisons ?? {}).map((comparison) => Revision.key(comparison)),
+			...Object.entries(comparisons?.comparisons ?? {})
+				.filter(([id]) => !Object.hasOwn(items, id.slice(changeset.length + 1)))
+				.map(([, comparison]) => Revision.key(comparison)),
 			...Object.keys(comparisons?.unattributed ?? {}),
 		])) {
 			if (state.recorded[key]) continue;

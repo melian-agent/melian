@@ -12,6 +12,7 @@ import {
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { expect, it } from "vitest";
 import { ComparisonDocument } from "../src/compare.ts";
+import { ReviewIndex } from "../src/review-index.ts";
 import { RoundsDocument, RoundWriter } from "../src/rounds.ts";
 
 const fixture = new URL("./fixtures/rounds-head-only/", import.meta.url);
@@ -46,16 +47,23 @@ it.each(["main", "rounds-v1"])("keeps main's head-only round key through a %s re
 					head: recorded.key,
 				}).toJSON();
 				await new RoundWriter(tx, root.id).preserve(recorded.key);
+				// Head-only adjudications predate the current findings-version guard.
+				delete (await tx.doc(ReviewIndex, root.id)).reviews[recorded.key];
 			}, context);
 			const state = await comparison.harness.snapshot(RoundsDocument, root.id, context);
 			expect(Object.keys(state!.current)).toEqual([recorded.key]);
 			expect(`${recorded.changeset}.${state!.current[recorded.key]}`).toBe(id);
+			await comparison.importFindings({ base: "", head: recorded.key, round: id }, [], "2026-10-27T00:00:00Z");
 		} finally {
 			await comparison.close(context);
 		}
 		const reopened = await openSqliteStorage(path);
 		try {
-			const [round] = await new RoundReader(reopened).read(recorded.changeset);
+			const rounds = await new RoundReader(reopened).read(recorded.changeset);
+			expect(rounds.map((round) => ({ id: round.id, key: round.revisionKey() }))).toEqual([
+				{ id, key: recorded.key },
+			]);
+			const [round] = rounds;
 			expect(round!.id).toBe(id);
 			expect(round!.revisionKey()).toBe(recorded.key);
 			expect(round!.stored).toEqual(saved);
