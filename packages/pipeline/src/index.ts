@@ -65,6 +65,13 @@ export {
 } from "./models.ts";
 export type { HeadTrust } from "./mutation-cache.ts";
 export {
+	type MutationAdapter,
+	MutationEnumeration,
+	MutationEnumerationError,
+	type MutationFile,
+	TypeScriptMutationAdapter,
+} from "./mutation-enumeration.ts";
+export {
 	type AbandonedReview,
 	openPublishHarness,
 	type Publication,

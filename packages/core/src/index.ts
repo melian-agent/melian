@@ -433,6 +433,25 @@ export {
 	type UnmutatedFile,
 } from "./mutation.ts";
 export {
+	type LegacyMutationInventory,
+	type MutationAdapterIdentity,
+	type MutationClaim,
+	type MutationEvidence,
+	type MutationIdentity,
+	MutationInventory,
+	MutationInventoryError,
+	type MutationInventoryErrorCode,
+	type MutationInventoryInput,
+	type MutationInventoryRow,
+	type MutationInventoryRowInput,
+	type MutationInventoryState,
+	type MutationInventoryV2,
+	type MutationSample,
+	type MutationSurvivorClass,
+	type MutationTestIdentity,
+	survivorClasses,
+} from "./mutation-inventory.ts";
+export {
 	type ToolArtifact,
 	ToolManifest,
 	ToolManifestError,

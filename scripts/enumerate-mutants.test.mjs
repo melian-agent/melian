@@ -250,7 +250,7 @@ describe("mutant enumeration", { timeout: 60_000 }, () => {
 		}
 	});
 
-	it("reads excluded mutations as data and reports generated ignored mutants", async () => {
+	it("reads exclusions from the base even when the head changes its own policy", async () => {
 		for (const config of [{}, { mutator: {} }, { mutator: { excludedMutations: ["StringLiteral"] } }]) {
 			write("stryker.config.json", JSON.stringify(config));
 			git("add", "stryker.config.json");
@@ -258,7 +258,7 @@ describe("mutant enumeration", { timeout: 60_000 }, () => {
 			const result = await enumerateMutants({ cwd: root });
 			const strings = result.mutants.filter((mutant) => mutant.mutatorName === "StringLiteral");
 			expect(strings).toHaveLength(1);
-			expect(strings[0].status).toBe(config.mutator?.excludedMutations ? "Ignored" : undefined);
+			expect(strings[0].status).toBe("Ignored");
 		}
 	});
 
@@ -411,7 +411,7 @@ describe("mutant enumeration", { timeout: 60_000 }, () => {
 		const help = spawnSync(process.execPath, [script, "--help"], { cwd: root, encoding: "utf8" });
 		expect(help.status).toBe(0);
 		expect(help.stdout).toBe(
-			"Usage: node scripts/enumerate-mutants.mjs [range] [--json] [--limit N] [--sample FILE]\nDefaults: range origin/main...HEAD; limit 200 (output rows).\nLines are 1-based; columns are 0-based. Replacements are JSON-escaped in the table.\nRuns the checkout's own code, like its tests: trusted heads only; never a fork's head.\nReads committed source and stryker.config.json; runs no tests or process listing.\nUses static.mutation's path exclusions, also accepts JavaScript, and applies no line budget.\nIncludes generated ignored mutants; static status needs the host's static.mutation run.\n--sample FILE prints JSON probes from a complete classified inventory; --limit applies only to enumeration.\nAdd claim (killed/new-test/equivalent), evidence, and survivorClasses to every mutant.\nSampling covers each class, mutator and file, then a hash-ordered fifth of remaining kills per file, rounded up.\n",
+			"Usage: node scripts/enumerate-mutants.mjs [range] [--json] [--limit N] [--sample FILE]\nDefaults: range origin/main...HEAD; limit 200 (output rows).\nLines are 1-based; columns are 0-based. Replacements are JSON-escaped in the table.\nRuns the checkout's own code, like its tests: trusted heads only; never a fork's head.\nReads committed source and base-sourced stryker.config.json; runs no tests or process listing.\nUses static.mutation's path exclusions, also accepts JavaScript, and applies no line budget.\nIncludes generated ignored mutants; static status needs the host's static.mutation run.\n--sample FILE prints JSON probes from a complete classified inventory; --limit applies only to enumeration.\nAdd claim (killed/new-test/equivalent), evidence, and survivorClasses to every mutant.\nSampling covers each class, mutator and file, then a hash-ordered fifth of remaining kills per file, rounded up.\n",
 		);
 	});
 });

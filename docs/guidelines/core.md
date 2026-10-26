@@ -864,3 +864,7 @@ StoredCheckRecord includes optional snapshots and coverage IDs. Verdict.upgrade 
 Decider and TextModel accept an optional usage observer after the abort signal. It receives each assistant response's provider/model and ModelUsage counters before answer validation. It stays outside DecisionRequest, ToolRequest and stored decision identity. ModelUsage copies Pi's units without importing Pi. Reasoning is part of output; cacheWrite1h is part of cacheWrite.
 
 The usage observer also accepts optional RequestReasoning: the requested level, observed settings by request path, capture source and any provider-reported level. It stays outside decision identity. A missing payload observer carries only a labelled catalogue mapping. Source unrecognised means the payload callback exposed a reasoning-shaped parameter outside the captured paths. Known sent settings remain available; unknown names and values are not retained.
+
+## Mutation inventories
+
+`MutationInventory.create` derives version-2 mutant IDs from the SHA-256 of the JSON tuple `[file, line, column, endLine, endColumn, mutatorName, replacement]`. `parse` validates external inventories, including end coordinates, ID consistency and ignored provenance. A builder's evidence identifies a test by file and title components, or gives an equivalence reason. `sample` preserves the historical deterministic sampling rule. Legacy inventories with string evidence can sample; `forVerification` refuses them with a request to enumerate again. No inventory method runs repository code.
