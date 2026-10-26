@@ -346,6 +346,7 @@ A version-4 fixture recorded by that version’s own code proves SQLite reopen a
 
 The run table takes each check’s outcome from the indexed adjudication task’s recorded input, including refused lenses with no conversation.
 Conversation telemetry keeps its own terminal status. A reused failed check still renders failed.
+Checks supplied only by adjudication appear only in the run table; they add no stage to telemetry reads or JSON.
 
 Version 6 adds the storage-local round ID to the task target; `PublisherDocument` version 3 records the same target. Version 7 lets the input carry the review's run, which `melian publish` reads from stage telemetry for the ledger's run details; a version-6 input has none. `PublishedDocument` version 10 keeps that run on the ledger round, so a later publish that reads none keeps it.
 Both migrations leave older targets unbound and preserve newer publisher attribution.

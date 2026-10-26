@@ -217,10 +217,17 @@ export class StageTelemetry {
 	readonly usageUnavailable: readonly string[];
 	readonly usageIncomplete?: number;
 	readonly prepare?: PrepareRecord;
+	private readonly checkStages: readonly Stage[];
 
-	constructor(revision: string, stages: readonly Stage[], prepare?: PrepareRecord) {
+	constructor(
+		revision: string,
+		stages: readonly Stage[],
+		prepare?: PrepareRecord,
+		checkStages: readonly Stage[] = [],
+	) {
 		this.revision = revision;
 		this.stages = stages;
+		this.checkStages = checkStages;
 		if (prepare !== undefined) this.prepare = prepare;
 		const unmeasured = stages.reduce((sum, stage) => sum + (stage.usageIncomplete ?? 0), 0);
 		if (unmeasured > 0) this.usageIncomplete = unmeasured;
@@ -264,6 +271,7 @@ export class StageTelemetry {
 	 * adjudication and walkthrough as a row, and every verification claim in one row.
 	 */
 	runDetails(): StoredRunDetails {
+		const stages = [...this.stages, ...this.checkStages];
 		const top = (this.prepare?.spans ?? []).filter((span) => span.parent === undefined);
 		const preparation: RunStage[] =
 			top.length === 0
@@ -276,9 +284,9 @@ export class StageTelemetry {
 							outcome: "ran",
 						},
 					];
-		const claims = this.stages.filter((stage) => stage.name === "melian.verification.candidate");
+		const claims = stages.filter((stage) => stage.name === "melian.verification.candidate");
 		const count = claims.reduce((sum, stage) => sum + stage.subject.split(",").length, 0);
-		const rows = this.stages.flatMap((stage): RunStage[] => {
+		const rows = stages.flatMap((stage): RunStage[] => {
 			if (stage === claims[0]) return [runStage(`verification ${count} claims`, claims)];
 			const kind = runNames[stage.name];
 			if (kind === undefined) return [];
@@ -430,6 +438,7 @@ export class TelemetryReader {
 		const summaries = await this.document(SummaryIndex, scope, context);
 		const checks = await this.document(ChecksDocument, scope, context);
 		const rows: Stage[] = [];
+		const checkRows: Stage[] = [];
 		for (const entry of Object.values(decisions?.decisions[revision] ?? {})) {
 			const task = (await this.storage.task(entry.task as TaskId, context))!;
 			rows.push(
@@ -536,7 +545,7 @@ export class TelemetryReader {
 				const result = checkOutcome(check);
 				for (const stage of matching) if (stage.outcome !== result.outcome) stage.checkOutcome = result.outcome;
 				if (matching.length === 0)
-					rows.push({
+					checkRows.push({
 						id: `check:${task.id}:${check.name}`,
 						task: task.id,
 						name: name === "melian.verification.candidate" ? "melian.verification" : name,
@@ -559,7 +568,12 @@ export class TelemetryReader {
 			if (page.next === undefined) break;
 			page = await this.storage.scanTasks({ kind: "melian.publish" }, 200, page.next, context);
 		}
-		return new StageTelemetry(revision, rows, await this.document(PrepareDocument, scope, context, revision));
+		return new StageTelemetry(
+			revision,
+			rows,
+			await this.document(PrepareDocument, scope, context, revision),
+			checkRows,
+		);
 	}
 
 	private async document<T>(

@@ -59,12 +59,14 @@ it("projects recorded checks without conversations, including a refused lens and
 			...stage,
 			id: `check:${id}:${checks[index]!.name}`,
 			task: id,
-			timing: "unavailable",
+			timing: "unavailable" as const,
 			note: "No start recorded by the older build, or stage not started.",
 			reused: false,
 			resumed: false,
 		}));
-		expect(telemetry.stages.slice(1)).toEqual(expected);
+		expect(telemetry.stages).toHaveLength(1);
+		expect(telemetry.stages[0]).toMatchObject({ task: id, name: "melian.adjudication" });
+		expect(telemetry.toJSON().stages).toEqual(telemetry.stages);
 		expect(telemetry.runDetails().stages.slice(1)).toEqual([
 			{ name: "lens alpha", level: "careful", models: [], outcome: "failed", usageIncomplete: true },
 			{ name: "verification", models: [], outcome: "ended" },
@@ -75,6 +77,8 @@ it("projects recorded checks without conversations, including a refused lens and
 		const reused = new StageTelemetry(
 			"base..head",
 			telemetry.stages.map((stage) => ({ ...stage, reused: true })),
+			undefined,
+			expected.map((stage) => ({ ...stage, reused: true })),
 		);
 		expect(reused.runDetails().stages.map(({ outcome }) => outcome)).toEqual([
 			"reused",
