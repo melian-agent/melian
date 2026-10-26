@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import * as core from "@melian-agent/core";
 import { Changeset, defaultConfig, EnolaFacts, GraphSnapshot, Lens, type MelianConfig } from "@melian-agent/core";
 import {
 	CallerContext,
@@ -24,7 +25,8 @@ import {
 	textOf,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { lensListedTools } from "../src/lens-tools.ts";
+import type { ToolExecutionApi } from "../src/harness.ts";
+import { LensDocument, lensListedTools } from "../src/lens-tools.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines, writeFiles } from "./fixtures/repo.ts";
 import { twoLensTiers } from "./fixtures/review-scenario.ts";
 
@@ -185,6 +187,292 @@ async function reviewWith(callers: CallerContext | undefined, replies: Parameter
 const withGraph = () => CallerContext.from({ groups: [], issues: [], notes: [], paths: [], parts }, cacheRoot);
 
 describe("graph tools", { timeout: 60_000 }, () => {
+	it("keeps 5000 graph rows within both limits with the warning and closing boundary", async () => {
+		const facts = [
+			{
+				id: "x",
+				name: "src.x",
+				kind: "symbol",
+				file: "src/user.ts",
+				line: 1,
+				relations: Array.from({ length: 5000 }, (_, index) => ({ kind: "calls", target: `x${index}` })),
+			},
+		];
+		await (await GraphCache.open(cacheRoot)).store(
+			GraphSnapshot.create(parts, {
+				"facts.jsonl": facts.map((fact) => JSON.stringify(fact)).join("\n"),
+				"insights.json": "[]",
+				"receipt.json": JSON.stringify({
+					format_version: 1,
+					enola_version: "0.4.27",
+					snapshot_id: `sha256:${"d".repeat(64)}`,
+				}),
+			}),
+		);
+		const requests = await reviewWith(withGraph(), [[["graph_callees", { symbol: "src.x" }]]]);
+		const result = toolResults(requests[correctness]![1]!)[0]!;
+		expect(Buffer.byteLength(result)).toBeLessThanOrEqual(lensListedTools.graph_callees.outputLimits!.maxBytes!);
+		expect(result.split("\n").length).toBeLessThanOrEqual(lensListedTools.graph_callees.outputLimits!.maxLines!);
+		expect(result).toContain("truncated");
+		expect(result).toContain("absent caller proves nothing");
+		expect(result.endsWith(`</untrusted-${nonceOf(requests[correctness]![0]!)}>`)).toBe(true);
+	});
+
+	it.each([2000, 2001])("bounds graph bodies at %i lines", async (count) => {
+		const facts = [
+			{
+				id: "x",
+				name: "src.x",
+				kind: "symbol",
+				file: "src/user.ts",
+				line: 1,
+				relations: Array.from({ length: count }, (_, index) => ({ kind: "calls", target: `x${index}` })),
+			},
+		];
+		await (await GraphCache.open(cacheRoot)).store(
+			GraphSnapshot.create(parts, {
+				"facts.jsonl": JSON.stringify(facts[0]),
+				"insights.json": "[]",
+				"receipt.json": JSON.stringify({
+					format_version: 1,
+					enola_version: "0.4.27",
+					snapshot_id: `sha256:${"d".repeat(64)}`,
+				}),
+			}),
+		);
+		const requests = await reviewWith(withGraph(), [[["graph_callees", { symbol: "src.x" }]]]);
+		const result = toolResults(requests[correctness]![1]!)[0]!;
+		const nonce = nonceOf(requests[correctness]![0]!);
+		const body = result.split(`<untrusted-${nonce} label="graph">\n`)[1]!.split(`\n</untrusted-${nonce}>`)[0]!;
+		expect(body.split("\n")).toHaveLength(2000);
+		expect(result.includes("truncated")).toBe(count > 2000);
+		if (count > 2000) {
+			expect(result).toContain("[tool output truncated: 1 more lines not shown; a line too long to fit is cut]");
+			expect(result).toContain("[1 more not shown]");
+		}
+	});
+
+	it.each([48 * 1024, 48 * 1024 + 1])("bounds file bodies at %i bytes", async (bytes) => {
+		writeFiles(repo, { "src/long.ts": `${"x".repeat(bytes - 2)}\n` });
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "long line");
+		const requests = await reviewWith(undefined, [[["read_file", { path: "src/long.ts" }]]]);
+		const result = toolResults(requests[correctness]![1]!)[0]!;
+		const nonce = nonceOf(requests[correctness]![0]!);
+		const body = result.split(`<untrusted-${nonce} label="file">\n`)[1]!.split(`\n</untrusted-${nonce}>`)[0]!;
+		expect(Buffer.byteLength(body)).toBeLessThanOrEqual(48 * 1024);
+		expect(result.includes("truncated")).toBe(bytes > 48 * 1024);
+		if (bytes === 48 * 1024) expect(body).toBe(`1\t${"x".repeat(bytes - 2)}`);
+		expect(result.endsWith(`</untrusted-${nonce}>`)).toBe(true);
+	});
+
+	it.each([0, 1])("counts separators within the byte bound with %i extra bytes", async (extra) => {
+		const rows = [`1\t${"x".repeat(24573)}`, `2\t${"x".repeat(24574 + extra)}`];
+		writeFiles(repo, { "src/long.ts": `${rows.map((row) => row.slice(2)).join("\n")}\n` });
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "two long lines");
+		const requests = await reviewWith(undefined, [[["read_file", { path: "src/long.ts" }]]]);
+		const result = toolResults(requests[correctness]![1]!)[0]!;
+		const nonce = nonceOf(requests[correctness]![0]!);
+		const body = result.split(`<untrusted-${nonce} label="file">\n`)[1]!.split(`\n</untrusted-${nonce}>`)[0]!;
+		expect(body).toBe(extra === 0 ? rows.join("\n") : rows[0]);
+		expect(result.includes("truncated")).toBe(extra === 1);
+		if (extra === 1) expect(result).toContain("[lines 2 onward not shown; read again with startLine 2]");
+	});
+
+	it("cuts UTF-8 at a character and bounds output diagnostics through the same constructor", async () => {
+		writeFiles(repo, { "src/unicode.ts": `${"\u{10000}".repeat(20_000)}\n` });
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "unicode line");
+		const requests = await reviewWith(undefined, [
+			[
+				["read_file", { path: "src/unicode.ts" }],
+				["read_file", { path: "x".repeat(100_000) }],
+			],
+		]);
+		const nonce = nonceOf(requests[correctness]![0]!);
+		const [file, diagnostic] = toolResults(requests[correctness]![1]!);
+		expect(diagnostic).toContain(`<untrusted-${nonce} label="findings">`);
+		expect(file).not.toContain("\uFFFD");
+		expect(file).toContain(`1\t${"\u{10000}".repeat(12271)} [line cut]`);
+		for (const result of [file!, diagnostic!]) {
+			expect(Buffer.byteLength(result)).toBeLessThanOrEqual(lensListedTools.read_file.outputLimits!.maxBytes!);
+			expect(result.split("\n").length).toBeLessThanOrEqual(lensListedTools.read_file.outputLimits!.maxLines!);
+			expect(result).toContain("truncated");
+			expect(result).toContain(`</untrusted-${nonce}>`);
+		}
+	});
+
+	it.each([
+		[
+			"100000-character pattern",
+			{ pattern: `${"x".repeat(100_000)}[`, regex: true, paths: ["src/user.ts"] },
+			"not a valid regular expression",
+		],
+		["5000-newline path", { pattern: "needle", paths: [`../${"INJECTED\n".repeat(5000)}`] }, "outside"],
+	] as const)("bounds search errors with a %s", async (_name, args, reason) => {
+		const requests = await reviewWith(undefined, [[["search", args]]]);
+		const result = toolResults(requests[correctness]![1]!)[0]!;
+		const nonce = nonceOf(requests[correctness]![0]!);
+		expect(Buffer.byteLength(result)).toBeLessThanOrEqual(lensListedTools.search.outputLimits!.maxBytes!);
+		expect(result.split("\n").length).toBeLessThanOrEqual(lensListedTools.search.outputLimits!.maxLines!);
+		expect(result).toContain("truncated");
+		expect(result).toContain(`</untrusted-${nonce}>`);
+		expect(result).toContain(reason);
+		expect(result).not.toContain("x".repeat(100_000));
+	});
+
+	it("renders read continuation, file truncation and past-end notes exactly", async () => {
+		const actualRead = core.readRevisionFile;
+		vi.spyOn(core, "readRevisionFile").mockImplementation(async (root, commit, path) => {
+			if (path !== "src/mock.ts") return actualRead(root, commit, path);
+			expect(root).toBe(repo);
+			expect(commit).toBe(gitIn(repo, "rev-parse", "feature"));
+			return {
+				path,
+				content: `a\nb\n${"p".repeat(core.revisionLimits.fileBytes - 4)}`,
+				size: 10_000_000,
+				truncated: true,
+			};
+		});
+		const requests = await reviewWith(undefined, [
+			[
+				["read_file", { path: "src/mock.ts", maxLines: 1 }],
+				["read_file", { path: "src/user.ts", startLine: 4 }],
+			],
+		]);
+		const nonce = nonceOf(requests[correctness]![0]!);
+		expect(toolResults(requests[correctness]![1]!)).toEqual([
+			`<untrusted-${nonce} label="file">\n1\ta\n</untrusted-${nonce}>\n[lines 2 onward not shown; read again with startLine 2]\n[the file is 10000000 bytes; only the first part was read]`,
+			`<untrusted-${nonce} label="file">\n\n</untrusted-${nonce}>\n[the file has 3 lines]`,
+		]);
+	});
+
+	it("bounds listings when bytes or the entry count alone require a cut", async () => {
+		const entries = Array.from({ length: 1000 }, (_, index) => ({
+			path: `f${index}`,
+			kind: "file" as const,
+			size: 0,
+		}));
+		vi.spyOn(core, "listRevisionFiles").mockImplementation(async (root, commit, options) => {
+			expect(root).toBe(repo);
+			expect(commit).toBe(gitIn(repo, "rev-parse", "feature"));
+			switch (options?.path) {
+				case "whole":
+					return { entries: [{ ...entries[0]!, path: "whole/f0" }], truncated: false };
+				case "entries":
+					return {
+						entries: entries.map((entry) => ({ ...entry, path: `entries/${entry.path}` })),
+						truncated: true,
+					};
+				case "bytes":
+					return {
+						entries: entries.map((entry) => ({ ...entry, path: `bytes/${entry.path}${"x".repeat(100)}` })),
+						truncated: false,
+					};
+				default:
+					throw new Error("unexpected listing request");
+			}
+		});
+		const requests = await reviewWith(undefined, [
+			[
+				["list_files", { path: "whole" }],
+				["list_files", { path: "entries" }],
+				["list_files", { path: "bytes" }],
+			],
+		]);
+		const [whole, count, bytes] = toolResults(requests[correctness]![1]!);
+		const nonce = nonceOf(requests[correctness]![0]!);
+		expect(whole).toBe(`<untrusted-${nonce} label="listing">\nwhole/f0 (0 bytes)\n</untrusted-${nonce}>`);
+		for (const result of [count!, bytes!])
+			expect(result.endsWith(`</untrusted-${nonce}>\n[more entries not shown]`)).toBe(true);
+		expect(count).toContain("entries/f999 (0 bytes)");
+		expect(bytes).not.toContain(`bytes/f999${"x".repeat(100)}`);
+		expect(Buffer.byteLength(bytes!)).toBeLessThanOrEqual(lensListedTools.list_files.outputLimits!.maxBytes!);
+	});
+
+	it("bounds search when bytes or upstream matches alone require a cut", async () => {
+		vi.spyOn(core, "searchRevision").mockImplementation(async (root, commit, query) => {
+			expect(root).toBe(repo);
+			expect(commit).toBe(gitIn(repo, "rev-parse", "feature"));
+			expect(query.attributesFrom).toBe(gitIn(repo, "rev-parse", "main"));
+			switch (query.pattern) {
+				case "needle":
+					return { matches: [{ path: "src/user.ts", line: 1, text: "needle" }], truncated: false };
+				case "more":
+					return { matches: [{ path: "src/user.ts", line: 1, text: "more" }], truncated: true };
+				case "x":
+					return {
+						matches: Array.from({ length: 200 }, (_, index) => ({
+							path: "src/user.ts",
+							line: index + 1,
+							text: "x".repeat(300),
+						})),
+						truncated: false,
+					};
+				default:
+					throw new Error("unexpected search request");
+			}
+		});
+		const requests = await reviewWith(undefined, [
+			[
+				["search", { pattern: "needle" }],
+				["search", { pattern: "more" }],
+				["search", { pattern: "x" }],
+			],
+		]);
+		const [whole, matches, bytes] = toolResults(requests[correctness]![1]!);
+		const nonce = nonceOf(requests[correctness]![0]!);
+		const block = `<untrusted-${nonce} label="search">\nsrc/user.ts:1: needle\n</untrusted-${nonce}>`;
+		expect(whole).toBe(block);
+		expect(matches).toBe(`${block.replace("needle", "more")}\n[more matches not shown; narrow the search]`);
+		expect(bytes!.endsWith(`</untrusted-${nonce}>\n[more matches not shown; narrow the search]`)).toBe(true);
+		expect(bytes).toContain("tool output truncated");
+		expect(bytes).not.toContain("src/user.ts:200:");
+		expect(Buffer.byteLength(bytes!)).toBeLessThanOrEqual(lensListedTools.search.outputLimits!.maxBytes!);
+	});
+
+	it("bounds and quotes a read refused inside the tool, including a replay", async () => {
+		const nonce = "0123456789abcdef01234567";
+		const api = {
+			conversationId: 1,
+			taskId: 1,
+			snapshot: async (document: unknown, conversation: unknown) => {
+				expect(document).toBe(LensDocument);
+				expect(conversation).toBe(1);
+				return {
+					lens: {
+						name: "probe",
+						version: "1",
+						review: 1,
+						tools: [],
+						severities: ["P2"],
+						rules: [],
+						budget: 8,
+						coverage: { scope: "", paths: ["**"], nearer: [] },
+						revision: {
+							repoRoot: repo,
+							nonce,
+							base: gitIn(repo, "rev-parse", "main"),
+							head: gitIn(repo, "rev-parse", "feature"),
+							files: [],
+						},
+					},
+				};
+			},
+		} as unknown as ToolExecutionApi;
+		expect(await lensListedTools.read_file.execute({ path: "src/user.ts" }, api, context)).toEqual({
+			isError: true,
+			diagnostics: [
+				{
+					severity: "error",
+					code: "tool_error",
+					message: `<untrusted-${nonce} label="findings">\nlens probe may call only report_finding\n</untrusted-${nonce}>`,
+				},
+			],
+		});
+	});
+
 	it("offer the graph tools only to a lens that lists them", async () => {
 		const requests = await reviewWith(undefined, []);
 		expect(offered(requests[correctness]![0]!)).toEqual([
@@ -253,7 +541,7 @@ describe("graph tools", { timeout: 60_000 }, () => {
 		expect(parse).toHaveBeenCalledTimes(2);
 	});
 
-	it("render each answer whole: rows inside the boundary, Melian's notes after it, and no empty block", async () => {
+	it("render each answer whole: rows inside the boundary, Melian's notes before it, and no empty block", async () => {
 		await (await GraphCache.open(cacheRoot)).store(snapshot("probe"));
 		const requests = await reviewWith(withGraph(), [
 			[
@@ -273,28 +561,28 @@ describe("graph tools", { timeout: 60_000 }, () => {
 		const note =
 			"[from Enola's graph of the head: an edge it did not resolve is absent, so an absent caller proves nothing; confirm with read_file before citing]";
 		expect(toolResults(requests[correctness]![1]!)).toEqual([
-			[block("src/report.ts:2 src.line (symbol)"), note].join("\n"),
+			[note, block("src/report.ts:2 src.line (symbol)")].join("\n"),
 			["No declarations found.", note].join("\n"),
 			[
 				"No reference in the snapshot's resolved edges. That is unknown, not none: search for the name before concluding nothing uses it.",
 				note,
 			].join("\n"),
-			[block("calls from src/evil.ts:1 evil.probe sentinel (symbol)"), note].join("\n"),
+			[note, block("calls from src/evil.ts:1 evil.probe sentinel (symbol)")].join("\n"),
 			[
 				"No caller in the snapshot's resolved edges. That is unknown, not none: Enola's impact query resolves a few calls its facts do not. Search for the name before concluding nothing calls it.",
 				note,
 			].join("\n"),
 			[
-				block("1 src/evil.ts:1 evil.probe sentinel (symbol)"),
 				"[the walk follows resolved calls and constructions only; Enola's impact query can find callers it misses, so search for the name too]",
 				note,
+				block("1 src/evil.ts:1 evil.probe sentinel (symbol)"),
 			].join("\n"),
 			["No calls.", note].join("\n"),
-			[block(["calls src/user.ts:6 src.managerName (symbol)", "unresolved lib.format"].join("\n")), note].join("\n"),
+			[note, block(["calls src/user.ts:6 src.managerName (symbol)", "unresolved lib.format"].join("\n"))].join("\n"),
 			[
-				block(["other/line.ts:1 other.line (symbol)", "src/report.ts:2 src.line (symbol)"].join("\n")),
 				"[2 declarations match; call again with one full name from the list, and its file when two share it]",
 				note,
+				block(["other/line.ts:1 other.line (symbol)", "src/report.ts:2 src.line (symbol)"].join("\n")),
 			].join("\n"),
 		]);
 	});
@@ -401,7 +689,7 @@ describe("graph tools", { timeout: 60_000 }, () => {
 		const shown = (path: string) => (result!.match(new RegExp(`${path}:\\d+:`, "g")) ?? []).length;
 		expect(Math.abs(shown(paths[0]!) - shown(paths[1]!))).toBeLessThanOrEqual(1);
 		// What each file's status is never falls to the output bound: it leads the block.
-		const body = result!.split("\n").slice(1, 4);
+		const body = result!.split('label="search">\n')[1]!.split("\n").slice(0, 3);
 		expect(body).toEqual([
 			"docs/long0.md: [more matches not shown; search it alone]",
 			"docs/long1.md: [more matches not shown; search it alone]",

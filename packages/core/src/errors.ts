@@ -101,7 +101,9 @@ export class OutsideRepositoryError extends Error {
 	readonly repoRoot: string;
 
 	constructor(path: string, repoRoot: string) {
-		super(`${path} is outside the repository at ${repoRoot}`);
+		super(
+			`${JSON.stringify(path.slice(0, 200))}${path.length > 200 ? " [path truncated]" : ""} is outside the repository at ${repoRoot}`,
+		);
 		this.name = "OutsideRepositoryError";
 		this.path = path;
 		this.repoRoot = repoRoot;

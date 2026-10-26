@@ -498,3 +498,29 @@ describe("searchRevisionFiles", () => {
 		]);
 	});
 });
+
+it.each([200, 201])("shortens quoted outside paths at %i characters", (length) => {
+	const path = `../${"x".repeat(length - 3)}`;
+	const error = new OutsideRepositoryError(path, "the repository root");
+	expect(error.message).toBe(
+		`${JSON.stringify(path.slice(0, 200))}${length > 200 ? " [path truncated]" : ""} is outside the repository at the repository root`,
+	);
+	expect(error.path).toBe(path);
+});
+
+it.each([200, 201])("shortens quoted search patterns at %i characters", async (length) => {
+	const pattern = `${"x".repeat(length - 1)}[`;
+	for (const query of [
+		() => searchRevision(repo, head, { pattern, regex: true, attributesFrom: head }),
+		() => searchRevisionFiles(repo, head, { pattern, regex: true, attributesFrom: head }, ["src/total.ts"]),
+	]) {
+		const error = await rejection(query(), RevisionError);
+		expect(error).toBeInstanceOf(RevisionError);
+		expect(error.code).toBe("invalidPattern");
+		expect(
+			error.message.startsWith(
+				`${JSON.stringify(pattern.slice(0, 200))}${length > 200 ? " [pattern truncated]" : ""} is not a valid regular expression:`,
+			),
+		).toBe(true);
+	}
+});

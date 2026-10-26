@@ -296,7 +296,10 @@ async function grepFile(repoRoot: string, revision: string, search: RevisionSear
 	if (result.code !== 0 && !result.truncated && !(result.code === 1 && result.stderr === "")) {
 		const message = result.stderr.trim();
 		if (search.regex)
-			throw new RevisionError("invalidPattern", `"${search.pattern}" is not a valid regular expression: ${message}`);
+			throw new RevisionError(
+				"invalidPattern",
+				`${JSON.stringify(search.pattern.slice(0, 200))}${search.pattern.length > 200 ? " [pattern truncated]" : ""} is not a valid regular expression: ${message}`,
+			);
 		throw new RevisionError("gitFailed", `git grep failed: ${message}`);
 	}
 	// Output cut at the byte bound may have dropped the file's last matches, so it may have more.
@@ -351,7 +354,10 @@ export async function searchRevision(
 			throw new RevisionError("invalidRevision", `${revision} does not name a commit`);
 		}
 		if (search.regex) {
-			throw new RevisionError("invalidPattern", `"${search.pattern}" is not a valid regular expression: ${message}`);
+			throw new RevisionError(
+				"invalidPattern",
+				`${JSON.stringify(search.pattern.slice(0, 200))}${search.pattern.length > 200 ? " [pattern truncated]" : ""} is not a valid regular expression: ${message}`,
+			);
 		}
 		throw new RevisionError("gitFailed", `git grep failed: ${message}`);
 	}

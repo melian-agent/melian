@@ -201,30 +201,26 @@ export const LensDocument = defineDoc<{ lens?: LensPolicy; spend?: LensSpend }>(
 // What one read_file call returns, at most. The file itself is read whole, so any line can be reached by startLine.
 const maxReadLines = 2000;
 
-// Pi Durable cuts a tool's result at 50 KB or 2000 lines unless the tool says otherwise, which would drop a boundary's
-// closing tag and Melian's notes. Each tool bounds the body it quotes below that, and sets Pi's limit above it.
+// Pi's limits leave room above the bounded body for boundary tags, continuation notes and budget messages.
 const maxShownBytes = 48 * 1024;
 const outputLimits = { maxBytes: 64 * 1024, maxLines: maxReadLines + 50 } as const;
 
-// The leading rows that fit in `maxShownBytes`, joined by newlines; a first row too long alone is cut to fit.
-function fitting(rows: readonly string[]): { body: string; count: number } {
+function fitting(rows: readonly string[]): { body: string; count: number; cut: boolean } {
 	const shown: string[] = [];
 	let size = 0;
 	for (const row of rows) {
-		const bytes = Buffer.byteLength(row) + 1;
-		if (size + bytes > maxShownBytes) {
+		const bytes = Buffer.byteLength(row) + (shown.length === 0 ? 0 : 1);
+		if (shown.length === maxReadLines || size + bytes > maxShownBytes) {
 			if (shown.length === 0)
 				shown.push(
-					`${Buffer.from(row)
-						.subarray(0, maxShownBytes - 64)
-						.toString()} [line cut]`,
+					`${new TextDecoder().decode(Buffer.from(row).subarray(0, maxShownBytes - 64), { stream: true })} [line cut]`,
 				);
-			break;
+			return { body: shown.join("\n"), count: shown.length, cut: true };
 		}
 		shown.push(row);
 		size += bytes;
 	}
-	return { body: shown.join("\n"), count: shown.length };
+	return { body: shown.join("\n"), count: shown.length, cut: false };
 }
 
 async function lensOf(reader: DocumentReader, conversationId: ConversationId, context: Context): Promise<LensPolicy> {
@@ -233,8 +229,13 @@ async function lensOf(reader: DocumentReader, conversationId: ConversationId, co
 	return lens;
 }
 
-function text(content: string) {
-	return { content: [{ type: "text" as const, text: content }] };
+function text(content: string | readonly string[], render: (body: string, count: number) => string = (body) => body) {
+	const rows = typeof content === "string" ? content.split("\n") : content.flatMap((row) => row.split("\n"));
+	const { body, count, cut } = fitting(rows);
+	const note = cut
+		? `[tool output truncated: ${rows.length - count} more lines not shown; a line too long to fit is cut]\n`
+		: "";
+	return { content: [{ type: "text" as const, text: `${note}${render(body, count)}` }] };
 }
 
 // Input tokens, cache writes included, and output tokens of every model response in the conversation. Cache reads are
@@ -363,7 +364,7 @@ type ToolResult = {
 
 // A throw ends a call with no result to carry the budget's ending, so an error becomes a result, rendered as Pi
 // renders a throw.
-function failed(error: unknown, context: Context, nonce?: string): ToolResult {
+function failed(error: unknown, context: Context, nonce: string): ToolResult {
 	if (context.abortSignal?.aborted) throw error;
 	const message = error instanceof Error ? error.message : String(error);
 	return {
@@ -372,7 +373,7 @@ function failed(error: unknown, context: Context, nonce?: string): ToolResult {
 			{
 				severity: "error",
 				code: "tool_error",
-				message: nonce === undefined ? message : quoteUntrusted("findings", visibleText(message), nonce),
+				message: text(visibleText(message), (body) => quoteUntrusted("findings", body, nonce)).content[0]!.text,
 			},
 		],
 	};
@@ -431,12 +432,7 @@ async function budgeted(
 	const { position, spent } = await meter(api, lens, "read", context);
 	const tools = lens.limits?.tools;
 	const problem = refusal(lens, { name, arguments: {} });
-	if (problem !== undefined)
-		return ending(
-			failed(new Error(problem), context, lens.role === "verifier" ? lens.revision.nonce : undefined),
-			lens,
-			spent,
-		);
+	if (problem !== undefined) return ending(failed(new Error(problem), context, lens.revision.nonce), lens, spent);
 	if (spent !== undefined) return ending(text("[not run]"), lens, spent);
 	if (tools !== undefined && position > tools) {
 		return text(
@@ -444,7 +440,7 @@ async function budgeted(
 		);
 	}
 	const result = await read(lens.revision, lens).catch((error: unknown) =>
-		failed(error, context, lens.role === "verifier" ? lens.revision.nonce : undefined),
+		failed(error, context, lens.revision.nonce),
 	);
 	if (tools === undefined || position < tools) return result;
 	const last = `[that was the last of this lens's ${toolCalls(tools)}. Report what you have confirmed; another read ends the review.]`;
@@ -509,16 +505,17 @@ const readFile = defineTool({
 			const window = lines
 				.slice(start - 1, last)
 				.map((line, index) => `${String(start + index).padStart(width)}\t${line}`);
-			const { body, count } = fitting(window);
-			const end = start - 1 + count;
-			const notes = [
-				end < lines.length
-					? `[lines ${end + 1} onward not shown; read again with startLine ${end + 1}]`
-					: undefined,
-				file.truncated ? `[the file is ${file.size} bytes; only the first part was read]` : undefined,
-				start > lines.length ? `[the file has ${lines.length} lines]` : undefined,
-			].filter((note) => note !== undefined);
-			return text([quoteUntrusted("file", body, review.nonce), ...notes].join("\n"));
+			return text(window, (body, count) => {
+				const end = start - 1 + count;
+				const notes = [
+					end < lines.length
+						? `[lines ${end + 1} onward not shown; read again with startLine ${end + 1}]`
+						: undefined,
+					file.truncated ? `[the file is ${file.size} bytes; only the first part was read]` : undefined,
+					start > lines.length ? `[the file has ${lines.length} lines]` : undefined,
+				].filter((note) => note !== undefined);
+				return [quoteUntrusted("file", body, review.nonce), ...notes].join("\n");
+			});
 		}),
 });
 
@@ -562,9 +559,10 @@ const search = defineTool({
 				return text("[matches found, but their lines are too long to show; narrow the search with path]");
 			if (matches.length === 0) return text("No matches.");
 			const lines = matches.map((match) => `${visibleText(match.path)}:${match.line}: ${match.text}`);
-			const { body, count } = fitting(lines);
-			const notes = truncated || count < lines.length ? ["[more matches not shown; narrow the search]"] : [];
-			return text([quoteUntrusted("search", body, review.nonce), ...notes].join("\n"));
+			return text(lines, (body, count) => {
+				const notes = truncated || count < lines.length ? ["[more matches not shown; narrow the search]"] : [];
+				return [quoteUntrusted("search", body, review.nonce), ...notes].join("\n");
+			});
 		}),
 });
 
@@ -587,9 +585,10 @@ async function searchFiles(review: ReviewState, commit: string, search: Revision
 		}
 	// A missing file has a row of its own, so no rows means every file was searched.
 	if (rows.length === 0) return text(`No matches in ${files.length} files.`);
-	const { body, count } = fitting(rows);
-	const notes = count < rows.length ? [`[${rows.length - count} more lines not shown; search fewer files]`] : [];
-	return text([quoteUntrusted("search", body, review.nonce), ...notes].join("\n"));
+	return text(rows, (body, count) => {
+		const notes = count < rows.length ? [`[${rows.length - count} more lines not shown; search fewer files]`] : [];
+		return [quoteUntrusted("search", body, review.nonce), ...notes].join("\n");
+	});
 }
 
 function describeEntry(entry: RevisionEntry): string {
@@ -612,10 +611,11 @@ const listFiles = defineTool({
 		budgeted(api, context, "list_files", async (review) => {
 			const { entries, truncated } = await listRevisionFiles(review.repoRoot, review.head, args);
 			if (entries.length === 0) return text("Empty.");
-			const { body, count } = fitting(entries.map(describeEntry));
-			const listing = quoteUntrusted("listing", body, review.nonce);
-			return text(
-				[listing, ...(truncated || count < entries.length ? ["[more entries not shown]"] : [])].join("\n"),
+			return text(entries.map(describeEntry), (body, count) =>
+				[
+					quoteUntrusted("listing", body, review.nonce),
+					...(truncated || count < entries.length ? ["[more entries not shown]"] : []),
+				].join("\n"),
 			);
 		}),
 });
@@ -652,9 +652,10 @@ function describeFact(fact: EnolaFact): string {
 // The rows a graph tool quotes, bounded like every other tool's, with how many it left out.
 function graphRows(review: ReviewState, rows: readonly string[], notes: readonly string[]) {
 	if (rows.length === 0) return text([...notes, graphNote].join("\n"));
-	const { body, count } = fitting(rows);
-	const cut = count < rows.length ? [`[${rows.length - count} more not shown]`] : [];
-	return text([quoteUntrusted("graph", body, review.nonce), ...cut, ...notes, graphNote].join("\n"));
+	return text(rows, (body, count) => {
+		const cut = count < rows.length ? [`[${rows.length - count} more not shown]`] : [];
+		return [...cut, ...notes, graphNote, quoteUntrusted("graph", body, review.nonce)].join("\n");
+	});
 }
 
 // The one declaration `symbol` names, or a result that lists the candidates to choose from.
@@ -1013,7 +1014,9 @@ export const reportFinding = defineTool({
 	execute: async (args, api, context) => {
 		const lens = await lensOf(api, api.conversationId, context);
 		const { spent } = await meter(api, lens, "report", context);
-		const result = await recordFinding(args, api, lens, context).catch((error: unknown) => failed(error, context));
+		const result = await recordFinding(args, api, lens, context).catch((error: unknown) =>
+			failed(error, context, lens.revision.nonce),
+		);
 		return ending(result, lens, spent);
 	},
 });
@@ -1106,12 +1109,8 @@ export const reportVerdict = defineTool({
 						: `lowered ${severity} to ${stands}`,
 				];
 			}, context);
-			return text(
-				[
-					`recorded verdict for ${args.claim}`,
-					...notes,
-					quoteUntrusted("evidence", JSON.stringify(evidence), review.nonce),
-				].join("\n"),
+			return text(JSON.stringify(evidence), (body) =>
+				[`recorded verdict for ${args.claim}`, ...notes, quoteUntrusted("evidence", body, review.nonce)].join("\n"),
 			);
 		})().catch((error: unknown) => failed(error, context, lens.revision.nonce));
 		return ending(result, lens, spent);
@@ -1191,14 +1190,14 @@ async function recordFinding(args: ReportFindingInput, api: ToolExecutionApi, le
 			? ": it is outside the change, and no cause location overlaps lines the change added, modified, or deleted, or names a file it only renamed while the finding's own file is one it edited or left alone"
 			: "";
 	// Each location's first line as Melian read it, so a lens that miscounted a line number sees what it cited.
-	const { body } = fitting(
+	return text(
 		evidence.map(
 			({ file, startLine, role, revision, snippet }) =>
 				`${role} ${visibleText(file)}:${startLine}${revision === "base" ? " at base" : ""}: ${snippet.split("\n")[0]}`,
 		),
+		(body) =>
+			`recorded finding ${id} as ${cause}${unproven}\nThe first line of each evidence location:\n${quoteUntrusted("evidence", body, review.nonce)}`,
 	);
-	const cited = quoteUntrusted("evidence", body, review.nonce);
-	return text(`recorded finding ${id} as ${cause}${unproven}\nThe first line of each evidence location:\n${cited}`);
 }
 
 // Enforces each lens's policy before a tool call runs: only the tools the lens lists plus `report_finding`, and only
