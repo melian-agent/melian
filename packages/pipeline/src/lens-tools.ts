@@ -205,15 +205,17 @@ const maxReadLines = 2000;
 // Pi's limits leave room above the bounded body for boundary tags, continuation notes and budget messages.
 const maxShownBytes = 48 * 1024;
 const outputLimits = { maxBytes: 64 * 1024, maxLines: maxReadLines + 50 } as const;
+const maxErrorBytes = 4 * 1024;
+const maxErrorLines = 40;
 
 function defineLensTool<T extends TSchema>(tool: ToolRegistration<T>) {
 	return defineTool({
 		...tool,
 		prepareArguments: (args: unknown) => {
-			// 8 KiB caps input work; preflight with Pi's validator replaces every schema error with a fixed refusal below
-			// outputLimits, including nested JSON whose pretty-printed echo grows quadratically: https://github.com/melian-agent/melian/issues/248.
-			const refusal = "Tool arguments are too large or do not match the schema.";
-			if (Buffer.byteLength(JSON.stringify(args)) > 8192) throw new Error(refusal);
+			// 8 KiB caps input work. Pi's own validation error tells the model what to fix, but echoes the arguments
+			// pretty-printed, which can grow quadratically, so it is cut below outputLimits: https://github.com/melian-agent/melian/issues/248.
+			if (Buffer.byteLength(JSON.stringify(args)) > 8192)
+				throw new Error("Tool arguments are too large: keep them under 8 KiB.");
 			try {
 				return validateToolArguments(tool, {
 					type: "toolCall",
@@ -221,8 +223,11 @@ function defineLensTool<T extends TSchema>(tool: ToolRegistration<T>) {
 					name: tool.name,
 					arguments: args as ToolCall["arguments"],
 				});
-			} catch {
-				throw new Error(refusal);
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				const lines = message.split("\n").slice(0, maxErrorLines).join("\n");
+				const shown = new TextDecoder().decode(Buffer.from(lines).subarray(0, maxErrorBytes), { stream: true });
+				throw new Error(shown === message ? message : `${shown}\n[validation error cut]`);
 			}
 		},
 	});

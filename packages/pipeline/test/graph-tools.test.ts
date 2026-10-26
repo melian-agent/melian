@@ -370,9 +370,7 @@ describe("graph tools", { timeout: 60_000 }, () => {
 		]);
 		const nonce = nonceOf(requests[correctness]![0]!);
 		const [file, diagnostic] = toolResults(requests[correctness]![1]!);
-		expect(diagnostic).toBe(
-			"<harness>\n[error] Tool arguments are too large or do not match the schema.\n</harness>",
-		);
+		expect(diagnostic).toBe("<harness>\n[error] Tool arguments are too large: keep them under 8 KiB.\n</harness>");
 		expect(file).not.toContain("\uFFFD");
 		expect(file).toContain(`1\t${"\u{10000}".repeat(12271)} [line cut]`);
 		for (const result of [file!]) {
@@ -395,7 +393,7 @@ describe("graph tools", { timeout: 60_000 }, () => {
 		const result = toolResults(requests[correctness]![1]!)[0]!;
 		expect(Buffer.byteLength(result)).toBeLessThanOrEqual(lensListedTools.search.outputLimits!.maxBytes!);
 		expect(result.split("\n").length).toBeLessThanOrEqual(lensListedTools.search.outputLimits!.maxLines!);
-		expect(result).toBe("<harness>\n[error] Tool arguments are too large or do not match the schema.\n</harness>");
+		expect(result).toBe("<harness>\n[error] Tool arguments are too large: keep them under 8 KiB.\n</harness>");
 	});
 
 	it("renders read continuation, file truncation and past-end notes exactly", async () => {

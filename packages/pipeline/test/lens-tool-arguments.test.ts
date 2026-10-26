@@ -11,7 +11,11 @@ import { backgroundContext as context, type JsonObject } from "../src/harness.ts
 import { LensDocument, lensListedTools } from "../src/lens-tools.ts";
 import { lensExtension } from "../src/review.ts";
 
-const refusal = "<harness>\n[error] Tool arguments are too large or do not match the schema.\n</harness>";
+const refusal = "<harness>\n[error] Tool arguments are too large: keep them under 8 KiB.\n</harness>";
+const withinLimits = (name: keyof typeof lensListedTools, reply: string) => {
+	expect(Buffer.byteLength(reply)).toBeLessThanOrEqual(lensListedTools[name].outputLimits!.maxBytes!);
+	expect(reply.split("\n").length).toBeLessThanOrEqual(lensListedTools[name].outputLimits!.maxLines!);
+};
 const cases = [
 	["read_file", "path"],
 	["list_files", "path"],
@@ -103,18 +107,22 @@ it("accepts exactly 8192 argument bytes and refuses one byte more", async () => 
 	expect(received[1]).toBe(refusal);
 });
 
-it("accepts 65 search paths and refuses 66 even within the byte bound", async () => {
+it("accepts 65 search paths and lets Pi refuse 66 within the byte bound, bounded", async () => {
 	const received = await replies("search", [
 		{ pattern: "needle", paths: Array(65).fill("f.ts") },
 		{ pattern: "needle", paths: Array(66).fill("f.ts") },
 	]);
-	expect(received[0]).not.toBe(refusal);
-	expect(received[1]).toBe(refusal);
+	expect(received[0]).not.toContain("Validation failed");
+	expect(received[1]).toContain("Validation failed");
+	withinLimits("search", received[1]!);
 });
 
-it("bounds schema errors with nested malformed arguments", async () => {
+it("keeps Pi's validation message for nested malformed arguments, cut within the bounds", async () => {
 	let nested: JsonObject | null = null;
 	for (let i = 0; i < 500; i++) nested = { nested };
 	const received = await replies("graph_definitions", [{ name: nested }]);
-	expect(received).toEqual([refusal]);
+	expect(received).toHaveLength(1);
+	expect(received[0]).toContain("Validation failed");
+	expect(received[0]).toContain("[validation error cut]");
+	withinLimits("graph_definitions", received[0]!);
 });
