@@ -387,7 +387,15 @@ export async function review(
 		);
 		return outcome.exitCode();
 	} catch (error) {
-		const timings = await reviewTimings(reviewHarness, storage, spans, revisionKey(changeset.revision), beganAt, io);
+		const timings = await reviewTimings(
+			reviewHarness,
+			storage,
+			spans,
+			revisionKey(changeset.revision),
+			beganAt,
+			io,
+			true,
+		);
 		io.stderr(timings.slowest());
 		if (options.json)
 			io.stdout(
@@ -414,8 +422,15 @@ async function reviewTimings(
 	revision: string,
 	before: number,
 	io: Io,
+	preserveDecided = false,
 ): Promise<StageTelemetry> {
 	try {
+		if (preserveDecided) {
+			const root = await reviewHarness.harness.root(context);
+			const verdict = await readVerdict(reviewHarness.harness, root.id, revision, context);
+			const previous = await TelemetryReader.open(storage).read(revision, before);
+			if (verdict !== undefined && previous.prepare !== undefined) return previous;
+		}
 		await spans.record(reviewHarness.harness, revision, context);
 		return await TelemetryReader.open(storage).read(revision, before);
 	} catch (error) {

@@ -1,4 +1,5 @@
-import { rmSync } from "node:fs";
+import { rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { Adjudication, Changeset, defaultConfig, Finding, type FindingInput } from "@melian-agent/core";
 import { createGitHubProvider } from "@melian-agent/github";
 import {
@@ -6,6 +7,8 @@ import {
 	createRegistry,
 	openHarness,
 	openSqliteStorage,
+	PrepareSpans,
+	ReviewHarness,
 	revisionKey,
 	TelemetryReader,
 } from "@melian-agent/pipeline";
@@ -17,6 +20,8 @@ import { VerdictDocument } from "../../pipeline/src/adjudication.ts";
 import { RecordedReview, recordedReviewTask } from "../../pipeline/test/fixtures/recorded-review.ts";
 import { baseAndHead, isolatedGitEnv } from "../../pipeline/test/fixtures/repo.ts";
 import { publish } from "../src/commands.ts";
+import { main } from "../src/main.ts";
+import * as repository from "../src/repository.ts";
 import { storagePath } from "../src/repository.ts";
 import * as targets from "../src/target.ts";
 
@@ -42,7 +47,7 @@ const finding = (input: Partial<FindingInput>): Finding =>
 
 // Publishes a stored review through a provider over a fake GitHub, and returns what it posted and what publish said
 // on standard error.
-async function published(): Promise<{ state: FakeState; stderr: string }> {
+async function published(failedRerun?: boolean, fails = true): Promise<{ state: FakeState; stderr: string }> {
 	const base = "";
 	const head = "";
 	for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
@@ -99,6 +104,12 @@ async function published(): Promise<{ state: FakeState; stderr: string }> {
 				};
 			}, context);
 			await new RecordedReview(harness).record(revisionKey(changeset.revision));
+			if (failedRerun === true)
+				await PrepareSpans.start("decided", 1000, () => 3000).record(
+					harness,
+					revisionKey(changeset.revision),
+					context,
+				);
 		} finally {
 			await harness.close(context);
 		}
@@ -112,6 +123,24 @@ async function published(): Promise<{ state: FakeState; stderr: string }> {
 			},
 			color: false,
 		};
+
+		if (failedRerun !== undefined) {
+			const script = join(repo, "script.json");
+			writeFileSync(script, "{}");
+			vi.spyOn(repository, "storagePath").mockResolvedValue(path);
+			const provider = await targets.gitHubFor(repo, env);
+			vi.spyOn(targets, "fetchedPullRequest").mockResolvedValue({
+				changeset,
+				pullRequest: await provider.pullRequest(7),
+			});
+			if (fails)
+				vi.spyOn(ReviewHarness.prototype, "resumedProviders").mockRejectedValue(new Error("second review failed"));
+			expect(
+				await main(["review", "#7", "--no-walkthrough"], { ...io, env: { ...env, MELIAN_TEST_SCRIPT: script } }),
+			).toBe(fails ? 2 : 0);
+			if (fails) expect(stderr).toContain("second review failed");
+			stderr = "";
+		}
 		expect(await publish(io, "#7", { walkthrough: false })).toBe(0);
 		return { state, stderr };
 	} finally {
@@ -149,4 +178,26 @@ it("says why in plain text when what failed was not an Error", async () => {
 	vi.spyOn(TelemetryReader.prototype, "runDetails").mockRejectedValue("refused");
 	const { stderr } = await published();
 	expect(stderr).toBe("melian: Run details unavailable: refused\n");
+});
+
+it.each([true, false])(
+	"publishes the decided round after a failed second review (previous spans=%s)",
+	async (previousSpans) => {
+		const { state, stderr } = await published(previousSpans);
+		expect(state.ledgers).toHaveLength(1);
+		if (previousSpans) {
+			expect(state.ledgers[0]!.body).toContain("| preparation |  |  | 2.0 s | — | — | ran |  |");
+			expect(state.ledgers[0]!.body).toContain("<summary>Run details: 2.0 s · 0 tokens · $0.00</summary>");
+		} else {
+			expect(state.ledgers[0]!.body).toContain("| preparation |");
+		}
+		expect(stderr).toBe("");
+	},
+);
+
+it("replaces the preparation spans when a second review decides a verdict", async () => {
+	const { state, stderr } = await published(true, false);
+	expect(state.ledgers[0]!.body).toContain("| preparation |");
+	expect(state.ledgers[0]!.body).not.toContain("| preparation |  |  | 2.0 s | — | — | ran |  |");
+	expect(stderr).toBe("");
 });
