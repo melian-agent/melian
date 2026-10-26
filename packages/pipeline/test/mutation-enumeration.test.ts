@@ -409,6 +409,53 @@ import {writeFileSync} from 'node:fs'; writeFileSync(${JSON.stringify(marker)}, 
 			[],
 		);
 	});
+	it.each([false, true])("ignores an executable Python test (mixed production: %s)", async (mixed) => {
+		writeFiles(repo, {
+			"tests/test_api.py": "#!/usr/bin/env python3\nassert True\n",
+			...(mixed ? { "src/added.ts": "export const added = (n: number) => n > 0;\n" } : {}),
+		});
+		await chmod(join(repo, "tests/test_api.py"), 0o755);
+		const finish = commit(repo, {});
+		const inventory = (await (await MutationEnumeration.open(repo, `${head}..${finish}`)).list()).toJSON();
+		expect(inventory.unmutated).toEqual([]);
+		expect(new Set(inventory.mutants.map((row) => row.file))).toEqual(new Set(mixed ? ["src/added.ts"] : []));
+	});
+
+	it("applies shared exclusions to executable fixtures, test names and generated directories", async () => {
+		const excluded = [
+			"test/runner.py",
+			"__tests__/runner.py",
+			"__mocks__/runner.py",
+			"fixtures/runner",
+			"goldens/runner.py",
+			"dist/runner",
+			"node_modules/runner",
+			"packages/evals/verifier/runner",
+			"src/helper.test.ts",
+			"src/helper.spec.js",
+			"src/types.d.ts",
+		];
+		writeFiles(repo, {
+			...Object.fromEntries(excluded.map((file) => [file, "#!/bin/sh\necho test fixture\n"])),
+			"src/added.ts": "export const added = (n: number) => n > 0;\n",
+		});
+		await Promise.all(excluded.map((file) => chmod(join(repo, file), 0o755)));
+		gitIn(repo, "add", "-f", "--", ...excluded);
+		const finish = commit(repo, {});
+		const inventory = (await (await MutationEnumeration.open(repo, `${head}..${finish}`)).list()).toJSON();
+		expect(inventory.unmutated).toEqual([]);
+		expect(new Set(inventory.mutants.map((row) => row.file))).toEqual(new Set(["src/added.ts"]));
+	});
+
+	it("refuses a line-break-only extensionless production executable", async () => {
+		writeFiles(repo, { "\n": "#!/bin/sh\necho production\n" });
+		await chmod(join(repo, "\n"), 0o755);
+		const finish = commit(repo, {});
+		await expect((await MutationEnumeration.open(repo, `${head}..${finish}`)).list()).rejects.toMatchObject({
+			code: "unsupported",
+		});
+	});
+
 	it("refuses an extensionless executable but permits uppercase documentation", async () => {
 		writeFiles(repo, { "bin/tool": "#!/bin/sh\necho hi\n", "README.md": "manual\n" });
 		await chmod(join(repo, "bin/tool"), 0o755);

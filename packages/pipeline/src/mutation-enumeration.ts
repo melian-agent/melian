@@ -297,7 +297,8 @@ export class MutationEnumeration {
 		]);
 		const unknown = [...changedPaths].filter(
 			(path) =>
-				(productionWithExtensions(path, sourceExtension) ||
+				productionWithExtensions(path, /.*/) &&
+				(sourceExtension.test(path) ||
 					revision.files.some((file) => file.path === path && file.newKind === "executable")) &&
 				!javascript.test(path) &&
 				!dataExtension.test(path),
