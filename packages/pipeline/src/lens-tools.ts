@@ -629,7 +629,7 @@ async function graphOf(lens: LensPolicy): Promise<EnolaFacts> {
 		throw new Error("the Enola graph this review recorded is of another revision; use search and read_file instead");
 	const { root, parts } = lens.graph;
 	return graphs.get(`${root}\0${GraphSnapshot.key(parts)}`, async () => {
-		const snapshot = await (await GraphCache.open(root)).read(parts);
+		const snapshot = await GraphCache.openReadOnly(root).read(parts);
 		if (snapshot === undefined)
 			throw new Error("the head's Enola graph is no longer in the cache; use search and read_file instead");
 		return EnolaFacts.parse(snapshot.files()["facts.jsonl"]);

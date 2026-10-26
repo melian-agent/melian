@@ -1,4 +1,5 @@
-import { mkdtempSync, realpathSync, rmSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Changeset, defaultConfig, EnolaFacts, GraphSnapshot, Lens, type MelianConfig } from "@melian-agent/core";
@@ -637,6 +638,28 @@ describe("graph tools", { timeout: 60_000 }, () => {
 		config = { ...config, static: { ...config.static, enola: { ...config.static.enola, enabled: false } } };
 		const requests = await reviewWith(undefined, [[["graph_impact", { symbol: "managerName" }]]]);
 		expect(toolResults(requests[correctness]![1]!)[0]).toContain("this review has no Enola graph of the head");
+	});
+
+	it("leave stale cache scratch untouched when a graph tool reads", async () => {
+		await (await GraphCache.open(cacheRoot)).store(snapshot("probe"));
+		const child = spawnSync(process.execPath, ["-e", ""]);
+		expect(child.status).toBe(0);
+		const stale = join(cacheRoot, "graphs", `.graph-${child.pid}-x`);
+		mkdirSync(stale);
+		writeFileSync(join(stale, "unfinished"), "keep");
+		const before = readdirSync(cacheRoot, { recursive: true });
+		const requests = await reviewWith(withGraph(), [[["graph_definitions", { name: "managerName" }]]]);
+		expect(toolResults(requests[correctness]![1]!)[0]).toContain("src/user.ts:6 src.managerName (symbol)");
+		expect(existsSync(stale)).toBe(true);
+		expect(readdirSync(cacheRoot, { recursive: true })).toEqual(before);
+	});
+
+	it.each(["graphs", "."])("create no directory when the cache lacks %s", async (missing) => {
+		const absent = join(cacheRoot, missing);
+		rmSync(absent, { recursive: true, force: true });
+		const requests = await reviewWith(withGraph(), [[["graph_definitions", { name: "managerName" }]]]);
+		expect(toolResults(requests[correctness]![1]!)[0]).toContain("no longer in the cache");
+		expect(existsSync(absent)).toBe(false);
 	});
 
 	it("say the graph is unavailable when the review recorded none, or the cache lost it", async () => {
