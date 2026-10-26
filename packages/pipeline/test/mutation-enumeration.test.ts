@@ -29,7 +29,7 @@ vi.mock("node:child_process", async (original) => {
 });
 vi.mock("node:fs/promises", async (original) => {
 	const actual = await original<typeof nodeFs>();
-	return { ...actual, realpath: vi.fn(actual.realpath) };
+	return { ...actual, realpath: vi.fn(actual.realpath), writeFile: vi.fn(actual.writeFile) };
 });
 vi.mock("node:path", async (original) => {
 	const actual = await original<typeof nodePath>();
@@ -62,6 +62,7 @@ afterEach(() => {
 	vi.mocked(childProcess.spawnSync).mockReset();
 	vi.mocked(nodePath.relative).mockReset();
 	vi.mocked(nodeFs.realpath).mockReset();
+	vi.mocked(nodeFs.writeFile).mockReset();
 	vi.unstubAllGlobals();
 	removeRepository(repo);
 });
@@ -233,6 +234,65 @@ describe("mutation enumeration", { timeout: 60_000 }, () => {
 		await expect((await MutationEnumeration.open(repo, `${rubyBase}..${rubyHead}`)).list()).rejects.toThrow(
 			"no mutation adapter",
 		);
+	});
+
+	it.each([
+		[".babelrc.js", "js"],
+		[".babelrc.cjs", "jsx"],
+		[".babelrc.mjs", "js"],
+		[".babelrc", "js"],
+		[".babelrc.json", "jsx"],
+		["package.json", "js"],
+		["scratch-parent/.babelrc.cjs", "js"],
+	])("isolates tracked %s when JavaScript scratch is inside the repository (%s)", async (configFile, extension) => {
+		const marker = join(repo, "babel-executed");
+		const plugin = join(repo, "config-plugin.cjs");
+		const common = `require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'head Babel config executed');`;
+		let config = `${common} module.exports = {};`;
+		if (configFile.endsWith(".mjs"))
+			config = `import {writeFileSync} from 'node:fs'; writeFileSync(${JSON.stringify(marker)}, 'head Babel config executed'); export default {};`;
+		if (configFile === ".babelrc" || configFile === ".babelrc.json") config = JSON.stringify({ plugins: [plugin] });
+		if (configFile === "package.json") config = JSON.stringify({ babel: { plugins: [plugin] } });
+		const policy = commit(repo, {
+			"package.json": "{}",
+			".gitignore": "scratch-parent/nested/\n",
+			"stryker.config.json": JSON.stringify({ mutator: { excludedMutations: ["StringLiteral"] } }),
+			"config-plugin.cjs": `${common} module.exports = () => ({visitor: {}});`,
+			[configFile]: config,
+		});
+		const file = `src/javascript.${extension}`;
+		const next = commit(repo, {
+			[file]: `export const flag=true;${extension === "jsx" ? " export const view=<div />;" : ""}\n`,
+		});
+		const temporary = join(repo, "scratch-parent/nested");
+		await mkdir(temporary, { recursive: true });
+		vi.stubEnv("TMPDIR", temporary);
+		const inventory = (await (await MutationEnumeration.open(repo, `${policy}..${next}`)).list()).toJSON();
+		expect(inventory.mutants).toContainEqual(
+			expect.objectContaining({ file, mutatorName: "BooleanLiteral", replacement: "false", status: "generated" }),
+		);
+		expect(await readdir(repo)).not.toContain("babel-executed");
+		expect(await readdir(temporary)).toEqual([]);
+	});
+
+	it("cleans scratch and starts no parser when writing the Babel package boundary fails", async () => {
+		const temporary = await mkdtemp(join(tmpdir(), "melian-boundary-failure-"));
+		try {
+			vi.stubEnv("TMPDIR", temporary);
+			const adapter = await TypeScriptMutationAdapter.open(repo);
+			vi.mocked(nodeFs.writeFile).mockImplementationOnce(async (file, data) => {
+				expect(nodePath.basename(file as string)).toBe("package.json");
+				expect(data).toBe("{}");
+				throw Object.assign(new Error("boundary write denied"), { code: "EACCES" });
+			});
+			await expect(
+				adapter.enumerate([{ name: "src/a.js", content: "export const a=true;", ranges: [[1, 1]] }], []),
+			).rejects.toMatchObject({ code: "EACCES" });
+			expect(childProcess.execFile).not.toHaveBeenCalled();
+			expect(await readdir(temporary)).toEqual([]);
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
+		}
 	});
 
 	it("cleans scratch on parser failure and accepts a missing policy config", async () => {

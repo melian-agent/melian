@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdtemp, readFile, realpath, rm } from "node:fs/promises";
+import { mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, relative, sep } from "node:path";
@@ -115,6 +115,8 @@ export class TypeScriptMutationAdapter implements MutationAdapter {
 	async enumerate(files: readonly MutationFile[], excludedMutations: readonly string[]): Promise<EnumeratedMutant[]> {
 		const scratch = await mkdtemp(join(tmpdir(), `melian-enumerate-${process.pid}-`));
 		try {
+			// Babel stops .babelrc discovery at the nearest package boundary.
+			await writeFile(join(scratch, "package.json"), "{}");
 			const script = `import { readFileSync } from 'node:fs';
 import { Instrumenter } from ${JSON.stringify(pathToFileURL(this.#module).href)};
 const logger = {debug(){}, info(){}, warn(){}, error(){}, trace(){}, isDebugEnabled:()=>false};
