@@ -33,6 +33,18 @@ describe("the production verifier version", () => {
 		}
 	});
 
+	it("holds a contradicts-documented-decision claim to the limits the design lens sets on it", () => {
+		for (const sentence of [
+			"For a claim under contradicts-documented-decision, the baseline is words in an ACTIVE decision in Decisions at base, or in a section or file listed under Design sections at base or Design files at base, read at base.",
+			"Refute it when the cited words are inactive at base, exist only at the head, or describe the design rather than say what code must or must not do.",
+			"Refute it when the change only rewords a line or adds context and the cited words do not forbid that.",
+			"Refute it when another rule in the design catalogue names the defect; that rule's claim is the one to make.",
+		]) {
+			expect(verifierInstructions).toContain(sentence);
+			expect(computeVerifierVersion(verifierInstructions.replace(sentence, ""))).not.toBe(verifierVersion);
+		}
+	});
+
 	it("judges a claim that cites other instances of its shape at its own line", () => {
 		for (const sentence of [
 			"A claim may cite other instances of its shape as context.",

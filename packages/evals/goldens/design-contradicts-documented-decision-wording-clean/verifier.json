@@ -1,0 +1,13 @@
+{
+  "ef9ed09f125d5a9d": {
+    "verdict": "refuted",
+    "reason": "The base design governs how often a fact is stated, not how a line is worded. The head still prints each note once; a wording change contradicts nothing.",
+    "evidence": [
+      {
+        "file": "src/comment.ts",
+        "line": 4,
+        "role": "context"
+      }
+    ]
+  }
+}

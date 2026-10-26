@@ -1,0 +1,6 @@
+{
+  "5c1ef24d7b1da793": {
+    "verdict": "confirmed",
+    "reason": "The base design section says a fact is stated once, never once per lens. `renderNotes` now prints a shared note once per lens, which the words forbid, and no more specific design rule names it."
+  }
+}
