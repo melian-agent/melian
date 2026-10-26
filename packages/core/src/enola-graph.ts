@@ -106,18 +106,10 @@ export class EnolaFacts {
 		const declarations = this.#facts.filter((fact) => fact.kind === "symbol");
 		const exact = declarations.filter((fact) => fact.name === name);
 		const found = exact.length > 0 ? exact : declarations.filter((fact) => fact.name.endsWith(`.${name}`));
-		return found
-			.map((fact) => structuredClone(fact))
-			.sort(
-				(a, b) =>
-					compare(a.name, b.name) ||
-					compare(a.file ?? "", b.file ?? "") ||
-					(a.line ?? 0) - (b.line ?? 0) ||
-					compare(a.id, b.id),
-			);
+		return found.map((fact) => structuredClone(fact)).sort(compareFacts);
 	}
 	/**
-	 * Every fact with an edge Enola resolved to `target`, with the edge's kind, sorted by file and line. `declares` edges
+	 * Every fact with an edge Enola resolved to `target`, with the edge's kind, sorted by name, file, line and ID. `declares` edges
 	 * are structure, not use, and are left out. `unresolved` counts the edges that name `target` but that Enola did not
 	 * resolve to it, which a grep would have to settle.
 	 */
@@ -125,7 +117,7 @@ export class EnolaFacts {
 		const references = (this.#incoming().get(target.id) ?? [])
 			.filter((edge) => edge.kind !== "declares")
 			.map((edge) => ({ kind: edge.kind, fact: structuredClone(edge.source) }))
-			.sort((a, b) => compare(place(a.fact), place(b.fact)) || compare(a.kind, b.kind));
+			.sort((a, b) => compareFacts(a.fact, b.fact) || compare(a.kind, b.kind));
 		let unresolved = 0;
 		for (const fact of this.#facts)
 			for (const relation of fact.relations ?? [])
@@ -144,14 +136,16 @@ export class EnolaFacts {
 		let frontier = [target.id];
 		for (let level = 1; level <= depth && frontier.length > 0; level++) {
 			const next: string[] = [];
-			for (const id of frontier)
-				for (const edge of incoming.get(id) ?? []) {
-					if (!callEdges.includes(edge.kind) || seen.has(edge.source.id)) continue;
-					if (reached.length === maxNodes) return { reached, truncated: true };
-					seen.add(edge.source.id);
-					reached.push({ depth: level, fact: structuredClone(edge.source) });
-					next.push(edge.source.id);
-				}
+			const edges = frontier
+				.flatMap((id) => incoming.get(id) ?? [])
+				.sort((a, b) => compareFacts(a.source, b.source) || compare(a.kind, b.kind));
+			for (const edge of edges) {
+				if (!callEdges.includes(edge.kind) || seen.has(edge.source.id)) continue;
+				if (reached.length === maxNodes) return { reached, truncated: true };
+				seen.add(edge.source.id);
+				reached.push({ depth: level, fact: structuredClone(edge.source) });
+				next.push(edge.source.id);
+			}
 			frontier = next;
 		}
 		return { reached, truncated: false };
@@ -167,6 +161,7 @@ export class EnolaFacts {
 			if (target === undefined) unresolved.push(relation.target);
 			else resolved.push({ kind: relation.kind, fact: structuredClone(target) });
 		}
+		resolved.sort((a, b) => compareFacts(a.fact, b.fact) || compare(a.kind, b.kind));
 		return { resolved, unresolved: [...new Set(unresolved)].sort(compare) };
 	}
 	#byId(): Map<string, EnolaFact> {
@@ -183,15 +178,12 @@ export class EnolaFacts {
 					edges.push({ kind: relation.kind, source });
 					this.#edges.set(relation.target_id, edges);
 				}
-			// Sorted and each edge once, so the callers a node cap keeps never depend on the order Enola wrote its facts.
+			// Repeated edges describe one use; queries order the unique uses before applying their bounds.
 			for (const [id, edges] of this.#edges) {
 				const key = (edge: { kind: string; source: EnolaFact }) =>
 					`${place(edge.source)}\0${edge.source.id}\0${edge.kind}`;
 				const unique = new Map(edges.map((edge) => [key(edge), edge]));
-				this.#edges.set(
-					id,
-					[...unique].sort(([a], [b]) => compare(a, b)).map(([, edge]) => edge),
-				);
+				this.#edges.set(id, [...unique.values()]);
 			}
 		}
 		return this.#edges;
@@ -208,6 +200,14 @@ export type EnolaReach = { depth: number; fact: EnolaFact };
 const callEdges: readonly string[] = ["calls", "instantiates"];
 function compare(a: string, b: string): number {
 	return a < b ? -1 : a > b ? 1 : 0;
+}
+function compareFacts(a: EnolaFact, b: EnolaFact): number {
+	return (
+		compare(a.name, b.name) ||
+		compare(a.file ?? "", b.file ?? "") ||
+		(a.line ?? 0) - (b.line ?? 0) ||
+		compare(a.id, b.id)
+	);
 }
 function place(fact: EnolaFact): string {
 	return `${fact.file ?? ""}\0${String(fact.line ?? 0).padStart(9, "0")}\0${fact.name}`;
