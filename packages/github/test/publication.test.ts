@@ -594,7 +594,7 @@ describe("markers", () => {
 		);
 	});
 
-	// Pull request #201's body repeated seven caller notes and the triage note under each of eight lenses.
+	// [Pull request #201](https://github.com/melian-agent/melian/pull/201)'s body repeated seven caller notes and the triage note under each of eight lenses.
 	const pr201Notes = [
 		...Array.from(
 			{ length: 7 },
@@ -1048,6 +1048,25 @@ describe("a quiet review body", () => {
 		// Each folded advisory keeps its marker on a line of its own, so a rerun still finds what it posted.
 		expect(markersIn(folds[1]![2]!).map(({ id }) => id)).toEqual(advisories.map(({ id }) => id));
 		for (const finding of dismissed) expect(folds[0]![2]).toContain(finding.id);
+	});
+
+	it("counts every dismissed report the fold lists, merged members included", () => {
+		const primary = dismissedAs("src/a.ts", shared);
+		const member = Finding.create({ ...input, rule: "other-rule" });
+		const merged = Finding.from({
+			...primary.toJSON(),
+			properties: {
+				...primary.properties,
+				alsoReportedAs: [
+					{
+						...member.report(),
+						dismissal: { by: "M <m@example.invalid>", at: "2026-10-25T00:00:00Z", reason: "Other." },
+					},
+					{ ...member.report(), id: "b".repeat(16) },
+				],
+			},
+		});
+		expect(bodyOf([merged])).toContain("<summary>3 dismissed, 2 reasons</summary>");
 	});
 
 	it("names one advisory and one reason in the singular", () => {
