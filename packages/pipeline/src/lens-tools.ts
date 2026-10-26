@@ -205,15 +205,14 @@ const maxReadLines = 2000;
 // Pi's limits leave room above the bounded body for boundary tags, continuation notes and budget messages.
 const maxShownBytes = 48 * 1024;
 const outputLimits = { maxBytes: 64 * 1024, maxLines: maxReadLines + 50 } as const;
-const maxErrorBytes = 4 * 1024;
-const maxErrorLines = 40;
 
 function defineLensTool<T extends TSchema>(tool: ToolRegistration<T>) {
 	return defineTool({
 		...tool,
 		prepareArguments: (args: unknown) => {
-			// 8 KiB caps input work. Pi's own validation error tells the model what to fix, but echoes the arguments
-			// pretty-printed, which can grow quadratically, so it is cut below outputLimits: https://github.com/melian-agent/melian/issues/248.
+			// 8 KiB caps input work. Pi's validation error names the first failing path, then echoes the arguments, which
+			// carry model text outside the untrusted boundary and can grow past outputLimits, so the echo goes. What remains
+			// is one line bounded by the 8 KiB input: https://github.com/melian-agent/melian/issues/248.
 			if (Buffer.byteLength(JSON.stringify(args)) > 8192)
 				throw new Error("Tool arguments are too large: keep them under 8 KiB.");
 			try {
@@ -224,10 +223,9 @@ function defineLensTool<T extends TSchema>(tool: ToolRegistration<T>) {
 					arguments: args as ToolCall["arguments"],
 				});
 			} catch (error) {
-				const message = error instanceof Error ? error.message : String(error);
-				const lines = message.split("\n").slice(0, maxErrorLines).join("\n");
-				const shown = new TextDecoder().decode(Buffer.from(lines).subarray(0, maxErrorBytes), { stream: true });
-				throw new Error(shown === message ? message : `${shown}\n[validation error cut]`);
+				throw new Error(
+					(error instanceof Error ? error.message : String(error)).split("\n\nReceived arguments:")[0],
+				);
 			}
 		},
 	});

@@ -114,15 +114,17 @@ it("accepts 65 search paths and lets Pi refuse 66 within the byte bound, bounded
 	]);
 	expect(received[0]).not.toContain("Validation failed");
 	expect(received[1]).toContain("Validation failed");
+	expect(received[1]).not.toContain("Received arguments");
+	expect(received[1]).not.toContain("f.ts");
 	withinLimits("search", received[1]!);
 });
 
-it("keeps Pi's validation message for nested malformed arguments, cut within the bounds", async () => {
+it("keeps Pi's validation message for nested malformed arguments, without the echoed arguments", async () => {
 	let nested: JsonObject | null = null;
 	for (let i = 0; i < 500; i++) nested = { nested };
 	const received = await replies("graph_definitions", [{ name: nested }]);
 	expect(received).toHaveLength(1);
 	expect(received[0]).toContain("Validation failed");
-	expect(received[0]).toContain("[validation error cut]");
+	expect(received[0]).not.toContain("Received arguments");
 	withinLimits("graph_definitions", received[0]!);
 });
