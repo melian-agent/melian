@@ -1,0 +1,954 @@
+{
+  "mutants": [
+    {
+      "file": "packages/cli/src/commands.ts",
+      "line": 123,
+      "column": 43,
+      "endLine": 123,
+      "endColumn": 104,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "claim": "killed",
+      "evidence": "packages/cli/test/cli.test.ts: exits 1 for a blocking finding, and findings adds its agent prompt",
+      "survivorClasses": [
+        "dropped-value"
+      ],
+      "command": [
+        "npx",
+        "vitest",
+        "--run",
+        "packages/cli/test/cli.test.ts",
+        "-t",
+        "exits 1 for a blocking finding, and findings adds its agent prompt"
+      ],
+      "result": {
+        "status": "killed",
+        "exitCode": 1,
+        "log": "tmp/quiet-output-fix2/combined-mutant-00.log",
+        "seconds": 3.26
+      }
+    },
+    {
+      "file": "packages/cli/src/commands.ts",
+      "line": 123,
+      "column": 76,
+      "endLine": 123,
+      "endColumn": 80,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "false",
+      "claim": "killed",
+      "evidence": "packages/cli/test/cli.test.ts: exits 1 for a blocking finding, and findings adds its agent prompt",
+      "survivorClasses": [],
+      "command": [
+        "npx",
+        "vitest",
+        "--run",
+        "packages/cli/test/cli.test.ts",
+        "-t",
+        "exits 1 for a blocking finding, and findings adds its agent prompt"
+      ],
+      "result": {
+        "status": "killed",
+        "exitCode": 1,
+        "log": "tmp/quiet-output-fix2/combined-mutant-01.log",
+        "seconds": 3.02
+      }
+    },
+    {
+      "file": "packages/cli/src/commands.ts",
+      "line": 123,
+      "column": 91,
+      "endLine": 123,
+      "endColumn": 95,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "false",
+      "claim": "killed",
+      "evidence": "packages/cli/test/cli.test.ts: exits 1 for a blocking finding, and findings adds its agent prompt",
+      "survivorClasses": [],
+      "command": [
+        "npx",
+        "vitest",
+        "--run",
+        "packages/cli/test/cli.test.ts",
+        "-t",
+        "exits 1 for a blocking finding, and findings adds its agent prompt"
+      ],
+      "result": {
+        "status": "killed",
+        "exitCode": 1,
+        "log": "tmp/quiet-output-fix2/combined-mutant-02.log",
+        "seconds": 3.07
+      }
+    },
+    {
+      "file": "packages/cli/src/commands.ts",
+      "line": 391,
+      "column": 6,
+      "endLine": 391,
+      "endColumn": 31,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "claim": "new-test",
+      "evidence": "packages/cli/test/cli.test.ts: keeps lens notes opt-in in review, findings and frozen rounds, and preserves them in JSON",
+      "survivorClasses": [
+        "dropped-value"
+      ],
+      "command": [
+        "npx",
+        "vitest",
+        "--run",
+        "packages/cli/test/cli.test.ts",
+        "-t",
+        "keeps lens notes opt-in in review, findings and frozen rounds, and preserves them in JSON"
+      ],
+      "result": {
+        "status": "killed",
+        "exitCode": 1,
+        "log": "tmp/quiet-output-fix2/combined-mutant-03.log",
+        "seconds": 2.05
+      }
+    },
+    {
+      "file": "packages/cli/src/commands.ts",
+      "line": 634,
+      "column": 31,
+      "endLine": 641,
+      "endColumn": 3,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "claim": "new-test",
+      "evidence": "packages/cli/test/cli.test.ts: keeps lens notes opt-in in review, findings and frozen rounds, and preserves them in JSON",
+      "survivorClasses": [
+        "dropped-value"
+      ],
+      "command": [
+        "npx",
+        "vitest",
+        "--run",
+        "packages/cli/test/cli.test.ts",
+        "-t",
+        "keeps lens notes opt-in in review, findings and frozen rounds, and preserves them in JSON"
+      ],
+      "result": {
+        "status": "killed",
+        "exitCode": 1,
+        "log": "tmp/quiet-output-fix2/combined-mutant-04.log",
+        "seconds": 5.84
+      }
+    },
+    {
+      "file": "packages/cli/src/commands.ts",
+      "line": 637,
+      "column": 8,
+      "endLine": 637,
+      "endColumn": 12,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "false",
+      "claim": "killed",
+      "evidence": "packages/cli/test/cli.test.ts: exits 1 for a blocking finding, and findings adds its agent prompt",
+      "survivorClasses": [],
+      "command": [
+        "npx",
+        "vitest",
+        "--run",
+        "packages/cli/test/cli.test.ts",
+        "-t",
+        "exits 1 for a blocking finding, and findings adds its agent prompt"
+      ],
+      "result": {
+        "status": "killed",
+        "exitCode": 1,
+        "log": "tmp/quiet-output-fix2/combined-mutant-05.log",
+        "seconds": 3.08
+      }
+    },
+    {
+      "file": "packages/cli/src/commands.ts",
+      "line": 639,
+      "column": 12,
+      "endLine": 639,
+      "endColumn": 16,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "false",
+      "claim": "killed",
+      "evidence": "packages/cli/test/cli.test.ts: exits 1 for a blocking finding, and findings adds its agent prompt",
+      "survivorClasses": [],
+      "command": [
+        "npx",
+        "vitest",
+        "--run",
+        "packages/cli/test/cli.test.ts",
+        "-t",
+        "exits 1 for a blocking finding, and findings adds its agent prompt"
+      ],
+      "result": {
+        "status": "killed",
+        "exitCode": 1,
+        "log": "tmp/quiet-output-fix2/combined-mutant-06.log",
+        "seconds": 3.24
+      }
+    },
+    {
+      "file": "packages/cli/src/main.ts",
+      "line": 141,
+      "column": 11,
+      "endLine": 141,
+      "endColumn": 46,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "claim": "new-test",
+      "evidence": "packages/cli/test/cli.test.ts: keeps lens notes opt-in in review, findings and frozen rounds, and preserves them in JSON",
+      "survivorClasses": [
+        "dropped-value"
+      ],
+      "command": [
+        "npx",
+        "vitest",
+        "--run",
+        "packages/cli/test/cli.test.ts",
+        "-t",
+        "keeps lens notes opt-in in review, findings and frozen rounds, and preserves them in JSON"
+      ],
+      "result": {
+        "status": "killed",
+        "exitCode": 1,
+        "log": "tmp/quiet-output-fix2/combined-mutant-07.log",
+        "seconds": 1.73
+      }
+    },
+    {
+      "file": "packages/cli/src/main.ts",
+      "line": 141,
+      "column": 19,
+      "endLine": 141,
+      "endColumn": 28,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "Ignored",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "claim": "new-test",
+      "evidence": "packages/cli/test/cli.test.ts: keeps lens notes opt-in in review, findings and frozen rounds, and preserves them in JSON",
+      "survivorClasses": [],
+      "command": [
+        "npx",
+        "vitest",
+        "--run",
+        "packages/cli/test/cli.test.ts",
+        "-t",
+        "keeps lens notes opt-in in review, findings and frozen rounds, and preserves them in JSON"
+      ],
+      "result": {
+        "status": "killed",
+        "exitCode": 1,
+        "log": "tmp/quiet-output-fix2/combined-mutant-08.log",
+        "seconds": 1.73
+      }
+    },
+    {
+      "file": "packages/cli/src/main.ts",
+      "line": 141,
+      "column": 39,
+      "endLine": 141,
+      "endColumn": 44,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "true",
+      "claim": "new-test",
+      "evidence": "packages/cli/test/cli.test.ts: keeps lens notes opt-in in review, findings and frozen rounds, and preserves them in JSON",
+      "survivorClasses": [],
+      "command": [
+        "npx",
+        "vitest",
+        "--run",
+        "packages/cli/test/cli.test.ts",
+        "-t",
+        "keeps lens notes opt-in in review, findings and frozen rounds, and preserves them in JSON"
+      ],
+      "result": {
+        "status": "killed",
+        "exitCode": 1,
+        "log": "tmp/quiet-output-fix2/combined-mutant-09.log",
+        "seconds": 2.55
+      }
+    },
+    {
+      "file": "packages/core/src/adjudication.ts",
+      "line": 606,
+      "column": 7,
+      "endLine": 606,
+      "endColumn": 27,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "claim": "new-test",
+      "evidence": "packages/core/test/lens-notes.test.ts: deduplicates individual notes inside different lens reasons in record order",
+      "survivorClasses": [],
+      "command": [
+        "npx",
+        "vitest",
+        "--run",
+        "packages/core/test/lens-notes.test.ts",
+        "-t",
+        "deduplicates individual notes inside different lens reasons in record order"
+      ],
+      "result": {
+        "status": "killed",
+        "exitCode": 1,
+        "log": "tmp/quiet-output-fix2/combined-mutant-10.log",
+        "seconds": 0.84
+      }
+    },
+    {
+      "file": "packages/core/src/adjudication.ts",
+      "line": 606,
+      "column": 7,
+      "endLine": 606,
+      "endColumn": 27,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "claim": "new-test",
+      "evidence": "packages/core/test/lens-notes.test.ts: deduplicates individual notes inside different lens reasons in record order",
+      "survivorClasses": [],
+      "command": [
+        "npx",
+        "vitest",
+        "--run",
+        "packages/core/test/lens-notes.test.ts",
+        "-t",
+        "deduplicates individual notes inside different lens reasons in record order"
+      ],
+      "result": {
+        "status": "killed",
+        "exitCode": 1,
+        "log": "tmp/quiet-output-fix2/combined-mutant-11.log",
+        "seconds": 0.88
+      }
+    },
+    {
+      "file": "packages/core/src/adjudication.ts",
+      "line": 606,
+      "column": 7,
+      "endLine": 606,
+      "endColumn": 27,
+      "mutatorName": "EqualityOperator",
+      "replacement": "reason === undefined",
+      "claim": "new-test",
+      "evidence": "packages/core/test/lens-notes.test.ts: deduplicates individual notes inside different lens reasons in record order",
+      "survivorClasses": [],
+      "command": [
+        "npx",
+        "vitest",
+        "--run",
+        "packages/core/test/lens-notes.test.ts",
+        "-t",
+        "deduplicates individual notes inside different lens reasons in record order"
+      ],
+      "result": {
+        "status": "killed",
+        "exitCode": 1,
+        "log": "tmp/quiet-output-fix2/combined-mutant-12.log",
+        "seconds": 0.93
+      }
+    },
+    {
+      "file": "packages/core/src/adjudication.ts",
+      "line": 607,
+      "column": 36,
+      "endLine": 607,
+      "endColumn": 40,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "Ignored",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "claim": "new-test",
+      "evidence": "packages/core/test/lens-notes.test.ts: deduplicates individual notes inside different lens reasons in record order",
+      "survivorClasses": [],
+      "command": [
+        "npx",
+        "vitest",
+        "--run",
+        "packages/core/test/lens-notes.test.ts",
+        "-t",
+        "deduplicates individual notes inside different lens reasons in record order"
+      ],
+      "result": {
+        "status": "killed",
+        "exitCode": 1,
+        "log": "tmp/quiet-output-fix2/combined-mutant-13.log",
+        "seconds": 0.88
+      }
+    },
+    {
+      "file": "packages/core/src/adjudication.ts",
+      "line": 607,
+      "column": 59,
+      "endLine": 607,
+      "endColumn": 107,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "claim": "new-test",
+      "evidence": "packages/core/test/lens-notes.test.ts: deduplicates individual notes inside different lens reasons in record order",
+      "survivorClasses": [
+        "dropped-value"
+      ],
+      "command": [
+        "npx",
+        "vitest",
+        "--run",
+        "packages/core/test/lens-notes.test.ts",
+        "-t",
+        "deduplicates individual notes inside different lens reasons in record order"
+      ],
+      "result": {
+        "status": "killed",
+        "exitCode": 1,
+        "log": "tmp/quiet-output-fix2/combined-mutant-14.log",
+        "seconds": 0.88
+      }
+    },
+    {
+      "file": "packages/core/src/adjudication.ts",
+      "line": 607,
+      "column": 71,
+      "endLine": 607,
+      "endColumn": 105,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "claim": "new-test",
+      "evidence": "packages/core/test/lens-notes.test.ts: deduplicates individual notes inside different lens reasons in record order",
+      "survivorClasses": [
+        "dropped-value"
+      ],
+      "command": [
+        "npx",
+        "vitest",
+        "--run",
+        "packages/core/test/lens-notes.test.ts",
+        "-t",
+        "deduplicates individual notes inside different lens reasons in record order"
+      ],
+      "result": {
+        "status": "killed",
+        "exitCode": 1,
+        "log": "tmp/quiet-output-fix2/combined-mutant-15.log",
+        "seconds": 0.87
+      }
+    },
+    {
+      "file": "packages/core/src/adjudication.ts",
+      "line": 607,
+      "column": 76,
+      "endLine": 607,
+      "endColumn": 97,
+      "mutatorName": "LogicalOperator",
+      "replacement": "notes.get(note) && []",
+      "claim": "new-test",
+      "evidence": "packages/core/test/lens-notes.test.ts: deduplicates individual notes inside different lens reasons in record order",
+      "survivorClasses": [
+        "nullish-logical"
+      ],
+      "command": [
+        "npx",
+        "vitest",
+        "--run",
+        "packages/core/test/lens-notes.test.ts",
+        "-t",
+        "deduplicates individual notes inside different lens reasons in record order"
+      ],
+      "result": {
+        "status": "killed",
+        "exitCode": 1,
+        "log": "tmp/quiet-output-fix2/combined-mutant-16.log",
+        "seconds": 0.89
+      }
+    },
+    {
+      "file": "packages/core/src/adjudication.ts",
+      "line": 607,
+      "column": 95,
+      "endLine": 607,
+      "endColumn": 97,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[\"Stryker was here\"]",
+      "claim": "new-test",
+      "evidence": "packages/core/test/lens-notes.test.ts: deduplicates individual notes inside different lens reasons in record order",
+      "survivorClasses": [
+        "dropped-value",
+        "seeded-default"
+      ],
+      "command": [
+        "npx",
+        "vitest",
+        "--run",
+        "packages/core/test/lens-notes.test.ts",
+        "-t",
+        "deduplicates individual notes inside different lens reasons in record order"
+      ],
+      "result": {
+        "status": "killed",
+        "exitCode": 1,
+        "log": "tmp/quiet-output-fix2/combined-mutant-17.log",
+        "seconds": 1.79
+      }
+    },
+    {
+      "file": "packages/core/src/adjudication.ts",
+      "line": 842,
+      "column": 4,
+      "endLine": 843,
+      "endColumn": 131,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "claim": "killed",
+      "evidence": "packages/core/test/render.test.ts: leads with the verdict, the checks that did not run, a lens its budget ended, and each lens's level, then groups findings by resolution",
+      "survivorClasses": [],
+      "command": [
+        "npx",
+        "vitest",
+        "--run",
+        "packages/core/test/render.test.ts",
+        "-t",
+        "leads with the verdict, the checks that did not run, a lens its budget ended, and each lens's level, then groups findings by resolution"
+      ],
+      "result": {
+        "status": "killed",
+        "exitCode": 1,
+        "log": "tmp/quiet-output-fix2/combined-mutant-18.log",
+        "seconds": 1.16
+      }
+    },
+    {
+      "file": "packages/core/src/adjudication.ts",
+      "line": 843,
+      "column": 5,
+      "endLine": 843,
+      "endColumn": 131,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "Ignored",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "claim": "killed",
+      "evidence": "packages/core/test/render.test.ts: leads with the verdict, the checks that did not run, a lens its budget ended, and each lens's level, then groups findings by resolution",
+      "survivorClasses": [],
+      "command": [
+        "npx",
+        "vitest",
+        "--run",
+        "packages/core/test/render.test.ts",
+        "-t",
+        "leads with the verdict, the checks that did not run, a lens its budget ended, and each lens's level, then groups findings by resolution"
+      ],
+      "result": {
+        "status": "killed",
+        "exitCode": 1,
+        "log": "tmp/quiet-output-fix2/combined-mutant-19.log",
+        "seconds": 1.73
+      }
+    },
+    {
+      "file": "packages/core/src/adjudication.ts",
+      "line": 843,
+      "column": 40,
+      "endLine": 843,
+      "endColumn": 65,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "claim": "killed",
+      "evidence": "packages/core/test/render.test.ts: leads with the verdict, the checks that did not run, a lens its budget ended, and each lens's level, then groups findings by resolution",
+      "survivorClasses": [],
+      "command": [
+        "npx",
+        "vitest",
+        "--run",
+        "packages/core/test/render.test.ts",
+        "-t",
+        "leads with the verdict, the checks that did not run, a lens its budget ended, and each lens's level, then groups findings by resolution"
+      ],
+      "result": {
+        "status": "killed",
+        "exitCode": 1,
+        "log": "tmp/quiet-output-fix2/combined-mutant-20.log",
+        "seconds": 1.25
+      }
+    },
+    {
+      "file": "packages/core/src/adjudication.ts",
+      "line": 843,
+      "column": 40,
+      "endLine": 843,
+      "endColumn": 65,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "claim": "killed",
+      "evidence": "packages/core/test/render.test.ts: leads with the verdict, the checks that did not run, a lens its budget ended, and each lens's level, then groups findings by resolution",
+      "survivorClasses": [],
+      "command": [
+        "npx",
+        "vitest",
+        "--run",
+        "packages/core/test/render.test.ts",
+        "-t",
+        "leads with the verdict, the checks that did not run, a lens its budget ended, and each lens's level, then groups findings by resolution"
+      ],
+      "result": {
+        "status": "killed",
+        "exitCode": 1,
+        "log": "tmp/quiet-output-fix2/combined-mutant-21.log",
+        "seconds": 1.13
+      }
+    },
+    {
+      "file": "packages/core/src/adjudication.ts",
+      "line": 843,
+      "column": 40,
+      "endLine": 843,
+      "endColumn": 65,
+      "mutatorName": "EqualityOperator",
+      "replacement": "budgetEnded !== undefined",
+      "claim": "killed",
+      "evidence": "packages/core/test/render.test.ts: leads with the verdict, the checks that did not run, a lens its budget ended, and each lens's level, then groups findings by resolution",
+      "survivorClasses": [],
+      "command": [
+        "npx",
+        "vitest",
+        "--run",
+        "packages/core/test/render.test.ts",
+        "-t",
+        "leads with the verdict, the checks that did not run, a lens its budget ended, and each lens's level, then groups findings by resolution"
+      ],
+      "result": {
+        "status": "killed",
+        "exitCode": 1,
+        "log": "tmp/quiet-output-fix2/combined-mutant-22.log",
+        "seconds": 1.08
+      }
+    },
+    {
+      "file": "packages/core/src/adjudication.ts",
+      "line": 843,
+      "column": 68,
+      "endLine": 843,
+      "endColumn": 70,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"Stryker was here!\"",
+      "status": "Ignored",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "claim": "killed",
+      "evidence": "packages/core/test/render.test.ts: leads with the verdict, the checks that did not run, a lens its budget ended, and each lens's level, then groups findings by resolution",
+      "survivorClasses": [],
+      "command": [
+        "npx",
+        "vitest",
+        "--run",
+        "packages/core/test/render.test.ts",
+        "-t",
+        "leads with the verdict, the checks that did not run, a lens its budget ended, and each lens's level, then groups findings by resolution"
+      ],
+      "result": {
+        "status": "killed",
+        "exitCode": 1,
+        "log": "tmp/quiet-output-fix2/combined-mutant-23.log",
+        "seconds": 1.13
+      }
+    },
+    {
+      "file": "packages/core/src/adjudication.ts",
+      "line": 843,
+      "column": 73,
+      "endLine": 843,
+      "endColumn": 129,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "Ignored",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "claim": "killed",
+      "evidence": "packages/core/test/render.test.ts: leads with the verdict, the checks that did not run, a lens its budget ended, and each lens's level, then groups findings by resolution",
+      "survivorClasses": [],
+      "command": [
+        "npx",
+        "vitest",
+        "--run",
+        "packages/core/test/render.test.ts",
+        "-t",
+        "leads with the verdict, the checks that did not run, a lens its budget ended, and each lens's level, then groups findings by resolution"
+      ],
+      "result": {
+        "status": "killed",
+        "exitCode": 1,
+        "log": "tmp/quiet-output-fix2/combined-mutant-24.log",
+        "seconds": 1.17
+      }
+    },
+    {
+      "file": "packages/core/src/adjudication.ts",
+      "line": 847,
+      "column": 6,
+      "endLine": 847,
+      "endColumn": 21,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "claim": "new-test",
+      "evidence": "packages/core/test/lens-notes.test.ts: omits lens notes by default and with --all, keeping levels",
+      "survivorClasses": [],
+      "command": [
+        "npx",
+        "vitest",
+        "--run",
+        "packages/core/test/lens-notes.test.ts",
+        "-t",
+        "omits lens notes by default and with --all, keeping levels"
+      ],
+      "result": {
+        "status": "killed",
+        "exitCode": 1,
+        "log": "tmp/quiet-output-fix2/combined-mutant-25.log",
+        "seconds": 0.98
+      }
+    },
+    {
+      "file": "packages/core/src/adjudication.ts",
+      "line": 847,
+      "column": 6,
+      "endLine": 847,
+      "endColumn": 21,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "claim": "new-test",
+      "evidence": "packages/core/test/lens-notes.test.ts: shows a shared lens note once with --notes and names its checks",
+      "survivorClasses": [],
+      "command": [
+        "npx",
+        "vitest",
+        "--run",
+        "packages/core/test/lens-notes.test.ts",
+        "-t",
+        "shows a shared lens note once with --notes and names its checks"
+      ],
+      "result": {
+        "status": "killed",
+        "exitCode": 1,
+        "log": "tmp/quiet-output-fix2/combined-mutant-26.log",
+        "seconds": 1.04
+      }
+    },
+    {
+      "file": "packages/core/src/adjudication.ts",
+      "line": 850,
+      "column": 5,
+      "endLine": 850,
+      "endColumn": 96,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "claim": "new-test",
+      "evidence": "packages/core/test/lens-notes.test.ts: shows a shared lens note once with --notes and names its checks",
+      "survivorClasses": [
+        "dropped-value"
+      ],
+      "command": [
+        "npx",
+        "vitest",
+        "--run",
+        "packages/core/test/lens-notes.test.ts",
+        "-t",
+        "shows a shared lens note once with --notes and names its checks"
+      ],
+      "result": {
+        "status": "killed",
+        "exitCode": 1,
+        "log": "tmp/quiet-output-fix2/combined-mutant-27.log",
+        "seconds": 1.03
+      }
+    },
+    {
+      "file": "packages/core/src/adjudication.ts",
+      "line": 850,
+      "column": 29,
+      "endLine": 850,
+      "endColumn": 96,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "Ignored",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "claim": "new-test",
+      "evidence": "packages/core/test/lens-notes.test.ts: shows a shared lens note once with --notes and names its checks",
+      "survivorClasses": [],
+      "command": [
+        "npx",
+        "vitest",
+        "--run",
+        "packages/core/test/lens-notes.test.ts",
+        "-t",
+        "shows a shared lens note once with --notes and names its checks"
+      ],
+      "result": {
+        "status": "killed",
+        "exitCode": 1,
+        "log": "tmp/quiet-output-fix2/combined-mutant-28.log",
+        "seconds": 1.08
+      }
+    },
+    {
+      "file": "packages/core/src/adjudication.ts",
+      "line": 850,
+      "column": 63,
+      "endLine": 850,
+      "endColumn": 67,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "Ignored",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "claim": "new-test",
+      "evidence": "packages/core/test/lens-notes.test.ts: shows a shared lens note once with --notes and names its checks",
+      "survivorClasses": [],
+      "command": [
+        "npx",
+        "vitest",
+        "--run",
+        "packages/core/test/lens-notes.test.ts",
+        "-t",
+        "shows a shared lens note once with --notes and names its checks"
+      ],
+      "result": {
+        "status": "killed",
+        "exitCode": 1,
+        "log": "tmp/quiet-output-fix2/combined-mutant-29.log",
+        "seconds": 1.06
+      }
+    },
+    {
+      "file": "packages/core/src/adjudication.ts",
+      "line": 850,
+      "column": 87,
+      "endLine": 850,
+      "endColumn": 93,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "Ignored",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "claim": "new-test",
+      "evidence": "packages/core/test/lens-notes.test.ts: indents a note's continuation and escapes terminal controls",
+      "survivorClasses": [],
+      "command": [
+        "npx",
+        "vitest",
+        "--run",
+        "packages/core/test/lens-notes.test.ts",
+        "-t",
+        "indents a note's continuation and escapes terminal controls"
+      ],
+      "result": {
+        "status": "killed",
+        "exitCode": 1,
+        "log": "tmp/quiet-output-fix2/combined-mutant-30.log",
+        "seconds": 1.08
+      }
+    },
+    {
+      "file": "packages/core/src/render.ts",
+      "line": 176,
+      "column": 15,
+      "endLine": 176,
+      "endColumn": 37,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "claim": "new-test",
+      "evidence": "packages/core/test/lens-notes.test.ts: omits lens notes by default and with --all, keeping levels",
+      "survivorClasses": [],
+      "command": [
+        "npx",
+        "vitest",
+        "--run",
+        "packages/core/test/lens-notes.test.ts",
+        "-t",
+        "omits lens notes by default and with --all, keeping levels"
+      ],
+      "result": {
+        "status": "killed",
+        "exitCode": 1,
+        "log": "tmp/quiet-output-fix2/combined-mutant-31.log",
+        "seconds": 1.14
+      }
+    },
+    {
+      "file": "packages/core/src/render.ts",
+      "line": 176,
+      "column": 15,
+      "endLine": 176,
+      "endColumn": 37,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "claim": "new-test",
+      "evidence": "packages/core/test/lens-notes.test.ts: shows a shared lens note once with --notes and names its checks",
+      "survivorClasses": [],
+      "command": [
+        "npx",
+        "vitest",
+        "--run",
+        "packages/core/test/lens-notes.test.ts",
+        "-t",
+        "shows a shared lens note once with --notes and names its checks"
+      ],
+      "result": {
+        "status": "killed",
+        "exitCode": 1,
+        "log": "tmp/quiet-output-fix2/combined-mutant-32.log",
+        "seconds": 1.15
+      }
+    },
+    {
+      "file": "packages/core/src/render.ts",
+      "line": 176,
+      "column": 15,
+      "endLine": 176,
+      "endColumn": 37,
+      "mutatorName": "EqualityOperator",
+      "replacement": "options.notes !== true",
+      "claim": "new-test",
+      "evidence": "packages/core/test/lens-notes.test.ts: omits lens notes by default and with --all, keeping levels",
+      "survivorClasses": [],
+      "command": [
+        "npx",
+        "vitest",
+        "--run",
+        "packages/core/test/lens-notes.test.ts",
+        "-t",
+        "omits lens notes by default and with --all, keeping levels"
+      ],
+      "result": {
+        "status": "killed",
+        "exitCode": 1,
+        "log": "tmp/quiet-output-fix2/combined-mutant-33.log",
+        "seconds": 1.19
+      }
+    },
+    {
+      "file": "packages/core/src/render.ts",
+      "line": 176,
+      "column": 33,
+      "endLine": 176,
+      "endColumn": 37,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "false",
+      "claim": "new-test",
+      "evidence": "packages/core/test/lens-notes.test.ts: shows a shared lens note once with --notes and names its checks",
+      "survivorClasses": [],
+      "command": [
+        "npx",
+        "vitest",
+        "--run",
+        "packages/core/test/lens-notes.test.ts",
+        "-t",
+        "shows a shared lens note once with --notes and names its checks"
+      ],
+      "result": {
+        "status": "killed",
+        "exitCode": 1,
+        "log": "tmp/quiet-output-fix2/combined-mutant-34.log",
+        "seconds": 1.19
+      }
+    }
+  ],
+  "total": 35,
+  "omitted": 0,
+  "unmutated": [],
+  "base": "54d786303bed0a6117a297eb43e4d8d55a095d18",
+  "scope": "Fix pass 2, complete pass including terminal opt-in and individual-note deduplication"
+}

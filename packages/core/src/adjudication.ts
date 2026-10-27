@@ -603,7 +603,8 @@ export class Verdict {
 	lensNotes(): { reason: string; checks: string[] }[] {
 		const notes = new Map<string, string[]>();
 		for (const { name, reason } of this.ran ?? [])
-			if (reason !== undefined) notes.set(reason, [...new Set([...(notes.get(reason) ?? []), name])]);
+			if (reason !== undefined)
+				for (const note of reason.split("; ")) notes.set(note, [...new Set([...(notes.get(note) ?? []), name])]);
 		return [...notes].map(([reason, checks]) => ({ reason, checks }));
 	}
 

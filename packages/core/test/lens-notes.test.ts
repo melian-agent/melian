@@ -1,4 +1,4 @@
-import { Adjudication, type CheckRecord, defaultConfig, Rendering } from "@melian-agent/core";
+import { Adjudication, type CheckRecord, defaultConfig, Rendering, Verdict } from "@melian-agent/core";
 import { expect, it } from "vitest";
 
 const note = "Callers unavailable for src/a.ts: directory-scoped name is ambiguous";
@@ -38,4 +38,40 @@ it("indents a note's continuation and escapes terminal controls", () => {
 		config: defaultConfig,
 	}).adjudicate();
 	expect(unsafe.render(new Rendering({ notes: true }))).toContain("  lens.x\\u001b: first\n    second\\u001b");
+});
+
+it("deduplicates individual notes inside different lens reasons in record order", () => {
+	const first = "triage input was cut, so no lens could skip";
+	const other = "kept the defects it hands to durability";
+	const combined = new Adjudication({
+		findings: [],
+		manifest: [],
+		checks: [
+			{ name: "lens.correctness", status: "ran", level: "careful", reason: `${note}; ${first}; ${note}` },
+			{ name: "lens.contracts", status: "ran", level: "quick", reason: `${other}; ${note}` },
+			{ name: "lens.tests", status: "ran", level: "deep" },
+		],
+		config: defaultConfig,
+	}).adjudicate();
+	expect(combined.lensNotes()).toEqual([
+		{ reason: note, checks: ["lens.correctness", "lens.contracts"] },
+		{ reason: first, checks: ["lens.correctness"] },
+		{ reason: other, checks: ["lens.contracts"] },
+	]);
+	expect(combined.render(new Rendering({ notes: true })).split(note)).toHaveLength(2);
+});
+
+it("keeps an empty stored note and accepts records without a reason or legacy ran list", () => {
+	const empty = new Adjudication({
+		findings: [],
+		manifest: [],
+		checks: [
+			{ name: "lens.correctness", status: "ran", reason: "" },
+			{ name: "lens.tests", status: "ran" },
+		],
+		config: defaultConfig,
+	}).adjudicate();
+	expect(empty.lensNotes()).toEqual([{ reason: "", checks: ["lens.correctness"] }]);
+	const { ran: _, ...legacy } = empty.toJSON();
+	expect(Verdict.from(legacy).lensNotes()).toEqual([]);
 });

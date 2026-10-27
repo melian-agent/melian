@@ -1,0 +1,11 @@
+[Fix pass 2](https://github.com/melian-agent/melian/issues/212#issuecomment-6433464438) for [pull request #217](https://github.com/melian-agent/melian/pull/217), second fix: `Verdict.lensNotes()` splits each stored reason at its `; ` separator before removing duplicates. It keeps first-seen note order and lists each note's checks once. The ledger and `--notes` share that projection. The stored reasons remain whole in JSON. This follows the existing rule that each fact appears once on a surface.
+
+The core and ledger regressions both failed with the starting head's production files (`54d786303bed0a6117a297eb43e4d8d55a095d18`). Core returned joined reasons instead of the expected notes; the ledger repeated the shared caller note. The scratch reproduction restored that head's four affected production files, ran only these two tests, then restored the first fix. Both tests passed after splitting. Logs: `tmp/quiet-output-fix2/dedup-before.log` and `tmp/quiet-output-fix2/dedup-after.log`.
+
+All 124 tests passed across `packages/core/test/lens-notes.test.ts`, `packages/github/test/ledger.test.ts`, `packages/github/test/publication.test.ts`, `packages/pipeline/test/caveats-reopen.test.ts` and `packages/pipeline/test/legacy-caveats.test.ts`. The first fix, commit `4207b1e2`, also passed the CLI file's 74 tests after removing the inherited `MELIAN_STATE_DIR`. Its progress entry records the sandbox-only failures from that setting.
+
+The [complete fix-pass inventory](2026-10-27-pr-217-fix2-mutants.json) covers both commits from the starting head. The second fix adds eight mutants to the first fix's 27: 35 total, none omitted. The scratch runner `tmp/quiet-output-fix2/run-combined-mutants.py` applies each alone, runs its named test and restores the source, recording each result in the inventory.
+
+Only targeted test files run in this sandbox. The host still owes the whole core, pipeline and CLI suites and `npm run check`. No comparison record or implementation-plan status changed.
+
+Final proof: all 35 mutants killed; no survivors or equivalence claims. The post-probe note regressions passed all eight selected cases across core, CLI and ledger. `npx tsc --noEmit -p tsconfig.json`, targeted Biome checks and `git diff --check` passed. The final logs are `tmp/quiet-output-fix2/final-notes.log` and `tmp/quiet-output-fix2/final-types.log`.
