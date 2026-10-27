@@ -1,0 +1,34 @@
+{
+  "pr_title": "Index variant bands by lens name",
+  "comments": [
+    {
+      "comment": "Indexing bands by name lets the docs variant overwrite the payments variant. The change replaces selection with name as the map key, although folder variants may share a name. Both declared variants then read the last band.",
+      "severity": "High",
+      "category": "bug",
+      "file": "src/bands.ts",
+      "rule": "wrong-result",
+      "source": "lens.correctness",
+      "cause": "introduced",
+      "failureScenario": "The two correctness variants in src/review.ts have bands { floor: 2, ceiling: 3 } for payments and { floor: 1, ceiling: 1 } for docs. bandFor(variants, variants[0]) now returns the docs band for payments because both map entries use the name correctness.",
+      "evidence": [
+        {
+          "file": "src/bands.ts",
+          "line": 10,
+          "endLine": 13,
+          "role": "cause"
+        },
+        {
+          "file": "src/bands.ts",
+          "line": 8,
+          "role": "context"
+        },
+        {
+          "file": "src/review.ts",
+          "line": 3,
+          "endLine": 8,
+          "role": "context"
+        }
+      ]
+    }
+  ]
+}
