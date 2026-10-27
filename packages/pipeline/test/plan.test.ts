@@ -387,6 +387,35 @@ describe("reviewChangeset with a plan", () => {
 		]);
 	});
 
+	it("matches legacy check records to conversations by name when their versions are absent", async () => {
+		await planned({ model: heavy });
+		const { revision } = await Changeset.resolve(repo, "main...feature");
+		const root = await harness.root(context);
+		const id = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revisionKey(revision)]!.adjudication!
+			.task;
+		const task = storage.task.bind(storage);
+		vi.spyOn(storage, "task").mockImplementation(async (wanted, readContext) => {
+			const record = await task(wanted, readContext);
+			if (wanted !== id || record === undefined) return record;
+			return {
+				...record,
+				input: {
+					checks: [
+						{ name: "lens.contracts", status: "failed" },
+						{ name: "lens.correctness", status: "ran" },
+					],
+				},
+			};
+		});
+		const run = (await TelemetryReader.open(storage).read(revisionKey(revision))).runDetails();
+		expect(
+			run.stages.filter(({ name }) => name.startsWith("lens ")).map(({ name, outcome }) => ({ name, outcome })),
+		).toEqual([
+			{ name: "lens contracts", outcome: "failed" },
+			{ name: "lens correctness", outcome: "ran" },
+		]);
+	});
+
 	it("reads only the sightings of the run on the route the review ran, not an earlier run's", async () => {
 		const first = await planned({ model: heavy, accept: [heavy] }, backup, { reports: "backup" });
 		const second = await planned({ model: heavy, accept: [heavy] });
@@ -697,7 +726,15 @@ describe("reviewChangeset with a plan, for a lens two folders define", () => {
 			config,
 			routes: {
 				committed: options.committed,
-				overridden: options.committed === options.effective ? {} : { light: "melian.local.yaml" },
+				overridden:
+					options.committed === options.effective
+						? {}
+						: {
+								light: "melian.local.yaml",
+								...(options.committed.heavy?.model === options.effective.heavy?.model
+									? {}
+									: { heavy: "melian.local.yaml" }),
+							},
 				lensTiers: options.moved === true ? { correctness: "heavy" } : {},
 				retiered: options.moved === true ? { correctness: "melian.local.yaml" } : {},
 			},
@@ -760,6 +797,36 @@ describe("reviewChangeset with a plan, for a lens two folders define", () => {
 			status: "failed",
 			reason: "none of nowhere/m, which models.light accepts, has credentials, and models.light.unavailable is fail",
 		});
+	});
+
+	it("keeps separate refusal lineage for two variants on different overridden tiers", async () => {
+		const { review, answered } = await reviewVariants({
+			tier: "light",
+			committed: {
+				heavy: { model: heavy, accept: [heavy], acceptOverridden: false },
+				light: { model: backup, accept: [backup], acceptOverridden: false },
+			},
+			effective: {
+				heavy: { model: backup, accept: [heavy], acceptOverridden: false },
+				light: { model: heavy, accept: [backup], acceptOverridden: false },
+			},
+		});
+		expect(answered).toEqual([]);
+		expect(
+			review.verdict.notRun
+				.filter(({ name }) => name === "lens.correctness")
+				.map(({ version, lineage }) => ({
+					version,
+					model: lineage?.model,
+				})),
+		).toEqual(
+			lenses
+				.filter(({ name }) => name === "correctness")
+				.map((lens) => ({
+					version: lens.version,
+					model: lens.scope === "" ? backup : heavy,
+				})),
+		);
 	});
 
 	it("runs again under --rerun a variant that finished on a refused fallback", async () => {

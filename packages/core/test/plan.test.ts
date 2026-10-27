@@ -635,11 +635,16 @@ describe("a resolved plan", () => {
 		expect(resolved.judge("correctness", "careful").refusal).toBeUndefined();
 		const record = { name: "lens.correctness", status: "ran", level: "careful" } as const;
 		expect(
-			resolved.mark([record], new Map([["correctness", [{ scope: "", level: "careful" as const, model: opus }]]])),
+			resolved.mark(
+				[record],
+				new Map([["correctness", [{ scope: "", version: "root", level: "careful" as const, model: opus }]]]),
+			),
 		).toEqual([record]);
 		const [fallback] = resolved.mark(
 			[record],
-			new Map([["correctness", [{ scope: "", level: "careful" as const, model: "openai/gpt-5.4-mini" }]]]),
+			new Map([
+				["correctness", [{ scope: "", version: "root", level: "careful" as const, model: "openai/gpt-5.4-mini" }]],
+			]),
 		);
 		expect(fallback).toMatchObject({
 			status: "failed",
@@ -652,6 +657,28 @@ describe("a resolved plan", () => {
 				outside: true,
 			},
 		});
+	});
+
+	it("marks only the recorded version and level when completed runs differ", () => {
+		const resolved = plan(
+			{ heavy: { model: opus, accept: [opus], acceptOverridden: false } },
+			{ anthropic: "key", openai: "key" },
+		);
+		const record = { name: "lens.correctness", version: "root", level: "careful", status: "ran" } as const;
+		expect(
+			resolved.mark(
+				[record],
+				new Map([
+					[
+						"correctness",
+						[
+							{ scope: "", version: "root", level: "careful" as const, model: opus },
+							{ scope: "", version: "root", level: "quick" as const, model: gpt },
+						],
+					],
+				]),
+			),
+		).toEqual([record]);
 	});
 
 	it("prints each routed tier, each lens's levels, and every warning for doctor", () => {

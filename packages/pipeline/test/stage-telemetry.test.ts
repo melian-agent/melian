@@ -311,6 +311,18 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 		await spans.record(harness, revision, context);
 		const telemetry = await TelemetryReader.open(storage).read(revision);
 		const json = JSON.parse(JSON.stringify(telemetry.toJSON())) as { stages: Stage[] };
+		expect(
+			telemetry
+				.runDetails()
+				.stages.filter(({ name }) => name.startsWith("check "))
+				.map(({ name }) => name),
+		).toEqual([
+			"check guardrails",
+			"check static.biome",
+			"check static.tsc",
+			"check static.enola",
+			"check static.mutation",
+		]);
 		// The review's own stages, read against its start, are none of them reused.
 		expect(await TelemetryReader.open(storage).runDetails(revision)).toEqual(telemetry.runDetails());
 		expect(await TelemetryReader.open(createMemoryStorage()).runDetails(revision)).toBeUndefined();
