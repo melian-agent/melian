@@ -43,7 +43,15 @@ import { ComparisonDocument } from "../src/compare.ts";
 import * as configurations from "../src/configurations.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { RoundsDocument, RoundWriter } from "../src/rounds.ts";
+import type * as Instructions from "../src/verification-instructions.ts";
 import { baseAndHead, gitIn } from "./fixtures/repo.ts";
+
+// The fixtures record the verifier version main had when it wrote them. A round whose verifier instructions change is
+// reviewed again, by design, so these attachment tests run under the version the fixtures hold.
+vi.mock("../src/verification-instructions.ts", async (importOriginal) => ({
+	...(await importOriginal<typeof Instructions>()),
+	verifierVersion: "4190289e598badf0",
+}));
 
 const rounds = RoundsDocument;
 let repo: string;

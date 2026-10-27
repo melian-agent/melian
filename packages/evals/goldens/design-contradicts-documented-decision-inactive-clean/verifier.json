@@ -1,0 +1,14 @@
+{
+  "ae7e3998aeeaf27d": {
+    "verdict": "refuted",
+    "reason": "The cited decision is INACTIVE at base, superseded by the five-retries decision, which the head follows. An inactive decision is never a baseline.",
+    "evidence": [
+      {
+        "file": "docs/decisions/2026-10-01-five-retries.md",
+        "line": 3,
+        "role": "context",
+        "revision": "base"
+      }
+    ]
+  }
+}

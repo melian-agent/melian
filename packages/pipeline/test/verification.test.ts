@@ -10,7 +10,7 @@ import {
 	type Verification,
 	VerificationState,
 } from "@melian-agent/core";
-import { DecisionFiles, RecordedDecider } from "@melian-agent/decisions";
+import { DecisionFiles, DesignSections, RecordedDecider } from "@melian-agent/decisions";
 import {
 	backgroundContext as context,
 	createMemoryStorage,
@@ -46,7 +46,7 @@ import { hasCredentials } from "../src/models.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { RoundsDocument } from "../src/rounds.ts";
 import { startVerification, type VerificationInput, VerificationTask } from "../src/verification.ts";
-import { verifierMarker, verifierVersion } from "../src/verification-instructions.ts";
+import { verifierInstructions, verifierMarker, verifierVersion } from "../src/verification-instructions.ts";
 import { baseAndHead, gitIn } from "./fixtures/repo.ts";
 import { crashFinding, crashRepository } from "./fixtures/review-scenario.ts";
 
@@ -396,17 +396,24 @@ describe("the verifier", () => {
 		lenses = [Lens.from({ ...first.toJSON(), name, rules: [{ id: rule, description: "Planted rule." }] })];
 		const requests = scripts();
 		const decisions = vi.spyOn(DecisionFiles, "load");
+		const sections = vi.spyOn(DesignSections, "load");
 		const baseLenses = vi.spyOn(Lens, "load");
 		await review();
 		expect(baseLenses).not.toHaveBeenCalled();
 		const instructions = systemPromptOf(requests[verifierMarker]![0]!);
 		if (name === "design" || rule === "fail-open-default") {
 			expect(decisions).toHaveBeenCalledWith(repo, changeset.revision.base);
+			expect(sections).toHaveBeenCalledWith(repo, changeset.revision.base);
 			expect(instructions).toContain("## Decisions at base");
-			expect(instructions).toMatch(/label="listing"/);
+			expect(instructions).toContain("## Design sections at base");
+			expect(instructions).toContain("## Design files at base");
+			expect(instructions.match(/label="listing"/g)).toHaveLength(3);
 		} else {
+			expect(instructions).toContain(`${verifierInstructions}\n\nClaim c1 finding`);
 			expect(decisions).not.toHaveBeenCalled();
+			expect(sections).not.toHaveBeenCalled();
 			expect(instructions).not.toContain("## Decisions at base");
+			expect(instructions).not.toContain("## Design sections at base");
 		}
 	});
 
@@ -419,8 +426,16 @@ describe("the verifier", () => {
 		const decision = "docs/decisions/2026-10-01-writer-trust.md";
 		rmSync(repo, { recursive: true, force: true });
 		repo = baseAndHead(
-			{ "src/user.ts": `${base}\n`, [decision]: "# Writer trust\n" },
-			{ "src/user.ts": `${head}\n`, [decision]: "# Publisher eligibility at head\n" },
+			{
+				"src/user.ts": `${base}\n`,
+				[decision]: "# Writer trust\n",
+				"docs/design.md": "# Design\n\n## Writer trust at base\n",
+			},
+			{
+				"src/user.ts": `${head}\n`,
+				[decision]: "# Publisher eligibility at head\n",
+				"docs/design.md": "# Design\n\n## Publisher eligibility in the head design\n",
+			},
 		);
 		changeset = await Changeset.resolve(repo, "main...feature");
 		const first = lenses[0]!.toJSON();
@@ -481,6 +496,9 @@ describe("the verifier", () => {
 		expect(instructions).toContain("## Decisions at base");
 		expect(instructions).toContain(`[ACTIVE] ${decision} — Writer trust`);
 		expect(instructions).not.toContain("Publisher eligibility at head");
+		expect(instructions).toContain("Writer trust at base");
+		expect(instructions).not.toContain("Publisher eligibility in the head design");
+		expect(instructions).toContain("docs/design.md");
 		expect(instructions).toMatch(/label="listing"/);
 		expect(decisions).toHaveBeenCalledWith(repo, changeset.revision.base);
 	});
