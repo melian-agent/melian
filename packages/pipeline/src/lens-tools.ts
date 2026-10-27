@@ -259,9 +259,9 @@ function text(content: string | readonly string[], render: (body: string, count:
 	const rows = typeof content === "string" ? content.split("\n") : content.flatMap((row) => row.split("\n"));
 	const { body, count, cut } = fitting(rows);
 	const note = cut
-		? `[tool output truncated: ${rows.length - count} more lines not shown; a line too long to fit is cut]\n`
+		? `\n[tool output truncated: ${rows.length - count} more lines not shown; a line too long to fit is cut]`
 		: "";
-	return { content: [{ type: "text" as const, text: `${note}${render(body, count)}` }] };
+	return { content: [{ type: "text" as const, text: `${render(body, count)}${note}` }] };
 }
 
 // Input tokens, cache writes included, and output tokens of every model response in the conversation. Cache reads are

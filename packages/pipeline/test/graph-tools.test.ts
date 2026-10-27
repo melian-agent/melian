@@ -13,6 +13,7 @@ import {
 	type Harness,
 	type Message,
 	openHarness,
+	ReviewTranscript,
 	reviewChangeset,
 } from "@melian-agent/pipeline";
 import {
@@ -25,7 +26,7 @@ import {
 	textOf,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ToolExecutionApi } from "../src/harness.ts";
+import type { EntryRecord, JsonObject, ToolExecutionApi } from "../src/harness.ts";
 import { LensDocument, lensListedTools } from "../src/lens-tools.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines, writeFiles } from "./fixtures/repo.ts";
 import { twoLensTiers } from "./fixtures/review-scenario.ts";
@@ -293,7 +294,11 @@ describe("graph tools", { timeout: 60_000 }, () => {
 		expect(result.split("\n").length).toBeLessThanOrEqual(lensListedTools.graph_callees.outputLimits!.maxLines!);
 		expect(result).toContain("truncated");
 		expect(result).toContain("absent caller proves nothing");
-		expect(result.endsWith(`</untrusted-${nonceOf(requests[correctness]![0]!)}>`)).toBe(true);
+		expect(
+			result.endsWith(
+				`</untrusted-${nonceOf(requests[correctness]![0]!)}>\n[tool output truncated: 3000 more lines not shown; a line too long to fit is cut]`,
+			),
+		).toBe(true);
 	});
 
 	it.each([2000, 2001])("bounds graph bodies at %i lines", async (count) => {
@@ -330,6 +335,57 @@ describe("graph tools", { timeout: 60_000 }, () => {
 		}
 	});
 
+	it.each(["read_file", "search", "search paths"] as const)(
+		"records coverage for delivered lines in truncated %s results",
+		async (name) => {
+			const path = "src/long.ts";
+			const reading = name === "read_file";
+			const content = reading ? Array(2).fill("x".repeat(25 * 1024)) : Array(200).fill("x".repeat(300));
+			writeFiles(repo, { [path]: lines(...content) });
+			gitIn(repo, "add", "--all");
+			gitIn(repo, "commit", "--quiet", "-m", "long tool output");
+			const tool = reading ? "read_file" : "search";
+			const args: JsonObject = reading
+				? { path }
+				: { pattern: "x", ...(name === "search paths" ? { paths: [path] } : { path }) };
+			const requests = await reviewWith(undefined, [[[tool, args]]]);
+			const messages = requests[correctness]![1]!;
+			const result = toolResults(messages)[0]!;
+			const nonce = nonceOf(requests[correctness]![0]!);
+			const delivered = reading ? [1] : Array.from({ length: 154 }, (_, index) => index + 1);
+			const body = delivered
+				.map((line) => (reading ? `${line}\t${content[line - 1]}` : `${path}:${line}: ${content[line - 1]}`))
+				.join("\n");
+			const continuation = reading
+				? "[lines 2 onward not shown; read again with startLine 2]"
+				: name === "search paths"
+					? "[46 more lines not shown; search fewer files]"
+					: "[more matches not shown; narrow the search]";
+			const records: EntryRecord[] = messages.map((message, index) => ({
+				id: (index + 1) as EntryRecord["id"],
+				conversationId: 1 as EntryRecord["conversationId"],
+				kind: "test",
+				model: [message],
+			}));
+			expect(ReviewTranscript.from(records, "correctness", [path], nonce).reads()).toEqual(
+				reading
+					? [{ lens: "correctness", path, revision: "head", kind: "read", lines: delivered }]
+					: delivered.map((line) => ({
+							lens: "correctness",
+							path,
+							revision: "head",
+							kind: "search",
+							lines: [line],
+						})),
+			);
+			expect(result).toBe(
+				`<untrusted-${nonce} label="${reading ? "file" : "search"}">\n${body}\n</untrusted-${nonce}>\n${continuation}\n[tool output truncated: ${content.length - delivered.length} more lines not shown; a line too long to fit is cut]`,
+			);
+			expect(Buffer.byteLength(result)).toBeLessThanOrEqual(lensListedTools[tool].outputLimits!.maxBytes!);
+			expect(result.split("\n").length).toBeLessThanOrEqual(lensListedTools[tool].outputLimits!.maxLines!);
+		},
+	);
+
 	it.each([48 * 1024, 48 * 1024 + 1])("bounds file bodies at %i bytes", async (bytes) => {
 		writeFiles(repo, { "src/long.ts": `${"x".repeat(bytes - 2)}\n` });
 		gitIn(repo, "add", "--all");
@@ -341,7 +397,11 @@ describe("graph tools", { timeout: 60_000 }, () => {
 		expect(Buffer.byteLength(body)).toBeLessThanOrEqual(48 * 1024);
 		expect(result.includes("truncated")).toBe(bytes > 48 * 1024);
 		if (bytes === 48 * 1024) expect(body).toBe(`1\t${"x".repeat(bytes - 2)}`);
-		expect(result.endsWith(`</untrusted-${nonce}>`)).toBe(true);
+		expect(
+			result.endsWith(
+				`</untrusted-${nonce}>${bytes > 48 * 1024 ? "\n[tool output truncated: 0 more lines not shown; a line too long to fit is cut]" : ""}`,
+			),
+		).toBe(true);
 	});
 
 	it.each([0, 1])("counts separators within the byte bound with %i extra bytes", async (extra) => {
@@ -458,8 +518,12 @@ describe("graph tools", { timeout: 60_000 }, () => {
 		const [whole, count, bytes] = toolResults(requests[correctness]![1]!);
 		const nonce = nonceOf(requests[correctness]![0]!);
 		expect(whole).toBe(`<untrusted-${nonce} label="listing">\nwhole/f0 (0 bytes)\n</untrusted-${nonce}>`);
-		for (const result of [count!, bytes!])
-			expect(result.endsWith(`</untrusted-${nonce}>\n[more entries not shown]`)).toBe(true);
+		expect(count!.endsWith(`</untrusted-${nonce}>\n[more entries not shown]`)).toBe(true);
+		expect(
+			bytes!.endsWith(
+				`</untrusted-${nonce}>\n[more entries not shown]\n[tool output truncated: 593 more lines not shown; a line too long to fit is cut]`,
+			),
+		).toBe(true);
 		expect(count).toContain("entries/f999 (0 bytes)");
 		expect(bytes).not.toContain(`bytes/f999${"x".repeat(100)}`);
 		expect(Buffer.byteLength(bytes!)).toBeLessThanOrEqual(lensListedTools.list_files.outputLimits!.maxBytes!);
@@ -500,7 +564,11 @@ describe("graph tools", { timeout: 60_000 }, () => {
 		const block = `<untrusted-${nonce} label="search">\nsrc/user.ts:1: needle\n</untrusted-${nonce}>`;
 		expect(whole).toBe(block);
 		expect(matches).toBe(`${block.replace("needle", "more")}\n[more matches not shown; narrow the search]`);
-		expect(bytes!.endsWith(`</untrusted-${nonce}>\n[more matches not shown; narrow the search]`)).toBe(true);
+		expect(
+			bytes!.endsWith(
+				`</untrusted-${nonce}>\n[more matches not shown; narrow the search]\n[tool output truncated: 46 more lines not shown; a line too long to fit is cut]`,
+			),
+		).toBe(true);
 		expect(bytes).toContain("tool output truncated");
 		expect(bytes).not.toContain("src/user.ts:200:");
 		expect(Buffer.byteLength(bytes!)).toBeLessThanOrEqual(lensListedTools.search.outputLimits!.maxBytes!);
@@ -772,7 +840,7 @@ describe("graph tools", { timeout: 60_000 }, () => {
 		const rows = 200 - shown(paths[0]!) - shown(paths[1]!);
 		expect(
 			result!.endsWith(
-				`</untrusted-${nonceOf(requests[correctness]![0]!)}>\n[${rows} more lines not shown; search fewer files]`,
+				`</untrusted-${nonceOf(requests[correctness]![0]!)}>\n[${rows} more lines not shown; search fewer files]\n[tool output truncated: ${rows} more lines not shown; a line too long to fit is cut]`,
 			),
 		).toBe(true);
 	});
