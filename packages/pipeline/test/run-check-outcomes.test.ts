@@ -11,10 +11,10 @@ import { ReviewIndex } from "../src/review-index.ts";
 import { StageTelemetry, TelemetryReader } from "../src/telemetry.ts";
 import { createFakeModels } from "../src/testing.ts";
 
-it("projects recorded checks without conversations, including a refused lens and verifier", async () => {
+it.each(["ran", "ended"] as const)("projects recorded checks without conversations (verifier=%s)", async (verifier) => {
 	const checks: { name: string; status: CheckStatus; level?: "careful"; cause?: "timeout" }[] = [
 		{ name: "lens.alpha", status: "failed", level: "careful" },
-		{ name: "verifier", status: "ended" },
+		{ name: "verifier", status: verifier },
 		{ name: "static.tsc", status: "skipped", cause: "timeout" },
 		{ name: "guardrails", status: "provisional" },
 		{ name: "lens.beta", status: "ran", level: "careful" },
@@ -51,7 +51,7 @@ it("projects recorded checks without conversations, including a refused lens and
 		const telemetry = await TelemetryReader.open(storage).read("base..head");
 		const expected = [
 			{ name: "melian.lens", subject: "alpha@@careful", outcome: "failed", error: undefined },
-			{ name: "melian.verification", subject: "verifier", outcome: "ended" },
+			{ name: "melian.verification", subject: "verifier", outcome: verifier === "ran" ? "completed" : "ended" },
 			{ name: "melian.check", subject: "static.tsc", outcome: "timed-out" },
 			{ name: "melian.check", subject: "guardrails", outcome: "provisional" },
 			{ name: "melian.lens", subject: "beta@@careful", outcome: "completed" },
@@ -69,7 +69,7 @@ it("projects recorded checks without conversations, including a refused lens and
 		expect(telemetry.toJSON().stages).toEqual(telemetry.stages);
 		expect(telemetry.runDetails().stages.slice(1)).toEqual([
 			{ name: "lens alpha", level: "careful", models: [], outcome: "failed", usageIncomplete: true },
-			{ name: "verification", models: [], outcome: "ended" },
+			{ name: "verification", models: [], outcome: verifier, usageIncomplete: true },
 			{ name: "check static.tsc", models: [], outcome: "timed-out" },
 			{ name: "check guardrails", models: [], outcome: "provisional" },
 			{ name: "lens beta", level: "careful", models: [], outcome: "ran", usageIncomplete: true },
@@ -83,7 +83,7 @@ it("projects recorded checks without conversations, including a refused lens and
 		expect(reused.runDetails().stages.map(({ outcome }) => outcome)).toEqual([
 			"reused",
 			"failed",
-			"ended",
+			verifier === "ran" ? "reused" : "ended",
 			"timed-out",
 			"provisional",
 			"reused",

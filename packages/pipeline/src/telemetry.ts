@@ -137,6 +137,7 @@ function runModels(stage: Stage): string[] {
 
 // The model stages, whose usage a run must have measured to be complete.
 const modelStages: readonly string[] = [
+	"melian.verification",
 	"melian.triage",
 	"melian.lens",
 	"melian.verification.candidate",
