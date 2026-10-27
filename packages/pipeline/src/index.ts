@@ -108,6 +108,12 @@ export { CallerContext, type CallerData, type CallerGroup } from "./callers.ts";
 export { CoverageCache } from "./coverage-cache.ts";
 export { EnolaCoverage } from "./enola-coverage.ts";
 export { GraphCache } from "./graph-cache.ts";
+export {
+	MembershipReader,
+	PullRequestRoundHistory,
+	type PullRequestRoundMember,
+	type PullRequestRoundSnapshot,
+} from "./pull-request-rounds.ts";
 export { ReviewTranscript } from "./review-coverage.ts";
 export { Round, RoundError, RoundReader } from "./rounds.ts";
 export { type PrepareRecord, PrepareSpans, type Span } from "./spans.ts";

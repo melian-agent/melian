@@ -356,8 +356,8 @@ describe('melian compare "#N"', { timeout: 60_000 }, () => {
 				`${span.name} overlaps the walkthrough`,
 			).toBe(true);
 
-		// A pull request imports CodeRabbit's threads when no source is named.
-		const result = melian(repo, ["compare", "#7"], env);
+		// Explicit imports retain current-revision behaviour until build 4 adds membership routing.
+		const result = melian(repo, ["compare", "#7", "--from", "github"], env);
 
 		expect(result).toMatchObject({ status: 0, stderr: "" });
 		const lines = result.stdout.split("\n");
@@ -398,7 +398,7 @@ describe('melian compare "#N"', { timeout: 60_000 }, () => {
 	it("counts an adjudicated pull request in stats and the backlog", () => {
 		const { repo, env } = pullRequest();
 		expect(melian(repo, ["review", "#7"], env).status).toBe(1);
-		const imported = melian(repo, ["compare", "#7"], env);
+		const imported = melian(repo, ["compare", "#7", "--from", "github"], env);
 		const missed = /^ {2}([0-9a-f]{16}) {2}coderabbit/m.exec(imported.stdout)![1]!;
 		expect(
 			melian(
@@ -433,7 +433,7 @@ describe('melian compare "#N"', { timeout: 60_000 }, () => {
 	it("counts the review bodies skipped by every source the comparison holds, not only this run's", () => {
 		const { repo, env } = pullRequest();
 		expect(melian(repo, ["review", "#7"], env).status).toBe(1);
-		expect(melian(repo, ["compare", "#7"], env).stdout).toContain("Skipped review bodies: 1.");
+		expect(melian(repo, ["compare", "#7", "--from", "github"], env).stdout).toContain("Skipped review bodies: 1.");
 
 		const human = melian(repo, ["compare", "#7", "--from", "github:octocat"], env);
 
