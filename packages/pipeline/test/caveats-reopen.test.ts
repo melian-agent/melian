@@ -4,7 +4,8 @@ import { join } from "node:path";
 import { Changeset, Verdict } from "@melian-agent/core";
 import { renderReviewBody } from "@melian-agent/github";
 import { expect, it } from "vitest";
-import { VerdictDocument } from "../src/adjudication.ts";
+import { type AdjudicationTaskInput, VerdictDocument } from "../src/adjudication.ts";
+import { DismissHarness, recordDismissal } from "../src/dismiss.ts";
 import {
 	backgroundContext as context,
 	createRegistry,
@@ -225,6 +226,75 @@ it("reopens main's version-1 rounds with each round's verdict upgraded as the ve
 			await opened.close(context);
 		}
 	} finally {
+		rmSync(directory, { recursive: true, force: true });
+	}
+});
+
+it("keeps the published Reach caveat after dismissing a finding from main's pre-caveat review", async () => {
+	const repo = crashRepository();
+	const directory = realpathSync(mkdtempSync(join(tmpdir(), "melian-caveats-dismiss-")));
+	const file = join(directory, "state.sqlite");
+	copyFileSync(new URL("previous.sqlite", fixture), file);
+	const fake = createFakeModels();
+	try {
+		const opened = await DismissHarness.open(await openSqliteStorage(file), fake.review);
+		try {
+			const harness = opened.harness;
+			const root = await harness.root(context);
+			const verdicts = (await harness.snapshot(VerdictDocument, root.id, context))!;
+			const [revision, stored] = Object.entries(verdicts.verdicts)[0]!;
+			const [base, head] = revision.split("..");
+			const finding = Verdict.from(stored).findings.block[0]!;
+			const changeset = await Changeset.resolve(repo, "main...feature");
+			await root.commit(async (tx) => {
+				const index = await tx.doc(ReviewIndex, root.id);
+				const adjudication = index.reviews[revision]!.adjudication!;
+				const input = JSON.parse(adjudication.input) as AdjudicationTaskInput;
+				expect(input.checks.find((check) => check.name === "lens.correctness")).toMatchObject({
+					reason: expect.stringContaining("Callers unavailable: the host supplied no graph context"),
+				});
+				expect(input.checks.every((check) => check.caveats === undefined)).toBe(true);
+				// Relocate the recorded policy to the same tree in this test's repository; keep the old checks intact.
+				adjudication.input = JSON.stringify({
+					...input,
+					repoRoot: repo,
+					policy: { kind: "revision", commit: changeset.revision.base },
+				});
+			}, context);
+			const dismissed = await recordDismissal({
+				harness,
+				revision: { base: base!, head: head! },
+				id: finding.id,
+				dismissal: {
+					by: "Maintainer",
+					reason: "Every user here has a manager.",
+					at: "2026-10-27T00:00:00Z",
+				},
+				repoRoot: repo,
+			});
+			expect(dismissed.finding.properties.status).toBe("dismissed");
+			const body = renderReviewBody(
+				{
+					pullRequest: 7,
+					revision: head!,
+					base: base!,
+					fingerprint: "0123456789abcdef",
+					round: 1,
+					verdict: dismissed.verdict,
+					findings: [],
+					stillOpen: 0,
+					resolved: [],
+					secret: "11".repeat(32),
+				},
+				{ web: "https://github.com/melian-agent/example" },
+			);
+			expect(body).toContain(`Reach: ${blindHost}.`);
+			expect(fake.provider.state.callCount).toBe(0);
+		} finally {
+			await opened.close(context);
+		}
+	} finally {
+		rmSync(repo, { recursive: true, force: true });
 		rmSync(directory, { recursive: true, force: true });
 	}
 });

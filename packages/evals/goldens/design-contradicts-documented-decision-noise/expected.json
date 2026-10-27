@@ -1,0 +1,28 @@
+{
+  "pr_title": "Name the lens beside each note",
+  "comments": [
+    {
+      "comment": "renderNotes prints each note once per lens, which the base design's High signal, low noise section forbids: a fact is stated once in the comment, never once per lens.",
+      "severity": "Medium",
+      "category": "bug",
+      "file": "src/comment.ts",
+      "rule": "contradicts-documented-decision",
+      "source": "lens.design",
+      "cause": "introduced",
+      "failureScenario": "Eight lenses run, and each carries the note `callers unavailable for src/a.ts`. The base prints that note once. The head prints it eight times, once under each lens name, so the comment grows by seven lines that tell the reader nothing new.",
+      "evidence": [
+        {
+          "file": "src/comment.ts",
+          "line": 4,
+          "role": "cause"
+        },
+        {
+          "file": "docs/design.md",
+          "line": 5,
+          "role": "context",
+          "revision": "base"
+        }
+      ]
+    }
+  ]
+}

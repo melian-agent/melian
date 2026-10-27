@@ -1,0 +1,6 @@
+{
+  "636a72f6aa73b93c": {
+    "verdict": "confirmed",
+    "reason": "The cited words are in an ACTIVE base decision and say what `stamp` must return. `stamp` now returns `toLocaleString` in Sydney time, which the words forbid, and no more specific design rule names it."
+  }
+}

@@ -1933,7 +1933,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	const settling = lenses.map((lens) => settle(stored.get(lens.key) ?? lens, lensResult, rule));
 	// The change triage reads can steer it, so a review in which every lens stayed at quick says so.
 	const light =
-		triaged.decision !== undefined && settling.length > 0 && settling.every(({ run }) => run.level === "quick")
+		triaged.decision !== undefined &&
+		settling.length === selected.length &&
+		settling.every(({ run }) => run.level === "quick")
 			? [lightTriage]
 			: [];
 	spans.step("callers.coverage");
@@ -2063,6 +2065,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			.flatMap((lens) => lens.rules.map((rule) => rule.id)),
 	);
 	let decisionsAtBase: string | undefined;
+	let designAtBase: VerificationCandidate["designAtBase"];
 	for (const defect of new Merge(storedFindings, configFor, changeset.revision).defects()) {
 		if (defect.speaker.properties.status === "dismissed") continue;
 		const candidateState = VerificationState.from(defect.speaker).toJSON();
@@ -2125,9 +2128,15 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		const designClaim = candidateState.claims.some(
 			(claim) => claim.source.check === "lens.design" || designRules.has(claim.ruleId),
 		);
-		if (designClaim) decisionsAtBase ??= (await DecisionFiles.load(repoRoot, base)).render();
+		if (designClaim) {
+			decisionsAtBase ??= (await DecisionFiles.load(repoRoot, base)).render();
+			if (designAtBase === undefined) {
+				const sections = await DesignSections.load(repoRoot, base);
+				designAtBase = { sections: sections.render(), files: sections.renderFiles() };
+			}
+		}
 		candidates.push({
-			...(designClaim ? { decisionsAtBase } : {}),
+			...(designClaim ? { decisionsAtBase, designAtBase } : {}),
 			key: defect.speaker.id,
 			state: candidateState,
 			finder,

@@ -126,6 +126,17 @@ describe("the golden corpus", () => {
 			"design-bound-on-wrong-measure",
 			"design-bound-on-wrong-measure-clean",
 			"design-clean",
+			"design-contradicts-documented-decision",
+			"design-contradicts-documented-decision-added-context-clean",
+			"design-contradicts-documented-decision-clean",
+			"design-contradicts-documented-decision-collapse-clean",
+			"design-contradicts-documented-decision-diagnostic-clean",
+			"design-contradicts-documented-decision-head-only-clean",
+			"design-contradicts-documented-decision-inactive-clean",
+			"design-contradicts-documented-decision-noise",
+			"design-contradicts-documented-decision-noise-clean",
+			"design-contradicts-documented-decision-surface-clean",
+			"design-contradicts-documented-decision-wording-clean",
 			"design-decision-injection",
 			"design-fail-open-default",
 			"design-identity-missing-input",
@@ -502,6 +513,41 @@ describe("the live flag", () => {
 			const expected = JSON.parse(readFileSync(join(copy, "expected.json"), "utf8"));
 			writeFileSync(join(copy, "expected.json"), JSON.stringify({ ...expected, live: "no" }));
 			expect(() => loadGoldens(directory)).toThrow(/expected\.json: \/live /);
+		} finally {
+			rmSync(directory, { recursive: true, force: true });
+		}
+	});
+});
+
+describe("scripted verifier verdicts", () => {
+	it("load from verifier.json, and a golden without one has none", () => {
+		expect(goldens.find((each) => each.name === "clean-rename")!.verifier).toBeUndefined();
+		expect(
+			goldens.find((each) => each.name === "design-contradicts-documented-decision-wording-clean")!.verifier,
+		).toEqual({
+			ef9ed09f125d5a9d: expect.objectContaining({ verdict: "refuted" }),
+		});
+	});
+
+	it("rejects a verdict, an ID or evidence the verifier cannot give, and keeps a valid one", () => {
+		const directory = mkdtempSync(join(tmpdir(), "melian-goldens-"));
+		try {
+			const golden = goldens.find((each) => each.name === "clean-rename")!;
+			const copy = join(directory, golden.name);
+			cpSync(golden.directory, copy, { recursive: true });
+			const verdicts = (verdicts: unknown) => {
+				writeFileSync(join(copy, "verifier.json"), JSON.stringify(verdicts));
+				return () => loadGoldens(directory);
+			};
+			expect(verdicts({ ef9ed09f125d5a9d: { verdict: "maybe", reason: "r" } })).toThrow(
+				/verifier\.json: \/ef9ed09f125d5a9d\/verdict /,
+			);
+			expect(verdicts({ "not-an-id": { verdict: "refuted", reason: "r" } })).toThrow(/verifier\.json/);
+			expect(verdicts({ ef9ed09f125d5a9d: { verdict: "refuted", reason: "r", evidence: [] } })).toThrow(
+				/verifier\.json: \/ef9ed09f125d5a9d\/evidence /,
+			);
+			const [loaded] = verdicts({ ef9ed09f125d5a9d: { verdict: "refuted", reason: "r" } })();
+			expect(loaded!.verifier).toEqual({ ef9ed09f125d5a9d: { verdict: "refuted", reason: "r" } });
 		} finally {
 			rmSync(directory, { recursive: true, force: true });
 		}
