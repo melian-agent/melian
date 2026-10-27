@@ -1273,7 +1273,7 @@ describe("escalation under a review plan", () => {
 		]);
 		// The map the plan marks from holds the careful run's model, not the quick run's.
 		const marked = mark.mock.calls.at(-1)![1]!;
-		expect(marked.get("correctness")).toEqual([{ scope: "", level: "careful", model: heavy }]);
+		expect(marked.get("correctness")).toEqual([{ scope: "", version: version(), level: "careful", model: heavy }]);
 		// The refusal callback asked about the escalated run on the model it finished on.
 		expect(judge.mock.calls).toContainEqual(["correctness", "careful", heavy, ""]);
 	});
