@@ -80,17 +80,31 @@ export class PullRequestMembership {
 		return new PullRequestMembership(repoRoot, answer, base);
 	}
 
+	/**
+	 * Reads stored ownership without Git or network access. True names this pull request; false names another
+	 * owner or incomplete pull-request provenance. Undefined needs Git attribution and does not mean foreign.
+	 * Pull-request provenance takes precedence over publication; range provenance permits publication ownership.
+	 */
+	static storedOwnership(
+		candidate: MembershipCandidate,
+		pullRequest: Pick<PullRequestRoundHeads, "repository" | "number">,
+	): boolean | undefined {
+		const owned = candidate.provenance?.kind === "pull-request" ? candidate.provenance : candidate.publication;
+		if (owned === undefined) return undefined;
+		const repository = owned.repository;
+		return (
+			repository !== undefined &&
+			repository.owner.toLowerCase() === pullRequest.repository.owner.toLowerCase() &&
+			repository.name.toLowerCase() === pullRequest.repository.name.toLowerCase() &&
+			owned.pullRequest === pullRequest.number
+		);
+	}
+
 	/** Classifies one detached round, fetching a missing candidate commit once before rejecting it. */
 	async classify(candidate: MembershipCandidate): Promise<RoundMembership> {
-		const owned = candidate.provenance?.kind === "pull-request" ? candidate.provenance : candidate.publication;
-		if (owned !== undefined) {
-			const repository = owned.repository;
+		const member = PullRequestMembership.storedOwnership(candidate, this.answer);
+		if (member !== undefined) {
 			const stamp = await git(this.repoRoot, ["show", "-s", "--format=%ct", candidate.head]).catch(() => undefined);
-			const member =
-				repository !== undefined &&
-				repository.owner.toLowerCase() === this.answer.repository.owner.toLowerCase() &&
-				repository.name.toLowerCase() === this.answer.repository.name.toLowerCase() &&
-				owned.pullRequest === this.answer.number;
 			return {
 				...candidate,
 				status: member ? "member" : "foreign",

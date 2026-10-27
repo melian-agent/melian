@@ -1,6 +1,13 @@
 import { writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { ComparisonExport, PullRequestMembership, pullRequestChangesetId, visibleText } from "@melian-agent/core";
+import {
+	ComparisonExport,
+	MembershipError,
+	PullRequestMembership,
+	type PullRequestRoundHeads,
+	pullRequestChangesetId,
+	visibleText,
+} from "@melian-agent/core";
 import { PullRequestRoundsReader, parseGitHubRemote } from "@melian-agent/github";
 import {
 	CompareHarness,
@@ -20,13 +27,22 @@ export class PullRequestComparison {
 	private readonly changeset: string;
 	private readonly stores: ComparisonStores;
 	private readonly url: string;
+	private readonly repository: PullRequestRoundHeads["repository"];
 
-	private constructor(io: Io, number: number, changeset: string, stores: ComparisonStores, url: string) {
+	private constructor(
+		io: Io,
+		number: number,
+		changeset: string,
+		stores: ComparisonStores,
+		url: string,
+		repository: PullRequestRoundHeads["repository"],
+	) {
 		this.io = io;
 		this.number = number;
 		this.changeset = changeset;
 		this.stores = stores;
 		this.url = url;
+		this.repository = repository;
 	}
 	static async open(io: Io, number: number): Promise<PullRequestComparison> {
 		const repository = parseGitHubRemote(await git(io.cwd, ["remote", "get-url", "origin"]));
@@ -40,6 +56,7 @@ export class PullRequestComparison {
 			pullRequestChangesetId("github", { owner: repository.owner, name: repository.repo }, number),
 			stores,
 			`https://github.com/${repository.owner}/${repository.repo}/pull/${number}`,
+			{ owner: repository.owner, name: repository.repo },
 		);
 	}
 	async refresh(accept: boolean): Promise<number> {
@@ -94,21 +111,52 @@ export class PullRequestComparison {
 		const snapshot = history?.current();
 		const ids = new Set(snapshot?.members.map((round) => round.id));
 		const memberStores = new Set(snapshot?.members.map((round) => round.id.split(".")[0]));
+		const ownership = new Map(
+			this.stores.candidates.map((candidate) => [
+				candidate.id,
+				PullRequestMembership.storedOwnership(candidate, { repository: this.repository, number: this.number }),
+			]),
+		);
+		const conflicts = snapshot?.members.filter((round) => ownership.get(round.id) === false) ?? [];
+		if (conflicts.length > 0)
+			throw new MembershipError(
+				`stored ownership now rejects saved members ${conflicts.map((round) => round.id).join(", ")}; run melian compare refresh "#${this.number}", then --accept if refresh reports a rejection`,
+			);
+		const owned = new Set(
+			this.stores.candidates
+				.filter((candidate) => ownership.get(candidate.id) === true)
+				.map((candidate) => candidate.id),
+		);
+		const ownedStores = new Set([...owned].map((id) => id.split(".")[0]));
 		const entries = this.stores.entries.filter((entry) =>
 			snapshot === undefined
-				? entry.changeset === this.changeset
+				? entry.changeset === this.changeset &&
+					(entry.unattributed !== undefined || ownership.get(entry.round!) !== false)
 				: entry.unattributed !== undefined
-					? entry.changeset === this.changeset || memberStores.has(entry.changeset)
-					: entry.round !== undefined && ids.has(entry.round),
+					? entry.changeset === this.changeset ||
+						memberStores.has(entry.changeset) ||
+						ownedStores.has(entry.changeset)
+					: entry.round !== undefined && (ids.has(entry.round) || owned.has(entry.round)),
 		);
+		const additional =
+			snapshot !== undefined &&
+			entries.some((entry) =>
+				entry.unattributed !== undefined
+					? entry.changeset !== this.changeset && !memberStores.has(entry.changeset)
+					: entry.round !== undefined && !ids.has(entry.round),
+			);
+		const notice =
+			snapshot === undefined
+				? ""
+				: `Additional stored records are included beyond snapshot ${snapshot.version}; membership/history remain as last refreshed; run melian compare "#${this.number}" to refresh.`;
 		if (snapshot === undefined && entries.length === 0)
 			throw new CliError(`no membership snapshot; run melian compare "#${this.number}" first`);
-		if (snapshot !== undefined)
-			entries.sort(
-				(a, b) =>
-					snapshot.members.findIndex((round) => round.id === a.round) -
-					snapshot.members.findIndex((round) => round.id === b.round),
+		if (snapshot !== undefined) {
+			const positions = new Map(
+				[...ids, ...[...owned].filter((id) => !ids.has(id)).sort()].map((id, index) => [id, index]),
 			);
+			entries.sort((a, b) => (positions.get(a.round!) ?? -1) - (positions.get(b.round!) ?? -1));
+		}
 		const comparisons = new ComparisonExport(entries, `#${this.number}`, this.url);
 		const record = options.json ? comparisons.renderJson() : comparisons.render();
 		const output = options.json
@@ -118,13 +166,14 @@ export class PullRequestComparison {
 						.split("\n")
 						.map(visibleText)
 						.join("\n")}\n`
-			: `${snapshot === undefined ? "" : `${this.render(snapshot)}\n`}${record}`;
+			: `${snapshot === undefined ? "" : `${this.render(snapshot)}${additional ? `${visibleText(`Membership as of ${snapshot.at}. Additional records have no snapshot numbers. ${notice}`)}\n` : ""}\n`}${record}`;
 		if (options.out === undefined) this.io.stdout(output);
 		else {
 			const path = resolve(this.io.cwd, options.out);
 			await writeFile(path, output, "utf8");
 			this.io.stdout(`Exported comparison to ${visibleText(path)}.\n`);
 		}
+		if (additional) this.io.stderr(`${visibleText(notice)}\n`);
 		return 0;
 	}
 	private render(snapshot: PullRequestRoundSnapshot): string {

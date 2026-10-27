@@ -1,4 +1,10 @@
-import { Comparison, PullRequestMembership, pullRequestChangesetId, type RoundMembership } from "@melian-agent/core";
+import {
+	Comparison,
+	MembershipError,
+	PullRequestMembership,
+	pullRequestChangesetId,
+	type RoundMembership,
+} from "@melian-agent/core";
 import { PullRequestRoundsReader } from "@melian-agent/github";
 import {
 	CompareHarness,
@@ -211,3 +217,144 @@ it("includes saved membership ahead of the offline markdown comparisons", async 
 	expect(output()).toContain("# Comparison review: pull request");
 	expect(output()).toContain(`Foreign: ${rejected.id}: ${rejected.reason}`);
 });
+
+it.each([true, false])(
+	"includes all conclusively owned records after the saved members offline (json %s)",
+	async (json) => {
+		stores.candidates.splice(
+			0,
+			stores.candidates.length,
+			old,
+			{ ...added, publication: { repository: answer.repository, pullRequest: 7 } },
+			{
+				...removed,
+				provenance: { kind: "pull-request", repository: answer.repository, pullRequest: 8 },
+				publication: { repository: answer.repository, pullRequest: 7 },
+			},
+		);
+		stores.histories.set(id, PullRequestRoundHistory.from([{ ...previous, members: [{ ...old, number: 1 }] }]));
+		const original = JSON.stringify(stores.histories.get(id)!.versions);
+		await (await PullRequestComparison.open(io, 7)).export({ json });
+		if (json) {
+			const exported = JSON.parse(output());
+			expect(Object.keys(exported.comparisons)).toEqual([old.id, added.id]);
+			expect(JSON.stringify(exported.history)).toBe(original);
+			expect(exported.membership.members).toEqual([{ ...old, number: 1 }]);
+		} else {
+			expect(output()).toContain(`Membership as of ${at}`);
+			expect(output()).toContain("Additional stored records are included beyond snapshot 1");
+			expect(output()).not.toContain(`Round 2: ${added.id}`);
+		}
+		expect(JSON.stringify(stores.histories.get(id)!.versions)).toBe(original);
+		expect(io.stderr).toHaveBeenCalledExactlyOnceWith(expect.stringContaining('run melian compare "#7" to refresh'));
+		expect(target.gitHubAccess).not.toHaveBeenCalled();
+		expect(CompareHarness.open).not.toHaveBeenCalled();
+	},
+);
+
+it("refuses a former Git member newly owned by another pull request before any output", async () => {
+	stores.candidates.splice(0, stores.candidates.length, {
+		...old,
+		publication: { repository: answer.repository, pullRequest: 8 },
+	});
+	const history = JSON.stringify(stores.histories.get(id)!.versions);
+	await expect(
+		(await PullRequestComparison.open(io, 7)).export({ json: true, out: "/cannot-write/existing.json" }),
+	).rejects.toThrowError(MembershipError);
+	await expect((await PullRequestComparison.open(io, 7)).export({ json: false })).rejects.toThrow(
+		'compare refresh "#7"',
+	);
+	expect(JSON.stringify(stores.histories.get(id)!.versions)).toBe(history);
+	expect(io.stdout).not.toHaveBeenCalled();
+	expect(io.stderr).not.toHaveBeenCalled();
+});
+
+it("does not warn for ownership candidates without an added record and retains a missing unreachable member", async () => {
+	stores.entries.splice(0, stores.entries.length, stores.entries[1]!);
+	stores.candidates.splice(0, stores.candidates.length, {
+		...added,
+		publication: { repository: answer.repository, pullRequest: 7 },
+	});
+	stores.histories.set(
+		id,
+		PullRequestRoundHistory.from([{ ...previous, members: [{ ...old, status: "unreachable", number: 1 }] }]),
+	);
+	await (await PullRequestComparison.open(io, 7)).export({ json: true });
+	expect(Object.keys(JSON.parse(output()).comparisons)).toEqual([old.id]);
+	expect(io.stderr).not.toHaveBeenCalled();
+});
+
+it("orders new owned attributed records by ID after saved members while keeping unknown additions out", async () => {
+	stores.histories.set(id, PullRequestRoundHistory.from([{ ...previous, members: [{ ...old, number: 1 }] }]));
+	stores.candidates.splice(
+		0,
+		stores.candidates.length,
+		...[added, removed].map((candidate) => ({
+			...candidate,
+			publication: { repository: answer.repository, pullRequest: 7 },
+		})),
+	);
+	const entries = [...stores.entries];
+	for (const indices of [
+		[0, 1, 2],
+		[1, 2, 0],
+		[2, 0, 1],
+		[2, 1, 0],
+	]) {
+		stores.entries.splice(0, stores.entries.length, ...indices.map((index) => entries[index]!));
+		vi.mocked(io.stdout).mockClear();
+		await (await PullRequestComparison.open(io, 7)).export({ json: true });
+		expect(Object.keys(JSON.parse(output()).comparisons)).toEqual([old.id, removed.id, added.id]);
+	}
+	stores.candidates.splice(0, stores.candidates.length);
+	vi.mocked(io.stdout).mockClear();
+	await (await PullRequestComparison.open(io, 7)).export({ json: true });
+	expect(Object.keys(JSON.parse(output()).comparisons)).toEqual([old.id]);
+});
+
+it("preserves own-store compatibility without letting the filename override foreign ownership", async () => {
+	stores.histories.clear();
+	stores.entries.splice(0, stores.entries.length, ...stores.entries.map((entry) => ({ ...entry, changeset: id })));
+	stores.candidates.splice(
+		0,
+		stores.candidates.length,
+		{
+			...added,
+			provenance: { kind: "pull-request", repository: answer.repository, pullRequest: 8 },
+			publication: { repository: answer.repository, pullRequest: 7 },
+		},
+		{ ...removed, publication: { repository: answer.repository, pullRequest: 7 } },
+	);
+	await (await PullRequestComparison.open(io, 7)).export({ json: true });
+	const exported = JSON.parse(output());
+	expect(Object.keys(exported.comparisons)).toEqual([old.id, removed.id]);
+	expect(exported.membership).toBeUndefined();
+	expect(exported.history).toBeUndefined();
+	expect(io.stderr).not.toHaveBeenCalled();
+});
+
+it.each([true, false])(
+	"includes newly eligible raw records without a new attributed comparison (json %s)",
+	async (json) => {
+		const own = { ...stores.entries[0]!, changeset: id, round: undefined, unattributed: "own-key" };
+		const raw = { ...stores.entries[0]!, round: undefined, unattributed: "range-key" };
+		const foreignRaw = { ...stores.entries[2]!, round: undefined, unattributed: "foreign-key" };
+		stores.entries.splice(0, stores.entries.length, own, raw, foreignRaw);
+		stores.candidates.splice(0, stores.candidates.length, {
+			...added,
+			publication: { repository: answer.repository, pullRequest: 7 },
+		});
+		stores.histories.set(id, PullRequestRoundHistory.from([{ ...previous, members: [] }]));
+		await (await PullRequestComparison.open(io, 7)).export({ json });
+		if (json) {
+			const exported = JSON.parse(output());
+			expect(exported.comparisons).toEqual({});
+			expect(Object.keys(exported.unattributed)).toEqual(["own-key", "range-key"]);
+			expect(exported.membership.members).toEqual([]);
+			expect(exported.history).toHaveLength(1);
+		} else expect(output()).toContain("Additional records have no snapshot numbers");
+		expect(io.stderr).toHaveBeenCalledExactlyOnceWith(
+			expect.stringContaining("Additional stored records are included beyond snapshot 1"),
+		);
+	},
+);

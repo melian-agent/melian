@@ -1,7 +1,12 @@
 import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Adjudication, defaultConfig, PullRequestMembership, pullRequestChangesetId } from "@melian-agent/core";
-import { CompareHarness, backgroundContext as context, openSqliteStorage } from "@melian-agent/pipeline";
+import {
+	CompareHarness,
+	backgroundContext as context,
+	MembershipReader,
+	openSqliteStorage,
+} from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { gitIn, isolatedGitEnv, temporaryDirectory } from "../../core/test/fixtures/repo.ts";
@@ -130,6 +135,54 @@ afterEach(() => {
 	vi.restoreAllMocks();
 	rmSync(repo, { recursive: true, force: true });
 });
+
+it.each(["json", "markdown"])(
+	"refuses an offline %s export when a saved Git member gains foreign publication ownership",
+	async (format) => {
+		expect(await main(["compare", "#7"], io)).toBe(0);
+		const pull = pullRequestChangesetId("github", { owner: "owner", name: "repo" }, 7);
+		const path = await storagePath(repo, pull, io.env, true);
+		const readHistory = async () => {
+			const storage = await openSqliteStorage(path);
+			try {
+				return (await MembershipReader.open(storage).history()).versions;
+			} finally {
+				await storage.close(context);
+			}
+		};
+		const before = await readHistory();
+		expect(before[0]!.members[0]!.reason).toBe("exact pull request merge base");
+		const harness = await CompareHarness.open(await openSqliteStorage(store), createFakeModels().review, changeset);
+		try {
+			const root = await harness.harness.root(context);
+			await root.commit(async (tx) => {
+				(await tx.doc(PublisherDocument, root.id)).target = {
+					repository: "owner/repo",
+					pullRequest: 8,
+					baseRef: "main",
+					baseTip: base,
+					base,
+					head,
+					revision: `${base}..${head}`,
+					roundId: "r1",
+				};
+			}, context);
+		} finally {
+			await harness.close();
+		}
+		rmSync(recording);
+		const out = join(repo, "existing-export");
+		writeFileSync(out, "previous export");
+		vi.mocked(io.stdout).mockClear();
+		expect(await main(["compare", "export", "#7", ...(format === "json" ? ["--json"] : []), "--out", out], io)).toBe(
+			1,
+		);
+		expect(readFileSync(out, "utf8")).toBe("previous export");
+		expect(output()).toBe("");
+		for (const value of [round, 'compare refresh "#7"', "--accept"]) expect(errors()).toContain(value);
+		expect(await readHistory()).toEqual(before);
+	},
+);
 
 it("reads a range's rounds through #N, snapshots membership, and exports/stats entirely offline", async () => {
 	expect(await main(["compare", "#7"], io), errors()).toBe(0);

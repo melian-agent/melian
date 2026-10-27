@@ -392,3 +392,71 @@ it.each(["stdout", "file"])(
 		safeLines(await readExport(false));
 	},
 );
+
+it.each(["json", "markdown"])(
+	"includes newly eligible raw-only range records beyond the saved snapshot in %s",
+	async (format) => {
+		expect(await main(["compare", "#7"], io)).toBe(0);
+		const range = "range-3333333333333333";
+		const ownPath = await storagePath(repo, changeset, io.env, true);
+		const rangePath = await storagePath(repo, range, io.env, true);
+		copyFileSync(new URL("comparisons.sqlite", fixture), rangePath);
+		const harness = await CompareHarness.open(await openSqliteStorage(rangePath), createFakeModels().review, range);
+		try {
+			const root = await harness.harness.root(context);
+			await root.commit(async (tx) => {
+				(await tx.doc(PublisherDocument, root.id)).target = {
+					repository: "owner/repo",
+					pullRequest: 7,
+					baseRef: "main",
+					baseTip: revision.base,
+					...revision,
+					revision: key,
+					roundId: "r1",
+				};
+			}, context);
+		} finally {
+			await harness.close();
+		}
+		const storage = await openSqliteStorage(ownPath);
+		let history: PullRequestRoundHistory;
+		try {
+			history = await MembershipReader.open(storage).history();
+		} finally {
+			await storage.close(context);
+		}
+		rmSync(join(repo, "github.json"));
+		vi.mocked(io.stdout).mockClear();
+		vi.mocked(io.stderr).mockClear();
+		if (format === "json") {
+			const out = join(repo, "existing-raw.json");
+			writeFileSync(out, "previous raw export");
+			expect(await main(["compare", "export", "#7", "--json", "--out", out], io)).toBe(1);
+			expect(readFileSync(out, "utf8")).toBe("previous raw export");
+			expect(output()).toBe("");
+			expect(
+				vi
+					.mocked(io.stderr)
+					.mock.calls.map(([text]) => text)
+					.join(""),
+			).toContain("Markdown");
+		} else {
+			expect(await main(["compare", "export", "#7"], io)).toBe(0);
+			expect(output().split(`At ${revision.head.slice(0, 12)}:`)).toHaveLength(3);
+			expect(output()).toContain(`Membership as of ${history!.current()!.at}`);
+			expect(output()).toContain("Additional records have no snapshot numbers");
+			expect(
+				vi
+					.mocked(io.stderr)
+					.mock.calls.map(([text]) => text)
+					.join(""),
+			).toContain("Additional stored records are included beyond snapshot 1");
+		}
+		const reopened = await openSqliteStorage(ownPath);
+		try {
+			expect((await MembershipReader.open(reopened).history()).versions).toEqual(history!.versions);
+		} finally {
+			await reopened.close(context);
+		}
+	},
+);

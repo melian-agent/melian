@@ -112,6 +112,42 @@ it("uses provenance before publication and git, confined to its recorded reposit
 		}),
 	).toMatchObject({ status: "member" });
 });
+it("keeps stored ownership tri-state and rejects foreign provenance even when Git would accept the round", async () => {
+	const rules = await PullRequestMembership.open(repo, { ...answer, associated: { [head]: [7] } });
+	const own = { repository: { owner: "OWNER", name: "REPO" }, pullRequest: 7 };
+	const foreign = { repository: answer.repository, pullRequest: 8 };
+	for (const [facts, result] of [
+		[{}, undefined],
+		[{ provenance: { kind: "range" } }, undefined],
+		[{ publication: own }, true],
+		[{ provenance: { kind: "range" }, publication: own }, true],
+		[{ publication: foreign }, false],
+		[{ provenance: { kind: "pull-request", ...own }, publication: foreign }, true],
+		[{ provenance: { kind: "pull-request", ...foreign }, publication: own }, false],
+		[{ provenance: { kind: "pull-request" }, publication: own }, false],
+		[{ provenance: { kind: "pull-request", repository: answer.repository } }, false],
+		[{ provenance: { kind: "pull-request", pullRequest: 7 } }, false],
+	] as const) {
+		const input = { ...candidate, ...facts };
+		expect(PullRequestMembership.storedOwnership(input, answer)).toBe(result);
+		const classified = await rules.classify(input);
+		expect(classified.status).toBe(result === false ? "foreign" : "member");
+		expect(classified.reason).toBe(
+			result === undefined
+				? "exact pull request merge base"
+				: result
+					? "stored pull request ownership"
+					: "stored ownership names another pull request",
+		);
+	}
+	const missing = { ...candidate, head: "f".repeat(40), publication: own };
+	expect(PullRequestMembership.storedOwnership(missing, answer)).toBe(true);
+	expect(await rules.classify(missing)).toEqual({
+		...missing,
+		status: "member",
+		reason: "stored pull request ownership",
+	});
+});
 it("accepts current, commit-list, before-force-push and after-force-push heads independently", async () => {
 	for (const shape of [
 		{ commits: [], forcePushes: [] },
