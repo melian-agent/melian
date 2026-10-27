@@ -8,6 +8,7 @@ import {
 	ReviewCoverage,
 	visibleText,
 } from "@melian-agent/core";
+import { blindCallers } from "./caveats.ts";
 import { CoverageCache } from "./coverage-cache.ts";
 import { EnolaRun } from "./enola-static.ts";
 import type { Context, ConversationId, Harness } from "./harness.ts";
@@ -40,9 +41,11 @@ export type CoverageSource = { parts: GraphKeyParts; paths: string[]; root: stri
 export class CallerContext {
 	readonly #data: CallerData;
 	readonly #root?: string;
-	private constructor(data: CallerData, root?: string) {
+	readonly #unavailable?: string;
+	private constructor(data: CallerData, root?: string, unavailable?: string) {
 		this.#data = structuredClone(data);
 		this.#root = root;
+		this.#unavailable = unavailable;
 	}
 	/** Queries only cached snapshots and verified executables, without downloading. */
 	static async open(
@@ -81,7 +84,19 @@ export class CallerContext {
 	}
 	/** Records a missing graph or failed tool as advisory context. */
 	static unavailable(reason: string): CallerContext {
-		return new CallerContext({ groups: [], issues: [], paths: [], notes: [`Callers unavailable: ${reason}`] });
+		return new CallerContext(
+			{ groups: [], issues: [], paths: [], notes: [`Callers unavailable: ${reason}`] },
+			undefined,
+			reason,
+		);
+	}
+	/** The caveat a review states once when no changed site got callers: none was queried, or every query failed. */
+	caveat(): string | undefined {
+		if (this.#unavailable !== undefined) return `${blindCallers}: ${this.#unavailable}`;
+		const { groups, issues } = this.#data;
+		return groups.length === 0 && issues.length > 0
+			? `${blindCallers}: each changed site was a test file or its caller query failed`
+			: undefined;
 	}
 	/** The graph identity and cache a later coverage record needs, absent when no verified graph was read. */
 	coverageSource(): CoverageSource | undefined {

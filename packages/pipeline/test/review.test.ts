@@ -264,10 +264,46 @@ describe("reviewChangeset", () => {
 				expect(record.status).toBe("ran");
 				expect(record.reason).toContain("Callers unavailable: fixture graph missing");
 				expect(record.reason).toContain("Review coverage unavailable: transcript or cache could not be read");
+				expect(record.caveats).toEqual([
+					"callers were unavailable for every changed site, so no lens saw who calls the changed code: fixture graph missing",
+				]);
 			}
 		} finally {
 			failed.mockRestore();
 		}
+	});
+	const blind = "callers were unavailable for every changed site, so no lens saw who calls the changed code";
+	it.each([
+		[
+			"names no caveat when one caller query answered",
+			true,
+			CallerContext.from({
+				groups: [{ file: "src/user.ts", symbol: "managerName", callers: [], truncated: false }],
+				issues: [{ file: "src/user.ts", reason: "line 1: directory-scoped name is ambiguous" }],
+				notes: [],
+				paths: [],
+			}),
+			undefined,
+		],
+		[
+			"names a caveat when the host gave no caller context",
+			true,
+			undefined,
+			[`${blind}: the host supplied no graph context`],
+		],
+		["names no caveat when Enola is off", false, CallerContext.unavailable("off"), undefined],
+	] as const)("%s", async (_name, enola, callers, caveats) => {
+		scriptConversations(fake, [
+			{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+		const result = await reviewed({
+			...(callers === undefined ? {} : { callers }),
+			config: { ...config, static: { ...config.static, enola: { ...config.static.enola, enabled: enola } } },
+		});
+		const records = result.verdict.ran!.filter((record) => record.name.startsWith("lens."));
+		expect(records).toHaveLength(2);
+		for (const record of records) expect(record.caveats).toEqual(caveats);
 	});
 	it("unlocks a new lens route when the indexed task is absent", async () => {
 		const script = () =>

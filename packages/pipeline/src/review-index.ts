@@ -1,4 +1,5 @@
 import type { CoverageIds } from "@melian-agent/core";
+import { callersWithLegacyCaveat } from "./caveats.ts";
 import { defineDoc, type TaskId, type Tx } from "./harness.ts";
 
 // Type aliases, not interfaces: a document's value must satisfy Pi's JsonObject, which an interface never does.
@@ -21,6 +22,8 @@ type IndexedReview = {
 // first call's whatever the graph cache holds by then.
 export type CallerRecord = {
 	notes: Record<string, string[]>;
+	// Why no lens saw who calls the changed code, when none did; absent from a record an older Melian stored.
+	caveat?: string;
 	coverage?: CoverageIds;
 	coverageUnavailable?: true;
 	// The lens task the record was computed from; a record of another task is stale.
@@ -34,15 +37,25 @@ export type ReviewIndexState = { reviews: Record<string, IndexedReview> };
 // running, or crashed. A head retargeted onto another base is another revision, with tasks of its own.
 // Version 3 keys each selected lens by its route too. An entry stored before reads unchanged and never matches a
 // selection, so a review harness aborts its task as it opens, before anything resumes it, and the next review of its
-// revision replaces it and drops its sightings.
+// revision replaces it and drops its sightings. Version 4 lets a caller record name a caveat; an older one names none.
 export const ReviewIndex = defineDoc<ReviewIndexState>({
 	kind: "melian.reviews",
-	version: 3,
+	version: 4,
 	scope: "conversation",
 	history: "latest",
 	fork: "current",
 	initial: () => ({ reviews: {} }),
-	migrate: (value) => value as ReviewIndexState,
+	migrate: (value, from) => {
+		const state = value as ReviewIndexState;
+		if (from >= 4) return state;
+		const reviews = Object.fromEntries(
+			Object.entries(state.reviews).map(([revision, entry]) => [
+				revision,
+				entry.callers === undefined ? entry : { ...entry, callers: callersWithLegacyCaveat(entry.callers) },
+			]),
+		);
+		return { ...state, reviews };
+	},
 });
 
 // Outcomes that decided nothing: a cancelled task, one that broke the task contract, and one whose definition is gone.

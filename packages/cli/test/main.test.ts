@@ -215,6 +215,7 @@ describe("the --trust-head flag", () => {
 			expect(await main(args as string[], io)).toBe(0);
 			expect(review).toHaveBeenCalledExactlyOnceWith(io, "#7", {
 				rerun: false,
+				notes: false,
 				walkthrough: true,
 				trustHead,
 				cold: false,
@@ -236,9 +237,32 @@ describe("the --cold flag", () => {
 			expect(await main(args as string[], io)).toBe(0);
 			expect(review).toHaveBeenCalledExactlyOnceWith(io, "#7", {
 				rerun: false,
+				notes: false,
 				walkthrough: true,
 				trustHead: false,
 				cold,
+			});
+		} finally {
+			review.mockRestore();
+		}
+	});
+});
+
+describe("the --notes flag", () => {
+	it.each([
+		[["review", "#7"], false],
+		[["review", "#7", "--notes"], true],
+	])("asks the review for lens notes only when given: %j", async (args, notes) => {
+		const io = output();
+		const review = vi.spyOn(commands, "review").mockResolvedValue(0);
+		try {
+			expect(await main(args as string[], io)).toBe(0);
+			expect(review).toHaveBeenCalledExactlyOnceWith(io, "#7", {
+				rerun: false,
+				notes,
+				walkthrough: true,
+				trustHead: false,
+				cold: false,
 			});
 		} finally {
 			review.mockRestore();

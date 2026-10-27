@@ -21,6 +21,7 @@ import {
 	Verdict,
 	type Walkthrough,
 } from "@melian-agent/core";
+import { verdictWithLegacyCaveats, withLegacyCaveats } from "./caveats.ts";
 import { configsFor } from "./configurations.ts";
 import { findingsVersion, type Producer, readFindings, revisionKey, seenBefore } from "./findings.ts";
 import { type Context, type ConversationId, type DocumentReader, defineDoc, defineTask } from "./harness.ts";
@@ -52,6 +53,7 @@ type StoredCheck = {
 		moved?: { by: string; from: string; to: string };
 		outside: boolean;
 	};
+	caveats?: string[];
 };
 
 /**
@@ -134,7 +136,10 @@ class VerdictState {
 			}
 		}
 		const verdicts = Object.fromEntries(
-			Object.entries(state.verdicts).map(([revision, verdict]) => [revision, Verdict.upgrade(verdict)]),
+			Object.entries(state.verdicts).map(([revision, verdict]) => {
+				const upgraded = Verdict.upgrade(verdict);
+				return [revision, from >= 13 ? upgraded : verdictWithLegacyCaveats(upgraded)];
+			}),
 		);
 		return new VerdictState({
 			...state,
@@ -151,7 +156,8 @@ class VerdictState {
 
 export const VerdictDocument = defineDoc<StoredVerdictState>({
 	kind: "melian.verdicts",
-	version: 12,
+	version: 13,
+	// Version 13 lets a check record carry caveats; a version 12 verdict has none and reads unchanged.
 	// Version 10 permits protected-claim diagnostics; old verdicts keep their recorded resolutions.
 	scope: "conversation",
 	history: "rewindable",
@@ -221,11 +227,17 @@ export const AdjudicationTask = defineTask<
 >({
 	name: "melian.adjudication",
 	// Version 2 added `files`, and version 3 marks a task created before stage timing. A version 1 input holds no files,
-	// so its task decides by snippet, as it did.
-	version: 5,
+	// so its task decides by snippet, as it did. Version 6 lets a check record carry caveats; an older one has none.
+	version: 6,
 	initial: () => ({ phase: "adjudicate" }),
 	migrate: (input, checkpoint, from) => ({
-		input: input as unknown as AdjudicationTaskInput,
+		input:
+			from >= 6
+				? (input as unknown as AdjudicationTaskInput)
+				: {
+						...(input as unknown as AdjudicationTaskInput),
+						checks: (input as unknown as AdjudicationTaskInput).checks.map(withLegacyCaveats),
+					},
 		checkpoint: { ...(checkpoint as { phase: "adjudicate" }), ...(from < 3 ? { legacyTiming: true as const } : {}) },
 	}),
 	phases: {
@@ -352,7 +364,7 @@ export function adjudicationInput(options: {
 			ruleAliases: structuredClone(config.ruleAliases) as Record<string, StoredAlias>,
 		},
 		manifest: [...manifest],
-		checks: checks.map((check) => structuredClone(check)),
+		checks: checks.map((check) => structuredClone(check) as StoredCheck),
 		findingsVersion,
 		allowSkip: [...allowSkip],
 		producers: producers.map(({ ids, ...source }) => ({

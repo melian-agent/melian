@@ -71,6 +71,6 @@ it.each([1, 2])("reopens a version-%i review index without rewriting its stale s
 		"current",
 		context,
 	);
-	expect((await storage.document(document!.id, "current", context))!.version).toBe(3);
+	expect((await storage.document(document!.id, "current", context))!.version).toBe(4);
 	expect(fake.provider.state.callCount).toBe(0);
 });

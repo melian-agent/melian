@@ -11,6 +11,8 @@ export interface TerminalRenderOptions {
 	readonly ids?: boolean;
 	/** Print a verdict's silent and dismissed findings too, rather than count them. Off by default. */
 	readonly all?: boolean;
+	/** Print each distinct lens note with the checks that carry it. Off by default. */
+	readonly notes?: boolean;
 	/** Name, under each finding, the file and entry that decided its resolution. Off by default. */
 	readonly decided?: boolean;
 	/** Omit instructions that act on the current review when showing a saved round. Off by default. */
@@ -156,6 +158,8 @@ export class Rendering {
 	readonly ids: boolean;
 	/** Print a verdict's silent and dismissed findings too, rather than count them. */
 	readonly all: boolean;
+	/** Print each distinct lens note with the checks that carry it. */
+	readonly notes: boolean;
 	/** Name, under each finding, the file and entry that decided its resolution. */
 	readonly decided: boolean;
 	/** Render a saved round without current-review instructions. */
@@ -169,6 +173,7 @@ export class Rendering {
 		this.#color = options.color === true;
 		this.ids = options.ids === true;
 		this.all = options.all === true;
+		this.notes = options.notes === true;
 		this.decided = options.decided === true;
 		this.historical = options.historical === true;
 		this.emoji = options.emoji === true;

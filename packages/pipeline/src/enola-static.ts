@@ -16,6 +16,7 @@ import {
 import type { CallerData, CallerGroup } from "./callers.ts";
 import { CoverageCache } from "./coverage-cache.ts";
 import { GraphCache } from "./graph-cache.ts";
+import { testFileName } from "./mutation-paths.ts";
 import { PrepareSpans } from "./spans.ts";
 import { type Run, type StaticRun, staticOutputLimit } from "./static.ts";
 import type { ToolProvisioning } from "./tool-provisioning.ts";
@@ -248,7 +249,11 @@ export class EnolaRun {
 		const deadline = Date.now() + this.#run.input.settings.timeout * 1000;
 		let omitted = 0;
 		let attempted = 0;
-		const queues = files.map((file) => {
+		const queried = files.filter((file) => !testFileName(file.path));
+		for (const file of files)
+			if (testFileName(file.path))
+				issues.push({ file: file.path, reason: "a test file, which nothing calls, so it was not queried" });
+		const queues = queried.map((file) => {
 			const symbols = facts
 				.inFile(file.path)
 				.filter((fact) => fact.line !== undefined)

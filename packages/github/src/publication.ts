@@ -353,6 +353,9 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 				: ""),
 	);
 	parts.push(...new Set(tallied.flatMap((finding) => finding.trustFloorNotes().slice(0, 1)).map(inline)));
+	// A lens's other notes are for tuning Melian and stay in the ledger's run details; a caveat narrows the whole review.
+	const caveats = new Set([...(verdict.ran ?? []), ...verdict.notRun].flatMap((check) => check.caveats ?? []));
+	parts.push(...[...caveats].map((caveat) => `Reach: ${inline(caveat)}.`));
 	const reviewStatus = verdict.reviewStatus();
 	parts.push(`melian/review: ${reviewStatus.state} (${inline(reviewStatus.description)}).`);
 	if (verdict.counted().some((finding) => finding.properties.resolution === "acknowledge")) {
@@ -361,17 +364,24 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 		);
 	}
 	if (verdict.dismissed.length > 0) {
+		// Dismissals that share a reason are one decision, so the reason is said once, above the findings it covers.
+		const reasons = new Map<string, { id: string; ruleId: string; path: string }[]>();
+		const dismissals = verdict.dismissals();
+		for (const { id, ruleId, path, dismissal } of dismissals) {
+			const reason = dismissal?.reason ?? "No reason stored.";
+			reasons.set(reason, [...(reasons.get(reason) ?? []), { id, ruleId, path }]);
+		}
+		const lines = [...reasons].flatMap(([reason, covered]) => {
+			const named = ({ id, ruleId, path }: (typeof covered)[number]) =>
+				`${code(id)} ${code(ruleId)} in ${code(path)}`;
+			if (covered.length === 1) return [`- ${named(covered[0]!)}: ${inline(reason)}`];
+			return [`- ${inline(reason)}`, ...covered.map((finding) => `  - ${named(finding)}`)];
+		});
 		parts.push(
-			[
-				"Dismissals attested by this publication:",
-				"",
-				...verdict
-					.dismissals()
-					.map(
-						({ id, ruleId, path, dismissal }) =>
-							`- ${code(id)} ${code(ruleId)} in ${code(path)}: ${inline(dismissal?.reason ?? "No reason stored.")}`,
-					),
-			].join("\n"),
+			folded(
+				`${dismissals.length} dismissed, ${plural(reasons.size, "reason")}`,
+				["Dismissals attested by this publication:", "", ...lines].join("\n"),
+			),
 		);
 	}
 	// A check off the committed routes ran under a maintainer's own choice, so it leads, before anything else said.
@@ -399,10 +409,6 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 	if (counted.length > 0) {
 		parts.push(["Lenses a budget ended, counted with the findings they reported:", "", ...counted].join("\n"));
 	}
-	const noted = (verdict.ran ?? []).flatMap(({ name, reason }) =>
-		reason === undefined ? [] : [`- ${code(name)}: ${inline(reason)}`],
-	);
-	if (noted.length > 0) parts.push(["Lenses that ran with a note:", "", ...noted].join("\n"));
 	const named = (finding: ClosedFinding) => `- ${code(finding.ruleId)} in ${code(finding.path)} line ${finding.line}`;
 	const resolved = draft.resolved.filter((finding) => finding.dismissal === undefined).map(named);
 	if (resolved.length > 0) parts.push(["Resolved since the last review:", "", ...resolved].join("\n"));
@@ -425,24 +431,38 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 			)
 			.map((finding) => ({ finding })),
 	];
-	const sections = inBody.map(({ finding }) =>
+	const render = ({ finding }: { readonly finding: Finding }) =>
 		ReviewComment.from(finding, { kind: "body" }, verdict.importance(finding.id)).render({
 			revision,
 			base: draft.base,
 			links,
 			secret,
 			emoji: options.emoji,
-		}),
-	);
+		});
+	// A finding that asks for action stays open; an advisory asks for none, so it folds under its count.
+	const open = inBody.filter(({ finding }) => finding.properties.resolution !== "advisory").map(render);
+	const quiet = inBody.filter(({ finding }) => finding.properties.resolution === "advisory").map(render);
+	const sections = [...open, ...quiet];
 	const heading = options.inlineRefused
 		? "### Findings\n\nGitHub refused this review's inline comments, so every finding is listed here."
 		: "### Advisories and findings carried or outside the diff";
-	const assemble = (kept: number, note?: string) =>
-		[
+	const assemble = (kept: number, note?: string) => {
+		const shown = open.slice(0, kept);
+		const advisories = quiet.slice(0, Math.max(0, kept - open.length));
+		return [
 			...parts,
-			...(kept > 0 ? [heading, ...sections.slice(0, kept)] : []),
+			...(shown.length > 0 ? [heading, ...shown] : []),
+			...(advisories.length > 0
+				? [
+						folded(
+							`${advisories.length} ${advisories.length === 1 ? "advisory" : "advisories"}`,
+							advisories.join("\n\n"),
+						),
+					]
+				: []),
 			...(note === undefined ? [] : [note]),
 		].join("\n\n");
+	};
 	const whole = assemble(sections.length);
 	if (whole.length <= limit) return whole;
 	// GitHub refuses a body over its limit, and the summary and the marker matter more than the last findings.
@@ -452,9 +472,13 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 		const body = assemble(kept, `${plural(cut, "finding")} did not fit in this review; ${all}`);
 		if (body.length <= limit) return body;
 	}
+	// A cut inside a fold closes it, so the note stays outside every fold; room for the close is kept either way.
 	const note = `This review was cut to fit GitHub's limit; ${all}`;
-	const room = assemble(0).slice(0, limit - note.length - 2);
-	return `${room.slice(0, Math.max(room.lastIndexOf("\n"), 0))}\n\n${note}`;
+	const close = "\n\n</details>";
+	const room = assemble(0).slice(0, limit - note.length - close.length - 2);
+	const kept = room.slice(0, Math.max(room.lastIndexOf("\n"), 0));
+	const unclosed = kept.lastIndexOf("<details>") > kept.lastIndexOf("</details>");
+	return `${kept}${unclosed ? close : ""}\n\n${note}`;
 }
 
 /** GitHub refuses a review body, or a comment, longer than this many characters. */
@@ -483,6 +507,11 @@ export function renderResolvedReply(finding: ClosedFinding, revision: string, se
 		return `${head}\nDismissed at ${code(short(revision))}: ${inline(finding.dismissal.reason)}`;
 	}
 	return `${head}\nResolved at ${code(short(revision))}: this revision no longer reports ${code(finding.ruleId)} here.`;
+}
+
+// A section the reader opens only to dig in, under a summary that is a count and a noun.
+function folded(summary: string, body: string): string {
+	return `<details>\n<summary>${summary}</summary>\n\n${body}\n\n</details>`;
 }
 
 // Prose on one line, for a list item or a reply's single line.
