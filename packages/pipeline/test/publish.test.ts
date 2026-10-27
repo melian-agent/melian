@@ -46,6 +46,7 @@ afterEach(async () => {
 
 describe("publication planning recovery", () => {
 	let options: PublishOptions;
+	let storage: ReturnType<typeof createMemoryStorage>;
 	let root: Conversation;
 	let state: ReturnType<typeof pullRequestState>;
 	let provider: ReturnType<typeof createGitHubProvider>;
@@ -78,7 +79,8 @@ describe("publication planning recovery", () => {
 		const registry = createRegistry();
 		registry.install(publishExtension(provider));
 		registry.install({ name: "test.recorded-review", tasks: [recordedReviewTask] });
-		harness = await openHarness(createMemoryStorage(), { models: fake.models, registry });
+		storage = createMemoryStorage();
+		harness = await openHarness(storage, { models: fake.models, registry });
 		root = await harness.root(context, { agent: { model: fake.ref() } });
 		finding = Finding.create({
 			rule: "unsafe",
@@ -150,6 +152,11 @@ describe("publication planning recovery", () => {
 		);
 		await publishReview({ ...options, readRun });
 		expect(readRun).toHaveBeenCalledExactlyOnceWith(legacyKey(revision));
+		const tasks = await storage.scanTasks({ kind: "melian.publish" }, 100, undefined, context);
+		const input = tasks.items[0]!.input as { run?: { roundId?: string; durationMs: number; stages: [] } };
+		expect(input.run).toEqual(
+			binding === "bound" ? { roundId: legacyKey(revision), durationMs: 142_000, stages: [] } : undefined,
+		);
 		expect(state.ledgers[0]!.body.includes("Run details: 142 s")).toBe(binding === "bound");
 		if (binding === "bound") {
 			await publishReview(options);

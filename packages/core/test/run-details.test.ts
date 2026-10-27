@@ -207,7 +207,7 @@ describe("RunDetails", () => {
 
 	it("round-trips its stored shape", () => {
 		const stored = { durationMs: 1, stages: [lens({ tools: 2, limits: { tools: 3 }, ended: "tokens" as const })] };
-		expect(RunDetails.from(stored).toJSON()).toEqual(stored);
+		expect(RunDetails.from(stored).toJSON()).toStrictEqual(stored);
 	});
 
 	it("says a total is incomplete when a stage's usage was not all measured", () => {
@@ -231,5 +231,5 @@ describe("RunDetails", () => {
 
 it("preserves the bound round ID through the run view", () => {
 	const stored = { roundId: "r17", durationMs: 42, stages: [lens({})] };
-	expect(RunDetails.from(stored).toJSON()).toEqual(stored);
+	expect(RunDetails.from(stored).toJSON()).toStrictEqual(stored);
 });

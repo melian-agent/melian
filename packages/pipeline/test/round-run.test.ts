@@ -57,6 +57,9 @@ async function setup(path?: string) {
 			.toJSON();
 	}, context);
 	await new RecordedReview(harness).record(revision);
+	await new RecordedReview(harness).record("other..head");
+	const otherTask = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews["other..head"]!.adjudication!
+		.task;
 	const task = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.adjudication!.task;
 	await root.commit(async (tx) => {
 		await new RoundWriter(tx, root.id).keep(revision, task);
@@ -66,7 +69,7 @@ async function setup(path?: string) {
 	spans.bindRound(roundId);
 	expect(spans.roundId).toBe(roundId);
 	const prepare = await spans.record(harness, revision, context);
-	return { root, storage, prepare, reader: TelemetryReader.open(storage) };
+	return { root, storage, prepare, otherTask, reader: TelemetryReader.open(storage) };
 }
 
 it.each([
@@ -82,7 +85,7 @@ it.each([
 	"unbound checks",
 	"other preparation",
 ])("captures only the round's own sources (%s)", async (mode) => {
-	const { root, reader, prepare } = await setup();
+	const { root, reader, prepare, otherTask } = await setup();
 	await root.commit(async (tx) => {
 		const rounds = await tx.doc(RoundsDocument, root.id);
 		const round = rounds.items[roundId]!;
@@ -91,7 +94,7 @@ it.each([
 		const checks = await tx.doc(ChecksDocument, root.id);
 		if (mode === "wrong round") rounds.current[revision] = "r2";
 		if (mode === "undecided") delete round.verdict;
-		if (mode === "other adjudication") index.reviews[revision]!.adjudication!.task = 999;
+		if (mode === "other adjudication") index.reviews[revision]!.adjudication!.task = otherTask;
 		if (mode === "no adjudication") delete index.reviews[revision]!.adjudication;
 		if (mode === "no review") delete index.reviews[revision];
 		if (["matched checks", "absent check owner", "other check owner"].includes(mode))
