@@ -345,6 +345,8 @@ Its migration preserves timing from versions 3 and 4; versions 1 and 2 retain le
 A version-4 fixture recorded by that version’s own code proves SQLite reopen and timing preservation.
 
 The run table takes each check’s outcome from the indexed adjudication task’s recorded input, including refused lenses with no conversation.
+Lens records match a conversation by name, version and scrutiny level. Older records without a level match by name and version alone.
+An escalated lens's settled record never replaces an earlier level's outcome.
 Conversation telemetry keeps its own terminal status. A reused failed check still renders failed.
 Checks supplied only by adjudication appear only in the run table; they add no stage to telemetry reads or JSON.
 

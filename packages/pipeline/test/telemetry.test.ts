@@ -347,6 +347,65 @@ it.each(["quick", undefined])("reads verification claim IDs and lens subjects at
 	]);
 });
 
+it.each([
+	{ quick: "ended", careful: "ran", level: "careful", expectedQuick: "ended" },
+	{ quick: "ran", careful: "failed", level: "careful", expectedQuick: "ran" },
+	{ quick: "ran", careful: "failed", level: undefined, expectedQuick: "failed" },
+] as const)(
+	"matches escalated lens outcomes (quick=$quick, careful=$careful, level=$level)",
+	async ({ quick, careful, level, expectedQuick }) => {
+		const fixture = new ReaderFixture();
+		fixture.document(ReviewIndex, {
+			reviews: { [revision]: { task: 1, lenses: [], adjudication: { task: 2, input: "{}" } } },
+		});
+		fixture.task(1, { status: "terminal", outcome: { status: "completed", result: null } });
+		fixture.task(
+			2,
+			{ status: "terminal", outcome: { status: "completed", result: null } },
+			{
+				input: {
+					checks: [
+						{
+							name: "lens.correctness",
+							version: "v1",
+							...(level === undefined ? {} : { level }),
+							status: careful,
+						},
+					],
+				},
+			},
+		);
+		for (const [index, level] of ["quick", "careful"].entries())
+			fixture.document(
+				LensDocument,
+				{
+					lens: { name: "correctness", version: "v1", level },
+					...(level === "quick" && quick === "ended" ? { spend: { calls: [], ended: "tools" } } : {}),
+				},
+				undefined,
+				(3 + index) as ConversationId,
+			);
+		vi.spyOn(fixture.storage, "scanConversations").mockImplementation(async (query) => {
+			expect(query).toEqual({ ownerTaskId: 1 });
+			return {
+				items: [{ id: 3 as ConversationId }, { id: 4 as ConversationId }] as Awaited<
+					ReturnType<Storage["scanConversations"]>
+				>["items"],
+			};
+		});
+		const telemetry = await fixture.read();
+		expect(
+			telemetry
+				.runDetails()
+				.stages.filter(({ name }) => name === "lens correctness")
+				.map(({ level, outcome, ended }) => ({ level, outcome, ...(ended === undefined ? {} : { ended }) })),
+		).toEqual([
+			{ level: "quick", outcome: expectedQuick, ...(quick === "ended" ? { ended: "tools" } : {}) },
+			{ level: "careful", outcome: careful },
+		]);
+	},
+);
+
 it("refuses an unsupported old checks document instead of treating it as current", async () => {
 	const fixture = new ReaderFixture();
 	const migrate = vi.spyOn(ChecksDocument.definition, "migrate");

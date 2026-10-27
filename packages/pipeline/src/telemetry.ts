@@ -575,6 +575,8 @@ export class TelemetryReader {
 						: "melian.check";
 				const matching = rows.filter(
 					(stage) =>
+						// Legacy records without a level fall back to matching the lens name and version.
+						(check.level === undefined || stage.subject.split("@")[2] === check.level) &&
 						stage.name === name &&
 						(name === "melian.verification.candidate" ||
 							(stage.subject.split("@")[0] === check.name.replace(/^lens\./, "") &&

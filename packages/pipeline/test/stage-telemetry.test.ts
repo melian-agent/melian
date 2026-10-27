@@ -436,8 +436,13 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 		const telemetry = await TelemetryReader.open(storage).read(revisionKey(options.changeset.revision));
 		const lens = telemetry.stages.find(({ name }) => name === "melian.lens")!;
 		expect(lens).toMatchObject({ outcome: "ended", ended: "tokens", limits: { tokens: 1 } });
-		const row = telemetry.runDetails().stages.find(({ name }) => name === "lens correctness")!;
-		expect(row).toMatchObject({ outcome: "ran", ended: "tokens", limits: { tokens: 1 } });
+		const rows = telemetry.runDetails().stages.filter(({ name }) => name === "lens correctness");
+		expect(
+			rows.map(({ level, outcome, ended, limits }) => ({ level, outcome, ended, tokens: limits!.tokens })),
+		).toEqual([
+			{ level: "quick", outcome: "ended", ended: "tokens", tokens: 1 },
+			{ level: "careful", outcome: "ran", ended: undefined, tokens: 1 },
+		]);
 		const others = telemetry.stages.filter(({ name }) => name !== "melian.lens");
 		for (const stage of others) expect(stage).not.toHaveProperty("ended");
 	});
