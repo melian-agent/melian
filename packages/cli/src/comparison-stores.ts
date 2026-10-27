@@ -11,7 +11,6 @@ import type { Io } from "./commands.ts";
 import { isScripted } from "./models.ts";
 import { CliError, git, openStorage, stateDirectory } from "./repository.ts";
 
-/** One detached scan of the command's chosen state directory. */
 export class ComparisonStores {
 	readonly entries: ComparisonEntry[] = [];
 	readonly candidates: MembershipCandidate[] = [];

@@ -279,7 +279,6 @@ export class CompareHarness {
 		);
 	}
 
-	/** Closes the harness and its storage. Idempotent. */
 	/** Atomically records a new membership version, leaving the old snapshot intact on refusal. */
 	async refreshMembership(
 		answer: PullRequestRoundHeads,
@@ -301,6 +300,7 @@ export class CompareHarness {
 		}, context);
 	}
 
+	/** Closes the harness and its storage. Idempotent. */
 	close(context: Context = backgroundContext): Promise<void> {
 		return this.harness.close(context);
 	}

@@ -14,7 +14,6 @@ import { idleModels } from "./models.ts";
 import { CliError, git, openStorage } from "./repository.ts";
 import { gitHubAccess } from "./target.ts";
 
-/** Reads and refreshes a pull request's membership, keeping comparison writes deferred to build 4. */
 export class PullRequestComparison {
 	private readonly io: Io;
 	private readonly number: number;
@@ -60,7 +59,7 @@ export class PullRequestComparison {
 				classified.push({ ...round, status: "unreachable" as const, reason: "head unavailable after fetch" });
 			else classified.push(round);
 		}
-		const by = await gitAuthor(this.stores.repoRoot, "accepted pull request membership");
+		const by = accept ? await gitAuthor(this.stores.repoRoot, "accepted pull request membership") : "";
 		const at = new Date().toISOString();
 		PullRequestRoundHistory.from(this.stores.histories.get(this.changeset)?.versions ?? []).refresh(
 			answer,
@@ -94,10 +93,13 @@ export class PullRequestComparison {
 		const history = this.stores.histories.get(this.changeset);
 		const snapshot = history?.current();
 		const ids = new Set(snapshot?.members.map((round) => round.id));
+		const memberStores = new Set(snapshot?.members.map((round) => round.id.split(".")[0]));
 		const entries = this.stores.entries.filter((entry) =>
 			snapshot === undefined
 				? entry.changeset === this.changeset
-				: entry.round !== undefined && ids.has(entry.round),
+				: entry.unattributed !== undefined
+					? entry.changeset === this.changeset || memberStores.has(entry.changeset)
+					: entry.round !== undefined && ids.has(entry.round),
 		);
 		if (snapshot === undefined && entries.length === 0)
 			throw new CliError(`no membership snapshot; run melian compare "#${this.number}" first`);
@@ -108,12 +110,12 @@ export class PullRequestComparison {
 					snapshot.members.findIndex((round) => round.id === b.round),
 			);
 		const comparisons = new ComparisonExport(entries, `#${this.number}`, this.url);
-		const record = comparisons.renderJson();
+		const record = options.json ? comparisons.renderJson() : comparisons.render();
 		const output = options.json
 			? snapshot === undefined
 				? record
 				: `${JSON.stringify({ ...JSON.parse(record), membership: snapshot, history: history!.versions }, null, 2)}\n`
-			: `${snapshot === undefined ? "" : `${this.render(snapshot)}\n`}${comparisons.render()}`;
+			: `${snapshot === undefined ? "" : `${this.render(snapshot)}\n`}${record}`;
 		if (options.out === undefined) this.io.stdout(output);
 		else {
 			const path = resolve(this.io.cwd, options.out);
