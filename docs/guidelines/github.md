@@ -68,6 +68,10 @@ Finding text is never live markdown either. Problem: Melian posts from the maint
 
 The paginator forwards only method, URL and headers to each page request. It drops a signal supplied in page parameters. Add the deadline inside the wrapped request, as `mergeGroupPages` does. Convert HTTP 409 before pagination. Otherwise Octokit turns a failed read into an empty page.
 
+## Reading pull-request membership
+
+`PullRequestRoundsReader.open(options).read()` reads `MelianRoundCommits`, `MelianRoundPushes` and `MelianRoundAssociations`. Every connection follows `pageInfo.hasNextPage`, with at most 50 pages. Missing or repeated cursors, failed or partial pages, changing base/head/merge facts and a commit list of 250 or more fail closed. Force-push pages request only `HEAD_REF_FORCE_PUSHED_EVENT`; base-change events carry no commit. A null before commit remains in the answer. Associated pull requests include closed and merged requests, with repository identity compared case-insensitively. All requested heads, including both force-push endpoints and the current head, receive an association lookup. The reader posts nothing and receives the same token, endpoint and fake-fetch options as the thread importer.
+
 ## Tokens
 
 `resolveGitHubToken` reads `GITHUB_TOKEN`, then `GH_TOKEN`, then `gh auth token`. Report where a token came from, never the token. `GitHubError` messages carry GitHub's status and message only; Octokit redacts the token from the request it attaches to its own error, and that error is never printed.

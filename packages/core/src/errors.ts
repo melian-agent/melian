@@ -258,16 +258,17 @@ export class ModelRoutingError extends Error {
 	}
 }
 
-/** Why an external finding, a reviewer's file, or a match was refused. */
+/** Why comparison input, matching, adjudication, or export was refused. */
 export type ComparisonErrorCode =
 	| "invalidFinding"
 	| "invalidFile"
 	| "unknownExternal"
 	| "unknownMelian"
 	| "unknownFinding"
-	| "invalidAdjudication";
+	| "invalidAdjudication"
+	| "unattributedCollision";
 
-/** An external finding, a reviewer's file, or a match was refused. `path` names the file or JSON pointer at fault. */
+/** Comparison input, matching, adjudication, or export was refused. `path` names the file or JSON pointer at fault. */
 export class ComparisonError extends Error {
 	readonly code: ComparisonErrorCode;
 	readonly path: string | undefined;

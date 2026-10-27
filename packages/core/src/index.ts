@@ -433,6 +433,13 @@ export {
 	type UnmutatedFile,
 } from "./mutation.ts";
 export {
+	type MembershipCandidate,
+	MembershipError,
+	PullRequestMembership,
+	type PullRequestRoundHeads,
+	type RoundMembership,
+} from "./pull-request-rounds.ts";
+export {
 	type ToolArtifact,
 	ToolManifest,
 	ToolManifestError,

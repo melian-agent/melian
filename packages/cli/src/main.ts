@@ -19,6 +19,7 @@ import {
 } from "./compare.ts";
 import { doctor } from "./doctor.ts";
 import { MergeGroupStatus } from "./merge-group.ts";
+import { PullRequestComparison } from "./pull-request-comparison.ts";
 import { parseTarget } from "./target.ts";
 import { tools } from "./tools.ts";
 
@@ -48,7 +49,9 @@ Commands:
                          Import other reviewers' findings and match them against the stored review of the head,
                          by site. A source is github for CodeRabbit's review threads, github:<login> for another
                          login's, or file:<path> for a reviewer's JSON file. Without --from, a pull request
-                         imports github, and a range matches again.
+                         refreshes and reads its stored membership; a range matches again.
+  compare refresh <#pr> [--accept]
+                         Refresh membership; accept rejected earlier members with an audit trail.
   compare match|unmatch <range|#pr> <external-id> <melian-id> [--round <id|unattributed>]
                          Match an external finding with a Melian finding by hand, or keep them apart.
   compare adjudicate <range|#pr> <finding-id> --verdict valid|noise|duplicate [--round <id|unattributed>]
@@ -74,6 +77,7 @@ Options:
                          review, so run it before the queue (review).
   --open, --all, --json  For findings; --json also applies to review and telemetry.
   --round <id>          Read a stored verdict; select a range comparison by ID or unattributed.
+  --accept              Accept rejected members (compare refresh only).
   --rounds              List a target's stored rounds (findings).
   --reason <text>        Dismissal reason, or owned-missed, no-owner, needs-execution, out-of-scope (adjudicate).
   --only                 Dismiss the report the ID names alone, leaving the reports merged with it live (dismiss).
@@ -130,6 +134,7 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 				open: { type: "boolean", default: false },
 				round: { type: "string" },
 				rounds: { type: "boolean" },
+				accept: { type: "boolean" },
 				json: { type: "boolean", default: false },
 				model: { type: "string" },
 				walkthrough: { type: "boolean", default: true },
@@ -170,6 +175,8 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 			throw new UsageError("--rounds is only available for findings");
 		if (name !== "findings" && name !== "compare" && values.round !== undefined)
 			throw new UsageError("--round is only available for findings and compare");
+		if (values.accept !== undefined && (name !== "compare" || rest[0] !== "refresh"))
+			throw new UsageError("--accept is only available for compare refresh");
 		const scoped: Io = { ...io, color: io.color && values.color };
 		switch (name) {
 			case "review":
@@ -234,6 +241,14 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 					(["export", "stats", "backlog"].includes(first ?? "") || rest.some((target) => /^#\d+$/.test(target)))
 				)
 					throw new UsageError("--round is available for range comparison writes only");
+				if (first === "refresh") {
+					if (values.round !== undefined || values.from.length > 0)
+						throw new UsageError("compare refresh takes membership options only");
+					const target = parseTarget(one(others, "compare refresh", "pull request"));
+					if (target.kind !== "pullRequest")
+						throw new UsageError('compare refresh takes a pull request such as "#12"');
+					return await (await PullRequestComparison.open(scoped, target.number)).refresh(values.accept ?? false);
+				}
 				if (first === "export") {
 					return await exportComparison(scoped, one(others, "compare export", "range or pull request"), {
 						json: values.json,
@@ -318,7 +333,7 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 				if (sources.some((source) => source.kind === "github") && !pullRequest) {
 					throw new UsageError(`--from github reads a pull request's threads; name it as "#12", not a range`);
 				}
-				const fallback = pullRequest && sources.length === 0 ? [parseImportSource("github")!] : [];
+				const fallback: typeof sources = [];
 				return await compare(scoped, target, [...sources, ...fallback], values.round);
 			}
 			case "doctor":

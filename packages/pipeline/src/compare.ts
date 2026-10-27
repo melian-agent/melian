@@ -2,6 +2,8 @@ import {
 	Comparison,
 	type ComparisonEntry,
 	type ExternalImport,
+	type PullRequestRoundHeads,
+	type RoundMembership,
 	type StoredComparison,
 	type StoredComparisonAdjudication,
 	type StoredVerdict,
@@ -23,6 +25,11 @@ import {
 	type Tx,
 } from "./harness.ts";
 import { modelsOf, type ReviewModels } from "./models.ts";
+import {
+	PullRequestRoundHistory,
+	type PullRequestRoundSnapshot,
+	PullRequestRoundsDocument,
+} from "./pull-request-rounds.ts";
 import { ReviewIndex } from "./review-index.ts";
 import { legacyKey, Round, RoundReader, RoundsDocument, RoundWriter } from "./rounds.ts";
 
@@ -270,6 +277,27 @@ export class CompareHarness {
 			},
 			context,
 		);
+	}
+
+	/** Atomically records a new membership version, leaving the old snapshot intact on refusal. */
+	async refreshMembership(
+		answer: PullRequestRoundHeads,
+		rounds: RoundMembership[],
+		by: string,
+		at: string,
+		accept = false,
+		context: Context = backgroundContext,
+	): Promise<PullRequestRoundSnapshot> {
+		const root = await this.harness.root(context);
+		return root.commit(async (tx) => {
+			const document = await tx.doc(PullRequestRoundsDocument, root.id);
+			const history = PullRequestRoundHistory.from(
+				JSON.parse(JSON.stringify(document.versions)) as PullRequestRoundSnapshot[],
+			);
+			const next = history.refresh(answer, rounds, by, at, accept);
+			document.versions = history.versions;
+			return next;
+		}, context);
 	}
 
 	/** Closes the harness and its storage. Idempotent. */

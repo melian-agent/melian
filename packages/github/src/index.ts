@@ -32,3 +32,5 @@ export { coderabbitLogin, ReviewThreadImporter, type ReviewThreadImporterOptions
 export const packageName = "@melian-agent/github";
 
 export { Ledger } from "./ledger.ts";
+
+export { PullRequestRoundsReader } from "./rounds.ts";
