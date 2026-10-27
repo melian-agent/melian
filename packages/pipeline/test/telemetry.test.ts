@@ -229,8 +229,8 @@ it.each([undefined, 0, 1])("keeps exact rendered spacing with %s incomplete requ
 	]);
 	expect(telemetry.render()).toBe(
 		count === 1
-			? "triage test completed start=0 end=5 duration=5ms (usage incomplete: 1 request(s) not measured)\nTotal: Token usage unavailable (usage incomplete: 1 request(s) not measured).\n"
-			: "triage test completed start=0 end=5 duration=5ms\nTotal: Token usage unavailable.\n",
+			? "Run: 0 tokens · $0.00\ntriage test completed start=0 end=5 duration=5ms (usage incomplete: 1 request(s) not measured)\nTotal: Token usage unavailable (usage incomplete: 1 request(s) not measured).\n"
+			: "Run: 0 tokens · $0.00\ntriage test completed start=0 end=5 duration=5ms\nTotal: Token usage unavailable.\n",
 	);
 });
 

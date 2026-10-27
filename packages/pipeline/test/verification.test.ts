@@ -25,6 +25,7 @@ import {
 	reviewChangeset,
 	revisionKey,
 	type TaskId,
+	TelemetryReader,
 	unlockCredentials,
 	upsertFinding,
 } from "@melian-agent/pipeline";
@@ -52,6 +53,7 @@ import { crashFinding, crashRepository } from "./fixtures/review-scenario.ts";
 
 let repo: string;
 let harness: Harness;
+let storage: ReturnType<typeof createMemoryStorage>;
 let fake: FakeModels;
 let lenses: Lens[];
 let changeset: Changeset;
@@ -61,7 +63,8 @@ beforeEach(async () => {
 	repo = crashRepository();
 	fake = createFakeModels({ models: [{ id: "finder" }, { id: "judge" }, { id: "backup" }] });
 	registry = createReviewRegistry();
-	harness = await openHarness(createMemoryStorage(), {
+	storage = createMemoryStorage();
+	harness = await openHarness(storage, {
 		models: fake.models,
 		registry,
 		settings: { retry: { enabled: false }, toolExecution: "parallel" },
@@ -670,6 +673,12 @@ describe("the verifier", () => {
 		const verdict = (await readVerdict(harness, root.id, revision, context))!;
 		expect(verdict.ran?.some((check) => check.name === "verifier")).toBe(false);
 		expect(verdict.refuted).toBeUndefined();
+		expect(
+			(await TelemetryReader.open(storage).read(revision))
+				.runDetails()
+				.stages.filter(({ name }) => name.startsWith("verification"))
+				.map(({ name, outcome }) => ({ name, outcome })),
+		).toEqual([{ name: "verification 2 claims", outcome: "failed" }]);
 	});
 	it.each(["confirmed", "plausible", "refuted"] as const)(
 		"stores %s beside the sighting without writing confidence",
@@ -1344,6 +1353,12 @@ describe("the verifier", () => {
 		await expect(review(false, plan)).rejects.toMatchObject(failure);
 		const root = await harness.root(context);
 		const revision = revisionKey(changeset.revision);
+		expect(
+			(await TelemetryReader.open(storage).read(revision))
+				.runDetails()
+				.stages.filter(({ name }) => name.startsWith("verification"))
+				.map(({ name, outcome }) => ({ name, outcome })),
+		).toEqual([{ name: "verification 1 claims", outcome: "failed" }]);
 		const before = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!;
 		const finished = await harness.getTask(before.verification!.task as TaskId, context);
 		expect(finished!.state).toMatchObject({

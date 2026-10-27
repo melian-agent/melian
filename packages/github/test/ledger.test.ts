@@ -1,6 +1,14 @@
-import { rmSync } from "node:fs";
+import { readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { Adjudication, defaultConfig, Finding, type LedgerRound, replyKey, Verdict } from "@melian-agent/core";
+import {
+	Adjudication,
+	defaultConfig,
+	Finding,
+	type LedgerRound,
+	replyKey,
+	type StoredRunDetails,
+	Verdict,
+} from "@melian-agent/core";
 import { createGitHubProvider, Ledger, marker, maxBodyLength, parseMarker, verifyMarker } from "@melian-agent/github";
 import {
 	backgroundContext as context,
@@ -635,6 +643,131 @@ describe("ledger rendering", () => {
 		const quiet = Ledger.from(verdict, { rounds: [round] }, options).render(links);
 		expect(quiet).toContain("<summary>Run details</summary>");
 		expect(quiet).not.toContain("Lens notes");
+	});
+
+	it("renders run details from stored telemetry as one summary line and a table, matching its golden", () => {
+		const sol = "openai/gpt-6.1-sol low (reported medium)";
+		const terra = "openai/gpt-5.6-terra low";
+		const run: StoredRunDetails = {
+			durationMs: 142_000,
+			stages: [
+				{ name: "preparation", models: [], durationMs: 3_200, outcome: "ran" },
+				{ name: "check guardrails", models: [], durationMs: 400, outcome: "reused" },
+				{ name: "check static.tsc", models: [], durationMs: 12_000, outcome: "ran" },
+				{
+					name: "triage",
+					models: [terra],
+					durationMs: 2_100,
+					tokens: 12_000,
+					cacheRead: 0,
+					cost: 0.03,
+					outcome: "ran",
+				},
+				{
+					name: "lens correctness",
+					level: "careful",
+					models: [sol],
+					durationMs: 61_000,
+					tokens: 820_000,
+					cacheRead: 789_000,
+					cost: 1.25,
+					outcome: "ran",
+					tools: 28,
+					limits: { tools: 30, tokens: 200_000 },
+				},
+				{
+					name: "lens contracts",
+					level: "careful",
+					models: [sol],
+					durationMs: 50_000,
+					tokens: 700_000,
+					cacheRead: 0,
+					cost: 1,
+					outcome: "reused",
+				},
+				{
+					name: "lens tests",
+					level: "quick",
+					models: [sol],
+					durationMs: 40_000,
+					tokens: 210_000,
+					cacheRead: 9_000,
+					cost: 0.4,
+					outcome: "ended",
+					ended: "tokens",
+					tools: 12,
+					limits: { tools: 30, tokens: 200_000 },
+				},
+				{
+					name: "verification 2 claims",
+					models: ["anthropic/claude-sonnet-5-5"],
+					durationMs: 9_000,
+					tokens: 4_000,
+					cacheRead: 0,
+					cost: 0,
+					outcome: "ran",
+				},
+				{
+					name: "walkthrough",
+					models: [terra],
+					durationMs: 1_500,
+					tokens: 4_000,
+					cacheRead: 0,
+					cost: 0.003,
+					outcome: "ran",
+				},
+			],
+		};
+		const current: LedgerRound = {
+			...round,
+			publishedBy: { login: "melian-user", permission: "write", authorPermission: "read", trustedWriters: true },
+			details: {
+				policy: "revision:base",
+				manifest: ["guardrails", "static.tsc", "lens.correctness"],
+				standards: ["AGENTS.md", "packages/core/AGENTS.md"],
+				lenses: [
+					{
+						name: "correctness",
+						version: "18c49f913df8",
+						level: "careful",
+						models: [sol],
+						budget: { findings: 8 },
+					},
+				],
+			},
+		};
+		const body = Ledger.from(verdict, { rounds: [{ ...current, run }] }, options).render(links);
+		const start = body.indexOf("<details>\n<summary>Run details");
+		const block = body.slice(start, body.indexOf("</details>", start) + "</details>".length);
+
+		expect(`${block}\n`).toBe(readFileSync(new URL("./fixtures/run-details.golden.md", import.meta.url), "utf8"));
+		// The hidden stamp keeps each lens version; the prose does not.
+		expect(body.split("\n").slice(2).join("\n")).not.toContain("18c49f913df8");
+		expect(body).not.toContain("Manifest:");
+	});
+
+	it("says so when a round holds neither a run nor a plan", () => {
+		const body = Ledger.from(verdict, { rounds: [round] }, options).render(links);
+		expect(body).toContain("<summary>Run details</summary>\n\nPublished by `unknown`");
+		expect(body).toContain("No run details were stored by the older reviewer.");
+		const run: StoredRunDetails = { stages: [{ name: "triage", models: [], outcome: "ran" }] };
+		expect(Ledger.from(verdict, { rounds: [{ ...round, run }] }, options).render(links)).not.toContain(
+			"No run details were stored",
+		);
+	});
+
+	it("renders each round's own run, an earlier round's in its history", () => {
+		const run = (durationMs: number): StoredRunDetails => ({
+			durationMs,
+			stages: [{ name: "triage", models: [], outcome: "ran" }],
+		});
+		const earlier: LedgerRound = { ...round, head: "c".repeat(40), round: 1, run: run(1_000) };
+		const body = Ledger.from(verdict, { rounds: [earlier, { ...round, round: 2, run: run(2_000) }] }, options).render(
+			links,
+		);
+		expect(body.split("<summary>Run details: 1.0 s")).toHaveLength(2);
+		expect(body.split("<summary>Run details: 2.0 s")).toHaveLength(2);
+		expect(body.indexOf("Run details: 2.0 s")).toBeLessThan(body.indexOf("Run details: 1.0 s"));
 	});
 
 	it("renders a lens lineage in the run details", () => {

@@ -14,6 +14,7 @@ import {
 	ReviewPlan,
 	type ReviewProvider,
 	Standards,
+	type StoredRunDetails,
 	userFiles,
 	type Verdict,
 	visibleText,
@@ -386,7 +387,15 @@ export async function review(
 		);
 		return outcome.exitCode();
 	} catch (error) {
-		const timings = await reviewTimings(reviewHarness, storage, spans, revisionKey(changeset.revision), beganAt, io);
+		const timings = await reviewTimings(
+			reviewHarness,
+			storage,
+			spans,
+			revisionKey(changeset.revision),
+			beganAt,
+			io,
+			true,
+		);
 		io.stderr(timings.slowest());
 		if (options.json)
 			io.stdout(
@@ -413,10 +422,20 @@ async function reviewTimings(
 	revision: string,
 	before: number,
 	io: Io,
+	preserveDecided = false,
 ): Promise<StageTelemetry> {
 	try {
-		await spans.record(reviewHarness.harness, revision, context);
-		return await TelemetryReader.open(storage).read(revision, before);
+		if (preserveDecided) {
+			const root = await reviewHarness.harness.root(context);
+			const verdict = await readVerdict(reviewHarness.harness, root.id, revision, context);
+			const previous = await TelemetryReader.open(storage).read(revision, before);
+			if (verdict !== undefined && previous.prepare !== undefined) return previous;
+		}
+		const prepare = await spans.record(reviewHarness.harness, revision, context);
+		const reader = TelemetryReader.open(storage);
+		if (spans.roundId !== undefined)
+			await reader.recordRun(reviewHarness.harness, revision, spans.roundId, before, prepare);
+		return await reader.read(revision, before);
 	} catch (error) {
 		io.stderr(
 			`melian: Stage timings unavailable: ${visibleText(error instanceof Error ? error.message : String(error))}\n`,
@@ -480,8 +499,9 @@ export async function publish(
 	// `publish.emoji` is the base's to say, and the base is known only once the pull request is read.
 	const provider = config.publish.emoji === "on" ? reader : await gitHubFor(io.cwd, io.env, { emoji: false });
 	const path = await storagePath(changeset.repoRoot, changeset.id, io.env, false);
+	const storage = await openStorage(path);
 	// Only the publish task: a review a crash interrupted must not resume here and spend tokens on real models.
-	const publishHarness = await openPublishHarness(await openStorage(path), idleModels(io.env), provider);
+	const publishHarness = await openPublishHarness(storage, idleModels(io.env), provider);
 	const { harness } = publishHarness;
 	try {
 		// A head that moved has no merge base here, and publishReview refuses it for the head before it reads this.
@@ -496,6 +516,7 @@ export async function publish(
 				...config.publish.walkthrough,
 				enabled: options.walkthrough !== false && config.publish.walkthrough.enabled,
 			},
+			readRun: (roundId) => reviewRun(storage, roundId, io),
 		});
 		const parts = [
 			`${published.posted} new ${published.posted === 1 ? "finding" : "findings"}`,
@@ -522,6 +543,22 @@ export async function publish(
 		throw error;
 	} finally {
 		await publishHarness.close(context);
+	}
+}
+
+// The ledger is still worth posting without its run details, so an unreadable record leaves them out and says so.
+async function reviewRun(
+	storage: Awaited<ReturnType<typeof openStorage>>,
+	roundId: string,
+	io: Io,
+): Promise<StoredRunDetails | undefined> {
+	try {
+		return await TelemetryReader.open(storage).runDetails(roundId);
+	} catch (error) {
+		io.stderr(
+			`melian: Run details unavailable: ${visibleText(error instanceof Error ? error.message : String(error))}\n`,
+		);
+		return undefined;
 	}
 }
 

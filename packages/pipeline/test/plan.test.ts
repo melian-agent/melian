@@ -23,6 +23,7 @@ import {
 	reviewChangeset,
 	revisionKey,
 	type TaskId,
+	TelemetryReader,
 } from "@melian-agent/pipeline";
 import {
 	createFakeModels,
@@ -56,6 +57,7 @@ const contracts = "You are the contracts reviewer";
 let repo: string;
 let fake: FakeModels;
 let harness: Harness;
+let storage: ReturnType<typeof createMemoryStorage>;
 let lenses: Lens[];
 let heavy: string;
 let backup: string;
@@ -66,7 +68,8 @@ beforeEach(async () => {
 	fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }, { id: "backup" }] });
 	heavy = `${fake.ref("heavy").provider}/heavy`;
 	backup = `${fake.ref("backup").provider}/backup`;
-	harness = await openHarness(createMemoryStorage(), {
+	storage = createMemoryStorage();
+	harness = await openHarness(storage, {
 		models: fake.models,
 		registry: createReviewRegistry(),
 		settings: { retry: { enabled: false } },
@@ -191,8 +194,20 @@ describe("reviewChangeset with a plan", () => {
 		expect(review.verdict.status).toBe("passed");
 		expect(review.verdict.ran).toEqual(
 			expect.arrayContaining([
-				{ name: "lens.contracts", status: "ran", level: "careful", lineage },
-				{ name: "lens.correctness", status: "ran", level: "careful", lineage },
+				{
+					name: "lens.contracts",
+					version: lenses.find(({ name }) => name === "contracts")!.version,
+					status: "ran",
+					level: "careful",
+					lineage,
+				},
+				{
+					name: "lens.correctness",
+					version: lenses.find(({ name }) => name === "correctness")!.version,
+					status: "ran",
+					level: "careful",
+					lineage,
+				},
 			]),
 		);
 		expect(review.verdict.render()).toContain("2 checks left the committed routes:");
@@ -208,8 +223,33 @@ describe("reviewChangeset with a plan", () => {
 		const reason = `models.heavy.acceptOverridden is false, and melian.local.yaml puts it on ${backup}, which models.heavy.accept does not list`;
 		const lineage = { model: backup, wanted: heavy, by: "melian.local.yaml", outside: true };
 		expect(review.verdict.notRun.filter((check) => check.name.startsWith("lens."))).toEqual([
-			{ name: "lens.contracts", status: "failed", level: "careful", reason, lineage },
-			{ name: "lens.correctness", status: "failed", level: "careful", reason, lineage },
+			{
+				name: "lens.contracts",
+				version: lenses.find(({ name }) => name === "contracts")!.version,
+				status: "failed",
+				level: "careful",
+				reason,
+				lineage,
+			},
+			{
+				name: "lens.correctness",
+				version: lenses.find(({ name }) => name === "correctness")!.version,
+				status: "failed",
+				level: "careful",
+				reason,
+				lineage,
+			},
+		]);
+		const changeset = await Changeset.resolve(repo, "main...feature");
+		expect(
+			(await TelemetryReader.open(storage).read(revisionKey(changeset.revision)))
+				.runDetails()
+				.stages.filter(({ name }) => name.startsWith("lens "))
+				.map(({ name, outcome }) => ({ name, outcome }))
+				.sort((a, b) => a.name.localeCompare(b.name)),
+		).toEqual([
+			{ name: "lens contracts", outcome: "failed" },
+			{ name: "lens correctness", outcome: "failed" },
 		]);
 	});
 
@@ -225,8 +265,20 @@ describe("reviewChangeset with a plan", () => {
 		const reason =
 			"none of nowhere/opus, which models.heavy accepts, has credentials, and models.heavy.unavailable is fail";
 		expect(review.verdict.notRun.filter((check) => check.name.startsWith("lens."))).toEqual([
-			{ name: "lens.contracts", status: "failed", level: "careful", reason },
-			{ name: "lens.correctness", status: "failed", level: "careful", reason },
+			{
+				name: "lens.contracts",
+				version: lenses.find(({ name }) => name === "contracts")!.version,
+				status: "failed",
+				level: "careful",
+				reason,
+			},
+			{
+				name: "lens.correctness",
+				version: lenses.find(({ name }) => name === "correctness")!.version,
+				status: "failed",
+				level: "careful",
+				reason,
+			},
 		]);
 	});
 
@@ -244,6 +296,7 @@ describe("reviewChangeset with a plan", () => {
 		const reason = `lenses.correctness.tier moves it from heavy to light, and models.heavy.acceptOverridden is false; light runs ${backup}, which models.heavy.accept does not list`;
 		expect(review.verdict.notRun.find((check) => check.name === "lens.correctness")).toEqual({
 			name: "lens.correctness",
+			version: lenses.find(({ name }) => name === "correctness")!.configured({ tier: "light" }).version,
 			status: "failed",
 			level: "careful",
 			reason,
@@ -277,8 +330,20 @@ describe("reviewChangeset with a plan", () => {
 		const lineage = { model: backup, wanted: heavy, by: "melian.yaml", outside: true };
 		expect(review.verdict.ran).toEqual(
 			expect.arrayContaining([
-				{ name: "lens.contracts", status: "ran", level: "careful", lineage },
-				{ name: "lens.correctness", status: "ran", level: "careful", lineage },
+				{
+					name: "lens.contracts",
+					version: lenses.find(({ name }) => name === "contracts")!.version,
+					status: "ran",
+					level: "careful",
+					lineage,
+				},
+				{
+					name: "lens.correctness",
+					version: lenses.find(({ name }) => name === "correctness")!.version,
+					status: "ran",
+					level: "careful",
+					lineage,
+				},
 			]),
 		);
 	});
@@ -309,6 +374,46 @@ describe("reviewChangeset with a plan", () => {
 		});
 		// The stored outcome says done, but the plan refuses the model it finished on, so --rerun does not reuse it.
 		expect([...again.answered].sort()).toEqual(["backup", "backup", "heavy", "heavy"]);
+		const changeset = await Changeset.resolve(repo, "main...feature");
+		expect(
+			(await TelemetryReader.open(storage).read(revisionKey(changeset.revision)))
+				.runDetails()
+				.stages.filter(({ name }) => name.startsWith("lens "))
+				.map(({ name, outcome }) => ({ name, outcome }))
+				.sort((a, b) => a.name.localeCompare(b.name)),
+		).toEqual([
+			{ name: "lens contracts", outcome: "failed" },
+			{ name: "lens correctness", outcome: "failed" },
+		]);
+	});
+
+	it("matches legacy check records to conversations by name when their versions are absent", async () => {
+		await planned({ model: heavy });
+		const { revision } = await Changeset.resolve(repo, "main...feature");
+		const root = await harness.root(context);
+		const id = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revisionKey(revision)]!.adjudication!
+			.task;
+		const task = storage.task.bind(storage);
+		vi.spyOn(storage, "task").mockImplementation(async (wanted, readContext) => {
+			const record = await task(wanted, readContext);
+			if (wanted !== id || record === undefined) return record;
+			return {
+				...record,
+				input: {
+					checks: [
+						{ name: "lens.contracts", status: "failed" },
+						{ name: "lens.correctness", status: "ran" },
+					],
+				},
+			};
+		});
+		const run = (await TelemetryReader.open(storage).read(revisionKey(revision))).runDetails();
+		expect(
+			run.stages.filter(({ name }) => name.startsWith("lens ")).map(({ name, outcome }) => ({ name, outcome })),
+		).toEqual([
+			{ name: "lens contracts", outcome: "failed" },
+			{ name: "lens correctness", outcome: "ran" },
+		]);
 	});
 
 	it("reads only the sightings of the run on the route the review ran, not an earlier run's", async () => {
@@ -585,9 +690,9 @@ describe("a lens run a later review replaced", () => {
 });
 
 describe("reviewChangeset with a plan, for a lens two folders define", () => {
-	const variant = "Variant of sub/.";
+	const variant = "Variant of services/pay/.";
 
-	// A root correctness lens and a variant for sub/, each with a change to review. `committed` and `effective` are the
+	// A root correctness lens and a variant for services/pay/, each with a change to review. `committed` and `effective` are the
 	// routes the committed files and the preference file give; `moved` has the preference file move both to light.
 	async function reviewVariants(options: {
 		tier?: "light";
@@ -601,14 +706,14 @@ describe("reviewChangeset with a plan, for a lens two folders define", () => {
 		repo = baseAndHead(
 			{
 				"src/a.ts": lines("export const a = 1;"),
-				"sub/b.ts": lines("export const b = 1;"),
-				"sub/.melian/lenses/correctness/LENS.md": lines("---", ...own, "---", variant),
+				"services/pay/b.ts": lines("export const b = 1;"),
+				"services/pay/.melian/lenses/correctness/LENS.md": lines("---", ...own, "---", variant),
 			},
-			{ "src/a.ts": lines("export const a = 2;"), "sub/b.ts": lines("export const b = 2;") },
+			{ "src/a.ts": lines("export const a = 2;"), "services/pay/b.ts": lines("export const b = 2;") },
 		);
 		lenses = await Lens.load(repo, { kind: "revision", commit: gitIn(repo, "rev-parse", "main") }, [
 			"src/a.ts",
-			"sub/b.ts",
+			"services/pay/b.ts",
 		]);
 		const config: MelianConfig = {
 			...defaultConfig,
@@ -621,7 +726,15 @@ describe("reviewChangeset with a plan, for a lens two folders define", () => {
 			config,
 			routes: {
 				committed: options.committed,
-				overridden: options.committed === options.effective ? {} : { light: "melian.local.yaml" },
+				overridden:
+					options.committed === options.effective
+						? {}
+						: {
+								light: "melian.local.yaml",
+								...(options.committed.heavy?.model === options.effective.heavy?.model
+									? {}
+									: { heavy: "melian.local.yaml" }),
+							},
 				lensTiers: options.moved === true ? { correctness: "heavy" } : {},
 				retiered: options.moved === true ? { correctness: "melian.local.yaml" } : {},
 			},
@@ -653,7 +766,9 @@ describe("reviewChangeset with a plan, for a lens two folders define", () => {
 			rerun: options.rerun === true,
 			checks: [{ name: "guardrails", status: "ran" }],
 		});
-		return { review, answered, requests };
+		const { revision } = await Changeset.resolve(repo, "main...feature");
+		const run = (await TelemetryReader.open(storage).read(revisionKey(revision))).runDetails();
+		return { review, answered, requests, run };
 	}
 
 	it("drops the variant a plan refuses before any model is asked, and runs the root's lens", async () => {
@@ -670,10 +785,48 @@ describe("reviewChangeset with a plan, for a lens two folders define", () => {
 		expect(requests[variant]).toEqual([]);
 		expect(answered).toEqual(["heavy"]);
 		expect(review.verdict.status).toBe("not-reviewed");
+		const { revision } = await Changeset.resolve(repo, "main...feature");
+		const run = await TelemetryReader.open(storage).read(revisionKey(revision));
+		expect(
+			run
+				.runDetails()
+				.stages.filter(({ name }) => name === "lens correctness")
+				.map(({ outcome }) => outcome),
+		).toEqual(["ran", "failed"]);
 		expect(review.verdict.notRun.find((check) => check.name === "lens.correctness")).toMatchObject({
 			status: "failed",
 			reason: "none of nowhere/m, which models.light accepts, has credentials, and models.light.unavailable is fail",
 		});
+	});
+
+	it("keeps separate refusal lineage for two variants on different overridden tiers", async () => {
+		const { review, answered } = await reviewVariants({
+			tier: "light",
+			committed: {
+				heavy: { model: heavy, accept: [heavy], acceptOverridden: false },
+				light: { model: backup, accept: [backup], acceptOverridden: false },
+			},
+			effective: {
+				heavy: { model: backup, accept: [heavy], acceptOverridden: false },
+				light: { model: heavy, accept: [backup], acceptOverridden: false },
+			},
+		});
+		expect(answered).toEqual([]);
+		expect(
+			review.verdict.notRun
+				.filter(({ name }) => name === "lens.correctness")
+				.map(({ version, lineage }) => ({
+					version,
+					model: lineage?.model,
+				})),
+		).toEqual(
+			lenses
+				.filter(({ name }) => name === "correctness")
+				.map((lens) => ({
+					version: lens.version,
+					model: lens.scope === "" ? backup : heavy,
+				})),
+		);
 	});
 
 	it("runs again under --rerun a variant that finished on a refused fallback", async () => {
@@ -685,6 +838,10 @@ describe("reviewChangeset with a plan, for a lens two folders define", () => {
 
 		// The root's lens runs on heavy; the variant fails over from heavy to backup, which heavy's policy refuses.
 		expect([...first.answered].sort()).toEqual(["backup", "heavy", "heavy"]);
+		expect(first.run.stages.filter(({ name }) => name === "lens correctness").map(({ outcome }) => outcome)).toEqual([
+			"ran",
+			"failed",
+		]);
 		expect(first.review.verdict.status).toBe("not-reviewed");
 		expect(first.review.verdict.notRun.find((check) => check.name === "lens.correctness")).toMatchObject({
 			status: "failed",

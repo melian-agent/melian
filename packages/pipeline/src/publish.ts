@@ -18,6 +18,7 @@ import {
 	type ReviewStatus,
 	replyKey,
 	type StoredFinding,
+	type StoredRunDetails,
 	type StoredVerdict,
 	Verdict,
 } from "@melian-agent/core";
@@ -170,6 +171,7 @@ class PublishedState {
 
 	static upgrade(value: unknown, from: number): StoredPublishedState {
 		const state = value as StoredPublishedState;
+		if (from >= 9) return state;
 		const revisions = Object.fromEntries(
 			Object.entries(state.revisions).map(([head, record]): [string, StoredRevision] => {
 				const { pending } = record;
@@ -216,7 +218,7 @@ class PublishedState {
 // would post it twice.
 export const PublishedDocument = defineDoc<StoredPublishedState>({
 	kind: "melian.published",
-	version: 9,
+	version: 10,
 	scope: "conversation",
 	history: "latest",
 	fork: "current",
@@ -224,7 +226,7 @@ export const PublishedDocument = defineDoc<StoredPublishedState>({
 	// Version 2 made a finding's evidence a list of locations, so a round left pending before it renders. Version 3 keys
 	// each reply by `replyKey`. Version 4 adds ledger snapshots; version 5 retains only one-line older rounds.
 	// Version 6 adds optional standards paths per lens; version 7 records the publisher. Version 8 permits trust-floor
-	// diagnostics; version 9 keys resolutions by thread.
+	// diagnostics; version 9 keys resolutions by thread. Version 10 lets a ledger round hold its run.
 	migrate: (value, from) => PublishedState.upgrade(value, from),
 });
 
@@ -486,6 +488,8 @@ type StoredPublishInput = {
 	target: PublishTarget;
 	lines: Record<string, [number, number][]>;
 	walkthrough?: { enabled: boolean; collapsed: boolean; diagrams: boolean };
+	// The review's run from its stage telemetry, which the ledger shows; absent from a task an older Melian created.
+	run?: StoredRunDetails;
 };
 
 class PublishInput {
@@ -553,7 +557,8 @@ const untrustedWriterStatus: ReviewStatus = {
 function publishTask(provider: ReviewProvider) {
 	return defineTask<StoredPublishInput, { phase: "publish"; legacyTiming?: true }, PublishOutcome>({
 		name: publishTaskName,
-		version: 6,
+		// Version 7 lets the input carry the review's run; an older input has none, and its ledger shows the plan alone.
+		version: 7,
 		migrate: (input, checkpoint, fromVersion) => ({
 			input: PublishInput.upgrade(input, fromVersion),
 			checkpoint:
@@ -961,6 +966,9 @@ function publishTask(provider: ReviewProvider) {
 						currentRound.walkthrough = structuredClone(storedVerdict.walkthroughs[revision]);
 					if (storedVerdict?.walkthroughNotes?.[revision] !== undefined)
 						currentRound.walkthroughNote = storedVerdict.walkthroughNotes[revision];
+					// A publish that could not read the run keeps the one an earlier publish of the round stored.
+					if (task.input.run?.roundId === target.roundId) currentRound.run = structuredClone(task.input.run);
+					else if (currentRound.run?.roundId !== target.roundId) delete currentRound.run;
 					const previousLedger = (await runtime.snapshot(LedgerDocument, root, context))?.comment;
 					await revalidate();
 					writingLedger = true;
@@ -1162,6 +1170,10 @@ export interface PublishOptions {
 	 */
 	readonly base: string;
 	readonly walkthrough?: { readonly enabled: boolean; readonly collapsed: boolean; readonly diagrams: boolean };
+	/** A run snapshot carrying the captured round's ID. An absent or different ID omits the table. */
+	readonly run?: StoredRunDetails;
+	/** Reads the snapshot of the round publication has captured and will validate again before posting. */
+	readonly readRun?: (roundId: string) => Promise<StoredRunDetails | undefined>;
 	readonly context?: Context;
 }
 
@@ -1379,6 +1391,7 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 			where,
 		);
 	}
+	const run = options.readRun === undefined ? options.run : await options.readRun(validated.roundId);
 	const login = await options.provider.login();
 	const permission = login === undefined ? undefined : await options.provider.permission(login);
 	const authorPermission =
@@ -1442,6 +1455,7 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 		target,
 		lines: changeset.revision.diffLines(),
 		...(options.walkthrough === undefined ? {} : { walkthrough: { ...options.walkthrough } }),
+		...(run?.roundId === target.roundId ? { run: structuredClone(run) } : {}),
 	}).toJSON();
 	const taskId = await (await harness.root(context)).commit(
 		(tx) => tx.createTask(publishTask(options.provider), input, { ownership: { kind: "conversation" } }),

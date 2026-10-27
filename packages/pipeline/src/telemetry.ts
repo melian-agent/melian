@@ -1,12 +1,24 @@
-import { deterministicChecks, type ReasoningValue, type RequestReasoning, visibleText } from "@melian-agent/core";
-import { type CheckRunRecord, CheckSources, ChecksDocument } from "./checks.ts";
+import { isDeepStrictEqual } from "node:util";
+import {
+	type CheckRecord,
+	deterministicChecks,
+	type ReasoningValue,
+	type RequestReasoning,
+	RunDetails,
+	type RunStage,
+	type StoredRunDetails,
+	visibleText,
+} from "@melian-agent/core";
+import { type CheckRunRecord, CheckSources, ChecksDocument, type RunIdentity } from "./checks.ts";
 import { DecisionDocument } from "./decisions.ts";
 import {
 	backgroundContext,
 	type Context,
 	type ConversationId,
 	type DocumentRecord,
+	defineDocFamily,
 	type EntryId,
+	type Harness,
 	type JsonObject,
 	ROOT_CONVERSATION_ID,
 	type Storage,
@@ -15,10 +27,21 @@ import {
 } from "./harness.ts";
 import { LensDocument } from "./lens-tools.ts";
 import { ReviewIndex } from "./review-index.ts";
+import { RoundsDocument } from "./rounds.ts";
 import { PrepareDocument, type PrepareRecord } from "./spans.ts";
 import { SummaryIndex } from "./summarize.ts";
 import { TimingDocument } from "./task-timing.ts";
 import { ModelAttemptsDocument, ModelUsageDocument, TokenUsage, type UsageSummary } from "./token-usage.ts";
+
+export const RunDetailsDocument = defineDocFamily<{ run?: StoredRunDetails }, null>({
+	kind: "melian.run-details",
+	family: true,
+	version: 1,
+	scope: "conversation",
+	history: "latest",
+	fork: "current",
+	initial: () => ({}),
+});
 
 type TaskRecord = NonNullable<Awaited<ReturnType<Storage["task"]>>>;
 type DocumentScope = DocumentRecord["scope"];
@@ -53,7 +76,7 @@ function outcome(task: TaskRecord): { outcome: string; error?: string } {
 	return { outcome: "completed" };
 }
 
-function checkOutcome(record: CheckRunRecord): { outcome: string; error?: string } {
+function checkOutcome(record: CheckRecord): { outcome: string; error?: string } {
 	switch (record.status) {
 		case "ran":
 			return { outcome: "completed" };
@@ -61,6 +84,8 @@ function checkOutcome(record: CheckRunRecord): { outcome: string; error?: string
 			return { outcome: record.cause === "timeout" ? "timed-out" : "skipped" };
 		case "failed":
 			return { outcome: "failed", error: record.error };
+		case "ended":
+			return { outcome: "ended" };
 		case "provisional":
 			return { outcome: "provisional" };
 	}
@@ -74,6 +99,8 @@ export type Stage = {
 	task: number;
 	conversation?: number;
 	outcome: string;
+	/** The check record’s outcome, which the run table uses ahead of the conversation status. */
+	checkOutcome?: string;
 	startedAt?: number;
 	endedAt?: number;
 	durationMs?: number;
@@ -87,7 +114,81 @@ export type Stage = {
 	usageIncomplete?: number;
 	/** For a model stage, the summed response time of its answers; the rest is tools and orchestration. */
 	modelMs?: number;
+	/** For a lens, the tool calls its tools budget counted. */
+	tools?: number;
+	/** For a lens, its level's token and tool budgets. */
+	limits?: { tokens?: number; tools?: number };
+	/** For a lens, the budget that ended it. */
+	ended?: "tokens" | "tools";
 };
+
+// The run table's name for each stage kind; publication runs in another command, so the table leaves it out.
+const runNames: Readonly<Record<string, string>> = {
+	"melian.check": "check",
+	"melian.triage": "triage",
+	"melian.lens": "lens",
+	"melian.adjudication": "adjudication",
+	"melian.verification": "verification",
+	"melian.walkthrough": "walkthrough",
+};
+
+function runModels(stage: Stage): string[] {
+	const requests = stage.usage?.requests;
+	if (requests === undefined) return Object.keys(stage.usage?.models ?? {});
+	return [
+		...new Set(
+			requests.map(({ model, reasoning: { requested, providerReported } }) => {
+				const level = requested === "unset" ? "" : ` ${requested}`;
+				const reported =
+					providerReported === undefined || providerReported === requested
+						? ""
+						: ` (reported ${providerReported})`;
+				return `${model}${level}${reported}`;
+			}),
+		),
+	];
+}
+
+// The model stages, whose usage a run must have measured to be complete.
+const modelStages: readonly string[] = [
+	"melian.verification",
+	"melian.triage",
+	"melian.lens",
+	"melian.verification.candidate",
+	"melian.walkthrough",
+];
+
+// One row from one stage, or from every verification claim. A claim an earlier run judged cost this run nothing, so
+// only the claims this run judged count, and any outcome but completed among them is the row's.
+function runStage(name: string, stages: readonly Stage[]): RunStage {
+	const [first] = stages;
+	const own = stages.filter((stage) => !stage.reused);
+	const usage = own.flatMap((stage) => (stage.usage === undefined ? [] : [stage.usage.total]));
+	const timed = own.filter((stage) => stage.durationMs !== undefined);
+	const unmeasured = own.some(
+		(stage) => modelStages.includes(stage.name) && (stage.usage === undefined || (stage.usageIncomplete ?? 0) > 0),
+	);
+	const outcome =
+		stages.map((stage) => stage.checkOutcome ?? stage.outcome).find((outcome) => outcome !== "completed") ??
+		(own.length === 0 ? "reused" : "ran");
+	return {
+		name,
+		models: [...new Set((own.length === 0 ? stages : own).flatMap(runModels))],
+		...(timed.length === 0 ? {} : { durationMs: timed.reduce((sum, stage) => sum + stage.durationMs!, 0) }),
+		...(usage.length === 0
+			? {}
+			: {
+					tokens: usage.reduce((sum, each) => sum + each.totalTokens, 0),
+					cacheRead: usage.reduce((sum, each) => sum + each.cacheRead, 0),
+					cost: usage.reduce((sum, each) => sum + each.cost.total, 0),
+				}),
+		outcome,
+		...(first!.tools === undefined ? {} : { tools: first!.tools }),
+		...(first!.limits === undefined ? {} : { limits: { ...first!.limits } }),
+		...(first!.ended === undefined ? {} : { ended: first!.ended }),
+		...(unmeasured ? { usageIncomplete: true as const } : {}),
+	};
+}
 
 /** A stretch of a review's wall clock that no span or stage covers. */
 export type Untimed = { startedAt: number; endedAt: number; durationMs: number };
@@ -131,10 +232,17 @@ export class StageTelemetry {
 	readonly usageUnavailable: readonly string[];
 	readonly usageIncomplete?: number;
 	readonly prepare?: PrepareRecord;
+	private readonly checkStages: readonly Stage[];
 
-	constructor(revision: string, stages: readonly Stage[], prepare?: PrepareRecord) {
+	constructor(
+		revision: string,
+		stages: readonly Stage[],
+		prepare?: PrepareRecord,
+		checkStages: readonly Stage[] = [],
+	) {
 		this.revision = revision;
 		this.stages = stages;
+		this.checkStages = checkStages;
 		if (prepare !== undefined) this.prepare = prepare;
 		const unmeasured = stages.reduce((sum, stage) => sum + (stage.usageIncomplete ?? 0), 0);
 		if (unmeasured > 0) this.usageIncomplete = unmeasured;
@@ -170,6 +278,40 @@ export class StageTelemetry {
 			usageUnavailable: this.usageUnavailable,
 			...(this.usageIncomplete === undefined ? {} : { usageIncomplete: this.usageIncomplete }),
 			...(this.prepare === undefined ? {} : { prepare: this.prepare, untimed: this.untimed() }),
+		};
+	}
+
+	/**
+	 * The run the ledger shows: the review's wall clock, its preparation spans as one row, each check, triage, lens,
+	 * adjudication and walkthrough as a row, and every verification claim in one row.
+	 */
+	runDetails(): StoredRunDetails {
+		const stages = [...this.stages, ...this.checkStages];
+		const top = (this.prepare?.spans ?? []).filter((span) => span.parent === undefined);
+		const preparation: RunStage[] =
+			top.length === 0
+				? []
+				: [
+						{
+							name: "preparation",
+							models: [],
+							durationMs: top.reduce((sum, span) => sum + span.durationMs, 0),
+							outcome: "ran",
+						},
+					];
+		const claims = stages.filter((stage) => stage.name === "melian.verification.candidate");
+		const count = claims.reduce((sum, stage) => sum + stage.subject.split(",").length, 0);
+		const rows = stages.flatMap((stage): RunStage[] => {
+			if (stage === claims[0]) return [runStage(`verification ${count} claims`, claims)];
+			const kind = runNames[stage.name];
+			if (kind === undefined) return [];
+			const [subject, , level] = stage.subject.split("@");
+			if (stage.name === "melian.lens") return [{ ...runStage(`lens ${subject}`, [stage]), level: level! }];
+			return [runStage(stage.name === "melian.check" ? `check ${stage.subject}` : kind, [stage])];
+		});
+		return {
+			...(this.prepare === undefined ? {} : { durationMs: this.prepare.endedAt - this.prepare.startedAt }),
+			stages: [...preparation, ...rows],
 		};
 	}
 
@@ -232,9 +374,9 @@ export class StageTelemetry {
 		return `melian: Slowest stages: ${ranked.map((stage) => `${visibleText(stage.name)} ${visibleText(stage.subject)} ${stage.durationMs}ms${stage.reused ? " (reused)" : stage.resumed ? " (resumed)" : ""}`).join("; ")}. Total: ${this.spend()}.\n`;
 	}
 
-	/** The full local timing view. */
+	/** The full local timing view, opening with the summary line the ledger shows. */
 	render(): string {
-		return `${this.stages
+		return `Run: ${visibleText(RunDetails.from(this.runDetails()).summary())}\n${this.stages
 			.map((stage) =>
 				visibleText(
 					[
@@ -291,6 +433,39 @@ export class TelemetryReader {
 		return new TelemetryReader(storage);
 	}
 
+	/** The frozen run for exactly this storage-local round, absent from older rounds. */
+	async runDetails(roundId: string, context: Context = backgroundContext): Promise<StoredRunDetails | undefined> {
+		const scope = { kind: "conversation", conversationId: ROOT_CONVERSATION_ID } as const;
+		return (await this.document(RunDetailsDocument, scope, context, roundId))?.run;
+	}
+
+	/** Stores this review's telemetry only while its round still owns every source. */
+	async recordRun(
+		harness: Harness,
+		revision: string,
+		roundId: string,
+		before: number,
+		prepare: PrepareRecord,
+		context: Context = backgroundContext,
+	): Promise<void> {
+		const root = await harness.root(context);
+		await root.commit(async (tx) => {
+			const rounds = await tx.doc(RoundsDocument, root.id);
+			if (rounds.current[revision] !== roundId) return;
+			const round = rounds.items[roundId]!;
+			if (round.verdict === undefined) return;
+			const selected = (await tx.doc(ReviewIndex, root.id)).reviews[revision]?.adjudication?.task;
+			if (!round.tasks.some((task) => task === selected)) return;
+			const authority = (await tx.doc(ChecksDocument, root.id)).owners?.[revision];
+			const checkParent =
+				round.checkRun === undefined ? undefined : (JSON.parse(round.checkRun) as RunIdentity).task;
+			if ((authority === undefined ? undefined : Number(authority.split(" ").at(-1))) !== checkParent) return;
+			const telemetry = await this.read(revision, before, context);
+			if (!isDeepStrictEqual(telemetry.prepare, prepare)) return;
+			(await tx.doc(RunDetailsDocument, root.id, roundId, null)).run = { ...telemetry.runDetails(), roundId };
+		}, context);
+	}
+
 	/** Select the revision's stages, marking reuse against the optional call start. */
 	async read(revision: string, before?: number, context: Context = backgroundContext): Promise<StageTelemetry> {
 		const scope = { kind: "conversation", conversationId: ROOT_CONVERSATION_ID } as const;
@@ -300,6 +475,7 @@ export class TelemetryReader {
 		const summaries = await this.document(SummaryIndex, scope, context);
 		const checks = await this.document(ChecksDocument, scope, context);
 		const rows: Stage[] = [];
+		const checkRows: Stage[] = [];
 		for (const entry of Object.values(decisions?.decisions[revision] ?? {})) {
 			const task = (await this.storage.task(entry.task as TaskId, context))!;
 			rows.push(
@@ -391,7 +567,37 @@ export class TelemetryReader {
 		if (selected?.adjudication !== undefined) {
 			const task = (await this.storage.task(selected.adjudication.task as TaskId, context))!;
 			rows.push(await this.deterministic(task, "melian.adjudication", "adjudication", before, false, context));
+			for (const check of (task.input as { checks?: CheckRecord[] } | null)?.checks ?? []) {
+				const name = check.name.startsWith("lens.")
+					? "melian.lens"
+					: check.name === "verifier"
+						? "melian.verification.candidate"
+						: "melian.check";
+				const matching = rows.filter(
+					(stage) =>
+						stage.name === name &&
+						(name === "melian.verification.candidate" ||
+							(stage.subject.split("@")[0] === check.name.replace(/^lens\./, "") &&
+								(name !== "melian.lens" ||
+									check.version === undefined ||
+									stage.subject.split("@")[1] === check.version))),
+				);
+				const result = checkOutcome(check);
+				for (const stage of matching) if (stage.outcome !== result.outcome) stage.checkOutcome = result.outcome;
+				if (matching.length === 0)
+					checkRows.push({
+						id: `check:${task.id}:${check.name}`,
+						task: task.id,
+						name: name === "melian.verification.candidate" ? "melian.verification" : name,
+						subject: name === "melian.lens" ? `${check.name.slice(5)}@@${check.level}` : check.name,
+						...result,
+						...interval(undefined, undefined),
+						reused: false,
+						resumed: false,
+					});
+			}
 		}
+
 		let page = await this.storage.scanTasks({ kind: "melian.publish" }, 200, undefined, context);
 		for (;;) {
 			for (const task of page.items) {
@@ -402,7 +608,12 @@ export class TelemetryReader {
 			if (page.next === undefined) break;
 			page = await this.storage.scanTasks({ kind: "melian.publish" }, 200, page.next, context);
 		}
-		return new StageTelemetry(revision, rows, await this.document(PrepareDocument, scope, context, revision));
+		return new StageTelemetry(
+			revision,
+			rows,
+			await this.document(PrepareDocument, scope, context, revision),
+			checkRows,
+		);
 	}
 
 	private async document<T>(
@@ -547,6 +758,13 @@ export class TelemetryReader {
 			...ending,
 			...this.attachment(start, ending.endedAt, before),
 			...(modelMs === undefined ? {} : { modelMs }),
+			...(name !== "melian.lens" || policy === undefined
+				? {}
+				: {
+						tools: policy.spend?.calls.length ?? 0,
+						...(policy.lens?.limits === undefined ? {} : { limits: { ...policy.lens.limits } }),
+						...(policy.spend?.ended === undefined ? {} : { ended: policy.spend.ended }),
+					}),
 			...(usage === undefined
 				? {}
 				: {

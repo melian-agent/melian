@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import type { StoredVerdict, Verdict } from "./adjudication.ts";
 import type { Finding, FindingDismissal } from "./findings.ts";
+import type { StoredRunDetails } from "./run-details.ts";
 
 /** A repository role returned by a provider's permission lookup. */
 export type RepositoryPermission = "admin" | "maintain" | "write" | "triage" | "read" | "none";
@@ -284,6 +285,8 @@ export type LedgerRound = {
 	details?: PublicationDetails;
 	walkthrough?: Walkthrough;
 	walkthroughNote?: string;
+	/** The round's run, from its stage telemetry; absent when no publish of the round read one. */
+	run?: StoredRunDetails;
 	resolved: { id: string; ruleId: string; path: string; line: number; commit: string; reason?: string }[];
 };
 

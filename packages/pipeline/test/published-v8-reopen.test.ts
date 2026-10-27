@@ -79,7 +79,7 @@ it.each(recorded.rounds)("reopens main's version-8 $phase resolutions and trust-
 		await reopened.commit(async (tx) => {
 			await tx.doc(PublishedDocument, root.id);
 		}, context);
-		await expect(second.snapshot(previous, root.id, context)).rejects.toThrow(/newer version 9 than 8/);
+		await expect(second.snapshot(previous, root.id, context)).rejects.toThrow(/newer version 10 than 8/);
 		await second.close(context);
 		const third = await open();
 		harnesses.push(third);

@@ -4,6 +4,7 @@ import {
 	type LedgerHistory,
 	type LedgerRound,
 	type ResolvedFinding,
+	RunDetails,
 	type LedgerStamp as StoredLedgerStamp,
 	Verdict,
 	visibleText,
@@ -43,6 +44,19 @@ function renderDiagram(text: string): string {
 		return `\`\`\`mermaid\n${lines.map(visibleText).join("\n")}\n\`\`\``;
 	}
 	return prose(text);
+}
+
+const tokenBudgetNote = `${code("budget.tokens")} counts input, output and cache-write tokens, never cache reads; Tokens counts every token, cache reads included.`;
+
+// One row per stage; every cell is prose, so a model ID or check name cannot break the table.
+function runTable(run: RunDetails): string {
+	const head = ["Stage", "Level", "Model", "Time", "Tokens", "Cost", "Outcome", "Budget"];
+	const rows = run
+		.rows()
+		.map(({ stage, level, model, time, tokens, cost, outcome, budget }) =>
+			[stage, level, model, time, tokens, cost, outcome, budget].map(prose),
+		);
+	return [head, head.map(() => "---"), ...rows].map((cells) => `| ${cells.join(" | ")} |`).join("\n");
 }
 
 /** The one comment Melian owns, projected from a verdict and durable publication rounds. */
@@ -296,18 +310,30 @@ export class Ledger {
 
 	private runDetails(round: LedgerRound): string {
 		const plan = round.details;
+		const run = round.run === undefined ? undefined : RunDetails.from(round.run);
 		const lines =
-			plan === undefined
-				? ["No run details were stored by the older reviewer."]
-				: [
-						`Policy: ${prose(plan.policy)}`,
-						`Manifest: ${plan.manifest.map(prose).join(", ")}`,
-						`Standards: ${plan.standards.map(prose).join(", ") || "none"}`,
-						...plan.lenses.map(
-							({ name, version, level, models, ran, lineage, budget, usage, standards }) =>
-								`- ${prose(name)}@${prose(version)}, ${prose(level)}; route ${models.map(prose).join(", ")}${ran === undefined ? "" : `; ran on ${prose(ran)}`}${lineage === undefined ? "" : `; ${prose(lineage)}`}; budgets ${prose(JSON.stringify(budget))}${usage === undefined ? "" : `; used ${usage.models.map(prose).join(", ")}, ${usage.tokens} tokens, $${usage.cost.toFixed(6)}`}${standards === undefined ? "" : `; standards ${standards.map(code).join(", ") || "none"}`}`,
-						),
-					];
+			run !== undefined
+				? [
+						...(plan === undefined
+							? []
+							: [
+									`Policy: ${prose(plan.policy)}`,
+									`Standards: ${plan.standards.map(prose).join(", ") || "none"}`,
+								]),
+						runTable(run),
+						...(run.hasTokenBudget() ? [tokenBudgetNote] : []),
+					]
+				: plan === undefined
+					? ["No run details were stored by the older reviewer."]
+					: [
+							`Policy: ${prose(plan.policy)}`,
+							`Manifest: ${plan.manifest.map(prose).join(", ")}`,
+							`Standards: ${plan.standards.map(prose).join(", ") || "none"}`,
+							...plan.lenses.map(
+								({ name, version, level, models, ran, lineage, budget, usage, standards }) =>
+									`- ${prose(name)}@${prose(version)}, ${prose(level)}; route ${models.map(prose).join(", ")}${ran === undefined ? "" : `; ran on ${prose(ran)}`}${lineage === undefined ? "" : `; ${prose(lineage)}`}; budgets ${prose(JSON.stringify(budget))}${usage === undefined ? "" : `; used ${usage.models.map(prose).join(", ")}, ${usage.tokens} tokens, $${usage.cost.toFixed(6)}`}${standards === undefined ? "" : `; standards ${standards.map(code).join(", ") || "none"}`}`,
+							),
+						];
 		const notes = Verdict.from(round.verdict).lensNotes();
 		if (notes.length > 0)
 			lines.push(
@@ -322,7 +348,7 @@ export class Ledger {
 			`Published by ${code(publisher.login ?? "unknown")} (${code(publisher.permission ?? "unknown")}); writers trusted: ${publisher.trustedWriters ? "yes" : "no"}`,
 			`Pull request author permission: ${code(publisher.authorPermission ?? "unknown")}`,
 		);
-		return details("Run details", lines.join("\n\n"));
+		return details(run === undefined ? "Run details" : `Run details: ${prose(run.summary())}`, lines.join("\n\n"));
 	}
 
 	private history(round: LedgerRound | LedgerHistory, links: RepositoryLinks): string {
