@@ -26,7 +26,7 @@ import {
 	publishExtension,
 	publishReview,
 } from "../src/publish.ts";
-import { RoundWriter } from "../src/rounds.ts";
+import { legacyKey, RoundWriter } from "../src/rounds.ts";
 import { TaskTiming } from "../src/task-timing.ts";
 import { createFakeModels } from "../src/testing.ts";
 import { RecordedReview, recordedReviewTask } from "./fixtures/recorded-review.ts";
@@ -119,6 +119,82 @@ describe("publication planning recovery", () => {
 			base: changeset.revision.base,
 			trustedWriters: true,
 		};
+	});
+
+	it("omits a run when the round advances after telemetry capture and before publication", async () => {
+		const run = { roundId: legacyKey(revision), durationMs: 142_000, stages: [] };
+		await root.commit(async (tx) => {
+			const doc = await tx.doc(VerdictDocument, root.id);
+			const verdict = JSON.parse(JSON.stringify(doc.verdicts[revision]!));
+			const provenance = JSON.parse(JSON.stringify(doc.provenance![revision]!));
+			const rounds = new RoundWriter(tx, root.id);
+			await rounds.mint(revision, 0, "2026-10-27T00:00:00.000Z");
+			await rounds.record(revision, 0, verdict, provenance);
+			doc.verdicts[revision] = verdict;
+			doc.provenance![revision] = provenance;
+		}, context);
+		await publishReview({ ...options, run });
+		expect(state.ledgers[0]!.body).not.toContain("Run details: 142 s");
+		expect(state.ledgers[0]!.body).not.toContain("| Stage |");
+	});
+
+	it.each([undefined, "another round", "bound"])("reads a run only for the captured round (%s)", async (binding) => {
+		const readRun = vi.fn(async (roundId: string) =>
+			binding === undefined
+				? undefined
+				: {
+						roundId: binding === "bound" ? roundId : binding,
+						durationMs: 142_000,
+						stages: [],
+					},
+		);
+		await publishReview({ ...options, readRun });
+		expect(readRun).toHaveBeenCalledExactlyOnceWith(legacyKey(revision));
+		expect(state.ledgers[0]!.body.includes("Run details: 142 s")).toBe(binding === "bound");
+		if (binding === "bound") {
+			await publishReview(options);
+			expect(state.ledgers[0]!.body).toContain("Run details: 142 s");
+		}
+	});
+
+	it("refuses a round that advances while its bound run is being read", async () => {
+		await expect(
+			publishReview({
+				...options,
+				readRun: async (roundId) => {
+					await root.commit(async (tx) => {
+						const doc = await tx.doc(VerdictDocument, root.id);
+						const verdict = JSON.parse(JSON.stringify(doc.verdicts[revision]!));
+						const provenance = JSON.parse(JSON.stringify(doc.provenance![revision]!));
+						const rounds = new RoundWriter(tx, root.id);
+						await rounds.mint(revision, 0, "2026-10-27T00:00:00.000Z");
+						await rounds.record(revision, 0, verdict, provenance);
+						doc.verdicts[revision] = verdict;
+						doc.provenance![revision] = provenance;
+					}, context);
+					return { roundId, durationMs: 142_000, stages: [] };
+				},
+			}),
+		).rejects.toMatchObject({ code: "notReviewed" });
+		expect(state.ledgers).toEqual([]);
+		expect(state.reviews).toEqual([]);
+	});
+
+	it("drops a prior round's stored table when the next round has no run", async () => {
+		await publishReview({ ...options, run: { roundId: legacyKey(revision), durationMs: 142_000, stages: [] } });
+		expect(state.ledgers[0]!.body).toContain("Run details: 142 s");
+		await root.commit(async (tx) => {
+			const doc = await tx.doc(VerdictDocument, root.id);
+			const verdict = JSON.parse(JSON.stringify(doc.verdicts[revision]!));
+			const provenance = JSON.parse(JSON.stringify(doc.provenance![revision]!));
+			const rounds = new RoundWriter(tx, root.id);
+			await rounds.mint(revision, 0, "2026-10-27T00:00:00.000Z");
+			await rounds.record(revision, 0, verdict, provenance);
+			doc.verdicts[revision] = verdict;
+			doc.provenance![revision] = provenance;
+		}, context);
+		await publishReview(options);
+		expect(state.ledgers[0]!.body).not.toContain("Run details: 142 s");
 	});
 
 	it.each([

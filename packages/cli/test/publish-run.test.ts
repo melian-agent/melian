@@ -17,6 +17,8 @@ import { afterEach, expect, it, vi } from "vitest";
 import { type FakeState, fakeGitHub } from "../../github/test/fixtures/fake-github.ts";
 import { moveTo, pullRequestState } from "../../github/test/fixtures/scenario.ts";
 import { VerdictDocument } from "../../pipeline/src/adjudication.ts";
+import { ReviewIndex } from "../../pipeline/src/review-index.ts";
+import { legacyKey, RoundWriter } from "../../pipeline/src/rounds.ts";
 import { RecordedReview, recordedReviewTask } from "../../pipeline/test/fixtures/recorded-review.ts";
 import { baseAndHead, isolatedGitEnv } from "../../pipeline/test/fixtures/repo.ts";
 import { publish } from "../src/commands.ts";
@@ -47,7 +49,11 @@ const finding = (input: Partial<FindingInput>): Finding =>
 
 // Publishes a stored review through a provider over a fake GitHub, and returns what it posted and what publish said
 // on standard error.
-async function published(failedRerun?: boolean, fails = true): Promise<{ state: FakeState; stderr: string }> {
+async function published(
+	failedRerun?: boolean,
+	fails = true,
+	afterChecks = false,
+): Promise<{ state: FakeState; stderr: string }> {
 	const base = "";
 	const head = "";
 	for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
@@ -76,7 +82,8 @@ async function published(failedRerun?: boolean, fails = true): Promise<{ state: 
 		const registry = createRegistry();
 		registry.install({ name: "test.recorded-review", tasks: [recordedReviewTask] });
 		const path = await storagePath(repo, changeset.id, env, false);
-		const harness = await openHarness(await openSqliteStorage(path), { models: fake.models, registry });
+		const stored = await openSqliteStorage(path);
+		const harness = await openHarness(stored, { models: fake.models, registry });
 		try {
 			const root = await harness.root(context, { agent: { model: fake.ref() } });
 			await root.commit(async (tx) => {
@@ -104,12 +111,16 @@ async function published(failedRerun?: boolean, fails = true): Promise<{ state: 
 				};
 			}, context);
 			await new RecordedReview(harness).record(revisionKey(changeset.revision));
-			if (failedRerun === true)
-				await PrepareSpans.start("decided", 1000, () => 3000).record(
-					harness,
-					revisionKey(changeset.revision),
-					context,
-				);
+			const revision = revisionKey(changeset.revision);
+			const adjudication = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.adjudication!
+				.task;
+			await root.commit(async (tx) => {
+				await new RoundWriter(tx, root.id).keep(revision, adjudication);
+			}, context);
+			if (failedRerun === true) {
+				const prepare = await PrepareSpans.start("decided", 1000, () => 3000).record(harness, revision, context);
+				await TelemetryReader.open(stored).recordRun(harness, revision, legacyKey(revision), 1000, prepare);
+			}
 		} finally {
 			await harness.close(context);
 		}
@@ -133,8 +144,18 @@ async function published(failedRerun?: boolean, fails = true): Promise<{ state: 
 				changeset,
 				pullRequest: await provider.pullRequest(7),
 			});
-			if (fails)
-				vi.spyOn(ReviewHarness.prototype, "resumedProviders").mockRejectedValue(new Error("second review failed"));
+			if (fails) {
+				if (afterChecks) {
+					const step = PrepareSpans.prototype.step;
+					vi.spyOn(PrepareSpans.prototype, "step").mockImplementation(function (this: PrepareSpans, name) {
+						if (name === "callers") throw new Error("second review failed");
+						step.call(this, name);
+					});
+				} else
+					vi.spyOn(ReviewHarness.prototype, "resumedProviders").mockRejectedValue(
+						new Error("second review failed"),
+					);
+			}
 			expect(
 				await main(["review", "#7", "--no-walkthrough"], { ...io, env: { ...env, MELIAN_TEST_SCRIPT: script } }),
 			).toBe(fails ? 2 : 0);
@@ -151,7 +172,9 @@ async function published(failedRerun?: boolean, fails = true): Promise<{ state: 
 const run = { durationMs: 142_000, stages: [{ name: "triage", models: ["faux/scripted low"], outcome: "ran" }] };
 
 it("shows the review's run in the ledger, from the telemetry its storage holds", async () => {
-	const read = vi.spyOn(TelemetryReader.prototype, "runDetails").mockResolvedValue(run);
+	const read = vi
+		.spyOn(TelemetryReader.prototype, "runDetails")
+		.mockImplementation(async (roundId) => ({ ...run, roundId }));
 	const { state, stderr } = await published();
 	expect(read).toHaveBeenCalledOnce();
 	expect(state.ledgers[0]!.body).toContain(
@@ -160,10 +183,10 @@ it("shows the review's run in the ledger, from the telemetry its storage holds",
 	expect(stderr).toBe("");
 });
 
-it("reads the stages the storage holds, without a review time when no spans recorded one", async () => {
+it("omits the table when the bound round has no snapshot", async () => {
 	const { state, stderr } = await published();
-	expect(state.ledgers[0]!.body).toContain("<summary>Run details: 0 tokens · $0.00</summary>");
-	expect(state.ledgers[0]!.body).toContain("| adjudication |");
+	expect(state.ledgers[0]!.body).toContain("<summary>Run details</summary>");
+	expect(state.ledgers[0]!.body).not.toContain("| adjudication |");
 	expect(stderr).toBe("");
 });
 
@@ -189,7 +212,7 @@ it.each([true, false])(
 			expect(state.ledgers[0]!.body).toContain("| preparation |  |  | 2.0 s | — | — | ran |  |");
 			expect(state.ledgers[0]!.body).toContain("<summary>Run details: 2.0 s · 0 tokens · $0.00</summary>");
 		} else {
-			expect(state.ledgers[0]!.body).toContain("| preparation |");
+			expect(state.ledgers[0]!.body).not.toContain("| preparation |");
 		}
 		expect(stderr).toBe("");
 	},
@@ -200,4 +223,10 @@ it("replaces the preparation spans when a second review decides a verdict", asyn
 	expect(state.ledgers[0]!.body).toContain("| preparation |");
 	expect(state.ledgers[0]!.body).not.toContain("| preparation |  |  | 2.0 s | — | — | ran |  |");
 	expect(stderr).toBe("");
+});
+
+it("keeps the decided round's run after a rerun checks the head and then fails", async () => {
+	const { state } = await published(true, true, true);
+	expect(state.ledgers[0]!.body).toContain("Run details: 2.0 s");
+	expect(state.ledgers[0]!.body).not.toContain("check guardrails");
 });

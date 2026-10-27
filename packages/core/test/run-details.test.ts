@@ -228,3 +228,8 @@ describe("RunDetails", () => {
 		expect(reused.summary()).toBe("0 tokens · $0.00");
 	});
 });
+
+it("preserves the bound round ID through the run view", () => {
+	const stored = { roundId: "r17", durationMs: 42, stages: [lens({})] };
+	expect(RunDetails.from(stored).toJSON()).toEqual(stored);
+});

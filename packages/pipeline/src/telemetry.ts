@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from "node:util";
 import {
 	type CheckRecord,
 	deterministicChecks,
@@ -8,14 +9,16 @@ import {
 	type StoredRunDetails,
 	visibleText,
 } from "@melian-agent/core";
-import { type CheckRunRecord, CheckSources, ChecksDocument } from "./checks.ts";
+import { type CheckRunRecord, CheckSources, ChecksDocument, type RunIdentity } from "./checks.ts";
 import { DecisionDocument } from "./decisions.ts";
 import {
 	backgroundContext,
 	type Context,
 	type ConversationId,
 	type DocumentRecord,
+	defineDocFamily,
 	type EntryId,
+	type Harness,
 	type JsonObject,
 	ROOT_CONVERSATION_ID,
 	type Storage,
@@ -24,10 +27,21 @@ import {
 } from "./harness.ts";
 import { LensDocument } from "./lens-tools.ts";
 import { ReviewIndex } from "./review-index.ts";
+import { RoundsDocument } from "./rounds.ts";
 import { PrepareDocument, type PrepareRecord } from "./spans.ts";
 import { SummaryIndex } from "./summarize.ts";
 import { TimingDocument } from "./task-timing.ts";
 import { ModelAttemptsDocument, ModelUsageDocument, TokenUsage, type UsageSummary } from "./token-usage.ts";
+
+export const RunDetailsDocument = defineDocFamily<{ run?: StoredRunDetails }, null>({
+	kind: "melian.run-details",
+	family: true,
+	version: 1,
+	scope: "conversation",
+	history: "latest",
+	fork: "current",
+	initial: () => ({}),
+});
 
 type TaskRecord = NonNullable<Awaited<ReturnType<Storage["task"]>>>;
 type DocumentScope = DocumentRecord["scope"];
@@ -419,15 +433,37 @@ export class TelemetryReader {
 		return new TelemetryReader(storage);
 	}
 
-	/**
-	 * The revision's run as its last review recorded it, a stage that ended before that review started counting as
-	 * reused; `undefined` when nothing is stored.
-	 */
-	async runDetails(revision: string, context: Context = backgroundContext): Promise<StoredRunDetails | undefined> {
-		const first = await this.read(revision, undefined, context);
-		if (first.stages.length === 0 && first.prepare === undefined) return undefined;
-		if (first.prepare === undefined) return first.runDetails();
-		return (await this.read(revision, first.prepare.startedAt, context)).runDetails();
+	/** The frozen run for exactly this storage-local round, absent from older rounds. */
+	async runDetails(roundId: string, context: Context = backgroundContext): Promise<StoredRunDetails | undefined> {
+		const scope = { kind: "conversation", conversationId: ROOT_CONVERSATION_ID } as const;
+		return (await this.document(RunDetailsDocument, scope, context, roundId))?.run;
+	}
+
+	/** Stores this review's telemetry only while its round still owns every source. */
+	async recordRun(
+		harness: Harness,
+		revision: string,
+		roundId: string,
+		before: number,
+		prepare: PrepareRecord,
+		context: Context = backgroundContext,
+	): Promise<void> {
+		const root = await harness.root(context);
+		await root.commit(async (tx) => {
+			const rounds = await tx.doc(RoundsDocument, root.id);
+			if (rounds.current[revision] !== roundId) return;
+			const round = rounds.items[roundId]!;
+			if (round.verdict === undefined) return;
+			const selected = (await tx.doc(ReviewIndex, root.id)).reviews[revision]?.adjudication?.task;
+			if (!round.tasks.some((task) => task === selected)) return;
+			const authority = (await tx.doc(ChecksDocument, root.id)).owners?.[revision];
+			const checkParent =
+				round.checkRun === undefined ? undefined : (JSON.parse(round.checkRun) as RunIdentity).task;
+			if ((authority === undefined ? undefined : Number(authority.split(" ").at(-1))) !== checkParent) return;
+			const telemetry = await this.read(revision, before, context);
+			if (!isDeepStrictEqual(telemetry.prepare, prepare)) return;
+			(await tx.doc(RunDetailsDocument, root.id, roundId, null)).run = { ...telemetry.runDetails(), roundId };
+		}, context);
 	}
 
 	/** Select the revision's stages, marking reuse against the optional call start. */

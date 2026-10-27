@@ -348,7 +348,7 @@ The run table takes each check’s outcome from the indexed adjudication task’
 Conversation telemetry keeps its own terminal status. A reused failed check still renders failed.
 Checks supplied only by adjudication appear only in the run table; they add no stage to telemetry reads or JSON.
 
-Version 6 adds the storage-local round ID to the task target; `PublisherDocument` version 3 records the same target. Version 7 lets the input carry the review's run, which `melian publish` reads from stage telemetry for the ledger's run details; a version-6 input has none. `PublishedDocument` version 10 keeps that run on the ledger round, so a later publish that reads none keeps it.
+Version 6 adds the storage-local round ID to the task target; `PublisherDocument` version 3 records the same target. Version 7 lets the input carry the review's run, which `melian publish` reads from stage telemetry for the ledger's run details; a version-6 input has none. `PublishedDocument` version 10 keeps that run on the ledger round. A later publish that reads none keeps it only when its bound round ID still matches.
 Both migrations leave older targets unbound and preserve newer publisher attribution.
 The task binds an older target to its revision's legacy round transactionally only when no minted round exists at that revision.
 Otherwise it ends superseded and requires a fresh publish.
@@ -633,6 +633,14 @@ A race test must attach a rejection handler when it starts a review expected to 
 
 A mutated class or function must stay in its module when another context uses it. Stryker puts helper functions at module scope; serialising the class into a supervisor loses those helpers. The supervisor imports MutationStderr by its own module URL, which names .ts in source and .js after a build. Fake supervisor tests inject the imported class into their context. Signal-sending mutation-process.ts remains excluded under the signal rule.
 
+
+## Round run snapshots
+
+`PrepareSpans.roundId` names the round whose adjudication the review started or attached to. The CLI records a successful review's spans, then calls `TelemetryReader.recordRun` for that ID. The capture holds a root transaction while reading telemetry. It checks the current round, its decided verdict, adjudication ownership, check-parent ownership and the host's exact preparation record. A failed rerun stores no snapshot over the decided round's.
+
+`melian.run-details`, a version-1 document family on the root conversation, stores each snapshot under its storage-local round ID. `StoredRunDetails.roundId` carries the same ID. `TelemetryReader.runDetails(roundId)` reads that member without deriving rows from the revision's mutable indexes. `read(revision)` remains the detached stage interface and keeps its earlier shape.
+
+`publishReview` captures the round before calling `readRun(roundId)`, then validates the round again before creating the publish target. It accepts a supplied run only when its ID matches. Its task applies the same check on replay. A missing snapshot omits the table; a previous ledger run is retained only for the same round. Old unbound runs are omitted. No old document or task version changes.
 
 ## Token telemetry
 

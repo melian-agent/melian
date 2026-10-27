@@ -431,8 +431,11 @@ async function reviewTimings(
 			const previous = await TelemetryReader.open(storage).read(revision, before);
 			if (verdict !== undefined && previous.prepare !== undefined) return previous;
 		}
-		await spans.record(reviewHarness.harness, revision, context);
-		return await TelemetryReader.open(storage).read(revision, before);
+		const prepare = await spans.record(reviewHarness.harness, revision, context);
+		const reader = TelemetryReader.open(storage);
+		if (spans.roundId !== undefined)
+			await reader.recordRun(reviewHarness.harness, revision, spans.roundId, before, prepare);
+		return await reader.read(revision, before);
 	} catch (error) {
 		io.stderr(
 			`melian: Stage timings unavailable: ${visibleText(error instanceof Error ? error.message : String(error))}\n`,
@@ -501,7 +504,6 @@ export async function publish(
 	const publishHarness = await openPublishHarness(storage, idleModels(io.env), provider);
 	const { harness } = publishHarness;
 	try {
-		const run = await reviewRun(storage, revisionKey(changeset.revision), io);
 		// A head that moved has no merge base here, and publishReview refuses it for the head before it reads this.
 		const published = await publishReview({
 			harness,
@@ -514,7 +516,7 @@ export async function publish(
 				...config.publish.walkthrough,
 				enabled: options.walkthrough !== false && config.publish.walkthrough.enabled,
 			},
-			...(run === undefined ? {} : { run }),
+			readRun: (roundId) => reviewRun(storage, roundId, io),
 		});
 		const parts = [
 			`${published.posted} new ${published.posted === 1 ? "finding" : "findings"}`,
@@ -547,11 +549,11 @@ export async function publish(
 // The ledger is still worth posting without its run details, so an unreadable record leaves them out and says so.
 async function reviewRun(
 	storage: Awaited<ReturnType<typeof openStorage>>,
-	revision: string,
+	roundId: string,
 	io: Io,
 ): Promise<StoredRunDetails | undefined> {
 	try {
-		return await TelemetryReader.open(storage).runDetails(revision);
+		return await TelemetryReader.open(storage).runDetails(roundId);
 	} catch (error) {
 		io.stderr(
 			`melian: Run details unavailable: ${visibleText(error instanceof Error ? error.message : String(error))}\n`,

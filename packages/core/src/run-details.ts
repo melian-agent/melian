@@ -23,7 +23,12 @@ export type RunStage = {
 };
 
 /** A review's run as the ledger stores it: the review's wall clock, when its spans recorded one, and its stages. */
-export type StoredRunDetails = { durationMs?: number; stages: RunStage[] };
+export type StoredRunDetails = {
+	/** The storage-local review round; absent in older, unbound records, which publication omits. */
+	roundId?: string;
+	durationMs?: number;
+	stages: RunStage[];
+};
 
 /** One row of the run table, every cell as plain text a renderer escapes. */
 export type RunRow = {
@@ -85,10 +90,12 @@ function budgetOf(stage: RunStage): string {
 
 /** A review's run, read back from the ledger's store: one summary line and a row per stage. */
 export class RunDetails {
+	readonly roundId?: string;
 	readonly durationMs?: number;
 	readonly stages: readonly RunStage[];
 
 	private constructor(stored: StoredRunDetails) {
+		if (stored.roundId !== undefined) this.roundId = stored.roundId;
 		if (stored.durationMs !== undefined) this.durationMs = stored.durationMs;
 		this.stages = stored.stages;
 	}
@@ -140,6 +147,7 @@ export class RunDetails {
 
 	toJSON(): StoredRunDetails {
 		return {
+			...(this.roundId === undefined ? {} : { roundId: this.roundId }),
 			...(this.durationMs === undefined ? {} : { durationMs: this.durationMs }),
 			stages: structuredClone([...this.stages]),
 		};

@@ -967,7 +967,8 @@ function publishTask(provider: ReviewProvider) {
 					if (storedVerdict?.walkthroughNotes?.[revision] !== undefined)
 						currentRound.walkthroughNote = storedVerdict.walkthroughNotes[revision];
 					// A publish that could not read the run keeps the one an earlier publish of the round stored.
-					if (task.input.run !== undefined) currentRound.run = structuredClone(task.input.run);
+					if (task.input.run?.roundId === target.roundId) currentRound.run = structuredClone(task.input.run);
+					else if (currentRound.run?.roundId !== target.roundId) delete currentRound.run;
 					const previousLedger = (await runtime.snapshot(LedgerDocument, root, context))?.comment;
 					await revalidate();
 					writingLedger = true;
@@ -1169,8 +1170,10 @@ export interface PublishOptions {
 	 */
 	readonly base: string;
 	readonly walkthrough?: { readonly enabled: boolean; readonly collapsed: boolean; readonly diagrams: boolean };
-	/** The review's run, from `StageTelemetry.runDetails`, which the ledger shows as its run details. */
+	/** A run snapshot carrying the captured round's ID. An absent or different ID omits the table. */
 	readonly run?: StoredRunDetails;
+	/** Reads the snapshot of the round publication has captured and will validate again before posting. */
+	readonly readRun?: (roundId: string) => Promise<StoredRunDetails | undefined>;
 	readonly context?: Context;
 }
 
@@ -1388,6 +1391,7 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 			where,
 		);
 	}
+	const run = options.readRun === undefined ? options.run : await options.readRun(validated.roundId);
 	const login = await options.provider.login();
 	const permission = login === undefined ? undefined : await options.provider.permission(login);
 	const authorPermission =
@@ -1451,7 +1455,7 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 		target,
 		lines: changeset.revision.diffLines(),
 		...(options.walkthrough === undefined ? {} : { walkthrough: { ...options.walkthrough } }),
-		...(options.run === undefined ? {} : { run: structuredClone(options.run) }),
+		...(run?.roundId === target.roundId ? { run: structuredClone(run) } : {}),
 	}).toJSON();
 	const taskId = await (await harness.root(context)).commit(
 		(tx) => tx.createTask(publishTask(options.provider), input, { ownership: { kind: "conversation" } }),

@@ -128,7 +128,7 @@ import {
 	type ReviewIndexState,
 	undecided,
 } from "./review-index.ts";
-import { RoundWriter } from "./rounds.ts";
+import { RoundsDocument, RoundWriter } from "./rounds.ts";
 import { PrepareSpans } from "./spans.ts";
 import { SummaryTask, summarizeExtension } from "./summarize.ts";
 import { injectionAttemptRule, quoteUntrusted, reviewNonce, triageBoundary } from "./untrusted.ts";
@@ -2316,6 +2316,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			{ lenses: lenses.map((lens) => lens.name) },
 		);
 	}
+	const rounds = (await harness.snapshot(RoundsDocument, root, context))!;
+	spans.bindRound(Object.entries(rounds.items).find(([, round]) => round.tasks.includes(adjudication))![0]);
 	if (verificationRefused) await abortReplacedRuns(harness, context);
 	const forget = (index: ReviewIndexState) => {
 		const entry = index.reviews[reviewed];

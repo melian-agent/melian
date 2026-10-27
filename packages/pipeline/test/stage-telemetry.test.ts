@@ -308,7 +308,9 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 		await reviewChangeset({ ...options, spans });
 		await summarizeReview({ ...options, harness });
 		const revision = revisionKey(options.changeset.revision);
-		await spans.record(harness, revision, context);
+		const prepare = await spans.record(harness, revision, context);
+		const roundId = spans.roundId!;
+		await TelemetryReader.open(storage).recordRun(harness, revision, roundId, spans.startedAt, prepare);
 		const telemetry = await TelemetryReader.open(storage).read(revision);
 		const json = JSON.parse(JSON.stringify(telemetry.toJSON())) as { stages: Stage[] };
 		expect(
@@ -324,8 +326,8 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 			"check static.mutation",
 		]);
 		// The review's own stages, read against its start, are none of them reused.
-		expect(await TelemetryReader.open(storage).runDetails(revision)).toEqual(telemetry.runDetails());
-		expect(await TelemetryReader.open(createMemoryStorage()).runDetails(revision)).toBeUndefined();
+		expect(await TelemetryReader.open(storage).runDetails(roundId)).toEqual({ ...telemetry.runDetails(), roundId });
+		expect(await TelemetryReader.open(createMemoryStorage()).runDetails(roundId)).toBeUndefined();
 		const lenses = json.stages.filter(({ name }) => name === "melian.lens");
 		expect(lenses.length).toBeGreaterThan(0);
 		for (const lens of lenses) {
@@ -353,7 +355,7 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 			pullRequest: await provider.pullRequest(7),
 			base: options.changeset.revision.base,
 			trustedWriters: true,
-			run: telemetry.runDetails(),
+			run: { ...telemetry.runDetails(), roundId },
 		});
 		const body = state.ledgers[0]!.body;
 		// A later publish that reads no run keeps the one the round stored, so the ledger does not lose its table.
@@ -375,7 +377,7 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 			pullRequest: await provider.pullRequest(7),
 			base: options.changeset.revision.base,
 			trustedWriters: true,
-			run: { ...telemetry.runDetails(), durationMs: 600_000 },
+			run: { ...telemetry.runDetails(), roundId, durationMs: 600_000 },
 		});
 		expect(state.ledgers[0]!.body).toContain("<summary>Run details: 10.0 min · ");
 		expect(state.ledgers).toHaveLength(1);
