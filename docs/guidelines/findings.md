@@ -4,6 +4,8 @@ This guideline sets how a Melian finding reads: its parts, its voice, how it sta
 
 A finding tells an author three things: what breaks, how Melian knows, and what to do. It says them in that order, in plain words, with the evidence one click away. It is factual, and it is friendly because it respects the author's time. It never flatters, apologises or jokes.
 
+Every line a renderer shows a reader earns its place, as [the high-signal, low-noise decision](../decisions/2026-10-25-high-signal-low-noise.md) sets. A renderer states a fact once in one surface, never per lens, per finding or per round, keeps the decision's named diagnostic classes out of the pull-request comment, shows on each surface what the decision's table says, and collapses in `<details>` a section the reader needs only to dig in.
+
 ## Structure
 
 A finding has one of two shapes, by what produced it. Every renderer prints the parts a shape has, in this order, and every element [What every renderer keeps](#what-every-renderer-keeps) lists, and omits a part whose field the finding does not carry. It never prints an empty heading or a placeholder. The one exception is the review-body advisory below, a projection that leaves out parts the finding does carry.

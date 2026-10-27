@@ -125,7 +125,7 @@ describe("built-in lenses", () => {
 			contracts: "dd8fb36095b4",
 			conventions: "1815e2aee9b9",
 			correctness: "18c49f913df8",
-			design: "ffc3d1482acf",
+			design: "2107c1dcda26",
 			"removed-behaviour": "37aeab0038e3",
 			tests: "9eb5dbf32a98",
 			"trust-boundary": "24aa8e2540b4",
@@ -164,8 +164,21 @@ describe("built-in lenses", () => {
 			"unshipped-artifact",
 			"single-slot-overwrite",
 			"reimplements-an-authority",
+			"contradicts-documented-decision",
 			"melian/injection-attempt",
 		]);
+		expect(design!.rules.find((rule) => rule.id === "contradicts-documented-decision")!.description).toBe(
+			"The fallback. A change contradicts what the repository's decisions, design or stated principles say in words. Use it only when no other rule in this list names the defect; when one does, report under that rule.",
+		);
+		expect(design!.instructions).toContain(
+			"`contradicts-documented-decision` is the fallback: report under it only when no other rule above names the defect.",
+		);
+		expect(design!.instructions).toContain(
+			'quote the documented words as `context` evidence with `revision: "base"`',
+		);
+		expect(design!.instructions).toContain(
+			"Nor is a change that only rewords a line or adds context, unless the documented words forbid that.",
+		);
 		expect(design!.instructions).toContain(
 			"a package the manifest at base declares, or a tool the base's code already runs",
 		);
@@ -237,7 +250,7 @@ describe("built-in lenses", () => {
 			contracts: "43fa057f7957",
 			conventions: "ab9fda3d360c",
 			correctness: "ac390a655d0e",
-			design: "00b6c949a31c",
+			design: "c9e62241de62",
 			durability: "910628aa27ee",
 			"removed-behaviour": "8e3474a4b315",
 			tests: "e6364f9cf7e6",
@@ -249,7 +262,7 @@ describe("built-in lenses", () => {
 			contracts: "61fa4ff978ef",
 			conventions: "7029ae04254f",
 			correctness: "d150d8ad1289",
-			design: "ab8ebe6a8140",
+			design: "c98d11ac753c",
 			"removed-behaviour": "1131ab311d50",
 			tests: "aea7f643ccac",
 			"trust-boundary": "4c55e242b68f",
