@@ -1,6 +1,6 @@
 # Mutation evidence
 
-Planned for milestone 2, plan step 34, with the other-language adapters in milestone 3. [The decision](../decisions/2026-10-24-mutation-evidence-by-enumeration-and-verification.md) holds the exact rules, what it amends, and the numbered list to attack before any build. Each part is tagged: **[Melian's flow]** is the product, **[Building Melian]** this repository's own process.
+Plan step 34 is being built in parts. The version-2 inventory, TypeScript enumeration, and `melian mutants list` and `sample` are available. Verification and lens integration remain planned for milestone 2, with other-language adapters in milestone 3. [The decision](../decisions/2026-10-24-mutation-evidence-by-enumeration-and-verification.md) holds the exact rules, what it amends, and the numbered list to attack before any build. Each part is tagged: **[Melian's flow]** is the product, **[Building Melian]** this repository's own process.
 
 Problem: a test counts as proof only when it fails with the guard it covers removed, and the only thing that ran the removal was a whole Stryker run, 15 to 70 minutes a round. The `tests` lens named "the mutation every test lets through" in prose, and nobody ran it. Enumeration reached TypeScript and JavaScript alone.
 

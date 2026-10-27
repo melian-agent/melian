@@ -35,7 +35,7 @@ An outer package adapts a core object through a class of its own: `ReviewComment
 
 ## Git by shelling out
 
-Core reads repositories by running the `git` executable through `src/git.ts`. It never uses a JavaScript reimplementation of git, which drifts from git on renames, merge bases, and configuration.
+Core reads repositories by running the `git` executable through `src/git.ts`. It never uses a JavaScript reimplementation of git, which drifts from git on renames, merge bases, and configuration. Outer packages use the exported `gitOutput` helper for the same repository-bound environment.
 
 - Never let the caller's environment pick the repository. A git hook runs with `GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE`, and their kin set for its own repository, and git honours them over the working directory. `src/git.ts` removes every variable `git rev-parse --local-env-vars` lists before it spawns git.
 - Never let the checked-out head choose diff attributes. git reads `.gitattributes` from the working tree, which often holds the head under review, so a head that adds `*.ts -diff` turns its own changes into binary files with no hunks. Every diff passes `--attr-source=<base>`. That flag needs git 2.40, so `Changeset.resolve` checks the version once per process and throws `gitTooOld` rather than review with the head's attributes.
@@ -864,3 +864,7 @@ StoredCheckRecord includes optional snapshots and coverage IDs. Verdict.upgrade 
 Decider and TextModel accept an optional usage observer after the abort signal. It receives each assistant response's provider/model and ModelUsage counters before answer validation. It stays outside DecisionRequest, ToolRequest and stored decision identity. ModelUsage copies Pi's units without importing Pi. Reasoning is part of output; cacheWrite1h is part of cacheWrite.
 
 The usage observer also accepts optional RequestReasoning: the requested level, observed settings by request path, capture source and any provider-reported level. It stays outside decision identity. A missing payload observer carries only a labelled catalogue mapping. Source unrecognised means the payload callback exposed a reasoning-shaped parameter outside the captured paths. Known sent settings remain available; unknown names and values are not retained.
+
+## Mutation inventories
+
+`MutationInventory.create` derives version-2 mutant IDs from the SHA-256 of the JSON tuple `[file, line, column, endLine, endColumn, mutatorName, replacement]`. `parse` validates external inventories, including end coordinates, ID consistency and ignored provenance. A builder's evidence identifies a test by file and title components, or gives an equivalence reason. `sample` preserves the historical deterministic sampling rule. Legacy inventories with string evidence can sample; `forVerification` refuses them with a request to enumerate again. No inventory method runs repository code.
