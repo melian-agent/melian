@@ -1,4 +1,4 @@
-import { EnolaFacts, EnolaImpact, EnolaQueryError, type SymbolSite } from "@melian-agent/core";
+import { type EnolaFact, EnolaFacts, EnolaImpact, EnolaQueryError, type SymbolSite } from "@melian-agent/core";
 import { expect, it } from "vitest";
 
 const caller = { id: "a", name: "src.a", kind: "symbol", file: "src/a.ts", line: 1 };
@@ -90,4 +90,372 @@ it("keeps symbol and file callers, excluding module nodes", () => {
 			.callers()
 			.map((node) => node.name),
 	).toEqual([caller.name, "file"]);
+});
+
+// A graph of declarations a.ts → b.ts → c.ts, where `src.c` is also named by a type use and by an unresolved call.
+function graph() {
+	const symbol = (id: string, name: string, file: string, line: number, relations: object[] = []) => ({
+		id,
+		name,
+		kind: "symbol",
+		file,
+		line,
+		relations,
+	});
+	return EnolaFacts.parse(
+		[
+			symbol("c", "src.c", "src/c.ts", 3, [{ kind: "declares", target: "src", target_id: "m" }]),
+			symbol("b", "src.b", "src/b.ts", 2, [
+				{ kind: "calls", target: "src.c", target_id: "c" },
+				{ kind: "calls", target: "lib.missing" },
+				{ kind: "calls", target: "lib.missing" },
+				{ kind: "calls", target: "src.gone", target_id: "zz" },
+				{ kind: "names", target: "src.c", target_id: "c" },
+			]),
+			symbol("a", "src.a", "src/a.ts", 1, [{ kind: "instantiates", target: "src.b", target_id: "b" }]),
+			symbol("d", "src.d", "src/a.ts", 9, [{ kind: "calls", target: "src.c" }]),
+			symbol("e", "other.c", "other/c.ts", 4),
+			{ id: "m", name: "src", kind: "module", file: "src" },
+		]
+			.map((fact) => JSON.stringify(fact))
+			.join("\n"),
+	);
+}
+
+it("finds a declaration by its exact Enola name, or else by the end of its dotted name", () => {
+	const facts = graph();
+	expect(facts.definitions("src.c").map((fact) => fact.id)).toEqual(["c"]);
+	expect(facts.definitions("c").map((fact) => fact.name)).toEqual(["other.c", "src.c"]);
+	expect(facts.definitions("rc.c")).toEqual([]);
+	expect(facts.definitions("src")).toEqual([]);
+});
+
+it("takes the exact name alone when a longer name also ends with it", () => {
+	const facts = EnolaFacts.parse(
+		[
+			{ id: "c", name: "src.c", kind: "symbol", file: "src/c.ts", line: 1 },
+			{ id: "n", name: "nested.src.c", kind: "symbol", file: "nested/src/c.ts", line: 1 },
+		]
+			.map((fact) => JSON.stringify(fact))
+			.join("\n"),
+	);
+	expect(facts.definitions("src.c").map((fact) => fact.id)).toEqual(["c"]);
+	expect(facts.definitions("c").map((fact) => fact.id)).toEqual(["n", "c"]);
+});
+
+it("lists every resolved edge to a declaration but its declares edges, and counts the unresolved ones", () => {
+	const facts = graph();
+	const [c] = facts.definitions("src.c");
+	expect(facts.references(c!)).toEqual({
+		references: [
+			{ kind: "calls", fact: expect.objectContaining({ id: "b" }) },
+			{ kind: "names", fact: expect.objectContaining({ id: "b" }) },
+		],
+		unresolved: 1,
+	});
+	const [module] = facts.toJSON().filter((fact) => fact.id === "m");
+	expect(facts.references(module!)).toEqual({ references: [], unresolved: 0 });
+	const [a] = facts.definitions("src.a");
+	expect(facts.references(a!)).toEqual({ references: [], unresolved: 0 });
+});
+
+it("walks resolved calls and constructions outward to a depth and a node cap", () => {
+	const facts = graph();
+	const [c] = facts.definitions("src.c");
+	const ids = (result: ReturnType<typeof facts.impact>) => result.reached.map(({ depth, fact }) => [depth, fact.id]);
+	expect(ids(facts.impact(c!, 1, 10))).toEqual([[1, "b"]]);
+	expect(facts.impact(c!, 2, 10)).toEqual({
+		reached: [
+			{ depth: 1, fact: expect.objectContaining({ id: "b" }) },
+			{ depth: 2, fact: expect.objectContaining({ id: "a" }) },
+		],
+		truncated: false,
+	});
+	expect(facts.impact(c!, 2, 2).truncated).toBe(false);
+	expect(facts.impact(c!, 2, 1)).toEqual({
+		reached: [{ depth: 1, fact: expect.objectContaining({ id: "b" }) }],
+		truncated: true,
+	});
+	expect(facts.impact(c!, 0, 10)).toEqual({ reached: [], truncated: false });
+});
+
+it("walks callers in name order, whatever order Enola wrote the facts and relations in", () => {
+	const calls = (...ids: string[]) => ids.map((id) => ({ kind: "calls", target: `src.${id}`, target_id: id }));
+	const facts = [
+		{ id: "t", name: "src.t", kind: "symbol", file: "src/t.ts", line: 1 },
+		{ id: "p", name: "src.p", kind: "symbol", file: "src/z.ts", line: 1, relations: calls("t") },
+		{ id: "q", name: "src.q", kind: "symbol", file: "src/a.ts", line: 5, relations: calls("t", "t") },
+		{ id: "r", name: "src.r", kind: "symbol", file: "src/a.ts", line: 2, relations: calls("q", "t") },
+		{ id: "s", name: "src.s", kind: "symbol", file: "src/m.ts", line: 3, relations: calls("t") },
+	];
+	const permuted = facts.map((fact) => ({ ...fact, relations: [...(fact.relations ?? [])].reverse() })).reverse();
+	for (const order of [facts, permuted]) {
+		const graph = EnolaFacts.parse(order.map((fact) => JSON.stringify(fact)).join("\n"));
+		const [t] = graph.definitions("src.t");
+		const ids = (cap: number) => graph.impact(t!, 2, cap).reached.map(({ fact }) => fact.id);
+		expect(ids(2)).toEqual(["p", "q"]);
+		expect(ids(10)).toEqual(["p", "q", "r", "s"]);
+		expect(graph.references(t!).references.map(({ fact }) => fact.id)).toEqual(["p", "q", "r", "s"]);
+	}
+});
+
+it("walks callers that are top-level code, a file or a module, as it walks declarations", () => {
+	const graph = EnolaFacts.parse(
+		[
+			{ id: "t", name: "src.t", kind: "symbol", file: "src/t.ts", line: 1 },
+			{
+				id: "f",
+				name: "src/run.ts",
+				kind: "file_ref",
+				file: "src/run.ts",
+				relations: [{ kind: "calls", target: "src.t", target_id: "t" }],
+			},
+			{
+				id: "m",
+				name: "lib",
+				kind: "module",
+				file: "lib",
+				relations: [{ kind: "instantiates", target: "src.t", target_id: "t" }],
+			},
+			{
+				id: "s",
+				name: "src.s",
+				kind: "symbol",
+				file: "src/s.ts",
+				line: 4,
+				relations: [{ kind: "calls", target: "src/run.ts", target_id: "f" }],
+			},
+		]
+			.map((fact) => JSON.stringify(fact))
+			.join("\n"),
+	);
+	const [t] = graph.definitions("src.t");
+	expect(graph.impact(t!, 2, 10).reached.map(({ depth, fact }) => [depth, fact.id])).toEqual([
+		[1, "m"],
+		[1, "f"],
+		[2, "s"],
+	]);
+});
+
+it("counts a declaration once when two edges reach it, and never walks back to the target", () => {
+	const facts = EnolaFacts.parse(
+		[
+			{ id: "t", name: "src.t", kind: "symbol", relations: [{ kind: "calls", target: "src.s", target_id: "s" }] },
+			{
+				id: "s",
+				name: "src.s",
+				kind: "symbol",
+				relations: [
+					{ kind: "calls", target: "src.t", target_id: "t" },
+					{ kind: "instantiates", target: "src.t", target_id: "t" },
+				],
+			},
+		]
+			.map((fact) => JSON.stringify(fact))
+			.join("\n"),
+	);
+	const [t] = facts.definitions("src.t");
+	expect(facts.impact(t!, 3, 10)).toEqual({
+		reached: [{ depth: 1, fact: expect.objectContaining({ id: "s" }) }],
+		truncated: false,
+	});
+});
+
+it("lists what a declaration calls, resolved targets as facts and the rest once each by name", () => {
+	const facts = graph();
+	const [b] = facts.definitions("src.b");
+	expect(facts.callees(b!)).toEqual({
+		resolved: [{ kind: "calls", fact: expect.objectContaining({ id: "c" }) }],
+		unresolved: ["lib.missing", "src.gone"],
+	});
+	const [a] = facts.definitions("src.a");
+	expect(facts.callees(a!)).toEqual({
+		resolved: [{ kind: "instantiates", fact: expect.objectContaining({ id: "b" }) }],
+		unresolved: [],
+	});
+	const [c] = facts.definitions("src.c");
+	expect(facts.callees(c!)).toEqual({ resolved: [], unresolved: [] });
+});
+
+it("sorts references by name, file, line and ID, and callees' unresolved names, whatever order the facts come in", () => {
+	const facts = EnolaFacts.parse(
+		[
+			{ id: "t", name: "src.t", kind: "symbol", file: "src/t.ts", line: 1 },
+			{
+				id: "z",
+				name: "src.z",
+				kind: "symbol",
+				file: "src/z.ts",
+				line: 1,
+				relations: [{ kind: "calls", target: "src.t", target_id: "t" }],
+			},
+			{
+				id: "a1",
+				name: "src.a1",
+				kind: "symbol",
+				file: "src/a.ts",
+				line: 20,
+				relations: [{ kind: "calls", target: "src.t", target_id: "t" }],
+			},
+			{
+				id: "ab",
+				name: "src.ab",
+				kind: "symbol",
+				file: "src/a.ts-b",
+				line: 1,
+				relations: [{ kind: "calls", target: "src.t", target_id: "t" }],
+			},
+			{
+				id: "a2",
+				name: "src.a2",
+				kind: "symbol",
+				file: "src/a.ts",
+				line: 3,
+				relations: [
+					{ kind: "names", target: "src.t", target_id: "t" },
+					{ kind: "calls", target: "src.t", target_id: "t" },
+				],
+			},
+			{
+				id: "s",
+				name: "src.s",
+				kind: "symbol",
+				relations: [
+					{ kind: "calls", target: "lib.zeta" },
+					{ kind: "calls", target: "lib.alpha" },
+				],
+			},
+		]
+			.map((fact) => JSON.stringify(fact))
+			.join("\n"),
+	);
+	const [t] = facts.definitions("src.t");
+	expect(facts.references(t!).references.map(({ kind, fact }) => `${fact.id} ${kind}`)).toEqual([
+		"a1 calls",
+		"a2 calls",
+		"a2 names",
+		"ab calls",
+		"z calls",
+	]);
+	const [s] = facts.definitions("src.s");
+	expect(facts.callees(s!).unresolved).toEqual(["lib.alpha", "lib.zeta"]);
+});
+
+it("counts no unresolved declares edge as a use", () => {
+	const facts = EnolaFacts.parse(
+		[
+			{ id: "t", name: "src.t", kind: "symbol" },
+			{ id: "m", name: "src", kind: "module", relations: [{ kind: "declares", target: "src.t" }] },
+		]
+			.map((fact) => JSON.stringify(fact))
+			.join("\n"),
+	);
+	const [t] = facts.definitions("src.t");
+	expect(facts.references(t!)).toEqual({ references: [], unresolved: 0 });
+});
+
+it("orders references by name before comparing absent and present files", () => {
+	const facts = EnolaFacts.parse(
+		[
+			{ id: "t", name: "src.t", kind: "symbol" },
+			{
+				id: "m",
+				name: "src.m",
+				kind: "symbol",
+				file: "Makefile",
+				line: 1,
+				relations: [{ kind: "calls", target: "src.t", target_id: "t" }],
+			},
+			{ id: "n", name: "src.n", kind: "symbol", relations: [{ kind: "calls", target: "src.t", target_id: "t" }] },
+		]
+			.map((fact) => JSON.stringify(fact))
+			.join("\n"),
+	);
+	const [t] = facts.definitions("src.t");
+	expect(facts.references(t!).references.map(({ fact }) => fact.id)).toEqual(["m", "n"]);
+});
+
+it.each([
+	["name", { id: "z", name: "a.same", file: "z.ts", line: 10 }, { id: "a", name: "z.same", file: "a.ts", line: 1 }],
+	["file", { id: "z", file: "f0.ts", line: 10 }, { id: "a", file: "f1.ts", line: 1 }],
+	["line", { id: "z", file: "f0.ts", line: 2 }, { id: "a", file: "f0.ts", line: 10 }],
+	["ID", { id: "a", file: "f0.ts", line: 1 }, { id: "z", file: "f0.ts", line: 1 }],
+	["absent file", { id: "z", line: 10 }, { id: "a", file: "A.ts", line: 1 }],
+	["absent line", { id: "z", file: "f0.ts" }, { id: "a", file: "f0.ts", line: 1 }],
+] as const)("orders declarations by %s in both fact orders", (_key, first, second) => {
+	const expected = [first, second].map((fact) => ({ name: "src.same", kind: "symbol", ...fact }));
+	for (const rows of [expected, [...expected].reverse()]) {
+		const facts = EnolaFacts.parse(rows.map((fact) => JSON.stringify(fact)).join("\n"));
+		expect(facts.definitions("same")).toEqual(expected);
+	}
+});
+
+it.each([
+	["name", { id: "z", name: "a.same", file: "z.ts", line: 10 }, { id: "a", name: "z.same", file: "a.ts", line: 1 }],
+	["file", { id: "z", file: "f0.ts", line: 10 }, { id: "a", file: "f1.ts", line: 1 }],
+	["line", { id: "z", file: "f0.ts", line: 2 }, { id: "a", file: "f0.ts", line: 10 }],
+	["ID", { id: "a", file: "f0.ts", line: 1 }, { id: "z", file: "f0.ts", line: 1 }],
+	["absent file", { id: "z", line: 10 }, { id: "a", file: "A.ts", line: 1 }],
+	["absent line", { id: "z", file: "f0.ts" }, { id: "a", file: "f0.ts", line: 1 }],
+] as const)(
+	"orders callees, references and impact by %s after reversing facts and relations",
+	(_key, first, second) => {
+		const target = { id: "t", name: "src.target", kind: "symbol" };
+		const nodes = [first, second].map((fact) => ({
+			name: "src.same",
+			kind: "symbol",
+			...fact,
+			relations: [{ kind: "calls", target: target.name, target_id: target.id }],
+		}));
+		const source = {
+			id: "s",
+			name: "src.source",
+			kind: "symbol",
+			relations: nodes.flatMap((fact) => [
+				{ kind: "instantiates", target: fact.name, target_id: fact.id },
+				{ kind: "calls", target: fact.name, target_id: fact.id },
+			]),
+		};
+		const facts: EnolaFact[] = [source, ...nodes, target];
+		const reversed = facts.map((fact) => ({ ...fact, relations: [...(fact.relations ?? [])].reverse() })).reverse();
+		for (const rows of [facts, reversed]) {
+			const graph = EnolaFacts.parse(rows.map((fact) => JSON.stringify(fact)).join("\n"));
+			const [s] = graph.definitions(source.name);
+			const [t] = graph.definitions(target.name);
+			expect(graph.callees(s!).resolved.map(({ kind, fact }) => [fact.id, kind])).toEqual([
+				[first.id, "calls"],
+				[first.id, "instantiates"],
+				[second.id, "calls"],
+				[second.id, "instantiates"],
+			]);
+			expect(graph.references(t!).references.map(({ kind, fact }) => [fact.id, kind])).toEqual([
+				[first.id, "calls"],
+				[second.id, "calls"],
+			]);
+			expect(graph.impact(t!, 2, 10).reached.map(({ depth, fact }) => [depth, fact.id])).toEqual([
+				[1, first.id],
+				[1, second.id],
+				[2, "s"],
+			]);
+			expect(graph.impact(t!, 2, 1).reached.map(({ fact }) => fact.id)).toEqual([first.id]);
+		}
+	},
+);
+
+it("sorts all callers at a depth together before applying the node cap", () => {
+	const edge = (id: string) => [{ kind: "calls", target: `src.${id}`, target_id: id }];
+	const rows = [
+		{ id: "t", name: "src.t", kind: "symbol" },
+		{ id: "a", name: "src.a", kind: "symbol", relations: edge("t") },
+		{ id: "b", name: "src.b", kind: "symbol", relations: edge("t") },
+		{ id: "z", name: "src.z", kind: "symbol", relations: edge("a") },
+		{ id: "c", name: "src.c", kind: "symbol", relations: edge("b") },
+	];
+	const graph = EnolaFacts.parse(rows.map((fact) => JSON.stringify(fact)).join("\n"));
+	const [t] = graph.definitions("src.t");
+	expect(graph.impact(t!, 2, 3).reached.map(({ depth, fact }) => [depth, fact.id])).toEqual([
+		[1, "a"],
+		[1, "b"],
+		[2, "c"],
+	]);
 });

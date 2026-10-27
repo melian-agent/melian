@@ -8,6 +8,7 @@ import {
 	type LensFields,
 	type LensNeighbour,
 	lensCovers,
+	lensGraphToolNames,
 	lensToolNames,
 	loadConfig,
 	type MelianConfig,
@@ -249,7 +250,7 @@ describe("built-in lenses", () => {
 			contracts: "43fa057f7957",
 			conventions: "ab9fda3d360c",
 			correctness: "ac390a655d0e",
-			design: "73c3eb1fd9f4",
+			design: "9d07ab879ee3",
 			durability: "910628aa27ee",
 			"removed-behaviour": "8e3474a4b315",
 			tests: "e6364f9cf7e6",
@@ -261,7 +262,7 @@ describe("built-in lenses", () => {
 			contracts: "61fa4ff978ef",
 			conventions: "7029ae04254f",
 			correctness: "d150d8ad1289",
-			design: "5184001f9e70",
+			design: "0bf14d21f254",
 			"removed-behaviour": "1131ab311d50",
 			tests: "aea7f643ccac",
 			"trust-boundary": "4c55e242b68f",
@@ -328,6 +329,10 @@ describe("built-in lenses", () => {
 				budget: { findings: 8, tokens: 3_000_000, tools: 250 },
 			},
 		});
+		expect(named(lenses, "design")[0]!.tools).toEqual([...lensToolNames, ...lensGraphToolNames]);
+		expect(
+			lenses.filter((lens) => lens.tools.some((tool) => tool.startsWith("graph_"))).map((lens) => lens.name),
+		).toEqual(["design"]);
 		expect(config.models.medium).toEqual({
 			model: "openai-codex/gpt-5.6-sol",
 			thinking: "high",

@@ -1660,6 +1660,7 @@ describe("lowering a severity through report_verdict", () => {
 		expect(verdict.findings.acknowledge.map((finding) => finding.id)).toEqual([findings[0]!.id]);
 		expect(verdict.blocking).toBe(false);
 		expect(resultOf(requests)).toContain("recorded verdict for c1\nlowered P1 to P2\n<untrusted-");
+		expect(resultOf(requests)).toContain('label="evidence"');
 	});
 
 	it("records the verdict and leaves the lens's severity when the fence refuses the lowering", async () => {

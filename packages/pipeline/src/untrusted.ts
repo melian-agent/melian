@@ -15,6 +15,7 @@ export type UntrustedLabel =
 	| "evidence"
 	| "findings"
 	| "callers"
+	| "graph"
 	| "standards";
 
 /**

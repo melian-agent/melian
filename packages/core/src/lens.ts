@@ -29,11 +29,14 @@ import type { LevelBand, TriageChoice } from "./triage.ts";
 const strict = { additionalProperties: false } as const;
 const text = Type.String({ minLength: 1 });
 
-/** The read-only tools a lens may list in `tools`. Every lens also gets `report_finding`, which it never lists. */
+/** The read-only tools a lens gets when it lists none in `tools`. Every lens also gets `report_finding`, which it never lists. */
 export const lensToolNames = ["read_file", "search", "list_files"] as const;
 
+/** The read-only tools over the head's Enola graph, which a lens gets only by listing them in `tools`. */
+export const lensGraphToolNames = ["graph_definitions", "graph_references", "graph_impact", "graph_callees"] as const;
+
 /** A read-only tool a lens may be offered. */
-export type LensToolName = (typeof lensToolNames)[number];
+export type LensToolName = (typeof lensToolNames)[number] | (typeof lensGraphToolNames)[number];
 
 /**
  * The JSON Schema of a {@link LensRule}. An ID is lower-case letters, digits, dots, and hyphens; the `melian/` prefix
@@ -92,7 +95,9 @@ export const lensFrontMatterSchema = Type.Object(
 		name: lensName,
 		description: Type.Optional(text),
 		tier: Type.Optional(lensTierSchema),
-		tools: Type.Optional(Type.Array(Type.Union(lensToolNames.map((tool) => Type.Literal(tool))))),
+		tools: Type.Optional(
+			Type.Array(Type.Union([...lensToolNames, ...lensGraphToolNames].map((tool) => Type.Literal(tool)))),
+		),
 		severities: Type.Optional(Type.Array(severitySchema, { minItems: 1 })),
 		rules: Type.Optional(Type.Array(lensRuleSchema, { minItems: 1 })),
 		paths: Type.Optional(Type.Array(text, { minItems: 1 })),

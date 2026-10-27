@@ -158,7 +158,7 @@ A lens is a directory holding `LENS.md`: YAML front matter between `---` lines, 
 | `name` | Must match the directory name | required |
 | `description` | One line | required, or inherited through `extends` |
 | `tier` | `light`, `medium`, or `heavy`; each level that names none runs on it | required, or inherited |
-| `tools` | Read-only tools from `lensToolNames`: `read_file`, `search`, `list_files` | all three |
+| `tools` | Read-only tools from `lensToolNames`, `read_file`, `search` and `list_files`, and from `lensGraphToolNames`, `graph_definitions`, `graph_references`, `graph_impact` and `graph_callees` | the three in `lensToolNames` |
 | `severities` | The severities the lens may report; the pipeline also accepts `melian/injection-attempt` at P1 from every lens | all five |
 | `rules` | `id` and one-line `description` for each rule the lens reports under. An ID is lower-case letters, digits, dots, and hyphens; the prefix `melian/` marks a rule Melian defines for every lens, such as `melian/injection-attempt` | required, or inherited |
 | `paths` | Globs relative to the directory holding the lens's `.melian/` or `.agents/`, normalised like a `melian.yaml`'s; `!` excludes. A glob that leaves the repository, holds braces or a character class, ends in `/`, or passes the engine's step limit is a `LensError` `invalidValue` naming the file and the glob | `**` |
@@ -852,6 +852,8 @@ A TypeBox record with a key pattern needs `additionalProperties: false` to rejec
 All Enola policy paths join analyser configuration in policy-change-review. A committed `.enola/baseline` does not.
 
 `GraphSnapshot` holds validated graph artifacts and a `GraphEntryState`. Snapshot IDs identify Enola's facts; cache keys identify inputs. Keep these separate in records.
+
+Graph-tool lists sort by name, file, numeric line and ID; equal fact identities use edge kind as a final tie-break. Impact keeps nearest depth first and sorts the whole depth before its node cap. Fact and relation order cannot decide which rows survive either bound.
 
 `EnolaFacts` reads the JSONL contract; `EnolaImpact` accepts only a successful full JSON query. Exit 2 is no answer. `GraphCoverage.compute` creates a validated per-file artifact with explicit denominators and gaps; its ID hashes its stored content. Symbols and paths remain repository data.
 

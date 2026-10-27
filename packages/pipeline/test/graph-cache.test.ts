@@ -131,6 +131,18 @@ it.each([...graphFiles, "entry.json"])("rejects byte-identical symlinked %s arti
 	expect((await cache.read(parts))?.files()).toEqual(files);
 });
 
+it("reads and verifies entries through a read-only cache and refuses stores", async () => {
+	root = await mkdtemp(join(tmpdir(), "melian-graph-read-only-"));
+	const snapshot = GraphSnapshot.create(parts, files);
+	await (await GraphCache.open(root)).store(snapshot);
+	const cache = GraphCache.openReadOnly(join(root, "."));
+	expect(cache.root).toBe(root);
+	expect((await cache.read(parts))?.files()).toEqual(files);
+	await expect(cache.store(snapshot)).rejects.toThrow("Graph cache is read-only");
+	await writeFile(join(root, "graphs", snapshot.key, "facts.jsonl"), "corrupt");
+	expect(await cache.read(parts)).toBeUndefined();
+});
+
 it("publishes once under concurrency and shares an identical tree across commits", async () => {
 	root = await mkdtemp(join(tmpdir(), "melian-graph-"));
 	const cache = await GraphCache.open(root);
