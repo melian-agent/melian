@@ -290,7 +290,13 @@ describe("triage", () => {
 			expect(reviewed.verdict.notRun).toContainEqual(
 				other === "skipped"
 					? { name: "lens.contracts", status: "skipped", reason: "triage skipped it, as its floor allows" }
-					: { name: "lens.contracts", status: "failed", level: "careful", reason: plan.refusal("heavy") },
+					: {
+							name: "lens.contracts",
+							version: lenses.find(({ name }) => name === "contracts")!.version,
+							status: "failed",
+							level: "careful",
+							reason: plan.refusal("heavy"),
+						},
 			);
 			expect(requests[correctness]).toHaveLength(1);
 			expect(requests[contracts]).toHaveLength(0);
@@ -305,7 +311,12 @@ describe("triage", () => {
 		const reviewed = await review({
 			config: { ...config, lenses: { correctness: { level: { ceiling: "quick" } } } },
 		});
-		expect(lensRecord(reviewed)).toEqual({ name: "lens.correctness", status: "ran", level: "quick" });
+		expect(lensRecord(reviewed)).toEqual({
+			name: "lens.correctness",
+			version: lenses.find(({ name }) => name === "correctness")!.version,
+			status: "ran",
+			level: "quick",
+		});
 	});
 
 	it("keeps a pull request's lenses at careful or above, and warns when a range review looks quickly everywhere", async () => {
