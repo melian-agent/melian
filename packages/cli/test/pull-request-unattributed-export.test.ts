@@ -4,6 +4,7 @@ import {
 	type ComparisonEntry,
 	ComparisonError,
 	ComparisonExport,
+	ExternalFinding,
 	PullRequestMembership,
 	pullRequestChangesetId,
 	type StoredComparison,
@@ -12,7 +13,9 @@ import {
 	CompareHarness,
 	ComparisonReader,
 	backgroundContext as context,
+	MembershipReader,
 	openSqliteStorage,
+	type PullRequestRoundHistory,
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -281,3 +284,111 @@ it("needs no git author for a membership read or ordinary refresh, and refuses e
 		{ version: 2, audit: [] },
 	]);
 });
+
+it.each(["stdout", "file"])(
+	"escapes the final JSON boundary on %s without changing reviewer or snapshot values",
+	async (destination) => {
+		const codepoints = [
+			...Array.from({ length: 32 }, (_, i) => i),
+			...Array.from({ length: 33 }, (_, i) => 0x7f + i),
+			0x061c,
+			0x200e,
+			0x200f,
+			0x2028,
+			0x2029,
+			...Array.from({ length: 5 }, (_, i) => 0x202a + i),
+			...Array.from({ length: 4 }, (_, i) => 0x2066 + i),
+		];
+		const controls = codepoints.map((code) => String.fromCodePoint(code));
+		const hostile = `raw:${controls.join("|")} literal:\\u202e quote:" slash:\\ end`;
+		const path = await storagePath(repo, changeset, io.env, true);
+		let harness = await CompareHarness.open(await openSqliteStorage(path), createFakeModels().review, changeset);
+		try {
+			const imported = ExternalFinding.importFile(
+				{
+					reviewer: { name: "claude-code" },
+					findings: [{ ref: "controls", file: "a.ts", line: 1, title: hostile, body: hostile }],
+				},
+				"controls.json",
+			);
+			await harness.importFindings(
+				{ ...revision, round: "unattributed" },
+				[{ source: `file:${hostile}`, imported }],
+				"2026-10-27T00:00:00Z",
+			);
+		} finally {
+			await harness.close();
+		}
+		const storage = await openSqliteStorage(path);
+		let expected: StoredComparison;
+		try {
+			expected = (await ComparisonReader.open(storage).read(changeset))[0]!.comparison.toJSON();
+		} finally {
+			await storage.close(context);
+		}
+		const readExport = async (json: boolean) => {
+			vi.mocked(io.stdout).mockClear();
+			const file = join(repo, json ? "controls.json" : "controls.md");
+			expect(
+				await main(
+					[
+						"compare",
+						"export",
+						"#7",
+						...(json ? ["--json"] : []),
+						...(destination === "file" ? ["--out", file] : []),
+					],
+					io,
+				),
+			).toBe(0);
+			return destination === "file" ? readFileSync(file, "utf8") : output();
+		};
+		const safeLines = (text: string) => {
+			for (const line of text.split("\n")) for (const control of controls) expect(line).not.toContain(control);
+		};
+		const before = await readExport(true);
+		safeLines(before);
+		expect(JSON.parse(before).unattributed[key]).toStrictEqual(expected!);
+		expect(before).toContain('  "unattributed": {');
+		expect(before.endsWith("\n")).toBe(true);
+		expect(await main(["compare", "#7"], io)).toBe(0);
+		const afterFirstSnapshot = await readExport(true);
+		safeLines(afterFirstSnapshot);
+		expect(JSON.parse(afterFirstSnapshot).unattributed[key]).toStrictEqual(expected!);
+
+		const metadataStorage = await openSqliteStorage(path);
+		harness = await CompareHarness.open(metadataStorage, createFakeModels().review, changeset);
+		let history: PullRequestRoundHistory;
+		try {
+			history = await MembershipReader.open(metadataStorage).history();
+			const answer = history.current()!.answer;
+			const member = {
+				id: `${changeset}.r1`,
+				base: revision.base,
+				head: revision.head,
+				status: "member" as const,
+				reason: hostile,
+			};
+			await harness.refreshMembership(answer, [member], "", "2026-10-27T01:00:00Z");
+			await harness.refreshMembership(
+				answer,
+				[{ ...member, status: "foreign" }],
+				hostile,
+				"2026-10-27T02:00:00Z",
+				true,
+			);
+			history = await MembershipReader.open(metadataStorage).history();
+		} finally {
+			await harness.close();
+		}
+		const final = await readExport(true);
+		safeLines(final);
+		const parsed = JSON.parse(final);
+		expect(parsed.unattributed[key]).toStrictEqual(expected!);
+		expect(parsed.membership).toStrictEqual(history!.current());
+		expect(parsed.history).toStrictEqual(history!.versions);
+		expect(final).toContain('  "membership": {');
+		expect(final.endsWith("\n")).toBe(true);
+		safeLines(await readExport(false));
+	},
+);

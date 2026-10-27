@@ -114,7 +114,10 @@ export class PullRequestComparison {
 		const output = options.json
 			? snapshot === undefined
 				? record
-				: `${JSON.stringify({ ...JSON.parse(record), membership: snapshot, history: history!.versions }, null, 2)}\n`
+				: `${JSON.stringify({ ...JSON.parse(record), membership: snapshot, history: history!.versions }, null, 2)
+						.split("\n")
+						.map(visibleText)
+						.join("\n")}\n`
 			: `${snapshot === undefined ? "" : `${this.render(snapshot)}\n`}${record}`;
 		if (options.out === undefined) this.io.stdout(output);
 		else {
