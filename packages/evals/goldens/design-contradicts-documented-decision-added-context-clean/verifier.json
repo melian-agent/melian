@@ -1,0 +1,13 @@
+{
+  "cdb9b63a8dbe568f": {
+    "verdict": "refuted",
+    "reason": "The base design forbids stating a fact more than once. The head states each note once and adds one line about trust, which the words do not forbid; added context is not a contradiction.",
+    "evidence": [
+      {
+        "file": "src/comment.ts",
+        "line": 4,
+        "role": "context"
+      }
+    ]
+  }
+}

@@ -31,6 +31,7 @@ export type VerificationCandidate = {
 	thinking?: ModelRoute["thinking"];
 	budget: { tokens: number; tools: number };
 	decisionsAtBase?: string;
+	designAtBase?: { sections: string; files: string };
 	// What a lowering of any claim is checked against; absent from a candidate an older Melian stored.
 	fence?: { coReported: boolean; silent: Severity[] };
 };
@@ -99,6 +100,12 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 								? []
 								: [
 										`## Decisions at base\n${quoteUntrusted("listing", candidate.decisionsAtBase, task.input.revision.nonce)}`,
+									]),
+							...(candidate.designAtBase === undefined
+								? []
+								: [
+										`## Design sections at base\n${quoteUntrusted("listing", candidate.designAtBase.sections, task.input.revision.nonce)}`,
+										`## Design files at base\n${quoteUntrusted("listing", candidate.designAtBase.files, task.input.revision.nonce)}`,
 									]),
 							...claims.map(({ label, id, source }) => {
 								const at = revisionKey(task.input.revision);

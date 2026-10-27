@@ -1,0 +1,16 @@
+src/timestamps.ts
+
+  P1 | Blocks merge | Design | Verifier confirmed | New in this change
+    Verified: faux/scripted: The cited words are in an ACTIVE base decision and say what `stamp` must return. `stamp` now returns `toLocaleString` in Sydney time, which the words forbid, and no more specific design rule names it.
+  `stamp` returns a Sydney local-time string where the API promises UTC ISO 8601.
+    Why here: The base decision says: "Every timestamp the API returns is a UTC ISO 8601 string ending in `Z`". The base returned `toISOString()`; the head returns `toLocaleString` in one time zone.
+    Failure scenario: The API returns events at 2026-10-30T21:00:00Z and 2026-10-31T22:00:00Z. The head stamps them `31/10/2026, 8:00:00 am` and `01/11/2026, 9:00:00 am`, with no `Z`. A client that sorts the strings as text, as the decision says clients do, puts the earlier event second.
+    Evidence:
+      cause: src/timestamps.ts:2
+          return at.toLocaleString("en-AU", { timeZone: "Australia/Sydney" });
+      context: docs/decisions/2026-10-01-utc-timestamps.md:3 at base
+        Choice: Every timestamp the API returns is a UTC ISO 8601 string ending in `Z`, because clients in several time zones sort and compare them as text.
+    What to do: Return `at.toISOString()`, and format local time in the client. Add a test that asserts `stamp` ends in `Z`.
+    Rule contradicts-documented-decision | Line 2 | Status new
+
+1 finding in 1 file.
