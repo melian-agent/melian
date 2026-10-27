@@ -233,6 +233,75 @@ describe("triage", () => {
 		},
 	);
 
+	it.each(["skipped", "refused"] as const)(
+		"omits the whole-review quick caveat when another selected lens is %s",
+		async (other) => {
+			const contracts = "You are the contracts reviewer";
+			const decider = new RecordedDecider({
+				triage: {
+					version: "1",
+					answers: {
+						correctness: { distribution: { quick: 1 } },
+						contracts: { distribution: { [other === "skipped" ? "skip" : "careful"]: 1 } },
+					},
+				},
+			});
+			const planned: MelianConfig = {
+				...config,
+				tiers: { ...config.tiers, full: ["standard", "lens.contracts"] },
+				lenses: { contracts: { level: { floor: "skip" } } },
+				models: {
+					...config.models,
+					...(other === "refused" ? { heavy: { accept: ["nowhere/opus"], unavailable: "fail" as const } } : {}),
+				},
+			};
+			const { catalog, credentials } = await planInputs(fake.review);
+			const plan = ReviewPlan.resolve({
+				config: planned,
+				routes: { committed: planned.models, overridden: {}, lensTiers: {}, retiered: {} },
+				catalog,
+				credentials,
+				lenses,
+				checks: ["lens.correctness", "lens.contracts"],
+			});
+			await open(decider);
+			const requests = scriptConversations(fake, [
+				{ match: correctness, replies: [done] },
+				{ match: contracts, replies: [done] },
+			]);
+			const reviewed = await reviewChangeset({
+				harness,
+				changeset: await Changeset.resolve(repo, "main...feature"),
+				config: planned,
+				lenses,
+				standards: [],
+				models: fake.review,
+				checks: ran,
+				decider,
+				plan,
+			});
+			expect(lensRecord(reviewed)).toMatchObject({ status: "ran", level: "quick" });
+			expect(reviewed.verdict.notRun).toContainEqual(
+				other === "skipped"
+					? { name: "lens.contracts", status: "skipped", reason: "triage skipped it, as its floor allows" }
+					: { name: "lens.contracts", status: "failed", level: "careful", reason: plan.refusal("heavy") },
+			);
+			expect(requests[correctness]).toHaveLength(1);
+			expect(requests[contracts]).toHaveLength(0);
+			expect(lensRecord(reviewed)!.reason ?? "").not.toContain(lightly);
+			expect(lensRecord(reviewed)!.caveats).toBeUndefined();
+		},
+	);
+
+	it("omits the quick caveat when a policy ceiling chooses quick without triage", async () => {
+		await open();
+		scriptConversations(fake, [{ match: correctness, replies: [done] }]);
+		const reviewed = await review({
+			config: { ...config, lenses: { correctness: { level: { ceiling: "quick" } } } },
+		});
+		expect(lensRecord(reviewed)).toEqual({ name: "lens.correctness", status: "ran", level: "quick" });
+	});
+
 	it("keeps a pull request's lenses at careful or above, and warns when a range review looks quickly everywhere", async () => {
 		const decider = choosing("quick");
 		await open(decider);

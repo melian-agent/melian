@@ -1926,7 +1926,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	const settling = lenses.map((lens) => settle(stored.get(lens.key) ?? lens, lensResult, rule));
 	// The change triage reads can steer it, so a review in which every lens stayed at quick says so.
 	const light =
-		triaged.decision !== undefined && settling.length > 0 && settling.every(({ run }) => run.level === "quick")
+		triaged.decision !== undefined &&
+		settling.length === selected.length &&
+		settling.every(({ run }) => run.level === "quick")
 			? [lightTriage]
 			: [];
 	spans.step("callers.coverage");
