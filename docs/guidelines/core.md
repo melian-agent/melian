@@ -702,6 +702,10 @@ The terminal, review body and ledger state the mapping and name `melian dismiss 
 
 `src/comparison.ts` holds the shape of another reviewer's finding and the comparison of those findings with Melian's, as [design.md](../design.md#comparison-with-external-reviewers) sets out. The pipeline stores a comparison in the changeset's storage; the github package and the pipeline import findings into it; core decides what matches.
 
+### Pull-request membership
+
+`PullRequestMembership.open(repoRoot, answer)` and `classify(candidate)` implement the first-applicable rules in [the rounds decision](../decisions/2026-10-18-compare-rounds-exact-rule.md). Stored pull-request provenance is exclusive. Bound publication ownership follows it. Range candidates require a GitHub-named head and an exact merge base against the current base, or the merge commit’s first parent. Every merge base must have the same tree. Associations with another pull request make an exact member ambiguous. The Git reader uses `src/git.ts` for commit existence, targeted fetches, merge bases, trees and commit dates. A missing merge commit is fetched before reading its parent. Missing legacy dates never invalidate ownership. GitHub’s commit cap, different-tree merge bases and fast-forward merges raise `MembershipError`.
+
 ### The stored shape
 
 The pipeline's comparison document is at version 2. Its state is `{ legacy, comparisons, unattributed }`. `comparisons` keys a `StoredComparison` by the full round ID of the review it compares against, `<changeset>.<round>`. `unattributed` holds version-1 records, still keyed by `revisionKey`, until a writer can attribute them to a round. `legacy` marks the revisions whose pending record keeps its legacy round ID, as [the pipeline guideline](pipeline.md#comparing-with-external-reviewers) sets out. Each `StoredComparison` holds:
