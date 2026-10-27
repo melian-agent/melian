@@ -1,3 +1,4 @@
+import { Revision } from "./changeset.ts";
 import type { StoredComparisonAdjudication } from "./comparison-adjudication.ts";
 import type { ComparisonEntry } from "./comparison-set.ts";
 import { ComparisonSet, markdownText } from "./comparison-set.ts";
@@ -22,10 +23,7 @@ export class ComparisonExport {
 				comparisons: Object.fromEntries(
 					this.entries
 						.filter((entry) => entry.unattributed === undefined)
-						.map(({ comparison, round }) => [
-							round ?? `${comparison.base}..${comparison.head}`,
-							comparison.toJSON(),
-						]),
+						.map(({ comparison, round }) => [round ?? Revision.key(comparison), comparison.toJSON()]),
 				),
 				unattributed: Object.fromEntries(
 					this.entries
@@ -67,7 +65,7 @@ export class ComparisonExport {
 				unattributed !== undefined
 					? "unattributed comparison"
 					: round === undefined
-						? `revision ${comparison.base.slice(0, 12)}..${comparison.head.slice(0, 12)}`
+						? `revision ${Revision.display(comparison)}`
 						: `round ${markdownText(round)}`;
 			const groups = new Map<string, ReturnType<typeof comparison.externalFindings>>();
 			for (const reviewer of Object.values(comparison.importsBySource()).flatMap((each) => each.reviewers ?? [])) {

@@ -1,6 +1,7 @@
 import { mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { Revision } from "@melian-agent/core";
 import {
 	backgroundContext as context,
 	createRegistry,
@@ -8,7 +9,6 @@ import {
 	type Harness,
 	openHarness,
 	openSqliteStorage,
-	revisionKey,
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, expect, it } from "vitest";
@@ -50,7 +50,7 @@ it.each([1, 2])("reopens a version-%i review index without rewriting its stale s
 	opened.push(second);
 	const migrated = await second.snapshot(ReviewIndex, root.id, context);
 	expect(migrated).toEqual(recorded.index);
-	const key = version === 1 ? recorded.revision.head : revisionKey(recorded.revision);
+	const key = version === 1 ? recorded.revision.head : Revision.key(recorded.revision);
 	expect(Object.keys(migrated!.reviews)).toEqual([key]);
 	expect(migrated!.reviews[key]!.lenses).toHaveLength(1);
 	expect(migrated!.reviews[key]!.lenses[0]).toMatch(/^correctness@[^@\s]+(?: on \S+)?$/);

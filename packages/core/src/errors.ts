@@ -7,7 +7,8 @@ export type ChangesetErrorCode =
 	| "dirtyWorktree"
 	| "gitUnavailable"
 	| "gitTooOld"
-	| "gitFailed";
+	| "gitFailed"
+	| "unknownScope";
 
 /** A changeset could not be resolved. `code` says why; `ref` and `paths` carry the offending input where there is one. */
 export class ChangesetError extends Error {

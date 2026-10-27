@@ -29,7 +29,7 @@ export type CallerRecord = {
 
 export type ReviewIndexState = { reviews: Record<string, IndexedReview> };
 
-// Which tasks reviewed each revision, keyed by `revisionKey` of its base and head, and with which lenses. Kept on the
+// Which tasks reviewed each revision, keyed by `Revision.key` of its base and head, and with which lenses. Kept on the
 // root conversation, so a later call for the same revision and lenses finds the tasks, whether they finished, are
 // running, or crashed. A head retargeted onto another base is another revision, with tasks of its own.
 // Version 3 keys each selected lens by its route too. An entry stored before reads unchanged and never matches a

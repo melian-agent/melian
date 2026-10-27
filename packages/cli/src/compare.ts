@@ -9,6 +9,7 @@ import {
 	type ExternalImporter,
 	Lens,
 	LensError,
+	Revision,
 	type StoredComparisonAdjudication,
 	type Verdict,
 	visibleText,
@@ -23,7 +24,6 @@ import {
 	type Round,
 	RoundReader,
 	readVerdict,
-	revisionKey,
 } from "@melian-agent/pipeline";
 import { gitAuthor, type Io, StoredReview, shellQuote, short } from "./commands.ts";
 import { idleModels, isScripted } from "./models.ts";
@@ -161,7 +161,7 @@ export async function compare(
 		const verdict =
 			round === "unattributed"
 				? undefined
-				: (frozen ?? (await readVerdict(harness.harness, root, revisionKey(revision), context)));
+				: (frozen ?? (await readVerdict(harness.harness, root, Revision.key(revision), context)));
 		const external = comparison.externalFindings().length;
 		const melian = comparison.melianFindings().length;
 		io.stdout(
@@ -205,7 +205,7 @@ export async function matchByHand(
 		const verdict =
 			round === "unattributed"
 				? undefined
-				: (frozen ?? (await readVerdict(harness.harness, root, revisionKey(revision), context)));
+				: (frozen ?? (await readVerdict(harness.harness, root, Revision.key(revision), context)));
 		io.stdout(comparison.render(verdict));
 		return 0;
 	} finally {

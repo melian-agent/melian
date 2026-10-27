@@ -12,6 +12,7 @@ import {
 	type MelianConfig,
 	Rendering,
 	ReviewPlan,
+	Revision,
 	type ScrutinyLevel,
 } from "@melian-agent/core";
 import { FallbackDecider, RecordedDecider } from "@melian-agent/decisions";
@@ -36,7 +37,6 @@ import {
 	readProvenance,
 	readRecordedDecision,
 	reviewChangeset,
-	revisionKey,
 	type SubmissionId,
 	type TaskId,
 	upsertFinding,
@@ -143,7 +143,7 @@ async function review(
 }
 
 function revision(): string {
-	return revisionKey({
+	return Revision.key({
 		base: gitIn(repo, "merge-base", "main", "feature"),
 		head: gitIn(repo, "rev-parse", "feature"),
 	});
@@ -2288,7 +2288,7 @@ describe("reviews recorded before levels joined the keys", () => {
 					expect(settled.input).toEqual(input);
 					expect(settled.input).not.toHaveProperty("lenses.0.standards");
 				}
-				const findings = await readFindings(current, root.id, revisionKey({ base, head }), context);
+				const findings = await readFindings(current, root.id, Revision.key({ base, head }), context);
 				expect(findings.map((finding) => finding.properties.source)).toEqual([
 					{ check: "lens.correctness", version: `${lens.version}${version === 1 ? "" : "@careful"}` },
 				]);

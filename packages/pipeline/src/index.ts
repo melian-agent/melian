@@ -51,7 +51,6 @@ export {
 	type ReadFindingsOptions,
 	readFindings,
 	recordRevision,
-	revisionKey,
 	upsertFinding,
 } from "./findings.ts";
 export * from "./harness.ts";

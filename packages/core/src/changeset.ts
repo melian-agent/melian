@@ -197,6 +197,22 @@ function overlaps(start: number, end: number, from: number, count: number): bool
 	return count > 0 && start < from + count && end >= from;
 }
 
+/** What a round of review covers of a revision. The one scope today is the whole diff. */
+export type RevisionScope = "diff";
+
+/** The two commits a revision runs between, as a stored record names them. */
+export interface RevisionSides {
+	readonly base: string;
+	readonly head: string;
+}
+
+/** A revision key read back by {@link Revision.parseKey}. */
+export interface RevisionKeyParts extends RevisionSides {
+	readonly scope: RevisionScope;
+}
+
+const scopes: readonly string[] = ["diff"] satisfies readonly RevisionScope[];
+
 /** A {@link Revision} as JSON. */
 export interface RevisionFields {
 	readonly head: string;
@@ -244,6 +260,34 @@ export class Revision {
 		const policyFiles =
 			fields.policyFiles ?? [...new Set(Revision.#touched(fields.files).filter(isPolicyFile))].sort();
 		return new Revision({ head: fields.head, base: fields.base, files: fields.files, policyFiles });
+	}
+
+	/**
+	 * The key every document stores a reviewed revision under, and the one place a key is built: `<base>..<head>` for
+	 * the whole diff. A pull request retargeted onto a new base keeps its head but has another diff, so it is another
+	 * revision, reviewed afresh. Throws `ChangesetError` `unknownScope` for a scope it does not know, so a stored or
+	 * typed-around scope never makes a key of its own.
+	 */
+	static key(sides: RevisionSides, scope: RevisionScope = "diff"): string {
+		if (!scopes.includes(scope)) {
+			throw new ChangesetError(
+				"unknownScope",
+				`a revision key has no scope "${String(scope)}"; the one scope is "diff"`,
+			);
+		}
+		return [sides.base, sides.head].join("..");
+	}
+
+	/** The sides and scope of a key {@link Revision.key} built, or `undefined` for text that is not one. */
+	static parseKey(key: string): RevisionKeyParts | undefined {
+		const sides = key.split("..");
+		if (sides.length !== 2 || sides.some((side) => side === "" || side.startsWith("."))) return undefined;
+		return { base: sides[0]!, head: sides[1]!, scope: "diff" };
+	}
+
+	/** A revision for a reader: each side cut to its first twelve characters, as `<base>..<head>`. */
+	static display(sides: RevisionSides): string {
+		return Revision.key({ base: sides.base.slice(0, 12), head: sides.head.slice(0, 12) });
 	}
 
 	static #touched(files: readonly ChangedFile[]): string[] {

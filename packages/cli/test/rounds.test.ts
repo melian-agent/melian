@@ -9,6 +9,7 @@ import {
 	loadConfig,
 	pullRequestChangesetId,
 	ReviewPlan,
+	Revision,
 	type RevisionFields,
 } from "@melian-agent/core";
 import {
@@ -20,7 +21,6 @@ import {
 	openSqliteStorage,
 	RoundReader,
 	reviewChangeset,
-	revisionKey,
 	upsertFinding,
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
@@ -77,7 +77,7 @@ beforeEach(async () => {
 						explanation: { what: "wrong", whyHere: "here", whatToDo: "fix" },
 						source: { check: "static.mutation", version: "1" },
 					}),
-					revisionKey(changeset.revision),
+					Revision.key(changeset.revision),
 				),
 			context,
 		);
@@ -98,7 +98,7 @@ beforeEach(async () => {
 						explanation: { what: "small", whyHere: "here", whatToDo: "fix" },
 						source: { check: "static.mutation", version: "1" },
 					}),
-					revisionKey(changeset.revision),
+					Revision.key(changeset.revision),
 				),
 			context,
 		);
@@ -159,7 +159,7 @@ it("keeps r1's passing verdict after r2 blocks the same revision", async () => {
 						explanation: { what: "wrong", whyHere: "here", whatToDo: "fix" },
 						source: { check: "static.mutation", version: "1" },
 					}),
-					revisionKey(changeset.revision),
+					Revision.key(changeset.revision),
 				),
 			context,
 		);
@@ -195,6 +195,30 @@ it.each([false, true])("lists the range's rounds (json=%s)", async (json) => {
 		});
 });
 
+it.each(["main", "rounds-v1"])("displays main's head-only key unchanged after a %s reopen", async (name) => {
+	const fixture = new URL("../../pipeline/test/fixtures/rounds-head-only/", import.meta.url);
+	const recorded = JSON.parse(readFileSync(new URL("recorded.json", fixture), "utf8")) as { key: string };
+	const path = await storagePath(repo, changeset.id, io.env, false);
+	copyFileSync(new URL(`${name}.sqlite`, fixture), path);
+	gitIn(repo, "fetch", new URL("repo.bundle", fixture).pathname, "refs/heads/feature:refs/heads/legacy-head");
+	const date = new Date(Number(gitIn(repo, "show", "-s", "--format=%ct", recorded.key)) * 1000).toISOString();
+	expect(await main(["findings", "main...feature", "--rounds"], io)).toBe(0);
+	expect(io.stdout.mock.calls.join("")).toContain(`  ${recorded.key}  passed  `);
+	io.stdout.mockClear();
+	expect(await main(["findings", "main...feature", "--rounds", "--json"], io)).toBe(0);
+	const [round] = JSON.parse(io.stdout.mock.calls.join(""));
+	expect(round).toEqual({
+		id: expect.stringMatching(/\.k[0-9a-f]{16}$/),
+		base: "",
+		head: recorded.key,
+		date,
+		status: "passed",
+	});
+	io.stdout.mockClear();
+	expect(await main(["findings", "main...feature", "--rounds"], io)).toBe(0);
+	expect(io.stdout.mock.calls.join("")).toBe(`${round.id}  ${recorded.key}  passed  ${date}\n`);
+});
+
 it("lists main's legacy round before a minted undecided round and asks git for its head date", async () => {
 	const path = await storagePath(repo, changeset.id, io.env, false);
 	copyFileSync(new URL("../../pipeline/test/fixtures/rounds-main/decided.sqlite", import.meta.url), path);
@@ -213,7 +237,7 @@ it("lists main's legacy round before a minted undecided round and asks git for i
 	});
 	const root = await harness.root(context);
 	await root.commit(
-		(tx) => new RoundWriter(tx, root.id).mint(revisionKey(changeset.revision), 999, "2020-01-01T00:00:00Z"),
+		(tx) => new RoundWriter(tx, root.id).mint(Revision.key(changeset.revision), 999, "2020-01-01T00:00:00Z"),
 		context,
 	);
 	await harness.close(context);
@@ -227,6 +251,16 @@ it("lists main's legacy round before a minted undecided round and asks git for i
 	);
 	expect(output[1]).toMatchObject({ id: `${changeset.id}.r1`, status: "undecided" });
 	expect(git).toHaveBeenCalledWith(repo, ["show", "-s", "--format=%ct", oldHead, "--"]);
+	io.stdout.mockClear();
+	expect(await main(["findings", "main...feature", "--rounds"], io)).toBe(0);
+	expect(io.stdout.mock.calls.join("")).toBe(
+		output
+			.map(
+				(round: { id: string; base: string; head: string; status: string; date: string }) =>
+					`${round.id}  ${Revision.key(round)}  ${round.status}  ${round.date}\n`,
+			)
+			.join(""),
+	);
 	io.stdout.mockClear();
 	expect(await main(["findings", "--round", output[0].id, "--json"], io)).toBe(0);
 	expect(JSON.parse(io.stdout.mock.calls.join("")).status).toBe("passed");
@@ -410,8 +444,8 @@ it("refuses missing and undecided rounds even when an earlier frozen verdict exi
 	});
 	const root = await harness.root(context);
 	await root.commit(async (tx) => {
-		await new RoundWriter(tx, root.id).mint(revisionKey(changeset.revision), 999, "2026-10-18T00:00:00Z");
-		delete (await tx.doc(ReviewIndex, root.id)).reviews[revisionKey(changeset.revision)];
+		await new RoundWriter(tx, root.id).mint(Revision.key(changeset.revision), 999, "2026-10-18T00:00:00Z");
+		delete (await tx.doc(ReviewIndex, root.id)).reviews[Revision.key(changeset.revision)];
 	}, context);
 	await harness.close(context);
 	for (const [suffix, message] of [
@@ -438,7 +472,7 @@ it.each([false, true])("lists an unreadable legacy head last with an unknown dat
 	try {
 		const root = await harness.root(context);
 		await root.commit(
-			(tx) => new RoundWriter(tx, root.id).mint(revisionKey(changeset.revision), 999, "2020-01-01T00:00:00Z"),
+			(tx) => new RoundWriter(tx, root.id).mint(Revision.key(changeset.revision), 999, "2020-01-01T00:00:00Z"),
 			context,
 		);
 	} finally {
@@ -595,7 +629,7 @@ it.each(["import", "match", "unmatch", "adjudicate"])(
 		try {
 			const root = await pending.harness.root(context);
 			await root.commit(
-				(tx) => new RoundWriter(tx, root.id).mint(revisionKey(changeset.revision), 999, "later"),
+				(tx) => new RoundWriter(tx, root.id).mint(Revision.key(changeset.revision), 999, "later"),
 				context,
 			);
 		} finally {
@@ -721,7 +755,7 @@ it.each(["import", "match", "unmatch", "adjudicate"])(
 			try {
 				const entries = await ComparisonReader.open(storage).read(changeset.id);
 				expect(entries).toHaveLength(1);
-				expect(entries[0]!.unattributed).toBe(revisionKey(stored.revision));
+				expect(entries[0]!.unattributed).toBe(Revision.key(stored.revision));
 				if (operation === "adjudicate")
 					expect(entries[0]!.comparison.adjudication(external)?.history).toHaveLength(2);
 			} finally {
@@ -754,7 +788,7 @@ it.each(["match", "unmatch"])(
 			const root = await harness.harness.root(context);
 			await root.commit(async (tx) => {
 				const document = await tx.doc(ComparisonDocument, root.id);
-				document.unattributed[revisionKey(changeset.revision)] = comparison.toJSON();
+				document.unattributed[Revision.key(changeset.revision)] = comparison.toJSON();
 				document.comparisons = {};
 			}, context);
 		} finally {

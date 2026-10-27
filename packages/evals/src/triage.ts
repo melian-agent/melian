@@ -10,6 +10,7 @@ import {
 	type ModelRoute,
 	parseModelReference,
 	type QuestionSet,
+	Revision,
 	type ScrutinyLevel,
 	scrutinyLevels,
 	type TextModel,
@@ -26,7 +27,6 @@ import {
 	RouteTextModel,
 	readRecordedDecision,
 	reviewChangeset,
-	revisionKey,
 	StageTelemetry,
 	TelemetryReader,
 } from "@melian-agent/pipeline";
@@ -181,7 +181,7 @@ export async function runTriageGolden(
 				const recorded = await readRecordedDecision(
 					reviewHarness.harness,
 					root.id,
-					revisionKey(changeset.revision),
+					Revision.key(changeset.revision),
 					triageQuestionSet.name,
 					backgroundContext,
 				);
@@ -192,9 +192,9 @@ export async function runTriageGolden(
 				chosen.push(
 					Object.fromEntries(wanted.map((lens) => [lens, recorded?.decision?.chosen(lens) ?? "unanswered"])),
 				);
-				record?.(await TelemetryReader.open(storage).read(revisionKey(changeset.revision)));
+				record?.(await TelemetryReader.open(storage).read(Revision.key(changeset.revision)));
 			} catch (error) {
-				throw new GoldenRunError(error, await TelemetryReader.open(storage).read(revisionKey(changeset.revision)));
+				throw new GoldenRunError(error, await TelemetryReader.open(storage).read(Revision.key(changeset.revision)));
 			} finally {
 				await reviewHarness.close(backgroundContext);
 			}

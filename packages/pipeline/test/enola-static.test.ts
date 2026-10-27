@@ -10,6 +10,7 @@ import {
 	Lens,
 	loadConfig,
 	ReviewCoverage,
+	Revision,
 	staticFindings,
 	ToolManifest,
 } from "@melian-agent/core";
@@ -27,7 +28,6 @@ import {
 	PrepareSpans,
 	readFindings,
 	reviewChangeset,
-	revisionKey,
 	runChecks,
 	runStaticTool,
 	ToolProvisioning,
@@ -492,7 +492,7 @@ describe("static.enola", { timeout: 60_000 }, () => {
 			const record = result.records[0];
 			if (record?.status !== "ran") throw new Error("Enola did not run");
 			expect(record.snapshots?.map((snapshot) => snapshot.commit)).toEqual([base, head]);
-			const findings = await readFindings(harness, root.id, revisionKey({ base, head }), context);
+			const findings = await readFindings(harness, root.id, Revision.key({ base, head }), context);
 			expect(findings).toEqual([
 				expect.objectContaining({
 					ruleId: "enola/constraints/core-layer",

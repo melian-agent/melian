@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
-import { Changeset, loadConfig, mutationSkips, type RepositorySource } from "@melian-agent/core";
+import { Changeset, loadConfig, mutationSkips, type RepositorySource, Revision } from "@melian-agent/core";
 import {
 	checksExtension,
 	backgroundContext as context,
@@ -16,7 +16,6 @@ import {
 	openHarness,
 	openSqliteStorage,
 	readFindings,
-	revisionKey,
 	runChecks,
 	type Storage,
 	type TaskId,
@@ -221,13 +220,13 @@ describe("the authority over a revision's mutation check", { timeout: 120_000 },
 		const request = await input(base, head, root.id, trusted);
 		const first = await runChecks(harness, request, context);
 		await runChecks(harness, { ...request, writer: revoked }, context);
-		expect(await readFindings(harness, root.id, revisionKey({ base, head }), context)).toEqual([]);
+		expect(await readFindings(harness, root.id, Revision.key({ base, head }), context)).toEqual([]);
 		vi.spyOn(harness, "inspect").mockRejectedValueOnce(new Error("interrupted takeover"));
 		await expect(runChecks(harness, request, context)).rejects.toThrow("interrupted takeover");
 		const retry = await runChecks(harness, request, context);
 		expect(retry.identity.task).not.toBe(first.identity.task);
 		expect(runs()).toBe(2);
-		expect(await readFindings(harness, root.id, revisionKey({ base, head }), context)).toHaveLength(1);
+		expect(await readFindings(harness, root.id, Revision.key({ base, head }), context)).toHaveLength(1);
 	});
 
 	it.each(["package-lock.json", "@stryker-mutator/core", "@stryker-mutator/vitest-runner", "vitest"])(
@@ -351,7 +350,7 @@ echo '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Biome","version":"2.
 				cause: "headNotAllowed",
 			},
 		]);
-		expect(await readFindings(harness, root.id, revisionKey({ base, head }), context)).toEqual([]);
+		expect(await readFindings(harness, root.id, Revision.key({ base, head }), context)).toEqual([]);
 		expect(await liveChecks(harness)).toEqual([]);
 		expect(await outcomeOf(harness, pending!.record.id)).toEqual({ status: "aborted" });
 		expect(runs()).toBe(0);
@@ -377,7 +376,7 @@ echo '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Biome","version":"2.
 		expect(abort.mock.calls.map(([id]) => id)).toContain(pending!.record.id);
 		expect(await outcomeOf(harness, pending!.record.id)).toEqual({ status: "aborted" });
 		expect(runs()).toBe(0);
-		expect(await readFindings(harness, root.id, revisionKey({ base, head }), context)).toEqual([]);
+		expect(await readFindings(harness, root.id, Revision.key({ base, head }), context)).toEqual([]);
 	});
 
 	it("keeps retirement durable across a crash before the pending task is aborted", async () => {
@@ -404,7 +403,7 @@ echo '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Biome","version":"2.
 		const reopened = await openOn(await openSqliteStorage(database));
 		expect(await outcomeOf(reopened.harness, pending!.record.id)).toEqual({ status: "aborted" });
 		expect(runs()).toBe(0);
-		expect(await readFindings(reopened.harness, reopened.root.id, revisionKey({ base, head }), context)).toEqual([]);
+		expect(await readFindings(reopened.harness, reopened.root.id, Revision.key({ base, head }), context)).toEqual([]);
 	});
 
 	it("keeps A's old child retired when B crashes before abort and A takes ownership again", async () => {
@@ -426,7 +425,7 @@ echo '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Biome","version":"2.
 		expect(resumed.records).toMatchObject([{ name: "static.mutation", status: "ran" }]);
 		expect(runs()).toBe(1);
 		const owners = (await harness.snapshot(ChecksDocument, root.id, context))!.owners;
-		expect(owners![revisionKey({ base, head })]).toBe(
+		expect(owners![Revision.key({ base, head })]).toBe(
 			`${base} ${head} ${resumed.identity.tier} ${resumed.identity.policy} ${resumed.identity.task}`,
 		);
 		await harness.close(context);
@@ -448,7 +447,7 @@ echo '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Biome","version":"2.
 		const result = await runChecks(harness, await input(base, head, root.id, trusted), context);
 		expect(result.records).toMatchObject([{ name: "static.mutation", status: "ran" }]);
 		const owners = (await harness.snapshot(ChecksDocument, root.id, context))!.owners;
-		expect(owners![revisionKey({ base, head })]).toBe(
+		expect(owners![Revision.key({ base, head })]).toBe(
 			`${base} ${head} ${result.identity.tier} ${result.identity.policy} ${result.identity.task}`,
 		);
 		expect(runs()).toBe(1);
@@ -576,7 +575,7 @@ echo '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Biome","version":"2.
 		const run = await runChecks(harness, await input(base, head, root.id, trusted), context);
 		expect(run.records).toMatchObject([{ name: "static.mutation", status: "ran", findings: 1 }]);
 		expect(runs()).toBe(1);
-		const [finding] = await readFindings(harness, root.id, revisionKey({ base, head }), context);
+		const [finding] = await readFindings(harness, root.id, Revision.key({ base, head }), context);
 		expect(finding).toMatchObject({ ruleId: "mutation/untested-behaviour" });
 	});
 
@@ -600,7 +599,7 @@ echo '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Biome","version":"2.
 		const kills = fakeProcesses(alive.map((entry) => ({ ...entry })));
 		await root.commit(async (tx) => {
 			const document = await tx.doc(ChecksDocument, root.id);
-			document.owners = { [revisionKey({ base, head })]: "a newer review of this revision" };
+			document.owners = { [Revision.key({ base, head })]: "a newer review of this revision" };
 		}, context);
 		expect(await outcomeOf(harness, pending!.record.id)).toEqual({ status: "aborted" });
 		expect(kills).toEqual([
@@ -609,7 +608,7 @@ echo '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Biome","version":"2.
 		]);
 		expect((await harness.snapshot(MutationProcesses, root.id, context))!.trees).toEqual({});
 		expect(runs()).toBe(0);
-		expect(await readFindings(harness, root.id, revisionKey({ base, head }), context)).toEqual([]);
+		expect(await readFindings(harness, root.id, Revision.key({ base, head }), context)).toEqual([]);
 	});
 
 	it("runs the task of a document an earlier build wrote, which records no owner and retires no task", async () => {
@@ -636,12 +635,12 @@ echo '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Biome","version":"2.
 		const [running] = await liveChecks(harness);
 		await root.commit(async (tx) => {
 			const document = await tx.doc(ChecksDocument, root.id);
-			document.owners = { [revisionKey({ base, head })]: "a newer review of this revision" };
+			document.owners = { [Revision.key({ base, head })]: "a newer review of this revision" };
 		}, context);
 		writeFileSync(join(artifacts, "release"), "");
 		await run.catch(() => undefined);
 		expect(await outcomeOf(harness, running!.record.id)).toEqual({ status: "aborted" });
-		expect(await readFindings(harness, root.id, revisionKey({ base, head }), context)).toEqual([]);
+		expect(await readFindings(harness, root.id, Revision.key({ base, head }), context)).toEqual([]);
 		expect(runs()).toBe(1);
 		expect(published()).toEqual([]);
 	});
@@ -673,7 +672,7 @@ echo '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Biome","version":"2.
 		expect(outcome).toBe("settled");
 		expect((await first).records).toMatchObject([{ name: "static.mutation", status: "failed", reason: "aborted" }]);
 		expect(await outcomeOf(harness, running!.record.id)).toEqual({ status: "aborted" });
-		expect(await readFindings(harness, root.id, revisionKey({ base, head }), context)).toEqual([]);
+		expect(await readFindings(harness, root.id, Revision.key({ base, head }), context)).toEqual([]);
 	});
 
 	it("retires a running mutation check when the new tier omits it", async () => {
@@ -702,6 +701,6 @@ echo '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Biome","version":"2.
 		expect((await mutation).records).toMatchObject([
 			{ name: "static.mutation", status: "failed", reason: "aborted" },
 		]);
-		expect(await readFindings(harness, root.id, revisionKey({ base, head }), context)).toEqual([]);
+		expect(await readFindings(harness, root.id, Revision.key({ base, head }), context)).toEqual([]);
 	});
 });
