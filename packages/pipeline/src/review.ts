@@ -866,14 +866,14 @@ function planned(options: ReviewOptions): ReviewOptions {
 function ranOn(
 	lenses: readonly LensRun[],
 	result: LensResult | undefined,
-): Map<string, { scope: string; level: ScrutinyLevel; model: string }[]> {
-	const ran = new Map<string, { scope: string; level: ScrutinyLevel; model: string }[]>();
+): Map<string, { scope: string; version: string; level: ScrutinyLevel; model: string }[]> {
+	const ran = new Map<string, { scope: string; version: string; level: ScrutinyLevel; model: string }[]>();
 	for (const lens of lenses) {
 		const outcome = result?.[lens.key];
 		if (outcome?.status !== "done" || outcome.model === undefined) continue;
 		ran.set(lens.name, [
 			...(ran.get(lens.name) ?? []),
-			{ scope: lens.coverage.scope, level: lens.level, model: outcome.model },
+			{ scope: lens.coverage.scope, version: lens.version, level: lens.level, model: outcome.model },
 		]);
 	}
 	return ran;
@@ -1266,7 +1266,7 @@ function lensCheck(
 	caveats: readonly string[],
 ): CheckRecord {
 	const record = lensRecord(lens, outcome, completed, notes, handedBy);
-	return caveats.length === 0 ? record : { ...record, caveats: [...caveats] };
+	return { ...record, version: lens.version, ...(caveats.length === 0 ? {} : { caveats: [...caveats] }) };
 }
 
 function lensRecord(
@@ -1720,9 +1720,16 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		const { refusal: reason, lineage } = plan.judge(lens.name, level, undefined, lens.scope);
 		if (reason === undefined) continue;
 		refused.add(lens);
-		if (refusals.has(lens.name)) continue;
+		if (refusals.has(`${lens.name}@${lens.version}`)) continue;
 		const name = `lens.${lens.name}`;
-		refusals.set(lens.name, { name, status: "failed", level, reason, ...(lineage === undefined ? {} : { lineage }) });
+		refusals.set(`${lens.name}@${lens.version}`, {
+			name,
+			version: lens.version,
+			status: "failed",
+			level,
+			reason,
+			...(lineage === undefined ? {} : { lineage }),
+		});
 	}
 	// A lens triage skipped or the plan refused is not running, so no lens hands it a defect.
 	const running = covering.filter(({ lens }) => choices.get(lens) !== "skip" && !refused.has(lens));

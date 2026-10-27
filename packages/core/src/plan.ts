@@ -520,13 +520,18 @@ export class ReviewPlan {
 	/**
 	 * `records` with each lens's lineage added, judged on the model it finished on, from `ranOn`, each variant of a lens
 	 * name by its scope and level, or the first of its route. A lens that finished on a model its policy refuses, such as a
-	 * fallback outside `accept`, records `failed`, since its result cannot count; so does a lens of which any variant at that level did.
+	 * fallback outside `accept`, records `failed`, since its result cannot count. A versioned record matches only its own variant.
 	 */
 	mark(
 		records: readonly CheckRecord[],
 		ranOn: ReadonlyMap<
 			string,
-			readonly { readonly scope: string; readonly level: ScrutinyLevel; readonly model: string }[]
+			readonly {
+				readonly scope: string;
+				readonly version?: string;
+				readonly level: ScrutinyLevel;
+				readonly model: string;
+			}[]
 		> = new Map(),
 	): CheckRecord[] {
 		return records.map((record) => {
@@ -534,7 +539,10 @@ export class ReviewPlan {
 				return record;
 			const name = record.name.slice("lens.".length);
 			const { level } = record;
-			const ran = (ranOn.get(name) ?? []).filter((variant) => variant.level === level);
+			const ran = (ranOn.get(name) ?? []).filter(
+				(variant) =>
+					variant.level === level && (record.version === undefined || variant.version === record.version),
+			);
 			const judged =
 				ran.length === 0
 					? [this.judge(name, level)]

@@ -212,7 +212,13 @@ describe("triage", () => {
 			const reviewed = await review({ decider });
 
 			const light = level === "quick" ? { reason: lightly, caveats: [lightly] } : {};
-			expect(lensRecord(reviewed)).toEqual({ name: "lens.correctness", status: "ran", level, ...light });
+			expect(lensRecord(reviewed)).toEqual({
+				name: "lens.correctness",
+				version: lenses.find(({ name }) => name === "correctness")!.version,
+				status: "ran",
+				level,
+				...light,
+			});
 			expect(systemPromptOf(requests[correctness]![0]!)).toContain(statedBudget[level]);
 			const root = (await harness.root(context)).id;
 			const stored = await readRecordedDecision(harness, root, revision(), "triage", context);
@@ -256,6 +262,7 @@ describe("triage", () => {
 		const ranged = await review({ decider });
 		expect(lensRecord(ranged)).toEqual({
 			name: "lens.correctness",
+			version: lenses.find(({ name }) => name === "correctness")!.version,
 			status: "ran",
 			level: "quick",
 			reason: lightly,
@@ -334,7 +341,12 @@ describe("triage", () => {
 	it("runs every lens at careful without a decider, as before triage", async () => {
 		await open();
 		scriptConversations(fake, [{ match: correctness, replies: [done] }]);
-		expect(lensRecord(await review())).toEqual({ name: "lens.correctness", status: "ran", level: "careful" });
+		expect(lensRecord(await review())).toEqual({
+			name: "lens.correctness",
+			version: lenses.find(({ name }) => name === "correctness")!.version,
+			status: "ran",
+			level: "careful",
+		});
 	});
 
 	it.each([
@@ -1326,6 +1338,7 @@ describe("escalation", () => {
 
 		expect(lensRecord(reviewed)).toEqual({
 			name: "lens.correctness",
+			version: lenses.find(({ name }) => name === "correctness")!.version,
 			status: "ran",
 			level: "careful",
 			reason:
@@ -1731,6 +1744,7 @@ describe("escalation", () => {
 
 		expect(lensRecord(reviewed)).toEqual({
 			name: "lens.correctness",
+			version: lenses.find(({ name }) => name === "correctness")!.version,
 			status: "ran",
 			level: "careful",
 			reason: "escalated from quick to careful: at quick its tools budget ended it before it reported anything",
@@ -1782,6 +1796,7 @@ describe("escalation", () => {
 
 		expect(lensRecord(reviewed)).toEqual({
 			name: "lens.correctness",
+			version: lenses.find(({ name }) => name === "correctness")!.version,
 			status: "ran",
 			level: "quick",
 			reason: `escalation capped at quick, its ceiling: at quick it reported a P1 finding, at or above P1; ${lightly}`,
@@ -1839,6 +1854,7 @@ describe("escalation", () => {
 		scriptConversations(fake, [{ match: correctness, replies: [mild, done] }]);
 		expect(lensRecord(await review({ decider }))).toEqual({
 			name: "lens.correctness",
+			version: lenses.find(({ name }) => name === "correctness")!.version,
 			status: "ran",
 			level: "quick",
 			reason: lightly,

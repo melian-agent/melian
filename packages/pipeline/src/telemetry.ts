@@ -541,7 +541,10 @@ export class TelemetryReader {
 					(stage) =>
 						stage.name === name &&
 						(name === "melian.verification.candidate" ||
-							stage.subject.split("@")[0] === check.name.replace(/^lens\./, "")),
+							(stage.subject.split("@")[0] === check.name.replace(/^lens\./, "") &&
+								(name !== "melian.lens" ||
+									check.version === undefined ||
+									stage.subject.split("@")[1] === check.version))),
 				);
 				const result = checkOutcome(check);
 				for (const stage of matching) if (stage.outcome !== result.outcome) stage.checkOutcome = result.outcome;

@@ -266,7 +266,8 @@ export interface CheckRecord {
 	readonly error?: string;
 	/**
 	 * The version of the tool that ran, as its findings name it in `properties.source.version`, such as Biome's. A review
-	 * counts only that version's findings for the check; without it, every version's.
+	 * counts only that version's findings for the check; without it, every version's. Lens records name the lens version,
+	 * which includes its folder, so telemetry and route judgement can match its own conversation.
 	 */
 	readonly version?: string;
 	/** Snapshot identities and their receipts when a graph tool ran. */
