@@ -116,8 +116,10 @@ it("pages all connections by hasNextPage, ignoring filtered totalCount", async (
 		} else {
 			expect(query).toContain("pullRequest(number: $number)");
 			expect(query).toContain("baseRefOid headRefOid mergeCommit { oid }");
-			if (query.includes("MelianRoundCommits")) expect(query).toContain("commits(first: 100, after: $after)");
-			else {
+			if (query.includes("MelianRoundCommits")) {
+				expect(query).toContain("commits(first: 100, after: $after)");
+				expect(query).toContain("nodes { commit { oid } }");
+			} else {
 				expect(query).toContain("itemTypes: [HEAD_REF_FORCE_PUSHED_EVENT]");
 				expect(query).toContain("beforeCommit { oid } afterCommit { oid }");
 			}
