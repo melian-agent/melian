@@ -467,6 +467,14 @@ Planned, not built, to make the loop cheaper and teach Melian from it:
 
 Step 24 designs the coverage ledger and delta review in [design/coverage-and-delta-review.md](design/coverage-and-delta-review.md).
 
+Version-2 mutation samples classify and select generated rows only. Ignored config and comment rows remain full-row notes and enter no quota. Version 1 retains its historical behaviour. [The mutation-evidence section](design/mutation-evidence.md#the-commands-melians-flow) sets out the notes and unchanged stored schema.
+
+Mutant inventory output, including the compatibility script, escapes variable table cells and complete errors through core’s `visibleText`. JSON keeps its structural newlines and parsed values. Child stderr must reach the escaped error path. [The terminal-output amendment](decisions/2026-11-03-mutant-terminal-output.md) records the shared rule.
+
+Enumeration sets aside whole files containing lone CR, U+2028 or U+2029 after reading committed text. Git and the parser count these line breaks differently; LF and CRLF remain supported. Each file carries an explicit unmutated note. [The selection amendment](decisions/2026-11-03-mutant-line-break-selection.md) records the limit and the deferred static-check follow-up.
+
+Enumeration refuses sources over 16 MiB per file or 64 MiB retained in aggregate, encoded UTF8 requests over 64 MiB and worker responses over 64 MiB. A 512 MiB V8 old-space cap may refuse smaller inputs. Its 120-second monotonic deadline starts before input work. Direct callers may supply an earlier deadline, but cannot extend that budget, as the [caller-deadline clarification](decisions/2026-11-04-direct-enumeration-deadline.md) records. The worker counts every mutant and serialises only the requested prefix; zero retains no rows. [The protocol amendment](decisions/2026-11-03-bounded-mutant-protocol.md) records independent bounds, typed failures and compatibility-buffer headroom.
+
 ## Tech stack
 
 In use since milestone 1, except what a row marks as planned.

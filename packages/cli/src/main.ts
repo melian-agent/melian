@@ -19,6 +19,7 @@ import {
 } from "./compare.ts";
 import { doctor } from "./doctor.ts";
 import { MergeGroupStatus } from "./merge-group.ts";
+import { listMutants, sampleMutants } from "./mutants.ts";
 import { parseTarget } from "./target.ts";
 import { tools } from "./tools.ts";
 
@@ -60,6 +61,10 @@ Commands:
   compare export <range|#pr> [--out <path>] [--json]
                          Write the local comparison record as markdown, or its whole document as JSON.
   tools [fetch <name>]   List pinned tool readiness, or fetch and verify one tool. Exits 0 success, 1 failure.
+  mutants list <range|#pr> [--json] [--limit N|--all]
+                         Enumerate changed production lines without running tests or head code. Exits 0 success, 1 failure.
+  mutants sample <inventory>
+                         Print deterministic probes from a complete classified inventory. Exits 0 success, 1 refused.
   doctor                 Check Node, git, credentials, model routes, tool readiness, and GitHub access.
 
 Options:
@@ -88,6 +93,7 @@ Options:
   --last <n>            The last n changesets compared (compare stats).
   --markdown            Print BACKLOG.md's generated section (compare backlog).
   --out <path>          Write the export to this path (compare export).
+  --limit <N>           List at most N mutants (default 200); --all lists every mutant (mutants list).
   --no-walkthrough       Omit the walkthrough (review, publish).
   --no-color             Print without colour.
   -h, --help             Show this help.
@@ -137,6 +143,7 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 				"trust-head": { type: "boolean", default: false },
 				cold: { type: "boolean", default: false },
 				all: { type: "boolean", default: false },
+				limit: { type: "string" },
 				reason: { type: "string" },
 				verdict: { type: "string" },
 				severity: { type: "string" },
@@ -171,7 +178,31 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 		if (name !== "findings" && name !== "compare" && values.round !== undefined)
 			throw new UsageError("--round is only available for findings and compare");
 		const scoped: Io = { ...io, color: io.color && values.color };
+		if (name !== "mutants" && values.limit !== undefined)
+			throw new UsageError("--limit is only available for mutants list");
 		switch (name) {
+			case "mutants": {
+				const [subcommand, ...targets] = rest;
+				if (subcommand === undefined) throw new UsageError("mutants takes a subcommand: list or sample");
+				if (subcommand === "sample") {
+					if (values.limit !== undefined || values.all)
+						throw new UsageError("mutants sample takes neither --limit nor --all");
+					return await sampleMutants(scoped, one(targets, "mutants sample", "inventory"));
+				}
+				if (subcommand !== "list") throw new UsageError("mutants takes list or sample");
+				if (values.limit !== undefined && values.all)
+					throw new UsageError("mutants list takes --limit or --all, not both");
+				if (
+					values.limit !== undefined &&
+					(!/^\d+$/.test(values.limit) || !Number.isSafeInteger(Number(values.limit)))
+				)
+					throw new UsageError("--limit takes a non-negative safe integer");
+				return await listMutants(scoped, one(targets, "mutants list", "range or pull request"), {
+					json: values.json,
+					all: values.all,
+					...(values.limit === undefined ? {} : { limit: Number(values.limit) }),
+				});
+			}
 			case "review":
 				return await review(
 					values.json

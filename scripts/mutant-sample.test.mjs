@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { MutationInventory } from "../packages/core/src/mutation-inventory.ts";
 import { sampleMutants, survivorClasses } from "./mutant-sample.mjs";
 
 const classes = [
@@ -29,6 +30,19 @@ const inventory = (mutants, extra = {}) => ({ mutants, total: mutants.length, om
 const lines = (result) => result.selected.map((row) => row.line);
 
 describe("mutant sampling", () => {
+	it("samples structural version-2 evidence through the compatibility entry", () => {
+		const row = mutant(0, { status: "generated", evidence: { test: { file: "value.test.ts", path: ["guard"] } } });
+		const classified = MutationInventory.create({
+			range: { base: "a".repeat(40), head: "b".repeat(40) },
+			adapters: [{ name: "typescript", version: "1", toolVersion: "10.0.0", source: "melian" }],
+			installation: "c".repeat(64),
+			mutants: [row],
+			total: 1,
+			omitted: 0,
+			unmutated: [],
+		});
+		expect(sampleMutants(classified.toJSON())).toEqual(classified.sample());
+	});
 	it("keeps the checklist class names in the sampling contract", () => {
 		expect(survivorClasses).toEqual(classes);
 		const agents = readFileSync(new URL("../AGENTS.md", import.meta.url), "utf8");

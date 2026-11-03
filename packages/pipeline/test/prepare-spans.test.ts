@@ -27,6 +27,36 @@ function clocked(start: number) {
 	return { clock, now: () => clock.now };
 }
 
+it("records one sampled endpoint for the open final span", async () => {
+	let now = 100;
+	const spans = PrepareSpans.start("output", 10, () => now++);
+	harness = await openHarness(createMemoryStorage(), {
+		models: createFakeModels().models,
+		registry: createRegistry(),
+	});
+	expect(await spans.record(harness, "base..head", context)).toEqual({
+		startedAt: 10,
+		endedAt: 100,
+		spans: [{ name: "output", startedAt: 10, endedAt: 100, durationMs: 90 }],
+	});
+});
+
+it("records the current endpoint after the final span was already closed", async () => {
+	const { clock, now } = clocked(100);
+	const spans = PrepareSpans.start("output", 10, now);
+	spans.end();
+	clock.now = 250;
+	harness = await openHarness(createMemoryStorage(), {
+		models: createFakeModels().models,
+		registry: createRegistry(),
+	});
+	expect(await spans.record(harness, "base..head", context)).toEqual({
+		startedAt: 10,
+		endedAt: 250,
+		spans: [{ name: "output", startedAt: 10, endedAt: 100, durationMs: 90 }],
+	});
+});
+
 it("times steps, nested work and the open step until the record", async () => {
 	const { clock, now } = clocked(100);
 	const spans = PrepareSpans.start("startup", 10, now);
