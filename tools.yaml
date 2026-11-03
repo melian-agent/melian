@@ -46,3 +46,4 @@ misses:
   - { record: packages/evals/comparisons/2026-10-27-pr-250.md, finding: "LG1", tool: repro-run }
   - { record: packages/evals/comparisons/2026-10-27-pr-250.md, finding: "LG2", tool: repro-run }
   - { record: packages/evals/comparisons/2026-10-27-pr-250.md, finding: "LG4", tool: repro-run }
+  - { record: packages/evals/comparisons/2026-10-27-pr-250.md, finding: "LL1", tool: repro-run }
