@@ -54,6 +54,19 @@ it("fetches a merged pull request's missing merge commit before reading its firs
 	expect(await rules.classify(candidate)).toMatchObject({ status: "member" });
 	expect(gitIn(repo, "cat-file", "-t", merge)).toBe("commit");
 });
+it("fetches a remote-only pull request base that diverges from the head before reading merge bases", async () => {
+	const target = gitIn(remote, "commit-tree", `${answer.base}^{tree}`, "-p", answer.base, "-m", "remote-only target");
+	gitIn(remote, "update-ref", "refs/heads/main", target);
+	expect(() => gitIn(repo, "cat-file", "-e", `${target}^{commit}`)).toThrow();
+	const rules = await PullRequestMembership.open(repo, { ...answer, base: target });
+	expect(await rules.classify(candidate)).toEqual({
+		...candidate,
+		status: "member",
+		reason: "exact pull request merge base",
+		date: Number(gitIn(repo, "show", "-s", "--format=%ct", answer.head)) * 1000,
+	});
+	expect(gitIn(repo, "cat-file", "-t", target)).toBe("commit");
+});
 it("dates an ownership member's legacy round without making Git a membership test", async () => {
 	const rules = await PullRequestMembership.open(repo, answer);
 	const owned = {
