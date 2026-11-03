@@ -72,7 +72,11 @@ export class PullRequestComparison {
 		);
 		for (const candidate of this.stores.candidates) {
 			const round = await membership.classify(candidate);
-			if (prior.has(round.id) && round.status === "member" && !(await membership.headAvailable(round.head)))
+			if (
+				prior.has(round.id) &&
+				(round.status === "member" || round.status === "unattributed") &&
+				!(await membership.headAvailable(round.head))
+			)
 				classified.push({ ...round, status: "unreachable" as const, reason: "head unavailable after fetch" });
 			else classified.push(round);
 		}

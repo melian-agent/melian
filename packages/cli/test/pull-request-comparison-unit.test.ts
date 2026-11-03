@@ -70,6 +70,17 @@ const next: PullRequestRoundSnapshot = {
 	],
 	foreign: [rejected],
 };
+const saved: PullRequestRoundSnapshot = { ...previous, members: [{ ...old, number: 1 }] };
+const moved = { ...answer, head: "c".repeat(40), commits: ["c".repeat(40)] };
+const unnamed: RoundMembership = { ...old, status: "unattributed", reason: "GitHub no longer names this head" };
+const unreachable: RoundMembership = { ...old, status: "unreachable", reason: "head unavailable after fetch" };
+const fresh: RoundMembership = {
+	...old,
+	id: "range-aaaaaaaaaaaaaaaa.r3",
+	head: "d".repeat(40),
+	mintedAt: "2026-10-26T03:00:00Z",
+};
+const freshUnnamed: RoundMembership = { ...fresh, status: "unattributed", reason: unnamed.reason };
 let io: Io;
 let storage: ReturnType<typeof createMemoryStorage>;
 let stores: ComparisonStores;
@@ -358,3 +369,106 @@ it.each([true, false])(
 		);
 	},
 );
+
+const arrangeSaved = (
+	candidates: RoundMembership[],
+	classifications: RoundMembership[],
+	availability: Map<string, boolean>,
+) => {
+	stores.candidates.splice(0, stores.candidates.length, ...candidates);
+	stores.histories.set(id, PullRequestRoundHistory.from([saved]));
+	vi.mocked(PullRequestRoundsReader.open).mockReturnValue({ read: async () => structuredClone(moved) } as never);
+	vi.mocked(PullRequestMembership.prototype.classify)
+		.mockReset()
+		.mockImplementation(async (candidate) => {
+			const round = classifications.find((round) => round.id === candidate.id && round.head === candidate.head);
+			if (round === undefined) throw new Error(`unexpected classification of ${candidate.id} at ${candidate.head}`);
+			return structuredClone(round);
+		});
+	vi.mocked(PullRequestMembership.prototype.headAvailable)
+		.mockReset()
+		.mockImplementation(async (head) => {
+			const available = availability.get(head);
+			if (available === undefined) throw new Error(`unexpected availability request for ${head}`);
+			return available;
+		});
+	const refreshMembership = vi.fn<CompareHarness["refreshMembership"]>(
+		async (heads, rounds, by, when, accept = false) =>
+			PullRequestRoundHistory.from([saved]).refresh(heads, rounds, by, when, accept),
+	);
+	vi.mocked(CompareHarness.open).mockResolvedValue({ refreshMembership, close } as never);
+	return refreshMembership;
+};
+
+it("retains an unavailable saved range head that GitHub no longer names", async () => {
+	const refreshMembership = arrangeSaved([old], [unnamed], new Map([[old.head, false]]));
+	expect(await (await PullRequestComparison.open(io, 7)).refresh(false)).toBe(0);
+	expect(PullRequestMembership.prototype.classify).toHaveBeenCalledExactlyOnceWith(old);
+	expect(PullRequestMembership.prototype.headAvailable).toHaveBeenCalledExactlyOnceWith(old.head);
+	expect(refreshMembership.mock.calls).toEqual([[moved, [unreachable], "", at, false]]);
+	await expect(refreshMembership.mock.results[0]?.value).resolves.toEqual({
+		version: 2,
+		at,
+		answer: moved,
+		members: [{ ...unreachable, number: 1 }],
+		foreign: [],
+		ambiguous: [],
+		unattributed: [],
+		warnings: [],
+		audit: [],
+	});
+	expect(output()).toContain("Membership snapshot 2: 0 added, 0 removed.");
+	expect(output()).toContain(`Round 1: ${old.id} (unreachable)`);
+	expect(close).toHaveBeenCalledExactlyOnceWith(context);
+});
+it("still requires acceptance for a readable saved head that GitHub no longer names", async () => {
+	const refreshMembership = arrangeSaved([old], [unnamed], new Map([[old.head, true]]));
+	const error = await (await PullRequestComparison.open(io, 7)).refresh(false).catch((cause: unknown) => cause);
+	expect(error).toBeInstanceOf(MembershipError);
+	expect(error).toHaveProperty(
+		"message",
+		expect.stringContaining(`refresh rejects earlier members: ${old.id}: ${unnamed.reason}`),
+	);
+	expect(error).toHaveProperty("message", expect.stringContaining('compare refresh "#7" --accept'));
+	expect(CompareHarness.open).not.toHaveBeenCalled();
+	expect(refreshMembership).not.toHaveBeenCalled();
+	expect(repository.openStorage).not.toHaveBeenCalled();
+	expect(stores.histories.get(id)?.versions).toEqual([saved]);
+	expect(io.stdout).not.toHaveBeenCalled();
+});
+it("still rejects a saved head with explicit foreign ownership without consulting availability", async () => {
+	const owned: RoundMembership = { ...old, publication: { repository: answer.repository, pullRequest: 8 } };
+	const foreign: RoundMembership = {
+		...owned,
+		status: "foreign",
+		reason: "stored ownership names another pull request",
+	};
+	const refreshMembership = arrangeSaved([owned], [foreign], new Map());
+	const error = await (await PullRequestComparison.open(io, 7)).refresh(false).catch((cause: unknown) => cause);
+	expect(error).toBeInstanceOf(MembershipError);
+	expect(error).toHaveProperty(
+		"message",
+		expect.stringContaining(`refresh rejects earlier members: ${old.id}: ${foreign.reason}`),
+	);
+	expect(PullRequestMembership.prototype.headAvailable).not.toHaveBeenCalled();
+	expect(CompareHarness.open).not.toHaveBeenCalled();
+	expect(refreshMembership).not.toHaveBeenCalled();
+	expect(stores.histories.get(id)?.versions).toEqual([saved]);
+});
+it("gives a new unattributed candidate no saved-member availability exemption", async () => {
+	const owned: RoundMembership = { ...old, publication: { repository: answer.repository, pullRequest: 7 } };
+	const refreshMembership = arrangeSaved([owned, fresh], [owned, freshUnnamed], new Map([[old.head, true]]));
+	expect(await (await PullRequestComparison.open(io, 7)).refresh(false)).toBe(0);
+	expect(refreshMembership.mock.calls).toEqual([[moved, [owned, freshUnnamed], "", at, false]]);
+	await expect(refreshMembership.mock.results[0]?.value).resolves.toEqual({
+		version: 2,
+		at,
+		answer: moved,
+		members: [{ ...owned, number: 1 }],
+		foreign: [],
+		ambiguous: [],
+		unattributed: [freshUnnamed],
+		warnings: [],
+		audit: [],
+	});
+});
