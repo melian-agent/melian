@@ -143,6 +143,7 @@ export class TypeScriptMutationAdapter implements MutationAdapter {
 		limit = Number.MAX_SAFE_INTEGER,
 		deadline = performance.now() + 120_000,
 	): Promise<MutationBatch> {
+		const boundedDeadline = Math.min(deadline, performance.now() + 120_000);
 		remainingTime(deadline);
 		if (!Number.isSafeInteger(limit) || limit < 0)
 			throw new MutationEnumerationError("limit", "limit must be a non-negative safe integer");
@@ -215,7 +216,7 @@ if (process.exitCode !== 73) process.stdout.write(prefix + rows.join(',') + ']}'
 			}
 			append(`],"limit":${limit}}`);
 			const input = parts.join("");
-			const timeout = remainingTime(deadline);
+			const timeout = remainingTime(boundedDeadline);
 			const output = await new Promise<string>((resolve, reject) => {
 				const child = execFile(
 					process.execPath,

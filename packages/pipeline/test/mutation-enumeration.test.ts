@@ -153,6 +153,40 @@ describe("mutation enumeration", { timeout: 60_000 }, () => {
 			});
 		},
 	);
+	it.each([
+		[121000, 120000],
+		[121001, 120000],
+		[Number.MAX_SAFE_INTEGER, 120000],
+		[1001, 1],
+	])("bounds caller deadline %s to timeout %s", async (deadline, timeout) => {
+		const adapter = await TypeScriptMutationAdapter.open(repo);
+		vi.spyOn(performance, "now").mockReturnValue(1000);
+		let observedTimeout: number | undefined;
+		workerReply((input, options) => {
+			expect(JSON.parse(input)).toEqual({
+				files: [
+					{
+						name: "src/a.ts",
+						content: "export const a = true;",
+						mutate: [{ start: { line: 0, column: 0 }, end: { line: 0, column: Number.MAX_SAFE_INTEGER } }],
+					},
+				],
+				excludedMutations: ["StringLiteral"],
+				limit: 0,
+			});
+			observedTimeout = options.timeout;
+			return { stdout: '{"total":0,"mutants":[]}' };
+		});
+		expect(
+			await adapter.enumerate(
+				[{ name: "src/a.ts", content: "export const a = true;", ranges: [[1, 1]] }],
+				["StringLiteral"],
+				0,
+				deadline,
+			),
+		).toEqual({ total: 0, mutants: [] });
+		expect(observedTimeout).toBe(timeout);
+	});
 	it.each([Number.NaN, Number.POSITIVE_INFINITY])(
 		"refuses a non-finite caller deadline %s before input work",
 		async (deadline) => {

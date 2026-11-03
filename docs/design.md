@@ -473,7 +473,7 @@ Mutant inventory output, including the compatibility script, escapes variable ta
 
 Enumeration sets aside whole files containing lone CR, U+2028 or U+2029 after reading committed text. Git and the parser count these line breaks differently; LF and CRLF remain supported. Each file carries an explicit unmutated note. [The selection amendment](decisions/2026-11-03-mutant-line-break-selection.md) records the limit and the deferred static-check follow-up.
 
-Enumeration refuses sources over 16 MiB per file or 64 MiB retained in aggregate, encoded UTF8 requests over 64 MiB and worker responses over 64 MiB. A 512 MiB V8 old-space cap may refuse smaller inputs. Its 120-second monotonic deadline starts before input work. The worker counts every mutant and serialises only the requested prefix; zero retains no rows. [The protocol amendment](decisions/2026-11-03-bounded-mutant-protocol.md) records independent bounds, typed failures and compatibility-buffer headroom.
+Enumeration refuses sources over 16 MiB per file or 64 MiB retained in aggregate, encoded UTF8 requests over 64 MiB and worker responses over 64 MiB. A 512 MiB V8 old-space cap may refuse smaller inputs. Its 120-second monotonic deadline starts before input work. Direct callers may supply an earlier deadline, but cannot extend that budget, as the [caller-deadline clarification](decisions/2026-11-04-direct-enumeration-deadline.md) records. The worker counts every mutant and serialises only the requested prefix; zero retains no rows. [The protocol amendment](decisions/2026-11-03-bounded-mutant-protocol.md) records independent bounds, typed failures and compatibility-buffer headroom.
 
 ## Tech stack
 
