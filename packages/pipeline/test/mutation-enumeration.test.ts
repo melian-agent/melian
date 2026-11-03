@@ -68,6 +68,96 @@ afterEach(() => {
 });
 
 describe("mutation enumeration", { timeout: 60_000 }, () => {
+	it.each([
+		["lone CR", "// a\r// z\n"],
+		["CRLF with lone CR", "// a\r\r\n"],
+		["Unicode comment", `// a${String.fromCharCode(0x2028)}// z\n`],
+		["Unicode string", `const s = 'a${String.fromCharCode(0x2029)}';\n`],
+	])("sets aside whole files with %s after a real committed read", async (_label, prefix) => {
+		const earlier = commit(repo, { "src/lines.ts": `${prefix}const x = 1;\nexport const b = x - 1;\n` });
+		const later = commit(repo, { "src/lines.ts": `${prefix}const x = 1;\nexport const b = x + 1;\n` });
+		const result = (
+			await (await MutationEnumeration.open(repo, `${earlier}..${later}`)).list({ all: true })
+		).toJSON();
+		expect(result.mutants).toEqual([]);
+		expect({
+			adapters: result.adapters,
+			total: result.total,
+			omitted: result.omitted,
+			unmutated: result.unmutated,
+		}).toEqual({
+			adapters: [],
+			total: 0,
+			omitted: 0,
+			unmutated: [
+				{
+					file: "src/lines.ts",
+					reason: "Git and the parser count lone CR, U+2028 and U+2029 line breaks differently",
+				},
+			],
+		});
+	});
+	it("refuses wrong-line rows when inserting a separator shifts unchanged mutable code", async () => {
+		const earlier = commit(repo, { "src/lines.ts": "// a\nexport const x = y > 1;\nexport const b = x - 1;\n" });
+		const later = commit(repo, { "src/lines.ts": "// a\r// z\nexport const x = y > 1;\nexport const b = x + 1;\n" });
+		const result = (
+			await (await MutationEnumeration.open(repo, `${earlier}..${later}`)).list({ all: true })
+		).toJSON();
+		expect(result.mutants).toEqual([]);
+		expect(result.unmutated).toEqual([
+			{
+				file: "src/lines.ts",
+				reason: "Git and the parser count lone CR, U+2028 and U+2029 line breaks differently",
+			},
+		]);
+		expect(result.adapters).toEqual([]);
+	});
+	it("sets aside a separator-only change and enumerates only safe files in a mixed change", async () => {
+		const earlier = commit(repo, { "src/lines.ts": "// a\nexport const x = y > 1;\n" });
+		const later = commit(repo, {
+			"src/lines.ts": "// a\r// z\nexport const x = y > 1;\n",
+			"src/safe.ts": "export const flag = true;\n",
+		});
+		const result = (
+			await (await MutationEnumeration.open(repo, `${earlier}..${later}`)).list({ all: true })
+		).toJSON();
+		expect(result.mutants.map(({ id: _id, ...row }) => row)).toEqual([
+			{
+				file: "src/safe.ts",
+				line: 1,
+				column: 20,
+				endLine: 1,
+				endColumn: 24,
+				mutatorName: "BooleanLiteral",
+				replacement: "false",
+				status: "ignored",
+				ignoredBy: "config",
+				statusReason: 'Ignored because of excluded mutation "BooleanLiteral"',
+			},
+		]);
+		expect(result.unmutated).toEqual([
+			{
+				file: "src/lines.ts",
+				reason: "Git and the parser count lone CR, U+2028 and U+2029 line breaks differently",
+			},
+		]);
+		expect(result.adapters).toHaveLength(1);
+	});
+	it.each(["\n", "\r\n"])("keeps twelve real mutants for a new four-Git-line %j control", async (eol) => {
+		const content = Array.from({ length: 4 }, (_, i) => `export const v${i} = n === 1;`).join(eol) + eol;
+		const later = commit(repo, { "src/four.ts": content });
+		const safe = (await (await MutationEnumeration.open(repo, `${head}..${later}`)).list({ all: true })).toJSON();
+		expect(safe.total).toBe(12);
+		expect(safe.unmutated).toEqual([]);
+		expect(safe.mutants.map(({ line }) => line)).toEqual([1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4]);
+		const unsafe = commit(repo, { "src/four.ts": content.replace(";", ";\r// separator") });
+		const result = (await (await MutationEnumeration.open(repo, `${head}..${unsafe}`)).list({ all: true })).toJSON();
+		expect(result.mutants).toEqual([]);
+		expect(result.unmutated).toEqual([
+			{ file: "src/four.ts", reason: "Git and the parser count lone CR, U+2028 and U+2029 line breaks differently" },
+		]);
+		expect(result.adapters).toEqual([]);
+	});
 	it("sets aside mixed unsupported source and accepts documentation and data extensions", async () => {
 		const mixed = commit(repo, { "src/other.scala": "source\n" });
 		expect(

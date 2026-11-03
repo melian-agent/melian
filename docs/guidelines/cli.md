@@ -58,6 +58,8 @@ A pull request is `#` and its number. Quote it, `melian review "#12"`: an unquot
 
 ## Where policy comes from
 
+`mutants list` and the compatibility script report an explicit unmutated note for each TS/JS file containing lone CR, U+2028 or U+2029. LF and CRLF remain supported. All-set-aside results contain no adapters or mutants, retaining every note. This selection limit leaves `static.mutation` unchanged; [the amendment](../decisions/2026-11-03-mutant-line-break-selection.md) records its follow-up.
+
 - A pull request reads `melian.yaml`, standards, and lenses from the base commit GitHub reports, so the head cannot rewrite its own review.
 - A range whose head is the checked-out commit reads configuration and lens definitions from the working tree, so uncommitted policy edits apply. It reads standards from the committed head, including their imports. The one exception is `static.mutation` without `--trust-head`: whether it runs, and for how long, comes from the base.
 - Any other range reads them from its base.

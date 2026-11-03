@@ -89,6 +89,45 @@ describe("mutant enumeration", { timeout: 60_000 }, () => {
 		write("src/.babelrc.cjs", "throw new Error('head Babel config must never run');\n");
 	});
 	afterEach(() => rmSync(root, { recursive: true, force: true }));
+	it.each(["new file", "edited line", "wrong unchanged line"])(
+		"reports a separator set-aside through CLI and compatibility routes: %s",
+		async (scenario) => {
+			const name = "src/separator.ts";
+			const prefix = scenario === "wrong unchanged line" ? "export const x = y > 1;" : "const x = 1;";
+			if (scenario !== "new file") {
+				write(name, `// a\r// z\n${prefix}\nexport const b = x - 1;\n`);
+				git("add", name);
+				git("commit", "-m", "before separator edit");
+			}
+			const before = git("rev-parse", "HEAD");
+			write(
+				name,
+				scenario === "new file"
+					? "export const a = n > 1;\r// z\nexport const b = n > 1;\nexport const c = n > 1;\nexport const d = n > 1;\n"
+					: `// a\r// z\n${prefix}\nexport const b = x + 1;\n`,
+			);
+			git("add", name);
+			git("commit", "-m", "separator edit");
+			const expected = {
+				mutants: [],
+				total: 0,
+				omitted: 0,
+				unmutated: [
+					{ file: name, reason: "Git and the parser count lone CR, U+2028 and U+2029 line breaks differently" },
+				],
+			};
+			expect(await enumerateMutants({ cwd: root, range: `${before}..HEAD`, limit: 10000 })).toEqual(expected);
+			const cli = fileURLToPath(new URL("../packages/cli/bin/melian.js", import.meta.url));
+			const result = spawnSync(process.execPath, [cli, "mutants", "list", `${before}..HEAD`, "--all", "--json"], {
+				cwd: root,
+				encoding: "utf8",
+				timeout: 10000,
+			});
+			expect(result.status, result.stderr).toBe(0);
+			const { mutants, total, omitted, unmutated, adapters } = JSON.parse(result.stdout);
+			expect({ mutants, total, omitted, unmutated, adapters }).toEqual({ ...expected, adapters: [] });
+		},
+	);
 
 	it("matches the instrumenter exactly on changed production lines, including JavaScript", async () => {
 		const files = [

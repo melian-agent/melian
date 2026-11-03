@@ -313,6 +313,11 @@ export class MutationEnumeration {
 			const content = await source.readText(name, 16 * 1024 * 1024);
 			if (content === undefined)
 				throw new MutationEnumerationError("instrumenter", `committed source ${name} is missing`);
+			// Git and the parser count these line breaks differently.
+			if (/\r(?!\n)|[\u2028\u2029]/u.test(content)) {
+				unmutated.push({ file: name, reason: mutationUnmutated.lineBreaks.why });
+				continue;
+			}
 			files.push({ name, content, ranges });
 		}
 		const policy = await openSource(repoRoot, this.#policy);

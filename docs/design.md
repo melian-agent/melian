@@ -471,6 +471,8 @@ Version-2 mutation samples classify and select generated rows only. Ignored conf
 
 Mutant inventory output, including the compatibility script, escapes variable table cells and complete errors through core’s `visibleText`. JSON keeps its structural newlines and parsed values. Child stderr must reach the escaped error path. [The terminal-output amendment](decisions/2026-11-03-mutant-terminal-output.md) records the shared rule.
 
+Enumeration sets aside whole files containing lone CR, U+2028 or U+2029 after reading committed text. Git and the parser count these line breaks differently; LF and CRLF remain supported. Each file carries an explicit unmutated note. [The selection amendment](decisions/2026-11-03-mutant-line-break-selection.md) records the limit and the deferred static-check follow-up.
+
 ## Tech stack
 
 In use since milestone 1, except what a row marks as planned.
