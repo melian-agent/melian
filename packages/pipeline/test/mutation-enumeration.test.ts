@@ -131,6 +131,32 @@ describe("mutation enumeration", { timeout: 60_000 }, () => {
 		});
 	});
 
+	it.each([
+		[200, 0],
+		[201, 1],
+	])("retains the default 200 rows from exactly %s real mutants with %s omitted", async (total, omitted) => {
+		const start = commit(repo, {
+			"stryker.config.json": JSON.stringify({ mutator: { excludedMutations: ["StringLiteral"] } }),
+		});
+		const finish = commit(repo, {
+			"src/flags.ts": Array.from({ length: total }, (_, index) => `export const flag${index} = true;\n`).join(""),
+		});
+		const enumeration = await MutationEnumeration.open(repo, `${start}..${finish}`);
+		const full = (await enumeration.list({ all: true })).toJSON();
+		expect(full.total).toBe(total);
+		expect(full.omitted).toBe(0);
+		expect(full.mutants).toHaveLength(total);
+		expect(full.mutants.map(({ mutatorName, status }) => ({ mutatorName, status }))).toEqual(
+			Array.from({ length: total }, () => ({ mutatorName: "BooleanLiteral", status: "generated" })),
+		);
+		expect(full.range).toEqual({ base: start, head: finish });
+		expect(full.adapters).toHaveLength(1);
+		expect(full.unmutated).toEqual([]);
+		const result = (await enumeration.list()).toJSON();
+		expect(result.mutants).toHaveLength(200);
+		expect(result).toEqual({ ...full, mutants: full.mutants.slice(0, 200), omitted });
+	});
+
 	it("accepts maximum one-based coordinates including a zero-width origin row and an empty reason", async () => {
 		const adapter = await TypeScriptMutationAdapter.open(repo);
 		const row = {
