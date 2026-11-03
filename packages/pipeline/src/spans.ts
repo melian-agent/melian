@@ -50,8 +50,12 @@ export class PrepareSpans {
 
 	/** Ends the open step, if any. */
 	end(): void {
+		this.#end();
+	}
+
+	#end(endedAt?: number): void {
 		if (this.#open === undefined) return;
-		this.#push(this.#open.name, this.#open.startedAt);
+		this.#push(this.#open.name, this.#open.startedAt, undefined, endedAt);
 		this.#open = undefined;
 	}
 
@@ -68,10 +72,11 @@ export class PrepareSpans {
 
 	/** Ends the open step and stores the record for `revision`, replacing an earlier review's. */
 	async record(harness: Harness, revision: string, context: Context): Promise<PrepareRecord> {
-		this.end();
+		const endedAt = this.#now();
+		this.#end(endedAt);
 		const record: PrepareRecord = {
 			startedAt: this.startedAt,
-			endedAt: this.#now(),
+			endedAt,
 			spans: structuredClone(this.#spans),
 		};
 		const root = await harness.root(context);
@@ -81,8 +86,7 @@ export class PrepareSpans {
 		return record;
 	}
 
-	#push(name: string, startedAt: number, parent?: string): void {
-		const endedAt = this.#now();
+	#push(name: string, startedAt: number, parent?: string, endedAt = this.#now()): void {
 		this.#spans.push({
 			name,
 			startedAt,

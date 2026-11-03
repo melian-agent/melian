@@ -66,6 +66,7 @@ export {
 export type { HeadTrust } from "./mutation-cache.ts";
 export {
 	type MutationAdapter,
+	type MutationBatch,
 	MutationEnumeration,
 	MutationEnumerationError,
 	type MutationFile,

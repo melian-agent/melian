@@ -14,6 +14,8 @@ import {
 	mutationUnmutated,
 	openSource,
 	type RepositorySource,
+	SourceError,
+	visibleText,
 } from "@melian-agent/core";
 import { MutationTargets, productionWithExtensions } from "./mutation-paths.ts";
 import { mutationInstallation } from "./mutation-static.ts";
@@ -38,12 +40,35 @@ type EnumeratedMutant = {
 	statusReason?: string;
 };
 
+/** Retained rows in instrumenter order and the full count before the row limit. */
+export interface MutationBatch {
+	readonly mutants: EnumeratedMutant[];
+	readonly total: number;
+}
+
+const maxFileBytes = 16 * 1024 * 1024;
+const maxAggregateBytes = 64 * 1024 * 1024;
+const maxPayloadBytes = 64 * 1024 * 1024;
+const maxResponseBytes = 64 * 1024 * 1024;
+
+function remainingTime(deadline: number): number {
+	const remaining = Math.floor(deadline - performance.now());
+	if (!Number.isSafeInteger(remaining) || remaining < 1)
+		throw new MutationEnumerationError("limit", "enumeration exceeded its 120-second deadline");
+	return remaining;
+}
+
 /** A language's enumeration contract. Verification operations join it in the next build. */
 export interface MutationAdapter {
 	readonly identity: MutationAdapterIdentity;
 	readonly applies: "switch" | "text";
 	readonly enumerationRequiresBuild: boolean;
-	enumerate(files: readonly MutationFile[], excludedMutations: readonly string[]): Promise<EnumeratedMutant[]>;
+	enumerate(
+		files: readonly MutationFile[],
+		excludedMutations: readonly string[],
+		limit?: number,
+		deadline?: number,
+	): Promise<MutationBatch>;
 }
 
 /** Failure to enumerate committed source, distinct from a failed mutation test. */
@@ -112,75 +137,190 @@ export class TypeScriptMutationAdapter implements MutationAdapter {
 		);
 	}
 
-	async enumerate(files: readonly MutationFile[], excludedMutations: readonly string[]): Promise<EnumeratedMutant[]> {
+	async enumerate(
+		files: readonly MutationFile[],
+		excludedMutations: readonly string[],
+		limit = Number.MAX_SAFE_INTEGER,
+		deadline = performance.now() + 120_000,
+	): Promise<MutationBatch> {
+		const boundedDeadline = Math.min(deadline, performance.now() + 120_000);
+		remainingTime(deadline);
+		if (!Number.isSafeInteger(limit) || limit < 0)
+			throw new MutationEnumerationError("limit", "limit must be a non-negative safe integer");
+		let retained = 0;
+		for (const file of files) {
+			const size = Buffer.byteLength(file.content, "utf8");
+			if (size > maxFileBytes)
+				throw new MutationEnumerationError("limit", "enumeration source exceeds 16 MiB per file");
+			retained += size;
+			if (retained > maxAggregateBytes)
+				throw new MutationEnumerationError("limit", "enumeration aggregate source exceeds 64 MiB");
+		}
 		const scratch = await mkdtemp(join(tmpdir(), `melian-enumerate-${process.pid}-`));
+		let batch: MutationBatch;
 		try {
 			// Babel stops .babelrc discovery at the nearest package boundary.
 			await writeFile(join(scratch, "package.json"), "{}");
-			const script = `import { readFileSync } from 'node:fs';
-import { Instrumenter } from ${JSON.stringify(pathToFileURL(this.#module).href)};
+			const script = `import { Instrumenter } from ${JSON.stringify(pathToFileURL(this.#module).href)};
 const logger = {debug(){}, info(){}, warn(){}, error(){}, trace(){}, isDebugEnabled:()=>false};
-const {files, excludedMutations} = JSON.parse(readFileSync(0, 'utf8'));
+let input = '';
+for await (const chunk of process.stdin.setEncoding('utf8')) input += chunk;
+const {files, excludedMutations, limit} = JSON.parse(input);
 const {mutants} = await new Instrumenter(logger).instrument(files, {plugins:null, ignorers:[], excludedMutations});
-console.log(JSON.stringify(mutants));`;
-			const input = JSON.stringify({
-				files: files.map((file) => ({
-					name: file.name,
-					content: file.content,
-					mutate: file.ranges.map(([first, last]) => ({
-						start: { line: first - 1, column: 0 },
-						end: { line: last - 1, column: Number.MAX_SAFE_INTEGER },
-					})),
-				})),
-				excludedMutations,
-			});
+const prefix = '{"total":' + mutants.length + ',"mutants":[';
+let size = Buffer.byteLength(prefix) + 2;
+const rows = [];
+for (let i = 0; i < Math.min(limit, mutants.length); i++) {
+  const row = JSON.stringify(mutants[i]);
+  size += Buffer.byteLength(row) + (i === 0 ? 0 : 1);
+  if (size > ${maxResponseBytes}) { process.exitCode = 73; break; }
+  rows.push(row);
+}
+if (process.exitCode !== 73) process.stdout.write(prefix + rows.join(',') + ']}');`;
+			const parts: string[] = [];
+			let encoded = 0;
+			const append = (text: string) => {
+				encoded += Buffer.byteLength(text);
+				if (encoded > maxPayloadBytes)
+					throw new MutationEnumerationError("limit", "enumeration encoded UTF8 payload exceeds 64 MiB");
+				parts.push(text);
+			};
+			const quoted = (text: string) => {
+				append('"');
+				for (let offset = 0; offset < text.length; offset += 16_384)
+					append(JSON.stringify(text.slice(offset, offset + 16_384)).slice(1, -1));
+				append('"');
+			};
+			append('{"files":[');
+			for (const [index, file] of files.entries()) {
+				if (index > 0) append(",");
+				append('{"name":');
+				quoted(file.name);
+				append(',"content":');
+				quoted(file.content);
+				append(',"mutate":[');
+				for (const [index, [first, last]] of file.ranges.entries()) {
+					if (index > 0) append(",");
+					append(
+						JSON.stringify({
+							start: { line: first - 1, column: 0 },
+							end: { line: last - 1, column: Number.MAX_SAFE_INTEGER },
+						}),
+					);
+				}
+				append("]}");
+			}
+			append('],"excludedMutations":[');
+			for (const [index, name] of excludedMutations.entries()) {
+				if (index > 0) append(",");
+				quoted(name);
+			}
+			append(`],"limit":${limit}}`);
+			const input = parts.join("");
+			const timeout = remainingTime(boundedDeadline);
 			const output = await new Promise<string>((resolve, reject) => {
 				const child = execFile(
 					process.execPath,
-					["--input-type=module", "--eval", script],
+					["--max-old-space-size=512", "--input-type=module", "--eval", script],
 					{
 						cwd: scratch,
-						maxBuffer: 64 * 1024 * 1024,
-						timeout: 120_000,
+						maxBuffer: maxResponseBytes + 1024,
+						timeout,
 						// Node preload flags can load repository code before the isolated parser starts.
-						env: { PATH: process.env.PATH, LANG: "C.UTF-8" },
+						env: { PATH: process.env.PATH, HOME: scratch, LANG: "C.UTF-8" },
 					},
 					(error, stdout, stderr) => {
-						if (error)
+						if (!error) {
+							resolve(stdout);
+							return;
+						}
+						if (error.code !== "ERR_CHILD_PROCESS_STDIO_MAXBUFFER" && error.killed && error.signal === "SIGTERM")
+							reject(new MutationEnumerationError("limit", "enumeration exceeded its 120-second deadline"));
+						else if (error.signal === "SIGABRT" && /heap (?:limit|out of memory)/i.test(stderr))
 							reject(
-								new MutationEnumerationError("instrumenter", `enumeration failed: ${stderr || error.message}`),
+								new MutationEnumerationError(
+									"limit",
+									"enumeration worker exceeded its 512 MiB V8 old-space heap cap",
+								),
 							);
-						else resolve(stdout);
+						else if (
+							error.code === 73 ||
+							(error.code === "ERR_CHILD_PROCESS_STDIO_MAXBUFFER" && error.message.includes("stdout"))
+						)
+							reject(new MutationEnumerationError("limit", "enumeration worker response exceeds 64 MiB"));
+						else
+							reject(
+								new MutationEnumerationError(
+									"instrumenter",
+									`enumeration failed: ${visibleText(stderr || error.message)}`,
+								),
+							);
 					},
 				);
 				child.stdin!.on("error", () => {});
 				child.stdin!.end(input);
 			});
-			const mutants = JSON.parse(output) as {
-				fileName: string;
-				location: { start: { line: number; column: number }; end: { line: number; column: number } };
-				mutatorName: string;
-				replacement: string;
-				status?: string;
-				statusReason?: string;
-			}[];
-			return mutants.map((mutant) => ({
-				file: mutant.fileName,
-				line: mutant.location.start.line + 1,
-				column: mutant.location.start.column,
-				endLine: mutant.location.end.line + 1,
-				endColumn: mutant.location.end.column,
-				mutatorName: mutant.mutatorName,
-				replacement: mutant.replacement,
-				status: mutant.status === "Ignored" ? "ignored" : "generated",
-				...(mutant.status === "Ignored"
-					? ({ ignoredBy: excludedMutations.includes(mutant.mutatorName) ? "config" : "comment" } as const)
-					: {}),
-				...(mutant.statusReason === undefined ? {} : { statusReason: mutant.statusReason }),
-			}));
+			remainingTime(boundedDeadline);
+			try {
+				const { mutants, total } = JSON.parse(output) as {
+					total: number;
+					mutants: {
+						fileName: string;
+						location: { start: { line: number; column: number }; end: { line: number; column: number } };
+						mutatorName: string;
+						replacement: string;
+						status?: string;
+						statusReason?: string;
+					}[];
+				};
+				if (
+					!Number.isSafeInteger(total) ||
+					total < 0 ||
+					!Array.isArray(mutants) ||
+					mutants.length !== Math.min(limit, total)
+				)
+					throw new Error("invalid worker count or retained length");
+				const rows = mutants.map<EnumeratedMutant>((mutant) => {
+					const { start, end } = mutant.location;
+					if (
+						mutant.fileName.trim() === "" ||
+						mutant.mutatorName.trim() === "" ||
+						typeof mutant.replacement !== "string" ||
+						![start.line, start.column, end.line, end.column].every(Number.isSafeInteger) ||
+						start.line < 0 ||
+						end.line < start.line ||
+						end.line >= Number.MAX_SAFE_INTEGER ||
+						start.column < 0 ||
+						end.column < 0 ||
+						(end.line === start.line && end.column < start.column) ||
+						![undefined, "Ignored"].includes(mutant.status) ||
+						(mutant.statusReason !== undefined && typeof mutant.statusReason !== "string")
+					)
+						throw new Error("invalid worker row");
+					return {
+						file: mutant.fileName,
+						line: mutant.location.start.line + 1,
+						column: mutant.location.start.column,
+						endLine: mutant.location.end.line + 1,
+						endColumn: mutant.location.end.column,
+						mutatorName: mutant.mutatorName,
+						replacement: mutant.replacement,
+						status: mutant.status === "Ignored" ? "ignored" : "generated",
+						...(mutant.status === "Ignored"
+							? ({ ignoredBy: excludedMutations.includes(mutant.mutatorName) ? "config" : "comment" } as const)
+							: {}),
+						...(mutant.statusReason === undefined ? {} : { statusReason: mutant.statusReason }),
+					};
+				});
+				batch = { mutants: rows, total };
+			} catch {
+				throw new MutationEnumerationError("instrumenter", "enumeration returned invalid worker output");
+			}
 		} finally {
 			await rm(scratch, { recursive: true, force: true });
 		}
+		remainingTime(boundedDeadline);
+		return batch;
 	}
 }
 
@@ -252,7 +392,7 @@ async function safeDependencies(module: string, root: string, install: string, t
 
 const sourceExtension = /(?:^|\/)[^/]+\.[^/.]+$/;
 const dataExtension =
-	/\.(?:md|markdown|txt|rst|adoc|json|yaml|yml|toml|xml|csv|tsv|lock|map|svg|png|jpe?g|gif|webp|ico|pdf|snap|tgz|zip|gz|sum)$/i;
+	/\.(?:md|markdown|txt|rst|adoc|json|yaml|yml|toml|xml|csv|tsv|lock|lockb|map|svg|png|jpe?g|gif|webp|ico|pdf|snap|tgz|zip|gz|sum)$/i;
 
 /** Enumerates a resolved revision under one host-selected policy source. */
 export class MutationEnumeration {
@@ -279,6 +419,7 @@ export class MutationEnumeration {
 	}
 
 	async list(options: { limit?: number; all?: boolean } = {}): Promise<MutationInventory<MutationInventoryV2>> {
+		const deadline = performance.now() + 120_000;
 		const limit = options.all ? Number.MAX_SAFE_INTEGER : (options.limit ?? 200);
 		if (!Number.isSafeInteger(limit) || limit < 0)
 			throw new MutationEnumerationError("limit", "limit must be a non-negative safe integer");
@@ -308,11 +449,40 @@ export class MutationEnumeration {
 		unmutated.push(...unknown.map((file) => ({ file, reason: "no mutation adapter handles this language" })));
 		const source = await openSource(repoRoot, { kind: "revision", commit: revision.head });
 		const files: MutationFile[] = [];
+		let retained = 0;
 		for (const [name, ranges] of Object.entries(targets.changed)) {
-			const content = await source.readText(name, 16 * 1024 * 1024);
+			remainingTime(deadline);
+			const bound = Math.min(maxFileBytes, maxAggregateBytes - retained);
+			let content: string | undefined;
+			try {
+				content = await source.readText(name, bound);
+			} catch (error) {
+				if (error instanceof SourceError && error.code === "tooLarge")
+					throw new MutationEnumerationError(
+						"limit",
+						bound < maxFileBytes
+							? "enumeration aggregate source exceeds 64 MiB"
+							: "enumeration source exceeds 16 MiB per file",
+					);
+				throw error;
+			}
 			if (content === undefined)
 				throw new MutationEnumerationError("instrumenter", `committed source ${name} is missing`);
+			const size = Buffer.byteLength(content, "utf8");
+			if (size > bound)
+				throw new MutationEnumerationError(
+					"limit",
+					bound < maxFileBytes
+						? "enumeration aggregate source exceeds 64 MiB"
+						: "enumeration source exceeds 16 MiB per file",
+				);
+			// Git and the parser count these line breaks differently.
+			if (/\r(?!\n)|[\u2028\u2029]/u.test(content)) {
+				unmutated.push({ file: name, reason: mutationUnmutated.lineBreaks.why });
+				continue;
+			}
 			files.push({ name, content, ranges });
+			retained += size;
 		}
 		const policy = await openSource(repoRoot, this.#policy);
 		const text = await policy.readText("stryker.config.json", 1024 * 1024);
@@ -328,8 +498,11 @@ export class MutationEnumeration {
 			}
 		}
 		const adapter = files.length === 0 ? undefined : await TypeScriptMutationAdapter.open(repoRoot);
-		const rows = adapter === undefined ? [] : await adapter.enumerate(files, excluded);
-		return MutationInventory.create({
+		remainingTime(deadline);
+		const { mutants: rows, total } =
+			adapter === undefined ? { mutants: [], total: 0 } : await adapter.enumerate(files, excluded, limit, deadline);
+		remainingTime(deadline);
+		const inventory = MutationInventory.create({
 			range: {
 				base: revision.base,
 				head: revision.head,
@@ -345,10 +518,12 @@ export class MutationEnumeration {
 					}),
 				)
 				.digest("hex"),
-			mutants: rows.slice(0, limit),
-			total: rows.length,
-			omitted: Math.max(0, rows.length - limit),
+			mutants: rows,
+			total,
+			omitted: total - rows.length,
 			unmutated,
 		});
+		remainingTime(deadline);
+		return inventory;
 	}
 }

@@ -1,0 +1,258 @@
+{
+  "format": 1,
+  "purpose": "Selective local-agent coordinator handover evidence, not a new review or formal comparison record.",
+  "date": "2026-10-28 Australia/Melbourne",
+  "scope": {
+    "included": "Historical strict reviews/CLI exports, manual mutation rows and bindings, independent audit summaries, CI job metadata, and authentication diagnosis.",
+    "excluded": "Credentials/auth files, raw model transcripts, per-mutant native report files, proof source snapshots, the full43MB audit detail JSON and durable SQLite/task stores. Cloud absolute paths in receipts are provenance only.",
+    "warning": "A checksum binds the transferred file; it does not supply missing referenced files or prove outcomes were rerun locally. Final PR250 source reviews/CI bind173409, not the new handover head.",
+    "pendingOpusBrief": "pr256/claude-r4-brief.txt is an unlaunched cloud draft; adapt paths only after a successful full same-head Melian review."
+  },
+  "files": [
+    {
+      "path": "drain258/ci-305bee-final-jobs.json",
+      "bytes": 4764,
+      "sha256": "94d0bae7cd2b5eeb605c26a655d178a4dc8e6b35d8df35137b1a6d3b68b4af2e"
+    },
+    {
+      "path": "drain258/comparison-r1-adjudicated.json",
+      "bytes": 2441,
+      "sha256": "cdc0c09a630f200f97f662df6b1d42a5dfc90fa59acb9fbfb16fa406d62b77af"
+    },
+    {
+      "path": "drain258/comparison-r1-adjudicated.md",
+      "bytes": 3161,
+      "sha256": "92c0627c5d778604d4601a2c48ff6540e4666216805f232e538b2e704a98337a"
+    },
+    {
+      "path": "pr250/baseline-final.json",
+      "bytes": 81774,
+      "sha256": "0e8477fdf30af46827ad3f0a4274778d2f01ecff6de8eb3f02e61bfe3927b85e"
+    },
+    {
+      "path": "pr250/claude-r1-receipt-metadata.json",
+      "bytes": 1720,
+      "sha256": "0e0bf3ffcf9a08aee81a74605dab26c39702f8e142325007a8bea2875667924d"
+    },
+    {
+      "path": "pr250/claude-r2-receipt-metadata.json",
+      "bytes": 1694,
+      "sha256": "0f17c1cc91fa554905e3eba72c3d56ecec37f4ed5907dce2b3edf38876cb2be4"
+    },
+    {
+      "path": "pr250/claude-r2-review.json",
+      "bytes": 115,
+      "sha256": "48372ecf7430d9ec5a1ffd1ed9dbb2f7f6d2deef89b7f95d21946c30b1faa9a4"
+    },
+    {
+      "path": "pr250/codex-r2-review.json",
+      "bytes": 93,
+      "sha256": "9044bd1ed904c6d3d8ab59d8422957ae05d3c24857cbaf950852fce555541469"
+    },
+    {
+      "path": "pr250/codex-r2-review.md",
+      "bytes": 7582,
+      "sha256": "8ae468241233ea13b09576780c502aedb8be22faa474f8e932f1f87712d0d52d"
+    },
+    {
+      "path": "pr250/comparison-final.json",
+      "bytes": 16613,
+      "sha256": "1aac670fccfb5cc0949dc56834095aca3eac458e4023841fabdd94b623f48963"
+    },
+    {
+      "path": "pr250/comparison-final.md",
+      "bytes": 10840,
+      "sha256": "7bb27b2f4c0e00de1b98b2ade6b5cb796300086e8fdada84eb144cfad2344791"
+    },
+    {
+      "path": "pr250/enumerated-final.json",
+      "bytes": 286271,
+      "sha256": "b66f07a1e242b0b62708963cd85f8c4a84f76145a2554911322adb2933f10eed"
+    },
+    {
+      "path": "pr250/final-proof-index.json",
+      "bytes": 703556,
+      "sha256": "75969ce30f365de4c1f49df1ee8505a1daa1b68ee0471b6ef667c0c917bb9f50"
+    },
+    {
+      "path": "pr250/final-sources.json",
+      "bytes": 57188,
+      "sha256": "51b05af98417ef223aeae5c9490041c774e20dbb7d5f2c3c6153769281d0ed17"
+    },
+    {
+      "path": "pr250/github-auth-research.md",
+      "bytes": 4926,
+      "sha256": "bb7a6b2954df887935a627533258a9cedaa6300d20a9722977413b154d790580"
+    },
+    {
+      "path": "pr250/inventory-final.json",
+      "bytes": 516894,
+      "sha256": "5440791ce3242072fb1ed84eaf418c133f2587a447a8d1815bd4e4b39d33130c"
+    },
+    {
+      "path": "pr250/melian-r2-verdict.json",
+      "bytes": 71300,
+      "sha256": "b53b476ed87deea4eb2c85f58008666469816496751e34c733b4cfae7993f761"
+    },
+    {
+      "path": "pr256/backlog-after-r3.md",
+      "bytes": 1563,
+      "sha256": "9e5463faa1fb3e2470bd75cf7809e47a6d64641d549b291bd90d0b6c453ff9b4"
+    },
+    {
+      "path": "pr256/ci-66236-final-jobs.json",
+      "bytes": 4764,
+      "sha256": "a4c5596f756a93cf266341547704774eeca4c3b7eeb7622931c3d1d24fdaf364"
+    },
+    {
+      "path": "pr256/claude-r1-process.json",
+      "bytes": 281,
+      "sha256": "6068a465ebc1f3f93791b2f762c82e2a25ed6bd582e128ea35f33988598b0b4a"
+    },
+    {
+      "path": "pr256/claude-r1-receipt-metadata.json",
+      "bytes": 1722,
+      "sha256": "0b8a6e1a39de87f61e7bf035e53d927c37e33f6662c260e3fac671065149b909"
+    },
+    {
+      "path": "pr256/claude-r1-review.json",
+      "bytes": 7822,
+      "sha256": "f98970b746064f90c923a13a66c5edfc31491e0f65e7b176f88a9b3cca3f0cdf"
+    },
+    {
+      "path": "pr256/claude-r2-process.json",
+      "bytes": 281,
+      "sha256": "efa6d9276c71dbdc1b4e93859c96aebb0cf9bf46f25ed3413090cd553715b979"
+    },
+    {
+      "path": "pr256/claude-r2-receipt-metadata.json",
+      "bytes": 1700,
+      "sha256": "7931abc22ee08dc39b6ca731604668bc2742dca4ea45baeb350f6a465de63c7a"
+    },
+    {
+      "path": "pr256/claude-r2-review.json",
+      "bytes": 2653,
+      "sha256": "62640fae12707b74d1f4cbef637d61e97f9b627ff8867dc3f3fa2354e35102bc"
+    },
+    {
+      "path": "pr256/claude-r2-structured.json",
+      "bytes": 7756,
+      "sha256": "c5c4882d78af74ac1cf49819a0939f87ac41aa68a3c820e6e740599a454aa78a"
+    },
+    {
+      "path": "pr256/claude-r3-process.json",
+      "bytes": 281,
+      "sha256": "e7297d26d3bec354e633c53617748735043241e5256d0d804f93f6caa9fed484"
+    },
+    {
+      "path": "pr256/claude-r3-receipt-metadata.json",
+      "bytes": 1722,
+      "sha256": "721f515ad65d95e4abd088bff64f45e28e469b8d2e6729f1b8155d09020d5158"
+    },
+    {
+      "path": "pr256/claude-r3-review.json",
+      "bytes": 2883,
+      "sha256": "b0bd89d2f0f19ed976eed6ed8395b0d3516ba488025c84c8021dbadef4a94484"
+    },
+    {
+      "path": "pr256/claude-r3-structured.json",
+      "bytes": 10075,
+      "sha256": "4e160688f139ea9b59e168510c6fafa5be34fc8a1a34ae31ef27146565cda47d"
+    },
+    {
+      "path": "pr256/claude-r4-brief.txt",
+      "bytes": 8356,
+      "sha256": "48167f9f1f237e69931fff1d07cfbfcd9928c2ac791bd2a3009bd5815e861140"
+    },
+    {
+      "path": "pr256/codex-r4-review.json",
+      "bytes": 173,
+      "sha256": "8a336875f5eb451cc45f73da51e8166534eadeb4988fd704fd6e95d26ec3bf70"
+    },
+    {
+      "path": "pr256/codex-r4-review.md",
+      "bytes": 10863,
+      "sha256": "8986d92b4ee8c850755589fae69b18c54c189f6328828382da83a49c111c63d6"
+    },
+    {
+      "path": "pr256/comparison-r3-adjudicated.json",
+      "bytes": 30183,
+      "sha256": "2105f5fe051aef812d2dcb8d1c81b7d5ab16a6ff3bf09221e20bb4fdafdd7435"
+    },
+    {
+      "path": "pr256/comparison-r3-adjudicated.md",
+      "bytes": 18200,
+      "sha256": "c1b90c91d0821f0f68fbf234c5c5d5e4b68736b4f9c5787427d9da0c80f8076a"
+    },
+    {
+      "path": "pr256/coordinator-proof-audit/r4-ancillary-check.json",
+      "bytes": 16931,
+      "sha256": "2ce39ef0bb1976ce13b849c586a78c948536f299570f2d3c801effed3d0c93a1"
+    },
+    {
+      "path": "pr256/coordinator-proof-audit/r4-final-audit-summary.json",
+      "bytes": 4018,
+      "sha256": "58bd7a799451e29361b57b37dcfa752cbc784725d51e138a27d069217b2b9945"
+    },
+    {
+      "path": "pr256/coordinator-proof-audit/r4-final-audit.md",
+      "bytes": 5912,
+      "sha256": "c9be30134292f5c3d8d1c4527c7411fcad4a8e6417d8d1b7c568e40766afe0ca"
+    },
+    {
+      "path": "pr256/coordinator-proof-audit/r4-runtime-equivalence-adopted.json",
+      "bytes": 42212,
+      "sha256": "ab4945947e6ff5a6497c277e5e78ced7533656ae033b31bd7b0976e72dbe4a75"
+    },
+    {
+      "path": "pr256/coordinator-proof-audit/r4-supplemental-audit.json",
+      "bytes": 95971,
+      "sha256": "9b222a463ab4e77268d36451ccae74a92b87da0009cc6e8f2212454b6ccf02a0"
+    },
+    {
+      "path": "pr256/coordinator-r4-authority-rule-review.md",
+      "bytes": 7270,
+      "sha256": "4ca5afbe558a6d683ee31fdda26474babb516eeae3e9778e542484975a3b7c83"
+    },
+    {
+      "path": "pr256/coordinator-r4-rerun-diagnosis.md",
+      "bytes": 3580,
+      "sha256": "07a693cb2769b0959b872248cadd4518ed37af5eeb8941e9f70803acc8350638"
+    },
+    {
+      "path": "pr256/melian-r4-attempt3-rate-limit-rounds.json",
+      "bytes": 1629,
+      "sha256": "3198b05429e8cee86ae3d346838293ce73e05f9e011b22c16560e0b59bfb50a4"
+    },
+    {
+      "path": "pr256/melian-r4-attempt3.log",
+      "bytes": 9987,
+      "sha256": "488ede72ce8f82c4fd2e6308b195ee753cdbfdd05b0193543512b2dcd47341e9"
+    },
+    {
+      "path": "pr256/r4-final-bindings.json",
+      "bytes": 1268608,
+      "sha256": "c94e0532e4ea7b1ea91aad42100bd123f1d60aa971014ae2d22fe7f3c1205d28"
+    },
+    {
+      "path": "pr256/r4-final-source-manifest.json",
+      "bytes": 6369,
+      "sha256": "076ba3b2076e79ed5ad9f267410d91f39ad794655dc7652812281ceb4cc66bf1"
+    },
+    {
+      "path": "pr256/r4-full-inventory.json",
+      "bytes": 375672,
+      "sha256": "566644c6041145513958c7e9b1f7aa02c30aa15fa19bdd90c518d8dea9088630"
+    },
+    {
+      "path": "pr256/r4-verified-proof.json",
+      "bytes": 7018631,
+      "sha256": "6d37a58adddb349115c43159a211c8319e8d6d05c4137f08614971f4b7db88f9"
+    }
+  ],
+  "archive": {
+    "file": "2026-10-28-cloud-coordinator-evidence.tar.gz",
+    "bytes": 875866,
+    "sha256": "0f0b25ef2596bdae7347b02ddaadcf015f385a7e0c499c969a329a570b635675"
+  }
+}

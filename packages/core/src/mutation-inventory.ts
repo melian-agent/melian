@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import Type, { type Static } from "typebox";
 import Value from "typebox/value";
 import { canonicalPath } from "./findings.ts";
+import { visibleText } from "./render.ts";
 
 /** Recurring survivor labels used by the builder's checklist and deterministic sample. */
 export const survivorClasses = [
@@ -132,6 +133,7 @@ export type MutationSample = {
 	selected: ((MutationInventoryRow | LegacyMutationInventory["mutants"][number]) & { sampleHash: string })[];
 	total: number;
 	unmutated: MutationInventoryV2["unmutated"];
+	ignored?: { config: MutationInventoryRow[]; comment: MutationInventoryRow[] };
 };
 /** Why an inventory cannot be read, sampled or used for verification. */
 export type MutationInventoryErrorCode =
@@ -160,6 +162,10 @@ function identityHash(row: MutationIdentity): string {
 			JSON.stringify([row.file, row.line, row.column, row.endLine, row.endColumn, row.mutatorName, row.replacement]),
 		)
 		.digest("hex");
+}
+
+function jsonText(value: unknown): string {
+	return JSON.stringify(value, null, 2).split("\n").map(visibleText).join("\n");
 }
 
 function requireRepositoryPath(file: string): void {
@@ -258,7 +264,7 @@ export class MutationInventory<State extends MutationInventoryState = MutationIn
 	/** Chooses the same hashes, mandatory groups and per-file rounded fifth as the historical script. */
 	sample(): MutationSample {
 		this.#requireClassified();
-		const ranked = this.#state.mutants
+		const ranked = this.#probes()
 			.map((mutant) => ({ mutant, hash: identityHash(mutant) }))
 			.sort((a, b) => a.hash.localeCompare(b.hash));
 		const selected = new Set(ranked.filter((row) => row.mutant.claim !== "killed"));
@@ -278,10 +284,20 @@ export class MutationInventory<State extends MutationInventoryState = MutationIn
 		);
 		for (const group of remaining.values())
 			for (const row of group.slice(0, Math.ceil(group.length / 5))) selected.add(row);
+		const ignored =
+			this.#state.melianMutants === 2
+				? {
+						ignored: {
+							config: this.#state.mutants.filter((row) => row.ignoredBy === "config"),
+							comment: this.#state.mutants.filter((row) => row.ignoredBy === "comment"),
+						},
+					}
+				: {};
 		return structuredClone({
 			selected: ranked.filter((row) => selected.has(row)).map((row) => ({ ...row.mutant, sampleHash: row.hash })),
 			total: this.#state.total,
 			unmutated: this.#state.unmutated,
+			...ignored,
 		});
 	}
 
@@ -301,6 +317,16 @@ export class MutationInventory<State extends MutationInventoryState = MutationIn
 		return structuredClone(this.#state);
 	}
 
+	/** Renders the original inventory as terminal-safe JSON without changing its data. */
+	renderJson(): string {
+		return jsonText(this.toJSON());
+	}
+
+	/** Renders the deterministic sample as terminal-safe JSON without changing its data. */
+	renderSampleJson(): string {
+		return jsonText(this.sample());
+	}
+
 	/** Renders full identities and ignored provenance without treating statusReason as policy. */
 	renderTable(): string {
 		const state = this.#state;
@@ -309,24 +335,35 @@ export class MutationInventory<State extends MutationInventoryState = MutationIn
 			...state.mutants.map((row) =>
 				[
 					identityHash(row),
-					JSON.stringify(row.file),
+					visibleText(JSON.stringify(row.file)),
 					row.line,
 					row.column,
 					row.endLine,
 					row.endColumn,
-					JSON.stringify(row.mutatorName).slice(1, -1),
-					JSON.stringify(row.replacement),
-					JSON.stringify({
-						status: row.status,
-						...("ignoredBy" in row ? { ignoredBy: row.ignoredBy } : {}),
-						statusReason: row.statusReason,
-					}),
+					visibleText(JSON.stringify(row.mutatorName)).slice(1, -1),
+					visibleText(JSON.stringify(row.replacement)),
+					visibleText(
+						JSON.stringify({
+							status: row.status,
+							...("ignoredBy" in row ? { ignoredBy: row.ignoredBy } : {}),
+							statusReason: row.statusReason,
+						}),
+					),
 				].join("\t"),
 			),
-			...state.unmutated.map(({ file, reason }) => `UNMUTATED\t${JSON.stringify(file)}\t${JSON.stringify(reason)}`),
+			...state.unmutated.map(
+				({ file, reason }) =>
+					`UNMUTATED\t${visibleText(JSON.stringify(file))}\t${visibleText(JSON.stringify(reason))}`,
+			),
 			"",
 			`${state.mutants.length} of ${state.total} mutants; ${state.omitted} omitted`,
 		].join("\n");
+	}
+
+	#probes() {
+		return this.#state.melianMutants === 2
+			? this.#state.mutants.filter((row) => row.status === "generated")
+			: this.#state.mutants;
 	}
 
 	#requireClassified(): void {
@@ -335,7 +372,7 @@ export class MutationInventory<State extends MutationInventoryState = MutationIn
 				"incompleteInventory",
 				"sampling and verification require a complete inventory with no omitted mutants",
 			);
-		for (const row of this.#state.mutants) {
+		for (const row of this.#probes()) {
 			if (row.claim === undefined)
 				throw new MutationInventoryError(
 					"unclassifiedClaim",

@@ -23,12 +23,12 @@ export async function listMutants(
 	}
 	const enumeration = await MutationEnumeration.open(io.cwd, range, { policy, target: url });
 	const inventory = await enumeration.list(options);
-	io.stdout(`${options.json ? JSON.stringify(inventory.toJSON(), null, 2) : inventory.renderTable()}\n`);
+	io.stdout(`${options.json ? inventory.renderJson() : inventory.renderTable()}\n`);
 	return 0;
 }
 
 export async function sampleMutants(io: Io, path: string): Promise<number> {
 	const inventory = MutationInventory.parse(JSON.parse(await readFile(resolve(io.cwd, path), "utf8")));
-	io.stdout(`${JSON.stringify(inventory.sample(), null, 2)}\n`);
+	io.stdout(`${inventory.renderSampleJson()}\n`);
 	return 0;
 }

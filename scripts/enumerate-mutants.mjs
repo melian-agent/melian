@@ -3,9 +3,14 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 
+import { visibleText } from "../packages/core/src/render.ts";
 import { sampleMutants } from "./mutant-sample.mjs";
 
 const defaultLimit = 200;
+
+function jsonText(value) {
+	return JSON.stringify(value, null, 2).split("\n").map(visibleText).join("\n");
+}
 
 export async function enumerateMutants({
 	cwd = process.cwd(),
@@ -14,11 +19,18 @@ export async function enumerateMutants({
 } = {}) {
 	if (!Number.isSafeInteger(limit) || limit < 0) throw new Error("limit must be a non-negative safe integer");
 	const cli = fileURLToPath(new URL("../packages/cli/bin/melian.js", import.meta.url));
-	const output = execFileSync(process.execPath, [cli, "mutants", "list", range, "--json", "--limit", String(limit)], {
-		cwd,
-		encoding: "utf8",
-		maxBuffer: 64 * 1024 * 1024,
-	});
+	let output;
+	try {
+		output = execFileSync(process.execPath, [cli, "mutants", "list", range, "--json", "--limit", String(limit)], {
+			cwd,
+			encoding: "utf8",
+			maxBuffer: 512 * 1024 * 1024,
+			stdio: ["ignore", "pipe", "pipe"],
+		});
+	} catch (error) {
+		if (error.code === "ENOBUFS") throw new Error("compatibility output exceeds its 512 MiB buffer; reduce --limit");
+		throw error;
+	}
 	const inventory = JSON.parse(output);
 	return {
 		mutants: inventory.mutants.map(({ id, ignoredBy, status, ...row }) => ({
@@ -35,20 +47,23 @@ export function renderTable({ mutants, total, omitted, unmutated = [] }) {
 	const rows = mutants.map(
 		({ file, line, column, endLine, endColumn, mutatorName, replacement, status, statusReason }) =>
 			[
-				JSON.stringify(file),
+				visibleText(JSON.stringify(file)),
 				line,
 				column,
 				endLine,
 				endColumn,
-				mutatorName,
-				JSON.stringify(replacement),
-				JSON.stringify({ status, statusReason }),
+				visibleText(mutatorName),
+				visibleText(JSON.stringify(replacement)),
+				visibleText(JSON.stringify({ status, statusReason })),
 			].join("\t"),
 	);
 	return [
 		"FILE\tLINE\tCOLUMN\tEND_LINE\tEND_COLUMN\tMUTATOR\tREPLACEMENT\tPOLICY",
 		...rows,
-		...unmutated.map(({ file, reason }) => `UNMUTATED\t${JSON.stringify(file)}\t${JSON.stringify(reason)}`),
+		...unmutated.map(
+			({ file, reason }) =>
+				`UNMUTATED\t${visibleText(JSON.stringify(file))}\t${visibleText(JSON.stringify(reason))}`,
+		),
 		"",
 		`${mutants.length} of ${total} mutants; ${omitted} omitted`,
 	].join("\n");
@@ -73,16 +88,16 @@ async function main() {
 	if (positionals.length > 1) throw new Error("expected one git range");
 	if (values.sample !== undefined) {
 		if (positionals.length !== 0) throw new Error("use either a range or --sample FILE");
-		console.log(JSON.stringify(sampleMutants(JSON.parse(readFileSync(values.sample, "utf8"))), null, 2));
+		console.log(jsonText(sampleMutants(JSON.parse(readFileSync(values.sample, "utf8")))));
 		return;
 	}
 	const result = await enumerateMutants({ range: positionals[0], limit: Number(values.limit) });
-	console.log(values.json ? JSON.stringify(result, null, 2) : renderTable(result));
+	console.log(values.json ? jsonText(result) : renderTable(result));
 }
 
 if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
 	main().catch((error) => {
-		console.error(error.message);
+		console.error(visibleText(error.message));
 		process.exitCode = 1;
 	});
 }

@@ -3,8 +3,21 @@ import {
 	MutationInventory,
 	MutationInventoryError,
 	type MutationInventoryInput,
+	type MutationInventoryRowInput,
 	survivorClasses,
 } from "../src/mutation-inventory.ts";
+
+const terminalControls = [
+	...Array.from({ length: 32 }, (_, index) => index),
+	...Array.from({ length: 33 }, (_, index) => index + 0x7f),
+	0x61c,
+	0x200e,
+	0x200f,
+	0x2028,
+	0x2029,
+	...Array.from({ length: 5 }, (_, index) => index + 0x202a),
+	...Array.from({ length: 4 }, (_, index) => index + 0x2066),
+];
 
 const identity = (index = 0, extra = {}) => ({
 	file: "src/a.ts",
@@ -24,7 +37,7 @@ const row = (index = 0, extra = {}) => ({
 	survivorClasses: ["compound-condition" as const],
 	...extra,
 });
-const fields = (mutants = [row()], extra = {}) => ({
+const fields = (mutants: MutationInventoryRowInput[] = [row()], extra = {}) => ({
 	range: { base: "a".repeat(40), head: "b".repeat(40), target: "https://github.com/example/repo/pull/1" },
 	adapters: [
 		{ name: "typescript", version: "1", toolVersion: "stryker-instrumenter@10.0.0", source: "checkout" as const },
@@ -75,6 +88,209 @@ describe("MutationInventory", () => {
 		expect(() => MutationInventory.create(fields([row(0, { file })]))).toThrow(MutationInventoryError);
 		expect(() =>
 			MutationInventory.create(fields([row(0, { evidence: { test: { file, path: ["guard"] } } })])),
+		).toThrow(MutationInventoryError);
+	});
+
+	it("keeps unclassified config and comment rows as owned full-row v2 notes", () => {
+		const input = fields([
+			{ ...identity(0), status: "ignored", ignoredBy: "config", statusReason: "policy" },
+			{ ...identity(1), status: "ignored", ignoredBy: "comment", statusReason: "head disable" },
+		]);
+		const inventory = MutationInventory.create(input);
+		const stored = inventory.toJSON();
+		expect(stored).toEqual({
+			melianMutants: 2,
+			...input,
+			mutants: input.mutants.map((r, index) => ({ ...r, id: stored.mutants[index].id })),
+		});
+		const expected = {
+			selected: [],
+			total: 2,
+			unmutated: stored.unmutated,
+			ignored: { config: [stored.mutants[0]], comment: [stored.mutants[1]] },
+		};
+		expect(() => inventory.sample()).not.toThrow();
+		expect(inventory.sample()).toEqual(expected);
+		expect(() => inventory.forVerification()).not.toThrow();
+		expect(inventory.forVerification()).toEqual(stored);
+		expect(inventory.toJSON()).toEqual(stored);
+		const sample = inventory.sample();
+		expect(sample).toHaveProperty("ignored");
+		if (sample.ignored === undefined) throw new Error("missing notes");
+		sample.ignored.config[0].statusReason = "changed";
+		sample.ignored.comment[0].statusReason = "changed";
+		expect(inventory.sample()).toEqual(expected);
+	});
+
+	it.each(["killed", "new-test", "equivalent"] as const)(
+		"excludes every classified ignored %s row from mandatory groups and remaining quotas",
+		(claim) => {
+			const generated = Array.from({ length: 12 }, (_, index) => row(index));
+			generated.push(
+				row(12, { file: "src/b.ts", mutatorName: "ArrayDeclaration", survivorClasses: ["some-every"] }),
+			);
+			const ignored = ["config", "comment"].flatMap((ignoredBy, index) => [
+				row(30 + index, {
+					status: "ignored",
+					ignoredBy,
+					claim,
+					evidence: claim === "equivalent" ? { reason: "optional reason" } : row().evidence,
+				}),
+				row(40 + index, {
+					status: "ignored",
+					ignoredBy,
+					claim,
+					file: "src/ignored.ts",
+					mutatorName: "IgnoredOnly",
+					survivorClasses: ["negative-test"],
+					evidence: claim === "equivalent" ? { reason: "optional reason" } : row().evidence,
+				}),
+			]);
+			const inventory = MutationInventory.create(fields([...generated, ...ignored]));
+			const stored = inventory.toJSON();
+			const notes = {
+				config: stored.mutants.filter((r) => r.ignoredBy === "config"),
+				comment: stored.mutants.filter((r) => r.ignoredBy === "comment"),
+			};
+			const expected = {
+				...MutationInventory.create(fields(generated)).sample(),
+				total: stored.total,
+				ignored: notes,
+			};
+			expect(inventory.sample()).toEqual(expected);
+			const sample = inventory.sample();
+			if (sample.ignored === undefined) throw new Error("missing notes");
+			const config = sample.ignored.config;
+			config[0].survivorClasses?.push("numeric-bound");
+			if (config[0].evidence && "test" in config[0].evidence) config[0].evidence.test.path.push("changed");
+			if (config[0].evidence && "reason" in config[0].evidence) config[0].evidence.reason = "changed";
+			expect(inventory.sample()).toEqual(expected);
+			expect(inventory.toJSON()).toEqual(stored);
+		},
+	);
+
+	it.each([
+		[5, 2],
+		[6, 3],
+	])("samples %i remaining generated rows with mixed ignored rows: %i probes", (remaining, probes) => {
+		const generated = Array.from({ length: remaining + 1 }, (_, index) => row(index));
+		const ignored = Array.from({ length: 9 }, (_, index) =>
+			row(index + 50, {
+				status: "ignored",
+				ignoredBy: index % 2 === 0 ? "config" : "comment",
+			}),
+		);
+		const inventory = MutationInventory.create(fields([...ignored, ...generated]));
+		const sample = inventory.sample();
+		expect(sample.selected).toHaveLength(probes);
+		expect(sample.selected).toEqual(MutationInventory.create(fields(generated)).sample().selected);
+		expect(sample.total).toBe(generated.length + ignored.length);
+	});
+
+	it("does not let ignored-only groups satisfy generated file, mutator or class groups", () => {
+		const generated = [
+			row(0),
+			row(1, { file: "src/rare.ts" }),
+			row(2, { mutatorName: "ArrayDeclaration" }),
+			row(3, { survivorClasses: ["some-every"] }),
+		];
+		const ignored = generated.map((r, index) => ({
+			...r,
+			line: index + 40,
+			endLine: index + 40,
+			status: "ignored" as const,
+			ignoredBy: "comment" as const,
+			claim: "new-test" as const,
+		}));
+		expect(MutationInventory.create(fields([...ignored, ...generated])).sample().selected).toEqual(
+			MutationInventory.create(fields(generated)).sample().selected,
+		);
+	});
+
+	it("always includes empty ignored groups in v2 samples", () => {
+		expect(MutationInventory.create(fields([], { adapters: [] })).sample()).toEqual({
+			selected: [],
+			total: 0,
+			unmutated: fields().unmutated,
+			ignored: { config: [], comment: [] },
+		});
+		expect(MutationInventory.create(fields()).sample()).toEqual({
+			selected: [
+				{
+					...MutationInventory.create(fields()).toJSON().mutants[0],
+					sampleHash: "b4909d8c461235c8a78ce0dfbb445781394b1abfaf0b19858345fc019a01dbe8",
+				},
+			],
+			total: 1,
+			unmutated: fields().unmutated,
+			ignored: { config: [], comment: [] },
+		});
+	});
+
+	it.each([undefined, 1])(
+		"keeps exact v1 selection and output for ignored-like labels at version %s",
+		(melianMutants) => {
+			const input = legacy(
+				Array.from({ length: 12 }, (_, index) => row(index)),
+				{ melianMutants },
+			);
+			const labelled = {
+				...input,
+				mutants: input.mutants.map((r, index) => ({
+					...r,
+					status: index % 3 === 0 ? "ignored" : index % 3 === 1 ? "Ignored" : "generated",
+					ignoredBy: "config",
+				})),
+			};
+			const expected = MutationInventory.parse(input).sample();
+			expect(MutationInventory.parse(labelled).sample()).toEqual({
+				...expected,
+				selected: expected.selected.map((r) => ({
+					...r,
+					status: labelled.mutants[r.line - 1].status,
+					ignoredBy: "config",
+				})),
+			});
+			expect(MutationInventory.parse(labelled).sample()).not.toHaveProperty("ignored");
+			const unclassified = { ...labelled, mutants: labelled.mutants.map((r) => ({ ...r, claim: undefined })) };
+			expect(() => MutationInventory.parse(unclassified).sample()).toThrow("claim");
+		},
+	);
+
+	it.each([
+		{ claim: undefined, evidence: undefined, survivorClasses: undefined },
+		{ claim: "killed", evidence: undefined },
+		{ claim: "new-test", evidence: undefined },
+		{ claim: "equivalent", evidence: undefined },
+		{ claim: "killed", evidence: { reason: "wrong kind" } },
+		{ claim: "new-test", evidence: { reason: "wrong kind" } },
+		{ claim: "equivalent", evidence: row().evidence },
+		{ claim: "killed", survivorClasses: undefined },
+	])("refuses generated classification gaps for sampling and future verification: %j", (extra) => {
+		for (const method of ["sample", "forVerification"] as const)
+			expect(() => MutationInventory.create(fields([row(0, extra)]))[method]()).toThrow(MutationInventoryError);
+	});
+
+	it.each([
+		{ claim: "unknown" },
+		{ claim: "" },
+		{ evidence: null },
+		{ survivorClasses: null },
+		{ claim: "equivalent", evidence: { reason: " " } },
+		{ evidence: { test: { file: "test/a.ts", path: [] } } },
+		{ evidence: "legacy" },
+		{ evidence: { reason: "wrong kind" } },
+		{ claim: undefined },
+		{ evidence: undefined },
+		{ survivorClasses: undefined },
+		{ survivorClasses: ["unknown"] },
+		{ claim: "equivalent", evidence: row().evidence },
+		{ claim: "new-test", evidence: { reason: "wrong kind" } },
+		{ evidence: { test: { file: "../outside.ts", path: ["guard"] } } },
+		{ ignoredBy: "other" },
+	])("still refuses invalid supplied ignored claims and fields: %j", (extra) => {
+		expect(() =>
+			MutationInventory.create(fields([row(0, { status: "ignored", ignoredBy: "config", ...extra })])),
 		).toThrow(MutationInventoryError);
 	});
 
@@ -183,7 +399,9 @@ describe("MutationInventory", () => {
 		const input = fields();
 		const inventory = MutationInventory.create(input);
 		const expected = inventory.toJSON();
-		input.mutants[0].evidence.test.path.push("changed");
+		const evidence = input.mutants[0].evidence;
+		if (evidence === undefined || !("test" in evidence)) throw new Error("missing test evidence");
+		evidence.test.path.push("changed");
 		const parsedInput = inventory.toJSON();
 		const parsed = MutationInventory.parse(parsedInput);
 		parsedInput.mutants[0].file = "changed.ts";
@@ -367,6 +585,49 @@ describe("MutationInventory", () => {
 		).toEqual(input.mutants.map((mutant) => mutant.evidence));
 	});
 
+	it.each(
+		terminalControls.flatMap((code) =>
+			["file", "replacement", "mutatorName", "statusReason", "unmutatedFile", "unmutatedReason"].map(
+				(field) => [code, field] as const,
+			),
+		),
+	)("escapes terminal control %i in table cell %s", (code, field) => {
+		const control = String.fromCharCode(code);
+		const value = `before${control}after`;
+		const quoted = code < 32 ? JSON.stringify(value) : `"before\\u${code.toString(16).padStart(4, "0")}after"`;
+		const input = legacy([row(0, field.startsWith("unmutated") ? {} : { [field]: value })], {
+			unmutated: [
+				{
+					file: field === "unmutatedFile" ? value : "src/link.ts",
+					reason: field === "unmutatedReason" ? value : "symlink",
+				},
+			],
+		});
+		// Legacy paths permit every control, including NUL; version 2 refuses NUL paths before rendering.
+		const inventory = MutationInventory.parse(input);
+		const hash = inventory.sample().selected[0].sampleHash;
+		expect(inventory.renderTable(), field).toBe(
+			[
+				"ID\tFILE\tLINE\tCOLUMN\tEND_LINE\tEND_COLUMN\tMUTATOR\tREPLACEMENT\tPOLICY",
+				[
+					hash,
+					field === "file" ? quoted : '"src/a.ts"',
+					1,
+					0,
+					1,
+					1,
+					field === "mutatorName" ? quoted.slice(1, -1) : "ConditionalExpression",
+					field === "replacement" ? quoted : '"true"',
+					field === "statusReason" ? `{"statusReason":${quoted}}` : "{}",
+				].join("\t"),
+				`UNMUTATED\t${field === "unmutatedFile" ? quoted : '"src/link.ts"'}\t${field === "unmutatedReason" ? quoted : '"symlink"'}`,
+				"",
+				"1 of 1 mutants; 0 omitted",
+			].join("\n"),
+		);
+		expect(inventory.toJSON()).toEqual(input);
+	});
+
 	it("renders ids, ignored provenance, escaped text, omissions and unmutated files", () => {
 		const inventory = MutationInventory.create(
 			fields(
@@ -445,6 +706,7 @@ describe("inventory sampling", () => {
 			selected: [],
 			total: 0,
 			unmutated: fields().unmutated,
+			ignored: { config: [], comment: [] },
 		});
 	});
 });
