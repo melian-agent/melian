@@ -161,6 +161,64 @@ describe("mutation enumeration", { timeout: 60_000 }, () => {
 			message: "missing language",
 		});
 	});
+	it("keeps preloads and unrelated variables out of the enumeration worker", async () => {
+		const adapter = await TypeScriptMutationAdapter.open(repo);
+		const marker = join(repo, "preload-marker");
+		const preload = join(repo, "preload.cjs");
+		const sentinel = "parent-only-value";
+		writeFiles(repo, {
+			"preload.cjs": `require('node:fs').writeFileSync(${JSON.stringify(marker)}, process.env.MELIAN_ENUMERATION_SENTINEL);`,
+		});
+		vi.stubEnv("NODE_OPTIONS", `--require=${JSON.stringify(preload)}`);
+		vi.stubEnv("MELIAN_ENUMERATION_SENTINEL", sentinel);
+		try {
+			const control = spawnSync(process.execPath, ["--eval", ""], {
+				cwd: repo,
+				encoding: "utf8",
+				timeout: 10_000,
+				env: {
+					PATH: process.env.PATH,
+					LANG: "C.UTF-8",
+					NODE_OPTIONS: process.env.NODE_OPTIONS,
+					MELIAN_ENUMERATION_SENTINEL: sentinel,
+				},
+			});
+			expect(control.status, control.stderr || control.error?.message).toBe(0);
+			expect(await readFile(marker, "utf8")).toBe(sentinel);
+			await rm(marker);
+			expect(
+				await adapter.enumerate(
+					[{ name: "src/flag.ts", content: "export const flag = true;", ranges: [[1, 1]] }],
+					[],
+				),
+			).toEqual([
+				{
+					file: "src/flag.ts",
+					line: 1,
+					column: 20,
+					endLine: 1,
+					endColumn: 24,
+					mutatorName: "BooleanLiteral",
+					replacement: "false",
+					status: "generated",
+				},
+			]);
+			await expect(access(marker)).rejects.toMatchObject({ code: "ENOENT" });
+			const calls = vi.mocked(childProcess.execFile).mock.calls;
+			expect(calls).toHaveLength(1);
+			const options = calls[0][2]!;
+			expect(Object.keys(options.env!).sort()).toEqual(["LANG", "PATH"]);
+			expect(options).toEqual({
+				cwd: expect.any(String),
+				maxBuffer: 64 * 1024 * 1024,
+				timeout: 120_000,
+				env: { PATH: process.env.PATH, LANG: "C.UTF-8" },
+			});
+		} finally {
+			vi.unstubAllEnvs();
+		}
+	});
+
 	it("enumerates source larger than the stdin pipe buffer", async () => {
 		const adapter = await TypeScriptMutationAdapter.open(repo);
 		const content = `export const value = true;\n${"// padding\n".repeat(20_000)}`;
