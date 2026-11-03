@@ -131,10 +131,15 @@ afterEach(async () => {
 
 it("passes exact membership facts and ownership to the writer and reports mixed additions and removals", async () => {
 	expect(await (await PullRequestComparison.open(io, 7)).refresh(true)).toBe(0);
-	expect(ComparisonStores.read).toHaveBeenCalledExactlyOnceWith(io, {
-		repository: { owner: "owner", name: "repo" },
-		pullRequest: 7,
-	});
+	expect(ComparisonStores.read).toHaveBeenCalledExactlyOnceWith(
+		io,
+		{
+			repository: { owner: "owner", name: "repo" },
+			pullRequest: 7,
+		},
+		true,
+		false,
+	);
 	expect(repository.openStorage).toHaveBeenCalledExactlyOnceWith(`/state/scripted/${id}.sqlite`);
 	expect(write).toHaveBeenCalledExactlyOnceWith(
 		answer,
@@ -471,4 +476,14 @@ it("gives a new unattributed candidate no saved-member availability exemption", 
 		warnings: [],
 		audit: [],
 	});
+});
+
+it("passes an explicit export context while retaining own history reads", async () => {
+	expect(await (await PullRequestComparison.open(io, 7, true)).export({ json: true })).toBe(0);
+	expect(ComparisonStores.read).toHaveBeenCalledExactlyOnceWith(
+		io,
+		{ repository: { owner: "owner", name: "repo" }, pullRequest: 7 },
+		true,
+		true,
+	);
 });

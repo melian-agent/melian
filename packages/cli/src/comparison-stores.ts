@@ -25,6 +25,7 @@ export class ComparisonStores {
 		io: Io,
 		ownership?: MembershipCandidate["publication"],
 		histories = ownership !== undefined,
+		exporting = false,
 	): Promise<ComparisonStores> {
 		const repoRoot = await git(io.cwd, ["rev-parse", "--show-toplevel"]);
 		const directory = join(await stateDirectory(repoRoot, io.env), ...(isScripted(io.env) ? ["scripted"] : []));
@@ -37,7 +38,13 @@ export class ComparisonStores {
 			if (error.code === "ENOENT") return [];
 			throw new CliError(`cannot read comparisons at ${directory}: ${error.message}`);
 		});
-		for (const name of names.filter((name) => /^(range|pull)-[0-9a-f]{16}\.sqlite$/.test(name)).sort()) {
+		const files = names.filter((name) => /^(range|pull)-[0-9a-f]{16}\.sqlite$/.test(name)).sort();
+		if (exporting) {
+			const own = files.indexOf(`${historyChangeset}.sqlite`);
+			if (own < 0) return result;
+			files.unshift(...files.splice(own, 1));
+		}
+		for (const name of files) {
 			const changeset = name.slice(0, -".sqlite".length);
 			const storage = await openStorage(join(directory, name));
 			try {
@@ -49,6 +56,7 @@ export class ComparisonStores {
 			} finally {
 				await storage.close(context);
 			}
+			if (exporting && result.histories.get(historyChangeset!)?.current() === undefined) break;
 		}
 		return result;
 	}

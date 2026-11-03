@@ -282,7 +282,8 @@ export async function exportComparison(
 	options: { readonly out?: string; readonly json: boolean },
 ): Promise<number> {
 	const target = parseTarget(argument);
-	if (target.kind === "pullRequest") return (await PullRequestComparison.open(io, target.number)).export(options);
+	if (target.kind === "pullRequest")
+		return (await PullRequestComparison.open(io, target.number, true)).export(options);
 	const stored = await StoredReview.open(io, argument);
 	const path = await storagePath(stored.changeset.repoRoot, stored.changeset.id, io.env, isScripted(io.env));
 	if (!existsSync(path))

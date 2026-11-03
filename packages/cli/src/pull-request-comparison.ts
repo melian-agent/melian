@@ -44,12 +44,17 @@ export class PullRequestComparison {
 		this.url = url;
 		this.repository = repository;
 	}
-	static async open(io: Io, number: number): Promise<PullRequestComparison> {
+	static async open(io: Io, number: number, exporting = false): Promise<PullRequestComparison> {
 		const repository = parseGitHubRemote(await git(io.cwd, ["remote", "get-url", "origin"]));
-		const stores = await ComparisonStores.read(io, {
-			repository: { owner: repository.owner, name: repository.repo },
-			pullRequest: number,
-		});
+		const stores = await ComparisonStores.read(
+			io,
+			{
+				repository: { owner: repository.owner, name: repository.repo },
+				pullRequest: number,
+			},
+			true,
+			exporting,
+		);
 		return new PullRequestComparison(
 			io,
 			number,
