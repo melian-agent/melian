@@ -258,7 +258,7 @@ export async function comparisonStats(
 	io: Io,
 	options: { readonly since?: string; readonly last?: number },
 ): Promise<number> {
-	const stores = await ComparisonStores.read(io);
+	const stores = await ComparisonStores.read(io, undefined, true);
 	const comparisons = new ComparisonSet(stores.entries);
 	io.stdout(comparisons.renderStats(options));
 	const unattributed = new Set(
