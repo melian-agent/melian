@@ -38,6 +38,39 @@ const associations = (numbers: number[], hasNext = false, cursor: string | null 
 		},
 	},
 });
+// Typed from GitHub's schema, never imported from the reader: a recorded reply cannot prove what the query asks.
+const commitsQuery = `query MelianRoundCommits($owner: String!, $name: String!, $number: Int!, $after: String) {
+  repository(owner: $owner, name: $name) {
+    pullRequest(number: $number) {
+      baseRefOid headRefOid mergeCommit { oid }
+      commits(first: 100, after: $after) {
+        nodes { commit { oid } }
+        pageInfo { hasNextPage endCursor }
+      }
+    }
+  }
+}`;
+const pushesQuery = `query MelianRoundPushes($owner: String!, $name: String!, $number: Int!, $after: String) {
+  repository(owner: $owner, name: $name) {
+    pullRequest(number: $number) {
+      baseRefOid headRefOid mergeCommit { oid }
+      timelineItems(first: 100, after: $after, itemTypes: [HEAD_REF_FORCE_PUSHED_EVENT]) {
+        nodes { ... on HeadRefForcePushedEvent { beforeCommit { oid } afterCommit { oid } } }
+        pageInfo { hasNextPage endCursor }
+      }
+    }
+  }
+}`;
+const associatedQuery = `query MelianRoundAssociations($owner: String!, $name: String!, $oid: GitObjectID!, $after: String) {
+  repository(owner: $owner, name: $name) {
+    object(oid: $oid) { ... on Commit {
+      associatedPullRequests(first: 100, after: $after) {
+        nodes { number repository { name owner { login } } }
+        pageInfo { hasNextPage endCursor }
+      }
+    } }
+  }
+}`;
 const defaults = {
 	MelianRoundCommits: [commits([head])],
 	MelianRoundPushes: [pushes(old, head)],
@@ -93,38 +126,20 @@ it("pages all connections by hasNextPage, ignoring filtered totalCount", async (
 		],
 		associated: { [head]: [7, 12], [old]: [7, 12] },
 	});
-	expect(requests.map((request) => request.variables.after)).toEqual([
-		null,
-		"commits-1",
-		null,
-		"pushes-1",
-		null,
-		"associated-1",
-		null,
-		"associated-1",
+	const request = (query: string, variables: Record<string, unknown>) => ({
+		query,
+		variables: { owner: "owner", name: "repo", number: 7, ...variables },
+	});
+	expect(requests.map(({ url: _url, ...body }) => body)).toEqual([
+		request(commitsQuery, { after: null }),
+		request(commitsQuery, { after: "commits-1" }),
+		request(pushesQuery, { after: null }),
+		request(pushesQuery, { after: "pushes-1" }),
+		request(associatedQuery, { oid: head, after: null }),
+		request(associatedQuery, { oid: head, after: "associated-1" }),
+		request(associatedQuery, { oid: old, after: null }),
+		request(associatedQuery, { oid: old, after: "associated-1" }),
 	]);
-	for (const { query, variables } of requests) {
-		expect(query).toContain("repository(owner: $owner, name: $name)");
-		expect(query).toContain("pageInfo { hasNextPage endCursor }");
-		expect(variables).toMatchObject({ owner: "owner", name: "repo", number: 7 });
-		if (query.includes("MelianRoundAssociations")) {
-			expect(query).toContain("object(oid: $oid)");
-			expect(query).toContain("associatedPullRequests(first: 100, after: $after)");
-			expect(query).toContain("number repository { name owner { login } }");
-			expect(query).not.toContain("states:");
-			expect([head, old]).toContain(variables.oid);
-		} else {
-			expect(query).toContain("pullRequest(number: $number)");
-			expect(query).toContain("baseRefOid headRefOid mergeCommit { oid }");
-			if (query.includes("MelianRoundCommits")) {
-				expect(query).toContain("commits(first: 100, after: $after)");
-				expect(query).toContain("nodes { commit { oid } }");
-			} else {
-				expect(query).toContain("itemTypes: [HEAD_REF_FORCE_PUSHED_EVENT]");
-				expect(query).toContain("beforeCommit { oid } afterCommit { oid }");
-			}
-		}
-	}
 });
 it.each([249, 250, 251])("refuses commit cap at %i commits", async (count) => {
 	const { opened } = reader({ ...defaults, MelianRoundCommits: [commits(Array<string>(count).fill(head))] });
