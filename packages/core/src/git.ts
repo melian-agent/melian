@@ -117,7 +117,7 @@ export function requireGitVersion(cwd: string): Promise<void> {
 	return versionCheck;
 }
 
-// Throws `gitFailed` with git's own message.
+/** Runs a read-only Git command in cwd with repository-local environment variables removed; failures carry Git's message. */
 export async function gitOutput(cwd: string, args: readonly string[]): Promise<string> {
 	const result = await git(cwd, args);
 	if (result.code !== 0) throw gitFailure(args, result);

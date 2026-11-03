@@ -38,3 +38,12 @@ misses:
   - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "C13", tool: tests }
   - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "C14", tool: tests }
   - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "C15", tool: tests }
+  - { record: packages/evals/comparisons/2026-10-27-pr-250.md, finding: "LA3", tool: repro-run }
+  - { record: packages/evals/comparisons/2026-10-27-pr-250.md, finding: "LB1", tool: repro-run }
+  - { record: packages/evals/comparisons/2026-10-27-pr-250.md, finding: "LD2", tool: repro-run }
+  - { record: packages/evals/comparisons/2026-10-27-pr-250.md, finding: "LD3", tool: repro-run }
+  - { record: packages/evals/comparisons/2026-10-27-pr-250.md, finding: "LE2", tool: repro-run }
+  - { record: packages/evals/comparisons/2026-10-27-pr-250.md, finding: "LG1", tool: repro-run }
+  - { record: packages/evals/comparisons/2026-10-27-pr-250.md, finding: "LG2", tool: repro-run }
+  - { record: packages/evals/comparisons/2026-10-27-pr-250.md, finding: "LG4", tool: repro-run }
+  - { record: packages/evals/comparisons/2026-10-27-pr-250.md, finding: "LL1", tool: repro-run }
