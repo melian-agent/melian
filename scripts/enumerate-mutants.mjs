@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 
+import { visibleText } from "../packages/core/src/render.ts";
 import { sampleMutants } from "./mutant-sample.mjs";
 
 const defaultLimit = 200;
@@ -73,7 +74,12 @@ async function main() {
 	if (positionals.length > 1) throw new Error("expected one git range");
 	if (values.sample !== undefined) {
 		if (positionals.length !== 0) throw new Error("use either a range or --sample FILE");
-		console.log(JSON.stringify(sampleMutants(JSON.parse(readFileSync(values.sample, "utf8"))), null, 2));
+		console.log(
+			JSON.stringify(sampleMutants(JSON.parse(readFileSync(values.sample, "utf8"))), null, 2)
+				.split("\n")
+				.map(visibleText)
+				.join("\n"),
+		);
 		return;
 	}
 	const result = await enumerateMutants({ range: positionals[0], limit: Number(values.limit) });

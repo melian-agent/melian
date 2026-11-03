@@ -2,11 +2,24 @@ import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Changeset, MutationInventory, type PullRequest } from "@melian-agent/core";
 import { createGitHubProvider } from "@melian-agent/github";
+import { MutationEnumeration } from "@melian-agent/pipeline";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { commit, createRepository, gitIn, removeRepository } from "../../pipeline/test/fixtures/repo.ts";
 import type { Io } from "../src/commands.ts";
 import { main } from "../src/main.ts";
 import * as target from "../src/target.ts";
+
+const terminalControls = [
+	...Array.from({ length: 32 }, (_, index) => index),
+	...Array.from({ length: 33 }, (_, index) => index + 0x7f),
+	0x61c,
+	0x200e,
+	0x200f,
+	0x2028,
+	0x2029,
+	...Array.from({ length: 5 }, (_, index) => index + 0x202a),
+	...Array.from({ length: 4 }, (_, index) => index + 0x2066),
+];
 
 let repo: string;
 let base: string;
@@ -36,6 +49,50 @@ function output(): Io & { lines: string[]; errors: string[] } {
 }
 
 describe("mutants commands", { timeout: 60_000 }, () => {
+	it.each(terminalControls.flatMap((code) => ["list", "sample"].map((route) => [code, route] as const)))(
+		"escapes terminal control %i through the %s JSON route",
+		async (code, route) => {
+			const control = String.fromCharCode(code);
+			const value = `before${control}after`;
+			const input = {
+				mutants: [
+					{
+						file: value,
+						line: 1,
+						column: 0,
+						endLine: 1,
+						endColumn: 1,
+						mutatorName: value,
+						replacement: value,
+						statusReason: value,
+						claim: "killed",
+						evidence: value,
+						survivorClasses: [],
+					},
+				],
+				total: 1,
+				omitted: 0,
+				unmutated: [{ file: value, reason: value }],
+			};
+			const inventory = MutationInventory.parse(input);
+			vi.spyOn(MutationEnumeration.prototype, "list").mockResolvedValue(
+				inventory as Awaited<ReturnType<MutationEnumeration["list"]>>,
+			);
+			await writeFile(join(repo, "controls.json"), JSON.stringify(input));
+			const io = output();
+			const args = route === "list" ? ["list", `${base}..${head}`, "--json"] : ["sample", "controls.json"];
+			const expected = route === "list" ? input : inventory.sample();
+			io.lines.length = 0;
+			expect(await main(["mutants", ...args], io)).toBe(0);
+			const text = io.lines.join("");
+			expect(JSON.parse(text)).toEqual(expected);
+			const json = JSON.stringify(expected, null, 2);
+			const expectedText = code < 32 ? json : json.replaceAll(control, `\\u${code.toString(16).padStart(4, "0")}`);
+			expect(text).toBe(`${expectedText}\n`);
+			expect(io.errors).toEqual([]);
+		},
+	);
+
 	it("fetches a pull request and uses its current base policy rather than its merge base", async () => {
 		const policy = commit(repo, {
 			"stryker.config.json": JSON.stringify({ mutator: { excludedMutations: ["BooleanLiteral"] } }),

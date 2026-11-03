@@ -16,7 +16,20 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { Instrumenter } from "@stryker-mutator/instrumenter";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { mutationUnmutated } from "../packages/core/src/mutation.ts";
+import { MutationInventory } from "../packages/core/src/mutation-inventory.ts";
 import { enumerateMutants, renderTable } from "./enumerate-mutants.mjs";
+
+const terminalControls = [
+	...Array.from({ length: 32 }, (_, index) => index),
+	...Array.from({ length: 33 }, (_, index) => index + 0x7f),
+	0x61c,
+	0x200e,
+	0x200f,
+	0x2028,
+	0x2029,
+	...Array.from({ length: 5 }, (_, index) => index + 0x202a),
+	...Array.from({ length: 4 }, (_, index) => index + 0x2066),
+];
 
 const excluded = [
 	{ file: "packages/core/src/git.ts", reason: mutationUnmutated.signals.why },
@@ -198,6 +211,40 @@ describe("mutant enumeration", { timeout: 60_000 }, () => {
 				replacement: "false",
 			},
 		]);
+	});
+
+	it("escapes all 79 terminal controls through the compatibility sample command", () => {
+		expect(terminalControls).toHaveLength(79);
+		const value = `before${String.fromCharCode(...terminalControls)}after`;
+		const input = {
+			mutants: [
+				{
+					file: value,
+					line: 1,
+					column: 0,
+					endLine: 1,
+					endColumn: 1,
+					mutatorName: value,
+					replacement: value,
+					statusReason: value,
+					claim: "killed",
+					evidence: value,
+					survivorClasses: [],
+				},
+			],
+			total: 1,
+			omitted: 0,
+			unmutated: [{ file: value, reason: value }],
+		};
+		write("controls.json", JSON.stringify(input));
+		const child = spawnSync(process.execPath, [script, "--sample", "controls.json"], { cwd: root, encoding: "utf8" });
+		expect(child.status, child.stderr).toBe(0);
+		const expected = MutationInventory.parse(input).sample();
+		expect(JSON.parse(child.stdout)).toEqual(expected);
+		let expectedText = JSON.stringify(expected, null, 2);
+		for (const code of terminalControls.filter((code) => code >= 32))
+			expectedText = expectedText.replaceAll(String.fromCharCode(code), `\\u${code.toString(16).padStart(4, "0")}`);
+		expect(child.stdout).toBe(`${expectedText}\n`);
 	});
 
 	it("prints a reproducible sampling selection from a complete classified inventory", () => {

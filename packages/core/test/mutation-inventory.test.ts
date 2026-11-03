@@ -6,6 +6,18 @@ import {
 	survivorClasses,
 } from "../src/mutation-inventory.ts";
 
+const terminalControls = [
+	...Array.from({ length: 32 }, (_, index) => index),
+	...Array.from({ length: 33 }, (_, index) => index + 0x7f),
+	0x61c,
+	0x200e,
+	0x200f,
+	0x2028,
+	0x2029,
+	...Array.from({ length: 5 }, (_, index) => index + 0x202a),
+	...Array.from({ length: 4 }, (_, index) => index + 0x2066),
+];
+
 const identity = (index = 0, extra = {}) => ({
 	file: "src/a.ts",
 	line: index + 1,
@@ -365,6 +377,49 @@ describe("MutationInventory", () => {
 				.forVerification()
 				.mutants.map((mutant) => mutant.evidence),
 		).toEqual(input.mutants.map((mutant) => mutant.evidence));
+	});
+
+	it.each(
+		terminalControls.flatMap((code) =>
+			["file", "replacement", "mutatorName", "statusReason", "unmutatedFile", "unmutatedReason"].map(
+				(field) => [code, field] as const,
+			),
+		),
+	)("escapes terminal control %i in table cell %s", (code, field) => {
+		const control = String.fromCharCode(code);
+		const value = `before${control}after`;
+		const quoted = code < 32 ? JSON.stringify(value) : `"before\\u${code.toString(16).padStart(4, "0")}after"`;
+		const input = legacy([row(0, field.startsWith("unmutated") ? {} : { [field]: value })], {
+			unmutated: [
+				{
+					file: field === "unmutatedFile" ? value : "src/link.ts",
+					reason: field === "unmutatedReason" ? value : "symlink",
+				},
+			],
+		});
+		// Legacy paths permit every control, including NUL; version 2 refuses NUL paths before rendering.
+		const inventory = MutationInventory.parse(input);
+		const hash = inventory.sample().selected[0].sampleHash;
+		expect(inventory.renderTable(), field).toBe(
+			[
+				"ID\tFILE\tLINE\tCOLUMN\tEND_LINE\tEND_COLUMN\tMUTATOR\tREPLACEMENT\tPOLICY",
+				[
+					hash,
+					field === "file" ? quoted : '"src/a.ts"',
+					1,
+					0,
+					1,
+					1,
+					field === "mutatorName" ? quoted.slice(1, -1) : "ConditionalExpression",
+					field === "replacement" ? quoted : '"true"',
+					field === "statusReason" ? `{"statusReason":${quoted}}` : "{}",
+				].join("\t"),
+				`UNMUTATED\t${field === "unmutatedFile" ? quoted : '"src/link.ts"'}\t${field === "unmutatedReason" ? quoted : '"symlink"'}`,
+				"",
+				"1 of 1 mutants; 0 omitted",
+			].join("\n"),
+		);
+		expect(inventory.toJSON()).toEqual(input);
 	});
 
 	it("renders ids, ignored provenance, escaped text, omissions and unmutated files", () => {

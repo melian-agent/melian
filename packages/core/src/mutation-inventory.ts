@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import Type, { type Static } from "typebox";
 import Value from "typebox/value";
 import { canonicalPath } from "./findings.ts";
+import { visibleText } from "./render.ts";
 
 /** Recurring survivor labels used by the builder's checklist and deterministic sample. */
 export const survivorClasses = [
@@ -162,6 +163,10 @@ function identityHash(row: MutationIdentity): string {
 		.digest("hex");
 }
 
+function jsonText(value: unknown): string {
+	return JSON.stringify(value, null, 2).split("\n").map(visibleText).join("\n");
+}
+
 function requireRepositoryPath(file: string): void {
 	let canonical: string;
 	try {
@@ -301,6 +306,16 @@ export class MutationInventory<State extends MutationInventoryState = MutationIn
 		return structuredClone(this.#state);
 	}
 
+	/** Renders the original inventory as terminal-safe JSON without changing its data. */
+	renderJson(): string {
+		return jsonText(this.toJSON());
+	}
+
+	/** Renders the deterministic sample as terminal-safe JSON without changing its data. */
+	renderSampleJson(): string {
+		return jsonText(this.sample());
+	}
+
 	/** Renders full identities and ignored provenance without treating statusReason as policy. */
 	renderTable(): string {
 		const state = this.#state;
@@ -309,21 +324,26 @@ export class MutationInventory<State extends MutationInventoryState = MutationIn
 			...state.mutants.map((row) =>
 				[
 					identityHash(row),
-					JSON.stringify(row.file),
+					visibleText(JSON.stringify(row.file)),
 					row.line,
 					row.column,
 					row.endLine,
 					row.endColumn,
-					JSON.stringify(row.mutatorName).slice(1, -1),
-					JSON.stringify(row.replacement),
-					JSON.stringify({
-						status: row.status,
-						...("ignoredBy" in row ? { ignoredBy: row.ignoredBy } : {}),
-						statusReason: row.statusReason,
-					}),
+					visibleText(JSON.stringify(row.mutatorName)).slice(1, -1),
+					visibleText(JSON.stringify(row.replacement)),
+					visibleText(
+						JSON.stringify({
+							status: row.status,
+							...("ignoredBy" in row ? { ignoredBy: row.ignoredBy } : {}),
+							statusReason: row.statusReason,
+						}),
+					),
 				].join("\t"),
 			),
-			...state.unmutated.map(({ file, reason }) => `UNMUTATED\t${JSON.stringify(file)}\t${JSON.stringify(reason)}`),
+			...state.unmutated.map(
+				({ file, reason }) =>
+					`UNMUTATED\t${visibleText(JSON.stringify(file))}\t${visibleText(JSON.stringify(reason))}`,
+			),
 			"",
 			`${state.mutants.length} of ${state.total} mutants; ${state.omitted} omitted`,
 		].join("\n");
