@@ -467,6 +467,8 @@ Planned, not built, to make the loop cheaper and teach Melian from it:
 
 Step 24 designs the coverage ledger and delta review in [design/coverage-and-delta-review.md](design/coverage-and-delta-review.md).
 
+Version-2 mutation samples classify and select generated rows only. Ignored config and comment rows remain full-row notes and enter no quota. Version 1 retains its historical behaviour. [The mutation-evidence section](design/mutation-evidence.md#the-commands-melians-flow) sets out the notes and unchanged stored schema.
+
 Mutant inventory output, including the compatibility script, escapes variable table cells and complete errors through core’s `visibleText`. JSON keeps its structural newlines and parsed values. Child stderr must reach the escaped error path. [The terminal-output amendment](decisions/2026-11-03-mutant-terminal-output.md) records the shared rule.
 
 ## Tech stack

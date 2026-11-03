@@ -133,6 +133,7 @@ export type MutationSample = {
 	selected: ((MutationInventoryRow | LegacyMutationInventory["mutants"][number]) & { sampleHash: string })[];
 	total: number;
 	unmutated: MutationInventoryV2["unmutated"];
+	ignored?: { config: MutationInventoryRow[]; comment: MutationInventoryRow[] };
 };
 /** Why an inventory cannot be read, sampled or used for verification. */
 export type MutationInventoryErrorCode =
@@ -263,7 +264,7 @@ export class MutationInventory<State extends MutationInventoryState = MutationIn
 	/** Chooses the same hashes, mandatory groups and per-file rounded fifth as the historical script. */
 	sample(): MutationSample {
 		this.#requireClassified();
-		const ranked = this.#state.mutants
+		const ranked = this.#probes()
 			.map((mutant) => ({ mutant, hash: identityHash(mutant) }))
 			.sort((a, b) => a.hash.localeCompare(b.hash));
 		const selected = new Set(ranked.filter((row) => row.mutant.claim !== "killed"));
@@ -283,10 +284,20 @@ export class MutationInventory<State extends MutationInventoryState = MutationIn
 		);
 		for (const group of remaining.values())
 			for (const row of group.slice(0, Math.ceil(group.length / 5))) selected.add(row);
+		const ignored =
+			this.#state.melianMutants === 2
+				? {
+						ignored: {
+							config: this.#state.mutants.filter((row) => row.ignoredBy === "config"),
+							comment: this.#state.mutants.filter((row) => row.ignoredBy === "comment"),
+						},
+					}
+				: {};
 		return structuredClone({
 			selected: ranked.filter((row) => selected.has(row)).map((row) => ({ ...row.mutant, sampleHash: row.hash })),
 			total: this.#state.total,
 			unmutated: this.#state.unmutated,
+			...ignored,
 		});
 	}
 
@@ -349,13 +360,19 @@ export class MutationInventory<State extends MutationInventoryState = MutationIn
 		].join("\n");
 	}
 
+	#probes() {
+		return this.#state.melianMutants === 2
+			? this.#state.mutants.filter((row) => row.status === "generated")
+			: this.#state.mutants;
+	}
+
 	#requireClassified(): void {
 		if (this.#state.omitted !== 0)
 			throw new MutationInventoryError(
 				"incompleteInventory",
 				"sampling and verification require a complete inventory with no omitted mutants",
 			);
-		for (const row of this.#state.mutants) {
+		for (const row of this.#probes()) {
 			if (row.claim === undefined)
 				throw new MutationInventoryError(
 					"unclassifiedClaim",

@@ -1,5 +1,7 @@
+import { spawnSync } from "node:child_process";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { Changeset, MutationInventory, type PullRequest } from "@melian-agent/core";
 import { createGitHubProvider } from "@melian-agent/github";
 import { MutationEnumeration } from "@melian-agent/pipeline";
@@ -93,6 +95,64 @@ describe("mutants commands", { timeout: 60_000 }, () => {
 		},
 	);
 
+	it("prints the same safe full-row v2 ignored notes through CLI and compatibility sampling", async () => {
+		const value = `before${String.fromCharCode(...terminalControls)}after`;
+		const common = { file: "src/a.ts", column: 0, endColumn: 1, mutatorName: "BooleanLiteral", replacement: "true" };
+		const inventory = MutationInventory.create({
+			range: { base, head },
+			adapters: [{ name: "typescript", version: "1", toolVersion: "10.0.0", source: "melian" }],
+			installation: "c".repeat(64),
+			total: 3,
+			omitted: 0,
+			unmutated: [],
+			mutants: [
+				{
+					...common,
+					line: 1,
+					endLine: 1,
+					status: "generated",
+					claim: "killed",
+					evidence: { test: { file: "test/a.test.ts", path: ["guard"] } },
+					survivorClasses: [],
+				},
+				{ ...common, line: 2, endLine: 2, status: "ignored", ignoredBy: "config", statusReason: value },
+				{
+					...common,
+					line: 3,
+					endLine: 3,
+					status: "ignored",
+					ignoredBy: "comment",
+					statusReason: value,
+					claim: "equivalent",
+					evidence: { reason: value },
+					survivorClasses: ["some-every"],
+				},
+			],
+		});
+		const stored = inventory.toJSON();
+		await writeFile(join(repo, "notes.json"), JSON.stringify(stored));
+		const expected = {
+			selected: [{ ...stored.mutants[0], sampleHash: stored.mutants[0].id }],
+			total: 3,
+			unmutated: [],
+			ignored: { config: [stored.mutants[1]], comment: [stored.mutants[2]] },
+		};
+		let text = JSON.stringify(expected, null, 2);
+		for (const code of terminalControls.filter((code) => code >= 32))
+			text = text.replaceAll(String.fromCharCode(code), `\\u${code.toString(16).padStart(4, "0")}`);
+		const io = output();
+		expect(await main(["mutants", "sample", "notes.json"], io)).toBe(0);
+		expect(io.lines.join("")).toBe(`${text}\n`);
+		expect(JSON.parse(io.lines.join(""))).toEqual(expected);
+		expect(io.errors).toEqual([]);
+		const script = fileURLToPath(new URL("../../../scripts/enumerate-mutants.mjs", import.meta.url));
+		const child = spawnSync(process.execPath, [script, "--sample", "notes.json"], { cwd: repo, encoding: "utf8" });
+		expect(child.status, child.stderr).toBe(0);
+		expect(child.stderr).toBe("");
+		expect(child.stdout).toBe(`${text}\n`);
+		expect(JSON.parse(child.stdout)).toEqual(expected);
+	});
+
 	it("fetches a pull request and uses its current base policy rather than its merge base", async () => {
 		const policy = commit(repo, {
 			"stryker.config.json": JSON.stringify({ mutator: { excludedMutations: ["BooleanLiteral"] } }),
@@ -141,7 +201,12 @@ describe("mutants commands", { timeout: 60_000 }, () => {
 		await writeFile(join(repo, "inventory.json"), JSON.stringify(data));
 		io.lines.length = 0;
 		expect(await main(["mutants", "sample", "inventory.json"], io)).toBe(0);
-		expect(JSON.parse(io.lines.join("")).selected).toEqual([{ ...data.mutants[0], sampleHash: data.mutants[0].id }]);
+		expect(JSON.parse(io.lines.join(""))).toEqual({
+			selected: [{ ...data.mutants[0], sampleHash: data.mutants[0].id }],
+			total: data.total,
+			unmutated: data.unmutated,
+			ignored: { config: [], comment: [] },
+		});
 		const legacy = {
 			mutants: [{ ...data.mutants[0], evidence: "a.test.ts > flags works" }],
 			total: 1,
@@ -151,7 +216,11 @@ describe("mutants commands", { timeout: 60_000 }, () => {
 		await writeFile(join(repo, "legacy.json"), JSON.stringify(legacy));
 		io.lines.length = 0;
 		expect(await main(["mutants", "sample", "legacy.json"], io)).toBe(0);
-		expect(JSON.parse(io.lines.join("")).selected[0].sampleHash).toBe(data.mutants[0].id);
+		expect(JSON.parse(io.lines.join(""))).toEqual({
+			selected: [{ ...legacy.mutants[0], sampleHash: data.mutants[0].id }],
+			total: 1,
+			unmutated: [],
+		});
 		expect(io.errors).toEqual([]);
 	});
 
