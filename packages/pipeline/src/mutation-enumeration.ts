@@ -117,10 +117,11 @@ export class TypeScriptMutationAdapter implements MutationAdapter {
 		try {
 			// Babel stops .babelrc discovery at the nearest package boundary.
 			await writeFile(join(scratch, "package.json"), "{}");
-			const script = `import { readFileSync } from 'node:fs';
-import { Instrumenter } from ${JSON.stringify(pathToFileURL(this.#module).href)};
+			const script = `import { Instrumenter } from ${JSON.stringify(pathToFileURL(this.#module).href)};
 const logger = {debug(){}, info(){}, warn(){}, error(){}, trace(){}, isDebugEnabled:()=>false};
-const {files, excludedMutations} = JSON.parse(readFileSync(0, 'utf8'));
+let input = '';
+for await (const chunk of process.stdin.setEncoding('utf8')) input += chunk;
+const {files, excludedMutations} = JSON.parse(input);
 const {mutants} = await new Instrumenter(logger).instrument(files, {plugins:null, ignorers:[], excludedMutations});
 console.log(JSON.stringify(mutants));`;
 			const input = JSON.stringify({

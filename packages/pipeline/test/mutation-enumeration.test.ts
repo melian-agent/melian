@@ -161,6 +161,54 @@ describe("mutation enumeration", { timeout: 60_000 }, () => {
 			message: "missing language",
 		});
 	});
+	it("enumerates source larger than the stdin pipe buffer", async () => {
+		const adapter = await TypeScriptMutationAdapter.open(repo);
+		const content = `export const value = true;\n${"// padding\n".repeat(20_000)}`;
+		expect(await adapter.enumerate([{ name: "src/large.ts", content, ranges: [[1, 1]] }], [])).toEqual([
+			{
+				file: "src/large.ts",
+				line: 1,
+				column: 21,
+				endLine: 1,
+				endColumn: 25,
+				mutatorName: "BooleanLiteral",
+				replacement: "false",
+				status: "generated",
+			},
+		]);
+	});
+	it("preserves Unicode split across stdin chunks", async () => {
+		const adapter = await TypeScriptMutationAdapter.open(repo);
+		const exec = vi.mocked(childProcess.execFile).getMockImplementation()!;
+		vi.mocked(childProcess.execFile).mockImplementation((...args) => {
+			const parameters = args[1] as string[];
+			parameters[parameters.length - 1] =
+				`process.stdin.once('data', () => process.stderr.write('chunk received'));\n${parameters[parameters.length - 1]}`;
+			const child = exec(...args);
+			const end = child.stdin!.end.bind(child.stdin!);
+			vi.spyOn(child.stdin!, "end").mockImplementation((...endArgs) => {
+				const bytes = Buffer.from(endArgs[0] as string);
+				const split = bytes.lastIndexOf(Buffer.from("é")) + 1;
+				expect(bytes.subarray(split - 1, split + 1)).toEqual(Buffer.from("é"));
+				// Wait for a worker read so the pipe cannot coalesce the split bytes.
+				child.stderr!.once("data", () => end(bytes.subarray(split)));
+				child.stdin!.write(bytes.subarray(0, split));
+				return child.stdin!;
+			});
+			return child;
+		});
+		const mutants = await adapter.enumerate(
+			[
+				{
+					name: "src/unicode.ts",
+					content: "export const café = true; export const result = café + 1;\n",
+					ranges: [[1, 1]],
+				},
+			],
+			[],
+		);
+		expect(mutants.map((mutant) => mutant.replacement)).toEqual(["false", "café - 1"]);
+	});
 
 	it.each([
 		"{",
