@@ -144,7 +144,7 @@ console.log(JSON.stringify(mutants));`;
 						maxBuffer: 64 * 1024 * 1024,
 						timeout: 120_000,
 						// Node preload flags can load repository code before the isolated parser starts.
-						env: { PATH: process.env.PATH, LANG: "C.UTF-8" },
+						env: { PATH: process.env.PATH, HOME: scratch, LANG: "C.UTF-8" },
 					},
 					(error, stdout, stderr) => {
 						if (error)

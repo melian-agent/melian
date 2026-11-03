@@ -207,12 +207,12 @@ describe("mutation enumeration", { timeout: 60_000 }, () => {
 			const calls = vi.mocked(childProcess.execFile).mock.calls;
 			expect(calls).toHaveLength(1);
 			const options = calls[0][2]!;
-			expect(Object.keys(options.env!).sort()).toEqual(["LANG", "PATH"]);
+			expect(options.env).toEqual({ PATH: process.env.PATH, HOME: options.cwd, LANG: "C.UTF-8" });
 			expect(options).toEqual({
 				cwd: expect.any(String),
 				maxBuffer: 64 * 1024 * 1024,
 				timeout: 120_000,
-				env: { PATH: process.env.PATH, LANG: "C.UTF-8" },
+				env: { PATH: process.env.PATH, HOME: options.cwd, LANG: "C.UTF-8" },
 			});
 		} finally {
 			vi.unstubAllEnvs();
