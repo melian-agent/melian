@@ -213,6 +213,112 @@ describe("mutant enumeration", { timeout: 60_000 }, () => {
 		]);
 	});
 
+	it("escapes all 79 terminal controls in every compatibility table cell", () => {
+		const value = `before${String.fromCharCode(...terminalControls)}after`;
+		const escaped = terminalControls.map((code) => `\\u${code.toString(16).padStart(4, "0")}`).join("");
+		let json = JSON.stringify(value);
+		for (const code of terminalControls.filter((code) => code >= 32))
+			json = json.replaceAll(String.fromCharCode(code), `\\u${code.toString(16).padStart(4, "0")}`);
+		expect(
+			renderTable({
+				mutants: [
+					{
+						file: value,
+						line: 1,
+						column: 2,
+						endLine: 3,
+						endColumn: 4,
+						mutatorName: value,
+						replacement: value,
+						status: value,
+						statusReason: value,
+					},
+				],
+				total: 1,
+				omitted: 0,
+				unmutated: [{ file: value, reason: value }],
+			}),
+		).toBe(
+			[
+				"FILE\tLINE\tCOLUMN\tEND_LINE\tEND_COLUMN\tMUTATOR\tREPLACEMENT\tPOLICY",
+				[json, 1, 2, 3, 4, `before${escaped}after`, json, `{"status":${json},"statusReason":${json}}`].join("\t"),
+				`UNMUTATED\t${json}\t${json}`,
+				"",
+				"1 of 1 mutants; 0 omitted",
+			].join("\n"),
+		);
+	});
+
+	it("escapes all 79 terminal controls in ordinary compatibility JSON without changing values", () => {
+		const value = `before${String.fromCharCode(...terminalControls)}after`;
+		const row = {
+			file: value,
+			line: 1,
+			column: 0,
+			endLine: 1,
+			endColumn: 1,
+			mutatorName: value,
+			replacement: value,
+			statusReason: value,
+		};
+		const expected = { mutants: [row], total: 1, omitted: 0, unmutated: [{ file: value, reason: value }] };
+		write(
+			"output-preload.mjs",
+			`import cp from 'node:child_process';
+import { syncBuiltinESMExports } from 'node:module';
+cp.execFileSync = () => ${JSON.stringify(JSON.stringify(expected))};
+syncBuiltinESMExports();`,
+		);
+		const child = spawnSync(process.execPath, ["--import", join(root, "output-preload.mjs"), script, "--json"], {
+			cwd: root,
+			encoding: "utf8",
+		});
+		expect(child.status, child.stderr).toBe(0);
+		let text = JSON.stringify(expected, null, 2);
+		for (const code of terminalControls.filter((code) => code >= 32))
+			text = text.replaceAll(String.fromCharCode(code), `\\u${code.toString(16).padStart(4, "0")}`);
+		expect(child.stdout).toBe(`${text}\n`);
+		expect(JSON.parse(child.stdout)).toEqual(expected);
+		expect(child.stderr).toBe("");
+	});
+
+	it.each(["range", "sample"])("escapes caller controls in a missing %s", (route) => {
+		const value = `missing${String.fromCharCode(...terminalControls.filter((code) => code !== 0))}`;
+		const args = route === "range" ? [`${value}...HEAD`] : ["--sample", value];
+		{
+			const child = spawnSync(process.execPath, [script, ...args], { cwd: root, encoding: "utf8" });
+			expect(child.status).toBe(1);
+			expect(child.stdout).toBe("");
+			for (const code of terminalControls.filter((code) => code !== 10))
+				expect(child.stderr).not.toContain(String.fromCharCode(code));
+			expect(child.stderr.split("\n")).toHaveLength(2);
+			expect(child.stderr).toContain("missing");
+		}
+	});
+
+	it("captures child stderr before escaping the entire compatibility error", () => {
+		const value = `child${String.fromCharCode(...terminalControls)}failure`;
+		write(
+			"stderr-preload.mjs",
+			`import cp from 'node:child_process';
+import { syncBuiltinESMExports } from 'node:module';
+const run = cp.execFileSync;
+cp.execFileSync = (file, args, options) => run(file, ['--eval', ${JSON.stringify(`process.stderr.write(${JSON.stringify(value)}); process.exit(1);`)}], options);
+syncBuiltinESMExports();`,
+		);
+		const child = spawnSync(process.execPath, ["--import", join(root, "stderr-preload.mjs"), script], {
+			cwd: root,
+			encoding: "utf8",
+		});
+		expect(child.status).toBe(1);
+		expect(child.stdout).toBe("");
+		for (const code of terminalControls.filter((code) => code !== 10))
+			expect(child.stderr).not.toContain(String.fromCharCode(code));
+		expect(child.stderr.split("\n")).toHaveLength(2);
+		const escaped = terminalControls.map((code) => `\\u${code.toString(16).padStart(4, "0")}`).join("");
+		expect(child.stderr).toContain(`child${escaped}failure`);
+	});
+
 	it("escapes all 79 terminal controls through the compatibility sample command", () => {
 		expect(terminalControls).toHaveLength(79);
 		const value = `before${String.fromCharCode(...terminalControls)}after`;
@@ -240,11 +346,11 @@ describe("mutant enumeration", { timeout: 60_000 }, () => {
 		const child = spawnSync(process.execPath, [script, "--sample", "controls.json"], { cwd: root, encoding: "utf8" });
 		expect(child.status, child.stderr).toBe(0);
 		const expected = MutationInventory.parse(input).sample();
-		expect(JSON.parse(child.stdout)).toEqual(expected);
 		let expectedText = JSON.stringify(expected, null, 2);
 		for (const code of terminalControls.filter((code) => code >= 32))
 			expectedText = expectedText.replaceAll(String.fromCharCode(code), `\\u${code.toString(16).padStart(4, "0")}`);
 		expect(child.stdout).toBe(`${expectedText}\n`);
+		expect(JSON.parse(child.stdout)).toEqual(expected);
 	});
 
 	it("prints a reproducible sampling selection from a complete classified inventory", () => {

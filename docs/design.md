@@ -467,6 +467,8 @@ Planned, not built, to make the loop cheaper and teach Melian from it:
 
 Step 24 designs the coverage ledger and delta review in [design/coverage-and-delta-review.md](design/coverage-and-delta-review.md).
 
+Mutant inventory output, including the compatibility script, escapes variable table cells and complete errors through core’s `visibleText`. JSON keeps its structural newlines and parsed values. Child stderr must reach the escaped error path. [The terminal-output amendment](decisions/2026-11-03-mutant-terminal-output.md) records the shared rule.
+
 ## Tech stack
 
 In use since milestone 1, except what a row marks as planned.

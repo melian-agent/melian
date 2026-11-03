@@ -8,6 +8,10 @@ import { sampleMutants } from "./mutant-sample.mjs";
 
 const defaultLimit = 200;
 
+function jsonText(value) {
+	return JSON.stringify(value, null, 2).split("\n").map(visibleText).join("\n");
+}
+
 export async function enumerateMutants({
 	cwd = process.cwd(),
 	range = "origin/main...HEAD",
@@ -19,6 +23,7 @@ export async function enumerateMutants({
 		cwd,
 		encoding: "utf8",
 		maxBuffer: 64 * 1024 * 1024,
+		stdio: ["ignore", "pipe", "pipe"],
 	});
 	const inventory = JSON.parse(output);
 	return {
@@ -36,20 +41,23 @@ export function renderTable({ mutants, total, omitted, unmutated = [] }) {
 	const rows = mutants.map(
 		({ file, line, column, endLine, endColumn, mutatorName, replacement, status, statusReason }) =>
 			[
-				JSON.stringify(file),
+				visibleText(JSON.stringify(file)),
 				line,
 				column,
 				endLine,
 				endColumn,
-				mutatorName,
-				JSON.stringify(replacement),
-				JSON.stringify({ status, statusReason }),
+				visibleText(mutatorName),
+				visibleText(JSON.stringify(replacement)),
+				visibleText(JSON.stringify({ status, statusReason })),
 			].join("\t"),
 	);
 	return [
 		"FILE\tLINE\tCOLUMN\tEND_LINE\tEND_COLUMN\tMUTATOR\tREPLACEMENT\tPOLICY",
 		...rows,
-		...unmutated.map(({ file, reason }) => `UNMUTATED\t${JSON.stringify(file)}\t${JSON.stringify(reason)}`),
+		...unmutated.map(
+			({ file, reason }) =>
+				`UNMUTATED\t${visibleText(JSON.stringify(file))}\t${visibleText(JSON.stringify(reason))}`,
+		),
 		"",
 		`${mutants.length} of ${total} mutants; ${omitted} omitted`,
 	].join("\n");
@@ -74,21 +82,16 @@ async function main() {
 	if (positionals.length > 1) throw new Error("expected one git range");
 	if (values.sample !== undefined) {
 		if (positionals.length !== 0) throw new Error("use either a range or --sample FILE");
-		console.log(
-			JSON.stringify(sampleMutants(JSON.parse(readFileSync(values.sample, "utf8"))), null, 2)
-				.split("\n")
-				.map(visibleText)
-				.join("\n"),
-		);
+		console.log(jsonText(sampleMutants(JSON.parse(readFileSync(values.sample, "utf8")))));
 		return;
 	}
 	const result = await enumerateMutants({ range: positionals[0], limit: Number(values.limit) });
-	console.log(values.json ? JSON.stringify(result, null, 2) : renderTable(result));
+	console.log(values.json ? jsonText(result) : renderTable(result));
 }
 
 if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
 	main().catch((error) => {
-		console.error(error.message);
+		console.error(visibleText(error.message));
 		process.exitCode = 1;
 	});
 }
