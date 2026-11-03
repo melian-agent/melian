@@ -51,6 +51,29 @@ function output(): Io & { lines: string[]; errors: string[] } {
 }
 
 describe("mutants commands", { timeout: 60_000 }, () => {
+	it("lists an empty inventory for a binary Bun dependency-only change", async () => {
+		const start = commit(repo, { "package.json": '{"dependencies":{}}\n', "bun.lockb": "\0before" });
+		const finish = commit(repo, {
+			"package.json": '{"dependencies":{"example":"1.0.0"}}\n',
+			"bun.lockb": "\0after",
+		});
+		expect(gitIn(repo, "diff", "--name-only", start, finish)).toBe("bun.lockb\npackage.json");
+		expect(gitIn(repo, "diff", "--numstat", start, finish, "--", "bun.lockb")).toBe("-\t-\tbun.lockb");
+		const io = output();
+		expect(await main(["mutants", "list", `${start}..${finish}`, "--json"], io)).toBe(0);
+		expect(JSON.parse(io.lines.join(""))).toEqual({
+			melianMutants: 2,
+			range: { base: start, head: finish },
+			installation: expect.stringMatching(/^[a-f0-9]{64}$/),
+			mutants: [],
+			total: 0,
+			omitted: 0,
+			unmutated: [],
+			adapters: [],
+		});
+		expect(io.errors).toEqual([]);
+	});
+
 	it.each(terminalControls.flatMap((code) => ["list", "sample"].map((route) => [code, route] as const)))(
 		"escapes terminal control %i through the %s JSON route",
 		async (code, route) => {

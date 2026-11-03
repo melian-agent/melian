@@ -108,6 +108,29 @@ afterEach(() => {
 });
 
 describe("mutation enumeration", { timeout: 60_000 }, () => {
+	it.each([
+		["bun.lockb", "\0before", "\0after", "-\t-"],
+		["bun.lock", "before\n", "after\n", "1\t1"],
+	])("ignores a Bun dependency-only change: %s", async (file, before, after, numstat) => {
+		const start = commit(repo, { "package.json": '{"dependencies":{}}\n', [file]: before });
+		const finish = commit(repo, {
+			"package.json": '{"dependencies":{"example":"1.0.0"}}\n',
+			[file]: after,
+		});
+		expect(gitIn(repo, "diff", "--name-only", start, finish)).toBe(`${file}\npackage.json`);
+		expect(gitIn(repo, "diff", "--numstat", start, finish, "--", file)).toBe(`${numstat}\t${file}`);
+		expect((await (await MutationEnumeration.open(repo, `${start}..${finish}`)).list()).toJSON()).toEqual({
+			melianMutants: 2,
+			range: { base: start, head: finish },
+			installation: expect.stringMatching(/^[a-f0-9]{64}$/),
+			mutants: [],
+			total: 0,
+			omitted: 0,
+			unmutated: [],
+			adapters: [],
+		});
+	});
+
 	it("accepts maximum one-based coordinates including a zero-width origin row and an empty reason", async () => {
 		const adapter = await TypeScriptMutationAdapter.open(repo);
 		const row = {

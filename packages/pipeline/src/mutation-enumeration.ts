@@ -388,7 +388,7 @@ async function safeDependencies(module: string, root: string, install: string, t
 
 const sourceExtension = /(?:^|\/)[^/]+\.[^/.]+$/;
 const dataExtension =
-	/\.(?:md|markdown|txt|rst|adoc|json|yaml|yml|toml|xml|csv|tsv|lock|map|svg|png|jpe?g|gif|webp|ico|pdf|snap|tgz|zip|gz|sum)$/i;
+	/\.(?:md|markdown|txt|rst|adoc|json|yaml|yml|toml|xml|csv|tsv|lock|lockb|map|svg|png|jpe?g|gif|webp|ico|pdf|snap|tgz|zip|gz|sum)$/i;
 
 /** Enumerates a resolved revision under one host-selected policy source. */
 export class MutationEnumeration {
