@@ -89,6 +89,51 @@ describe("mutant enumeration", { timeout: 60_000 }, () => {
 		write("src/.babelrc.cjs", "throw new Error('head Babel config must never run');\n");
 	});
 	afterEach(() => rmSync(root, { recursive: true, force: true }));
+	it("forwards real safe JSON larger than the old compatibility buffer", async () => {
+		const before = git("rev-parse", "HEAD");
+		write("src/del.js", `export const value = '${String.fromCharCode(0x7f).repeat(6 * 1024 * 1024)}' + x + y + z;\n`);
+		git("add", "src/del.js");
+		git("commit", "-m", "DEL source");
+		const cli = fileURLToPath(new URL("../packages/cli/bin/melian.js", import.meta.url));
+		const output = execFileSync(process.execPath, [cli, "mutants", "list", `${before}..HEAD`, "--all", "--json"], {
+			cwd: root,
+			encoding: "utf8",
+			timeout: 30000,
+			maxBuffer: 128 * 1024 * 1024,
+		});
+		expect(Buffer.byteLength(output)).toBeGreaterThan(64 * 1024 * 1024);
+		expect(output).not.toContain(String.fromCharCode(0x7f));
+		const inventory = JSON.parse(output);
+		expect(inventory.total).toBe(3);
+		expect(await enumerateMutants({ cwd: root, range: `${before}..HEAD`, limit: 10000 })).toEqual({
+			mutants: inventory.mutants.map(({ id: _id, ignoredBy: _ignored, status, ...row }) => ({
+				...row,
+				...(status === "ignored" ? { status: "Ignored" } : {}),
+			})),
+			total: 3,
+			omitted: 0,
+			unmutated: [],
+		});
+	});
+	it.each(["ENOBUFS", "other"])("maps only its own synchronous compatibility buffer overflow: %s", (code) => {
+		write(
+			"buffer-preload.mjs",
+			`import cp from 'node:child_process'; import {syncBuiltinESMExports} from 'node:module'; cp.execFileSync = (file,args,options) => { if(options.maxBuffer!==512*1024*1024 || options.stdio.join(',')!=='ignore,pipe,pipe') throw Error('wrong compatibility buffer contract'); throw Object.assign(Error('ordinary failure'),{code:${JSON.stringify(code)}}); }; syncBuiltinESMExports();`,
+		);
+		const child = spawnSync(process.execPath, ["--import", join(root, "buffer-preload.mjs"), script], {
+			cwd: root,
+			encoding: "utf8",
+			timeout: 10000,
+		});
+		expect({ status: child.status, stdout: child.stdout, stderr: child.stderr }).toEqual({
+			status: 1,
+			stdout: "",
+			stderr:
+				code === "ENOBUFS"
+					? "compatibility output exceeds its 512 MiB buffer; reduce --limit\n"
+					: "ordinary failure\n",
+		});
+	});
 	it.each(["new file", "edited line", "wrong unchanged line"])(
 		"reports a separator set-aside through CLI and compatibility routes: %s",
 		async (scenario) => {

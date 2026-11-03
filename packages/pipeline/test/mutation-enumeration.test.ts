@@ -9,6 +9,7 @@ import * as nodePath from "node:path";
 import { join } from "node:path";
 import { PassThrough } from "node:stream";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import * as core from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	ancestorInstalls,
@@ -35,6 +36,44 @@ vi.mock("node:path", async (original) => {
 	const actual = await original<typeof nodePath>();
 	return { ...actual, relative: vi.fn(actual.relative) };
 });
+vi.mock("@melian-agent/core", async (original) => {
+	const actual = await original<typeof core>();
+	return { ...actual, openSource: vi.fn(actual.openSource) };
+});
+
+function workerReply(
+	reply: (
+		input: string,
+		options: childProcess.ExecFileOptions,
+		argv: readonly string[],
+	) => { stdout: string; error?: childProcess.ExecFileException; stderr?: string },
+): void {
+	vi.mocked(childProcess.execFile).mockImplementation((...args) => {
+		const callback = args[3] as (
+			error: childProcess.ExecFileException | null,
+			stdout: string,
+			stderr: string,
+		) => void;
+		const input = new PassThrough();
+		const chunks: Buffer[] = [];
+		input.on("data", (chunk: Buffer) => chunks.push(chunk));
+		input.on("finish", () => {
+			try {
+				const result = reply(
+					Buffer.concat(chunks).toString("utf8"),
+					args[2] as childProcess.ExecFileOptions,
+					args[1] as string[],
+				);
+				queueMicrotask(() => callback(result.error ?? null, result.stdout, result.stderr ?? ""));
+			} catch (error) {
+				queueMicrotask(() => callback(error as Error, "", "test fake request mismatch"));
+			}
+		});
+		const child = new ChildProcess();
+		Object.defineProperty(child, "stdin", { value: input });
+		return child;
+	});
+}
 
 let repo: string;
 let base: string;
@@ -63,11 +102,802 @@ afterEach(() => {
 	vi.mocked(nodePath.relative).mockReset();
 	vi.mocked(nodeFs.realpath).mockReset();
 	vi.mocked(nodeFs.writeFile).mockReset();
+	vi.mocked(core.openSource).mockReset();
 	vi.unstubAllGlobals();
 	removeRepository(repo);
 });
 
 describe("mutation enumeration", { timeout: 60_000 }, () => {
+	it("accepts maximum one-based coordinates including a zero-width origin row and an empty reason", async () => {
+		const adapter = await TypeScriptMutationAdapter.open(repo);
+		const row = {
+			fileName: "src/a.ts",
+			location: { start: { line: 0, column: 0 }, end: { line: 0, column: 0 } },
+			mutatorName: "BooleanLiteral",
+			replacement: "",
+			statusReason: "",
+		};
+		workerReply((input) => {
+			expect(JSON.parse(input)).toEqual({ files: [], excludedMutations: [], limit: 1 });
+			return { stdout: JSON.stringify({ total: 1, mutants: [row] }) };
+		});
+		expect(await adapter.enumerate([], [], 1)).toEqual({
+			total: 1,
+			mutants: [
+				{
+					file: "src/a.ts",
+					line: 1,
+					column: 0,
+					endLine: 1,
+					endColumn: 0,
+					mutatorName: "BooleanLiteral",
+					replacement: "",
+					status: "generated",
+					statusReason: "",
+				},
+			],
+		});
+	});
+	it.each([-1, 0.5, Number.MAX_SAFE_INTEGER + 1])(
+		"refuses malformed worker batch count %s at limit zero",
+		async (total) => {
+			const adapter = await TypeScriptMutationAdapter.open(repo);
+			workerReply((input) => {
+				expect(JSON.parse(input)).toEqual({ files: [], excludedMutations: [], limit: 0 });
+				return { stdout: JSON.stringify({ total, mutants: [] }) };
+			});
+			await expect(adapter.enumerate([], [], 0)).rejects.toMatchObject({
+				name: "MutationEnumerationError",
+				code: "instrumenter",
+				message: expect.stringContaining("invalid"),
+			});
+		},
+	);
+	it.each([Number.NaN, Number.POSITIVE_INFINITY])(
+		"refuses a non-finite caller deadline %s before input work",
+		async (deadline) => {
+			const adapter = await TypeScriptMutationAdapter.open(repo);
+			await expect(adapter.enumerate([], [], 0, deadline)).rejects.toMatchObject({
+				name: "MutationEnumerationError",
+				code: "limit",
+				message: expect.stringContaining("deadline"),
+			});
+			expect(nodeFs.writeFile).not.toHaveBeenCalled();
+			expect(childProcess.execFile).not.toHaveBeenCalled();
+		},
+	);
+	it("refuses an expired empty selection after policy input", async () => {
+		const enumeration = await MutationEnumeration.open(repo, `${head}..${head}`);
+		let now = 0;
+		vi.spyOn(performance, "now").mockImplementation(() => now);
+		const open = vi.mocked(core.openSource).getMockImplementation()!;
+		let calls = 0;
+		vi.mocked(core.openSource).mockImplementation(async (root, selected) => {
+			const source = await open(root, selected);
+			if (++calls === 2) now = 120000;
+			return source;
+		});
+		await expect(enumeration.list({ limit: 0 })).rejects.toMatchObject({
+			name: "MutationEnumerationError",
+			code: "limit",
+			message: expect.stringContaining("deadline"),
+		});
+		expect(childProcess.execFile).not.toHaveBeenCalled();
+	});
+	it("accepts a multiline row whose columns reset", async () => {
+		const adapter = await TypeScriptMutationAdapter.open(repo);
+		const row = {
+			fileName: "src/a.ts",
+			location: { start: { line: 0, column: 4 }, end: { line: 1, column: 0 } },
+			mutatorName: "BooleanLiteral",
+			replacement: "false",
+		};
+		workerReply((input) => {
+			expect(JSON.parse(input)).toEqual({ files: [], excludedMutations: [], limit: 1 });
+			return { stdout: JSON.stringify({ total: 1, mutants: [row] }) };
+		});
+		expect(await adapter.enumerate([], [], 1)).toEqual({
+			total: 1,
+			mutants: [
+				{
+					file: "src/a.ts",
+					line: 1,
+					column: 4,
+					endLine: 2,
+					endColumn: 0,
+					mutatorName: "BooleanLiteral",
+					replacement: "false",
+					status: "generated",
+				},
+			],
+		});
+	});
+	it("uses non-negative bounded string offsets while encoding", async () => {
+		const adapter = await TypeScriptMutationAdapter.open(repo);
+		const content = `/*${"x".repeat(16380)}*/`;
+		const slice = String.prototype.slice;
+		vi.spyOn(String.prototype, "slice").mockImplementation(function (this: string, start, end) {
+			if (this === content || this === "src/a.ts") {
+				expect(start).toBeGreaterThanOrEqual(0);
+				expect(end! - start!).toBeGreaterThan(0);
+				expect(end! - start!).toBeLessThanOrEqual(16384);
+			}
+			return slice.call(this, start, end);
+		});
+		workerReply((input) => {
+			expect(JSON.parse(input)).toEqual({
+				files: [{ name: "src/a.ts", content, mutate: [] }],
+				excludedMutations: [],
+				limit: 0,
+			});
+			return { stdout: '{"mutants":[],"total":0}' };
+		});
+		expect(await adapter.enumerate([{ name: "src/a.ts", content, ranges: [] }], [], 0)).toEqual({
+			mutants: [],
+			total: 0,
+		});
+	});
+	it.each(["missing", "unreadable", "ordinary"])("preserves a committed source %s failure", async (kind) => {
+		const next = commit(repo, { "src/read.ts": "export const flag = true;" });
+		const enumeration = await MutationEnumeration.open(repo, `${head}..${next}`);
+		const open = vi.mocked(core.openSource).getMockImplementation()!;
+		const error =
+			kind === "unreadable"
+				? new core.SourceError("unreadable", "src/read.ts", "source unavailable")
+				: new Error("ordinary source failure");
+		vi.mocked(core.openSource).mockImplementation(async (root, selected) => {
+			const source = await open(root, selected);
+			return new Proxy(source, {
+				get(target, key, receiver) {
+					if (key !== "readText") return Reflect.get(target, key, receiver);
+					return async (path: string, max: number) => {
+						if (path !== "src/read.ts") return target.readText(path, max);
+						expect(max).toBe(16 * 1024 * 1024);
+						if (kind === "missing") return undefined;
+						throw error;
+					};
+				},
+			});
+		});
+		if (kind === "missing")
+			await expect(enumeration.list()).rejects.toMatchObject({
+				name: "MutationEnumerationError",
+				code: "instrumenter",
+				message: "committed source src/read.ts is missing",
+			});
+		else await expect(enumeration.list()).rejects.toBe(error);
+		expect(childProcess.execFile).not.toHaveBeenCalled();
+	});
+	it("bounds decoded expansion against remaining aggregate before retention", async () => {
+		const contents = Array.from({ length: 4 }, (_, i) => `export const v${i} = true;`);
+		const names = [...contents.map((_, i) => `src/partial${i}.ts`), "src/partial4.ts"];
+		const next = commit(repo, Object.fromEntries(names.map((name, i) => [name, contents[i] ?? "// bytes"])));
+		const opened = vi.spyOn(TypeScriptMutationAdapter, "open");
+		const enumeration = await MutationEnumeration.open(repo, `${head}..${next}`);
+		const open = vi.mocked(core.openSource).getMockImplementation()!;
+		const byteLength = Buffer.byteLength;
+		vi.spyOn(Buffer, "byteLength").mockImplementation((value, encoding) => {
+			const index = contents.indexOf(value as string);
+			return encoding === "utf8" && index >= 0 ? (index === 3 ? 15 : 16) * 1024 * 1024 : byteLength(value, encoding);
+		});
+		vi.mocked(core.openSource).mockImplementation(async (root, selected) => {
+			const source = await open(root, selected);
+			return new Proxy(source, {
+				get(target, key, receiver) {
+					if (key !== "readText") return Reflect.get(target, key, receiver);
+					return async (path: string, max: number) => {
+						const index = names.indexOf(path);
+						if (index < 0) return target.readText(path, max);
+						expect(max).toBe((index === 4 ? 1 : 16) * 1024 * 1024);
+						return index === 4 ? Buffer.alloc(1024 * 1024, 0xff).toString("utf8") : contents[index];
+					};
+				},
+			});
+		});
+		await expect(enumeration.list({ limit: 0 })).rejects.toMatchObject({
+			name: "MutationEnumerationError",
+			code: "limit",
+			message: expect.stringContaining("aggregate"),
+		});
+		expect(childProcess.execFile).not.toHaveBeenCalled();
+		expect(opened).not.toHaveBeenCalled();
+	});
+	it("keeps a real valid C0 comment through encoded input and preserves its row", { timeout: 5000 }, async () => {
+		const adapter = await TypeScriptMutationAdapter.open(repo);
+		const content = `/*${String.fromCharCode(1, 2, 3, 31)}*/export const flag = true;`;
+		expect(await adapter.enumerate([{ name: "src/a.ts", content, ranges: [[1, 1]] }], [], 1)).toEqual({
+			total: 1,
+			mutants: [
+				{
+					file: "src/a.ts",
+					line: 1,
+					column: 28,
+					endLine: 1,
+					endColumn: 32,
+					mutatorName: "BooleanLiteral",
+					replacement: "false",
+					status: "generated",
+				},
+			],
+		});
+	});
+	it("preserves a quoted surrogate pair crossing an encoding chunk boundary", async () => {
+		const adapter = await TypeScriptMutationAdapter.open(repo);
+		const name = `${"x".repeat(16383)}${String.fromCodePoint(0x10348)}.ts`;
+		workerReply((input) => {
+			expect(JSON.parse(input)).toEqual({
+				files: [
+					{
+						name,
+						content: "// é",
+						mutate: [
+							{ start: { line: 0, column: 0 }, end: { line: 1, column: Number.MAX_SAFE_INTEGER } },
+							{ start: { line: 3, column: 0 }, end: { line: 4, column: Number.MAX_SAFE_INTEGER } },
+						],
+					},
+				],
+				excludedMutations: ["one", "two"],
+				limit: 0,
+			});
+			return { stdout: '{"total":0,"mutants":[]}' };
+		});
+		expect(
+			await adapter.enumerate(
+				[
+					{
+						name,
+						content: "// é",
+						ranges: [
+							[1, 2],
+							[4, 5],
+						],
+					},
+				],
+				["one", "two"],
+				0,
+			),
+		).toEqual({ mutants: [], total: 0 });
+	});
+	it.each([0, Number.MAX_SAFE_INTEGER])(
+		"accepts the exact safe full-count boundary %s with no retained rows",
+		async (total) => {
+			const adapter = await TypeScriptMutationAdapter.open(repo);
+			workerReply((input) => {
+				expect(JSON.parse(input)).toEqual({ files: [], excludedMutations: [], limit: 0 });
+				return { stdout: JSON.stringify({ mutants: [], total }) };
+			});
+			expect(await adapter.enumerate([], [], 0)).toEqual({ mutants: [], total });
+		},
+	);
+	it("accepts maximum one-based coordinates and rejects excess retained valid rows", async () => {
+		const adapter = await TypeScriptMutationAdapter.open(repo);
+		const row = {
+			fileName: "src/a.ts",
+			location: {
+				start: { line: Number.MAX_SAFE_INTEGER - 1, column: Number.MAX_SAFE_INTEGER },
+				end: { line: Number.MAX_SAFE_INTEGER - 1, column: Number.MAX_SAFE_INTEGER },
+			},
+			mutatorName: "BooleanLiteral",
+			replacement: "false",
+			status: "Ignored",
+			statusReason: "excludedMutations forged by a comment",
+		};
+		workerReply((input) => {
+			const { limit } = JSON.parse(input);
+			expect(JSON.parse(input)).toEqual({ files: [], excludedMutations: [], limit });
+			return { stdout: JSON.stringify({ mutants: [row], total: 1 }) };
+		});
+		expect(await adapter.enumerate([], [], 1)).toEqual({
+			total: 1,
+			mutants: [
+				{
+					file: "src/a.ts",
+					line: Number.MAX_SAFE_INTEGER,
+					column: Number.MAX_SAFE_INTEGER,
+					endLine: Number.MAX_SAFE_INTEGER,
+					endColumn: Number.MAX_SAFE_INTEGER,
+					mutatorName: "BooleanLiteral",
+					replacement: "false",
+					status: "ignored",
+					ignoredBy: "comment",
+					statusReason: row.statusReason,
+				},
+			],
+		});
+		await expect(adapter.enumerate([], [], 0)).rejects.toMatchObject({
+			name: "MutationEnumerationError",
+			code: "instrumenter",
+			message: expect.stringContaining("invalid"),
+		});
+	});
+	it("shares the deadline begun before committed input work", async () => {
+		const next = commit(repo, { "src/clock.ts": "export const flag = true;" });
+		const enumeration = await MutationEnumeration.open(repo, `${head}..${next}`);
+		let now = 0;
+		vi.spyOn(performance, "now").mockImplementation(() => now);
+		const reads: string[] = [];
+		const open = vi.mocked(core.openSource).getMockImplementation()!;
+		vi.mocked(core.openSource).mockImplementation(async (root, selected) => {
+			const source = await open(root, selected);
+			now = 120000;
+			return new Proxy(source, {
+				get(target, key, receiver) {
+					if (key !== "readText") return Reflect.get(target, key, receiver);
+					return async (path: string, max: number) => {
+						reads.push(path);
+						return target.readText(path, max);
+					};
+				},
+			});
+		});
+		await expect(enumeration.list({ limit: 0 })).rejects.toMatchObject({
+			name: "MutationEnumerationError",
+			code: "limit",
+			message: expect.stringContaining("deadline"),
+		});
+		expect(childProcess.execFile).not.toHaveBeenCalled();
+		expect(reads).toEqual([]);
+	});
+	it.each([0, 1])("checks committed blob size before reading at sixteen MiB plus %s", async (over) => {
+		const content = `/*${"a".repeat(16 * 1024 * 1024 - 4 + over)}*/`;
+		const next = commit(repo, { "src/blob.ts": content });
+		const enumeration = await MutationEnumeration.open(repo, `${head}..${next}`);
+		if (over)
+			await expect(enumeration.list({ limit: 0 })).rejects.toMatchObject({
+				name: "MutationEnumerationError",
+				code: "limit",
+				message: "enumeration source exceeds 16 MiB per file",
+			});
+		else {
+			const { mutants, total, omitted, unmutated } = (await enumeration.list({ limit: 0 })).toJSON();
+			expect({ mutants, total, omitted, unmutated }).toEqual({ mutants: [], total: 0, omitted: 0, unmutated: [] });
+		}
+	});
+	it("refuses retained UTF8 expansion of a bounded invalid-UTF8 Git blob", async () => {
+		await nodeFs.writeFile(
+			join(repo, "src/invalid.ts"),
+			Buffer.concat([Buffer.from("/*"), Buffer.alloc(6 * 1024 * 1024, 0xff), Buffer.from("*/")]),
+		);
+		const next = commit(repo, {});
+		const opened = vi.spyOn(TypeScriptMutationAdapter, "open");
+		const enumeration = await MutationEnumeration.open(repo, `${head}..${next}`);
+		await expect(enumeration.list({ limit: 0 })).rejects.toMatchObject({
+			name: "MutationEnumerationError",
+			code: "limit",
+			message: "enumeration source exceeds 16 MiB per file",
+		});
+		expect(childProcess.execFile).not.toHaveBeenCalled();
+		expect(opened).not.toHaveBeenCalled();
+	});
+	it.each([0, 1])("asks committed authority for the remaining aggregate before reading: %s", async (over) => {
+		const contents = Array.from({ length: 4 + over }, (_, i) => `export const v${i} = true;`);
+		const names = contents.map((_, i) => `src/aggregate${i}.ts`);
+		const next = commit(repo, Object.fromEntries(names.map((name, i) => [name, contents[i]!])));
+		const enumeration = await MutationEnumeration.open(repo, `${head}..${next}`);
+		const open = vi.mocked(core.openSource).getMockImplementation()!;
+		const requests: [string, number][] = [];
+		vi.mocked(core.openSource).mockImplementation(async (root, selected) => {
+			const source = await open(root, selected);
+			return new Proxy(source, {
+				get(target, key, receiver) {
+					if (key !== "readText") return Reflect.get(target, key, receiver);
+					return async (path: string, max: number) => {
+						const index = names.indexOf(path);
+						if (index < 0) return target.readText(path, max);
+						requests.push([path, max]);
+						if (index === 4 && max < Buffer.byteLength(contents[index]!))
+							throw new core.SourceError("tooLarge", path, "source exceeds remaining aggregate", { size: 1 });
+						return contents[index];
+					};
+				},
+			});
+		});
+		const byteLength = Buffer.byteLength;
+		vi.spyOn(Buffer, "byteLength").mockImplementation((value, encoding) =>
+			encoding === "utf8" && contents.includes(value as string) ? 16 * 1024 * 1024 : byteLength(value, encoding),
+		);
+		workerReply((input) => {
+			expect(JSON.parse(input)).toEqual({
+				files: names.map((name, i) => ({
+					name,
+					content: contents[i],
+					mutate: [{ start: { line: 0, column: 0 }, end: { line: 0, column: Number.MAX_SAFE_INTEGER } }],
+				})),
+				excludedMutations: ["BooleanLiteral"],
+				limit: 0,
+			});
+			return { stdout: JSON.stringify({ total: names.length, mutants: [] }) };
+		});
+		if (over) {
+			await expect(enumeration.list({ limit: 0 })).rejects.toMatchObject({
+				name: "MutationEnumerationError",
+				code: "limit",
+				message: expect.stringContaining("aggregate"),
+			});
+			expect(childProcess.execFile).not.toHaveBeenCalled();
+		} else {
+			const { total, mutants, omitted } = (await enumeration.list({ limit: 0 })).toJSON();
+			expect({ total, mutants, omitted }).toEqual({ total: 4, mutants: [], omitted: 4 });
+		}
+		expect(requests).toEqual(names.map((name, i) => [name, i < 4 ? 16 * 1024 * 1024 : 0]));
+	});
+	it.each([
+		[0, 1],
+		[1, 1],
+		[0, 2],
+		[1, 2],
+	])(
+		"checks a real worker response at sixty-four MiB plus %s across %s rows and counts at zero",
+		async (over, rowCount) => {
+			const rows = Array.from({ length: rowCount! }, (_, i) => ({
+				fileName: "src/a.ts",
+				location: { start: { line: 0, column: i }, end: { line: 0, column: i + 1 } },
+				mutatorName: "StringLiteral",
+				replacement: "",
+			}));
+			const size = 64 * 1024 * 1024 - Buffer.byteLength(JSON.stringify({ total: rowCount, mutants: rows })) + over!;
+			const sizes = rows.map((_, i) => Math.floor(size / rows.length) + (i === 0 ? size % rows.length : 0));
+			writeFiles(repo, {
+				"node_modules/@stryker-mutator/instrumenter/package.json": JSON.stringify({
+					name: "@stryker-mutator/instrumenter",
+					version: "10.0.0",
+					type: "module",
+					main: "index.js",
+				}),
+				"node_modules/@stryker-mutator/instrumenter/index.js": `export class Instrumenter { async instrument(files,options) { if(JSON.stringify(files)!==JSON.stringify([{name:"src/a.ts",content:"true;",mutate:[]}]) || options.plugins!==null || options.ignorers.length!==0 || options.excludedMutations.length!==0) throw Error("unexpected request"); const rows=${JSON.stringify(rows)},sizes=${JSON.stringify(sizes)};return {mutants:rows.map((row,i)=>({...row,replacement:"x".repeat(sizes[i])}))}; } }`,
+			});
+			const adapter = await TypeScriptMutationAdapter.open(repo);
+			const files = [{ name: "src/a.ts", content: "true;", ranges: [] }];
+			expect(await adapter.enumerate(files, [], 0)).toEqual({ total: rowCount, mutants: [] });
+			if (over)
+				await expect(adapter.enumerate(files, [], rowCount).then(() => "accepted")).rejects.toMatchObject({
+					name: "MutationEnumerationError",
+					code: "limit",
+					message: expect.stringContaining("response"),
+				});
+			else
+				expect(await adapter.enumerate(files, [], rowCount)).toEqual({
+					total: rowCount,
+					mutants: rows.map((_row, i) => ({
+						file: "src/a.ts",
+						line: 1,
+						column: i,
+						endLine: 1,
+						endColumn: i + 1,
+						mutatorName: "StringLiteral",
+						replacement: "x".repeat(sizes[i]!),
+						status: "generated",
+					})),
+				});
+		},
+	);
+	it.each([
+		{ fileName: "" },
+		{ fileName: " " },
+		{ fileName: 1 },
+		{ mutatorName: " " },
+		{ replacement: null },
+		{ status: "Survived" },
+		{ statusReason: 1 },
+		{ location: null },
+		{ location: { start: { line: 0, column: 0 }, end: { line: Number.MAX_SAFE_INTEGER, column: 1 } } },
+		{ location: { start: { line: 0, column: 0 }, end: { line: 1, column: -1 } } },
+		{ location: { start: { line: 0.5, column: 0 }, end: { line: 1, column: 1 } } },
+		{ location: { start: { line: 0, column: 0.5 }, end: { line: 0, column: 1 } } },
+		{ location: { start: { line: 0, column: 0 }, end: { line: 0.5, column: 1 } } },
+		{ location: { start: { line: 0, column: 0 }, end: { line: 0, column: 1.5 } } },
+		...[-1, 0.5, Number.MAX_SAFE_INTEGER, Number.NaN].map((line) => ({
+			location: { start: { line, column: 0 }, end: { line: 0, column: 1 } },
+		})),
+		{ location: { start: { line: 0, column: -1 }, end: { line: 0, column: 1 } } },
+		{ location: { start: { line: 1, column: 0 }, end: { line: 0, column: 1 } } },
+		{ location: { start: { line: 0, column: 2 }, end: { line: 0, column: 1 } } },
+	])("refuses a malformed worker row independently: %j", async (change) => {
+		const adapter = await TypeScriptMutationAdapter.open(repo);
+		const row = {
+			fileName: "src/a.ts",
+			location: { start: { line: 0, column: 0 }, end: { line: 0, column: 1 } },
+			mutatorName: "BooleanLiteral",
+			replacement: "false",
+			...change,
+		};
+		workerReply((input) => {
+			expect(JSON.parse(input)).toEqual({ files: [], excludedMutations: [], limit: 1 });
+			return { stdout: JSON.stringify({ total: 1, mutants: [row] }) };
+		});
+		await expect(adapter.enumerate([], [], 1)).rejects.toMatchObject({
+			name: "MutationEnumerationError",
+			code: "instrumenter",
+			message: expect.stringContaining("invalid"),
+		});
+	});
+	it.each([-1, 0.5, Number.NaN, Number.POSITIVE_INFINITY, Number.MAX_SAFE_INTEGER + 1])(
+		"refuses invalid adapter row limit %s before spawning",
+		async (limit) => {
+			const adapter = await TypeScriptMutationAdapter.open(repo);
+			await expect(adapter.enumerate([], [], limit)).rejects.toMatchObject({
+				name: "MutationEnumerationError",
+				code: "limit",
+				message: "limit must be a non-negative safe integer",
+			});
+			expect(childProcess.execFile).not.toHaveBeenCalled();
+		},
+	);
+	it.each([0, 0.5, 1, 1.75])("passes only a positive integer remaining deadline: %s", async (remaining) => {
+		const adapter = await TypeScriptMutationAdapter.open(repo);
+		vi.spyOn(performance, "now")
+			.mockReturnValueOnce(0)
+			.mockReturnValue(120000 - remaining);
+		workerReply((input, options, argv) => {
+			expect(JSON.parse(input)).toEqual({ files: [], excludedMutations: [], limit: 0 });
+			expect(options.timeout).toBe(1);
+			expect(argv.slice(0, 2)).toEqual(["--max-old-space-size=512", "--input-type=module"]);
+			return { stdout: '{"total":0,"mutants":[]}' };
+		});
+		if (remaining < 1) {
+			await expect(adapter.enumerate([], [], 0)).rejects.toMatchObject({
+				name: "MutationEnumerationError",
+				code: "limit",
+				message: expect.stringContaining("deadline"),
+			});
+			expect(childProcess.execFile).not.toHaveBeenCalled();
+			expect(nodeFs.writeFile).not.toHaveBeenCalled();
+		} else expect(await adapter.enumerate([], [], 0)).toEqual({ mutants: [], total: 0 });
+	});
+	it("checks the deadline again after encoding the payload and removes scratch", async () => {
+		const adapter = await TypeScriptMutationAdapter.open(repo);
+		let now = 0;
+		vi.spyOn(performance, "now").mockImplementation(() => now);
+		const stringify = JSON.stringify;
+		vi.spyOn(JSON, "stringify").mockImplementation((value, ...args) => {
+			if (value === "deadline-marker") now = 120000;
+			return stringify(value, ...args);
+		});
+		const before = new Set(await readdir(tmpdir()));
+		await expect(adapter.enumerate([], ["deadline-marker"], 0)).rejects.toMatchObject({
+			name: "MutationEnumerationError",
+			code: "limit",
+			message: expect.stringContaining("deadline"),
+		});
+		expect(childProcess.execFile).not.toHaveBeenCalled();
+		expect(
+			(await readdir(tmpdir())).filter(
+				(name) => name.startsWith(`melian-enumerate-${process.pid}-`) && !before.has(name),
+			),
+		).toEqual([]);
+	});
+	it.each([0, 1])("bounds direct decoded source bytes at sixteen MiB plus %s", async (over) => {
+		const adapter = await TypeScriptMutationAdapter.open(repo);
+		const content = `/*${"é".repeat((16 * 1024 * 1024 - 4) / 2)}${"x".repeat(over)}*/`;
+		workerReply((input) => {
+			expect(JSON.parse(input)).toEqual({
+				files: [{ name: "src/a.ts", content, mutate: [] }],
+				excludedMutations: [],
+				limit: 0,
+			});
+			return { stdout: '{"total":0,"mutants":[]}' };
+		});
+		const pending = adapter.enumerate([{ name: "src/a.ts", content, ranges: [] }], [], 0);
+		if (over) {
+			await expect(pending).rejects.toMatchObject({
+				name: "MutationEnumerationError",
+				code: "limit",
+				message: "enumeration source exceeds 16 MiB per file",
+			});
+			expect(childProcess.execFile).not.toHaveBeenCalled();
+		} else expect(await pending).toEqual({ mutants: [], total: 0 });
+	});
+	it.each([0, 1])("bounds aggregate retained source independently at sixty-four MiB plus %s", async (over) => {
+		const adapter = await TypeScriptMutationAdapter.open(repo);
+		const files = Array.from({ length: 5 }, (_, i) => ({
+			name: `src/f${i}.ts`,
+			content: `export const v${i} = true;`,
+			ranges: [],
+		}));
+		const byteLength = Buffer.byteLength;
+		vi.spyOn(Buffer, "byteLength").mockImplementation((value, encoding) => {
+			const index = files.findIndex((file) => file.content === value);
+			return index < 0 || encoding !== "utf8" ? byteLength(value, encoding) : index < 4 ? 16 * 1024 * 1024 : over;
+		});
+		workerReply((input) => {
+			expect(JSON.parse(input)).toEqual({
+				files: files.map(({ name, content }) => ({ name, content, mutate: [] })),
+				excludedMutations: [],
+				limit: 0,
+			});
+			return { stdout: '{"total":0,"mutants":[]}' };
+		});
+		const pending = adapter.enumerate(files, [], 0);
+		if (over) {
+			await expect(pending).rejects.toMatchObject({
+				name: "MutationEnumerationError",
+				code: "limit",
+				message: expect.stringContaining("aggregate"),
+			});
+			expect(childProcess.execFile).not.toHaveBeenCalled();
+		} else expect(await pending).toEqual({ mutants: [], total: 0 });
+	});
+	it.each([0, 1])(
+		"bounds encoded UTF8 payload including C0 comment escaping at sixty-four MiB plus %s",
+		async (over) => {
+			const adapter = await TypeScriptMutationAdapter.open(repo);
+			const cap = 64 * 1024 * 1024;
+			const name = "src/é.ts";
+			const ranges: [number, number][] = [
+				[1, 1],
+				[3, 3],
+			];
+			const mutate = ranges.map(([first, last]) => ({
+				start: { line: first - 1, column: 0 },
+				end: { line: last - 1, column: Number.MAX_SAFE_INTEGER },
+			}));
+			const excludedMutations = ["StringLiteral", "BooleanLiteral"];
+			const overhead = Buffer.byteLength(
+				JSON.stringify({
+					files: [{ name, content: "/**/", mutate }],
+					excludedMutations,
+					limit: 0,
+				}),
+			);
+			const budget = cap - overhead;
+			const content = `/*${"\u0001".repeat(Math.floor(budget / 6))}${"x".repeat((budget % 6) + over)}*/`;
+			workerReply((input) => {
+				expect(Buffer.byteLength(input)).toBe(cap);
+				expect(JSON.parse(input)).toEqual({
+					files: [{ name, content, mutate }],
+					excludedMutations,
+					limit: 0,
+				});
+				return { stdout: '{"total":0,"mutants":[]}' };
+			});
+			const pending = adapter.enumerate([{ name, content, ranges }], excludedMutations, 0);
+			if (over) {
+				await expect(pending).rejects.toMatchObject({
+					name: "MutationEnumerationError",
+					code: "limit",
+					message: expect.stringContaining("payload"),
+				});
+				expect(childProcess.execFile).not.toHaveBeenCalled();
+			} else expect(await pending).toEqual({ mutants: [], total: 0 });
+		},
+	);
+	it.each([
+		[
+			"heap",
+			{ signal: "SIGABRT", killed: false },
+			"FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory",
+			"limit",
+			"heap",
+		],
+		["timeout", { signal: "SIGTERM", killed: true }, "", "limit", "deadline"],
+		["machine response refusal", { code: 73 }, "", "limit", "response"],
+		["other killed signal", { signal: "SIGKILL", killed: true }, "other signal", "instrumenter", "other signal"],
+		[
+			"heap text without abort",
+			{ signal: "SIGTERM", killed: false },
+			"heap limit from import",
+			"instrumenter",
+			"heap limit from import",
+		],
+		[
+			"stdout text without overflow code",
+			{ message: "stdout reported by import" },
+			"",
+			"instrumenter",
+			"stdout reported by import",
+		],
+		[
+			"stdout",
+			{
+				code: "ERR_CHILD_PROCESS_STDIO_MAXBUFFER",
+				message: "stdout maxBuffer length exceeded",
+				killed: true,
+				signal: "SIGTERM",
+			},
+			"",
+			"limit",
+			"response",
+		],
+		[
+			"stderr",
+			{
+				code: "ERR_CHILD_PROCESS_STDIO_MAXBUFFER",
+				message: "stderr maxBuffer length exceeded",
+				killed: true,
+				signal: "SIGTERM",
+			},
+			"",
+			"instrumenter",
+			"stderr",
+		],
+		["abort", { signal: "SIGABRT", killed: false }, "syntax failed", "instrumenter", "syntax failed"],
+		["term", { signal: "SIGTERM", killed: false }, "import failed", "instrumenter", "import failed"],
+		["spoof", {}, "response too large\u001b", "instrumenter", "response too large\\u001b"],
+	] as const)(
+		"classifies worker %s without trusting stderr as a protocol status",
+		{ timeout: 5000 },
+		async (_name, fields, stderr, code, message) => {
+			const adapter = await TypeScriptMutationAdapter.open(repo);
+			workerReply((input) => {
+				expect(JSON.parse(input)).toEqual({ files: [], excludedMutations: [], limit: 0 });
+				return {
+					stdout: "",
+					error: Object.assign(new Error("worker failed"), fields) as childProcess.ExecFileException,
+					stderr,
+				};
+			});
+			await expect(adapter.enumerate([], [], 0)).rejects.toMatchObject({
+				name: "MutationEnumerationError",
+				code,
+				message: expect.stringContaining(message),
+			});
+		},
+	);
+	it.each([
+		"{",
+		"null",
+		"[]",
+		'{"total":-1,"mutants":[]}',
+		'{"total":0.5,"mutants":[]}',
+		'{"total":9007199254740992,"mutants":[]}',
+		'{"total":0,"mutants":null}',
+		'{"total":1,"mutants":[]}',
+		'{"total":0,"mutants":[{}]}',
+		'{"total":1,"mutants":[{}]}',
+	])("refuses malformed worker batch %s", async (output) => {
+		const adapter = await TypeScriptMutationAdapter.open(repo);
+		workerReply((input) => {
+			expect(JSON.parse(input)).toEqual({ files: [], excludedMutations: [], limit: 1 });
+			return { stdout: output };
+		});
+		await expect(adapter.enumerate([], [], 1)).rejects.toMatchObject({
+			name: "MutationEnumerationError",
+			code: "instrumenter",
+			message: expect.stringContaining("invalid"),
+		});
+	});
+	it("counts all dense real mutants without serialising rows at limit zero", async () => {
+		const identifier = `v${"x".repeat(8191)}`;
+		const content = `export const value = ${Array(140).fill(identifier).join(" - ")};\n`;
+		expect(Buffer.byteLength(content)).toBe(1_147_320);
+		const next = commit(repo, { "src/dense.ts": content });
+		const enumeration = await MutationEnumeration.open(repo, `${head}..${next}`);
+		const result = (await enumeration.list({ limit: 0 })).toJSON();
+		expect({
+			mutants: result.mutants,
+			total: result.total,
+			omitted: result.omitted,
+			unmutated: result.unmutated,
+		}).toEqual({ mutants: [], total: 139, omitted: 139, unmutated: [] });
+		const first = (await enumeration.list({ limit: 1 })).toJSON();
+		expect(first.total).toBe(139);
+		expect(first.omitted).toBe(138);
+		expect(
+			first.mutants.map(({ mutatorName, replacement, line, column, endLine, endColumn }) => ({
+				mutatorName,
+				replacement,
+				line,
+				column,
+				endLine,
+				endColumn,
+			})),
+		).toEqual([
+			{
+				mutatorName: "ArithmeticOperator",
+				replacement: `${Array(139).fill(identifier).join(" - ")} + ${identifier}`,
+				line: 1,
+				column: 21,
+				endLine: 1,
+				endColumn: content.length - 2,
+			},
+		]);
+		for (const options of [{}, { all: true }])
+			await expect(enumeration.list(options)).rejects.toMatchObject({
+				name: "MutationEnumerationError",
+				code: "limit",
+				message: expect.stringContaining("response"),
+			});
+	});
 	it.each([
 		["lone CR", "// a\r// z\n"],
 		["CRLF with lone CR", "// a\r\r\n"],
@@ -277,10 +1107,12 @@ describe("mutation enumeration", { timeout: 60_000 }, () => {
 			expect(await readFile(marker, "utf8")).toBe(sentinel);
 			await rm(marker);
 			expect(
-				await adapter.enumerate(
-					[{ name: "src/flag.ts", content: "export const flag = true;", ranges: [[1, 1]] }],
-					[],
-				),
+				(
+					await adapter.enumerate(
+						[{ name: "src/flag.ts", content: "export const flag = true;", ranges: [[1, 1]] }],
+						[],
+					)
+				).mutants,
 			).toEqual([
 				{
 					file: "src/flag.ts",
@@ -300,8 +1132,8 @@ describe("mutation enumeration", { timeout: 60_000 }, () => {
 			expect(options.env).toEqual({ PATH: process.env.PATH, HOME: options.cwd, LANG: "C.UTF-8" });
 			expect(options).toEqual({
 				cwd: expect.any(String),
-				maxBuffer: 64 * 1024 * 1024,
-				timeout: 120_000,
+				maxBuffer: 64 * 1024 * 1024 + 1024,
+				timeout: expect.any(Number),
 				env: { PATH: process.env.PATH, HOME: options.cwd, LANG: "C.UTF-8" },
 			});
 		} finally {
@@ -312,7 +1144,7 @@ describe("mutation enumeration", { timeout: 60_000 }, () => {
 	it("enumerates source larger than the stdin pipe buffer", async () => {
 		const adapter = await TypeScriptMutationAdapter.open(repo);
 		const content = `export const value = true;\n${"// padding\n".repeat(20_000)}`;
-		expect(await adapter.enumerate([{ name: "src/large.ts", content, ranges: [[1, 1]] }], [])).toEqual([
+		expect((await adapter.enumerate([{ name: "src/large.ts", content, ranges: [[1, 1]] }], [])).mutants).toEqual([
 			{
 				file: "src/large.ts",
 				line: 1,
@@ -355,7 +1187,7 @@ describe("mutation enumeration", { timeout: 60_000 }, () => {
 			],
 			[],
 		);
-		expect(mutants.map((mutant) => mutant.replacement)).toEqual(["false", "café - 1"]);
+		expect(mutants.mutants.map((mutant) => mutant.replacement)).toEqual(["false", "café - 1"]);
 	});
 
 	it.each([
@@ -554,7 +1386,8 @@ describe("mutation enumeration", { timeout: 60_000 }, () => {
 				}
 				const adapter = await TypeScriptMutationAdapter.open(repo);
 				expect(
-					await adapter.enumerate([{ name: "src/a.ts", content: "export const a=true;", ranges: [[1, 1]] }], []),
+					(await adapter.enumerate([{ name: "src/a.ts", content: "export const a=true;", ranges: [[1, 1]] }], []))
+						.mutants,
 				).not.toEqual([]);
 				expect(await readdir(repo)).not.toContain("executed");
 				expect(adapter.source).toBe("melian");

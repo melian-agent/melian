@@ -58,6 +58,10 @@ A pull request is `#` and its number. Quote it, `melian review "#12"`: an unquot
 
 ## Where policy comes from
 
+`mutants list --limit N` retains the first N instrumenter rows and reports the full count. Zero still generates and counts; it serialises no rows. Default limit is 200. `--all` refuses when the complete worker response exceeds 64 MiB. Source, payload, heap and deadline refusals are explicit enumeration errors. The [protocol amendment](../decisions/2026-11-03-bounded-mutant-protocol.md) records each independent bound. The compatibility script gives mapped, terminal-safe pretty JSON a separate 512 MiB buffer; overflow says to reduce `--limit`. That headroom is not the raw worker cap or a guarantee about caller memory.
+
+Keep compatibility stdio as `["ignore", "pipe", "pipe"]`. On Node 24.18.0, an empty individual entry loses stderr from the synchronous failure result and its message. An empty array retains the default pipes. Prove transport changes against a real failing child, as well as successful JSON output.
+
 `mutants list` and the compatibility script report an explicit unmutated note for each TS/JS file containing lone CR, U+2028 or U+2029. LF and CRLF remain supported. All-set-aside results contain no adapters or mutants, retaining every note. This selection limit leaves `static.mutation` unchanged; [the amendment](../decisions/2026-11-03-mutant-line-break-selection.md) records its follow-up.
 
 - A pull request reads `melian.yaml`, standards, and lenses from the base commit GitHub reports, so the head cannot rewrite its own review.

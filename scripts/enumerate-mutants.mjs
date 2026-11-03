@@ -19,12 +19,18 @@ export async function enumerateMutants({
 } = {}) {
 	if (!Number.isSafeInteger(limit) || limit < 0) throw new Error("limit must be a non-negative safe integer");
 	const cli = fileURLToPath(new URL("../packages/cli/bin/melian.js", import.meta.url));
-	const output = execFileSync(process.execPath, [cli, "mutants", "list", range, "--json", "--limit", String(limit)], {
-		cwd,
-		encoding: "utf8",
-		maxBuffer: 64 * 1024 * 1024,
-		stdio: ["ignore", "pipe", "pipe"],
-	});
+	let output;
+	try {
+		output = execFileSync(process.execPath, [cli, "mutants", "list", range, "--json", "--limit", String(limit)], {
+			cwd,
+			encoding: "utf8",
+			maxBuffer: 512 * 1024 * 1024,
+			stdio: ["ignore", "pipe", "pipe"],
+		});
+	} catch (error) {
+		if (error.code === "ENOBUFS") throw new Error("compatibility output exceeds its 512 MiB buffer; reduce --limit");
+		throw error;
+	}
 	const inventory = JSON.parse(output);
 	return {
 		mutants: inventory.mutants.map(({ id, ignoredBy, status, ...row }) => ({
