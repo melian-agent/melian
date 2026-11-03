@@ -103,6 +103,15 @@ describe("ToolManifest", () => {
 			"C13",
 			"C14",
 			"C15",
+			"LA3",
+			"LB1",
+			"LD2",
+			"LD3",
+			"LE2",
+			"LG1",
+			"LG2",
+			"LG4",
+			"LL1",
 		]);
 		expect(() => manifest.tool("constructor")).toThrow("No tool");
 		expect(() => manifest.artifact("enola", "windows-amd64")).toThrow("no pin");
