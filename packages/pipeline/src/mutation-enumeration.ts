@@ -157,6 +157,7 @@ export class TypeScriptMutationAdapter implements MutationAdapter {
 				throw new MutationEnumerationError("limit", "enumeration aggregate source exceeds 64 MiB");
 		}
 		const scratch = await mkdtemp(join(tmpdir(), `melian-enumerate-${process.pid}-`));
+		let batch: MutationBatch;
 		try {
 			// Babel stops .babelrc discovery at the nearest package boundary.
 			await writeFile(join(scratch, "package.json"), "{}");
@@ -259,6 +260,7 @@ if (process.exitCode !== 73) process.stdout.write(prefix + rows.join(',') + ']}'
 				child.stdin!.on("error", () => {});
 				child.stdin!.end(input);
 			});
+			remainingTime(boundedDeadline);
 			try {
 				const { mutants, total } = JSON.parse(output) as {
 					total: number;
@@ -310,13 +312,15 @@ if (process.exitCode !== 73) process.stdout.write(prefix + rows.join(',') + ']}'
 						...(mutant.statusReason === undefined ? {} : { statusReason: mutant.statusReason }),
 					};
 				});
-				return { mutants: rows, total };
+				batch = { mutants: rows, total };
 			} catch {
 				throw new MutationEnumerationError("instrumenter", "enumeration returned invalid worker output");
 			}
 		} finally {
 			await rm(scratch, { recursive: true, force: true });
 		}
+		remainingTime(boundedDeadline);
+		return batch;
 	}
 }
 
@@ -497,7 +501,8 @@ export class MutationEnumeration {
 		remainingTime(deadline);
 		const { mutants: rows, total } =
 			adapter === undefined ? { mutants: [], total: 0 } : await adapter.enumerate(files, excluded, limit, deadline);
-		return MutationInventory.create({
+		remainingTime(deadline);
+		const inventory = MutationInventory.create({
 			range: {
 				base: revision.base,
 				head: revision.head,
@@ -518,5 +523,7 @@ export class MutationEnumeration {
 			omitted: total - rows.length,
 			unmutated,
 		});
+		remainingTime(deadline);
+		return inventory;
 	}
 }

@@ -30,7 +30,7 @@ vi.mock("node:child_process", async (original) => {
 });
 vi.mock("node:fs/promises", async (original) => {
 	const actual = await original<typeof nodeFs>();
-	return { ...actual, realpath: vi.fn(actual.realpath), writeFile: vi.fn(actual.writeFile) };
+	return { ...actual, realpath: vi.fn(actual.realpath), writeFile: vi.fn(actual.writeFile), rm: vi.fn(actual.rm) };
 });
 vi.mock("node:path", async (original) => {
 	const actual = await original<typeof nodePath>();
@@ -102,6 +102,7 @@ afterEach(() => {
 	vi.mocked(nodePath.relative).mockReset();
 	vi.mocked(nodeFs.realpath).mockReset();
 	vi.mocked(nodeFs.writeFile).mockReset();
+	vi.mocked(nodeFs.rm).mockReset();
 	vi.mocked(core.openSource).mockReset();
 	vi.unstubAllGlobals();
 	removeRepository(repo);
@@ -235,6 +236,234 @@ describe("mutation enumeration", { timeout: 60_000 }, () => {
 			),
 		).toEqual({ total: 0, mutants: [] });
 		expect(observedTimeout).toBe(timeout);
+	});
+	describe("post-work deadline", () => {
+		const files = [{ name: "src/a.ts", content: "export const a = true;", ranges: [[1, 1]] as const }];
+		const request = {
+			files: [
+				{
+					name: "src/a.ts",
+					content: "export const a = true;",
+					mutate: [{ start: { line: 0, column: 0 }, end: { line: 0, column: Number.MAX_SAFE_INTEGER } }],
+				},
+			],
+			excludedMutations: ["StringLiteral"],
+			limit: 1,
+		};
+		const output = JSON.stringify({
+			total: 1,
+			mutants: [
+				{
+					fileName: "src/a.ts",
+					location: { start: { line: 0, column: 17 }, end: { line: 0, column: 21 } },
+					mutatorName: "BooleanLiteral",
+					replacement: "false",
+				},
+			],
+		});
+		const batch = {
+			total: 1,
+			mutants: [
+				{
+					file: "src/a.ts",
+					line: 1,
+					column: 17,
+					endLine: 1,
+					endColumn: 21,
+					mutatorName: "BooleanLiteral",
+					replacement: "false",
+					status: "generated",
+				},
+			],
+		};
+
+		it.each([119999, 120000])("checks worker completion before parsing at %s", async (elapsed) => {
+			const adapter = await TypeScriptMutationAdapter.open(repo);
+			let now = 0;
+			vi.spyOn(performance, "now").mockImplementation(() => now);
+			const parse = JSON.parse;
+			let outputParses = 0;
+			vi.spyOn(JSON, "parse").mockImplementation((text, reviver) => {
+				if (text === output) outputParses++;
+				return parse(text, reviver);
+			});
+			let replied = false;
+			workerReply((input) => {
+				expect(JSON.parse(input)).toEqual(request);
+				replied = true;
+				now = elapsed;
+				return { stdout: output };
+			});
+			const result = adapter.enumerate(files, ["StringLiteral"], 1, 120000);
+			if (elapsed === 120000) {
+				await expect(result).rejects.toMatchObject({
+					name: "MutationEnumerationError",
+					code: "limit",
+					message: expect.stringContaining("deadline"),
+				});
+				expect(outputParses).toBe(0);
+			} else {
+				expect(await result).toEqual(batch);
+				expect(outputParses).toBe(1);
+			}
+			expect(replied).toBe(true);
+		});
+
+		it.each([119999, 120000])(
+			"checks successful output parsing at %s without relabelling the limit",
+			async (elapsed) => {
+				const adapter = await TypeScriptMutationAdapter.open(repo);
+				let now = 0;
+				vi.spyOn(performance, "now").mockImplementation(() => now);
+				const parse = JSON.parse;
+				let outputParses = 0;
+				vi.spyOn(JSON, "parse").mockImplementation((text, reviver) => {
+					const value = parse(text, reviver);
+					if (text === output) {
+						outputParses++;
+						now = elapsed;
+					}
+					return value;
+				});
+				workerReply((input) => {
+					expect(JSON.parse(input)).toEqual(request);
+					return { stdout: output };
+				});
+				const result = adapter.enumerate(files, ["StringLiteral"], 1, 120000);
+				if (elapsed === 120000)
+					await expect(result).rejects.toMatchObject({
+						name: "MutationEnumerationError",
+						code: "limit",
+						message: expect.stringContaining("deadline"),
+					});
+				else expect(await result).toEqual(batch);
+				expect(outputParses).toBe(1);
+			},
+		);
+
+		it.each([119999, 120000])("checks successful scratch cleanup at %s", async (elapsed) => {
+			const adapter = await TypeScriptMutationAdapter.open(repo);
+			let now = 0;
+			vi.spyOn(performance, "now").mockImplementation(() => now);
+			const remove = vi.mocked(nodeFs.rm).getMockImplementation()!;
+			let cleaned: string | undefined;
+			vi.mocked(nodeFs.rm).mockImplementation(async (path, options) => {
+				expect(path).toEqual(expect.stringContaining(`melian-enumerate-${process.pid}-`));
+				expect(options).toEqual({ recursive: true, force: true });
+				await remove(path, options);
+				cleaned = String(path);
+				now = elapsed;
+			});
+			workerReply((input) => {
+				expect(JSON.parse(input)).toEqual(request);
+				return { stdout: output };
+			});
+			const result = adapter.enumerate(files, ["StringLiteral"], 1, 120000);
+			if (elapsed === 120000)
+				await expect(result).rejects.toMatchObject({
+					name: "MutationEnumerationError",
+					code: "limit",
+					message: expect.stringContaining("deadline"),
+				});
+			else expect(await result).toEqual(batch);
+			expect(cleaned).toBeDefined();
+			await expect(access(cleaned!)).rejects.toMatchObject({ code: "ENOENT" });
+		});
+
+		it.each(["syntax", "import", "invalid output"])("preserves %s failure when cleanup expires", async (failure) => {
+			const adapter = await TypeScriptMutationAdapter.open(repo);
+			let now = 0;
+			vi.spyOn(performance, "now").mockImplementation(() => now);
+			const remove = vi.mocked(nodeFs.rm).getMockImplementation()!;
+			let cleaned = false;
+			vi.mocked(nodeFs.rm).mockImplementation(async (path, options) => {
+				await remove(path, options);
+				cleaned = true;
+				now = 120000;
+			});
+			workerReply((input) => {
+				expect(JSON.parse(input)).toEqual(request);
+				return failure === "invalid output"
+					? { stdout: "{invalid" }
+					: { stdout: "", error: Object.assign(new Error(failure), { code: 1 }), stderr: failure };
+			});
+			await expect(adapter.enumerate(files, ["StringLiteral"], 1, 120000)).rejects.toMatchObject({
+				name: "MutationEnumerationError",
+				code: "instrumenter",
+				message:
+					failure === "invalid output"
+						? "enumeration returned invalid worker output"
+						: `enumeration failed: ${failure}`,
+			});
+			expect(cleaned).toBe(true);
+		});
+
+		it.each([119999, 120000])("checks adapter completion before the inventory factory at %s", async (elapsed) => {
+			const start = commit(repo, { "src/deadline.ts": "export const flag = false;\n" });
+			const finish = commit(repo, { "src/deadline.ts": "export const flag = true;\n" });
+			const enumeration = await MutationEnumeration.open(repo, `${start}..${finish}`);
+			let now = 0;
+			vi.spyOn(performance, "now").mockImplementation(() => now);
+			let enumerated = false;
+			vi.spyOn(TypeScriptMutationAdapter.prototype, "enumerate").mockImplementation(
+				async (input, excluded, limit, deadline) => {
+					expect(input).toEqual([
+						{ name: "src/deadline.ts", content: "export const flag = true;\n", ranges: [[1, 1]] },
+					]);
+					expect(excluded).toEqual(["BooleanLiteral"]);
+					expect(limit).toBe(1);
+					expect(deadline).toBe(120000);
+					enumerated = true;
+					now = elapsed;
+					return { total: 0, mutants: [] };
+				},
+			);
+			const factory = vi.spyOn(core.MutationInventory, "create");
+			const result = enumeration.list({ limit: 1 });
+			if (elapsed === 120000) {
+				await expect(result).rejects.toMatchObject({
+					name: "MutationEnumerationError",
+					code: "limit",
+					message: expect.stringContaining("deadline"),
+				});
+				expect(factory).not.toHaveBeenCalled();
+			} else {
+				expect((await result).toJSON()).toMatchObject({ total: 0, mutants: [], omitted: 0 });
+				expect(factory).toHaveBeenCalledTimes(1);
+			}
+			expect(enumerated).toBe(true);
+		});
+
+		it.each([119999, 120000])("checks completed inventory construction at %s for an empty range", async (elapsed) => {
+			const enumeration = await MutationEnumeration.open(repo, `${head}..${head}`);
+			let now = 0;
+			vi.spyOn(performance, "now").mockImplementation(() => now);
+			const create = core.MutationInventory.create;
+			let constructed = false;
+			vi.spyOn(core.MutationInventory, "create").mockImplementation((input) => {
+				const inventory = create(input);
+				constructed = true;
+				now = elapsed;
+				return inventory;
+			});
+			const result = enumeration.list({ limit: 1 });
+			if (elapsed === 120000)
+				await expect(result).rejects.toMatchObject({
+					name: "MutationEnumerationError",
+					code: "limit",
+					message: expect.stringContaining("deadline"),
+				});
+			else
+				expect((await result).toJSON()).toMatchObject({
+					total: 0,
+					mutants: [],
+					omitted: 0,
+					adapters: [],
+					unmutated: [],
+				});
+			expect(constructed).toBe(true);
+			expect(childProcess.execFile).not.toHaveBeenCalled();
+		});
 	});
 	it.each([Number.NaN, Number.POSITIVE_INFINITY])(
 		"refuses a non-finite caller deadline %s before input work",
