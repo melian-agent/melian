@@ -42,6 +42,13 @@ const answer: PullRequestRoundHeads = {
 	associated: {},
 };
 const ownership = { repository: answer.repository, pullRequest: answer.number };
+const other = pullRequestChangesetId("github", answer.repository, 8);
+const otherCandidate = {
+	id: `${other}.r1`,
+	base: answer.base,
+	head: "d".repeat(40),
+	mintedAt: at,
+};
 const member: RoundMembership = {
 	id: `${changeset}.r1`,
 	base: answer.base,
@@ -152,13 +159,21 @@ function errors() {
 		.mock.calls.map(([text]) => text)
 		.join("");
 }
-async function writeUnsupported(kind: "publisher" | "snapshot" | "comparison", newer = true) {
+async function writeUnsupported(
+	kind: "publisher" | "snapshot" | "comparison",
+	newer = true,
+	store = { path, changeset },
+) {
 	const definition = {
 		publisher: PublisherDocument.definition,
 		snapshot: PullRequestRoundsDocument.definition,
 		comparison: ComparisonDocument.definition,
 	}[kind];
-	const harness = await CompareHarness.open(await openSqliteStorage(path), createFakeModels().review, changeset);
+	const harness = await CompareHarness.open(
+		await openSqliteStorage(store.path),
+		createFakeModels().review,
+		store.changeset,
+	);
 	try {
 		const root = await harness.harness.root(context);
 		const marker = defineDoc({
@@ -178,6 +193,20 @@ async function writeUnsupported(kind: "publisher" | "snapshot" | "comparison", n
 	} finally {
 		await harness.close();
 	}
+}
+async function seedOtherPullRequest() {
+	const store = { path: await storagePath(repo, other, io.env, true), changeset: other };
+	const harness = await CompareHarness.open(await openSqliteStorage(store.path), createFakeModels().review, other);
+	try {
+		const root = await harness.harness.root(context);
+		await root.commit(async (tx) => {
+			const rounds = await tx.doc(RoundsDocument, root.id);
+			rounds.items.r1 = { base: otherCandidate.base, head: otherCandidate.head, mintedAt: at, tasks: [] };
+		}, context);
+	} finally {
+		await harness.close();
+	}
+	await writeUnsupported("snapshot", true, store);
 }
 async function expectComparisonReadable() {
 	const storage = await openSqliteStorage(path);
@@ -245,6 +274,7 @@ it("backlog retains the exact owed golden", async () => {
 	});
 });
 it("an entry-only scan defaults to neither candidates nor histories", async () => {
+	await writeUnsupported("snapshot");
 	const stores = await ComparisonStores.read(io);
 	expect(stores.candidates).toEqual([]);
 	expect([...stores.histories]).toEqual([]);
@@ -252,7 +282,7 @@ it("an entry-only scan defaults to neither candidates nor histories", async () =
 		{ changeset, round: member.id, comparison, verdict },
 	]);
 });
-it("ownership requests all candidates and saved histories by default", async () => {
+it("ownership requests all candidates and its own saved history by default", async () => {
 	const stores = await ComparisonStores.read(io, ownership);
 	expect(stores.candidates).toEqual(
 		[member, unnamed].map(({ id, base, head, mintedAt }) => ({ id, base, head, mintedAt })),
@@ -263,11 +293,36 @@ it("ownership requests all candidates and saved histories by default", async () 
 	]);
 });
 it("explicit false skips histories while retaining ownership candidates", async () => {
+	await writeUnsupported("snapshot");
 	const stores = await ComparisonStores.read(io, ownership, false);
 	expect(stores.candidates).toEqual(
 		[member, unnamed].map(({ id, base, head, mintedAt }) => ({ id, base, head, mintedAt })),
 	);
 	expect([...stores.histories]).toEqual([]);
+	expect(stores.entries.map((entry) => ({ ...entry, comparison: entry.comparison.toJSON() }))).toEqual([
+		{ changeset, round: member.id, comparison, verdict },
+	]);
+});
+it("ownership reads only its own saved history beside another pull request's future snapshot", async () => {
+	await seedOtherPullRequest();
+	const stores = await ComparisonStores.read(io, ownership);
+	expect(stores.candidates).toEqual(
+		[...[member, unnamed].map(({ id, base, head, mintedAt }) => ({ id, base, head, mintedAt })), otherCandidate].sort(
+			(a, b) => a.id.localeCompare(b.id),
+		),
+	);
+	expect([...stores.histories].map(([id, history]) => [id, history.versions])).toEqual([[changeset, snapshots]]);
+	expect(stores.entries.map((entry) => ({ ...entry, comparison: entry.comparison.toJSON() }))).toEqual([
+		{ changeset, round: member.id, comparison, verdict },
+	]);
+});
+it("stats still refuses another pull request's future snapshot", async () => {
+	await seedOtherPullRequest();
+	expect(await main(["compare", "stats"], io)).toBe(1);
+	expect({ output: output(), errors: errors() }).toEqual({
+		output: "",
+		errors: `melian: melian.pull-request-rounds has newer version ${PullRequestRoundsDocument.definition.version + 1}\n`,
+	});
 });
 it.each(["publisher", "snapshot"] as const)("ownership still refuses a future %s envelope", async (kind) => {
 	await writeUnsupported(kind);

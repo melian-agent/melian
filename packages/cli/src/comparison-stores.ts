@@ -1,6 +1,6 @@
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
-import type { ComparisonEntry, MembershipCandidate } from "@melian-agent/core";
+import { type ComparisonEntry, type MembershipCandidate, pullRequestChangesetId } from "@melian-agent/core";
 import {
 	ComparisonReader,
 	backgroundContext as context,
@@ -29,6 +29,10 @@ export class ComparisonStores {
 		const repoRoot = await git(io.cwd, ["rev-parse", "--show-toplevel"]);
 		const directory = join(await stateDirectory(repoRoot, io.env), ...(isScripted(io.env) ? ["scripted"] : []));
 		const result = new ComparisonStores(repoRoot, directory);
+		const historyChangeset =
+			ownership === undefined
+				? undefined
+				: pullRequestChangesetId("github", ownership.repository, ownership.pullRequest);
 		const names = await readdir(directory).catch((error: NodeJS.ErrnoException) => {
 			if (error.code === "ENOENT") return [];
 			throw new CliError(`cannot read comparisons at ${directory}: ${error.message}`);
@@ -40,7 +44,8 @@ export class ComparisonStores {
 				result.entries.push(...(await ComparisonReader.open(storage).read(changeset)));
 				const reader = MembershipReader.open(storage);
 				if (ownership !== undefined) result.candidates.push(...(await reader.candidates(changeset, ownership)));
-				if (histories) result.histories.set(changeset, await reader.history());
+				if (histories && (historyChangeset === undefined || changeset === historyChangeset))
+					result.histories.set(changeset, await reader.history());
 			} finally {
 				await storage.close(context);
 			}
