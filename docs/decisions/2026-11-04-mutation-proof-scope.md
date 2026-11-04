@@ -14,6 +14,6 @@ Example: the builder of [pull request #256](https://github.com/melian-agent/meli
 
 - No builder runs `static.mutation` or Stryker before a round. `scripts/enumerate-mutants.mjs` lists Stryker's own mutants, so the inventory already covers what Stryker would try. A reviewer may still opt in, as the amended decision allows.
 - A pass proves the mutants of its own commits, enumerated from its parent to its head, not the whole branch.
-- Each mutant runs against its named test file alone. The gate runs the whole suite once, after the pass.
+- Each mutant runs against its named test alone, selected by its full name. A sibling test's failure, or a file that fails to load, is no kill, as the mutation evidence decision says. The gate runs the whole suite once, after the pass.
 
 The rule that a guard counts as tested only when a failing mutation proves it is unchanged.
