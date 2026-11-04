@@ -285,25 +285,58 @@ describe("stages", () => {
 		]);
 	});
 
-	it("starts ready to claim at the first status: ready label, not the issue's opening or another label", () => {
+	it("starts ready to claim at the last status: ready label before the claim, not an unlabel or another label", () => {
+		const at = (hours) => new Date(start + hours * HOUR).toISOString();
 		const issue = {
 			number: 7,
-			createdAt: "2026-10-01T00:00:00.000Z",
+			createdAt: at(0),
 			timelineItems: page([
-				{ __typename: "UnlabeledEvent", createdAt: "2026-10-01T00:15:00.000Z", label: { name: "status: ready" } },
-				{ __typename: "LabeledEvent", createdAt: "2026-10-01T00:30:00.000Z", label: { name: "status: blocked" } },
-				{ __typename: "LabeledEvent", createdAt: "2026-10-01T01:00:00.000Z", label: { name: "status: ready" } },
-				{ __typename: "LabeledEvent", createdAt: "2026-10-01T01:30:00.000Z", label: { name: "status: ready" } },
-				{
-					__typename: "IssueComment",
-					createdAt: "2026-10-01T02:00:00.000Z",
-					body: "Claim: me",
-					author: { login: "me" },
-				},
+				{ __typename: "LabeledEvent", createdAt: at(1), label: { name: "status: ready" } },
+				{ __typename: "LabeledEvent", createdAt: at(1.5), label: { name: "status: ready" } },
+				{ __typename: "UnlabeledEvent", createdAt: at(1.75), label: { name: "status: ready" } },
+				{ __typename: "LabeledEvent", createdAt: at(1.8), label: { name: "status: blocked" } },
+				{ __typename: "IssueComment", createdAt: at(2), body: "Claim: me", author: { login: "me" } },
 			]),
 		};
 		const timeline = Timeline.from({ pull: pull({ closingIssuesReferences: page([issue]) }), runs: [] });
-		expect(rows(timeline)).toContain("| ready to claim | 1.00 |  |");
+		expect(rows(timeline)).toContain("| ready to claim | 0.50 |  |");
+	});
+
+	it("measures a released and reclaimed issue from its last ready label to the claim that won", () => {
+		const at = (hours) => new Date(start + hours * HOUR).toISOString();
+		const issue = {
+			number: 7,
+			createdAt: at(0),
+			timelineItems: page([
+				{ __typename: "LabeledEvent", createdAt: at(0), label: { name: "status: ready" } },
+				{ __typename: "IssueComment", createdAt: at(2), body: "Claim: first", author: { login: "a" } },
+				{ __typename: "IssueComment", createdAt: at(4), body: "Released: stale", author: { login: "m" } },
+				{ __typename: "LabeledEvent", createdAt: at(5), label: { name: "status: ready" } },
+				{ __typename: "IssueComment", createdAt: at(5.5), body: "Claim: second", author: { login: "b" } },
+				{ __typename: "IssueComment", createdAt: at(5.75), body: "Claim: late", author: { login: "c" } },
+			]),
+		};
+		const commits = page([commit("1".repeat(40), start + 8 * HOUR)]);
+		const timeline = Timeline.from({ pull: pull({ closingIssuesReferences: page([issue]), commits }), runs: [] });
+		expect(rows(timeline).filter((row) => /^\| (ready to claim|claim to last commit) /.test(row))).toEqual([
+			"| ready to claim | 0.50 |  |",
+			"| claim to last commit | 2.50 |  |",
+		]);
+	});
+
+	it("measures no claim when the issue was marked ready again after its last claim", () => {
+		const at = (hours) => new Date(start + hours * HOUR).toISOString();
+		const issue = {
+			number: 7,
+			createdAt: at(0),
+			timelineItems: page([
+				{ __typename: "LabeledEvent", createdAt: at(0), label: { name: "status: ready" } },
+				{ __typename: "IssueComment", createdAt: at(2), body: "Claim: first", author: { login: "a" } },
+				{ __typename: "LabeledEvent", createdAt: at(5), label: { name: "status: ready" } },
+			]),
+		};
+		const timeline = Timeline.from({ pull: pull({ closingIssuesReferences: page([issue]) }), runs: [] });
+		expect(rows(timeline)).toContain("| ready to claim | — |  |");
 	});
 
 	it("counts only the Timing items inside a stage, from its start up to but not including its end", () => {

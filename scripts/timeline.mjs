@@ -136,12 +136,14 @@ export class Timeline {
 		const stages = {};
 		for (const issue of pull.closingIssuesReferences.nodes) {
 			add(issue.createdAt, "issue opened", `#${issue.number}`);
+			const readied = [Date.parse(issue.createdAt)];
+			const claims = [];
 			for (const node of issue.timelineItems.nodes) {
 				if (node.__typename === "IssueComment") {
 					for (const marker of ["Claim:", "Fix pass"])
 						if (node.body.trimStart().startsWith(marker))
 							add(node.createdAt, marker.replace(":", ""), `#${issue.number} by ${login(node)}`);
-					if (node.body.trimStart().startsWith("Claim:")) stages.claim ??= Date.parse(node.createdAt);
+					if (node.body.trimStart().startsWith("Claim:")) claims.push(Date.parse(node.createdAt));
 					timing(node.createdAt, node.body);
 				} else if (node.label.name.startsWith("status:")) {
 					add(
@@ -150,10 +152,12 @@ export class Timeline {
 						`#${issue.number} ${node.label.name}`,
 					);
 					if (node.__typename === "LabeledEvent" && node.label.name === "status: ready")
-						stages.ready ??= Date.parse(node.createdAt);
+						readied.push(Date.parse(node.createdAt));
 				}
 			}
-			stages.ready ??= Date.parse(issue.createdAt);
+			// The earliest claim since the issue was last marked ready wins, as AGENTS.md's Work from issues says.
+			stages.ready ??= readied.at(-1);
+			stages.claim ??= claims.find((claim) => claim >= stages.ready);
 		}
 		add(pull.createdAt, "pull request opened", `#${pull.number} by ${login(pull)}`);
 		timing(pull.createdAt, pull.body);
