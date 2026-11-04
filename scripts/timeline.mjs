@@ -57,7 +57,7 @@ const paragraphs = (node) =>
 export function parseTiming(body) {
 	const items = [];
 	for (const line of paragraphs(fromMarkdown(body)).flatMap((text) => text.split("\n"))) {
-		const match = /^Timing:(.*)$/.exec(line);
+		const match = /^Timing:(.*)$/s.exec(line);
 		if (!match) continue;
 		for (const raw of match[1].split(";")) {
 			const text = raw.trim().replace(/\.$/, "");

@@ -732,6 +732,14 @@ describe("parseTiming", () => {
 		expect(parseTiming(body)).toEqual([{ text: "review 2 min", minutes: 2 }]);
 	});
 
+	it("keeps a Timing line that holds a line separator, as text, instead of dropping it", () => {
+		const separator = String.fromCharCode(0x2028);
+		expect(parseTiming(`Timing: gate${separator}x 5 min; review 2 min`)).toEqual([
+			{ text: `gate${separator}x 5 min` },
+			{ text: "review 2 min", minutes: 2 },
+		]);
+	});
+
 	it("reads no item from a body with no Timing line", () => {
 		expect(parseTiming("Report.\nNothing timed.")).toEqual([]);
 	});
