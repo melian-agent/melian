@@ -282,6 +282,11 @@ export interface CheckRecord {
 	readonly budgetEnded?: BudgetEnd;
 	/** Why a lens ran, or was to run, on a model other than the one the committed routes chose. */
 	readonly lineage?: CheckLineage;
+	/**
+	 * Notes that change how far a reader can trust the whole review, such as no lens seeing who calls the changed code.
+	 * Every lens of the review carries the same ones, and a renderer states each once. `reason` keeps them too.
+	 */
+	readonly caveats?: readonly string[];
 }
 
 /**
@@ -410,13 +415,15 @@ export type StoredCheckRecord = {
 		moved?: { by: string; from: string; to: string };
 		outside: boolean;
 	};
+	caveats?: string[];
 };
 
 function storedCheck(record: CheckRecord): StoredCheckRecord {
-	const { snapshots, ...fields } = record;
+	const { snapshots, caveats, ...fields } = record;
 	return {
 		...fields,
 		...(snapshots === undefined ? {} : { snapshots: snapshots.map((snapshot) => ({ ...snapshot })) }),
+		...(caveats === undefined ? {} : { caveats: [...caveats] }),
 	};
 }
 
@@ -589,6 +596,18 @@ export class Verdict {
 		return counts;
 	}
 
+	/**
+	 * The notes of the checks that ran, each distinct note once with the checks that carry it, in record order. Eight
+	 * lenses with the same caller notes give one entry.
+	 */
+	lensNotes(): { reason: string; checks: string[] }[] {
+		const notes = new Map<string, string[]>();
+		for (const { name, reason } of this.ran ?? [])
+			if (reason !== undefined)
+				for (const note of reason.split("; ")) notes.set(note, [...new Set([...(notes.get(note) ?? []), name])]);
+		return [...notes].map(([reason, checks]) => ({ reason, checks }));
+	}
+
 	/** The verification outcomes the CLI and ledger can show. */
 	verificationSummary(): string {
 		return Object.entries(this.verificationCounts())
@@ -731,8 +750,13 @@ export class Verdict {
 		const findings = Object.fromEntries(
 			Object.entries(this.findings).map(([resolution, group]) => [resolution, group.map(bare)]),
 		);
+		// Caveats restate notes the reason already holds, so a verdict upgraded to carry them hashes as it did.
+		const plain = ({ caveats: _, ...check }: StoredCheckRecord) => check;
+		const stored = this.toJSON();
 		const kept = {
-			...this.toJSON(),
+			...stored,
+			notRun: stored.notRun.map(plain),
+			...(stored.ran === undefined ? {} : { ran: stored.ran.map(plain) }),
 			findings,
 			dismissed: this.dismissed.map(bare),
 			...(this.refuted === undefined ? {} : { refuted: this.refuted.map(bare) }),
@@ -815,11 +839,17 @@ export class Verdict {
 		const lenses = (this.ran ?? []).filter((check) => check.level !== undefined);
 		if (lenses.length > 0) {
 			const checks = lenses.map(
-				({ name, level, budgetEnded, reason }) =>
-					`  ${visibleText(name)}  ${level}${budgetEnded === undefined ? "" : `, ended and counted: ${describeBudgetEnd(budgetEnded)}`}${reason === undefined ? "" : `; ${prose(reason, "    ")}`}`,
+				({ name, level, budgetEnded }) =>
+					`  ${visibleText(name)}  ${level}${budgetEnded === undefined ? "" : `, ended and counted: ${describeBudgetEnd(budgetEnded)}`}`,
 			);
 			parts.push([`${plural(lenses.length, "lens", "lenses")} ran:`, ...checks].join("\n"));
 		}
+		if (rendering.notes)
+			parts.push(
+				...this.lensNotes().map(
+					({ reason, checks }) => `  ${checks.map(visibleText).join(", ")}: ${prose(reason, "    ")}`,
+				),
+			);
 		const lineage = [...(this.ran ?? []), ...this.notRun].filter((check) => check.lineage !== undefined);
 		if (lineage.length > 0) {
 			const checks = lineage.map(

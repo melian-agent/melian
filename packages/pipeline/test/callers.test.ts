@@ -20,6 +20,7 @@ import {
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, expect, it, vi } from "vitest";
+import { legacyCaveats, lightTriage } from "../src/caveats.ts";
 import { coverageCompiler } from "../src/coverage-identity.ts";
 import { EnolaRun } from "../src/enola-static.ts";
 import { commit, createRepository, removeRepository } from "./fixtures/repo.ts";
@@ -320,3 +321,33 @@ it.each([
 		expect(lines.at(-1)).toBe(`${38 - kept} callers cut locally; upstream cap not reached.`);
 	},
 );
+
+const blind = "callers were unavailable for every changed site, so no lens saw who calls the changed code";
+
+it("names a caveat when no caller context reached the review", () => {
+	expect(CallerContext.unavailable("Enola executable not-fetched").caveat()).toBe(
+		`${blind}: Enola executable not-fetched`,
+	);
+});
+
+it("names a caveat when each changed site was a test file or its caller query failed, and none when one answered or none was asked", () => {
+	const issues = [
+		{ file: "a.ts", reason: "line 1: directory-scoped name is ambiguous" },
+		{ file: "b.ts", reason: "line 2: caller-query time budget ended" },
+	];
+	const group = { file: "a.ts", symbol: "a", callers: [], truncated: false };
+	expect(CallerContext.from({ groups: [], issues, notes: [], paths: [] }).caveat()).toBe(
+		`${blind}: each changed site was a test file or its caller query failed`,
+	);
+	expect(CallerContext.from({ groups: [group], issues, notes: [], paths: [] }).caveat()).toBeUndefined();
+	expect(CallerContext.from({ groups: [], issues: [], notes: [], paths: [] }).caveat()).toBeUndefined();
+});
+
+it("reads the caveats a record written before caveats carried only as notes", () => {
+	expect(
+		legacyCaveats(["kept the defects it hands to `design`", "Callers unavailable: graph missing", lightTriage]),
+	).toEqual([`${blind}: graph missing`, lightTriage]);
+	expect(legacyCaveats(["Callers unavailable for a.ts: line 1: directory-scoped name is ambiguous"])).toEqual([]);
+	expect(legacyCaveats(["Callers unavailable: x", "Callers unavailable: x"])).toEqual([`${blind}: x`]);
+	expect(legacyCaveats([`${lightTriage}, said twice`])).toEqual([]);
+});

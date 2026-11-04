@@ -108,6 +108,7 @@ export class ReviewOutcome {
 		emoji: boolean,
 		lenses: readonly Lens[],
 		ran?: { readonly config: MelianConfig; readonly paths: readonly string[] },
+		notes?: boolean,
 	): string {
 		const selected = ran === undefined ? [] : Lens.select(lenses, ran.config, ran.paths).map(({ lens }) => lens);
 		// Each variant by its version, loaded or as the review ran it; a name alone only when its variants agree, so a
@@ -119,7 +120,7 @@ export class ReviewOutcome {
 				.filter((lens) => lenses.every((other) => other.name !== lens.name || other.emoji === lens.emoji))
 				.map((lens) => [`lens.${lens.name}`, lens.emoji!]),
 		]);
-		return this.verdict.render(new Rendering({ color, emoji, lensEmojis, ids: true, decided: true }));
+		return this.verdict.render(new Rendering({ color, emoji, lensEmojis, ids: true, decided: true, notes }));
 	}
 }
 
@@ -177,6 +178,7 @@ export async function review(
 		readonly trustHead?: boolean;
 		readonly cold?: boolean;
 		readonly json?: boolean;
+		readonly notes?: boolean;
 	},
 ): Promise<number> {
 	const beganAt = Date.now();
@@ -382,7 +384,13 @@ export async function review(
 		io.stdout(
 			options.json
 				? `${JSON.stringify({ ...JSON.parse(verdict.renderJson()), telemetry: timings.toJSON() }, null, 2)}\n`
-				: outcome.render(io.color, await terminalEmoji(io, repoRoot), lenses, { config: loaded, paths }),
+				: outcome.render(
+						io.color,
+						await terminalEmoji(io, repoRoot),
+						lenses,
+						{ config: loaded, paths },
+						options.notes,
+					),
 		);
 		return outcome.exitCode();
 	} catch (error) {
@@ -560,6 +568,7 @@ export async function findings(
 		readonly open: boolean;
 		readonly all: boolean;
 		readonly json: boolean;
+		readonly notes?: boolean;
 		readonly round?: string;
 		readonly rounds?: boolean;
 	},
@@ -622,7 +631,14 @@ export async function findings(
 				io.stderr(`melian: ${line}\n`);
 		}
 		const emoji = await terminalEmoji(io, changeset.repoRoot);
-		const render = new Rendering({ color: io.color, emoji, ids: true, all: options.all, decided: true });
+		const render = new Rendering({
+			color: io.color,
+			emoji,
+			ids: true,
+			all: options.all,
+			decided: true,
+			notes: options.notes,
+		});
 		if (!options.open) {
 			io.stdout(options.json ? verdict.renderJson() : verdict.render(render) + verdict.agentPrompt(argument));
 			return 0;
@@ -638,7 +654,7 @@ export async function findings(
 async function roundFindings(
 	io: Io,
 	id: string,
-	options: { readonly open: boolean; readonly all: boolean; readonly json: boolean },
+	options: { readonly open: boolean; readonly all: boolean; readonly json: boolean; readonly notes?: boolean },
 ): Promise<number> {
 	const match = /^(range-[0-9a-f]{16}|pull-[0-9a-f]{16})\.(?:r[1-9][0-9]*|k[0-9a-f]{16})$/.exec(id);
 	if (match === null) throw new CliError(`invalid round ID ${id}`);
@@ -663,6 +679,7 @@ async function roundFindings(
 			all: options.all,
 			decided: true,
 			historical: true,
+			notes: options.notes,
 		});
 		if (options.open) {
 			const open = FindingsLog.of(verdict.attention());

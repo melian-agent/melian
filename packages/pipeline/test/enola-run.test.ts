@@ -8,6 +8,7 @@ import {
 	ToolManifest,
 } from "@melian-agent/core";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { CallerContext } from "../src/callers.ts";
 import { CoverageCache } from "../src/coverage-cache.ts";
 import { EnolaRun } from "../src/enola-static.ts";
 import { GraphCache } from "../src/graph-cache.ts";
@@ -480,4 +481,52 @@ it.each([
 	f.artifacts[output] = "x".repeat(5000);
 	f.shell.mockImplementation(async (text) => ({ code: text.includes(command) ? 2 : 0, output: "a".repeat(40) }));
 	await expect(f.enola.check()).rejects.toMatchObject({ code: "toolFailed", message: `${prefix}${"x".repeat(4096)}` });
+});
+
+async function withSecondFile(path: string) {
+	const f = await fixture();
+	f.artifacts["facts.jsonl"] = [
+		{ id: "alpha", kind: "symbol", name: "Alpha", file: "src/a.ts", line: 1 },
+		{ id: "spec", kind: "symbol", name: "Spec", file: path, line: 1 },
+	]
+		.map((fact) => JSON.stringify(fact))
+		.join("\n");
+	const second = { ...f.files[0]!, path, hunks: [{ ...f.files[0]!.hunks[0]!, file: path }] };
+	return { f, second };
+}
+
+const queriesOf = (f: Awaited<ReturnType<typeof fixture>>) =>
+	f.shell.mock.calls.flatMap(([command]) => (command.includes("impact --json") ? [command] : []));
+
+it.each(["src/a.test.ts", "src/a.spec.tsx", "packages/p/test/a.test.mts"])(
+	"asks Enola for no callers of %s, a test file nothing calls, and names it as skipped",
+	async (path) => {
+		const { f, second } = await withSecondFile(path);
+		const data = await f.enola.callers([...f.files, second], []);
+		expect(queriesOf(f)).toHaveLength(1);
+		expect(queriesOf(f)[0]).toContain("file:src/a.ts Alpha");
+		expect(data.groups.map((group) => group.file)).toEqual(["src/a.ts"]);
+		expect(data.issues).toEqual([{ file: path, reason: "a test file, which nothing calls, so it was not queried" }]);
+	},
+);
+
+// A directory name is no evidence that a file is a test: production code can live under fixtures/ or test/.
+it.each(["test/a.ts", "src/__tests__/a.ts", "src/fixtures/a.ts", "src/latest.ts"])(
+	"asks Enola for the callers of %s, whose name does not mark it a test",
+	async (path) => {
+		const { f, second } = await withSecondFile(path);
+		const data = await f.enola.callers([...f.files, second], []);
+		expect(queriesOf(f)).toHaveLength(2);
+		expect(queriesOf(f)[1]).toContain(`file:${path} Spec`);
+		expect(data.issues.every(({ reason }) => !reason.startsWith("a test file"))).toBe(true);
+	},
+);
+
+it("names the caveat when every changed site was a skipped test file", async () => {
+	const { f, second } = await withSecondFile("src/a.test.ts");
+	const data = await f.enola.callers([second], []);
+	expect(queriesOf(f)).toEqual([]);
+	expect(CallerContext.from(data).caveat()).toBe(
+		"callers were unavailable for every changed site, so no lens saw who calls the changed code: each changed site was a test file or its caller query failed",
+	);
 });

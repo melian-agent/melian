@@ -7,6 +7,7 @@ import {
 	readVerdict,
 	VerdictDocument,
 } from "./adjudication.ts";
+import { withLegacyCaveats } from "./caveats.ts";
 import { DismissError } from "./errors.ts";
 import { type Dismissal, dismissFinding, FindingsDocument, revisionKey, siteAt } from "./findings.ts";
 import {
@@ -161,7 +162,12 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 		// another worktree may hold another melian.yaml.
 		const findingsVersion = (await tx.doc(FindingsDocument, root.id)).versions[revision] ?? 0;
 		const checkout = existsSync(previous.repoRoot) ? previous.repoRoot : repoRoot;
-		const input: AdjudicationTaskInput = { ...previous, repoRoot: checkout, findingsVersion };
+		const input: AdjudicationTaskInput = {
+			...previous,
+			checks: previous.checks.map(withLegacyCaveats),
+			repoRoot: checkout,
+			findingsVersion,
+		};
 		const key = JSON.stringify(input);
 		// Copies: the stored verdict is the commit's own view, unusable once the commit settles.
 		const also = found.members

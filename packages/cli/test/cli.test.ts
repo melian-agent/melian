@@ -470,6 +470,45 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(result.stderr).not.toContain(control);
 	});
 
+	it("keeps lens notes opt-in in review, findings and frozen rounds, and preserves them in JSON", () => {
+		const { repo, env: script } = goldenCheckout(
+			goldens["clean-rename"]!,
+			undefined,
+			`${guardrailsOnly}static:\n  enola: { enabled: true }\n`,
+		);
+		const env = { ...script, MELIAN_STATE_DIR: join(scratch, "state") };
+		const review = melian(repo, ["review", "main"], env);
+		expect(review.status).toBe(0);
+		const saved = melian(repo, ["findings", "main", "--json"], env);
+		expect(saved.status).toBe(0);
+		const recorded = JSON.parse(saved.stdout) as StoredVerdict;
+		const reasons = recorded.ran!.filter((check) => check.name.startsWith("lens.")).map((check) => check.reason);
+		const note = "Callers unavailable: Enola executable not-fetched";
+		expect(reasons).toEqual(builtinLenses.map(() => note));
+		expect(review.stdout).not.toContain(note);
+		const rounds = melian(repo, ["findings", "main", "--rounds", "--json"], env);
+		expect(rounds.status).toBe(0);
+		const [{ id }] = JSON.parse(rounds.stdout) as { id: string }[];
+		for (const args of [
+			["review", "main"],
+			["findings", "main"],
+			["findings", "--round", id!],
+		]) {
+			const plain = melian(repo, args, env);
+			expect(plain.status).toBe(0);
+			expect(plain.stdout).not.toContain(note);
+			const noted = melian(repo, [...args, "--notes"], env);
+			expect(noted.status).toBe(0);
+			expect(noted.stdout.split(note)).toHaveLength(2);
+			const json = melian(repo, [...args, "--json"], env);
+			expect(json.status).toBe(0);
+			const stored = JSON.parse(json.stdout) as StoredVerdict;
+			expect(stored.ran!.filter((check) => check.name.startsWith("lens.")).length).toBeGreaterThan(1);
+			for (const check of stored.ran!.filter((check) => check.name.startsWith("lens.")))
+				expect(check.reason).toContain(note);
+		}
+	});
+
 	it("exits 0 for a review that passed, and prints the terminal rendering of its verdict", () => {
 		const { repo, env } = goldenCheckout(goldens["clean-rename"]!);
 

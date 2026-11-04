@@ -20,9 +20,9 @@ describe("mutation paths", () => {
 
 	it("excludes declarations, tests and specs by their final extension", async () => {
 		const { productionWithExtensions } = await load();
-		for (const name of ["src/a.test.ts", "src/a.test.mts", "src/a.spec.cjs", "src/a.d.ts"])
+		for (const name of ["src/a.test.ts", "src/a.test.mts", "src/a.spec.cjs", "src/a.d.ts", "src/a.d.mts"])
 			expect(productionWithExtensions(name, scripts), name).toBe(false);
-		for (const name of ["src/a.test.ts.backup.ts", "src/a.test.xts.ts", "src/a.ts"])
+		for (const name of ["src/a.test.ts.backup.ts", "src/a.d.ts.backup.ts", "src/a.test.xts.ts", "src/a.ts"])
 			expect(productionWithExtensions(name, scripts), name).toBe(true);
 	});
 
