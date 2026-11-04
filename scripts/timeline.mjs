@@ -229,7 +229,7 @@ export class Timeline {
 		}
 		const ci = this.#events.filter((event) => event.end !== undefined);
 		const ciMinutes = ci.reduce((sum, event) => sum + (event.end - event.at) / 60_000, 0);
-		const last = Math.max(...this.#events.map((event) => event.end ?? event.at));
+		const last = merged ?? Math.max(...this.#events.map((event) => event.end ?? event.at));
 		lines.push(`| CI | ${ciMinutes.toFixed(1)} min over ${ci.length} runs |  |`);
 		lines.push(`| total | ${((last - first) / HOUR).toFixed(2)} |  |`);
 		return lines.join("\n");

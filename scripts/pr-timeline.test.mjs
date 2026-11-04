@@ -352,6 +352,16 @@ describe("fetch", () => {
 });
 
 describe("stage bounds", () => {
+	it("ends a merged pull request's total at its merge and keeps a later comment in the table", () => {
+		const timelineItems = page([
+			{ __typename: "MergedEvent", createdAt: "2026-10-01T02:00:00.000Z", commit: { oid: "e".repeat(40) } },
+			{ __typename: "IssueComment", createdAt: "2026-10-11T02:00:00.000Z", body: "Thanks", author: { login: "b" } },
+		]);
+		const timeline = Timeline.from({ pull: pull({ timelineItems }), runs: [] });
+		expect(rows(timeline)).toContain("| 2026-10-11 02:00 | 242.00 | comment | by b |");
+		expect(rows(timeline).at(-1)).toBe("| total | 2.00 |  |");
+	});
+
 	it("prints — for a stage whose end is known and whose start is not", () => {
 		const timelineItems = page([{ __typename: "ReadyForReviewEvent", createdAt: "2026-10-01T01:00:00.000Z" }]);
 		const timeline = Timeline.from({ pull: pull({ timelineItems }), runs: [] });
