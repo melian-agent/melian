@@ -23,6 +23,7 @@ import {
 	Verdict,
 } from "@melian-agent/core";
 import { VerdictDocument, type VerdictProvenance } from "./adjudication.ts";
+import { verdictWithLegacyCaveats } from "./caveats.ts";
 import { PublishError } from "./errors.ts";
 import { FindingsDocument } from "./findings.ts";
 import {
@@ -782,7 +783,7 @@ function publishTask(provider: ReviewProvider) {
 								base,
 								fingerprint: pending.fingerprint,
 								round: pending.round,
-								verdict: Verdict.from(pending.verdict),
+								verdict: Verdict.from(verdictWithLegacyCaveats(pending.verdict)),
 								findings: pending.post.map(({ finding, placement }) => ({
 									finding: Finding.from(finding),
 									placement,

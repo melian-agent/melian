@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { Revision, type StoredVerdict, Verdict } from "@melian-agent/core";
 import { VerdictDocument } from "./adjudication.ts";
+import { verdictWithLegacyCaveats } from "./caveats.ts";
 import { ComparisonDocument } from "./compare.ts";
 import {
 	backgroundContext,
@@ -42,9 +43,11 @@ export class RoundError extends Error {
 }
 
 // Keys are local to this storage; the public ID prefixes them with the changeset ID of its SQLite file.
+// Version 2 meant caveats on main and split round keys on this branch; version 3 applies both, and each is a no-op
+// on a round that already has it, so one migration serves every earlier version.
 export const RoundsDocument = defineDoc<RoundState>({
 	kind: "melian.rounds",
-	version: 2,
+	version: 3,
 	scope: "conversation",
 	history: "latest",
 	fork: "current",
@@ -53,7 +56,15 @@ export const RoundsDocument = defineDoc<RoundState>({
 		const state = value as RoundState;
 		return {
 			...state,
-			items: Object.fromEntries(Object.entries(state.items).map(([key, stored]) => [key, Round.upgrade(stored)])),
+			items: Object.fromEntries(
+				Object.entries(state.items).map(([key, stored]) => {
+					const round = Round.upgrade(stored);
+					return [
+						key,
+						round.verdict === undefined ? round : { ...round, verdict: verdictWithLegacyCaveats(round.verdict) },
+					];
+				}),
+			),
 		};
 	},
 });
