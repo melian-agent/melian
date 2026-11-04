@@ -1933,8 +1933,8 @@ describe("reviewChangeset", () => {
 					expect(ran?.reason).toBe(
 						"kept the defects it hands to `trust-boundary`, whose files here would list past 40 files or 4 KiB",
 					);
-					expect(verdict.render()).toContain(
-						"lens.correctness  careful; kept the defects it hands to `trust-boundary`",
+					expect(verdict.render(new Rendering({ notes: true }))).toContain(
+						"  lens.correctness: kept the defects it hands to `trust-boundary`",
 					);
 					// contracts hands nothing to trust-boundary, so its instructions left nothing out.
 					expect(verdict.ran?.find((check) => check.name === "lens.contracts")?.reason).toBeUndefined();
