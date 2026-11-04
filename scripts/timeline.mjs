@@ -213,10 +213,10 @@ export class Timeline {
 		}
 		const { ready, claim, built, reviewed, queued, merged } = this.#stages;
 		const stages = [
-			["ready-wait", ready, claim],
-			["build", claim, built],
-			["review", built, reviewed],
-			["queue", queued, merged],
+			["ready to claim", ready, claim],
+			["claim to last commit", claim, built],
+			["last commit to ready", built, reviewed],
+			["queued to merged", queued, merged],
 		];
 		lines.push("", "| Stage | Hours | Timing reported |", "| --- | --- | --- |");
 		for (const [name, start, end] of stages) {

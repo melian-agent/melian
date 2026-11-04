@@ -76,10 +76,10 @@ const expected = [
 	"",
 	"| Stage | Hours | Timing reported |",
 	"| --- | --- | --- |",
-	"| ready-wait | 2.00 |  |",
-	"| build | 4.00 | 83 min, $6.40 |",
-	"| review | 2.00 |  |",
-	"| queue | 0.25 |  |",
+	"| ready to claim | 2.00 |  |",
+	"| claim to last commit | 4.00 | 83 min, $6.40 |",
+	"| last commit to ready | 2.00 |  |",
+	"| queued to merged | 0.25 |  |",
 	"| CI | 29.0 min over 2 runs |  |",
 	"| total | 8.27 |  |",
 	"",
@@ -130,10 +130,10 @@ describe("pr-timeline", () => {
 		expect(lines.slice(-9)).toEqual([
 			"| Stage | Hours | Timing reported |",
 			"| --- | --- | --- |",
-			"| ready-wait | 18.22 |  |",
-			"| build | 191.70 |  |",
-			"| review | 2.47 |  |",
-			"| queue | 0.23 |  |",
+			"| ready to claim | 18.22 |  |",
+			"| claim to last commit | 191.70 |  |",
+			"| last commit to ready | 2.47 |  |",
+			"| queued to merged | 0.23 |  |",
 			"| CI | 159.9 min over 14 runs |  |",
 			"| total | 212.62 |  |",
 			"",
@@ -274,16 +274,16 @@ describe("stages", () => {
 			"| 2026-10-01 01:45 | 1.75 | Claim | #7 by late |",
 		]);
 		expect(rows(timeline).slice(-6)).toEqual([
-			"| ready-wait | 1.50 |  |",
-			"| build | — |  |",
-			"| review | — |  |",
-			"| queue | — |  |",
+			"| ready to claim | 1.50 |  |",
+			"| claim to last commit | — |  |",
+			"| last commit to ready | — |  |",
+			"| queued to merged | — |  |",
 			"| CI | 0.0 min over 0 runs |  |",
 			"| total | 1.75 |  |",
 		]);
 	});
 
-	it("starts ready-wait at the first status: ready label, not the issue's opening or another label", () => {
+	it("starts ready to claim at the first status: ready label, not the issue's opening or another label", () => {
 		const issue = {
 			number: 7,
 			createdAt: "2026-10-01T00:00:00.000Z",
@@ -301,7 +301,7 @@ describe("stages", () => {
 			]),
 		};
 		const timeline = Timeline.from({ pull: pull({ closingIssuesReferences: page([issue]) }), runs: [] });
-		expect(rows(timeline)).toContain("| ready-wait | 1.00 |  |");
+		expect(rows(timeline)).toContain("| ready to claim | 1.00 |  |");
 	});
 
 	it("counts only the Timing items inside a stage, from its start up to but not including its end", () => {
@@ -323,9 +323,9 @@ describe("stages", () => {
 			]),
 		};
 		const timeline = Timeline.from({ pull: pull({ closingIssuesReferences: page([issue]), commits }), runs: [] });
-		expect(rows(timeline).filter((row) => /^\| (ready-wait|build) /.test(row))).toEqual([
-			"| ready-wait | 0.17 | 1 min |",
-			"| build | 0.83 | 2 min |",
+		expect(rows(timeline).filter((row) => /^\| (ready to claim|claim to last commit) /.test(row))).toEqual([
+			"| ready to claim | 0.17 | 1 min |",
+			"| claim to last commit | 0.83 | 2 min |",
 		]);
 	});
 });
@@ -365,7 +365,7 @@ describe("stage bounds", () => {
 	it("prints — for a stage whose end is known and whose start is not", () => {
 		const timelineItems = page([{ __typename: "ReadyForReviewEvent", createdAt: "2026-10-01T01:00:00.000Z" }]);
 		const timeline = Timeline.from({ pull: pull({ timelineItems }), runs: [] });
-		expect(rows(timeline)).toContain("| review | — |  |");
+		expect(rows(timeline)).toContain("| last commit to ready | — |  |");
 	});
 });
 
