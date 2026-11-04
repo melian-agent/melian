@@ -40,10 +40,10 @@
 			"-f",
 			"event=merge_group",
 			"-f",
-			"created=>=2026-10-01",
+			"created=2026-10-01T04:10:00Z..2026-10-01T08:16:00Z",
 			"-f",
 			"per_page=100"
 		],
-		"stdout": "[{\"total_count\":1,\"workflow_runs\":[{\"name\":\"check\",\"event\":\"merge_group\",\"head_branch\":\"gh-readonly-queue/main/pr-900-dddddddddddddddddddddddddddddddddddddddd\",\"head_sha\":\"ffffffffffffffffffffffffffffffffffffffff\",\"status\":\"completed\",\"conclusion\":\"success\",\"run_started_at\":\"2026-10-01T08:01:30Z\",\"updated_at\":\"2026-10-01T08:15:30Z\"}]},{\"total_count\":1,\"workflow_runs\":[{\"name\":\"check\",\"event\":\"merge_group\",\"head_branch\":\"gh-readonly-queue/main/pr-9001-dddddddddddddddddddddddddddddddddddddddd\",\"head_sha\":\"9999999999999999999999999999999999999999\",\"status\":\"completed\",\"conclusion\":\"success\",\"run_started_at\":\"2026-10-01T08:02:00Z\",\"updated_at\":\"2026-10-01T08:20:00Z\"}]}]\n"
+		"stdout": "[{\"total_count\":2,\"workflow_runs\":[{\"name\":\"check\",\"event\":\"merge_group\",\"head_branch\":\"gh-readonly-queue/main/pr-900-dddddddddddddddddddddddddddddddddddddddd\",\"head_sha\":\"ffffffffffffffffffffffffffffffffffffffff\",\"status\":\"completed\",\"conclusion\":\"success\",\"run_started_at\":\"2026-10-01T08:01:30Z\",\"updated_at\":\"2026-10-01T08:15:30Z\"}]},{\"total_count\":2,\"workflow_runs\":[{\"name\":\"check\",\"event\":\"merge_group\",\"head_branch\":\"gh-readonly-queue/main/pr-9001-dddddddddddddddddddddddddddddddddddddddd\",\"head_sha\":\"9999999999999999999999999999999999999999\",\"status\":\"completed\",\"conclusion\":\"success\",\"run_started_at\":\"2026-10-01T08:02:00Z\",\"updated_at\":\"2026-10-01T08:20:00Z\"}]}]\n"
 	}
 ]

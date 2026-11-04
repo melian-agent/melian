@@ -78,7 +78,7 @@ export class Timeline {
 		this.#stages = stages;
 	}
 
-	static fetch({ number, repo, gh }) {
+	static fetch({ number, repo, gh, now = new Date().toISOString() }) {
 		const [owner, name] = repo.split("/");
 		const data = JSON.parse(
 			gh([
@@ -105,21 +105,30 @@ export class Timeline {
 			throw new Error(
 				`pull request #${number} has more items than one page holds; the timeline would be incomplete`,
 			);
-		const runs = (args) =>
-			JSON.parse(gh(["api", "--paginate", "--slurp", "-X", "GET", `repos/${repo}/actions/runs`, ...args]));
+		const runs = (args) => {
+			const pages = JSON.parse(
+				gh(["api", "--paginate", "--slurp", "-X", "GET", `repos/${repo}/actions/runs`, ...args]),
+			);
+			const found = pages.flatMap((page) => page.workflow_runs);
+			// GitHub stops a filtered run search at 1,000 results and says so only in total_count.
+			if (pages[0].total_count > found.length)
+				throw new Error(
+					`GitHub found ${pages[0].total_count} workflow runs and returned ${found.length}; the timeline would be incomplete`,
+				);
+			return found;
+		};
+		const merge = pull.timelineItems.nodes.find((node) => node.__typename === "MergedEvent");
 		const branch = runs(["-f", `branch=${pull.headRefName}`, "-f", "per_page=100"]);
 		const group = runs([
 			"-f",
 			"event=merge_group",
 			"-f",
-			`created=>=${pull.createdAt.slice(0, 10)}`,
+			`created=${pull.createdAt}..${merge?.createdAt ?? now}`,
 			"-f",
 			"per_page=100",
 		]);
-		const queued = group
-			.flatMap((page) => page.workflow_runs)
-			.filter((run) => run.head_branch.includes(`/pr-${number}-`));
-		return Timeline.from({ pull, runs: [...branch.flatMap((page) => page.workflow_runs), ...queued] });
+		const queued = group.filter((run) => run.head_branch.includes(`/pr-${number}-`));
+		return Timeline.from({ pull, runs: [...branch, ...queued] });
 	}
 
 	static from({ pull, runs }) {

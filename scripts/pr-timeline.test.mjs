@@ -349,6 +349,78 @@ describe("fetch", () => {
 			expect(asked).toEqual(["graphql"]);
 		},
 	);
+
+	const ci = (id) => ({
+		name: "check",
+		event: "merge_group",
+		head_branch: `gh-readonly-queue/main/pr-1-${id}`,
+		head_sha: id.repeat(40),
+		status: "completed",
+		conclusion: "success",
+		run_started_at: "2026-10-01T01:00:00Z",
+		updated_at: "2026-10-01T01:10:00Z",
+	});
+	const github = (data, answers) => {
+		const asked = [];
+		const gh = (args) => {
+			asked.push(args);
+			if (args[1] === "graphql") return JSON.stringify({ data: { repository: { pullRequest: data } } });
+			return JSON.stringify(args.includes("event=merge_group") ? answers.group : answers.branch);
+		};
+		return { gh, asked };
+	};
+	const empty = [{ total_count: 0, workflow_runs: [] }];
+	const merged = page([
+		{ __typename: "MergedEvent", createdAt: "2026-10-02T00:00:00Z", commit: { oid: "e".repeat(40) } },
+	]);
+
+	it("searches merge-group runs only from a merged pull request's opening to its merge", () => {
+		const { gh, asked } = github(pull({ timelineItems: merged }), { branch: empty, group: empty });
+		Timeline.fetch({ number: 1, repo: "o/r", gh, now: "2026-10-09T00:00:00Z" });
+		expect(asked[2]).toEqual([
+			"api",
+			"--paginate",
+			"--slurp",
+			"-X",
+			"GET",
+			"repos/o/r/actions/runs",
+			"-f",
+			"event=merge_group",
+			"-f",
+			"created=2026-10-01T00:00:00.000Z..2026-10-02T00:00:00Z",
+			"-f",
+			"per_page=100",
+		]);
+	});
+
+	it("searches an open pull request's merge-group runs up to now", () => {
+		const { gh, asked } = github(pull(), { branch: empty, group: empty });
+		Timeline.fetch({ number: 1, repo: "o/r", gh, now: "2026-10-09T00:00:00Z" });
+		expect(asked[2]).toContain("created=2026-10-01T00:00:00.000Z..2026-10-09T00:00:00Z");
+	});
+
+	it.each([
+		{ search: "branch", total: 2, throws: false },
+		{ search: "branch", total: 3, throws: true },
+		{ search: "group", total: 2, throws: false },
+		{ search: "group", total: 3, throws: true },
+	])(
+		"checks the $search search's total_count of $total against the two runs its pages returned",
+		({ search, total, throws }) => {
+			const pages = [
+				{ total_count: total, workflow_runs: [ci("a")] },
+				{ total_count: total, workflow_runs: [ci("b")] },
+			];
+			const answers = { branch: empty, group: empty, [search]: pages };
+			const { gh } = github(pull({ timelineItems: merged }), answers);
+			const fetch = () => Timeline.fetch({ number: 1, repo: "o/r", gh });
+			if (throws)
+				expect(fetch).toThrow(
+					`GitHub found ${total} workflow runs and returned 2; the timeline would be incomplete`,
+				);
+			else expect(fetch).not.toThrow();
+		},
+	);
 });
 
 describe("stage bounds", () => {
