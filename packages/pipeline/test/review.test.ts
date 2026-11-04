@@ -18,6 +18,7 @@ import {
 	mutationSkips,
 	Rendering,
 	type RepositorySource,
+	Revision,
 	type Verdict,
 } from "@melian-agent/core";
 import { DecisionFiles, DesignSections, RecordedDecider } from "@melian-agent/decisions";
@@ -41,7 +42,6 @@ import {
 	ReviewError,
 	readVerdict,
 	reviewChangeset,
-	revisionKey,
 	type TaskId,
 	upsertFinding,
 } from "@melian-agent/pipeline";
@@ -190,7 +190,7 @@ async function review(options: ReviewWith = {}): Promise<readonly Finding[]> {
 
 // The revision `main...feature` reviews, as the findings, verdict, and review index documents key it.
 function reviewedRevision(): string {
-	return revisionKey({
+	return Revision.key({
 		base: gitIn(repo, "merge-base", "main", "feature"),
 		head: gitIn(repo, "rev-parse", "feature"),
 	});

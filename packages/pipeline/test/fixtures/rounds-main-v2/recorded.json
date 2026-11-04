@@ -1,0 +1,81 @@
+{
+  "commit": "0b3a0c4ba8cfc30adf84f94afad1d52ba881b742",
+  "version": 2,
+  "headOnly": "6916d34138704b5a8fae3be4e6a63082f85afc47",
+  "legacyRound": "k3d8894967d58de47",
+  "state": {
+    "sequence": 1,
+    "current": {
+      "6916d34138704b5a8fae3be4e6a63082f85afc47": "k3d8894967d58de47",
+      "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb..cccccccccccccccccccccccccccccccccccccccc": "r1"
+    },
+    "items": {
+      "k3d8894967d58de47": {
+        "base": "6916d34138704b5a8fae3be4e6a63082f85afc47",
+        "head": "",
+        "tasks": [],
+        "verdict": {
+          "status": "passed",
+          "blocking": false,
+          "findings": {
+            "block": [],
+            "acknowledge": [],
+            "advisory": [],
+            "silent": []
+          },
+          "dismissed": [],
+          "notRun": []
+        }
+      },
+      "r1": {
+        "base": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "head": "cccccccccccccccccccccccccccccccccccccccc",
+        "tasks": [
+          11
+        ],
+        "mintedAt": "2026-11-04T00:00:00Z",
+        "verdict": {
+          "status": "not-reviewed",
+          "blocking": false,
+          "findings": {
+            "block": [],
+            "acknowledge": [],
+            "advisory": [],
+            "silent": []
+          },
+          "dismissed": [],
+          "notRun": [
+            {
+              "name": "lens.contracts",
+              "status": "skipped",
+              "reason": "triage chose quick for every lens, so the whole review looked lightly, at a change that can steer triage",
+              "caveats": [
+                "triage chose quick for every lens, so the whole review looked lightly, at a change that can steer triage"
+              ]
+            }
+          ],
+          "ran": [
+            {
+              "name": "lens.correctness",
+              "status": "ran",
+              "reason": "Callers unavailable: graph absent"
+            }
+          ]
+        },
+        "provenance": {
+          "kind": "range",
+          "policy": "config",
+          "manifest": [
+            "lens.correctness",
+            "lens.contracts"
+          ],
+          "lenses": []
+        }
+      }
+    },
+    "recorded": {
+      "6916d34138704b5a8fae3be4e6a63082f85afc47": true,
+      "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb..cccccccccccccccccccccccccccccccccccccccc": true
+    }
+  }
+}

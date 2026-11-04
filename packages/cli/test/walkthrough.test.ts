@@ -1,15 +1,9 @@
 import { copyFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { Changeset } from "@melian-agent/core";
+import { Changeset, Revision } from "@melian-agent/core";
 import { createGitHubProvider } from "@melian-agent/github";
 import * as pipeline from "@melian-agent/pipeline";
-import {
-	backgroundContext as context,
-	createRegistry,
-	openHarness,
-	openSqliteStorage,
-	revisionKey,
-} from "@melian-agent/pipeline";
+import { backgroundContext as context, createRegistry, openHarness, openSqliteStorage } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type FakeState, fakeGitHub } from "../../github/test/fixtures/fake-github.ts";
@@ -77,7 +71,7 @@ describe("CLI walkthrough switch", { timeout: 60_000 }, () => {
 		expect((await recorded())?.walkthroughs).toBeUndefined();
 		expect((await recorded())?.walkthroughNotes).toBeUndefined();
 		expect(await review(io, "#7", { rerun: false })).toBe(0);
-		expect((await recorded())?.walkthroughNotes?.[revisionKey(changeset.revision)]).toBeDefined();
+		expect((await recorded())?.walkthroughNotes?.[Revision.key(changeset.revision)]).toBeDefined();
 		expect(output.every((text) => !text.includes("summariser"))).toBe(true);
 	});
 });
@@ -153,7 +147,7 @@ describe("CLI walkthrough credential failure", { timeout: 60_000 }, () => {
 
 		expect(unlock.mock.calls.map(([, providers]) => providers)).toContainEqual(["faux"]);
 		expect(stderr).toContain("melian: credential vault in /xdg/melian/secrets.yaml: its command failed (3)\n");
-		const note = (await recorded())?.walkthroughNotes?.[revisionKey(changeset.revision)];
+		const note = (await recorded())?.walkthroughNotes?.[Revision.key(changeset.revision)];
 		expect(note).toBe("No walkthrough available. The summariser failed.");
 		expect(note).not.toContain("vault");
 	});
@@ -278,7 +272,7 @@ describe("CLI publish walkthrough settings", { timeout: 60_000 }, () => {
 
 	it("hides a stored walkthrough when publish gets --no-walkthrough from the command line", async () => {
 		expect(await published("", { walkthrough: false }, undefined, { publish: true })).not.toContain("Walkthrough");
-		expect((await recorded())?.walkthroughNotes?.[revisionKey(changeset.revision)]).toBeDefined();
+		expect((await recorded())?.walkthroughNotes?.[Revision.key(changeset.revision)]).toBeDefined();
 	});
 });
 

@@ -9,6 +9,7 @@ import {
 	defaultConfig,
 	ExternalFinding,
 	Finding,
+	Revision,
 } from "@melian-agent/core";
 import {
 	CompareHarness,
@@ -18,7 +19,6 @@ import {
 	openSqliteStorage,
 	ROOT_CONVERSATION_ID,
 	RoundReader,
-	revisionKey,
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, expect, it, vi } from "vitest";
@@ -28,7 +28,7 @@ import { legacyKey, RoundsDocument, RoundWriter } from "../src/rounds.ts";
 
 const changeset = "range-0123456789abcdef";
 const revision = { base: "a".repeat(40), head: "b".repeat(40) };
-const key = revisionKey(revision);
+const key = Revision.key(revision);
 const finding = Finding.create({
 	rule: "wrong",
 	message: "wrong",
@@ -102,6 +102,29 @@ it("keeps two comparisons at one revision and reads their own frozen verdicts", 
 		`${changeset}.r2`,
 	]);
 	expect(new ComparisonSet(entries).stats().reviewers.find((each) => each.reviewer === "melian")?.total).toBe(1);
+});
+
+it("keeps the selected round's revision when request sides name another revision", async () => {
+	const { harness } = await memory();
+	await mint(harness);
+	const root = await harness.harness.root(context);
+	const before = structuredClone(await harness.harness.snapshot(RoundsDocument, root.id, context));
+	await harness.importFindings({ base: "c".repeat(40), head: "d".repeat(40), round: `${changeset}.r1` }, sources, at);
+	expect(await harness.harness.snapshot(RoundsDocument, root.id, context)).toEqual(before);
+});
+
+it("refuses a current frozen verdict whose live verdict disappeared, naming its key", async () => {
+	const { harness } = await memory();
+	await mint(harness);
+	const root = await harness.harness.root(context);
+	await root.commit(async (tx) => {
+		delete (await tx.doc(VerdictDocument, root.id)).verdicts[key];
+	}, context);
+	const before = structuredClone(await harness.harness.snapshot(ComparisonDocument, root.id, context));
+	await expect(harness.importFindings(revision, sources, at)).rejects.toThrow(
+		`Melian has no current, decided review of ${key} to compare against; run melian review again`,
+	);
+	expect(await harness.harness.snapshot(ComparisonDocument, root.id, context)).toEqual(before);
 });
 
 it("reads comparisons in round order whatever order they were recorded in", async () => {
@@ -255,12 +278,12 @@ it("attributes a legacy comparison when minted rounds exist only at another revi
 	const other = { ...revision, head: "c".repeat(40) };
 	const root = await harness.harness.root(context);
 	await root.commit(async (tx) => {
-		(await tx.doc(ComparisonDocument, root.id)).unattributed[revisionKey(other)] = Comparison.of(other).toJSON();
-		(await tx.doc(VerdictDocument, root.id)).verdicts[revisionKey(other)] = verdict;
+		(await tx.doc(ComparisonDocument, root.id)).unattributed[Revision.key(other)] = Comparison.of(other).toJSON();
+		(await tx.doc(VerdictDocument, root.id)).verdicts[Revision.key(other)] = verdict;
 	}, context);
 	const entries = await ComparisonReader.open(storage).read(changeset);
 	expect(entries).toHaveLength(1);
-	expect(entries[0]!.round).toBe(`${changeset}.${legacyKey(revisionKey(other))}`);
+	expect(entries[0]!.round).toBe(`${changeset}.${legacyKey(Revision.key(other))}`);
 	expect(entries[0]!.unattributed).toBeUndefined();
 });
 
@@ -319,11 +342,11 @@ it.each(["main-36122eb2", "build1-0ee97219"])(
 		for (const entry of entries) {
 			expect(entry.comparison.adjudication(recorded.external)?.history).toHaveLength(1);
 			if (fixture.startsWith("main")) {
-				expect(entry.round).toBe(`${changeset}.${legacyKey(revisionKey(entry.comparison))}`);
+				expect(entry.round).toBe(`${changeset}.${legacyKey(Revision.key(entry.comparison))}`);
 				expect(entry.verdict?.status).toBe("passed");
 			} else {
 				expect(entry.round).toBeUndefined();
-				expect(entry.unattributed).toBe(revisionKey(recorded.revisions[1]!));
+				expect(entry.unattributed).toBe(Revision.key(recorded.revisions[1]!));
 				expect(entry.verdict).toBeUndefined();
 				expect(new ComparisonExport(entries, "range").render()).toContain("Unattributed");
 				expect(new ComparisonSet(entries).renderStats()).toContain("Unattributed comparisons: 1");
@@ -364,7 +387,7 @@ it("preserves a proven legacy comparison when its first upgraded review mints a 
 	const harness = await CompareHarness.open(storage, createFakeModels().review, changeset);
 	opened.push(harness);
 	const root = await harness.harness.root(context);
-	const key = revisionKey(recorded.revisions[1]!);
+	const key = Revision.key(recorded.revisions[1]!);
 	await root.commit((tx) => new RoundWriter(tx, root.id).mint(key, 999, at), context);
 	const entries = await ComparisonReader.open(storage).read(changeset);
 	expect(entries.filter((entry) => entry.unattributed !== undefined)).toEqual([]);
@@ -399,7 +422,7 @@ it("retries a detached SQLite read when mint commits between comparisons and rou
 	opened.push(harness);
 	const root = await harness.harness.root(context);
 	const revision = recorded.revisions[1]!;
-	const key = revisionKey(revision);
+	const key = Revision.key(revision);
 	const storage = await openSqliteStorage(path);
 	const document = storage.document.bind(storage);
 	let interleaved = false;
@@ -423,7 +446,7 @@ it("retries a detached SQLite read when mint commits between comparisons and rou
 	}
 });
 
-const elsewhere = revisionKey({ base: "a".repeat(40), head: "c".repeat(40) });
+const elsewhere = Revision.key({ base: "a".repeat(40), head: "c".repeat(40) });
 
 it("keeps a comparison unattributed when its own revision has a minted round beside rounds elsewhere", async () => {
 	const { harness } = await memory();
@@ -502,7 +525,7 @@ it("adjudicates build-1 finding 494eaf51 through its unattributed address and re
 		undefined,
 		`${changeset}.r1`,
 		`${changeset}.r2`,
-		`${changeset}.${legacyKey(revisionKey(revision))}`,
+		`${changeset}.${legacyKey(Revision.key(revision))}`,
 	]) {
 		await expect(
 			harness.adjudicate({ ...revision, round }, recorded.external, { verdict: "noise", by: "M", at }),
@@ -517,7 +540,7 @@ it("adjudicates build-1 finding 494eaf51 through its unattributed address and re
 	try {
 		const entries = await ComparisonReader.open(storage).read(changeset);
 		expect(entries).toHaveLength(1);
-		expect(entries[0]!.unattributed).toBe(revisionKey(revision));
+		expect(entries[0]!.unattributed).toBe(Revision.key(revision));
 		expect(entries[0]!.comparison.adjudication(recorded.external)).toMatchObject({
 			current: { verdict: "noise" },
 			history: [expect.anything(), expect.anything()],

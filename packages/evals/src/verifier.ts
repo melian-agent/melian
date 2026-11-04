@@ -11,6 +11,7 @@ import {
 	loadConfig,
 	Rendering,
 	type ResolvedFinding,
+	Revision,
 	reportFindingInputSchema,
 	resolutionSchema,
 	type StoredVerdict,
@@ -25,7 +26,6 @@ import {
 	openReviewHarness,
 	ReviewError,
 	reviewChangeset,
-	revisionKey,
 	type StageTelemetry,
 	TelemetryReader,
 	upsertFinding,
@@ -254,7 +254,7 @@ export async function runScenarioGolden(golden: ScenarioGolden, reversed = false
 				if (planted !== undefined) {
 					const root = await reviewHarness.harness.root(backgroundContext);
 					const finding = coReport(repo, candidate, planted);
-					const revision = revisionKey(changeset.revision);
+					const revision = Revision.key(changeset.revision);
 					await root.commit((tx) => upsertFinding(tx, root.id, finding, revision), backgroundContext);
 				}
 				const result = await reviewChangeset({
@@ -528,14 +528,14 @@ export async function runVerifierGolden(golden: VerifierGolden, mode: GoldenMode
 				throw new Error(`${golden.name}: expected one planted finding, got ${result.findings.length}`);
 			const reason = result.verdict!.notRun.find((check) => check.name === "verifier")?.reason;
 			return {
-				telemetry: await TelemetryReader.open(storage).read(revisionKey(changeset.revision)),
+				telemetry: await TelemetryReader.open(storage).read(Revision.key(changeset.revision)),
 				verification: result instanceof ReviewError ? undefined : result.findings[0]!.properties.verification,
 				...(reason === undefined ? {} : { unjudged: reason }),
 				rendered: result.verdict!.render(new Rendering({ all: true })),
 				verifierRequests: requests[marker]?.length ?? 0,
 			};
 		} catch (error) {
-			throw new GoldenRunError(error, await TelemetryReader.open(storage).read(revisionKey(changeset.revision)));
+			throw new GoldenRunError(error, await TelemetryReader.open(storage).read(Revision.key(changeset.revision)));
 		} finally {
 			await reviewHarness.close(backgroundContext);
 		}

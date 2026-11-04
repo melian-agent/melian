@@ -1,5 +1,5 @@
 import { rmSync } from "node:fs";
-import { Adjudication, Changeset, defaultConfig, Finding } from "@melian-agent/core";
+import { Adjudication, Changeset, defaultConfig, Finding, Revision } from "@melian-agent/core";
 import { createGitHubProvider } from "@melian-agent/github";
 import {
 	backgroundContext as context,
@@ -9,7 +9,6 @@ import {
 	openPublishHarness,
 	openSqliteStorage,
 	publishReview,
-	revisionKey,
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, expect, it, vi } from "vitest";
@@ -100,7 +99,7 @@ it.each([
 			const root = await harness.root(context, { agent: { model: fake.ref() } });
 			await root.commit(async (tx) => {
 				const doc = await tx.doc(VerdictDocument, root.id);
-				const key = revisionKey(changeset.revision);
+				const key = Revision.key(changeset.revision);
 				doc.verdicts[key] = new Adjudication({
 					findings: [dismissed],
 					manifest: [],
@@ -122,7 +121,7 @@ it.each([
 					},
 				};
 			}, context);
-			await new RecordedReview(harness).record(revisionKey(changeset.revision));
+			await new RecordedReview(harness).record(Revision.key(changeset.revision));
 		} finally {
 			await harness.close(context);
 		}
@@ -157,7 +156,7 @@ it.each([
 			const opened = await openPublishHarness(await openSqliteStorage(path), fake.review, provider);
 			try {
 				const root = await opened.harness.root(context);
-				const key = revisionKey(changeset.revision);
+				const key = Revision.key(changeset.revision);
 				const current = (await opened.harness.snapshot(VerdictDocument, root.id, context))!.verdicts[key]!;
 				await root.commit(async (tx) => {
 					(await tx.doc(VerdictDocument, root.id)).verdicts[key] = new Adjudication({
@@ -242,8 +241,8 @@ it.each([
 		if (earlier !== undefined) {
 			expect(output.join("")).toContain(earlier.id);
 			expect(output.join("")).toContain(legacy ? "No reason stored." : "Earlier reason.");
-			expect(output.join("")).toContain(`Revision ${revisionKey(changeset.revision)}, round 1`);
-			expect(output.join("")).toContain(`Revision ${revisionKey(changeset.revision)}, round 2`);
+			expect(output.join("")).toContain(`Revision ${Revision.key(changeset.revision)}, round 1`);
+			expect(output.join("")).toContain(`Revision ${Revision.key(changeset.revision)}, round 2`);
 		}
 		for (const expected of [
 			dismissed.id,
@@ -270,7 +269,7 @@ it.each([
 		expect(await publish(io, "#7")).toBe(0);
 		expect(output.join("")).toContain(dismissed.id);
 		expect(output.join("")).toContain(`round ${resume === undefined ? 1 : 2}`);
-		expect(output.join("")).toContain(revisionKey(changeset.revision));
+		expect(output.join("")).toContain(Revision.key(changeset.revision));
 		expect(state.reviews).toHaveLength(resume === undefined ? 1 : 2);
 	} finally {
 		rmSync(repo, { recursive: true, force: true });
