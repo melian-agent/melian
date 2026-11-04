@@ -206,13 +206,11 @@ export class Timeline {
 	render() {
 		const first = this.#events[0].at;
 		const lines = ["| Time (UTC) | Hours | Event | Detail |", "| --- | --- | --- | --- |"];
-		let latest;
+		let latest = first;
 		for (const event of this.#events) {
-			if (!event.item) {
-				if (latest !== undefined && event.at - latest > HOUR)
-					lines.push(`|  |  | gap | ${((event.at - latest) / HOUR).toFixed(1)} h |`);
-				latest = Math.max(latest ?? event.at, event.end ?? event.at);
-			}
+			// A Timing item sits at its own comment's time, so it can never end a gap the comment did not.
+			if (event.at - latest > HOUR) lines.push(`|  |  | gap | ${((event.at - latest) / HOUR).toFixed(1)} h |`);
+			latest = Math.max(latest, event.end ?? event.at);
 			lines.push(
 				`| ${stamp(event.at)} | ${((event.at - first) / HOUR).toFixed(2)} | ${event.event} | ${cell(event.detail)} |`,
 			);
