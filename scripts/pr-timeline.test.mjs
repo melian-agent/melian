@@ -23,7 +23,7 @@ if (!answer) {
 process.stdout.write(answer.stdout);
 `;
 
-function run(args) {
+function run(args, recording = fixture) {
 	const dir = mkdtempSync(join(tmpdir(), "pr-timeline-"));
 	try {
 		writeFileSync(join(dir, "gh"), fakeGh);
@@ -32,7 +32,7 @@ function run(args) {
 		writeFileSync(log, "");
 		const result = spawnSync(process.execPath, [script, ...args.map((arg) => arg.replace("$DIR", dir))], {
 			encoding: "utf8",
-			env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, FAKE_GH_FIXTURE: fixture, FAKE_GH_LOG: log },
+			env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, FAKE_GH_FIXTURE: recording, FAKE_GH_LOG: log },
 		});
 		const requests = readFileSync(log, "utf8").split("\n").filter(Boolean).map(JSON.parse);
 		const record = join(dir, "record.json");
@@ -93,6 +93,51 @@ describe("pr-timeline", () => {
 		expect(result.stdout.split("\n")).toEqual(expected);
 		const recorded = JSON.parse(readFileSync(fixture, "utf8")).map((request) => request.args);
 		expect(result.requests).toEqual(recorded);
+	});
+
+	it("prints the first cut's gaps, commits and stage totals for pull request 256 from its host recording", () => {
+		const recording = fileURLToPath(new URL("./fixtures/pr-timeline/pr-256.json", import.meta.url));
+		const result = run(["256"], recording);
+		expect(result.status).toBe(0);
+		const lines = result.stdout.split("\n");
+		expect(lines.filter((row) => row.includes("| gap |")).map((row) => row.split("|")[4].trim())).toEqual([
+			"18.2 h",
+			"1.2 h",
+			"1.2 h",
+			"1.3 h",
+			"1.2 h",
+			"178.3 h",
+			"1.2 h",
+			"1.5 h",
+			"2.3 h",
+		]);
+		expect(lines.filter((row) => /\| (merge )?commit \|/.test(row)).map((row) => row.split("|")[4].trim())).toEqual([
+			"7ca5d111",
+			"b88647c5",
+			"fd68b824",
+			"42cef9eb",
+			"b6d4e8c2",
+			"66236a18",
+			"9b6de4a9",
+			"dff453f3",
+			"5318223d",
+			"2d63c723",
+			"bdcf9ef2",
+			"414339b1",
+			"f086a12d",
+			"1db1fad2",
+		]);
+		expect(lines.slice(-9)).toEqual([
+			"| Stage | Hours | Timing reported |",
+			"| --- | --- | --- |",
+			"| ready-wait | 18.22 |  |",
+			"| build | 191.70 |  |",
+			"| review | 2.47 |  |",
+			"| queue | 0.23 |  |",
+			"| CI | 159.9 min over 14 runs |  |",
+			"| total | 212.62 |  |",
+			"",
+		]);
 	});
 
 	it("records every request and answer with --record, in the fixture's own form", () => {
