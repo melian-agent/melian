@@ -495,6 +495,30 @@ describe("stage bounds", () => {
 	});
 });
 
+describe("force-pushes", () => {
+	it("prints one row per force-push with the commit before and after, or unknown where GitHub has none", () => {
+		const timelineItems = page([
+			{
+				__typename: "HeadRefForcePushedEvent",
+				createdAt: "2026-10-01T01:00:00.000Z",
+				beforeCommit: { oid: "a".repeat(40) },
+				afterCommit: { oid: "b".repeat(40) },
+			},
+			{
+				__typename: "HeadRefForcePushedEvent",
+				createdAt: "2026-10-01T02:00:00.000Z",
+				beforeCommit: null,
+				afterCommit: null,
+			},
+		]);
+		const timeline = Timeline.from({ pull: pull({ timelineItems }), runs: [] });
+		expect(rows(timeline).filter((row) => row.includes("force-pushed"))).toEqual([
+			"| 2026-10-01 01:00 | 1.00 | force-pushed | aaaaaaaa to bbbbbbbb |",
+			"| 2026-10-01 02:00 | 2.00 | force-pushed | unknown to unknown |",
+		]);
+	});
+});
+
 describe("printed text", () => {
 	it("replaces C0 and C1 control characters, ESC and DEL among them, and keeps the characters beside each range", () => {
 		const char = (code) => String.fromCharCode(code);

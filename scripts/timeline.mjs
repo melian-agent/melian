@@ -26,7 +26,7 @@ export const QUERY = `query($owner: String!, $name: String!, $number: Int!) {
         pageInfo { hasNextPage }
         nodes { commit { oid committedDate parents { totalCount } } }
       }
-      timelineItems(first: 100, itemTypes: [ISSUE_COMMENT, PULL_REQUEST_REVIEW, READY_FOR_REVIEW_EVENT, ADDED_TO_MERGE_QUEUE_EVENT, REMOVED_FROM_MERGE_QUEUE_EVENT, MERGED_EVENT]) {
+      timelineItems(first: 100, itemTypes: [ISSUE_COMMENT, PULL_REQUEST_REVIEW, READY_FOR_REVIEW_EVENT, ADDED_TO_MERGE_QUEUE_EVENT, REMOVED_FROM_MERGE_QUEUE_EVENT, MERGED_EVENT, HEAD_REF_FORCE_PUSHED_EVENT]) {
         pageInfo { hasNextPage }
         nodes {
           __typename
@@ -36,6 +36,7 @@ export const QUERY = `query($owner: String!, $name: String!, $number: Int!) {
           ... on AddedToMergeQueueEvent { createdAt }
           ... on RemovedFromMergeQueueEvent { createdAt reason }
           ... on MergedEvent { createdAt commit { oid } }
+          ... on HeadRefForcePushedEvent { createdAt beforeCommit { oid } afterCommit { oid } }
         }
       }
     }
@@ -198,6 +199,11 @@ export class Timeline {
 				case "RemovedFromMergeQueueEvent":
 					add(node.createdAt, "left the queue", (node.reason ?? "").toLowerCase());
 					break;
+				case "HeadRefForcePushedEvent": {
+					const short = (commit) => commit?.oid.slice(0, 8) ?? "unknown";
+					add(node.createdAt, "force-pushed", `${short(node.beforeCommit)} to ${short(node.afterCommit)}`);
+					break;
+				}
 				case "MergedEvent":
 					add(node.createdAt, "merged", node.commit.oid.slice(0, 8));
 					stages.merged = Date.parse(node.createdAt);
