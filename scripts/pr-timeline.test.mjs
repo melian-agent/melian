@@ -338,6 +338,20 @@ describe("stages", () => {
 		]);
 	});
 
+	it("counts a claim made in the same second as the last ready label", () => {
+		const at = (hours) => new Date(start + hours * HOUR).toISOString();
+		const issue = {
+			number: 7,
+			createdAt: at(0),
+			timelineItems: page([
+				{ __typename: "LabeledEvent", createdAt: at(1), label: { name: "status: ready" } },
+				{ __typename: "IssueComment", createdAt: at(1), body: "Claim: quick", author: { login: "a" } },
+			]),
+		};
+		const timeline = Timeline.from({ pull: pull({ closingIssuesReferences: page([issue]) }), runs: [] });
+		expect(rows(timeline)).toContain("| ready to claim | 0.00 |  |");
+	});
+
 	it("measures no claim when the issue was marked ready again after its last claim", () => {
 		const at = (hours) => new Date(start + hours * HOUR).toISOString();
 		const issue = {
