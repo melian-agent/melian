@@ -623,6 +623,25 @@ describe("force-pushes", () => {
 	});
 });
 
+describe("queued runs", () => {
+	it("places a queued run, which has not started, at its creation and keeps its status", () => {
+		const runs = [
+			{
+				name: "check",
+				event: "push",
+				head_sha: "1".repeat(40),
+				status: "queued",
+				conclusion: null,
+				created_at: "2026-10-01T01:00:00.000Z",
+				run_started_at: null,
+				updated_at: "2026-10-01T01:00:00.000Z",
+			},
+		];
+		const timeline = Timeline.from({ pull: pull(), runs });
+		expect(rows(timeline)).toContain("| 2026-10-01 01:00 | 1.00 | CI check | 11111111, queued, 0.0 min |");
+	});
+});
+
 describe("printed text", () => {
 	it("sanitises the event column as well, so a workflow name cannot break the table or reach the terminal raw", () => {
 		const replaced = String.fromCharCode(0xfffd);

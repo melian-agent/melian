@@ -227,11 +227,13 @@ export class Timeline {
 			}
 		}
 		for (const run of runs) {
-			const minutes = (Date.parse(run.updated_at) - Date.parse(run.run_started_at)) / 60_000;
+			// A queued run has not started, so GitHub gives it no run_started_at.
+			const started = run.run_started_at ?? run.created_at;
+			const minutes = (Date.parse(run.updated_at) - Date.parse(started)) / 60_000;
 			const where = run.event === "merge_group" ? "merge group" : run.head_sha.slice(0, 8);
 			const attempt = run.run_attempt > 1 ? `, attempt ${run.run_attempt}` : "";
 			add(
-				run.run_started_at,
+				started,
 				`CI ${run.name}`,
 				`${where}, ${run.conclusion ?? run.status}, ${minutes.toFixed(1)} min${attempt}`,
 				run.updated_at,
