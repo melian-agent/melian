@@ -102,7 +102,7 @@ describe("pr-timeline", () => {
 	});
 
 	it("rejects a missing or non-numeric pull request number without calling gh", () => {
-		for (const args of [[], ["abc"], ["12a"]]) {
+		for (const args of [[], ["abc"], ["12a"], ["a12"]]) {
 			const result = run(args);
 			expect(result.status).toBe(2);
 			expect(result.stderr).toContain("usage:");
@@ -224,6 +224,10 @@ describe("stages", () => {
 			]),
 		};
 		const timeline = Timeline.from({ pull: pull({ closingIssuesReferences: page([issue]) }), runs: [] });
+		expect(rows(timeline).filter((row) => row.includes("Claim"))).toEqual([
+			"| 2026-10-01 01:30 | 1.50 | Claim | #7 by me |",
+			"| 2026-10-01 01:45 | 1.75 | Claim | #7 by late |",
+		]);
 		expect(rows(timeline).slice(-6)).toEqual([
 			"| ready-wait | 1.50 |  |",
 			"| build | — |  |",
@@ -239,6 +243,7 @@ describe("stages", () => {
 			number: 7,
 			createdAt: "2026-10-01T00:00:00.000Z",
 			timelineItems: page([
+				{ __typename: "UnlabeledEvent", createdAt: "2026-10-01T00:15:00.000Z", label: { name: "status: ready" } },
 				{ __typename: "LabeledEvent", createdAt: "2026-10-01T00:30:00.000Z", label: { name: "status: blocked" } },
 				{ __typename: "LabeledEvent", createdAt: "2026-10-01T01:00:00.000Z", label: { name: "status: ready" } },
 				{ __typename: "LabeledEvent", createdAt: "2026-10-01T01:30:00.000Z", label: { name: "status: ready" } },
@@ -301,7 +306,30 @@ describe("fetch", () => {
 	);
 });
 
+describe("stage bounds", () => {
+	it("prints — for a stage whose end is known and whose start is not", () => {
+		const timelineItems = page([{ __typename: "ReadyForReviewEvent", createdAt: "2026-10-01T01:00:00.000Z" }]);
+		const timeline = Timeline.from({ pull: pull({ timelineItems }), runs: [] });
+		expect(rows(timeline)).toContain("| review | — |  |");
+	});
+});
+
 describe("parseTiming", () => {
+	it("reads multi-digit counts, decimal minutes and costs, and refuses trailing or leading words", () => {
+		expect(
+			parseTiming(
+				"Timing: gate 12 × 3 min; round 1.25 min, $12.40; round 2 min, $6; waited 40.25 min for CI; gate 5 min extra; then waited 5 min for CI",
+			),
+		).toEqual([
+			{ text: "gate 12 × 3 min", minutes: 36 },
+			{ text: "round 1.25 min, $12.40", minutes: 1.25, cost: 12.4 },
+			{ text: "round 2 min, $6", minutes: 2, cost: 6 },
+			{ text: "waited 40.25 min for CI", minutes: 40.25 },
+			{ text: "gate 5 min extra" },
+			{ text: "then waited 5 min for CI" },
+		]);
+	});
+
 	it("reads each item, keeps an unreadable one as text, and ignores other lines", () => {
 		expect(
 			parseTiming(
