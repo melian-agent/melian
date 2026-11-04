@@ -66,7 +66,13 @@ export function parseTiming(body) {
 }
 
 const login = (node) => node.author?.login ?? "ghost";
-const cell = (text) => text.replaceAll("|", "\\|").replaceAll("\n", " ");
+const REPLACEMENT = String.fromCharCode(0xfffd);
+const control = (code) => code < 0x20 || (code >= 0x7f && code <= 0x9f);
+// Comment text reaches the terminal, so no control character, ESC included, may reach it unchanged.
+const cell = (text) =>
+	[...text.replaceAll("|", "\\|").replaceAll("\n", " ")]
+		.map((char) => (control(char.codePointAt(0)) ? REPLACEMENT : char))
+		.join("");
 const stamp = (ms) => new Date(ms).toISOString().slice(0, 16).replace("T", " ");
 
 export class Timeline {

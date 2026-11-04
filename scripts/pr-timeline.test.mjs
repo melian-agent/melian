@@ -495,6 +495,21 @@ describe("stage bounds", () => {
 	});
 });
 
+describe("printed text", () => {
+	it("replaces C0 and C1 control characters, ESC and DEL among them, and keeps the characters beside each range", () => {
+		const char = (code) => String.fromCharCode(code);
+		const replaced = char(0xfffd);
+		const text = [0x1b, 0x1f, 0x20, 0x7e, 0x7f, 0x80, 0x9b, 0x9f, 0xa0].map(char).join("");
+		const body = `Timing: x${text}y 5 min`;
+		const timelineItems = page([
+			{ __typename: "IssueComment", createdAt: "2026-10-01T01:00:00.000Z", body, author: { login: "b" } },
+		]);
+		const timeline = Timeline.from({ pull: pull({ timelineItems }), runs: [] });
+		const expected = `x${replaced}${replaced} ~${replaced}${replaced}${replaced}${replaced}${char(0xa0)}y 5 min`;
+		expect(rows(timeline)).toContain(`| 2026-10-01 01:00 | 1.00 | Timing | ${expected} |`);
+	});
+});
+
 describe("parseTiming", () => {
 	it("reads multi-digit counts, decimal minutes and costs, and refuses trailing or leading words", () => {
 		expect(
