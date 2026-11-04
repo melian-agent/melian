@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { HOUR, parseTiming, Timeline } from "./pr-timeline.mjs";
+import { HOUR, parseTiming, Timeline } from "./timeline.mjs";
 
 const script = fileURLToPath(new URL("./pr-timeline.mjs", import.meta.url));
 const fixture = fileURLToPath(new URL("./fixtures/pr-timeline/pr-900.json", import.meta.url));
