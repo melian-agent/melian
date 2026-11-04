@@ -1,0 +1,529 @@
+import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
+import { mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
+import { tmpdir } from "node:os";
+import { dirname, isAbsolute, join, relative, sep } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import {
+	Changeset,
+	gitOutput,
+	type MutationAdapterIdentity,
+	MutationInventory,
+	type MutationInventoryV2,
+	mutationUnmutated,
+	openSource,
+	type RepositorySource,
+	SourceError,
+	visibleText,
+} from "@melian-agent/core";
+import { MutationTargets, productionWithExtensions } from "./mutation-paths.ts";
+import { mutationInstallation } from "./mutation-static.ts";
+
+/** Committed source and changed line ranges passed to an enumerator, never executed. */
+export interface MutationFile {
+	readonly name: string;
+	readonly content: string;
+	readonly ranges: readonly (readonly [number, number])[];
+}
+
+type EnumeratedMutant = {
+	file: string;
+	line: number;
+	column: number;
+	endLine: number;
+	endColumn: number;
+	mutatorName: string;
+	replacement: string;
+	status: "generated" | "ignored";
+	ignoredBy?: "config" | "comment";
+	statusReason?: string;
+};
+
+/** Retained rows in instrumenter order and the full count before the row limit. */
+export interface MutationBatch {
+	readonly mutants: EnumeratedMutant[];
+	readonly total: number;
+}
+
+const maxFileBytes = 16 * 1024 * 1024;
+const maxAggregateBytes = 64 * 1024 * 1024;
+const maxPayloadBytes = 64 * 1024 * 1024;
+const maxResponseBytes = 64 * 1024 * 1024;
+
+function remainingTime(deadline: number): number {
+	const remaining = Math.floor(deadline - performance.now());
+	if (!Number.isSafeInteger(remaining) || remaining < 1)
+		throw new MutationEnumerationError("limit", "enumeration exceeded its 120-second deadline");
+	return remaining;
+}
+
+/** A language's enumeration contract. Verification operations join it in the next build. */
+export interface MutationAdapter {
+	readonly identity: MutationAdapterIdentity;
+	readonly applies: "switch" | "text";
+	readonly enumerationRequiresBuild: boolean;
+	enumerate(
+		files: readonly MutationFile[],
+		excludedMutations: readonly string[],
+		limit?: number,
+		deadline?: number,
+	): Promise<MutationBatch>;
+}
+
+/** Failure to enumerate committed source, distinct from a failed mutation test. */
+export class MutationEnumerationError extends Error {
+	readonly code: "instrumenter" | "policy" | "unsupported" | "limit";
+	constructor(code: MutationEnumerationError["code"], message: string) {
+		super(message);
+		this.name = "MutationEnumerationError";
+		this.code = code;
+	}
+}
+
+/** Stryker's TypeScript and JavaScript enumerator, isolated from the revision's Babel configuration. */
+export class TypeScriptMutationAdapter implements MutationAdapter {
+	readonly identity: MutationAdapterIdentity;
+	readonly applies = "switch";
+	readonly enumerationRequiresBuild = false;
+	readonly source: "checkout" | "melian";
+	readonly #module: string;
+	private constructor(module: string, toolVersion: string, source: "checkout" | "melian") {
+		this.#module = module;
+		this.identity = { name: "typescript", version: "1", toolVersion, source };
+		this.source = source;
+	}
+
+	static async open(repoRoot: string): Promise<TypeScriptMutationAdapter> {
+		let tracked: string;
+		try {
+			tracked = await gitOutput(repoRoot, ["ls-files", "--", "node_modules"]);
+		} catch {
+			throw new MutationEnumerationError(
+				"instrumenter",
+				"cannot establish whether git tracks the installed instrumenter",
+			);
+		}
+		const trackedInstall = tracked !== "";
+		const root = await realpath(repoRoot);
+		const install = join(root, "node_modules");
+		for (const [from, source] of [
+			[join(repoRoot, "package.json"), "checkout"],
+			[import.meta.url, "melian"],
+		] as const) {
+			if (source === "checkout" && trackedInstall) continue;
+			const require = createRequire(from);
+			try {
+				const module = await realpath(require.resolve("@stryker-mutator/instrumenter"));
+				if (source === "checkout" && !inside(install, module)) continue;
+				if (inside(root, module) && (!inside(install, module) || trackedInstall)) continue;
+				if (
+					source === "melian" &&
+					!ancestorInstalls(fileURLToPath(import.meta.url)).some((directory) => inside(directory, module))
+				)
+					continue;
+				if (!(await safeDependencies(module, root, install, trackedInstall))) continue;
+				const { version } = JSON.parse(
+					await readFile(require.resolve("@stryker-mutator/instrumenter/package.json"), "utf8"),
+				) as { version: string };
+				return new TypeScriptMutationAdapter(module, version, source);
+			} catch (error) {
+				if ((error as NodeJS.ErrnoException).code !== "MODULE_NOT_FOUND") throw error;
+			}
+		}
+		throw new MutationEnumerationError(
+			"instrumenter",
+			"Stryker's instrumenter is unavailable; reinstall Melian's dependencies",
+		);
+	}
+
+	async enumerate(
+		files: readonly MutationFile[],
+		excludedMutations: readonly string[],
+		limit = Number.MAX_SAFE_INTEGER,
+		deadline = performance.now() + 120_000,
+	): Promise<MutationBatch> {
+		const boundedDeadline = Math.min(deadline, performance.now() + 120_000);
+		remainingTime(deadline);
+		if (!Number.isSafeInteger(limit) || limit < 0)
+			throw new MutationEnumerationError("limit", "limit must be a non-negative safe integer");
+		let retained = 0;
+		for (const file of files) {
+			const size = Buffer.byteLength(file.content, "utf8");
+			if (size > maxFileBytes)
+				throw new MutationEnumerationError("limit", "enumeration source exceeds 16 MiB per file");
+			retained += size;
+			if (retained > maxAggregateBytes)
+				throw new MutationEnumerationError("limit", "enumeration aggregate source exceeds 64 MiB");
+		}
+		const scratch = await mkdtemp(join(tmpdir(), `melian-enumerate-${process.pid}-`));
+		let batch: MutationBatch;
+		try {
+			// Babel stops .babelrc discovery at the nearest package boundary.
+			await writeFile(join(scratch, "package.json"), "{}");
+			const script = `import { Instrumenter } from ${JSON.stringify(pathToFileURL(this.#module).href)};
+const logger = {debug(){}, info(){}, warn(){}, error(){}, trace(){}, isDebugEnabled:()=>false};
+let input = '';
+for await (const chunk of process.stdin.setEncoding('utf8')) input += chunk;
+const {files, excludedMutations, limit} = JSON.parse(input);
+const {mutants} = await new Instrumenter(logger).instrument(files, {plugins:null, ignorers:[], excludedMutations});
+const prefix = '{"total":' + mutants.length + ',"mutants":[';
+let size = Buffer.byteLength(prefix) + 2;
+const rows = [];
+for (let i = 0; i < Math.min(limit, mutants.length); i++) {
+  const row = JSON.stringify(mutants[i]);
+  size += Buffer.byteLength(row) + (i === 0 ? 0 : 1);
+  if (size > ${maxResponseBytes}) { process.exitCode = 73; break; }
+  rows.push(row);
+}
+if (process.exitCode !== 73) process.stdout.write(prefix + rows.join(',') + ']}');`;
+			const parts: string[] = [];
+			let encoded = 0;
+			const append = (text: string) => {
+				encoded += Buffer.byteLength(text);
+				if (encoded > maxPayloadBytes)
+					throw new MutationEnumerationError("limit", "enumeration encoded UTF8 payload exceeds 64 MiB");
+				parts.push(text);
+			};
+			const quoted = (text: string) => {
+				append('"');
+				for (let offset = 0; offset < text.length; offset += 16_384)
+					append(JSON.stringify(text.slice(offset, offset + 16_384)).slice(1, -1));
+				append('"');
+			};
+			append('{"files":[');
+			for (const [index, file] of files.entries()) {
+				if (index > 0) append(",");
+				append('{"name":');
+				quoted(file.name);
+				append(',"content":');
+				quoted(file.content);
+				append(',"mutate":[');
+				for (const [index, [first, last]] of file.ranges.entries()) {
+					if (index > 0) append(",");
+					append(
+						JSON.stringify({
+							start: { line: first - 1, column: 0 },
+							end: { line: last - 1, column: Number.MAX_SAFE_INTEGER },
+						}),
+					);
+				}
+				append("]}");
+			}
+			append('],"excludedMutations":[');
+			for (const [index, name] of excludedMutations.entries()) {
+				if (index > 0) append(",");
+				quoted(name);
+			}
+			append(`],"limit":${limit}}`);
+			const input = parts.join("");
+			const timeout = remainingTime(boundedDeadline);
+			const output = await new Promise<string>((resolve, reject) => {
+				const child = execFile(
+					process.execPath,
+					["--max-old-space-size=512", "--input-type=module", "--eval", script],
+					{
+						cwd: scratch,
+						maxBuffer: maxResponseBytes + 1024,
+						timeout,
+						// Node preload flags can load repository code before the isolated parser starts.
+						env: { PATH: process.env.PATH, HOME: scratch, LANG: "C.UTF-8" },
+					},
+					(error, stdout, stderr) => {
+						if (!error) {
+							resolve(stdout);
+							return;
+						}
+						if (error.code !== "ERR_CHILD_PROCESS_STDIO_MAXBUFFER" && error.killed && error.signal === "SIGTERM")
+							reject(new MutationEnumerationError("limit", "enumeration exceeded its 120-second deadline"));
+						else if (error.signal === "SIGABRT" && /heap (?:limit|out of memory)/i.test(stderr))
+							reject(
+								new MutationEnumerationError(
+									"limit",
+									"enumeration worker exceeded its 512 MiB V8 old-space heap cap",
+								),
+							);
+						else if (
+							error.code === 73 ||
+							(error.code === "ERR_CHILD_PROCESS_STDIO_MAXBUFFER" && error.message.includes("stdout"))
+						)
+							reject(new MutationEnumerationError("limit", "enumeration worker response exceeds 64 MiB"));
+						else
+							reject(
+								new MutationEnumerationError(
+									"instrumenter",
+									`enumeration failed: ${visibleText(stderr || error.message)}`,
+								),
+							);
+					},
+				);
+				child.stdin!.on("error", () => {});
+				child.stdin!.end(input);
+			});
+			remainingTime(boundedDeadline);
+			try {
+				const { mutants, total } = JSON.parse(output) as {
+					total: number;
+					mutants: {
+						fileName: string;
+						location: { start: { line: number; column: number }; end: { line: number; column: number } };
+						mutatorName: string;
+						replacement: string;
+						status?: string;
+						statusReason?: string;
+					}[];
+				};
+				if (
+					!Number.isSafeInteger(total) ||
+					total < 0 ||
+					!Array.isArray(mutants) ||
+					mutants.length !== Math.min(limit, total)
+				)
+					throw new Error("invalid worker count or retained length");
+				const rows = mutants.map<EnumeratedMutant>((mutant) => {
+					const { start, end } = mutant.location;
+					if (
+						mutant.fileName.trim() === "" ||
+						mutant.mutatorName.trim() === "" ||
+						typeof mutant.replacement !== "string" ||
+						![start.line, start.column, end.line, end.column].every(Number.isSafeInteger) ||
+						start.line < 0 ||
+						end.line < start.line ||
+						end.line >= Number.MAX_SAFE_INTEGER ||
+						start.column < 0 ||
+						end.column < 0 ||
+						(end.line === start.line && end.column < start.column) ||
+						![undefined, "Ignored"].includes(mutant.status) ||
+						(mutant.statusReason !== undefined && typeof mutant.statusReason !== "string")
+					)
+						throw new Error("invalid worker row");
+					return {
+						file: mutant.fileName,
+						line: mutant.location.start.line + 1,
+						column: mutant.location.start.column,
+						endLine: mutant.location.end.line + 1,
+						endColumn: mutant.location.end.column,
+						mutatorName: mutant.mutatorName,
+						replacement: mutant.replacement,
+						status: mutant.status === "Ignored" ? "ignored" : "generated",
+						...(mutant.status === "Ignored"
+							? ({ ignoredBy: excludedMutations.includes(mutant.mutatorName) ? "config" : "comment" } as const)
+							: {}),
+						...(mutant.statusReason === undefined ? {} : { statusReason: mutant.statusReason }),
+					};
+				});
+				batch = { mutants: rows, total };
+			} catch {
+				throw new MutationEnumerationError("instrumenter", "enumeration returned invalid worker output");
+			}
+		} finally {
+			await rm(scratch, { recursive: true, force: true });
+		}
+		remainingTime(boundedDeadline);
+		return batch;
+	}
+}
+
+const javascript = /\.[cm]?[jt]sx?$/;
+export function inside(root: string, path: string): boolean {
+	const distance = relative(root, path);
+	return distance !== ".." && !distance.startsWith(`..${sep}`) && !isAbsolute(distance);
+}
+
+export function ancestorInstalls(from: string): string[] {
+	const paths: string[] = [];
+	for (let directory = dirname(from); ; directory = dirname(directory)) {
+		paths.push(join(directory, "node_modules"));
+		if (dirname(directory) === directory) return paths;
+	}
+}
+
+async function safeDependencies(module: string, root: string, install: string, tracked: boolean): Promise<boolean> {
+	const pending = [module];
+	const visited = new Set<string>();
+	while (pending.length > 0) {
+		const entry = pending.pop()!;
+		let manifest = entry.endsWith("package.json") ? entry : join(dirname(entry), "package.json");
+		let text: string;
+		for (;;) {
+			try {
+				text = await readFile(manifest, "utf8");
+				break;
+			} catch (error) {
+				if (!["ENOENT", "ENOTDIR"].includes((error as NodeJS.ErrnoException).code ?? "")) throw error;
+				const directory = dirname(dirname(manifest));
+				if (directory === dirname(manifest)) throw error;
+				manifest = join(directory, "package.json");
+			}
+		}
+		manifest = await realpath(manifest);
+		if (visited.has(manifest)) continue;
+		visited.add(manifest);
+		if (inside(root, manifest) && (!inside(install, manifest) || tracked)) return false;
+		const metadata = JSON.parse(text) as {
+			dependencies?: Record<string, string>;
+			optionalDependencies?: Record<string, string>;
+			peerDependencies?: Record<string, string>;
+		};
+		const require = createRequire(manifest);
+		const required = Object.keys(metadata.dependencies ?? {});
+		const names = new Set([
+			...required,
+			...Object.keys(metadata.optionalDependencies ?? {}),
+			...Object.keys(metadata.peerDependencies ?? {}),
+		]);
+		for (const name of names) {
+			let found = false;
+			for (const directory of require.resolve.paths(name) ?? []) {
+				const candidate = join(directory, name, "package.json");
+				try {
+					pending.push(await realpath(candidate));
+					found = true;
+					break;
+				} catch (error) {
+					if (!["ENOENT", "ENOTDIR"].includes((error as NodeJS.ErrnoException).code ?? "")) throw error;
+				}
+			}
+			if (!found && required.includes(name)) return false;
+		}
+	}
+	return true;
+}
+
+const sourceExtension = /(?:^|\/)[^/]+\.[^/.]+$/;
+const dataExtension =
+	/\.(?:md|markdown|txt|rst|adoc|json|yaml|yml|toml|xml|csv|tsv|lock|lockb|map|svg|png|jpe?g|gif|webp|ico|pdf|snap|tgz|zip|gz|sum)$/i;
+
+/** Enumerates a resolved revision under one host-selected policy source. */
+export class MutationEnumeration {
+	readonly #changeset: Changeset;
+	readonly #policy: RepositorySource;
+	readonly #target?: string;
+	private constructor(changeset: Changeset, policy: RepositorySource, target?: string) {
+		this.#changeset = changeset;
+		this.#policy = policy;
+		this.#target = target;
+	}
+
+	static async open(
+		cwd: string,
+		range: string,
+		options: { policy?: RepositorySource; target?: string } = {},
+	): Promise<MutationEnumeration> {
+		const changeset = await Changeset.resolve(cwd, range);
+		return new MutationEnumeration(
+			changeset,
+			options.policy ?? { kind: "revision", commit: changeset.revision.base },
+			options.target,
+		);
+	}
+
+	async list(options: { limit?: number; all?: boolean } = {}): Promise<MutationInventory<MutationInventoryV2>> {
+		const deadline = performance.now() + 120_000;
+		const limit = options.all ? Number.MAX_SAFE_INTEGER : (options.limit ?? 200);
+		if (!Number.isSafeInteger(limit) || limit < 0)
+			throw new MutationEnumerationError("limit", "limit must be a non-negative safe integer");
+		const { repoRoot, revision } = this.#changeset;
+		const targets = MutationTargets.select(
+			revision,
+			(path) => productionWithExtensions(path, javascript),
+			mutationUnmutated,
+		);
+		const unmutated = targets.unmutated.map(({ path, why }) => ({ file: path, reason: why }));
+		const changedPaths = new Set([
+			...Object.keys(revision.diffLines()),
+			...revision.files
+				.filter((file) => file.status !== "deleted" && (file.binary || file.percentEncoded))
+				.map((file) => file.path),
+		]);
+		const unknown = [...changedPaths].filter(
+			(path) =>
+				productionWithExtensions(path, /.*/) &&
+				(sourceExtension.test(path) ||
+					revision.files.some((file) => file.path === path && file.newKind === "executable")) &&
+				!javascript.test(path) &&
+				!dataExtension.test(path),
+		);
+		if (!targets.judges && unknown.length > 0)
+			throw new MutationEnumerationError("unsupported", `no mutation adapter handles ${unknown.join(", ")}`);
+		unmutated.push(...unknown.map((file) => ({ file, reason: "no mutation adapter handles this language" })));
+		const source = await openSource(repoRoot, { kind: "revision", commit: revision.head });
+		const files: MutationFile[] = [];
+		let retained = 0;
+		for (const [name, ranges] of Object.entries(targets.changed)) {
+			remainingTime(deadline);
+			const bound = Math.min(maxFileBytes, maxAggregateBytes - retained);
+			let content: string | undefined;
+			try {
+				content = await source.readText(name, bound);
+			} catch (error) {
+				if (error instanceof SourceError && error.code === "tooLarge")
+					throw new MutationEnumerationError(
+						"limit",
+						bound < maxFileBytes
+							? "enumeration aggregate source exceeds 64 MiB"
+							: "enumeration source exceeds 16 MiB per file",
+					);
+				throw error;
+			}
+			if (content === undefined)
+				throw new MutationEnumerationError("instrumenter", `committed source ${name} is missing`);
+			const size = Buffer.byteLength(content, "utf8");
+			if (size > bound)
+				throw new MutationEnumerationError(
+					"limit",
+					bound < maxFileBytes
+						? "enumeration aggregate source exceeds 64 MiB"
+						: "enumeration source exceeds 16 MiB per file",
+				);
+			// Git and the parser count these line breaks differently.
+			if (/\r(?!\n)|[\u2028\u2029]/u.test(content)) {
+				unmutated.push({ file: name, reason: mutationUnmutated.lineBreaks.why });
+				continue;
+			}
+			files.push({ name, content, ranges });
+			retained += size;
+		}
+		const policy = await openSource(repoRoot, this.#policy);
+		const text = await policy.readText("stryker.config.json", 1024 * 1024);
+		let excluded: string[] = [];
+		if (text !== undefined) {
+			try {
+				const config = JSON.parse(text);
+				excluded = config.mutator?.excludedMutations ?? [];
+				if (!Array.isArray(excluded) || excluded.some((name) => typeof name !== "string"))
+					throw new Error("excludedMutations must be an array of names");
+			} catch (error) {
+				throw new MutationEnumerationError("policy", `cannot read mutation policy: ${(error as Error).message}`);
+			}
+		}
+		const adapter = files.length === 0 ? undefined : await TypeScriptMutationAdapter.open(repoRoot);
+		remainingTime(deadline);
+		const { mutants: rows, total } =
+			adapter === undefined ? { mutants: [], total: 0 } : await adapter.enumerate(files, excluded, limit, deadline);
+		remainingTime(deadline);
+		const inventory = MutationInventory.create({
+			range: {
+				base: revision.base,
+				head: revision.head,
+				...(this.#target === undefined ? {} : { target: this.#target }),
+			},
+			adapters: adapter === undefined ? [] : [adapter.identity],
+			installation: createHash("sha256")
+				.update(
+					JSON.stringify({
+						installation: mutationInstallation(repoRoot),
+						platform: process.platform,
+						arch: process.arch,
+					}),
+				)
+				.digest("hex"),
+			mutants: rows,
+			total,
+			omitted: total - rows.length,
+			unmutated,
+		});
+		remainingTime(deadline);
+		return inventory;
+	}
+}

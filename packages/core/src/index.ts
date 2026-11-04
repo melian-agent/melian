@@ -259,6 +259,7 @@ export {
 	type LensToolName,
 	lensCovers,
 	lensFrontMatterSchema,
+	lensGraphToolNames,
 	lensLimits,
 	lensReadScopes,
 	lensRuleSchema,
@@ -328,12 +329,15 @@ export {
 	type RevisionEntry,
 	type RevisionEntryKind,
 	type RevisionFile,
+	type RevisionFileMatches,
 	type RevisionMatch,
 	type RevisionSearch,
 	readRevisionFile,
 	repositoryPath,
 	revisionLimits,
+	revisionTree,
 	searchRevision,
+	searchRevisionFiles,
 } from "./revision.ts";
 export {
 	type CredentialValue,
@@ -403,8 +407,17 @@ export {
 	type TestCoverageState,
 } from "./coverage-artifacts.ts";
 export { EnolaPolicy, type EnolaPolicyState, type EnolaSnapshot, normaliseEnolaSarif } from "./enola.ts";
-export { type EnolaFact, EnolaFacts, EnolaImpact, type EnolaImpactState, EnolaQueryError } from "./enola-graph.ts";
+export {
+	type EnolaFact,
+	EnolaFacts,
+	EnolaImpact,
+	type EnolaImpactState,
+	EnolaQueryError,
+	type EnolaReach,
+	type EnolaReference,
+} from "./enola-graph.ts";
 export { enolaPolicyPattern } from "./enola-paths.ts";
+export { gitOutput } from "./git.ts";
 export {
 	type GraphEntryState,
 	GraphError,
@@ -435,6 +448,32 @@ export {
 	normaliseMutationReport,
 	type UnmutatedFile,
 } from "./mutation.ts";
+export {
+	type LegacyMutationInventory,
+	type MutationAdapterIdentity,
+	type MutationClaim,
+	type MutationEvidence,
+	type MutationIdentity,
+	MutationInventory,
+	MutationInventoryError,
+	type MutationInventoryErrorCode,
+	type MutationInventoryInput,
+	type MutationInventoryRow,
+	type MutationInventoryRowInput,
+	type MutationInventoryState,
+	type MutationInventoryV2,
+	type MutationSample,
+	type MutationSurvivorClass,
+	type MutationTestIdentity,
+	survivorClasses,
+} from "./mutation-inventory.ts";
+export {
+	type MembershipCandidate,
+	MembershipError,
+	PullRequestMembership,
+	type PullRequestRoundHeads,
+	type RoundMembership,
+} from "./pull-request-rounds.ts";
 export {
 	type ToolArtifact,
 	ToolManifest,

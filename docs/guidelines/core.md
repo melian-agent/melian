@@ -35,7 +35,7 @@ An outer package adapts a core object through a class of its own: `ReviewComment
 
 ## Git by shelling out
 
-Core reads repositories by running the `git` executable through `src/git.ts`. It never uses a JavaScript reimplementation of git, which drifts from git on renames, merge bases, and configuration.
+Core reads repositories by running the `git` executable through `src/git.ts`. It never uses a JavaScript reimplementation of git, which drifts from git on renames, merge bases, and configuration. Outer packages use the exported `gitOutput` helper for the same repository-bound environment.
 
 - Never let the caller's environment pick the repository. A git hook runs with `GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE`, and their kin set for its own repository, and git honours them over the working directory. `src/git.ts` removes every variable `git rev-parse --local-env-vars` lists before it spawns git.
 - Never let the checked-out head choose diff attributes. git reads `.gitattributes` from the working tree, which often holds the head under review, so a head that adds `*.ts -diff` turns its own changes into binary files with no hunks. Every diff passes `--attr-source=<base>`. That flag needs git 2.40, so `Changeset.resolve` checks the version once per process and throws `gitTooOld` rather than review with the head's attributes.
@@ -158,7 +158,7 @@ A lens is a directory holding `LENS.md`: YAML front matter between `---` lines, 
 | `name` | Must match the directory name | required |
 | `description` | One line | required, or inherited through `extends` |
 | `tier` | `light`, `medium`, or `heavy`; each level that names none runs on it | required, or inherited |
-| `tools` | Read-only tools from `lensToolNames`: `read_file`, `search`, `list_files` | all three |
+| `tools` | Read-only tools from `lensToolNames`, `read_file`, `search` and `list_files`, and from `lensGraphToolNames`, `graph_definitions`, `graph_references`, `graph_impact` and `graph_callees` | the three in `lensToolNames` |
 | `severities` | The severities the lens may report; the pipeline also accepts `melian/injection-attempt` at P1 from every lens | all five |
 | `rules` | `id` and one-line `description` for each rule the lens reports under. An ID is lower-case letters, digits, dots, and hyphens; the prefix `melian/` marks a rule Melian defines for every lens, such as `melian/injection-attempt` | required, or inherited |
 | `paths` | Globs relative to the directory holding the lens's `.melian/` or `.agents/`, normalised like a `melian.yaml`'s; `!` excludes. A glob that leaves the repository, holds braces or a character class, ends in `/`, or passes the engine's step limit is a `LensError` `invalidValue` naming the file and the glob | `**` |
@@ -702,6 +702,12 @@ The terminal, review body and ledger state the mapping and name `melian dismiss 
 
 `src/comparison.ts` holds the shape of another reviewer's finding and the comparison of those findings with Melian's, as [design.md](../design.md#comparison-with-external-reviewers) sets out. The pipeline stores a comparison in the changeset's storage; the github package and the pipeline import findings into it; core decides what matches.
 
+### Pull-request membership
+
+`PullRequestMembership.open(repoRoot, answer)` and `classify(candidate)` implement the first-applicable rules in [the rounds decision](../decisions/2026-10-18-compare-rounds-exact-rule.md). Stored pull-request provenance is exclusive. Bound publication ownership follows it. Range candidates require a GitHub-named head and an exact merge base against the current base, or the merge commit’s first parent. Every merge base must have the same tree. Associations with another pull request make an exact member ambiguous. The Git reader uses `src/git.ts` for commit existence, targeted fetches, merge bases, trees and commit dates. A missing merge commit is fetched before reading its parent. Missing legacy dates never invalidate ownership. GitHub’s commit cap, different-tree merge bases and fast-forward merges raise `MembershipError`.
+
+`PullRequestMembership.storedOwnership(candidate, { repository, number })` is the shared pure ownership authority for classification and offline export. True names this pull request. False names another owner or incomplete pull-request provenance. Undefined requires Git attribution and is not foreign. Pull-request provenance takes precedence over publication; range provenance permits publication. Owner and repository names compare case-insensitively. The query performs no Git or network operation. Callers distinguish false from undefined explicitly.
+
 ### The stored shape
 
 The pipeline's comparison document is at version 2. Its state is `{ legacy, comparisons, unattributed }`. `comparisons` keys a `StoredComparison` by the full round ID of the review it compares against, `<changeset>.<round>`. `unattributed` holds version-1 records, still keyed by `Revision.key`, until a writer can attribute them to a round. `legacy` marks the revisions whose pending record keeps its legacy round ID, as [the pipeline guideline](pipeline.md#comparing-with-external-reviewers) sets out. Each `StoredComparison` holds:
@@ -819,6 +825,8 @@ The optional `createdAt` records when comparison began; `target` keeps the CLI r
 
 `ComparisonExport` owns markdown and JSON rendering over the comparisons and their stored verdicts. It preserves the round order and IDs supplied by the pipeline, rather than sorting by comparison time. JSON keys comparisons by round ID; unattributed version-1 records keep their revision keys in a separate map. Markdown labels them as unattributed comparisons, and statistics excludes them from round metrics and the comparison counter. Uncertain round identity does not discharge recorded golden debt or erase candidate-check evidence. Each imported participant gets a reviewer section, including a review with zero findings. A valid external finding awaiting a miss reason shows that pending reason beside its recorded golden lens. Reviewer text, paths, notes, and titles render as inert prose, with controls visible and markdown escaped. Markdown uses the six-column hand-written form, with no fix-commit column or drain notice. Summary cells hold a title and at most 300 characters of the first body paragraph, with newlines as spaces. Maintainer notes print names without author emails. JSON preserves the whole stored document. Its differences section carries the terminal match listing as escaped prose, including dismissal labels. Its fixed-record snapshot is `test/golden/comparison.md`.
 
+`ComparisonExport.renderJson` refuses duplicate unattributed revision keys from distinct changeset stores with `ComparisonError` code `unattributedCollision`. The diagnostic names the revision and stores. This preserves the existing revision-keyed JSON shape. Markdown retains both records and their current adjudications; full replacement histories remain in their stores.
+
 ## Tests
 
 - Test exported schemas directly at their bounds. Downstream validation or normalisation can hide a weakened schema when tests only call an importer.
@@ -853,6 +861,8 @@ All Enola policy paths join analyser configuration in policy-change-review. A co
 
 `GraphSnapshot` holds validated graph artifacts and a `GraphEntryState`. Snapshot IDs identify Enola's facts; cache keys identify inputs. Keep these separate in records.
 
+Graph-tool lists sort by name, file, numeric line and ID; equal fact identities use edge kind as a final tie-break. Impact keeps nearest depth first and sorts the whole depth before its node cap. Fact and relation order cannot decide which rows survive either bound.
+
 `EnolaFacts` reads the JSONL contract; `EnolaImpact` accepts only a successful full JSON query. Exit 2 is no answer. `GraphCoverage.compute` creates a validated per-file artifact with explicit denominators and gaps; its ID hashes its stored content. Symbols and paths remain repository data.
 
 ### Coverage artifacts
@@ -864,3 +874,7 @@ StoredCheckRecord includes optional snapshots and coverage IDs. Verdict.upgrade 
 Decider and TextModel accept an optional usage observer after the abort signal. It receives each assistant response's provider/model and ModelUsage counters before answer validation. It stays outside DecisionRequest, ToolRequest and stored decision identity. ModelUsage copies Pi's units without importing Pi. Reasoning is part of output; cacheWrite1h is part of cacheWrite.
 
 The usage observer also accepts optional RequestReasoning: the requested level, observed settings by request path, capture source and any provider-reported level. It stays outside decision identity. A missing payload observer carries only a labelled catalogue mapping. Source unrecognised means the payload callback exposed a reasoning-shaped parameter outside the captured paths. Known sent settings remain available; unknown names and values are not retained.
+
+## Mutation inventories
+
+`MutationInventory.create` derives version-2 mutant IDs from the SHA-256 of the JSON tuple `[file, line, column, endLine, endColumn, mutatorName, replacement]`. `parse` validates external inventories, including end coordinates, ID consistency and ignored provenance. A builder's evidence identifies a test by file and title components, or gives an equivalence reason. Version-1 `sample` preserves the historical deterministic rule, including arbitrary ignored-like status labels. In version 2, only generated rows require classification and enter mandatory groups or the per-file remaining fifth. `sample` adds full-row `ignored: { config: [], comment: [] }` notes, even when empty. Config notes describe policy exclusions; comment notes describe unresolved head disables and cover nothing. Optional valid ignored claims stay intact but select no probe. Notes are owned copies, as are `toJSON` and future-verification inputs. `total` counts every inventory row, and `unmutated` stays unchanged. Invalid supplied ignored claims or evidence still refuse. Legacy inventories with string evidence can sample; `forVerification` refuses them with a request to enumerate again. No inventory method runs repository code. Terminal JSON uses `JSON.stringify`, splits on structural LF, applies `visibleText` to each line, then rejoins with LF. Compatibility output uses the same authority; table delimiters remain literal tabs and newlines.
