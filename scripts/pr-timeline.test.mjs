@@ -541,6 +541,11 @@ describe("parseTiming", () => {
 		]);
 	});
 
+	it("reads Timing only from paragraph text, never from an indented or fenced code block", () => {
+		const body = "Report.\n\n    Timing: gate 5 min\n\n```\nTiming: round 3 min\n```\n\nTiming: review 2 min";
+		expect(parseTiming(body)).toEqual([{ text: "review 2 min", minutes: 2 }]);
+	});
+
 	it("reads no item from a body with no Timing line", () => {
 		expect(parseTiming("Report.\nNothing timed.")).toEqual([]);
 	});

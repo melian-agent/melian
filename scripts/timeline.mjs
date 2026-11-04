@@ -1,3 +1,6 @@
+import { fromMarkdown } from "mdast-util-from-markdown";
+import { toString as markdownText } from "mdast-util-to-string";
+
 export const HOUR = 3_600_000;
 
 export const QUERY = `query($owner: String!, $name: String!, $number: Int!) {
@@ -42,9 +45,12 @@ export const QUERY = `query($owner: String!, $name: String!, $number: Int!) {
 const WAIT = /^waited (\d+(?:\.\d+)?) min for (.+)$/;
 const WORK = /^(.+?) (?:(\d+) × )?(\d+(?:\.\d+)?) min(?:, \$(\d+(?:\.\d+)?))?$/;
 
+const paragraphs = (node) =>
+	node.type === "paragraph" ? [markdownText(node)] : (node.children ?? []).flatMap(paragraphs);
+
 export function parseTiming(body) {
 	const items = [];
-	for (const line of body.split("\n")) {
+	for (const line of paragraphs(fromMarkdown(body)).flatMap((text) => text.split("\n"))) {
 		const match = /^Timing:(.*)$/.exec(line.trim());
 		if (!match) continue;
 		for (const raw of match[1].split(";")) {
