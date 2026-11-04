@@ -1,3 +1,7 @@
+// Known limits, accepted by the maintainer:
+// - commits a force-push replaced appear only as the force-push row's tips;
+// - a Timing: line sits at its comment's creation time, even if the comment was edited later;
+// - a pull request closing several issues reads the first issue's ready and claim.
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { toString as markdownText } from "mdast-util-to-string";
 
@@ -80,6 +84,7 @@ const cell = (text) =>
 	[...text.replaceAll("|", "\\|").replaceAll("\n", " ")]
 		.map((char) => (control(char.codePointAt(0)) ? REPLACEMENT : char))
 		.join("");
+const row = (...cells) => `| ${cells.map(cell).join(" | ")} |`;
 const stamp = (ms) => new Date(ms).toISOString().slice(0, 16).replace("T", " ");
 
 export class Timeline {
@@ -242,11 +247,9 @@ export class Timeline {
 		let latest = first;
 		for (const event of this.#events) {
 			// A Timing item sits at its own comment's time, so it can never end a gap the comment did not.
-			if (event.at - latest > HOUR) lines.push(`|  |  | gap | ${((event.at - latest) / HOUR).toFixed(1)} h |`);
+			if (event.at - latest > HOUR) lines.push(row("", "", "gap", `${((event.at - latest) / HOUR).toFixed(1)} h`));
 			latest = Math.max(latest, event.end ?? event.at);
-			lines.push(
-				`| ${stamp(event.at)} | ${((event.at - first) / HOUR).toFixed(2)} | ${event.event} | ${cell(event.detail)} |`,
-			);
+			lines.push(row(stamp(event.at), ((event.at - first) / HOUR).toFixed(2), event.event, event.detail));
 		}
 		const { ready, claim, built, reviewed, queued, merged } = this.#stages;
 		const stages = [
@@ -262,13 +265,13 @@ export class Timeline {
 			const minutes = items.reduce((sum, event) => sum + (event.item.minutes ?? 0), 0);
 			const cost = items.reduce((sum, event) => sum + (event.item.cost ?? 0), 0);
 			const reported = minutes === 0 ? "" : `${minutes} min${cost === 0 ? "" : `, $${cost.toFixed(2)}`}`;
-			lines.push(`| ${name} | ${known ? ((end - start) / HOUR).toFixed(2) : "—"} | ${reported} |`);
+			lines.push(row(name, known ? ((end - start) / HOUR).toFixed(2) : "—", reported));
 		}
 		const ci = this.#events.filter((event) => event.end !== undefined);
 		const ciMinutes = ci.reduce((sum, event) => sum + (event.end - event.at) / 60_000, 0);
 		const last = merged ?? Math.max(...this.#events.map((event) => event.end ?? event.at));
-		lines.push(`| CI | ${ciMinutes.toFixed(1)} min over ${ci.length} runs |  |`);
-		lines.push(`| total | ${((last - first) / HOUR).toFixed(2)} |  |`);
+		lines.push(row("CI", `${ciMinutes.toFixed(1)} min over ${ci.length} runs`, ""));
+		lines.push(row("total", ((last - first) / HOUR).toFixed(2), ""));
 		return lines.join("\n");
 	}
 }

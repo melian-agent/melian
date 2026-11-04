@@ -624,6 +624,26 @@ describe("force-pushes", () => {
 });
 
 describe("printed text", () => {
+	it("sanitises the event column as well, so a workflow name cannot break the table or reach the terminal raw", () => {
+		const replaced = String.fromCharCode(0xfffd);
+		const name = `build\n${String.fromCharCode(0x1b)}[2J|x`;
+		const runs = [
+			{
+				name,
+				event: "push",
+				head_sha: "1".repeat(40),
+				status: "completed",
+				conclusion: "success",
+				run_started_at: "2026-10-01T01:00:00.000Z",
+				updated_at: "2026-10-01T01:10:00.000Z",
+			},
+		];
+		const timeline = Timeline.from({ pull: pull(), runs });
+		expect(rows(timeline)).toContain(
+			`| 2026-10-01 01:00 | 1.00 | CI build ${replaced}[2J\\|x | 11111111, success, 10.0 min |`,
+		);
+	});
+
 	it("replaces C0 and C1 control characters, ESC and DEL among them, and keeps the characters beside each range", () => {
 		const char = (code) => String.fromCharCode(code);
 		const replaced = char(0xfffd);
