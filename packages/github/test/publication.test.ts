@@ -594,24 +594,42 @@ describe("markers", () => {
 		);
 	});
 
-	it("names each lens that ran with a note, such as the hand-offs its instructions left out for size", () => {
-		const note = "kept the defects it hands to `durability`, whose files here would list past 40 files or 4 KiB";
-		const body = renderReviewBody(
+	// [Pull request #201](https://github.com/melian-agent/melian/pull/201)'s body repeated seven caller notes and the triage note under each of eight lenses.
+	const pr201Notes = [
+		...Array.from(
+			{ length: 7 },
+			(_, index) =>
+				`Callers unavailable for packages/github/src/file${index}.ts: line ${index + 1}: directory-scoped name is ambiguous`,
+		),
+		"triage input was cut, so no lens could skip",
+	].join("; ");
+	const lensNames = [
+		"correctness",
+		"contracts",
+		"design",
+		"durability",
+		"security",
+		"tests",
+		"conventions",
+		"trust-boundary",
+	];
+	const noted = (caveats?: string[]) =>
+		lensNames.map((name) => ({
+			name: `lens.${name}`,
+			status: "ran" as const,
+			level: "careful" as const,
+			reason: pr201Notes,
+			...(caveats === undefined ? {} : { caveats }),
+		}));
+	const bodyOf = (checks: ReturnType<typeof noted>) =>
+		renderReviewBody(
 			{
 				pullRequest: 7,
 				revision,
 				base,
 				fingerprint: "0123456789abcdef",
 				round: 1,
-				verdict: new Adjudication({
-					findings: [],
-					manifest: [],
-					checks: [
-						{ name: "lens.correctness", status: "ran", level: "careful", reason: note },
-						{ name: "lens.contracts", status: "ran", level: "careful" },
-					],
-					config: defaultConfig,
-				}).adjudicate(),
+				verdict: new Adjudication({ findings: [], manifest: [], checks, config: defaultConfig }).adjudicate(),
 				findings: [],
 				stillOpen: 0,
 				resolved: [],
@@ -620,9 +638,34 @@ describe("markers", () => {
 			links,
 		);
 
-		// A reason renders as prose, so its backticks are escaped.
-		expect(body).toContain(`Lenses that ran with a note:\n\n- \`lens.correctness\`: ${note.replaceAll("`", "\\`")}`);
-		expect(body).not.toContain("`lens.contracts`:");
+	it("publishes a body without the notes of lenses that ran, though every lens carries them", () => {
+		const body = bodyOf(noted());
+
+		expect(body).not.toContain("Lenses that ran with a note");
+		expect(body).not.toContain("Callers unavailable");
+		expect(body).not.toContain("triage input was cut");
+		expect(body).not.toContain("Reach:");
+		expect(body).toContain("**passed**");
+	});
+
+	it("states a note that lowers the review's reach once, however many lenses carry it", () => {
+		const caveat = "callers were unavailable for every changed site, so no lens saw who calls the changed code";
+		const body = bodyOf(noted([caveat]));
+
+		expect(body.split(caveat)).toHaveLength(2);
+		expect(body).toContain(`\n\nReach: ${caveat}.\n\nmelian/review:`);
+		expect(body).not.toContain("Callers unavailable for");
+	});
+
+	it("renders a caveat as inert prose on one line, since its reason can come from the change", () => {
+		const caveat =
+			"callers were unavailable for every changed site: @octocat [log in](https://evil.test)\n# Approved <b>";
+		const body = bodyOf(noted([caveat]));
+
+		expect(body).toContain(
+			"\n\nReach: callers were unavailable for every changed site: @\u2060octocat \\[log in\\]\\(https:\u2060//evil.test\\) \\# Approved &lt;b&gt;.\n\nmelian/review:",
+		);
+		expect(body).not.toContain("\n# Approved");
 	});
 
 	it("names each check that left the committed routes, before the checks that did not run", () => {
@@ -933,5 +976,147 @@ describe("verification comments", () => {
 		);
 		expect(rendered).toContain(`**Correction:** ${renderProse(finding.properties.verification!.correction!)}`);
 		expect(markersIn(rendered)).toHaveLength(1);
+	});
+});
+
+describe("a quiet review body", () => {
+	const dismissedAs = (file: string, reason: string) => {
+		const created = Finding.create({ ...input, file, status: "dismissed" });
+		return Finding.from({
+			...created.toJSON(),
+			properties: {
+				...created.properties,
+				dismissal: { by: "M <m@example.invalid>", at: "2026-10-25T00:00:00Z", reason },
+			},
+		});
+	};
+	const bodyOf = (findings: Finding[], inBody: Finding[] = [], limit?: number) => {
+		const verdict = new Adjudication({ findings, manifest: [], checks: [], config: defaultConfig }).adjudicate();
+		return renderReviewBody(
+			{
+				pullRequest: 7,
+				revision,
+				base,
+				fingerprint: verdict.fingerprint(),
+				round: 1,
+				verdict,
+				findings: inBody.map((finding) => ({
+					finding: verdict.all().find((each) => each.id === finding.id)!,
+					placement: { kind: "body" as const },
+				})),
+				stillOpen: 0,
+				resolved: [],
+				secret,
+			},
+			links,
+			limit === undefined ? {} : { limit },
+		);
+	};
+	const shared = "The deployment always sets these values.";
+
+	it("lists dismissals that share a reason once, under the reason, and one with its own reason on its line", () => {
+		const group = ["src/a.ts", "src/b.ts", "src/c.ts"].map((file) => dismissedAs(file, shared));
+		const own = dismissedAs("src/d.ts", "Covered by the integration suite.");
+		const body = bodyOf([...group, own]);
+
+		expect(body).toContain(
+			"<details>\n<summary>4 dismissed, 2 reasons</summary>\n\nDismissals attested by this publication:\n\n- ",
+		);
+		expect(body.split(shared)).toHaveLength(2);
+		expect(body).toContain(
+			`- ${shared}\n${group.map((finding) => `  - \`${finding.id}\` \`no-eval\` in \`${finding.properties.path}\``).join("\n")}`,
+		);
+		expect(body).toContain(`- \`${own.id}\` \`no-eval\` in \`src/d.ts\`: Covered by the integration suite.`);
+		expect(body).not.toContain("advisor");
+		expect(body).not.toContain("### ");
+	});
+
+	it("keeps a blocker open and folds the advisories and the dismissals, each under its count", () => {
+		const blocker = Finding.create({ ...input, file: "src/block.ts" });
+		const advisories = ["src/x.ts", "src/y.ts"].map((file) =>
+			Finding.create({ ...input, file, severity: "P3", resolution: "advisory" }),
+		);
+		const dismissed = ["src/a.ts", "src/b.ts", "src/c.ts"].map((file) => dismissedAs(file, shared));
+		const body = bodyOf([blocker, ...advisories, ...dismissed], [blocker]);
+
+		const folds = [...body.matchAll(/<details>\n<summary>([^<]*)<\/summary>([\s\S]*?)<\/details>/g)];
+		expect(folds.map(([, summary]) => summary)).toEqual(["3 dismissed, 1 reason", "2 advisories"]);
+		const folded = folds.map(([whole]) => whole).join("\n");
+		expect(folded).not.toContain(blocker.id);
+		expect(body).toContain(blocker.id);
+		for (const advisory of advisories) expect(folds[1]![2]).toContain(advisory.id);
+		// Each folded advisory keeps its marker on a line of its own, so a rerun still finds what it posted.
+		expect(markersIn(folds[1]![2]!).map(({ id }) => id)).toEqual(advisories.map(({ id }) => id));
+		for (const finding of dismissed) expect(folds[0]![2]).toContain(finding.id);
+	});
+
+	it("counts every dismissed report the fold lists, merged members included", () => {
+		const primary = dismissedAs("src/a.ts", shared);
+		const member = Finding.create({ ...input, rule: "other-rule" });
+		const merged = Finding.from({
+			...primary.toJSON(),
+			properties: {
+				...primary.properties,
+				alsoReportedAs: [
+					{
+						...member.report(),
+						dismissal: { by: "M <m@example.invalid>", at: "2026-10-25T00:00:00Z", reason: "Other." },
+					},
+					{ ...member.report(), id: "b".repeat(16) },
+				],
+			},
+		});
+		expect(bodyOf([merged])).toContain("<summary>3 dismissed, 2 reasons</summary>");
+	});
+
+	it("names one advisory and one reason in the singular", () => {
+		const advisory = Finding.create({ ...input, severity: "P3", resolution: "advisory" });
+		const body = bodyOf([advisory, dismissedAs("src/a.ts", shared)]);
+		expect(body).toContain("<summary>1 advisory</summary>");
+		expect(body).toContain("<summary>1 dismissed, 1 reason</summary>");
+	});
+
+	it("cuts the folded advisories before the open findings, and counts what it cut", () => {
+		const blocker = Finding.create({ ...input, file: "src/block.ts" });
+		const advisories = ["src/x.ts", "src/y.ts"].map((file) =>
+			Finding.create({ ...input, file, severity: "P3", resolution: "advisory" }),
+		);
+		const whole = bodyOf([blocker, ...advisories], [blocker]);
+		const last = whole.lastIndexOf("<!-- melian:revision=");
+		const cut = bodyOf([blocker, ...advisories], [blocker], last + 200);
+
+		expect(cut).toContain(blocker.id);
+		expect(cut).toContain("<summary>1 advisory</summary>");
+		expect(cut).toContain("1 finding did not fit in this review");
+		expect(cut).toContain(advisories[0]!.id);
+		expect(cut).not.toContain(advisories[1]!.id);
+	});
+
+	it("closes the dismissals fold and keeps the cut note outside it when the body is cut, at the limit and one under", () => {
+		const dismissed = Array.from({ length: 6 }, (_, index) =>
+			dismissedAs(`src/f${index}.ts`, `Reason ${index}: ${"the deployment sets this value. ".repeat(6)}`),
+		);
+		const whole = bodyOf(dismissed);
+		expect(bodyOf(dismissed, [], whole.length)).toBe(whole);
+
+		const note = 'This review was cut to fit GitHub\'s limit; `melian findings "#7"` lists them all.';
+		const fold = whole.indexOf("<details>");
+		// From the smallest cut, which ends before the fold opens and must close nothing, to one under the whole body.
+		for (let limit = fold + note.length + "\n\n</details>".length + 2; limit < whole.length; limit++) {
+			const cut = bodyOf(dismissed, [], limit);
+			expect(cut.length).toBeLessThanOrEqual(limit);
+			expect(cut.split("<details>")).toHaveLength(cut.split("</details>").length);
+			expect(cut.endsWith(`\n\n${note}`)).toBe(true);
+			expect(cut.slice(0, -note.length)).toMatch(/(<\/details>|[^>])\n\n$/);
+		}
+		const first = bodyOf(dismissed, [], fold + note.length + "\n\n</details>".length + 2);
+		expect(first).not.toContain("<details>");
+	});
+
+	it("gives advisories alone no findings heading, since nothing in the body asks for action", () => {
+		const advisory = Finding.create({ ...input, severity: "P3", resolution: "advisory" });
+		const body = bodyOf([advisory]);
+		expect(body).not.toContain("### ");
+		expect(body).toContain("<summary>1 advisory</summary>");
 	});
 });

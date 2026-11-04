@@ -264,7 +264,7 @@ it("migrates a recorded old checks document in memory and refuses a future index
 	expect(commit).not.toHaveBeenCalled();
 	const future = defineDoc<JsonObject>({
 		kind: ReviewIndex.definition.kind,
-		version: 4,
+		version: 5,
 		scope: "conversation",
 		history: "latest",
 		fork: "current",

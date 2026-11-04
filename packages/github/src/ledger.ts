@@ -308,6 +308,15 @@ export class Ledger {
 								`- ${prose(name)}@${prose(version)}, ${prose(level)}; route ${models.map(prose).join(", ")}${ran === undefined ? "" : `; ran on ${prose(ran)}`}${lineage === undefined ? "" : `; ${prose(lineage)}`}; budgets ${prose(JSON.stringify(budget))}${usage === undefined ? "" : `; used ${usage.models.map(prose).join(", ")}, ${usage.tokens} tokens, $${usage.cost.toFixed(6)}`}${standards === undefined ? "" : `; standards ${standards.map(code).join(", ") || "none"}`}`,
 						),
 					];
+		const notes = Verdict.from(round.verdict).lensNotes();
+		if (notes.length > 0)
+			lines.push(
+				[
+					"Lens notes:",
+					"",
+					...notes.map(({ reason, checks }) => `- ${checks.map(code).join(", ")}: ${prose(reason)}`),
+				].join("\n"),
+			);
 		const publisher = round.publishedBy ?? { trustedWriters: true };
 		lines.unshift(
 			`Published by ${code(publisher.login ?? "unknown")} (${code(publisher.permission ?? "unknown")}); writers trusted: ${publisher.trustedWriters ? "yes" : "no"}`,

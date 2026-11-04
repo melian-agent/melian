@@ -81,6 +81,7 @@ Options:
   --cold                 Run the mutation check without an earlier head's results; only a cold run can pass the
                          review, so run it before the queue (review).
   --open, --all, --json  For findings; --json also applies to review and telemetry.
+  --notes                Show each distinct lens note once (review, findings).
   --round <id>          Read a stored verdict; select a range comparison by ID or unattributed.
   --accept              Accept rejected members (compare refresh only).
   --rounds              List a target's stored rounds (findings).
@@ -149,6 +150,7 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 				cold: { type: "boolean", default: false },
 				all: { type: "boolean", default: false },
 				limit: { type: "string" },
+				notes: { type: "boolean", default: false },
 				reason: { type: "string" },
 				verdict: { type: "string" },
 				severity: { type: "string" },
@@ -225,6 +227,7 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 					{
 						...(values.model === undefined ? {} : { model: values.model }),
 						rerun: values.rerun,
+						notes: values.notes,
 						walkthrough: values.walkthrough,
 						trustHead: values["trust-head"],
 						cold: values.cold,
@@ -250,6 +253,7 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 				return await findings(scoped, values.round === undefined ? one(rest, name, "range or pull request") : "", {
 					open: values.open,
 					all: values.all,
+					notes: values.notes,
 					json: values.json,
 					round: values.round,
 					rounds: values.rounds,
