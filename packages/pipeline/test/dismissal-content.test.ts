@@ -1,4 +1,4 @@
-import { Changeset, loadConfig } from "@melian-agent/core";
+import { Changeset, loadConfig, Revision } from "@melian-agent/core";
 import {
 	backgroundContext as context,
 	createMemoryStorage,
@@ -9,7 +9,7 @@ import {
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { findingsVersion, revisionKey } from "../src/findings.ts";
+import { findingsVersion } from "../src/findings.ts";
 import { commit, createRepository, isolatedGitEnv, lines, removeRepository } from "./fixtures/repo.ts";
 
 let repo: string;
@@ -73,9 +73,9 @@ describe("dismissal content across revisions", { timeout: 120_000 }, () => {
 		const recorded = await dismiss(b, id);
 		expect(recorded.verdict.reviewStatus().state).toBe("success");
 		const root = await harness.harness.root(context);
-		const version = await findingsVersion(harness.harness, root.id, revisionKey(second.changeset.revision), context);
+		const version = await findingsVersion(harness.harness, root.id, Revision.key(second.changeset.revision), context);
 		expect((await review(b)).verdict.reviewStatus().state).toBe("success");
-		expect(await findingsVersion(harness.harness, root.id, revisionKey(second.changeset.revision), context)).toBe(
+		expect(await findingsVersion(harness.harness, root.id, Revision.key(second.changeset.revision), context)).toBe(
 			version,
 		);
 		const same = commit(repo, { "unrelated.txt": "same trigger\n" });

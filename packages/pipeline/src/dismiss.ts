@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { type AlsoReportedAs, type Finding, Verdict } from "@melian-agent/core";
+import { type AlsoReportedAs, type Finding, Revision, Verdict } from "@melian-agent/core";
 import {
 	type AdjudicationResult,
 	AdjudicationTask,
@@ -9,7 +9,7 @@ import {
 } from "./adjudication.ts";
 import { withLegacyCaveats } from "./caveats.ts";
 import { DismissError } from "./errors.ts";
-import { type Dismissal, dismissFinding, FindingsDocument, revisionKey, siteAt } from "./findings.ts";
+import { type Dismissal, dismissFinding, FindingsDocument, siteAt } from "./findings.ts";
 import {
 	backgroundContext,
 	type Context,
@@ -118,7 +118,7 @@ export interface RecordedDismissal {
 export async function recordDismissal(options: DismissalOptions): Promise<RecordedDismissal> {
 	const { harness, id, dismissal, repoRoot } = options;
 	const context = options.context ?? backgroundContext;
-	const revision = revisionKey(options.revision);
+	const revision = Revision.key(options.revision);
 	const where = { revision, finding: id };
 	const root = await harness.root(context);
 	const again = "run melian review again";

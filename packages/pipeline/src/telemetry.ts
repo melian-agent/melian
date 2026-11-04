@@ -1,4 +1,10 @@
-import { deterministicChecks, type ReasoningValue, type RequestReasoning, visibleText } from "@melian-agent/core";
+import {
+	deterministicChecks,
+	type ReasoningValue,
+	type RequestReasoning,
+	Revision,
+	visibleText,
+} from "@melian-agent/core";
 import { type CheckRunRecord, CheckSources, ChecksDocument } from "./checks.ts";
 import { DecisionDocument } from "./decisions.ts";
 import {
@@ -315,7 +321,8 @@ export class TelemetryReader {
 			);
 		}
 		const authority = checks?.owners?.[revision];
-		const prefix = `${revision.replace("..", " ")} `;
+		const { base, head } = Revision.parseKey(revision) ?? { base: revision, head: "" };
+		const prefix = `${base} ${head} `;
 		const parent =
 			authority === undefined
 				? Object.entries(checks?.tasks ?? {})

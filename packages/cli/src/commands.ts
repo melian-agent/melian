@@ -13,6 +13,7 @@ import {
 	type RepositorySource,
 	ReviewPlan,
 	type ReviewProvider,
+	Revision,
 	Standards,
 	userFiles,
 	type Verdict,
@@ -38,7 +39,6 @@ import {
 	readVerdict,
 	recordDismissal,
 	reviewChangeset,
-	revisionKey,
 	runChecks,
 	StageTelemetry,
 	summarizeReview,
@@ -379,7 +379,7 @@ export async function review(
 		}
 		spans.step("output");
 		const outcome = new ReviewOutcome(verdict);
-		const timings = await reviewTimings(reviewHarness, storage, spans, revisionKey(changeset.revision), beganAt, io);
+		const timings = await reviewTimings(reviewHarness, storage, spans, Revision.key(changeset.revision), beganAt, io);
 		io.stderr(timings.slowest());
 		io.stdout(
 			options.json
@@ -394,7 +394,7 @@ export async function review(
 		);
 		return outcome.exitCode();
 	} catch (error) {
-		const timings = await reviewTimings(reviewHarness, storage, spans, revisionKey(changeset.revision), beganAt, io);
+		const timings = await reviewTimings(reviewHarness, storage, spans, Revision.key(changeset.revision), beganAt, io);
 		io.stderr(timings.slowest());
 		if (options.json)
 			io.stdout(
@@ -595,7 +595,7 @@ export async function findings(
 			rounds.sort((left, right) => left.compare(right, dates));
 			const listed = rounds.map((round) => {
 				const date = dates.get(round.stored.head);
-				return {
+				const listed = {
 					id: round.id,
 					base: round.stored.base,
 					head: round.stored.head,
@@ -603,14 +603,9 @@ export async function findings(
 					date: round.stored.mintedAt ?? (date === undefined ? "unknown" : new Date(date * 1000).toISOString()),
 					status: round.verdict()?.status ?? "undecided",
 				};
+				return options.json ? listed : `${listed.id}  ${round.revisionKey()}  ${listed.status}  ${listed.date}\n`;
 			});
-			io.stdout(
-				options.json
-					? `${JSON.stringify(listed, null, 2)}\n`
-					: listed
-							.map((round) => `${round.id}  ${round.base}..${round.head}  ${round.status}  ${round.date}\n`)
-							.join(""),
-			);
+			io.stdout(options.json ? `${JSON.stringify(listed, null, 2)}\n` : listed.join(""));
 			return 0;
 		} finally {
 			await storage.close(context);
@@ -620,7 +615,7 @@ export async function findings(
 	const { harness } = reviewHarness;
 	try {
 		const root = (await harness.root(context)).id;
-		const revision = revisionKey(changeset.revision);
+		const revision = Revision.key(changeset.revision);
 		const verdict = await readVerdict(harness, root, revision, context);
 		if (verdict === undefined) throw missing;
 		// The plan the review ran under, as stored with its verdict, never one resolved now: routes or credentials may have
@@ -785,7 +780,7 @@ export async function telemetry(io: Io, argument: string, options: { readonly js
 	if (!existsSync(path)) throw new CliError("No stage telemetry is stored for this revision.");
 	const storage = await openStorage(path);
 	try {
-		const timings = await TelemetryReader.open(storage).read(revisionKey(stored.changeset.revision));
+		const timings = await TelemetryReader.open(storage).read(Revision.key(stored.changeset.revision));
 		if (timings.stages.length === 0 && timings.prepare === undefined)
 			throw new CliError("No stage telemetry is stored for this revision.");
 		io.stdout(options.json ? `${JSON.stringify(timings.toJSON(), null, 2)}\n` : timings.render());

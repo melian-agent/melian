@@ -1,7 +1,16 @@
 import { copyFileSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Adjudication, Changeset, Comparison, ConfigError, defaultConfig, Finding, Lens } from "@melian-agent/core";
+import {
+	Adjudication,
+	Changeset,
+	Comparison,
+	ConfigError,
+	defaultConfig,
+	Finding,
+	Lens,
+	Revision,
+} from "@melian-agent/core";
 import {
 	CompareHarness,
 	backgroundContext as context,
@@ -19,7 +28,6 @@ import {
 	RoundReader,
 	recordDismissal,
 	reviewChangeset,
-	revisionKey,
 	type TaskId,
 	upsertFinding,
 } from "@melian-agent/pipeline";
@@ -119,7 +127,7 @@ it("mints a round for changed lens thinking and attaches at a fixed level", asyn
 		},
 	]);
 	const root = await harness.root(context);
-	const revision = revisionKey(changeset.revision);
+	const revision = Revision.key(changeset.revision);
 	const tasks: number[][] = [];
 	for (const thinking of ["high", "high", "low", "low"] as const) {
 		await reviewChangeset({
@@ -222,7 +230,7 @@ it("mints nothing when startAdjudication finds the lens selection replaced", asy
 		const config = await original(...args);
 		const root = await harness.root(context);
 		await root.commit(async (tx) => {
-			(await tx.doc(ReviewIndex, root.id)).reviews[revisionKey(changeset.revision)] = { lenses: ["replacement"] };
+			(await tx.doc(ReviewIndex, root.id)).reviews[Revision.key(changeset.revision)] = { lenses: ["replacement"] };
 		}, context);
 		return config;
 	});
@@ -247,7 +255,7 @@ it("mints nothing when startAdjudication finds the lens selection replaced", asy
 
 it("keeps the current round on dismissal and repeat dismissal, and freezes it on the next review", async () => {
 	const changeset = await Changeset.resolve(repo, "main...feature");
-	const key = revisionKey(changeset.revision);
+	const key = Revision.key(changeset.revision);
 	const finding = Finding.create({
 		rule: "static-defect",
 		message: "bad",
@@ -297,6 +305,80 @@ async function oldStorage(name = "pending") {
 	copyFileSync(new URL(`./fixtures/rounds-main/${name}.sqlite`, import.meta.url), path);
 	return { path, storage: await openSqliteStorage(path) };
 }
+
+it("reopens main's version-2 rounds with split legacy keys and preserved verdict caveats", async () => {
+	const directory = realpathSync(mkdtempSync(join(tmpdir(), "melian-rounds-main-v2-")));
+	scratch.push(directory);
+	const path = join(directory, "rounds.sqlite");
+	copyFileSync(new URL("./fixtures/rounds-main-v2/rounds-v2.sqlite", import.meta.url), path);
+	const captured = JSON.parse(
+		readFileSync(new URL("./fixtures/rounds-main-v2/recorded.json", import.meta.url), "utf8"),
+	) as {
+		headOnly: string;
+		legacyRound: string;
+		state: ReturnType<typeof RoundsDocument.definition.initial>;
+	};
+	const storage = await openSqliteStorage(path);
+	try {
+		const record = await storage.findDocument(
+			{ kind: "melian.rounds", scope: { kind: "conversation", conversationId: ROOT_CONVERSATION_ID } },
+			"current",
+			context,
+		);
+		expect((await storage.document(record!.id, "current", context))!.version).toEqual(2);
+		const decided = captured.state.items.r1!;
+		const expected: ReturnType<typeof RoundsDocument.definition.initial> = {
+			...captured.state,
+			items: {
+				[captured.legacyRound]: {
+					...captured.state.items[captured.legacyRound]!,
+					base: "",
+					head: captured.headOnly,
+					legacyKey: captured.headOnly,
+				},
+				r1: {
+					...decided,
+					verdict: {
+						...decided.verdict!,
+						notRun: [
+							{
+								name: "lens.contracts",
+								status: "skipped",
+								reason:
+									"triage chose quick for every lens, so the whole review looked lightly, at a change that can steer triage",
+								caveats: [
+									"triage chose quick for every lens, so the whole review looked lightly, at a change that can steer triage",
+								],
+							},
+						],
+						ran: [
+							{
+								name: "lens.correctness",
+								status: "ran",
+								reason: "Callers unavailable: graph absent",
+								caveats: [
+									"callers were unavailable for every changed site, so no lens saw who calls the changed code: graph absent",
+								],
+							},
+						],
+					},
+				},
+			},
+		};
+		expect(await new RoundReader(storage).read("main-v2")).toEqual([
+			new Round(`main-v2.${captured.legacyRound}`, expected.items[captured.legacyRound]!),
+			new Round("main-v2.r1", expected.items.r1!),
+		]);
+		const reopened = await openHarness(storage, { models: fake.models, registry: createReviewRegistry() });
+		try {
+			expect(await reopened.snapshot(rounds, (await reopened.root(context)).id, context)).toEqual(expected);
+		} finally {
+			await reopened.close(context);
+		}
+	} finally {
+		await storage.close(context);
+	}
+});
 
 it.each(["import", "adjudicate"])("records the legacy verdict before a comparison %s", async (command) => {
 	const { storage } = await oldStorage("decided");
@@ -756,6 +838,29 @@ it.each(["verdict", "comparison"])("reads a legacy %s without provenance", async
 	}
 });
 
+it("reads a verdict an older Melian keyed by head alone as a round with no base round", async () => {
+	const storage = createMemoryStorage();
+	const opened = await openHarness(storage, { models: fake.models, registry: createReviewRegistry() });
+	try {
+		const root = await opened.root(context, { agent: { model: fake.ref() } });
+		const headOnly = "d".repeat(40);
+		await root.commit(async (tx) => {
+			(await tx.doc(VerdictDocument, root.id)).verdicts[headOnly] = new Adjudication({
+				findings: [],
+				manifest: [],
+				checks: [],
+				config: defaultConfig,
+			})
+				.adjudicate()
+				.toJSON();
+		}, context);
+		const [round] = await new RoundReader(storage).read("range-test");
+		expect(round!.stored).toMatchObject({ base: "", head: headOnly, legacyKey: headOnly, tasks: [] });
+	} finally {
+		await opened.close(context);
+	}
+});
+
 it("returns independent frozen verdict views", async () => {
 	await review();
 	const stored = (await harness.snapshot(rounds, (await harness.root(context)).id, context))!.items.r1!;
@@ -794,7 +899,7 @@ it("reads empty storage and a document lost between detached reads as absent", a
 });
 
 it.each([
-	{ kind: "melian.rounds", version: 3 },
+	{ kind: "melian.rounds", version: 4 },
 	{ kind: "melian.comparisons", version: 3 },
 	{ kind: "melian.verdicts", version: 14 },
 ])("refuses newer $kind version $version", async ({ kind, version }) => {

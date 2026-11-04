@@ -18,6 +18,7 @@ import {
 	type MemberClaim,
 	type ModelRoute,
 	type RepositorySource,
+	Revision,
 	Standards,
 	verificationSchema,
 } from "@melian-agent/core";
@@ -28,7 +29,6 @@ import {
 	openReviewHarness,
 	type ReviewModels,
 	reviewChangeset,
-	revisionKey,
 	type StageTelemetry,
 	TelemetryReader,
 } from "@melian-agent/pipeline";
@@ -397,10 +397,10 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 				findings,
 				rendered,
 				toolMismatches,
-				telemetry: await TelemetryReader.open(storage).read(revisionKey(changeset.revision)),
+				telemetry: await TelemetryReader.open(storage).read(Revision.key(changeset.revision)),
 			};
 		} catch (error) {
-			throw new GoldenRunError(error, await TelemetryReader.open(storage).read(revisionKey(changeset.revision)));
+			throw new GoldenRunError(error, await TelemetryReader.open(storage).read(Revision.key(changeset.revision)));
 		} finally {
 			await reviewHarness.close(backgroundContext);
 		}

@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import Type, { type Static, type TSchema } from "typebox";
 import Value from "typebox/value";
 import type { Verdict } from "./adjudication.ts";
+import { Revision } from "./changeset.ts";
 import {
 	Adjudication,
 	type ComparisonAdjudicationRecord,
@@ -730,7 +731,7 @@ export class Comparison {
 
 	/** The target the host named, or the base and head for an older document. */
 	label(): string {
-		return this.target ?? `${this.base.slice(0, 12)}..${this.head.slice(0, 12)}`;
+		return this.target ?? Revision.display(this);
 	}
 
 	/** Recall over adjudicated distinct defects, precision over adjudicated reports, and pending reports. */

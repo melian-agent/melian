@@ -57,7 +57,7 @@ type ProducerFinding = Omit<StoredFinding, "properties"> & {
 	properties: Omit<FindingProperties, "status" | "reportedBy" | "dismissal" | "pastDismissals">;
 };
 
-// Sightings are keyed by revision, `revisionKey` of a base and head, then by producer, a lens's check and version. Only
+// Sightings are keyed by revision, `Revision.key` of a base and head, then by producer, a lens's check and version. Only
 // the same producer at the same revision ever rewrites a sighting, so two lenses or two pushes never race for one record.
 type FindingRecord = {
 	lifecycle: FindingLifecycle;
@@ -105,15 +105,6 @@ export const FindingsDocument = defineDoc<FindingsState>({
 		return { ...state, items };
 	},
 });
-
-/**
- * The key a reviewed revision is stored under in the findings, verdict, and review index documents: its base and head
- * as `<base>..<head>`. A pull request retargeted onto a new base keeps its head but has another diff, so it is another
- * revision, reviewed afresh.
- */
-export function revisionKey(revision: { readonly base: string; readonly head: string }): string {
-	return `${revision.base}..${revision.head}`;
-}
 
 function producerKey(source: FindingSource): string {
 	return `${source.check}@${source.version ?? ""}`;
@@ -242,7 +233,7 @@ export function siteAt(
 /**
  * Marks `revision` as the newest the changeset has been reviewed at, moving it last if it was reviewed before. Call it
  * in the commit that starts a review, so a review of an older revision that resumes afterwards counts as older.
- * `revision` is a {@link revisionKey}, as every revision this module takes is.
+ * `revision` is a {@link Revision.key}, as every revision this module takes is.
  */
 export async function recordRevision(tx: Tx, rootConversationId: ConversationId, revision: string): Promise<void> {
 	const state = await tx.doc(FindingsDocument, rootConversationId);
@@ -426,7 +417,7 @@ export async function upsertFinding(
 }
 
 /**
- * Makes `findings` the whole of what `check` sights at `revision`, a {@link revisionKey}: removes the check's earlier sightings there, of any
+ * Makes `findings` the whole of what `check` sights at `revision`, a {@link Revision.key}: removes the check's earlier sightings there, of any
  * version, then upserts each. A finding left with no sighting at any revision is removed too, unless it was dismissed,
  * so its dismissal survives if it returns. Call it in the commit that records the check's outcome, with no findings for
  * a check that failed, so a failed rerun leaves nothing of an earlier run behind.
@@ -626,7 +617,7 @@ export interface ReadFindingsOptions {
 }
 
 /**
- * The findings sighted at `revision`, a {@link revisionKey}, one per ID in ID order, each with its lifecycle status. Where several producers
+ * The findings sighted at `revision`, a {@link Revision.key}, one per ID in ID order, each with its lifecycle status. Where several producers
  * sighted one ID, the highest severity wins and a tie goes to the producer whose check sorts first, and
  * `properties.reportedBy` lists every producer that sighted it. Empty when nothing was reported at `revision`. Each is a
  * copy: the harness caches the committed document, so changing a returned finding must not reach it.
