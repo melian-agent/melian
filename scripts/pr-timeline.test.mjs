@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -35,9 +35,8 @@ function run(args) {
 			env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, FAKE_GH_FIXTURE: fixture, FAKE_GH_LOG: log },
 		});
 		const requests = readFileSync(log, "utf8").split("\n").filter(Boolean).map(JSON.parse);
-		const recorded = args.includes("--record")
-			? JSON.parse(readFileSync(join(dir, "record.json"), "utf8"))
-			: undefined;
+		const record = join(dir, "record.json");
+		const recorded = existsSync(record) ? JSON.parse(readFileSync(record, "utf8")) : undefined;
 		return { ...result, requests, recorded };
 	} finally {
 		rmSync(dir, { recursive: true, force: true });
@@ -110,6 +109,18 @@ describe("pr-timeline", () => {
 			expect(result.requests).toEqual([]);
 		}
 	});
+
+	it("asks about melian-agent/melian when only --record is given", () => {
+		const result = run(["900", "--record", "$DIR/record.json"]);
+		expect(result.requests[0].slice(4)).toEqual([
+			"-F",
+			"owner=melian-agent",
+			"-F",
+			"name=melian",
+			"-F",
+			"number=900",
+		]);
+	});
 });
 
 const page = (nodes) => ({ pageInfo: { hasNextPage: false }, nodes });
@@ -178,6 +189,16 @@ describe("gaps", () => {
 			"| 2026-10-01 02:00 | 2.00 | review | commented by ghost |",
 			"| 2026-10-01 02:00 | 2.00 | Timing | gate 5 min |",
 			"| 2026-10-01 03:00 | 3.00 | commit | 22222222 |",
+		]);
+	});
+});
+
+describe("Timing rows", () => {
+	it("reads a Timing line from the pull request's description, at its opening", () => {
+		const timeline = Timeline.from({ pull: pull({ body: "Closes #2\n\nTiming: gate 5 min" }), runs: [] });
+		expect(rows(timeline).slice(2, 4)).toEqual([
+			"| 2026-10-01 00:00 | 0.00 | pull request opened | #1 by a |",
+			"| 2026-10-01 00:00 | 0.00 | Timing | gate 5 min |",
 		]);
 	});
 });
