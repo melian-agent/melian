@@ -3,6 +3,7 @@
 // - a Timing: line sits at its comment's creation time, even if the comment was edited later;
 // - a pull request closing several issues reads the first issue's ready and claim.
 import { fromMarkdown } from "mdast-util-from-markdown";
+import { toMarkdown } from "mdast-util-to-markdown";
 import { toString as markdownText } from "mdast-util-to-string";
 import { visibleText } from "../packages/core/src/render.ts";
 
@@ -78,7 +79,8 @@ export function parseTiming(body) {
 }
 
 const login = (node) => node.author?.login ?? "ghost";
-const cell = (text) => visibleText(text).replaceAll("|", "\\|");
+// toMarkdown ends what it writes with a line ending, and without the table extension it leaves pipes alone.
+const cell = (text) => visibleText(toMarkdown({ type: "text", value: text }).replace(/\n$/, "")).replaceAll("|", "\\|");
 const row = (...cells) => `| ${cells.map(cell).join(" | ")} |`;
 const stamp = (ms) => new Date(ms).toISOString().slice(0, 16).replace("T", " ");
 

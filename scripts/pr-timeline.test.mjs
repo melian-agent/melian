@@ -46,16 +46,16 @@ function run(args, recording = fixture) {
 const expected = [
 	"| Time (UTC) | Hours | Event | Detail |",
 	"| --- | --- | --- | --- |",
-	"| 2026-10-01 00:00 | 0.00 | issue opened | #901 |",
-	"| 2026-10-01 00:00 | 0.00 | labelled | #901 status: ready |",
+	"| 2026-10-01 00:00 | 0.00 | issue opened | \\#901 |",
+	"| 2026-10-01 00:00 | 0.00 | labelled | \\#901 status: ready |",
 	"|  |  | gap | 2.0 h |",
-	"| 2026-10-01 02:00 | 2.00 | Claim | #901 by builder |",
-	"| 2026-10-01 02:00 | 2.00 | labelled | #901 status: in progress |",
-	"| 2026-10-01 02:00 | 2.00 | unlabelled | #901 status: ready |",
+	"| 2026-10-01 02:00 | 2.00 | Claim | \\#901 by builder |",
+	"| 2026-10-01 02:00 | 2.00 | labelled | \\#901 status: in progress |",
+	"| 2026-10-01 02:00 | 2.00 | unlabelled | \\#901 status: ready |",
 	"| 2026-10-01 03:00 | 3.00 | commit | aaaaaaaa |",
 	"|  |  | gap | 1.0 h |",
 	"| 2026-10-01 04:00 | 4.00 | commit | bbbbbbbb |",
-	"| 2026-10-01 04:10 | 4.17 | pull request opened | #900 by builder |",
+	"| 2026-10-01 04:10 | 4.17 | pull request opened | \\#900 by builder |",
 	"| 2026-10-01 04:10 | 4.17 | CI check | cccccccc, success, 15.0 min |",
 	"| 2026-10-01 04:20 | 4.33 | merge commit | cccccccc |",
 	"| 2026-10-01 05:25 | 5.42 | comment | by builder |",
@@ -65,7 +65,7 @@ const expected = [
 	"| 2026-10-01 05:25 | 5.42 | Timing | waited 40 min for a ruling |",
 	"| 2026-10-01 05:25 | 5.42 | Timing | lunch \\| break |",
 	"| 2026-10-01 05:30 | 5.50 | review | approved by maintainer |",
-	"| 2026-10-01 05:40 | 5.67 | Fix pass | #901 by builder |",
+	"| 2026-10-01 05:40 | 5.67 | Fix pass | \\#901 by builder |",
 	"| 2026-10-01 06:00 | 6.00 | commit | dddddddd |",
 	"|  |  | gap | 2.0 h |",
 	"| 2026-10-01 08:00 | 8.00 | ready for review |  |",
@@ -245,7 +245,7 @@ describe("gaps", () => {
 		]);
 		const timeline = Timeline.from({ pull: pull({ commits, timelineItems }), runs: [] });
 		expect(rows(timeline).slice(2, 8)).toEqual([
-			"| 2026-10-01 00:00 | 0.00 | pull request opened | #1 by a |",
+			"| 2026-10-01 00:00 | 0.00 | pull request opened | \\#1 by a |",
 			"| 2026-10-01 00:00 | 0.00 | commit | 11111111 |",
 			"|  |  | gap | 2.0 h |",
 			"| 2026-10-01 02:00 | 2.00 | review | commented by ghost |",
@@ -259,7 +259,7 @@ describe("Timing rows", () => {
 	it("reads a Timing line from the pull request's description, at its opening", () => {
 		const timeline = Timeline.from({ pull: pull({ body: "Closes #2\n\nTiming: gate 5 min" }), runs: [] });
 		expect(rows(timeline).slice(2, 4)).toEqual([
-			"| 2026-10-01 00:00 | 0.00 | pull request opened | #1 by a |",
+			"| 2026-10-01 00:00 | 0.00 | pull request opened | \\#1 by a |",
 			"| 2026-10-01 00:00 | 0.00 | Timing | gate 5 min |",
 		]);
 	});
@@ -287,8 +287,8 @@ describe("stages", () => {
 		};
 		const timeline = Timeline.from({ pull: pull({ closingIssuesReferences: page([issue]) }), runs: [] });
 		expect(rows(timeline).filter((row) => row.includes("Claim"))).toEqual([
-			"| 2026-10-01 01:30 | 1.50 | Claim | #7 by me |",
-			"| 2026-10-01 01:45 | 1.75 | Claim | #7 by late |",
+			"| 2026-10-01 01:30 | 1.50 | Claim | \\#7 by me |",
+			"| 2026-10-01 01:45 | 1.75 | Claim | \\#7 by late |",
 		]);
 		expect(rows(timeline).slice(-6)).toEqual([
 			"| ready to claim | 1.50 |  |",
@@ -658,7 +658,7 @@ describe("printed text", () => {
 		];
 		const timeline = Timeline.from({ pull: pull(), runs });
 		expect(rows(timeline)).toContain(
-			"| 2026-10-01 01:00 | 1.00 | CI build\\u000a\\u001b[2J\\|x | 11111111, success, 10.0 min |",
+			"| 2026-10-01 01:00 | 1.00 | CI build\\u000a\\u001b\\[2J\\|x | 11111111, success, 10.0 min |",
 		);
 	});
 
@@ -693,6 +693,17 @@ describe("visible text", () => {
 		expect(rows(timeline)).toContain(
 			"| 2026-10-01 01:00 | 1.00 | CI a\\u202eb\\u2028c\\u001bd | 11111111, success, 10.0 min |",
 		);
+	});
+});
+
+describe("Markdown text", () => {
+	it("escapes a cell as Markdown text, so a commenter cannot plant a live link in the table", () => {
+		const body = "Timing: \\[approved\\]\\(https://evil.example\\)";
+		const timelineItems = page([
+			{ __typename: "IssueComment", createdAt: "2026-10-01T01:00:00.000Z", body, author: { login: "b" } },
+		]);
+		const timeline = Timeline.from({ pull: pull({ timelineItems }), runs: [] });
+		expect(rows(timeline)).toContain("| 2026-10-01 01:00 | 1.00 | Timing | \\[approved]\\(https://evil.example) |");
 	});
 });
 
