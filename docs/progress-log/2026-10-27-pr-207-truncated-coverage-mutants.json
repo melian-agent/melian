@@ -1,0 +1,192 @@
+{
+  "mutants": [
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 262,
+      "column": 4,
+      "endLine": 262,
+      "endColumn": 107,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "Ignored",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "claim": "new-test",
+      "evidence": "packages/pipeline/test/graph-tools.test.ts > graph tools > records coverage for delivered lines in truncated read_file results",
+      "survivorClasses": [
+        "dropped-value"
+      ],
+      "run": {
+        "status": "killed",
+        "exitCode": 1,
+        "command": [
+          "npx",
+          "vitest",
+          "--run",
+          "packages/pipeline/test/graph-tools.test.ts",
+          "-t",
+          "records coverage for delivered lines in truncated read_file results"
+        ],
+        "log": "tmp/pr-207-truncated-coverage/mutant-1.log",
+        "durationSeconds": 5.34,
+        "failure": "AssertionError: expected '<untrusted-22f7298526cbf86dfa109d40 l\u2026' to be '<untrusted-22f7298526cbf86dfa109d40 l\u2026' // Object.is equality"
+      }
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 262,
+      "column": 33,
+      "endLine": 262,
+      "endColumn": 52,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "rows.length + count",
+      "claim": "new-test",
+      "evidence": "packages/pipeline/test/graph-tools.test.ts > graph tools > records coverage for delivered lines in truncated read_file results",
+      "survivorClasses": [],
+      "run": {
+        "status": "killed",
+        "exitCode": 1,
+        "command": [
+          "npx",
+          "vitest",
+          "--run",
+          "packages/pipeline/test/graph-tools.test.ts",
+          "-t",
+          "records coverage for delivered lines in truncated read_file results"
+        ],
+        "log": "tmp/pr-207-truncated-coverage/mutant-2.log",
+        "durationSeconds": 3.24,
+        "failure": "AssertionError: expected '<untrusted-dc74fdd4d077f9690193b659 l\u2026' to be '<untrusted-dc74fdd4d077f9690193b659 l\u2026' // Object.is equality"
+      }
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 264,
+      "column": 8,
+      "endLine": 264,
+      "endColumn": 87,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "claim": "new-test",
+      "evidence": "packages/pipeline/test/graph-tools.test.ts > graph tools > records coverage for delivered lines in truncated read_file results",
+      "survivorClasses": [
+        "dropped-value"
+      ],
+      "run": {
+        "status": "killed",
+        "exitCode": 1,
+        "command": [
+          "npx",
+          "vitest",
+          "--run",
+          "packages/pipeline/test/graph-tools.test.ts",
+          "-t",
+          "records coverage for delivered lines in truncated read_file results"
+        ],
+        "log": "tmp/pr-207-truncated-coverage/mutant-3.log",
+        "durationSeconds": 2.51,
+        "failure": "AssertionError: expected [] to deeply equal [ { lens: 'correctness', \u2026(4) } ]"
+      }
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 264,
+      "column": 19,
+      "endLine": 264,
+      "endColumn": 85,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "claim": "new-test",
+      "evidence": "packages/pipeline/test/graph-tools.test.ts > graph tools > records coverage for delivered lines in truncated read_file results",
+      "survivorClasses": [
+        "dropped-value"
+      ],
+      "run": {
+        "status": "killed",
+        "exitCode": 1,
+        "command": [
+          "npx",
+          "vitest",
+          "--run",
+          "packages/pipeline/test/graph-tools.test.ts",
+          "-t",
+          "records coverage for delivered lines in truncated read_file results"
+        ],
+        "log": "tmp/pr-207-truncated-coverage/mutant-4.log",
+        "durationSeconds": 4.69,
+        "failure": "AssertionError: expected [] to deeply equal [ { lens: 'correctness', \u2026(4) } ]"
+      }
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 264,
+      "column": 20,
+      "endLine": 264,
+      "endColumn": 84,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "claim": "new-test",
+      "evidence": "packages/pipeline/test/graph-tools.test.ts > graph tools > records coverage for delivered lines in truncated read_file results",
+      "survivorClasses": [
+        "dropped-value"
+      ],
+      "run": {
+        "status": "killed",
+        "exitCode": 1,
+        "command": [
+          "npx",
+          "vitest",
+          "--run",
+          "packages/pipeline/test/graph-tools.test.ts",
+          "-t",
+          "records coverage for delivered lines in truncated read_file results"
+        ],
+        "log": "tmp/pr-207-truncated-coverage/mutant-5.log",
+        "durationSeconds": 5.34,
+        "failure": "See log"
+      }
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 264,
+      "column": 51,
+      "endLine": 264,
+      "endColumn": 82,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "Ignored",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "claim": "new-test",
+      "evidence": "packages/pipeline/test/graph-tools.test.ts > graph tools > records coverage for delivered lines in truncated read_file results",
+      "survivorClasses": [
+        "dropped-value"
+      ],
+      "run": {
+        "status": "killed",
+        "exitCode": 1,
+        "command": [
+          "npx",
+          "vitest",
+          "--run",
+          "packages/pipeline/test/graph-tools.test.ts",
+          "-t",
+          "records coverage for delivered lines in truncated read_file results"
+        ],
+        "log": "tmp/pr-207-truncated-coverage/mutant-6.log",
+        "durationSeconds": 5.31,
+        "failure": "AssertionError: expected [] to deeply equal [ { lens: 'correctness', \u2026(4) } ]"
+      }
+    }
+  ],
+  "total": 6,
+  "omitted": 0,
+  "unmutated": [],
+  "base": "cf24bd8811f40e15c22c32e5f9df711728670347",
+  "testFile": "packages/pipeline/test/graph-tools.test.ts",
+  "test": "records coverage for delivered lines in truncated read_file results",
+  "enumerationCommand": "node scripts/enumerate-mutants.mjs cf24bd8811f40e15c22c32e5f9df711728670347...HEAD --json --limit 10000",
+  "summary": {
+    "killed": 6,
+    "survived": 0,
+    "omitted": 0
+  }
+}

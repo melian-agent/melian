@@ -12,7 +12,8 @@ function output() {
 describe("comparison arguments", () => {
 	it.each([
 		[["main...feature"], []],
-		[["#7"], [{ kind: "github", login: "coderabbitai[bot]" }]],
+		[["#7"], []],
+		[["#7", "--from", "github"], [{ kind: "github", login: "coderabbitai[bot]" }]],
 		[["#7", "--from", "github:octocat"], [{ kind: "github", login: "octocat" }]],
 		[["#7", "--from", "file:review.json"], [{ kind: "file", path: "review.json" }]],
 		[

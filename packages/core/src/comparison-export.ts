@@ -1,6 +1,7 @@
 import type { StoredComparisonAdjudication } from "./comparison-adjudication.ts";
 import type { ComparisonEntry } from "./comparison-set.ts";
 import { ComparisonSet, markdownText } from "./comparison-set.ts";
+import { ComparisonError } from "./errors.ts";
 import { visibleText } from "./render.ts";
 
 /** The markdown record of one changeset's comparison rounds; no output leaves the process here. */
@@ -15,8 +16,19 @@ export class ComparisonExport {
 		this.url = url;
 	}
 
-	/** The whole comparison document for this changeset, including replacement history. Control characters appear as JSON `\\uXXXX` escapes, so the text is safe on a terminal and parses to the same value. */
+	/** The comparison record, including replacement history. Controls appear as JSON `\\uXXXX` escapes. Refuses duplicate unattributed revision keys from different stores. */
 	renderJson(): string {
+		const stores = new Map<string, string>();
+		for (const entry of this.entries) {
+			if (entry.unattributed === undefined) continue;
+			const previous = stores.get(entry.unattributed);
+			if (previous !== undefined && previous !== entry.changeset)
+				throw new ComparisonError(
+					"unattributedCollision",
+					`cannot export JSON: unattributed revision ${entry.unattributed} occurs in stores ${previous} and ${entry.changeset}; export Markdown to show both records and their current adjudications`,
+				);
+			stores.set(entry.unattributed, entry.changeset);
+		}
 		const json = JSON.stringify(
 			{
 				comparisons: Object.fromEntries(

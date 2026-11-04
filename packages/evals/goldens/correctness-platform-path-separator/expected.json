@@ -1,0 +1,38 @@
+{
+  "pr_title": "Compare relative paths without normalisation",
+  "comments": [
+    {
+      "comment": "The native relative path is compared with a forward slash prefix without normalisation. The change removes separator normalisation. Windows relative paths use backslashes, so a pipeline source file no longer matches packages/pipeline/.",
+      "severity": "High",
+      "category": "bug",
+      "file": "src/paths.ts",
+      "rule": "wrong-result",
+      "source": "lens.correctness",
+      "cause": "introduced",
+      "failureScenario": "On Windows, isPipelineSource(\"C:\\repo\", \"C:\\repo\\packages\\pipeline\\src\\review.ts\") receives the declared absolute source paths. relative returns \"packages\\pipeline\\src\\review.ts\", so the forward slash prefix does not match and the function returns false for a pipeline source file.",
+      "evidence": [
+        {
+          "file": "src/paths.ts",
+          "line": 5,
+          "role": "cause"
+        },
+        {
+          "file": "src/paths.ts",
+          "line": 3,
+          "role": "context"
+        },
+        {
+          "file": "src/paths.ts",
+          "line": 6,
+          "role": "context"
+        },
+        {
+          "file": "src/paths.ts",
+          "line": 5,
+          "role": "context",
+          "revision": "base"
+        }
+      ]
+    }
+  ]
+}

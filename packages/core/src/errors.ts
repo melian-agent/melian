@@ -101,7 +101,9 @@ export class OutsideRepositoryError extends Error {
 	readonly repoRoot: string;
 
 	constructor(path: string, repoRoot: string) {
-		super(`${path} is outside the repository at ${repoRoot}`);
+		super(
+			`${JSON.stringify(path.slice(0, 200))}${path.length > 200 ? " [path truncated]" : ""} is outside the repository at ${repoRoot}`,
+		);
 		this.name = "OutsideRepositoryError";
 		this.path = path;
 		this.repoRoot = repoRoot;
@@ -181,6 +183,7 @@ export type RevisionErrorCode =
 	| "symlink"
 	| "binary"
 	| "invalidPattern"
+	| "tooManyFiles"
 	| "gitFailed";
 
 /** A path could not be read at a revision. `path` names it, where there is one. */
@@ -258,16 +261,17 @@ export class ModelRoutingError extends Error {
 	}
 }
 
-/** Why an external finding, a reviewer's file, or a match was refused. */
+/** Why comparison input, matching, adjudication, or export was refused. */
 export type ComparisonErrorCode =
 	| "invalidFinding"
 	| "invalidFile"
 	| "unknownExternal"
 	| "unknownMelian"
 	| "unknownFinding"
-	| "invalidAdjudication";
+	| "invalidAdjudication"
+	| "unattributedCollision";
 
-/** An external finding, a reviewer's file, or a match was refused. `path` names the file or JSON pointer at fault. */
+/** Comparison input, matching, adjudication, or export was refused. `path` names the file or JSON pointer at fault. */
 export class ComparisonError extends Error {
 	readonly code: ComparisonErrorCode;
 	readonly path: string | undefined;
