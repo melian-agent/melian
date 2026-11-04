@@ -1,9 +1,16 @@
 import * as fs from "node:fs";
 import * as fsp from "node:fs/promises";
 import { join } from "node:path";
-import { Changeset, Comparison, ComparisonError, Lens, LensError } from "@melian-agent/core";
+import { Changeset, Comparison, ComparisonError, Lens, LensError, pullRequestChangesetId } from "@melian-agent/core";
 import { buildGoldenRepository, loadGoldens } from "@melian-agent/evals";
-import { CompareHarness, ComparisonReader, createMemoryStorage, FileImporter } from "@melian-agent/pipeline";
+import {
+	CompareHarness,
+	ComparisonReader,
+	createMemoryStorage,
+	FileImporter,
+	MembershipReader,
+	PullRequestRoundHistory,
+} from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type Io, StoredReview } from "../src/commands.ts";
@@ -16,6 +23,7 @@ import {
 	matchByHand,
 	parseImportSource,
 } from "../src/compare.ts";
+import { ComparisonStores } from "../src/comparison-stores.ts";
 import * as repository from "../src/repository.ts";
 import { CliError } from "../src/repository.ts";
 
@@ -52,6 +60,19 @@ afterEach(async () => {
 });
 
 describe("comparison command failures", () => {
+	it("keeps explicit pull request imports on the current-revision comparison path", async () => {
+		const imported = {
+			source: "file:review.json",
+			import: async () => ({ findings: [], skippedBodies: 0, reviewers: [] }),
+		};
+		vi.spyOn(FileImporter, "open").mockResolvedValue(imported as never);
+		vi.spyOn(harness, "importFindings").mockResolvedValue(
+			Comparison.of({ base: "a".repeat(40), head: "b".repeat(40) }),
+		);
+		expect(await compare(io, "#7", [{ kind: "file", path: "review.json" }])).toBe(0);
+		expect(FileImporter.open).toHaveBeenCalledExactlyOnceWith("review.json", { cwd: io.cwd, repoRoot: repo });
+	});
+
 	it("refuses missing storage before opening a harness", async () => {
 		vi.spyOn(fs, "existsSync").mockReturnValue(false);
 
@@ -210,6 +231,12 @@ describe("comparison command guards", () => {
 });
 
 describe("stored comparison reading and export", () => {
+	beforeEach(() => {
+		vi.spyOn(MembershipReader, "open").mockReturnValue({
+			candidates: async () => [],
+			history: async () => PullRequestRoundHistory.from([]),
+		} as never);
+	});
 	const dir = "/state/scripted";
 	const names = ["range-bbbbbbbbbbbbbbbb.sqlite", "pull-cccccccccccccccc.sqlite", "range-aaaaaaaaaaaaaaaa.sqlite"];
 	const entry = () => {
@@ -222,6 +249,7 @@ describe("stored comparison reading and export", () => {
 		vi.spyOn(fsp, "readdir").mockResolvedValue([
 			...names,
 			"range-zzzz.sqlite",
+			"prefix-range-aaaaaaaaaaaaaaaa.sqlite",
 			"range-aaaaaaaaaaaaaaaa.sqlite-wal",
 			"other.sqlite",
 		] as never);
@@ -307,11 +335,19 @@ describe("stored comparison reading and export", () => {
 		["#7", "git@github.com:o/r.git", "(https://github.com/o/r/pull/7)"],
 		["#7", "https://github.com/o/r.git", "(https://github.com/o/r/pull/7)"],
 		["#7", "https://github.com/o/r", "(https://github.com/o/r/pull/7)"],
-		["#7", "https://gitlab.com/o/r.git", undefined],
-		["#7", "https://github.com/o", undefined],
-		["#7", new Error("no such remote"), undefined],
+		["main...feature", "https://gitlab.com/o/r.git", undefined],
+		["main...feature", "https://github.com/o", undefined],
+		["main...feature", new Error("no such remote"), undefined],
 		["main...feature", "git@github.com:o/r.git", undefined],
 	])("links %s only when it is a pull request", async (argument, remote, link) => {
+		if (argument === "#7")
+			vi.spyOn(ComparisonStores, "read").mockResolvedValue({
+				entries: [{ ...entry(), changeset: pullRequestChangesetId("github", { owner: "o", name: "r" }, 7) }],
+				histories: new Map(),
+				candidates: [],
+				repoRoot: repo,
+				directory: "/state/scripted",
+			} as never);
 		if (remote instanceof Error) vi.spyOn(repository, "git").mockRejectedValue(remote);
 		else vi.spyOn(repository, "git").mockResolvedValue(remote);
 		vi.spyOn(ComparisonReader, "open").mockReturnValue({ read: async () => [entry()] } as never);
