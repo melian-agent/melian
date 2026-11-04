@@ -192,6 +192,7 @@ const pull = (overrides = {}) => ({
 	number: 1,
 	createdAt: "2026-10-01T00:00:00.000Z",
 	headRefName: "b",
+	baseRefName: "main",
 	body: "",
 	author: { login: "a" },
 	closingIssuesReferences: page([]),
@@ -472,6 +473,81 @@ describe("fetch", () => {
 			"created=2026-10-01T00:00:00.000Z..2026-10-02T00:00:00Z",
 			"-f",
 			"per_page=100",
+		]);
+	});
+
+	const run = (name, extra) => ({
+		name,
+		event: "push",
+		head_branch: "b",
+		head_sha: "0".repeat(40),
+		status: "completed",
+		conclusion: "success",
+		run_started_at: "2026-10-01T01:00:00Z",
+		updated_at: "2026-10-01T01:10:00Z",
+		...extra,
+	});
+	const ciRows = (gh) =>
+		Timeline.fetch({ number: 1, repo: "o/r", gh, now: "2026-10-09T00:00:00Z" })
+			.render()
+			.split("\n")
+			.filter((row) => /^\| \d{4}-.* \| CI /.test(row));
+
+	it("keeps a branch run only when its commit is one of the pull request's commits or force-push tips", () => {
+		const commits = page([commit("a".repeat(40), start)]);
+		const timelineItems = page([
+			{
+				__typename: "HeadRefForcePushedEvent",
+				createdAt: "2026-10-01T00:30:00Z",
+				beforeCommit: { oid: "b".repeat(40) },
+				afterCommit: { oid: "c".repeat(40) },
+			},
+			{
+				__typename: "HeadRefForcePushedEvent",
+				createdAt: "2026-10-01T00:40:00Z",
+				beforeCommit: null,
+				afterCommit: null,
+			},
+		]);
+		const runs = [
+			run("ours", { head_sha: "a".repeat(40) }),
+			run("replaced", { head_sha: "b".repeat(40) }),
+			run("pushed", { head_sha: "c".repeat(40) }),
+			run("reused branch name", { head_sha: "9".repeat(40) }),
+		];
+		const branch = [{ total_count: 4, workflow_runs: runs }];
+		const { gh } = github(pull({ commits, timelineItems }), { branch, group: empty });
+		expect(ciRows(gh).map((row) => row.split("|")[3].trim())).toEqual(["CI ours", "CI replaced", "CI pushed"]);
+	});
+
+	it("keeps a merge-group run only when its whole branch name is this pull request's queue branch on its base", () => {
+		const sha = "f".repeat(40);
+		const names = [
+			`gh-readonly-queue/release.1/pr-1-${sha}`,
+			`gh-readonly-queue/releasex1/pr-1-${sha}`,
+			`gh-readonly-queue/release/pr-1-old/pr-7-${sha}`,
+			`gh-readonly-queue/release.1/pr-1-${sha}0`,
+			`x/gh-readonly-queue/release.1/pr-1-${sha}`,
+			`gh-readonly-queue/release.1/pr-1-${"F".repeat(40)}`,
+			`gh-readonly-queue/release.1/pr-11-${sha}`,
+		];
+		const group = [
+			{
+				total_count: names.length,
+				workflow_runs: names.map((head_branch, i) => run(`q${i}`, { event: "merge_group", head_branch })),
+			},
+		];
+		const { gh } = github(pull({ baseRefName: "release.1" }), { branch: empty, group });
+		expect(ciRows(gh).map((row) => row.split("|")[3].trim())).toEqual(["CI q0"]);
+	});
+
+	it("shows a run's attempt only when it is above 1", () => {
+		const commits = page([commit("a".repeat(40), start)]);
+		const runs = [1, 2].map((attempt) => run(`try ${attempt}`, { head_sha: "a".repeat(40), run_attempt: attempt }));
+		const { gh } = github(pull({ commits }), { branch: [{ total_count: 2, workflow_runs: runs }], group: empty });
+		expect(ciRows(gh).map((row) => row.split("|")[4].trim())).toEqual([
+			"aaaaaaaa, success, 10.0 min",
+			"aaaaaaaa, success, 10.0 min, attempt 2",
 		]);
 	});
 

@@ -6,7 +6,7 @@ export const HOUR = 3_600_000;
 export const QUERY = `query($owner: String!, $name: String!, $number: Int!) {
   repository(owner: $owner, name: $name) {
     pullRequest(number: $number) {
-      number createdAt headRefName body author { login }
+      number createdAt headRefName baseRefName body author { login }
       closingIssuesReferences(first: 10) {
         pageInfo { hasNextPage }
         nodes {
@@ -134,8 +134,19 @@ export class Timeline {
 		const lifetime = ["-f", `created=${pull.createdAt}..${merge?.createdAt ?? now}`, "-f", "per_page=100"];
 		const branch = runs(["-f", `branch=${pull.headRefName}`, ...lifetime]);
 		const group = runs(["-f", "event=merge_group", ...lifetime]);
-		const queued = group.filter((run) => run.head_branch.includes(`/pr-${number}-`));
-		return Timeline.from({ pull, runs: [...branch, ...queued] });
+		// A run belongs to this pull request by commit, never by branch name, which another pull request can reuse.
+		const tips = new Set([
+			...pull.commits.nodes.map(({ commit }) => commit.oid),
+			...pull.timelineItems.nodes
+				.filter((node) => node.__typename === "HeadRefForcePushedEvent")
+				.flatMap((node) => [node.beforeCommit, node.afterCommit])
+				.filter((tip) => tip !== null)
+				.map((tip) => tip.oid),
+		]);
+		const base = pull.baseRefName.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
+		const queue = new RegExp(`^gh-readonly-queue/${base}/pr-${number}-[0-9a-f]{40}$`);
+		const ours = branch.filter((run) => tips.has(run.head_sha));
+		return Timeline.from({ pull, runs: [...ours, ...group.filter((run) => queue.test(run.head_branch))] });
 	}
 
 	static from({ pull, runs }) {
@@ -213,10 +224,11 @@ export class Timeline {
 		for (const run of runs) {
 			const minutes = (Date.parse(run.updated_at) - Date.parse(run.run_started_at)) / 60_000;
 			const where = run.event === "merge_group" ? "merge group" : run.head_sha.slice(0, 8);
+			const attempt = run.run_attempt > 1 ? `, attempt ${run.run_attempt}` : "";
 			add(
 				run.run_started_at,
 				`CI ${run.name}`,
-				`${where}, ${run.conclusion ?? run.status}, ${minutes.toFixed(1)} min`,
+				`${where}, ${run.conclusion ?? run.status}, ${minutes.toFixed(1)} min${attempt}`,
 				run.updated_at,
 			);
 		}
