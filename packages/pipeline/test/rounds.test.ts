@@ -306,6 +306,80 @@ async function oldStorage(name = "pending") {
 	return { path, storage: await openSqliteStorage(path) };
 }
 
+it("reopens main's version-2 rounds with split legacy keys and preserved verdict caveats", async () => {
+	const directory = realpathSync(mkdtempSync(join(tmpdir(), "melian-rounds-main-v2-")));
+	scratch.push(directory);
+	const path = join(directory, "rounds.sqlite");
+	copyFileSync(new URL("./fixtures/rounds-main-v2/rounds-v2.sqlite", import.meta.url), path);
+	const captured = JSON.parse(
+		readFileSync(new URL("./fixtures/rounds-main-v2/recorded.json", import.meta.url), "utf8"),
+	) as {
+		headOnly: string;
+		legacyRound: string;
+		state: ReturnType<typeof RoundsDocument.definition.initial>;
+	};
+	const storage = await openSqliteStorage(path);
+	try {
+		const record = await storage.findDocument(
+			{ kind: "melian.rounds", scope: { kind: "conversation", conversationId: ROOT_CONVERSATION_ID } },
+			"current",
+			context,
+		);
+		expect((await storage.document(record!.id, "current", context))!.version).toEqual(2);
+		const decided = captured.state.items.r1!;
+		const expected: ReturnType<typeof RoundsDocument.definition.initial> = {
+			...captured.state,
+			items: {
+				[captured.legacyRound]: {
+					...captured.state.items[captured.legacyRound]!,
+					base: "",
+					head: captured.headOnly,
+					legacyKey: captured.headOnly,
+				},
+				r1: {
+					...decided,
+					verdict: {
+						...decided.verdict!,
+						notRun: [
+							{
+								name: "lens.contracts",
+								status: "skipped",
+								reason:
+									"triage chose quick for every lens, so the whole review looked lightly, at a change that can steer triage",
+								caveats: [
+									"triage chose quick for every lens, so the whole review looked lightly, at a change that can steer triage",
+								],
+							},
+						],
+						ran: [
+							{
+								name: "lens.correctness",
+								status: "ran",
+								reason: "Callers unavailable: graph absent",
+								caveats: [
+									"callers were unavailable for every changed site, so no lens saw who calls the changed code: graph absent",
+								],
+							},
+						],
+					},
+				},
+			},
+		};
+		expect(await new RoundReader(storage).read("main-v2")).toEqual([
+			new Round(`main-v2.${captured.legacyRound}`, expected.items[captured.legacyRound]!),
+			new Round("main-v2.r1", expected.items.r1!),
+		]);
+		const reopened = await openHarness(storage, { models: fake.models, registry: createReviewRegistry() });
+		try {
+			expect(await reopened.snapshot(rounds, (await reopened.root(context)).id, context)).toEqual(expected);
+		} finally {
+			await reopened.close(context);
+		}
+	} finally {
+		await storage.close(context);
+	}
+});
+
 it.each(["import", "adjudicate"])("records the legacy verdict before a comparison %s", async (command) => {
 	const { storage } = await oldStorage("decided");
 	const comparison = await CompareHarness.open(storage, fake.review, "change");
