@@ -4,6 +4,7 @@
 // - a pull request closing several issues reads the first issue's ready and claim.
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { toString as markdownText } from "mdast-util-to-string";
+import { visibleText } from "../packages/core/src/render.ts";
 
 export const HOUR = 3_600_000;
 
@@ -77,13 +78,7 @@ export function parseTiming(body) {
 }
 
 const login = (node) => node.author?.login ?? "ghost";
-const REPLACEMENT = String.fromCharCode(0xfffd);
-const control = (code) => code < 0x20 || (code >= 0x7f && code <= 0x9f);
-// Comment text reaches the terminal, so no control character, ESC included, may reach it unchanged.
-const cell = (text) =>
-	[...text.replaceAll("|", "\\|").replaceAll("\n", " ")]
-		.map((char) => (control(char.codePointAt(0)) ? REPLACEMENT : char))
-		.join("");
+const cell = (text) => visibleText(text).replaceAll("|", "\\|");
 const row = (...cells) => `| ${cells.map(cell).join(" | ")} |`;
 const stamp = (ms) => new Date(ms).toISOString().slice(0, 16).replace("T", " ");
 

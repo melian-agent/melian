@@ -644,7 +644,6 @@ describe("queued runs", () => {
 
 describe("printed text", () => {
 	it("sanitises the event column as well, so a workflow name cannot break the table or reach the terminal raw", () => {
-		const replaced = String.fromCharCode(0xfffd);
 		const name = `build\n${String.fromCharCode(0x1b)}[2J|x`;
 		const runs = [
 			{
@@ -659,21 +658,41 @@ describe("printed text", () => {
 		];
 		const timeline = Timeline.from({ pull: pull(), runs });
 		expect(rows(timeline)).toContain(
-			`| 2026-10-01 01:00 | 1.00 | CI build ${replaced}[2J\\|x | 11111111, success, 10.0 min |`,
+			"| 2026-10-01 01:00 | 1.00 | CI build\\u000a\\u001b[2J\\|x | 11111111, success, 10.0 min |",
 		);
 	});
 
-	it("replaces C0 and C1 control characters, ESC and DEL among them, and keeps the characters beside each range", () => {
+	it("writes C0 and C1 control characters, ESC and DEL among them, as visible escapes and keeps the characters beside each range", () => {
 		const char = (code) => String.fromCharCode(code);
-		const replaced = char(0xfffd);
 		const text = [0x1b, 0x1f, 0x20, 0x7e, 0x7f, 0x80, 0x9b, 0x9f, 0xa0].map(char).join("");
 		const body = `Timing: x${text}y 5 min`;
 		const timelineItems = page([
 			{ __typename: "IssueComment", createdAt: "2026-10-01T01:00:00.000Z", body, author: { login: "b" } },
 		]);
 		const timeline = Timeline.from({ pull: pull({ timelineItems }), runs: [] });
-		const expected = `x${replaced}${replaced} ~${replaced}${replaced}${replaced}${replaced}${char(0xa0)}y 5 min`;
+		const expected = `x\\u001b\\u001f ~\\u007f\\u0080\\u009b\\u009f${char(0xa0)}y 5 min`;
 		expect(rows(timeline)).toContain(`| 2026-10-01 01:00 | 1.00 | Timing | ${expected} |`);
+	});
+});
+
+describe("visible text", () => {
+	it("writes a bidi override, a line separator and an ESC in a workflow name as visible escapes", () => {
+		const char = (code) => String.fromCharCode(code);
+		const runs = [
+			{
+				name: `a${char(0x202e)}b${char(0x2028)}c${char(0x1b)}d`,
+				event: "push",
+				head_sha: "1".repeat(40),
+				status: "completed",
+				conclusion: "success",
+				run_started_at: "2026-10-01T01:00:00.000Z",
+				updated_at: "2026-10-01T01:10:00.000Z",
+			},
+		];
+		const timeline = Timeline.from({ pull: pull(), runs });
+		expect(rows(timeline)).toContain(
+			"| 2026-10-01 01:00 | 1.00 | CI a\\u202eb\\u2028c\\u001bd | 11111111, success, 10.0 min |",
+		);
 	});
 });
 
