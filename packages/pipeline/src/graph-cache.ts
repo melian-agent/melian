@@ -21,8 +21,8 @@ async function bounded(path: string): Promise<string> {
 /** A disposable graph cache under the same root as tool binaries. */
 export class GraphCache {
 	readonly root: string;
-	readonly #scratch: CacheScratch;
-	private constructor(root: string, scratch: CacheScratch) {
+	readonly #scratch: CacheScratch | undefined;
+	private constructor(root: string, scratch?: CacheScratch) {
 		this.root = root;
 		this.#scratch = scratch;
 	}
@@ -31,6 +31,10 @@ export class GraphCache {
 		root = resolve(root);
 		await mkdir(join(root, "graphs"), { recursive: true });
 		return new GraphCache(root, await CacheScratch.open(root));
+	}
+	/** Opens an existing cache without creating directories or sweeping scratch entries. */
+	static openReadOnly(root: string): GraphCache {
+		return new GraphCache(resolve(root));
 	}
 	/** Treats every incomplete, corrupt, or incompatible entry as a miss. */
 	async read(parts: GraphKeyParts): Promise<GraphSnapshot | undefined> {
@@ -55,6 +59,7 @@ export class GraphCache {
 	}
 	/** Publishes a complete directory atomically; concurrent valid writers share the winner. */
 	async store(snapshot: GraphSnapshot): Promise<void> {
+		if (this.#scratch === undefined) throw new Error("Graph cache is read-only");
 		const parts = snapshot.toJSON().parts;
 		if (await this.read(parts)) return;
 		const directory = join(this.root, "graphs", snapshot.key);

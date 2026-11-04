@@ -633,7 +633,11 @@ describe("reviewChangeset", () => {
 		expect(firstLines.length).toBeGreaterThan(500);
 		expect(firstLines.length).toBeLessThan(2000);
 		const next = firstLines.length + 1;
-		expect(first!.endsWith(`[lines ${next} onward not shown; read again with startLine ${next}]`)).toBe(true);
+		expect(
+			first!.endsWith(
+				`</untrusted-${nonce}>\n[lines ${next} onward not shown; read again with startLine ${next}]\n[tool output truncated: ${2000 - firstLines.length} more lines not shown; a line too long to fit is cut]`,
+			),
+		).toBe(true);
 		expect(
 			quoted(tail!, nonce, "file")[0]!
 				.split("\n")
