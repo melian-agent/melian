@@ -118,15 +118,9 @@ export class Timeline {
 			return found;
 		};
 		const merge = pull.timelineItems.nodes.find((node) => node.__typename === "MergedEvent");
-		const branch = runs(["-f", `branch=${pull.headRefName}`, "-f", "per_page=100"]);
-		const group = runs([
-			"-f",
-			"event=merge_group",
-			"-f",
-			`created=${pull.createdAt}..${merge?.createdAt ?? now}`,
-			"-f",
-			"per_page=100",
-		]);
+		const lifetime = ["-f", `created=${pull.createdAt}..${merge?.createdAt ?? now}`, "-f", "per_page=100"];
+		const branch = runs(["-f", `branch=${pull.headRefName}`, ...lifetime]);
+		const group = runs(["-f", "event=merge_group", ...lifetime]);
 		const queued = group.filter((run) => run.head_branch.includes(`/pr-${number}-`));
 		return Timeline.from({ pull, runs: [...branch, ...queued] });
 	}

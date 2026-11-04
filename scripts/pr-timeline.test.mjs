@@ -395,6 +395,25 @@ describe("fetch", () => {
 		]);
 	});
 
+	it("searches the branch's runs over the same window, so a reused branch name brings no other pull request's runs", () => {
+		const { gh, asked } = github(pull({ timelineItems: merged }), { branch: empty, group: empty });
+		Timeline.fetch({ number: 1, repo: "o/r", gh, now: "2026-10-09T00:00:00Z" });
+		expect(asked[1]).toEqual([
+			"api",
+			"--paginate",
+			"--slurp",
+			"-X",
+			"GET",
+			"repos/o/r/actions/runs",
+			"-f",
+			"branch=b",
+			"-f",
+			"created=2026-10-01T00:00:00.000Z..2026-10-02T00:00:00Z",
+			"-f",
+			"per_page=100",
+		]);
+	});
+
 	it("searches an open pull request's merge-group runs up to now", () => {
 		const { gh, asked } = github(pull(), { branch: empty, group: empty });
 		Timeline.fetch({ number: 1, repo: "o/r", gh, now: "2026-10-09T00:00:00Z" });

@@ -25,6 +25,8 @@
 			"-f",
 			"branch=feature",
 			"-f",
+			"created=2026-10-01T04:10:00Z..2026-10-01T08:16:00Z",
+			"-f",
 			"per_page=100"
 		],
 		"stdout": "[{\"total_count\":1,\"workflow_runs\":[{\"name\":\"check\",\"event\":\"pull_request\",\"head_branch\":\"feature\",\"head_sha\":\"cccccccccccccccccccccccccccccccccccccccc\",\"status\":\"completed\",\"conclusion\":\"success\",\"run_started_at\":\"2026-10-01T04:10:30Z\",\"updated_at\":\"2026-10-01T04:25:30Z\"}]}]\n"
