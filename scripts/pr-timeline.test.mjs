@@ -95,10 +95,12 @@ describe("pr-timeline", () => {
 		expect(result.requests).toEqual(recorded);
 	});
 
-	it("prints the first cut's gaps, commits and stage totals for pull request 256 from its host recording", () => {
+	it("prints the host's table for pull request 256, with the first cut's gaps, commits and totals", () => {
 		const recording = fileURLToPath(new URL("./fixtures/pr-timeline/pr-256.json", import.meta.url));
 		const result = run(["256"], recording);
 		expect(result.status).toBe(0);
+		const printed = fileURLToPath(new URL("./fixtures/pr-timeline/pr-256.md", import.meta.url));
+		expect(result.stdout).toBe(readFileSync(printed, "utf8"));
 		const lines = result.stdout.split("\n");
 		expect(lines.filter((row) => row.includes("| gap |")).map((row) => row.split("|")[4].trim())).toEqual([
 			"18.2 h",
