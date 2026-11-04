@@ -1,23 +1,26 @@
 import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
+import { parseArgs } from "node:util";
 import { Timeline } from "./timeline.mjs";
 
-const [number, ...flags] = process.argv.slice(2);
-const option = (name) => {
-	const at = flags.indexOf(name);
-	return at === -1 ? undefined : flags[at + 1];
-};
-if (!/^\d+$/.test(number ?? "")) {
+const usage = () => {
 	console.error("usage: node scripts/pr-timeline.mjs <number> [--repo owner/name] [--record file.json]");
 	process.exit(2);
+};
+let parsed;
+try {
+	parsed = parseArgs({ allowPositionals: true, options: { repo: { type: "string" }, record: { type: "string" } } });
+} catch {
+	usage();
 }
-const record = option("--record");
+const { positionals, values } = parsed;
+if (positionals.length !== 1 || !/^\d+$/.test(positionals[0])) usage();
 const requests = [];
 const gh = (args) => {
 	const stdout = execFileSync("gh", args, { encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
 	requests.push({ args, stdout });
 	return stdout;
 };
-const timeline = Timeline.fetch({ number: Number(number), repo: option("--repo") ?? "melian-agent/melian", gh });
-if (record) writeFileSync(record, `${JSON.stringify(requests, null, "\t")}\n`);
+const timeline = Timeline.fetch({ number: Number(positionals[0]), repo: values.repo ?? "melian-agent/melian", gh });
+if (values.record) writeFileSync(values.record, `${JSON.stringify(requests, null, "\t")}\n`);
 console.log(timeline.render());

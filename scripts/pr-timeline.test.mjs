@@ -157,6 +157,20 @@ describe("pr-timeline", () => {
 		}
 	});
 
+	it("rejects an option with no value, or one it does not know, without calling gh", () => {
+		for (const args of [
+			["900", "--repo"],
+			["900", "--record"],
+			["900", "--bogus", "x"],
+			["900", "901"],
+		]) {
+			const result = run(args);
+			expect(result.status).toBe(2);
+			expect(result.stderr).toContain("usage:");
+			expect(result.requests).toEqual([]);
+		}
+	});
+
 	it("asks about melian-agent/melian when only --record is given", () => {
 		const result = run(["900", "--record", "$DIR/record.json"]);
 		expect(result.requests[0].slice(4)).toEqual([
