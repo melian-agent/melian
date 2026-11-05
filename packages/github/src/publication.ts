@@ -364,6 +364,25 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 	// A lens's other notes are for tuning Melian and stay in the ledger's run details; a caveat narrows the whole review.
 	const caveats = new Set([...(verdict.ran ?? []), ...verdict.notRun].flatMap((check) => check.caveats ?? []));
 	parts.push(...[...caveats].map((caveat) => `Reach: ${inline(caveat)}.`));
+	// The status check shows these already, so they fold for a reader who wants to dig in. They come before every
+	// section a cut to GitHub's limit can reach.
+	const reviewStatus = verdict.reviewStatus();
+	const verified =
+		verdict.all().some((finding) => finding.properties.verification !== undefined) ||
+		[...(verdict.ran ?? []), ...verdict.notRun].some((check) => check.name === "verifier");
+	parts.push(
+		folded(
+			"Verification and status",
+			[
+				...(verified
+					? [
+							`Verification: ${verdict.verificationSummary()}; ${plural(verdict.refuted?.length ?? 0, "refuted finding")} not posted.`,
+						]
+					: []),
+				`melian/review: ${reviewStatus.state} (${inline(reviewStatus.description)}).`,
+			].join("\n\n"),
+		),
+	);
 	if (verdict.counted().some((finding) => finding.properties.resolution === "acknowledge")) {
 		parts.push(
 			`Dismiss unresolved acknowledgements with a reason, then publish. Use ${code(`melian dismiss "#${draft.pullRequest}" <id> --reason <text>`)} for this pull request.`,
@@ -422,24 +441,6 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 		finding.dismissal === undefined ? [] : [`${named(finding)}: ${inline(finding.dismissal.reason)}`],
 	);
 	if (dismissed.length > 0) parts.push(["Dismissed since the last review:", "", ...dismissed].join("\n"));
-	// The status check shows these already, so they fold for a reader who wants to dig in.
-	const reviewStatus = verdict.reviewStatus();
-	const verified =
-		verdict.all().some((finding) => finding.properties.verification !== undefined) ||
-		[...(verdict.ran ?? []), ...verdict.notRun].some((check) => check.name === "verifier");
-	parts.push(
-		folded(
-			"Verification and status",
-			[
-				...(verified
-					? [
-							`Verification: ${verdict.verificationSummary()}; ${plural(verdict.refuted?.length ?? 0, "refuted finding")} not posted.`,
-						]
-					: []),
-				`melian/review: ${reviewStatus.state} (${inline(reviewStatus.description)}).`,
-			].join("\n\n"),
-		),
-	);
 	const carried = new Set(draft.carried);
 	const inBody = [
 		...draft.findings.filter(

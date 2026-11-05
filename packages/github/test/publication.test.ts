@@ -1024,6 +1024,15 @@ describe("a quiet review body", () => {
 	};
 	const shared = "The deployment always sets these values.";
 
+	it("keeps the status in a body the limit cuts from the end", () => {
+		const dismissed = Array.from({ length: 70 }, (_, index) =>
+			dismissedAs(`src/d${index}.ts`, `${index} ${"r".repeat(1000)}`),
+		);
+		const body = bodyOf(dismissed);
+		expect(body).toContain("This review was cut to fit GitHub's limit");
+		expect(body).toContain("melian/review: success (0 findings, 70 dismissed).");
+	});
+
 	it("lists dismissals that share a reason once, under the reason, and one with its own reason on its line", () => {
 		const group = ["src/a.ts", "src/b.ts", "src/c.ts"].map((file) => dismissedAs(file, shared));
 		const own = dismissedAs("src/d.ts", "Covered by the integration suite.");
@@ -1051,8 +1060,8 @@ describe("a quiet review body", () => {
 
 		const folds = [...body.matchAll(/<details>\n<summary>([^<]*)<\/summary>([\s\S]*?)<\/details>/g)];
 		expect(folds.map(([, summary]) => summary)).toEqual([
-			"3 dismissed, 1 reason",
 			"Verification and status",
+			"3 dismissed, 1 reason",
 			"2 advisories",
 		]);
 		const folded = folds.map(([whole]) => whole).join("\n");
@@ -1061,7 +1070,7 @@ describe("a quiet review body", () => {
 		for (const advisory of advisories) expect(folds[2]![2]).toContain(advisory.id);
 		// Each folded advisory keeps its marker on a line of its own, so a rerun still finds what it posted.
 		expect(markersIn(folds[2]![2]!).map(({ id }) => id)).toEqual(advisories.map(({ id }) => id));
-		for (const finding of dismissed) expect(folds[0]![2]).toContain(finding.id);
+		for (const finding of dismissed) expect(folds[1]![2]).toContain(finding.id);
 	});
 
 	it("counts every dismissed report the fold lists, merged members included", () => {
