@@ -1,38 +1,6 @@
-// What the melian-round workflow does beside running melian: raise the lens budgets to a round's, take the Codex
-// access token from a Codex login, and turn a round's output into a pull request comment. round-budgets.mjs,
-// round-codex-token.mjs and round-comment.mjs are its commands.
-import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-
-/** The round budget AGENTS.md's "Three reviews before ready" sets. */
-export const roundBudget = "budget: { findings: 8, tokens: 600000, tools: 90 }";
-// The design lens's committed budget already exceeds the round's.
-const kept = new Set(["design"]);
-
-// Only the top-level line: a level's own budget stays, as the coordinator's rounds leave it.
-export function withBudget(text, budget) {
-	const lines = text.split("\n");
-	if (lines[0] !== "---") throw new Error("a LENS.md must open with front matter");
-	const end = lines.indexOf("---", 1);
-	if (end === -1) throw new Error("a LENS.md front matter has no closing ---");
-	const at = lines.slice(1, end).findIndex((line) => line.startsWith("budget:"));
-	if (at === -1) lines.splice(end, 0, budget);
-	else if (lines[at + 1].slice("budget:".length).trimStart().startsWith("{")) lines[at + 1] = budget;
-	else throw new Error("a top-level budget must be one flow mapping on one line");
-	return lines.join("\n");
-}
-
-export function raiseBudgets(directory) {
-	const raised = [];
-	if (!existsSync(directory)) return raised;
-	for (const name of readdirSync(directory)) {
-		const path = join(directory, name, "LENS.md");
-		if (kept.has(name) || !existsSync(path)) continue;
-		writeFileSync(path, withBudget(readFileSync(path, "utf8"), roundBudget));
-		raised.push(name);
-	}
-	return raised;
-}
+// What the melian-round workflow does beside running melian: take the Codex access token from a Codex login, and
+// turn a round's output into a pull request comment. round-codex-token.mjs and round-comment.mjs are its commands.
+import { existsSync, readFileSync } from "node:fs";
 
 /**
  * The access token of a Codex login, `~/.codex/auth.json` base64-encoded as this repository's `CODEX_AUTH_B64` holds

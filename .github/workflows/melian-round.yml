@@ -93,8 +93,6 @@ jobs:
           node-version: 24
       - run: npm ci --ignore-scripts
         working-directory: head
-      - name: Raise the lens budgets to a round's
-        run: node trusted/scripts/round-budgets.mjs head/.melian/lenses
       # The logins reach only this step, which calls melian. Melian reads CLAUDE_CODE_OAUTH_TOKEN itself. The Codex
       # login's access token goes to Melian as a named bearer credential, by variable, so no file holds it, and Pi's
       # store stays empty, so nothing refreshes the login and rotates its refresh token. An expired token reads as

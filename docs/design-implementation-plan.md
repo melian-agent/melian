@@ -299,7 +299,7 @@ Planned from [the lens roadmap](decisions/2026-10-12-lens-roadmap-after-the-rese
 
 Built early, in milestone 2:
 
-- `[x]` A builder's own rounds in Actions, from [issue #270](https://github.com/melian-agent/melian/issues/270). `.github/workflows/melian-round.yml` runs on `workflow_dispatch` with a pull request number. It refuses a fork's head and a starter without write permission, runs `melian review origin/<base>...HEAD` with the head's own build at the round budgets, and comments the verdict line, the checks that did not run or left the committed routes, and every finding above advisory. It reads the Claude Code and Codex logins from repository secrets, and hands Melian only the Codex login's access token. It is not the host: no state branch, no installation token, no publication, and its store is thrown away.
+- `[x]` A builder's own rounds in Actions, from [issue #270](https://github.com/melian-agent/melian/issues/270). `.github/workflows/melian-round.yml` runs on `workflow_dispatch` with a pull request number. It refuses a fork's head and a starter without write permission, runs `melian review origin/<base>...HEAD` with the head's own build, and comments the verdict line, the checks that did not run or left the committed routes, and every finding above advisory. It reads the Claude Code and Codex logins from repository secrets, and hands Melian only the Codex login's access token. It is not the host: no state branch, no installation token, no publication, and its store is thrown away.
 
 Decided for the Actions host, not started:
 

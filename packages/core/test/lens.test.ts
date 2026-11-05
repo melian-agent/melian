@@ -247,25 +247,25 @@ describe("built-in lenses", () => {
 		writeFiles(repo, Object.fromEntries(own.map((path) => [path, readFileSync(join(melian, path), "utf8")])));
 		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
 		expect(Object.fromEntries(lenses.map((lens) => [lens.name, lens.version]))).toEqual({
-			contracts: "43fa057f7957",
-			conventions: "ab9fda3d360c",
-			correctness: "ac390a655d0e",
+			contracts: "002ebeaf1eca",
+			conventions: "ad3ba69382e8",
+			correctness: "4544ed036123",
 			design: "9d07ab879ee3",
-			durability: "910628aa27ee",
-			"removed-behaviour": "8e3474a4b315",
-			tests: "e6364f9cf7e6",
-			"trust-boundary": "e21a19e886b1",
+			durability: "21610a5290ed",
+			"removed-behaviour": "1b9f413edfc3",
+			tests: "c6a8e2ef99f2",
+			"trust-boundary": "e4d7e3f77f25",
 		});
 		const { config } = await loadConfig(repo, { kind: "worktree" }, ".");
 		const selected = Lens.select(lenses, config, ["src/index.ts"]);
 		expect(Object.fromEntries(selected.map(({ lens }) => [lens.name, lens.version]))).toEqual({
-			contracts: "61fa4ff978ef",
-			conventions: "7029ae04254f",
-			correctness: "d150d8ad1289",
+			contracts: "4b5efdb66ad1",
+			conventions: "75232e07e2e2",
+			correctness: "12ea7aa8b1c3",
 			design: "0bf14d21f254",
-			"removed-behaviour": "1131ab311d50",
-			tests: "aea7f643ccac",
-			"trust-boundary": "4c55e242b68f",
+			"removed-behaviour": "71acafc9ce35",
+			tests: "6222f0d2f3e3",
+			"trust-boundary": "e1903cfb79e1",
 		});
 	});
 
