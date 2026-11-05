@@ -658,6 +658,8 @@ identified by the discriminator `beyond the base at <id>`. A result on a blank l
 large to read, or in a symlink is identified by its message instead. Any other failure to read the
 file fails the check with `CheckError` `unreadable`: only absence is silent, as for the loaders.
 
+An `enola/god-class` result is reported only when the change adds a line inside its region. Problem: a symbol's fan-in grows when a change only adds callers, so Enola reports a new result on code the change never touched. Example: on [pull request #215](https://github.com/melian-agent/melian/pull/215), round one flagged `quoteUntrusted` in `packages/pipeline/src/untrusted.ts` for its 14 dependents; the change only called it. Solution: `staticFindings` drops a `god-class` result for which `revision.trigger` finds no hunk, and the report's notes count what it dropped.
+
 ## Publication
 
 `src/publication.ts` holds the provider port and the decisions publication makes without a host. `packages/github` implements the port; the pipeline's publish task calls it. Nothing here talks to a network.

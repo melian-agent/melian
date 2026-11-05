@@ -418,6 +418,59 @@ describe("staticFindings", () => {
 		expect(findings.map((finding) => finding.properties.cause)).toEqual(["pre-existing"]);
 	});
 
+	async function godClasses(headFiles: Record<string, string>) {
+		const base = commit({ "src/quote.ts": lines("export function quote() {}", ""), "src/use.ts": lines("1") });
+		const head = commit(headFiles);
+		const { revision } = await Changeset.resolve(repo, `${base}..${head}`);
+		const results = (uri: string, startLine: number) =>
+			normaliseEnolaSarif(
+				JSON.stringify({
+					version: "2.1.0",
+					runs: [
+						{
+							results: [
+								{
+									ruleId: "god-class",
+									level: "warning",
+									message: { text: "High fan-in symbol: quote (14 dependents)" },
+									locations: [{ physicalLocation: { artifactLocation: { uri }, region: { startLine } } }],
+								},
+							],
+						},
+					],
+				}),
+				{ root: repo, version: "0.4.27" },
+			);
+		const report = await staticFindings({
+			repoRoot: repo,
+			revision,
+			tool: "enola",
+			settings: defaultConfig.static.enola,
+			base: { ...results("src/quote.ts", 1), runs: [{ ...results("src/quote.ts", 1).runs[0], results: [] }] },
+			head: results("src/quote.ts", 1),
+		});
+		return {
+			findings: report.findings.map((finding) => [finding.ruleId, finding.properties.cause]),
+			notes: report.notes,
+		};
+	}
+
+	it("does not report enola/god-class when the change only adds callers to the symbol", async () => {
+		expect(await godClasses({ "src/use.ts": lines("quote()") })).toEqual({
+			findings: [],
+			notes: ["enola/god-class results left out, the change not editing their symbol: 1."],
+		});
+	});
+
+	it("reports enola/god-class when the change edits the symbol itself", async () => {
+		expect(
+			await godClasses({
+				"src/quote.ts": lines("export function quote(text) {}", ""),
+				"src/use.ts": lines("quote()"),
+			}),
+		).toEqual({ findings: [["enola/god-class", "introduced"]], notes: [] });
+	});
+
 	it("fails rather than guess when a result's file cannot be read", async () => {
 		const base = commit({ "src/a.ts": lines("a") });
 		const head = commit({ "src/a.ts": lines("b") });
