@@ -7,14 +7,12 @@ import { afterEach, describe, expect, it } from "vitest";
 import { fenced, marker, maxLength, RoundComment } from "./round.mjs";
 
 const script = fileURLToPath(new URL("./round-comment.mjs", import.meta.url));
-const goldenText = fileURLToPath(new URL("../packages/core/test/golden/verdict.txt", import.meta.url));
 const goldenJson = fileURLToPath(new URL("../packages/core/test/golden/verdict.json", import.meta.url));
+const golden = JSON.parse(readFileSync(goldenJson, "utf8"));
 const run = "https://github.com/melian-agent/melian/actions/runs/1";
 const head = "0123456789abcdef0123456789abcdef01234567";
-const ids = (({ findings }) => [...findings.block, ...findings.acknowledge].map((finding) => finding.properties.id))(
-	JSON.parse(readFileSync(goldenJson, "utf8")),
-);
-const header = `${marker}\nMelian round on \`0123456789ab\`, exit 2: [run](${run})`;
+const ids = [...golden.findings.block, ...golden.findings.acknowledge].map((finding) => finding.properties.id);
+const header = (exit) => `${marker}\nMelian round on \`0123456789ab\`, exit ${exit}: [run](${run})`;
 const scratch = [];
 
 function directory() {
@@ -36,23 +34,29 @@ function finding({ id = "aaaaaaaaaaaaaaaa", resolution, severity = "P1", text = 
 	};
 }
 
-function verdict(findings, status = "findings") {
-	return { status, findings: { block: [], acknowledge: [], advisory: [], silent: [], ...findings }, notRun: [] };
+function verdict({ status = "findings", blocking = false, notRun = [], ran, ...findings } = {}) {
+	return {
+		status,
+		blocking,
+		findings: { block: [], acknowledge: [], advisory: [], silent: [], ...findings },
+		notRun,
+		...(ran === undefined ? {} : { ran }),
+	};
 }
 
+const comment = (value, exitCode) => new RoundComment({ verdict: value, exitCode, runUrl: run, head }).body();
+const fence = (exit, lines) => `${header(exit)}\n\n\`\`\`text\n${lines.join("\n")}\n\`\`\`\n`;
+
 describe("RoundComment", () => {
-	it("quotes the verdict line, the checks that did not run, and every block and acknowledge finding", () => {
-		expect(RoundComment.read(goldenText, goldenJson, "2", run, head).body()).toBe(
-			[
-				header,
-				"",
-				"```text",
+	it("renders the verdict, the checks that did not run, and every block and acknowledge finding from the JSON", () => {
+		expect(RoundComment.read(goldenJson, "2", run, head).body()).toBe(
+			fence(2, [
 				"Verdict: not reviewed, blocking",
 				"",
 				"3 checks did not run:",
 				"  lens.security  failed at deep: the lens did not finish",
 				"    Error: provider returned 529",
-				"  lens.tests  ended at quick: its token budget of 50,000 ran out after 4 tool calls and 51,200 tokens",
+				"  lens.tests  ended at quick: its tokens budget of 50000 ran out",
 				"  static.tsc  skipped: no tsconfig.json at the base revision",
 				"",
 				"Above advisory: 4",
@@ -60,130 +64,198 @@ describe("RoundComment", () => {
 				`  P1 block  src/run.ts:12  lens.security  no-eval  ${ids[1]}  eval runs request input`,
 				`  P1 block  src/run.ts:50  lens.security  no-eval  ${ids[2]}  eval runs a stored template`,
 				`  P2 acknowledge  src/total.ts:9  lens.security  missing-test  ${ids[3]}  No test covers the new branch`,
-				"```",
-				"",
-			].join("\n"),
+			]),
 		);
 	});
 
-	it("says there is nothing above advisory when only advisory and silent findings stand", () => {
-		const comment = new RoundComment({
-			text: "Verdict: findings\n\nmelian/review: success (1 advisory).\n\nAdvisory: 1 finding\n",
-			verdict: verdict({
-				advisory: [finding({ resolution: "advisory" })],
-				silent: [finding({ resolution: "silent" })],
-			}),
-			exitCode: "3",
-			runUrl: run,
-			head,
-		});
-		expect(comment.body()).toBe(
-			`${header.replace("exit 2", "exit 3")}\n\n\`\`\`text\nVerdict: findings\n\nNo findings above advisory.\n\`\`\`\n`,
-		);
-	});
-
-	it("quotes a provisional block apart from the checks that did not run", () => {
-		const text = [
-			"Verdict: not reviewed",
-			"",
-			"melian/review: error (Not reviewed).",
-			"",
-			"Provisional:",
-			"  static.mutation  reused an earlier head's results",
-			"",
-			"1 check did not run:",
-			"  lens.tests  failed: the lens did not finish",
-			"",
-			"No findings.",
-		].join("\n");
-		const body = new RoundComment({
-			text,
-			verdict: verdict({}, "not-reviewed"),
-			exitCode: "2",
-			runUrl: run,
-			head,
-		}).body();
-		expect(body).toBe(
-			[
-				header,
-				"",
-				"```text",
+	it("reports a not-reviewed verdict as not reviewed, whatever else the run printed", () => {
+		const value = verdict({ status: "not-reviewed", notRun: [{ name: "lens.tests", status: "failed" }] });
+		expect(comment(value, "2")).toBe(
+			fence(2, [
 				"Verdict: not reviewed",
 				"",
-				"Provisional:",
-				"  static.mutation  reused an earlier head's results",
-				"",
 				"1 check did not run:",
-				"  lens.tests  failed: the lens did not finish",
+				"  lens.tests  failed",
 				"",
 				"No findings above advisory.",
-				"```",
-				"",
-			].join("\n"),
+			]),
 		);
 	});
 
-	it("keeps a did-not-run block that ends the output, with no blank line after it", () => {
-		const text = "Verdict: not reviewed\n\n2 checks did not run:\n  lens.a  failed: x\n  lens.b  failed: y";
-		const body = new RoundComment({
-			text,
-			verdict: verdict({}, "not-reviewed"),
-			exitCode: "2",
-			runUrl: run,
-			head,
-		}).body();
-		expect(body).toBe(
-			`${header}\n\n\`\`\`text\nVerdict: not reviewed\n\n2 checks did not run:\n  lens.a  failed: x\n  lens.b  failed: y\n\nNo findings above advisory.\n\`\`\`\n`,
+	it("renders each status at the exit code melian gives it", () => {
+		expect(comment(verdict({ status: "passed" }), "0")).toBe(
+			fence(0, ["Verdict: passed", "", "No findings above advisory."]),
+		);
+		expect(comment(verdict(), "3")).toBe(fence(3, ["Verdict: findings", "", "No findings above advisory."]));
+		expect(comment(verdict({ blocking: true }), "1")).toBe(
+			fence(1, ["Verdict: findings, blocking", "", "No findings above advisory."]),
 		);
 	});
 
-	it("says the round ended before a verdict when the output has no verdict line", () => {
-		for (const text of ["", "melian: melian.yaml does not parse\n", "  Verdict: indented, so a finding's text\n"]) {
-			expect(new RoundComment({ text, verdict: undefined, exitCode: "none", runUrl: run, head }).body()).toBe(
-				`${header.replace("exit 2", "exit none")}\n\nThe round ended before it decided a verdict. The run's log and summary say why.\n`,
+	it("reads a verdict whose exit code disagrees with its status as not reviewed", () => {
+		const cases = [
+			[verdict({ status: "passed" }), "2", "melian exited 2, which does not match a verdict that reads passed"],
+			[
+				verdict({ status: "not-reviewed" }),
+				"0",
+				"melian exited 0, which does not match a verdict that reads not reviewed",
+			],
+			[
+				verdict({ blocking: true }),
+				"3",
+				"melian exited 3, which does not match a verdict that reads findings, blocking",
+			],
+			[verdict(), "1", "melian exited 1, which does not match a verdict that reads findings"],
+			[
+				verdict({ status: "passed" }),
+				"none",
+				"melian exited none, which does not match a verdict that reads passed",
+			],
+		];
+		for (const [value, exit, problem] of cases) {
+			expect(comment(value, exit)).toBe(
+				fence(exit, ["Verdict: not reviewed", "", `${problem}; the run's log and artefact say why.`]),
 			);
 		}
 	});
 
-	it("names a finding's lines as a range, a single line, or the file alone", () => {
-		const findings = [
-			finding({ id: "1111111111111111", resolution: "block", region: { startLine: 3, endLine: 7 } }),
-			finding({ id: "2222222222222222", resolution: "block", region: { startLine: 4 } }),
-			finding({ id: "3333333333333333", resolution: "acknowledge", severity: "P2" }),
+	it("reads a missing or malformed verdict as not reviewed, naming what is wrong", () => {
+		const { findings, ...noFindings } = verdict();
+		const cases = [
+			[undefined, "melian wrote no verdict"],
+			[null, "melian wrote no verdict"],
+			["Verdict: passed", "melian wrote no verdict"],
+			[{ ...verdict(), status: "clean" }, "the verdict names no known status"],
+			[{ ...verdict(), status: "toString" }, "the verdict names no known status"],
+			[{ ...verdict(), blocking: "no" }, "the verdict does not say whether it blocks"],
+			[noFindings, "the verdict holds no findings"],
+			[{ ...verdict(), findings: null }, "the verdict holds no findings"],
+			[{ ...verdict(), findings: { acknowledge: [] } }, "the verdict holds no block or acknowledge findings"],
+			[{ ...verdict(), findings: { block: [] } }, "the verdict holds no block or acknowledge findings"],
+			[{ ...verdict(), notRun: undefined }, "the verdict does not list the checks that did not run"],
 		];
-		const body = new RoundComment({
-			text: "Verdict: findings, blocking\n",
-			verdict: verdict({ block: findings.slice(0, 2), acknowledge: findings.slice(2) }),
-			exitCode: "1",
-			runUrl: run,
-			head,
-		}).body();
-		expect(body).toContain(
-			[
+		for (const [value, problem] of cases) {
+			expect(comment(value, "3"), problem).toBe(
+				fence(3, ["Verdict: not reviewed", "", `${problem}; the run's log and artefact say why.`]),
+			);
+		}
+	});
+
+	it("reads a verdict file that is absent or not JSON as no verdict", () => {
+		const dir = directory();
+		writeFileSync(join(dir, "verdict.json"), "Verdict: passed\n");
+		for (const path of [join(dir, "absent.json"), join(dir, "verdict.json")]) {
+			expect(RoundComment.read(path, "0", run, head).verdict).toBeUndefined();
+		}
+	});
+
+	it("lists provisional checks apart from the checks that did not run, each with its level, reason and budget", () => {
+		const value = verdict({
+			status: "not-reviewed",
+			notRun: [
+				{ name: "static.mutation", status: "provisional", reason: "reused an earlier head's results" },
+				{
+					name: "lens.a",
+					status: "ended",
+					level: "careful",
+					budgetEnded: { budget: "tools", limit: 90 },
+					reason: "a note",
+				},
+				{ name: "lens.b", status: "skipped" },
+			],
+		});
+		expect(comment(value, "2")).toBe(
+			fence(2, [
+				"Verdict: not reviewed",
+				"",
+				"Provisional:",
+				"  static.mutation  provisional: reused an earlier head's results",
+				"",
+				"2 checks did not run:",
+				"  lens.a  ended at careful: its tools budget of 90 ran out; a note",
+				"  lens.b  skipped",
+				"",
+				"No findings above advisory.",
+			]),
+		);
+	});
+
+	it("lists every check that ran or did not run off the committed routes", () => {
+		const value = verdict({
+			status: "not-reviewed",
+			ran: [
+				{
+					name: "lens.design",
+					status: "ran",
+					lineage: { model: "anthropic/claude-opus-5-5", wanted: "openai-codex/gpt-5.6-sol" },
+				},
+				{ name: "lens.tests", status: "ran" },
+			],
+			notRun: [{ name: "lens.a", status: "failed", lineage: { model: "openai/gpt-5.5", outside: true } }],
+		});
+		expect(comment(value, "2")).toBe(
+			fence(2, [
+				"Verdict: not reviewed",
+				"",
+				"1 check did not run:",
+				"  lens.a  failed",
+				"",
+				"2 checks left the committed routes:",
+				"  lens.design  on anthropic/claude-opus-5-5, where policy wants openai-codex/gpt-5.6-sol",
+				"  lens.a  on openai/gpt-5.5, outside what policy accepts",
+				"",
+				"No findings above advisory.",
+			]),
+		);
+	});
+
+	it("says there is nothing above advisory when only advisory and silent findings stand", () => {
+		const value = verdict({
+			advisory: [finding({ resolution: "advisory" })],
+			silent: [finding({ resolution: "silent" })],
+		});
+		expect(comment(value, "3")).toBe(fence(3, ["Verdict: findings", "", "No findings above advisory."]));
+	});
+
+	it("names a finding's lines as a range, a single line, or the file alone", () => {
+		const value = verdict({
+			blocking: true,
+			block: [
+				finding({ id: "1111111111111111", resolution: "block", region: { startLine: 3, endLine: 7 } }),
+				finding({ id: "2222222222222222", resolution: "block", region: { startLine: 4 } }),
+			],
+			acknowledge: [finding({ id: "3333333333333333", resolution: "acknowledge", severity: "P2" })],
+		});
+		expect(comment(value, "1")).toBe(
+			fence(1, [
+				"Verdict: findings, blocking",
+				"",
 				"Above advisory: 3",
 				"  P1 block  src/a.ts:3-7  lens.correctness  rule-a  1111111111111111  A defect",
 				"  P1 block  src/a.ts:4  lens.correctness  rule-a  2222222222222222  A defect",
 				"  P2 acknowledge  src/a.ts  lens.correctness  rule-a  3333333333333333  A defect",
-				"```",
-			].join("\n"),
+			]),
 		);
 	});
 
-	it("keeps a finding's text inside the fence, whatever backticks, newlines or controls it holds", () => {
+	it("keeps a finding's text and a check's reason inside the fence, whatever backticks, newlines or controls they hold", () => {
 		const text = `Closes the fence \`\`\`\`\n@maintainer [x](https://evil)\u001b[2J${String.fromCharCode(0x202e)}`;
-		const body = new RoundComment({
-			text: "Verdict: findings, blocking\n",
-			verdict: verdict({ block: [finding({ resolution: "block", text })] }),
-			exitCode: "1",
-			runUrl: run,
-			head,
-		}).body();
-		expect(body).toBe(
+		const value = verdict({
+			blocking: true,
+			block: [finding({ resolution: "block", text })],
+			notRun: [{ name: "lens.a", status: "failed", error: "line one\r\nline two" }],
+			status: "not-reviewed",
+		});
+		expect(comment(value, "2")).toBe(
 			[
-				header.replace("exit 2", "exit 1"),
+				header(2),
 				"",
 				"`````text",
-				"Verdict: findings, blocking",
+				"Verdict: not reviewed, blocking",
+				"",
+				"1 check did not run:",
+				"  lens.a  failed",
+				"    Error: line one line two",
 				"",
 				"Above advisory: 1",
 				"  P1 block  src/a.ts  lens.correctness  rule-a  aaaaaaaaaaaaaaaa  Closes the fence ```` @maintainer [x](https://evil)\\u001b[2J\\u202e",
@@ -193,104 +265,18 @@ describe("RoundComment", () => {
 		);
 	});
 
-	it("finds the did-not-run heading only on a line of its own at the margin", () => {
-		const text = [
-			"Verdict: not reviewed",
-			"",
-			"melian/review: error (2 checks did not run: lens.a, lens.b).",
-			"",
-			"Provisional:",
-			"  static.mutation  the earlier head's run did not run:",
-			"",
-			"2 checks did not run:",
-			"  lens.a  failed: x",
-			"  lens.b  failed: y",
-		].join("\n");
-		const body = new RoundComment({
-			text,
-			verdict: verdict({}, "not-reviewed"),
-			exitCode: "2",
-			runUrl: run,
-			head,
-		}).body();
-		expect(body).toBe(
-			[
-				header,
-				"",
-				"```text",
-				"Verdict: not reviewed",
-				"",
-				"Provisional:",
-				"  static.mutation  the earlier head's run did not run:",
-				"",
-				"2 checks did not run:",
-				"  lens.a  failed: x",
-				"  lens.b  failed: y",
-				"",
-				"No findings above advisory.",
-				"```",
-				"",
-			].join("\n"),
-		);
-	});
-
 	it("fills a comment to exactly its limit, and cuts a finding that would pass it", () => {
-		const comment = (length) =>
-			new RoundComment({
-				text: "Verdict: findings, blocking\n",
-				verdict: verdict({ block: [finding({ resolution: "block", text: "x".repeat(length) })] }),
-				exitCode: "1",
-				runUrl: run,
-				head,
-			}).body();
-		const room = maxLength - comment(0).length;
-		expect(comment(room)).toHaveLength(maxLength);
-		expect(comment(room)).not.toContain("more lines");
-		expect(comment(room + 1)).toContain("... 1 more lines; the run's artefact has them all.");
-		expect(comment(room + 1).length).toBeLessThanOrEqual(maxLength);
-	});
-
-	it("says the findings could not be read when the verdict file is missing, rather than that there are none", () => {
-		const body = new RoundComment({
-			text: "Verdict: findings, blocking\n",
-			verdict: undefined,
-			exitCode: "1",
-			runUrl: run,
-			head,
-		}).body();
-		expect(body).toBe(
-			`${header.replace("exit 2", "exit 1")}\n\n\`\`\`text\nVerdict: findings, blocking\n\nThe findings could not be read; the run's artefact holds the whole output.\n\`\`\`\n`,
-		);
-	});
-
-	it("keeps every check that did not run when an error holds a blank line", () => {
-		const text = [
-			"Verdict: not reviewed",
-			"",
-			"2 checks did not run:",
-			"  lens.a  failed: boom",
-			"    Error: first",
-			"    ",
-			"    more",
-			"  lens.b  failed: y",
-			"",
-			"No findings.",
-		].join("\n");
-		const body = new RoundComment({
-			text,
-			verdict: verdict({}, "not-reviewed"),
-			exitCode: "2",
-			runUrl: run,
-			head,
-		}).body();
-		expect(body).toBe(
-			`${header}\n\n\`\`\`text\nVerdict: not reviewed\n\n2 checks did not run:\n  lens.a  failed: boom\n    Error: first\n\n    more\n  lens.b  failed: y\n\nNo findings above advisory.\n\`\`\`\n`,
-		);
+		const body = (length) =>
+			comment(verdict({ blocking: true, block: [finding({ resolution: "block", text: "x".repeat(length) })] }), "1");
+		const room = maxLength - body(0).length;
+		expect(body(room)).toHaveLength(maxLength);
+		expect(body(room)).not.toContain("more lines");
+		expect(body(room + 1)).toContain("... 1 more lines; the run's artefact has them all.");
+		expect(body(room + 1).length).toBeLessThanOrEqual(maxLength);
 	});
 
 	it("prints an exit code that is not a number or none as unknown, outside the fence", () => {
-		const exit = (exitCode) =>
-			new RoundComment({ text: "", verdict: undefined, exitCode, runUrl: run, head }).body().split("\n")[1];
+		const exit = (exitCode) => comment(verdict({ status: "passed" }), exitCode).split("\n")[1];
 		expect(exit("0\n\nVerdict: passed")).toBe(`Melian round on \`0123456789ab\`, exit unknown: [run](${run})`);
 		expect(exit("1234")).toBe(`Melian round on \`0123456789ab\`, exit unknown: [run](${run})`);
 		expect(exit("")).toBe(`Melian round on \`0123456789ab\`, exit unknown: [run](${run})`);
@@ -298,53 +284,8 @@ describe("RoundComment", () => {
 		expect(exit("none")).toBe(`Melian round on \`0123456789ab\`, exit none: [run](${run})`);
 	});
 
-	it("quotes the checks that left the committed routes, so a round on a derived route says so", () => {
-		const text = [
-			"Verdict: passed",
-			"",
-			"melian/review: success (2 checks left the committed routes: lens.design, verifier).",
-			"",
-			"Provisional:",
-			"  static.mutation  reused a run whose checks left the committed routes:",
-			"",
-			"1 check left the committed routes:",
-			"  lens.design  on anthropic/claude-opus-5-5, derived, since no model of its route has credentials, where",
-			"    policy wants openai-codex/gpt-5.6-sol and accepts anthropic/claude-opus-5-5",
-			"",
-			"No findings.",
-		].join("\n");
-		const body = new RoundComment({ text, verdict: verdict({}, "passed"), exitCode: "0", runUrl: run, head }).body();
-		expect(body).toBe(
-			[
-				header.replace("exit 2", "exit 0"),
-				"",
-				"```text",
-				"Verdict: passed",
-				"",
-				"Provisional:",
-				"  static.mutation  reused a run whose checks left the committed routes:",
-				"",
-				"1 check left the committed routes:",
-				"  lens.design  on anthropic/claude-opus-5-5, derived, since no model of its route has credentials, where",
-				"    policy wants openai-codex/gpt-5.6-sol and accepts anthropic/claude-opus-5-5",
-				"",
-				"No findings above advisory.",
-				"```",
-				"",
-			].join("\n"),
-		);
-	});
-
 	it("opens with the marker a later job counts its rounds by", () => {
-		const body = new RoundComment({ text: "", verdict: undefined, exitCode: "none", runUrl: run, head }).body();
-		expect(body.startsWith("<!-- melian-round -->\nMelian round on ")).toBe(true);
-	});
-
-	it("reads absent files as an empty round with no verdict", () => {
-		const dir = directory();
-		const comment = RoundComment.read(join(dir, "round.txt"), join(dir, "verdict.json"), "none", run, head);
-		expect(comment.text).toBe("");
-		expect(comment.verdict).toBeUndefined();
+		expect(comment(undefined, "none").startsWith("<!-- melian-round -->\nMelian round on ")).toBe(true);
 	});
 });
 
@@ -385,15 +326,13 @@ describe("fenced", () => {
 });
 
 describe("the command", () => {
-	it("prints a comment from files, and refuses to run without every argument", () => {
-		const ran = spawnSync(process.execPath, [script, goldenText, goldenJson, "2", run, head], { encoding: "utf8" });
+	it("prints a comment from the verdict file, and refuses to run without every argument", () => {
+		const ran = spawnSync(process.execPath, [script, goldenJson, "2", run, head], { encoding: "utf8" });
 		expect(ran.status).toBe(0);
-		expect(ran.stdout).toBe(RoundComment.read(goldenText, goldenJson, "2", run, head).body());
-		const short = spawnSync(process.execPath, [script, goldenText, goldenJson, "2", run], { encoding: "utf8" });
+		expect(ran.stdout).toBe(RoundComment.read(goldenJson, "2", run, head).body());
+		const short = spawnSync(process.execPath, [script, goldenJson, "2", run], { encoding: "utf8" });
 		expect(short.status).toBe(64);
-		expect(short.stderr).toBe(
-			"usage: node scripts/round-comment.mjs <round.txt> <verdict.json> <exit> <run URL> <head>\n",
-		);
+		expect(short.stderr).toBe("usage: node scripts/round-comment.mjs <verdict.json> <exit> <run URL> <head>\n");
 	});
 
 	it("fences a file for the job summary with its controls escaped, and says so when it is absent or empty", () => {

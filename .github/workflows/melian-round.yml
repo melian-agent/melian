@@ -1,9 +1,10 @@
 name: melian round
 
-# A builder starts a full Melian round on a writer's pull request and reads the findings back on it. A head a writer
-# pushed to this repository is trusted, so it runs with the provider secrets; a fork's head never does. The round's
-# store is thrown away: it never publishes or dismisses, since a fresh store mints a new marker secret and would orphan
-# the pull request's ledger.
+# A builder starts a full Melian round on a writer's pull request and reads the findings back on it. Melian is built
+# from the pull request's base commit and reviews the pull request as data, so the head's code runs only where Melian
+# runs it for a writer's head, in its static checks; a fork's head never runs with secrets. The round's store is thrown
+# away: it never publishes or dismisses, since a fresh store mints a new marker secret and would orphan the pull
+# request's ledger.
 
 on:
   workflow_dispatch:
@@ -53,13 +54,13 @@ jobs:
           state=$(jq -r .state "$RUNNER_TEMP/pull.json")
           head_repository=$(jq -r '.head.repo.full_name // ""' "$RUNNER_TEMP/pull.json")
           head=$(jq -r .head.sha "$RUNNER_TEMP/pull.json")
-          base=$(jq -r .base.ref "$RUNNER_TEMP/pull.json")
+          base=$(jq -r .base.sha "$RUNNER_TEMP/pull.json")
           if [ "$state" != open ]; then echo "::error::pull request $NUMBER is $state"; exit 1; fi
           if [ "$head_repository" != "$REPOSITORY" ]; then
             echo "::error::pull request $NUMBER's head is in ${head_repository:-a deleted repository}, not $REPOSITORY; a fork's head never runs with secrets"
             exit 1
           fi
-          if ! [[ "$head" =~ ^[0-9a-f]{40}$ ]]; then echo "::error::unreadable head SHA"; exit 1; fi
+          if ! [[ "$head" =~ ^[0-9a-f]{40}$ && "$base" =~ ^[0-9a-f]{40}$ ]]; then echo "::error::unreadable head or base SHA"; exit 1; fi
           echo "head=$head" >> "$GITHUB_OUTPUT"
           echo "base=$base" >> "$GITHUB_OUTPUT"
 
@@ -69,6 +70,7 @@ jobs:
     timeout-minutes: 150
     permissions:
       contents: read
+      pull-requests: read
     outputs:
       artifact: ${{ steps.artifact.outputs.name }}
     steps:
@@ -81,28 +83,30 @@ jobs:
         with:
           path: trusted
           persist-credentials: false
-      # The whole history, so origin/<base> and the merge base are present.
+      # Melian itself comes from the base commit, a revision the head cannot change. The whole history, so Melian can
+      # fetch the pull request's head and find its merge base; the credentials let it fetch refs/pull/N/head.
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
-          ref: ${{ needs.gate.outputs.head }}
-          path: head
+          ref: ${{ needs.gate.outputs.base }}
+          path: melian
           fetch-depth: 0
-          persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
       - run: npm ci --ignore-scripts
-        working-directory: head
-      # The logins reach only this step, which calls melian. Melian reads CLAUDE_CODE_OAUTH_TOKEN itself. The Codex
-      # login's access token goes to Melian as a named bearer credential, by variable, so no file holds it, and Pi's
-      # store stays empty, so nothing refreshes the login and rotates its refresh token. An expired token reads as
-      # absent, and the plan derives a Claude route, which the comment quotes as a check that left the committed routes.
+        working-directory: melian
+      # The logins reach only this step. Melian reads CLAUDE_CODE_OAUTH_TOKEN itself. The Codex login's access token
+      # goes to Melian as a named bearer credential, by variable, so no file holds it, and Pi's store stays empty, so
+      # nothing refreshes the login and rotates its refresh token. An expired token reads as absent, and the plan derives
+      # a Claude route, which the comment lists as a check that left the committed routes. The comment reads only the
+      # verdict JSON; the text output is for the summary and the artefact.
       - name: Run the round
-        working-directory: head
+        working-directory: melian
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           CODEX_AUTH_B64: ${{ secrets.CODEX_AUTH_B64 }}
-          BASE: ${{ needs.gate.outputs.base }}
+          GITHUB_TOKEN: ${{ github.token }}
+          NUMBER: ${{ inputs.pull_request }}
         run: |
           out="$RUNNER_TEMP/round"
           mkdir -p "$out" "$RUNNER_TEMP/state" "$RUNNER_TEMP/config/melian" "$RUNNER_TEMP/pi"
@@ -113,12 +117,11 @@ jobs:
             printf 'credentials:\n  actions-codex: { provider: openai-codex, env: MELIAN_CODEX_ACCESS_TOKEN }\n' > "$XDG_CONFIG_HOME/melian/secrets.yaml"
           fi
           unset token CODEX_AUTH_B64
-          git rev-parse --verify --quiet "refs/remotes/origin/$BASE" > /dev/null || { echo "::error::origin/$BASE is not in the checkout"; exit 1; }
           node packages/cli/bin/melian.js doctor > "$out/doctor.txt" 2>&1 || true
           set +e
-          node packages/cli/bin/melian.js review --no-color "origin/$BASE...HEAD" > "$out/round.txt" 2> "$out/round.err"
+          node packages/cli/bin/melian.js review "#$NUMBER" --json --no-walkthrough > "$out/verdict.json" 2> "$out/round.err"
           echo $? > "$out/exit"
-          node packages/cli/bin/melian.js findings "origin/$BASE...HEAD" --json > "$out/verdict.json" 2>> "$out/round.err" || rm -f "$out/verdict.json"
+          node packages/cli/bin/melian.js findings "#$NUMBER" --no-color > "$out/round.txt" 2>> "$out/round.err"
           exit 0
       - name: Write the job summary
         if: always()
@@ -167,5 +170,5 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           out="$RUNNER_TEMP/round"
-          node scripts/round-comment.mjs "$out/round.txt" "$out/verdict.json" "$(cat "$out/exit" 2>/dev/null || echo none)" "$RUN_URL" "$HEAD" > "$RUNNER_TEMP/comment.md"
+          node scripts/round-comment.mjs "$out/verdict.json" "$(cat "$out/exit" 2>/dev/null || echo none)" "$RUN_URL" "$HEAD" > "$RUNNER_TEMP/comment.md"
           gh pr comment "$NUMBER" --repo "$REPOSITORY" --body-file "$RUNNER_TEMP/comment.md"

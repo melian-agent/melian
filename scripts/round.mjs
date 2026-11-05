@@ -1,6 +1,6 @@
 // What the melian-round workflow does beside running melian: take the Codex access token from a Codex login, and
 // turn a round's output into a pull request comment. round-codex-token.mjs and round-comment.mjs are its commands.
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 
 /**
  * The access token of a Codex login, `~/.codex/auth.json` base64-encoded as this repository's `CODEX_AUTH_B64` holds
@@ -33,17 +33,48 @@ export function visible(text) {
 	return text.replace(invisible, (character) => `\\u${character.charCodeAt(0).toString(16).padStart(4, "0")}`);
 }
 
-// A block of the rendered verdict: its heading line and the lines under it, up to the next line at the margin. The
-// renderer indents every continuation, and a blank line inside an indented error reads as empty once trimmed.
-function section(lines, heading) {
-	const start = lines.findIndex(heading);
-	if (start === -1) return [];
-	const block = [lines[start]];
-	for (const line of lines.slice(start + 1)) {
-		if (line !== "" && !line.startsWith(" ")) break;
-		block.push(line);
-	}
-	return block.slice(0, block.findLastIndex((line) => line !== "") + 1);
+const statuses = { passed: "passed", findings: "findings", "not-reviewed": "not reviewed" };
+
+// What `melian review` exits with for a verdict, as the CLI's reviewExitCodes and ReviewOutcome decide it.
+function exitFor({ status, blocking }) {
+	if (status === "not-reviewed") return "2";
+	if (blocking) return "1";
+	return status === "passed" ? "0" : "3";
+}
+
+function oneLine(text) {
+	return visible(String(text).replace(/\r?\n/g, " "));
+}
+
+/** Why `value` is not a verdict this comment can render, or undefined when it is one. */
+function verdictProblem(value) {
+	if (typeof value !== "object" || value === null) return "melian wrote no verdict";
+	if (!Object.hasOwn(statuses, value.status)) return "the verdict names no known status";
+	if (typeof value.blocking !== "boolean") return "the verdict does not say whether it blocks";
+	const { findings } = value;
+	if (typeof findings !== "object" || findings === null) return "the verdict holds no findings";
+	if (!aboveAdvisory.every((resolution) => Array.isArray(findings[resolution])))
+		return "the verdict holds no block or acknowledge findings";
+	if (!Array.isArray(value.notRun)) return "the verdict does not list the checks that did not run";
+	return undefined;
+}
+
+function checkLines({ name, status, level, reason, error, budgetEnded }) {
+	const ended = budgetEnded === undefined ? [] : [`its ${budgetEnded.budget} budget of ${budgetEnded.limit} ran out`];
+	const why = [...ended, ...(reason === undefined ? [] : [reason])].join("; ");
+	return [
+		oneLine(`  ${name}  ${status}${level === undefined ? "" : ` at ${level}`}${why === "" ? "" : `: ${why}`}`),
+		...(error === undefined ? [] : [oneLine(`    Error: ${error}`)]),
+	];
+}
+
+function lineageLine({ name, lineage }) {
+	const wanted = lineage.wanted === undefined ? "" : `, where policy wants ${lineage.wanted}`;
+	return oneLine(`  ${name}  on ${lineage.model}${wanted}${lineage.outside ? ", outside what policy accepts" : ""}`);
+}
+
+function plural(count, noun) {
+	return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }
 
 function findingLine(finding) {
@@ -52,56 +83,61 @@ function findingLine(finding) {
 	const start = region.startLine;
 	const end = region.endLine ?? start;
 	const where = start === undefined ? path : `${path}:${start}${end === start ? "" : `-${end}`}`;
-	const line = `${severity} ${resolution}  ${where}  ${source.check}  ${finding.ruleId}  ${id}  ${finding.message.text}`;
-	return visible(line.replace(/\r?\n/g, " "));
+	return oneLine(
+		`${severity} ${resolution}  ${where}  ${source.check}  ${finding.ruleId}  ${id}  ${finding.message.text}`,
+	);
 }
 
 /**
- * The comment for one round: the run's link, the verdict line, the checks that did not run, and every finding above
- * advisory. Everything after the link comes from the round, and so from the head under review, so it sits inside one
- * code fence that no backtick run in it can close.
+ * The comment for one round, from the verdict JSON `melian review --json` wrote and nothing it printed: the run's link,
+ * the verdict, the checks that did not run or left the committed routes, and every finding above advisory. A verdict
+ * that is missing, malformed, or disagrees with the exit code reads as not reviewed. Finding text comes from models
+ * that read the head, so everything after the link sits inside one code fence that no backtick run in it can close.
  */
 export class RoundComment {
-	constructor({ text, verdict, exitCode, runUrl, head }) {
-		this.text = text;
+	constructor({ verdict, exitCode, runUrl, head }) {
 		this.verdict = verdict;
 		this.exitCode = exitCode;
 		this.runUrl = runUrl;
 		this.head = head;
 	}
 
-	static read(textPath, verdictPath, exitCode, runUrl, head) {
-		const text = existsSync(textPath) ? readFileSync(textPath, "utf8") : "";
-		const verdict = existsSync(verdictPath) ? JSON.parse(readFileSync(verdictPath, "utf8")) : undefined;
-		return new RoundComment({ text, verdict, exitCode, runUrl, head });
+	static read(verdictPath, exitCode, runUrl, head) {
+		let verdict;
+		try {
+			verdict = JSON.parse(readFileSync(verdictPath, "utf8"));
+		} catch {
+			verdict = undefined;
+		}
+		return new RoundComment({ verdict, exitCode, runUrl, head });
 	}
 
 	body() {
-		const lines = this.text.split("\n").map((line) => line.trimEnd());
-		const verdictLine = lines.find((line) => line.startsWith("Verdict: "));
-		// The exit code sits outside the fence, and the head's code could have written the file it came from.
+		// The exit code sits outside the fence.
 		const exit = /^(\d{1,3}|none)$/.test(this.exitCode) ? this.exitCode : "unknown";
 		const header = `${marker}\nMelian round on \`${this.head.slice(0, 12)}\`, exit ${exit}: [run](${this.runUrl})`;
-		if (verdictLine === undefined) {
-			return `${header}\n\nThe round ended before it decided a verdict. The run's log and summary say why.\n`;
+		const verdict = this.verdict;
+		const problem =
+			verdictProblem(verdict) ??
+			(exitFor(verdict) === this.exitCode
+				? undefined
+				: `melian exited ${exit}, which does not match a verdict that reads ${statuses[verdict.status]}${verdict.blocking ? ", blocking" : ""}`);
+		if (problem !== undefined) {
+			const quoted = ["Verdict: not reviewed", "", `${problem}; the run's log and artefact say why.`];
+			return `${header}\n\n${fenced(quoted, maxLength - header.length - 2)}`;
 		}
-		const quoted = [visible(verdictLine)];
-		const headings = [
-			(line) => line === "Provisional:",
-			(line) => /^\S.* did not run:$/.test(line),
-			(line) => /^\S.* left the committed routes:$/.test(line),
-		];
-		for (const heading of headings) {
-			const block = section(lines, heading);
-			if (block.length > 0) quoted.push("", ...block.map(visible));
-		}
-		if (this.verdict === undefined) {
-			quoted.push("", "The findings could not be read; the run's artefact holds the whole output.");
-		} else {
-			const findings = aboveAdvisory.flatMap((resolution) => this.verdict.findings[resolution]);
-			quoted.push("", findings.length === 0 ? "No findings above advisory." : `Above advisory: ${findings.length}`);
-			quoted.push(...findings.map((finding) => `  ${findingLine(finding)}`));
-		}
+		const quoted = [`Verdict: ${statuses[verdict.status]}${verdict.blocking ? ", blocking" : ""}`];
+		const provisional = verdict.notRun.filter((check) => check.status === "provisional");
+		const notRun = verdict.notRun.filter((check) => check.status !== "provisional");
+		if (provisional.length > 0) quoted.push("", "Provisional:", ...provisional.flatMap(checkLines));
+		if (notRun.length > 0)
+			quoted.push("", `${plural(notRun.length, "check")} did not run:`, ...notRun.flatMap(checkLines));
+		const lineage = [...(verdict.ran ?? []), ...verdict.notRun].filter((check) => check.lineage !== undefined);
+		if (lineage.length > 0)
+			quoted.push("", `${plural(lineage.length, "check")} left the committed routes:`, ...lineage.map(lineageLine));
+		const findings = aboveAdvisory.flatMap((resolution) => verdict.findings[resolution]);
+		quoted.push("", findings.length === 0 ? "No findings above advisory." : `Above advisory: ${findings.length}`);
+		quoted.push(...findings.map((finding) => `  ${findingLine(finding)}`));
 		return `${header}\n\n${fenced(quoted, maxLength - header.length - 2)}`;
 	}
 }
