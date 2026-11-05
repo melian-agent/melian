@@ -19,6 +19,7 @@ import {
 	staticFindings,
 	type ToolLog,
 } from "@melian-agent/core";
+import { SymbolEnds } from "./enclosing-functions.ts";
 import { replaceCheckFindings } from "./findings.ts";
 import {
 	backgroundContext,
@@ -256,6 +257,13 @@ async function runStatic(
 		head.baseLog === undefined ? await run(revision.base) : { status: "ran" as const, log: head.baseLog, notes: [] };
 	// A base without the tool's project, such as before a repository adopted TypeScript, reports nothing to subtract.
 	const empty: ToolLog = { ...head.log, runs: [{ ...head.log.runs[0], results: [] }] };
+	const symbols = head.log.runs[0].results.some((result) => result.ruleId === "god-class")
+		? await SymbolEnds.read(
+				repoRoot,
+				revision.head,
+				revision.files.map((file) => file.path),
+			)
+		: undefined;
 	const report = await staticFindings({
 		repoRoot,
 		revision,
@@ -263,6 +271,7 @@ async function runStatic(
 		settings,
 		base: base.status === "ran" ? base.log : empty,
 		head: head.log,
+		...(symbols === undefined ? {} : { symbols }),
 	});
 	const notes = [...leaveNotes, ...report.notes, ...head.notes, ...(base.status === "ran" ? base.notes : [])];
 	return {

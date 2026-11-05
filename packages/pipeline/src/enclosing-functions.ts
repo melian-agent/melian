@@ -1,4 +1,4 @@
-import { type ChangedFile, type Changeset, readRevisionFile, visibleText } from "@melian-agent/core";
+import { type ChangedFile, type Changeset, readRevisionFile, type SymbolSpans, visibleText } from "@melian-agent/core";
 import {
 	isArrowFunction,
 	isClassDeclaration,
@@ -428,5 +428,57 @@ export class EnclosingFunctions {
 		}
 		if (held.length > 0) parts.push(heldNote);
 		return parts;
+	}
+}
+
+/**
+ * Where each symbol of a TypeScript file ends at the head, read through the compiler: for every line a syntax node starts
+ * on, the last line of the outermost such node. Enola names a symbol by the line it starts on and no more, so this is
+ * what tells an edit to a symbol's body from one beside it. A file it could not read or parse has no spans.
+ */
+export class SymbolEnds implements SymbolSpans {
+	readonly #ends: ReadonlyMap<string, ReadonlyMap<number, number>>;
+
+	private constructor(ends: ReadonlyMap<string, ReadonlyMap<number, number>>) {
+		this.#ends = ends;
+	}
+
+	/** Reads `paths` at `head`, those that are TypeScript. Never throws: what it cannot read has no spans. */
+	static async read(repoRoot: string, head: string, paths: readonly string[]): Promise<SymbolEnds> {
+		const texts = new Map<string, string>();
+		for (const path of paths.filter((each) => typescriptFile.test(each)).slice(0, enclosingLimits.files)) {
+			const read = await readRevisionFile(repoRoot, head, path, enclosingLimits.fileBytes).catch(() => undefined);
+			if (read !== undefined && !read.truncated) texts.set(path, read.content);
+		}
+		const ends = new Map<string, Map<number, number>>();
+		if (texts.size === 0) return new SymbolEnds(ends);
+		let program: HeadProgram;
+		try {
+			program = HeadProgram.open(texts);
+		} catch {
+			return new SymbolEnds(ends);
+		}
+		try {
+			for (const [path, text] of texts) {
+				const source = program.source(path);
+				if (source === undefined) continue;
+				const starts = lineStarts(text);
+				const own = new Map<number, number>();
+				const visit = (node: Node): void => {
+					const line = lineAt(starts, node.getStart(source));
+					own.set(line, Math.max(own.get(line) ?? line, lineAt(starts, node.end)));
+					node.forEachChild(visit);
+				};
+				source.forEachChild(visit);
+				ends.set(path, own);
+			}
+		} finally {
+			program.close();
+		}
+		return new SymbolEnds(ends);
+	}
+
+	endLine(path: string, startLine: number): number | undefined {
+		return this.#ends.get(path)?.get(startLine);
 	}
 }

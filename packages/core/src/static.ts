@@ -320,6 +320,13 @@ export interface StaticFindingsInput {
 	readonly settings: StaticToolSettings;
 	readonly base: ToolLog;
 	readonly head: ToolLog;
+	/** Where each symbol a result names ends at head, as a parser reads it; Enola gives only the line it starts on. */
+	readonly symbols?: SymbolSpans;
+}
+
+/** Where a symbol that starts on `startLine` of `path` ends, or `undefined` when the reader cannot say. */
+export interface SymbolSpans {
+	endLine(path: string, startLine: number): number | undefined;
 }
 
 interface Identified {
@@ -421,7 +428,14 @@ export async function staticFindings(input: StaticFindingsInput): Promise<CheckR
 		const { region } = each.result.locations[0]!.physicalLocation;
 		const endLine = Math.max(region.endLine ?? region.startLine, region.startLine);
 		// A symbol's fan-in grows when the change only adds callers; that is the symbol doing its job, not a defect here.
-		if (each.rule === "enola/god-class" && revision.trigger(each.path, region.startLine, endLine) === undefined) {
+		// Enola names only the line a symbol starts on, so a changed file keeps the result unless a parser bounds the symbol.
+		const symbolEnd = input.symbols?.endLine(each.path, region.startLine);
+		const changed = revision.files.some((file) => file.path === each.path);
+		if (
+			each.rule === "enola/god-class" &&
+			(!changed ||
+				(symbolEnd !== undefined && revision.trigger(each.path, region.startLine, symbolEnd) === undefined))
+		) {
 			untouched++;
 			continue;
 		}
