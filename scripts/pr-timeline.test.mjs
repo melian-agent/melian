@@ -610,6 +610,22 @@ describe("fetch", () => {
 });
 
 describe("overall span", () => {
+	it("ends an unmerged pull request's total at the end of its last CI run", () => {
+		const runs = [
+			{
+				name: "check",
+				event: "push",
+				head_sha: "1".repeat(40),
+				status: "completed",
+				conclusion: "success",
+				run_started_at: "2026-10-01T01:00:00.000Z",
+				updated_at: "2026-10-01T03:00:00.000Z",
+			},
+		];
+		const timeline = Timeline.from({ pull: pull(), runs });
+		expect(rows(timeline).at(-1)).toBe("| total | 3.00 h |");
+	});
+
 	it("ends a merged pull request's total at its merge and keeps a later comment in the table", () => {
 		const timelineItems = page([
 			{ __typename: "MergedEvent", createdAt: "2026-10-01T02:00:00.000Z", commit: { oid: "e".repeat(40) } },
