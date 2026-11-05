@@ -68,3 +68,41 @@ jobs:
           grep -q 'tool enola.*not yet fetched' "$RUNNER_TEMP/doctor.out"
       - name: Fail if check rewrote files
         run: git diff --exit-code
+
+  # Linux skips the tests that need sandbox-exec or a BSD ps, so only this job runs the Codex seatbelt profile and the
+  # mutation supervisor against real processes.
+  check-macos:
+    name: check (macos, 24)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - if: github.event_name != 'push'
+        run: git fetch --no-tags origin +main:refs/remotes/origin/main
+      # The seatbelt suite skips its ssh-agent test unless launchd holds an agent socket.
+      - name: Start an ssh agent for launchd
+        run: |
+          eval "$(ssh-agent -s)"
+          launchctl setenv SSH_AUTH_SOCK "$SSH_AUTH_SOCK"
+      - run: npm run check -- --reporter=default --reporter=json --outputFile.json="$RUNNER_TEMP/vitest.json"
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          MELIAN_SANDBOX_NETWORK: "1"
+      - name: Fail if a macOS-only test skipped
+        run: |
+          jq -e -r '
+            [.testResults[]
+              | select(.name | test("/scripts/codex-sandboxed\\.test\\.mjs$|/packages/pipeline/test/mutation-process-real\\.test\\.ts$"))
+              | .name as $file | .assertionResults[] | {file: ($file | split("/") | last), title: .fullName, status}]
+            | (group_by(.file)[] | "\(.[0].file): \(map(select(.status == "passed")) | length) of \(length) passed"),
+              (.[] | select(.status != "passed") | "not passed (\(.status)): \(.file) > \(.title)"),
+              (if length > 0 and all(.status == "passed") then "every macOS-only test ran" else error("a macOS-only test did not pass") end)
+          ' "$RUNNER_TEMP/vitest.json"
+      - name: Fail if check rewrote files
+        run: git diff --exit-code
