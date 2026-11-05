@@ -49,6 +49,19 @@ it("ends a declaration Enola names by its keyword or name line where the whole d
 	expect(ends.endLine("src/pair.ts", 1)).toBe(1);
 });
 
+it("gives no span for a symbol the compiler merges from several declarations, and one for a single declaration", async () => {
+	const head = commit(repo, {
+		"src/store.ts": "export interface Store {\n\ta: number;\n}\nexport interface Store {\n\tb: number;\n}\n",
+		"src/space.ts": "namespace Space {\n\texport const a = 1;\n}\nnamespace Space {\n\texport const b = 2;\n}\n",
+		"src/single.ts": "export interface Single {\n\ta: number;\n}\n",
+	});
+	const ends = await SymbolEnds.read(repo, head, ["src/store.ts", "src/space.ts", "src/single.ts"]);
+	// An edit to the second Store, on line 5, must not read as beside the first.
+	expect([ends.endLine("src/store.ts", 1), ends.endLine("src/store.ts", 4)]).toEqual([undefined, undefined]);
+	expect([ends.endLine("src/space.ts", 1), ends.endLine("src/space.ts", 4)]).toEqual([undefined, undefined]);
+	expect(ends.endLine("src/single.ts", 1)).toBe(3);
+});
+
 it("gives no span for a file past the read limit, whose symbol may run past the cut", { timeout: 60_000 }, async () => {
 	const filler = "\tconst x = 1;\n".repeat(Math.ceil(enclosingLimits.fileBytes / 14) + 10);
 	const head = commit(repo, { "src/big.ts": `export function big() {\n${filler}}\n` });

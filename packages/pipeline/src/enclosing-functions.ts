@@ -469,7 +469,8 @@ export class SymbolEnds implements SymbolSpans {
 					const owner = node.parent;
 					// A declaration holds its name as `name`; so does `a.b`, whose line then reads as unclear and keeps its finding.
 					if ((owner as Node & { name?: Node }).name === node) {
-						const end = lineAt(starts, owner.end);
+						// A symbol the compiler merges from several declarations, or cannot resolve, has no one span.
+						const end = program.declarations(path, node) === 1 ? lineAt(starts, owner.end) : undefined;
 						for (let line = lineAt(starts, owner.getStart(source)); line <= lineAt(starts, node.end); line++)
 							own.set(line, own.has(line) && own.get(line) !== end ? undefined : end);
 					}
