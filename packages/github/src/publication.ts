@@ -360,12 +360,8 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 							: []),
 					];
 	parts.push(summary.join(" "));
-	parts.push(...new Set(tallied.flatMap((finding) => finding.trustFloorNotes().slice(0, 1)).map(inline)));
-	// A lens's other notes are for tuning Melian and stay in the ledger's run details; a caveat narrows the whole review.
-	const caveats = new Set([...(verdict.ran ?? []), ...verdict.notRun].flatMap((check) => check.caveats ?? []));
-	parts.push(...[...caveats].map((caveat) => `Reach: ${inline(caveat)}.`));
-	// The status check shows these already, so they fold for a reader who wants to dig in. They come before every
-	// section a cut to GitHub's limit can reach.
+	// The status check shows these already, so they fold for a reader who wants to dig in. Everything above the fold is
+	// bounded and everything after it is not, and a cut to GitHub's limit trims from the end, so it never reaches them.
 	const reviewStatus = verdict.reviewStatus();
 	const verified =
 		verdict.all().some((finding) => finding.properties.verification !== undefined) ||
@@ -379,10 +375,14 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 							`Verification: ${verdict.verificationSummary()}; ${plural(verdict.refuted?.length ?? 0, "refuted finding")} not posted.`,
 						]
 					: []),
-				`melian/review: ${reviewStatus.state} (${inline(reviewStatus.description)}).`,
+				`melian/review: ${reviewStatus.state} (${inline(capped(reviewStatus.description))}${[...reviewStatus.description].length > statusLength ? `; ${code(`melian findings "#${draft.pullRequest}"`)} shows it whole` : ""}).`,
 			].join("\n\n"),
 		),
 	);
+	parts.push(...new Set(tallied.flatMap((finding) => finding.trustFloorNotes().slice(0, 1)).map(inline)));
+	// A lens's other notes are for tuning Melian and stay in the ledger's run details; a caveat narrows the whole review.
+	const caveats = new Set([...(verdict.ran ?? []), ...verdict.notRun].flatMap((check) => check.caveats ?? []));
+	parts.push(...[...caveats].map((caveat) => `Reach: ${inline(caveat)}.`));
 	if (verdict.counted().some((finding) => finding.properties.resolution === "acknowledge")) {
 		parts.push(
 			`Dismiss unresolved acknowledgements with a reason, then publish. Use ${code(`melian dismiss "#${draft.pullRequest}" <id> --reason <text>`)} for this pull request.`,
@@ -526,6 +526,14 @@ export function renderResolvedReply(finding: ClosedFinding, revision: string, se
 		return `${head}\nDismissed at ${code(short(revision))}: ${inline(finding.dismissal.reason)}`;
 	}
 	return `${head}\nResolved at ${code(short(revision))}: this revision no longer reports ${code(finding.ruleId)} here.`;
+}
+
+// The most of a status description the fold shows: a check's reason can run to any length.
+const statusLength = 200;
+
+function capped(text: string): string {
+	const characters = [...text];
+	return characters.length <= statusLength ? text : `${characters.slice(0, statusLength).join("")}…`;
 }
 
 function advisories(count: number): string {

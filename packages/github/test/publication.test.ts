@@ -1,4 +1,4 @@
-import { Adjudication, defaultConfig, Finding, type FindingInput } from "@melian-agent/core";
+import { Adjudication, type CheckRecord, defaultConfig, Finding, type FindingInput } from "@melian-agent/core";
 import {
 	blobUrl,
 	createGitHubProvider,
@@ -663,7 +663,7 @@ describe("markers", () => {
 		const body = bodyOf(noted([caveat]));
 
 		expect(body.split(caveat)).toHaveLength(2);
-		expect(body).toContain(`\n\nReach: ${caveat}.\n\n<details>\n<summary>Verification and status</summary>`);
+		expect(body).toContain(`</details>\n\nReach: ${caveat}.`);
 		expect(body).not.toContain("Callers unavailable for");
 	});
 
@@ -673,7 +673,7 @@ describe("markers", () => {
 		const body = bodyOf(noted([caveat]));
 
 		expect(body).toContain(
-			"\n\nReach: callers were unavailable for every changed site: @\u2060octocat \\[log in\\]\\(https:\u2060//evil.test\\) \\# Approved &lt;b&gt;.\n\n<details>",
+			"</details>\n\nReach: callers were unavailable for every changed site: @\u2060octocat \\[log in\\]\\(https:\u2060//evil.test\\) \\# Approved &lt;b&gt;.",
 		);
 		expect(body).not.toContain("\n# Approved");
 	});
@@ -1338,5 +1338,73 @@ describe("an all-advisory review", () => {
 				.map(({ id }) => id),
 		).toEqual(unseen);
 		expect(next).toContain(`No blocking findings, 40 advisories, ${shown.length} carried from earlier.`);
+	});
+});
+
+describe("the status fold", () => {
+	const bodyFor = (checks: CheckRecord[], limit?: number) => {
+		const verdict = new Adjudication({ findings: [], manifest: [], checks, config: defaultConfig }).adjudicate();
+		return renderReviewBody(
+			{
+				pullRequest: 7,
+				revision,
+				base,
+				fingerprint: "0123456789abcdef",
+				round: 1,
+				verdict,
+				findings: [],
+				stillOpen: 0,
+				resolved: [],
+				secret,
+			},
+			links,
+			limit === undefined ? {} : { limit },
+		);
+	};
+
+	it("keeps the status when a check's reason alone would fill the body, and caps the reason it shows", () => {
+		const body = bodyFor([{ name: "lens.design", status: "failed", reason: "r".repeat(65_000) }]);
+		expect(body.length).toBeLessThanOrEqual(maxBodyLength);
+		const status = body.split("\n").find((line) => line.startsWith("melian/review:"));
+		expect(status).toBeDefined();
+		expect(status!.length).toBeLessThan(400);
+		expect(status).toContain('`melian findings "#7"` shows it whole');
+	});
+
+	it("shows a status description of 200 characters whole, and cuts one of 201", () => {
+		const description = (reason: string) =>
+			new Adjudication({
+				findings: [],
+				manifest: [],
+				checks: [{ name: "lens.design", status: "failed", reason }],
+				config: defaultConfig,
+			})
+				.adjudicate()
+				.reviewStatus().description;
+		const fixed = [...description("r")].length - 1;
+		const at = (length: number) =>
+			bodyFor([{ name: "lens.design", status: "failed", reason: "r".repeat(length - fixed) }])
+				.split("\n")
+				.find((line) => line.startsWith("melian/review:"))!;
+		expect([...description("r".repeat(200 - fixed))]).toHaveLength(200);
+		expect(at(200)).not.toContain("shows it whole");
+		expect(at(200)).not.toContain("…");
+		expect(at(201)).toContain(`${"r".repeat(10)}…; \`melian findings "#7"\` shows it whole).`);
+	});
+
+	it("keeps the status beneath 80 long caveats", () => {
+		const caveats = Array.from({ length: 80 }, (_, index) => `${index} ${"c".repeat(1000)}`);
+		const body = bodyFor([{ name: "lens.correctness", status: "ran", level: "careful", caveats }]);
+		expect(body.length).toBeLessThanOrEqual(maxBodyLength);
+		expect(body).toContain("melian/review: success (Passed).");
+	});
+
+	it("keeps the whole fold when the limit would otherwise cut inside it", () => {
+		const caveats = Array.from({ length: 3 }, (_, index) => `${index} ${"c".repeat(1000)}`);
+		const body = bodyFor([{ name: "lens.correctness", status: "ran", level: "careful", caveats }], 900);
+		expect(body.length).toBeLessThanOrEqual(900);
+		expect(body).toContain(
+			"<summary>Verification and status</summary>\n\nmelian/review: success (Passed).\n\n</details>",
+		);
 	});
 });
