@@ -56,8 +56,7 @@ function section(lines, heading) {
 		if (line !== "" && !line.startsWith(" ")) break;
 		block.push(line);
 	}
-	while (block.at(-1) === "") block.pop();
-	return block;
+	return block.slice(0, block.findLastIndex((line) => line !== "") + 1);
 }
 
 function findingLine(finding) {
