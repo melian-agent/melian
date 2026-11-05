@@ -267,6 +267,16 @@ describe("RoundComment", () => {
 		);
 	});
 
+	it("keeps a full comment under GitHub's limit of 65,536 characters, at a budget of 60,000", () => {
+		expect(maxLength).toBe(60_000);
+		const body = comment(
+			verdict({ blocking: true, block: [finding({ resolution: "block", text: "x".repeat(70_000) })] }),
+			"1",
+		);
+		expect(body.length).toBeLessThanOrEqual(65_536);
+		expect(body).toContain("... 1 more lines; the run's artefact has them all.");
+	});
+
 	it("fills a comment to exactly its limit, and cuts a finding that would pass it", () => {
 		const body = (length) =>
 			comment(verdict({ blocking: true, block: [finding({ resolution: "block", text: "x".repeat(length) })] }), "1");
