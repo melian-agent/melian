@@ -515,7 +515,10 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 				const [reply, ...rest] = stored.entry.model!;
 				return {
 					...stored,
-					entry: { ...stored.entry, model: [{ ...reply!, timestamp: settled - 10, durationMs: 10 + offset }, ...rest] },
+					entry: {
+						...stored.entry,
+						model: [{ ...reply!, timestamp: settled - 10, durationMs: 10 + offset }, ...rest],
+					},
 				};
 			});
 			const stage = (await TelemetryReader.open(storage).read(revision)).stages.find(
