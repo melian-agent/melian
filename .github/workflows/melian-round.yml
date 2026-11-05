@@ -69,7 +69,13 @@ jobs:
     timeout-minutes: 150
     permissions:
       contents: read
+    outputs:
+      artifact: ${{ steps.artifact.outputs.name }}
     steps:
+      # A rerun of failed jobs alone bumps run_attempt for report but keeps this job's earlier attempt, so report reads
+      # the name from this output, never from its own run_attempt.
+      - id: artifact
+        run: echo "name=melian-round-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
       # The workflow's own ref supplies the helper scripts, so a head cut before they existed can still run a round.
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
@@ -129,7 +135,7 @@ jobs:
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
-          name: melian-round-${{ github.run_attempt }}
+          name: ${{ steps.artifact.outputs.name }}
           path: ${{ runner.temp }}/round
           if-no-files-found: ignore
           retention-days: 30
@@ -146,10 +152,13 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
+      # A round that finished uploaded its artefact, so a missing one fails this job rather than post a comment that
+      # says the round ended before a verdict. An empty name would download every artefact of the run.
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        continue-on-error: true
+        if: needs.round.outputs.artifact != ''
+        continue-on-error: ${{ needs.round.result != 'success' }}
         with:
-          name: melian-round-${{ github.run_attempt }}
+          name: ${{ needs.round.outputs.artifact }}
           path: ${{ runner.temp }}/round
       - name: Comment on the pull request
         env:
