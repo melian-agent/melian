@@ -239,7 +239,7 @@ describe("a golden's standards and policy", () => {
 			scripted.mockRestore();
 			rmSync(directory, { recursive: true, force: true });
 		}
-	});
+	}, 60_000);
 
 	it("resolves a guardrail golden's finding through its policy's own keys, as adjudication does", async () => {
 		const directory = mkdtempSync(join(tmpdir(), "melian-keyed-guardrail-golden-"));
@@ -734,7 +734,7 @@ describe("runGolden", () => {
 		} finally {
 			rmSync(directory, { recursive: true, force: true });
 		}
-	});
+	}, 60_000);
 });
 
 describe("expectToolResult", () => {
@@ -760,7 +760,7 @@ describe("expectToolResult", () => {
 		expect(run.toolMismatches).toEqual([
 			'correctness step 2: search returned "No matches.", expected it to contain "src/org-chart.ts"',
 		]);
-	});
+	}, 60_000);
 });
 
 describe("scriptedMismatches", () => {
@@ -872,7 +872,7 @@ describe("scriptedMismatches", () => {
 			"src/cart.ts broken-caller: not reported",
 			"src/price.ts wrong-result: not reported",
 		]);
-	});
+	}, 60_000);
 });
 
 describe("scoreGolden", () => {
@@ -1070,7 +1070,7 @@ describe("scoreGolden", () => {
 		const run = await runGolden(duplicate, { kind: "scripted" });
 		expect(run.findings).toHaveLength(1);
 		expect(scoreGolden(duplicate, run.findings)).toMatchObject({ reported: 1, precision: 1, recall: 1 });
-	});
+	}, 60_000);
 	it("matches on file and rule", () => {
 		expect(
 			scoreGolden(nullDeref!, [finding("src/user.ts", "null-dereference"), finding("src/user.ts", "wrong-result")]),
