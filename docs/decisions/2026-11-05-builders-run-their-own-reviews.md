@@ -1,0 +1,7 @@
+# Builders run Codex's adversarial review and their own Melian rounds
+
+Choice: the builder of a pull request runs Codex's adversarial review on its own branch, and its own Melian rounds through the `melian round` workflow, before the first round and after each fix pass. It posts the review's JSON and its findings in the pull request's report, and fixes from them. The coordinator still reads the verdicts, runs the round a dismissal or the comparison record needs, marks the pull request ready and queues it.
+
+Why: both reviews used to wait for the coordinator's machine, the only place with the Codex login and the provider credentials, so every fix pass waited there too. The `melian round` workflow, from [issue #270](https://github.com/melian-agent/melian/issues/270), gives a builder its Melian rounds, and cloud sessions now carry the Codex login as `CODEX_AUTH_B64`. On [pull request #275](https://github.com/melian-agent/melian/pull/275) a builder ran the companion plugin's adversarial prompt through the Codex CLI in a cloud session. The review found a rerun defect, which the builder then fixed with no coordinator in the loop. The maintainer asked for the guidance to make this the rule.
+
+What this gives up: the coordinator no longer sees each Codex review as it runs, only as the builder reports it. A builder without the plugin fills the plugin's prompt by hand, so its review can drift from the plugin's if the plugin changes how it builds the prompt. AGENTS.md names the prompt file and the steps the plugin takes, so a drift shows in the diff of either.
