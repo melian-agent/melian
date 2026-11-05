@@ -440,7 +440,7 @@ export class TelemetryReader {
 		return (await this.document(RunDetailsDocument, scope, context, roundId))?.run;
 	}
 
-	/** Stores this review's telemetry only while its round still owns every source. */
+	/** Stores a round's first run, and only while that round still owns every source. */
 	async recordRun(
 		harness: Harness,
 		revision: string,
@@ -463,7 +463,10 @@ export class TelemetryReader {
 			if ((authority === undefined ? undefined : Number(authority.split(" ").at(-1))) !== checkParent) return;
 			const telemetry = await this.read(revision, before, context);
 			if (!isDeepStrictEqual(telemetry.prepare, prepare)) return;
-			(await tx.doc(RunDetailsDocument, root.id, roundId, null)).run = { ...telemetry.runDetails(), roundId };
+			const stored = await tx.doc(RunDetailsDocument, root.id, roundId, null);
+			// A repeat review reattaches to a decided round; its reused stages must not replace the run that decided it.
+			if (stored.run !== undefined) return;
+			stored.run = { ...telemetry.runDetails(), roundId };
 		}, context);
 	}
 

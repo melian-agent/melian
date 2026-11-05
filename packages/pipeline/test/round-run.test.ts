@@ -138,3 +138,36 @@ it("reopens the frozen run twice without changing its round or measured values",
 		}
 	}
 });
+
+it("keeps a decided round's run when a repeat review reattaches to that round", async () => {
+	const { reader, prepare } = await setup();
+	await reader.recordRun(harness!, revision, roundId, 100, prepare);
+	const repeat = await PrepareSpans.start("repeat", 1000, () => 1100).record(harness!, revision, context);
+	await reader.recordRun(harness!, revision, roundId, 1000, repeat);
+	expect(await reader.runDetails(roundId)).toEqual(expected);
+});
+
+it("stores a rerun's new round beside the decided round's run", async () => {
+	const { root, reader, prepare } = await setup();
+	await reader.recordRun(harness!, revision, roundId, 100, prepare);
+	const task = (await harness!.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.adjudication!.task;
+	await root.commit(async (tx) => {
+		const verdict = (await tx.doc(RoundsDocument, root.id)).items[roundId]!.verdict;
+		await new RoundWriter(tx, root.id).mint(revision, task, "2026-11-05T00:00:00.000Z");
+		const rounds = await tx.doc(RoundsDocument, root.id);
+		rounds.items[rounds.current[revision]!]!.verdict = verdict;
+	}, context);
+	const rerun = (await harness!.snapshot(RoundsDocument, root.id, context))!.current[revision]!;
+	const spans = PrepareSpans.start("rerun", 1000, () => 1100);
+	spans.bindRound(rerun);
+	await reader.recordRun(harness!, revision, rerun, 1000, await spans.record(harness!, revision, context));
+	expect(await reader.runDetails(roundId)).toEqual(expected);
+	expect(await reader.runDetails(rerun)).toEqual({
+		roundId: rerun,
+		durationMs: 100,
+		stages: [
+			{ name: "preparation", models: [], durationMs: 100, outcome: "ran" },
+			{ name: "adjudication", models: [], outcome: "ran" },
+		],
+	});
+});
