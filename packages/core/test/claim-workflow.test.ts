@@ -137,13 +137,14 @@ const say = (id: number, login: string, second: number, body = `Claim: ${login}`
 	created_at: at(second),
 });
 
+// Add before remove, so a run that fails between the two leaves both labels, which the next run repairs.
 const toInProgress = [
-	["remove", READY],
 	["add", IN_PROGRESS],
+	["remove", READY],
 ];
 const toReady = [
-	["remove", IN_PROGRESS],
 	["add", READY],
+	["remove", IN_PROGRESS],
 ];
 
 // A ready issue whose last comment is the builder's claim, which triggered the run.
@@ -159,7 +160,7 @@ function claimScenario(overrides: Partial<Scenario> = {}): Scenario {
 }
 
 describe("claim workflow policy", () => {
-	it("runs on new issue comments that start a claim or a release, with issues: write alone", () => {
+	it("runs on every new issue comment, with issues: write alone", () => {
 		expect(workflow.on).toEqual({ issue_comment: { types: ["created"] } });
 		expect(workflow.permissions).toEqual({ issues: "write" });
 		expect(workflow.concurrency).toEqual({
@@ -167,9 +168,7 @@ describe("claim workflow policy", () => {
 			"cancel-in-progress": false,
 		});
 		expect(Object.keys(workflow.jobs)).toEqual(["swap-labels"]);
-		expect(job.if).toBe(
-			`\${{ !github.event.issue.pull_request && (startsWith(github.event.comment.body, 'Claim:') || startsWith(github.event.comment.body, 'Released:')) }}`,
-		);
+		expect(job.if).toBe(`\${{ !github.event.issue.pull_request }}`);
 		expect(job.permissions).toBeUndefined();
 		expect(job["timeout-minutes"]).toBe(5);
 	});
@@ -245,7 +244,9 @@ describe("claim workflow script", () => {
 			label("plan step", 41),
 			mine,
 		];
-		const { writes } = await run(claimScenario({ trigger: mine, timeline, permissions: { builder: "write" } }));
+		const { writes } = await run(
+			claimScenario({ trigger: mine, timeline, permissions: { builder: "write", other: "write" } }),
+		);
 		expect(writes).toEqual(toInProgress);
 	});
 
@@ -278,6 +279,72 @@ describe("claim workflow script", () => {
 		expect(asked).toEqual([]);
 	});
 
+	it("applies an earlier writer's claim whose own run never ran, from a later claim's run", async () => {
+		const mine = say(20, "builder", 5);
+		const timeline = [label(READY, 0), say(10, "other", 2), mine];
+		const { writes, asked } = await run(
+			claimScenario({ timeline, permissions: { builder: "write", other: "write" } }),
+		);
+		expect(writes).toEqual(toInProgress);
+		expect(asked).toEqual(["other"]);
+	});
+
+	it("applies a claim from the run of any later comment", async () => {
+		const thanks = say(30, "stranger", 9, "Thanks!");
+		const timeline = [label(READY, 0), say(20, "builder", 5), thanks];
+		const { writes } = await run(claimScenario({ trigger: thanks, timeline }));
+		expect(writes).toEqual(toInProgress);
+	});
+
+	it("repairs a claim whose add failed when the run is retried", async () => {
+		const scenario = claimScenario({ fail: { add: 503 } });
+		await expect(run(scenario)).rejects.toThrow("HTTP 503");
+		expect(scenario.labels).toEqual(["plan step", READY]);
+		scenario.fail = undefined;
+		const { writes, labels } = await run(scenario);
+		expect(writes).toEqual(toInProgress);
+		expect(labels).toEqual(["plan step", IN_PROGRESS]);
+	});
+
+	it("repairs a claim whose remove failed when the run is retried", async () => {
+		const scenario = claimScenario({ fail: { remove: 503 } });
+		await expect(run(scenario)).rejects.toThrow("HTTP 503");
+		expect(scenario.labels).toEqual(["plan step", READY, IN_PROGRESS]);
+		scenario.fail = undefined;
+		const { writes, labels } = await run(scenario);
+		expect(writes).toEqual([["remove", READY]]);
+		expect(labels).toEqual(["plan step", IN_PROGRESS]);
+	});
+
+	it("writes nothing when the labels already match the claim", async () => {
+		const { writes } = await run(claimScenario({ labels: ["plan step", IN_PROGRESS] }));
+		expect(writes).toEqual([]);
+	});
+
+	it("leaves an issue alone once a writer took the ready label off by hand", async () => {
+		const mine = say(20, "builder", 5);
+		const timeline = [label(READY, 0), unlabel(READY, 3), mine];
+		const { writes } = await run(claimScenario({ timeline, labels: ["plan step"] }));
+		expect(writes).toEqual([]);
+	});
+
+	it("counts a claim after the issue was marked ready again", async () => {
+		const mine = say(40, "builder", 30);
+		const timeline = [
+			label(READY, 0),
+			say(10, "other", 2),
+			label(IN_PROGRESS, 3),
+			unlabel(READY, 3),
+			unlabel(IN_PROGRESS, 20),
+			label(READY, 21),
+			mine,
+		];
+		const { writes } = await run(
+			claimScenario({ trigger: mine, timeline, permissions: { builder: "write", other: "write" } }),
+		);
+		expect(writes).toEqual(toInProgress);
+	});
+
 	it("ignores a comment on a pull request", async () => {
 		const { writes, asked } = await run(claimScenario({ pullRequest: true }));
 		expect(writes).toEqual([]);
@@ -302,6 +369,52 @@ describe("release in the claim workflow script", () => {
 
 	it("ignores a release from a non-writer", async () => {
 		const { writes } = await run(releaseScenario({ permissions: { maintainer: "read", builder: "write" } }));
+		expect(writes).toEqual([]);
+	});
+
+	it("ignores a release on an issue nobody claimed, without asking who wrote it", async () => {
+		const { writes, asked } = await run(
+			releaseScenario({ labels: ["plan step", READY], timeline: [label(READY, 0), release] }),
+		);
+		expect(writes).toEqual([]);
+		expect(asked).toEqual([]);
+	});
+
+	it("ignores a writer's release on an issue never marked ready", async () => {
+		const { writes } = await run(releaseScenario({ labels: ["plan step"], timeline: [release] }));
+		expect(writes).toEqual([]);
+	});
+
+	it("applies a release from the run of any later comment", async () => {
+		const thanks = say(40, "stranger", 40, "Thanks!");
+		const scenario = releaseScenario({ trigger: thanks });
+		scenario.timeline.push(thanks);
+		const { writes } = await run(scenario);
+		expect(writes).toEqual(toReady);
+	});
+
+	it("repairs a release whose add failed when the run is retried", async () => {
+		const scenario = releaseScenario({ fail: { add: 503 } });
+		await expect(run(scenario)).rejects.toThrow("HTTP 503");
+		expect(scenario.labels).toEqual(["plan step", IN_PROGRESS]);
+		scenario.fail = undefined;
+		const { writes, labels } = await run(scenario);
+		expect(writes).toEqual(toReady);
+		expect(labels).toEqual(["plan step", READY]);
+	});
+
+	it("repairs a release whose remove failed when the run is retried", async () => {
+		const scenario = releaseScenario({ fail: { remove: 503 } });
+		await expect(run(scenario)).rejects.toThrow("HTTP 503");
+		expect(scenario.labels).toEqual(["plan step", IN_PROGRESS, READY]);
+		scenario.fail = undefined;
+		const { writes, labels } = await run(scenario);
+		expect(writes).toEqual([["remove", IN_PROGRESS]]);
+		expect(labels).toEqual(["plan step", READY]);
+	});
+
+	it("writes nothing when the labels already match the release", async () => {
+		const { writes } = await run(releaseScenario({ labels: ["plan step", READY] }));
 		expect(writes).toEqual([]);
 	});
 });
