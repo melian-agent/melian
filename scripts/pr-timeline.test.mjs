@@ -305,6 +305,31 @@ describe("summary", () => {
 		]);
 	});
 
+	it("reads Claim and Fix pass from a comment's opening paragraph, never from a code block", () => {
+		const comment = (minutes, body) => ({
+			__typename: "IssueComment",
+			createdAt: new Date(start + minutes * 60_000).toISOString(),
+			body,
+			author: { login: "b" },
+		});
+		const issue = {
+			number: 7,
+			createdAt: "2026-10-01T00:00:00.000Z",
+			timelineItems: page([
+				comment(10, "    Claim: example only"),
+				comment(20, "```\nFix pass 1, quoted\n```"),
+				comment(30, ""),
+				comment(40, "Claim: me"),
+				comment(50, "Fix pass 2 starts."),
+			]),
+		};
+		const timeline = Timeline.from({ pull: pull({ closingIssuesReferences: page([issue]) }), runs: [] });
+		expect(rows(timeline).filter((row) => /\| (Claim|Fix pass) \|/.test(row))).toEqual([
+			"| 2026-10-01 00:40 | 0.67 | Claim | \\#7 by b |",
+			"| 2026-10-01 00:50 | 0.83 | Fix pass | \\#7 by b |",
+		]);
+	});
+
 	it("sums every Timing item's minutes and cost across comments into one line", () => {
 		const comment = (hours, body) => ({
 			__typename: "IssueComment",

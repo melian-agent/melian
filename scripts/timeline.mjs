@@ -53,12 +53,16 @@ export const QUERY = `query($owner: String!, $name: String!, $number: Int!) {
 const WAIT = /^waited (\d+(?:\.\d+)?) min for (.+)$/;
 const WORK = /^(.+?) (?:(\d+) × )?(\d+(?:\.\d+)?) min(?:, \$(\d+(?:\.\d+)?))?$/;
 
-export function parseTiming(body) {
-	const items = [];
-	for (const line of fromMarkdown(body)
+// What a comment says comes from its own top-level paragraphs, never from code, quotes or lists.
+const paragraphLines = (body) =>
+	fromMarkdown(body)
 		.children.filter((node) => node.type === "paragraph")
 		.map(markdownText)
-		.flatMap((text) => text.split("\n"))) {
+		.flatMap((text) => text.split("\n"));
+
+export function parseTiming(body) {
+	const items = [];
+	for (const line of paragraphLines(body)) {
 		const match = /^Timing:(.*)$/s.exec(line);
 		if (!match) continue;
 		for (const raw of match[1].split(";")) {
@@ -172,8 +176,9 @@ export class Timeline {
 			add(issue.createdAt, "issue opened", `#${issue.number}`);
 			for (const node of issue.timelineItems.nodes) {
 				if (node.__typename === "IssueComment") {
+					const opening = paragraphLines(node.body)[0] ?? "";
 					for (const marker of ["Claim:", "Fix pass"])
-						if (node.body.trimStart().startsWith(marker))
+						if (opening.startsWith(marker))
 							add(node.createdAt, marker.replace(":", ""), `#${issue.number} by ${login(node)}`);
 					timing(node.createdAt, node.body);
 				} else if (node.label.name.startsWith("status:")) {
