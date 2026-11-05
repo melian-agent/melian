@@ -89,18 +89,26 @@ jobs:
         working-directory: head
       - name: Raise the lens budgets to a round's
         run: node trusted/scripts/round-budgets.mjs head/.melian/lenses
-      # The provider secrets reach only the two steps that call melian. An empty Pi directory and configuration
-      # directory keep the runner's own files out of the plan.
+      # The logins reach only this step, which calls melian. Melian reads CLAUDE_CODE_OAUTH_TOKEN itself. The Codex
+      # login's access token goes to Melian as a named bearer credential, by variable, so no file holds it, and Pi's
+      # store stays empty, so nothing refreshes the login and rotates its refresh token. An expired token reads as
+      # absent, and the plan derives a Claude route, which the comment quotes as a check that left the committed routes.
       - name: Run the round
         working-directory: head
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          CODEX_AUTH_B64: ${{ secrets.CODEX_AUTH_B64 }}
           BASE: ${{ needs.gate.outputs.base }}
         run: |
           out="$RUNNER_TEMP/round"
-          mkdir -p "$out" "$RUNNER_TEMP/state" "$RUNNER_TEMP/config" "$RUNNER_TEMP/pi"
+          mkdir -p "$out" "$RUNNER_TEMP/state" "$RUNNER_TEMP/config/melian" "$RUNNER_TEMP/pi"
           export MELIAN_STATE_DIR="$RUNNER_TEMP/state" XDG_CONFIG_HOME="$RUNNER_TEMP/config" PI_CODING_AGENT_DIR="$RUNNER_TEMP/pi"
+          if token=$(node "$GITHUB_WORKSPACE/trusted/scripts/round-codex-token.mjs"); then
+            echo "::add-mask::$token"
+            export MELIAN_CODEX_ACCESS_TOKEN="$token"
+            printf 'credentials:\n  actions-codex: { provider: openai-codex, env: MELIAN_CODEX_ACCESS_TOKEN }\n' > "$XDG_CONFIG_HOME/melian/secrets.yaml"
+          fi
+          unset token CODEX_AUTH_B64
           git rev-parse --verify --quiet "refs/remotes/origin/$BASE" > /dev/null || { echo "::error::origin/$BASE is not in the checkout"; exit 1; }
           node packages/cli/bin/melian.js doctor > "$out/doctor.txt" 2>&1 || true
           set +e

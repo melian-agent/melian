@@ -1,5 +1,6 @@
-// What the melian-round workflow does beside running melian: raise the lens budgets to a round's, and turn a round's
-// output into a pull request comment. round-budgets.mjs and round-comment.mjs are its commands.
+// What the melian-round workflow does beside running melian: raise the lens budgets to a round's, take the Codex
+// access token from a Codex login, and turn a round's output into a pull request comment. round-budgets.mjs,
+// round-codex-token.mjs and round-comment.mjs are its commands.
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -31,6 +32,21 @@ export function raiseBudgets(directory) {
 		raised.push(name);
 	}
 	return raised;
+}
+
+/**
+ * The access token of a Codex login, `~/.codex/auth.json` base64-encoded as this repository's `CODEX_AUTH_B64` holds
+ * it, or undefined when there is none to read. Only the access token leaves: a refresh would rotate the refresh token
+ * and break the login's other copies.
+ */
+export function codexAccessToken(encoded) {
+	if (encoded === undefined || encoded === "") return undefined;
+	try {
+		const token = JSON.parse(Buffer.from(encoded, "base64").toString("utf8")).tokens?.access_token;
+		return typeof token === "string" && token !== "" ? token : undefined;
+	} catch {
+		return undefined;
+	}
 }
 
 export const marker = "<!-- melian-round -->";
