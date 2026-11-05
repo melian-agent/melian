@@ -727,8 +727,9 @@ export class GitHubProvider implements ReviewProvider {
 				break;
 			}
 		}
-		// What a body shows is the authority for what a reader saw: a finding the size limit cut was never listed. A
-		// signature proves the finding, not that Melian's review showed it, so with no known publisher nothing counts.
+		// A finding counts as listed when a review by the publisher's own login holds its signed marker, whatever that
+		// review's revision or body. That login is the trust root and can post anything, so a marker it forges gains
+		// nothing; a finding the size limit cut is in no body. With no known publisher nothing counts.
 		const listed = new Set<string>();
 		for (const each of reviews) {
 			const me = await this.login();
