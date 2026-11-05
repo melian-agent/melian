@@ -98,6 +98,10 @@ function lineageLine({ name, lineage }) {
 	return oneLine(`  ${name}  on ${lineage.model}${wanted}${lineage.outside ? ", outside what policy accepts" : ""}`);
 }
 
+function commit(sha) {
+	return /^[0-9a-f]{40}$/.test(sha) ? `\`${sha.slice(0, 12)}\`` : "an unreadable commit";
+}
+
 function plural(count, noun) {
 	return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }
@@ -120,27 +124,39 @@ function findingLine(finding) {
  * that read the head, so everything after the link sits inside one code fence that no backtick run in it can close.
  */
 export class RoundComment {
-	constructor({ verdict, exitCode, runUrl, head }) {
+	/**
+	 * `base` and `head` are what the round reviewed; `current` is the pull request's base and head, read again just
+	 * before posting, or undefined when that read failed.
+	 */
+	constructor({ verdict, exitCode, runUrl, base, head, current }) {
 		this.verdict = verdict;
 		this.exitCode = exitCode;
 		this.runUrl = runUrl;
+		this.base = base;
 		this.head = head;
+		this.current = current;
 	}
 
-	static read(verdictPath, exitCode, runUrl, head) {
+	static read(verdictPath, exitCode, runUrl, base, head, current) {
 		let verdict;
 		try {
 			verdict = JSON.parse(readFileSync(verdictPath, "utf8"));
 		} catch {
 			verdict = undefined;
 		}
-		return new RoundComment({ verdict, exitCode, runUrl, head });
+		return new RoundComment({ verdict, exitCode, runUrl, base, head, current });
 	}
 
 	body() {
-		// The exit code sits outside the fence.
+		// The exit code and commits sit outside the fence.
 		const exit = /^(\d{1,3}|none)$/.test(this.exitCode) ? this.exitCode : "unknown";
-		const header = `${marker}\nMelian round on \`${this.head.slice(0, 12)}\`, exit ${exit}: [run](${this.runUrl})`;
+		const header = `${marker}\nMelian round on ${commit(this.base)}...${commit(this.head)}, exit ${exit}: [run](${this.runUrl})`;
+		if (this.current === undefined)
+			return `${header}\n\nThe pull request could not be read again before posting, so this round posts no findings. Start a new round.\n`;
+		if (this.current.base !== this.base || this.current.head !== this.head) {
+			const moved = `${commit(this.current.base)}...${commit(this.current.head)}`;
+			return `${header}\n\nThe pull request moved to ${moved} during the round, so this round posts no findings. Start a new round.\n`;
+		}
 		const verdict = this.verdict;
 		const problem =
 			verdictProblem(verdict) ??

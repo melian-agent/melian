@@ -189,9 +189,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
           NUMBER: ${{ inputs.pull_request }}
+          BASE: ${{ needs.gate.outputs.base }}
           HEAD: ${{ needs.gate.outputs.head }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           out="$RUNNER_TEMP/round"
-          node scripts/round-comment.mjs "$out/verdict.json" "$(cat "$out/exit" 2>/dev/null || echo none)" "$RUN_URL" "$HEAD" > "$RUNNER_TEMP/comment.md"
+          # Read again just before posting: a push or a retarget during the round leaves findings for a revision the
+          # pull request no longer shows. A failed read leaves both empty, and the comment posts no findings.
+          current=$(gh api "repos/$REPOSITORY/pulls/$NUMBER" --jq '.base.sha + " " + .head.sha') || current=""
+          read -r current_base current_head <<< "$current" || true
+          node scripts/round-comment.mjs "$out/verdict.json" "$(cat "$out/exit" 2>/dev/null || echo none)" "$RUN_URL" "$BASE" "$HEAD" ${current_head:+"$current_base" "$current_head"} > "$RUNNER_TEMP/comment.md"
           gh pr comment "$NUMBER" --repo "$REPOSITORY" --body-file "$RUNNER_TEMP/comment.md"

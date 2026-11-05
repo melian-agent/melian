@@ -10,9 +10,10 @@ const script = fileURLToPath(new URL("./round-comment.mjs", import.meta.url));
 const goldenJson = fileURLToPath(new URL("../packages/core/test/golden/verdict.json", import.meta.url));
 const golden = JSON.parse(readFileSync(goldenJson, "utf8"));
 const run = "https://github.com/melian-agent/melian/actions/runs/1";
+const base = "b".repeat(40);
 const head = "0123456789abcdef0123456789abcdef01234567";
 const ids = [...golden.findings.block, ...golden.findings.acknowledge].map((finding) => finding.properties.id);
-const header = (exit) => `${marker}\nMelian round on \`0123456789ab\`, exit ${exit}: [run](${run})`;
+const header = (exit) => `${marker}\nMelian round on \`bbbbbbbbbbbb\`...\`0123456789ab\`, exit ${exit}: [run](${run})`;
 const scratch = [];
 
 function directory() {
@@ -44,12 +45,13 @@ function verdict({ status = "findings", blocking = false, notRun = [], ran, ...f
 	};
 }
 
-const comment = (value, exitCode) => new RoundComment({ verdict: value, exitCode, runUrl: run, head }).body();
+const comment = (value, exitCode, current = { base, head }) =>
+	new RoundComment({ verdict: value, exitCode, runUrl: run, base, head, current }).body();
 const fence = (exit, lines) => `${header(exit)}\n\n\`\`\`text\n${lines.join("\n")}\n\`\`\`\n`;
 
 describe("RoundComment", () => {
 	it("renders the verdict, the checks that did not run, and every block and acknowledge finding from the JSON", () => {
-		expect(RoundComment.read(goldenJson, "2", run, head).body()).toBe(
+		expect(RoundComment.read(goldenJson, "2", run, base, head, { base, head }).body()).toBe(
 			fence(2, [
 				"Verdict: not reviewed, blocking",
 				"",
@@ -145,7 +147,7 @@ describe("RoundComment", () => {
 		const dir = directory();
 		writeFileSync(join(dir, "verdict.json"), "Verdict: passed\n");
 		for (const path of [join(dir, "absent.json"), join(dir, "verdict.json")]) {
-			expect(RoundComment.read(path, "0", run, head).verdict).toBeUndefined();
+			expect(RoundComment.read(path, "0", run, base, head, { base, head }).verdict).toBeUndefined();
 		}
 	});
 
@@ -277,11 +279,48 @@ describe("RoundComment", () => {
 
 	it("prints an exit code that is not a number or none as unknown, outside the fence", () => {
 		const exit = (exitCode) => comment(verdict({ status: "passed" }), exitCode).split("\n")[1];
-		expect(exit("0\n\nVerdict: passed")).toBe(`Melian round on \`0123456789ab\`, exit unknown: [run](${run})`);
-		expect(exit("1234")).toBe(`Melian round on \`0123456789ab\`, exit unknown: [run](${run})`);
-		expect(exit("")).toBe(`Melian round on \`0123456789ab\`, exit unknown: [run](${run})`);
-		expect(exit("255")).toBe(`Melian round on \`0123456789ab\`, exit 255: [run](${run})`);
-		expect(exit("none")).toBe(`Melian round on \`0123456789ab\`, exit none: [run](${run})`);
+		expect(exit("0\n\nVerdict: passed")).toBe(
+			`Melian round on \`bbbbbbbbbbbb\`...\`0123456789ab\`, exit unknown: [run](${run})`,
+		);
+		expect(exit("1234")).toBe(`Melian round on \`bbbbbbbbbbbb\`...\`0123456789ab\`, exit unknown: [run](${run})`);
+		expect(exit("")).toBe(`Melian round on \`bbbbbbbbbbbb\`...\`0123456789ab\`, exit unknown: [run](${run})`);
+		expect(exit("255")).toBe(`Melian round on \`bbbbbbbbbbbb\`...\`0123456789ab\`, exit 255: [run](${run})`);
+		expect(exit("none")).toBe(`Melian round on \`bbbbbbbbbbbb\`...\`0123456789ab\`, exit none: [run](${run})`);
+	});
+
+	it("posts no findings for a pull request whose base or head moved during the round", () => {
+		const blocking = verdict({ blocking: true, block: [finding({ resolution: "block" })] });
+		const moved = (to) =>
+			`${header(1)}\n\nThe pull request moved to ${to} during the round, so this round posts no findings. Start a new round.\n`;
+		expect(comment(blocking, "1", { base: "c".repeat(40), head })).toBe(moved("`cccccccccccc`...`0123456789ab`"));
+		expect(comment(blocking, "1", { base, head: "d".repeat(40) })).toBe(moved("`bbbbbbbbbbbb`...`dddddddddddd`"));
+	});
+
+	it("posts no findings when the pull request could not be read again before posting", () => {
+		const body = new RoundComment({
+			verdict: verdict({ status: "passed" }),
+			exitCode: "0",
+			runUrl: run,
+			base,
+			head,
+		}).body();
+		expect(body).toBe(
+			`${header(0)}\n\nThe pull request could not be read again before posting, so this round posts no findings. Start a new round.\n`,
+		);
+	});
+
+	it("names a commit that is not a full SHA as unreadable, outside the fence", () => {
+		const body = new RoundComment({
+			verdict: verdict({ status: "passed" }),
+			exitCode: "0",
+			runUrl: run,
+			base: "main",
+			head: `${head.slice(0, 39)}g`,
+			current: { base: "main", head: `${head.slice(0, 39)}g` },
+		}).body();
+		expect(body.split("\n")[1]).toBe(
+			`Melian round on an unreadable commit...an unreadable commit, exit 0: [run](${run})`,
+		);
 	});
 
 	it("opens with the marker a later job counts its rounds by", () => {
@@ -327,12 +366,17 @@ describe("fenced", () => {
 
 describe("the command", () => {
 	it("prints a comment from the verdict file, and refuses to run without every argument", () => {
-		const ran = spawnSync(process.execPath, [script, goldenJson, "2", run, head], { encoding: "utf8" });
+		const args = [script, goldenJson, "2", run, base, head];
+		const ran = spawnSync(process.execPath, [...args, base, head], { encoding: "utf8" });
 		expect(ran.status).toBe(0);
-		expect(ran.stdout).toBe(RoundComment.read(goldenJson, "2", run, head).body());
-		const short = spawnSync(process.execPath, [script, goldenJson, "2", run], { encoding: "utf8" });
+		expect(ran.stdout).toBe(RoundComment.read(goldenJson, "2", run, base, head, { base, head }).body());
+		const unread = spawnSync(process.execPath, args, { encoding: "utf8" });
+		expect(unread.stdout).toBe(RoundComment.read(goldenJson, "2", run, base, head, undefined).body());
+		const short = spawnSync(process.execPath, args.slice(0, -1), { encoding: "utf8" });
 		expect(short.status).toBe(64);
-		expect(short.stderr).toBe("usage: node scripts/round-comment.mjs <verdict.json> <exit> <run URL> <head>\n");
+		expect(short.stderr).toBe(
+			"usage: node scripts/round-comment.mjs <verdict.json> <exit> <run URL> <base> <head> [<base> <head>]\n",
+		);
 	});
 
 	it("fences a file for the job summary with its controls escaped, and says so when it is absent or empty", () => {
