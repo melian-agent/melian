@@ -94,15 +94,24 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           MELIAN_SANDBOX_NETWORK: "1"
-      - name: Fail if a macOS-only test skipped
+      # Every test must pass here except the allowlist, so a new platform-gated test cannot skip unseen, and each named
+      # suite must be present and pass whole.
+      - name: Fail if a test skipped outside the allowlist
         run: |
-          jq -e -r '
-            [.testResults[]
-              | select(.name | test("/scripts/codex-sandboxed\\.test\\.mjs$|/packages/pipeline/test/mutation-process-real\\.test\\.ts$"))
-              | .name as $file | .assertionResults[] | {file: ($file | split("/") | last), title: .fullName, status}]
-            | (group_by(.file)[] | "\(.[0].file): \(map(select(.status == "passed")) | length) of \(length) passed"),
-              (.[] | select(.status != "passed") | "not passed (\(.status)): \(.file) > \(.title)"),
-              (if length > 0 and all(.status == "passed") then "every macOS-only test ran" else error("a macOS-only test did not pass") end)
+          jq -e -r --arg root "$GITHUB_WORKSPACE" '
+            [.testResults[] | (.name | ltrimstr($root + "/")) as $file
+              | .assertionResults[] | {id: ([$file] + .ancestorTitles + [.title] | join(" > ")), file: $file, status}] as $tests
+            | ["scripts/codex-sandboxed.test.mjs", "packages/pipeline/test/mutation-process-real.test.ts"] as $suites
+            # Only root can give a file to another user, and the runner is not root.
+            | ["packages/core/test/secrets.test.ts > loadSecrets > refuses a command in a file another user owns, advising chown"] as $allowed
+            | [$suites[] as $suite | [$tests[] | select(.file == $suite)]
+                | {suite: $suite, passed: (map(select(.status == "passed")) | length), total: length}] as $counts
+            | [$tests[] | select(.status != "passed") | .allowed = (.status == "skipped" and (.id | IN($allowed[])))] as $unpassed
+            | ($counts[] | "\(.suite): \(.passed) of \(.total) passed"),
+              ($unpassed[] | "\(if .allowed then "allowed" else "not allowed" end) (\(.status)): \(.id)"),
+              (if ($counts | all(.total > 0 and .passed == .total)) and ($unpassed | all(.allowed))
+                then "\($tests | length) tests: every one passed or is allowlisted"
+                else error("a named suite is missing or incomplete, or a test outside the allowlist did not pass") end)
           ' "$RUNNER_TEMP/vitest.json"
       - name: Fail if check rewrote files
         run: git diff --exit-code
