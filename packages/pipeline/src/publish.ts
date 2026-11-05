@@ -790,9 +790,7 @@ function publishTask(provider: ReviewProvider) {
 								})),
 								stillOpen: pending.stillOpen,
 								carried,
-								postedEarlier: Object.keys(pending.open).filter(
-									(id) => !pending.post.some(({ finding }) => finding.properties.id === id),
-								),
+								open: Object.keys(pending.open),
 								resolved: Object.values(pending.resolved).filter((entry) => entry.thread === undefined),
 								secret,
 							});

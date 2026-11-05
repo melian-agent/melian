@@ -418,7 +418,7 @@ describe("staticFindings", () => {
 		expect(findings.map((finding) => finding.properties.cause)).toEqual(["pre-existing"]);
 	});
 
-	async function godClasses(headFiles: Record<string, string>) {
+	async function godClasses(headFiles: Record<string, string>, rule = "god-class") {
 		const base = commit({ "src/quote.ts": lines("export function quote() {}", ""), "src/use.ts": lines("1") });
 		const head = commit(headFiles);
 		const { revision } = await Changeset.resolve(repo, `${base}..${head}`);
@@ -430,7 +430,7 @@ describe("staticFindings", () => {
 						{
 							results: [
 								{
-									ruleId: "god-class",
+									ruleId: rule,
 									level: "warning",
 									message: { text: "High fan-in symbol: quote (14 dependents)" },
 									locations: [{ physicalLocation: { artifactLocation: { uri }, region: { startLine } } }],
@@ -459,6 +459,13 @@ describe("staticFindings", () => {
 		expect(await godClasses({ "src/use.ts": lines("quote()") })).toEqual({
 			findings: [],
 			notes: ["enola/god-class results left out, the change not editing their symbol: 1."],
+		});
+	});
+
+	it("still reports another Enola rule on lines the change did not edit", async () => {
+		expect(await godClasses({ "src/use.ts": lines("quote()") }, "hotspot")).toEqual({
+			findings: [["enola/hotspot", "introduced"]],
+			notes: [],
 		});
 	});
 

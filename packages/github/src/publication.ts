@@ -436,7 +436,7 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 		),
 	);
 	const posted = new Set(draft.findings.flatMap(({ finding }) => finding.reportIds()));
-	const earlier = new Set(draft.postedEarlier);
+	const earlier = new Set(draft.open);
 	const carried = new Set(draft.carried);
 	const inBody = [
 		...draft.findings.filter(

@@ -159,10 +159,11 @@ export interface ReviewDraft {
 	/** Still-open findings, by ID, whose thread a human resolved or deleted; the body lists them again. */
 	readonly carried?: readonly string[];
 	/**
-	 * Findings, by ID, an earlier revision posted that this one does not post again. An advisory among them is counted
-	 * in the body, not listed again. Without it, the body lists every advisory.
+	 * Every finding, by ID, with a place on the pull request once this review posts. An advisory among them that the
+	 * review does not post was posted on an earlier revision, so the body counts it rather than listing it again.
+	 * Without it, the body lists every advisory.
 	 */
-	readonly postedEarlier?: readonly string[];
+	readonly open?: readonly string[];
 	/** Resolved and dismissed findings that have no thread to reply in, so the body names them. */
 	readonly resolved: readonly ClosedFinding[];
 	/** The changeset's publisher secret, as hex, which signs every marker the review carries. Never printed. */

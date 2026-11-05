@@ -648,6 +648,16 @@ describe("markers", () => {
 		expect(body).toContain("**passed**");
 	});
 
+	it("renders a passed review as its outcome, one sentence and the folded status, with no tally and nothing more", () => {
+		expect(bodyOf(noted())).toBe(
+			[
+				`${marker(revision, "verdict", "0123456789abcdef", secret, { round: 1 })}\nMelian reviewed \`aaaaaaaaaaaa\`: **passed**.`,
+				"No findings need attention.",
+				"<details>\n<summary>Verification and status</summary>\n\nmelian/review: success (Passed).\n\n</details>",
+			].join("\n\n"),
+		);
+	});
+
 	it("states a note that lowers the review's reach once, however many lenses carry it", () => {
 		const caveat = "callers were unavailable for every changed site, so no lens saw who calls the changed code";
 		const body = bodyOf(noted([caveat]));
@@ -1149,7 +1159,7 @@ describe("an all-advisory review", () => {
 			verdict,
 			findings: [{ finding: fresh, placement: { kind: "lines" as const, startLine: 12, line: 12 } }],
 			stillOpen: 1,
-			postedEarlier: [earlier],
+			open: [fresh.id, earlier],
 			resolved: [],
 			secret,
 		};
@@ -1215,5 +1225,47 @@ describe("an all-advisory review", () => {
 		});
 		expect(comment.split("\n").at(-1)).toBe(`Rule \`no-eval\` | Finding \`${blocking.id}\``);
 		for (const posted of [advisory, comment]) expect(posted).not.toContain("Status");
+	});
+
+	it("states the verifier's tally when one finding of several carries a verdict, though no verifier record ran", () => {
+		const judged = Finding.create({ ...input, severity: "P3" });
+		const verified = Finding.from({
+			...judged.toJSON(),
+			properties: {
+				...judged.properties,
+				verification: {
+					verdict: "confirmed",
+					reason: "It is.",
+					executor: "llm",
+					model: "openai/gpt",
+					version: "1",
+				},
+			},
+		});
+		const unjudged = Finding.create({ ...input, severity: "P3", file: "src/other.ts" });
+		const verdict = new Adjudication({
+			findings: [verified, unjudged],
+			manifest: [],
+			checks: [],
+			config: defaultConfig,
+		}).adjudicate();
+		const body = renderReviewBody(
+			{
+				pullRequest: 7,
+				revision,
+				base,
+				fingerprint: verdict.fingerprint(),
+				round: 1,
+				verdict,
+				findings: [],
+				stillOpen: 0,
+				resolved: [],
+				secret,
+			},
+			links,
+		);
+		expect(body).toContain(
+			`<summary>Verification and status</summary>\n\nVerification: ${verdict.verificationSummary()}; 0 refuted findings not posted.`,
+		);
 	});
 });
