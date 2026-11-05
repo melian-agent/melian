@@ -190,8 +190,10 @@ export class Timeline {
 				}
 			}
 			// The earliest claim since the issue was last marked ready wins, as AGENTS.md's Work from issues says.
-			stages.ready ??= readied.at(-1);
-			stages.claim ??= claims.find((claim) => claim >= stages.ready);
+			if (issue === pull.closingIssuesReferences.nodes[0]) {
+				stages.ready = readied.at(-1);
+				stages.claim = claims.find((claim) => claim >= stages.ready);
+			}
 		}
 		add(pull.createdAt, "pull request opened", `#${pull.number} by ${login(pull)}`);
 		timing(pull.createdAt, pull.body);

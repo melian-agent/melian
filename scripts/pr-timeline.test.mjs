@@ -353,6 +353,21 @@ describe("stages", () => {
 		expect(rows(timeline)).toContain("| ready to claim | 0.00 |  |");
 	});
 
+	it("takes ready and claim from the first closing issue alone, so a claim on another issue leaves the stage unknown", () => {
+		const at = (hours) => new Date(start + hours * HOUR).toISOString();
+		const issue = (number, items) => ({ number, createdAt: at(0), timelineItems: page(items) });
+		const ready = (hours) => ({ __typename: "LabeledEvent", createdAt: at(hours), label: { name: "status: ready" } });
+		const claim = (hours) => ({
+			__typename: "IssueComment",
+			createdAt: at(hours),
+			body: "Claim: b",
+			author: { login: "b" },
+		});
+		const issues = page([issue(7, [ready(1)]), issue(8, [ready(2), claim(3)])]);
+		const timeline = Timeline.from({ pull: pull({ closingIssuesReferences: issues }), runs: [] });
+		expect(rows(timeline)).toContain("| ready to claim | — |  |");
+	});
+
 	it("measures no claim when the issue was marked ready again after its last claim", () => {
 		const at = (hours) => new Date(start + hours * HOUR).toISOString();
 		const issue = {
