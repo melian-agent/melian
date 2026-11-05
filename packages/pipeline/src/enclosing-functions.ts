@@ -4,7 +4,6 @@ import {
 	isClassDeclaration,
 	isClassExpression,
 	isConstructorDeclaration,
-	isDeclarationName,
 	isExportAssignment,
 	isFunctionDeclaration,
 	isFunctionExpression,
