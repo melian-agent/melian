@@ -1485,8 +1485,18 @@ describe("reviewChangeset", () => {
 
 		expect(verdict.ran).toEqual([
 			...deterministicRan,
-			{ name: "lens.contracts", status: "ran", level: "careful" },
-			{ name: "lens.correctness", status: "ran", level: "careful" },
+			{
+				name: "lens.contracts",
+				version: lenses.find(({ name }) => name === "contracts")!.version,
+				status: "ran",
+				level: "careful",
+			},
+			{
+				name: "lens.correctness",
+				version: lenses.find(({ name }) => name === "correctness")!.version,
+				status: "ran",
+				level: "careful",
+			},
 		]);
 		const prompt = systemPromptOf(requests[correctness]![0]!);
 		expect(prompt).toContain(
@@ -1634,6 +1644,7 @@ describe("reviewChangeset", () => {
 			expect(verdict.status).toBe("not-reviewed");
 			expect(verdict.notRun.find((check) => check.name === "lens.contracts")).toEqual({
 				name: "lens.contracts",
+				version: lenses.find(({ name }) => name === "contracts")!.version,
 				status: "ended",
 				level: "careful",
 				reason:
@@ -1701,6 +1712,7 @@ describe("reviewChangeset", () => {
 			expect(verdict.status).toBe("not-reviewed");
 			expect(verdict.notRun.find((check) => check.name === "lens.contracts")).toEqual({
 				name: "lens.contracts",
+				version: lenses.find(({ name }) => name === "contracts")!.version,
 				status: "ended",
 				level: "careful",
 				reason:
@@ -1719,6 +1731,7 @@ describe("reviewChangeset", () => {
 			expect(verdict.status).toBe("findings");
 			expect(verdict.ran?.find((check) => check.name === "lens.contracts")).toEqual({
 				name: "lens.contracts",
+				version: lenses.find(({ name }) => name === "contracts")!.version,
 				status: "ran",
 				level: "careful",
 			});
@@ -1742,6 +1755,7 @@ describe("reviewChangeset", () => {
 				expect(verdict.status).toBe("not-reviewed");
 				expect(verdict.notRun.find((check) => check.name === "lens.correctness")).toEqual({
 					name: "lens.correctness",
+					version: lenses.find(({ name }) => name === "correctness")!.version,
 					status: "ended",
 					level: "careful",
 					reason: "its findings budget of 1 ran out, so defects may be unreported",
@@ -2235,6 +2249,7 @@ describe("reviewChangeset", () => {
 		expect(findings).toHaveLength(1);
 		expect(verdict.ran?.find((check) => check.name === "lens.correctness")).toEqual({
 			name: "lens.correctness",
+			version: lenses.find(({ name }) => name === "correctness")!.version,
 			status: "ran",
 			level: "careful",
 		});
@@ -2318,6 +2333,7 @@ describe("reviewChangeset", () => {
 			expect(searched).toContain("[that was the last of this lens's 2 tool calls, report_finding included.");
 			expect(verdict.ran?.find((check) => check.name === "lens.correctness")).toEqual({
 				name: "lens.correctness",
+				version: lenses.find(({ name }) => name === "correctness")!.version,
 				status: "ran",
 				level: "careful",
 			});
@@ -2371,6 +2387,7 @@ describe("reviewChangeset", () => {
 		expect(ended?.budgetEnded?.tokens).toBeGreaterThan(1);
 		expect(verdict.ran?.find((check) => check.name === "lens.contracts")).toEqual({
 			name: "lens.contracts",
+			version: lenses.find(({ name }) => name === "contracts")!.version,
 			status: "ran",
 			level: "careful",
 		});

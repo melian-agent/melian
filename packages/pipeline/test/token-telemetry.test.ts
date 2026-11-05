@@ -350,7 +350,7 @@ it.each(["before", "after"])(
 				expect(stored.usageIncomplete).toBe(1);
 				expect(telemetry.spend()).toContain("usage incomplete: 1 request(s) not measured");
 				expect(telemetry.slowest()).toContain("usage incomplete: 1 request(s) not measured");
-				expect(telemetry.render().split("\n")[0]).toContain("usage incomplete: 1 request(s) not measured");
+				expect(telemetry.render().split("\n")[1]).toContain("usage incomplete: 1 request(s) not measured");
 			} else {
 				expect(stored.stages[0]!.usageIncomplete).toBeUndefined();
 				expect(stored.usageIncomplete).toBeUndefined();
@@ -579,7 +579,7 @@ it("carries every unmeasured request into the run total, even without any usage 
 	expect(partial.spend()).toBe(
 		"36 tokens, $0.1 (usage unavailable for 1 stage) (usage incomplete: 3 request(s) not measured)",
 	);
-	expect(partial.render().split("\n")[1]).toContain("usage incomplete: 2 request(s) not measured");
+	expect(partial.render().split("\n")[2]).toContain("usage incomplete: 2 request(s) not measured");
 });
 
 it("awaits a request receipt before dispatch and propagates a receipt failure without calling the provider", async () => {

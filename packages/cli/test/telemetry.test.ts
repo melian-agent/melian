@@ -4,6 +4,7 @@ import { Changeset } from "@melian-agent/core";
 import {
 	backgroundContext as context,
 	createMemoryStorage,
+	PrepareSpans,
 	ReviewHarness,
 	StageTelemetry,
 	TelemetryReader,
@@ -153,4 +154,17 @@ it.each([false, true])("prints the slowest stages for an in-process review (fail
 	]);
 	expect(JSON.parse(io.stdout.mock.calls[0]![0])).toMatchObject({ telemetry: timings.toJSON() });
 	if (failed) expect(JSON.parse(io.stdout.mock.calls[0]![0])).toHaveProperty("error.message", "review stopped");
+});
+
+it("records a new failed review's spans when only an earlier failed run has spans", async () => {
+	const previous = new StageTelemetry(timings.revision, [], {
+		startedAt: 10,
+		endedAt: 20,
+		spans: [{ name: "failed", startedAt: 10, endedAt: 20, durationMs: 10 }],
+	});
+	vi.mocked(TelemetryReader.prototype.read).mockResolvedValue(previous);
+	vi.spyOn(ReviewHarness.prototype, "resumedProviders").mockRejectedValue(new Error("review stopped"));
+	const record = vi.spyOn(PrepareSpans.prototype, "record");
+	expect(await main(["review", "main...HEAD", "--json"], io)).toBe(2);
+	expect(record).toHaveBeenCalledOnce();
 });

@@ -1,0 +1,5 @@
+Fix pass 6 on [pull request #221](https://github.com/melian-agent/melian/pull/221) answers Melian's P2 `3fa925f8b5f2f5f3` at d5e5ac85. A repeat `melian review` without `--rerun` reattaches to the decided round, and `recordRun` overwrote that round's stored run with the repeat's projection: every stage reused, at no cost. Fix commit e3b6962c makes `recordRun` write a round's run once, inside the same commit, and leaves its guards and the stored shape alone.
+
+`round-run.test.ts` gains two tests. "keeps a decided round's run when a repeat review reattaches to that round" failed on d5e5ac85 with a stored `durationMs` of 100, the repeat's, where the first run's 200 was expected, and passes after the fix. "stores a rerun's new round beside the decided round's run" passes on both heads, and shows a new round from `--rerun` still stores its own run.
+
+Enumeration of `d5e5ac85...HEAD` lists four mutants, all on `telemetry.ts` lines 468 and 469. Each ran against one named test alone, and each test failed. The repeat test kills the guard forced false. The rerun test kills the guard forced true, the inverted comparison, and the run replaced by `{}`.

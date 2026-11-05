@@ -1,0 +1,313 @@
+{
+  "mutants": [
+    {
+      "file": "packages/cli/src/commands.ts",
+      "line": 397,
+      "column": 3,
+      "endLine": 397,
+      "endColumn": 7,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "false",
+      "claim": "killed",
+      "evidence": "FAIL  packages/cli/test/publish-run.test.ts > publishes the decided round after a failed second review (previous spans=true)",
+      "survivorClasses": [],
+      "tests": [
+        "packages/cli/test/publish-run.test.ts",
+        "packages/cli/test/telemetry.test.ts"
+      ],
+      "result": {
+        "exitCode": 1,
+        "killed": true,
+        "log": "tmp/quiet-run-details/spans-mutants-0.log",
+        "failingTests": [
+          "FAIL  packages/cli/test/publish-run.test.ts > publishes the decided round after a failed second review (previous spans=true)"
+        ]
+      }
+    },
+    {
+      "file": "packages/cli/src/commands.ts",
+      "line": 425,
+      "column": 19,
+      "endLine": 425,
+      "endColumn": 24,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "true",
+      "claim": "killed",
+      "evidence": "FAIL  packages/cli/test/publish-run.test.ts > replaces the preparation spans when a second review decides a verdict",
+      "survivorClasses": [],
+      "tests": [
+        "packages/cli/test/publish-run.test.ts",
+        "packages/cli/test/telemetry.test.ts"
+      ],
+      "result": {
+        "exitCode": 1,
+        "killed": true,
+        "log": "tmp/quiet-run-details/spans-mutants-1.log",
+        "failingTests": [
+          "FAIL  packages/cli/test/publish-run.test.ts > replaces the preparation spans when a second review decides a verdict"
+        ]
+      }
+    },
+    {
+      "file": "packages/cli/src/commands.ts",
+      "line": 428,
+      "column": 6,
+      "endLine": 428,
+      "endColumn": 21,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "claim": "killed",
+      "evidence": "FAIL  packages/cli/test/publish-run.test.ts > replaces the preparation spans when a second review decides a verdict",
+      "survivorClasses": [],
+      "tests": [
+        "packages/cli/test/publish-run.test.ts",
+        "packages/cli/test/telemetry.test.ts"
+      ],
+      "result": {
+        "exitCode": 1,
+        "killed": true,
+        "log": "tmp/quiet-run-details/spans-mutants-2.log",
+        "failingTests": [
+          "FAIL  packages/cli/test/publish-run.test.ts > replaces the preparation spans when a second review decides a verdict"
+        ]
+      }
+    },
+    {
+      "file": "packages/cli/src/commands.ts",
+      "line": 428,
+      "column": 6,
+      "endLine": 428,
+      "endColumn": 21,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "claim": "killed",
+      "evidence": "FAIL  packages/cli/test/publish-run.test.ts > publishes the decided round after a failed second review (previous spans=true)",
+      "survivorClasses": [],
+      "tests": [
+        "packages/cli/test/publish-run.test.ts",
+        "packages/cli/test/telemetry.test.ts"
+      ],
+      "result": {
+        "exitCode": 1,
+        "killed": true,
+        "log": "tmp/quiet-run-details/spans-mutants-3.log",
+        "failingTests": [
+          "FAIL  packages/cli/test/publish-run.test.ts > publishes the decided round after a failed second review (previous spans=true)"
+        ]
+      }
+    },
+    {
+      "file": "packages/cli/src/commands.ts",
+      "line": 428,
+      "column": 23,
+      "endLine": 433,
+      "endColumn": 3,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "claim": "killed",
+      "evidence": "FAIL  packages/cli/test/publish-run.test.ts > publishes the decided round after a failed second review (previous spans=true)",
+      "survivorClasses": [],
+      "tests": [
+        "packages/cli/test/publish-run.test.ts",
+        "packages/cli/test/telemetry.test.ts"
+      ],
+      "result": {
+        "exitCode": 1,
+        "killed": true,
+        "log": "tmp/quiet-run-details/spans-mutants-4.log",
+        "failingTests": [
+          "FAIL  packages/cli/test/publish-run.test.ts > publishes the decided round after a failed second review (previous spans=true)"
+        ]
+      }
+    },
+    {
+      "file": "packages/cli/src/commands.ts",
+      "line": 432,
+      "column": 7,
+      "endLine": 432,
+      "endColumn": 62,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "claim": "killed",
+      "evidence": "FAIL  packages/cli/test/publish-run.test.ts > publishes the decided round after a failed second review (previous spans=false); FAIL  packages/cli/test/telemetry.test.ts > records a new failed review's spans when only an earlier failed run has spans",
+      "survivorClasses": [
+        "compound-condition"
+      ],
+      "tests": [
+        "packages/cli/test/publish-run.test.ts",
+        "packages/cli/test/telemetry.test.ts"
+      ],
+      "result": {
+        "exitCode": 1,
+        "killed": true,
+        "log": "tmp/quiet-run-details/spans-mutants-5.log",
+        "failingTests": [
+          "FAIL  packages/cli/test/publish-run.test.ts > publishes the decided round after a failed second review (previous spans=false)",
+          "FAIL  packages/cli/test/telemetry.test.ts > records a new failed review's spans when only an earlier failed run has spans"
+        ]
+      }
+    },
+    {
+      "file": "packages/cli/src/commands.ts",
+      "line": 432,
+      "column": 7,
+      "endLine": 432,
+      "endColumn": 62,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "claim": "killed",
+      "evidence": "FAIL  packages/cli/test/publish-run.test.ts > publishes the decided round after a failed second review (previous spans=true)",
+      "survivorClasses": [
+        "compound-condition"
+      ],
+      "tests": [
+        "packages/cli/test/publish-run.test.ts",
+        "packages/cli/test/telemetry.test.ts"
+      ],
+      "result": {
+        "exitCode": 1,
+        "killed": true,
+        "log": "tmp/quiet-run-details/spans-mutants-6.log",
+        "failingTests": [
+          "FAIL  packages/cli/test/publish-run.test.ts > publishes the decided round after a failed second review (previous spans=true)"
+        ]
+      }
+    },
+    {
+      "file": "packages/cli/src/commands.ts",
+      "line": 432,
+      "column": 7,
+      "endLine": 432,
+      "endColumn": 62,
+      "mutatorName": "LogicalOperator",
+      "replacement": "verdict !== undefined || previous.prepare !== undefined",
+      "claim": "killed",
+      "evidence": "FAIL  packages/cli/test/publish-run.test.ts > publishes the decided round after a failed second review (previous spans=false); FAIL  packages/cli/test/telemetry.test.ts > records a new failed review's spans when only an earlier failed run has spans",
+      "survivorClasses": [
+        "compound-condition"
+      ],
+      "tests": [
+        "packages/cli/test/publish-run.test.ts",
+        "packages/cli/test/telemetry.test.ts"
+      ],
+      "result": {
+        "exitCode": 1,
+        "killed": true,
+        "log": "tmp/quiet-run-details/spans-mutants-7.log",
+        "failingTests": [
+          "FAIL  packages/cli/test/publish-run.test.ts > publishes the decided round after a failed second review (previous spans=false)",
+          "FAIL  packages/cli/test/telemetry.test.ts > records a new failed review's spans when only an earlier failed run has spans"
+        ]
+      }
+    },
+    {
+      "file": "packages/cli/src/commands.ts",
+      "line": 432,
+      "column": 7,
+      "endLine": 432,
+      "endColumn": 28,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "claim": "killed",
+      "evidence": "FAIL  packages/cli/test/telemetry.test.ts > records a new failed review's spans when only an earlier failed run has spans",
+      "survivorClasses": [
+        "compound-condition"
+      ],
+      "tests": [
+        "packages/cli/test/publish-run.test.ts",
+        "packages/cli/test/telemetry.test.ts"
+      ],
+      "result": {
+        "exitCode": 1,
+        "killed": true,
+        "log": "tmp/quiet-run-details/spans-mutants-8.log",
+        "failingTests": [
+          "FAIL  packages/cli/test/telemetry.test.ts > records a new failed review's spans when only an earlier failed run has spans"
+        ]
+      }
+    },
+    {
+      "file": "packages/cli/src/commands.ts",
+      "line": 432,
+      "column": 7,
+      "endLine": 432,
+      "endColumn": 28,
+      "mutatorName": "EqualityOperator",
+      "replacement": "verdict === undefined",
+      "claim": "killed",
+      "evidence": "FAIL  packages/cli/test/publish-run.test.ts > publishes the decided round after a failed second review (previous spans=true); FAIL  packages/cli/test/telemetry.test.ts > records a new failed review's spans when only an earlier failed run has spans",
+      "survivorClasses": [
+        "compound-condition"
+      ],
+      "tests": [
+        "packages/cli/test/publish-run.test.ts",
+        "packages/cli/test/telemetry.test.ts"
+      ],
+      "result": {
+        "exitCode": 1,
+        "killed": true,
+        "log": "tmp/quiet-run-details/spans-mutants-9.log",
+        "failingTests": [
+          "FAIL  packages/cli/test/publish-run.test.ts > publishes the decided round after a failed second review (previous spans=true)",
+          "FAIL  packages/cli/test/telemetry.test.ts > records a new failed review's spans when only an earlier failed run has spans"
+        ]
+      }
+    },
+    {
+      "file": "packages/cli/src/commands.ts",
+      "line": 432,
+      "column": 32,
+      "endLine": 432,
+      "endColumn": 62,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "claim": "killed",
+      "evidence": "FAIL  packages/cli/test/publish-run.test.ts > publishes the decided round after a failed second review (previous spans=false)",
+      "survivorClasses": [
+        "compound-condition"
+      ],
+      "tests": [
+        "packages/cli/test/publish-run.test.ts",
+        "packages/cli/test/telemetry.test.ts"
+      ],
+      "result": {
+        "exitCode": 1,
+        "killed": true,
+        "log": "tmp/quiet-run-details/spans-mutants-10.log",
+        "failingTests": [
+          "FAIL  packages/cli/test/publish-run.test.ts > publishes the decided round after a failed second review (previous spans=false)"
+        ]
+      }
+    },
+    {
+      "file": "packages/cli/src/commands.ts",
+      "line": 432,
+      "column": 32,
+      "endLine": 432,
+      "endColumn": 62,
+      "mutatorName": "EqualityOperator",
+      "replacement": "previous.prepare === undefined",
+      "claim": "killed",
+      "evidence": "FAIL  packages/cli/test/publish-run.test.ts > publishes the decided round after a failed second review (previous spans=true); FAIL  packages/cli/test/publish-run.test.ts > publishes the decided round after a failed second review (previous spans=false)",
+      "survivorClasses": [
+        "compound-condition"
+      ],
+      "tests": [
+        "packages/cli/test/publish-run.test.ts",
+        "packages/cli/test/telemetry.test.ts"
+      ],
+      "result": {
+        "exitCode": 1,
+        "killed": true,
+        "log": "tmp/quiet-run-details/spans-mutants-11.log",
+        "failingTests": [
+          "FAIL  packages/cli/test/publish-run.test.ts > publishes the decided round after a failed second review (previous spans=true)",
+          "FAIL  packages/cli/test/publish-run.test.ts > publishes the decided round after a failed second review (previous spans=false)"
+        ]
+      }
+    }
+  ],
+  "total": 12,
+  "omitted": 0,
+  "unmutated": []
+}

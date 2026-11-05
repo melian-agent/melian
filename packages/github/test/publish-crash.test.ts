@@ -286,7 +286,7 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 			},
 		]);
 		expect(await harness.getTask(task, context)).toMatchObject({
-			version: 6,
+			version: 7,
 			input: { publishedBy: { trustedWriters: true } },
 			state: {
 				status: "terminal",

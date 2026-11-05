@@ -1,0 +1,261 @@
+{
+  "mutants": [
+    {
+      "file": "packages/pipeline/src/telemetry.ts",
+      "line": 579,
+      "column": 7,
+      "endLine": 579,
+      "endColumn": 79,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "claim": "new-test",
+      "evidence": "telemetry.test.ts > matches escalated lens outcomes (quick=ended, careful=ran, level=careful); (quick=ran, careful=failed, level=careful); (quick=ran, careful=failed, level=undefined)",
+      "survivorClasses": [
+        "compound-condition"
+      ],
+      "tests": [
+        "npx",
+        "vitest",
+        "--run",
+        "--maxWorkers=1",
+        "packages/pipeline/test/telemetry.test.ts",
+        "-t",
+        "matches escalated lens outcomes"
+      ],
+      "result": {
+        "exitCode": 1,
+        "killed": true,
+        "failingTests": [
+          "FAIL  packages/pipeline/test/telemetry.test.ts > matches escalated lens outcomes (quick=ended, careful=ran, level=careful)",
+          "FAIL  packages/pipeline/test/telemetry.test.ts > matches escalated lens outcomes (quick=ran, careful=failed, level=careful)"
+        ],
+        "log": "tmp/quiet-run-details-fix5/mutant-0.log"
+      }
+    },
+    {
+      "file": "packages/pipeline/src/telemetry.ts",
+      "line": 579,
+      "column": 7,
+      "endLine": 579,
+      "endColumn": 79,
+      "mutatorName": "LogicalOperator",
+      "replacement": "check.level === undefined && stage.subject.split(\"@\")[2] === check.level",
+      "claim": "new-test",
+      "evidence": "telemetry.test.ts > matches escalated lens outcomes (quick=ended, careful=ran, level=careful); (quick=ran, careful=failed, level=careful); (quick=ran, careful=failed, level=undefined)",
+      "survivorClasses": [
+        "compound-condition"
+      ],
+      "tests": [
+        "npx",
+        "vitest",
+        "--run",
+        "--maxWorkers=1",
+        "packages/pipeline/test/telemetry.test.ts",
+        "-t",
+        "matches escalated lens outcomes"
+      ],
+      "result": {
+        "exitCode": 1,
+        "killed": true,
+        "failingTests": [
+          "FAIL  packages/pipeline/test/telemetry.test.ts > matches escalated lens outcomes (quick=ended, careful=ran, level=careful)",
+          "FAIL  packages/pipeline/test/telemetry.test.ts > matches escalated lens outcomes (quick=ran, careful=failed, level=careful)",
+          "FAIL  packages/pipeline/test/telemetry.test.ts > matches escalated lens outcomes (quick=ran, careful=failed, level=undefined)"
+        ],
+        "log": "tmp/quiet-run-details-fix5/mutant-1.log"
+      }
+    },
+    {
+      "file": "packages/pipeline/src/telemetry.ts",
+      "line": 579,
+      "column": 7,
+      "endLine": 579,
+      "endColumn": 32,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "claim": "new-test",
+      "evidence": "telemetry.test.ts > matches escalated lens outcomes (quick=ended, careful=ran, level=careful); (quick=ran, careful=failed, level=careful); (quick=ran, careful=failed, level=undefined)",
+      "survivorClasses": [
+        "compound-condition"
+      ],
+      "tests": [
+        "npx",
+        "vitest",
+        "--run",
+        "--maxWorkers=1",
+        "packages/pipeline/test/telemetry.test.ts",
+        "-t",
+        "matches escalated lens outcomes"
+      ],
+      "result": {
+        "exitCode": 1,
+        "killed": true,
+        "failingTests": [
+          "FAIL  packages/pipeline/test/telemetry.test.ts > matches escalated lens outcomes (quick=ran, careful=failed, level=undefined)"
+        ],
+        "log": "tmp/quiet-run-details-fix5/mutant-2.log"
+      }
+    },
+    {
+      "file": "packages/pipeline/src/telemetry.ts",
+      "line": 579,
+      "column": 7,
+      "endLine": 579,
+      "endColumn": 32,
+      "mutatorName": "EqualityOperator",
+      "replacement": "check.level !== undefined",
+      "claim": "new-test",
+      "evidence": "telemetry.test.ts > matches escalated lens outcomes (quick=ended, careful=ran, level=careful); (quick=ran, careful=failed, level=careful); (quick=ran, careful=failed, level=undefined)",
+      "survivorClasses": [
+        "compound-condition"
+      ],
+      "tests": [
+        "npx",
+        "vitest",
+        "--run",
+        "--maxWorkers=1",
+        "packages/pipeline/test/telemetry.test.ts",
+        "-t",
+        "matches escalated lens outcomes"
+      ],
+      "result": {
+        "exitCode": 1,
+        "killed": true,
+        "failingTests": [
+          "FAIL  packages/pipeline/test/telemetry.test.ts > matches escalated lens outcomes (quick=ended, careful=ran, level=careful)",
+          "FAIL  packages/pipeline/test/telemetry.test.ts > matches escalated lens outcomes (quick=ran, careful=failed, level=careful)",
+          "FAIL  packages/pipeline/test/telemetry.test.ts > matches escalated lens outcomes (quick=ran, careful=failed, level=undefined)"
+        ],
+        "log": "tmp/quiet-run-details-fix5/mutant-3.log"
+      }
+    },
+    {
+      "file": "packages/pipeline/src/telemetry.ts",
+      "line": 579,
+      "column": 36,
+      "endLine": 579,
+      "endColumn": 79,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "claim": "new-test",
+      "evidence": "telemetry.test.ts > matches escalated lens outcomes (quick=ended, careful=ran, level=careful); (quick=ran, careful=failed, level=careful); (quick=ran, careful=failed, level=undefined)",
+      "survivorClasses": [
+        "compound-condition"
+      ],
+      "tests": [
+        "npx",
+        "vitest",
+        "--run",
+        "--maxWorkers=1",
+        "packages/pipeline/test/telemetry.test.ts",
+        "-t",
+        "matches escalated lens outcomes"
+      ],
+      "result": {
+        "exitCode": 1,
+        "killed": true,
+        "failingTests": [
+          "FAIL  packages/pipeline/test/telemetry.test.ts > matches escalated lens outcomes (quick=ended, careful=ran, level=careful)",
+          "FAIL  packages/pipeline/test/telemetry.test.ts > matches escalated lens outcomes (quick=ran, careful=failed, level=careful)"
+        ],
+        "log": "tmp/quiet-run-details-fix5/mutant-4.log"
+      }
+    },
+    {
+      "file": "packages/pipeline/src/telemetry.ts",
+      "line": 579,
+      "column": 36,
+      "endLine": 579,
+      "endColumn": 79,
+      "mutatorName": "EqualityOperator",
+      "replacement": "stage.subject.split(\"@\")[2] !== check.level",
+      "claim": "new-test",
+      "evidence": "telemetry.test.ts > matches escalated lens outcomes (quick=ended, careful=ran, level=careful); (quick=ran, careful=failed, level=careful); (quick=ran, careful=failed, level=undefined)",
+      "survivorClasses": [
+        "compound-condition"
+      ],
+      "tests": [
+        "npx",
+        "vitest",
+        "--run",
+        "--maxWorkers=1",
+        "packages/pipeline/test/telemetry.test.ts",
+        "-t",
+        "matches escalated lens outcomes"
+      ],
+      "result": {
+        "exitCode": 1,
+        "killed": true,
+        "failingTests": [
+          "FAIL  packages/pipeline/test/telemetry.test.ts > matches escalated lens outcomes (quick=ended, careful=ran, level=careful)",
+          "FAIL  packages/pipeline/test/telemetry.test.ts > matches escalated lens outcomes (quick=ran, careful=failed, level=careful)"
+        ],
+        "log": "tmp/quiet-run-details-fix5/mutant-5.log"
+      }
+    },
+    {
+      "file": "packages/pipeline/src/telemetry.ts",
+      "line": 579,
+      "column": 56,
+      "endLine": 579,
+      "endColumn": 59,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "Ignored",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "claim": "new-test",
+      "evidence": "telemetry.test.ts > matches escalated lens outcomes (quick=ended, careful=ran, level=careful); (quick=ran, careful=failed, level=careful); (quick=ran, careful=failed, level=undefined)",
+      "survivorClasses": [
+        "dropped-value"
+      ],
+      "tests": [
+        "npx",
+        "vitest",
+        "--run",
+        "--maxWorkers=1",
+        "packages/pipeline/test/telemetry.test.ts",
+        "-t",
+        "matches escalated lens outcomes"
+      ],
+      "result": {
+        "exitCode": 1,
+        "killed": true,
+        "failingTests": [
+          "FAIL  packages/pipeline/test/telemetry.test.ts > matches escalated lens outcomes (quick=ended, careful=ran, level=careful)",
+          "FAIL  packages/pipeline/test/telemetry.test.ts > matches escalated lens outcomes (quick=ran, careful=failed, level=careful)"
+        ],
+        "log": "tmp/quiet-run-details-fix5/mutant-6.log"
+      }
+    }
+  ],
+  "total": 7,
+  "omitted": 0,
+  "unmutated": [],
+  "base": "5e1523c8bad4884e79311cb9b2f422db1fb3eac9",
+  "enumeratedHead": "85914ff2992095e20306c371fd650e34fc745273",
+  "sourceSha256": "006596830b9971a0808305bd0a3e290ef9c32e4752ca3f2a84871a3c9cf8e388",
+  "enumerationCommand": "node scripts/enumerate-mutants.mjs 5e1523c8bad4884e79311cb9b2f422db1fb3eac9...HEAD --json --limit 10000",
+  "runnerSource": "import hashlib\nimport json\nimport subprocess\nfrom pathlib import Path\n\nroot = Path(\"/Users/tal/dev/melian-worktrees/quiet-run-details\")\nscratch = root / \"tmp/quiet-run-details-fix5\"\ninventory_path = root / \"docs/progress-log/2026-10-27-quiet-run-details-level-outcomes-mutants.json\"\ninventory = json.loads((scratch / \"enumerated.json\").read_text())\nassert inventory[\"omitted\"] == 0\nsource_path = root / \"packages/pipeline/src/telemetry.ts\"\noriginal = source_path.read_text()\ncommand = [\"npx\", \"vitest\", \"--run\", \"--maxWorkers=1\", \"packages/pipeline/test/telemetry.test.ts\", \"-t\", \"matches escalated lens outcomes\"]\ninventory.update({\n    \"base\": \"5e1523c8bad4884e79311cb9b2f422db1fb3eac9\",\n    \"enumeratedHead\": (scratch / \"snapshot\").read_text().strip(),\n    \"sourceSha256\": hashlib.sha256(original.encode()).hexdigest(),\n    \"enumerationCommand\": \"node scripts/enumerate-mutants.mjs 5e1523c8bad4884e79311cb9b2f422db1fb3eac9...HEAD --json --limit 10000\",\n    \"runnerSource\": Path(__file__).read_text(),\n})\nfor mutant in inventory[\"mutants\"]:\n    mutant.update({\"claim\": \"new-test\", \"evidence\": \"telemetry.test.ts > matches escalated lens outcomes (quick=ended, careful=ran, level=careful); (quick=ran, careful=failed, level=careful); (quick=ran, careful=failed, level=undefined)\", \"survivorClasses\": [\"dropped-value\"] if mutant[\"mutatorName\"] == \"StringLiteral\" else [\"compound-condition\"], \"tests\": command})\ninventory_path.write_text(json.dumps(inventory, indent=2) + \"\\n\")\nlines = original.splitlines(keepends=True)\ntry:\n    for index, mutant in enumerate(inventory[\"mutants\"]):\n        start = sum(map(len, lines[:mutant[\"line\"] - 1])) + mutant[\"column\"]\n        end = sum(map(len, lines[:mutant[\"endLine\"] - 1])) + mutant[\"endColumn\"]\n        source_path.write_text(original[:start] + mutant[\"replacement\"] + original[end:])\n        log = scratch / f\"mutant-{index}.log\"\n        try:\n            with log.open(\"w\") as output:\n                result = subprocess.run(command, cwd=root, stdout=output, stderr=subprocess.STDOUT, timeout=120)\n        finally:\n            source_path.write_text(original)\n        failing = [line.strip() for line in log.read_text().splitlines() if line.strip().startswith(\"FAIL \")]\n        killed = result.returncode == 1 and bool(failing) and all(\"matches escalated lens outcomes\" in name for name in failing)\n        mutant[\"result\"] = {\"exitCode\": result.returncode, \"killed\": killed, \"failingTests\": failing, \"log\": str(log.relative_to(root))}\n        inventory_path.write_text(json.dumps(inventory, indent=2) + \"\\n\")\n        print(index, mutant[\"mutatorName\"], \"killed\" if killed else \"SURVIVED OR INVALID\", flush=True)\n        if not killed:\n            raise RuntimeError(f\"Mutant {index} needs investigation\")\nfinally:\n    source_path.write_text(original)\n",
+  "proof": {
+    "killed": 7,
+    "survived": 0,
+    "equivalent": 0,
+    "omitted": 0,
+    "baseline": "Final unmutated telemetry.test.ts: 40 passed (tmp/quiet-run-details-fix5/telemetry-final.log).",
+    "reproduction": "Two escalation regressions failed on 5e1523c8: quick ended rendered ran; quick ran rendered failed (tmp/quiet-run-details-fix5/reproduce.log).",
+    "snapshot": "Pre-commit source snapshot; sourceSha256 binds every probe to the final production file. Re-enumerate base...HEAD after the fix commit and compare every identity field.",
+    "finalValidation": {
+      "pipeline": {
+        "files": 6,
+        "passed": 89,
+        "log": "tmp/quiet-run-details-fix5/pipeline-final.log"
+      },
+      "cli": {
+        "files": 1,
+        "passed": 8,
+        "log": "tmp/quiet-run-details-fix5/cli-final.log"
+      },
+      "fullGate": "Not run in the sandbox; host owns whole package suites and npm run check."
+    }
+  }
+}

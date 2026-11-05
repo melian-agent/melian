@@ -234,7 +234,7 @@ The plan answers:
 - `refusal(tier)`, why a check there fails without running.
 - `lineage(tier)`, the `CheckLineage` of a check on the tier's first model.
 - `judge(name, level, ran?, scope?)`, the refusal and lineage of one lens check, of the variant a folder's `scope` names, on the model it finished on. A lens a preference file moved is judged under its committed tier's policy.
-- `mark(records, ranOn)`, the lens records with their lineage added, and `failed` where a lens finished on a model its policy refuses.
+- `mark(records, ranOn)`, the lens records with their lineage added, and `failed` where a lens finished on a model its policy refuses. A versioned lens record matches only its own folder variant and level; legacy records without a version keep their former aggregate judgement.
 - `verifierRoute(finder)`, credentialed models ordered across families; an unrouted tier uses heavy, medium, then light routes. A refused or uncredentialed explicit verifier tier returns no route and keeps its reason and lineage.
 - `verifierLineage(model)`, lineage for the judge that finished, including lens-tier fallback.
 - `providers()`, every provider verification or the review's lenses may call at any declared level. Credential unlocks follow each concrete task's route: the chosen triage provider, selected lens runs including a quick run's escalation, and candidate verifier routes. Credentials for unselected levels stay locked unless another task needs them. [The task-route decision](../decisions/2026-10-08-credentials-follow-concrete-task-routes.md) records this rule.

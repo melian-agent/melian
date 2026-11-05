@@ -178,6 +178,9 @@ it.each([200, 201])("reads every stage and settled input across %i-record pages"
 	expect(telemetry.render()).toContain("Response duration unavailable; end uses the request timestamp.");
 	expect(walkthroughs[0]!.usage).toEqual(new TokenUsage().toJSON());
 	expect(walkthroughs[1]!.outcome).toBe("ended");
+	// Budgets belong to a lens's stage; a walkthrough's conversation records none.
+	expect(walkthroughs[1]).not.toHaveProperty("tools");
+	expect(walkthroughs[1]).not.toHaveProperty("ended");
 	expect(walkthroughs[2]!.outcome).toBe("ended");
 	expect(walkthroughs[2]).toMatchObject({ endedAt: 1, durationMs: 1 });
 	expect(walkthroughs[2]!.note).toBeUndefined();
