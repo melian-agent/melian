@@ -366,6 +366,17 @@ describe("summary", () => {
 		]);
 	});
 
+	it.each([
+		{ body: "Timing: round 0 min, $0.10", reported: "0 min, $0.10" },
+		{ body: "Timing: lunch", reported: "none" },
+	])("reports $reported for a comment reading $body", ({ body, reported }) => {
+		const timelineItems = page([
+			{ __typename: "IssueComment", createdAt: "2026-10-01T01:00:00.000Z", body, author: { login: "b" } },
+		]);
+		const timeline = Timeline.from({ pull: pull({ timelineItems }), runs: [] });
+		expect(rows(timeline)).toContain(`| Timing reported | ${reported} |`);
+	});
+
 	it("prints minutes alone when no Timing item carries a cost", () => {
 		const timelineItems = page([
 			{

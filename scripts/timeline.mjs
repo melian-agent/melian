@@ -250,10 +250,10 @@ export class Timeline {
 			latest = Math.max(latest, event.end ?? event.at);
 			lines.push(row(stamp(event.at), ((event.at - first) / HOUR).toFixed(2), event.event, event.detail));
 		}
-		const items = this.#events.filter((event) => event.item);
-		const minutes = items.reduce((sum, event) => sum + (event.item.minutes ?? 0), 0);
+		const items = this.#events.filter((event) => event.item?.minutes !== undefined);
+		const minutes = items.reduce((sum, event) => sum + event.item.minutes, 0);
 		const cost = items.reduce((sum, event) => sum + (event.item.cost ?? 0), 0);
-		const reported = minutes === 0 ? "none" : `${minutes} min${cost === 0 ? "" : `, $${cost.toFixed(2)}`}`;
+		const reported = items.length === 0 ? "none" : `${minutes} min${cost === 0 ? "" : `, $${cost.toFixed(2)}`}`;
 		lines.push("", "| Summary | Value |", "| --- | --- |", row("Timing reported", reported));
 		const ci = this.#events.filter((event) => event.end !== undefined);
 		const ciMinutes = ci.reduce((sum, event) => sum + (event.end - event.at) / 60_000, 0);
