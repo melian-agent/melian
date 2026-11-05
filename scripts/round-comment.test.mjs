@@ -298,6 +298,37 @@ describe("RoundComment", () => {
 		expect(exit("none")).toBe(`Melian round on \`0123456789ab\`, exit none: [run](${run})`);
 	});
 
+	it("quotes the checks that left the committed routes, so a round on a derived route says so", () => {
+		const text = [
+			"Verdict: passed",
+			"",
+			"melian/review: success (Passed).",
+			"",
+			"1 check left the committed routes:",
+			"  lens.design  on anthropic/claude-opus-5-5, derived, since no model of its route has credentials, where",
+			"    policy wants openai-codex/gpt-5.6-sol and accepts anthropic/claude-opus-5-5",
+			"",
+			"No findings.",
+		].join("\n");
+		const body = new RoundComment({ text, verdict: verdict({}, "passed"), exitCode: "0", runUrl: run, head }).body();
+		expect(body).toBe(
+			[
+				header.replace("exit 2", "exit 0"),
+				"",
+				"```text",
+				"Verdict: passed",
+				"",
+				"1 check left the committed routes:",
+				"  lens.design  on anthropic/claude-opus-5-5, derived, since no model of its route has credentials, where",
+				"    policy wants openai-codex/gpt-5.6-sol and accepts anthropic/claude-opus-5-5",
+				"",
+				"No findings above advisory.",
+				"```",
+				"",
+			].join("\n"),
+		);
+	});
+
 	it("opens with the marker a later job counts its rounds by", () => {
 		const body = new RoundComment({ text: "", verdict: undefined, exitCode: "none", runUrl: run, head }).body();
 		expect(body.startsWith("<!-- melian-round -->\nMelian round on ")).toBe(true);

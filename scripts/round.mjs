@@ -99,7 +99,12 @@ export class RoundComment {
 			return `${header}\n\nThe round ended before it decided a verdict. The run's log and summary say why.\n`;
 		}
 		const quoted = [visible(verdictLine)];
-		for (const heading of [(line) => line === "Provisional:", (line) => /^\S.* did not run:$/.test(line)]) {
+		const headings = [
+			(line) => line === "Provisional:",
+			(line) => /^\S.* did not run:$/.test(line),
+			(line) => /^\S.* left the committed routes:$/.test(line),
+		];
+		for (const heading of headings) {
 			const block = section(lines, heading);
 			if (block.length > 0) quoted.push("", ...block.map(visible));
 		}
