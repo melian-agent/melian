@@ -16,10 +16,10 @@ Example: [the final review](https://github.com/melian-agent/melian/pull/215#pull
 
 1. A review whose counted findings are all advisories opens "No blocking findings, N advisories". When earlier revisions posted some, it adds "M carried from earlier". A review with a block or an acknowledgement keeps "N findings need attention" and its still-open sentence.
 2. The verifier's tally and the `melian/review` state and description fold under one `<details>` block, "Verification and status", after the open sections. The status check shows both, so they are for a reader who wants to dig in. The fold's summary is a noun phrase, not a count: it holds two facts, not N of one. The dismissal instruction stays open, since it asks the reader to act.
-3. An advisory is listed once. A later revision counts it in the header and lists only the advisories it posts now. The publish task passes the pending round's `open` as `ReviewDraft.open`; an advisory in it that the review does not post was posted earlier. A renderer given none, such as the ledger's summary, lists every advisory as before.
+3. An advisory is listed once. A later revision counts it in the header and lists only the advisories it posts now. An earlier body's signed finding markers are the authority for what was posted: `findPublished` reads them back as `listed`, and the publish task passes them as `ReviewDraft.listed`. The plan's `open` set would also hold an advisory the size limit cut, which nobody saw, and counting it would hide it for good. A renderer given none, such as the ledger's summary, lists every advisory as before.
 4. A posted finding's footer and an advisory's body line drop `Status`. A comment is posted once, so its status always read `new`. The terminal keeps the lifecycle status in its footer.
 
-No stored shape changes. `open` is read at post time from the pending round, and a round recovered by its markers is not rendered again.
+No stored shape changes. `listed` is read from the pull request before each post, and a round recovered by its markers is not rendered again.
 
 ## Why
 

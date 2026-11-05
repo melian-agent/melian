@@ -107,6 +107,7 @@ describe("publication response gaps", () => {
 			{ ...root, id: 3, body: answer, in_reply_to_id: 1 },
 		);
 		expect(await provider.findPublished(7, head, { fingerprint: "0123456789abcdef", round: 1 }, secret)).toEqual({
+			listed: [],
 			review: "1",
 			threads: { [finding]: "1" },
 			replies: { [`${finding} 1`]: "3" },
@@ -122,7 +123,7 @@ describe("publication response gaps", () => {
 				{ fingerprint: "0123456789abcdef", round: 1 },
 				"11".repeat(32),
 			),
-		).toEqual({ threads: {}, replies: {} });
+		).toEqual({ listed: [], threads: {}, replies: {} });
 		expect(state.calls.map(({ path }) => path)).toEqual([
 			"/repos/owner/repo/pulls/7/reviews",
 			"/repos/owner/repo/pulls/7/comments",
@@ -439,6 +440,7 @@ describe("publication record validation", () => {
 			},
 		});
 		expect(await provider.findPublished(7, head, wanted, secret)).toEqual({
+			listed: [],
 			review: "1",
 			threads: { [finding]: "2" },
 			replies: { [`${finding} 2`]: "3" },
@@ -467,6 +469,7 @@ describe("publication record validation", () => {
 		state.comments.push({ ...root, id: 3, user: { login: "human" }, pull_request_review_id: null }, root);
 		if (link === undefined) Reflect.deleteProperty(state.comments[0]!, "pull_request_review_id");
 		expect(await provider.findPublished(7, head, wanted, secret)).toEqual({
+			listed: [],
 			review: "1",
 			threads: { fedcba9876543210: "2" },
 			replies: {},
@@ -494,6 +497,7 @@ describe("publication record validation", () => {
 		};
 		state.comments.push(root, { ...root, id: 1, user: null, in_reply_to_id: root.id, body: "Deleted author" });
 		expect(await provider.findPublished(7, head, wanted, secret)).toEqual({
+			listed: [],
 			review: "1",
 			threads: { fedcba9876543210: String(root.id) },
 			replies: {},

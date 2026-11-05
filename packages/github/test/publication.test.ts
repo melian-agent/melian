@@ -1159,7 +1159,7 @@ describe("an all-advisory review", () => {
 			verdict,
 			findings: [{ finding: fresh, placement: { kind: "lines" as const, startLine: 12, line: 12 } }],
 			stillOpen: 1,
-			open: [fresh.id, earlier],
+			listed: [earlier],
 			resolved: [],
 			secret,
 		};
@@ -1267,5 +1267,67 @@ describe("an all-advisory review", () => {
 		expect(body).toContain(
 			`<summary>Verification and status</summary>\n\nVerification: ${verdict.verificationSummary()}; 0 refuted findings not posted.`,
 		);
+	});
+
+	it("reads back only the advisories a cut body listed, and lists the rest on the next revision", async () => {
+		const state = fakeState(
+			"melian-agent",
+			"example",
+			{ number: 7, title: "Change", base: { ref: "main", sha: base }, head: { ref: "feature", sha: revision } },
+			{ "src/run.ts": [[12, 12]] },
+		);
+		const provider = createGitHubProvider({
+			owner: state.owner,
+			repo: state.repo,
+			token: "t",
+			fetch: fakeGitHub(state),
+		});
+		const many = Array.from({ length: 40 }, (_, index) =>
+			Finding.create({
+				...input,
+				severity: "P3",
+				snippet: `eval(input${index})`,
+				message: `${"x".repeat(2000)} ${index}`,
+			}),
+		);
+		const verdict = new Adjudication({
+			findings: many,
+			manifest: [],
+			checks: [],
+			config: defaultConfig,
+		}).adjudicate();
+		const draft = {
+			pullRequest: 7,
+			revision,
+			base,
+			fingerprint: verdict.fingerprint(),
+			round: 1,
+			verdict,
+			findings: verdict.findings.advisory.map((finding) => ({ finding, placement: { kind: "body" as const } })),
+			stillOpen: 0,
+			resolved: [],
+			secret,
+		};
+		await provider.postReview(draft);
+		const shown = markersIn(state.reviews[0]!.body)
+			.filter(({ kind }) => kind === "finding")
+			.map(({ id }) => id);
+		expect(shown.length).toBeGreaterThan(0);
+		expect(shown.length).toBeLessThan(40);
+		const { listed } = await provider.findPublished(
+			7,
+			revision,
+			{ fingerprint: verdict.fingerprint(), round: 1 },
+			secret,
+		);
+		expect(listed).toEqual(shown);
+		const next = renderReviewBody({ ...draft, round: 2, findings: [], stillOpen: 40, listed: listed! }, links);
+		const unseen = verdict.findings.advisory.map(({ id }) => id).filter((id) => !shown.includes(id));
+		expect(
+			markersIn(next)
+				.filter(({ kind }) => kind === "finding")
+				.map(({ id }) => id),
+		).toEqual(unseen);
+		expect(next).toContain(`No blocking findings, 40 advisories, ${shown.length} carried from earlier.`);
 	});
 });

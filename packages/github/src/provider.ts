@@ -727,6 +727,13 @@ export class GitHubProvider implements ReviewProvider {
 				break;
 			}
 		}
+		// What a body shows is the authority for what a reader saw: a finding the size limit cut was never listed.
+		const listed = new Set<string>();
+		for (const each of reviews) {
+			if (!(await this.ours(each.user))) continue;
+			for (const found of markersIn(each.body))
+				if (found.kind === "finding" && verifyMarker(found, secret)) listed.add(found.id);
+		}
 		const threads: Record<string, string> = {};
 		const replies: Record<string, string> = {};
 		const roots = new Map<number, { id: string; author: string }>();
@@ -756,7 +763,7 @@ export class GitHubProvider implements ReviewProvider {
 				);
 			}
 		}
-		return { ...(review === undefined ? {} : { review }), threads, replies };
+		return { ...(review === undefined ? {} : { review }), threads, replies, listed: [...listed] };
 	}
 
 	private async publicationPages<

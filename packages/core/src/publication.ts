@@ -159,11 +159,11 @@ export interface ReviewDraft {
 	/** Still-open findings, by ID, whose thread a human resolved or deleted; the body lists them again. */
 	readonly carried?: readonly string[];
 	/**
-	 * Every finding, by ID, with a place on the pull request once this review posts. An advisory among them that the
-	 * review does not post was posted on an earlier revision, so the body counts it rather than listing it again.
-	 * Without it, the body lists every advisory.
+	 * Findings, by ID, whose signed marker stands in a review body Melian posted on the pull request, at any head. An
+	 * advisory among them that this review does not post is counted, not listed again. Without it, the body lists every
+	 * advisory.
 	 */
-	readonly open?: readonly string[];
+	readonly listed?: readonly string[];
 	/** Resolved and dismissed findings that have no thread to reply in, so the body names them. */
 	readonly resolved: readonly ClosedFinding[];
 	/** The changeset's publisher secret, as hex, which signs every marker the review carries. Never printed. */
@@ -185,6 +185,8 @@ export interface PublishedMarkers {
 	readonly threads: Readonly<Record<string, string>>;
 	/** The reply marking each finding resolved or dismissed across all heads, by {@link replyKey}. */
 	readonly replies: Readonly<Record<string, string>>;
+	/** Each finding whose signed marker stands in the body of a review Melian posted, across all heads, by ID. */
+	readonly listed?: readonly string[];
 }
 
 /**

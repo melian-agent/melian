@@ -107,7 +107,7 @@ describe("reading markers back", () => {
 	const wanted = { fingerprint, round: 1 };
 	const finding = "fedcba9876543210";
 	const secret = "11".repeat(32);
-	const none = { threads: {}, replies: {} };
+	const none = { threads: {}, replies: {}, listed: [] };
 	const review = (id: number, login: string, opening: string) => ({
 		id,
 		user: { login },
@@ -140,6 +140,7 @@ describe("reading markers back", () => {
 		const github = providerFor(state);
 		// A reply is found by its finding, its thread, and the dismissal it gave, so a second reason is a reply of its own.
 		expect(await github.findPublished(7, head, wanted, secret)).toEqual({
+			listed: [],
 			review: "1",
 			threads: { [finding]: "2" },
 			replies: { [`${finding} 2`]: "3", [`${finding} 2 ${version}`]: "4" },
@@ -1225,6 +1226,7 @@ describe("cross-head answer discovery", () => {
 		);
 		const result = await providerFor(state).findPublished(7, head, wanted, secret);
 		expect(result).toEqual({
+			listed: [],
 			threads: {},
 			replies: { "fedcba9876543210 1": "1", "0123456789abcdef 2 00112233aabbccdd": "6" },
 		});
@@ -1261,6 +1263,7 @@ describe("cross-head answer discovery", () => {
 			user: { login: "human" },
 		});
 		expect(await providerFor(state).findPublished(7, old, wanted, secret)).toEqual({
+			listed: [],
 			review: "1",
 			threads: { [finding]: "1" },
 			replies: {},
@@ -1314,6 +1317,7 @@ describe("cross-head answer discovery", () => {
 		state.reviews.push(review);
 		state.comments.push({ ...root(1), body: marker(old, kind, "fedcba9876543210", secret) });
 		expect(await providerFor(state).findPublished(7, old, wanted, secret)).toEqual({
+			listed: [],
 			review: "1",
 			threads: {},
 			replies: {},
@@ -1326,6 +1330,7 @@ describe("cross-head answer discovery", () => {
 		state.reviews.push(review);
 		state.comments.push({ ...root(1), body: marker(old, "finding", "fedcba9876543210", "22".repeat(32)) });
 		expect(await providerFor(state).findPublished(7, old, wanted, secret)).toEqual({
+			listed: [],
 			review: "1",
 			threads: {},
 			replies: {},
@@ -1338,6 +1343,7 @@ describe("cross-head answer discovery", () => {
 		state.reviews.push(review);
 		state.comments.push({ ...root(1), user: null });
 		expect(await providerFor(state).findPublished(7, old, wanted, secret)).toEqual({
+			listed: [],
 			review: "1",
 			threads: {},
 			replies: {},
@@ -1357,6 +1363,7 @@ describe("cross-head answer discovery", () => {
 			},
 		);
 		expect(await providerFor(state).findPublished(7, old, wanted, secret)).toEqual({
+			listed: [],
 			review: "1",
 			threads: {},
 			replies: {},
@@ -1481,6 +1488,7 @@ describe("cross-head answer discovery", () => {
 		state.reviews.push(review);
 		state.comments.push(first, { ...root(2), user: null });
 		expect(await providerFor(state).findPublished(7, old, wanted, secret)).toEqual({
+			listed: [],
 			review: "1",
 			threads: { fedcba9876543210: "1" },
 			replies: {},

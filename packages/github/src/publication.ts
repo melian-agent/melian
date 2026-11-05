@@ -337,14 +337,19 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 		return count === 0 ? [] : [`${count} ${resolution}`];
 	});
 	const shown = tallied.length;
+	const posted = new Set(draft.findings.flatMap(({ finding }) => finding.reportIds()));
+	const earlier = new Set(draft.listed);
+	// An earlier body listed it, so this one counts it; one a size limit cut was never seen and is listed again.
+	const seen = (finding: Finding) => !posted.has(finding.id) && earlier.has(finding.id);
 	// An advisory asks for no action, so a review of advisories alone says nothing needs attention.
 	const quiet = tallied.every((finding) => finding.properties.resolution === "advisory");
+	const carriedOver = tallied.filter(seen).length;
 	const summary =
 		shown === 0
 			? ["No findings need attention."]
 			: quiet
 				? [
-						`No blocking findings, ${advisories(shown)}${draft.stillOpen > 0 ? `, ${draft.stillOpen} carried from earlier` : ""}.`,
+						`No blocking findings, ${advisories(shown)}${carriedOver > 0 ? `, ${carriedOver} carried from earlier` : ""}.`,
 					]
 				: [
 						`${plural(shown, "finding")} ${shown === 1 ? "needs" : "need"} attention: ${counts.join(", ")}.`,
@@ -435,8 +440,6 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 			].join("\n\n"),
 		),
 	);
-	const posted = new Set(draft.findings.flatMap(({ finding }) => finding.reportIds()));
-	const earlier = new Set(draft.open);
 	const carried = new Set(draft.carried);
 	const inBody = [
 		...draft.findings.filter(

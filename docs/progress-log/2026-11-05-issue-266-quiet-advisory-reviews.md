@@ -6,7 +6,7 @@ For [issue #266](https://github.com/melian-agent/melian/issues/266), a follow-up
 - The `overlong-sentence` guardrail says "45 or more words with no full stop; find the seam, as AGENTS.md asks" instead of about 40 words of AGENTS.md. Its golden copies the root rule, so its policy and scripted output changed with it.
 - A review of advisories alone opens "No blocking findings, N advisories", with "M carried from earlier" when earlier revisions posted some.
 - The verifier's tally and the `melian/review` line fold under "Verification and status".
-- An advisory an earlier revision posted is counted, not listed again. The publish task passes the pending round's `open`, so no stored shape changes.
+- An advisory an earlier revision posted is counted, not listed again. The publish task reads the finding markers that stand in earlier review bodies, so an advisory GitHub's size limit cut is listed again, and no stored shape changes.
 - A posted comment's footer and an advisory's body line drop `Status`.
 
 Each change started from a test that failed on `main` for the reported reason.

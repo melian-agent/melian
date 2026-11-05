@@ -142,6 +142,22 @@ describe("advisory publication", { timeout: 60_000 }, () => {
 		]);
 	});
 
+	it("lists an advisory again when no earlier body shows it, as when GitHub's limit cut it", async () => {
+		const { state, review, publish } = await session();
+		const first = await review("advisory");
+		const id = first.verdict.findings.advisory[0]!.id;
+		await publish(first.changeset);
+		// The first body as it would read had the limit cut its one advisory: the marker and its line are gone.
+		const lines = state.reviews[0]!.body.split("\n");
+		const at = lines.findIndex((line) => parseMarker(line)?.id === id);
+		lines.splice(at, 2);
+		state.reviews[0]!.body = lines.join("\n");
+		const second = await review("advisory");
+		await publish(second.changeset);
+		expect(markersIn(state.reviews[1]!.body).map((found) => [found.kind, found.id])).toContainEqual(["finding", id]);
+		expect(state.reviews[1]!.body).toContain("No blocking findings, 1 advisory.");
+	});
+
 	it.each(["advisory", "gone"] as const)(
 		"retires an owed thread when the finding returns as advisory after %s",
 		async (interrupted) => {
