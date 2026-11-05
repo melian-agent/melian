@@ -615,7 +615,7 @@ it.each(["main-36122eb2", "main-other-revision", "main-preserved", "build1-6bd29
 		expect(done.state.outcome).toMatchObject({ status: "completed", result: { kind: "published" } });
 		expect((await harness.snapshot(PublisherDocument, root.id, context))?.target?.roundId).toBe(legacy);
 		expect(done.input).toMatchObject({ publishedBy: { trustedWriters: false } });
-		expect(done.version).toBe(6);
+		expect(done.version).toBe(7);
 		expect(previous.state.reviews).toHaveLength(1);
 		expect(previous.state.statuses.at(-1)?.state).toBe("error");
 		expect(fake.provider.state.callCount).toBe(0);

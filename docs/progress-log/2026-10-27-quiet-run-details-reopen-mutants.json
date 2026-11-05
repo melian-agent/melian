@@ -1,0 +1,276 @@
+{
+  "mutants": [
+    {
+      "file": "packages/pipeline/src/telemetry.ts",
+      "line": 226,
+      "column": 34,
+      "endLine": 226,
+      "endColumn": 36,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[\"Stryker was here\"]",
+      "claim": "equivalent",
+      "evidence": "The seeded string has no recognised stage name, so runDetails omits it; telemetry stages and totals never include this array.",
+      "survivorClasses": [
+        "seeded-default"
+      ],
+      "tests": [
+        "packages/pipeline/test/run-details.test.ts",
+        "packages/pipeline/test/run-check-outcomes.test.ts"
+      ],
+      "result": {
+        "exitCode": 0,
+        "killed": false,
+        "log": "tmp/quiet-run-details-fix2/mutant-0.log",
+        "failingTests": []
+      }
+    },
+    {
+      "file": "packages/pipeline/src/telemetry.ts",
+      "line": 274,
+      "column": 17,
+      "endLine": 274,
+      "endColumn": 54,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "claim": "killed",
+      "evidence": " FAIL  packages/pipeline/test/run-check-outcomes.test.ts > projects recorded checks without conversations, including a refused lens and verifier;  FAIL  packages/pipeline/test/run-details.test.ts > projects each stage into a run row, with the preparation spans and the verification claims as one row each;  FAIL  packages/pipeline/test/run-details.test.ts > leaves out a review time and a preparation row it has no spans for;  FAIL  packages/pipeline/test/run-details.test.ts > names a model without a request record, and a stage with no duration;  FAIL  packages/pipeline/test/run-details.test.ts > opens the terminal view with the summary line the ledger shows;  FAIL  packages/pipeline/test/run-details.test.ts > charges only a verification claim this review ran, and keeps an outcome other than ran;  FAIL  packages/pipeline/test/run-details.test.ts > marks a model stage whose usage was not all measured, and a check that needs none as complete",
+      "survivorClasses": [
+        "dropped-value"
+      ],
+      "tests": [
+        "packages/pipeline/test/run-details.test.ts",
+        "packages/pipeline/test/run-check-outcomes.test.ts"
+      ],
+      "result": {
+        "exitCode": 1,
+        "killed": true,
+        "log": "tmp/quiet-run-details-fix2/mutant-1.log",
+        "failingTests": [
+          " FAIL  packages/pipeline/test/run-check-outcomes.test.ts > projects recorded checks without conversations, including a refused lens and verifier",
+          " FAIL  packages/pipeline/test/run-details.test.ts > projects each stage into a run row, with the preparation spans and the verification claims as one row each",
+          " FAIL  packages/pipeline/test/run-details.test.ts > leaves out a review time and a preparation row it has no spans for",
+          " FAIL  packages/pipeline/test/run-details.test.ts > names a model without a request record, and a stage with no duration",
+          " FAIL  packages/pipeline/test/run-details.test.ts > opens the terminal view with the summary line the ledger shows",
+          " FAIL  packages/pipeline/test/run-details.test.ts > charges only a verification claim this review ran, and keeps an outcome other than ran",
+          " FAIL  packages/pipeline/test/run-details.test.ts > marks a model stage whose usage was not all measured, and a check that needs none as complete"
+        ]
+      }
+    },
+    {
+      "file": "packages/pipeline/src/telemetry.ts",
+      "line": 287,
+      "column": 17,
+      "endLine": 287,
+      "endColumn": 89,
+      "mutatorName": "MethodExpression",
+      "replacement": "stages",
+      "claim": "killed",
+      "evidence": " FAIL  packages/pipeline/test/run-check-outcomes.test.ts > projects recorded checks without conversations, including a refused lens and verifier;  FAIL  packages/pipeline/test/run-details.test.ts > projects each stage into a run row, with the preparation spans and the verification claims as one row each;  FAIL  packages/pipeline/test/run-details.test.ts > leaves out a review time and a preparation row it has no spans for;  FAIL  packages/pipeline/test/run-details.test.ts > names a model without a request record, and a stage with no duration;  FAIL  packages/pipeline/test/run-details.test.ts > marks a model stage whose usage was not all measured, and a check that needs none as complete",
+      "survivorClasses": [
+        "some-every"
+      ],
+      "tests": [
+        "packages/pipeline/test/run-details.test.ts",
+        "packages/pipeline/test/run-check-outcomes.test.ts"
+      ],
+      "result": {
+        "exitCode": 1,
+        "killed": true,
+        "log": "tmp/quiet-run-details-fix2/mutant-2.log",
+        "failingTests": [
+          " FAIL  packages/pipeline/test/run-check-outcomes.test.ts > projects recorded checks without conversations, including a refused lens and verifier",
+          " FAIL  packages/pipeline/test/run-details.test.ts > projects each stage into a run row, with the preparation spans and the verification claims as one row each",
+          " FAIL  packages/pipeline/test/run-details.test.ts > leaves out a review time and a preparation row it has no spans for",
+          " FAIL  packages/pipeline/test/run-details.test.ts > names a model without a request record, and a stage with no duration",
+          " FAIL  packages/pipeline/test/run-details.test.ts > marks a model stage whose usage was not all measured, and a check that needs none as complete"
+        ]
+      }
+    },
+    {
+      "file": "packages/pipeline/src/telemetry.ts",
+      "line": 287,
+      "column": 31,
+      "endLine": 287,
+      "endColumn": 88,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "claim": "killed",
+      "evidence": " FAIL  packages/pipeline/test/run-details.test.ts > projects each stage into a run row, with the preparation spans and the verification claims as one row each;  FAIL  packages/pipeline/test/run-details.test.ts > charges only a verification claim this review ran, and keeps an outcome other than ran;  FAIL  packages/pipeline/test/run-details.test.ts > marks a model stage whose usage was not all measured, and a check that needs none as complete",
+      "survivorClasses": [
+        "some-every"
+      ],
+      "tests": [
+        "packages/pipeline/test/run-details.test.ts",
+        "packages/pipeline/test/run-check-outcomes.test.ts"
+      ],
+      "result": {
+        "exitCode": 1,
+        "killed": true,
+        "log": "tmp/quiet-run-details-fix2/mutant-3.log",
+        "failingTests": [
+          " FAIL  packages/pipeline/test/run-details.test.ts > projects each stage into a run row, with the preparation spans and the verification claims as one row each",
+          " FAIL  packages/pipeline/test/run-details.test.ts > charges only a verification claim this review ran, and keeps an outcome other than ran",
+          " FAIL  packages/pipeline/test/run-details.test.ts > marks a model stage whose usage was not all measured, and a check that needs none as complete"
+        ]
+      }
+    },
+    {
+      "file": "packages/pipeline/src/telemetry.ts",
+      "line": 287,
+      "column": 42,
+      "endLine": 287,
+      "endColumn": 88,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "claim": "killed",
+      "evidence": " FAIL  packages/pipeline/test/run-check-outcomes.test.ts > projects recorded checks without conversations, including a refused lens and verifier;  FAIL  packages/pipeline/test/run-details.test.ts > projects each stage into a run row, with the preparation spans and the verification claims as one row each;  FAIL  packages/pipeline/test/run-details.test.ts > leaves out a review time and a preparation row it has no spans for;  FAIL  packages/pipeline/test/run-details.test.ts > names a model without a request record, and a stage with no duration;  FAIL  packages/pipeline/test/run-details.test.ts > marks a model stage whose usage was not all measured, and a check that needs none as complete",
+      "survivorClasses": [
+        "some-every"
+      ],
+      "tests": [
+        "packages/pipeline/test/run-details.test.ts",
+        "packages/pipeline/test/run-check-outcomes.test.ts"
+      ],
+      "result": {
+        "exitCode": 1,
+        "killed": true,
+        "log": "tmp/quiet-run-details-fix2/mutant-4.log",
+        "failingTests": [
+          " FAIL  packages/pipeline/test/run-check-outcomes.test.ts > projects recorded checks without conversations, including a refused lens and verifier",
+          " FAIL  packages/pipeline/test/run-details.test.ts > projects each stage into a run row, with the preparation spans and the verification claims as one row each",
+          " FAIL  packages/pipeline/test/run-details.test.ts > leaves out a review time and a preparation row it has no spans for",
+          " FAIL  packages/pipeline/test/run-details.test.ts > names a model without a request record, and a stage with no duration",
+          " FAIL  packages/pipeline/test/run-details.test.ts > marks a model stage whose usage was not all measured, and a check that needs none as complete"
+        ]
+      }
+    },
+    {
+      "file": "packages/pipeline/src/telemetry.ts",
+      "line": 287,
+      "column": 42,
+      "endLine": 287,
+      "endColumn": 88,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "claim": "killed",
+      "evidence": " FAIL  packages/pipeline/test/run-details.test.ts > projects each stage into a run row, with the preparation spans and the verification claims as one row each;  FAIL  packages/pipeline/test/run-details.test.ts > charges only a verification claim this review ran, and keeps an outcome other than ran;  FAIL  packages/pipeline/test/run-details.test.ts > marks a model stage whose usage was not all measured, and a check that needs none as complete",
+      "survivorClasses": [
+        "some-every"
+      ],
+      "tests": [
+        "packages/pipeline/test/run-details.test.ts",
+        "packages/pipeline/test/run-check-outcomes.test.ts"
+      ],
+      "result": {
+        "exitCode": 1,
+        "killed": true,
+        "log": "tmp/quiet-run-details-fix2/mutant-5.log",
+        "failingTests": [
+          " FAIL  packages/pipeline/test/run-details.test.ts > projects each stage into a run row, with the preparation spans and the verification claims as one row each",
+          " FAIL  packages/pipeline/test/run-details.test.ts > charges only a verification claim this review ran, and keeps an outcome other than ran",
+          " FAIL  packages/pipeline/test/run-details.test.ts > marks a model stage whose usage was not all measured, and a check that needs none as complete"
+        ]
+      }
+    },
+    {
+      "file": "packages/pipeline/src/telemetry.ts",
+      "line": 287,
+      "column": 42,
+      "endLine": 287,
+      "endColumn": 88,
+      "mutatorName": "EqualityOperator",
+      "replacement": "stage.name !== \"melian.verification.candidate\"",
+      "claim": "killed",
+      "evidence": " FAIL  packages/pipeline/test/run-check-outcomes.test.ts > projects recorded checks without conversations, including a refused lens and verifier;  FAIL  packages/pipeline/test/run-details.test.ts > projects each stage into a run row, with the preparation spans and the verification claims as one row each;  FAIL  packages/pipeline/test/run-details.test.ts > leaves out a review time and a preparation row it has no spans for;  FAIL  packages/pipeline/test/run-details.test.ts > names a model without a request record, and a stage with no duration;  FAIL  packages/pipeline/test/run-details.test.ts > charges only a verification claim this review ran, and keeps an outcome other than ran;  FAIL  packages/pipeline/test/run-details.test.ts > marks a model stage whose usage was not all measured, and a check that needs none as complete",
+      "survivorClasses": [
+        "some-every"
+      ],
+      "tests": [
+        "packages/pipeline/test/run-details.test.ts",
+        "packages/pipeline/test/run-check-outcomes.test.ts"
+      ],
+      "result": {
+        "exitCode": 1,
+        "killed": true,
+        "log": "tmp/quiet-run-details-fix2/mutant-6.log",
+        "failingTests": [
+          " FAIL  packages/pipeline/test/run-check-outcomes.test.ts > projects recorded checks without conversations, including a refused lens and verifier",
+          " FAIL  packages/pipeline/test/run-details.test.ts > projects each stage into a run row, with the preparation spans and the verification claims as one row each",
+          " FAIL  packages/pipeline/test/run-details.test.ts > leaves out a review time and a preparation row it has no spans for",
+          " FAIL  packages/pipeline/test/run-details.test.ts > names a model without a request record, and a stage with no duration",
+          " FAIL  packages/pipeline/test/run-details.test.ts > charges only a verification claim this review ran, and keeps an outcome other than ran",
+          " FAIL  packages/pipeline/test/run-details.test.ts > marks a model stage whose usage was not all measured, and a check that needs none as complete"
+        ]
+      }
+    },
+    {
+      "file": "packages/pipeline/src/telemetry.ts",
+      "line": 287,
+      "column": 57,
+      "endLine": 287,
+      "endColumn": 88,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "Ignored",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "claim": "killed",
+      "evidence": " FAIL  packages/pipeline/test/run-details.test.ts > projects each stage into a run row, with the preparation spans and the verification claims as one row each;  FAIL  packages/pipeline/test/run-details.test.ts > charges only a verification claim this review ran, and keeps an outcome other than ran;  FAIL  packages/pipeline/test/run-details.test.ts > marks a model stage whose usage was not all measured, and a check that needs none as complete",
+      "survivorClasses": [
+        "dropped-value"
+      ],
+      "tests": [
+        "packages/pipeline/test/run-details.test.ts",
+        "packages/pipeline/test/run-check-outcomes.test.ts"
+      ],
+      "result": {
+        "exitCode": 1,
+        "killed": true,
+        "log": "tmp/quiet-run-details-fix2/mutant-7.log",
+        "failingTests": [
+          " FAIL  packages/pipeline/test/run-details.test.ts > projects each stage into a run row, with the preparation spans and the verification claims as one row each",
+          " FAIL  packages/pipeline/test/run-details.test.ts > charges only a verification claim this review ran, and keeps an outcome other than ran",
+          " FAIL  packages/pipeline/test/run-details.test.ts > marks a model stage whose usage was not all measured, and a check that needs none as complete"
+        ]
+      }
+    },
+    {
+      "file": "packages/pipeline/src/telemetry.ts",
+      "line": 441,
+      "column": 29,
+      "endLine": 441,
+      "endColumn": 31,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[\"Stryker was here\"]",
+      "claim": "equivalent",
+      "evidence": "The seeded string has no recognised stage name, so runDetails omits it; telemetry stages and totals never include this array.",
+      "survivorClasses": [
+        "seeded-default"
+      ],
+      "tests": [
+        "packages/pipeline/test/run-details.test.ts",
+        "packages/pipeline/test/run-check-outcomes.test.ts"
+      ],
+      "result": {
+        "exitCode": 0,
+        "killed": false,
+        "log": "tmp/quiet-run-details-fix2/mutant-8.log",
+        "failingTests": []
+      }
+    }
+  ],
+  "total": 9,
+  "omitted": 0,
+  "unmutated": [],
+  "base": "4a7472a9bec8a75feda5652258f30560c419cd65",
+  "command": "npx vitest --run packages/pipeline/test/run-details.test.ts packages/pipeline/test/run-check-outcomes.test.ts",
+  "summary": {
+    "applied": 9,
+    "killed": 7,
+    "equivalent": 2,
+    "unexplained": 0,
+    "omitted": 0
+  },
+  "sourceBlobs": {
+    "packages/pipeline/src/telemetry.ts": "01b5059465299525f85438c16872182ff90aa924"
+  }
+}

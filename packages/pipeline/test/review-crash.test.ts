@@ -944,6 +944,7 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 			settings: { retry: { enabled: false } },
 		});
 		const heavy = fake.ref("heavy");
+		const lenses = budgetLenses(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"]));
 		const { verdict } = await reviewChangeset({
 			harness,
 			changeset: await Changeset.resolve(repo, "main...feature"),
@@ -952,7 +953,7 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 				tiers: twoLensTiers,
 				models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } },
 			},
-			lenses: budgetLenses(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"])),
+			lenses,
 			standards: [],
 			checks: [],
 			models: fake.review,
@@ -967,6 +968,7 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 		expect(toolResults(next!).at(-1)).not.toContain("not run");
 		expect(verdict.ran?.find((check) => check.name === "lens.correctness")).toEqual({
 			name: "lens.correctness",
+			version: lenses.find(({ name }) => name === "correctness")!.version,
 			status: "ran",
 			level: "careful",
 		});
@@ -1375,6 +1377,7 @@ describe("a lens task from an earlier selection during triage", { timeout: 60_00
 		expect(entry.adjudication!.task).toBe(previous.record.id);
 		const medium = fake.ref("medium");
 		const heavy = fake.ref("heavy");
+		const loaded = await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"]);
 		const pending = reviewChangeset({
 			harness,
 			changeset: await Changeset.resolve(repo, "main...feature"),
@@ -1386,7 +1389,7 @@ describe("a lens task from an earlier selection during triage", { timeout: 60_00
 					heavy: { model: `${heavy.provider}/${heavy.modelId}` },
 				},
 			},
-			lenses: await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"]),
+			lenses: loaded,
 			standards: [],
 			models: fake.review,
 			decider,
@@ -1412,6 +1415,7 @@ describe("a lens task from an earlier selection during triage", { timeout: 60_00
 			ran: expect.arrayContaining([
 				{
 					name: "lens.correctness",
+					version: loaded.find(({ name }) => name === "correctness")!.version,
 					status: "ran",
 					level: "quick",
 					reason: expect.any(String),

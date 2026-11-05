@@ -24,6 +24,7 @@ export const PrepareDocument = defineDocFamily<PrepareRecord, null>({
  * covers the wait.
  */
 export class PrepareSpans {
+	#roundId: string | undefined;
 	readonly startedAt: number;
 	readonly #now: () => number;
 	readonly #spans: Span[] = [];
@@ -40,6 +41,16 @@ export class PrepareSpans {
 		const spans = new PrepareSpans(startedAt, now);
 		spans.#open = { name, startedAt };
 		return spans;
+	}
+
+	/** The round whose adjudication this review started or attached to. */
+	get roundId(): string | undefined {
+		return this.#roundId;
+	}
+
+	/** Binds this host's spans to the round it reviewed. */
+	bindRound(roundId: string): void {
+		this.#roundId = roundId;
 	}
 
 	/** Ends the open step and opens `name`. */

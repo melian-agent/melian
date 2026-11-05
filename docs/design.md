@@ -87,6 +87,8 @@ A tool with a durable side effect is written as an idempotent upsert keyed by a 
 
 Only the publish and knowledge tasks hold write credentials. Lenses never see them.
 
+Run details are stored by the review round ID. Publication reads the snapshot of exactly the round it validates. A later failed rerun cannot supply checks or spend to an earlier decided round. A round without a bound snapshot has no run table. [The round binding decision](decisions/2026-10-27-run-details-bound-to-round.md) records the rule.
+
 ## Findings
 
 A finding is a SARIF result with Melian extension properties; this section sets out its schema, out-of-diff findings, and cross-revision diffing.
