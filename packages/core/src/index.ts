@@ -361,7 +361,6 @@ export {
 	parseTscDiagnostics,
 	type StaticFindingsInput,
 	type StaticTool,
-	type SymbolSpans,
 	staticFindings,
 	staticRuleId,
 	staticSeverity,

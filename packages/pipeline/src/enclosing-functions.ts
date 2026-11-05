@@ -1,4 +1,4 @@
-import { type ChangedFile, type Changeset, readRevisionFile, type SymbolSpans, visibleText } from "@melian-agent/core";
+import { type ChangedFile, type Changeset, readRevisionFile, visibleText } from "@melian-agent/core";
 import {
 	isArrowFunction,
 	isClassDeclaration,
@@ -428,64 +428,5 @@ export class EnclosingFunctions {
 		}
 		if (held.length > 0) parts.push(heldNote);
 		return parts;
-	}
-}
-
-/**
- * Where each symbol of a TypeScript file ends at the head, read through the compiler. Enola names a symbol by one line,
- * its keyword's or its name's, and no more, so this is what tells an edit to a symbol's body from one beside it. Each
- * line from a declaration's start, decorators and modifiers included, to its name maps to the declaration's last line.
- * A line two declarations claim with different ends, a file it could not read whole or parse, and an unnamed declaration
- * have no span.
- */
-export class SymbolEnds implements SymbolSpans {
-	readonly #ends: ReadonlyMap<string, ReadonlyMap<number, number | undefined>>;
-
-	private constructor(ends: ReadonlyMap<string, ReadonlyMap<number, number | undefined>>) {
-		this.#ends = ends;
-	}
-
-	/** Reads `paths` at `head`, those that are TypeScript. Never throws: what it cannot read has no spans. */
-	static async read(repoRoot: string, head: string, paths: readonly string[]): Promise<SymbolEnds> {
-		const texts = new Map<string, string>();
-		for (const path of paths.filter((each) => typescriptFile.test(each)).slice(0, enclosingLimits.files)) {
-			const read = await readRevisionFile(repoRoot, head, path, enclosingLimits.fileBytes).catch(() => undefined);
-			if (read !== undefined && !read.truncated) texts.set(path, read.content);
-		}
-		const ends = new Map<string, Map<number, number | undefined>>();
-		let program: HeadProgram;
-		try {
-			program = HeadProgram.open(texts);
-		} catch {
-			return new SymbolEnds(ends);
-		}
-		try {
-			for (const [path, text] of texts) {
-				const source = program.source(path);
-				if (source === undefined) continue;
-				const starts = lineStarts(text);
-				const own = new Map<number, number | undefined>();
-				const visit = (node: Node): void => {
-					const owner = node.parent;
-					// A declaration holds its name as `name`; so does `a.b`, whose line then reads as unclear and keeps its finding.
-					if ((owner as Node & { name?: Node }).name === node) {
-						// A symbol the compiler merges from several declarations, or cannot resolve, has no one span.
-						const end = program.declarations(path, node) === 1 ? lineAt(starts, owner.end) : undefined;
-						for (let line = lineAt(starts, owner.getStart(source)); line <= lineAt(starts, node.end); line++)
-							own.set(line, own.has(line) && own.get(line) !== end ? undefined : end);
-					}
-					node.forEachChild(visit);
-				};
-				source.forEachChild(visit);
-				ends.set(path, own);
-			}
-		} finally {
-			program.close();
-		}
-		return new SymbolEnds(ends);
-	}
-
-	endLine(path: string, startLine: number): number | undefined {
-		return this.#ends.get(path)?.get(startLine);
 	}
 }

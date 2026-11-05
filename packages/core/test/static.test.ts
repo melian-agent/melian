@@ -420,10 +420,7 @@ describe("staticFindings", () => {
 
 	const quote = (body: string, other = "1") =>
 		lines("export function quote(text: string) {", body, "}", `export const other = ${other};`, "");
-	// What the compiler would say of the base's `quote`: it runs from line 1 to line 3.
-	const spans = { endLine: (path: string, line: number) => (path === "src/quote.ts" && line === 1 ? 3 : undefined) };
-
-	async function godClasses(headFiles: Record<string, string>, rule = "god-class", symbols?: typeof spans) {
+	async function godClasses(headFiles: Record<string, string>, rule = "god-class") {
 		const base = commit({ "src/quote.ts": quote("\treturn text;"), "src/use.ts": lines("1") });
 		const head = commit(headFiles);
 		const { revision } = await Changeset.resolve(repo, `${base}..${head}`);
@@ -453,7 +450,6 @@ describe("staticFindings", () => {
 			settings: defaultConfig.static.enola,
 			base: { ...results("src/quote.ts", 1), runs: [{ ...results("src/quote.ts", 1).runs[0], results: [] }] },
 			head: results("src/quote.ts", 1),
-			...(symbols === undefined ? {} : { symbols }),
 		});
 		return {
 			findings: report.findings.map((finding) => [finding.ruleId, finding.properties.cause]),
@@ -464,7 +460,7 @@ describe("staticFindings", () => {
 	it("does not report enola/god-class when the change only adds callers to the symbol", async () => {
 		expect(await godClasses({ "src/use.ts": lines("quote()") })).toEqual({
 			findings: [],
-			notes: ["enola/god-class results left out, the change not editing their symbol: 1."],
+			notes: ["enola/god-class results left out, the change not editing their file: 1."],
 		});
 	});
 
@@ -491,20 +487,13 @@ describe("staticFindings", () => {
 	});
 
 	it("reports enola/god-class when the change edits only the symbol's body, below the line Enola names", async () => {
-		expect(await godClasses({ "src/quote.ts": quote("\treturn text.trim();") }, "god-class", spans)).toEqual({
+		expect(await godClasses({ "src/quote.ts": quote("\treturn text.trim();") })).toEqual({
 			findings: [["enola/god-class", "introduced"]],
 			notes: [],
 		});
 	});
 
-	it("does not report enola/god-class when the change edits its file outside the symbol", async () => {
-		expect(await godClasses({ "src/quote.ts": quote("\treturn text;", "2") }, "god-class", spans)).toEqual({
-			findings: [],
-			notes: ["enola/god-class results left out, the change not editing their symbol: 1."],
-		});
-	});
-
-	it("keeps enola/god-class when the change edits its file and the symbol's extent is unknown", async () => {
+	it("keeps enola/god-class when the change edits its file beside the symbol", async () => {
 		expect(await godClasses({ "src/quote.ts": quote("\treturn text;", "2") })).toEqual({
 			findings: [["enola/god-class", "introduced"]],
 			notes: [],

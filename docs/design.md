@@ -405,7 +405,7 @@ Problem: a finding's identity hashes its rule and snippet, and an analyser's ver
 
 Solution: Melian pins every external tool in a `tools.yaml` manifest of its own: the version, and per platform a download URL and a sha256. Tool and platform keys must match their declared patterns; unknown record keys are rejected. The gate checks release metadata with GITHUB_TOKEN when set. A network outage skips that metadata check with a visible note locally; CI requires it. Digest or release mismatches still fail everywhere. The runtime reads the reviewer’s .npmrc, bundled as release-policy.npmrc for installed builds. The manifest takes the same release-age quarantine as npm dependencies, so a release younger than the window is refused, and a bump is a reviewed pull request.
 
-Enola uses the official v0.4.27 release, which includes `enola impact --json`. Melian disables update checks and never runs `upgrade`. No fork is needed. [The manifest decision](decisions/2026-10-06-tool-manifest.md) replaces the fork plan.
+Enola uses the official v0.4.27 release, which includes `enola impact --json`. Melian disables update checks and never runs `upgrade`. No fork is needed. [The manifest decision](decisions/2026-10-06-tool-manifest.md) replaces the fork plan. An `enola/god-class` result is dropped when the change leaves its file untouched, since a symbol that only gained callers is doing its job; any edit to that file keeps it. Enola names only the line a symbol starts on, and the maintainer ruled symbol spans out until they can come from the full head project, as [the core guideline](guidelines/core.md#static-analysis) says.
 
 One manifest builds two execution environments:
 
