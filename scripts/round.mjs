@@ -37,24 +37,12 @@ export const marker = "<!-- melian-round -->";
 export const maxLength = 60_000;
 const aboveAdvisory = ["block", "acknowledge"];
 
-// Control characters, zero-width and bidi controls, and the line and paragraph separators. Built from code points:
-// Biome rewrites an escape of a separator into the character, which JavaScript reads as a line break.
-const ranges = [
-	[0x0, 0x8],
-	[0xb, 0x1f],
-	[0x7f, 0x9f],
-	[0x200b, 0x200f],
-	[0x2028, 0x202e],
-	[0x2066, 0x2069],
-];
-const invisible = new RegExp(`[${ranges.map(([from, to]) => `\\u${hex(from)}-\\u${hex(to)}`).join("")}]`, "g");
-
-function hex(code) {
-	return code.toString(16).padStart(4, "0");
-}
+// Control characters, zero-width and bidi controls, and the line and paragraph separators. Keep them as escapes: a
+// literal separator reads as a line break.
+const invisible = /[\u0000-\u0008\u000b-\u001f\u007f-\u009f\u200b-\u200f\u2028-\u202e\u2066-\u2069]/g;
 
 export function visible(text) {
-	return text.replace(invisible, (character) => `\\u${hex(character.charCodeAt(0))}`);
+	return text.replace(invisible, (character) => `\\u${character.charCodeAt(0).toString(16).padStart(4, "0")}`);
 }
 
 // A block of the rendered verdict: its heading line and the indented lines under it, up to the blank line that ends it.
@@ -130,9 +118,8 @@ export function fenced(lines, budget = Number.POSITIVE_INFINITY) {
 	const sizes = [0];
 	for (const line of lines) sizes.push(sizes.at(-1) + line.length + 1);
 	if (frame + sizes[lines.length] - 1 <= budget) return render(lines);
-	for (let kept = lines.length - 1; kept > 0; kept--) {
-		const note = `... ${lines.length - kept} more lines; the run's artefact has them all.`;
-		if (frame + sizes[kept] + note.length <= budget) return render([...lines.slice(0, kept), note]);
-	}
-	return render([`... ${lines.length} more lines; the run's artefact has them all.`]);
+	const note = (kept) => `... ${lines.length - kept} more lines; the run's artefact has them all.`;
+	let kept = lines.length - 1;
+	while (kept > 0 && frame + sizes[kept] + note(kept).length > budget) kept--;
+	return render([...lines.slice(0, kept), note(kept)]);
 }

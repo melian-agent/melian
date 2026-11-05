@@ -10,7 +10,7 @@ const summaryBudget = 300_000;
 
 if (process.argv[2] === "--fence") {
 	const path = process.argv[3];
-	const text = path !== undefined && existsSync(path) ? readFileSync(path, "utf8").trimEnd() : "";
+	const text = existsSync(path) ? readFileSync(path, "utf8").trimEnd() : "";
 	process.stdout.write(text === "" ? "Nothing was written.\n" : fenced(text.split("\n").map(visible), summaryBudget));
 } else {
 	const [textPath, verdictPath, exitCode, runUrl, head] = process.argv.slice(2);

@@ -126,8 +126,8 @@ describe("RoundComment", () => {
 	it("keeps a did-not-run block that ends the output, with no blank line after it", () => {
 		const text = "Verdict: not reviewed\n\n2 checks did not run:\n  lens.a  failed: x\n  lens.b  failed: y";
 		const body = new RoundComment({ text, verdict: undefined, exitCode: "2", runUrl: run, head }).body();
-		expect(body).toContain(
-			"2 checks did not run:\n  lens.a  failed: x\n  lens.b  failed: y\n\nNo findings above advisory.",
+		expect(body).toBe(
+			`${header}\n\n\`\`\`text\nVerdict: not reviewed\n\n2 checks did not run:\n  lens.a  failed: x\n  lens.b  failed: y\n\nNo findings above advisory.\n\`\`\`\n`,
 		);
 	});
 
