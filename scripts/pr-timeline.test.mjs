@@ -74,14 +74,11 @@ const expected = [
 	"| 2026-10-01 08:16 | 8.27 | merged | eeeeeeee |",
 	"| 2026-10-01 08:16 | 8.27 | left the queue | merged |",
 	"",
-	"| Stage | Hours | Timing reported |",
-	"| --- | --- | --- |",
-	"| ready to claim | 2.00 |  |",
-	"| claim to last commit | 4.00 | 83 min, $6.40 |",
-	"| last commit to ready | 2.00 |  |",
-	"| queued to merged | 0.25 |  |",
-	"| CI | 29.0 min over 2 runs |  |",
-	"| total | 8.27 |  |",
+	"| Summary | Value |",
+	"| --- | --- |",
+	"| Timing reported | 83 min, $6.40 |",
+	"| CI | 29.0 min over 2 runs |",
+	"| total | 8.27 h |",
 	"",
 ];
 
@@ -95,7 +92,7 @@ describe("pr-timeline", () => {
 		expect(result.requests).toEqual(recorded);
 	});
 
-	it("prints the host's table for pull request 256, with the first cut's gaps, commits and totals", () => {
+	it("prints the recorded table for pull request 256, with the first cut's gaps, commits, CI and span", () => {
 		const recording = fileURLToPath(new URL("./fixtures/pr-timeline/pr-256.json", import.meta.url));
 		const result = run(["256"], recording);
 		expect(result.status).toBe(0);
@@ -129,15 +126,12 @@ describe("pr-timeline", () => {
 			"f086a12d",
 			"1db1fad2",
 		]);
-		expect(lines.slice(-9)).toEqual([
-			"| Stage | Hours | Timing reported |",
-			"| --- | --- | --- |",
-			"| ready to claim | 18.22 |  |",
-			"| claim to last commit | 191.70 |  |",
-			"| last commit to ready | 2.47 |  |",
-			"| queued to merged | 0.23 |  |",
-			"| CI | 159.9 min over 14 runs |  |",
-			"| total | 212.62 |  |",
+		expect(lines.slice(-6)).toEqual([
+			"| Summary | Value |",
+			"| --- | --- |",
+			"| Timing reported | none |",
+			"| CI | 159.9 min over 14 runs |",
+			"| total | 212.62 h |",
 			"",
 		]);
 	});
@@ -232,7 +226,7 @@ describe("gaps", () => {
 		expect(rows(timeline).filter((row) => row.includes("gap") || row.includes("CI"))).toEqual([
 			"| 2026-10-01 00:00 | 0.00 | CI check | 11111111, completed, 180.0 min |",
 			"|  |  | gap | 1.5 h |",
-			"| CI | 180.0 min over 1 runs |  |",
+			"| CI | 180.0 min over 1 runs |",
 		]);
 	});
 
@@ -265,8 +259,8 @@ describe("Timing rows", () => {
 	});
 });
 
-describe("stages", () => {
-	it("falls back to the issue's opening when no status: ready label exists, and prints — for an unknown stage", () => {
+describe("summary", () => {
+	it("prints every claim on the issue as a row, and a summary with no Timing and no CI", () => {
 		const issue = {
 			number: 7,
 			createdAt: "2026-10-01T00:00:00.000Z",
@@ -291,121 +285,42 @@ describe("stages", () => {
 			"| 2026-10-01 01:45 | 1.75 | Claim | \\#7 by late |",
 		]);
 		expect(rows(timeline).slice(-6)).toEqual([
-			"| ready to claim | 1.50 |  |",
-			"| claim to last commit | — |  |",
-			"| last commit to ready | — |  |",
-			"| queued to merged | — |  |",
-			"| CI | 0.0 min over 0 runs |  |",
-			"| total | 1.75 |  |",
+			"",
+			"| Summary | Value |",
+			"| --- | --- |",
+			"| Timing reported | none |",
+			"| CI | 0.0 min over 0 runs |",
+			"| total | 1.75 h |",
 		]);
 	});
 
-	it("starts ready to claim at the last status: ready label before the claim, not an unlabel or another label", () => {
-		const at = (hours) => new Date(start + hours * HOUR).toISOString();
-		const issue = {
-			number: 7,
-			createdAt: at(0),
-			timelineItems: page([
-				{ __typename: "LabeledEvent", createdAt: at(1), label: { name: "status: ready" } },
-				{ __typename: "LabeledEvent", createdAt: at(1.5), label: { name: "status: ready" } },
-				{ __typename: "UnlabeledEvent", createdAt: at(1.75), label: { name: "status: ready" } },
-				{ __typename: "LabeledEvent", createdAt: at(1.8), label: { name: "status: blocked" } },
-				{ __typename: "IssueComment", createdAt: at(2), body: "Claim: me", author: { login: "me" } },
-			]),
-		};
-		const timeline = Timeline.from({ pull: pull({ closingIssuesReferences: page([issue]) }), runs: [] });
-		expect(rows(timeline)).toContain("| ready to claim | 0.50 |  |");
-	});
-
-	it("measures a released and reclaimed issue from its last ready label to the claim that won", () => {
-		const at = (hours) => new Date(start + hours * HOUR).toISOString();
-		const issue = {
-			number: 7,
-			createdAt: at(0),
-			timelineItems: page([
-				{ __typename: "LabeledEvent", createdAt: at(0), label: { name: "status: ready" } },
-				{ __typename: "IssueComment", createdAt: at(2), body: "Claim: first", author: { login: "a" } },
-				{ __typename: "IssueComment", createdAt: at(4), body: "Released: stale", author: { login: "m" } },
-				{ __typename: "LabeledEvent", createdAt: at(5), label: { name: "status: ready" } },
-				{ __typename: "IssueComment", createdAt: at(5.5), body: "Claim: second", author: { login: "b" } },
-				{ __typename: "IssueComment", createdAt: at(5.75), body: "Claim: late", author: { login: "c" } },
-			]),
-		};
-		const commits = page([commit("1".repeat(40), start + 8 * HOUR)]);
-		const timeline = Timeline.from({ pull: pull({ closingIssuesReferences: page([issue]), commits }), runs: [] });
-		expect(rows(timeline).filter((row) => /^\| (ready to claim|claim to last commit) /.test(row))).toEqual([
-			"| ready to claim | 0.50 |  |",
-			"| claim to last commit | 2.50 |  |",
-		]);
-	});
-
-	it("counts a claim made in the same second as the last ready label", () => {
-		const at = (hours) => new Date(start + hours * HOUR).toISOString();
-		const issue = {
-			number: 7,
-			createdAt: at(0),
-			timelineItems: page([
-				{ __typename: "LabeledEvent", createdAt: at(1), label: { name: "status: ready" } },
-				{ __typename: "IssueComment", createdAt: at(1), body: "Claim: quick", author: { login: "a" } },
-			]),
-		};
-		const timeline = Timeline.from({ pull: pull({ closingIssuesReferences: page([issue]) }), runs: [] });
-		expect(rows(timeline)).toContain("| ready to claim | 0.00 |  |");
-	});
-
-	it("takes ready and claim from the first closing issue alone, so a claim on another issue leaves the stage unknown", () => {
-		const at = (hours) => new Date(start + hours * HOUR).toISOString();
-		const issue = (number, items) => ({ number, createdAt: at(0), timelineItems: page(items) });
-		const ready = (hours) => ({ __typename: "LabeledEvent", createdAt: at(hours), label: { name: "status: ready" } });
-		const claim = (hours) => ({
+	it("sums every Timing item's minutes and cost across comments into one line", () => {
+		const comment = (hours, body) => ({
 			__typename: "IssueComment",
-			createdAt: at(hours),
-			body: "Claim: b",
-			author: { login: "b" },
-		});
-		const issues = page([issue(7, [ready(1)]), issue(8, [ready(2), claim(3)])]);
-		const timeline = Timeline.from({ pull: pull({ closingIssuesReferences: issues }), runs: [] });
-		expect(rows(timeline)).toContain("| ready to claim | — |  |");
-	});
-
-	it("measures no claim when the issue was marked ready again after its last claim", () => {
-		const at = (hours) => new Date(start + hours * HOUR).toISOString();
-		const issue = {
-			number: 7,
-			createdAt: at(0),
-			timelineItems: page([
-				{ __typename: "LabeledEvent", createdAt: at(0), label: { name: "status: ready" } },
-				{ __typename: "IssueComment", createdAt: at(2), body: "Claim: first", author: { login: "a" } },
-				{ __typename: "LabeledEvent", createdAt: at(5), label: { name: "status: ready" } },
-			]),
-		};
-		const timeline = Timeline.from({ pull: pull({ closingIssuesReferences: page([issue]) }), runs: [] });
-		expect(rows(timeline)).toContain("| ready to claim | — |  |");
-	});
-
-	it("counts only the Timing items inside a stage, from its start up to but not including its end", () => {
-		const commits = page([commit("1".repeat(40), start + HOUR)]);
-		const comment = (minutes, body) => ({
-			__typename: "IssueComment",
-			createdAt: new Date(start + minutes * 60_000).toISOString(),
+			createdAt: new Date(start + hours * HOUR).toISOString(),
 			body,
 			author: { login: "b" },
 		});
-		const issue = {
-			number: 7,
-			createdAt: "2026-10-01T00:00:00.000Z",
-			timelineItems: page([
-				comment(0, "Timing: before 1 min"),
-				comment(10, "Claim: b"),
-				comment(10, "Timing: at start 2 min"),
-				comment(60, "Timing: at end 4 min, $0.50"),
-			]),
-		};
-		const timeline = Timeline.from({ pull: pull({ closingIssuesReferences: page([issue]), commits }), runs: [] });
-		expect(rows(timeline).filter((row) => /^\| (ready to claim|claim to last commit) /.test(row))).toEqual([
-			"| ready to claim | 0.17 | 1 min |",
-			"| claim to last commit | 0.83 | 2 min |",
+		const timelineItems = page([
+			comment(1, "Timing: gate 2 × 14 min; round 6 min, $6.40"),
+			comment(2, "Timing: waited 40.5 min for CI; lunch"),
+			comment(3, "Timing: review 1 min, $0.10"),
 		]);
+		const timeline = Timeline.from({ pull: pull({ timelineItems }), runs: [] });
+		expect(rows(timeline)).toContain("| Timing reported | 75.5 min, $6.50 |");
+	});
+
+	it("prints minutes alone when no Timing item carries a cost", () => {
+		const timelineItems = page([
+			{
+				__typename: "IssueComment",
+				createdAt: "2026-10-01T01:00:00.000Z",
+				body: "Timing: gate 5 min",
+				author: { login: "b" },
+			},
+		]);
+		const timeline = Timeline.from({ pull: pull({ timelineItems }), runs: [] });
+		expect(rows(timeline)).toContain("| Timing reported | 5 min |");
 	});
 });
 
@@ -627,7 +542,7 @@ describe("fetch", () => {
 	);
 });
 
-describe("stage bounds", () => {
+describe("overall span", () => {
 	it("ends a merged pull request's total at its merge and keeps a later comment in the table", () => {
 		const timelineItems = page([
 			{ __typename: "MergedEvent", createdAt: "2026-10-01T02:00:00.000Z", commit: { oid: "e".repeat(40) } },
@@ -635,13 +550,7 @@ describe("stage bounds", () => {
 		]);
 		const timeline = Timeline.from({ pull: pull({ timelineItems }), runs: [] });
 		expect(rows(timeline)).toContain("| 2026-10-11 02:00 | 242.00 | comment | by b |");
-		expect(rows(timeline).at(-1)).toBe("| total | 2.00 |  |");
-	});
-
-	it("prints — for a stage whose end is known and whose start is not", () => {
-		const timelineItems = page([{ __typename: "ReadyForReviewEvent", createdAt: "2026-10-01T01:00:00.000Z" }]);
-		const timeline = Timeline.from({ pull: pull({ timelineItems }), runs: [] });
-		expect(rows(timeline)).toContain("| last commit to ready | — |  |");
+		expect(rows(timeline).at(-1)).toBe("| total | 2.00 h |");
 	});
 });
 

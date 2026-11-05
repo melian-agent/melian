@@ -1,7 +1,6 @@
 // Known limits, accepted by the maintainer:
 // - commits a force-push replaced appear only as the force-push row's tips;
 // - a Timing: line sits at its comment's creation time, even if the comment was edited later;
-// - a pull request closing several issues reads the first issue's ready and claim;
 // - two pull requests sharing a head SHA share its runs, since GitHub's run record no longer names the pull request once it merges.
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { toMarkdown } from "mdast-util-to-markdown";
@@ -87,11 +86,11 @@ const stamp = (ms) => new Date(ms).toISOString().slice(0, 16).replace("T", " ");
 
 export class Timeline {
 	#events;
-	#stages;
+	#merged;
 
-	constructor(events, stages) {
+	constructor(events, merged) {
 		this.#events = events;
-		this.#stages = stages;
+		this.#merged = merged;
 	}
 
 	static fetch({ number, repo, gh, now = new Date().toISOString() }) {
@@ -167,17 +166,14 @@ export class Timeline {
 			for (const item of parseTiming(body ?? ""))
 				events.push({ at: Date.parse(at), event: "Timing", item, detail: item.text });
 		};
-		const stages = {};
+		let merged;
 		for (const issue of pull.closingIssuesReferences.nodes) {
 			add(issue.createdAt, "issue opened", `#${issue.number}`);
-			const readied = [Date.parse(issue.createdAt)];
-			const claims = [];
 			for (const node of issue.timelineItems.nodes) {
 				if (node.__typename === "IssueComment") {
 					for (const marker of ["Claim:", "Fix pass"])
 						if (node.body.trimStart().startsWith(marker))
 							add(node.createdAt, marker.replace(":", ""), `#${issue.number} by ${login(node)}`);
-					if (node.body.trimStart().startsWith("Claim:")) claims.push(Date.parse(node.createdAt));
 					timing(node.createdAt, node.body);
 				} else if (node.label.name.startsWith("status:")) {
 					add(
@@ -185,21 +181,13 @@ export class Timeline {
 						node.__typename === "LabeledEvent" ? "labelled" : "unlabelled",
 						`#${issue.number} ${node.label.name}`,
 					);
-					if (node.__typename === "LabeledEvent" && node.label.name === "status: ready")
-						readied.push(Date.parse(node.createdAt));
 				}
-			}
-			// The earliest claim since the issue was last marked ready wins, as AGENTS.md's Work from issues says.
-			if (issue === pull.closingIssuesReferences.nodes[0]) {
-				stages.ready = readied.at(-1);
-				stages.claim = claims.find((claim) => claim >= stages.ready);
 			}
 		}
 		add(pull.createdAt, "pull request opened", `#${pull.number} by ${login(pull)}`);
 		timing(pull.createdAt, pull.body);
 		for (const { commit } of pull.commits.nodes) {
 			add(commit.committedDate, commit.parents.totalCount > 1 ? "merge commit" : "commit", commit.oid.slice(0, 8));
-			stages.built = Math.max(stages.built ?? 0, Date.parse(commit.committedDate));
 		}
 		for (const node of pull.timelineItems.nodes) {
 			switch (node.__typename) {
@@ -213,11 +201,9 @@ export class Timeline {
 					break;
 				case "ReadyForReviewEvent":
 					add(node.createdAt, "ready for review", "");
-					stages.reviewed = Date.parse(node.createdAt);
 					break;
 				case "AddedToMergeQueueEvent":
 					add(node.createdAt, "queued", "");
-					stages.queued = Date.parse(node.createdAt);
 					break;
 				case "RemovedFromMergeQueueEvent":
 					add(node.createdAt, "left the queue", (node.reason ?? "").toLowerCase());
@@ -229,7 +215,7 @@ export class Timeline {
 				}
 				case "MergedEvent":
 					add(node.createdAt, "merged", node.commit.oid.slice(0, 8));
-					stages.merged = Date.parse(node.createdAt);
+					merged = Date.parse(node.createdAt);
 					break;
 			}
 		}
@@ -247,7 +233,7 @@ export class Timeline {
 			);
 		}
 		events.sort((a, b) => a.at - b.at);
-		return new Timeline(events, stages);
+		return new Timeline(events, merged);
 	}
 
 	render() {
@@ -260,27 +246,16 @@ export class Timeline {
 			latest = Math.max(latest, event.end ?? event.at);
 			lines.push(row(stamp(event.at), ((event.at - first) / HOUR).toFixed(2), event.event, event.detail));
 		}
-		const { ready, claim, built, reviewed, queued, merged } = this.#stages;
-		const stages = [
-			["ready to claim", ready, claim],
-			["claim to last commit", claim, built],
-			["last commit to ready", built, reviewed],
-			["queued to merged", queued, merged],
-		];
-		lines.push("", "| Stage | Hours | Timing reported |", "| --- | --- | --- |");
-		for (const [name, start, end] of stages) {
-			const known = start !== undefined && end !== undefined;
-			const items = known ? this.#events.filter((event) => event.item && event.at >= start && event.at < end) : [];
-			const minutes = items.reduce((sum, event) => sum + (event.item.minutes ?? 0), 0);
-			const cost = items.reduce((sum, event) => sum + (event.item.cost ?? 0), 0);
-			const reported = minutes === 0 ? "" : `${minutes} min${cost === 0 ? "" : `, $${cost.toFixed(2)}`}`;
-			lines.push(row(name, known ? ((end - start) / HOUR).toFixed(2) : "—", reported));
-		}
+		const items = this.#events.filter((event) => event.item);
+		const minutes = items.reduce((sum, event) => sum + (event.item.minutes ?? 0), 0);
+		const cost = items.reduce((sum, event) => sum + (event.item.cost ?? 0), 0);
+		const reported = minutes === 0 ? "none" : `${minutes} min${cost === 0 ? "" : `, $${cost.toFixed(2)}`}`;
+		lines.push("", "| Summary | Value |", "| --- | --- |", row("Timing reported", reported));
 		const ci = this.#events.filter((event) => event.end !== undefined);
 		const ciMinutes = ci.reduce((sum, event) => sum + (event.end - event.at) / 60_000, 0);
-		const last = merged ?? Math.max(...this.#events.map((event) => event.end ?? event.at));
-		lines.push(row("CI", `${ciMinutes.toFixed(1)} min over ${ci.length} runs`, ""));
-		lines.push(row("total", ((last - first) / HOUR).toFixed(2), ""));
+		const last = this.#merged ?? Math.max(...this.#events.map((event) => event.end ?? event.at));
+		lines.push(row("CI", `${ciMinutes.toFixed(1)} min over ${ci.length} runs`));
+		lines.push(row("total", `${((last - first) / HOUR).toFixed(2)} h`));
 		return lines.join("\n");
 	}
 }
