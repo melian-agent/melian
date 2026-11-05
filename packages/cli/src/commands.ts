@@ -441,8 +441,7 @@ async function reviewTimings(
 		}
 		const prepare = await spans.record(reviewHarness.harness, revision, context);
 		const reader = TelemetryReader.open(storage);
-		if (spans.roundId !== undefined)
-			await reader.recordRun(reviewHarness.harness, revision, spans.roundId, before, prepare);
+		if (spans.roundId !== undefined) await reader.recordRun(reviewHarness.harness, revision, spans.roundId, prepare);
 		return await reader.read(revision, before);
 	} catch (error) {
 		io.stderr(

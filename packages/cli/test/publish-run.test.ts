@@ -118,7 +118,7 @@ async function published(
 			}, context);
 			if (failedRerun === true) {
 				const prepare = await PrepareSpans.start("decided", 1000, () => 3000).record(harness, revision, context);
-				await TelemetryReader.open(stored).recordRun(harness, revision, legacyKey(revision), 1000, prepare);
+				await TelemetryReader.open(stored).recordRun(harness, revision, legacyKey(revision), prepare);
 			}
 		} finally {
 			await harness.close(context);

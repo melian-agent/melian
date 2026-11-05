@@ -445,7 +445,6 @@ export class TelemetryReader {
 		harness: Harness,
 		revision: string,
 		roundId: string,
-		before: number,
 		prepare: PrepareRecord,
 		context: Context = backgroundContext,
 	): Promise<void> {
@@ -461,7 +460,8 @@ export class TelemetryReader {
 			const checkParent =
 				round.checkRun === undefined ? undefined : (JSON.parse(round.checkRun) as RunIdentity).task;
 			if ((authority === undefined ? undefined : Number(authority.split(" ").at(-1))) !== checkParent) return;
-			const telemetry = await this.read(revision, before, context);
+			// The round's own tasks are its run, whichever process records it; only carried checks read as reused.
+			const telemetry = await this.read(revision, undefined, context);
 			if (!isDeepStrictEqual(telemetry.prepare, prepare)) return;
 			const stored = await tx.doc(RunDetailsDocument, root.id, roundId, null);
 			// A repeat review reattaches to a decided round; its reused stages must not replace the run that decided it.

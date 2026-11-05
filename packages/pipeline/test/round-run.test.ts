@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { Adjudication, defaultConfig } from "@melian-agent/core";
 import { afterEach, expect, it } from "vitest";
 import { VerdictDocument } from "../src/adjudication.ts";
-import { ChecksDocument } from "../src/checks.ts";
+import { CheckSources, ChecksDocument } from "../src/checks.ts";
 import {
 	backgroundContext as context,
 	createMemoryStorage,
@@ -16,8 +16,10 @@ import {
 import { ReviewIndex } from "../src/review-index.ts";
 import { legacyKey, RoundsDocument, RoundWriter } from "../src/rounds.ts";
 import { PrepareSpans } from "../src/spans.ts";
+import { TimingDocument } from "../src/task-timing.ts";
 import { TelemetryReader } from "../src/telemetry.ts";
 import { createFakeModels } from "../src/testing.ts";
+import { ModelUsageDocument } from "../src/token-usage.ts";
 import { RecordedReview, recordedReviewTask } from "./fixtures/recorded-review.ts";
 
 let harness: Harness | undefined;
@@ -104,7 +106,7 @@ it.each([
 	}, context);
 	if (mode === "other preparation")
 		await PrepareSpans.start("another", 400, () => 500).record(harness!, revision, context);
-	await reader.recordRun(harness!, revision, roundId, 100, prepare);
+	await reader.recordRun(harness!, revision, roundId, prepare);
 	expect(await reader.runDetails(roundId)).toEqual(
 		["current", "matched checks"].includes(mode) ? expected : undefined,
 	);
@@ -115,7 +117,7 @@ it("reopens the frozen run twice without changing its round or measured values",
 	directory = mkdtempSync(join(tmpdir(), "melian-round-run-"));
 	const path = join(directory, "state.sqlite");
 	const { reader, prepare, storage: writerStorage } = await setup(path);
-	await reader.recordRun(harness!, revision, roundId, 100, prepare);
+	await reader.recordRun(harness!, revision, roundId, prepare);
 	const document = await writerStorage.findDocument(
 		{
 			kind: "melian.run-details",
@@ -141,15 +143,15 @@ it("reopens the frozen run twice without changing its round or measured values",
 
 it("keeps a decided round's run when a repeat review reattaches to that round", async () => {
 	const { reader, prepare } = await setup();
-	await reader.recordRun(harness!, revision, roundId, 100, prepare);
+	await reader.recordRun(harness!, revision, roundId, prepare);
 	const repeat = await PrepareSpans.start("repeat", 1000, () => 1100).record(harness!, revision, context);
-	await reader.recordRun(harness!, revision, roundId, 1000, repeat);
+	await reader.recordRun(harness!, revision, roundId, repeat);
 	expect(await reader.runDetails(roundId)).toEqual(expected);
 });
 
 it("stores a rerun's new round beside the decided round's run", async () => {
 	const { root, reader, prepare } = await setup();
-	await reader.recordRun(harness!, revision, roundId, 100, prepare);
+	await reader.recordRun(harness!, revision, roundId, prepare);
 	const task = (await harness!.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.adjudication!.task;
 	await root.commit(async (tx) => {
 		const verdict = (await tx.doc(RoundsDocument, root.id)).items[roundId]!.verdict;
@@ -160,7 +162,7 @@ it("stores a rerun's new round beside the decided round's run", async () => {
 	const rerun = (await harness!.snapshot(RoundsDocument, root.id, context))!.current[revision]!;
 	const spans = PrepareSpans.start("rerun", 1000, () => 1100);
 	spans.bindRound(rerun);
-	await reader.recordRun(harness!, revision, rerun, 1000, await spans.record(harness!, revision, context));
+	await reader.recordRun(harness!, revision, rerun, await spans.record(harness!, revision, context));
 	expect(await reader.runDetails(roundId)).toEqual(expected);
 	expect(await reader.runDetails(rerun)).toEqual({
 		roundId: rerun,
@@ -168,6 +170,66 @@ it("stores a rerun's new round beside the decided round's run", async () => {
 		stages: [
 			{ name: "preparation", models: [], durationMs: 100, outcome: "ran" },
 			{ name: "adjudication", models: [], outcome: "ran" },
+		],
+	});
+});
+
+const spent = (totalTokens: number, total: number) => {
+	const usage = { input: totalTokens, output: 0, cacheRead: 2, cacheWrite: 0, totalTokens };
+	const cost = { input: total, output: 0, cacheRead: 0, cacheWrite: 0, total };
+	return { models: { "faux/scripted": { ...usage, cost } }, total: { ...usage, cost } };
+};
+
+// Gives a finished task the timing and usage its own run measured.
+async function measure(root: Awaited<ReturnType<Harness["root"]>>, task: number, startedAt: number, endedAt: number) {
+	const record = (await harness!.getTask(task as never, context))!;
+	await root.commit(async (tx) => {
+		Object.assign(await tx.doc(TimingDocument, record.conversationId, String(task), null), { startedAt, endedAt });
+		(await tx.doc(ModelUsageDocument, record.conversationId, String(task), null)).usage = spent(40, 0.25);
+	}, context);
+}
+
+it("stores the round's own measured stages when a retry records the run after a crash", async () => {
+	const { root, reader } = await setup();
+	const task = (await harness!.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.adjudication!.task;
+	await measure(root, task, 120, 180);
+	const retry = await PrepareSpans.start("retry", 1000, () => 1100).record(harness!, revision, context);
+	await reader.recordRun(harness!, revision, roundId, retry);
+	expect(await reader.runDetails(roundId)).toEqual({
+		roundId,
+		durationMs: 100,
+		stages: [
+			{ name: "preparation", models: [], durationMs: 100, outcome: "ran" },
+			{
+				name: "adjudication",
+				models: ["faux/scripted"],
+				durationMs: 60,
+				tokens: 40,
+				cacheRead: 2,
+				cost: 0.25,
+				outcome: "ran",
+			},
+		],
+	});
+});
+
+it("stores a check carried from an earlier round as reused", async () => {
+	const { root, reader, otherTask } = await setup();
+	await measure(root, otherTask, 50, 90);
+	await root.commit(async (tx) => {
+		const round = (await tx.doc(RoundsDocument, root.id)).items[roundId]!;
+		round.checkRun = JSON.stringify({ base: "base", head: "head", tier: "full", policy: "policy", task: 123 });
+		(await tx.doc(ChecksDocument, root.id)).owners = { [revision]: "base head full policy 123" };
+		(await tx.doc(CheckSources, root.id, "123", null)).tasks["static.biome"] = otherTask;
+	}, context);
+	const retry = await PrepareSpans.start("retry", 100, () => 300).record(harness!, revision, context);
+	await reader.recordRun(harness!, revision, roundId, retry);
+	expect(await reader.runDetails(roundId)).toEqual({
+		...expected,
+		stages: [
+			expected.stages[0],
+			{ name: "check static.biome", models: ["faux/scripted"], outcome: "reused" },
+			expected.stages[1],
 		],
 	});
 });

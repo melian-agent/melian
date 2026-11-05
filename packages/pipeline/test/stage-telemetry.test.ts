@@ -310,7 +310,7 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 		const revision = Revision.key(options.changeset.revision);
 		const prepare = await spans.record(harness, revision, context);
 		const roundId = spans.roundId!;
-		await TelemetryReader.open(storage).recordRun(harness, revision, roundId, spans.startedAt, prepare);
+		await TelemetryReader.open(storage).recordRun(harness, revision, roundId, prepare);
 		const telemetry = await TelemetryReader.open(storage).read(revision);
 		const json = JSON.parse(JSON.stringify(telemetry.toJSON())) as { stages: Stage[] };
 		expect(
