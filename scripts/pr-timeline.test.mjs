@@ -782,6 +782,11 @@ describe("parseTiming", () => {
 		]);
 	});
 
+	it("reads Timing only from the body's own paragraphs, never from a block quote or a list", () => {
+		const body = "> Timing: quoted 5 min\n\n- Timing: listed 3 min\n\nTiming: review 2 min";
+		expect(parseTiming(body)).toEqual([{ text: "review 2 min", minutes: 2 }]);
+	});
+
 	it("reads no item from a body with no Timing line", () => {
 		expect(parseTiming("Report.\nNothing timed.")).toEqual([]);
 	});
