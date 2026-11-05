@@ -93,8 +93,8 @@ export class HeadProgram {
 
 	/** How many declarations the symbol `name` names has, as the compiler merges them, or `undefined` when it has none. */
 	declarations(path: string, name: Node): number | undefined {
-		const file = this.#names.get(path);
-		const project = file === undefined ? undefined : this.#snapshot.getDefaultProjectForFile(file);
+		// A caller asks only of a path it opened, which always has a name.
+		const project = this.#snapshot.getDefaultProjectForFile(this.#names.get(path)!);
 		return project?.checker.getSymbolAtLocation(name)?.declarations.length;
 	}
 

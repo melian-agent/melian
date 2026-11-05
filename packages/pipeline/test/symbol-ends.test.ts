@@ -54,12 +54,20 @@ it("gives no span for a symbol the compiler merges from several declarations, an
 		"src/store.ts": "export interface Store {\n\ta: number;\n}\nexport interface Store {\n\tb: number;\n}\n",
 		"src/space.ts": "namespace Space {\n\texport const a = 1;\n}\nnamespace Space {\n\texport const b = 2;\n}\n",
 		"src/single.ts": "export interface Single {\n\ta: number;\n}\n",
+		// The checker resolves no symbol for `prop`, so its line has no one owner.
+		"src/unresolved.ts": "export const x = missing.prop;\n",
 	});
-	const ends = await SymbolEnds.read(repo, head, ["src/store.ts", "src/space.ts", "src/single.ts"]);
+	const ends = await SymbolEnds.read(repo, head, [
+		"src/store.ts",
+		"src/space.ts",
+		"src/single.ts",
+		"src/unresolved.ts",
+	]);
 	// An edit to the second Store, on line 5, must not read as beside the first.
 	expect([ends.endLine("src/store.ts", 1), ends.endLine("src/store.ts", 4)]).toEqual([undefined, undefined]);
 	expect([ends.endLine("src/space.ts", 1), ends.endLine("src/space.ts", 4)]).toEqual([undefined, undefined]);
 	expect(ends.endLine("src/single.ts", 1)).toBe(3);
+	expect(ends.endLine("src/unresolved.ts", 1)).toBeUndefined();
 });
 
 it("gives no span for a file past the read limit, whose symbol may run past the cut", { timeout: 60_000 }, async () => {
