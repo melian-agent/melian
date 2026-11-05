@@ -733,6 +733,10 @@ export class TelemetryReader {
 			ending = { endedAt: task.endedAt };
 			result = outcome(task);
 		}
+		// A reply's wall-clock timestamp plus its monotonic duration can pass its owning task's terminal commit.
+		const settled = task.endedAt;
+		if (settled !== undefined && ending.endedAt !== undefined && ending.endedAt > settled)
+			ending = { ...ending, endedAt: settled };
 		const recorded = await this.document(
 			ModelUsageDocument,
 			{ kind: "conversation", conversationId: id },
