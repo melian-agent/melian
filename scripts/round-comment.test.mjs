@@ -238,6 +238,11 @@ describe("RoundComment", () => {
 		expect(comment(room + 1).length).toBeLessThanOrEqual(maxLength);
 	});
 
+	it("opens with the marker a later job counts its rounds by", () => {
+		const body = new RoundComment({ text: "", verdict: undefined, exitCode: "none", runUrl: run, head }).body();
+		expect(body.startsWith("<!-- melian-round -->\nMelian round on ")).toBe(true);
+	});
+
 	it("reads absent files as an empty round with no verdict", () => {
 		const dir = directory();
 		const comment = RoundComment.read(join(dir, "round.txt"), join(dir, "verdict.json"), "none", run, head);
