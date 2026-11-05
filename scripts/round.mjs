@@ -46,12 +46,15 @@ export function visible(text) {
 	return text.replace(invisible, (character) => `\\u${character.charCodeAt(0).toString(16).padStart(4, "0")}`);
 }
 
-// A block of the rendered verdict: its heading line and the indented lines under it, up to the blank line that ends it.
+// A block of the rendered verdict: its heading line and the lines under it, up to the next line at the margin. The
+// renderer indents every continuation, and a blank line inside an indented error reads as empty once trimmed.
 function section(lines, heading) {
 	const start = lines.findIndex(heading);
 	if (start === -1) return [];
-	const end = lines.indexOf("", start);
-	return lines.slice(start, end === -1 ? undefined : end);
+	let end = lines.findIndex((line, at) => at > start && line !== "" && !line.startsWith(" "));
+	if (end === -1) end = lines.length;
+	while (lines[end - 1] === "") end--;
+	return lines.slice(start, end);
 }
 
 function findingLine(finding) {
@@ -87,7 +90,9 @@ export class RoundComment {
 	body() {
 		const lines = this.text.split("\n").map((line) => line.trimEnd());
 		const verdictLine = lines.find((line) => line.startsWith("Verdict: "));
-		const header = `${marker}\nMelian round on \`${this.head.slice(0, 12)}\`, exit ${this.exitCode}: [run](${this.runUrl})`;
+		// The exit code sits outside the fence, and the head's code could have written the file it came from.
+		const exit = /^(\d{1,3}|none)$/.test(this.exitCode) ? this.exitCode : "unknown";
+		const header = `${marker}\nMelian round on \`${this.head.slice(0, 12)}\`, exit ${exit}: [run](${this.runUrl})`;
 		if (verdictLine === undefined) {
 			return `${header}\n\nThe round ended before it decided a verdict. The run's log and summary say why.\n`;
 		}
@@ -96,9 +101,13 @@ export class RoundComment {
 			const block = section(lines, heading);
 			if (block.length > 0) quoted.push("", ...block.map(visible));
 		}
-		const findings = aboveAdvisory.flatMap((resolution) => this.verdict?.findings[resolution] ?? []);
-		quoted.push("", findings.length === 0 ? "No findings above advisory." : `Above advisory: ${findings.length}`);
-		quoted.push(...findings.map((finding) => `  ${findingLine(finding)}`));
+		if (this.verdict === undefined) {
+			quoted.push("", "The findings could not be read; the run's artefact holds the whole output.");
+		} else {
+			const findings = aboveAdvisory.flatMap((resolution) => this.verdict.findings[resolution]);
+			quoted.push("", findings.length === 0 ? "No findings above advisory." : `Above advisory: ${findings.length}`);
+			quoted.push(...findings.map((finding) => `  ${findingLine(finding)}`));
+		}
 		return `${header}\n\n${fenced(quoted, maxLength - header.length - 2)}`;
 	}
 }

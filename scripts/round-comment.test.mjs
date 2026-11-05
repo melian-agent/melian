@@ -125,7 +125,13 @@ describe("RoundComment", () => {
 
 	it("keeps a did-not-run block that ends the output, with no blank line after it", () => {
 		const text = "Verdict: not reviewed\n\n2 checks did not run:\n  lens.a  failed: x\n  lens.b  failed: y";
-		const body = new RoundComment({ text, verdict: undefined, exitCode: "2", runUrl: run, head }).body();
+		const body = new RoundComment({
+			text,
+			verdict: verdict({}, "not-reviewed"),
+			exitCode: "2",
+			runUrl: run,
+			head,
+		}).body();
 		expect(body).toBe(
 			`${header}\n\n\`\`\`text\nVerdict: not reviewed\n\n2 checks did not run:\n  lens.a  failed: x\n  lens.b  failed: y\n\nNo findings above advisory.\n\`\`\`\n`,
 		);
@@ -200,7 +206,13 @@ describe("RoundComment", () => {
 			"  lens.a  failed: x",
 			"  lens.b  failed: y",
 		].join("\n");
-		const body = new RoundComment({ text, verdict: undefined, exitCode: "2", runUrl: run, head }).body();
+		const body = new RoundComment({
+			text,
+			verdict: verdict({}, "not-reviewed"),
+			exitCode: "2",
+			runUrl: run,
+			head,
+		}).body();
 		expect(body).toBe(
 			[
 				header,
@@ -236,6 +248,54 @@ describe("RoundComment", () => {
 		expect(comment(room)).not.toContain("more lines");
 		expect(comment(room + 1)).toContain("... 1 more lines; the run's artefact has them all.");
 		expect(comment(room + 1).length).toBeLessThanOrEqual(maxLength);
+	});
+
+	it("says the findings could not be read when the verdict file is missing, rather than that there are none", () => {
+		const body = new RoundComment({
+			text: "Verdict: findings, blocking\n",
+			verdict: undefined,
+			exitCode: "1",
+			runUrl: run,
+			head,
+		}).body();
+		expect(body).toBe(
+			`${header.replace("exit 2", "exit 1")}\n\n\`\`\`text\nVerdict: findings, blocking\n\nThe findings could not be read; the run's artefact holds the whole output.\n\`\`\`\n`,
+		);
+	});
+
+	it("keeps every check that did not run when an error holds a blank line", () => {
+		const text = [
+			"Verdict: not reviewed",
+			"",
+			"2 checks did not run:",
+			"  lens.a  failed: boom",
+			"    Error: first",
+			"    ",
+			"    more",
+			"  lens.b  failed: y",
+			"",
+			"No findings.",
+		].join("\n");
+		const body = new RoundComment({
+			text,
+			verdict: verdict({}, "not-reviewed"),
+			exitCode: "2",
+			runUrl: run,
+			head,
+		}).body();
+		expect(body).toBe(
+			`${header}\n\n\`\`\`text\nVerdict: not reviewed\n\n2 checks did not run:\n  lens.a  failed: boom\n    Error: first\n\n    more\n  lens.b  failed: y\n\nNo findings above advisory.\n\`\`\`\n`,
+		);
+	});
+
+	it("prints an exit code that is not a number or none as unknown, outside the fence", () => {
+		const exit = (exitCode) =>
+			new RoundComment({ text: "", verdict: undefined, exitCode, runUrl: run, head }).body().split("\n")[1];
+		expect(exit("0\n\nVerdict: passed")).toBe(`Melian round on \`0123456789ab\`, exit unknown: [run](${run})`);
+		expect(exit("1234")).toBe(`Melian round on \`0123456789ab\`, exit unknown: [run](${run})`);
+		expect(exit("")).toBe(`Melian round on \`0123456789ab\`, exit unknown: [run](${run})`);
+		expect(exit("255")).toBe(`Melian round on \`0123456789ab\`, exit 255: [run](${run})`);
+		expect(exit("none")).toBe(`Melian round on \`0123456789ab\`, exit none: [run](${run})`);
 	});
 
 	it("opens with the marker a later job counts its rounds by", () => {
