@@ -14,17 +14,23 @@ describe("codexAccessToken", () => {
 		);
 	});
 
-	it("reads no login when the variable is unset or empty", () => {
-		expect(codexAccessToken(undefined)).toBeUndefined();
-		expect(codexAccessToken("")).toBeUndefined();
+	it("says the variable is unset when it is absent or empty", () => {
+		expect(() => codexAccessToken(undefined)).toThrow(/^CODEX_AUTH_B64 is unset$/);
+		expect(() => codexAccessToken("")).toThrow(/^CODEX_AUTH_B64 is unset$/);
 	});
 
-	it("reads no login from text that is not a Codex login", () => {
-		expect(codexAccessToken(encode("not json"))).toBeUndefined();
-		expect(codexAccessToken(encode({ OPENAI_API_KEY: "sk-test" }))).toBeUndefined();
-		expect(codexAccessToken(login({ refresh_token: "refresh" }))).toBeUndefined();
-		expect(codexAccessToken(login({ access_token: "" }))).toBeUndefined();
-		expect(codexAccessToken(login({ access_token: 7 }))).toBeUndefined();
+	it("says the text is not a Codex login without quoting it", () => {
+		for (const value of [encode("sk-secret-not-json"), encode({ OPENAI_API_KEY: "sk-secret" })]) {
+			expect(() => codexAccessToken(value)).toThrow(/^CODEX_AUTH_B64 is not a Codex login$/);
+		}
+	});
+
+	it("says a login with no usable access token has none", () => {
+		for (const tokens of [{ refresh_token: "refresh" }, { access_token: "" }, { access_token: 7 }]) {
+			expect(() => codexAccessToken(login(tokens))).toThrow(
+				/^the Codex login in CODEX_AUTH_B64 has no access token$/,
+			);
+		}
 	});
 });
 
@@ -40,10 +46,14 @@ describe("the command", () => {
 		expect([ran.status, ran.stdout, ran.stderr]).toEqual([0, "access", ""]);
 	});
 
-	it("exits 1 with nothing on standard output when there is no login", () => {
-		for (const value of [undefined, encode("not json")]) {
-			const ran = run(value);
-			expect([ran.status, ran.stdout, ran.stderr]).toEqual([1, "", "no Codex access token in CODEX_AUTH_B64\n"]);
-		}
+	it("exits 1 with nothing on standard output, naming what is missing, when there is no token", () => {
+		const ran = run(undefined);
+		expect([ran.status, ran.stdout, ran.stderr]).toEqual([1, "", "CODEX_AUTH_B64 is unset\n"]);
+		const malformed = run(encode("sk-secret-not-json"));
+		expect([malformed.status, malformed.stdout, malformed.stderr]).toEqual([
+			1,
+			"",
+			"CODEX_AUTH_B64 is not a Codex login\n",
+		]);
 	});
 });

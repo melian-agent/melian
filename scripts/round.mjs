@@ -36,17 +36,20 @@ export function raiseBudgets(directory) {
 
 /**
  * The access token of a Codex login, `~/.codex/auth.json` base64-encoded as this repository's `CODEX_AUTH_B64` holds
- * it, or undefined when there is none to read. Only the access token leaves: a refresh would rotate the refresh token
- * and break the login's other copies.
+ * it. Only the access token leaves: a refresh would rotate the refresh token and break the login's other copies. Each
+ * error names what is missing and never quotes the login, as a `JSON.parse` error would.
  */
 export function codexAccessToken(encoded) {
-	if (encoded === undefined || encoded === "") return undefined;
+	if (encoded === undefined || encoded === "") throw new Error("CODEX_AUTH_B64 is unset");
+	let token;
 	try {
-		const token = JSON.parse(Buffer.from(encoded, "base64").toString("utf8")).tokens?.access_token;
-		return typeof token === "string" && token !== "" ? token : undefined;
+		token = JSON.parse(Buffer.from(encoded, "base64").toString("utf8")).tokens.access_token;
 	} catch {
-		return undefined;
+		throw new Error("CODEX_AUTH_B64 is not a Codex login");
 	}
+	if (typeof token !== "string" || token === "")
+		throw new Error("the Codex login in CODEX_AUTH_B64 has no access token");
+	return token;
 }
 
 export const marker = "<!-- melian-round -->";
