@@ -297,6 +297,10 @@ Planned from [the lens roadmap](decisions/2026-10-12-lens-roadmap-after-the-rese
 - `[ ]` A cleanup lens for reuse, simplification, efficiency, and altitude. It sits outside the default tier, is advisory by default, and is raised per folder through milestone 2's step 18.
 - `[ ]` A specification-consistency lens, outside the default tier. It waits for a second sample and for goldens from a customer repository.
 
+Built early, in milestone 2:
+
+- `[x]` A builder's own rounds in Actions, from [issue #270](https://github.com/melian-agent/melian/issues/270). `.github/workflows/melian-round.yml` runs on `workflow_dispatch` with a pull request number. It refuses a fork's head and a starter without write permission, runs `melian review origin/<base>...HEAD` with the head's own build at the round budgets, and comments the verdict line, the checks that did not run, and every finding above advisory. It is not the host: no state branch, no installation token, no publication, and its store is thrown away.
+
 Decided for the Actions host, not started:
 
 - `[ ]` A fork's mutation check in two jobs, from the maintainer's ruling on 2026-10-14. A job with no credentials and no publishing runs the fork's tests and the mutation check and hands on its result. A second job, which holds the token and the model keys, runs the lenses and publishes, and never executes head code. A clean result from the first counts as a fork's CI test results do; human review before merge is the control. Until it lands, a head from outside the repository's writers runs no mutation check and reads not reviewed. [The unconfined decision](decisions/2026-10-14-static-checks-run-unconfined.md) records the shape.

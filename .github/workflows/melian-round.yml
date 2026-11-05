@@ -1,0 +1,158 @@
+name: melian round
+
+# A builder starts a full Melian round on a writer's pull request and reads the findings back on it. A head a writer
+# pushed to this repository is trusted, so it runs with the provider secrets; a fork's head never does. The round's
+# store is thrown away: it never publishes or dismisses, since a fresh store mints a new marker secret and would orphan
+# the pull request's ledger.
+
+on:
+  workflow_dispatch:
+    inputs:
+      pull_request:
+        description: Pull request number
+        required: true
+        type: number
+
+permissions:
+  contents: read
+
+concurrency:
+  group: melian-round-${{ inputs.pull_request }}
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      head: ${{ steps.pull.outputs.head }}
+      base: ${{ steps.pull.outputs.base }}
+    steps:
+      - name: Refuse a starter without write permission
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          STARTER: ${{ github.triggering_actor }}
+        run: |
+          permission=$(gh api "repos/$REPOSITORY/collaborators/$STARTER/permission" --jq .permission)
+          case "$permission" in
+            admin|maintain|write) echo "$STARTER has $permission permission" ;;
+            *) echo "::error::$STARTER has ${permission:-unknown} permission; a round needs write, maintain or admin"; exit 1 ;;
+          esac
+      - name: Refuse a fork's head
+        id: pull
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          NUMBER: ${{ inputs.pull_request }}
+        run: |
+          gh api "repos/$REPOSITORY/pulls/$NUMBER" > "$RUNNER_TEMP/pull.json"
+          state=$(jq -r .state "$RUNNER_TEMP/pull.json")
+          head_repository=$(jq -r '.head.repo.full_name // ""' "$RUNNER_TEMP/pull.json")
+          head=$(jq -r .head.sha "$RUNNER_TEMP/pull.json")
+          base=$(jq -r .base.ref "$RUNNER_TEMP/pull.json")
+          if [ "$state" != open ]; then echo "::error::pull request $NUMBER is $state"; exit 1; fi
+          if [ "$head_repository" != "$REPOSITORY" ]; then
+            echo "::error::pull request $NUMBER's head is in ${head_repository:-a deleted repository}, not $REPOSITORY; a fork's head never runs with secrets"
+            exit 1
+          fi
+          if ! [[ "$head" =~ ^[0-9a-f]{40}$ ]]; then echo "::error::unreadable head SHA"; exit 1; fi
+          echo "head=$head" >> "$GITHUB_OUTPUT"
+          echo "base=$base" >> "$GITHUB_OUTPUT"
+
+  round:
+    needs: gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    permissions:
+      contents: read
+    steps:
+      # The workflow's own ref supplies the helper scripts, so a head cut before they existed can still run a round.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          path: trusted
+          persist-credentials: false
+      # The whole history, so origin/<base> and the merge base are present.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ needs.gate.outputs.head }}
+          path: head
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: head/package-lock.json
+      - run: npm ci --ignore-scripts
+        working-directory: head
+      - name: Raise the lens budgets to a round's
+        run: node trusted/scripts/round-budgets.mjs head/.melian/lenses
+      # The provider secrets reach only the two steps that call melian. An empty Pi directory and configuration
+      # directory keep the runner's own files out of the plan.
+      - name: Run the round
+        working-directory: head
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          BASE: ${{ needs.gate.outputs.base }}
+        run: |
+          out="$RUNNER_TEMP/round"
+          mkdir -p "$out" "$RUNNER_TEMP/state" "$RUNNER_TEMP/config" "$RUNNER_TEMP/pi"
+          export MELIAN_STATE_DIR="$RUNNER_TEMP/state" XDG_CONFIG_HOME="$RUNNER_TEMP/config" PI_CODING_AGENT_DIR="$RUNNER_TEMP/pi"
+          git rev-parse --verify --quiet "refs/remotes/origin/$BASE" > /dev/null || { echo "::error::origin/$BASE is not in the checkout"; exit 1; }
+          node packages/cli/bin/melian.js doctor > "$out/doctor.txt" 2>&1 || true
+          set +e
+          node packages/cli/bin/melian.js review --no-color "origin/$BASE...HEAD" > "$out/round.txt" 2> "$out/round.err"
+          echo $? > "$out/exit"
+          node packages/cli/bin/melian.js findings "origin/$BASE...HEAD" --json > "$out/verdict.json" 2>> "$out/round.err" || rm -f "$out/verdict.json"
+          exit 0
+      - name: Write the job summary
+        if: always()
+        run: |
+          out="$RUNNER_TEMP/round"
+          {
+            echo "## Melian round, exit $(cat "$out/exit" 2>/dev/null || echo none)"
+            node trusted/scripts/round-comment.mjs --fence "$out/round.txt"
+            echo "### Standard error"
+            node trusted/scripts/round-comment.mjs --fence "$out/round.err"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: melian-round
+          path: ${{ runner.temp }}/round
+          if-no-files-found: ignore
+          retention-days: 30
+
+  report:
+    needs: [gate, round]
+    if: always() && needs.gate.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        continue-on-error: true
+        with:
+          name: melian-round
+          path: ${{ runner.temp }}/round
+      - name: Comment on the pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          NUMBER: ${{ inputs.pull_request }}
+          HEAD: ${{ needs.gate.outputs.head }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          out="$RUNNER_TEMP/round"
+          node scripts/round-comment.mjs "$out/round.txt" "$out/verdict.json" "$(cat "$out/exit" 2>/dev/null || echo none)" "$RUN_URL" "$HEAD" > "$RUNNER_TEMP/comment.md"
+          gh pr comment "$NUMBER" --repo "$REPOSITORY" --body-file "$RUNNER_TEMP/comment.md"
