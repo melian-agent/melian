@@ -62,22 +62,14 @@ jobs:
             }
 
             if (!labels.includes(READY)) return core.info(`The issue is not "${READY}".`);
-            const events = await github.paginate(github.rest.issues.listEvents, { owner, repo, issue_number, per_page: 100 });
-            const readied = events.filter((event) => event.event === "labeled" && event.label.name === READY).at(-1);
-            if (!readied) return core.info(`No event labelled the issue "${READY}".`);
-            const since = Date.parse(readied.created_at);
-            const comments = await github.paginate(github.rest.issues.listComments, {
-              owner,
-              repo,
-              issue_number,
-              since: readied.created_at,
-              per_page: 100,
-            });
+            const timeline = await github.paginate(github.rest.issues.listEventsForTimeline, { owner, repo, issue_number, per_page: 100 });
+            const readied = timeline.findLastIndex((item) => item.event === "labeled" && item.label.name === READY);
+            if (readied < 0) return core.info(`No event labelled the issue "${READY}".`);
             let earliest;
-            for (const candidate of comments.toSorted((a, b) => a.id - b.id)) {
-              if (Date.parse(candidate.created_at) < since || !isClaim(candidate.body)) continue;
-              if (await isWriter(candidate.user.login)) {
-                earliest = candidate;
+            for (const item of timeline.slice(readied + 1)) {
+              if (item.event !== "commented" || !isClaim(item.body)) continue;
+              if (await isWriter(item.user.login)) {
+                earliest = item;
                 break;
               }
             }
