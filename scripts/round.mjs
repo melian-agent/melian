@@ -23,9 +23,10 @@ export function withBudget(text, budget) {
 
 export function raiseBudgets(directory) {
 	const raised = [];
+	if (!existsSync(directory)) return raised;
 	for (const name of readdirSync(directory)) {
-		if (kept.has(name)) continue;
 		const path = join(directory, name, "LENS.md");
+		if (kept.has(name) || !existsSync(path)) continue;
 		writeFileSync(path, withBudget(readFileSync(path, "utf8"), roundBudget));
 		raised.push(name);
 	}

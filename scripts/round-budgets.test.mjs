@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { cpSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -92,6 +92,26 @@ describe("raiseBudgets", () => {
 			tokens: 3_000_000,
 			tools: 250,
 		});
+	});
+
+	it("passes over a file or a directory with no LENS.md beside the lenses", () => {
+		const dir = repository();
+		const directory = join(dir, ".melian", "lenses");
+		writeFileSync(join(directory, "README.md"), "# Lenses\n");
+		mkdirSync(join(directory, "draft"));
+		expect(raiseBudgets(directory).toSorted()).toEqual([
+			"contracts",
+			"conventions",
+			"correctness",
+			"durability",
+			"removed-behaviour",
+			"tests",
+			"trust-boundary",
+		]);
+	});
+
+	it("raises nothing for a head with no lenses directory", () => {
+		expect(raiseBudgets(join(repository(), "absent"))).toEqual([]);
 	});
 
 	it("prints the lenses it raised, and refuses to run without a directory", () => {
