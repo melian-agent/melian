@@ -1192,6 +1192,37 @@ describe("an all-advisory review", () => {
 		);
 	});
 
+	it.each([
+		["not reviewed", ["lens.design"], "**not reviewed**.\n\n2 findings need attention: 2 advisory."],
+		["findings", [], "**findings**.\n\nNo blocking findings, 2 advisories."],
+	])("gives a review whose status is %s the header it reads as", (_, manifest, header) => {
+		const verdict = new Adjudication({
+			findings: [
+				Finding.create({ ...input, severity: "P3" }),
+				Finding.create({ ...input, severity: "P3", file: "src/other.ts" }),
+			],
+			manifest,
+			checks: [],
+			config: defaultConfig,
+		}).adjudicate();
+		const body = renderReviewBody(
+			{
+				pullRequest: 7,
+				revision,
+				base,
+				fingerprint: verdict.fingerprint(),
+				round: 1,
+				verdict,
+				findings: [],
+				stillOpen: 0,
+				resolved: [],
+				secret,
+			},
+			links,
+		);
+		expect(body).toContain(header);
+	});
+
 	it("keeps the still-open sentence when something needs acknowledgement", () => {
 		const { verdict } = advisoryVerdict();
 		const acknowledged = new Adjudication({

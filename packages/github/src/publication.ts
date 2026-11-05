@@ -341,8 +341,10 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 	const earlier = new Set(draft.listed);
 	// An earlier body listed it, so this one counts it; one a size limit cut was never seen and is listed again.
 	const seen = (finding: Finding) => !posted.has(finding.id) && earlier.has(finding.id);
-	// An advisory asks for no action, so a review of advisories alone says nothing needs attention.
-	const quiet = tallied.every((finding) => finding.properties.resolution === "advisory");
+	// An advisory asks for no action, so a review of advisories alone says nothing needs attention. A review that is not
+	// complete has not shown that, so it keeps the plain count.
+	const quiet =
+		verdict.status === "findings" && tallied.every((finding) => finding.properties.resolution === "advisory");
 	const carriedOver = tallied.filter(seen).length;
 	const summary =
 		shown === 0
