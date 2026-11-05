@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Lens } from "@melian-agent/core";
 import { afterEach, describe, expect, it } from "vitest";
-import { raiseBudgets, roundBudget, withBudget } from "./round-budgets.mjs";
+import { raiseBudgets, roundBudget, withBudget } from "./round.mjs";
 
 const script = fileURLToPath(new URL("./round-budgets.mjs", import.meta.url));
 const lenses = fileURLToPath(new URL("../.melian/lenses", import.meta.url));
@@ -37,6 +37,12 @@ describe("withBudget", () => {
 		);
 	});
 
+	it("replaces a budget written with spaces before its mapping", () => {
+		expect(withBudget("---\nname: t\nbudget:   { findings: 6 }\n---\n", roundBudget)).toBe(
+			`---\nname: t\n${roundBudget}\n---\n`,
+		);
+	});
+
 	it("reads only the front matter, not a budget line in the body", () => {
 		expect(withBudget("---\nname: t\n---\nbudget: { findings: 1 }\n", roundBudget)).toBe(
 			`---\nname: t\n${roundBudget}\n---\nbudget: { findings: 1 }\n`,
@@ -63,7 +69,7 @@ describe("raiseBudgets", () => {
 		const dir = repository();
 		const design = readFileSync(join(dir, ".melian/lenses/design/LENS.md"), "utf8");
 		const raised = raiseBudgets(join(dir, ".melian", "lenses"));
-		expect(raised).toEqual([
+		expect(raised.toSorted()).toEqual([
 			"contracts",
 			"conventions",
 			"correctness",
@@ -92,9 +98,16 @@ describe("raiseBudgets", () => {
 		const dir = repository();
 		const ran = spawnSync(process.execPath, [script, join(dir, ".melian", "lenses")], { encoding: "utf8" });
 		expect(ran.status).toBe(0);
-		expect(ran.stdout).toBe(
-			"raised: contracts, conventions, correctness, durability, removed-behaviour, tests, trust-boundary\n",
-		);
+		expect(ran.stdout).toMatch(/^raised: [a-z-]+(, [a-z-]+){6}\n$/);
+		expect(ran.stdout.slice("raised: ".length, -1).split(", ").toSorted()).toEqual([
+			"contracts",
+			"conventions",
+			"correctness",
+			"durability",
+			"removed-behaviour",
+			"tests",
+			"trust-boundary",
+		]);
 		const bare = spawnSync(process.execPath, [script], { encoding: "utf8" });
 		expect(bare.status).toBe(64);
 		expect(bare.stderr).toBe("usage: node scripts/round-budgets.mjs <lenses directory>\n");

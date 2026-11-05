@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
-import { fenced, marker, RoundComment } from "./round-comment.mjs";
+import { fenced, marker, maxLength, RoundComment } from "./round.mjs";
 
 const script = fileURLToPath(new URL("./round-comment.mjs", import.meta.url));
 const goldenText = fileURLToPath(new URL("../packages/core/test/golden/verdict.txt", import.meta.url));
@@ -164,7 +164,7 @@ describe("RoundComment", () => {
 	});
 
 	it("keeps a finding's text inside the fence, whatever backticks, newlines or controls it holds", () => {
-		const text = "Closes the fence ````\n@maintainer [x](https://evil)\u001b[2J‮";
+		const text = `Closes the fence \`\`\`\`\n@maintainer [x](https://evil)\u001b[2J${String.fromCharCode(0x202e)}`;
 		const body = new RoundComment({
 			text: "Verdict: findings, blocking\n",
 			verdict: verdict({ block: [finding({ resolution: "block", text })] }),
@@ -187,6 +187,57 @@ describe("RoundComment", () => {
 		);
 	});
 
+	it("finds the did-not-run heading only on a line of its own at the margin", () => {
+		const text = [
+			"Verdict: not reviewed",
+			"",
+			"melian/review: error (2 checks did not run: lens.a, lens.b).",
+			"",
+			"Provisional:",
+			"  static.mutation  the earlier head's run did not run:",
+			"",
+			"2 checks did not run:",
+			"  lens.a  failed: x",
+			"  lens.b  failed: y",
+		].join("\n");
+		const body = new RoundComment({ text, verdict: undefined, exitCode: "2", runUrl: run, head }).body();
+		expect(body).toBe(
+			[
+				header,
+				"",
+				"```text",
+				"Verdict: not reviewed",
+				"",
+				"Provisional:",
+				"  static.mutation  the earlier head's run did not run:",
+				"",
+				"2 checks did not run:",
+				"  lens.a  failed: x",
+				"  lens.b  failed: y",
+				"",
+				"No findings above advisory.",
+				"```",
+				"",
+			].join("\n"),
+		);
+	});
+
+	it("fills a comment to exactly its limit, and cuts a finding that would pass it", () => {
+		const comment = (length) =>
+			new RoundComment({
+				text: "Verdict: findings, blocking\n",
+				verdict: verdict({ block: [finding({ resolution: "block", text: "x".repeat(length) })] }),
+				exitCode: "1",
+				runUrl: run,
+				head,
+			}).body();
+		const room = maxLength - comment(0).length;
+		expect(comment(room)).toHaveLength(maxLength);
+		expect(comment(room)).not.toContain("more lines");
+		expect(comment(room + 1)).toContain("... 1 more lines; the run's artefact has them all.");
+		expect(comment(room + 1).length).toBeLessThanOrEqual(maxLength);
+	});
+
 	it("reads absent files as an empty round with no verdict", () => {
 		const dir = directory();
 		const comment = RoundComment.read(join(dir, "round.txt"), join(dir, "verdict.json"), "none", run, head);
@@ -196,20 +247,38 @@ describe("RoundComment", () => {
 });
 
 describe("fenced", () => {
-	const lines = ["a".repeat(10), "b".repeat(10), "c".repeat(10)];
-	const whole = "```text\naaaaaaaaaa\nbbbbbbbbbb\ncccccccccc\n```\n";
+	const lines = ["a".repeat(100), "b".repeat(100), "c".repeat(100)];
+	const whole = `\`\`\`text\n${lines.join("\n")}\n\`\`\`\n`;
+	const note = (count) => `... ${count} more lines; the run's artefact has them all.`;
+	const cut = (kept) => `\`\`\`text\n${[...lines.slice(0, kept), note(lines.length - kept)].join("\n")}\n\`\`\`\n`;
 
-	it("keeps every line that fits, at the budget and one past it", () => {
-		// The room is the budget less both fences and 100 for the note: 33 characters of lines need a budget of 139.
-		expect(fenced(lines, 139)).toBe(whole);
-		expect(fenced(lines, 138)).toBe(
-			"```text\naaaaaaaaaa\nbbbbbbbbbb\n... 1 more lines; the run's artefact has them all.\n```\n",
-		);
+	it("keeps every line at a budget of exactly its length, and cuts one past it", () => {
+		expect(whole).toHaveLength(315);
+		expect(fenced(lines, 315)).toBe(whole);
+		expect(fenced(lines, 314)).toBe(cut(2));
+	});
+
+	it("keeps as many lines as fit beside the note, at that bound and one past it", () => {
+		expect(fenced(lines, cut(2).length)).toBe(cut(2));
+		expect(fenced(lines, cut(2).length - 1)).toBe(cut(1));
+		expect(fenced(lines, cut(1).length)).toBe(cut(1));
+		expect(fenced(lines, cut(1).length - 1)).toBe(cut(0));
+	});
+
+	it("keeps only the note when no line fits beside it", () => {
+		expect(fenced(lines, 10)).toBe(cut(0));
 	});
 
 	it("keeps every line with no budget, and opens with a fence of three for a body with no backticks", () => {
 		expect(fenced(lines)).toBe(whole);
 		expect(fenced(["one `tick` and ``two``"])).toBe("```text\none `tick` and ``two``\n```\n");
+	});
+
+	it("measures the fence it uses, not three backticks", () => {
+		const body = ["x ````", "y".repeat(100)];
+		const out = `\`\`\`\`\`text\nx \`\`\`\`\n${"y".repeat(100)}\n\`\`\`\`\`\n`;
+		expect(fenced(body, out.length)).toBe(out);
+		expect(fenced(body, out.length - 1)).toBe(`\`\`\`\`\`text\nx \`\`\`\`\n${note(1)}\n\`\`\`\`\`\n`);
 	});
 });
 
@@ -233,5 +302,7 @@ describe("the command", () => {
 		expect(fence(join(dir, "round.err"))).toBe("```text\nmelian: Plan: light derived\\u0007\n```\n");
 		expect(fence(join(dir, "empty"))).toBe("Nothing was written.\n");
 		expect(fence(join(dir, "absent"))).toBe("Nothing was written.\n");
+		const bare = spawnSync(process.execPath, [script, "--fence"], { encoding: "utf8" });
+		expect(bare.stdout).toBe("Nothing was written.\n");
 	});
 });
