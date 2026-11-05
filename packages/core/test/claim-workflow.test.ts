@@ -194,6 +194,15 @@ describe("claim workflow script", () => {
 		expect(writes).toEqual(toInProgress);
 	});
 
+	// The endpoint's legacy `permission` field folds maintain into write and triage into read; `role_name` names the role.
+	it.each([
+		[{ permission: "write", role_name: "maintain" }, toInProgress],
+		[{ permission: "read", role_name: "triage" }, []],
+	])("decides a writer from the endpoint's own response %j", async (permission, expected) => {
+		const { writes } = await run(claimScenario({ permissions: { builder: permission } }));
+		expect(writes).toEqual(expected);
+	});
+
 	it.each(["read", "triage", "none"])("ignores a claim from %s permission", async (permission) => {
 		const { writes, asked } = await run(claimScenario({ permissions: { builder: permission } }));
 		expect(writes).toEqual([]);
