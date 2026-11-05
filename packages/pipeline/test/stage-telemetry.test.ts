@@ -55,6 +55,7 @@ import { moveTo, pullRequestState } from "../../github/test/fixtures/scenario.ts
 import { VerdictDocument } from "../src/adjudication.ts";
 import { CheckSources, ChecksDocument } from "../src/checks.ts";
 import { DecisionDocument } from "../src/decisions.ts";
+import type { EntryId } from "../src/harness.ts";
 import { LensDocument } from "../src/lens-tools.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import * as staticRunner from "../src/static.ts";
@@ -509,7 +510,7 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 		const entry = storage.entry.bind(storage);
 		// The reply's wall-clock timestamp plus its monotonic, rounded duration, ending `offset` past the task.
 		for (const offset of [-1, 0, 1, 40]) {
-			vi.spyOn(storage, "entry").mockImplementation(async (id, readContext) => {
+			const overshot = async (id: EntryId, readContext: typeof context) => {
 				const stored = await entry(id, readContext);
 				if (id !== last.answer || stored === undefined) return stored;
 				const [reply, ...rest] = stored.entry.model!;
@@ -520,7 +521,9 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 						model: [{ ...reply!, timestamp: settled - 10, durationMs: 10 + offset }, ...rest],
 					},
 				};
-			});
+			};
+			// `entry` is overloaded, and `vi.spyOn` types the mock from its last signature.
+			vi.spyOn(storage, "entry").mockImplementation(overshot as typeof storage.entry);
 			const stage = (await TelemetryReader.open(storage).read(revision)).stages.find(
 				({ id }) => id === candidate.id,
 			)!;
