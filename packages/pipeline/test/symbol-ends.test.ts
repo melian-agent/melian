@@ -21,9 +21,24 @@ it("ends a symbol where the compiler ends its outermost node, and knows nothing 
 	const ends = await SymbolEnds.read(repo, head, ["src/a.ts", "docs/a.md", "src/missing.ts"]);
 	expect(ends.endLine("src/a.ts", 2)).toBe(6);
 	expect(ends.endLine("src/a.ts", 7)).toBe(7);
-	expect(ends.endLine("src/a.ts", 4)).toBe(4);
+	// An array element declares nothing.
+	expect(ends.endLine("src/a.ts", 4)).toBeUndefined();
 	expect(ends.endLine("docs/a.md", 1)).toBeUndefined();
 	expect(ends.endLine("src/missing.ts", 1)).toBeUndefined();
+});
+
+it("ends a declaration Enola names by its keyword or name line where the whole declaration ends", async () => {
+	const head = commit(repo, {
+		"src/default.ts": "export default\nclass Service {\n\trun() {\n\t\treturn 2;\n\t}\n}\n",
+		"src/decorated.ts": "@sealed\nexport class Store {\n\tget() {\n\t\treturn 1;\n\t}\n}\n",
+		"src/shared.ts": "export class A { m() { return 1; }\n\tn() {}\n}\n",
+	});
+	const ends = await SymbolEnds.read(repo, head, ["src/default.ts", "src/decorated.ts", "src/shared.ts"]);
+	expect([ends.endLine("src/default.ts", 1), ends.endLine("src/default.ts", 2)]).toEqual([6, 6]);
+	expect([ends.endLine("src/decorated.ts", 1), ends.endLine("src/decorated.ts", 2)]).toEqual([6, 6]);
+	// The class and its first method both open on line 1, so which one Enola means there is unclear.
+	expect(ends.endLine("src/shared.ts", 1)).toBeUndefined();
+	expect(ends.endLine("src/shared.ts", 2)).toBe(2);
 });
 
 it("reads the first files up to the limit, and none past it", async () => {

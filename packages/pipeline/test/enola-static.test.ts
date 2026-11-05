@@ -502,6 +502,44 @@ describe("static.enola", { timeout: 60_000 }, () => {
 		}
 	});
 
+	it.each([
+		["a default export split over two lines", "export default\nclass Service {\n\trun() {\n\t\treturn %;\n\t}\n}\n"],
+		["a decorator", "@sealed\nexport class Store {\n\tget() {\n\t\treturn %;\n\t}\n}\n"],
+	])("keeps enola/god-class for an edit to the body of a class beneath %s", async (_, template) => {
+		const policy = "tiers:\n  fast: [static.enola]\nstatic:\n  enola: { enabled: true }\n";
+		const base = commit(repo, { "melian.yaml": policy, "src/a.ts": template.replace("%", "1") });
+		gitIn(repo, "checkout", "-b", "feature", base);
+		const head = commit(repo, { "src/a.ts": template.replace("%", "2; // BROKEN") });
+		const changeset = await Changeset.resolve(repo, `${base}...${head}`);
+		const { config } = await loadConfig(repo, { kind: "revision", commit: base }, "");
+		// Enola names the line the class keyword is on.
+		const godClass =
+			'[{"ruleId":"god-class","level":"warning","message":{"text":"High fan-in symbol"},"locations":[{"physicalLocation":{"artifactLocation":{"uri":"src/a.ts"},"region":{"startLine":2}}}]}]';
+		vi.spyOn(ToolProvisioning, "open").mockResolvedValue(
+			await fake(1, 0, false, "Alpha", false, "src/a.ts", { head: godClass }),
+		);
+		const models = createFakeModels();
+		const registry = createReviewRegistry();
+		registry.install(checksExtension);
+		const harness = await openHarness(createMemoryStorage(), {
+			models: models.models,
+			registry,
+			env: () => createNodeExecutionEnv(repo),
+		});
+		try {
+			const root = await harness.root(context, { agent: { model: models.ref() } });
+			await runChecks(
+				harness,
+				{ rootConversationId: root.id, changeset, config, source: { kind: "revision", commit: base } },
+				context,
+			);
+			const findings = await readFindings(harness, root.id, Revision.key({ base, head }), context);
+			expect(findings.map((finding) => finding.ruleId)).toEqual(["enola/god-class"]);
+		} finally {
+			await harness.close(context);
+		}
+	});
+
 	it("judges a diverged PR with target-tip policy and reuses that policy for callers", async () => {
 		const base = commit(repo, { "src/a.ts": "export function Alpha() { return 1; }\n" });
 		const policy = commit(repo, {

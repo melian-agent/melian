@@ -4,6 +4,7 @@ import {
 	isClassDeclaration,
 	isClassExpression,
 	isConstructorDeclaration,
+	isDeclarationName,
 	isExportAssignment,
 	isFunctionDeclaration,
 	isFunctionExpression,
@@ -432,14 +433,16 @@ export class EnclosingFunctions {
 }
 
 /**
- * Where each symbol of a TypeScript file ends at the head, read through the compiler: for every line a syntax node starts
- * on, the last line of the outermost such node. Enola names a symbol by the line it starts on and no more, so this is
- * what tells an edit to a symbol's body from one beside it. A file it could not read or parse has no spans.
+ * Where each symbol of a TypeScript file ends at the head, read through the compiler. Enola names a symbol by one line,
+ * its keyword's or its name's, and no more, so this is what tells an edit to a symbol's body from one beside it. Each
+ * line from a declaration's start, decorators and modifiers included, to its name maps to the declaration's last line.
+ * A line two declarations claim with different ends, a file it could not read whole or parse, and an unnamed declaration
+ * have no span.
  */
 export class SymbolEnds implements SymbolSpans {
-	readonly #ends: ReadonlyMap<string, ReadonlyMap<number, number>>;
+	readonly #ends: ReadonlyMap<string, ReadonlyMap<number, number | undefined>>;
 
-	private constructor(ends: ReadonlyMap<string, ReadonlyMap<number, number>>) {
+	private constructor(ends: ReadonlyMap<string, ReadonlyMap<number, number | undefined>>) {
 		this.#ends = ends;
 	}
 
@@ -450,7 +453,7 @@ export class SymbolEnds implements SymbolSpans {
 			const read = await readRevisionFile(repoRoot, head, path, enclosingLimits.fileBytes).catch(() => undefined);
 			if (read !== undefined && !read.truncated) texts.set(path, read.content);
 		}
-		const ends = new Map<string, Map<number, number>>();
+		const ends = new Map<string, Map<number, number | undefined>>();
 		let program: HeadProgram;
 		try {
 			program = HeadProgram.open(texts);
@@ -462,10 +465,15 @@ export class SymbolEnds implements SymbolSpans {
 				const source = program.source(path);
 				if (source === undefined) continue;
 				const starts = lineStarts(text);
-				const own = new Map<number, number>();
+				const own = new Map<number, number | undefined>();
 				const visit = (node: Node): void => {
-					const line = lineAt(starts, node.getStart(source));
-					own.set(line, Math.max(own.get(line) ?? line, lineAt(starts, node.end)));
+					const owner = node.parent;
+					// A declaration holds its name as `name`; so does `a.b`, whose line then reads as unclear and keeps its finding.
+					if ((owner as Node & { name?: Node }).name === node) {
+						const end = lineAt(starts, owner.end);
+						for (let line = lineAt(starts, owner.getStart(source)); line <= lineAt(starts, node.end); line++)
+							own.set(line, own.has(line) && own.get(line) !== end ? undefined : end);
+					}
 					node.forEachChild(visit);
 				};
 				source.forEachChild(visit);
