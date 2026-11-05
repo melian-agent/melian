@@ -331,6 +331,19 @@ describe("RoundComment", () => {
 		expect(body.split("\n")[1]).toBe(
 			`Melian round on an unreadable commit...an unreadable commit, exit 0: [run](${run})`,
 		);
+		for (const sha of [`${"a".repeat(40)}z`, `z${"a".repeat(40)}`]) {
+			const longer = new RoundComment({
+				verdict: verdict({ status: "passed" }),
+				exitCode: "0",
+				runUrl: run,
+				base: sha,
+				head,
+				current: { base: sha, head },
+			}).body();
+			expect(longer.split("\n")[1], sha).toBe(
+				`Melian round on an unreadable commit...\`0123456789ab\`, exit 0: [run](${run})`,
+			);
+		}
 	});
 
 	it("opens with the marker a later job counts its rounds by", () => {

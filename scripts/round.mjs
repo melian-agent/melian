@@ -164,8 +164,7 @@ export class RoundComment {
 				? undefined
 				: `melian exited ${exit}, which does not match a verdict that reads ${statuses[verdict.status]}${verdict.blocking ? ", blocking" : ""}`);
 		if (problem !== undefined) {
-			const quoted = ["Verdict: not reviewed", "", `${problem}; the run's log and artefact say why.`];
-			return `${header}\n\n${fenced(quoted, maxLength - header.length - 2)}`;
+			return `${header}\n\n${fenced(["Verdict: not reviewed", "", `${problem}; the run's log and artefact say why.`])}`;
 		}
 		const quoted = [`Verdict: ${statuses[verdict.status]}${verdict.blocking ? ", blocking" : ""}`];
 		const provisional = verdict.notRun.filter((check) => check.status === "provisional");

@@ -24,6 +24,7 @@ describe("headWriter", () => {
 			push("on-another-branch", { ref: "refs/heads/other" }),
 			push("newest-pusher"),
 			push("older-pusher"),
+			"  ",
 			"",
 		].join("\n");
 		expect(headWriter(events, head)).toBe("newest-pusher");
