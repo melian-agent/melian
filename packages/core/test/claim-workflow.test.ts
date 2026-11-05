@@ -209,6 +209,16 @@ describe("claim workflow script", () => {
 		expect(asked).toEqual(["builder"]);
 	});
 
+	it("asks once about a commenter who claims twice", async () => {
+		const again = say(21, "builder", 6);
+		const timeline = [label(READY, 0), say(20, "builder", 5), again];
+		const { writes, asked } = await run(
+			claimScenario({ trigger: again, timeline, permissions: { builder: "read" } }),
+		);
+		expect(writes).toEqual([]);
+		expect(asked).toEqual(["builder"]);
+	});
+
 	it("ignores a claim from someone the permission endpoint does not know", async () => {
 		const { writes } = await run(claimScenario({ permissions: { builder: 404 } }));
 		expect(writes).toEqual([]);
