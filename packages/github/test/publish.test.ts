@@ -165,6 +165,19 @@ describe("reading markers back", () => {
 		expect(await providerFor(state).findPublished(7, head, wanted, secret)).toEqual(none);
 	});
 
+	it("lists a finding a review body shows only when the review is the token's own and the marker verifies", async () => {
+		const state = pullRequestState();
+		const verdict = marker(head, "verdict", fingerprint, secret, { round: 1 });
+		const listed = marker(head, "finding", finding, secret);
+		state.reviews.push(review(1, "pull-request-author", `${verdict}\n${listed}`));
+		state.reviews.push(
+			review(2, state.login, `${verdict}\n${marker(head, "finding", "0123456789abcdef", "22".repeat(32))}`),
+		);
+		expect(await providerFor(state).findPublished(7, head, wanted, secret)).toMatchObject({ listed: [] });
+		state.reviews.push(review(3, state.login, `${verdict}\n${listed}`));
+		expect(await providerFor(state).findPublished(7, head, wanted, secret)).toMatchObject({ listed: [finding] });
+	});
+
 	it("also requires the token's own user when it knows who that is", async () => {
 		const state = pullRequestState();
 		const signed = marker(head, "verdict", fingerprint, secret, { round: 1 });

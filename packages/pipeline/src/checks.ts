@@ -271,7 +271,7 @@ async function runStatic(
 		settings,
 		base: base.status === "ran" ? base.log : empty,
 		head: head.log,
-		...(symbols === undefined ? {} : { symbols }),
+		symbols,
 	});
 	const notes = [...leaveNotes, ...report.notes, ...head.notes, ...(base.status === "ran" ? base.notes : [])];
 	return {

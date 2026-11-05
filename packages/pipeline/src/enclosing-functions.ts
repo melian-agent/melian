@@ -451,7 +451,6 @@ export class SymbolEnds implements SymbolSpans {
 			if (read !== undefined && !read.truncated) texts.set(path, read.content);
 		}
 		const ends = new Map<string, Map<number, number>>();
-		if (texts.size === 0) return new SymbolEnds(ends);
 		let program: HeadProgram;
 		try {
 			program = HeadProgram.open(texts);

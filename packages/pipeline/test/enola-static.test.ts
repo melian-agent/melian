@@ -464,6 +464,7 @@ describe("static.enola", { timeout: 60_000 }, () => {
 	it.each([
 		["edits only its body", "\treturn 2; // BROKEN", "1", ["enola/god-class"]],
 		["edits beside it", "\treturn 1;", "2; // BROKEN", []],
+		["edits beside it, beside another rule's result", "\treturn 1;", "2; // BROKEN", ["enola/hotspot"]],
 	])("reports enola/god-class by the symbol's extent when the change %s", async (_, body, other, expected) => {
 		const policy = "tiers:\n  fast: [static.enola]\nstatic:\n  enola: { enabled: true }\n";
 		const source = (inner: string, value: string) =>
@@ -473,8 +474,9 @@ describe("static.enola", { timeout: 60_000 }, () => {
 		const head = commit(repo, { "src/a.ts": source(body, other) });
 		const changeset = await Changeset.resolve(repo, `${base}...${head}`);
 		const { config } = await loadConfig(repo, { kind: "revision", commit: base }, "");
-		const godClass =
-			'[{"ruleId":"god-class","level":"warning","message":{"text":"High fan-in symbol: Alpha (14 dependents)"},"locations":[{"physicalLocation":{"artifactLocation":{"uri":"src/a.ts"},"region":{"startLine":1}}}]}]';
+		const result = (rule: string, line: number) =>
+			`{"ruleId":"${rule}","level":"warning","message":{"text":"${rule} at ${line}"},"locations":[{"physicalLocation":{"artifactLocation":{"uri":"src/a.ts"},"region":{"startLine":${line}}}}]}`;
+		const godClass = `[${[result("god-class", 1), ...(expected.includes("enola/hotspot") ? [result("hotspot", 4)] : [])].join(",")}]`;
 		vi.spyOn(ToolProvisioning, "open").mockResolvedValue(
 			await fake(1, 0, false, "Alpha", false, "src/a.ts", { head: godClass }),
 		);

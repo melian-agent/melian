@@ -790,7 +790,7 @@ function publishTask(provider: ReviewProvider) {
 								})),
 								stillOpen: pending.stillOpen,
 								carried,
-								...(found.listed === undefined ? {} : { listed: found.listed }),
+								listed: found.listed,
 								resolved: Object.values(pending.resolved).filter((entry) => entry.thread === undefined),
 								secret,
 							});
