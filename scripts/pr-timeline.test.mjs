@@ -234,15 +234,13 @@ describe("gaps", () => {
 		const commits = page([commit("1".repeat(40), start), commit("2".repeat(40), start + 3 * HOUR)]);
 		const body = "Timing: gate 5 min";
 		const at = new Date(start + 2 * HOUR).toISOString();
-		const timelineItems = page([
-			{ __typename: "PullRequestReview", submittedAt: at, state: "COMMENTED", body, author: null },
-		]);
+		const timelineItems = page([{ __typename: "IssueComment", createdAt: at, body, author: null }]);
 		const timeline = Timeline.from({ pull: pull({ commits, timelineItems }), runs: [] });
 		expect(rows(timeline).slice(2, 8)).toEqual([
 			"| 2026-10-01 00:00 | 0.00 | pull request opened | \\#1 by a |",
 			"| 2026-10-01 00:00 | 0.00 | commit | 11111111 |",
 			"|  |  | gap | 2.0 h |",
-			"| 2026-10-01 02:00 | 2.00 | review | commented by ghost |",
+			"| 2026-10-01 02:00 | 2.00 | comment | by ghost |",
 			"| 2026-10-01 02:00 | 2.00 | Timing | gate 5 min |",
 			"| 2026-10-01 03:00 | 3.00 | commit | 22222222 |",
 		]);
@@ -250,12 +248,25 @@ describe("gaps", () => {
 });
 
 describe("Timing rows", () => {
-	it("reads a Timing line from the pull request's description, at its opening", () => {
-		const timeline = Timeline.from({ pull: pull({ body: "Closes #2\n\nTiming: gate 5 min" }), runs: [] });
-		expect(rows(timeline).slice(2, 4)).toEqual([
-			"| 2026-10-01 00:00 | 0.00 | pull request opened | \\#1 by a |",
-			"| 2026-10-01 00:00 | 0.00 | Timing | gate 5 min |",
+	it("reads Timing only from comments, never from the description or a review", () => {
+		const at = "2026-10-01T01:00:00.000Z";
+		const timelineItems = page([
+			{
+				__typename: "PullRequestReview",
+				submittedAt: at,
+				state: "APPROVED",
+				body: "Timing: review 3 min",
+				author: null,
+			},
+			{ __typename: "IssueComment", createdAt: at, body: "Timing: round 2 min", author: { login: "b" } },
 		]);
+		const body = "Closes #2\n\nTiming: gate 5 min";
+		const timeline = Timeline.from({ pull: pull({ body, timelineItems }), runs: [] });
+		expect(rows(timeline).filter((row) => row.includes("Timing"))).toEqual([
+			"| 2026-10-01 01:00 | 1.00 | Timing | round 2 min |",
+			"| Timing reported | 2 min |",
+		]);
+		expect(rows(timeline)).toContain("| 2026-10-01 01:00 | 1.00 | review | approved by ghost |");
 	});
 });
 

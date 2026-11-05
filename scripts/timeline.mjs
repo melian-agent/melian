@@ -1,6 +1,7 @@
 // Known limits, accepted by the maintainer:
 // - commits a force-push replaced appear only as the force-push row's tips;
 // - a Timing: line sits at its comment's creation time, even if the comment was edited later;
+// - a Timing: line counts whoever wrote the comment;
 // - two pull requests sharing a head SHA share its runs, since GitHub's run record no longer names the pull request once it merges.
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { toMarkdown } from "mdast-util-to-markdown";
@@ -163,7 +164,7 @@ export class Timeline {
 		const add = (at, event, detail, end) =>
 			events.push({ at: Date.parse(at), end: end && Date.parse(end), event, detail });
 		const timing = (at, body) => {
-			for (const item of parseTiming(body ?? ""))
+			for (const item of parseTiming(body))
 				events.push({ at: Date.parse(at), event: "Timing", item, detail: item.text });
 		};
 		let merged;
@@ -185,7 +186,6 @@ export class Timeline {
 			}
 		}
 		add(pull.createdAt, "pull request opened", `#${pull.number} by ${login(pull)}`);
-		timing(pull.createdAt, pull.body);
 		for (const { commit } of pull.commits.nodes) {
 			add(commit.committedDate, commit.parents.totalCount > 1 ? "merge commit" : "commit", commit.oid.slice(0, 8));
 		}
@@ -197,7 +197,6 @@ export class Timeline {
 					break;
 				case "PullRequestReview":
 					add(node.submittedAt, "review", `${node.state.toLowerCase()} by ${login(node)}`);
-					timing(node.submittedAt, node.body);
 					break;
 				case "ReadyForReviewEvent":
 					add(node.createdAt, "ready for review", "");
