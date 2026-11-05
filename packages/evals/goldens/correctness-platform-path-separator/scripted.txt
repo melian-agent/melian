@@ -1,0 +1,20 @@
+src/paths.ts
+
+  P1 | Blocks merge | Correctness | Verifier confirmed | New in this change
+    Verified: faux/scripted: The scripted verifier traced the claim.
+  The native relative path is compared with a forward slash prefix without normalisation.
+    Why here: The change removes separator normalisation. Windows relative paths use backslashes, so a pipeline source file no longer matches packages/pipeline/.
+    Failure scenario: On Windows, isPipelineSource("C:\repo", "C:\repo\packages\pipeline\src\review.ts") receives the declared absolute source paths. relative returns "packages\pipeline\src\review.ts", so the forward slash prefix does not match and the function returns false for a pipeline source file.
+    Evidence:
+      cause: src/paths.ts:5
+          const path = relative(root, file);
+      context: src/paths.ts:3
+        /** Classify absolute source paths on Windows and POSIX. */
+      context: src/paths.ts:6
+          return path.startsWith("packages/pipeline/");
+      context: src/paths.ts:5 at base
+          const path = relative(root, file).split(sep).join("/");
+    What to do: Normalise the native separators to forward slashes before checking the prefix.
+    Rule wrong-result | Line 5 | Status new
+
+1 finding in 1 file.

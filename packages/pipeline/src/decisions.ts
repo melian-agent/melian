@@ -25,7 +25,7 @@ type StoredEntry = { key: string; task: number; decision?: StoredDecision; failu
 
 type DecisionState = { decisions: Record<string, Record<string, StoredEntry>> };
 
-// Each revision's decisions, keyed by `revisionKey` of its base and head, then by question set, on the changeset's root
+// Each revision's decisions, keyed by `Revision.key` of its base and head, then by question set, on the changeset's root
 // conversation. Rewindable, so a fork of the root at a revision carries the decisions its review was made with.
 export const DecisionDocument = defineDoc<DecisionState>({
 	kind: "melian.decisions",
@@ -181,7 +181,7 @@ export type RecordedDecision = {
 };
 
 /**
- * The decision `questionSet` holds for `revision`, a `revisionKey`, as the root conversation's decision document
+ * The decision `questionSet` holds for `revision`, a `Revision.key`, as the root conversation's decision document
  * records it, or `undefined` when none was asked. A decision still being made has neither `decision` nor `failure`.
  */
 export async function readRecordedDecision(

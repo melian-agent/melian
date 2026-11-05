@@ -1,6 +1,6 @@
 import { rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { Adjudication, Changeset, defaultConfig, Finding, type FindingInput } from "@melian-agent/core";
+import { Adjudication, Changeset, defaultConfig, Finding, type FindingInput, Revision } from "@melian-agent/core";
 import { createGitHubProvider } from "@melian-agent/github";
 import {
 	backgroundContext as context,
@@ -9,7 +9,6 @@ import {
 	openSqliteStorage,
 	PrepareSpans,
 	ReviewHarness,
-	revisionKey,
 	TelemetryReader,
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
@@ -88,7 +87,7 @@ async function published(
 			const root = await harness.root(context, { agent: { model: fake.ref() } });
 			await root.commit(async (tx) => {
 				const doc = await tx.doc(VerdictDocument, root.id);
-				const key = revisionKey(changeset.revision);
+				const key = Revision.key(changeset.revision);
 				doc.verdicts[key] = new Adjudication({
 					findings: [finding({}), finding({ rule: "style", severity: "P3", message: "Style", snippet: "x" })],
 					manifest: [],
@@ -110,8 +109,8 @@ async function published(
 					},
 				};
 			}, context);
-			await new RecordedReview(harness).record(revisionKey(changeset.revision));
-			const revision = revisionKey(changeset.revision);
+			await new RecordedReview(harness).record(Revision.key(changeset.revision));
+			const revision = Revision.key(changeset.revision);
 			const adjudication = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.adjudication!
 				.task;
 			await root.commit(async (tx) => {

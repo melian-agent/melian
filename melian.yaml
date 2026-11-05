@@ -90,6 +90,10 @@ guardrails:
         pattern: 'uses:\s*[^\s#]+@v\d'
         paths: [".github/workflows/**"]
         message: a tag can be moved to other code after review, so pin the action to a full commit SHA with its version in a comment, as check.yml does
+      hand-built-revision-key:
+        pattern: '\$\{[^`]*\}\.\.\$\{'
+        paths: ["packages/*/src/**"]
+        message: every round key and its display come from core's Revision.key, Revision.parseKey and Revision.display, so a scope the key does not know is refused in one place; call those instead of joining a base and a head by hand
       dynamic-import:
         pattern: 'await import\(|import\(["'']'
         paths: ["packages/*/src/**"]

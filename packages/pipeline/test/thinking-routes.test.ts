@@ -1,11 +1,10 @@
 import { mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Changeset, type Decider, defaultConfig, Lens, type MelianConfig } from "@melian-agent/core";
+import { Changeset, type Decider, defaultConfig, Lens, type MelianConfig, Revision } from "@melian-agent/core";
 import { FallbackDecider } from "@melian-agent/decisions";
 import { expect, it } from "vitest";
 import { decisionExtension } from "../src/decisions.ts";
-import { revisionKey } from "../src/findings.ts";
 import { type ConversationId, backgroundContext as context, createMemoryStorage, openHarness } from "../src/harness.ts";
 import { RouteTextModel } from "../src/models.ts";
 import { createReviewRegistry, openReviewHarness, reviewChangeset } from "../src/review.ts";
@@ -116,7 +115,7 @@ it.each([false, true])("sends every path's tier thinking to the provider (config
 		await reviewChangeset(options);
 		await summarizeReview({ ...options, harness: opened.harness });
 		const beforeCompaction = [...received];
-		const telemetry = await TelemetryReader.open(storage).read(revisionKey(changeset.revision));
+		const telemetry = await TelemetryReader.open(storage).read(Revision.key(changeset.revision));
 		const conversation = telemetry.stages.find((stage) => stage.name === "melian.lens")!.conversation!;
 		const child = (await opened.harness.conversation(conversation as ConversationId, context))!;
 		await (
@@ -191,7 +190,8 @@ it("changes the lens attachment when only thinking changes", async () => {
 			});
 		const root = await opened.harness.root(context);
 		const task = async () =>
-			(await opened.harness.snapshot(ReviewIndex, root.id, context))!.reviews[revisionKey(changeset.revision)]!.task;
+			(await opened.harness.snapshot(ReviewIndex, root.id, context))!.reviews[Revision.key(changeset.revision)]!
+				.task;
 		await run(undefined);
 		const unset = await task();
 		await run("high");
@@ -276,7 +276,7 @@ it("changes verifier identity without rerunning its cached finder", async () => 
 			});
 		const root = await opened.harness.root(context);
 		const task = async () =>
-			(await opened.harness.snapshot(ReviewIndex, root.id, context))!.reviews[revisionKey(changeset.revision)]!
+			(await opened.harness.snapshot(ReviewIndex, root.id, context))!.reviews[Revision.key(changeset.revision)]!
 				.verification!.task;
 		await run("high");
 		const high = await task();
@@ -289,7 +289,7 @@ it("changes verifier identity without rerunning its cached finder", async () => 
 		expect(await task()).not.toBe(high);
 		const nextRound = (await opened.harness.snapshot(RoundsDocument, root.id, context))!;
 		expect(nextRound.sequence).toBe(2);
-		expect(nextRound.current[revisionKey(changeset.revision)]).toBe("r2");
+		expect(nextRound.current[Revision.key(changeset.revision)]).toBe("r2");
 		expect(nextRound.items.r1).toEqual(firstRound.items.r1);
 		expect(received.filter(({ model }) => model === "finder")).toHaveLength(2);
 		expect(received.filter(({ model }) => model === "judge").map(({ thinking }) => thinking)).toEqual([
@@ -350,8 +350,8 @@ it("does not attach a triage decision made at another thinking level", async () 
 			});
 			const state = (await harness.snapshot(RoundsDocument, root.id, context))!;
 			expect(state.sequence).toBe(thinking === "high" ? 1 : 2);
-			expect(state.current[revisionKey(changeset.revision)]).toBe(thinking === "high" ? "r1" : "r2");
-			roundTasks.push([...state.items[state.current[revisionKey(changeset.revision)]!]!.tasks]);
+			expect(state.current[Revision.key(changeset.revision)]).toBe(thinking === "high" ? "r1" : "r2");
+			roundTasks.push([...state.items[state.current[Revision.key(changeset.revision)]!]!.tasks]);
 		}
 		expect(roundTasks[0]).toHaveLength(1);
 		expect(roundTasks[1]).toEqual(roundTasks[0]);
@@ -466,11 +466,12 @@ it("includes the escalation tier's thinking in lens attachment", async () => {
 		const root = await opened.harness.root(context);
 		await run("high");
 		const high = (await opened.harness.snapshot(ReviewIndex, root.id, context))!.reviews[
-			revisionKey(changeset.revision)
+			Revision.key(changeset.revision)
 		]!.task;
 		await run("low");
 		expect(
-			(await opened.harness.snapshot(ReviewIndex, root.id, context))!.reviews[revisionKey(changeset.revision)]!.task,
+			(await opened.harness.snapshot(ReviewIndex, root.id, context))!.reviews[Revision.key(changeset.revision)]!
+				.task,
 		).not.toBe(high);
 		expect(received).toEqual([
 			"minimal",

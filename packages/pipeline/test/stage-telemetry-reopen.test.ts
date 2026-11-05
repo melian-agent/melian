@@ -1,7 +1,7 @@
 import { mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Changeset, type Decider } from "@melian-agent/core";
+import { Changeset, type Decider, Revision } from "@melian-agent/core";
 import { createGitHubProvider } from "@melian-agent/github";
 import {
 	checksExtension,
@@ -14,7 +14,6 @@ import {
 	openSqliteStorage,
 	publishExtension,
 	readVerdict,
-	revisionKey,
 	TelemetryReader,
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
@@ -199,7 +198,7 @@ it.each([
 				throw new Error("old task must not abort");
 			},
 		});
-		const revision = revisionKey(previous.task.input);
+		const revision = Revision.key(previous.task.input);
 		const id = await root.commit(async (tx) => {
 			Object.assign(await tx.doc(FindingsDocument, root.id), previous.findings);
 			const id = await tx.createTask(token, previous.task.input, { ownership: { kind: "conversation" } });

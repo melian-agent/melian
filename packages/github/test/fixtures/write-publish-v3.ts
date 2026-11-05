@@ -1,5 +1,5 @@
 import { rmSync } from "node:fs";
-import { Adjudication, Changeset, defaultConfig, evaluateGuardrails, Finding } from "@melian-agent/core";
+import { Adjudication, Changeset, defaultConfig, evaluateGuardrails, Finding, Revision } from "@melian-agent/core";
 import { createGitHubProvider } from "@melian-agent/github";
 import {
 	backgroundContext as context,
@@ -7,7 +7,6 @@ import {
 	dismissFinding,
 	publishReview,
 	readFindings,
-	revisionKey,
 	upsertFinding,
 } from "@melian-agent/pipeline";
 import { VerdictDocument } from "../../../pipeline/src/adjudication.ts";
@@ -38,7 +37,7 @@ provider.postReview = async (draft) => {
 };
 try {
 	const root = await harness.root(context);
-	const key = revisionKey(revision);
+	const key = Revision.key(revision);
 	const { findings } = await evaluateGuardrails({
 		repoRoot: repo,
 		revision,

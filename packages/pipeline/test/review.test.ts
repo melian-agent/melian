@@ -18,6 +18,7 @@ import {
 	mutationSkips,
 	Rendering,
 	type RepositorySource,
+	Revision,
 	type Verdict,
 } from "@melian-agent/core";
 import { DecisionFiles, DesignSections, RecordedDecider } from "@melian-agent/decisions";
@@ -41,7 +42,6 @@ import {
 	ReviewError,
 	readVerdict,
 	reviewChangeset,
-	revisionKey,
 	type TaskId,
 	upsertFinding,
 } from "@melian-agent/pipeline";
@@ -190,7 +190,7 @@ async function review(options: ReviewWith = {}): Promise<readonly Finding[]> {
 
 // The revision `main...feature` reviews, as the findings, verdict, and review index documents key it.
 function reviewedRevision(): string {
-	return revisionKey({
+	return Revision.key({
 		base: gitIn(repo, "merge-base", "main", "feature"),
 		head: gitIn(repo, "rev-parse", "feature"),
 	});
@@ -669,7 +669,11 @@ describe("reviewChangeset", () => {
 		expect(firstLines.length).toBeGreaterThan(500);
 		expect(firstLines.length).toBeLessThan(2000);
 		const next = firstLines.length + 1;
-		expect(first!.endsWith(`[lines ${next} onward not shown; read again with startLine ${next}]`)).toBe(true);
+		expect(
+			first!.endsWith(
+				`</untrusted-${nonce}>\n[lines ${next} onward not shown; read again with startLine ${next}]\n[tool output truncated: ${2000 - firstLines.length} more lines not shown; a line too long to fit is cut]`,
+			),
+		).toBe(true);
 		expect(
 			quoted(tail!, nonce, "file")[0]!
 				.split("\n")
@@ -1947,8 +1951,8 @@ describe("reviewChangeset", () => {
 					expect(ran?.reason).toBe(
 						"kept the defects it hands to `trust-boundary`, whose files here would list past 40 files or 4 KiB",
 					);
-					expect(verdict.render()).toContain(
-						"lens.correctness  careful; kept the defects it hands to `trust-boundary`",
+					expect(verdict.render(new Rendering({ notes: true }))).toContain(
+						"  lens.correctness: kept the defects it hands to `trust-boundary`",
 					);
 					// contracts hands nothing to trust-boundary, so its instructions left nothing out.
 					expect(verdict.ran?.find((check) => check.name === "lens.contracts")?.reason).toBeUndefined();

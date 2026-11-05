@@ -1,14 +1,14 @@
 import { existsSync } from "node:fs";
-import { readdir, writeFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { writeFile } from "node:fs/promises";
+import { resolve } from "node:path";
 import {
-	type ComparisonEntry,
 	ComparisonError,
 	ComparisonExport,
 	ComparisonSet,
 	type ExternalImporter,
 	Lens,
 	LensError,
+	Revision,
 	type StoredComparisonAdjudication,
 	type Verdict,
 	visibleText,
@@ -23,11 +23,12 @@ import {
 	type Round,
 	RoundReader,
 	readVerdict,
-	revisionKey,
 } from "@melian-agent/pipeline";
 import { gitAuthor, type Io, StoredReview, shellQuote, short } from "./commands.ts";
+import { ComparisonStores } from "./comparison-stores.ts";
 import { idleModels, isScripted } from "./models.ts";
-import { CliError, git, openStorage, stateDirectory, storagePath } from "./repository.ts";
+import { PullRequestComparison } from "./pull-request-comparison.ts";
+import { CliError, git, openStorage, storagePath } from "./repository.ts";
 import { gitHubAccess, parseTarget } from "./target.ts";
 
 export type ImportSource =
@@ -120,6 +121,8 @@ export async function compare(
 	round?: string,
 ): Promise<number> {
 	const target = parseTarget(argument);
+	if (target.kind === "pullRequest" && sources.length === 0 && round === undefined)
+		return (await PullRequestComparison.open(io, target.number)).refresh(false);
 	const { stored, harness, verdict: frozen, target: recordedTarget } = await openComparison(io, argument, round);
 	const { changeset } = stored;
 	const { revision } = changeset;
@@ -161,7 +164,7 @@ export async function compare(
 		const verdict =
 			round === "unattributed"
 				? undefined
-				: (frozen ?? (await readVerdict(harness.harness, root, revisionKey(revision), context)));
+				: (frozen ?? (await readVerdict(harness.harness, root, Revision.key(revision), context)));
 		const external = comparison.externalFindings().length;
 		const melian = comparison.melianFindings().length;
 		io.stdout(
@@ -205,7 +208,7 @@ export async function matchByHand(
 		const verdict =
 			round === "unattributed"
 				? undefined
-				: (frozen ?? (await readVerdict(harness.harness, root, revisionKey(revision), context)));
+				: (frozen ?? (await readVerdict(harness.harness, root, Revision.key(revision), context)));
 		io.stdout(comparison.render(verdict));
 		return 0;
 	} finally {
@@ -251,45 +254,25 @@ export async function adjudicateComparison(
 	}
 }
 
-class StoredComparisons {
-	readonly comparisons: ComparisonSet;
-
-	private constructor(comparisons: ComparisonSet) {
-		this.comparisons = comparisons;
-	}
-
-	static async read(io: Io): Promise<StoredComparisons> {
-		const repoRoot = await git(io.cwd, ["rev-parse", "--show-toplevel"]);
-		const directory = join(await stateDirectory(repoRoot, io.env), ...(isScripted(io.env) ? ["scripted"] : []));
-		const names = await readdir(directory).catch((error: NodeJS.ErrnoException) => {
-			if (error.code === "ENOENT") return [];
-			throw new CliError(`cannot read comparisons at ${directory}: ${error.message}`);
-		});
-		const entries: ComparisonEntry[] = [];
-		for (const name of names.filter((name) => /^(range|pull)-[0-9a-f]{16}\.sqlite$/.test(name)).sort()) {
-			const storage = await openStorage(join(directory, name));
-			try {
-				entries.push(...(await ComparisonReader.open(storage).read(name.slice(0, -".sqlite".length))));
-			} finally {
-				await storage.close(context);
-			}
-		}
-		return new StoredComparisons(new ComparisonSet(entries));
-	}
-}
-
 export async function comparisonStats(
 	io: Io,
 	options: { readonly since?: string; readonly last?: number },
 ): Promise<number> {
-	const { comparisons } = await StoredComparisons.read(io);
+	const stores = await ComparisonStores.read(io, undefined, true);
+	const comparisons = new ComparisonSet(stores.entries);
 	io.stdout(comparisons.renderStats(options));
+	const unattributed = new Set(
+		[...stores.histories.values()].flatMap(
+			(history) => history.current()?.unattributed.map((round) => round.id) ?? [],
+		),
+	);
+	io.stdout(`Unattributed pull request rounds: ${unattributed.size}.\n`);
 	return 0;
 }
 
 export async function comparisonBacklog(io: Io, markdown: boolean): Promise<number> {
-	const { comparisons } = await StoredComparisons.read(io);
-	io.stdout(comparisons.renderBacklog(markdown));
+	const stores = await ComparisonStores.read(io);
+	io.stdout(new ComparisonSet(stores.entries).renderBacklog(markdown));
 	return 0;
 }
 
@@ -298,6 +281,9 @@ export async function exportComparison(
 	argument: string,
 	options: { readonly out?: string; readonly json: boolean },
 ): Promise<number> {
+	const target = parseTarget(argument);
+	if (target.kind === "pullRequest")
+		return (await PullRequestComparison.open(io, target.number, true)).export(options);
 	const stored = await StoredReview.open(io, argument);
 	const path = await storagePath(stored.changeset.repoRoot, stored.changeset.id, io.env, isScripted(io.env));
 	if (!existsSync(path))

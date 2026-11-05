@@ -10,6 +10,7 @@ import {
 	type PullRequest,
 	type ReviewProvider,
 	type ReviewStatus,
+	Revision,
 } from "@melian-agent/core";
 import {
 	CompareHarness,
@@ -27,7 +28,6 @@ import {
 	readVerdict,
 	recordDismissal,
 	reviewChangeset,
-	revisionKey,
 	type Storage,
 	type TaskId,
 } from "@melian-agent/pipeline";
@@ -176,7 +176,7 @@ async function reviewed(harness: Harness, asPullRequest = false): Promise<Review
 
 async function adjudicationTask(harness: Harness): Promise<number | undefined> {
 	const root = (await harness.root(context)).id;
-	return (await harness.snapshot(ReviewIndex, root, context))?.reviews[revisionKey(await revision())]?.adjudication
+	return (await harness.snapshot(ReviewIndex, root, context))?.reviews[Revision.key(await revision())]?.adjudication
 		?.task;
 }
 
@@ -325,7 +325,7 @@ describe("recording a dismissal", () => {
 		expect(recorded.replaced).toBeUndefined();
 		expect(recorded.finding.properties).toMatchObject({ id: finding!.properties.id, status: "dismissed", dismissal });
 		const root = (await harness.root(context)).id;
-		const key = revisionKey(await revision());
+		const key = Revision.key(await revision());
 		expect(await readVerdict(harness, root, key, context)).toEqual(recorded.verdict);
 		const task = (await harness.snapshot(ReviewIndex, root, context))?.reviews[key]?.adjudication?.task;
 		const calls = fake.provider.state.callCount;
@@ -392,7 +392,7 @@ describe("recording a dismissal", () => {
 		expect(reopened!.properties).toMatchObject({ id, status: "new" });
 		expect(reopened!.properties.dismissal).toBeUndefined();
 		expect(reopened!.properties.pastDismissals).toEqual([
-			{ ...dismissal, reopenedRevision: revisionKey({ base: (await revision()).base, head }) },
+			{ ...dismissal, reopenedRevision: Revision.key({ base: (await revision()).base, head }) },
 		]);
 	});
 
@@ -444,7 +444,7 @@ describe("recording a dismissal", () => {
 		expect(reopened!.properties.trigger!.snippet).toBe(first!.properties.trigger!.snippet);
 		expect(reopened!.properties.trigger!.proof).not.toEqual(first!.properties.trigger!.proof);
 		expect(reopened!.properties.pastDismissals).toEqual([
-			{ ...dismissal, reopenedRevision: revisionKey(await revision()) },
+			{ ...dismissal, reopenedRevision: Revision.key(await revision()) },
 		]);
 	});
 
@@ -558,7 +558,7 @@ describe("recording a dismissal", () => {
 				const [reopened] = verdict.findings.block;
 				expect(reopened!.properties).toMatchObject({ id: first.properties.id, status: "new", cause: "affected" });
 				expect(reopened!.properties.pastDismissals).toEqual([
-					{ ...dismissal, reopenedRevision: revisionKey(await revision()) },
+					{ ...dismissal, reopenedRevision: Revision.key(await revision()) },
 				]);
 				expect(await storedProof(harness, first.properties.id)).toEqual(reopened!.properties.trigger!.proof);
 			},
@@ -578,7 +578,7 @@ describe("recording a dismissal", () => {
 			expect(reopened!.properties).toMatchObject({ id: first!.properties.id, status: "new", cause: "affected" });
 			expect(reopened!.properties.trigger!.proof).not.toEqual(first!.properties.trigger!.proof);
 			expect(reopened!.properties.pastDismissals).toEqual([
-				{ ...dismissal, reopenedRevision: revisionKey(await revision()) },
+				{ ...dismissal, reopenedRevision: Revision.key(await revision()) },
 			]);
 		});
 	});
@@ -708,7 +708,7 @@ describe("recording a dismissal", () => {
 		expect(shown).toMatchObject({ ruleId: "changed-return" });
 		const [member] = shown!.properties.alsoReportedAs!;
 		// A sighting of the speaker's ID by a producer the review did not select, on the member's lines.
-		const key = revisionKey(await revision());
+		const key = Revision.key(await revision());
 		const root = await harness.root(context);
 		await root.commit(async (tx) => {
 			const { items } = await tx.doc(FindingsDocument, root.id);
@@ -743,7 +743,7 @@ describe("recording a dismissal", () => {
 		async function asIndexedBeforeTheStep(harness: Harness): Promise<AdjudicationTaskInput> {
 			const root = await harness.root(context);
 			return await root.commit(async (tx) => {
-				const known = (await tx.doc(ReviewIndex, root.id)).reviews[revisionKey(await revision())]!.adjudication!;
+				const known = (await tx.doc(ReviewIndex, root.id)).reviews[Revision.key(await revision())]!.adjudication!;
 				const { files, ...older } = JSON.parse(known.input) as AdjudicationTaskInput;
 				expect(files).toEqual([expect.objectContaining({ path: "src/user.ts" })]);
 				known.input = JSON.stringify(older);
@@ -765,7 +765,7 @@ describe("recording a dismissal", () => {
 			return await root.commit(async (tx) => {
 				const created = await tx.createTask(versionOne, older, { ownership: { kind: "conversation" } });
 				const index = await tx.doc(ReviewIndex, root.id);
-				const key = revisionKey(await revision());
+				const key = Revision.key(await revision());
 				index.reviews[key] = {
 					...index.reviews[key]!,
 					adjudication: { task: created, input: JSON.stringify(older) },
@@ -812,7 +812,7 @@ describe("recording a dismissal", () => {
 				const [shown] = (await reviewed(harness)).verdict.findings.block;
 				const [member] = shown!.properties.alsoReportedAs!;
 				// As after a rerun that cleared the member's sightings before the verdict was decided again.
-				const key = revisionKey(await revision());
+				const key = Revision.key(await revision());
 				const root = await harness.root(context);
 				await root.commit(async (tx) => {
 					const { items } = await tx.doc(FindingsDocument, root.id);
@@ -859,7 +859,7 @@ describe("recording a dismissal", () => {
 			const decided = await readVerdict(
 				harness,
 				(await harness.root(context)).id,
-				revisionKey(await revision()),
+				Revision.key(await revision()),
 				context,
 			);
 			const [shown] = decided!.findings.block;
@@ -889,7 +889,7 @@ describe("recording a dismissal", () => {
 			const verdict = await readVerdict(
 				reopened,
 				(await reopened.root(context)).id,
-				revisionKey(await revision()),
+				Revision.key(await revision()),
 				context,
 			);
 			expect(verdict!.findings.block).toHaveLength(1);
@@ -953,7 +953,7 @@ describe("recording a dismissal", () => {
 		const compared = await CompareHarness.open(await openSqliteStorage(path), fake.review, "change");
 		opened.push(compared);
 		const rev = await revision();
-		const key = revisionKey(rev);
+		const key = Revision.key(rev);
 		const root = (await compared.harness.root(context)).id;
 		expect((await compared.harness.snapshot(FindingsDocument, root, context))?.items[id]?.lifecycle.status).toBe(
 			"dismissed",
@@ -1257,7 +1257,7 @@ describe("recording a dismissal", () => {
 			policy: { kind: "worktree" },
 		});
 		const root = await harness.root(context);
-		const key = revisionKey(changeset.revision);
+		const key = Revision.key(changeset.revision);
 		await root.commit(async (tx) => {
 			const index = await tx.doc(ReviewIndex, root.id);
 			const known = index.reviews[key]!.adjudication!;
@@ -1294,7 +1294,7 @@ describe("recording a dismissal", () => {
 			.slice(0, 16);
 		const root = await harness.root(context);
 		await root.commit(async (tx) => {
-			const known = (await tx.doc(ReviewIndex, root.id)).reviews[revisionKey(changeset.revision)]!.adjudication!;
+			const known = (await tx.doc(ReviewIndex, root.id)).reviews[Revision.key(changeset.revision)]!.adjudication!;
 			const input = JSON.parse(known.input) as AdjudicationTaskInput;
 			known.input = JSON.stringify({ ...input, resolutionPolicy: retired });
 		}, context);
@@ -1321,7 +1321,7 @@ describe("recording a dismissal", () => {
 		});
 		const root = await harness.root(context);
 		await root.commit(async (tx) => {
-			const known = (await tx.doc(ReviewIndex, root.id)).reviews[revisionKey(changeset.revision)]!.adjudication!;
+			const known = (await tx.doc(ReviewIndex, root.id)).reviews[Revision.key(changeset.revision)]!.adjudication!;
 			const { policy: _, ...input } = JSON.parse(known.input) as AdjudicationTaskInput;
 			expect(input.resolutionPolicy).toMatch(/^2:[0-9a-f]{16}$/);
 			known.input = JSON.stringify(input);
@@ -1383,7 +1383,7 @@ describe("recording a dismissal", () => {
 		const harness = await reviewHarness(createMemoryStorage());
 		scriptFinding();
 		const id = (await reviewed(harness)).findings[0]!.properties.id;
-		const key = revisionKey(await revision());
+		const key = Revision.key(await revision());
 		// A review that starts between the dismissal's commit and its adjudication, after static analysis failed, records
 		// an adjudication task of its own in the index, as reviewChangeset does for input that differs.
 		const review = async () => {
@@ -1436,7 +1436,7 @@ describe("recording a dismissal", () => {
 			const harness = await reviewHarness(createMemoryStorage());
 			scriptFinding();
 			const id = (await reviewed(harness)).findings[0]!.properties.id;
-			const key = revisionKey(await revision());
+			const key = Revision.key(await revision());
 			const root = await harness.root(context);
 			await root.commit(async (tx) => {
 				const index = await tx.doc(ReviewIndex, root.id);
@@ -1480,7 +1480,7 @@ describe("recording a dismissal", () => {
 		});
 
 		const root = (await harness.root(context)).id;
-		expect(await readVerdict(harness, root, revisionKey(await revision()), context)).toEqual(first.verdict);
+		expect(await readVerdict(harness, root, Revision.key(await revision()), context)).toEqual(first.verdict);
 	});
 
 	it("survives a reopen of the storage and a rerun of the review", async () => {

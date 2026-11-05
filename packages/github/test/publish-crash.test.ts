@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
-import { Changeset } from "@melian-agent/core";
+import { Changeset, Revision } from "@melian-agent/core";
 import { createGitHubProvider, statusContext } from "@melian-agent/github";
 import {
 	backgroundContext as context,
@@ -16,7 +16,6 @@ import {
 	publishReview,
 	ReviewError,
 	readPublished,
-	revisionKey,
 } from "@melian-agent/pipeline";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VerdictDocument } from "../../pipeline/src/adjudication.ts";
@@ -235,7 +234,7 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 				baseTip: state.pull.base.sha,
 				base: changeset.revision.base,
 				head: changeset.revision.head,
-				revision: revisionKey(changeset.revision),
+				revision: Revision.key(changeset.revision),
 			},
 			lines: changeset.revision.diffLines(),
 		};
@@ -760,7 +759,7 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 				Object.assign(await tx.doc(PublishedDocument, root.id), advisoryCrash.published);
 				Object.assign(await tx.doc(PublisherDocument, root.id), advisoryCrash.publisher);
 			}, context);
-			await opened.record(revisionKey(changeset.revision));
+			await opened.record(Revision.key(changeset.revision));
 			await opened.close(context);
 			opened = await RecordedReview.open(await openSqliteStorage(path), scenarioModels().review, github);
 			const publish = async () =>

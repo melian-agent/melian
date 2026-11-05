@@ -13,6 +13,7 @@ import {
 	type RepositorySource,
 	ReviewPlan,
 	type ReviewProvider,
+	Revision,
 	Standards,
 	type StoredRunDetails,
 	userFiles,
@@ -39,7 +40,6 @@ import {
 	readVerdict,
 	recordDismissal,
 	reviewChangeset,
-	revisionKey,
 	runChecks,
 	StageTelemetry,
 	summarizeReview,
@@ -109,6 +109,7 @@ export class ReviewOutcome {
 		emoji: boolean,
 		lenses: readonly Lens[],
 		ran?: { readonly config: MelianConfig; readonly paths: readonly string[] },
+		notes?: boolean,
 	): string {
 		const selected = ran === undefined ? [] : Lens.select(lenses, ran.config, ran.paths).map(({ lens }) => lens);
 		// Each variant by its version, loaded or as the review ran it; a name alone only when its variants agree, so a
@@ -120,7 +121,7 @@ export class ReviewOutcome {
 				.filter((lens) => lenses.every((other) => other.name !== lens.name || other.emoji === lens.emoji))
 				.map((lens) => [`lens.${lens.name}`, lens.emoji!]),
 		]);
-		return this.verdict.render(new Rendering({ color, emoji, lensEmojis, ids: true, decided: true }));
+		return this.verdict.render(new Rendering({ color, emoji, lensEmojis, ids: true, decided: true, notes }));
 	}
 }
 
@@ -178,6 +179,7 @@ export async function review(
 		readonly trustHead?: boolean;
 		readonly cold?: boolean;
 		readonly json?: boolean;
+		readonly notes?: boolean;
 	},
 ): Promise<number> {
 	const beganAt = Date.now();
@@ -378,12 +380,18 @@ export async function review(
 		}
 		spans.step("output");
 		const outcome = new ReviewOutcome(verdict);
-		const timings = await reviewTimings(reviewHarness, storage, spans, revisionKey(changeset.revision), beganAt, io);
+		const timings = await reviewTimings(reviewHarness, storage, spans, Revision.key(changeset.revision), beganAt, io);
 		io.stderr(timings.slowest());
 		io.stdout(
 			options.json
 				? `${JSON.stringify({ ...JSON.parse(verdict.renderJson()), telemetry: timings.toJSON() }, null, 2)}\n`
-				: outcome.render(io.color, await terminalEmoji(io, repoRoot), lenses, { config: loaded, paths }),
+				: outcome.render(
+						io.color,
+						await terminalEmoji(io, repoRoot),
+						lenses,
+						{ config: loaded, paths },
+						options.notes,
+					),
 		);
 		return outcome.exitCode();
 	} catch (error) {
@@ -391,7 +399,7 @@ export async function review(
 			reviewHarness,
 			storage,
 			spans,
-			revisionKey(changeset.revision),
+			Revision.key(changeset.revision),
 			beganAt,
 			io,
 			true,
@@ -597,6 +605,7 @@ export async function findings(
 		readonly open: boolean;
 		readonly all: boolean;
 		readonly json: boolean;
+		readonly notes?: boolean;
 		readonly round?: string;
 		readonly rounds?: boolean;
 	},
@@ -623,7 +632,7 @@ export async function findings(
 			rounds.sort((left, right) => left.compare(right, dates));
 			const listed = rounds.map((round) => {
 				const date = dates.get(round.stored.head);
-				return {
+				const listed = {
 					id: round.id,
 					base: round.stored.base,
 					head: round.stored.head,
@@ -631,14 +640,9 @@ export async function findings(
 					date: round.stored.mintedAt ?? (date === undefined ? "unknown" : new Date(date * 1000).toISOString()),
 					status: round.verdict()?.status ?? "undecided",
 				};
+				return options.json ? listed : `${listed.id}  ${round.revisionKey()}  ${listed.status}  ${listed.date}\n`;
 			});
-			io.stdout(
-				options.json
-					? `${JSON.stringify(listed, null, 2)}\n`
-					: listed
-							.map((round) => `${round.id}  ${round.base}..${round.head}  ${round.status}  ${round.date}\n`)
-							.join(""),
-			);
+			io.stdout(options.json ? `${JSON.stringify(listed, null, 2)}\n` : listed.join(""));
 			return 0;
 		} finally {
 			await storage.close(context);
@@ -648,7 +652,7 @@ export async function findings(
 	const { harness } = reviewHarness;
 	try {
 		const root = (await harness.root(context)).id;
-		const revision = revisionKey(changeset.revision);
+		const revision = Revision.key(changeset.revision);
 		const verdict = await readVerdict(harness, root, revision, context);
 		if (verdict === undefined) throw missing;
 		// The plan the review ran under, as stored with its verdict, never one resolved now: routes or credentials may have
@@ -659,7 +663,14 @@ export async function findings(
 				io.stderr(`melian: ${line}\n`);
 		}
 		const emoji = await terminalEmoji(io, changeset.repoRoot);
-		const render = new Rendering({ color: io.color, emoji, ids: true, all: options.all, decided: true });
+		const render = new Rendering({
+			color: io.color,
+			emoji,
+			ids: true,
+			all: options.all,
+			decided: true,
+			notes: options.notes,
+		});
 		if (!options.open) {
 			io.stdout(options.json ? verdict.renderJson() : verdict.render(render) + verdict.agentPrompt(argument));
 			return 0;
@@ -675,7 +686,7 @@ export async function findings(
 async function roundFindings(
 	io: Io,
 	id: string,
-	options: { readonly open: boolean; readonly all: boolean; readonly json: boolean },
+	options: { readonly open: boolean; readonly all: boolean; readonly json: boolean; readonly notes?: boolean },
 ): Promise<number> {
 	const match = /^(range-[0-9a-f]{16}|pull-[0-9a-f]{16})\.(?:r[1-9][0-9]*|k[0-9a-f]{16})$/.exec(id);
 	if (match === null) throw new CliError(`invalid round ID ${id}`);
@@ -700,6 +711,7 @@ async function roundFindings(
 			all: options.all,
 			decided: true,
 			historical: true,
+			notes: options.notes,
 		});
 		if (options.open) {
 			const open = FindingsLog.of(verdict.attention());
@@ -805,7 +817,7 @@ export async function telemetry(io: Io, argument: string, options: { readonly js
 	if (!existsSync(path)) throw new CliError("No stage telemetry is stored for this revision.");
 	const storage = await openStorage(path);
 	try {
-		const timings = await TelemetryReader.open(storage).read(revisionKey(stored.changeset.revision));
+		const timings = await TelemetryReader.open(storage).read(Revision.key(stored.changeset.revision));
 		if (timings.stages.length === 0 && timings.prepare === undefined)
 			throw new CliError("No stage telemetry is stored for this revision.");
 		io.stdout(options.json ? `${JSON.stringify(timings.toJSON(), null, 2)}\n` : timings.render());

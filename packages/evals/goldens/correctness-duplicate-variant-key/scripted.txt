@@ -1,0 +1,26 @@
+src/bands.ts
+
+  P1 | Blocks merge | Correctness | Verifier confirmed | New in this change
+    Verified: faux/scripted: The scripted verifier traced the claim.
+  Indexing bands by name lets the docs variant overwrite the payments variant.
+    Why here: The change replaces selection with name as the map key, although folder variants may share a name. Both declared variants then read the last band.
+    Failure scenario: The two correctness variants in src/review.ts have bands { floor: 2, ceiling: 3 } for payments and { floor: 1, ceiling: 1 } for docs. bandFor(variants, variants[0]) now returns the docs band for payments because both map entries use the name correctness.
+    Evidence:
+      cause: src/bands.ts:10-13
+          const bands = new Map(variants.map((variant) => [variant.name, {
+            floor: variant.floor,
+            ceiling: variant.ceiling,
+          }]));
+      context: src/bands.ts:8
+        /** Each selection has its own band; folder variants may share a name. */
+      context: src/review.ts:3-8
+        const variants: Variant[] = [
+          { name: "correctness", selection: "payments", floor: 2, ceiling: 3 },
+          { name: "correctness", selection: "docs", floor: 1, ceiling: 1 },
+        ];
+        
+        export const paymentsBand = bandFor(variants, variants[0]!);
+    What to do: Keep the map and lookup keyed by the variant selection.
+    Rule wrong-result | Lines 10-13 | Status new
+
+1 finding in 1 file.

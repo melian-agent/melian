@@ -8,6 +8,7 @@ import {
 	type MelianConfig,
 	type ModelRoute,
 	ReviewPlan,
+	Revision,
 } from "@melian-agent/core";
 import {
 	backgroundContext as context,
@@ -21,7 +22,6 @@ import {
 	readProvenance,
 	recordDismissal,
 	reviewChangeset,
-	revisionKey,
 	type TaskId,
 	TelemetryReader,
 } from "@melian-agent/pipeline";
@@ -167,7 +167,7 @@ async function planned(
 		],
 	});
 	const root = (await harness.root(context)).id;
-	const provenance = await readProvenance(harness, root, revisionKey(changeset.revision), context);
+	const provenance = await readProvenance(harness, root, Revision.key(changeset.revision), context);
 	return { plan, review, answered, provenance };
 }
 
@@ -177,7 +177,7 @@ describe("reviewChangeset with a plan", () => {
 		expect(answered).toEqual(["backup", "backup"]);
 		expect(review.verdict.status).toBe("passed");
 		const root = await harness.root(context);
-		const revision = revisionKey((await Changeset.resolve(repo, "main...feature")).revision);
+		const revision = Revision.key((await Changeset.resolve(repo, "main...feature")).revision);
 		const stored = await harness.snapshot(VerdictDocument, root.id, context);
 		const lineage = `on ${backup}, set by melian.local.yaml, where policy wants ${heavy} and accepts ${backup}`;
 		expect(stored?.details?.[revision]?.lenses.map(({ name, lineage }) => ({ name, lineage }))).toEqual([
@@ -242,7 +242,7 @@ describe("reviewChangeset with a plan", () => {
 		]);
 		const changeset = await Changeset.resolve(repo, "main...feature");
 		expect(
-			(await TelemetryReader.open(storage).read(revisionKey(changeset.revision)))
+			(await TelemetryReader.open(storage).read(Revision.key(changeset.revision)))
 				.runDetails()
 				.stages.filter(({ name }) => name.startsWith("lens "))
 				.map(({ name, outcome }) => ({ name, outcome }))
@@ -376,7 +376,7 @@ describe("reviewChangeset with a plan", () => {
 		expect([...again.answered].sort()).toEqual(["backup", "backup", "heavy", "heavy"]);
 		const changeset = await Changeset.resolve(repo, "main...feature");
 		expect(
-			(await TelemetryReader.open(storage).read(revisionKey(changeset.revision)))
+			(await TelemetryReader.open(storage).read(Revision.key(changeset.revision)))
 				.runDetails()
 				.stages.filter(({ name }) => name.startsWith("lens "))
 				.map(({ name, outcome }) => ({ name, outcome }))
@@ -391,7 +391,7 @@ describe("reviewChangeset with a plan", () => {
 		await planned({ model: heavy });
 		const { revision } = await Changeset.resolve(repo, "main...feature");
 		const root = await harness.root(context);
-		const id = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revisionKey(revision)]!.adjudication!
+		const id = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[Revision.key(revision)]!.adjudication!
 			.task;
 		const task = storage.task.bind(storage);
 		vi.spyOn(storage, "task").mockImplementation(async (wanted, readContext) => {
@@ -407,7 +407,7 @@ describe("reviewChangeset with a plan", () => {
 				},
 			};
 		});
-		const run = (await TelemetryReader.open(storage).read(revisionKey(revision))).runDetails();
+		const run = (await TelemetryReader.open(storage).read(Revision.key(revision))).runDetails();
 		expect(
 			run.stages.filter(({ name }) => name.startsWith("lens ")).map(({ name, outcome }) => ({ name, outcome })),
 		).toEqual([
@@ -470,7 +470,7 @@ describe("reviewChangeset with a plan", () => {
 			],
 		});
 		const root = await harness.root(context);
-		const revision = revisionKey(changeset.revision);
+		const revision = Revision.key(changeset.revision);
 		expect((await harness.snapshot(ReviewIndex, root.id, context))?.reviews[revision]?.task).toBeUndefined();
 
 		const again = await planned({ model: heavy, accept: [heavy] });
@@ -483,7 +483,7 @@ describe("reviewChangeset with a plan", () => {
 		await planned({ model: heavy, accept: [heavy] }, undefined, { reports: "heavy" });
 		// The entry as review index version 2 stored it: each lens by name and version, with no route.
 		const root = await harness.root(context);
-		const revision = revisionKey((await Changeset.resolve(repo, "main...feature")).revision);
+		const revision = Revision.key((await Changeset.resolve(repo, "main...feature")).revision);
 		await root.commit(async (tx) => {
 			const index = await tx.doc(ReviewIndex, root.id);
 			const entry = index.reviews[revision]!;
@@ -544,7 +544,7 @@ describe("a lens run a later review replaced", () => {
 		}).catch((error: unknown) => error);
 		await asked;
 		const root = await harness.root(context);
-		const revision = revisionKey(changeset.revision);
+		const revision = Revision.key(changeset.revision);
 		await root.commit(async (tx) => {
 			const index = await tx.doc(ReviewIndex, root.id);
 			const entry = index.reviews[revision]!;
@@ -609,13 +609,13 @@ describe("a lens run a later review replaced", () => {
 		expect(replaced).toMatchObject({ code: "superseded" });
 		expect(current.verdict.status).toBe("passed");
 		const root = await harness.root(context);
-		const entry = (await harness.snapshot(ReviewIndex, root.id, context))?.reviews[revisionKey(changeset.revision)];
+		const entry = (await harness.snapshot(ReviewIndex, root.id, context))?.reviews[Revision.key(changeset.revision)];
 		expect(entry?.task).toBeDefined();
 		expect(entry?.lenses.every((lens) => lens.endsWith(` on ${heavy}`))).toBe(true);
 		const named = await harness.getTask(entry!.task as TaskId, context);
 		expect(named?.state).toMatchObject({ status: "terminal", outcome: { status: "completed" } });
 		const details = (await harness.snapshot(VerdictDocument, root.id, context))?.details?.[
-			revisionKey(changeset.revision)
+			Revision.key(changeset.revision)
 		];
 		expect(JSON.stringify(details)).toContain("heavy");
 		expect(JSON.stringify(details)).not.toContain("backup");
@@ -662,7 +662,7 @@ describe("a lens run a later review replaced", () => {
 		}).catch((error: unknown) => error);
 		await asked;
 		const root = await harness.root(context);
-		const revision = revisionKey(changeset.revision);
+		const revision = Revision.key(changeset.revision);
 		await root.commit(async (tx) => {
 			const index = await tx.doc(ReviewIndex, root.id);
 			index.reviews[revision] = named === undefined ? { lenses: [] } : { ...index.reviews[revision]!, task: named };
@@ -767,7 +767,7 @@ describe("reviewChangeset with a plan, for a lens two folders define", () => {
 			checks: [{ name: "guardrails", status: "ran" }],
 		});
 		const { revision } = await Changeset.resolve(repo, "main...feature");
-		const run = (await TelemetryReader.open(storage).read(revisionKey(revision))).runDetails();
+		const run = (await TelemetryReader.open(storage).read(Revision.key(revision))).runDetails();
 		return { review, answered, requests, run };
 	}
 
@@ -786,7 +786,7 @@ describe("reviewChangeset with a plan, for a lens two folders define", () => {
 		expect(answered).toEqual(["heavy"]);
 		expect(review.verdict.status).toBe("not-reviewed");
 		const { revision } = await Changeset.resolve(repo, "main...feature");
-		const run = await TelemetryReader.open(storage).read(revisionKey(revision));
+		const run = await TelemetryReader.open(storage).read(Revision.key(revision));
 		expect(
 			run
 				.runDetails()

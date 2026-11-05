@@ -4,6 +4,7 @@ import {
 	deterministicChecks,
 	type ReasoningValue,
 	type RequestReasoning,
+	Revision,
 	RunDetails,
 	type RunStage,
 	type StoredRunDetails,
@@ -491,7 +492,8 @@ export class TelemetryReader {
 			);
 		}
 		const authority = checks?.owners?.[revision];
-		const prefix = `${revision.replace("..", " ")} `;
+		const { base, head } = Revision.parseKey(revision) ?? { base: revision, head: "" };
+		const prefix = `${base} ${head} `;
 		const parent =
 			authority === undefined
 				? Object.entries(checks?.tasks ?? {})

@@ -51,7 +51,6 @@ export {
 	type ReadFindingsOptions,
 	readFindings,
 	recordRevision,
-	revisionKey,
 	upsertFinding,
 } from "./findings.ts";
 export * from "./harness.ts";
@@ -64,6 +63,14 @@ export {
 	unlockCredentials,
 } from "./models.ts";
 export type { HeadTrust } from "./mutation-cache.ts";
+export {
+	type MutationAdapter,
+	type MutationBatch,
+	MutationEnumeration,
+	MutationEnumerationError,
+	type MutationFile,
+	TypeScriptMutationAdapter,
+} from "./mutation-enumeration.ts";
 export {
 	type AbandonedReview,
 	openPublishHarness,
@@ -108,6 +115,12 @@ export { CallerContext, type CallerData, type CallerGroup } from "./callers.ts";
 export { CoverageCache } from "./coverage-cache.ts";
 export { EnolaCoverage } from "./enola-coverage.ts";
 export { GraphCache } from "./graph-cache.ts";
+export {
+	MembershipReader,
+	PullRequestRoundHistory,
+	type PullRequestRoundMember,
+	type PullRequestRoundSnapshot,
+} from "./pull-request-rounds.ts";
 export { ReviewTranscript } from "./review-coverage.ts";
 export { Round, RoundError, RoundReader } from "./rounds.ts";
 export { type PrepareRecord, PrepareSpans, type Span } from "./spans.ts";

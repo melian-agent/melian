@@ -119,6 +119,9 @@ export interface UnmutatedFile {
 
 /** The reasons a changed file, or lines of one, were not mutated, for {@link UnmutatedFile}. */
 export const mutationUnmutated = {
+	lineBreaks: {
+		why: "Git and the parser count lone CR, U+2028 and U+2029 line breaks differently",
+	},
 	pastBound: (maxLines: number) => ({
 		why: `the change is past static.mutation.maxLines of ${maxLines}, so the run mutated other lines and left these out`,
 		whatToDo:

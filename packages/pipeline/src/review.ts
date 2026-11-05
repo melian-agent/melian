@@ -33,6 +33,7 @@ import {
 	parseModelReference,
 	type RepositorySource,
 	type ReviewPlan,
+	Revision,
 	resolveModelForTier,
 	type ScrutinyLevel,
 	type Severity,
@@ -80,7 +81,6 @@ import {
 	readFindings,
 	recordRevision,
 	reopenDismissals,
-	revisionKey,
 	type SightedFinding,
 	sightedBy,
 } from "./findings.ts";
@@ -108,8 +108,8 @@ import {
 	findingsCapped,
 	injectionPolicySection,
 	LensDocument,
+	lensListedTools,
 	lensPolicyHook,
-	lensReadTools,
 	lensSource,
 	provingHunk,
 	type ReviewState,
@@ -303,7 +303,7 @@ async function spawnLens(tx: Tx, taskId: TaskId, input: StoredLensTaskInput, len
 	const created = await tx.createConversation({ ownership: { kind: "task", taskId } });
 	// An owned conversation starts with its owner's tools and extensions, so both are explicit. Selecting only the lens
 	// extension puts its injection policy section first, ahead of the instructions.
-	const tools = [...lens.tools.map((tool) => lensReadTools[tool]), reportFinding];
+	const tools = [...lens.tools.map((tool) => lensListedTools[tool]), reportFinding];
 	// A task an older Melian created and a crash left in this phase holds only the findings budget, as a number.
 	const stored = lens.budget as LensBudget | number;
 	const budget = typeof stored === "number" ? { findings: stored } : stored;
@@ -337,6 +337,9 @@ async function spawnLens(tx: Tx, taskId: TaskId, input: StoredLensTaskInput, len
 			nearer: [...lens.coverage.nearer],
 			...(lens.coverage.moved === undefined ? {} : { moved: [...lens.coverage.moved] }),
 		},
+		...(input.callers?.coverage === undefined
+			? {}
+			: { graph: { root: input.callers.coverage.root, parts: structuredClone(input.callers.coverage.parts) } }),
 	};
 	return created.id;
 }
@@ -358,7 +361,7 @@ async function abortReplacedRuns(harness: Harness, context: Context): Promise<vo
 	const index = await harness.snapshot(ReviewIndex, root.id, context);
 	for (const { record } of live) {
 		const input = record.input as unknown as StoredLensTaskInput;
-		const entry = index?.reviews[revisionKey(input.revision)];
+		const entry = index?.reviews[Revision.key(input.revision)];
 		// An entry with no task is one a review that selected no lens rewrote: it names no run at all.
 		const replaced =
 			record.kind === VerificationTask.definition.name
@@ -374,7 +377,7 @@ async function abortReplacedRuns(harness: Harness, context: Context): Promise<vo
 	}
 	for (const { record } of adjudications) {
 		const input = record.input as unknown as AdjudicationTaskInput;
-		if (index?.reviews[revisionKey(input)]?.adjudication?.task !== record.id) {
+		if (index?.reviews[Revision.key(input)]?.adjudication?.task !== record.id) {
 			await harness.abortTask(record.id, context);
 		}
 	}
@@ -399,7 +402,7 @@ async function superseded(
 	taskId: number,
 	context: Context,
 ): Promise<boolean> {
-	const entry = (await reader.snapshot(ReviewIndex, input.root, context))?.reviews[revisionKey(input.revision)];
+	const entry = (await reader.snapshot(ReviewIndex, input.root, context))?.reviews[Revision.key(input.revision)];
 	return entry !== undefined && entry.task !== taskId;
 }
 
@@ -434,7 +437,7 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 			const started = task.state.checkpoint as ReviewCheckpoint;
 			const { input } = task;
 			const rule = input.escalateAt === undefined ? undefined : new EscalationRule(input.escalateAt);
-			const revision = revisionKey(input.revision);
+			const revision = Revision.key(input.revision);
 			// One run on its conversation, from the attempt a crash left it at. A request ID per attempt: a rerun after a
 			// crash finds the attempt it had reached, settled or not.
 			const run = async (lens: LensRun, id: ConversationId, prompt: string): Promise<LensOutcome> => {
@@ -588,7 +591,7 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
  */
 export const lensExtension = defineExtension({
 	name: "melian.lenses",
-	tools: [...Object.values(lensReadTools), reportFinding, reportVerdict],
+	tools: [...Object.values(lensListedTools), reportFinding, reportVerdict],
 	sections: [injectionPolicySection],
 	hooks: [lensPolicyHook],
 	tasks: [LensTask, VerificationTask, AdjudicationTask],
@@ -1037,7 +1040,7 @@ async function runLenses(
 	unlockModels?: (providers: readonly string[]) => Promise<void>,
 ): Promise<{ readonly result: LensResult | undefined; readonly ran: StoredLensTaskInput; readonly task: number }> {
 	const root = await harness.root(context);
-	const revision = revisionKey(input.revision);
+	const revision = Revision.key(input.revision);
 	const selection = selectionOf(input.lenses, input.escalateAt);
 	if (unlockModels !== undefined) {
 		// Live tasks were unlocked from their checkpoints before resume; finished tasks ask no model.
@@ -1144,7 +1147,7 @@ async function callersFor(
 	context: Context,
 ): Promise<CallerRecord> {
 	const root = await harness.root(context);
-	const revision = revisionKey(input.revision);
+	const revision = Revision.key(input.revision);
 	const selection = selectionOf(input.lenses, input.escalateAt);
 	const entryOf = async () => {
 		const entry = (await harness.snapshot(ReviewIndex, root.id, context))?.reviews[revision];
@@ -1178,7 +1181,7 @@ async function startAdjudication(
 	const root = await harness.root(context);
 	return root.commit(async (tx) => {
 		const index = await tx.doc(ReviewIndex, root.id);
-		const revision = revisionKey(input);
+		const revision = Revision.key(input);
 		let known = index.reviews[revision];
 		// A review whose lenses ran owns the entry only while it still names their selection. Problem: once a later review
 		// replaced this one's lens task, rewriting the entry here dropped the newer run's task, and the guards then read
@@ -1625,7 +1628,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	const prompt = new ChangePrompt(changeset, nonce);
 	const { repoRoot, revision } = changeset;
 	const { base, head } = revision;
-	const reviewed = revisionKey(revision);
+	const reviewed = Revision.key(revision);
 	// A lens selected through a file's old path covers its head path for this review, so it can report what it moved.
 	const covering = selected.map((selection) => {
 		const { files } = selection;

@@ -5,6 +5,7 @@ import {
 	defaultConfig,
 	Finding,
 	type LedgerRound,
+	Revision,
 	replyKey,
 	type StoredRunDetails,
 	Verdict,
@@ -17,7 +18,6 @@ import {
 	type Harness,
 	openSqliteStorage,
 	publishReview,
-	revisionKey,
 	summarizeReview,
 } from "@melian-agent/pipeline";
 import { fauxAssistantMessage, fauxToolCall, scriptConversations, textOf } from "@melian-agent/pipeline/testing";
@@ -438,6 +438,14 @@ describe("ledger rendering", () => {
 		expect(Ledger.readStamp(body.replace('"round":1', '"round":2'))).toBeUndefined();
 	});
 
+	it("shows an earlier round whose findings were trimmed by its revision and status", () => {
+		const trimmed = { base: "a".repeat(40), head: "c".repeat(40), round: 1, status: "findings" as const };
+		const current = Ledger.from(verdict, { rounds: [trimmed, round] }, options);
+		expect(current.render(links)).toContain(
+			"<summary>Earlier round 1 at cccccccccccc</summary>\n\naaaaaaaaaaaa..cccccccccccc; findings.",
+		);
+	});
+
 	it("switches the walkthrough and keeps earlier rounds collapsed with their heads", () => {
 		const earlier = {
 			...round,
@@ -617,13 +625,14 @@ describe("ledger rendering", () => {
 
 	it("keeps every lens note in the run details, each distinct note once with the lenses that carry it", () => {
 		const shared = "Callers unavailable for src/a.ts: line 1: directory-scoped name is ambiguous";
+		const other = "triage input was cut, so no lens could skip";
 		const own = "kept the defects it hands to `durability`, whose files here would list past 40 files or 4 KiB";
 		const noted = new Adjudication({
 			findings: [],
 			manifest: [],
 			checks: [
-				{ name: "lens.correctness", status: "ran", level: "careful", reason: shared },
-				{ name: "lens.contracts", status: "ran", level: "careful", reason: shared },
+				{ name: "lens.correctness", status: "ran", level: "careful", reason: `${shared}; ${own}` },
+				{ name: "lens.contracts", status: "ran", level: "careful", reason: `${other}; ${shared}` },
 				{ name: "lens.design", status: "ran", level: "careful", reason: own },
 				{ name: "lens.design", status: "ran", level: "quick", reason: own },
 				{ name: "lens.security", status: "ran", level: "careful" },
@@ -636,9 +645,10 @@ describe("ledger rendering", () => {
 
 		expect(body.slice(0, start)).not.toContain("Callers unavailable");
 		expect(runDetails).toContain(
-			`Lens notes:\n\n- \`lens.correctness\`, \`lens.contracts\`: ${inline(shared)}\n- \`lens.design\`: ${inline(own)}`,
+			`Lens notes:\n\n- \`lens.correctness\`, \`lens.contracts\`: ${inline(shared)}\n- \`lens.correctness\`, \`lens.design\`: ${inline(own)}\n- \`lens.contracts\`: ${inline(other)}`,
 		);
 		expect(runDetails.split(inline(shared))).toHaveLength(2);
+		expect(runDetails.split(inline(own))).toHaveLength(2);
 		expect(runDetails).not.toContain("`lens.security`");
 		const quiet = Ledger.from(verdict, { rounds: [round] }, options).render(links);
 		expect(quiet).toContain("<summary>Run details</summary>");
@@ -1041,7 +1051,7 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 		const id = state.ledgers[0]!.id;
 		expect(state.ledgers[0]!.body).toContain("Removes the absent manager fallback.");
 		const doc = await harness.snapshot(VerdictDocument, (await harness.root(context)).id, context);
-		const details = doc?.details?.[revisionKey(first.changeset.revision)];
+		const details = doc?.details?.[Revision.key(first.changeset.revision)];
 		expect(details?.policy).toBe(`revision:${first.changeset.revision.base}`);
 		expect(details?.manifest).toContain("lens.correctness");
 		expect(details?.lenses).toEqual(
@@ -1698,7 +1708,7 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 			const record = {
 				reviews: ["1001"],
 				verdict: reviewed.verdict.fingerprint(),
-				verdictRevision: revisionKey(second.changeset.revision),
+				verdictRevision: Revision.key(second.changeset.revision),
 				rounds: 1,
 				open: {},
 				resolved: { [id]: entry },

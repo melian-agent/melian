@@ -10,6 +10,7 @@ import {
 	defaultConfig,
 	durationText,
 	Lens,
+	Revision,
 	type ToolLog,
 	tokenText,
 } from "@melian-agent/core";
@@ -33,7 +34,6 @@ import {
 	type ROOT_CONVERSATION_ID,
 	recordDismissal,
 	reviewChangeset,
-	revisionKey,
 	runChecks,
 	type Stage,
 	StageTelemetry,
@@ -213,7 +213,7 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 		expect(tools).toHaveBeenCalledTimes(7);
 		await summarizeReview({ ...options, harness });
 		expect(calls["You write Melian's walkthrough"]).toHaveLength(1);
-		const revision = revisionKey(options.changeset.revision);
+		const revision = Revision.key(options.changeset.revision);
 		const before = await TelemetryReader.open(storage).read(revision, beganAt);
 		const stages = before.stages;
 		for (const stage of stages.filter((stage) => stage.conversation !== undefined)) {
@@ -307,7 +307,7 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 		const spans = PrepareSpans.start("host", Date.now());
 		await reviewChangeset({ ...options, spans });
 		await summarizeReview({ ...options, harness });
-		const revision = revisionKey(options.changeset.revision);
+		const revision = Revision.key(options.changeset.revision);
 		const prepare = await spans.record(harness, revision, context);
 		const roundId = spans.roundId!;
 		await TelemetryReader.open(storage).recordRun(harness, revision, roundId, spans.startedAt, prepare);
@@ -433,7 +433,7 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 					}),
 		);
 		await reviewChangeset({ ...options, lenses });
-		const telemetry = await TelemetryReader.open(storage).read(revisionKey(options.changeset.revision));
+		const telemetry = await TelemetryReader.open(storage).read(Revision.key(options.changeset.revision));
 		const lens = telemetry.stages.find(({ name }) => name === "melian.lens")!;
 		expect(lens).toMatchObject({ outcome: "ended", ended: "tokens", limits: { tokens: 1 } });
 		const rows = telemetry.runDetails().stages.filter(({ name }) => name === "lens correctness");
@@ -452,7 +452,7 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 		// The host's step is still open when the review runs its checks, which must end it first.
 		const spans = PrepareSpans.start("host", Date.now());
 		await reviewChangeset({ ...options, spans });
-		const revision = revisionKey(options.changeset.revision);
+		const revision = Revision.key(options.changeset.revision);
 		await spans.record(harness, revision, context);
 		const telemetry = await TelemetryReader.open(storage).read(revision);
 		const spansOf = (top: boolean) =>
@@ -490,7 +490,7 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 	it("attaches to the same tasks and adds no timing records on repeated calls or detached reads", async () => {
 		const { options, harness, fake, tools, storage } = await setup();
 		await reviewChangeset(options);
-		const revision = revisionKey(options.changeset.revision);
+		const revision = Revision.key(options.changeset.revision);
 		const root = (await harness.root(context)).id;
 		const firstIndex = structuredClone(await harness.snapshot(ReviewIndex, root, context));
 		const firstVerdict = await storage.findDocument(
@@ -561,7 +561,7 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 			writer: options.writer,
 		};
 		await runChecks(harness, input, context);
-		const revision = revisionKey(options.changeset.revision);
+		const revision = Revision.key(options.changeset.revision);
 		const first = await TelemetryReader.open(storage).read(revision);
 		expect(first.stages.filter(({ name }) => name === "melian.check")).toHaveLength(5);
 		expect(first.stages.find(({ subject }) => subject === "static.tsc")!.outcome).toBe("failed");
@@ -678,7 +678,7 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 			context,
 		);
 		now = 10000;
-		const timings = await TelemetryReader.open(storage).read(revisionKey(changeset.revision));
+		const timings = await TelemetryReader.open(storage).read(Revision.key(changeset.revision));
 		expect(timings.stages).toEqual([
 			expect.objectContaining({
 				subject: "guardrails",
@@ -738,7 +738,7 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 		);
 		const changeset = await Changeset.resolve(repo, "main...feature");
 		const storage = await openSqliteStorage(database);
-		const first = await TelemetryReader.open(storage).read(revisionKey(changeset.revision));
+		const first = await TelemetryReader.open(storage).read(Revision.key(changeset.revision));
 		expect(first.stages).toHaveLength(1);
 		const lens = first.stages[0]!;
 		expect(lens).toMatchObject({ name: "melian.lens", outcome: "completed", durationMs: expect.any(Number) });
@@ -772,7 +772,7 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 			models: fake.review,
 			checks: [],
 		});
-		const after = await TelemetryReader.open(reopened).read(revisionKey(changeset.revision));
+		const after = await TelemetryReader.open(reopened).read(Revision.key(changeset.revision));
 		expect(after.stages.find(({ name }) => name === "melian.lens")).toEqual(lens);
 		expect(fake.provider.state.callCount).toBe(0);
 	});
@@ -788,7 +788,7 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 		);
 		const changeset = await Changeset.resolve(repo, "main...feature");
 		const storage = await openSqliteStorage(database);
-		const before = await TelemetryReader.open(storage).read(revisionKey(changeset.revision));
+		const before = await TelemetryReader.open(storage).read(Revision.key(changeset.revision));
 		const quick = before.stages.find(({ subject }) => subject.endsWith("@quick"))!;
 		const careful = before.stages.find(({ subject }) => subject.endsWith("@careful"))!;
 		expect(quick).toMatchObject({ outcome: "completed", durationMs: expect.any(Number) });
@@ -823,7 +823,7 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 			checks: [],
 			decider,
 		});
-		const after = await TelemetryReader.open(reopened).read(revisionKey(changeset.revision), resumedAt);
+		const after = await TelemetryReader.open(reopened).read(Revision.key(changeset.revision), resumedAt);
 		expect(after.stages.find(({ id }) => id === quick.id)).toEqual({ ...quick, reused: true });
 		expect(after.stages.find(({ id }) => id === careful.id)).toMatchObject({
 			startedAt: careful.startedAt,
@@ -841,7 +841,7 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 		const harness = await openHarness(storage, { models: fake.models, registry: createRegistry() });
 		opened.push({ close: () => harness.close(context) });
 		const root = await harness.root(context);
-		const revision = revisionKey(options.changeset.revision);
+		const revision = Revision.key(options.changeset.revision);
 		const fakeTask = defineTask<null, { phase: "spawn" }, null>({
 			name: "melian.lenses",
 			version: 3,
@@ -948,7 +948,7 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 				trustedWriters: true,
 			}),
 		).rejects.toMatchObject({ code: "staleTarget" });
-		const timing = await TelemetryReader.open(storage).read(revisionKey(options.changeset.revision));
+		const timing = await TelemetryReader.open(storage).read(Revision.key(options.changeset.revision));
 		expect(timing.stages.filter(({ name }) => name === "melian.publication")).toEqual([
 			expect.objectContaining({ outcome: "failed", endedAt: expect.any(Number), durationMs: expect.any(Number) }),
 		]);
@@ -975,7 +975,7 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 			context,
 		);
 
-		const revision = revisionKey(options.changeset.revision);
+		const revision = Revision.key(options.changeset.revision);
 		const root = await harness.root(context);
 		await root.commit(async (tx) => {
 			delete (await tx.doc(ChecksDocument, root.id)).owners;
@@ -1000,7 +1000,7 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 	it("reads spend once per conversation from durable usage, including reused work", async () => {
 		const { options, harness, storage } = await setup();
 		await reviewChangeset(options);
-		const revision = revisionKey(options.changeset.revision);
+		const revision = Revision.key(options.changeset.revision);
 		const before = await TelemetryReader.open(storage).read(revision);
 		const lens = before.stages.find(({ name }) => name === "melian.lens")!;
 		const root = await harness.root(context);
@@ -1023,7 +1023,7 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 	it("renders a lens whose stored level is absent as legacy", async () => {
 		const { options, harness, storage } = await setup();
 		await reviewChangeset(options);
-		const revision = revisionKey(options.changeset.revision);
+		const revision = Revision.key(options.changeset.revision);
 		const first = await TelemetryReader.open(storage).read(revision);
 		const lens = first.stages.find(({ name }) => name === "melian.lens")!;
 		await (await harness.root(context)).commit(async (tx) => {

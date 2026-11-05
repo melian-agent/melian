@@ -604,7 +604,8 @@ export class Verdict {
 	lensNotes(): { reason: string; checks: string[] }[] {
 		const notes = new Map<string, string[]>();
 		for (const { name, reason } of this.ran ?? [])
-			if (reason !== undefined) notes.set(reason, [...new Set([...(notes.get(reason) ?? []), name])]);
+			if (reason !== undefined)
+				for (const note of reason.split("; ")) notes.set(note, [...new Set([...(notes.get(note) ?? []), name])]);
 		return [...notes].map(([reason, checks]) => ({ reason, checks }));
 	}
 
@@ -839,11 +840,17 @@ export class Verdict {
 		const lenses = (this.ran ?? []).filter((check) => check.level !== undefined);
 		if (lenses.length > 0) {
 			const checks = lenses.map(
-				({ name, level, budgetEnded, reason }) =>
-					`  ${visibleText(name)}  ${level}${budgetEnded === undefined ? "" : `, ended and counted: ${describeBudgetEnd(budgetEnded)}`}${reason === undefined ? "" : `; ${prose(reason, "    ")}`}`,
+				({ name, level, budgetEnded }) =>
+					`  ${visibleText(name)}  ${level}${budgetEnded === undefined ? "" : `, ended and counted: ${describeBudgetEnd(budgetEnded)}`}`,
 			);
 			parts.push([`${plural(lenses.length, "lens", "lenses")} ran:`, ...checks].join("\n"));
 		}
+		if (rendering.notes)
+			parts.push(
+				...this.lensNotes().map(
+					({ reason, checks }) => `  ${checks.map(visibleText).join(", ")}: ${prose(reason, "    ")}`,
+				),
+			);
 		const lineage = [...(this.ran ?? []), ...this.notRun].filter((check) => check.lineage !== undefined);
 		if (lineage.length > 0) {
 			const checks = lineage.map(
