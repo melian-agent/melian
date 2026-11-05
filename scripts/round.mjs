@@ -51,10 +51,13 @@ export function visible(text) {
 function section(lines, heading) {
 	const start = lines.findIndex(heading);
 	if (start === -1) return [];
-	let end = lines.findIndex((line, at) => at > start && line !== "" && !line.startsWith(" "));
-	if (end === -1) end = lines.length;
-	while (lines[end - 1] === "") end--;
-	return lines.slice(start, end);
+	const block = [lines[start]];
+	for (const line of lines.slice(start + 1)) {
+		if (line !== "" && !line.startsWith(" ")) break;
+		block.push(line);
+	}
+	while (block.at(-1) === "") block.pop();
+	return block;
 }
 
 function findingLine(finding) {
