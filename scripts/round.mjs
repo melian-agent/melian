@@ -1,5 +1,6 @@
-// What the melian-round workflow does beside running melian: take the Codex access token from a Codex login, and
-// turn a round's output into a pull request comment. round-codex-token.mjs and round-comment.mjs are its commands.
+// What the melian-round workflow does beside running melian: find whose code the head is, take the Codex access token
+// from a Codex login, and turn a round's output into a pull request comment. round-writer.mjs, round-codex-token.mjs
+// and round-comment.mjs are its commands.
 import { readFileSync } from "node:fs";
 
 /**
@@ -18,6 +19,30 @@ export function codexAccessToken(encoded) {
 	if (typeof token !== "string" || token === "")
 		throw new Error("the Codex login in CODEX_AUTH_B64 has no access token");
 	return token;
+}
+
+/**
+ * Whose code the head is, by the rule of the head-writer decision as Melian's GitHub provider applies it: the first
+ * push event, newest first, for exactly this SHA on exactly this branch names the pusher; with none, the pull request's
+ * author stands in. `events` are JSON lines of `{ actor, head, ref }`, one per push event. An event that names no actor,
+ * or a line that is not one, is refused rather than passed over.
+ */
+export function headWriter(events, { sha, branch, author }) {
+	for (const line of events.split("\n").filter((each) => each.trim() !== "")) {
+		let event;
+		try {
+			event = JSON.parse(line);
+		} catch {
+			throw new Error("a push event could not be read");
+		}
+		if (event.head !== sha || event.ref !== `refs/heads/${branch}`) continue;
+		if (typeof event.actor !== "string" || event.actor === "")
+			throw new Error("the head's push event names no pushing identity");
+		return event.actor;
+	}
+	if (typeof author !== "string" || author === "")
+		throw new Error("no push event names the head, and the pull request names no author");
+	return author;
 }
 
 export const marker = "<!-- melian-round -->";

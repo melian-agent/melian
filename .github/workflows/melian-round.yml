@@ -63,6 +63,29 @@ jobs:
           if ! [[ "$head" =~ ^[0-9a-f]{40}$ && "$base" =~ ^[0-9a-f]{40}$ ]]; then echo "::error::unreadable head or base SHA"; exit 1; fi
           echo "head=$head" >> "$GITHUB_OUTPUT"
           echo "base=$base" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      # The writer decision trusts a head only when the identity that pushed that exact commit holds write permission,
+      # so a writer dispatching a round on a bot's branch is not enough. Every page of push events is read; a failed
+      # read fails this step, and no later job holds a secret.
+      - name: Refuse a head its pusher could not have written
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          HEAD: ${{ steps.pull.outputs.head }}
+        run: |
+          branch=$(jq -r .head.ref "$RUNNER_TEMP/pull.json")
+          author=$(jq -r '.user.login // ""' "$RUNNER_TEMP/pull.json")
+          gh api --paginate "repos/$REPOSITORY/events?per_page=100" \
+            --jq '.[] | select(.type == "PushEvent") | {actor: .actor.login, head: .payload.head, ref: .payload.ref} | tojson' \
+            > "$RUNNER_TEMP/pushes.jsonl"
+          writer=$(node scripts/round-writer.mjs "$RUNNER_TEMP/pushes.jsonl" "$HEAD" "$branch" "$author")
+          permission=$(gh api "repos/$REPOSITORY/collaborators/$writer/permission" --jq .permission) || permission=""
+          case "$permission" in
+            admin|maintain|write) echo "$writer, whose code the head is, has $permission permission" ;;
+            *) echo "::error::$writer, whose code the head is, has ${permission:-no known} permission; a round runs only a writer's head"; exit 1 ;;
+          esac
 
   round:
     needs: gate
