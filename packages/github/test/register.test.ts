@@ -103,7 +103,7 @@ describe("a finding as a pull request shows it, in the register", () => {
 				"",
 				"**What to do:** Restore findOpenIntent, or pass the intent ID as the idempotency key.",
 				"",
-				`Rule \`payment-idempotency\` | Finding \`${finding.id}\` | Status \`new\``,
+				`Rule \`payment-idempotency\` | Finding \`${finding.id}\``,
 			].join("\n"),
 		);
 	});
@@ -140,7 +140,7 @@ describe("a finding as a pull request shows it, in the register", () => {
 				"",
 				"**What to do:** Catch and log the error, as readRecord does.",
 				"",
-				`Rule \`degrade-on-cache-failure\` | Finding \`${finding.id}\` | Status \`new\``,
+				`Rule \`degrade-on-cache-failure\` | Finding \`${finding.id}\``,
 			].join("\n"),
 		);
 	});
@@ -156,7 +156,7 @@ describe("a finding as a pull request shows it, in the register", () => {
 			failureScenario: undefined,
 		});
 		expect(comment(finding, true, { kind: "body" })).toBe(
-			`- \u{1F535} P3 | \u{1F4AC} Advisory | \u{1F4CF} Conventions | \u{2754} Not verified | New in this change: [\`payments/submit.ts:31\`](${links.web}/blob/${revision}/payments/submit.ts#L31-L44) \`docs-match-code\`: The guide says half-hour slots; the list builds quarter-hours. | Finding \`${finding.id}\` | Status \`new\``,
+			`- \u{1F535} P3 | \u{1F4AC} Advisory | \u{1F4CF} Conventions | \u{2754} Not verified | New in this change: [\`payments/submit.ts:31\`](${links.web}/blob/${revision}/payments/submit.ts#L31-L44) \`docs-match-code\`: The guide says half-hour slots; the list builds quarter-hours. | Finding \`${finding.id}\``,
 		);
 	});
 
@@ -240,7 +240,7 @@ describe("a refuted protected finding as a pull request shows it", () => {
 		expect(text).toContain("- \u{1F535} P3 | \u{1F4AC} Advisory | \u{1F9EA} Tests | \u{2716}\u{FE0F} Refuted | ");
 		const lines = text.split("\n");
 		const entry = lines.findIndex((line) => line.startsWith("- \u{1F535} P3 | "));
-		expect(lines[entry]).toMatch(/ \| Finding `[0-9a-f]{16}` \| Status `new`$/);
+		expect(lines[entry]).toMatch(/ \| Finding `[0-9a-f]{16}`$/);
 		expect(lines.slice(entry + 1, entry + 3)).toEqual([
 			"  \u{2696}\u{FE0F} **Verified:** `faux/judge`: Another test counts.",
 			"  Trust floor: reported-severity policy requires no acknowledgement.",
@@ -321,7 +321,7 @@ describe("a deterministic finding as a pull request shows it", () => {
 				"",
 				"**What to do:** Remove the file.",
 				"",
-				`Rule \`guardrail/forbidden-paths/no-secrets\` | Finding \`${finding.id}\` | Status \`new\``,
+				`Rule \`guardrail/forbidden-paths/no-secrets\` | Finding \`${finding.id}\``,
 			].join("\n"),
 		);
 	});

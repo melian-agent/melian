@@ -416,9 +416,16 @@ export async function staticFindings(input: StaticFindingsInput): Promise<CheckR
 	]);
 	const version = input.head.runs[0].tool.driver.version;
 	const findings: Finding[] = [];
+	let untouched = 0;
 	for (const each of head.values()) {
 		const { region } = each.result.locations[0]!.physicalLocation;
 		const endLine = Math.max(region.endLine ?? region.startLine, region.startLine);
+		// A symbol's fan-in grows when the change only adds callers; that is the symbol doing its job, not a defect here.
+		// Enola names only the line a symbol starts on, so any edit to its file keeps the result.
+		if (each.rule === "enola/god-class" && !revision.files.some((file) => file.path === each.path)) {
+			untouched++;
+			continue;
+		}
 		const before = base.get(each.id);
 		const severity = staticSeverity(tool, each.rule, each.result.level, input.settings.severity);
 		const sameLine = endLine === region.startLine;
@@ -461,5 +468,7 @@ export async function staticFindings(input: StaticFindingsInput): Promise<CheckR
 		else findings.push(findingOf("pre-existing", Math.min(each.count, before.count)));
 		if (added > 0) findings.push(findingOf("introduced", added, { discriminator: `beyond the base at ${each.id}` }));
 	}
-	return { findings, notes: [] };
+	const notes =
+		untouched === 0 ? [] : [`enola/god-class results left out, the change not editing their file: ${untouched}.`];
+	return { findings, notes };
 }

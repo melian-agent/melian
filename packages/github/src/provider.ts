@@ -727,6 +727,16 @@ export class GitHubProvider implements ReviewProvider {
 				break;
 			}
 		}
+		// A finding counts as listed when a review by the publisher's own login holds its signed marker, whatever that
+		// review's revision or body. That login is the trust root and can post anything, so a marker it forges gains
+		// nothing; a finding the size limit cut is in no body. With no known publisher nothing counts.
+		const listed = new Set<string>();
+		for (const each of reviews) {
+			const me = await this.login();
+			if (me === undefined || each.user?.login !== me) continue;
+			for (const found of markersIn(each.body))
+				if (found.kind === "finding" && verifyMarker(found, secret)) listed.add(found.id);
+		}
 		const threads: Record<string, string> = {};
 		const replies: Record<string, string> = {};
 		const roots = new Map<number, { id: string; author: string }>();
@@ -756,7 +766,7 @@ export class GitHubProvider implements ReviewProvider {
 				);
 			}
 		}
-		return { ...(review === undefined ? {} : { review }), threads, replies };
+		return { ...(review === undefined ? {} : { review }), threads, replies, listed: [...listed] };
 	}
 
 	private async publicationPages<

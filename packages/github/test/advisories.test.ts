@@ -116,6 +116,48 @@ describe("advisory publication", { timeout: 60_000 }, () => {
 		expect(state.resolvedThreads).not.toContain(state.comments[1]!.id);
 	});
 
+	it("counts an advisory posted on an earlier revision rather than listing it again", async () => {
+		const { state, review, publish } = await session();
+		const first = await review("advisory");
+		const id = first.verdict.findings.advisory[0]!.id;
+		await publish(first.changeset);
+		expect(markersIn(state.reviews[0]!.body).map((found) => [found.kind, found.id])).toContainEqual(["finding", id]);
+		const second = await review("advisory");
+		expect(second.verdict.findings.advisory.map((finding) => finding.id)).toEqual([id]);
+		await publish(second.changeset);
+		const body = state.reviews[1]!.body.split("\n");
+		expect(body.slice(1)).toEqual([
+			`Melian reviewed \`${second.changeset.revision.head.slice(0, 12)}\`: **findings**.`,
+			"",
+			"No blocking findings, 1 advisory, 1 carried from earlier.",
+			"",
+			"<details>",
+			"<summary>Verification and status</summary>",
+			"",
+			`Verification: ${second.verdict.verificationSummary()}; 0 refuted findings not posted.`,
+			"",
+			"melian/review: success (1 finding, none blocking).",
+			"",
+			"</details>",
+		]);
+	});
+
+	it("lists an advisory again when no earlier body shows it, as when GitHub's limit cut it", async () => {
+		const { state, review, publish } = await session();
+		const first = await review("advisory");
+		const id = first.verdict.findings.advisory[0]!.id;
+		await publish(first.changeset);
+		// The first body as it would read had the limit cut its one advisory: the marker and its line are gone.
+		const lines = state.reviews[0]!.body.split("\n");
+		const at = lines.findIndex((line) => parseMarker(line)?.id === id);
+		lines.splice(at, 2);
+		state.reviews[0]!.body = lines.join("\n");
+		const second = await review("advisory");
+		await publish(second.changeset);
+		expect(markersIn(state.reviews[1]!.body).map((found) => [found.kind, found.id])).toContainEqual(["finding", id]);
+		expect(state.reviews[1]!.body).toContain("No blocking findings, 1 advisory.");
+	});
+
 	it.each(["advisory", "gone"] as const)(
 		"retires an owed thread when the finding returns as advisory after %s",
 		async (interrupted) => {
@@ -134,7 +176,13 @@ describe("advisory publication", { timeout: 60_000 }, () => {
 			expect(state.comments[0]!.body).toContain(
 				`Addressed in commit ${lowered.changeset.revision.head.slice(0, 12)}`,
 			);
-			expect(state.reviews.at(-1)!.body).toContain(`/blob/${returned.changeset.revision.head}/src/user.ts#L19`);
+			// The interrupted head's review listed the advisory before its replies failed, so this one counts it instead.
+			if (interrupted === "advisory") {
+				expect(state.reviews.at(-1)!.body).toContain("No blocking findings, 1 advisory, 1 carried from earlier.");
+				expect(state.reviews.at(-1)!.body).not.toContain("/src/user.ts#L19");
+			} else {
+				expect(state.reviews.at(-1)!.body).toContain(`/blob/${returned.changeset.revision.head}/src/user.ts#L19`);
+			}
 			const before = posts(state).length;
 			await publish(returned.changeset);
 			expect(posts(state)).toHaveLength(before);

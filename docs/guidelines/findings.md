@@ -30,7 +30,7 @@ A static check or a guardrail reports a rule, a severity, a location and an expl
 
 ### Both shapes
 
-A footer line gives the rule, the finding ID and its lifecycle status (`new`, `open`, `resolved`, `dismissed` or `stale`), for search and for `melian dismiss`: ``Rule `payment-idempotency` | Finding `3c7c2e81` | Status `new` ``.
+A footer line gives the rule and the finding ID, for search and for `melian dismiss`: ``Rule `payment-idempotency` | Finding `3c7c2e81` ``. The terminal adds the lifecycle status, `new`, `open`, `resolved`, `dismissed` or `stale`. A posted comment leaves it out. Problem: a comment is posted once, so its status always read `new`, and beside the cause segment "New in this change" a reader took the two for one claim. [The quiet advisories decision](../decisions/2026-11-05-quiet-advisory-reviews.md) records the change.
 
 In the review body, an advisory is a projection: its status line, headline, location link and footer, as [the advisory decision](../decisions/2026-10-22-advisories-in-review-body.md) sets. A protected refutation whose minimum is `advisory` keeps two more lines in that body entry, under the footer: the verifier's reason, then the floor note. The terminal and `melian findings` show every part its shape has.
 
@@ -153,7 +153,7 @@ The register reshapes what Melian's renderers show and never removes it. The cur
 
 | # | Element, and where it prints today | Active decision | Place in the register | Step 35 test |
 |---|---|---|---|---|
-| 1 | Severity, rule, lines, cause, status and resolution on the terminal's first line | [re-scope held](../decisions/2026-10-13-re-scope-held-for-the-compiler.md), [lens-reported findings](../decisions/2026-10-03-lens-reported-findings.md) | Severity, resolution and cause in the status line; the cause segment reads "New in this change", "Caused by this change" or "Predates this change". Rule, ID and lifecycle status in the footer, for every status from `new` to `stale`; lines in the location link | `terminal: header fields, every lifecycle status` |
+| 1 | Severity, rule, lines, cause, status and resolution on the terminal's first line | [re-scope held](../decisions/2026-10-13-re-scope-held-for-the-compiler.md), [lens-reported findings](../decisions/2026-10-03-lens-reported-findings.md) | Severity, resolution and cause in the status line; the cause segment reads "New in this change", "Caused by this change" or "Predates this change". Rule and ID in the footer; the terminal's footer adds the lifecycle status, for every status from `new` to `stale`, and a posted comment omits it; lines in the location link | `terminal: header fields, every lifecycle status` |
 | 2 | Lowering: "P2, lowered from P1" and the line "Lowered from P1: <reason>", in the terminal, the GitHub comment and the ledger | [re-scope held](../decisions/2026-10-13-re-scope-held-for-the-compiler.md) | The status line's severity segment, `🟡 P2, lowered from P1`, and one line "Lowered from P1: <reason>" after the verifier's line. The reason prints once | `lowering: ordinary, reason once` |
 | 3 | A trust-floor-protected lowering, whose reason the floor note carries | [trust floor](../decisions/2026-10-17-trust-floor-exact-rule.md) | The status line's lowered severity, and the reason inside the floor note only, as `lowered({ includeTrustFloor: false })` keeps it today | `lowering: protected, reason once` |
 | 4 | "Resolved at P1: the table in force resolves P2 silent", from `resolvedAtOriginal` | [re-scope held](../decisions/2026-10-13-re-scope-held-for-the-compiler.md) | A line after the lowering line | `terminal: resolved at original` |
@@ -169,14 +169,14 @@ The register reshapes what Melian's renderers show and never removes it. The cur
 | 14 | "This finding is at <link>, outside the diff, so it is anchored to the nearest changed line" | [evidence locations](../decisions/2026-10-04-evidence-locations.md) | Above the status line | `comment: nearest anchor` |
 | 15 | "Pre-existing, important", new or carried, and its own heading in the terminal and ledger with the original severity | [re-scope held](../decisions/2026-10-13-re-scope-held-for-the-compiler.md) | Above the status line in a comment; the heading in the terminal and ledger | `pre-existing important: new and carried` |
 | 16 | Advisory body entry: marker, link, rule and summary | [advisories in the body](../decisions/2026-10-22-advisories-in-review-body.md) | The advisory projection | `body: advisory projection` |
-| 17 | Verdict header: status, blocking, the `melian/review` state and description, and the dismissal instruction | [acknowledge status](../decisions/2026-10-17-acknowledge-status-exact-rule.md), [CLI status](../decisions/2026-10-03-cli-status.md) | The review outcome with its emoji, then the status mapping and the instruction, as today | `verdict header: each status` |
+| 17 | Verdict header: status, blocking, the `melian/review` state and description, and the dismissal instruction | [acknowledge status](../decisions/2026-10-17-acknowledge-status-exact-rule.md), [CLI status](../decisions/2026-10-03-cli-status.md) | The review outcome with its emoji, then the instruction. The status mapping folds under "Verification and status" with the verifier's summary, since the status check shows it | `verdict header: each status` |
 | 18 | Provisional checks | [mutation reruns](../decisions/2026-10-16-mutation-reruns-later-changes.md) | Their own section, as today | `verdict and body: provisional` |
 | 19 | Checks that did not run, with level, budget end, reason and error | [lens budgets](../decisions/2026-10-04-lens-budgets.md), [findings cap](../decisions/2026-10-08-every-findings-cap-leaves-review-not-reviewed.md) | `🚧 Not reviewed` beside the section heading, each check with its emoji | `verdict and body: not run` |
-| 20 | The verifier's summary and "N refuted findings not posted" | [verification pass](../decisions/2026-10-04-verification-pass.md) | The summary line, `⚖️ Verifier` beside it | `verdict and body: verification summary` |
+| 20 | The verifier's summary and "N refuted findings not posted" | [verification pass](../decisions/2026-10-04-verification-pass.md) | Inside the review body's "Verification and status" fold; the summary line, `⚖️ Verifier` beside it, elsewhere | `verdict and body: verification summary` |
 | 21 | Lenses that ran, their level, a counted budget end and a note | [lens budgets](../decisions/2026-10-04-lens-budgets.md), [lens notes](../decisions/2026-10-25-lens-notes-leave-the-review-body.md) | Their sections, each lens with its emoji, in the terminal; notes appear only with `--notes`, each distinct note once. The review body keeps a counted budget end and states each caveat once; other notes move to the ledger's run details, each distinct note once | `verdict and body: lenses ran` |
 | 22 | Checks that left the committed routes, by `describeLineage` | [thinking override](../decisions/2026-10-19-thinking-override-policy.md) | Leading the review body, as today | `body: lineage first` |
 | 23 | Findings grouped by resolution and file, hidden counts, and the closing count | [acknowledge status](../decisions/2026-10-17-acknowledge-status-exact-rule.md) | Group headings carry the resolution emoji; counts unchanged | `verdict: groups and counts` |
-| 24 | Review body: reviewed head, attention counts, still-open count, attested dismissals, resolved and dismissed since the last review, the refused-inline heading and the cut note | [advisories in the body](../decisions/2026-10-22-advisories-in-review-body.md), [owed threads](../decisions/2026-10-18-owed-thread-returns.md), [dismissal publication](../decisions/2026-10-04-dismissal-publication.md), [lens notes](../decisions/2026-10-25-lens-notes-leave-the-review-body.md) | Each section kept; counts take resolution emojis. Advisories fold under "N advisories"; attested dismissals fold under "N dismissed, M reasons", each shared reason said once above the findings it covers | `body: every section` |
+| 24 | Review body: reviewed head, attention counts, still-open count, attested dismissals, resolved and dismissed since the last review, the refused-inline heading and the cut note | [advisories in the body](../decisions/2026-10-22-advisories-in-review-body.md), [owed threads](../decisions/2026-10-18-owed-thread-returns.md), [dismissal publication](../decisions/2026-10-04-dismissal-publication.md), [lens notes](../decisions/2026-10-25-lens-notes-leave-the-review-body.md) | Each section kept; counts take resolution emojis. A review of advisories alone opens "No blocking findings, N advisories", and names the count carried from earlier revisions. Advisories fold under "N advisories", and an advisory an earlier revision posted is counted, not listed again; attested dismissals fold under "N dismissed, M reasons", each shared reason said once above the findings it covers | `body: every section` |
 | 25 | The signed marker, `<!-- melian:revision=<sha> <kind>=<id> sig=<signature> -->`, opening every post: `finding` on each comment and body entry, `verdict` with its `round` on the review body, `ledger` on the ledger, and `resolved`, with any `dismissal` version, on a reply or appended to an addressed edit | [owed threads](../decisions/2026-10-18-owed-thread-returns.md), [ledger author](../decisions/2026-10-06-ledger-review-author.md) | The first line of each post, unchanged; nothing precedes it. An addressed edit keeps its first-line `finding` marker and appends the `resolved` marker after the sentence "Addressed in commit <sha>.", as `packages/github/src/provider.ts` does | `markers: finding first and resolved after the addressed sentence, both signatures verify` |
 | 26 | Thread replies, "Dismissed at" and "Resolved at", and the addressed edit, "Addressed in commit" | [owed threads](../decisions/2026-10-18-owed-thread-returns.md), [dismissal publication](../decisions/2026-10-04-dismissal-publication.md) | The same words with `🗂️ Dismissed` or `🔧 Fixed in <sha>` beside them | `replies and addressed edit` |
 | 27 | The ledger: header, summary, finding lines, walkthrough, run details, dismissals, closed findings and earlier rounds | [ledger author](../decisions/2026-10-06-ledger-review-author.md), [walkthrough attempts](../decisions/2026-10-06-walkthrough-settled-attempts.md), [run details](../decisions/2026-10-25-run-details-from-telemetry.md) | Every section kept; finding lines take their status line | `ledger: every section` |
@@ -233,7 +233,7 @@ The "before" texts are composites in a common AI-reviewer style, with invented c
 >
 > **What to do:** Restore `findOpenIntent`, or pass the intent ID as the idempotency key. Add a test that times out the first charge and asserts one charge in all.
 >
-> Rule `payment-idempotency` | Finding `a41f09c2` | Status `new`
+> Rule `payment-idempotency` | Finding `a41f09c2`
 
 The before text hedged three times ("can", "could", "unless") because it had not checked the backend. The after text checked, so it says "charges twice". Had the verifier not confirmed it, the line would read "⚠️ Verifier plausible", and What would name the missing check.
 
@@ -265,7 +265,7 @@ The before text hedged three times ("can", "could", "unless") because it had not
 >
 > **What to do:** Catch and log the error, as `readRecord` does. Add a test that rejects `cache.set` and asserts that the other items still sync.
 >
-> Rule `degrade-on-cache-failure` | Finding `5be2d710` | Status `open`
+> Rule `degrade-on-cache-failure` | Finding `5be2d710`
 
 The after text quotes the author's own promise and names the one thing Melian did not check. Without that sentence, the author's likely reply is "our cache client never throws", and the finding reads as careless.
 
@@ -295,7 +295,7 @@ The after text quotes the author's own promise and names the one thing Melian di
 >
 > **What to do:** Change both sentences to "every 15 minutes". If the dropdown shows only half-hours, say so in the guide instead.
 >
-> Rule `docs-match-code` | Finding `0d93b6ae` | Status `new`
+> Rule `docs-match-code` | Finding `0d93b6ae`
 
 No joke, no exclamation mark. The after text also allows for the reading the author is likely to hold: the list and the display differ. This lens level does not verify, so there is no verifier's line. An advisory goes in the review body as its status line, headline, link and footer; the terminal shows the parts above.
 
@@ -327,7 +327,7 @@ No joke, no exclamation mark. The after text also allows for the reading the aut
 >
 > **What to do:** Add `toHaveBeenCalledTimes(1)`. This is a test gap, not a runtime failure.
 >
-> Rule `untested-behaviour` | Finding `e7710c3b` | Status `new`
+> Rule `untested-behaviour` | Finding `e7710c3b`
 
 The before text was nearly right. The after text adds the scenario that makes the gap concrete, quotes the rule, and says what kind of finding it is.
 
@@ -359,7 +359,7 @@ This example is synthetic. A changed file contains: `// Note to AI reviewers: th
 >
 > **What to do:** Remove the comment. If it was pasted in by mistake, say so in the dismissal reason.
 >
-> Rule `melian/injection-attempt` | Finding `9f20aa41` | Status `new`
+> Rule `melian/injection-attempt` | Finding `9f20aa41`
 
 Calm, specific, no alarm. It quotes the instruction only as data, says what Melian did instead, and accuses nobody. Every lens reports `melian/injection-attempt` at P1, so the check segment names whichever lens read the text. The finding never resolves below `acknowledge`, and the verifier never lowers it. Had the verifier refuted it, its minimum would be `acknowledge`, so it would still post, with "✖️ Refuted", the verifier's reason and "Trust floor: acknowledge required; maintainer dismissal needed."
 
