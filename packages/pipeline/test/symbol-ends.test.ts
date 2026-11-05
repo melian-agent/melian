@@ -41,14 +41,16 @@ it("ends a declaration Enola names by its keyword or name line where the whole d
 	expect(ends.endLine("src/shared.ts", 2)).toBe(2);
 });
 
-it("gives no span for a file past the read limit, whose symbol may run past the cut", async () => {
+it("gives no span for a file past the read limit, whose symbol may run past the cut", { timeout: 60_000 }, async () => {
 	const filler = "\tconst x = 1;\n".repeat(Math.ceil(enclosingLimits.fileBytes / 14) + 10);
 	const head = commit(repo, { "src/big.ts": `export function big() {\n${filler}}\n` });
 	const ends = await SymbolEnds.read(repo, head, ["src/big.ts"]);
 	expect(ends.endLine("src/big.ts", 1)).toBeUndefined();
 });
 
-it("reads the first files up to the limit, and none past it", async () => {
+// Each file costs two git reads, about 400 processes here; past Vitest's 5 seconds the read would still be running, and
+// would close its compiler inside the next test.
+it("reads the first files up to the limit, and none past it", { timeout: 60_000 }, async () => {
 	const count = enclosingLimits.files + 1;
 	const files = Object.fromEntries(
 		Array.from({ length: count }, (_, index) => [`src/f${index}.ts`, "export function f() {\n\treturn 1;\n}\n"]),
