@@ -241,7 +241,7 @@ export class ReviewComment {
 			return [
 				marker(revision, "finding", id, context.secret),
 				...heading,
-				`- ${status}: [${code(`${path}:${start}`)}](${blobUrl(links, revision, path, start, end)}) ${code(finding.ruleId)}: ${inline(finding.message.text)} | Finding ${code(id)} | Status ${code(finding.properties.status)}`,
+				`- ${status}: [${code(`${path}:${start}`)}](${blobUrl(links, revision, path, start, end)}) ${code(finding.ruleId)}: ${inline(finding.message.text)} | Finding ${code(id)}`,
 				...held,
 			].join("\n");
 		}
@@ -267,7 +267,7 @@ export class ReviewComment {
 			...finding.trustFloorNotes().flatMap((line) => [inline(line), ""]),
 			...this.#text(context),
 			"",
-			`Rule ${code(finding.ruleId)} | Finding ${code(id)} | Status ${code(finding.properties.status)}`,
+			`Rule ${code(finding.ruleId)} | Finding ${code(id)}`,
 		].join("\n");
 	}
 
@@ -337,27 +337,28 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 		return count === 0 ? [] : [`${count} ${resolution}`];
 	});
 	const shown = tallied.length;
-	const summary = [
+	// An advisory asks for no action, so a review of advisories alone says nothing needs attention.
+	const quiet = tallied.every((finding) => finding.properties.resolution === "advisory");
+	const summary =
 		shown === 0
-			? "No findings need attention."
-			: `${plural(shown, "finding")} ${shown === 1 ? "needs" : "need"} attention: ${counts.join(", ")}.`,
-		...(draft.stillOpen > 0
-			? [`${draft.stillOpen} of them ${draft.stillOpen === 1 ? "was" : "were"} posted on an earlier revision.`]
-			: []),
-	];
-	parts.push(
-		summary.join(" ") +
-			(verdict.all().some((finding) => finding.properties.verification !== undefined) ||
-			[...(verdict.ran ?? []), ...verdict.notRun].some((check) => check.name === "verifier")
-				? ` Verification: ${verdict.verificationSummary()}; ${plural(verdict.refuted?.length ?? 0, "refuted finding")} not posted.`
-				: ""),
-	);
+			? ["No findings need attention."]
+			: quiet
+				? [
+						`No blocking findings, ${advisories(shown)}${draft.stillOpen > 0 ? `, ${draft.stillOpen} carried from earlier` : ""}.`,
+					]
+				: [
+						`${plural(shown, "finding")} ${shown === 1 ? "needs" : "need"} attention: ${counts.join(", ")}.`,
+						...(draft.stillOpen > 0
+							? [
+									`${draft.stillOpen} of them ${draft.stillOpen === 1 ? "was" : "were"} posted on an earlier revision.`,
+								]
+							: []),
+					];
+	parts.push(summary.join(" "));
 	parts.push(...new Set(tallied.flatMap((finding) => finding.trustFloorNotes().slice(0, 1)).map(inline)));
 	// A lens's other notes are for tuning Melian and stay in the ledger's run details; a caveat narrows the whole review.
 	const caveats = new Set([...(verdict.ran ?? []), ...verdict.notRun].flatMap((check) => check.caveats ?? []));
 	parts.push(...[...caveats].map((caveat) => `Reach: ${inline(caveat)}.`));
-	const reviewStatus = verdict.reviewStatus();
-	parts.push(`melian/review: ${reviewStatus.state} (${inline(reviewStatus.description)}).`);
 	if (verdict.counted().some((finding) => finding.properties.resolution === "acknowledge")) {
 		parts.push(
 			`Dismiss unresolved acknowledgements with a reason, then publish. Use ${code(`melian dismiss "#${draft.pullRequest}" <id> --reason <text>`)} for this pull request.`,
@@ -416,13 +417,34 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 		finding.dismissal === undefined ? [] : [`${named(finding)}: ${inline(finding.dismissal.reason)}`],
 	);
 	if (dismissed.length > 0) parts.push(["Dismissed since the last review:", "", ...dismissed].join("\n"));
+	// The status check shows these already, so they fold for a reader who wants to dig in.
+	const reviewStatus = verdict.reviewStatus();
+	const verified =
+		verdict.all().some((finding) => finding.properties.verification !== undefined) ||
+		[...(verdict.ran ?? []), ...verdict.notRun].some((check) => check.name === "verifier");
+	parts.push(
+		folded(
+			"Verification and status",
+			[
+				...(verified
+					? [
+							`Verification: ${verdict.verificationSummary()}; ${plural(verdict.refuted?.length ?? 0, "refuted finding")} not posted.`,
+						]
+					: []),
+				`melian/review: ${reviewStatus.state} (${inline(reviewStatus.description)}).`,
+			].join("\n\n"),
+		),
+	);
 	const posted = new Set(draft.findings.flatMap(({ finding }) => finding.reportIds()));
+	const earlier = new Set(draft.postedEarlier);
 	const carried = new Set(draft.carried);
 	const inBody = [
 		...draft.findings.filter(
 			({ finding, placement }) => placement.kind === "body" || finding.properties.resolution === "advisory",
 		),
-		...verdict.findings.advisory.filter((finding) => !posted.has(finding.id)).map((finding) => ({ finding })),
+		...verdict.findings.advisory
+			.filter((finding) => !posted.has(finding.id) && !earlier.has(finding.id))
+			.map((finding) => ({ finding })),
 		...verdict
 			.attention()
 			.filter(
@@ -441,25 +463,18 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 		});
 	// A finding that asks for action stays open; an advisory asks for none, so it folds under its count.
 	const open = inBody.filter(({ finding }) => finding.properties.resolution !== "advisory").map(render);
-	const quiet = inBody.filter(({ finding }) => finding.properties.resolution === "advisory").map(render);
-	const sections = [...open, ...quiet];
+	const listed = inBody.filter(({ finding }) => finding.properties.resolution === "advisory").map(render);
+	const sections = [...open, ...listed];
 	const heading = options.inlineRefused
 		? "### Findings\n\nGitHub refused this review's inline comments, so every finding is listed here."
 		: "### Advisories and findings carried or outside the diff";
 	const assemble = (kept: number, note?: string) => {
 		const shown = open.slice(0, kept);
-		const advisories = quiet.slice(0, Math.max(0, kept - open.length));
+		const fits = listed.slice(0, Math.max(0, kept - open.length));
 		return [
 			...parts,
 			...(shown.length > 0 ? [heading, ...shown] : []),
-			...(advisories.length > 0
-				? [
-						folded(
-							`${advisories.length} ${advisories.length === 1 ? "advisory" : "advisories"}`,
-							advisories.join("\n\n"),
-						),
-					]
-				: []),
+			...(fits.length > 0 ? [folded(advisories(fits.length), fits.join("\n\n"))] : []),
 			...(note === undefined ? [] : [note]),
 		].join("\n\n");
 	};
@@ -507,6 +522,10 @@ export function renderResolvedReply(finding: ClosedFinding, revision: string, se
 		return `${head}\nDismissed at ${code(short(revision))}: ${inline(finding.dismissal.reason)}`;
 	}
 	return `${head}\nResolved at ${code(short(revision))}: this revision no longer reports ${code(finding.ruleId)} here.`;
+}
+
+function advisories(count: number): string {
+	return `${count} ${count === 1 ? "advisory" : "advisories"}`;
 }
 
 // A section the reader opens only to dig in, under a summary that is a count and a noun.

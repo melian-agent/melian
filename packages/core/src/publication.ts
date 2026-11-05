@@ -158,6 +158,11 @@ export interface ReviewDraft {
 	readonly stillOpen: number;
 	/** Still-open findings, by ID, whose thread a human resolved or deleted; the body lists them again. */
 	readonly carried?: readonly string[];
+	/**
+	 * Findings, by ID, an earlier revision posted that this one does not post again. An advisory among them is counted
+	 * in the body, not listed again. Without it, the body lists every advisory.
+	 */
+	readonly postedEarlier?: readonly string[];
 	/** Resolved and dismissed findings that have no thread to reply in, so the body names them. */
 	readonly resolved: readonly ClosedFinding[];
 	/** The changeset's publisher secret, as hex, which signs every marker the review carries. Never printed. */
