@@ -183,6 +183,11 @@ describe("reading markers back", () => {
 		state.failUser = true;
 		const verdict = marker(head, "verdict", fingerprint, secret, { round: 1 });
 		state.reviews.push(review(1, "pull-request-author", `${verdict}\n${marker(head, "finding", finding, secret)}`));
+		// A deleted account's review has no author at all, and no more says who posted it.
+		state.reviews.push({
+			...review(2, "ghost", `${verdict}\n${marker(head, "finding", finding, secret)}`),
+			user: null,
+		});
 		expect(await providerFor(state).findPublished(7, head, wanted, secret)).toMatchObject({ listed: [] });
 	});
 

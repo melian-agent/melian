@@ -32,13 +32,21 @@ it("ends a declaration Enola names by its keyword or name line where the whole d
 		"src/default.ts": "export default\nclass Service {\n\trun() {\n\t\treturn 2;\n\t}\n}\n",
 		"src/decorated.ts": "@sealed\nexport class Store {\n\tget() {\n\t\treturn 1;\n\t}\n}\n",
 		"src/shared.ts": "export class A { m() { return 1; }\n\tn() {}\n}\n",
+		"src/pair.ts": "export const a = 1, b = 2;\n",
 	});
-	const ends = await SymbolEnds.read(repo, head, ["src/default.ts", "src/decorated.ts", "src/shared.ts"]);
+	const ends = await SymbolEnds.read(repo, head, [
+		"src/default.ts",
+		"src/decorated.ts",
+		"src/shared.ts",
+		"src/pair.ts",
+	]);
 	expect([ends.endLine("src/default.ts", 1), ends.endLine("src/default.ts", 2)]).toEqual([6, 6]);
 	expect([ends.endLine("src/decorated.ts", 1), ends.endLine("src/decorated.ts", 2)]).toEqual([6, 6]);
 	// The class and its first method both open on line 1, so which one Enola means there is unclear.
 	expect(ends.endLine("src/shared.ts", 1)).toBeUndefined();
 	expect(ends.endLine("src/shared.ts", 2)).toBe(2);
+	// Two declarations that end on the same line agree.
+	expect(ends.endLine("src/pair.ts", 1)).toBe(1);
 });
 
 it("gives no span for a file past the read limit, whose symbol may run past the cut", { timeout: 60_000 }, async () => {
