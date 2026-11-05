@@ -178,6 +178,14 @@ describe("reading markers back", () => {
 		expect(await providerFor(state).findPublished(7, head, wanted, secret)).toMatchObject({ listed: [finding] });
 	});
 
+	it("lists nothing when it cannot tell who it posts as, so a marker replayed from the ledger hides no advisory", async () => {
+		const state = pullRequestState();
+		state.failUser = true;
+		const verdict = marker(head, "verdict", fingerprint, secret, { round: 1 });
+		state.reviews.push(review(1, "pull-request-author", `${verdict}\n${marker(head, "finding", finding, secret)}`));
+		expect(await providerFor(state).findPublished(7, head, wanted, secret)).toMatchObject({ listed: [] });
+	});
+
 	it("also requires the token's own user when it knows who that is", async () => {
 		const state = pullRequestState();
 		const signed = marker(head, "verdict", fingerprint, secret, { round: 1 });

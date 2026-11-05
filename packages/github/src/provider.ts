@@ -727,10 +727,12 @@ export class GitHubProvider implements ReviewProvider {
 				break;
 			}
 		}
-		// What a body shows is the authority for what a reader saw: a finding the size limit cut was never listed.
+		// What a body shows is the authority for what a reader saw: a finding the size limit cut was never listed. A
+		// signature proves the finding, not that Melian's review showed it, so with no known publisher nothing counts.
 		const listed = new Set<string>();
 		for (const each of reviews) {
-			if (!(await this.ours(each.user))) continue;
+			const me = await this.login();
+			if (me === undefined || each.user?.login !== me) continue;
 			for (const found of markersIn(each.body))
 				if (found.kind === "finding" && verifyMarker(found, secret)) listed.add(found.id);
 		}
