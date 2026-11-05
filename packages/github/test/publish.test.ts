@@ -174,6 +174,8 @@ describe("reading markers back", () => {
 			review(2, state.login, `${verdict}\n${marker(head, "finding", "0123456789abcdef", "22".repeat(32))}`),
 		);
 		expect(await providerFor(state).findPublished(7, head, wanted, secret)).toMatchObject({ listed: [] });
+		state.reviews.push({ ...review(4, "ghost", `${verdict}\n${listed}`), user: null });
+		expect(await providerFor(state).findPublished(7, head, wanted, secret)).toMatchObject({ listed: [] });
 		state.reviews.push(review(3, state.login, `${verdict}\n${listed}`));
 		expect(await providerFor(state).findPublished(7, head, wanted, secret)).toMatchObject({ listed: [finding] });
 	});
