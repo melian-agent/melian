@@ -487,6 +487,48 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 				).toBe(true);
 	});
 
+	it("ends a conversation no later than its task, however far its reply's clocks overshoot", async () => {
+		const { options, storage, harness } = await setup();
+		const spans = PrepareSpans.start("host", Date.now());
+		await reviewChangeset({ ...options, spans });
+		const revision = Revision.key(options.changeset.revision);
+		await spans.record(harness, revision, context);
+		const before = await TelemetryReader.open(storage).read(revision);
+		const candidate = before.stages.find(({ name }) => name === "melian.verification.candidate")!;
+		const settled = (await storage.task(candidate.task as TaskId, context))!.endedAt!;
+		const prepare = before.prepare!.spans.find(({ name }) => name === "adjudication.prepare")!;
+		expect(prepare.startedAt).toBeGreaterThanOrEqual(settled);
+		const submissions = await storage.scanSubmissions(
+			{ conversationId: candidate.conversation! as ConversationId },
+			200,
+			undefined,
+			context,
+		);
+		const last = submissions.items.at(-1)!;
+		if (last.status !== "done" || last.type !== "input") throw new Error("expected an answered input");
+		const entry = storage.entry.bind(storage);
+		// The reply's wall-clock timestamp plus its monotonic, rounded duration, ending `offset` past the task.
+		for (const offset of [-1, 0, 1, 40]) {
+			vi.spyOn(storage, "entry").mockImplementation(async (id, readContext) => {
+				const stored = await entry(id, readContext);
+				if (id !== last.answer || stored === undefined) return stored;
+				const [reply, ...rest] = stored.entry.model!;
+				return {
+					...stored,
+					entry: { ...stored.entry, model: [{ ...reply!, timestamp: settled - 10, durationMs: 10 + offset }, ...rest] },
+				};
+			});
+			const stage = (await TelemetryReader.open(storage).read(revision)).stages.find(
+				({ id }) => id === candidate.id,
+			)!;
+			expect(stage, `offset ${offset}`).toMatchObject({
+				endedAt: settled + Math.min(offset, 0),
+				durationMs: settled + Math.min(offset, 0) - stage.startedAt!,
+			});
+			expect(stage.endedAt!).toBeLessThanOrEqual(prepare.startedAt);
+		}
+	});
+
 	it("attaches to the same tasks and adds no timing records on repeated calls or detached reads", async () => {
 		const { options, harness, fake, tools, storage } = await setup();
 		await reviewChangeset(options);
