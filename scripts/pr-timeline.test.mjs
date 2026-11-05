@@ -429,9 +429,11 @@ describe("fetch", () => {
 		const gh = (args) => {
 			asked.push(args);
 			if (args[1] === "graphql") return JSON.stringify({ data: { repository: { pullRequest: data } } });
-			return JSON.stringify(args.includes("event=merge_group") ? answers.group : answers.branch);
+			if (args.includes("event=merge_group")) return JSON.stringify(answers.group ?? empty);
+			const sha = args.find((arg) => arg.startsWith("head_sha="))?.slice("head_sha=".length);
+			return JSON.stringify(answers.shas?.[sha] ?? empty);
 		};
-		return { gh, asked };
+		return { gh, asked, queue: () => asked.find((args) => args.includes("event=merge_group")) };
 	};
 	const empty = [{ total_count: 0, workflow_runs: [] }];
 	const merged = page([
@@ -439,9 +441,9 @@ describe("fetch", () => {
 	]);
 
 	it("searches merge-group runs only from a merged pull request's opening to its merge", () => {
-		const { gh, asked } = github(pull({ timelineItems: merged }), { branch: empty, group: empty });
+		const { gh, queue } = github(pull({ timelineItems: merged }), {});
 		Timeline.fetch({ number: 1, repo: "o/r", gh, now: "2026-10-09T00:00:00Z" });
-		expect(asked[2]).toEqual([
+		expect(queue()).toEqual([
 			"api",
 			"--paginate",
 			"--slurp",
@@ -457,10 +459,25 @@ describe("fetch", () => {
 		]);
 	});
 
-	it("searches the branch's runs over the same window, so a reused branch name brings no other pull request's runs", () => {
-		const { gh, asked } = github(pull({ timelineItems: merged }), { branch: empty, group: empty });
+	it("asks for the runs of each commit and force-push tip by SHA, with no time window", () => {
+		const commits = page([commit("a".repeat(40), start), commit("b".repeat(40), start + HOUR)]);
+		const timelineItems = page([
+			{
+				__typename: "HeadRefForcePushedEvent",
+				createdAt: "2026-10-01T00:30:00Z",
+				beforeCommit: { oid: "c".repeat(40) },
+				afterCommit: { oid: "a".repeat(40) },
+			},
+			{
+				__typename: "HeadRefForcePushedEvent",
+				createdAt: "2026-10-01T00:40:00Z",
+				beforeCommit: null,
+				afterCommit: null,
+			},
+		]);
+		const { gh, asked } = github(pull({ commits, timelineItems }), {});
 		Timeline.fetch({ number: 1, repo: "o/r", gh, now: "2026-10-09T00:00:00Z" });
-		expect(asked[1]).toEqual([
+		const bySha = (sha) => [
 			"api",
 			"--paginate",
 			"--slurp",
@@ -468,11 +485,14 @@ describe("fetch", () => {
 			"GET",
 			"repos/o/r/actions/runs",
 			"-f",
-			"branch=b",
-			"-f",
-			"created=2026-10-01T00:00:00.000Z..2026-10-02T00:00:00Z",
+			`head_sha=${sha}`,
 			"-f",
 			"per_page=100",
+		];
+		expect(asked.filter((args) => args[1] !== "graphql" && !args.includes("event=merge_group"))).toEqual([
+			bySha("a".repeat(40)),
+			bySha("b".repeat(40)),
+			bySha("c".repeat(40)),
 		]);
 	});
 
@@ -493,31 +513,39 @@ describe("fetch", () => {
 			.split("\n")
 			.filter((row) => /^\| \d{4}-.* \| CI /.test(row));
 
-	it("keeps a branch run only when its commit is one of the pull request's commits or force-push tips", () => {
+	it("shows the runs of each commit and force-push tip, from before the pull request opened and after it closed", () => {
 		const commits = page([commit("a".repeat(40), start)]);
 		const timelineItems = page([
 			{
 				__typename: "HeadRefForcePushedEvent",
 				createdAt: "2026-10-01T00:30:00Z",
 				beforeCommit: { oid: "b".repeat(40) },
-				afterCommit: { oid: "c".repeat(40) },
-			},
-			{
-				__typename: "HeadRefForcePushedEvent",
-				createdAt: "2026-10-01T00:40:00Z",
-				beforeCommit: null,
 				afterCommit: null,
 			},
 		]);
-		const runs = [
-			run("ours", { head_sha: "a".repeat(40) }),
-			run("replaced", { head_sha: "b".repeat(40) }),
-			run("pushed", { head_sha: "c".repeat(40) }),
-			run("reused branch name", { head_sha: "9".repeat(40) }),
-		];
-		const branch = [{ total_count: 4, workflow_runs: runs }];
-		const { gh } = github(pull({ commits, timelineItems }), { branch, group: empty });
-		expect(ciRows(gh).map((row) => row.split("|")[3].trim())).toEqual(["CI ours", "CI replaced", "CI pushed"]);
+		const pages = (...runs) => [{ total_count: runs.length, workflow_runs: runs }];
+		const shas = {
+			["a".repeat(40)]: pages(
+				run("before opening", {
+					head_sha: "a".repeat(40),
+					run_started_at: "2026-09-30T22:50:00Z",
+					updated_at: "2026-09-30T23:00:00Z",
+				}),
+				run("rerun after closing", {
+					head_sha: "a".repeat(40),
+					run_attempt: 2,
+					run_started_at: "2026-10-09T03:00:00Z",
+					updated_at: "2026-10-09T03:10:00Z",
+				}),
+			),
+			["b".repeat(40)]: pages(run("replaced", { head_sha: "b".repeat(40) })),
+		};
+		const { gh } = github(pull({ commits, timelineItems }), { shas });
+		expect(ciRows(gh)).toEqual([
+			"| 2026-09-30 22:50 | 0.00 | CI before opening | aaaaaaaa, success, 10.0 min |",
+			"| 2026-10-01 01:00 | 2.17 | CI replaced | bbbbbbbb, success, 10.0 min |",
+			"| 2026-10-09 03:00 | 196.17 | CI rerun after closing | aaaaaaaa, success, 10.0 min, attempt 2 |",
+		]);
 	});
 
 	it("keeps a merge-group run only when its whole branch name is this pull request's queue branch on its base", () => {
@@ -537,14 +565,16 @@ describe("fetch", () => {
 				workflow_runs: names.map((head_branch, i) => run(`q${i}`, { event: "merge_group", head_branch })),
 			},
 		];
-		const { gh } = github(pull({ baseRefName: "release.1" }), { branch: empty, group });
+		const { gh } = github(pull({ baseRefName: "release.1" }), { group });
 		expect(ciRows(gh).map((row) => row.split("|")[3].trim())).toEqual(["CI q0"]);
 	});
 
 	it("shows a run's attempt only when it is above 1", () => {
 		const commits = page([commit("a".repeat(40), start)]);
 		const runs = [1, 2].map((attempt) => run(`try ${attempt}`, { head_sha: "a".repeat(40), run_attempt: attempt }));
-		const { gh } = github(pull({ commits }), { branch: [{ total_count: 2, workflow_runs: runs }], group: empty });
+		const { gh } = github(pull({ commits }), {
+			shas: { ["a".repeat(40)]: [{ total_count: 2, workflow_runs: runs }] },
+		});
 		expect(ciRows(gh).map((row) => row.split("|")[4].trim())).toEqual([
 			"aaaaaaaa, success, 10.0 min",
 			"aaaaaaaa, success, 10.0 min, attempt 2",
@@ -552,14 +582,14 @@ describe("fetch", () => {
 	});
 
 	it("searches an open pull request's merge-group runs up to now", () => {
-		const { gh, asked } = github(pull(), { branch: empty, group: empty });
+		const { gh, queue } = github(pull(), {});
 		Timeline.fetch({ number: 1, repo: "o/r", gh, now: "2026-10-09T00:00:00Z" });
-		expect(asked[2]).toContain("created=2026-10-01T00:00:00.000Z..2026-10-09T00:00:00Z");
+		expect(queue()).toContain("created=2026-10-01T00:00:00.000Z..2026-10-09T00:00:00Z");
 	});
 
 	it.each([
-		{ search: "branch", total: 2, throws: false },
-		{ search: "branch", total: 3, throws: true },
+		{ search: "commit", total: 2, throws: false },
+		{ search: "commit", total: 3, throws: true },
 		{ search: "group", total: 2, throws: false },
 		{ search: "group", total: 3, throws: true },
 	])(
@@ -569,8 +599,9 @@ describe("fetch", () => {
 				{ total_count: total, workflow_runs: [ci("a")] },
 				{ total_count: total, workflow_runs: [ci("b")] },
 			];
-			const answers = { branch: empty, group: empty, [search]: pages };
-			const { gh } = github(pull({ timelineItems: merged }), answers);
+			const answers = search === "group" ? { group: pages } : { shas: { ["a".repeat(40)]: pages } };
+			const commits = page([commit("a".repeat(40), start)]);
+			const { gh } = github(pull({ commits, timelineItems: merged }), answers);
 			const fetch = () => Timeline.fetch({ number: 1, repo: "o/r", gh });
 			if (throws)
 				expect(fetch).toThrow(

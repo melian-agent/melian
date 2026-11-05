@@ -1,7 +1,8 @@
 // Known limits, accepted by the maintainer:
 // - commits a force-push replaced appear only as the force-push row's tips;
 // - a Timing: line sits at its comment's creation time, even if the comment was edited later;
-// - a pull request closing several issues reads the first issue's ready and claim.
+// - a pull request closing several issues reads the first issue's ready and claim;
+// - two pull requests sharing a head SHA share its runs, since GitHub's run record no longer names the pull request once it merges.
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { toMarkdown } from "mdast-util-to-markdown";
 import { toString as markdownText } from "mdast-util-to-string";
@@ -133,22 +134,29 @@ export class Timeline {
 			return found;
 		};
 		const merge = pull.timelineItems.nodes.find((node) => node.__typename === "MergedEvent");
-		const lifetime = ["-f", `created=${pull.createdAt}..${merge?.createdAt ?? now}`, "-f", "per_page=100"];
-		const branch = runs(["-f", `branch=${pull.headRefName}`, ...lifetime]);
-		const group = runs(["-f", "event=merge_group", ...lifetime]);
-		// A run belongs to this pull request by commit, never by branch name, which another pull request can reuse.
-		const tips = new Set([
-			...pull.commits.nodes.map(({ commit }) => commit.oid),
-			...pull.timelineItems.nodes
-				.filter((node) => node.__typename === "HeadRefForcePushedEvent")
-				.flatMap((node) => [node.beforeCommit, node.afterCommit])
-				.filter((tip) => tip !== null)
-				.map((tip) => tip.oid),
+		// A branch run belongs to this pull request by commit, never by branch name or time, so ask GitHub per SHA.
+		const tips = [
+			...new Set([
+				...pull.commits.nodes.map(({ commit }) => commit.oid),
+				...pull.timelineItems.nodes
+					.filter((node) => node.__typename === "HeadRefForcePushedEvent")
+					.flatMap((node) => [node.beforeCommit, node.afterCommit])
+					.filter((tip) => tip !== null)
+					.map((tip) => tip.oid),
+			]),
+		];
+		const branch = tips.flatMap((sha) => runs(["-f", `head_sha=${sha}`, "-f", "per_page=100"]));
+		const group = runs([
+			"-f",
+			"event=merge_group",
+			"-f",
+			`created=${pull.createdAt}..${merge?.createdAt ?? now}`,
+			"-f",
+			"per_page=100",
 		]);
 		const base = pull.baseRefName.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
 		const queue = new RegExp(`^gh-readonly-queue/${base}/pr-${number}-[0-9a-f]{40}$`);
-		const ours = branch.filter((run) => tips.has(run.head_sha));
-		return Timeline.from({ pull, runs: [...ours, ...group.filter((run) => queue.test(run.head_branch))] });
+		return Timeline.from({ pull, runs: [...branch, ...group.filter((run) => queue.test(run.head_branch))] });
 	}
 
 	static from({ pull, runs }) {
