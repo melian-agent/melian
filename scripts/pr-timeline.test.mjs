@@ -321,6 +321,26 @@ describe("summary", () => {
 		expect(rows(timeline)).toContain("| Timing reported | 75.5 min, $6.50 |");
 	});
 
+	it("reads a Timing line from a comment on the closing issue", () => {
+		const issue = {
+			number: 7,
+			createdAt: "2026-10-01T00:00:00.000Z",
+			timelineItems: page([
+				{
+					__typename: "IssueComment",
+					createdAt: "2026-10-01T01:00:00.000Z",
+					body: "Timing: gate 4 min",
+					author: { login: "b" },
+				},
+			]),
+		};
+		const timeline = Timeline.from({ pull: pull({ closingIssuesReferences: page([issue]) }), runs: [] });
+		expect(rows(timeline).filter((row) => row.includes("Timing"))).toEqual([
+			"| 2026-10-01 01:00 | 1.00 | Timing | gate 4 min |",
+			"| Timing reported | 4 min |",
+		]);
+	});
+
 	it("prints minutes alone when no Timing item carries a cost", () => {
 		const timelineItems = page([
 			{
