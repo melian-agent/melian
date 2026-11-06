@@ -6,6 +6,8 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 
+// An Actions expression, `${{ ... }}`, as the workflow file spells it.
+const actions = (expression) => `\${{ ${expression} }}`;
 const workflow = parse(
 	readFileSync(fileURLToPath(new URL("../.github/workflows/melian-round.yml", import.meta.url)), "utf8"),
 );
@@ -14,7 +16,7 @@ const steps = Object.entries(workflow.jobs).flatMap(([job, { steps }]) => steps.
 describe("the melian round workflow", () => {
 	it("uploads only the public files, and writes no job summary", () => {
 		const uploads = steps.filter((step) => step.uses?.startsWith("actions/upload-artifact@"));
-		expect(uploads.map((step) => step.with.path)).toEqual(["${{ runner.temp }}/public"]);
+		expect(uploads.map((step) => step.with.path)).toEqual([`${actions("runner.temp")}/public`]);
 		expect(steps.filter((step) => JSON.stringify(step).includes("GITHUB_STEP_SUMMARY"))).toEqual([]);
 	});
 
@@ -50,10 +52,10 @@ describe("the melian round workflow", () => {
 		expect(check).toBeLessThan(secret);
 		expect(round.slice(0, check + 1).filter((step) => JSON.stringify(step).includes("secrets."))).toEqual([]);
 		expect(round[check].env).toEqual({
-			GH_TOKEN: "${{ github.token }}",
-			REPOSITORY: "${{ github.repository }}",
-			REF: "${{ github.ref }}",
-			SHA: "${{ github.sha }}",
+			GH_TOKEN: actions("github.token"),
+			REPOSITORY: actions("github.repository"),
+			REF: actions("github.ref"),
+			SHA: actions("github.sha"),
 		});
 	});
 

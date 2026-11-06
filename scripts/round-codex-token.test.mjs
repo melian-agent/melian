@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { codexAccessToken } from "./round.mjs";
@@ -38,7 +39,7 @@ describe("the command", () => {
 	const run = (value) =>
 		spawnSync(process.execPath, [script], {
 			encoding: "utf8",
-			env: { PATH: process.env.PATH, ...(value === undefined ? {} : { CODEX_AUTH_B64: value }) },
+			env: { PATH: process.env.PATH, HOME: tmpdir(), ...(value === undefined ? {} : { CODEX_AUTH_B64: value }) },
 		});
 
 	it("prints the access token alone", () => {
