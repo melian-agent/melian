@@ -219,17 +219,14 @@ export class RoundComment {
 	}
 }
 
-// `lines` in a `text` code fence longer than any backtick run inside, at most `budget` characters long. Past the budget
-// it keeps the lines that fit and ends with one naming how many it cut.
-export function fenced(lines, budget = Number.POSITIVE_INFINITY) {
-	const longest = lines.reduce((most, line) => {
-		for (const run of line.match(/`+/g) ?? []) most = Math.max(most, run.length);
-		return most;
-	}, 0);
-	const fence = "`".repeat(Math.max(3, longest + 1));
-	const render = (body) => `${fence}text\n${body.join("\n")}\n${fence}\n`;
+// `lines` in a three-backtick `text` code fence, at most `budget` characters long. A run of three or more backticks
+// inside is written as `\u0060`s, as core's agent prompt writes backticks, so no line can close the fence and the fence
+// never grows with the text. Past the budget it keeps the lines that fit and ends with one naming how many it cut.
+export function fenced(text, budget = Number.POSITIVE_INFINITY) {
+	const lines = text.map((line) => line.replace(/`{3,}/g, (run) => "\\u0060".repeat(run.length)));
+	const render = (body) => `\`\`\`text\n${body.join("\n")}\n\`\`\`\n`;
 	// Two fences, "text" and three newlines frame the body; each line costs its length and one newline less in all.
-	const frame = 2 * fence.length + 7;
+	const frame = 13;
 	const sizes = [0];
 	for (const line of lines) sizes.push(sizes.at(-1) + line.length + 1);
 	if (frame + sizes[lines.length] - 1 <= budget) return render(lines);

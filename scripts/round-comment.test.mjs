@@ -301,7 +301,7 @@ describe("RoundComment", () => {
 			[
 				header(2),
 				"",
-				"`````text",
+				"```text",
 				"Verdict: not reviewed, blocking",
 				"",
 				"1 check did not run:",
@@ -309,8 +309,8 @@ describe("RoundComment", () => {
 				"    Error: line one line two",
 				"",
 				"Above advisory: 1",
-				"  P1 block  src/a.ts  lens.correctness  rule-a  aaaaaaaaaaaaaaaa  Closes the fence ```` @maintainer [x](https://evil)\\u001b[2J\\u202e",
-				"`````",
+				"  P1 block  src/a.ts  lens.correctness  rule-a  aaaaaaaaaaaaaaaa  Closes the fence \\u0060\\u0060\\u0060\\u0060 @maintainer [x](https://evil)\\u001b[2J\\u202e",
+				"```",
 				"",
 			].join("\n"),
 		);
@@ -324,6 +324,13 @@ describe("RoundComment", () => {
 		);
 		expect(body.length).toBeLessThanOrEqual(65_536);
 		expect(body).toContain("... 1 more lines; the run's artefact has them all.");
+	});
+
+	it("keeps a comment within its limit when a finding holds a run of backticks longer than the limit allows", () => {
+		const text = "`".repeat(40_000);
+		const body = comment(verdict({ blocking: true, block: [finding({ resolution: "block", text })] }), "1");
+		expect(body.length).toBeLessThanOrEqual(maxLength);
+		expect(body).toContain("Verdict: findings, blocking");
 	});
 
 	it("fills a comment to exactly its limit, and cuts a finding that would pass it", () => {
@@ -473,11 +480,18 @@ describe("fenced", () => {
 		expect(fenced(["one `tick` and ``two``"])).toBe("```text\none `tick` and ``two``\n```\n");
 	});
 
-	it("measures the fence it uses, not three backticks", () => {
+	it("writes a run of three or more backticks as escapes, so the fence stays at three", () => {
+		const escaped = (count) => "\\u0060".repeat(count);
+		expect(fenced(["x `` y", "x ``` y", "````"])).toBe(
+			`\`\`\`text\nx \`\` y\nx ${escaped(3)} y\n${escaped(4)}\n\`\`\`\n`,
+		);
+	});
+
+	it("measures the escaped lines against the budget", () => {
 		const body = ["x ````", "y".repeat(100)];
-		const out = `\`\`\`\`\`text\nx \`\`\`\`\n${"y".repeat(100)}\n\`\`\`\`\`\n`;
+		const out = `\`\`\`text\nx ${"\\u0060".repeat(4)}\n${"y".repeat(100)}\n\`\`\`\n`;
 		expect(fenced(body, out.length)).toBe(out);
-		expect(fenced(body, out.length - 1)).toBe(`\`\`\`\`\`text\nx \`\`\`\`\n${note(1)}\n\`\`\`\`\`\n`);
+		expect(fenced(body, out.length - 1)).toBe(`\`\`\`text\nx ${"\\u0060".repeat(4)}\n${note(1)}\n\`\`\`\n`);
 	});
 });
 
