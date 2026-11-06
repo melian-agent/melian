@@ -135,6 +135,8 @@ jobs:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           CODEX_AUTH_B64: ${{ secrets.CODEX_AUTH_B64 }}
           GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
           NUMBER: ${{ inputs.pull_request }}
           BASE: ${{ needs.gate.outputs.base }}
           HEAD: ${{ needs.gate.outputs.head }}
@@ -149,6 +151,15 @@ jobs:
           fi
           unset token CODEX_AUTH_B64
           node packages/cli/bin/melian.js doctor > "$out/doctor.txt" 2>&1 || true
+          # "#N" reads the pull request again, so a push since the gate would spend the logins on a head the gate never
+          # approved. Refuse one that moved; the report then posts its stale notice. Seconds remain between this read and
+          # Melian's own, and the comment's check of what the round reviewed covers them.
+          now=$(gh api "repos/$REPOSITORY/pulls/$NUMBER" --jq '.base.sha + " " + .head.sha') || now=""
+          if [ "$now" != "$BASE $HEAD" ]; then
+            echo "::error::pull request $NUMBER moved from $BASE $HEAD to ${now:-an unreadable revision} after the gate"
+            echo none > "$out/exit"
+            exit 0
+          fi
           set +e
           node packages/cli/bin/melian.js review "#$NUMBER" --json --no-walkthrough > "$out/verdict.json" 2> "$out/round.err"
           echo $? > "$out/exit"
