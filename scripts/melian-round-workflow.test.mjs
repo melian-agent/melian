@@ -122,6 +122,65 @@ describe("the melian round workflow", () => {
 		}
 	});
 
+	it("refuses a fork's head, a closed pull request, a base other than the default and an unreadable SHA", () => {
+		const { run } = workflow.jobs.gate.steps.find((step) => step.id === "pull");
+		const dir = mkdtempSync(join(tmpdir(), "round-workflow-"));
+		try {
+			// A fake gh answers only the request for the pull request.
+			writeFileSync(join(dir, "gh"), '#!/bin/sh\n[ "$*" = "api repos/o/r/pulls/7" ] && printf %s "$PULL"\n');
+			chmodSync(join(dir, "gh"), 0o755);
+			const head = "1".repeat(40);
+			const base = "2".repeat(40);
+			const pull = {
+				state: "open",
+				base: { ref: "main", sha: base },
+				head: { sha: head, repo: { full_name: "o/r" } },
+			};
+			const gate = (overrides, defaultBranch = "main") => {
+				writeFileSync(join(dir, "output"), "");
+				const ran = spawnSync("bash", ["-e", "-c", run], {
+					encoding: "utf8",
+					env: {
+						PATH: `${dir}:${process.env.PATH}`,
+						HOME: dir,
+						RUNNER_TEMP: dir,
+						GITHUB_OUTPUT: join(dir, "output"),
+						REPOSITORY: "o/r",
+						NUMBER: "7",
+						DEFAULT: defaultBranch,
+						PULL: JSON.stringify({ ...pull, ...overrides }),
+					},
+				});
+				return [ran.status, ran.stdout, readFileSync(join(dir, "output"), "utf8")];
+			};
+			expect(gate({})).toEqual([0, "", `head=${head}\nbase=${base}\n`]);
+			const refused = (message) => [1, `::error::${message}\n`, ""];
+			expect(gate({ head: { sha: head, repo: { full_name: "outsider/r" } } })).toEqual(
+				refused("pull request 7's head is in outsider/r, not o/r; a fork's head never runs with secrets"),
+			);
+			expect(gate({ head: { sha: head, repo: null } })).toEqual(
+				refused("pull request 7's head is in a deleted repository, not o/r; a fork's head never runs with secrets"),
+			);
+			expect(gate({ state: "closed" })).toEqual(refused("pull request 7 is closed"));
+			const other = refused(
+				"pull request 7 targets feature, not main; a round judges only a pull request into the default branch",
+			);
+			expect(gate({ base: { ref: "feature", sha: base } })).toEqual(other);
+			expect(gate({}, "")).toEqual(
+				refused("pull request 7 targets main, not ; a round judges only a pull request into the default branch"),
+			);
+			expect(gate({ base: { ref: "", sha: base } }, "")).toEqual(
+				refused("pull request 7 targets , not ; a round judges only a pull request into the default branch"),
+			);
+			expect(gate({ head: { sha: `${head}0`, repo: { full_name: "o/r" } } })).toEqual(
+				refused("unreadable head or base SHA"),
+			);
+			expect(gate({ base: { ref: "main", sha: base.slice(1) } })).toEqual(refused("unreadable head or base SHA"));
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
 	it("keeps no token in any checkout's git configuration", () => {
 		const checkouts = steps.filter((step) => step.uses?.startsWith("actions/checkout@"));
 		expect(checkouts.map((step) => [step.job, step.with?.["persist-credentials"]])).toEqual([
