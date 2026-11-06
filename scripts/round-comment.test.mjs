@@ -514,4 +514,15 @@ describe("the command", () => {
 		const bare = spawnSync(process.execPath, [script, "--fence"], { encoding: "utf8" });
 		expect(bare.stdout).toBe("Nothing was written.\n");
 	});
+
+	it("fences no more than 300,000 characters of a file for the job summary, which holds 1 MiB for two", () => {
+		const dir = directory();
+		writeFileSync(join(dir, "round.txt"), `${"x".repeat(99)}\n`.repeat(4_000));
+		const fenced = spawnSync(process.execPath, [script, "--fence", join(dir, "round.txt")], {
+			encoding: "utf8",
+		}).stdout;
+		expect(fenced.length).toBeLessThanOrEqual(300_000);
+		expect(fenced.length).toBeGreaterThan(299_000);
+		expect(fenced).toMatch(/\n\.\.\. \d+ more lines; the run's artefact has them all\.\n```\n$/);
+	});
 });

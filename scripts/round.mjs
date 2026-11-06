@@ -4,11 +4,9 @@
 import { readFileSync } from "node:fs";
 import { describeBudgetEnd, describeLineage, visibleText } from "../packages/core/src/render.ts";
 
-/**
- * The access token of a Codex login, `~/.codex/auth.json` base64-encoded as this repository's `CODEX_AUTH_B64` holds
- * it. Only the access token leaves: a refresh would rotate the refresh token and break the login's other copies. Each
- * error names what is missing and never quotes the login, as a `JSON.parse` error would.
- */
+// The access token of a Codex login, `~/.codex/auth.json` base64-encoded as this repository's `CODEX_AUTH_B64` holds
+// it. Only the access token leaves: a refresh would rotate the refresh token and break the login's other copies. Each
+// error names what is missing and never quotes the login, as a `JSON.parse` error would.
 export function codexAccessToken(encoded) {
 	if (encoded === undefined || encoded === "") throw new Error("CODEX_AUTH_B64 is unset");
 	let token;
@@ -22,12 +20,10 @@ export function codexAccessToken(encoded) {
 	return token;
 }
 
-/**
- * Whose code the head is, by the rule of the head-writer decision as Melian's GitHub provider applies it: the first
- * push event, newest first, for exactly this SHA on exactly this branch names the pusher; with none, the pull request's
- * author stands in. `events` are JSON lines of `{ actor, head, ref }`, one per push event. An event that names no actor,
- * or a line that is not one, is refused rather than passed over.
- */
+// Whose code the head is, by the rule of the head-writer decision as Melian's GitHub provider applies it: the first
+// push event, newest first, for exactly this SHA on exactly this branch names the pusher; with none, the pull request's
+// author stands in. `events` are JSON lines of `{ actor, head, ref }`, one per push event. An event that names no actor,
+// or a line that is not one, is refused rather than passed over.
 export function headWriter(events, { sha, branch, author }) {
 	for (const line of events.split("\n").filter((each) => each.trim() !== "")) {
 		let event;
@@ -51,11 +47,9 @@ export function marker(runId) {
 	return `<!-- melian-round run:${/^\d+$/.test(runId) ? runId : "unknown"} -->`;
 }
 
-/**
- * The ID of the comment this run already posted, or undefined when it posted none. `comments` are JSON lines of
- * `{ id, login, body }`, one per comment on the pull request. Only a comment `author` wrote counts, so no one else can
- * claim a run's marker; a line that is not a comment is refused rather than passed over.
- */
+// The ID of the comment this run already posted, or undefined when it posted none. `comments` are JSON lines of
+// `{ id, login, body }`, one per comment on the pull request. Only a comment `author` wrote counts, so no one else can
+// claim a run's marker; a line that is not a comment is refused rather than passed over.
 export function ownComment(comments, { runId, author }) {
 	if (!/^\d+$/.test(runId)) throw new Error("the run has no ID to find its comment by");
 	const opening = `${marker(runId)}\n`;
@@ -88,7 +82,7 @@ function oneLine(text) {
 	return visibleText(String(text).replace(/\r?\n/g, " "));
 }
 
-/** Why `value` is not a verdict this comment can render, or undefined when it is one. */
+// Why `value` is not a verdict this comment can render, or undefined when it is one.
 function verdictProblem(value) {
 	if (typeof value !== "object" || value === null) return "melian wrote no verdict";
 	if (!Object.hasOwn(statuses, value.status)) return "the verdict names no known status";
@@ -133,12 +127,6 @@ function findingLine(finding) {
 	);
 }
 
-/**
- * The comment for one round, from the verdict JSON `melian review --json` wrote and nothing it printed: the run's link,
- * the verdict, the checks that did not run or left the committed routes, and every finding above advisory. A verdict
- * that is missing, malformed, or disagrees with the exit code reads as not reviewed. Finding text comes from models
- * that read the head, so everything after the link sits inside one code fence that no backtick run in it can close.
- */
 // The base and head of the last round `melian findings --rounds --json` lists, or undefined when there is none to read.
 function lastRound(text) {
 	let rounds;
@@ -231,10 +219,8 @@ export class RoundComment {
 	}
 }
 
-/**
- * `lines` in a `text` code fence longer than any backtick run inside, at most `budget` characters long. Past the budget
- * it keeps the lines that fit and ends with one naming how many it cut.
- */
+// `lines` in a `text` code fence longer than any backtick run inside, at most `budget` characters long. Past the budget
+// it keeps the lines that fit and ends with one naming how many it cut.
 export function fenced(lines, budget = Number.POSITIVE_INFINITY) {
 	const longest = lines.reduce((most, line) => {
 		for (const run of line.match(/`+/g) ?? []) most = Math.max(most, run.length);
