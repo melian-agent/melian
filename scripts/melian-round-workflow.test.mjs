@@ -31,6 +31,14 @@ describe("the melian round workflow", () => {
 		}
 	});
 
+	it("hands the nonce to the report in the artefact, never through a job output or a step's printed env", () => {
+		expect(Object.keys(workflow.jobs.round.outputs)).toEqual(["artifact"]);
+		const printed = steps.filter((step) => /nonce/i.test(JSON.stringify(step.env ?? {})));
+		expect(printed).toEqual([]);
+		const drawn = workflow.jobs.round.steps.find((step) => step.id === "artifact");
+		expect(drawn.run).toContain('openssl rand -hex 16 > "$RUNNER_TEMP/public/nonce"');
+	});
+
 	it("keeps no token in any checkout's git configuration", () => {
 		const checkouts = steps.filter((step) => step.uses?.startsWith("actions/checkout@"));
 		expect(checkouts.map((step) => [step.job, step.with?.["persist-credentials"]])).toEqual([

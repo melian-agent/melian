@@ -120,14 +120,16 @@ jobs:
       pull-requests: read
     outputs:
       artifact: ${{ steps.artifact.outputs.name }}
-      nonce: ${{ steps.artifact.outputs.nonce }}
     steps:
       # A rerun of failed jobs alone bumps run_attempt for report but keeps this job's earlier attempt, so report reads
-      # the name from this output, never from its own run_attempt. The nonce marks this run's comment as its own.
+      # the name from this output, never from its own run_attempt. The nonce marks this run's comment as its own. It goes
+      # to the report in the artefact, since Actions prints a step's env in the log, where another workflow could read it
+      # before this run posts.
       - id: artifact
         run: |
           echo "name=melian-round-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
-          echo "nonce=$(openssl rand -hex 16)" >> "$GITHUB_OUTPUT"
+          mkdir -p "$RUNNER_TEMP/public"
+          openssl rand -hex 16 > "$RUNNER_TEMP/public/nonce"
       # The default branch's commit, which the gate required, supplies Melian and every helper script, so neither the
       # pull request's head nor its base decides what runs with the logins; both stay review data. The whole history,
       # so Melian can fetch the pull request and find its merge base. The repository is public, so that fetch needs no
@@ -233,15 +235,15 @@ jobs:
           HEAD: ${{ needs.gate.outputs.head }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           RUN_ID: ${{ github.run_id }}
-          NONCE: ${{ needs.round.outputs.nonce }}
         run: |
           out="$RUNNER_TEMP/round"
+          nonce=$(cat "$out/nonce" 2>/dev/null) || nonce=""
           # Read again just before posting: a push or a retarget during the round leaves findings for a revision the
           # pull request no longer shows. A failed read leaves both empty, and the comment posts no findings.
           current=$(gh api "repos/$REPOSITORY/pulls/$NUMBER" --jq '.base.sha + " " + .head.sha') || current=""
           read -r current_base current_head <<< "$current" || true
           node scripts/round-comment.mjs --verdict "$out/verdict.json" --rounds "$out/rounds.json" \
-            --exit "$(cat "$out/exit" 2>/dev/null || echo none)" --run-url "$RUN_URL" --run-id "$RUN_ID" --nonce "$NONCE" --base "$BASE" --head "$HEAD" \
+            --exit "$(cat "$out/exit" 2>/dev/null || echo none)" --run-url "$RUN_URL" --run-id "$RUN_ID" --nonce "$nonce" --base "$BASE" --head "$HEAD" \
             --merge-base "$(cat "$out/merge-base" 2>/dev/null || echo none)" \
             ${current_head:+--current-base "$current_base" --current-head "$current_head"} > "$RUNNER_TEMP/comment.md"
           # A rerun of this job alone finds the comment this run already posted, by its marker and this job's identity, and
@@ -249,7 +251,7 @@ jobs:
           # with a new nonce and artefact, so it posts that round's own comment.
           gh api --paginate "repos/$REPOSITORY/issues/$NUMBER/comments?per_page=100" \
             --jq '.[] | {id, login: .user.login, body} | tojson' > "$RUNNER_TEMP/comments.jsonl"
-          own=$(node scripts/round-own-comment.mjs "$RUNNER_TEMP/comments.jsonl" "$RUN_ID" "$NONCE" "github-actions[bot]")
+          own=$(node scripts/round-own-comment.mjs "$RUNNER_TEMP/comments.jsonl" "$RUN_ID" "$nonce" "github-actions[bot]")
           if [ -n "$own" ]; then
             gh api -X PATCH "repos/$REPOSITORY/issues/comments/$own" -F "body=@$RUNNER_TEMP/comment.md" > /dev/null
           else
