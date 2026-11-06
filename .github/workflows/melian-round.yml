@@ -85,6 +85,11 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
+      # scripts/round.mjs imports core's render.ts, which plain Node runs only from 22.18 or 23.6, so every job that runs
+      # a script pins the round job's Node.
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
       # The writer decision trusts a head only when the identity that pushed that exact commit holds write permission,
       # so a writer dispatching a round on a bot's branch is not enough. Every page of push events is read; a failed
       # read fails this step, and no later job holds a secret.
@@ -206,6 +211,11 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
+      # scripts/round.mjs imports core's render.ts, which plain Node runs only from 22.18 or 23.6, so every job that runs
+      # a script pins the round job's Node.
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
       # A round that finished uploaded its artefact, so a missing one fails this job rather than post a comment that
       # says the round ended before a verdict. An empty name would download every artefact of the run.
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2

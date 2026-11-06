@@ -15,6 +15,22 @@ describe("the melian round workflow", () => {
 		expect(steps.filter((step) => JSON.stringify(step).includes("GITHUB_STEP_SUMMARY"))).toEqual([]);
 	});
 
+	it("sets up Node 24 in every job before a step runs node, at the round job's pin", () => {
+		const setups = steps.filter((step) => step.uses?.startsWith("actions/setup-node@"));
+		expect(setups.map((step) => [step.job, step.uses, step.with["node-version"]])).toEqual(
+			["gate", "round", "report"].map((job) => [
+				job,
+				"actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+				24,
+			]),
+		);
+		for (const [job, { steps: jobSteps }] of Object.entries(workflow.jobs)) {
+			const setup = jobSteps.findIndex((step) => step.uses?.startsWith("actions/setup-node@"));
+			const first = jobSteps.findIndex((step) => /\bnode\b/.test(step.run ?? ""));
+			expect([job, setup < first], job).toEqual([job, true]);
+		}
+	});
+
 	it("keeps no token in any checkout's git configuration", () => {
 		const checkouts = steps.filter((step) => step.uses?.startsWith("actions/checkout@"));
 		expect(checkouts.map((step) => [step.job, step.with?.["persist-credentials"]])).toEqual([
