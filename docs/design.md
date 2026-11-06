@@ -397,6 +397,12 @@ Lenses follow the same rule: the lens loader reads repository lenses from the re
 
 Reading from the base does not hide the head's changes. Each revision lists the policy and standards files it changes: every `melian.yaml`, `AGENTS.md`, `CLAUDE.md` (in any case), lens file under `.agents/lenses/`, file under a `.melian/` directory, and static tool configuration file, such as `biome.json`, `tsconfig*.json`, `package.json`, or `stryker.config.json`, and from milestone 2 Enola's configuration: `enola.yaml`, `mcp-arch.yaml`, `enola-intent.yaml`, `enola/constraints/`, and `.enola/suppressions.yaml`. A lens can be handed those changes as quoted data, "the standards this pull request changes", and review them like any other code.
 
+### A static tool reads no configuration outside the checkout
+
+Problem: Biome and tsc read whatever file a head's configuration names, and Melian stores what they print. Example: a head `biome.json` of `{"extends": ["<absolute path>/environ"]}` had Biome quote that file, a token included, into the check's stored error. Biome labelled the quote `biome.json:1:1`, so no filter could tell it from the revision's own text.
+
+Solution: before Biome or tsc runs, `ConfigurationScope` in `packages/pipeline/src/static-configuration.ts` follows the revision's configuration through `extends`, Biome's `plugins` and tsc's `references`. An entry outside the worktree and the checkout's install, a package the install does not provide, or a file Melian cannot parse fails the check with `outsideCheckout`. The error names the path, and the tool never runs. Biome's stderr is not stored. tsc options such as `paths` and `typeRoots`, and source imports, are not yet covered. [The decision](decisions/2026-11-06-static-configuration-stays-in-the-checkout.md) records the rule and its limits.
+
 ### Tool provisioning
 
 The manifest and its quarantine are built. The verified tool cache is built; Enola's static check is built; the graph cache and caller input are built in milestone 2 (review of record). The container environment, Opengrep, and gitleaks are planned for milestone 3 (Actions host).
