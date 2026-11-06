@@ -22,7 +22,6 @@ import { backgroundContext, type Context, type ExecutionEnv } from "./harness.ts
 import type { HeadTrust } from "./mutation-cache.ts";
 import type { MutationProcessHooks } from "./mutation-process.ts";
 import { MutationRun, strykerNotInstalled } from "./mutation-static.ts";
-import { ConfigurationScope } from "./static-configuration.ts";
 import { ToolProvisioning } from "./tool-provisioning.ts";
 
 /** The most a static tool may write, its report included. Past it the run fails with `outputTooLarge`. */
@@ -554,10 +553,6 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 			!(installed !== undefined && (await run.exists(posix.join(installed, ".bin", "stryker"))))
 		) {
 			return { status: "skipped", reason: strykerNotInstalled };
-		}
-		const refused = await ConfigurationScope.refusal(run, root, files, installed);
-		if (refused !== undefined) {
-			throw run.fail("outsideCheckout", `${refused}; Melian did not run ${tool}, so it read none of that file`);
 		}
 		const binary = await binaryFor(run, installed);
 		const version = await versionOf(run, binary);
