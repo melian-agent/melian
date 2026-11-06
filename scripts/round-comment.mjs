@@ -9,8 +9,9 @@ import { parseArgs } from "node:util";
 import { visibleText } from "../packages/core/src/render.ts";
 import { fenced, RoundComment } from "./round.mjs";
 
-// A step summary holds 1 MiB; the summary fences two files.
-const summaryBudget = 300_000;
+// A step summary holds 1 MiB of UTF-8 and fences two files. A UTF-16 code unit is at most three bytes of UTF-8, so
+// 170,000 of them fit twice.
+const summaryBudget = 170_000;
 const required = ["verdict", "rounds", "exit", "run-url", "run-id", "base", "head", "merge-base"];
 const names = [...required, "current-base", "current-head"];
 
