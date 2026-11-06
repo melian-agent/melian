@@ -125,11 +125,13 @@ jobs:
           echo "nonce=$(openssl rand -hex 16)" >> "$GITHUB_OUTPUT"
       # The default branch's commit, which the gate required, supplies Melian and every helper script, so neither the
       # pull request's head nor its base decides what runs with the logins; both stay review data. The whole history,
-      # so Melian can fetch the pull request and find its merge base; the credentials let it fetch refs/pull/N/head.
+      # so Melian can fetch the pull request and find its merge base. The repository is public, so that fetch needs no
+      # token, and none stays in .git/config, where a head's tool configuration could read it.
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           path: melian
           fetch-depth: 0
+          persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
@@ -138,8 +140,12 @@ jobs:
       # The logins reach only this step. Melian reads CLAUDE_CODE_OAUTH_TOKEN itself. The Codex login's access token
       # goes to Melian as a named bearer credential, by variable, so no file holds it, and Pi's store stays empty, so
       # nothing refreshes the login and rotates its refresh token. An expired token reads as absent, and the plan derives
-      # a Claude route, which the comment lists as a check that left the committed routes. The comment reads only the
-      # verdict JSON; the text output is for the summary and the artefact.
+      # a Claude route, which the comment lists as a check that left the committed routes.
+      #
+      # Nothing a static tool printed leaves this job. A head's biome.json can extend /proc/<pid>/environ, which still
+      # holds the logins after unset, and Biome's parse error quotes it. GitHub masks secrets only in the log, so Melian's
+      # output stays in $raw, and only the public verdict, which keeps no check's reason or error and no static finding's
+      # text, goes to $out for the artefact.
       - name: Run the round
         working-directory: melian
         env:
@@ -152,8 +158,8 @@ jobs:
           BASE: ${{ needs.gate.outputs.base }}
           HEAD: ${{ needs.gate.outputs.head }}
         run: |
-          out="$RUNNER_TEMP/round"
-          mkdir -p "$out" "$RUNNER_TEMP/state" "$RUNNER_TEMP/config/melian" "$RUNNER_TEMP/pi"
+          out="$RUNNER_TEMP/public" raw="$RUNNER_TEMP/raw"
+          mkdir -p "$out" "$raw" "$RUNNER_TEMP/state" "$RUNNER_TEMP/config/melian" "$RUNNER_TEMP/pi"
           export MELIAN_STATE_DIR="$RUNNER_TEMP/state" XDG_CONFIG_HOME="$RUNNER_TEMP/config" PI_CODING_AGENT_DIR="$RUNNER_TEMP/pi"
           if token=$(node scripts/round-codex-token.mjs); then
             echo "::add-mask::$token"
@@ -161,7 +167,7 @@ jobs:
             printf 'credentials:\n  actions-codex: { provider: openai-codex, env: MELIAN_CODEX_ACCESS_TOKEN }\n' > "$XDG_CONFIG_HOME/melian/secrets.yaml"
           fi
           unset token CODEX_AUTH_B64
-          node packages/cli/bin/melian.js doctor > "$out/doctor.txt" 2>&1 || true
+          node packages/cli/bin/melian.js doctor || true
           # "#N" reads the pull request again, so a push since the gate would spend the logins on a head the gate never
           # approved. Refuse one that moved; the report then posts its stale notice. Seconds remain between this read and
           # Melian's own, and the comment's check of what the round reviewed covers them.
@@ -172,29 +178,19 @@ jobs:
             exit 0
           fi
           set +e
-          node packages/cli/bin/melian.js review "#$NUMBER" --json --no-walkthrough > "$out/verdict.json" 2> "$out/round.err"
+          node packages/cli/bin/melian.js review "#$NUMBER" --json --no-walkthrough > "$raw/verdict.json" 2> "$raw/round.err"
           echo $? > "$out/exit"
-          node packages/cli/bin/melian.js findings "#$NUMBER" --no-color > "$out/round.txt" 2>> "$out/round.err"
+          node scripts/round-comment.mjs --public "$raw/verdict.json" > "$out/verdict.json"
           # "#N" reads the pull request again, so the comment checks that the round reviewed what the gate approved:
           # the round's own base and head against the gate's head and their merge base.
-          node packages/cli/bin/melian.js findings "#$NUMBER" --rounds --json > "$out/rounds.json" 2>> "$out/round.err"
-          git merge-base "$BASE" "$HEAD" > "$out/merge-base" 2>> "$out/round.err"
+          node packages/cli/bin/melian.js findings "#$NUMBER" --rounds --json > "$out/rounds.json" 2> /dev/null
+          git merge-base "$BASE" "$HEAD" > "$out/merge-base" 2> /dev/null
           exit 0
-      - name: Write the job summary
-        if: always()
-        run: |
-          out="$RUNNER_TEMP/round"
-          {
-            echo "## Melian round, exit $(cat "$out/exit" 2>/dev/null || echo none)"
-            node melian/scripts/round-comment.mjs --fence "$out/round.txt"
-            echo "### Standard error"
-            node melian/scripts/round-comment.mjs --fence "$out/round.err"
-          } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: ${{ steps.artifact.outputs.name }}
-          path: ${{ runner.temp }}/round
+          path: ${{ runner.temp }}/public
           if-no-files-found: ignore
           retention-days: 30
 

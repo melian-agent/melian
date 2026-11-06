@@ -82,6 +82,7 @@ const read = (options) =>
 		current: { base, head },
 		...options,
 	});
+const local = "A local run of melian review shows why each check did not run.";
 const fence = (exit, lines) => `${header(exit)}\n\n\`\`\`text\n${lines.join("\n")}\n\`\`\`\n`;
 
 describe("RoundComment", () => {
@@ -91,10 +92,10 @@ describe("RoundComment", () => {
 				"Verdict: not reviewed, blocking",
 				"",
 				"3 checks did not run:",
-				"  lens.security  failed at deep: the lens did not finish",
-				"    Error: provider returned 529",
-				"  lens.tests  ended at quick: its token budget of 50,000 ran out after 4 tool calls and 51,200 tokens",
-				"  static.tsc  skipped: no tsconfig.json at the base revision",
+				"  lens.security  failed",
+				"  lens.tests  ended",
+				"  static.tsc  skipped",
+				local,
 				"",
 				"Above advisory: 4",
 				`  P0 block  src/run.ts:40  lens.security  sql-injection  ${ids[0]}  The query interpolates the user's name`,
@@ -113,6 +114,7 @@ describe("RoundComment", () => {
 				"",
 				"1 check did not run:",
 				"  lens.tests  failed",
+				local,
 				"",
 				"No findings above advisory.",
 			]),
@@ -151,7 +153,7 @@ describe("RoundComment", () => {
 		];
 		for (const [value, exit, problem] of cases) {
 			expect(comment(value, exit)).toBe(
-				fence(exit, ["Verdict: not reviewed", "", `${problem}; the run's log and artefact say why.`]),
+				fence(exit, ["Verdict: not reviewed", "", `${problem}; a local run of melian review says why.`]),
 			);
 		}
 	});
@@ -173,7 +175,7 @@ describe("RoundComment", () => {
 		];
 		for (const [value, problem] of cases) {
 			expect(comment(value, "3"), problem).toBe(
-				fence(3, ["Verdict: not reviewed", "", `${problem}; the run's log and artefact say why.`]),
+				fence(3, ["Verdict: not reviewed", "", `${problem}; a local run of melian review says why.`]),
 			);
 		}
 	});
@@ -181,12 +183,11 @@ describe("RoundComment", () => {
 	it("reads a verdict file that is absent or not JSON as no verdict", () => {
 		const dir = directory();
 		writeFileSync(join(dir, "verdict.json"), "Verdict: passed\n");
-		for (const path of [join(dir, "absent.json"), join(dir, "verdict.json")]) {
-			expect(read({ verdict: path, exitCode: "0" }).verdict).toBeUndefined();
-		}
+		expect(read({ verdict: join(dir, "absent.json"), exitCode: "0" }).verdict).toBeUndefined();
+		expect(read({ verdict: join(dir, "verdict.json"), exitCode: "0" }).verdict).toBeNull();
 	});
 
-	it("lists provisional checks apart from the checks that did not run, each with its level, reason and budget", () => {
+	it("lists provisional checks apart from the checks that did not run, by name and status alone", () => {
 		const value = verdict({
 			status: "not-reviewed",
 			notRun: [
@@ -206,11 +207,13 @@ describe("RoundComment", () => {
 				"Verdict: not reviewed",
 				"",
 				"Provisional:",
-				"  static.mutation  provisional: reused an earlier head's results",
+				"  static.mutation  provisional",
+				local,
 				"",
 				"2 checks did not run:",
-				"  lens.a  ended at careful: its tool call budget of 90 ran out after 90 tool calls and 12,000 tokens; a note",
+				"  lens.a  ended",
 				"  lens.b  skipped",
+				local,
 				"",
 				"No findings above advisory.",
 			]),
@@ -247,6 +250,7 @@ describe("RoundComment", () => {
 				"",
 				"1 check did not run:",
 				"  lens.a  failed",
+				local,
 				"",
 				"2 checks left the committed routes:",
 				"  lens.design  on anthropic/claude-opus-5-5, derived, since no model of its route has credentials, where policy wants openai-codex/gpt-5.6-sol and accepts anthropic/claude-opus-5-5",
@@ -292,12 +296,12 @@ describe("RoundComment", () => {
 		);
 	});
 
-	it("keeps a finding's text and a check's reason inside the fence, whatever backticks, newlines or controls they hold", () => {
+	it("keeps a finding's text and a check's name inside the fence, whatever backticks, newlines or controls they hold", () => {
 		const text = `Closes the fence \`\`\`\`\n@maintainer [x](https://evil)\u001b[2J${String.fromCharCode(0x202e)}`;
 		const value = verdict({
 			blocking: true,
 			block: [finding({ resolution: "block", text })],
-			notRun: [{ name: "lens.a", status: "failed", error: "line one\r\nline two" }],
+			notRun: [{ name: "lens.a\r\nb", status: "failed", error: "line one\r\nline two" }],
 			status: "not-reviewed",
 		});
 		expect(comment(value, "2")).toBe(
@@ -308,8 +312,8 @@ describe("RoundComment", () => {
 				"Verdict: not reviewed, blocking",
 				"",
 				"1 check did not run:",
-				"  lens.a  failed",
-				"    Error: line one line two",
+				"  lens.a b  failed",
+				local,
 				"",
 				"Above advisory: 1",
 				"  P1 block  src/a.ts  lens.correctness  rule-a  aaaaaaaaaaaaaaaa  Closes the fence \\u0060\\u0060\\u0060\\u0060 @maintainer [x](https://evil)\\u001b[2J\\u202e",
@@ -326,7 +330,7 @@ describe("RoundComment", () => {
 			"1",
 		);
 		expect(body.length).toBeLessThanOrEqual(65_536);
-		expect(body).toContain("... 1 more lines; the run's artefact has them all.");
+		expect(body).toContain("... 1 more lines; a local run shows them all.");
 	});
 
 	it("keeps a comment within its limit when a finding holds a run of backticks longer than the limit allows", () => {
@@ -342,7 +346,7 @@ describe("RoundComment", () => {
 		const room = maxLength - body(0).length;
 		expect(body(room)).toHaveLength(maxLength);
 		expect(body(room)).not.toContain("more lines");
-		expect(body(room + 1)).toContain("... 1 more lines; the run's artefact has them all.");
+		expect(body(room + 1)).toContain("... 1 more lines; a local run shows them all.");
 		expect(body(room + 1).length).toBeLessThanOrEqual(maxLength);
 	});
 
@@ -472,7 +476,7 @@ describe("RoundComment", () => {
 describe("fenced", () => {
 	const lines = ["a".repeat(100), "b".repeat(100), "c".repeat(100)];
 	const whole = `\`\`\`text\n${lines.join("\n")}\n\`\`\`\n`;
-	const note = (count) => `... ${count} more lines; the run's artefact has them all.`;
+	const note = (count) => `... ${count} more lines; a local run shows them all.`;
 	const cut = (kept) => `\`\`\`text\n${[...lines.slice(0, kept), note(lines.length - kept)].join("\n")}\n\`\`\`\n`;
 
 	it("keeps every line at a budget of exactly its length, and cuts one past it", () => {
@@ -545,37 +549,5 @@ describe("the command", () => {
 			const refused = spawnSync(process.execPath, [script, ...short], { encoding: "utf8" });
 			expect([refused.status, refused.stdout, refused.stderr]).toEqual([64, "", usage]);
 		}
-	});
-
-	it("fences a file for the job summary with its controls escaped, and says so when it is absent or empty", () => {
-		const dir = directory();
-		writeFileSync(join(dir, "round.err"), "melian: Plan: light derived\u0007\n\n");
-		writeFileSync(join(dir, "empty"), "\n");
-		const fence = (path) => spawnSync(process.execPath, [script, "--fence", path], { encoding: "utf8" }).stdout;
-		expect(fence(join(dir, "round.err"))).toBe("```text\nmelian: Plan: light derived\\u0007\n```\n");
-		expect(fence(join(dir, "empty"))).toBe("Nothing was written.\n");
-		expect(fence(join(dir, "absent"))).toBe("Nothing was written.\n");
-		const bare = spawnSync(process.execPath, [script, "--fence"], { encoding: "utf8" });
-		expect(bare.stdout).toBe("Nothing was written.\n");
-	});
-
-	it("fences a file of multibyte text in less than half the job summary's 1 MiB of UTF-8", () => {
-		const dir = directory();
-		writeFileSync(join(dir, "round.txt"), `${"\u754c".repeat(99)}\n`.repeat(4_000));
-		const fenced = spawnSync(process.execPath, [script, "--fence", join(dir, "round.txt")], {
-			encoding: "utf8",
-		}).stdout;
-		expect(Buffer.byteLength(fenced)).toBeLessThanOrEqual(512 * 1024);
-	});
-
-	it("fences no more than 170,000 characters of a file for the job summary, which holds 1 MiB for two", () => {
-		const dir = directory();
-		writeFileSync(join(dir, "round.txt"), `${"x".repeat(99)}\n`.repeat(4_000));
-		const fenced = spawnSync(process.execPath, [script, "--fence", join(dir, "round.txt")], {
-			encoding: "utf8",
-		}).stdout;
-		expect(fenced.length).toBeLessThanOrEqual(170_000);
-		expect(fenced.length).toBeGreaterThan(169_000);
-		expect(fenced).toMatch(/\n\.\.\. \d+ more lines; the run's artefact has them all\.\n```\n$/);
 	});
 });

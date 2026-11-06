@@ -2,7 +2,7 @@
 // from a Codex login, and turn a round's output into a pull request comment it posts once. round-writer.mjs,
 // round-codex-token.mjs, round-comment.mjs and round-own-comment.mjs are its commands.
 import { readFileSync } from "node:fs";
-import { describeBudgetEnd, describeLineage, visibleText } from "../packages/core/src/render.ts";
+import { describeLineage, visibleText } from "../packages/core/src/render.ts";
 
 // The access token of a Codex login, `~/.codex/auth.json` base64-encoded as this repository's `CODEX_AUTH_B64` holds
 // it. Only the access token leaves: a refresh would rotate the refresh token and break the login's other copies. Each
@@ -99,14 +99,11 @@ function verdictProblem(value) {
 	return undefined;
 }
 
-function checkLines({ name, status, level, reason, error, budgetEnded }) {
-	const ended = budgetEnded === undefined ? [] : [describeBudgetEnd(budgetEnded)];
-	const why = [...ended, ...(reason === undefined ? [] : [reason])].join("; ");
-	return [
-		oneLine(`  ${name}  ${status}${level === undefined ? "" : ` at ${level}`}${why === "" ? "" : `: ${why}`}`),
-		...(error === undefined ? [] : [oneLine(`    Error: ${error}`)]),
-	];
+function checkLine({ name, status }) {
+	return oneLine(`  ${name}  ${status}`);
 }
+
+const localRun = "A local run of melian review shows why each check did not run.";
 
 function lineageLine({ name, lineage }) {
 	return oneLine(`  ${name}  ${describeLineage(lineage)}`);
@@ -153,6 +150,46 @@ function readOr(path, fallback) {
 	}
 }
 
+// What of a verdict may leave the job: the fields the comment renders, and nothing a static tool printed. A head's
+// tool configuration can reach outside the checkout, as a biome.json that extends /proc/<pid>/environ does, and the
+// tool's error then quotes that file. So a check keeps its name, status and route, and a static finding its rule and
+// place but not its text. Null for anything that is not a verdict, which the comment reads as no verdict.
+export function publicVerdict(text) {
+	try {
+		const verdict = JSON.parse(text);
+		const check = ({ name, status, lineage }) => ({ name, status, ...(lineage === undefined ? {} : { lineage }) });
+		const finding = ({ ruleId, message, locations, properties: { id, severity, resolution, path, source } }) => {
+			const region = locations[0]?.physicalLocation.region;
+			return {
+				ruleId,
+				message: { text: source.check.startsWith("static.") ? staticText : message.text },
+				locations:
+					region === undefined
+						? []
+						: [{ physicalLocation: { region: { startLine: region.startLine, endLine: region.endLine } } }],
+				properties: { id, severity, resolution, path, source: { check: source.check } },
+			};
+		};
+		const { findings } = verdict;
+		return {
+			status: Object.hasOwn(statuses, verdict.status) ? verdict.status : undefined,
+			blocking: typeof verdict.blocking === "boolean" ? verdict.blocking : undefined,
+			findings: Object.fromEntries(
+				aboveAdvisory.map((resolution) => [
+					resolution,
+					Array.isArray(findings[resolution]) ? findings[resolution].map(finding) : undefined,
+				]),
+			),
+			notRun: Array.isArray(verdict.notRun) ? verdict.notRun.map(check) : undefined,
+			...(Array.isArray(verdict.ran) ? { ran: verdict.ran.map(check) } : {}),
+		};
+	} catch {
+		return null;
+	}
+}
+
+const staticText = "A static check's finding; a local run shows its text.";
+
 // The comment for one round, from the verdict JSON `melian review --json` wrote and nothing it printed. `base` and
 // `head` are what the gate approved, and `mergeBase` their merge base, which a round of them reviews from. `reviewed`
 // is the base and head the round itself records, and `current` the pull request's, read again just before posting;
@@ -175,7 +212,7 @@ export class RoundComment {
 	static read({ verdict, rounds, exitCode, runUrl, runId, nonce, base, head, mergeBase, current }) {
 		let parsed;
 		try {
-			parsed = JSON.parse(readFileSync(verdict, "utf8"));
+			parsed = publicVerdict(readFileSync(verdict, "utf8"));
 		} catch {
 			parsed = undefined;
 		}
@@ -217,14 +254,14 @@ export class RoundComment {
 				? undefined
 				: `melian exited ${exit}, which does not match a verdict that reads ${statuses[verdict.status]}${verdict.blocking ? ", blocking" : ""}`);
 		if (problem !== undefined) {
-			return `${header}\n\n${fenced(["Verdict: not reviewed", "", `${problem}; the run's log and artefact say why.`])}`;
+			return `${header}\n\n${fenced(["Verdict: not reviewed", "", `${problem}; a local run of melian review says why.`])}`;
 		}
 		const quoted = [`Verdict: ${statuses[verdict.status]}${verdict.blocking ? ", blocking" : ""}`];
 		const provisional = verdict.notRun.filter((check) => check.status === "provisional");
 		const notRun = verdict.notRun.filter((check) => check.status !== "provisional");
-		if (provisional.length > 0) quoted.push("", "Provisional:", ...provisional.flatMap(checkLines));
+		if (provisional.length > 0) quoted.push("", "Provisional:", ...provisional.map(checkLine), localRun);
 		if (notRun.length > 0)
-			quoted.push("", `${plural(notRun.length, "check")} did not run:`, ...notRun.flatMap(checkLines));
+			quoted.push("", `${plural(notRun.length, "check")} did not run:`, ...notRun.map(checkLine), localRun);
 		const lineage = [...(verdict.ran ?? []), ...verdict.notRun].filter((check) => check.lineage !== undefined);
 		if (lineage.length > 0)
 			quoted.push("", `${plural(lineage.length, "check")} left the committed routes:`, ...lineage.map(lineageLine));
@@ -246,7 +283,7 @@ export function fenced(text, budget = Number.POSITIVE_INFINITY) {
 	const sizes = [0];
 	for (const line of lines) sizes.push(sizes.at(-1) + line.length + 1);
 	if (frame + sizes[lines.length] - 1 <= budget) return render(lines);
-	const note = (kept) => `... ${lines.length - kept} more lines; the run's artefact has them all.`;
+	const note = (kept) => `... ${lines.length - kept} more lines; a local run shows them all.`;
 	let kept = lines.length - 1;
 	while (kept > 0 && frame + sizes[kept] + note(kept).length > budget) kept--;
 	return render([...lines.slice(0, kept), note(kept)]);
