@@ -436,6 +436,20 @@ describe("claim workflow script", () => {
 		expect(writes).toEqual([["remove", IN_PROGRESS]]);
 	});
 
+	it("is not reopened by a writer's in-progress label on a claimed issue", async () => {
+		const thanks = say(30, "stranger", 9, "Thanks!");
+		const timeline = [label(READY, 0), say(20, "builder", 5), label(IN_PROGRESS, 6), thanks];
+		const { writes } = await run(claimScenario({ trigger: thanks, timeline, labels: [READY, IN_PROGRESS] }));
+		expect(writes).toEqual([["remove", READY]]);
+	});
+
+	it("is not reopened by a writer's hand removal of the ready label on a claimed issue", async () => {
+		const thanks = say(30, "stranger", 9, "Thanks!");
+		const timeline = [label(READY, 0), say(20, "builder", 5), unlabel(READY, 6), thanks];
+		const { writes } = await run(claimScenario({ trigger: thanks, timeline, labels: [READY] }));
+		expect(writes).toEqual(toInProgress);
+	});
+
 	it("is not moved by the workflow's own label events", async () => {
 		const thanks = say(30, "stranger", 9, "Thanks!");
 		const timeline = [label(READY, 0), say(20, "builder", 5), ...claimed(6), ...released(7), thanks];
@@ -497,11 +511,12 @@ describe("release in the claim workflow script", () => {
 	});
 
 	it("ignores a release on an issue nobody claimed, without asking who wrote it", async () => {
-		const { writes, asked } = await run(
+		const { writes, asked, infos } = await run(
 			releaseScenario({ labels: ["plan step", READY], timeline: [label(READY, 0, "builder"), release] }),
 		);
 		expect(writes).toEqual([]);
 		expect(asked).toEqual(["builder"]);
+		expect(infos).toEqual([`The issue reads "${READY}", from a ready label by builder.`]);
 	});
 
 	it("ignores a writer's release on an issue never marked ready", async () => {
