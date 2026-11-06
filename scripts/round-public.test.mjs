@@ -94,6 +94,43 @@ describe("what of a round leaves the job", () => {
 		});
 	});
 
+	it("keeps a check's route, a finding with no place, and nothing that is not a verdict's own field", () => {
+		const lineage = {
+			model: "anthropic/claude-opus-5-5",
+			wanted: "openai-codex/gpt-5.6-sol",
+			by: "derived",
+			outside: false,
+		};
+		const lens = {
+			ruleId: "rule-a",
+			message: { text: "A defect" },
+			locations: [],
+			properties: {
+				id: "bbbbbbbbbbbbbbbb",
+				path: "src/a.ts",
+				severity: "P2",
+				resolution: "acknowledge",
+				source: { check: "lens.tests" },
+			},
+		};
+		const value = {
+			status: "clean",
+			blocking: "no",
+			findings: { block: [], acknowledge: [lens] },
+			notRun: [{ name: "lens.a", status: "failed", lineage }],
+			ran: [{ name: "lens.design", status: "ran", lineage, reason: token }],
+		};
+		const published = run("--public", file("verdict.json", JSON.stringify(value)));
+		expect(JSON.parse(published.stdout)).toStrictEqual({
+			findings: {
+				block: [],
+				acknowledge: [{ ...lens, properties: { ...lens.properties, source: { check: "lens.tests" } } }],
+			},
+			notRun: [{ name: "lens.a", status: "failed", lineage }],
+			ran: [{ name: "lens.design", status: "ran", lineage }],
+		});
+	});
+
 	it("keeps the probe's own output out of the public verdict, and reads it as no verdict", () => {
 		expect(readFileSync(probe, "utf8")).toContain(token);
 		const published = run("--public", probe);

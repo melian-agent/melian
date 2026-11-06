@@ -157,7 +157,7 @@ function readOr(path, fallback) {
 export function publicVerdict(text) {
 	try {
 		const verdict = JSON.parse(text);
-		const check = ({ name, status, lineage }) => ({ name, status, ...(lineage === undefined ? {} : { lineage }) });
+		const check = ({ name, status, lineage }) => ({ name, status, lineage });
 		const finding = ({ ruleId, message, locations, properties: { id, severity, resolution, path, source } }) => {
 			const region = locations[0]?.physicalLocation.region;
 			return {
