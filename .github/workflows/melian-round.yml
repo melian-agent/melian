@@ -54,14 +54,22 @@ jobs:
             admin|maintain|write) echo "$STARTER has $permission permission" ;;
             *) echo "::error::$STARTER has ${permission:-unknown} permission; a round needs write, maintain or admin"; exit 1 ;;
           esac
-      - name: Refuse a fork's head
+      # "#N" reads melian.yaml and every lens from the pull request's base, so a base a writer chose could carry a
+      # policy that runs no checks. Only a pull request into the default branch is judged by a reviewed policy.
+      - name: Refuse a fork's head, or a base other than the default branch
         id: pull
         env:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
           NUMBER: ${{ inputs.pull_request }}
+          DEFAULT: ${{ github.event.repository.default_branch }}
         run: |
           gh api "repos/$REPOSITORY/pulls/$NUMBER" > "$RUNNER_TEMP/pull.json"
+          base_ref=$(jq -r .base.ref "$RUNNER_TEMP/pull.json")
+          if [ -z "$DEFAULT" ] || [ "$base_ref" != "$DEFAULT" ]; then
+            echo "::error::pull request $NUMBER targets $base_ref, not $DEFAULT; a round judges only a pull request into the default branch"
+            exit 1
+          fi
           state=$(jq -r .state "$RUNNER_TEMP/pull.json")
           head_repository=$(jq -r '.head.repo.full_name // ""' "$RUNNER_TEMP/pull.json")
           head=$(jq -r .head.sha "$RUNNER_TEMP/pull.json")
