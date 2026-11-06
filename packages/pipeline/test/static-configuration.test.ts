@@ -87,6 +87,26 @@ describe("ConfigurationScope with Biome", () => {
 		expect(await refusal("biome", { ".biome.json": extending })).toMatch(/^\.biome\.json names/);
 	});
 
+	it("checks each configuration file after one that names nothing outside", async () => {
+		const reason = await refusal("biome", {
+			"biome.json": "{}",
+			"sub/biome.json": JSON.stringify({ extends: [secret()] }),
+		});
+		expect(reason).toBe(`sub/biome.json names ${secret()}, which is outside the checkout`);
+	});
+
+	it("reads a path entry as Biome does, with no .json added and only a final .json making a path", async () => {
+		expect(
+			await refusal("biome", {
+				"biome.json": JSON.stringify({ extends: ["./base"] }),
+				"base.json": JSON.stringify({ extends: [secret()] }),
+			}),
+		).toBeUndefined();
+		expect(await refusal("biome", { "biome.json": JSON.stringify({ extends: ["base.json/x"] }) })).toBe(
+			"biome.json names the package base.json, which the checkout's install does not provide",
+		);
+	});
+
 	it("refuses a plugin outside the checkout, by path or as a plain string", async () => {
 		const grit = join(outside, "rule.grit");
 		for (const plugins of [[{ path: grit }], [grit], grit]) {
@@ -100,7 +120,7 @@ describe("ConfigurationScope with Biome", () => {
 		const reason = await refusal("biome", {
 			"biome.json": JSON.stringify({
 				extends: ["./a.json", "./missing.json"],
-				plugins: [{ path: "./rule.grit" }, 7],
+				plugins: [{ path: "./rule.grit" }, 7, null],
 			}),
 			"a.json": JSON.stringify({ extends: ["./biome.json"] }),
 			"sub/biome.json": JSON.stringify({ extends: "//" }),
