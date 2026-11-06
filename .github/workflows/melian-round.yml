@@ -130,6 +130,21 @@ jobs:
           echo "name=melian-round-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
           mkdir -p "$RUNNER_TEMP/public"
           openssl rand -hex 16 > "$RUNNER_TEMP/public/nonce"
+      # A rerun keeps the run's first commit, and the default branch may have moved past a fix to this workflow or its
+      # scripts since. "Re-run failed jobs" can also skip the gate. So before any step holds a login, this job refuses a
+      # commit that is no longer the default branch's, and a fresh dispatch runs the current code.
+      - name: Refuse a commit the default branch has moved past
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          DEFAULT: ${{ github.event.repository.default_branch }}
+          SHA: ${{ github.sha }}
+        run: |
+          current=$(gh api "repos/$REPOSITORY/branches/$DEFAULT" --jq .commit.sha) || current=""
+          if [ "$current" != "$SHA" ]; then
+            echo "::error::the default branch is at ${current:-an unreadable commit}, not $SHA, which this run would build; start a new round"
+            exit 1
+          fi
       # The default branch's commit, which the gate required, supplies Melian and every helper script, so neither the
       # pull request's head nor its base decides what runs with the logins; both stay review data. The whole history,
       # so Melian can fetch the pull request and find its merge base. The repository is public, so that fetch needs no
