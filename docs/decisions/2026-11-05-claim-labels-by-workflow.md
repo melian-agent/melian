@@ -14,7 +14,15 @@ A builder claims by commenting `Claim:`. The workflow `.github/workflows/claim.y
 - after it, the first `Claim:` from a writer calls for `status: in progress`;
 - after that, a writer's `Released:` opens the issue again, and the next writer's `Claim:` takes it.
 
-A writer is a commenter or labeller with write, maintain or admin permission, read from the collaborator permission endpoint. The run ignores every removal, every `status: in progress` label, and every label event by its own token. It then makes the labels match, adding the label it wants before removing the other, and writes nothing when they already match. A hand edit of a status label is undone by the next comment's run, so a builder only comments, and a writer takes an issue back by commenting `Released:`.
+A writer is a commenter or labeller with write, maintain or admin permission, read from the collaborator permission endpoint. The run ignores every removal, every `status: in progress` label, and every label event by its own token. It then makes the labels match, adding the label it wants before removing the other, and writes nothing when they already match. A hand edit of a status label is undone by the next comment's run, so a builder only comments, and a writer takes an issue back by commenting `Released:`. When no writer's ready label opens the issue, the run removes both status labels, and a writer reopens it by adding `status: ready`.
+
+To withdraw an issue from claims, close it: the run leaves a closed issue's labels alone. Removing `status: ready` does not withdraw it, because the writer's earlier label still opens the issue and the next comment's run puts the label back.
+
+Permission is read at run time, not when the comment was posted. If a claimant loses write, the next writer's claim after theirs holds the issue, so a builder that yielded rereads the issue when it sees the label stay. If the labeller loses write, the issue has no trusted ready label and the next run clears its status labels.
+
+A permission lookup that answers anything but 404 fails the run before it writes. Every later run on that issue fails the same way until the comment or label whose author it cannot read is gone. That is fail-closed by design: the run never guesses a writer.
+
+A run whose starting comment the timeline does not yet hold asks GitHub for the comment. A 404 means the comment was deleted, and the run reconciles from the timeline as it stands. Otherwise the timeline lags, and the run fails and asks for a rerun or another comment.
 
 Comments decide because every rule that also read label edits lost to an interleaving. Example: a claim's run writes its labels after a release was posted, and a rule that read the run's own removal of `status: ready` as a hand edit then dropped the release. Round 1 of [pull request #274](https://github.com/melian-agent/melian/pull/274) found two such orderings and round 2 found four more, so the maintainer ruled on the class: no label edit but a writer's `status: ready` moves the state.
 
