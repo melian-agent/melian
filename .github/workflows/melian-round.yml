@@ -1,8 +1,8 @@
 name: melian round
 
 # A builder starts a full Melian round on a writer's pull request and reads the findings back on it. Melian is built
-# from the pull request's base commit and reviews the pull request as data, so the head's code runs only where Melian
-# runs it for a writer's head, in its static checks; a fork's head never runs with secrets. The round's store is thrown
+# from the default branch and reviews the pull request as data, so the head's code runs only where Melian runs it for
+# a writer's head, in its static checks; a fork's head never runs with secrets. The round's store is thrown
 # away: it never publishes or dismisses, since a fresh store mints a new marker secret and would orphan the pull
 # request's ledger.
 
@@ -32,6 +32,17 @@ jobs:
       head: ${{ steps.pull.outputs.head }}
       base: ${{ steps.pull.outputs.base }}
     steps:
+      # Every script and the Melian build that hold a secret come from the workflow's own commit, so only the default
+      # branch may supply them. A pull request's base can be another writer's unmerged branch, and `--ref` can name any.
+      - name: Refuse a dispatch from any branch but the default
+        env:
+          REF: ${{ github.ref }}
+          DEFAULT: ${{ github.event.repository.default_branch }}
+        run: |
+          if [ -z "$DEFAULT" ] || [ "$REF" != "refs/heads/$DEFAULT" ]; then
+            echo "::error::a round runs only from the default branch's workflow, not $REF"
+            exit 1
+          fi
       - name: Refuse a starter without write permission
         env:
           GH_TOKEN: ${{ github.token }}
@@ -101,16 +112,11 @@ jobs:
       # the name from this output, never from its own run_attempt.
       - id: artifact
         run: echo "name=melian-round-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
-      # The workflow's own ref supplies the helper scripts, so a head cut before they existed can still run a round.
+      # The default branch's commit, which the gate required, supplies Melian and every helper script, so neither the
+      # pull request's head nor its base decides what runs with the logins; both stay review data. The whole history,
+      # so Melian can fetch the pull request and find its merge base; the credentials let it fetch refs/pull/N/head.
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
-          path: trusted
-          persist-credentials: false
-      # Melian itself comes from the base commit, a revision the head cannot change. The whole history, so Melian can
-      # fetch the pull request's head and find its merge base; the credentials let it fetch refs/pull/N/head.
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-        with:
-          ref: ${{ needs.gate.outputs.base }}
           path: melian
           fetch-depth: 0
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -134,7 +140,7 @@ jobs:
           out="$RUNNER_TEMP/round"
           mkdir -p "$out" "$RUNNER_TEMP/state" "$RUNNER_TEMP/config/melian" "$RUNNER_TEMP/pi"
           export MELIAN_STATE_DIR="$RUNNER_TEMP/state" XDG_CONFIG_HOME="$RUNNER_TEMP/config" PI_CODING_AGENT_DIR="$RUNNER_TEMP/pi"
-          if token=$(node "$GITHUB_WORKSPACE/trusted/scripts/round-codex-token.mjs"); then
+          if token=$(node scripts/round-codex-token.mjs); then
             echo "::add-mask::$token"
             export MELIAN_CODEX_ACCESS_TOKEN="$token"
             printf 'credentials:\n  actions-codex: { provider: openai-codex, env: MELIAN_CODEX_ACCESS_TOKEN }\n' > "$XDG_CONFIG_HOME/melian/secrets.yaml"
@@ -152,9 +158,9 @@ jobs:
           out="$RUNNER_TEMP/round"
           {
             echo "## Melian round, exit $(cat "$out/exit" 2>/dev/null || echo none)"
-            node trusted/scripts/round-comment.mjs --fence "$out/round.txt"
+            node melian/scripts/round-comment.mjs --fence "$out/round.txt"
             echo "### Standard error"
-            node trusted/scripts/round-comment.mjs --fence "$out/round.err"
+            node melian/scripts/round-comment.mjs --fence "$out/round.err"
           } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
