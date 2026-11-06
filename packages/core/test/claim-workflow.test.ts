@@ -20,15 +20,17 @@ const IN_PROGRESS = "status: in progress";
 const OWNER = "melian-agent";
 const REPO = "melian";
 const ISSUE = 7;
+const SELF = "github-actions[bot]";
 
 type Said = { event: "commented"; id: number; body: string; login: string; created_at: string };
-type Labelled = { event: "labeled" | "unlabeled"; name: string; created_at: string };
+type Labelled = { event: "labeled" | "unlabeled"; name: string; actor: string; created_at: string };
 type Other = { event: "assigned"; created_at: string };
 type Item = Said | Labelled | Other;
 type Permission = { permission: string; role_name?: string } | number;
 type Scenario = {
 	trigger: Said;
 	pullRequest?: boolean;
+	closed?: boolean;
 	labels: string[];
 	timeline: Item[];
 	permissions: Record<string, Permission | string>;
@@ -55,22 +57,23 @@ const asComment = (said: Said) => ({
 });
 const asTimeline = (item: Item) =>
 	item.event === "commented"
-		? { event: "commented", ...asComment(item) }
+		? { event: "commented", actor: { login: item.login }, ...asComment(item) }
 		: item.event === "assigned"
 			? { event: item.event, created_at: item.created_at }
-			: { event: item.event, label: { name: item.name }, created_at: item.created_at };
+			: { event: item.event, actor: { login: item.actor }, label: { name: item.name }, created_at: item.created_at };
 
 // The script under test is the workflow's own text, run as github-script runs it. The fake holds one issue: its
-// labels and its ordered timeline, from which it answers every read, and each write changes both, as GitHub would.
-// Each method checks that the request names exactly what it should, so a script that asks the wrong question fails
-// rather than gets an answer.
+// labels and its ordered timeline, from which it answers every read, and each write changes both, as GitHub would,
+// under the workflow's own login. Each method checks that the request names exactly what it should, so a script that
+// asks the wrong question fails rather than gets an answer.
 async function run(scenario: Scenario) {
 	const writes: unknown[] = [];
 	const asked: string[] = [];
+	const infos: string[] = [];
 	const fail = { ...scenario.fail };
 	const exact = (actual: unknown, expected: unknown) => expect(actual).toStrictEqual(expected);
 	const write = (event: "labeled" | "unlabeled", name: string) =>
-		scenario.timeline.push({ event, name, created_at: "2026-11-05T12:00:00Z" });
+		scenario.timeline.push({ event, name, actor: SELF, created_at: "2026-11-05T12:00:00Z" });
 	const github = {
 		rest: {
 			repos: {
@@ -86,7 +89,12 @@ async function run(scenario: Scenario) {
 			issues: {
 				get: async (params: unknown) => {
 					exact(params, issueParams);
-					return { data: { labels: scenario.labels.map((name) => ({ name })) } };
+					return {
+						data: {
+							state: scenario.closed ? "closed" : "open",
+							labels: scenario.labels.map((name) => ({ name })),
+						},
+					};
 				},
 				listEventsForTimeline: async (params: unknown) => {
 					exact(params, { ...issueParams, per_page: 100 });
@@ -120,15 +128,25 @@ async function run(scenario: Scenario) {
 			issue: { number: ISSUE, ...(scenario.pullRequest ? { pull_request: { url: "x" } } : {}) },
 		},
 	};
-	const core = { info: () => {} };
+	const core = { info: (message: string) => infos.push(message) };
 	const body = new (Object.getPrototypeOf(async () => {}).constructor)("github", "context", "core", script);
 	await body(github, context, core);
-	return { writes, asked, labels: scenario.labels };
+	return { writes, asked, infos, labels: scenario.labels };
 }
 
 const at = (second: number) => `2026-11-05T10:00:${String(second).padStart(2, "0")}Z`;
-const label = (name: string, second: number): Labelled => ({ event: "labeled", name, created_at: at(second) });
-const unlabel = (name: string, second: number): Labelled => ({ event: "unlabeled", name, created_at: at(second) });
+const label = (name: string, second: number, actor = "maintainer"): Labelled => ({
+	event: "labeled",
+	name,
+	actor,
+	created_at: at(second),
+});
+const unlabel = (name: string, second: number, actor = "maintainer"): Labelled => ({
+	event: "unlabeled",
+	name,
+	actor,
+	created_at: at(second),
+});
 const say = (id: number, login: string, second: number, body = `Claim: ${login}`): Said => ({
 	event: "commented",
 	id,
@@ -136,6 +154,10 @@ const say = (id: number, login: string, second: number, body = `Claim: ${login}`
 	login,
 	created_at: at(second),
 });
+// What the workflow's own run writes after a claim, and after a release.
+const claimed = (second: number) => [label(IN_PROGRESS, second, SELF), unlabel(READY, second, SELF)];
+const released = (second: number) => [label(READY, second, SELF), unlabel(IN_PROGRESS, second, SELF)];
+const decidedBy = (id: number) => `The issue reads "${IN_PROGRESS}", from ${commentUrl(id)}.`;
 
 // Add before remove, so a run that fails between the two leaves both labels, which the next run repairs.
 const toInProgress = [
@@ -147,14 +169,14 @@ const toReady = [
 	["remove", IN_PROGRESS],
 ];
 
-// A ready issue whose last comment is the builder's claim, which triggered the run.
+// A ready issue, labelled by a maintainer, whose last comment is the builder's claim, which triggered the run.
 function claimScenario(overrides: Partial<Scenario> = {}): Scenario {
 	const mine = say(20, "builder", 5);
 	return {
 		trigger: mine,
 		labels: ["plan step", READY],
 		timeline: [label(READY, 0), mine],
-		permissions: { builder: "write" },
+		permissions: { maintainer: "admin", builder: "write" },
 		...overrides,
 	};
 }
@@ -184,13 +206,14 @@ describe("claim workflow policy", () => {
 
 describe("claim workflow script", () => {
 	it("swaps ready for in progress on a writer's first claim", async () => {
-		const { writes, asked } = await run(claimScenario());
+		const { writes, asked, infos } = await run(claimScenario());
 		expect(writes).toEqual(toInProgress);
-		expect(asked).toEqual(["builder"]);
+		expect(asked).toEqual(["maintainer", "builder"]);
+		expect(infos).toEqual([decidedBy(20)]);
 	});
 
 	it.each(["admin", "write"])("accepts a claim from %s permission", async (permission) => {
-		const { writes } = await run(claimScenario({ permissions: { builder: permission } }));
+		const { writes } = await run(claimScenario({ permissions: { maintainer: "admin", builder: permission } }));
 		expect(writes).toEqual(toInProgress);
 	});
 
@@ -199,33 +222,33 @@ describe("claim workflow script", () => {
 		[{ permission: "write", role_name: "maintain" }, toInProgress],
 		[{ permission: "read", role_name: "triage" }, []],
 	])("decides a writer from the endpoint's own response %j", async (permission, expected) => {
-		const { writes } = await run(claimScenario({ permissions: { builder: permission } }));
+		const { writes } = await run(claimScenario({ permissions: { maintainer: "admin", builder: permission } }));
 		expect(writes).toEqual(expected);
 	});
 
 	it.each(["read", "triage", "none"])("ignores a claim from %s permission", async (permission) => {
-		const { writes, asked } = await run(claimScenario({ permissions: { builder: permission } }));
+		const { writes, asked } = await run(claimScenario({ permissions: { maintainer: "admin", builder: permission } }));
 		expect(writes).toEqual([]);
-		expect(asked).toEqual(["builder"]);
+		expect(asked).toEqual(["maintainer", "builder"]);
 	});
 
 	it("asks once about a commenter who claims twice", async () => {
 		const again = say(21, "builder", 6);
 		const timeline = [label(READY, 0), say(20, "builder", 5), again];
 		const { writes, asked } = await run(
-			claimScenario({ trigger: again, timeline, permissions: { builder: "read" } }),
+			claimScenario({ trigger: again, timeline, permissions: { maintainer: "admin", builder: "read" } }),
 		);
 		expect(writes).toEqual([]);
-		expect(asked).toEqual(["builder"]);
+		expect(asked).toEqual(["maintainer", "builder"]);
 	});
 
 	it("ignores a claim from someone the permission endpoint does not know", async () => {
-		const { writes } = await run(claimScenario({ permissions: { builder: 404 } }));
+		const { writes } = await run(claimScenario({ permissions: { maintainer: "admin", builder: 404 } }));
 		expect(writes).toEqual([]);
 	});
 
 	it("fails without writing when the permission lookup errs", async () => {
-		const scenario = claimScenario({ permissions: { builder: 500 } });
+		const scenario = claimScenario({ permissions: { maintainer: "admin", builder: 500 } });
 		await expect(run(scenario)).rejects.toThrow("HTTP 500");
 		expect(scenario.labels).toEqual(["plan step", READY]);
 	});
@@ -236,64 +259,98 @@ describe("claim workflow script", () => {
 		expect(writes).toEqual([]);
 	});
 
-	it("ignores a second claim behind a writer's earlier one", async () => {
+	it("opens nothing on a triage user's ready label, and opens on a writer's later one", async () => {
+		const early = say(10, "builder", 2);
 		const mine = say(20, "builder", 5);
-		const timeline = [label(READY, 0), say(10, "other", 2), mine];
-		const { writes } = await run(
-			claimScenario({ timeline, permissions: { builder: "write", other: "admin" }, labels: [IN_PROGRESS] }),
+		const permissions = {
+			triager: { permission: "read", role_name: "triage" },
+			maintainer: "admin",
+			builder: "write",
+		};
+		const shut = await run(
+			claimScenario({ trigger: early, timeline: [label(READY, 0, "triager"), early], permissions }),
+		);
+		expect(shut.writes).toEqual([]);
+		const timeline = [label(READY, 0, "triager"), early, label(READY, 3), mine];
+		const { writes, infos } = await run(claimScenario({ timeline, permissions }));
+		expect(writes).toEqual(toInProgress);
+		expect(infos).toEqual([decidedBy(20)]);
+	});
+
+	it("keeps an earlier writer's claim against a second one", async () => {
+		const mine = say(20, "builder", 5);
+		const timeline = [label(READY, 0), say(10, "other", 2), ...claimed(3), mine];
+		const { writes, infos } = await run(
+			claimScenario({
+				timeline,
+				permissions: { maintainer: "admin", builder: "write", other: "admin" },
+				labels: [IN_PROGRESS],
+			}),
 		);
 		expect(writes).toEqual([]);
+		expect(infos).toEqual([decidedBy(10)]);
 	});
 
 	it("is not blocked by a non-writer's earlier claim", async () => {
 		const mine = say(20, "builder", 5);
 		const timeline = [label(READY, 0), say(10, "stranger", 2), mine];
-		const { writes } = await run(claimScenario({ timeline, permissions: { builder: "write", stranger: "read" } }));
+		const { writes } = await run(
+			claimScenario({ timeline, permissions: { maintainer: "admin", builder: "write", stranger: "read" } }),
+		);
 		expect(writes).toEqual(toInProgress);
 	});
 
-	it("ignores claims before the last ready label", async () => {
+	it("reopens claims on a writer's later ready label", async () => {
 		const mine = say(20, "builder", 50);
 		const timeline = [
 			label(READY, 0),
 			{ event: "assigned", created_at: at(5) } as const,
 			say(5, "other", 10),
-			unlabel(READY, 20),
+			...claimed(11),
 			label(READY, 40),
 			label("plan step", 41),
 			mine,
 		];
-		const { writes } = await run(
-			claimScenario({ trigger: mine, timeline, permissions: { builder: "write", other: "write" } }),
+		const { writes, infos } = await run(
+			claimScenario({
+				trigger: mine,
+				timeline,
+				labels: ["plan step", IN_PROGRESS, READY],
+				permissions: { maintainer: "admin", builder: "write", other: "write" },
+			}),
 		);
-		expect(writes).toEqual(toInProgress);
+		expect(writes).toEqual([["remove", READY]]);
+		expect(infos).toEqual([decidedBy(20)]);
 	});
 
 	it("orders a claim by the timeline, not its timestamp: one before the ready label loses at the same second", async () => {
 		const mine = say(20, "builder", 9);
 		const timeline = [say(10, "other", 4), label(READY, 4), mine];
 		const { writes } = await run(
-			claimScenario({ trigger: mine, timeline, permissions: { builder: "write", other: "write" } }),
+			claimScenario({
+				trigger: mine,
+				timeline,
+				permissions: { maintainer: "admin", builder: "write", other: "write" },
+			}),
 		);
 		expect(writes).toEqual(toInProgress);
 	});
 
-	it("ignores a claim posted before the issue was last marked ready", async () => {
+	it("ignores a claim posted before the issue was marked ready", async () => {
 		const mine = say(20, "builder", 5);
 		const { writes } = await run(claimScenario({ timeline: [mine, label(READY, 10)] }));
 		expect(writes).toEqual([]);
 	});
 
-	it("does not count a comment that only mentions a claim", async () => {
-		const mine = say(20, "builder", 5);
-		const timeline = [label(READY, 0), say(10, "other", 2, "I will post Claim: soon"), mine];
-		const { writes } = await run(claimScenario({ timeline, permissions: { builder: "write", other: "write" } }));
-		expect(writes).toEqual(toInProgress);
-	});
-
 	it.each([" Claim: builder", "claim: builder", "Claim builder"])("ignores a comment %j", async (body) => {
 		const mine = say(20, "builder", 5, body);
 		const { writes, asked } = await run(claimScenario({ trigger: mine, timeline: [label(READY, 0), mine] }));
+		expect(writes).toEqual([]);
+		expect(asked).toEqual(["maintainer"]);
+	});
+
+	it("ignores a comment on a pull request", async () => {
+		const { writes, asked } = await run(claimScenario({ pullRequest: true }));
 		expect(writes).toEqual([]);
 		expect(asked).toEqual([]);
 	});
@@ -302,10 +359,10 @@ describe("claim workflow script", () => {
 		const mine = say(20, "builder", 5);
 		const timeline = [label(READY, 0), say(10, "other", 2), mine];
 		const { writes, asked } = await run(
-			claimScenario({ timeline, permissions: { builder: "write", other: "write" } }),
+			claimScenario({ timeline, permissions: { maintainer: "admin", builder: "write", other: "write" } }),
 		);
 		expect(writes).toEqual(toInProgress);
-		expect(asked).toEqual(["other"]);
+		expect(asked).toEqual(["maintainer", "other"]);
 	});
 
 	it("applies a claim from the run of any later comment", async () => {
@@ -340,34 +397,63 @@ describe("claim workflow script", () => {
 		expect(writes).toEqual([]);
 	});
 
-	it("leaves an issue alone once a writer took the ready label off by hand", async () => {
+	it("undoes a hand removal of the ready label on the next comment", async () => {
 		const mine = say(20, "builder", 5);
 		const timeline = [label(READY, 0), unlabel(READY, 3), mine];
 		const { writes } = await run(claimScenario({ timeline, labels: ["plan step"] }));
-		expect(writes).toEqual([]);
+		expect(writes).toEqual([["add", IN_PROGRESS]]);
 	});
 
-	it("counts a claim after the issue was marked ready again", async () => {
-		const mine = say(40, "builder", 30);
-		const timeline = [
-			label(READY, 0),
-			say(10, "other", 2),
-			label(IN_PROGRESS, 3),
-			unlabel(READY, 3),
-			unlabel(IN_PROGRESS, 20),
-			label(READY, 21),
-			mine,
-		];
-		const { writes } = await run(
-			claimScenario({ trigger: mine, timeline, permissions: { builder: "write", other: "write" } }),
+	it("undoes a hand removal of the in-progress label on the next comment", async () => {
+		const thanks = say(30, "stranger", 9, "Thanks!");
+		const timeline = [label(READY, 0), say(20, "builder", 5), ...claimed(6), unlabel(IN_PROGRESS, 8), thanks];
+		const { writes } = await run(claimScenario({ trigger: thanks, timeline, labels: ["plan step"] }));
+		expect(writes).toEqual([["add", IN_PROGRESS]]);
+	});
+
+	it("ignores a writer's in-progress label", async () => {
+		const thanks = say(30, "stranger", 9, "Thanks!");
+		const timeline = [label(READY, 0), label(IN_PROGRESS, 4), thanks];
+		const { writes } = await run(claimScenario({ trigger: thanks, timeline, labels: [READY, IN_PROGRESS] }));
+		expect(writes).toEqual([["remove", IN_PROGRESS]]);
+	});
+
+	it("is not moved by the workflow's own label events", async () => {
+		const thanks = say(30, "stranger", 9, "Thanks!");
+		const timeline = [label(READY, 0), say(20, "builder", 5), ...claimed(6), ...released(7), thanks];
+		const { writes, asked } = await run(
+			claimScenario({
+				trigger: thanks,
+				timeline,
+				labels: [READY],
+				permissions: { maintainer: "admin", builder: "write", [SELF]: 404 },
+			}),
 		);
 		expect(writes).toEqual(toInProgress);
+		expect(asked).toEqual(["maintainer", "builder"]);
 	});
 
-	it("ignores a comment on a pull request", async () => {
-		const { writes, asked } = await run(claimScenario({ pullRequest: true }));
-		expect(writes).toEqual([]);
-		expect(asked).toEqual([]);
+	it("gives a claim posted between a release run's read and its writes the issue, not a later claim", async () => {
+		const later = say(50, "late", 40);
+		const timeline = [
+			label(READY, 0),
+			say(20, "builder", 5),
+			...claimed(6),
+			say(30, "maintainer", 10, "Released: no push for 24 hours"),
+			say(40, "other", 11),
+			...released(12),
+			later,
+		];
+		const { writes, infos } = await run(
+			claimScenario({
+				trigger: later,
+				timeline,
+				labels: [READY],
+				permissions: { maintainer: "admin", builder: "write", other: "write", late: "write" },
+			}),
+		);
+		expect(writes).toEqual(toInProgress);
+		expect(infos).toEqual([decidedBy(40)]);
 	});
 });
 
@@ -376,14 +462,15 @@ describe("release in the claim workflow script", () => {
 	const releaseScenario = (overrides: Partial<Scenario> = {}): Scenario => ({
 		trigger: release,
 		labels: ["plan step", IN_PROGRESS],
-		timeline: [label(READY, 0), say(20, "builder", 5), label(IN_PROGRESS, 6), unlabel(READY, 6), release],
+		timeline: [label(READY, 0), say(20, "builder", 5), ...claimed(6), release],
 		permissions: { maintainer: "admin", builder: "write" },
 		...overrides,
 	});
 
 	it("swaps in progress back to ready on a writer's release", async () => {
-		const { writes } = await run(releaseScenario());
+		const { writes, infos } = await run(releaseScenario());
 		expect(writes).toEqual(toReady);
+		expect(infos).toEqual([`The issue reads "${READY}", from ${commentUrl(30)}.`]);
 	});
 
 	it("ignores a release from a non-writer", async () => {
@@ -393,10 +480,10 @@ describe("release in the claim workflow script", () => {
 
 	it("ignores a release on an issue nobody claimed, without asking who wrote it", async () => {
 		const { writes, asked } = await run(
-			releaseScenario({ labels: ["plan step", READY], timeline: [label(READY, 0), release] }),
+			releaseScenario({ labels: ["plan step", READY], timeline: [label(READY, 0, "builder"), release] }),
 		);
 		expect(writes).toEqual([]);
-		expect(asked).toEqual([]);
+		expect(asked).toEqual(["builder"]);
 	});
 
 	it("ignores a writer's release on an issue never marked ready", async () => {
@@ -409,6 +496,12 @@ describe("release in the claim workflow script", () => {
 		const scenario = releaseScenario({ trigger: thanks });
 		scenario.timeline.push(thanks);
 		const { writes } = await run(scenario);
+		expect(writes).toEqual(toReady);
+	});
+
+	it("applies a release posted between a claim run's read and its writes", async () => {
+		const timeline = [label(READY, 0), say(20, "builder", 5), release, ...claimed(31)];
+		const { writes } = await run(releaseScenario({ timeline, labels: ["plan step", IN_PROGRESS] }));
 		expect(writes).toEqual(toReady);
 	});
 
@@ -435,5 +528,18 @@ describe("release in the claim workflow script", () => {
 	it("writes nothing when the labels already match the release", async () => {
 		const { writes } = await run(releaseScenario({ labels: ["plan step", READY] }));
 		expect(writes).toEqual([]);
+	});
+
+	it("lets the next writer's claim take a released issue", async () => {
+		const next = say(40, "other", 40);
+		const scenario = releaseScenario({
+			trigger: next,
+			labels: ["plan step", READY],
+			permissions: { maintainer: "admin", builder: "write", other: "write" },
+		});
+		scenario.timeline.push(...released(31), next);
+		const { writes, infos } = await run(scenario);
+		expect(writes).toEqual(toInProgress);
+		expect(infos).toEqual([decidedBy(40)]);
 	});
 });

@@ -1,9 +1,11 @@
 name: claim
 
 # Cloud builders reach GitHub through an app that cannot edit labels, so this sets the claim labels for them under the
-# rules in AGENTS.md's Work from issues. Every run, whatever comment started it, reads the whole timeline and makes the
-# labels match the state it calls for, so a cancelled or failed run is repaired by the next. Comments are only ever
-# data: the script reads them from the API, and nothing interpolates them into a shell or a script.
+# rules in AGENTS.md's Work from issues. Comments decide: every run, whatever comment started it, reads the whole
+# timeline and makes the labels match the state the writers' comments call for, so a cancelled or failed run, or a hand
+# edit, is put right by the next. Comments are only ever data: the script reads them from the API, and nothing
+# interpolates them into a shell or a script.
+
 on:
   issue_comment:
     types: [created]
@@ -26,6 +28,7 @@ jobs:
           script: |
             const READY = "status: ready";
             const IN_PROGRESS = "status: in progress";
+            const SELF = "github-actions[bot]";
             const { owner, repo } = context.repo;
             const { issue } = context.payload;
             const issue_number = issue.number;
@@ -45,17 +48,20 @@ jobs:
               return writers.get(login);
             };
 
-            // A ready label opens the issue to claims. The first writer's claim after it calls for in progress, and a
-            // writer's release after that for ready again. A hand removal of the label the state calls for takes the
-            // issue out of the workflow's hands until it is marked ready again.
+            // A writer's ready label opens the issue to claims. The first writer's claim after it calls for in
+            // progress, and a writer's release after that for ready again. Removals, in-progress labels and this
+            // workflow's own label events change nothing.
             const timeline = await github.paginate(github.rest.issues.listEventsForTimeline, { owner, repo, issue_number, per_page: 100 });
             let want;
+            let by;
             for (const item of timeline) {
-              if (item.event === "labeled" && item.label.name === READY) want = READY;
-              else if (item.event === "unlabeled" && item.label.name === want) want = undefined;
-              else if (item.event === "commented" && want !== undefined) {
+              if (item.event === "labeled" && item.label.name === READY && item.actor.login !== SELF) {
+                if (await isWriter(item.actor.login)) [want, by] = [READY, `a ready label by ${item.actor.login}`];
+              } else if (item.event === "commented" && want !== undefined) {
                 const command = want === READY ? "Claim:" : "Released:";
-                if (item.body.startsWith(command) && (await isWriter(item.user.login))) want = want === READY ? IN_PROGRESS : READY;
+                if (item.body.startsWith(command) && (await isWriter(item.user.login))) {
+                  [want, by] = [want === READY ? IN_PROGRESS : READY, item.html_url];
+                }
               }
             }
             if (want === undefined) return core.info("The claim rules call for no status label here.");
@@ -65,4 +71,4 @@ jobs:
             const labels = current.labels.map((label) => label.name);
             if (!labels.includes(want)) await github.rest.issues.addLabels({ owner, repo, issue_number, labels: [want] });
             if (labels.includes(unwanted)) await github.rest.issues.removeLabel({ owner, repo, issue_number, name: unwanted });
-            core.info(`The issue reads "${want}".`);
+            core.info(`The issue reads "${want}", from ${by}.`);

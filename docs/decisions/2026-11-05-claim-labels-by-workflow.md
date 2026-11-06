@@ -8,11 +8,19 @@ A cloud builder cannot claim an issue alone. Claude's cloud sessions reach GitHu
 
 ## Decision
 
-A builder claims by commenting `Claim:`. The workflow `.github/workflows/claim.yml` runs on every new issue comment with a token holding `issues: write` alone. Whatever comment started it, a run reads the issue's whole timeline, in GitHub's order, and works out which status label the rules call for. A `status: ready` label opens the issue to claims. The first `Claim:` after it from a commenter with write, maintain or admin permission, read from the collaborator permission endpoint, calls for `status: in progress`. A writer's `Released:` after that calls for `status: ready` again. A hand removal of the label the rules call for leaves the issue to whoever removed it, until it is marked ready again. The run then makes the labels match, adding the label it wants before removing the other, and writes nothing when they already match. A builder whose token can edit labels may still swap them by hand.
+A builder claims by commenting `Claim:`. The workflow `.github/workflows/claim.yml` runs on every new issue comment with a token holding `issues: write` alone. Comments decide. Whatever comment started it, a run reads the issue's whole timeline, in GitHub's order, and takes the state from three kinds of event:
 
-A run reconciles rather than swaps because a one-off swap can be lost. Example: a remove that succeeds before an add that fails strands the issue with neither label. A newer comment's run can also replace a claim's pending run in the concurrency group, so the claim is never applied. Each later run repairs either, and adding first means a failure partway leaves both labels, which the next run reduces to one.
+- a `status: ready` label added by a writer opens the issue to claims;
+- after it, the first `Claim:` from a writer calls for `status: in progress`;
+- after that, a writer's `Released:` opens the issue again, and the next writer's `Claim:` takes it.
 
-Only writers' claims count. The earlier rule made the earliest `Claim:` comment win, whoever wrote it, so anyone who can comment could hold an issue with one line. A non-writer's comment is data under the trust rules, so it cannot claim.
+A writer is a commenter or labeller with write, maintain or admin permission, read from the collaborator permission endpoint. The run ignores every removal, every `status: in progress` label, and every label event by its own token. It then makes the labels match, adding the label it wants before removing the other, and writes nothing when they already match. A hand edit of a status label is undone by the next comment's run, so a builder only comments, and a writer takes an issue back by commenting `Released:`.
+
+Comments decide because every rule that also read label edits lost to an interleaving. Example: a claim's run writes its labels after a release was posted, and a rule that read the run's own removal of `status: ready` as a hand edit then dropped the release. Round 1 of [pull request #274](https://github.com/melian-agent/melian/pull/274) found two such orderings and round 2 found four more, so the maintainer ruled on the class: no label edit but a writer's `status: ready` moves the state.
+
+A run reconciles rather than swaps because a one-off swap can be lost. A remove that succeeds before an add that fails strands the issue with neither label. A newer comment's run can also replace a claim's pending run in the concurrency group, so the claim is never applied. Each later run repairs either, and adding first means a failure partway leaves both labels, which the next run reduces to one.
+
+Only writers' comments and ready labels count. The earlier rule made the earliest `Claim:` comment win, whoever wrote it, so anyone who can comment could hold an issue with one line. A user with triage permission can add labels but is not a writer, so their `status: ready` opens nothing. A non-writer's comment or label is data under the trust rules.
 
 ## Why
 
