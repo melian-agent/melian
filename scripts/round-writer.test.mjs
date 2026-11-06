@@ -21,11 +21,11 @@ describe("headWriter", () => {
 	it("names the pusher of the first event for exactly this commit on exactly this branch", () => {
 		const events = [
 			push("someone-else", { head: other }),
+			"  ",
+			"",
 			push("on-another-branch", { ref: "refs/heads/other" }),
 			push("newest-pusher"),
 			push("older-pusher"),
-			"  ",
-			"",
 		].join("\n");
 		expect(headWriter(events, head)).toBe("newest-pusher");
 	});

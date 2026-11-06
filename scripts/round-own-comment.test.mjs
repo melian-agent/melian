@@ -26,12 +26,13 @@ describe("ownComment", () => {
 			line(4, bot, `before ${marker("7", nonce)}\nnot opening with it`),
 			line(7, bot, `${marker("7", other)}\nanother workflow's forgery with this run's ID`),
 			line(8, bot, `<!-- melian-round run:7 -->\nthe marker without a nonce`),
-			line(5, bot, `${marker("7", nonce)}\nthis run`),
-			line(6, bot, `${marker("7", nonce)}\na later duplicate`),
 			"  ",
 			"",
+			line(5, bot, `${marker("7", nonce)}\nthis run`),
+			line(6, bot, `${marker("7", nonce)}\na later duplicate`),
 		].join("\n");
 		expect(ownComment(comments, { runId: "7", nonce, author: bot })).toBe(5);
+		expect(ownComment(comments, { runId: "70", nonce, author: bot })).toBe(2);
 	});
 
 	it("finds nothing when this run has not posted", () => {
@@ -41,7 +42,7 @@ describe("ownComment", () => {
 	});
 
 	it("refuses a run with no ID, rather than match every run's unknown marker", () => {
-		for (const runId of ["", "x", undefined]) {
+		for (const runId of ["", "x", "x7", "7x", undefined]) {
 			expect(() => ownComment(line(1, bot, `${marker(runId, nonce)}\n`), { runId, nonce, author: bot })).toThrow(
 				/^the run has no ID to find its comment by$/,
 			);
