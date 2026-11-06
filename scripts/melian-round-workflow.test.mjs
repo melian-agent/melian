@@ -183,6 +183,67 @@ describe("the melian round workflow", () => {
 		}
 	});
 
+	it("runs a head only when its pusher holds write, maintain or admin permission", () => {
+		const { run } = workflow.jobs.gate.steps.find(
+			(step) => step.name === "Refuse a head its pusher could not have written",
+		);
+		const dir = mkdtempSync(join(tmpdir(), "round-workflow-"));
+		try {
+			const head = "1".repeat(40);
+			// A fake gh answers only the request for the push events and the request for the pusher's permission.
+			writeFileSync(
+				join(dir, "gh"),
+				[
+					"#!/bin/sh",
+					'if [ "$1 $2 $3 $4" = "api --paginate repos/o/r/events?per_page=100 --jq" ]; then printf "%s\\n" "$EVENTS"; exit; fi',
+					'[ "$*" = "api repos/o/r/collaborators/pusher-login/permission --jq .permission" ] && [ -n "$PERMISSION" ] && echo "$PERMISSION"',
+					"",
+				].join("\n"),
+			);
+			chmodSync(join(dir, "gh"), 0o755);
+			writeFileSync(
+				join(dir, "pull.json"),
+				JSON.stringify({ head: { ref: "feature", sha: head }, user: { login: "author-login" } }),
+			);
+			const events = JSON.stringify({ actor: "pusher-login", head, ref: "refs/heads/feature" });
+			const step = (permission) => {
+				const ran = spawnSync("bash", ["-e", "-c", run], {
+					cwd: fileURLToPath(new URL("..", import.meta.url)),
+					encoding: "utf8",
+					env: {
+						PATH: `${dir}:${process.env.PATH}`,
+						HOME: dir,
+						RUNNER_TEMP: dir,
+						REPOSITORY: "o/r",
+						HEAD: head,
+						EVENTS: events,
+						PERMISSION: permission,
+					},
+				});
+				return [ran.status, ran.stdout];
+			};
+			for (const permission of ["write", "maintain", "admin"]) {
+				expect(step(permission), permission).toEqual([
+					0,
+					`pusher-login, whose code the head is, has ${permission} permission\n`,
+				]);
+			}
+			for (const [permission, named] of [
+				["read", "read"],
+				["triage", "triage"],
+				["none", "none"],
+				["", "no known"],
+			]) {
+				expect(step(permission), permission).toEqual([
+					1,
+					`::error::pusher-login, whose code the head is, has ${named} permission; a round runs only a writer's head\n`,
+				]);
+			}
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
 	it("keeps no token in any checkout's git configuration", () => {
 		const checkouts = steps.filter((step) => step.uses?.startsWith("actions/checkout@"));
 		expect(checkouts.map((step) => [step.job, step.with?.["persist-credentials"]])).toEqual([
