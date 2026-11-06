@@ -543,6 +543,12 @@ describe("release in the claim workflow script", () => {
 		expect(labels).toEqual(["plan step", READY]);
 	});
 
+	it("leaves a closed issue's labels alone", async () => {
+		const { writes, asked } = await run(releaseScenario({ closed: true }));
+		expect(writes).toEqual([]);
+		expect(asked).toEqual([]);
+	});
+
 	it("writes nothing when the labels already match the release", async () => {
 		const { writes } = await run(releaseScenario({ labels: ["plan step", READY] }));
 		expect(writes).toEqual([]);

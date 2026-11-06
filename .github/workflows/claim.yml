@@ -34,6 +34,9 @@ jobs:
             const issue_number = issue.number;
             if (issue.pull_request) return;
 
+            const { data: current } = await github.rest.issues.get({ owner, repo, issue_number });
+            if (current.state === "closed") return core.info("The issue is closed, so its labels stay as they are.");
+
             const writers = new Map();
             const isWriter = async (login) => {
               if (!writers.has(login)) {
@@ -70,7 +73,6 @@ jobs:
             if (want === undefined) return core.info("The claim rules call for no status label here.");
 
             const unwanted = want === READY ? IN_PROGRESS : READY;
-            const { data: current } = await github.rest.issues.get({ owner, repo, issue_number });
             const labels = current.labels.map((label) => label.name);
             if (!labels.includes(want)) await github.rest.issues.addLabels({ owner, repo, issue_number, labels: [want] });
             if (labels.includes(unwanted)) await github.rest.issues.removeLabel({ owner, repo, issue_number, name: unwanted });
