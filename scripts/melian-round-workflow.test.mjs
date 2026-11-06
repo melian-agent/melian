@@ -52,11 +52,9 @@ describe("the melian round workflow", () => {
 		expect(round[check].env).toEqual({
 			GH_TOKEN: "${{ github.token }}",
 			REPOSITORY: "${{ github.repository }}",
-			DEFAULT: "${{ github.event.repository.default_branch }}",
+			REF: "${{ github.ref }}",
 			SHA: "${{ github.sha }}",
 		});
-		expect(round[check].run).toContain('gh api "repos/$REPOSITORY/branches/$DEFAULT" --jq .commit.sha');
-		expect(round[check].run).toContain('if [ "$current" != "$SHA" ]; then');
 	});
 
 	it("lets the round run only on the default branch's current commit", () => {
@@ -65,20 +63,30 @@ describe("the melian round workflow", () => {
 		);
 		const dir = mkdtempSync(join(tmpdir(), "round-workflow-"));
 		try {
-			// A fake gh answers only the request for the default branch's commit.
+			// A fake gh answers only the requests for the repository's default branch and a branch's commit. A branch that
+			// was the default keeps the run's commit.
 			writeFileSync(
 				join(dir, "gh"),
-				'#!/bin/sh\n[ "$*" = "api repos/o/r/branches/main --jq .commit.sha" ] && [ -n "$CURRENT" ] && echo "$CURRENT"\n',
+				[
+					"#!/bin/sh",
+					'if [ "$*" = "api repos/o/r --jq .default_branch" ]; then [ -n "$NOW" ] && echo "$NOW"; exit; fi',
+					'[ "$NOW" != main ] && [ "$*" = "api repos/o/r/branches/main --jq .commit.sha" ] && echo "$SHA" && exit',
+					'[ "$*" = "api repos/o/r/branches/$NOW --jq .commit.sha" ] && [ -n "$CURRENT" ] && echo "$CURRENT"',
+					"",
+				].join("\n"),
 			);
 			chmodSync(join(dir, "gh"), 0o755);
-			const step = (current) =>
+			const step = (current, branch = "main", ref = "refs/heads/main") =>
 				spawnSync("bash", ["-e", "-c", run], {
 					encoding: "utf8",
 					env: {
 						PATH: `${dir}:${process.env.PATH}`,
 						REPOSITORY: "o/r",
-						DEFAULT: "main",
+						REF: ref,
 						SHA: "a".repeat(40),
+						// What the run's event named as the default branch; a rerun replays it whatever the repository says now.
+						DEFAULT: "main",
+						NOW: branch,
 						CURRENT: current,
 					},
 				});
@@ -87,6 +95,22 @@ describe("the melian round workflow", () => {
 			expect([moved.status, moved.stdout]).toEqual([
 				1,
 				`::error::the default branch is at ${"b".repeat(40)}, not ${"a".repeat(40)}, which this run would build; start a new round\n`,
+			]);
+			const renamed = step("a".repeat(40), "trunk");
+			expect([renamed.status, renamed.stdout]).toEqual([
+				1,
+				"::error::this run is from refs/heads/main, and the default branch is now trunk; start a new round\n",
+			]);
+			const movedTrunk = step("b".repeat(40), "trunk", "refs/heads/trunk");
+			expect([movedTrunk.status, movedTrunk.stdout]).toEqual([
+				1,
+				`::error::the default branch is at ${"b".repeat(40)}, not ${"a".repeat(40)}, which this run would build; start a new round\n`,
+			]);
+			expect(step("a".repeat(40), "trunk", "refs/heads/trunk").status).toBe(0);
+			const nameless = step("a".repeat(40), "");
+			expect([nameless.status, nameless.stdout]).toEqual([
+				1,
+				"::error::this run is from refs/heads/main, and the default branch is now unreadable; start a new round\n",
 			]);
 			const unread = step("");
 			expect([unread.status, unread.stdout]).toEqual([
