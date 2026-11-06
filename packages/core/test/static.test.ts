@@ -539,6 +539,45 @@ describe("staticFindings", () => {
 		]);
 	});
 
+	// Issue #281: Biome and tsc quote files a head leads them to, outside the checkout too.
+	it("gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message", async () => {
+		const base = commit({ "a.ts": lines("export const a = 1;") });
+		const head = commit({ "a.ts": lines("export const a = 1;", "debugger;") });
+		const { revision } = await Changeset.resolve(repo, `${base}..${head}`);
+		const quoted = (ruleId: string): ToolLog => ({
+			version: "2.1.0",
+			runs: [
+				{
+					tool: { driver: { name: "x", version: "1.0.0" } },
+					results: [
+						{
+							ruleId,
+							level: "error",
+							message: { text: "ghp_FAKEoutsideTOKEN281" },
+							locations: [{ physicalLocation: { artifactLocation: { uri: "a.ts" }, region: { startLine: 2 } } }],
+						},
+					],
+				},
+			],
+		});
+		const texts = async (tool: "biome" | "tsc" | "enola", ruleId: string) => {
+			const { findings } = await staticFindings({
+				repoRoot: repo,
+				revision,
+				tool,
+				settings: defaultConfig.static[tool],
+				base: { ...quoted(ruleId), runs: [{ ...quoted(ruleId).runs[0], results: [] }] },
+				head: quoted(ruleId),
+			});
+			return findings.map((finding) => [finding.message.text, finding.properties.explanation.what]);
+		};
+		const biome =
+			"Biome reports biome/suspicious/noDebugger here. Melian keeps none of Biome's text; run biome lint at this commit to read its message.";
+		expect(await texts("biome", "lint/suspicious/noDebugger")).toEqual([[biome, biome]]);
+		expect(await texts("tsc", "TS2322")).toEqual([[said("tsc/TS2322"), said("tsc/TS2322")]]);
+		expect(await texts("enola", "enola/layer")).toEqual([["ghp_FAKEoutsideTOKEN281", "ghp_FAKEoutsideTOKEN281"]]);
+	});
+
 	it("takes severity overrides from the tool's settings, and stores no resolution", async () => {
 		const base = commit({ "melian.yaml": lines("resolution:", "  P0: advisory"), "a.ts": lines("a") });
 		const head = commit({ "a.ts": lines("b") });
