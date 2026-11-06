@@ -136,6 +136,8 @@ jobs:
           CODEX_AUTH_B64: ${{ secrets.CODEX_AUTH_B64 }}
           GITHUB_TOKEN: ${{ github.token }}
           NUMBER: ${{ inputs.pull_request }}
+          BASE: ${{ needs.gate.outputs.base }}
+          HEAD: ${{ needs.gate.outputs.head }}
         run: |
           out="$RUNNER_TEMP/round"
           mkdir -p "$out" "$RUNNER_TEMP/state" "$RUNNER_TEMP/config/melian" "$RUNNER_TEMP/pi"
@@ -151,6 +153,10 @@ jobs:
           node packages/cli/bin/melian.js review "#$NUMBER" --json --no-walkthrough > "$out/verdict.json" 2> "$out/round.err"
           echo $? > "$out/exit"
           node packages/cli/bin/melian.js findings "#$NUMBER" --no-color > "$out/round.txt" 2>> "$out/round.err"
+          # "#N" reads the pull request again, so the comment checks that the round reviewed what the gate approved:
+          # the round's own base and head against the gate's head and their merge base.
+          node packages/cli/bin/melian.js findings "#$NUMBER" --rounds --json > "$out/rounds.json" 2>> "$out/round.err"
+          git merge-base "$BASE" "$HEAD" > "$out/merge-base" 2>> "$out/round.err"
           exit 0
       - name: Write the job summary
         if: always()
@@ -204,5 +210,8 @@ jobs:
           # pull request no longer shows. A failed read leaves both empty, and the comment posts no findings.
           current=$(gh api "repos/$REPOSITORY/pulls/$NUMBER" --jq '.base.sha + " " + .head.sha') || current=""
           read -r current_base current_head <<< "$current" || true
-          node scripts/round-comment.mjs "$out/verdict.json" "$(cat "$out/exit" 2>/dev/null || echo none)" "$RUN_URL" "$BASE" "$HEAD" ${current_head:+"$current_base" "$current_head"} > "$RUNNER_TEMP/comment.md"
+          node scripts/round-comment.mjs --verdict "$out/verdict.json" --rounds "$out/rounds.json" \
+            --exit "$(cat "$out/exit" 2>/dev/null || echo none)" --run-url "$RUN_URL" --base "$BASE" --head "$HEAD" \
+            --merge-base "$(cat "$out/merge-base" 2>/dev/null || echo none)" \
+            ${current_head:+--current-base "$current_base" --current-head "$current_head"} > "$RUNNER_TEMP/comment.md"
           gh pr comment "$NUMBER" --repo "$REPOSITORY" --body-file "$RUNNER_TEMP/comment.md"

@@ -115,28 +115,54 @@ function findingLine(finding) {
  * that is missing, malformed, or disagrees with the exit code reads as not reviewed. Finding text comes from models
  * that read the head, so everything after the link sits inside one code fence that no backtick run in it can close.
  */
+// The base and head of the last round `melian findings --rounds --json` lists, or undefined when there is none to read.
+function lastRound(text) {
+	let rounds;
+	try {
+		rounds = JSON.parse(text);
+	} catch {
+		return undefined;
+	}
+	const round = Array.isArray(rounds) ? rounds.at(-1) : undefined;
+	return typeof round?.base === "string" && typeof round.head === "string"
+		? { base: round.base, head: round.head }
+		: undefined;
+}
+
+function readOr(path, fallback) {
+	try {
+		return readFileSync(path, "utf8");
+	} catch {
+		return fallback;
+	}
+}
+
+// The comment for one round, from the verdict JSON `melian review --json` wrote and nothing it printed. `base` and
+// `head` are what the gate approved, and `mergeBase` their merge base, which a round of them reviews from. `reviewed`
+// is the base and head the round itself records, and `current` the pull request's, read again just before posting;
+// either is undefined when its read failed. Finding text comes from models that read the head, so everything after
+// the link sits inside one code fence that no backtick run in it can close.
 export class RoundComment {
-	/**
-	 * `base` and `head` are what the round reviewed; `current` is the pull request's base and head, read again just
-	 * before posting, or undefined when that read failed.
-	 */
-	constructor({ verdict, exitCode, runUrl, base, head, current }) {
+	constructor({ verdict, exitCode, runUrl, base, head, mergeBase, reviewed, current }) {
 		this.verdict = verdict;
 		this.exitCode = exitCode;
 		this.runUrl = runUrl;
 		this.base = base;
 		this.head = head;
+		this.mergeBase = mergeBase;
+		this.reviewed = reviewed;
 		this.current = current;
 	}
 
-	static read(verdictPath, exitCode, runUrl, base, head, current) {
-		let verdict;
+	static read({ verdict, rounds, exitCode, runUrl, base, head, mergeBase, current }) {
+		let parsed;
 		try {
-			verdict = JSON.parse(readFileSync(verdictPath, "utf8"));
+			parsed = JSON.parse(readFileSync(verdict, "utf8"));
 		} catch {
-			verdict = undefined;
+			parsed = undefined;
 		}
-		return new RoundComment({ verdict, exitCode, runUrl, base, head, current });
+		const reviewed = lastRound(readOr(rounds, ""));
+		return new RoundComment({ verdict: parsed, exitCode, runUrl, base, head, mergeBase, reviewed, current });
 	}
 
 	body() {
@@ -148,6 +174,12 @@ export class RoundComment {
 		if (this.current.base !== this.base || this.current.head !== this.head) {
 			const moved = `${commit(this.current.base)}...${commit(this.current.head)}`;
 			return `${header}\n\nThe pull request moved to ${moved} during the round, so this round posts no findings. Start a new round.\n`;
+		}
+		if (this.reviewed === undefined)
+			return `${header}\n\nThe round's own record of what it reviewed could not be read, so this round posts no findings. Start a new round.\n`;
+		if (this.reviewed.head !== this.head || this.reviewed.base !== this.mergeBase) {
+			const other = `${commit(this.reviewed.base)}...${commit(this.reviewed.head)}`;
+			return `${header}\n\nMelian reviewed ${other}, not the pull request the gate approved, so this round posts no findings. Start a new round.\n`;
 		}
 		const verdict = this.verdict;
 		const problem =

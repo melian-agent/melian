@@ -45,13 +45,33 @@ function verdict({ status = "findings", blocking = false, notRun = [], ran, ...f
 	};
 }
 
-const comment = (value, exitCode, current = { base, head }) =>
-	new RoundComment({ verdict: value, exitCode, runUrl: run, base, head, current }).body();
+const mergeBase = "e".repeat(40);
+const comment = (value, exitCode, current = { base, head }, reviewed = { base: mergeBase, head }) =>
+	new RoundComment({ verdict: value, exitCode, runUrl: run, base, head, mergeBase, reviewed, current }).body();
+
+function roundsFile(rounds = [{ base: mergeBase, head }]) {
+	const path = join(directory(), "rounds.json");
+	writeFileSync(path, typeof rounds === "string" ? rounds : JSON.stringify(rounds));
+	return path;
+}
+
+const read = (options) =>
+	RoundComment.read({
+		verdict: goldenJson,
+		rounds: roundsFile(),
+		exitCode: "2",
+		runUrl: run,
+		base,
+		head,
+		mergeBase,
+		current: { base, head },
+		...options,
+	});
 const fence = (exit, lines) => `${header(exit)}\n\n\`\`\`text\n${lines.join("\n")}\n\`\`\`\n`;
 
 describe("RoundComment", () => {
 	it("renders the verdict, the checks that did not run, and every block and acknowledge finding from the JSON", () => {
-		expect(RoundComment.read(goldenJson, "2", run, base, head, { base, head }).body()).toBe(
+		expect(read().body()).toBe(
 			fence(2, [
 				"Verdict: not reviewed, blocking",
 				"",
@@ -147,7 +167,7 @@ describe("RoundComment", () => {
 		const dir = directory();
 		writeFileSync(join(dir, "verdict.json"), "Verdict: passed\n");
 		for (const path of [join(dir, "absent.json"), join(dir, "verdict.json")]) {
-			expect(RoundComment.read(path, "0", run, base, head, { base, head }).verdict).toBeUndefined();
+			expect(read({ verdict: path, exitCode: "0" }).verdict).toBeUndefined();
 		}
 	});
 
@@ -323,6 +343,38 @@ describe("RoundComment", () => {
 		expect(comment(blocking, "1", { base, head: "d".repeat(40) })).toBe(moved("`bbbbbbbbbbbb`...`dddddddddddd`"));
 	});
 
+	it("posts no findings for a verdict on a head or base other than the gate approved", () => {
+		const blocking = verdict({ blocking: true, block: [finding({ resolution: "block" })] });
+		const other = (to) =>
+			`${header(1)}\n\nMelian reviewed ${to}, not the pull request the gate approved, so this round posts no findings. Start a new round.\n`;
+		expect(comment(blocking, "1", { base, head }, { base: mergeBase, head: "d".repeat(40) })).toBe(
+			other("`eeeeeeeeeeee`...`dddddddddddd`"),
+		);
+		expect(comment(blocking, "1", { base, head }, { base, head })).toBe(other("`bbbbbbbbbbbb`...`0123456789ab`"));
+	});
+
+	it("posts no findings when the round's record of what it reviewed cannot be read", () => {
+		const unread = `${header(1)}\n\nThe round's own record of what it reviewed could not be read, so this round posts no findings. Start a new round.\n`;
+		const blocking = verdict({ blocking: true, block: [finding({ resolution: "block" })] });
+		const current = { base, head };
+		expect(
+			new RoundComment({ verdict: blocking, exitCode: "1", runUrl: run, base, head, mergeBase, current }).body(),
+		).toBe(unread);
+		for (const rounds of ["not json", "{}", [], [{ base: mergeBase }], [{ head }], [{ base: mergeBase, head: 7 }]]) {
+			const body = read({ verdict: goldenJson, rounds: roundsFile(rounds), exitCode: "1" });
+			expect(body.reviewed, JSON.stringify(rounds)).toBeUndefined();
+		}
+		expect(read({ rounds: join(directory(), "absent.json") }).reviewed).toBeUndefined();
+	});
+
+	it("reads what the last round listed reviewed", () => {
+		const rounds = roundsFile([
+			{ base: "1".repeat(40), head: "2".repeat(40) },
+			{ base: mergeBase, head, status: "findings" },
+		]);
+		expect(read({ rounds }).reviewed).toEqual({ base: mergeBase, head });
+	});
+
 	it("posts no findings when the pull request could not be read again before posting", () => {
 		const body = new RoundComment({
 			verdict: verdict({ status: "passed" }),
@@ -405,18 +457,25 @@ describe("fenced", () => {
 });
 
 describe("the command", () => {
-	it("prints a comment from the verdict file, and refuses to run without every argument", () => {
-		const args = [script, goldenJson, "2", run, base, head];
-		const ran = spawnSync(process.execPath, [...args, base, head], { encoding: "utf8" });
-		expect(ran.status).toBe(0);
-		expect(ran.stdout).toBe(RoundComment.read(goldenJson, "2", run, base, head, { base, head }).body());
-		const unread = spawnSync(process.execPath, args, { encoding: "utf8" });
-		expect(unread.stdout).toBe(RoundComment.read(goldenJson, "2", run, base, head, undefined).body());
-		const short = spawnSync(process.execPath, args.slice(0, -1), { encoding: "utf8" });
-		expect(short.status).toBe(64);
-		expect(short.stderr).toBe(
-			"usage: node scripts/round-comment.mjs <verdict.json> <exit> <run URL> <base> <head> [<base> <head>]\n",
-		);
+	it("prints a comment from its files, and refuses to run without every option", () => {
+		const rounds = roundsFile();
+		const options = ["--verdict", goldenJson, "--rounds", rounds, "--exit", "2", "--run-url", run];
+		const commits = ["--base", base, "--head", head, "--merge-base", mergeBase];
+		const current = ["--current-base", base, "--current-head", head];
+		const ran = spawnSync(process.execPath, [script, ...options, ...commits, ...current], { encoding: "utf8" });
+		expect([ran.status, ran.stderr]).toEqual([0, ""]);
+		expect(ran.stdout).toBe(read({ rounds }).body());
+		const unread = spawnSync(process.execPath, [script, ...options, ...commits], { encoding: "utf8" });
+		expect(unread.stdout).toBe(read({ rounds, current: undefined }).body());
+		const usage =
+			"usage: node scripts/round-comment.mjs --verdict <value> --rounds <value> --exit <value> --run-url <value> --base <value> --head <value> --merge-base <value>\n";
+		for (const short of [
+			[...options, ...commits.slice(0, -2)],
+			[...options, ...commits, "--unknown", "x"],
+		]) {
+			const refused = spawnSync(process.execPath, [script, ...short], { encoding: "utf8" });
+			expect([refused.status, refused.stdout, refused.stderr]).toEqual([64, "", usage]);
+		}
 	});
 
 	it("fences a file for the job summary with its controls escaped, and says so when it is absent or empty", () => {
