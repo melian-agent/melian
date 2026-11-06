@@ -349,6 +349,13 @@ describe("claim workflow script", () => {
 		expect(asked).toEqual(["maintainer"]);
 	});
 
+	it("fails, naming the comment, when the timeline does not yet hold the comment that started the run", async () => {
+		const mine = say(20, "builder", 5);
+		const scenario = claimScenario({ trigger: mine, timeline: [label(READY, 0), say(10, "other", 2, "Thanks!")] });
+		await expect(run(scenario)).rejects.toThrow(`The timeline does not yet hold ${commentUrl(20)}`);
+		expect(scenario.labels).toEqual(["plan step", READY]);
+	});
+
 	it("ignores a comment on a pull request", async () => {
 		const { writes, asked } = await run(claimScenario({ pullRequest: true }));
 		expect(writes).toEqual([]);

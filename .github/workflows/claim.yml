@@ -30,7 +30,7 @@ jobs:
             const IN_PROGRESS = "status: in progress";
             const SELF = "github-actions[bot]";
             const { owner, repo } = context.repo;
-            const { issue } = context.payload;
+            const { comment, issue } = context.payload;
             const issue_number = issue.number;
             if (issue.pull_request) return;
 
@@ -52,6 +52,9 @@ jobs:
             // progress, and a writer's release after that for ready again. Removals, in-progress labels and this
             // workflow's own label events change nothing.
             const timeline = await github.paginate(github.rest.issues.listEventsForTimeline, { owner, repo, issue_number, per_page: 100 });
+            if (!timeline.some((item) => item.event === "commented" && item.id === comment.id)) {
+              throw new Error(`The timeline does not yet hold ${comment.html_url}; rerun this job.`);
+            }
             let want;
             let by;
             for (const item of timeline) {
