@@ -454,7 +454,7 @@ Details: [docs/design/comparison-with-external-reviewers.md](design/comparison-w
 
 ### The review loop
 
-Melian reviews its own pull requests in rounds. After each fix pass, a Melian round runs from the branch's own build. Codex's adversarial review and a review of record run beside the rounds. The loop ends when a round finds nothing above advisory apart from policy notices. `AGENTS.md` says who runs each part.
+Melian reviews its own pull requests in rounds. After each fix pass, a Melian round runs: from the `melian round` workflow, which runs the default branch's build, or from the branch's own build on a host. A pull request that changes Melian's review code needs a round from its own build, since the default branch's build cannot exercise it; [the Actions rounds decision](decisions/2026-11-06-actions-rounds-run-default-branch-code.md) says why the workflow runs the default branch's. Codex's adversarial review and a review of record run beside the rounds. The loop ends when a round finds nothing above advisory apart from policy notices. `AGENTS.md` says who runs each part.
 
 Problem: fixing each finding as it comes does not always converge. Example: [pull request #102](https://github.com/melian-agent/melian/pull/102) took eighteen rounds while a hand-built Markdown line reconstruction met one new shape per round, and [pull request #98](https://github.com/melian-agent/melian/pull/98) grew to 13,000 changed lines, with rounds of one to two hours that sampled the change. Each finding was a true defect; only the count showed that the approach was the defect.
 

@@ -6,4 +6,6 @@ Why: fix pass 1 of [pull request #275](https://github.com/melian-agent/melian/pu
 
 Melian's round on the next head showed that the code is not enough: `melian review "#N"` reads `melian.yaml` and every lens from the pull request's base, so a base a writer chose could still supply a policy that runs no checks. The gate therefore also refuses a pull request whose base is not the default branch, as the maintainer chose over trusting a writer's base.
 
-What this gives up: a stacked pull request gets no Actions round until its parent lands and it retargets to the default branch. A host round from the branch's own build still covers that case.
+What this gives up: a stacked pull request gets no Actions round until its parent lands and it retargets to the default branch. A host round from the branch's own build still covers that case. The workflow also cannot exercise a pull request's changes to Melian's own review code, so such a pull request needs a host round from its own build as well; the review loop in `docs/design.md` and `AGENTS.md` say so.
+
+The workflow is a builder's round, not the Actions review host of `docs/design/hosts.md`. It keeps no state branch and dispatches no continuation: its store lives in runner storage and is thrown away. A round that times out or loses its runner starts again from nothing when it is dispatched again, and pays again for the lenses it had finished. A builder's round is short beside the job's 150 minutes, and milestone 3's host brings the continuation.

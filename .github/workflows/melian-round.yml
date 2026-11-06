@@ -238,8 +238,9 @@ jobs:
             --exit "$(cat "$out/exit" 2>/dev/null || echo none)" --run-url "$RUN_URL" --run-id "$RUN_ID" --nonce "$NONCE" --base "$BASE" --head "$HEAD" \
             --merge-base "$(cat "$out/merge-base" 2>/dev/null || echo none)" \
             ${current_head:+--current-base "$current_base" --current-head "$current_head"} > "$RUNNER_TEMP/comment.md"
-          # A rerun of this job finds the comment this run already posted, by its marker and this job's identity, and
-          # updates it, so a post GitHub accepted before the job failed is never repeated.
+          # A rerun of this job alone finds the comment this run already posted, by its marker and this job's identity, and
+          # updates it, so a post GitHub accepted before the job failed is never repeated. "Re-run all jobs" runs a new round
+          # with a new nonce and artefact, so it posts that round's own comment.
           gh api --paginate "repos/$REPOSITORY/issues/$NUMBER/comments?per_page=100" \
             --jq '.[] | {id, login: .user.login, body} | tojson' > "$RUNNER_TEMP/comments.jsonl"
           own=$(node scripts/round-own-comment.mjs "$RUNNER_TEMP/comments.jsonl" "$RUN_ID" "$NONCE" "github-actions[bot]")
