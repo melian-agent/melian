@@ -13,7 +13,8 @@ const run = "https://github.com/melian-agent/melian/actions/runs/1";
 const base = "b".repeat(40);
 const head = "0123456789abcdef0123456789abcdef01234567";
 const ids = [...golden.findings.block, ...golden.findings.acknowledge].map((finding) => finding.properties.id);
-const header = (exit) => `${marker}\nMelian round on \`bbbbbbbbbbbb\`...\`0123456789ab\`, exit ${exit}: [run](${run})`;
+const header = (exit) =>
+	`${marker("1")}\nMelian round on \`bbbbbbbbbbbb\`...\`0123456789ab\`, exit ${exit}: [run](${run})`;
 const scratch = [];
 
 function directory() {
@@ -47,7 +48,17 @@ function verdict({ status = "findings", blocking = false, notRun = [], ran, ...f
 
 const mergeBase = "e".repeat(40);
 const comment = (value, exitCode, current = { base, head }, reviewed = { base: mergeBase, head }) =>
-	new RoundComment({ verdict: value, exitCode, runUrl: run, base, head, mergeBase, reviewed, current }).body();
+	new RoundComment({
+		verdict: value,
+		exitCode,
+		runUrl: run,
+		runId: "1",
+		base,
+		head,
+		mergeBase,
+		reviewed,
+		current,
+	}).body();
 
 function roundsFile(rounds = [{ base: mergeBase, head }]) {
 	const path = join(directory(), "rounds.json");
@@ -61,6 +72,7 @@ const read = (options) =>
 		rounds: roundsFile(),
 		exitCode: "2",
 		runUrl: run,
+		runId: "1",
 		base,
 		head,
 		mergeBase,
@@ -358,7 +370,16 @@ describe("RoundComment", () => {
 		const blocking = verdict({ blocking: true, block: [finding({ resolution: "block" })] });
 		const current = { base, head };
 		expect(
-			new RoundComment({ verdict: blocking, exitCode: "1", runUrl: run, base, head, mergeBase, current }).body(),
+			new RoundComment({
+				verdict: blocking,
+				exitCode: "1",
+				runUrl: run,
+				runId: "1",
+				base,
+				head,
+				mergeBase,
+				current,
+			}).body(),
 		).toBe(unread);
 		for (const rounds of ["not json", "{}", [], [{ base: mergeBase }], [{ head }], [{ base: mergeBase, head: 7 }]]) {
 			const body = read({ verdict: goldenJson, rounds: roundsFile(rounds), exitCode: "1" });
@@ -380,6 +401,7 @@ describe("RoundComment", () => {
 			verdict: verdict({ status: "passed" }),
 			exitCode: "0",
 			runUrl: run,
+			runId: "1",
 			base,
 			head,
 		}).body();
@@ -415,8 +437,11 @@ describe("RoundComment", () => {
 		}
 	});
 
-	it("opens with the marker a later job counts its rounds by", () => {
-		expect(comment(undefined, "none").startsWith("<!-- melian-round -->\nMelian round on ")).toBe(true);
+	it("opens with a marker naming its run, by which a rerun finds the comment", () => {
+		expect(comment(undefined, "none").startsWith("<!-- melian-round run:1 -->\nMelian round on ")).toBe(true);
+		expect(marker("12345")).toBe("<!-- melian-round run:12345 -->");
+		for (const runId of ["", "12a", "1 2", undefined])
+			expect(marker(runId), String(runId)).toBe("<!-- melian-round run:unknown -->");
 	});
 });
 
@@ -459,7 +484,7 @@ describe("fenced", () => {
 describe("the command", () => {
 	it("prints a comment from its files, and refuses to run without every option", () => {
 		const rounds = roundsFile();
-		const options = ["--verdict", goldenJson, "--rounds", rounds, "--exit", "2", "--run-url", run];
+		const options = ["--verdict", goldenJson, "--rounds", rounds, "--exit", "2", "--run-url", run, "--run-id", "1"];
 		const commits = ["--base", base, "--head", head, "--merge-base", mergeBase];
 		const current = ["--current-base", base, "--current-head", head];
 		const ran = spawnSync(process.execPath, [script, ...options, ...commits, ...current], { encoding: "utf8" });
@@ -468,7 +493,7 @@ describe("the command", () => {
 		const unread = spawnSync(process.execPath, [script, ...options, ...commits], { encoding: "utf8" });
 		expect(unread.stdout).toBe(read({ rounds, current: undefined }).body());
 		const usage =
-			"usage: node scripts/round-comment.mjs --verdict <value> --rounds <value> --exit <value> --run-url <value> --base <value> --head <value> --merge-base <value>\n";
+			"usage: node scripts/round-comment.mjs --verdict <value> --rounds <value> --exit <value> --run-url <value> --run-id <value> --base <value> --head <value> --merge-base <value>\n";
 		for (const short of [
 			[...options, ...commits.slice(0, -2)],
 			[...options, ...commits, "--unknown", "x"],

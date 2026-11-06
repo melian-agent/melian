@@ -204,6 +204,7 @@ jobs:
           BASE: ${{ needs.gate.outputs.base }}
           HEAD: ${{ needs.gate.outputs.head }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          RUN_ID: ${{ github.run_id }}
         run: |
           out="$RUNNER_TEMP/round"
           # Read again just before posting: a push or a retarget during the round leaves findings for a revision the
@@ -211,7 +212,16 @@ jobs:
           current=$(gh api "repos/$REPOSITORY/pulls/$NUMBER" --jq '.base.sha + " " + .head.sha') || current=""
           read -r current_base current_head <<< "$current" || true
           node scripts/round-comment.mjs --verdict "$out/verdict.json" --rounds "$out/rounds.json" \
-            --exit "$(cat "$out/exit" 2>/dev/null || echo none)" --run-url "$RUN_URL" --base "$BASE" --head "$HEAD" \
+            --exit "$(cat "$out/exit" 2>/dev/null || echo none)" --run-url "$RUN_URL" --run-id "$RUN_ID" --base "$BASE" --head "$HEAD" \
             --merge-base "$(cat "$out/merge-base" 2>/dev/null || echo none)" \
             ${current_head:+--current-base "$current_base" --current-head "$current_head"} > "$RUNNER_TEMP/comment.md"
-          gh pr comment "$NUMBER" --repo "$REPOSITORY" --body-file "$RUNNER_TEMP/comment.md"
+          # A rerun of this job finds the comment this run already posted, by its marker and this job's identity, and
+          # updates it, so a post GitHub accepted before the job failed is never repeated.
+          gh api --paginate "repos/$REPOSITORY/issues/$NUMBER/comments?per_page=100" \
+            --jq '.[] | {id, login: .user.login, body} | tojson' > "$RUNNER_TEMP/comments.jsonl"
+          own=$(node scripts/round-own-comment.mjs "$RUNNER_TEMP/comments.jsonl" "$RUN_ID" "github-actions[bot]")
+          if [ -n "$own" ]; then
+            gh api -X PATCH "repos/$REPOSITORY/issues/comments/$own" -F "body=@$RUNNER_TEMP/comment.md" > /dev/null
+          else
+            gh pr comment "$NUMBER" --repo "$REPOSITORY" --body-file "$RUNNER_TEMP/comment.md"
+          fi
