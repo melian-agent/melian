@@ -341,7 +341,9 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 		]);
 	});
 
-	it("fails with toolFailed when the tool crashes, carrying what it printed", { timeout: 60_000 }, async () => {
+	it("fails with toolFailed when the tool crashes, keeping its exit code and none of what it printed", {
+		timeout: 60_000,
+	}, async () => {
 		const head = commit(repo, { ".gitignore": lines("node_modules"), "tsconfig.json": tsconfig });
 		fakeTool(
 			repo,
@@ -353,7 +355,9 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 			(caught: unknown) => caught,
 		);
 		expect((error as CheckError).code).toBe("toolFailed");
-		expect((error as CheckError).message).toMatch(/exited with code 134 on tsconfig.json: out of memory/);
+		expect((error as CheckError).message).toBe(
+			`tsc exited with code 134 on tsconfig.json; run tsc --noEmit -p tsconfig.json at ${head.slice(0, 12)} to see why, since Melian keeps none of its output`,
+		);
 		expectCheckoutUntouched();
 	});
 

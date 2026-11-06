@@ -376,7 +376,7 @@ async function runBiome(run: Run, root: string, scratch: string, binary: string,
 	);
 	const text = await run.readOutput(report);
 	// Biome exits 1 when it reports an error-level diagnostic; anything else without a report is a failure. Its stderr
-	// quotes the files it could not parse, so none of it is kept.
+	// quotes whatever files it could not parse, so none of it is kept.
 	if (text === undefined || (code !== 0 && code !== 1)) {
 		throw run.fail(
 			"toolFailed",
@@ -435,7 +435,7 @@ async function runTsc(
 	const results: ToolLog["runs"][0]["results"] = [];
 	for (const [index, each] of projects.entries()) {
 		const out = posix.join(scratch, `tsc-${index}.out`);
-		const { code, output } = await run.shell(
+		const { code } = await run.shell(
 			`cd ${quote(root)} && ${fileLimit} && ${quote(binary)} --noEmit --pretty false -p ${quote(each)} > ${quote(out)} 2>&1`,
 		);
 		const text = (await run.readOutput(out)) ?? "";
@@ -451,7 +451,7 @@ async function runTsc(
 		if (code !== 0 && (none || (code !== 1 && code !== 2))) {
 			throw run.fail(
 				"toolFailed",
-				`tsc exited with code ${code} on ${each}: ${(text || output).slice(0, 4096).trim()}`,
+				`tsc exited with code ${code} on ${each}; run tsc --noEmit -p ${each} at ${run.input.commit.slice(0, 12)} to see why, since Melian keeps none of its output`,
 			);
 		}
 		results.push(...log.runs[0].results);

@@ -167,6 +167,8 @@ describe("staticSeverity", () => {
 
 describe("staticFindings", () => {
 	let repo: string;
+	const said = (rule: string) =>
+		`tsc reports ${rule} here. Melian keeps none of tsc's text; run tsc --noEmit at this commit to read its message.`;
 
 	beforeEach(() => {
 		for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
@@ -303,12 +305,12 @@ describe("staticFindings", () => {
 			[
 				"pre-existing",
 				{
-					what: "TS2322 at a.ts:1",
+					what: said("tsc/TS2322"),
 					whyHere: "tsc reports this at the base too, so it predates this change.",
 					whatToDo: "Change the code so tsc no longer reports tsc/TS2322.",
 				},
 			],
-			["pre-existing", { what: "TS2322 at a.ts:2", whyHere: "Own reason.", whatToDo: "Own fix." }],
+			["pre-existing", { what: said("tsc/TS2322"), whyHere: "Own reason.", whatToDo: "Own fix." }],
 		]);
 	});
 
@@ -343,8 +345,8 @@ describe("staticFindings", () => {
 			head: log(["a.ts", 2, "TS2345"], ["a.ts", 2, "TS2345"], ["a.ts", 2, "TS2554"]),
 		});
 		expect(findings.map((finding) => [finding.ruleId, finding.message.text])).toEqual([
-			["tsc/TS2345", "TS2345 at a.ts:2 (and 1 more on these lines)"],
-			["tsc/TS2554", "TS2554 at a.ts:2"],
+			["tsc/TS2345", `${said("tsc/TS2345")} (and 1 more on these lines)`],
+			["tsc/TS2554", said("tsc/TS2554")],
 		]);
 	});
 
@@ -532,8 +534,8 @@ describe("staticFindings", () => {
 			head: log(["a.ts", 1, "TS2345"], ["a.ts", 1, "TS2345"]),
 		});
 		expect(findings.map((finding) => [finding.properties.cause, finding.message.text])).toEqual([
-			["pre-existing", "TS2345 at a.ts:1"],
-			["introduced", "1 more tsc/TS2345 result(s) on these lines than at the base: TS2345 at a.ts:1"],
+			["pre-existing", said("tsc/TS2345")],
+			["introduced", `1 more tsc/TS2345 result(s) on these lines than at the base: ${said("tsc/TS2345")}`],
 		]);
 	});
 

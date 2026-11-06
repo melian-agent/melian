@@ -397,11 +397,11 @@ Lenses follow the same rule: the lens loader reads repository lenses from the re
 
 Reading from the base does not hide the head's changes. Each revision lists the policy and standards files it changes: every `melian.yaml`, `AGENTS.md`, `CLAUDE.md` (in any case), lens file under `.agents/lenses/`, file under a `.melian/` directory, and static tool configuration file, such as `biome.json`, `tsconfig*.json`, `package.json`, or `stryker.config.json`, and from milestone 2 Enola's configuration: `enola.yaml`, `mcp-arch.yaml`, `enola-intent.yaml`, `enola/constraints/`, and `.enola/suppressions.yaml`. A lens can be handed those changes as quoted data, "the standards this pull request changes", and review them like any other code.
 
-### A static tool reads no configuration outside the checkout
+### Melian stores no Biome or tsc text
 
-Problem: Biome and tsc read whatever file a head's configuration names, and Melian stores what they print. Example: a head `biome.json` of `{"extends": ["<absolute path>/environ"]}` had Biome quote that file, a token included, into the check's stored error. Biome labelled the quote `biome.json:1:1`, so no filter could tell it from the revision's own text.
+Problem: Biome and tsc read whatever files a head's configuration and sources lead them to, outside the checkout too, and quote them, and Melian stored what they printed. Example: a head `biome.json` of `{"extends": ["<absolute path>/environ"]}` had Biome quote that file, a token included, into the check's stored error. A `/// <reference>` to an outside declaration file had tsc quote its types in a finding on the revision's own line.
 
-Solution: before Biome or tsc runs, `ConfigurationScope` in `packages/pipeline/src/static-configuration.ts` follows the revision's configuration through `extends`, Biome's `plugins` and tsc's `references`. An entry outside the worktree and the checkout's install, a package the install does not provide, or a file Melian cannot parse fails the check with `outsideCheckout`. The error names the path, and the tool never runs. Biome's stderr is not stored. tsc options such as `paths` and `typeRoots`, and source imports, are not yet covered. [The decision](decisions/2026-11-06-static-configuration-stays-in-the-checkout.md) records the rule and its limits.
+Solution: a Biome or tsc finding keeps its rule, place and severity, and its message is a fixed sentence naming the tool and the rule. `staticFindings` applies it, so no stored document, verdict, published review, lens or verifier sees the tool's text. A failed run keeps its exit code and a fixed sentence, never the tool's output. A check of each tool's configuration was tried first and dropped: eight routes past it turned up in one round. [The decision](decisions/2026-11-06-static-configuration-stays-in-the-checkout.md) records the routes, the cost, and the follow-ups for Enola and the mutation check.
 
 ### Tool provisioning
 

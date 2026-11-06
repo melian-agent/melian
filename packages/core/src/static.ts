@@ -393,12 +393,29 @@ async function identify(
 	return identified;
 }
 
+const quietCommands: Readonly<Record<"biome" | "tsc", string>> = { biome: "biome lint", tsc: "tsc --noEmit" };
+
+// Biome and tsc quote whatever a head's configuration or sources lead them to, outside the checkout too, so a result
+// keeps its rule, place and level, never the tool's text (issue #281).
+function withoutToolText(tool: StaticTool, log: ToolLog): ToolLog {
+	if (tool !== "biome" && tool !== "tsc") return log;
+	const name = tool === "biome" ? "Biome" : "tsc";
+	const results = log.runs[0].results.map(({ message: _, ...result }) => ({
+		...result,
+		message: {
+			text: `${name} reports ${staticRuleId(tool, result.ruleId)} here. Melian keeps none of ${name}'s text; run ${quietCommands[tool]} at this commit to read its message.`,
+		},
+	}));
+	return { ...log, runs: [{ ...log.runs[0], results }] };
+}
+
 /**
  * Turns one tool's results at base and head into findings, matched across the two runs by finding identity, never by
  * line. A result's snippet is the full text of its lines at its own revision, read through git's object store, and its
  * occurrence is counted there, so code an edit above moved keeps its ID. A result at head absent at base is
  * `introduced`; one at both is `pre-existing`, which never blocks; one only at base was resolved and is not reported.
- * Severity follows {@link staticSeverity}. A finding carries no resolution: only adjudication writes one.
+ * Severity follows {@link staticSeverity}. A finding carries no resolution: only adjudication writes one. A Biome or tsc
+ * finding's message is a fixed sentence naming the tool and the rule, never the tool's own text.
  */
 export async function staticFindings(input: StaticFindingsInput): Promise<CheckReport> {
 	const { repoRoot, revision, tool } = input;
@@ -411,8 +428,8 @@ export async function staticFindings(input: StaticFindingsInput): Promise<CheckR
 		revision.files.flatMap((file) => (file.oldPath === undefined ? [] : [[file.oldPath, file.path] as const])),
 	);
 	const [base, head] = await Promise.all([
-		identify(tool, input.base, baseReader, (path) => renamed.get(path) ?? path),
-		identify(tool, input.head, headReader, (path) => path),
+		identify(tool, withoutToolText(tool, input.base), baseReader, (path) => renamed.get(path) ?? path),
+		identify(tool, withoutToolText(tool, input.head), headReader, (path) => path),
 	]);
 	const version = input.head.runs[0].tool.driver.version;
 	const findings: Finding[] = [];

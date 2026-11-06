@@ -1,25 +1,31 @@
-# A static tool's configuration stays in the checkout
+# Melian stores no Biome or tsc text
 
-Status: asked for by the maintainer in [issue #281](https://github.com/melian-agent/melian/issues/281), 2026-11-06.
+Status: ruled by the maintainer on [pull request #282](https://github.com/melian-agent/melian/pull/282), 2026-11-07, for [issue #281](https://github.com/melian-agent/melian/issues/281): "store no tool text". Reading is not the leak; echoing is. The file keeps the name of the rule it replaced before merging, a check of each tool's configuration, so the links to it hold.
 
 Amends: [Static checks run unconfined; only agents are sandboxed](2026-10-14-static-checks-run-unconfined.md), the second bullet of "What this gives up", which accepted that a head's `biome.json` extending an absolute path has Biome quote that file.
 
 ## Problem
 
-Biome and tsc read whatever file a head's configuration names, and Melian stored what they printed. A stored error reaches the verdict, `melian findings` and every published review.
+Biome and tsc read whatever files a head's configuration and sources lead them to, outside the checkout too, and quote them. Melian stored what they printed. A stored message reaches the verdict, `melian findings`, published reviews, and the lenses and verifier that read static findings.
 
-Example: the Opus review of record on [pull request #275](https://github.com/melian-agent/melian/pull/275) committed `{"extends": ["<absolute path>/environ"]}`. Biome could not parse the file and quoted it, a fake token included, and `static.ts` kept 4,096 characters of that stderr as the check's error. Biome labels each quoted frame with the extending file's name, `biome.json:1:1`, not the file it came from. tsc follows an `extends` too, even from a `tsconfig.json` it cannot parse, and its `Unknown compiler option` message quotes the outside file's keys. [Pull request #112](https://github.com/melian-agent/melian/pull/112) met the same class in its fallback.
+Example: the Opus review of record on [pull request #275](https://github.com/melian-agent/melian/pull/275) committed `{"extends": ["<absolute path>/environ"]}`. Biome could not parse the file and quoted it, a fake token included, under the label `biome.json:1:1`. Melian kept 4,096 characters of that stderr as the check's error. [Pull request #112](https://github.com/melian-agent/melian/pull/112) met the same class in its fallback.
+
+The first form of [pull request #282](https://github.com/melian-agent/melian/pull/282) followed each tool's `extends`, `plugins` and `references` before it ran, and refused a path outside the checkout. Its first round and Codex's review found four routes past it at once: a bare project reference, a quoted path that resolves differently, a symlink, and a source import whose types tsc quotes. A short attacking review of reading configuration from the base found four more: a committed symlink under the base's `include`, workspace `package.json` metadata, a `/// <reference path>` directive, and a symlinked configuration directory. Each tool resolves files its own way, and TypeScript 7 has no in-process API to ask. Hand-resolving what the tools read would not converge, so the check was removed.
 
 ## Decision
 
-1. Before Biome or tsc runs, Melian follows the revision's configuration through every entry that names another file it reads: `extends` and `plugins` for Biome, from every `biome.json`, `biome.jsonc`, `.biome.json` and `.biome.jsonc` the revision tracks; `extends` and `references` for tsc, from `static.tsc.project`. Each file is resolved through links. A Grit plugin is located, never parsed.
-2. A path entry must stay inside the worktree, or inside the checkout's install. A package entry must resolve to a package the install provides, which the maintainer made from the lockfile; a package the revision itself supplies, or one with a `..` segment, is refused. The classification follows each tool: Biome reads an entry ending in `.json` or `.jsonc` as a path, tsc reads one starting with `.` or `/` as a path, and any other entry is a package.
-3. A configuration file Melian cannot parse as a JSON object is refused, since Melian cannot tell what the tool would follow through it.
-4. A refusal fails the check with `CheckError` code `outsideCheckout`. The error names the configuration file and the entry, and the tool never runs, so nothing reads the named file. The review is not reviewed, as for any failed check.
-5. Biome's stderr is not stored. Because Biome labels quoted text with the extending file's name, no filter can tell an outside file's text from the revision's. The error keeps the exit code and says to run `biome lint` at the commit. tsc keeps its output on a crash: with `--pretty false` it prints no source frames, and each diagnostic names its own file, so `parseTscDiagnostics` drops one from outside the worktree.
+1. A Biome or tsc finding keeps its rule code, file, line, column and severity, never the tool's message. Its message, its explanation and its identity's discriminator are a fixed sentence naming the tool and the rule, such as "tsc reports tsc/TS2322 here. Melian keeps none of tsc's text; run tsc --noEmit at this commit to read its message." `staticFindings` in core applies it, so every stored document, the verdict JSON, `melian findings`, a published review, and the text a lens or the verifier receives carry only that sentence. Lenses and the verifier read the source line themselves.
+2. A failed Biome or tsc run keeps its exit code and a fixed sentence naming the command that shows why. Neither tool's stdout nor stderr is stored.
+3. The head's tool configuration is read as it is on `main`, so the base-versus-head comparison is unchanged.
+
+This closes every route named above, and any not yet found, because no route reaches stored text.
 
 ## What this gives up
 
-- A configuration that extends a package of the revision's own workspace, or a file Melian cannot parse, fails the check. Its maintainer can extend the file by path instead.
-- A broken `biome.json` no longer shows Biome's message in the review. Running Biome locally shows it.
-- The rule covers configuration, not source. tsc options such as `paths`, `typeRoots` and `baseUrl`, and a source file that imports a path outside the checkout, can still make tsc read such a file; a diagnostic on that file is dropped, but one on a revision file can quote a type from it. Biome's `vcs.root` can point its ignore file outside. These need their own probe and ruling.
+- A static finding no longer says what is wrong. A reader runs the tool at the commit, or reads the source line, as the lenses and the verifier do.
+- A finding identified by its message rather than its code, in a file too large to read or a symlink, now shares its identity with every other result of its rule in that file, so they merge into one counted finding.
+
+## Other static tools
+
+- Enola reads its policy from the host's trusted commit, never the head's, so a head's configuration cannot steer what it reads. Its results quote symbols from the head's sources, and a failed run keeps Enola's message. Whether Enola follows a committed symlink out of the tree has not been probed. That is a follow-up.
+- The mutation check runs the head's own tests, and only with the host's leave: a writer pushed the head, or the reviewer passed `--trust-head`. It stores the end of Stryker's output and each mutant's replacement text, and a test can print any file it can read. A head allowed to run code can already read any file the reviewer can, so withholding that text belongs with milestone 3's credential-free job. That is a follow-up too.
