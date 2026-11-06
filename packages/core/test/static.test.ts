@@ -418,6 +418,88 @@ describe("staticFindings", () => {
 		expect(findings.map((finding) => finding.properties.cause)).toEqual(["pre-existing"]);
 	});
 
+	const quote = (body: string, other = "1") =>
+		lines("export function quote(text: string) {", body, "}", `export const other = ${other};`, "");
+	async function godClasses(headFiles: Record<string, string>, rule = "god-class") {
+		const base = commit({ "src/quote.ts": quote("\treturn text;"), "src/use.ts": lines("1") });
+		const head = commit(headFiles);
+		const { revision } = await Changeset.resolve(repo, `${base}..${head}`);
+		const results = (uri: string, startLine: number) =>
+			normaliseEnolaSarif(
+				JSON.stringify({
+					version: "2.1.0",
+					runs: [
+						{
+							results: [
+								{
+									ruleId: rule,
+									level: "warning",
+									message: { text: "High fan-in symbol: quote (14 dependents)" },
+									locations: [{ physicalLocation: { artifactLocation: { uri }, region: { startLine } } }],
+								},
+							],
+						},
+					],
+				}),
+				{ root: repo, version: "0.4.27" },
+			);
+		const report = await staticFindings({
+			repoRoot: repo,
+			revision,
+			tool: "enola",
+			settings: defaultConfig.static.enola,
+			base: { ...results("src/quote.ts", 1), runs: [{ ...results("src/quote.ts", 1).runs[0], results: [] }] },
+			head: results("src/quote.ts", 1),
+		});
+		return {
+			findings: report.findings.map((finding) => [finding.ruleId, finding.properties.cause]),
+			notes: report.notes,
+		};
+	}
+
+	it("does not report enola/god-class when the change only adds callers to the symbol", async () => {
+		expect(await godClasses({ "src/use.ts": lines("quote()") })).toEqual({
+			findings: [],
+			notes: ["enola/god-class results left out, the change not editing their file: 1."],
+		});
+	});
+
+	it("still reports another Enola rule on lines the change did not edit", async () => {
+		expect(await godClasses({ "src/use.ts": lines("quote()") }, "hotspot")).toEqual({
+			findings: [["enola/hotspot", "introduced"]],
+			notes: [],
+		});
+	});
+
+	it("reports enola/god-class when the change edits the symbol itself", async () => {
+		expect(
+			await godClasses({
+				"src/quote.ts": lines(
+					"export function quote(text: unknown) {",
+					"\treturn text;",
+					"}",
+					"export const other = 1;",
+					"",
+				),
+				"src/use.ts": lines("quote()"),
+			}),
+		).toEqual({ findings: [["enola/god-class", "introduced"]], notes: [] });
+	});
+
+	it("reports enola/god-class when the change edits only the symbol's body, below the line Enola names", async () => {
+		expect(await godClasses({ "src/quote.ts": quote("\treturn text.trim();") })).toEqual({
+			findings: [["enola/god-class", "introduced"]],
+			notes: [],
+		});
+	});
+
+	it("keeps enola/god-class when the change edits its file beside the symbol", async () => {
+		expect(await godClasses({ "src/quote.ts": quote("\treturn text;", "2") })).toEqual({
+			findings: [["enola/god-class", "introduced"]],
+			notes: [],
+		});
+	});
+
 	it("fails rather than guess when a result's file cannot be read", async () => {
 		const base = commit({ "src/a.ts": lines("a") });
 		const head = commit({ "src/a.ts": lines("b") });

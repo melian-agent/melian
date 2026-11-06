@@ -107,7 +107,7 @@ describe("reading markers back", () => {
 	const wanted = { fingerprint, round: 1 };
 	const finding = "fedcba9876543210";
 	const secret = "11".repeat(32);
-	const none = { threads: {}, replies: {} };
+	const none = { threads: {}, replies: {}, listed: [] };
 	const review = (id: number, login: string, opening: string) => ({
 		id,
 		user: { login },
@@ -140,6 +140,7 @@ describe("reading markers back", () => {
 		const github = providerFor(state);
 		// A reply is found by its finding, its thread, and the dismissal it gave, so a second reason is a reply of its own.
 		expect(await github.findPublished(7, head, wanted, secret)).toEqual({
+			listed: [],
 			review: "1",
 			threads: { [finding]: "2" },
 			replies: { [`${finding} 2`]: "3", [`${finding} 2 ${version}`]: "4" },
@@ -162,6 +163,34 @@ describe("reading markers back", () => {
 		state.comments.push(comment(5, state.login, marker(head, "finding", finding, secret), 4));
 
 		expect(await providerFor(state).findPublished(7, head, wanted, secret)).toEqual(none);
+	});
+
+	it("lists a finding a review body shows only when the review is the token's own and the marker verifies", async () => {
+		const state = pullRequestState();
+		const verdict = marker(head, "verdict", fingerprint, secret, { round: 1 });
+		const listed = marker(head, "finding", finding, secret);
+		state.reviews.push(review(1, "pull-request-author", `${verdict}\n${listed}`));
+		state.reviews.push(
+			review(2, state.login, `${verdict}\n${marker(head, "finding", "0123456789abcdef", "22".repeat(32))}`),
+		);
+		expect(await providerFor(state).findPublished(7, head, wanted, secret)).toMatchObject({ listed: [] });
+		state.reviews.push({ ...review(4, "ghost", `${verdict}\n${listed}`), user: null });
+		expect(await providerFor(state).findPublished(7, head, wanted, secret)).toMatchObject({ listed: [] });
+		state.reviews.push(review(3, state.login, `${verdict}\n${listed}`));
+		expect(await providerFor(state).findPublished(7, head, wanted, secret)).toMatchObject({ listed: [finding] });
+	});
+
+	it("lists nothing when it cannot tell who it posts as, so a marker replayed from the ledger hides no advisory", async () => {
+		const state = pullRequestState();
+		state.failUser = true;
+		const verdict = marker(head, "verdict", fingerprint, secret, { round: 1 });
+		state.reviews.push(review(1, "pull-request-author", `${verdict}\n${marker(head, "finding", finding, secret)}`));
+		// A deleted account's review has no author at all, and no more says who posted it.
+		state.reviews.push({
+			...review(2, "ghost", `${verdict}\n${marker(head, "finding", finding, secret)}`),
+			user: null,
+		});
+		expect(await providerFor(state).findPublished(7, head, wanted, secret)).toMatchObject({ listed: [] });
 	});
 
 	it("also requires the token's own user when it knows who that is", async () => {
@@ -1225,6 +1254,7 @@ describe("cross-head answer discovery", () => {
 		);
 		const result = await providerFor(state).findPublished(7, head, wanted, secret);
 		expect(result).toEqual({
+			listed: [],
 			threads: {},
 			replies: { "fedcba9876543210 1": "1", "0123456789abcdef 2 00112233aabbccdd": "6" },
 		});
@@ -1261,6 +1291,7 @@ describe("cross-head answer discovery", () => {
 			user: { login: "human" },
 		});
 		expect(await providerFor(state).findPublished(7, old, wanted, secret)).toEqual({
+			listed: [],
 			review: "1",
 			threads: { [finding]: "1" },
 			replies: {},
@@ -1314,6 +1345,7 @@ describe("cross-head answer discovery", () => {
 		state.reviews.push(review);
 		state.comments.push({ ...root(1), body: marker(old, kind, "fedcba9876543210", secret) });
 		expect(await providerFor(state).findPublished(7, old, wanted, secret)).toEqual({
+			listed: [],
 			review: "1",
 			threads: {},
 			replies: {},
@@ -1326,6 +1358,7 @@ describe("cross-head answer discovery", () => {
 		state.reviews.push(review);
 		state.comments.push({ ...root(1), body: marker(old, "finding", "fedcba9876543210", "22".repeat(32)) });
 		expect(await providerFor(state).findPublished(7, old, wanted, secret)).toEqual({
+			listed: [],
 			review: "1",
 			threads: {},
 			replies: {},
@@ -1338,6 +1371,7 @@ describe("cross-head answer discovery", () => {
 		state.reviews.push(review);
 		state.comments.push({ ...root(1), user: null });
 		expect(await providerFor(state).findPublished(7, old, wanted, secret)).toEqual({
+			listed: [],
 			review: "1",
 			threads: {},
 			replies: {},
@@ -1357,6 +1391,7 @@ describe("cross-head answer discovery", () => {
 			},
 		);
 		expect(await providerFor(state).findPublished(7, old, wanted, secret)).toEqual({
+			listed: [],
 			review: "1",
 			threads: {},
 			replies: {},
@@ -1481,6 +1516,7 @@ describe("cross-head answer discovery", () => {
 		state.reviews.push(review);
 		state.comments.push(first, { ...root(2), user: null });
 		expect(await providerFor(state).findPublished(7, old, wanted, secret)).toEqual({
+			listed: [],
 			review: "1",
 			threads: { fedcba9876543210: "1" },
 			replies: {},

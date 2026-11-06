@@ -1,4 +1,4 @@
-import { Adjudication, defaultConfig, Finding, type FindingInput } from "@melian-agent/core";
+import { Adjudication, type CheckRecord, defaultConfig, Finding, type FindingInput } from "@melian-agent/core";
 import {
 	blobUrl,
 	createGitHubProvider,
@@ -648,12 +648,22 @@ describe("markers", () => {
 		expect(body).toContain("**passed**");
 	});
 
+	it("renders a passed review as its outcome, one sentence and the folded status, with no tally and nothing more", () => {
+		expect(bodyOf(noted())).toBe(
+			[
+				`${marker(revision, "verdict", "0123456789abcdef", secret, { round: 1 })}\nMelian reviewed \`aaaaaaaaaaaa\`: **passed**.`,
+				"No findings need attention.",
+				"<details>\n<summary>Verification and status</summary>\n\nmelian/review: success (Passed).\n\n</details>",
+			].join("\n\n"),
+		);
+	});
+
 	it("states a note that lowers the review's reach once, however many lenses carry it", () => {
 		const caveat = "callers were unavailable for every changed site, so no lens saw who calls the changed code";
 		const body = bodyOf(noted([caveat]));
 
 		expect(body.split(caveat)).toHaveLength(2);
-		expect(body).toContain(`\n\nReach: ${caveat}.\n\nmelian/review:`);
+		expect(body).toContain(`</details>\n\nReach: ${caveat}.`);
 		expect(body).not.toContain("Callers unavailable for");
 	});
 
@@ -663,7 +673,7 @@ describe("markers", () => {
 		const body = bodyOf(noted([caveat]));
 
 		expect(body).toContain(
-			"\n\nReach: callers were unavailable for every changed site: @\u2060octocat \\[log in\\]\\(https:\u2060//evil.test\\) \\# Approved &lt;b&gt;.\n\nmelian/review:",
+			"</details>\n\nReach: callers were unavailable for every changed site: @\u2060octocat \\[log in\\]\\(https:\u2060//evil.test\\) \\# Approved &lt;b&gt;.",
 		);
 		expect(body).not.toContain("\n# Approved");
 	});
@@ -723,7 +733,7 @@ describe("markers", () => {
 		};
 
 		const body = renderReviewBody(draft, links);
-		const small = renderReviewBody(draft, links, { limit: 400 });
+		const small = renderReviewBody(draft, links, { limit: 500 });
 		const tiny = renderReviewBody(draft, links, { limit: 260 });
 
 		expect(body.length).toBeLessThanOrEqual(maxBodyLength);
@@ -733,7 +743,7 @@ describe("markers", () => {
 		expect(body).toContain(
 			`${12 - kept} findings did not fit in this review; \`melian findings "#7"\` lists them all.`,
 		);
-		expect(small.length).toBeLessThanOrEqual(400);
+		expect(small.length).toBeLessThanOrEqual(500);
 		expect(small).toContain(`12 findings did not fit in this review;`);
 		expect(tiny.length).toBeLessThanOrEqual(260);
 		expect(tiny.split("\n")[0]).toBe(marker(revision, "verdict", "0123456789abcdef", secret, { round: 1 }));
@@ -861,7 +871,7 @@ describe("an important pre-existing finding that only its floor lifts", () => {
 	it("counts the ordinary findings beside it, and not the member", () => {
 		const verdict = decide([old, plain]);
 		const body = bodyOf(verdict, verdict.attention());
-		expect(body).toContain("1 finding needs attention: 1 advisory.");
+		expect(body).toContain("No blocking findings, 1 advisory.");
 		expect(verdict.counted().map((finding) => finding.id)).toEqual([plain.id]);
 		expect(verdict.reviewStatus()).toEqual({ state: "success", description: "1 finding, none blocking" });
 	});
@@ -874,7 +884,7 @@ describe("an important pre-existing finding that only its floor lifts", () => {
 			config: defaultConfig,
 		}).adjudicate();
 		expect(verdict.preExistingImportant).toEqual([{ id: old.id, state: "new", originalSeverity: "P0" }]);
-		expect(bodyOf(verdict, verdict.attention())).toContain("1 finding needs attention: 1 advisory.");
+		expect(bodyOf(verdict, verdict.attention())).toContain("No blocking findings, 1 advisory.");
 		expect(verdict.counted()).toHaveLength(1);
 	});
 
@@ -1014,6 +1024,15 @@ describe("a quiet review body", () => {
 	};
 	const shared = "The deployment always sets these values.";
 
+	it("keeps the status in a body the limit cuts from the end", () => {
+		const dismissed = Array.from({ length: 70 }, (_, index) =>
+			dismissedAs(`src/d${index}.ts`, `${index} ${"r".repeat(1000)}`),
+		);
+		const body = bodyOf(dismissed);
+		expect(body).toContain("This review was cut to fit GitHub's limit");
+		expect(body).toContain("melian/review: success (0 findings, 70 dismissed).");
+	});
+
 	it("lists dismissals that share a reason once, under the reason, and one with its own reason on its line", () => {
 		const group = ["src/a.ts", "src/b.ts", "src/c.ts"].map((file) => dismissedAs(file, shared));
 		const own = dismissedAs("src/d.ts", "Covered by the integration suite.");
@@ -1040,14 +1059,18 @@ describe("a quiet review body", () => {
 		const body = bodyOf([blocker, ...advisories, ...dismissed], [blocker]);
 
 		const folds = [...body.matchAll(/<details>\n<summary>([^<]*)<\/summary>([\s\S]*?)<\/details>/g)];
-		expect(folds.map(([, summary]) => summary)).toEqual(["3 dismissed, 1 reason", "2 advisories"]);
+		expect(folds.map(([, summary]) => summary)).toEqual([
+			"Verification and status",
+			"3 dismissed, 1 reason",
+			"2 advisories",
+		]);
 		const folded = folds.map(([whole]) => whole).join("\n");
 		expect(folded).not.toContain(blocker.id);
 		expect(body).toContain(blocker.id);
-		for (const advisory of advisories) expect(folds[1]![2]).toContain(advisory.id);
+		for (const advisory of advisories) expect(folds[2]![2]).toContain(advisory.id);
 		// Each folded advisory keeps its marker on a line of its own, so a rerun still finds what it posted.
-		expect(markersIn(folds[1]![2]!).map(({ id }) => id)).toEqual(advisories.map(({ id }) => id));
-		for (const finding of dismissed) expect(folds[0]![2]).toContain(finding.id);
+		expect(markersIn(folds[2]![2]!).map(({ id }) => id)).toEqual(advisories.map(({ id }) => id));
+		for (const finding of dismissed) expect(folds[1]![2]).toContain(finding.id);
 	});
 
 	it("counts every dismissed report the fold lists, merged members included", () => {
@@ -1118,5 +1141,301 @@ describe("a quiet review body", () => {
 		const body = bodyOf([advisory]);
 		expect(body).not.toContain("### ");
 		expect(body).toContain("<summary>1 advisory</summary>");
+	});
+});
+
+describe("an all-advisory review", () => {
+	const advisoryVerdict = () => {
+		const fresh = Finding.create({ ...input, severity: "P3" });
+		const earlier = Finding.create({ ...input, severity: "P3", file: "src/earlier.ts" });
+		const verdict = new Adjudication({
+			findings: [fresh, earlier],
+			manifest: [],
+			checks: [{ name: "verifier", status: "ran" }],
+			config: defaultConfig,
+		}).adjudicate();
+		return { verdict, fresh: verdict.defect(fresh.id)!.speaker, earlier: earlier.id };
+	};
+
+	it("opens with no blocking findings, folds the verification tally and the status, and lists only the new advisory", () => {
+		const { verdict, fresh, earlier } = advisoryVerdict();
+		const draft = {
+			pullRequest: 7,
+			revision,
+			base,
+			fingerprint: verdict.fingerprint(),
+			round: 1,
+			verdict,
+			findings: [{ finding: fresh, placement: { kind: "lines" as const, startLine: 12, line: 12 } }],
+			stillOpen: 1,
+			listed: [earlier],
+			resolved: [],
+			secret,
+		};
+		const entry = ReviewComment.from(fresh).render({ revision, base, links, secret });
+		expect(renderReviewBody(draft, links)).toBe(
+			[
+				`${marker(revision, "verdict", verdict.fingerprint(), secret, { round: 1 })}\nMelian reviewed \`aaaaaaaaaaaa\`: **findings**.`,
+				"No blocking findings, 2 advisories, 1 carried from earlier.",
+				[
+					"<details>",
+					"<summary>Verification and status</summary>",
+					"",
+					`Verification: ${verdict.verificationSummary()}; 0 refuted findings not posted.`,
+					"",
+					"melian/review: success (2 findings, none blocking).",
+					"",
+					"</details>",
+				].join("\n"),
+				`<details>\n<summary>1 advisory</summary>\n\n${entry}\n\n</details>`,
+			].join("\n\n"),
+		);
+	});
+
+	it.each([
+		["not reviewed", ["lens.design"], "**not reviewed**.\n\n2 findings need attention: 2 advisory."],
+		["findings", [], "**findings**.\n\nNo blocking findings, 2 advisories."],
+	])("gives a review whose status is %s the header it reads as", (_, manifest, header) => {
+		const verdict = new Adjudication({
+			findings: [
+				Finding.create({ ...input, severity: "P3" }),
+				Finding.create({ ...input, severity: "P3", file: "src/other.ts" }),
+			],
+			manifest,
+			checks: [],
+			config: defaultConfig,
+		}).adjudicate();
+		const body = renderReviewBody(
+			{
+				pullRequest: 7,
+				revision,
+				base,
+				fingerprint: verdict.fingerprint(),
+				round: 1,
+				verdict,
+				findings: [],
+				stillOpen: 0,
+				resolved: [],
+				secret,
+			},
+			links,
+		);
+		expect(body).toContain(header);
+	});
+
+	it("keeps the still-open sentence when something needs acknowledgement", () => {
+		const { verdict } = advisoryVerdict();
+		const acknowledged = new Adjudication({
+			findings: [...verdict.all(), Finding.create({ ...input, severity: "P2", file: "src/ack.ts" })],
+			manifest: [],
+			checks: [],
+			config: defaultConfig,
+		}).adjudicate();
+		const body = renderReviewBody(
+			{
+				pullRequest: 7,
+				revision,
+				base,
+				fingerprint: acknowledged.fingerprint(),
+				round: 1,
+				verdict: acknowledged,
+				findings: [],
+				stillOpen: 2,
+				resolved: [],
+				secret,
+			},
+			links,
+		);
+		expect(body).toContain(
+			"3 findings need attention: 1 acknowledge, 2 advisory. 2 of them were posted on an earlier revision.",
+		);
+		expect(body).not.toContain("No blocking findings");
+	});
+
+	it("posts a finding's lines without a lifecycle status beside the cause", () => {
+		const { fresh } = advisoryVerdict();
+		const advisory = ReviewComment.from(fresh).render({ revision, base, links, secret });
+		expect(advisory.split("\n").at(-1)).toMatch(new RegExp(`\\| Finding \`${fresh.id}\`$`));
+		const blocking = Finding.create(input);
+		const comment = ReviewComment.from(blocking, { kind: "lines", startLine: 12, line: 12 }).render({
+			revision,
+			base,
+			links,
+			secret,
+		});
+		expect(comment.split("\n").at(-1)).toBe(`Rule \`no-eval\` | Finding \`${blocking.id}\``);
+		for (const posted of [advisory, comment]) expect(posted).not.toContain("Status");
+	});
+
+	it("states the verifier's tally when one finding of several carries a verdict, though no verifier record ran", () => {
+		const judged = Finding.create({ ...input, severity: "P3" });
+		const verified = Finding.from({
+			...judged.toJSON(),
+			properties: {
+				...judged.properties,
+				verification: {
+					verdict: "confirmed",
+					reason: "It is.",
+					executor: "llm",
+					model: "openai/gpt",
+					version: "1",
+				},
+			},
+		});
+		const unjudged = Finding.create({ ...input, severity: "P3", file: "src/other.ts" });
+		const verdict = new Adjudication({
+			findings: [verified, unjudged],
+			manifest: [],
+			checks: [],
+			config: defaultConfig,
+		}).adjudicate();
+		const body = renderReviewBody(
+			{
+				pullRequest: 7,
+				revision,
+				base,
+				fingerprint: verdict.fingerprint(),
+				round: 1,
+				verdict,
+				findings: [],
+				stillOpen: 0,
+				resolved: [],
+				secret,
+			},
+			links,
+		);
+		expect(body).toContain(
+			`<summary>Verification and status</summary>\n\nVerification: ${verdict.verificationSummary()}; 0 refuted findings not posted.`,
+		);
+	});
+
+	it("reads back only the advisories a cut body listed, and lists the rest on the next revision", async () => {
+		const state = fakeState(
+			"melian-agent",
+			"example",
+			{ number: 7, title: "Change", base: { ref: "main", sha: base }, head: { ref: "feature", sha: revision } },
+			{ "src/run.ts": [[12, 12]] },
+		);
+		const provider = createGitHubProvider({
+			owner: state.owner,
+			repo: state.repo,
+			token: "t",
+			fetch: fakeGitHub(state),
+		});
+		const many = Array.from({ length: 40 }, (_, index) =>
+			Finding.create({
+				...input,
+				severity: "P3",
+				snippet: `eval(input${index})`,
+				message: `${"x".repeat(2000)} ${index}`,
+			}),
+		);
+		const verdict = new Adjudication({
+			findings: many,
+			manifest: [],
+			checks: [],
+			config: defaultConfig,
+		}).adjudicate();
+		const draft = {
+			pullRequest: 7,
+			revision,
+			base,
+			fingerprint: verdict.fingerprint(),
+			round: 1,
+			verdict,
+			findings: verdict.findings.advisory.map((finding) => ({ finding, placement: { kind: "body" as const } })),
+			stillOpen: 0,
+			resolved: [],
+			secret,
+		};
+		await provider.postReview(draft);
+		const shown = markersIn(state.reviews[0]!.body)
+			.filter(({ kind }) => kind === "finding")
+			.map(({ id }) => id);
+		expect(shown.length).toBeGreaterThan(0);
+		expect(shown.length).toBeLessThan(40);
+		const { listed } = await provider.findPublished(
+			7,
+			revision,
+			{ fingerprint: verdict.fingerprint(), round: 1 },
+			secret,
+		);
+		expect(listed).toEqual(shown);
+		const next = renderReviewBody({ ...draft, round: 2, findings: [], stillOpen: 40, listed: listed! }, links);
+		const unseen = verdict.findings.advisory.map(({ id }) => id).filter((id) => !shown.includes(id));
+		expect(
+			markersIn(next)
+				.filter(({ kind }) => kind === "finding")
+				.map(({ id }) => id),
+		).toEqual(unseen);
+		expect(next).toContain(`No blocking findings, 40 advisories, ${shown.length} carried from earlier.`);
+	});
+});
+
+describe("the status fold", () => {
+	const bodyFor = (checks: CheckRecord[], limit?: number) => {
+		const verdict = new Adjudication({ findings: [], manifest: [], checks, config: defaultConfig }).adjudicate();
+		return renderReviewBody(
+			{
+				pullRequest: 7,
+				revision,
+				base,
+				fingerprint: "0123456789abcdef",
+				round: 1,
+				verdict,
+				findings: [],
+				stillOpen: 0,
+				resolved: [],
+				secret,
+			},
+			links,
+			limit === undefined ? {} : { limit },
+		);
+	};
+
+	it("keeps the status when a check's reason alone would fill the body, and caps the reason it shows", () => {
+		const body = bodyFor([{ name: "lens.design", status: "failed", reason: "r".repeat(65_000) }]);
+		expect(body.length).toBeLessThanOrEqual(maxBodyLength);
+		const status = body.split("\n").find((line) => line.startsWith("melian/review:"));
+		expect(status).toBeDefined();
+		expect(status!.length).toBeLessThan(400);
+		expect(status).toContain('`melian findings "#7"` shows it whole');
+	});
+
+	it("shows a status description of 200 characters whole, and cuts one of 201", () => {
+		const description = (reason: string) =>
+			new Adjudication({
+				findings: [],
+				manifest: [],
+				checks: [{ name: "lens.design", status: "failed", reason }],
+				config: defaultConfig,
+			})
+				.adjudicate()
+				.reviewStatus().description;
+		const fixed = [...description("r")].length - 1;
+		const at = (length: number) =>
+			bodyFor([{ name: "lens.design", status: "failed", reason: "r".repeat(length - fixed) }])
+				.split("\n")
+				.find((line) => line.startsWith("melian/review:"))!;
+		expect([...description("r".repeat(200 - fixed))]).toHaveLength(200);
+		expect(at(200)).not.toContain("shows it whole");
+		expect(at(200)).not.toContain("…");
+		expect(at(201)).toContain(`${"r".repeat(10)}…; \`melian findings "#7"\` shows it whole).`);
+	});
+
+	it("keeps the status beneath 80 long caveats", () => {
+		const caveats = Array.from({ length: 80 }, (_, index) => `${index} ${"c".repeat(1000)}`);
+		const body = bodyFor([{ name: "lens.correctness", status: "ran", level: "careful", caveats }]);
+		expect(body.length).toBeLessThanOrEqual(maxBodyLength);
+		expect(body).toContain("melian/review: success (Passed).");
+	});
+
+	it("keeps the whole fold when the limit would otherwise cut inside it", () => {
+		const caveats = Array.from({ length: 3 }, (_, index) => `${index} ${"c".repeat(1000)}`);
+		const body = bodyFor([{ name: "lens.correctness", status: "ran", level: "careful", caveats }], 900);
+		expect(body.length).toBeLessThanOrEqual(900);
+		expect(body).toContain(
+			"<summary>Verification and status</summary>\n\nmelian/review: success (Passed).\n\n</details>",
+		);
 	});
 });
