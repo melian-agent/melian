@@ -35,6 +35,8 @@ type Scenario = {
 	timeline: Item[];
 	permissions: Record<string, Permission | string>;
 	fail?: { add?: number; remove?: number };
+	// The status GitHub answers when asked for the comment that started the run; it exists unless this is set.
+	trigger_status?: number;
 };
 
 class HttpError extends Error {
@@ -95,6 +97,11 @@ async function run(scenario: Scenario) {
 							labels: scenario.labels.map((name) => ({ name })),
 						},
 					};
+				},
+				getComment: async (params: unknown) => {
+					exact(params, { owner: OWNER, repo: REPO, comment_id: scenario.trigger.id });
+					if (scenario.trigger_status) throw new HttpError(scenario.trigger_status);
+					return { data: asComment(scenario.trigger) };
 				},
 				listEventsForTimeline: async (params: unknown) => {
 					exact(params, { ...issueParams, per_page: 100 });
@@ -395,7 +402,28 @@ describe("claim workflow script", () => {
 	it("fails, naming the comment, when the timeline does not yet hold the comment that started the run", async () => {
 		const mine = say(20, "builder", 5);
 		const scenario = claimScenario({ trigger: mine, timeline: [label(READY, 0), say(10, "other", 2, "Thanks!")] });
-		await expect(run(scenario)).rejects.toThrow(`The timeline does not yet hold ${commentUrl(20)}`);
+		await expect(run(scenario)).rejects.toThrow(
+			`The timeline does not yet hold ${commentUrl(20)}; rerun this job, or post another comment.`,
+		);
+		expect(scenario.labels).toEqual(["plan step", READY]);
+	});
+
+	it("reconciles from the timeline as it stands when the comment that started the run was deleted", async () => {
+		const gone = say(30, "stranger", 9, "Thanks!");
+		const timeline = [label(READY, 0), say(20, "builder", 5)];
+		const { writes, infos } = await run(claimScenario({ trigger: gone, timeline, trigger_status: 404 }));
+		expect(writes).toEqual(toInProgress);
+		expect(infos).toEqual([decidedBy(20)]);
+	});
+
+	it("fails without writing when GitHub errs on the comment that started the run", async () => {
+		const gone = say(30, "stranger", 9, "Thanks!");
+		const scenario = claimScenario({
+			trigger: gone,
+			timeline: [label(READY, 0), say(20, "builder", 5)],
+			trigger_status: 500,
+		});
+		await expect(run(scenario)).rejects.toThrow("HTTP 500");
 		expect(scenario.labels).toEqual(["plan step", READY]);
 	});
 

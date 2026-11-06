@@ -55,8 +55,16 @@ jobs:
             // progress, and a writer's release after that for ready again. Removals, in-progress labels and this
             // workflow's own label events change nothing.
             const timeline = await github.paginate(github.rest.issues.listEventsForTimeline, { owner, repo, issue_number, per_page: 100 });
+            // A deleted comment never reaches the timeline, so only a comment GitHub still holds is lag.
             if (!timeline.some((item) => item.event === "commented" && item.id === comment.id)) {
-              throw new Error(`The timeline does not yet hold ${comment.html_url}; rerun this job.`);
+              const deleted = await github.rest.issues.getComment({ owner, repo, comment_id: comment.id }).then(
+                () => false,
+                (error) => {
+                  if (error.status !== 404) throw error;
+                  return true;
+                },
+              );
+              if (!deleted) throw new Error(`The timeline does not yet hold ${comment.html_url}; rerun this job, or post another comment.`);
             }
             let want;
             let by;
