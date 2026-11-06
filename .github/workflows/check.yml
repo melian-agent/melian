@@ -68,3 +68,50 @@ jobs:
           grep -q 'tool enola.*not yet fetched' "$RUNNER_TEMP/doctor.out"
       - name: Fail if check rewrote files
         run: git diff --exit-code
+
+  # Linux skips the tests that need sandbox-exec or a BSD ps, so only this job runs the Codex seatbelt profile and the
+  # mutation supervisor against real processes.
+  check-macos:
+    name: check (macos, 24)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - if: github.event_name != 'push'
+        run: git fetch --no-tags origin +main:refs/remotes/origin/main
+      # The seatbelt suite skips its ssh-agent test unless launchd holds an agent socket.
+      - name: Start an ssh agent for launchd
+        run: |
+          eval "$(ssh-agent -s)"
+          launchctl setenv SSH_AUTH_SOCK "$SSH_AUTH_SOCK"
+      - run: npm run check -- --reporter=default --reporter=json --outputFile.json="$RUNNER_TEMP/vitest.json"
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          MELIAN_SANDBOX_NETWORK: "1"
+      # Every test must pass here except the allowlist, so a new platform-gated test cannot skip unseen, and each named
+      # suite must be present and pass whole.
+      - name: Fail if a test skipped outside the allowlist
+        run: |
+          jq -e -r --arg root "$GITHUB_WORKSPACE" '
+            [.testResults[] | (.name | ltrimstr($root + "/")) as $file
+              | .assertionResults[] | {id: ([$file] + .ancestorTitles + [.title] | join(" > ")), file: $file, status}] as $tests
+            | ["scripts/codex-sandboxed.test.mjs", "packages/pipeline/test/mutation-process-real.test.ts"] as $suites
+            # Only root can give a file to another user, and the runner is not root.
+            | ["packages/core/test/secrets.test.ts > loadSecrets > refuses a command in a file another user owns, advising chown"] as $allowed
+            | [$suites[] as $suite | [$tests[] | select(.file == $suite)]
+                | {suite: $suite, passed: (map(select(.status == "passed")) | length), total: length}] as $counts
+            | [$tests[] | select(.status != "passed") | .allowed = (.status == "skipped" and (.id | IN($allowed[])))] as $unpassed
+            | ($counts[] | "\(.suite): \(.passed) of \(.total) passed"),
+              ($unpassed[] | "\(if .allowed then "allowed" else "not allowed" end) (\(.status)): \(.id)"),
+              (if ($counts | all(.total > 0 and .passed == .total)) and ($unpassed | all(.allowed))
+                then "\($tests | length) tests: every one passed or is allowlisted"
+                else error("a named suite is missing or incomplete, or a test outside the allowlist did not pass") end)
+          ' "$RUNNER_TEMP/vitest.json"
+      - name: Fail if check rewrote files
+        run: git diff --exit-code
