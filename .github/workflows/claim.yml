@@ -70,10 +70,15 @@ jobs:
                 }
               }
             }
-            if (want === undefined) return core.info("The claim rules call for no status label here.");
+            const labels = current.labels.map((label) => label.name);
+            if (want === undefined) {
+              for (const name of [READY, IN_PROGRESS]) {
+                if (labels.includes(name)) await github.rest.issues.removeLabel({ owner, repo, issue_number, name });
+              }
+              return core.info("No writer's ready label opens this issue, so it carries no status label.");
+            }
 
             const unwanted = want === READY ? IN_PROGRESS : READY;
-            const labels = current.labels.map((label) => label.name);
             if (!labels.includes(want)) await github.rest.issues.addLabels({ owner, repo, issue_number, labels: [want] });
             if (labels.includes(unwanted)) await github.rest.issues.removeLabel({ owner, repo, issue_number, name: unwanted });
             core.info(`The issue reads "${want}", from ${by}.`);

@@ -255,8 +255,40 @@ describe("claim workflow script", () => {
 
 	it("ignores a claim when no event ever labelled the issue ready", async () => {
 		const mine = say(20, "builder", 5);
-		const { writes } = await run(claimScenario({ timeline: [label("plan step", 0), mine] }));
+		const { writes } = await run(claimScenario({ timeline: [label("plan step", 0), mine], labels: ["plan step"] }));
 		expect(writes).toEqual([]);
+	});
+
+	it("clears both status labels when no writer's ready label opens the issue", async () => {
+		const mine = say(20, "builder", 5);
+		const { writes, labels } = await run(
+			claimScenario({ timeline: [label("plan step", 0), mine], labels: ["plan step", READY, IN_PROGRESS] }),
+		);
+		expect(writes).toEqual([
+			["remove", READY],
+			["remove", IN_PROGRESS],
+		]);
+		expect(labels).toEqual(["plan step"]);
+	});
+
+	it("clears the in-progress label once its labeller loses write, until a writer marks the issue ready again", async () => {
+		const permissions = { maintainer: "read", builder: "write", lead: "admin" };
+		const thanks = say(30, "stranger", 9, "Thanks!");
+		const scenario = claimScenario({
+			trigger: thanks,
+			timeline: [label(READY, 0), say(20, "builder", 5), ...claimed(6), thanks],
+			labels: ["plan step", IN_PROGRESS],
+			permissions,
+		});
+		const first = await run(scenario);
+		expect(first.writes).toEqual([["remove", IN_PROGRESS]]);
+		const mine = say(40, "builder", 20);
+		scenario.trigger = mine;
+		scenario.timeline.push(label(READY, 15, "lead"), mine);
+		scenario.labels.push(READY);
+		const second = await run(scenario);
+		expect(second.writes).toEqual(toInProgress);
+		expect(second.infos).toEqual([decidedBy(40)]);
 	});
 
 	it("opens nothing on a triage user's ready label, and opens on a writer's later one", async () => {
@@ -270,7 +302,7 @@ describe("claim workflow script", () => {
 		const shut = await run(
 			claimScenario({ trigger: early, timeline: [label(READY, 0, "triager"), early], permissions }),
 		);
-		expect(shut.writes).toEqual([]);
+		expect(shut.writes).toEqual([["remove", READY]]);
 		const timeline = [label(READY, 0, "triager"), early, label(READY, 3), mine];
 		const { writes, infos } = await run(claimScenario({ timeline, permissions }));
 		expect(writes).toEqual(toInProgress);
