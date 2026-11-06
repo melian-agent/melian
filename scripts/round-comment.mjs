@@ -1,6 +1,6 @@
 // Writes the pull request comment for a round the melian-round workflow ran, or with --fence prints a file fenced for
 // the job summary.
-// Usage: node scripts/round-comment.mjs --verdict <file> --rounds <file> --exit <code> --run-url <url> --run-id <id> --base <sha>
+// Usage: node scripts/round-comment.mjs --verdict <file> --rounds <file> --exit <code> --run-url <url> --run-id <id> --nonce <hex> --base <sha>
 //          --head <sha> --merge-base <sha> [--current-base <sha> --current-head <sha>]
 //        A missing current base or head means the pull request could not be read again.
 //        node scripts/round-comment.mjs --fence <file>
@@ -12,7 +12,7 @@ import { fenced, RoundComment } from "./round.mjs";
 // A step summary holds 1 MiB of UTF-8 and fences two files. A UTF-16 code unit is at most three bytes of UTF-8, so
 // 170,000 of them fit twice.
 const summaryBudget = 170_000;
-const required = ["verdict", "rounds", "exit", "run-url", "run-id", "base", "head", "merge-base"];
+const required = ["verdict", "rounds", "exit", "run-url", "run-id", "nonce", "base", "head", "merge-base"];
 const names = [...required, "current-base", "current-head"];
 
 if (process.argv[2] === "--fence") {
@@ -42,6 +42,7 @@ if (process.argv[2] === "--fence") {
 		exitCode: values.exit,
 		runUrl: values["run-url"],
 		runId: values["run-id"],
+		nonce: values.nonce,
 		base: values.base,
 		head: values.head,
 		mergeBase: values["merge-base"],

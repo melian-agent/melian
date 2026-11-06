@@ -10,11 +10,12 @@ const script = fileURLToPath(new URL("./round-comment.mjs", import.meta.url));
 const goldenJson = fileURLToPath(new URL("../packages/core/test/golden/verdict.json", import.meta.url));
 const golden = JSON.parse(readFileSync(goldenJson, "utf8"));
 const run = "https://github.com/melian-agent/melian/actions/runs/1";
+const nonce = "0123456789abcdef0123456789abcdef";
 const base = "b".repeat(40);
 const head = "0123456789abcdef0123456789abcdef01234567";
 const ids = [...golden.findings.block, ...golden.findings.acknowledge].map((finding) => finding.properties.id);
 const header = (exit) =>
-	`${marker("1")}\nMelian round on \`bbbbbbbbbbbb\`...\`0123456789ab\`, exit ${exit}: [run](${run})`;
+	`${marker("1", nonce)}\nMelian round on \`bbbbbbbbbbbb\`...\`0123456789ab\`, exit ${exit}: [run](${run})`;
 const scratch = [];
 
 function directory() {
@@ -53,6 +54,7 @@ const comment = (value, exitCode, current = { base, head }, reviewed = { base: m
 		exitCode,
 		runUrl: run,
 		runId: "1",
+		nonce,
 		base,
 		head,
 		mergeBase,
@@ -73,6 +75,7 @@ const read = (options) =>
 		exitCode: "2",
 		runUrl: run,
 		runId: "1",
+		nonce,
 		base,
 		head,
 		mergeBase,
@@ -382,6 +385,7 @@ describe("RoundComment", () => {
 				exitCode: "1",
 				runUrl: run,
 				runId: "1",
+				nonce,
 				base,
 				head,
 				mergeBase,
@@ -409,6 +413,7 @@ describe("RoundComment", () => {
 			exitCode: "0",
 			runUrl: run,
 			runId: "1",
+			nonce,
 			base,
 			head,
 		}).body();
@@ -444,11 +449,23 @@ describe("RoundComment", () => {
 		}
 	});
 
-	it("opens with a marker naming its run, by which a rerun finds the comment", () => {
-		expect(comment(undefined, "none").startsWith("<!-- melian-round run:1 -->\nMelian round on ")).toBe(true);
-		expect(marker("12345")).toBe("<!-- melian-round run:12345 -->");
+	it("opens with a marker naming its run and its nonce, by which a rerun finds the comment", () => {
+		expect(
+			comment(undefined, "none").startsWith(`<!-- melian-round run:1 nonce:${nonce} -->\nMelian round on `),
+		).toBe(true);
+		expect(marker("12345", nonce)).toBe(`<!-- melian-round run:12345 nonce:${nonce} -->`);
 		for (const runId of ["", "12a", "1 2", undefined])
-			expect(marker(runId), String(runId)).toBe("<!-- melian-round run:unknown -->");
+			expect(marker(runId, nonce), String(runId)).toBe(`<!-- melian-round run:unknown nonce:${nonce} -->`);
+		for (const bad of [
+			"",
+			`${nonce}0`,
+			`0${nonce}`,
+			nonce.slice(1),
+			nonce.toUpperCase(),
+			`${nonce.slice(1)}g`,
+			undefined,
+		])
+			expect(marker("1", bad), String(bad)).toBe("<!-- melian-round run:1 nonce:unknown -->");
 	});
 });
 
@@ -498,7 +515,20 @@ describe("fenced", () => {
 describe("the command", () => {
 	it("prints a comment from its files, and refuses to run without every option", () => {
 		const rounds = roundsFile();
-		const options = ["--verdict", goldenJson, "--rounds", rounds, "--exit", "2", "--run-url", run, "--run-id", "1"];
+		const options = [
+			"--verdict",
+			goldenJson,
+			"--rounds",
+			rounds,
+			"--exit",
+			"2",
+			"--run-url",
+			run,
+			"--run-id",
+			"1",
+			"--nonce",
+			nonce,
+		];
 		const commits = ["--base", base, "--head", head, "--merge-base", mergeBase];
 		const current = ["--current-base", base, "--current-head", head];
 		const ran = spawnSync(process.execPath, [script, ...options, ...commits, ...current], { encoding: "utf8" });
@@ -507,7 +537,7 @@ describe("the command", () => {
 		const unread = spawnSync(process.execPath, [script, ...options, ...commits], { encoding: "utf8" });
 		expect(unread.stdout).toBe(read({ rounds, current: undefined }).body());
 		const usage =
-			"usage: node scripts/round-comment.mjs --verdict <value> --rounds <value> --exit <value> --run-url <value> --run-id <value> --base <value> --head <value> --merge-base <value>\n";
+			"usage: node scripts/round-comment.mjs --verdict <value> --rounds <value> --exit <value> --run-url <value> --run-id <value> --nonce <value> --base <value> --head <value> --merge-base <value>\n";
 		for (const short of [
 			[...options, ...commits.slice(0, -2)],
 			[...options, ...commits, "--unknown", "x"],

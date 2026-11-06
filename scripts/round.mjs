@@ -42,17 +42,21 @@ export function headWriter(events, { sha, branch, author }) {
 	return author;
 }
 
-// Each run's comment opens with its own marker, so a rerun of the report job finds and updates that comment.
-export function marker(runId) {
-	return `<!-- melian-round run:${/^\d+$/.test(runId) ? runId : "unknown"} -->`;
+// Each run's comment opens with a marker naming the run and a nonce its round job drew, so a rerun of the report job
+// finds and updates that comment. The run's ID is public, and every workflow's token posts as one bot, so only the
+// nonce, which no other workflow can read before this run posts, makes the marker this run's.
+export function marker(runId, nonce) {
+	const id = /^\d+$/.test(runId) ? runId : "unknown";
+	return `<!-- melian-round run:${id} nonce:${/^[0-9a-f]{32}$/.test(nonce) ? nonce : "unknown"} -->`;
 }
 
 // The ID of the comment this run already posted, or undefined when it posted none. `comments` are JSON lines of
-// `{ id, login, body }`, one per comment on the pull request. Only a comment `author` wrote counts, so no one else can
-// claim a run's marker; a line that is not a comment is refused rather than passed over.
-export function ownComment(comments, { runId, author }) {
+// `{ id, login, body }`, one per comment on the pull request, oldest first. Only a comment `author` wrote under this
+// run's whole marker counts; a line that is not a comment is refused rather than passed over.
+export function ownComment(comments, { runId, nonce, author }) {
 	if (!/^\d+$/.test(runId)) throw new Error("the run has no ID to find its comment by");
-	const opening = `${marker(runId)}\n`;
+	if (!/^[0-9a-f]{32}$/.test(nonce)) throw new Error("the run has no nonce to find its comment by");
+	const opening = `${marker(runId, nonce)}\n`;
 	for (const line of comments.split("\n").filter((each) => each.trim() !== "")) {
 		let comment;
 		try {
@@ -155,9 +159,10 @@ function readOr(path, fallback) {
 // either is undefined when its read failed. Finding text comes from models that read the head, so everything after
 // the link sits inside one code fence that no backtick run in it can close.
 export class RoundComment {
-	constructor({ verdict, exitCode, runUrl, runId, base, head, mergeBase, reviewed, current }) {
+	constructor({ verdict, exitCode, runUrl, runId, nonce, base, head, mergeBase, reviewed, current }) {
 		this.verdict = verdict;
 		this.runId = runId;
+		this.nonce = nonce;
 		this.exitCode = exitCode;
 		this.runUrl = runUrl;
 		this.base = base;
@@ -167,7 +172,7 @@ export class RoundComment {
 		this.current = current;
 	}
 
-	static read({ verdict, rounds, exitCode, runUrl, runId, base, head, mergeBase, current }) {
+	static read({ verdict, rounds, exitCode, runUrl, runId, nonce, base, head, mergeBase, current }) {
 		let parsed;
 		try {
 			parsed = JSON.parse(readFileSync(verdict, "utf8"));
@@ -175,13 +180,24 @@ export class RoundComment {
 			parsed = undefined;
 		}
 		const reviewed = lastRound(readOr(rounds, ""));
-		return new RoundComment({ verdict: parsed, exitCode, runUrl, runId, base, head, mergeBase, reviewed, current });
+		return new RoundComment({
+			verdict: parsed,
+			exitCode,
+			runUrl,
+			runId,
+			nonce,
+			base,
+			head,
+			mergeBase,
+			reviewed,
+			current,
+		});
 	}
 
 	body() {
 		// The exit code and commits sit outside the fence.
 		const exit = /^(\d{1,3}|none)$/.test(this.exitCode) ? this.exitCode : "unknown";
-		const header = `${marker(this.runId)}\nMelian round on ${commit(this.base)}...${commit(this.head)}, exit ${exit}: [run](${this.runUrl})`;
+		const header = `${marker(this.runId, this.nonce)}\nMelian round on ${commit(this.base)}...${commit(this.head)}, exit ${exit}: [run](${this.runUrl})`;
 		if (this.current === undefined)
 			return `${header}\n\nThe pull request could not be read again before posting, so this round posts no findings. Start a new round.\n`;
 		if (this.current.base !== this.base || this.current.head !== this.head) {
