@@ -506,8 +506,16 @@ describe("release in the claim workflow script", () => {
 	});
 
 	it("ignores a release from a non-writer", async () => {
-		const { writes } = await run(releaseScenario({ permissions: { maintainer: "read", builder: "write" } }));
+		const theirs = say(31, "stranger", 31, "Released: I want this one");
+		const scenario = releaseScenario({
+			trigger: theirs,
+			timeline: [label(READY, 0), say(20, "builder", 5), ...claimed(6), theirs],
+			permissions: { maintainer: "admin", builder: "write", stranger: "read" },
+		});
+		const { writes, asked, infos } = await run(scenario);
 		expect(writes).toEqual([]);
+		expect(asked).toEqual(["maintainer", "builder", "stranger"]);
+		expect(infos).toEqual([decidedBy(20)]);
 	});
 
 	it("ignores a release on an issue nobody claimed, without asking who wrote it", async () => {
