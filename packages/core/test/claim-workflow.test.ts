@@ -342,6 +342,17 @@ describe("claim workflow script", () => {
 		expect(writes).toEqual([]);
 	});
 
+	it("does not count a comment that only mentions a claim", async () => {
+		const mine = say(20, "builder", 5);
+		const timeline = [label(READY, 0), say(10, "other", 2, "I will post Claim: soon"), mine];
+		const { writes, asked, infos } = await run(
+			claimScenario({ timeline, permissions: { maintainer: "admin", builder: "write", other: "write" } }),
+		);
+		expect(writes).toEqual(toInProgress);
+		expect(asked).toEqual(["maintainer", "builder"]);
+		expect(infos).toEqual([decidedBy(20)]);
+	});
+
 	it.each([" Claim: builder", "claim: builder", "Claim builder"])("ignores a comment %j", async (body) => {
 		const mine = say(20, "builder", 5, body);
 		const { writes, asked } = await run(claimScenario({ trigger: mine, timeline: [label(READY, 0), mine] }));
