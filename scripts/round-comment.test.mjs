@@ -58,7 +58,7 @@ describe("RoundComment", () => {
 				"3 checks did not run:",
 				"  lens.security  failed at deep: the lens did not finish",
 				"    Error: provider returned 529",
-				"  lens.tests  ended at quick: its tokens budget of 50000 ran out",
+				"  lens.tests  ended at quick: its token budget of 50,000 ran out after 4 tool calls and 51,200 tokens",
 				"  static.tsc  skipped: no tsconfig.json at the base revision",
 				"",
 				"Above advisory: 4",
@@ -160,7 +160,7 @@ describe("RoundComment", () => {
 					name: "lens.a",
 					status: "ended",
 					level: "careful",
-					budgetEnded: { budget: "tools", limit: 90 },
+					budgetEnded: { budget: "tools", limit: 90, tokens: 12_000, tools: 90 },
 					reason: "a note",
 				},
 				{ name: "lens.b", status: "skipped" },
@@ -174,7 +174,7 @@ describe("RoundComment", () => {
 				"  static.mutation  provisional: reused an earlier head's results",
 				"",
 				"2 checks did not run:",
-				"  lens.a  ended at careful: its tools budget of 90 ran out; a note",
+				"  lens.a  ended at careful: its tool call budget of 90 ran out after 90 tool calls and 12,000 tokens; a note",
 				"  lens.b  skipped",
 				"",
 				"No findings above advisory.",
@@ -189,11 +189,22 @@ describe("RoundComment", () => {
 				{
 					name: "lens.design",
 					status: "ran",
-					lineage: { model: "anthropic/claude-opus-5-5", wanted: "openai-codex/gpt-5.6-sol" },
+					lineage: {
+						model: "anthropic/claude-opus-5-5",
+						wanted: "openai-codex/gpt-5.6-sol",
+						by: "derived",
+						outside: false,
+					},
 				},
 				{ name: "lens.tests", status: "ran" },
 			],
-			notRun: [{ name: "lens.a", status: "failed", lineage: { model: "openai/gpt-5.5", outside: true } }],
+			notRun: [
+				{
+					name: "lens.a",
+					status: "failed",
+					lineage: { model: "openai/gpt-5.5", by: "melian.local.yaml", outside: true },
+				},
+			],
 		});
 		expect(comment(value, "2")).toBe(
 			fence(2, [
@@ -203,12 +214,18 @@ describe("RoundComment", () => {
 				"  lens.a  failed",
 				"",
 				"2 checks left the committed routes:",
-				"  lens.design  on anthropic/claude-opus-5-5, where policy wants openai-codex/gpt-5.6-sol",
-				"  lens.a  on openai/gpt-5.5, outside what policy accepts",
+				"  lens.design  on anthropic/claude-opus-5-5, derived, since no model of its route has credentials, where policy wants openai-codex/gpt-5.6-sol and accepts anthropic/claude-opus-5-5",
+				"  lens.a  on openai/gpt-5.5, set by melian.local.yaml, where policy does not accept openai/gpt-5.5",
 				"",
 				"No findings above advisory.",
 			]),
 		);
+	});
+
+	it("escapes U+061C in a finding's text, as core's visibleText does", () => {
+		const text = `left${String.fromCharCode(0x061c)}right`;
+		const body = comment(verdict({ blocking: true, block: [finding({ resolution: "block", text })] }), "1");
+		expect(body).toContain("  P1 block  src/a.ts  lens.correctness  rule-a  aaaaaaaaaaaaaaaa  left\\u061cright\n");
 	});
 
 	it("says there is nothing above advisory when only advisory and silent findings stand", () => {

@@ -2,6 +2,7 @@
 // from a Codex login, and turn a round's output into a pull request comment. round-writer.mjs, round-codex-token.mjs
 // and round-comment.mjs are its commands.
 import { readFileSync } from "node:fs";
+import { describeBudgetEnd, describeLineage, visibleText } from "../packages/core/src/render.ts";
 
 /**
  * The access token of a Codex login, `~/.codex/auth.json` base64-encoded as this repository's `CODEX_AUTH_B64` holds
@@ -50,14 +51,6 @@ export const marker = "<!-- melian-round -->";
 export const maxLength = 60_000;
 const aboveAdvisory = ["block", "acknowledge"];
 
-// Control characters, zero-width and bidi controls, and the line and paragraph separators. Keep them as escapes: a
-// literal separator reads as a line break.
-const invisible = /[\u0000-\u0008\u000b-\u001f\u007f-\u009f\u200b-\u200f\u2028-\u202e\u2066-\u2069]/g;
-
-export function visible(text) {
-	return text.replace(invisible, (character) => `\\u${character.charCodeAt(0).toString(16).padStart(4, "0")}`);
-}
-
 const statuses = { passed: "passed", findings: "findings", "not-reviewed": "not reviewed" };
 
 // What `melian review` exits with for a verdict, as the CLI's reviewExitCodes and ReviewOutcome decide it.
@@ -68,7 +61,7 @@ function exitFor({ status, blocking }) {
 }
 
 function oneLine(text) {
-	return visible(String(text).replace(/\r?\n/g, " "));
+	return visibleText(String(text).replace(/\r?\n/g, " "));
 }
 
 /** Why `value` is not a verdict this comment can render, or undefined when it is one. */
@@ -85,7 +78,7 @@ function verdictProblem(value) {
 }
 
 function checkLines({ name, status, level, reason, error, budgetEnded }) {
-	const ended = budgetEnded === undefined ? [] : [`its ${budgetEnded.budget} budget of ${budgetEnded.limit} ran out`];
+	const ended = budgetEnded === undefined ? [] : [describeBudgetEnd(budgetEnded)];
 	const why = [...ended, ...(reason === undefined ? [] : [reason])].join("; ");
 	return [
 		oneLine(`  ${name}  ${status}${level === undefined ? "" : ` at ${level}`}${why === "" ? "" : `: ${why}`}`),
@@ -94,8 +87,7 @@ function checkLines({ name, status, level, reason, error, budgetEnded }) {
 }
 
 function lineageLine({ name, lineage }) {
-	const wanted = lineage.wanted === undefined ? "" : `, where policy wants ${lineage.wanted}`;
-	return oneLine(`  ${name}  on ${lineage.model}${wanted}${lineage.outside ? ", outside what policy accepts" : ""}`);
+	return oneLine(`  ${name}  ${describeLineage(lineage)}`);
 }
 
 function commit(sha) {
