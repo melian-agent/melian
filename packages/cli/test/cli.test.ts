@@ -794,6 +794,48 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(review.stdout).toContain("biome/suspicious/noDoubleEquals");
 	});
 
+	// Issue #281: a probe on pull request #275 had Biome quote a file a head's `extends` named into the stored error.
+	it.each([
+		["biome.json", "static.biome", (path: string) => JSON.stringify({ extends: [path] })],
+		["tsconfig.json", "static.tsc", (path: string) => JSON.stringify({ extends: path })],
+	])(
+		"stores and prints nothing of a file outside the checkout that a head %s extends",
+		{
+			timeout: 120_000,
+		},
+		(file, check, config) => {
+			const { repo, env: script } = staticCheckout("export const b: number = 2;\n");
+			const env = { ...script, MELIAN_STATE_DIR: join(scratch, "state") };
+			const outside = mkdtempSync(join(tmpdir(), "melian-outside-"));
+			repos.push(outside);
+			const token = "ghp_FAKEoutsideTOKEN281";
+			const secret = join(outside, "environ.json");
+			writeFileSync(secret, `{"${token}": 1}\n`);
+			writeFileSync(join(repo, file), config(secret));
+			git(repo, "add", "--all");
+			git(repo, "commit", "--quiet", "-m", "extend a file outside the checkout");
+
+			const review = melian(repo, ["review", "main"], env);
+			const json = melian(repo, ["findings", "main", "--json"], env);
+
+			for (const text of [review.stdout, review.stderr, json.stdout]) expect(text).not.toContain(token);
+			const verdict = JSON.parse(json.stdout) as StoredVerdict;
+			const record = verdict.notRun.find((each) => each.name === check);
+			expect(record).toMatchObject({ status: "failed", reason: "outsideCheckout" });
+			expect(record!.error).toContain(secret);
+			expect(review.stdout).toContain(`${check}  failed`);
+			const stored = (directory: string): string[] =>
+				readdirSync(directory, { withFileTypes: true }).flatMap((entry) =>
+					entry.isDirectory()
+						? stored(join(directory, entry.name))
+						: [readFileSync(join(directory, entry.name), "latin1")],
+				);
+			const documents = stored(env.MELIAN_STATE_DIR);
+			expect(documents.length).toBeGreaterThan(0);
+			for (const bytes of documents) expect(bytes).not.toContain(token);
+		},
+	);
+
 	it("tells the author to review first when nothing is stored", () => {
 		const { repo, env } = goldenCheckout(goldens["clean-rename"]!);
 

@@ -22,6 +22,7 @@ import { backgroundContext, type Context, type ExecutionEnv } from "./harness.ts
 import type { HeadTrust } from "./mutation-cache.ts";
 import type { MutationProcessHooks } from "./mutation-process.ts";
 import { MutationRun, strykerNotInstalled } from "./mutation-static.ts";
+import { ConfigurationScope } from "./static-configuration.ts";
 import { ToolProvisioning } from "./tool-provisioning.ts";
 
 /** The most a static tool may write, its report included. Past it the run fails with `outputTooLarge`. */
@@ -370,16 +371,16 @@ const fileLimit = `ulimit -f ${staticOutputLimit / 1024}`;
 
 async function runBiome(run: Run, root: string, scratch: string, binary: string, version: string): Promise<ToolLog> {
 	const report = posix.join(scratch, "biome.sarif");
-	const { code, output } = await run.shell(
-		`cd ${quote(root)} && ${fileLimit} && ${quote(binary)} lint --reporter=sarif --reporter-file=${quote(report)} --max-diagnostics=none --colors=off --no-errors-on-unmatched . > /dev/null 2> ${quote(posix.join(scratch, "biome.err"))}`,
+	const { code } = await run.shell(
+		`cd ${quote(root)} && ${fileLimit} && ${quote(binary)} lint --reporter=sarif --reporter-file=${quote(report)} --max-diagnostics=none --colors=off --no-errors-on-unmatched . > /dev/null 2>&1`,
 	);
 	const text = await run.readOutput(report);
-	// Biome exits 1 when it reports an error-level diagnostic; anything else without a report is a failure.
+	// Biome exits 1 when it reports an error-level diagnostic; anything else without a report is a failure. Its stderr
+	// quotes the files it could not parse, so none of it is kept.
 	if (text === undefined || (code !== 0 && code !== 1)) {
-		const stderr = (await run.readOutput(posix.join(scratch, "biome.err")))?.slice(0, 4096) ?? output;
 		throw run.fail(
 			"toolFailed",
-			`biome exited with code ${code} and ${text === undefined ? "no report" : "a report"}: ${stderr.trim()}`,
+			`biome exited with code ${code} and ${text === undefined ? "no report" : "a report"}; run biome lint at ${run.input.commit.slice(0, 12)} to see why, since Melian keeps none of its stderr`,
 		);
 	}
 	return normaliseBiomeSarif(text, { root, version });
@@ -553,6 +554,10 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 			!(installed !== undefined && (await run.exists(posix.join(installed, ".bin", "stryker"))))
 		) {
 			return { status: "skipped", reason: strykerNotInstalled };
+		}
+		const refused = await ConfigurationScope.refusal(run, root, files, installed);
+		if (refused !== undefined) {
+			throw run.fail("outsideCheckout", `${refused}; Melian did not run ${tool}, so it read none of that file`);
 		}
 		const binary = await binaryFor(run, installed);
 		const version = await versionOf(run, binary);

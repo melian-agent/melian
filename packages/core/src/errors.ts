@@ -152,6 +152,7 @@ export type CheckErrorCode =
 	| "worktreeFailed"
 	| "toolMissing"
 	| "toolFailed"
+	| "outsideCheckout"
 	| "timeout"
 	| "aborted"
 	| "nothingToCheck"

@@ -428,7 +428,37 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 			(caught: unknown) => caught,
 		);
 		expect((error as CheckError).code).toBe("toolFailed");
-		expect((error as CheckError).message).toMatch(/no report: bad config/);
+		// Biome quotes a file it cannot parse under the name of the file that extended it (issue #281).
+		expect((error as CheckError).message).not.toContain("bad config");
+		expect((error as CheckError).message).toBe(
+			`biome exited with code 1 and no report; run biome lint at ${head.slice(0, 12)} to see why, since Melian keeps none of its stderr`,
+		);
+	});
+
+	it("runs no tool whose configuration names a file outside the checkout", { timeout: 60_000 }, async () => {
+		const outside = join(repo, ".git", "environ.json");
+		writeFileSync(outside, '{"ghp_FAKEoutsideTOKEN281": 1}\n');
+		const head = commit(repo, {
+			".gitignore": lines("node_modules"),
+			"biome.json": JSON.stringify({ extends: [outside] }),
+			"src/a.ts": lines("a"),
+		});
+		const sentinel = join(repo, ".git", "biome-ran");
+		fakeTool(
+			repo,
+			"biome",
+			`if [ "$1" = "--version" ]; then echo "Version: 9.9.9"; exit 0; fi\ntouch '${sentinel}'\nexit 1`,
+		);
+		const error = await runStaticTool(input("biome", head), context).then(
+			() => undefined,
+			(caught: unknown) => caught,
+		);
+		expect((error as CheckError).code).toBe("outsideCheckout");
+		expect((error as CheckError).message).toBe(
+			`biome.json names ${outside}, which is outside the checkout; Melian did not run biome, so it read none of that file`,
+		);
+		expect(existsSync(sentinel)).toBe(false);
+		expectCheckoutUntouched();
 	});
 });
 
