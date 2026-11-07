@@ -1,0 +1,146 @@
+[
+	{
+		"mutant": "pusher: head read from .before",
+		"from": "head: .after,",
+		"to": "head: .before,",
+		"test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > runs a head only when its pusher holds write, maintain or admin permission",
+		"collected": 1,
+		"killed": true
+	},
+	{
+		"mutant": "pusher: activity type not selected",
+		"from": "select(.activity_type == \"push\" or .activity_type == \"force_push\" or .activity_type == \"branch_creation\") | ",
+		"to": "",
+		"test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > runs a head only when its pusher holds write, maintain or admin permission",
+		"collected": 1,
+		"killed": true
+	},
+	{
+		"mutant": "pusher: push not accepted",
+		"from": ".activity_type == \"push\" or ",
+		"to": "",
+		"test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > runs a head only when its pusher holds write, maintain or admin permission",
+		"collected": 1,
+		"killed": true
+	},
+	{
+		"mutant": "pusher: force push not accepted",
+		"from": " or .activity_type == \"force_push\"",
+		"to": "",
+		"test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > runs a head only when its pusher holds write, maintain or admin permission",
+		"collected": 1,
+		"killed": true
+	},
+	{
+		"mutant": "pusher: branch creation not accepted",
+		"from": " or .activity_type == \"branch_creation\"",
+		"to": "",
+		"test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > runs a head only when its pusher holds write, maintain or admin permission",
+		"collected": 1,
+		"killed": true
+	},
+	{
+		"mutant": "pusher: actor read from the entry",
+		"from": "actor: .actor.login,",
+		"to": "actor: .actor,",
+		"test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > runs a head only when its pusher holds write, maintain or admin permission",
+		"collected": 1,
+		"killed": true
+	},
+	{
+		"mutant": "pusher: ref read from nowhere",
+		"from": "ref: .ref}",
+		"to": "ref: .branch}",
+		"test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > runs a head only when its pusher holds write, maintain or admin permission",
+		"collected": 1,
+		"killed": true
+	},
+	{
+		"mutant": "pusher: activity not limited to the branch",
+		"from": " -f ref=\"refs/heads/$branch\"",
+		"to": "",
+		"test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > runs a head only when its pusher holds write, maintain or admin permission",
+		"collected": 1,
+		"killed": true
+	},
+	{
+		"mutant": "pusher: pages not followed",
+		"from": "gh api -X GET --paginate \"repos/$REPOSITORY/activity\"",
+		"to": "gh api -X GET \"repos/$REPOSITORY/activity\"",
+		"test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > runs a head only when its pusher holds write, maintain or admin permission",
+		"collected": 1,
+		"killed": true
+	},
+	{
+		"mutant": "env: policy check inverted",
+		"from": "if [ \"$policy\" != \"false true\" ]; then",
+		"to": "if [ \"$policy\" = \"false true\" ]; then",
+		"test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > refuses, in the gate before any job holds a login, an Environment another branch could deploy from",
+		"collected": 1,
+		"killed": true
+	},
+	{
+		"mutant": "env: policy check removed",
+		"from": "if [ \"$policy\" != \"false true\" ]; then",
+		"to": "if false; then",
+		"test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > refuses, in the gate before any job holds a login, an Environment another branch could deploy from",
+		"collected": 1,
+		"killed": true
+	},
+	{
+		"mutant": "env: protected_branches not read",
+		"from": "deployment_branch_policy.protected_branches) ",
+		"to": "deployment_branch_policy.custom_branch_policies | not) ",
+		"test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > refuses, in the gate before any job holds a login, an Environment another branch could deploy from",
+		"collected": 1,
+		"killed": true
+	},
+	{
+		"mutant": "env: branch list check removed",
+		"from": "if [ \"$branches\" != \"branch $DEFAULT\" ]; then",
+		"to": "if false; then",
+		"test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > refuses, in the gate before any job holds a login, an Environment another branch could deploy from",
+		"collected": 1,
+		"killed": true
+	},
+	{
+		"mutant": "env: branch list check inverted",
+		"from": "if [ \"$branches\" != \"branch $DEFAULT\" ]; then",
+		"to": "if [ \"$branches\" = \"branch $DEFAULT\" ]; then",
+		"test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > refuses, in the gate before any job holds a login, an Environment another branch could deploy from",
+		"collected": 1,
+		"killed": true
+	},
+	{
+		"mutant": "env: policy type ignored",
+		"from": "\"\\(.type // \"branch\") \\(.name)\"",
+		"to": "\"branch \\(.name)\"",
+		"test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > refuses, in the gate before any job holds a login, an Environment another branch could deploy from",
+		"collected": 1,
+		"killed": true
+	},
+	{
+		"mutant": "env: absent type not taken as branch",
+		"from": ".type // \"branch\"",
+		"to": ".type",
+		"test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > refuses, in the gate before any job holds a login, an Environment another branch could deploy from",
+		"collected": 1,
+		"killed": true
+	},
+	{
+		"mutant": "env: actions read permission dropped",
+		"from": "      actions: read\n      contents: read\n      pull-requests: read\n    outputs:",
+		"to": "      contents: read\n      pull-requests: read\n    outputs:",
+		"test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > refuses, in the gate before any job holds a login, an Environment another branch could deploy from",
+		"collected": 1,
+		"killed": true
+	},
+	{
+		"mutant": "env: pages not read past the first",
+		"from": "gh api --paginate \"repos/$REPOSITORY/environments",
+		"to": "gh api \"repos/$REPOSITORY/environments",
+		"test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > refuses, in the gate before any job holds a login, an Environment another branch could deploy from",
+		"collected": 1,
+		"killed": true
+	}
+]

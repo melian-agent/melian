@@ -275,13 +275,13 @@ describe("the melian round workflow", () => {
 		const dir = mkdtempSync(join(tmpdir(), "round-workflow-"));
 		try {
 			const head = "1".repeat(40);
-			// A fake gh answers only the request for the push events, by running the step's own --jq over each raw page as
-			// gh does, and the request for the pusher's permission.
+			// A fake gh answers only the request for the branch's activity, by running the step's own --jq over each raw
+			// page as gh does, and the request for the pusher's permission.
 			writeFileSync(
 				join(dir, "gh"),
 				[
 					"#!/bin/sh",
-					'if [ "$1 $2 $3 $4" = "api --paginate repos/o/r/events?per_page=100 --jq" ]; then printf "%s\\n" "$EVENTS" | jq -r "$5"; exit; fi',
+					'if [ "$1 $2 $3 $4 $5 $6 $7 $8 $9" = "api -X GET --paginate repos/o/r/activity -f ref=refs/heads/feature -f per_page=100" ]; then shift 9; [ "$#" = 2 ] && [ "$1" = --jq ] || exit 1; printf "%s\\n" "$EVENTS" | jq -r "$2"; exit; fi',
 					'[ "$*" = "api repos/o/r/collaborators/pusher-login/permission --jq .permission" ] && [ -n "$PERMISSION" ] && echo "$PERMISSION"',
 					"",
 				].join("\n"),
@@ -291,21 +291,29 @@ describe("the melian round workflow", () => {
 				join(dir, "pull.json"),
 				JSON.stringify({ head: { ref: "feature", sha: head }, user: { login: "author-login" } }),
 			);
-			// Two raw pages. Each decoy names the head through a field the projection must not read: an event of another
-			// type, a push whose earlier commit is the head, and a push of the head to another branch.
-			const push = (login, payload) => ({ type: "PushEvent", actor: { login }, payload });
-			const events = [
+			const entry = (activity_type, login, fields) => ({
+				activity_type,
+				actor: { login },
+				ref: "refs/heads/feature",
+				before: "0".repeat(40),
+				after: "0".repeat(40),
+				...fields,
+			});
+			// Two raw pages. Each decoy names the head through an entry the projection must not read: a merge, a branch
+			// deletion, a push whose earlier commit is the head, and a push of the head to another branch.
+			const pages = (pushed) =>
 				[
-					{ type: "CreateEvent", actor: { login: "creator-login" }, payload: { head, ref: "refs/heads/feature" } },
-					push("before-login", { before: head, head: "2".repeat(40), ref: "refs/heads/feature" }),
-				],
-				[
-					push("other-branch-login", { before: "3".repeat(40), head, ref: "refs/heads/other" }),
-					push("pusher-login", { before: "4".repeat(40), head, ref: "refs/heads/feature" }),
-				],
-			]
-				.map((page) => JSON.stringify(page))
-				.join("\n");
+					[
+						entry("pr_merge", "merger-login", { after: head }),
+						entry("merge_queue_merge", "queue-login", { after: head }),
+						entry("branch_deletion", "deleter-login", { before: head, after: head }),
+						entry("push", "before-login", { before: head, after: "2".repeat(40) }),
+					],
+					[entry("push", "other-branch-login", { after: head, ref: "refs/heads/other" }), pushed],
+				]
+					.map((page) => JSON.stringify(page))
+					.join("\n");
+			const events = pages(entry("push", "pusher-login", { after: head }));
 			const step = (permission) => {
 				const ran = spawnSync("bash", ["-e", "-c", run], {
 					cwd: fileURLToPath(new URL("..", import.meta.url)),
@@ -328,6 +336,43 @@ describe("the melian round workflow", () => {
 					`pusher-login, whose code the head is, has ${permission} permission\n`,
 				]);
 			}
+			for (const activity of ["force_push", "branch_creation"]) {
+				const ran = spawnSync("bash", ["-e", "-c", run], {
+					cwd: fileURLToPath(new URL("..", import.meta.url)),
+					encoding: "utf8",
+					env: {
+						PATH: `${dir}:${process.env.PATH}`,
+						HOME: dir,
+						RUNNER_TEMP: dir,
+						REPOSITORY: "o/r",
+						HEAD: head,
+						EVENTS: pages(entry(activity, "pusher-login", { after: head })),
+						PERMISSION: "write",
+					},
+				});
+				expect([ran.status, ran.stdout], activity).toEqual([
+					0,
+					"pusher-login, whose code the head is, has write permission\n",
+				]);
+			}
+			const unnamed = spawnSync("bash", ["-e", "-c", run], {
+				cwd: fileURLToPath(new URL("..", import.meta.url)),
+				encoding: "utf8",
+				env: {
+					PATH: `${dir}:${process.env.PATH}`,
+					HOME: dir,
+					RUNNER_TEMP: dir,
+					REPOSITORY: "o/r",
+					HEAD: head,
+					EVENTS: pages(entry("push", "pusher-login", { after: "3".repeat(40) })),
+					PERMISSION: "write",
+				},
+			});
+			expect([unnamed.status, unnamed.stdout, unnamed.stderr]).toEqual([
+				1,
+				"",
+				"no push, force push or branch creation in the repository's activity left this head on this branch\n",
+			]);
 			for (const [permission, named] of [
 				["read", "read"],
 				["triage", "triage"],

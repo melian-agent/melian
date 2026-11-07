@@ -113,9 +113,9 @@ jobs:
         with:
           node-version: 24
       # The writer decision trusts a head only when the identity that pushed that exact commit holds write permission,
-      # so a writer dispatching a round on a bot's branch is not enough. Every page of push events is read; a failed
-      # read fails this step, and no later job holds a secret. A head no push event names is refused too, never taken
-      # as the pull request author's: the feed keeps 300 events and can lag by hours, so a bot's push may be missing.
+      # so a writer dispatching a round on a bot's branch is not enough. The repository's activity for the branch names
+      # every push, force push and branch creation at once; the events feed lagged by hours and kept 300 events. Every
+      # page is read, and a failed read fails this step. A head no entry names is refused, never taken as the author's.
       - name: Refuse a head its pusher could not have written
         env:
           GH_TOKEN: ${{ github.token }}
@@ -123,8 +123,8 @@ jobs:
           HEAD: ${{ steps.pull.outputs.head }}
         run: |
           branch=$(jq -r .head.ref "$RUNNER_TEMP/pull.json")
-          gh api --paginate "repos/$REPOSITORY/events?per_page=100" \
-            --jq '.[] | select(.type == "PushEvent") | {actor: .actor.login, head: .payload.head, ref: .payload.ref} | tojson' \
+          gh api -X GET --paginate "repos/$REPOSITORY/activity" -f ref="refs/heads/$branch" -f per_page=100 \
+            --jq '.[] | select(.activity_type == "push" or .activity_type == "force_push" or .activity_type == "branch_creation") | {actor: .actor.login, head: .after, ref: .ref} | tojson' \
             > "$RUNNER_TEMP/pushes.jsonl"
           writer=$(node scripts/round-writer.mjs "$RUNNER_TEMP/pushes.jsonl" "$HEAD" "$branch")
           permission=$(gh api "repos/$REPOSITORY/collaborators/$writer/permission" --jq .permission) || permission=""
