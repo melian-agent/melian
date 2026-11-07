@@ -436,4 +436,78 @@ describe("verification as each lens ends", () => {
 			expect(input.candidates.length).toBeGreaterThan(0);
 		}
 	});
+
+	it("starts no wave while an earlier wave still runs", async () => {
+		let firstAsked!: () => void;
+		const waveAsked = new Promise<void>((resolve) => {
+			firstAsked = resolve;
+		});
+		let release!: () => void;
+		const held = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		let contractsDone!: () => void;
+		const contractsEnded = new Promise<void>((resolve) => {
+			contractsDone = resolve;
+		});
+		const asked: string[][] = [];
+		// Wave 1 verifies correctness's claim and holds its answer; contracts reports a defect of its own on another line
+		// and ends meanwhile, so a second wave started now would run beside the first.
+		const judge: ScriptedReply = async (messages) => {
+			const claims = claimsIn(messages);
+			if (!messages.some((message) => message.role === "toolResult")) {
+				asked.push(claims);
+				if (asked.length === 1) {
+					firstAsked();
+					await held;
+				}
+			}
+			return scriptVerifier(
+				messages,
+				Object.fromEntries(claims.map((id) => [id, { verdict: "confirmed" as const, reason: "Traced the code." }])),
+			);
+		};
+		const caller = {
+			...crashFinding,
+			line: 3,
+			rule: "broken-caller",
+			explanation: {
+				what: "User.manager is optional, and managerName now reads it unguarded.",
+				why: "Every caller passing a user without a manager now throws.",
+				fix: "Guard the manager in managerName.",
+			},
+		};
+		scriptConversations(fake, [
+			{
+				match: lens("correctness").instructions,
+				replies: [report("null-dereference"), fauxAssistantMessage("Done.")],
+			},
+			{
+				match: lens("contracts").instructions,
+				replies: [
+					async () => {
+						await Promise.race([waveAsked, new Promise((resolve) => setTimeout(resolve, 2_000))]);
+						return fauxAssistantMessage(fauxToolCall("report_finding", caller), { stopReason: "toolUse" });
+					},
+					async () => {
+						contractsDone();
+						return fauxAssistantMessage("Done.");
+					},
+				],
+			},
+			{ match: verifierMarker, replies: Array.from({ length: 20 }, () => judge) },
+		]);
+		const running = review();
+		let during: number | undefined;
+		try {
+			await contractsEnded;
+			await new Promise((resolve) => setTimeout(resolve, 1_000));
+			during = asked.length;
+		} finally {
+			release();
+			await running;
+		}
+		expect(during).toBe(1);
+		expect(asked.map((claims) => claims.length)).toEqual([1, 1]);
+	});
 });
