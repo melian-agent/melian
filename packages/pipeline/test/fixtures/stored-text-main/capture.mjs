@@ -56,8 +56,9 @@ const result = await reviewChangeset({
 		head: changeset.revision.head,
 	},
 });
-const quoted = JSON.stringify(result.verdict.findings).includes("not assignable to type '{ ghp_FAKEoutsideTOKEN281")
-	|| JSON.stringify(result.verdict.findings).includes("This variable ghp_FAKEoutsideTOKEN281 is unused");
+const quoted =
+	JSON.stringify(result.verdict.findings).includes("not assignable to type '{ ghp_FAKEoutsideTOKEN281") ||
+	JSON.stringify(result.verdict.findings).includes("This variable ghp_FAKEoutsideTOKEN281 is unused");
 if (quoted !== full.some((check) => check === "static.biome" || check === "static.tsc"))
 	throw new Error(`a tool's text was ${quoted ? "" : "not "}stored for ${tier}`);
 await review.close(context);
