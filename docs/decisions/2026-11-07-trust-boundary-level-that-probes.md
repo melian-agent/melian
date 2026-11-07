@@ -18,7 +18,7 @@ A lens level may probe. `probe` on a level names the prober's tier, the level's 
 4. **A finding** from the prober names the probe it rests on, and `report_finding` refuses one whose probe did not fail: a non-zero exit, not a timeout, a signal or cut output.
 5. **The verifier** receives the plan, the probe's script, files and result, and the result of running it again, which the review does before the verifier starts and stores on the root, so a repeat review reads the stored run. It judges by the result and by whether the probe exercises the claim. `report_verdict` refuses `confirmed` for a claim whose probe did not fail again.
 
-There is no fixed probe count. The bound is the level's token and tool budgets, which every conversation of the run takes, and the per-probe time limit. Each conversation's stage telemetry names its role, and the prober's names its probe count, their time and the limit. The lens's check record says how many attacks the plan held, how many probes ran in what time, and how many attacks were skipped.
+There is no fixed probe count. The bound is the level's token and tool budgets and the per-probe time limit. Each of the run's two conversations takes the level's token and tool budgets whole, so a level that probes may spend twice what one conversation may; the findings budget is shared. Each conversation's stage telemetry names its role, and the prober's names its probe count, their time and the limit. The lens's check record says how many attacks the plan held, how many probes ran in what time, and how many attacks were skipped.
 
 A level that probes runs its probes only where a probe may: the host has said the head is a writer's or the reviewer's, the base policy trusts writers, and an empty probe runs here. Its prober's tier must also route, and the plan must not refuse it. Elsewhere the level runs as it would without `probe`, one conversation reading as the lens reads, and the lens's record says why. Triage's question is unchanged, so a fork's head still gets the closest look its band allows, and the probes are lost only there.
 
@@ -32,6 +32,7 @@ The planner reads rulings from the base's decision files, through the same index
 - Review coverage records what the planner read, not the prober's reads.
 - Each probe writes the head's tree afresh: about half a second for Melian's own 21 MB.
 - A probe reads the checkout's third-party packages through `node_modules`; a workspace package linked there points outside the probe's reads, so a probe imports the head's own packages by path.
-- The planner is reminded once, and so is the prober. A model that ignores both leaves the lens failed or ended.
+- The planner is reminded once, and so is the prober. A model that ignores both leaves the lens failed or ended. A reminder does not check first whether a later review replaced the run, so a replaced run can ask one more question.
+- A quick run that escalates to a level that probes carries its findings to the planner alone, which may report none, so the probing run neither restates nor refutes them and they count as the quick run reported them. No built-in lens escalates into a level that probes: `trust-boundary`'s `quick` escalates to `careful`.
 
 Measuring which routes to commit, the goldens from this week's probes and the `needs-execution` misses, is the issue's second part.
