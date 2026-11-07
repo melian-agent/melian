@@ -9,6 +9,7 @@ import {
 	type Review,
 	readFindings,
 	reviewChangeset,
+	TelemetryReader,
 } from "@melian-agent/pipeline";
 import {
 	createFakeModels,
@@ -27,6 +28,7 @@ import { crashFinding, crashRepository } from "./fixtures/review-scenario.ts";
 
 let repo: string;
 let harness: Harness;
+let storage: ReturnType<typeof createMemoryStorage>;
 let fake: FakeModels;
 let lenses: Lens[];
 let changeset: Changeset;
@@ -34,7 +36,8 @@ let changeset: Changeset;
 beforeEach(async () => {
 	repo = crashRepository();
 	fake = createFakeModels({ models: [{ id: "finder" }, { id: "judge" }] });
-	harness = await openHarness(createMemoryStorage(), {
+	storage = createMemoryStorage();
+	harness = await openHarness(storage, {
 		models: fake.models,
 		registry: createReviewRegistry(),
 		settings: { retry: { enabled: false }, toolExecution: "parallel" },
@@ -133,6 +136,11 @@ describe("verification as each lens ends", () => {
 		expect(asked).toHaveLength(1);
 		expect(result.verdict.status).toBe("findings");
 		expect((result.verdict.ran ?? []).map((check) => check.name)).toContain("verifier");
+		// The round's telemetry shows the verifier at work before the last lens ended.
+		const { stages } = await TelemetryReader.open(storage).read(Revision.key(changeset.revision));
+		const judging = stages.find((stage) => stage.name === "melian.verification.candidate")!;
+		const contracts = stages.find((stage) => stage.name === "melian.lens" && stage.subject.startsWith("contracts@"))!;
+		expect(judging.startedAt).toBeLessThan(contracts.endedAt!);
 	});
 
 	it("verifies a defect again with every sighting when a later lens joins it, and the last verification decides", async () => {
