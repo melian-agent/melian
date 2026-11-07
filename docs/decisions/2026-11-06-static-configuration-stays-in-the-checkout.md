@@ -23,7 +23,8 @@ This closes every route named above, and any not yet found, because no route rea
 ## What this gives up
 
 - A static finding no longer says what is wrong. A reader runs the tool at the commit, or reads the source line, as the lenses and the verifier do.
-- A finding identified by its message rather than its code, in a file too large to read or a symlink, now shares its identity with every other result of its rule in that file, so they merge into one counted finding.
+- A result with no code to identify it by, in a file too large to read, a symlink or a blank line, was identified by its message. It is now identified by its line and column. A result the base lacks at that place is introduced, so an edit above it in such a file makes a result read as introduced again. Matching by count alone merged every result of one rule in the file, so a fixed error and a new one cancelled out and the new one read as pre-existing. A hash of the message would not help: a message that holds a short secret can be recovered from its hash by trying every value.
+- Counts and places still carry a little. A writer can commit TypeScript conditional types that inspect an outside declaration, reached through a committed symlink, a `/// <reference>` or an import, so that tsc reports one diagnostic or two depending on its content. Melian keeps those counts and places, so each review round can leak one bit. The maintainer accepted this: it needs a writer to commit type-level probing code that the diff shows, and one round per bit. The general fix is a read sandbox for the static tools, to come as its own issue when customers need writer heads confined.
 
 ## Other static tools
 
