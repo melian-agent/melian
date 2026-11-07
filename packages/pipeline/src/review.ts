@@ -2104,6 +2104,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 							waves.standing(
 								JSON.stringify(candidateIdentity(candidate)),
 								candidate.state.claims.map(claimKey),
+								verifierVersion,
 							) === undefined,
 					);
 					if (fresh.length > 0 && candidates.every((candidate) => candidate.route.length > 0))
@@ -2302,6 +2303,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				const wave = waves.standing(
 					JSON.stringify(candidateIdentity(candidate)),
 					candidate.state.claims.map(claimKey),
+					verifierVersion,
 				);
 				const record = wave === undefined ? undefined : await harness.getTask(wave as TaskId, context);
 				const outcome =

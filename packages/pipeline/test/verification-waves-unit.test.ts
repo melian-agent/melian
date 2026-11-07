@@ -3,7 +3,11 @@ import type { ReviewIndexState } from "../src/review-index.ts";
 import { claimKey, VerificationWaves, type VerificationWavesState } from "../src/verification-waves.ts";
 
 const state = (lensTask: number, waves: { task: number; candidates: { key: string; claims: string[] }[] }[]) =>
-	({ reviews: { r: { lensTask, ended: { a: { status: "done" } }, waves } } }) as VerificationWavesState;
+	({
+		reviews: {
+			r: { lensTask, ended: { a: { status: "done" } }, waves: waves.map((wave) => ({ ...wave, version: "v1" })) },
+		},
+	}) as VerificationWavesState;
 const index = (task: number, verification?: number) =>
 	({
 		reviews: { r: { task, ...(verification === undefined ? {} : { verification: { task: verification } }) } },
@@ -39,12 +43,26 @@ describe("verification waves", () => {
 		expect(VerificationWaves.owns(undefined, waves, "r", 11)).toBe(false);
 	});
 
+	it("stands for a wave only under the verifier version that ran it", () => {
+		const waves = {
+			reviews: {
+				r: {
+					lensTask: 7,
+					ended: {},
+					waves: [{ task: 11, version: "v1", candidates: [{ key: "A", claims: ["x"] }] }],
+				},
+			},
+		} as VerificationWavesState;
+		expect(VerificationWaves.of(waves, "r", 7).standing("A", ["x"], "v1")).toBe(11);
+		expect(VerificationWaves.of(waves, "r", 7).standing("A", ["x"], "v2")).toBeUndefined();
+	});
+
 	it("stands for a candidate's latest wave until a later wave verifies one of its claims in another candidate", () => {
 		const waves = state(7, [
 			{ task: 11, candidates: [{ key: "A", claims: ["x"] }] },
 			{ task: 12, candidates: [{ key: "C", claims: ["z"] }] },
 		]);
-		expect(VerificationWaves.of(waves, "r", 7).standing("A", ["x"])).toBe(11);
+		expect(VerificationWaves.of(waves, "r", 7).standing("A", ["x"], "v1")).toBe(11);
 		const joined = state(7, [
 			{ task: 11, candidates: [{ key: "A", claims: ["x"] }] },
 			{
@@ -55,9 +73,9 @@ describe("verification waves", () => {
 				],
 			},
 		]);
-		expect(VerificationWaves.of(joined, "r", 7).standing("A", ["x"])).toBeUndefined();
-		expect(VerificationWaves.of(joined, "r", 7).standing("B", ["x", "y"])).toBe(12);
-		expect(VerificationWaves.of(joined, "r", 7).standing("D", ["w"])).toBeUndefined();
-		expect(VerificationWaves.of(undefined, "r", 7).standing("A", ["x"])).toBeUndefined();
+		expect(VerificationWaves.of(joined, "r", 7).standing("A", ["x"], "v1")).toBeUndefined();
+		expect(VerificationWaves.of(joined, "r", 7).standing("B", ["x", "y"], "v1")).toBe(12);
+		expect(VerificationWaves.of(joined, "r", 7).standing("D", ["w"], "v1")).toBeUndefined();
+		expect(VerificationWaves.of(undefined, "r", 7).standing("A", ["x"], "v1")).toBeUndefined();
 	});
 });

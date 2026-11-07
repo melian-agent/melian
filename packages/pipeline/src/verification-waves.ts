@@ -2,7 +2,8 @@ import type { StoredVerificationState } from "@melian-agent/core";
 import { type ConversationId, defineDoc, type JsonObject, type Tx } from "./harness.ts";
 import type { ReviewIndexState } from "./review-index.ts";
 
-type Wave = { task: number; candidates: { key: string; claims: string[] }[] };
+// `version` is the verifier version the wave ran under; a later version never reuses its outcome.
+type Wave = { task: number; version: string; candidates: { key: string; claims: string[] }[] };
 // What one lens task's ended lenses started: the outcome of each run by key, as the task recorded it when its lens
 // ended, and the verification tasks the review started from them, oldest first.
 type WaveEntry = { lensTask: number; ended: Record<string, JsonObject>; waves: Wave[] };
@@ -70,14 +71,16 @@ export class VerificationWaves {
 	}
 
 	/**
-	 * The wave whose verification of the candidate `key` still stands: the latest wave that verified it, when no later
-	 * wave verified any of its claims as part of another candidate.
+	 * The wave whose verification of the candidate `key` still stands under verifier `version`: the latest wave that
+	 * verified it, when it ran under that version and no later wave verified any of its claims as part of another
+	 * candidate.
 	 */
-	standing(key: string, claims: readonly string[]): number | undefined {
+	standing(key: string, claims: readonly string[], version: string): number | undefined {
 		const waves = this.#entry?.waves ?? [];
 		for (let index = waves.length - 1; index >= 0; index--) {
 			const wave = waves[index]!;
-			if (wave.candidates.some((candidate) => candidate.key === key)) return wave.task;
+			if (wave.candidates.some((candidate) => candidate.key === key))
+				return wave.version === version ? wave.task : undefined;
 			if (wave.candidates.some((candidate) => candidate.claims.some((claim) => claims.includes(claim))))
 				return undefined;
 		}

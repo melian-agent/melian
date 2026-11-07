@@ -352,6 +352,7 @@ export async function startWave(
 		const created = await tx.createTask(VerificationTask, input, { ownership: { kind: "conversation" } });
 		entry.waves.push({
 			task: created,
+			version: input.version,
 			candidates: input.candidates.map((candidate) => ({
 				key: JSON.stringify(candidateIdentity(candidate)),
 				claims: candidate.state.claims.map(claimKey),
