@@ -1,5 +1,6 @@
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
+import { once } from "node:events";
 import {
 	chmodSync,
 	existsSync,
@@ -14,6 +15,7 @@ import {
 import { createServer, type Server } from "node:net";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { createInterface } from "node:readline";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { Probe, type ProbeInput, type ProbeOptions, type ProbeResult } from "../src/probe.ts";
 
@@ -270,6 +272,42 @@ console.log("started");
 				if (process.platform === "darwin") expect(result.timedOut).toBe(true);
 				expect(result.output).toContain("started");
 				expect(Date.now() - began).toBeLessThan(20_000);
+			}
+		});
+
+		it("ends a CPU-bound runner whose host died mid-probe, by its CPU limit", { timeout: 300_000 }, async () => {
+			// A probe that never yields never lets the runner's watchdog timer fire, so once the host is gone only a bound
+			// outside the event loop ends it. The script spins to 40 CPU seconds and then stops itself, so a run without the
+			// bound still ends; the runner's CPU limit is the timeout, grace and five seconds, 12 CPU seconds here.
+			const host = spawn(
+				process.execPath,
+				[
+					"--conditions=@melian-agent/source",
+					join(import.meta.dirname, "fixtures", "probe-orphan.ts"),
+					worktree,
+					"40",
+				],
+				{ stdio: ["ignore", "pipe", "inherit"] },
+			);
+			try {
+				const [line] = (await once(createInterface({ input: host.stdout! }), "line")) as [string];
+				const runner = JSON.parse(line) as { pid: number; start: string };
+				// The host is this test's own child, still unreaped, so its pid is still its own.
+				if (host.exitCode === null && host.signalCode === null) host.kill("SIGKILL");
+				let seconds = 0;
+				for (;;) {
+					const row = spawnSync("/bin/ps", ["-p", String(runner.pid), "-o", "lstart=,time="], {
+						encoding: "utf8",
+					});
+					const match = /^(\S+\s+\S+\s+\S+\s+\S+\s+\S+)\s+(\S+)\s*$/.exec(row.stdout.trim());
+					if (match === null || match[1] !== runner.start) break;
+					seconds = match[2]!.split(":").reduce((total, part) => total * 60 + Number(part), 0);
+					if (seconds > 25) break;
+					await new Promise((resolve) => setTimeout(resolve, 250));
+				}
+				expect(seconds).toBeLessThan(25);
+			} finally {
+				if (host.exitCode === null && host.signalCode === null) host.kill("SIGKILL");
 			}
 		});
 

@@ -19,6 +19,12 @@ function watchdogSource(deadline: number): string {
 	return `setTimeout(() => process.exit(124), ${deadline}).unref();\n`;
 }
 
+// The backstop past Melian's own deadline, in milliseconds. A probe that never yields never lets the watchdog's timer
+// fire, so the runner also runs under a CPU-time limit of this many seconds, which the kernel enforces.
+function backstop(timeout: number): number {
+	return timeout + closeGraceMs + 5_000;
+}
+
 // Rejects with a {@link ProbeError} if `work` has not settled within `ms`, so a step that can hang, such as starting the
 // sandbox, cannot stall a caller unbounded. The timer is unref'd so it never keeps the process alive on its own.
 export function withBound<T>(work: Promise<T>, ms: number, message: string): Promise<T> {
@@ -466,7 +472,7 @@ export class Probe {
 			// A watchdog inside the runner exits the probe at its own limit even if the Melian process dies and so never
 			// stops it. It is a backstop past Melian's own deadline, so a running Melian stops the probe first; a
 			// grandchild that reparents away from the runner still escapes it, as the decision records.
-			await writeFile(join(scratch, "probe", watchdogName), watchdogSource(limits.timeout + closeGraceMs + 5_000));
+			await writeFile(join(scratch, "probe", watchdogName), watchdogSource(backstop(limits.timeout)));
 			await writeFile(join(scratch, "probe", runnerName), runnerSource());
 			for (const file of files) {
 				const target = join(scratch, "probe", ...file.path.split("/"));
@@ -551,7 +557,7 @@ export class Probe {
 		const home = join(this.#scratch, "run", "home");
 		const temporary = join(this.#scratch, "run", "tmp");
 		const node = realpathSync(process.execPath);
-		const command = `cd ${quote(this.#worktree)} && export HOME=${quote(home)} TMPDIR=${quote(temporary)} && exec ${quote(node)} ${quote(join(this.#scratch, "probe", runnerName))}`;
+		const command = `cd ${quote(this.#worktree)} && export HOME=${quote(home)} TMPDIR=${quote(temporary)} && ulimit -t ${Math.ceil(backstop(this.#timeout) / 1000)} && exec ${quote(node)} ${quote(join(this.#scratch, "probe", runnerName))}`;
 		const chunks: Buffer[] = [];
 		let size = 0;
 		let truncated = false;
