@@ -276,7 +276,8 @@ describe("Probe.policy", () => {
 		const { policy } = probe;
 		await probe.close();
 		expect(policy.denyWrite).toEqual(denyWrite);
-		expect(policy.read).toContain(system);
+		// A path the host lacks is left out, so the other system's mark is checked only where it exists.
+		if (existsSync(system)) expect(policy.read).toContain(system);
 		for (const path of policy.read.slice(5)) expect(existsSync(path), path).toBe(true);
 		expect(policy.read).not.toContain(platform === "linux" ? "/System" : "/lib64");
 	});
