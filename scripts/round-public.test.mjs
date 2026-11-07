@@ -131,6 +131,85 @@ describe("what of a round leaves the job", () => {
 		});
 	});
 
+	it("keeps a lens finding's explanation, failure scenario and fix, and withholds a static finding's", () => {
+		const lens = {
+			ruleId: "stale-cache",
+			message: { text: "The cache key omits policy" },
+			locations: [{ physicalLocation: { region: { startLine: 4 } } }],
+			properties: {
+				id: "cccccccccccccccc",
+				path: "src/cache.ts",
+				severity: "P1",
+				resolution: "block",
+				explanation: {
+					what: "The cache key omits policy",
+					whyHere: "This change adds policy",
+					whatToDo: "Key by policy",
+				},
+				failureScenario: "A policy change reuses the old verdict",
+				source: { check: "lens.correctness" },
+			},
+		};
+		const staticFinding = {
+			...lens,
+			properties: {
+				...lens.properties,
+				id: "dddddddddddddddd",
+				explanation: { what: token, whyHere: token, whatToDo: token },
+				failureScenario: token,
+				source: { check: "static.biome" },
+			},
+		};
+		const value = {
+			status: "findings",
+			blocking: true,
+			findings: { block: [lens, staticFinding], acknowledge: [] },
+			notRun: [],
+		};
+		const published = run("--public", file("verdict.json", JSON.stringify(value)));
+		expect(published.stdout).not.toContain(token);
+		const [kept, withheld] = JSON.parse(published.stdout).findings.block;
+		expect(kept.properties).toStrictEqual({
+			id: "cccccccccccccccc",
+			severity: "P1",
+			resolution: "block",
+			path: "src/cache.ts",
+			source: { check: "lens.correctness" },
+			explanation: { whyHere: "This change adds policy", whatToDo: "Key by policy" },
+			failureScenario: "A policy change reuses the old verdict",
+		});
+		expect(withheld.properties).toStrictEqual({
+			id: "dddddddddddddddd",
+			severity: "P1",
+			resolution: "block",
+			path: "src/cache.ts",
+			source: { check: "static.biome" },
+		});
+		const body = RoundComment.read({
+			verdict: file("verdict.json", JSON.stringify(value)),
+			rounds: file("rounds.json", JSON.stringify([{ base: mergeBase, head }])),
+			exitCode: "1",
+			runUrl: "https://example.test/run",
+			runId: "1",
+			nonce: "0123456789abcdef0123456789abcdef",
+			base,
+			head,
+			mergeBase,
+			current: { base, head },
+		}).body();
+		expect(body).not.toContain(token);
+		expect(body).toContain(
+			[
+				"  P1 block  src/cache.ts:4  lens.correctness  stale-cache  cccccccccccccccc  The cache key omits policy",
+				"    Why here: This change adds policy",
+				"    Failure scenario: A policy change reuses the old verdict",
+				"    What to do: Key by policy",
+				"  P1 block  src/cache.ts:4  static.biome  stale-cache  dddddddddddddddd  A static check's finding; a local run shows its text.",
+				"",
+			].join("\n"),
+		);
+	});
+
 	it("keeps the probe's own output out of the public verdict, and reads it as no verdict", () => {
 		expect(readFileSync(probe, "utf8")).toContain(token);
 		const published = run("--public", probe);

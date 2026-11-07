@@ -129,6 +129,15 @@ function findingLine(finding) {
 	);
 }
 
+// What a builder needs to fix a finding, as the lines under its headline, labelled as the terminal labels them.
+function details({ properties: { explanation, failureScenario } }) {
+	return [
+		["Why here", explanation?.whyHere],
+		["Failure scenario", failureScenario],
+		["What to do", explanation?.whatToDo],
+	].filter(([, text]) => typeof text === "string");
+}
+
 // The base and head of the last round `melian findings --rounds --json` lists, or undefined when there is none to read.
 function lastRound(text) {
 	let rounds;
@@ -159,16 +168,31 @@ export function publicVerdict(text) {
 	try {
 		const verdict = JSON.parse(text);
 		const check = ({ name, status, lineage }) => ({ name, status, lineage });
-		const finding = ({ ruleId, message, locations, properties: { id, severity, resolution, path, source } }) => {
+		const finding = ({ ruleId, message, locations, properties }) => {
+			const { id, severity, resolution, path, source, explanation, failureScenario } = properties;
 			const region = locations[0]?.physicalLocation.region;
+			const lens = !source.check.startsWith("static.");
 			return {
 				ruleId,
-				message: { text: source.check.startsWith("static.") ? staticText : message.text },
+				message: { text: lens ? message.text : staticText },
 				locations:
 					region === undefined
 						? []
 						: [{ physicalLocation: { region: { startLine: region.startLine, endLine: region.endLine } } }],
-				properties: { id, severity, resolution, path, source: { check: source.check } },
+				properties: {
+					id,
+					severity,
+					resolution,
+					path,
+					source: { check: source.check },
+					// A lens wrote these about files it read from git; it never sees a static tool's text, so they may leave.
+					...(lens
+						? {
+								explanation: explanation && { whyHere: explanation.whyHere, whatToDo: explanation.whatToDo },
+								failureScenario,
+							}
+						: {}),
+				},
 			};
 		};
 		const { findings } = verdict;
@@ -268,8 +292,24 @@ export class RoundComment {
 			quoted.push("", `${plural(lineage.length, "check")} left the committed routes:`, ...lineage.map(lineageLine));
 		const findings = aboveAdvisory.flatMap((resolution) => verdict.findings[resolution]);
 		quoted.push("", findings.length === 0 ? "No findings above advisory." : `Above advisory: ${findings.length}`);
-		quoted.push(...findings.map((finding) => `  ${findingLine(finding)}`));
-		return `${header}\n\n${fenced(quoted, maxLength - header.length - 2)}`;
+		const cuttable = [];
+		for (const finding of findings) {
+			quoted.push(`  ${findingLine(finding)}`);
+			for (const [label, text] of details(finding)) {
+				cuttable.push({ at: quoted.length, label });
+				quoted.push(oneLine(`    ${label}: ${text}`));
+			}
+		}
+		// Past the limit, the longest detail goes first, and its line says so; fenced cuts whole lines only after that.
+		const budget = maxLength - header.length - 2;
+		while (fenced(quoted).length > budget && cuttable.length > 0) {
+			const longest = cuttable.reduce((most, each) =>
+				quoted[each.at].length > quoted[most.at].length ? each : most,
+			);
+			quoted[longest.at] = `    ${longest.label}: cut to fit the comment's limit; a local run shows it.`;
+			cuttable.splice(cuttable.indexOf(longest), 1);
+		}
+		return `${header}\n\n${fenced(quoted, budget)}`;
 	}
 }
 

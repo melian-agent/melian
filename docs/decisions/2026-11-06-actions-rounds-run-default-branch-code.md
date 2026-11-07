@@ -24,3 +24,5 @@ The maintainer sets it up once, in the repository's settings:
 4. Delete both from the repository's secrets.
 
 What this gives up: a branch's copy of the workflow, run to try a change before it merges, gets no logins, so it reviews with no model and reads as not reviewed.
+
+Fix pass 9 put a lens finding's why here, failure scenario and fix back into the public copy and the comment. Without them a builder read a headline such as "The cache key omits policy" with nothing to act on, and the round's store is thrown away. A lens wrote that text about files it read from git, and the review of record at fb4eedb confirmed a lens never sees a static tool's output, so it carries no login. A static finding keeps its fixed sentence. When the comment would pass GitHub's limit, the longest of those lines is cut first, and its line says it was cut.

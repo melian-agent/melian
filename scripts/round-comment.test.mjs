@@ -99,9 +99,17 @@ describe("RoundComment", () => {
 				"",
 				"Above advisory: 4",
 				`  P0 block  src/run.ts:40  lens.security  sql-injection  ${ids[0]}  The query interpolates the user's name`,
+				"    Why here: This change passes the name straight from the request.",
+				"    What to do: Pass the name as a bound parameter.",
 				`  P1 block  src/run.ts:12  lens.security  no-eval  ${ids[1]}  eval runs request input`,
+				"    Why here: This change routes the body into run() without parsing it.",
+				"    What to do: Parse the body with JSON.parse and validate it.",
 				`  P1 block  src/run.ts:50  lens.security  no-eval  ${ids[2]}  eval runs a stored template`,
+				"    Why here: This change lets users edit that template.",
+				"    What to do: Render the template with a sandboxed engine.",
 				`  P2 acknowledge  src/total.ts:9  lens.security  missing-test  ${ids[3]}  No test covers the new branch`,
+				"    Why here: This change adds the branch.",
+				"    What to do: Add a test with a total above the limit.",
 			]),
 		);
 	});
@@ -321,6 +329,29 @@ describe("RoundComment", () => {
 				"",
 			].join("\n"),
 		);
+	});
+
+	it("cuts the longest detail first to fit the limit, and says each cut", () => {
+		const detailed = (id, why) => ({
+			...finding({ id, resolution: "block", region: { startLine: 1 } }),
+			properties: {
+				...finding({ id, resolution: "block" }).properties,
+				explanation: { whyHere: why, whatToDo: "Fix it" },
+				failureScenario: "It fails",
+			},
+		});
+		const value = verdict({
+			blocking: true,
+			block: [detailed("aaaaaaaaaaaaaaaa", "w".repeat(40_000)), detailed("bbbbbbbbbbbbbbbb", "v".repeat(30_000))],
+		});
+		const body = comment(value, "1");
+		expect(body.length).toBeLessThanOrEqual(maxLength);
+		const cut = "    Why here: cut to fit the comment's limit; a local run shows it.";
+		expect(body.split("\n").filter((line) => line === cut)).toHaveLength(1);
+		expect(body).toContain(`    Why here: ${"v".repeat(30_000)}\n`);
+		expect(body).not.toContain("w".repeat(100));
+		expect(body).toContain("    What to do: Fix it\n");
+		expect(body).not.toContain("more lines; a local run shows them all.");
 	});
 
 	it("keeps a full comment under GitHub's limit of 65,536 characters, at a budget of 60,000", () => {
