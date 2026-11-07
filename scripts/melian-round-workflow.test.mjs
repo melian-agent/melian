@@ -32,7 +32,7 @@ describe("the melian round workflow", () => {
 		for (const [job, { steps: jobSteps }] of Object.entries(workflow.jobs)) {
 			const setup = jobSteps.findIndex((step) => step.uses?.startsWith("actions/setup-node@"));
 			const first = jobSteps.findIndex((step) => /\bnode\b/.test(step.run ?? ""));
-			expect([job, setup < first], job).toEqual([job, true]);
+			if (first >= 0) expect([job, setup >= 0 && setup < first], job).toEqual([job, true]);
 		}
 	});
 
@@ -42,6 +42,17 @@ describe("the melian round workflow", () => {
 		expect(printed).toEqual([]);
 		const drawn = workflow.jobs.round.steps.find((step) => step.id === "artifact");
 		expect(drawn.run).toContain('openssl rand -hex 16 > "$RUNNER_TEMP/public/nonce"');
+		// The pending job hands the report the ID of the status it set, as a job output a report-only rerun keeps.
+		expect(workflow.jobs.pending.outputs).toEqual({ status: actions("steps.post.outputs.id") });
+		expect(workflow.jobs.report.needs).toEqual(["gate", "pending", "round"]);
+		// The status step reads the pull request's base policy, so the report job's checkout holds the history.
+		const checkout = workflow.jobs.report.steps.find((step) => step.uses?.startsWith("actions/checkout@"));
+		expect(checkout.with).toEqual({ "fetch-depth": 0, "persist-credentials": false });
+		// The trust read loads core's configuration, whose packages a fresh runner does not have.
+		const report = workflow.jobs.report.steps;
+		const install = report.findIndex((step) => step.run === "npm ci --ignore-scripts");
+		expect(install).toBeGreaterThan(report.findIndex((step) => step.uses?.startsWith("actions/setup-node@")));
+		expect(install).toBeLessThan(report.findIndex((step) => step.name === "Set melian/review on the reviewed head"));
 	});
 
 	it("refuses, before any step holds a login, a commit the default branch has moved past", () => {
@@ -59,10 +70,11 @@ describe("the melian round workflow", () => {
 		});
 	});
 
-	it("refuses, in the report job before its checkout, the commit the round job refuses", () => {
+	it("refuses, in the pending and report jobs before anything else, the commit the round job refuses", () => {
 		const name = "Refuse a commit the default branch has moved past";
 		const roundCheck = workflow.jobs.round.steps.find((step) => step.name === name);
 		expect(workflow.jobs.report.steps[0]).toEqual(roundCheck);
+		expect(workflow.jobs.pending.steps[0]).toEqual(roundCheck);
 	});
 
 	it("lets the round run only on the default branch's current commit", () => {
@@ -200,7 +212,12 @@ describe("the melian round workflow", () => {
 		});
 		expect(workflow.jobs.gate.permissions.actions).toBe("read");
 		expect(gate.filter((step) => JSON.stringify(step).includes("secrets."))).toEqual([]);
-		expect(workflow.jobs.round.needs).toBe("gate");
+		const holding = Object.entries(workflow.jobs).filter(([, job]) => JSON.stringify(job).includes("secrets."));
+		expect(holding.map(([name, job]) => [name, [job.needs].flat().includes("gate")])).toEqual([
+			["pending", true],
+			["round", true],
+			["report", true],
+		]);
 		const dir = mkdtempSync(join(tmpdir(), "round-workflow-"));
 		try {
 			// A fake gh answers only the two requests for the Environment, running the step's own --jq over each raw
@@ -218,7 +235,7 @@ describe("the melian round workflow", () => {
 			const custom = { protected_branches: false, custom_branch_policies: true };
 			const pages = (...pages) => pages.map((page) => JSON.stringify({ branch_policies: page })).join("\n");
 			const step = ({ policy = custom, branches = pages([{ name: "main", type: "branch" }]), branch = "main" }) => {
-				const ran = spawnSync("bash", ["-e", "-o", "pipefail", "-c", run], {
+				const ran = spawnSync("bash", ["-e", "-c", run], {
 					encoding: "utf8",
 					env: {
 						PATH: `${dir}:${process.env.PATH}`,
@@ -263,6 +280,59 @@ describe("the melian round workflow", () => {
 			expect(step({ branch: "" })[0]).toBe(1);
 			// A read GitHub refuses fails the step.
 			expect(step({ branches: "" })[0]).toBe(1);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("refuses a head another open pull request shares, since a status names a commit, not a pull request", () => {
+		const { run, env } = workflow.jobs.gate.steps.find(
+			(step) => step.name === "Refuse a head another open pull request shares",
+		);
+		expect(env).toEqual({
+			GH_TOKEN: actions("github.token"),
+			REPOSITORY: actions("github.repository"),
+			NUMBER: actions("inputs.pull_request"),
+			HEAD: actions("steps.pull.outputs.head"),
+		});
+		const dir = mkdtempSync(join(tmpdir(), "round-workflow-"));
+		try {
+			const head = "1".repeat(40);
+			// A fake gh answers only the listing of open pull requests, running the step's own --jq over each raw page.
+			writeFileSync(
+				join(dir, "gh"),
+				[
+					"#!/bin/sh",
+					'[ "$1 $2 $3 $4" = "api --paginate repos/o/r/pulls?state=open&per_page=100 --jq" ] && [ "$PULLS" != unreadable ] && printf "%s\\n" "$PULLS" | jq -r "$5" && exit 0',
+					"exit 1",
+					"",
+				].join("\n"),
+			);
+			chmodSync(join(dir, "gh"), 0o755);
+			const pull = (number, sha) => ({ number, head: { sha } });
+			const pages = (...pages) => pages.map((page) => JSON.stringify(page)).join("\n");
+			const step = (pulls) => {
+				const ran = spawnSync("bash", ["-e", "-c", run], {
+					encoding: "utf8",
+					env: {
+						PATH: `${dir}:${process.env.PATH}`,
+						HOME: dir,
+						REPOSITORY: "o/r",
+						NUMBER: "7",
+						HEAD: head,
+						PULLS: pulls,
+					},
+				});
+				return [ran.status, ran.stdout];
+			};
+			const alone = [0, `no other open pull request has head ${head}\n`];
+			expect(step(pages([pull(7, head), pull(8, "2".repeat(40))]))).toEqual(alone);
+			expect(step(pages([]))).toEqual(alone);
+			expect(step(pages([pull(7, head)], [pull(9, head)]))).toEqual([
+				1,
+				`::error::pull request 9 has head ${head} too; a status names a commit, so neither can take a round's melian/review\n`,
+			]);
+			expect(step("unreadable")).toEqual([1, "::error::the open pull requests could not be read\n"]);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}
@@ -504,9 +574,339 @@ describe("the melian round workflow", () => {
 		);
 		expect(reading.map(([name, job]) => [name, job.environment])).toEqual([["round", "melian-round"]]);
 		expect(JSON.stringify(workflow).match(/\$\{\{\s*secrets\.\w+\s*\}\}/g)).toEqual([
+			actions("secrets.MELIAN_STATUS_TOKEN"),
 			actions("secrets.CLAUDE_CODE_OAUTH_TOKEN"),
 			actions("secrets.CODEX_AUTH_B64"),
+			actions("secrets.MELIAN_STATUS_TOKEN"),
 		]);
+	});
+
+	it("reads the status token only in the step that sets melian/review, in a job of the melian-round Environment", () => {
+		const holding = steps.filter((step) => JSON.stringify(step).includes("secrets.MELIAN_STATUS_TOKEN"));
+		expect(holding.map((step) => [step.job, step.name, step.env.STATUS_TOKEN])).toEqual([
+			["pending", "Set melian/review to pending on the head", actions("secrets.MELIAN_STATUS_TOKEN")],
+			["report", "Set melian/review on the reviewed head", actions("secrets.MELIAN_STATUS_TOKEN")],
+		]);
+		expect(workflow.jobs.report.environment).toBe("melian-round");
+		const { env } = workflow.jobs.report.steps.find((step) => step.name === "Set melian/review on the reviewed head");
+		expect(env).toEqual({
+			GH_TOKEN: actions("github.token"),
+			STATUS_TOKEN: actions("secrets.MELIAN_STATUS_TOKEN"),
+			REPOSITORY: actions("github.repository"),
+			NUMBER: actions("inputs.pull_request"),
+			BASE: actions("needs.gate.outputs.base"),
+			HEAD: actions("needs.gate.outputs.head"),
+			PENDING: actions("needs.pending.outputs.status"),
+			PULL_URL: `${actions("github.server_url")}/${actions("github.repository")}/pull/${actions("inputs.pull_request")}`,
+			RUN_URL: `${actions("github.server_url")}/${actions("github.repository")}/actions/runs/${actions("github.run_id")}`,
+			RUN_ID: actions("github.run_id"),
+		});
+		expect(workflow.jobs.report.permissions).toEqual({ contents: "read", "pull-requests": "write" });
+	});
+
+	it("sets melian/review on the head the gate approved and the round reviewed, from the round's verdict", () => {
+		const { run } = workflow.jobs.report.steps.find((step) => step.name === "Set melian/review on the reviewed head");
+		const dir = mkdtempSync(join(tmpdir(), "round-workflow-"));
+		try {
+			// The base's policy lives in a repository of its own: one commit trusts writers by default, the next turns
+			// trust off, as a root melian.yaml may.
+			const policy = join(dir, "policy");
+			mkdirSync(policy);
+			const git = (...args) =>
+				spawnSync("git", args, {
+					cwd: policy,
+					encoding: "utf8",
+					env: {
+						...process.env,
+						GIT_AUTHOR_NAME: "t",
+						GIT_AUTHOR_EMAIL: "t@t",
+						GIT_COMMITTER_NAME: "t",
+						GIT_COMMITTER_EMAIL: "t@t",
+					},
+				}).stdout.trim();
+			git("init", "-q");
+			writeFileSync(join(policy, "README.md"), "policy\n");
+			git("add", "-A");
+			git("commit", "-qm", "trusted");
+			const base = git("rev-parse", "HEAD");
+			writeFileSync(join(policy, "melian.yaml"), "trust:\n  writers: false\n");
+			git("add", "-A");
+			git("commit", "-qm", "untrusted");
+			const untrusted = git("rev-parse", "HEAD");
+			const head = "1".repeat(40);
+			const mergeBase = "e".repeat(40);
+			// A fake gh answers only the fresh read of the pull request, the head's statuses through the step's own
+			// --jq, and the status post when it carries the status token, which it keeps.
+			writeFileSync(
+				join(dir, "gh"),
+				[
+					"#!/bin/sh",
+					'if [ "$*" = "api repos/o/r/pulls/7 --jq .base.sha + \\" \\" + .head.sha" ]; then [ -n "$NOW" ] && echo "$NOW"; exit; fi',
+					'if [ "$1 $2 $3" = "api --paginate repos/o/r/commits/$HEAD/statuses?per_page=100" ] && [ "$4" = --jq ] && [ "$#" = 5 ]; then [ "$STATUSES" = unreadable ] && exit 1; printf "%s" "$STATUSES" | jq -r "$5"; exit; fi',
+					'[ "$*" = "api -X POST repos/o/r/statuses/$HEAD --input -" ] && [ "$GH_TOKEN" = status-token ] && cat > "$POSTED" && exit 0',
+					"exit 1",
+					"",
+				].join("\n"),
+			);
+			chmodSync(join(dir, "gh"), 0o755);
+			const round = join(dir, "round");
+			mkdirSync(round);
+			const finding = (resolution) => ({
+				ruleId: "no-eval",
+				message: { text: "eval runs input" },
+				locations: [],
+				properties: { id: "0", severity: "P1", resolution, path: "a.ts", source: { check: "lens.security" } },
+			});
+			const posted = join(dir, "posted.json");
+			// This round's own pending status, as the pending job set it and handed its ID on.
+			const own = { id: 77, context: "melian/review", created_at: "2026-11-07T10:00:05Z", state: "pending" };
+			const step = ({
+				verdict = { status: "passed", blocking: false, findings: { block: [], acknowledge: [] }, notRun: [] },
+				exit = "0",
+				reviewed = { base: mergeBase, head },
+				merged = mergeBase,
+				at = base,
+				now = `${at} ${head}`,
+				token = "status-token",
+				statuses = [own],
+				pending = "77",
+			}) => {
+				rmSync(posted, { force: true });
+				writeFileSync(join(round, "verdict.json"), typeof verdict === "string" ? verdict : JSON.stringify(verdict));
+				writeFileSync(
+					join(round, "rounds.json"),
+					typeof reviewed === "string" ? reviewed : JSON.stringify([reviewed]),
+				);
+				writeFileSync(join(round, "exit"), `${exit}\n`);
+				writeFileSync(join(round, "merge-base"), `${merged}\n`);
+				const ran = spawnSync("bash", ["-e", "-c", run], {
+					cwd: fileURLToPath(new URL("..", import.meta.url)),
+					encoding: "utf8",
+					env: {
+						PATH: `${dir}:${process.env.PATH}`,
+						HOME: dir,
+						RUNNER_TEMP: dir,
+						GITHUB_WORKSPACE: policy,
+						GH_TOKEN: "workflow-token",
+						STATUS_TOKEN: token,
+						REPOSITORY: "o/r",
+						NUMBER: "7",
+						BASE: at,
+						HEAD: head,
+						PENDING: pending,
+						PULL_URL: "https://github.com/o/r/pull/7",
+						RUN_URL: "https://example.test/run",
+						RUN_ID: "9",
+						NOW: now,
+						STATUSES: typeof statuses === "string" ? statuses : JSON.stringify(statuses),
+						POSTED: posted,
+					},
+				});
+				let status;
+				try {
+					status = JSON.parse(readFileSync(posted, "utf8"));
+				} catch {
+					status = undefined;
+				}
+				return { code: ran.status, stdout: ran.stdout, status };
+			};
+			const set = (state, description) => ({
+				code: 0,
+				stdout: `melian/review on ${head}: ${state}, ${description}\n`,
+				status: { state, context: "melian/review", description, target_url: "https://github.com/o/r/pull/7" },
+			});
+			const suffix = `; base ${mergeBase}`;
+			expect(step({})).toEqual(set("success", `Passed${suffix}`));
+			const acknowledged = { status: "findings", blocking: false, notRun: [] };
+			expect(
+				step({
+					verdict: {
+						...acknowledged,
+						findings: { block: [], acknowledge: [finding("acknowledge"), finding("acknowledge")] },
+					},
+					exit: "3",
+				}),
+			).toEqual(set("success", `Passed; 2 findings to acknowledge${suffix}`));
+			expect(
+				step({
+					verdict: {
+						status: "findings",
+						blocking: true,
+						findings: { block: [finding("block")], acknowledge: [finding("acknowledge")] },
+						notRun: [],
+					},
+					exit: "1",
+				}),
+			).toEqual(set("failure", `Blocked by 1 finding${suffix}`));
+			const skipped = [{ name: "lens.security", status: "failed" }];
+			expect(
+				step({
+					verdict: {
+						status: "not-reviewed",
+						blocking: false,
+						findings: { block: [], acknowledge: [] },
+						notRun: skipped,
+					},
+					exit: "2",
+				}),
+			).toEqual(set("error", `Not reviewed: a check did not run${suffix}`));
+			const unreadable = set("error", `Not reviewed: the round's verdict could not be read${suffix}`);
+			expect(step({ verdict: "not json" })).toEqual(unreadable);
+			expect(step({ exit: "3" })).toEqual(unreadable);
+			const another = set("error", `Not reviewed: the round reviewed another revision${suffix}`);
+			expect(step({ reviewed: { base: mergeBase, head: "2".repeat(40) } })).toEqual(another);
+			expect(step({ reviewed: { base: "f".repeat(40), head } })).toEqual(another);
+			expect(step({ reviewed: "not json" })).toEqual(another);
+			// A merge base that is not exactly one full SHA sets no suffix, so the merge group could not copy it.
+			for (const merged of ["none", `0${mergeBase}`, `${mergeBase}0`]) {
+				expect(step({ merged, reviewed: { base: merged, head } }), merged).toEqual(
+					set("error", "Not reviewed: the round reviewed another revision"),
+				);
+			}
+			// The base's policy decides whether a writer's status counts, as it does for melian publish.
+			const distrusted = set(
+				"error",
+				`Not reviewed here: writers are not trusted; a trusted host sets this status${suffix}`,
+			);
+			expect(step({ at: untrusted })).toEqual(distrusted);
+			expect(step({ at: "a".repeat(40) })).toEqual(distrusted);
+			// The round posts only while its own pending status is the head's latest melian/review, by ID, never by clock:
+			// a status of any time that another writer set since is newer than this round.
+			const newer = {
+				code: 0,
+				stdout:
+					"a newer melian/review status stands on this head, so this round sets none; start a new round, since rerunning failed jobs keeps the old pending status\n",
+				status: undefined,
+			};
+			const other = (id, context) => ({ id, context, created_at: "2026-11-07T09:00:00Z", state: "failure" });
+			expect(step({ statuses: [other(78, "melian/review"), own] })).toEqual(newer);
+			// GitHub lists a commit's statuses newest first, so the first melian/review is the latest.
+			expect(step({ statuses: [other(78, "melian/review"), other(76, "melian/review")] })).toEqual(newer);
+			expect(step({ statuses: [other(99, "ci"), own, other(76, "melian/review")] })).toEqual(
+				set("success", `Passed${suffix}`),
+			);
+			// With this round's pending status on the head, a read that fails posts nothing: pending already blocks, and a
+			// newer status another writer set must stand.
+			const stands = (why) => ({
+				code: 0,
+				stdout: `${why}, so this round's pending status stands; start a new round\n`,
+				status: undefined,
+			});
+			const unread = stands("the head's statuses could not be read");
+			expect(step({ statuses: "unreadable" })).toEqual(unread);
+			expect(step({ statuses: [] })).toEqual(unread);
+			expect(step({ statuses: [other(99, "ci")] })).toEqual(unread);
+			expect(step({ now: "" })).toEqual(stands("the pull request could not be read again"));
+			// Without a pending status the job handed on, an earlier success could still stand, so the round sets error.
+			const unknown = set("error", `Not reviewed: no pending status from this round${suffix}`);
+			for (const pending of ["", "x77", "77x"]) expect(step({ pending }), pending).toEqual(unknown);
+			expect(step({ pending: "", now: "" })).toEqual(unknown);
+			const none = {
+				code: 0,
+				stdout: "the pull request moved during the round, so no melian/review status is set; start a new round\n",
+				status: undefined,
+			};
+			expect(step({ now: `${base} ${"3".repeat(40)}` })).toEqual(none);
+			expect(step({ now: `${"c".repeat(40)} ${head}` })).toEqual(none);
+			expect(step({ token: "" })).toEqual({
+				code: 1,
+				stdout: "::error::the melian-round Environment holds no MELIAN_STATUS_TOKEN\n",
+				status: undefined,
+			});
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	}, 60_000);
+
+	it("sets melian/review to pending on the gate's head before the round job starts, in a job of the Environment", () => {
+		const { pending, round } = workflow.jobs;
+		expect(pending.needs).toBe("gate");
+		expect(pending.environment).toBe("melian-round");
+		expect(pending.permissions).toEqual({ contents: "read" });
+		expect(round.needs).toEqual(["gate", "pending"]);
+		expect(pending.steps.map((step) => step.name)).toEqual([
+			"Refuse a commit the default branch has moved past",
+			"Set melian/review to pending on the head",
+		]);
+		const [, { run, env }] = pending.steps;
+		expect(env).toEqual({
+			STATUS_TOKEN: actions("secrets.MELIAN_STATUS_TOKEN"),
+			REPOSITORY: actions("github.repository"),
+			HEAD: actions("needs.gate.outputs.head"),
+			PULL_URL: `${actions("github.server_url")}/${actions("github.repository")}/pull/${actions("inputs.pull_request")}`,
+		});
+		const dir = mkdtempSync(join(tmpdir(), "round-workflow-"));
+		try {
+			const head = "1".repeat(40);
+			// A fake gh answers only the status post when it carries the status token, which it keeps.
+			writeFileSync(
+				join(dir, "gh"),
+				[
+					"#!/bin/sh",
+					'[ "$*" = "api -X POST repos/o/r/statuses/$HEAD --input - --jq .id" ] && [ "$GH_TOKEN" = status-token ] && cat > "$POSTED" && echo "$ID" && exit 0',
+					"exit 1",
+					"",
+				].join("\n"),
+			);
+			chmodSync(join(dir, "gh"), 0o755);
+			const posted = join(dir, "posted.json");
+			const output = join(dir, "output");
+			const step = (token, id = "4242") => {
+				rmSync(output, { force: true });
+				rmSync(posted, { force: true });
+				const ran = spawnSync("bash", ["-e", "-c", run], {
+					encoding: "utf8",
+					env: {
+						PATH: `${dir}:${process.env.PATH}`,
+						HOME: dir,
+						STATUS_TOKEN: token,
+						REPOSITORY: "o/r",
+						HEAD: head,
+						PULL_URL: "https://github.com/o/r/pull/7",
+						POSTED: posted,
+						ID: id,
+						GITHUB_OUTPUT: output,
+					},
+				});
+				let status;
+				try {
+					status = JSON.parse(readFileSync(posted, "utf8"));
+				} catch {
+					status = undefined;
+				}
+				let handed;
+				try {
+					handed = readFileSync(output, "utf8");
+				} catch {
+					handed = undefined;
+				}
+				return { code: ran.status, stdout: ran.stdout, status, handed };
+			};
+			expect(step("status-token", "")).toMatchObject({
+				code: 1,
+				stdout: "::error::GitHub returned no ID for the pending status\n",
+				handed: undefined,
+			});
+			expect(step("status-token")).toEqual({
+				code: 0,
+				handed: "id=4242\n",
+				stdout: `melian/review on ${head}: pending, status 4242\n`,
+				status: {
+					state: "pending",
+					context: "melian/review",
+					description: "A Melian round is reviewing this head",
+					target_url: "https://github.com/o/r/pull/7",
+				},
+			});
+			expect(step("")).toEqual({
+				code: 1,
+				stdout: "::error::the melian-round Environment holds no MELIAN_STATUS_TOKEN\n",
+				status: undefined,
+				handed: undefined,
+			});
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
 	});
 
 	it("posts the moved notice when the pull request moved during the round, from a fresh read", () => {

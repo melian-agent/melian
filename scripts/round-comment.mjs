@@ -2,14 +2,16 @@
 // verdict that may leave the job.
 // Usage: node scripts/round-comment.mjs --verdict <file> --rounds <file> --exit <code> --run-url <url> --run-id <id> --nonce <hex> --base <sha>
 //          --head <sha> --merge-base <sha> [--current-base <sha> --current-head <sha>]
-//        A missing current base or head means the pull request could not be read again.
+//        A missing current base or head means the pull request could not be read again. With --status <pull request URL>,
+//        --trusted <true|false>, --latest <status ID or empty> and --pending <status ID>, it prints the melian/review status to
+//        set, as JSON, or `skip: ` and why none may be set.
 //        node scripts/round-comment.mjs --public <verdict file>
 import { readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { publicVerdict, RoundComment } from "./round.mjs";
 
 const required = ["verdict", "rounds", "exit", "run-url", "run-id", "nonce", "base", "head", "merge-base"];
-const names = [...required, "current-base", "current-head"];
+const names = [...required, "current-base", "current-head", "status", "trusted", "latest", "pending"];
 
 if (process.argv[2] === "--public") {
 	let text;
@@ -46,5 +48,13 @@ if (process.argv[2] === "--public") {
 		mergeBase: values["merge-base"],
 		current,
 	});
-	process.stdout.write(comment.body());
+	if (values.status === undefined) process.stdout.write(comment.body());
+	else {
+		const status = comment.status(values.status, {
+			trusted: values.trusted === "true",
+			latest: values.latest ?? "",
+			pending: values.pending ?? "",
+		});
+		process.stdout.write(status.skip === undefined ? `${JSON.stringify(status)}\n` : `skip: ${status.skip}\n`);
+	}
 }
