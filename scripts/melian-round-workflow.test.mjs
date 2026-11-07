@@ -773,7 +773,8 @@ describe("the melian round workflow", () => {
 			// a status of any time that another writer set since is newer than this round.
 			const newer = {
 				code: 0,
-				stdout: "a newer melian/review status stands on this head, so this round sets none\n",
+				stdout:
+					"a newer melian/review status stands on this head, so this round sets none; start a new round, since rerunning failed jobs keeps the old pending status\n",
 				status: undefined,
 			};
 			const other = (id, context) => ({ id, context, created_at: "2026-11-07T09:00:00Z", state: "failure" });

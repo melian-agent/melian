@@ -321,7 +321,9 @@ export class RoundComment {
 			};
 		const id = /^[0-9]+$/;
 		if (id.test(latest) && id.test(pending) && latest !== pending)
-			return { skip: "a newer melian/review status stands on this head, so this round sets none" };
+			return {
+				skip: "a newer melian/review status stands on this head, so this round sets none; start a new round, since rerunning failed jobs keeps the old pending status",
+			};
 		const known = /^[0-9a-f]{40}$/.test(this.mergeBase);
 		const base = known ? `; base ${this.mergeBase}` : "";
 		const set = (state, text) => ({
