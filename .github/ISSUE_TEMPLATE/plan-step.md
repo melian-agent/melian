@@ -18,7 +18,7 @@ labels: plan step
 
 ## For the agent
 
-- Claim first, as AGENTS.md's Work from issues says: swap `status: ready` for `status: in progress`, comment `Claim:` with your name, where you run and your branch, then reread the comments. The earliest claim wins; if it isn't yours, comment `Yielding to` its link and stop without touching the labels.
+- Claim first, as AGENTS.md's Work from issues says: comment `Claim:` with your name, where you run and your branch, then reread the comments. The `claim` workflow sets the status labels from the comments; never edit them by hand. The earliest writer's claim wins; if it isn't yours, comment `Yielding to` its link and stop without touching the labels.
 - Work in a checkout of your own, on any machine, as [AGENTS.md](https://github.com/melian-agent/melian/blob/main/AGENTS.md) sets out: failing tests first, the mutation inventory with every claimed mutant run by hand, one commit per discrete change, and `npm run check` before you finish.
 - Open a draft pull request whose description says `Closes #N`. Don't mark it ready or queue it; the coordinator runs the reviews.
 - End each report comment with a `Timing:` line, as AGENTS.md's Work from issues says.
