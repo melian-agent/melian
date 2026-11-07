@@ -584,3 +584,44 @@ describe("doctor clone check", () => {
 		expect(await cloneLine(undefined)).toBeUndefined();
 	});
 });
+
+describe("doctor state key", () => {
+	const secrets = (body: string) => {
+		mkdirSync(join(home, "melian"), { recursive: true });
+		writeFileSync(join(home, "melian", "secrets.yaml"), body, { mode: 0o600 });
+		chmodSync(join(home, "melian", "secrets.yaml"), 0o600);
+	};
+	const line = (stdout: string) => stdout.split("\n").find((each) => /^\S+ +state key {3}/.test(each));
+	const file = () => join(home, "melian", "secrets.yaml");
+
+	it("warns when no secrets file names a writers' key", async () => {
+		expect(line((await run(github())).stdout)).toBe(
+			"warn  state key   no writers' key; name one for the provider melian-state in a secrets file, or a pull request's storage stays in this clone",
+		);
+	});
+
+	it("names the key's source, never its value, and keeps it out of the model catalogue", async () => {
+		secrets(
+			"credentials:\n  state:\n    provider: melian-state\n    key: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n",
+		);
+		const { stdout } = await run(github());
+		expect(line(stdout)).toBe(
+			`ok    state key   writers' key state in ${file()}; a pull request's storage goes to melian/state on origin`,
+		);
+		expect(stdout).not.toContain("0123456789abcdef0123");
+		expect(stdout).not.toMatch(/^fail {2}models/m);
+	});
+
+	it("warns when the key's variable is unset", async () => {
+		secrets("credentials:\n  state:\n    provider: melian-state\n    env: MELIAN_DOCTOR_STATE_KEY\n");
+		expect(line((await run(github())).stdout)).toBe(
+			`warn  state key   writers' key state in ${file()} reads MELIAN_DOCTOR_STATE_KEY, which is unset; a pull request's storage stays in this clone`,
+		);
+	});
+
+	it("takes the key's variable when it is set", async () => {
+		secrets("credentials:\n  state:\n    provider: melian-state\n    env: MELIAN_DOCTOR_STATE_KEY\n");
+		vi.stubEnv("MELIAN_DOCTOR_STATE_KEY", "set");
+		expect(line((await run(github())).stdout)).toMatch(/^ok {4}state key {3}writers' key state in /);
+	});
+});
