@@ -207,7 +207,10 @@ setInterval(() => {}, 1000);
 		it("is cut at its output limit and ended", { timeout: 60_000 }, async () => {
 			const script = `
 const block = "x".repeat(65536);
-for (;;) process.stdout.write(block);
+// Each write waits for the last, so output keeps flowing: a synchronous loop queues its writes in memory, and the
+// pipe can see no more than its first block.
+const flood = () => process.stdout.write(block, flood);
+flood();
 `;
 			const began = Date.now();
 			const result = await probed({ script }, { outputLimit: 4096, timeout: 30_000 });
