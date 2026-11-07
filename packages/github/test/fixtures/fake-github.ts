@@ -107,7 +107,8 @@ function json(data: unknown, status = 200): Response {
 // Answers only the ref the request names, a page at a time behind GitHub's cursor links, newest first unless the
 // request asks otherwise.
 function activity(state: FakeState, url: URL): Response {
-	if (state.failActivity) return json({ message: "Forbidden" }, 403);
+	// GitHub's answer to a token without contents: read, which this endpoint alone of the provider's reads needs.
+	if (state.failActivity) return json({ message: "Resource not accessible by personal access token" }, 403);
 	const ref = url.searchParams.get("ref");
 	const direction = url.searchParams.get("direction") ?? "desc";
 	if (ref === null || (direction !== "desc" && direction !== "asc"))

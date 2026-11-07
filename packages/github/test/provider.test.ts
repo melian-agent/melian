@@ -275,7 +275,9 @@ describe("the head's pusher", () => {
 		expect(await refused()).toBe("no push, force push or branch creation in GitHub's activity names this head");
 		state.failActivity = true;
 		state.activity = [push("head-writer", state.pull.head.sha)];
-		expect(await refused()).toBe("the head's pushing identity could not be read from GitHub's activity");
+		expect(await refused()).toBe(
+			"the head's pushing identity could not be read from GitHub's activity, which needs a token with contents: read",
+		);
 		state.failActivity = false;
 		state.activity = [push(null, state.pull.head.sha), push("older-writer", state.pull.head.sha)];
 		expect(await refused()).toBe("the head's push names no pushing identity");

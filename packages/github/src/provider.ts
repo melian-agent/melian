@@ -42,7 +42,10 @@ const pushes = new Set(["push", "force_push", "branch_creation"]);
 export interface GitHubProviderOptions {
 	readonly owner: string;
 	readonly repo: string;
-	/** A token with `pull_requests: write` and `statuses: write`, or a classic token with `repo`. Never logged. */
+	/**
+	 * A token with `pull_requests: write`, `statuses: write` and `contents: read`, or a classic token with `repo`.
+	 * Never logged.
+	 */
 	readonly token: string;
 	/** The REST API's address; GitHub's own by default. */
 	readonly apiUrl?: string;
@@ -293,7 +296,10 @@ export class GitHubProvider implements ReviewProvider {
 				return { pusher: push.actor.login };
 			}
 		} catch {
-			return { writerError: "the head's pushing identity could not be read from GitHub's activity" };
+			return {
+				writerError:
+					"the head's pushing identity could not be read from GitHub's activity, which needs a token with contents: read",
+			};
 		}
 		return { writerError: "no push, force push or branch creation in GitHub's activity names this head" };
 	}

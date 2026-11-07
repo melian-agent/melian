@@ -18,6 +18,8 @@ The head is refused, with the reason recorded, when:
 - the matching entry has no actor;
 - the activity cannot be read.
 
+The activity endpoint needs a token with `contents: read`; the events feed needed only metadata. GitHub's `X-Accepted-GitHub-Permissions` header on the endpoint reads `contents=read`. So a fine-grained token now needs `contents: read` beside `pull_requests: write` and `statuses: write`, and a token without it refuses every head, with a reason that names the permission.
+
 ## The author fallback
 
 The author fallback is gone. The CLI's `writerTrust` takes the provider's pusher alone, and a provider that names none refuses the head, whatever the author's permission. The fallback existed because the events feed often had no matching event; the activity API has no such gap, so the fallback would only let an author's permission stand in for a pusher no one could name. The [Actions-rounds decision](2026-11-06-actions-rounds-run-default-branch-code.md) already ruled it out for the `melian round` workflow, and [pull request #299](https://github.com/melian-agent/melian/pull/299) moves that workflow's gate to the same API.
