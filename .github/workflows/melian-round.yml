@@ -23,7 +23,7 @@ concurrency:
 
 jobs:
   gate:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 5
     permissions:
       contents: read
@@ -113,7 +113,7 @@ jobs:
 
   round:
     needs: gate
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 150
     # The logins are secrets of the melian-round Environment, whose deployment branches are limited to main, so GitHub
     # withholds them from any other branch's copy of this workflow. Repository secrets reach every branch's workflow,
@@ -239,7 +239,7 @@ jobs:
   report:
     needs: [gate, round]
     if: always() && needs.gate.result == 'success'
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 5
     permissions:
       contents: read
