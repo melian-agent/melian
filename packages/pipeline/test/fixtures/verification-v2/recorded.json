@@ -1,0 +1,153 @@
+{
+	"recordedBy": "ffb710e5",
+	"revision": "ba8b5db3feb175dfbeb15ae2f1e9847eaa625f60..130e8f16e99cd29443721583c24b04e243bc8d9f",
+	"repoRoot": "/tmp/melian-review-j47XOb",
+	"tasks": [
+		{
+			"kind": "melian.verification",
+			"version": 2,
+			"input": {
+				"root": 1,
+				"revision": {
+					"repoRoot": "/tmp/melian-review-j47XOb",
+					"nonce": "ac069caa60fb44002acc5159",
+					"base": "ba8b5db3feb175dfbeb15ae2f1e9847eaa625f60",
+					"head": "130e8f16e99cd29443721583c24b04e243bc8d9f",
+					"files": [
+						{
+							"path": "src/user.ts",
+							"status": "modified",
+							"binary": false,
+							"hunks": [
+								{
+									"file": "src/user.ts",
+									"index": 0,
+									"oldStart": 7,
+									"oldLines": 1,
+									"newStart": 7,
+									"newLines": 1,
+									"added": "\treturn user.manager.name;",
+									"changes": "-\treturn user.manager?.name ?? \"none\";\n+\treturn user.manager.name;"
+								}
+							]
+						}
+					]
+				},
+				"version": "678bb91db027f664",
+				"candidates": [
+					{
+						"key": "64f813a9f8e50dfe",
+						"state": {
+							"speaker": {
+								"ruleId": "null-dereference",
+								"level": "error",
+								"message": {
+									"text": "managerName reads name from a manager that may be undefined."
+								},
+								"partialFingerprints": {
+									"melian/v1": "64f813a9f8e50dfe"
+								},
+								"locations": [
+									{
+										"physicalLocation": {
+											"artifactLocation": {
+												"uri": "src/user.ts"
+											},
+											"region": {
+												"startLine": 7,
+												"snippet": {
+													"text": "\treturn user.manager.name;"
+												}
+											}
+										}
+									}
+								],
+								"properties": {
+									"id": "64f813a9f8e50dfe",
+									"path": "src/user.ts",
+									"occurrence": 0,
+									"cause": "introduced",
+									"trigger": {
+										"file": "src/user.ts",
+										"index": 0,
+										"snippet": "\treturn user.manager.name;",
+										"hash": "2ccd7d9ec80a2d0ae81c5d36e913910bc47ff488c129753fb931ebe72833a538"
+									},
+									"severity": "P1",
+									"explanation": {
+										"what": "managerName reads name from a manager that may be undefined.",
+										"whyHere": "This change dropped the optional chain, so a user without a manager throws.",
+										"whatToDo": "Restore user.manager?.name with a fallback."
+									},
+									"source": {
+										"check": "lens.correctness",
+										"version": "18c49f913df8@careful"
+									},
+									"evidence": [
+										{
+											"file": "src/user.ts",
+											"startLine": 7,
+											"role": "cause",
+											"revision": "head",
+											"proves": true,
+											"snippet": "\treturn user.manager.name;"
+										}
+									],
+									"failureScenario": "managerName({ name: \"Ada\" }) throws a TypeError reading name of undefined.",
+									"status": "new",
+									"reportedBy": [
+										{
+											"check": "lens.correctness",
+											"version": "18c49f913df8@careful"
+										}
+									]
+								}
+							},
+							"claims": [
+								{
+									"id": "64f813a9f8e50dfe",
+									"ruleId": "null-dereference",
+									"source": {
+										"check": "lens.correctness",
+										"version": "18c49f913df8@careful"
+									},
+									"failureScenario": "managerName({ name: \"Ada\" }) throws a TypeError reading name of undefined.",
+									"evidence": [
+										{
+											"file": "src/user.ts",
+											"startLine": 7,
+											"role": "cause",
+											"revision": "head",
+											"proves": true,
+											"snippet": "\treturn user.manager.name;"
+										}
+									]
+								}
+							]
+						},
+						"finder": "faux/finder",
+						"route": [
+							{
+								"provider": "faux",
+								"modelId": "judge"
+							}
+						],
+						"budget": {
+							"tokens": 300000,
+							"tools": 60
+						},
+						"fence": {
+							"coReported": false,
+							"silent": [
+								"nit"
+							]
+						}
+					}
+				]
+			},
+			"initial": {
+				"phase": "spawn"
+			}
+		}
+	]
+}

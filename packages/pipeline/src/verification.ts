@@ -23,6 +23,7 @@ import { lensExtension } from "./review.ts";
 import { ReviewIndex } from "./review-index.ts";
 import { quoteUntrusted } from "./untrusted.ts";
 import { verifierInstructions } from "./verification-instructions.ts";
+import { claimKey, VerificationWaves, VerificationWavesDocument } from "./verification-waves.ts";
 
 export type VerificationCandidate = {
 	key: string;
@@ -41,6 +42,9 @@ export type VerificationInput = {
 	revision: ReviewState;
 	version: string;
 	candidates: VerificationCandidate[];
+	// Outcomes an earlier wave reached for candidates it verified with the same claims, by key; this task copies them
+	// rather than ask again. Absent from a task an older Melian stored.
+	reused?: Record<string, Outcome>;
 };
 type Checkpoint =
 	| { phase: "spawn" }
@@ -57,15 +61,17 @@ async function replaced(
 	task: number,
 	context: Context,
 ): Promise<boolean> {
-	return (
-		(await reader.snapshot(ReviewIndex, input.root, context))?.reviews[Revision.key(input.revision)]?.verification
-			?.task !== task
+	return !VerificationWaves.owns(
+		await reader.snapshot(ReviewIndex, input.root, context),
+		await reader.snapshot(VerificationWavesDocument, input.root, context),
+		Revision.key(input.revision),
+		task,
 	);
 }
 
 export const VerificationTask = defineTask<VerificationInput, Checkpoint, VerificationResult>({
 	name: "melian.verification",
-	version: 2,
+	version: 3,
 	migrate: (input, checkpoint) => ({
 		input: input as unknown as VerificationInput,
 		checkpoint: checkpoint as Checkpoint,
@@ -75,8 +81,12 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 		spawn: async (task, runtime, context) => {
 			await runtime.commit(async (tx) => {
 				if (
-					(await tx.doc(ReviewIndex, task.input.root)).reviews[Revision.key(task.input.revision)]?.verification
-						?.task !== runtime.taskId
+					!VerificationWaves.owns(
+						await tx.doc(ReviewIndex, task.input.root),
+						await tx.doc(VerificationWavesDocument, task.input.root),
+						Revision.key(task.input.revision),
+						runtime.taskId,
+					)
 				)
 					return { status: "terminal", outcome: { status: "completed", result: {} } };
 				// Read before any write. The severity each lens reported goes on the claim's label line, which Melian
@@ -84,6 +94,7 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 				const findings = await tx.doc(FindingsDocument, task.input.root);
 				const children: Record<string, ConversationId> = {};
 				for (const candidate of task.input.candidates) {
+					if (task.input.reused?.[candidate.key] !== undefined) continue;
 					const child = await tx.createConversation({ ownership: { kind: "task", taskId: runtime.taskId } });
 					children[candidate.key] = child.id;
 					const claims = candidate.state.claims.map(({ id, source }, index) => ({
@@ -139,7 +150,7 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 		},
 		verify: async (task, runtime, context) => {
 			const started = task.state.checkpoint as Extract<Checkpoint, { phase: "verify" }>;
-			const result: VerificationResult = {};
+			const result: VerificationResult = { ...task.input.reused };
 			const run = async (candidate: VerificationCandidate): Promise<Outcome> => {
 				const id = started.children[candidate.key]!;
 				const child = (await runtime.conversation(id, context))!;
@@ -189,8 +200,12 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 					if (next === undefined) return { status: "exhausted", reason };
 					await runtime.commit(async (tx, current) => {
 						if (
-							(await tx.doc(ReviewIndex, task.input.root)).reviews[Revision.key(task.input.revision)]
-								?.verification?.task !== runtime.taskId
+							!VerificationWaves.owns(
+								await tx.doc(ReviewIndex, task.input.root),
+								await tx.doc(VerificationWavesDocument, task.input.root),
+								Revision.key(task.input.revision),
+								runtime.taskId,
+							)
 						)
 							return undefined;
 						await configure(tx, id, { model: next });
@@ -209,6 +224,7 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 					for (;;) {
 						const candidate = task.input.candidates[cursor++];
 						if (candidate === undefined) return;
+						if (task.input.reused?.[candidate.key] !== undefined) continue;
 						result[candidate.key] = await run(candidate);
 					}
 				}),
@@ -232,14 +248,13 @@ export async function startVerification(
 ): Promise<TaskId<VerificationResult> | undefined> {
 	const root = await harness.root(context);
 	const { nonce: _, ...revision } = input.revision;
-	const candidates = input.candidates.map((candidate) => ({
-		...candidate,
-		state: {
-			speaker: candidate.state.speaker.properties.id,
-			claims: candidate.state.claims.map(({ verification: __, ...claim }) => claim),
-		},
-	}));
-	const key = JSON.stringify({ root: input.root, revision, version: input.version, candidates });
+	const key = JSON.stringify({
+		root: input.root,
+		revision,
+		version: input.version,
+		candidates: input.candidates.map(candidateIdentity),
+	});
+	const asking = input.candidates.filter((candidate) => input.reused?.[candidate.key] === undefined);
 	if (unlockModels !== undefined) {
 		// Live tasks were unlocked from their checkpoints before resume; finished tasks ask no model.
 		const previous = (await harness.snapshot(ReviewIndex, root.id, context))?.reviews[Revision.key(input.revision)]
@@ -261,9 +276,15 @@ export async function startVerification(
 			previous?.input === key &&
 			record !== undefined &&
 			(record.state.status !== "terminal" || (answered && (!failed || !rerun)));
-		if (!attaches)
-			await unlockModels(input.candidates.flatMap((candidate) => candidate.route.map((model) => model.provider)));
+		if (!attaches && asking.length > 0)
+			await unlockModels(asking.flatMap((candidate) => candidate.route.map((model) => model.provider)));
 	}
+	// A reused outcome's claims keep the verdicts the wave that reached it stored.
+	const kept = new Set(
+		input.candidates.flatMap((candidate) =>
+			input.reused?.[candidate.key] === undefined ? [] : candidate.state.claims.map(claimKey),
+		),
+	);
 	return root.commit(async (tx) => {
 		const index = await tx.doc(ReviewIndex, root.id);
 		const known = index.reviews[Revision.key(input.revision)];
@@ -286,13 +307,56 @@ export async function startVerification(
 			if (record !== undefined && (record.state.status !== "terminal" || (results !== undefined && !failed)))
 				return previous.task as TaskId<VerificationResult>;
 		}
-		await clearVerifications(tx, input.root, Revision.key(input.revision));
+		await clearVerifications(tx, input.root, Revision.key(input.revision), (claim) => !kept.has(claim));
 		const created = await tx.createTask(VerificationTask, input, { ownership: { kind: "conversation" } });
 		const { adjudication: __, ...entry } = known ?? { lenses: [...selection] };
 		index.reviews[Revision.key(input.revision)] = {
 			...entry,
 			verification: { task: created, input: key },
 		};
+		return created;
+	}, context);
+}
+
+/** What identifies a candidate's verification: the candidate less its claims' stored verdicts and speaker. */
+export function candidateIdentity(candidate: VerificationCandidate) {
+	return {
+		...candidate,
+		state: {
+			speaker: candidate.state.speaker.properties.id,
+			claims: candidate.state.claims.map(({ verification: _, ...claim }) => claim),
+		},
+	};
+}
+
+/**
+ * Starts a wave for `lensTask` at the input's revision: a verification task over candidates some lenses' ends formed
+ * while others still run. Clears their claims' earlier verdicts, so the wave's own decide them. Returns nothing when the
+ * index no longer names `lensTask`.
+ */
+export async function startWave(
+	harness: Harness,
+	input: VerificationInput,
+	lensTask: number,
+	context: Context,
+	unlockModels?: (providers: readonly string[]) => Promise<void>,
+): Promise<TaskId<VerificationResult> | undefined> {
+	const root = await harness.root(context);
+	const revision = Revision.key(input.revision);
+	await unlockModels?.(input.candidates.flatMap((candidate) => candidate.route.map((model) => model.provider)));
+	const claims = new Set(input.candidates.flatMap((candidate) => candidate.state.claims.map(claimKey)));
+	return root.commit(async (tx) => {
+		if ((await tx.doc(ReviewIndex, root.id)).reviews[revision]?.task !== lensTask) return undefined;
+		const entry = await VerificationWaves.open(tx, root.id, revision, lensTask);
+		await clearVerifications(tx, input.root, revision, (claim) => claims.has(claim));
+		const created = await tx.createTask(VerificationTask, input, { ownership: { kind: "conversation" } });
+		entry.waves.push({
+			task: created,
+			candidates: input.candidates.map((candidate) => ({
+				key: JSON.stringify(candidateIdentity(candidate)),
+				claims: candidate.state.claims.map(claimKey),
+			})),
+		});
 		return created;
 	}, context);
 }
