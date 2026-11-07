@@ -161,8 +161,11 @@ jobs:
     environment: melian-round
     permissions:
       contents: read
+    outputs:
+      status: ${{ steps.post.outputs.id }}
     steps:
       - name: Set melian/review to pending on the head
+        id: post
         env:
           STATUS_TOKEN: ${{ secrets.MELIAN_STATUS_TOKEN }}
           REPOSITORY: ${{ github.repository }}
@@ -170,10 +173,12 @@ jobs:
           PULL_URL: ${{ github.server_url }}/${{ github.repository }}/pull/${{ inputs.pull_request }}
         run: |
           if [ -z "$STATUS_TOKEN" ]; then echo "::error::the melian-round Environment holds no MELIAN_STATUS_TOKEN"; exit 1; fi
-          jq -n --arg target "$PULL_URL" \
+          id=$(jq -n --arg target "$PULL_URL" \
             '{ state: "pending", context: "melian/review", description: "A Melian round is reviewing this head", target_url: $target }' \
-            | GH_TOKEN="$STATUS_TOKEN" gh api -X POST "repos/$REPOSITORY/statuses/$HEAD" --input - > /dev/null
-          echo "melian/review on $HEAD: pending"
+            | GH_TOKEN="$STATUS_TOKEN" gh api -X POST "repos/$REPOSITORY/statuses/$HEAD" --input - --jq .id)
+          if ! [[ "$id" =~ ^[0-9]+$ ]]; then echo "::error::GitHub returned no ID for the pending status"; exit 1; fi
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+          echo "melian/review on $HEAD: pending, status $id"
 
   round:
     needs: [gate, pending]
@@ -188,7 +193,6 @@ jobs:
       pull-requests: read
     outputs:
       artifact: ${{ steps.artifact.outputs.name }}
-      started: ${{ steps.artifact.outputs.started }}
     steps:
       # A rerun of failed jobs alone bumps run_attempt for report but keeps this job's earlier attempt, so report reads
       # the name from this output, never from its own run_attempt. The nonce ties the run's comment to the run, for a rerun
@@ -198,7 +202,6 @@ jobs:
       - id: artifact
         run: |
           echo "name=melian-round-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
-          echo "started=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
           mkdir -p "$RUNNER_TEMP/public"
           openssl rand -hex 16 > "$RUNNER_TEMP/public/nonce"
       # A rerun keeps the run's first event, ref and commit, and the default branch may have moved past a fix to this
@@ -303,7 +306,7 @@ jobs:
           retention-days: 30
 
   report:
-    needs: [gate, round]
+    needs: [gate, pending, round]
     if: always() && needs.gate.result == 'success'
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 5
@@ -395,7 +398,7 @@ jobs:
           NUMBER: ${{ inputs.pull_request }}
           BASE: ${{ needs.gate.outputs.base }}
           HEAD: ${{ needs.gate.outputs.head }}
-          STARTED: ${{ needs.round.outputs.started }}
+          PENDING: ${{ needs.pending.outputs.status }}
           PULL_URL: ${{ github.server_url }}/${{ github.repository }}/pull/${{ inputs.pull_request }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           RUN_ID: ${{ github.run_id }}
@@ -407,13 +410,13 @@ jobs:
           # put an older verdict back over it. An unreadable answer counts as newer.
           # Actions runs this step without pipefail, so the read is captured on its own and its failure is seen.
           created=$(gh api --paginate "repos/$REPOSITORY/commits/$HEAD/statuses?per_page=100" \
-            --jq '.[] | select(.context == "melian/review") | .created_at') || created="unreadable"
+            --jq '.[] | select(.context == "melian/review") | .id') || created="unreadable"
           latest=$(printf '%s\n' "$created" | sed -n 1p)
           trusted=$(node scripts/round-trust.mjs "$GITHUB_WORKSPACE" "$BASE")
           status=$(node scripts/round-comment.mjs --verdict "$out/verdict.json" --rounds "$out/rounds.json" \
             --exit "$(cat "$out/exit" 2>/dev/null || echo none)" --run-url "$RUN_URL" --run-id "$RUN_ID" --nonce none --base "$BASE" --head "$HEAD" \
             --merge-base "$(cat "$out/merge-base" 2>/dev/null || echo none)" --status "$PULL_URL" \
-            --trusted "$trusted" --latest "$latest" --started "$STARTED" \
+            --trusted "$trusted" --latest "$latest" --pending "$PENDING" \
             ${current_head:+--current-base "$current_base" --current-head "$current_head"})
           case "$status" in "skip: "*) echo "${status#skip: }"; exit 0 ;; esac
           if [ -z "$STATUS_TOKEN" ]; then echo "::error::the melian-round Environment holds no MELIAN_STATUS_TOKEN"; exit 1; fi

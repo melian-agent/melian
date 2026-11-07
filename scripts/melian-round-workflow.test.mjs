@@ -37,14 +37,14 @@ describe("the melian round workflow", () => {
 	});
 
 	it("hands the nonce to the report in the artefact, never through a job output or a step's printed env", () => {
-		expect(Object.keys(workflow.jobs.round.outputs)).toEqual(["artifact", "started"]);
+		expect(Object.keys(workflow.jobs.round.outputs)).toEqual(["artifact"]);
 		const printed = steps.filter((step) => /nonce/i.test(JSON.stringify(step.env ?? {})));
 		expect(printed).toEqual([]);
 		const drawn = workflow.jobs.round.steps.find((step) => step.id === "artifact");
 		expect(drawn.run).toContain('openssl rand -hex 16 > "$RUNNER_TEMP/public/nonce"');
-		// When the round began, recorded before any head code runs, so a report-only rerun reads the first attempt's.
-		expect(drawn.run).toContain('echo "started=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"');
-		expect(workflow.jobs.round.outputs.started).toBe(actions("steps.artifact.outputs.started"));
+		// The pending job hands the report the ID of the status it set, as a job output a report-only rerun keeps.
+		expect(workflow.jobs.pending.outputs).toEqual({ status: actions("steps.post.outputs.id") });
+		expect(workflow.jobs.report.needs).toEqual(["gate", "pending", "round"]);
 		// The status step reads the pull request's base policy, so the report job's checkout holds the history.
 		const checkout = workflow.jobs.report.steps.find((step) => step.uses?.startsWith("actions/checkout@"));
 		expect(checkout.with).toEqual({ "fetch-depth": 0, "persist-credentials": false });
@@ -595,7 +595,7 @@ describe("the melian round workflow", () => {
 			NUMBER: actions("inputs.pull_request"),
 			BASE: actions("needs.gate.outputs.base"),
 			HEAD: actions("needs.gate.outputs.head"),
-			STARTED: actions("needs.round.outputs.started"),
+			PENDING: actions("needs.pending.outputs.status"),
 			PULL_URL: `${actions("github.server_url")}/${actions("github.repository")}/pull/${actions("inputs.pull_request")}`,
 			RUN_URL: `${actions("github.server_url")}/${actions("github.repository")}/actions/runs/${actions("github.run_id")}`,
 			RUN_ID: actions("github.run_id"),
@@ -657,7 +657,8 @@ describe("the melian round workflow", () => {
 				properties: { id: "0", severity: "P1", resolution, path: "a.ts", source: { check: "lens.security" } },
 			});
 			const posted = join(dir, "posted.json");
-			const started = "2026-11-07T10:00:00Z";
+			// This round's own pending status, as the pending job set it and handed its ID on.
+			const own = { id: 77, context: "melian/review", created_at: "2026-11-07T10:00:05Z", state: "pending" };
 			const step = ({
 				verdict = { status: "passed", blocking: false, findings: { block: [], acknowledge: [] }, notRun: [] },
 				exit = "0",
@@ -666,8 +667,8 @@ describe("the melian round workflow", () => {
 				at = base,
 				now = `${at} ${head}`,
 				token = "status-token",
-				statuses = [],
-				since = started,
+				statuses = [own],
+				pending = "77",
 			}) => {
 				rmSync(posted, { force: true });
 				writeFileSync(join(round, "verdict.json"), typeof verdict === "string" ? verdict : JSON.stringify(verdict));
@@ -691,7 +692,7 @@ describe("the melian round workflow", () => {
 						NUMBER: "7",
 						BASE: at,
 						HEAD: head,
-						STARTED: since,
+						PENDING: pending,
 						PULL_URL: "https://github.com/o/r/pull/7",
 						RUN_URL: "https://example.test/run",
 						RUN_ID: "9",
@@ -768,30 +769,27 @@ describe("the melian round workflow", () => {
 			);
 			expect(step({ at: untrusted })).toEqual(distrusted);
 			expect(step({ at: "a".repeat(40) })).toEqual(distrusted);
-			// A status set after the round started is newer than this round, whichever round or host set it.
+			// The round posts only while its own pending status is the head's latest melian/review, by ID, never by clock:
+			// a status of any time that another writer set since is newer than this round.
 			const newer = {
 				code: 0,
 				stdout: "a newer melian/review status stands on this head, so this round sets none\n",
 				status: undefined,
 			};
-			const other = (context, created_at) => ({ context, created_at, state: "failure" });
-			expect(step({ statuses: [other("melian/review", "2026-11-07T10:00:01Z")] })).toEqual(newer);
-			// A read that fails, or a start time the job lost, sets error, so an earlier success cannot stand.
-			const unknown = set("error", `Not reviewed: the head's earlier statuses could not be read${suffix}`);
-			expect(step({ since: "" })).toEqual(unknown);
-			expect(step({ statuses: "unreadable" })).toEqual(unknown);
+			const other = (id, context) => ({ id, context, created_at: "2026-11-07T09:00:00Z", state: "failure" });
+			expect(step({ statuses: [other(78, "melian/review"), own] })).toEqual(newer);
 			// GitHub lists a commit's statuses newest first, so the first melian/review is the latest.
-			expect(
-				step({
-					statuses: [
-						other("melian/review", "2026-11-07T10:30:00Z"),
-						other("melian/review", "2026-11-07T09:00:00Z"),
-					],
-				}),
-			).toEqual(newer);
-			expect(
-				step({ statuses: [other("ci", "2026-11-07T11:00:00Z"), other("melian/review", "2026-11-07T10:00:00Z")] }),
-			).toEqual(set("success", `Passed${suffix}`));
+			expect(step({ statuses: [other(78, "melian/review"), other(76, "melian/review")] })).toEqual(newer);
+			expect(step({ statuses: [other(99, "ci"), own, other(76, "melian/review")] })).toEqual(
+				set("success", `Passed${suffix}`),
+			);
+			// A read that fails, a pending status the job did not hand on, or none on the head sets error, so an earlier
+			// success cannot stand.
+			const unknown = set("error", `Not reviewed: the head's statuses could not be read${suffix}`);
+			expect(step({ pending: "" })).toEqual(unknown);
+			expect(step({ statuses: "unreadable" })).toEqual(unknown);
+			expect(step({ statuses: [] })).toEqual(unknown);
+			expect(step({ statuses: [other(99, "ci")] })).toEqual(unknown);
 			const none = {
 				code: 0,
 				stdout: "the pull request moved during the round, so no melian/review status is set; start a new round\n",
@@ -834,14 +832,16 @@ describe("the melian round workflow", () => {
 				join(dir, "gh"),
 				[
 					"#!/bin/sh",
-					'[ "$*" = "api -X POST repos/o/r/statuses/$HEAD --input -" ] && [ "$GH_TOKEN" = status-token ] && cat > "$POSTED" && exit 0',
+					'[ "$*" = "api -X POST repos/o/r/statuses/$HEAD --input - --jq .id" ] && [ "$GH_TOKEN" = status-token ] && cat > "$POSTED" && echo "$ID" && exit 0',
 					"exit 1",
 					"",
 				].join("\n"),
 			);
 			chmodSync(join(dir, "gh"), 0o755);
 			const posted = join(dir, "posted.json");
-			const step = (token) => {
+			const output = join(dir, "output");
+			const step = (token, id = "4242") => {
+				rmSync(output, { force: true });
 				rmSync(posted, { force: true });
 				const ran = spawnSync("bash", ["-e", "-c", run], {
 					encoding: "utf8",
@@ -853,6 +853,8 @@ describe("the melian round workflow", () => {
 						HEAD: head,
 						PULL_URL: "https://github.com/o/r/pull/7",
 						POSTED: posted,
+						ID: id,
+						GITHUB_OUTPUT: output,
 					},
 				});
 				let status;
@@ -861,11 +863,23 @@ describe("the melian round workflow", () => {
 				} catch {
 					status = undefined;
 				}
-				return { code: ran.status, stdout: ran.stdout, status };
+				let handed;
+				try {
+					handed = readFileSync(output, "utf8");
+				} catch {
+					handed = undefined;
+				}
+				return { code: ran.status, stdout: ran.stdout, status, handed };
 			};
+			expect(step("status-token", "")).toMatchObject({
+				code: 1,
+				stdout: "::error::GitHub returned no ID for the pending status\n",
+				handed: undefined,
+			});
 			expect(step("status-token")).toEqual({
 				code: 0,
-				stdout: `melian/review on ${head}: pending\n`,
+				handed: "id=4242\n",
+				stdout: `melian/review on ${head}: pending, status 4242\n`,
 				status: {
 					state: "pending",
 					context: "melian/review",
@@ -877,6 +891,7 @@ describe("the melian round workflow", () => {
 				code: 1,
 				stdout: "::error::the melian-round Environment holds no MELIAN_STATUS_TOKEN\n",
 				status: undefined,
+				handed: undefined,
 			});
 		} finally {
 			rmSync(dir, { recursive: true, force: true });

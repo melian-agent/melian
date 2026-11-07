@@ -309,18 +309,19 @@ export class RoundComment {
 
 	// The melian/review status for the head the gate approved, in the shape `melian publish` sets so the merge group
 	// copies it: the pull request as its target, and the base the round reviewed from as the description's suffix.
-	// `skip` says why none may be set: the pull request moved or could not be read again, so the status would name a
-	// head no round reviewed; or `latest`, the head's newest melian/review creation time, is after `started`, when this
-	// round began, so a later round or host decided it. `trusted` is the base policy's `trust.writers`, as publication
-	// reads it. Acknowledge findings do not fail it, by the maintainer's ruling: the builder asks the maintainer first.
-	status(pull, { trusted, latest, started }) {
+	// `skip` says why none may be set: the pull request moved, so the status would name a head no round reviewed; or
+	// the head's latest melian/review, `latest` by ID, is not `pending`, the status this round's pending job set, so a
+	// later round or host has decided it since. IDs, not clocks: two clocks and one-second times cannot order them.
+	// `trusted` is the base policy's `trust.writers`, as publication reads it. Acknowledge findings do not fail it, by
+	// the maintainer's ruling: the builder asks the maintainer first.
+	status(pull, { trusted, latest, pending }) {
 		if (this.current !== undefined && (this.current.base !== this.base || this.current.head !== this.head))
 			return {
 				skip: "the pull request moved during the round, so no melian/review status is set; start a new round",
 			};
-		const began = Date.parse(started);
-		const newest = latest === "" ? Number.NEGATIVE_INFINITY : Date.parse(latest);
-		if (newest > began) return { skip: "a newer melian/review status stands on this head, so this round sets none" };
+		const id = /^[0-9]+$/;
+		if (id.test(latest) && id.test(pending) && latest !== pending)
+			return { skip: "a newer melian/review status stands on this head, so this round sets none" };
 		const known = /^[0-9a-f]{40}$/.test(this.mergeBase);
 		const base = known ? `; base ${this.mergeBase}` : "";
 		const set = (state, text) => ({
@@ -331,8 +332,8 @@ export class RoundComment {
 		});
 		// A read that failed sets error, never nothing: skipping would leave an earlier success standing on this head.
 		if (this.current === undefined) return set("error", "Not reviewed: the pull request could not be read again");
-		if (Number.isNaN(began) || Number.isNaN(newest))
-			return set("error", "Not reviewed: the head's earlier statuses could not be read");
+		if (!id.test(pending) || latest !== pending)
+			return set("error", "Not reviewed: the head's statuses could not be read");
 		if (trusted !== true)
 			return set("error", "Not reviewed here: writers are not trusted; a trusted host sets this status");
 		if (
