@@ -153,6 +153,11 @@ function scripts(verdict: Verification["verdict"] = "confirmed") {
 	]);
 }
 
+// The merged candidate's requests. A wave may verify the first lens's claim alone before them, or both lenses may end
+// before any wave starts, so only the merged candidate's conversation is fixed.
+const merged = (requests: ReturnType<typeof scriptConversations>) =>
+	requests[verifierMarker]!.filter((messages) => systemPromptOf(messages).includes("Claim c2 finding"));
+
 describe("finder family notices", () => {
 	beforeEach(async () => {
 		await harness.close(context);
@@ -376,10 +381,8 @@ describe("finder family notices", () => {
 					.sort(),
 			).toEqual(["lens.correctness", "lens.unverified"]);
 			expect(speaker.properties.verification).toMatchObject({ verdict: "confirmed", model: terra });
-			// A wave verifies the first lens's claim alone; the merged candidate is verified again with both.
-			expect(requests[verifierMarker]).toHaveLength(4);
+			expect(merged(requests)).toHaveLength(2);
 			expect(verifierRoute).toHaveBeenCalledWith(`${fake.ref("finder").provider}/finder`);
-			expect(systemPromptOf(requests[verifierMarker]![2]!)).toContain("Claim c2 finding");
 			const text = accepted
 				? "the verifier shares the finder's family by the maintainer's choice"
 				: "some verification candidates would be judged by their finder's own family";
@@ -495,8 +498,8 @@ describe("the verifier", () => {
 				source: expect.objectContaining({ check: `lens.${name}` }),
 			}),
 		]);
-		expect(requests[verifierMarker]).toHaveLength(4);
-		const instructions = systemPromptOf(requests[verifierMarker]![2]!);
+		expect(merged(requests)).toHaveLength(2);
+		const instructions = systemPromptOf(merged(requests)[0]!);
 		expect(instructions).toContain("## Decisions at base");
 		expect(instructions).toContain(`[ACTIVE] ${decision} — Writer trust`);
 		expect(instructions).not.toContain("Publisher eligibility at head");
@@ -599,9 +602,8 @@ describe("the verifier", () => {
 		const requests = scripts();
 		const result = await review();
 		expect(result.verdict.attention()).toHaveLength(1);
-		// A wave verifies the first lens's claim alone; the merged candidate is verified again with both.
-		expect(requests[verifierMarker]).toHaveLength(4);
-		const messages = requests[verifierMarker]![2]!;
+		expect(merged(requests)).toHaveLength(2);
+		const messages = merged(requests)[0]!;
 		const prompt = messages
 			.filter((message) => message.role === "user")
 			.map(textOf)
@@ -665,9 +667,7 @@ describe("the verifier", () => {
 				],
 			},
 		});
-		// A wave verifies the first lens's claim alone; the merged candidate is verified again with both.
-		expect(requests[verifierMarker]).toHaveLength(4);
-		expect(systemPromptOf(requests[verifierMarker]![2]!)).toContain("Claim c2 finding");
+		expect(merged(requests)).toHaveLength(2);
 		const root = await harness.root(context);
 		const revision = Revision.key(changeset.revision);
 		const findings = await readFindings(harness, root.id, revision, context);
@@ -1410,7 +1410,9 @@ describe("the verifier", () => {
 		const plan = ReviewPlan.from({
 			...resolved.toJSON(),
 			tiers: resolved.tiers.map((tier) =>
-				tier.tier === "verifier" ? { ...tier, accept: [judge], acceptOverridden: unguarded } : tier,
+				tier.tier === "verifier"
+					? { ...tier, accept: [judge], ...(unguarded ? {} : { acceptOverridden: false as const }) }
+					: tier,
 			),
 		});
 		const models: string[] = [];
@@ -1915,7 +1917,7 @@ describe("lowering a severity through report_verdict", () => {
 		]);
 		const { findings } = await review();
 		const bySeverity = Object.fromEntries(findings.map((finding) => [finding.properties.severity, finding.id]));
-		const request = requests[verifierMarker]![2]!;
+		const request = merged(requests)[0]!;
 		const prompt = systemPromptOf(request);
 		expect(prompt).toContain(`Claim c1 finding ${bySeverity.P0}, reported at P0`);
 		expect(prompt).toContain(`Claim c2 finding ${bySeverity.P2}, reported at P2`);
@@ -2637,9 +2639,8 @@ describe("verification ownership and budgets", () => {
 				replies: [
 					async () => {
 						const record = await harness.getTask(task!, context);
-						child = (record!.state as { checkpoint: { children: Record<string, number> } }).checkpoint.children[
-							key
-						];
+						const state = record!.state as unknown as { checkpoint: { children: Record<string, number> } };
+						child = state.checkpoint.children[key];
 						await root.commit(async (tx) => {
 							(await tx.doc(ReviewIndex, root.id)).reviews[revision]!.verification!.task = 999_999;
 						}, context);

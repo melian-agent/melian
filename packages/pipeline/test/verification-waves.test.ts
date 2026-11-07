@@ -290,6 +290,9 @@ describe("verification as each lens ends", () => {
 		fastThenSlow(asked);
 		await review();
 		const failed = defineTask<Record<string, never>, { phase: "end" }, unknown>({
+			abort: async (_task, runtime, context) => {
+				await runtime.commit(() => ({ status: "terminal", outcome: { status: "aborted" } }), context);
+			},
 			name: "test.failed-wave",
 			version: 1,
 			initial: () => ({ phase: "end" }),
