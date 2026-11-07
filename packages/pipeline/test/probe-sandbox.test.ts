@@ -254,15 +254,15 @@ setInterval(() => {}, 1000);
 		}, async () => {
 			// The review's probe: `( exec /bin/sleep N ) &` leaves a grandchild holding stdout, so close never fires. The
 			// deadline must stop what it recorded and, after the grace, abandon the streams and return timedOut.
-			const tag = String(1_000_000 + Math.floor(Math.random() * 8_000_000));
 			const script = `
 import { spawn } from "node:child_process";
-// Detached so it reparents away from the probe and keeps the inherited stdout open.
-spawn("/bin/sh", ["-c", "exec /bin/sleep ${tag}"], { stdio: ["ignore", "inherit", "inherit"], detached: true }).unref();
+// Detached so it reparents away from the probe and keeps the inherited stdout open. It sleeps past the 2 s limit and
+// the grace, then ends by itself, so the test never has to signal it.
+spawn("/bin/sh", ["-c", "exec /bin/sleep 8"], { stdio: ["ignore", "inherit", "inherit"], detached: true }).unref();
 console.log("started");
 `;
 			const began = Date.now();
-			try {
+			{
 				const result = await probed({ script }, { timeout: 2_000 });
 				// On macOS the grandchild escapes and holds stdout, so the run ends at the deadline and grace, timed out. On
 				// Linux bubblewrap's PID namespace dies with the probe and takes the grandchild with it, so the run ends
@@ -270,14 +270,6 @@ console.log("started");
 				if (process.platform === "darwin") expect(result.timedOut).toBe(true);
 				expect(result.output).toContain("started");
 				expect(Date.now() - began).toBeLessThan(20_000);
-			} finally {
-				// The grandchild escapes the probe, as the decision documents; end it by its own pid, found by its tag.
-				for (const line of spawnSync("/bin/ps", ["-A", "-o", "pid=,args="], { encoding: "utf8" }).stdout.split(
-					"\n",
-				)) {
-					const match = /^\s*(\d+)\s+(.*)$/.exec(line);
-					if (match && match[2]!.includes(`sleep ${tag}`)) process.kill(Number(match[1]), "SIGKILL");
-				}
 			}
 		});
 
@@ -332,12 +324,13 @@ console.log(sum(a, b));
 			mkdirSync(join(outside, "sub"));
 			chmodSync(outside, 0o500);
 			chmodSync(join(outside, "sub"), 0o500);
-			const tag = `swap-${randomBytes(6).toString("hex")}`;
 			const script = `
 import { spawn } from "node:child_process";
-const target = process.env.TMPDIR + "/victim";
+// The fixed directories close() relaxes: the swap must race the very paths cleanup opens.
+const targets = [process.env.TMPDIR, process.env.HOME];
 // A detached survivor that keeps swapping a directory in the writable scratch for a symlink to the outside directory.
-spawn("/bin/sh", ["-c", "while true; do rm -rf '" + target + "' 2>/dev/null; ln -s '${outside}' '" + target + "' 2>/dev/null; rm -f '" + target + "' 2>/dev/null; mkdir -p '" + target + "/run/home' 2>/dev/null; chmod 0 '" + target + "' 2>/dev/null; done # ${tag}"], { stdio: "ignore", detached: true }).unref();
+const swap = targets.map((t) => "rm -rf '" + t + "' 2>/dev/null; ln -s '${outside}' '" + t + "' 2>/dev/null; sleep 0; rm -f '" + t + "' 2>/dev/null; mkdir '" + t + "' 2>/dev/null").join("; ");
+spawn("/bin/sh", ["-c", "end=$(( $(date +%s) + 30 )); while [ $(date +%s) -lt $end ]; do " + swap + "; done"], { stdio: "ignore", detached: true }).unref();
 console.log("ready");
 `;
 			try {
@@ -349,12 +342,7 @@ console.log("ready");
 				expect(statSync(outside).mode & 0o777).toBe(0o500);
 				expect(statSync(join(outside, "sub")).mode & 0o777).toBe(0o500);
 			} finally {
-				for (const line of spawnSync("/bin/ps", ["-A", "-o", "pid=,args="], { encoding: "utf8" }).stdout.split(
-					"\n",
-				)) {
-					const match = /^\s*(\d+)\s+(.*)$/.exec(line);
-					if (match && match[2]!.includes(tag)) process.kill(Number(match[1]), "SIGKILL");
-				}
+				// The swapper ends by itself within 30 seconds; the test signals nothing.
 				chmodSync(outside, 0o700);
 				chmodSync(join(outside, "sub"), 0o700);
 				rmSync(outside, { recursive: true, force: true });
