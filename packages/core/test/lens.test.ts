@@ -128,7 +128,7 @@ describe("built-in lenses", () => {
 			design: "2107c1dcda26",
 			"removed-behaviour": "37aeab0038e3",
 			tests: "9eb5dbf32a98",
-			"trust-boundary": "b878e8bcfd1e",
+			"trust-boundary": "24aa8e2540b4",
 		});
 		const tuned = { ...defaultConfig, lenses: { correctness: { tier: "light" as const, paths: ["src/**"] } } };
 		const [correctness] = Lens.select(named(lenses, "correctness"), tuned, ["src/index.ts"]);
@@ -254,7 +254,7 @@ describe("built-in lenses", () => {
 			durability: "910628aa27ee",
 			"removed-behaviour": "8e3474a4b315",
 			tests: "e6364f9cf7e6",
-			"trust-boundary": "ad39c46e414e",
+			"trust-boundary": "e21a19e886b1",
 		});
 		const { config } = await loadConfig(repo, { kind: "worktree" }, ".");
 		const selected = Lens.select(lenses, config, ["src/index.ts"]);
@@ -265,7 +265,7 @@ describe("built-in lenses", () => {
 			design: "0bf14d21f254",
 			"removed-behaviour": "1131ab311d50",
 			tests: "aea7f643ccac",
-			"trust-boundary": "ee5934ca67de",
+			"trust-boundary": "4c55e242b68f",
 		});
 	});
 
@@ -829,22 +829,33 @@ describe.each(sourceKinds)("repository lenses from the %s", (kind) => {
 
 	it("inherits a level's probe through extends, and replaces it whole when the extending lens sets one", async () => {
 		writeFiles(repo, {
-			".melian/lenses/trust-boundary/LENS.md": lensFile(["name: trust-boundary", "extends: trust-boundary"]),
+			".melian/lenses/security/LENS.md": lensFile([
+				...security,
+				"levels:",
+				"  deep: { tier: heavy, probe: { prober: light } }",
+			]),
+			"pkg/.melian/lenses/security/LENS.md": lensFile(["name: security", "extends: security"]),
+			"pkg/x.ts": lines("export {};"),
 		});
-		const [inherited] = named(await load(["src/index.ts"]), "trust-boundary");
-		expect(inherited!.levels.deep?.probe).toEqual({});
+		const [inherited] = named(await load(["pkg/x.ts"]), "security");
+		expect(inherited!.levels.deep?.probe).toEqual({ prober: "light" });
 		expect(inherited!.levels.careful).not.toHaveProperty("probe");
 		writeFiles(repo, {
-			".melian/lenses/trust-boundary/LENS.md": lensFile([
-				"name: trust-boundary",
-				"extends: trust-boundary",
+			"pkg/.melian/lenses/security/LENS.md": lensFile([
+				"name: security",
+				"extends: security",
 				"levels:",
 				"  deep: { probe: { timeout: 9000 } }",
 			]),
 		});
-		const [replaced] = named(await load(["src/index.ts"]), "trust-boundary");
+		const [replaced] = named(await load(["pkg/x.ts"]), "security");
 		expect(replaced!.levels.deep?.probe).toEqual({ timeout: 9000 });
 		expect(replaced!.levels.deep?.tier).toBe("heavy");
+	});
+
+	it("ships no level that probes, until the measurement picks its routes", async () => {
+		for (const lens of await Lens.builtins())
+			for (const level of lens.declaredLevels()) expect(lens.level(level)).not.toHaveProperty("probe");
 	});
 
 	it("refuses an unknown probe field, a prober outside the tiers, and a timeout below a millisecond", async () => {

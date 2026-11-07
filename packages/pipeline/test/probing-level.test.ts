@@ -148,7 +148,7 @@ async function review(
 		config?: Partial<MelianConfig>;
 		rewrite?: (command: string) => string;
 		sandbox?: ProbeSandbox;
-		// Rewrites the trust-boundary lens, such as its deep level's probe.
+		// Rewrites the trust-boundary lens; by default its deep level probes, as no shipped level does yet.
 		lens?: (lens: Lens) => Lens;
 		fake?: FakeModels;
 		decider?: ReviewOptions["decider"];
@@ -181,7 +181,7 @@ async function review(
 		...(options.decider === undefined ? {} : { decider: options.decider }),
 	});
 	const lenses = (await Lens.load(repo, policy, paths)).map((lens) =>
-		lens.name === "trust-boundary" && options.lens !== undefined ? options.lens(lens) : lens,
+		lens.name === "trust-boundary" ? (options.lens ?? probingWith({}))(lens) : lens,
 	);
 	const plan = await options.plan?.(config, lenses, fake);
 	// No policy source, so `config` is every path's, its band among it.
