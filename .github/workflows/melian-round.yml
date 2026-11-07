@@ -26,6 +26,7 @@ jobs:
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 5
     permissions:
+      actions: read
       contents: read
       pull-requests: read
     outputs:
@@ -54,6 +55,27 @@ jobs:
             admin|maintain|write) echo "$STARTER has $permission permission" ;;
             *) echo "::error::$STARTER has ${permission:-unknown} permission; a round needs write, maintain or admin"; exit 1 ;;
           esac
+      # The round job's logins are kept from every other branch's copy of this workflow by the Environment's branch
+      # policy, which lives in the repository's settings. Without one, GitHub lets any branch deploy to it, so read it.
+      - name: Refuse an Environment whose logins another branch could reach
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          DEFAULT: ${{ github.event.repository.default_branch }}
+        run: |
+          policy=$(gh api "repos/$REPOSITORY/environments/melian-round" \
+            --jq '"\(.deployment_branch_policy.protected_branches) \(.deployment_branch_policy.custom_branch_policies)"')
+          if [ "$policy" != "false true" ]; then
+            echo "::error::the melian-round Environment has no custom branch policy; its logins would reach every branch"
+            exit 1
+          fi
+          branches=$(gh api --paginate "repos/$REPOSITORY/environments/melian-round/deployment-branch-policies?per_page=100" \
+            --jq '.branch_policies[] | "\(.type // "branch") \(.name)"')
+          if [ "$branches" != "branch $DEFAULT" ]; then
+            echo "::error::the melian-round Environment must deploy from $DEFAULT alone"
+            exit 1
+          fi
+          echo "the melian-round Environment deploys from $DEFAULT alone"
       # "#N" reads melian.yaml and every lens from the pull request's base, so a base a writer chose could carry a
       # policy that runs no checks. Only a pull request into the default branch is judged by a reviewed policy.
       - name: Refuse a fork's head, or a base other than the default branch
