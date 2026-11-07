@@ -114,7 +114,7 @@ export async function reviewMiss(
 			...(verifierModel === undefined ? {} : { verifier: { model: verifierModel } }),
 		},
 	};
-	const { lenses, config } = routedProbing(await Lens.load(miss.repo, source, paths), scoped, routes);
+	const { lenses, config } = routedProbing(routes, await Lens.load(miss.repo, source, paths), scoped);
 	const storage = createMemoryStorage();
 	const harness = await openReviewHarness(storage, models, probeSandbox === undefined ? {} : { probeSandbox });
 	const began = Date.now();

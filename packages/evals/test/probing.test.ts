@@ -72,7 +72,7 @@ describe("MELIAN_EVAL_PROBE_ROUTES", () => {
 describe("routedProbing", () => {
 	it("moves each level that probes to a prober on medium, and routes heavy and medium", async () => {
 		const lenses = await Lens.builtins();
-		const routed = routedProbing(lenses, defaultConfig, { planner: "a/plan", prober: "b/probe" });
+		const routed = routedProbing({ planner: "a/plan", prober: "b/probe" }, lenses, defaultConfig);
 		const trust = routed.lenses.find((lens) => lens.name === "trust-boundary")!;
 		expect(trust.level("deep").probe).toEqual({ prober: "medium" });
 		expect(trust.level("careful")).not.toHaveProperty("probe");
@@ -81,7 +81,7 @@ describe("routedProbing", () => {
 	});
 
 	it("drops every probe for the level without probes, and leaves medium as it was", async () => {
-		const routed = routedProbing(await Lens.builtins(), defaultConfig, { planner: "a/plan" });
+		const routed = routedProbing({ planner: "a/plan" }, await Lens.builtins(), defaultConfig);
 		const trust = routed.lenses.find((lens) => lens.name === "trust-boundary")!;
 		expect(trust.level("deep")).not.toHaveProperty("probe");
 		expect(routed.config.models.heavy).toEqual({ model: "a/plan" });

@@ -320,9 +320,9 @@ export interface ProbingRoutes {
  * to medium, or drops its probe for the level without probes.
  */
 export function routedProbing(
+	routes: ProbingRoutes,
 	lenses: readonly Lens[],
 	config: MelianConfig,
-	routes: ProbingRoutes,
 ): { lenses: Lens[]; config: MelianConfig } {
 	const moved = lenses.map((lens) =>
 		Lens.from({
@@ -431,7 +431,7 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 		if (mode.kind === "live" && mode.thinking !== undefined) config = mode.thinking.apply(config);
 		let routed = lenses;
 		if (mode.kind === "live" && mode.probing !== undefined)
-			({ lenses: routed, config } = routedProbing(lenses, config, mode.probing));
+			({ lenses: routed, config } = routedProbing(mode.probing, lenses, config));
 		const storage = createMemoryStorage();
 		// A scripted golden's probes are its own committed scripts, so they run unconfined; a live run's are a model's.
 		const reviewHarness = await openReviewHarness(storage, models, {
