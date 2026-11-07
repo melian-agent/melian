@@ -15,6 +15,8 @@ let repo: string;
 let home: string;
 
 beforeEach(() => {
+	// A real empty probe takes seconds on a loaded runner; the probes line has tests of its own below.
+	vi.spyOn(pipeline.Probe, "availability").mockResolvedValue({ available: true });
 	const fallback = github();
 	fallback.login = "global-viewer";
 	vi.stubGlobal("fetch", fakeGitHub(fallback));
