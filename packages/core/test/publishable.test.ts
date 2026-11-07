@@ -179,11 +179,52 @@ describe("Finding.publishable", () => {
 		});
 	});
 
-	it("returns any other check's finding as it is", () => {
+	// A finding of another check, with no Biome or tsc member: `members` adds one.
+	function other(members: Partial<StoredFinding["properties"]> = {}): Finding {
+		const lens = stored({ check: "lens.tests", version: "1" });
+		const { reportedBy: _, alsoReportedAs: __, otherClaims: ___, ...properties } = lens.properties;
+		lens.properties = { ...properties, ...members } as StoredFinding["properties"];
+		return Finding.from(lens);
+	}
+
+	it("returns a finding with no Biome or tsc report as it is", () => {
 		const lens = Finding.create(evalInput);
 		expect(lens.publishable()).toBe(lens);
-		const enola = Finding.from(stored({ check: "static.enola", version: "1" }));
-		expect(enola.publishable()).toBe(enola);
+		const enola = { check: "static.enola", version: "1" };
+		const merged = other({
+			reportedBy: [enola],
+			alsoReportedAs: [{ id: "fedcba9876543210", ruleId: "enola/layer", check: "static.enola" }],
+			otherClaims: [{ id: "fedcba9876543210", ruleId: "enola/layer", source: enola }],
+		});
+		expect(merged.publishable()).toBe(merged);
+	});
+
+	it("treats a finding that holds a Biome or tsc member as that member, whoever speaks", () => {
+		const biome = { check: "static.biome", version: "2.5.15" };
+		const rule = "biome/suspicious/noDebugger";
+		const sentence = withheldToolText("static.biome", rule);
+		const members: [string, Partial<StoredFinding["properties"]>, string][] = [
+			[
+				"alsoReportedAs",
+				{ alsoReportedAs: [{ id: "fedcba9876543210", ruleId: rule, check: "static.biome" }] },
+				rule,
+			],
+			["otherClaims", { otherClaims: [{ id: "fedcba9876543210", ruleId: rule, source: biome }] }, rule],
+			["reportedBy", { reportedBy: [{ check: "static.lint" }, biome] }, "tsc/TS2322"],
+		];
+		for (const [, member, named] of members) {
+			const published = other(member).publishable().toJSON();
+			const said = withheldToolText("static.biome", named);
+			expect(published.message.text).toBe(said);
+			expect(published.properties.explanation).toStrictEqual({
+				what: said,
+				whyHere: "biome reports this at head but not at the base, so this change introduced it.",
+				whatToDo: `Change the code so biome no longer reports ${named}.`,
+			});
+			expect(JSON.stringify(published)).not.toContain(token);
+			expect(published.properties.source).toStrictEqual({ check: "lens.tests", version: "1" });
+		}
+		expect(sentence).toBe(withheldToolText("static.biome", rule));
 	});
 });
 
@@ -235,6 +276,81 @@ describe("Verdict.publishable", () => {
 		]);
 		expect(publishable.ran).toEqual([{ name: "static.biome", status: "ran", version: "2" }]);
 		expect(JSON.stringify(publishable)).not.toContain(token);
+	});
+
+	it("says why each Biome or tsc check did not run from its code or Melian's own skip, never its stored text", () => {
+		const reasons: [StoredCheckRecord, string][] = [
+			[
+				{ name: "static.tsc", status: "failed", reason: "nothingToCheck" },
+				"its project names no files, so the tool checked nothing",
+			],
+			[{ name: "static.tsc", status: "failed", reason: "timeout" }, "the tool ran past its timeout"],
+			[{ name: "static.biome", status: "failed", reason: "toolMissing" }, "the tool is not installed"],
+			[
+				{ name: "static.tsc", status: "failed", reason: "toolFailed", error: token },
+				"the tool exited unexpectedly; run it at this commit to see why",
+			],
+			[
+				{ name: "static.tsc", status: "failed", reason: "outputTooLarge" },
+				"the tool wrote more output than Melian reads",
+			],
+			[
+				{ name: "static.tsc", status: "failed", reason: "invalidOutput" },
+				"the tool wrote output Melian cannot read",
+			],
+			[
+				{ name: "static.tsc", status: "failed", reason: "worktreeFailed" },
+				"Melian could not check the revision out",
+			],
+			[{ name: "static.tsc", status: "failed", reason: "aborted" }, "the run was cancelled"],
+			[
+				{ name: "static.tsc", status: "failed", reason: "unreadable" },
+				"Melian could not read a file a result names",
+			],
+			[{ name: "static.tsc", status: "failed", reason: "noEnvironment" }, "no execution environment was available"],
+			[{ name: "static.tsc", status: "failed", reason: token }, "the tool failed; Melian keeps none of its text"],
+			[{ name: "static.tsc", status: "failed" }, "the tool failed; Melian keeps none of its text"],
+			[{ name: "static.tsc", status: "skipped", reason: "no record" }, "no run of it was recorded"],
+			[{ name: "static.biome", status: "skipped", reason: "static.biome.enabled is false" }, "it is turned off"],
+			[{ name: "static.tsc", status: "skipped", reason: "static.tsc.enabled is false" }, "it is turned off"],
+			[
+				{ name: "static.tsc", status: "skipped", reason: `${"a".repeat(40)} has no tsconfig.json` },
+				"the revision has no TypeScript project to check",
+			],
+			[
+				{ name: "static.tsc", status: "skipped", reason: `${"a".repeat(39)} has no tsconfig.json` },
+				"the tool did not run; Melian keeps none of its reason",
+			],
+			[
+				{ name: "static.tsc", status: "skipped", reason: `${"a".repeat(64)} has no ${token}` },
+				"the revision has no TypeScript project to check",
+			],
+			[
+				{ name: "static.tsc", status: "skipped", reason: `x${"a".repeat(40)} has no tsconfig.json` },
+				"the tool did not run; Melian keeps none of its reason",
+			],
+			[
+				{ name: "static.tsc", status: "skipped", reason: "no record ghp" },
+				"the tool did not run; Melian keeps none of its reason",
+			],
+			[
+				{ name: "static.tsc", status: "skipped", reason: "static.lint.enabled is false" },
+				"the tool did not run; Melian keeps none of its reason",
+			],
+			[
+				{ name: "static.tsc", status: "skipped", reason: "static.tsc.enabled is false!" },
+				"the tool did not run; Melian keeps none of its reason",
+			],
+			[{ name: "static.tsc", status: "skipped" }, "the tool did not run; Melian keeps none of its reason"],
+		];
+		const empty = new Adjudication({ findings: [], manifest: [], checks: [], config: defaultConfig })
+			.adjudicate()
+			.toJSON();
+		const notRun = Verdict.from({ ...empty, notRun: reasons.map(([record]) => record) })
+			.publishable()
+			.toJSON().notRun;
+		expect(notRun.map((check) => check.reason)).toStrictEqual(reasons.map(([, reason]) => reason));
+		expect(JSON.stringify(notRun)).not.toContain(token);
 	});
 
 	it("leaves out the lists a verdict does not hold", () => {

@@ -1301,18 +1301,29 @@ export class Finding {
 	}
 
 	/**
-	 * The finding as publishing may render it. A Biome or tsc finding keeps only its rule, place, severity, resolution and
-	 * identity, with Melian's sentence for its text: a tool's text, or a verifier's or caller's text about it, can quote
-	 * a file outside the checkout. Any other finding is returned as it is.
+	 * The finding as publishing may render it. A finding that holds a Biome or tsc report, as its own or a member's, keeps
+	 * only its rule, place, severity, resolution and identity, with Melian's sentence for that report: a tool's text, or
+	 * a verifier's or caller's text about it, can quote a file outside the checkout. Any other finding is returned as it
+	 * is.
 	 */
 	publishable(): Finding {
-		const { source } = this.properties;
-		if (source.check !== "static.biome" && source.check !== "static.tsc") return this;
-		const said = withheldToolText(source.check, this.ruleId);
-		const tool = source.check === "static.biome" ? "biome" : "tsc";
+		const { source, reportedBy, alsoReportedAs, otherClaims } = this.properties;
+		// By membership, not by speaker: a merge can let a lens report speak with a Biome report's text.
+		const quoted = (check: string): check is "static.biome" | "static.tsc" =>
+			check === "static.biome" || check === "static.tsc";
+		const member = quoted(source.check)
+			? { check: source.check, rule: this.ruleId }
+			: [
+					...(alsoReportedAs ?? []).map((other) => ({ check: other.check, rule: other.ruleId })),
+					...(otherClaims ?? []).map((claim) => ({ check: claim.source.check, rule: claim.ruleId })),
+					...(reportedBy ?? []).map((other) => ({ check: other.check, rule: this.ruleId })),
+				].find((each) => quoted(each.check));
+		if (member === undefined) return this;
+		const said = withheldToolText(member.check as "static.biome" | "static.tsc", member.rule);
+		const tool = member.check === "static.biome" ? "biome" : "tsc";
 		const { id, path, occurrence, cause, severity, originalSeverity, resolution, decidedBy, status } =
 			this.properties;
-		const { dismissal, pastDismissals, reportedBy, alsoReportedAs, otherClaims } = this.properties;
+		const { dismissal, pastDismissals } = this.properties;
 		return new Finding({
 			ruleId: this.ruleId,
 			level: this.level,
@@ -1349,7 +1360,7 @@ export class Finding {
 						cause === "introduced"
 							? `${tool} reports this at head but not at the base, so this change introduced it.`
 							: `${tool} reports this at the base too, so it predates this change.`,
-					whatToDo: `Change the code so ${tool} no longer reports ${this.ruleId}.`,
+					whatToDo: `Change the code so ${tool} no longer reports ${member.rule}.`,
 				},
 				source,
 				...(reportedBy === undefined ? {} : { reportedBy }),

@@ -75,6 +75,31 @@ function distinct(aliases: Aliases, left: string, right: string): boolean {
 	return declares(left, right) || declares(right, left);
 }
 
+// What a failed Biome or tsc check's error code means, in Melian's words.
+const failedReasons = new Map([
+	["nothingToCheck", "its project names no files, so the tool checked nothing"],
+	["timeout", "the tool ran past its timeout"],
+	["toolMissing", "the tool is not installed"],
+	["toolFailed", "the tool exited unexpectedly; run it at this commit to see why"],
+	["outputTooLarge", "the tool wrote more output than Melian reads"],
+	["invalidOutput", "the tool wrote output Melian cannot read"],
+	["worktreeFailed", "Melian could not check the revision out"],
+	["aborted", "the run was cancelled"],
+	["unreadable", "Melian could not read a file a result names"],
+	["noEnvironment", "no execution environment was available"],
+]);
+
+// Why a Biome or tsc check did not run, chosen from its error code or Melian's own skip forms; its stored text, which a
+// tool or a caller may have written, is never given back.
+function notRunReason(check: StoredCheckRecord): string {
+	const reason = check.reason ?? "";
+	if (check.status === "failed") return failedReasons.get(reason) ?? "the tool failed; Melian keeps none of its text";
+	if (reason === "no record") return "no run of it was recorded";
+	if (/^static\.(?:biome|tsc)\.enabled is false$/.test(reason)) return "it is turned off";
+	if (/^[0-9a-f]{40,64} has no \S/.test(reason)) return "the revision has no TypeScript project to check";
+	return "the tool did not run; Melian keeps none of its reason";
+}
+
 /**
  * One defect, as a verdict holds it: the finding that speaks for it, and the reports adjudication merged into that
  * finding, which a dismissal of the defect dismisses with it. A dismissed report of the defect that a live finding never
@@ -566,14 +591,7 @@ export class Verdict {
 						name: each.name,
 						status: each.status,
 						...(each.version === undefined ? {} : { version: each.version }),
-						...(each.status === "ran"
-							? {}
-							: {
-									reason:
-										each.status === "failed"
-											? "the tool failed; Melian keeps none of its text"
-											: "the tool did not run; Melian keeps none of its reason",
-								}),
+						...(each.status === "ran" ? {} : { reason: notRunReason(each) }),
 					};
 		return Verdict.from({
 			...stored,

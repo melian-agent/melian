@@ -12,6 +12,7 @@ import {
 } from "@melian-agent/core";
 import { createGitHubProvider } from "@melian-agent/github";
 import { afterEach, expect, it, vi } from "vitest";
+import { evalInput } from "../../core/test/fixtures/findings.ts";
 import { fakeGitHub } from "../../github/test/fixtures/fake-github.ts";
 import { moveTo, pullRequestState } from "../../github/test/fixtures/scenario.ts";
 import { VerdictDocument } from "../src/adjudication.ts";
@@ -64,6 +65,13 @@ const verified = (fields: Record<string, unknown>) => (stored: StoredFinding) =>
 	} as NonNullable<StoredFinding["properties"]["verification"]>;
 };
 
+// A lens report a verifier refuted.
+function refuted(input: FindingInput): Finding {
+	const stored = Finding.create(input).toJSON();
+	verified({ verdict: "refuted", reason: "The branch is covered." })(stored);
+	return Finding.from(stored);
+}
+
 const cases: [string, Finding[], CheckRecord[]][] = [
 	["a verifier's reason", [planted(verified({ reason: token }))], []],
 	["a verifier's correction", [planted(verified({ correction: token }))], []],
@@ -93,6 +101,36 @@ const cases: [string, Finding[], CheckRecord[]][] = [
 	["a failed check's reason", [], [{ name: "static.tsc", status: "failed", reason: token, error: "x" }]],
 	["a failed check's error", [], [{ name: "static.tsc", status: "failed", reason: "toolFailed", error: token }]],
 	["a skipped check's reason", [], [{ name: "static.biome", status: "skipped", reason: token }]],
+	// Codex's scenario: a refuted lens report speaks for a defect, and the merge shows the Biome report that stands.
+	[
+		"a Biome report merged under a refuted lens report",
+		[
+			refuted({
+				...evalInput,
+				rule: "untested-branch",
+				file: "src/a.ts",
+				startLine: 1,
+				endLine: 1,
+				startColumn: undefined,
+				endColumn: undefined,
+				snippet: "new",
+				severity: "P0",
+				resolution: undefined,
+				trigger: undefined,
+				failureScenario: "The branch never runs.",
+				evidence: [{ file: "src/a.ts", startLine: 1, endLine: 1, role: "cause", revision: "head", snippet: "new" }],
+				source: { check: "lens.tests", version: "1" },
+			}),
+			planted(() => {}, {
+				rule: "biome/suspicious/noDebugger",
+				message: token,
+				severity: "P1",
+				explanation: { what: token, whyHere: token, whatToDo: token },
+				source: { check: "static.biome", version: "2.5.15" },
+			}),
+		],
+		[],
+	],
 ];
 
 it.each(cases)("posts nothing of %s on a Biome or tsc result", async (_field, findings, checks) => {
@@ -116,12 +154,13 @@ it.each(cases)("posts nothing of %s on a Biome or tsc result", async (_field, fi
 			const doc = await tx.doc(VerdictDocument, root.id);
 			doc.verdicts[key] = new Adjudication({
 				findings,
-				manifest: ["static.tsc", "static.biome"],
+				manifest: ["static.tsc", "static.biome", "lens.tests"],
 				checks: [
 					...checks,
 					...["static.tsc", "static.biome"]
 						.filter((name) => !checks.some((check) => check.name === name))
-						.map((name) => ({ name, status: "ran" as const, version: "7.0.2" })),
+						.map((name) => ({ name, status: "ran" as const })),
+					{ name: "lens.tests", status: "ran" as const },
 				],
 				config: defaultConfig,
 			})
@@ -130,7 +169,7 @@ it.each(cases)("posts nothing of %s on a Biome or tsc result", async (_field, fi
 			doc.provenance = {
 				[key]: {
 					kind: "pull-request",
-					manifest: ["static.tsc", "static.biome"],
+					manifest: ["static.tsc", "static.biome", "lens.tests"],
 					lenses: [],
 					repository: { owner: state.owner, name: state.repo },
 					pullRequest: 7,
@@ -141,6 +180,12 @@ it.each(cases)("posts nothing of %s on a Biome or tsc result", async (_field, fi
 			};
 		}, context);
 		expect(JSON.stringify(await recorded.harness.snapshot(VerdictDocument, root.id, context))).toContain(token);
+		console.log(
+			"DBGM",
+			JSON.stringify(
+				(await recorded.harness.snapshot(VerdictDocument, root.id, context))?.verdicts[key]?.findings,
+			).slice(0, 1500),
+		);
 		await recorded.record(key);
 		const adjudication = (await recorded.harness.snapshot(ReviewIndexOf, root.id, context))!.reviews[key]!
 			.adjudication!.task;
