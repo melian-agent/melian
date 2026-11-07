@@ -201,6 +201,16 @@ describe("ProbeProcess", () => {
 		sleepResolve?.();
 	});
 
+	it("settles with the failure recorded when the process table cannot be read at the deadline", async () => {
+		// Without a handler, the deadline's fire-and-forget stop would reject unhandled and could end the process.
+		const table = new FakeTable([entry(100, 1)]);
+		const { process: probe, root } = started(table, child(100), () => {}, { timeoutMs: 10, graceMs: 5 });
+		table.broken = true;
+		const exit = await probe.wait();
+		expect(exit).toEqual({ code: null, signal: null, timedOut: true, error: "ps failed" });
+		expect(root.kills).toEqual(["SIGKILL"]);
+	});
+
 	it("scans the process table on its interval, finding a descendant that appears later", async () => {
 		const table = new FakeTable([entry(100, 1)]);
 		const { process: probe } = started(table, child(100), () => {}, { interval: 5 });

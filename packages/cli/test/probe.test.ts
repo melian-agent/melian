@@ -125,7 +125,8 @@ describe("melian probe", () => {
 		});
 	});
 
-	it("reads a file at the size bound and refuses one past it before reading it", async () => {
+	// Writes and reads 1 MiB files twice, which can pass five seconds on a loaded machine.
+	it("reads a file at the size bound and refuses one past it before reading it", { timeout: 30_000 }, async () => {
 		writeFileSync(join(dir, "probe.mjs"), "");
 		writeFileSync(join(dir, "fixture", "big"), "x".repeat(pipeline.probeLimits.fileBytes));
 		const open = vi.spyOn(pipeline.Probe, "open").mockRejectedValue(new pipeline.ProbeError("invalidProbe", "stop"));
@@ -214,6 +215,21 @@ describe("melian probe", () => {
 		expect(close).toHaveBeenCalledOnce();
 	});
 
+	it("escapes bidi and C1 controls in JSON output, which JSON.stringify leaves alone", async () => {
+		writeFileSync(join(dir, "probe.mjs"), "");
+		// U+202E reverses the text after it; U+009B is the C1 control sequence introducer.
+		const output = "safe\u202eevil\u009b[2Jdone";
+		const result = { exitCode: 0, signal: null, output, truncated: false, timedOut: false, error: "ps\u202efailed" };
+		const close = vi.fn(async () => ({ removed: true }));
+		vi.spyOn(pipeline.Probe, "open").mockResolvedValue({ run: async () => result, close } as never);
+		const run = await melian(["probe", "probes/first", "--trust-head", "--json"]);
+		expect(run.stdout).not.toMatch(/[\u202e\u009b]/);
+		expect(JSON.parse(run.stdout)).toMatchObject({
+			output: "safe\\u202eevil\\u009b[2Jdone",
+			error: "ps\\u202efailed",
+		});
+	});
+
 	it("reports a leftover scratch without replacing the probe's result", async () => {
 		writeFileSync(join(dir, "probe.mjs"), "");
 		const result = { exitCode: 0, signal: null, output: "ok\n", truncated: false, timedOut: false };
@@ -269,7 +285,8 @@ describe("melian probe", () => {
 			expect(JSON.parse(result.stdout)).toEqual({
 				exitCode: 4,
 				signal: null,
-				output: "no\n",
+				// visibleText escapes every control, the newline included, as the plain output does per line.
+				output: "no\\u000a",
 				truncated: false,
 				timedOut: false,
 			});

@@ -154,6 +154,8 @@ describe("Probe.open", () => {
 		["sp ace"],
 		["probe.mjs"],
 		["PROBE.MJS"],
+		["run.mjs"],
+		["watchdog.mjs"],
 	])("refuses the file path %j", async (path) => {
 		const { sandbox } = passthrough();
 		const error = await refusal({ script: "", files: [{ path, text: "" }] }, options(sandbox));
@@ -190,15 +192,16 @@ describe("Probe.open", () => {
 		);
 		const { policy } = probe;
 		const root = dirname(policy.write[0]!);
-		expect(readdirSync(join(root, "probe")).sort()).toEqual(["a", "probe.mjs", "run.mjs"]);
+		expect(readdirSync(join(root, "probe")).sort()).toEqual(["a", "probe.mjs", "run.mjs", "watchdog.mjs"]);
 		expect(readdirSync(join(root, "probe", "a")).sort()).toEqual(["b.json", "c-1_x.txt"]);
 		expect(policy.write).toEqual([join(root, "run")]);
-		// The runner carries a watchdog that exits the probe at its own limit even if nothing outside the sandbox stops
-		// it, and then loads the probe's module. It is unref'd, so a probe that finishes keeps its own exit code.
+		// The runner imports the watchdog, then the probe's module, statically and in that order, so the watchdog is
+		// armed first. The watchdog exits the probe at its own limit even if nothing outside the sandbox stops it, and
+		// is unref'd, so a probe that finishes keeps its own exit code.
 		const runner = readFileSync(join(root, "probe", "run.mjs"), "utf8");
-		expect(runner).toMatch(/setTimeout\(\(\) => process\.exit\(124\),/);
-		expect(runner).toContain(".unref()");
-		expect(runner).toContain('import("./probe.mjs")');
+		expect(runner).toBe('import "./watchdog.mjs";\nimport "./probe.mjs";\n');
+		const watchdog = readFileSync(join(root, "probe", "watchdog.mjs"), "utf8");
+		expect(watchdog).toMatch(/^setTimeout\(\(\) => process\.exit\(124\), \d+\)\.unref\(\);\n$/);
 		await probe.close();
 		expect(existsSync(root)).toBe(false);
 	});
@@ -213,8 +216,8 @@ describe("Probe.open", () => {
 	it("sets the runner's watchdog past the time limit and its grace", async () => {
 		const { sandbox } = passthrough();
 		const probe = await Probe.open({ script: "" }, options(sandbox, { timeout: 1_000 }));
-		const runner = readFileSync(join(dirname(probe.policy.write[0]!), "probe", "run.mjs"), "utf8");
-		expect(runner).toContain(`process.exit(124), ${1_000 + closeGraceMs + 5_000})`);
+		const watchdog = readFileSync(join(dirname(probe.policy.write[0]!), "probe", "watchdog.mjs"), "utf8");
+		expect(watchdog).toContain(`process.exit(124), ${1_000 + closeGraceMs + 5_000})`);
 		await probe.close();
 	});
 
@@ -744,6 +747,28 @@ describe("RuntimeSandbox", () => {
 		const ready = runtime();
 		expect(new RuntimeSandbox(ready.fake, "darwin").unavailable()).toBeUndefined();
 		expect(ready.names()).toEqual(["isSupportedPlatform", "checkDependencies"]);
+	});
+
+	it("closes an open that settles after the setup bound gave up, so no session leaks", async () => {
+		let release!: () => void;
+		const { fake, names } = runtime({ initialize: () => new Promise<void>((resolve) => (release = resolve)) });
+		const sandbox = new RuntimeSandbox(fake, "darwin");
+		vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+		try {
+			const refused = Probe.open({ script: "" }, options(sandbox)).then(
+				() => undefined,
+				(error: unknown) => error,
+			);
+			while (!names().includes("initialize")) await new Promise((resolve) => setImmediate(resolve));
+			await vi.advanceTimersByTimeAsync(probeLimits.setup);
+			expect(await refused).toMatchObject({ code: "sandboxUnavailable" });
+			// The abandoned open now settles; its session must be released, taking the count back to zero.
+			release();
+			while (!names().includes("reset")) await new Promise((resolve) => setImmediate(resolve));
+			expect(names()).toEqual(["isSupportedPlatform", "checkDependencies", "initialize", "reset"]);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it("serialises open and close so a reset never tears down a newer session", async () => {

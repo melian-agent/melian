@@ -7,11 +7,16 @@ import { SandboxManager } from "@anthropic-ai/sandbox-runtime";
 import type { WriterTrust } from "./checks.ts";
 import { closeGraceMs, ProbeProcess } from "./probe-process.ts";
 
-// The runner the sandbox executes: a watchdog that exits the probe at `deadline` milliseconds even if nothing outside
-// the sandbox stops it, then the probe's own module. The timer is unref'd, so a probe that finishes leaves at its own
-// exit code; a probe that hangs keeps the event loop alive until the timer fires and exits 124.
-function runnerSource(deadline: number): string {
-	return `const watchdog = setTimeout(() => process.exit(124), ${deadline});\nwatchdog.unref();\nawait import("./${scriptName}");\n`;
+// The runner the sandbox executes imports the watchdog, then the probe's own module, both statically: a module's imports
+// evaluate in order, so the watchdog is armed before the probe runs. The watchdog exits the probe at `deadline`
+// milliseconds even if nothing outside the sandbox stops it. Its timer is unref'd, so a probe that finishes leaves at
+// its own exit code; a probe that hangs keeps the event loop alive until the timer fires and exits 124.
+function runnerSource(): string {
+	return `import "./${watchdogName}";\nimport "./${scriptName}";\n`;
+}
+
+function watchdogSource(deadline: number): string {
+	return `setTimeout(() => process.exit(124), ${deadline}).unref();\n`;
 }
 
 // Rejects with a {@link ProbeError} if `work` has not settled within `ms`, so a step that can hang, such as starting the
@@ -109,6 +114,8 @@ export interface ProbeResult {
 	/** The output passed its limit, was cut there, and the probe was ended. */
 	readonly truncated: boolean;
 	readonly timedOut: boolean;
+	/** Why stopping the probe's processes failed, when it did, such as a process table that could not be read. */
+	readonly error?: string;
 }
 
 export type ProbeErrorCode = "headNotAllowed" | "sandboxUnavailable" | "invalidProbe" | "closed";
@@ -133,6 +140,7 @@ export type CleanupOutcome =
 const segment = /^[A-Za-z0-9_][A-Za-z0-9._-]*$/;
 const scriptName = "probe.mjs";
 const runnerName = "run.mjs";
+const watchdogName = "watchdog.mjs";
 
 // The operating system's programs and libraries, which Node and a shell need to start. They hold no user's data.
 const systemReads: Readonly<Record<"darwin" | "linux", readonly string[]>> = {
@@ -228,7 +236,7 @@ function validFiles(input: ProbeInput): readonly ProbeFile[] {
 	const files = input.files ?? [];
 	if (files.length > probeLimits.files)
 		throw new ProbeError("invalidProbe", `a probe has at most ${probeLimits.files} files`);
-	const seen = new Set<string>([scriptName, runnerName]);
+	const seen = new Set<string>([scriptName, runnerName, watchdogName]);
 	let bytes = 0;
 	for (const file of files) {
 		const parts = file.path.split("/");
@@ -458,13 +466,23 @@ export class Probe {
 			// A watchdog inside the runner exits the probe at its own limit even if the Melian process dies and so never
 			// stops it. It is a backstop past Melian's own deadline, so a running Melian stops the probe first; a
 			// grandchild that reparents away from the runner still escapes it, as the decision records.
-			await writeFile(join(scratch, "probe", runnerName), runnerSource(limits.timeout + closeGraceMs + 5_000));
+			await writeFile(join(scratch, "probe", watchdogName), watchdogSource(limits.timeout + closeGraceMs + 5_000));
+			await writeFile(join(scratch, "probe", runnerName), runnerSource());
 			for (const file of files) {
 				const target = join(scratch, "probe", ...file.path.split("/"));
 				await mkdir(dirname(target), { recursive: true });
 				await writeFile(target, fileBytes(file));
 			}
-			await withBound(sandbox.open(), probeLimits.setup, "the sandbox did not start");
+			const opening = sandbox.open();
+			await withBound(opening, probeLimits.setup, "the sandbox did not start").catch((error: unknown) => {
+				// The bound gave up on an open that may still finish; release its session then, so the shared manager's
+				// count returns to zero instead of leaking.
+				void opening.then(
+					() => sandbox.close(),
+					() => undefined,
+				);
+				throw error;
+			});
 		} catch (error) {
 			await rm(scratch, { recursive: true }).catch(() => undefined);
 			throw new ProbeError("sandboxUnavailable", `the probe could not start: ${String(error)}`, { cause: error });
@@ -575,7 +593,8 @@ export class Probe {
 			const bytes = Buffer.concat(chunks);
 			// A cut at the output limit can fall inside a multi-byte character; decode only up to the last whole one.
 			const output = new TextDecoder().decode(truncated ? bytes.subarray(0, completeUtf8(bytes)) : bytes);
-			return { exitCode: exit.code, signal: exit.signal, output, truncated, timedOut: exit.timedOut };
+			const result = { exitCode: exit.code, signal: exit.signal, output, truncated, timedOut: exit.timedOut };
+			return exit.error === undefined ? result : { ...result, error: exit.error };
 		} finally {
 			await child?.stop();
 			this.#sandbox.cleanup();

@@ -14,6 +14,8 @@ export type ProbeExit = {
 	readonly code: number | null;
 	readonly signal: NodeJS.Signals | null;
 	readonly timedOut: boolean;
+	/** Why stopping the recorded tree failed, when it did; the run still settles. */
+	readonly error?: string;
 };
 
 export interface ProbeProcessOptions {
@@ -48,6 +50,7 @@ export class ProbeProcess {
 	#natural: { code: number | null; signal: NodeJS.Signals | null } | undefined;
 	#timedOut = false;
 	#done = false;
+	#error: string | undefined;
 
 	private constructor(child: ChildProcess, options: ProbeProcessOptions) {
 		this.#child = child;
@@ -106,7 +109,7 @@ export class ProbeProcess {
 		this.#done = true;
 		clearInterval(this.#timer);
 		if (this.#deadline !== undefined) clearTimeout(this.#deadline);
-		this.#settle(exit);
+		this.#settle(this.#error === undefined ? exit : { ...exit, error: this.#error });
 	}
 
 	// Stop the recorded tree, wait at most the grace for a natural close, then abandon the streams and settle. A natural
@@ -114,7 +117,14 @@ export class ProbeProcess {
 	async #bound(timedOut: boolean): Promise<void> {
 		if (this.#done) return;
 		this.#timedOut = this.#timedOut || timedOut;
-		await this.stop();
+		// A process table that cannot be read fails the stop; the run still settles, with the failure recorded, rather
+		// than leaving an unhandled rejection behind a fire-and-forget call. stop() has already ended the root through
+		// its own handle.
+		try {
+			await this.stop();
+		} catch (error) {
+			this.#error = error instanceof Error ? error.message : String(error);
+		}
 		const closed = await Promise.race([this.#closed.then(() => true), this.#sleep(this.#grace).then(() => false)]);
 		if (closed || this.#done) return;
 		this.#child.stdout?.destroy();

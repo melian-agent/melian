@@ -83,7 +83,12 @@ export async function probe(
 		} finally {
 			cleanup = await opened.close();
 		}
-		if (options.json) io.stdout(`${JSON.stringify(result)}\n`);
+		// JSON escapes ASCII controls but not bidi or C1 controls, which can reorder or hide text in a terminal, so the
+		// probe's text goes through visibleText first, as the plain output does.
+		if (options.json)
+			io.stdout(
+				`${JSON.stringify({ ...result, output: visibleText(result.output), ...(result.error === undefined ? {} : { error: visibleText(result.error) }) })}\n`,
+			);
 		else {
 			const lines = result.output.endsWith("\n") ? result.output.slice(0, -1) : result.output;
 			if (result.output !== "") io.stdout(`${lines.split("\n").map(visibleText).join("\n")}\n`);
