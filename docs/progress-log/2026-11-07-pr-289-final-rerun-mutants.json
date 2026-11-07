@@ -9,7 +9,7 @@
  ],
  "base": "0b06c3862b60114c413bd5a809bf54b9a7b0cb0f",
  "head": "f491f79bd261997f01ea469e661fd527a2ed6271",
- "selection": "Before the last round, as the rerun rule of pull request #303 sets: every claim over origin/main...HEAD at this head whose named test file `npx vitest list --filesOnly --changed <claim head>` lists, or whose mutated file changed since that head. 526 selected and rerun here; 127 skipped, carried from 2026-11-07-pr-289-fix-pass-3-mutants.json at fcb25f87, whose named test files and mutated files are unchanged since.",
+ "selection": "Before the last round, under pull request #303's final rule: the merge of main changed files Vitest does not track as modules (docs, lens files, workflows), so every claim over origin/main...HEAD was rerun at this head. A first selection by `npx vitest list --filesOnly --changed` reran 526 and carried 127 from fix pass 3; the rule's final form then reran those 127 as well.",
  "command": "node scripts/enumerate-mutants.mjs origin/main...HEAD --json --limit 10000",
  "runner": "each mutant applied in a throwaway worktree at the head; its failing test found by a file run, then that test run alone by its anchored ancestorTitles > title pattern; a kill counts only when exactly one test was collected and it failed",
  "mutants": [
@@ -2351,16 +2351,15 @@
    "endColumn": 39,
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
-   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "tests": [
     "packages/cli/test/probe.test.ts"
    ],
    "result": "survived",
    "claim": "equivalent",
    "evidence": "The CLI prints the error's message alone; the code reaches no caller.",
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/cli/src/probe.ts",
@@ -5387,8 +5386,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -5398,8 +5396,8 @@
    "endColumn": 33,
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
-   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "failingTests": [
     "packages/pipeline/test/probe.test.ts > Probe.open > reads only the worktree, the install, Node, the sandbox's helpers, its own files and the system"
    ],
@@ -5411,8 +5409,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -5433,8 +5430,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -5444,8 +5440,8 @@
    "endColumn": 37,
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
-   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "failingTests": [
     "packages/pipeline/test/probe.test.ts > Probe.open > reads only the worktree, the install, Node, the sandbox's helpers, its own files and the system"
    ],
@@ -5457,8 +5453,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -5468,8 +5463,8 @@
    "endColumn": 63,
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
-   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "failingTests": [
     "packages/pipeline/test/probe.test.ts > Probe.open > reads only the worktree, the install, Node, the sandbox's helpers, its own files and the system"
    ],
@@ -5481,8 +5476,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -5492,8 +5486,8 @@
    "endColumn": 87,
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
-   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "failingTests": [
     "packages/pipeline/test/probe.test.ts > Probe.open > reads only the worktree, the install, Node, the sandbox's helpers, its own files and the system"
    ],
@@ -5505,8 +5499,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -5527,8 +5520,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -5538,8 +5530,8 @@
    "endColumn": 42,
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
-   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "failingTests": [
     "packages/pipeline/test/probe.test.ts > RuntimeSandbox > passes every path as a literal, keeps deny globs as patterns, denies JAVA_TOOL_OPTIONS, and no network"
    ],
@@ -5551,8 +5543,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -5599,8 +5590,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -5626,8 +5616,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -5653,8 +5642,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -5678,8 +5666,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -5701,8 +5688,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -5724,8 +5710,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -5735,8 +5720,8 @@
    "endColumn": 26,
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
-   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "failingTests": [
     "packages/pipeline/test/probe.test.ts > nodeReads > grants a shared prefix such as /usr its binary and module directory alone",
     "packages/pipeline/test/probe.test.ts > nodeReads > grants a version not under a node directory its binary and module directory alone",
@@ -5753,8 +5738,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -5775,8 +5759,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -5797,8 +5780,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -5820,8 +5802,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -5843,8 +5824,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -5865,8 +5845,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -5887,8 +5866,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -5910,8 +5888,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -5933,8 +5910,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -5956,8 +5932,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -5979,8 +5954,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -5998,8 +5972,7 @@
    "result": "survived",
    "claim": "equivalent",
    "evidence": "The version pattern has no end anchor, so one trailing digit matches wherever more digits follow.",
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -6021,8 +5994,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -6043,8 +6015,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -6067,8 +6038,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -6078,8 +6048,8 @@
    "endColumn": 84,
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
-   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "failingTests": [
     "packages/pipeline/test/probe.test.ts > nodeReads > grants a version under a node directory whole",
     "packages/pipeline/test/probe.test.ts > nodeReads > grants a v-prefixed version under a node directory whole"
@@ -6092,8 +6062,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -6114,8 +6083,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -6142,8 +6110,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -6169,8 +6136,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -6180,8 +6146,8 @@
    "endColumn": 56,
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
-   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "failingTests": [
     "packages/pipeline/test/probe.test.ts > nodeReads > grants a shared prefix such as /usr its binary and module directory alone",
     "packages/pipeline/test/probe.test.ts > nodeReads > grants a version not under a node directory its binary and module directory alone",
@@ -6197,8 +6163,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -6208,8 +6173,8 @@
    "endColumn": 72,
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
-   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "failingTests": [
     "packages/pipeline/test/probe.test.ts > nodeReads > grants a shared prefix such as /usr its binary and module directory alone",
     "packages/pipeline/test/probe.test.ts > nodeReads > grants a version not under a node directory its binary and module directory alone",
@@ -6225,8 +6190,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -6259,8 +6223,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -6292,8 +6255,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -6315,8 +6277,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -6341,8 +6302,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -6360,8 +6320,7 @@
    "result": "survived",
    "claim": "equivalent",
    "evidence": "At start 0, buf[-1] is undefined, whose masked value is 0, not 0x80, so the loop stops there either way.",
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -6379,8 +6338,7 @@
    "result": "survived",
    "claim": "equivalent",
    "evidence": "At start 0, buf[-1] is undefined, whose masked value is 0, not 0x80, so the loop stops there either way.",
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -6402,8 +6360,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -6428,8 +6385,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -6454,8 +6410,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -6477,8 +6432,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -6500,8 +6454,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -6526,8 +6479,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -6545,8 +6497,7 @@
    "result": "survived",
    "claim": "equivalent",
    "evidence": "With start 0 the lead is undefined, which reads as a one-byte sequence the whole buffer completes, so the length returned is the same.",
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -6571,8 +6522,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -6597,8 +6547,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -6623,8 +6572,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -6642,8 +6590,7 @@
    "result": "survived",
    "claim": "equivalent",
    "evidence": "An ASCII lead that skips this test falls through to expected 0, which returns the whole length, as expected 1 does.",
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -6668,8 +6615,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -6691,8 +6637,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -6713,8 +6658,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -6737,8 +6681,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -6760,8 +6703,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -6784,8 +6726,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -6810,8 +6751,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -6832,8 +6772,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -6854,8 +6793,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -6877,8 +6815,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -6903,8 +6840,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -6922,8 +6858,7 @@
    "result": "survived",
    "claim": "equivalent",
    "evidence": "An invalid lead gives expected 0, and every remainder is at least 0 bytes, so the whole length is returned either way.",
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -6948,8 +6883,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -6974,8 +6908,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -7000,8 +6933,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -7026,8 +6958,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -7057,8 +6988,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -7081,8 +7011,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -7107,8 +7036,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -7133,8 +7061,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -11547,8 +11474,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -11569,8 +11495,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -11591,8 +11516,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -11613,8 +11537,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -11624,8 +11547,8 @@
    "endColumn": 102,
    "mutatorName": "StringLiteral",
    "replacement": "``",
-   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "failingTests": [
     "packages/pipeline/test/probe.test.ts > RuntimeSandbox > says what sandbox-runtime lacks here, and refuses a warning that weakens confinement"
    ],
@@ -11637,8 +11560,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -11648,8 +11570,8 @@
    "endColumn": 99,
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
-   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "failingTests": [
     "packages/pipeline/test/probe.test.ts > RuntimeSandbox > says what sandbox-runtime lacks here, and refuses a warning that weakens confinement"
    ],
@@ -11661,8 +11583,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -11685,8 +11606,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -11753,8 +11673,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -11777,8 +11696,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -11801,8 +11719,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -11823,8 +11740,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -11845,8 +11761,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -11867,8 +11782,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -11889,8 +11803,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -11911,8 +11824,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -11933,8 +11845,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -11955,8 +11866,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -11977,8 +11887,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -11999,8 +11908,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -12023,8 +11931,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -12066,8 +11973,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -12088,8 +11994,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -12238,8 +12143,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -12260,8 +12164,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -12282,8 +12185,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -12304,8 +12206,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -12393,8 +12294,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -12417,8 +12317,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -12440,8 +12339,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -12464,8 +12362,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -12488,8 +12385,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -12510,8 +12406,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -12534,8 +12429,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -12558,8 +12452,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -12603,8 +12496,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -12626,8 +12518,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -12649,8 +12540,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -12671,8 +12561,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -12695,8 +12584,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -12706,8 +12594,8 @@
    "endColumn": 56,
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
-   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "failingTests": [
     "packages/pipeline/test/probe.test.ts > makeWritable > restores a read-only and a mode-0 directory so rm can remove them, and closes what it opened",
     "packages/pipeline/test/probe.test.ts > Probe.run > removes a scratch directory the probe made unreadable"
@@ -12720,8 +12608,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -12743,8 +12630,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -12766,8 +12652,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -12809,8 +12694,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -12852,8 +12736,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -12871,8 +12754,7 @@
    "result": "survived",
    "claim": "equivalent",
    "evidence": "A non-directory entry fails the O_DIRECTORY and O_NOFOLLOW open and is left alone, as the filter would leave it.",
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -12894,8 +12776,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -12916,8 +12797,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -12939,8 +12819,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -15091,8 +14970,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -15102,8 +14980,8 @@
    "endColumn": 7,
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
-   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "failingTests": [
     "packages/pipeline/test/probe.test.ts > Probe.open > reads only the worktree, the install, Node, the sandbox's helpers, its own files and the system"
    ],
@@ -15115,8 +14993,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -15137,8 +15014,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -15148,8 +15024,8 @@
    "endColumn": 65,
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
-   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "failingTests": [
     "packages/pipeline/test/probe.test.ts > Probe.open > reads only the worktree, the install, Node, the sandbox's helpers, its own files and the system"
    ],
@@ -15161,8 +15037,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -15183,8 +15058,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
@@ -16512,8 +16386,7 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "survivorClasses": [],
-   "carriedFrom": "fcb25f875152e0c5ff29d1f877368a8cf4320373"
+   "survivorClasses": []
   },
   {
    "file": "packages/pipeline/src/probe.ts",
