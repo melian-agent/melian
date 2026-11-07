@@ -342,6 +342,10 @@ describe("Verdict.publishable", () => {
 				"the tool did not run; Melian keeps none of its reason",
 			],
 			[{ name: "static.tsc", status: "skipped" }, "the tool did not run; Melian keeps none of its reason"],
+			[
+				{ name: "static.tsc", status: "skipped", reason: "so static.tsc.enabled is false" },
+				"the tool did not run; Melian keeps none of its reason",
+			],
 		];
 		const empty = new Adjudication({ findings: [], manifest: [], checks: [], config: defaultConfig })
 			.adjudicate()
