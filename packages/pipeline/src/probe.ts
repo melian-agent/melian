@@ -1,7 +1,7 @@
-import { existsSync, realpathSync, statSync } from "node:fs";
-import { chmod, lstat, mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
+import { constants, existsSync, realpathSync, statSync } from "node:fs";
+import { chmod, lstat, mkdir, mkdtemp, open as openFile, readdir, rm, writeFile } from "node:fs/promises";
 import { homedir, platform, tmpdir } from "node:os";
-import { dirname, join, posix, relative, sep } from "node:path";
+import { basename, dirname, join, posix, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { SandboxManager } from "@anthropic-ai/sandbox-runtime";
 import type { WriterTrust } from "./checks.ts";
@@ -29,10 +29,15 @@ export interface ProbeInput {
 	readonly files?: readonly ProbeFile[];
 }
 
-/** What a probe's filesystem allows: reads of `read` alone, less `deny`, and writes to `write` alone. */
+/**
+ * What a probe's filesystem allows. Every entry but `denyGlobs` is a literal path: the wrap passes it to sandbox-runtime
+ * as `{ path, literal: true }`, so a worktree whose name holds `*` or `**` cannot read as a glob. `denyGlobs` carries the
+ * deny-read patterns, such as `**​/.env*`, which only ever deny, so a broad match is safe.
+ */
 export interface ProbePolicy {
 	readonly read: readonly string[];
 	readonly deny: readonly string[];
+	readonly denyGlobs: readonly string[];
 	readonly write: readonly string[];
 	readonly denyWrite: readonly string[];
 }
@@ -124,8 +129,52 @@ const systemReads: Readonly<Record<"darwin" | "linux", readonly string[]>> = {
 	],
 };
 
-// What the worktree holds that is no probe's business, as the standards loader never reads it.
-const worktreeDenies = [".git", "**/.env*", "**/melian.secrets.yaml", "**/melian.local.yaml"];
+// What the worktree holds that is no probe's business, as the standards loader never reads it. `.git` is a literal path;
+// the rest are patterns that match a file of that name at any depth.
+const worktreeDenyPaths = [".git"];
+const worktreeDenyGlobs = ["**/.env*", "**/melian.secrets.yaml", "**/melian.local.yaml"];
+
+// A parent env variable sandbox-runtime embeds in the wrapped command verbatim, so its value would reach a probe.
+// JAVA_TOOL_OPTIONS can carry JVM-property credentials; denying it drops the inherited value from the wrap. The only
+// other parent variable that survives is CLAUDE_CODE_TMPDIR, a path the probe's own `export TMPDIR` overrides, not a
+// secret, so it is left alone.
+const deniedEnvVars = ["JAVA_TOOL_OPTIONS"];
+
+// sandbox-runtime's reads of Node's install, for a probe's `node`. The grandparent of the executable is granted only
+// when it is a Node-only prefix, such as an nvm or a `node-*` directory; `/usr/bin/node`'s grandparent `/usr` would
+// expose `/usr/local/etc/npmrc`, so a system install grants the binary and its module directory alone, both already
+// under the system reads.
+export function nodeReads(execPath: string): readonly string[] {
+	const real = realpathSync(execPath);
+	const prefix = dirname(dirname(real));
+	const segments = prefix.split(sep);
+	const nodeOnly =
+		segments.includes(".nvm") ||
+		/^node(-|$)/.test(basename(prefix)) ||
+		(/^v?\d+\.\d+\.\d+/.test(basename(prefix)) && basename(dirname(prefix)) === "node");
+	return (nodeOnly ? [prefix] : [real, join(prefix, "lib", "node_modules")]).filter((path) => existsSync(path));
+}
+
+// The length of the largest prefix of `buf` that ends on a complete UTF-8 sequence, so a cut never leaves a half
+// character to decode as a replacement.
+function completeUtf8(buf: Buffer): number {
+	let start = buf.length;
+	while (start > 0 && (buf[start - 1]! & 0xc0) === 0x80) start--;
+	if (start === 0) return buf.length;
+	const lead = buf[start - 1]!;
+	const expected =
+		(lead & 0x80) === 0
+			? 1
+			: (lead & 0xe0) === 0xc0
+				? 2
+				: (lead & 0xf0) === 0xe0
+					? 3
+					: (lead & 0xf8) === 0xf0
+						? 4
+						: 0;
+	if (expected === 0) return buf.length;
+	return buf.length - (start - 1) >= expected ? buf.length : start - 1;
+}
 
 function quote(text: string): string {
 	return `'${text.replaceAll("'", "'\\''")}'`;
@@ -221,7 +270,9 @@ export class RuntimeSandbox implements ProbeSandbox {
 	readonly #name: string;
 	readonly #runtime: SandboxRuntime;
 	#sessions = 0;
-	#opening: Promise<void> | undefined;
+	// open and close run one at a time on the shared manager, so a reset can never complete after a newer open tears its
+	// session down. Each call waits for the ones before it, and a thrown step does not poison the chain.
+	#queue: Promise<void> = Promise.resolve();
 
 	constructor(runtime: SandboxRuntime = SandboxManager, name: string = platform()) {
 		this.#runtime = runtime;
@@ -229,37 +280,48 @@ export class RuntimeSandbox implements ProbeSandbox {
 		this.platform = name === "darwin" ? "darwin" : "linux";
 	}
 
+	// A confinement tool's dependency warnings each weaken it: a missing seccomp helper leaves unix sockets unrestricted,
+	// an old bubblewrap cannot mask a non-regular file, a library in a writable path can be rewritten. So a warning is as
+	// fatal as an error, and a probe is refused rather than run less confined than it says.
 	unavailable(): string | undefined {
 		if (this.#name !== "darwin" && this.#name !== "linux") return `probes run on macOS and Linux, not ${this.#name}`;
 		if (!this.#runtime.isSupportedPlatform()) return "sandbox-runtime does not support this platform";
-		const { errors } = this.#runtime.checkDependencies();
-		return errors.length === 0 ? undefined : `sandbox-runtime cannot run here: ${errors.join("; ")}`;
+		const { errors, warnings } = this.#runtime.checkDependencies();
+		const problems = [...errors, ...warnings];
+		return problems.length === 0 ? undefined : `sandbox-runtime cannot run here: ${problems.join("; ")}`;
 	}
 
-	async open(): Promise<void> {
-		this.#sessions++;
-		this.#opening ??= this.#runtime.initialize({
-			network: { allowedDomains: [], deniedDomains: [] },
-			filesystem: { denyRead: [], allowRead: [], allowWrite: [], denyWrite: [] },
+	#enqueue(step: () => Promise<void>): Promise<void> {
+		const run = this.#queue.then(step);
+		this.#queue = run.then(
+			() => {},
+			() => {},
+		);
+		return run;
+	}
+
+	open(): Promise<void> {
+		return this.#enqueue(async () => {
+			if (this.#sessions === 0)
+				await this.#runtime.initialize({
+					network: { allowedDomains: [], deniedDomains: [] },
+					filesystem: { denyRead: [], allowRead: [], allowWrite: [], denyWrite: [] },
+				});
+			this.#sessions++;
 		});
-		try {
-			await this.#opening;
-		} catch (error) {
-			this.#opening = undefined;
-			this.#sessions--;
-			throw error;
-		}
 	}
 
 	async wrap(command: string, policy: ProbePolicy): Promise<readonly string[]> {
+		const literal = (path: string) => ({ path, literal: true as const });
 		const { argv } = await this.#runtime.wrapWithSandboxArgv(command, "/bin/bash", {
 			network: { allowedDomains: [], deniedDomains: [] },
 			filesystem: {
-				denyRead: [...policy.deny],
-				allowRead: [...policy.read],
-				allowWrite: [...policy.write],
-				denyWrite: [...policy.denyWrite],
+				denyRead: [...policy.deny.map(literal), ...policy.denyGlobs],
+				allowRead: policy.read.map(literal),
+				allowWrite: policy.write.map(literal),
+				denyWrite: policy.denyWrite.map(literal),
 			},
+			credentials: { envVars: deniedEnvVars.map((name) => ({ name, mode: "deny" as const })) },
 		});
 		return argv;
 	}
@@ -268,23 +330,47 @@ export class RuntimeSandbox implements ProbeSandbox {
 		this.#runtime.cleanupAfterCommand();
 	}
 
-	async close(): Promise<void> {
-		if (this.#sessions === 0) return;
-		this.#sessions--;
-		if (this.#sessions > 0) return;
-		this.#opening = undefined;
-		await this.#runtime.reset();
+	close(): Promise<void> {
+		return this.#enqueue(async () => {
+			if (this.#sessions === 0) return;
+			this.#sessions--;
+			if (this.#sessions === 0) await this.#runtime.reset();
+		});
 	}
 }
 
 // One per process, since sandbox-runtime's manager is.
 const runtime = new RuntimeSandbox();
 
-// Lets close() remove a directory the probe made unreadable to its owner. A link is left for rm to remove, not followed.
-async function writable(path: string): Promise<void> {
-	if (!(await lstat(path)).isDirectory()) return;
-	await chmod(path, 0o700);
-	for (const name of await readdir(path)) await writable(join(path, name));
+// Lets close() remove a directory the probe made unreadable to its owner, without following a symlink a surviving child
+// may have swapped in. It opens each directory with O_NOFOLLOW and changes the mode through that descriptor, so a path
+// that is now a symlink fails the open (ELOOP) and is left for rm to remove by name rather than followed. A mode-0
+// directory cannot be opened, and fails with EACCES rather than ELOOP, which proves it is a real directory and not a
+// symlink, so it is safe to chmod by path. The opened directory's identity is confirmed before it is listed, and the
+// descent enters only real subdirectories. run()'s child is stopped before close, so no live process swaps an entry
+// mid-descent; a detached macOS child is the documented residual.
+async function makeWritable(path: string): Promise<void> {
+	let handle: Awaited<ReturnType<typeof openFile>> | undefined;
+	try {
+		handle = await openFile(path, constants.O_RDONLY | constants.O_DIRECTORY | constants.O_NOFOLLOW);
+	} catch (error) {
+		const code = (error as NodeJS.ErrnoException).code;
+		if (code !== "EACCES" && code !== "EPERM") return;
+		// A real directory this user cannot open; O_NOFOLLOW ruled out a symlink, so chmod by path is not a follow.
+		await chmod(path, 0o700).catch(() => undefined);
+	}
+	try {
+		if (handle !== undefined) {
+			await handle.chmod(0o700);
+			const opened = await handle.stat();
+			const named = await lstat(path).catch(() => undefined);
+			if (named === undefined || named.ino !== opened.ino || named.dev !== opened.dev) return;
+		}
+		for (const child of await readdir(path, { withFileTypes: true }).catch(() => []))
+			if (child.isDirectory() && !child.isSymbolicLink()) await makeWritable(join(path, child.name));
+	} finally {
+		await handle?.close();
+	}
 }
 
 /**
@@ -378,7 +464,6 @@ export class Probe {
 
 	/** What the probe may read and write, as the sandbox is given it. */
 	get policy(): ProbePolicy {
-		const node = dirname(dirname(realpathSync(process.execPath)));
 		const { platform } = this.#sandbox;
 		const system = systemReads[platform].filter((path) => existsSync(path));
 		const run = join(this.#scratch, "run");
@@ -386,14 +471,19 @@ export class Probe {
 			read: [
 				this.#worktree,
 				...(this.#install === undefined ? [] : [this.#install]),
-				node,
+				...nodeReads(process.execPath),
 				runtimePackage(),
 				join(this.#scratch, "probe"),
 				run,
 				...system,
 			],
-			// Node's etc holds the global npmrc, which can carry a registry token.
-			deny: ["/", ...worktreeDenies.map((path) => posix.join(this.#worktree, path)), join(node, "etc")],
+			// A granted Node prefix's `etc` holds the global npmrc, which can carry a registry token.
+			deny: [
+				"/",
+				posix.join(this.#worktree, ...worktreeDenyPaths),
+				...nodeReads(process.execPath).map((path) => join(path, "etc")),
+			],
+			denyGlobs: worktreeDenyGlobs.map((pattern) => posix.join(this.#worktree, pattern)),
 			write: [run],
 			// sandbox-runtime keeps this writable for itself whatever the policy says.
 			denyWrite: platform === "darwin" ? ["/tmp/claude", "/private/tmp/claude"] : ["/tmp/claude"],
@@ -449,13 +539,10 @@ export class Probe {
 			const exit = await child.wait();
 			clearTimeout(timer);
 			await child.stop();
-			return {
-				exitCode: exit.code,
-				signal: exit.signal,
-				output: new TextDecoder().decode(Buffer.concat(chunks)),
-				truncated,
-				timedOut,
-			};
+			const bytes = Buffer.concat(chunks);
+			// A cut at the output limit can fall inside a multi-byte character; decode only up to the last whole one.
+			const output = new TextDecoder().decode(truncated ? bytes.subarray(0, completeUtf8(bytes)) : bytes);
+			return { exitCode: exit.code, signal: exit.signal, output, truncated, timedOut };
 		} finally {
 			this.#sandbox.cleanup();
 			this.#running = false;
@@ -467,7 +554,7 @@ export class Probe {
 		if (this.#closed) return;
 		this.#closed = true;
 		try {
-			await writable(this.#scratch);
+			await makeWritable(this.#scratch);
 			await rm(this.#scratch, { recursive: true });
 		} finally {
 			await this.#sandbox.close();

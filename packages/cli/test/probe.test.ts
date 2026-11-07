@@ -154,6 +154,20 @@ describe("melian probe", () => {
 		expect(open).toHaveBeenCalledOnce();
 	});
 
+	it("refuses the aggregate byte limit while reading, before opening the probe", async () => {
+		writeFileSync(join(dir, "probe.mjs"), "");
+		// Two files that each fit but together exceed the aggregate: the CLI must refuse while reading, not leave it to
+		// Probe.open after both are in memory.
+		const half = Math.ceil(pipeline.probeLimits.fileBytes / 2) + 1;
+		writeFileSync(join(dir, "a"), "x".repeat(half));
+		writeFileSync(join(dir, "b"), "x".repeat(half));
+		const open = vi.spyOn(pipeline.Probe, "open");
+		expect((await melian(["probe", "probes/first", "--trust-head"])).stderr).toBe(
+			`melian: a probe's files hold at most ${pipeline.probeLimits.fileBytes} bytes\n`,
+		);
+		expect(open).not.toHaveBeenCalled();
+	});
+
 	it("fails as any other error does when the directory cannot be read", async () => {
 		writeFileSync(join(repo, "plain"), "");
 		expect(await melian(["probe", "plain", "--trust-head"])).toMatchObject({

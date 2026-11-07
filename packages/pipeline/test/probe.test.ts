@@ -1,8 +1,19 @@
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readdirSync,
+	realpathSync,
+	rmSync,
+	statSync,
+	symlinkSync,
+	writeFileSync,
+} from "node:fs";
 import { homedir, tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, sep } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+	nodeReads,
 	Probe,
 	ProbeError,
 	type ProbeInput,
@@ -255,30 +266,28 @@ describe("Probe.open", () => {
 		const probe = await Probe.open({ script: "" }, options(sandbox, { install }));
 		const { policy } = probe;
 		const root = dirname(policy.write[0]!);
-		const node = dirname(dirname(realpathSync(process.execPath)));
-		expect(policy.read.slice(0, 6)).toEqual([
+		const node = nodeReads(process.execPath);
+		expect(policy.read.slice(0, 2 + node.length + 3)).toEqual([
 			worktree,
 			install,
-			node,
+			...node,
 			expect.stringMatching(/node_modules\/@anthropic-ai\/sandbox-runtime$/),
 			join(root, "probe"),
 			join(root, "run"),
 		]);
-		for (const path of policy.read.slice(6))
+		for (const path of policy.read.slice(2 + node.length + 3))
 			expect(path).toMatch(/^\/(bin|sbin|lib|usr|System|private\/var\/select)/);
 		expect(policy.read).not.toContain("/usr/local");
-		expect(policy.deny).toEqual([
-			"/",
-			join(worktree, ".git"),
+		expect(policy.deny).toEqual(["/", join(worktree, ".git"), ...node.map((path) => join(path, "etc"))]);
+		expect(policy.denyGlobs).toEqual([
 			join(worktree, "**/.env*"),
 			join(worktree, "**/melian.secrets.yaml"),
 			join(worktree, "**/melian.local.yaml"),
-			join(node, "etc"),
 		]);
 		expect(policy.denyWrite).toContain("/tmp/claude");
 		await probe.close();
 		const plain = await Probe.open({ script: "" }, options(sandbox));
-		expect(plain.policy.read[1]).toBe(node);
+		expect(plain.policy.read[1]).toBe(node[0]);
 		await plain.close();
 	});
 });
@@ -324,8 +333,54 @@ describe("Probe.policy", () => {
 		expect(policy.denyWrite).toEqual(denyWrite);
 		// A path the host lacks is left out, so the other system's mark is checked only where it exists.
 		if (existsSync(system)) expect(policy.read).toContain(system);
-		expect(policy.read.slice(5)).toEqual(systems[platform].filter((path) => existsSync(path)));
+		const before = 1 + nodeReads(process.execPath).length + 3;
+		expect(policy.read.slice(before)).toEqual(systems[platform].filter((path) => existsSync(path)));
 		expect(policy.read).not.toContain(platform === "linux" ? "/System" : "/lib64");
+	});
+});
+
+describe("nodeReads", () => {
+	// A Node-only prefix is granted whole; a system node grants its binary and module directory, never a shared prefix
+	// such as /usr that would expose /usr/local/etc/npmrc. The host's own node proves the real path resolves.
+	it("grants a whole nvm or node-* prefix", () => {
+		const nvm = realpathSync(process.execPath);
+		if (nvm.includes(`${sep}.nvm${sep}`)) expect(nodeReads(nvm)).toEqual([dirname(dirname(nvm))]);
+		const node = join(scratch, "node-v24.0.0-linux-x64");
+		mkdirSync(join(node, "bin"), { recursive: true });
+		writeFileSync(join(node, "bin", "node"), "");
+		expect(nodeReads(join(node, "bin", "node"))).toEqual([node]);
+	});
+
+	it("grants /usr/bin/node its binary and module directory, never /usr", () => {
+		if (!existsSync("/usr/bin/node")) return;
+		const reads = nodeReads("/usr/bin/node");
+		expect(reads).not.toContain("/usr");
+		expect(reads).toContain("/usr/bin/node");
+		for (const path of reads) expect(path.startsWith("/usr/")).toBe(true);
+	});
+});
+
+describe("makeWritable (through close)", () => {
+	it("removes a scratch the probe left unreadable, without following a swapped symlink", async () => {
+		// Stand in for a surviving child's swap: a directory inside the writable scratch is replaced by a symlink to an
+		// outside directory. close() must make the scratch writable and remove it, and never chmod the outside target.
+		const { sandbox } = passthrough();
+		const outside = realpathSync(mkdtempSync(join(scratch, "outside-")));
+		const outsideFile = join(outside, "keep");
+		writeFileSync(outsideFile, "x");
+		const probe = await Probe.open({ script: "" }, options(sandbox));
+		const root = dirname(probe.policy.write[0]!);
+		const swapped = join(root, "run", "home");
+		rmSync(swapped, { recursive: true, force: true });
+		symlinkSync(outside, swapped);
+		const before = statSync(outside).mode;
+		await probe.close();
+		expect(existsSync(root)).toBe(false);
+		// The outside directory and its file are untouched: the symlink was not followed.
+		expect(existsSync(outside)).toBe(true);
+		expect(statSync(outside).mode).toBe(before);
+		expect(existsSync(outsideFile)).toBe(true);
+		rmSync(outside, { recursive: true, force: true });
 	});
 });
 
@@ -387,6 +442,15 @@ console.log(JSON.stringify({ marker: readFileSync("marker", "utf8"), home: proce
 		} finally {
 			vi.useRealTimers();
 		}
+	});
+
+	it("cuts truncated output at a code-point boundary, not mid-character", async () => {
+		// "\u20ac" is three bytes; with room for one, no whole character fits, so the output is empty, not a replacement char.
+		const one = await ran('process.stdout.write("\u20ac");', { outputLimit: 1 });
+		expect(one.result).toMatchObject({ output: "", truncated: true });
+		// With room for two characters of a three-character run, the third is dropped whole rather than split.
+		const two = await ran('process.stdout.write("\u20ac\u20ac\u20ac");', { outputLimit: 7 });
+		expect(two.result).toMatchObject({ output: "\u20ac\u20ac", truncated: true });
 	});
 
 	it("keeps output at its limit whole and cuts one byte past it", async () => {
@@ -473,7 +537,15 @@ describe("Probe.availability", () => {
 });
 
 describe("RuntimeSandbox", () => {
-	function runtime(answers: { supported?: boolean; errors?: string[]; initialize?: () => Promise<void> } = {}) {
+	function runtime(
+		answers: {
+			supported?: boolean;
+			errors?: string[];
+			warnings?: string[];
+			initialize?: () => Promise<void>;
+			reset?: () => Promise<void>;
+		} = {},
+	) {
 		const calls: unknown[][] = [];
 		const fake = {
 			isSupportedPlatform: () => {
@@ -482,7 +554,7 @@ describe("RuntimeSandbox", () => {
 			},
 			checkDependencies: () => {
 				calls.push(["checkDependencies"]);
-				return { errors: answers.errors ?? [], warnings: ["an old bubblewrap"] };
+				return { errors: answers.errors ?? [], warnings: answers.warnings ?? [] };
 			},
 			initialize: async (config: unknown) => {
 				calls.push(["initialize", config]);
@@ -497,6 +569,7 @@ describe("RuntimeSandbox", () => {
 			},
 			reset: async () => {
 				calls.push(["reset"]);
+				await answers.reset?.();
 			},
 		} as unknown as SandboxRuntime;
 		return { fake, calls, names: () => calls.map(([name]) => name) };
@@ -510,7 +583,7 @@ describe("RuntimeSandbox", () => {
 		expect(new RuntimeSandbox(fake, "linux").platform).toBe("linux");
 	});
 
-	it("says what sandbox-runtime lacks here", () => {
+	it("says what sandbox-runtime lacks here, and refuses a warning that weakens confinement", () => {
 		expect(new RuntimeSandbox(runtime({ supported: false }).fake, "linux").unavailable()).toBe(
 			"sandbox-runtime does not support this platform",
 		);
@@ -518,9 +591,43 @@ describe("RuntimeSandbox", () => {
 		expect(new RuntimeSandbox(missing.fake, "linux").unavailable()).toBe(
 			"sandbox-runtime cannot run here: bubblewrap (bwrap) not installed; socat not found",
 		);
+		// A missing seccomp helper leaves unix sockets unrestricted; 0.0.81 reports it only as a warning.
+		const weak = runtime({ warnings: ["seccomp not available - unix socket access not restricted"] });
+		expect(new RuntimeSandbox(weak.fake, "linux").unavailable()).toBe(
+			"sandbox-runtime cannot run here: seccomp not available - unix socket access not restricted",
+		);
+		const both = runtime({ errors: ["bwrap missing"], warnings: ["an old bubblewrap"] });
+		expect(new RuntimeSandbox(both.fake, "linux").unavailable()).toBe(
+			"sandbox-runtime cannot run here: bwrap missing; an old bubblewrap",
+		);
 		const ready = runtime();
 		expect(new RuntimeSandbox(ready.fake, "darwin").unavailable()).toBeUndefined();
 		expect(ready.names()).toEqual(["isSupportedPlatform", "checkDependencies"]);
+	});
+
+	it("serialises open and close so a reset never tears down a newer session", async () => {
+		const order: string[] = [];
+		const gap = () => new Promise((resolve) => setTimeout(resolve, 5));
+		const { fake } = runtime({
+			initialize: async () => {
+				order.push("init-start");
+				await gap();
+				order.push("init-end");
+			},
+			reset: async () => {
+				order.push("reset-start");
+				await gap();
+				order.push("reset-end");
+			},
+		});
+		const sandbox = new RuntimeSandbox(fake, "linux");
+		await sandbox.open();
+		// A's close and B's open race on the shared manager; serialised, B initialises only after A's reset finishes.
+		const closing = sandbox.close();
+		const reopening = sandbox.open();
+		await Promise.all([closing, reopening]);
+		expect(order).toEqual(["init-start", "init-end", "reset-start", "reset-end", "init-start", "init-end"]);
+		await sandbox.close();
 	});
 
 	it("opens one session with no network for every open probe, and resets it when the last closes", async () => {
@@ -564,12 +671,19 @@ describe("RuntimeSandbox", () => {
 		expect(names()).toEqual(["initialize", "initialize", "reset"]);
 	});
 
-	it("wraps a command for bash with the policy and no network, and cleans up after it", async () => {
+	it("passes every path as a literal, keeps deny globs as patterns, denies JAVA_TOOL_OPTIONS, and no network", async () => {
 		const { fake, calls } = runtime();
 		const sandbox = new RuntimeSandbox(fake, "linux");
-		const policy = { read: ["/w"], deny: ["/"], write: ["/s/run"], denyWrite: ["/tmp/claude"] };
+		const policy = {
+			read: ["/w", "/w/**"],
+			deny: ["/", "/w/.git"],
+			denyGlobs: ["/w/**/.env*"],
+			write: ["/s/run"],
+			denyWrite: ["/tmp/claude"],
+		};
 		expect(await sandbox.wrap("exec node probe.mjs", policy)).toEqual(["wrapped"]);
 		sandbox.cleanup();
+		const literal = (path: string) => ({ path, literal: true });
 		expect(calls).toEqual([
 			[
 				"wrapWithSandboxArgv",
@@ -577,7 +691,14 @@ describe("RuntimeSandbox", () => {
 				"/bin/bash",
 				{
 					network: { allowedDomains: [], deniedDomains: [] },
-					filesystem: { denyRead: ["/"], allowRead: ["/w"], allowWrite: ["/s/run"], denyWrite: ["/tmp/claude"] },
+					filesystem: {
+						// The literal paths carry a worktree named "/w/**" without reading as a glob; only the deny pattern is one.
+						denyRead: [literal("/"), literal("/w/.git"), "/w/**/.env*"],
+						allowRead: [literal("/w"), literal("/w/**")],
+						allowWrite: [literal("/s/run")],
+						denyWrite: [literal("/tmp/claude")],
+					},
+					credentials: { envVars: [{ name: "JAVA_TOOL_OPTIONS", mode: "deny" }] },
 				},
 			],
 			["cleanupAfterCommand"],

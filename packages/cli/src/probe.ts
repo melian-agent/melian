@@ -11,21 +11,25 @@ export const probeExitCodes = { passed: 0, failed: 1, refused: 2 } as const;
 const script = "probe.mjs";
 
 // The directory's files, every regular file under it but the script, by their relative paths. A link or anything else
-// is refused rather than followed, and reading stops at the bounds a probe takes.
-async function directoryFiles(root: string, at = ""): Promise<ProbeFile[]> {
-	const files: ProbeFile[] = [];
+// is refused rather than followed, and every bound a probe takes is checked while reading, so a directory far over a
+// bound is refused before it is all read into memory.
+async function directoryFiles(root: string, at: string, files: ProbeFile[], total: { bytes: number }): Promise<void> {
 	for (const name of await readdir(join(root, at))) {
 		const path = at === "" ? name : `${at}/${name}`;
 		const entry = await lstat(join(root, path));
-		if (entry.isDirectory()) files.push(...(await directoryFiles(root, path)));
+		if (entry.isDirectory()) await directoryFiles(root, path, files, total);
 		else if (!entry.isFile()) throw new ProbeError("invalidProbe", `${path} is neither a file nor a directory`);
 		else if (entry.size > probeLimits.fileBytes)
 			throw new ProbeError("invalidProbe", `${path} is larger than ${probeLimits.fileBytes} bytes`);
-		else if (path !== script) files.push({ path, text: await readFile(join(root, path), "utf8") });
+		else if (path !== script) {
+			total.bytes += entry.size;
+			if (total.bytes > probeLimits.fileBytes)
+				throw new ProbeError("invalidProbe", `a probe's files hold at most ${probeLimits.fileBytes} bytes`);
+			files.push({ path, text: await readFile(join(root, path), "utf8") });
+		}
 		if (files.length > probeLimits.files)
 			throw new ProbeError("invalidProbe", `a probe has at most ${probeLimits.files} files`);
 	}
-	return files;
 }
 
 function status(result: ProbeResult, timeout: number): string {
@@ -47,7 +51,9 @@ export async function probe(
 	const timeout = options.timeout ?? probeLimits.timeout.default;
 	try {
 		const root = resolve(io.cwd, directory);
-		const input = { script: await readFile(join(root, script), "utf8"), files: await directoryFiles(root) };
+		const files: ProbeFile[] = [];
+		await directoryFiles(root, "", files, { bytes: 0 });
+		const input = { script: await readFile(join(root, script), "utf8"), files };
 		const opened = await Probe.open(input, {
 			worktree: await git(io.cwd, ["rev-parse", "--show-toplevel"]),
 			writer: options.trustHead

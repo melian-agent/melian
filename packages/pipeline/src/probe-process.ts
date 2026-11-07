@@ -38,7 +38,9 @@ export class ProbeProcess {
 		child.stdout?.on("data", options.output);
 		child.stderr?.on("data", options.output);
 		this.#exit = new Promise((resolve) => {
-			child.once("exit", (code, signal) => resolve({ code, signal }));
+			// "close" fires once the process has exited and both stdio streams have ended, so no output lands after the
+			// result is built; "exit" can leave buffered bytes still to come.
+			child.once("close", (code, signal) => resolve({ code, signal }));
 			// A command that never started has no exit; 127 is the shell's word for it.
 			child.once("error", () => resolve({ code: 127, signal: null }));
 		});

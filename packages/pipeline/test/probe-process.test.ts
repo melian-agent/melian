@@ -44,6 +44,12 @@ function child(pid: number | undefined): ChildProcess & EventEmitter & { kills: 
 	return fake as never;
 }
 
+// A real child emits "close" after "exit" once its stdio has ended; the probe resolves on "close".
+function ended(root: EventEmitter, code: number | null, signal: NodeJS.Signals | null): void {
+	root.emit("exit", code, signal);
+	root.emit("close", code, signal);
+}
+
 function started(table: FakeTable, root = child(100), output: (chunk: Buffer) => void = () => {}) {
 	const process = ProbeProcess.start(["/bin/true"], {
 		cwd: "/",
@@ -125,11 +131,31 @@ describe("ProbeProcess", () => {
 		(root.stdout as PassThrough).write("out");
 		(root.stderr as PassThrough).write("err");
 		await new Promise((resolve) => setImmediate(resolve));
-		root.emit("exit", 3, null);
+		ended(root, 3, null);
 		expect(await probe.wait()).toEqual({ code: 3, signal: null });
 		expect(chunks).toEqual(["out", "err"]);
 		await probe.stop();
 		expect(root.kills).toEqual([]);
+	});
+
+	it("resolves on close, not on exit, so output between the two is captured", async () => {
+		const chunks: string[] = [];
+		const table = new FakeTable([]);
+		const { process: probe, root } = started(table, child(100), (chunk) => chunks.push(chunk.toString()));
+		let settled = false;
+		void probe.wait().then(() => {
+			settled = true;
+		});
+		root.emit("exit", 0, null);
+		// A real stream can still deliver buffered data after exit, before close.
+		(root.stdout as PassThrough).write("late");
+		await new Promise((resolve) => setImmediate(resolve));
+		// wait() has not resolved on exit, so the result it builds will include the late output.
+		expect(settled).toBe(false);
+		root.emit("close", 0, null);
+		expect(await probe.wait()).toEqual({ code: 0, signal: null });
+		expect(chunks).toEqual(["late"]);
+		await probe.stop();
 	});
 
 	it("reads a command that never started as exit 127, and records nothing", async () => {

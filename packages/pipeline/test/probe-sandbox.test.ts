@@ -234,5 +234,59 @@ console.log(sum(a, b));
 			const result = await probed({ script, files: [{ path: "fixture/input.json", text: '{"a":2,"b":3}' }] });
 			expect(result).toEqual({ exitCode: 0, signal: null, output: "5\n", truncated: false, timedOut: false });
 		});
+
+		it("does not receive the reviewer's JAVA_TOOL_OPTIONS", { timeout: 60_000 }, async () => {
+			const canary = `CANARY_${randomBytes(8).toString("hex")}`;
+			const before = process.env.JAVA_TOOL_OPTIONS;
+			process.env.JAVA_TOOL_OPTIONS = `-Dsecret.token=${canary}`;
+			try {
+				const result = await probed({
+					script: 'console.log(JSON.stringify({ seen: process.env.JAVA_TOOL_OPTIONS ?? "" }));',
+				});
+				expect(result).toMatchObject({ exitCode: 0, timedOut: false });
+				// The value sandbox-runtime embeds in the wrapped command is dropped, so it reaches neither the probe's
+				// environment nor the command text.
+				expect(JSON.parse(result.output).seen).not.toContain(canary);
+				expect(result.output).not.toContain(canary);
+			} finally {
+				if (before === undefined) delete process.env.JAVA_TOOL_OPTIONS;
+				else process.env.JAVA_TOOL_OPTIONS = before;
+			}
+		});
+
+		it("cannot connect to a unix socket in the worktree", { timeout: 60_000 }, async () => {
+			// A host service a probe could reach over a pathname socket in the readable worktree; on Linux the seccomp
+			// helper blocks the socket() call, on macOS the socket is not in allowUnixSockets. The server records any
+			// connection; the probe must make none.
+			let connections = 0;
+			const socketPath = join(worktree, "service.sock");
+			const server = createServer((socket) => {
+				connections++;
+				socket.end();
+			});
+			await new Promise<void>((resolve, reject) => {
+				server.once("error", reject);
+				server.listen(socketPath, resolve);
+			});
+			try {
+				const script = `
+import { connect } from "node:net";
+const outcome = await new Promise((resolve) => {
+	const socket = connect(${JSON.stringify(socketPath)});
+	socket.once("connect", () => { socket.destroy(); resolve("connected"); });
+	socket.once("error", (error) => resolve(error.code ?? "error"));
+	setTimeout(() => { socket.destroy(); resolve("timeout"); }, 3000);
+});
+console.log(JSON.stringify({ outcome }));
+process.exit(0);
+`;
+				const result = await probed({ script });
+				expect(result).toMatchObject({ exitCode: 0, timedOut: false });
+				expect(JSON.parse(result.output).outcome).not.toBe("connected");
+				expect(connections).toBe(0);
+			} finally {
+				await new Promise((resolve) => server.close(resolve));
+			}
+		});
 	},
 );
