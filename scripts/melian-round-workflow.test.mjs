@@ -436,6 +436,72 @@ describe("the melian round workflow", () => {
 		}
 	});
 
+	it("edits the comment this run already posted rather than post a second", () => {
+		const { run } = workflow.jobs.report.steps.find((step) => step.name === "Comment on the pull request");
+		const dir = mkdtempSync(join(tmpdir(), "round-workflow-"));
+		try {
+			const base = "b".repeat(40);
+			const head = "1".repeat(40);
+			const nonce = "0123456789abcdef0123456789abcdef";
+			const comments = [
+				{
+					id: 54,
+					login: "github-actions[bot]",
+					body: `<!-- melian-round run:8 nonce:${nonce} -->\nan earlier run`,
+				},
+				{ id: 55, login: "github-actions[bot]", body: `<!-- melian-round run:9 nonce:${nonce} -->\nthis run` },
+			];
+			// A fake gh answers only the fresh read, the listing, which holds this run's comment, and an edit of comment 55.
+			writeFileSync(
+				join(dir, "gh"),
+				[
+					"#!/bin/sh",
+					'if [ "$*" = "api repos/o/r/pulls/7 --jq .base.sha + \\" \\" + .head.sha" ]; then echo "$NOW"; exit; fi',
+					'[ "$1 $2 $3" = "api --paginate repos/o/r/issues/7/comments?per_page=100" ] && printf "%s\\n" "$COMMENTS" && exit 0',
+					'[ "$1 $2 $3 $4 $5" = "api -X PATCH repos/o/r/issues/comments/55 -F" ] && cp "$(printf %s "$6" | sed s/^body=@//)" "$EDITED" && exit 0',
+					"exit 1",
+					"",
+				].join("\n"),
+			);
+			chmodSync(join(dir, "gh"), 0o755);
+			const round = join(dir, "round");
+			mkdirSync(round);
+			writeFileSync(
+				join(round, "verdict.json"),
+				JSON.stringify({ status: "passed", blocking: false, findings: { block: [], acknowledge: [] }, notRun: [] }),
+			);
+			writeFileSync(join(round, "rounds.json"), JSON.stringify([{ base: "e".repeat(40), head }]));
+			writeFileSync(join(round, "exit"), "0\n");
+			writeFileSync(join(round, "merge-base"), `${"e".repeat(40)}\n`);
+			writeFileSync(join(round, "nonce"), `${nonce}\n`);
+			const ran = spawnSync("bash", ["-e", "-c", run], {
+				cwd: fileURLToPath(new URL("..", import.meta.url)),
+				encoding: "utf8",
+				env: {
+					PATH: `${dir}:${process.env.PATH}`,
+					HOME: dir,
+					RUNNER_TEMP: dir,
+					REPOSITORY: "o/r",
+					NUMBER: "7",
+					BASE: base,
+					HEAD: head,
+					RUN_URL: "https://example.test/run",
+					RUN_ID: "9",
+					NOW: `${base} ${head}`,
+					COMMENTS: comments.map((comment) => JSON.stringify(comment)).join("\n"),
+					EDITED: join(dir, "edited.md"),
+				},
+			});
+			expect([ran.status, ran.stderr]).toEqual([0, ""]);
+			expect(readFileSync(join(dir, "edited.md"), "utf8")).toBe(readFileSync(join(dir, "comment.md"), "utf8"));
+			expect(readFileSync(join(dir, "edited.md"), "utf8")).toMatch(
+				new RegExp(`^<!-- melian-round run:9 nonce:${nonce} -->\nMelian round on `),
+			);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
 	it("keeps no token in any checkout's git configuration", () => {
 		const checkouts = steps.filter((step) => step.uses?.startsWith("actions/checkout@"));
 		expect(checkouts.map((step) => [step.job, step.with?.["persist-credentials"]])).toEqual([
