@@ -10,7 +10,7 @@ Example: on [pull request #275](https://github.com/melian-agent/melian/pull/275)
 
 ## Decision
 
-A lens level may probe. `probe` on a level names the prober's tier, the level's own when absent, and each probe's time limit, the pipeline's 30 seconds when absent. The built-in `trust-boundary` lens's `deep` level probes, with both left to their defaults. A level that probes runs as two conversations, each on its own route.
+A lens level may probe. `probe` on a level names the prober's tier, the level's own when absent, and each probe's time limit, the pipeline's 30 seconds when absent. No built-in level probes yet. The maintainer ruled on 2026-11-07 that the built-in `trust-boundary` lens's `deep` level turns probing on once the live measurement picks the planner and prober routes, so no route is committed before the measurement. Until then the goldens and `npm run eval:probing` declare the level that probes in their own lenses. A level that probes runs as two conversations, each on its own route.
 
 1. **The planner** runs on the level's tier, with the lens's instructions, the change, the decisions at base and the findings of the change's last earlier revision. It writes a numbered attack plan with one `record_plan` call and nothing else: no probe, and no finding but an injection attempt. Each attack names its target, why something untrusted might cross a boundary there, and what a passing and a failing probe would print. The plan is an artefact of its own, the planner conversation's `ProbingDocument`. A planner that finishes without one is reminded once, and the lens fails if it still records none. An empty plan runs no prober.
 2. **The prober** runs on its own tier and receives the plan alone: no diff, no lens body, the lens's rules and reporting policy, and the read tools. It answers every attack with at least one probe through `run_probe`, or records it skipped with `skip_attack` and the reason. A prober that leaves an attack with neither is reminded once; one it still leaves ends the lens, and the review is not reviewed.
@@ -24,7 +24,7 @@ A level that probes runs its probes only where a probe may: the host has said th
 
 ## Rulings it reads, and pull request comments
 
-The planner reads rulings from the base's decision files, through the same index the `design` lens reads. A maintainer's ruling that lives only in a pull request comment does not reach it. It does not read comments now. If a miss shows the need, the comments it reads should be those whose author has write, maintain or admin permission, checked as the agent rules check them, at most 20 comments and 8 KiB, inside the review's boundary as data, and never instructions. Dismissals already reach it: a dismissed finding of the last earlier revision is listed with its status.
+The planner reads rulings from the base's decision files, through the same index the `design` lens reads, and the findings of the change's last earlier revision, dismissals among them with their status. The maintainer ruled on 2026-11-07 that it reads no pull request comments. A ruling that lives only in a comment does not reach it. If the measurement shows a miss a comment would have caught, the fallback to adopt is bounded: only comments whose author has write, maintain or admin permission, checked as the agent rules check them; at most 20 comments and 8 KiB; inside the review's boundary as data, never as instructions.
 
 ## What it gives up
 
