@@ -522,6 +522,19 @@ describe("the melian round workflow", () => {
 			["report", "Set melian/review on the reviewed head", actions("secrets.MELIAN_STATUS_TOKEN")],
 		]);
 		expect(workflow.jobs.report.environment).toBe("melian-round");
+		const { env } = workflow.jobs.report.steps.find((step) => step.name === "Set melian/review on the reviewed head");
+		expect(env).toEqual({
+			GH_TOKEN: actions("github.token"),
+			STATUS_TOKEN: actions("secrets.MELIAN_STATUS_TOKEN"),
+			REPOSITORY: actions("github.repository"),
+			NUMBER: actions("inputs.pull_request"),
+			BASE: actions("needs.gate.outputs.base"),
+			HEAD: actions("needs.gate.outputs.head"),
+			STARTED: actions("needs.round.outputs.started"),
+			PULL_URL: `${actions("github.server_url")}/${actions("github.repository")}/pull/${actions("inputs.pull_request")}`,
+			RUN_URL: `${actions("github.server_url")}/${actions("github.repository")}/actions/runs/${actions("github.run_id")}`,
+			RUN_ID: actions("github.run_id"),
+		});
 		expect(workflow.jobs.report.permissions).toEqual({ contents: "read", "pull-requests": "write" });
 	});
 
