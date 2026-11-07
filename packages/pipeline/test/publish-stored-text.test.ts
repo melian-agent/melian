@@ -5,6 +5,7 @@ import { Changeset, defaultConfig } from "@melian-agent/core";
 import { createGitHubProvider } from "@melian-agent/github";
 import { afterEach, expect, it, vi } from "vitest";
 import { type FakeState, fakeGitHub } from "../../github/test/fixtures/fake-github.ts";
+import { moveTo, pullRequestState } from "../../github/test/fixtures/scenario.ts";
 import {
 	backgroundContext as context,
 	createMemoryStorage,
@@ -158,3 +159,58 @@ it.each([
 		expect(provenance?.storedText).toBe(version);
 	},
 );
+
+it("publishes a verdict this build decided for a tier that runs tsc", async () => {
+	for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
+	const repo = baseAndHead({ "a.ts": "export const n = 1;\n" }, { "a.ts": "export const n = 2;\n" });
+	directories.push(repo);
+	const changeset = await Changeset.resolve(repo, "main...feature");
+	const state = pullRequestState();
+	moveTo(state, changeset);
+	const provider = createGitHubProvider({
+		owner: state.owner,
+		repo: state.repo,
+		token: "test-token",
+		fetch: fakeGitHub(state),
+	});
+	const directory = realpathSync(mkdtempSync(join(tmpdir(), "melian-stored-text-")));
+	directories.push(directory);
+	const path = join(directory, "state.sqlite");
+	const fake = createFakeModels();
+	const reviewing = await openHarness(await openSqliteStorage(path), {
+		models: fake.models,
+		registry: createReviewRegistry(),
+	});
+	await reviewing.root(context, { agent: { model: fake.ref() } });
+	await reviewChangeset({
+		harness: reviewing,
+		changeset,
+		config: { ...defaultConfig, tiers: { full: ["static.tsc"] } },
+		lenses: [],
+		standards: [],
+		models: fake.review,
+		checks: [{ name: "static.tsc", status: "ran" }],
+		policy: { kind: "revision", commit: changeset.revision.base },
+		origin: {
+			kind: "pull-request",
+			repository: { owner: state.owner, name: state.repo },
+			pullRequest: 7,
+			base: changeset.revision.base,
+			head: changeset.revision.head,
+		},
+	});
+	await reviewing.close(context);
+	const publisher = await PublishHarness.open(await openSqliteStorage(path), fake.review, provider);
+	opened.push(publisher.harness);
+	await expect(
+		publishReview({
+			harness: publisher.harness,
+			provider,
+			changeset,
+			pullRequest: await provider.pullRequest(7),
+			base: changeset.revision.base,
+			trustedWriters: true,
+		}),
+	).resolves.toMatchObject({ review: "1001", status: { state: "success" } });
+	expect(state.reviews).toHaveLength(1);
+});
