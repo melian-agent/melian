@@ -342,7 +342,7 @@ describe("RoundComment", () => {
 		});
 		const value = verdict({
 			blocking: true,
-			block: [detailed("aaaaaaaaaaaaaaaa", "w".repeat(40_000)), detailed("bbbbbbbbbbbbbbbb", "v".repeat(30_000))],
+			block: [detailed("bbbbbbbbbbbbbbbb", "v".repeat(30_000)), detailed("aaaaaaaaaaaaaaaa", "w".repeat(40_000))],
 		});
 		const body = comment(value, "1");
 		expect(body.length).toBeLessThanOrEqual(maxLength);
