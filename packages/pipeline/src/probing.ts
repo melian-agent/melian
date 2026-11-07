@@ -133,6 +133,8 @@ function blobs(
 				const size = Number(header[2]);
 				if (header[1] !== "blob" || !Number.isSafeInteger(size)) {
 					failure ??= new Error(`git cat-file answered ${header.join(" ")}`);
+					// Read no more: git's next write fails and it exits, and the close reports the failure.
+					child.stdout.destroy();
 					return;
 				}
 				if (pending.length < end + 1 + size + 1) return;
@@ -152,6 +154,8 @@ function blobs(
 				reject(new Error(`git cat-file failed: ${Buffer.concat(errors).toString("utf8").trim()}`));
 			else resolve();
 		});
+		// git exits early on a failure, and the names it never read then fail to write; the close reports the failure.
+		child.stdin.on("error", () => {});
 		child.stdin.end(entries.map((entry) => `${entry.object}\n`).join(""));
 	});
 }

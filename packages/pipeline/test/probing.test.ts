@@ -152,6 +152,20 @@ describe("HeadTree", () => {
 		expect(left()).toBe(before);
 	});
 
+	it("refuses a crafted tree naming a blob git does not hold", async () => {
+		const tree = execFileSync("git", ["mktree", "--missing"], {
+			cwd: repo,
+			input: `100644 blob ${"1".repeat(40)}\tgone\n`,
+		})
+			.toString()
+			.trim();
+		const before = left();
+		await expect(HeadTree.open(repo, gitIn(repo, "commit-tree", tree, "-m", "missing"))).rejects.toThrow(
+			/git cat-file answered 1{40} missing/,
+		);
+		expect(left()).toBe(before);
+	});
+
 	it("refuses a crafted tree with two spellings of one name where the disk folds case", async () => {
 		const object = execFileSync("git", ["hash-object", "-w", "--stdin"], { cwd: repo, input: "x\n" })
 			.toString()
