@@ -302,12 +302,9 @@ export class RoundComment {
 		}
 		// Past the limit, the longest detail goes first, and its line says so; fenced cuts whole lines only after that.
 		const budget = maxLength - header.length - 2;
-		while (fenced(quoted).length > budget && cuttable.length > 0) {
-			const longest = cuttable.reduce((most, each) =>
-				quoted[each.at].length > quoted[most.at].length ? each : most,
-			);
-			quoted[longest.at] = `    ${longest.label}: cut to fit the comment's limit; a local run shows it.`;
-			cuttable.splice(cuttable.indexOf(longest), 1);
+		for (const { at, label } of cuttable.sort((a, b) => quoted[b.at].length - quoted[a.at].length)) {
+			if (fenced(quoted).length <= budget) break;
+			quoted[at] = `    ${label}: cut to fit the comment's limit; a local run shows it.`;
 		}
 		return `${header}\n\n${fenced(quoted, budget)}`;
 	}

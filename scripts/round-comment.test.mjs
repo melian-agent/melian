@@ -354,6 +354,19 @@ describe("RoundComment", () => {
 		expect(body).not.toContain("more lines; a local run shows them all.");
 	});
 
+	it("cuts no detail of a comment at exactly the limit, and one past it cuts the longest", () => {
+		const detailed = (why) => {
+			const base = finding({ resolution: "block", region: { startLine: 1 } });
+			return { ...base, properties: { ...base.properties, explanation: { whyHere: why, whatToDo: "Fix it" } } };
+		};
+		const sized = (length) => comment(verdict({ blocking: true, block: [detailed("w".repeat(length))] }), "1");
+		const length = 1_000 + maxLength - sized(1_000).length;
+		expect(sized(length)).toHaveLength(maxLength);
+		expect(sized(length)).toContain(`    Why here: ${"w".repeat(length)}\n`);
+		expect(sized(length + 1)).toContain("    Why here: cut to fit the comment's limit; a local run shows it.\n");
+		expect(sized(length + 1)).toContain("    What to do: Fix it\n");
+	});
+
 	it("keeps a full comment under GitHub's limit of 65,536 characters, at a budget of 60,000", () => {
 		expect(maxLength).toBe(60_000);
 		const body = comment(
