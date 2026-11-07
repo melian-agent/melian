@@ -1,5 +1,5 @@
 import { constants, existsSync, realpathSync, statSync } from "node:fs";
-import { chmod, lstat, mkdir, mkdtemp, open as openFile, readdir, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, open as openFile, readdir, rm, writeFile } from "node:fs/promises";
 import { homedir, platform, tmpdir } from "node:os";
 import { basename, dirname, join, posix, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -157,7 +157,7 @@ export function nodeReads(execPath: string): readonly string[] {
 
 // The length of the largest prefix of `buf` that ends on a complete UTF-8 sequence, so a cut never leaves a half
 // character to decode as a replacement.
-function completeUtf8(buf: Buffer): number {
+export function completeUtf8(buf: Buffer): number {
 	let start = buf.length;
 	while (start > 0 && (buf[start - 1]! & 0xc0) === 0x80) start--;
 	if (start === 0) return buf.length;
@@ -342,32 +342,23 @@ export class RuntimeSandbox implements ProbeSandbox {
 // One per process, since sandbox-runtime's manager is.
 const runtime = new RuntimeSandbox();
 
-// Lets close() remove a directory the probe made unreadable to its owner, without following a symlink a surviving child
-// may have swapped in. It opens each directory with O_NOFOLLOW and changes the mode through that descriptor, so a path
-// that is now a symlink fails the open (ELOOP) and is left for rm to remove by name rather than followed. A mode-0
-// directory cannot be opened, and fails with EACCES rather than ELOOP, which proves it is a real directory and not a
-// symlink, so it is safe to chmod by path. The opened directory's identity is confirmed before it is listed, and the
-// descent enters only real subdirectories. run()'s child is stopped before close, so no live process swaps an entry
-// mid-descent; a detached macOS child is the documented residual.
-async function makeWritable(path: string): Promise<void> {
+// Lets close() remove a directory the probe made unreadable to its owner, without following a symlink in its place. It
+// opens each directory with O_NOFOLLOW and changes the mode through that descriptor, so a symlink fails the open (ELOOP)
+// and is left for rm to remove by name. A mode-0 directory cannot be opened and fails with EACCES instead, which proves
+// it is a real directory, so it is chmod'd by path. run() stops every process the probe started before close() runs,
+// so nothing swaps an entry during the descent; a child that detached on macOS is the decision's documented residual.
+export async function makeWritable(path: string): Promise<void> {
 	let handle: Awaited<ReturnType<typeof openFile>> | undefined;
 	try {
 		handle = await openFile(path, constants.O_RDONLY | constants.O_DIRECTORY | constants.O_NOFOLLOW);
 	} catch (error) {
-		const code = (error as NodeJS.ErrnoException).code;
-		if (code !== "EACCES" && code !== "EPERM") return;
-		// A real directory this user cannot open; O_NOFOLLOW ruled out a symlink, so chmod by path is not a follow.
-		await chmod(path, 0o700).catch(() => undefined);
+		if ((error as NodeJS.ErrnoException).code !== "EACCES") return;
+		await chmod(path, 0o700);
 	}
 	try {
-		if (handle !== undefined) {
-			await handle.chmod(0o700);
-			const opened = await handle.stat();
-			const named = await lstat(path).catch(() => undefined);
-			if (named === undefined || named.ino !== opened.ino || named.dev !== opened.dev) return;
-		}
-		for (const child of await readdir(path, { withFileTypes: true }).catch(() => []))
-			if (child.isDirectory() && !child.isSymbolicLink()) await makeWritable(join(path, child.name));
+		await handle?.chmod(0o700);
+		for (const child of await readdir(path, { withFileTypes: true }))
+			if (child.isDirectory()) await makeWritable(join(path, child.name));
 	} finally {
 		await handle?.close();
 	}

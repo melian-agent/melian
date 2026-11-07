@@ -1,4 +1,5 @@
 import {
+	chmodSync,
 	existsSync,
 	mkdirSync,
 	mkdtempSync,
@@ -13,6 +14,8 @@ import { homedir, tmpdir } from "node:os";
 import { dirname, join, sep } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+	completeUtf8,
+	makeWritable,
 	nodeReads,
 	Probe,
 	ProbeError,
@@ -340,47 +343,102 @@ describe("Probe.policy", () => {
 });
 
 describe("nodeReads", () => {
-	// A Node-only prefix is granted whole; a system node grants its binary and module directory, never a shared prefix
-	// such as /usr that would expose /usr/local/etc/npmrc. The host's own node proves the real path resolves.
-	it("grants a whole nvm or node-* prefix", () => {
-		const nvm = realpathSync(process.execPath);
-		if (nvm.includes(`${sep}.nvm${sep}`)) expect(nodeReads(nvm)).toEqual([dirname(dirname(nvm))]);
-		const node = join(scratch, "node-v24.0.0-linux-x64");
-		mkdirSync(join(node, "bin"), { recursive: true });
-		writeFileSync(join(node, "bin", "node"), "");
-		expect(nodeReads(join(node, "bin", "node"))).toEqual([node]);
+	// Builds a node binary at `prefix/bin/node`, optionally with `prefix/lib/node_modules`, and returns its path.
+	function install(prefix: string, modules = false): string {
+		mkdirSync(join(prefix, "bin"), { recursive: true });
+		writeFileSync(join(prefix, "bin", "node"), "");
+		if (modules) mkdirSync(join(prefix, "lib", "node_modules"), { recursive: true });
+		return join(prefix, "bin", "node");
+	}
+
+	it.each([
+		["an nvm version", ".nvm/versions/node/v24.18.0"],
+		["a node- tarball", "node-v24.0.0-linux-x64"],
+		["a directory named node", "opt/node"],
+		["a version under a node directory", "Cellar/node/24.10.0"],
+		["a v-prefixed version under a node directory", "Cellar/node/v24.10.0"],
+	])("grants %s whole", (_, relative) => {
+		const prefix = join(scratch, relative);
+		expect(nodeReads(install(prefix, true))).toEqual([prefix]);
 	});
 
-	it("grants /usr/bin/node its binary and module directory, never /usr", () => {
-		if (!existsSync("/usr/bin/node")) return;
-		const reads = nodeReads("/usr/bin/node");
-		expect(reads).not.toContain("/usr");
-		expect(reads).toContain("/usr/bin/node");
-		for (const path of reads) expect(path.startsWith("/usr/")).toBe(true);
+	it.each([
+		["a shared prefix such as /usr", "usr"],
+		["a version not under a node directory", "tools/24.10.0"],
+		["a name that only contains node", "xnode-1"],
+		["a name that starts nodejs", "nodejs"],
+		["a version-like name that is not one", "Cellar/node/a24.1.0"],
+	])("grants %s its binary and module directory alone", (_, relative) => {
+		const prefix = join(scratch, relative);
+		const node = install(prefix, true);
+		expect(nodeReads(node)).toEqual([node, join(prefix, "lib", "node_modules")]);
+	});
+
+	it("leaves out a module directory that does not exist", () => {
+		const node = install(join(scratch, "usr"));
+		expect(nodeReads(node)).toEqual([node]);
+	});
+
+	it("grants the host's own nvm node its prefix", () => {
+		const real = realpathSync(process.execPath);
+		if (real.includes(`${sep}.nvm${sep}`)) expect(nodeReads(real)).toEqual([dirname(dirname(real))]);
 	});
 });
 
-describe("makeWritable (through close)", () => {
-	it("removes a scratch the probe left unreadable, without following a swapped symlink", async () => {
-		// Stand in for a surviving child's swap: a directory inside the writable scratch is replaced by a symlink to an
-		// outside directory. close() must make the scratch writable and remove it, and never chmod the outside target.
-		const { sandbox } = passthrough();
-		const outside = realpathSync(mkdtempSync(join(scratch, "outside-")));
-		const outsideFile = join(outside, "keep");
-		writeFileSync(outsideFile, "x");
-		const probe = await Probe.open({ script: "" }, options(sandbox));
-		const root = dirname(probe.policy.write[0]!);
-		const swapped = join(root, "run", "home");
-		rmSync(swapped, { recursive: true, force: true });
-		symlinkSync(outside, swapped);
-		const before = statSync(outside).mode;
-		await probe.close();
+describe("completeUtf8", () => {
+	const at = (...bytes: number[]) => completeUtf8(Buffer.from(bytes));
+	it.each([
+		["ASCII", [0x61, 0x62], 2],
+		["a whole two-byte character", [0xc3, 0xa9], 2],
+		["half a two-byte character", [0x61, 0xc3], 1],
+		["a whole three-byte character", [0xe2, 0x82, 0xac], 3],
+		["one byte of three", [0xe2], 0],
+		["two bytes of three", [0x61, 0xe2, 0x82], 1],
+		["a whole four-byte character", [0xf0, 0x9f, 0x98, 0x80], 4],
+		["three bytes of four", [0xf0, 0x9f, 0x98], 0],
+		["continuation bytes alone", [0x80, 0x80], 2],
+		["an invalid lead byte", [0x61, 0xff, 0x80], 3],
+		["nothing", [], 0],
+	])("keeps %s", (_, bytes, length) => {
+		expect(at(...bytes)).toBe(length);
+	});
+});
+
+describe("makeWritable", () => {
+	const descriptors = () => readdirSync("/dev/fd").length;
+
+	it("restores a read-only and a mode-0 directory so rm can remove them, and closes what it opened", async () => {
+		const root = join(scratch, "tree");
+		mkdirSync(join(root, "readonly"), { recursive: true });
+		writeFileSync(join(root, "readonly", "f"), "x");
+		mkdirSync(join(root, "locked", "inner"), { recursive: true });
+		writeFileSync(join(root, "locked", "inner", "f"), "x");
+		chmodSync(join(root, "readonly"), 0o500);
+		chmodSync(join(root, "locked", "inner"), 0);
+		chmodSync(join(root, "locked"), 0);
+		const before = descriptors();
+		await makeWritable(root);
+		expect(descriptors()).toBe(before);
+		for (const path of ["readonly", "locked", "locked/inner"])
+			expect(statSync(join(root, path)).mode & 0o777, path).toBe(0o700);
+		rmSync(root, { recursive: true });
 		expect(existsSync(root)).toBe(false);
-		// The outside directory and its file are untouched: the symlink was not followed.
-		expect(existsSync(outside)).toBe(true);
-		expect(statSync(outside).mode).toBe(before);
-		expect(existsSync(outsideFile)).toBe(true);
-		rmSync(outside, { recursive: true, force: true });
+	});
+
+	it("leaves a symlink to an outside directory, and the directory, as they were", async () => {
+		const root = join(scratch, "tree");
+		mkdirSync(join(root, "run"), { recursive: true });
+		const outside = join(scratch, "outside");
+		mkdirSync(join(outside, "deeper"), { recursive: true });
+		chmodSync(outside, 0o755);
+		chmodSync(join(outside, "deeper"), 0o755);
+		symlinkSync(outside, join(root, "run", "home"));
+		await makeWritable(root);
+		expect(statSync(outside).mode & 0o777).toBe(0o755);
+		expect(statSync(join(outside, "deeper")).mode & 0o777).toBe(0o755);
+		// The root itself handed in as the symlink is not followed either.
+		await makeWritable(join(root, "run", "home"));
+		expect(statSync(outside).mode & 0o777).toBe(0o755);
 	});
 });
 
