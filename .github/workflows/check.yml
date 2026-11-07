@@ -89,8 +89,8 @@ jobs:
         run: git diff --exit-code
 
   # Linux skips the tests that need sandbox-exec, a BSD ps or launchd. This job runs only the files that hold a test the
-  # Node 24 Linux job skipped, and the probe suites, which run under seatbelt here and bubblewrap there, and fails unless every such test passed here; Biome, tsc, the audit and every other test
-  # ran on Linux already. A test that passes on Linux and fails only on macOS is not run here, which is why AGENTS.md
+  # Node 24 Linux job skipped, and the probe suites, which run under seatbelt here and bubblewrap there. It fails unless
+  # every such test passed here; Biome, tsc, the audit and every other test ran on Linux already. A test that passes on Linux and fails only on macOS is not run here, which is why AGENTS.md
   # keeps the host rerun until this job is required.
   check-macos:
     name: check (macos, 24)
