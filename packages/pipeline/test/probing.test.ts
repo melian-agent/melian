@@ -519,7 +519,10 @@ describe("the evidence a verifier reads, exactly", () => {
 		expect(text.slice(text.indexOf(`<untrusted-${nonce} label="probe">`))).toBe(
 			`<untrusted-${nonce} label="probe">\nscript:\nS\n\nwhen the prober ran it, it failed, exiting 1 and printed:\no\n\nwhen Melian ran it again, it printed:\n(nothing)\n</untrusted-${nonce}>`,
 		);
-		expect(renderProbeEvidence("c1", claim, undefined, nonce)).not.toContain("Melian could not run it again:");
+		const unrun = renderProbeEvidence("c1", claim, undefined, nonce);
+		expect(unrun.slice(unrun.indexOf(`<untrusted-${nonce} label="probe">`))).toBe(
+			`<untrusted-${nonce} label="probe">\nscript:\nS\n\nwhen the prober ran it, it failed, exiting 1 and printed:\no\n</untrusted-${nonce}>`,
+		);
 	});
 
 	it("keys a rerun by its claim and its probe", () => {

@@ -271,7 +271,7 @@ describe("a level that probes", () => {
 		expect(record.reason).toMatch(/it planned 1 attack and ran 1 probe in [0-9]+\.[0-9] s/);
 		// The planner records, then answers; the prober probes, reports and answers, with no reminder to either.
 		expect(requests[planner]).toHaveLength(2);
-		expect(lastResults(requests[planner]![1]!)).toContain("recorded a plan of 1 attack");
+		expect(lastResults(requests[planner]![1]!)).toMatch(/recorded a plan of 1 attack\b/);
 		expect(requests[prober]).toHaveLength(3);
 		expect(lastResults(requests[prober]![1]!)).toMatch(/probe p[0-9]+ failed: it exited 1, so it shows the defect/);
 		expect(lastResults(requests[prober]![1]!)).toContain(`<untrusted-`);
@@ -528,7 +528,26 @@ describe("a level that probes", () => {
 		);
 		await moved.run;
 		expect(moved.requests[planner]).toHaveLength(2);
-	});
+		// Another time limit, and another thinking level for the prober's tier, each run the lens again.
+		const longer = await review(
+			{ planner: [...empty, ...empty], prober: [] },
+			{ ...options, lens: probingWith({ prober: "light", timeout: 1000 }) },
+		);
+		await longer.run;
+		expect(longer.requests[planner]).toHaveLength(2);
+		const thought = await review(
+			{ planner: [...empty, ...empty], prober: [] },
+			{
+				...options,
+				lens: probingWith({ prober: "light", timeout: 1000 }),
+				config: {
+					models: { ...options.config.models, light: { ...options.config.models.light, thinking: "low" } },
+				},
+			},
+		);
+		await thought.run;
+		expect(thought.requests[planner]).toHaveLength(2);
+	}, 60_000);
 
 	it("names the probing run's providers while it waits on its planner", async () => {
 		const fake = createFakeModels({ models: [{ id: "planning" }] });
@@ -1026,6 +1045,55 @@ describe("a level that probes", () => {
 		const ended = record((await probed.run).verdict);
 		expect(probed.requests[prober]).toHaveLength(2);
 		expect(ended.reason).toContain("its prober left attack 2 with neither a probe nor a skip");
+		expect(ended.budgetEnded).toMatchObject({ budget: "tools", limit: 1 });
+	});
+
+	it("names every attack a prober left unanswered, and no budget that did not end", async () => {
+		const { run } = await review({
+			planner: [call("record_plan", { attacks: [attack, attack] }), plan[1]!],
+			prober: [fauxAssistantMessage("Done."), fauxAssistantMessage("Still done.")],
+		});
+		const ended = record((await run).verdict);
+		expect(ended.reason).toContain("its prober left attacks 1, 2 with neither a probe nor a skip");
+		expect(ended).not.toHaveProperty("budgetEnded");
+	});
+
+	it("counts the probes' time in seconds", async () => {
+		const { run } = await review({ planner: plan, prober: probing(failing) });
+		const seconds = Number(/ran 1 probe in ([0-9.]+) s/.exec(record((await run).verdict).reason!)![1]);
+		expect(seconds).toBeGreaterThan(0);
+		expect(seconds).toBeLessThan(60);
+	});
+
+	it("gives a probing finding its probe beside another lens that reports in the same review", async () => {
+		const { probe: _, ...plain } = finding("p1");
+		const correctness = "You are the correctness reviewer";
+		const { run, requests } = await review(
+			{
+				planner: plan,
+				prober: probing(failing),
+				others: [
+					{
+						match: correctness,
+						replies: [
+							call("report_finding", {
+								...plain,
+								rule: "null-dereference",
+								line: 2,
+								evidence: [{ file: "src/load.ts", line: 2, role: "cause" }],
+							}),
+							fauxAssistantMessage("Done."),
+						],
+					},
+				],
+			},
+			{ config: { tiers: { full: ["lens.trust-boundary", "lens.correctness"] } } },
+		);
+		const { verdict } = await run;
+		expect(verdict.counted()).toHaveLength(2);
+		const prompts = [...new Set(requests["Melian adversarial verifier"]!.map(systemPromptOf))];
+		expect(prompts).toHaveLength(2);
+		expect(prompts.filter((prompt) => prompt.includes("rests on probe p"))).toHaveLength(1);
 	});
 
 	it("names no role for the verifier's stage", async () => {
