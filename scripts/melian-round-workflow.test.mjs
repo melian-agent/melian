@@ -32,7 +32,7 @@ describe("the melian round workflow", () => {
 		for (const [job, { steps: jobSteps }] of Object.entries(workflow.jobs)) {
 			const setup = jobSteps.findIndex((step) => step.uses?.startsWith("actions/setup-node@"));
 			const first = jobSteps.findIndex((step) => /\bnode\b/.test(step.run ?? ""));
-			expect([job, setup < first], job).toEqual([job, true]);
+			if (first >= 0) expect([job, setup >= 0 && setup < first], job).toEqual([job, true]);
 		}
 	});
 
@@ -211,7 +211,12 @@ describe("the melian round workflow", () => {
 		});
 		expect(workflow.jobs.gate.permissions.actions).toBe("read");
 		expect(gate.filter((step) => JSON.stringify(step).includes("secrets."))).toEqual([]);
-		expect(workflow.jobs.round.needs).toBe("gate");
+		const holding = Object.entries(workflow.jobs).filter(([, job]) => JSON.stringify(job).includes("secrets."));
+		expect(holding.map(([name, job]) => [name, [job.needs].flat().includes("gate")])).toEqual([
+			["pending", true],
+			["round", true],
+			["report", true],
+		]);
 		const dir = mkdtempSync(join(tmpdir(), "round-workflow-"));
 		try {
 			// A fake gh answers only the two requests for the Environment, running the step's own --jq over each raw
@@ -515,6 +520,7 @@ describe("the melian round workflow", () => {
 		);
 		expect(reading.map(([name, job]) => [name, job.environment])).toEqual([["round", "melian-round"]]);
 		expect(JSON.stringify(workflow).match(/\$\{\{\s*secrets\.\w+\s*\}\}/g)).toEqual([
+			actions("secrets.MELIAN_STATUS_TOKEN"),
 			actions("secrets.CLAUDE_CODE_OAUTH_TOKEN"),
 			actions("secrets.CODEX_AUTH_B64"),
 			actions("secrets.MELIAN_STATUS_TOKEN"),
@@ -524,6 +530,7 @@ describe("the melian round workflow", () => {
 	it("reads the status token only in the step that sets melian/review, in a job of the melian-round Environment", () => {
 		const holding = steps.filter((step) => JSON.stringify(step).includes("secrets.MELIAN_STATUS_TOKEN"));
 		expect(holding.map((step) => [step.job, step.name, step.env.STATUS_TOKEN])).toEqual([
+			["pending", "Set melian/review to pending on the head", actions("secrets.MELIAN_STATUS_TOKEN")],
 			["report", "Set melian/review on the reviewed head", actions("secrets.MELIAN_STATUS_TOKEN")],
 		]);
 		expect(workflow.jobs.report.environment).toBe("melian-round");
@@ -751,6 +758,77 @@ describe("the melian round workflow", () => {
 			rmSync(dir, { recursive: true, force: true });
 		}
 	}, 60_000);
+
+	it("sets melian/review to pending on the gate's head before the round job starts, in a job of the Environment", () => {
+		const { pending, round } = workflow.jobs;
+		expect(pending.needs).toBe("gate");
+		expect(pending.environment).toBe("melian-round");
+		expect(pending.permissions).toEqual({ contents: "read" });
+		expect(round.needs).toEqual(["gate", "pending"]);
+		expect(pending.steps.map((step) => step.name)).toEqual(["Set melian/review to pending on the head"]);
+		const [{ run, env }] = pending.steps;
+		expect(env).toEqual({
+			STATUS_TOKEN: actions("secrets.MELIAN_STATUS_TOKEN"),
+			REPOSITORY: actions("github.repository"),
+			HEAD: actions("needs.gate.outputs.head"),
+			PULL_URL: `${actions("github.server_url")}/${actions("github.repository")}/pull/${actions("inputs.pull_request")}`,
+		});
+		const dir = mkdtempSync(join(tmpdir(), "round-workflow-"));
+		try {
+			const head = "1".repeat(40);
+			// A fake gh answers only the status post when it carries the status token, which it keeps.
+			writeFileSync(
+				join(dir, "gh"),
+				[
+					"#!/bin/sh",
+					'[ "$*" = "api -X POST repos/o/r/statuses/$HEAD --input -" ] && [ "$GH_TOKEN" = status-token ] && cat > "$POSTED" && exit 0',
+					"exit 1",
+					"",
+				].join("\n"),
+			);
+			chmodSync(join(dir, "gh"), 0o755);
+			const posted = join(dir, "posted.json");
+			const step = (token) => {
+				rmSync(posted, { force: true });
+				const ran = spawnSync("bash", ["-e", "-o", "pipefail", "-c", run], {
+					encoding: "utf8",
+					env: {
+						PATH: `${dir}:${process.env.PATH}`,
+						HOME: dir,
+						STATUS_TOKEN: token,
+						REPOSITORY: "o/r",
+						HEAD: head,
+						PULL_URL: "https://github.com/o/r/pull/7",
+						POSTED: posted,
+					},
+				});
+				let status;
+				try {
+					status = JSON.parse(readFileSync(posted, "utf8"));
+				} catch {
+					status = undefined;
+				}
+				return { code: ran.status, stdout: ran.stdout, status };
+			};
+			expect(step("status-token")).toEqual({
+				code: 0,
+				stdout: `melian/review on ${head}: pending\n`,
+				status: {
+					state: "pending",
+					context: "melian/review",
+					description: "A Melian round is reviewing this head",
+					target_url: "https://github.com/o/r/pull/7",
+				},
+			});
+			expect(step("")).toEqual({
+				code: 1,
+				stdout: "::error::the melian-round Environment holds no MELIAN_STATUS_TOKEN\n",
+				status: undefined,
+			});
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
 
 	it("posts the moved notice when the pull request moved during the round, from a fresh read", () => {
 		const { run } = workflow.jobs.report.steps.find((step) => step.name === "Comment on the pull request");

@@ -133,8 +133,32 @@ jobs:
             *) echo "::error::$writer, whose code the head is, has ${permission:-no known} permission; a round runs only a writer's head"; exit 1 ;;
           esac
 
-  round:
+  # A status names a head, not a round, and GitHub keeps the latest. Setting pending before the round job starts means
+  # a round that fails, or a report step that never runs, leaves pending on the head, never an earlier round's success.
+  # A host publication can still land between the report's read and its post; the maintainer accepted that window.
+  pending:
     needs: gate
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    timeout-minutes: 5
+    environment: melian-round
+    permissions:
+      contents: read
+    steps:
+      - name: Set melian/review to pending on the head
+        env:
+          STATUS_TOKEN: ${{ secrets.MELIAN_STATUS_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          HEAD: ${{ needs.gate.outputs.head }}
+          PULL_URL: ${{ github.server_url }}/${{ github.repository }}/pull/${{ inputs.pull_request }}
+        run: |
+          if [ -z "$STATUS_TOKEN" ]; then echo "::error::the melian-round Environment holds no MELIAN_STATUS_TOKEN"; exit 1; fi
+          jq -n --arg target "$PULL_URL" \
+            '{ state: "pending", context: "melian/review", description: "A Melian round is reviewing this head", target_url: $target }' \
+            | GH_TOKEN="$STATUS_TOKEN" gh api -X POST "repos/$REPOSITORY/statuses/$HEAD" --input - > /dev/null
+          echo "melian/review on $HEAD: pending"
+
+  round:
+    needs: [gate, pending]
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 150
     # The logins are secrets of the melian-round Environment, whose deployment branches are limited to main, so GitHub
