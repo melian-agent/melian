@@ -11,6 +11,8 @@ export {
 	goldenEvidenceSchema,
 	goldensDirectory,
 	loadGoldens,
+	type ProbingRoutes,
+	routedProbing,
 	runGolden,
 	type Script,
 	scoreCorpus,
@@ -19,6 +21,19 @@ export {
 	scriptSchema,
 	selectGoldens,
 } from "./goldens.ts";
+export {
+	type CombinationResult,
+	foundMiss,
+	loadMisses,
+	type MeasuredRun,
+	type Miss,
+	measureProbing,
+	missesSchema,
+	type ProbingCombination,
+	type ProbingRunners,
+	parseCombinations,
+	reviewMiss,
+} from "./probing.ts";
 export {
 	loadResolutionGoldens,
 	type ResolutionGolden,

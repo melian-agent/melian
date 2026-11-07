@@ -12,6 +12,7 @@ import {
 	type Finding,
 	FindingsLog,
 	Lens,
+	type LensLevels,
 	type LensTier,
 	loadConfig,
 	type MelianConfig,
@@ -32,7 +33,7 @@ import {
 	type StageTelemetry,
 	TelemetryReader,
 } from "@melian-agent/pipeline";
-import { createFakeModels, scriptLenses } from "@melian-agent/pipeline/testing";
+import { createFakeModels, scriptLenses, unconfinedSandbox } from "@melian-agent/pipeline/testing";
 import Type, { type Static, type TSchema } from "typebox";
 import Value from "typebox/value";
 import { parse } from "yaml";
@@ -300,7 +301,48 @@ export type GoldenMode =
 			/** A separate verifier route for a live run. */
 			readonly verifierModel?: string;
 			readonly thinking?: EvalThinking;
+			/** Routes for a level that probes, which a measurement of its routes sets; see {@link ProbingRoutes}. */
+			readonly probing?: ProbingRoutes;
 	  };
+
+/**
+ * One combination a measurement of a level that probes runs: the planner's model, on the heavy tier, and the prober's,
+ * on the medium tier. Without `prober`, every level that probes runs without probes on the planner's model, as the
+ * level the measurement compares against.
+ */
+export interface ProbingRoutes {
+	readonly planner: string;
+	readonly prober?: string;
+}
+
+/** The lenses and routes of a run under `routes`: each level that probes moves its prober to medium, or drops its probe. */
+export function routedProbing(
+	lenses: readonly Lens[],
+	config: MelianConfig,
+	routes: ProbingRoutes,
+): { lenses: Lens[]; config: MelianConfig } {
+	const moved = lenses.map((lens) =>
+		Lens.from({
+			...lens.toJSON(),
+			levels: Object.fromEntries(
+				Object.entries(lens.levels).map(([level, settings]) => {
+					if (settings.probe === undefined) return [level, settings];
+					const { probe: _, ...rest } = settings;
+					return [
+						level,
+						routes.prober === undefined ? rest : { ...rest, probe: { ...settings.probe, prober: "medium" } },
+					];
+				}),
+			) as LensLevels,
+		}),
+	);
+	const models = {
+		...config.models,
+		heavy: { model: routes.planner },
+		...(routes.prober === undefined ? {} : { medium: { model: routes.prober } }),
+	};
+	return { lenses: moved, config: { ...config, models } };
+}
 
 /** A golden's review: the findings, and the terminal rendering an author would see. */
 export interface GoldenRun {
@@ -382,10 +424,28 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 			models = mode.models;
 		}
 		if (mode.kind === "live" && mode.thinking !== undefined) config = mode.thinking.apply(config);
+		let routed = lenses;
+		if (mode.kind === "live" && mode.probing !== undefined)
+			({ lenses: routed, config } = routedProbing(lenses, config, mode.probing));
 		const storage = createMemoryStorage();
-		const reviewHarness = await openReviewHarness(storage, models, { retry: mode.kind !== "scripted" });
+		// A scripted golden's probes are its own committed scripts, so they run unconfined; a live run's are a model's.
+		const reviewHarness = await openReviewHarness(storage, models, {
+			retry: mode.kind !== "scripted",
+			...(mode.kind === "scripted" ? { probeSandbox: unconfinedSandbox() } : {}),
+		});
 		try {
-			const review = { harness: reviewHarness, changeset, config, lenses, standards, models, policy: source };
+			// The golden's repository is built here from the corpus, so its head is the reviewer's own.
+			const writer = { trusted: true, by: "reviewer" } as const;
+			const review = {
+				harness: reviewHarness,
+				changeset,
+				config,
+				lenses: routed,
+				standards,
+				models,
+				policy: source,
+				writer,
+			};
 			const reviewed = await reviewChangeset(review);
 			const findings = [
 				...Object.values(reviewed.verdict.findings).flat(),

@@ -236,6 +236,23 @@ function lastResults(messages: readonly Message[]): Map<string, string> {
 	return results;
 }
 
+// The latest probe ID a tool result in `messages` named, which a scripted prober's `{{probe}}` stands for.
+function lastProbe(messages: readonly Message[]): string | undefined {
+	let probe: string | undefined;
+	for (const message of messages)
+		if (message.role === "toolResult") probe = /probe (p[0-9]+)/.exec(text(message))?.[1] ?? probe;
+	return probe;
+}
+
+// Replaces each string `{{probe}}` in a call's arguments with the probe ID, which no script can know ahead of a run.
+function withProbe(value: unknown, probe: string | undefined): unknown {
+	if (value === "{{probe}}") return probe ?? value;
+	if (Array.isArray(value)) return value.map((each) => withProbe(each, probe));
+	if (value !== null && typeof value === "object")
+		return Object.fromEntries(Object.entries(value).map(([key, each]) => [key, withProbe(each, probe)]));
+	return value;
+}
+
 // Each reply first checks the previous step's calls against their expected results, which it finds in the request.
 function lensReplies(lens: string, steps: readonly LensScriptStep[], mismatches: string[]): ScriptedReply[] {
 	const ids: string[][] = [];
@@ -253,8 +270,9 @@ function lensReplies(lens: string, steps: readonly LensScriptStep[], mismatches:
 			});
 		}
 		if ("text" in step) return fauxAssistantMessage(step.text);
+		const probe = lastProbe(messages);
 		const calls = step.calls.map((call) =>
-			fauxToolCall(call.name, call.arguments as Parameters<typeof fauxToolCall>[1]),
+			fauxToolCall(call.name, withProbe(call.arguments, probe) as Parameters<typeof fauxToolCall>[1]),
 		);
 		ids[index] = calls.map((call) => call.id);
 		return fauxAssistantMessage(calls, { stopReason: "toolUse" });
@@ -264,7 +282,9 @@ function lensReplies(lens: string, steps: readonly LensScriptStep[], mismatches:
 /**
  * Scripts each lens in `script` by name, matching its conversation by the lens's instructions, as
  * {@link scriptConversations} does. Throws for a name no lens in `lenses` has. The longest instructions match first,
- * so a lens extending another is not answered from the other's script. Each scripted call whose result lacks its
+ * so a lens extending another is not answered from the other's script. A name `<lens>/prober` scripts the prober of
+ * that lens's level that probes, whose instructions hold no lens body; its lens's own name scripts the planner. A call
+ * argument `{{probe}}` is the last probe ID a tool result named. Each scripted call whose result lacks its
  * `expectToolResult` is described in `mismatches`, when given.
  */
 export function scriptLenses(
@@ -276,6 +296,12 @@ export function scriptLenses(
 	const scripts = Object.entries(script)
 		.filter(([name]) => name !== "verifier")
 		.map(([name, steps]) => {
+			const prober = /^(.+)\/prober$/.exec(name)?.[1];
+			if (prober !== undefined && lenses.some((each) => each.name === prober))
+				return {
+					match: `You are the prober for the ${prober} lens`,
+					replies: lensReplies(name, steps as readonly LensScriptStep[], mismatches),
+				};
 			const lens = lenses.find((each) => each.name === name);
 			if (lens === undefined) throw new Error(`the script names ${name}, which is not a lens here`);
 			return {
