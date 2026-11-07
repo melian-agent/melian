@@ -56,6 +56,7 @@ async function refusal(input: ProbeInput, given: ProbeOptions): Promise<ProbeErr
 		(thrown: unknown) => thrown,
 	);
 	if (!(error instanceof ProbeError)) throw new Error(`expected a ProbeError, got ${String(error)}`);
+	expect(error.name).toBe("ProbeError");
 	return error;
 }
 
@@ -143,18 +144,20 @@ describe("Probe.open", () => {
 		expect(sandbox.open).not.toHaveBeenCalled();
 	});
 
-	it.each([[["a", "A"]], [["a", "a/b"]], [["a/b", "a"]], [["x/y", "x/y"]], [["a/b", "a/b/c"]], [["a/b/c", "a/b"]]])(
-		"refuses colliding paths %j",
-		async (paths) => {
-			const { sandbox } = passthrough();
-			const error = await refusal(
-				{ script: "", files: paths.map((path) => ({ path, text: "" })) },
-				options(sandbox),
-			);
-			expect(error.code).toBe("invalidProbe");
-			expect(error.message).toContain("collides");
-		},
-	);
+	it.each([
+		[["a", "A"]],
+		[["a", "a/b"]],
+		[["a/b", "a"]],
+		[["x/y", "x/y"]],
+		[["a/b", "a/b/c"]],
+		[["a/b/c", "a/b"]],
+		[["a/b", "a/b/c/d"]],
+	])("refuses colliding paths %j", async (paths) => {
+		const { sandbox } = passthrough();
+		const error = await refusal({ script: "", files: paths.map((path) => ({ path, text: "" })) }, options(sandbox));
+		expect(error.code).toBe("invalidProbe");
+		expect(error.message).toContain("collides");
+	});
 
 	it("writes the script and its files beside each other, readable and outside the writable directory", async () => {
 		const { sandbox } = passthrough();
@@ -342,8 +345,9 @@ describe("Probe.run", () => {
 		process.env.MELIAN_PROBE_SECRET = "secret";
 		try {
 			const { result, asked, sandbox } = await ran(`
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
+writeFileSync(process.env.HOME + "/written", "x");
 console.log(JSON.stringify({ marker: readFileSync("marker", "utf8"), home: process.env.HOME, tmp: tmpdir(), keys: Object.keys(process.env).sort() }));
 `);
 			expect(result.exitCode, result.output).toBe(0);
