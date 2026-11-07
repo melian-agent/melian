@@ -116,6 +116,19 @@ export { CoverageCache } from "./coverage-cache.ts";
 export { EnolaCoverage } from "./enola-coverage.ts";
 export { GraphCache } from "./graph-cache.ts";
 export {
+	Probe,
+	type ProbeAvailability,
+	ProbeError,
+	type ProbeErrorCode,
+	type ProbeFile,
+	type ProbeInput,
+	type ProbeOptions,
+	type ProbePolicy,
+	type ProbeResult,
+	type ProbeSandbox,
+	probeLimits,
+} from "./probe.ts";
+export {
 	MembershipReader,
 	PullRequestRoundHistory,
 	type PullRequestRoundMember,

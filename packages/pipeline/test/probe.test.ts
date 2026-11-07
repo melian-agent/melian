@@ -1,0 +1,370 @@
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { Probe, ProbeError, type ProbeInput, type ProbeOptions, type ProbePolicy, probeLimits } from "../src/probe.ts";
+
+// Probe's own rules, on a sandbox that runs the command unconfined and records what it was asked. Every script here is
+// the test's own. The real sandbox's attacks are in probe-sandbox.test.ts.
+
+const original = process.env.TMPDIR;
+let scratch: string;
+let worktree: string;
+
+function passthrough(
+	overrides: { unavailable?: string; open?: () => Promise<void>; wrap?: () => Promise<never> } = {},
+) {
+	const asked: { command: string; policy: ProbePolicy }[] = [];
+	const sandbox = {
+		unavailable: vi.fn(() => overrides.unavailable),
+		open: vi.fn(overrides.open ?? (async () => {})),
+		wrap: vi.fn(
+			overrides.wrap ??
+				(async (command: string, policy: ProbePolicy) => {
+					asked.push({ command, policy });
+					return ["/bin/bash", "-c", command];
+				}),
+		),
+		cleanup: vi.fn(),
+		close: vi.fn(async () => {}),
+	};
+	return { sandbox, asked };
+}
+
+function options(sandbox: ProbeOptions["sandbox"], more: Partial<ProbeOptions> = {}): ProbeOptions {
+	return { worktree, writer: { trusted: true, by: "writer" }, trustWriters: true, sandbox, ...more };
+}
+
+async function refusal(input: ProbeInput, given: ProbeOptions): Promise<ProbeError> {
+	const error = await Probe.open(input, given).then(
+		() => undefined,
+		(thrown: unknown) => thrown,
+	);
+	if (!(error instanceof ProbeError)) throw new Error(`expected a ProbeError, got ${String(error)}`);
+	return error;
+}
+
+const left = () => readdirSync(scratch).filter((name) => name.startsWith("melian-probe-"));
+
+beforeEach(() => {
+	scratch = realpathSync(mkdtempSync(join(original ?? tmpdir(), "melian-probe-test-")));
+	process.env.TMPDIR = scratch;
+	worktree = join(scratch, "worktree");
+	mkdirSync(worktree);
+});
+
+afterEach(() => {
+	process.env.TMPDIR = original;
+	if (original === undefined) delete process.env.TMPDIR;
+	rmSync(scratch, { recursive: true, force: true });
+});
+
+describe("Probe.open", () => {
+	it("refuses a head the host has not allowed, before anything else", async () => {
+		const { sandbox } = passthrough();
+		const error = await refusal(
+			{ script: "" },
+			options(sandbox, { writer: { trusted: false, detail: "the head is from a fork" } }),
+		);
+		expect(error.code).toBe("headNotAllowed");
+		expect(error.message).toBe("the head's code may not run here: the head is from a fork");
+		expect(sandbox.unavailable).not.toHaveBeenCalled();
+		expect(sandbox.open).not.toHaveBeenCalled();
+		expect(left()).toEqual([]);
+	});
+
+	it("refuses a writer's head when the policy trusts no writers, and runs a reviewer's", async () => {
+		const { sandbox } = passthrough();
+		const error = await refusal({ script: "" }, options(sandbox, { trustWriters: false }));
+		expect(error.code).toBe("headNotAllowed");
+		expect(error.message).toContain("trust.writers is false");
+		const probe = await Probe.open(
+			{ script: "" },
+			options(sandbox, { trustWriters: false, writer: { trusted: true, by: "reviewer" } }),
+		);
+		await probe.close();
+		expect(sandbox.open).toHaveBeenCalledOnce();
+	});
+
+	it("refuses where the sandbox cannot run, and never opens it", async () => {
+		const { sandbox } = passthrough({ unavailable: "bubblewrap not found" });
+		const error = await refusal({ script: "" }, options(sandbox));
+		expect(error.code).toBe("sandboxUnavailable");
+		expect(error.message).toBe("bubblewrap not found");
+		expect(sandbox.open).not.toHaveBeenCalled();
+		expect(left()).toEqual([]);
+	});
+
+	it("refuses when the sandbox fails to start, and removes its scratch", async () => {
+		const { sandbox } = passthrough({
+			open: async () => {
+				throw new Error("user namespaces are restricted");
+			},
+		});
+		const error = await refusal({ script: "" }, options(sandbox));
+		expect(error.code).toBe("sandboxUnavailable");
+		expect(error.message).toBe("the sandbox did not start: Error: user namespaces are restricted");
+		expect(left()).toEqual([]);
+	});
+
+	it.each([
+		["../escape"],
+		["/absolute"],
+		["a//b"],
+		["a/./b"],
+		["a/../b"],
+		[".hidden"],
+		["-flag"],
+		["a/"],
+		[""],
+		["sp ace"],
+		["probe.mjs"],
+		["PROBE.MJS"],
+	])("refuses the file path %j", async (path) => {
+		const { sandbox } = passthrough();
+		const error = await refusal({ script: "", files: [{ path, text: "" }] }, options(sandbox));
+		expect(error.code).toBe("invalidProbe");
+		expect(sandbox.open).not.toHaveBeenCalled();
+	});
+
+	it.each([[["a", "A"]], [["a", "a/b"]], [["a/b", "a"]], [["x/y", "x/y"]]])(
+		"refuses colliding paths %j",
+		async (paths) => {
+			const { sandbox } = passthrough();
+			const error = await refusal(
+				{ script: "", files: paths.map((path) => ({ path, text: "" })) },
+				options(sandbox),
+			);
+			expect(error.code).toBe("invalidProbe");
+			expect(error.message).toContain("collides");
+		},
+	);
+
+	it("writes the script and its files beside each other, readable and outside the writable directory", async () => {
+		const { sandbox } = passthrough();
+		const probe = await Probe.open(
+			{
+				script: "// s",
+				files: [
+					{ path: "a/b.json", text: "{}" },
+					{ path: "a/c-1_x.txt", text: "c" },
+				],
+			},
+			options(sandbox),
+		);
+		const { policy } = probe;
+		const root = dirname(policy.write[0]!);
+		expect(readdirSync(join(root, "probe")).sort()).toEqual(["a", "probe.mjs"]);
+		expect(readdirSync(join(root, "probe", "a")).sort()).toEqual(["b.json", "c-1_x.txt"]);
+		expect(policy.write).toEqual([join(root, "run")]);
+		await probe.close();
+		expect(existsSync(root)).toBe(false);
+	});
+
+	it.each([
+		["timeout", probeLimits.timeout.max],
+		["outputLimit", probeLimits.output.max],
+	] as const)("takes a %s at its bound and refuses one past it, or below one", async (name, max) => {
+		const { sandbox } = passthrough();
+		await (await Probe.open({ script: "" }, options(sandbox, { [name]: max }))).close();
+		await (await Probe.open({ script: "" }, options(sandbox, { [name]: 1 }))).close();
+		for (const value of [max + 1, 0, 1.5])
+			expect((await refusal({ script: "" }, options(sandbox, { [name]: value }))).code).toBe("invalidProbe");
+	});
+
+	it("takes the script, file count, file bytes and path length at their bounds and refuses one past", async () => {
+		const { sandbox } = passthrough();
+		const name = (length: number) => "p".repeat(length);
+		const many = (count: number) => Array.from({ length: count }, (_, index) => ({ path: `f${index}`, text: "" }));
+		const fits: ProbeInput[] = [
+			{ script: "x".repeat(probeLimits.script) },
+			{ script: "", files: many(probeLimits.files) },
+			{ script: "", files: [{ path: "a", text: "x".repeat(probeLimits.fileBytes) }] },
+			{ script: "", files: [{ path: name(probeLimits.path), text: "" }] },
+		];
+		const past: ProbeInput[] = [
+			{ script: "x".repeat(probeLimits.script + 1) },
+			{ script: "", files: many(probeLimits.files + 1) },
+			{
+				script: "",
+				files: [
+					{ path: "a", text: "x".repeat(probeLimits.fileBytes) },
+					{ path: "b", text: "x" },
+				],
+			},
+			{ script: "", files: [{ path: name(probeLimits.path + 1), text: "" }] },
+		];
+		for (const input of fits) await (await Probe.open(input, options(sandbox))).close();
+		for (const input of past) expect((await refusal(input, options(sandbox))).code).toBe("invalidProbe");
+	});
+
+	it("refuses a worktree that is missing, a file, the home directory or above it", async () => {
+		const { sandbox } = passthrough();
+		writeFileSync(join(scratch, "file"), "");
+		for (const path of [join(scratch, "missing"), join(scratch, "file"), homedir(), dirname(homedir()), "/"]) {
+			const error = await refusal({ script: "" }, options(sandbox, { worktree: path }));
+			expect(error.code, path).toBe("invalidProbe");
+		}
+		expect(
+			(await refusal({ script: "" }, options(sandbox, { install: join(scratch, "missing") }))).message,
+		).toContain("the install");
+		expect(sandbox.open).not.toHaveBeenCalled();
+	});
+
+	it("reads only the worktree, the install, Node, the sandbox's helpers, its own files and the system", async () => {
+		const { sandbox } = passthrough();
+		const install = join(scratch, "install");
+		mkdirSync(install);
+		const probe = await Probe.open({ script: "" }, options(sandbox, { install }));
+		const { policy } = probe;
+		const root = dirname(policy.write[0]!);
+		const node = dirname(dirname(realpathSync(process.execPath)));
+		expect(policy.read.slice(0, 6)).toEqual([
+			worktree,
+			install,
+			node,
+			expect.stringMatching(/node_modules\/@anthropic-ai\/sandbox-runtime$/),
+			join(root, "probe"),
+			join(root, "run"),
+		]);
+		for (const path of policy.read.slice(6))
+			expect(path).toMatch(/^\/(bin|sbin|lib|usr|System|private\/var\/select)/);
+		expect(policy.read).not.toContain("/usr/local");
+		expect(policy.deny).toEqual([
+			"/",
+			join(worktree, ".git"),
+			join(worktree, "**/.env*"),
+			join(worktree, "**/melian.secrets.yaml"),
+			join(worktree, "**/melian.local.yaml"),
+		]);
+		expect(policy.denyWrite).toContain("/tmp/claude");
+		await probe.close();
+		const plain = await Probe.open({ script: "" }, options(sandbox));
+		expect(plain.policy.read[1]).toBe(node);
+		await plain.close();
+	});
+});
+
+describe("Probe.run", () => {
+	async function ran(script: string, more: Partial<ProbeOptions> = {}) {
+		const { sandbox, asked } = passthrough();
+		const probe = await Probe.open({ script }, options(sandbox, more));
+		try {
+			return { result: await probe.run(), asked, sandbox };
+		} finally {
+			await probe.close();
+		}
+	}
+
+	it("runs the script in the worktree with a scratch home and temporary directory and no other variable", async () => {
+		writeFileSync(join(worktree, "marker"), "here");
+		process.env.MELIAN_PROBE_SECRET = "secret";
+		try {
+			const { result, asked, sandbox } = await ran(`
+import { readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+console.log(JSON.stringify({ marker: readFileSync("marker", "utf8"), home: process.env.HOME, tmp: tmpdir(), keys: Object.keys(process.env).sort() }));
+`);
+			expect(result.exitCode, result.output).toBe(0);
+			const seen = JSON.parse(result.output) as { marker: string; home: string; tmp: string; keys: string[] };
+			const root = dirname(asked[0]!.policy.write[0]!);
+			expect(seen.marker).toBe("here");
+			expect(seen.home).toBe(join(root, "run", "home"));
+			expect(seen.tmp).toBe(join(root, "run", "tmp"));
+			// bash adds PWD, SHLVL and _ to what the probe is given, and macOS adds __CF_USER_TEXT_ENCODING.
+			const added = ["PWD", "SHLVL", "_", "OLDPWD", "__CF_USER_TEXT_ENCODING"];
+			expect(seen.keys.filter((key) => !added.includes(key))).toEqual(
+				["HOME", "LANG", "PATH", "TMPDIR"].filter((key) => key !== "LANG" || process.env.LANG !== undefined),
+			);
+			expect(sandbox.cleanup).toHaveBeenCalledOnce();
+		} finally {
+			delete process.env.MELIAN_PROBE_SECRET;
+		}
+	});
+
+	it("returns the exit code and output, uncut and in time", async () => {
+		const { result } = await ran(`process.stdout.write("out\\n"); process.stderr.write("err\\n"); process.exit(3);`);
+		expect(result).toEqual({ exitCode: 3, signal: null, output: "out\nerr\n", truncated: false, timedOut: false });
+	});
+
+	it("keeps output at its limit whole and cuts one byte past it", async () => {
+		const at = await ran(`process.stdout.write("x".repeat(100));`, { outputLimit: 100 });
+		expect(at.result).toMatchObject({ output: "x".repeat(100), truncated: false });
+		const past = await ran(`process.stdout.write("x".repeat(101));`, { outputLimit: 100 });
+		expect(past.result).toMatchObject({ output: "x".repeat(100), truncated: true });
+	});
+
+	it("ends a probe that runs past its time limit", { timeout: 30_000 }, async () => {
+		const began = Date.now();
+		const { result } = await ran(`console.log("started"); setInterval(() => {}, 1000);`, { timeout: 1_000 });
+		expect(result).toMatchObject({ timedOut: true, truncated: false, output: "started\n" });
+		expect(result.exitCode).not.toBe(0);
+		expect(Date.now() - began).toBeLessThan(15_000);
+	});
+
+	it("refuses a second run while one runs, and any run after close", async () => {
+		const { sandbox } = passthrough();
+		const probe = await Probe.open({ script: "setTimeout(() => {}, 300);" }, options(sandbox));
+		const first = probe.run();
+		await expect(probe.run()).rejects.toMatchObject({ code: "invalidProbe" });
+		await first;
+		expect((await probe.run()).exitCode).toBe(0);
+		await probe.close();
+		await probe.close();
+		expect(sandbox.close).toHaveBeenCalledOnce();
+		await expect(probe.run()).rejects.toMatchObject({ code: "closed" });
+	});
+
+	it("refuses to run when the sandbox refuses the wrap, and runs nothing", async () => {
+		const { sandbox } = passthrough({
+			wrap: async () => {
+				throw new Error("profile too long");
+			},
+		});
+		const probe = await Probe.open({ script: "" }, options(sandbox));
+		await expect(probe.run()).rejects.toMatchObject({
+			code: "sandboxUnavailable",
+			message: "the sandbox refused the probe: Error: profile too long",
+		});
+		expect(sandbox.cleanup).toHaveBeenCalledOnce();
+		await probe.close();
+	});
+
+	it("removes a scratch directory the probe made unreadable", async () => {
+		const { sandbox } = passthrough();
+		const probe = await Probe.open(
+			{
+				script: `import { chmodSync, mkdirSync, writeFileSync } from "node:fs"; import { tmpdir } from "node:os"; mkdirSync(tmpdir() + "/locked/inner", { recursive: true }); writeFileSync(tmpdir() + "/locked/inner/f", "x"); chmodSync(tmpdir() + "/locked/inner", 0); chmodSync(tmpdir() + "/locked", 0);`,
+			},
+			options(sandbox),
+		);
+		const root = dirname(probe.policy.write[0]!);
+		expect((await probe.run()).exitCode).toBe(0);
+		await probe.close();
+		expect(existsSync(root)).toBe(false);
+	});
+});
+
+describe("Probe.availability", () => {
+	it("says why a probe cannot run", async () => {
+		expect(await Probe.availability(passthrough({ unavailable: "no bubblewrap" }).sandbox)).toEqual({
+			available: false,
+			reason: "no bubblewrap",
+		});
+	});
+
+	it("runs an empty probe and reports how it ended", async () => {
+		const { sandbox, asked } = passthrough();
+		expect(await Probe.availability(sandbox)).toEqual({ available: true });
+		expect(asked).toHaveLength(1);
+		expect(sandbox.close).toHaveBeenCalledOnce();
+		const failing = passthrough({ wrap: async () => ["/bin/sh", "-c", "echo broken; exit 4"] as never });
+		expect(await Probe.availability(failing.sandbox)).toEqual({
+			available: false,
+			reason: "an empty probe exited 4: broken",
+		});
+		const silent = passthrough({ wrap: async () => ["/bin/sh", "-c", "exit 5"] as never });
+		expect(await Probe.availability(silent.sandbox)).toEqual({ available: false, reason: "an empty probe exited 5" });
+		expect(left()).toEqual([]);
+	});
+});

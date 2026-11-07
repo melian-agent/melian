@@ -30,6 +30,14 @@ jobs:
       # Node 22 bundles npm 10, which silently ignores min-release-age in .npmrc.
       - if: matrix.node == 22
         run: npm install -g npm@11.19.0
+      # Probes run under sandbox-runtime, which needs bubblewrap, socat and ripgrep on Linux, and user namespaces that
+      # Ubuntu 24.04's AppArmor restricts by default. MELIAN_PROBE_SANDBOX=1 below makes the probe suite fail, not skip,
+      # if any of it is missing.
+      - name: Let probes run under bubblewrap
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq bubblewrap socat ripgrep
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       - run: npm ci --ignore-scripts
       # The triage gate compares questions.json with main's, at origin/main. A push run already has origin/main at the
       # pushed commit, so the gate has nothing to compare; fetching would be refused as a non-fast-forward once main
@@ -39,6 +47,7 @@ jobs:
       - run: npm run check
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          MELIAN_PROBE_SANDBOX: "1"
       # The publish check. The tests run the CLI from source, so nothing else builds dist/, packs it, or runs the
       # shim's tarball branch. `! grep` would not fail a step under bash -e, hence the if.
       - name: Pack, install, and run the published CLI
@@ -70,7 +79,7 @@ jobs:
         run: git diff --exit-code
 
   # Linux skips the tests that need sandbox-exec or a BSD ps, so only this job runs the Codex seatbelt profile and the
-  # mutation supervisor against real processes.
+  # mutation supervisor against real processes. Both jobs run the probe suite, under seatbelt here and bubblewrap there.
   check-macos:
     name: check (macos, 24)
     runs-on: macos-latest
@@ -94,6 +103,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           MELIAN_SANDBOX_NETWORK: "1"
+          MELIAN_PROBE_SANDBOX: "1"
       # Every test must pass here except the allowlist, so a new platform-gated test cannot skip unseen, and each named
       # suite must be present and pass whole.
       - name: Fail if a test skipped outside the allowlist
@@ -101,7 +111,8 @@ jobs:
           jq -e -r --arg root "$GITHUB_WORKSPACE" '
             [.testResults[] | (.name | ltrimstr($root + "/")) as $file
               | .assertionResults[] | {id: ([$file] + .ancestorTitles + [.title] | join(" > ")), file: $file, status}] as $tests
-            | ["scripts/codex-sandboxed.test.mjs", "packages/pipeline/test/mutation-process-real.test.ts"] as $suites
+            | ["scripts/codex-sandboxed.test.mjs", "packages/pipeline/test/mutation-process-real.test.ts",
+                "packages/pipeline/test/probe-sandbox.test.ts"] as $suites
             # Only root can give a file to another user, and the runner is not root.
             | ["packages/core/test/secrets.test.ts > loadSecrets > refuses a command in a file another user owns, advising chown"] as $allowed
             | [$suites[] as $suite | [$tests[] | select(.file == $suite)]
