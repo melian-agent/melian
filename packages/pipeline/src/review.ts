@@ -2085,23 +2085,15 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					wake = resolve;
 				});
 				if (finished) return;
-				const waves = VerificationWaves.of(
-					await harness.snapshot(VerificationWavesDocument, root, context),
-					reviewed,
-					task,
-				);
+				const read = async () =>
+					VerificationWaves.of(await harness.snapshot(VerificationWavesDocument, root, context), reviewed, task);
+				// One wave at a time: the verifier's cap of eight conversations holds per revision, and a wave never clears
+				// claims an earlier one is still judging. Waiting on a finished wave returns at once.
+				const running = (await read()).tasks().at(-1);
+				if (running !== undefined) await harness.waitForTask(running as TaskId, context);
+				const waves = await read();
 				const ended = waves.ended() as unknown as LensResult;
 				if (Object.keys(ended).length > seen) {
-					// One wave at a time: the verifier's cap of eight conversations holds per revision, and a wave never
-					// clears claims an earlier one is still judging.
-					const running = waves.tasks().at(-1);
-					if (
-						running !== undefined &&
-						(await harness.getTask(running as TaskId, context))?.state.status !== "terminal"
-					) {
-						await harness.waitForTask(running as TaskId, context);
-						continue;
-					}
 					seen = Object.keys(ended).length;
 					const settledEnded = lenses
 						.map((lens) => stored.get(lens.key) ?? lens)
