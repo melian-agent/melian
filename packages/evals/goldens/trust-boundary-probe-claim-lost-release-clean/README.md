@@ -4,4 +4,6 @@ From [pull request #274](https://github.com/melian-agent/melian/pull/274), "Swap
 
 The clean twin's head is `main`'s `claim.yml`, after the fix. The same probe passes, so `report_finding` refuses the finding and the review is clean.
 
-The rule is `fail-open`: the label is what tells builders an issue is free, and the workflow's own event reads as a hand edit, so the gate reads clean when it should not. The defect is an interleaving rather than a hostile input, which the maintainer listed among this week's probes in [issue #288](https://github.com/melian-agent/melian/issues/288).
+The rule is `fail-open`, as the maintainer ruled on 2026-11-07 in [issue #288](https://github.com/melian-agent/melian/issues/288). The status label is the check builders trust to tell them an issue is free. The workflow's own `unlabeled` event is input it did not expect, and it makes the workflow skip the label change it owed, as if the timeline asked for none, so the issue stays held after a writer released it. No trust-boundary rule names an interleaving, and `fail-open` is the one whose outcome this is.
+
+The golden's `.melian/lenses/trust-boundary/LENS.golden.md` gives `deep` a probe, since no shipped level probes until the live measurement picks the routes.

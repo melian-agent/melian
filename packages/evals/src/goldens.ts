@@ -315,7 +315,10 @@ export interface ProbingRoutes {
 	readonly prober?: string;
 }
 
-/** The lenses and routes of a run under `routes`: each level that probes moves its prober to medium, or drops its probe. */
+/**
+ * The lenses and routes of a run under `routes`: each level that probes, and `trust-boundary`'s `deep`, moves its prober
+ * to medium, or drops its probe for the level without probes.
+ */
 export function routedProbing(
 	lenses: readonly Lens[],
 	config: MelianConfig,
@@ -326,11 +329,13 @@ export function routedProbing(
 			...lens.toJSON(),
 			levels: Object.fromEntries(
 				Object.entries(lens.levels).map(([level, settings]) => {
-					if (settings.probe === undefined) return [level, settings];
+					// No shipped level probes until this measurement picks its routes, so trust-boundary's deep is measured.
+					const probing = settings.probe ?? (lens.name === "trust-boundary" && level === "deep" ? {} : undefined);
+					if (probing === undefined) return [level, settings];
 					const { probe: _, ...rest } = settings;
 					return [
 						level,
-						routes.prober === undefined ? rest : { ...rest, probe: { ...settings.probe, prober: "medium" } },
+						routes.prober === undefined ? rest : { ...rest, probe: { ...probing, prober: "medium" } },
 					];
 				}),
 			) as LensLevels,
