@@ -263,6 +263,10 @@ jobs:
     if: always() && needs.gate.result == 'success'
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 5
+    # The melian/review status is set with MELIAN_STATUS_TOKEN, a machine user's token for commit statuses alone, which
+    # only this Environment holds. The merge group copies a status only from a User with write permission, so no
+    # branch's copy of this workflow, posting as github-actions[bot], can set one it accepts. This job runs no head code.
+    environment: melian-round
     permissions:
       contents: read
       pull-requests: write
@@ -333,3 +337,31 @@ jobs:
           else
             gh pr comment "$NUMBER" --repo "$REPOSITORY" --body-file "$RUNNER_TEMP/comment.md"
           fi
+      # Read again just before setting it, as the comment does: a status names a head, and a pull request that moved
+      # during the round shows a head no round reviewed, so it gets none.
+      - name: Set melian/review on the reviewed head
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STATUS_TOKEN: ${{ secrets.MELIAN_STATUS_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          NUMBER: ${{ inputs.pull_request }}
+          BASE: ${{ needs.gate.outputs.base }}
+          HEAD: ${{ needs.gate.outputs.head }}
+          PULL_URL: ${{ github.server_url }}/${{ github.repository }}/pull/${{ inputs.pull_request }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          out="$RUNNER_TEMP/round"
+          current=$(gh api "repos/$REPOSITORY/pulls/$NUMBER" --jq '.base.sha + " " + .head.sha') || current=""
+          read -r current_base current_head <<< "$current" || true
+          status=$(node scripts/round-comment.mjs --verdict "$out/verdict.json" --rounds "$out/rounds.json" \
+            --exit "$(cat "$out/exit" 2>/dev/null || echo none)" --run-url "$RUN_URL" --run-id "$RUN_ID" --nonce none --base "$BASE" --head "$HEAD" \
+            --merge-base "$(cat "$out/merge-base" 2>/dev/null || echo none)" --status "$PULL_URL" \
+            ${current_head:+--current-base "$current_base" --current-head "$current_head"})
+          if [ -z "$status" ]; then
+            echo "the pull request moved or could not be read again, so no melian/review status is set; start a new round"
+            exit 0
+          fi
+          if [ -z "$STATUS_TOKEN" ]; then echo "::error::the melian-round Environment holds no MELIAN_STATUS_TOKEN"; exit 1; fi
+          printf '%s' "$status" | GH_TOKEN="$STATUS_TOKEN" gh api -X POST "repos/$REPOSITORY/statuses/$HEAD" --input - > /dev/null
+          echo "melian/review on $HEAD: $(printf '%s' "$status" | jq -r '.state + ", " + .description')"

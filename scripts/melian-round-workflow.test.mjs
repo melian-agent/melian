@@ -506,7 +506,155 @@ describe("the melian round workflow", () => {
 		expect(JSON.stringify(workflow).match(/\$\{\{\s*secrets\.\w+\s*\}\}/g)).toEqual([
 			actions("secrets.CLAUDE_CODE_OAUTH_TOKEN"),
 			actions("secrets.CODEX_AUTH_B64"),
+			actions("secrets.MELIAN_STATUS_TOKEN"),
 		]);
+	});
+
+	it("reads the status token only in the step that sets melian/review, in a job of the melian-round Environment", () => {
+		const holding = steps.filter((step) => JSON.stringify(step).includes("secrets.MELIAN_STATUS_TOKEN"));
+		expect(holding.map((step) => [step.job, step.name, step.env.STATUS_TOKEN])).toEqual([
+			["report", "Set melian/review on the reviewed head", actions("secrets.MELIAN_STATUS_TOKEN")],
+		]);
+		expect(workflow.jobs.report.environment).toBe("melian-round");
+		expect(workflow.jobs.report.permissions).toEqual({ contents: "read", "pull-requests": "write" });
+	});
+
+	it("sets melian/review on the head the gate approved and the round reviewed, from the round's verdict", () => {
+		const { run } = workflow.jobs.report.steps.find((step) => step.name === "Set melian/review on the reviewed head");
+		const dir = mkdtempSync(join(tmpdir(), "round-workflow-"));
+		try {
+			const base = "b".repeat(40);
+			const head = "1".repeat(40);
+			const mergeBase = "e".repeat(40);
+			// A fake gh answers only the fresh read of the pull request, and the status post when it carries the status
+			// token, which it keeps.
+			writeFileSync(
+				join(dir, "gh"),
+				[
+					"#!/bin/sh",
+					'if [ "$*" = "api repos/o/r/pulls/7 --jq .base.sha + \\" \\" + .head.sha" ]; then [ -n "$NOW" ] && echo "$NOW"; exit; fi',
+					'[ "$*" = "api -X POST repos/o/r/statuses/$HEAD --input -" ] && [ "$GH_TOKEN" = status-token ] && cat > "$POSTED" && exit 0',
+					"exit 1",
+					"",
+				].join("\n"),
+			);
+			chmodSync(join(dir, "gh"), 0o755);
+			const round = join(dir, "round");
+			mkdirSync(round);
+			const finding = (resolution) => ({
+				ruleId: "no-eval",
+				message: { text: "eval runs input" },
+				locations: [],
+				properties: { id: "0", severity: "P1", resolution, path: "a.ts", source: { check: "lens.security" } },
+			});
+			const posted = join(dir, "posted.json");
+			const step = ({
+				verdict = { status: "passed", blocking: false, findings: { block: [], acknowledge: [] }, notRun: [] },
+				exit = "0",
+				reviewed = { base: mergeBase, head },
+				merged = mergeBase,
+				now = `${base} ${head}`,
+				token = "status-token",
+			}) => {
+				rmSync(posted, { force: true });
+				writeFileSync(join(round, "verdict.json"), typeof verdict === "string" ? verdict : JSON.stringify(verdict));
+				writeFileSync(join(round, "rounds.json"), JSON.stringify([reviewed]));
+				writeFileSync(join(round, "exit"), `${exit}\n`);
+				writeFileSync(join(round, "merge-base"), `${merged}\n`);
+				const ran = spawnSync("bash", ["-e", "-o", "pipefail", "-c", run], {
+					cwd: fileURLToPath(new URL("..", import.meta.url)),
+					encoding: "utf8",
+					env: {
+						PATH: `${dir}:${process.env.PATH}`,
+						HOME: dir,
+						RUNNER_TEMP: dir,
+						GH_TOKEN: "workflow-token",
+						STATUS_TOKEN: token,
+						REPOSITORY: "o/r",
+						NUMBER: "7",
+						BASE: base,
+						HEAD: head,
+						PULL_URL: "https://github.com/o/r/pull/7",
+						RUN_URL: "https://example.test/run",
+						RUN_ID: "9",
+						NOW: now,
+						POSTED: posted,
+					},
+				});
+				let status;
+				try {
+					status = JSON.parse(readFileSync(posted, "utf8"));
+				} catch {
+					status = undefined;
+				}
+				return { code: ran.status, stdout: ran.stdout, status };
+			};
+			const set = (state, description) => ({
+				code: 0,
+				stdout: `melian/review on ${head}: ${state}, ${description}\n`,
+				status: { state, context: "melian/review", description, target_url: "https://github.com/o/r/pull/7" },
+			});
+			const suffix = `; base ${mergeBase}`;
+			expect(step({})).toEqual(set("success", `Passed${suffix}`));
+			const acknowledged = { status: "findings", blocking: false, notRun: [] };
+			expect(
+				step({
+					verdict: {
+						...acknowledged,
+						findings: { block: [], acknowledge: [finding("acknowledge"), finding("acknowledge")] },
+					},
+					exit: "3",
+				}),
+			).toEqual(set("success", `Passed; 2 findings to acknowledge${suffix}`));
+			expect(
+				step({
+					verdict: {
+						status: "findings",
+						blocking: true,
+						findings: { block: [finding("block")], acknowledge: [finding("acknowledge")] },
+						notRun: [],
+					},
+					exit: "1",
+				}),
+			).toEqual(set("failure", `Blocked by 1 finding${suffix}`));
+			const skipped = [{ name: "lens.security", status: "failed" }];
+			expect(
+				step({
+					verdict: {
+						status: "not-reviewed",
+						blocking: false,
+						findings: { block: [], acknowledge: [] },
+						notRun: skipped,
+					},
+					exit: "2",
+				}),
+			).toEqual(set("error", `Not reviewed: a check did not run${suffix}`));
+			const unreadable = set("error", `Not reviewed: the round's verdict could not be read${suffix}`);
+			expect(step({ verdict: "not json" })).toEqual(unreadable);
+			expect(step({ exit: "3" })).toEqual(unreadable);
+			const another = set("error", `Not reviewed: the round reviewed another revision${suffix}`);
+			expect(step({ reviewed: { base: mergeBase, head: "2".repeat(40) } })).toEqual(another);
+			expect(step({ reviewed: { base: "f".repeat(40), head } })).toEqual(another);
+			expect(step({ merged: "none", reviewed: { base: "none", head } })).toEqual(
+				set("error", "Not reviewed: the round reviewed another revision"),
+			);
+			const none = {
+				code: 0,
+				stdout:
+					"the pull request moved or could not be read again, so no melian/review status is set; start a new round\n",
+				status: undefined,
+			};
+			expect(step({ now: `${base} ${"3".repeat(40)}` })).toEqual(none);
+			expect(step({ now: `${"c".repeat(40)} ${head}` })).toEqual(none);
+			expect(step({ now: "" })).toEqual(none);
+			expect(step({ token: "" })).toEqual({
+				code: 1,
+				stdout: "::error::the melian-round Environment holds no MELIAN_STATUS_TOKEN\n",
+				status: undefined,
+			});
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
 	});
 
 	it("posts the moved notice when the pull request moved during the round, from a fresh read", () => {

@@ -306,6 +306,38 @@ export class RoundComment {
 		}
 		return `${header}\n\n${fenced(quoted, budget)}`;
 	}
+
+	// The melian/review status for the head the gate approved, in the shape `melian publish` sets so the merge group
+	// copies it: the pull request as its target, and the base the round reviewed from as the description's suffix.
+	// Undefined when the pull request moved or could not be read again, since no status may name another head.
+	// Acknowledge findings do not fail it, by the maintainer's ruling: the builder asks the maintainer to read them.
+	status(pull) {
+		if (this.current === undefined || this.current.base !== this.base || this.current.head !== this.head)
+			return undefined;
+		const known = /^[0-9a-f]{40}$/.test(this.mergeBase);
+		const base = known ? `; base ${this.mergeBase}` : "";
+		const set = (state, text) => ({
+			state,
+			context: "melian/review",
+			description: `${text}${base}`,
+			target_url: pull,
+		});
+		if (
+			!known ||
+			this.reviewed === undefined ||
+			this.reviewed.head !== this.head ||
+			this.reviewed.base !== this.mergeBase
+		)
+			return set("error", "Not reviewed: the round reviewed another revision");
+		const verdict = this.verdict;
+		if (verdictProblem(verdict) !== undefined || exitFor(verdict) !== this.exitCode)
+			return set("error", "Not reviewed: the round's verdict could not be read");
+		if (verdict.status === "not-reviewed") return set("error", "Not reviewed: a check did not run");
+		const blocks = verdict.findings.block.length;
+		if (verdict.blocking) return set("failure", `Blocked by ${plural(blocks, "finding")}`);
+		const acknowledge = verdict.findings.acknowledge.length;
+		return set("success", acknowledge === 0 ? "Passed" : `Passed; ${plural(acknowledge, "finding")} to acknowledge`);
+	}
 }
 
 // `lines` in a three-backtick `text` code fence, at most `budget` characters long. A run of three or more backticks
