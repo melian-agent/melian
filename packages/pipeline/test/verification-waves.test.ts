@@ -22,7 +22,11 @@ import {
 	systemPromptOf,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { verifierMarker } from "../src/verification-instructions.ts";
+import { reviewFiles } from "../src/lens-tools.ts";
+import { ReviewIndex } from "../src/review-index.ts";
+import { startWave } from "../src/verification.ts";
+import { verifierMarker, verifierVersion } from "../src/verification-instructions.ts";
+import { VerificationWavesDocument } from "../src/verification-waves.ts";
 import { gitIn } from "./fixtures/repo.ts";
 import { crashFinding, crashRepository } from "./fixtures/review-scenario.ts";
 
@@ -176,5 +180,55 @@ describe("verification as each lens ends", () => {
 			context,
 		);
 		expect(findings.map((finding) => finding.properties.verification?.verdict)).toEqual(["plausible", "plausible"]);
+	});
+	it("records no lens's end once the index names another lens task", async () => {
+		const correctness = lens("correctness");
+		lenses = [correctness];
+		const key = Revision.key(changeset.revision);
+		scriptConversations(fake, [
+			{
+				match: correctness.instructions,
+				replies: [
+					async () => {
+						const root = await harness.root(context);
+						await root.commit(async (tx) => {
+							(await tx.doc(ReviewIndex, root.id)).reviews[key]!.task = 999_999;
+						}, context);
+						return fauxAssistantMessage("Done.");
+					},
+				],
+			},
+		]);
+		await review();
+		const root = await harness.root(context);
+		const entry = (await harness.snapshot(VerificationWavesDocument, root.id, context))?.reviews[key];
+		expect(entry?.ended).toEqual({});
+	});
+
+	it("starts no wave for a lens task the index does not name", async () => {
+		const root = await harness.root(context);
+		const created = await startWave(
+			harness,
+			{
+				root: root.id,
+				version: verifierVersion,
+				revision: {
+					repoRoot: repo,
+					nonce: "a".repeat(24),
+					base: changeset.revision.base,
+					head: changeset.revision.head,
+					files: reviewFiles(changeset.revision.files),
+				},
+				candidates: [],
+			},
+			424_242,
+			context,
+		);
+		expect(created).toBeUndefined();
+		expect(
+			(await harness.snapshot(VerificationWavesDocument, root.id, context))?.reviews[
+				Revision.key(changeset.revision)
+			],
+		).toBeUndefined();
 	});
 });
