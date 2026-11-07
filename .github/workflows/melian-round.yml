@@ -146,6 +146,7 @@ jobs:
       pull-requests: read
     outputs:
       artifact: ${{ steps.artifact.outputs.name }}
+      started: ${{ steps.artifact.outputs.started }}
     steps:
       # A rerun of failed jobs alone bumps run_attempt for report but keeps this job's earlier attempt, so report reads
       # the name from this output, never from its own run_attempt. The nonce ties the run's comment to the run, for a rerun
@@ -155,6 +156,7 @@ jobs:
       - id: artifact
         run: |
           echo "name=melian-round-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
+          echo "started=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
           mkdir -p "$RUNNER_TEMP/public"
           openssl rand -hex 16 > "$RUNNER_TEMP/public/nonce"
       # A rerun keeps the run's first event, ref and commit, and the default branch may have moved past a fix to this
@@ -290,8 +292,10 @@ jobs:
             echo "::error::the default branch is at ${current:-an unreadable commit}, not $SHA, which this run would build; start a new round"
             exit 1
           fi
+      # The whole history, so the status step reads the pull request's base policy, which the default branch contains.
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          fetch-depth: 0
           persist-credentials: false
       # scripts/round.mjs imports core's render.ts, which plain Node runs only from 22.18 or 23.6, so every job that runs
       # a script pins the round job's Node.
@@ -347,6 +351,7 @@ jobs:
           NUMBER: ${{ inputs.pull_request }}
           BASE: ${{ needs.gate.outputs.base }}
           HEAD: ${{ needs.gate.outputs.head }}
+          STARTED: ${{ needs.round.outputs.started }}
           PULL_URL: ${{ github.server_url }}/${{ github.repository }}/pull/${{ inputs.pull_request }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           RUN_ID: ${{ github.run_id }}
@@ -354,14 +359,17 @@ jobs:
           out="$RUNNER_TEMP/round"
           current=$(gh api "repos/$REPOSITORY/pulls/$NUMBER" --jq '.base.sha + " " + .head.sha') || current=""
           read -r current_base current_head <<< "$current" || true
+          # A later round or host may have set the status since this round began; a rerun of this job alone must not
+          # put an older verdict back over it. An unreadable answer counts as newer.
+          latest=$(gh api "repos/$REPOSITORY/commits/$HEAD/statuses?per_page=100" \
+            --jq '[.[] | select(.context == "melian/review")][0].created_at // ""') || latest="unreadable"
+          trusted=$(node scripts/round-trust.mjs "$GITHUB_WORKSPACE" "$BASE")
           status=$(node scripts/round-comment.mjs --verdict "$out/verdict.json" --rounds "$out/rounds.json" \
             --exit "$(cat "$out/exit" 2>/dev/null || echo none)" --run-url "$RUN_URL" --run-id "$RUN_ID" --nonce none --base "$BASE" --head "$HEAD" \
             --merge-base "$(cat "$out/merge-base" 2>/dev/null || echo none)" --status "$PULL_URL" \
+            --trusted "$trusted" --latest "$latest" --started "$STARTED" \
             ${current_head:+--current-base "$current_base" --current-head "$current_head"})
-          if [ -z "$status" ]; then
-            echo "the pull request moved or could not be read again, so no melian/review status is set; start a new round"
-            exit 0
-          fi
+          case "$status" in "skip: "*) echo "${status#skip: }"; exit 0 ;; esac
           if [ -z "$STATUS_TOKEN" ]; then echo "::error::the melian-round Environment holds no MELIAN_STATUS_TOKEN"; exit 1; fi
           printf '%s' "$status" | GH_TOKEN="$STATUS_TOKEN" gh api -X POST "repos/$REPOSITORY/statuses/$HEAD" --input - > /dev/null
           echo "melian/review on $HEAD: $(printf '%s' "$status" | jq -r '.state + ", " + .description')"

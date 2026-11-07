@@ -37,7 +37,7 @@ describe("the melian round workflow", () => {
 	});
 
 	it("hands the nonce to the report in the artefact, never through a job output or a step's printed env", () => {
-		expect(Object.keys(workflow.jobs.round.outputs)).toEqual(["artifact"]);
+		expect(Object.keys(workflow.jobs.round.outputs)).toEqual(["artifact", "started"]);
 		const printed = steps.filter((step) => /nonce/i.test(JSON.stringify(step.env ?? {})));
 		expect(printed).toEqual([]);
 		const drawn = workflow.jobs.round.steps.find((step) => step.id === "artifact");
@@ -523,16 +523,41 @@ describe("the melian round workflow", () => {
 		const { run } = workflow.jobs.report.steps.find((step) => step.name === "Set melian/review on the reviewed head");
 		const dir = mkdtempSync(join(tmpdir(), "round-workflow-"));
 		try {
-			const base = "b".repeat(40);
+			// The base's policy lives in a repository of its own: one commit trusts writers by default, the next turns
+			// trust off, as a root melian.yaml may.
+			const policy = join(dir, "policy");
+			mkdirSync(policy);
+			const git = (...args) =>
+				spawnSync("git", args, {
+					cwd: policy,
+					encoding: "utf8",
+					env: {
+						...process.env,
+						GIT_AUTHOR_NAME: "t",
+						GIT_AUTHOR_EMAIL: "t@t",
+						GIT_COMMITTER_NAME: "t",
+						GIT_COMMITTER_EMAIL: "t@t",
+					},
+				}).stdout.trim();
+			git("init", "-q");
+			writeFileSync(join(policy, "README.md"), "policy\n");
+			git("add", "-A");
+			git("commit", "-qm", "trusted");
+			const base = git("rev-parse", "HEAD");
+			writeFileSync(join(policy, "melian.yaml"), "trust:\n  writers: false\n");
+			git("add", "-A");
+			git("commit", "-qm", "untrusted");
+			const untrusted = git("rev-parse", "HEAD");
 			const head = "1".repeat(40);
 			const mergeBase = "e".repeat(40);
-			// A fake gh answers only the fresh read of the pull request, and the status post when it carries the status
-			// token, which it keeps.
+			// A fake gh answers only the fresh read of the pull request, the head's statuses through the step's own
+			// --jq, and the status post when it carries the status token, which it keeps.
 			writeFileSync(
 				join(dir, "gh"),
 				[
 					"#!/bin/sh",
 					'if [ "$*" = "api repos/o/r/pulls/7 --jq .base.sha + \\" \\" + .head.sha" ]; then [ -n "$NOW" ] && echo "$NOW"; exit; fi',
+					'if [ "$1 $2 $3" = "api repos/o/r/commits/$HEAD/statuses?per_page=100 --jq" ] && [ "$#" = 4 ]; then printf "%s" "$STATUSES" | jq -r "$4"; exit; fi',
 					'[ "$*" = "api -X POST repos/o/r/statuses/$HEAD --input -" ] && [ "$GH_TOKEN" = status-token ] && cat > "$POSTED" && exit 0',
 					"exit 1",
 					"",
@@ -548,13 +573,17 @@ describe("the melian round workflow", () => {
 				properties: { id: "0", severity: "P1", resolution, path: "a.ts", source: { check: "lens.security" } },
 			});
 			const posted = join(dir, "posted.json");
+			const started = "2026-11-07T10:00:00Z";
 			const step = ({
 				verdict = { status: "passed", blocking: false, findings: { block: [], acknowledge: [] }, notRun: [] },
 				exit = "0",
 				reviewed = { base: mergeBase, head },
 				merged = mergeBase,
-				now = `${base} ${head}`,
+				at = base,
+				now = `${at} ${head}`,
 				token = "status-token",
+				statuses = [],
+				since = started,
 			}) => {
 				rmSync(posted, { force: true });
 				writeFileSync(join(round, "verdict.json"), typeof verdict === "string" ? verdict : JSON.stringify(verdict));
@@ -571,16 +600,19 @@ describe("the melian round workflow", () => {
 						PATH: `${dir}:${process.env.PATH}`,
 						HOME: dir,
 						RUNNER_TEMP: dir,
+						GITHUB_WORKSPACE: policy,
 						GH_TOKEN: "workflow-token",
 						STATUS_TOKEN: token,
 						REPOSITORY: "o/r",
 						NUMBER: "7",
-						BASE: base,
+						BASE: at,
 						HEAD: head,
+						STARTED: since,
 						PULL_URL: "https://github.com/o/r/pull/7",
 						RUN_URL: "https://example.test/run",
 						RUN_ID: "9",
 						NOW: now,
+						STATUSES: JSON.stringify(statuses),
 						POSTED: posted,
 					},
 				});
@@ -645,6 +677,25 @@ describe("the melian round workflow", () => {
 					set("error", "Not reviewed: the round reviewed another revision"),
 				);
 			}
+			// The base's policy decides whether a writer's status counts, as it does for melian publish.
+			const distrusted = set(
+				"error",
+				`Not reviewed here: writers are not trusted; a trusted host sets this status${suffix}`,
+			);
+			expect(step({ at: untrusted })).toEqual(distrusted);
+			expect(step({ at: "a".repeat(40) })).toEqual(distrusted);
+			// A status set after the round started is newer than this round, whichever round or host set it.
+			const newer = {
+				code: 0,
+				stdout: "a newer melian/review status stands on this head, so this round sets none\n",
+				status: undefined,
+			};
+			const other = (context, created_at) => ({ context, created_at, state: "failure" });
+			expect(step({ statuses: [other("melian/review", "2026-11-07T10:00:01Z")] })).toEqual(newer);
+			expect(step({ since: "" })).toEqual(newer);
+			expect(
+				step({ statuses: [other("ci", "2026-11-07T11:00:00Z"), other("melian/review", "2026-11-07T10:00:00Z")] }),
+			).toEqual(set("success", `Passed${suffix}`));
 			const none = {
 				code: 0,
 				stdout:
@@ -662,7 +713,7 @@ describe("the melian round workflow", () => {
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}
-	});
+	}, 60_000);
 
 	it("posts the moved notice when the pull request moved during the round, from a fresh read", () => {
 		const { run } = workflow.jobs.report.steps.find((step) => step.name === "Comment on the pull request");
