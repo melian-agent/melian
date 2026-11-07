@@ -332,3 +332,34 @@ describe("ChangesetStore", () => {
 		expect(await ChangesetStore.exists(io(first), first, "range-0123456789abcdef")).toBe(true);
 	});
 });
+
+describe("Codex's review of a35d88c", () => {
+	it("fails a command whose copy cannot be stored, rather than call it offline", async () => {
+		const store = await ChangesetStore.write(io(first), first, pullRequest);
+		await writeNote(store, "kept");
+		const copy = join(
+			gitIn(first, "rev-parse", "--path-format=absolute", "--git-common-dir"),
+			"melian",
+			"state",
+			pullRequest,
+		);
+		writeFileSync(join(copy, "stray.txt"), "");
+		await expect(store.close()).rejects.toMatchObject({ code: "invalidCopy" });
+		expect(stderr).toEqual([]);
+		await expect(ChangesetStore.read(io(first), first, pullRequest)).resolves.toBeDefined();
+	});
+
+	it("restores a pull request's copy from the branch into a fresh clone, and releases the lease", async () => {
+		const store = await ChangesetStore.write(io(first), first, pullRequest);
+		await writeNote(store, "stored");
+		await store.close();
+		const fresh = clone();
+		expect(await ChangesetStore.read(io(fresh), fresh, pullRequest)).toBeUndefined();
+		await ChangesetStore.restore(io(fresh), fresh, pullRequest);
+		const read = (await ChangesetStore.read(io(fresh), fresh, pullRequest))!;
+		expect(await readNotes(read)).toEqual(["stored"]);
+		await read.close();
+		const index = JSON.parse(gitIn(origin, "cat-file", "blob", "refs/heads/melian/state:index.json"));
+		expect(index.changesets).toEqual({});
+	});
+});

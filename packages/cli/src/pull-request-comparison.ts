@@ -47,6 +47,10 @@ export class PullRequestComparison {
 	}
 	static async open(io: Io, number: number, exporting = false): Promise<PullRequestComparison> {
 		const repository = parseGitHubRemote(await git(io.cwd, ["remote", "get-url", "origin"]));
+		const changeset = pullRequestChangesetId("github", { owner: repository.owner, name: repository.repo }, number);
+		// A fresh clone holds no copy of the pull request's storage, so the scan below would find no membership; an
+		// export stays offline and reads what this clone holds.
+		if (!exporting) await ChangesetStore.restore(io, await git(io.cwd, ["rev-parse", "--show-toplevel"]), changeset);
 		const stores = await ComparisonStores.read(
 			io,
 			{

@@ -41,7 +41,10 @@ export class ComparisonStores {
 		});
 		// A pull request's storage is this clone's copy of the state branch's, unless it kept SQLite from before.
 		// A copy's directory is named for its changeset alone; its lock and markers carry a suffix.
-		const copies = await readdir(join(directory, "state")).catch((): string[] => []);
+		const copies = await readdir(join(directory, "state")).catch((error: NodeJS.ErrnoException): string[] => {
+			if (error.code === "ENOENT") return [];
+			throw new CliError(`cannot read comparisons at ${join(directory, "state")}: ${error.message}`);
+		});
 		const changesets = [
 			...new Set([
 				...names

@@ -9,7 +9,7 @@ import {
 	openJsonlStorage,
 	type Storage,
 } from "@melian-agent/pipeline";
-import { CopyInUse, LeaseHeld, StateBranch, type StateCheckout } from "@melian-agent/state-git";
+import { CopyInUse, LeaseHeld, StateBranch, StateBranchError, type StateCheckout } from "@melian-agent/state-git";
 import type { Io } from "./commands.ts";
 import { isScripted } from "./models.ts";
 import { CliError, openStorage, storagePath } from "./repository.ts";
@@ -127,6 +127,14 @@ export class ChangesetStore {
 		return ChangesetStore.#opened(io, checkout);
 	}
 
+	/** Takes a pull request's copy from the state branch when another run stored it since, and changes nothing else. */
+	static async restore(io: Io, repoRoot: string, changeset: string): Promise<void> {
+		if ((await locate(repoRoot, changeset, io.env)).kind !== "state") return;
+		const store = await ChangesetStore.write(io, repoRoot, changeset);
+		await store.storage.close(context);
+		await store.close();
+	}
+
 	/** Opens the changeset's storage for a command that only reads it, or undefined when none is stored here. */
 	static async read(
 		io: Io,
@@ -176,9 +184,12 @@ export class ChangesetStore {
 		const checkout = this.#checkout;
 		if (checkout === undefined) return;
 		try {
-			const pushed = await checkout
-				.push()
-				.catch((error: Error) => ({ kind: "unreached", reason: error.message }) as const);
+			// Only a branch out of reach leaves the copy for later; a copy or branch this build cannot store fails the command.
+			const pushed = await checkout.push().catch((error: unknown) => {
+				if (error instanceof StateBranchError && (error.code === "fetchFailed" || error.code === "pushFailed"))
+					return { kind: "unreached", reason: error.message } as const;
+				throw error;
+			});
 			if (pushed.kind === "refused")
 				this.#io.stderr(
 					`melian: melian/state refused this command's storage: ${visibleText(pushed.reason)}; this clone keeps it, and the next command carries on from the branch's copy\n`,
