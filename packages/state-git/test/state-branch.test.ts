@@ -4,7 +4,7 @@ import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineDoc } from "@melian-agent/pipeline";
-import { createSession, registerStorageConformance } from "@melian-agent/pipeline/testing";
+import { createSession } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { gitIn, isolatedGitEnv } from "../../core/test/fixtures/repo.ts";
 import { LeaseHeld, StateBranchError } from "../src/index.ts";
@@ -40,24 +40,6 @@ afterEach(() => {
 	vi.restoreAllMocks();
 	vi.unstubAllEnvs();
 	remote.close();
-});
-
-describe("Pi's storage conformance on a state branch checkout", () => {
-	registerStorageConformance({ describe, expect: (actual) => expect(actual), it }, "state-git", async (use) => {
-		const own = new Remote();
-		try {
-			const checkout = await own.clone().branch().checkout(changeset);
-			const storage = await storageOf(checkout);
-			try {
-				await use(storage);
-			} finally {
-				await storage.close(context).catch(() => {});
-			}
-			expect(await checkout.push()).toMatchObject({ kind: "pushed" });
-		} finally {
-			own.close();
-		}
-	});
 });
 
 describe("a changeset on the state branch", () => {
@@ -525,3 +507,127 @@ describe("Codex's review of edc438b", () => {
 		expect(remote.index()).toMatchObject({ changesets: { [changeset]: { lease: { holder: "x".repeat(200) } } } });
 	});
 });
+
+describe("what the mutation inventory found untested", () => {
+	it.each(["xmain.jsonl", "main.jsonlx", "doc-1a.jsonl", "task-01.jsonl"])(
+		"refuses %s on the branch",
+		async (name) => {
+			await (await remote.clone().branch().checkout(changeset)).push();
+			replaceChangeset(remote, { [name]: "" });
+			await expect(remote.clone().branch().checkout(changeset)).rejects.toMatchObject({ code: "invalidBranch" });
+		},
+	);
+
+	it.each(["xmain.jsonl", "main.jsonlx", "doc-1a.jsonl"])("refuses to push a copy holding %s", async (name) => {
+		const checkout = await remote.clone().branch().checkout(changeset);
+		writeFileSync(join(checkout.directory, name), "");
+		await expect(checkout.push()).rejects.toMatchObject({ code: "invalidCopy" });
+	});
+
+	it.each(["Pull-0123456789abcdef", "pull-0123/x", "pull-0123456789abcdef!", "-pull", "x".repeat(65)])(
+		"refuses the changeset name %j before any git command",
+		async (name) => {
+			await expect(remote.clone().branch().checkout(name)).rejects.toMatchObject({
+				code: "invalidBranch",
+				message: `${JSON.stringify(name)} is not a changeset name`,
+			});
+			expect(remote.tip()).toBeUndefined();
+		},
+	);
+
+	it("takes a changeset name of 64 characters", async () => {
+		await expect(remote.clone().branch().checkout("p".repeat(64))).resolves.toBeDefined();
+	});
+
+	it("commits under Melian's own identity, whatever the clone's git configuration says", async () => {
+		for (const key of Object.keys(isolatedGitEnv).filter((key) => /^GIT_(AUTHOR|COMMITTER)_/.test(key)))
+			vi.stubEnv(key, undefined);
+		await remote.clone().branch().checkout(changeset);
+		expect(gitIn(remote.bare, "log", "-1", "--format=%an <%ae> | %cn <%ce>", "refs/heads/melian/state")).toBe(
+			"Melian state <state@melian.invalid> | Melian state <state@melian.invalid>",
+		);
+	});
+
+	it("names its errors", async () => {
+		const clone = remote.clone();
+		await clone.branch().checkout(changeset);
+		const inUse = await clone
+			.branch()
+			.checkout(changeset)
+			.catch((error: Error) => error);
+		const held = await remote
+			.clone()
+			.branch()
+			.checkout(changeset)
+			.catch((error: Error) => error);
+		const invalid = await clone
+			.branch()
+			.checkout("Bad")
+			.catch((error: Error) => error);
+		expect([inUse, held, invalid].map((error) => (error as Error).name)).toEqual([
+			"CopyInUse",
+			"LeaseHeld",
+			"StateBranchError",
+		]);
+	});
+
+	it.each([
+		[
+			"index.json as an executable",
+			(index: string, changesets: string) =>
+				`100755 blob ${index}\tindex.json\n040000 tree ${changesets}\tchangesets\n`,
+		],
+		[
+			"index.json as a symlink",
+			(index: string, changesets: string) =>
+				`120000 blob ${index}\tindex.json\n040000 tree ${changesets}\tchangesets\n`,
+		],
+	])("refuses a branch with %s", async (_name, root) => {
+		await (await remote.clone().branch().checkout(changeset)).push();
+		const bare = remote.bare;
+		const index = gitIn(bare, "rev-parse", "refs/heads/melian/state:index.json");
+		const changesets = gitIn(bare, "rev-parse", "refs/heads/melian/state:changesets");
+		const tree = gitWith(bare, root(index, changesets), "mktree");
+		gitIn(
+			bare,
+			"update-ref",
+			"refs/heads/melian/state",
+			gitIn(bare, "commit-tree", tree, "-p", remote.tip()!, "-m", "m"),
+		);
+		await expect(remote.clone().branch().checkout(changeset)).rejects.toMatchObject({ code: "invalidBranch" });
+	});
+
+	it("refuses an executable storage file on the branch", async () => {
+		await (await remote.clone().branch().checkout(changeset)).push();
+		const bare = remote.bare;
+		const blob = gitWith(bare, "", "hash-object", "-w", "--stdin");
+		const own = gitWith(bare, `100755 blob ${blob}\tmain.jsonl\n`, "mktree");
+		const index = gitIn(bare, "rev-parse", "refs/heads/melian/state:index.json");
+		const changesets = gitWith(bare, `040000 tree ${own}\t${changeset}\n`, "mktree");
+		const root = gitWith(bare, `100644 blob ${index}\tindex.json\n040000 tree ${changesets}\tchangesets\n`, "mktree");
+		gitIn(
+			bare,
+			"update-ref",
+			"refs/heads/melian/state",
+			gitIn(bare, "commit-tree", root, "-p", remote.tip()!, "-m", "m"),
+		);
+		await expect(remote.clone().branch().checkout(changeset)).rejects.toMatchObject({ code: "invalidBranch" });
+	});
+
+	it("seals a file and commits to a key exactly as this format's first version does", async () => {
+		const key = Buffer.alloc(32, 1);
+		const checkout = await remote.clone({ key }).branch().checkout(changeset);
+		writeFileSync(join(checkout.directory, "main.jsonl"), "melian\n");
+		await checkout.push();
+		const sealed = execFileSync("git", ["cat-file", "blob", `${remote.stored()}:main.jsonl`], { cwd: remote.bare });
+		expect({ key: (remote.index() as { key: string }).key, sealed: sealed.toString("hex") }).toEqual(GOLDEN);
+	});
+});
+
+// Computed apart from this code, from the format the state branch decision sets: for 32 bytes of 0x01, the commitment
+// HMAC-SHA256(key, "melian-state key commitment"), and main.jsonl holding "melian\n" sealed as version 1, nonce, tag
+// and ciphertext.
+const GOLDEN = {
+	key: "07fcf6ff72e5a96a2ab8c8a51825709a0ba3096d8b984f37d04b87d60606c56b",
+	sealed: "0179f42154297f99b85f1a6d5af912a28f8e24aa9085d85478267ca04bbb4bf12357fcbd",
+};

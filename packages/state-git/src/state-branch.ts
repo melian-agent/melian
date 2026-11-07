@@ -256,9 +256,7 @@ export class StateBranch {
 	/** @internal Writes a tree of the branch into a fresh directory, refusing anything Pi's storage would not write. */
 	async materialize(changeset: string, tree: string, directory: string): Promise<void> {
 		const files = entries(await gitOutputBytes(this.#options.repoRoot, ["ls-tree", "-z", tree]));
-		const stray = files.find(
-			(entry) => entry.type !== "blob" || entry.mode !== "100644" || !storageFile.test(entry.name),
-		);
+		const stray = files.find((entry) => entry.mode !== "100644" || !storageFile.test(entry.name));
 		if (stray !== undefined)
 			throw new StateBranchError(
 				"invalidBranch",
@@ -356,17 +354,12 @@ export class StateBranch {
 
 	async #read(tip: string | undefined): Promise<{ index: StateIndex; changesets: Map<string, Entry> }> {
 		if (tip === undefined) return { index: StateIndex.empty(), changesets: new Map() };
-		// A branch this build cannot read whole is refused, never read as empty: the next push would delete the rest.
+		// A branch this build cannot read whole is refused, never read as empty: the next push would delete the rest. A
+		// git mode names its object's type: 100644 a plain blob, 040000 a tree.
 		const top = entries(await gitOutputBytes(this.#options.repoRoot, ["ls-tree", "-z", tip]));
 		const indexEntry = top.find((entry) => entry.name === indexFile);
 		const treeEntry = top.find((entry) => entry.name === changesetsTree);
-		if (
-			top.length !== 2 ||
-			indexEntry?.mode !== "100644" ||
-			indexEntry.type !== "blob" ||
-			treeEntry?.mode !== "040000" ||
-			treeEntry.type !== "tree"
-		)
+		if (top.length !== 2 || indexEntry?.mode !== "100644" || treeEntry?.mode !== "040000")
 			throw new StateBranchError(
 				"invalidBranch",
 				`the state branch's root holds ${JSON.stringify(top.map((entry) => `${entry.type} ${entry.name}`))}, where this build reads only the blob index.json and the tree changesets`,
@@ -380,7 +373,7 @@ export class StateBranch {
 			);
 		const changesets = new Map<string, Entry>();
 		for (const entry of entries(await gitOutputBytes(this.#options.repoRoot, ["ls-tree", "-z", treeEntry.sha]))) {
-			if (entry.mode !== "040000" || entry.type !== "tree" || !changesetName.test(entry.name))
+			if (entry.mode !== "040000" || !changesetName.test(entry.name))
 				throw new StateBranchError(
 					"invalidBranch",
 					`the state branch's changesets hold the ${entry.type} ${JSON.stringify(entry.name)}, which is no changeset`,
