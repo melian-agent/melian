@@ -388,12 +388,23 @@ async function runBiome(run: Run, root: string, scratch: string, binary: string,
 // The projects a tsconfig asks tsc to check. A solution-style tsconfig, with `references` and an empty `files` and no
 // `include`, checks nothing itself, so each referenced project is checked in its place; a tsconfig with an empty
 // `files`, no `include`, and no references checks nothing at all. With neither `files` nor `include`, tsc checks every
-// file below the tsconfig, so it is checked as it is.
-async function tscProjects(run: Run, root: string, project: string, seen = new Set<string>()): Promise<string[]> {
+// file below the tsconfig, so it is checked as it is. Each is read from git's object store, not the worktree: a
+// committed link there would have Melian read a file outside the checkout and repeat its references.
+async function tscProjects(
+	run: Run,
+	root: string,
+	scratch: string,
+	project: string,
+	seen = new Set<string>(),
+): Promise<string[]> {
 	if (seen.has(project)) return [];
 	seen.add(project);
-	const text = await run.input.env.readTextFile(posix.join(root, project), run.context);
-	const config = text.ok ? parseJsonc(text.value) : undefined;
+	const committed = posix.join(scratch, "project.json");
+	const shown = await run.shell(
+		`${git(root, `cat-file blob ${quote(`${run.input.commit}:${project}`)}`)} > ${quote(committed)} 2> /dev/null`,
+	);
+	const text = shown.code === 0 ? await run.readOutput(committed) : undefined;
+	const config = text === undefined ? undefined : parseJsonc(text);
 	if (typeof config !== "object" || config === null) return [project];
 	const { files, include, references } = config as { files?: unknown; include?: unknown; references?: unknown };
 	const empty = (value: unknown) => Array.isArray(value) && value.length === 0;
@@ -409,7 +420,7 @@ async function tscProjects(run: Run, root: string, project: string, seen = new S
 		const resolved = posix.normalize(posix.join(posix.dirname(project), reference));
 		if (resolved.startsWith("..") || posix.isAbsolute(resolved)) continue;
 		const file = resolved.endsWith(".json") ? resolved : posix.join(resolved, "tsconfig.json");
-		projects.push(...(await tscProjects(run, root, file, seen)));
+		projects.push(...(await tscProjects(run, root, scratch, file, seen)));
 	}
 	return projects;
 }
@@ -424,7 +435,7 @@ async function runTsc(
 	notes: string[],
 ): Promise<ToolLog> {
 	const { project } = run.input.settings as TscSettings;
-	const projects = await tscProjects(run, root, project);
+	const projects = await tscProjects(run, root, scratch, project);
 	if (projects.length === 0) {
 		throw run.fail("nothingToCheck", `${project} has no files, no include, and no references, so tsc checks nothing`);
 	}

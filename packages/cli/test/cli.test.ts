@@ -818,6 +818,15 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 			"tsc/TS2322",
 		],
 		[
+			"a committed tsconfig.json symlink to an outside project file",
+			(repo, outside) => {
+				writeFileSync(join(outside, "tsconfig.json"), JSON.stringify({ files: [], references: [{ path: token }] }));
+				rmSync(join(repo, "tsconfig.json"));
+				symlinkSync(join(outside, "tsconfig.json"), join(repo, "tsconfig.json"));
+			},
+			undefined,
+		],
+		[
 			"a /// <reference> to an outside declaration file",
 			(repo, outside) =>
 				writeFileSync(
