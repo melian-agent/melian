@@ -1,4 +1,5 @@
 import { createCipheriv, createDecipheriv, createHmac, randomUUID } from "node:crypto";
+import { existsSync } from "node:fs";
 import { mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -138,7 +139,8 @@ class CopyLock {
 /** What a push did: stored the changeset on the branch, or was refused because the branch moved under it. */
 export type PushResult =
 	| { readonly kind: "pushed"; readonly commit: string }
-	| { readonly kind: "refused"; readonly reason: string };
+	| { readonly kind: "refused"; readonly reason: string }
+	| { readonly kind: "unreached"; readonly reason: string };
 
 interface Entry {
 	readonly mode: string;
@@ -199,9 +201,35 @@ export class StateBranch {
 		}
 	}
 
+	/**
+	 * Opens this clone's copy of the changeset under its lock, touching no remote, for a command that only reads it.
+	 * Answers undefined when this clone holds no copy.
+	 */
+	async open(changeset: string): Promise<StateCheckout | undefined> {
+		if (!changesetName.test(changeset))
+			throw new StateBranchError("invalidBranch", `"${changeset}" is not a changeset name`);
+		if (!existsSync(join(this.#options.directory, changeset))) return undefined;
+		const lock = await CopyLock.take(this.#options.directory, changeset);
+		return StateCheckout.unreached(this, changeset, lock, "opened without the state branch");
+	}
+
 	async #checkout(changeset: string, lock: CopyLock): Promise<StateCheckout> {
 		// This clone's lock is held, so a live lease of this clone's is one a crashed run left.
-		const { stored } = await this.#withRetry(async (index) => {
+		let stored: (changeset: string) => string | undefined;
+		try {
+			({ stored } = await this.#reach(changeset));
+		} catch (error) {
+			// A branch this clone cannot fetch or push leaves the copy as it is; a later run that reaches the branch
+			// pushes it, or takes the branch's if another run pushed meanwhile.
+			if (error instanceof StateBranchError && (error.code === "fetchFailed" || error.code === "pushFailed"))
+				return StateCheckout.unreached(this, changeset, lock, error.message);
+			throw error;
+		}
+		return StateCheckout.restore(this, changeset, stored(changeset), lock);
+	}
+
+	#reach(changeset: string): Promise<{ stored: (changeset: string) => string | undefined }> {
+		return this.#withRetry(async (index) => {
 			const held = index.lease(changeset);
 			if (held !== undefined && held.holder !== this.#options.holder && this.#live(held))
 				throw new LeaseHeld(changeset, held);
@@ -213,7 +241,6 @@ export class StateBranch {
 			};
 			return { index: index.leased(changeset, lease) };
 		});
-		return StateCheckout.restore(this, changeset, stored(changeset), lock);
 	}
 
 	/** @internal */
@@ -453,6 +480,8 @@ export class StateCheckout {
 	readonly directory: string;
 	/** Where this clone's copy was set aside, when the branch had moved past it. */
 	readonly setAside: string | undefined;
+	/** Why this copy is not leased from the branch, when it is not: the branch was out of reach, or never asked. */
+	readonly unreached: string | undefined;
 	readonly #branch: StateBranch;
 	readonly #synced: string;
 	readonly #lock: CopyLock;
@@ -463,13 +492,32 @@ export class StateCheckout {
 		synced: string,
 		setAside: string | undefined,
 		lock: CopyLock,
+		unreached?: string,
 	) {
 		this.#branch = branch;
 		this.#lock = lock;
+		this.unreached = unreached;
 		this.changeset = changeset;
 		this.directory = join(branch.directory, changeset);
 		this.#synced = synced;
 		this.setAside = setAside;
+	}
+
+	/** @internal */
+	static async unreached(
+		branch: StateBranch,
+		changeset: string,
+		lock: CopyLock,
+		reason: string,
+	): Promise<StateCheckout> {
+		const directory = join(branch.directory, changeset);
+		// A copy started here from nothing is based on no stored tree, so the next run that reaches the branch keeps it
+		// unless another run stored the changeset meanwhile.
+		if (!existsSync(directory)) {
+			await mkdir(directory, { recursive: true });
+			await writeFile(`${directory}.synced`, "none\n", { flag: "wx" }).catch(() => {});
+		}
+		return new StateCheckout(branch, changeset, "none", undefined, lock, reason);
 	}
 
 	/** @internal */
@@ -508,6 +556,7 @@ export class StateCheckout {
 	 * because another run moved the changeset, keeps the copy here; the next checkout sets it aside for the branch's.
 	 */
 	async push(): Promise<PushResult> {
+		if (this.unreached !== undefined) return { kind: "unreached", reason: this.unreached };
 		let tree = "";
 		const result = await this.#branch.push(this.changeset, this.#synced, async () => {
 			tree = await this.#branch.snapshot(this.changeset, this.directory);

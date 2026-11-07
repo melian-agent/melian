@@ -64,23 +64,16 @@ it("takes the lease when the branch moves under two pushes in a row", async () =
 
 it("gives up when the branch moves under three pushes in a row", async () => {
 	moves = 3;
-	await expect(remote.clone().branch().checkout(changeset)).rejects.toMatchObject({
-		code: "pushFailed",
-		message: "the state branch moved under 3 pushes in a row",
-	});
+	expect((await remote.clone().branch().checkout(changeset)).unreached).toBe(
+		"the state branch moved under 3 pushes in a row",
+	);
 });
 
 it("does not retry a push the remote refused for another reason", async () => {
 	const hook = join(remote.bare, "hooks", "pre-receive");
 	writeFileSync(hook, "#!/bin/sh\necho 'state branch is protected' >&2\nexit 1\n");
 	chmodSync(hook, 0o755);
-	const error = await remote
-		.clone()
-		.branch()
-		.checkout(changeset)
-		.catch((caught: unknown) => caught);
-	expect(error).toMatchObject({
-		code: "pushFailed",
-		message: expect.stringMatching(/^git push of melian\/state failed: [\s\S]*state branch is protected/),
-	});
+	const checkout = await remote.clone().branch().checkout(changeset);
+	expect(checkout.unreached).toMatch(/^git push of melian\/state failed: [\s\S]*state branch is protected/);
+	expect(remote.tip()).toBeUndefined();
 });

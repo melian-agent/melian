@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineDoc } from "@melian-agent/pipeline";
@@ -288,15 +288,8 @@ describe("what the branch holds", () => {
 
 	it("names a fetch that fails", async () => {
 		const clone = remote.clone();
-		const error = await clone
-			.branch({ remote: join(remote.root, "absent.git") })
-			.checkout(changeset)
-			.catch((caught: unknown) => caught);
-		expect(error).toBeInstanceOf(StateBranchError);
-		expect(error).toMatchObject({
-			code: "fetchFailed",
-			message: expect.stringMatching(/^git fetch of melian\/state failed: /),
-		});
+		const checkout = await clone.branch({ remote: join(remote.root, "absent.git") }).checkout(changeset);
+		expect(checkout.unreached).toMatch(/^git fetch of melian\/state failed: /);
 	});
 });
 
@@ -523,5 +516,70 @@ describe("Codex's review of edc438b", () => {
 			.branch()
 			.checkout(changeset);
 		expect(remote.index()).toMatchObject({ changesets: { [changeset]: { lease: { holder: "x".repeat(200) } } } });
+	});
+});
+
+describe("a clone that cannot reach the branch", () => {
+	it("works on its own copy when the branch cannot be fetched, and keeps the copy's lock", async () => {
+		const clone = remote.clone();
+		const unreachable = { remote: join(remote.root, "absent.git") };
+		const checkout = await clone.branch(unreachable).checkout(changeset);
+		expect(checkout.unreached).toMatch(/^git fetch of melian\/state failed: /);
+		await note(await storageOf(checkout), "offline");
+		await expect(clone.branch(unreachable).checkout(changeset)).rejects.toMatchObject({ code: "copyInUse" });
+		expect(await checkout.push()).toEqual({ kind: "unreached", reason: checkout.unreached });
+		checkout.close();
+		expect(remote.tip()).toBeUndefined();
+		const reached = await clone.branch().checkout(changeset);
+		expect(reached.unreached).toBeUndefined();
+		expect(await notes(await storageOf(reached))).toEqual(["offline"]);
+	});
+
+	it("works on its own copy when the lease cannot be pushed", async () => {
+		const hook = join(remote.bare, "hooks", "pre-receive");
+		writeFileSync(hook, "#!/bin/sh\necho 'read-only token' >&2\nexit 1\n");
+		chmodSync(hook, 0o755);
+		const checkout = await remote.clone().branch().checkout(changeset);
+		expect(checkout.unreached).toMatch(/^git push of melian\/state failed: [\s\S]*read-only token/);
+		expect(await checkout.push()).toMatchObject({ kind: "unreached" });
+		expect(remote.tip()).toBeUndefined();
+	});
+
+	it("still refuses a live lease it can read", async () => {
+		await remote.clone().branch().checkout(changeset);
+		await expect(remote.clone().branch().checkout(changeset)).rejects.toBeInstanceOf(LeaseHeld);
+	});
+
+	it("still refuses a branch it cannot read", async () => {
+		await (await remote.clone().branch().checkout(changeset)).push();
+		await expect(
+			remote
+				.clone({ key: randomBytes(32) })
+				.branch()
+				.checkout(changeset),
+		).rejects.toMatchObject({
+			code: "invalidBranch",
+		});
+	});
+});
+
+describe("opening a copy without the branch", () => {
+	it("takes the copy's lock and touches no remote", async () => {
+		const clone = remote.clone();
+		const writer = await clone.branch().checkout(changeset);
+		await note(await storageOf(writer), "stored");
+		await writer.push();
+		writer.close();
+		const reader = (await clone.branch({ remote: join(remote.root, "absent.git") }).open(changeset))!;
+		expect(reader.unreached).toBe("opened without the state branch");
+		expect(await notes(await storageOf(reader))).toEqual(["stored"]);
+		await expect(clone.branch().checkout(changeset)).rejects.toMatchObject({ code: "copyInUse" });
+		expect(await reader.push()).toEqual({ kind: "unreached", reason: "opened without the state branch" });
+		reader.close();
+		await expect(clone.branch().checkout(changeset)).resolves.toBeDefined();
+	});
+
+	it("answers undefined for a changeset this clone has no copy of", async () => {
+		expect(await remote.clone().branch().open(changeset)).toBeUndefined();
 	});
 });
