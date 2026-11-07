@@ -73,6 +73,7 @@ describe("a changeset on the state branch", () => {
 		expect(await notes(await storageOf(fresh))).toEqual(["marker secret 0123", "ledger comment 42"]);
 		expect(remote.index()).toEqual({
 			version: 1,
+			key: expect.stringMatching(/^[0-9a-f]{64}$/),
 			changesets: {
 				[changeset]: {
 					lease: { run: expect.any(String), holder: "clone-2", heartbeat: expect.any(String), attempts: 1 },
@@ -167,7 +168,7 @@ describe("the lease", () => {
 	it("is released by the push", async () => {
 		const checkout = await remote.clone().branch().checkout(changeset);
 		await checkout.push();
-		expect(remote.index()).toEqual({ version: 1, changesets: {} });
+		expect(remote.index()).toEqual({ version: 1, key: expect.stringMatching(/^[0-9a-f]{64}$/), changesets: {} });
 	});
 });
 
@@ -434,9 +435,8 @@ describe("Codex's review of a7e009f", () => {
 		const stranger = remote.clone({ key: randomBytes(32) });
 		await expect(stranger.branch().checkout(changeset)).rejects.toMatchObject({
 			code: "invalidBranch",
-			message: expect.stringMatching(
-				/^this clone's state key cannot read (?:main|doc-\d+|task-\d+)\.jsonl in pull-0123456789abcdef; the branch was written under another key, or the file was moved$/,
-			),
+			message:
+				"this clone's state key is not the key the branch was written under; check the writers' key in Melian's secrets file",
 		});
 		expect(stranger.has(changeset)).toBe(false);
 	});
@@ -450,6 +450,8 @@ describe("Codex's review of a7e009f", () => {
 		replaceChangeset(remote, { "main.jsonl": moved }, "pull-fedcba9876543210");
 		await expect(remote.clone().branch().checkout("pull-fedcba9876543210")).rejects.toMatchObject({
 			code: "invalidBranch",
+			message:
+				"this clone's state key cannot read main.jsonl in pull-fedcba9876543210; the branch was written under another key, or the file was moved",
 		});
 	});
 
@@ -469,5 +471,57 @@ describe("Codex's review of a7e009f", () => {
 		expect(() => remote.clone({ key: randomBytes(length) }).branch()).toThrow(
 			"the state key must be 32 bytes, as a writers' key from Melian's secrets file is",
 		);
+	});
+});
+
+describe("Codex's review of edc438b", () => {
+	it("refuses a new changeset from a clone whose key is not the branch's, and moves nothing", async () => {
+		await (await remote.clone().branch().checkout(changeset)).push();
+		const tip = remote.tip();
+		await expect(
+			remote
+				.clone({ key: randomBytes(32) })
+				.branch()
+				.checkout("pull-fedcba9876543210"),
+		).rejects.toMatchObject({
+			code: "invalidBranch",
+			message:
+				"this clone's state key is not the key the branch was written under; check the writers' key in Melian's secrets file",
+		});
+		expect(remote.tip()).toBe(tip);
+	});
+
+	it("refuses a cached copy when this clone's key changed, and moves nothing", async () => {
+		const clone = remote.clone();
+		const first = await clone.branch().checkout(changeset);
+		await note(await storageOf(first), "kept");
+		await first.push();
+		first.close();
+		const tip = remote.tip();
+		await expect(clone.branch({ key: randomBytes(32) }).checkout(changeset)).rejects.toMatchObject({
+			code: "invalidBranch",
+		});
+		expect(remote.tip()).toBe(tip);
+	});
+
+	it.each([
+		["empty", ""],
+		["201 characters long", "x".repeat(201)],
+	])("refuses a holder that is %s before any git command", (_name, holder) => {
+		expect(() => remote.clone({ holder }).branch()).toThrow(
+			expect.objectContaining({
+				code: "invalidHolder",
+				message: "a state branch holder must be 1 to 200 characters",
+			}),
+		);
+		expect(remote.tip()).toBeUndefined();
+	});
+
+	it("takes a holder of exactly 200 characters", async () => {
+		await remote
+			.clone({ holder: "x".repeat(200) })
+			.branch()
+			.checkout(changeset);
+		expect(remote.index()).toMatchObject({ changesets: { [changeset]: { lease: { holder: "x".repeat(200) } } } });
 	});
 });

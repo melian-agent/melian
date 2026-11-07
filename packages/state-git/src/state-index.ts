@@ -11,7 +11,7 @@ export interface Lease {
  * clone's copy holds what Pi's storage never writes.
  */
 export class StateBranchError extends Error {
-	readonly code: "fetchFailed" | "pushFailed" | "invalidBranch" | "invalidCopy" | "invalidKey";
+	readonly code: "fetchFailed" | "pushFailed" | "invalidBranch" | "invalidCopy" | "invalidKey" | "invalidHolder";
 
 	constructor(code: StateBranchError["code"], message: string) {
 		super(message);
@@ -49,13 +49,16 @@ function lease(value: unknown): Lease {
 /** The state branch's `index.json`: one record per changeset another run may be working on. */
 export class StateIndex {
 	readonly #leases: ReadonlyMap<string, Lease>;
+	/** What the writers' key commits to, so a clone holding another key refuses rather than write under it. */
+	readonly key: string | undefined;
 
-	private constructor(leases: ReadonlyMap<string, Lease>) {
+	private constructor(leases: ReadonlyMap<string, Lease>, key: string | undefined) {
 		this.#leases = leases;
+		this.key = key;
 	}
 
 	static empty(): StateIndex {
-		return new StateIndex(new Map());
+		return new StateIndex(new Map(), undefined);
 	}
 
 	/** Reads the index a branch holds, refusing one this build does not know rather than overwriting it. */
@@ -67,17 +70,23 @@ export class StateIndex {
 			throw invalid("it is not JSON");
 		}
 		if (typeof value !== "object" || value === null) throw invalid("it is not an object");
-		const { version: found, changesets } = value as Record<string, unknown>;
+		const { version: found, key, changesets } = value as Record<string, unknown>;
 		if (found !== version)
 			throw invalid(`its version is ${JSON.stringify(found)}, and this build of Melian reads version ${version}`);
 		if (typeof changesets !== "object" || changesets === null || Array.isArray(changesets))
 			throw invalid("its changesets are not an object");
+		if (key !== undefined && (typeof key !== "string" || !/^[0-9a-f]{64}$/.test(key)))
+			throw invalid("its key is not a commitment");
 		const leases = new Map<string, Lease>();
 		for (const [id, record] of Object.entries(changesets)) {
 			if (typeof record !== "object" || record === null) throw invalid(`the record of ${id} is not an object`);
 			leases.set(id, lease((record as Record<string, unknown>).lease));
 		}
-		return new StateIndex(leases);
+		return new StateIndex(leases, key);
+	}
+
+	keyed(key: string): StateIndex {
+		return new StateIndex(this.#leases, key);
 	}
 
 	lease(changeset: string): Lease | undefined {
@@ -85,19 +94,19 @@ export class StateIndex {
 	}
 
 	leased(changeset: string, held: Lease): StateIndex {
-		return new StateIndex(new Map([...this.#leases, [changeset, held]]));
+		return new StateIndex(new Map([...this.#leases, [changeset, held]]), this.key);
 	}
 
 	released(changeset: string): StateIndex {
 		const leases = new Map(this.#leases);
 		leases.delete(changeset);
-		return new StateIndex(leases);
+		return new StateIndex(leases, this.key);
 	}
 
-	toJSON(): { version: number; changesets: Record<string, { lease: Lease }> } {
+	toJSON(): { version: number; key?: string; changesets: Record<string, { lease: Lease }> } {
 		const changesets: Record<string, { lease: Lease }> = {};
 		for (const [id, held] of [...this.#leases].sort(([a], [b]) => a.localeCompare(b)))
 			changesets[id] = { lease: held };
-		return { version, changesets };
+		return { version, ...(this.key === undefined ? {} : { key: this.key }), changesets };
 	}
 }

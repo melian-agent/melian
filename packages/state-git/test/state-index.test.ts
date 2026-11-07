@@ -74,3 +74,15 @@ describe("StateIndex", () => {
 		expect(StateIndex.parse(indexOf({ a: { lease: long } })).lease("a")).toEqual(long);
 	});
 });
+
+it("keeps the key commitment it reads, and adds one it is given", () => {
+	const key = "a".repeat(64);
+	expect(StateIndex.parse(JSON.stringify({ version: 1, key, changesets: {} })).key).toBe(key);
+	expect(StateIndex.empty().key).toBeUndefined();
+	expect(StateIndex.empty().leased("pull-a", lease).keyed(key).released("pull-a").toJSON()).toEqual({
+		version: 1,
+		key,
+		changesets: {},
+	});
+	expect(StateIndex.empty().toJSON()).toEqual({ version: 1, changesets: {} });
+});

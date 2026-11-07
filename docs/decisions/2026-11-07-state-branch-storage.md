@@ -31,7 +31,7 @@ Each run fetches into a ref of its own, without writing `FETCH_HEAD`, so runs on
 
 ## Sealing
 
-Every file a push puts on the branch is sealed with AES-256-GCM under a subkey of the writers' 32-byte key, with the changeset and the file's name as associated data, so a file moved to another changeset or name fails to open. Its nonce is an HMAC of the name and the content under another subkey, so an unchanged file seals to the same blob on every push, and two contents never share a nonce. A checkout opens every file before it writes any, and a file this clone's key cannot open is `invalidBranch`. The index stays plain, since it holds only leases.
+Every file a push puts on the branch is sealed with AES-256-GCM under a subkey of the writers' 32-byte key, with the changeset and the file's name as associated data, so a file moved to another changeset or name fails to open. Its nonce is an HMAC of the name and the content under another subkey, so an unchanged file seals to the same blob on every push, and two contents never share a nonce. A checkout opens every file before it writes any, and a file this clone's key cannot open is `invalidBranch`. The index stays plain, since it holds only leases and the key's commitment: an HMAC of a fixed label under the key. The first push records it, and every read checks it before a lease is taken or a copy pushed, so a clone holding another key refuses rather than add a changeset no writer can open, or rewrite a cached copy under its key. A holder outside 1 to 200 characters is refused before any git command, since a lease the next read refuses would make the whole branch unreadable.
 
 ## Pushing and resuming
 

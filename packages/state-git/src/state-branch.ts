@@ -61,6 +61,7 @@ export class LeaseHeld extends Error {
 class Seal {
 	readonly #encrypt: Buffer;
 	readonly #nonce: Buffer;
+	readonly commitment: string;
 
 	constructor(key: Uint8Array) {
 		if (key.length !== 32)
@@ -70,6 +71,7 @@ class Seal {
 			);
 		this.#encrypt = createHmac("sha256", key).update("melian-state encrypt").digest();
 		this.#nonce = createHmac("sha256", key).update("melian-state nonce").digest();
+		this.commitment = createHmac("sha256", key).update("melian-state key commitment").digest("hex");
 	}
 
 	seal(name: string, plain: Buffer): Buffer {
@@ -169,6 +171,8 @@ export class StateBranch {
 	readonly #seal: Seal;
 
 	constructor(options: StateBranchOptions) {
+		if (options.holder.length === 0 || options.holder.length > 200)
+			throw new StateBranchError("invalidHolder", "a state branch holder must be 1 to 200 characters");
 		this.#options = options;
 		this.#seal = new Seal(options.key);
 	}
@@ -312,7 +316,7 @@ export class StateBranch {
 			const { index, changesets } = await this.#read(tip);
 			const stored = (id: string) => changesets.get(id)?.sha;
 			const next = await change(index, stored);
-			const commit = await this.#compose(tip, next.index, changesets, next.tree);
+			const commit = await this.#compose(tip, next.index.keyed(this.#seal.commitment), changesets, next.tree);
 			if (await this.#push(commit, tip)) {
 				const after = new Map(changesets);
 				if (next.tree !== undefined)
@@ -368,6 +372,12 @@ export class StateBranch {
 				`the state branch's root holds ${JSON.stringify(top.map((entry) => `${entry.type} ${entry.name}`))}, where this build reads only the blob index.json and the tree changesets`,
 			);
 		const index = StateIndex.parse(await gitOutput(this.#options.repoRoot, ["cat-file", "blob", indexEntry.sha]));
+		// Checked on every read, so neither a new changeset nor a cached copy is ever written under another key.
+		if (index.key !== undefined && index.key !== this.#seal.commitment)
+			throw new StateBranchError(
+				"invalidBranch",
+				"this clone's state key is not the key the branch was written under; check the writers' key in Melian's secrets file",
+			);
 		const changesets = new Map<string, Entry>();
 		for (const entry of entries(await gitOutputBytes(this.#options.repoRoot, ["ls-tree", "-z", treeEntry.sha]))) {
 			if (entry.mode !== "040000" || entry.type !== "tree" || !changesetName.test(entry.name))

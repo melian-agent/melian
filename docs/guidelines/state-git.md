@@ -8,8 +8,8 @@ The state-git package keeps a changeset's Pi storage on the repository's `melian
 - `StateBranch.checkout(changeset)` takes the changeset's lease and returns a `StateCheckout`, with this clone's copy as the branch has it. It throws `CopyInUse` while another process in this clone works on the changeset, and `LeaseHeld` while another clone holds a live lease. Close the checkout when the work is done, pushed or not; `close()` releases the clone's lock, an exclusive SQLite transaction on `<id>.lock`.
 - `StateCheckout.directory` is the copy. The CLI opens it with the pipeline's `openJsonlStorage`, since only the pipeline's wrapper imports Pi; close that storage before `push()`.
 - `StateCheckout.push()` stores the copy on the branch and releases the lease. It returns `refused`, with the reason, when another run wrote the changeset; the copy stays, and the next checkout sets it aside for the branch's.
-- `StateIndex` is the branch's `index.json`. It parses strictly and refuses a version this build does not read.
-- `StateBranchError` carries `fetchFailed`, `pushFailed`, `invalidBranch` for a branch this build or this key cannot read whole, `invalidCopy` for a local copy holding what Pi's storage never writes, or `invalidKey`.
+- `StateIndex` is the branch's `index.json`: the leases and the writers' key commitment. It parses strictly and refuses a version this build does not read.
+- `StateBranchError` carries `fetchFailed`, `pushFailed`, `invalidBranch` for a branch this build or this key cannot read whole, `invalidCopy` for a local copy holding what Pi's storage never writes, `invalidKey`, or `invalidHolder`.
 
 ## The layout
 
