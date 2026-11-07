@@ -20,7 +20,7 @@ A lens level may probe. `probe` on a level names the prober's tier, the level's 
 
 There is no fixed probe count. The bound is the level's token and tool budgets, which every conversation of the run takes, and the per-probe time limit. Each conversation's stage telemetry names its role, and the prober's names its probe count, their time and the limit. The lens's check record says how many attacks the plan held, how many probes ran in what time, and how many attacks were skipped.
 
-A level that probes runs only where a probe may: the host has said the head is a writer's or the reviewer's, the base policy trusts writers, and an empty probe runs here. Elsewhere triage cannot choose it and the lens's record says why, as for a level whose tier has no model.
+A level that probes runs its probes only where a probe may: the host has said the head is a writer's or the reviewer's, the base policy trusts writers, and an empty probe runs here. Its prober's tier must also route, and the plan must not refuse it. Elsewhere the level runs as it would without `probe`, one conversation reading as the lens reads, and the lens's record says why. Triage's question is unchanged, so a fork's head still gets the closest look its band allows, and the probes are lost only there.
 
 ## Rulings it reads, and pull request comments
 

@@ -207,6 +207,21 @@ const record = (verdict: { ran?: readonly CheckRecord[]; notRun: readonly CheckR
 
 const plan = [call("record_plan", { attacks: [attack] }), fauxAssistantMessage("Planned 1 attack.")];
 
+// The lens's own instructions, as a level runs them without probes.
+const reviewer = "You are the trust-boundary reviewer";
+
+// A review in which the deep level runs as it would without `probe`, answering once.
+function withoutProbes(options: Parameters<typeof review>[1]) {
+	return review(
+		{
+			planner: [],
+			prober: [],
+			others: [{ match: reviewer, replies: [fauxAssistantMessage("Reported 0 findings.")] }],
+		},
+		options,
+	);
+}
+
 describe("a level that probes", () => {
 	it("reports a finding only with a probe that failed, and the verifier judges the probe it ran again", async () => {
 		const { run, requests, sandbox } = await review({ planner: plan, prober: probing(failing) });
@@ -319,19 +334,15 @@ describe("a level that probes", () => {
 		expect(record.error).toBe("the planner recorded no attack plan");
 	});
 
-	it("runs no probe for a head the host has not allowed, and says so when no other level may run", async () => {
-		const { run, requests } = await review(
-			{ planner: plan, prober: probing(failing) },
-			{ writer: { trusted: false, detail: "octocat has read permission" } },
-		);
-		const error = await run.then(
-			() => undefined,
-			(thrown: unknown) => thrown,
-		);
-		expect((error as ReviewError).code).toBe("noAvailableModel");
-		expect((error as ReviewError).message).toContain(
-			"deep runs probes, which cannot run here: octocat has read permission",
-		);
+	it("runs a level that cannot probe here without probes, as it ran before, and says why", async () => {
+		const { run, requests } = await withoutProbes({
+			writer: { trusted: false, detail: "octocat has read permission" },
+		});
+		const ran = record((await run).verdict);
+		expect(ran).toMatchObject({ status: "ran", level: "deep" });
+		expect(ran.reason).toContain("deep ran without probes, which cannot run here: octocat has read permission");
+		expect(requests[reviewer]).toHaveLength(1);
+		expect(systemPromptOf(requests[reviewer]![0]!)).not.toContain(planner);
 		expect(requests[planner]).toEqual([]);
 	});
 
@@ -374,12 +385,11 @@ describe("a level that probes", () => {
 		expect(record(verdict)).toMatchObject({ status: "ran", level: "deep" });
 	});
 
-	it("fails a review whose prober's tier reaches no model, naming the tier", async () => {
-		const { run, requests } = await review({ planner: plan, prober: [] }, { lens: probingWith({ prober: "light" }) });
-		const error = await failure(run);
-		expect(error.code).toBe("noAvailableModel");
-		expect(error.message).toContain("deep's prober runs on light, and");
-		expect(requests[planner]).toEqual([]);
+	it("runs without probes when its prober's tier reaches no model, naming the tier", async () => {
+		const { run } = await withoutProbes({ lens: probingWith({ prober: "light" }) });
+		expect(record((await run).verdict).reason).toContain(
+			"deep ran without probes, since its prober runs on light, and",
+		);
 	});
 
 	it.each([
@@ -391,8 +401,8 @@ describe("a level that probes", () => {
 			"trust.writers is false in the repository's policy",
 		],
 	] as const)("runs no probe for %s", async (_, config, writer, reason) => {
-		const { run } = await review({ planner: plan, prober: [] }, { config, writer });
-		expect((await failure(run)).message).toContain(`deep runs probes, which cannot run here: ${reason}`);
+		const { run } = await withoutProbes({ config, writer });
+		expect(record((await run).verdict).reason).toContain(`deep ran without probes, which cannot run here: ${reason}`);
 	});
 
 	it("probes a writer's head under a policy that trusts writers", async () => {
@@ -404,65 +414,56 @@ describe("a level that probes", () => {
 	});
 
 	it("runs no probe where the sandbox cannot run, with the sandbox's reason", async () => {
-		const { run } = await review(
-			{ planner: plan, prober: [] },
-			{ sandbox: { ...unconfinedSandbox(), unavailable: () => "no seatbelt here" } },
+		const { run } = await withoutProbes({
+			sandbox: { ...unconfinedSandbox(), unavailable: () => "no seatbelt here" },
+		});
+		expect(record((await run).verdict).reason).toContain(
+			"deep ran without probes, which cannot run here: no seatbelt here",
 		);
-		expect((await failure(run)).message).toContain("deep runs probes, which cannot run here: no seatbelt here");
 	});
 
-	it("lets triage choose no level that cannot probe, and says so on the record of the level it ran", async () => {
+	it("lets triage choose a level that cannot probe here, which runs without probes", async () => {
 		const decider = new RecordedDecider(
 			{ triage: { version: "1", answers: { "trust-boundary": { distribution: { deep: 1 } } } } },
 			{ name: "recorded" },
 		);
-		const careful = "You are the trust-boundary reviewer";
-		const { run, requests } = await review(
-			{
-				planner: [],
-				prober: [],
-				others: [{ match: careful, replies: [fauxAssistantMessage("Reported 0 findings.")] }],
-			},
-			{ writer: { trusted: false, detail: "octocat has read permission" }, decider, config: { lenses: {} } },
-		);
+		const { run, requests } = await withoutProbes({
+			writer: { trusted: false, detail: "octocat has read permission" },
+			decider,
+			config: { lenses: {} },
+		});
 		const ran = record((await run).verdict);
-		expect(ran).toMatchObject({ status: "ran", level: "careful" });
-		expect(ran.reason).toContain(
-			"triage could not choose deep, since deep runs probes, which cannot run here: octocat has read permission",
-		);
-		expect(requests[careful]).toHaveLength(1);
-		expect(requests[planner]).toEqual([]);
+		expect(ran).toMatchObject({ status: "ran", level: "deep" });
+		expect(ran.reason).toContain("deep ran without probes, which cannot run here: octocat has read permission");
+		expect(requests[reviewer]).toHaveLength(1);
 	});
 
-	it("refuses a lens whose prober's tier the plan refuses, before any model is asked", async () => {
+	it("runs without probes when the plan refuses its prober's tier, and asks it nothing there", async () => {
 		const fake = createFakeModels();
-		const { run, requests } = await review(
-			{ planner: plan, prober: [] },
-			{
-				fake,
-				lens: probingWith({ prober: "medium" }),
-				config: {
-					models: {
-						heavy: { model: `${fake.ref().provider}/${fake.ref().modelId}` },
-						medium: { accept: ["nowhere/model"], unavailable: "fail" },
-					},
-				},
-				plan: async (config, lenses, fake) => {
-					const { catalog, credentials } = await planInputs(fake.review);
-					return ReviewPlan.resolve({
-						config,
-						routes: { committed: config.models, overridden: {}, lensTiers: {}, retiered: {} },
-						catalog,
-						credentials,
-						lenses,
-						checks: ["lens.trust-boundary"],
-					});
+		const { run, requests } = await withoutProbes({
+			fake,
+			lens: probingWith({ prober: "medium" }),
+			config: {
+				models: {
+					heavy: { model: `${fake.ref().provider}/${fake.ref().modelId}` },
+					medium: { accept: ["nowhere/model"], unavailable: "fail" },
 				},
 			},
-		);
-		const failed = record((await run).verdict);
-		expect(failed).toMatchObject({ status: "failed", level: "deep" });
-		expect(failed.reason).toMatch(/^its prober's tier, medium: /);
+			plan: async (config, lenses, fake) => {
+				const { catalog, credentials } = await planInputs(fake.review);
+				return ReviewPlan.resolve({
+					config,
+					routes: { committed: config.models, overridden: {}, lensTiers: {}, retiered: {} },
+					catalog,
+					credentials,
+					lenses,
+					checks: ["lens.trust-boundary"],
+				});
+			},
+		});
+		const ran = record((await run).verdict);
+		expect(ran).toMatchObject({ status: "ran", level: "deep" });
+		expect(ran.reason).toMatch(/deep ran without probes, since the plan refuses its prober's tier, medium: /);
 		expect(requests[planner]).toEqual([]);
 	});
 

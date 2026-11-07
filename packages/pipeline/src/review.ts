@@ -1985,47 +1985,19 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		const route = routes.get(tier);
 		return route !== undefined && "unrouted" in route ? route.unrouted : undefined;
 	};
-	// A level that probes runs only where probes may: for a head the host allows, under a sandbox that runs here.
-	const probes = covering.some(({ lens }) =>
-		lens.declaredLevels().some((level) => lens.level(level).probe !== undefined),
-	)
-		? await probeRefusal(request, config)
-		: undefined;
-	// Why a level of `lens` cannot run although its own tier routes: it probes where probes may not, or its prober's
-	// tier reaches no model.
-	const unprobed = (lens: Lens, level: ScrutinyLevel): string | undefined => {
-		const { tier, probe } = lens.level(level);
-		if (probe === undefined) return undefined;
-		if (probes !== undefined) return `${level} runs probes, which cannot run here: ${probes}`;
-		const prober = probe.prober ?? tier;
-		return routed(prober)
-			? undefined
-			: `${level}'s prober runs on ${prober}, and ${unrouted(prober) ?? "it has no route"}`;
-	};
 	// Levels the band holds that triage could not offer, by lens, noted on its record so coverage never shrinks unseen.
 	const unrunnable = new Map<Lens, string[]>();
 	const runnable = new Map(
 		covering.map(({ lens }) => {
 			const band = bands.get(lens)!;
-			const routedLevels = lens.runnableLevels(band, routed);
-			const levels = routedLevels.filter((level) => unprobed(lens, level) === undefined);
-			if (levels.length === 0)
-				throw noLevel(
-					lens.name,
-					band,
-					routedLevels.length === 0
-						? lens.unrunnable(band, unrouted)
-						: routedLevels.map((level) => unprobed(lens, level)).join("; "),
-				);
+			const levels = lens.runnableLevels(band, routed);
+			if (levels.length === 0) throw noLevel(lens.name, band, lens.unrunnable(band, unrouted));
 			// The level the lens runs at without a decision must run, as it had to before triage, so a missing model
 			// fails the review rather than quietly moving the lens to a lighter level.
 			const fallback = band.bound(defaultScrutinyLevel, band.holds(lens.declaredLevels()));
 			if (fallback !== "skip" && !levels.includes(fallback)) {
 				const { tier } = lens.level(fallback);
-				const why = routedLevels.includes(fallback)
-					? `cannot run: ${unprobed(lens, fallback)}`
-					: `runs on ${tier}, and ${unrouted(tier)}`;
-				throw noLevel(lens.name, band, `its default level, ${fallback}, ${why}`);
+				throw noLevel(lens.name, band, `its default level, ${fallback}, runs on ${tier}, and ${unrouted(tier)}`);
 			}
 			// Without a decider the lens runs at its default level, so a level it could not have chosen changes nothing.
 			const dropped =
@@ -2036,15 +2008,29 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				lens,
 				dropped.map((level) => {
 					const { tier } = lens.level(level);
-					const why = routedLevels.includes(level)
-						? unprobed(lens, level)
-						: `${level} runs on ${tier}, and ${unrouted(tier)}`;
-					return `triage could not choose ${level}, since ${why}`;
+					return `triage could not choose ${level}, since ${level} runs on ${tier}, and ${unrouted(tier)}`;
 				}),
 			);
 			return [lens, levels] as const;
 		}),
 	);
+	// Whether probes may run for this review, asked once and only when a level that probes runs: for a head the host
+	// allows, under trusting policy, on a sandbox that runs here.
+	let probesAsked: Promise<string | undefined> | undefined;
+	const probeRefused = () => (probesAsked ??= probeRefusal(request, config));
+	// Why a level that probes runs without them here: probes may not run, or its prober's tier reaches no model, or the
+	// plan refuses that tier. It then runs as it would without `probe`, and its record says why.
+	const withoutProbes = async (level: ScrutinyLevel, settings: LensLevel): Promise<string | undefined> => {
+		const refused = await probeRefused();
+		if (refused !== undefined) return `${level} ran without probes, which cannot run here: ${refused}`;
+		const prober = settings.probe!.prober ?? settings.tier;
+		const planned = plan?.refusal(prober);
+		if (planned !== undefined)
+			return `${level} ran without probes, since the plan refuses its prober's tier, ${prober}: ${planned}`;
+		return "route" in routes.get(prober)!
+			? undefined
+			: `${level} ran without probes, since its prober runs on ${prober}, and ${unrouted(prober)}`;
+	};
 	const triageInput = prompt.renderInput(undefined, { tools: false });
 	spans.end();
 	const triaged =
@@ -2082,13 +2068,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	for (const { lens } of covering) {
 		const level = choices.get(lens);
 		if (plan === undefined || level === undefined || level === "skip") continue;
-		const judged = plan.judge(lens.name, level, undefined, lens.scope);
-		const { lineage } = judged;
-		// A prober on a tier of its own answers to that tier's policy too.
-		const prober = lens.level(level).probe?.prober;
-		const proberRefusal = prober === undefined ? undefined : plan.refusal(prober);
-		const reason =
-			judged.refusal ?? (proberRefusal === undefined ? undefined : `its prober's tier, ${prober}: ${proberRefusal}`);
+		const { refusal: reason, lineage } = plan.judge(lens.name, level, undefined, lens.scope);
 		if (reason === undefined) continue;
 		refused.add(lens);
 		if (refusals.has(`${lens.name}@${lens.version}`)) continue;
@@ -2212,7 +2192,10 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			// The head's functions around the hunks, read once for the review, at the levels that read functions.
 			const functions = settings.reads === "functions" ? await enclosing() : undefined;
 			const band = bands.get(lens)!;
-			const probing = settings.probe === undefined ? undefined : await probingAt(settings, level);
+			const skipped = settings.probe === undefined ? undefined : await withoutProbes(level, settings);
+			if (skipped !== undefined && !noted.includes(skipped)) noted.push(skipped);
+			const probing =
+				settings.probe === undefined || skipped !== undefined ? undefined : await probingAt(settings, level);
 			const planning = (boundary: string) =>
 				probing === undefined ? "" : `\n\n${plannerInstructions(probing.context(boundary))}`;
 			return {
