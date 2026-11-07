@@ -21,6 +21,7 @@ import { createReviewModels, piAuthPath, providersWithCredentials, staticToolSou
 import type { Io } from "./commands.ts";
 import { decisionProviderRefusal, reviewModels } from "./models.ts";
 import { git, stateDirectory, stateDirectoryVariable } from "./repository.ts";
+import { modelCredentials, stateKeyProvider } from "./state.ts";
 import { ToolInventory } from "./tools.ts";
 
 type Check = { readonly name: string; readonly state: "ok" | "warn" | "fail"; readonly detail: string };
@@ -56,10 +57,34 @@ async function gitCheck(cwd: string): Promise<Check> {
 	};
 }
 
+// Names where the state branch's writers' key comes from, never its value, and runs no command.
+function stateBranchCheck(secrets: LoadedSecrets, env: NodeJS.ProcessEnv): Check {
+	const name = "state key";
+	const credential = secrets.credentials.find((each) => each.provider === stateKeyProvider);
+	if (credential === undefined)
+		return {
+			name,
+			state: "warn",
+			detail: `no writers' key; name one for the provider ${stateKeyProvider} in a secrets file, or a pull request's storage stays in this clone`,
+		};
+	const source = `${visibleText(credential.name)} in ${visibleText(credential.file)}`;
+	if (credential.value.kind === "env" && (env[credential.value.variable] ?? "") === "")
+		return {
+			name,
+			state: "warn",
+			detail: `writers' key ${source} reads ${visibleText(credential.value.variable)}, which is unset; a pull request's storage stays in this clone`,
+		};
+	return {
+		name,
+		state: "ok",
+		detail: `writers' key ${source}; a pull request's storage goes to melian/state on origin`,
+	};
+}
+
 async function credentialsCheck(secrets: LoadedSecrets): Promise<Check> {
 	let configured: string[];
 	try {
-		configured = await providersWithCredentials(createReviewModels({ credentials: secrets.credentials }));
+		configured = await providersWithCredentials(createReviewModels({ credentials: modelCredentials(secrets) }));
 	} catch (error) {
 		return { name: "models", state: "fail", detail: error instanceof Error ? error.message : String(error) };
 	}
@@ -118,7 +143,7 @@ async function planChecks(cwd: string, env: NodeJS.ProcessEnv, secrets: LoadedSe
 		const loaded = await loadConfig(root, source, ".");
 		const checks = Object.values(loaded.config.stages).flatMap((stage) => checksOfTier(loaded.config, stage));
 		const lenses = await Lens.load(root, source, ["."]);
-		const { plan } = await reviewModels({}, loaded, lenses, { checks, credentials: secrets.credentials });
+		const { plan } = await reviewModels({}, loaded, lenses, { checks, credentials: modelCredentials(secrets) });
 		const refusal = decisionProviderRefusal(loaded.config);
 		return [
 			{
@@ -449,6 +474,7 @@ export async function doctor(io: Io, options: { readonly fetch?: typeof globalTh
 			: { name: "pi login", state: "warn", detail: `${authPath} not found; environment variables still apply` },
 		...secretChecks,
 		await credentialsCheck(secrets),
+		stateBranchCheck(secrets, io.env),
 		token === undefined
 			? { name: "github", state: "warn", detail: "no token; set GITHUB_TOKEN or GH_TOKEN, or run gh auth login" }
 			: { name: "github", state: "ok", detail: `token from ${token.source}` },

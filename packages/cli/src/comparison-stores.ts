@@ -10,6 +10,7 @@ import {
 import type { Io } from "./commands.ts";
 import { isScripted } from "./models.ts";
 import { CliError, git, openStorage, stateDirectory } from "./repository.ts";
+import { ChangesetStore } from "./state.ts";
 
 export class ComparisonStores {
 	readonly entries: ComparisonEntry[] = [];
@@ -34,19 +35,31 @@ export class ComparisonStores {
 			ownership === undefined
 				? undefined
 				: pullRequestChangesetId("github", ownership.repository, ownership.pullRequest);
-		const names = await readdir(directory).catch((error: NodeJS.ErrnoException) => {
+		const names = await readdir(directory).catch((error: NodeJS.ErrnoException): string[] => {
 			if (error.code === "ENOENT") return [];
 			throw new CliError(`cannot read comparisons at ${directory}: ${error.message}`);
 		});
-		const files = names.filter((name) => /^(range|pull)-[0-9a-f]{16}\.sqlite$/.test(name)).sort();
+		// A pull request's storage is this clone's copy of the state branch's, unless it kept SQLite from before.
+		// A copy's directory is named for its changeset alone; its lock and markers carry a suffix.
+		const copies = await readdir(join(directory, "state")).catch((): string[] => []);
+		const changesets = [
+			...new Set([
+				...names
+					.filter((name) => /^(range|pull)-[0-9a-f]{16}\.sqlite$/.test(name))
+					.map((name) => name.slice(0, -7)),
+				...copies.filter((name) => /^pull-[0-9a-f]{16}$/.test(name)),
+			]),
+		].sort();
 		if (exporting) {
-			const own = files.indexOf(`${historyChangeset}.sqlite`);
+			const own = changesets.indexOf(historyChangeset!);
 			if (own < 0) return result;
-			files.unshift(...files.splice(own, 1));
+			changesets.unshift(...changesets.splice(own, 1));
 		}
-		for (const name of files) {
-			const changeset = name.slice(0, -".sqlite".length);
-			const storage = await openStorage(join(directory, name));
+		for (const changeset of changesets) {
+			const sqlite = names.includes(`${changeset}.sqlite`);
+			const store = sqlite ? undefined : await ChangesetStore.read(io, repoRoot, changeset, directory);
+			if (!sqlite && store === undefined) continue;
+			const storage = store?.storage ?? (await openStorage(join(directory, `${changeset}.sqlite`)));
 			try {
 				result.entries.push(...(await ComparisonReader.open(storage).read(changeset)));
 				const reader = MembershipReader.open(storage);
@@ -55,6 +68,7 @@ export class ComparisonStores {
 					result.histories.set(changeset, await reader.history());
 			} finally {
 				await storage.close(context);
+				await store?.close();
 			}
 			if (exporting && result.histories.get(historyChangeset!)?.current() === undefined) break;
 		}

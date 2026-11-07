@@ -1,4 +1,3 @@
-import { existsSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
@@ -26,9 +25,10 @@ import {
 } from "@melian-agent/pipeline";
 import { gitAuthor, type Io, StoredReview, shellQuote, short } from "./commands.ts";
 import { ComparisonStores } from "./comparison-stores.ts";
-import { idleModels, isScripted } from "./models.ts";
+import { idleModels } from "./models.ts";
 import { PullRequestComparison } from "./pull-request-comparison.ts";
-import { CliError, git, openStorage, storagePath } from "./repository.ts";
+import { CliError, git } from "./repository.ts";
+import { ChangesetStore } from "./state.ts";
 import { gitHubAccess, parseTarget } from "./target.ts";
 
 export type ImportSource =
@@ -57,7 +57,6 @@ type ComparisonTarget = {
 async function openComparison(io: Io, argument: string, round?: string) {
 	let stored: ComparisonTarget;
 	let verdict: Verdict | undefined;
-	let path: string;
 	let target: string | undefined = argument;
 	if (round === undefined || round === "unattributed") {
 		stored = await StoredReview.open(io, argument);
@@ -67,7 +66,6 @@ async function openComparison(io: Io, argument: string, round?: string) {
 				changeset: { ...stored.changeset, revision: { ...stored.changeset.revision, round } },
 				missing: () => new CliError(`Melian has no unattributed comparison for ${argument}`),
 			};
-		path = await storagePath(stored.changeset.repoRoot, stored.changeset.id, io.env, isScripted(io.env));
 	} else {
 		const match = /^(range-[0-9a-f]{16}|pull-[0-9a-f]{16})\.(?:r[1-9][0-9]*|k[0-9a-f]{16})$/.exec(round);
 		if (match === null) throw new CliError(`invalid round ID ${round}`);
@@ -79,14 +77,14 @@ async function openComparison(io: Io, argument: string, round?: string) {
 			throw new CliError(`round ${round} belongs to ${match[1]}, but ${argument} names ${named.changeset.id}`);
 		if (named === undefined) target = undefined;
 		const repoRoot = await git(io.cwd, ["rev-parse", "--show-toplevel"]);
-		path = await storagePath(repoRoot, match[1]!, io.env, isScripted(io.env));
-		if (!existsSync(path)) throw new CliError(`Melian has no round ${round}`);
-		const storage = await openStorage(path);
+		const roundStore = await ChangesetStore.read(io, repoRoot, match[1]!);
+		if (roundStore === undefined) throw new CliError(`Melian has no round ${round}`);
 		let selected: Round | undefined;
 		try {
-			selected = (await new RoundReader(storage).read(match[1]!)).find((each) => each.id === round);
+			selected = (await new RoundReader(roundStore.storage).read(match[1]!)).find((each) => each.id === round);
 		} finally {
-			await storage.close(context);
+			await roundStore.storage.close(context);
+			await roundStore.close();
 		}
 		if (selected === undefined) throw new CliError(`Melian has no round ${round}`);
 		verdict = selected.verdict();
@@ -100,17 +98,27 @@ async function openComparison(io: Io, argument: string, round?: string) {
 		};
 	}
 	const { changeset } = stored;
-	if (!existsSync(path)) throw stored.missing();
-	const harness = await CompareHarness.open(await openStorage(path), idleModels(io.env), changeset.id);
+	if (!(await ChangesetStore.exists(io, changeset.repoRoot, changeset.id))) throw stored.missing();
+	// A pull request's copy may first arrive from the state branch here; the harness says whether it holds a review.
+	const store = await ChangesetStore.write(io, changeset.repoRoot, changeset.id);
+	const harness = await CompareHarness.open(store.storage, idleModels(io.env), changeset.id).catch(
+		async (error: unknown) => {
+			await store.storage.close(context).catch(() => {});
+			await store.close();
+			throw error;
+		},
+	);
 	const reviewed = await harness.reviewed(changeset.revision).catch(async (error: unknown) => {
 		await harness.close(context);
+		await store.close();
 		throw error;
 	});
 	if (!reviewed) {
 		await harness.close(context);
+		await store.close();
 		throw stored.missing();
 	}
-	return { stored, harness, verdict, target };
+	return { stored, harness, store, verdict, target };
 }
 
 // Every source is read before anything is written, so a source that fails records nothing.
@@ -123,7 +131,13 @@ export async function compare(
 	const target = parseTarget(argument);
 	if (target.kind === "pullRequest" && sources.length === 0 && round === undefined)
 		return (await PullRequestComparison.open(io, target.number)).refresh(false);
-	const { stored, harness, verdict: frozen, target: recordedTarget } = await openComparison(io, argument, round);
+	const {
+		stored,
+		harness,
+		store,
+		verdict: frozen,
+		target: recordedTarget,
+	} = await openComparison(io, argument, round);
 	const { changeset } = stored;
 	const { revision } = changeset;
 	try {
@@ -178,6 +192,7 @@ export async function compare(
 		return 0;
 	} finally {
 		await harness.close(context);
+		await store.close();
 	}
 }
 
@@ -188,7 +203,7 @@ export async function matchByHand(
 	matched: boolean,
 	round?: string,
 ): Promise<number> {
-	const { stored, harness, verdict: frozen } = await openComparison(io, argument, round);
+	const { stored, harness, store, verdict: frozen } = await openComparison(io, argument, round);
 	const { revision, repoRoot } = stored.changeset;
 	try {
 		const hand = { by: await gitAuthor(repoRoot, "matched a finding by hand"), at: new Date().toISOString() };
@@ -213,6 +228,7 @@ export async function matchByHand(
 		return 0;
 	} finally {
 		await harness.close(context);
+		await store.close();
 	}
 }
 
@@ -223,7 +239,7 @@ export async function adjudicateComparison(
 	fields: Omit<StoredComparisonAdjudication, "by" | "at">,
 	round?: string,
 ): Promise<number> {
-	const { stored, harness } = await openComparison(io, argument, round);
+	const { stored, harness, store } = await openComparison(io, argument, round);
 	try {
 		if (fields.golden !== undefined && fields.golden !== "none") {
 			try {
@@ -251,6 +267,7 @@ export async function adjudicateComparison(
 		return 0;
 	} finally {
 		await harness.close(context);
+		await store.close();
 	}
 }
 
@@ -285,10 +302,10 @@ export async function exportComparison(
 	if (target.kind === "pullRequest")
 		return (await PullRequestComparison.open(io, target.number, true)).export(options);
 	const stored = await StoredReview.open(io, argument);
-	const path = await storagePath(stored.changeset.repoRoot, stored.changeset.id, io.env, isScripted(io.env));
-	if (!existsSync(path))
+	const store = await ChangesetStore.read(io, stored.changeset.repoRoot, stored.changeset.id);
+	if (store === undefined)
 		throw new CliError(`no comparison recorded; run melian compare ${shellQuote(argument)} first`);
-	const storage = await openStorage(path);
+	const { storage } = store;
 	try {
 		const entries = await ComparisonReader.open(storage).read(stored.changeset.id);
 		if (entries.length === 0)
@@ -313,5 +330,6 @@ export async function exportComparison(
 		return 0;
 	} finally {
 		await storage.close(context);
+		await store.close();
 	}
 }

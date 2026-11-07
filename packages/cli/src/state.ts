@@ -1,0 +1,192 @@
+import { randomUUID } from "node:crypto";
+import { existsSync } from "node:fs";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { type LoadedSecrets, loadSecrets, type NamedCredential, userFiles, visibleText } from "@melian-agent/core";
+import {
+	backgroundContext as context,
+	MelianCredentialStore,
+	openJsonlStorage,
+	type Storage,
+} from "@melian-agent/pipeline";
+import { CopyInUse, LeaseHeld, StateBranch, type StateCheckout } from "@melian-agent/state-git";
+import type { Io } from "./commands.ts";
+import { isScripted } from "./models.ts";
+import { CliError, openStorage, storagePath } from "./repository.ts";
+
+/** The provider a secrets file names for the state branch's writers' key, which no model uses. */
+export const stateKeyProvider = "melian-state";
+
+/** The secrets files' credentials without the state key, for the model catalogue, which would refuse its provider. */
+export function modelCredentials(secrets: LoadedSecrets): readonly NamedCredential[] {
+	return secrets.credentials.filter((credential) => credential.provider !== stateKeyProvider);
+}
+
+// Where a changeset's storage lives: one SQLite file for a range, for scripted mode and for a pull request first
+// reviewed before the state branch, and this clone's copy of the branch's JSONL storage for any other pull request.
+type Location =
+	| { readonly kind: "sqlite"; readonly path: string; readonly legacy: boolean }
+	| { readonly kind: "state"; readonly directory: string };
+
+// `directory`, when given, is the state directory the caller already resolved.
+async function locate(
+	repoRoot: string,
+	changeset: string,
+	env: NodeJS.ProcessEnv,
+	directory?: string,
+): Promise<Location> {
+	const scripted = isScripted(env);
+	const path =
+		directory === undefined
+			? await storagePath(repoRoot, changeset, env, scripted)
+			: join(directory, `${changeset}.sqlite`);
+	// Scripted mode's stores never leave the clone, so they stay where its tests find them.
+	if (scripted || !changeset.startsWith("pull-")) return { kind: "sqlite", path, legacy: false };
+	if (existsSync(path)) return { kind: "sqlite", path, legacy: true };
+	return { kind: "state", directory: join(dirname(path), "state") };
+}
+
+// This clone's name on the state branch, made once, so a crashed run's lease is this clone's to take over.
+async function holder(directory: string): Promise<string> {
+	const path = join(directory, "holder");
+	const existing = await readFile(path, "utf8").catch(() => undefined);
+	if (existing?.trim()) return existing.trim();
+	await mkdir(directory, { recursive: true });
+	await writeFile(path, `${randomUUID()}\n`, { flag: "wx" }).catch(() => {});
+	return (await readFile(path, "utf8")).trim();
+}
+
+// The writers' key from the secrets files, as 64 hex digits or 32 bytes in base64; undefined when none names one.
+async function stateKey(repoRoot: string, env: NodeJS.ProcessEnv): Promise<Uint8Array | undefined> {
+	const secrets = await loadSecrets(repoRoot, userFiles(env).secrets);
+	const credential = secrets.credentials.find((each) => each.provider === stateKeyProvider);
+	if (credential === undefined) return undefined;
+	const value = (
+		await new MelianCredentialStore(
+			secrets.credentials,
+			() => ({ apiKey: true, oauth: false }),
+			undefined,
+			env,
+		).value(credential)
+	).trim();
+	const key = /^[0-9a-f]{64}$/i.test(value) ? Buffer.from(value, "hex") : Buffer.from(value, "base64");
+	if (key.length !== 32 || (!/^[0-9a-f]{64}$/i.test(value) && key.toString("base64") !== value))
+		throw new CliError(
+			`credential ${visibleText(credential.name)} in ${visibleText(credential.file)} is not a state key: give 64 hex digits or 32 bytes in base64`,
+		);
+	return key;
+}
+
+/**
+ * A changeset's storage, opened for one command. A pull request's storage is this clone's copy of the state branch's,
+ * under the copy's lock: a command that writes it takes the branch's lease first and stores the copy back when it
+ * closes, and a command that reads it touches no remote.
+ */
+export class ChangesetStore {
+	readonly storage: Storage;
+	readonly #checkout: StateCheckout | undefined;
+	readonly #io: Io;
+
+	private constructor(storage: Storage, checkout: StateCheckout | undefined, io: Io) {
+		this.storage = storage;
+		this.#checkout = checkout;
+		this.#io = io;
+	}
+
+	/**
+	 * Whether the changeset may hold a stored review: its SQLite file exists, or it is a pull request's, whose copy a
+	 * writer may yet take from the state branch.
+	 */
+	static async exists(io: Io, repoRoot: string, changeset: string, directory?: string): Promise<boolean> {
+		const location = await locate(repoRoot, changeset, io.env, directory);
+		return location.kind === "state" || existsSync(location.path);
+	}
+
+	/** Opens the changeset's storage for a command that writes it, creating it when absent. */
+	static async write(io: Io, repoRoot: string, changeset: string, directory?: string): Promise<ChangesetStore> {
+		const location = await locate(repoRoot, changeset, io.env, directory);
+		if (location.kind === "sqlite") return ChangesetStore.#sqlite(io, location, changeset);
+		const branch = new StateBranch({
+			repoRoot,
+			remote: "origin",
+			directory: location.directory,
+			holder: await holder(location.directory),
+			key: await stateKey(repoRoot, io.env),
+		});
+		const checkout = await branch.checkout(changeset).catch(ChangesetStore.#refusal);
+		if (checkout.unreached !== undefined)
+			io.stderr(
+				`melian: ${visibleText(checkout.unreached)}; this command works in this clone's copy of the pull request's storage, and a later command that reaches melian/state stores it\n`,
+			);
+		if (checkout.setAside !== undefined)
+			io.stderr(
+				`melian: another run stored this pull request on melian/state since this clone did; its copy is set aside at ${visibleText(checkout.setAside)}, and this command carries on from the branch's\n`,
+			);
+		return ChangesetStore.#opened(io, checkout);
+	}
+
+	/** Opens the changeset's storage for a command that only reads it, or undefined when none is stored here. */
+	static async read(
+		io: Io,
+		repoRoot: string,
+		changeset: string,
+		directory?: string,
+	): Promise<ChangesetStore | undefined> {
+		const location = await locate(repoRoot, changeset, io.env, directory);
+		if (location.kind === "sqlite")
+			return existsSync(location.path) ? ChangesetStore.#sqlite(io, location, changeset) : undefined;
+		const branch = new StateBranch({ repoRoot, remote: "origin", directory: location.directory, holder: "reader" });
+		const checkout = await branch.open(changeset).catch(ChangesetStore.#refusal);
+		return checkout === undefined ? undefined : ChangesetStore.#opened(io, checkout);
+	}
+
+	static async #sqlite(
+		io: Io,
+		location: { readonly path: string; readonly legacy: boolean },
+		changeset: string,
+	): Promise<ChangesetStore> {
+		if (location.legacy)
+			io.stderr(
+				`melian: ${changeset} keeps the SQLite storage it had before the state branch, in this clone alone\n`,
+			);
+		return new ChangesetStore(await openStorage(location.path), undefined, io);
+	}
+
+	static async #opened(io: Io, checkout: StateCheckout): Promise<ChangesetStore> {
+		try {
+			return new ChangesetStore(await openJsonlStorage(checkout.directory, context), checkout, io);
+		} catch (error) {
+			checkout.close();
+			throw error;
+		}
+	}
+
+	static #refusal(error: unknown): never {
+		if (error instanceof LeaseHeld || error instanceof CopyInUse) throw new CliError(error.message);
+		throw error;
+	}
+
+	/**
+	 * Releases the copy, after the harness has closed the storage, storing it on the branch first when the command
+	 * wrote it. A store the branch refuses stays in this clone; the next command takes the branch's.
+	 */
+	async close(): Promise<void> {
+		const checkout = this.#checkout;
+		if (checkout === undefined) return;
+		try {
+			const pushed = await checkout
+				.push()
+				.catch((error: Error) => ({ kind: "unreached", reason: error.message }) as const);
+			if (pushed.kind === "refused")
+				this.#io.stderr(
+					`melian: melian/state refused this command's storage: ${visibleText(pushed.reason)}; this clone keeps it, and the next command carries on from the branch's copy\n`,
+				);
+			else if (pushed.kind === "unreached" && pushed.reason !== checkout.unreached)
+				this.#io.stderr(
+					`melian: melian/state is out of reach: ${visibleText(pushed.reason)}; this clone keeps the pull request's storage, and a later command that reaches the branch stores it\n`,
+				);
+		} finally {
+			checkout.close();
+		}
+	}
+}

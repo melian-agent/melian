@@ -1,5 +1,5 @@
 import { writeFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { resolve } from "node:path";
 import {
 	ComparisonExport,
 	MembershipError,
@@ -18,7 +18,8 @@ import {
 import { gitAuthor, type Io } from "./commands.ts";
 import { ComparisonStores } from "./comparison-stores.ts";
 import { idleModels } from "./models.ts";
-import { CliError, git, openStorage } from "./repository.ts";
+import { CliError, git } from "./repository.ts";
+import { ChangesetStore } from "./state.ts";
 import { gitHubAccess } from "./target.ts";
 
 export class PullRequestComparison {
@@ -94,13 +95,20 @@ export class PullRequestComparison {
 			at,
 			accept,
 		);
-		const path = join(this.stores.directory, `${this.changeset}.sqlite`);
-		const harness = await CompareHarness.open(await openStorage(path), idleModels(this.io.env), this.changeset);
+		const store = await ChangesetStore.write(this.io, this.stores.repoRoot, this.changeset, this.stores.directory);
+		const harness = await CompareHarness.open(store.storage, idleModels(this.io.env), this.changeset).catch(
+			async (error: unknown) => {
+				await store.storage.close(context).catch(() => {});
+				await store.close();
+				throw error;
+			},
+		);
 		let snapshot: PullRequestRoundSnapshot;
 		try {
 			snapshot = await harness.refreshMembership(answer, classified, by, at, accept);
 		} finally {
 			await harness.close(context);
+			await store.close();
 		}
 		const previous = this.stores.histories.get(this.changeset)?.current();
 		const old = new Set(previous?.members.map((round) => round.id));
