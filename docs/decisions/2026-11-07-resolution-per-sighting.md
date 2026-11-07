@@ -1,6 +1,6 @@
 # Resolution per sighting
 
-Status: built in milestone 2, step 21, "Resolution per sighting", [issue #230](https://github.com/melian-agent/melian/issues/230).
+Status: built in milestone 2, step 21, "Resolution per sighting", [issue #230](https://github.com/melian-agent/melian/issues/230). The maintainer ruled for the merged cause on [the issue](https://github.com/melian-agent/melian/issues/230#issuecomment-6703493966).
 
 Amends: [An unresolved acknowledgement fails the status, as built](2026-10-17-acknowledge-status-exact-rule.md), the paragraph of "What this gives up" on sightings of one finding ID.
 
