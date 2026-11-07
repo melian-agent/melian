@@ -41,6 +41,10 @@ The next checkout sees that the branch has moved past this clone's copy, sets th
 
 A store a newer build wrote is refused when this build opens it, by Pi's document versions, as today. The branch is not overwritten: a push after the refusal stores the copy unchanged.
 
+## The CLI
+
+A pull request's storage is this clone's copy of the branch's, through `ChangesetStore`. Every command that writes it checks it out and pushes it when it finishes; a command that only reads it opens it under the copy's lock and touches no remote. A range, scripted mode and a pull request with SQLite storage from before keep SQLite. The writers' key is a credential for the provider `melian-state` in a secrets file, which the model catalogue never sees. A checkout that cannot reach the branch, or has no key, keeps the copy's lock and says why, as ruling 3 sets.
+
 ## What this gives up
 
 - The lease is no lock. A run that holds the lease longer than two hours can be raced; the push then decides, and the loser redoes its delta.
