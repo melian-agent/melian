@@ -19,7 +19,7 @@ The round's report job sets `melian/review` on the head the gate approved, from 
 
 - `success` when the verdict passed, or found nothing blocking. The description counts the findings to acknowledge.
 - `failure` when a finding blocks.
-- `error` when the round did not review that head, or its verdict cannot be read.
+- `error` when the round did not review that head, or its verdict cannot be read. A not-reviewed verdict sets `error` even when a finding also blocks: a check that did not run leaves the change unreviewed, whatever the others found.
 
 It re-reads the pull request first and sets no status when the base or head moved. It sets none either when the head's latest `melian/review`, read across every page, is not the `pending` status this round set, compared by the status's ID. So a rerun of the report job alone never puts an older verdict back over a later round's or a host's. Round 5 found that comparing times failed both ways: GitHub's clock and the runner's differ, and both keep whole seconds, so a status set in the same second could be overwritten, and skew could make the round's own `pending` look newer and leave it standing. A round whose pending job handed on no status ID sets `error`, since an earlier `success` could still be latest. Once the round's `pending` status is on the head, a read that fails posts nothing: `pending` already blocks, and a newer status another writer set must stand. Round 8 found that an `error` there could overwrite a newer host status.
 
@@ -33,7 +33,7 @@ The merge group copies a head's status only when its creator is a User with writ
 
 The report job declares the Environment, so it can read that secret, and the secret reaches only its status step. The job runs no head code. The model logins stay in the round job.
 
-An acknowledge finding does not fail this status, by the maintainer's ruling. The builder asks the maintainer in its own session to read the finding, records the maintainer's read on the pull request, then marks it ready and queues it. `melian publish` keeps the amended decision's rule: an unresolved acknowledgement fails the status it sets.
+An acknowledge finding does not fail this status, by the maintainer's ruling. The builder asks the maintainer in its own session to read the finding, records the maintainer's read on the pull request, then marks it ready and queues it. `melian publish` keeps the amended decision's rule: an unresolved acknowledgement fails the status it sets. So an Actions status is a separate publisher class from a host publication until [issue #305](https://github.com/melian-agent/melian/issues/305) gives builders an identity of their own: its `success` records a maintainer's read, held on the pull request, rather than a dismissal held in a store.
 
 The builder, not the coordinator, now marks its pull request ready and queues it, by the same ruling. The coordinator still runs the host round a dismissal or the comparison record needs. The maintainer's read of acknowledge findings is the independent step before the queue, and a blocking finding still needs a fix or a dismissal through a host round.
 

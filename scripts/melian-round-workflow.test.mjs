@@ -750,6 +750,18 @@ describe("the melian round workflow", () => {
 					exit: "2",
 				}),
 			).toEqual(set("error", `Not reviewed: a check did not run${suffix}`));
+			// A round that blocks and also missed a check is not reviewed, not blocked.
+			expect(
+				step({
+					verdict: {
+						status: "not-reviewed",
+						blocking: true,
+						findings: { block: [finding("block")], acknowledge: [] },
+						notRun: skipped,
+					},
+					exit: "2",
+				}),
+			).toEqual(set("error", `Not reviewed: a check did not run${suffix}`));
 			const unreadable = set("error", `Not reviewed: the round's verdict could not be read${suffix}`);
 			expect(step({ verdict: "not json" })).toEqual(unreadable);
 			expect(step({ exit: "3" })).toEqual(unreadable);
