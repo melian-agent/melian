@@ -257,7 +257,10 @@ describe("melian probe", () => {
 		});
 
 		it("exits 1 for a probe that floods its output", { timeout: 60_000 }, async () => {
-			writeFileSync(join(dir, "probe.mjs"), 'for (;;) process.stdout.write("y".repeat(65536));\n');
+			writeFileSync(
+				join(dir, "probe.mjs"),
+				'const flood = () => process.stdout.write("y".repeat(65536), flood);\nflood();\n',
+			);
 			const result = await melian(["probe", "probes/first", "--trust-head"]);
 			expect(result.status).toBe(1);
 			const output = "y".repeat(pipeline.probeLimits.output.default);
