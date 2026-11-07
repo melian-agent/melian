@@ -1,13 +1,12 @@
-import { randomUUID } from "node:crypto";
-import { mkdir, readdir, readFile, rename, rm, stat, utimes, writeFile } from "node:fs/promises";
+import { createHash, randomUUID } from "node:crypto";
+import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { connect, createServer, type Server } from "node:net";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Context } from "@earendil-works/chord";
-import { JsonlStorage, openNodeJsonlStorage } from "@earendil-works/pi-durable/storage/jsonl/node";
 import { git, gitFailure, gitOutput, gitOutputBytes } from "@melian-agent/core";
 import { type Lease, StateBranchError, StateIndex } from "./state-index.ts";
 
 const branch = "refs/heads/melian/state";
-const fetched = "refs/melian/state/fetched";
 const indexFile = "index.json";
 const changesetsTree = "changesets";
 // Pi's JSONL storage writes exactly these: its main log and one sidecar per document and task.
@@ -15,9 +14,7 @@ const storageFile = /^(?:main|(?:doc|task)-(?:0|[1-9]\d*))\.jsonl$/;
 const changesetName = /^[a-z0-9][a-z0-9-]{0,63}$/;
 const attemptsLimit = 3;
 const defaultLeaseMs = 2 * 60 * 60 * 1000;
-// A process working on a changeset touches its lock this often; one untouched for `staleMs` has crashed.
-const touchMs = 30 * 1000;
-const staleMs = 2 * 60 * 1000;
+const takeoverMs = 10 * 1000;
 // Git records who pushed the branch; the commits themselves need only some identity.
 const identity = {
 	GIT_AUTHOR_NAME: "Melian state",
@@ -60,54 +57,86 @@ export class CopyInUse extends Error {
 	readonly code = "copyInUse";
 
 	constructor(changeset: string) {
-		super(
-			`another melian process in this clone is working on ${changeset}; wait for it to finish, or, if none is running, wait two minutes`,
-		);
+		super(`another melian process in this clone is working on ${changeset}; wait for it to finish`);
 		this.name = "CopyInUse";
 	}
 }
 
-// One process's hold on this clone's copy of a changeset: a file it creates exclusively and touches while it works.
+// One process's hold on this clone's copy of a changeset: a Unix socket it listens on while it works. The kernel
+// frees it when the process dies, and a stopped or stalled process keeps it, so no clock guesses who is alive. A
+// socket file nobody listens on is a crashed process's; the takeover runs under an exclusive file, so two processes
+// that both find it stale cannot both unlink a fresh one.
 class CopyLock {
-	readonly #path: string;
-	readonly #run: string;
-	readonly #timer: NodeJS.Timeout;
+	readonly #server: Server;
 
-	private constructor(path: string, run: string) {
-		this.#path = path;
-		this.#run = run;
-		this.#timer = setInterval(() => {
-			const now = new Date();
-			utimes(path, now, now).catch(() => {});
-		}, touchMs);
-		this.#timer.unref();
+	private constructor(server: Server) {
+		this.#server = server;
 	}
 
 	static async take(directory: string, changeset: string, run: string): Promise<CopyLock> {
-		const path = join(directory, `${changeset}.running`);
-		await mkdir(directory, { recursive: true });
-		for (let attempt = 0; attempt < 2; attempt++) {
+		// A socket's path is limited to about a hundred bytes, so it lives in the temporary directory, named by a hash.
+		const name = createHash("sha256").update(`${directory}\0${changeset}`).digest("hex").slice(0, 16);
+		const path = join(tmpdir(), `melian-${name}.sock`);
+		for (let attempt = 0; attempt < 3; attempt++) {
+			const server = await listen(path);
+			if (server !== undefined) return new CopyLock(server);
+			if (await answers(path)) throw new CopyInUse(changeset);
+			const takeover = `${path}.take`;
+			const took = await writeFile(takeover, `${run}\n`, { flag: "wx" }).then(
+				() => true,
+				async (error: NodeJS.ErrnoException) => {
+					if (error.code !== "EEXIST") throw error;
+					// A takeover is a few system calls; one ten seconds old belongs to a process that died inside it.
+					const age = await stat(takeover).then(
+						(info) => Date.now() - info.mtimeMs,
+						() => 0,
+					);
+					if (age > takeoverMs) await rm(takeover, { force: true });
+					return false;
+				},
+			);
+			if (!took) continue;
 			try {
-				await writeFile(path, `${run}\n`, { flag: "wx" });
-				return new CopyLock(path, run);
-			} catch (error) {
-				if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-				const touched = await stat(path).then(
-					(info) => info.mtimeMs,
-					() => undefined,
-				);
-				if (touched !== undefined && Date.now() - touched < staleMs) throw new CopyInUse(changeset);
-				await rm(path, { force: true });
+				if (!(await answers(path))) await rm(path, { force: true });
+			} finally {
+				await rm(takeover, { force: true });
 			}
 		}
 		throw new CopyInUse(changeset);
 	}
 
-	async release(): Promise<void> {
-		clearInterval(this.#timer);
-		const holder = await readFile(this.#path, "utf8").catch(() => undefined);
-		if (holder?.trim() === this.#run) await rm(this.#path, { force: true });
+	release(): Promise<void> {
+		return new Promise((resolve) => {
+			if (!this.#server.listening) resolve();
+			else this.#server.close(() => resolve());
+		});
 	}
+}
+
+// Listens on the socket, or answers undefined when its file already exists.
+function listen(path: string): Promise<Server | undefined> {
+	return new Promise((resolve, reject) => {
+		const server = createServer((socket) => socket.destroy());
+		server.once("error", (error: NodeJS.ErrnoException) =>
+			error.code === "EADDRINUSE" ? resolve(undefined) : reject(error),
+		);
+		server.listen(path, () => {
+			server.unref();
+			resolve(server);
+		});
+	});
+}
+
+// Whether a live process listens on the socket.
+function answers(path: string): Promise<boolean> {
+	return new Promise((resolve) => {
+		const socket = connect(path);
+		socket.once("connect", () => {
+			socket.destroy();
+			resolve(true);
+		});
+		socket.once("error", () => resolve(false));
+	});
 }
 
 /** What a push did: stored the changeset on the branch, or was refused because the branch moved under it. */
@@ -296,13 +325,24 @@ export class StateBranch {
 	}
 
 	async #fetch(): Promise<string | undefined> {
-		const args = ["fetch", "--quiet", "--no-tags", this.#options.remote, `+${branch}:${fetched}`];
+		// A ref of this run's own, and no FETCH_HEAD, so runs on other changesets in this clone never contend for one.
+		const fetched = `refs/melian/state/${this.#run}`;
+		const args = [
+			"fetch",
+			"--quiet",
+			"--no-tags",
+			"--no-write-fetch-head",
+			this.#options.remote,
+			`+${branch}:${fetched}`,
+		];
 		const result = await git(this.#options.repoRoot, args);
 		if (result.code !== 0) {
 			if (/couldn't find remote ref/i.test(result.stderr)) return undefined;
 			throw new StateBranchError("fetchFailed", `git fetch of melian/state failed: ${result.stderr.trim()}`);
 		}
-		return (await gitOutput(this.#options.repoRoot, ["rev-parse", "--verify", `${fetched}^{commit}`])).trim();
+		const tip = (await gitOutput(this.#options.repoRoot, ["rev-parse", "--verify", `${fetched}^{commit}`])).trim();
+		await gitOutput(this.#options.repoRoot, ["update-ref", "-d", fetched]);
+		return tip;
 	}
 
 	async #read(tip: string | undefined): Promise<{ index: StateIndex; changesets: Map<string, Entry> }> {
@@ -375,8 +415,13 @@ export class StateBranch {
 		];
 		const result = await git(this.#options.repoRoot, args);
 		if (result.code === 0) return true;
-		// The lease names the tip this run fetched, so "stale info" means another run pushed since.
-		if (result.stdout.split("\n").some((line) => line.startsWith(`!\t${commit}:${branch}\t[rejected] (stale info)`)))
+		// The lease names the tip this run fetched, so "stale info" means another run pushed since; a ref the remote could
+		// not lock is another run's push to it landing at the same moment.
+		const line = result.stdout.split("\n").find((each) => each.startsWith(`!\t${commit}:${branch}\t`));
+		if (
+			line?.includes("[rejected] (stale info)") ||
+			(line?.includes("[remote rejected] (failed to update ref)") && result.stderr.includes("cannot lock ref"))
+		)
 			return false;
 		throw new StateBranchError("pushFailed", `git push of melian/state failed: ${result.stderr.trim()}`);
 	}
@@ -443,12 +488,8 @@ export class StateCheckout {
 		return new StateCheckout(branch, changeset, onBranch, setAside, lock);
 	}
 
-	openStorage(context: Context): Promise<JsonlStorage> {
-		return openNodeJsonlStorage(this.directory, context);
-	}
-
 	/**
-	 * Stores this clone's copy on the branch and releases the lease. Close the storage first. A push the branch refuses,
+	 * Stores this clone's copy on the branch and releases the lease. Close the storage opened over `directory` first. A push the branch refuses,
 	 * because another run moved the changeset, keeps the copy here; the next checkout sets it aside for the branch's.
 	 */
 	async push(): Promise<PushResult> {
@@ -466,5 +507,3 @@ export class StateCheckout {
 		return this.#lock.release();
 	}
 }
-
-export { JsonlStorage };

@@ -2,12 +2,12 @@
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import { createSession, defineDoc, type Storage } from "@earendil-works/pi-durable";
+import { backgroundContext, defineDoc, openJsonlStorage, type Storage } from "@melian-agent/pipeline";
+import { createSession } from "@melian-agent/pipeline/testing";
 import { gitIn, isolatedGitEnv, removeDirectory, temporaryDirectory } from "../../../core/test/fixtures/repo.ts";
-import { StateBranch, type StateBranchOptions } from "../../src/index.ts";
+import { StateBranch, type StateBranchOptions, type StateCheckout } from "../../src/index.ts";
 
-export const context = BACKGROUND_CONTEXT;
+export const context = backgroundContext;
 export const changeset = "pull-0123456789abcdef";
 
 export class Remote {
@@ -138,4 +138,9 @@ export function replaceChangeset(remote: Remote, files: Record<string, string>, 
 	const root = gitWith(bare, `100644 blob ${index}\tindex.json\n040000 tree ${changesets}\tchangesets\n`, "mktree");
 	const commit = gitIn(bare, "commit-tree", root, "-p", tip, "-m", "replaced");
 	gitIn(bare, "update-ref", "refs/heads/melian/state", commit);
+}
+
+/** Opens the storage in a checkout's copy, as the CLI does through the pipeline. */
+export function storageOf(checkout: StateCheckout): Promise<Storage> {
+	return openJsonlStorage(checkout.directory, context);
 }

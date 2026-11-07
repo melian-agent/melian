@@ -3,7 +3,7 @@ import { join } from "node:path";
 import type * as core from "@melian-agent/core";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { isolatedGitEnv } from "../../core/test/fixtures/repo.ts";
-import { changeset, context, note, notes, Remote } from "./fixtures/state.ts";
+import { changeset, note, notes, Remote, storageOf } from "./fixtures/state.ts";
 
 // Another run's push lands between this run's fetch and its push, as many times as `moves` says.
 let moves = 0;
@@ -31,11 +31,13 @@ let remote: Remote;
 beforeEach(() => {
 	for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
 	remote = new Remote();
+	// Each checkout's lock socket lives in the temporary directory; keep a test's inside its own remote's root.
+	vi.stubEnv("TMPDIR", remote.root);
 	let count = 0;
 	const other = remote.clone();
 	interloper = async () => {
 		const checkout = await other.branch().checkout(`pull-${String(++count).padStart(16, "0")}`);
-		await note(await checkout.openStorage(context), "theirs");
+		await note(await storageOf(checkout), "theirs");
 		await checkout.push();
 	};
 });
@@ -49,13 +51,11 @@ afterEach(() => {
 
 it("pushes again from a fresh fetch when another changeset's push lands first", async () => {
 	const checkout = await remote.clone().branch().checkout(changeset);
-	await note(await checkout.openStorage(context), "mine");
+	await note(await storageOf(checkout), "mine");
 	moves = 1;
 	expect(await checkout.push()).toEqual({ kind: "pushed", commit: remote.tip() });
 	expect(remote.stored("pull-0000000000000001")).toMatch(/^[0-9a-f]{40}$/);
-	expect(await notes(await (await remote.clone().branch().checkout(changeset)).openStorage(context))).toEqual([
-		"mine",
-	]);
+	expect(await notes(await storageOf(await remote.clone().branch().checkout(changeset)))).toEqual(["mine"]);
 });
 
 it("takes the lease when the branch moves under two pushes in a row", async () => {

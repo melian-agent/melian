@@ -1,20 +1,53 @@
-import { mkdirSync, readdirSync, utimesSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { createSession, defineDoc } from "@earendil-works/pi-durable";
-import { registerStorageConformance } from "@earendil-works/pi-durable/testing";
+import { fileURLToPath } from "node:url";
+import { defineDoc } from "@melian-agent/pipeline";
+import { createSession, registerStorageConformance } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { gitIn, isolatedGitEnv } from "../../core/test/fixtures/repo.ts";
 import { LeaseHeld, StateBranchError } from "../src/index.ts";
-import { changeset, context, gitWith, note, notes, Remote, replaceChangeset } from "./fixtures/state.ts";
+import {
+	type Clone,
+	changeset,
+	context,
+	gitWith,
+	note,
+	notes,
+	Remote,
+	replaceChangeset,
+	storageOf,
+} from "./fixtures/state.ts";
 
 let remote: Remote;
+
+// Checks the changeset out in a child process that exits without closing it, as a crashed review does.
+function crash(clone: Clone): void {
+	const fixture = fileURLToPath(new URL("./fixtures/crash-checkout.ts", import.meta.url));
+	execFileSync(
+		process.execPath,
+		[
+			"--conditions=@melian-agent/source",
+			fixture,
+			clone.repoRoot,
+			remote.bare,
+			clone.directory,
+			clone.holder,
+			changeset,
+		],
+		{ env: { ...process.env, ...isolatedGitEnv } },
+	);
+}
 
 beforeEach(() => {
 	for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
 	remote = new Remote();
+	// Each checkout's lock socket lives in the temporary directory; keep a test's inside its own remote's root.
+	vi.stubEnv("TMPDIR", remote.root);
 });
 
 afterEach(() => {
+	vi.restoreAllMocks();
 	vi.unstubAllEnvs();
 	remote.close();
 });
@@ -24,7 +57,7 @@ describe("Pi's storage conformance on a state branch checkout", () => {
 		const own = new Remote();
 		try {
 			const checkout = await own.clone().branch().checkout(changeset);
-			const storage = await checkout.openStorage(context);
+			const storage = await storageOf(checkout);
 			try {
 				await use(storage);
 			} finally {
@@ -40,14 +73,14 @@ describe("Pi's storage conformance on a state branch checkout", () => {
 describe("a changeset on the state branch", () => {
 	it("restores in a fresh clone what another clone pushed", async () => {
 		const first = await remote.clone().branch().checkout(changeset);
-		await note(await first.openStorage(context), "marker secret 0123");
-		await note(await first.openStorage(context), "ledger comment 42");
+		await note(await storageOf(first), "marker secret 0123");
+		await note(await storageOf(first), "ledger comment 42");
 		const pushed = await first.push();
 		expect(pushed).toEqual({ kind: "pushed", commit: remote.tip() });
 
 		const fresh = await remote.clone().branch().checkout(changeset);
 		expect(fresh.setAside).toBeUndefined();
-		expect(await notes(await fresh.openStorage(context))).toEqual(["marker secret 0123", "ledger comment 42"]);
+		expect(await notes(await storageOf(fresh))).toEqual(["marker secret 0123", "ledger comment 42"]);
 		expect(remote.index()).toEqual({
 			version: 1,
 			changesets: {
@@ -61,25 +94,25 @@ describe("a changeset on the state branch", () => {
 	it("keeps this clone's copy when nobody else pushed the changeset since", async () => {
 		const clone = remote.clone();
 		const first = await clone.branch().checkout(changeset);
-		await note(await first.openStorage(context), "pushed");
+		await note(await storageOf(first), "pushed");
 		expect(await first.push()).toMatchObject({ kind: "pushed" });
 		await first.close();
 		const second = await clone.branch().checkout(changeset);
-		await note(await second.openStorage(context), "kept locally");
+		await note(await storageOf(second), "kept locally");
 		await second.close();
 		const third = await clone.branch().checkout(changeset);
 		expect(third.setAside).toBeUndefined();
-		expect(await notes(await third.openStorage(context))).toEqual(["pushed", "kept locally"]);
+		expect(await notes(await storageOf(third))).toEqual(["pushed", "kept locally"]);
 	});
 
 	it("leaves other changesets on the branch as they were", async () => {
 		const clone = remote.clone();
 		const other = await clone.branch().checkout("pull-fedcba9876543210");
-		await note(await other.openStorage(context), "other");
+		await note(await storageOf(other), "other");
 		await other.push();
 		const before = remote.stored("pull-fedcba9876543210");
 		const mine = await clone.branch().checkout(changeset);
-		await note(await mine.openStorage(context), "mine");
+		await note(await storageOf(mine), "mine");
 		await mine.push();
 		expect(remote.stored("pull-fedcba9876543210")).toBe(before);
 		expect(gitIn(remote.bare, "ls-tree", "--name-only", "refs/heads/melian/state:changesets").split("\n")).toEqual([
@@ -133,10 +166,7 @@ describe("the lease", () => {
 
 	it("takes a lease of its own clone's, which a crashed run left, and counts the attempt", async () => {
 		const clone = remote.clone({ now: () => start });
-		const crashed = clone.branch();
-		await crashed.checkout(changeset);
-		const old = new Date(Date.now() - 2 * 60 * 1000);
-		utimesSync(join(clone.directory, `${changeset}.running`), old, old);
+		crash(clone);
 		const rerun = clone.branch();
 		await rerun.checkout(changeset);
 		expect(remote.index()).toMatchObject({
@@ -158,13 +188,13 @@ describe("two runs racing one changeset", () => {
 	it("refuses the loser's push, keeps its copy, and resumes it from the winner's", async () => {
 		const loserClone = remote.clone({ now: () => start });
 		const loser = await loserClone.branch().checkout(changeset);
-		await note(await loser.openStorage(context), "lens A");
-		await note(await loser.openStorage(context), "lens B");
+		await note(await storageOf(loser), "lens A");
+		await note(await storageOf(loser), "lens B");
 		const winner = await remote
 			.clone({ now: () => expired })
 			.branch()
 			.checkout(changeset);
-		await note(await winner.openStorage(context), "lens A");
+		await note(await storageOf(winner), "lens A");
 		expect(await winner.push()).toMatchObject({ kind: "pushed" });
 		const won = remote.tip();
 
@@ -173,16 +203,16 @@ describe("two runs racing one changeset", () => {
 			reason: "another run took the changeset's lease after this one's expired",
 		});
 		expect(remote.tip()).toBe(won);
-		expect(await notes(await loser.openStorage(context))).toEqual(["lens A", "lens B"]);
+		expect(await notes(await storageOf(loser))).toEqual(["lens A", "lens B"]);
 		await loser.close();
 
 		const resumed = await loserClone.branch({ now: () => expired + 1 }).checkout(changeset);
 		expect(resumed.setAside).toMatch(/\/pull-0123456789abcdef\.set-aside-\d+$/);
-		const storage = await resumed.openStorage(context);
+		const storage = await storageOf(resumed);
 		expect(await notes(storage)).toEqual(["lens A"]);
-		await note(await resumed.openStorage(context), "lens B");
+		await note(await storageOf(resumed), "lens B");
 		expect(await resumed.push()).toMatchObject({ kind: "pushed" });
-		expect(await notes(await (await remote.clone().branch().checkout(changeset)).openStorage(context))).toEqual([
+		expect(await notes(await storageOf(await remote.clone().branch().checkout(changeset)))).toEqual([
 			"lens A",
 			"lens B",
 		]);
@@ -190,7 +220,7 @@ describe("two runs racing one changeset", () => {
 
 	it("refuses a push when the changeset moved on the branch under this run's own lease", async () => {
 		const checkout = await remote.clone().branch().checkout(changeset);
-		await note(await checkout.openStorage(context), "mine");
+		await note(await storageOf(checkout), "mine");
 		replaceChangeset(remote, { "main.jsonl": "" });
 		const moved = remote.tip();
 		expect(await checkout.push()).toEqual({
@@ -243,7 +273,7 @@ describe("what the branch holds", () => {
 			initial: () => ({ notes: [] as string[] }),
 		});
 		const writer = await remote.clone().branch().checkout(changeset);
-		const session = createSession(await writer.openStorage(context));
+		const session = createSession(await storageOf(writer));
 		await session.commit(async (tx) => {
 			(await tx.doc(newer)).notes.push("from a newer build");
 		}, context);
@@ -252,7 +282,7 @@ describe("what the branch holds", () => {
 		const stored = remote.stored();
 
 		const older = await remote.clone().branch().checkout(changeset);
-		await expect(notes(await older.openStorage(context))).rejects.toThrow(
+		await expect(notes(await storageOf(older))).rejects.toThrow(
 			/^Document \d+ \(test\.note\) has newer version 2 than 1$/,
 		);
 		await older.push();
@@ -280,28 +310,42 @@ describe("Codex's review of d449ec6", () => {
 		const tip = remote.tip();
 		await expect(clone.branch().checkout(changeset)).rejects.toMatchObject({
 			code: "copyInUse",
-			message:
-				"another melian process in this clone is working on pull-0123456789abcdef; wait for it to finish, or, if none is running, wait two minutes",
+			message: "another melian process in this clone is working on pull-0123456789abcdef; wait for it to finish",
 		});
 		expect(remote.tip()).toBe(tip);
 		await first.close();
 		await expect(clone.branch().checkout(changeset)).resolves.toBeDefined();
 	});
 
-	it("takes over the copy a crashed process left two minutes ago", async () => {
+	it("keeps the copy for a live process however long it stalls", async () => {
 		const clone = remote.clone();
 		await clone.branch().checkout(changeset);
-		const old = new Date(Date.now() - 2 * 60 * 1000);
-		utimesSync(join(clone.directory, `${changeset}.running`), old, old);
+		const stalled = Date.now() + 60 * 60 * 1000;
+		vi.spyOn(Date, "now").mockReturnValue(stalled);
+		await expect(clone.branch().checkout(changeset)).rejects.toMatchObject({ code: "copyInUse" });
+	});
+
+	it("takes over the copy a crashed process left", async () => {
+		const clone = remote.clone();
+		crash(clone);
 		await expect(clone.branch().checkout(changeset)).resolves.toBeDefined();
 	});
 
-	it("refuses a copy a process touched under two minutes ago", async () => {
+	it("checks two changesets out of one clone at once", async () => {
 		const clone = remote.clone();
-		await clone.branch().checkout(changeset);
-		const recent = new Date(Date.now() - 2 * 60 * 1000 + 5000);
-		utimesSync(join(clone.directory, `${changeset}.running`), recent, recent);
-		await expect(clone.branch().checkout(changeset)).rejects.toMatchObject({ code: "copyInUse" });
+		for (let round = 0; round < 5; round++) {
+			const ids = [`pull-${String(2 * round).padStart(16, "0")}`, `pull-${String(2 * round + 1).padStart(16, "0")}`];
+			const checkouts = await Promise.all(ids.map((id) => clone.branch().checkout(id)));
+			await Promise.all(
+				checkouts.map(async (checkout) => {
+					await checkout.push();
+					await checkout.close();
+				}),
+			);
+		}
+		expect(
+			gitIn(remote.bare, "ls-tree", "--name-only", "refs/heads/melian/state:changesets").split("\n"),
+		).toHaveLength(10);
 	});
 
 	it.each([
@@ -361,7 +405,7 @@ describe("Codex's review of d449ec6", () => {
 		["a directory", (directory: string) => mkdirSync(join(directory, "doc-1.jsonl"))],
 	])("refuses to push a copy holding %s, rather than push part of it", async (_name, plant) => {
 		const checkout = await remote.clone().branch().checkout(changeset);
-		await note(await checkout.openStorage(context), "kept");
+		await note(await storageOf(checkout), "kept");
 		const tip = remote.tip();
 		plant(checkout.directory);
 		await expect(checkout.push()).rejects.toMatchObject({ code: "invalidCopy" });

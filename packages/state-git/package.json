@@ -33,9 +33,10 @@
 		"test": "vitest --run --root ../.. --passWithNoTests packages/state-git/"
 	},
 	"dependencies": {
-		"@earendil-works/chord": "1.1.0",
-		"@earendil-works/pi-durable": "1.1.0",
 		"@melian-agent/core": "*"
+	},
+	"devDependencies": {
+		"@melian-agent/pipeline": "*"
 	},
 	"engines": {
 		"node": ">=22.19.0"
