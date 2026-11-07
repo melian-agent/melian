@@ -359,6 +359,17 @@ describe("the melian round workflow", () => {
 		}
 	});
 
+	it("reads the logins only in jobs of the melian-round Environment, which only main may deploy to", () => {
+		const reading = Object.entries(workflow.jobs).filter(([, job]) =>
+			/secrets\.(CLAUDE_CODE_OAUTH_TOKEN|CODEX_AUTH_B64)\b/.test(JSON.stringify(job)),
+		);
+		expect(reading.map(([name, job]) => [name, job.environment])).toEqual([["round", "melian-round"]]);
+		expect(JSON.stringify(workflow).match(/\$\{\{\s*secrets\.\w+\s*\}\}/g)).toEqual([
+			actions("secrets.CLAUDE_CODE_OAUTH_TOKEN"),
+			actions("secrets.CODEX_AUTH_B64"),
+		]);
+	});
+
 	it("keeps no token in any checkout's git configuration", () => {
 		const checkouts = steps.filter((step) => step.uses?.startsWith("actions/checkout@"));
 		expect(checkouts.map((step) => [step.job, step.with?.["persist-credentials"]])).toEqual([
