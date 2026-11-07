@@ -1,4 +1,6 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { spawn } from "node:child_process";
+import { once } from "node:events";
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import * as pipeline from "@melian-agent/pipeline";
@@ -114,6 +116,49 @@ describe("melian probe", () => {
 			stdout: "",
 			stderr: "melian: fixture/link is neither a file nor a directory\n",
 		});
+	});
+
+	it("never reads through a fixture swapped for a link after it was checked", { timeout: 120_000 }, async () => {
+		// A process of the test's own swaps the fixture between a regular file and a link to an outside file, as fast as
+		// it can, while the CLI reads the directory again and again. A read by path after the check follows the link.
+		writeFileSync(join(dir, "probe.mjs"), "");
+		const outside = join(repo, "outside.txt");
+		writeFileSync(outside, "outside");
+		const staging = join(repo, "staging");
+		mkdirSync(staging);
+		const stop = join(repo, "stop");
+		const swaps = `
+const fs = require("node:fs");
+const [data, staging, outside, stop] = process.argv.slice(1);
+const ends = Date.now() + 60000;
+let count = 0;
+while (!fs.existsSync(stop) && Date.now() < ends) {
+	fs.writeFileSync(staging + "/file", "inside");
+	fs.renameSync(staging + "/file", data);
+	fs.symlinkSync(outside, staging + "/link");
+	fs.renameSync(staging + "/link", data);
+	count++;
+}
+fs.writeFileSync(stop + ".count", String(count));
+`;
+		const swapper = spawn(process.execPath, ["-e", swaps, join(dir, "fixture", "data"), staging, outside, stop], {
+			stdio: "ignore",
+		});
+		const read: string[] = [];
+		try {
+			const open = vi.spyOn(pipeline.Probe, "open").mockImplementation(async (input) => {
+				for (const file of input.files ?? []) read.push(Buffer.from(file.bytes ?? file.text ?? "").toString());
+				throw new pipeline.ProbeError("invalidProbe", "stop");
+			});
+			for (let attempt = 0; attempt < 400 && !read.includes("outside"); attempt++)
+				await melian(["probe", "probes/first", "--trust-head"]);
+			expect(open).toHaveBeenCalled();
+		} finally {
+			writeFileSync(stop, "");
+			if (swapper.exitCode === null && swapper.signalCode === null) await once(swapper, "exit");
+		}
+		expect(Number(readFileSync(`${stop}.count`, "utf8"))).toBeGreaterThan(0);
+		expect(read.filter((text) => text !== "inside")).toEqual([]);
 	});
 
 	it("refuses more files than a probe takes", async () => {

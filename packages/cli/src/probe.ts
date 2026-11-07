@@ -1,4 +1,5 @@
-import { lstat, readdir, readFile } from "node:fs/promises";
+import { constants } from "node:fs";
+import { lstat, open, readdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { visibleText } from "@melian-agent/core";
 import {
@@ -17,6 +18,34 @@ export const probeExitCodes = { passed: 0, failed: 1, refused: 2 } as const;
 
 const script = "probe.mjs";
 
+// Reads a file through one descriptor that refuses a link, so a swap after the directory was listed cannot redirect the
+// read, and checks that descriptor, not the path, to be a regular file within the size bound. O_NONBLOCK keeps a FIFO
+// swapped in from blocking the open; the descriptor's check then refuses it.
+async function regularFile(root: string, path: string): Promise<Buffer> {
+	const neither = new ProbeError("invalidProbe", `${path} is neither a file nor a directory`);
+	const handle = await open(join(root, path), constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK).catch(
+		(error: unknown) => {
+			throw (error as NodeJS.ErrnoException).code === "ELOOP" ? neither : error;
+		},
+	);
+	try {
+		if (!(await handle.stat()).isFile()) throw neither;
+		// Reads one byte past the bound, so a file that grew after its check is refused rather than read without end.
+		const buffer = Buffer.alloc(probeLimits.fileBytes + 1);
+		let size = 0;
+		for (;;) {
+			const { bytesRead } = await handle.read(buffer, size, buffer.length - size, size);
+			size += bytesRead;
+			if (bytesRead === 0 || size === buffer.length) break;
+		}
+		if (size > probeLimits.fileBytes)
+			throw new ProbeError("invalidProbe", `${path} is larger than ${probeLimits.fileBytes} bytes`);
+		return buffer.subarray(0, size);
+	} finally {
+		await handle.close();
+	}
+}
+
 // The directory's files, every regular file under it but the script, by their relative paths. A link or anything else
 // is refused rather than followed, and every bound a probe takes is checked while reading, so a directory far over a
 // bound is refused before it is all read into memory.
@@ -29,11 +58,12 @@ async function directoryFiles(root: string, at: string, files: ProbeFile[], tota
 		else if (entry.size > probeLimits.fileBytes)
 			throw new ProbeError("invalidProbe", `${path} is larger than ${probeLimits.fileBytes} bytes`);
 		else if (path !== script) {
-			total.bytes += entry.size;
+			// Carried as bytes, so a binary fixture is not corrupted by a UTF-8 decode.
+			const bytes = await regularFile(root, path);
+			total.bytes += bytes.length;
 			if (total.bytes > probeLimits.fileBytes)
 				throw new ProbeError("invalidProbe", `a probe's files hold at most ${probeLimits.fileBytes} bytes`);
-			// Carried as bytes, so a binary fixture is not corrupted by a UTF-8 decode.
-			files.push({ path, bytes: await readFile(join(root, path)) });
+			files.push({ path, bytes });
 		}
 		if (files.length > probeLimits.files)
 			throw new ProbeError("invalidProbe", `a probe has at most ${probeLimits.files} files`);
@@ -61,7 +91,7 @@ export async function probe(
 		const root = resolve(io.cwd, directory);
 		const files: ProbeFile[] = [];
 		await directoryFiles(root, "", files, { bytes: 0 });
-		const input = { script: await readFile(join(root, script), "utf8"), files };
+		const input = { script: (await regularFile(root, script)).toString("utf8"), files };
 		const opened = await Probe.open(input, {
 			worktree: await git(io.cwd, ["rev-parse", "--show-toplevel"]),
 			writer: options.trustHead
