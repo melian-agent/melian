@@ -37,7 +37,10 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq bubblewrap socat ripgrep
-          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          # Runner images differ: an image without the restriction has no such setting.
+          if [ -e /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          fi
       - run: npm ci --ignore-scripts
       # The triage gate compares questions.json with main's, at origin/main. A push run already has origin/main at the
       # pushed commit, so the gate has nothing to compare; fetching would be refused as a non-fast-forward once main
