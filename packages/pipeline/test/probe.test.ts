@@ -28,7 +28,7 @@ import {
 	type SandboxRuntime,
 	withBound,
 } from "../src/probe.ts";
-import { closeGraceMs } from "../src/probe-process.ts";
+import { closeGraceMs, ProbeProcess } from "../src/probe-process.ts";
 
 // Probe's own rules, on a sandbox that runs the command unconfined and records what it was asked. Every script here is
 // the test's own. The real sandbox's attacks are in probe-sandbox.test.ts.
@@ -547,7 +547,33 @@ console.log(JSON.stringify({ marker: readFileSync("marker", "utf8"), home: proce
 
 	it("returns the exit code and output, uncut and in time", async () => {
 		const { result } = await ran(`process.stdout.write("out\\n"); process.stderr.write("err\\n"); process.exit(3);`);
-		expect(result).toEqual({ exitCode: 3, signal: null, output: "out\nerr\n", truncated: false, timedOut: false });
+		expect(result).toStrictEqual({
+			exitCode: 3,
+			signal: null,
+			output: "out\nerr\n",
+			truncated: false,
+			timedOut: false,
+		});
+	});
+
+	it("passes on a failure to stop the probe's processes", async () => {
+		const wait = ProbeProcess.prototype.wait;
+		const failed = vi.spyOn(ProbeProcess.prototype, "wait").mockImplementation(async function (this: ProbeProcess) {
+			return { ...(await wait.call(this)), error: "ps failed" };
+		});
+		try {
+			const { result } = await ran(`process.exit(0);`);
+			expect(result).toStrictEqual({
+				exitCode: 0,
+				signal: null,
+				output: "",
+				truncated: false,
+				timedOut: false,
+				error: "ps failed",
+			});
+		} finally {
+			failed.mockRestore();
+		}
 	});
 
 	it("runs from a worktree whose path holds a quote", async () => {
