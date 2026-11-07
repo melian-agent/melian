@@ -568,18 +568,19 @@ describe("staticFindings", () => {
 				},
 			],
 		});
-		const causes = async (baseLog: ToolLog, headLog: ToolLog) =>
+		const causes = async (baseLog: ToolLog, headLog: ToolLog, tool: "biome" | "tsc" = "tsc") =>
 			(
 				await staticFindings({
 					repoRoot: repo,
 					revision,
-					tool: "tsc",
-					settings: defaultConfig.static.tsc,
+					tool,
+					settings: defaultConfig.static[tool],
 					base: baseLog,
 					head: headLog,
 				})
 			).findings.map((finding) => [finding.properties.cause, finding.properties.discriminator]);
 		expect(await causes(at(1, 14), at(2, 14))).toEqual([["introduced", "line 2, column 14"]]);
+		expect(await causes(at(1, 14), at(2, 14), "biome")).toEqual([["introduced", "line 2, column 14"]]);
 		expect(await causes(at(2, 13), at(2, 14))).toEqual([["introduced", "line 2, column 14"]]);
 		expect(await causes(at(2, 14), at(2, 14))).toEqual([["pre-existing", "line 2, column 14"]]);
 		const unplaced = at(2, 1);
