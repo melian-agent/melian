@@ -90,6 +90,17 @@ function reviewOptions(): Parameters<typeof reviewChangeset>[0] {
 }
 
 const lens = (name: string) => lenses.find((each) => each.name === name)!;
+// A defect of contracts' own on another line, so it never merges with correctness's report.
+const caller = {
+	...crashFinding,
+	line: 3,
+	rule: "broken-caller",
+	explanation: {
+		what: "User.manager is optional, and managerName now reads it unguarded.",
+		why: "Every caller passing a user without a manager now throws.",
+		fix: "Guard the manager in managerName.",
+	},
+};
 const report = (rule: string) =>
 	fauxAssistantMessage(fauxToolCall("report_finding", { ...crashFinding, rule }), { stopReason: "toolUse" });
 const claimsIn = (messages: Parameters<typeof systemPromptOf>[0]) =>
@@ -469,16 +480,6 @@ describe("verification as each lens ends", () => {
 				Object.fromEntries(claims.map((id) => [id, { verdict: "confirmed" as const, reason: "Traced the code." }])),
 			);
 		};
-		const caller = {
-			...crashFinding,
-			line: 3,
-			rule: "broken-caller",
-			explanation: {
-				what: "User.manager is optional, and managerName now reads it unguarded.",
-				why: "Every caller passing a user without a manager now throws.",
-				fix: "Guard the manager in managerName.",
-			},
-		};
 		scriptConversations(fake, [
 			{
 				match: lens("correctness").instructions,
@@ -511,5 +512,59 @@ describe("verification as each lens ends", () => {
 		}
 		expect(during).toBe(1);
 		expect(asked.map((claims) => claims.length)).toEqual([1, 1]);
+	});
+
+	it("starts the next wave once the running one settles, while a slower lens still runs", async () => {
+		lenses = [
+			...lenses,
+			(await Lens.load(repo, { kind: "revision", commit: gitIn(repo, "rev-parse", "main") }, ["src/user.ts"])).find(
+				(each) => each.name === "tests",
+			)!,
+		];
+		const settled = [Promise.withResolvers<void>(), Promise.withResolvers<void>()];
+		const events: string[] = [];
+		let judged = 0;
+		const judge: ScriptedReply = (messages) => {
+			const claims = claimsIn(messages);
+			if (messages.some((message) => message.role === "toolResult")) {
+				if (judged === 1) events.push("contracts verified");
+				settled[judged++]?.resolve();
+			}
+			return scriptVerifier(
+				messages,
+				Object.fromEntries(claims.map((id) => [id, { verdict: "confirmed" as const, reason: "Traced the code." }])),
+			);
+		};
+		const within = (promise: Promise<void>, ms: number) =>
+			Promise.race([promise, new Promise((resolve) => setTimeout(resolve, ms))]);
+		scriptConversations(fake, [
+			{
+				match: lens("correctness").instructions,
+				replies: [report("null-dereference"), fauxAssistantMessage("Done.")],
+			},
+			{
+				match: lens("contracts").instructions,
+				replies: [
+					async () => {
+						await within(settled[0]!.promise, 2_000);
+						return fauxAssistantMessage(fauxToolCall("report_finding", caller), { stopReason: "toolUse" });
+					},
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{
+				match: lens("tests").instructions,
+				replies: [
+					async () => {
+						await within(settled[1]!.promise, 3_000);
+						events.push("tests ended");
+						return fauxAssistantMessage("Done.");
+					},
+				],
+			},
+			{ match: verifierMarker, replies: Array.from({ length: 20 }, () => judge) },
+		]);
+		await review();
+		expect(events).toEqual(["contracts verified", "tests ended"]);
 	});
 });

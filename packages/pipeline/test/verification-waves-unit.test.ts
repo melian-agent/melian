@@ -39,6 +39,7 @@ describe("verification waves", () => {
 		expect(VerificationWaves.owns(index(8, 20), waves, "r", 11)).toBe(false);
 		expect(VerificationWaves.owns(index(7, 20), waves, "r", 12)).toBe(false);
 		expect(VerificationWaves.owns(index(7, 20), waves, "r", undefined)).toBe(false);
+		expect(VerificationWaves.owns(index(8, 20), waves, "r", undefined)).toBe(false);
 		expect(VerificationWaves.owns({ reviews: {} } as unknown as ReviewIndexState, waves, "r", 11)).toBe(false);
 		expect(VerificationWaves.owns(undefined, waves, "r", 11)).toBe(false);
 	});
@@ -67,6 +68,20 @@ describe("verification waves", () => {
 			},
 		]);
 		expect(VerificationWaves.owns(index(7, 20), apart, "r", 11)).toBe(true);
+		// One later wave apart and one that overlaps through the second of its candidates: the overlap still supersedes.
+		const mixed = state(7, [
+			{ task: 11, candidates: [{ key: "A", claims: ["x"] }] },
+			{ task: 12, candidates: [{ key: "C", claims: ["z"] }] },
+			{
+				task: 13,
+				candidates: [
+					{ key: "Q", claims: ["q"] },
+					{ key: "B", claims: ["x"] },
+				],
+			},
+		]);
+		expect(VerificationWaves.owns(index(7, 20), mixed, "r", 11)).toBe(false);
+		expect(VerificationWaves.owns(index(7, 20), mixed, "r", 13)).toBe(true);
 	});
 
 	it("stands for a wave only under the verifier version that ran it", () => {
