@@ -17,7 +17,7 @@ export interface GitOptions {
 	// Stop git once stdout reaches this many bytes.
 	readonly maxBytes?: number;
 	// Written to git's standard input, which otherwise stays open and empty.
-	readonly input?: string;
+	readonly input?: string | Uint8Array;
 	// Set in git's environment after the repository-local variables are removed.
 	readonly env?: Readonly<Record<string, string>>;
 }

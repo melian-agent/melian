@@ -31,8 +31,6 @@ let remote: Remote;
 beforeEach(() => {
 	for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
 	remote = new Remote();
-	// Each checkout's lock socket lives in the temporary directory; keep a test's inside its own remote's root.
-	vi.stubEnv("TMPDIR", remote.root);
 	let count = 0;
 	const other = remote.clone();
 	interloper = async () => {

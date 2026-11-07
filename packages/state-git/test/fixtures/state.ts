@@ -1,5 +1,6 @@
 // A bare remote and clones of it, each with its own store directory, for state branch tests.
 import { execFileSync } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { backgroundContext, defineDoc, openJsonlStorage, type Storage } from "@melian-agent/pipeline";
@@ -13,6 +14,8 @@ export const changeset = "pull-0123456789abcdef";
 export class Remote {
 	readonly root = temporaryDirectory();
 	readonly bare = join(this.root, "remote.git");
+	// The writers' key every clone of this remote shares unless a test gives it another.
+	readonly key = randomBytes(32);
 	#clones = 0;
 
 	constructor() {
@@ -70,6 +73,7 @@ export class Clone {
 			remote: this.#remote.bare,
 			directory: this.directory,
 			holder: this.holder,
+			key: this.#remote.key,
 			...this.#options,
 			...options,
 		});

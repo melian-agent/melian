@@ -1,8 +1,7 @@
-import { createHash, randomUUID } from "node:crypto";
-import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
-import { connect, createServer, type Server } from "node:net";
-import { tmpdir } from "node:os";
+import { createCipheriv, createDecipheriv, createHmac, randomUUID } from "node:crypto";
+import { mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { git, gitFailure, gitOutput, gitOutputBytes } from "@melian-agent/core";
 import { type Lease, StateBranchError, StateIndex } from "./state-index.ts";
 
@@ -14,7 +13,8 @@ const storageFile = /^(?:main|(?:doc|task)-(?:0|[1-9]\d*))\.jsonl$/;
 const changesetName = /^[a-z0-9][a-z0-9-]{0,63}$/;
 const attemptsLimit = 3;
 const defaultLeaseMs = 2 * 60 * 60 * 1000;
-const takeoverMs = 10 * 1000;
+const sealVersion = 1;
+const sqliteBusy = 5;
 // Git records who pushed the branch; the commits themselves need only some identity.
 const identity = {
 	GIT_AUTHOR_NAME: "Melian state",
@@ -33,6 +33,8 @@ export interface StateBranchOptions {
 	readonly directory: string;
 	/** This clone's identity, so a run in the same clone may take over a lease a crashed run left. */
 	readonly holder: string;
+	/** The writers' 32-byte key, which every file on the branch is encrypted under. */
+	readonly key: Uint8Array;
 	readonly now?: () => number;
 	/** How long a lease stays live after it is taken. */
 	readonly leaseMs?: number;
@@ -52,6 +54,45 @@ export class LeaseHeld extends Error {
 	}
 }
 
+// Seals each file the branch holds under the writers' key, so a repository reader learns nothing from it: the
+// publisher secret that signs Melian's markers lives in the storage. AES-256-GCM binds a file to its changeset and
+// name. Its nonce is derived from the key and the content, so an unchanged file seals to the same blob on every push,
+// and two contents never share a nonce.
+class Seal {
+	readonly #encrypt: Buffer;
+	readonly #nonce: Buffer;
+
+	constructor(key: Uint8Array) {
+		if (key.length !== 32)
+			throw new StateBranchError(
+				"invalidKey",
+				"the state key must be 32 bytes, as a writers' key from Melian's secrets file is",
+			);
+		this.#encrypt = createHmac("sha256", key).update("melian-state encrypt").digest();
+		this.#nonce = createHmac("sha256", key).update("melian-state nonce").digest();
+	}
+
+	seal(name: string, plain: Buffer): Buffer {
+		const nonce = createHmac("sha256", this.#nonce).update(name).update("\0").update(plain).digest().subarray(0, 12);
+		const cipher = createCipheriv("aes-256-gcm", this.#encrypt, nonce).setAAD(Buffer.from(name));
+		const body = Buffer.concat([cipher.update(plain), cipher.final()]);
+		return Buffer.concat([Buffer.from([sealVersion]), nonce, cipher.getAuthTag(), body]);
+	}
+
+	open(name: string, sealed: Buffer): Buffer | undefined {
+		if (sealed.length < 29 || sealed[0] !== sealVersion) return undefined;
+		try {
+			const decipher = createDecipheriv("aes-256-gcm", this.#encrypt, sealed.subarray(1, 13)).setAAD(
+				Buffer.from(name),
+			);
+			decipher.setAuthTag(sealed.subarray(13, 29));
+			return Buffer.concat([decipher.update(sealed.subarray(29)), decipher.final()]);
+		} catch {
+			return undefined;
+		}
+	}
+}
+
 /** Another melian process in this clone is working on the changeset, so this one must not open its copy. */
 export class CopyInUse extends Error {
 	readonly code = "copyInUse";
@@ -62,81 +103,34 @@ export class CopyInUse extends Error {
 	}
 }
 
-// One process's hold on this clone's copy of a changeset: a Unix socket it listens on while it works. The kernel
-// frees it when the process dies, and a stopped or stalled process keeps it, so no clock guesses who is alive. A
-// socket file nobody listens on is a crashed process's; the takeover runs under an exclusive file, so two processes
-// that both find it stale cannot both unlink a fresh one.
+// One process's hold on this clone's copy of a changeset: an exclusive SQLite transaction on a lock file beside it,
+// held until the checkout closes. SQLite's lock is the operating system's: the kernel frees it when the process dies,
+// and a stopped or stalled process keeps it, so nothing guesses from a clock and nothing is ever taken over.
 class CopyLock {
-	readonly #server: Server;
+	readonly #database: DatabaseSync;
 
-	private constructor(server: Server) {
-		this.#server = server;
+	private constructor(database: DatabaseSync) {
+		this.#database = database;
 	}
 
-	static async take(directory: string, changeset: string, run: string): Promise<CopyLock> {
-		// A socket's path is limited to about a hundred bytes, so it lives in the temporary directory, named by a hash.
-		const name = createHash("sha256").update(`${directory}\0${changeset}`).digest("hex").slice(0, 16);
-		const path = join(tmpdir(), `melian-${name}.sock`);
-		for (let attempt = 0; attempt < 3; attempt++) {
-			const server = await listen(path);
-			if (server !== undefined) return new CopyLock(server);
-			if (await answers(path)) throw new CopyInUse(changeset);
-			const takeover = `${path}.take`;
-			const took = await writeFile(takeover, `${run}\n`, { flag: "wx" }).then(
-				() => true,
-				async (error: NodeJS.ErrnoException) => {
-					if (error.code !== "EEXIST") throw error;
-					// A takeover is a few system calls; one ten seconds old belongs to a process that died inside it.
-					const age = await stat(takeover).then(
-						(info) => Date.now() - info.mtimeMs,
-						() => 0,
-					);
-					if (age > takeoverMs) await rm(takeover, { force: true });
-					return false;
-				},
-			);
-			if (!took) continue;
-			try {
-				if (!(await answers(path))) await rm(path, { force: true });
-			} finally {
-				await rm(takeover, { force: true });
-			}
+	static async take(directory: string, changeset: string): Promise<CopyLock> {
+		await mkdir(directory, { recursive: true });
+		const database = new DatabaseSync(join(directory, `${changeset}.lock`), { timeout: 0 });
+		try {
+			database.exec("BEGIN EXCLUSIVE");
+		} catch (error) {
+			database.close();
+			if ((error as { errcode?: number }).errcode === sqliteBusy) throw new CopyInUse(changeset);
+			throw error;
 		}
-		throw new CopyInUse(changeset);
+		return new CopyLock(database);
 	}
 
-	release(): Promise<void> {
-		return new Promise((resolve) => {
-			if (!this.#server.listening) resolve();
-			else this.#server.close(() => resolve());
-		});
+	release(): void {
+		if (!this.#database.isOpen) return;
+		this.#database.exec("ROLLBACK");
+		this.#database.close();
 	}
-}
-
-// Listens on the socket, or answers undefined when its file already exists.
-function listen(path: string): Promise<Server | undefined> {
-	return new Promise((resolve, reject) => {
-		const server = createServer((socket) => socket.destroy());
-		server.once("error", (error: NodeJS.ErrnoException) =>
-			error.code === "EADDRINUSE" ? resolve(undefined) : reject(error),
-		);
-		server.listen(path, () => {
-			server.unref();
-			resolve(server);
-		});
-	});
-}
-
-// Whether a live process listens on the socket.
-function answers(path: string): Promise<boolean> {
-	return new Promise((resolve) => {
-		const socket = connect(path);
-		socket.once("connect", () => {
-			socket.destroy();
-			resolve(true);
-		});
-		socket.once("error", () => resolve(false));
-	});
 }
 
 /** What a push did: stored the changeset on the branch, or was refused because the branch moved under it. */
@@ -172,9 +166,11 @@ const mktreeLine = (entry: Entry) => `${entry.mode} ${entry.type} ${entry.sha}\t
 export class StateBranch {
 	readonly #options: StateBranchOptions;
 	readonly #run = randomUUID();
+	readonly #seal: Seal;
 
 	constructor(options: StateBranchOptions) {
 		this.#options = options;
+		this.#seal = new Seal(options.key);
 	}
 
 	get run(): string {
@@ -190,11 +186,11 @@ export class StateBranch {
 	async checkout(changeset: string): Promise<StateCheckout> {
 		if (!changesetName.test(changeset))
 			throw new StateBranchError("invalidBranch", `"${changeset}" is not a changeset name`);
-		const lock = await CopyLock.take(this.#options.directory, changeset, this.#run);
+		const lock = await CopyLock.take(this.#options.directory, changeset);
 		try {
 			return await this.#checkout(changeset, lock);
 		} catch (error) {
-			await lock.release();
+			lock.release();
 			throw error;
 		}
 	}
@@ -234,8 +230,8 @@ export class StateBranch {
 		}
 	}
 
-	/** @internal Writes the changeset's directory into the clone's object database and names its tree. */
-	async snapshot(directory: string): Promise<string> {
+	/** @internal Seals the changeset's directory into the clone's object database and names its tree. */
+	async snapshot(changeset: string, directory: string): Promise<string> {
 		const found = await readdir(directory, { withFileTypes: true });
 		const stray = found.find((entry) => !entry.isFile() || !storageFile.test(entry.name));
 		if (stray !== undefined)
@@ -244,15 +240,17 @@ export class StateBranch {
 				`this clone's copy of ${directory.split("/").at(-1)} holds ${JSON.stringify(stray.name)}, which Pi's storage never writes, so Melian will not push part of it`,
 			);
 		const names = found.map((entry) => entry.name).sort();
-		const paths = names.map((name) => join(directory, name));
-		const shas =
-			names.length === 0 ? [] : (await this.#git(["hash-object", "-w", "--", ...paths])).trim().split("\n");
+		const shas: string[] = [];
+		for (const name of names) {
+			const sealed = this.#seal.seal(`${changeset}/${name}`, await readFile(join(directory, name)));
+			shas.push((await this.#git(["hash-object", "-w", "--stdin"], sealed)).trim());
+		}
 		const tree = names.map((name, i) => mktreeLine({ mode: "100644", type: "blob", sha: shas[i]!, name })).join("");
 		return (await this.#git(["mktree", "-z"], tree)).trim();
 	}
 
 	/** @internal Writes a tree of the branch into a fresh directory, refusing anything Pi's storage would not write. */
-	async materialize(tree: string, directory: string): Promise<void> {
+	async materialize(changeset: string, tree: string, directory: string): Promise<void> {
 		const files = entries(await gitOutputBytes(this.#options.repoRoot, ["ls-tree", "-z", tree]));
 		const stray = files.find(
 			(entry) => entry.type !== "blob" || entry.mode !== "100644" || !storageFile.test(entry.name),
@@ -262,12 +260,19 @@ export class StateBranch {
 				"invalidBranch",
 				`the state branch holds ${JSON.stringify(stray.name)} in ${directory.split("/").at(-1)}, which Melian never writes`,
 			);
+		const opened: [string, Buffer][] = [];
+		for (const entry of files) {
+			const sealed = await gitOutputBytes(this.#options.repoRoot, ["cat-file", "blob", entry.sha]);
+			const plain = this.#seal.open(`${changeset}/${entry.name}`, sealed);
+			if (plain === undefined)
+				throw new StateBranchError(
+					"invalidBranch",
+					`this clone's state key cannot read ${entry.name} in ${changeset}; the branch was written under another key, or the file was moved`,
+				);
+			opened.push([entry.name, plain]);
+		}
 		await mkdir(directory, { recursive: true });
-		for (const entry of files)
-			await writeFile(
-				join(directory, entry.name),
-				await gitOutputBytes(this.#options.repoRoot, ["cat-file", "blob", entry.sha]),
-			);
+		for (const [name, plain] of opened) await writeFile(join(directory, name), plain);
 	}
 
 	get directory(): string {
@@ -284,7 +289,7 @@ export class StateBranch {
 		);
 	}
 
-	async #git(args: readonly string[], input?: string): Promise<string> {
+	async #git(args: readonly string[], input?: string | Uint8Array): Promise<string> {
 		const result = await git(this.#options.repoRoot, args, {
 			...(input === undefined ? {} : { input }),
 			env: identity,
@@ -483,7 +488,7 @@ export class StateCheckout {
 		}
 		await rm(directory, { recursive: true, force: true });
 		if (onBranch === "none") await mkdir(directory, { recursive: true });
-		else await branch.materialize(onBranch, directory);
+		else await branch.materialize(changeset, onBranch, directory);
 		await writeFile(marker, `${onBranch}\n`);
 		return new StateCheckout(branch, changeset, onBranch, setAside, lock);
 	}
@@ -495,7 +500,7 @@ export class StateCheckout {
 	async push(): Promise<PushResult> {
 		let tree = "";
 		const result = await this.#branch.push(this.changeset, this.#synced, async () => {
-			tree = await this.#branch.snapshot(this.directory);
+			tree = await this.#branch.snapshot(this.changeset, this.directory);
 			return tree;
 		});
 		if (result.kind === "pushed") await writeFile(`${this.directory}.synced`, `${tree}\n`);
@@ -503,7 +508,7 @@ export class StateCheckout {
 	}
 
 	/** Lets another process in this clone open the copy. A lease left on the branch expires, or the next run takes it. */
-	close(): Promise<void> {
-		return this.#lock.release();
+	close(): void {
+		this.#lock.release();
 	}
 }

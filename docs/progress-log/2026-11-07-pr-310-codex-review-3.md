@@ -1,0 +1,5 @@
+[Pull request #310](https://github.com/melian-agent/melian/pull/310), fixes for Codex's adversarial review of a7e009f. Each began with a test that failed on a7e009f for the reported reason.
+
+- The branch carried each changeset's storage in plain text, and the storage holds the publisher secret that signs Melian's markers, so anyone who could read the repository could forge one. The maintainer ruled that every file be encrypted under a writers' key from Melian's secrets file. A push now seals each file with AES-256-GCM, bound to its changeset and name, with a nonce derived from the content so an unchanged file keeps its blob. A checkout that cannot open a file refuses before writing any. Four tests failed first: plaintext on the branch, a stranger's key reading it, a file moved to another changeset, and a short key.
+- A process stalled inside the socket lock's ten-second takeover could let a second process in, the third instance of one class. The maintainer ruled for SQLite's exclusive lock, which the kernel holds and nothing takes over. The socket and its `.take` file are gone.
+- Core's `git` takes bytes on standard input, for the sealed files.

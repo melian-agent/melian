@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, readdirSync, writeFileSync } from "node:fs";
+import { randomBytes } from "node:crypto";
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineDoc } from "@melian-agent/pipeline";
@@ -24,26 +25,15 @@ let remote: Remote;
 // Checks the changeset out in a child process that exits without closing it, as a crashed review does.
 function crash(clone: Clone): void {
 	const fixture = fileURLToPath(new URL("./fixtures/crash-checkout.ts", import.meta.url));
-	execFileSync(
-		process.execPath,
-		[
-			"--conditions=@melian-agent/source",
-			fixture,
-			clone.repoRoot,
-			remote.bare,
-			clone.directory,
-			clone.holder,
-			changeset,
-		],
-		{ env: { ...process.env, ...isolatedGitEnv } },
-	);
+	const args = [clone.repoRoot, remote.bare, clone.directory, clone.holder, changeset, remote.key.toString("hex")];
+	execFileSync(process.execPath, ["--conditions=@melian-agent/source", fixture, ...args], {
+		env: { ...process.env, ...isolatedGitEnv },
+	});
 }
 
 beforeEach(() => {
 	for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
 	remote = new Remote();
-	// Each checkout's lock socket lives in the temporary directory; keep a test's inside its own remote's root.
-	vi.stubEnv("TMPDIR", remote.root);
 });
 
 afterEach(() => {
@@ -96,10 +86,10 @@ describe("a changeset on the state branch", () => {
 		const first = await clone.branch().checkout(changeset);
 		await note(await storageOf(first), "pushed");
 		expect(await first.push()).toMatchObject({ kind: "pushed" });
-		await first.close();
+		first.close();
 		const second = await clone.branch().checkout(changeset);
 		await note(await storageOf(second), "kept locally");
-		await second.close();
+		second.close();
 		const third = await clone.branch().checkout(changeset);
 		expect(third.setAside).toBeUndefined();
 		expect(await notes(await storageOf(third))).toEqual(["pushed", "kept locally"]);
@@ -204,7 +194,7 @@ describe("two runs racing one changeset", () => {
 		});
 		expect(remote.tip()).toBe(won);
 		expect(await notes(await storageOf(loser))).toEqual(["lens A", "lens B"]);
-		await loser.close();
+		loser.close();
 
 		const resumed = await loserClone.branch({ now: () => expired + 1 }).checkout(changeset);
 		expect(resumed.setAside).toMatch(/\/pull-0123456789abcdef\.set-aside-\d+$/);
@@ -258,11 +248,17 @@ describe("what the branch holds", () => {
 		},
 	);
 
-	it.each(["main.jsonl", "doc-0.jsonl", "doc-17.jsonl", "task-3.jsonl"])("restores %s", async (name) => {
-		await (await remote.clone().branch().checkout(changeset)).push();
-		replaceChangeset(remote, { [name]: "" });
-		const checkout = await remote.clone().branch().checkout(changeset);
-		expect(readdirSync(checkout.directory)).toEqual([name]);
+	it("restores every file the writer pushed, byte for byte", async () => {
+		const writer = await remote.clone().branch().checkout(changeset);
+		await note(await storageOf(writer), "one");
+		await note(await storageOf(writer), "two");
+		await writer.push();
+		const written = readdirSync(writer.directory).sort();
+		expect(written).toEqual(expect.arrayContaining(["main.jsonl", expect.stringMatching(/^doc-\d+\.jsonl$/)]));
+		const restored = await remote.clone().branch().checkout(changeset);
+		expect(readdirSync(restored.directory).sort()).toEqual(written);
+		for (const name of written)
+			expect(readFileSync(join(restored.directory, name))).toEqual(readFileSync(join(writer.directory, name)));
 	});
 
 	it("refuses a store whose document a newer build wrote, rather than overwrite it", async () => {
@@ -313,7 +309,7 @@ describe("Codex's review of d449ec6", () => {
 			message: "another melian process in this clone is working on pull-0123456789abcdef; wait for it to finish",
 		});
 		expect(remote.tip()).toBe(tip);
-		await first.close();
+		first.close();
 		await expect(clone.branch().checkout(changeset)).resolves.toBeDefined();
 	});
 
@@ -339,7 +335,7 @@ describe("Codex's review of d449ec6", () => {
 			await Promise.all(
 				checkouts.map(async (checkout) => {
 					await checkout.push();
-					await checkout.close();
+					checkout.close();
 				}),
 			);
 		}
@@ -410,5 +406,68 @@ describe("Codex's review of d449ec6", () => {
 		plant(checkout.directory);
 		await expect(checkout.push()).rejects.toMatchObject({ code: "invalidCopy" });
 		expect(remote.tip()).toBe(tip);
+	});
+});
+
+describe("Codex's review of a7e009f", () => {
+	const blobs = (): string[] =>
+		gitIn(remote.bare, "ls-tree", "-r", "refs/heads/melian/state:changesets")
+			.split("\n")
+			.map((line) => line.split(/\s+/)[2]!);
+
+	it("puts nothing on the branch that reads without the writers' key", async () => {
+		const checkout = await remote.clone().branch().checkout(changeset);
+		await note(await storageOf(checkout), "marker secret 0123");
+		await checkout.push();
+		const stored = blobs().map((sha) => execFileSync("git", ["cat-file", "blob", sha], { cwd: remote.bare }));
+		expect(stored.length).toBeGreaterThan(0);
+		for (const blob of stored) {
+			expect(blob.includes("marker secret")).toBe(false);
+			expect(blob.includes("test.note")).toBe(false);
+		}
+	});
+
+	it("refuses a branch this clone's key cannot read, and writes nothing locally", async () => {
+		const checkout = await remote.clone().branch().checkout(changeset);
+		await note(await storageOf(checkout), "marker secret 0123");
+		await checkout.push();
+		const stranger = remote.clone({ key: randomBytes(32) });
+		await expect(stranger.branch().checkout(changeset)).rejects.toMatchObject({
+			code: "invalidBranch",
+			message: expect.stringMatching(
+				/^this clone's state key cannot read (?:main|doc-\d+|task-\d+)\.jsonl in pull-0123456789abcdef; the branch was written under another key, or the file was moved$/,
+			),
+		});
+		expect(stranger.has(changeset)).toBe(false);
+	});
+
+	it("refuses a file moved to another changeset or name on the branch", async () => {
+		const checkout = await remote.clone().branch().checkout(changeset);
+		await note(await storageOf(checkout), "marker secret 0123");
+		await checkout.push();
+		const main = gitIn(remote.bare, "rev-parse", `refs/heads/melian/state:changesets/${changeset}/main.jsonl`);
+		const moved = execFileSync("git", ["cat-file", "blob", main], { cwd: remote.bare, encoding: "latin1" });
+		replaceChangeset(remote, { "main.jsonl": moved }, "pull-fedcba9876543210");
+		await expect(remote.clone().branch().checkout("pull-fedcba9876543210")).rejects.toMatchObject({
+			code: "invalidBranch",
+		});
+	});
+
+	it("keeps an unchanged file's blob from one push to the next", async () => {
+		const clone = remote.clone();
+		const first = await clone.branch().checkout(changeset);
+		await note(await storageOf(first), "one");
+		await first.push();
+		first.close();
+		const before = new Set(blobs());
+		const second = await clone.branch().checkout(changeset);
+		await second.push();
+		expect(new Set(blobs())).toEqual(before);
+	});
+
+	it.each([31, 33])("refuses a key of %i bytes", (length) => {
+		expect(() => remote.clone({ key: randomBytes(length) }).branch()).toThrow(
+			"the state key must be 32 bytes, as a writers' key from Melian's secrets file is",
+		);
 	});
 });

@@ -4,20 +4,20 @@ The state-git package keeps a changeset's Pi storage on the repository's `melian
 
 ## The objects
 
-- `StateBranch` is one remote's branch, seen from one clone: where the clone keeps its copies, and which clone it is. Its constructor does no I/O.
-- `StateBranch.checkout(changeset)` takes the changeset's lease and returns a `StateCheckout`, with this clone's copy as the branch has it. It throws `CopyInUse` while another process in this clone works on the changeset, and `LeaseHeld` while another clone holds a live lease. Close the checkout when the work is done, pushed or not; `close()` releases the clone's lock, a Unix socket under the temporary directory.
+- `StateBranch` is one remote's branch, seen from one clone: where the clone keeps its copies, which clone it is, and the writers' 32-byte key every file on the branch is sealed under. Its constructor does no I/O, and refuses a key of any other length with `invalidKey`.
+- `StateBranch.checkout(changeset)` takes the changeset's lease and returns a `StateCheckout`, with this clone's copy as the branch has it. It throws `CopyInUse` while another process in this clone works on the changeset, and `LeaseHeld` while another clone holds a live lease. Close the checkout when the work is done, pushed or not; `close()` releases the clone's lock, an exclusive SQLite transaction on `<id>.lock`.
 - `StateCheckout.directory` is the copy. The CLI opens it with the pipeline's `openJsonlStorage`, since only the pipeline's wrapper imports Pi; close that storage before `push()`.
 - `StateCheckout.push()` stores the copy on the branch and releases the lease. It returns `refused`, with the reason, when another run wrote the changeset; the copy stays, and the next checkout sets it aside for the branch's.
 - `StateIndex` is the branch's `index.json`. It parses strictly and refuses a version this build does not read.
-- `StateBranchError` carries `fetchFailed`, `pushFailed`, `invalidBranch` for a branch this build cannot read whole, or `invalidCopy` for a local copy holding what Pi's storage never writes.
+- `StateBranchError` carries `fetchFailed`, `pushFailed`, `invalidBranch` for a branch this build or this key cannot read whole, `invalidCopy` for a local copy holding what Pi's storage never writes, or `invalidKey`.
 
 ## The layout
 
-The branch's root holds `index.json` and `changesets/<id>/`. A clone keeps `<directory>/<id>/` for each changeset it works on, beside `<id>.synced`, which names the branch's tree the copy last matched, and any `<id>.set-aside-<time>/` a moved branch displaced.
+The branch's root holds `index.json` and `changesets/<id>/`. A clone keeps `<directory>/<id>/` for each changeset it works on, beside `<id>.synced`, which names the branch's tree the copy last matched, `<id>.lock`, and any `<id>.set-aside-<time>/` a moved branch displaced.
 
 ## Tests
 
 - `test/fixtures/state.ts` builds a bare remote and clones of it, each with a holder and a store directory of its own. `replaceChangeset` moves the remote's branch directly, as a writer that ignores the lease would.
 - The conformance suite runs on a checkout's storage, through `registerStorageConformance` from `@melian-agent/pipeline/testing`, which also gives the tests Pi's `createSession`.
-- Each test points `TMPDIR` at its remote's root, so the lock sockets of checkouts a test never closes go with it. `crash(clone)` checks out in a child process that exits without closing, leaving the stale socket a crash leaves.
+- `crash(clone)` checks out in a child process that exits without closing, as a crash does. Each remote has a random key its clones share; pass `key` to a clone to give it another.
 - `test/push-race.test.ts` lands another run's push between a fetch and its push by wrapping core's `git`; it is the only test that mocks a module.
