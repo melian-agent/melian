@@ -24,7 +24,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^routedProbing > moves each level that probes to a prober on medium, and routes heavy and medium$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/goldens.ts",
@@ -42,7 +47,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^routedProbing > moves each level that probes to a prober on medium, and routes heavy and medium$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/goldens.ts",
@@ -60,7 +70,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^routedProbing > moves each level that probes to a prober on medium, and routes heavy and medium$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/goldens.ts",
@@ -78,7 +93,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^routedProbing > moves each level that probes to a prober on medium, and routes heavy and medium$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/goldens.ts",
@@ -96,7 +116,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^routedProbing > moves each level that probes to a prober on medium, and routes heavy and medium$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/goldens.ts",
@@ -114,7 +139,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^routedProbing > moves each level that probes to a prober on medium, and routes heavy and medium$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/goldens.ts",
@@ -132,7 +162,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^routedProbing > drops every probe for the level without probes, and leaves medium as it was$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/goldens.ts",
@@ -150,7 +185,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^routedProbing > moves each level that probes to a prober on medium, and routes heavy and medium$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/goldens.ts",
@@ -168,7 +208,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^routedProbing > moves each level that probes to a prober on medium, and routes heavy and medium$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/goldens.ts",
@@ -186,7 +231,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^routedProbing > moves each level that probes to a prober on medium, and routes heavy and medium$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/goldens.ts",
@@ -204,7 +254,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^routedProbing > moves each level that probes to a prober on medium, and routes heavy and medium$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/goldens.ts",
@@ -222,7 +277,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^routedProbing > moves each level that probes to a prober on medium, and routes heavy and medium$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/goldens.ts",
@@ -240,7 +300,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing > totals each combination's goldens, misses and spend over its passes, and counts a review that throws$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/goldens.ts",
@@ -258,7 +323,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^a live golden run under probing routes > routes the planner on heavy and the prober on medium, and finds the golden's defect$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/goldens.ts",
@@ -276,7 +346,12 @@
    "tests": [
     "packages/evals/test/goldens.test.ts -t ^live design golden routing > uses the subscription verifier route openai-codex\\/gpt-5\\.6-terra independently of the finder$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/goldens.ts",
@@ -307,7 +382,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^a live golden run under probing routes > routes the planner on heavy and the prober on medium, and finds the golden's defect$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/goldens.ts",
@@ -336,7 +416,12 @@
    "tests": [
     "packages/evals/test/goldens.test.ts -t ^live design golden routing > uses the subscription verifier route openai-codex\\/gpt-5\\.6-terra independently of the finder$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/goldens.ts",
@@ -354,7 +439,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^a live golden run under probing routes > routes the planner on heavy and the prober on medium, and finds the golden's defect$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/goldens.ts",
@@ -498,7 +588,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing > totals each combination's goldens, misses and spend over its passes, and counts a review that throws$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing-live.ts",
@@ -516,7 +611,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^probing-live\\.ts > exits 2 before any provider without MELIAN_EVAL_LIVE, and for a malformed combination or pass count$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing-live.ts",
@@ -547,7 +647,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^probing-live\\.ts > exits 2 before any provider without MELIAN_EVAL_LIVE, and for a malformed combination or pass count$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing-live.ts",
@@ -626,7 +731,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^probing-live\\.ts > exits 2 before any provider without MELIAN_EVAL_LIVE, and for a malformed combination or pass count$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing-live.ts",
@@ -644,7 +754,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^probing-live\\.ts > exits 2 before any provider without MELIAN_EVAL_LIVE, and for a malformed combination or pass count$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing-live.ts",
@@ -673,7 +788,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^probing-live\\.ts > exits 2 before any provider without MELIAN_EVAL_LIVE, and for a malformed combination or pass count$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing-live.ts",
@@ -691,7 +811,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^probing-live\\.ts > exits 2 before any provider without MELIAN_EVAL_LIVE, and for a malformed combination or pass count$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing-live.ts",
@@ -709,7 +834,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^probing-live\\.ts > exits 2 before any provider without MELIAN_EVAL_LIVE, and for a malformed combination or pass count$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing-live.ts",
@@ -727,7 +857,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^probing-live\\.ts > exits 2 before any provider without MELIAN_EVAL_LIVE, and for a malformed combination or pass count$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing-live.ts",
@@ -745,7 +880,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^probing-live\\.ts > exits 2 before any provider without MELIAN_EVAL_LIVE, and for a malformed combination or pass count$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing-live.ts",
@@ -776,7 +916,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^probing-live\\.ts > exits 2 before any provider without MELIAN_EVAL_LIVE, and for a malformed combination or pass count$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing-live.ts",
@@ -794,7 +939,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^probing-live\\.ts > exits 2 before any provider without MELIAN_EVAL_LIVE, and for a malformed combination or pass count$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing-live.ts",
@@ -823,7 +973,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^probing-live\\.ts > exits 2 before any provider without MELIAN_EVAL_LIVE, and for a malformed combination or pass count$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing-live.ts",
@@ -878,7 +1033,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^probing-live\\.ts > exits 2 before any provider without MELIAN_EVAL_LIVE, and for a malformed combination or pass count$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing-live.ts",
@@ -1011,7 +1171,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^probing-live\\.ts > exits 2 before any provider without MELIAN_EVAL_LIVE, and for a malformed combination or pass count$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing-live.ts",
@@ -1029,7 +1194,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^probing-live\\.ts > exits 2 before any provider without MELIAN_EVAL_LIVE, and for a malformed combination or pass count$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing-live.ts",
@@ -1047,7 +1217,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^probing-live\\.ts > exits 2 before any provider without MELIAN_EVAL_LIVE, and for a malformed combination or pass count$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing-live.ts",
@@ -1065,7 +1240,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^probing-live\\.ts > exits 2 before any provider without MELIAN_EVAL_LIVE, and for a malformed combination or pass count$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing-live.ts",
@@ -1452,7 +1632,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > refuses x=a b\\/c$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -1470,7 +1655,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > refuses x=a\\/b c$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -1488,7 +1678,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > refuses x=ab\\/c\\/d$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -1506,7 +1701,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > reads planner and prober pairs, and a model alone as the level without probes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -1524,7 +1724,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > reads planner and prober pairs, and a model alone as the level without probes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -1542,7 +1747,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > refuses x=ab\\/c\\/d$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -1560,7 +1770,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > reads planner and prober pairs, and a model alone as the level without probes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -1578,7 +1793,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > reads planner and prober pairs, and a model alone as the level without probes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -1596,7 +1816,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > refuses undefined$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -1614,7 +1839,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > reads planner and prober pairs, and a model alone as the level without probes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -1654,7 +1884,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > reads planner and prober pairs, and a model alone as the level without probes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -1672,7 +1907,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > reads planner and prober pairs, and a model alone as the level without probes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -1690,7 +1930,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > reads planner and prober pairs, and a model alone as the level without probes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -1708,7 +1953,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > refuses undefined$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -1726,7 +1976,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > reads planner and prober pairs, and a model alone as the level without probes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -1744,7 +1999,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > refuses undefined$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -1773,7 +2033,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > reads planner and prober pairs, and a model alone as the level without probes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -1791,7 +2056,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > refuses Same=a\\/x$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -1809,7 +2079,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > reads planner and prober pairs, and a model alone as the level without probes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -1827,7 +2102,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > reads planner and prober pairs, and a model alone as the level without probes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -1845,7 +2125,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > reads planner and prober pairs, and a model alone as the level without probes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -1863,7 +2148,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > reads planner and prober pairs, and a model alone as the level without probes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -1881,7 +2171,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > reads planner and prober pairs, and a model alone as the level without probes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -1899,7 +2194,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > reads planner and prober pairs, and a model alone as the level without probes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -1917,7 +2217,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > reads planner and prober pairs, and a model alone as the level without probes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -1935,7 +2240,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > reads planner and prober pairs, and a model alone as the level without probes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -1953,7 +2263,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > reads planner and prober pairs, and a model alone as the level without probes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -1971,7 +2286,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > trims each side of an entry, and leaves the prober out of a level without probes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2002,7 +2322,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > refuses Same=a\\/x$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2020,7 +2345,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > trims each side of an entry, and leaves the prober out of a level without probes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2038,7 +2368,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > reads planner and prober pairs, and a model alone as the level without probes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2056,7 +2391,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > refuses Same=a\\/x$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2074,7 +2414,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > reads planner and prober pairs, and a model alone as the level without probes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2092,7 +2437,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > refuses same=ax>a\\/x$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2110,7 +2460,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > refuses same=ax>a\\/x$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2128,7 +2483,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > refuses same=ax>a\\/x$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2146,7 +2506,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > refuses same=ax>a\\/x$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2177,7 +2542,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > reads planner and prober pairs, and a model alone as the level without probes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2195,7 +2565,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > reads planner and prober pairs, and a model alone as the level without probes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2213,7 +2588,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > refuses same=a\\/x>b$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2231,7 +2611,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > reads planner and prober pairs, and a model alone as the level without probes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2249,7 +2634,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > reads planner and prober pairs, and a model alone as the level without probes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2267,7 +2657,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > reads planner and prober pairs, and a model alone as the level without probes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2285,7 +2680,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > reads planner and prober pairs, and a model alone as the level without probes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2303,7 +2703,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > refuses same=ax>a\\/x$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2332,7 +2737,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > reads planner and prober pairs, and a model alone as the level without probes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2350,7 +2760,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > reads planner and prober pairs, and a model alone as the level without probes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2368,7 +2783,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > reads planner and prober pairs, and a model alone as the level without probes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2386,7 +2806,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > trims each side of an entry, and leaves the prober out of a level without probes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2404,7 +2829,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > reads planner and prober pairs, and a model alone as the level without probes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2422,7 +2852,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > reads planner and prober pairs, and a model alone as the level without probes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2440,7 +2875,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > refuses same=a\\/x;same=b\\/y$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2458,7 +2898,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > refuses same=a\\/x;same=b\\/y$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2476,7 +2921,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > reads planner and prober pairs, and a model alone as the level without probes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2494,7 +2944,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > refuses same=a\\/x;same=b\\/y$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2512,7 +2967,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > reads planner and prober pairs, and a model alone as the level without probes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2530,7 +2990,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > reads planner and prober pairs, and a model alone as the level without probes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2548,7 +3013,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > refuses same=a\\/x;same=b\\/y$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2566,7 +3036,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > reads planner and prober pairs, and a model alone as the level without probes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2584,7 +3059,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^MELIAN_EVAL_PROBE_ROUTES > refuses same=a\\/x;same=b\\/y$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2613,7 +3093,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^misses > reads a misses file and refuses one missing a field, naming where$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2631,7 +3116,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^misses > reads a misses file and refuses one missing a field, naming where$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2649,7 +3139,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^misses > reads a misses file and refuses one missing a field, naming where$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2667,7 +3162,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^misses > reads a misses file and refuses one missing a field, naming where$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2685,7 +3185,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^misses > reads a misses file and refuses one missing a field, naming where$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2703,7 +3208,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^misses > reads a misses file and refuses one missing a field, naming where$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2732,7 +3242,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^misses > reads a misses file and refuses one missing a field, naming where$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2750,7 +3265,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^misses > reads a misses file and refuses one missing a field, naming where$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2768,7 +3288,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^misses > reads a misses file and refuses one missing a field, naming where$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2786,7 +3311,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^misses > reads a misses file and refuses one missing a field, naming where$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2815,7 +3345,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^misses > reads a misses file and refuses one missing a field, naming where$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2833,7 +3368,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^misses > reads a misses file and refuses one missing a field, naming where$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2851,7 +3391,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^misses > reads a misses file and refuses one missing a field, naming where$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2880,7 +3425,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^reviewMiss > reviews a range with trust-boundary alone at its level that probes, on the combination's routes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2898,7 +3448,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^reviewMiss > reviews a range with trust-boundary alone at its level that probes, on the combination's routes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2949,7 +3504,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^reviewMiss > reviews a range with trust-boundary alone at its level that probes, on the combination's routes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2967,7 +3527,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^reviewMiss > reviews a range with trust-boundary alone at its level that probes, on the combination's routes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -2985,7 +3550,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^reviewMiss > reviews a range with trust-boundary alone at its level that probes, on the combination's routes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3038,7 +3608,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^reviewMiss > reviews a range with trust-boundary alone at its level that probes, on the combination's routes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3056,7 +3631,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^reviewMiss > reviews a range with trust-boundary alone at its level that probes, on the combination's routes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3074,7 +3654,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^reviewMiss > reviews a range with trust-boundary alone at its level that probes, on the combination's routes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3108,13 +3693,19 @@
    "replacement": "{}",
    "result": "killed",
    "claim": "killed",
-   "evidence": "packages/evals/test/probing.test.ts > reviewMiss > finds a miss with a failing probe, judged on the verifier the measurement names",
+   "evidence": "packages/evals/test/probing.test.ts > reviewMiss > finds a miss with a failing probe, judged on the verifier the measurement names: true",
    "collected": 1,
    "exitCode": 1,
    "tests": [
-    "packages/evals/test/probing.test.ts -t ^reviewMiss > finds a miss with a failing probe, judged on the verifier the measurement names$"
+    "packages/evals/test/probing.test.ts -t ^reviewMiss > finds a miss with a failing probe, judged on the verifier the measurement names: true$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1,
+    "note": "the recorded pattern named the it.each template without its case and collected nothing; the ': true' case alone kills it"
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3126,13 +3717,19 @@
    "replacement": "true",
    "result": "killed",
    "claim": "killed",
-   "evidence": "packages/evals/test/probing.test.ts > reviewMiss > finds a miss with a failing probe, judged on the verifier the measurement names",
+   "evidence": "packages/evals/test/probing.test.ts > reviewMiss > finds a miss with a failing probe, judged on the verifier the measurement names: true",
    "collected": 1,
    "exitCode": 1,
    "tests": [
-    "packages/evals/test/probing.test.ts -t ^reviewMiss > finds a miss with a failing probe, judged on the verifier the measurement names$"
+    "packages/evals/test/probing.test.ts -t ^reviewMiss > finds a miss with a failing probe, judged on the verifier the measurement names: true$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1,
+    "note": "the recorded pattern named the it.each template without its case and collected nothing; the ': true' case alone kills it"
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3150,7 +3747,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^reviewMiss > finds a miss with a failing probe, judged on the verifier the measurement names: false$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3162,13 +3764,19 @@
    "replacement": "verifierModel !== undefined",
    "result": "killed",
    "claim": "killed",
-   "evidence": "packages/evals/test/probing.test.ts > reviewMiss > finds a miss with a failing probe, judged on the verifier the measurement names",
+   "evidence": "packages/evals/test/probing.test.ts > reviewMiss > finds a miss with a failing probe, judged on the verifier the measurement names: true",
    "collected": 1,
    "exitCode": 1,
    "tests": [
-    "packages/evals/test/probing.test.ts -t ^reviewMiss > finds a miss with a failing probe, judged on the verifier the measurement names$"
+    "packages/evals/test/probing.test.ts -t ^reviewMiss > finds a miss with a failing probe, judged on the verifier the measurement names: true$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1,
+    "note": "the recorded pattern named the it.each template without its case and collected nothing; the ': true' case alone kills it"
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3180,13 +3788,19 @@
    "replacement": "{}",
    "result": "killed",
    "claim": "killed",
-   "evidence": "packages/evals/test/probing.test.ts > reviewMiss > finds a miss with a failing probe, judged on the verifier the measurement names",
+   "evidence": "packages/evals/test/probing.test.ts > reviewMiss > finds a miss with a failing probe, judged on the verifier the measurement names: true",
    "collected": 1,
    "exitCode": 1,
    "tests": [
-    "packages/evals/test/probing.test.ts -t ^reviewMiss > finds a miss with a failing probe, judged on the verifier the measurement names$"
+    "packages/evals/test/probing.test.ts -t ^reviewMiss > finds a miss with a failing probe, judged on the verifier the measurement names: true$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1,
+    "note": "the recorded pattern named the it.each template without its case and collected nothing; the ': true' case alone kills it"
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3198,13 +3812,19 @@
    "replacement": "{}",
    "result": "killed",
    "claim": "killed",
-   "evidence": "packages/evals/test/probing.test.ts > reviewMiss > finds a miss with a failing probe, judged on the verifier the measurement names",
+   "evidence": "packages/evals/test/probing.test.ts > reviewMiss > finds a miss with a failing probe, judged on the verifier the measurement names: true",
    "collected": 1,
    "exitCode": 1,
    "tests": [
-    "packages/evals/test/probing.test.ts -t ^reviewMiss > finds a miss with a failing probe, judged on the verifier the measurement names$"
+    "packages/evals/test/probing.test.ts -t ^reviewMiss > finds a miss with a failing probe, judged on the verifier the measurement names: true$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1,
+    "note": "the recorded pattern named the it.each template without its case and collected nothing; the ': true' case alone kills it"
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3222,7 +3842,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^reviewMiss > finds a miss with a failing probe, judged on the verifier the measurement names: true$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3253,7 +3878,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^reviewMiss > finds a miss with a failing probe, judged on the verifier the measurement names: true$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3271,7 +3901,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^reviewMiss > finds a miss with a failing probe, judged on the verifier the measurement names: true$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3289,7 +3924,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^reviewMiss > reviews a range with trust-boundary alone at its level that probes, on the combination's routes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3307,7 +3947,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^reviewMiss > reviews a range with trust-boundary alone at its level that probes, on the combination's routes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3319,13 +3964,19 @@
    "replacement": "{}",
    "result": "killed",
    "claim": "killed",
-   "evidence": "packages/evals/test/probing.test.ts > reviewMiss > finds a miss with a failing probe, judged on the verifier the measurement names",
+   "evidence": "packages/evals/test/probing.test.ts > reviewMiss > finds a miss with a failing probe, judged on the verifier the measurement names: true",
    "collected": 1,
    "exitCode": 1,
    "tests": [
-    "packages/evals/test/probing.test.ts -t ^reviewMiss > finds a miss with a failing probe, judged on the verifier the measurement names$"
+    "packages/evals/test/probing.test.ts -t ^reviewMiss > finds a miss with a failing probe, judged on the verifier the measurement names: true$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1,
+    "note": "the recorded pattern named the it.each template without its case and collected nothing; the ': true' case alone kills it"
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3337,13 +3988,19 @@
    "replacement": "false",
    "result": "killed",
    "claim": "killed",
-   "evidence": "packages/evals/test/probing.test.ts > reviewMiss > finds a miss with a failing probe, judged on the verifier the measurement names",
+   "evidence": "packages/evals/test/probing.test.ts > reviewMiss > finds a miss with a failing probe, judged on the verifier the measurement names: true",
    "collected": 1,
    "exitCode": 1,
    "tests": [
-    "packages/evals/test/probing.test.ts -t ^reviewMiss > finds a miss with a failing probe, judged on the verifier the measurement names$"
+    "packages/evals/test/probing.test.ts -t ^reviewMiss > finds a miss with a failing probe, judged on the verifier the measurement names: true$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1,
+    "note": "the recorded pattern named the it.each template without its case and collected nothing; the ': true' case alone kills it"
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3372,7 +4029,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^reviewMiss > reviews a range with trust-boundary alone at its level that probes, on the combination's routes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3390,7 +4052,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^reviewMiss > reviews a range with trust-boundary alone at its level that probes, on the combination's routes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3447,7 +4114,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^reviewMiss > reviews a range with trust-boundary alone at its level that probes, on the combination's routes$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3478,7 +4150,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^misses > finds a miss only at its file, under its rule, from trust-boundary, and unrefuted$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3496,7 +4173,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^misses > finds a miss only at its file, under its rule, from trust-boundary, and unrefuted$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3514,7 +4196,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^misses > finds a miss only at its file, under its rule, from trust-boundary, and unrefuted$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3532,7 +4219,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^misses > finds a miss only at its file, under its rule, from trust-boundary, and unrefuted$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3550,7 +4242,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^misses > finds a miss only at its file, under its rule, from trust-boundary, and unrefuted$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3568,7 +4265,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^misses > finds a miss only at its file, under its rule, from trust-boundary, and unrefuted$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3586,7 +4288,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^misses > finds a miss only at its file, under its rule, from trust-boundary, and unrefuted$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3604,7 +4311,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^misses > finds a miss only at its file, under its rule, from trust-boundary, and unrefuted$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3622,7 +4334,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^misses > finds a miss only at its file, under its rule, from trust-boundary, and unrefuted$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3640,7 +4357,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^misses > finds a miss only at its file, under its rule, from trust-boundary, and unrefuted$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3658,7 +4380,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^misses > finds a miss only at its file, under its rule, from trust-boundary, and unrefuted$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3676,7 +4403,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^misses > finds a miss only at its file, under its rule, from trust-boundary, and unrefuted$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3694,7 +4426,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^misses > finds a miss only at its file, under its rule, from trust-boundary, and unrefuted$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3712,7 +4449,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^misses > finds a miss only at its file, under its rule, from trust-boundary, and unrefuted$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3730,7 +4472,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^misses > finds a miss only at its file, under its rule, from trust-boundary, and unrefuted$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3748,7 +4495,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^misses > finds a miss only at its file, under its rule, from trust-boundary, and unrefuted$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3766,7 +4518,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^misses > finds a miss only at its file, under its rule, from trust-boundary, and unrefuted$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3795,7 +4552,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^misses > finds a miss only at its file, under its rule, from trust-boundary, and unrefuted$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3813,7 +4575,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^misses > finds a miss only at its file, under its rule, from trust-boundary, and unrefuted$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3855,7 +4622,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing > totals each combination's goldens, misses and spend over its passes, and counts a review that throws$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3873,7 +4645,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing > totals each combination's goldens, misses and spend over its passes, and counts a review that throws$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3891,7 +4668,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing > totals each combination's goldens, misses and spend over its passes, and counts a review that throws$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3909,7 +4691,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing > totals each combination's goldens, misses and spend over its passes, and counts a review that throws$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3927,7 +4714,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing > totals each combination's goldens, misses and spend over its passes, and counts a review that throws$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3945,7 +4737,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing > totals each combination's goldens, misses and spend over its passes, and counts a review that throws$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3963,7 +4760,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing > totals each combination's goldens, misses and spend over its passes, and counts a review that throws$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -3994,7 +4796,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing > totals each combination's goldens, misses and spend over its passes, and counts a review that throws$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -4012,7 +4819,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing > totals each combination's goldens, misses and spend over its passes, and counts a review that throws$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -4030,7 +4842,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing > totals each combination's goldens, misses and spend over its passes, and counts a review that throws$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -4048,7 +4865,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing's totals > sums each pass's scores, misses and spend, and counts every failure$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -4066,7 +4888,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing > totals each combination's goldens, misses and spend over its passes, and counts a review that throws$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -4084,7 +4911,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing > totals each combination's goldens, misses and spend over its passes, and counts a review that throws$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -4115,7 +4947,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing's totals > sums each pass's scores, misses and spend, and counts every failure$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -4133,7 +4970,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing's totals > sums each pass's scores, misses and spend, and counts every failure$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -4164,7 +5006,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing > totals each combination's goldens, misses and spend over its passes, and counts a review that throws$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -4182,7 +5029,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing's totals > sums each pass's scores, misses and spend, and counts every failure$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -4211,7 +5063,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing > totals each combination's goldens, misses and spend over its passes, and counts a review that throws$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -4229,7 +5086,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing > totals each combination's goldens, misses and spend over its passes, and counts a review that throws$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -4247,7 +5109,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing > totals each combination's goldens, misses and spend over its passes, and counts a review that throws$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -4276,7 +5143,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing > totals each combination's goldens, misses and spend over its passes, and counts a review that throws$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -4294,7 +5166,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing > totals each combination's goldens, misses and spend over its passes, and counts a review that throws$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -4312,7 +5189,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing > totals each combination's goldens, misses and spend over its passes, and counts a review that throws$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -4330,7 +5212,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing's totals > sums each pass's scores, misses and spend, and counts every failure$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -4348,7 +5235,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing's totals > sums each pass's scores, misses and spend, and counts every failure$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -4366,7 +5258,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing > totals each combination's goldens, misses and spend over its passes, and counts a review that throws$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -4384,7 +5281,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing's totals > sums each pass's scores, misses and spend, and counts every failure$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -4402,7 +5304,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing > totals each combination's goldens, misses and spend over its passes, and counts a review that throws$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -4420,7 +5327,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing's totals > sums each pass's scores, misses and spend, and counts every failure$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -4471,7 +5383,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing's totals > sums each pass's scores, misses and spend, and counts every failure$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -4489,7 +5406,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing's totals > sums each pass's scores, misses and spend, and counts every failure$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -4507,7 +5429,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing's totals > sums each pass's scores, misses and spend, and counts every failure$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -4536,7 +5463,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing > totals each combination's goldens, misses and spend over its passes, and counts a review that throws$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -4554,7 +5486,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing > totals each combination's goldens, misses and spend over its passes, and counts a review that throws$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -4572,7 +5509,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing > totals each combination's goldens, misses and spend over its passes, and counts a review that throws$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -4590,7 +5532,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing > totals each combination's goldens, misses and spend over its passes, and counts a review that throws$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -4608,7 +5555,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing > totals each combination's goldens, misses and spend over its passes, and counts a review that throws$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -4626,7 +5578,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing's totals > scores no misses as full recall$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -4644,7 +5601,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing > totals each combination's goldens, misses and spend over its passes, and counts a review that throws$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -4662,7 +5624,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing's totals > sums each pass's scores, misses and spend, and counts every failure$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -4680,7 +5647,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing > totals each combination's goldens, misses and spend over its passes, and counts a review that throws$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -4709,7 +5681,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing > totals each combination's goldens, misses and spend over its passes, and counts a review that throws$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -4738,7 +5715,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing's totals > sums each pass's scores, misses and spend, and counts every failure$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/evals/src/probing.ts",
@@ -4756,7 +5738,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^measureProbing's totals > sums each pass's scores, misses and spend, and counts every failure$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/pipeline/src/testing.ts",
@@ -4774,7 +5761,12 @@
    "tests": [
     "packages/evals/test/goldens.test.ts -t ^scripted trust-boundary-probe-claim-lost-release > finds exactly what the golden expects, with its cause, failure scenario, and evidence$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/pipeline/src/testing.ts",
@@ -4805,7 +5797,12 @@
    "tests": [
     "packages/evals/test/goldens.test.ts -t ^scripted trust-boundary-probe-claim-lost-release > finds exactly what the golden expects, with its cause, failure scenario, and evidence$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/pipeline/src/testing.ts",
@@ -4823,7 +5820,12 @@
    "tests": [
     "packages/evals/test/goldens.test.ts -t ^scripted trust-boundary-probe-claim-lost-release > finds exactly what the golden expects, with its cause, failure scenario, and evidence$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/pipeline/src/testing.ts",
@@ -4852,7 +5854,12 @@
    "tests": [
     "packages/evals/test/goldens.test.ts -t ^scripted trust-boundary-probe-claim-lost-release > finds exactly what the golden expects, with its cause, failure scenario, and evidence$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/pipeline/src/testing.ts",
@@ -4870,7 +5877,12 @@
    "tests": [
     "packages/evals/test/goldens.test.ts -t ^a golden's standards and policy > supplies design-only base vocabulary to the scripted golden conversation$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/pipeline/src/testing.ts",
@@ -4888,7 +5900,12 @@
    "tests": [
     "packages/evals/test/goldens.test.ts -t ^scripted trust-boundary-probe-claim-lost-release > finds exactly what the golden expects, with its cause, failure scenario, and evidence$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/pipeline/src/testing.ts",
@@ -4906,7 +5923,12 @@
    "tests": [
     "packages/evals/test/goldens.test.ts -t ^scripted trust-boundary-probe-claim-lost-release > finds exactly what the golden expects, with its cause, failure scenario, and evidence$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/pipeline/src/testing.ts",
@@ -4924,7 +5946,12 @@
    "tests": [
     "packages/evals/test/goldens.test.ts -t ^scripted trust-boundary-probe-claim-lost-release > finds exactly what the golden expects, with its cause, failure scenario, and evidence$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/pipeline/src/testing.ts",
@@ -4942,7 +5969,12 @@
    "tests": [
     "packages/evals/test/goldens.test.ts -t ^scripted trust-boundary-probe-claim-lost-release > finds exactly what the golden expects, with its cause, failure scenario, and evidence$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/pipeline/src/testing.ts",
@@ -4960,7 +5992,12 @@
    "tests": [
     "packages/evals/test/goldens.test.ts -t ^scripted trust-boundary-probe-claim-lost-release > finds exactly what the golden expects, with its cause, failure scenario, and evidence$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/pipeline/src/testing.ts",
@@ -4978,7 +6015,12 @@
    "tests": [
     "packages/evals/test/goldens.test.ts -t ^scripted trust-boundary-probe-claim-lost-release > finds exactly what the golden expects, with its cause, failure scenario, and evidence$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/pipeline/src/testing.ts",
@@ -5007,7 +6049,12 @@
    "tests": [
     "packages/evals/test/goldens.test.ts -t ^scripted trust-boundary-probe-claim-lost-release > finds exactly what the golden expects, with its cause, failure scenario, and evidence$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/pipeline/src/testing.ts",
@@ -5025,7 +6072,12 @@
    "tests": [
     "packages/evals/test/goldens.test.ts -t ^scripted trust-boundary-probe-claim-lost-release > finds exactly what the golden expects, with its cause, failure scenario, and evidence$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/pipeline/src/testing.ts",
@@ -5043,7 +6095,12 @@
    "tests": [
     "packages/evals/test/goldens.test.ts -t ^scripted trust-boundary-probe-claim-lost-release > finds exactly what the golden expects, with its cause, failure scenario, and evidence$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/pipeline/src/testing.ts",
@@ -5061,7 +6118,12 @@
    "tests": [
     "packages/evals/test/goldens.test.ts -t ^scripted trust-boundary-probe-claim-lost-release > finds exactly what the golden expects, with its cause, failure scenario, and evidence$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/pipeline/src/testing.ts",
@@ -5079,7 +6141,12 @@
    "tests": [
     "packages/evals/test/goldens.test.ts -t ^scripted trust-boundary-probe-claim-lost-release > finds exactly what the golden expects, with its cause, failure scenario, and evidence$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/pipeline/src/testing.ts",
@@ -5097,7 +6164,12 @@
    "tests": [
     "packages/evals/test/goldens.test.ts -t ^scripted trust-boundary-probe-claim-lost-release > finds exactly what the golden expects, with its cause, failure scenario, and evidence$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/pipeline/src/testing.ts",
@@ -5115,7 +6187,12 @@
    "tests": [
     "packages/evals/test/goldens.test.ts -t ^scripted trust-boundary-probe-claim-lost-release > finds exactly what the golden expects, with its cause, failure scenario, and evidence$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/pipeline/src/testing.ts",
@@ -5146,7 +6223,12 @@
    "tests": [
     "packages/evals/test/goldens.test.ts -t ^scripted trust-boundary-probe-claim-lost-release > finds exactly what the golden expects, with its cause, failure scenario, and evidence$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/pipeline/src/testing.ts",
@@ -5164,7 +6246,12 @@
    "tests": [
     "packages/evals/test/goldens.test.ts -t ^scripted trust-boundary-probe-claim-lost-release > finds exactly what the golden expects, with its cause, failure scenario, and evidence$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/pipeline/src/testing.ts",
@@ -5182,7 +6269,12 @@
    "tests": [
     "packages/evals/test/goldens.test.ts -t ^scripted trust-boundary-probe-claim-lost-release > finds exactly what the golden expects, with its cause, failure scenario, and evidence$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/pipeline/src/testing.ts",
@@ -5211,7 +6303,12 @@
    "tests": [
     "packages/evals/test/goldens.test.ts -t ^scripted trust-boundary-probe-claim-lost-release > finds exactly what the golden expects, with its cause, failure scenario, and evidence$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/pipeline/src/testing.ts",
@@ -5229,7 +6326,12 @@
    "tests": [
     "packages/evals/test/goldens.test.ts -t ^scripted trust-boundary-probe-claim-lost-release > finds exactly what the golden expects, with its cause, failure scenario, and evidence$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/pipeline/src/testing.ts",
@@ -5247,7 +6349,12 @@
    "tests": [
     "packages/evals/test/goldens.test.ts -t ^scripted trust-boundary-probe-claim-lost-release > finds exactly what the golden expects, with its cause, failure scenario, and evidence$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/pipeline/src/testing.ts",
@@ -5278,7 +6385,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^scripting a prober > refuses a prober script for a lens the review has not, or a name that only starts like one$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/pipeline/src/testing.ts",
@@ -5296,7 +6408,12 @@
    "tests": [
     "packages/evals/test/goldens.test.ts -t ^scripted trust-boundary-probe-claim-lost-release > finds exactly what the golden expects, with its cause, failure scenario, and evidence$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/pipeline/src/testing.ts",
@@ -5314,7 +6431,12 @@
    "tests": [
     "packages/evals/test/goldens.test.ts -t ^scripted trust-boundary-probe-claim-lost-release > finds exactly what the golden expects, with its cause, failure scenario, and evidence$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/pipeline/src/testing.ts",
@@ -5332,7 +6454,12 @@
    "tests": [
     "packages/evals/test/goldens.test.ts -t ^scripted trust-boundary-probe-claim-lost-release > finds exactly what the golden expects, with its cause, failure scenario, and evidence$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/pipeline/src/testing.ts",
@@ -5350,7 +6477,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^scripting a prober > refuses a prober script for a lens the review has not, or a name that only starts like one$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/pipeline/src/testing.ts",
@@ -5381,7 +6513,12 @@
    "tests": [
     "packages/evals/test/goldens.test.ts -t ^scripted trust-boundary-probe-claim-lost-release > finds exactly what the golden expects, with its cause, failure scenario, and evidence$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/pipeline/src/testing.ts",
@@ -5399,7 +6536,12 @@
    "tests": [
     "packages/evals/test/goldens.test.ts -t ^scripted trust-boundary-probe-claim-lost-release > finds exactly what the golden expects, with its cause, failure scenario, and evidence$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/pipeline/src/testing.ts",
@@ -5417,7 +6559,12 @@
    "tests": [
     "packages/evals/test/goldens.test.ts -t ^scripted trust-boundary-probe-claim-lost-release > finds exactly what the golden expects, with its cause, failure scenario, and evidence$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/pipeline/src/testing.ts",
@@ -5435,7 +6582,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^scripting a prober > refuses a prober script for a lens the review has not, or a name that only starts like one$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/pipeline/src/testing.ts",
@@ -5453,7 +6605,12 @@
    "tests": [
     "packages/evals/test/goldens.test.ts -t ^scripted trust-boundary-probe-claim-lost-release > finds exactly what the golden expects, with its cause, failure scenario, and evidence$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/pipeline/src/testing.ts",
@@ -5471,7 +6628,12 @@
    "tests": [
     "packages/evals/test/probing.test.ts -t ^scripting a prober > refuses a prober script for a lens the review has not, or a name that only starts like one$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/pipeline/src/testing.ts",
@@ -5489,7 +6651,12 @@
    "tests": [
     "packages/evals/test/goldens.test.ts -t ^scripted trust-boundary-probe-claim-lost-release > finds exactly what the golden expects, with its cause, failure scenario, and evidence$"
    ],
-   "survivorClasses": []
+   "survivorClasses": [],
+   "rerun": {
+    "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+    "result": "killed",
+    "collected": 1
+   }
   },
   {
    "file": "packages/pipeline/src/testing.ts",
@@ -5501,6 +6668,21 @@
    "replacement": "``",
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored"
+  }
+ ],
+ "reruns": [
+  {
+   "head": "1bc13d769763ebcd6ddcb1a5e23075b06ea220be",
+   "rule": "pull request #303's rerun rule: a changed golden fixture is not a module Vitest tracks, so every claim is selected",
+   "enumerated": "340 mutants at this head, identical to the inventory's",
+   "selected": 232,
+   "skipped": {
+    "equivalent": 16,
+    "new-test": 49
+   },
+   "killed": 232,
+   "survived": 0,
+   "patternsCorrected": 7
   }
  ]
 }
