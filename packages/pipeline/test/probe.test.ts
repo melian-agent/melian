@@ -28,6 +28,7 @@ import {
 	type SandboxRuntime,
 	withBound,
 } from "../src/probe.ts";
+import { closeGraceMs } from "../src/probe-process.ts";
 
 // Probe's own rules, on a sandbox that runs the command unconfined and records what it was asked. Every script here is
 // the test's own. The real sandbox's attacks are in probe-sandbox.test.ts.
@@ -202,12 +203,32 @@ describe("Probe.open", () => {
 		expect(existsSync(root)).toBe(false);
 	});
 
+	it("treats a scratch someone else removed as removed", async () => {
+		const { sandbox } = passthrough();
+		const probe = await Probe.open({ script: "" }, options(sandbox));
+		rmSync(dirname(probe.policy.write[0]!), { recursive: true });
+		expect(await probe.close()).toEqual({ removed: true });
+	});
+
+	it("sets the runner's watchdog past the time limit and its grace", async () => {
+		const { sandbox } = passthrough();
+		const probe = await Probe.open({ script: "" }, options(sandbox, { timeout: 1_000 }));
+		const runner = readFileSync(join(dirname(probe.policy.write[0]!), "probe", "run.mjs"), "utf8");
+		expect(runner).toContain(`process.exit(124), ${1_000 + closeGraceMs + 5_000})`);
+		await probe.close();
+	});
+
 	it("writes a binary fixture as its bytes, undecoded", async () => {
 		const { sandbox } = passthrough();
 		const bytes = new Uint8Array([0, 0xff, 0x80, 0xc3, 0x28]);
-		const probe = await Probe.open({ script: "", files: [{ path: "f.bin", bytes }] }, options(sandbox));
+		const probe = await Probe.open(
+			{ script: "", files: [{ path: "f.bin", bytes }, { path: "empty.txt" }] },
+			options(sandbox),
+		);
 		const root = dirname(probe.policy.write[0]!);
 		expect(new Uint8Array(readFileSync(join(root, "probe", "f.bin")))).toEqual(bytes);
+		// A file with neither text nor bytes is written empty.
+		expect(readFileSync(join(root, "probe", "empty.txt"), "utf8")).toBe("");
 		await probe.close();
 	});
 
@@ -574,8 +595,9 @@ console.log(JSON.stringify({ marker: readFileSync("marker", "utf8"), home: proce
 		await expect(probe.run()).rejects.toMatchObject({ code: "invalidProbe" });
 		await first;
 		expect((await probe.run()).exitCode).toBe(0);
-		await probe.close();
-		await probe.close();
+		expect(await probe.close()).toEqual({ removed: true });
+		// A second close does nothing and still reports the scratch as removed.
+		expect(await probe.close()).toEqual({ removed: true });
 		expect(sandbox.close).toHaveBeenCalledOnce();
 		await expect(probe.run()).rejects.toMatchObject({ code: "closed" });
 	});
@@ -621,7 +643,7 @@ console.log(JSON.stringify({ marker: readFileSync("marker", "utf8"), home: proce
 		const root = dirname(probe.policy.write[0]!);
 		expect((await probe.run()).exitCode).toBe(0);
 		const cleanup = await probe.close();
-		expect(cleanup).toMatchObject({ removed: false, leftover: root });
+		expect(cleanup).toMatchObject({ removed: false, leftover: root, reason: expect.stringMatching(/^E[A-Z]+: /) });
 		expect(existsSync(root)).toBe(true);
 		expect(sandbox.close).toHaveBeenCalledOnce();
 		// The leftover is the test's to remove.

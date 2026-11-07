@@ -77,7 +77,7 @@ export async function probe(
 		// close() runs whether or not the probe ran, and never throws for a cleanup failure, so it cannot replace the
 		// result; it reports a leftover instead.
 		let result: ProbeResult;
-		let cleanup: CleanupOutcome = { removed: true };
+		let cleanup!: CleanupOutcome;
 		try {
 			result = await opened.run();
 		} finally {

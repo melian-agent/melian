@@ -466,8 +466,7 @@ export class Probe {
 			}
 			await withBound(sandbox.open(), probeLimits.setup, "the sandbox did not start");
 		} catch (error) {
-			await rm(scratch, { recursive: true, force: true }).catch(() => undefined);
-			if (error instanceof ProbeError) throw error;
+			await rm(scratch, { recursive: true }).catch(() => undefined);
 			throw new ProbeError("sandboxUnavailable", `the probe could not start: ${String(error)}`, { cause: error });
 		}
 		return new Probe(scratch, worktree, install, limits, sandbox);
@@ -565,7 +564,7 @@ export class Probe {
 						chunks.push(chunk.subarray(0, room));
 						size = this.#outputLimit;
 						truncated = true;
-						child?.cut();
+						child!.cut();
 						return;
 					}
 					chunks.push(chunk);
@@ -597,9 +596,8 @@ export class Probe {
 			await rm(this.#scratch, { recursive: true, force: true, maxRetries: 2, retryDelay: 50 });
 			return { removed: true };
 		} catch (error) {
-			const code = (error as NodeJS.ErrnoException).code;
-			if (code === "ENOENT") return { removed: true };
-			return { removed: false, leftover: this.#scratch, reason: String((error as Error).message ?? error) };
+			// rm's force already treats a scratch someone else removed as gone, so any error here is a real leftover.
+			return { removed: false, leftover: this.#scratch, reason: (error as Error).message };
 		} finally {
 			await this.#sandbox.close();
 		}
