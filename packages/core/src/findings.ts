@@ -845,8 +845,6 @@ export function withheldToolText(check: "static.biome" | "static.tsc", rule: str
 	return `${name} reports ${rule} here. Melian keeps none of ${name}'s text; run ${command} at this commit to read its message.`;
 }
 
-const escapedPattern = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
 export class Finding {
 	readonly ruleId: string;
 	readonly level: SarifLevel;
@@ -1302,27 +1300,74 @@ export class Finding {
 		});
 	}
 
-	/** The IDs of the reports the finding holds: its own, then each it lists in `alsoReportedAs`. */
 	/**
-	 * Whether this is a Biome or tsc finding that holds text other than what Melian writes in place of the tool's: its
-	 * message, its explanation, or a discriminator taken from the tool's message, as a build before it did.
+	 * The finding as publishing may render it. A Biome or tsc finding keeps only its rule, place, severity, resolution and
+	 * identity, with Melian's sentence for its text: a tool's text, or a verifier's or caller's text about it, can quote
+	 * a file outside the checkout. Any other finding is returned as it is.
 	 */
-	quotesTool(): boolean {
-		const { check } = this.properties.source;
-		if (check !== "static.biome" && check !== "static.tsc") return false;
-		const said = withheldToolText(check, this.ruleId);
-		const message = new RegExp(
-			`^(?:\\d+ more ${escapedPattern(this.ruleId)} result\\(s\\) on these lines than at the base: )?${escapedPattern(said)}(?: \\(and \\d+ more on these lines\\))?$`,
-		);
-		const { discriminator } = this.properties;
-		return (
-			!message.test(this.message.text) ||
-			this.properties.explanation.what !== said ||
-			(discriminator !== undefined &&
-				!/^(?:line \d+, column \d+|beyond the base at [0-9a-f]{16})$/.test(discriminator))
-		);
+	publishable(): Finding {
+		const { source } = this.properties;
+		if (source.check !== "static.biome" && source.check !== "static.tsc") return this;
+		const said = withheldToolText(source.check, this.ruleId);
+		const tool = source.check === "static.biome" ? "biome" : "tsc";
+		const { id, path, occurrence, cause, severity, originalSeverity, resolution, decidedBy, status } =
+			this.properties;
+		const { dismissal, pastDismissals, reportedBy, alsoReportedAs, otherClaims } = this.properties;
+		return new Finding({
+			ruleId: this.ruleId,
+			level: this.level,
+			message: { text: said },
+			partialFingerprints: this.partialFingerprints,
+			locations: this.locations.map(({ physicalLocation: { artifactLocation, region } }) => ({
+				physicalLocation: {
+					artifactLocation,
+					region: {
+						startLine: region.startLine,
+						...(region.startColumn === undefined ? {} : { startColumn: region.startColumn }),
+						...(region.endLine === undefined ? {} : { endLine: region.endLine }),
+						...(region.endColumn === undefined ? {} : { endColumn: region.endColumn }),
+					},
+				},
+			})),
+			properties: {
+				id,
+				path,
+				...(occurrence === undefined ? {} : { occurrence }),
+				cause,
+				severity,
+				...(originalSeverity === undefined ? {} : { originalSeverity }),
+				...(resolution === undefined ? {} : { resolution }),
+				...(decidedBy === undefined
+					? {}
+					: { decidedBy: { check: decidedBy.check, requirement: decidedBy.requirement } }),
+				status,
+				...(dismissal === undefined ? {} : { dismissal }),
+				...(pastDismissals === undefined ? {} : { pastDismissals }),
+				explanation: {
+					what: said,
+					whyHere:
+						cause === "introduced"
+							? `${tool} reports this at head but not at the base, so this change introduced it.`
+							: `${tool} reports this at the base too, so it predates this change.`,
+					whatToDo: `Change the code so ${tool} no longer reports ${this.ruleId}.`,
+				},
+				source,
+				...(reportedBy === undefined ? {} : { reportedBy }),
+				...(alsoReportedAs === undefined ? {} : { alsoReportedAs }),
+				...(otherClaims === undefined
+					? {}
+					: {
+							otherClaims: otherClaims.map((claim) => ({
+								id: claim.id,
+								ruleId: claim.ruleId,
+								source: claim.source,
+							})),
+						}),
+			},
+		});
 	}
 
+	/** The IDs of the reports the finding holds: its own, then each it lists in `alsoReportedAs`. */
 	reportIds(): string[] {
 		return [this.properties.id, ...(this.properties.alsoReportedAs ?? []).map((other) => other.id)];
 	}

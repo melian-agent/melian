@@ -6,6 +6,7 @@ import { createGitHubProvider } from "@melian-agent/github";
 import { afterEach, expect, it, vi } from "vitest";
 import { type FakeState, fakeGitHub } from "../../github/test/fixtures/fake-github.ts";
 import { moveTo, pullRequestState } from "../../github/test/fixtures/scenario.ts";
+import { VerdictDocument } from "../src/adjudication.ts";
 import {
 	backgroundContext as context,
 	createReviewRegistry,
@@ -59,30 +60,20 @@ async function olderStore(name: string) {
 	return { recorded, changeset, provider, posts, statuses, path, repo, harness: publisher.harness };
 }
 
-it.each(["tsc", "biome", "mixed"])(
-	"ends a publication an older build left pending, posting nothing, when its %s tier kept a tool's text",
-	async (name) => {
-		const { recorded, posts, statuses, harness } = await olderStore(name);
-		const done = await harness.waitForTask(recorded.pending as TaskId, context);
-		expect(done.state.outcome).toMatchObject({
-			status: "completed",
-			result: {
-				kind: "superseded",
-				reason: "it holds Biome or tsc text an older Melian stored; run melian review again",
-			},
-		});
-		expect(posts).not.toHaveBeenCalled();
-		expect(statuses).not.toHaveBeenCalled();
-		expect(recorded.state.reviews).toEqual([]);
-		expect(recorded.state.statuses).toEqual([]);
-	},
-);
+// What a tool printed about the head's code, which an older build stored: tsc's quoted type and Biome's named variable.
+const toolText = /is not assignable|This variable ghp|ghp\\?_FAKEoutsideTOKEN281/;
+const posted = ({ reviews, comments, ledgers, statuses }: FakeState) =>
+	JSON.stringify({ reviews, comments, ledgers, statuses });
 
-it.each(["tsc", "biome", "mixed"])(
-	"refuses to publish a review an older build decided, since its %s tier kept a tool's text",
+it.each(["tsc", "biome", "mixed", "guardrails"])(
+	"posts a publication an older build left pending for a %s tier with none of a tool's text",
 	async (name) => {
-		const { recorded, changeset, provider, posts, statuses, harness } = await olderStore(name);
-		await harness.waitForIdle(context);
+		const { recorded, changeset, provider, harness } = await olderStore(name);
+		const stored = await harness.snapshot(VerdictDocument, (await harness.root(context)).id, context);
+		expect(toolText.test(JSON.stringify(stored))).toBe(name !== "guardrails");
+		const done = await harness.waitForTask(recorded.pending as TaskId, context);
+		expect(done.state.outcome).toMatchObject({ status: "completed", result: { kind: "published" } });
+		expect(recorded.state.reviews).toHaveLength(1);
 		await expect(
 			publishReview({
 				harness,
@@ -92,32 +83,10 @@ it.each(["tsc", "biome", "mixed"])(
 				base: changeset.revision.base,
 				trustedWriters: true,
 			}),
-		).rejects.toMatchObject({
-			code: "notPublishable",
-			message: `Melian will not publish its review of ${changeset.revision.head.slice(0, 12)} to pull request #7: it holds Biome or tsc text an older Melian stored; run melian review "#7" first`,
-		});
-		expect(posts).not.toHaveBeenCalled();
-		expect(statuses).not.toHaveBeenCalled();
-		expect(recorded.state.reviews).toEqual([]);
+		).resolves.toMatchObject({ review: "1001" });
+		expect(posted(recorded.state)).not.toMatch(toolText);
 	},
 );
-
-it("publishes a review an older build decided when its tier ran neither Biome nor tsc", async () => {
-	const { recorded, changeset, provider, harness } = await olderStore("guardrails");
-	const done = await harness.waitForTask(recorded.pending as TaskId, context);
-	expect(done.state.outcome).toMatchObject({ status: "completed", result: { kind: "published" } });
-	expect(recorded.state.reviews).toHaveLength(1);
-	await expect(
-		publishReview({
-			harness,
-			provider,
-			changeset,
-			pullRequest: await provider.pullRequest(7),
-			base: changeset.revision.base,
-			trustedWriters: true,
-		}),
-	).resolves.toMatchObject({ review: "1001", status: { state: "success" } });
-});
 
 it("publishes a verdict this build decided for a tier that runs tsc", async () => {
 	for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
@@ -209,25 +178,11 @@ async function freshReview(name: string) {
 	return { ...older, harness: publisher.harness };
 }
 
-it("drops a round an older build left pending with tsc's text, posting nothing, after a fresh review", async () => {
-	const { recorded, changeset, provider, posts, statuses, harness } = await freshReview("tsc-failed");
-	await expect(
-		publishReview({
-			harness,
-			provider,
-			changeset,
-			pullRequest: await provider.pullRequest(7),
-			base: changeset.revision.base,
-			trustedWriters: true,
-		}),
-	).rejects.toMatchObject({
-		code: "notPublishable",
-		message: `Melian will not publish its review of ${changeset.revision.head.slice(0, 12)} to pull request #7: it holds Biome or tsc text an older Melian stored; run melian review "#7" first`,
-	});
-	expect(posts).not.toHaveBeenCalled();
-	expect(statuses).not.toHaveBeenCalled();
-	expect(recorded.state.reviews).toEqual([]);
-	const again = await publishReview({
+it("posts a round an older build left pending with none of its tsc text, after a fresh review", async () => {
+	const { recorded, changeset, provider, harness } = await freshReview("tsc-failed");
+	const stored = await harness.snapshot(PublishedDocument, (await harness.root(context)).id, context);
+	expect(JSON.stringify(stored?.revisions[changeset.revision.head]?.pending)).toContain("is not assignable");
+	await publishReview({
 		harness,
 		provider,
 		changeset,
@@ -235,10 +190,9 @@ it("drops a round an older build left pending with tsc's text, posting nothing, 
 		base: changeset.revision.base,
 		trustedWriters: true,
 	});
-	expect(again).toMatchObject({ posted: 1 });
+	expect(recorded.state.reviews.length).toBeGreaterThan(0);
 	// The older build's refused request stays in the fake's call log; only what was posted counts.
-	const { reviews, comments, ledgers } = recorded.state;
-	expect(JSON.stringify({ reviews, comments, ledgers })).not.toContain("is not assignable");
+	expect(posted(recorded.state)).not.toMatch(toolText);
 });
 
 it("recovers a round an older build posted before it died, and writes none of its tsc text again", async () => {
@@ -264,6 +218,5 @@ it("recovers a round an older build posted before it died, and writes none of it
 		ledgers: recorded.state.ledgers,
 	};
 	expect(JSON.stringify(recorded.state.comments.slice(0, comments))).toContain("is not assignable");
-	expect(JSON.stringify(written)).not.toContain("is not assignable");
-	expect(JSON.stringify(written)).not.toContain("ghp_FAKEoutsideTOKEN281: 1;");
+	expect(JSON.stringify(written)).not.toMatch(toolText);
 });

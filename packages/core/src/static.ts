@@ -402,10 +402,10 @@ async function identify(
 }
 
 // Biome and tsc quote whatever a head's configuration or sources lead them to, outside the checkout too, so a result
-// keeps its rule, place and level, never the tool's text (issue #281).
+// keeps its rule, place and level, never the tool's text or advice (issue #281).
 function withoutToolText(tool: StaticTool, log: ToolLog): ToolLog {
 	if (tool !== "biome" && tool !== "tsc") return log;
-	const results = log.runs[0].results.map(({ message: _, ...result }) => ({
+	const results = log.runs[0].results.map(({ message: _, advice: __, ...result }) => ({
 		...result,
 		message: {
 			text: withheldToolText(checkOf(tool) as "static.biome" | "static.tsc", staticRuleId(tool, result.ruleId)),

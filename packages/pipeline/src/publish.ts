@@ -704,29 +704,11 @@ function publishTask(provider: ReviewProvider) {
 						}, context);
 						return;
 					}
-					// Before anything is posted: a verdict, or a round left pending, that an older build wrote can hold a tool's
-					// text. A pending round posts findings of its own verdict. One the provider already shows is recovered.
-					const held = (await read()).revisions[head]?.pending;
-					const stale =
-						held !== undefined &&
-						Verdict.from(held.verdict).quotesTool() &&
-						(await marked(held)).review === undefined;
-					if (stale || Verdict.from(storedRound.verdict).quotesTool()) {
-						const reason = `${olderBuild}; run melian review again`;
-						await runtime.commit(async (tx) => {
-							if (stale) delete (await tx.doc(PublishedDocument, root)).revisions[head]!.pending;
-							await timing.end(tx);
-							return {
-								status: "terminal",
-								outcome: { status: "completed", result: { kind: "superseded", reason } },
-							};
-						}, context);
-						return;
-					}
 					provider.beginPublish?.();
 					const verdict = Verdict.from(storedRound.verdict);
 					const current = verdict.fingerprint();
-					const status = publishedBy.trustedWriters ? verdict.reviewStatus() : untrustedWriterStatus;
+					// Everything the provider renders goes through `publishable`, so no Biome or tsc text reaches it.
+					const status = publishedBy.trustedWriters ? verdict.publishable().reviewStatus() : untrustedWriterStatus;
 					await postStatus(status);
 					// A pending round planned for another revision of this head, such as the pull request before a retarget,
 					// is dropped unless the provider already shows it, in which case the loop below records it as posted.
@@ -807,9 +789,9 @@ function publishTask(provider: ReviewProvider) {
 								base,
 								fingerprint: pending.fingerprint,
 								round: pending.round,
-								verdict: Verdict.from(verdictWithLegacyCaveats(pending.verdict)),
+								verdict: Verdict.from(verdictWithLegacyCaveats(pending.verdict)).publishable(),
 								findings: pending.post.map(({ finding, placement }) => ({
-									finding: Finding.from(finding),
+									finding: Finding.from(finding).publishable(),
 									placement,
 								})),
 								stillOpen: pending.stillOpen,
@@ -865,15 +847,7 @@ function publishTask(provider: ReviewProvider) {
 												}
 											: round,
 									),
-									// A recovered round an older build planned keeps only its status, not its tool text.
-									Verdict.from(pending.ledger.verdict).quotesTool()
-										? {
-												base: pending.ledger.base,
-												head: pending.ledger.head,
-												round: pending.ledger.round,
-												status: pending.ledger.verdict.status,
-											}
-										: structuredClone(pending.ledger),
+									structuredClone(pending.ledger),
 								].slice(-maxLedgerRounds);
 							record.reviews = [...record.reviews, posted.id];
 							record.verdict = pending.fingerprint;
@@ -1006,8 +980,14 @@ function publishTask(provider: ReviewProvider) {
 					const ledger = await provider.writeLedger({
 						pullRequest,
 						review: record.reviews.at(-1),
-						verdict,
-						publication: { rounds },
+						verdict: verdict.publishable(),
+						publication: {
+							rounds: rounds.map((round) =>
+								"verdict" in round
+									? { ...round, verdict: Verdict.from(round.verdict).publishable().toJSON() }
+									: round,
+							),
+						},
 						walkthrough: task.input.walkthrough ?? { enabled: true, collapsed: true, diagrams: true },
 						secret,
 						...(previousLedger === undefined ? {} : { recorded: previousLedger }),
@@ -1290,8 +1270,6 @@ function short(commit: string): string {
 	return commit.slice(0, 12);
 }
 
-const olderBuild = "it holds Biome or tsc text an older Melian stored";
-
 // Why a verdict decided from `provenance` must not reach `pullRequest`, or `undefined` when it may. Only a review of
 // the pull request itself, fetched from its provider, under policy read from the base commit the provider reported,
 // is publishable: a range naming the refs Melian fetched for the pull request is still a range, and a review whose
@@ -1408,9 +1386,7 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 			where,
 		);
 	}
-	const mismatch = Verdict.from(validated.verdict).quotesTool()
-		? olderBuild
-		: unpublishable(validated.provenance, pullRequest);
+	const mismatch = unpublishable(validated.provenance, pullRequest);
 	if (mismatch !== undefined) {
 		throw new PublishError(
 			"notPublishable",
@@ -1524,12 +1500,6 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 				superseded,
 			};
 		}
-		if (result.reason.startsWith(olderBuild))
-			throw new PublishError(
-				"notPublishable",
-				`Melian will not publish its review of ${short(head)} to pull request #${pullRequest.number}: ${olderBuild}; ${again}`,
-				where,
-			);
 		throw new PublishError(
 			"staleTarget",
 			`pull request #${pullRequest.number} changed while Melian published it, so publication stopped: ${result.reason}; ${again}`,

@@ -552,34 +552,42 @@ export class Verdict {
 		return this.preExistingImportant?.find((member) => member.id === id)?.state;
 	}
 
-	/** Every finding the verdict holds, by resolution, strictest first, then the dismissed ones. */
 	/**
-	 * Whether this verdict holds a Biome or tsc text that this build would not have written: a finding that quotes the
-	 * tool, as {@link Finding.quotesTool} says, or a failed run's error that carries the tool's output.
+	 * The verdict as publishing may render it: each finding as {@link Finding.publishable} gives it, and each Biome or
+	 * tsc check that did not run with a fixed reason for its status in place of its stored reason and error.
 	 */
-	quotesTool(): boolean {
-		const quiet = new Map([
-			[
-				"static.biome",
-				/^biome exited with code -?\d+ and (?:no report|a report); run biome lint at [0-9a-f]{12} to see why, since Melian keeps none of its stderr$/,
-			],
-			[
-				"static.tsc",
-				/^tsc exited with code -?\d+ on ([^\n:]+); run tsc --noEmit -p \1 at [0-9a-f]{12} to see why, since Melian keeps none of its output$/,
-			],
-		]);
-		const exited = (check: CheckRecord) => {
-			const form = quiet.get(check.name);
-			const error = check.error ?? "";
-			return (
-				form !== undefined &&
-				error.startsWith(`${check.name.slice("static.".length)} exited with code`) &&
-				!form.test(error)
-			);
-		};
-		return this.all().some((finding) => finding.quotesTool()) || [...this.notRun, ...(this.ran ?? [])].some(exited);
+	publishable(): Verdict {
+		const stored = this.toJSON();
+		const finding = (each: StoredFinding) => Finding.from(each).publishable().toJSON();
+		const check = (each: StoredCheckRecord): StoredCheckRecord =>
+			each.name !== "static.biome" && each.name !== "static.tsc"
+				? each
+				: {
+						name: each.name,
+						status: each.status,
+						...(each.version === undefined ? {} : { version: each.version }),
+						...(each.status === "ran"
+							? {}
+							: {
+									reason:
+										each.status === "failed"
+											? "the tool failed; Melian keeps none of its text"
+											: "the tool did not run; Melian keeps none of its reason",
+								}),
+					};
+		return Verdict.from({
+			...stored,
+			findings: Object.fromEntries(
+				Object.entries(stored.findings).map(([resolution, group]) => [resolution, group.map(finding)]),
+			) as StoredVerdict["findings"],
+			dismissed: stored.dismissed.map(finding),
+			...(stored.refuted === undefined ? {} : { refuted: stored.refuted.map(finding) }),
+			notRun: stored.notRun.map(check),
+			...(stored.ran === undefined ? {} : { ran: stored.ran.map(check) }),
+		});
 	}
 
+	/** Every finding the verdict holds, by resolution, strictest first, then the dismissed ones. */
 	all(): ResolvedFinding[] {
 		return [...Object.values(this.findings).flat(), ...this.dismissed, ...(this.refuted ?? [])];
 	}

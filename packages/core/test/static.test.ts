@@ -284,7 +284,7 @@ describe("staticFindings", () => {
 		expect(findings[0]!.properties.source.check).toBe("static.mutation");
 	});
 
-	it("explains a pre-existing result as one the base has too, and keeps a pre-existing result's own advice", async () => {
+	it("explains a pre-existing result as one the base has too, and keeps a result's own advice for Enola alone", async () => {
 		const base = commit({ "a.ts": lines("export const a: number = 'x';", "export const b: number = 'y';") });
 		const head = commit({
 			"a.ts": lines("export const a: number = 'x';", "export const b: number = 'y';", "export const c = 3;"),
@@ -310,7 +310,30 @@ describe("staticFindings", () => {
 					whatToDo: "Change the code so tsc no longer reports tsc/TS2322.",
 				},
 			],
-			["pre-existing", { what: said("tsc/TS2322"), whyHere: "Own reason.", whatToDo: "Own fix." }],
+			[
+				"pre-existing",
+				{
+					what: said("tsc/TS2322"),
+					whyHere: "tsc reports this at the base too, so it predates this change.",
+					whatToDo: "Change the code so tsc no longer reports tsc/TS2322.",
+				},
+			],
+		]);
+		const enola = await staticFindings({
+			repoRoot: repo,
+			revision,
+			tool: "enola",
+			settings: defaultConfig.static.enola,
+			base: before,
+			head: before,
+		});
+		expect(enola.findings.map((finding) => finding.properties.explanation)).toEqual([
+			{
+				what: "TS2322 at a.ts:1",
+				whyHere: "enola reports this at the base too, so it predates this change.",
+				whatToDo: "Change the code so enola no longer reports enola/TS2322.",
+			},
+			{ what: "TS2322 at a.ts:2", whyHere: "Own reason.", whatToDo: "Own fix." },
 		]);
 	});
 
