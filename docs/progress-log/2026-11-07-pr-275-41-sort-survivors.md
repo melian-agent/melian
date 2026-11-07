@@ -1,0 +1,1 @@
+The test that the round comment cuts its longest detail first now lists the shorter detail first, in fix pass 9 of [pull request #275](https://github.com/melian-agent/melian/pull/275), so its three sort mutants, which survived while the longer came first, now fail it.
