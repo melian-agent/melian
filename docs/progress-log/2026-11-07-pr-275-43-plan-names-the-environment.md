@@ -1,0 +1,1 @@
+The implementation plan's entry for the `melian round` workflow now says the logins live in the `melian-round` Environment, limited to `main`, in fix pass 9 of [pull request #275](https://github.com/melian-agent/melian/pull/275). Codex's adversarial review of 4802646 found it still said repository secrets, which fix pass 8 retired.
