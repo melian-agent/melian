@@ -24,8 +24,24 @@ class FakeTable implements ProcessControl {
 	}
 }
 
-function child(pid: number | undefined): ChildProcess & EventEmitter {
-	return Object.assign(new EventEmitter(), { pid, stdout: new PassThrough(), stderr: new PassThrough() }) as never;
+function child(pid: number | undefined): ChildProcess & EventEmitter & { kills: string[] } {
+	const kills: string[] = [];
+	const fake = Object.assign(new EventEmitter(), {
+		pid,
+		stdout: new PassThrough(),
+		stderr: new PassThrough(),
+		exitCode: null as number | null,
+		signalCode: null,
+		kills,
+		kill: (signal: string) => {
+			kills.push(signal);
+			return true;
+		},
+	});
+	fake.once("exit", (code: number | null) => {
+		fake.exitCode = code;
+	});
+	return fake as never;
 }
 
 function started(table: FakeTable, root = child(100), output: (chunk: Buffer) => void = () => {}) {
@@ -91,11 +107,12 @@ describe("ProbeProcess", () => {
 		expect(table.kills).toEqual([]);
 	});
 
-	it("ends what it recorded when the table can no longer be read", async () => {
+	it("ends its own command, and what it recorded, when the table can no longer be read", async () => {
 		const table = new FakeTable([entry(100, 1)]);
-		const { process: probe } = started(table);
+		const { process: probe, root } = started(table);
 		table.broken = true;
 		await expect(probe.stop()).rejects.toThrow("ps failed");
+		expect(root.kills).toEqual(["SIGKILL"]);
 		table.broken = false;
 		await probe.stop();
 		expect(table.kills).toEqual([[100, "SIGTERM"]]);
@@ -112,6 +129,7 @@ describe("ProbeProcess", () => {
 		expect(await probe.wait()).toEqual({ code: 3, signal: null });
 		expect(chunks).toEqual(["out", "err"]);
 		await probe.stop();
+		expect(root.kills).toEqual([]);
 	});
 
 	it("reads a command that never started as exit 127, and records nothing", async () => {

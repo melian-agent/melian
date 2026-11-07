@@ -376,10 +376,13 @@ console.log(JSON.stringify({ marker: readFileSync("marker", "utf8"), home: proce
 	});
 
 	it("leaves no timer behind once the probe has ended", async () => {
-		const timers = () => process.getActiveResourcesInfo().filter((kind) => kind === "Timeout").length;
-		const before = timers();
-		await ran(`process.exit(0);`, { timeout: 60_000 });
-		expect(timers()).toBe(before);
+		vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+		try {
+			await ran(`process.exit(0);`, { timeout: 60_000 });
+			expect(vi.getTimerCount()).toBe(0);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it("keeps output at its limit whole and cuts one byte past it", async () => {

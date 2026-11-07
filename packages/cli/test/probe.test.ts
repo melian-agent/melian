@@ -50,7 +50,10 @@ async function melian(args: readonly string[]) {
 }
 
 describe("melian probe arguments", () => {
-	it("names the bound of --timeout", async () => {
+	it("names the bound of --timeout, and the one directory it takes", async () => {
+		expect((await melian(["probe"])).stderr).toBe(
+			"melian: probe takes one directory\nRun melian --help for usage.\n",
+		);
 		expect((await melian(["probe", "a", "--timeout", "601"])).stderr).toBe(
 			"melian: --timeout takes whole seconds from 1 to 600\nRun melian --help for usage.\n",
 		);

@@ -22,6 +22,7 @@ function spawned(argv: readonly string[], cwd: string, env: NodeJS.ProcessEnv): 
 }
 
 export class ProbeProcess {
+	readonly #child: ChildProcess;
 	readonly #root: number | undefined;
 	readonly #control: ProcessControl;
 	readonly #sleep: (milliseconds: number) => Promise<void>;
@@ -30,6 +31,7 @@ export class ProbeProcess {
 	readonly #timer: ReturnType<typeof setInterval>;
 
 	private constructor(child: ChildProcess, options: ProbeProcessOptions) {
+		this.#child = child;
 		this.#root = child.pid;
 		this.#control = options.control ?? new ProcessTable();
 		this.#sleep = options.sleep ?? ((milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
@@ -57,11 +59,17 @@ export class ProbeProcess {
 		return this.#exit;
 	}
 
-	// Ends every recorded process still alive, the root first among them, and stops watching. Safe to call twice.
+	// Ends every recorded process still alive, the root first among them, and stops watching. Safe to call twice. The
+	// command is also ended through its own handle, which needs no process table: on a CI runner a probe that flooded its
+	// output outlived the first stop and ran on to its time limit.
 	async stop(): Promise<void> {
 		this.#scan();
 		clearInterval(this.#timer);
-		await terminateRecorded(this.recorded, this.#control, this.#sleep, [process.pid]);
+		try {
+			await terminateRecorded(this.recorded, this.#control, this.#sleep, [process.pid]);
+		} finally {
+			if (this.#child.exitCode === null && this.#child.signalCode === null) this.#child.kill("SIGKILL");
+		}
 	}
 
 	// Records the root and every process descending from it or from a process recorded earlier. A table that cannot be read
