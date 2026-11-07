@@ -37,7 +37,7 @@ describe("headWriter", () => {
 
 	it("refuses a head no push event names, whoever wrote the pull request, rather than trust its author", () => {
 		const missing =
-			/^no push event names this head on this branch; GitHub's events feed can lag by hours and keeps only the latest 300, so start the round again later$/;
+			/^no push, force push or branch creation in the repository's activity left this head on this branch$/;
 		expect(() => headWriter(`${push("someone-else", { head: other })}\n`, head)).toThrow(missing);
 		expect(() => headWriter("", head)).toThrow(missing);
 	});

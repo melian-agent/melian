@@ -26,6 +26,7 @@ jobs:
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 5
     permissions:
+      actions: read
       contents: read
       pull-requests: read
     outputs:
@@ -54,6 +55,27 @@ jobs:
             admin|maintain|write) echo "$STARTER has $permission permission" ;;
             *) echo "::error::$STARTER has ${permission:-unknown} permission; a round needs write, maintain or admin"; exit 1 ;;
           esac
+      # The round job's logins are kept from every other branch's copy of this workflow by the Environment's branch
+      # policy, which lives in the repository's settings. Without one, GitHub lets any branch deploy to it, so read it.
+      - name: Refuse an Environment whose logins another branch could reach
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          DEFAULT: ${{ github.event.repository.default_branch }}
+        run: |
+          policy=$(gh api "repos/$REPOSITORY/environments/melian-round" \
+            --jq '"\(.deployment_branch_policy.protected_branches) \(.deployment_branch_policy.custom_branch_policies)"')
+          if [ "$policy" != "false true" ]; then
+            echo "::error::the melian-round Environment has no custom branch policy; its logins would reach every branch"
+            exit 1
+          fi
+          branches=$(gh api --paginate "repos/$REPOSITORY/environments/melian-round/deployment-branch-policies?per_page=100" \
+            --jq '.branch_policies[] | "\(.type // "branch") \(.name)"')
+          if [ "$branches" != "branch $DEFAULT" ]; then
+            echo "::error::the melian-round Environment must deploy from $DEFAULT alone"
+            exit 1
+          fi
+          echo "the melian-round Environment deploys from $DEFAULT alone"
       # "#N" reads melian.yaml and every lens from the pull request's base, so a base a writer chose could carry a
       # policy that runs no checks. Only a pull request into the default branch is judged by a reviewed policy.
       - name: Refuse a fork's head, or a base other than the default branch
@@ -91,9 +113,9 @@ jobs:
         with:
           node-version: 24
       # The writer decision trusts a head only when the identity that pushed that exact commit holds write permission,
-      # so a writer dispatching a round on a bot's branch is not enough. Every page of push events is read; a failed
-      # read fails this step, and no later job holds a secret. A head no push event names is refused too, never taken
-      # as the pull request author's: the feed keeps 300 events and can lag by hours, so a bot's push may be missing.
+      # so a writer dispatching a round on a bot's branch is not enough. The repository's activity for the branch names
+      # every push, force push and branch creation at once; the events feed lagged by hours and kept 300 events. Every
+      # page is read, and a failed read fails this step. A head no entry names is refused, never taken as the author's.
       - name: Refuse a head its pusher could not have written
         env:
           GH_TOKEN: ${{ github.token }}
@@ -101,8 +123,8 @@ jobs:
           HEAD: ${{ steps.pull.outputs.head }}
         run: |
           branch=$(jq -r .head.ref "$RUNNER_TEMP/pull.json")
-          gh api --paginate "repos/$REPOSITORY/events?per_page=100" \
-            --jq '.[] | select(.type == "PushEvent") | {actor: .actor.login, head: .payload.head, ref: .payload.ref} | tojson' \
+          gh api -X GET --paginate "repos/$REPOSITORY/activity" -f ref="refs/heads/$branch" -f per_page=100 \
+            --jq '.[] | select(.activity_type == "push" or .activity_type == "force_push" or .activity_type == "branch_creation") | {actor: .actor.login, head: .after, ref: .ref} | tojson' \
             > "$RUNNER_TEMP/pushes.jsonl"
           writer=$(node scripts/round-writer.mjs "$RUNNER_TEMP/pushes.jsonl" "$HEAD" "$branch")
           permission=$(gh api "repos/$REPOSITORY/collaborators/$writer/permission" --jq .permission) || permission=""

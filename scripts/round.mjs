@@ -20,11 +20,10 @@ export function codexAccessToken(encoded) {
 	return token;
 }
 
-// Whose code the head is: the first push event, newest first, for exactly this SHA on exactly this branch names the
+// Whose code the head is: the first push, newest first, that left exactly this SHA on exactly this branch names the
 // pusher. With none the gate fails closed, by the maintainer's ruling, where Melian's provider would trust the pull
-// request's author: GitHub's events feed keeps 300 events and can lag by hours, so a bot's push may be missing from it.
-// `events` are JSON lines of `{ actor, head, ref }`, one per push event. An event that names no actor, or a line that
-// is not one, is refused rather than passed over.
+// request's author. `events` are JSON lines of `{ actor, head, ref }`, one per push, force push or branch creation in
+// the repository's activity. An entry that names no actor, or a line that is not one, is refused rather than passed over.
 export function headWriter(events, { sha, branch }) {
 	for (const line of events.split("\n").filter((each) => each.trim() !== "")) {
 		let event;
@@ -38,9 +37,7 @@ export function headWriter(events, { sha, branch }) {
 			throw new Error("the head's push event names no pushing identity");
 		return event.actor;
 	}
-	throw new Error(
-		"no push event names this head on this branch; GitHub's events feed can lag by hours and keeps only the latest 300, so start the round again later",
-	);
+	throw new Error("no push, force push or branch creation in the repository's activity left this head on this branch");
 }
 
 // Each run's comment opens with a marker naming the run and a nonce its round job drew and uploaded, so a rerun of the
