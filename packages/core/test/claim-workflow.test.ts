@@ -227,7 +227,12 @@ describe("claim workflow script", () => {
 	// The endpoint's legacy `permission` field folds maintain into write and triage into read; `role_name` names the role.
 	it.each([
 		[{ permission: "write", role_name: "maintain" }, toInProgress],
+		[{ permission: "read", role_name: "maintain" }, toInProgress],
+		[{ permission: "read", role_name: "admin" }, toInProgress],
+		[{ permission: "read", role_name: "write" }, toInProgress],
+		[{ permission: "write", role_name: "release-manager" }, toInProgress],
 		[{ permission: "read", role_name: "triage" }, []],
+		[{ permission: "read", role_name: "release-manager" }, []],
 	])("decides a writer from the endpoint's own response %j", async (permission, expected) => {
 		const { writes } = await run(claimScenario({ permissions: { maintainer: "admin", builder: permission } }));
 		expect(writes).toEqual(expected);

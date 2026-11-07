@@ -42,7 +42,10 @@ jobs:
               if (!writers.has(login)) {
                 try {
                   const { data } = await github.rest.repos.getCollaboratorPermissionLevel({ owner, repo, username: login });
-                  writers.set(login, data.permission === "admin" || data.permission === "write");
+                  writers.set(
+                    login,
+                    ["admin", "write"].includes(data.permission) || ["admin", "maintain", "write"].includes(data.role_name),
+                  );
                 } catch (error) {
                   if (error.status !== 404) throw error;
                   writers.set(login, false);
