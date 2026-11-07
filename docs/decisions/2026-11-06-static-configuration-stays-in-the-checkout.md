@@ -3,6 +3,7 @@
 Status: ruled by the maintainer on [pull request #282](https://github.com/melian-agent/melian/pull/282), 2026-11-07, for [issue #281](https://github.com/melian-agent/melian/issues/281): "store no tool text". Reading is not the leak; echoing is. The file keeps the name of the rule it replaced before merging, a check of each tool's configuration, so the links to it hold.
 
 Amends: [Static checks run unconfined; only agents are sandboxed](2026-10-14-static-checks-run-unconfined.md), the second bullet of "What this gives up", which accepted that a head's `biome.json` extending an absolute path has Biome quote that file.
+Amends: [Finding identity](2026-10-03-finding-identity.md), for a Biome or tsc result whose lines cannot be read: it is identified by its line and column, since its message is withheld and a fixed message would merge every such result of its rule in the file. An edit above such a result moves its place, so it reads as introduced again.
 
 ## Problem
 
@@ -16,7 +17,8 @@ The first form of [pull request #282](https://github.com/melian-agent/melian/pul
 
 1. A Biome or tsc finding keeps its rule code, file, line, column and severity, never the tool's message. Its message, its explanation and its identity's discriminator are a fixed sentence naming the tool and the rule, such as "tsc reports tsc/TS2322 here. Melian keeps none of tsc's text; run tsc --noEmit at this commit to read its message." `staticFindings` in core applies it, so every stored document, the verdict JSON, `melian findings`, a published review, and the text a lens or the verifier receives carry only that sentence. Lenses and the verifier read the source line themselves.
 2. A failed Biome or tsc run keeps its exit code and a fixed sentence naming the command that shows why. Neither tool's stdout nor stderr is stored.
-3. The head's tool configuration is read as it is on `main`, so the base-versus-head comparison is unchanged.
+3. The head's tool configuration is read as it is on `main`, so the base-versus-head comparison is unchanged. Melian reads tsc's project files, to follow their references, from git's object store, so a committed `tsconfig.json` link cannot make Melian itself read an outside file and repeat its reference paths.
+4. After upgrading, a store from an older build can still hold a static tool's text, in its findings, verdicts and frozen rounds, until a fresh review of that revision replaces them. `melian findings` prints what is stored. `melian publish`, and a publication an older build left pending, refuse a verdict whose tier ran Biome or tsc unless the build that decided it withheld their text. Each verdict of such a tier records that build's stored-text version for this, and posts nothing otherwise. The maintainer accepted the stored copies, with this note, rather than rewriting every older document.
 
 This closes every route named above, and any not yet found, because no route reaches stored text.
 
