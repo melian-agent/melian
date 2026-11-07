@@ -705,12 +705,11 @@ function publishTask(provider: ReviewProvider) {
 						return;
 					}
 					// Before anything is posted: a verdict, or a round left pending, that an older build wrote can hold a tool's
-					// text. A round the provider already shows is recovered as it stands.
+					// text. A pending round posts findings of its own verdict. One the provider already shows is recovered.
 					const held = (await read()).revisions[head]?.pending;
 					const stale =
 						held !== undefined &&
-						(Verdict.from(held.verdict).quotesTool() ||
-							held.post.some(({ finding }) => Finding.from(finding).quotesTool())) &&
+						Verdict.from(held.verdict).quotesTool() &&
 						(await marked(held)).review === undefined;
 					if (stale || Verdict.from(storedRound.verdict).quotesTool()) {
 						const reason = `${olderBuild}; run melian review again`;
@@ -1526,7 +1525,7 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 				superseded,
 			};
 		}
-		if (result.kind === "superseded" && result.reason.startsWith(olderBuild))
+		if (result.reason.startsWith(olderBuild))
 			throw new PublishError(
 				"notPublishable",
 				`Melian will not publish its review of ${short(head)} to pull request #${pullRequest.number}: ${olderBuild}; ${again}`,

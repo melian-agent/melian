@@ -42,6 +42,7 @@ describe("Finding.quotesTool", () => {
 			}).quotesTool(),
 		).toBe(false);
 		expect(tsc({ ...unread, discriminator: "line 12, column 3" }).quotesTool()).toBe(false);
+		expect(tsc({ ...unread, discriminator: "line 12, column 34" }).quotesTool()).toBe(false);
 		const biome = withheldToolText("static.biome", "biome/suspicious/noDebugger");
 		expect(
 			tsc({
@@ -123,6 +124,10 @@ describe("Verdict.quotesTool", () => {
 	it("passes the findings and failures this build writes, and other checks' failures", () => {
 		expect(verdict([tsc()], [{ name: "static.tsc", status: "ran" }]).quotesTool()).toBe(false);
 		expect(verdict([], [failed("static.biome", biomeNow), failed("static.tsc", tscNow)]).quotesTool()).toBe(false);
+		expect(verdict([], [failed("static.biome", biomeNow.replace("code 1 ", "code 137 "))]).quotesTool()).toBe(false);
+		expect(verdict([], [failed("static.mutation", "mutation exited with code 1: Stryker's tail")]).quotesTool()).toBe(
+			false,
+		);
 		expect(verdict([], [failed("static.biome", "biome ran past its 3600-second timeout")]).quotesTool()).toBe(false);
 		expect(
 			verdict([], [failed("lens.correctness", "biome exited with code 1 and no report: ghp")]).quotesTool(),
@@ -141,6 +146,12 @@ describe("Verdict.quotesTool", () => {
 			verdict([], [failed("static.tsc", tscNow.replace("-p tsconfig.json", "-p other.json"))]).quotesTool(),
 		).toBe(true);
 		expect(verdict([], [failed("static.biome", `${biomeNow} ghp`)]).quotesTool()).toBe(true);
+		expect(
+			verdict(
+				[],
+				[failed("static.tsc", tscNow), failed("static.biome", "biome exited with code 1 and no report: g")],
+			).quotesTool(),
+		).toBe(true);
 	});
 
 	it("reads the checks that ran as well as those that did not", () => {
