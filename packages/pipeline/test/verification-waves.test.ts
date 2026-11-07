@@ -311,11 +311,13 @@ describe("verification as each lens ends", () => {
 			const id = await tx.createTask(failed, {}, { ownership: { kind: "conversation" } });
 			const entry = (await tx.doc(VerificationWavesDocument, root.id)).reviews[Revision.key(changeset.revision)]!;
 			entry.waves = entry.waves.map((wave) => ({ ...wave, task: id }));
+			// Without the final verification, only the failed wave could supply the outcome, so the review must ask again.
+			delete (await tx.doc(ReviewIndex, root.id)).reviews[Revision.key(changeset.revision)]!.verification;
 			return id;
 		}, context);
 		expect((await harness.waitForTask(parked as TaskId, context)).state.outcome.status).toBe("failed");
 		const result = await review();
-		expect(asked).toHaveLength(1);
+		expect(asked).toHaveLength(2);
 		expect(result.verdict.ran?.find((check) => check.name === "verifier")?.status).toBe("ran");
 	});
 
