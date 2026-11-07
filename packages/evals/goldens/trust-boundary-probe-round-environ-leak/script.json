@@ -1,0 +1,75 @@
+{
+  "trust-boundary": [
+    {
+      "calls": [
+        {
+          "name": "record_plan",
+          "arguments": {
+            "attacks": [
+              {
+                "target": "scripts/round.mjs, the lines that render a check that did not run into the round comment",
+                "reason": "A head's biome.json can extend /proc/<pid>/environ, so static.biome fails with an error that quotes the round job's environment, logins included. The comment is public, so nothing a static tool printed may reach it.",
+                "passing": "The comment names static.biome and its status, and the planted login appears nowhere in it.",
+                "failing": "The comment quotes the planted login from static.biome's error."
+              }
+            ]
+          },
+          "expectToolResult": "recorded a plan of 1 attack"
+        }
+      ]
+    },
+    {
+      "text": "Planned 1 attack."
+    }
+  ],
+  "trust-boundary/prober": [
+    {
+      "calls": [
+        {
+          "name": "run_probe",
+          "arguments": {
+            "attack": 1,
+            "script": "// Attack 1: a head's biome.json extends /proc/<pid>/environ, so Biome's parse error quotes the round's logins. The\n// round comment must not carry a check's error out of the job.\nimport { spawnSync } from \"node:child_process\";\nimport { mkdtempSync, writeFileSync } from \"node:fs\";\nimport { tmpdir } from \"node:os\";\nimport { join } from \"node:path\";\n\nconst secret = \"MELIAN_CODEX_ACCESS_TOKEN=probe-secret-4f2a9c\";\nconst base = \"a\".repeat(40);\nconst head = \"b\".repeat(40);\nconst dir = mkdtempSync(join(tmpdir(), \"round-\"));\nconst verdict = {\n\tstatus: \"not-reviewed\",\n\tblocking: false,\n\tfindings: { block: [], acknowledge: [] },\n\tran: [],\n\tnotRun: [\n\t\t{\n\t\t\tname: \"static.biome\",\n\t\t\tstatus: \"toolFailed\",\n\t\t\terror: `biome.json extends /proc/4242/environ, which could not be parsed: unexpected character at 1:1: ${secret}\\0PATH=/usr/bin`,\n\t\t},\n\t],\n};\nwriteFileSync(join(dir, \"verdict.json\"), JSON.stringify(verdict));\nwriteFileSync(join(dir, \"rounds.json\"), JSON.stringify([{ base, head }]));\nconst args = [\"scripts/round-comment.mjs\", \"--verdict\", join(dir, \"verdict.json\"), \"--rounds\", join(dir, \"rounds.json\")];\nargs.push(\"--exit\", \"2\", \"--run-url\", \"https://example.invalid/run/1\", \"--run-id\", \"1\", \"--nonce\", \"0\".repeat(32));\nargs.push(\"--base\", base, \"--head\", head, \"--merge-base\", base, \"--current-base\", base, \"--current-head\", head);\nconst run = spawnSync(process.execPath, args, { encoding: \"utf8\" });\nconsole.log(`exit ${run.status}\\n${run.stdout}${run.stderr}`);\nif (run.status !== 0) process.exit(2);\nprocess.exit(run.stdout.includes(\"probe-secret-4f2a9c\") ? 1 : 0);\n"
+          },
+          "expectToolResult": "failed: it exited 1"
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "report_finding",
+          "arguments": {
+            "file": "scripts/round.mjs",
+            "line": 107,
+            "rule": "secret-exposure",
+            "severity": "P1",
+            "explanation": {
+              "what": "The round comment prints each check that did not run with its error, and a static tool's error quotes whatever file the head pointed its configuration at.",
+              "why": "The head decides what Biome reads, so a biome.json that extends /proc/<pid>/environ puts the round job's login in the error, and the comment and the uploaded artefact carry it out of the job.",
+              "fix": "Render a check that did not run by name and status alone, and upload only a public copy of the verdict that drops every check reason and error and every static finding's text."
+            },
+            "failureScenario": "A head adds a biome.json of {\"extends\": [\"/proc/<pid>/environ\"]}, where <pid> is the round step's shell, which still holds MELIAN_CODEX_ACCESS_TOKEN after unset. static.biome fails, and its error quotes the file. round.mjs prints that error into the round comment under Error:, and the workflow uploads the raw verdict, round.txt and round.err as the run artefact, so anyone who can read the pull request or the run reads the login.",
+            "evidence": [
+              {
+                "file": "scripts/round.mjs",
+                "line": 107,
+                "role": "cause"
+              },
+              {
+                "file": ".github/workflows/melian-round.yml",
+                "line": 197,
+                "role": "context"
+              }
+            ],
+            "probe": "{{probe}}"
+          },
+          "expectToolResult": "recorded finding"
+        }
+      ]
+    },
+    {
+      "text": "Reported 1 finding."
+    }
+  ]
+}

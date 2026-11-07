@@ -1,0 +1,70 @@
+{
+  "trust-boundary": [
+    {
+      "calls": [
+        {
+          "name": "record_plan",
+          "arguments": {
+            "attacks": [
+              {
+                "target": ".github/workflows/claim.yml, the timeline walk that decides the status label",
+                "reason": "A builder's Released: comment can land between a claim run's read of the timeline and its label writes. The next run reads those writes, which its own token made, and must not take them for a maintainer's hand edit, or a writer's release is lost and no builder can claim the issue.",
+                "passing": "After the release's run the issue carries status: ready and not status: in progress.",
+                "failing": "After the release's run the issue still carries status: in progress, and the release is lost."
+              }
+            ]
+          },
+          "expectToolResult": "recorded a plan of 1 attack"
+        }
+      ]
+    },
+    {
+      "text": "Planned 1 attack."
+    }
+  ],
+  "trust-boundary/prober": [
+    {
+      "calls": [
+        {
+          "name": "run_probe",
+          "arguments": {
+            "attack": 1,
+            "script": "// Attack 1: a builder's Released: lands between a claim run's read and its writes. The next run must read the claim\n// run's own label events as its own and open the issue again, or the release is lost.\nimport { readFileSync } from \"node:fs\";\n\nconst workflow = readFileSync(\".github/workflows/claim.yml\", \"utf8\").split(\"\\n\");\nconst start = workflow.findIndex((line) => /^\\s*script: \\|\\s*$/.test(line));\nconst indent = (line) => line.length - line.trimStart().length;\nconst body = [];\nfor (const line of workflow.slice(start + 1)) {\n\tif (line.trim() !== \"\" && indent(line) <= indent(workflow[start])) break;\n\tbody.push(line);\n}\nconst depth = Math.min(...body.filter((line) => line.trim() !== \"\").map(indent));\nconst script = body.map((line) => line.slice(depth)).join(\"\\n\");\n\nconst bot = \"github-actions[bot]\";\nconst label = (name, actor, event) => ({ event, label: { name }, actor: { login: actor } });\nconst release = { id: 3, event: \"commented\", body: \"Released: done\", user: { login: \"builder\" }, html_url: \"https://x/3\" };\nconst timeline = [\n\tlabel(\"status: ready\", \"maintainer\", \"labeled\"),\n\t{ id: 2, event: \"commented\", body: \"Claim: builder\", user: { login: \"builder\" }, html_url: \"https://x/2\" },\n\trelease,\n\t// The claim run's writes, after the release it never read.\n\tlabel(\"status: in progress\", bot, \"labeled\"),\n\tlabel(\"status: ready\", bot, \"unlabeled\"),\n];\nlet labels = [\"status: in progress\"];\nconst github = {\n\tpaginate: async () => timeline,\n\trest: {\n\t\tissues: {\n\t\t\tget: async () => ({ data: { state: \"open\", labels: labels.map((name) => ({ name })) } }),\n\t\t\tlistEventsForTimeline: () => undefined,\n\t\t\tgetComment: async () => ({ data: release }),\n\t\t\taddLabels: async ({ labels: added }) => {\n\t\t\t\tlabels = [...new Set([...labels, ...added])];\n\t\t\t},\n\t\t\tremoveLabel: async ({ name }) => {\n\t\t\t\tlabels = labels.filter((each) => each !== name);\n\t\t\t},\n\t\t},\n\t\trepos: {\n\t\t\tgetCollaboratorPermissionLevel: async ({ username }) => ({\n\t\t\t\tdata: { permission: username === \"maintainer\" ? \"admin\" : \"write\", role_name: \"write\" },\n\t\t\t}),\n\t\t},\n\t},\n};\nconst context = { repo: { owner: \"o\", repo: \"r\" }, payload: { comment: release, issue: { number: 1 } } };\nconst core = { info: (message) => console.log(`info: ${message}`) };\nawait new (Object.getPrototypeOf(async () => {}).constructor)(\"github\", \"context\", \"core\", script)(github, context, core);\nconsole.log(`labels after the release's run: ${JSON.stringify(labels)}`);\nprocess.exit(labels.includes(\"status: ready\") && !labels.includes(\"status: in progress\") ? 0 : 1);\n"
+          },
+          "expectToolResult": "failed: it exited 1"
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "report_finding",
+          "arguments": {
+            "file": ".github/workflows/claim.yml",
+            "line": 55,
+            "rule": "fail-open",
+            "severity": "P2",
+            "explanation": {
+              "what": "The claim workflow reads its own unlabeled ready event as a maintainer's hand removal and drops a release that arrived while it was writing.",
+              "why": "The label is what tells builders an issue is free; a lost release leaves it held by a builder who let it go.",
+              "fix": "Skip every label event the workflow's own token made, and every unlabeled event, and let comments decide."
+            },
+            "failureScenario": "The timeline holds a maintainer's status: ready, a builder's Claim:, the builder's Released:, then the claim run's own labeled status: in progress and unlabeled status: ready. The release's run reads the bot's unlabeled ready as a hand removal, sets want to undefined, and writes nothing, so the issue stays in progress after its release.",
+            "evidence": [
+              {
+                "file": ".github/workflows/claim.yml",
+                "line": 55,
+                "role": "cause"
+              }
+            ],
+            "probe": "{{probe}}"
+          },
+          "expectToolResult": "recorded finding"
+        }
+      ]
+    },
+    {
+      "text": "Reported 1 finding."
+    }
+  ]
+}

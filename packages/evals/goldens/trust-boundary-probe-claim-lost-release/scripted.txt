@@ -1,0 +1,14 @@
+.github/workflows/claim.yml
+
+  P2 | Needs acknowledgement | Trust boundary | Verifier confirmed | New in this change
+    Verified: faux/scripted: The scripted verifier traced the claim.
+  The claim workflow reads its own unlabeled ready event as a maintainer's hand removal and drops a release that arrived while it was writing.
+    Why here: The label is what tells builders an issue is free; a lost release leaves it held by a builder who let it go.
+    Failure scenario: The timeline holds a maintainer's status: ready, a builder's Claim:, the builder's Released:, then the claim run's own labeled status: in progress and unlabeled status: ready. The release's run reads the bot's unlabeled ready as a hand removal, sets want to undefined, and writes nothing, so the issue stays in progress after its release.
+    Evidence:
+      cause: .github/workflows/claim.yml:55
+                      else if (item.event === "unlabeled" && item.label.name === want) want = undefined;
+    What to do: Skip every label event the workflow's own token made, and every unlabeled event, and let comments decide.
+    Rule fail-open | Line 55 | Status new
+
+1 finding in 1 file.
