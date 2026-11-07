@@ -1,6 +1,7 @@
 # Rerun only the mutant claims a later change could affect
 
 Amends: [the mutation proof scope](2026-11-04-mutation-proof-scope.md), the rerun before the last round
+Amends: [mutation evidence by enumeration and verification](2026-10-24-mutation-evidence-by-enumeration-and-verification.md), which claims a final head must hold evidence for
 
 ## Context
 
@@ -8,15 +9,15 @@ The mutation proof scope decision has a builder rerun every claim of the pull re
 
 It found nothing. Across [#267](https://github.com/melian-agent/melian/pull/267), [#274](https://github.com/melian-agent/melian/pull/274), [#275](https://github.com/melian-agent/melian/pull/275) and [#282](https://github.com/melian-agent/melian/pull/282), 15 full reruns proved no earlier claim wrong. The only claim that changed, on [#289](https://github.com/melian-agent/melian/pull/289), became equivalent after its code changed, and a targeted rerun caught it.
 
-A later change can affect an earlier claim in only two ways: it changes the named test that killed the mutant, or it changes the source file the mutant sits in. A claim whose two files are unchanged since it was proved gives the same result again.
+A later change affects an earlier claim only through a file its named test loads: the test itself, the mutated source, or anything either imports. A test can reach a mutant through an imported file, so the test's own file and the mutated file are not enough. The round's design lens showed this: `a.test.ts` kills a mutant in `a.ts` through `b.ts`, and a later change to `b.ts` alone skips the claim. Vitest is the authority for which tests a change affects: `vitest list --filesOnly --changed <ref>` follows its import graph and runs nothing.
 
 ## Decision
 
-The maintainer ruled on 2026-11-07. Before the pull request's last round, the builder reruns, at the last head, each earlier claim whose named test file or mutated source file changed since the head the claim was proved at. It selects them with `git diff --name-only <claim head>..HEAD`, and the report says how many claims were selected and how many were not. Every other clause of the amended decision stands: pass-scoped proofs while iterating, named tests alone, exactly one test collected, and the gate run once.
+The maintainer ruled on 2026-11-07. Before the pull request's last round, the builder reruns, at the last head, each earlier claim whose named test file is on `npx vitest list --filesOnly --changed <claim head>`, or whose mutated file changed since that head. The report says how many claims were selected and how many were not. A final head holds exact-head evidence for every selected claim, and a claim no change could affect keeps its evidence from the head it was proved at; this narrows the exact-head rule of the enumeration-and-verification decision to the claims a change could affect. Every other clause of the amended decision stands: pass-scoped proofs while iterating, named tests alone, exactly one test collected, and the gate run once.
 
 ## What this gives up
 
-A claim whose mutated file and named test are both unchanged, but whose result depends on another file that changed, such as a shared helper or a fixture, is not rerun. Such a change shows up in the diff and in the round's lenses. If it ever lets a claim go stale, the selection widens to the files the named test imports.
+A claim whose result depends on a file its named test reads at run time without importing it, such as a fixture, a snapshot or a spawned script, is not selected unless the mutated file changed. Such a change shows up in the diff and in the round's lenses. A change to Vitest's configuration or to `package.json` makes Vitest list every test file, so every claim reruns, as it should.
 
 ## Cost
 
