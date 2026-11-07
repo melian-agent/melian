@@ -192,6 +192,8 @@ describe("the golden corpus", () => {
 			"trust-boundary-injection",
 			"trust-boundary-joined-path-escape",
 			"trust-boundary-policy-from-head",
+			"trust-boundary-probe-claim-lost-release",
+			"trust-boundary-probe-claim-lost-release-clean",
 			"trust-boundary-secret-env",
 			"trust-boundary-terminal-escape",
 		]);
@@ -390,8 +392,14 @@ describe("a golden's standards and policy", () => {
 			(entry) => entry.name === "melian.golden.yaml" && ofLensCorpus(entry),
 		);
 		expect(copies.length).toBeGreaterThan(0);
-		// A guardrail golden names no lens of its own, so its policy sets no tiers and runs the default ones.
-		const exempt = ["guardrails-bare-issue-reference", "guardrails-overlong-sentence"];
+		// A guardrail golden names no lens of its own, so its policy sets no tiers and runs the default ones. A probing
+		// golden measures trust-boundary's level that probes alone, so its policy switches every other lens off.
+		const exempt = [
+			"guardrails-bare-issue-reference",
+			"guardrails-overlong-sentence",
+			"trust-boundary-probe-claim-lost-release",
+			"trust-boundary-probe-claim-lost-release-clean",
+		];
 		const tiered = copies.filter((copy) => !exempt.includes(basename(copy.parentPath)));
 		expect(tiered.length).toBeGreaterThan(0);
 		expect(copies.length - tiered.length).toBe(exempt.length);
