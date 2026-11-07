@@ -104,6 +104,24 @@ jobs:
           if ! [[ "$head" =~ ^[0-9a-f]{40}$ && "$base" =~ ^[0-9a-f]{40}$ ]]; then echo "::error::unreadable head or base SHA"; exit 1; fi
           echo "head=$head" >> "$GITHUB_OUTPUT"
           echo "base=$base" >> "$GITHUB_OUTPUT"
+      # melian/review is keyed by commit and context, so two open pull requests on one head would overwrite each other's
+      # status, and the merge group would refuse the one whose target the other's write replaced.
+      - name: Refuse a head another open pull request shares
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          NUMBER: ${{ inputs.pull_request }}
+          HEAD: ${{ steps.pull.outputs.head }}
+        run: |
+          sharing=$(gh api --paginate "repos/$REPOSITORY/pulls?state=open&per_page=100" \
+            --jq ".[] | select(.head.sha == \"$HEAD\") | .number") || { echo "::error::the open pull requests could not be read"; exit 1; }
+          for other in $sharing; do
+            if [ "$other" != "$NUMBER" ]; then
+              echo "::error::pull request $other has head $HEAD too; a status names a commit, so neither can take a round's melian/review"
+              exit 1
+            fi
+          done
+          echo "no other open pull request has head $HEAD"
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
@@ -387,8 +405,10 @@ jobs:
           read -r current_base current_head <<< "$current" || true
           # A later round or host may have set the status since this round began; a rerun of this job alone must not
           # put an older verdict back over it. An unreadable answer counts as newer.
-          latest=$(gh api --paginate "repos/$REPOSITORY/commits/$HEAD/statuses?per_page=100" \
-            --jq '.[] | select(.context == "melian/review") | .created_at' | sed -n 1p) || latest="unreadable"
+          # Actions runs this step without pipefail, so the read is captured on its own and its failure is seen.
+          created=$(gh api --paginate "repos/$REPOSITORY/commits/$HEAD/statuses?per_page=100" \
+            --jq '.[] | select(.context == "melian/review") | .created_at') || created="unreadable"
+          latest=$(printf '%s\n' "$created" | sed -n 1p)
           trusted=$(node scripts/round-trust.mjs "$GITHUB_WORKSPACE" "$BASE")
           status=$(node scripts/round-comment.mjs --verdict "$out/verdict.json" --rounds "$out/rounds.json" \
             --exit "$(cat "$out/exit" 2>/dev/null || echo none)" --run-url "$RUN_URL" --run-id "$RUN_ID" --nonce none --base "$BASE" --head "$HEAD" \

@@ -234,7 +234,7 @@ describe("the melian round workflow", () => {
 			const custom = { protected_branches: false, custom_branch_policies: true };
 			const pages = (...pages) => pages.map((page) => JSON.stringify({ branch_policies: page })).join("\n");
 			const step = ({ policy = custom, branches = pages([{ name: "main", type: "branch" }]), branch = "main" }) => {
-				const ran = spawnSync("bash", ["-e", "-o", "pipefail", "-c", run], {
+				const ran = spawnSync("bash", ["-e", "-c", run], {
 					encoding: "utf8",
 					env: {
 						PATH: `${dir}:${process.env.PATH}`,
@@ -279,6 +279,59 @@ describe("the melian round workflow", () => {
 			expect(step({ branch: "" })[0]).toBe(1);
 			// A read GitHub refuses fails the step.
 			expect(step({ branches: "" })[0]).toBe(1);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("refuses a head another open pull request shares, since a status names a commit, not a pull request", () => {
+		const { run, env } = workflow.jobs.gate.steps.find(
+			(step) => step.name === "Refuse a head another open pull request shares",
+		);
+		expect(env).toEqual({
+			GH_TOKEN: actions("github.token"),
+			REPOSITORY: actions("github.repository"),
+			NUMBER: actions("inputs.pull_request"),
+			HEAD: actions("steps.pull.outputs.head"),
+		});
+		const dir = mkdtempSync(join(tmpdir(), "round-workflow-"));
+		try {
+			const head = "1".repeat(40);
+			// A fake gh answers only the listing of open pull requests, running the step's own --jq over each raw page.
+			writeFileSync(
+				join(dir, "gh"),
+				[
+					"#!/bin/sh",
+					'[ "$1 $2 $3 $4" = "api --paginate repos/o/r/pulls?state=open&per_page=100 --jq" ] && [ "$PULLS" != unreadable ] && printf "%s\\n" "$PULLS" | jq -r "$5" && exit 0',
+					"exit 1",
+					"",
+				].join("\n"),
+			);
+			chmodSync(join(dir, "gh"), 0o755);
+			const pull = (number, sha) => ({ number, head: { sha } });
+			const pages = (...pages) => pages.map((page) => JSON.stringify(page)).join("\n");
+			const step = (pulls) => {
+				const ran = spawnSync("bash", ["-e", "-c", run], {
+					encoding: "utf8",
+					env: {
+						PATH: `${dir}:${process.env.PATH}`,
+						HOME: dir,
+						REPOSITORY: "o/r",
+						NUMBER: "7",
+						HEAD: head,
+						PULLS: pulls,
+					},
+				});
+				return [ran.status, ran.stdout];
+			};
+			const alone = [0, `no other open pull request has head ${head}\n`];
+			expect(step(pages([pull(7, head), pull(8, "2".repeat(40))]))).toEqual(alone);
+			expect(step(pages([]))).toEqual(alone);
+			expect(step(pages([pull(7, head)], [pull(9, head)]))).toEqual([
+				1,
+				`::error::pull request 9 has head ${head} too; a status names a commit, so neither can take a round's melian/review\n`,
+			]);
+			expect(step("unreadable")).toEqual([1, "::error::the open pull requests could not be read\n"]);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}
@@ -624,7 +677,7 @@ describe("the melian round workflow", () => {
 				);
 				writeFileSync(join(round, "exit"), `${exit}\n`);
 				writeFileSync(join(round, "merge-base"), `${merged}\n`);
-				const ran = spawnSync("bash", ["-e", "-o", "pipefail", "-c", run], {
+				const ran = spawnSync("bash", ["-e", "-c", run], {
 					cwd: fileURLToPath(new URL("..", import.meta.url)),
 					encoding: "utf8",
 					env: {
@@ -790,7 +843,7 @@ describe("the melian round workflow", () => {
 			const posted = join(dir, "posted.json");
 			const step = (token) => {
 				rmSync(posted, { force: true });
-				const ran = spawnSync("bash", ["-e", "-o", "pipefail", "-c", run], {
+				const ran = spawnSync("bash", ["-e", "-c", run], {
 					encoding: "utf8",
 					env: {
 						PATH: `${dir}:${process.env.PATH}`,
