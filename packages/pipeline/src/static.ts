@@ -385,6 +385,11 @@ async function runBiome(run: Run, root: string, scratch: string, binary: string,
 	return normaliseBiomeSarif(text, { root, version });
 }
 
+// Whether a normalised relative path leaves the directory it is relative to, by its segments: `..config` is a child.
+function escapes(path: string): boolean {
+	return path === ".." || path.startsWith("../") || posix.isAbsolute(path);
+}
+
 // The projects a tsconfig asks tsc to check. A solution-style tsconfig, with `references` and an empty `files` and no
 // `include`, checks nothing itself, so each referenced project is checked in its place; a tsconfig with an empty
 // `files`, no `include`, and no references checks nothing at all. With neither `files` nor `include`, tsc checks every
@@ -412,7 +417,7 @@ async function tscProjects(run: Run, root: string, project: string, seen = new S
 	const projects: string[] = [];
 	for (const reference of referenced) {
 		const resolved = posix.normalize(posix.join(posix.dirname(project), reference));
-		if (resolved.startsWith("..") || posix.isAbsolute(resolved)) continue;
+		if (escapes(resolved)) continue;
 		const file = resolved.endsWith(".json") ? resolved : posix.join(resolved, "tsconfig.json");
 		projects.push(...(await tscProjects(run, root, file, seen)));
 	}
@@ -527,7 +532,7 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 	return run.inWorktree(async (root, scratch) => {
 		if (tool === "tsc") {
 			const { project } = input.settings as TscSettings;
-			if (posix.isAbsolute(project) || posix.normalize(project).startsWith("..")) {
+			if (escapes(posix.normalize(project))) {
 				throw run.fail("toolFailed", `static.tsc.project ${project} is outside the repository`);
 			}
 			if (!(await run.exists(posix.join(root, project)))) {

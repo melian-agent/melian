@@ -229,6 +229,46 @@ describe("runStaticTool with Melian's own tools", () => {
 		expect(result.notes).toEqual([]);
 	});
 
+	it("checks a referenced project in a folder whose name starts with two dots, and refuses one above the checkout", {
+		timeout: 60_000,
+	}, async () => {
+		const project = JSON.stringify({ compilerOptions: { strict: true, noEmit: true, composite: true } });
+		const head = commit(repo, {
+			"tsconfig.json": JSON.stringify({ files: [], references: [{ path: "./..config" }] }),
+			"..config/tsconfig.json": project,
+			"..config/index.ts": lines("export const n: number = 'a';"),
+		});
+		const result = await runStaticTool(input("tsc", head), context);
+		if (result.status !== "ran") throw new Error(result.reason);
+		expect(results(result.log)).toEqual([["TS2322", "..config/index.ts", 1]]);
+		for (const path of ["../outside", ".."]) {
+			const above = commit(repo, { "tsconfig.json": JSON.stringify({ files: [], references: [{ path }] }) });
+			await expect(runStaticTool(input("tsc", above), context)).rejects.toMatchObject({ code: "nothingToCheck" });
+		}
+	});
+
+	it("refuses a configured project above the checkout, and checks one in a folder that starts with two dots", {
+		timeout: 60_000,
+	}, async () => {
+		const head = commit(repo, {
+			"..config/tsconfig.json": JSON.stringify({ compilerOptions: { strict: true, noEmit: true } }),
+			"..config/index.ts": lines("export const n: number = 'a';"),
+		});
+		const at = (project: string): StaticRunInput => ({
+			...input("tsc", head),
+			settings: { ...defaultConfig.static.tsc, timeout: 120, project },
+		});
+		for (const project of ["/etc/tsconfig.json", "../tsconfig.json", ".."]) {
+			await expect(runStaticTool(at(project), context)).rejects.toMatchObject({
+				code: "toolFailed",
+				message: `static.tsc.project ${project} is outside the repository`,
+			});
+		}
+		const result = await runStaticTool(at("..config/tsconfig.json"), context);
+		if (result.status !== "ran") throw new Error(result.reason);
+		expect(results(result.log)).toEqual([["TS2322", "..config/index.ts", 1]]);
+	});
+
 	it("skips tsc on a commit with no tsconfig.json", { timeout: 60_000 }, async () => {
 		const head = commit(repo, { "src/a.ts": lines("export const a = 1;") });
 		expect(await runStaticTool(input("tsc", head), context)).toEqual({
