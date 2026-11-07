@@ -558,7 +558,10 @@ describe("the melian round workflow", () => {
 			}) => {
 				rmSync(posted, { force: true });
 				writeFileSync(join(round, "verdict.json"), typeof verdict === "string" ? verdict : JSON.stringify(verdict));
-				writeFileSync(join(round, "rounds.json"), JSON.stringify([reviewed]));
+				writeFileSync(
+					join(round, "rounds.json"),
+					typeof reviewed === "string" ? reviewed : JSON.stringify([reviewed]),
+				);
 				writeFileSync(join(round, "exit"), `${exit}\n`);
 				writeFileSync(join(round, "merge-base"), `${merged}\n`);
 				const ran = spawnSync("bash", ["-e", "-o", "pipefail", "-c", run], {
@@ -635,9 +638,13 @@ describe("the melian round workflow", () => {
 			const another = set("error", `Not reviewed: the round reviewed another revision${suffix}`);
 			expect(step({ reviewed: { base: mergeBase, head: "2".repeat(40) } })).toEqual(another);
 			expect(step({ reviewed: { base: "f".repeat(40), head } })).toEqual(another);
-			expect(step({ merged: "none", reviewed: { base: "none", head } })).toEqual(
-				set("error", "Not reviewed: the round reviewed another revision"),
-			);
+			expect(step({ reviewed: "not json" })).toEqual(another);
+			// A merge base that is not exactly one full SHA sets no suffix, so the merge group could not copy it.
+			for (const merged of ["none", `0${mergeBase}`, `${mergeBase}0`]) {
+				expect(step({ merged, reviewed: { base: merged, head } }), merged).toEqual(
+					set("error", "Not reviewed: the round reviewed another revision"),
+				);
+			}
 			const none = {
 				code: 0,
 				stdout:
