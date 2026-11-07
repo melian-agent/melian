@@ -1,11 +1,11 @@
-import { readdirSync } from "node:fs";
+import { mkdirSync, readdirSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createSession, defineDoc } from "@earendil-works/pi-durable";
 import { registerStorageConformance } from "@earendil-works/pi-durable/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { gitIn, isolatedGitEnv } from "../../core/test/fixtures/repo.ts";
 import { LeaseHeld, StateBranchError } from "../src/index.ts";
-import { changeset, context, note, notes, Remote, replaceChangeset } from "./fixtures/state.ts";
+import { changeset, context, gitWith, note, notes, Remote, replaceChangeset } from "./fixtures/state.ts";
 
 let remote: Remote;
 
@@ -63,8 +63,10 @@ describe("a changeset on the state branch", () => {
 		const first = await clone.branch().checkout(changeset);
 		await note(await first.openStorage(context), "pushed");
 		expect(await first.push()).toMatchObject({ kind: "pushed" });
+		await first.close();
 		const second = await clone.branch().checkout(changeset);
 		await note(await second.openStorage(context), "kept locally");
+		await second.close();
 		const third = await clone.branch().checkout(changeset);
 		expect(third.setAside).toBeUndefined();
 		expect(await notes(await third.openStorage(context))).toEqual(["pushed", "kept locally"]);
@@ -133,6 +135,8 @@ describe("the lease", () => {
 		const clone = remote.clone({ now: () => start });
 		const crashed = clone.branch();
 		await crashed.checkout(changeset);
+		const old = new Date(Date.now() - 2 * 60 * 1000);
+		utimesSync(join(clone.directory, `${changeset}.running`), old, old);
 		const rerun = clone.branch();
 		await rerun.checkout(changeset);
 		expect(remote.index()).toMatchObject({
@@ -170,6 +174,7 @@ describe("two runs racing one changeset", () => {
 		});
 		expect(remote.tip()).toBe(won);
 		expect(await notes(await loser.openStorage(context))).toEqual(["lens A", "lens B"]);
+		await loser.close();
 
 		const resumed = await loserClone.branch({ now: () => expired + 1 }).checkout(changeset);
 		expect(resumed.setAside).toMatch(/\/pull-0123456789abcdef\.set-aside-\d+$/);
@@ -265,5 +270,101 @@ describe("what the branch holds", () => {
 			code: "fetchFailed",
 			message: expect.stringMatching(/^git fetch of melian\/state failed: /),
 		});
+	});
+});
+
+describe("Codex's review of d449ec6", () => {
+	it("refuses a second process in the same clone while the first works on the changeset", async () => {
+		const clone = remote.clone();
+		const first = await clone.branch().checkout(changeset);
+		const tip = remote.tip();
+		await expect(clone.branch().checkout(changeset)).rejects.toMatchObject({
+			code: "copyInUse",
+			message:
+				"another melian process in this clone is working on pull-0123456789abcdef; wait for it to finish, or, if none is running, wait two minutes",
+		});
+		expect(remote.tip()).toBe(tip);
+		await first.close();
+		await expect(clone.branch().checkout(changeset)).resolves.toBeDefined();
+	});
+
+	it("takes over the copy a crashed process left two minutes ago", async () => {
+		const clone = remote.clone();
+		await clone.branch().checkout(changeset);
+		const old = new Date(Date.now() - 2 * 60 * 1000);
+		utimesSync(join(clone.directory, `${changeset}.running`), old, old);
+		await expect(clone.branch().checkout(changeset)).resolves.toBeDefined();
+	});
+
+	it("refuses a copy a process touched under two minutes ago", async () => {
+		const clone = remote.clone();
+		await clone.branch().checkout(changeset);
+		const recent = new Date(Date.now() - 2 * 60 * 1000 + 5000);
+		utimesSync(join(clone.directory, `${changeset}.running`), recent, recent);
+		await expect(clone.branch().checkout(changeset)).rejects.toMatchObject({ code: "copyInUse" });
+	});
+
+	it.each([
+		["no index.json", (index: string, changesets: string) => `040000 tree ${changesets}\tchangesets\n`],
+		["no changesets tree", (index: string) => `100644 blob ${index}\tindex.json\n`],
+		[
+			"index.json as a tree",
+			(_index: string, changesets: string) =>
+				`040000 tree ${changesets}\tindex.json\n040000 tree ${changesets}\tchangesets\n`,
+		],
+		[
+			"changesets as a blob",
+			(index: string) => `100644 blob ${index}\tindex.json\n100644 blob ${index}\tchangesets\n`,
+		],
+		[
+			"an entry this build does not know",
+			(index: string, changesets: string) =>
+				`100644 blob ${index}\tindex.json\n040000 tree ${changesets}\tchangesets\n100644 blob ${index}\tledger.json\n`,
+		],
+	])("refuses a branch with %s, and pushes nothing", async (_name, root) => {
+		await (await remote.clone().branch().checkout(changeset)).push();
+		const bare = remote.bare;
+		const index = gitIn(bare, "rev-parse", "refs/heads/melian/state:index.json");
+		const changesets = gitIn(bare, "rev-parse", "refs/heads/melian/state:changesets");
+		const tree = gitWith(bare, root(index, changesets), "mktree");
+		const commit = gitIn(bare, "commit-tree", tree, "-p", remote.tip()!, "-m", "malformed");
+		gitIn(bare, "update-ref", "refs/heads/melian/state", commit);
+		await expect(remote.clone().branch().checkout(changeset)).rejects.toMatchObject({ code: "invalidBranch" });
+		expect(remote.tip()).toBe(commit);
+	});
+
+	it.each([
+		[
+			"a blob",
+			(tree: string, blob: string) =>
+				`100644 blob ${blob}\tpull-fedcba9876543210\n040000 tree ${tree}\t${changeset}\n`,
+		],
+		[
+			"a name no changeset has",
+			(tree: string) => `040000 tree ${tree}\tPull Request\n040000 tree ${tree}\t${changeset}\n`,
+		],
+	])("refuses a changesets tree holding %s, and pushes nothing", async (_name, listing) => {
+		await (await remote.clone().branch().checkout(changeset)).push();
+		const bare = remote.bare;
+		const tree = gitIn(bare, "rev-parse", `refs/heads/melian/state:changesets/${changeset}`);
+		const index = gitIn(bare, "rev-parse", "refs/heads/melian/state:index.json");
+		const changesets = gitWith(bare, listing(tree, index), "mktree");
+		const root = gitWith(bare, `100644 blob ${index}\tindex.json\n040000 tree ${changesets}\tchangesets\n`, "mktree");
+		const commit = gitIn(bare, "commit-tree", root, "-p", remote.tip()!, "-m", "malformed");
+		gitIn(bare, "update-ref", "refs/heads/melian/state", commit);
+		await expect(remote.clone().branch().checkout(changeset)).rejects.toMatchObject({ code: "invalidBranch" });
+		expect(remote.tip()).toBe(commit);
+	});
+
+	it.each([
+		["a file Pi's storage never writes", (directory: string) => writeFileSync(join(directory, "notes.txt"), "")],
+		["a directory", (directory: string) => mkdirSync(join(directory, "doc-1.jsonl"))],
+	])("refuses to push a copy holding %s, rather than push part of it", async (_name, plant) => {
+		const checkout = await remote.clone().branch().checkout(changeset);
+		await note(await checkout.openStorage(context), "kept");
+		const tip = remote.tip();
+		plant(checkout.directory);
+		await expect(checkout.push()).rejects.toMatchObject({ code: "invalidCopy" });
+		expect(remote.tip()).toBe(tip);
 	});
 });

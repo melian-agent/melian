@@ -6,9 +6,12 @@ export interface Lease {
 	readonly attempts: number;
 }
 
-/** Why the state branch cannot be used: it could not be fetched or pushed, or it holds what this build cannot read. */
+/**
+ * Why the state branch cannot be used: it could not be fetched or pushed, it holds what this build cannot read, or this
+ * clone's copy holds what Pi's storage never writes.
+ */
 export class StateBranchError extends Error {
-	readonly code: "fetchFailed" | "pushFailed" | "invalidBranch";
+	readonly code: "fetchFailed" | "pushFailed" | "invalidBranch" | "invalidCopy";
 
 	constructor(code: StateBranchError["code"], message: string) {
 		super(message);

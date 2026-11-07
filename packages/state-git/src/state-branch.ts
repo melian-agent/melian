@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rename, rm, stat, utimes, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Context } from "@earendil-works/chord";
 import { JsonlStorage, openNodeJsonlStorage } from "@earendil-works/pi-durable/storage/jsonl/node";
@@ -15,6 +15,9 @@ const storageFile = /^(?:main|(?:doc|task)-(?:0|[1-9]\d*))\.jsonl$/;
 const changesetName = /^[a-z0-9][a-z0-9-]{0,63}$/;
 const attemptsLimit = 3;
 const defaultLeaseMs = 2 * 60 * 60 * 1000;
+// A process working on a changeset touches its lock this often; one untouched for `staleMs` has crashed.
+const touchMs = 30 * 1000;
+const staleMs = 2 * 60 * 1000;
 // Git records who pushed the branch; the commits themselves need only some identity.
 const identity = {
 	GIT_AUTHOR_NAME: "Melian state",
@@ -49,6 +52,61 @@ export class LeaseHeld extends Error {
 		);
 		this.name = "LeaseHeld";
 		this.lease = lease;
+	}
+}
+
+/** Another melian process in this clone is working on the changeset, so this one must not open its copy. */
+export class CopyInUse extends Error {
+	readonly code = "copyInUse";
+
+	constructor(changeset: string) {
+		super(
+			`another melian process in this clone is working on ${changeset}; wait for it to finish, or, if none is running, wait two minutes`,
+		);
+		this.name = "CopyInUse";
+	}
+}
+
+// One process's hold on this clone's copy of a changeset: a file it creates exclusively and touches while it works.
+class CopyLock {
+	readonly #path: string;
+	readonly #run: string;
+	readonly #timer: NodeJS.Timeout;
+
+	private constructor(path: string, run: string) {
+		this.#path = path;
+		this.#run = run;
+		this.#timer = setInterval(() => {
+			const now = new Date();
+			utimes(path, now, now).catch(() => {});
+		}, touchMs);
+		this.#timer.unref();
+	}
+
+	static async take(directory: string, changeset: string, run: string): Promise<CopyLock> {
+		const path = join(directory, `${changeset}.running`);
+		await mkdir(directory, { recursive: true });
+		for (let attempt = 0; attempt < 2; attempt++) {
+			try {
+				await writeFile(path, `${run}\n`, { flag: "wx" });
+				return new CopyLock(path, run);
+			} catch (error) {
+				if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+				const touched = await stat(path).then(
+					(info) => info.mtimeMs,
+					() => undefined,
+				);
+				if (touched !== undefined && Date.now() - touched < staleMs) throw new CopyInUse(changeset);
+				await rm(path, { force: true });
+			}
+		}
+		throw new CopyInUse(changeset);
+	}
+
+	async release(): Promise<void> {
+		clearInterval(this.#timer);
+		const holder = await readFile(this.#path, "utf8").catch(() => undefined);
+		if (holder?.trim() === this.#run) await rm(this.#path, { force: true });
 	}
 }
 
@@ -95,13 +153,25 @@ export class StateBranch {
 	}
 
 	/**
-	 * Takes the changeset's lease, refusing with `LeaseHeld` when another clone's run holds a live one, and leaves this
-	 * clone's copy as the branch has it. A copy the branch has moved past, because another run pushed since this clone
-	 * last did, is set aside and replaced by the branch's.
+	 * Takes the changeset's lease, refusing with `CopyInUse` while another process in this clone works on it and with
+	 * `LeaseHeld` while another clone's run holds a live lease, and leaves this clone's copy as the branch has it. A copy
+	 * the branch has moved past, because another run pushed since this clone last did, is set aside and replaced by the
+	 * branch's. Close the checkout when the work is done, pushed or not.
 	 */
 	async checkout(changeset: string): Promise<StateCheckout> {
 		if (!changesetName.test(changeset))
 			throw new StateBranchError("invalidBranch", `"${changeset}" is not a changeset name`);
+		const lock = await CopyLock.take(this.#options.directory, changeset, this.#run);
+		try {
+			return await this.#checkout(changeset, lock);
+		} catch (error) {
+			await lock.release();
+			throw error;
+		}
+	}
+
+	async #checkout(changeset: string, lock: CopyLock): Promise<StateCheckout> {
+		// This clone's lock is held, so a live lease of this clone's is one a crashed run left.
 		const { stored } = await this.#withRetry(async (index) => {
 			const held = index.lease(changeset);
 			if (held !== undefined && held.holder !== this.#options.holder && this.#live(held))
@@ -114,7 +184,7 @@ export class StateBranch {
 			};
 			return { index: index.leased(changeset, lease) };
 		});
-		return StateCheckout.restore(this, changeset, stored(changeset));
+		return StateCheckout.restore(this, changeset, stored(changeset), lock);
 	}
 
 	/** @internal */
@@ -137,7 +207,14 @@ export class StateBranch {
 
 	/** @internal Writes the changeset's directory into the clone's object database and names its tree. */
 	async snapshot(directory: string): Promise<string> {
-		const names = (await readdir(directory)).filter((name) => storageFile.test(name)).sort();
+		const found = await readdir(directory, { withFileTypes: true });
+		const stray = found.find((entry) => !entry.isFile() || !storageFile.test(entry.name));
+		if (stray !== undefined)
+			throw new StateBranchError(
+				"invalidCopy",
+				`this clone's copy of ${directory.split("/").at(-1)} holds ${JSON.stringify(stray.name)}, which Pi's storage never writes, so Melian will not push part of it`,
+			);
+		const names = found.map((entry) => entry.name).sort();
 		const paths = names.map((name) => join(directory, name));
 		const shas =
 			names.length === 0 ? [] : (await this.#git(["hash-object", "-w", "--", ...paths])).trim().split("\n");
@@ -230,17 +307,31 @@ export class StateBranch {
 
 	async #read(tip: string | undefined): Promise<{ index: StateIndex; changesets: Map<string, Entry> }> {
 		if (tip === undefined) return { index: StateIndex.empty(), changesets: new Map() };
+		// A branch this build cannot read whole is refused, never read as empty: the next push would delete the rest.
 		const top = entries(await gitOutputBytes(this.#options.repoRoot, ["ls-tree", "-z", tip]));
-		const indexEntry = top.find((entry) => entry.name === indexFile && entry.type === "blob");
-		const index =
-			indexEntry === undefined
-				? StateIndex.empty()
-				: StateIndex.parse(await gitOutput(this.#options.repoRoot, ["cat-file", "blob", indexEntry.sha]));
-		const treeEntry = top.find((entry) => entry.name === changesetsTree && entry.type === "tree");
+		const indexEntry = top.find((entry) => entry.name === indexFile);
+		const treeEntry = top.find((entry) => entry.name === changesetsTree);
+		if (
+			top.length !== 2 ||
+			indexEntry?.mode !== "100644" ||
+			indexEntry.type !== "blob" ||
+			treeEntry?.mode !== "040000" ||
+			treeEntry.type !== "tree"
+		)
+			throw new StateBranchError(
+				"invalidBranch",
+				`the state branch's root holds ${JSON.stringify(top.map((entry) => `${entry.type} ${entry.name}`))}, where this build reads only the blob index.json and the tree changesets`,
+			);
+		const index = StateIndex.parse(await gitOutput(this.#options.repoRoot, ["cat-file", "blob", indexEntry.sha]));
 		const changesets = new Map<string, Entry>();
-		if (treeEntry !== undefined)
-			for (const entry of entries(await gitOutputBytes(this.#options.repoRoot, ["ls-tree", "-z", treeEntry.sha])))
-				if (entry.type === "tree") changesets.set(entry.name, entry);
+		for (const entry of entries(await gitOutputBytes(this.#options.repoRoot, ["ls-tree", "-z", treeEntry.sha]))) {
+			if (entry.mode !== "040000" || entry.type !== "tree" || !changesetName.test(entry.name))
+				throw new StateBranchError(
+					"invalidBranch",
+					`the state branch's changesets hold the ${entry.type} ${JSON.stringify(entry.name)}, which is no changeset`,
+				);
+			changesets.set(entry.name, entry);
+		}
 		return { index, changesets };
 	}
 
@@ -304,9 +395,17 @@ export class StateCheckout {
 	readonly setAside: string | undefined;
 	readonly #branch: StateBranch;
 	readonly #synced: string;
+	readonly #lock: CopyLock;
 
-	private constructor(branch: StateBranch, changeset: string, synced: string, setAside: string | undefined) {
+	private constructor(
+		branch: StateBranch,
+		changeset: string,
+		synced: string,
+		setAside: string | undefined,
+		lock: CopyLock,
+	) {
 		this.#branch = branch;
+		this.#lock = lock;
 		this.changeset = changeset;
 		this.directory = join(branch.directory, changeset);
 		this.#synced = synced;
@@ -314,7 +413,12 @@ export class StateCheckout {
 	}
 
 	/** @internal */
-	static async restore(branch: StateBranch, changeset: string, stored: string | undefined): Promise<StateCheckout> {
+	static async restore(
+		branch: StateBranch,
+		changeset: string,
+		stored: string | undefined,
+		lock: CopyLock,
+	): Promise<StateCheckout> {
 		const directory = join(branch.directory, changeset);
 		const marker = `${directory}.synced`;
 		const onBranch = stored ?? "none";
@@ -326,7 +430,7 @@ export class StateCheckout {
 			() => true,
 			() => false,
 		);
-		if (local && synced === onBranch) return new StateCheckout(branch, changeset, onBranch, undefined);
+		if (local && synced === onBranch) return new StateCheckout(branch, changeset, onBranch, undefined, lock);
 		let setAside: string | undefined;
 		if (local) {
 			setAside = `${directory}.set-aside-${Date.now()}`;
@@ -336,7 +440,7 @@ export class StateCheckout {
 		if (onBranch === "none") await mkdir(directory, { recursive: true });
 		else await branch.materialize(onBranch, directory);
 		await writeFile(marker, `${onBranch}\n`);
-		return new StateCheckout(branch, changeset, onBranch, setAside);
+		return new StateCheckout(branch, changeset, onBranch, setAside, lock);
 	}
 
 	openStorage(context: Context): Promise<JsonlStorage> {
@@ -355,6 +459,11 @@ export class StateCheckout {
 		});
 		if (result.kind === "pushed") await writeFile(`${this.directory}.synced`, `${tree}\n`);
 		return result;
+	}
+
+	/** Lets another process in this clone open the copy. A lease left on the branch expires, or the next run takes it. */
+	close(): Promise<void> {
+		return this.#lock.release();
 	}
 }
 
