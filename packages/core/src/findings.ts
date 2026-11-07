@@ -836,6 +836,17 @@ function withProof(own: FindingEvidence | undefined, proof: readonly EvidenceLoc
  * first location's file, the rule, that location's snippet, and `properties.occurrence` or `properties.discriminator`.
  * {@link Finding.create} derives both, and {@link Finding.parse} rejects a finding where either disagrees.
  */
+/**
+ * The message Melian stores for a Biome or tsc result of Melian rule `rule`, in place of the tool's own text, which can
+ * quote files outside the checkout.
+ */
+export function withheldToolText(check: "static.biome" | "static.tsc", rule: string): string {
+	const [name, command] = check === "static.biome" ? ["Biome", "biome lint"] : ["tsc", "tsc --noEmit"];
+	return `${name} reports ${rule} here. Melian keeps none of ${name}'s text; run ${command} at this commit to read its message.`;
+}
+
+const escapedPattern = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 export class Finding {
 	readonly ruleId: string;
 	readonly level: SarifLevel;
@@ -1292,6 +1303,26 @@ export class Finding {
 	}
 
 	/** The IDs of the reports the finding holds: its own, then each it lists in `alsoReportedAs`. */
+	/**
+	 * Whether this is a Biome or tsc finding that holds text other than what Melian writes in place of the tool's: its
+	 * message, its explanation, or a discriminator taken from the tool's message, as a build before it did.
+	 */
+	quotesTool(): boolean {
+		const { check } = this.properties.source;
+		if (check !== "static.biome" && check !== "static.tsc") return false;
+		const said = withheldToolText(check, this.ruleId);
+		const message = new RegExp(
+			`^(?:\\d+ more ${escapedPattern(this.ruleId)} result\\(s\\) on these lines than at the base: )?${escapedPattern(said)}(?: \\(and \\d+ more on these lines\\))?$`,
+		);
+		const { discriminator } = this.properties;
+		return (
+			!message.test(this.message.text) ||
+			this.properties.explanation.what !== said ||
+			(discriminator !== undefined &&
+				!/^(?:line \d+, column \d+|beyond the base at [0-9a-f]{16})$/.test(discriminator))
+		);
+	}
+
 	reportIds(): string[] {
 		return [this.properties.id, ...(this.properties.alsoReportedAs ?? []).map((other) => other.id)];
 	}

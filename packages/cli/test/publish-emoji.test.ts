@@ -1,5 +1,13 @@
 import { rmSync } from "node:fs";
-import { Adjudication, Changeset, defaultConfig, Finding, type FindingInput, Revision } from "@melian-agent/core";
+import {
+	Adjudication,
+	Changeset,
+	defaultConfig,
+	Finding,
+	type FindingInput,
+	Revision,
+	withheldToolText,
+} from "@melian-agent/core";
 import { createGitHubProvider } from "@melian-agent/github";
 import { backgroundContext as context, createRegistry, openHarness, openSqliteStorage } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
@@ -20,8 +28,10 @@ afterEach(() => {
 
 const emojis = /\p{Emoji_Presentation}|\u{FE0F}/u;
 
-const finding = (input: Partial<FindingInput>): Finding =>
-	Finding.create({
+// A Biome finding holds only the sentence Melian writes in place of Biome's text, or publish refuses it.
+const finding = (input: Partial<FindingInput>): Finding => {
+	const said = withheldToolText("static.biome", input.rule ?? "unsafe");
+	return Finding.create({
 		rule: "unsafe",
 		file: "src/a.ts",
 		startLine: 1,
@@ -29,11 +39,12 @@ const finding = (input: Partial<FindingInput>): Finding =>
 		occurrence: 0,
 		severity: "P2",
 		cause: "introduced",
-		message: "Unsafe input",
+		message: said,
 		source: { check: "static.biome" },
-		explanation: { what: "Unsafe", whyHere: "New", whatToDo: "Validate" },
+		explanation: { what: said, whyHere: "New", whatToDo: "Validate" },
 		...input,
 	});
+};
 
 // Publishes a stored review of a change whose base and head melian.yaml set `publish.emoji` as given, through a
 // provider over a fake GitHub that records every post, and returns that record.
@@ -71,7 +82,7 @@ async function published(base: string, head: string): Promise<FakeState> {
 				const doc = await tx.doc(VerdictDocument, root.id);
 				const key = Revision.key(changeset.revision);
 				doc.verdicts[key] = new Adjudication({
-					findings: [finding({}), finding({ rule: "style", severity: "P3", message: "Style", snippet: "x" })],
+					findings: [finding({}), finding({ rule: "style", severity: "P3", snippet: "x" })],
 					manifest: [],
 					checks: [],
 					config: defaultConfig,

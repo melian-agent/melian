@@ -19,7 +19,7 @@ import {
 	staticFindings,
 	type ToolLog,
 } from "@melian-agent/core";
-import { replaceCheckFindings, storedText } from "./findings.ts";
+import { replaceCheckFindings } from "./findings.ts";
 import {
 	backgroundContext,
 	type Context,
@@ -625,6 +625,10 @@ function decisive(config: MelianConfig): Omit<MelianConfig, "output" | "publish"
 	const { emoji: __, ...kept } = publish;
 	return { ...rest, publish: kept };
 }
+
+// Raised when what a check stores from a tool changes, so no run of an earlier build is reused: 2 keeps no Biome or tsc
+// text.
+const storedText = 2;
 
 // What decides a run's results: both commits, the tier, and the policy it ran under, with Melian's own tool pins, so a
 // build that pins another Enola does not take the finished run of an older one. Mutation testing adds the Stryker

@@ -26,7 +26,7 @@ import {
 import { VerdictDocument, type VerdictProvenance } from "./adjudication.ts";
 import { verdictWithLegacyCaveats } from "./caveats.ts";
 import { PublishError } from "./errors.ts";
-import { FindingsDocument, runsTextTools, storedText } from "./findings.ts";
+import { FindingsDocument } from "./findings.ts";
 import {
 	backgroundContext,
 	type Context,
@@ -704,9 +704,18 @@ function publishTask(provider: ReviewProvider) {
 						}, context);
 						return;
 					}
-					if (storedRound.provenance === undefined || keptToolText(storedRound.provenance)) {
+					// Before anything is posted: a verdict, or a round left pending, that an older build wrote can hold a tool's
+					// text. A round the provider already shows is recovered as it stands.
+					const held = (await read()).revisions[head]?.pending;
+					const stale =
+						held !== undefined &&
+						(Verdict.from(held.verdict).quotesTool() ||
+							held.post.some(({ finding }) => Finding.from(finding).quotesTool())) &&
+						(await marked(held)).review === undefined;
+					if (stale || Verdict.from(storedRound.verdict).quotesTool()) {
 						const reason = `${olderBuild}; run melian review again`;
 						await runtime.commit(async (tx) => {
+							if (stale) delete (await tx.doc(PublishedDocument, root)).revisions[head]!.pending;
 							await timing.end(tx);
 							return {
 								status: "terminal",
@@ -845,7 +854,8 @@ function publishTask(provider: ReviewProvider) {
 						await runtime.commit(async (tx) => {
 							const document = await tx.doc(PublishedDocument, root);
 							const record = document.revisions[head]!;
-							if (pending.ledger !== undefined)
+							const { ledger } = pending;
+							if (ledger !== undefined)
 								document.ledgerRounds = [
 									...(document.ledgerRounds ?? []).map((round) =>
 										"verdict" in round
@@ -857,7 +867,15 @@ function publishTask(provider: ReviewProvider) {
 												}
 											: round,
 									),
-									structuredClone(pending.ledger),
+									// A recovered round an older build planned keeps only its status, not its tool text.
+									Verdict.from(ledger.verdict).quotesTool()
+										? {
+												base: ledger.base,
+												head: ledger.head,
+												round: ledger.round,
+												status: ledger.verdict.status,
+											}
+										: structuredClone(ledger),
 								].slice(-maxLedgerRounds);
 							record.reviews = [...record.reviews, posted.id];
 							record.verdict = pending.fingerprint;
@@ -1274,12 +1292,7 @@ function short(commit: string): string {
 	return commit.slice(0, 12);
 }
 
-const olderBuild = "an older Melian decided its review and kept Biome and tsc text";
-
-// Whether a build from before Melian withheld Biome and tsc text decided a verdict whose tier ran either tool.
-function keptToolText(provenance: Pick<VerdictProvenance, "manifest" | "storedText">): boolean {
-	return provenance.storedText !== storedText && runsTextTools(provenance.manifest);
-}
+const olderBuild = "it holds Biome or tsc text an older Melian stored";
 
 // Why a verdict decided from `provenance` must not reach `pullRequest`, or `undefined` when it may. Only a review of
 // the pull request itself, fetched from its provider, under policy read from the base commit the provider reported,
@@ -1287,7 +1300,6 @@ function keptToolText(provenance: Pick<VerdictProvenance, "manifest" | "storedTe
 // policy came from the working tree obeyed whatever was checked out.
 function unpublishable(provenance: VerdictProvenance | undefined, pullRequest: PullRequest): string | undefined {
 	if (provenance === undefined) return "its review recorded no provenance";
-	if (keptToolText(provenance)) return olderBuild;
 	if (provenance.kind !== "pull-request") return `it reviewed a ${provenance.kind}, not the pull request`;
 	const { owner, name } = pullRequest.repository;
 	if (provenance.repository.owner !== owner || provenance.repository.name !== name) {
@@ -1398,7 +1410,9 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 			where,
 		);
 	}
-	const mismatch = unpublishable(validated.provenance, pullRequest);
+	const mismatch = Verdict.from(validated.verdict).quotesTool()
+		? olderBuild
+		: unpublishable(validated.provenance, pullRequest);
 	if (mismatch !== undefined) {
 		throw new PublishError(
 			"notPublishable",
@@ -1512,6 +1526,12 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 				superseded,
 			};
 		}
+		if (result.kind === "superseded" && result.reason.startsWith(olderBuild))
+			throw new PublishError(
+				"notPublishable",
+				`Melian will not publish its review of ${short(head)} to pull request #${pullRequest.number}: ${olderBuild}; ${again}`,
+				where,
+			);
 		throw new PublishError(
 			"staleTarget",
 			`pull request #${pullRequest.number} changed while Melian published it, so publication stopped: ${result.reason}; ${again}`,

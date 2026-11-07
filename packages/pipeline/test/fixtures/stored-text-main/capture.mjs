@@ -15,10 +15,11 @@ import {
 	publishReview,
 	reviewChangeset,
 } from "./packages/pipeline/src/index.ts";
+import { PublishedDocument } from "./packages/pipeline/src/publish.ts";
 import { createFakeModels } from "./packages/pipeline/src/testing.ts";
 import { baseAndHead, gitIn } from "./packages/pipeline/test/fixtures/repo.ts";
 
-const [output, commit, tier] = process.argv.slice(2);
+const [output, commit, tier, mode = "parked"] = process.argv.slice(2);
 const full = tier.split(",");
 mkdirSync(output, { recursive: true });
 const tsconfig = JSON.stringify({ compilerOptions: { strict: true, noEmit: true } });
@@ -65,12 +66,8 @@ await review.close(context);
 const registry = createReviewRegistry();
 registry.install(publishExtension(provider));
 const harness = await openHarness(await openSqliteStorage(path), { models: fake.models, registry });
-harness.resume = () => {};
-harness.waitForTask = async () => {
-	throw new Error("capture before pending publication runs");
-};
-try {
-	await publishReview({
+const publish = async () =>
+	publishReview({
 		harness,
 		changeset,
 		provider,
@@ -78,16 +75,49 @@ try {
 		base: changeset.revision.base,
 		trustedWriters: true,
 	});
-	throw new Error("capture did not park");
-} catch (error) {
-	if (error.message !== "capture before pending publication runs") throw error;
+let pending;
+if (mode === "parked") {
+	// The publication is committed and parked before its task runs.
+	harness.resume = () => {};
+	harness.waitForTask = async () => {
+		throw new Error("capture before pending publication runs");
+	};
+	try {
+		await publish();
+		throw new Error("capture did not park");
+	} catch (error) {
+		if (error.message !== "capture before pending publication runs") throw error;
+	}
+	const tasks = (await harness.inspect(context)).tasks.filter((each) => each.record.kind === "melian.publish");
+	if (tasks.length !== 1) throw new Error("expected one pending publication");
+	pending = tasks[0].record.id;
+} else {
+	// The task plans its round, then GitHub refuses the review, or takes it and the run dies before recording it, so
+	// the planned round stays pending.
+	if (mode === "failed") state.failReviews = true;
+	else {
+		const post = provider.postReview.bind(provider);
+		provider.postReview = async (review) => {
+			await post(review);
+			throw new Error("the run died after posting");
+		};
+	}
+	await publish().then(
+		() => {
+			throw new Error("capture did not fail");
+		},
+		() => undefined,
+	);
+	state.failReviews = undefined;
+	const document = await harness.snapshot(PublishedDocument, (await harness.root(context)).id, context);
+	if (document?.revisions[changeset.revision.head]?.pending === undefined)
+		throw new Error("no round was left pending");
+	if (state.reviews.length !== (mode === "posted" ? 1 : 0)) throw new Error(`unexpected reviews for ${mode}`);
 }
-const tasks = (await harness.inspect(context)).tasks.filter((each) => each.record.kind === "melian.publish");
-if (tasks.length !== 1) throw new Error("expected one pending publication");
 await harness.close(context);
 gitIn(repo, "bundle", "create", join(output, "repo.bundle"), "--all");
 writeFileSync(
 	join(output, "recorded.json"),
-	`${JSON.stringify({ commit, tier: full, changeset: changeset.toJSON(), pending: tasks[0].record.id, state }, null, 2)}\n`,
+	`${JSON.stringify({ commit, tier: full, mode, changeset: changeset.toJSON(), pending, state }, null, 2)}\n`,
 );
 rmSync(repo, { recursive: true, force: true });

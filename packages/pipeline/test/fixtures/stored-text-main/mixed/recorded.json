@@ -4,18 +4,19 @@
     "guardrails",
     "static.tsc"
   ],
+  "mode": "parked",
   "changeset": {
     "kind": "range",
     "id": "range-8fb67dfe2bac6ead",
-    "repoRoot": "/private/var/folders/db/mtn64lld7g971ck9kfq26xyc0000gn/T/melian-review-zzxm4v",
+    "repoRoot": "/private/var/folders/db/mtn64lld7g971ck9kfq26xyc0000gn/T/melian-review-9X5Dll",
     "spec": {
       "base": "main",
       "head": "feature",
       "mode": "threeDot"
     },
     "revision": {
-      "head": "4bc8f2f2a22d21961b2a03a6b44ea3630d3ef05e",
-      "base": "e9ed1874c9a8c5a1dde3f9d1387cc4c1a47e0d3b",
+      "head": "c64d767f5a510f20132bef33f073af6c7fef6d9a",
+      "base": "827a2ab655ae7e552bb2dbb128c62c68d8429778",
       "files": [
         {
           "status": "modified",
@@ -52,11 +53,11 @@
       "title": "Trim names",
       "base": {
         "ref": "main",
-        "sha": "e9ed1874c9a8c5a1dde3f9d1387cc4c1a47e0d3b"
+        "sha": "827a2ab655ae7e552bb2dbb128c62c68d8429778"
       },
       "head": {
         "ref": "feature",
-        "sha": "4bc8f2f2a22d21961b2a03a6b44ea3630d3ef05e"
+        "sha": "c64d767f5a510f20132bef33f073af6c7fef6d9a"
       }
     },
     "lines": {

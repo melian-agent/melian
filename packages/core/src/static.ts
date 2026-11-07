@@ -13,6 +13,7 @@ import {
 	type SarifLevel,
 	sarifLevelSchema,
 	snippetOccurrence,
+	withheldToolText,
 } from "./findings.ts";
 import { type CheckReport, guardrailLimits } from "./guardrails.ts";
 import { openSource, SourceError, type SourceReader } from "./source.ts";
@@ -400,17 +401,14 @@ async function identify(
 	return identified;
 }
 
-const quietCommands: Readonly<Record<"biome" | "tsc", string>> = { biome: "biome lint", tsc: "tsc --noEmit" };
-
 // Biome and tsc quote whatever a head's configuration or sources lead them to, outside the checkout too, so a result
 // keeps its rule, place and level, never the tool's text (issue #281).
 function withoutToolText(tool: StaticTool, log: ToolLog): ToolLog {
 	if (tool !== "biome" && tool !== "tsc") return log;
-	const name = tool === "biome" ? "Biome" : "tsc";
 	const results = log.runs[0].results.map(({ message: _, ...result }) => ({
 		...result,
 		message: {
-			text: `${name} reports ${staticRuleId(tool, result.ruleId)} here. Melian keeps none of ${name}'s text; run ${quietCommands[tool]} at this commit to read its message.`,
+			text: withheldToolText(checkOf(tool) as "static.biome" | "static.tsc", staticRuleId(tool, result.ruleId)),
 		},
 	}));
 	return { ...log, runs: [{ ...log.runs[0], results }] };

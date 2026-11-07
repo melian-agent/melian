@@ -622,27 +622,6 @@ it.each(["main-36122eb2", "main-other-revision", "main-preserved", "build1-6bd29
 	},
 );
 
-it("supersedes a resumed publication whose round records no provenance, posting nothing", async () => {
-	const { harness, root, pending, state, provider, path } = await pendingPublication("minted", ["ran"]);
-	await root.commit(async (tx) => {
-		for (const round of Object.values((await tx.doc(RoundsDocument, root.id)).items)) delete round.provenance;
-	}, context);
-	await harness.close(context);
-	const posts = vi.spyOn(provider, "postReview");
-	const publisher = await PublishHarness.open(await openSqliteStorage(path), createFakeModels().review, provider);
-	opened.push(publisher.harness);
-	const done = await publisher.harness.waitForTask(pending.record.id, context);
-	expect(done.state.outcome).toMatchObject({
-		status: "completed",
-		result: {
-			kind: "superseded",
-			reason: "an older Melian decided its review and kept Biome and tsc text; run melian review again",
-		},
-	});
-	expect(posts).not.toHaveBeenCalled();
-	expect(state.reviews).toEqual([]);
-});
-
 it.each(["adjudication", "revision", "document"])(
 	"supersedes a resumed publication during triage without indexed %s",
 	async (missing) => {

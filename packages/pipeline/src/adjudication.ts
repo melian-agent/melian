@@ -23,7 +23,7 @@ import {
 } from "@melian-agent/core";
 import { verdictWithLegacyCaveats, withLegacyCaveats } from "./caveats.ts";
 import { configsFor } from "./configurations.ts";
-import { findingsVersion, type Producer, readFindings, runsTextTools, seenBefore, storedText } from "./findings.ts";
+import { findingsVersion, type Producer, readFindings, seenBefore } from "./findings.ts";
 import { type Context, type ConversationId, type DocumentReader, defineDoc, defineTask } from "./harness.ts";
 import type { StoredBudgetEnd } from "./lens-tools.ts";
 import { ReviewIndex } from "./review-index.ts";
@@ -84,11 +84,6 @@ export type VerdictProvenance = ReviewOrigin & {
 	readonly lenses: readonly string[];
 	readonly plan?: StoredPlan;
 	readonly verifierVersion?: string;
-	/**
-	 * The {@link storedText} of the build that decided a verdict whose tier ran Biome or tsc; absent for any other tier,
-	 * and before Melian withheld their text.
-	 */
-	readonly storedText?: number;
 };
 
 type StoredProvenance = {
@@ -102,7 +97,6 @@ type StoredProvenance = {
 	lenses: string[];
 	plan?: StoredPlan;
 	verifierVersion?: string;
-	storedText?: number;
 };
 
 // The adjudication task that recorded a verdict, and the findings version it read before deciding. Absent for a verdict
@@ -344,8 +338,6 @@ export function adjudicationInput(options: {
 	const { origin } = options;
 	const provenance: StoredProvenance = {
 		...(options.verifierVersion === undefined ? {} : { verifierVersion: options.verifierVersion }),
-		// Only a tier that ran Biome or tsc stored their text, so only its verdict marks the build's stored-text version.
-		...(runsTextTools(manifest) ? { storedText } : {}),
 		kind: origin.kind,
 		...(origin.kind === "pull-request"
 			? {

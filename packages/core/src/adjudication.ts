@@ -553,6 +553,33 @@ export class Verdict {
 	}
 
 	/** Every finding the verdict holds, by resolution, strictest first, then the dismissed ones. */
+	/**
+	 * Whether this verdict holds a Biome or tsc text that this build would not have written: a finding that quotes the
+	 * tool, as {@link Finding.quotesTool} says, or a failed run's error that carries the tool's output.
+	 */
+	quotesTool(): boolean {
+		const quiet = new Map([
+			[
+				"static.biome",
+				/^biome exited with code -?\d+ and (?:no report|a report); run biome lint at [0-9a-f]{12} to see why, since Melian keeps none of its stderr$/,
+			],
+			[
+				"static.tsc",
+				/^tsc exited with code -?\d+ on ([^\n:]+); run tsc --noEmit -p \1 at [0-9a-f]{12} to see why, since Melian keeps none of its output$/,
+			],
+		]);
+		const exited = (check: CheckRecord) => {
+			const form = quiet.get(check.name);
+			const error = check.error ?? "";
+			return (
+				form !== undefined &&
+				error.startsWith(`${check.name.slice("static.".length)} exited with code`) &&
+				!form.test(error)
+			);
+		};
+		return this.all().some((finding) => finding.quotesTool()) || [...this.notRun, ...(this.ran ?? [])].some(exited);
+	}
+
 	all(): ResolvedFinding[] {
 		return [...Object.values(this.findings).flat(), ...this.dismissed, ...(this.refuted ?? [])];
 	}

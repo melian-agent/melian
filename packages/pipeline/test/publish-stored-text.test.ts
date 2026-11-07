@@ -8,15 +8,14 @@ import { type FakeState, fakeGitHub } from "../../github/test/fixtures/fake-gith
 import { moveTo, pullRequestState } from "../../github/test/fixtures/scenario.ts";
 import {
 	backgroundContext as context,
-	createMemoryStorage,
 	createReviewRegistry,
 	type Harness,
 	openHarness,
+	openReviewHarness,
 	openSqliteStorage,
-	readProvenance,
 	type TaskId,
 } from "../src/index.ts";
-import { PublishHarness, publishReview } from "../src/publish.ts";
+import { PublishedDocument, PublishHarness, publishReview } from "../src/publish.ts";
 import { reviewChangeset } from "../src/review.ts";
 import { createFakeModels } from "../src/testing.ts";
 import { baseAndHead, gitIn, isolatedGitEnv } from "./fixtures/repo.ts";
@@ -57,7 +56,7 @@ async function olderStore(name: string) {
 	const statuses = vi.spyOn(provider, "setStatus");
 	const publisher = await PublishHarness.open(await openSqliteStorage(path), createFakeModels().review, provider);
 	opened.push(publisher.harness);
-	return { recorded, changeset, provider, posts, statuses, harness: publisher.harness };
+	return { recorded, changeset, provider, posts, statuses, path, repo, harness: publisher.harness };
 }
 
 it.each(["tsc", "biome", "mixed"])(
@@ -69,7 +68,7 @@ it.each(["tsc", "biome", "mixed"])(
 			status: "completed",
 			result: {
 				kind: "superseded",
-				reason: "an older Melian decided its review and kept Biome and tsc text; run melian review again",
+				reason: "it holds Biome or tsc text an older Melian stored; run melian review again",
 			},
 		});
 		expect(posts).not.toHaveBeenCalled();
@@ -95,7 +94,7 @@ it.each(["tsc", "biome", "mixed"])(
 			}),
 		).rejects.toMatchObject({
 			code: "notPublishable",
-			message: `Melian will not publish its review of ${changeset.revision.head.slice(0, 12)} to pull request #7: an older Melian decided its review and kept Biome and tsc text; run melian review "#7" first`,
+			message: `Melian will not publish its review of ${changeset.revision.head.slice(0, 12)} to pull request #7: it holds Biome or tsc text an older Melian stored; run melian review "#7" first`,
 		});
 		expect(posts).not.toHaveBeenCalled();
 		expect(statuses).not.toHaveBeenCalled();
@@ -119,46 +118,6 @@ it("publishes a review an older build decided when its tier ran neither Biome no
 		}),
 	).resolves.toMatchObject({ review: "1001", status: { state: "success" } });
 });
-
-it.each([
-	[["static.biome"], 2],
-	[["static.tsc"], 2],
-	[["guardrails", "static.tsc"], 2],
-	[["guardrails"], undefined],
-])(
-	"records this build's stored-text version on a verdict of tier %j only when it runs Biome or tsc",
-	async (full, version) => {
-		for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
-		const repo = baseAndHead({ "a.ts": "export const n = 1;\n" }, { "a.ts": "export const n = 2;\n" });
-		directories.push(repo);
-		const changeset = await Changeset.resolve(repo, "main...feature");
-		const fake = createFakeModels();
-		const harness = await openHarness(createMemoryStorage(), {
-			models: fake.models,
-			registry: createReviewRegistry(),
-		});
-		opened.push(harness);
-		const root = await harness.root(context, { agent: { model: fake.ref() } });
-		await reviewChangeset({
-			harness,
-			changeset,
-			config: { ...defaultConfig, tiers: { full } },
-			lenses: [],
-			standards: [],
-			models: fake.review,
-			checks: full.map((name) => ({ name, status: "ran" as const })),
-			policy: { kind: "revision", commit: changeset.revision.base },
-		});
-		const provenance = await readProvenance(
-			harness,
-			root.id,
-			`${changeset.revision.base}..${changeset.revision.head}`,
-			context,
-		);
-		expect(provenance?.manifest).toEqual(full);
-		expect(provenance?.storedText).toBe(version);
-	},
-);
 
 it("publishes a verdict this build decided for a tier that runs tsc", async () => {
 	for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
@@ -213,4 +172,98 @@ it("publishes a verdict this build decided for a tier that runs tsc", async () =
 		}),
 	).resolves.toMatchObject({ review: "1001", status: { state: "success" } });
 	expect(state.reviews).toHaveLength(1);
+});
+
+// Codex's scenario: a round an older build planned is left pending, a fresh review of the same revision follows, and the
+// next publication must not replay the old round.
+async function freshReview(name: string) {
+	const older = await olderStore(name);
+	await older.harness.close(context);
+	opened.splice(opened.indexOf(older.harness), 1);
+	const storage = await openSqliteStorage(older.path);
+	const review = await openReviewHarness(storage, createFakeModels().review, { retry: false, checkout: older.repo });
+	const { state } = older.recorded;
+	await reviewChangeset({
+		harness: review,
+		changeset: older.changeset,
+		config: { ...defaultConfig, tiers: { full: ["static.tsc"] } },
+		lenses: [],
+		standards: [],
+		models: createFakeModels().review,
+		policy: { kind: "revision", commit: older.changeset.revision.base },
+		origin: {
+			kind: "pull-request",
+			repository: { owner: state.owner, name: state.repo },
+			pullRequest: 7,
+			base: older.changeset.revision.base,
+			head: older.changeset.revision.head,
+		},
+	});
+	await review.close(context);
+	const publisher = await PublishHarness.open(
+		await openSqliteStorage(older.path),
+		createFakeModels().review,
+		older.provider,
+	);
+	opened.push(publisher.harness);
+	return { ...older, harness: publisher.harness };
+}
+
+it("drops a round an older build left pending with tsc's text, posting nothing, after a fresh review", async () => {
+	const { recorded, changeset, provider, posts, statuses, harness } = await freshReview("tsc-failed");
+	await expect(
+		publishReview({
+			harness,
+			provider,
+			changeset,
+			pullRequest: await provider.pullRequest(7),
+			base: changeset.revision.base,
+			trustedWriters: true,
+		}),
+	).rejects.toMatchObject({
+		code: "notPublishable",
+		message: `Melian will not publish its review of ${changeset.revision.head.slice(0, 12)} to pull request #7: it holds Biome or tsc text an older Melian stored; run melian review "#7" first`,
+	});
+	expect(posts).not.toHaveBeenCalled();
+	expect(statuses).not.toHaveBeenCalled();
+	expect(recorded.state.reviews).toEqual([]);
+	const again = await publishReview({
+		harness,
+		provider,
+		changeset,
+		pullRequest: await provider.pullRequest(7),
+		base: changeset.revision.base,
+		trustedWriters: true,
+	});
+	expect(again).toMatchObject({ posted: 1 });
+	// The older build's refused request stays in the fake's call log; only what was posted counts.
+	const { reviews, comments, ledgers } = recorded.state;
+	expect(JSON.stringify({ reviews, comments, ledgers })).not.toContain("is not assignable");
+});
+
+it("recovers a round an older build posted before it died, and writes none of its tsc text again", async () => {
+	const { recorded, changeset, provider, posts, harness } = await freshReview("tsc-posted");
+	const before = structuredClone(recorded.state.reviews);
+	const comments = recorded.state.comments.length;
+	const stored = await harness.snapshot(PublishedDocument, (await harness.root(context)).id, context);
+	expect(JSON.stringify(stored?.revisions[changeset.revision.head]?.pending)).toContain("is not assignable");
+	const published = await publishReview({
+		harness,
+		provider,
+		changeset,
+		pullRequest: await provider.pullRequest(7),
+		base: changeset.revision.base,
+		trustedWriters: true,
+	});
+	expect(published).toMatchObject({ recovered: 1, review: "1003" });
+	expect(posts).toHaveBeenCalledTimes(1);
+	expect(recorded.state.reviews.slice(0, before.length)).toEqual(before);
+	const written = {
+		reviews: recorded.state.reviews.slice(before.length),
+		comments: recorded.state.comments.slice(comments),
+		ledgers: recorded.state.ledgers,
+	};
+	expect(JSON.stringify(recorded.state.comments.slice(0, comments))).toContain("is not assignable");
+	expect(JSON.stringify(written)).not.toContain("is not assignable");
+	expect(JSON.stringify(written)).not.toContain("ghp_FAKEoutsideTOKEN281: 1;");
 });
