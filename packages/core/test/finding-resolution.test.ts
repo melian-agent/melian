@@ -170,7 +170,10 @@ describe("Finding.decision", () => {
 				decidedBy: { check: "lens.tests" },
 			});
 			const both = merged([struck, sighting("lens.tests", "P3", { ...refuted, source: tests.properties.source })]);
-			expect(both.capped(defaultConfig)).toMatchObject({ resolution: "block", decidedBy: { check: "lens.security" } });
+			expect(both.capped(defaultConfig)).toMatchObject({
+				resolution: "block",
+				decidedBy: { check: "lens.security" },
+			});
 		});
 
 		it("keeps the merged severity for every producer when one left no claim of this ID", () => {
@@ -183,7 +186,10 @@ describe("Finding.decision", () => {
 				[security.properties.source, { check: "lens.tests", version: "3" }],
 			]) {
 				const unmatched = Finding.from({ ...silent.toJSON(), properties: { ...silent.properties, reportedBy } });
-				expect(unmatched.decision(opposite)).toMatchObject({ resolution: "block", decidedBy: { check: "lens.tests" } });
+				expect(unmatched.decision(opposite)).toMatchObject({
+					resolution: "block",
+					decidedBy: { check: "lens.tests" },
+				});
 			}
 			// A claim of another ID, or of a lens that never sighted this one, is no sighting of it.
 			const strays = [

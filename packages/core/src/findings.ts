@@ -1489,7 +1489,9 @@ export class Finding {
 			return (standing.length === 0 ? sightings : standing)
 				.map((sighting) => sighting.capped(source, options))
 				.reduce((strictest, each) =>
-					resolutionOrder.indexOf(each.resolution) < resolutionOrder.indexOf(strictest.resolution) ? each : strictest,
+					resolutionOrder.indexOf(each.resolution) < resolutionOrder.indexOf(strictest.resolution)
+						? each
+						: strictest,
 				);
 		}
 		const walk = ResolutionWalk.over(source);
