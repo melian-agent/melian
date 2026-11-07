@@ -786,7 +786,7 @@ describe("the melian round workflow", () => {
 			// A read that fails, a pending status the job did not hand on, or none on the head sets error, so an earlier
 			// success cannot stand.
 			const unknown = set("error", `Not reviewed: the head's statuses could not be read${suffix}`);
-			expect(step({ pending: "" })).toEqual(unknown);
+			for (const pending of ["", "x77", "77x"]) expect(step({ pending }), pending).toEqual(unknown);
 			expect(step({ statuses: "unreadable" })).toEqual(unknown);
 			expect(step({ statuses: [] })).toEqual(unknown);
 			expect(step({ statuses: [other(99, "ci")] })).toEqual(unknown);
