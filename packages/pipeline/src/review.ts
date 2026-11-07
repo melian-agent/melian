@@ -627,7 +627,10 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 					attacks: plan.length,
 					probes: probes.length,
 					milliseconds: probes.reduce((sum, each) => sum + each.milliseconds, 0),
-					skipped: Object.keys(state.skips ?? {}).length,
+					// An attack skipped and then probed was probed.
+					skipped: Object.keys(state.skips ?? {}).filter(
+						(attack) => !probes.some((probe) => probe.attack === Number(attack)),
+					).length,
 					unanswered: open,
 				};
 			};

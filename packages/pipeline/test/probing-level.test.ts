@@ -741,4 +741,18 @@ describe("a level that probes", () => {
 		const judged = systemPromptOf(requests["Melian adversarial verifier"]![0]!);
 		expect(judged).toContain("Claim c1 rests on probe p");
 	});
+
+	it("counts a skipped attack the prober went on to probe as probed", async () => {
+		const { run } = await review({
+			planner: plan,
+			prober: [
+				call("skip_attack", { attack: 1, reason: "it needs the network" }),
+				call("run_probe", { attack: 1, script: passing }),
+				fauxAssistantMessage("Done."),
+			],
+		});
+		const note = record((await run).verdict).reason!;
+		expect(note).toContain("it planned 1 attack and ran 1 probe in");
+		expect(note).not.toContain("skipped");
+	});
 });
