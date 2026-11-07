@@ -34,8 +34,8 @@ export interface StateBranchOptions {
 	readonly directory: string;
 	/** This clone's identity, so a run in the same clone may take over a lease a crashed run left. */
 	readonly holder: string;
-	/** The writers' 32-byte key, which every file on the branch is encrypted under. */
-	readonly key: Uint8Array;
+	/** The writers' 32-byte key, which every file on the branch is encrypted under. Without one, nothing reaches the branch. */
+	readonly key?: Uint8Array | undefined;
 	readonly now?: () => number;
 	/** How long a lease stays live after it is taken. */
 	readonly leaseMs?: number;
@@ -170,13 +170,13 @@ const mktreeLine = (entry: Entry) => `${entry.mode} ${entry.type} ${entry.sha}\t
 export class StateBranch {
 	readonly #options: StateBranchOptions;
 	readonly #run = randomUUID();
-	readonly #seal: Seal;
+	readonly #seal: Seal | undefined;
 
 	constructor(options: StateBranchOptions) {
 		if (options.holder.length === 0 || options.holder.length > 200)
 			throw new StateBranchError("invalidHolder", "a state branch holder must be 1 to 200 characters");
 		this.#options = options;
-		this.#seal = new Seal(options.key);
+		this.#seal = options.key === undefined ? undefined : new Seal(options.key);
 	}
 
 	get run(): string {
@@ -214,6 +214,8 @@ export class StateBranch {
 	}
 
 	async #checkout(changeset: string, lock: CopyLock): Promise<StateCheckout> {
+		if (this.#seal === undefined)
+			return StateCheckout.unreached(this, changeset, lock, "no writers' key is configured for the state branch");
 		// This clone's lock is held, so a live lease of this clone's is one a crashed run left.
 		let stored: (changeset: string) => string | undefined;
 		try {
@@ -273,7 +275,7 @@ export class StateBranch {
 		const names = found.map((entry) => entry.name).sort();
 		const shas: string[] = [];
 		for (const name of names) {
-			const sealed = this.#seal.seal(`${changeset}/${name}`, await readFile(join(directory, name)));
+			const sealed = this.#sealer.seal(`${changeset}/${name}`, await readFile(join(directory, name)));
 			shas.push((await this.#git(["hash-object", "-w", "--stdin"], sealed)).trim());
 		}
 		const tree = names.map((name, i) => mktreeLine({ mode: "100644", type: "blob", sha: shas[i]!, name })).join("");
@@ -294,7 +296,7 @@ export class StateBranch {
 		const opened: [string, Buffer][] = [];
 		for (const entry of files) {
 			const sealed = await gitOutputBytes(this.#options.repoRoot, ["cat-file", "blob", entry.sha]);
-			const plain = this.#seal.open(`${changeset}/${entry.name}`, sealed);
+			const plain = this.#sealer.open(`${changeset}/${entry.name}`, sealed);
 			if (plain === undefined)
 				throw new StateBranchError(
 					"invalidBranch",
@@ -304,6 +306,11 @@ export class StateBranch {
 		}
 		await mkdir(directory, { recursive: true });
 		for (const [name, plain] of opened) await writeFile(join(directory, name), plain);
+	}
+
+	// Only a checkout with a key reaches the branch, so every caller of this has one.
+	get #sealer(): Seal {
+		return this.#seal!;
 	}
 
 	get directory(): string {
@@ -343,7 +350,7 @@ export class StateBranch {
 			const { index, changesets } = await this.#read(tip);
 			const stored = (id: string) => changesets.get(id)?.sha;
 			const next = await change(index, stored);
-			const commit = await this.#compose(tip, next.index.keyed(this.#seal.commitment), changesets, next.tree);
+			const commit = await this.#compose(tip, next.index.keyed(this.#sealer.commitment), changesets, next.tree);
 			if (await this.#push(commit, tip)) {
 				const after = new Map(changesets);
 				if (next.tree !== undefined)
@@ -400,7 +407,7 @@ export class StateBranch {
 			);
 		const index = StateIndex.parse(await gitOutput(this.#options.repoRoot, ["cat-file", "blob", indexEntry.sha]));
 		// Checked on every read, so neither a new changeset nor a cached copy is ever written under another key.
-		if (index.key !== undefined && index.key !== this.#seal.commitment)
+		if (index.key !== undefined && index.key !== this.#sealer.commitment)
 			throw new StateBranchError(
 				"invalidBranch",
 				"this clone's state key is not the key the branch was written under; check the writers' key in Melian's secrets file",

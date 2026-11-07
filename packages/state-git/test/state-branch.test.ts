@@ -583,3 +583,14 @@ describe("opening a copy without the branch", () => {
 		expect(await remote.clone().branch().open(changeset)).toBeUndefined();
 	});
 });
+
+describe("a clone with no writers' key", () => {
+	it("works on its own copy under the lock, and touches no remote", async () => {
+		const clone = remote.clone({ key: undefined });
+		const checkout = await clone.branch().checkout(changeset);
+		expect(checkout.unreached).toBe("no writers' key is configured for the state branch");
+		await expect(clone.branch().checkout(changeset)).rejects.toMatchObject({ code: "copyInUse" });
+		expect(await checkout.push()).toEqual({ kind: "unreached", reason: checkout.unreached });
+		expect(remote.tip()).toBeUndefined();
+	});
+});
