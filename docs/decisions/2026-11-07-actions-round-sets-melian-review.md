@@ -5,6 +5,7 @@ Status: built for [issue #304](https://github.com/melian-agent/melian/issues/304
 Amends: [Actions rounds run only the default branch's code with the logins](2026-11-06-actions-rounds-run-default-branch-code.md), which jobs declare the `melian-round` Environment.
 Amends: [An unresolved acknowledgement fails the status, as built](2026-10-17-acknowledge-status-exact-rule.md), the status an Actions round sets.
 Amends: [Builders run Codex's adversarial review and their own Melian rounds](2026-11-05-builders-run-their-own-reviews.md), who marks a pull request ready and queues it.
+Amends: [A coverage ledger decides what a round reviews](2026-10-23-coverage-ledger-and-delta-review.md), "The status": the status an Actions round sets while acknowledge findings are open.
 
 ## Problem
 
