@@ -59,6 +59,12 @@ describe("the melian round workflow", () => {
 		});
 	});
 
+	it("refuses, in the report job before its checkout, the commit the round job refuses", () => {
+		const name = "Refuse a commit the default branch has moved past";
+		const roundCheck = workflow.jobs.round.steps.find((step) => step.name === name);
+		expect(workflow.jobs.report.steps[0]).toEqual(roundCheck);
+	});
+
 	it("lets the round run only on the default branch's current commit", () => {
 		const { run } = workflow.jobs.round.steps.find(
 			(step) => step.name === "Refuse a commit the default branch has moved past",
