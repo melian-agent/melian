@@ -28,7 +28,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { defineTask, openSqliteStorage, type TaskId } from "../src/harness.ts";
 import { reviewFiles } from "../src/lens-tools.ts";
 import { ReviewIndex } from "../src/review-index.ts";
-import { startWave } from "../src/verification.ts";
+import { startWave, type VerificationInput } from "../src/verification.ts";
 import { verifierMarker, verifierVersion } from "../src/verification-instructions.ts";
 import { VerificationWavesDocument } from "../src/verification-waves.ts";
 import { gitIn } from "./fixtures/repo.ts";
@@ -419,5 +419,21 @@ describe("verification as each lens ends", () => {
 		]);
 		await review();
 		expect(asked.map((claims) => claims.length)).toEqual([1, 2]);
+	});
+
+	it("gives each candidate the verifier's fixed budget", async () => {
+		const asked: string[][] = [];
+		fastThenSlow(asked);
+		await review();
+		const root = await harness.root(context);
+		const entry = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[Revision.key(changeset.revision)]!;
+		const tasks = [...(await waveTasks()), entry.verification!.task];
+		for (const task of tasks) {
+			const input = (await harness.getTask(task as TaskId, context))!.input as unknown as VerificationInput;
+			expect(input.candidates.map((candidate) => candidate.budget)).toEqual(
+				input.candidates.map(() => ({ tokens: 300_000, tools: 60 })),
+			);
+			expect(input.candidates.length).toBeGreaterThan(0);
+		}
 	});
 });
