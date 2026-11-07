@@ -425,3 +425,24 @@ function renderedPlan(plan: readonly Attack[]): string {
 		)
 		.join("\n");
 }
+
+/** A claim probe's key among a revision's reruns: the claim and the probe's ID, which names one prober's run. */
+export function rerunKey(
+	claim: { readonly id: string; readonly source: { check: string; version?: string } },
+	probe: ClaimProbe,
+): string {
+	return JSON.stringify([claimKey(claim), probe.id]);
+}
+
+/**
+ * Each claim probe a review ran again before its verifier started, by revision and then by {@link rerunKey}, on the
+ * root conversation. A repeat review reads the run it stored rather than run the probe again.
+ */
+export const ProbeReruns = defineDoc<{ runs: Record<string, Record<string, ProbeRun>> }>({
+	kind: "melian.probe-reruns",
+	version: 1,
+	scope: "conversation",
+	history: "latest",
+	fork: "current",
+	initial: () => ({ runs: {} }),
+});

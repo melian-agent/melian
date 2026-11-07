@@ -133,6 +133,7 @@ import {
 	type ClaimProbe,
 	claimKey,
 	type EarlierFinding,
+	ProbeReruns,
 	ProbingDocument,
 	type ProbingEnvironment,
 	plannerInstructions,
@@ -140,6 +141,8 @@ import {
 	recordPlanPrompt,
 	renderEarlierFindings,
 	renderPlan,
+	rerunKey,
+	runHeadProbe,
 } from "./probing.ts";
 import { ConversationUsageRecorder } from "./reasoning.ts";
 import {
@@ -160,7 +163,6 @@ import {
 	type VerificationInput,
 	type VerificationResult,
 	VerificationTask,
-	verificationTask,
 } from "./verification.ts";
 import { verifierVersion } from "./verification-instructions.ts";
 
@@ -767,7 +769,7 @@ export function createLensExtension(sandbox?: ProbeSandbox) {
 		],
 		sections: [injectionPolicySection],
 		hooks: [lensPolicyHook],
-		tasks: [LensTask, sandbox === undefined ? VerificationTask : verificationTask(sandbox), AdjudicationTask],
+		tasks: [LensTask, VerificationTask, AdjudicationTask],
 	});
 }
 
@@ -1197,6 +1199,37 @@ async function claimProbes(
 		probing = structuredClone(run.probe!.environment);
 	}
 	return probing === undefined ? {} : { probes, probing };
+}
+
+// Runs each candidate's claim probes again, before verification, and stores each run on the root under the revision,
+// so the verifier reads the run whatever crashes or repeats around it. A probe a stored run already answered runs no more.
+async function rerunProbes(
+	harness: Harness,
+	root: ConversationId,
+	revision: ReviewState,
+	candidates: readonly VerificationCandidate[],
+	sandbox: ProbeSandbox | undefined,
+	context: Context,
+): Promise<void> {
+	const at = Revision.key(revision);
+	for (const candidate of candidates) {
+		for (const claim of candidate.state.claims) {
+			const probe = candidate.probes?.[claimKey(claim)];
+			if (probe === undefined || candidate.probing === undefined) continue;
+			const key = rerunKey(claim, probe);
+			if ((await harness.snapshot(ProbeReruns, root, context))?.runs[at]?.[key] !== undefined) continue;
+			const run = await runHeadProbe(
+				{ script: probe.probe.script, files: probe.probe.files },
+				revision,
+				candidate.probing,
+				sandbox,
+			);
+			await (await harness.root(context)).commit(async (tx) => {
+				const document = await tx.doc(ProbeReruns, root);
+				document.runs = { ...document.runs, [at]: { ...document.runs[at], [key]: run } };
+			}, context);
+		}
+	}
 }
 
 // The findings the change's last earlier revision was reported with, every producer's, for a probing level's planner.
@@ -2556,6 +2589,14 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				...(request.plan?.lineage("verifier") === undefined ? {} : { lineage: request.plan.lineage("verifier")! }),
 			};
 		} else {
+			await rerunProbes(
+				harness,
+				root,
+				state,
+				candidates,
+				request.harness instanceof ReviewHarness ? request.harness.probeSandbox : undefined,
+				context,
+			);
 			const verificationInput: VerificationInput = {
 				root,
 				revision: ran.revision,

@@ -693,4 +693,15 @@ describe("a level that probes", () => {
 			expect.arrayContaining(["lens trust-boundary planner", "lens trust-boundary prober"]),
 		);
 	});
+
+	it("runs a claim's probe again once, and a repeat review reads the stored run", async () => {
+		const fake = createFakeModels();
+		const first = await review({ planner: plan, prober: probing(failing) }, { fake });
+		await first.run;
+		const heads = () => first.sandbox.asked.filter(({ command }) => command.includes("melian-probe-head-")).length;
+		expect(heads()).toBe(2);
+		const again = await review({ planner: [], prober: [] }, { fake });
+		expect((await again.run).verdict.counted()).toHaveLength(1);
+		expect(heads()).toBe(2);
+	});
 });
