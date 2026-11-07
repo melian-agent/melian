@@ -1,0 +1,6 @@
+A builder now ties a `melian round` comment to its run through the comment's marker, in fix pass 5 of [pull request #275](https://github.com/melian-agent/melian/pull/275). The coordinator's final round and the Opus re-check found that the rule's two checks could not tell who posted: every workflow posts as `github-actions[bot]`, so any bot comment can cite a real round run's ID. AGENTS.md's "Commits and pull requests" now gives a bash check that takes the comment's ID and the run's. It exits non-zero unless:
+- the run is a `workflow_dispatch` run of `.github/workflows/melian-round.yml` on the repository's current default branch, each value compared;
+- the comment is `github-actions[bot]`'s;
+- its marker names that run and a nonce one of the run's `melian-round-*` artefacts holds, which `gh run download` fetches.
+
+The plan-step template and the builders decision point at it. The check only uses REST, so it works in a cloud session. Against a real `check.yml` run it refused, naming the run's workflow, event and branch. Against a fake `gh` playing a genuine round run, the text as AGENTS.md prints it accepted the matching comment and refused a forged nonce and a `push` run. It is a builder's command, not committed code, so no mutation inventory applies.

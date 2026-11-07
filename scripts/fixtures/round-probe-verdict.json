@@ -1,0 +1,158 @@
+{
+	"error": {
+		"message": "lens contracts may run from quick to deep, and no level there can run: quick runs on medium, and no model is configured for the medium tier; set models.medium.model in melian.yaml; careful runs on heavy, and no model is configured for the heavy tier; set models.heavy.model in melian.yaml; deep runs on heavy, and no model is configured for the heavy tier; set models.heavy.model in melian.yaml. Route the tier in melian.local.yaml, log in with pi, or set the provider's API key"
+	},
+	"telemetry": {
+		"revision": "133f48cf84d1aeb84ea7455c5f8133bab393a10c..3014890292552392de456b4bcdc858d138d169c0",
+		"stages": [
+			{
+				"id": "task:10",
+				"name": "melian.check",
+				"subject": "guardrails",
+				"task": 10,
+				"outcome": "completed",
+				"timing": "available",
+				"startedAt": 1793951565584,
+				"endedAt": 1793951565616,
+				"durationMs": 32,
+				"clockRegressed": false,
+				"reused": false,
+				"resumed": false
+			},
+			{
+				"id": "task:11",
+				"name": "melian.check",
+				"subject": "static.biome",
+				"task": 11,
+				"outcome": "failed",
+				"error": "biome exited with code 1 and no report: /tmp/melian-static-AqNUua/tree/biome.json:1:1 parse ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n  × String values must be double quoted.\n  \n  > 1 │ FAKE_TOKEN=sk-probe-SECRET-123\n      │ ^^^^^^^^^^\n    2 │ \n  \n\n/tmp/melian-static-AqNUua/tree/biome.json:1:11 parse ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n  × unexpected character `=`\n  \n  > 1 │ FAKE_TOKEN=sk-probe-SECRET-123\n      │           ^\n    2 │ \n  \n\n/tmp/melian-static-AqNUua/tree/biome.json:1:12 parse ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n  × String values must be double quoted.\n  \n  > 1 │ FAKE_TOKEN=sk-probe-SECRET-123\n      │            ^^\n    2 │ \n  \n\n/tmp/melian-static-AqNUua/tree/biome.json:1:14 parse ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n  × Minus must be followed by a digit\n  \n  > 1 │ FAKE_TOKEN=sk-probe-SECRET-123\n      │              ^\n    2 │ \n  \n\n/tmp/melian-static-AqNUua/tree/biome.json:1:15 parse ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n  × String values must be double quoted.\n  \n  > 1 │ FAKE_TOKEN=sk-probe-SECRET-123\n      │               ^^^^^\n    2 │ \n  \n\n/tmp/melian-static-AqNUua/tree/biome.json:1:20 parse ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n  × Minus must be followed by a digit\n  \n  > 1 │ FAKE_TOKEN=sk-probe-SECRET-123\n      │                    ^\n    2 │ \n  \n\n/tmp/melian-static-AqNUua/tree/biome.json:1:21 parse ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n  × String values must be double quoted.\n  \n  > 1 │ FAKE_TOKEN=sk-probe-SECRET-123\n      │                     ^^^^^^\n    2 │ \n  \n\n/tmp/melian-static-AqNUua/tree/biome.json:1:27 parse ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n  × End of file expected\n  \n  > 1 │ FAKE_TOKEN=sk-probe-SECRET-123\n      │                           ^^^^\n    2 │ \n  \n  i Use an array for a sequence of values: `[1, 2]`\n  \n\n/tmp/melian-static-AqNUua/tree/biome.json:1:1 deserialize ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n  × Incorrect type, expected an object, but received an array.\n  \n  > 1 │ FAKE_TOKEN=sk-probe-SECRET-123\n      │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    2 │ \n  \n\nconfiguration ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n  × Biome exited because the configuration resulted in errors. Please fix them.",
+				"timing": "available",
+				"startedAt": 1793951565584,
+				"endedAt": 1793951566295,
+				"durationMs": 711,
+				"clockRegressed": false,
+				"reused": false,
+				"resumed": false
+			},
+			{
+				"id": "task:12",
+				"name": "melian.check",
+				"subject": "static.tsc",
+				"task": 12,
+				"outcome": "skipped",
+				"timing": "available",
+				"startedAt": 1793951565584,
+				"endedAt": 1793951565649,
+				"durationMs": 65,
+				"clockRegressed": false,
+				"reused": false,
+				"resumed": false
+			}
+		],
+		"usageUnavailable": [],
+		"prepare": {
+			"startedAt": 1793951564397,
+			"endedAt": 1793951566307,
+			"spans": [
+				{
+					"name": "startup",
+					"startedAt": 1793951564397,
+					"endedAt": 1793951565375,
+					"durationMs": 978
+				},
+				{
+					"name": "resolve",
+					"startedAt": 1793951565375,
+					"endedAt": 1793951565414,
+					"durationMs": 39
+				},
+				{
+					"name": "lenses.load",
+					"startedAt": 1793951565414,
+					"endedAt": 1793951565458,
+					"durationMs": 44
+				},
+				{
+					"name": "standards.load",
+					"startedAt": 1793951565458,
+					"endedAt": 1793951565481,
+					"durationMs": 23
+				},
+				{
+					"name": "config",
+					"startedAt": 1793951565481,
+					"endedAt": 1793951565483,
+					"durationMs": 2
+				},
+				{
+					"name": "secrets",
+					"startedAt": 1793951565483,
+					"endedAt": 1793951565484,
+					"durationMs": 1
+				},
+				{
+					"name": "models",
+					"startedAt": 1793951565484,
+					"endedAt": 1793951565537,
+					"durationMs": 53
+				},
+				{
+					"name": "triage.create",
+					"startedAt": 1793951565537,
+					"endedAt": 1793951565538,
+					"durationMs": 1
+				},
+				{
+					"name": "storage.open",
+					"startedAt": 1793951565538,
+					"endedAt": 1793951565557,
+					"durationMs": 19
+				},
+				{
+					"name": "unlock",
+					"startedAt": 1793951565558,
+					"endedAt": 1793951565558,
+					"durationMs": 0,
+					"parent": "resume"
+				},
+				{
+					"name": "resume",
+					"startedAt": 1793951565557,
+					"endedAt": 1793951565563,
+					"durationMs": 6
+				},
+				{
+					"name": "callers",
+					"startedAt": 1793951566300,
+					"endedAt": 1793951566302,
+					"durationMs": 2
+				},
+				{
+					"name": "standards.trust",
+					"startedAt": 1793951566302,
+					"endedAt": 1793951566302,
+					"durationMs": 0
+				},
+				{
+					"name": "abort.replaced",
+					"startedAt": 1793951566302,
+					"endedAt": 1793951566303,
+					"durationMs": 1
+				},
+				{
+					"name": "bands",
+					"startedAt": 1793951566303,
+					"endedAt": 1793951566304,
+					"durationMs": 1
+				},
+				{
+					"name": "routes",
+					"startedAt": 1793951566304,
+					"endedAt": 1793951566307,
+					"durationMs": 3
+				}
+			]
+		},
+		"untimed": []
+	}
+}

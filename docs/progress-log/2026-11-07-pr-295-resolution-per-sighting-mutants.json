@@ -1,0 +1,786 @@
+{
+	"mutants": [
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1487,
+			"column": 6,
+			"endLine": 1487,
+			"endColumn": 26,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/finding-resolution.test.ts > Finding.decision > one ID several lenses sighted > resolves each sighting under its own check and severity",
+			"survivorClasses": [
+				"numeric-bound"
+			],
+			"run": {
+				"collected": 1,
+				"killed": true,
+				"head": "9a0aab5"
+			}
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1487,
+			"column": 6,
+			"endLine": 1487,
+			"endColumn": 26,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/finding-resolution.test.ts > Finding.decision > one ID several lenses sighted > resolves each sighting under its own check and severity",
+			"survivorClasses": [
+				"numeric-bound"
+			],
+			"run": {
+				"collected": 1,
+				"killed": true,
+				"head": "9a0aab5"
+			}
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1487,
+			"column": 6,
+			"endLine": 1487,
+			"endColumn": 26,
+			"mutatorName": "EqualityOperator",
+			"replacement": "sightings.length >= 1",
+			"claim": "killed",
+			"evidence": "packages/core/test/finding-resolution.test.ts > Finding.decision > one ID several lenses sighted > resolves each sighting under its own check and severity",
+			"survivorClasses": [
+				"numeric-bound"
+			],
+			"run": {
+				"collected": 1,
+				"killed": true,
+				"head": "9a0aab5"
+			}
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1487,
+			"column": 6,
+			"endLine": 1487,
+			"endColumn": 26,
+			"mutatorName": "EqualityOperator",
+			"replacement": "sightings.length <= 1",
+			"claim": "killed",
+			"evidence": "packages/core/test/finding-resolution.test.ts > Finding.decision > one ID several lenses sighted > resolves each sighting under its own check and severity",
+			"survivorClasses": [
+				"numeric-bound"
+			],
+			"run": {
+				"collected": 1,
+				"killed": true,
+				"head": "9a0aab5"
+			}
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1487,
+			"column": 28,
+			"endLine": 1496,
+			"endColumn": 3,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/finding-resolution.test.ts > Finding.decision > one ID several lenses sighted > resolves each sighting under its own check and severity",
+			"survivorClasses": [],
+			"run": {
+				"collected": 1,
+				"killed": true,
+				"head": "9a0aab5"
+			}
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1488,
+			"column": 20,
+			"endLine": 1488,
+			"endColumn": 71,
+			"mutatorName": "MethodExpression",
+			"replacement": "sightings",
+			"claim": "killed",
+			"evidence": "packages/core/test/finding-resolution.test.ts > Finding.decision > one ID several lenses sighted > leaves out a refuted sighting while another stands, and counts every one when none does",
+			"survivorClasses": [
+				"optional-chain"
+			],
+			"run": {
+				"collected": 1,
+				"killed": true,
+				"head": "9a0aab5"
+			}
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1488,
+			"column": 37,
+			"endLine": 1488,
+			"endColumn": 70,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/finding-resolution.test.ts > Finding.decision > one ID several lenses sighted > leaves out a refuted sighting while another stands, and counts every one when none does",
+			"survivorClasses": [],
+			"run": {
+				"collected": 1,
+				"killed": true,
+				"head": "9a0aab5"
+			}
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1488,
+			"column": 51,
+			"endLine": 1488,
+			"endColumn": 70,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "sighting.refuted()",
+			"claim": "killed",
+			"evidence": "packages/core/test/finding-resolution.test.ts > Finding.decision > one ID several lenses sighted > leaves out a refuted sighting while another stands, and counts every one when none does",
+			"survivorClasses": [
+				"negative-test"
+			],
+			"run": {
+				"collected": 1,
+				"killed": true,
+				"head": "9a0aab5"
+			}
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1489,
+			"column": 11,
+			"endLine": 1489,
+			"endColumn": 32,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/finding-resolution.test.ts > Finding.decision > one ID several lenses sighted > leaves out a refuted sighting while another stands, and counts every one when none does",
+			"survivorClasses": [
+				"compound-condition"
+			],
+			"run": {
+				"collected": 1,
+				"killed": true,
+				"head": "9a0aab5"
+			}
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1489,
+			"column": 11,
+			"endLine": 1489,
+			"endColumn": 32,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/finding-resolution.test.ts > Finding.decision > one ID several lenses sighted > leaves out a refuted sighting while another stands, and counts every one when none does",
+			"survivorClasses": [
+				"compound-condition"
+			],
+			"run": {
+				"collected": 1,
+				"killed": true,
+				"head": "9a0aab5"
+			}
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1489,
+			"column": 11,
+			"endLine": 1489,
+			"endColumn": 32,
+			"mutatorName": "EqualityOperator",
+			"replacement": "standing.length !== 0",
+			"claim": "killed",
+			"evidence": "packages/core/test/finding-resolution.test.ts > Finding.decision > one ID several lenses sighted > leaves out a refuted sighting while another stands, and counts every one when none does",
+			"survivorClasses": [
+				"compound-condition"
+			],
+			"run": {
+				"collected": 1,
+				"killed": true,
+				"head": "9a0aab5"
+			}
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1490,
+			"column": 9,
+			"endLine": 1490,
+			"endColumn": 55,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/finding-resolution.test.ts > Finding.decision > one ID several lenses sighted > resolves each sighting under its own check and severity",
+			"survivorClasses": [],
+			"run": {
+				"collected": 1,
+				"killed": true,
+				"head": "9a0aab5"
+			}
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1491,
+			"column": 12,
+			"endLine": 1494,
+			"endColumn": 17,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/finding-resolution.test.ts > Finding.decision > one ID several lenses sighted > resolves each sighting under its own check and severity",
+			"survivorClasses": [],
+			"run": {
+				"collected": 1,
+				"killed": true,
+				"head": "9a0aab5"
+			}
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1492,
+			"column": 5,
+			"endLine": 1492,
+			"endColumn": 93,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/finding-resolution.test.ts > Finding.decision > one ID several lenses sighted > resolves each sighting under its own check and severity",
+			"survivorClasses": [
+				"numeric-bound"
+			],
+			"run": {
+				"collected": 1,
+				"killed": true,
+				"head": "9a0aab5"
+			}
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1492,
+			"column": 5,
+			"endLine": 1492,
+			"endColumn": 93,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/finding-resolution.test.ts > Finding.decision > one ID several lenses sighted > resolves each sighting under its own check and severity",
+			"survivorClasses": [
+				"numeric-bound"
+			],
+			"run": {
+				"collected": 1,
+				"killed": true,
+				"head": "9a0aab5"
+			}
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1492,
+			"column": 5,
+			"endLine": 1492,
+			"endColumn": 93,
+			"mutatorName": "EqualityOperator",
+			"replacement": "resolutionOrder.indexOf(each.resolution) <= resolutionOrder.indexOf(strictest.resolution)",
+			"claim": "killed",
+			"evidence": "packages/core/test/finding-resolution.test.ts > Finding.decision > one ID several lenses sighted > resolves each sighting under its own check and severity",
+			"survivorClasses": [
+				"numeric-bound"
+			],
+			"run": {
+				"collected": 1,
+				"killed": true,
+				"head": "9a0aab5"
+			}
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1492,
+			"column": 5,
+			"endLine": 1492,
+			"endColumn": 93,
+			"mutatorName": "EqualityOperator",
+			"replacement": "resolutionOrder.indexOf(each.resolution) >= resolutionOrder.indexOf(strictest.resolution)",
+			"claim": "killed",
+			"evidence": "packages/core/test/finding-resolution.test.ts > Finding.decision > one ID several lenses sighted > resolves each sighting under its own check and severity",
+			"survivorClasses": [
+				"numeric-bound"
+			],
+			"run": {
+				"collected": 1,
+				"killed": true,
+				"head": "9a0aab5"
+			}
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1599,
+			"column": 25,
+			"endLine": 1611,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/finding-resolution.test.ts > Finding.decision > one ID several lenses sighted > resolves each sighting under its own check and severity",
+			"survivorClasses": [],
+			"run": {
+				"collected": 1,
+				"killed": true,
+				"head": "9a0aab5"
+			}
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1600,
+			"column": 31,
+			"endLine": 1600,
+			"endColumn": 39,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"claim": "equivalent",
+			"evidence": "A finding without reportedBy has one producer, so either default gives fewer than two sightings and capped resolves it whole.",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1601,
+			"column": 17,
+			"endLine": 1605,
+			"endColumn": 3,
+			"mutatorName": "MethodExpression",
+			"replacement": "VerificationState.from(this).claims",
+			"claim": "killed",
+			"evidence": "packages/core/test/finding-resolution.test.ts > Finding.decision > one ID several lenses sighted > keeps the merged severity for every producer when one left no claim of this ID",
+			"survivorClasses": [],
+			"run": {
+				"collected": 1,
+				"killed": true,
+				"head": "9a0aab5"
+			}
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1602,
+			"column": 3,
+			"endLine": 1604,
+			"endColumn": 109,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/finding-resolution.test.ts > Finding.decision > one ID several lenses sighted > resolves each sighting under its own check and severity",
+			"survivorClasses": [],
+			"run": {
+				"collected": 1,
+				"killed": true,
+				"head": "9a0aab5"
+			}
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1603,
+			"column": 4,
+			"endLine": 1604,
+			"endColumn": 109,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/finding-resolution.test.ts > Finding.decision > one ID several lenses sighted > keeps the merged severity for every producer when one left no claim of this ID",
+			"survivorClasses": [
+				"compound-condition"
+			],
+			"run": {
+				"collected": 1,
+				"killed": true,
+				"head": "9a0aab5"
+			}
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1603,
+			"column": 4,
+			"endLine": 1604,
+			"endColumn": 109,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/finding-resolution.test.ts > Finding.decision > one ID several lenses sighted > resolves each sighting under its own check and severity",
+			"survivorClasses": [],
+			"run": {
+				"collected": 1,
+				"killed": true,
+				"head": "9a0aab5"
+			}
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1603,
+			"column": 4,
+			"endLine": 1604,
+			"endColumn": 109,
+			"mutatorName": "LogicalOperator",
+			"replacement": "claim.id === this.id || reportedBy.some(({\n  check,\n  version\n}) => check === claim.source.check && version === claim.source.version)",
+			"claim": "killed",
+			"evidence": "packages/core/test/finding-resolution.test.ts > Finding.decision > one ID several lenses sighted > keeps the merged severity for every producer when one left no claim of this ID",
+			"survivorClasses": [
+				"compound-condition"
+			],
+			"run": {
+				"collected": 1,
+				"killed": true,
+				"head": "9a0aab5"
+			}
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1603,
+			"column": 4,
+			"endLine": 1603,
+			"endColumn": 24,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/finding-resolution.test.ts > Finding.decision > one ID several lenses sighted > keeps the merged severity for every producer when one left no claim of this ID",
+			"survivorClasses": [
+				"compound-condition"
+			],
+			"run": {
+				"collected": 1,
+				"killed": true,
+				"head": "9a0aab5"
+			}
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1603,
+			"column": 4,
+			"endLine": 1603,
+			"endColumn": 24,
+			"mutatorName": "EqualityOperator",
+			"replacement": "claim.id !== this.id",
+			"claim": "killed",
+			"evidence": "packages/core/test/finding-resolution.test.ts > Finding.decision > one ID several lenses sighted > resolves each sighting under its own check and severity",
+			"survivorClasses": [],
+			"run": {
+				"collected": 1,
+				"killed": true,
+				"head": "9a0aab5"
+			}
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1604,
+			"column": 4,
+			"endLine": 1604,
+			"endColumn": 109,
+			"mutatorName": "MethodExpression",
+			"replacement": "reportedBy.every(({\n  check,\n  version\n}) => check === claim.source.check && version === claim.source.version)",
+			"claim": "killed",
+			"evidence": "packages/core/test/finding-resolution.test.ts > Finding.decision > one ID several lenses sighted > resolves each sighting under its own check and severity",
+			"survivorClasses": [],
+			"run": {
+				"collected": 1,
+				"killed": true,
+				"head": "9a0aab5"
+			}
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1604,
+			"column": 20,
+			"endLine": 1604,
+			"endColumn": 108,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/finding-resolution.test.ts > Finding.decision > one ID several lenses sighted > resolves each sighting under its own check and severity",
+			"survivorClasses": [],
+			"run": {
+				"collected": 1,
+				"killed": true,
+				"head": "9a0aab5"
+			}
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1604,
+			"column": 44,
+			"endLine": 1604,
+			"endColumn": 108,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/finding-resolution.test.ts > Finding.decision > one ID several lenses sighted > keeps the merged severity for every producer when one left no claim of this ID",
+			"survivorClasses": [
+				"compound-condition"
+			],
+			"run": {
+				"collected": 1,
+				"killed": true,
+				"head": "9a0aab5"
+			}
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1604,
+			"column": 44,
+			"endLine": 1604,
+			"endColumn": 108,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/finding-resolution.test.ts > Finding.decision > one ID several lenses sighted > resolves each sighting under its own check and severity",
+			"survivorClasses": [],
+			"run": {
+				"collected": 1,
+				"killed": true,
+				"head": "9a0aab5"
+			}
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1604,
+			"column": 44,
+			"endLine": 1604,
+			"endColumn": 108,
+			"mutatorName": "LogicalOperator",
+			"replacement": "check === claim.source.check || version === claim.source.version",
+			"claim": "killed",
+			"evidence": "packages/core/test/finding-resolution.test.ts > Finding.decision > one ID several lenses sighted > keeps the merged severity for every producer when one left no claim of this ID",
+			"survivorClasses": [
+				"compound-condition"
+			],
+			"run": {
+				"collected": 1,
+				"killed": true,
+				"head": "9a0aab5"
+			}
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1604,
+			"column": 44,
+			"endLine": 1604,
+			"endColumn": 72,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/finding-resolution.test.ts > Finding.decision > one ID several lenses sighted > keeps the merged severity for every producer when one left no claim of this ID",
+			"survivorClasses": [
+				"compound-condition"
+			],
+			"run": {
+				"collected": 1,
+				"killed": true,
+				"head": "9a0aab5"
+			}
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1604,
+			"column": 44,
+			"endLine": 1604,
+			"endColumn": 72,
+			"mutatorName": "EqualityOperator",
+			"replacement": "check !== claim.source.check",
+			"claim": "killed",
+			"evidence": "packages/core/test/finding-resolution.test.ts > Finding.decision > one ID several lenses sighted > resolves each sighting under its own check and severity",
+			"survivorClasses": [],
+			"run": {
+				"collected": 1,
+				"killed": true,
+				"head": "9a0aab5"
+			}
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1604,
+			"column": 76,
+			"endLine": 1604,
+			"endColumn": 108,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/finding-resolution.test.ts > Finding.decision > one ID several lenses sighted > keeps the merged severity for every producer when one left no claim of this ID",
+			"survivorClasses": [
+				"compound-condition"
+			],
+			"run": {
+				"collected": 1,
+				"killed": true,
+				"head": "9a0aab5"
+			}
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1604,
+			"column": 76,
+			"endLine": 1604,
+			"endColumn": 108,
+			"mutatorName": "EqualityOperator",
+			"replacement": "version !== claim.source.version",
+			"claim": "killed",
+			"evidence": "packages/core/test/finding-resolution.test.ts > Finding.decision > one ID several lenses sighted > keeps the merged severity for every producer when one left no claim of this ID",
+			"survivorClasses": [
+				"compound-condition"
+			],
+			"run": {
+				"collected": 1,
+				"killed": true,
+				"head": "9a0aab5"
+			}
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1606,
+			"column": 6,
+			"endLine": 1606,
+			"endColumn": 41,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/finding-resolution.test.ts > Finding.decision > one ID several lenses sighted > resolves each sighting under its own check and severity",
+			"survivorClasses": [],
+			"run": {
+				"collected": 1,
+				"killed": true,
+				"head": "9a0aab5"
+			}
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1606,
+			"column": 6,
+			"endLine": 1606,
+			"endColumn": 41,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/finding-resolution.test.ts > Finding.decision > one ID several lenses sighted > keeps the merged severity for every producer when one left no claim of this ID",
+			"survivorClasses": [
+				"negative-test"
+			],
+			"run": {
+				"collected": 1,
+				"killed": true,
+				"head": "9a0aab5"
+			}
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1606,
+			"column": 6,
+			"endLine": 1606,
+			"endColumn": 41,
+			"mutatorName": "EqualityOperator",
+			"replacement": "claims.length === reportedBy.length",
+			"claim": "killed",
+			"evidence": "packages/core/test/finding-resolution.test.ts > Finding.decision > one ID several lenses sighted > resolves each sighting under its own check and severity",
+			"survivorClasses": [],
+			"run": {
+				"collected": 1,
+				"killed": true,
+				"head": "9a0aab5"
+			}
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1606,
+			"column": 50,
+			"endLine": 1606,
+			"endColumn": 56,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"claim": "equivalent",
+			"evidence": "An empty list and [this] both hold fewer than two sightings, so capped resolves the finding whole either way.",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1607,
+			"column": 31,
+			"endLine": 1610,
+			"endColumn": 3,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/finding-resolution.test.ts > Finding.decision > one ID several lenses sighted > resolves each sighting under its own check and severity",
+			"survivorClasses": [],
+			"run": {
+				"collected": 1,
+				"killed": true,
+				"head": "9a0aab5"
+			}
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1609,
+			"column": 10,
+			"endLine": 1609,
+			"endColumn": 42,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/finding-resolution.test.ts > Finding.decision > one ID several lenses sighted > leaves out a refuted sighting while another stands, and counts every one when none does",
+			"survivorClasses": [],
+			"run": {
+				"collected": 1,
+				"killed": true,
+				"head": "9a0aab5"
+			}
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1609,
+			"column": 10,
+			"endLine": 1609,
+			"endColumn": 42,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/finding-resolution.test.ts > Finding.decision > one ID several lenses sighted > resolves each sighting under its own check and severity",
+			"survivorClasses": [],
+			"run": {
+				"collected": 1,
+				"killed": true,
+				"head": "9a0aab5"
+			}
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1609,
+			"column": 10,
+			"endLine": 1609,
+			"endColumn": 42,
+			"mutatorName": "EqualityOperator",
+			"replacement": "claim.verification !== undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/finding-resolution.test.ts > Finding.decision > one ID several lenses sighted > resolves each sighting under its own check and severity",
+			"survivorClasses": [],
+			"run": {
+				"collected": 1,
+				"killed": true,
+				"head": "9a0aab5"
+			}
+		}
+	],
+	"total": 43,
+	"omitted": 0,
+	"unmutated": [],
+	"handChecks": [
+		{
+			"mutation": "capped passes { unverified: options.unverified } to each sighting, dropping the merged defect",
+			"test": "packages/core/test/finding-resolution.test.ts > Finding.decision > one ID several lenses sighted > reads the merged defect's cause for each sighting",
+			"collected": 1,
+			"killed": true
+		},
+		{
+			"mutation": "capped passes { defect: options.defect } to each sighting, dropping unverified",
+			"test": "packages/core/test/finding-resolution.test.ts > Finding.decision > one ID several lenses sighted > caps only the sighting no verifier judged",
+			"collected": 1,
+			"killed": true
+		}
+	]
+}
