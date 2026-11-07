@@ -45,4 +45,5 @@ A store a newer build wrote is refused when this build opens it, by Pi's documen
 
 - The lease is no lock. A run that holds the lease longer than two hours can be raced; the push then decides, and the loser redoes its delta.
 - A set-aside copy stays in the clone until someone deletes it.
+- A writer can roll a changeset back. Sealing keeps the branch from readers, not from writers: one who lacks the key can still push a commit that reuses an older sealed tree from the branch's history, and every file of it still opens. Writers are trusted, as [the coverage ledger decision](2026-10-23-coverage-ledger-and-delta-review.md) rules under "No signature or attestation now", and anyone who can push the branch can push anything to the repository. Codex's review of dd4358b raised it; authenticating each state commit becomes worth building when an untrusted writer must be kept out.
 - The lease lives on the branch, so every checkout and every push is a network round trip, a second or so against reviews that take minutes.
