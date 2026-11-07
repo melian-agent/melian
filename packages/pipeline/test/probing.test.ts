@@ -23,10 +23,12 @@ import {
 	HeadTree,
 	headTreeLimits,
 	probeFailed,
+	proberInstructions,
 	probingLimits,
 	renderEarlierFindings,
 	renderPlan,
 	renderProbeEvidence,
+	rerunKey,
 	runHeadProbe,
 	type StoredProbeResult,
 } from "../src/probing.ts";
@@ -414,5 +416,123 @@ describe("the findings earlier reviews reported", () => {
 		);
 		expect(rows(past)).toHaveLength(3);
 		expect(past).toContain("1 more are not listed.");
+	});
+});
+
+describe("a head tree and its probe, past the simple cases", () => {
+	it("removes its tree once, and a second close is safe", async () => {
+		commit(repo, { a: "a\n" });
+		const tree = await HeadTree.open(repo, "HEAD");
+		await tree.close();
+		await expect(tree.close()).resolves.toBeUndefined();
+	});
+
+	it("has every file written when it opens", async () => {
+		commit(
+			repo,
+			Object.fromEntries(Array.from({ length: 300 }, (_, index) => [`d${index % 7}/f${index}.txt`, `${index}\n`])),
+		);
+		const tree = await HeadTree.open(repo, "HEAD");
+		try {
+			for (let index = 0; index < 300; index++)
+				expect(readFileSync(join(tree.path, `d${index % 7}/f${index}.txt`), "utf8")).toBe(`${index}\n`);
+		} finally {
+			await tree.close();
+		}
+	});
+
+	it("reads the repository it names, whatever GIT_DIR the process holds", async () => {
+		commit(repo, { a: "mine\n" });
+		const head = gitIn(repo, "rev-parse", "HEAD");
+		const other = createRepository();
+		commit(other, { a: "theirs\n" });
+		const was = process.env.GIT_DIR;
+		process.env.GIT_DIR = join(other, ".git");
+		try {
+			const tree = await HeadTree.open(repo, head);
+			try {
+				expect(readFileSync(join(tree.path, "a"), "utf8")).toBe("mine\n");
+			} finally {
+				await tree.close();
+			}
+		} finally {
+			if (was === undefined) delete process.env.GIT_DIR;
+			else process.env.GIT_DIR = was;
+			rmSync(other, { recursive: true, force: true });
+		}
+	});
+
+	it("refuses a crafted tree with a .. below a directory", async () => {
+		const object = execFileSync("git", ["hash-object", "-w", "--stdin"], { cwd: repo, input: "x\n" })
+			.toString()
+			.trim();
+		const inner = execFileSync("git", ["mktree"], { cwd: repo, input: `100644 blob ${object}\t..\n` })
+			.toString()
+			.trim();
+		const outer = execFileSync("git", ["mktree"], {
+			cwd: repo,
+			input: `100644 blob ${object}\tplain\n040000 tree ${inner}\tsafe\n`,
+		})
+			.toString()
+			.trim();
+		await expect(HeadTree.open(repo, gitIn(repo, "commit-tree", outer, "-m", "nested"))).rejects.toThrow(
+			"the head names a path that leaves its tree: safe/..",
+		);
+	});
+
+	it("lets the probe read the install it links, leaves no scratch, and times the run", async () => {
+		commit(repo, { a: "a\n" });
+		mkdirSync(join(repo, "node_modules/dep"), { recursive: true });
+		const sandbox = unconfinedSandbox();
+		const began = Date.now();
+		const run = await runHeadProbe(
+			{ script: "process.exit(0);\n" },
+			{ repoRoot: repo, head: "HEAD" },
+			reviewer,
+			sandbox,
+		);
+		expect(run).toHaveProperty("result");
+		expect("milliseconds" in run && run.milliseconds <= Date.now() - began).toBe(true);
+		expect(sandbox.asked[0]!.policy.read).toContain(realpathSync(join(repo, "node_modules")));
+		expect(readdirSync(scratch).filter((name) => name.startsWith("melian-probe"))).toEqual([]);
+	});
+});
+
+describe("the prober's instructions", () => {
+	it("give the time limit in seconds and the output limit in KiB, with the policy last", () => {
+		const thirty = proberInstructions("trust-boundary", "POLICY", 30_000);
+		expect(thirty).toContain("It has 30 seconds and 16 KiB of output.");
+		expect(thirty.endsWith("POLICY")).toBe(true);
+		expect(proberInstructions("trust-boundary", "POLICY", 1000)).toContain("It has 1 second and 16 KiB of output.");
+	});
+});
+
+describe("the evidence a verifier reads, exactly", () => {
+	it("renders one probe's block in full", () => {
+		const claim: ClaimProbe = {
+			id: "p3",
+			attack: 1,
+			plan: [{ target: "t", reason: "r", passing: "p", failing: "f" }],
+			probe: { attack: 1, script: "S", files: [], result: result({ output: "o" }), milliseconds: 1 },
+		};
+		const text = renderProbeEvidence("c1", claim, { result: result({ output: "" }), milliseconds: 1 }, nonce);
+		expect(text.slice(text.indexOf(`<untrusted-${nonce} label="probe">`))).toBe(
+			`<untrusted-${nonce} label="probe">\nscript:\nS\n\nwhen the prober ran it, it failed, exiting 1 and printed:\no\n\nwhen Melian ran it again, it printed:\n(nothing)\n</untrusted-${nonce}>`,
+		);
+		expect(renderProbeEvidence("c1", claim, undefined, nonce)).not.toContain("Melian could not run it again:");
+	});
+
+	it("keys a rerun by its claim and its probe", () => {
+		const claim = { id: "a", source: { check: "lens.x", version: "v" } };
+		expect(rerunKey(claim, { id: "p9" } as ClaimProbe)).toBe(JSON.stringify([claimKey(claim), "p9"]));
+	});
+
+	it("lists no block when the one finding is too long to fit", () => {
+		const text = renderEarlierFindings(
+			[{ severity: "P1", rule: "r", path: "a", line: 1, status: "new", message: "x".repeat(9000) }],
+			nonce,
+		);
+		expect(text).toContain("1 more are not listed.");
+		expect(text).not.toContain("<untrusted-");
 	});
 });
