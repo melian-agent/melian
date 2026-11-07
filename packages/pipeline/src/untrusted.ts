@@ -4,7 +4,7 @@ import { injectionAttemptRuleId } from "@melian-agent/core";
 /**
  * What a quoted block of the change's content is: a diff, a file's text, a function of the head, search results, a directory listing, the
  * code at a finding's evidence locations, or the findings an earlier run reported, which a model wrote after reading the
- * change.
+ * change; or a probing level's attack plan and what a probe printed, which a model and the head's code wrote.
  */
 export type UntrustedLabel =
 	| "diff"
@@ -16,7 +16,9 @@ export type UntrustedLabel =
 	| "findings"
 	| "callers"
 	| "graph"
-	| "standards";
+	| "standards"
+	| "plan"
+	| "probe";
 
 /**
  * A fresh random nonce for one review. Quoted content cannot close a boundary it cannot name, and the head is fixed

@@ -27,6 +27,8 @@ import {
 	UsageDoc,
 } from "./harness.ts";
 import { LensDocument } from "./lens-tools.ts";
+import { probeLimits } from "./probe.ts";
+import { ProbingDocument } from "./probing.ts";
 import { ReviewIndex } from "./review-index.ts";
 import { RoundsDocument } from "./rounds.ts";
 import { PrepareDocument, type PrepareRecord } from "./spans.ts";
@@ -121,6 +123,10 @@ export type Stage = {
 	limits?: { tokens?: number; tools?: number };
 	/** For a lens, the budget that ended it. */
 	ended?: "tokens" | "tools";
+	/** For a lens at a level that probes, which of its two conversations this is. */
+	role?: "planner" | "prober";
+	/** For a prober, the probes it ran, their summed time, and each probe's time limit. */
+	probes?: { count: number; milliseconds: number; limit: number };
 };
 
 // The run table's name for each stage kind; publication runs in another command, so the table leaves it out.
@@ -307,7 +313,13 @@ export class StageTelemetry {
 			const kind = runNames[stage.name];
 			if (kind === undefined) return [];
 			const [subject, , level] = stage.subject.split("@");
-			if (stage.name === "melian.lens") return [{ ...runStage(`lens ${subject}`, [stage]), level: level! }];
+			if (stage.name === "melian.lens")
+				return [
+					{
+						...runStage(`lens ${subject}${stage.role === undefined ? "" : ` ${stage.role}`}`, [stage]),
+						level: level!,
+					},
+				];
 			return [runStage(stage.name === "melian.check" ? `check ${stage.subject}` : kind, [stage])];
 		});
 		return {
@@ -388,6 +400,10 @@ export class StageTelemetry {
 						`end=${stage.endedAt ?? "unavailable"}`,
 						`duration=${stage.durationMs ?? "unavailable"}ms`,
 						stage.modelMs === undefined ? "" : `model=${stage.modelMs}ms`,
+						stage.role ?? "",
+						stage.probes === undefined
+							? ""
+							: `probes=${stage.probes.count} probeTime=${stage.probes.milliseconds}ms probeLimit=${stage.probes.limit}ms`,
 						stage.reused ? "reused" : stage.resumed ? "resumed" : "",
 						stage.note,
 						stage.error,
@@ -728,6 +744,15 @@ export class TelemetryReader {
 			result = { outcome: "failed", ...(typeof last.detail === "string" ? { error: last.detail } : {}) };
 		}
 		const policy = await this.document(LensDocument, { kind: "conversation", conversationId: id }, context);
+		const role = policy?.lens?.role === "verifier" ? undefined : policy?.lens?.role;
+		const probing = policy?.lens?.probing;
+		const probes =
+			probing === undefined
+				? undefined
+				: Object.values(
+						(await this.document(ProbingDocument, { kind: "conversation", conversationId: id }, context))
+							?.probes ?? {},
+					);
 		if (policy?.spend?.ended !== undefined || policy?.spend?.capped !== undefined) result = { outcome: "ended" };
 		if (ending.endedAt === undefined && task.state.status === "terminal" && task.state.outcome.status === "faulted") {
 			ending = { endedAt: task.endedAt };
@@ -775,6 +800,16 @@ export class TelemetryReader {
 						tools: policy.spend?.calls.length ?? 0,
 						...(policy.lens?.limits === undefined ? {} : { limits: { ...policy.lens.limits } }),
 						...(policy.spend?.ended === undefined ? {} : { ended: policy.spend.ended }),
+						...(role === undefined ? {} : { role }),
+						...(probes === undefined
+							? {}
+							: {
+									probes: {
+										count: probes.length,
+										milliseconds: probes.reduce((sum, probe) => sum + probe.milliseconds, 0),
+										limit: probing!.timeout ?? probeLimits.timeout.default,
+									},
+								}),
 					}),
 			...(usage === undefined
 				? {}

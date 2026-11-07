@@ -35,7 +35,7 @@ const recorded = JSON.parse(readFileSync(new URL("recorded.json", fixture), "utf
 };
 
 it.each([
-	["melian.lenses", 4, 5],
+	["melian.lenses", 4, 6],
 	["melian.adjudication", 5, 6],
 ] as const)("reopens main's version-%s %s input, reading its caller note as a caveat", async (kind, from, to) => {
 	const repo = crashRepository();

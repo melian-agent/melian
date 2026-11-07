@@ -19,6 +19,7 @@ import type { NamedCredential, Verification } from "@melian-agent/core";
 import { MelianCredentialStore, PiCredentialStore } from "./credentials.ts";
 import type { CredentialStore, ModelRef } from "./harness.ts";
 import { modelsOf, type ReviewModels, wrapModels } from "./models.ts";
+import type { ProbePolicy, ProbeSandbox } from "./probe.ts";
 import { verifierMarker } from "./verification-instructions.ts";
 
 export { type FauxProviderHandle, fauxAssistantMessage, fauxToolCall, normalizeContext } from "@earendil-works/pi-ai";
@@ -312,4 +313,27 @@ export function scriptVerifier(messages: readonly Message[], verdicts: VerifierS
 		} as Parameters<typeof fauxToolCall>[1]);
 	});
 	return fauxAssistantMessage(calls, { stopReason: "toolUse" });
+}
+
+/**
+ * A probe sandbox that runs each probe unconfined, through bash, and records what it was asked: for tests whose probes
+ * the test wrote, on a machine whose own sandbox a test must not depend on. `wrap` may rewrite a command, as a test that
+ * makes a rerun behave otherwise does. Never a host's sandbox.
+ */
+export function unconfinedSandbox(
+	rewrite: (command: string) => string = (command) => command,
+): ProbeSandbox & { readonly asked: { command: string; policy: ProbePolicy }[] } {
+	const asked: { command: string; policy: ProbePolicy }[] = [];
+	return {
+		asked,
+		platform: process.platform === "darwin" ? "darwin" : "linux",
+		unavailable: () => undefined,
+		open: async () => {},
+		wrap: async (command, policy) => {
+			asked.push({ command, policy });
+			return ["/bin/bash", "-c", rewrite(command)];
+		},
+		cleanup: () => {},
+		close: async () => {},
+	};
 }

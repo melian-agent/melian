@@ -72,12 +72,20 @@ const budgetSchema = Type.Object(
 	strict,
 );
 
+// A level that probes: a planner on the level's tier writes an attack plan, and a prober on `prober`, the level's tier
+// when absent, answers each attack with probes, each held to `timeout` milliseconds.
+const probeSchema = Type.Object(
+	{ prober: Type.Optional(lensTierSchema), timeout: Type.Optional(Type.Integer({ minimum: 1 })) },
+	strict,
+);
+
 const levelSchema = Type.Object(
 	{
 		tier: Type.Optional(lensTierSchema),
 		reads: Type.Optional(Type.Union(lensReadScopes.map((reads) => Type.Literal(reads)))),
 		verify: Type.Optional(Type.Boolean()),
 		budget: Type.Optional(budgetSchema),
+		probe: Type.Optional(probeSchema),
 	},
 	strict,
 );
@@ -132,12 +140,25 @@ export interface LensBudget {
 	readonly ended?: "count";
 }
 
-/** How a lens runs at one {@link ScrutinyLevel}: its model tier, what it reads, whether its findings are verified, and its budget. */
+/**
+ * How a level probes: the prober's tier, the level's own when absent, and each probe's time limit in milliseconds, the
+ * pipeline's default when absent. The planner runs on the level's tier.
+ */
+export interface LensProbing {
+	readonly prober?: LensTier;
+	readonly timeout?: number;
+}
+
+/**
+ * How a lens runs at one {@link ScrutinyLevel}: its model tier, what it reads, whether its findings are verified, its
+ * budget, and, for a level that runs probes, how it probes.
+ */
 export interface LensLevel {
 	readonly tier: LensTier;
 	readonly reads: LensReads;
 	readonly verify: boolean;
 	readonly budget: LensBudget;
+	readonly probe?: LensProbing;
 }
 
 /** The levels a lens runs at: always `careful`, and `quick` and `deep` where its `LENS.md` declares them. */
@@ -332,6 +353,7 @@ type DeclaredLevel = {
 	readonly reads?: LensReads;
 	readonly verify?: boolean;
 	readonly budget: DeclaredBudget;
+	readonly probe?: LensProbing;
 };
 
 // What a lens's files set, layered through `extends` but not yet defaulted, so a level a nearer file leaves alone
@@ -362,6 +384,7 @@ function declare(own: LensFrontMatter, base: Declared | undefined): Declared {
 			reads: mine?.reads ?? theirs?.reads,
 			verify: mine?.verify ?? theirs?.verify,
 			budget: declaredBudget(mine?.budget, theirs?.budget),
+			probe: mine?.probe ?? theirs?.probe,
 		};
 	}
 	return { tier: own.tier ?? base?.tier, budget: declaredBudget(own.budget, base?.budget), levels };
@@ -384,6 +407,7 @@ function resolveLevels(file: string, name: string, declared: Declared): LensLeve
 		const tokens = own?.budget.tokens ?? declared.budget.tokens;
 		const tools = own?.budget.tools ?? declared.budget.tools;
 		const ended = own?.budget.ended ?? declared.budget.ended;
+		const probe = own?.probe;
 		return {
 			tier,
 			reads: own?.reads ?? "hunks",
@@ -394,6 +418,8 @@ function resolveLevels(file: string, name: string, declared: Declared): LensLeve
 				...(tools === undefined ? {} : { tools }),
 				...(ended === "count" ? { ended } : {}),
 			},
+			// Absent rather than undefined, so a lens that does not probe keeps the version it had before levels could.
+			...(probe === undefined ? {} : { probe: { ...probe } }),
 		};
 	};
 	const careful = resolved(defaultScrutinyLevel, declared.levels.careful);
@@ -1070,6 +1096,15 @@ export class Lens {
 				)
 				.join("\n"),
 		];
+	}
+
+	/**
+	 * The lens's rules, severities, budget, reading scope and reporting rules at `level`, as {@link Lens.renderInstructions}
+	 * renders them after the body: for a conversation that reports under the lens's rules without its body, such as the
+	 * prober of a level that probes. Throws {@link LensError} `unknownLevel` for a level the lens does not declare.
+	 */
+	renderPolicy(level: ScrutinyLevel): string {
+		return this.#policy(this.level(level));
 	}
 
 	// The lens's policy as the model must follow it, so it never guesses a rule ID the hook would refuse.

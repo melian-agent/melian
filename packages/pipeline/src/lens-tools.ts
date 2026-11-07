@@ -70,6 +70,15 @@ import {
 	type UsageState,
 	validateToolArguments,
 } from "./harness.ts";
+import { type ProbeSandbox, probeLimits } from "./probe.ts";
+import {
+	type ProbeRecord,
+	ProbingDocument,
+	type ProbingEnvironment,
+	probeFailed,
+	probingLimits,
+	runHeadProbe,
+} from "./probing.ts";
 import { ReviewIndex } from "./review-index.ts";
 import { injectionAttemptRule, injectionPolicy, injectionSeverity, quoteUntrusted } from "./untrusted.ts";
 import { type ReportVerdictInput, reportVerdictSchema } from "./verification-instructions.ts";
@@ -143,12 +152,24 @@ export function reviewFiles(files: readonly ChangedFile[]): ReviewFile[] {
 export type LensPolicy = {
 	name: string;
 	version: string;
-	role?: "verifier";
+	// A probing level runs as two conversations: the planner, which writes the attack plan, and the prober, which answers
+	// it with probes. Absent for a lens that does not probe.
+	role?: "verifier" | "planner" | "prober";
+	// What the prober's probes run under; absent from every other conversation.
+	probing?: ProbingEnvironment;
 	model?: string;
 	// `fence` is what a lowering is checked against, fixed when the candidate was built: whether a deterministic check
 	// co-reported the defect, and the severities the table in force at its path resolves silent. Absent from a verifier
 	// an older Melian created, which may lower nothing.
-	claims?: { label: string; id: string; source: FindingSource; fence?: { coReported: boolean; silent: Severity[] } }[];
+	// `probe` says, for a claim of a probing level, whether its probe failed again when the task ran it before the
+	// verifier started; a claim it does not reproduce cannot be confirmed.
+	claims?: {
+		label: string;
+		id: string;
+		source: FindingSource;
+		fence?: { coReported: boolean; silent: Severity[] };
+		probe?: { reproduced: boolean };
+	}[];
 	// The level it runs at, which its findings' source names; absent from a lens an older Melian created, whose findings
 	// name the lens's version alone.
 	level?: ScrutinyLevel;
@@ -205,15 +226,15 @@ const maxReadLines = 2000;
 const maxShownBytes = 48 * 1024;
 const outputLimits = { maxBytes: 64 * 1024, maxLines: maxReadLines + 50 } as const;
 
-function defineLensTool<T extends TSchema>(tool: ToolRegistration<T>) {
+function defineLensTool<T extends TSchema>(tool: ToolRegistration<T>, limit = 8192) {
 	return defineTool({
 		...tool,
 		prepareArguments: (args: unknown) => {
 			// 8 KiB caps input work. Pi's validation error names the first failing path, then echoes the arguments, which
 			// carry model text outside the untrusted boundary and can grow past outputLimits, so the echo goes. What remains
-			// is one line bounded by the 8 KiB input: https://github.com/melian-agent/melian/issues/248.
-			if (Buffer.byteLength(JSON.stringify(args)) > 8192)
-				throw new Error("Tool arguments are too large: keep them under 8 KiB.");
+			// is one line bounded by the input limit: https://github.com/melian-agent/melian/issues/248.
+			if (Buffer.byteLength(JSON.stringify(args)) > limit)
+				throw new Error(`Tool arguments are too large: keep them under ${limit / 1024} KiB.`);
 			try {
 				return validateToolArguments(tool, {
 					type: "toolCall",
@@ -291,12 +312,10 @@ function roundOf(
 	{ slots, used }: Awaited<ReturnType<typeof roundState>>,
 	reaches: (slot: Slot) => boolean,
 ) {
-	const reads: readonly string[] = lens.tools;
-	const counted = slots.filter(
-		(slot) =>
-			(reads.includes(slot.name) || slot.name === "report_finding" || slot.name === "report_verdict") &&
-			reaches(slot),
-	);
+	// A probe reads the head as a read does, so it is refused past the tools budget; the plan and a skip report.
+	const reads: readonly string[] = lens.role === "prober" ? [...lens.tools, "run_probe"] : lens.tools;
+	const reports = ["report_finding", "report_verdict", "record_plan", "skip_attack"];
+	const counted = slots.filter((slot) => (reads.includes(slot.name) || reports.includes(slot.name)) && reaches(slot));
 	const round = counted.map((slot) => slot.taskId);
 	return { round, reads: counted.some((slot) => reads.includes(slot.name)), used };
 }
@@ -429,12 +448,24 @@ function ending(result: ToolResult, lens: LensPolicy, spent: Spent | undefined) 
 // What the lens's policy refuses in `call`, or undefined: a tool it does not list, and for `report_finding`, a severity
 // or a rule outside its own. An injection attempt at P1 always passes, because the injection policy orders every lens
 // to report one at P1, whatever severities the lens declares.
+const roleTools: Readonly<Record<NonNullable<LensPolicy["role"]> | "lens", readonly string[]>> = {
+	lens: ["report_finding"],
+	verifier: ["report_verdict"],
+	planner: ["record_plan", "report_finding"],
+	prober: ["run_probe", "skip_attack", "report_finding"],
+};
+
 function refusal(lens: LensPolicy, call: { name: string; arguments: unknown }): string | undefined {
-	const allowed: readonly string[] = [...lens.tools, lens.role === "verifier" ? "report_verdict" : "report_finding"];
+	const allowed: readonly string[] = [...lens.tools, ...roleTools[lens.role ?? "lens"]];
 	if (!allowed.includes(call.name)) return `lens ${lens.name} may call only ${allowed.join(", ")}`;
 	if (call.name !== "report_finding") return undefined;
-	const { severity, rule } = (call.arguments ?? {}) as { severity?: unknown; rule?: unknown };
+	const { severity, rule, probe } = (call.arguments ?? {}) as { severity?: unknown; rule?: unknown; probe?: unknown };
 	const injection = rule === injectionAttemptRule.id && severity === injectionSeverity;
+	if (lens.role === "planner" && rule !== injectionAttemptRule.id)
+		return "the planner writes the attack plan and reports no finding but an injection attempt; record the plan with record_plan";
+	if (lens.role === "prober" && rule !== injectionAttemptRule.id && probe === undefined)
+		return "a finding of a probing level needs the probe that shows it: pass probe, the ID run_probe returned for a probe that failed";
+	if (lens.role !== "prober" && probe !== undefined) return "probe is only for the prober of a level that runs probes";
 	if (!injection && !lens.severities.includes(severity as Severity)) {
 		return `severity ${String(severity)} is outside this lens's severities: ${lens.severities.join(", ")}`;
 	}
@@ -450,7 +481,7 @@ function refusal(lens: LensPolicy, call: { name: string; arguments: unknown }): 
 async function budgeted(
 	api: ToolExecutionApi,
 	context: Context,
-	name: LensToolName,
+	name: LensToolName | "run_probe",
 	read: (review: ReviewState, lens: LensPolicy) => Promise<ToolResult>,
 ) {
 	const lens = await lensOf(api, api.conversationId, context);
@@ -1074,6 +1105,10 @@ export const reportVerdict = defineTool({
 			if (claim === undefined) throw new Error("claim label was not supplied to this verifier");
 			if (args.verdict === "refuted" && (args.evidence?.length ?? 0) === 0)
 				throw new Error("a refuted verdict requires evidence locations");
+			if (args.verdict === "confirmed" && claim.probe !== undefined && !claim.probe.reproduced)
+				throw new Error(
+					"this claim's probe did not fail when Melian ran it again, so the claim cannot be confirmed: refute it, or answer plausible when code you read shows the defect another way",
+				);
 			const review = lens.revision;
 			const revision = Revision.from({
 				base: review.base,
@@ -1142,8 +1177,204 @@ export const reportVerdict = defineTool({
 	},
 });
 
+const bounded = (max: number) => Type.String({ minLength: 1, maxLength: max, pattern: "\\S" });
+
+const attackParameter = Type.Object(
+	{
+		target: Type.String({
+			...bounded(probingLimits.target),
+			description: "What the attack aims at: the file, function, input or path",
+		}),
+		reason: Type.String({
+			...bounded(probingLimits.reason),
+			description: "Why something untrusted might cross a boundary there, and who controls it",
+		}),
+		passing: Type.String({
+			...bounded(probingLimits.outcome),
+			description: "What a probe that passes, exiting 0, prints when the boundary holds",
+		}),
+		failing: Type.String({
+			...bounded(probingLimits.outcome),
+			description: "What a probe that fails, exiting non-zero, prints when it shows the defect",
+		}),
+	},
+	{ additionalProperties: false },
+);
+
+// Within a commit's own document, read back, since a value assigned is copied in.
+async function probingOf(api: ToolExecutionApi, context: Context) {
+	return (await api.snapshot(ProbingDocument, api.conversationId, context)) ?? {};
+}
+
+// A tool that reports rather than reads: counted against the tools budget, never refused by it, and ending the
+// conversation in a round that spends a budget.
+async function reported(
+	api: ToolExecutionApi,
+	context: Context,
+	report: (lens: LensPolicy) => Promise<ToolResult>,
+): Promise<ToolResult> {
+	const lens = await lensOf(api, api.conversationId, context);
+	const { spent } = await meter(api, lens, "report", context);
+	const result = await report(lens).catch((error: unknown) => failed(error, context, lens.revision.nonce));
+	return ending(result, lens, spent);
+}
+
+export const recordPlan = defineLensTool(
+	{
+		name: "record_plan",
+		description:
+			"Record the attack plan, numbered in the order given: for each attack, what it aims at, why something untrusted might cross a boundary there, and what a probe that passes and one that fails would print. A later call replaces the plan.",
+		parameters: Type.Object(
+			{ attacks: Type.Array(attackParameter, { maxItems: probingLimits.attacks }) },
+			{ additionalProperties: false },
+		),
+		outputLimits,
+		replay: "safe",
+		execute: (args, api, context) =>
+			reported(api, context, async (lens) => {
+				const problem = refusal(lens, { name: "record_plan", arguments: args });
+				if (problem !== undefined) throw new Error(problem);
+				await api.commit(async (tx) => {
+					(await tx.doc(ProbingDocument, api.conversationId)).plan = args.attacks.map((attack) => ({ ...attack }));
+				}, context);
+				const count = args.attacks.length;
+				return text(`recorded a plan of ${count} ${count === 1 ? "attack" : "attacks"}`);
+			}),
+	},
+	probingLimits.arguments,
+);
+
+export const skipAttack = defineLensTool(
+	{
+		name: "skip_attack",
+		description:
+			"Record that an attack of the plan cannot be probed, by its number, with the reason: what a probe would need that a probe here cannot have.",
+		parameters: Type.Object(
+			{
+				attack: Type.Integer({ minimum: 1, description: "The attack's number in the plan" }),
+				reason: Type.String({ ...bounded(probingLimits.skipReason), description: "Why no probe can show it" }),
+			},
+			{ additionalProperties: false },
+		),
+		outputLimits,
+		replay: "safe",
+		execute: (args, api, context) =>
+			reported(api, context, async (lens) => {
+				const problem = refusal(lens, { name: "skip_attack", arguments: args });
+				if (problem !== undefined) throw new Error(problem);
+				const plan = (await probingOf(api, context)).plan ?? [];
+				if (args.attack > plan.length)
+					throw new Error(`attack ${args.attack} is not in the plan, which has ${plan.length}`);
+				await api.commit(async (tx) => {
+					const document = await tx.doc(ProbingDocument, api.conversationId);
+					document.skips = { ...document.skips, [String(args.attack)]: args.reason };
+				}, context);
+				return text(`recorded attack ${args.attack} as skipped`);
+			}),
+	},
+	probingLimits.arguments,
+);
+
+function describeProbe(id: string, result: ProbeRecord["result"], timeout: number): string {
+	const seconds = timeout / 1000;
+	if (result.timedOut)
+		return `probe ${id} timed out after ${seconds} second${seconds === 1 ? "" : "s"}, which shows nothing`;
+	if (result.truncated)
+		return `probe ${id}'s output passed its limit, so it was cut and the probe ended, which shows nothing`;
+	if (result.exitCode === null) return `probe ${id} was ended by ${result.signal}, which shows nothing`;
+	if (result.exitCode === 0) return `probe ${id} passed: it exited 0, so the boundary held`;
+	return `probe ${id} failed: it exited ${result.exitCode}, so it shows the defect if it exercises the attack. Report a finding it shows with probe "${id}"`;
+}
+
+/**
+ * `run_probe` over `sandbox`, sandbox-runtime when absent: runs a probe the prober wrote against a tree of the head,
+ * records it under its tool task's ID, and returns its result. A replay returns the recorded result.
+ */
+export function runProbeTool(sandbox?: ProbeSandbox) {
+	return defineLensTool(
+		{
+			name: "run_probe",
+			description:
+				"Run a probe for one attack of the plan: a Node ES module, run as probe.mjs with your files beside it, in a read-only checkout of the head with no network. Exit 0 when the boundary holds and non-zero when the probe shows the defect. Returns the probe's ID, its exit, and its output.",
+			parameters: Type.Object(
+				{
+					attack: Type.Integer({ minimum: 1, description: "The attack's number in the plan" }),
+					script: Type.String({ minLength: 1, maxLength: probingLimits.script }),
+					files: Type.Optional(
+						Type.Array(
+							Type.Object(
+								{
+									path: Type.String({
+										minLength: 1,
+										maxLength: 200,
+										description: "Relative, beside probe.mjs",
+									}),
+									text: Type.String({ maxLength: probingLimits.fileBytes }),
+								},
+								{ additionalProperties: false },
+							),
+							{ maxItems: probingLimits.files },
+						),
+					),
+				},
+				{ additionalProperties: false },
+			),
+			outputLimits,
+			replay: "safe",
+			execute: (args, api, context) =>
+				budgeted(api, context, "run_probe", async (review, lens) => {
+					if (lens.probing === undefined) throw new Error("run_probe runs only in a prober conversation");
+					const files = args.files ?? [];
+					const bytes = files.reduce((sum, file) => sum + Buffer.byteLength(file.text), 0);
+					if (bytes > probingLimits.fileBytes)
+						throw new Error(`a probe's files hold at most ${probingLimits.fileBytes} bytes; these hold ${bytes}`);
+					const state = await probingOf(api, context);
+					const plan = state.plan ?? [];
+					if (args.attack > plan.length)
+						throw new Error(`attack ${args.attack} is not in the plan, which has ${plan.length}`);
+					const id = `p${api.taskId}`;
+					let record = state.probes?.[id];
+					if (record === undefined) {
+						const run = await runHeadProbe({ script: args.script, files }, review, lens.probing, sandbox);
+						if ("refused" in run) throw new Error(`the probe did not run: ${run.refused}`);
+						const ran: ProbeRecord = {
+							attack: args.attack,
+							script: args.script,
+							files: files.map((file) => ({ ...file })),
+							result: { ...run.result },
+							milliseconds: run.milliseconds,
+						};
+						record = await api.commit(async (tx) => {
+							const document = await tx.doc(ProbingDocument, api.conversationId);
+							document.probes = { ...document.probes, [id]: document.probes?.[id] ?? ran };
+							return JSON.parse(JSON.stringify(document.probes[id])) as ProbeRecord;
+						}, context);
+					}
+					const timeout = lens.probing.timeout ?? probeLimits.timeout.default;
+					const output = record.result.output.split("\n").map(visibleText).join("\n");
+					return text(output === "" ? [] : output.split("\n"), (body) =>
+						[
+							describeProbe(id, record.result, timeout),
+							...(body === "" ? ["[the probe printed nothing]"] : [quoteUntrusted("probe", body, review.nonce)]),
+						].join("\n"),
+					);
+				}),
+		},
+		probingLimits.arguments,
+	);
+}
+
+export const runProbe = runProbeTool();
+
 // Every tool a lens may be offered, which `reaches` checks a call against as Pi would.
-const lensTools: readonly ToolRegistration[] = [...Object.values(lensListedTools), reportFinding, reportVerdict];
+const lensTools: readonly ToolRegistration[] = [
+	...Object.values(lensListedTools),
+	reportFinding,
+	reportVerdict,
+	recordPlan,
+	runProbe,
+	skipAttack,
+];
 
 // How many times a lens may correct one finding it reported.
 const maxCorrections = 3;
@@ -1170,6 +1401,16 @@ async function recordFinding(args: ReportFindingInput, api: ToolExecutionApi, le
 			throw new Error("superseded: a later review of this revision replaced this run; stop reporting and finish");
 		}
 		const own = hasSighting(state, id, at, source);
+		// A finding of a probing level rests on a probe this prober ran that failed; read before any write.
+		const probing = args.probe === undefined ? undefined : await tx.doc(ProbingDocument, api.conversationId);
+		if (args.probe !== undefined) {
+			const probe = probing?.probes?.[args.probe];
+			if (probe === undefined) throw new Error(`no probe ${args.probe} ran in this conversation`);
+			if (!probeFailed(probe.result))
+				throw new Error(
+					`probe ${args.probe} did not fail, so it shows no defect: report a finding only with a probe that exited non-zero`,
+				);
+		}
 		const document = await tx.doc(LensDocument, api.conversationId);
 		document.spend ??= { calls: [] };
 		if (refuted === undefined && !own && sightingCount(state, at, source) >= lens.budget) {
@@ -1198,6 +1439,8 @@ async function recordFinding(args: ReportFindingInput, api: ToolExecutionApi, le
 			at,
 			review.files.flatMap((file) => file.hunks.map(provingHunk)),
 		);
+		if (probing !== undefined && args.probe !== undefined)
+			probing.findings = { ...probing.findings, [id]: args.probe };
 		return true;
 	}, context);
 	if (recorded === "capped") {

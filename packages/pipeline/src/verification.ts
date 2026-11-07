@@ -19,6 +19,15 @@ import {
 	reportVerdict,
 	type StoredBudgetEnd,
 } from "./lens-tools.ts";
+import {
+	type ClaimProbe,
+	claimKey,
+	ProbeReruns,
+	type ProbingEnvironment,
+	probeFailed,
+	renderProbeEvidence,
+	rerunKey,
+} from "./probing.ts";
 import { lensExtension } from "./review.ts";
 import { ReviewIndex } from "./review-index.ts";
 import { quoteUntrusted } from "./untrusted.ts";
@@ -35,6 +44,10 @@ export type VerificationCandidate = {
 	designAtBase?: { sections: string; files: string };
 	// What a lowering of any claim is checked against; absent from a candidate an older Melian stored.
 	fence?: { coReported: boolean; silent: Severity[] };
+	// The probe each claim of a probing level rests on, by `claimKey`, and what probes run under. The review runs each
+	// again into `ProbeReruns` before the task starts. Absent from a candidate of a level that does not probe.
+	probes?: Record<string, ClaimProbe>;
+	probing?: ProbingEnvironment;
 };
 export type VerificationInput = {
 	root: ConversationId;
@@ -65,7 +78,8 @@ async function replaced(
 
 export const VerificationTask = defineTask<VerificationInput, Checkpoint, VerificationResult>({
 	name: "melian.verification",
-	version: 2,
+	// Version 3 lets a candidate carry its claims' probes; an older candidate carries none.
+	version: 3,
 	migrate: (input, checkpoint) => ({
 		input: input as unknown as VerificationInput,
 		checkpoint: checkpoint as Checkpoint,
@@ -82,16 +96,35 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 				// Read before any write. The severity each lens reported goes on the claim's label line, which Melian
 				// writes outside the boundary: a lowering is one step from it, and the claim itself does not hold it.
 				const findings = await tx.doc(FindingsDocument, task.input.root);
+				const reruns = (await tx.doc(ProbeReruns, task.input.root)).runs[Revision.key(task.input.revision)] ?? {};
 				const children: Record<string, ConversationId> = {};
 				for (const candidate of task.input.candidates) {
 					const child = await tx.createConversation({ ownership: { kind: "task", taskId: runtime.taskId } });
 					children[candidate.key] = child.id;
-					const claims = candidate.state.claims.map(({ id, source }, index) => ({
-						label: `c${index + 1}`,
-						id,
-						source,
-						...(candidate.fence === undefined ? {} : { fence: structuredClone(candidate.fence) }),
-					}));
+					const probed = (claim: { id: string; source: { check: string; version?: string } }) => {
+						const probe = candidate.probes?.[claimKey(claim)];
+						return probe === undefined ? undefined : { probe, again: reruns[rerunKey(claim, probe)] };
+					};
+					const claims = candidate.state.claims.map(({ id, source }, index) => {
+						const probe = probed({ id, source });
+						return {
+							label: `c${index + 1}`,
+							id,
+							source,
+							...(candidate.fence === undefined ? {} : { fence: structuredClone(candidate.fence) }),
+							// Confirmed only when the probe failed again, so a claim stands on what its probe shows now.
+							...(probe === undefined
+								? {}
+								: {
+										probe: {
+											reproduced:
+												probe.again !== undefined &&
+												"result" in probe.again &&
+												probeFailed(probe.again.result),
+										},
+									}),
+						};
+					});
 					await configure(tx, child.id, {
 						model: candidate.route[0],
 						thinkingLevel: candidate.thinking,
@@ -112,6 +145,12 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 								const at = Revision.key(task.input.revision);
 								const severity = sightingIn(findings, at, id, source)?.properties.severity;
 								return `Claim ${label} finding ${id}${severity === undefined ? "" : `, reported at ${severity}`}`;
+							}),
+							...claims.flatMap(({ label, id, source }) => {
+								const probe = probed({ id, source });
+								return probe === undefined
+									? []
+									: [renderProbeEvidence(label, probe.probe, probe.again, task.input.revision.nonce)];
 							}),
 						].join("\n\n"),
 						tools: [...Object.values(lensReadTools), reportVerdict],

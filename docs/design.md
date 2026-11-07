@@ -436,6 +436,14 @@ Solution: a lens may write a probe, a short Node script with its fixture files, 
 
 What it gives up: the probe shares the reviewer's kernel, so an escape from sandbox-runtime or a kernel bug is an escape. On macOS a child that detaches between two scans of the process table outlives the probe, still confined. Linux needs unprivileged user namespaces, which Ubuntu 24.04 restricts by default. A microVM would give the probe its own kernel; it was deferred because it needs a VM runtime and nested virtualisation, which builders' VMs and Actions runners may lack. [The decision](decisions/2026-11-07-probes-run-under-sandbox-runtime.md) records the ruling and each limit.
 
+### A level that probes
+
+Built in milestone 2 by [issue #288](https://github.com/melian-agent/melian/issues/288)'s first pull request; its goldens and live measurement follow.
+
+Problem: probes run, but no lens could ask for one, so the reviews of record kept finding by running what rounds missed by reading.
+
+Solution: a lens level's `probe` makes it run as two conversations. The planner, on the level's tier, reads the change, the decisions at base and the findings of the change's last earlier revision, and records a numbered attack plan, each attack with its reason and what a passing and a failing probe would print. The prober, on `probe.prober`'s tier or the level's, receives that plan alone and answers every attack with a probe through `run_probe`, or a skip with its reason. A finding names a probe that failed. The review runs each claim's probe again before its verifier starts, and the verifier receives the plan, the probe and both runs, and cannot confirm a claim whose probe did not fail again. No count bounds the probes: the level's token and tool budgets and each probe's time limit do, and telemetry shows all three. The built-in `trust-boundary` lens's `deep` level probes. Where a probe may not run, for a fork's head, under `trust.writers: false` or on a host where the sandbox cannot run, the level runs as it would without `probe`, and its record says why. [The decision](decisions/2026-11-07-trust-boundary-level-that-probes.md) records the rulings and what it gives up.
+
 ## Interaction model
 
 On a pull request, Melian posts one review per revision with inline comments, a summary, and a check status; this section covers the ledger and the commands a reader can give.
