@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { chmodSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -368,6 +368,72 @@ describe("the melian round workflow", () => {
 			actions("secrets.CLAUDE_CODE_OAUTH_TOKEN"),
 			actions("secrets.CODEX_AUTH_B64"),
 		]);
+	});
+
+	it("posts the moved notice when the pull request moved during the round, from a fresh read", () => {
+		const { run } = workflow.jobs.report.steps.find((step) => step.name === "Comment on the pull request");
+		const dir = mkdtempSync(join(tmpdir(), "round-workflow-"));
+		try {
+			const base = "b".repeat(40);
+			const head = "1".repeat(40);
+			const mergeBase = "e".repeat(40);
+			// A fake gh answers only the fresh read of the pull request, the comment listing, and the post, which it keeps.
+			writeFileSync(
+				join(dir, "gh"),
+				[
+					"#!/bin/sh",
+					'if [ "$*" = "api repos/o/r/pulls/7 --jq .base.sha + \\" \\" + .head.sha" ]; then [ -n "$NOW" ] && echo "$NOW"; exit; fi',
+					'[ "$1 $2 $3" = "api --paginate repos/o/r/issues/7/comments?per_page=100" ] && exit 0',
+					'[ "$1 $2 $3 $4 $5 $6" = "pr comment 7 --repo o/r --body-file" ] && cp "$7" "$POSTED" && exit 0',
+					"exit 1",
+					"",
+				].join("\n"),
+			);
+			chmodSync(join(dir, "gh"), 0o755);
+			const round = join(dir, "round");
+			mkdirSync(round);
+			const verdict = { status: "passed", blocking: false, findings: { block: [], acknowledge: [] }, notRun: [] };
+			writeFileSync(join(round, "verdict.json"), JSON.stringify(verdict));
+			writeFileSync(join(round, "rounds.json"), JSON.stringify([{ base: mergeBase, head }]));
+			writeFileSync(join(round, "exit"), "0\n");
+			writeFileSync(join(round, "merge-base"), `${mergeBase}\n`);
+			writeFileSync(join(round, "nonce"), "0123456789abcdef0123456789abcdef\n");
+			const posted = join(dir, "posted.md");
+			const step = (now) => {
+				rmSync(posted, { force: true });
+				const ran = spawnSync("bash", ["-e", "-c", run], {
+					cwd: fileURLToPath(new URL("..", import.meta.url)),
+					encoding: "utf8",
+					env: {
+						PATH: `${dir}:${process.env.PATH}`,
+						HOME: dir,
+						RUNNER_TEMP: dir,
+						REPOSITORY: "o/r",
+						NUMBER: "7",
+						BASE: base,
+						HEAD: head,
+						RUN_URL: "https://example.test/run",
+						RUN_ID: "9",
+						NOW: now,
+						POSTED: posted,
+					},
+				});
+				expect(ran.status, ran.stderr).toBe(0);
+				return readFileSync(posted, "utf8").split("\n").slice(1).join("\n");
+			};
+			const opening = "Melian round on `bbbbbbbbbbbb`...`111111111111`, exit 0: [run](https://example.test/run)\n\n";
+			expect(step(`${base} ${head}`)).toBe(
+				`${opening}\`\`\`text\nVerdict: passed\n\nNo findings above advisory.\n\`\`\`\n`,
+			);
+			expect(step(`${base} ${"3".repeat(40)}`)).toBe(
+				`${opening}The pull request moved to \`bbbbbbbbbbbb\`...\`333333333333\` during the round, so this round posts no findings. Start a new round.\n`,
+			);
+			expect(step("")).toBe(
+				`${opening}The pull request could not be read again before posting, so this round posts no findings. Start a new round.\n`,
+			);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
 	});
 
 	it("keeps no token in any checkout's git configuration", () => {
