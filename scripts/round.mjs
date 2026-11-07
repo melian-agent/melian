@@ -332,10 +332,12 @@ export class RoundComment {
 			description: `${text}${base}`,
 			target_url: pull,
 		});
-		// A read that failed sets error, never nothing: skipping would leave an earlier success standing on this head.
-		if (this.current === undefined) return set("error", "Not reviewed: the pull request could not be read again");
-		if (!id.test(pending) || latest !== pending)
-			return set("error", "Not reviewed: the head's statuses could not be read");
+		// Without this round's pending status, an earlier success could still be latest, so the round sets error. With it,
+		// a read that failed posts nothing: pending already blocks, and a newer status another writer set must stand.
+		if (!id.test(pending)) return set("error", "Not reviewed: no pending status from this round");
+		const stands = (why) => ({ skip: `${why}, so this round's pending status stands; start a new round` });
+		if (this.current === undefined) return stands("the pull request could not be read again");
+		if (latest !== pending) return stands("the head's statuses could not be read");
 		if (trusted !== true)
 			return set("error", "Not reviewed here: writers are not trusted; a trusted host sets this status");
 		if (

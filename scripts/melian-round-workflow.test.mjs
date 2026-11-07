@@ -785,13 +785,22 @@ describe("the melian round workflow", () => {
 			expect(step({ statuses: [other(99, "ci"), own, other(76, "melian/review")] })).toEqual(
 				set("success", `Passed${suffix}`),
 			);
-			// A read that fails, a pending status the job did not hand on, or none on the head sets error, so an earlier
-			// success cannot stand.
-			const unknown = set("error", `Not reviewed: the head's statuses could not be read${suffix}`);
+			// With this round's pending status on the head, a read that fails posts nothing: pending already blocks, and a
+			// newer status another writer set must stand.
+			const stands = (why) => ({
+				code: 0,
+				stdout: `${why}, so this round's pending status stands; start a new round\n`,
+				status: undefined,
+			});
+			const unread = stands("the head's statuses could not be read");
+			expect(step({ statuses: "unreadable" })).toEqual(unread);
+			expect(step({ statuses: [] })).toEqual(unread);
+			expect(step({ statuses: [other(99, "ci")] })).toEqual(unread);
+			expect(step({ now: "" })).toEqual(stands("the pull request could not be read again"));
+			// Without a pending status the job handed on, an earlier success could still stand, so the round sets error.
+			const unknown = set("error", `Not reviewed: no pending status from this round${suffix}`);
 			for (const pending of ["", "x77", "77x"]) expect(step({ pending }), pending).toEqual(unknown);
-			expect(step({ statuses: "unreadable" })).toEqual(unknown);
-			expect(step({ statuses: [] })).toEqual(unknown);
-			expect(step({ statuses: [other(99, "ci")] })).toEqual(unknown);
+			expect(step({ pending: "", now: "" })).toEqual(unknown);
 			const none = {
 				code: 0,
 				stdout: "the pull request moved during the round, so no melian/review status is set; start a new round\n",
@@ -799,9 +808,6 @@ describe("the melian round workflow", () => {
 			};
 			expect(step({ now: `${base} ${"3".repeat(40)}` })).toEqual(none);
 			expect(step({ now: `${"c".repeat(40)} ${head}` })).toEqual(none);
-			expect(step({ now: "" })).toEqual(
-				set("error", `Not reviewed: the pull request could not be read again${suffix}`),
-			);
 			expect(step({ token: "" })).toEqual({
 				code: 1,
 				stdout: "::error::the melian-round Environment holds no MELIAN_STATUS_TOKEN\n",
