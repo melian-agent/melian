@@ -22,6 +22,7 @@ import {
 	fauxAssistantMessage,
 	fauxToolCall,
 	scriptConversations,
+	scriptLenses,
 	scriptVerifier,
 	textOf,
 	unconfinedSandbox,
@@ -52,6 +53,7 @@ describe("MELIAN_EVAL_PROBE_ROUTES", () => {
 		["x=/b", 'entry "x=/b" is not'],
 		["x=a/", 'entry "x=a/" is not'],
 		["x=ab/c/d", undefined],
+		["x=a b/c", 'entry "x=a b/c" is not'],
 		["same=ax>a/x", 'entry "same=ax>a/x" is not'],
 		["same=a/x>b", 'entry "same=a/x>b" is not'],
 		["Same=a/x", 'entry "Same=a/x" is not'],
@@ -297,74 +299,134 @@ describe("reviewMiss", { timeout: 60_000 }, () => {
 		}
 	});
 
-	it("finds a miss with a failing probe, judged on the verifier the measurement names", async () => {
-		const lost = golden("trust-boundary-probe-claim-lost-release");
-		const { repo, base } = buildGoldenRepository(lost);
-		try {
-			const fake = createFakeModels({ models: [{ id: "plan" }, { id: "probe" }, { id: "judge" }] });
-			const script = JSON.parse(readFileSync(join(lost.directory, "script.json"), "utf8")) as Record<
-				string,
-				{ calls?: { name: string; arguments: Record<string, unknown> }[]; text?: string }[]
-			>;
-			const turns = (steps: (typeof script)[string]) =>
-				steps.map((step) => (messages: readonly { role: string }[]) => {
-					if (step.text !== undefined) return fauxAssistantMessage(step.text);
-					const results = (messages as Parameters<typeof textOf>[0][])
-						.filter((each) => each.role === "toolResult")
-						.map(textOf);
-					const probe = results
-						.map((each) => /probe (p[0-9]+)/.exec(each)?.[1])
-						.filter(Boolean)
-						.at(-1);
-					return fauxAssistantMessage(
-						step.calls!.map((call) =>
-							fauxToolCall(
-								call.name,
-								JSON.parse(JSON.stringify(call.arguments).replaceAll("{{probe}}", probe ?? "")) as never,
+	it.each([true, false])(
+		"finds a miss with a failing probe, judged on the verifier the measurement names: %s",
+		async (verifier) => {
+			const lost = golden("trust-boundary-probe-claim-lost-release");
+			const { repo, base } = buildGoldenRepository(lost);
+			try {
+				const fake = createFakeModels({ models: [{ id: "plan" }, { id: "probe" }, { id: "judge" }] });
+				const script = JSON.parse(readFileSync(join(lost.directory, "script.json"), "utf8")) as Record<
+					string,
+					{ calls?: { name: string; arguments: Record<string, unknown> }[]; text?: string }[]
+				>;
+				const turns = (steps: (typeof script)[string]) =>
+					steps.map((step) => (messages: readonly { role: string }[]) => {
+						if (step.text !== undefined) return fauxAssistantMessage(step.text);
+						const results = (messages as Parameters<typeof textOf>[0][])
+							.filter((each) => each.role === "toolResult")
+							.map(textOf);
+						const probe = results
+							.map((each) => /probe (p[0-9]+)/.exec(each)?.[1])
+							.filter(Boolean)
+							.at(-1);
+						return fauxAssistantMessage(
+							step.calls!.map((call) =>
+								fauxToolCall(
+									call.name,
+									JSON.parse(JSON.stringify(call.arguments).replaceAll("{{probe}}", probe ?? "")) as never,
+								),
 							),
+							{ stopReason: "toolUse" },
+						);
+					});
+				const judged: string[] = [];
+				scriptConversations(fake, [
+					{
+						match: "Your role at this level: the attack planner",
+						replies: turns(script["trust-boundary"]!) as never,
+					},
+					{
+						match: "You are the prober for the trust-boundary lens",
+						replies: turns(script["trust-boundary/prober"]!) as never,
+					},
+					{
+						match: "Melian adversarial verifier",
+						replies: [0, 1].map(() => (messages: Parameters<typeof scriptVerifier>[0], model: string) => {
+							judged.push(model);
+							return scriptVerifier(messages);
+						}),
+					},
+				]);
+				const provider = fake.ref("plan").provider;
+				const miss: Miss = {
+					name: "m",
+					repo,
+					base,
+					head: "feature",
+					file: ".github/workflows/claim.yml",
+					rule: "fail-open",
+				};
+				const sandbox = unconfinedSandbox();
+				const run = await reviewMiss(
+					miss,
+					fake.review,
+					{ planner: `${provider}/plan`, prober: `${provider}/probe` },
+					verifier ? `${provider}/judge` : undefined,
+					sandbox,
+				);
+				expect(foundMiss(miss, run.findings)).toBe(true);
+				expect(judged[0]).toBe(verifier ? "judge" : "plan");
+				expect(sandbox.asked.length).toBeGreaterThan(0);
+			} finally {
+				rmSync(repo, { recursive: true, force: true });
+			}
+		},
+	);
+});
+
+describe("a live golden run under probing routes", { timeout: 60_000 }, () => {
+	it("routes the planner on heavy and the prober on medium, and finds the golden's defect", async () => {
+		const lost = golden("trust-boundary-probe-claim-lost-release");
+		const fake = createFakeModels({ models: [{ id: "plan" }, { id: "probe" }] });
+		const script = JSON.parse(readFileSync(join(lost.directory, "script.json"), "utf8")) as Record<
+			string,
+			{ calls?: { name: string; arguments: Record<string, unknown> }[]; text?: string }[]
+		>;
+		const seen: string[] = [];
+		const turns = (steps: (typeof script)[string]) =>
+			steps.map((step) => (messages: Parameters<typeof scriptVerifier>[0], model: string) => {
+				seen.push(model);
+				if (step.text !== undefined) return fauxAssistantMessage(step.text);
+				const probe = messages
+					.filter((each) => each.role === "toolResult")
+					.map((each) => /probe (p[0-9]+)/.exec(textOf(each))?.[1])
+					.filter(Boolean)
+					.at(-1);
+				return fauxAssistantMessage(
+					step.calls!.map((call) =>
+						fauxToolCall(
+							call.name,
+							JSON.parse(JSON.stringify(call.arguments).replaceAll("{{probe}}", probe ?? "")) as never,
 						),
-						{ stopReason: "toolUse" },
-					);
-				});
-			const judged: string[] = [];
-			scriptConversations(fake, [
-				{
-					match: "Your role at this level: the attack planner",
-					replies: turns(script["trust-boundary"]!) as never,
-				},
-				{
-					match: "You are the prober for the trust-boundary lens",
-					replies: turns(script["trust-boundary/prober"]!) as never,
-				},
-				{
-					match: "Melian adversarial verifier",
-					replies: [0, 1].map(() => (messages: Parameters<typeof scriptVerifier>[0], model: string) => {
-						judged.push(model);
-						return scriptVerifier(messages);
-					}),
-				},
-			]);
-			const provider = fake.ref("plan").provider;
-			const miss: Miss = {
-				name: "m",
-				repo,
-				base,
-				head: "feature",
-				file: ".github/workflows/claim.yml",
-				rule: "fail-open",
-			};
-			const run = await reviewMiss(
-				miss,
-				fake.review,
-				{ planner: `${provider}/plan`, prober: `${provider}/probe` },
-				`${provider}/judge`,
-				unconfinedSandbox(),
-			);
-			expect(foundMiss(miss, run.findings)).toBe(true);
-			expect(judged[0]).toBe("judge");
-		} finally {
-			rmSync(repo, { recursive: true, force: true });
-		}
+					),
+					{ stopReason: "toolUse" },
+				);
+			});
+		scriptConversations(fake, [
+			{ match: "Your role at this level: the attack planner", replies: turns(script["trust-boundary"]!) },
+			{ match: "You are the prober for the trust-boundary lens", replies: turns(script["trust-boundary/prober"]!) },
+		]);
+		const provider = fake.ref("plan").provider;
+		const run = await runGolden(lost, {
+			kind: "live",
+			models: fake.review,
+			verifierModel: `${provider}/plan`,
+			probing: { planner: `${provider}/plan`, prober: `${provider}/probe` },
+		});
+		expect(run.findings.map((each) => each.ruleId)).toEqual(["fail-open"]);
+		expect(seen.slice(0, 2)).toEqual(["plan", "plan"]);
+		expect(seen.slice(2)).toEqual(["probe", "probe", "probe"]);
+	});
+});
+
+describe("scripting a prober", () => {
+	it("refuses a prober script for a lens the review has not, or a name that only starts like one", async () => {
+		const fake = createFakeModels();
+		const lenses = await Lens.builtins();
+		expect(() => scriptLenses(fake, lenses, { "nope/prober": [] })).toThrow("nope/prober");
+		expect(() => scriptLenses(fake, lenses, { "trust-boundary/proberx": [] })).toThrow("trust-boundary/proberx");
+		expect(() => scriptLenses(fake, lenses, { "trust-boundary/prober": [] })).not.toThrow();
 	});
 });
 
