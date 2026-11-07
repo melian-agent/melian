@@ -42,7 +42,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AdjudicationTask, readDecision, readVerdict } from "../src/adjudication.ts";
 import { clearSightings } from "../src/findings.ts";
-import { lensReadTools, reviewFiles } from "../src/lens-tools.ts";
+import { LensDocument, lensReadTools, reviewFiles } from "../src/lens-tools.ts";
 import { hasCredentials } from "../src/models.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { RoundsDocument } from "../src/rounds.ts";
@@ -1387,6 +1387,70 @@ describe("the verifier", () => {
 		expect(result.findings[0]!.properties.verification?.model).toBe(judge);
 		expect(result.verdict.ran?.find((check) => check.name === "verifier")?.status).toBe("ran");
 	});
+	it.each([
+		["a guarded route's accepted judge", false, false],
+		["an unguarded route's fallback", true, true],
+	] as const)("reuses a verification that finished on %s when the review reruns", async (_, unguarded, fallsBack) => {
+		const finder = `${fake.ref("finder").provider}/finder`;
+		const judge = `${fake.ref("judge").provider}/judge`;
+		const backup = `${fake.ref("backup").provider}/backup`;
+		const config = {
+			...defaultConfig,
+			models: { heavy: { model: finder }, verifier: { model: judge, fallbacks: [backup] } },
+		};
+		const { catalog, credentials } = await planInputs(fake.review);
+		const resolved = ReviewPlan.resolve({
+			config,
+			catalog,
+			credentials,
+			lenses,
+			checks: ["lens.correctness"],
+			routes: { committed: config.models, overridden: {}, lensTiers: {}, retiered: {} },
+		});
+		const plan = ReviewPlan.from({
+			...resolved.toJSON(),
+			tiers: resolved.tiers.map((tier) =>
+				tier.tier === "verifier" ? { ...tier, accept: [judge], acceptOverridden: unguarded } : tier,
+			),
+		});
+		const models: string[] = [];
+		const requests = scriptConversations(fake, [
+			{
+				match: lenses[0]!.instructions,
+				replies: [
+					fauxAssistantMessage(fauxToolCall("report_finding", crashFinding), { stopReason: "toolUse" }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{
+				match: verifierMarker,
+				replies: [
+					...(fallsBack
+						? [
+								(_messages: unknown, modelId: string) => {
+									models.push(modelId);
+									return fauxAssistantMessage("", {
+										stopReason: "error",
+										errorMessage: "HTTP 503 service unavailable",
+									});
+								},
+							]
+						: []),
+					...Array.from({ length: 4 }, () => (messages: Parameters<typeof scriptVerifier>[0], modelId: string) => {
+						models.push(modelId);
+						return scriptVerifier(messages);
+					}),
+				],
+			},
+		]);
+		expect((await review(false, plan)).verdict.ran?.find((check) => check.name === "verifier")?.status).toBe("ran");
+		const asked = requests[verifierMarker]!.length;
+		const result = await review(true, plan);
+		expect(requests[verifierMarker]).toHaveLength(asked);
+		expect(models).toEqual(fallsBack ? ["judge", "backup", "backup"] : ["judge", "judge"]);
+		expect(result.findings[0]!.properties.verification?.model).toBe(fallsBack ? backup : judge);
+		expect(result.verdict.ran?.find((check) => check.name === "verifier")?.status).toBe("ran");
+	});
 	it("refuses a rejected fallback after another candidate finishes on the accepted judge", async () => {
 		const finder = `${fake.ref("finder").provider}/finder`;
 		const judge = `${fake.ref("judge").provider}/judge`;
@@ -2557,6 +2621,47 @@ describe("verification ownership and budgets", () => {
 		);
 		expect((await harness.waitForTask(id, context)).state.outcome).toMatchObject({ status: "completed", result: {} });
 		expect(fake.provider.state.callCount).toBe(calls);
+	});
+	it("moves a verifier the index no longer names to no fallback model", async () => {
+		const stored = await input();
+		stored.candidates[0]!.route = [fake.ref("judge"), fake.ref("backup")];
+		const key = stored.candidates[0]!.key;
+		const root = await harness.root(context);
+		const revision = Revision.key(changeset.revision);
+		const selection = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.lenses;
+		let task: TaskId | undefined;
+		let child: number | undefined;
+		const requests = scriptConversations(fake, [
+			{
+				match: verifierMarker,
+				replies: [
+					async () => {
+						const record = await harness.getTask(task!, context);
+						child = (record!.state as { checkpoint: { children: Record<string, number> } }).checkpoint.children[
+							key
+						];
+						await root.commit(async (tx) => {
+							(await tx.doc(ReviewIndex, root.id)).reviews[revision]!.verification!.task = 999_999;
+						}, context);
+						return fauxAssistantMessage("", {
+							stopReason: "error",
+							errorMessage: "HTTP 503 service unavailable",
+						});
+					},
+					(messages) => scriptVerifier(messages),
+				],
+			},
+		]);
+		task = (await startVerification(harness, stored, selection, false, context))!;
+		expect((await harness.waitForTask(task, context)).state.outcome).toEqual({
+			status: "completed",
+			result: { [key]: { status: "unanswered", reason: "superseded" } },
+		});
+		expect(requests[verifierMarker]).toHaveLength(1);
+		const judge = fake.ref("judge");
+		expect((await harness.snapshot(LensDocument, child as never, context))!.lens!.model).toBe(
+			`${judge.provider}/${judge.modelId}`,
+		);
 	});
 	it("refuses a spawned verifier's report after a second verification replaces it", async () => {
 		const stored = await input();

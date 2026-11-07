@@ -1,11 +1,14 @@
-import { rmSync } from "node:fs";
-import { Changeset, defaultConfig, Lens, Revision, type Verification } from "@melian-agent/core";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { Changeset, defaultConfig, Lens, ReviewPlan, Revision, type Verification } from "@melian-agent/core";
 import {
 	backgroundContext as context,
 	createMemoryStorage,
 	createReviewRegistry,
 	type Harness,
 	openHarness,
+	planInputs,
 	type Review,
 	readFindings,
 	reviewChangeset,
@@ -22,6 +25,7 @@ import {
 	systemPromptOf,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { defineTask, openSqliteStorage, type TaskId } from "../src/harness.ts";
 import { reviewFiles } from "../src/lens-tools.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { startWave } from "../src/verification.ts";
@@ -36,14 +40,16 @@ let storage: ReturnType<typeof createMemoryStorage>;
 let fake: FakeModels;
 let lenses: Lens[];
 let changeset: Changeset;
+let registry: ReturnType<typeof createReviewRegistry>;
 
 beforeEach(async () => {
 	repo = crashRepository();
-	fake = createFakeModels({ models: [{ id: "finder" }, { id: "judge" }] });
+	fake = createFakeModels({ models: [{ id: "finder" }, { id: "judge" }, { id: "backup" }] });
 	storage = createMemoryStorage();
+	registry = createReviewRegistry();
 	harness = await openHarness(storage, {
 		models: fake.models,
-		registry: createReviewRegistry(),
+		registry,
 		settings: { retry: { enabled: false }, toolExecution: "parallel" },
 	});
 	await harness.root(context, { agent: { model: fake.ref("finder") } });
@@ -58,9 +64,13 @@ afterEach(async () => {
 });
 
 function review(): Promise<Review> {
+	return reviewChangeset(reviewOptions());
+}
+
+function reviewOptions(): Parameters<typeof reviewChangeset>[0] {
 	const finder = fake.ref("finder");
 	const judge = fake.ref("judge");
-	return reviewChangeset({
+	return {
 		harness,
 		checks: [],
 		changeset,
@@ -76,7 +86,7 @@ function review(): Promise<Review> {
 				verifier: { model: `${judge.provider}/${judge.modelId}` },
 			},
 		},
-	});
+	};
 }
 
 const lens = (name: string) => lenses.find((each) => each.name === name)!;
@@ -230,5 +240,181 @@ describe("verification as each lens ends", () => {
 				Revision.key(changeset.revision)
 			],
 		).toBeUndefined();
+	});
+
+	// Correctness reports and ends at once; contracts waits for the first verification, so a wave verifies
+	// correctness's claim, and the final step finds it standing.
+	function fastThenSlow(asked: string[][]) {
+		let judged!: () => void;
+		const firstJudged = new Promise<void>((resolve) => {
+			judged = resolve;
+		});
+		const slow: ScriptedReply = async () => {
+			await Promise.race([firstJudged, new Promise((resolve) => setTimeout(resolve, 2_000))]);
+			return fauxAssistantMessage("Done.");
+		};
+		return scriptConversations(fake, [
+			{
+				match: lens("correctness").instructions,
+				replies: [report("null-dereference"), fauxAssistantMessage("Done.")],
+			},
+			{ match: lens("contracts").instructions, replies: [slow] },
+			verifier(
+				asked,
+				() => judged(),
+				() => "confirmed",
+			),
+		]);
+	}
+	const waveTasks = async () =>
+		(await harness.snapshot(VerificationWavesDocument, (await harness.root(context)).id, context))!.reviews[
+			Revision.key(changeset.revision)
+		]!.waves.map((wave) => wave.task);
+
+	it("reuses a wave's outcome on rerun once the index has lost the final verification", async () => {
+		const asked: string[][] = [];
+		fastThenSlow(asked);
+		await review();
+		expect(await waveTasks()).toHaveLength(1);
+		const root = await harness.root(context);
+		await root.commit(async (tx) => {
+			delete (await tx.doc(ReviewIndex, root.id)).reviews[Revision.key(changeset.revision)]!.verification;
+		}, context);
+		const result = await reviewChangeset({ ...reviewOptions(), rerun: true });
+		expect(asked).toHaveLength(1);
+		expect(result.verdict.ran?.find((check) => check.name === "verifier")?.status).toBe("ran");
+	});
+
+	it("passes over a standing wave whose task ended without completing", async () => {
+		const asked: string[][] = [];
+		fastThenSlow(asked);
+		await review();
+		const failed = defineTask<Record<string, never>, { phase: "end" }, unknown>({
+			name: "test.failed-wave",
+			version: 1,
+			initial: () => ({ phase: "end" }),
+			phases: {
+				end: async (_task, runtime, context) => {
+					await runtime.commit(
+						() => ({ status: "terminal", outcome: { status: "failed", error: { message: "wave failed" } } }),
+						context,
+					);
+				},
+			},
+		});
+		registry.install({ name: "failed-wave", tasks: [failed] });
+		const root = await harness.root(context);
+		const parked = await root.commit(async (tx) => {
+			const id = await tx.createTask(failed, {}, { ownership: { kind: "conversation" } });
+			const entry = (await tx.doc(VerificationWavesDocument, root.id)).reviews[Revision.key(changeset.revision)]!;
+			entry.waves = entry.waves.map((wave) => ({ ...wave, task: id }));
+			return id;
+		}, context);
+		expect((await harness.waitForTask(parked as TaskId, context)).state.outcome.status).toBe("failed");
+		const result = await review();
+		expect(asked).toHaveLength(1);
+		expect(result.verdict.ran?.find((check) => check.name === "verifier")?.status).toBe("ran");
+	});
+
+	it("reads no wave for a candidate no wave verified, in SQLite storage", async () => {
+		const directory = mkdtempSync(join(tmpdir(), "melian-waves-"));
+		try {
+			await harness.close(context);
+			harness = await openHarness(await openSqliteStorage(join(directory, "state.sqlite")), {
+				models: fake.models,
+				registry: createReviewRegistry(),
+				settings: { retry: { enabled: false }, toolExecution: "parallel" },
+			});
+			await harness.root(context, { agent: { model: fake.ref("finder") } });
+			const asked: string[][] = [];
+			fastThenSlow(asked);
+			await review();
+			const root = await harness.root(context);
+			await root.commit(async (tx) => {
+				delete (await tx.doc(VerificationWavesDocument, root.id)).reviews[Revision.key(changeset.revision)];
+			}, context);
+			const result = await review();
+			expect(asked).toHaveLength(1);
+			expect(result.verdict.ran?.find((check) => check.name === "verifier")?.status).toBe("ran");
+		} finally {
+			await harness.close(context);
+			rmSync(directory, { recursive: true, force: true });
+		}
+	});
+
+	it("starts no wave while the plan refuses the verifier", async () => {
+		const asked: string[][] = [];
+		fastThenSlow(asked);
+		const options = reviewOptions();
+		const judge = `${fake.ref("judge").provider}/judge`;
+		const config = {
+			...options.config,
+			models: { ...options.config.models, verifier: { model: `${fake.ref("backup").provider}/backup` } },
+		};
+		const { catalog, credentials } = await planInputs(fake.review);
+		const plan = ReviewPlan.resolve({
+			config,
+			catalog,
+			credentials,
+			lenses,
+			checks: lenses.map((each) => `lens.${each.name}`),
+			routes: {
+				committed: { heavy: config.models.heavy, verifier: { model: judge, acceptOverridden: false } },
+				overridden: { verifier: "melian.local.yaml" },
+				lensTiers: {},
+				retiered: {},
+			},
+		});
+		expect(plan.refusal("verifier")).toBeDefined();
+		await expect(
+			reviewChangeset({ ...options, plan, config: { ...config, models: plan.routes() } }),
+		).rejects.toMatchObject({ code: "verifierFailed" });
+		expect(asked).toEqual([]);
+		expect(await waveTasks()).toEqual([]);
+	});
+
+	it("starts no wave while a candidate has no verifier model with credentials", async () => {
+		const asked: string[][] = [];
+		fastThenSlow(asked);
+		const options = reviewOptions();
+		const locked = fake.withoutCredentials("judge");
+		await expect(
+			reviewChangeset({
+				...options,
+				config: {
+					...options.config,
+					models: { ...options.config.models, verifier: { model: `${locked.provider}/${locked.modelId}` } },
+				},
+			}),
+		).rejects.toMatchObject({ code: "verifierFailed" });
+		expect(asked).toEqual([]);
+		expect(await waveTasks()).toEqual([]);
+	});
+
+	it("leaves a lens that has reported but not ended out of a wave", async () => {
+		let judged!: () => void;
+		const firstJudged = new Promise<void>((resolve) => {
+			judged = resolve;
+		});
+		const asked: string[][] = [];
+		// Contracts reports at once, then holds its end until correctness's claim is judged alone.
+		const hold: ScriptedReply = async () => {
+			await Promise.race([firstJudged, new Promise((resolve) => setTimeout(resolve, 2_000))]);
+			return fauxAssistantMessage("Done.");
+		};
+		scriptConversations(fake, [
+			{
+				match: lens("correctness").instructions,
+				replies: [report("null-dereference"), fauxAssistantMessage("Done.")],
+			},
+			{ match: lens("contracts").instructions, replies: [report("broken-caller"), hold] },
+			verifier(
+				asked,
+				() => judged(),
+				() => "confirmed",
+			),
+		]);
+		await review();
+		expect(asked.map((claims) => claims.length)).toEqual([1, 2]);
 	});
 });
