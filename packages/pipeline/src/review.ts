@@ -1061,8 +1061,8 @@ async function runLenses(
 	rerun: boolean,
 	context: Context,
 	refused: (key: string, model: string) => boolean = () => false,
-	unlockModels?: (providers: readonly string[]) => Promise<void>,
-	whileRunning?: (task: number, done: Promise<unknown>) => Promise<void>,
+	unlockModels: ((providers: readonly string[]) => Promise<void>) | undefined,
+	whileRunning: (task: number, done: Promise<unknown>) => Promise<void>,
 ): Promise<{ readonly result: LensResult | undefined; readonly ran: StoredLensTaskInput; readonly task: number }> {
 	const root = await harness.root(context);
 	const revision = Revision.key(input.revision);
@@ -1120,7 +1120,7 @@ async function runLenses(
 		context,
 	);
 	const waiting = harness.waitForTask(taskId, context);
-	const [settled] = await Promise.all([waiting, whileRunning?.(taskId, waiting)]);
+	const [settled] = await Promise.all([waiting, whileRunning(taskId, waiting)]);
 	const { outcome } = settled.state;
 	return {
 		result: outcome.status === "completed" ? outcome.result : undefined,
