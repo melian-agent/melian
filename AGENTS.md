@@ -109,6 +109,17 @@ Every linked worktree lives in one folder beside the main checkout, `<checkout p
 
 A delegated agent shares your checkout. Do not `git checkout`, `git pull`, `git stash`, or rebase in the orchestrating session while one is working. Use a throwaway worktree for concurrent work on another branch. Read-only agents are safe to overlap; writers are not.
 
+## Working in a cloud session
+
+A Claude Code cloud session on the Melian environment carries what a builder needs. Read this first; the session's own home directory holds none of it.
+
+- `CODEX_AUTH_B64` is a Codex login, `auth.json` in base64. `codex login status` says "Not logged in" until you decode it. Decode it into a throwaway `CODEX_HOME`, never `~/.codex`, with a `config.toml` holding `cli_auth_credentials_store = "file"`: `export CODEX_HOME="$(mktemp -d)"`, then `printf '%s' "$CODEX_AUTH_B64" | base64 -d > "$CODEX_HOME/auth.json"`. The environment allows `chatgpt.com` and not `auth.openai.com`, so Codex cannot refresh the login and rotate the refresh token its other copies hold.
+- `CLAUDE_CODE_OAUTH_TOKEN` is a Claude login, which Melian reads for Anthropic. An environment variable reaches only a container started after it was set, so check `[ -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ]` before saying a session has no Claude credential.
+- A Melian round on the session's own build, as a change to `packages/` or `.melian/` needs, sets up Codex as the `melian round` workflow does. `node scripts/round-codex-token.mjs` prints the login's access token. Export it as `MELIAN_CODEX_ACCESS_TOKEN`, and name it in `$XDG_CONFIG_HOME/melian/secrets.yaml` as `credentials: { session-codex: { provider: openai-codex, env: MELIAN_CODEX_ACCESS_TOKEN } }`, with `XDG_CONFIG_HOME` a scratch directory. Run with `NODE_USE_ENV_PROXY=1`, as the Learnings below say, and check the routes with `melian doctor` first.
+- `gh` is installed and goes through the session's proxy. The proxy refuses GraphQL, so use `gh api` over REST, as the Learnings below say.
+- The container's `GITHUB_TOKEN` gets HTTP 401 from `api.github.com`, which fails `scripts/check-tools.mjs` in the gate. Run `npm run check` with `GITHUB_TOKEN` unset; the check then skips release verification, as on any local run without GitHub access, and CI still verifies.
+- The clone is shallow, and the container has no `/usr/bin/time`, so some tests fail here that pass in CI. On 2026-11-07, 16 tests in five files failed on a clean `main`. Before calling a failure yours, run the same files on a worktree of `origin/main`, and say in the report which failed on both.
+
 ## Delegation and the review loop
 
 Milestone 2 runs on three lanes of work and a fixed review loop. Read this before you start a step or review a pull request.
