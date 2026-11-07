@@ -43,6 +43,32 @@ describe("verification waves", () => {
 		expect(VerificationWaves.owns(undefined, waves, "r", 11)).toBe(false);
 	});
 
+	it("stops owning a wave once a later wave verifies any of its claims", () => {
+		const overlapping = state(7, [
+			{
+				task: 11,
+				candidates: [
+					{ key: "A", claims: ["x"] },
+					{ key: "C", claims: ["z"] },
+				],
+			},
+			{ task: 12, candidates: [{ key: "B", claims: ["w", "x"] }] },
+		]);
+		expect(VerificationWaves.owns(index(7, 20), overlapping, "r", 11)).toBe(false);
+		expect(VerificationWaves.owns(index(7, 20), overlapping, "r", 12)).toBe(true);
+		const apart = state(7, [
+			{ task: 11, candidates: [{ key: "A", claims: ["x"] }] },
+			{
+				task: 12,
+				candidates: [
+					{ key: "C", claims: ["z"] },
+					{ key: "D", claims: ["y"] },
+				],
+			},
+		]);
+		expect(VerificationWaves.owns(index(7, 20), apart, "r", 11)).toBe(true);
+	});
+
 	it("stands for a wave only under the verifier version that ran it", () => {
 		const waves = {
 			reviews: {

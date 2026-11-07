@@ -50,7 +50,10 @@ export class VerificationWaves {
 		return state.reviews[revision]!;
 	}
 
-	/** Whether the index names `task` as `revision`'s verification, or as a wave of the lens task it names. */
+	/**
+	 * Whether the index names `task` as `revision`'s verification, or as a wave of the lens task it names that no later
+	 * wave superseded by verifying any of its claims.
+	 */
 	static owns(
 		index: Readonly<ReviewIndexState> | null | undefined,
 		state: Readonly<VerificationWavesState> | null | undefined,
@@ -59,7 +62,15 @@ export class VerificationWaves {
 	): boolean {
 		const entry = index?.reviews[revision];
 		if (entry?.verification?.task === task) return true;
-		return task !== undefined && VerificationWaves.of(state, revision, entry?.task).tasks().includes(task);
+		const waves = VerificationWaves.of(state, revision, entry?.task).#entry?.waves ?? [];
+		const at = waves.findIndex((wave) => wave.task === task);
+		if (at < 0) return false;
+		const claims = new Set(waves[at]!.candidates.flatMap((candidate) => candidate.claims));
+		return waves
+			.slice(at + 1)
+			.every((later) =>
+				later.candidates.every((candidate) => candidate.claims.every((claim) => !claims.has(claim))),
+			);
 	}
 
 	ended(): Readonly<Record<string, JsonObject>> {
