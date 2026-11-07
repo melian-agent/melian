@@ -18,13 +18,15 @@ import {
 import { createFakeModels } from "./packages/pipeline/src/testing.ts";
 import { baseAndHead, gitIn } from "./packages/pipeline/test/fixtures/repo.ts";
 
-const [output, commit] = process.argv.slice(2);
+const [output, commit, tier] = process.argv.slice(2);
+const full = tier.split(",");
 mkdirSync(output, { recursive: true });
 const tsconfig = JSON.stringify({ compilerOptions: { strict: true, noEmit: true } });
-// tsc quotes the type it names, so the stored finding holds the fake token as tsc's own text.
+// tsc quotes the type it names, and Biome the unused variable, so a stored finding holds the fake token as a tool's own
+// text.
 const repo = baseAndHead(
 	{ "tsconfig.json": tsconfig, "a.ts": "export const n = 1;\n" },
-	{ "a.ts": "export const n: { ghp_FAKEoutsideTOKEN281: 1 } = 1;\n" },
+	{ "a.ts": "const ghp_FAKEoutsideTOKEN281 = 1;\nexport const n: { ghp_FAKEoutsideTOKEN281: 1 } = 1;\n" },
 );
 const changeset = await Changeset.resolve(repo, "main...feature");
 const state = pullRequestState();
@@ -41,7 +43,7 @@ const review = await openReviewHarness(await openSqliteStorage(path), fake.revie
 const result = await reviewChangeset({
 	harness: review,
 	changeset,
-	config: { ...defaultConfig, tiers: { full: ["static.tsc"] } },
+	config: { ...defaultConfig, tiers: { full } },
 	lenses: [],
 	standards: [],
 	models: fake.review,
@@ -54,7 +56,10 @@ const result = await reviewChangeset({
 		head: changeset.revision.head,
 	},
 });
-if (!JSON.stringify(result.verdict).includes("ghp_FAKEoutsideTOKEN281")) throw new Error("tsc's text was not stored");
+const quoted = JSON.stringify(result.verdict.findings).includes("not assignable to type '{ ghp_FAKEoutsideTOKEN281")
+	|| JSON.stringify(result.verdict.findings).includes("This variable ghp_FAKEoutsideTOKEN281 is unused");
+if (quoted !== full.some((check) => check === "static.biome" || check === "static.tsc"))
+	throw new Error(`a tool's text was ${quoted ? "" : "not "}stored for ${tier}`);
 await review.close(context);
 const registry = createReviewRegistry();
 registry.install(publishExtension(provider));
@@ -82,6 +87,6 @@ await harness.close(context);
 gitIn(repo, "bundle", "create", join(output, "repo.bundle"), "--all");
 writeFileSync(
 	join(output, "recorded.json"),
-	JSON.stringify({ commit, changeset: changeset.toJSON(), pending: tasks[0].record.id, state }, null, 2) + "\n",
+	`${JSON.stringify({ commit, tier: full, changeset: changeset.toJSON(), pending: tasks[0].record.id, state }, null, 2)}\n`,
 );
 rmSync(repo, { recursive: true, force: true });

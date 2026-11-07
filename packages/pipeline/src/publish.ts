@@ -26,7 +26,7 @@ import {
 import { VerdictDocument, type VerdictProvenance } from "./adjudication.ts";
 import { verdictWithLegacyCaveats } from "./caveats.ts";
 import { PublishError } from "./errors.ts";
-import { FindingsDocument, storedText } from "./findings.ts";
+import { FindingsDocument, runsTextTools, storedText } from "./findings.ts";
 import {
 	backgroundContext,
 	type Context,
@@ -704,7 +704,7 @@ function publishTask(provider: ReviewProvider) {
 						}, context);
 						return;
 					}
-					if (storedRound.provenance !== undefined && keptToolText(storedRound.provenance)) {
+					if (storedRound.provenance === undefined || keptToolText(storedRound.provenance)) {
 						const reason = `${olderBuild}; run melian review again`;
 						await runtime.commit(async (tx) => {
 							await timing.end(tx);
@@ -1278,10 +1278,7 @@ const olderBuild = "an older Melian decided its review and kept Biome and tsc te
 
 // Whether a build from before Melian withheld Biome and tsc text decided a verdict whose tier ran either tool.
 function keptToolText(provenance: Pick<VerdictProvenance, "manifest" | "storedText">): boolean {
-	return (
-		provenance.storedText !== storedText &&
-		provenance.manifest.some((check) => check === "static.biome" || check === "static.tsc")
-	);
+	return provenance.storedText !== storedText && runsTextTools(provenance.manifest);
 }
 
 // Why a verdict decided from `provenance` must not reach `pullRequest`, or `undefined` when it may. Only a review of

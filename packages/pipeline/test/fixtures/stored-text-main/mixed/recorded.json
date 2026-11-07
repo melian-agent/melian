@@ -1,17 +1,21 @@
 {
   "commit": "8921ccb4e208448ede620d44c279d1761173414b",
+  "tier": [
+    "guardrails",
+    "static.tsc"
+  ],
   "changeset": {
     "kind": "range",
     "id": "range-8fb67dfe2bac6ead",
-    "repoRoot": "/private/var/folders/db/mtn64lld7g971ck9kfq26xyc0000gn/T/melian-review-dXGdfH",
+    "repoRoot": "/private/var/folders/db/mtn64lld7g971ck9kfq26xyc0000gn/T/melian-review-zzxm4v",
     "spec": {
       "base": "main",
       "head": "feature",
       "mode": "threeDot"
     },
     "revision": {
-      "head": "6b054ea8c4db525d1057d0f2a7af989a17a0d1f0",
-      "base": "e3adf1f35fffd575fe282afa704c86b2fe3a36ef",
+      "head": "4bc8f2f2a22d21961b2a03a6b44ea3630d3ef05e",
+      "base": "e9ed1874c9a8c5a1dde3f9d1387cc4c1a47e0d3b",
       "files": [
         {
           "status": "modified",
@@ -28,9 +32,9 @@
               "oldStart": 1,
               "oldLines": 1,
               "newStart": 1,
-              "newLines": 1,
-              "header": "@@ -1 +1 @@",
-              "text": "-export const n = 1;\n+export const n: { ghp_FAKEoutsideTOKEN281: 1 } = 1;"
+              "newLines": 2,
+              "header": "@@ -1 +1,2 @@",
+              "text": "-export const n = 1;\n+const ghp_FAKEoutsideTOKEN281 = 1;\n+export const n: { ghp_FAKEoutsideTOKEN281: 1 } = 1;"
             }
           ]
         }
@@ -38,7 +42,7 @@
       "policyFiles": []
     }
   },
-  "pending": 21,
+  "pending": 23,
   "state": {
     "owner": "melian-agent",
     "repo": "example",
@@ -48,18 +52,18 @@
       "title": "Trim names",
       "base": {
         "ref": "main",
-        "sha": "e3adf1f35fffd575fe282afa704c86b2fe3a36ef"
+        "sha": "e9ed1874c9a8c5a1dde3f9d1387cc4c1a47e0d3b"
       },
       "head": {
         "ref": "feature",
-        "sha": "6b054ea8c4db525d1057d0f2a7af989a17a0d1f0"
+        "sha": "4bc8f2f2a22d21961b2a03a6b44ea3630d3ef05e"
       }
     },
     "lines": {
       "a.ts": [
         [
           1,
-          1
+          2
         ]
       ]
     },

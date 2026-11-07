@@ -83,6 +83,11 @@ type FindingsState = { revisions: string[]; items: Record<string, FindingRecord>
  */
 export const storedText = 2;
 
+/** Whether a tier of `checks` runs Biome or tsc, whose text a build before {@link storedText} 2 stored. */
+export function runsTextTools(checks: readonly string[]): boolean {
+	return checks.some((check) => check === "static.biome" || check === "static.tsc");
+}
+
 export const FindingsDocument = defineDoc<FindingsState>({
 	kind: "melian.findings",
 	version: 10,

@@ -23,7 +23,7 @@ import {
 } from "@melian-agent/core";
 import { verdictWithLegacyCaveats, withLegacyCaveats } from "./caveats.ts";
 import { configsFor } from "./configurations.ts";
-import { findingsVersion, type Producer, readFindings, seenBefore, storedText } from "./findings.ts";
+import { findingsVersion, type Producer, readFindings, runsTextTools, seenBefore, storedText } from "./findings.ts";
 import { type Context, type ConversationId, type DocumentReader, defineDoc, defineTask } from "./harness.ts";
 import type { StoredBudgetEnd } from "./lens-tools.ts";
 import { ReviewIndex } from "./review-index.ts";
@@ -345,7 +345,7 @@ export function adjudicationInput(options: {
 	const provenance: StoredProvenance = {
 		...(options.verifierVersion === undefined ? {} : { verifierVersion: options.verifierVersion }),
 		// Only a tier that ran Biome or tsc stored their text, so only its verdict marks the build's stored-text version.
-		...(manifest.some((check) => check === "static.biome" || check === "static.tsc") ? { storedText } : {}),
+		...(runsTextTools(manifest) ? { storedText } : {}),
 		kind: origin.kind,
 		...(origin.kind === "pull-request"
 			? {
