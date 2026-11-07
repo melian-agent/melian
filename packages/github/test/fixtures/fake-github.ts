@@ -30,6 +30,14 @@ export type FakeStatus = {
 	creator?: { login: string; type: string } | null;
 };
 
+export type FakeActivity = {
+	activity_type: string;
+	actor: { login: string } | null;
+	before: string;
+	after: string;
+	ref: string;
+};
+
 export type FakeState = {
 	branchRules?: unknown[];
 	readFailures?: Record<string, number>;
@@ -40,8 +48,9 @@ export type FakeState = {
 	author?: string;
 	permissions?: Record<string, string>;
 	headRepository?: { owner: string; name: string } | null;
-	pushEvents?: { type: string; actor?: { login: string }; payload: { head: string; ref: string } }[];
-	failEvents?: boolean;
+	// The repository's activity, newest first, as GitHub lists it.
+	activity?: FakeActivity[];
+	failActivity?: boolean;
 	failPermission?: boolean;
 	pull: { number: number; title: string; base: { ref: string; sha: string }; head: { ref: string; sha: string } };
 	// The lines the pull request's diff adds, which alone take an inline comment.
@@ -93,6 +102,28 @@ export function fakeState(owner: string, repo: string, pull: FakeState["pull"], 
 
 function json(data: unknown, status = 200): Response {
 	return new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json" } });
+}
+
+// Answers only the ref the request names, a page at a time behind GitHub's cursor links, newest first unless the
+// request asks otherwise.
+function activity(state: FakeState, url: URL): Response {
+	if (state.failActivity) return json({ message: "Forbidden" }, 403);
+	const ref = url.searchParams.get("ref");
+	const direction = url.searchParams.get("direction") ?? "desc";
+	if (ref === null || (direction !== "desc" && direction !== "asc"))
+		return json({ message: "Validation Failed" }, 422);
+	const entries = (state.activity ?? []).filter((entry) => entry.ref === ref);
+	if (direction === "asc") entries.reverse();
+	const size = Number(url.searchParams.get("per_page") ?? "30");
+	const start = Number(url.searchParams.get("after") ?? "0");
+	const next = new URL(url);
+	next.searchParams.set("after", String(start + size));
+	return new Response(JSON.stringify(entries.slice(start, start + size)), {
+		headers: {
+			"content-type": "application/json",
+			...(start + size < entries.length ? { link: `<${next.href}>; rel="next"` } : {}),
+		},
+	});
 }
 
 function inDiff(lines: DiffLines, path: string, line: number): boolean {
@@ -157,8 +188,7 @@ export function fakeGitHub(
 			return json({ message: "Read unavailable" }, 503);
 		}
 		if (method === "GET" && path === `${repoPath}/rules/branches/main`) return json(state.branchRules ?? []);
-		if (method === "GET" && path === `${repoPath}/events`)
-			return state.failEvents ? json({ message: "Forbidden" }, 403) : json(state.pushEvents ?? []);
+		if (method === "GET" && path === `${repoPath}/activity`) return activity(state, url);
 		if (method === "POST" || method === "PATCH") await beforeWrite(call);
 		const collaborator = new RegExp(`^${repoPath}/collaborators/([^/]+)/permission$`).exec(path);
 		if (method === "GET" && collaborator !== null) {

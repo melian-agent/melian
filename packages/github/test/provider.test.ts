@@ -1,6 +1,6 @@
 import { createGitHubProvider, marker } from "@melian-agent/github";
 import { describe, expect, it } from "vitest";
-import { fakeGitHub, fakeState } from "./fixtures/fake-github.ts";
+import { type FakeActivity, fakeGitHub, fakeState } from "./fixtures/fake-github.ts";
 
 function fixture() {
 	const state = fakeState(
@@ -198,124 +198,103 @@ describe("provider identity", () => {
 	});
 });
 
-it.each(["OtherEvent", "wrong-head", "wrong-ref"])(
-	"reads the exact head push identity past %s decoys",
-	async (decoy) => {
+const push = (login: string | null, after: string, overrides: Partial<FakeActivity> = {}): FakeActivity => ({
+	activity_type: "push",
+	actor: login === null ? null : { login },
+	before: "c".repeat(40),
+	after,
+	ref: "refs/heads/feature",
+	...overrides,
+});
+
+describe("the head's pusher", () => {
+	it("names who pushed a head seconds ago, with nothing in the events feed", async () => {
 		const { state, provider } = fixture();
-		state.pushEvents = [
-			{
-				type: decoy === "OtherEvent" ? "OtherEvent" : "PushEvent",
-				actor: { login: "wrong" },
-				payload: {
-					head: decoy === "wrong-head" ? "a".repeat(40) : state.pull.head.sha,
-					ref: decoy === "wrong-ref" ? "refs/heads/another" : "refs/heads/feature",
-				},
-			},
-			{
-				type: "PushEvent",
-				actor: { login: "head-writer" },
-				payload: { head: state.pull.head.sha, ref: "refs/heads/feature" },
-			},
-		];
+		state.activity = [push("head-writer", state.pull.head.sha, { timestamp: new Date().toISOString() } as never)];
 		expect((await provider.pullRequest(7)).head).toMatchObject({
 			repository: { owner: "owner", name: "repo" },
 			pusher: "head-writer",
 		});
-		expect(state.calls.filter(({ path }) => path.endsWith("/events"))).toEqual([
-			{ method: "GET", path: "/repos/owner/repo/events" },
-		]);
-	},
-);
-it("distinguishes absent push events, unreadable events and an event with no actor", async () => {
-	const { state, provider } = fixture();
-	expect((await provider.pullRequest(7)).head).not.toHaveProperty("pusher");
-	expect((await provider.pullRequest(7)).head).not.toHaveProperty("writerError");
-	state.failEvents = true;
-	expect((await provider.pullRequest(7)).head.writerError).toContain("could not be read");
-	state.failEvents = false;
-	state.pushEvents = [{ type: "PushEvent", payload: { head: state.pull.head.sha, ref: "refs/heads/feature" } }];
-	expect((await provider.pullRequest(7)).head.writerError).toContain("names no pushing identity");
-	state.headRepository = null;
-	expect((await provider.pullRequest(7)).head).not.toHaveProperty("repository");
-});
-it("reads subsequent event pages before using the author fallback", async () => {
-	const { state } = fixture();
-	const transport = fakeGitHub(state);
-	const pages: number[] = [];
-	const provider = createGitHubProvider({
-		owner: state.owner,
-		repo: state.repo,
-		token: "test",
-		fetch: async (input, init) => {
-			const url = new URL(String(input));
-			if (url.pathname !== "/repos/owner/repo/events") return transport(input, init);
-			expect(url.searchParams.get("per_page")).toBe("100");
-			const page = Number(url.searchParams.get("page") ?? "1");
-			pages.push(page);
-			return new Response(
-				JSON.stringify(
-					page === 1
-						? []
-						: [
-								{
-									type: "PushEvent",
-									actor: { login: "second-page-writer" },
-									payload: { head: state.pull.head.sha, ref: "refs/heads/feature" },
-								},
-							],
-				),
-				{
-					headers: {
-						"content-type": "application/json",
-						...(page === 1
-							? { link: '<https://api.github.com/repos/owner/repo/events?per_page=100&page=2>; rel="next"' }
-							: {}),
-					},
-				},
-			);
-		},
+		expect(state.calls.filter(({ path }) => path.endsWith("/events"))).toEqual([]);
 	});
-	expect((await provider.pullRequest(7)).head.pusher).toBe("second-page-writer");
-	expect(pages).toEqual([1, 2]);
-});
 
-it.each(["one page", "two pages"])("uses the newest matching push from %s", async (pagination) => {
-	const { state } = fixture();
-	state.permissions = { contributor: "read", maintainer: "write" };
-	const events = ["contributor", "maintainer"].map((login) => ({
-		type: "PushEvent",
-		actor: { login },
-		payload: { head: state.pull.head.sha, ref: "refs/heads/feature" },
-	}));
-	const transport = fakeGitHub(state);
-	const pages: number[] = [];
-	const provider = createGitHubProvider({
-		owner: state.owner,
-		repo: state.repo,
-		token: "test",
-		fetch: async (input, init) => {
-			const url = new URL(String(input));
-			if (url.pathname !== "/repos/owner/repo/events") return transport(input, init);
-			expect(url.searchParams.get("per_page")).toBe("100");
-			const page = Number(url.searchParams.get("page") ?? "1");
-			pages.push(page);
-			expect(page).toBeLessThanOrEqual(pagination === "one page" ? 1 : 2);
-			return new Response(JSON.stringify(pagination === "one page" ? events : [events[page - 1]]), {
-				headers: {
-					"content-type": "application/json",
-					...(pagination === "two pages" && page === 1
-						? {
-								link: '<https://api.github.com/repos/owner/repo/events?per_page=100&page=2>; rel="next"',
-							}
-						: {}),
-				},
-			});
-		},
+	it.each(["push", "force_push", "branch_creation"])("takes a %s of the head as its push", async (type) => {
+		const { state, provider } = fixture();
+		state.activity = [push("head-writer", state.pull.head.sha, { activity_type: type })];
+		expect((await provider.pullRequest(7)).head.pusher).toBe("head-writer");
 	});
-	const { head } = await provider.pullRequest(7);
-	expect(head.pusher).toBe("contributor");
-	expect(await provider.permission(head.pusher!)).toBe("read");
-	expect(pages).toEqual(pagination === "one page" ? [1] : [1, 2]);
+
+	it.each([
+		["a branch deletion", { activity_type: "branch_deletion" }],
+		["a pull request merge", { activity_type: "pr_merge" }],
+		["a merge queue merge", { activity_type: "merge_queue_merge" }],
+		["another head", { after: "d".repeat(40) }],
+		["a head before the push", { before: "b".repeat(40), after: "d".repeat(40) }],
+	])("reads past %s to the head's own push", async (_name, decoy) => {
+		const { state, provider } = fixture();
+		state.activity = [push("wrong", state.pull.head.sha, decoy), push("head-writer", state.pull.head.sha)];
+		expect((await provider.pullRequest(7)).head.pusher).toBe("head-writer");
+	});
+
+	it("reads past an entry GitHub lists for another branch", async () => {
+		const { state } = fixture();
+		const transport = fakeGitHub(state);
+		const provider = createGitHubProvider({
+			owner: state.owner,
+			repo: state.repo,
+			token: "test",
+			fetch: async (input, init) => {
+				const response = await transport(input, init);
+				if (new URL(String(input)).pathname !== "/repos/owner/repo/activity") return response;
+				const entries = (await response.json()) as FakeActivity[];
+				return new Response(
+					JSON.stringify([push("wrong", state.pull.head.sha, { ref: "refs/heads/another" }), ...entries]),
+					{ headers: { "content-type": "application/json" } },
+				);
+			},
+		});
+		state.activity = [push("head-writer", state.pull.head.sha)];
+		expect((await provider.pullRequest(7)).head.pusher).toBe("head-writer");
+	});
+
+	it("asks only for the head's branch", async () => {
+		const { state, provider } = fixture();
+		state.activity = [push("other-writer", state.pull.head.sha, { ref: "refs/heads/another" })];
+		expect((await provider.pullRequest(7)).head.writerError).toBe(
+			"no push, force push or branch creation in GitHub's activity names this head",
+		);
+	});
+
+	it("refuses a head no activity names, an unreadable activity, and a push with no actor", async () => {
+		const { state, provider } = fixture();
+		const refused = async () => {
+			const { head } = await provider.pullRequest(7);
+			expect(head).not.toHaveProperty("pusher");
+			return head.writerError;
+		};
+		expect(await refused()).toBe("no push, force push or branch creation in GitHub's activity names this head");
+		state.failActivity = true;
+		state.activity = [push("head-writer", state.pull.head.sha)];
+		expect(await refused()).toBe("the head's pushing identity could not be read from GitHub's activity");
+		state.failActivity = false;
+		state.activity = [push(null, state.pull.head.sha), push("older-writer", state.pull.head.sha)];
+		expect(await refused()).toBe("the head's push names no pushing identity");
+	});
+
+	it("reads later pages, a hundred entries at a time, and stops at the newest match", async () => {
+		const { state, provider } = fixture();
+		const others = Array.from({ length: 100 }, (_, index) =>
+			push("other-writer", index.toString(16).padStart(40, "0")),
+		);
+		state.activity = [...others, push("newest", state.pull.head.sha), push("oldest", state.pull.head.sha)];
+		const pages = () => state.calls.filter(({ path }) => path === "/repos/owner/repo/activity").length;
+		expect((await provider.pullRequest(7)).head.pusher).toBe("newest");
+		expect(pages()).toBe(2);
+		state.calls.length = 0;
+		state.activity = [push("newest", state.pull.head.sha), ...others, push("oldest", state.pull.head.sha)];
+		expect((await provider.pullRequest(7)).head.pusher).toBe("newest");
+		expect(pages()).toBe(1);
+	});
 });
 
 describe("publication record validation", () => {

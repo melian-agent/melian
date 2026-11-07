@@ -35,8 +35,10 @@ async function open(
 		repository?: { owner: string; name: string } | null;
 		pusher?: string;
 		pushers?: string[];
-		failEvents?: boolean;
+		failActivity?: boolean;
 		failPermission?: boolean;
+		// A provider that names neither a pusher nor a reason it has none.
+		noPusher?: boolean;
 	} = {},
 	baseFiles: Record<string, string> = {},
 ) {
@@ -66,13 +68,17 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 	if (author !== undefined) state.author = author;
 	state.permissions = permissions;
 	state.headRepository = identity.repository;
-	state.failEvents = identity.failEvents;
+	state.failActivity = identity.failActivity;
 	state.failPermission = identity.failPermission;
-	const pushers = identity.pushers ?? (identity.pusher === undefined ? [] : [identity.pusher]);
-	state.pushEvents = pushers.map((login) => ({
-		type: "PushEvent",
+	// The author pushed the head unless the test names its pushers.
+	const pushers =
+		identity.pushers ?? (identity.pusher === undefined ? (author === undefined ? [] : [author]) : [identity.pusher]);
+	state.activity = pushers.map((login) => ({
+		activity_type: "push",
 		actor: { login },
-		payload: { head: changeset.revision.head, ref: `refs/heads/${state.pull.head.ref}` },
+		before: changeset.revision.base,
+		after: changeset.revision.head,
+		ref: `refs/heads/${state.pull.head.ref}`,
 	}));
 	const provider = createGitHubProvider({
 		owner: state.owner,
@@ -81,7 +87,9 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 		fetch: fakeGitHub(state),
 	});
 	vi.spyOn(targets, "gitHubFor").mockResolvedValue(provider);
-	const pullRequest = await provider.pullRequest(7);
+	const read = await provider.pullRequest(7);
+	const { pusher: _pusher, writerError: _writerError, ...unnamed } = read.head;
+	const pullRequest = identity.noPusher === true ? { ...read, head: unnamed } : read;
 	vi.spyOn(targets, "fetchedPullRequest").mockResolvedValue({
 		pullRequest: author === undefined ? { ...pullRequest, author: undefined } : pullRequest,
 		changeset,
@@ -109,7 +117,7 @@ const ran = () => existsSync(calls) && readFileSync(calls, "utf8").trim().split(
 
 describe("static.mutation and the writer of a pull request", { timeout: 60_000 }, () => {
 	it.each(["write", "maintain", "admin"])(
-		"runs the head's tests for an author with %s permission",
+		"runs the head's tests for a pusher with %s permission",
 		async (permission) => {
 			const { io } = await open("octocat", { octocat: permission });
 			expect(await review(io, "#7", { rerun: false, walkthrough: false })).toBe(0);
@@ -118,7 +126,7 @@ describe("static.mutation and the writer of a pull request", { timeout: 60_000 }
 	);
 
 	it.each(["triage", "read", "none"])(
-		"runs nothing for an author with %s permission, and the review is not reviewed",
+		"runs nothing for a pusher with %s permission, and the review is not reviewed",
 		async (permission) => {
 			const { io, output } = await open("octocat", { octocat: permission });
 			expect(await review(io, "#7", { rerun: false, walkthrough: false })).toBe(notReviewed);
@@ -130,14 +138,29 @@ describe("static.mutation and the writer of a pull request", { timeout: 60_000 }
 		},
 	);
 
-	it("skips the check when the provider names no author", async () => {
-		const { io, output } = await open(undefined, {});
+	it("refuses a head no activity names, whatever the author's permission", async () => {
+		const { io, output } = await open("maintainer", { maintainer: "admin" }, {}, "static.mutation", { pushers: [] });
 		expect(await review(io, "#7", { rerun: false, walkthrough: false })).toBe(notReviewed);
 		expect(ran()).toBe(false);
-		expect(output()).toContain("the provider names no author for the pull request");
+		expect(output()).toContain("no push, force push or branch creation in GitHub's activity names this head");
 	});
 
-	it("skips the check when the author's permission cannot be read", async () => {
+	it("refuses a head the provider names no pusher for, whatever the author's permission", async () => {
+		const { io, output } = await open("maintainer", { maintainer: "admin" }, {}, "static.mutation", {
+			noPusher: true,
+		});
+		expect(await review(io, "#7", { rerun: false, walkthrough: false })).toBe(notReviewed);
+		expect(ran()).toBe(false);
+		expect(output()).toContain("the provider names no pusher for the pull request's head");
+	});
+
+	it("trusts a writer's push whatever the author", async () => {
+		const { io } = await open(undefined, { maintainer: "write" }, {}, "static.mutation", { pusher: "maintainer" });
+		expect(await review(io, "#7", { rerun: false, walkthrough: false })).toBe(0);
+		expect(ran()).toBe(1);
+	});
+
+	it("skips the check when the pusher's permission cannot be read", async () => {
 		const { io, output } = await open("octocat", { octocat: "surprise" });
 		expect(await review(io, "#7", { rerun: false, walkthrough: false })).toBe(notReviewed);
 		expect(ran()).toBe(false);
@@ -208,7 +231,7 @@ describe("static.mutation and the writer of a pull request", { timeout: 60_000 }
 	});
 	it("refuses a failed pusher lookup rather than falling back to the writer author", async () => {
 		const { io, output } = await open("maintainer", { maintainer: "admin" }, {}, "static.mutation", {
-			failEvents: true,
+			failActivity: true,
 		});
 		expect(await review(io, "#7", { rerun: false, walkthrough: false })).toBe(notReviewed);
 		expect(ran()).toBe(false);

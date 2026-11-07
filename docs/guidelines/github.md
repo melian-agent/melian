@@ -4,7 +4,7 @@ The github package implements core's `ReviewProvider` port for GitHub through Oc
 
 ## Identity reads
 
-`pullRequest` carries its author login. `login()` reads `/user` once and remembers a refusal. `permission(login)` reads the collaborator permission endpoint for that repository. A refused lookup or unknown role reads as absent. Pull-request metadata also carries the head repository and the pushing actor from the first exact head-SHA and branch match across GitHub’s event pages. An absent match permits author fallback. A failed event read or an event without an actor records a writer error; the CLI refuses trust. GitHub maps maintain to write and triage to read in that endpoint's permission field.
+`pullRequest` carries its author login. `login()` reads `/user` once and remembers a refusal. `permission(login)` reads the collaborator permission endpoint for that repository. A refused lookup or unknown role reads as absent. Pull-request metadata also carries the head repository and the pushing actor. `GET /repos/{owner}/{repo}/activity` with `ref=refs/heads/<branch>` lists the branch's activity newest first; the first `push`, `force_push` or `branch_creation` whose `after` is the head and whose ref is the branch names the pusher, and paging stops there. No matching entry, an entry without an actor, or a failed read records a writer error, and the CLI refuses trust. The fake in `test/fixtures/fake-github.ts` answers only the ref a request names, so a request for the wrong branch finds nothing. GitHub maps maintain to write and triage to read in that endpoint's permission field.
 
 ## Posting
 

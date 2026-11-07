@@ -35,6 +35,8 @@ export const statusContext = "melian/review";
 // GitHub refuses a commit status description longer than this.
 const maxDescription = 140;
 const maxPages = 50;
+// The activities that leave a branch at a commit, so their actor pushed it.
+const pushes = new Set(["push", "force_push", "branch_creation"]);
 
 /** How a {@link GitHubProvider} reaches a repository. */
 export interface GitHubProviderOptions {
@@ -274,24 +276,26 @@ export class GitHubProvider implements ReviewProvider {
 	}
 
 	async #headWriter(ref: string, sha: string): Promise<Pick<PullRequest["head"], "pusher" | "writerError">> {
+		const branch = `refs/heads/${ref}`;
 		try {
-			const events = await this.octokit.paginate(this.octokit.rest.activity.listRepoEvents, {
+			const pages = this.octokit.paginate.iterator(this.octokit.rest.repos.listActivities, {
 				owner: this.owner,
 				repo: this.repo,
+				ref: branch,
 				per_page: 100,
 			});
-			const push = events.find(
-				(event) =>
-					event.type === "PushEvent" &&
-					(event.payload as { head?: string }).head === sha &&
-					(event.payload as { ref?: string }).ref === `refs/heads/${ref}`,
-			);
-			if (push === undefined) return {};
-			if (!push.actor?.login) return { writerError: "the head's push event names no pushing identity" };
-			return { pusher: push.actor.login };
+			for await (const { data } of pages) {
+				const push = data.find(
+					(entry) => pushes.has(entry.activity_type) && entry.after === sha && entry.ref === branch,
+				);
+				if (push === undefined) continue;
+				if (!push.actor?.login) return { writerError: "the head's push names no pushing identity" };
+				return { pusher: push.actor.login };
+			}
 		} catch {
-			return { writerError: "the head's pushing identity could not be read from GitHub events" };
+			return { writerError: "the head's pushing identity could not be read from GitHub's activity" };
 		}
+		return { writerError: "no push, force push or branch creation in GitHub's activity names this head" };
 	}
 
 	async permission(login: string): Promise<RepositoryPermission | undefined> {
