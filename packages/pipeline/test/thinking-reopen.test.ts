@@ -27,8 +27,8 @@ const recorded = JSON.parse(readFileSync(new URL("recorded.json", fixture), "utf
 };
 
 it.each([
-	["melian.lenses", 5],
-	["melian.verification", 2],
+	["melian.lenses", 6],
+	["melian.verification", 3],
 	["melian.summarize", 2],
 	["melian.adjudication", 6],
 	["melian.adjudication", 6, "thinking-policy-v11"],
