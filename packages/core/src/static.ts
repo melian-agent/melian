@@ -448,7 +448,11 @@ export async function staticFindings(input: StaticFindingsInput): Promise<CheckR
 			untouched++;
 			continue;
 		}
-		const before = base.get(each.id);
+		// A Biome or tsc result placed by line and column, its code unreadable, cannot be told from a different result the
+		// change put at the same place, so one on a changed line is introduced.
+		const placed = (tool === "biome" || tool === "tsc") && each.snippet === undefined;
+		const before =
+			placed && revision.trigger(each.path, region.startLine, endLine) !== undefined ? undefined : base.get(each.id);
 		const severity = staticSeverity(tool, each.rule, each.result.level, input.settings.severity);
 		const sameLine = endLine === region.startLine;
 		// Results of one rule on one set of lines share an ID, so presence alone would hide a second error added beside

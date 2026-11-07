@@ -563,7 +563,7 @@ describe("staticFindings", () => {
 	});
 
 	// A file too large to read has no code to identify a result by, and Biome's and tsc's messages are withheld.
-	it("reads a result in a file too large to read as introduced unless the base has one at the same place", async () => {
+	it("reads a result in a file too large to read as introduced unless the base has one at the same place on an unchanged line", async () => {
 		const filler = `// ${"x".repeat(4 * 1024 * 1024)}`;
 		const base = commit({ "huge.ts": lines("export const a: number = 'x';", "export const b = 2;", filler) });
 		const head = commit({ "huge.ts": lines("export const a = 1;", "export const b: number = 'y';", filler) });
@@ -605,10 +605,12 @@ describe("staticFindings", () => {
 		expect(await causes(at(1, 14), at(2, 14))).toEqual([["introduced", "line 2, column 14"]]);
 		expect(await causes(at(1, 14), at(2, 14), "biome")).toEqual([["introduced", "line 2, column 14"]]);
 		expect(await causes(at(2, 13), at(2, 14))).toEqual([["introduced", "line 2, column 14"]]);
-		expect(await causes(at(2, 14), at(2, 14))).toEqual([["pre-existing", "line 2, column 14"]]);
-		const unplaced = at(2, 1);
+		// The change rewrote line 2, so a TS2322 there may be another one than the base's.
+		expect(await causes(at(2, 14), at(2, 14))).toEqual([["introduced", "line 2, column 14"]]);
+		expect(await causes(at(3, 1), at(3, 1))).toEqual([["pre-existing", "line 3, column 1"]]);
+		const unplaced = at(3, 1);
 		delete unplaced.runs[0].results[0]!.locations[0]!.physicalLocation.region.startColumn;
-		expect(await causes(at(2, 1), unplaced)).toEqual([["pre-existing", "line 2, column 1"]]);
+		expect(await causes(at(3, 1), unplaced)).toEqual([["pre-existing", "line 3, column 1"]]);
 	});
 
 	// Issue #281: Biome and tsc quote files a head leads them to, outside the checkout too.
