@@ -275,12 +275,13 @@ describe("the melian round workflow", () => {
 		const dir = mkdtempSync(join(tmpdir(), "round-workflow-"));
 		try {
 			const head = "1".repeat(40);
-			// A fake gh answers only the request for the push events and the request for the pusher's permission.
+			// A fake gh answers only the request for the push events, by running the step's own --jq over each raw page as
+			// gh does, and the request for the pusher's permission.
 			writeFileSync(
 				join(dir, "gh"),
 				[
 					"#!/bin/sh",
-					'if [ "$1 $2 $3 $4" = "api --paginate repos/o/r/events?per_page=100 --jq" ]; then printf "%s\\n" "$EVENTS"; exit; fi',
+					'if [ "$1 $2 $3 $4" = "api --paginate repos/o/r/events?per_page=100 --jq" ]; then printf "%s\\n" "$EVENTS" | jq -r "$5"; exit; fi',
 					'[ "$*" = "api repos/o/r/collaborators/pusher-login/permission --jq .permission" ] && [ -n "$PERMISSION" ] && echo "$PERMISSION"',
 					"",
 				].join("\n"),
@@ -290,7 +291,21 @@ describe("the melian round workflow", () => {
 				join(dir, "pull.json"),
 				JSON.stringify({ head: { ref: "feature", sha: head }, user: { login: "author-login" } }),
 			);
-			const events = JSON.stringify({ actor: "pusher-login", head, ref: "refs/heads/feature" });
+			// Two raw pages. Each decoy names the head through a field the projection must not read: an event of another
+			// type, a push whose earlier commit is the head, and a push of the head to another branch.
+			const push = (login, payload) => ({ type: "PushEvent", actor: { login }, payload });
+			const events = [
+				[
+					{ type: "CreateEvent", actor: { login: "creator-login" }, payload: { head, ref: "refs/heads/feature" } },
+					push("before-login", { before: head, head: "2".repeat(40), ref: "refs/heads/feature" }),
+				],
+				[
+					push("other-branch-login", { before: "3".repeat(40), head, ref: "refs/heads/other" }),
+					push("pusher-login", { before: "4".repeat(40), head, ref: "refs/heads/feature" }),
+				],
+			]
+				.map((page) => JSON.stringify(page))
+				.join("\n");
 			const step = (permission) => {
 				const ran = spawnSync("bash", ["-e", "-c", run], {
 					cwd: fileURLToPath(new URL("..", import.meta.url)),
