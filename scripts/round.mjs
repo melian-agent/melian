@@ -314,13 +314,13 @@ export class RoundComment {
 	// round began, so a later round or host decided it. `trusted` is the base policy's `trust.writers`, as publication
 	// reads it. Acknowledge findings do not fail it, by the maintainer's ruling: the builder asks the maintainer first.
 	status(pull, { trusted, latest, started }) {
-		if (this.current === undefined || this.current.base !== this.base || this.current.head !== this.head)
+		if (this.current !== undefined && (this.current.base !== this.base || this.current.head !== this.head))
 			return {
-				skip: "the pull request moved or could not be read again, so no melian/review status is set; start a new round",
+				skip: "the pull request moved during the round, so no melian/review status is set; start a new round",
 			};
 		const began = Date.parse(started);
-		if (Number.isNaN(began) || (latest !== "" && !(Date.parse(latest) <= began)))
-			return { skip: "a newer melian/review status stands on this head, so this round sets none" };
+		const newest = latest === "" ? Number.NEGATIVE_INFINITY : Date.parse(latest);
+		if (newest > began) return { skip: "a newer melian/review status stands on this head, so this round sets none" };
 		const known = /^[0-9a-f]{40}$/.test(this.mergeBase);
 		const base = known ? `; base ${this.mergeBase}` : "";
 		const set = (state, text) => ({
@@ -329,6 +329,10 @@ export class RoundComment {
 			description: `${text}${base}`,
 			target_url: pull,
 		});
+		// A read that failed sets error, never nothing: skipping would leave an earlier success standing on this head.
+		if (this.current === undefined) return set("error", "Not reviewed: the pull request could not be read again");
+		if (Number.isNaN(began) || Number.isNaN(newest))
+			return set("error", "Not reviewed: the head's earlier statuses could not be read");
 		if (trusted !== true)
 			return set("error", "Not reviewed here: writers are not trusted; a trusted host sets this status");
 		if (

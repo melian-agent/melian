@@ -302,6 +302,8 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
+      # The status step's trust read loads core's configuration, whose packages a fresh runner does not have.
+      - run: npm ci --ignore-scripts
       # A round that finished uploaded its artefact, so a missing one fails this job rather than post a comment that
       # says the round ended before a verdict. An empty name would download every artefact of the run.
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -361,8 +363,8 @@ jobs:
           read -r current_base current_head <<< "$current" || true
           # A later round or host may have set the status since this round began; a rerun of this job alone must not
           # put an older verdict back over it. An unreadable answer counts as newer.
-          latest=$(gh api "repos/$REPOSITORY/commits/$HEAD/statuses?per_page=100" \
-            --jq '[.[] | select(.context == "melian/review")][0].created_at // ""') || latest="unreadable"
+          latest=$(gh api --paginate "repos/$REPOSITORY/commits/$HEAD/statuses?per_page=100" \
+            --jq '.[] | select(.context == "melian/review") | .created_at' | sed -n 1p) || latest="unreadable"
           trusted=$(node scripts/round-trust.mjs "$GITHUB_WORKSPACE" "$BASE")
           status=$(node scripts/round-comment.mjs --verdict "$out/verdict.json" --rounds "$out/rounds.json" \
             --exit "$(cat "$out/exit" 2>/dev/null || echo none)" --run-url "$RUN_URL" --run-id "$RUN_ID" --nonce none --base "$BASE" --head "$HEAD" \

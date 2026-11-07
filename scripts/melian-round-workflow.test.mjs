@@ -48,6 +48,11 @@ describe("the melian round workflow", () => {
 		// The status step reads the pull request's base policy, so the report job's checkout holds the history.
 		const checkout = workflow.jobs.report.steps.find((step) => step.uses?.startsWith("actions/checkout@"));
 		expect(checkout.with).toEqual({ "fetch-depth": 0, "persist-credentials": false });
+		// The trust read loads core's configuration, whose packages a fresh runner does not have.
+		const report = workflow.jobs.report.steps;
+		const install = report.findIndex((step) => step.run === "npm ci --ignore-scripts");
+		expect(install).toBeGreaterThan(report.findIndex((step) => step.uses?.startsWith("actions/setup-node@")));
+		expect(install).toBeLessThan(report.findIndex((step) => step.name === "Set melian/review on the reviewed head"));
 	});
 
 	it("refuses, before any step holds a login, a commit the default branch has moved past", () => {
@@ -576,7 +581,7 @@ describe("the melian round workflow", () => {
 				[
 					"#!/bin/sh",
 					'if [ "$*" = "api repos/o/r/pulls/7 --jq .base.sha + \\" \\" + .head.sha" ]; then [ -n "$NOW" ] && echo "$NOW"; exit; fi',
-					'if [ "$1 $2 $3" = "api repos/o/r/commits/$HEAD/statuses?per_page=100 --jq" ] && [ "$#" = 4 ]; then [ "$STATUSES" = unreadable ] && exit 1; printf "%s" "$STATUSES" | jq -r "$4"; exit; fi',
+					'if [ "$1 $2 $3" = "api --paginate repos/o/r/commits/$HEAD/statuses?per_page=100" ] && [ "$4" = --jq ] && [ "$#" = 5 ]; then [ "$STATUSES" = unreadable ] && exit 1; printf "%s" "$STATUSES" | jq -r "$5"; exit; fi',
 					'[ "$*" = "api -X POST repos/o/r/statuses/$HEAD --input -" ] && [ "$GH_TOKEN" = status-token ] && cat > "$POSTED" && exit 0',
 					"exit 1",
 					"",
@@ -711,8 +716,10 @@ describe("the melian round workflow", () => {
 			};
 			const other = (context, created_at) => ({ context, created_at, state: "failure" });
 			expect(step({ statuses: [other("melian/review", "2026-11-07T10:00:01Z")] })).toEqual(newer);
-			expect(step({ since: "" })).toEqual(newer);
-			expect(step({ statuses: "unreadable" })).toEqual(newer);
+			// A read that fails, or a start time the job lost, sets error, so an earlier success cannot stand.
+			const unknown = set("error", `Not reviewed: the head's earlier statuses could not be read${suffix}`);
+			expect(step({ since: "" })).toEqual(unknown);
+			expect(step({ statuses: "unreadable" })).toEqual(unknown);
 			// GitHub lists a commit's statuses newest first, so the first melian/review is the latest.
 			expect(
 				step({
@@ -727,13 +734,14 @@ describe("the melian round workflow", () => {
 			).toEqual(set("success", `Passed${suffix}`));
 			const none = {
 				code: 0,
-				stdout:
-					"the pull request moved or could not be read again, so no melian/review status is set; start a new round\n",
+				stdout: "the pull request moved during the round, so no melian/review status is set; start a new round\n",
 				status: undefined,
 			};
 			expect(step({ now: `${base} ${"3".repeat(40)}` })).toEqual(none);
 			expect(step({ now: `${"c".repeat(40)} ${head}` })).toEqual(none);
-			expect(step({ now: "" })).toEqual(none);
+			expect(step({ now: "" })).toEqual(
+				set("error", `Not reviewed: the pull request could not be read again${suffix}`),
+			);
 			expect(step({ token: "" })).toEqual({
 				code: 1,
 				stdout: "::error::the melian-round Environment holds no MELIAN_STATUS_TOKEN\n",
