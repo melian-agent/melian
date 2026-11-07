@@ -116,6 +116,7 @@ export { CoverageCache } from "./coverage-cache.ts";
 export { EnolaCoverage } from "./enola-coverage.ts";
 export { GraphCache } from "./graph-cache.ts";
 export {
+	type CleanupOutcome,
 	Probe,
 	type ProbeAvailability,
 	ProbeError,

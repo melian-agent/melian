@@ -131,7 +131,7 @@ describe("melian probe", () => {
 		const open = vi.spyOn(pipeline.Probe, "open").mockRejectedValue(new pipeline.ProbeError("invalidProbe", "stop"));
 		expect((await melian(["probe", "probes/first", "--trust-head"])).stderr).toBe("melian: stop\n");
 		expect(open.mock.calls[0]![0].files).toEqual([
-			{ path: "fixture/big", text: "x".repeat(pipeline.probeLimits.fileBytes) },
+			{ path: "fixture/big", bytes: Buffer.from("x".repeat(pipeline.probeLimits.fileBytes)) },
 		]);
 		writeFileSync(join(dir, "fixture", "big"), "x".repeat(pipeline.probeLimits.fileBytes + 1));
 		expect(await melian(["probe", "probes/first", "--trust-head"])).toMatchObject({
@@ -193,7 +193,7 @@ describe("melian probe", () => {
 		],
 	] as const)("says how the probe ended: %j", async (ended, seconds, status, line) => {
 		writeFileSync(join(dir, "probe.mjs"), "");
-		const close = vi.fn(async () => {});
+		const close = vi.fn(async () => ({ removed: true }));
 		vi.spyOn(pipeline.Probe, "open").mockResolvedValue({
 			run: async () => ({ ...ended, output: "" }),
 			close,
@@ -205,13 +205,27 @@ describe("melian probe", () => {
 
 	it("closes the probe when its run throws", async () => {
 		writeFileSync(join(dir, "probe.mjs"), "");
-		const close = vi.fn(async () => {});
+		const close = vi.fn(async () => ({ removed: true }));
 		const run = async () => {
 			throw new pipeline.ProbeError("sandboxUnavailable", "refused");
 		};
 		vi.spyOn(pipeline.Probe, "open").mockResolvedValue({ run, close } as never);
 		expect((await melian(["probe", "probes/first", "--trust-head"])).status).toBe(2);
 		expect(close).toHaveBeenCalledOnce();
+	});
+
+	it("reports a leftover scratch without replacing the probe's result", async () => {
+		writeFileSync(join(dir, "probe.mjs"), "");
+		const result = { exitCode: 0, signal: null, output: "ok\n", truncated: false, timedOut: false };
+		const close = vi.fn(async () => ({ removed: false, leftover: "/tmp/melian-probe-x", reason: "EPERM: unlink" }));
+		vi.spyOn(pipeline.Probe, "open").mockResolvedValue({ run: async () => result, close } as never);
+		const run = await melian(["probe", "probes/first", "--trust-head"]);
+		// The probe passed, but the leftover downgrades the exit and prints a distinct warning naming the path.
+		expect(run.status).toBe(1);
+		expect(run.stdout).toBe("ok\nProbe: exited 0\n");
+		expect(run.stderr).toBe(
+			"melian: the probe's scratch could not be removed and was left at /tmp/melian-probe-x: EPERM: unlink\n",
+		);
 	});
 
 	it("says where the sandbox cannot run", async () => {

@@ -1,9 +1,19 @@
 import { spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+	chmodSync,
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	realpathSync,
+	rmSync,
+	statSync,
+	symlinkSync,
+	writeFileSync,
+} from "node:fs";
 import { createServer, type Server } from "node:net";
 import { homedir, tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { Probe, type ProbeInput, type ProbeOptions, type ProbeResult } from "../src/probe.ts";
 
@@ -38,13 +48,12 @@ afterEach(() => {
 	rmSync(outside, { recursive: true, force: true });
 });
 
+function opened(input: ProbeInput, options: Partial<ProbeOptions> = {}): Promise<Probe> {
+	return Probe.open(input, { worktree, writer: { trusted: true, by: "writer" }, trustWriters: true, ...options });
+}
+
 async function probed(input: ProbeInput, options: Partial<ProbeOptions> = {}): Promise<ProbeResult> {
-	const probe = await Probe.open(input, {
-		worktree,
-		writer: { trusted: true, by: "writer" },
-		trustWriters: true,
-		...options,
-	});
+	const probe = await opened(input, options);
 	try {
 		return await probe.run();
 	} finally {
@@ -100,6 +109,42 @@ describe.skipIf(!availability.available && !required)(
 			expect(results[join(worktree, "AGENTS.md")]).toBe("read");
 			for (const path of read) expect(results[path], path).not.toBe("read");
 		});
+
+		it.each(["[ab]", "star*", "what?", "{c,d}"])(
+			"denies .env and .git in a worktree named %j, whose glob characters do not widen the deny",
+			{ timeout: 60_000 },
+			async (name) => {
+				const named = realpathSync(mkdtempSync(join(tmpdir(), "melian-probe-glob-")));
+				const tree = join(named, name);
+				mkdirSync(join(tree, ".git"), { recursive: true });
+				writeFileSync(join(tree, ".git", "config"), "[core]\n");
+				writeFileSync(join(tree, ".env"), "TOKEN=x\n");
+				writeFileSync(join(tree, "AGENTS.md"), "inside\n");
+				try {
+					const results = outcomes(
+						await probed(
+							{
+								script: attempts,
+								files: [
+									{
+										path: "targets.json",
+										text: JSON.stringify({
+											read: [join(tree, ".env"), join(tree, ".git", "config"), join(tree, "AGENTS.md")],
+										}),
+									},
+								],
+							},
+							{ worktree: tree },
+						),
+					);
+					expect(results[join(tree, "AGENTS.md")]).toBe("read");
+					expect(results[join(tree, ".env")]).not.toBe("read");
+					expect(results[join(tree, ".git", "config")]).not.toBe("read");
+				} finally {
+					rmSync(named, { recursive: true, force: true });
+				}
+			},
+		);
 
 		it("cannot write outside its scratch directory", { timeout: 60_000 }, async () => {
 			const name = `melian-probe-${randomBytes(6).toString("hex")}`;
@@ -204,6 +249,47 @@ setInterval(() => {}, 1000);
 			expect(left.split("\n").filter((line) => line.includes(`sleep ${tag}`))).toEqual([]);
 		});
 
+		it("is bounded when a reparented grandchild holds stdout open past the deadline", {
+			timeout: 60_000,
+		}, async () => {
+			// The review's probe: `( exec /bin/sleep N ) &` leaves a grandchild holding stdout, so close never fires. The
+			// deadline must stop what it recorded and, after the grace, abandon the streams and return timedOut.
+			const tag = String(1_000_000 + Math.floor(Math.random() * 8_000_000));
+			const script = `
+import { spawn } from "node:child_process";
+// Detached so it reparents away from the probe and keeps the inherited stdout open.
+spawn("/bin/sh", ["-c", "exec /bin/sleep ${tag}"], { stdio: ["ignore", "inherit", "inherit"], detached: true }).unref();
+console.log("started");
+`;
+			const began = Date.now();
+			try {
+				const result = await probed({ script }, { timeout: 2_000 });
+				expect(result.timedOut).toBe(true);
+				expect(result.output).toContain("started");
+				expect(Date.now() - began).toBeLessThan(20_000);
+			} finally {
+				// The grandchild escapes the probe, as the decision documents; end it by its own pid, found by its tag.
+				for (const line of spawnSync("/bin/ps", ["-A", "-o", "pid=,args="], { encoding: "utf8" }).stdout.split(
+					"\n",
+				)) {
+					const match = /^\s*(\d+)\s+(.*)$/.exec(line);
+					if (match && match[2]!.includes(`sleep ${tag}`)) process.kill(Number(match[1]), "SIGKILL");
+				}
+			}
+		});
+
+		it("carries a binary fixture as bytes, not decoded as UTF-8", { timeout: 60_000 }, async () => {
+			const bytes = new Uint8Array([0, 1, 2, 0xff, 0xfe, 0x80, 0xc3, 0x28, 10]);
+			const script = `
+import { readFileSync } from "node:fs";
+const got = readFileSync(new URL("./fixture.bin", import.meta.url));
+console.log(JSON.stringify([...got]));
+`;
+			const result = await probed({ script, files: [{ path: "fixture.bin", bytes }] });
+			expect(result).toMatchObject({ exitCode: 0, timedOut: false });
+			expect(JSON.parse(result.output)).toEqual([...bytes]);
+		});
+
 		it("is cut at its output limit and ended", { timeout: 60_000 }, async () => {
 			const script = `
 const block = "x".repeat(65536);
@@ -233,6 +319,61 @@ console.log(sum(a, b));
 `;
 			const result = await probed({ script, files: [{ path: "fixture/input.json", text: '{"a":2,"b":3}' }] });
 			expect(result).toEqual({ exitCode: 0, signal: null, output: "5\n", truncated: false, timedOut: false });
+		});
+
+		it("close() never follows a survivor's symlink swap into a host directory", { timeout: 120_000 }, async () => {
+			// The review's attack: a double-forked survivor loops `rmdir d; symlink(<outside>, d)` on a fixed scratch
+			// directory while close() cleans up. If close() chmodded or listed by path, it would turn the outside
+			// directory and its subdirectory 0700. Across many runs the outside modes must not change.
+			const outside = realpathSync(mkdtempSync(join(tmpdir(), "melian-probe-victim-")));
+			mkdirSync(join(outside, "sub"));
+			chmodSync(outside, 0o500);
+			chmodSync(join(outside, "sub"), 0o500);
+			const tag = `swap-${randomBytes(6).toString("hex")}`;
+			const script = `
+import { spawn } from "node:child_process";
+const target = process.env.TMPDIR + "/victim";
+// A detached survivor that keeps swapping a directory in the writable scratch for a symlink to the outside directory.
+spawn("/bin/sh", ["-c", "while true; do rm -rf '" + target + "' 2>/dev/null; ln -s '${outside}' '" + target + "' 2>/dev/null; rm -f '" + target + "' 2>/dev/null; mkdir -p '" + target + "/run/home' 2>/dev/null; chmod 0 '" + target + "' 2>/dev/null; done # ${tag}"], { stdio: "ignore", detached: true }).unref();
+console.log("ready");
+`;
+			try {
+				for (let run = 0; run < 8; run++) {
+					const probe = await opened({ script });
+					await probe.run();
+					await probe.close();
+				}
+				expect(statSync(outside).mode & 0o777).toBe(0o500);
+				expect(statSync(join(outside, "sub")).mode & 0o777).toBe(0o500);
+			} finally {
+				for (const line of spawnSync("/bin/ps", ["-A", "-o", "pid=,args="], { encoding: "utf8" }).stdout.split(
+					"\n",
+				)) {
+					const match = /^\s*(\d+)\s+(.*)$/.exec(line);
+					if (match && match[2]!.includes(tag)) process.kill(Number(match[1]), "SIGKILL");
+				}
+				chmodSync(outside, 0o700);
+				chmodSync(join(outside, "sub"), 0o700);
+				rmSync(outside, { recursive: true, force: true });
+			}
+		});
+
+		it("leaves the scratch and reports it when the probe makes a file immutable", { timeout: 60_000 }, async () => {
+			// chflags uchg makes unlink fail with EPERM; the failure must not replace the probe's result, and close()
+			// reports the leftover rather than throwing.
+			if (process.platform !== "darwin") return;
+			const probe = await opened({
+				script: `import { writeFileSync } from "node:fs"; import { execFileSync } from "node:child_process"; const f = process.env.TMPDIR + "/locked"; writeFileSync(f, "x"); execFileSync("/usr/bin/chflags", ["uchg", f]); console.log("locked");`,
+			});
+			const result = await probe.run();
+			expect(result).toMatchObject({ exitCode: 0, output: "locked\n" });
+			const scratch = dirname(probe.policy.write[0]!);
+			const cleanup = await probe.close();
+			expect(cleanup).toMatchObject({ removed: false, leftover: scratch });
+			expect(existsSync(scratch)).toBe(true);
+			// The leftover is the test's to remove.
+			spawnSync("/usr/bin/chflags", ["-R", "nouchg", scratch]);
+			rmSync(scratch, { recursive: true, force: true });
 		});
 
 		it("does not receive the reviewer's JAVA_TOOL_OPTIONS", { timeout: 60_000 }, async () => {

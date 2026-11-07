@@ -1,11 +1,31 @@
 import { constants, existsSync, realpathSync, statSync } from "node:fs";
-import { chmod, mkdir, mkdtemp, open as openFile, readdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, open as openFile, rm, writeFile } from "node:fs/promises";
 import { homedir, platform, tmpdir } from "node:os";
 import { basename, dirname, join, posix, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { SandboxManager } from "@anthropic-ai/sandbox-runtime";
 import type { WriterTrust } from "./checks.ts";
-import { ProbeProcess } from "./probe-process.ts";
+import { closeGraceMs, ProbeProcess } from "./probe-process.ts";
+
+// The runner the sandbox executes: a watchdog that exits the probe at `deadline` milliseconds even if nothing outside
+// the sandbox stops it, then the probe's own module. The timer is unref'd, so a probe that finishes leaves at its own
+// exit code; a probe that hangs keeps the event loop alive until the timer fires and exits 124.
+function runnerSource(deadline: number): string {
+	return `const watchdog = setTimeout(() => process.exit(124), ${deadline});\nwatchdog.unref();\nawait import("./${scriptName}");\n`;
+}
+
+// Rejects with a {@link ProbeError} if `work` has not settled within `ms`, so a step that can hang, such as starting the
+// sandbox, cannot stall a caller unbounded. The timer is unref'd so it never keeps the process alive on its own.
+export function withBound<T>(work: Promise<T>, ms: number, message: string): Promise<T> {
+	return new Promise<T>((resolve, reject) => {
+		const timer = setTimeout(
+			() => reject(new ProbeError("sandboxUnavailable", `${message} within ${ms / 1000}s`)),
+			ms,
+		);
+		timer.unref();
+		work.then(resolve, reject).finally(() => clearTimeout(timer));
+	});
+}
 
 /** The bounds a probe runs within. A time or output limit past its `max` is refused. */
 export const probeLimits = {
@@ -15,12 +35,21 @@ export const probeLimits = {
 	files: 64,
 	fileBytes: 1_048_576,
 	path: 200,
+	/** How long starting the sandbox (open and wrap) may take, apart from the probe's own time limit. */
+	setup: 120_000,
 } as const;
 
-/** A fixture file a probe's script reads, at a relative path beside the script. */
+/** A fixture file a probe's script reads, at a relative path beside the script, as text or as raw bytes. */
 export interface ProbeFile {
 	readonly path: string;
-	readonly text: string;
+	readonly text?: string;
+	/** Raw bytes for a binary fixture, used in place of `text` and never decoded. */
+	readonly bytes?: Uint8Array;
+}
+
+/** The bytes a fixture carries, from its raw `bytes` or its `text`. */
+function fileBytes(file: ProbeFile): Uint8Array {
+	return file.bytes ?? Buffer.from(file.text ?? "");
 }
 
 /** A probe: a Node ES module, run as `probe.mjs` with its files beside it and the head's worktree as its directory. */
@@ -96,8 +125,14 @@ export class ProbeError extends Error {
 
 export type ProbeAvailability = { readonly available: true } | { readonly available: false; readonly reason: string };
 
+/** What {@link Probe.close} did: it removed the scratch, or it left it in place with the reason it could not remove it. */
+export type CleanupOutcome =
+	| { readonly removed: true }
+	| { readonly removed: false; readonly leftover: string; readonly reason: string };
+
 const segment = /^[A-Za-z0-9_][A-Za-z0-9._-]*$/;
 const scriptName = "probe.mjs";
+const runnerName = "run.mjs";
 
 // The operating system's programs and libraries, which Node and a shell need to start. They hold no user's data.
 const systemReads: Readonly<Record<"darwin" | "linux", readonly string[]>> = {
@@ -193,7 +228,7 @@ function validFiles(input: ProbeInput): readonly ProbeFile[] {
 	const files = input.files ?? [];
 	if (files.length > probeLimits.files)
 		throw new ProbeError("invalidProbe", `a probe has at most ${probeLimits.files} files`);
-	const seen = new Set<string>([scriptName]);
+	const seen = new Set<string>([scriptName, runnerName]);
 	let bytes = 0;
 	for (const file of files) {
 		const parts = file.path.split("/");
@@ -220,7 +255,7 @@ function validFiles(input: ProbeInput): readonly ProbeFile[] {
 				`a probe file's path collides with another: ${JSON.stringify(file.path)}`,
 			);
 		seen.add(key);
-		bytes += Buffer.byteLength(file.text);
+		bytes += fileBytes(file).length;
 	}
 	if (bytes > probeLimits.fileBytes)
 		throw new ProbeError("invalidProbe", `a probe's files hold at most ${probeLimits.fileBytes} bytes`);
@@ -342,25 +377,30 @@ export class RuntimeSandbox implements ProbeSandbox {
 // One per process, since sandbox-runtime's manager is.
 const runtime = new RuntimeSandbox();
 
-// Lets close() remove a directory the probe made unreadable to its owner, without following a symlink in its place. It
-// opens each directory with O_NOFOLLOW and changes the mode through that descriptor, so a symlink fails the open (ELOOP)
-// and is left for rm to remove by name. A mode-0 directory cannot be opened and fails with EACCES instead, which proves
-// it is a real directory, so it is chmod'd by path. run() stops every process the probe started before close() runs,
-// so nothing swaps an entry during the descent; a child that detached on macOS is the decision's documented residual.
-export async function makeWritable(path: string): Promise<void> {
-	let handle: Awaited<ReturnType<typeof openFile>> | undefined;
-	try {
-		handle = await openFile(path, constants.O_RDONLY | constants.O_DIRECTORY | constants.O_NOFOLLOW);
-	} catch (error) {
-		if ((error as NodeJS.ErrnoException).code !== "EACCES") return;
-		await chmod(path, 0o700);
-	}
-	try {
-		await handle?.chmod(0o700);
-		for (const child of await readdir(path, { withFileTypes: true }))
-			if (child.isDirectory()) await makeWritable(join(path, child.name));
-	} finally {
-		await handle?.close();
+// The scratch's own fixed directories, those close() may make writable so `rm` can remove them. `probe` and `run` sit
+// directly under the scratch, which the probe cannot write, so their names cannot be swapped; `run/home` and `run/tmp`
+// sit under the writable `run`, so a survivor could swap one for a symlink, and the open below guards against that.
+const fixedScratchDirs = ["probe", "run", join("run", "home"), join("run", "tmp")];
+
+// Makes each fixed scratch directory writable through an O_NOFOLLOW, O_DIRECTORY descriptor and changes its mode through
+// that descriptor alone. Cleanup never changes a mode or lists a directory by path: a survivor that swaps one of these
+// for a symlink to a host directory makes the open fail (ELOOP), which skips it, rather than chmodding the target. Every
+// component above each of these is a directory the probe cannot write, so the path cannot be swapped on the way down.
+// Anything the probe locked deeper inside `run` is left for `rm`; if `rm` then cannot remove it, close() reports it.
+export async function relaxScratch(scratch: string): Promise<void> {
+	for (const relative of ["", ...fixedScratchDirs]) {
+		let handle: Awaited<ReturnType<typeof openFile>> | undefined;
+		try {
+			handle = await openFile(
+				join(scratch, relative),
+				constants.O_RDONLY | constants.O_DIRECTORY | constants.O_NOFOLLOW,
+			);
+			await handle.chmod(0o700);
+		} catch {
+			// Gone, or swapped for a symlink, or already unopenable: leave it for rm, which close() reports if it blocks.
+		} finally {
+			await handle?.close();
+		}
 	}
 }
 
@@ -415,14 +455,19 @@ export class Probe {
 		try {
 			for (const path of ["probe", "run/home", "run/tmp"]) await mkdir(join(scratch, path), { recursive: true });
 			await writeFile(join(scratch, "probe", scriptName), input.script);
+			// A watchdog inside the runner exits the probe at its own limit even if the Melian process dies and so never
+			// stops it. It is a backstop past Melian's own deadline, so a running Melian stops the probe first; a
+			// grandchild that reparents away from the runner still escapes it, as the decision records.
+			await writeFile(join(scratch, "probe", runnerName), runnerSource(limits.timeout + closeGraceMs + 5_000));
 			for (const file of files) {
 				const target = join(scratch, "probe", ...file.path.split("/"));
 				await mkdir(dirname(target), { recursive: true });
-				await writeFile(target, file.text);
+				await writeFile(target, fileBytes(file));
 			}
-			await sandbox.open();
+			await withBound(sandbox.open(), probeLimits.setup, "the sandbox did not start");
 		} catch (error) {
-			await rm(scratch, { recursive: true });
+			await rm(scratch, { recursive: true, force: true }).catch(() => undefined);
+			if (error instanceof ProbeError) throw error;
 			throw new ProbeError("sandboxUnavailable", `the probe could not start: ${String(error)}`, { cause: error });
 		}
 		return new Probe(scratch, worktree, install, limits, sandbox);
@@ -489,18 +534,21 @@ export class Probe {
 		const home = join(this.#scratch, "run", "home");
 		const temporary = join(this.#scratch, "run", "tmp");
 		const node = realpathSync(process.execPath);
-		const command = `cd ${quote(this.#worktree)} && export HOME=${quote(home)} TMPDIR=${quote(temporary)} && exec ${quote(node)} ${quote(join(this.#scratch, "probe", scriptName))}`;
+		const command = `cd ${quote(this.#worktree)} && export HOME=${quote(home)} TMPDIR=${quote(temporary)} && exec ${quote(node)} ${quote(join(this.#scratch, "probe", runnerName))}`;
 		const chunks: Buffer[] = [];
 		let size = 0;
 		let truncated = false;
-		let timedOut = false;
+		let child: ProbeProcess | undefined;
 		try {
-			const argv = await this.#sandbox.wrap(command, this.policy).catch((error: unknown) => {
+			// Starting the sandbox is bounded apart from the run, so wrapping the command cannot hang unbounded before the
+			// probe's own time limit begins.
+			const wrapped = this.#sandbox.wrap(command, this.policy).catch((error: unknown) => {
 				throw new ProbeError("sandboxUnavailable", `the sandbox refused the probe: ${String(error)}`, {
 					cause: error,
 				});
 			});
-			const child = ProbeProcess.start(argv, {
+			const argv = await withBound(wrapped, probeLimits.setup, "the sandbox did not wrap the probe");
+			child = ProbeProcess.start(argv, {
 				cwd: this.#worktree,
 				env: {
 					PATH: `${dirname(node)}:/usr/bin:/bin`,
@@ -509,6 +557,7 @@ export class Probe {
 					// spawn leaves out a variable whose value is undefined.
 					LANG: process.env.LANG,
 				},
+				timeoutMs: this.#timeout,
 				output: (chunk) => {
 					if (truncated) return;
 					const room = this.#outputLimit - size;
@@ -516,37 +565,41 @@ export class Probe {
 						chunks.push(chunk.subarray(0, room));
 						size = this.#outputLimit;
 						truncated = true;
-						void child.stop().catch(() => undefined);
+						child?.cut();
 						return;
 					}
 					chunks.push(chunk);
 					size += chunk.length;
 				},
 			});
-			const timer = setTimeout(() => {
-				timedOut = true;
-				void child.stop().catch(() => undefined);
-			}, this.#timeout);
 			const exit = await child.wait();
-			clearTimeout(timer);
-			await child.stop();
 			const bytes = Buffer.concat(chunks);
 			// A cut at the output limit can fall inside a multi-byte character; decode only up to the last whole one.
 			const output = new TextDecoder().decode(truncated ? bytes.subarray(0, completeUtf8(bytes)) : bytes);
-			return { exitCode: exit.code, signal: exit.signal, output, truncated, timedOut };
+			return { exitCode: exit.code, signal: exit.signal, output, truncated, timedOut: exit.timedOut };
 		} finally {
+			await child?.stop();
 			this.#sandbox.cleanup();
 			this.#running = false;
 		}
 	}
 
-	/** Removes the scratch directory and releases the sandbox. Safe to call twice. */
-	async close(): Promise<void> {
-		if (this.#closed) return;
+	/**
+	 * Removes the scratch directory and releases the sandbox. Safe to call twice. A cleanup failure never throws: it
+	 * returns `{ removed: false }` with the leftover path, so it cannot replace the probe's result, and the scratch is
+	 * left in place rather than risking a host change. The sandbox is released either way.
+	 */
+	async close(): Promise<CleanupOutcome> {
+		if (this.#closed) return { removed: true };
 		this.#closed = true;
 		try {
-			await makeWritable(this.#scratch);
-			await rm(this.#scratch, { recursive: true });
+			await relaxScratch(this.#scratch);
+			await rm(this.#scratch, { recursive: true, force: true, maxRetries: 2, retryDelay: 50 });
+			return { removed: true };
+		} catch (error) {
+			const code = (error as NodeJS.ErrnoException).code;
+			if (code === "ENOENT") return { removed: true };
+			return { removed: false, leftover: this.#scratch, reason: String((error as Error).message ?? error) };
 		} finally {
 			await this.#sandbox.close();
 		}

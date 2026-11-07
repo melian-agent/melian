@@ -4,6 +4,7 @@ import {
 	mkdirSync,
 	mkdtempSync,
 	readdirSync,
+	readFileSync,
 	realpathSync,
 	rmSync,
 	statSync,
@@ -15,7 +16,6 @@ import { dirname, join, sep } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	completeUtf8,
-	makeWritable,
 	nodeReads,
 	Probe,
 	ProbeError,
@@ -24,7 +24,9 @@ import {
 	type ProbePolicy,
 	probeLimits,
 	RuntimeSandbox,
+	relaxScratch,
 	type SandboxRuntime,
+	withBound,
 } from "../src/probe.ts";
 
 // Probe's own rules, on a sandbox that runs the command unconfined and records what it was asked. Every script here is
@@ -187,11 +189,26 @@ describe("Probe.open", () => {
 		);
 		const { policy } = probe;
 		const root = dirname(policy.write[0]!);
-		expect(readdirSync(join(root, "probe")).sort()).toEqual(["a", "probe.mjs"]);
+		expect(readdirSync(join(root, "probe")).sort()).toEqual(["a", "probe.mjs", "run.mjs"]);
 		expect(readdirSync(join(root, "probe", "a")).sort()).toEqual(["b.json", "c-1_x.txt"]);
 		expect(policy.write).toEqual([join(root, "run")]);
+		// The runner carries a watchdog that exits the probe at its own limit even if nothing outside the sandbox stops
+		// it, and then loads the probe's module. It is unref'd, so a probe that finishes keeps its own exit code.
+		const runner = readFileSync(join(root, "probe", "run.mjs"), "utf8");
+		expect(runner).toMatch(/setTimeout\(\(\) => process\.exit\(124\),/);
+		expect(runner).toContain(".unref()");
+		expect(runner).toContain('import("./probe.mjs")');
 		await probe.close();
 		expect(existsSync(root)).toBe(false);
+	});
+
+	it("writes a binary fixture as its bytes, undecoded", async () => {
+		const { sandbox } = passthrough();
+		const bytes = new Uint8Array([0, 0xff, 0x80, 0xc3, 0x28]);
+		const probe = await Probe.open({ script: "", files: [{ path: "f.bin", bytes }] }, options(sandbox));
+		const root = dirname(probe.policy.write[0]!);
+		expect(new Uint8Array(readFileSync(join(root, "probe", "f.bin")))).toEqual(bytes);
+		await probe.close();
 	});
 
 	it.each([
@@ -385,6 +402,20 @@ describe("nodeReads", () => {
 	});
 });
 
+describe("withBound", () => {
+	it("rejects with a ProbeError when the work does not settle in time", async () => {
+		await expect(withBound(new Promise(() => {}), 20, "the sandbox did not wrap the probe")).rejects.toMatchObject({
+			code: "sandboxUnavailable",
+			message: "the sandbox did not wrap the probe within 0.02s",
+		});
+	});
+
+	it("passes a value and a rejection straight through when they settle in time", async () => {
+		await expect(withBound(Promise.resolve(7), 1000, "x")).resolves.toBe(7);
+		await expect(withBound(Promise.reject(new Error("boom")), 1000, "x")).rejects.toThrow("boom");
+	});
+});
+
 describe("completeUtf8", () => {
 	const at = (...bytes: number[]) => completeUtf8(Buffer.from(bytes));
 	it.each([
@@ -404,41 +435,51 @@ describe("completeUtf8", () => {
 	});
 });
 
-describe("makeWritable", () => {
+describe("relaxScratch", () => {
 	const descriptors = () => readdirSync("/dev/fd").length;
 
-	it("restores a read-only and a mode-0 directory so rm can remove them, and closes what it opened", async () => {
-		const root = join(scratch, "tree");
-		mkdirSync(join(root, "readonly"), { recursive: true });
-		writeFileSync(join(root, "readonly", "f"), "x");
-		mkdirSync(join(root, "locked", "inner"), { recursive: true });
-		writeFileSync(join(root, "locked", "inner", "f"), "x");
-		chmodSync(join(root, "readonly"), 0o500);
-		chmodSync(join(root, "locked", "inner"), 0);
-		chmodSync(join(root, "locked"), 0);
+	// Builds a scratch with the fixed directories close() may touch, and returns its root.
+	function scratchTree(): string {
+		const root = mkdtempSync(join(scratch, "scratch-"));
+		for (const relative of ["probe", "run/home", "run/tmp"]) mkdirSync(join(root, relative), { recursive: true });
+		return root;
+	}
+
+	it("makes each fixed directory writable through a descriptor, and closes what it opened", async () => {
+		const root = scratchTree();
+		for (const relative of ["", "probe", "run", "run/home", "run/tmp"]) chmodSync(join(root, relative), 0o500);
 		const before = descriptors();
-		await makeWritable(root);
+		await relaxScratch(root);
 		expect(descriptors()).toBe(before);
-		for (const path of ["readonly", "locked", "locked/inner"])
-			expect(statSync(join(root, path)).mode & 0o777, path).toBe(0o700);
+		for (const relative of ["", "probe", "run", "run/home", "run/tmp"])
+			expect(statSync(join(root, relative)).mode & 0o777, relative).toBe(0o700);
 		rmSync(root, { recursive: true });
 		expect(existsSync(root)).toBe(false);
 	});
 
-	it("leaves a symlink to an outside directory, and the directory, as they were", async () => {
-		const root = join(scratch, "tree");
-		mkdirSync(join(root, "run"), { recursive: true });
+	it("does not follow a symlink swapped for a fixed directory", async () => {
+		const root = scratchTree();
 		const outside = join(scratch, "outside");
 		mkdirSync(join(outside, "deeper"), { recursive: true });
 		chmodSync(outside, 0o755);
 		chmodSync(join(outside, "deeper"), 0o755);
+		rmSync(join(root, "run", "home"), { recursive: true });
 		symlinkSync(outside, join(root, "run", "home"));
-		await makeWritable(root);
+		await relaxScratch(root);
 		expect(statSync(outside).mode & 0o777).toBe(0o755);
 		expect(statSync(join(outside, "deeper")).mode & 0o777).toBe(0o755);
-		// The root itself handed in as the symlink is not followed either.
-		await makeWritable(join(root, "run", "home"));
-		expect(statSync(outside).mode & 0o777).toBe(0o755);
+	});
+
+	it("does not touch anything deeper than the fixed directories, which rm and close() report as a leftover", async () => {
+		const root = scratchTree();
+		const locked = join(root, "run", "tmp", "locked");
+		mkdirSync(locked);
+		chmodSync(locked, 0);
+		await relaxScratch(root);
+		// A directory the probe locked deeper inside run is left as it was; cleanup never recurses by path into it.
+		expect(statSync(locked).mode & 0o777).toBe(0);
+		chmodSync(locked, 0o700);
+		rmSync(root, { recursive: true });
 	});
 });
 
@@ -555,18 +596,38 @@ console.log(JSON.stringify({ marker: readFileSync("marker", "utf8"), home: proce
 		await probe.close();
 	});
 
-	it("removes a scratch directory the probe made unreadable", async () => {
+	it("removes a scratch whose only restrictive directories are the fixed ones", async () => {
 		const { sandbox } = passthrough();
 		const probe = await Probe.open(
 			{
-				script: `import { chmodSync, mkdirSync, writeFileSync } from "node:fs"; import { tmpdir } from "node:os"; mkdirSync(tmpdir() + "/locked/inner", { recursive: true }); writeFileSync(tmpdir() + "/locked/inner/f", "x"); chmodSync(tmpdir() + "/locked/inner", 0); chmodSync(tmpdir() + "/locked", 0);`,
+				script: `import { chmodSync } from "node:fs"; import { tmpdir } from "node:os"; chmodSync(tmpdir(), 0o500); chmodSync(process.env.HOME, 0o500);`,
 			},
 			options(sandbox),
 		);
 		const root = dirname(probe.policy.write[0]!);
 		expect((await probe.run()).exitCode).toBe(0);
-		await probe.close();
+		expect(await probe.close()).toEqual({ removed: true });
 		expect(existsSync(root)).toBe(false);
+	});
+
+	it("leaves the scratch and reports it when the probe locked a directory cleanup must not touch", async () => {
+		const { sandbox } = passthrough();
+		const probe = await Probe.open(
+			{
+				script: `import { chmodSync, mkdirSync } from "node:fs"; import { tmpdir } from "node:os"; mkdirSync(tmpdir() + "/locked/inner", { recursive: true }); chmodSync(tmpdir() + "/locked/inner", 0); chmodSync(tmpdir() + "/locked", 0);`,
+			},
+			options(sandbox),
+		);
+		const root = dirname(probe.policy.write[0]!);
+		expect((await probe.run()).exitCode).toBe(0);
+		const cleanup = await probe.close();
+		expect(cleanup).toMatchObject({ removed: false, leftover: root });
+		expect(existsSync(root)).toBe(true);
+		expect(sandbox.close).toHaveBeenCalledOnce();
+		// The leftover is the test's to remove.
+		chmodSync(join(root, "run", "tmp", "locked"), 0o700);
+		chmodSync(join(root, "run", "tmp", "locked", "inner"), 0o700);
+		rmSync(root, { recursive: true, force: true });
 	});
 });
 

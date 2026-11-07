@@ -50,7 +50,12 @@ function ended(root: EventEmitter, code: number | null, signal: NodeJS.Signals |
 	root.emit("close", code, signal);
 }
 
-function started(table: FakeTable, root = child(100), output: (chunk: Buffer) => void = () => {}) {
+function started(
+	table: FakeTable,
+	root = child(100),
+	output: (chunk: Buffer) => void = () => {},
+	more: Partial<Parameters<typeof ProbeProcess.start>[1]> = {},
+) {
 	const process = ProbeProcess.start(["/bin/true"], {
 		cwd: "/",
 		env: {},
@@ -59,6 +64,7 @@ function started(table: FakeTable, root = child(100), output: (chunk: Buffer) =>
 		interval: 1_000_000,
 		spawner: () => root,
 		sleep: async () => {},
+		...more,
 	});
 	return { process, root };
 }
@@ -132,7 +138,7 @@ describe("ProbeProcess", () => {
 		(root.stderr as PassThrough).write("err");
 		await new Promise((resolve) => setImmediate(resolve));
 		ended(root, 3, null);
-		expect(await probe.wait()).toEqual({ code: 3, signal: null });
+		expect(await probe.wait()).toEqual({ code: 3, signal: null, timedOut: false });
 		expect(chunks).toEqual(["out", "err"]);
 		await probe.stop();
 		expect(root.kills).toEqual([]);
@@ -153,7 +159,7 @@ describe("ProbeProcess", () => {
 		// wait() has not resolved on exit, so the result it builds will include the late output.
 		expect(settled).toBe(false);
 		root.emit("close", 0, null);
-		expect(await probe.wait()).toEqual({ code: 0, signal: null });
+		expect(await probe.wait()).toEqual({ code: 0, signal: null, timedOut: false });
 		expect(chunks).toEqual(["late"]);
 		await probe.stop();
 	});
@@ -162,7 +168,7 @@ describe("ProbeProcess", () => {
 		const table = new FakeTable([entry(100, 1)]);
 		const { process: probe, root } = started(table, child(undefined));
 		root.emit("error", new Error("ENOENT"));
-		expect(await probe.wait()).toEqual({ code: 127, signal: null });
+		expect(await probe.wait()).toEqual({ code: 127, signal: null, timedOut: false });
 		await probe.stop();
 		expect(probe.recorded).toEqual([]);
 		expect(table.kills).toEqual([]);
@@ -170,5 +176,37 @@ describe("ProbeProcess", () => {
 
 	it("refuses an empty command", () => {
 		expect(() => ProbeProcess.start([], { cwd: "/", env: {}, output: () => {} })).toThrow("a probe needs a command");
+	});
+
+	it("bounds the run at the deadline and resolves timedOut when a stream never closes", async () => {
+		// The child never emits close, as a reparented grandchild holding a stream would prevent. The deadline must stop
+		// the recorded tree and, after the grace, abandon the streams and resolve rather than wait forever.
+		const table = new FakeTable([entry(100, 1)]);
+		const { process: probe } = started(table, child(100), () => {}, { timeoutMs: 10, graceMs: 5 });
+		const exit = await probe.wait();
+		expect(exit.timedOut).toBe(true);
+		expect(table.kills).toEqual([[100, "SIGTERM"]]);
+	});
+
+	it("resolves not-timed-out when the deadline's stop lets the child close within the grace", async () => {
+		const table = new FakeTable([entry(100, 1)]);
+		let sleepResolve: (() => void) | undefined;
+		const { process: probe, root } = started(table, child(100), () => {}, {
+			timeoutMs: 1,
+			sleep: (ms) => (ms === 0 ? Promise.resolve() : new Promise<void>((r) => (sleepResolve = r))),
+		});
+		await new Promise((r) => setTimeout(r, 15));
+		ended(root, null, "SIGKILL");
+		expect(await probe.wait()).toEqual({ code: null, signal: "SIGKILL", timedOut: true });
+		sleepResolve?.();
+	});
+
+	it("scans the process table on its interval, finding a descendant that appears later", async () => {
+		const table = new FakeTable([entry(100, 1)]);
+		const { process: probe } = started(table, child(100), () => {}, { interval: 5 });
+		table.entries.push(entry(200, 100));
+		await new Promise((r) => setTimeout(r, 20));
+		expect(probe.recorded.map((p) => p.pid)).toEqual([100, 200]);
+		await probe.stop();
 	});
 });

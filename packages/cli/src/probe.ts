@@ -1,7 +1,14 @@
 import { lstat, readdir, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { visibleText } from "@melian-agent/core";
-import { Probe, ProbeError, type ProbeFile, type ProbeResult, probeLimits } from "@melian-agent/pipeline";
+import {
+	type CleanupOutcome,
+	Probe,
+	ProbeError,
+	type ProbeFile,
+	type ProbeResult,
+	probeLimits,
+} from "@melian-agent/pipeline";
 import type { Io } from "./commands.ts";
 import { git } from "./repository.ts";
 
@@ -25,7 +32,8 @@ async function directoryFiles(root: string, at: string, files: ProbeFile[], tota
 			total.bytes += entry.size;
 			if (total.bytes > probeLimits.fileBytes)
 				throw new ProbeError("invalidProbe", `a probe's files hold at most ${probeLimits.fileBytes} bytes`);
-			files.push({ path, text: await readFile(join(root, path), "utf8") });
+			// Carried as bytes, so a binary fixture is not corrupted by a UTF-8 decode.
+			files.push({ path, bytes: await readFile(join(root, path)) });
 		}
 		if (files.length > probeLimits.files)
 			throw new ProbeError("invalidProbe", `a probe has at most ${probeLimits.files} files`);
@@ -66,11 +74,14 @@ export async function probe(
 			trustWriters: true,
 			timeout,
 		});
+		// close() runs whether or not the probe ran, and never throws for a cleanup failure, so it cannot replace the
+		// result; it reports a leftover instead.
 		let result: ProbeResult;
+		let cleanup: CleanupOutcome = { removed: true };
 		try {
 			result = await opened.run();
 		} finally {
-			await opened.close();
+			cleanup = await opened.close();
 		}
 		if (options.json) io.stdout(`${JSON.stringify(result)}\n`);
 		else {
@@ -78,7 +89,11 @@ export async function probe(
 			if (result.output !== "") io.stdout(`${lines.split("\n").map(visibleText).join("\n")}\n`);
 			io.stdout(`${status(result, timeout)}\n`);
 		}
-		return result.exitCode === 0 && !result.timedOut && !result.truncated
+		if (!cleanup.removed)
+			io.stderr(
+				`melian: the probe's scratch could not be removed and was left at ${visibleText(cleanup.leftover)}: ${visibleText(cleanup.reason)}\n`,
+			);
+		return result.exitCode === 0 && !result.timedOut && !result.truncated && cleanup.removed
 			? probeExitCodes.passed
 			: probeExitCodes.failed;
 	} catch (error) {
