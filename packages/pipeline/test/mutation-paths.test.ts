@@ -47,6 +47,7 @@ describe("mutation paths", () => {
 			"packages/core/src/git.ts",
 			"packages/pipeline/src/cache-scratch.ts",
 			"packages/pipeline/src/mutation-process.ts",
+			"packages/pipeline/src/probe-process.ts",
 			"packages/pipeline/src/static.ts",
 		]);
 	});

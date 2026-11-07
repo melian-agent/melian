@@ -414,9 +414,27 @@ One manifest builds two execution environments:
 
 Where a tool comes from depends on what it loads. A tool whose configuration loads repository code, such as Biome, eslint, or tsc, comes from the checkout's lockfile install, as [the static tool binaries decision](decisions/2026-10-03-static-tool-binaries.md) sets. Its configuration and plugins are written for that version. Where the checkout installs none, Melian's own copy runs, and `melian doctor` says which one will. A standalone analyser, such as Opengrep or gitleaks, comes from Melian's manifest. Either way it executes inside the environment, never in the Melian process. Melian never depends on a host-installed analyser: version drift breaks finding identity, and the host is outside the trust boundary.
 
-Anthropic's sandbox-runtime, which Pi's own repository depends on, is a candidate for the local untrusted case on a machine without Docker.
+Anthropic's sandbox-runtime confines a lens's probes, as [Probes run in a sandbox](#probes-run-in-a-sandbox) sets out. It is not used for static tools.
 
 [Enola](design/trust-and-isolation.md#enola) is the first tool in the manifest. The first standalone analysers after it are Opengrep and gitleaks. Opengrep is the LGPL 2.1 fork of the Semgrep engine, which also stays LGPL 2.1. Melian does not use Semgrep's registry rules. Since 13 December 2024 they are under the [Semgrep Rules License v1.0](https://semgrep.dev/legal/rules-license), which allows them only for a user's internal business purposes and forbids distributing them or offering them as a service. Opengrep's fork of those rules keeps their earlier licence, LGPL 2.1 with the Commons Clause, which forbids selling them. Melian ships no Opengrep rules at first. gitleaks is the fast tier's secrets check.
+
+### Probes run in a sandbox
+
+Built in milestone 2 by [issue #285](https://github.com/melian-agent/melian/issues/285); [issue #288](https://github.com/melian-agent/melian/issues/288) gives the `trust-boundary` lens a level that runs them.
+
+Problem: on trust surfaces, a reviewer who runs something finds what a lens that reads cannot. Example: on [pull request #275](https://github.com/melian-agent/melian/pull/275), a head `biome.json` extending `/proc/<pid>/environ` would have put the runner's logins in a public comment, and only running Biome on such a file showed it. `melian compare stats` counts nine `needs-execution` misses.
+
+Solution: a lens may write a probe, a short Node script with its fixture files, and `Probe` in the pipeline runs it under [`@anthropic-ai/sandbox-runtime`](https://github.com/anthropics/sandbox-runtime), seatbelt on macOS and bubblewrap on Linux. A model wrote the script after reading the head, so the head's author can steer it; the probe is the agent case that [the unconfined decision](decisions/2026-10-14-static-checks-run-unconfined.md) left to a sandbox.
+
+- No network: an empty allow list on sandbox-runtime's proxy, and no network namespace on Linux.
+- A scratch `HOME` and `TMPDIR`, and an environment of `PATH`, `HOME`, `TMPDIR` and `LANG` alone.
+- Writes only to the probe's scratch directory. The script and its files are readable there but not writable, and sandbox-runtime's own `/tmp/claude` is denied.
+- Reads only of the head's worktree, a dependency install the caller names, Node's install, sandbox-runtime's own package, and the operating system's programs and libraries: `/bin`, `/sbin`, and `/usr`'s `bin`, `sbin`, `lib*`, `libexec` and `share`, with `/System` and `/private/var/select` on macOS and `/lib*` on Linux. Node does not start without its libraries and OpenSSL configuration, a shell needs its own, and Linux runs sandbox-runtime's seccomp helper from its package; the maintainer accepted these reads on 2026-11-07. `.git`, `.env*`, `melian.secrets.yaml` and `melian.local.yaml` in the worktree are denied.
+- A time limit and an output limit. The result is the exit code, the bounded output, whether it was cut, and whether the run timed out. Processes end by recorded pid, never by group.
+- A writer's head only, by the `WriterTrust` that `static.mutation` takes: a fork's head is refused, and so is a writer's under `trust.writers: false`.
+- Fail closed. Where sandbox-runtime does not support the platform, lacks a dependency or fails to start, a probe is refused with its reason and never runs unconfined. `melian doctor` runs an empty probe and prints whether it ran, and `melian probe <dir> --trust-head` runs one from the command line.
+
+What it gives up: the probe shares the reviewer's kernel, so an escape from sandbox-runtime or a kernel bug is an escape. On macOS a child that detaches between two scans of the process table outlives the probe, still confined. Linux needs unprivileged user namespaces, which Ubuntu 24.04 restricts by default. A microVM would give the probe its own kernel; it was deferred because it needs a VM runtime and nested virtualisation, which builders' VMs and Actions runners may lack. [The decision](decisions/2026-11-07-probes-run-under-sandbox-runtime.md) records the ruling and each limit.
 
 ## Interaction model
 
@@ -501,7 +519,7 @@ Match Pi's conventions unless there is a reason not to.
 | Code graph | Enola v0.4.27, pinned from its official release; `enola check` for static constraints, `enola impact --json` for advisory caller input, contract artifacts for identity and the verified graph cache (built, milestone 2) |
 | Durability | pi-durable, exact-pinned, wrapped behind one module |
 | Storage | memory for tests, SQLite locally, SQLite on the server (planned), JSONL on the state branch for Actions (planned, milestone 3) |
-| Execution | Node environment locally, container environment for untrusted code (planned, milestone 3) |
+| Execution | Node environment locally, container environment for untrusted code (planned, milestone 3); probes under `@anthropic-ai/sandbox-runtime` |
 | GitHub | Octokit, GitHub App auth on server and Actions (planned), `gh` token locally; git by shelling out |
 | Telemetry | Durable transcript intervals and task-scoped deterministic timings (milestone 2 step 31); pi-telemetry deferred until Pi Durable passes a context |
 | Code shape | Classes for objects with identity, state, or a lifecycle, and functions and readonly data for definitions, as in Pi; every query, change, and transform of a domain object is a method on it, and constructions are static factories, which departs from Pi's plain stored records because Melian's objects accumulate behaviour; `Finding`, `Defect`, `Verdict`, `Manifest`, `Lens`, `Revision`, and `Changeset` are classes over their stored JSON, so a document keeps its shape and the class is the runtime view; an outer package adapts a core object through a class of its own; the `free-domain-function` guardrail and Biome plugin enforce it, with no file excluded |
@@ -557,4 +575,4 @@ The coverage artifact classes and cache storage are built. Review coverage disti
 
 Melian’s committed Enola constraint forbids core importing the pipeline by package name, subpath or resolved relative path. The scratch proof caught all three forms. A directory-only selector missed the workspace alias, so named targets accompany the path rule. The broader harness-free test remains.
 
-Signal targets. Automatic mutation excludes Melian’s signal-sending production files: `packages/core/src/git.ts`, `packages/pipeline/src/cache-scratch.ts`, `packages/pipeline/src/mutation-process.ts` and `packages/pipeline/src/static.ts`. The last has a `kill -0` liveness probe, which is still a signal operation. Their contracts are proved on fake process controls. Keep this list in `mutation-paths.ts` current when adding signal code.
+Signal targets. Automatic mutation excludes Melian’s signal-sending production files: `packages/core/src/git.ts`, `packages/pipeline/src/cache-scratch.ts`, `packages/pipeline/src/mutation-process.ts`, `packages/pipeline/src/probe-process.ts` and `packages/pipeline/src/static.ts`. The last has a `kill -0` liveness probe, which is still a signal operation. Their contracts are proved on fake process controls. Keep this list in `mutation-paths.ts` current when adding signal code.
