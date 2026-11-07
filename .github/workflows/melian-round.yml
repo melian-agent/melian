@@ -122,9 +122,10 @@ jobs:
       artifact: ${{ steps.artifact.outputs.name }}
     steps:
       # A rerun of failed jobs alone bumps run_attempt for report but keeps this job's earlier attempt, so report reads
-      # the name from this output, never from its own run_attempt. The nonce marks this run's comment as its own. It goes
-      # to the report in the artefact, since Actions prints a step's env in the log, where another workflow could read it
-      # before this run posts.
+      # the name from this output, never from its own run_attempt. The nonce ties the run's comment to the run, for a rerun
+      # of the report and for a builder checking the comment. It goes to the report in the artefact, not a printed env.
+      # The artefact is public once uploaded, so the nonce guards against nothing that can read it: such a workflow can
+      # post a matching marker first, and the report then overwrites that comment with the round's own body.
       - id: artifact
         run: |
           echo "name=melian-round-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"

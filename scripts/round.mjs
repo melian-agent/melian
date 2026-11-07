@@ -42,9 +42,10 @@ export function headWriter(events, { sha, branch, author }) {
 	return author;
 }
 
-// Each run's comment opens with a marker naming the run and a nonce its round job drew, so a rerun of the report job
-// finds and updates that comment. The run's ID is public, and every workflow's token posts as one bot, so only the
-// nonce, which no other workflow can read before this run posts, makes the marker this run's.
+// Each run's comment opens with a marker naming the run and a nonce its round job drew and uploaded, so a rerun of the
+// report job finds and updates that comment, and a builder can tie the comment to its run. The nonce guards against
+// nothing that can read the run's artefact: a workflow that does can post a matching marker first, and the report then
+// overwrites that comment with the round's own body.
 export function marker(runId, nonce) {
 	const id = /^\d+$/.test(runId) ? runId : "unknown";
 	return `<!-- melian-round run:${id} nonce:${/^[0-9a-f]{32}$/.test(nonce) ? nonce : "unknown"} -->`;
