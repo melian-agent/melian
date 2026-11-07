@@ -8,8 +8,8 @@
   }
  ],
  "base": "ffb710e5030e18b573a7ecb717888b4619340b43",
- "head": "40b817d17362fe83eab55225b9b957c5e71c4061",
- "note": "Mutated files are identical at the pull request head; later commits change tests, probe-process.ts (a signal file, not mutated) and CI only.",
+ "head": "f210eac92dd966eb2fd67fed84f26285914956d8",
+ "note": "Mutants were run at 40b817d1, whose mutated files match this head; four rows the changed flood tests had killed were run again at this head.",
  "command": "node scripts/enumerate-mutants.mjs origin/main...HEAD --json --limit 10000",
  "runner": "each mutant applied in a throwaway worktree, its failing test found by a file run, then that test run alone by its anchored ancestorTitles > title pattern; a kill counts only when exactly one test was collected and it failed",
  "mutants": [
@@ -3491,8 +3491,8 @@
    "endColumn": 44,
    "mutatorName": "StringLiteral",
    "replacement": "\"\"",
-   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "failingTests": [
     "packages/cli/test/probe.test.ts > melian probe > under the sandbox > exits 1 for a probe that floods its output"
    ],
@@ -7105,20 +7105,15 @@
    "endColumn": 37,
    "mutatorName": "MethodExpression",
    "replacement": "parts",
-   "failingTests": [
-    "packages/cli/test/probe.test.ts > melian probe > under the sandbox > exits 1 for a probe that floods its output"
-   ],
-   "result": "killed",
-   "claim": "killed",
-   "evidence": "packages/cli/test/probe.test.ts > melian probe > under the sandbox > exits 1 for a probe that floods its output",
-   "exitCode": 1,
-   "collected": 1,
    "tests": [
     "packages/pipeline/test/probe.test.ts",
     "packages/pipeline/test/probe-sandbox.test.ts",
     "packages/cli/test/probe.test.ts"
    ],
-   "survivorClasses": []
+   "result": "survived",
+   "claim": "equivalent",
+   "survivorClasses": [],
+   "evidence": "Every prefix the mutant adds is the whole path, which the check on the path itself already refuses."
   },
   {
    "file": "packages/pipeline/src/probe.ts",
