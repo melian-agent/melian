@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { ChangesetError } from "./errors.ts";
 
+/** What a Git command exited with and printed. */
 export interface GitResult {
 	readonly code: number;
 	readonly stdout: string;
@@ -11,9 +12,14 @@ export interface GitResult {
 	readonly truncated?: boolean;
 }
 
+/** How to run a Git command: a cap on its output, its standard input, and variables to add to its environment. */
 export interface GitOptions {
 	// Stop git once stdout reaches this many bytes.
 	readonly maxBytes?: number;
+	// Written to git's standard input, which otherwise stays open and empty.
+	readonly input?: string;
+	// Set in git's environment after the repository-local variables are removed.
+	readonly env?: Readonly<Record<string, string>>;
 }
 
 // What `git rev-parse --local-env-vars` prints. A hook runs with these set for its own repository, and git honours
@@ -42,10 +48,12 @@ function gitEnvironment(): NodeJS.ProcessEnv {
 	return env;
 }
 
+/** Runs Git in cwd with repository-local environment variables removed, and resolves with its exit code and output. */
 export function git(cwd: string, args: readonly string[], options: GitOptions = {}): Promise<GitResult> {
 	return new Promise((resolve, reject) => {
 		// Melian only reads; optional locks would contend with an editor or a concurrent git.
-		const child = spawn("git", args, { cwd, env: gitEnvironment() });
+		const child = spawn("git", args, { cwd, env: { ...gitEnvironment(), ...options.env } });
+		if (options.input !== undefined) child.stdin.end(options.input);
 		const stdout: Buffer[] = [];
 		const stderr: Buffer[] = [];
 		let size = 0;
@@ -124,12 +132,14 @@ export async function gitOutput(cwd: string, args: readonly string[]): Promise<s
 	return result.stdout;
 }
 
+/** Runs a read-only Git command as `gitOutput` does, and returns its output undecoded. */
 export async function gitOutputBytes(cwd: string, args: readonly string[]): Promise<Buffer> {
 	const result = await git(cwd, args);
 	if (result.code !== 0) throw gitFailure(args, result);
 	return result.stdoutBytes;
 }
 
+/** The error a failed Git command raises, naming its subcommand and quoting what Git printed. */
 export function gitFailure(args: readonly string[], result: GitResult): ChangesetError {
 	return new ChangesetError("gitFailed", `git ${subcommand(args)} failed: ${result.stderr.trim()}`);
 }

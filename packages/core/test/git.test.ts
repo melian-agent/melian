@@ -1,6 +1,6 @@
 import { ChangesetError } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { checkGitVersion, gitOutput, requireGitVersion } from "../src/git.ts";
+import { checkGitVersion, git, gitOutput, requireGitVersion } from "../src/git.ts";
 import { gitIn, isolatedGitEnv, rejection, removeDirectory, temporaryDirectory } from "./fixtures/repo.ts";
 
 let repo: string;
@@ -43,5 +43,19 @@ describe("gitOutput", () => {
 		);
 		expect(error.code).toBe("gitFailed");
 		expect(error.message).toMatch(/^git diff failed: /);
+	});
+});
+
+describe("git", () => {
+	it("writes its input to git's standard input", async () => {
+		const result = await git(repo, ["hash-object", "--stdin"], { input: "melian\n" });
+		expect(result).toMatchObject({ code: 0, stdout: "a0f65a5c40a43bdb94fe28039ba991c097628f00\n" });
+	});
+
+	it("adds the variables it is given to git's environment", async () => {
+		const result = await git(repo, ["var", "GIT_COMMITTER_IDENT"], {
+			env: { GIT_COMMITTER_NAME: "Melian state", GIT_COMMITTER_EMAIL: "state@melian.invalid" },
+		});
+		expect(result.stdout).toMatch(/^Melian state <state@melian\.invalid> /);
 	});
 });
