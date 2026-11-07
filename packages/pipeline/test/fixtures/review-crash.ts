@@ -14,6 +14,8 @@
 // `replacement` first records a verdict, then parks in replacement triage after its decision commit.
 // `lowered-verdict` has the verifier confirm the claim and lower it one step, and parks once report_verdict has
 // committed, before the tool's result is stored and before adjudication.
+// `wave` lets correctness finish while contracts parks in its first model request, and parks once the wave that verifies
+// correctness's claim has committed its report_verdict, before the tool's result is stored.
 import { Changeset, type Decider, defaultConfig, Lens, severitySchema } from "@melian-agent/core";
 import { RecordedDecider } from "@melian-agent/decisions";
 import { AdjudicationTask } from "../../src/adjudication.ts";
@@ -70,6 +72,7 @@ const [scenario, repo, database, log] = process.argv.slice(2) as [
 		| "replacement"
 		| "lens-failover"
 		| "verifier-failover"
+		| "wave"
 	),
 	string,
 	string,
@@ -139,7 +142,7 @@ const parkedAdjudication = defineTask({
 const parked = defineExtension({
 	...lensExtension,
 	tools: lensExtension.tools?.map((tool) =>
-		tool.name === "report_verdict" && ["verdict", "conflicting-verdict", "lowered-verdict"].includes(scenario)
+		tool.name === "report_verdict" && ["verdict", "conflicting-verdict", "lowered-verdict", "wave"].includes(scenario)
 			? parkedVerdict
 			: tool.name === lensReadTools.read_file.name && ["read", "spent", "tokens"].includes(scenario)
 				? parkedRead
@@ -151,6 +154,7 @@ const parked = defineExtension({
 							"conflicting-verdict",
 							"lowered-verdict",
 							"verifier-failover",
+							"wave",
 						].includes(scenario)
 					? tool
 					: scenario === "legacy"
@@ -211,9 +215,10 @@ const correctness: Readonly<Record<typeof scenario, readonly ScriptedReply[]>> =
 	escalation: [toolUse("report_finding", crashFinding), done, requested("correctness")],
 	decision: [done],
 	replacement: [done],
+	wave: [toolUse("report_finding", crashFinding), done],
 };
 scriptConversations(fake, [
-	...(["verifier", "verdict", "conflicting-verdict", "lowered-verdict", "verifier-failover"].includes(scenario)
+	...(["verifier", "verdict", "conflicting-verdict", "lowered-verdict", "verifier-failover", "wave"].includes(scenario)
 		? [
 				{
 					match: "Melian adversarial verifier",
@@ -253,7 +258,9 @@ scriptConversations(fake, [
 	{
 		match: "You are the contracts reviewer",
 		replies: [
-			scenario === "request" || scenario === "callers" || scenario === "functions" ? requested("contracts") : done,
+			scenario === "request" || scenario === "callers" || scenario === "functions" || scenario === "wave"
+				? requested("contracts")
+				: done,
 		],
 	},
 ]);

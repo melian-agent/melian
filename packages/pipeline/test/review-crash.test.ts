@@ -93,7 +93,8 @@ async function killWhen(
 		| "decision"
 		| "replacement"
 		| "lens-failover"
-		| "verifier-failover",
+		| "verifier-failover"
+		| "wave",
 	reached: (events: ReturnType<typeof readEvents>) => boolean,
 	database: string,
 	log: string,
@@ -1181,6 +1182,63 @@ describe("verification across a crash", { timeout: 30_000 }, () => {
 		const after = await readFindings(harness, root.id, reviewedRevision(), context);
 		expect(after[0]!.properties.verification?.verdict).toBe("confirmed");
 		expect(requests["Melian adversarial verifier"]).toHaveLength(scenario === "verdict" ? 1 : 2);
+	});
+});
+
+describe("a wave of verification across a real kill", { timeout: 60_000 }, () => {
+	it("resumes after a wave's verdict commits and before the slower lens ends, without verifying the claim again", async () => {
+		const database = join(dir, "wave.sqlite");
+		const log = join(dir, "wave.jsonl");
+		await killWhen(
+			"wave",
+			(events) =>
+				count(events, "verdict-committed") === 1 &&
+				events.some((event) => event.event === "model-request" && event.lens === "contracts"),
+			database,
+			log,
+		);
+		const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }, { id: "medium" }] });
+		const requests = scriptConversations(fake, [
+			{ match: "You are the contracts reviewer", replies: [fauxAssistantMessage("Done.")] },
+			{
+				match: "Melian adversarial verifier",
+				replies: Array.from(
+					{ length: 4 },
+					() => (messages: Parameters<typeof scriptVerifier>[0]) => scriptVerifier(messages),
+				),
+			},
+		]);
+		harness = await openHarness(await openSqliteStorage(database), {
+			models: fake.models,
+			registry: createReviewRegistry(),
+			settings: { retry: { enabled: false } },
+		});
+		const heavy = fake.ref("heavy");
+		const medium = fake.ref("medium");
+		const { verdict, findings } = await reviewChangeset({
+			harness,
+			changeset: await Changeset.resolve(repo, "main...feature"),
+			config: {
+				...defaultConfig,
+				tiers: twoLensTiers,
+				models: {
+					medium: { model: `${medium.provider}/${medium.modelId}` },
+					heavy: { model: `${heavy.provider}/${heavy.modelId}` },
+				},
+			},
+			lenses: crashLenses(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"])),
+			standards: [],
+			checks: [],
+			models: fake.review,
+		});
+		expect(requests["You are the contracts reviewer"]).toHaveLength(1);
+		// The wave's replayed report reaches its verifier, which finishes. No conversation is asked to judge the claim
+		// afresh: the final step reuses the wave's outcome.
+		const verifier = requests["Melian adversarial verifier"]!;
+		expect(verifier).toHaveLength(1);
+		expect(toolResults(verifier[0]!).join("\n")).toContain("recorded verdict for c1");
+		expect(findings[0]!.properties.verification?.verdict).toBe("confirmed");
+		expect(verdict.ran?.find((check) => check.name === "verifier")?.status).toBe("ran");
 	});
 });
 
