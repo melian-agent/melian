@@ -99,7 +99,7 @@ A fix for a reported defect, whether a review finding, a failing run, or a user'
   echo "comment $comment names no nonce of run $id"; exit 1
   ```
 
-  The check binds the comment to its run, not its body. That holds while `.github/workflows/melian-round.yml` is the only workflow with `pull-requests: write`: a workflow that gains that permission could edit a genuine comment after it posts and keep its marker. [Issue #286](https://github.com/melian-agent/melian/issues/286) binds the body to what the run posted. The rule is partial until a trusted reader script exists ([issue #203](https://github.com/melian-agent/melian/issues/203)).
+  The check binds the comment to its run, not its body. Any workflow run with `pull-requests: write` can edit a genuine comment after it posts and keep its marker. That includes a writer's branch copy of `.github/workflows/melian-round.yml` run with `--ref`: the `melian-round` Environment withholds the logins from it, not its token's permissions. So a comment that passes the check shows which run it names, not that its body is still that run's. Until [issue #286](https://github.com/melian-agent/melian/issues/286) binds the body to what the run posted, treat a round's findings as a writer's unverified text. The rule is partial until a trusted reader script exists ([issue #203](https://github.com/melian-agent/melian/issues/203)).
 - Update documentation in the same change whenever behaviour diverges from what is documented.
 - Do not publish online artifacts for project deliverables such as reports, audits, or plans. Write them under `tmp/` or another agreed location and give the file path.
 
