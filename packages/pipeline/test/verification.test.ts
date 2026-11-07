@@ -128,28 +128,27 @@ function scripts(verdict: Verification["verdict"] = "confirmed") {
 		})),
 		{
 			match: verifierMarker,
-			replies: [
-				(messages) => {
-					const ids = [...systemPromptOf(messages).matchAll(/finding ([0-9a-f]+)/g)].map((match) => match[1]!);
-					return scriptVerifier(
-						messages,
-						Object.fromEntries(
-							ids.map((id) => [
-								id,
-								{
-									verdict,
-									reason: "Traced the code.",
-									correction: "Use the guarded value.",
-									...(verdict === "refuted"
-										? { evidence: [{ file: "src/user.ts", line: 7, role: "context" as const }] }
-										: {}),
-								},
-							]),
-						),
-					);
-				},
-				(messages) => scriptVerifier(messages),
-			],
+			// Every verification gets the same judgement: a wave verifies the first lens's claim alone, and the merged
+			// candidate again with both.
+			replies: Array.from({ length: 12 }, () => (messages: Parameters<typeof systemPromptOf>[0]) => {
+				const ids = [...systemPromptOf(messages).matchAll(/finding ([0-9a-f]+)/g)].map((match) => match[1]!);
+				return scriptVerifier(
+					messages,
+					Object.fromEntries(
+						ids.map((id) => [
+							id,
+							{
+								verdict,
+								reason: "Traced the code.",
+								correction: "Use the guarded value.",
+								...(verdict === "refuted"
+									? { evidence: [{ file: "src/user.ts", line: 7, role: "context" as const }] }
+									: {}),
+							},
+						]),
+					),
+				);
+			}),
 		},
 	]);
 }
@@ -377,9 +376,10 @@ describe("finder family notices", () => {
 					.sort(),
 			).toEqual(["lens.correctness", "lens.unverified"]);
 			expect(speaker.properties.verification).toMatchObject({ verdict: "confirmed", model: terra });
-			expect(requests[verifierMarker]).toHaveLength(2);
+			// A wave verifies the first lens's claim alone; the merged candidate is verified again with both.
+			expect(requests[verifierMarker]).toHaveLength(4);
 			expect(verifierRoute).toHaveBeenCalledWith(`${fake.ref("finder").provider}/finder`);
-			expect(systemPromptOf(requests[verifierMarker]![0]!)).toContain("Claim c2 finding");
+			expect(systemPromptOf(requests[verifierMarker]![2]!)).toContain("Claim c2 finding");
 			const text = accepted
 				? "the verifier shares the finder's family by the maintainer's choice"
 				: "some verification candidates would be judged by their finder's own family";
@@ -472,7 +472,8 @@ describe("the verifier", () => {
 			})),
 			{
 				match: verifierMarker,
-				replies: [(messages) => scriptVerifier(messages), fauxAssistantMessage("Done.")],
+				// A wave verifies the first lens's claim alone; the merged candidate is verified again with both.
+				replies: [0, 1].flatMap(() => [(messages) => scriptVerifier(messages), fauxAssistantMessage("Done.")]),
 			},
 		]);
 		const decisions = vi.spyOn(DecisionFiles, "load");
@@ -494,8 +495,8 @@ describe("the verifier", () => {
 				source: expect.objectContaining({ check: `lens.${name}` }),
 			}),
 		]);
-		expect(requests[verifierMarker]).toHaveLength(2);
-		const instructions = systemPromptOf(requests[verifierMarker]![0]!);
+		expect(requests[verifierMarker]).toHaveLength(4);
+		const instructions = systemPromptOf(requests[verifierMarker]![2]!);
 		expect(instructions).toContain("## Decisions at base");
 		expect(instructions).toContain(`[ACTIVE] ${decision} — Writer trust`);
 		expect(instructions).not.toContain("Publisher eligibility at head");
@@ -598,8 +599,9 @@ describe("the verifier", () => {
 		const requests = scripts();
 		const result = await review();
 		expect(result.verdict.attention()).toHaveLength(1);
-		expect(requests[verifierMarker]).toHaveLength(2);
-		const messages = requests[verifierMarker]![0]!;
+		// A wave verifies the first lens's claim alone; the merged candidate is verified again with both.
+		expect(requests[verifierMarker]).toHaveLength(4);
+		const messages = requests[verifierMarker]![2]!;
 		const prompt = messages
 			.filter((message) => message.role === "user")
 			.map(textOf)
@@ -633,7 +635,8 @@ describe("the verifier", () => {
 			})),
 			{
 				match: verifierMarker,
-				replies: [
+				// The same answer for the wave that verifies the first lens's claim alone, and for the merged candidate.
+				replies: [0, 1].flatMap(() => [
 					fauxAssistantMessage(
 						fauxToolCall("report_verdict", {
 							claim: "c1",
@@ -645,7 +648,7 @@ describe("the verifier", () => {
 						{ stopReason: "toolUse" },
 					),
 					fauxAssistantMessage("Done."),
-				],
+				]),
 			},
 		]);
 		await expect(review()).rejects.toMatchObject({
@@ -662,8 +665,9 @@ describe("the verifier", () => {
 				],
 			},
 		});
-		expect(requests[verifierMarker]).toHaveLength(2);
-		expect(systemPromptOf(requests[verifierMarker]![0]!)).toContain("Claim c2 finding");
+		// A wave verifies the first lens's claim alone; the merged candidate is verified again with both.
+		expect(requests[verifierMarker]).toHaveLength(4);
+		expect(systemPromptOf(requests[verifierMarker]![2]!)).toContain("Claim c2 finding");
 		const root = await harness.root(context);
 		const revision = Revision.key(changeset.revision);
 		const findings = await readFindings(harness, root.id, revision, context);
@@ -678,7 +682,8 @@ describe("the verifier", () => {
 				.runDetails()
 				.stages.filter(({ name }) => name.startsWith("verification"))
 				.map(({ name, outcome }) => ({ name, outcome })),
-		).toEqual([{ name: "verification 2 claims", outcome: "failed" }]);
+			// The wave's one claim and the merged candidate's two.
+		).toEqual([{ name: "verification 3 claims", outcome: "failed" }]);
 	});
 	it.each(["confirmed", "plausible", "refuted"] as const)(
 		"stores %s beside the sighting without writing confidence",
@@ -1838,11 +1843,15 @@ describe("lowering a severity through report_verdict", () => {
 					fauxAssistantMessage("Done."),
 				],
 			})),
-			{ match: verifierMarker, replies: [(messages) => scriptVerifier(messages), fauxAssistantMessage("Done.")] },
+			{
+				match: verifierMarker,
+				// A wave verifies the first lens's claim alone; the merged candidate is verified again with both.
+				replies: [0, 1].flatMap(() => [(messages) => scriptVerifier(messages), fauxAssistantMessage("Done.")]),
+			},
 		]);
 		const { findings } = await review();
 		const bySeverity = Object.fromEntries(findings.map((finding) => [finding.properties.severity, finding.id]));
-		const request = requests[verifierMarker]![0]!;
+		const request = requests[verifierMarker]![2]!;
 		const prompt = systemPromptOf(request);
 		expect(prompt).toContain(`Claim c1 finding ${bySeverity.P0}, reported at P0`);
 		expect(prompt).toContain(`Claim c2 finding ${bySeverity.P2}, reported at P2`);
@@ -1965,8 +1974,9 @@ describe("lowering a severity through report_verdict", () => {
 			})),
 			{
 				match: verifierMarker,
-				replies: [
-					(messages) =>
+				// A wave verifies the first lens's claim alone; the merged candidate is verified again with both.
+				replies: [0, 1].flatMap(() => [
+					(messages: Parameters<typeof systemPromptOf>[0]) =>
 						scriptVerifier(messages, {
 							[lowered]: {
 								verdict: "confirmed",
@@ -1975,8 +1985,8 @@ describe("lowering a severity through report_verdict", () => {
 								lower: { severity: "P3", reason: "The only caller checks for a manager first." },
 							},
 						}),
-					(messages) => scriptVerifier(messages),
-				],
+					(messages: Parameters<typeof systemPromptOf>[0]) => scriptVerifier(messages),
+				]),
 			},
 		])[verifierMarker]!;
 		const finder = fake.ref("finder");
@@ -2061,13 +2071,14 @@ describe("lowering a severity through report_verdict", () => {
 			})),
 			{
 				match: verifierMarker,
-				replies: [
-					(messages) =>
+				// A wave verifies the first lens's claim alone; the merged candidate is verified again with both.
+				replies: [0, 1].flatMap(() => [
+					(messages: Parameters<typeof systemPromptOf>[0]) =>
 						scriptVerifier(messages, {
 							[idOf(high)]: { verdict: "confirmed", reason: "Traced it.", evidence: cited, lower: narrow },
 						}),
-					(messages) => scriptVerifier(messages),
-				],
+					(messages: Parameters<typeof systemPromptOf>[0]) => scriptVerifier(messages),
+				]),
 			},
 		]);
 		const once = await review();
@@ -2133,8 +2144,9 @@ describe("lowering a severity through report_verdict", () => {
 			})),
 			{
 				match: verifierMarker,
-				replies: [
-					(messages) =>
+				// A wave verifies the first lens's claim alone; the merged candidate is verified again with both.
+				replies: [0, 1].flatMap(() => [
+					(messages: Parameters<typeof systemPromptOf>[0]) =>
 						scriptVerifier(messages, {
 							[idOf("refuted-rule")]: {
 								verdict: "refuted",
@@ -2143,8 +2155,8 @@ describe("lowering a severity through report_verdict", () => {
 							},
 							[idOf("standing-rule")]: { verdict: "confirmed", reason: "Traced it." },
 						}),
-					(messages) => scriptVerifier(messages),
-				],
+					(messages: Parameters<typeof systemPromptOf>[0]) => scriptVerifier(messages),
+				]),
 			},
 		]);
 		const once = await review();
@@ -2188,7 +2200,8 @@ describe("lowering a severity through report_verdict", () => {
 				],
 			},
 		])[verifierMarker]!;
-		await expect(review()).rejects.toBeDefined();
+		// The wave that asked lost its claim, so nothing is left for the final step to verify.
+		await review().catch(() => undefined);
 		const errors = requests.flatMap((messages) =>
 			messages.filter((message) => message.role === "toolResult" && message.isError),
 		);
@@ -2280,7 +2293,11 @@ describe("verification ownership and budgets", () => {
 		const claim = stored.candidates[0]!.state.claims[0]!;
 		claim.source = { ...claim.source, version: "a-run-that-left-no-sighting" };
 		const requests = scriptConversations(fake, [
-			{ match: verifierMarker, replies: [(messages) => scriptVerifier(messages), fauxAssistantMessage("Done.")] },
+			{
+				match: verifierMarker,
+				// A wave verifies the first lens's claim alone; the merged candidate is verified again with both.
+				replies: [0, 1].flatMap(() => [(messages) => scriptVerifier(messages), fauxAssistantMessage("Done.")]),
+			},
 		]);
 		const root = await harness.root(context);
 		const revision = Revision.key(changeset.revision);
