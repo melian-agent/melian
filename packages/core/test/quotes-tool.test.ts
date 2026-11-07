@@ -146,6 +146,7 @@ describe("Verdict.quotesTool", () => {
 			verdict([], [failed("static.tsc", tscNow.replace("-p tsconfig.json", "-p other.json"))]).quotesTool(),
 		).toBe(true);
 		expect(verdict([], [failed("static.biome", `${biomeNow} ghp`)]).quotesTool()).toBe(true);
+		expect(verdict([], [failed("static.tsc", `${tscNow} ghp`)]).quotesTool()).toBe(true);
 		expect(
 			verdict(
 				[],

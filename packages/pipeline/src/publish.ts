@@ -853,8 +853,7 @@ function publishTask(provider: ReviewProvider) {
 						await runtime.commit(async (tx) => {
 							const document = await tx.doc(PublishedDocument, root);
 							const record = document.revisions[head]!;
-							const { ledger } = pending;
-							if (ledger !== undefined)
+							if (pending.ledger !== undefined)
 								document.ledgerRounds = [
 									...(document.ledgerRounds ?? []).map((round) =>
 										"verdict" in round
@@ -867,14 +866,14 @@ function publishTask(provider: ReviewProvider) {
 											: round,
 									),
 									// A recovered round an older build planned keeps only its status, not its tool text.
-									Verdict.from(ledger.verdict).quotesTool()
+									Verdict.from(pending.ledger.verdict).quotesTool()
 										? {
-												base: ledger.base,
-												head: ledger.head,
-												round: ledger.round,
-												status: ledger.verdict.status,
+												base: pending.ledger.base,
+												head: pending.ledger.head,
+												round: pending.ledger.round,
+												status: pending.ledger.verdict.status,
 											}
-										: structuredClone(ledger),
+										: structuredClone(pending.ledger),
 								].slice(-maxLedgerRounds);
 							record.reviews = [...record.reviews, posted.id];
 							record.verdict = pending.fingerprint;
