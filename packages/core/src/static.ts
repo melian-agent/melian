@@ -378,9 +378,16 @@ async function identify(
 		const unlocated =
 			tool === "enola" && path === "enola-intent.yaml" && Object.keys(region).length === 1 && region.startLine === 1;
 		const byCode = !unlocated && text !== undefined && snippet !== undefined && normaliseSnippet(snippet) !== "";
+		// Biome's and tsc's messages are withheld, so a result with no code to go by is told apart by its place, and one the
+		// base lacks at that place is introduced.
 		const identity = byCode
 			? { snippet, occurrence: snippetOccurrence(text, snippet, { startLine: region.startLine, endLine }) }
-			: { discriminator: result.message.text };
+			: {
+					discriminator:
+						tool === "biome" || tool === "tsc"
+							? `line ${region.startLine}, column ${region.startColumn ?? 1}`
+							: result.message.text,
+				};
 		const id = findingId({ file: pathAtHead(path), rule, snippet: identity.snippet ?? "", ...identity });
 		const earlier = identified.get(id);
 		identified.set(

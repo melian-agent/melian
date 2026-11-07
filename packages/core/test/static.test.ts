@@ -539,6 +539,54 @@ describe("staticFindings", () => {
 		]);
 	});
 
+	// A file too large to read has no code to identify a result by, and Biome's and tsc's messages are withheld.
+	it("reads a result in a file too large to read as introduced unless the base has one at the same place", async () => {
+		const filler = `// ${"x".repeat(4 * 1024 * 1024)}`;
+		const base = commit({ "huge.ts": lines("export const a: number = 'x';", "export const b = 2;", filler) });
+		const head = commit({ "huge.ts": lines("export const a = 1;", "export const b: number = 'y';", filler) });
+		const { revision } = await Changeset.resolve(repo, `${base}..${head}`);
+		const at = (startLine: number, startColumn: number): ToolLog => ({
+			version: "2.1.0",
+			runs: [
+				{
+					tool: { driver: { name: "tsc", version: "7.0.2" } },
+					results: [
+						{
+							ruleId: "TS2322",
+							level: "error",
+							message: { text: "tsc's own text" },
+							locations: [
+								{
+									physicalLocation: {
+										artifactLocation: { uri: "huge.ts" },
+										region: { startLine, startColumn },
+									},
+								},
+							],
+						},
+					],
+				},
+			],
+		});
+		const causes = async (baseLog: ToolLog, headLog: ToolLog) =>
+			(
+				await staticFindings({
+					repoRoot: repo,
+					revision,
+					tool: "tsc",
+					settings: defaultConfig.static.tsc,
+					base: baseLog,
+					head: headLog,
+				})
+			).findings.map((finding) => [finding.properties.cause, finding.properties.discriminator]);
+		expect(await causes(at(1, 14), at(2, 14))).toEqual([["introduced", "line 2, column 14"]]);
+		expect(await causes(at(2, 13), at(2, 14))).toEqual([["introduced", "line 2, column 14"]]);
+		expect(await causes(at(2, 14), at(2, 14))).toEqual([["pre-existing", "line 2, column 14"]]);
+		const unplaced = at(2, 1);
+		delete unplaced.runs[0].results[0]!.locations[0]!.physicalLocation.region.startColumn;
+		expect(await causes(at(2, 1), unplaced)).toEqual([["pre-existing", "line 2, column 1"]]);
+	});
+
 	// Issue #281: Biome and tsc quote files a head leads them to, outside the checkout too.
 	it("gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message", async () => {
 		const base = commit({ "a.ts": lines("export const a = 1;") });
