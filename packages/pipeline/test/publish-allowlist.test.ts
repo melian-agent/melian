@@ -180,12 +180,6 @@ it.each(cases)("posts nothing of %s on a Biome or tsc result", async (_field, fi
 			};
 		}, context);
 		expect(JSON.stringify(await recorded.harness.snapshot(VerdictDocument, root.id, context))).toContain(token);
-		console.log(
-			"DBGM",
-			JSON.stringify(
-				(await recorded.harness.snapshot(VerdictDocument, root.id, context))?.verdicts[key]?.findings,
-			).slice(0, 1500),
-		);
 		await recorded.record(key);
 		const adjudication = (await recorded.harness.snapshot(ReviewIndexOf, root.id, context))!.reviews[key]!
 			.adjudication!.task;

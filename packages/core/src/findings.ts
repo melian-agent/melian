@@ -829,6 +829,17 @@ function withProof(own: FindingEvidence | undefined, proof: readonly EvidenceLoc
 }
 
 /**
+ * The message Melian stores for a Biome or tsc result of Melian rule `rule`, in place of the tool's own text, which can
+ * quote files outside the checkout.
+ */
+export function withheldToolText(check: "static.biome" | "static.tsc", rule: string): string {
+	// tsc may have checked a named project, or the projects a solution references, so the sentence points there.
+	const [name, command] =
+		check === "static.biome" ? ["Biome", "biome lint"] : ["tsc", "tsc --noEmit with the project Melian checked"];
+	return `${name} reports ${rule} here. Melian keeps none of ${name}'s text; run ${command} at this commit to read its message.`;
+}
+
+/**
  * One objection, as a SARIF 2.1.0 `result`: a runtime view over a {@link StoredFinding}, holding its fields as they are
  * stored, so `toJSON()` gives back the stored shape and a Pi Durable document stays JSON.
  *
@@ -836,15 +847,6 @@ function withProof(own: FindingEvidence | undefined, proof: readonly EvidenceLoc
  * first location's file, the rule, that location's snippet, and `properties.occurrence` or `properties.discriminator`.
  * {@link Finding.create} derives both, and {@link Finding.parse} rejects a finding where either disagrees.
  */
-/**
- * The message Melian stores for a Biome or tsc result of Melian rule `rule`, in place of the tool's own text, which can
- * quote files outside the checkout.
- */
-export function withheldToolText(check: "static.biome" | "static.tsc", rule: string): string {
-	const [name, command] = check === "static.biome" ? ["Biome", "biome lint"] : ["tsc", "tsc --noEmit"];
-	return `${name} reports ${rule} here. Melian keeps none of ${name}'s text; run ${command} at this commit to read its message.`;
-}
-
 export class Finding {
 	readonly ruleId: string;
 	readonly level: SarifLevel;

@@ -168,7 +168,7 @@ describe("staticSeverity", () => {
 describe("staticFindings", () => {
 	let repo: string;
 	const said = (rule: string) =>
-		`tsc reports ${rule} here. Melian keeps none of tsc's text; run tsc --noEmit at this commit to read its message.`;
+		`tsc reports ${rule} here. Melian keeps none of tsc's text; run tsc --noEmit with the project Melian checked at this commit to read its message.`;
 
 	beforeEach(() => {
 		for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
