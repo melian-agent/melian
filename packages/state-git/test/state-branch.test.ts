@@ -305,7 +305,7 @@ describe("Codex's review of d449ec6", () => {
 	});
 
 	it.each([
-		["no index.json", (index: string, changesets: string) => `040000 tree ${changesets}\tchangesets\n`],
+		["no index.json", (_index: string, changesets: string) => `040000 tree ${changesets}\tchangesets\n`],
 		["no changesets tree", (index: string) => `100644 blob ${index}\tindex.json\n`],
 		[
 			"index.json as a tree",
