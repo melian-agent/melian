@@ -92,7 +92,8 @@ jobs:
           node-version: 24
       # The writer decision trusts a head only when the identity that pushed that exact commit holds write permission,
       # so a writer dispatching a round on a bot's branch is not enough. Every page of push events is read; a failed
-      # read fails this step, and no later job holds a secret.
+      # read fails this step, and no later job holds a secret. A head no push event names is refused too, never taken
+      # as the pull request author's: the feed keeps 300 events and can lag by hours, so a bot's push may be missing.
       - name: Refuse a head its pusher could not have written
         env:
           GH_TOKEN: ${{ github.token }}
@@ -100,11 +101,10 @@ jobs:
           HEAD: ${{ steps.pull.outputs.head }}
         run: |
           branch=$(jq -r .head.ref "$RUNNER_TEMP/pull.json")
-          author=$(jq -r '.user.login // ""' "$RUNNER_TEMP/pull.json")
           gh api --paginate "repos/$REPOSITORY/events?per_page=100" \
             --jq '.[] | select(.type == "PushEvent") | {actor: .actor.login, head: .payload.head, ref: .payload.ref} | tojson' \
             > "$RUNNER_TEMP/pushes.jsonl"
-          writer=$(node scripts/round-writer.mjs "$RUNNER_TEMP/pushes.jsonl" "$HEAD" "$branch" "$author")
+          writer=$(node scripts/round-writer.mjs "$RUNNER_TEMP/pushes.jsonl" "$HEAD" "$branch")
           permission=$(gh api "repos/$REPOSITORY/collaborators/$writer/permission" --jq .permission) || permission=""
           case "$permission" in
             admin|maintain|write) echo "$writer, whose code the head is, has $permission permission" ;;

@@ -9,7 +9,7 @@ import { headWriter } from "./round.mjs";
 const script = fileURLToPath(new URL("./round-writer.mjs", import.meta.url));
 const sha = "1".repeat(40);
 const other = "2".repeat(40);
-const head = { sha, branch: "feature", author: "author-login" };
+const head = { sha, branch: "feature" };
 const push = (actor, overrides = {}) => JSON.stringify({ actor, head: sha, ref: "refs/heads/feature", ...overrides });
 const scratch = [];
 
@@ -35,17 +35,11 @@ describe("headWriter", () => {
 		expect(headWriter(events, head)).toBe("dependabot[bot]");
 	});
 
-	it("falls back to the pull request's author when no push event names the head", () => {
-		expect(headWriter(`${push("someone-else", { head: other })}\n`, head)).toBe("author-login");
-		expect(headWriter("", head)).toBe("author-login");
-	});
-
-	it("refuses when no push event names the head and the pull request names no author", () => {
-		for (const author of ["", undefined]) {
-			expect(() => headWriter("", { ...head, author })).toThrow(
-				/^no push event names the head, and the pull request names no author$/,
-			);
-		}
+	it("refuses a head no push event names, whoever wrote the pull request, rather than trust its author", () => {
+		const missing =
+			/^no push event names this head on this branch; GitHub's events feed can lag by hours and keeps only the latest 300, so start the round again later$/;
+		expect(() => headWriter(`${push("someone-else", { head: other })}\n`, head)).toThrow(missing);
+		expect(() => headWriter("", head)).toThrow(missing);
 	});
 
 	it("refuses a matching event that names no pushing identity, rather than fall back", () => {
@@ -68,12 +62,12 @@ describe("the command", () => {
 	};
 
 	it("prints the login alone", () => {
-		const ran = run(`${push("pusher")}\n`, sha, "feature", "author-login");
+		const ran = run(`${push("pusher")}\n`, sha, "feature");
 		expect([ran.status, ran.stdout, ran.stderr]).toEqual([0, "pusher", ""]);
 	});
 
 	it("exits 1 with nothing on standard output when the events cannot say", () => {
-		const ran = run(push(""), sha, "feature", "author-login");
+		const ran = run(push(""), sha, "feature");
 		expect([ran.status, ran.stdout, ran.stderr]).toEqual([
 			1,
 			"",
@@ -86,7 +80,7 @@ describe("the command", () => {
 		expect([ran.status, ran.stdout, ran.stderr]).toEqual([
 			64,
 			"",
-			"usage: node scripts/round-writer.mjs <events.jsonl> <head SHA> <head branch> <author>\n",
+			"usage: node scripts/round-writer.mjs <events.jsonl> <head SHA> <head branch>\n",
 		]);
 	});
 });
