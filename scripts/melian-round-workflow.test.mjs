@@ -42,6 +42,12 @@ describe("the melian round workflow", () => {
 		expect(printed).toEqual([]);
 		const drawn = workflow.jobs.round.steps.find((step) => step.id === "artifact");
 		expect(drawn.run).toContain('openssl rand -hex 16 > "$RUNNER_TEMP/public/nonce"');
+		// When the round began, recorded before any head code runs, so a report-only rerun reads the first attempt's.
+		expect(drawn.run).toContain('echo "started=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"');
+		expect(workflow.jobs.round.outputs.started).toBe(actions("steps.artifact.outputs.started"));
+		// The status step reads the pull request's base policy, so the report job's checkout holds the history.
+		const checkout = workflow.jobs.report.steps.find((step) => step.uses?.startsWith("actions/checkout@"));
+		expect(checkout.with).toEqual({ "fetch-depth": 0, "persist-credentials": false });
 	});
 
 	it("refuses, before any step holds a login, a commit the default branch has moved past", () => {
@@ -557,7 +563,7 @@ describe("the melian round workflow", () => {
 				[
 					"#!/bin/sh",
 					'if [ "$*" = "api repos/o/r/pulls/7 --jq .base.sha + \\" \\" + .head.sha" ]; then [ -n "$NOW" ] && echo "$NOW"; exit; fi',
-					'if [ "$1 $2 $3" = "api repos/o/r/commits/$HEAD/statuses?per_page=100 --jq" ] && [ "$#" = 4 ]; then printf "%s" "$STATUSES" | jq -r "$4"; exit; fi',
+					'if [ "$1 $2 $3" = "api repos/o/r/commits/$HEAD/statuses?per_page=100 --jq" ] && [ "$#" = 4 ]; then [ "$STATUSES" = unreadable ] && exit 1; printf "%s" "$STATUSES" | jq -r "$4"; exit; fi',
 					'[ "$*" = "api -X POST repos/o/r/statuses/$HEAD --input -" ] && [ "$GH_TOKEN" = status-token ] && cat > "$POSTED" && exit 0',
 					"exit 1",
 					"",
@@ -612,7 +618,7 @@ describe("the melian round workflow", () => {
 						RUN_URL: "https://example.test/run",
 						RUN_ID: "9",
 						NOW: now,
-						STATUSES: JSON.stringify(statuses),
+						STATUSES: typeof statuses === "string" ? statuses : JSON.stringify(statuses),
 						POSTED: posted,
 					},
 				});
@@ -693,6 +699,16 @@ describe("the melian round workflow", () => {
 			const other = (context, created_at) => ({ context, created_at, state: "failure" });
 			expect(step({ statuses: [other("melian/review", "2026-11-07T10:00:01Z")] })).toEqual(newer);
 			expect(step({ since: "" })).toEqual(newer);
+			expect(step({ statuses: "unreadable" })).toEqual(newer);
+			// GitHub lists a commit's statuses newest first, so the first melian/review is the latest.
+			expect(
+				step({
+					statuses: [
+						other("melian/review", "2026-11-07T10:30:00Z"),
+						other("melian/review", "2026-11-07T09:00:00Z"),
+					],
+				}),
+			).toEqual(newer);
 			expect(
 				step({ statuses: [other("ci", "2026-11-07T11:00:00Z"), other("melian/review", "2026-11-07T10:00:00Z")] }),
 			).toEqual(set("success", `Passed${suffix}`));
