@@ -1,0 +1,1497 @@
+{
+	"range": "origin/main...1a16ccb1; rows with inPass true are 83eefd03...1a16ccb1",
+	"mutants": [
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 385,
+			"column": 5,
+			"endLine": 390,
+			"endColumn": 5,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > keeps the same unlocated Enola result pre-existing",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^staticFindings > keeps the same unlocated Enola result pre-existing$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 387,
+			"column": 6,
+			"endLine": 387,
+			"endColumn": 40,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > identifies an unlocated Enola result by its message though the intent file has code on line 1",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^staticFindings > identifies an unlocated Enola result by its message though the intent file has code on line 1$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 387,
+			"column": 6,
+			"endLine": 387,
+			"endColumn": 40,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 387,
+			"column": 6,
+			"endLine": 387,
+			"endColumn": 40,
+			"mutatorName": "LogicalOperator",
+			"replacement": "tool === \"biome\" && tool === \"tsc\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 387,
+			"column": 6,
+			"endLine": 387,
+			"endColumn": 22,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 387,
+			"column": 6,
+			"endLine": 387,
+			"endColumn": 22,
+			"mutatorName": "EqualityOperator",
+			"replacement": "tool !== \"biome\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > identifies an unlocated Enola result by its message though the intent file has code on line 1",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^staticFindings > identifies an unlocated Enola result by its message though the intent file has code on line 1$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 387,
+			"column": 15,
+			"endLine": 387,
+			"endColumn": 22,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 387,
+			"column": 26,
+			"endLine": 387,
+			"endColumn": 40,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 387,
+			"column": 26,
+			"endLine": 387,
+			"endColumn": 40,
+			"mutatorName": "EqualityOperator",
+			"replacement": "tool !== \"tsc\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > identifies an unlocated Enola result by its message though the intent file has code on line 1",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^staticFindings > identifies an unlocated Enola result by its message though the intent file has code on line 1$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 387,
+			"column": 35,
+			"endLine": 387,
+			"endColumn": 40,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 388,
+			"column": 9,
+			"endLine": 388,
+			"endColumn": 70,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 388,
+			"column": 45,
+			"endLine": 388,
+			"endColumn": 68,
+			"mutatorName": "LogicalOperator",
+			"replacement": "region.startColumn && 1",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 403,
+			"column": 65,
+			"endLine": 403,
+			"endColumn": 109,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reports a second result added beside an old one on the same lines as introduced",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^staticFindings > reports a second result added beside an old one on the same lines as introduced$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 403,
+			"column": 74,
+			"endLine": 403,
+			"endColumn": 86,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 403,
+			"column": 93,
+			"endLine": 403,
+			"endColumn": 107,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reports a second result added beside an old one on the same lines as introduced",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^staticFindings > reports a second result added beside an old one on the same lines as introduced$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 407,
+			"column": 66,
+			"endLine": 417,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > keeps the same unlocated Enola result pre-existing",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^staticFindings > keeps the same unlocated Enola result pre-existing$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 408,
+			"column": 5,
+			"endLine": 408,
+			"endColumn": 39,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reports a second result added beside an old one on the same lines as introduced",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^staticFindings > reports a second result added beside an old one on the same lines as introduced$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 408,
+			"column": 5,
+			"endLine": 408,
+			"endColumn": 39,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > keeps the same unlocated Enola result pre-existing",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^staticFindings > keeps the same unlocated Enola result pre-existing$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 408,
+			"column": 5,
+			"endLine": 408,
+			"endColumn": 39,
+			"mutatorName": "LogicalOperator",
+			"replacement": "tool !== \"biome\" || tool !== \"tsc\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reports a second result added beside an old one on the same lines as introduced",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^staticFindings > reports a second result added beside an old one on the same lines as introduced$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 408,
+			"column": 5,
+			"endLine": 408,
+			"endColumn": 21,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 408,
+			"column": 5,
+			"endLine": 408,
+			"endColumn": 21,
+			"mutatorName": "EqualityOperator",
+			"replacement": "tool === \"biome\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > keeps the same unlocated Enola result pre-existing",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^staticFindings > keeps the same unlocated Enola result pre-existing$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 408,
+			"column": 14,
+			"endLine": 408,
+			"endColumn": 21,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 408,
+			"column": 25,
+			"endLine": 408,
+			"endColumn": 39,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reports a second result added beside an old one on the same lines as introduced",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^staticFindings > reports a second result added beside an old one on the same lines as introduced$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 408,
+			"column": 25,
+			"endLine": 408,
+			"endColumn": 39,
+			"mutatorName": "EqualityOperator",
+			"replacement": "tool === \"tsc\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > keeps the same unlocated Enola result pre-existing",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^staticFindings > keeps the same unlocated Enola result pre-existing$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 408,
+			"column": 34,
+			"endLine": 408,
+			"endColumn": 39,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reports a second result added beside an old one on the same lines as introduced",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^staticFindings > reports a second result added beside an old one on the same lines as introduced$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 409,
+			"column": 14,
+			"endLine": 409,
+			"endColumn": 30,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reports a second result added beside an old one on the same lines as introduced",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^staticFindings > reports a second result added beside an old one on the same lines as introduced$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 409,
+			"column": 14,
+			"endLine": 409,
+			"endColumn": 30,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 409,
+			"column": 14,
+			"endLine": 409,
+			"endColumn": 30,
+			"mutatorName": "EqualityOperator",
+			"replacement": "tool !== \"biome\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reports a second result added beside an old one on the same lines as introduced",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^staticFindings > reports a second result added beside an old one on the same lines as introduced$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 409,
+			"column": 23,
+			"endLine": 409,
+			"endColumn": 30,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 409,
+			"column": 33,
+			"endLine": 409,
+			"endColumn": 40,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 409,
+			"column": 43,
+			"endLine": 409,
+			"endColumn": 48,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reports a second result added beside an old one on the same lines as introduced",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^staticFindings > reports a second result added beside an old one on the same lines as introduced$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 410,
+			"column": 41,
+			"endLine": 415,
+			"endColumn": 3,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > fails rather than guess when a result's file cannot be read",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^staticFindings > fails rather than guess when a result's file cannot be read$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 410,
+			"column": 73,
+			"endLine": 415,
+			"endColumn": 2,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > fails rather than guess when a result's file cannot be read",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^staticFindings > fails rather than guess when a result's file cannot be read$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 412,
+			"column": 11,
+			"endLine": 414,
+			"endColumn": 3,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > takes severity overrides from the tool's settings, and stores no resolution",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^staticFindings > takes severity overrides from the tool's settings, and stores no resolution$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 413,
+			"column": 9,
+			"endLine": 413,
+			"endColumn": 169,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > takes severity overrides from the tool's settings, and stores no resolution",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^staticFindings > takes severity overrides from the tool's settings, and stores no resolution$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 416,
+			"column": 8,
+			"endLine": 416,
+			"endColumn": 55,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > fails rather than guess when a result's file cannot be read",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^staticFindings > fails rather than guess when a result's file cannot be read$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 416,
+			"column": 24,
+			"endLine": 416,
+			"endColumn": 53,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > fails rather than guess when a result's file cannot be read",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^staticFindings > fails rather than guess when a result's file cannot be read$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 416,
+			"column": 25,
+			"endLine": 416,
+			"endColumn": 52,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > fails rather than guess when a result's file cannot be read",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^staticFindings > fails rather than guess when a result's file cannot be read$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 438,
+			"column": 64,
+			"endLine": 438,
+			"endColumn": 99,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > keeps the same unlocated Enola result pre-existing",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^staticFindings > keeps the same unlocated Enola result pre-existing$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 438,
+			"column": 74,
+			"endLine": 438,
+			"endColumn": 99,
+			"mutatorName": "LogicalOperator",
+			"replacement": "renamed.get(path) && path",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > keeps the same unlocated Enola result pre-existing",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^staticFindings > keeps the same unlocated Enola result pre-existing$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 439,
+			"column": 64,
+			"endLine": 439,
+			"endColumn": 78,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > keeps the same unlocated Enola result pre-existing",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^staticFindings > keeps the same unlocated Enola result pre-existing$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/pipeline/src/adjudication.ts",
+			"line": 348,
+			"column": 32,
+			"endLine": 348,
+			"endColumn": 46,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-stored-text.test.ts > records this build's stored-text version on a verdict of tier [\"static.tsc\"] only when it runs Biome or tsc",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^records this build's stored-text version on a verdict of tier \\[\"static\\.tsc\"\\] only when it runs Biome or tsc$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 649,
+			"column": 13,
+			"endLine": 649,
+			"endColumn": 111,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/checks.test.ts > runChecks > reuses the run when only the display setting output.emoji changes",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^runChecks > reuses the run when only the display setting output\\.emoji changes$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 87,
+			"column": 66,
+			"endLine": 89,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-stored-text.test.ts > refuses to publish a review an older build decided, since its tsc tier kept a tool's text",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^refuses to publish a review an older build decided, since its tsc tier kept a tool's text$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 88,
+			"column": 8,
+			"endLine": 88,
+			"endColumn": 82,
+			"mutatorName": "MethodExpression",
+			"replacement": "checks.every(check => check === \"static.biome\" || check === \"static.tsc\")",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-stored-text.test.ts > refuses to publish a review an older build decided, since its mixed tier kept a tool's text",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^refuses to publish a review an older build decided, since its mixed tier kept a tool's text$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 88,
+			"column": 20,
+			"endLine": 88,
+			"endColumn": 81,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-stored-text.test.ts > refuses to publish a review an older build decided, since its tsc tier kept a tool's text",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^refuses to publish a review an older build decided, since its tsc tier kept a tool's text$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 88,
+			"column": 31,
+			"endLine": 88,
+			"endColumn": 81,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-rounds.test.ts > reopens main-36122eb2 without guessing an unbound publication round",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^reopens main-36122eb2 without guessing an unbound publication round$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 88,
+			"column": 31,
+			"endLine": 88,
+			"endColumn": 81,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-stored-text.test.ts > refuses to publish a review an older build decided, since its tsc tier kept a tool's text",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^refuses to publish a review an older build decided, since its tsc tier kept a tool's text$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 88,
+			"column": 31,
+			"endLine": 88,
+			"endColumn": 81,
+			"mutatorName": "LogicalOperator",
+			"replacement": "check === \"static.biome\" && check === \"static.tsc\"",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-stored-text.test.ts > refuses to publish a review an older build decided, since its tsc tier kept a tool's text",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^refuses to publish a review an older build decided, since its tsc tier kept a tool's text$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 88,
+			"column": 31,
+			"endLine": 88,
+			"endColumn": 55,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-stored-text.test.ts > refuses to publish a review an older build decided, since its biome tier kept a tool's text",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^refuses to publish a review an older build decided, since its biome tier kept a tool's text$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 88,
+			"column": 31,
+			"endLine": 88,
+			"endColumn": 55,
+			"mutatorName": "EqualityOperator",
+			"replacement": "check !== \"static.biome\"",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-rounds.test.ts > reopens main-36122eb2 without guessing an unbound publication round",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^reopens main-36122eb2 without guessing an unbound publication round$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 88,
+			"column": 41,
+			"endLine": 88,
+			"endColumn": 55,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-stored-text.test.ts > refuses to publish a review an older build decided, since its biome tier kept a tool's text",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^refuses to publish a review an older build decided, since its biome tier kept a tool's text$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 88,
+			"column": 59,
+			"endLine": 88,
+			"endColumn": 81,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-stored-text.test.ts > refuses to publish a review an older build decided, since its tsc tier kept a tool's text",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^refuses to publish a review an older build decided, since its tsc tier kept a tool's text$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 88,
+			"column": 59,
+			"endLine": 88,
+			"endColumn": 81,
+			"mutatorName": "EqualityOperator",
+			"replacement": "check !== \"static.tsc\"",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-rounds.test.ts > reopens main-36122eb2 without guessing an unbound publication round",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^reopens main-36122eb2 without guessing an unbound publication round$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 88,
+			"column": 69,
+			"endLine": 88,
+			"endColumn": 81,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-stored-text.test.ts > refuses to publish a review an older build decided, since its tsc tier kept a tool's text",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^refuses to publish a review an older build decided, since its tsc tier kept a tool's text$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 707,
+			"column": 9,
+			"endLine": 707,
+			"endColumn": 85,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-rounds.test.ts > publishes without an optional provider session hook",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^publishes without an optional provider session hook$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 707,
+			"column": 9,
+			"endLine": 707,
+			"endColumn": 85,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-rounds.test.ts > supersedes a resumed publication whose round records no provenance, posting nothing",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^supersedes a resumed publication whose round records no provenance, posting nothing$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 707,
+			"column": 9,
+			"endLine": 707,
+			"endColumn": 85,
+			"mutatorName": "LogicalOperator",
+			"replacement": "storedRound.provenance === undefined && keptToolText(storedRound.provenance)",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-rounds.test.ts > supersedes a resumed publication whose round records no provenance, posting nothing",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^supersedes a resumed publication whose round records no provenance, posting nothing$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 707,
+			"column": 9,
+			"endLine": 707,
+			"endColumn": 45,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-rounds.test.ts > supersedes a resumed publication whose round records no provenance, posting nothing",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^supersedes a resumed publication whose round records no provenance, posting nothing$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 707,
+			"column": 9,
+			"endLine": 707,
+			"endColumn": 45,
+			"mutatorName": "EqualityOperator",
+			"replacement": "storedRound.provenance !== undefined",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-rounds.test.ts > publishes without an optional provider session hook",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^publishes without an optional provider session hook$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 707,
+			"column": 87,
+			"endLine": 717,
+			"endColumn": 6,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-rounds.test.ts > supersedes a resumed publication whose round records no provenance, posting nothing",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^supersedes a resumed publication whose round records no provenance, posting nothing$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 708,
+			"column": 21,
+			"endLine": 708,
+			"endColumn": 61,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-rounds.test.ts > supersedes a resumed publication whose round records no provenance, posting nothing",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^supersedes a resumed publication whose round records no provenance, posting nothing$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 709,
+			"column": 41,
+			"endLine": 715,
+			"endColumn": 7,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-rounds.test.ts > supersedes a resumed publication whose round records no provenance, posting nothing",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^supersedes a resumed publication whose round records no provenance, posting nothing$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 711,
+			"column": 14,
+			"endLine": 714,
+			"endColumn": 8,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-rounds.test.ts > supersedes a resumed publication whose round records no provenance, posting nothing",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^supersedes a resumed publication whose round records no provenance, posting nothing$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 712,
+			"column": 16,
+			"endLine": 712,
+			"endColumn": 26,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-rounds.test.ts > supersedes a resumed publication whose round records no provenance, posting nothing",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^supersedes a resumed publication whose round records no provenance, posting nothing$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 713,
+			"column": 17,
+			"endLine": 713,
+			"endColumn": 80,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-rounds.test.ts > supersedes a resumed publication whose round records no provenance, posting nothing",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^supersedes a resumed publication whose round records no provenance, posting nothing$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 713,
+			"column": 27,
+			"endLine": 713,
+			"endColumn": 38,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-rounds.test.ts > supersedes a resumed publication whose round records no provenance, posting nothing",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^supersedes a resumed publication whose round records no provenance, posting nothing$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 713,
+			"column": 48,
+			"endLine": 713,
+			"endColumn": 78,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-rounds.test.ts > supersedes a resumed publication whose round records no provenance, posting nothing",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^supersedes a resumed publication whose round records no provenance, posting nothing$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 713,
+			"column": 56,
+			"endLine": 713,
+			"endColumn": 68,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-rounds.test.ts > supersedes a resumed publication whose round records no provenance, posting nothing",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^supersedes a resumed publication whose round records no provenance, posting nothing$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 1277,
+			"column": 19,
+			"endLine": 1277,
+			"endColumn": 83,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-rounds.test.ts > supersedes a resumed publication whose round records no provenance, posting nothing",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^supersedes a resumed publication whose round records no provenance, posting nothing$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 1280,
+			"column": 95,
+			"endLine": 1282,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-stored-text.test.ts > refuses to publish a review an older build decided, since its tsc tier kept a tool's text",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^refuses to publish a review an older build decided, since its tsc tier kept a tool's text$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 1281,
+			"column": 8,
+			"endLine": 1281,
+			"endColumn": 82,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-rounds.test.ts > refuses publication without live verdict",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^refuses publication without live verdict$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 1281,
+			"column": 8,
+			"endLine": 1281,
+			"endColumn": 82,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-stored-text.test.ts > refuses to publish a review an older build decided, since its tsc tier kept a tool's text",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^refuses to publish a review an older build decided, since its tsc tier kept a tool's text$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 1281,
+			"column": 8,
+			"endLine": 1281,
+			"endColumn": 82,
+			"mutatorName": "LogicalOperator",
+			"replacement": "provenance.storedText !== storedText || runsTextTools(provenance.manifest)",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-rounds.test.ts > refuses publication without live verdict",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^refuses publication without live verdict$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 1281,
+			"column": 8,
+			"endLine": 1281,
+			"endColumn": 44,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "new-test",
+			"evidence": "packages/pipeline/test/publish-stored-text.test.ts > publishes a verdict this build decided for a tier that runs tsc",
+			"survivorClasses": [
+				"compound-condition"
+			],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^publishes a verdict this build decided for a tier that runs tsc$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 1281,
+			"column": 8,
+			"endLine": 1281,
+			"endColumn": 44,
+			"mutatorName": "EqualityOperator",
+			"replacement": "provenance.storedText === storedText",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-stored-text.test.ts > refuses to publish a review an older build decided, since its tsc tier kept a tool's text",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^refuses to publish a review an older build decided, since its tsc tier kept a tool's text$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 1290,
+			"column": 5,
+			"endLine": 1290,
+			"endColumn": 29,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-rounds.test.ts > refuses publication without live verdict",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^refuses publication without live verdict$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 1290,
+			"column": 5,
+			"endLine": 1290,
+			"endColumn": 29,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-stored-text.test.ts > refuses to publish a review an older build decided, since its tsc tier kept a tool's text",
+			"survivorClasses": [],
+			"run": {
+				"head": "1a16ccb1",
+				"pattern": "^refuses to publish a review an older build decided, since its tsc tier kept a tool's text$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		}
+	],
+	"total": 78,
+	"omitted": 0,
+	"unmutated": [
+		{
+			"file": "packages/pipeline/src/static.ts",
+			"reason": "it sends process signals, and a mutant there could signal a process outside the run"
+		}
+	]
+}

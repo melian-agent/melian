@@ -173,6 +173,62 @@ describe("runStaticTool with Melian's own tools", () => {
 		await expect(runStaticTool(input("tsc", nothing), context)).rejects.toMatchObject({ code: "nothingToCheck" });
 	});
 
+	it("follows a tsconfig that links to a solution inside the checkout to the projects it references", {
+		timeout: 60_000,
+	}, async () => {
+		writeFiles(repo, {
+			"solution.json": JSON.stringify({ files: [], references: [{ path: "./a" }] }),
+			"a/tsconfig.json": JSON.stringify({ compilerOptions: { strict: true, noEmit: true, composite: true } }),
+			"a/index.ts": lines("export const n: number = 'a';"),
+		});
+		symlinkSync("solution.json", join(repo, "tsconfig.json"));
+		const head = commit(repo, {});
+		const result = await runStaticTool(input("tsc", head), context);
+		if (result.status !== "ran") throw new Error(result.reason);
+		expect(results(result.log)).toEqual([["TS2322", "a/index.ts", 1]]);
+		expect(result.notes).toEqual(["tsc checked a/tsconfig.json, which tsconfig.json references."]);
+	});
+
+	it("refuses a project file linked outside the checkout without reading it", { timeout: 60_000 }, async () => {
+		const outside = join(repo, ".git", "outside.json");
+		writeFileSync(outside, JSON.stringify({ files: [], references: [{ path: "ghp_FAKEoutsideTOKEN281" }] }));
+		symlinkSync(outside, join(repo, "tsconfig.json"));
+		const head = commit(repo, { "a.ts": lines("export const a = 1;") });
+		await expect(runStaticTool(input("tsc", head), context)).rejects.toMatchObject({
+			code: "toolFailed",
+			message: "tsconfig.json links outside the checkout, so Melian ran no tsc on it",
+		});
+	});
+
+	it("follows a reference to a linked solution inside the checkout", { timeout: 60_000 }, async () => {
+		writeFiles(repo, {
+			"tsconfig.json": JSON.stringify({ files: [], references: [{ path: "./linked.json" }] }),
+			"solution.json": JSON.stringify({ files: [], references: [{ path: "./a" }] }),
+			"a/tsconfig.json": JSON.stringify({ compilerOptions: { strict: true, noEmit: true, composite: true } }),
+			"a/index.ts": lines("export const n: number = 'a';"),
+		});
+		symlinkSync("solution.json", join(repo, "linked.json"));
+		const head = commit(repo, {});
+		const result = await runStaticTool(input("tsc", head), context);
+		if (result.status !== "ran") throw new Error(result.reason);
+		expect(results(result.log)).toEqual([["TS2322", "a/index.ts", 1]]);
+	});
+
+	// As on main: Melian reads a project's own files and references, not those its base supplies, so this project is
+	// checked as it is and tsc finds nothing in it.
+	it("checks a tsconfig that extends a solution base as it is, as on main", { timeout: 60_000 }, async () => {
+		const head = commit(repo, {
+			"base.json": JSON.stringify({ files: [], references: [{ path: "./a" }] }),
+			"tsconfig.json": JSON.stringify({ extends: "./base.json" }),
+			"a/tsconfig.json": JSON.stringify({ compilerOptions: { strict: true, noEmit: true, composite: true } }),
+			"a/index.ts": lines("export const n: number = 'a';"),
+		});
+		const result = await runStaticTool(input("tsc", head), context);
+		if (result.status !== "ran") throw new Error(result.reason);
+		expect(results(result.log)).toEqual([]);
+		expect(result.notes).toEqual([]);
+	});
+
 	it("skips tsc on a commit with no tsconfig.json", { timeout: 60_000 }, async () => {
 		const head = commit(repo, { "src/a.ts": lines("export const a = 1;") });
 		expect(await runStaticTool(input("tsc", head), context)).toEqual({
@@ -341,7 +397,9 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 		]);
 	});
 
-	it("fails with toolFailed when the tool crashes, carrying what it printed", { timeout: 60_000 }, async () => {
+	it("fails with toolFailed when the tool crashes, keeping its exit code and none of what it printed", {
+		timeout: 60_000,
+	}, async () => {
 		const head = commit(repo, { ".gitignore": lines("node_modules"), "tsconfig.json": tsconfig });
 		fakeTool(
 			repo,
@@ -353,7 +411,9 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 			(caught: unknown) => caught,
 		);
 		expect((error as CheckError).code).toBe("toolFailed");
-		expect((error as CheckError).message).toMatch(/exited with code 134 on tsconfig.json: out of memory/);
+		expect((error as CheckError).message).toBe(
+			`tsc exited with code 134 on tsconfig.json; run tsc --noEmit -p tsconfig.json at ${head.slice(0, 12)} to see why, since Melian keeps none of its output`,
+		);
 		expectCheckoutUntouched();
 	});
 
@@ -428,7 +488,11 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 			(caught: unknown) => caught,
 		);
 		expect((error as CheckError).code).toBe("toolFailed");
-		expect((error as CheckError).message).toMatch(/no report: bad config/);
+		// Biome quotes a file it cannot parse under the name of the file that extended it (issue #281).
+		expect((error as CheckError).message).not.toContain("bad config");
+		expect((error as CheckError).message).toBe(
+			`biome exited with code 1 and no report; run biome lint at ${head.slice(0, 12)} to see why, since Melian keeps none of its stderr`,
+		);
 	});
 });
 

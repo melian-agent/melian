@@ -370,16 +370,16 @@ const fileLimit = `ulimit -f ${staticOutputLimit / 1024}`;
 
 async function runBiome(run: Run, root: string, scratch: string, binary: string, version: string): Promise<ToolLog> {
 	const report = posix.join(scratch, "biome.sarif");
-	const { code, output } = await run.shell(
-		`cd ${quote(root)} && ${fileLimit} && ${quote(binary)} lint --reporter=sarif --reporter-file=${quote(report)} --max-diagnostics=none --colors=off --no-errors-on-unmatched . > /dev/null 2> ${quote(posix.join(scratch, "biome.err"))}`,
+	const { code } = await run.shell(
+		`cd ${quote(root)} && ${fileLimit} && ${quote(binary)} lint --reporter=sarif --reporter-file=${quote(report)} --max-diagnostics=none --colors=off --no-errors-on-unmatched . > /dev/null 2>&1`,
 	);
 	const text = await run.readOutput(report);
-	// Biome exits 1 when it reports an error-level diagnostic; anything else without a report is a failure.
+	// Biome exits 1 when it reports an error-level diagnostic; anything else without a report is a failure. Its stderr
+	// quotes whatever files it could not parse, so none of it is kept.
 	if (text === undefined || (code !== 0 && code !== 1)) {
-		const stderr = (await run.readOutput(posix.join(scratch, "biome.err")))?.slice(0, 4096) ?? output;
 		throw run.fail(
 			"toolFailed",
-			`biome exited with code ${code} and ${text === undefined ? "no report" : "a report"}: ${stderr.trim()}`,
+			`biome exited with code ${code} and ${text === undefined ? "no report" : "a report"}; run biome lint at ${run.input.commit.slice(0, 12)} to see why, since Melian keeps none of its stderr`,
 		);
 	}
 	return normaliseBiomeSarif(text, { root, version });
@@ -388,10 +388,15 @@ async function runBiome(run: Run, root: string, scratch: string, binary: string,
 // The projects a tsconfig asks tsc to check. A solution-style tsconfig, with `references` and an empty `files` and no
 // `include`, checks nothing itself, so each referenced project is checked in its place; a tsconfig with an empty
 // `files`, no `include`, and no references checks nothing at all. With neither `files` nor `include`, tsc checks every
-// file below the tsconfig, so it is checked as it is.
+// file below the tsconfig, so it is checked as it is. A project file whose real path leaves the worktree, through a
+// committed link, is refused unread: Melian would repeat the references of a file outside the checkout.
 async function tscProjects(run: Run, root: string, project: string, seen = new Set<string>()): Promise<string[]> {
 	if (seen.has(project)) return [];
 	seen.add(project);
+	const real = await run.input.env.canonicalPath(posix.join(root, project), run.context);
+	if (real.ok && !real.value.startsWith(`${root}/`)) {
+		throw run.fail("toolFailed", `${project} links outside the checkout, so Melian ran no tsc on it`);
+	}
 	const text = await run.input.env.readTextFile(posix.join(root, project), run.context);
 	const config = text.ok ? parseJsonc(text.value) : undefined;
 	if (typeof config !== "object" || config === null) return [project];
@@ -434,7 +439,7 @@ async function runTsc(
 	const results: ToolLog["runs"][0]["results"] = [];
 	for (const [index, each] of projects.entries()) {
 		const out = posix.join(scratch, `tsc-${index}.out`);
-		const { code, output } = await run.shell(
+		const { code } = await run.shell(
 			`cd ${quote(root)} && ${fileLimit} && ${quote(binary)} --noEmit --pretty false -p ${quote(each)} > ${quote(out)} 2>&1`,
 		);
 		const text = (await run.readOutput(out)) ?? "";
@@ -450,7 +455,7 @@ async function runTsc(
 		if (code !== 0 && (none || (code !== 1 && code !== 2))) {
 			throw run.fail(
 				"toolFailed",
-				`tsc exited with code ${code} on ${each}: ${(text || output).slice(0, 4096).trim()}`,
+				`tsc exited with code ${code} on ${each}; run tsc --noEmit -p ${each} at ${run.input.commit.slice(0, 12)} to see why, since Melian keeps none of its output`,
 			);
 		}
 		results.push(...log.runs[0].results);
