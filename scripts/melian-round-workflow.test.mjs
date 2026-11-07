@@ -244,6 +244,66 @@ describe("the melian round workflow", () => {
 		}
 	});
 
+	it("refuses, before any step holds a login, a pull request that moved after the gate", () => {
+		const round = workflow.jobs.round.steps;
+		const check = round.findIndex((step) => step.name === "Refuse a pull request that moved after the gate");
+		const secret = round.findIndex((step) => JSON.stringify(step).includes("secrets."));
+		expect(check).toBeGreaterThanOrEqual(0);
+		expect(check).toBeLessThan(secret);
+		const dir = mkdtempSync(join(tmpdir(), "round-workflow-"));
+		try {
+			const base = "2".repeat(40);
+			const head = "1".repeat(40);
+			// A fake gh answers only the request for the pull request's base and head.
+			writeFileSync(
+				join(dir, "gh"),
+				[
+					"#!/bin/sh",
+					'[ "$*" = "api repos/o/r/pulls/7 --jq .base.sha + \\" \\" + .head.sha" ] && [ -n "$NOW" ] && echo "$NOW"',
+					"",
+				].join("\n"),
+			);
+			chmodSync(join(dir, "gh"), 0o755);
+			const step = (now) => {
+				rmSync(join(dir, "public"), { recursive: true, force: true });
+				const ran = spawnSync("bash", ["-e", "-c", round[check].run], {
+					encoding: "utf8",
+					env: {
+						PATH: `${dir}:${process.env.PATH}`,
+						HOME: dir,
+						RUNNER_TEMP: dir,
+						REPOSITORY: "o/r",
+						NUMBER: "7",
+						BASE: base,
+						HEAD: head,
+						NOW: now,
+					},
+				});
+				let exit;
+				try {
+					exit = readFileSync(join(dir, "public", "exit"), "utf8");
+				} catch {
+					exit = undefined;
+				}
+				return [ran.status, ran.stdout, exit];
+			};
+			expect(step(`${base} ${head}`)).toEqual([0, "", undefined]);
+			const moved = "3".repeat(40);
+			expect(step(`${base} ${moved}`)).toEqual([
+				1,
+				`::error::pull request 7 moved from ${base} ${head} to ${base} ${moved} after the gate\n`,
+				"none\n",
+			]);
+			expect(step("")).toEqual([
+				1,
+				`::error::pull request 7 moved from ${base} ${head} to an unreadable revision after the gate\n`,
+				"none\n",
+			]);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
 	it("keeps no token in any checkout's git configuration", () => {
 		const checkouts = steps.filter((step) => step.uses?.startsWith("actions/checkout@"));
 		expect(checkouts.map((step) => [step.job, step.with?.["persist-credentials"]])).toEqual([

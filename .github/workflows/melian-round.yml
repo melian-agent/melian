@@ -165,6 +165,24 @@ jobs:
           node-version: 24
       - run: npm ci --ignore-scripts
         working-directory: melian
+      # "#N" reads the pull request again, so a push since the gate would spend the logins on a head the gate never
+      # approved. Refuse one that moved, before the step that holds them; the report then posts its stale notice. Seconds
+      # remain between this read and Melian's own, and the comment's check of what the round reviewed covers them.
+      - name: Refuse a pull request that moved after the gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          NUMBER: ${{ inputs.pull_request }}
+          BASE: ${{ needs.gate.outputs.base }}
+          HEAD: ${{ needs.gate.outputs.head }}
+        run: |
+          now=$(gh api "repos/$REPOSITORY/pulls/$NUMBER" --jq '.base.sha + " " + .head.sha') || now=""
+          if [ "$now" != "$BASE $HEAD" ]; then
+            echo "::error::pull request $NUMBER moved from $BASE $HEAD to ${now:-an unreadable revision} after the gate"
+            mkdir -p "$RUNNER_TEMP/public"
+            echo none > "$RUNNER_TEMP/public/exit"
+            exit 1
+          fi
       # The logins reach only this step. Melian reads CLAUDE_CODE_OAUTH_TOKEN itself. The Codex login's access token
       # goes to Melian as a named bearer credential, by variable, so no file holds it, and Pi's store stays empty, so
       # nothing refreshes the login and rotates its refresh token. An expired token reads as absent, and the plan derives
@@ -196,15 +214,6 @@ jobs:
           fi
           unset token CODEX_AUTH_B64
           node packages/cli/bin/melian.js doctor || true
-          # "#N" reads the pull request again, so a push since the gate would spend the logins on a head the gate never
-          # approved. Refuse one that moved; the report then posts its stale notice. Seconds remain between this read and
-          # Melian's own, and the comment's check of what the round reviewed covers them.
-          now=$(gh api "repos/$REPOSITORY/pulls/$NUMBER" --jq '.base.sha + " " + .head.sha') || now=""
-          if [ "$now" != "$BASE $HEAD" ]; then
-            echo "::error::pull request $NUMBER moved from $BASE $HEAD to ${now:-an unreadable revision} after the gate"
-            echo none > "$out/exit"
-            exit 0
-          fi
           set +e
           node packages/cli/bin/melian.js review "#$NUMBER" --json --no-walkthrough > "$raw/verdict.json" 2> "$raw/round.err"
           echo $? > "$out/exit"
