@@ -398,12 +398,16 @@ export function renderProbeEvidence(
 		again === undefined
 			? "Melian did not run it again."
 			: "refused" in again
-				? `Melian could not run it again: ${again.refused}`
+				? "Melian could not run it again; why is in the probe's block below."
 				: `When Melian ran it again it ${outcome(again.result)}.`;
 	const shown = [
 		`script:\n${probe.script}`,
 		...probe.files.map((file) => `file ${visibleText(file.path)}:\n${file.text}`),
 		`when the prober ran it, it ${outcome(probe.result)} and printed:\n${printed(probe.result.output)}`,
+		// The refusal can name the head's paths, so it stays inside the boundary.
+		...(again !== undefined && "refused" in again
+			? [`Melian could not run it again: ${printed(again.refused)}`]
+			: []),
 		...(again !== undefined && "result" in again
 			? [`when Melian ran it again, it printed:\n${printed(again.result.output)}`]
 			: []),
