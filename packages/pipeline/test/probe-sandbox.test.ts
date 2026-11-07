@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { createServer, type Server } from "node:net";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
@@ -29,6 +29,7 @@ beforeEach(() => {
 	writeFileSync(join(worktree, ".git", "config"), "[credential]\n");
 	writeFileSync(join(worktree, ".env"), "TOKEN=x\n");
 	writeFileSync(join(outside, "secret.txt"), "secret\n");
+	symlinkSync(join(outside, "secret.txt"), join(worktree, "escape"));
 });
 
 afterEach(() => {
@@ -81,6 +82,7 @@ describe.skipIf(!availability.available && !required)(
 				join(homedir(), ".ssh"),
 				join(homedir(), ".config"),
 				join(outside, "secret.txt"),
+				join(worktree, "escape"),
 				outside,
 				join(worktree, ".git", "config"),
 				join(worktree, ".env"),

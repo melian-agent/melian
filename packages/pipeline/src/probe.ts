@@ -394,7 +394,8 @@ export class Probe {
 				run,
 				...system,
 			],
-			deny: ["/", ...worktreeDenies.map((path) => posix.join(this.#worktree, path))],
+			// Node's etc holds the global npmrc, which can carry a registry token.
+			deny: ["/", ...worktreeDenies.map((path) => posix.join(this.#worktree, path)), join(node, "etc")],
 			write: [run],
 			// sandbox-runtime keeps this writable for itself whatever the policy says.
 			denyWrite: platform === "darwin" ? ["/tmp/claude", "/private/tmp/claude"] : ["/tmp/claude"],

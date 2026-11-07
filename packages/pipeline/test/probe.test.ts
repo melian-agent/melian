@@ -256,6 +256,7 @@ describe("Probe.open", () => {
 			join(worktree, "**/.env*"),
 			join(worktree, "**/melian.secrets.yaml"),
 			join(worktree, "**/melian.local.yaml"),
+			join(node, "etc"),
 		]);
 		expect(policy.denyWrite).toContain("/tmp/claude");
 		await probe.close();
