@@ -13,6 +13,7 @@ import {
 } from "@melian-agent/core";
 import { RecordedDecider } from "@melian-agent/decisions";
 import {
+	backgroundContext,
 	createMemoryStorage,
 	openReviewHarness,
 	type ProbeSandbox,
@@ -36,6 +37,7 @@ import {
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { planInputs } from "../src/models.ts";
+import { ProbeReruns } from "../src/probing.ts";
 import { baseAndHead, gitIn, writeFiles } from "./fixtures/repo.ts";
 
 // A level that probes, end to end on the fake model: the planner records the plan, the prober runs probes under a
@@ -704,5 +706,31 @@ describe("a level that probes", () => {
 		const again = await review({ planner: [], prober: [] }, { fake });
 		expect((await again.run).verdict.counted()).toHaveLength(1);
 		expect(heads()).toBe(2);
+	});
+
+	it("stores no rerun the sandbox refused, so a repeat review runs the probe again", async () => {
+		const fake = createFakeModels();
+		let heads = 0;
+		const base = unconfinedSandbox();
+		const sandbox: ProbeSandbox = {
+			...base,
+			wrap: async (command, policy) => {
+				if (command.includes("melian-probe-head-") && ++heads === 2) throw new Error("the sandbox hiccuped");
+				return base.wrap(command, policy);
+			},
+		};
+		const first = await review({ planner: plan, prober: probing(failing) }, { fake, sandbox });
+		expect((await failure(first.run)).code).toBe("verifierFailed");
+		const again = await review({ planner: [], prober: [] }, { fake });
+		await again.run.catch(() => undefined);
+		const root = (await harness!.harness.root(backgroundContext)).id;
+		const runs = Object.values(
+			(await harness!.harness.snapshot(ProbeReruns, root, backgroundContext))!.runs[
+				Revision.key(again.changeset.revision)
+			]!,
+		);
+		expect(heads).toBe(3);
+		expect(runs).toHaveLength(1);
+		expect(runs[0]).toHaveProperty("result");
 	});
 });

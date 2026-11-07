@@ -1202,7 +1202,8 @@ async function claimProbes(
 }
 
 // Runs each candidate's claim probes again, before verification, and stores each run on the root under the revision,
-// so the verifier reads the run whatever crashes or repeats around it. A probe a stored run already answered runs no more.
+// so the verifier reads the run whatever crashes or repeats around it. A probe a stored run already answered runs no
+// more; one the sandbox or the host refused runs again, since the refusal may have passed.
 async function rerunProbes(
 	harness: Harness,
 	root: ConversationId,
@@ -1217,7 +1218,8 @@ async function rerunProbes(
 			const probe = candidate.probes?.[claimKey(claim)];
 			if (probe === undefined || candidate.probing === undefined) continue;
 			const key = rerunKey(claim, probe);
-			if ((await harness.snapshot(ProbeReruns, root, context))?.runs[at]?.[key] !== undefined) continue;
+			const stored = (await harness.snapshot(ProbeReruns, root, context))?.runs[at]?.[key];
+			if (stored !== undefined && "result" in stored) continue;
 			const run = await runHeadProbe(
 				{ script: probe.probe.script, files: probe.probe.files },
 				revision,
