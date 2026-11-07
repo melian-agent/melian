@@ -1,0 +1,21 @@
+{
+  "range": "origin/main...HEAD",
+  "enumerated": { "mutants": [], "total": 0, "omitted": 0, "unmutated": [] },
+  "note": "The enumerator mutates source files only, and this pull request changes one test file. The test's own guard, the clock skew from the terminal commit, was mutated by hand and run against each named test alone.",
+  "handMutants": [
+    {
+      "file": "packages/pipeline/test/stage-telemetry-reader.test.ts",
+      "mutation": "skew = 1_000 -> skew = -100",
+      "test": "counts the final generation of a slow done response",
+      "claim": "killed",
+      "result": "failed: endedAt capped at the task's end, 1 failed | 10 skipped"
+    },
+    {
+      "file": "packages/pipeline/test/stage-telemetry-reader.test.ts",
+      "mutation": "skew = 1_000 -> skew = -100",
+      "test": "counts the final generation of a slow unanswered response",
+      "claim": "killed",
+      "result": "failed: endedAt capped at the task's end, 1 failed | 10 skipped"
+    }
+  ]
+}

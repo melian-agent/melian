@@ -493,6 +493,7 @@ it.each(["done", "unanswered"] as const)(
 		const storage = createMemoryStorage();
 		const registry = createRegistry();
 		let settledAt = 0;
+		let skew = 0;
 		const task = defineTask<null, { phase: "spawn" } | { phase: "run"; child: ConversationId }, null>({
 			name: "test.response-duration",
 			version: 1,
@@ -512,6 +513,8 @@ it.each(["done", "unanswered"] as const)(
 					).wait(taskContext);
 					settledAt = Date.now();
 					expect(submission.status).toBe(status);
+					// The reply's timestamp plus its duration can pass the real terminal commit, and the reader caps a stage there.
+					skew = 1_000;
 					await runtime.commit(
 						() => ({ status: "terminal", outcome: { status: "completed", result: null } }),
 						taskContext,
@@ -523,7 +526,12 @@ it.each(["done", "unanswered"] as const)(
 			},
 		});
 		registry.install(defineExtension({ name: "test.response-duration", tasks: [task] }));
-		harness = await openHarness(storage, { models: fake.models, registry, settings: { retry: { enabled: false } } });
+		harness = await openHarness(storage, {
+			models: fake.models,
+			registry,
+			now: () => Date.now() + skew,
+			settings: { retry: { enabled: false } },
+		});
 		const root = await harness.root(context);
 		const id = await root.commit(async (tx) => {
 			const id = await tx.createTask(task, null, { ownership: { kind: "conversation" } });
