@@ -220,3 +220,25 @@ it("recovers a round an older build posted before it died, and writes none of it
 	expect(JSON.stringify(recorded.state.comments.slice(0, comments))).toContain("is not assignable");
 	expect(JSON.stringify(written)).not.toMatch(toolText);
 });
+
+it("recovers a round an older build posted, with no fresh review, and its ledger renders none of its tsc text", async () => {
+	const { recorded, changeset, provider, harness } = await olderStore("tsc-posted");
+	const comments = recorded.state.comments.length;
+	await expect(
+		publishReview({
+			harness,
+			provider,
+			changeset,
+			pullRequest: await provider.pullRequest(7),
+			base: changeset.revision.base,
+			trustedWriters: true,
+		}),
+	).resolves.toMatchObject({ recovered: 1 });
+	const stored = await harness.snapshot(PublishedDocument, (await harness.root(context)).id, context);
+	expect(JSON.stringify(stored?.ledgerRounds)).toContain("is not assignable");
+	expect(recorded.state.ledgers).toHaveLength(1);
+	const { ledgers, statuses } = recorded.state;
+	expect(JSON.stringify({ ledgers, statuses, comments: recorded.state.comments.slice(comments) })).not.toMatch(
+		toolText,
+	);
+});

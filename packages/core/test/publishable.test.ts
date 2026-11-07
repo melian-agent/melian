@@ -172,7 +172,7 @@ describe("Finding.publishable", () => {
 			otherClaims: _kc,
 			...rest
 		} = kept().properties;
-		expect(Finding.from(bare).publishable().toJSON()).toEqual({
+		expect(Finding.from(bare).publishable().toJSON()).toStrictEqual({
 			...kept(),
 			locations: [{ physicalLocation: { artifactLocation: { uri: "src/a.ts" }, region: { startLine: 2 } } }],
 			properties: rest,
@@ -223,7 +223,7 @@ describe("Verdict.publishable", () => {
 		expect(publishable.findings.block).toEqual([kept()]);
 		expect(publishable.dismissed).toEqual([kept()]);
 		expect(publishable.refuted).toEqual([kept()]);
-		expect(publishable.notRun).toEqual([
+		expect(publishable.notRun).toStrictEqual([
 			{
 				name: "static.tsc",
 				status: "failed",
