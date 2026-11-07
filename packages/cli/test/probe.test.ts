@@ -1,0 +1,183 @@
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import * as pipeline from "@melian-agent/pipeline";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { gitIn, isolatedGitEnv } from "../../core/test/fixtures/repo.ts";
+import type { Io } from "../src/commands.ts";
+import { main, usageExitCode } from "../src/main.ts";
+import * as probeCommand from "../src/probe.ts";
+
+// `melian probe` reads a directory and runs it through Probe. The runs that need the real sandbox skip where it cannot
+// run, unless MELIAN_PROBE_SANDBOX=1 says this host must run them, as CI does on macOS and Linux.
+
+const availability = await pipeline.Probe.availability();
+const required = process.env.MELIAN_PROBE_SANDBOX === "1";
+
+let repo: string;
+let dir: string;
+
+beforeEach(() => {
+	for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
+	repo = realpathSync(mkdtempSync(join(tmpdir(), "melian-probe-cli-")));
+	gitIn(repo, "init", "--quiet", "--initial-branch=main");
+	writeFileSync(join(repo, "value.txt"), "from the checkout\n");
+	dir = join(repo, "probes", "first");
+	mkdirSync(join(dir, "fixture"), { recursive: true });
+});
+
+afterEach(() => {
+	vi.unstubAllEnvs();
+	vi.restoreAllMocks();
+	rmSync(repo, { recursive: true, force: true });
+});
+
+async function melian(args: readonly string[]) {
+	let stdout = "";
+	let stderr = "";
+	const io: Io = {
+		cwd: repo,
+		env: process.env,
+		stdout: (text) => {
+			stdout += text;
+		},
+		stderr: (text) => {
+			stderr += text;
+		},
+		color: false,
+	};
+	return { status: await main(args, io), stdout, stderr };
+}
+
+describe("melian probe arguments", () => {
+	it.each([
+		[["probe"]],
+		[["probe", "a", "b"]],
+		[["probe", "a", "--timeout", "0"]],
+		[["probe", "a", "--timeout", "601"]],
+		[["probe", "a", "--timeout", "1.5"]],
+		[["probe", "a", "--timeout", "-1"]],
+		[["review", "main", "--timeout", "5"]],
+	])("refuses %j as usage", async (args) => {
+		const run = vi.spyOn(probeCommand, "probe");
+		expect((await melian(args)).status).toBe(usageExitCode);
+		expect(run).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		[["probe", "a", "--trust-head"], { trustHead: true, json: false }],
+		[["probe", "a"], { trustHead: false, json: false }],
+		[["probe", "a", "--json", "--timeout", "600"], { trustHead: false, json: true, timeout: 600_000 }],
+		[["probe", "a", "--timeout", "1"], { trustHead: false, json: false, timeout: 1_000 }],
+	])("passes %j on", async (args, options) => {
+		const run = vi.spyOn(probeCommand, "probe").mockResolvedValue(0);
+		expect((await melian(args)).status).toBe(0);
+		expect(run).toHaveBeenCalledExactlyOnceWith(expect.anything(), "a", options);
+	});
+});
+
+describe("melian probe", () => {
+	it("refuses without --trust-head, and opens nothing", async () => {
+		writeFileSync(join(dir, "probe.mjs"), "console.log('ran');\n");
+		const open = vi.spyOn(pipeline.Probe, "open");
+		const result = await melian(["probe", "probes/first"]);
+		expect(result).toEqual({
+			status: 2,
+			stdout: "",
+			stderr:
+				"melian: the head's code may not run here: nothing git records says whose code the checkout is; pass --trust-head if you have read this code and want it probed\n",
+		});
+		expect(open).toHaveBeenCalledOnce();
+	});
+
+	it("refuses a directory without probe.mjs, or holding a link", async () => {
+		expect(await melian(["probe", "probes/first", "--trust-head"])).toMatchObject({
+			status: 2,
+			stderr: expect.stringContaining("ENOENT"),
+		});
+		writeFileSync(join(dir, "probe.mjs"), "");
+		symlinkSync(join(repo, "value.txt"), join(dir, "fixture", "link"));
+		expect(await melian(["probe", "probes/first", "--trust-head"])).toEqual({
+			status: 2,
+			stdout: "",
+			stderr: "melian: fixture/link is neither a file nor a directory\n",
+		});
+	});
+
+	it("refuses more files than a probe takes", async () => {
+		writeFileSync(join(dir, "probe.mjs"), "");
+		for (let index = 0; index <= pipeline.probeLimits.files; index++) writeFileSync(join(dir, `f${index}`), "");
+		expect(await melian(["probe", "probes/first", "--trust-head"])).toMatchObject({
+			status: 2,
+			stderr: `melian: a probe has at most ${pipeline.probeLimits.files} files\n`,
+		});
+	});
+
+	it("says where the sandbox cannot run", async () => {
+		writeFileSync(join(dir, "probe.mjs"), "");
+		vi.spyOn(pipeline.Probe, "open").mockRejectedValue(
+			new pipeline.ProbeError(
+				"sandboxUnavailable",
+				"sandbox-runtime cannot run here: bubblewrap\u001b[2J not found",
+			),
+		);
+		expect(await melian(["probe", "probes/first", "--trust-head"])).toEqual({
+			status: 2,
+			stdout: "",
+			stderr: "melian: sandbox-runtime cannot run here: bubblewrap\\u001b[2J not found\n",
+		});
+	});
+
+	describe.skipIf(!availability.available && !required)("under the sandbox", () => {
+		it("runs the probe in the checkout with its files and prints how it ended", { timeout: 60_000 }, async () => {
+			writeFileSync(join(dir, "fixture", "name.txt"), "fixture\n");
+			writeFileSync(
+				join(dir, "probe.mjs"),
+				[
+					'import { readFileSync } from "node:fs";',
+					'process.stdout.write(readFileSync("value.txt", "utf8"));',
+					'process.stdout.write(readFileSync(new URL("./fixture/name.txt", import.meta.url), "utf8"));',
+					'process.stdout.write("\\u001b[31m\\n");',
+				].join("\n"),
+			);
+			expect(await melian(["probe", "probes/first", "--trust-head"])).toEqual({
+				status: 0,
+				stdout: "from the checkout\nfixture\n\\u001b[31m\nProbe: exited 0\n",
+				stderr: "",
+			});
+		});
+
+		it("exits 1 for a probe that fails, and prints JSON", { timeout: 60_000 }, async () => {
+			writeFileSync(join(dir, "probe.mjs"), "console.log('no'); process.exit(4);\n");
+			const result = await melian(["probe", "probes/first", "--trust-head", "--json"]);
+			expect(result.status).toBe(1);
+			expect(JSON.parse(result.stdout)).toEqual({
+				exitCode: 4,
+				signal: null,
+				output: "no\n",
+				truncated: false,
+				timedOut: false,
+			});
+		});
+
+		it("exits 1 for a probe past its time limit", { timeout: 60_000 }, async () => {
+			writeFileSync(join(dir, "probe.mjs"), "setInterval(() => {}, 1000);\n");
+			expect(await melian(["probe", "probes/first", "--trust-head", "--timeout", "1"])).toEqual({
+				status: 1,
+				stdout: "Probe: timed out after 1 second\n",
+				stderr: "",
+			});
+		});
+
+		it("exits 1 for a probe that floods its output", { timeout: 60_000 }, async () => {
+			writeFileSync(join(dir, "probe.mjs"), 'for (;;) process.stdout.write("y".repeat(65536));\n');
+			const result = await melian(["probe", "probes/first", "--trust-head"]);
+			expect(result.status).toBe(1);
+			const output = "y".repeat(pipeline.probeLimits.output.default);
+			expect(result.stdout.slice(0, output.length + 1)).toBe(`${output}\n`);
+			expect(result.stdout.slice(output.length + 1)).toMatch(
+				/^Probe: (exited \d+|ended by SIG[A-Z]+); its output was cut at its limit\n$/,
+			);
+		});
+	});
+});

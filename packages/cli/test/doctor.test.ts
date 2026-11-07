@@ -584,3 +584,27 @@ describe("doctor clone check", () => {
 		expect(await cloneLine(undefined)).toBeUndefined();
 	});
 });
+
+describe("doctor probes", () => {
+	const line = (stdout: string) => stdout.split("\n").find((each) => / {2}probes\s+/.test(each));
+
+	it("says probes run when an empty one ran", async () => {
+		const availability = vi.spyOn(pipeline.Probe, "availability").mockResolvedValue({ available: true });
+		const { status, stdout } = await run(github());
+		expect(availability).toHaveBeenCalledOnce();
+		expect(line(stdout)).toMatch(/^ok {4}probes\s+run under sandbox-runtime \((seatbelt|bubblewrap)\)$/);
+		expect(status).toBe(0);
+	});
+
+	it("warns, without failing, that every probe is refused where none can run", async () => {
+		vi.spyOn(pipeline.Probe, "availability").mockResolvedValue({
+			available: false,
+			reason: "sandbox-runtime cannot run here: bubblewrap\u001b[2J not found",
+		});
+		const { status, stdout } = await run(github());
+		expect(line(stdout)).toMatch(
+			/^warn {2}probes\s+cannot run here, so every probe is refused: sandbox-runtime cannot run here: bubblewrap\\u001b\[2J not found$/,
+		);
+		expect(status).toBe(0);
+	});
+});
