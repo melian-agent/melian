@@ -264,7 +264,10 @@ console.log("started");
 			const began = Date.now();
 			try {
 				const result = await probed({ script }, { timeout: 2_000 });
-				expect(result.timedOut).toBe(true);
+				// On macOS the grandchild escapes and holds stdout, so the run ends at the deadline and grace, timed out. On
+				// Linux bubblewrap's PID namespace dies with the probe and takes the grandchild with it, so the run ends
+				// on its own. Either way it returns within the bound, which is the property under test.
+				if (process.platform === "darwin") expect(result.timedOut).toBe(true);
 				expect(result.output).toContain("started");
 				expect(Date.now() - began).toBeLessThan(20_000);
 			} finally {
