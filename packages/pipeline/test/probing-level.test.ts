@@ -733,4 +733,12 @@ describe("a level that probes", () => {
 		expect(runs).toHaveLength(1);
 		expect(runs[0]).toHaveProperty("result");
 	});
+
+	it("gives the verifier the probe of a finding whose prober failed after reporting it", async () => {
+		const reported = probing(failing).slice(0, 2);
+		const { run, requests } = await review({ planner: plan, prober: reported });
+		expect((await failure(run)).code).toBe("lensFailed");
+		const judged = systemPromptOf(requests["Melian adversarial verifier"]![0]!);
+		expect(judged).toContain("Claim c1 rests on probe p");
+	});
 });

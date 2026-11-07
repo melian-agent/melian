@@ -335,7 +335,12 @@ type ReviewCheckpoint = {
 
 type LensCheckpoint = { phase: "spawn" } | ReviewCheckpoint;
 
-type LensResult = Record<string, LensOutcome & { readonly conversation?: ConversationId }>;
+// `prober` names a probing run's prober conversation whatever the run's outcome, so a finding it reported before the
+// run failed still reaches its verifier with its probe.
+type LensResult = Record<
+	string,
+	LensOutcome & { readonly conversation?: ConversationId; readonly prober?: ConversationId }
+>;
 
 function modelName(model: ModelReference): string {
 	return `${model.provider}/${model.modelId}`;
@@ -740,7 +745,17 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 			await runtime.commit(async (tx) => {
 				const checkpoint = (await tx.task(runtime.taskId))!.state.checkpoint as ReviewCheckpoint;
 				const result = Object.fromEntries(
-					chains.flat().map(([key, outcome]) => [key, { ...outcome, conversation: checkpoint.children[key] }]),
+					chains.flat().map(([key, outcome]) => {
+						const prober = checkpoint.children[`${key}/prober`];
+						return [
+							key,
+							{
+								...outcome,
+								conversation: checkpoint.children[key],
+								...(prober === undefined ? {} : { prober }),
+							},
+						];
+					}),
 				);
 				return { status: "terminal", outcome: { status: "completed", result } };
 			}, context);
@@ -1183,7 +1198,7 @@ async function claimProbes(
 			return source.check === claim.source.check && source.version === claim.source.version;
 		});
 		const outcome = run === undefined ? undefined : result?.[run.key];
-		const prober = outcome?.status === "done" ? outcome.probing?.prober : undefined;
+		const prober = outcome?.prober;
 		if (run === undefined || outcome?.conversation === undefined || prober === undefined) continue;
 		const plan = (await harness.snapshot(ProbingDocument, outcome.conversation, context))?.plan ?? [];
 		const state = (await harness.snapshot(ProbingDocument, prober, context)) ?? {};
