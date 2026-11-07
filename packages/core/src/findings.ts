@@ -363,6 +363,13 @@ export const reportFindingInputSchema = Type.Object(
 					"Only for a finding an earlier, quicker look reported that you were asked to check: its ID, as you were given it, when the code shows it is not a defect. Report it at the finding's file, lines, and rule, with failureScenario saying why it cannot fail and evidence holding the code that prevents it",
 			}),
 		),
+		probe: Type.Optional(
+			Type.String({
+				pattern: "^p[0-9]+$",
+				description:
+					"Only in a level that runs probes: the ID run_probe returned for the probe that shows this finding, one that failed",
+			}),
+		),
 	},
 	strict,
 );
