@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -305,6 +305,55 @@ describe("the melian round workflow", () => {
 				`::error::pull request 7 moved from ${base} ${head} to an unreadable revision after the gate\n`,
 				"none\n",
 			]);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("uploads no file holding what a static tool printed, when Melian's output quotes a login", () => {
+		const { run } = workflow.jobs.round.steps.find((step) => step.name === "Run the round");
+		const probe = fileURLToPath(new URL("./fixtures/round-probe-verdict.json", import.meta.url));
+		const token = "sk-probe-SECRET-123";
+		const dir = mkdtempSync(join(tmpdir(), "round-workflow-"));
+		try {
+			// A fake node answers only the step's three melian commands: review prints the probe's own output, in which
+			// Biome quoted a file holding the token, on both streams, since Melian's errors can quote a tool too. Every
+			// other script runs on the real Node.
+			writeFileSync(
+				join(dir, "node"),
+				[
+					"#!/bin/sh",
+					'if [ "$1" = packages/cli/bin/melian.js ]; then',
+					'  case "$2" in',
+					'    review) [ "$*" = "packages/cli/bin/melian.js review #7 --json --no-walkthrough" ] && cat "$PROBE" && cat "$PROBE" >&2; exit 2 ;;',
+					"    doctor|findings) exit 0 ;;",
+					"  esac",
+					"  exit 1",
+					"fi",
+					`exec "${process.execPath}" "$@"`,
+					"",
+				].join("\n"),
+			);
+			chmodSync(join(dir, "node"), 0o755);
+			const ran = spawnSync("bash", ["-e", "-c", run], {
+				cwd: fileURLToPath(new URL("..", import.meta.url)),
+				encoding: "utf8",
+				env: {
+					PATH: `${dir}:${process.env.PATH}`,
+					HOME: dir,
+					RUNNER_TEMP: dir,
+					NUMBER: "7",
+					BASE: "2".repeat(40),
+					HEAD: "1".repeat(40),
+					PROBE: probe,
+				},
+			});
+			expect(ran.status).toBe(0);
+			expect(readFileSync(join(dir, "raw", "verdict.json"), "utf8")).toContain(token);
+			const uploaded = readdirSync(join(dir, "public"));
+			expect(uploaded).toContain("verdict.json");
+			expect(uploaded.filter((name) => readFileSync(join(dir, "public", name), "utf8").includes(token))).toEqual([]);
+			expect(readFileSync(join(dir, "public", "verdict.json"), "utf8")).toBe("null\n");
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}
