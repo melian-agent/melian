@@ -5,7 +5,6 @@ import { dirname, join, posix, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { SandboxManager } from "@anthropic-ai/sandbox-runtime";
 import type { WriterTrust } from "./checks.ts";
-import type { ProcessControl } from "./mutation-process.ts";
 import { ProbeProcess } from "./probe-process.ts";
 
 /** The bounds a probe runs within. A time or output limit past its `max` is refused. */
@@ -40,6 +39,8 @@ export interface ProbePolicy {
 
 /** The sandbox a probe runs under. {@link Probe} uses sandbox-runtime's; a test may pass its own. */
 export interface ProbeSandbox {
+	/** Which system's programs and libraries a probe reads. */
+	readonly platform: "darwin" | "linux";
 	/** Why a probe cannot run here, or `undefined` when it can. */
 	unavailable(): string | undefined;
 	open(): Promise<void>;
@@ -63,7 +64,6 @@ export interface ProbeOptions {
 	/** Bytes of standard output and standard error, together; {@link probeLimits} sets the default and the bound. */
 	readonly outputLimit?: number;
 	readonly sandbox?: ProbeSandbox;
-	readonly control?: ProcessControl;
 }
 
 export interface ProbeResult {
@@ -126,11 +126,6 @@ const systemReads: Readonly<Record<"darwin" | "linux", readonly string[]>> = {
 
 // What the worktree holds that is no probe's business, as the standards loader never reads it.
 const worktreeDenies = [".git", "**/.env*", "**/melian.secrets.yaml", "**/melian.local.yaml"];
-
-function supported(): "darwin" | "linux" | undefined {
-	const name = platform();
-	return name === "darwin" || name === "linux" ? name : undefined;
-}
 
 function quote(text: string): string {
 	return `'${text.replaceAll("'", "'\\''")}'`;
@@ -214,20 +209,36 @@ function runtimePackage(): string {
 	return dirname(dirname(fileURLToPath(import.meta.resolve("@anthropic-ai/sandbox-runtime"))));
 }
 
-class RuntimeSandbox implements ProbeSandbox {
+/** The parts of sandbox-runtime's manager a probe uses. */
+export type SandboxRuntime = Pick<
+	typeof SandboxManager,
+	"isSupportedPlatform" | "checkDependencies" | "initialize" | "wrapWithSandboxArgv" | "cleanupAfterCommand" | "reset"
+>;
+
+/** sandbox-runtime as a {@link ProbeSandbox}. Its manager is one per process, so one session serves every open probe. */
+export class RuntimeSandbox implements ProbeSandbox {
+	readonly platform: "darwin" | "linux";
+	readonly #name: string;
+	readonly #runtime: SandboxRuntime;
 	#sessions = 0;
 	#opening: Promise<void> | undefined;
 
+	constructor(runtime: SandboxRuntime = SandboxManager, name: string = platform()) {
+		this.#runtime = runtime;
+		this.#name = name;
+		this.platform = name === "darwin" ? "darwin" : "linux";
+	}
+
 	unavailable(): string | undefined {
-		if (supported() === undefined) return `probes run on macOS and Linux, not ${platform()}`;
-		if (!SandboxManager.isSupportedPlatform()) return "sandbox-runtime does not support this platform";
-		const { errors } = SandboxManager.checkDependencies();
+		if (this.#name !== "darwin" && this.#name !== "linux") return `probes run on macOS and Linux, not ${this.#name}`;
+		if (!this.#runtime.isSupportedPlatform()) return "sandbox-runtime does not support this platform";
+		const { errors } = this.#runtime.checkDependencies();
 		return errors.length === 0 ? undefined : `sandbox-runtime cannot run here: ${errors.join("; ")}`;
 	}
 
 	async open(): Promise<void> {
 		this.#sessions++;
-		this.#opening ??= SandboxManager.initialize({
+		this.#opening ??= this.#runtime.initialize({
 			network: { allowedDomains: [], deniedDomains: [] },
 			filesystem: { denyRead: [], allowRead: [], allowWrite: [], denyWrite: [] },
 		});
@@ -241,7 +252,7 @@ class RuntimeSandbox implements ProbeSandbox {
 	}
 
 	async wrap(command: string, policy: ProbePolicy): Promise<readonly string[]> {
-		const { argv } = await SandboxManager.wrapWithSandboxArgv(command, "/bin/bash", {
+		const { argv } = await this.#runtime.wrapWithSandboxArgv(command, "/bin/bash", {
 			network: { allowedDomains: [], deniedDomains: [] },
 			filesystem: {
 				denyRead: [...policy.deny],
@@ -254,7 +265,7 @@ class RuntimeSandbox implements ProbeSandbox {
 	}
 
 	cleanup(): void {
-		SandboxManager.cleanupAfterCommand();
+		this.#runtime.cleanupAfterCommand();
 	}
 
 	async close(): Promise<void> {
@@ -262,7 +273,7 @@ class RuntimeSandbox implements ProbeSandbox {
 		this.#sessions--;
 		if (this.#sessions > 0) return;
 		this.#opening = undefined;
-		await SandboxManager.reset();
+		await this.#runtime.reset();
 	}
 }
 
@@ -289,7 +300,6 @@ export class Probe {
 	readonly #timeout: number;
 	readonly #outputLimit: number;
 	readonly #sandbox: ProbeSandbox;
-	readonly #control: ProcessControl | undefined;
 	#closed = false;
 	#running = false;
 
@@ -299,7 +309,6 @@ export class Probe {
 		install: string | undefined,
 		limits: { timeout: number; output: number },
 		sandbox: ProbeSandbox,
-		control: ProcessControl | undefined,
 	) {
 		this.#scratch = scratch;
 		this.#worktree = worktree;
@@ -307,7 +316,6 @@ export class Probe {
 		this.#timeout = limits.timeout;
 		this.#outputLimit = limits.output;
 		this.#sandbox = sandbox;
-		this.#control = control;
 	}
 
 	/**
@@ -342,7 +350,7 @@ export class Probe {
 			if (error instanceof ProbeError) throw error;
 			throw new ProbeError("sandboxUnavailable", `the sandbox did not start: ${String(error)}`, { cause: error });
 		}
-		return new Probe(scratch, worktree, install, limits, sandbox, options.control);
+		return new Probe(scratch, worktree, install, limits, sandbox);
 	}
 
 	/** Whether a probe can run on this machine, by running an empty one. */
@@ -370,9 +378,11 @@ export class Probe {
 		}
 	}
 
+	/** What the probe may read and write, as the sandbox is given it. */
 	get policy(): ProbePolicy {
 		const node = dirname(dirname(realpathSync(process.execPath)));
-		const system = systemReads[supported() ?? "linux"].filter((path) => existsSync(path));
+		const { platform } = this.#sandbox;
+		const system = systemReads[platform].filter((path) => existsSync(path));
 		const run = join(this.#scratch, "run");
 		return {
 			read: [
@@ -387,7 +397,7 @@ export class Probe {
 			deny: ["/", ...worktreeDenies.map((path) => posix.join(this.#worktree, path))],
 			write: [run],
 			// sandbox-runtime keeps this writable for itself whatever the policy says.
-			denyWrite: supported() === "darwin" ? ["/tmp/claude", "/private/tmp/claude"] : ["/tmp/claude"],
+			denyWrite: platform === "darwin" ? ["/tmp/claude", "/private/tmp/claude"] : ["/tmp/claude"],
 		};
 	}
 
@@ -431,7 +441,6 @@ export class Probe {
 					chunks.push(chunk);
 					size += chunk.length;
 				},
-				...(this.#control === undefined ? {} : { control: this.#control }),
 			});
 			const timer = setTimeout(() => {
 				timedOut = true;

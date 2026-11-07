@@ -592,7 +592,7 @@ describe("doctor probes", () => {
 		const availability = vi.spyOn(pipeline.Probe, "availability").mockResolvedValue({ available: true });
 		const { status, stdout } = await run(github());
 		expect(availability).toHaveBeenCalledOnce();
-		expect(line(stdout)).toMatch(/^ok {4}probes\s+run under sandbox-runtime \((seatbelt|bubblewrap)\)$/);
+		expect(line(stdout)).toMatch(/^ok {4}probes\s+run under sandbox-runtime$/);
 		expect(status).toBe(0);
 	});
 

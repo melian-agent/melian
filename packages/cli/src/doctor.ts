@@ -440,11 +440,7 @@ async function trustCheck(
 async function probeCheck(): Promise<Check> {
 	const availability = await Probe.availability();
 	return availability.available
-		? {
-				name: "probes",
-				state: "ok",
-				detail: `run under sandbox-runtime (${process.platform === "darwin" ? "seatbelt" : "bubblewrap"})`,
-			}
+		? { name: "probes", state: "ok", detail: "run under sandbox-runtime" }
 		: {
 				name: "probes",
 				state: "warn",

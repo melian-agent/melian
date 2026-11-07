@@ -2,7 +2,16 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, 
 import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { Probe, ProbeError, type ProbeInput, type ProbeOptions, type ProbePolicy, probeLimits } from "../src/probe.ts";
+import {
+	Probe,
+	ProbeError,
+	type ProbeInput,
+	type ProbeOptions,
+	type ProbePolicy,
+	probeLimits,
+	RuntimeSandbox,
+	type SandboxRuntime,
+} from "../src/probe.ts";
 
 // Probe's own rules, on a sandbox that runs the command unconfined and records what it was asked. Every script here is
 // the test's own. The real sandbox's attacks are in probe-sandbox.test.ts.
@@ -12,10 +21,16 @@ let scratch: string;
 let worktree: string;
 
 function passthrough(
-	overrides: { unavailable?: string; open?: () => Promise<void>; wrap?: () => Promise<never> } = {},
+	overrides: {
+		unavailable?: string;
+		open?: () => Promise<void>;
+		wrap?: () => Promise<never>;
+		platform?: "darwin" | "linux";
+	} = {},
 ) {
 	const asked: { command: string; policy: ProbePolicy }[] = [];
 	const sandbox = {
+		platform: overrides.platform ?? "darwin",
 		unavailable: vi.fn(() => overrides.unavailable),
 		open: vi.fn(overrides.open ?? (async () => {})),
 		wrap: vi.fn(
@@ -172,6 +187,11 @@ describe("Probe.open", () => {
 			expect((await refusal({ script: "" }, options(sandbox, { [name]: value }))).code).toBe("invalidProbe");
 	});
 
+	it("refuses a script that is not text", async () => {
+		const { sandbox } = passthrough();
+		expect((await refusal({ script: 5 as never }, options(sandbox))).code).toBe("invalidProbe");
+	});
+
 	it("takes the script, file count, file bytes and path length at their bounds and refuses one past", async () => {
 		const { sandbox } = passthrough();
 		const name = (length: number) => "p".repeat(length);
@@ -242,6 +262,22 @@ describe("Probe.open", () => {
 		const plain = await Probe.open({ script: "" }, options(sandbox));
 		expect(plain.policy.read[1]).toBe(node);
 		await plain.close();
+	});
+});
+
+describe("Probe.policy", () => {
+	it.each([
+		["darwin", ["/tmp/claude", "/private/tmp/claude"], "/System"],
+		["linux", ["/tmp/claude"], "/usr/lib"],
+	] as const)("reads %s's own programs and libraries, each one present", async (platform, denyWrite, system) => {
+		const { sandbox } = passthrough({ platform });
+		const probe = await Probe.open({ script: "" }, options(sandbox));
+		const { policy } = probe;
+		await probe.close();
+		expect(policy.denyWrite).toEqual(denyWrite);
+		expect(policy.read).toContain(system);
+		for (const path of policy.read.slice(5)) expect(existsSync(path), path).toBe(true);
+		expect(policy.read).not.toContain(platform === "linux" ? "/System" : "/lib64");
 	});
 });
 
@@ -366,5 +402,118 @@ describe("Probe.availability", () => {
 		const silent = passthrough({ wrap: async () => ["/bin/sh", "-c", "exit 5"] as never });
 		expect(await Probe.availability(silent.sandbox)).toEqual({ available: false, reason: "an empty probe exited 5" });
 		expect(left()).toEqual([]);
+	});
+});
+
+describe("RuntimeSandbox", () => {
+	function runtime(answers: { supported?: boolean; errors?: string[]; initialize?: () => Promise<void> } = {}) {
+		const calls: unknown[][] = [];
+		const fake = {
+			isSupportedPlatform: () => {
+				calls.push(["isSupportedPlatform"]);
+				return answers.supported ?? true;
+			},
+			checkDependencies: () => {
+				calls.push(["checkDependencies"]);
+				return { errors: answers.errors ?? [], warnings: ["an old bubblewrap"] };
+			},
+			initialize: async (config: unknown) => {
+				calls.push(["initialize", config]);
+				await answers.initialize?.();
+			},
+			wrapWithSandboxArgv: async (...args: unknown[]) => {
+				calls.push(["wrapWithSandboxArgv", ...args]);
+				return { argv: ["wrapped"], env: {} };
+			},
+			cleanupAfterCommand: () => {
+				calls.push(["cleanupAfterCommand"]);
+			},
+			reset: async () => {
+				calls.push(["reset"]);
+			},
+		} as unknown as SandboxRuntime;
+		return { fake, calls, names: () => calls.map(([name]) => name) };
+	}
+
+	it("runs on macOS and Linux alone, and asks sandbox-runtime nothing elsewhere", () => {
+		const { fake, calls } = runtime();
+		expect(new RuntimeSandbox(fake, "win32").unavailable()).toBe("probes run on macOS and Linux, not win32");
+		expect(calls).toEqual([]);
+		expect(new RuntimeSandbox(fake, "darwin").platform).toBe("darwin");
+		expect(new RuntimeSandbox(fake, "linux").platform).toBe("linux");
+	});
+
+	it("says what sandbox-runtime lacks here", () => {
+		expect(new RuntimeSandbox(runtime({ supported: false }).fake, "linux").unavailable()).toBe(
+			"sandbox-runtime does not support this platform",
+		);
+		const missing = runtime({ errors: ["bubblewrap (bwrap) not installed", "socat not found"] });
+		expect(new RuntimeSandbox(missing.fake, "linux").unavailable()).toBe(
+			"sandbox-runtime cannot run here: bubblewrap (bwrap) not installed; socat not found",
+		);
+		const ready = runtime();
+		expect(new RuntimeSandbox(ready.fake, "darwin").unavailable()).toBeUndefined();
+		expect(ready.names()).toEqual(["isSupportedPlatform", "checkDependencies"]);
+	});
+
+	it("opens one session with no network for every open probe, and resets it when the last closes", async () => {
+		const { fake, calls, names } = runtime();
+		const sandbox = new RuntimeSandbox(fake, "darwin");
+		await sandbox.close();
+		await sandbox.open();
+		await sandbox.open();
+		expect(calls).toEqual([
+			[
+				"initialize",
+				{
+					network: { allowedDomains: [], deniedDomains: [] },
+					filesystem: { denyRead: [], allowRead: [], allowWrite: [], denyWrite: [] },
+				},
+			],
+		]);
+		await sandbox.close();
+		expect(names()).toEqual(["initialize"]);
+		await sandbox.close();
+		expect(names()).toEqual(["initialize", "reset"]);
+		await sandbox.close();
+		await sandbox.open();
+		expect(names()).toEqual(["initialize", "reset", "initialize"]);
+	});
+
+	it("opens again after a session that failed to start", async () => {
+		let attempts = 0;
+		const { fake, names } = runtime({
+			initialize: async () => {
+				attempts++;
+				if (attempts === 1) throw new Error("no user namespaces");
+			},
+		});
+		const sandbox = new RuntimeSandbox(fake, "linux");
+		await expect(sandbox.open()).rejects.toThrow("no user namespaces");
+		await sandbox.close();
+		expect(names()).toEqual(["initialize"]);
+		await sandbox.open();
+		await sandbox.close();
+		expect(names()).toEqual(["initialize", "initialize", "reset"]);
+	});
+
+	it("wraps a command for bash with the policy and no network, and cleans up after it", async () => {
+		const { fake, calls } = runtime();
+		const sandbox = new RuntimeSandbox(fake, "linux");
+		const policy = { read: ["/w"], deny: ["/"], write: ["/s/run"], denyWrite: ["/tmp/claude"] };
+		expect(await sandbox.wrap("exec node probe.mjs", policy)).toEqual(["wrapped"]);
+		sandbox.cleanup();
+		expect(calls).toEqual([
+			[
+				"wrapWithSandboxArgv",
+				"exec node probe.mjs",
+				"/bin/bash",
+				{
+					network: { allowedDomains: [], deniedDomains: [] },
+					filesystem: { denyRead: ["/"], allowRead: ["/w"], allowWrite: ["/s/run"], denyWrite: ["/tmp/claude"] },
+				},
+			],
+			["cleanupAfterCommand"],
+		]);
 	});
 });

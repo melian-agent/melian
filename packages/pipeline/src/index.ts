@@ -127,6 +127,8 @@ export {
 	type ProbeResult,
 	type ProbeSandbox,
 	probeLimits,
+	RuntimeSandbox,
+	type SandboxRuntime,
 } from "./probe.ts";
 export {
 	MembershipReader,
