@@ -50,6 +50,15 @@ async function melian(args: readonly string[]) {
 }
 
 describe("melian probe arguments", () => {
+	it("names the bound of --timeout", async () => {
+		expect((await melian(["probe", "a", "--timeout", "601"])).stderr).toBe(
+			"melian: --timeout takes whole seconds from 1 to 600\nRun melian --help for usage.\n",
+		);
+		expect((await melian(["review", "main", "--timeout", "5"])).stderr).toBe(
+			"melian: --timeout is only available for probe\nRun melian --help for usage.\n",
+		);
+	});
+
 	it.each([
 		[["probe"]],
 		[["probe", "a", "b"]],
@@ -111,6 +120,81 @@ describe("melian probe", () => {
 			status: 2,
 			stderr: `melian: a probe has at most ${pipeline.probeLimits.files} files\n`,
 		});
+	});
+
+	it("reads a file at the size bound and refuses one past it before reading it", async () => {
+		writeFileSync(join(dir, "probe.mjs"), "");
+		writeFileSync(join(dir, "fixture", "big"), "x".repeat(pipeline.probeLimits.fileBytes));
+		const open = vi.spyOn(pipeline.Probe, "open").mockRejectedValue(new pipeline.ProbeError("invalidProbe", "stop"));
+		expect((await melian(["probe", "probes/first", "--trust-head"])).stderr).toBe("melian: stop\n");
+		expect(open.mock.calls[0]![0].files).toEqual([
+			{ path: "fixture/big", text: "x".repeat(pipeline.probeLimits.fileBytes) },
+		]);
+		writeFileSync(join(dir, "fixture", "big"), "x".repeat(pipeline.probeLimits.fileBytes + 1));
+		expect(await melian(["probe", "probes/first", "--trust-head"])).toMatchObject({
+			status: 2,
+			stderr: `melian: fixture/big is larger than ${pipeline.probeLimits.fileBytes} bytes\n`,
+		});
+		expect(open).toHaveBeenCalledOnce();
+	});
+
+	it("reads as many files as a probe takes, and opens nothing past them", async () => {
+		writeFileSync(join(dir, "probe.mjs"), "");
+		for (let index = 0; index < pipeline.probeLimits.files; index++) writeFileSync(join(dir, `f${index}`), "");
+		const open = vi.spyOn(pipeline.Probe, "open").mockRejectedValue(new pipeline.ProbeError("invalidProbe", "stop"));
+		await melian(["probe", "probes/first", "--trust-head"]);
+		expect(open.mock.calls[0]![0].files).toHaveLength(pipeline.probeLimits.files);
+		writeFileSync(join(dir, "extra"), "");
+		expect((await melian(["probe", "probes/first", "--trust-head"])).stderr).toBe(
+			`melian: a probe has at most ${pipeline.probeLimits.files} files\n`,
+		);
+		expect(open).toHaveBeenCalledOnce();
+	});
+
+	it("fails as any other error does when the directory cannot be read", async () => {
+		writeFileSync(join(repo, "plain"), "");
+		expect(await melian(["probe", "plain", "--trust-head"])).toMatchObject({
+			status: 1,
+			stderr: expect.stringContaining("ENOTDIR"),
+		});
+	});
+
+	it.each([
+		[{ exitCode: 0, signal: null, timedOut: false, truncated: false }, 30, 0, "Probe: exited 0"],
+		[
+			{ exitCode: null, signal: "SIGKILL", timedOut: true, truncated: false },
+			2,
+			1,
+			"Probe: timed out after 2 seconds",
+		],
+		[{ exitCode: null, signal: "SIGTERM", timedOut: false, truncated: false }, 30, 1, "Probe: ended by SIGTERM"],
+		[
+			{ exitCode: 0, signal: null, timedOut: false, truncated: true },
+			30,
+			1,
+			"Probe: exited 0; its output was cut at its limit",
+		],
+	] as const)("says how the probe ended: %j", async (ended, seconds, status, line) => {
+		writeFileSync(join(dir, "probe.mjs"), "");
+		const close = vi.fn(async () => {});
+		vi.spyOn(pipeline.Probe, "open").mockResolvedValue({
+			run: async () => ({ ...ended, output: "" }),
+			close,
+		} as never);
+		const args = ["probe", "probes/first", "--trust-head", "--timeout", String(seconds)];
+		expect(await melian(args)).toEqual({ status, stdout: `${line}\n`, stderr: "" });
+		expect(close).toHaveBeenCalledOnce();
+	});
+
+	it("closes the probe when its run throws", async () => {
+		writeFileSync(join(dir, "probe.mjs"), "");
+		const close = vi.fn(async () => {});
+		const run = async () => {
+			throw new pipeline.ProbeError("sandboxUnavailable", "refused");
+		};
+		vi.spyOn(pipeline.Probe, "open").mockResolvedValue({ run, close } as never);
+		expect((await melian(["probe", "probes/first", "--trust-head"])).status).toBe(2);
+		expect(close).toHaveBeenCalledOnce();
 	});
 
 	it("says where the sandbox cannot run", async () => {

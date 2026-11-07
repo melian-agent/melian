@@ -14,7 +14,7 @@ const script = "probe.mjs";
 // is refused rather than followed, and reading stops at the bounds a probe takes.
 async function directoryFiles(root: string, at = ""): Promise<ProbeFile[]> {
 	const files: ProbeFile[] = [];
-	for (const name of (await readdir(join(root, at))).sort()) {
+	for (const name of await readdir(join(root, at))) {
 		const path = at === "" ? name : `${at}/${name}`;
 		const entry = await lstat(join(root, path));
 		if (entry.isDirectory()) files.push(...(await directoryFiles(root, path)));

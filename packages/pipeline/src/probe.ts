@@ -280,12 +280,11 @@ export class RuntimeSandbox implements ProbeSandbox {
 // One per process, since sandbox-runtime's manager is.
 const runtime = new RuntimeSandbox();
 
-// Lets close() remove what a probe made unreadable to its owner.
+// Lets close() remove a directory the probe made unreadable to its owner. A link is left for rm to remove, not followed.
 async function writable(path: string): Promise<void> {
-	const entry = await lstat(path).catch(() => undefined);
-	if (entry === undefined || !entry.isDirectory()) return;
-	await chmod(path, 0o700).catch(() => undefined);
-	for (const name of await readdir(path).catch(() => [])) await writable(join(path, name));
+	if (!(await lstat(path)).isDirectory()) return;
+	await chmod(path, 0o700);
+	for (const name of await readdir(path)) await writable(join(path, name));
 }
 
 /**
@@ -338,17 +337,16 @@ export class Probe {
 		const scratch = realpathSync(await mkdtemp(join(tmpdir(), "melian-probe-")));
 		try {
 			for (const path of ["probe", "run/home", "run/tmp"]) await mkdir(join(scratch, path), { recursive: true });
-			await writeFile(join(scratch, "probe", scriptName), input.script, { flag: "wx" });
+			await writeFile(join(scratch, "probe", scriptName), input.script);
 			for (const file of files) {
 				const target = join(scratch, "probe", ...file.path.split("/"));
 				await mkdir(dirname(target), { recursive: true });
-				await writeFile(target, file.text, { flag: "wx" });
+				await writeFile(target, file.text);
 			}
 			await sandbox.open();
 		} catch (error) {
-			await rm(scratch, { recursive: true, force: true });
-			if (error instanceof ProbeError) throw error;
-			throw new ProbeError("sandboxUnavailable", `the sandbox did not start: ${String(error)}`, { cause: error });
+			await rm(scratch, { recursive: true });
+			throw new ProbeError("sandboxUnavailable", `the probe could not start: ${String(error)}`, { cause: error });
 		}
 		return new Probe(scratch, worktree, install, limits, sandbox);
 	}
@@ -374,7 +372,7 @@ export class Probe {
 		} catch (error) {
 			return { available: false, reason: error instanceof Error ? error.message : String(error) };
 		} finally {
-			await rm(worktree, { recursive: true, force: true });
+			await rm(worktree, { recursive: true });
 		}
 	}
 
@@ -427,7 +425,8 @@ export class Probe {
 					PATH: `${dirname(node)}:/usr/bin:/bin`,
 					HOME: home,
 					TMPDIR: temporary,
-					...(process.env.LANG === undefined ? {} : { LANG: process.env.LANG }),
+					// spawn leaves out a variable whose value is undefined.
+					LANG: process.env.LANG,
 				},
 				output: (chunk) => {
 					if (truncated) return;
@@ -468,10 +467,8 @@ export class Probe {
 		if (this.#closed) return;
 		this.#closed = true;
 		try {
-			await rm(this.#scratch, { recursive: true, force: true, maxRetries: 3 }).catch(async () => {
-				await writable(this.#scratch);
-				await rm(this.#scratch, { recursive: true, force: true, maxRetries: 3 });
-			});
+			await writable(this.#scratch);
+			await rm(this.#scratch, { recursive: true });
 		} finally {
 			await this.#sandbox.close();
 		}

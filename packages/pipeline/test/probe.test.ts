@@ -118,7 +118,8 @@ describe("Probe.open", () => {
 		});
 		const error = await refusal({ script: "" }, options(sandbox));
 		expect(error.code).toBe("sandboxUnavailable");
-		expect(error.message).toBe("the sandbox did not start: Error: user namespaces are restricted");
+		expect(error.message).toBe("the probe could not start: Error: user namespaces are restricted");
+		expect(error.cause).toEqual(new Error("user namespaces are restricted"));
 		expect(left()).toEqual([]);
 	});
 
@@ -142,7 +143,7 @@ describe("Probe.open", () => {
 		expect(sandbox.open).not.toHaveBeenCalled();
 	});
 
-	it.each([[["a", "A"]], [["a", "a/b"]], [["a/b", "a"]], [["x/y", "x/y"]]])(
+	it.each([[["a", "A"]], [["a", "a/b"]], [["a/b", "a"]], [["x/y", "x/y"]], [["a/b", "a/b/c"]], [["a/b/c", "a/b"]]])(
 		"refuses colliding paths %j",
 		async (paths) => {
 			const { sandbox } = passthrough();
@@ -225,10 +226,23 @@ describe("Probe.open", () => {
 			const error = await refusal({ script: "" }, options(sandbox, { worktree: path }));
 			expect(error.code, path).toBe("invalidProbe");
 		}
-		expect(
-			(await refusal({ script: "" }, options(sandbox, { install: join(scratch, "missing") }))).message,
-		).toContain("the install");
+		const missing = await refusal({ script: "" }, options(sandbox, { install: join(scratch, "missing") }));
+		expect(missing.message).toBe(`the install ${join(scratch, "missing")} cannot be read`);
+		expect(missing.cause).toMatchObject({ code: "ENOENT" });
 		expect(sandbox.open).not.toHaveBeenCalled();
+	});
+
+	it("takes a worktree inside the home directory, and refuses the home directory itself", async () => {
+		const { sandbox } = passthrough();
+		vi.stubEnv("HOME", scratch);
+		try {
+			await (await Probe.open({ script: "" }, options(sandbox))).close();
+			expect((await refusal({ script: "" }, options(sandbox, { worktree: scratch }))).message).toBe(
+				`the worktree ${scratch} holds the home directory`,
+			);
+		} finally {
+			vi.unstubAllEnvs();
+		}
 	});
 
 	it("reads only the worktree, the install, Node, the sandbox's helpers, its own files and the system", async () => {
@@ -267,6 +281,35 @@ describe("Probe.open", () => {
 });
 
 describe("Probe.policy", () => {
+	const systems = {
+		darwin: [
+			"/bin",
+			"/sbin",
+			"/usr/bin",
+			"/usr/sbin",
+			"/usr/lib",
+			"/usr/libexec",
+			"/usr/share",
+			"/System",
+			"/private/var/select",
+		],
+		linux: [
+			"/bin",
+			"/sbin",
+			"/lib",
+			"/lib32",
+			"/lib64",
+			"/libx32",
+			"/usr/bin",
+			"/usr/sbin",
+			"/usr/lib",
+			"/usr/lib32",
+			"/usr/lib64",
+			"/usr/libexec",
+			"/usr/share",
+		],
+	};
+
 	it.each([
 		["darwin", ["/tmp/claude", "/private/tmp/claude"], "/System"],
 		["linux", ["/tmp/claude"], "/usr/lib"],
@@ -278,7 +321,7 @@ describe("Probe.policy", () => {
 		expect(policy.denyWrite).toEqual(denyWrite);
 		// A path the host lacks is left out, so the other system's mark is checked only where it exists.
 		if (existsSync(system)) expect(policy.read).toContain(system);
-		for (const path of policy.read.slice(5)) expect(existsSync(path), path).toBe(true);
+		expect(policy.read.slice(5)).toEqual(systems[platform].filter((path) => existsSync(path)));
 		expect(policy.read).not.toContain(platform === "linux" ? "/System" : "/lib64");
 	});
 });
@@ -325,6 +368,20 @@ console.log(JSON.stringify({ marker: readFileSync("marker", "utf8"), home: proce
 		expect(result).toEqual({ exitCode: 3, signal: null, output: "out\nerr\n", truncated: false, timedOut: false });
 	});
 
+	it("runs from a worktree whose path holds a quote", async () => {
+		worktree = join(scratch, "it's here");
+		mkdirSync(worktree);
+		const { result } = await ran(`console.log(process.cwd());`);
+		expect(result).toMatchObject({ exitCode: 0, output: `${worktree}\n` });
+	});
+
+	it("leaves no timer behind once the probe has ended", async () => {
+		const timers = () => process.getActiveResourcesInfo().filter((kind) => kind === "Timeout").length;
+		const before = timers();
+		await ran(`process.exit(0);`, { timeout: 60_000 });
+		expect(timers()).toBe(before);
+	});
+
 	it("keeps output at its limit whole and cuts one byte past it", async () => {
 		const at = await ran(`process.stdout.write("x".repeat(100));`, { outputLimit: 100 });
 		expect(at.result).toMatchObject({ output: "x".repeat(100), truncated: false });
@@ -363,6 +420,7 @@ console.log(JSON.stringify({ marker: readFileSync("marker", "utf8"), home: proce
 		await expect(probe.run()).rejects.toMatchObject({
 			code: "sandboxUnavailable",
 			message: "the sandbox refused the probe: Error: profile too long",
+			cause: new Error("profile too long"),
 		});
 		expect(sandbox.cleanup).toHaveBeenCalledOnce();
 		await probe.close();
