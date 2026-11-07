@@ -104,6 +104,24 @@ jobs:
           if ! [[ "$head" =~ ^[0-9a-f]{40}$ && "$base" =~ ^[0-9a-f]{40}$ ]]; then echo "::error::unreadable head or base SHA"; exit 1; fi
           echo "head=$head" >> "$GITHUB_OUTPUT"
           echo "base=$base" >> "$GITHUB_OUTPUT"
+      # melian/review is keyed by commit and context, so two open pull requests on one head would overwrite each other's
+      # status, and the merge group would refuse the one whose target the other's write replaced.
+      - name: Refuse a head another open pull request shares
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          NUMBER: ${{ inputs.pull_request }}
+          HEAD: ${{ steps.pull.outputs.head }}
+        run: |
+          sharing=$(gh api --paginate "repos/$REPOSITORY/pulls?state=open&per_page=100" \
+            --jq ".[] | select(.head.sha == \"$HEAD\") | .number") || { echo "::error::the open pull requests could not be read"; exit 1; }
+          for other in $sharing; do
+            if [ "$other" != "$NUMBER" ]; then
+              echo "::error::pull request $other has head $HEAD too; a status names a commit, so neither can take a round's melian/review"
+              exit 1
+            fi
+          done
+          echo "no other open pull request has head $HEAD"
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
@@ -133,8 +151,54 @@ jobs:
             *) echo "::error::$writer, whose code the head is, has ${permission:-no known} permission; a round runs only a writer's head"; exit 1 ;;
           esac
 
-  round:
+  # A status names a head, not a round, and GitHub keeps the latest. Setting pending before the round job starts means
+  # a round that fails, or a report step that never runs, leaves pending on the head, never an earlier round's success.
+  # A host publication can still land between the report's read and its post; the maintainer accepted that window.
+  pending:
     needs: gate
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    timeout-minutes: 5
+    environment: melian-round
+    permissions:
+      contents: read
+    outputs:
+      status: ${{ steps.post.outputs.id }}
+    steps:
+      - name: Refuse a commit the default branch has moved past
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          REF: ${{ github.ref }}
+          SHA: ${{ github.sha }}
+        run: |
+          default=$(gh api "repos/$REPOSITORY" --jq .default_branch) || default=""
+          if [ "$REF" != "refs/heads/$default" ]; then
+            echo "::error::this run is from $REF, and the default branch is now ${default:-unreadable}; start a new round"
+            exit 1
+          fi
+          current=$(gh api "repos/$REPOSITORY/branches/$default" --jq .commit.sha) || current=""
+          if [ "$current" != "$SHA" ]; then
+            echo "::error::the default branch is at ${current:-an unreadable commit}, not $SHA, which this run would build; start a new round"
+            exit 1
+          fi
+      - name: Set melian/review to pending on the head
+        id: post
+        env:
+          STATUS_TOKEN: ${{ secrets.MELIAN_STATUS_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          HEAD: ${{ needs.gate.outputs.head }}
+          PULL_URL: ${{ github.server_url }}/${{ github.repository }}/pull/${{ inputs.pull_request }}
+        run: |
+          if [ -z "$STATUS_TOKEN" ]; then echo "::error::the melian-round Environment holds no MELIAN_STATUS_TOKEN"; exit 1; fi
+          id=$(jq -n --arg target "$PULL_URL" \
+            '{ state: "pending", context: "melian/review", description: "A Melian round is reviewing this head", target_url: $target }' \
+            | GH_TOKEN="$STATUS_TOKEN" gh api -X POST "repos/$REPOSITORY/statuses/$HEAD" --input - --jq .id)
+          if ! [[ "$id" =~ ^[0-9]+$ ]]; then echo "::error::GitHub returned no ID for the pending status"; exit 1; fi
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+          echo "melian/review on $HEAD: pending, status $id"
+
+  round:
+    needs: [gate, pending]
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 150
     # The logins are secrets of the melian-round Environment, whose deployment branches are limited to main, so GitHub
@@ -259,10 +323,14 @@ jobs:
           retention-days: 30
 
   report:
-    needs: [gate, round]
+    needs: [gate, pending, round]
     if: always() && needs.gate.result == 'success'
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 5
+    # The melian/review status is set with MELIAN_STATUS_TOKEN, a machine user's token for commit statuses alone, which
+    # only this Environment holds. The merge group copies a status only from a User with write permission, so no
+    # branch's copy of this workflow, posting as github-actions[bot], can set one it accepts. This job runs no head code.
+    environment: melian-round
     permissions:
       contents: read
       pull-requests: write
@@ -286,14 +354,18 @@ jobs:
             echo "::error::the default branch is at ${current:-an unreadable commit}, not $SHA, which this run would build; start a new round"
             exit 1
           fi
+      # The whole history, so the status step reads the pull request's base policy, which the default branch contains.
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          fetch-depth: 0
           persist-credentials: false
       # scripts/round.mjs imports core's render.ts, which plain Node runs only from 22.18 or 23.6, so every job that runs
       # a script pins the round job's Node.
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
+      # The status step's trust read loads core's configuration, whose packages a fresh runner does not have.
+      - run: npm ci --ignore-scripts
       # A round that finished uploaded its artefact, so a missing one fails this job rather than post a comment that
       # says the round ended before a verdict. An empty name would download every artefact of the run.
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -333,3 +405,37 @@ jobs:
           else
             gh pr comment "$NUMBER" --repo "$REPOSITORY" --body-file "$RUNNER_TEMP/comment.md"
           fi
+      # Read again just before setting it, as the comment does: a status names a head, and a pull request that moved
+      # during the round shows a head no round reviewed, so it gets none.
+      - name: Set melian/review on the reviewed head
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STATUS_TOKEN: ${{ secrets.MELIAN_STATUS_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          NUMBER: ${{ inputs.pull_request }}
+          BASE: ${{ needs.gate.outputs.base }}
+          HEAD: ${{ needs.gate.outputs.head }}
+          PENDING: ${{ needs.pending.outputs.status }}
+          PULL_URL: ${{ github.server_url }}/${{ github.repository }}/pull/${{ inputs.pull_request }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          out="$RUNNER_TEMP/round"
+          current=$(gh api "repos/$REPOSITORY/pulls/$NUMBER" --jq '.base.sha + " " + .head.sha') || current=""
+          read -r current_base current_head <<< "$current" || true
+          # A later round or host may have set the status since this round began; a rerun of this job alone must not
+          # put an older verdict back over it. An unreadable answer counts as newer.
+          # Actions runs this step without pipefail, so the read is captured on its own and its failure is seen.
+          created=$(gh api --paginate "repos/$REPOSITORY/commits/$HEAD/statuses?per_page=100" \
+            --jq '.[] | select(.context == "melian/review") | .id') || created="unreadable"
+          latest=$(printf '%s\n' "$created" | sed -n 1p)
+          trusted=$(node scripts/round-trust.mjs "$GITHUB_WORKSPACE" "$BASE")
+          status=$(node scripts/round-comment.mjs --verdict "$out/verdict.json" --rounds "$out/rounds.json" \
+            --exit "$(cat "$out/exit" 2>/dev/null || echo none)" --run-url "$RUN_URL" --run-id "$RUN_ID" --nonce none --base "$BASE" --head "$HEAD" \
+            --merge-base "$(cat "$out/merge-base" 2>/dev/null || echo none)" --status "$PULL_URL" \
+            --trusted "$trusted" --latest "$latest" --pending "$PENDING" \
+            ${current_head:+--current-base "$current_base" --current-head "$current_head"})
+          case "$status" in "skip: "*) echo "${status#skip: }"; exit 0 ;; esac
+          if [ -z "$STATUS_TOKEN" ]; then echo "::error::the melian-round Environment holds no MELIAN_STATUS_TOKEN"; exit 1; fi
+          printf '%s' "$status" | GH_TOKEN="$STATUS_TOKEN" gh api -X POST "repos/$REPOSITORY/statuses/$HEAD" --input - > /dev/null
+          echo "melian/review on $HEAD: $(printf '%s' "$status" | jq -r '.state + ", " + .description')"
