@@ -1,0 +1,37 @@
+# A trust-boundary level that runs probes
+
+Status: ruled by the maintainer, 2026-11-07, in [issue #288](https://github.com/melian-agent/melian/issues/288). Built by its first pull request; its goldens and live measurement follow in the next.
+
+## Problem
+
+A lens reads and searches; it never tries the boundary. On trust surfaces the reviews of record found what Melian's rounds missed by running probes, so the coordinator ran both, and paid twice.
+
+Example: on [pull request #275](https://github.com/melian-agent/melian/pull/275), a head `biome.json` that extended `/proc/<pid>/environ` would have put the runner's logins in a public comment. Only running Biome on such a file showed it. `melian compare stats` counts nine `needs-execution` misses, every one found by running something. [Issue #285](https://github.com/melian-agent/melian/issues/285) built `Probe`, which runs a model's script under sandbox-runtime, as [the sandbox decision](2026-11-07-probes-run-under-sandbox-runtime.md) records. Nothing let a lens use it.
+
+## Decision
+
+A lens level may probe. `probe` on a level names the prober's tier, the level's own when absent, and each probe's time limit, the pipeline's 30 seconds when absent. The built-in `trust-boundary` lens's `deep` level probes, with both left to their defaults. A level that probes runs as two conversations, each on its own route.
+
+1. **The planner** runs on the level's tier, with the lens's instructions, the change, the decisions at base and the findings of the change's last earlier revision. It writes a numbered attack plan with one `record_plan` call and nothing else: no probe, and no finding but an injection attempt. Each attack names its target, why something untrusted might cross a boundary there, and what a passing and a failing probe would print. The plan is an artefact of its own, the planner conversation's `ProbingDocument`. A planner that finishes without one is reminded once, and the lens fails if it still records none. An empty plan runs no prober.
+2. **The prober** runs on its own tier and receives the plan alone: no diff, no lens body, the lens's rules and reporting policy, and the read tools. It answers every attack with at least one probe through `run_probe`, or records it skipped with `skip_attack` and the reason. A prober that leaves an attack with neither is reminded once; one it still leaves ends the lens, and the review is not reviewed.
+3. **`run_probe`** writes the head's tree into scratch from git's blobs, without the head's attributes or filters, links the checkout's install at `node_modules`, and runs the probe there through `Probe`. The record, keyed by the call's tool task, holds the script, its files, the result and the time, so a replay returns it. A probe counts against the tools budget as a read does.
+4. **A finding** from the prober names the probe it rests on, and `report_finding` refuses one whose probe did not fail: a non-zero exit, not a timeout, a signal or cut output.
+5. **The verifier** receives the plan, the probe's script, files and result, and the result of running it again, which its task does before the verifier starts. It judges by the result and by whether the probe exercises the claim. `report_verdict` refuses `confirmed` for a claim whose probe did not fail again.
+
+There is no fixed probe count. The bound is the level's token and tool budgets, which every conversation of the run takes, and the per-probe time limit. Each conversation's stage telemetry names its role, and the prober's names its probe count, their time and the limit. The lens's check record says how many attacks the plan held, how many probes ran in what time, and how many attacks were skipped.
+
+A level that probes runs only where a probe may: the host has said the head is a writer's or the reviewer's, the base policy trusts writers, and an empty probe runs here. Elsewhere triage cannot choose it and the lens's record says why, as for a level whose tier has no model.
+
+## Rulings it reads, and pull request comments
+
+The planner reads rulings from the base's decision files, through the same index the `design` lens reads. A maintainer's ruling that lives only in a pull request comment does not reach it. It does not read comments now. If a miss shows the need, the comments it reads should be those whose author has write, maintain or admin permission, checked as the agent rules check them, at most 20 comments and 8 KiB, inside the review's boundary as data, and never instructions. Dismissals already reach it: a dismissed finding of the last earlier revision is listed with its status.
+
+## What it gives up
+
+- The plan judges the level's own tier. A prober on another tier is refused when the plan refuses that tier, but a fallback model the prober finishes on is not judged against the tier's `accept`.
+- Review coverage records what the planner read, not the prober's reads.
+- Each probe writes the head's tree afresh: about half a second for Melian's own 21 MB.
+- A probe reads the checkout's third-party packages through `node_modules`; a workspace package linked there points outside the probe's reads, so a probe imports the head's own packages by path.
+- The planner is reminded once, and so is the prober. A model that ignores both leaves the lens failed or ended.
+
+Measuring which routes to commit, the goldens from this week's probes and the `needs-execution` misses, is the issue's second part.
