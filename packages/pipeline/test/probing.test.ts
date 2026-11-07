@@ -535,7 +535,8 @@ describe("the evidence a verifier reads, exactly", () => {
 			[{ severity: "P1", rule: "r", path: "a", line: 1, status: "new", message: "x".repeat(9000) }],
 			nonce,
 		);
-		expect(text).toContain("1 more are not listed.");
-		expect(text).not.toContain("<untrusted-");
+		expect(text).toBe(
+			"## Findings earlier reviews reported\n\nThe last earlier revision of this change was reported with these findings. Plan an attack for each that touches a boundary, since the change may not have closed it. 1 more are not listed.",
+		);
 	});
 });

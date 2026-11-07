@@ -547,6 +547,20 @@ describe("a level that probes", () => {
 		);
 		await thought.run;
 		expect(thought.requests[planner]).toHaveLength(2);
+		// A head another writer vouches for runs the lens again, since the prober's trust is part of its selection.
+		const vouched = await review(
+			{ planner: [...empty, ...empty], prober: [] },
+			{
+				...options,
+				lens: probingWith({ prober: "light", timeout: 1000 }),
+				config: {
+					models: { ...options.config.models, light: { ...options.config.models.light, thinking: "low" } },
+				},
+				writer: { trusted: true, by: "writer" },
+			},
+		);
+		await vouched.run;
+		expect(vouched.requests[planner]).toHaveLength(2);
 	}, 60_000);
 
 	it("names the probing run's providers while it waits on its planner", async () => {
