@@ -608,9 +608,35 @@ describe("staticFindings", () => {
 		// The change rewrote line 2, so a TS2322 there may be another one than the base's.
 		expect(await causes(at(2, 14), at(2, 14))).toEqual([["introduced", "line 2, column 14"]]);
 		expect(await causes(at(3, 1), at(3, 1))).toEqual([["pre-existing", "line 3, column 1"]]);
+		expect(await causes(at(2, 14), at(2, 14), "biome")).toEqual([["introduced", "line 2, column 14"]]);
 		const unplaced = at(3, 1);
 		delete unplaced.runs[0].results[0]!.locations[0]!.physicalLocation.region.startColumn;
 		expect(await causes(at(3, 1), unplaced)).toEqual([["pre-existing", "line 3, column 1"]]);
+	});
+
+	it("matches a result on a line the change only reindented by its code, and an Enola result by its message", async () => {
+		const filler = `// ${"x".repeat(4 * 1024 * 1024)}`;
+		const base = commit({ "a.ts": lines("export const n: number = 'x';"), "huge.ts": lines("a", filler) });
+		const head = commit({ "a.ts": lines("  export const n: number = 'x';"), "huge.ts": lines("b", filler) });
+		const { revision } = await Changeset.resolve(repo, `${base}..${head}`);
+		const tsc = await staticFindings({
+			repoRoot: repo,
+			revision,
+			tool: "tsc",
+			settings: defaultConfig.static.tsc,
+			base: log(["a.ts", 1, "TS2322"]),
+			head: log(["a.ts", 1, "TS2322"]),
+		});
+		expect(summary(tsc.findings)).toEqual([{ rule: "tsc/TS2322", line: 1, cause: "pre-existing", severity: "P1" }]);
+		const enola = await staticFindings({
+			repoRoot: repo,
+			revision,
+			tool: "enola",
+			settings: defaultConfig.static.enola,
+			base: log(["huge.ts", 1, "enola/layer"]),
+			head: log(["huge.ts", 1, "enola/layer"]),
+		});
+		expect(enola.findings.map((finding) => finding.properties.cause)).toEqual(["pre-existing"]);
 	});
 
 	// Issue #281: Biome and tsc quote files a head leads them to, outside the checkout too.
