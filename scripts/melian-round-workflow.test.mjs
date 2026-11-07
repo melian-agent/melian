@@ -70,10 +70,11 @@ describe("the melian round workflow", () => {
 		});
 	});
 
-	it("refuses, in the report job before its checkout, the commit the round job refuses", () => {
+	it("refuses, in the pending and report jobs before anything else, the commit the round job refuses", () => {
 		const name = "Refuse a commit the default branch has moved past";
 		const roundCheck = workflow.jobs.round.steps.find((step) => step.name === name);
 		expect(workflow.jobs.report.steps[0]).toEqual(roundCheck);
+		expect(workflow.jobs.pending.steps[0]).toEqual(roundCheck);
 	});
 
 	it("lets the round run only on the default branch's current commit", () => {
@@ -817,8 +818,11 @@ describe("the melian round workflow", () => {
 		expect(pending.environment).toBe("melian-round");
 		expect(pending.permissions).toEqual({ contents: "read" });
 		expect(round.needs).toEqual(["gate", "pending"]);
-		expect(pending.steps.map((step) => step.name)).toEqual(["Set melian/review to pending on the head"]);
-		const [{ run, env }] = pending.steps;
+		expect(pending.steps.map((step) => step.name)).toEqual([
+			"Refuse a commit the default branch has moved past",
+			"Set melian/review to pending on the head",
+		]);
+		const [, { run, env }] = pending.steps;
 		expect(env).toEqual({
 			STATUS_TOKEN: actions("secrets.MELIAN_STATUS_TOKEN"),
 			REPOSITORY: actions("github.repository"),

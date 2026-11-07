@@ -164,6 +164,23 @@ jobs:
     outputs:
       status: ${{ steps.post.outputs.id }}
     steps:
+      - name: Refuse a commit the default branch has moved past
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          REF: ${{ github.ref }}
+          SHA: ${{ github.sha }}
+        run: |
+          default=$(gh api "repos/$REPOSITORY" --jq .default_branch) || default=""
+          if [ "$REF" != "refs/heads/$default" ]; then
+            echo "::error::this run is from $REF, and the default branch is now ${default:-unreadable}; start a new round"
+            exit 1
+          fi
+          current=$(gh api "repos/$REPOSITORY/branches/$default" --jq .commit.sha) || current=""
+          if [ "$current" != "$SHA" ]; then
+            echo "::error::the default branch is at ${current:-an unreadable commit}, not $SHA, which this run would build; start a new round"
+            exit 1
+          fi
       - name: Set melian/review to pending on the head
         id: post
         env:
