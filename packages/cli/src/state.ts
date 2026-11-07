@@ -60,7 +60,9 @@ async function holder(directory: string): Promise<string> {
 async function stateKey(repoRoot: string, env: NodeJS.ProcessEnv): Promise<Uint8Array | undefined> {
 	const secrets = await loadSecrets(repoRoot, userFiles(env).secrets);
 	const credential = secrets.credentials.find((each) => each.provider === stateKeyProvider);
-	if (credential === undefined) return undefined;
+	// An unset variable names no key, as it names no model credential, and as doctor reports it.
+	if (credential === undefined || (credential.value.kind === "env" && (env[credential.value.variable] ?? "") === ""))
+		return undefined;
 	const value = (
 		await new MelianCredentialStore(
 			secrets.credentials,
