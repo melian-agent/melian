@@ -137,7 +137,7 @@ Done when the `melian/review` status is required on `main`, and every pull reque
     - Done when, surfacing: a re-scoped finding whose original severity is P2 or higher joins "Pre-existing, important", with the reason and the original scope.
     - Goldens: the thirteen that [the decision](decisions/2026-10-13-re-scope-held-for-the-compiler.md#what-is-held-for-the-step-that-builds-the-route) holds, in `packages/evals/verifier/`. Ten cover scope: seven refusals, a renamed file, a true pre-existing case, and a co-report. Two cover surfacing, a re-scoped P2 and a re-scoped P3. One covers two scope answers that conflict. The five ways past the text match join them.
 
-21. `[ ]` **Resolution per sighting.** Not started. Carry each sighting's severity and cause through to adjudication. Two producers that sight one finding ID are merged by the findings document at the highest severity and the strongest cause, so the finding resolves once per check at those values. [decisions/2026-10-13-resolution-as-built.md](decisions/2026-10-13-resolution-as-built.md) states the limit. Unblocks resolving two lenses that share a rule ID each under its own severity and caps.
+21. `[x]` **Resolution per sighting.** Built, [issue #230](https://github.com/melian-agent/melian/issues/230). Each lens's sighting of one finding ID resolves as its own report, under its own check, severity, mapping, ceiling, and unjudged cap, and a refuted sighting is left out while another stands. The cause caps read the merged cause, as they do for reports, so a merge never lowers what blocks. The severities come from the claims the findings document already keeps, so no stored shape changes. [decisions/2026-11-07-resolution-per-sighting.md](decisions/2026-11-07-resolution-per-sighting.md) records the rule.
 
 Steps 22 to 26 come from the review loop's lessons, which [design.md](design.md#the-review-loop) sets out. Step 22 is the first after step 16 lands, and step 25 needs step 23.
 
@@ -244,7 +244,7 @@ Landed since 2026-10-17:
 Open:
 
 - Step 23, build pull requests 2 to 4: comparisons by round, membership, and `#N` writes.
-- Steps 20 (re-scope through the compiler), 21 (resolution per sighting), 24 (delta re-review) and 25 (review outcome task).
+- Steps 20 (re-scope through the compiler), 24 (delta re-review) and 25 (review outcome task).
 - Step 34 (mutation evidence by enumeration and verification), designed and awaiting its attacking review.
 - Migration reopen coverage is under review in [pull request #163](https://github.com/melian-agent/melian/pull/163). It adds own-code recordings and SQLite reopens for the missing publication versions 1, 2, 3, 4 and 6, plus populated version-7 dismissals. Existing recorded tests cover versions 5 and 8. This closes the version-1 gap left by [pull request #155](https://github.com/melian-agent/melian/pull/155) once merged.
 - The comparison importer counts a CodeRabbit thread the bot resolved, citing a fixing commit, as an accepted finding. It is unscheduled (see the note after step 30) and can skew the statistics that step 10's retirement decision uses.

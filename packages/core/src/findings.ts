@@ -1397,8 +1397,9 @@ export class Finding {
 	/**
 	 * What the finding requires under `source`, what resolution reads at its path. Each report it holds resolves through
 	 * {@link ResolutionWalk.decide}: a lens or static finding under its check and rule, once for each check that reported
-	 * it; a guardrail finding under each configured rule it matched, or its notice class. The caps apply to each, and
-	 * the strictest result stands. A `pre-existing` finding is never above the `preExisting` cap for its severity,
+	 * it; a guardrail finding under each configured rule it matched, or its notice class. Each lens that sighted the ID
+	 * resolves at the severity it reported, with its own judgement, and a refuted sighting is left out while another
+	 * stands. The caps apply to each, and the strictest result stands. A `pre-existing` finding is never above the `preExisting` cap for its severity,
 	 * `advisory` unless a folder opted in to `acknowledge`. An `affected` finding with no `cause` location marked
 	 * `proves` is never above `advisory`; one stored before Melian marked proving locations marks none, and any `cause`
 	 * location of it counts. The floors apply last, as {@link Finding.floored} lists them. It decides from rule, path,
@@ -1482,6 +1483,15 @@ export class Finding {
 		source: ResolutionSource,
 		options: { readonly unverified?: boolean; readonly defect?: Finding } = {},
 	): FindingDecision {
+		const sightings = this.#sightings();
+		if (sightings.length > 1) {
+			const standing = sightings.filter((sighting) => !sighting.refuted());
+			return (standing.length === 0 ? sightings : standing)
+				.map((sighting) => sighting.capped(source, options))
+				.reduce((strictest, each) =>
+					resolutionOrder.indexOf(each.resolution) < resolutionOrder.indexOf(strictest.resolution) ? each : strictest,
+				);
+		}
 		const walk = ResolutionWalk.over(source);
 		const scope = options.defect ?? this;
 		const { cause } = scope.properties;
@@ -1579,6 +1589,22 @@ export class Finding {
 				source: claim.source,
 				reportedBy: [claim.source],
 			},
+		});
+	}
+
+	// One finding per lens that sighted this ID, at its own severity with its own judgement. A stored finding that lacks a
+	// claim for some producer keeps the merged severity for all of them, the stricter reading.
+	#sightings(): Finding[] {
+		const { source, reportedBy = [source] } = this.properties;
+		const claims = VerificationState.from(this).claims.filter(
+			(claim) =>
+				claim.id === this.id &&
+				reportedBy.some(({ check, version }) => check === claim.source.check && version === claim.source.version),
+		);
+		if (claims.length !== reportedBy.length) return [this];
+		return claims.map((claim) => {
+			const sighting = this.#claim(claim, this);
+			return claim.verification === undefined ? sighting : sighting.verifiedAs(claim.verification);
 		});
 	}
 
