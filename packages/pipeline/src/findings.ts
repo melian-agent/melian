@@ -77,6 +77,12 @@ type FindingsState = { revisions: string[]; items: Record<string, FindingRecord>
 // Version 7 lets a verification record hold the verifier's answers, the evidence read back, and a lowered severity; a
 // version 6 record has none and reads unchanged. Version 6 added the optional per-sighting verification
 // records. Version 5 made evidence a list of locations; a sighting stored before reads with its one location as a cause.
+/**
+ * Raised when what a check stores from a tool changes, so no run, verdict or publication of an earlier build is reused:
+ * 2 keeps no Biome or tsc text.
+ */
+export const storedText = 2;
+
 export const FindingsDocument = defineDoc<FindingsState>({
 	kind: "melian.findings",
 	version: 10,

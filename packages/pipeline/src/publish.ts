@@ -26,7 +26,7 @@ import {
 import { VerdictDocument, type VerdictProvenance } from "./adjudication.ts";
 import { verdictWithLegacyCaveats } from "./caveats.ts";
 import { PublishError } from "./errors.ts";
-import { FindingsDocument } from "./findings.ts";
+import { FindingsDocument, storedText } from "./findings.ts";
 import {
 	backgroundContext,
 	type Context,
@@ -704,6 +704,17 @@ function publishTask(provider: ReviewProvider) {
 						}, context);
 						return;
 					}
+					if (storedRound.provenance !== undefined && keptToolText(storedRound.provenance)) {
+						const reason = `${olderBuild}; run melian review again`;
+						await runtime.commit(async (tx) => {
+							await timing.end(tx);
+							return {
+								status: "terminal",
+								outcome: { status: "completed", result: { kind: "superseded", reason } },
+							};
+						}, context);
+						return;
+					}
 					provider.beginPublish?.();
 					const verdict = Verdict.from(storedRound.verdict);
 					const current = verdict.fingerprint();
@@ -1263,12 +1274,23 @@ function short(commit: string): string {
 	return commit.slice(0, 12);
 }
 
+const olderBuild = "an older Melian decided its review and kept Biome and tsc text";
+
+// Whether a build from before Melian withheld Biome and tsc text decided a verdict whose tier ran either tool.
+function keptToolText(provenance: Pick<VerdictProvenance, "manifest" | "storedText">): boolean {
+	return (
+		provenance.storedText !== storedText &&
+		provenance.manifest.some((check) => check === "static.biome" || check === "static.tsc")
+	);
+}
+
 // Why a verdict decided from `provenance` must not reach `pullRequest`, or `undefined` when it may. Only a review of
 // the pull request itself, fetched from its provider, under policy read from the base commit the provider reported,
 // is publishable: a range naming the refs Melian fetched for the pull request is still a range, and a review whose
 // policy came from the working tree obeyed whatever was checked out.
 function unpublishable(provenance: VerdictProvenance | undefined, pullRequest: PullRequest): string | undefined {
 	if (provenance === undefined) return "its review recorded no provenance";
+	if (keptToolText(provenance)) return olderBuild;
 	if (provenance.kind !== "pull-request") return `it reviewed a ${provenance.kind}, not the pull request`;
 	const { owner, name } = pullRequest.repository;
 	if (provenance.repository.owner !== owner || provenance.repository.name !== name) {

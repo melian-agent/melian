@@ -19,7 +19,7 @@ import {
 } from "@melian-agent/pipeline";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VerdictDocument } from "../../pipeline/src/adjudication.ts";
-import { FindingsDocument } from "../../pipeline/src/findings.ts";
+import { FindingsDocument, storedText } from "../../pipeline/src/findings.ts";
 import { LedgerDocument, PublishedDocument, PublisherDocument } from "../../pipeline/src/publish.ts";
 import { TimingDocument } from "../../pipeline/src/task-timing.ts";
 import { RecordedReview } from "../../pipeline/test/fixtures/recorded-review.ts";
@@ -755,7 +755,12 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 				Object.assign(await tx.doc(FindingsDocument, root.id), advisoryCrash.findings);
 				// The recorded decision names the review's adjudication task, which RecordedReview's task stands in for.
 				const { decisions: _, ...verdicts } = advisoryCrash.verdicts;
-				Object.assign(await tx.doc(VerdictDocument, root.id), verdicts);
+				// This build decides the same verdict again after the upgrade, as publish requires of a tier that ran Biome or
+				// tsc, so only its stored-text version differs from the recorded one.
+				const provenance = Object.fromEntries(
+					Object.entries(verdicts.provenance).map(([key, each]) => [key, { ...each, storedText }]),
+				);
+				Object.assign(await tx.doc(VerdictDocument, root.id), { ...verdicts, provenance });
 				Object.assign(await tx.doc(PublishedDocument, root.id), advisoryCrash.published);
 				Object.assign(await tx.doc(PublisherDocument, root.id), advisoryCrash.publisher);
 			}, context);
