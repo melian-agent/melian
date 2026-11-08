@@ -73,6 +73,9 @@ export class LineMap {
 			return listed.code === 0 && entries.length === 1 && /^100(?:644|755) /.test(entries[0]!);
 		};
 		if (!(await regular(from)) || !(await regular(to))) return undefined;
+		// git reads no attributes, silently, from a well-formed object ID it does not hold, so the source must exist.
+		const source = await git(repoRoot, ["cat-file", "-e", `${attributesFrom}^{commit}`]);
+		if (source.code !== 0) return undefined;
 		const args = (format: readonly string[]) => [
 			"--literal-pathspecs",
 			`--attr-source=${attributesFrom}`,

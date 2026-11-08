@@ -160,6 +160,14 @@ describe("LineMap", () => {
 		expect((await mapOf(before, after, "c.ts")).mapped).toBe(false);
 	});
 
+	it("leaves the map unmapped when the diff itself fails, though both commits hold the file", async () => {
+		const before = commit({ "a.ts": lines(...ten) }, "base");
+		const after = commit({ "a.ts": lines("new 0", ...ten) }, "insert above");
+		const map = await mapOf(before, after, "a.ts", "0123456789abcdef0123456789abcdef01234567");
+		expect(map.mapped).toBe(false);
+		expect(map.map({ startLine: 5, endLine: 5 })).toBeUndefined();
+	});
+
 	it("refuses a ref that would read as an option", async () => {
 		const before = commit({ "a.ts": lines(...ten) }, "base");
 		expect((await mapOf(before, before, "a.ts", "--output=x")).mapped).toBe(false);

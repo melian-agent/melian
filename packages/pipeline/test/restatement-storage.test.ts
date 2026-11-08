@@ -201,6 +201,31 @@ describe("restatement links", () => {
 		expect(await findingsVersion(harness, id, elsewhere, context)).toBe(lapsing + 1);
 	});
 
+	it("bumps only the revisions that sighted a changed root or link to it", async () => {
+		const owner = await harness.root(context);
+		await owner.commit(async (tx) => {
+			await upsertFinding(tx, id, other, "base..linked");
+			await replaceInheritances(tx, id, "base..linked", {
+				[other.id]: { from: root.id, kind: "inherited", dismissedAt: dismissal.at },
+			});
+			await upsertFinding(tx, id, restated, "base..unrelated");
+			await replaceInheritances(tx, id, "base..unrelated", {
+				[restated.id]: { from: other.id, kind: "inherited", dismissedAt: dismissal.at },
+			});
+		}, context);
+		const versions = async () =>
+			Promise.all(["base..linked", "base..unrelated"].map((each) => findingsVersion(harness, id, each, context)));
+		const [linked, unrelated] = await versions();
+		await owner.commit(
+			(tx) => dismissFinding(tx, id, root.id, { ...dismissal, reason: "Another reason." }, at, "P2"),
+			context,
+		);
+		expect(await versions()).toEqual([linked + 1, unrelated]);
+		// A sighting that reopens nothing bumps only its own revision.
+		await owner.commit((tx) => upsertFinding(tx, id, root, "base..again"), context);
+		expect(await versions()).toEqual([linked + 1, unrelated]);
+	});
+
 	it("replaces the whole map, bumping the version only when it changed", async () => {
 		const start = await findingsVersion(harness, id, at, context);
 		const links = { [restated.id]: { from: root.id, kind: "inherited" as const, dismissedAt: dismissal.at } };
