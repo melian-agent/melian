@@ -667,3 +667,15 @@ describe("the fencing generation", () => {
 		expect(remote.index()).toMatchObject({ changesets: { [changeset]: { lease: { generation: 2 }, written: 2 } } });
 	});
 });
+
+describe("Codex's review of 1785bc4", () => {
+	it("refuses a branch copy it cannot read before taking the lease, and moves nothing", async () => {
+		const writer = await remote.clone().branch().checkout(changeset);
+		await note(await storageOf(writer), "stored");
+		await writer.push();
+		replaceChangeset(remote, { "main.jsonl": "not sealed" });
+		const tip = remote.tip();
+		await expect(remote.clone().branch().checkout(changeset)).rejects.toMatchObject({ code: "invalidBranch" });
+		expect(remote.tip()).toBe(tip);
+	});
+});

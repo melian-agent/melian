@@ -59,3 +59,12 @@ describe("git", () => {
 		expect(result.stdout).toMatch(/^Melian state <state@melian\.invalid> /);
 	});
 });
+
+describe("git with input it does not read", () => {
+	it("resolves with git's failure when git exits before reading a large input", async () => {
+		const result = await git(repo, ["rev-parse", "--verify", "--quiet", "absent"], {
+			input: "x".repeat(16 * 1024 * 1024),
+		});
+		expect(result.code).not.toBe(0);
+	});
+});

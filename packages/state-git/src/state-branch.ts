@@ -202,15 +202,24 @@ export class StateBranch {
 	async #checkout(changeset: string, lock: CopyLock): Promise<StateCheckout> {
 		// This clone's lock is held, so a live lease of this clone's is one a crashed run left.
 		let generation = 0;
-		const { stored } = await this.#withRetry(async (index) => {
+		const { stored } = await this.#withRetry(async (index, onBranch) => {
 			const held = index.lease(changeset);
 			if (held?.live(this.#now()) && held.holder.clone !== this.#options.holder)
 				throw new LeaseHeld(changeset, held);
+			// A copy this build cannot read is refused before the lease goes over it.
+			const tree = onBranch(changeset);
+			if (tree !== undefined) await this.#open(changeset, tree);
 			const lease = Lease.take(held, this.#holder, this.#now(), this.#options.leaseMs ?? defaultLeaseMs);
 			generation = lease.generation;
 			return { index: index.leased(changeset, lease) };
 		});
-		return StateCheckout.restore(this, changeset, stored(changeset), lock, generation);
+		try {
+			return await StateCheckout.restore(this, changeset, stored(changeset), lock, generation);
+		} catch (error) {
+			// The lease is taken, so a restore that failed would hold every other clone off until it expired.
+			await this.#expire(changeset, generation).catch(() => {});
+			throw error;
+		}
 	}
 
 	/** @internal */
@@ -259,12 +268,19 @@ export class StateBranch {
 
 	/** @internal Writes a tree of the branch into a fresh directory, refusing anything Pi's storage would not write. */
 	async materialize(changeset: string, tree: string, directory: string): Promise<void> {
+		const opened = await this.#open(changeset, tree);
+		await mkdir(directory, { recursive: true });
+		for (const [name, plain] of opened) await writeFile(join(directory, name), plain);
+	}
+
+	// Every file of a changeset's tree, opened under the key, or a refusal naming the first this build cannot read.
+	async #open(changeset: string, tree: string): Promise<[string, Buffer][]> {
 		const files = entries(await gitOutputBytes(this.#options.repoRoot, ["ls-tree", "-z", tree]));
 		const stray = files.find((entry) => entry.mode !== "100644" || !storageFile.test(entry.name));
 		if (stray !== undefined)
 			throw new StateBranchError(
 				"invalidBranch",
-				`the state branch holds ${JSON.stringify(stray.name)} in ${directory.split("/").at(-1)}, which Melian never writes`,
+				`the state branch holds ${JSON.stringify(stray.name)} in ${changeset}, which Melian never writes`,
 			);
 		const opened: [string, Buffer][] = [];
 		for (const entry of files) {
@@ -277,8 +293,17 @@ export class StateBranch {
 				);
 			opened.push([entry.name, plain]);
 		}
-		await mkdir(directory, { recursive: true });
-		for (const [name, plain] of opened) await writeFile(join(directory, name), plain);
+		return opened;
+	}
+
+	// Expires the changeset's lease, if this run's generation is still its latest.
+	async #expire(changeset: string, generation: number): Promise<void> {
+		await this.#withRetry(async (index) => {
+			const held = index.lease(changeset);
+			if (held === undefined || !held.admits(generation) || !held.heldBy(this.#holder))
+				throw new Refusal("superseded");
+			return { index: index.released(changeset, this.#now()), generation };
+		});
 	}
 
 	get directory(): string {
