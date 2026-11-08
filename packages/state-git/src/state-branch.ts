@@ -365,11 +365,20 @@ export class StateBranch {
 				const held = this.#fenced(index, changeset, lease);
 				if ((stored(changeset) ?? "none") !== synced)
 					throw new Refusal("another run pushed the changeset since this one fetched it");
-				const written = index.wrote(changeset);
+				// A copy nothing changed since the branch's, or nothing ever wrote, moves only the lease: an empty tree on the
+				// branch would say it holds the changeset, which refuses a legacy clone's reservation.
+				const sha = await tree();
+				if (sha === "none" && synced !== "none")
+					throw new StateBranchError(
+						"invalidCopy",
+						`this clone's copy of ${changeset} holds no files, though the branch's does, so Melian will not push it`,
+					);
+				const changed = sha !== synced;
+				const written = changed ? index.wrote(changeset) : index;
 				const next = keepLease
 					? written.leased(changeset, held.renewed(this.#now(), this.#options.leaseMs ?? defaultLeaseMs))
 					: written.released(changeset, this.#now());
-				return { index: next, tree: { changeset, sha: await tree() }, lease };
+				return { index: next, ...(changed ? { tree: { changeset, sha } } : {}), lease };
 			});
 			return { kind: "pushed", commit: tip };
 		} catch (error) {
@@ -378,7 +387,7 @@ export class StateBranch {
 		}
 	}
 
-	/** @internal Seals the changeset's directory into the clone's object database and names its tree. */
+	/** @internal Seals the changeset's directory into the clone's object database and names its tree, or "none" for no files. */
 	async snapshot(changeset: string, directory: string): Promise<string> {
 		const found = await readdir(directory, { withFileTypes: true });
 		const stray = found.find((entry) => !entry.isFile() || !storageFile.test(entry.name));
@@ -388,6 +397,7 @@ export class StateBranch {
 				`this clone's copy of ${directory.split("/").at(-1)} holds ${JSON.stringify(stray.name)}, which Pi's storage never writes, so Melian will not push part of it`,
 			);
 		const names = found.map((entry) => entry.name).sort();
+		if (names.length === 0) return "none";
 		const shas: string[] = [];
 		for (const name of names) {
 			const sealed = this.#sealer.seal(`${changeset}/${name}`, await readFile(join(directory, name)));

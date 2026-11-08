@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { chmodSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineDoc } from "@melian-agent/pipeline";
@@ -29,6 +29,13 @@ function crash(clone: Clone): void {
 	execFileSync(process.execPath, ["--conditions=@melian-agent/source", fixture, ...args], {
 		env: { ...process.env, ...isolatedGitEnv },
 	});
+}
+
+// Stores a copy holding one note, since a copy nothing wrote puts no tree on the branch.
+async function storeNoted(): Promise<void> {
+	const checkout = await remote.clone().branch().checkout(changeset);
+	await note(await storageOf(checkout), "stored");
+	await checkout.push();
 }
 
 beforeEach(() => {
@@ -163,6 +170,7 @@ describe("the lease", () => {
 
 	it("is released by the push", async () => {
 		const checkout = await remote.clone().branch().checkout(changeset);
+		await note(await storageOf(checkout), "stored");
 		await checkout.push();
 		const { changesets } = remote.index() as {
 			changesets: Record<string, { lease: { expiresAt: string }; written: number }>;
@@ -328,6 +336,7 @@ describe("Codex's review of d449ec6", () => {
 			const checkouts = await Promise.all(ids.map((id) => clone.branch().checkout(id)));
 			await Promise.all(
 				checkouts.map(async (checkout) => {
+					await note(await storageOf(checkout), checkout.changeset);
 					await checkout.push();
 					checkout.close();
 				}),
@@ -378,7 +387,7 @@ describe("Codex's review of d449ec6", () => {
 			(tree: string) => `040000 tree ${tree}\tPull Request\n040000 tree ${tree}\t${changeset}\n`,
 		],
 	])("refuses a changesets tree holding %s, and pushes nothing", async (_name, listing) => {
-		await (await remote.clone().branch().checkout(changeset)).push();
+		await storeNoted();
 		const bare = remote.bare;
 		const tree = gitIn(bare, "rev-parse", `refs/heads/melian/state:changesets/${changeset}`);
 		const index = gitIn(bare, "rev-parse", "refs/heads/melian/state:index.json");
@@ -752,7 +761,7 @@ describe("whether the branch holds a changeset", () => {
 	it("answers from the branch alone, with no key", async () => {
 		const reader = remote.clone({ key: undefined }).branch();
 		expect(await reader.stored(changeset)).toBe(false);
-		await (await remote.clone().branch().checkout(changeset)).push();
+		await storeNoted();
 		expect(await reader.stored(changeset)).toBe(true);
 		expect(await reader.stored("pull-fedcba9876543210")).toBe(false);
 	});
@@ -774,10 +783,12 @@ describe("the fencing generation", () => {
 		const clone = remote.clone();
 		const first = await clone.branch().checkout(changeset);
 		expect(first.generation).toBe(1);
+		await note(await storageOf(first), "first");
 		await first.push();
 		first.close();
 		const second = await clone.branch().checkout(changeset);
 		expect(second.generation).toBe(2);
+		await note(await storageOf(second), "second");
 		await second.push();
 		expect(gitIn(remote.bare, "log", "-1", "--format=%s", "refs/heads/melian/state")).toMatch(
 			/^melian: run [0-9a-f-]{36}, incarnation [0-9a-f-]{36}, generation 2$/,
@@ -805,7 +816,7 @@ describe("a reservation of a changeset the branch does not hold", () => {
 	});
 
 	it("refuses a changeset the branch holds", async () => {
-		await (await remote.clone().branch().checkout(changeset)).push();
+		await storeNoted();
 		await expect(remote.clone().branch().reserve(changeset)).rejects.toMatchObject({
 			code: "storedElsewhere",
 			message: `melian/state holds ${changeset}, which another clone stored there`,
@@ -959,5 +970,56 @@ describe("the lease record's incarnation", () => {
 			reason: `the changeset's lease record was created afresh, as incarnation afresh, after this one's ${stale.incarnation}`,
 		});
 		expect(remote.tip()).toBe(tip);
+	});
+});
+
+describe("Codex's review of b231987", () => {
+	it("stores no tree for a copy nothing wrote, and releases the lease", async () => {
+		const reader = remote.clone({ key: undefined }).branch();
+		const checkout = await remote.clone().branch().checkout(changeset);
+		expect(await checkout.push()).toEqual({ kind: "pushed", commit: remote.tip() });
+		expect(await reader.stored(changeset)).toBe(false);
+		const record = (remote.index() as { changesets: Record<string, { lease: { expiresAt: string } }> }).changesets[
+			changeset
+		]!;
+		expect(record).not.toHaveProperty("written");
+		expect(Date.parse(record.lease.expiresAt)).toBeLessThanOrEqual(Date.now());
+	});
+
+	it("records no write for a copy unchanged since the branch's, and keeps the stored tree", async () => {
+		const clone = remote.clone();
+		const first = await clone.branch().checkout(changeset);
+		await note(await storageOf(first), "stored");
+		await first.push();
+		first.close();
+		const stored = remote.stored();
+		const second = await clone.branch().checkout(changeset);
+		expect(await second.push()).toMatchObject({ kind: "pushed" });
+		expect(remote.stored()).toBe(stored);
+		expect(remote.index()).toMatchObject({ changesets: { [changeset]: { lease: { generation: 2 }, written: 1 } } });
+	});
+
+	it("refuses to push a copy emptied since the branch stored it", async () => {
+		const clone = remote.clone();
+		const first = await clone.branch().checkout(changeset);
+		await note(await storageOf(first), "stored");
+		await first.push();
+		first.close();
+		const second = await clone.branch().checkout(changeset);
+		for (const name of readdirSync(second.directory)) rmSync(join(second.directory, name));
+		const tip = remote.tip();
+		await expect(second.push()).rejects.toMatchObject({
+			code: "invalidCopy",
+			message: `this clone's copy of ${changeset} holds no files, though the branch's does, so Melian will not push it`,
+		});
+		expect(remote.tip()).toBe(tip);
+	});
+
+	it("keeps the lease for a copy nothing wrote yet, without storing a tree", async () => {
+		const reader = remote.clone({ key: undefined }).branch();
+		const checkout = await remote.clone().branch().checkout(changeset);
+		expect(await checkout.push({ keepLease: true })).toMatchObject({ kind: "pushed" });
+		expect(await reader.stored(changeset)).toBe(false);
+		await expect(remote.clone().branch().checkout(changeset)).rejects.toThrow(LeaseHeld);
 	});
 });
