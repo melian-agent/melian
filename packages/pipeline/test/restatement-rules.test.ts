@@ -151,6 +151,41 @@ describe("recording restatement links", () => {
 		expect(await links()).toBeUndefined();
 	});
 
+	it("reads a claim's judgement only at this revision and under its own producer", async () => {
+		await seed();
+		await judge(first.id, correctness, { [oldRoot.id]: "same" });
+		await commit(async (tx) => {
+			// The second claim's ID sighted by another producer, and at another revision, each judged the same there.
+			await upsertFinding(tx, root, lens({ snippet: "second restated", source: correctness }), at);
+			await upsertVerification(tx, root, at, second.id, correctness, {
+				verdict: "confirmed",
+				reason: "Traced.",
+				matches: { [oldRoot.id]: "same" },
+				executor: "llm",
+				model: "faux/judge",
+				version: "v1",
+			});
+		});
+		await derive([oldRoot.id]);
+		expect(await links()).toBeUndefined();
+		const elsewhere = "base..elsewhere";
+		const third = lens({ snippet: "third restated" });
+		await commit(async (tx) => {
+			await upsertFinding(tx, root, third, at);
+			await upsertFinding(tx, root, third, elsewhere);
+			await upsertVerification(tx, root, elsewhere, third.id, correctness, {
+				verdict: "confirmed",
+				reason: "Traced.",
+				matches: { [oldRoot.id]: "same" },
+				executor: "llm",
+				model: "faux/judge",
+				version: "v1",
+			});
+		});
+		await derive([oldRoot.id], "v1", [claims[0]!, { id: third.id, source: correctness, ruleId: "fail-open" }]);
+		expect(await links()).toBeUndefined();
+	});
+
 	it("revokes a link when a later round's judgement differs, or a new verifier version has judged nothing", async () => {
 		await seed();
 		await judge(first.id, correctness, { [oldRoot.id]: "same" });

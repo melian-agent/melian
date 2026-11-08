@@ -970,7 +970,8 @@ export async function recordInheritances(
 			if (!same) return [];
 			// The highest any lens reported, before a verifier lowered it: a stored sighting keeps the lens's own.
 			const reported = claims
-				.flatMap((claim) => sightingIn(state, revision, claim.id, claim.source)?.properties.severity ?? [])
+				// Every claim judged the same has a record, and so a sighting.
+				.map((claim) => sightingIn(state, revision, claim.id, claim.source)!.properties.severity)
 				.reduce<Severity>(stricter, "nit");
 			const fenced = severityRank[reported] < severityRank[lifecycle.dismissedSeverity];
 			const kind: Inheritance["kind"] = fenced || claims.some(floored) ? "proposed" : "inherited";
