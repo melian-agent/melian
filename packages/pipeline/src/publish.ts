@@ -62,6 +62,11 @@ type PublishedEntry = {
 
 type ResolvedEntry = PublishedEntry & { id: string };
 
+// A closed finding's ledger record keeps its own dismissal's root, since the finding may later inherit from another.
+function ledgerDismissal({ reason, inheritedFrom }: NonNullable<PublishedEntry["dismissal"]>) {
+	return { reason, ...(inheritedFrom === undefined ? {} : { inheritedFrom }) };
+}
+
 // What one round of a revision will post, committed before posting so a rerun posts exactly this: the verdict it
 // renders as well as its findings, since the head's verdict can change before a failed round is posted again.
 type PendingRound = {
@@ -757,7 +762,7 @@ function publishTask(provider: ReviewProvider) {
 									path: entry.path,
 									line: entry.line,
 									commit: entry.addressedIn ?? head,
-									...(entry.dismissal === undefined ? {} : { reason: entry.dismissal.reason }),
+									...(entry.dismissal === undefined ? {} : ledgerDismissal(entry.dismissal)),
 								})),
 							};
 							await runtime.commit(async (tx) => {
@@ -962,7 +967,7 @@ function publishTask(provider: ReviewProvider) {
 						path: entry.path,
 						line: entry.line,
 						commit: entry.addressedIn ?? head,
-						...(entry.dismissal === undefined ? {} : { reason: entry.dismissal.reason }),
+						...(entry.dismissal === undefined ? {} : ledgerDismissal(entry.dismissal)),
 					}));
 					if (storedVerdict?.details?.[revision] !== undefined)
 						currentRound.details = structuredClone(storedVerdict.details[revision]);

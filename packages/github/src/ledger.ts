@@ -255,15 +255,13 @@ export class Ledger {
 						),
 				].join("\n\n"),
 			);
-		// A closed finding's record keeps only the reason; the round's verdict says whether the dismissal was inherited.
-		const inherited = new Map(verdict.dismissals().map(({ id, dismissal }) => [id, dismissal ?? {}]));
 		if (current.resolved.length > 0)
 			parts.push(
 				[
 					"### Closed findings",
 					...current.resolved.map(
-						({ id, commit, reason }) =>
-							`- ${prose(id)}: ${reason === undefined ? `Addressed in commit ${commit.slice(0, 12)}` : `Dismissed${describeInheritance(inherited.get(id) ?? {}, code)}: ${prose(reason)}`}`,
+						(entry) =>
+							`- ${prose(entry.id)}: ${entry.reason === undefined ? `Addressed in commit ${entry.commit.slice(0, 12)}` : `Dismissed${describeInheritance(entry, code)}: ${prose(entry.reason)}`}`,
 					),
 				].join("\n\n"),
 			);

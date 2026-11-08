@@ -230,6 +230,7 @@ describe("an inherited dismissal beside a person's", () => {
 				line: 3,
 				commit: head,
 				reason: finding.properties.dismissal!.reason,
+				...(finding === inherited ? { inheritedFrom: root } : {}),
 			})),
 		};
 		round.resolved.push({ id: "fedcba9876543210", ruleId: "fixed", path: "src/fixed.ts", line: 1, commit: head });

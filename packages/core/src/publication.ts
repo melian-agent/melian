@@ -295,7 +295,16 @@ export type LedgerRound = {
 	walkthroughNote?: string;
 	/** The round's run, from its stage telemetry; absent when no publish of the round read one. */
 	run?: StoredRunDetails;
-	resolved: { id: string; ruleId: string; path: string; line: number; commit: string; reason?: string }[];
+	resolved: {
+		id: string;
+		ruleId: string;
+		path: string;
+		line: number;
+		commit: string;
+		reason?: string;
+		/** The root a closing dismissal was inherited from; absent from a record an older Melian wrote. */
+		inheritedFrom?: string;
+	}[];
 };
 
 /** The one-line history retained after a later round posts. */
