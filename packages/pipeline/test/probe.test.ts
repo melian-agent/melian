@@ -746,9 +746,44 @@ console.log(JSON.stringify({ marker: readFileSync("marker", "utf8"), home: proce
 			message: "the sandbox refused the probe: Error: profile too long",
 			cause: new Error("profile too long"),
 		});
-		expect(sandbox.cleanup).toHaveBeenCalledOnce();
+		// sandbox-runtime releases a wrap that threw itself; a second release would take a running sandbox's mount points.
+		expect(sandbox.cleanup).not.toHaveBeenCalled();
 		await probe.close();
 	});
+
+	it.each([
+		["resolves", 1],
+		["rejects", 0],
+	])(
+		"releases a wrap that %s after the setup bound only once it settles, and only if it succeeded",
+		async (_, releases) => {
+			let settle!: { resolve: (argv: never) => void; reject: (error: Error) => void };
+			const { sandbox } = passthrough({
+				wrap: () =>
+					new Promise<never>((resolve, reject) => {
+						settle = { resolve, reject };
+					}),
+			});
+			const probe = await Probe.open({ script: "" }, options(sandbox));
+			vi.useFakeTimers({ toFake: ["setTimeout"] });
+			try {
+				const refused = expect(probe.run()).rejects.toMatchObject({
+					code: "sandboxUnavailable",
+					message: "the sandbox did not wrap the probe within 120s",
+				});
+				await vi.advanceTimersByTimeAsync(probeLimits.setup);
+				await refused;
+			} finally {
+				vi.useRealTimers();
+			}
+			expect(sandbox.cleanup).not.toHaveBeenCalled();
+			if (releases === 1) settle.resolve(["/bin/true"] as never);
+			else settle.reject(new Error("late"));
+			await new Promise((resolve) => setTimeout(resolve, 20));
+			expect(sandbox.cleanup).toHaveBeenCalledTimes(releases);
+			await probe.close();
+		},
+	);
 
 	it("removes a scratch whose only restrictive directories are the fixed ones", async () => {
 		const { sandbox } = passthrough();

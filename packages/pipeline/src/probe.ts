@@ -677,15 +677,27 @@ export class Probe {
 		let size = 0;
 		let truncated = false;
 		let child: ProbeProcess | undefined;
+		let argv: readonly string[] | undefined;
 		try {
 			// Starting the sandbox is bounded apart from the run, so wrapping the command cannot hang unbounded before the
 			// probe's own time limit begins.
-			const wrapped = this.#sandbox.wrap(command, this.policy).catch((error: unknown) => {
+			const wrapping = this.#sandbox.wrap(command, this.policy);
+			const wrapped = wrapping.catch((error: unknown) => {
 				throw new ProbeError("sandboxUnavailable", `the sandbox refused the probe: ${String(error)}`, {
 					cause: error,
 				});
 			});
-			const argv = await withBound(wrapped, probeLimits.setup, "the sandbox did not wrap the probe");
+			// sandbox-runtime counts the sandboxes it wrapped and releases one that threw itself, so only a wrap that succeeded
+			// is released, a late one once it settles; a second release would take a running sandbox's mount points.
+			argv = await withBound(wrapped, probeLimits.setup, "the sandbox did not wrap the probe").catch(
+				(error: unknown) => {
+					wrapping.then(
+						() => this.#sandbox.cleanup(),
+						() => {},
+					);
+					throw error;
+				},
+			);
 			child = ProbeProcess.start(argv, {
 				cwd: tree,
 				env: {
@@ -718,7 +730,7 @@ export class Probe {
 			return exit.error === undefined ? result : { ...result, error: exit.error };
 		} finally {
 			await child?.stop();
-			this.#sandbox.cleanup();
+			if (argv !== undefined) this.#sandbox.cleanup();
 			this.#running = false;
 		}
 	}
