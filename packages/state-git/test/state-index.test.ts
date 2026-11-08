@@ -85,6 +85,18 @@ describe("StateIndex", () => {
 			"its key is not a commitment",
 		],
 		["a numeric key", JSON.stringify({ version: 1, key: 7, changesets: {} }), "its key is not a commitment"],
+		["changesets of null", indexOf(null), "its changesets are not an object"],
+		["a record of null", indexOf({ a: null }), "the record of a is not an object"],
+		[
+			"a key with a commitment at its end",
+			JSON.stringify({ version: 1, key: `x${"f".repeat(64)}`, changesets: {} }),
+			"its key is not a commitment",
+		],
+		[
+			"a key with a commitment at its start",
+			JSON.stringify({ version: 1, key: `${"f".repeat(64)}x`, changesets: {} }),
+			"its key is not a commitment",
+		],
 	])("refuses %s", (_name, json, reason) => {
 		expect(() => StateIndex.parse(json)).toThrow(
 			expect.objectContaining({
