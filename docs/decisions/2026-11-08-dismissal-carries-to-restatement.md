@@ -1,5 +1,8 @@
 # A dismissal carries to a restatement
 
+Amends: [An unresolved acknowledgement fails the status, as built](2026-10-17-acknowledge-status-exact-rule.md), a restatement that inherits a dismissal counts as dismissed
+Amends: [Dismissal](2026-10-04-dismissal.md), a dismissal's identity and who it names
+
 Status: decided by the maintainer on 2026-11-08, in two sessions, for [issue #315](https://github.com/melian-agent/melian/issues/315). Rulings 1 and 2 were given in the builder's session. Rulings 3 and 4 were revised in the coordinator's session after its attacking review. [The rulings](https://github.com/melian-agent/melian/issues/315#issuecomment-6718171211) and [the review](https://github.com/melian-agent/melian/issues/315#issuecomment-6718266328) are on the issue. [Issue #334](https://github.com/melian-agent/melian/issues/334) owns how an inheritance changes the verdict's fingerprint.
 
 ## Problem
@@ -22,6 +25,8 @@ A live lens finding N at revision R inherits the dismissal of an earlier finding
 8. **Choosing among predecessors.** Melian applies the fence and the trust-floor rule to each predecessor judged `same`. It then takes the one with the latest dismissal. Each N names one root at most.
 
 **Each round re-derives the inheritance.** After verification and before adjudication, one commit replaces the revision's whole set of inheritances and proposals, built from that round's stored judgements. So a `different` answer revokes an earlier inheritance, and so does a `verifierVersion` bump, whose new records start empty. An inheritance also lapses on read when its root reopens or its dismissal is replaced.
+
+**What it amends.** The acknowledgement rule says a maintainer clears an acknowledgement by dismissing it by ID. An inherited dismissal also clears it, because the maintainer dismissed the same defect under its root's ID. The dismissal decision says a dismissal names who made it. An inherited one is stored with `melian` as its dismisser and `inheritedFrom` naming the root, so no record claims a person dismissed an ID they never saw. Every other clause of both decisions stands.
 
 **Attribution.** An inherited dismissal is shown as "dismissed, inherited from `<D>`", with D's reason and time. It never names D's dismisser. The terminal, the review body, the inline reply, the ledger and the status all show it. A proposal is shown as "likely the same as dismissed finding `<D>`", with the command that accepts it.
 
