@@ -16,6 +16,8 @@ let interloper: (() => Promise<void>) | undefined;
 // Answers the next push with the remote's lock error, worded as a newer git words it, as when another push created the
 // branch at the same moment.
 let locked = 0;
+// Answers the next push as git does when the remote refuses the credential: no porcelain line at all.
+let denied = false;
 
 vi.mock("@melian-agent/core", async (original) => {
 	const actual = await original<typeof core>();
@@ -23,6 +25,16 @@ vi.mock("@melian-agent/core", async (original) => {
 		...actual,
 		git: async (cwd: string, args: readonly string[], options?: core.GitOptions) => {
 			environments.push({ command: args[0]!, env: options?.env });
+			if (args[0] === "push" && denied) {
+				denied = false;
+				return {
+					code: 128,
+					stdout: "",
+					stdoutBytes: Buffer.from(""),
+					stderr:
+						"remote: Permission to melian-agent/melian.git denied to reader.\nfatal: unable to access 'remote': The requested URL returned error: 403\n",
+				};
+			}
 			if (args[0] === "push" && locked > 0) {
 				locked--;
 				const refspec = args.find((arg) => arg.endsWith(":refs/heads/melian/state"))!;
@@ -64,6 +76,7 @@ afterEach(() => {
 	vi.unstubAllEnvs();
 	moves = 0;
 	locked = 0;
+	denied = false;
 	interloper = undefined;
 	remote.close();
 });
@@ -169,4 +182,13 @@ it("reads git's fetch and push output in the C locale, which git does not transl
 	const classified = environments.filter(({ command }) => command === "fetch" || command === "push");
 	expect(classified.length).toBeGreaterThanOrEqual(4);
 	for (const { env } of classified) expect(env).toMatchObject({ LC_ALL: "C", LANGUAGE: "C" });
+});
+
+it("names a push the remote refused with no porcelain line, as a refused credential gives", async () => {
+	denied = true;
+	await expect(remote.clone().branch().checkout(changeset)).rejects.toMatchObject({
+		code: "pushFailed",
+		message:
+			"git push of melian/state failed: remote: Permission to melian-agent/melian.git denied to reader.\nfatal: unable to access 'remote': The requested URL returned error: 403",
+	});
 });
