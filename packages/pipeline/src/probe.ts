@@ -677,16 +677,23 @@ export class Probe {
 				{ script: "process.exit(0);\n" },
 				{ writer: { trusted: true, by: "reviewer" }, trustWriters: true, sandbox },
 			);
+			let result: ProbeResult;
+			let cleanup!: CleanupOutcome;
 			try {
-				const result = await probe.run();
-				if (result.exitCode === 0) return { available: true };
+				result = await probe.run();
+			} finally {
+				cleanup = await probe.close();
+			}
+			if (result.error !== undefined)
+				return { available: false, reason: `stopping an empty probe's processes failed: ${result.error}` };
+			if (result.exitCode !== 0)
 				return {
 					available: false,
 					reason: `an empty probe exited ${result.exitCode ?? result.signal}${result.output === "" ? "" : `: ${result.output.trim()}`}`,
 				};
-			} finally {
-				await probe.close();
-			}
+			if (!cleanup.removed)
+				return { available: false, reason: `an empty probe's scratch could not be removed: ${cleanup.reason}` };
+			return { available: true };
 		} catch (error) {
 			return { available: false, reason: error instanceof Error ? error.message : String(error) };
 		}

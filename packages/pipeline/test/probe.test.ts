@@ -1071,6 +1071,29 @@ describe("Probe.availability", () => {
 		expect(await Probe.availability(silent.sandbox)).toEqual({ available: false, reason: "an empty probe exited 5" });
 		expect(left()).toEqual([]);
 	});
+
+	it("is unavailable where an empty probe exits 0 but its teardown fails", async () => {
+		const stop = vi.spyOn(ProbeProcess.prototype, "stop").mockRejectedValue(new Error("ps failed"));
+		try {
+			expect(await Probe.availability(passthrough().sandbox)).toEqual({
+				available: false,
+				reason: "stopping an empty probe's processes failed: ps failed",
+			});
+		} finally {
+			stop.mockRestore();
+		}
+		const close = vi
+			.spyOn(Probe.prototype, "close")
+			.mockResolvedValue({ removed: false, leftover: "/tmp/melian-probe-x", reason: "EPERM: rmdir" });
+		try {
+			expect(await Probe.availability(passthrough().sandbox)).toEqual({
+				available: false,
+				reason: "an empty probe's scratch could not be removed: EPERM: rmdir",
+			});
+		} finally {
+			close.mockRestore();
+		}
+	});
 });
 
 describe("RuntimeSandbox", () => {
