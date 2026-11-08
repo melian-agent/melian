@@ -17,6 +17,14 @@ Milestone 3, "Melian reviews pull requests on GitHub Actions", runs it there, an
 - Run anywhere: locally, from a coding agent, in a persistent container, in GitHub Actions and equivalents.
 - Be configurable per repository and per folder, for large multi-service monorepos.
 
+## Coordinating concurrent work
+
+Each kind of collision has one mechanism, as [the coordination decision](decisions/2026-11-08-how-melian-coordinates.md) sets out:
+- Within one process, a Pi Durable commit serialises writers, and a writer proves ownership in the commit that writes. An in-memory queue serves only a resource that dies with its process.
+- Across processes or hosts on one changeset, core's `Lease` decides the writer. It holds an owner, a taken-at time, an expiry, an incarnation minted with the record, and a fencing generation that rises on every taking. Every write records its generation, and the store refuses an older one. The state branch and a clone's git directory hold leases.
+- A write to GitHub is idempotent and checked against GitHub first. `melian/review` carries the lease's incarnation and generation. The merge-group check accepts only a status whose incarnation and generation equal the current lease record's, never the latest, and fails closed when none does; only it writes the group's status; and it re-reads before writing.
+- Lost, repeated or reordered events are reconciled to the state the authority implies.
+
 ## Non-goals
 
 - Replacing human judgement. Melian never merges and never fixes without being asked.
@@ -154,7 +162,7 @@ The floor keeps the verifier's judgement, severity and reason. Every live merged
 
 A refused lowering still records the verdict, and `report_verdict` says why in its result.
 
-Scope is location's alone. Location proves `introduced` only, `affected` needs lens evidence, and everything else is `pre-existing`, as [cause by location](decisions/2026-10-03-cause-by-location.md) set it. An earlier decision let the verifier propose `pre-existing` for Melian to confirm. Step 17 built that check by matching names in text, and five reviews each found a way through it. The route is held for a later step, "The verifier re-scopes through the compiler's call graph", which asks the compiler. The verifier's `base` answer is stored and changes nothing. [The decision](decisions/2026-10-13-re-scope-held-for-the-compiler.md) lists the five ways and restates what survives.
+Scope is location's alone. Location proves `introduced` only, `affected` needs lens evidence, and everything else is `pre-existing`, as [cause by location](decisions/2026-10-03-cause-by-location.md) set it. An earlier decision let the verifier propose `pre-existing` for Melian to confirm. Step 17 built that check by matching names in text, and five reviews each found a way through it; [the decision](decisions/2026-10-13-re-scope-held-for-the-compiler.md) lists the five ways and restates what survives. Re-scoping is now retired. No authority says what triggers a failure or which guard sits on its path, so a route that asked one would refuse almost every proposal. An old defect that blocks because of where the change touched it gets a writer's dismissal instead. The verifier's `base` answer is stored and changes nothing. [The retirement](decisions/2026-11-08-re-scoping-retired.md) records the ruling, what it gives up, and the attacking review's probes.
 
 "Pre-existing, important" is a heading of its own. Its members are pre-existing findings whose original severity is P0 or P1. The original severity is the lens's, before any lowering. A member is listed in the terminal, the JSON, and the ledger on the pull request. The JSON keeps a member in its resolution group and lists it again under `preExistingImportant`. It is raised once per finding ID per pull request and then shown as carried: a member is `carried` when another revision of the changeset first sighted it, and `new` otherwise. It never resolves below `advisory`: caps apply first, then that floor, which overrides a `silent` mapping or ceiling on purpose. A member counts toward the verdict and the exit code exactly as it did before the heading existed. That is as any advisory finding does, and not at all when the floor alone keeps it above `silent`. The threshold is a reading of "if important" that the maintainer may adjust.
 
@@ -403,6 +411,8 @@ Problem: Biome and tsc read whatever files a head's configuration and sources le
 
 Solution: a Biome or tsc finding keeps its rule, place and severity, and its message is a fixed sentence naming the tool and the rule. `staticFindings` applies it, so no stored document, verdict, published review, lens or verifier sees the tool's text. A failed run keeps its exit code and a fixed sentence, never the tool's output. A check of each tool's configuration was tried first and dropped: eight routes past it turned up in one round. [The decision](decisions/2026-11-06-static-configuration-stays-in-the-checkout.md) records the routes, the cost, and the follow-ups for Enola and the mutation check.
 
+tsc's projects come from tsc. Problem: Melian read each `tsconfig.json`'s own `files`, `include` and `references`, so a project whose base supplied its `include` read as empty, and one whose base supplied only `references` read as clean. Solution: the runner asks `tsc --showConfig` for each project's effective files and references, refuses a project whose effective files resolve outside the worktree, and fails closed when tsc cannot answer. [The decision](decisions/2026-11-08-tsc-projects-from-effective-configuration.md) gives the rule.
+
 ### Tool provisioning
 
 The manifest and its quarantine are built. The verified tool cache is built; Enola's static check is built; the graph cache and caller input are built in milestone 2 (review of record). The container environment, Opengrep, and gitleaks are planned for milestone 3 (Actions host).
@@ -479,7 +489,7 @@ Details: [docs/design/comparison-with-external-reviewers.md](design/comparison-w
 
 ### The review loop
 
-Melian reviews its own pull requests in rounds. After each fix pass, a Melian round runs: from the `melian round` workflow, which runs the default branch's build, or from the branch's own build on a host. A pull request that changes Melian's review code needs a round from its own build, since the default branch's build cannot exercise it; [the Actions rounds decision](decisions/2026-11-06-actions-rounds-run-default-branch-code.md) says why the workflow runs the default branch's. Codex's adversarial review and a review of record run beside the rounds. The loop ends when a round finds nothing above advisory apart from policy notices. `AGENTS.md` says who runs each part.
+Melian reviews its own pull requests in rounds. After each fix pass, a Melian round runs: from the `melian round` workflow, which runs the default branch's build, or from the branch's own build on a host. A pull request that changes Melian's review code needs a round from its own build, since the default branch's build cannot exercise it; [the Actions rounds decision](decisions/2026-11-06-actions-rounds-run-default-branch-code.md) says why the workflow runs the default branch's. The workflow posts its comment and sets `melian/review` as the machine user `melian-status-bot`, whose token only the default branch's round can read, so a builder reads that login's comment and no other as the round's; [the decision](decisions/2026-11-08-round-comment-as-the-machine-user.md) says why. A writer can still edit the comment's body after it posts, which [issue #286](https://github.com/melian-agent/melian/issues/286) tracks. Codex's adversarial review and a review of record run beside the rounds. The loop ends when a round finds nothing above advisory apart from policy notices. `AGENTS.md` says who runs each part.
 
 Problem: fixing each finding as it comes does not always converge. Example: [pull request #102](https://github.com/melian-agent/melian/pull/102) took eighteen rounds while a hand-built Markdown line reconstruction met one new shape per round, and [pull request #98](https://github.com/melian-agent/melian/pull/98) grew to 13,000 changed lines, with rounds of one to two hours that sampled the change. Each finding was a true defect; only the count showed that the approach was the defect.
 

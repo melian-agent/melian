@@ -1,0 +1,231 @@
+{
+ "mutants": [
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 215,
+   "column": 19,
+   "endLine": 215,
+   "endColumn": 22,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "note": "ignored by the enumerator: a string literal of no behaviour under test"
+  },
+  {
+   "file": "packages/evals/src/resolution.ts",
+   "line": 116,
+   "column": 19,
+   "endLine": 116,
+   "endColumn": 22,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "note": "ignored by the enumerator: a string literal of no behaviour under test"
+  },
+  {
+   "file": "scripts/check-tools.mjs",
+   "line": 23,
+   "column": 20,
+   "endLine": 23,
+   "endColumn": 57,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "scripts/check-tools.test.mjs > asks again without a token GitHub refuses, outside CI only",
+   "survivorClasses": [],
+   "result": {
+    "exit": 1,
+    "tests": "1 failed | 7 skipped (8)"
+   }
+  },
+  {
+   "file": "scripts/check-tools.mjs",
+   "line": 23,
+   "column": 37,
+   "endLine": 23,
+   "endColumn": 55,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "note": "ignored by the enumerator: a string literal of no behaviour under test"
+  },
+  {
+   "file": "scripts/check-tools.mjs",
+   "line": 31,
+   "column": 8,
+   "endLine": 31,
+   "endColumn": 47,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/check-tools.test.mjs > asks again without a token GitHub refuses, outside CI only",
+   "survivorClasses": [],
+   "result": {
+    "exit": 1,
+    "tests": "1 failed | 7 skipped (8)"
+   }
+  },
+  {
+   "file": "scripts/check-tools.mjs",
+   "line": 31,
+   "column": 8,
+   "endLine": 31,
+   "endColumn": 47,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "scripts/check-tools.test.mjs > asks again without a token GitHub refuses, outside CI only",
+   "survivorClasses": [],
+   "result": {
+    "exit": 1,
+    "tests": "1 failed | 7 skipped (8)"
+   }
+  },
+  {
+   "file": "scripts/check-tools.mjs",
+   "line": 31,
+   "column": 8,
+   "endLine": 31,
+   "endColumn": 47,
+   "mutatorName": "LogicalOperator",
+   "replacement": "!ci && token || response.status === 401",
+   "claim": "killed",
+   "evidence": "scripts/check-tools.test.mjs > asks again without a token GitHub refuses, outside CI only",
+   "survivorClasses": [],
+   "result": {
+    "exit": 1,
+    "tests": "1 failed | 7 skipped (8)"
+   }
+  },
+  {
+   "file": "scripts/check-tools.mjs",
+   "line": 31,
+   "column": 8,
+   "endLine": 31,
+   "endColumn": 20,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/check-tools.test.mjs > asks again without a token GitHub refuses, outside CI only",
+   "survivorClasses": [],
+   "result": {
+    "exit": 1,
+    "tests": "1 failed | 7 skipped (8)"
+   }
+  },
+  {
+   "file": "scripts/check-tools.mjs",
+   "line": 31,
+   "column": 8,
+   "endLine": 31,
+   "endColumn": 20,
+   "mutatorName": "LogicalOperator",
+   "replacement": "!ci || token",
+   "claim": "killed",
+   "evidence": "scripts/check-tools.test.mjs > asks again without a token GitHub refuses, outside CI only",
+   "survivorClasses": [],
+   "result": {
+    "exit": 1,
+    "tests": "1 failed | 7 skipped (8)"
+   }
+  },
+  {
+   "file": "scripts/check-tools.mjs",
+   "line": 31,
+   "column": 8,
+   "endLine": 31,
+   "endColumn": 11,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "ci",
+   "claim": "killed",
+   "evidence": "scripts/check-tools.test.mjs > asks again without a token GitHub refuses, outside CI only",
+   "survivorClasses": [],
+   "result": {
+    "exit": 1,
+    "tests": "1 failed | 7 skipped (8)"
+   }
+  },
+  {
+   "file": "scripts/check-tools.mjs",
+   "line": 31,
+   "column": 24,
+   "endLine": 31,
+   "endColumn": 47,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "scripts/check-tools.test.mjs > asks again without a token GitHub refuses, outside CI only",
+   "survivorClasses": [],
+   "result": {
+    "exit": 1,
+    "tests": "1 failed | 7 skipped (8)"
+   }
+  },
+  {
+   "file": "scripts/check-tools.mjs",
+   "line": 31,
+   "column": 24,
+   "endLine": 31,
+   "endColumn": 47,
+   "mutatorName": "EqualityOperator",
+   "replacement": "response.status !== 401",
+   "claim": "killed",
+   "evidence": "scripts/check-tools.test.mjs > asks again without a token GitHub refuses, outside CI only",
+   "survivorClasses": [],
+   "result": {
+    "exit": 1,
+    "tests": "1 failed | 7 skipped (8)"
+   }
+  },
+  {
+   "file": "scripts/check-tools.mjs",
+   "line": 31,
+   "column": 49,
+   "endLine": 34,
+   "endColumn": 5,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "scripts/check-tools.test.mjs > asks again without a token GitHub refuses, outside CI only",
+   "survivorClasses": [],
+   "result": {
+    "exit": 1,
+    "tests": "1 failed | 7 skipped (8)"
+   }
+  },
+  {
+   "file": "scripts/check-tools.mjs",
+   "line": 32,
+   "column": 5,
+   "endLine": 32,
+   "endColumn": 80,
+   "mutatorName": "CallExpression",
+   "replacement": ";",
+   "claim": "killed",
+   "evidence": "scripts/check-tools.test.mjs > asks again without a token GitHub refuses, outside CI only",
+   "survivorClasses": [],
+   "result": {
+    "exit": 1,
+    "tests": "1 failed | 7 skipped (8)"
+   }
+  },
+  {
+   "file": "scripts/check-tools.mjs",
+   "line": 32,
+   "column": 10,
+   "endLine": 32,
+   "endColumn": 78,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "note": "ignored by the enumerator: a string literal of no behaviour under test"
+  }
+ ],
+ "total": 15,
+ "omitted": 0,
+ "unmutated": []
+}
