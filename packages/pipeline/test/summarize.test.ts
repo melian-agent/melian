@@ -868,6 +868,27 @@ describe("the walkthrough publication posts", () => {
 			),
 		).toEqual(walkthrough);
 	});
+	it("is none when the round's plan routes no light model", () => {
+		const state = {
+			walkthroughs: { [revision]: walkthrough },
+			walkthroughRoutes: { [revision]: "faux/first@" },
+			provenance: {
+				[revision]: {
+					...planned([]),
+					plan: { tiers: [{ tier: "light", status: "unrouted", models: [] }], lenses: [] },
+				},
+			},
+		};
+		expect(publishedWalkthrough(state as never, revision)).toBeUndefined();
+	});
+	it("is the stored one when only another revision has a provenance", () => {
+		const state = {
+			walkthroughs: { [revision]: walkthrough },
+			walkthroughRoutes: { [revision]: "faux/other@" },
+			provenance: { "other..revision": planned([{ model: "faux/first" }]) },
+		};
+		expect(publishedWalkthrough(state as never, revision)).toEqual(walkthrough);
+	});
 	it("is none when nothing is stored", () => {
 		expect(publishedWalkthrough({} as never, revision)).toBeUndefined();
 		expect(publishedWalkthrough(undefined, revision)).toBeUndefined();
