@@ -25,6 +25,7 @@ import {
 	createReviewRegistry,
 	decisionExtension,
 	openHarness,
+	openReviewHarness,
 	PrepareSpans,
 	readFindings,
 	reviewChangeset,
@@ -462,6 +463,54 @@ describe("static.enola", { timeout: 60_000 }, () => {
 			await harness.close(context);
 		}
 	});
+	it.each([
+		["the host's environment", { GITHUB_TOKEN: "fake-host-token" }, { GITHUB_TOKEN: "fake-host-token" }],
+		["no environment", undefined, {}],
+	])("provisions checks and callers from %s, never the process's", async (_case, environment, env) => {
+		vi.stubEnv("GITHUB_TOKEN", "fake-process-token");
+		try {
+			const base = commit(repo, {
+				"src/a.ts": "export function Alpha() { return 1; }\n",
+				"melian.yaml": "tiers:\n  fast: [static.enola]\nstatic:\n  enola: { enabled: true }\n",
+			});
+			const head = commit(repo, { "src/a.ts": "export function Alpha() { return 2; } // BROKEN\n" });
+			const changeset = await Changeset.resolve(repo, `${base}...${head}`);
+			const source = { kind: "revision" as const, commit: base };
+			const { config } = await loadConfig(repo, source, "");
+			const tools = await fake(1);
+			const open = vi.spyOn(ToolProvisioning, "open").mockResolvedValue(tools);
+			const models = createFakeModels();
+			const reviewHarness = await openReviewHarness(createMemoryStorage(), models.review, {
+				retry: false,
+				checkout: repo,
+				...(environment === undefined ? {} : { environment }),
+			});
+			try {
+				const root = await reviewHarness.harness.root(context, { agent: { model: models.ref() } });
+				const input = { rootConversationId: root.id, changeset, config, source };
+				const result = await runChecks(reviewHarness.harness, input, context);
+				expect(result.records).toEqual([expect.objectContaining({ name: "static.enola", status: "ran" })]);
+				expect(open.mock.calls.map(([, options]) => options)).toEqual([{ env }]);
+			} finally {
+				await reviewHarness.close(context);
+			}
+			open.mockClear();
+			const callerInput = {
+				env: createNodeExecutionEnv(repo),
+				repoRoot: repo,
+				base,
+				commit: head,
+				tool: "enola" as const,
+				settings: config.static.enola,
+				...(environment === undefined ? {} : { environment }),
+			};
+			await CallerContext.open(callerInput, changeset.revision.files, context);
+			expect(open.mock.calls.map(([, options]) => options)).toEqual([{ env }]);
+		} finally {
+			vi.unstubAllEnvs();
+		}
+	});
+
 	it("judges a diverged PR with target-tip policy and reuses that policy for callers", async () => {
 		const base = commit(repo, { "src/a.ts": "export function Alpha() { return 1; }\n" });
 		const policy = commit(repo, {

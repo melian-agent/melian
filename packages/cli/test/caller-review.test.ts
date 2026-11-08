@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import { ReviewPlan } from "@melian-agent/core";
-import { CallerContext, planInputs } from "@melian-agent/pipeline";
+import { CallerContext, planInputs, ReviewHarness } from "@melian-agent/pipeline";
 import {
 	createFakeModels,
 	fauxAssistantMessage,
@@ -67,6 +67,7 @@ it.each([true, false])(
 		});
 		vi.spyOn(CallerContext, "open").mockResolvedValue(callers);
 		vi.spyOn(CallerContext.prototype, "recordCoverage").mockResolvedValue({ review: "a".repeat(64) });
+		const harness = vi.spyOn(ReviewHarness, "open");
 		const lines: string[] = [],
 			errors: string[] = [];
 		const io: Io = {
@@ -90,6 +91,8 @@ it.each([true, false])(
 			expect.anything(),
 		);
 		expect(vi.mocked(CallerContext.open).mock.calls[0]?.[0].policyCommit).toBe(checkedOut ? undefined : base);
+		expect(vi.mocked(CallerContext.open).mock.calls[0]?.[0].environment).toBe(io.env);
+		expect(harness.mock.calls[0]?.[2]?.environment).toBe(io.env);
 		expect(systemPromptOf(requests["You are the correctness reviewer"]![0]!)).toContain("OutsideCaller");
 		lines.length = 0;
 		expect(await main(["findings", "main...feature", "--json"], io)).toBe(0);

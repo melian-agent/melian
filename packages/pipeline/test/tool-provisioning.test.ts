@@ -129,14 +129,14 @@ it.each([
 	);
 });
 
-it("reads the token from the process environment when no environment is given", async () => {
+it("ignores the process environment's token when no environment is given", async () => {
 	vi.stubEnv("GITHUB_TOKEN", "fake-process-token");
-	vi.stubEnv("GH_TOKEN", "");
+	vi.stubEnv("GH_TOKEN", "fake-process-token");
 	try {
 		const bytes = toolArchive([{ name: "enola", text: "#!/bin/sh\necho local\n" }]);
-		const download = provisioningHost(bytes, "Bearer fake-process-token");
+		const download = provisioningHost(bytes, undefined);
 		expect(await provision(undefined, download)).toBe("#!/bin/sh\necho local\n");
-		expect(download.mock.calls.map(([url]) => url)).toEqual([releaseUrl, assetUrl]);
+		expect(download.mock.calls.map(([url]) => url)).toEqual([publicUrl]);
 	} finally {
 		vi.unstubAllEnvs();
 	}

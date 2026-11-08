@@ -68,12 +68,62 @@ it("lists readiness without downloading, verifies fetched pins and repairs a mis
 	expect(await inventory.render()).toContain("materialised and verified");
 });
 
+it.each([
+	["no token, whatever the process holds", {}, undefined],
+	["its own token", { GH_TOKEN: "fake-io-token" }, "Bearer fake-io-token"],
+])("fetches a tool with the command environment's token: %s", async (_case, tokens, authorization) => {
+	vi.stubEnv("GITHUB_TOKEN", "fake-process-token");
+	vi.stubEnv("GH_TOKEN", "fake-process-token");
+	try {
+		const bytes = toolArchive([{ name: "enola", text: "#!/bin/sh\nexit 0\n" }]);
+		const { name, ...pin } = testTool(bytes);
+		const manifest = ToolManifest.parse(JSON.stringify({ format_version: 1, tools: { [name]: pin }, misses: [] }));
+		const asked: (string | undefined)[] = [];
+		const open = ToolProvisioning.open.bind(ToolProvisioning);
+		vi.spyOn(ToolProvisioning, "open").mockImplementation((root, options) =>
+			open(root, {
+				...options,
+				manifest,
+				platform: "darwin-arm64",
+				fetch: async (url, request) => {
+					asked.push(request.headers?.authorization);
+					if (url.startsWith("https://api.github.com/") && request.headers?.authorization === authorization)
+						return url.endsWith("/tags/v0.0.1")
+							? new Response(
+									JSON.stringify({
+										assets: [{ id: 42, browser_download_url: pin.platforms["darwin-arm64"]!.url }],
+									}),
+								)
+							: new Response(new Uint8Array(bytes));
+					if (
+						url === pin.platforms["darwin-arm64"]!.url &&
+						authorization === undefined &&
+						request.headers === undefined
+					)
+						return new Response(new Uint8Array(bytes));
+					return new Response("unexpected request", { status: 400 });
+				},
+			}),
+		);
+		const io = output();
+		const env = {
+			XDG_CONFIG_HOME: io.env.XDG_CONFIG_HOME,
+			PI_CODING_AGENT_DIR: io.env.PI_CODING_AGENT_DIR,
+			...tokens,
+		};
+		expect(await main(["tools", "fetch", "enola"], { ...io, env }), io.errors.join("")).toBe(0);
+		expect(asked).toEqual(authorization === undefined ? [undefined] : [authorization, authorization]);
+	} finally {
+		vi.unstubAllEnvs();
+	}
+});
+
 it("lists Melian's own manifest using the host's state directory", async () => {
 	const io = output();
 	io.env.MELIAN_STATE_DIR = join(repo, "host-state");
 	const open = vi.spyOn(ToolProvisioning, "open");
 	expect(await main(["tools"], io)).toBe(0);
-	expect(open).toHaveBeenCalledWith(await realpath(repo), { root: await stateDirectory(repo, io.env) });
+	expect(open).toHaveBeenCalledWith(await realpath(repo), { root: await stateDirectory(repo, io.env), env: io.env });
 	expect(await stateDirectory(repo, io.env)).toContain("host-state");
 	expect(io.lines.join("")).toContain("enola@0.4.27");
 	expect(io.lines.join("")).toContain("not yet fetched");
@@ -86,7 +136,7 @@ it.each([[undefined], [join("host-state")]])(
 		const env = state === undefined ? {} : { MELIAN_STATE_DIR: join(repo, state) };
 		const open = vi.spyOn(ToolProvisioning, "open");
 		await ToolInventory.open(repo, env);
-		expect(open).toHaveBeenCalledWith(await realpath(repo), { root: await stateDirectory(repo, env) });
+		expect(open).toHaveBeenCalledWith(await realpath(repo), { root: await stateDirectory(repo, env), env });
 		const root = await stateDirectory(repo, env);
 		expect(root.startsWith(join(await realpath(repo), state ?? ".git"))).toBe(true);
 	},
