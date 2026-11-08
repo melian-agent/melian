@@ -416,7 +416,8 @@ function recordProblems(
 
 describe("the triage question set's version", () => {
 	it("stands for the questions across every commit that recorded their version", async ({ skip }) => {
-		if (gitIn(triageDirectory)(["rev-parse", "--is-shallow-repository"]).trim() === "true") {
+		// CI checks out the whole history, so a shallow clone there still fails closed, as the decisions require.
+		if (!process.env.CI && gitIn(triageDirectory)(["rev-parse", "--is-shallow-repository"]).trim() === "true") {
 			const reason = "this clone is shallow; run git fetch --unshallow to check questions.json's history";
 			process.stderr.write(`skipped: ${reason}\n`);
 			skip(reason);
