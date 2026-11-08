@@ -1,0 +1,165 @@
+{
+	"head": "61e1fee3",
+	"enumerated": {
+		"mutants": [
+			{
+				"file": "packages/pipeline/src/checks.ts",
+				"line": 656,
+				"column": 13,
+				"endLine": 665,
+				"endColumn": 4,
+				"mutatorName": "ObjectLiteral",
+				"replacement": "{}",
+				"claim": "killed",
+				"evidence": "packages/pipeline/test/checks.test.ts > runChecks > reuses the run when only the display setting output.emoji changes",
+				"survivorClasses": [],
+				"run": {
+					"collected": 1,
+					"killed": true
+				}
+			}
+		],
+		"total": 1,
+		"omitted": 0,
+		"unmutated": [
+			{
+				"file": "packages/pipeline/src/static.ts",
+				"reason": "it sends process signals, and a mutant there could signal a process outside the run"
+			}
+		],
+		"range": "origin/main...61e1fee3"
+	},
+	"hand": [
+		{
+			"mutant": "showConfig: non-zero exit read as an answer",
+			"file": "packages/pipeline/src/static.ts",
+			"from": "const text = code === 0 ? await run.readOutput(out) : undefined;",
+			"to": "const text = await run.readOutput(out);",
+			"test": "packages/pipeline/test/static.test.ts > runStaticTool with the repository's own tools > fails the check when tsc --showConfig fails or answers anything but a configuration",
+			"collected": 1,
+			"killed": true
+		},
+		{
+			"mutant": "showConfig: null accepted as a configuration",
+			"file": "packages/pipeline/src/static.ts",
+			"from": "if (typeof config !== \"object\" || config === null) {",
+			"to": "if (typeof config !== \"object\") {",
+			"test": "packages/pipeline/test/static.test.ts > runStaticTool with the repository's own tools > fails the check when tsc --showConfig fails or answers anything but a configuration",
+			"collected": 1,
+			"killed": true
+		},
+		{
+			"mutant": "showConfig: non-object accepted as a configuration",
+			"file": "packages/pipeline/src/static.ts",
+			"from": "if (typeof config !== \"object\" || config === null) {",
+			"to": "if (config === null) {",
+			"test": "packages/pipeline/test/static.test.ts > runStaticTool with the repository's own tools > fails the check when tsc --showConfig fails or answers anything but a configuration",
+			"collected": 1,
+			"killed": true
+		},
+		{
+			"mutant": "outside: a path above the worktree not refused",
+			"file": "packages/pipeline/src/static.ts",
+			"from": "const resolved = escapes(path)",
+			"to": "const resolved = false",
+			"test": "packages/pipeline/test/static.test.ts > runStaticTool with the repository's own tools > refuses an effective file above the worktree even when it does not exist",
+			"collected": 1,
+			"killed": true
+		},
+		{
+			"mutant": "outside: a real path outside not refused",
+			"file": "packages/pipeline/src/static.ts",
+			"from": "if (resolved === undefined || (resolved.ok && !resolved.value.startsWith(`${root}/`))) {",
+			"to": "if (resolved === undefined) {",
+			"test": "packages/pipeline/test/static.test.ts > runStaticTool with Melian's own tools > refuses a project whose effective files lie outside the checkout, by extends or by a link",
+			"collected": 1,
+			"killed": true
+		},
+		{
+			"mutant": "files: an empty project checked as it stands",
+			"file": "packages/pipeline/src/static.ts",
+			"from": "if (own.length > 0) return [{ project, empty: false }];",
+			"to": "if (own.length >= 0) return [{ project, empty: false }];",
+			"test": "packages/pipeline/test/static.test.ts > runStaticTool with Melian's own tools > refuses a tsconfig whose only references come from its base, as tsc checks nothing there",
+			"collected": 1,
+			"killed": true
+		},
+		{
+			"mutant": "empty: a project with no references dropped",
+			"file": "packages/pipeline/src/static.ts",
+			"from": "if (referenced.length === 0) return [{ project, empty: true }];",
+			"to": "",
+			"test": "packages/pipeline/test/static.test.ts > runStaticTool with Melian's own tools > checks each project a solution-style tsconfig references, and refuses one that checks nothing",
+			"collected": 1,
+			"killed": true
+		},
+		{
+			"mutant": "checked: a silent project with files not counted",
+			"file": "packages/pipeline/src/static.ts",
+			"from": "if (!(empty && none)) checked += 1;",
+			"to": "if (!none) checked += 1;",
+			"test": "packages/pipeline/test/static.test.ts > runStaticTool with Melian's own tools > resolves a workspace sibling to the revision's own sources, not the checkout's",
+			"collected": 1,
+			"killed": true
+		},
+		{
+			"mutant": "checked: an empty project that reports not counted",
+			"file": "packages/pipeline/src/static.ts",
+			"from": "if (!(empty && none)) checked += 1;",
+			"to": "if (!empty) checked += 1;",
+			"test": "packages/pipeline/test/static.test.ts > runStaticTool with Melian's own tools > checks each project a solution-style tsconfig references, and refuses one that checks nothing",
+			"collected": 1,
+			"killed": true
+		},
+		{
+			"mutant": "checked: nothing checked still passes",
+			"file": "packages/pipeline/src/static.ts",
+			"from": "if (checked === 0) throw nothing();",
+			"to": "",
+			"test": "packages/pipeline/test/static.test.ts > runStaticTool with Melian's own tools > refuses a tsconfig whose only references come from its base, as tsc checks nothing there",
+			"collected": 1,
+			"killed": true
+		},
+		{
+			"mutant": "notes: referenced projects not named",
+			"file": "packages/pipeline/src/static.ts",
+			"from": "if (projects.some((each) => each.project !== project))",
+			"to": "if (false)",
+			"test": "packages/pipeline/test/static.test.ts > runStaticTool with Melian's own tools > checks each project a solution-style tsconfig references, and refuses one that checks nothing",
+			"collected": 1,
+			"killed": true
+		},
+		{
+			"mutant": "notes: the root's own run named as referenced",
+			"file": "packages/pipeline/src/static.ts",
+			"from": "if (projects.some((each) => each.project !== project))",
+			"to": "if (projects.some((each) => each.project === project))",
+			"test": "packages/pipeline/test/static.test.ts > runStaticTool with Melian's own tools > checks a project whose include comes from the base it extends",
+			"collected": 1,
+			"killed": true
+		},
+		{
+			"mutant": "identity: tsc project rule left out of the run identity",
+			"file": "packages/pipeline/src/checks.ts",
+			"from": "\t\t\t\ttscProjects,\n",
+			"to": "",
+			"test": "packages/pipeline/test/checks.test.ts > runChecks > runs again rather than reuse a run from a build that chose tsc's projects by hand",
+			"collected": 1,
+			"killed": true
+		},
+		{
+			"mutant": "notes: some swapped for every",
+			"file": "packages/pipeline/src/static.ts",
+			"from": "projects.some(",
+			"to": "projects.every(",
+			"equivalent": "The list is either the root alone, when it has effective files, or only referenced projects, which the seen set keeps distinct from the root, so some and every always agree."
+		},
+		{
+			"mutant": "files: non-string entries kept",
+			"file": "packages/pipeline/src/static.ts",
+			"from": "typeof file === \"string\"",
+			"to": "true",
+			"equivalent": "tsc --showConfig prints each effective file as a string, so the filter never removes an entry from its answer."
+		}
+	]
+}
