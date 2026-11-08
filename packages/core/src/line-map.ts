@@ -68,20 +68,17 @@ export class LineMap {
 				"--",
 				path,
 			]);
-			if (listed.code !== 0) return false;
+			// One entry, `<mode> <type> <object>\t<path>`: a regular or executable file, never a symlink, tree or submodule.
 			const entries = listed.stdout.split("\0").filter((entry) => entry !== "");
-			if (entries.length !== 1) return false;
-			const [meta, name] = entries[0]!.split("\t");
-			const [mode, type] = (meta ?? "").split(" ");
-			return name === path && type === "blob" && (mode === "100644" || mode === "100755");
+			return listed.code === 0 && entries.length === 1 && /^100(?:644|755) /.test(entries[0]!);
 		};
 		if (!(await regular(from)) || !(await regular(to))) return undefined;
-		const flags = diffFlags.filter((flag) => flag !== "--find-renames");
 		const args = (format: readonly string[]) => [
 			"--literal-pathspecs",
 			`--attr-source=${attributesFrom}`,
 			"diff",
-			...flags,
+			...diffFlags,
+			// After the pinned --find-renames, so a rename is never followed.
 			"--no-renames",
 			...format,
 			from,

@@ -1,3 +1,5 @@
+import { rmSync, symlinkSync } from "node:fs";
+import { join } from "node:path";
 import { LineMap } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { gitIn, isolatedGitEnv, lines, removeDirectory, temporaryDirectory, writeFiles } from "./fixtures/repo.ts";
@@ -162,5 +164,43 @@ describe("LineMap", () => {
 		const before = commit({ "a.ts": lines(...ten) }, "base");
 		expect((await mapOf(before, before, "a.ts", "--output=x")).mapped).toBe(false);
 		expect((await mapOf("--help", before)).mapped).toBe(false);
+	});
+
+	it("leaves a symlink, a directory and a submodule unmapped, though git diffs each as text", async () => {
+		const before = commit({ "dir/only.ts": lines(...ten), target: "x\n" }, "base");
+		symlinkSync("target", join(repo, "link"));
+		gitIn(repo, "add", "-A");
+		gitIn(repo, "commit", "--quiet", "-m", "link");
+		const linked = gitIn(repo, "rev-parse", "HEAD").trim();
+		writeFiles(repo, { target: "y\n" });
+		rmSync(join(repo, "link"));
+		symlinkSync("elsewhere", join(repo, "link"));
+		const after = commit({ "dir/only.ts": lines("new 0", ...ten) }, "retarget");
+		expect((await mapOf(linked, after, "link")).mapped).toBe(false);
+		expect((await mapOf(before, after, "dir")).mapped).toBe(false);
+		gitIn(repo, "update-index", "--add", "--cacheinfo", `160000,${before},sub`);
+		gitIn(repo, "commit", "--quiet", "-m", "submodule");
+		const pointed = gitIn(repo, "rev-parse", "HEAD").trim();
+		gitIn(repo, "update-index", "--cacheinfo", `160000,${after},sub`);
+		gitIn(repo, "commit", "--quiet", "-m", "move submodule");
+		expect((await mapOf(pointed, gitIn(repo, "rev-parse", "HEAD").trim(), "sub")).mapped).toBe(false);
+		// The same file, regular at both commits, maps.
+		expect((await mapOf(before, after, "dir/only.ts")).map({ startLine: 2, endLine: 2 })).toEqual({
+			startLine: 3,
+			endLine: 3,
+		});
+	});
+
+	it("reads a path with glob characters as that one file, never as a pattern", async () => {
+		const before = commit({ "s*.ts": lines(...ten), "sa.ts": lines(...ten), "a.ts": lines(...ten) }, "base");
+		const after = commit(
+			{ "s*.ts": lines("new 0", ...ten), "sa.ts": lines("other 0", "other 0b", ...ten) },
+			"change both",
+		);
+		expect((await mapOf(before, after, "s*.ts")).map({ startLine: 5, endLine: 5 })).toEqual({
+			startLine: 6,
+			endLine: 6,
+		});
+		expect((await mapOf(before, after, "*.ts")).mapped).toBe(false);
 	});
 });
