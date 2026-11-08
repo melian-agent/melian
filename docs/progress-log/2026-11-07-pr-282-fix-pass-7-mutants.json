@@ -1,0 +1,331 @@
+{
+	"range": "8ee98cb5...dfff4b3e",
+	"mutants": [
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 453,
+			"column": 17,
+			"endLine": 453,
+			"endColumn": 83,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > matches a result on a line the change only reindented by its code, and an Enola result by its message",
+			"survivorClasses": [],
+			"run": {
+				"head": "dfff4b3e",
+				"pattern": "^staticFindings > matches a result on a line the change only reindented by its code, and an Enola result by its message$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 453,
+			"column": 17,
+			"endLine": 453,
+			"endColumn": 83,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place on an unchanged line",
+			"survivorClasses": [],
+			"run": {
+				"head": "dfff4b3e",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place on an unchanged line$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 453,
+			"column": 17,
+			"endLine": 453,
+			"endColumn": 83,
+			"mutatorName": "LogicalOperator",
+			"replacement": "tool === \"biome\" || tool === \"tsc\" || each.snippet === undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > matches a result on a line the change only reindented by its code, and an Enola result by its message",
+			"survivorClasses": [],
+			"run": {
+				"head": "dfff4b3e",
+				"pattern": "^staticFindings > matches a result on a line the change only reindented by its code, and an Enola result by its message$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 453,
+			"column": 18,
+			"endLine": 453,
+			"endColumn": 52,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > matches a result on a line the change only reindented by its code, and an Enola result by its message",
+			"survivorClasses": [],
+			"run": {
+				"head": "dfff4b3e",
+				"pattern": "^staticFindings > matches a result on a line the change only reindented by its code, and an Enola result by its message$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 453,
+			"column": 18,
+			"endLine": 453,
+			"endColumn": 52,
+			"mutatorName": "LogicalOperator",
+			"replacement": "tool === \"biome\" && tool === \"tsc\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place on an unchanged line",
+			"survivorClasses": [],
+			"run": {
+				"head": "dfff4b3e",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place on an unchanged line$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 453,
+			"column": 18,
+			"endLine": 453,
+			"endColumn": 34,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place on an unchanged line",
+			"survivorClasses": [],
+			"run": {
+				"head": "dfff4b3e",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place on an unchanged line$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 453,
+			"column": 18,
+			"endLine": 453,
+			"endColumn": 34,
+			"mutatorName": "EqualityOperator",
+			"replacement": "tool !== \"biome\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place on an unchanged line",
+			"survivorClasses": [],
+			"run": {
+				"head": "dfff4b3e",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place on an unchanged line$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 453,
+			"column": 27,
+			"endLine": 453,
+			"endColumn": 34,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place on an unchanged line",
+			"survivorClasses": [],
+			"run": {
+				"head": "dfff4b3e",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place on an unchanged line$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 453,
+			"column": 38,
+			"endLine": 453,
+			"endColumn": 52,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place on an unchanged line",
+			"survivorClasses": [],
+			"run": {
+				"head": "dfff4b3e",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place on an unchanged line$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 453,
+			"column": 38,
+			"endLine": 453,
+			"endColumn": 52,
+			"mutatorName": "EqualityOperator",
+			"replacement": "tool !== \"tsc\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place on an unchanged line",
+			"survivorClasses": [],
+			"run": {
+				"head": "dfff4b3e",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place on an unchanged line$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 453,
+			"column": 47,
+			"endLine": 453,
+			"endColumn": 52,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place on an unchanged line",
+			"survivorClasses": [],
+			"run": {
+				"head": "dfff4b3e",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place on an unchanged line$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 453,
+			"column": 57,
+			"endLine": 453,
+			"endColumn": 83,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > matches a result on a line the change only reindented by its code, and an Enola result by its message",
+			"survivorClasses": [],
+			"run": {
+				"head": "dfff4b3e",
+				"pattern": "^staticFindings > matches a result on a line the change only reindented by its code, and an Enola result by its message$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 453,
+			"column": 57,
+			"endLine": 453,
+			"endColumn": 83,
+			"mutatorName": "EqualityOperator",
+			"replacement": "each.snippet !== undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place on an unchanged line",
+			"survivorClasses": [],
+			"run": {
+				"head": "dfff4b3e",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place on an unchanged line$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 455,
+			"column": 3,
+			"endLine": 455,
+			"endColumn": 81,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place on an unchanged line",
+			"survivorClasses": [],
+			"run": {
+				"head": "dfff4b3e",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place on an unchanged line$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 455,
+			"column": 3,
+			"endLine": 455,
+			"endColumn": 81,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place on an unchanged line",
+			"survivorClasses": [],
+			"run": {
+				"head": "dfff4b3e",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place on an unchanged line$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 455,
+			"column": 3,
+			"endLine": 455,
+			"endColumn": 81,
+			"mutatorName": "LogicalOperator",
+			"replacement": "placed || revision.trigger(each.path, region.startLine, endLine) !== undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place on an unchanged line",
+			"survivorClasses": [],
+			"run": {
+				"head": "dfff4b3e",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place on an unchanged line$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 455,
+			"column": 13,
+			"endLine": 455,
+			"endColumn": 81,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place on an unchanged line",
+			"survivorClasses": [],
+			"run": {
+				"head": "dfff4b3e",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place on an unchanged line$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 455,
+			"column": 13,
+			"endLine": 455,
+			"endColumn": 81,
+			"mutatorName": "EqualityOperator",
+			"replacement": "revision.trigger(each.path, region.startLine, endLine) === undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place on an unchanged line",
+			"survivorClasses": [],
+			"run": {
+				"head": "dfff4b3e",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place on an unchanged line$",
+				"collected": 1,
+				"result": "failed"
+			}
+		}
+	],
+	"total": 18,
+	"omitted": 0
+}

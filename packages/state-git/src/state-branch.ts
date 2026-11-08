@@ -215,7 +215,7 @@ export class StateBranch {
 			throw new StateBranchError("invalidBranch", `"${changeset}" is not a changeset name`);
 		if (this.#seal === undefined)
 			throw new StateBranchError("invalidKey", "no writers' key is configured for the state branch");
-		let generation = 0;
+		let taken: Lease | undefined;
 		await this.#withRetry(async (index, stored) => {
 			if (stored(changeset) !== undefined)
 				throw new StateBranchError(
@@ -225,26 +225,25 @@ export class StateBranch {
 			const held = index.lease(changeset);
 			if (held?.live(this.#now()) && held.holder.clone !== this.#options.holder)
 				throw new LeaseHeld(changeset, held);
-			const lease = Lease.take(held, this.#holder, this.#now(), this.#options.leaseMs ?? defaultLeaseMs);
-			generation = lease.generation;
-			return { index: index.leased(changeset, lease), generation };
+			taken = Lease.take(held, this.#holder, this.#now(), this.#options.leaseMs ?? defaultLeaseMs);
+			return { index: index.leased(changeset, taken), lease: taken };
 		});
-		return new StateReservation(this, changeset, generation);
+		return new StateReservation(this, changeset, taken!);
 	}
 
 	/** @internal Renews a reservation's lease while it is still the latest and the branch still does not hold the changeset. */
 	async confirmReservation(
 		changeset: string,
-		generation: number,
+		lease: Lease,
 	): Promise<{ readonly kind: "confirmed" } | { readonly kind: "refused"; readonly reason: string }> {
 		try {
 			await this.#withRetry(async (index, stored) => {
-				const held = this.#fenced(index, changeset, generation);
+				const held = this.#fenced(index, changeset, lease);
 				if (stored(changeset) !== undefined)
 					throw new Refusal("another run stored the changeset since this one reserved it");
 				return {
 					index: index.leased(changeset, held.renewed(this.#now(), this.#options.leaseMs ?? defaultLeaseMs)),
-					generation,
+					lease,
 				};
 			});
 			return { kind: "confirmed" };
@@ -255,23 +254,26 @@ export class StateBranch {
 	}
 
 	/** @internal Expires a reservation's lease, if it is still this run's. */
-	async releaseReservation(changeset: string, generation: number): Promise<void> {
+	async releaseReservation(changeset: string, lease: Lease): Promise<void> {
 		try {
 			await this.#withRetry(async (index) => {
-				this.#fenced(index, changeset, generation);
-				return { index: index.released(changeset, this.#now()), generation };
+				this.#fenced(index, changeset, lease);
+				return { index: index.released(changeset, this.#now()), lease };
 			});
 		} catch (error) {
 			if (!(error instanceof Refusal)) throw error;
 		}
 	}
 
-	// The fence: the changeset's lease, if this run's generation is still its latest.
-	#fenced(index: StateIndex, changeset: string, generation: number): Lease {
+	// The fence: the changeset's lease in the index, if it is still the one this run took, by incarnation and
+	// generation; a record created afresh since has another incarnation, whatever its generation.
+	#fenced(index: StateIndex, changeset: string, lease: Lease): Lease {
 		const held = index.lease(changeset);
-		if (held === undefined || !held.admits(generation) || !held.heldBy(this.#holder))
+		if (held === undefined || !held.admits(lease.incarnation, lease.generation) || !held.heldBy(this.#holder))
 			throw new Refusal(
-				`another run took the changeset's lease, at generation ${held?.generation ?? "none"}, after this one's ${generation}`,
+				held !== undefined && held.incarnation !== lease.incarnation
+					? `the changeset's lease record was created afresh, as incarnation ${held.incarnation}, after this one's ${lease.incarnation}`
+					: `another run took the changeset's lease, at generation ${held?.generation ?? "none"}, after this one's ${lease.generation}`,
 			);
 		return held;
 	}
@@ -308,7 +310,7 @@ export class StateBranch {
 		if (this.#seal === undefined)
 			return StateCheckout.unreached(this, changeset, lock, "no writers' key is configured for the state branch");
 		// This clone's lock is held, so a live lease of this clone's is one a crashed run left.
-		let reached: { stored: (changeset: string) => string | undefined; generation: number };
+		let reached: { stored: (changeset: string) => string | undefined; lease: Lease };
 		try {
 			reached = await this.#reach(changeset);
 		} catch (error) {
@@ -318,24 +320,24 @@ export class StateBranch {
 				return StateCheckout.unreached(this, changeset, lock, error.message);
 			throw error;
 		}
-		const { generation } = reached;
+		const { lease } = reached;
 		try {
-			return await StateCheckout.restore(this, changeset, reached.stored(changeset), lock, generation);
+			return await StateCheckout.restore(this, changeset, reached.stored(changeset), lock, lease);
 		} catch (error) {
 			// The lease is taken, so a restore that failed would hold every other clone off until it expired.
-			const expired = await this.#expire(changeset, generation).then(
+			const expired = await this.#expire(changeset, lease).then(
 				() => undefined,
 				(failure: unknown) => (failure instanceof Error ? failure.message : String(failure)),
 			);
 			if (expired === undefined || !(error instanceof Error)) throw error;
 			const until = new Date(this.#now() + (this.#options.leaseMs ?? defaultLeaseMs)).toISOString();
-			error.message = `${error.message}; the lease, generation ${generation}, stays on melian/state until ${until}, since expiring it failed: ${expired}`;
+			error.message = `${error.message}; the lease, generation ${lease.generation}, stays on melian/state until ${until}, since expiring it failed: ${expired}`;
 			throw error;
 		}
 	}
 
-	async #reach(changeset: string): Promise<{ stored: (changeset: string) => string | undefined; generation: number }> {
-		let generation = 0;
+	async #reach(changeset: string): Promise<{ stored: (changeset: string) => string | undefined; lease: Lease }> {
+		let taken: Lease | undefined;
 		const { stored } = await this.#withRetry(async (index, onBranch) => {
 			const held = index.lease(changeset);
 			if (held?.live(this.#now()) && held.holder.clone !== this.#options.holder)
@@ -343,32 +345,31 @@ export class StateBranch {
 			// A copy this build cannot read is refused before the lease goes over it.
 			const tree = onBranch(changeset);
 			if (tree !== undefined) await this.#open(changeset, tree);
-			const lease = Lease.take(held, this.#holder, this.#now(), this.#options.leaseMs ?? defaultLeaseMs);
-			generation = lease.generation;
-			return { index: index.leased(changeset, lease) };
+			taken = Lease.take(held, this.#holder, this.#now(), this.#options.leaseMs ?? defaultLeaseMs);
+			return { index: index.leased(changeset, taken), lease: taken };
 		});
-		return { stored, generation };
+		return { stored, lease: taken! };
 	}
 
 	/** @internal */
 	async push(
 		changeset: string,
 		synced: string,
-		generation: number,
+		lease: Lease,
 		tree: () => Promise<string>,
 		keepLease: boolean,
 	): Promise<PushResult> {
 		try {
 			const { tip } = await this.#withRetry(async (index, stored) => {
-				// A write lands only under the latest generation, so a run that outlived its lease is refused.
-				const held = this.#fenced(index, changeset, generation);
+				// A write lands only under the latest lease, so a run that outlived its lease is refused.
+				const held = this.#fenced(index, changeset, lease);
 				if ((stored(changeset) ?? "none") !== synced)
 					throw new Refusal("another run pushed the changeset since this one fetched it");
 				const written = index.wrote(changeset);
 				const next = keepLease
 					? written.leased(changeset, held.renewed(this.#now(), this.#options.leaseMs ?? defaultLeaseMs))
 					: written.released(changeset, this.#now());
-				return { index: next, tree: { changeset, sha: await tree() }, generation };
+				return { index: next, tree: { changeset, sha: await tree() }, lease };
 			});
 			return { kind: "pushed", commit: tip };
 		} catch (error) {
@@ -426,14 +427,14 @@ export class StateBranch {
 		return opened;
 	}
 
-	// Expires the changeset's lease, if this run's generation is still its latest.
-	async #expire(changeset: string, generation: number): Promise<void> {
-		// A lease another run has since taken is not this run's to expire.
+	// Expires the changeset's lease, if it is still the one this run took; a lease another run has since taken is not
+	// this run's to expire.
+	async #expire(changeset: string, lease: Lease): Promise<void> {
 		await this.#withRetry(async (index) => {
-			const held = index.lease(changeset);
-			if (held === undefined || !held.admits(generation) || !held.heldBy(this.#holder))
-				throw new Refusal("superseded");
-			return { index: index.released(changeset, this.#now()), generation };
+			this.#fenced(index, changeset, lease);
+			return { index: index.released(changeset, this.#now()), lease };
+		}).catch((error: unknown) => {
+			if (!(error instanceof Refusal)) throw error;
 		});
 	}
 
@@ -470,14 +471,14 @@ export class StateBranch {
 		change: (
 			index: StateIndex,
 			stored: (changeset: string) => string | undefined,
-		) => Promise<{ index: StateIndex; tree?: { changeset: string; sha: string }; generation?: number }>,
+		) => Promise<{ index: StateIndex; tree?: { changeset: string; sha: string }; lease?: Lease }>,
 	): Promise<{ tip: string; stored: (changeset: string) => string | undefined }> {
 		for (let attempt = 1; ; attempt++) {
 			const tip = await this.#fetch();
 			const { index, changesets } = await this.#read(tip);
 			const stored = (id: string) => changesets.get(id)?.sha;
 			const next = await change(index, stored);
-			const message = `melian: run ${this.#run}${next.generation === undefined ? "" : `, generation ${next.generation}`}`;
+			const message = `melian: run ${this.#run}${next.lease === undefined ? "" : `, incarnation ${next.lease.incarnation}, generation ${next.lease.generation}`}`;
 			const commit = await this.#compose(
 				tip,
 				next.index.keyed(this.#sealer.commitment),
@@ -615,22 +616,27 @@ class Refusal extends Error {}
 /** A changeset's lease, held without a copy while a command works on storage the branch does not hold. */
 export class StateReservation {
 	readonly changeset: string;
-	readonly generation: number;
+	readonly lease: Lease;
 	readonly #branch: StateBranch;
 
-	constructor(branch: StateBranch, changeset: string, generation: number) {
+	constructor(branch: StateBranch, changeset: string, lease: Lease) {
 		this.#branch = branch;
 		this.changeset = changeset;
-		this.generation = generation;
+		this.lease = lease;
+	}
+
+	/** The lease's generation the reservation holds, within its incarnation. */
+	get generation(): number {
+		return this.lease.generation;
 	}
 
 	/** Renews the lease before the command acts, refused once another run took it or stored the changeset. */
 	confirm(): Promise<{ readonly kind: "confirmed" } | { readonly kind: "refused"; readonly reason: string }> {
-		return this.#branch.confirmReservation(this.changeset, this.generation);
+		return this.#branch.confirmReservation(this.changeset, this.lease);
 	}
 
 	release(): Promise<void> {
-		return this.#branch.releaseReservation(this.changeset, this.generation);
+		return this.#branch.releaseReservation(this.changeset, this.lease);
 	}
 }
 
@@ -648,7 +654,7 @@ export class StateCheckout {
 	readonly #branch: StateBranch;
 	#synced: string;
 	readonly #lock: CopyLock;
-	readonly #generation: number;
+	readonly #lease: Lease | undefined;
 
 	private constructor(
 		branch: StateBranch,
@@ -656,12 +662,12 @@ export class StateCheckout {
 		synced: string,
 		setAside: string | undefined,
 		lock: CopyLock,
-		generation: number,
+		lease: Lease | undefined,
 		unreached?: string,
 	) {
 		this.#branch = branch;
 		this.#lock = lock;
-		this.#generation = generation;
+		this.#lease = lease;
 		this.unreached = unreached;
 		this.changeset = changeset;
 		this.directory = join(branch.directory, changeset);
@@ -683,7 +689,7 @@ export class StateCheckout {
 			await mkdir(directory, { recursive: true });
 			await writeFile(`${directory}.synced`, "none\n", { flag: "wx" }).catch(() => {});
 		}
-		return new StateCheckout(branch, changeset, "none", undefined, lock, 0, reason);
+		return new StateCheckout(branch, changeset, "none", undefined, lock, undefined, reason);
 	}
 
 	/** @internal */
@@ -692,7 +698,7 @@ export class StateCheckout {
 		changeset: string,
 		stored: string | undefined,
 		lock: CopyLock,
-		generation: number,
+		lease: Lease,
 	): Promise<StateCheckout> {
 		const directory = join(branch.directory, changeset);
 		const marker = `${directory}.synced`;
@@ -705,8 +711,7 @@ export class StateCheckout {
 			() => true,
 			() => false,
 		);
-		if (local && synced === onBranch)
-			return new StateCheckout(branch, changeset, onBranch, undefined, lock, generation);
+		if (local && synced === onBranch) return new StateCheckout(branch, changeset, onBranch, undefined, lock, lease);
 		let setAside: string | undefined;
 		if (local) {
 			setAside = `${directory}.set-aside-${Date.now()}`;
@@ -716,16 +721,21 @@ export class StateCheckout {
 		if (onBranch === "none") await mkdir(directory, { recursive: true });
 		else await branch.materialize(changeset, onBranch, directory);
 		await writeFile(marker, `${onBranch}\n`);
-		return new StateCheckout(branch, changeset, onBranch, setAside, lock, generation);
+		return new StateCheckout(branch, changeset, onBranch, setAside, lock, lease);
 	}
 
-	/** The lease's generation this checkout writes under. */
+	/** The lease's generation this checkout writes under, within its incarnation; 0 when the branch was not reached. */
 	get generation(): number {
-		return this.#generation;
+		return this.#lease?.generation ?? 0;
+	}
+
+	/** The incarnation of the changeset's lease record this checkout writes under, when the branch was reached. */
+	get incarnation(): string | undefined {
+		return this.#lease?.incarnation;
 	}
 
 	/**
-	 * Stores this clone's copy on the branch under this checkout's generation, and releases the lease, or with
+	 * Stores this clone's copy on the branch under this checkout's lease, and releases the lease, or with
 	 * `keepLease` renews it for a later push. Close the storage opened over `directory` first, or have nothing writing
 	 * to it. A push the branch refuses, because another run took the lease or moved the changeset, keeps the copy here;
 	 * the next checkout sets it aside for the branch's.
@@ -736,7 +746,8 @@ export class StateCheckout {
 		const result = await this.#branch.push(
 			this.changeset,
 			this.#synced,
-			this.#generation,
+			// Only a checkout that reached the branch holds a lease, and an unreached one returned above.
+			this.#lease!,
 			async () => {
 				tree = await this.#branch.snapshot(this.changeset, this.directory);
 				return tree;

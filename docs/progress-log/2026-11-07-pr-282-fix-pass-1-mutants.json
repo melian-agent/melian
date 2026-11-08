@@ -1,0 +1,535 @@
+{
+	"range": "origin/main...544aeff1 (identical to 67856997...544aeff1)",
+	"mutants": [
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 396,
+			"column": 65,
+			"endLine": 396,
+			"endColumn": 109,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reports a second result added beside an old one on the same lines as introduced",
+			"survivorClasses": [],
+			"run": {
+				"head": "544aeff1",
+				"pattern": "^staticFindings > reports a second result added beside an old one on the same lines as introduced$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 396,
+			"column": 74,
+			"endLine": 396,
+			"endColumn": 86,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "544aeff1",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 396,
+			"column": 93,
+			"endLine": 396,
+			"endColumn": 107,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reports a second result added beside an old one on the same lines as introduced",
+			"survivorClasses": [],
+			"run": {
+				"head": "544aeff1",
+				"pattern": "^staticFindings > reports a second result added beside an old one on the same lines as introduced$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 400,
+			"column": 66,
+			"endLine": 410,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > keeps the same unlocated Enola result pre-existing",
+			"survivorClasses": [],
+			"run": {
+				"head": "544aeff1",
+				"pattern": "^staticFindings > keeps the same unlocated Enola result pre-existing$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 401,
+			"column": 5,
+			"endLine": 401,
+			"endColumn": 39,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reports a second result added beside an old one on the same lines as introduced",
+			"survivorClasses": [],
+			"run": {
+				"head": "544aeff1",
+				"pattern": "^staticFindings > reports a second result added beside an old one on the same lines as introduced$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 401,
+			"column": 5,
+			"endLine": 401,
+			"endColumn": 39,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > keeps the same unlocated Enola result pre-existing",
+			"survivorClasses": [],
+			"run": {
+				"head": "544aeff1",
+				"pattern": "^staticFindings > keeps the same unlocated Enola result pre-existing$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 401,
+			"column": 5,
+			"endLine": 401,
+			"endColumn": 39,
+			"mutatorName": "LogicalOperator",
+			"replacement": "tool !== \"biome\" || tool !== \"tsc\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reports a second result added beside an old one on the same lines as introduced",
+			"survivorClasses": [],
+			"run": {
+				"head": "544aeff1",
+				"pattern": "^staticFindings > reports a second result added beside an old one on the same lines as introduced$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 401,
+			"column": 5,
+			"endLine": 401,
+			"endColumn": 21,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "544aeff1",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 401,
+			"column": 5,
+			"endLine": 401,
+			"endColumn": 21,
+			"mutatorName": "EqualityOperator",
+			"replacement": "tool === \"biome\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > keeps the same unlocated Enola result pre-existing",
+			"survivorClasses": [],
+			"run": {
+				"head": "544aeff1",
+				"pattern": "^staticFindings > keeps the same unlocated Enola result pre-existing$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 401,
+			"column": 14,
+			"endLine": 401,
+			"endColumn": 21,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "544aeff1",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 401,
+			"column": 25,
+			"endLine": 401,
+			"endColumn": 39,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reports a second result added beside an old one on the same lines as introduced",
+			"survivorClasses": [],
+			"run": {
+				"head": "544aeff1",
+				"pattern": "^staticFindings > reports a second result added beside an old one on the same lines as introduced$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 401,
+			"column": 25,
+			"endLine": 401,
+			"endColumn": 39,
+			"mutatorName": "EqualityOperator",
+			"replacement": "tool === \"tsc\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > keeps the same unlocated Enola result pre-existing",
+			"survivorClasses": [],
+			"run": {
+				"head": "544aeff1",
+				"pattern": "^staticFindings > keeps the same unlocated Enola result pre-existing$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 401,
+			"column": 34,
+			"endLine": 401,
+			"endColumn": 39,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reports a second result added beside an old one on the same lines as introduced",
+			"survivorClasses": [],
+			"run": {
+				"head": "544aeff1",
+				"pattern": "^staticFindings > reports a second result added beside an old one on the same lines as introduced$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 402,
+			"column": 14,
+			"endLine": 402,
+			"endColumn": 30,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reports a second result added beside an old one on the same lines as introduced",
+			"survivorClasses": [],
+			"run": {
+				"head": "544aeff1",
+				"pattern": "^staticFindings > reports a second result added beside an old one on the same lines as introduced$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 402,
+			"column": 14,
+			"endLine": 402,
+			"endColumn": 30,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "544aeff1",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 402,
+			"column": 14,
+			"endLine": 402,
+			"endColumn": 30,
+			"mutatorName": "EqualityOperator",
+			"replacement": "tool !== \"biome\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reports a second result added beside an old one on the same lines as introduced",
+			"survivorClasses": [],
+			"run": {
+				"head": "544aeff1",
+				"pattern": "^staticFindings > reports a second result added beside an old one on the same lines as introduced$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 402,
+			"column": 23,
+			"endLine": 402,
+			"endColumn": 30,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "544aeff1",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 402,
+			"column": 33,
+			"endLine": 402,
+			"endColumn": 40,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "544aeff1",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 402,
+			"column": 43,
+			"endLine": 402,
+			"endColumn": 48,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reports a second result added beside an old one on the same lines as introduced",
+			"survivorClasses": [],
+			"run": {
+				"head": "544aeff1",
+				"pattern": "^staticFindings > reports a second result added beside an old one on the same lines as introduced$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 403,
+			"column": 41,
+			"endLine": 408,
+			"endColumn": 3,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > fails rather than guess when a result's file cannot be read",
+			"survivorClasses": [],
+			"run": {
+				"head": "544aeff1",
+				"pattern": "^staticFindings > fails rather than guess when a result's file cannot be read$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 403,
+			"column": 73,
+			"endLine": 408,
+			"endColumn": 2,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > fails rather than guess when a result's file cannot be read",
+			"survivorClasses": [],
+			"run": {
+				"head": "544aeff1",
+				"pattern": "^staticFindings > fails rather than guess when a result's file cannot be read$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 405,
+			"column": 11,
+			"endLine": 407,
+			"endColumn": 3,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > takes severity overrides from the tool's settings, and stores no resolution",
+			"survivorClasses": [],
+			"run": {
+				"head": "544aeff1",
+				"pattern": "^staticFindings > takes severity overrides from the tool's settings, and stores no resolution$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 406,
+			"column": 9,
+			"endLine": 406,
+			"endColumn": 169,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > takes severity overrides from the tool's settings, and stores no resolution",
+			"survivorClasses": [],
+			"run": {
+				"head": "544aeff1",
+				"pattern": "^staticFindings > takes severity overrides from the tool's settings, and stores no resolution$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 409,
+			"column": 8,
+			"endLine": 409,
+			"endColumn": 55,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > fails rather than guess when a result's file cannot be read",
+			"survivorClasses": [],
+			"run": {
+				"head": "544aeff1",
+				"pattern": "^staticFindings > fails rather than guess when a result's file cannot be read$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 409,
+			"column": 24,
+			"endLine": 409,
+			"endColumn": 53,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > fails rather than guess when a result's file cannot be read",
+			"survivorClasses": [],
+			"run": {
+				"head": "544aeff1",
+				"pattern": "^staticFindings > fails rather than guess when a result's file cannot be read$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 409,
+			"column": 25,
+			"endLine": 409,
+			"endColumn": 52,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > fails rather than guess when a result's file cannot be read",
+			"survivorClasses": [],
+			"run": {
+				"head": "544aeff1",
+				"pattern": "^staticFindings > fails rather than guess when a result's file cannot be read$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 431,
+			"column": 64,
+			"endLine": 431,
+			"endColumn": 99,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > keeps the same unlocated Enola result pre-existing",
+			"survivorClasses": [],
+			"run": {
+				"head": "544aeff1",
+				"pattern": "^staticFindings > keeps the same unlocated Enola result pre-existing$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 431,
+			"column": 74,
+			"endLine": 431,
+			"endColumn": 99,
+			"mutatorName": "LogicalOperator",
+			"replacement": "renamed.get(path) && path",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > keeps the same unlocated Enola result pre-existing",
+			"survivorClasses": [],
+			"run": {
+				"head": "544aeff1",
+				"pattern": "^staticFindings > keeps the same unlocated Enola result pre-existing$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 432,
+			"column": 64,
+			"endLine": 432,
+			"endColumn": 78,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > keeps the same unlocated Enola result pre-existing",
+			"survivorClasses": [],
+			"run": {
+				"head": "544aeff1",
+				"pattern": "^staticFindings > keeps the same unlocated Enola result pre-existing$",
+				"collected": 1,
+				"result": "failed"
+			}
+		}
+	],
+	"total": 29,
+	"omitted": 0,
+	"unmutated": [
+		{
+			"file": "packages/pipeline/src/static.ts",
+			"reason": "it sends process signals, and a mutant there could signal a process outside the run"
+		}
+	]
+}
