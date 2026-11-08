@@ -117,6 +117,7 @@ async function review(
 		origin?: ReviewOrigin;
 		rerun?: boolean;
 		unlockModels?: (providers: readonly string[]) => Promise<void>;
+		afterTriage?: () => void;
 	} = {},
 ): Promise<Review> {
 	return reviewChangeset({
@@ -139,6 +140,7 @@ async function review(
 		...(options.origin === undefined ? {} : { origin: options.origin }),
 		...(options.rerun === undefined ? {} : { rerun: options.rerun }),
 		...(options.unlockModels === undefined ? {} : { unlockModels: options.unlockModels }),
+		...(options.afterTriage === undefined ? {} : { afterTriage: options.afterTriage }),
 	});
 }
 
@@ -416,6 +418,31 @@ describe("triage", () => {
 		expect(decider.requests).toHaveLength(1);
 		expect(fake.provider.state.callCount).toBe(calls);
 		expect(second.verdict).toEqual(first.verdict);
+	});
+
+	it("tells the host once triage has decided, before any lens asks a model", async () => {
+		const decider = choosing("quick");
+		await open(decider);
+		scriptConversations(fake, [{ match: correctness, replies: [done] }]);
+		const seen: { asked: number; requests: number }[] = [];
+
+		await review({
+			decider,
+			afterTriage: () => seen.push({ asked: decider.requests.length, requests: fake.provider.state.callCount }),
+		});
+
+		expect(seen).toEqual([{ asked: 1, requests: 0 }]);
+		expect(fake.provider.state.callCount).toBeGreaterThan(0);
+	});
+
+	it("tells the host once without a decider, before any lens asks a model", async () => {
+		await open();
+		scriptConversations(fake, [{ match: correctness, replies: [done] }]);
+		const requests: number[] = [];
+
+		await review({ afterTriage: () => requests.push(fake.provider.state.callCount) });
+
+		expect(requests).toEqual([0]);
 	});
 
 	it("runs every lens at careful without a decider, as before triage", async () => {

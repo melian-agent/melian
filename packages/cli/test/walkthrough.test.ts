@@ -76,6 +76,75 @@ describe("CLI walkthrough switch", { timeout: 60_000 }, () => {
 	});
 });
 
+describe("CLI walkthrough beside the review", { timeout: 60_000 }, () => {
+	function gate() {
+		let open = () => {};
+		const opened = new Promise<void>((resolve) => {
+			open = resolve;
+		});
+		return { opened, open };
+	}
+
+	it("starts the walkthrough inside the review, from its origin and plan, and prints only once it ends", async () => {
+		const order: string[] = [];
+		const released = gate();
+		const summarize = vi.spyOn(pipeline, "summarizeReview").mockImplementation(async () => {
+			order.push("walkthrough started");
+			await released.opened;
+			order.push("walkthrough ended");
+		});
+		const actual = pipeline.reviewChangeset;
+		vi.spyOn(pipeline, "reviewChangeset").mockImplementation(async (request) => {
+			const reviewed = await actual(request);
+			order.push("review ended");
+			released.open();
+			return reviewed;
+		});
+		const io = {
+			cwd: repo,
+			env,
+			stdout: () => {
+				order.push("output");
+			},
+			stderr: () => {},
+			color: false,
+		};
+
+		expect(await review(io, "#7", { rerun: false })).toBe(0);
+
+		expect(order).toEqual(["walkthrough started", "review ended", "walkthrough ended", "output"]);
+		expect(summarize).toHaveBeenCalledOnce();
+		const { origin, plan } = summarize.mock.calls[0]![0];
+		expect(origin).toMatchObject({ kind: "pull-request", pullRequest: 7, head: changeset.revision.head });
+		expect(plan).toBeDefined();
+	});
+
+	it("closes the storage only after a walkthrough a failed review started", async () => {
+		const order: string[] = [];
+		vi.spyOn(pipeline, "summarizeReview").mockImplementation(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 50));
+			order.push("walkthrough ended");
+		});
+		vi.spyOn(pipeline, "reviewChangeset").mockImplementation(async (request) => {
+			request.afterTriage?.();
+			throw new Error("lenses broke");
+		});
+		const close = pipeline.ReviewHarness.prototype.close;
+		vi.spyOn(pipeline.ReviewHarness.prototype, "close").mockImplementation(async function (
+			this: pipeline.ReviewHarness,
+			...args
+		) {
+			order.push("closed");
+			return close.apply(this, args);
+		});
+		const io = { cwd: repo, env, stdout: () => {}, stderr: () => {}, color: false };
+
+		await expect(review(io, "#7", { rerun: false })).rejects.toThrow("lenses broke");
+
+		expect(order).toEqual(["walkthrough ended", "closed"]);
+	});
+});
+
 describe("CLI walkthrough credentials", { timeout: 60_000 }, () => {
 	it("gives the summariser an unlock for its concrete light route", async () => {
 		const summarize = vi.spyOn(pipeline, "summarizeReview").mockResolvedValue(undefined);

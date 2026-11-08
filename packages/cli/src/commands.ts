@@ -279,6 +279,7 @@ export async function review(
 		...triage.harnessOptions(),
 	});
 	const { harness } = reviewHarness;
+	let walkthrough: Promise<void> | undefined;
 	try {
 		spans.step("resume");
 		// A task a crash left unfinished resumes at the first wait below, so its commands run before it.
@@ -333,6 +334,28 @@ export async function review(
 					spans,
 				)
 			: undefined;
+		// The walkthrough needs the change, not the verdict, so it runs beside the lenses once triage has decided.
+		const summarize = () => {
+			if (target.kind !== "pullRequest" || options.walkthrough === false) return;
+			walkthrough ??= summarizeReview({
+				harness,
+				changeset,
+				config: loaded,
+				models,
+				origin,
+				plan,
+				rerun: options.rerun,
+				// The walkthrough is published, so it never names a credential; the terminal does.
+				unlockModels: async (providers) => {
+					try {
+						await unlockModels(providers);
+					} catch (error) {
+						io.stderr(`melian: ${visibleText(error instanceof Error ? error.message : String(error))}\n`);
+						throw error;
+					}
+				},
+			});
+		};
 		let verdict: Verdict;
 		try {
 			({ verdict } = await reviewChangeset({
@@ -353,31 +376,16 @@ export async function review(
 				...(callers === undefined ? {} : { callers }),
 				rerun: options.rerun,
 				origin,
+				afterTriage: summarize,
 			}));
 		} catch (error) {
 			if (!(error instanceof ReviewError) || error.verdict === undefined) throw error;
 			io.stderr(`melian: ${visibleText(error.message)}\n`);
 			verdict = error.verdict;
 		}
-		if (target.kind === "pullRequest" && options.walkthrough !== false) {
-			spans.end();
-			await summarizeReview({
-				harness,
-				changeset,
-				config: loaded,
-				models,
-				rerun: options.rerun,
-				// The walkthrough is published, so it never names a credential; the terminal does.
-				unlockModels: async (providers) => {
-					try {
-						await unlockModels(providers);
-					} catch (error) {
-						io.stderr(`melian: ${visibleText(error instanceof Error ? error.message : String(error))}\n`);
-						throw error;
-					}
-				},
-			});
-		}
+		summarize();
+		spans.end();
+		await walkthrough;
 		spans.step("output");
 		const outcome = new ReviewOutcome(verdict);
 		const timings = await reviewTimings(reviewHarness, storage, spans, Revision.key(changeset.revision), beganAt, io);
@@ -418,6 +426,7 @@ export async function review(
 			);
 		throw error;
 	} finally {
+		await walkthrough;
 		await reviewHarness.close(context);
 	}
 }

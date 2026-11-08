@@ -939,6 +939,11 @@ interface ReviewSettings {
 	/** The chosen decider's providers, unlocked only before a triage task that may ask it. */
 	readonly triageProviders?: readonly string[];
 	/**
+	 * Called once triage has decided, or found nothing to ask, before any lens runs. A host starts work there that
+	 * needs the change but not the verdict, such as the walkthrough. A review that fails earlier never calls it.
+	 */
+	readonly afterTriage?: () => void;
+	/**
 	 * Where the revision came from, recorded with the verdict. Only a `pull-request` review whose policy came from a
 	 * revision can be published. A range by default.
 	 */
@@ -1705,6 +1710,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					options.triageProviders ?? [],
 					unlockModels,
 				);
+	options.afterTriage?.();
 	spans.step("lenses.prepare");
 	const choices = new Map(
 		covering.map(({ lens }) => {

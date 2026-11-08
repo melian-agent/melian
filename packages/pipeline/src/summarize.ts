@@ -10,7 +10,7 @@ import {
 	resolveModelForTier,
 	type Walkthrough,
 } from "@melian-agent/core";
-import { VerdictDocument } from "./adjudication.ts";
+import { type ReviewOrigin, VerdictDocument } from "./adjudication.ts";
 import {
 	backgroundContext,
 	type Context,
@@ -254,6 +254,14 @@ export async function summarizeReview(options: {
 	readonly context?: Context;
 	readonly rerun?: boolean;
 	/**
+	 * Where the review's revision came from, standing for the verdict's stored provenance, so the walkthrough can start
+	 * before adjudication records it. Only a `pull-request` origin is summarised. Without it, the stored provenance
+	 * decides.
+	 */
+	readonly origin?: ReviewOrigin;
+	/** The review's plan, which resolves the light model when `origin` is given; without it, the configuration's routes. */
+	readonly plan?: ReviewPlan;
+	/**
 	 * Called once, after the walkthrough is found not to be stored and a light model is known, and before a model is
 	 * asked, only when a task will be attached to or created: not at the attempt cap without `rerun`. The host unlocks credentials there; one that fails leaves the fixed summariser note, which
 	 * names no credential, since the walkthrough is published.
@@ -269,14 +277,23 @@ export async function summarizeReview(options: {
 	try {
 		const conversation = await harness.root(context);
 		root = conversation;
-		const provenance = (await harness.snapshot(VerdictDocument, conversation.id, context))?.provenance?.[revision];
-		if (provenance?.kind !== "pull-request") return;
+		const provenance =
+			options.origin === undefined
+				? (await harness.snapshot(VerdictDocument, conversation.id, context))?.provenance?.[revision]
+				: undefined;
+		if ((options.origin ?? provenance)?.kind !== "pull-request") return;
 		if (
 			!options.rerun &&
 			(await harness.snapshot(VerdictDocument, conversation.id, context))?.walkthroughs?.[revision] !== undefined
 		)
 			return;
-		const routes = provenance.plan === undefined ? config.models : ReviewPlan.from(provenance.plan).routes();
+		const plan =
+			options.origin === undefined
+				? provenance?.plan === undefined
+					? undefined
+					: ReviewPlan.from(provenance.plan)
+				: options.plan;
+		const routes = plan === undefined ? config.models : plan.routes();
 		const configured = routes.light;
 		const route =
 			configured === undefined ||

@@ -1,7 +1,7 @@
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Changeset, defaultConfig, type MelianConfig, Revision } from "@melian-agent/core";
+import { Changeset, defaultConfig, type MelianConfig, ReviewPlan, Revision } from "@melian-agent/core";
 import {
 	backgroundContext as context,
 	createMemoryStorage,
@@ -626,5 +626,41 @@ describe("walkthrough summaries", () => {
 		expect(requests).toHaveLength(3);
 		expect(requests[1]?.map(textOf).join("\n")).toContain("unexpected");
 		expect(requests[2]?.map(textOf).join("\n")).toContain("unexpected");
+	});
+	describe("started alongside the review, before its verdict records a provenance", () => {
+		const pullRequest = {
+			kind: "pull-request",
+			repository: { owner: "melian-agent", name: "example" },
+			pullRequest: 7,
+			base: "b".repeat(40),
+			head: "c".repeat(40),
+		} as const;
+		async function withoutProvenance() {
+			const root = await harness.root(context);
+			await root.commit(async (tx) => {
+				delete (await tx.doc(VerdictDocument, root.id)).provenance;
+			}, context);
+		}
+		it("summarises a pull request from the origin it is given", async () => {
+			await withoutProvenance();
+			scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
+			const doc = await summarize({ origin: pullRequest });
+			expect(doc?.walkthroughs?.[Revision.key(changeset.revision)]?.summary).toBe("Changes a value.");
+		});
+		it("skips a range origin, whatever a stored provenance says", async () => {
+			const auth = vi.spyOn(models.models, "checkAuth");
+			await summarize({ origin: { kind: "range" } });
+			expect(auth).not.toHaveBeenCalled();
+			expect((await stored())?.walkthroughs).toBeUndefined();
+			expect((await stored())?.walkthroughNotes).toBeUndefined();
+		});
+		it("resolves the light model through the plan it is given, not the configuration", async () => {
+			await withoutProvenance();
+			const revision = Revision.key(changeset.revision);
+			const plan = ReviewPlan.from({ tiers: [{ tier: "light", status: "unrouted", models: [] }], lenses: [] });
+			expect((await summarize({ origin: pullRequest, plan }))?.walkthroughNotes?.[revision]).toContain(
+				"No light model is configured.",
+			);
+		});
 	});
 });
