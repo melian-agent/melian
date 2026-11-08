@@ -4,6 +4,8 @@ Status: built for [issue #254](https://github.com/melian-agent/melian/issues/254
 
 Amends: [Spans time a review's work between tasks](2026-10-24-review-spans.md), its rules that one step is open at a time and that no span overlaps a task, for the walkthrough alone.
 
+Amends: [A reasoning level per model tier](2026-10-19-tier-thinking-routes.md), its rule that the walkthrough's revision cache and rerun rules remain unchanged: a summary written on another light route or thinking level is written again.
+
 ## Problem
 
 The walkthrough summarises the change for the reader. It needs the change, not the verdict, yet `melian review` ran it only after adjudication. Each round on 2026-10-26 and 2026-10-27 ended with 13 to 16 seconds of walkthrough and nothing else running, by the prepare spans of [pull request #206](https://github.com/melian-agent/melian/pull/206).
