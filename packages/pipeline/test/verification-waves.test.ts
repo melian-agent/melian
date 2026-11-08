@@ -595,4 +595,12 @@ describe("verification as each lens ends", () => {
 		expect(asked.length).toBeGreaterThan(before);
 		expect(result.findings.map((finding) => finding.properties.verification?.verdict)).toEqual(["confirmed"]);
 	});
+
+	it("starts one wave for a lens's claim when two reviews watch the same lens task", async () => {
+		const asked: string[][] = [];
+		fastThenSlow(asked);
+		await Promise.all([review(), review()]);
+		expect(await waveTasks()).toHaveLength(1);
+		expect(asked).toHaveLength(1);
+	});
 });

@@ -344,16 +344,35 @@ export async function startWave(
 	const root = await harness.root(context);
 	const revision = Revision.key(input.revision);
 	await unlockModels?.(input.candidates.flatMap((candidate) => candidate.route.map((model) => model.provider)));
-	const claims = new Set(input.candidates.flatMap((candidate) => candidate.state.claims.map(claimKey)));
 	return root.commit(async (tx) => {
 		if ((await tx.doc(ReviewIndex, root.id)).reviews[revision]?.task !== lensTask) return undefined;
 		const entry = await VerificationWaves.open(tx, root.id, revision, lensTask);
+		// Another review watching the same lens task may have started a wave since this one read the document, so the
+		// one-wave rule and freshness are decided here, in the commit that adds the wave.
+		const running = entry.waves.at(-1);
+		if (running !== undefined && (await tx.task(running.task as TaskId))?.state.status !== "terminal")
+			return undefined;
+		const waves = VerificationWaves.of(await tx.doc(VerificationWavesDocument, root.id), revision, lensTask);
+		const fresh = input.candidates.filter(
+			(candidate) =>
+				waves.standing(
+					JSON.stringify(candidateIdentity(candidate)),
+					candidate.state.claims.map(claimKey),
+					input.version,
+				) === undefined,
+		);
+		if (fresh.length === 0) return undefined;
+		const claims = new Set(fresh.flatMap((candidate) => candidate.state.claims.map(claimKey)));
 		await clearVerifications(tx, input.root, revision, (claim) => claims.has(claim));
-		const created = await tx.createTask(VerificationTask, input, { ownership: { kind: "conversation" } });
+		const created = await tx.createTask(
+			VerificationTask,
+			{ ...input, candidates: fresh },
+			{ ownership: { kind: "conversation" } },
+		);
 		entry.waves.push({
 			task: created,
 			version: input.version,
-			candidates: input.candidates.map((candidate) => ({
+			candidates: fresh.map((candidate) => ({
 				key: JSON.stringify(candidateIdentity(candidate)),
 				claims: candidate.state.claims.map(claimKey),
 			})),

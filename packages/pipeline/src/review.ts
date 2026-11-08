@@ -2105,18 +2105,11 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 						.map((first) => settle(first, ended, rule));
 					const { producers } = account(manifest, settledEnded, { records: [], skippable: [] }, options);
 					const { candidates } = await candidatesFor(producers, ended, runs.lenses);
-					const fresh = candidates.filter(
-						(candidate) =>
-							waves.standing(
-								JSON.stringify(candidateIdentity(candidate)),
-								candidate.state.claims.map(claimKey),
-								verifierVersion,
-							) === undefined,
-					);
-					if (fresh.length > 0 && candidates.every((candidate) => candidate.route.length > 0))
+					// startWave keeps only the candidates no wave already stands for.
+					if (candidates.length > 0 && candidates.every((candidate) => candidate.route.length > 0))
 						await startWave(
 							harness,
-							{ root, revision: runs.revision, version: verifierVersion, candidates: fresh },
+							{ root, revision: runs.revision, version: verifierVersion, candidates },
 							task,
 							context,
 							unlockModels,
