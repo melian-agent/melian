@@ -7,12 +7,14 @@ import {
 	backgroundContext as context,
 	DismissHarness,
 	defineDoc,
+	openJsonlStorage,
 	openSqliteStorage,
 	publishReview,
 	readVerdict,
 	recordDismissal,
 } from "@melian-agent/pipeline";
 import { createSession } from "@melian-agent/pipeline/testing";
+import { StateCheckout } from "@melian-agent/state-git";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeGitHub } from "../../github/test/fixtures/fake-github.ts";
 import {
@@ -604,5 +606,46 @@ describe("Codex's review of ff4b2e1", () => {
 			message:
 				"melian publish needs the pull request's storage from melian/state, which this clone could not lease: no writers' key is configured for the state branch; set the writers' key in a secrets file, and publish where the branch is in reach",
 		});
+	});
+});
+
+describe("Codex's review of a4de0552", () => {
+	it("takes a checkpoint's snapshot only between Pi's commits, never during one", async () => {
+		const store = await ChangesetStore.write(io(first), first, pullRequest);
+		const scratch = await openJsonlStorage(join(first, ".git", "probe"), context);
+		const prototype = Object.getPrototypeOf(scratch) as { commit: (...args: never[]) => Promise<unknown> };
+		await scratch.close(context);
+		const events: string[] = [];
+		const commit = prototype.commit;
+		vi.spyOn(prototype, "commit").mockImplementation(async function (this: unknown, ...args: never[]) {
+			events.push("commit started");
+			await new Promise((resolve) => setTimeout(resolve, 100));
+			const done = await commit.apply(this, args);
+			events.push("commit finished");
+			return done;
+		});
+		const push = StateCheckout.prototype.push;
+		vi.spyOn(StateCheckout.prototype, "push").mockImplementation(async function (this: StateCheckout, options) {
+			events.push("snapshot");
+			return push.call(this, options);
+		});
+		const writing = writeNote(store, "in flight");
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		await Promise.all([writing, store.checkpoint()]);
+		vi.restoreAllMocks();
+		expect(events.slice(0, 3)).toEqual(["commit started", "commit finished", "snapshot"]);
+		await store.storage.close(context);
+		await store.close();
+	});
+
+	it("commits after a checkpoint that failed", async () => {
+		const store = await ChangesetStore.write(io(first), first, pullRequest);
+		vi.spyOn(StateCheckout.prototype, "push").mockRejectedValueOnce(new Error("no space left on device"));
+		await expect(store.checkpoint()).rejects.toThrow(/^no space left on device$/);
+		await expect(writeNote(store, "after")).resolves.toBeUndefined();
+		await store.close();
+		const again = await ChangesetStore.write(io(first), first, pullRequest);
+		expect(await readNotes(again)).toEqual(["after"]);
+		await again.close();
 	});
 });

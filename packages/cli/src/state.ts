@@ -97,6 +97,90 @@ async function validate(directory: string): Promise<void> {
 	await (await openJsonlStorage(directory, context)).close(context);
 }
 
+// A pull request's storage whose commits and the checkpoint's snapshots take turns. Pi writes a commit's sidecars, then
+// its marker in the main log, then reclaims sidecars, so a snapshot read during a commit could push a marker without
+// the records it names. Pi serialises every write through `commit`, so holding it is enough.
+class SerialStorage implements Storage {
+	readonly #inner: Storage;
+	#turn: Promise<unknown> = Promise.resolve();
+	// Generic and overloaded, so bound rather than spelt out.
+	readonly mintId: Storage["mintId"];
+	readonly entry: Storage["entry"];
+
+	constructor(inner: Storage) {
+		this.#inner = inner;
+		this.mintId = inner.mintId.bind(inner);
+		this.entry = inner.entry.bind(inner);
+	}
+
+	/** Runs `work` once no commit is in flight, and holds every later commit until it ends. */
+	exclusive<T>(work: () => Promise<T>): Promise<T> {
+		const run = this.#turn.then(work);
+		this.#turn = run.catch(() => undefined);
+		return run;
+	}
+
+	commit(...args: Parameters<Storage["commit"]>): ReturnType<Storage["commit"]> {
+		return this.exclusive(() => this.#inner.commit(...args));
+	}
+
+	close(...args: Parameters<Storage["close"]>): ReturnType<Storage["close"]> {
+		return this.#inner.close(...args);
+	}
+
+	conversation(...args: Parameters<Storage["conversation"]>): ReturnType<Storage["conversation"]> {
+		return this.#inner.conversation(...args);
+	}
+
+	scanConversations(...args: Parameters<Storage["scanConversations"]>): ReturnType<Storage["scanConversations"]> {
+		return this.#inner.scanConversations(...args);
+	}
+
+	findLatestHeadMarker(
+		...args: Parameters<Storage["findLatestHeadMarker"]>
+	): ReturnType<Storage["findLatestHeadMarker"]> {
+		return this.#inner.findLatestHeadMarker(...args);
+	}
+
+	scanEntries(...args: Parameters<Storage["scanEntries"]>): ReturnType<Storage["scanEntries"]> {
+		return this.#inner.scanEntries(...args);
+	}
+
+	task(...args: Parameters<Storage["task"]>): ReturnType<Storage["task"]> {
+		return this.#inner.task(...args);
+	}
+
+	scanTasks(...args: Parameters<Storage["scanTasks"]>): ReturnType<Storage["scanTasks"]> {
+		return this.#inner.scanTasks(...args);
+	}
+
+	submission(...args: Parameters<Storage["submission"]>): ReturnType<Storage["submission"]> {
+		return this.#inner.submission(...args);
+	}
+
+	scanSubmissions(...args: Parameters<Storage["scanSubmissions"]>): ReturnType<Storage["scanSubmissions"]> {
+		return this.#inner.scanSubmissions(...args);
+	}
+
+	submissionByRequest(
+		...args: Parameters<Storage["submissionByRequest"]>
+	): ReturnType<Storage["submissionByRequest"]> {
+		return this.#inner.submissionByRequest(...args);
+	}
+
+	findDocument(...args: Parameters<Storage["findDocument"]>): ReturnType<Storage["findDocument"]> {
+		return this.#inner.findDocument(...args);
+	}
+
+	document(...args: Parameters<Storage["document"]>): ReturnType<Storage["document"]> {
+		return this.#inner.document(...args);
+	}
+
+	scanDocuments(...args: Parameters<Storage["scanDocuments"]>): ReturnType<Storage["scanDocuments"]> {
+		return this.#inner.scanDocuments(...args);
+	}
+}
+
 export class ChangesetStore {
 	readonly storage: Storage;
 	readonly #checkout: StateCheckout | undefined;
@@ -244,7 +328,8 @@ export class ChangesetStore {
 
 	static async #opened(io: Io, checkout: StateCheckout, authoritative = false): Promise<ChangesetStore> {
 		try {
-			return new ChangesetStore(await openJsonlStorage(checkout.directory, context), checkout, io, authoritative);
+			const storage = new SerialStorage(await openJsonlStorage(checkout.directory, context));
+			return new ChangesetStore(storage, checkout, io, authoritative);
 		} catch (error) {
 			checkout.close();
 			throw error;
@@ -265,7 +350,9 @@ export class ChangesetStore {
 		const checkout = this.#checkout;
 		const pushed =
 			checkout !== undefined
-				? await ChangesetStore.#push(checkout, { keepLease: true })
+				? this.storage instanceof SerialStorage
+					? await this.storage.exclusive(() => ChangesetStore.#push(checkout, { keepLease: true }))
+					: await ChangesetStore.#push(checkout, { keepLease: true })
 				: this.#reservation === undefined
 					? ({ kind: "pushed" } as const)
 					: await this.#reservation.confirm().catch((error: unknown) => {
