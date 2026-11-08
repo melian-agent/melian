@@ -394,6 +394,32 @@ describe("a dismissal carrying to a restatement", () => {
 		expect(state!.inherited?.[Revision.key(await revision())]).toBeUndefined();
 	});
 
+	it("only proposes a P1 restatement of a root dismissed at the P2 it was lowered to", async () => {
+		const lowering = (messages: Messages) => {
+			const [id] = [...systemPromptOf(messages).matchAll(/Claim c1 finding ([0-9a-f]+)/g)].map((m) => m[1]!);
+			return scriptVerifier(messages, {
+				[id!]: {
+					verdict: "confirmed",
+					evidence: [{ file: "src/user.ts", line: 6, role: "context" }],
+					lower: { severity: "P2", reason: "One caller checks first." },
+				},
+			});
+		};
+		scriptConversations(fake, [
+			{ match: correctness, replies: [report(nullDeref), fauxAssistantMessage("Done.")] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			{ match: verifierMarker, replies: [lowering, lowering] },
+		]);
+		const [shown] = (await review()).verdict.attention();
+		expect(shown!.properties).toMatchObject({ severity: "P2", originalSeverity: "P1" });
+		await recordDismissal({ harness, revision: await revision(), id: shown!.id, dismissal, repoRoot: repo });
+		pushElsewhere("other");
+		script([restatement]);
+		expect((await review()).verdict.attention().map((each) => each.properties)).toMatchObject([
+			{ severity: "P1", status: "new", likelyDismissedAs: { id: shown!.id } },
+		]);
+	});
+
 	it("lets the scripted verifier answer different by default for each dismissed finding it is shown", async () => {
 		await dismissedRoot();
 		pushElsewhere("other");
