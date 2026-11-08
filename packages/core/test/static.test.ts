@@ -167,6 +167,8 @@ describe("staticSeverity", () => {
 
 describe("staticFindings", () => {
 	let repo: string;
+	const said = (rule: string) =>
+		`tsc reports ${rule} here. Melian keeps none of tsc's text; run tsc --noEmit with the project Melian checked at this commit to read its message.`;
 
 	beforeEach(() => {
 		for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
@@ -282,7 +284,7 @@ describe("staticFindings", () => {
 		expect(findings[0]!.properties.source.check).toBe("static.mutation");
 	});
 
-	it("explains a pre-existing result as one the base has too, and keeps a pre-existing result's own advice", async () => {
+	it("explains a pre-existing result as one the base has too, and keeps a result's own advice for Enola alone", async () => {
 		const base = commit({ "a.ts": lines("export const a: number = 'x';", "export const b: number = 'y';") });
 		const head = commit({
 			"a.ts": lines("export const a: number = 'x';", "export const b: number = 'y';", "export const c = 3;"),
@@ -303,12 +305,35 @@ describe("staticFindings", () => {
 			[
 				"pre-existing",
 				{
-					what: "TS2322 at a.ts:1",
+					what: said("tsc/TS2322"),
 					whyHere: "tsc reports this at the base too, so it predates this change.",
 					whatToDo: "Change the code so tsc no longer reports tsc/TS2322.",
 				},
 			],
-			["pre-existing", { what: "TS2322 at a.ts:2", whyHere: "Own reason.", whatToDo: "Own fix." }],
+			[
+				"pre-existing",
+				{
+					what: said("tsc/TS2322"),
+					whyHere: "tsc reports this at the base too, so it predates this change.",
+					whatToDo: "Change the code so tsc no longer reports tsc/TS2322.",
+				},
+			],
+		]);
+		const enola = await staticFindings({
+			repoRoot: repo,
+			revision,
+			tool: "enola",
+			settings: defaultConfig.static.enola,
+			base: before,
+			head: before,
+		});
+		expect(enola.findings.map((finding) => finding.properties.explanation)).toEqual([
+			{
+				what: "TS2322 at a.ts:1",
+				whyHere: "enola reports this at the base too, so it predates this change.",
+				whatToDo: "Change the code so enola no longer reports enola/TS2322.",
+			},
+			{ what: "TS2322 at a.ts:2", whyHere: "Own reason.", whatToDo: "Own fix." },
 		]);
 	});
 
@@ -343,8 +368,8 @@ describe("staticFindings", () => {
 			head: log(["a.ts", 2, "TS2345"], ["a.ts", 2, "TS2345"], ["a.ts", 2, "TS2554"]),
 		});
 		expect(findings.map((finding) => [finding.ruleId, finding.message.text])).toEqual([
-			["tsc/TS2345", "TS2345 at a.ts:2 (and 1 more on these lines)"],
-			["tsc/TS2554", "TS2554 at a.ts:2"],
+			["tsc/TS2345", `${said("tsc/TS2345")} (and 1 more on these lines)`],
+			["tsc/TS2554", said("tsc/TS2554")],
 		]);
 	});
 
@@ -532,9 +557,125 @@ describe("staticFindings", () => {
 			head: log(["a.ts", 1, "TS2345"], ["a.ts", 1, "TS2345"]),
 		});
 		expect(findings.map((finding) => [finding.properties.cause, finding.message.text])).toEqual([
-			["pre-existing", "TS2345 at a.ts:1"],
-			["introduced", "1 more tsc/TS2345 result(s) on these lines than at the base: TS2345 at a.ts:1"],
+			["pre-existing", said("tsc/TS2345")],
+			["introduced", `1 more tsc/TS2345 result(s) on these lines than at the base: ${said("tsc/TS2345")}`],
 		]);
+	});
+
+	// A file too large to read has no code to identify a result by, and Biome's and tsc's messages are withheld.
+	it("reads a result in a file too large to read as introduced unless the base has one at the same place on an unchanged line", async () => {
+		const filler = `// ${"x".repeat(4 * 1024 * 1024)}`;
+		const base = commit({ "huge.ts": lines("export const a: number = 'x';", "export const b = 2;", filler) });
+		const head = commit({ "huge.ts": lines("export const a = 1;", "export const b: number = 'y';", filler) });
+		const { revision } = await Changeset.resolve(repo, `${base}..${head}`);
+		const at = (startLine: number, startColumn: number): ToolLog => ({
+			version: "2.1.0",
+			runs: [
+				{
+					tool: { driver: { name: "tsc", version: "7.0.2" } },
+					results: [
+						{
+							ruleId: "TS2322",
+							level: "error",
+							message: { text: "tsc's own text" },
+							locations: [
+								{
+									physicalLocation: {
+										artifactLocation: { uri: "huge.ts" },
+										region: { startLine, startColumn },
+									},
+								},
+							],
+						},
+					],
+				},
+			],
+		});
+		const causes = async (baseLog: ToolLog, headLog: ToolLog, tool: "biome" | "tsc" = "tsc") =>
+			(
+				await staticFindings({
+					repoRoot: repo,
+					revision,
+					tool,
+					settings: defaultConfig.static[tool],
+					base: baseLog,
+					head: headLog,
+				})
+			).findings.map((finding) => [finding.properties.cause, finding.properties.discriminator]);
+		expect(await causes(at(1, 14), at(2, 14))).toEqual([["introduced", "line 2, column 14"]]);
+		expect(await causes(at(1, 14), at(2, 14), "biome")).toEqual([["introduced", "line 2, column 14"]]);
+		expect(await causes(at(2, 13), at(2, 14))).toEqual([["introduced", "line 2, column 14"]]);
+		// The change rewrote line 2, so a TS2322 there may be another one than the base's.
+		expect(await causes(at(2, 14), at(2, 14))).toEqual([["introduced", "line 2, column 14"]]);
+		expect(await causes(at(3, 1), at(3, 1))).toEqual([["pre-existing", "line 3, column 1"]]);
+		expect(await causes(at(2, 14), at(2, 14), "biome")).toEqual([["introduced", "line 2, column 14"]]);
+		const unplaced = at(3, 1);
+		delete unplaced.runs[0].results[0]!.locations[0]!.physicalLocation.region.startColumn;
+		expect(await causes(at(3, 1), unplaced)).toEqual([["pre-existing", "line 3, column 1"]]);
+	});
+
+	it("matches a result on a line the change only reindented by its code, and an Enola result by its message", async () => {
+		const filler = `// ${"x".repeat(4 * 1024 * 1024)}`;
+		const base = commit({ "a.ts": lines("export const n: number = 'x';"), "huge.ts": lines("a", filler) });
+		const head = commit({ "a.ts": lines("  export const n: number = 'x';"), "huge.ts": lines("b", filler) });
+		const { revision } = await Changeset.resolve(repo, `${base}..${head}`);
+		const tsc = await staticFindings({
+			repoRoot: repo,
+			revision,
+			tool: "tsc",
+			settings: defaultConfig.static.tsc,
+			base: log(["a.ts", 1, "TS2322"]),
+			head: log(["a.ts", 1, "TS2322"]),
+		});
+		expect(summary(tsc.findings)).toEqual([{ rule: "tsc/TS2322", line: 1, cause: "pre-existing", severity: "P1" }]);
+		const enola = await staticFindings({
+			repoRoot: repo,
+			revision,
+			tool: "enola",
+			settings: defaultConfig.static.enola,
+			base: log(["huge.ts", 1, "enola/layer"]),
+			head: log(["huge.ts", 1, "enola/layer"]),
+		});
+		expect(enola.findings.map((finding) => finding.properties.cause)).toEqual(["pre-existing"]);
+	});
+
+	// Issue #281: Biome and tsc quote files a head leads them to, outside the checkout too.
+	it("gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message", async () => {
+		const base = commit({ "a.ts": lines("export const a = 1;") });
+		const head = commit({ "a.ts": lines("export const a = 1;", "debugger;") });
+		const { revision } = await Changeset.resolve(repo, `${base}..${head}`);
+		const quoted = (ruleId: string): ToolLog => ({
+			version: "2.1.0",
+			runs: [
+				{
+					tool: { driver: { name: "x", version: "1.0.0" } },
+					results: [
+						{
+							ruleId,
+							level: "error",
+							message: { text: "ghp_FAKEoutsideTOKEN281" },
+							locations: [{ physicalLocation: { artifactLocation: { uri: "a.ts" }, region: { startLine: 2 } } }],
+						},
+					],
+				},
+			],
+		});
+		const texts = async (tool: "biome" | "tsc" | "enola", ruleId: string) => {
+			const { findings } = await staticFindings({
+				repoRoot: repo,
+				revision,
+				tool,
+				settings: defaultConfig.static[tool],
+				base: { ...quoted(ruleId), runs: [{ ...quoted(ruleId).runs[0], results: [] }] },
+				head: quoted(ruleId),
+			});
+			return findings.map((finding) => [finding.message.text, finding.properties.explanation.what]);
+		};
+		const biome =
+			"Biome reports biome/suspicious/noDebugger here. Melian keeps none of Biome's text; run biome lint at this commit to read its message.";
+		expect(await texts("biome", "lint/suspicious/noDebugger")).toEqual([[biome, biome]]);
+		expect(await texts("tsc", "TS2322")).toEqual([[said("tsc/TS2322"), said("tsc/TS2322")]]);
+		expect(await texts("enola", "enola/layer")).toEqual([["ghp_FAKEoutsideTOKEN281", "ghp_FAKEoutsideTOKEN281"]]);
 	});
 
 	it("takes severity overrides from the tool's settings, and stores no resolution", async () => {

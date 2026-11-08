@@ -193,6 +193,7 @@ async function runStatic(
 	env: ExecutionEnv | undefined,
 	context: Context,
 	mutation: MutationHooks,
+	environment: NodeJS.ProcessEnv,
 ): Promise<Outcome> {
 	const tool = toolOf[input.check as keyof typeof toolOf];
 	const settings = input.config.static[tool];
@@ -233,6 +234,7 @@ async function runStatic(
 				mutationProcess: mutation.process,
 				holdsAuthority: mutation.holdsAuthority,
 				repoRoot,
+				environment,
 				commit,
 				base: revision.base,
 				tool,
@@ -279,6 +281,7 @@ async function runCheck(
 	env: () => Promise<ExecutionEnv | undefined>,
 	context: Context,
 	mutation: MutationHooks,
+	environment: NodeJS.ProcessEnv,
 ): Promise<Outcome> {
 	if (input.check === "guardrails") {
 		const { repoRoot } = input.changeset;
@@ -294,7 +297,7 @@ async function runCheck(
 			},
 		};
 	}
-	return runStatic(input, await env(), context, mutation);
+	return runStatic(input, await env(), context, mutation, environment);
 }
 
 // Aborts every live mutation task of the revision that a run other than `key` created. Its own check would end it when it
@@ -347,109 +350,131 @@ function ownsMutation(input: CheckInput, owners: Readonly<Record<string, string>
 // One check on one revision. Rerunning it after a crash runs the tools again on the same commits and writes the same
 // findings, so the task is safe to replay. The check's findings at this base and head are replaced, not added to, in
 // the commit that records it, so a failed rerun leaves none of an earlier run's findings behind.
-const CheckTask = defineTask<CheckInput, { phase: "run"; legacyTiming?: true }, CheckRunRecord>({
-	name: "melian.check",
-	version: 3,
-	migrate: (input, checkpoint) => ({
-		input: input as unknown as CheckInput,
-		checkpoint: { ...(checkpoint as { phase: "run" }), legacyTiming: true },
-	}),
-	initial: () => ({ phase: "run" }),
-	phases: {
-		run: async (task, runtime, context) => {
-			const timing = await TaskTiming.start(runtime, task.state.checkpoint.legacyTiming, context);
-			const { check, changeset, run } = task.input;
-			await terminateMutation(runtime, runtime.conversationId, runtime.taskId, await runtime.env(context), context);
-			await runtime.commit(async (tx) => {
-				delete (await tx.doc(MutationProcesses, runtime.conversationId)).trees[String(runtime.taskId)];
-			}, context);
-			const current = await runtime.snapshot(ChecksDocument, runtime.conversationId, context);
-			if (!ownsMutation(task.input, current?.owners)) {
+// `environment` is the host's, which supplies the token pinned tools download with; it never enters the task's input.
+function checkTask(environment: NodeJS.ProcessEnv) {
+	return defineTask<CheckInput, { phase: "run"; legacyTiming?: true }, CheckRunRecord>({
+		name: "melian.check",
+		version: 3,
+		migrate: (input, checkpoint) => ({
+			input: input as unknown as CheckInput,
+			checkpoint: { ...(checkpoint as { phase: "run" }), legacyTiming: true },
+		}),
+		initial: () => ({ phase: "run" }),
+		phases: {
+			run: async (task, runtime, context) => {
+				const timing = await TaskTiming.start(runtime, task.state.checkpoint.legacyTiming, context);
+				const { check, changeset, run } = task.input;
+				await terminateMutation(
+					runtime,
+					runtime.conversationId,
+					runtime.taskId,
+					await runtime.env(context),
+					context,
+				);
 				await runtime.commit(async (tx) => {
-					await timing.end(tx);
-					return { status: "terminal", outcome: { status: "aborted" } };
+					delete (await tx.doc(MutationProcesses, runtime.conversationId)).trees[String(runtime.taskId)];
 				}, context);
-				return;
-			}
-			let outcome: Outcome | undefined;
-			let record: CheckRunRecord;
-			try {
-				outcome = await runCheck(task.input, () => runtime.env(context), context, {
-					process: {
-						started: async (tree) => {
-							await runtime.commit(async (tx) => {
-								(await tx.doc(MutationProcesses, runtime.conversationId)).trees[String(runtime.taskId)] = tree;
-							}, context);
+				const current = await runtime.snapshot(ChecksDocument, runtime.conversationId, context);
+				if (!ownsMutation(task.input, current?.owners)) {
+					await runtime.commit(async (tx) => {
+						await timing.end(tx);
+						return { status: "terminal", outcome: { status: "aborted" } };
+					}, context);
+					return;
+				}
+				let outcome: Outcome | undefined;
+				let record: CheckRunRecord;
+				try {
+					outcome = await runCheck(
+						task.input,
+						() => runtime.env(context),
+						context,
+						{
+							process: {
+								started: async (tree) => {
+									await runtime.commit(async (tx) => {
+										(await tx.doc(MutationProcesses, runtime.conversationId)).trees[String(runtime.taskId)] =
+											tree;
+									}, context);
+								},
+								stopped: async () => {
+									await runtime.commit(async (tx) => {
+										delete (await tx.doc(MutationProcesses, runtime.conversationId)).trees[
+											String(runtime.taskId)
+										];
+									}, backgroundContext);
+								},
+							},
+							holdsAuthority: async () =>
+								ownsMutation(
+									task.input,
+									(await runtime.snapshot(ChecksDocument, runtime.conversationId, context))?.owners,
+								),
 						},
-						stopped: async () => {
-							await runtime.commit(async (tx) => {
-								delete (await tx.doc(MutationProcesses, runtime.conversationId)).trees[String(runtime.taskId)];
-							}, backgroundContext);
-						},
-					},
-					holdsAuthority: async () =>
-						ownsMutation(
-							task.input,
-							(await runtime.snapshot(ChecksDocument, runtime.conversationId, context))?.owners,
-						),
-				});
-				record =
-					outcome.status === "skipped"
-						? {
-								name: check,
-								status: "skipped",
-								reason: outcome.reason,
-								...(outcome.cause === undefined ? {} : { cause: outcome.cause }),
-							}
-						: outcome.provisional !== undefined
+						environment,
+					);
+					record =
+						outcome.status === "skipped"
 							? {
 									name: check,
-									status: "provisional",
-									version: outcome.version,
-									findings: outcome.report.findings.length,
-									notes: [...outcome.report.notes],
-									reason: outcome.provisional,
+									status: "skipped",
+									reason: outcome.reason,
+									...(outcome.cause === undefined ? {} : { cause: outcome.cause }),
 								}
-							: {
-									name: check,
-									status: "ran",
-									...(outcome.version === undefined ? {} : { version: outcome.version }),
-									findings: outcome.report.findings.length,
-									...(outcome.snapshots === undefined ? {} : { snapshots: outcome.snapshots }),
-									notes: [...outcome.report.notes],
-								};
-			} catch (error) {
-				record = failure(check, error);
-			}
-			const revision = Revision.key(changeset.revision);
+							: outcome.provisional !== undefined
+								? {
+										name: check,
+										status: "provisional",
+										version: outcome.version,
+										findings: outcome.report.findings.length,
+										notes: [...outcome.report.notes],
+										reason: outcome.provisional,
+									}
+								: {
+										name: check,
+										status: "ran",
+										...(outcome.version === undefined ? {} : { version: outcome.version }),
+										findings: outcome.report.findings.length,
+										...(outcome.snapshots === undefined ? {} : { snapshots: outcome.snapshots }),
+										notes: [...outcome.report.notes],
+									};
+				} catch (error) {
+					record = failure(check, error);
+				}
+				const revision = Revision.key(changeset.revision);
+				await runtime.commit(async (tx) => {
+					const { runs, owners } = await tx.doc(ChecksDocument, runtime.conversationId);
+					// The run may have lost the revision while its tests ran; what it found then belongs to nobody.
+					await timing.end(tx);
+					if (!ownsMutation(task.input, owners)) return { status: "terminal", outcome: { status: "aborted" } };
+					const findings = outcome?.report?.findings ?? [];
+					await replaceCheckFindings(tx, runtime.conversationId, check, revision, findings);
+					runs[run] = { ...runs[run], [check]: record };
+					return { status: "terminal", outcome: { status: "completed", result: record } };
+				}, context);
+			},
+		},
+		abort: async (_task, runtime, context) => {
+			const timing = await TaskTiming.read(runtime, context);
+			await terminateMutation(
+				runtime,
+				runtime.conversationId,
+				runtime.taskId,
+				await runtime.env(backgroundContext),
+				backgroundContext,
+			);
 			await runtime.commit(async (tx) => {
-				const { runs, owners } = await tx.doc(ChecksDocument, runtime.conversationId);
-				// The run may have lost the revision while its tests ran; what it found then belongs to nobody.
+				delete (await tx.doc(MutationProcesses, runtime.conversationId)).trees[String(runtime.taskId)];
 				await timing.end(tx);
-				if (!ownsMutation(task.input, owners)) return { status: "terminal", outcome: { status: "aborted" } };
-				const findings = outcome?.report?.findings ?? [];
-				await replaceCheckFindings(tx, runtime.conversationId, check, revision, findings);
-				runs[run] = { ...runs[run], [check]: record };
-				return { status: "terminal", outcome: { status: "completed", result: record } };
+				return { status: "terminal", outcome: { status: "aborted" } };
 			}, context);
 		},
-	},
-	abort: async (_task, runtime, context) => {
-		const timing = await TaskTiming.read(runtime, context);
-		await terminateMutation(
-			runtime,
-			runtime.conversationId,
-			runtime.taskId,
-			await runtime.env(backgroundContext),
-			backgroundContext,
-		);
-		await runtime.commit(async (tx) => {
-			delete (await tx.doc(MutationProcesses, runtime.conversationId)).trees[String(runtime.taskId)];
-			await timing.end(tx);
-			return { status: "terminal", outcome: { status: "aborted" } };
-		}, context);
-	},
-});
+	});
+}
+
+// Pi creates a task from its definition's name and version, and runs whichever definition the registry holds under
+// that name, so the checks task creates this one and the extension supplies the host's.
+const CheckTask = checkTask({});
 
 interface ChecksInput {
 	readonly identity: Omit<RunIdentity, "task">;
@@ -576,9 +601,15 @@ const ChecksTask = defineTask<ChecksInput, ChecksState, CheckRunRecord[]>({
 /**
  * The extension that runs checks. Install it in the registry of every harness that calls {@link runChecks}, including
  * one reopened after a crash, so pending check tasks resume. Static checks take their execution environment from the
- * harness's `env` option, the seam a container environment replaces.
+ * harness's `env` option, the seam a container environment replaces. `environment` is the host's: its `GITHUB_TOKEN` or
+ * `GH_TOKEN` downloads pinned tools through GitHub's release API.
  */
-export const checksExtension = defineExtension({ name: "melian.checks", tasks: [ChecksTask, CheckTask] });
+export function checksExtensionFor(environment: NodeJS.ProcessEnv) {
+	return defineExtension({ name: "melian.checks", tasks: [ChecksTask, checkTask(environment)] });
+}
+
+/** {@link checksExtensionFor} without a host environment, so pinned tools download with no token. */
+export const checksExtension = checksExtensionFor({});
 
 /** What {@link runChecks} runs. */
 export interface RunChecksInput {
@@ -626,6 +657,13 @@ function decisive(config: MelianConfig): Omit<MelianConfig, "output" | "publish"
 	return { ...rest, publish: kept };
 }
 
+// Raised when what a check stores from a tool changes, so no run of an earlier build is reused: 2 keeps no Biome or tsc
+// text.
+const storedText = 2;
+
+// Raised when how Melian chooses tsc's projects changes, so no run of an earlier build is reused: 2 asks tsc --showConfig.
+const tscProjects = 2;
+
 // What decides a run's results: both commits, the tier, and the policy it ran under, with Melian's own tool pins, so a
 // build that pins another Enola does not take the finished run of an older one. Mutation testing adds the Stryker
 // version it would run, whether the checkout has an executable for it and where, and the host's decision on the head, so a
@@ -645,7 +683,18 @@ async function runIdentity(input: RunChecksInput, tier: string): Promise<Omit<Ru
 	// A cold run is another run of the check: a provisional result of the same head must not stand in for it.
 	const cold = mutating ? input.cold === true : undefined;
 	const policy = createHash("sha256")
-		.update(canonical({ config: decisive(input.config), source: input.source, tools, stryker, writer, cold }))
+		.update(
+			canonical({
+				config: decisive(input.config),
+				source: input.source,
+				tools,
+				stryker,
+				writer,
+				cold,
+				storedText,
+				tscProjects,
+			}),
+		)
 		.digest("hex")
 		.slice(0, 16);
 	return { base, head, tier, policy };

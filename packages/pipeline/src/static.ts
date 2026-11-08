@@ -38,6 +38,8 @@ export interface StaticRunInput {
 	/** Trusted Enola policy commit, separate from the comparison base. Defaults to base, then commit. */
 	readonly policyCommit?: string;
 	readonly tools?: ToolProvisioning;
+	/** The host's environment, whose GitHub token downloads pinned tools. Never the head's; without it, no token. */
+	readonly environment?: NodeJS.ProcessEnv;
 	readonly tool: StaticTool;
 	readonly settings: StaticToolSettings | TscSettings | MutationSettings;
 	/** The change under review. Mutation testing mutates the lines it adds or edits, so `mutation` needs it. */
@@ -274,7 +276,8 @@ async function trackedFiles(run: Run, tree: string, listing: string, pathspec = 
 // `--version` would run the head's code. `installed` is the checkout's node_modules, or undefined when there is none
 // the runner may use; otherwise Melian's own tool runs.
 async function binaryFor(run: Run, installed: string | undefined): Promise<string> {
-	if (run.input.tool === "enola") return (await ToolProvisioning.open(run.input.repoRoot)).binary("enola");
+	if (run.input.tool === "enola")
+		return (await ToolProvisioning.open(run.input.repoRoot, { env: run.input.environment ?? {} })).binary("enola");
 	const { bin, melian } = toolBinaries[run.input.tool];
 	const own = installed === undefined ? undefined : posix.join(installed, ".bin", bin);
 	if (own !== undefined && (await run.exists(own))) return own;
@@ -370,46 +373,81 @@ const fileLimit = `ulimit -f ${staticOutputLimit / 1024}`;
 
 async function runBiome(run: Run, root: string, scratch: string, binary: string, version: string): Promise<ToolLog> {
 	const report = posix.join(scratch, "biome.sarif");
-	const { code, output } = await run.shell(
-		`cd ${quote(root)} && ${fileLimit} && ${quote(binary)} lint --reporter=sarif --reporter-file=${quote(report)} --max-diagnostics=none --colors=off --no-errors-on-unmatched . > /dev/null 2> ${quote(posix.join(scratch, "biome.err"))}`,
+	const { code } = await run.shell(
+		`cd ${quote(root)} && ${fileLimit} && ${quote(binary)} lint --reporter=sarif --reporter-file=${quote(report)} --max-diagnostics=none --colors=off --no-errors-on-unmatched . > /dev/null 2>&1`,
 	);
 	const text = await run.readOutput(report);
-	// Biome exits 1 when it reports an error-level diagnostic; anything else without a report is a failure.
+	// Biome exits 1 when it reports an error-level diagnostic; anything else without a report is a failure. Its stderr
+	// quotes whatever files it could not parse, so none of it is kept.
 	if (text === undefined || (code !== 0 && code !== 1)) {
-		const stderr = (await run.readOutput(posix.join(scratch, "biome.err")))?.slice(0, 4096) ?? output;
 		throw run.fail(
 			"toolFailed",
-			`biome exited with code ${code} and ${text === undefined ? "no report" : "a report"}: ${stderr.trim()}`,
+			`biome exited with code ${code} and ${text === undefined ? "no report" : "a report"}; run biome lint at ${run.input.commit.slice(0, 12)} to see why, since Melian keeps none of its stderr`,
 		);
 	}
 	return normaliseBiomeSarif(text, { root, version });
 }
 
-// The projects a tsconfig asks tsc to check. A solution-style tsconfig, with `references` and an empty `files` and no
-// `include`, checks nothing itself, so each referenced project is checked in its place; a tsconfig with an empty
-// `files`, no `include`, and no references checks nothing at all. With neither `files` nor `include`, tsc checks every
-// file below the tsconfig, so it is checked as it is.
-async function tscProjects(run: Run, root: string, project: string, seen = new Set<string>()): Promise<string[]> {
+// Whether a normalised relative path leaves the directory it is relative to, by its segments: `..config` is a child.
+function escapes(path: string): boolean {
+	return path === ".." || path.startsWith("../") || posix.isAbsolute(path);
+}
+
+// The projects a tsconfig asks tsc to check, from tsc's own effective configuration, so `extends` counts as tsc counts
+// it. A project with no effective files is replaced by the projects its own `references` name; tsc inherits none through
+// `extends`. With none, it is still run, marked empty, so tsc says whether it checks nothing or is in error. A project
+// file, or an effective file, whose real path leaves the worktree is refused: Melian would act on configuration read
+// from outside the checkout.
+async function tscProjects(
+	run: Run,
+	root: string,
+	scratch: string,
+	binary: string,
+	project: string,
+	seen = new Set<string>(),
+): Promise<{ project: string; empty: boolean }[]> {
 	if (seen.has(project)) return [];
 	seen.add(project);
-	const text = await run.input.env.readTextFile(posix.join(root, project), run.context);
-	const config = text.ok ? parseJsonc(text.value) : undefined;
-	if (typeof config !== "object" || config === null) return [project];
-	const { files, include, references } = config as { files?: unknown; include?: unknown; references?: unknown };
-	const empty = (value: unknown) => Array.isArray(value) && value.length === 0;
-	const own = !(empty(files) && (include === undefined || empty(include)));
+	const real = await run.input.env.canonicalPath(posix.join(root, project), run.context);
+	if (real.ok && !real.value.startsWith(`${root}/`)) {
+		throw run.fail("toolFailed", `${project} links outside the checkout, so Melian ran no tsc on it`);
+	}
+	const out = posix.join(scratch, `tsc-config-${seen.size}.json`);
+	const { code } = await run.shell(
+		`cd ${quote(root)} && ${fileLimit} && ${quote(binary)} --showConfig -p ${quote(project)} > ${quote(out)} 2>&1`,
+	);
+	const text = code === 0 ? await run.readOutput(out) : undefined;
+	const config = text === undefined ? undefined : parseJsonc(text);
+	if (typeof config !== "object" || config === null) {
+		throw run.fail(
+			"toolFailed",
+			`tsc --showConfig exited with code ${code} on ${project}; run tsc --showConfig -p ${project} at ${run.input.commit.slice(0, 12)} to see why, since Melian keeps none of its output`,
+		);
+	}
+	const { files, references } = config as { files?: unknown; references?: unknown };
+	const own = Array.isArray(files) ? files.filter((file): file is string => typeof file === "string") : [];
+	for (const file of own) {
+		const path = posix.normalize(posix.join(posix.dirname(project), file));
+		const resolved = escapes(path)
+			? undefined
+			: await run.input.env.canonicalPath(posix.join(root, path), run.context);
+		if (resolved === undefined || (resolved.ok && !resolved.value.startsWith(`${root}/`))) {
+			throw run.fail("toolFailed", `${project} resolves a file outside the checkout, so Melian ran no tsc on it`);
+		}
+	}
+	if (own.length > 0) return [{ project, empty: false }];
 	const referenced = Array.isArray(references)
 		? references.flatMap((reference: { path?: unknown }) =>
 				typeof reference?.path === "string" ? [reference.path] : [],
 			)
 		: [];
-	if (own) return [project];
-	const projects: string[] = [];
+	if (referenced.length === 0) return [{ project, empty: true }];
+	const projects: { project: string; empty: boolean }[] = [];
 	for (const reference of referenced) {
 		const resolved = posix.normalize(posix.join(posix.dirname(project), reference));
-		if (resolved.startsWith("..") || posix.isAbsolute(resolved)) continue;
+		if (escapes(resolved)) continue;
 		const file = resolved.endsWith(".json") ? resolved : posix.join(resolved, "tsconfig.json");
-		projects.push(...(await tscProjects(run, root, file, seen)));
+		projects.push(...(await tscProjects(run, root, scratch, binary, file, seen)));
 	}
 	return projects;
 }
@@ -424,17 +462,20 @@ async function runTsc(
 	notes: string[],
 ): Promise<ToolLog> {
 	const { project } = run.input.settings as TscSettings;
-	const projects = await tscProjects(run, root, project);
-	if (projects.length === 0) {
-		throw run.fail("nothingToCheck", `${project} has no files, no include, and no references, so tsc checks nothing`);
-	}
-	if (projects.length > 1 || projects[0] !== project)
-		notes.push(`tsc checked ${projects.join(", ")}, which ${project} references.`);
+	const projects = await tscProjects(run, root, scratch, binary, project);
+	const nothing = () =>
+		run.fail(
+			"nothingToCheck",
+			`tsc's effective configuration of ${project} lists no files and no references, so tsc checks nothing`,
+		);
+	if (projects.some((each) => each.project !== project))
+		notes.push(`tsc checked ${projects.map(({ project }) => project).join(", ")}, which ${project} references.`);
 	const dropped: string[] = [];
 	const results: ToolLog["runs"][0]["results"] = [];
-	for (const [index, each] of projects.entries()) {
+	let checked = 0;
+	for (const [index, { project: each, empty }] of projects.entries()) {
 		const out = posix.join(scratch, `tsc-${index}.out`);
-		const { code, output } = await run.shell(
+		const { code } = await run.shell(
 			`cd ${quote(root)} && ${fileLimit} && ${quote(binary)} --noEmit --pretty false -p ${quote(each)} > ${quote(out)} 2>&1`,
 		);
 		const text = (await run.readOutput(out)) ?? "";
@@ -450,11 +491,14 @@ async function runTsc(
 		if (code !== 0 && (none || (code !== 1 && code !== 2))) {
 			throw run.fail(
 				"toolFailed",
-				`tsc exited with code ${code} on ${each}: ${(text || output).slice(0, 4096).trim()}`,
+				`tsc exited with code ${code} on ${each}; run tsc --noEmit -p ${each} at ${run.input.commit.slice(0, 12)} to see why, since Melian keeps none of its output`,
 			);
 		}
 		results.push(...log.runs[0].results);
+		// tsc reports an error for most empty projects; one it ran without a word checked nothing.
+		if (!(empty && none)) checked += 1;
 	}
+	if (checked === 0) throw nothing();
 	if (dropped.length > 0) {
 		const dependencies = dropped.filter((path) => path.split(/[\\/]/).includes("node_modules")).length;
 		const outside = dropped.length - dependencies;
@@ -522,7 +566,7 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 	return run.inWorktree(async (root, scratch) => {
 		if (tool === "tsc") {
 			const { project } = input.settings as TscSettings;
-			if (posix.isAbsolute(project) || posix.normalize(project).startsWith("..")) {
+			if (escapes(posix.normalize(project))) {
 				throw run.fail("toolFailed", `static.tsc.project ${project} is outside the repository`);
 			}
 			if (!(await run.exists(posix.join(root, project)))) {
@@ -530,7 +574,7 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 			}
 		}
 		if (tool === "enola") {
-			const tools = input.tools ?? (await ToolProvisioning.open(repoRoot));
+			const tools = input.tools ?? (await ToolProvisioning.open(repoRoot, { env: input.environment ?? {} }));
 			return await (await EnolaRun.open(run, root, scratch, tools)).check();
 		}
 		const files = await trackedFiles(run, root, posix.join(scratch, "files"));

@@ -375,6 +375,42 @@ describe("runChecks", () => {
 		expect(second.identity.task).not.toBe(first.identity.task);
 	});
 
+	// Issue #281: a run from before Biome and tsc text was withheld stored that text in its findings, so a build that
+	// withholds it must not reuse that run. 8921ccb4, the last such build, computed the policy below for this input; it was
+	// recorded by running this input through that build's runChecks, never written by hand.
+	it("runs again rather than reuse a run from a build that stored Biome and tsc text", async () => {
+		const { harness, root } = await open();
+		const base = commit(repo, { "a.ts": lines("a") });
+		const head = commit(repo, { "a.ts": lines("b") });
+		const changeset = await Changeset.resolve(repo, `${base}..${head}`);
+		const config = { ...defaultConfig, tiers: { ...defaultConfig.tiers, fast: ["guardrails"] } };
+		const run = await runChecks(
+			harness,
+			{ rootConversationId: root.id, changeset, config, source: { kind: "worktree" }, tier: "fast" },
+			context,
+		);
+		expect(run.identity.policy).toMatch(/^[0-9a-f]{16}$/);
+		expect(run.identity.policy).not.toBe("26a1a9e710a3ee76");
+	});
+
+	// Issue #312: a run from before Melian asked tsc --showConfig chose tsc's projects by hand, and could read a solution
+	// that checks nothing as clean, so a build that asks tsc must not reuse it. aad1d27b, the last such build, computed the
+	// policy below for this input; it was recorded by running this input through that build's runChecks.
+	it("runs again rather than reuse a run from a build that chose tsc's projects by hand", async () => {
+		const { harness, root } = await open();
+		const base = commit(repo, { "a.ts": lines("a") });
+		const head = commit(repo, { "a.ts": lines("b") });
+		const changeset = await Changeset.resolve(repo, `${base}..${head}`);
+		const config = { ...defaultConfig, tiers: { ...defaultConfig.tiers, fast: ["guardrails"] } };
+		const run = await runChecks(
+			harness,
+			{ rootConversationId: root.id, changeset, config, source: { kind: "worktree" }, tier: "fast" },
+			context,
+		);
+		expect(run.identity.policy).toMatch(/^[0-9a-f]{16}$/);
+		expect(run.identity.policy).not.toBe("f0eb2ebd9fb9b2f2");
+	});
+
 	it("records a fast and a full run of one head apart", { timeout: 120_000 }, async () => {
 		const base = commit(repo, {
 			"melian.yaml": lines("tiers:", "  fast: [guardrails]", "  full: [fast, static.biome]"),

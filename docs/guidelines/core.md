@@ -644,7 +644,7 @@ Severity, by default:
 
 `static.<tool>.severity` overrides one rule, keyed by its Melian rule ID.
 
-`staticFindings` matches results across the two runs by finding identity, never by line. A result's
+`staticFindings` matches results across the two runs by finding identity, not by line, with one exception below. A result's
 snippet is the full text of its lines at that revision, read through git's object store, and its
 occurrence is counted in that revision's file, so a result moved by an edit above it keeps its ID. A
 renamed file's base results are identified under its head path, through `revision.files`; otherwise
@@ -655,7 +655,10 @@ are one finding whose message counts the rest. Presence alone would then hide a 
 beside an old one, so the count matters: when the head has more results under an ID than the base,
 the base's count is the `pre-existing` finding and the difference is a second, `introduced` finding,
 identified by the discriminator `beyond the base at <id>`. A result on a blank line, in a file too
-large to read, or in a symlink is identified by its message instead. Any other failure to read the
+large to read, or in a symlink is identified by its message instead. A Biome or tsc result has no message
+Melian keeps, only a fixed sentence naming the tool and the rule, so such a result is identified by its line and
+column: one the base lacks at that place is `introduced`, and an edit above it makes it `introduced` again. [The
+decision](../decisions/2026-11-06-static-configuration-stays-in-the-checkout.md) says why. Any other failure to read the
 file fails the check with `CheckError` `unreadable`: only absence is silent, as for the loaders.
 
 An `enola/god-class` result is reported only when the change edits its file. Problem: a symbol's fan-in grows when a change only adds callers, so Enola reports a new result on code the change never touched. Example: on [pull request #215](https://github.com/melian-agent/melian/pull/215), round one flagged `quoteUntrusted` in `packages/pipeline/src/untrusted.ts` for its 14 dependents; the change only called it. Solution: `staticFindings` drops a `god-class` result in a file the change did not touch, and the report's notes count what it dropped. Any edit to the file keeps the result. Enola 0.4.27 gives only the line a symbol starts on, and a span read from the changed files alone missed declarations elsewhere in the project, such as a `declare module` augmentation, so the maintainer ruled spans out until they can come from the full head project.

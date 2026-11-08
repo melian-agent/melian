@@ -49,15 +49,26 @@ export class ToolProvisioning {
 		this.platform = platform;
 	}
 
-	/** Opens Melian's bundled manifest; test hosts may inject pins and a local fetch. */
+	/**
+	 * Opens Melian's bundled manifest; test hosts may inject pins and a local fetch. `env` is the host's environment, whose
+	 * `GITHUB_TOKEN` or `GH_TOKEN` downloads pins through GitHub's release API; without it, no token is sent.
+	 */
 	static async open(
 		repoRoot: string,
-		options: { manifest?: ToolManifest; root?: string; platform?: string; fetch?: ToolFetch } = {},
+		options: {
+			manifest?: ToolManifest;
+			root?: string;
+			platform?: string;
+			fetch?: ToolFetch;
+			env?: NodeJS.ProcessEnv;
+		} = {},
 	): Promise<ToolProvisioning> {
 		const manifest = options.manifest ?? (await ToolProvisioning.manifest());
 		const root = options.root ?? (await CacheLocation.open(repoRoot)).root;
 		const platform = options.platform ?? `${process.platform}-${process.arch === "x64" ? "amd64" : process.arch}`;
-		return new ToolProvisioning(manifest, await ToolCache.open(root, { fetch: options.fetch }), platform);
+		const env = options.env ?? {};
+		const token = [env.GITHUB_TOKEN, env.GH_TOKEN].map((value) => value?.trim()).find(Boolean);
+		return new ToolProvisioning(manifest, await ToolCache.open(root, { fetch: options.fetch, token }), platform);
 	}
 
 	/** Reads the manifest shipped with Melian, never one from repoRoot. */
