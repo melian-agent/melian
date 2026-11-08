@@ -721,9 +721,13 @@ describe("walkthrough summaries", () => {
 			]);
 			const light = config.models.light!;
 			await summarize({ config: { ...config, models: { light: { ...light, thinking: "low" } } } });
-			const doc = await summarize({ config: { ...config, models: { light: { ...light, thinking: "high" } } } });
+			const high = { ...config, models: { light: { ...light, thinking: "high" as const } } };
+			const doc = await summarize({ config: high });
 			expect(asked).toHaveLength(2);
 			expect(doc?.walkthroughs?.[Revision.key(changeset.revision)]?.summary).toBe("At high thinking.");
+			expect(doc?.walkthroughRoutes?.[Revision.key(changeset.revision)]).toBe(`${light.model}@high`);
+			await summarize({ config: high });
+			expect(asked).toHaveLength(2);
 		});
 		it("keeps a walkthrough an older Melian stored without its route, and asks no model", async () => {
 			const revision = Revision.key(changeset.revision);
