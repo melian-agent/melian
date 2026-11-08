@@ -843,8 +843,9 @@ async function routeOf(level: LevelRoute, review: ReviewModels): Promise<TierRou
 }
 
 // The route one level of a lens runs on, keyed so that levels sharing a route resolve it once: the lens's own route
-// where it names one, as the plan resolved it for that level, or else its tier's. `refused` says the plan refuses it.
-type LevelRoute = {
+// where it names one, as the plan resolved it for that level, or else its tier's. `on` names it in a message, and
+// `refused` says the plan refuses the level there.
+class LevelRoute {
 	readonly key: string;
 	readonly on: string;
 	readonly tier: string;
@@ -852,41 +853,59 @@ type LevelRoute = {
 	readonly noun: string;
 	readonly route: ModelRoute | undefined;
 	readonly refused: boolean;
-};
 
-function levelRoute(lens: Lens, level: ScrutinyLevel, config: MelianConfig, plan: ReviewPlan | undefined): LevelRoute {
-	const at = `lenses.${lens.name}.route`;
-	const planned = plan?.lensRoute(lens.name, lens.scope, level);
-	if (plan !== undefined && planned !== undefined) {
-		const [first, ...rest] = planned.status === "routed" || planned.status === "uncredentialed" ? planned.models : [];
-		const route = {
-			...(planned.thinking === undefined ? {} : { thinking: planned.thinking }),
-			...(first === undefined ? {} : { model: first.model, fallbacks: rest.map(({ model }) => model) }),
-		};
-		return {
-			key: `${at} ${lens.scope} ${level}`,
-			on: at,
-			tier: at,
-			at,
-			noun: at,
-			route,
-			refused: plan.judge(lens.name, level, undefined, lens.scope).refusal !== undefined,
-		};
+	private constructor(fields: Omit<LevelRoute, never>) {
+		this.key = fields.key;
+		this.on = fields.on;
+		this.tier = fields.tier;
+		this.at = fields.at;
+		this.noun = fields.noun;
+		this.route = fields.route;
+		this.refused = fields.refused;
 	}
-	const own = Object.hasOwn(config.lenses, lens.name) ? config.lenses[lens.name]!.route : undefined;
-	if (plan === undefined && own !== undefined) {
-		return { key: `${at} ${lens.scope}`, on: at, tier: at, at, noun: at, route: own, refused: false };
+
+	static of(lens: Lens, level: ScrutinyLevel, config: MelianConfig, plan: ReviewPlan | undefined): LevelRoute {
+		const at = `lenses.${lens.name}.route`;
+		const planned = plan?.lensRoute(lens.name, lens.scope, level);
+		if (plan !== undefined && planned !== undefined) {
+			const [first, ...rest] =
+				planned.status === "routed" || planned.status === "uncredentialed" ? planned.models : [];
+			return new LevelRoute({
+				key: `${at} ${lens.scope} ${level}`,
+				on: at,
+				tier: at,
+				at,
+				noun: at,
+				route: {
+					...(planned.thinking === undefined ? {} : { thinking: planned.thinking }),
+					...(first === undefined ? {} : { model: first.model, fallbacks: rest.map(({ model }) => model) }),
+				},
+				refused: plan.judge(lens.name, level, undefined, lens.scope).refusal !== undefined,
+			});
+		}
+		const own = Object.hasOwn(config.lenses, lens.name) ? config.lenses[lens.name]!.route : undefined;
+		if (plan === undefined && own !== undefined) {
+			return new LevelRoute({
+				key: `${at} ${lens.scope}`,
+				on: at,
+				tier: at,
+				at,
+				noun: at,
+				route: own,
+				refused: false,
+			});
+		}
+		const { tier } = lens.level(level);
+		return new LevelRoute({
+			key: tier,
+			on: tier,
+			tier,
+			at: `models.${tier}`,
+			noun: `the ${tier} tier`,
+			route: config.models[tier],
+			refused: plan?.refusal(tier) !== undefined,
+		});
 	}
-	const { tier } = lens.level(level);
-	return {
-		key: tier,
-		on: tier,
-		tier,
-		at: `models.${tier}`,
-		noun: `the ${tier} tier`,
-		route: config.models[tier],
-		refused: plan?.refusal(tier) !== undefined,
-	};
 }
 
 // Why a lens that reads functions got none in its prompt: it reads them with read_file, as its instructions say.
@@ -1693,7 +1712,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		covering.flatMap(({ lens }) =>
 			lens
 				.declaredLevels()
-				.map((level) => [`${lens.name}@${lens.version}@${level}`, levelRoute(lens, level, config, plan)] as const),
+				.map(
+					(level) => [`${lens.name}@${lens.version}@${level}`, LevelRoute.of(lens, level, config, plan)] as const,
+				),
 		),
 	);
 	const routeKeys = new Map([...levelRoutes.values()].map((level) => [level.key, level]));
