@@ -2642,6 +2642,32 @@ describe("verification ownership and budgets", () => {
 			await harness.waitForTask(first, context);
 		}
 	});
+	it("starts fresh when a candidate's claim changes, though its key and its count of claims do not", async () => {
+		const stored = await input();
+		const revision = Revision.key(changeset.revision);
+		const selection = (await harness.snapshot(ReviewIndex, stored.root, context))!.reviews[revision]!.lenses;
+		scripts();
+		const first = (await startVerification(harness, stored, selection, false, context))!;
+		await harness.waitForTask(first, context);
+		expect(await startVerification(harness, stored, selection, false, context)).toBe(first);
+		const candidate = stored.candidates[0]!;
+		const reworded = {
+			...stored,
+			candidates: [
+				{
+					...candidate,
+					state: {
+						...candidate.state,
+						claims: candidate.state.claims.map((claim) => ({
+							...claim,
+							failureScenario: "A reworded scenario.",
+						})),
+					},
+				},
+			],
+		};
+		expect(await startVerification(harness, reworded, selection, false, context)).not.toBe(first);
+	});
 	it("starts fresh when only the verifier version changes without rerun", async () => {
 		const stored = await input();
 		stored.version = "v1";
