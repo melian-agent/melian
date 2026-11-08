@@ -422,6 +422,17 @@ export class StateBranch {
 		for (const [name, plain] of opened) await writeFile(join(directory, name), plain);
 	}
 
+	/**
+	 * @internal Whether the copy in `directory` still holds the tree's commits. Pi only appends to its main log, and trims
+	 * only a torn last line, so a copy that grew from the tree starts its main log with the tree's.
+	 */
+	async extends(changeset: string, tree: string, directory: string): Promise<boolean> {
+		const main = (await this.#open(changeset, tree)).find(([name]) => name === "main.jsonl")?.[1];
+		if (main === undefined) return true;
+		const local = await readFile(join(directory, "main.jsonl")).catch(() => undefined);
+		return local !== undefined && local.length >= main.length && local.subarray(0, main.length).equals(main);
+	}
+
 	// Every file of a changeset's tree, opened under the key, or a refusal naming the first this build cannot read.
 	async #open(changeset: string, tree: string): Promise<[string, Buffer][]> {
 		const files = entries(await gitOutputBytes(this.#options.repoRoot, ["ls-tree", "-z", tree]));
@@ -575,6 +586,13 @@ export class StateBranch {
 				);
 			changesets.set(entry.name, entry);
 		}
+		// A written changeset whose tree is gone would read as a new, empty store, and the next push would keep it so.
+		const lost = index.writtenChangesets().find((id) => !changesets.has(id));
+		if (lost !== undefined)
+			throw new StateBranchError(
+				"invalidBranch",
+				`the state branch's index.json records a write of ${lost}, whose tree the branch does not hold`,
+			);
 		return { index, changesets };
 	}
 
@@ -617,13 +635,11 @@ export class StateBranch {
 		];
 		const result = await git(this.#options.repoRoot, args, { env: untranslated });
 		if (result.code === 0) return true;
-		// The lease names the tip this run fetched, so "stale info" means another run pushed since; a ref the remote could
-		// not lock is another run's push to it landing at the same moment.
+		// The lease names the tip this run fetched, so "stale info" means another run pushed since; the branch's ref the
+		// remote could not lock is another run's push to it landing at the same moment. Git versions word that rejection's
+		// porcelain line differently, so the remote's own error decides it; the push names no other ref.
 		const line = result.stdout.split("\n").find((each) => each.startsWith(`!\t${commit}:${branch}\t`));
-		if (
-			line?.includes("[rejected] (stale info)") ||
-			(line?.includes("[remote rejected] (failed to update ref)") && result.stderr.includes("cannot lock ref"))
-		)
+		if (line?.includes("[rejected] (stale info)") || result.stderr.includes(`cannot lock ref '${branch}'`))
 			return false;
 		throw new StateBranchError("pushFailed", `git push of melian/state failed: ${result.stderr.trim()}`);
 	}
@@ -737,7 +753,12 @@ export class StateCheckout {
 			() => true,
 			() => false,
 		);
-		if (local && synced === onBranch) return new StateCheckout(branch, changeset, onBranch, undefined, lock, lease);
+		if (
+			local &&
+			synced === onBranch &&
+			(onBranch === "none" || (await branch.extends(changeset, onBranch, directory)))
+		)
+			return new StateCheckout(branch, changeset, onBranch, undefined, lock, lease);
 		let setAside: string | undefined;
 		if (local) {
 			setAside = `${directory}.set-aside-${Date.now()}`;
