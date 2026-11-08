@@ -647,6 +647,29 @@ describe("walkthrough summaries", () => {
 			const doc = await summarize({ origin: pullRequest });
 			expect(doc?.walkthroughs?.[Revision.key(changeset.revision)]?.summary).toBe("Changes a value.");
 		});
+		it("summarises a pull request from its origin before any verdict document exists", async () => {
+			const fresh = await openHarness(createMemoryStorage(), {
+				models: models.models,
+				registry: createReviewRegistry(),
+				settings: { retry: { enabled: false } },
+			});
+			try {
+				scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
+				await summarizeReview({ harness: fresh, changeset, config, models: models.review, origin: pullRequest });
+				const doc = await fresh.snapshot(VerdictDocument, (await fresh.root(context)).id, context);
+				expect(doc?.walkthroughs?.[Revision.key(changeset.revision)]?.summary).toBe("Changes a value.");
+			} finally {
+				await fresh.close(context);
+			}
+		});
+		it("skips a review with neither an origin nor a stored provenance", async () => {
+			await withoutProvenance();
+			const auth = vi.spyOn(models.models, "checkAuth");
+			await summarize();
+			expect(auth).not.toHaveBeenCalled();
+			expect((await stored())?.walkthroughs).toBeUndefined();
+			expect((await stored())?.walkthroughNotes).toBeUndefined();
+		});
 		it("skips a range origin, whatever a stored provenance says", async () => {
 			const auth = vi.spyOn(models.models, "checkAuth");
 			await summarize({ origin: { kind: "range" } });

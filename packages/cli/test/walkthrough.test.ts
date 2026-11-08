@@ -119,6 +119,19 @@ describe("CLI walkthrough beside the review", { timeout: 60_000 }, () => {
 		expect(plan).toBeDefined();
 	});
 
+	it("starts the walkthrough once the review returns when it never reached triage", async () => {
+		const summarize = vi.spyOn(pipeline, "summarizeReview").mockResolvedValue(undefined);
+		const actual = pipeline.reviewChangeset;
+		vi.spyOn(pipeline, "reviewChangeset").mockImplementation(async (request) =>
+			actual({ ...request, afterTriage: () => {} }),
+		);
+		const io = { cwd: repo, env, stdout: () => {}, stderr: () => {}, color: false };
+
+		expect(await review(io, "#7", { rerun: false })).toBe(0);
+
+		expect(summarize).toHaveBeenCalledOnce();
+	});
+
 	it("closes the storage only after a walkthrough a failed review started", async () => {
 		const order: string[] = [];
 		vi.spyOn(pipeline, "summarizeReview").mockImplementation(async () => {
