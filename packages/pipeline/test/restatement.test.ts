@@ -30,7 +30,7 @@ import {
 	textOf,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { FindingsDocument } from "../src/findings.ts";
+import { FindingsDocument, findingsVersion } from "../src/findings.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { verifierMarker } from "../src/verification-instructions.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines, writeFiles } from "./fixtures/repo.ts";
@@ -208,8 +208,23 @@ describe("a dismissal carrying to a restatement", () => {
 			.filter((message) => message.role === "user")
 			.map(textOf)
 			.join("\n");
-		expect(input).toMatch(/Dismissed d1\n<untrusted-[0-9a-f]+ label="findings">/);
-		expect(input).toContain(JSON.stringify(nullDeref.failureScenario).slice(1, -1));
+		const tag = input.match(/Dismissed d1\n<(untrusted-[0-9a-f]+) label="findings">/)?.[1];
+		const claim = {
+			failureScenario: nullDeref.failureScenario,
+			evidence: [
+				{
+					file: "src/user.ts",
+					startLine: 8,
+					role: "cause",
+					revision: "head",
+					proves: true,
+					snippet: "\treturn user.manager.name + label;",
+				},
+			],
+		};
+		expect(input.split("\n\n").find((block) => block.startsWith("Dismissed d1\n"))).toBe(
+			`Dismissed d1\n<${tag} label="findings">\n${JSON.stringify(claim)}\n</${tag}>`,
+		);
 		expect(`${prompt}\n${input}`).not.toContain(dismissal.reason);
 	});
 
@@ -238,6 +253,142 @@ describe("a dismissal carrying to a restatement", () => {
 			at: dismissal.at,
 			inheritedFrom: root,
 		});
+	});
+
+	// Review A waits on its lens run or its verifier until review B, which replaced that run, has finished; A must not
+	// then clear the links B recorded.
+	it.each([
+		{ name: "its verifier by lens selection", waitsOn: "verification", budget: 9, verifier: false },
+		{ name: "its lens run before verification", waitsOn: "task", budget: 9, verifier: false },
+		{
+			name: "its verifier by verifier route",
+			waitsOn: "verification",
+			budget: undefined,
+			verifier: true,
+		},
+	] as const)("keeps the links of a review that replaced $name", async ({ waitsOn, budget, verifier }) => {
+		const root = await dismissedRoot();
+		pushElsewhere("other");
+		const at = Revision.key(await revision());
+		const owner = (await harness.root(context)).id;
+		let release: (() => void) | undefined;
+		const held = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		let finish: (() => void) | undefined;
+		const finished = new Promise<void>((resolve) => {
+			finish = resolve;
+		});
+		let hold = waitsOn === "verification";
+		const verify = (messages: Messages) => {
+			if (hold) {
+				hold = false;
+				return held.then(() => fauxAssistantMessage("Done."));
+			}
+			const prompt = systemPromptOf(messages);
+			const claims = [...prompt.matchAll(/Claim c[1-9][0-9]* finding ([0-9a-f]+)/g)].map((m) => m[1]!);
+			return scriptVerifier(
+				messages,
+				Object.fromEntries(
+					claims.map((id) => [id, { verdict: "confirmed" as const, matches: { [root]: "same" } }]),
+				),
+			);
+		};
+		const requests = scriptConversations(fake, [
+			{
+				match: correctness,
+				replies: [
+					report(restatement),
+					fauxAssistantMessage("Done."),
+					report(restatement),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{ match: contracts, replies: [fauxAssistantMessage("Done."), fauxAssistantMessage("Done.")] },
+			{ match: verifierMarker, replies: [verify, verify, verify, verify] },
+		]);
+		const entry = async () => (await harness.snapshot(ReviewIndex, owner, context))?.reviews[at];
+		const gated = new Proxy(harness, {
+			get(target, property) {
+				const value = Reflect.get(target, property, target);
+				if (property !== "waitForTask") return typeof value === "function" ? value.bind(target) : value;
+				return async (...args: Parameters<Harness["waitForTask"]>) => {
+					const known = await entry();
+					const waits = (waitsOn === "task" ? known?.task : known?.verification?.task) === args[0];
+					const outcome = await target.waitForTask(...args);
+					if (waits) {
+						finish!();
+						await held;
+					}
+					return outcome;
+				};
+			},
+		});
+		const changeset = await Changeset.resolve(repo, "main...feature");
+		const options = { changeset, standards: [], models: fake.review, checks: [...deterministicRan] };
+		const replaced = reviewChangeset({ ...options, config, harness: gated, lenses }).catch((error: unknown) => error);
+		if (waitsOn === "task") await finished;
+		else while ((requests[verifierMarker]?.length ?? 0) === 0) await new Promise((resolve) => setTimeout(resolve, 5));
+		const orchestrator = fake.ref("orchestrator");
+		const replacing = await reviewChangeset({
+			...options,
+			harness,
+			// Another findings budget is another lens selection; another verifier model is another verification input.
+			lenses: lenses.map((lens) =>
+				lens.name === "correctness" && budget !== undefined ? withBudget(lens, { findings: budget }) : lens,
+			),
+			config: verifier
+				? {
+						...config,
+						models: { ...config.models, verifier: { model: `${orchestrator.provider}/${orchestrator.modelId}` } },
+					}
+				: config,
+		});
+		const [restated] = replacing.findings;
+		expect(replacing.verdict.dismissed.map((each) => each.id)).toEqual([restated!.id]);
+		const links = structuredClone((await harness.snapshot(FindingsDocument, owner, context))!.inherited?.[at]);
+		expect(links?.[restated!.id]).toMatchObject({ from: root, kind: "inherited" });
+		const version = await findingsVersion(harness, owner, at, context);
+		release!();
+		await replaced;
+		expect((await harness.snapshot(FindingsDocument, owner, context))!.inherited?.[at]).toEqual(links);
+		if (!verifier) expect(await findingsVersion(harness, owner, at, context)).toBe(version);
+	});
+
+	it("clears the links when a later round on the head has no verifier with credentials", async () => {
+		await dismissedRoot();
+		pushElsewhere("other");
+		script([restatement]);
+		await review();
+		const at = Revision.key(await revision());
+		const owner = (await harness.root(context)).id;
+		expect((await harness.snapshot(ReviewIndex, owner, context))!.reviews[at]!.verification).toBeDefined();
+		expect((await harness.snapshot(FindingsDocument, owner, context))!.inherited?.[at]).toBeDefined();
+		script([restatement]);
+		config = { ...config, models: { ...config.models, verifier: { model: "faux/absent" } } };
+		await review().catch(() => undefined);
+		expect((await harness.snapshot(FindingsDocument, owner, context))!.inherited?.[at]).toBeUndefined();
+	});
+
+	it("clears the links when a later round on the head selects no lens", async () => {
+		await dismissedRoot();
+		pushElsewhere("other");
+		script([restatement]);
+		await review();
+		const at = Revision.key(await revision());
+		const owner = (await harness.root(context)).id;
+		expect((await harness.snapshot(FindingsDocument, owner, context))!.inherited?.[at]).toBeDefined();
+		const changeset = await Changeset.resolve(repo, "main...feature");
+		await reviewChangeset({
+			harness,
+			changeset,
+			config,
+			lenses: [],
+			standards: [],
+			models: fake.review,
+			checks: [...deterministicRan],
+		}).catch(() => undefined);
+		expect((await harness.snapshot(FindingsDocument, owner, context))!.inherited?.[at]).toBeUndefined();
 	});
 
 	it("leaves a restatement the verifier judges different live, with no link", async () => {

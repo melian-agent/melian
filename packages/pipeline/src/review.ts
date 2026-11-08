@@ -2156,6 +2156,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	}
 	let verificationCheck: CheckRecord | undefined;
 	let verificationRefused = false;
+	let verifying: TaskId<VerificationResult> | undefined;
 	if (candidates.length === 0) {
 		const previous = (await harness.snapshot(ReviewIndex, root, context))?.reviews[reviewed]?.verification;
 		if (previous !== undefined) {
@@ -2188,7 +2189,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				candidates,
 			};
 			spans.end();
-			const verifying = await startVerification(
+			verifying = await startVerification(
 				harness,
 				verificationInput,
 				selectionOf(lenses, escalateAt),
@@ -2257,11 +2258,20 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	}
 	// Each round re-derives every restatement link from its own stored judgements, in one commit, before adjudication
 	// reads the findings version. A verifier that did not run to the end judged no sameness, and leaves no links.
-	await (await harness.root(context)).commit(
-		(tx) =>
-			recordInheritances(tx, root, reviewed, verificationCheck?.status === "ran" ? restating : [], verifierVersion),
-		context,
-	);
+	// A review a later one replaced, by lens selection or by verification task, leaves the links that one recorded.
+	await (await harness.root(context)).commit(async (tx) => {
+		const entry = (await tx.doc(ReviewIndex, root)).reviews[reviewed];
+		const selection = selectionOf(lenses, escalateAt);
+		if (selection.length > 0 && entry?.lenses.join("\n") !== selection.join("\n")) return;
+		if (verifying !== undefined && entry?.verification?.task !== verifying) return;
+		await recordInheritances(
+			tx,
+			root,
+			reviewed,
+			verificationCheck?.status === "ran" ? restating : [],
+			verifierVersion,
+		);
+	}, context);
 	spans.step("adjudication.prepare");
 	const checks =
 		request.plan?.mark(
