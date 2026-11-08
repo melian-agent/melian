@@ -140,10 +140,17 @@ it("uses the public URL alone when no token is set", async () => {
 	expect(github.calls).toEqual([{ url: pinned, options: { signal: expect.any(AbortSignal) } }]);
 });
 
-it.each<[string, Record<string, Route>]>([
-	["the release answers 504", { [release]: releaseRoute("upstream timeout", 504) }],
-	["the release answers 404", { [release]: releaseRoute("Not Found", 404) }],
-	["the release has no body", { [release]: releaseRoute(null) }],
+const served = (id: number) => ({
+	[`https://api.github.com/repos/test/enola/releases/assets/${id}`]: assetRoute(redirect),
+	[signed]: signedRoute(bytes),
+});
+
+// Each case names the requests it expects before the public URL; the API would succeed wherever the guard allowed it.
+it.each<[string, Record<string, Route>, string[]]>([
+	["the release answers 504", { [release]: releaseRoute("upstream timeout", 504) }, [release]],
+	["the release answers 404", { [release]: releaseRoute("Not Found", 404) }, [release]],
+	["the release answers 500 with an asset listing", { [release]: releaseRoute(good, 500), ...served(42) }, [release]],
+	["the release has no body", { [release]: releaseRoute(null) }, [release]],
 	[
 		"the release request fails",
 		{
@@ -151,20 +158,39 @@ it.each<[string, Record<string, Route>]>([
 				throw new TypeError("fetch failed");
 			},
 		},
+		[release],
 	],
-	["the release is not JSON", { [release]: releaseRoute("<html>") }],
-	["the release lists no assets", { [release]: releaseRoute(JSON.stringify({ tag_name: "v0.0.1" })) }],
+	["the release is not JSON", { [release]: releaseRoute("<html>") }, [release]],
+	["the release lists no assets", { [release]: releaseRoute(JSON.stringify({ tag_name: "v0.0.1" })) }, [release]],
 	[
 		"the release lists only another asset",
-		{ [release]: releaseRoute(listing([{ id: 7, browser_download_url: `${pinned}.sha256` }])) },
+		{ [release]: releaseRoute(listing([{ id: 7, browser_download_url: `${pinned}.sha256` }])), ...served(7) },
+		[release],
 	],
-	["the asset id is zero", { [release]: releaseRoute(listing([{ id: 0, browser_download_url: pinned }])) }],
-	["the asset id is a string", { [release]: releaseRoute(listing([{ id: "42", browser_download_url: pinned }])) }],
-	["the asset id is a fraction", { [release]: releaseRoute(listing([{ id: 4.5, browser_download_url: pinned }])) }],
-	["the release metadata is one byte past 4 MiB", { [release]: releaseRoute(good.padEnd(metadataLimit + 1, " ")) }],
+	[
+		"the asset id is zero",
+		{ [release]: releaseRoute(listing([{ id: 0, browser_download_url: pinned }])), ...served(0) },
+		[release],
+	],
+	[
+		"the asset id is a string",
+		{ [release]: releaseRoute(listing([{ id: "42", browser_download_url: pinned }])), ...served(42) },
+		[release],
+	],
+	[
+		"the asset id is a fraction",
+		{ [release]: releaseRoute(listing([{ id: 4.5, browser_download_url: pinned }])), ...served(4.5) },
+		[release],
+	],
+	[
+		"the release metadata is one byte past 4 MiB",
+		{ [release]: releaseRoute(good.padEnd(metadataLimit + 1, " ")), ...served(42) },
+		[release],
+	],
 	[
 		"the asset answers 404",
 		{ [release]: releaseRoute(good), [asset]: assetRoute(() => new Response("Not Found", { status: 404 })) },
+		[release, asset],
 	],
 	[
 		"the asset redirect target answers 504",
@@ -173,12 +199,13 @@ it.each<[string, Record<string, Route>]>([
 			[asset]: assetRoute(redirect),
 			[signed]: () => new Response("timeout", { status: 504 }),
 		},
+		[release, asset, signed],
 	],
-])("falls back to the public URL when %s", async (_case, routes) => {
+])("falls back to the public URL when %s", async (_case, routes, before) => {
 	const github = host({ ...routes, [pinned]: publicRoute(bytes) });
 	const cache = await ToolCache.open(root, { fetch: github.fetch, token });
 	expect(await readFile(await cache.materialise(testTool(bytes), "darwin-arm64"), "utf8")).toBe("trusted");
-	expect(github.calls[0]?.url).toBe(release);
+	expect(github.calls.map((call) => call.url)).toEqual([...before, pinned]);
 	expect(github.calls.at(-1)).toEqual({ url: pinned, options: { signal: expect.any(AbortSignal) } });
 });
 
