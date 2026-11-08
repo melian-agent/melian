@@ -241,6 +241,7 @@ describe("the plan as a prober and a verifier read it", () => {
 		const claim: ClaimProbe = {
 			id: "p7",
 			attack: 1,
+			environment: reviewer,
 			plan: [attack],
 			probe: {
 				attack: 1,
@@ -285,6 +286,7 @@ describe("a rerun the head refused", () => {
 		const claim: ClaimProbe = {
 			id: "p7",
 			attack: 1,
+			environment: reviewer,
 			plan: [attack],
 			probe: { attack: 1, script: "x", files: [], result: result(), milliseconds: 1 },
 		};
@@ -427,6 +429,7 @@ describe("the evidence a verifier reads, exactly", () => {
 		const claim: ClaimProbe = {
 			id: "p3",
 			attack: 1,
+			environment: reviewer,
 			plan: [{ target: "t", reason: "r", passing: "p", failing: "f" }],
 			probe: { attack: 1, script: "S", files: [], result: result({ output: "o" }), milliseconds: 1 },
 		};

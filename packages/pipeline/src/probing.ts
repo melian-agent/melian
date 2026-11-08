@@ -224,7 +224,14 @@ export function renderEarlierFindings(findings: readonly EarlierFinding[], nonce
 }
 
 /** The probe one claim of a probing level rests on: its ID, the attack it answers, the whole plan, and the run itself. */
-export type ClaimProbe = { id: string; attack: number; plan: Attack[]; probe: ProbeRecord };
+/** The probe a claim rests on, its plan, and what its lens run ran probes under, for its verifier to run it again. */
+export type ClaimProbe = {
+	id: string;
+	attack: number;
+	plan: Attack[];
+	probe: ProbeRecord;
+	environment: ProbingEnvironment;
+};
 
 /** A claim's key among a candidate's probes: its finding ID and its producer. */
 export function claimKey(claim: { readonly id: string; readonly source: { check: string; version?: string } }): string {

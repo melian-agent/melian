@@ -158,6 +158,8 @@ async function review(
 		sandbox?: ProbeSandbox;
 		// Rewrites the trust-boundary lens; by default its deep level probes, as no shipped level does yet.
 		lens?: (lens: Lens) => Lens;
+		// Adds lenses to the ones loaded.
+		lenses?: (loaded: readonly Lens[]) => Lens[];
 		fake?: FakeModels;
 		decider?: ReviewOptions["decider"];
 		plan?: (config: MelianConfig, lenses: readonly Lens[], fake: FakeModels) => Promise<ReviewOptions["plan"]>;
@@ -176,10 +178,11 @@ async function review(
 		models: { heavy: { model: `${ref.provider}/${ref.modelId}` } },
 		...options.config,
 	};
+	// Other conversations first, so another lens's planner, whose prompt also names the planner's role, finds its own.
 	const requests = scriptConversations(fake, [
+		...(scripts.others ?? []),
 		{ match: planner, replies: scripts.planner },
 		{ match: prober, replies: scripts.prober },
-		...(scripts.others ?? []),
 	]);
 	// The head probes as they run, since a tree is gone once its probe ends.
 	const heads: string[] = [];
@@ -196,6 +199,7 @@ async function review(
 	const lenses = (await Lens.load(repo, policy, paths)).map((lens) =>
 		lens.name === "trust-boundary" ? (options.lens ?? probingWith({}))(lens) : lens,
 	);
+	if (options.lenses !== undefined) lenses.push(...options.lenses(lenses));
 	const plan = await options.plan?.(config, lenses, fake);
 	// No policy source, so `config` is every path's, its band among it.
 	const run = reviewChangeset({
@@ -1135,6 +1139,43 @@ describe("a level that probes", () => {
 		const prompts = [...new Set(requests["Melian adversarial verifier"]!.map(systemPromptOf))];
 		expect(prompts).toHaveLength(2);
 		expect(prompts.filter((prompt) => prompt.includes("rests on probe p"))).toHaveLength(1);
+	});
+
+	it("runs each merged claim's probe again under its own lens's time limit", async () => {
+		// A planner records its plan on its first turn and finishes on its next, whichever lens's planner asks.
+		const planning: ScriptedReply = (messages) =>
+			messages.some((message) => message.role === "assistant")
+				? fauxAssistantMessage("Planned 1 attack.")
+				: call("record_plan", { attacks: [attack] });
+		// A copy of trust-boundary shares its rules, so the two lenses' reports of one defect merge into one finding.
+		const copy = (loaded: readonly Lens[]) => [
+			probingWith({ timeout: 40_000 })(
+				Lens.from({ ...loaded.find((lens) => lens.name === "trust-boundary")!.toJSON(), name: "boundary-copy" }),
+			),
+		];
+		const { run, heads } = await review(
+			{
+				planner: [planning, planning, planning, planning],
+				prober: probing(failing),
+				others: [{ match: "You are the prober for the boundary-copy lens", replies: probing(failing) }],
+			},
+			{
+				config: {
+					tiers: { full: ["lens.trust-boundary", "lens.boundary-copy"] },
+					lenses: {
+						"trust-boundary": { level: { floor: "deep" } },
+						"boundary-copy": { level: { floor: "deep" } },
+					},
+				},
+				lens: probingWith({ timeout: 20_000 }),
+				lenses: copy,
+			},
+		);
+		const { verdict } = await run;
+		expect(verdict.counted()).toHaveLength(1);
+		// Each lens's limit shows as the CPU-time limit of its prober's probe and of that probe's rerun.
+		const limits = heads.map((command) => /ulimit -t ([0-9]+)/.exec(command)![1]);
+		expect(limits.toSorted()).toEqual(["27", "27", "47", "47"]);
 	});
 
 	it("names no role for the verifier's stage", async () => {

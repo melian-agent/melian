@@ -1184,17 +1184,16 @@ async function probeRefusal(request: ReviewOptions, config: MelianConfig): Promi
 	return available.available ? undefined : available.reason;
 }
 
-// The probe each claim of a probing run rests on, read from its planner's and its prober's conversations, and what probes
-// run under, for its verifier to run each again. Nothing for a candidate no probing run reported.
+// The probe each claim of a probing run rests on, read from its planner's and its prober's conversations, with what its
+// own run ran probes under, for its verifier to run each again. Nothing for a candidate no probing run reported.
 async function claimProbes(
 	harness: Harness,
 	claims: readonly MemberClaim[],
 	runs: readonly LensRun[],
 	result: LensResult | undefined,
 	context: Context,
-): Promise<Pick<VerificationCandidate, "probes" | "probing">> {
+): Promise<Pick<VerificationCandidate, "probes">> {
 	const probes: Record<string, ClaimProbe> = {};
-	let probing: ProbingEnvironment | undefined;
 	for (const claim of claims) {
 		const run = runs.find((each) => {
 			const source = lensSource(each.name, each.version, each.level);
@@ -1213,10 +1212,10 @@ async function claimProbes(
 			attack: probe.attack,
 			plan: structuredClone(plan),
 			probe: structuredClone(probe),
+			environment: structuredClone(run.probe!.environment),
 		};
-		probing = structuredClone(run.probe!.environment);
 	}
-	return probing === undefined ? {} : { probes, probing };
+	return Object.keys(probes).length === 0 ? {} : { probes };
 }
 
 // Runs each candidate's claim probes again, before verification, and stores each run on the root under the revision,
@@ -1234,14 +1233,14 @@ async function rerunProbes(
 	for (const candidate of candidates) {
 		for (const claim of candidate.state.claims) {
 			const probe = candidate.probes?.[claimKey(claim)];
-			if (probe === undefined || candidate.probing === undefined) continue;
+			if (probe === undefined) continue;
 			const key = rerunKey(claim, probe);
 			const stored = (await harness.snapshot(ProbeReruns, root, context))?.runs[at]?.[key];
 			if (stored !== undefined && "result" in stored) continue;
 			const run = await runHeadProbe(
 				{ script: probe.probe.script, files: probe.probe.files },
 				revision,
-				candidate.probing,
+				probe.environment,
 				sandbox,
 			);
 			await (await harness.root(context)).commit(async (tx) => {
