@@ -324,6 +324,24 @@ fs.writeFileSync(stop + ".count", String(count));
 		});
 	});
 
+	it("fails a probe that exited 0 when stopping its processes failed, and says why", async () => {
+		writeFileSync(join(dir, "probe.mjs"), "");
+		const result = {
+			exitCode: 0,
+			signal: null,
+			output: "ok\n",
+			truncated: false,
+			timedOut: false,
+			error: "ps failed",
+		};
+		const close = vi.fn(async () => ({ removed: true }));
+		vi.spyOn(pipeline.Probe, "open").mockResolvedValue({ run: async () => result, close } as never);
+		const run = await melian(["probe", "probes/first", "--trust-head"]);
+		expect(run.status).toBe(1);
+		expect(run.stdout).toBe("ok\nProbe: exited 0; stopping its processes failed: ps failed\n");
+		expect((await melian(["probe", "probes/first", "--trust-head", "--json"])).status).toBe(1);
+	});
+
 	it("reports a leftover scratch without replacing the probe's result", async () => {
 		writeFileSync(join(dir, "probe.mjs"), "");
 		const result = { exitCode: 0, signal: null, output: "ok\n", truncated: false, timedOut: false };
