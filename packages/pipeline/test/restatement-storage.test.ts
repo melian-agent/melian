@@ -247,6 +247,13 @@ describe("restatement links", () => {
 		expect((await read())[restated.id]!.properties.status).toBe("new");
 		await link({ [restated.id]: { from: other.id, kind: "inherited" } });
 		expect((await read())[restated.id]!.properties.status).toBe("new");
+		// A reopened root loses its record once its last sighting goes, though a link to it is stored.
+		await link({ [restated.id]: { from: root.id, kind: "inherited" } });
+		const owner = await harness.root(context);
+		await owner.commit(async (tx) => {
+			delete (await tx.doc(FindingsDocument, id)).items[root.id];
+		}, context);
+		expect((await read())[restated.id]!.properties.status).toBe("new");
 	});
 
 	it("compares links whatever order they are given in", async () => {
