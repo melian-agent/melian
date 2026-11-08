@@ -22,4 +22,4 @@ The answer a lens gives depends on the model and the level it ran at, not on whi
 
 - The fix pass that added the lens route's source to the key on [pull request #339](https://github.com/melian-agent/melian/pull/339) is reverted, so the key is the one `main` builds.
 - `docs/design.md` and the pipeline guideline say that a run is reused for the same models and level, and that lineage reads the current plan.
-- A finding that a run's key omits the route's source or the credential is answered by this decision.
+- A run reused under a changed preference file or credential records the current plan's lineage, which can name a file that did not choose the model when the run happened.
