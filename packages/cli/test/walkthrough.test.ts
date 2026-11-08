@@ -176,11 +176,10 @@ describe("CLI walkthrough beside the review", { timeout: 60_000 }, () => {
 		expect(await review(io, "#7", { rerun: false, json: true })).toBe(0);
 
 		const { telemetry } = JSON.parse(output) as {
-			telemetry: { prepare: { spans: { name: string; durationMs: number }[] } };
+			telemetry: { prepare: { spans: { name: string; durationMs: number; parent?: string }[] } };
 		};
 		const slow = telemetry.prepare.spans.filter((span) => span.durationMs >= 300);
-		expect(slow).toEqual([expect.objectContaining({ name: "walkthrough.unlock" })]);
-		expect(slow[0]).not.toHaveProperty("parent");
+		expect(slow).toEqual([expect.objectContaining({ name: "unlock", parent: "walkthrough" })]);
 	});
 
 	it("times the wait for a failed review's walkthrough in no preparation step", async () => {

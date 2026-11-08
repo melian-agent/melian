@@ -82,15 +82,16 @@ export class PrepareSpans {
 	}
 
 	/**
-	 * Times `work` as a span of its own, with no parent, whether it settles or throws. It is for work that runs beside
-	 * the review's steps, such as the walkthrough's credential unlock, so it may overlap any step or task.
+	 * Times `work` as `name` under `parent`, whether it settles or throws, whatever step is open. It is for work that
+	 * runs beside the review's steps, such as the walkthrough's credential unlock under `walkthrough`, so it may overlap
+	 * any step or task. `parent` names no step, so the work stays out of the review's own preparation time.
 	 */
-	async concurrent<T>(name: string, work: () => Promise<T>): Promise<T> {
+	async concurrent<T>(parent: string, name: string, work: () => Promise<T>): Promise<T> {
 		const startedAt = this.#now();
 		try {
 			return await work();
 		} finally {
-			this.#push(name, startedAt);
+			this.#push(name, startedAt, parent);
 		}
 	}
 

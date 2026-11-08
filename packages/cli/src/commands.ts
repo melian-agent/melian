@@ -349,7 +349,7 @@ export async function review(
 				// so its unlock is a span of its own rather than part of whichever review step is open.
 				unlockModels: async (providers) => {
 					try {
-						await spans.concurrent("walkthrough.unlock", () => triage.unlockModels(providers));
+						await spans.concurrent("walkthrough", "unlock", () => triage.unlockModels(providers));
 					} catch (error) {
 						io.stderr(`melian: ${visibleText(error instanceof Error ? error.message : String(error))}\n`);
 						throw error;
