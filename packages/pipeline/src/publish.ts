@@ -970,8 +970,12 @@ function publishTask(provider: ReviewProvider) {
 					delete currentRound.walkthroughNote;
 					const posted = publishedWalkthrough(storedVerdict, revision);
 					if (posted !== undefined) currentRound.walkthrough = structuredClone(posted);
-					if (storedVerdict?.walkthroughNotes?.[revision] !== undefined)
-						currentRound.walkthroughNote = storedVerdict.walkthroughNotes[revision];
+					const note =
+						storedVerdict?.walkthroughNotes?.[revision] ??
+						(posted === undefined && storedVerdict?.walkthroughs?.[revision] !== undefined
+							? "No walkthrough available. Another light route wrote it."
+							: undefined);
+					if (note !== undefined) currentRound.walkthroughNote = note;
 					// A publish that could not read the run keeps the one an earlier publish of the round stored.
 					if (task.input.run?.roundId === target.roundId) currentRound.run = structuredClone(task.input.run);
 					else if (currentRound.run?.roundId !== target.roundId) delete currentRound.run;

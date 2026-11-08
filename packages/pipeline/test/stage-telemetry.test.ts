@@ -343,6 +343,7 @@ describe("stage telemetry contract", { timeout: 60_000 }, () => {
 			trustedWriters: true,
 		});
 		expect(state.ledgers[0]!.body.includes("Changes manager name lookup.")).toBe(posted);
+		expect(state.ledgers[0]!.body.includes("No walkthrough available. Another light route wrote it.")).toBe(!posted);
 	});
 
 	it("publishes a run table whose every number is what melian telemetry --json reports", async () => {
