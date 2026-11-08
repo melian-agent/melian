@@ -210,8 +210,10 @@ describe("restatement links", () => {
 		const owner = await harness.root(context);
 		await owner.commit(async (tx) => {
 			await upsertFinding(tx, id, other, "base..linked");
+			// One of the revision's two links names the root.
 			await replaceInheritances(tx, id, "base..linked", {
 				[other.id]: { from: root.id, kind: "inherited", dismissedAt: dismissal.at },
+				[restated.id]: { from: other.id, kind: "inherited", dismissedAt: dismissal.at },
 			});
 			await upsertFinding(tx, id, restated, "base..unrelated");
 			await replaceInheritances(tx, id, "base..unrelated", {
