@@ -468,6 +468,29 @@ describe("triage", () => {
 		expect(named).toEqual([replacement]);
 	});
 
+	it("tells the host only once a live run it replaces is marked aborted", async () => {
+		await open();
+		let release: (reply: typeof done) => void = () => {};
+		scriptConversations(fake, [
+			{ match: correctness, replies: [() => new Promise((resolve) => (release = resolve)), done] },
+		]);
+		const interrupted = review().catch((error: unknown) => error);
+		await vi.waitFor(() => expect(fake.provider.state.callCount).toBe(1));
+		const root = await harness.root(context);
+		const first = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision()]!.task;
+		const marked: Promise<boolean | undefined>[] = [];
+
+		await review({
+			config: { ...config, triage: { ...config.triage, escalateAt: "P3" } },
+			lensesStarted: () =>
+				marked.push(harness.getTask(first as TaskId, context).then((task) => task?.abortRequested)),
+		});
+		release(done);
+		await interrupted;
+
+		expect(await Promise.all(marked)).toEqual([true]);
+	});
+
 	it("runs every lens at careful without a decider, as before triage", async () => {
 		await open();
 		scriptConversations(fake, [{ match: correctness, replies: [done] }]);
