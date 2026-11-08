@@ -1,4 +1,6 @@
-import { readdirSync, rmSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
 	Changeset,
 	type CheckRecord,
@@ -362,6 +364,35 @@ describe("a level that probes", () => {
 		});
 		const { reason } = record((await run).verdict);
 		expect(reason).toMatch(/it planned 2 attacks and ran 1 probe in .+ s, and skipped 1 attack/);
+	});
+
+	it("runs a round's probes one at a time, so each writes its head's tree alone", async () => {
+		// Each probe logs when it starts, and takes long enough that two at once would start together. Its command ends in
+		// exec, so nothing after it runs.
+		const log = join(mkdtempSync(join(tmpdir(), "melian-probe-order-")), "log");
+		const slow = "await new Promise((resolve) => setTimeout(resolve, 500));\nprocess.exit(0);\n";
+		try {
+			const { run } = await review(
+				{
+					planner: [call("record_plan", { attacks: [attack, attack] }), plan[1]!],
+					prober: [
+						round([
+							["run_probe", { attack: 1, script: slow }],
+							["run_probe", { attack: 2, script: slow }],
+						]),
+						fauxAssistantMessage("Done."),
+					],
+				},
+				{
+					rewrite: (command) => (inHeadTree(command) ? `date +%s%3N >> '${log}'; ${command}` : command),
+				},
+			);
+			await run;
+			const [first, second] = readFileSync(log, "utf8").trim().split("\n").map(Number);
+			expect(second! - first!).toBeGreaterThanOrEqual(500);
+		} finally {
+			rmSync(join(log, ".."), { recursive: true, force: true });
+		}
 	});
 
 	it("runs no prober for an empty plan", async () => {

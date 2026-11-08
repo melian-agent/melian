@@ -30,7 +30,8 @@ The planner reads rulings from the base's decision files, through the same index
 
 - The plan judges the level's own tier. A prober on another tier is refused when the plan refuses that tier, but a fallback model the prober finishes on is not judged against the tier's `accept`.
 - Review coverage records what the planner read, not the prober's reads.
-- Each probe writes the head's tree afresh: about half a second for Melian's own 21 MB.
+- Each probe writes the head's tree afresh: about half a second for Melian's own 21 MB. A round's probes run one at a time, so the scratch holds one tree at once.
+- A probing run's verifier is chosen against the model the run's prober finished on, or its route when the run failed first. A sighting names its lens, not whether the planner or the prober reported it, so an injection attempt the planner reports is judged against the prober's family too. The maintainer accepted that on 2026-11-08, in the builder's session, over recording the reporter on each sighting, which would change the findings document's stored shape.
 - A probe reads the checkout's third-party packages through `node_modules`; a workspace package linked there points outside the probe's reads, so a probe imports the head's own packages by path.
 - The planner is reminded once, and so is the prober. A model that ignores both leaves the lens failed or ended. A reminder does not check first whether a later review replaced the run, so a replaced run can ask one more question.
 - A quick run that escalates to a level that probes carries its findings to the planner alone, which may report none, so the probing run neither restates nor refutes them and they count as the quick run reported them. No built-in lens escalates into a level that probes: `trust-boundary`'s `quick` escalates to `careful`.
