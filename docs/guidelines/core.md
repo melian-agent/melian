@@ -126,6 +126,7 @@ The keys a `melian.yaml` accepts, all optional:
 |---|---|---|
 | `comparison` | `retirement.pullRequests`, a positive integer, and `retirement.recall`, a number from 0 to 1; only a committed root `melian.yaml` sets them. Nested policy and preferences are refused | `pullRequests: 10`, `recall: 0.75` |
 | `trust` | `writers`, a boolean; only a committed root `melian.yaml` sets it. Nested policy and preference files are refused | `writers: true` |
+| `probe` | `read`, a list of paths relative to the checkout that a probe reads beyond the head's tracked tree: `node_modules` links the dependency install in, and any other path is copied in. `Probe` refuses an absolute path, a `..` segment, the checkout itself and a path that resolves outside it. Only a committed root `melian.yaml` sets it, read from the base. Nested policy and preference files are refused | `read: [node_modules]` |
 | `tiers` | tier name to a list of check names or other tiers | `fast: [guardrails, static, decisions.fast]`, `standard: [fast, lens.correctness]`, `full: [standard, lens.contracts, lens.trust-boundary, lens.removed-behaviour, lens.tests, lens.conventions]` |
 | `stages` | stage name to tier name | `pre-commit: fast`, `pre-push: standard`, `pull-request: full`, `comment: standard` |
 | `resolution` | `P0` to `P3` and `nit`, each `block`, `acknowledge`, `advisory`, or `silent`. `preExisting`, the cap on pre-existing findings, takes the same severities, each `advisory` or `acknowledge`; `block` is refused. `checks` maps a check name, `lens.<name>`, `static.<tool>`, or `guardrails`, to an entry: a mapping for any severity, a `ceiling`, and `rules`, keyed by rule ID, each with the same two. Under `guardrails` a rule key is `guardrail/<name>` or `guardrail/<name>/<rule>`, where `<name>` is a registered guardrail. Any other check name, or a rule key that names no guardrail, such as a misspelt `guardrail/forbiden-patterns`, is an `invalidValue` error | `P0` and `P1` block, `P2` acknowledge, `P3` advisory, `nit` silent; every `preExisting` cap `advisory`; no `checks` |
@@ -440,7 +441,7 @@ The caps apply next: `finding.capped(source, { defect })`. The first two read th
 - An `affected` finding with no proving `cause` location is never above `advisory`.
 - A lens finding no verifier judged is never above `advisory`, in a review that ran the verifier.
 
-A merged defect resolves each of its reports under its own mapping and ceiling, through `defect.decision(policyFor, unverified)`, and takes the strictest. Problem: with each report's own cause, a P0 nothing ties to the change beside a P3 the change introduced resolved `advisory`, where the merged defect, an introduced P0, had blocked before the step. Solution: the caps on a cause read the merged defect, so severity and proof combine and a merge never lowers what blocks. A lens report whose every claim was refuted is left out, unless every report is one. So the answer does not depend on which report speaks. A report here is a finding with an ID of its own. Sightings of one ID by several producers are one finding, merged by the findings document at the highest severity and the strongest cause, and it resolves once for each check at those.
+A merged defect resolves each of its reports under its own mapping and ceiling, through `defect.decision(policyFor, unverified)`, and takes the strictest. Problem: with each report's own cause, a P0 nothing ties to the change beside a P3 the change introduced resolved `advisory`, where the merged defect, an introduced P0, had blocked before the step. Solution: the caps on a cause read the merged defect, so severity and proof combine and a merge never lowers what blocks. A lens report whose every claim was refuted is left out, unless every report is one. So the answer does not depend on which report speaks. A report here is a finding with an ID of its own. Sightings of one ID by several lenses are one finding, merged by the findings document, and each resolves as a report of its own: under its check and the severity it reported, after any lowering, with its own mapping, ceiling, and unjudged cap, leaving out a refuted sighting while another stands. The cause caps read the merged cause. `Finding.capped` reads each sighting from the claims the findings document keeps; a finding missing a claim of its ID for any producer it lists resolves every producer at the merged severity. [The decision](../decisions/2026-11-07-resolution-per-sighting.md) records why.
 
 The floors apply last, to the defect: `finding.floored(decision, rules)`. A policy-change notice on a `melian.yaml` or lens file, or one for a changed `resolution`, is never below `acknowledge`. Neither is a defect any lens reported as `melian/injection-attempt`. A member of "Pre-existing, important" is never below `advisory`.
 
@@ -644,7 +645,7 @@ Severity, by default:
 
 `static.<tool>.severity` overrides one rule, keyed by its Melian rule ID.
 
-`staticFindings` matches results across the two runs by finding identity, never by line. A result's
+`staticFindings` matches results across the two runs by finding identity, not by line, with one exception below. A result's
 snippet is the full text of its lines at that revision, read through git's object store, and its
 occurrence is counted in that revision's file, so a result moved by an edit above it keeps its ID. A
 renamed file's base results are identified under its head path, through `revision.files`; otherwise
@@ -655,7 +656,10 @@ are one finding whose message counts the rest. Presence alone would then hide a 
 beside an old one, so the count matters: when the head has more results under an ID than the base,
 the base's count is the `pre-existing` finding and the difference is a second, `introduced` finding,
 identified by the discriminator `beyond the base at <id>`. A result on a blank line, in a file too
-large to read, or in a symlink is identified by its message instead. Any other failure to read the
+large to read, or in a symlink is identified by its message instead. A Biome or tsc result has no message
+Melian keeps, only a fixed sentence naming the tool and the rule, so such a result is identified by its line and
+column: one the base lacks at that place is `introduced`, and an edit above it makes it `introduced` again. [The
+decision](../decisions/2026-11-06-static-configuration-stays-in-the-checkout.md) says why. Any other failure to read the
 file fails the check with `CheckError` `unreadable`: only absence is silent, as for the loaders.
 
 An `enola/god-class` result is reported only when the change edits its file. Problem: a symbol's fan-in grows when a change only adds callers, so Enola reports a new result on code the change never touched. Example: on [pull request #215](https://github.com/melian-agent/melian/pull/215), round one flagged `quoteUntrusted` in `packages/pipeline/src/untrusted.ts` for its 14 dependents; the change only called it. Solution: `staticFindings` drops a `god-class` result in a file the change did not touch, and the report's notes count what it dropped. Any edit to the file keeps the result. Enola 0.4.27 gives only the line a symbol starts on, and a span read from the changed files alone missed declarations elsewhere in the project, such as a `declare module` augmentation, so the maintainer ruled spans out until they can come from the full head project.

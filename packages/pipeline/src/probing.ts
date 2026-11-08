@@ -1,7 +1,3 @@
-import { spawn } from "node:child_process";
-import { chmod, lstat, mkdir, mkdtemp, realpath, rm, symlink, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
 import { gitOutput, visibleText } from "@melian-agent/core";
 import type { WriterTrust } from "./checks.ts";
 import { defineDoc } from "./harness.ts";
@@ -82,181 +78,43 @@ export type ProbeRun =
 	| { readonly result: StoredProbeResult; readonly milliseconds: number }
 	| { readonly refused: string };
 
-/** The most files and bytes {@link HeadTree} writes of a head. */
+/** The most files and bytes a head may hold for a probe to run in it. */
 export const headTreeLimits = { entries: 100_000, bytes: 1024 * 1024 * 1024 } as const;
 
-type TreeEntry = { mode: string; object: string; path: string };
-
-function entriesOf(listing: string): TreeEntry[] {
-	return listing
-		.split("\0")
-		.filter((line) => line !== "")
-		.map((line) => {
-			const tab = line.indexOf("\t");
-			const [mode, type, object] = line.slice(0, tab).split(" ");
-			return { mode: mode!, type: type!, object: object!, path: line.slice(tab + 1) };
-		})
-		.filter((entry) => entry.type === "blob")
-		.map(({ mode, object, path }) => ({ mode, object, path }));
-}
-
-// Git refuses such a tree in a checkout; a crafted one could still name a path that leaves the directory.
-function safe(path: string): boolean {
-	return path
-		.split("/")
-		.every((part) => part !== "" && part !== "." && part !== ".." && part.toLowerCase() !== ".git");
-}
-
-// Every blob of `entries`, by one `git cat-file --batch`, raw: no attribute, filter, or line-ending conversion of the
-// head's applies, so the head cannot hide a file from a probe or run a filter on the reviewer's machine.
-function blobs(
+// The head's full commit hash, which Probe writes as the probe's tree. Refuses a head past `limits` first, from git's own
+// listing of each blob and its size, so a head cannot make the probe write an unbounded tree.
+async function boundedHead(
 	repoRoot: string,
-	entries: readonly TreeEntry[],
-	bytes: number,
-	each: (entry: TreeEntry, content: Buffer) => void,
-) {
-	return new Promise<void>((resolve, reject) => {
-		const child = spawn("git", ["-C", repoRoot, "cat-file", "--batch"], {
-			env: { PATH: process.env.PATH, HOME: process.env.HOME, GIT_OPTIONAL_LOCKS: "0" },
-			stdio: ["pipe", "pipe", "pipe"],
-		});
-		let pending = Buffer.alloc(0);
-		let next = 0;
-		let total = 0;
-		let failure: Error | undefined;
-		child.stdout.on("data", (chunk: Buffer) => {
-			pending = Buffer.concat([pending, chunk]);
-			for (;;) {
-				const end = pending.indexOf(10);
-				if (end === -1) return;
-				const header = pending.subarray(0, end).toString("utf8").split(" ");
-				const size = Number(header[2]);
-				if (header[1] !== "blob" || !Number.isSafeInteger(size)) {
-					failure ??= new Error(`git cat-file answered ${header.join(" ")}`);
-					// Read no more: git's next write fails and it exits, and the close reports the failure.
-					child.stdout.destroy();
-					return;
-				}
-				if (pending.length < end + 1 + size + 1) return;
-				total += size;
-				if (total > bytes) failure ??= new Error(`the head holds more than ${bytes} bytes`);
-				if (failure === undefined) each(entries[next]!, pending.subarray(end + 1, end + 1 + size));
-				next++;
-				pending = pending.subarray(end + 1 + size + 1);
-			}
-		});
-		const errors: Buffer[] = [];
-		child.stderr.on("data", (chunk: Buffer) => errors.push(chunk));
-		child.on("error", reject);
-		child.on("close", (code) => {
-			if (failure !== undefined) reject(failure);
-			else if (code !== 0 || next !== entries.length)
-				reject(new Error(`git cat-file failed: ${Buffer.concat(errors).toString("utf8").trim()}`));
-			else resolve();
-		});
-		// git exits early on a failure, and the names it never read then fail to write; the close reports the failure.
-		child.stdin.on("error", () => {});
-		child.stdin.end(entries.map((entry) => `${entry.object}\n`).join(""));
-	});
+	head: string,
+	limits: { readonly entries: number; readonly bytes: number },
+): Promise<string> {
+	const commit = (await gitOutput(repoRoot, ["rev-parse", "--verify", "--end-of-options", `${head}^{commit}`])).trim();
+	const blobs = (await gitOutput(repoRoot, ["ls-tree", "-r", "-l", "-z", "--full-tree", commit]))
+		.split("\0")
+		.map((line) => line.slice(0, line.indexOf("\t")).split(/ +/))
+		.filter(([, type]) => type === "blob");
+	if (blobs.length > limits.entries) throw new Error(`the head holds more than ${limits.entries} files`);
+	const bytes = blobs.reduce((total, [, , , size]) => total + Number(size), 0);
+	if (bytes > limits.bytes) throw new Error(`the head holds more than ${limits.bytes} bytes`);
+	return commit;
 }
 
 /**
- * The head revision written out as files in a scratch directory of its own, for one probe: the head's blobs as git
- * stores them, executable bits and symlinks kept, submodules left out, and the checkout's `node_modules` linked in when
- * the head tracks none. Open it with {@link HeadTree.open} and {@link HeadTree.close} it to remove the directory.
- */
-export class HeadTree {
-	/** The directory a probe runs in. */
-	readonly path: string;
-	/** The checkout's install the tree links to, which a probe may read. */
-	readonly install: string | undefined;
-	readonly #scratch: string;
-
-	private constructor(scratch: string, path: string, install: string | undefined) {
-		this.#scratch = scratch;
-		this.path = path;
-		this.install = install;
-	}
-
-	static async open(
-		repoRoot: string,
-		head: string,
-		limits: { readonly entries: number; readonly bytes: number } = headTreeLimits,
-	): Promise<HeadTree> {
-		const scratch = await realpath(await mkdtemp(join(tmpdir(), "melian-probe-head-")));
-		try {
-			const path = join(scratch, "tree");
-			await mkdir(path);
-			const entries = entriesOf(await gitOutput(repoRoot, ["ls-tree", "-r", "-z", "--full-tree", head]));
-			if (entries.length > limits.entries) throw new Error(`the head holds more than ${limits.entries} files`);
-			const unsafe = entries.find((entry) => !safe(entry.path));
-			if (unsafe !== undefined) throw new Error(`the head names a path that leaves its tree: ${unsafe.path}`);
-			const writes: Promise<void>[] = [];
-			const links: { target: string; at: string }[] = [];
-			// Each write's failure is caught as it happens, so none goes unhandled while the stream still runs.
-			let failed: unknown;
-			const read = blobs(repoRoot, entries, limits.bytes, (entry, content) => {
-				const at = join(path, ...entry.path.split("/"));
-				// Links last, so no file is written through one.
-				if (entry.mode === "120000") links.push({ target: content.toString("utf8"), at });
-				else
-					writes.push(
-						mkdir(dirname(at), { recursive: true })
-							.then(() => writeFile(at, Buffer.from(content), { flag: "wx" }))
-							.then(() => (entry.mode === "100755" ? chmod(at, 0o755) : undefined))
-							.catch((error: unknown) => {
-								failed ??= error;
-							}),
-					);
-			});
-			await read.finally(() => Promise.all(writes));
-			if (failed !== undefined) throw failed;
-			for (const link of links) {
-				await mkdir(dirname(link.at), { recursive: true });
-				await symlink(link.target, link.at);
-			}
-			const install = await HeadTree.#link(repoRoot, path);
-			return new HeadTree(scratch, path, install);
-		} catch (error) {
-			await rm(scratch, { recursive: true, force: true });
-			throw error;
-		}
-	}
-
-	// The checkout's dependency install, linked where the head would have its own, unless the head tracks one.
-	static async #link(repoRoot: string, path: string): Promise<string | undefined> {
-		const own = join(path, "node_modules");
-		if (await lstat(own).catch(() => undefined)) return undefined;
-		const installed = join(repoRoot, "node_modules");
-		if (!(await lstat(installed).catch(() => undefined))?.isDirectory()) return undefined;
-		const install = await realpath(installed);
-		await symlink(install, own);
-		return install;
-	}
-
-	/** Removes the tree. Safe to call twice. */
-	async close(): Promise<void> {
-		await rm(this.#scratch, { recursive: true, force: true });
-	}
-}
-
-/**
- * Runs one probe against the head of `revision` under `environment`, in a tree of the head written for it alone, and
- * returns its result, or why it was refused: a head the host does not allow, a probe out of bounds, or a sandbox that
- * cannot run here. A probe never runs unconfined.
+ * Runs one probe against the head of `revision` under `environment`, in a tree of the head that {@link Probe} writes for
+ * it alone, and returns its result, or why it was refused: a head the host does not allow or past `limits`, a probe
+ * out of bounds, or a sandbox that cannot run here. A probe never runs unconfined.
  */
 export async function runHeadProbe(
 	input: { readonly script: string; readonly files?: readonly ProbeFile[] },
 	revision: { readonly repoRoot: string; readonly head: string },
 	environment: ProbingEnvironment,
 	sandbox?: ProbeSandbox,
+	limits: { readonly entries: number; readonly bytes: number } = headTreeLimits,
 ): Promise<ProbeRun> {
-	let tree: HeadTree | undefined;
 	try {
-		tree = await HeadTree.open(revision.repoRoot, revision.head);
+		const commit = await boundedHead(revision.repoRoot, revision.head, limits);
 		const probe = await Probe.open(input, {
-			worktree: tree.path,
-			...(tree.install === undefined ? {} : { install: tree.install }),
+			head: { checkout: revision.repoRoot, commit },
 			writer: environment.writer,
 			trustWriters: environment.trustWriters,
 			timeout: environment.timeout ?? probeLimits.timeout.default,
@@ -273,8 +131,6 @@ export async function runHeadProbe(
 		return { result: { ...result }, milliseconds: Date.now() - started };
 	} catch (error) {
 		return { refused: error instanceof Error ? error.message : String(error) };
-	} finally {
-		await tree?.close();
 	}
 }
 

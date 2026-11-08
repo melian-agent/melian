@@ -1,0 +1,773 @@
+{
+	"range": "origin/main...ee37d392; a0078472...ee37d392 is the 13 rows on core static.ts lines 385-388 and checks.ts line 653",
+	"mutants": [
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 385,
+			"column": 5,
+			"endLine": 390,
+			"endColumn": 5,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place",
+			"survivorClasses": [],
+			"run": {
+				"head": "ee37d392",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 387,
+			"column": 6,
+			"endLine": 387,
+			"endColumn": 40,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > identifies an unlocated Enola result by its message though the intent file has code on line 1",
+			"survivorClasses": [],
+			"run": {
+				"head": "ee37d392",
+				"pattern": "^staticFindings > identifies an unlocated Enola result by its message though the intent file has code on line 1$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 387,
+			"column": 6,
+			"endLine": 387,
+			"endColumn": 40,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place",
+			"survivorClasses": [],
+			"run": {
+				"head": "ee37d392",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 387,
+			"column": 6,
+			"endLine": 387,
+			"endColumn": 40,
+			"mutatorName": "LogicalOperator",
+			"replacement": "tool === \"biome\" && tool === \"tsc\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place",
+			"survivorClasses": [],
+			"run": {
+				"head": "ee37d392",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 387,
+			"column": 6,
+			"endLine": 387,
+			"endColumn": 22,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "new-test",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place",
+			"survivorClasses": [
+				"compound-condition"
+			],
+			"run": {
+				"head": "ee37d392",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 387,
+			"column": 6,
+			"endLine": 387,
+			"endColumn": 22,
+			"mutatorName": "EqualityOperator",
+			"replacement": "tool !== \"biome\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place",
+			"survivorClasses": [],
+			"run": {
+				"head": "ee37d392",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 387,
+			"column": 15,
+			"endLine": 387,
+			"endColumn": 22,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "new-test",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place",
+			"survivorClasses": [
+				"compound-condition"
+			],
+			"run": {
+				"head": "ee37d392",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 387,
+			"column": 26,
+			"endLine": 387,
+			"endColumn": 40,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place",
+			"survivorClasses": [],
+			"run": {
+				"head": "ee37d392",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 387,
+			"column": 26,
+			"endLine": 387,
+			"endColumn": 40,
+			"mutatorName": "EqualityOperator",
+			"replacement": "tool !== \"tsc\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place",
+			"survivorClasses": [],
+			"run": {
+				"head": "ee37d392",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 387,
+			"column": 35,
+			"endLine": 387,
+			"endColumn": 40,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place",
+			"survivorClasses": [],
+			"run": {
+				"head": "ee37d392",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 388,
+			"column": 9,
+			"endLine": 388,
+			"endColumn": 70,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place",
+			"survivorClasses": [],
+			"run": {
+				"head": "ee37d392",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 388,
+			"column": 45,
+			"endLine": 388,
+			"endColumn": 68,
+			"mutatorName": "LogicalOperator",
+			"replacement": "region.startColumn && 1",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place",
+			"survivorClasses": [],
+			"run": {
+				"head": "ee37d392",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 403,
+			"column": 65,
+			"endLine": 403,
+			"endColumn": 109,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "ee37d392",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 403,
+			"column": 74,
+			"endLine": 403,
+			"endColumn": 86,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "ee37d392",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 403,
+			"column": 93,
+			"endLine": 403,
+			"endColumn": 107,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "ee37d392",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 407,
+			"column": 66,
+			"endLine": 417,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "ee37d392",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 408,
+			"column": 5,
+			"endLine": 408,
+			"endColumn": 39,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "ee37d392",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 408,
+			"column": 5,
+			"endLine": 408,
+			"endColumn": 39,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "ee37d392",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 408,
+			"column": 5,
+			"endLine": 408,
+			"endColumn": 39,
+			"mutatorName": "LogicalOperator",
+			"replacement": "tool !== \"biome\" || tool !== \"tsc\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "ee37d392",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 408,
+			"column": 5,
+			"endLine": 408,
+			"endColumn": 21,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "ee37d392",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 408,
+			"column": 5,
+			"endLine": 408,
+			"endColumn": 21,
+			"mutatorName": "EqualityOperator",
+			"replacement": "tool === \"biome\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "ee37d392",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 408,
+			"column": 14,
+			"endLine": 408,
+			"endColumn": 21,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "ee37d392",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 408,
+			"column": 25,
+			"endLine": 408,
+			"endColumn": 39,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "ee37d392",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 408,
+			"column": 25,
+			"endLine": 408,
+			"endColumn": 39,
+			"mutatorName": "EqualityOperator",
+			"replacement": "tool === \"tsc\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "ee37d392",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 408,
+			"column": 34,
+			"endLine": 408,
+			"endColumn": 39,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "ee37d392",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 409,
+			"column": 14,
+			"endLine": 409,
+			"endColumn": 30,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "ee37d392",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 409,
+			"column": 14,
+			"endLine": 409,
+			"endColumn": 30,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "ee37d392",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 409,
+			"column": 14,
+			"endLine": 409,
+			"endColumn": 30,
+			"mutatorName": "EqualityOperator",
+			"replacement": "tool !== \"biome\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "ee37d392",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 409,
+			"column": 23,
+			"endLine": 409,
+			"endColumn": 30,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "ee37d392",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 409,
+			"column": 33,
+			"endLine": 409,
+			"endColumn": 40,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "ee37d392",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 409,
+			"column": 43,
+			"endLine": 409,
+			"endColumn": 48,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "ee37d392",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 410,
+			"column": 41,
+			"endLine": 415,
+			"endColumn": 3,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "ee37d392",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 410,
+			"column": 73,
+			"endLine": 415,
+			"endColumn": 2,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "ee37d392",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 412,
+			"column": 11,
+			"endLine": 414,
+			"endColumn": 3,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "ee37d392",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 413,
+			"column": 9,
+			"endLine": 413,
+			"endColumn": 169,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "ee37d392",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 416,
+			"column": 8,
+			"endLine": 416,
+			"endColumn": 55,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "ee37d392",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 416,
+			"column": 24,
+			"endLine": 416,
+			"endColumn": 53,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "ee37d392",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 416,
+			"column": 25,
+			"endLine": 416,
+			"endColumn": 52,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "ee37d392",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 438,
+			"column": 64,
+			"endLine": 438,
+			"endColumn": 99,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place",
+			"survivorClasses": [],
+			"run": {
+				"head": "ee37d392",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 438,
+			"column": 74,
+			"endLine": 438,
+			"endColumn": 99,
+			"mutatorName": "LogicalOperator",
+			"replacement": "renamed.get(path) && path",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place",
+			"survivorClasses": [],
+			"run": {
+				"head": "ee37d392",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 439,
+			"column": 64,
+			"endLine": 439,
+			"endColumn": 78,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "ee37d392",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			}
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 653,
+			"column": 13,
+			"endLine": 653,
+			"endColumn": 111,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/checks.test.ts > runChecks > reuses the run when only the display setting output.emoji changes",
+			"survivorClasses": [],
+			"run": {
+				"head": "ee37d392",
+				"pattern": "^runChecks > reuses the run when only the display setting output\\.emoji changes$",
+				"collected": 1,
+				"result": "failed"
+			}
+		}
+	],
+	"total": 42,
+	"omitted": 0,
+	"unmutated": [
+		{
+			"file": "packages/pipeline/src/static.ts",
+			"reason": "it sends process signals, and a mutant there could signal a process outside the run"
+		}
+	]
+}

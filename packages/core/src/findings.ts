@@ -836,6 +836,17 @@ function withProof(own: FindingEvidence | undefined, proof: readonly EvidenceLoc
 }
 
 /**
+ * The message Melian stores for a Biome or tsc result of Melian rule `rule`, in place of the tool's own text, which can
+ * quote files outside the checkout.
+ */
+export function withheldToolText(check: "static.biome" | "static.tsc", rule: string): string {
+	// tsc may have checked a named project, or the projects a solution references, so the sentence points there.
+	const [name, command] =
+		check === "static.biome" ? ["Biome", "biome lint"] : ["tsc", "tsc --noEmit with the project Melian checked"];
+	return `${name} reports ${rule} here. Melian keeps none of ${name}'s text; run ${command} at this commit to read its message.`;
+}
+
+/**
  * One objection, as a SARIF 2.1.0 `result`: a runtime view over a {@link StoredFinding}, holding its fields as they are
  * stored, so `toJSON()` gives back the stored shape and a Pi Durable document stays JSON.
  *
@@ -1298,6 +1309,84 @@ export class Finding {
 		});
 	}
 
+	/**
+	 * The finding as publishing may render it. A finding that holds a Biome or tsc report, as its own or a member's, keeps
+	 * only its rule, place, severity, resolution and identity, with Melian's sentence for that report: a tool's text, or
+	 * a verifier's or caller's text about it, can quote a file outside the checkout. Any other finding is returned as it
+	 * is.
+	 */
+	publishable(): Finding {
+		const { source, reportedBy, alsoReportedAs, otherClaims } = this.properties;
+		// By membership, not by speaker: a merge can let a lens report speak with a Biome report's text.
+		const quoted = (check: string): check is "static.biome" | "static.tsc" =>
+			check === "static.biome" || check === "static.tsc";
+		const member = quoted(source.check)
+			? { check: source.check, rule: this.ruleId }
+			: [
+					...(alsoReportedAs ?? []).map((other) => ({ check: other.check, rule: other.ruleId })),
+					...(otherClaims ?? []).map((claim) => ({ check: claim.source.check, rule: claim.ruleId })),
+					...(reportedBy ?? []).map((other) => ({ check: other.check, rule: this.ruleId })),
+				].find((each) => quoted(each.check));
+		if (member === undefined) return this;
+		const said = withheldToolText(member.check as "static.biome" | "static.tsc", member.rule);
+		const tool = member.check === "static.biome" ? "biome" : "tsc";
+		const { id, path, occurrence, cause, severity, originalSeverity, resolution, decidedBy, status } =
+			this.properties;
+		const { dismissal, pastDismissals } = this.properties;
+		return new Finding({
+			ruleId: this.ruleId,
+			level: this.level,
+			message: { text: said },
+			partialFingerprints: this.partialFingerprints,
+			locations: this.locations.map(({ physicalLocation: { artifactLocation, region } }) => ({
+				physicalLocation: {
+					artifactLocation,
+					region: {
+						startLine: region.startLine,
+						...(region.startColumn === undefined ? {} : { startColumn: region.startColumn }),
+						...(region.endLine === undefined ? {} : { endLine: region.endLine }),
+						...(region.endColumn === undefined ? {} : { endColumn: region.endColumn }),
+					},
+				},
+			})),
+			properties: {
+				id,
+				path,
+				...(occurrence === undefined ? {} : { occurrence }),
+				cause,
+				severity,
+				...(originalSeverity === undefined ? {} : { originalSeverity }),
+				...(resolution === undefined ? {} : { resolution }),
+				...(decidedBy === undefined
+					? {}
+					: { decidedBy: { check: decidedBy.check, requirement: decidedBy.requirement } }),
+				status,
+				...(dismissal === undefined ? {} : { dismissal }),
+				...(pastDismissals === undefined ? {} : { pastDismissals }),
+				explanation: {
+					what: said,
+					whyHere:
+						cause === "introduced"
+							? `${tool} reports this at head but not at the base, so this change introduced it.`
+							: `${tool} reports this at the base too, so it predates this change.`,
+					whatToDo: `Change the code so ${tool} no longer reports ${member.rule}.`,
+				},
+				source,
+				...(reportedBy === undefined ? {} : { reportedBy }),
+				...(alsoReportedAs === undefined ? {} : { alsoReportedAs }),
+				...(otherClaims === undefined
+					? {}
+					: {
+							otherClaims: otherClaims.map((claim) => ({
+								id: claim.id,
+								ruleId: claim.ruleId,
+								source: claim.source,
+							})),
+						}),
+			},
+		});
+	}
+
 	/** The IDs of the reports the finding holds: its own, then each it lists in `alsoReportedAs`. */
 	reportIds(): string[] {
 		return [this.properties.id, ...(this.properties.alsoReportedAs ?? []).map((other) => other.id)];
@@ -1404,8 +1493,9 @@ export class Finding {
 	/**
 	 * What the finding requires under `source`, what resolution reads at its path. Each report it holds resolves through
 	 * {@link ResolutionWalk.decide}: a lens or static finding under its check and rule, once for each check that reported
-	 * it; a guardrail finding under each configured rule it matched, or its notice class. The caps apply to each, and
-	 * the strictest result stands. A `pre-existing` finding is never above the `preExisting` cap for its severity,
+	 * it; a guardrail finding under each configured rule it matched, or its notice class. Each lens that sighted the ID
+	 * resolves at the severity it reported, with its own judgement, and a refuted sighting is left out while another
+	 * stands. The caps apply to each, and the strictest result stands. A `pre-existing` finding is never above the `preExisting` cap for its severity,
 	 * `advisory` unless a folder opted in to `acknowledge`. An `affected` finding with no `cause` location marked
 	 * `proves` is never above `advisory`; one stored before Melian marked proving locations marks none, and any `cause`
 	 * location of it counts. The floors apply last, as {@link Finding.floored} lists them. It decides from rule, path,
@@ -1489,6 +1579,17 @@ export class Finding {
 		source: ResolutionSource,
 		options: { readonly unverified?: boolean; readonly defect?: Finding } = {},
 	): FindingDecision {
+		const sightings = this.#sightings();
+		if (sightings.length > 1) {
+			const standing = sightings.filter((sighting) => !sighting.refuted());
+			return (standing.length === 0 ? sightings : standing)
+				.map((sighting) => sighting.capped(source, options))
+				.reduce((strictest, each) =>
+					resolutionOrder.indexOf(each.resolution) < resolutionOrder.indexOf(strictest.resolution)
+						? each
+						: strictest,
+				);
+		}
 		const walk = ResolutionWalk.over(source);
 		const scope = options.defect ?? this;
 		const { cause } = scope.properties;
@@ -1586,6 +1687,22 @@ export class Finding {
 				source: claim.source,
 				reportedBy: [claim.source],
 			},
+		});
+	}
+
+	// One finding per lens that sighted this ID, at its own severity with its own judgement. A stored finding that lacks a
+	// claim for some producer keeps the merged severity for all of them, the stricter reading.
+	#sightings(): Finding[] {
+		const { source, reportedBy = [source] } = this.properties;
+		const claims = VerificationState.from(this).claims.filter(
+			(claim) =>
+				claim.id === this.id &&
+				reportedBy.some(({ check, version }) => check === claim.source.check && version === claim.source.version),
+		);
+		if (claims.length !== reportedBy.length) return [this];
+		return claims.map((claim) => {
+			const sighting = this.#claim(claim, this);
+			return claim.verification === undefined ? sighting : sighting.verifiedAs(claim.verification);
 		});
 	}
 

@@ -3,8 +3,8 @@
  "omitted": 0,
  "unmutated": [],
  "base": "bad332024338225ef04b8c76a32acdefbf64b414",
- "head": "075aeb4102dd98e5c156732fccf89e67e877755f",
- "note": "Enumerated at 1998a579; the commits after it change tests only, so every mutated source file is identical at the head. new-test rows are survivors no test kills yet, named in the progress-log entry.",
+ "head": "266173cf80cf286a9657e50b2a0997e62fcdb518",
+ "note": "Enumerated at 1998a579. The commits after it change tests, docs and the built-in trust-boundary LENS.md, which is not mutated, so every mutated source file is identical at the head. new-test rows are the nine survivors issue #311 names.",
  "command": "node scripts/enumerate-mutants.mjs origin/sandboxed-probes...HEAD --json --limit 10000",
  "runner": "Stryker's kills and survivors served only to choose each mutant's candidate tests. Every claimed kill was then run by hand: the mutant applied in a throwaway worktree, its named test run alone by its anchored ancestorTitles > title pattern, and the kill counted only when exactly one test was collected and it failed. Kills first seen as timeouts were run again alone.",
  "mutants": [
@@ -6266,7 +6266,7 @@
    "replacement": "{}",
    "result": "hang",
    "claim": "new-test",
-   "evidence": "Empties the stream's handler, so no blob is ever written and HeadTree.open never settles; the HeadTree tests hang rather than fail, which is no kill under the rule.",
+   "evidence": "Survives; issue #311 names the condition it needs and why no test sets it up: Empties the stream's handler, so no blob is ever written and HeadTree.open never settles; the HeadTree tests hang rather than fail, which is no kill under the rule.",
    "survivorClasses": []
   },
   {
@@ -6623,10 +6623,15 @@
    "endColumn": 43,
    "mutatorName": "ArithmeticOperator",
    "replacement": "end + 1 + size - 1",
-   "result": "survived",
-   "claim": "new-test",
-   "evidence": "Survived: only a chunk that ends between a blob and its trailing newline tells the bound apart, and no test controls git's chunking.",
-   "survivorClasses": []
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing.test.ts > a head tree and its probe, past the simple cases > has every file written when it opens",
+   "survivorClasses": [],
+   "collected": 1,
+   "exitCode": 1,
+   "tests": [
+    "packages/pipeline/test/probing.test.ts -t ^a head tree and its probe, past the simple cases > has every file written when it opens$"
+   ]
   },
   {
    "file": "packages/pipeline/src/probing.ts",
@@ -12814,8 +12819,8 @@
    "mutatorName": "ConditionalExpression",
    "replacement": "true",
    "result": "survived",
-   "claim": "new-test",
-   "evidence": "Survived: needs a resumed task whose prober was created before a crash; no crash test of a probing run exists yet.",
+   "claim": "equivalent",
+   "evidence": "The commit that creates the prober reads the checkpoint again and returns the prober it already holds, so a run that asks for one it has gets the same one.",
    "survivorClasses": []
   },
   {
@@ -13019,10 +13024,15 @@
    "endColumn": 54,
    "mutatorName": "ObjectLiteral",
    "replacement": "{}",
-   "result": "survived",
-   "claim": "new-test",
-   "evidence": "Survived: needs a resumed task whose prober was created before a crash; no crash test of a probing run exists yet.",
-   "survivorClasses": []
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-crash.test.ts > a level that probes across a crash > resumes the planner and the prober on the models they failed over to, and creates no second prober",
+   "survivorClasses": [],
+   "collected": 1,
+   "exitCode": 1,
+   "tests": [
+    "packages/pipeline/test/probing-crash.test.ts -t ^a level that probes across a crash > resumes the planner and the prober on the models they failed over to, and creates no second prober$"
+   ]
   },
   {
    "file": "packages/pipeline/src/review.ts",
@@ -14005,7 +14015,7 @@
    "replacement": "false",
    "result": "survived",
    "claim": "new-test",
-   "evidence": "Survived: a number budget is a pre-version-2 task's, which no test resumes into the probing code.",
+   "evidence": "Survives; issue #311 names the condition it needs and why no test sets it up: Survived: a number budget is a pre-version-2 task's, which no test resumes into the probing code.",
    "survivorClasses": []
   },
   {
@@ -15038,10 +15048,15 @@
    "endColumn": 75,
    "mutatorName": "LogicalOperator",
    "replacement": "started?.attempts[`${run.key}/prober`] && 0",
-   "result": "survived",
-   "claim": "new-test",
-   "evidence": "Survived: needs a resumed probing run whose prober had failed over; no crash test of a probing run exists yet.",
-   "survivorClasses": []
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-crash.test.ts > a level that probes across a crash > resumes the planner and the prober on the models they failed over to, and creates no second prober",
+   "survivorClasses": [],
+   "collected": 1,
+   "exitCode": 1,
+   "tests": [
+    "packages/pipeline/test/probing-crash.test.ts -t ^a level that probes across a crash > resumes the planner and the prober on the models they failed over to, and creates no second prober$"
+   ]
   },
   {
    "file": "packages/pipeline/src/review.ts",
@@ -15053,7 +15068,7 @@
    "replacement": "started.attempts",
    "result": "survived",
    "claim": "new-test",
-   "evidence": "Survived: needs a resumed probing run whose prober had failed over; no crash test of a probing run exists yet.",
+   "evidence": "Survives; issue #311 names the condition it needs and why no test sets it up: Survived: needs a resumed probing run whose prober had failed over; no crash test of a probing run exists yet.",
    "survivorClasses": []
   },
   {
@@ -19184,7 +19199,7 @@
    "replacement": "true",
    "result": "survived",
    "claim": "new-test",
-   "evidence": "Survived: the finder chooses the verifier's family only under a review plan, and no test runs a probing level under a plan with prober and planner in different families.",
+   "evidence": "Survives; issue #311 names the condition it needs and why no test sets it up: Survived: the finder chooses the verifier's family only under a review plan, and no test runs a probing level under a plan with prober and planner in different families.",
    "survivorClasses": []
   },
   {
@@ -19195,10 +19210,15 @@
    "endColumn": 88,
    "mutatorName": "ConditionalExpression",
    "replacement": "false",
-   "result": "survived",
-   "claim": "new-test",
-   "evidence": "Survived: the finder chooses the verifier's family only under a review plan, and no test runs a probing level under a plan with prober and planner in different families.",
-   "survivorClasses": []
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > chooses the verifier against the prober's family, which reported the finding, not the planner's",
+   "survivorClasses": [],
+   "collected": 1,
+   "exitCode": 1,
+   "tests": [
+    "packages/pipeline/test/probing-level.test.ts -t ^a level that probes > chooses the verifier against the prober's family, which reported the finding, not the planner's$"
+   ]
   },
   {
    "file": "packages/pipeline/src/review.ts",
@@ -19210,7 +19230,7 @@
    "replacement": "outcome?.status === \"done\" || (outcome.probing?.model ?? outcome.model) !== undefined",
    "result": "survived",
    "claim": "new-test",
-   "evidence": "Survived: the finder chooses the verifier's family only under a review plan, and no test runs a probing level under a plan with prober and planner in different families.",
+   "evidence": "Survives; issue #311 names the condition it needs and why no test sets it up: Survived: the finder chooses the verifier's family only under a review plan, and no test runs a probing level under a plan with prober and planner in different families.",
    "survivorClasses": []
   },
   {
@@ -19223,7 +19243,7 @@
    "replacement": "true",
    "result": "survived",
    "claim": "new-test",
-   "evidence": "Survived: the finder chooses the verifier's family only under a review plan, and no test runs a probing level under a plan with prober and planner in different families.",
+   "evidence": "Survives; issue #311 names the condition it needs and why no test sets it up: Survived: the finder chooses the verifier's family only under a review plan, and no test runs a probing level under a plan with prober and planner in different families.",
    "survivorClasses": []
   },
   {
@@ -19234,10 +19254,15 @@
    "endColumn": 29,
    "mutatorName": "EqualityOperator",
    "replacement": "outcome?.status !== \"done\"",
-   "result": "survived",
-   "claim": "new-test",
-   "evidence": "Survived: the finder chooses the verifier's family only under a review plan, and no test runs a probing level under a plan with prober and planner in different families.",
-   "survivorClasses": []
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > chooses the verifier against the prober's family, which reported the finding, not the planner's",
+   "survivorClasses": [],
+   "collected": 1,
+   "exitCode": 1,
+   "tests": [
+    "packages/pipeline/test/probing-level.test.ts -t ^a level that probes > chooses the verifier against the prober's family, which reported the finding, not the planner's$"
+   ]
   },
   {
    "file": "packages/pipeline/src/review.ts",
@@ -19249,7 +19274,7 @@
    "replacement": "outcome.status",
    "result": "survived",
    "claim": "new-test",
-   "evidence": "Survived: the finder chooses the verifier's family only under a review plan, and no test runs a probing level under a plan with prober and planner in different families.",
+   "evidence": "Survives; issue #311 names the condition it needs and why no test sets it up: Survived: the finder chooses the verifier's family only under a review plan, and no test runs a probing level under a plan with prober and planner in different families.",
    "survivorClasses": []
   },
   {
@@ -19273,7 +19298,7 @@
    "replacement": "true",
    "result": "survived",
    "claim": "new-test",
-   "evidence": "Survived: the finder chooses the verifier's family only under a review plan, and no test runs a probing level under a plan with prober and planner in different families.",
+   "evidence": "Survives; issue #311 names the condition it needs and why no test sets it up: Survived: the finder chooses the verifier's family only under a review plan, and no test runs a probing level under a plan with prober and planner in different families.",
    "survivorClasses": []
   },
   {
@@ -19284,10 +19309,15 @@
    "endColumn": 88,
    "mutatorName": "EqualityOperator",
    "replacement": "(outcome.probing?.model ?? outcome.model) === undefined",
-   "result": "survived",
-   "claim": "new-test",
-   "evidence": "Survived: the finder chooses the verifier's family only under a review plan, and no test runs a probing level under a plan with prober and planner in different families.",
-   "survivorClasses": []
+   "result": "killed",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts > a level that probes > chooses the verifier against the prober's family, which reported the finding, not the planner's",
+   "survivorClasses": [],
+   "collected": 1,
+   "exitCode": 1,
+   "tests": [
+    "packages/pipeline/test/probing-level.test.ts -t ^a level that probes > chooses the verifier against the prober's family, which reported the finding, not the planner's$"
+   ]
   },
   {
    "file": "packages/pipeline/src/review.ts",
@@ -19299,7 +19329,7 @@
    "replacement": "outcome.probing?.model && outcome.model",
    "result": "survived",
    "claim": "new-test",
-   "evidence": "Survived: the finder chooses the verifier's family only under a review plan, and no test runs a probing level under a plan with prober and planner in different families.",
+   "evidence": "Survives; issue #311 names the condition it needs and why no test sets it up: Survived: the finder chooses the verifier's family only under a review plan, and no test runs a probing level under a plan with prober and planner in different families.",
    "survivorClasses": []
   },
   {

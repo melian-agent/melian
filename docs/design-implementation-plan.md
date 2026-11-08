@@ -137,7 +137,7 @@ Done when the `melian/review` status is required on `main`, and every pull reque
     - Done when, surfacing: a re-scoped finding whose original severity is P2 or higher joins "Pre-existing, important", with the reason and the original scope.
     - Goldens: the thirteen that [the decision](decisions/2026-10-13-re-scope-held-for-the-compiler.md#what-is-held-for-the-step-that-builds-the-route) holds, in `packages/evals/verifier/`. Ten cover scope: seven refusals, a renamed file, a true pre-existing case, and a co-report. Two cover surfacing, a re-scoped P2 and a re-scoped P3. One covers two scope answers that conflict. The five ways past the text match join them.
 
-21. `[ ]` **Resolution per sighting.** Not started. Carry each sighting's severity and cause through to adjudication. Two producers that sight one finding ID are merged by the findings document at the highest severity and the strongest cause, so the finding resolves once per check at those values. [decisions/2026-10-13-resolution-as-built.md](decisions/2026-10-13-resolution-as-built.md) states the limit. Unblocks resolving two lenses that share a rule ID each under its own severity and caps.
+21. `[x]` **Resolution per sighting.** Built, [issue #230](https://github.com/melian-agent/melian/issues/230). Each lens's sighting of one finding ID resolves as its own report, under its own check, severity, mapping, ceiling, and unjudged cap, and a refuted sighting is left out while another stands. The cause caps read the merged cause, as they do for reports, so a merge never lowers what blocks. The severities come from the claims the findings document already keeps, so no stored shape changes. [decisions/2026-11-07-resolution-per-sighting.md](decisions/2026-11-07-resolution-per-sighting.md) records the rule.
 
 Steps 22 to 26 come from the review loop's lessons, which [design.md](design.md#the-review-loop) sets out. Step 22 is the first after step 16 lands, and step 25 needs step 23.
 
@@ -247,7 +247,7 @@ Landed since 2026-10-17:
 Open:
 
 - Step 23, build pull requests 2 to 4: comparisons by round, membership, and `#N` writes.
-- Steps 20 (re-scope through the compiler), 21 (resolution per sighting), 24 (delta re-review) and 25 (review outcome task).
+- Steps 20 (re-scope through the compiler), 24 (delta re-review) and 25 (review outcome task).
 - Step 34 (mutation evidence by enumeration and verification), designed and awaiting its attacking review.
 - Migration reopen coverage is under review in [pull request #163](https://github.com/melian-agent/melian/pull/163). It adds own-code recordings and SQLite reopens for the missing publication versions 1, 2, 3, 4 and 6, plus populated version-7 dismissals. Existing recorded tests cover versions 5 and 8. This closes the version-1 gap left by [pull request #155](https://github.com/melian-agent/melian/pull/155) once merged.
 - The comparison importer counts a CodeRabbit thread the bot resolved, citing a fixing commit, as an accepted finding. It is unscheduled (see the note after step 30) and can skew the statistics that step 10's retirement decision uses.
@@ -299,6 +299,10 @@ Planned from [the lens roadmap](decisions/2026-10-12-lens-roadmap-after-the-rese
 - `[ ]` A candidate rule on `contracts`, `instruction-input-unsupplied`: an instruction names an input the request built for it never supplies, as [decisions/2026-10-15-instruction-names-an-unsupplied-input.md](decisions/2026-10-15-instruction-names-an-unsupplied-input.md) records. It waits for a second instance after [pull request #116](https://github.com/melian-agent/melian/pull/116)'s. Done when the rule is in the lens's catalogue, with a golden drawn from finding C1 in [its record](../packages/evals/comparisons/2026-10-14-pr-116.md) and a clean twin whose builder supplies the input.
 - `[ ]` A cleanup lens for reuse, simplification, efficiency, and altitude. It sits outside the default tier, is advisory by default, and is raised per folder through milestone 2's step 18.
 - `[ ]` A specification-consistency lens, outside the default tier. It waits for a second sample and for goldens from a customer repository.
+
+Built early, in milestone 2:
+
+- `[x]` A builder's own rounds in Actions, from [issue #270](https://github.com/melian-agent/melian/issues/270). `.github/workflows/melian-round.yml` runs on `workflow_dispatch` with a pull request number. It refuses a fork's head, a head whose pusher lacks write permission, and a starter without it. It runs only from the default branch, builds Melian from that commit, and runs `melian review "#N"` with it. Its comment renders the verdict JSON alone: the verdict, the checks that did not run or left the committed routes, and every finding above advisory. It reads the Claude Code and Codex logins from the `melian-round` Environment, whose deployment branches are limited to `main`, never from repository secrets, so a branch's copy of the workflow never receives them. It hands Melian only the Codex login's access token. It is not the host: no state branch, no installation token, no publication, and its store is thrown away.
 
 Decided for the Actions host, not started:
 
