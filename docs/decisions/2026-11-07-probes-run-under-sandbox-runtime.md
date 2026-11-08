@@ -39,6 +39,30 @@ The maintainer's three rulings that day:
 
 `node_modules` links the install in entry by entry, by the same `linkDependencies` the static checks use, so a workspace package links to the tree's own copy, never the checkout's sources. The probe may read the install directories those links lead into, with the deny patterns above over them. A head that tracks its own `node_modules` keeps it, and nothing is linked.
 
+### A head's links stay inside its tree
+
+The tree is the head's, links included, and `Probe` writes into it as the reviewer, unconfined, before the sandbox starts. Two reviews in a row found a link that carried such a write to the host.
+
+- Codex's adversarial review of 199a13b8: a head tracked `generated` as a link to a host directory, and the allowlist copy of `generated/out.txt` overwrote the host's file.
+- The Actions round at b1c62ffb: a head tracked a workspace directory, `foo`, as a link to a host directory, and dependency linking created `foo/node_modules` there.
+- A probe of the second case also found a third. A head that linked `foo` to the tree's own root made `foo/node_modules` the tree's `node_modules`. `ln -s` then followed an install link already there and wrote into the reviewer's own `node_modules`.
+
+The maintainer ruled on 2026-11-08, in the builder's session, that a head whose tracked links leave the tree is refused. [The ruling's record](https://github.com/melian-agent/melian/issues/285#issuecomment-6720745287) sets out the question.
+
+After git writes the tree, `Probe` walks it and resolves every link one component at a time, as the kernel resolves it: `realpath` for each component that exists, and the rest as written once one does not. Folding `..` first would be wrong: with `sub -> .`, `sub/..` reads as inside and reaches the scratch. The head is refused when any link:
+
+- resolves outside the tree;
+- resolves to the tree's root;
+- resolves into a `node_modules`, where the install's links to the host land;
+- dangles with a `..` past its first missing component;
+- cannot be resolved, as in a loop.
+
+Names come from the filesystem. Each component resolves through `realpath(3)`, which returns a name as the filesystem stores it. When dependency linking will run, the tree's `node_modules` is created before the walk. So on a filesystem that ignores case or folds Unicode, such as APFS, `NODE_MODULES` and `node_moduleſ` resolve to `node_modules` and are refused. The coordinator's independent test review at 25b76f8f found that a letter-for-letter comparison let `packages/foo -> ../NODE_MODULES/dep` through, and dependency linking then wrote into the reviewer's install. A component under a regular file counts as missing, as an absent one does, so a dangling link through a file inside the tree is kept.
+
+The walk runs again after the allowlist copies, since a copy keeps the links of the reviewer's checkout as written. Dependency linking runs only after both walks pass. A refused head is one that could not use such a link inside the sandbox anyway: a link out is unreadable there, and the tree's `node_modules` is the install's. A relative link that stays inside the tree, live or dangling, is kept.
+
+Two attacking reviews of the rule were started and a safety classifier stopped each before it ran a probe. The second reviewer's reading named the root alias and the `..` folding. The builder ran both as tests, and they failed before the walk and pass after it. The walk has no bound of its own. It is linear in the tree's entries, as `checkout-index` is.
+
 Probes run for a writer's head only. A probe takes the host's `WriterTrust`, the decision `static.mutation` takes: a head a writer pushed to the base repository, or one the reviewer vouches for with `--trust-head`. A fork's head is refused, and so is a writer's under `trust.writers: false`. The sandbox narrows what a probe can reach; it does not make a stranger's head safe to execute on the reviewer's machine.
 
 Fail closed. Before a probe runs, sandbox-runtime says whether it supports the platform and whether its dependencies are present: bubblewrap, socat and ripgrep on Linux, nothing more on macOS. Melian probes on macOS and Linux only; Windows, which sandbox-runtime supports in alpha, is refused. When any answer is no, or the sandbox fails to start, the probe is refused with that reason and never runs unconfined. `melian doctor` runs an empty probe and prints whether it ran.

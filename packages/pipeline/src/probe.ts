@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { constants, existsSync, realpathSync, statSync } from "node:fs";
+import { constants, existsSync, lstatSync, readdirSync, readlinkSync, realpathSync, statSync } from "node:fs";
 import { cp, mkdir, mkdtemp, open as openFile, rm, writeFile } from "node:fs/promises";
 import { homedir, platform, tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, posix, relative, sep } from "node:path";
@@ -256,6 +256,67 @@ function allowed(checkout: string, read: readonly string[]): readonly (readonly 
 	});
 }
 
+// The head chooses its links, and setup writes into the tree as the reviewer, before the sandbox starts. A link that
+// leads outside the tree, to its root, or into a node_modules, where the install's links to the host land, would carry a
+// later write to the host, so a head holding one is refused. Each link resolves one component at a time, as the kernel
+// resolves it: folding `..` first would read `sub/..`, with `sub -> .`, as inside.
+function refuseLinksOut(tree: string): void {
+	const root = realpathSync.native(tree);
+	const pending = [root];
+	for (let directory = pending.pop(); directory !== undefined; directory = pending.pop()) {
+		for (const entry of readdirSync(directory, { withFileTypes: true })) {
+			const path = join(directory, entry.name);
+			if (entry.isDirectory()) pending.push(path);
+			else if (entry.isSymbolicLink() && !staysInside(root, path))
+				throw new ProbeError(
+					"invalidProbe",
+					`the head's link ${relative(root, path)} leads outside its tree or into its node_modules`,
+				);
+		}
+	}
+}
+
+// What the filesystem holds at `path`, without following a link there. A component under a regular file is missing, as
+// one that is absent is.
+function entryAt(path: string): ReturnType<typeof lstatSync> {
+	try {
+		return lstatSync(path, { throwIfNoEntry: false });
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException).code === "ENOTDIR") return undefined;
+		throw error;
+	}
+}
+
+// Each component resolves through realpath(3), which names it as the filesystem stores it: on one that ignores case,
+// `NODE_MODULES` comes back as the tree's `node_modules`, which the comparison below then sees.
+function staysInside(root: string, link: string): boolean {
+	const parts = readlinkSync(link).split("/");
+	let at = parts[0] === "" ? "/" : realpathSync.native(dirname(link));
+	for (const [index, part] of parts.entries()) {
+		if (part === "" || part === ".") continue;
+		if (part === "..") {
+			at = dirname(at);
+			continue;
+		}
+		const next = join(at, part);
+		if (entryAt(next) === undefined) {
+			// Nothing past a missing component can be resolved yet, and a `..` there could climb once it exists.
+			if (parts.slice(index + 1).includes("..")) return false;
+			at = join(next, ...parts.slice(index + 1));
+			break;
+		}
+		try {
+			at = realpathSync.native(next);
+		} catch {
+			return false;
+		}
+	}
+	const inside = relative(root, at);
+	return (
+		inside !== "" && inside !== ".." && !inside.startsWith(`..${sep}`) && !inside.split(sep).includes("node_modules")
+	);
+}
+
 // Writes the head's tracked tree into `tree` from a temporary repository that borrows the checkout's objects, then the
 // allowed paths. Returns the install directories the tree's links lead into, which the probe may read.
 async function writeHead({ checkout, commit, entries }: PlannedHead, tree: string): Promise<readonly string[]> {
@@ -270,18 +331,24 @@ async function writeHead({ checkout, commit, entries }: PlannedHead, tree: strin
 		const at = { GIT_DIR: repository, GIT_WORK_TREE: tree };
 		await git(tree, ["read-tree", commit], repository, at);
 		await git(tree, ["checkout-index", "--all"], repository, at);
-		const installs: string[] = [];
-		for (const [entry, real] of entries) {
+		// The install's directory exists before the walks, so a link to another spelling of it resolves to it.
+		const linking = entries.some(([entry]) => entry === "node_modules") && !existsSync(join(tree, "node_modules"));
+		if (linking) await mkdir(join(tree, "node_modules"));
+		refuseLinksOut(tree);
+		const copies = entries.filter(([entry]) => entry !== "node_modules");
+		for (const [entry, real] of copies) {
 			const target = join(tree, entry);
-			if (entry !== "node_modules") {
-				await mkdir(dirname(target), { recursive: true });
-				await cp(real, target, { recursive: true, verbatimSymlinks: true, force: true });
-			} else if (!existsSync(target)) {
-				const env = createNodeExecutionEnv(checkout);
-				const linked = await linkDependencies(env, backgroundContext, checkout, tree, repository, shell);
-				if ("failed" in linked) throw new ProbeError("invalidProbe", `the dependency install: ${linked.failed}`);
-				installs.push(...linked.linked.flatMap((path) => [path, realpathSync(path)]));
-			}
+			await mkdir(dirname(target), { recursive: true });
+			await cp(real, target, { recursive: true, verbatimSymlinks: true, force: true });
+		}
+		// A copy comes from the reviewer's checkout, and its links are kept as written.
+		if (copies.length > 0) refuseLinksOut(tree);
+		const installs: string[] = [];
+		if (linking) {
+			const env = createNodeExecutionEnv(checkout);
+			const linked = await linkDependencies(env, backgroundContext, checkout, tree, repository, shell);
+			if ("failed" in linked) throw new ProbeError("invalidProbe", `the dependency install: ${linked.failed}`);
+			installs.push(...linked.linked.flatMap((path) => [path, realpathSync(path)]));
 		}
 		return [...new Set(installs)];
 	} catch (error) {
@@ -428,18 +495,23 @@ export type SandboxRuntime = Pick<
 	"isSupportedPlatform" | "checkDependencies" | "initialize" | "wrapWithSandboxArgv" | "cleanupAfterCommand" | "reset"
 >;
 
+// sandbox-runtime's manager is one per process, so every wrapper of one runtime shares its session count and queue; a
+// count of its own would let one wrapper's last close reset the manager under another's open probe.
+const sessionsOf = new WeakMap<SandboxRuntime, { count: number; queue: Promise<void> }>();
+
 /** sandbox-runtime as a {@link ProbeSandbox}. Its manager is one per process, so one session serves every open probe. */
 export class RuntimeSandbox implements ProbeSandbox {
 	readonly platform: "darwin" | "linux";
 	readonly #name: string;
 	readonly #runtime: SandboxRuntime;
-	#sessions = 0;
 	// open and close run one at a time on the shared manager, so a reset can never complete after a newer open tears its
 	// session down. Each call waits for the ones before it, and a thrown step does not poison the chain.
-	#queue: Promise<void> = Promise.resolve();
+	readonly #sessions: { count: number; queue: Promise<void> };
 
 	constructor(runtime: SandboxRuntime = SandboxManager, name: string = platform()) {
 		this.#runtime = runtime;
+		this.#sessions = sessionsOf.get(runtime) ?? { count: 0, queue: Promise.resolve() };
+		sessionsOf.set(runtime, this.#sessions);
 		this.#name = name;
 		this.platform = name === "darwin" ? "darwin" : "linux";
 	}
@@ -456,8 +528,8 @@ export class RuntimeSandbox implements ProbeSandbox {
 	}
 
 	#enqueue(step: () => Promise<void>): Promise<void> {
-		const run = this.#queue.then(step);
-		this.#queue = run.then(
+		const run = this.#sessions.queue.then(step);
+		this.#sessions.queue = run.then(
 			() => {},
 			() => {},
 		);
@@ -466,12 +538,12 @@ export class RuntimeSandbox implements ProbeSandbox {
 
 	open(): Promise<void> {
 		return this.#enqueue(async () => {
-			if (this.#sessions === 0)
+			if (this.#sessions.count === 0)
 				await this.#runtime.initialize({
 					network: { allowedDomains: [], deniedDomains: [] },
 					filesystem: { denyRead: [], allowRead: [], allowWrite: [], denyWrite: [] },
 				});
-			this.#sessions++;
+			this.#sessions.count++;
 		});
 	}
 
@@ -496,9 +568,9 @@ export class RuntimeSandbox implements ProbeSandbox {
 
 	close(): Promise<void> {
 		return this.#enqueue(async () => {
-			if (this.#sessions === 0) return;
-			this.#sessions--;
-			if (this.#sessions === 0) await this.#runtime.reset();
+			if (this.#sessions.count === 0) return;
+			this.#sessions.count--;
+			if (this.#sessions.count === 0) await this.#runtime.reset();
 		});
 	}
 }
@@ -546,6 +618,9 @@ export class Probe {
 	readonly #sandbox: ProbeSandbox;
 	#closed = false;
 	#running = false;
+	// A wrap still running past its setup bound, released once it settles. close() waits for it before releasing the
+	// session, since a reset under it would let its late release take a newer probe's resources.
+	#lateWrap: Promise<void> | undefined;
 
 	private constructor(
 		scratch: string,
@@ -618,16 +693,23 @@ export class Probe {
 				{ script: "process.exit(0);\n" },
 				{ writer: { trusted: true, by: "reviewer" }, trustWriters: true, sandbox },
 			);
+			let result: ProbeResult;
+			let cleanup!: CleanupOutcome;
 			try {
-				const result = await probe.run();
-				if (result.exitCode === 0) return { available: true };
+				result = await probe.run();
+			} finally {
+				cleanup = await probe.close();
+			}
+			if (result.error !== undefined)
+				return { available: false, reason: `stopping an empty probe's processes failed: ${result.error}` };
+			if (result.exitCode !== 0)
 				return {
 					available: false,
 					reason: `an empty probe exited ${result.exitCode ?? result.signal}${result.output === "" ? "" : `: ${result.output.trim()}`}`,
 				};
-			} finally {
-				await probe.close();
-			}
+			if (!cleanup.removed)
+				return { available: false, reason: `an empty probe's scratch could not be removed: ${cleanup.reason}` };
+			return { available: true };
 		} catch (error) {
 			return { available: false, reason: error instanceof Error ? error.message : String(error) };
 		}
@@ -677,15 +759,28 @@ export class Probe {
 		let size = 0;
 		let truncated = false;
 		let child: ProbeProcess | undefined;
+		let argv: readonly string[] | undefined;
+		let outcome: ProbeResult | undefined;
 		try {
 			// Starting the sandbox is bounded apart from the run, so wrapping the command cannot hang unbounded before the
 			// probe's own time limit begins.
-			const wrapped = this.#sandbox.wrap(command, this.policy).catch((error: unknown) => {
+			const wrapping = this.#sandbox.wrap(command, this.policy);
+			const wrapped = wrapping.catch((error: unknown) => {
 				throw new ProbeError("sandboxUnavailable", `the sandbox refused the probe: ${String(error)}`, {
 					cause: error,
 				});
 			});
-			const argv = await withBound(wrapped, probeLimits.setup, "the sandbox did not wrap the probe");
+			// sandbox-runtime counts the sandboxes it wrapped and releases one that threw itself, so only a wrap that succeeded
+			// is released, a late one once it settles; a second release would take a running sandbox's mount points.
+			argv = await withBound(wrapped, probeLimits.setup, "the sandbox did not wrap the probe").catch(
+				(error: unknown) => {
+					this.#lateWrap = wrapping.then(
+						() => this.#sandbox.cleanup(),
+						() => {},
+					);
+					throw error;
+				},
+			);
 			child = ProbeProcess.start(argv, {
 				cwd: tree,
 				env: {
@@ -715,12 +810,18 @@ export class Probe {
 			// A cut at the output limit can fall inside a multi-byte character; decode only up to the last whole one.
 			const output = new TextDecoder().decode(truncated ? bytes.subarray(0, completeUtf8(bytes)) : bytes);
 			const result = { exitCode: exit.code, signal: exit.signal, output, truncated, timedOut: exit.timedOut };
-			return exit.error === undefined ? result : { ...result, error: exit.error };
+			outcome = exit.error === undefined ? result : { ...result, error: exit.error };
 		} finally {
-			await child?.stop();
-			this.#sandbox.cleanup();
+			const stopped = await child?.stop().then(
+				() => undefined,
+				(error: unknown) => (error instanceof Error ? error.message : String(error)),
+			);
+			if (argv !== undefined) this.#sandbox.cleanup();
 			this.#running = false;
+			// A run that settled keeps its result, with the failed stop as its error unless it already holds one.
+			if (outcome !== undefined && stopped !== undefined) outcome = { ...outcome, error: outcome.error ?? stopped };
 		}
+		return outcome;
 	}
 
 	/**
@@ -739,7 +840,14 @@ export class Probe {
 			// rm's force already treats a scratch someone else removed as gone, so any error here is a real leftover.
 			return { removed: false, leftover: this.#scratch, reason: (error as Error).message };
 		} finally {
-			await this.#sandbox.close();
+			// A wrap that never settles keeps the session: a leaked session is safe, a reset under a live wrap is not.
+			const settled =
+				this.#lateWrap === undefined ||
+				(await withBound(this.#lateWrap, probeLimits.setup, "the sandbox did not wrap the probe").then(
+					() => true,
+					() => false,
+				));
+			if (settled) await this.#sandbox.close();
 		}
 	}
 }

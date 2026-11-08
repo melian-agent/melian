@@ -5,6 +5,7 @@ import {
 	mkdtempSync,
 	readdirSync,
 	readFileSync,
+	readlinkSync,
 	realpathSync,
 	rmSync,
 	statSync,
@@ -155,6 +156,22 @@ describe("Probe.open", () => {
 		expect(error.code).toBe("sandboxUnavailable");
 		expect(error.message).toBe("the probe could not start: Error: user namespaces are restricted");
 		expect(error.cause).toEqual(new Error("user namespaces are restricted"));
+		expect(left()).toEqual([]);
+	});
+
+	it("wraps a ProbeError the open raises unless it refuses the probe itself", async () => {
+		const late = new ProbeError("sandboxUnavailable", "the sandbox did not start within 120s");
+		const { sandbox } = passthrough({
+			open: async () => {
+				throw late;
+			},
+		});
+		const error = await refusal({ script: "" }, options(sandbox));
+		expect(error).toMatchObject({
+			code: "sandboxUnavailable",
+			message: "the probe could not start: ProbeError: the sandbox did not start within 120s",
+			cause: late,
+		});
 		expect(left()).toEqual([]);
 	});
 
@@ -320,6 +337,7 @@ describe("Probe.open", () => {
 		const error = await refusal({ script: "" }, options(sandbox, { head: { checkout: worktree, commit: absent } }));
 		expect(error).toMatchObject({ code: "invalidProbe" });
 		expect(error.message).toMatch(new RegExp(`^the head ${absent} could not be written from ${worktree}: `));
+		expect(error.cause).toBeInstanceOf(Error);
 		expect(sandbox.open).not.toHaveBeenCalled();
 		expect(left()).toEqual([]);
 		// A SHA-256 repository's hash is a full hash too, so it gets as far as git.
@@ -412,6 +430,149 @@ describe("Probe.open with a head's allowlist", () => {
 		await probe.close();
 	});
 
+	it("copies an allowed path over the tracked tree, keeping its links as written", async () => {
+		const { sandbox } = passthrough();
+		writeFileSync(join(checkout, "tracked.txt"), "local\n");
+		symlinkSync("out.txt", join(checkout, "generated", "link"));
+		const probe = await Probe.open({ script: "" }, options(sandbox, atHead(["tracked.txt", "generated"])));
+		const tree = probe.policy.read[0]!;
+		expect(readFileSync(join(tree, "tracked.txt"), "utf8")).toBe("local\n");
+		expect(readlinkSync(join(tree, "generated", "link"))).toBe("out.txt");
+		await probe.close();
+	});
+
+	it.each([["generated"], ["generated/out.txt"], ["node_modules"]])(
+		"refuses %s in probe.read where the head tracks a link on its path, and writes nothing outside",
+		async (entry) => {
+			const { sandbox } = passthrough();
+			const outside = join(scratch, "outside");
+			mkdirSync(outside);
+			writeFileSync(join(outside, "out.txt"), "canary\n");
+			const live = entry.split("/")[0]!;
+			rmSync(join(checkout, live), { recursive: true, force: true });
+			symlinkSync(outside, join(checkout, live));
+			gitIn(checkout, "add", "--all");
+			gitIn(checkout, "commit", "--quiet", "-m", "link the allowed path out");
+			head = gitIn(checkout, "rev-parse", "HEAD");
+			rmSync(join(checkout, live));
+			mkdirSync(join(checkout, live));
+			writeFileSync(join(checkout, live, "out.txt"), "written by the copy\n");
+			const error = await refusal({ script: "" }, options(sandbox, atHead([entry])));
+			expect(error).toMatchObject({
+				code: "invalidProbe",
+				message: `the head's link ${entry.split("/")[0]} leads outside its tree or into its node_modules`,
+			});
+			expect(readdirSync(outside)).toEqual(["out.txt"]);
+			expect(readFileSync(join(outside, "out.txt"), "utf8")).toBe("canary\n");
+		},
+	);
+
+	// Commits the links `make` writes into the checkout, then removes them from the working tree, so the head holds them
+	// and the live checkout does not.
+	function headWithLinks(make: (at: string) => readonly string[]): void {
+		const made = make(checkout);
+		gitIn(checkout, "add", "--all");
+		gitIn(checkout, "commit", "--quiet", "-m", "links");
+		head = gitIn(checkout, "rev-parse", "HEAD");
+		for (const path of made) rmSync(join(checkout, path), { force: true });
+	}
+
+	const linkRefusal = (path: string) => ({
+		code: "invalidProbe",
+		message: `the head's link ${path} leads outside its tree or into its node_modules`,
+	});
+
+	it("refuses a head that links a workspace out of its tree, and writes nothing outside", async () => {
+		const { sandbox } = passthrough();
+		const outside = join(scratch, "outside");
+		mkdirSync(outside);
+		headWithLinks((at) => {
+			symlinkSync(outside, join(at, "foo"));
+			return ["foo"];
+		});
+		mkdirSync(join(checkout, "foo", "node_modules", "only-foo"), { recursive: true });
+		mkdirSync(join(checkout, "node_modules"));
+		symlinkSync("../foo", join(checkout, "node_modules", "foo"));
+		const error = await refusal({ script: "" }, options(sandbox, { head: { checkout, commit: head } }));
+		expect(error).toMatchObject(linkRefusal("foo"));
+		expect(readdirSync(outside)).toEqual([]);
+	});
+
+	it("refuses a head that links a workspace to its own root, and writes nothing into the install", async () => {
+		const { sandbox } = passthrough();
+		headWithLinks((at) => {
+			symlinkSync(".", join(at, "foo"));
+			return ["foo"];
+		});
+		mkdirSync(join(checkout, "foo", "node_modules", "dep"), { recursive: true });
+		mkdirSync(join(checkout, "node_modules", "dep"), { recursive: true });
+		symlinkSync("../foo", join(checkout, "node_modules", "foo"));
+		const error = await refusal({ script: "" }, options(sandbox, { head: { checkout, commit: head } }));
+		expect(error).toMatchObject(linkRefusal("foo"));
+		expect(readdirSync(join(checkout, "node_modules", "dep"))).toEqual([]);
+	});
+
+	it.each([
+		["an absolute link out", (at: string) => symlinkSync(join(scratch, "elsewhere"), join(at, "l"))],
+		["a dangling link into node_modules", (at: string) => symlinkSync("node_modules/x", join(at, "l"))],
+		["a link to node_modules itself", (at: string) => symlinkSync("node_modules", join(at, "l"))],
+		[
+			"a link that climbs out through a link to the root",
+			(at: string) => {
+				symlinkSync(".", join(at, "sub"));
+				symlinkSync("sub/..", join(at, "l"));
+			},
+		],
+		[
+			"a dangling link that climbs out past a missing directory",
+			(at: string) => symlinkSync("missing/../..", join(at, "l")),
+		],
+		[
+			"a link loop",
+			(at: string) => {
+				symlinkSync("m", join(at, "l"));
+				symlinkSync("l", join(at, "m"));
+			},
+		],
+	])("refuses a head holding %s", async (_, make) => {
+		const { sandbox } = passthrough();
+		headWithLinks((at) => {
+			make(at);
+			return [];
+		});
+		const error = await refusal({ script: "" }, options(sandbox, atHead([])));
+		expect(error.code).toBe("invalidProbe");
+		expect(error.message).toMatch(/^the head's link (l|m|sub) leads outside its tree or into its node_modules$/);
+	});
+
+	it("opens a head whose links stay inside its tree", async () => {
+		const { sandbox } = passthrough();
+		headWithLinks((at) => {
+			mkdirSync(join(at, "real"));
+			writeFileSync(join(at, "real", "file.txt"), "inside\n");
+			symlinkSync("real/file.txt", join(at, "file"));
+			symlinkSync("../real", join(at, "real", "self"));
+			symlinkSync("not-yet", join(at, "pending"));
+			return [];
+		});
+		const probe = await Probe.open({ script: "" }, options(sandbox, atHead([])));
+		expect(readFileSync(join(probe.policy.read[0]!, "file"), "utf8")).toBe("inside\n");
+		await probe.close();
+	});
+
+	it("links no install over a node_modules the head tracks", async () => {
+		const { sandbox } = passthrough();
+		mkdirSync(join(checkout, "node_modules"));
+		writeFileSync(join(checkout, "node_modules", "kept.js"), "tracked\n");
+		gitIn(checkout, "add", "--all");
+		gitIn(checkout, "commit", "--quiet", "-m", "track node_modules");
+		head = gitIn(checkout, "rev-parse", "HEAD");
+		const probe = await Probe.open({ script: "" }, options(sandbox, { head: { checkout, commit: head } }));
+		expect(probe.policy.read).not.toContain(join(checkout, "node_modules"));
+		expect(readFileSync(join(probe.policy.read[0]!, "node_modules", "kept.js"), "utf8")).toBe("tracked\n");
+		await probe.close();
+	});
+
 	it.each([
 		["an absolute path", () => "/etc"],
 		["a path through ..", () => "generated/../.."],
@@ -419,6 +580,14 @@ describe("Probe.open with a head's allowlist", () => {
 			"a link that resolves outside the checkout",
 			() => {
 				symlinkSync(scratch, join(checkout, "out"));
+				return "out";
+			},
+		],
+		[
+			"a link to a directory beside the checkout",
+			() => {
+				mkdirSync(join(scratch, "beside"));
+				symlinkSync(join(scratch, "beside"), join(checkout, "out"));
 				return "out";
 			},
 		],
@@ -734,6 +903,59 @@ console.log(JSON.stringify({ marker: readFileSync("marker", "utf8"), home: proce
 		await expect(probe.run()).rejects.toMatchObject({ code: "closed" });
 	});
 
+	it.each([
+		["settles", true],
+		["never settles", false],
+	])("holds the sandbox's session at close while a wrap past the setup bound %s", async (_, settles) => {
+		const order: string[] = [];
+		let settle!: (argv: never) => void;
+		const { sandbox } = passthrough({
+			wrap: () =>
+				new Promise<never>((resolve) => {
+					settle = resolve;
+				}),
+		});
+		sandbox.cleanup.mockImplementation(() => order.push("cleanup"));
+		sandbox.close.mockImplementation(async () => {
+			order.push("close");
+		});
+		const probe = await Probe.open({ script: "" }, options(sandbox));
+		vi.useFakeTimers({ toFake: ["setTimeout"] });
+		try {
+			const refused = expect(probe.run()).rejects.toMatchObject({ code: "sandboxUnavailable" });
+			await vi.advanceTimersByTimeAsync(probeLimits.setup);
+			await refused;
+			let closed = false;
+			const closing = probe.close().finally(() => {
+				closed = true;
+			});
+			// Real time, since only setTimeout is faked: an unwaited close removes its scratch in a few milliseconds.
+			for (const began = Date.now(); Date.now() - began < 200; )
+				await new Promise((resolve) => setImmediate(resolve));
+			expect({ closed, order }).toEqual({ closed: false, order: [] });
+			if (settles) settle(["/bin/true"] as never);
+			else await vi.advanceTimersByTimeAsync(probeLimits.setup);
+			expect(await closing).toEqual({ removed: true });
+		} finally {
+			vi.useRealTimers();
+		}
+		expect(order).toEqual(settles ? ["cleanup", "close"] : []);
+	});
+
+	it("keeps a settled run's result when the final stop fails, and still releases the sandbox", async () => {
+		const { sandbox } = passthrough();
+		const probe = await Probe.open({ script: "process.exit(3);" }, options(sandbox));
+		const stop = vi.spyOn(ProbeProcess.prototype, "stop").mockRejectedValue(new Error("ps failed"));
+		try {
+			expect(await probe.run()).toMatchObject({ exitCode: 3, timedOut: false, error: "ps failed" });
+			expect(sandbox.cleanup).toHaveBeenCalledOnce();
+			expect((await probe.run()).exitCode).toBe(3);
+		} finally {
+			stop.mockRestore();
+			await probe.close();
+		}
+	});
+
 	it("refuses to run when the sandbox refuses the wrap, and runs nothing", async () => {
 		const { sandbox } = passthrough({
 			wrap: async () => {
@@ -746,9 +968,44 @@ console.log(JSON.stringify({ marker: readFileSync("marker", "utf8"), home: proce
 			message: "the sandbox refused the probe: Error: profile too long",
 			cause: new Error("profile too long"),
 		});
-		expect(sandbox.cleanup).toHaveBeenCalledOnce();
+		// sandbox-runtime releases a wrap that threw itself; a second release would take a running sandbox's mount points.
+		expect(sandbox.cleanup).not.toHaveBeenCalled();
 		await probe.close();
 	});
+
+	it.each([
+		["resolves", 1],
+		["rejects", 0],
+	])(
+		"releases a wrap that %s after the setup bound only once it settles, and only if it succeeded",
+		async (_, releases) => {
+			let settle!: { resolve: (argv: never) => void; reject: (error: Error) => void };
+			const { sandbox } = passthrough({
+				wrap: () =>
+					new Promise<never>((resolve, reject) => {
+						settle = { resolve, reject };
+					}),
+			});
+			const probe = await Probe.open({ script: "" }, options(sandbox));
+			vi.useFakeTimers({ toFake: ["setTimeout"] });
+			try {
+				const refused = expect(probe.run()).rejects.toMatchObject({
+					code: "sandboxUnavailable",
+					message: "the sandbox did not wrap the probe within 120s",
+				});
+				await vi.advanceTimersByTimeAsync(probeLimits.setup);
+				await refused;
+			} finally {
+				vi.useRealTimers();
+			}
+			expect(sandbox.cleanup).not.toHaveBeenCalled();
+			if (releases === 1) settle.resolve(["/bin/true"] as never);
+			else settle.reject(new Error("late"));
+			await new Promise((resolve) => setTimeout(resolve, 20));
+			expect(sandbox.cleanup).toHaveBeenCalledTimes(releases);
+			await probe.close();
+		},
+	);
 
 	it("removes a scratch whose only restrictive directories are the fixed ones", async () => {
 		const { sandbox } = passthrough();
@@ -813,6 +1070,29 @@ describe("Probe.availability", () => {
 		const silent = passthrough({ wrap: async () => ["/bin/sh", "-c", "exit 5"] as never });
 		expect(await Probe.availability(silent.sandbox)).toEqual({ available: false, reason: "an empty probe exited 5" });
 		expect(left()).toEqual([]);
+	});
+
+	it("is unavailable where an empty probe exits 0 but its teardown fails", async () => {
+		const stop = vi.spyOn(ProbeProcess.prototype, "stop").mockRejectedValue(new Error("ps failed"));
+		try {
+			expect(await Probe.availability(passthrough().sandbox)).toEqual({
+				available: false,
+				reason: "stopping an empty probe's processes failed: ps failed",
+			});
+		} finally {
+			stop.mockRestore();
+		}
+		const close = vi
+			.spyOn(Probe.prototype, "close")
+			.mockResolvedValue({ removed: false, leftover: "/tmp/melian-probe-x", reason: "EPERM: rmdir" });
+		try {
+			expect(await Probe.availability(passthrough().sandbox)).toEqual({
+				available: false,
+				reason: "an empty probe's scratch could not be removed: EPERM: rmdir",
+			});
+		} finally {
+			close.mockRestore();
+		}
 	});
 });
 
@@ -905,6 +1185,18 @@ describe("RuntimeSandbox", () => {
 		} finally {
 			vi.useRealTimers();
 		}
+	});
+
+	it("shares one session count among every wrapper of one runtime, so closing one never resets another's", async () => {
+		const { fake, names } = runtime();
+		const first = new RuntimeSandbox(fake, "linux");
+		const second = new RuntimeSandbox(fake, "linux");
+		await first.open();
+		await second.open();
+		await first.close();
+		expect(names().filter((name) => name === "initialize" || name === "reset")).toEqual(["initialize"]);
+		await second.close();
+		expect(names().filter((name) => name === "initialize" || name === "reset")).toEqual(["initialize", "reset"]);
 	});
 
 	it("serialises open and close so a reset never tears down a newer session", async () => {

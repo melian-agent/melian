@@ -230,18 +230,24 @@ console.log(JSON.stringify(out));
 				expect(seen[".npmrc"]).not.toContain("npm_FAKE");
 			});
 
-			it("cannot read through a tracked link into the live checkout or outside it", {
+			it("reads through a tracked link inside the tree, and never opens a head linking out of it", {
 				timeout: 60_000,
 			}, async () => {
-				symlinkSync(join(repository, ".npmrc"), join(repository, "into-checkout"));
-				symlinkSync(join(outside, "secret.txt"), join(repository, "out-link"));
 				symlinkSync("tracked.txt", join(repository, "in-link"));
-				const head = commit();
-				writeFileSync(join(repository, ".npmrc"), "//registry.npmjs.org/:_authToken=npm_FAKE0000000000000000\n");
-				const seen = await reads(["into-checkout", "out-link", "in-link"], head);
-				expect(seen["in-link"]).toBe("committed");
-				expect(seen["into-checkout"]).not.toContain("npm_FAKE");
-				expect(seen["out-link"]).not.toBe("secret");
+				expect((await reads(["in-link"], commit()))["in-link"]).toBe("committed");
+				for (const [name, target] of [
+					["into-checkout", join(repository, ".npmrc")],
+					["out-link", join(outside, "secret.txt")],
+				] as const) {
+					symlinkSync(target, join(repository, name));
+					const head = commit();
+					await expect(reads([name], head)).rejects.toMatchObject({
+						code: "invalidProbe",
+						message: `the head's link ${name} leads outside its tree or into its node_modules`,
+					});
+					rmSync(join(repository, name));
+					commit();
+				}
 			});
 
 			it("reads a tracked file as committed, not as the reviewer modified it", { timeout: 60_000 }, async () => {
@@ -505,6 +511,8 @@ flood();
 		it("imports a module from the head's worktree and calls it", { timeout: 60_000 }, async () => {
 			mkdirSync(join(worktree, "lib"));
 			writeFileSync(join(worktree, "lib", "sum.mjs"), "export function sum(a, b) { return a + b; }\n");
+			// The suite's live checkout links out, and a head that tracks such a link is refused.
+			rmSync(join(worktree, "escape"));
 			head = committed(worktree);
 			const script = `
 import { readFileSync } from "node:fs";
@@ -588,12 +596,21 @@ console.log("ready");
 			}
 		});
 
-		it("cannot connect to a unix socket in the worktree", { timeout: 60_000 }, async () => {
-			// A host service a probe could reach over a pathname socket in the readable worktree; on Linux the seccomp
-			// helper blocks the socket() call, on macOS the socket is not in allowUnixSockets. The server records any
-			// connection; the probe must make none.
+		it("cannot connect to a unix socket in a path it may read", { timeout: 60_000 }, async () => {
+			// A host service a probe could reach over a pathname socket in the install, which the probe may read; on Linux
+			// the seccomp helper blocks the socket() call, on macOS the socket is not in allowUnixSockets. The probe reads a
+			// file beside the socket, so a refused connection is the socket rule's, not the filesystem's. The server records
+			// any connection; the probe must make none. macOS refuses a socket path past 104 bytes, and its temporary
+			// directory alone takes about 50, so this test's checkout has a short name of its own.
 			let connections = 0;
-			const socketPath = join(worktree, "service.sock");
+			const checkout = realpathSync(mkdtempSync(join(tmpdir(), "m-")));
+			writeFileSync(join(checkout, ".gitignore"), "node_modules/\n");
+			const service = join(checkout, "node_modules", "s");
+			mkdirSync(service, { recursive: true });
+			const beside = join(service, "b.txt");
+			writeFileSync(beside, "readable\n");
+			const socketPath = join(service, "s.sock");
+			expect(Buffer.byteLength(socketPath)).toBeLessThan(104);
 			const server = createServer((socket) => {
 				connections++;
 				socket.end();
@@ -605,21 +622,24 @@ console.log("ready");
 			try {
 				const script = `
 import { connect } from "node:net";
+import { readFileSync } from "node:fs";
 const outcome = await new Promise((resolve) => {
 	const socket = connect(${JSON.stringify(socketPath)});
 	socket.once("connect", () => { socket.destroy(); resolve("connected"); });
 	socket.once("error", (error) => resolve(error.code ?? "error"));
 	setTimeout(() => { socket.destroy(); resolve("timeout"); }, 3000);
 });
-console.log(JSON.stringify({ outcome }));
+console.log(JSON.stringify({ beside: readFileSync(${JSON.stringify(beside)}, "utf8"), outcome }));
 process.exit(0);
 `;
-				const result = await probed({ script });
+				const result = await probed({ script }, { head: { checkout, commit: committed(checkout) } });
 				expect(result).toMatchObject({ exitCode: 0, timedOut: false });
+				expect(JSON.parse(result.output).beside).toBe("readable\n");
 				expect(JSON.parse(result.output).outcome).not.toBe("connected");
 				expect(connections).toBe(0);
 			} finally {
 				await new Promise((resolve) => server.close(resolve));
+				rmSync(checkout, { recursive: true, force: true });
 			}
 		});
 	},

@@ -70,7 +70,8 @@ function status(result: ProbeResult, timeout: number): string {
 	const seconds = timeout / 1000;
 	if (result.timedOut) return `Probe: timed out after ${seconds} second${seconds === 1 ? "" : "s"}`;
 	const ended = result.exitCode === null ? `ended by ${result.signal}` : `exited ${result.exitCode}`;
-	return result.truncated ? `Probe: ${ended}; its output was cut at its limit` : `Probe: ${ended}`;
+	const line = result.truncated ? `Probe: ${ended}; its output was cut at its limit` : `Probe: ${ended}`;
+	return result.error === undefined ? line : `${line}; stopping its processes failed: ${visibleText(result.error)}`;
 }
 
 // The base policy's `probe.read`, from the first of the base branches that resolves, as doctor reads `trust.writers`.
@@ -140,7 +141,11 @@ export async function probe(
 			io.stderr(
 				`melian: the probe's scratch could not be removed and was left at ${visibleText(cleanup.leftover)}: ${visibleText(cleanup.reason)}\n`,
 			);
-		return result.exitCode === 0 && !result.timedOut && !result.truncated && cleanup.removed
+		return result.exitCode === 0 &&
+			!result.timedOut &&
+			!result.truncated &&
+			result.error === undefined &&
+			cleanup.removed
 			? probeExitCodes.passed
 			: probeExitCodes.failed;
 	} catch (error) {
