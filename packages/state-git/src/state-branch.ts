@@ -301,7 +301,8 @@ export class StateBranch {
 	 * missing main log as an empty store, so this is checked first. Pi's own storage then judges the rest.
 	 */
 	async intact(changeset: string, tree: string, directory: string): Promise<boolean> {
-		const main = (await this.#open(changeset, tree)).find(([name]) => name === "main.jsonl")?.[1];
+		const main =
+			tree === "none" ? undefined : (await this.#open(changeset, tree)).find(([name]) => name === "main.jsonl")?.[1];
 		if (main !== undefined) {
 			const local = await readFile(join(directory, "main.jsonl")).catch(() => undefined);
 			if (local === undefined || local.length < main.length || !local.subarray(0, main.length).equals(main))
@@ -585,11 +586,7 @@ export class StateCheckout {
 			() => true,
 			() => false,
 		);
-		if (
-			local &&
-			synced === onBranch &&
-			(onBranch === "none" || (await branch.intact(changeset, onBranch, directory)))
-		)
+		if (local && synced === onBranch && (await branch.intact(changeset, onBranch, directory)))
 			return new StateCheckout(branch, changeset, onBranch, undefined, lock, lease);
 		let setAside: string | undefined;
 		if (local) {
