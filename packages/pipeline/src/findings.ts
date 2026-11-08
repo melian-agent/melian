@@ -533,7 +533,8 @@ export async function dismissFinding(
 		...Object.values(atRevision).flatMap((each) => proofOf(each.properties.cause, each.properties.trigger)),
 	]);
 	const dismissedTrigger = { hash: triggerCode(trigger), proof };
-	// Repeating the same dismissal of the same content adds no history; a severity it now records is kept.
+	// Repeating the same dismissal of the same content adds no history; a severity it now records is kept, at the
+	// repeat's time, so a restatement linked under the old severity lapses.
 	if (
 		status === "dismissed" &&
 		dismissedBy === by &&
@@ -541,7 +542,7 @@ export async function dismissFinding(
 		JSON.stringify(record.lifecycle.dismissedTrigger) === JSON.stringify(dismissedTrigger)
 	) {
 		if (severity === undefined || record.lifecycle.dismissedSeverity === severity) return undefined;
-		items[id] = { ...record, lifecycle: { ...record.lifecycle, ...shown } };
+		items[id] = { ...record, lifecycle: { ...record.lifecycle, ...shown, dismissedAt: at } };
 		bump(state, affectedBy(state, id, record));
 		return undefined;
 	}

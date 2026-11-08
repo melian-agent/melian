@@ -28,6 +28,7 @@ import {
 	overlapsSite,
 	type Restating,
 	recordInheritances,
+	recordRevision,
 	replaceInheritances,
 	upsertVerification,
 } from "../src/findings.ts";
@@ -816,6 +817,23 @@ describe("finding the roots a defect may restate", () => {
 		await dismissRoot(introduced("changed 5", 5, 5));
 		const h2 = step([...withLine5().slice(0, 7), "changed 8", ...ten.slice(8)]);
 		expect(await predecessorsAt(h2, introduced("changed 5\nline 6\nline 7", 5, 7))).toEqual([]);
+	});
+
+	it("offers nothing to a review that began before the root's, until a later round of it begins", async () => {
+		const h2 = step(withLine5(), { "b.ts": "other\n" });
+		const older = (await reviewOf(h1)).key;
+		const found = introduced("changed 5\nline 6", 5, 6);
+		// The older head's review starts, a newer head's review starts and its finding is dismissed, then the older resumes.
+		await commit(async (tx) => {
+			await recordRevision(tx, root, older);
+			const { key } = await reviewOf(h2);
+			await upsertFinding(tx, root, found, key);
+			await dismissFinding(tx, root, found.id, dismissal, key, "P2");
+		});
+		const restated = introduced("changed 5", 5, 5);
+		expect(await predecessorsAt(h1, restated)).toEqual([]);
+		await commit((tx) => recordRevision(tx, root, older));
+		expect(await predecessorsAt(h1, restated)).toEqual([found.id]);
 	});
 
 	it("offers nothing when git cannot read the head that last showed the root", async () => {
