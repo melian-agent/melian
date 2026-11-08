@@ -7,9 +7,9 @@
    "reason": "it sends process signals, and a mutant there could signal a process outside the run"
   }
  ],
- "base": "0b06c3862b60114c413bd5a809bf54b9a7b0cb0f",
- "head": "286c3aab6fd6a4a25df550f719ac9461a6a2fd5f",
- "selection": "Fix pass 6 changed the decision file, which Vitest does not track as a module, so the final rerun rule reran every claim over origin/main...HEAD at 6cd0fb78, at load 4 to 14; that run also proves the pass's own commits. Two mutants of the bounded read survived it, and the next commit adds packages/cli/test/probe-read.test.ts, which kills both by hand. That commit adds a test file and changes no source, so no other claim reruns.",
+ "base": "aad1d27b9fced1f9a1f06451e56c6df46ea19f97",
+ "head": "3610d9d69e90a65e9af7de7905e9dcd6cc1dd6cd",
+ "selection": "Fix pass 6 changed the decision file, and the merge of main at its end brought in files Vitest does not track as modules, so the final rerun rule reran every claim over origin/main...HEAD at the merge, 3610d9d6, at load 7 to 143; that run also proves the pass's own commits. Its discovery runs no test file it is not given, so the two mutants of the bounded read were run by hand at that head against packages/cli/test/probe-read.test.ts alone, and both were killed. An earlier full run at 6cd0fb78 agreed on every claim.",
  "command": "node scripts/enumerate-mutants.mjs origin/main...HEAD --json --limit 10000",
  "runner": "each mutant applied in a throwaway worktree at the head; its failing test found by a file run, then that test run alone by its anchored ancestorTitles > title pattern; a kill counts only when exactly one test was collected and it failed",
  "mutants": [
@@ -673,9 +673,9 @@
    "result": "killed",
    "claim": "new-test",
    "evidence": "packages/cli/test/probe-read.test.ts > reads each file only to one byte past the bound",
+   "survivorClasses": [],
    "collected": 1,
-   "exitCode": 1,
-   "survivorClasses": []
+   "exitCode": 1
   },
   {
    "file": "packages/cli/src/probe.ts",
@@ -2312,12 +2312,6 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "leftovers": [
-    {
-     "pid": 88425,
-     "args": "/bin/sleep 6756234"
-    }
-   ],
    "survivorClasses": []
   },
   {
@@ -2494,6 +2488,12 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
+   "leftovers": [
+    {
+     "pid": 47822,
+     "args": "/bin/sleep 7938804"
+    }
+   ],
    "survivorClasses": []
   },
   {
@@ -2637,12 +2637,6 @@
    "collected": 1,
    "tests": [
     "packages/pipeline/test/probe.test.ts"
-   ],
-   "leftovers": [
-    {
-     "pid": 68457,
-     "args": "/bin/sleep 7254617"
-    }
    ],
    "survivorClasses": []
   },
@@ -3616,6 +3610,12 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
+   "leftovers": [
+    {
+     "pid": 15688,
+     "args": "/bin/sleep 2838068"
+    }
+   ],
    "survivorClasses": []
   },
   {
@@ -3925,12 +3925,6 @@
    "collected": 1,
    "tests": [
     "packages/pipeline/test/probe.test.ts"
-   ],
-   "leftovers": [
-    {
-     "pid": 68353,
-     "args": "/bin/sleep 4861418"
-    }
    ],
    "survivorClasses": []
   },
@@ -4249,12 +4243,6 @@
    "collected": 1,
    "tests": [
     "packages/pipeline/test/probe.test.ts"
-   ],
-   "leftovers": [
-    {
-     "pid": 24916,
-     "args": "/bin/sleep 7942132"
-    }
    ],
    "survivorClasses": []
   },
@@ -5208,6 +5196,12 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
+   "leftovers": [
+    {
+     "pid": 48937,
+     "args": "/bin/sleep 2770337"
+    }
+   ],
    "survivorClasses": []
   },
   {
@@ -5379,6 +5373,12 @@
    "collected": 1,
    "tests": [
     "packages/pipeline/test/probe.test.ts"
+   ],
+   "leftovers": [
+    {
+     "pid": 30516,
+     "args": "/bin/sleep 7780513"
+    }
    ],
    "survivorClasses": []
   },
@@ -6112,12 +6112,6 @@
    "collected": 1,
    "tests": [
     "packages/pipeline/test/probe.test.ts"
-   ],
-   "leftovers": [
-    {
-     "pid": 91068,
-     "args": "/bin/sleep 6825651"
-    }
    ],
    "survivorClasses": []
   },
@@ -7114,7 +7108,6 @@
     "packages/cli/test/probe.test.ts > melian probe > closes every file it reads",
     "packages/cli/test/probe.test.ts > melian probe > reads a file at the size bound and refuses one past it before reading it",
     "packages/cli/test/probe.test.ts > melian probe > reads as many files as a probe takes, and opens nothing past them",
-    "packages/cli/test/probe.test.ts > melian probe > says how the probe ended: {\"exitCode\":0,\"signal\":null,\"timedOut\":false,\"truncated\":false}",
     "packages/cli/test/probe.test.ts > melian probe > says how the probe ended: {\"exitCode\":0,\"signal\":null,\"timedOut\":false,\"truncated\":true}",
     "packages/cli/test/probe.test.ts > melian probe > under the sandbox > runs the probe in the checkout with its files and prints how it ended"
    ],
@@ -7572,12 +7565,6 @@
    "tests": [
     "packages/cli/test/probe.test.ts"
    ],
-   "leftovers": [
-    {
-     "pid": 86251,
-     "args": "/bin/sleep 1877320"
-    }
-   ],
    "survivorClasses": []
   },
   {
@@ -7967,12 +7954,6 @@
    "tests": [
     "packages/cli/test/probe.test.ts"
    ],
-   "leftovers": [
-    {
-     "pid": 60229,
-     "args": "/bin/sleep 8933382"
-    }
-   ],
    "survivorClasses": []
   },
   {
@@ -7995,6 +7976,12 @@
    "collected": 1,
    "tests": [
     "packages/cli/test/probe.test.ts"
+   ],
+   "leftovers": [
+    {
+     "pid": 23793,
+     "args": "/bin/sleep 3821692"
+    }
    ],
    "survivorClasses": []
   },
@@ -9107,6 +9094,12 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
+   "leftovers": [
+    {
+     "pid": 68755,
+     "args": "/bin/sleep 2203991"
+    }
+   ],
    "survivorClasses": []
   },
   {
@@ -9211,12 +9204,6 @@
    "collected": 1,
    "tests": [
     "packages/pipeline/test/probe.test.ts"
-   ],
-   "leftovers": [
-    {
-     "pid": 80838,
-     "args": "/bin/sleep 1304934"
-    }
    ],
    "survivorClasses": []
   },
@@ -11201,6 +11188,12 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
+   "leftovers": [
+    {
+     "pid": 75372,
+     "args": "/bin/sleep 6937020"
+    }
+   ],
    "survivorClasses": []
   },
   {
@@ -11254,12 +11247,6 @@
    "collected": 1,
    "tests": [
     "packages/pipeline/test/probe.test.ts"
-   ],
-   "leftovers": [
-    {
-     "pid": 63717,
-     "args": "/bin/sleep 5061116"
-    }
    ],
    "survivorClasses": []
   },
@@ -11573,12 +11560,6 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "leftovers": [
-    {
-     "pid": 19456,
-     "args": "/bin/sleep 1052715"
-    }
-   ],
    "survivorClasses": []
   },
   {
@@ -11709,6 +11690,12 @@
    "collected": 1,
    "tests": [
     "packages/pipeline/test/probe.test.ts"
+   ],
+   "leftovers": [
+    {
+     "pid": 18786,
+     "args": "/bin/sleep 7936898"
+    }
    ],
    "survivorClasses": []
   },
@@ -12160,6 +12147,12 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
+   "leftovers": [
+    {
+     "pid": 75533,
+     "args": "/bin/sleep 2748153"
+    }
+   ],
    "survivorClasses": []
   },
   {
@@ -12510,6 +12503,12 @@
    "collected": 1,
    "tests": [
     "packages/pipeline/test/probe.test.ts"
+   ],
+   "leftovers": [
+    {
+     "pid": 56754,
+     "args": "/bin/sleep 2150729"
+    }
    ],
    "survivorClasses": []
   },
@@ -13285,9 +13284,9 @@
    "result": "killed",
    "claim": "new-test",
    "evidence": "packages/cli/test/probe-read.test.ts > reads each file only to one byte past the bound",
+   "survivorClasses": [],
    "collected": 1,
-   "exitCode": 1,
-   "survivorClasses": []
+   "exitCode": 1
   },
   {
    "file": "packages/cli/src/probe.ts",
@@ -16153,12 +16152,6 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "leftovers": [
-    {
-     "pid": 33187,
-     "args": "/bin/sleep 4503228"
-    }
-   ],
    "survivorClasses": []
   },
   {
@@ -16360,12 +16353,6 @@
    "collected": 1,
    "tests": [
     "packages/pipeline/test/probe.test.ts"
-   ],
-   "leftovers": [
-    {
-     "pid": 97616,
-     "args": "/bin/sleep 4640463"
-    }
    ],
    "survivorClasses": []
   },
@@ -16756,12 +16743,6 @@
    "collected": 1,
    "tests": [
     "packages/pipeline/test/probe.test.ts"
-   ],
-   "leftovers": [
-    {
-     "pid": 80838,
-     "args": "/bin/sleep 1304934"
-    }
    ],
    "survivorClasses": []
   },
@@ -17157,12 +17138,6 @@
    "tests": [
     "packages/pipeline/test/probe.test.ts"
    ],
-   "leftovers": [
-    {
-     "pid": 68353,
-     "args": "/bin/sleep 4861418"
-    }
-   ],
    "survivorClasses": []
   },
   {
@@ -17354,12 +17329,6 @@
    "collected": 1,
    "tests": [
     "packages/pipeline/test/probe.test.ts"
-   ],
-   "leftovers": [
-    {
-     "pid": 24916,
-     "args": "/bin/sleep 7942132"
-    }
    ],
    "survivorClasses": []
   },
