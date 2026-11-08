@@ -16,7 +16,11 @@ const defaultLeaseMs = 2 * 60 * 60 * 1000;
 const sealVersion = 1;
 const sqliteBusy = 5;
 // Git records who pushed the branch; the commits themselves need only some identity.
+// Git translates what it prints, and Melian reads its fetch and push output to tell a missing branch or a lost race
+// from a failure, so every command runs in the C locale, which git never translates.
+const untranslated = { LC_ALL: "C", LANGUAGE: "C" };
 const identity = {
+	...untranslated,
 	GIT_AUTHOR_NAME: "Melian state",
 	GIT_AUTHOR_EMAIL: "state@melian.invalid",
 	GIT_COMMITTER_NAME: "Melian state",
@@ -217,7 +221,13 @@ export class StateBranch {
 			return await StateCheckout.restore(this, changeset, stored(changeset), lock, generation);
 		} catch (error) {
 			// The lease is taken, so a restore that failed would hold every other clone off until it expired.
-			await this.#expire(changeset, generation).catch(() => {});
+			const expired = await this.#expire(changeset, generation).then(
+				() => undefined,
+				(failure: unknown) => (failure instanceof Error ? failure.message : String(failure)),
+			);
+			if (expired === undefined || !(error instanceof Error)) throw error;
+			const until = new Date(this.#now() + (this.#options.leaseMs ?? defaultLeaseMs)).toISOString();
+			error.message = `${error.message}; the lease, generation ${generation}, stays on melian/state until ${until}, since expiring it failed: ${expired}`;
 			throw error;
 		}
 	}
@@ -298,6 +308,7 @@ export class StateBranch {
 
 	// Expires the changeset's lease, if this run's generation is still its latest.
 	async #expire(changeset: string, generation: number): Promise<void> {
+		// A lease another run has since taken is not this run's to expire.
 		await this.#withRetry(async (index) => {
 			const held = index.lease(changeset);
 			if (held === undefined || !held.admits(generation) || !held.heldBy(this.#holder))
@@ -376,7 +387,7 @@ export class StateBranch {
 			this.#options.remote,
 			`+${branch}:${fetched}`,
 		];
-		const result = await git(this.#options.repoRoot, args);
+		const result = await git(this.#options.repoRoot, args, { env: untranslated });
 		if (result.code !== 0) {
 			if (/couldn't find remote ref/i.test(result.stderr)) return undefined;
 			throw new StateBranchError("fetchFailed", `git fetch of melian/state failed: ${result.stderr.trim()}`);
@@ -460,7 +471,7 @@ export class StateBranch {
 			`${commit}:${branch}`,
 			`--force-with-lease=${branch}:${tip ?? ""}`,
 		];
-		const result = await git(this.#options.repoRoot, args);
+		const result = await git(this.#options.repoRoot, args, { env: untranslated });
 		if (result.code === 0) return true;
 		// The lease names the tip this run fetched, so "stale info" means another run pushed since; a ref the remote could
 		// not lock is another run's push to it landing at the same moment.

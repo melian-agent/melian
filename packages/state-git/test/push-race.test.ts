@@ -7,6 +7,7 @@ import { changeset, note, notes, Remote, storageOf } from "./fixtures/state.ts";
 
 // Another run's push lands between this run's fetch and its push, as many times as `moves` says.
 let moves = 0;
+const environments: { command: string; env: Readonly<Record<string, string>> | undefined }[] = [];
 let interloper: (() => Promise<void>) | undefined;
 
 vi.mock("@melian-agent/core", async (original) => {
@@ -14,6 +15,7 @@ vi.mock("@melian-agent/core", async (original) => {
 	return {
 		...actual,
 		git: async (cwd: string, args: readonly string[], options?: core.GitOptions) => {
+			environments.push({ command: args[0]!, env: options?.env });
 			if (args[0] === "push" && moves > 0 && interloper !== undefined) {
 				moves--;
 				const run = interloper;
@@ -83,4 +85,12 @@ it("does not retry a push the remote refused for another reason", async () => {
 		code: "pushFailed",
 		message: expect.stringMatching(/^git push of melian\/state failed: [\s\S]*state branch is protected/),
 	});
+});
+
+it("reads git's fetch and push output in the C locale, which git does not translate", async () => {
+	environments.length = 0;
+	await (await remote.clone().branch().checkout(changeset)).push();
+	const classified = environments.filter(({ command }) => command === "fetch" || command === "push");
+	expect(classified.length).toBeGreaterThanOrEqual(4);
+	for (const { env } of classified) expect(env).toMatchObject({ LC_ALL: "C", LANGUAGE: "C" });
 });
