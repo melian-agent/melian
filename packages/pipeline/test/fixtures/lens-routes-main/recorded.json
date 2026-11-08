@@ -1,0 +1,346 @@
+{
+  "commit": "33138ec",
+  "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb..cccccccccccccccccccccccccccccccccccccccc",
+  "versions": {
+    "verdicts": 13,
+    "rounds": 3,
+    "adjudication": 6
+  },
+  "task": {
+    "kind": "melian.adjudication",
+    "version": 6,
+    "input": {
+      "root": 1,
+      "repoRoot": "/tmp/claude-0/-home-user-melian/49d5dd77-41ed-5de6-b60b-6b3531f2559a/scratchpad/capture-main",
+      "base": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "head": "cccccccccccccccccccccccccccccccccccccccc",
+      "config": {
+        "resolution": {
+          "P0": "block",
+          "P1": "block",
+          "P2": "acknowledge",
+          "P3": "advisory",
+          "nit": "silent",
+          "preExisting": {
+            "P0": "advisory",
+            "P1": "advisory",
+            "P2": "advisory",
+            "P3": "advisory",
+            "nit": "advisory"
+          }
+        },
+        "ruleAliases": {}
+      },
+      "manifest": [
+        "lens.correctness"
+      ],
+      "checks": [
+        {
+          "name": "lens.correctness",
+          "status": "ran",
+          "level": "careful"
+        }
+      ],
+      "findingsVersion": 0,
+      "allowSkip": [],
+      "producers": [],
+      "provenance": {
+        "kind": "range",
+        "policy": "config",
+        "manifest": [
+          "lens.correctness"
+        ],
+        "lenses": [
+          "correctness@v@careful"
+        ],
+        "plan": {
+          "tiers": [
+            {
+              "tier": "light",
+              "status": "unrouted",
+              "models": [],
+              "reason": "no model is configured for the light tier"
+            },
+            {
+              "tier": "medium",
+              "status": "unrouted",
+              "models": [],
+              "reason": "no model is configured for the medium tier"
+            },
+            {
+              "tier": "heavy",
+              "thinking": "high",
+              "thinkingBy": "melian.yaml",
+              "wanted": "faux/heavy",
+              "accept": [
+                "faux/heavy"
+              ],
+              "status": "routed",
+              "models": [
+                {
+                  "model": "faux/heavy",
+                  "credential": "faux's own",
+                  "family": "heavy"
+                }
+              ]
+            },
+            {
+              "tier": "decision",
+              "status": "unrouted",
+              "models": [],
+              "reason": "no model is configured for the decision tier"
+            },
+            {
+              "tier": "verifier",
+              "status": "unrouted",
+              "models": [],
+              "reason": "no model is configured for the verifier tier"
+            }
+          ],
+          "lenses": [
+            {
+              "name": "correctness",
+              "scope": "",
+              "levels": [
+                {
+                  "level": "quick",
+                  "tier": "medium"
+                },
+                {
+                  "level": "careful",
+                  "tier": "heavy"
+                },
+                {
+                  "level": "deep",
+                  "tier": "heavy"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "initial": {
+      "phase": "adjudicate"
+    }
+  },
+  "verdicts": {
+    "verdicts": {
+      "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb..cccccccccccccccccccccccccccccccccccccccc": {
+        "status": "passed",
+        "blocking": false,
+        "findings": {
+          "block": [],
+          "acknowledge": [],
+          "advisory": [],
+          "silent": []
+        },
+        "dismissed": [],
+        "notRun": [],
+        "ran": [
+          {
+            "name": "lens.correctness",
+            "status": "ran",
+            "level": "careful"
+          }
+        ]
+      }
+    },
+    "provenance": {
+      "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb..cccccccccccccccccccccccccccccccccccccccc": {
+        "kind": "range",
+        "policy": "config",
+        "manifest": [
+          "lens.correctness"
+        ],
+        "lenses": [
+          "correctness@v@careful"
+        ],
+        "plan": {
+          "tiers": [
+            {
+              "tier": "light",
+              "status": "unrouted",
+              "models": [],
+              "reason": "no model is configured for the light tier"
+            },
+            {
+              "tier": "medium",
+              "status": "unrouted",
+              "models": [],
+              "reason": "no model is configured for the medium tier"
+            },
+            {
+              "tier": "heavy",
+              "thinking": "high",
+              "thinkingBy": "melian.yaml",
+              "wanted": "faux/heavy",
+              "accept": [
+                "faux/heavy"
+              ],
+              "status": "routed",
+              "models": [
+                {
+                  "model": "faux/heavy",
+                  "credential": "faux's own",
+                  "family": "heavy"
+                }
+              ]
+            },
+            {
+              "tier": "decision",
+              "status": "unrouted",
+              "models": [],
+              "reason": "no model is configured for the decision tier"
+            },
+            {
+              "tier": "verifier",
+              "status": "unrouted",
+              "models": [],
+              "reason": "no model is configured for the verifier tier"
+            }
+          ],
+          "lenses": [
+            {
+              "name": "correctness",
+              "scope": "",
+              "levels": [
+                {
+                  "level": "quick",
+                  "tier": "medium"
+                },
+                {
+                  "level": "careful",
+                  "tier": "heavy"
+                },
+                {
+                  "level": "deep",
+                  "tier": "heavy"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "decisions": {
+      "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb..cccccccccccccccccccccccccccccccccccccccc": {
+        "task": 7,
+        "findingsVersion": 0
+      }
+    }
+  },
+  "rounds": {
+    "sequence": 1,
+    "current": {
+      "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb..cccccccccccccccccccccccccccccccccccccccc": "r1"
+    },
+    "items": {
+      "r1": {
+        "base": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "head": "cccccccccccccccccccccccccccccccccccccccc",
+        "tasks": [
+          7
+        ],
+        "mintedAt": "2026-11-08T00:00:00Z",
+        "verdict": {
+          "status": "passed",
+          "blocking": false,
+          "findings": {
+            "block": [],
+            "acknowledge": [],
+            "advisory": [],
+            "silent": []
+          },
+          "dismissed": [],
+          "notRun": [],
+          "ran": [
+            {
+              "name": "lens.correctness",
+              "status": "ran",
+              "level": "careful"
+            }
+          ]
+        },
+        "provenance": {
+          "kind": "range",
+          "policy": "config",
+          "manifest": [
+            "lens.correctness"
+          ],
+          "lenses": [
+            "correctness@v@careful"
+          ],
+          "plan": {
+            "tiers": [
+              {
+                "tier": "light",
+                "status": "unrouted",
+                "models": [],
+                "reason": "no model is configured for the light tier"
+              },
+              {
+                "tier": "medium",
+                "status": "unrouted",
+                "models": [],
+                "reason": "no model is configured for the medium tier"
+              },
+              {
+                "tier": "heavy",
+                "thinking": "high",
+                "thinkingBy": "melian.yaml",
+                "wanted": "faux/heavy",
+                "accept": [
+                  "faux/heavy"
+                ],
+                "status": "routed",
+                "models": [
+                  {
+                    "model": "faux/heavy",
+                    "credential": "faux's own",
+                    "family": "heavy"
+                  }
+                ]
+              },
+              {
+                "tier": "decision",
+                "status": "unrouted",
+                "models": [],
+                "reason": "no model is configured for the decision tier"
+              },
+              {
+                "tier": "verifier",
+                "status": "unrouted",
+                "models": [],
+                "reason": "no model is configured for the verifier tier"
+              }
+            ],
+            "lenses": [
+              {
+                "name": "correctness",
+                "scope": "",
+                "levels": [
+                  {
+                    "level": "quick",
+                    "tier": "medium"
+                  },
+                  {
+                    "level": "careful",
+                    "tier": "heavy"
+                  },
+                  {
+                    "level": "deep",
+                    "tier": "heavy"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    "recorded": {
+      "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb..cccccccccccccccccccccccccccccccccccccccc": true
+    }
+  }
+}
