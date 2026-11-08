@@ -531,12 +531,10 @@ export async function dismissFinding(
 	}
 	const { status, dismissedBy, dismissedReason, dismissedAt, history } = record.lifecycle;
 	const accepting = revision ?? record.lifecycle.lastSeenRevision;
-	// Only the sightings of the producers the dismissed verdict selected: a dropped lens's sighting was never shown.
-	const counts = selected(producers);
-	const atRevision = Object.fromEntries(
-		Object.entries(record.sightings[accepting]!).filter(([key, sighting]) => counts(key, sighting)),
-	);
-	const { winner } = adjudicate(atRevision);
+	// Only the sightings of the producers the dismissed verdict selected, judged as it read them, so the root is the claim
+	// it showed: a dropped lens's sighting, or a refuted claim beside one that stands, was never shown.
+	const atRevision = judgedAt(record, accepting, selected(producers));
+	const { winner } = adjudicate(atRevision, true);
 	const trigger = winner.properties.trigger;
 	const shown =
 		severity === undefined
@@ -711,17 +709,7 @@ export async function readFindings(
 		.flatMap((id) => {
 			const { lifecycle, sightings, verifications } = items[id]!;
 			const link = options.asReported === true ? undefined : standing(items, inherited[id], lifecycle);
-			const atHead = Object.fromEntries(
-				Object.entries(sightings[revision] ?? {})
-					.filter(([key, sighting]) => counts(key, sighting))
-					.map(([key, sighting]) => {
-						const verification = Object.values(verifications?.[revision]?.[key] ?? {}).at(-1);
-						if (verification === undefined) return [key, sighting];
-						if (options.asReported === true)
-							return [key, { ...sighting, properties: { ...sighting.properties, verification } }];
-						return [key, judged(sighting, verification)];
-					}),
-			);
+			const atHead = judgedAt({ sightings, verifications }, revision, counts, options.asReported === true);
 			if (Object.keys(atHead).length === 0) return [];
 			const { winner, reportedBy } = adjudicate(atHead, options.asReported !== true);
 			const properties = {
@@ -815,6 +803,26 @@ export async function replaceInheritances(
 	state.inherited = Object.keys(sorted).length === 0 ? rest : { ...rest, [revision]: sorted };
 	bump(state, [revision]);
 	return true;
+}
+
+// The sightings at `revision` that `counts` selects, each with its latest verification applied, or only attached when
+// `asReported`.
+function judgedAt(
+	{ sightings, verifications }: Pick<FindingRecord, "sightings" | "verifications">,
+	revision: string,
+	counts: ReturnType<typeof selected>,
+	asReported = false,
+): Record<string, ProducerFinding> {
+	return Object.fromEntries(
+		Object.entries(sightings[revision] ?? {})
+			.filter(([key, sighting]) => counts(key, sighting))
+			.map(([key, sighting]) => {
+				const verification = Object.values(verifications?.[revision]?.[key] ?? {}).at(-1);
+				if (verification === undefined) return [key, sighting];
+				if (asReported) return [key, { ...sighting, properties: { ...sighting.properties, verification } }];
+				return [key, judged(sighting, verification)];
+			}),
+	);
 }
 
 // A sighting as its verifier judged it: at the lowered severity its record holds, by core's `verifiedAs`. The stored

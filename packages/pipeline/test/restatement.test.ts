@@ -486,6 +486,69 @@ describe("a dismissal carrying to a restatement", () => {
 		});
 	});
 
+	// Pull request #341: two selected lenses reported one ID, and the verifier refuted the stricter claim. The verdict
+	// spoke with the other, so the root must freeze that one, or a restatement of the refuted claim inherits.
+	it("keeps as the root's claim the one the verdict showed, not a stricter claim the verifier refuted", async () => {
+		const refutedScenario = "Every caller passes a user without a manager, so the read always throws.";
+		const refuting = (messages: Messages) => {
+			if (messages.some((m) => m.role === "assistant" && m.content.some((b) => b.type === "toolCall")))
+				return fauxAssistantMessage("Every claim judged.");
+			const claims = [
+				...systemPromptOf(messages).matchAll(/Claim (c[0-9]+) finding [0-9a-f]+, reported at (P[0-3])/g),
+			];
+			return fauxAssistantMessage(
+				claims.map(([, claim, severity]) =>
+					fauxToolCall("report_verdict", {
+						claim: claim!,
+						answers: { code: "yes", guard: severity === "P0" ? "yes" : "no", base: "no" },
+						verdict: severity === "P0" ? "refuted" : "confirmed",
+						reason: "The scripted verifier traced the claim.",
+						...(severity === "P0" ? { evidence: [{ file: "src/user.ts", line: 7, role: "context" }] } : {}),
+					}),
+				),
+				{ stopReason: "toolUse" },
+			);
+		};
+		scriptConversations(fake, [
+			{ match: correctness, replies: [report(nullDeref), fauxAssistantMessage("Done.")] },
+			{
+				match: contracts,
+				replies: [
+					report({ ...nullDeref, severity: "P0", failureScenario: refutedScenario }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{ match: verifierMarker, replies: [refuting, refuting, refuting, refuting] },
+		]);
+		// The contracts lens may report the correctness rule, so both lenses can sight one ID.
+		const rule = lenses
+			.find((lens) => lens.name === "correctness")!
+			.rules.find((each) => each.id === nullDeref.rule)!;
+		lenses = lenses.map((lens) =>
+			lens.name === "contracts" ? Lens.from({ ...lens.toJSON(), rules: [...lens.rules, rule] }) : lens,
+		);
+		const [shown] = (await review()).verdict.attention();
+		expect(shown!.properties).toMatchObject({
+			severity: "P1",
+			reportedBy: [{ check: "lens.contracts" }, { check: "lens.correctness" }],
+		});
+		await recordDismissal({ harness, revision: await revision(), id: shown!.id, dismissal, repoRoot: repo });
+		const state = await harness.snapshot(FindingsDocument, (await harness.root(context)).id, context);
+		expect(state!.items[shown!.id]!.lifecycle.dismissedSighting!.sighting.properties).toMatchObject({
+			severity: "P1",
+			failureScenario: nullDeref.failureScenario,
+			source: { check: "lens.correctness" },
+		});
+		pushElsewhere("other");
+		const requests = script([{ ...restatement, failureScenario: refutedScenario }]);
+		await review();
+		const shownRoot = requests[verifierMarker]!.flatMap((messages) =>
+			messages.filter((m) => m.role === "user").flatMap((m) => textOf(m).split("\n\n")),
+		).find((block) => block.startsWith("Dismissed d1\n"));
+		expect(shownRoot).toContain(JSON.stringify(nullDeref.failureScenario));
+		expect(shownRoot).not.toContain(refutedScenario);
+	});
+
 	it("lets the scripted verifier answer different by default for each dismissed finding it is shown", async () => {
 		await dismissedRoot();
 		pushElsewhere("other");
