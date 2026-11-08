@@ -50,7 +50,10 @@ export class Predecessors {
 		context: Context,
 	): Promise<Predecessors> {
 		const state = (await reader.snapshot(FindingsDocument, root, context)) ?? FindingsDocument.definition.initial();
-		return new Predecessors(dismissedRoots(state), (ids) => proofAt(state, ids, revision), review);
+		// A root sighted at a revision whose review began after this one's would carry a later ruling backwards.
+		const at = state.revisions.indexOf(revision);
+		const roots = dismissedRoots(state).filter((each) => state.revisions.indexOf(each.revision) <= at);
+		return new Predecessors(roots, (ids) => proofAt(state, ids, revision), review);
 	}
 
 	/**
