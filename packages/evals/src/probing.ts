@@ -149,6 +149,8 @@ export async function reviewMiss(
 			cost: telemetry.total?.total.cost.total ?? 0,
 			milliseconds: Date.now() - began,
 		};
+	} catch (error) {
+		throw new GoldenRunError(error, await TelemetryReader.open(storage).read(Revision.key(changeset.revision)));
 	} finally {
 		await harness.close(backgroundContext);
 	}
@@ -253,6 +255,10 @@ export async function measureProbing(
 					);
 				} catch (error) {
 					missFailures++;
+					if (error instanceof GoldenRunError) {
+						tokens += error.telemetry.total?.total.totalTokens ?? 0;
+						cost += error.telemetry.total?.total.cost.total ?? 0;
+					}
 					milliseconds += Date.now() - began;
 					print(visibleText(`${label} pass ${pass} ${miss.name}: no result (${String(error)})`));
 				}

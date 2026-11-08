@@ -308,7 +308,7 @@ describe("measureProbing's totals", () => {
 					},
 					miss: async (_, routes) => {
 						vi.setSystemTime(Date.now() + 20);
-						if (routes.prober === "e/f") throw new Error("gone");
+						if (routes.prober === "e/f") throw new GoldenRunError(new Error("gone"), paid);
 						return { findings: [], tokens: 3, cost: 0.5, milliseconds: 20 };
 					},
 				},
@@ -324,7 +324,8 @@ describe("measureProbing's totals", () => {
 			expect(failedMiss).toMatchObject({
 				goldens: { precision: 1, recall: 0, failed: 0 },
 				misses: { found: 0, total: 1, recall: null, failed: 1 },
-				tokens: 7,
+				tokens: 7 + 7,
+				cost: 0.25 + 0.25,
 				milliseconds: 30 + 20,
 			});
 		} finally {
@@ -404,6 +405,24 @@ describe("reviewMiss", { timeout: 60_000 }, () => {
 			expect(run.milliseconds).toBeGreaterThanOrEqual(0);
 			expect(run.milliseconds).toBeLessThan(60_000);
 			expect(run.tokens).toBeGreaterThan(0);
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
+	it("keeps the spend of a review that fails after a model answered", async () => {
+		const { repo, base } = buildGoldenRepository(golden("trust-boundary-probe-claim-lost-release"));
+		try {
+			const fake = createFakeModels({ models: [{ id: "plan" }, { id: "probe" }] });
+			const failure: unknown = await reviewMiss(
+				{ name: "m", repo, base, head: "feature", file: ".github/workflows/claim.yml", rule: "fail-open" },
+				fake.review,
+				{ planner: `${fake.ref("plan").provider}/plan`, prober: `${fake.ref("probe").provider}/probe` },
+				undefined,
+				unconfinedSandbox(),
+			).catch((error: unknown) => error);
+			expect(failure).toBeInstanceOf(GoldenRunError);
+			expect((failure as GoldenRunError).telemetry.total!.total.totalTokens).toBeGreaterThan(0);
 		} finally {
 			rmSync(repo, { recursive: true, force: true });
 		}
