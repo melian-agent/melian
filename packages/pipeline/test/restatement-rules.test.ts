@@ -309,6 +309,25 @@ describe("recording restatement links", () => {
 		expect((await links())?.[first.id]).toEqual({ from: oldRoot.id, kind: "proposed", dismissedAt: dismissal.at });
 	});
 
+	it("breaks a tie between roots dismissed at one time by the lower ID", async () => {
+		await seed();
+		const tied = lens({ snippet: "tied root" });
+		await commit(async (tx) => {
+			await upsertFinding(tx, root, tied, "base..earlier");
+			await dismissFinding(tx, root, tied.id, { ...dismissal, reason: "Tied." }, "base..earlier", "P2");
+		});
+		for (const [id, source] of [
+			[first.id, correctness],
+			[second.id, contracts],
+		] as const)
+			await judge(id, source, { [oldRoot.id]: "same", [tied.id]: "same" });
+		const lower = [oldRoot.id, tied.id].sort()[0]!;
+		await derive([oldRoot.id, tied.id]);
+		expect((await links())?.[first.id]?.from).toBe(lower);
+		await derive([tied.id, oldRoot.id]);
+		expect((await links())?.[first.id]?.from).toBe(lower);
+	});
+
 	it("takes the latest dismissal among the roots judged the same, after fencing each", async () => {
 		await seed({ reported: "P1", oldSeverity: "P1", newSeverity: "P2" });
 		for (const [id, source] of [
@@ -440,7 +459,7 @@ describe("finding the roots a defect may restate", () => {
 		const findings = await readFindings(harness, root, key, context, { asReported: true });
 		const defect = new Merge(findings, defaultConfig, revision)
 			.defects()
-			.find((each) => each.speaker.id === restated.id);
+			.find((each) => [each.speaker.id, ...each.members.map((member) => member.id)].includes(restated.id));
 		expect(defect).toBeDefined();
 		const predecessors = await Predecessors.open(harness, root, key, state, context);
 		return (await predecessors.of(defect!)).map((each) => each.id);
@@ -486,6 +505,21 @@ describe("finding the roots a defect may restate", () => {
 					}),
 		});
 		expect(await predecessorsAt(h2, restated)).toEqual([]);
+	});
+
+	it("offers nothing to a defect whose merged lens claims hold another rule beside the root's", async () => {
+		await dismissRoot();
+		const h2 = step(withLine5(), { "b.ts": "other\n" });
+		const restated = introduced("changed 5", 5, 5);
+		const beside = introduced("changed 5", 5, 5, { rule: "other-rule", source: contracts, severity: "P3" });
+		expect(await predecessorsAt(h2, restated, [beside])).toEqual([]);
+	});
+
+	it("opens over a root conversation that holds no findings yet", async () => {
+		const { state, key, revision } = await reviewOf(h1);
+		const predecessors = await Predecessors.open(harness, root, key, state, context);
+		const [defect] = new Merge([introduced("changed 5", 5, 5)], defaultConfig, revision).defects();
+		expect(await predecessors.of(defect!)).toEqual([]);
 	});
 
 	it("offers nothing to a defect a deterministic check also reported", async () => {
