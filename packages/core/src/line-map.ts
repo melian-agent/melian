@@ -76,7 +76,7 @@ export class LineMap {
 		// git reads no attributes, silently, from a well-formed object ID it does not hold, so the source must exist.
 		const source = await git(repoRoot, ["cat-file", "-e", `${attributesFrom}^{commit}`]);
 		if (source.code !== 0) return undefined;
-		const args = (format: readonly string[]) => [
+		const args = (format: readonly string[], older = from, newer = to) => [
 			"--literal-pathspecs",
 			`--attr-source=${attributesFrom}`,
 			"diff",
@@ -84,11 +84,16 @@ export class LineMap {
 			// After the pinned --find-renames, so a rename is never followed.
 			"--no-renames",
 			...format,
-			from,
-			to,
+			older,
+			newer,
 			"--",
 			path,
 		];
+		// An unchanged path gives no numstat entry, so ask git whether the file is text at `from`, diffed from the empty
+		// tree; a change is read below. A failed git prints no entry, and reads as not text.
+		const empty = await git(repoRoot, ["hash-object", "-t", "tree", "/dev/null"]);
+		const whole = await git(repoRoot, args(["--numstat", "-z"], empty.stdout.trim(), from));
+		if (parseNumstatBinary(whole.stdout).join() !== "false") return undefined;
 		const [numstat, patch] = await Promise.all([
 			git(repoRoot, args(["--numstat", "-z"])),
 			git(repoRoot, args(["--unified=0"])),

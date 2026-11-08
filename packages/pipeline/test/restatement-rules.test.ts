@@ -128,8 +128,17 @@ describe("recording restatement links", () => {
 		);
 	}
 
-	const derive = (dismissed: string[], version = "v1", restClaims = claims) =>
-		commit((tx) => recordInheritances(tx, root, at, [{ members, claims: restClaims, dismissed }], version));
+	// Each root as predecessor discovery shows it to the verifier now; one it would not show takes no identity.
+	const shown = async (ids: string[]) => {
+		const roots = dismissedRoots((await harness.snapshot(FindingsDocument, root, context))!);
+		return ids.map((id) => ({ id, dismissal: roots.find((each) => each.id === id)?.dismissal ?? "none" }));
+	};
+	const derive = async (ids: string[], version = "v1", restClaims = claims, dismissed?: Restating["dismissed"]) => {
+		const roots = dismissed ?? (await shown(ids));
+		return commit((tx) =>
+			recordInheritances(tx, root, at, [{ members, claims: restClaims, dismissed: roots }], version),
+		);
+	};
 	const links = async () => (await harness.snapshot(FindingsDocument, root, context))!.inherited?.[at];
 
 	it("links every member to a root every claim judged the same", async () => {
@@ -240,6 +249,20 @@ describe("recording restatement links", () => {
 		expect((await links())?.[first.id]?.from).toBe(oldRoot.id);
 		await derive([oldRoot.id], "v1", []);
 		expect(await links()).toBeUndefined();
+	});
+
+	it("links nothing to a root whose dismissal changed after the verifier was shown it", async () => {
+		await seed();
+		await judge(first.id, correctness, { [oldRoot.id]: "same" });
+		await judge(second.id, contracts, { [oldRoot.id]: "same" });
+		const stale = await shown([oldRoot.id]);
+		await commit((tx) =>
+			dismissFinding(tx, root, oldRoot.id, { ...dismissal, reason: "Replaced." }, "base..earlier", "P2"),
+		);
+		await derive([], "v1", claims, stale);
+		expect(await links()).toBeUndefined();
+		await derive([oldRoot.id]);
+		expect((await links())?.[first.id]?.from).toBe(oldRoot.id);
 	});
 
 	it.each([
@@ -738,13 +761,14 @@ describe("finding the roots a defect may restate", () => {
 			.find((each) => each.speaker.id === merged.id)!;
 		expect(defect.members.map((each) => each.id)).toEqual([joined.id]);
 		const found = await (await Predecessors.open(harness, root, at2, second, context)).of(defect);
+		const state2 = (await harness.snapshot(FindingsDocument, root, context))!;
 		expect(found?.restating).toEqual({
 			members: [merged.id, joined.id],
 			claims: [
 				{ id: merged.id, source: correctness, ruleId: "fail-open" },
 				{ id: joined.id, source: contracts, ruleId: "fail-open" },
 			],
-			dismissed: [both.id],
+			dismissed: [{ id: both.id, dismissal: dismissedRoots(state2).find((each) => each.id === both.id)!.dismissal }],
 		});
 	});
 
@@ -957,6 +981,7 @@ it("lists every maintainer's dismissal with a recorded severity, in ID order, an
 			endLine: each === cleared ? 7 : each === roots[1] ? 6 : 5,
 			revision: each === cleared ? "base..second" : each === roots[1] ? "base..third" : "base..first",
 			dismissedAt: dismissal.at,
+			dismissal: expect.stringMatching(/^[0-9a-f]{16}$/),
 			severity: "P2",
 			hash: state.items[each.id]!.lifecycle.dismissedTrigger!.hash,
 			accepted: [],

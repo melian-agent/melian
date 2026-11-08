@@ -355,6 +355,42 @@ describe("a dismissal carrying to a restatement", () => {
 		if (!verifier) expect(await findingsVersion(harness, owner, at, context)).toBe(version);
 	});
 
+	// Codex's adversarial review of round four: the verifier judged one dismissal, and the link must not bind to another.
+	it("links nothing when the root's dismissal is replaced while the verifier judges it", async () => {
+		const root = await dismissedRoot();
+		const first = await revision();
+		pushElsewhere("other");
+		const replaced = { ...dismissal, reason: "Only staff reach this path." };
+		let pending = true;
+		const verify = async (messages: Messages) => {
+			if (pending)
+				await recordDismissal({ harness, revision: first, id: root, dismissal: replaced, repoRoot: repo });
+			pending = false;
+			const prompt = systemPromptOf(messages);
+			const claims = [...prompt.matchAll(/Claim c[1-9][0-9]* finding ([0-9a-f]+)/g)].map((m) => m[1]!);
+			return scriptVerifier(
+				messages,
+				Object.fromEntries(
+					claims.map((id) => [id, { verdict: "confirmed" as const, matches: { [root]: "same" } }]),
+				),
+			);
+		};
+		scriptConversations(fake, [
+			{ match: correctness, replies: [report(restatement), fauxAssistantMessage("Done.")] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			{ match: verifierMarker, replies: [verify, verify, verify, verify] },
+		]);
+		const second = await review();
+		const owner = (await harness.root(context)).id;
+		expect((await harness.snapshot(FindingsDocument, owner, context))!.items[root]!.lifecycle.dismissedReason).toBe(
+			replaced.reason,
+		);
+		expect(second.verdict.attention().map((each) => each.id)).toEqual([second.findings[0]!.id]);
+		expect(
+			(await harness.snapshot(FindingsDocument, owner, context))!.inherited?.[Revision.key(await revision())],
+		).toBeUndefined();
+	});
+
 	it("clears the links when a later round on the head has no verifier with credentials", async () => {
 		await dismissedRoot();
 		pushElsewhere("other");

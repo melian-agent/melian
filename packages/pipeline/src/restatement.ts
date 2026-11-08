@@ -66,11 +66,11 @@ export class Predecessors {
 		if (found.length === 0) return undefined;
 		const { claims } = VerificationState.from(defect.speaker);
 		return {
-			dismissed: found,
+			dismissed: found.map((root) => structuredClone(root.claim)),
 			restating: {
 				members: Predecessors.#members(defect),
 				claims: claims.map(({ id, source, ruleId }) => ({ id, source, ruleId })),
-				dismissed: found.map(({ id }) => id),
+				dismissed: found.map(({ id, dismissal }) => ({ id, dismissal })),
 			},
 		};
 	}
@@ -79,7 +79,7 @@ export class Predecessors {
 		return [defect.speaker.id, ...defect.members.map((member) => member.id)];
 	}
 
-	async #find(defect: Defect): Promise<DismissedPredecessor[]> {
+	async #find(defect: Defect): Promise<DismissedRoot[]> {
 		const { speaker } = defect;
 		if (!defect.lensOnly()) return [];
 		const { claims } = VerificationState.from(speaker);
@@ -91,7 +91,7 @@ export class Predecessors {
 		const current = { startLine: line, endLine };
 		const path = speaker.properties.path;
 		const proof = this.#proof(members);
-		const found: DismissedPredecessor[] = [];
+		const found: DismissedRoot[] = [];
 		for (const root of this.#roots) {
 			if (members.includes(root.id) || root.ruleId !== first.ruleId || root.path !== path) continue;
 			if (!this.#stands(root)) continue;
@@ -103,7 +103,7 @@ export class Predecessors {
 			if (map === undefined || mapped === undefined || !map.untouched(old, current)) continue;
 			const at = (span: LineSpan) => ({ path, ruleId: first.ruleId, line: span.startLine, endLine: span.endLine });
 			if (!overlapsSite(at(mapped), at(current))) continue;
-			found.push(structuredClone(root.claim));
+			found.push(root);
 		}
 		return found;
 	}
