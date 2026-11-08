@@ -154,7 +154,15 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 		const dismissed = [...new Set(reports)].filter((report) => Object.hasOwn(recorded, report));
 		let replaced: Dismissal | undefined;
 		for (const report of dismissed) {
-			const before = await dismissFinding(tx, root.id, report, dismissal, revision);
+			// The severity the verdict showed, which bounds the restatements the dismissal may carry to.
+			const before = await dismissFinding(
+				tx,
+				root.id,
+				report,
+				dismissal,
+				revision,
+				found.speaker.properties.severity,
+			);
 			if (report === own) replaced = before;
 		}
 		// The review's own input with the findings version the dismissal moved to, keeping its key order, so a later
