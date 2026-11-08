@@ -815,7 +815,8 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 				symlinkSync(join(outside, "leak.d.ts"), join(repo, "src/leak.d.ts"));
 				writeFileSync(join(repo, "src/b.ts"), "export const n: number = leaked;\n");
 			},
-			"tsc/TS2322",
+			// The link is one of the project's effective files, so Melian refuses the project before tsc runs.
+			"tsconfig.json resolves a file outside the checkout, so Melian ran no tsc on it",
 		],
 		[
 			"a committed tsconfig.json symlink to an outside project file",
