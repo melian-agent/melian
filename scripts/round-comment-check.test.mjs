@@ -49,7 +49,7 @@ describe("the round comment check in AGENTS.md", () => {
 	const actions = recorded("comment-github-actions.json");
 	const bot = { ...actions, user: recorded("user-melian-status-bot.json") };
 
-	it("reads a comment melian-status-bot posted, whose marker names the run and its nonce", () => {
+	it("reads a comment melian-status-bot posted, whose marker names the run", () => {
 		expect(run(bot)).toEqual([0, `comment ${bot.id} is run 42440138303's\n`]);
 	});
 
