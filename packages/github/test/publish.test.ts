@@ -574,7 +574,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 					const rounds = await tx.doc(RoundsDocument, owner.id);
 					for (const stored of [
 						(await tx.doc(VerdictDocument, owner.id)).verdicts[revision]!,
-						rounds.items[rounds.current[revision]!]!.verdict,
+						rounds.items[rounds.current[revision]!]!.verdict!,
 					]) {
 						const finding = stored.dismissed.find((each) => each.properties.id === id)!;
 						finding.properties.dismissal = { by: "melian", reason, at, inheritedFrom };
