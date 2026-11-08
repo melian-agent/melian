@@ -54,11 +54,11 @@ Each one costs a dismissal, and so a host round, until [issue #315](https://gith
 The rule as written is that nothing a model writes changes a finding's cause. Each probe below tried a way through it, against `main` at `27797250`.
 
 - A report with a top-level `scope` or `cause` field. The probe ran `Value.Check` on `reportVerdictSchema`: refused, since the schema sets `additionalProperties: false`.
-- The same field inside `answers`: refused.
-- A lowering to `nit`: refused. A lowering is one step, P1 to P2 or P2 to P3, and it changes a severity, never a cause.
+- The same field inside `answers`, `lower` or an evidence entry, or an object for `correction`: refused.
+- A lowering to `nit`: the schema accepts it, and `Lowering.refusal` refuses it inside the `report_verdict` commit. A lowering is one step, P1 to P2 or P2 to P3, and it changes a severity, never a cause.
 - The `code`, `guard` and `base` answers: stored, and no source outside the tool that stores them reads them.
 - The correction: it is display text. The terminal rendering and the pull request publication print it under "Correction:", and nothing else reads it.
-- The writer of cause: a lens finding's cause comes from `Revision.classifyCause`, called from `report_finding` in `packages/pipeline/src/lens-tools.ts`. It takes the finding's location, and the lens's evidence that Melian checks against the hunks. No verifier output reaches it.
+- The writer of cause: a lens finding's cause comes from `Revision.classifyCause`, called from `report_finding` in `packages/pipeline/src/lens-tools.ts`. It takes the finding's location, and the lens's evidence that Melian checks against the hunks. No verifier output reaches it. A guardrail or static finding sets its own cause from its check, and no model writes it.
 - One way through remains, and it is cause by location's own. A lens is a model reading code the author wrote. It can leave out the `cause` location that would prove `affected`. The finding then reads `pre-existing` and is capped at `advisory`, though the change caused it. This decision changes nothing there. The limit predates step 17 and errs toward a finding that does not block. Cause by location records it: a location heuristic must never make an old defect block.
 
 ## What this leaves alone
