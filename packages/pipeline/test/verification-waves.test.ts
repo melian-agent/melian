@@ -346,11 +346,14 @@ describe("verification as each lens ends", () => {
 			fastThenSlow(asked);
 			await review();
 			const root = await harness.root(context);
+			// With neither a wave nor the final verification left, only a fresh verification can judge the claim.
 			await root.commit(async (tx) => {
 				delete (await tx.doc(VerificationWavesDocument, root.id)).reviews[Revision.key(changeset.revision)];
+				delete (await tx.doc(ReviewIndex, root.id)).reviews[Revision.key(changeset.revision)]!.verification;
 			}, context);
 			const result = await review();
-			expect(asked).toHaveLength(1);
+			expect(asked).toHaveLength(2);
+			expect(result.findings.map((finding) => finding.properties.verification?.verdict)).toEqual(["confirmed"]);
 			expect(result.verdict.ran?.find((check) => check.name === "verifier")?.status).toBe("ran");
 		} finally {
 			await harness.close(context);
