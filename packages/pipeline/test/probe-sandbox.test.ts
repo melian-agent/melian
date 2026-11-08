@@ -30,6 +30,7 @@ const required = process.env.MELIAN_PROBE_SANDBOX === "1";
 const reason = availability.available ? "" : availability.reason;
 
 let worktree: string;
+let head: string;
 let outside: string;
 let markers: string[];
 
@@ -38,8 +39,8 @@ beforeEach(() => {
 	outside = realpathSync(mkdtempSync(join(tmpdir(), "melian-probe-outside-")));
 	markers = [];
 	writeFileSync(join(worktree, "AGENTS.md"), "inside\n");
-	mkdirSync(join(worktree, ".git"));
-	writeFileSync(join(worktree, ".git", "config"), "[credential]\n");
+	head = committed(worktree);
+	gitIn(worktree, "config", "credential.helper", "fake-store");
 	writeFileSync(join(worktree, ".env"), "TOKEN=x\n");
 	writeFileSync(join(outside, "secret.txt"), "secret\n");
 	symlinkSync(join(outside, "secret.txt"), join(worktree, "escape"));
@@ -51,8 +52,21 @@ afterEach(() => {
 	rmSync(outside, { recursive: true, force: true });
 });
 
+// Commits everything in `root`, making it a repository first, and returns the commit.
+function committed(root: string): string {
+	if (!existsSync(join(root, ".git"))) gitIn(root, "init", "--quiet", "--initial-branch=main");
+	gitIn(root, "add", "--all");
+	gitIn(root, "commit", "--quiet", "--allow-empty", "-m", "head");
+	return gitIn(root, "rev-parse", "HEAD");
+}
+
 function opened(input: ProbeInput, options: Partial<ProbeOptions> = {}): Promise<Probe> {
-	return Probe.open(input, { worktree, writer: { trusted: true, by: "writer" }, trustWriters: true, ...options });
+	return Probe.open(input, {
+		head: { checkout: worktree, commit: head },
+		writer: { trusted: true, by: "writer" },
+		trustWriters: true,
+		...options,
+	});
 }
 
 async function probed(input: ProbeInput, options: Partial<ProbeOptions> = {}): Promise<ProbeResult> {
@@ -89,12 +103,15 @@ function outcomes(result: ProbeResult): Record<string, string> {
 describe.skipIf(!availability.available && !required)(
 	`a probe under sandbox-runtime${reason ? ` (${reason})` : ""}`,
 	() => {
-		it("cannot read ~/.ssh, ~/.config, or anything outside the worktree", { timeout: 60_000 }, async () => {
+		it("cannot read ~/.ssh, ~/.config, the live worktree, or anything outside the head's tree", {
+			timeout: 60_000,
+		}, async () => {
 			const read = [
 				join(homedir(), ".ssh"),
 				join(homedir(), ".config"),
 				join(outside, "secret.txt"),
 				join(worktree, "escape"),
+				join(worktree, "AGENTS.md"),
 				outside,
 				join(worktree, ".git", "config"),
 				join(worktree, ".env"),
@@ -104,45 +121,43 @@ describe.skipIf(!availability.available && !required)(
 			const results = outcomes(
 				await probed({
 					script: attempts,
-					files: [
-						{ path: "targets.json", text: JSON.stringify({ read: [...read, join(worktree, "AGENTS.md")] }) },
-					],
+					files: [{ path: "targets.json", text: JSON.stringify({ read: [...read, "AGENTS.md"] }) }],
 				}),
 			);
-			expect(results[join(worktree, "AGENTS.md")]).toBe("read");
+			expect(results["AGENTS.md"]).toBe("read");
 			for (const path of read) expect(results[path], path).not.toBe("read");
 		});
 
 		it.each(["[ab]", "star*", "what?", "{c,d}"])(
-			"denies .env and .git in a worktree named %j, whose glob characters do not widen the deny",
+			"denies .env and .npmrc in a checkout named %j, whose glob characters do not widen the deny",
 			{ timeout: 60_000 },
 			async (name) => {
 				const named = realpathSync(mkdtempSync(join(tmpdir(), "melian-probe-glob-")));
-				const tree = join(named, name);
-				mkdirSync(join(tree, ".git"), { recursive: true });
-				writeFileSync(join(tree, ".git", "config"), "[core]\n");
-				writeFileSync(join(tree, ".env"), "TOKEN=x\n");
-				writeFileSync(join(tree, "AGENTS.md"), "inside\n");
+				const checkout = join(named, name);
+				mkdirSync(join(checkout, "node_modules", "pkg"), { recursive: true });
+				writeFileSync(join(checkout, ".gitignore"), "node_modules/\n");
+				writeFileSync(join(checkout, ".env"), "TOKEN=x\n");
+				writeFileSync(join(checkout, "AGENTS.md"), "inside\n");
+				writeFileSync(join(checkout, "node_modules", "pkg", "index.js"), "module.exports = 1;\n");
+				writeFileSync(
+					join(checkout, "node_modules", "pkg", ".npmrc"),
+					"//registry.npmjs.org/:_authToken=npm_FAKE\n",
+				);
+				const commit = committed(checkout);
+				const read = [".env", "AGENTS.md", "node_modules/pkg/index.js", "node_modules/pkg/.npmrc"];
 				try {
 					const results = outcomes(
 						await probed(
-							{
-								script: attempts,
-								files: [
-									{
-										path: "targets.json",
-										text: JSON.stringify({
-											read: [join(tree, ".env"), join(tree, ".git", "config"), join(tree, "AGENTS.md")],
-										}),
-									},
-								],
-							},
-							{ worktree: tree },
+							{ script: attempts, files: [{ path: "targets.json", text: JSON.stringify({ read }) }] },
+							{ head: { checkout, commit } },
 						),
 					);
-					expect(results[join(tree, "AGENTS.md")]).toBe("read");
-					expect(results[join(tree, ".env")]).not.toBe("read");
-					expect(results[join(tree, ".git", "config")]).not.toBe("read");
+					expect(results).toEqual({
+						".env": expect.not.stringMatching(/^read$/),
+						"AGENTS.md": "read",
+						"node_modules/pkg/index.js": "read",
+						"node_modules/pkg/.npmrc": expect.not.stringMatching(/^read$/),
+					});
 				} finally {
 					rmSync(named, { recursive: true, force: true });
 				}
@@ -169,8 +184,8 @@ describe.skipIf(!availability.available && !required)(
 				return gitIn(repository, "rev-parse", "HEAD");
 			}
 
-			function headOptions(head: string, read?: readonly string[]): Partial<ProbeOptions> {
-				return { worktree: repository, ...(read === undefined || head === "" ? {} : {}) };
+			function headOptions(commit: string, read?: readonly string[]): Partial<ProbeOptions> {
+				return { head: { checkout: repository, commit, ...(read === undefined ? {} : { read }) } };
 			}
 
 			// Prints each path with what reading it gave: its trimmed text, or the error's code.
@@ -194,7 +209,7 @@ console.log(JSON.stringify(out));
 						writer: { trusted: true, by: "writer" },
 						trustWriters: true,
 						...headOptions(head, more.read),
-					} as ProbeOptions,
+					},
 				);
 				let result: ProbeResult;
 				try {
@@ -420,12 +435,7 @@ console.log("started");
 			// bound still ends; the runner's CPU limit is the timeout, grace and five seconds, 12 CPU seconds here.
 			const host = spawn(
 				process.execPath,
-				[
-					"--conditions=@melian-agent/source",
-					join(import.meta.dirname, "fixtures", "probe-orphan.ts"),
-					worktree,
-					"40",
-				],
+				["--conditions=@melian-agent/source", join(import.meta.dirname, "fixtures", "probe-orphan.ts"), "40"],
 				{ stdio: ["ignore", "pipe", "inherit"] },
 			);
 			try {
@@ -481,6 +491,7 @@ flood();
 		it("imports a module from the head's worktree and calls it", { timeout: 60_000 }, async () => {
 			mkdirSync(join(worktree, "lib"));
 			writeFileSync(join(worktree, "lib", "sum.mjs"), "export function sum(a, b) { return a + b; }\n");
+			head = committed(worktree);
 			const script = `
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";

@@ -1,7 +1,7 @@
 import { constants } from "node:fs";
 import { lstat, open, readdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { visibleText } from "@melian-agent/core";
+import { defaultConfig, loadConfig, visibleText } from "@melian-agent/core";
 import {
 	type CleanupOutcome,
 	Probe,
@@ -73,9 +73,23 @@ function status(result: ProbeResult, timeout: number): string {
 	return result.truncated ? `Probe: ${ended}; its output was cut at its limit` : `Probe: ${ended}`;
 }
 
+// The base policy's `probe.read`, from the first of the base branches that resolves, as doctor reads `trust.writers`.
+// With none, the default, the dependency install alone; never the checked-out head's own policy.
+async function allowlist(checkout: string): Promise<readonly string[]> {
+	for (const ref of ["origin/HEAD", "origin/main", "main"]) {
+		const commit = await git(checkout, ["rev-parse", "--verify", "--quiet", `${ref}^{commit}`]).catch(
+			() => undefined,
+		);
+		if (commit !== undefined)
+			return (await loadConfig(checkout, { kind: "revision", commit }, ".")).config.probe.read;
+	}
+	return defaultConfig.probe.read;
+}
+
 /**
- * Runs `<directory>/probe.mjs`, with the directory's other files beside it, under the sandbox, in the checkout's top
- * level. The head's code runs only on the reviewer's word, `--trust-head`, as `static.mutation`'s does for a range.
+ * Runs `<directory>/probe.mjs`, with the directory's other files beside it, under the sandbox, in the tracked tree of
+ * the checkout's `HEAD`, with what the base policy's `probe.read` allows. The head's code runs only on the reviewer's
+ * word, `--trust-head`, as `static.mutation`'s does for a range.
  */
 export async function probe(
 	io: Io,
@@ -88,8 +102,10 @@ export async function probe(
 		const files: ProbeFile[] = [];
 		await directoryFiles(root, "", files, { bytes: 0 });
 		const input = { script: (await regularFile(root, script)).toString("utf8"), files };
+		const checkout = await git(io.cwd, ["rev-parse", "--show-toplevel"]);
+		const commit = await git(checkout, ["rev-parse", "--verify", "HEAD^{commit}"]);
 		const opened = await Probe.open(input, {
-			worktree: await git(io.cwd, ["rev-parse", "--show-toplevel"]),
+			head: { checkout, commit, read: await allowlist(checkout) },
 			writer: options.trustHead
 				? { trusted: true, by: "reviewer" }
 				: {

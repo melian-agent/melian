@@ -3,12 +3,12 @@
 import { spawnSync } from "node:child_process";
 import { Probe } from "../../src/probe.ts";
 
-const [worktree, seconds] = process.argv.slice(2) as [string, string];
+const [seconds] = process.argv.slice(2) as [string];
 // Spins until it has used the given CPU seconds, so a run without a CPU bound still ends on its own.
 const script = `for (;;) { for (let i = 0; i < 1e6; i++); if (process.cpuUsage().user > ${Number(seconds)} * 1e6) break; }\n`;
 const probe = await Probe.open(
 	{ script },
-	{ worktree, writer: { trusted: true, by: "reviewer" }, trustWriters: true, timeout: 5_000 },
+	{ writer: { trusted: true, by: "reviewer" }, trustWriters: true, timeout: 5_000 },
 );
 const running = probe.run();
 const ends = Date.now() + 60_000;

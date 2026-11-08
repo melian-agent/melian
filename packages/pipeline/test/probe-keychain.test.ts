@@ -60,7 +60,7 @@ describe.skipIf(!throwaway)("a probe and the macOS keychain (CI's throwaway macO
 			expect(security("dump-keychain", keychain)).toContain(marker);
 			const probe = await Probe.open(
 				{ script: script(keychain, service, marker) },
-				{ worktree, writer: { trusted: true, by: "reviewer" }, trustWriters: true },
+				{ writer: { trusted: true, by: "reviewer" }, trustWriters: true },
 			);
 			let output: string;
 			try {

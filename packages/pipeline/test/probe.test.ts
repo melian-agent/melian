@@ -37,6 +37,7 @@ import { closeGraceMs, ProbeProcess } from "../src/probe-process.ts";
 const original = process.env.TMPDIR;
 let scratch: string;
 let worktree: string;
+let head: string;
 
 function passthrough(
 	overrides: {
@@ -65,7 +66,13 @@ function passthrough(
 }
 
 function options(sandbox: ProbeOptions["sandbox"], more: Partial<ProbeOptions> = {}): ProbeOptions {
-	return { worktree, writer: { trusted: true, by: "writer" }, trustWriters: true, sandbox, ...more };
+	return {
+		head: { checkout: worktree, commit: head },
+		writer: { trusted: true, by: "writer" },
+		trustWriters: true,
+		sandbox,
+		...more,
+	};
 }
 
 async function refusal(input: ProbeInput, given: ProbeOptions): Promise<ProbeError> {
@@ -85,7 +92,16 @@ beforeEach(() => {
 	process.env.TMPDIR = scratch;
 	worktree = join(scratch, "worktree");
 	mkdirSync(worktree);
+	head = committed();
 });
+
+// Commits everything in the worktree and returns the commit, which a probe of it reads.
+function committed(): string {
+	if (!existsSync(join(worktree, ".git"))) gitIn(worktree, "init", "--quiet", "--initial-branch=main");
+	gitIn(worktree, "add", "--all");
+	gitIn(worktree, "commit", "--quiet", "--allow-empty", "-m", "head");
+	return gitIn(worktree, "rev-parse", "HEAD");
+}
 
 afterEach(() => {
 	process.env.TMPDIR = original;
@@ -278,17 +294,38 @@ describe("Probe.open", () => {
 		for (const input of past) expect((await refusal(input, options(sandbox))).code).toBe("invalidProbe");
 	});
 
-	it("refuses a worktree that is missing, a file, the home directory or above it", async () => {
+	it("refuses a checkout that is missing, a file, the home directory or above it", async () => {
 		const { sandbox } = passthrough();
 		writeFileSync(join(scratch, "file"), "");
 		for (const path of [join(scratch, "missing"), join(scratch, "file"), homedir(), dirname(homedir()), "/"]) {
-			const error = await refusal({ script: "" }, options(sandbox, { worktree: path }));
+			const error = await refusal({ script: "" }, options(sandbox, { head: { checkout: path, commit: head } }));
 			expect(error.code, path).toBe("invalidProbe");
 		}
-		const missing = await refusal({ script: "" }, options(sandbox, { install: join(scratch, "missing") }));
-		expect(missing.message).toBe(`the install ${join(scratch, "missing")} cannot be read`);
+		const missing = await refusal(
+			{ script: "" },
+			options(sandbox, { head: { checkout: join(scratch, "missing"), commit: head } }),
+		);
+		expect(missing.message).toBe(`the checkout ${join(scratch, "missing")} cannot be read`);
 		expect(missing.cause).toMatchObject({ code: "ENOENT" });
 		expect(sandbox.open).not.toHaveBeenCalled();
+	});
+
+	it("refuses a head that is not a full commit hash, or not a commit the checkout holds", async () => {
+		const { sandbox } = passthrough();
+		for (const commit of ["HEAD", head.slice(0, 39), `${head}0`, head.toUpperCase()]) {
+			const error = await refusal({ script: "" }, options(sandbox, { head: { checkout: worktree, commit } }));
+			expect(error.message).toBe(`${commit} is not a full commit hash`);
+		}
+		const absent = "0".repeat(40);
+		const error = await refusal({ script: "" }, options(sandbox, { head: { checkout: worktree, commit: absent } }));
+		expect(error).toMatchObject({ code: "invalidProbe" });
+		expect(error.message).toMatch(new RegExp(`^the head ${absent} could not be written from ${worktree}: `));
+		expect(sandbox.open).not.toHaveBeenCalled();
+		expect(left()).toEqual([]);
+		// A SHA-256 repository's hash is a full hash too, so it gets as far as git.
+		const sha256 = "a".repeat(64);
+		const later = await refusal({ script: "" }, options(sandbox, { head: { checkout: worktree, commit: sha256 } }));
+		expect(later.message).toMatch(new RegExp(`^the head ${sha256} could not be written`));
 	});
 
 	it("takes a worktree inside the home directory, and refuses the home directory itself", async () => {
@@ -296,24 +333,24 @@ describe("Probe.open", () => {
 		vi.stubEnv("HOME", scratch);
 		try {
 			await (await Probe.open({ script: "" }, options(sandbox))).close();
-			expect((await refusal({ script: "" }, options(sandbox, { worktree: scratch }))).message).toBe(
-				`the worktree ${scratch} holds the home directory`,
-			);
+			expect(
+				(await refusal({ script: "" }, options(sandbox, { head: { checkout: scratch, commit: head } }))).message,
+			).toBe(`the checkout ${scratch} holds the home directory`);
 		} finally {
 			vi.unstubAllEnvs();
 		}
 	});
 
-	it("reads only the worktree, the install, Node, the sandbox's helpers, its own files and the system", async () => {
+	it("reads only the head's tree, the install, Node, the sandbox's helpers, its own files and the system", async () => {
 		const { sandbox } = passthrough();
-		const install = join(scratch, "install");
-		mkdirSync(install);
-		const probe = await Probe.open({ script: "" }, options(sandbox, { install }));
+		mkdirSync(join(worktree, "node_modules", "pkg"), { recursive: true });
+		const probe = await Probe.open({ script: "" }, options(sandbox));
 		const { policy } = probe;
 		const root = dirname(policy.write[0]!);
 		const node = nodeReads(process.execPath);
+		const install = join(worktree, "node_modules");
 		expect(policy.read.slice(0, 2 + node.length + 3)).toEqual([
-			worktree,
+			join(root, "tree"),
 			install,
 			...node,
 			expect.stringMatching(/node_modules\/@anthropic-ai\/sandbox-runtime$/),
@@ -323,15 +360,27 @@ describe("Probe.open", () => {
 		for (const path of policy.read.slice(2 + node.length + 3))
 			expect(path).toMatch(/^\/(bin|sbin|lib|usr|System|private\/var\/select)/);
 		expect(policy.read).not.toContain("/usr/local");
-		expect(policy.deny).toEqual(["/", join(worktree, ".git"), ...node.map((path) => join(path, "etc"))]);
-		expect(policy.denyGlobs).toEqual([
-			join(worktree, "**/.env*"),
-			join(worktree, "**/melian.secrets.yaml"),
-			join(worktree, "**/melian.local.yaml"),
+		expect(policy.read).not.toContain(worktree);
+		const prefix = dirname(dirname(realpathSync(process.execPath)));
+		expect(policy.deny).toEqual([
+			"/",
+			...node.map((path) => join(path, "etc")),
+			join(prefix, "lib", "node_modules", "npm", "npmrc"),
 		]);
+		const globs = [
+			"**/.env*",
+			"**/.npmrc",
+			"**/.git",
+			"**/.git/**",
+			"**/melian.secrets.yaml",
+			"**/melian.local.yaml",
+		];
+		expect(policy.denyGlobs).toEqual(
+			[join(root, "tree"), install].flatMap((at) => globs.map((glob) => join(at, glob))),
+		);
 		expect(policy.denyWrite).toContain("/tmp/claude");
 		await probe.close();
-		const plain = await Probe.open({ script: "" }, options(sandbox));
+		const plain = await Probe.open({ script: "" }, options(sandbox, { head: undefined }));
 		expect(plain.policy.read[1]).toBe(node[0]);
 		await plain.close();
 	});
@@ -354,7 +403,7 @@ describe("Probe.open with a head's allowlist", () => {
 	});
 
 	function atHead(read: readonly string[]): Partial<ProbeOptions> {
-		return { worktree: checkout, head: { checkout, commit: head, read } } as unknown as Partial<ProbeOptions>;
+		return { head: { checkout, commit: head, read } };
 	}
 
 	it("opens with an allowed path inside the checkout", async () => {
@@ -568,8 +617,9 @@ describe("Probe.run", () => {
 		}
 	}
 
-	it("runs the script in the worktree with a scratch home and temporary directory and no other variable", async () => {
+	it("runs the script in the head's tree with a scratch home and temporary directory and no other variable", async () => {
 		writeFileSync(join(worktree, "marker"), "here");
+		head = committed();
 		process.env.MELIAN_PROBE_SECRET = "secret";
 		try {
 			const { result, asked, sandbox } = await ran(`
@@ -626,11 +676,14 @@ console.log(JSON.stringify({ marker: readFileSync("marker", "utf8"), home: proce
 		}
 	});
 
-	it("runs from a worktree whose path holds a quote", async () => {
-		worktree = join(scratch, "it's here");
-		mkdirSync(worktree);
-		const { result } = await ran(`console.log(process.cwd());`);
-		expect(result).toMatchObject({ exitCode: 0, output: `${worktree}\n` });
+	it("runs from a scratch whose path holds a quote", async () => {
+		const quoted = join(scratch, "it's here");
+		mkdirSync(quoted);
+		process.env.TMPDIR = quoted;
+		const { result, asked } = await ran(`console.log(process.cwd());`);
+		const root = dirname(asked[0]!.policy.write[0]!);
+		expect(root.startsWith(`${quoted}/`)).toBe(true);
+		expect(result).toMatchObject({ exitCode: 0, output: `${join(root, "tree")}\n` });
 	});
 
 	it("leaves no timer behind once the probe has ended", async () => {

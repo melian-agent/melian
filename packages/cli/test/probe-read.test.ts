@@ -24,6 +24,7 @@ beforeEach(() => {
 	mkdirSync(join(repo, "probe"));
 	writeFileSync(join(repo, "probe", "probe.mjs"), "");
 	writeFileSync(join(repo, "probe", "data"), "inside");
+	gitIn(repo, "commit", "--quiet", "--allow-empty", "-m", "head");
 });
 
 afterEach(() => {
