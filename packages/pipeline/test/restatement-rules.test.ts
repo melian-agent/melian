@@ -558,6 +558,93 @@ describe("finding the roots a defect may restate", () => {
 		).toEqual([]);
 	});
 
+	it("offers nothing once a root's accepted content left the revision, though its region is untouched", async () => {
+		const { state } = await reviewOf(h1);
+		const proof = state.files.flatMap((file) => file.hunks.map(provingHunk));
+		const introducedAt8 = introduced("line 8", 8, 8);
+		const affectedAt9 = lens({
+			snippet: "line 9",
+			startLine: 9,
+			cause: "affected",
+			evidence: [
+				{ file: "a.ts", startLine: 5, role: "cause", revision: "head", proves: true, snippet: "changed 5" },
+			],
+			trigger: { file: "a.ts", index: 0, snippet: "changed 5", proof },
+		});
+		const { key } = await reviewOf(h1);
+		await commit(async (tx) => {
+			for (const each of [introducedAt8, affectedAt9]) {
+				await upsertFinding(tx, root, each, key, proof);
+				await dismissFinding(tx, root, each.id, dismissal, key, "P2");
+			}
+		});
+		// Line 5 changes again: neither root's lines move, but the hunk each accepted is gone.
+		const h2 = step([...ten.slice(0, 4), "changed 5 again", ...ten.slice(5)]);
+		expect(await predecessorsAt(h2, lens({ snippet: "line 8 again", startLine: 8 }))).toEqual([]);
+		expect(await predecessorsAt(h2, lens({ snippet: "line 9 again", startLine: 9 }))).toEqual([]);
+		// Unchanged, both stand.
+		const h3 = step(withLine5(), { "b.ts": "other\n" });
+		expect(await predecessorsAt(h3, lens({ snippet: "line 8 too", startLine: 8 }))).toEqual([introducedAt8.id]);
+		expect(await predecessorsAt(h3, lens({ snippet: "line 9 too", startLine: 9 }))).toEqual([affectedAt9.id]);
+	});
+
+	it("holds every hunk any member proves, and accepts a proof the root's holds among others", async () => {
+		const base8 = step([...withLine5().slice(0, 7), "changed 8", ...ten.slice(8)]);
+		const { state } = await reviewOf(base8);
+		const [five, eight] = state.files.flatMap((file) => file.hunks.map(provingHunk));
+		const affected = (
+			snippet: string,
+			startLine: number,
+			hunks: (typeof state.files)[number]["hunks"] | ReturnType<typeof provingHunk>[],
+			source = correctness,
+		) =>
+			lens({
+				snippet,
+				startLine,
+				source,
+				cause: "affected",
+				evidence: [
+					{ file: "a.ts", startLine: 5, role: "cause", revision: "head", proves: true, snippet: "changed 5" },
+				],
+				trigger: { file: "a.ts", index: 0, snippet: "changed 5", proof: hunks as ReturnType<typeof provingHunk>[] },
+			});
+		const affectedFields = (hunks: ReturnType<typeof provingHunk>[]) => ({
+			cause: "affected" as const,
+			evidence: [
+				{
+					file: "a.ts",
+					startLine: 5,
+					role: "cause" as const,
+					revision: "head" as const,
+					proves: true as const,
+					snippet: "changed 5",
+				},
+			],
+			trigger: { file: "a.ts", index: 0, snippet: "changed 5", proof: hunks },
+		});
+		const both = affected("line 10", 10, [five!, eight!]);
+		const { key } = await reviewOf(base8);
+		await commit(async (tx) => {
+			await upsertFinding(tx, root, both, key, [five!, eight!]);
+			await dismissFinding(tx, root, both.id, dismissal, key, "P2");
+		});
+		const h2 = step([...withLine5().slice(0, 7), "changed 8", ...ten.slice(8)], { "b.ts": "other\n" });
+		// A restatement proved by one of the root's two accepted hunks.
+		expect(await predecessorsAt(h2, affected("line 10 again", 10, [five!]))).toEqual([both.id]);
+		// A member proved by a hunk the root never accepted keeps the whole defect from it.
+		const h3 = step(["line 1", "changed 2", ...withLine5().slice(2, 7), "changed 8", ...ten.slice(8)], {
+			"b.ts": "other\n",
+		});
+		const { state: third } = await reviewOf(h3);
+		const wider = third.files.flatMap((file) => file.hunks.map(provingHunk)).filter((hunk) => hunk.file === "a.ts");
+		expect(wider).toHaveLength(3);
+		// Another snippet, so another ID, merged with the speaker because both are proved by the hunk at line 5.
+		const speaker = lens({ ...affectedFields([five!]), snippet: "line 10 here", startLine: 10, severity: "P1" });
+		const member = affected("line 10 member", 10, wider, contracts);
+		expect(await predecessorsAt(h3, lens({ snippet: "line 10 alone", startLine: 10 }))).toEqual([both.id]);
+		expect(await predecessorsAt(h3, speaker, [member])).toEqual([]);
+	});
+
 	it("offers an affected root only while every hunk its proof accepted is here, and holds the restatement's proof", async () => {
 		const { state } = await reviewOf(h1);
 		const proof = state.files.flatMap((file) => file.hunks.map(provingHunk));
