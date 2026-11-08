@@ -30,17 +30,14 @@ async function regularFile(root: string, path: string): Promise<Buffer> {
 	);
 	try {
 		if (!(await handle.stat()).isFile()) throw neither;
-		// Reads one byte past the bound, so a file that grew after its check is refused rather than read without end.
-		const buffer = Buffer.alloc(probeLimits.fileBytes + 1);
-		let size = 0;
-		for (;;) {
-			const { bytesRead } = await handle.read(buffer, size, buffer.length - size, size);
-			size += bytesRead;
-			if (bytesRead === 0 || size === buffer.length) break;
-		}
-		if (size > probeLimits.fileBytes)
+		// Reads one byte past the bound at most, so a file that grew after its listing is refused, not read without end.
+		const chunks: Buffer[] = [];
+		for await (const chunk of handle.createReadStream({ end: probeLimits.fileBytes, autoClose: false }))
+			chunks.push(chunk as Buffer);
+		const bytes = Buffer.concat(chunks);
+		if (bytes.length > probeLimits.fileBytes)
 			throw new ProbeError("invalidProbe", `${path} is larger than ${probeLimits.fileBytes} bytes`);
-		return buffer.subarray(0, size);
+		return bytes;
 	} finally {
 		await handle.close();
 	}
@@ -54,9 +51,8 @@ async function directoryFiles(root: string, at: string, files: ProbeFile[], tota
 		const path = at === "" ? name : `${at}/${name}`;
 		const entry = await lstat(join(root, path));
 		if (entry.isDirectory()) await directoryFiles(root, path, files, total);
+		// A socket or device is refused before it is opened, since opening one can do more than read.
 		else if (!entry.isFile()) throw new ProbeError("invalidProbe", `${path} is neither a file nor a directory`);
-		else if (entry.size > probeLimits.fileBytes)
-			throw new ProbeError("invalidProbe", `${path} is larger than ${probeLimits.fileBytes} bytes`);
 		else if (path !== script) {
 			// Carried as bytes, so a binary fixture is not corrupted by a UTF-8 decode.
 			const bytes = await regularFile(root, path);

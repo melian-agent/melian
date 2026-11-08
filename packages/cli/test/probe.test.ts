@@ -1,6 +1,17 @@
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { once } from "node:events";
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+	mkdirSync,
+	mkdtempSync,
+	readdirSync,
+	readFileSync,
+	realpathSync,
+	renameSync,
+	rmSync,
+	symlinkSync,
+	writeFileSync,
+} from "node:fs";
+import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import * as pipeline from "@melian-agent/pipeline";
@@ -118,14 +129,18 @@ describe("melian probe", () => {
 		});
 	});
 
-	it("never reads through a fixture swapped for a link after it was checked", { timeout: 120_000 }, async () => {
-		// A process of the test's own swaps the fixture between a regular file and a link to an outside file, as fast as
-		// it can, while the CLI reads the directory again and again. A read by path after the check follows the link.
+	it("never reads through a fixture swapped for a link or a FIFO after it was listed", {
+		timeout: 120_000,
+	}, async () => {
+		// A process of the test's own swaps the fixture between a regular file, a link to an outside file and a FIFO, as
+		// fast as it can, while the CLI reads the directory again and again. A read by path after the check follows the
+		// link, and a read that trusts the listing reads the FIFO as an empty file.
 		writeFileSync(join(dir, "probe.mjs"), "");
 		const outside = join(repo, "outside.txt");
 		writeFileSync(outside, "outside");
 		const staging = join(repo, "staging");
 		mkdirSync(staging);
+		expect(spawnSync("mkfifo", [join(staging, "fifo")]).status).toBe(0);
 		const stop = join(repo, "stop");
 		const swaps = `
 const fs = require("node:fs");
@@ -137,6 +152,10 @@ while (!fs.existsSync(stop) && Date.now() < ends) {
 	fs.renameSync(staging + "/file", data);
 	fs.symlinkSync(outside, staging + "/link");
 	fs.renameSync(staging + "/link", data);
+	fs.writeFileSync(staging + "/file", "inside");
+	fs.renameSync(staging + "/file", data);
+	fs.linkSync(staging + "/fifo", staging + "/pipe");
+	fs.renameSync(staging + "/pipe", data);
 	count++;
 }
 fs.writeFileSync(stop + ".count", String(count));
@@ -145,20 +164,48 @@ fs.writeFileSync(stop + ".count", String(count));
 			stdio: "ignore",
 		});
 		const read: string[] = [];
+		const said = new Set<string>();
 		try {
-			const open = vi.spyOn(pipeline.Probe, "open").mockImplementation(async (input) => {
+			vi.spyOn(pipeline.Probe, "open").mockImplementation(async (input) => {
 				for (const file of input.files ?? []) read.push(Buffer.from(file.bytes ?? file.text ?? "").toString());
 				throw new pipeline.ProbeError("invalidProbe", "stop");
 			});
-			for (let attempt = 0; attempt < 400 && !read.includes("outside"); attempt++)
-				await melian(["probe", "probes/first", "--trust-head"]);
-			expect(open).toHaveBeenCalled();
+			for (let attempt = 0; attempt < 400; attempt++)
+				said.add((await melian(["probe", "probes/first", "--trust-head"])).stderr);
 		} finally {
 			writeFileSync(stop, "");
 			if (swapper.exitCode === null && swapper.signalCode === null) await once(swapper, "exit");
 		}
 		expect(Number(readFileSync(`${stop}.count`, "utf8"))).toBeGreaterThan(0);
 		expect(read.filter((text) => text !== "inside")).toEqual([]);
+		expect([...said].sort()).toEqual(["melian: fixture/data is neither a file nor a directory\n", "melian: stop\n"]);
+	});
+
+	it("refuses a socket without opening it", async () => {
+		writeFileSync(join(dir, "probe.mjs"), "");
+		// A socket's path has a short length limit, so it is bound in the temporary directory and moved into place.
+		const bound = join(tmpdir(), `mps-${process.pid}.sock`);
+		const server = createServer();
+		await new Promise<void>((resolve, reject) => server.once("error", reject).listen(bound, resolve));
+		try {
+			renameSync(bound, join(dir, "fixture", "sock"));
+			expect(await melian(["probe", "probes/first", "--trust-head"])).toEqual({
+				status: 2,
+				stdout: "",
+				stderr: "melian: fixture/sock is neither a file nor a directory\n",
+			});
+		} finally {
+			await new Promise((resolve) => server.close(resolve));
+		}
+	});
+
+	it("closes every file it reads", async () => {
+		writeFileSync(join(dir, "probe.mjs"), "");
+		for (let index = 0; index < 8; index++) writeFileSync(join(dir, `f${index}`), "x");
+		vi.spyOn(pipeline.Probe, "open").mockRejectedValue(new pipeline.ProbeError("invalidProbe", "stop"));
+		const before = readdirSync("/dev/fd").length;
+		await melian(["probe", "probes/first", "--trust-head"]);
+		expect(readdirSync("/dev/fd").length).toBe(before);
 	});
 
 	it("refuses more files than a probe takes", async () => {
