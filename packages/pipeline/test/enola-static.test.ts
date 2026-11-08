@@ -511,6 +511,38 @@ describe("static.enola", { timeout: 60_000 }, () => {
 		}
 	});
 
+	it("installs no checks in a review harness without a checkout, so their tasks wait for one", async () => {
+		const base = commit(repo, { "a.txt": "1\n", "melian.yaml": "tiers:\n  fast: [guardrails]\n" });
+		const head = commit(repo, { "a.txt": "2\n" });
+		const changeset = await Changeset.resolve(repo, `${base}...${head}`);
+		const source = { kind: "revision" as const, commit: base };
+		const { config } = await loadConfig(repo, source, "");
+		const models = createFakeModels();
+		const reviewHarness = await openReviewHarness(createMemoryStorage(), models.review, {
+			retry: false,
+			environment: { GITHUB_TOKEN: "fake-host-token" },
+		});
+		try {
+			const root = await reviewHarness.harness.root(context, { agent: { model: models.ref() } });
+			const input = { rootConversationId: root.id, changeset, config, source };
+			const run = runChecks(reviewHarness.harness, input, context).then(
+				() => "ran",
+				() => "refused",
+			);
+			let states: unknown[] = [];
+			for (let attempt = 0; attempt < 100 && states.length === 0; attempt++) {
+				await new Promise((resolve) => setTimeout(resolve, 20));
+				states = (await reviewHarness.harness.inspect(context)).tasks.map((task) => task.state);
+			}
+			expect(states).toEqual([{ kind: "blocked", reason: "missing_task" }]);
+			expect(await Promise.race([run, new Promise((resolve) => setTimeout(() => resolve("waiting"), 200))])).toBe(
+				"waiting",
+			);
+		} finally {
+			await reviewHarness.close(context);
+		}
+	});
+
 	it("judges a diverged PR with target-tip policy and reuses that policy for callers", async () => {
 		const base = commit(repo, { "src/a.ts": "export function Alpha() { return 1; }\n" });
 		const policy = commit(repo, {
