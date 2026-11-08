@@ -438,6 +438,7 @@ export {
 	type ImportEdge,
 	type SymbolSite,
 } from "./graph-coverage.ts";
+export { LineMap, type LineMapSides, type LineSpan } from "./line-map.ts";
 export {
 	type MutationReportInput,
 	type MutationSkipCause,
