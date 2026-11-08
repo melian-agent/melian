@@ -613,6 +613,14 @@ describe("verification as each lens ends", () => {
 		const final = (await harness.getTask(entry.verification!.task as TaskId, context))!
 			.input as unknown as VerificationInput;
 		const candidate = final.candidates[0]!;
+		// A finished wave before the unfinished one, so only the latest wave decides.
+		const earlier = await startWave(
+			harness,
+			{ ...final, version: "earlier", candidates: [candidate] },
+			entry.task!,
+			context,
+		);
+		await harness.waitForTask(earlier!, context);
 		// A task created in a commit stays pending until the scheduler resumes, so the first wave is still unfinished.
 		const first = await startWave(
 			harness,
