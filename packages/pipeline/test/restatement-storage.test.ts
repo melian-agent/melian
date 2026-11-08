@@ -100,6 +100,12 @@ describe("restatement links", () => {
 		const again = await owner.commit((tx) => dismissFinding(tx, id, other.id, dismissal, at, "P3"), context);
 		expect(again).toBeUndefined();
 		expect(await findingsVersion(harness, id, at, context)).toBe(version + 2);
+		// A repeat that names no severity keeps the one recorded.
+		await owner.commit((tx) => dismissFinding(tx, id, other.id, dismissal, at), context);
+		expect(
+			(await harness.snapshot(FindingsDocument, id, context))!.items[other.id]!.lifecycle.dismissedSeverity,
+		).toBe("P3");
+		expect(await findingsVersion(harness, id, at, context)).toBe(version + 2);
 	});
 
 	it("replaces a dismissal's severity with the new one, or none, when it is dismissed again", async () => {

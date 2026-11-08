@@ -717,7 +717,7 @@ function linked(
 	return {
 		dismissal: {
 			by: inheritedDismisser,
-			reason: root.dismissedReason ?? "",
+			reason: root.dismissedReason!,
 			at: link.dismissedAt,
 			inheritedFrom: link.from,
 		},
