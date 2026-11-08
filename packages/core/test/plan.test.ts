@@ -1578,6 +1578,39 @@ describe("a lens route", () => {
 		expect(moved.lensRoute("correctness", "services", "careful")?.models.map(({ model }) => model)).toEqual([opus]);
 	});
 
+	it("judges a scoped lens a preference route moves, by its own variant's committed tiers", () => {
+		const root = lenses.find(({ name }) => name === "correctness")!;
+		const light = Object.fromEntries(
+			Object.entries(root.levels).map(([level, settings]) => [level, { ...settings, tier: "light" as const }]),
+		);
+		const scoped = Lens.from({ ...root.toJSON(), scope: "services", levels: light as typeof root.levels });
+		const committed = { heavy: { model: opus, accept: [opus], acceptOverridden: false } };
+		const resolved = plan(committed, both, {
+			lenses: [root, scoped],
+			lensRoutePreferences: { correctness: { model: opus, fallbacks: [gpt] } },
+		});
+		expect(resolved.lensRoute("correctness", "", "careful")?.models.map(({ model }) => model)).toEqual([opus]);
+		expect(resolved.lensRoute("correctness", "services", "careful")?.models.map(({ model }) => model)).toEqual([
+			opus,
+			gpt,
+		]);
+		const refused = plan(committed, both, {
+			lenses: [Lens.from({ ...root.toJSON(), scope: "services" })],
+			lensRoutePreferences: { correctness: { model: gpt } },
+		});
+		expect(refused.judge("correctness", "careful", undefined, "services").refusal).toContain(
+			"lenses.correctness.route moves it from heavy to its own route",
+		);
+	});
+
+	it("finds no route for a moved lens a stored plan lost its route for", () => {
+		const resolved = plan({ heavy: { model: opus, accept: [opus], acceptOverridden: false } }, both, {
+			lensRoutePreferences: { correctness: { model: opus } },
+		});
+		const { lensRoutes: _, ...stored } = resolved.toJSON();
+		expect(ReviewPlan.from(stored).lensRoute("correctness", "", "careful")).toBeUndefined();
+	});
+
 	it("keeps a committed route's models at every level, and a moved route's under an unguarded tier", () => {
 		const guarded = { heavy: { model: opus, accept: [opus], acceptOverridden: false } };
 		const own = plan(guarded, both, {
