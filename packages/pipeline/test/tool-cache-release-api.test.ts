@@ -302,3 +302,51 @@ it("keeps the token out of every error and stored file", async () => {
 	expect(files.length).toBeGreaterThan(0);
 	for (const file of files) expect(await readFile(join(file.parentPath, file.name), "utf8")).not.toContain(token);
 });
+
+const anonymous = { "user-agent": "melian-tool-cache", "x-github-api-version": "2022-11-28" };
+
+it("asks the release API anonymously when GitHub refuses the token, before the public URL", async () => {
+	const github = host({
+		[release]: (options) =>
+			options.headers?.authorization === undefined
+				? new Response(good)
+				: new Response("Bad credentials", { status: 401 }),
+		[asset]: (options) =>
+			options.headers?.authorization === undefined && options.headers?.accept === "application/octet-stream"
+				? redirect()
+				: new Response("wrong request", { status: 415 }),
+		[signed]: signedRoute(bytes),
+		[pinned]: publicRoute(null, 504),
+	});
+	const cache = await ToolCache.open(root, { fetch: github.fetch, token });
+	expect(await readFile(await cache.materialise(testTool(bytes), "darwin-arm64"), "utf8")).toBe("trusted");
+	expect(github.calls).toEqual([
+		{
+			url: release,
+			options: { signal: expect.any(AbortSignal), headers: { ...api, accept: "application/vnd.github+json" } },
+		},
+		{
+			url: release,
+			options: { signal: expect.any(AbortSignal), headers: { ...anonymous, accept: "application/vnd.github+json" } },
+		},
+		{
+			url: asset,
+			options: {
+				signal: expect.any(AbortSignal),
+				headers: { ...anonymous, accept: "application/octet-stream" },
+				redirect: "manual",
+			},
+		},
+		{ url: signed, options: { signal: expect.any(AbortSignal) } },
+	]);
+});
+
+it("falls back to the public URL when GitHub refuses the token and the anonymous request", async () => {
+	const github = host({
+		[release]: () => new Response("Bad credentials", { status: 401 }),
+		[pinned]: publicRoute(bytes),
+	});
+	const cache = await ToolCache.open(root, { fetch: github.fetch, token });
+	expect(await readFile(await cache.materialise(testTool(bytes), "darwin-arm64"), "utf8")).toBe("trusted");
+	expect(github.calls.map((call) => call.url)).toEqual([release, release, pinned]);
+});

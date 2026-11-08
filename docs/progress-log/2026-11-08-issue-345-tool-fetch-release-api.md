@@ -7,3 +7,5 @@ The tests' fakes answer only a request with the right token, media type and redi
 Tests that pass a fake fetch to `ToolProvisioning.open` now pass `env: {}`, because CI sets `GITHUB_TOKEN` for the gate and would otherwise route them through the API.
 
 The enumerator listed 81 mutants. 18 are ignored string literals. One is equivalent: dropping `?.` before `.id` turns a missing asset's guard error into a `TypeError`, and both fall back. The other 62 were each run by hand against their one named test, and all were killed.
+
+Codex's adversarial review found that a token GitHub refuses with HTTP 401, as `scripts/check-tools.mjs` says a cloud session's can be, sent the fetch straight back to the failing public URL. The cache now asks the API once more without the token on a 401. Two new tests failed first, with `Download failed: HTTP 504` and a missing anonymous request, and pass after the fix.

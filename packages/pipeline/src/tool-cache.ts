@@ -223,18 +223,20 @@ export class ToolCache {
 		await this.#download(await this.#fetch(pin.url, { signal: AbortSignal.timeout(120_000) }), target, pin.sha256);
 	}
 
-	async #releaseAsset(pin: { url: string; repository: string; tag: string }, token: string): Promise<Response> {
+	async #releaseAsset(pin: { url: string; repository: string; tag: string }, token?: string): Promise<Response> {
 		const signal = AbortSignal.timeout(120_000);
-		const headers = {
-			authorization: `Bearer ${token}`,
+		const headers: Record<string, string> = {
 			"user-agent": "melian-tool-cache",
 			"x-github-api-version": "2022-11-28",
 		};
+		if (token !== undefined) headers.authorization = `Bearer ${token}`;
 		const releases = `https://api.github.com/repos/${pin.repository}/releases`;
 		const release = await this.#fetch(`${releases}/tags/${encodeURIComponent(pin.tag)}`, {
 			signal,
 			headers: { ...headers, accept: "application/vnd.github+json" },
 		});
+		// GitHub can refuse a cloud session's token while it still serves a public release anonymously.
+		if (release.status === 401 && token !== undefined) return this.#releaseAsset(pin);
 		if (!release.ok || !release.body)
 			throw new ToolCacheError("toolFailed", `Release API failed: HTTP ${release.status}`);
 		const chunks: Uint8Array[] = [];
