@@ -57,6 +57,8 @@ After git writes the tree, `Probe` walks it and resolves every link one componen
 - dangles with a `..` past its first missing component;
 - cannot be resolved, as in a loop.
 
+Names come from the filesystem. Each component resolves through `realpath(3)`, which returns a name as the filesystem stores it. When dependency linking will run, the tree's `node_modules` is created before the walk. So on a filesystem that ignores case or folds Unicode, such as APFS, `NODE_MODULES` and `node_moduleſ` resolve to `node_modules` and are refused. The coordinator's independent test review at 25b76f8f found that a letter-for-letter comparison let `packages/foo -> ../NODE_MODULES/dep` through, and dependency linking then wrote into the reviewer's install. A component under a regular file counts as missing, as an absent one does, so a dangling link through a file inside the tree is kept.
+
 The walk runs again after the allowlist copies, since a copy keeps the links of the reviewer's checkout as written. Dependency linking runs only after both walks pass. A refused head is one that could not use such a link inside the sandbox anyway: a link out is unreadable there, and the tree's `node_modules` is the install's. A relative link that stays inside the tree, live or dangling, is kept.
 
 Two attacking reviews of the rule were started and a safety classifier stopped each before it ran a probe. The second reviewer's reading named the root alias and the `..` folding. The builder ran both as tests, and they failed before the walk and pass after it. The walk has no bound of its own. It is linear in the tree's entries, as `checkout-index` is.

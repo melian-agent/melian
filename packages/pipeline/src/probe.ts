@@ -261,7 +261,7 @@ function allowed(checkout: string, read: readonly string[]): readonly (readonly 
 // later write to the host, so a head holding one is refused. Each link resolves one component at a time, as the kernel
 // resolves it: folding `..` first would read `sub/..`, with `sub -> .`, as inside.
 function refuseLinksOut(tree: string): void {
-	const root = realpathSync(tree);
+	const root = realpathSync.native(tree);
 	const pending = [root];
 	for (let directory = pending.pop(); directory !== undefined; directory = pending.pop()) {
 		for (const entry of readdirSync(directory, { withFileTypes: true })) {
@@ -276,9 +276,22 @@ function refuseLinksOut(tree: string): void {
 	}
 }
 
+// What the filesystem holds at `path`, without following a link there. A component under a regular file is missing, as
+// one that is absent is.
+function entryAt(path: string): ReturnType<typeof lstatSync> {
+	try {
+		return lstatSync(path, { throwIfNoEntry: false });
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException).code === "ENOTDIR") return undefined;
+		throw error;
+	}
+}
+
+// Each component resolves through realpath(3), which names it as the filesystem stores it: on one that ignores case,
+// `NODE_MODULES` comes back as the tree's `node_modules`, which the comparison below then sees.
 function staysInside(root: string, link: string): boolean {
 	const parts = readlinkSync(link).split("/");
-	let at = parts[0] === "" ? "/" : realpathSync(dirname(link));
+	let at = parts[0] === "" ? "/" : realpathSync.native(dirname(link));
 	for (const [index, part] of parts.entries()) {
 		if (part === "" || part === ".") continue;
 		if (part === "..") {
@@ -286,14 +299,14 @@ function staysInside(root: string, link: string): boolean {
 			continue;
 		}
 		const next = join(at, part);
-		if (lstatSync(next, { throwIfNoEntry: false }) === undefined) {
+		if (entryAt(next) === undefined) {
 			// Nothing past a missing component can be resolved yet, and a `..` there could climb once it exists.
 			if (parts.slice(index + 1).includes("..")) return false;
 			at = join(next, ...parts.slice(index + 1));
 			break;
 		}
 		try {
-			at = realpathSync(next);
+			at = realpathSync.native(next);
 		} catch {
 			return false;
 		}
@@ -318,6 +331,9 @@ async function writeHead({ checkout, commit, entries }: PlannedHead, tree: strin
 		const at = { GIT_DIR: repository, GIT_WORK_TREE: tree };
 		await git(tree, ["read-tree", commit], repository, at);
 		await git(tree, ["checkout-index", "--all"], repository, at);
+		// The install's directory exists before the walks, so a link to another spelling of it resolves to it.
+		const linking = entries.some(([entry]) => entry === "node_modules") && !existsSync(join(tree, "node_modules"));
+		if (linking) await mkdir(join(tree, "node_modules"));
 		refuseLinksOut(tree);
 		const copies = entries.filter(([entry]) => entry !== "node_modules");
 		for (const [entry, real] of copies) {
@@ -328,7 +344,7 @@ async function writeHead({ checkout, commit, entries }: PlannedHead, tree: strin
 		// A copy comes from the reviewer's checkout, and its links are kept as written.
 		if (copies.length > 0) refuseLinksOut(tree);
 		const installs: string[] = [];
-		if (entries.some(([entry]) => entry === "node_modules") && !existsSync(join(tree, "node_modules"))) {
+		if (linking) {
 			const env = createNodeExecutionEnv(checkout);
 			const linked = await linkDependencies(env, backgroundContext, checkout, tree, repository, shell);
 			if ("failed" in linked) throw new ProbeError("invalidProbe", `the dependency install: ${linked.failed}`);
