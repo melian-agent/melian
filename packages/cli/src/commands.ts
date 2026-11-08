@@ -345,10 +345,11 @@ export async function review(
 				origin,
 				plan,
 				rerun: options.rerun,
-				// The walkthrough is published, so it never names a credential; the terminal does.
+				// The walkthrough is published, so it never names a credential; the terminal does. It runs beside the review,
+				// so its unlock stays out of the review's spans, which time one step at a time.
 				unlockModels: async (providers) => {
 					try {
-						await unlockModels(providers);
+						await triage.unlockModels(providers);
 					} catch (error) {
 						io.stderr(`melian: ${visibleText(error instanceof Error ? error.message : String(error))}\n`);
 						throw error;

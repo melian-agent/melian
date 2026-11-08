@@ -152,6 +152,32 @@ describe("CLI walkthrough beside the review", { timeout: 60_000 }, () => {
 		expect(read!.durationMs).toBeLessThan(1000);
 	});
 
+	it("times the walkthrough's credential unlock in no preparation step", async () => {
+		vi.spyOn(pipeline, "summarizeReview").mockImplementation(async ({ unlockModels }) => {
+			await unlockModels!(["light-provider"]);
+		});
+		vi.spyOn(pipeline, "unlockCredentials").mockImplementation(async (_models, providers) => {
+			if (providers.includes("light-provider")) await new Promise((resolve) => setTimeout(resolve, 300));
+		});
+		let output = "";
+		const io = {
+			cwd: repo,
+			env,
+			stdout: (text: string) => {
+				output += text;
+			},
+			stderr: () => {},
+			color: false,
+		};
+
+		expect(await review(io, "#7", { rerun: false, json: true })).toBe(0);
+
+		const { telemetry } = JSON.parse(output) as {
+			telemetry: { prepare: { spans: { name: string; durationMs: number }[] } };
+		};
+		expect(telemetry.prepare.spans.filter((span) => span.durationMs >= 300)).toEqual([]);
+	});
+
 	it("starts the walkthrough once the review returns when it never reached triage", async () => {
 		const summarize = vi.spyOn(pipeline, "summarizeReview").mockResolvedValue(undefined);
 		const actual = pipeline.reviewChangeset;
