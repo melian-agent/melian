@@ -45,6 +45,9 @@ it("expires its own lease when restoring the copy fails after taking it", async 
 });
 
 it("says the lease stays on the branch when expiring it fails too", async () => {
+	// After the writer's push released its lease, so this clone can take it.
+	const start = Date.now() + 60 * 60 * 1000;
+	const until = new Date(start + 2 * 60 * 60 * 1000).toISOString().replaceAll(".", "\\.");
 	const writer = await remote.clone().branch().checkout(changeset);
 	await note(await storageOf(writer), "stored");
 	await writer.push();
@@ -59,8 +62,15 @@ it("says the lease stays on the branch when expiring it fails too", async () => 
 		}
 		return actual.writeFile(path, ...rest);
 	});
-	await expect(remote.clone().branch().checkout(changeset)).rejects.toThrow(
-		/^no space left on device; the lease, generation 2, stays on melian\/state until \S+, since expiring it failed: git push of melian\/state failed: /,
+	await expect(
+		remote
+			.clone({ now: () => start })
+			.branch()
+			.checkout(changeset),
+	).rejects.toThrow(
+		new RegExp(
+			`^no space left on device; the lease, generation 2, stays on melian/state until ${until}, since expiring it failed: git push of melian/state failed: `,
+		),
 	);
 });
 

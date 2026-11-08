@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { mkdirSync, readdirSync, readFileSync, rmSync, truncateSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, truncateSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineDoc, openJsonlStorage } from "@melian-agent/pipeline";
@@ -408,7 +409,10 @@ describe("Codex's review of d449ec6", () => {
 		await note(await storageOf(checkout), "kept");
 		const tip = remote.tip();
 		plant(checkout.directory);
-		await expect(checkout.push()).rejects.toMatchObject({ code: "invalidCopy" });
+		await expect(checkout.push()).rejects.toMatchObject({
+			code: "invalidCopy",
+			message: expect.stringMatching(new RegExp(`^this clone's copy of ${changeset} holds "`)),
+		});
 		expect(remote.tip()).toBe(tip);
 	});
 });
@@ -1026,5 +1030,15 @@ describe("the mutation inventory at f6872a26", () => {
 		const checkout = await remote.clone().branch().checkout(changeset);
 		checkout.close();
 		expect(() => checkout.close()).not.toThrow();
+	});
+
+	it("leaves no scratch copy behind when it pushes", async () => {
+		const scratch = mkdtempSync(join(tmpdir(), "melian-scratch-"));
+		vi.stubEnv("TMPDIR", scratch);
+		const checkout = await remote.clone().branch().checkout(changeset);
+		await note(await storageOf(checkout), "stored");
+		await checkout.push();
+		expect(readdirSync(scratch)).toEqual([]);
+		rmSync(scratch, { recursive: true, force: true });
 	});
 });
