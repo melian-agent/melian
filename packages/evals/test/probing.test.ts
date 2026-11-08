@@ -370,6 +370,24 @@ describe("measureProbing's totals", () => {
 		});
 	});
 
+	it("counts nothing for a failed miss review that spent nothing", async () => {
+		const miss: Miss = { name: "m", repo: "/r", base: "a", head: "b", file: "f", rule: "r" };
+		const [result] = await measureProbing(
+			parseCombinations("x=a/b"),
+			[],
+			[miss],
+			1,
+			{
+				golden: async () => ({}) as never,
+				miss: async () => {
+					throw new GoldenRunError(new Error("refused"), { spend: () => "nothing" } as never);
+				},
+			},
+			() => {},
+		);
+		expect(result).toMatchObject({ misses: { found: 0, total: 1, recall: null, failed: 1 }, tokens: 0, cost: 0 });
+	});
+
 	it("scores no misses as full recall", async () => {
 		const [result] = await measureProbing(parseCombinations("x=a/b"), [], [], 1, {} as never, () => {});
 		expect(result!.misses).toEqual({ found: 0, total: 0, recall: 1, failed: 0 });
