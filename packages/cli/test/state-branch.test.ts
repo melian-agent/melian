@@ -429,7 +429,7 @@ describe("Codex's review of a0756fc", () => {
 		await expect(store.checkpoint()).rejects.toMatchObject({
 			name: "CliError",
 			message: expect.stringMatching(
-				/^melian publish could not store the pull request's storage on melian\/state before posting: git fetch of melian\/state failed: .*; nothing was posted$/s,
+				/^melian publish could not store the pull request's storage on melian\/state before posting: git fetch of melian\/state failed: .*; nothing more was posted$/s,
 			),
 		});
 		await store.storage.close(context);
@@ -535,7 +535,7 @@ describe("Codex's review of ff4b2e1", () => {
 			await expect(legacy.checkpoint()).rejects.toMatchObject({
 				name: "CliError",
 				message: expect.stringMatching(
-					/^melian publish could not store the pull request's storage on melian\/state before posting: another run took the changeset's lease, at generation 2, after this one's 1; nothing was posted$/,
+					/^melian publish could not store the pull request's storage on melian\/state before posting: another run took the changeset's lease, at generation 2, after this one's 1; nothing more was posted$/,
 				),
 			});
 			await legacy.storage.close(context);

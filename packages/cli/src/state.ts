@@ -243,12 +243,9 @@ export class ChangesetStore {
 	}
 
 	/**
-	 * Releases the copy, after the harness has closed the storage, storing it on the branch first when the command
-	 * wrote it. A store the branch refuses stays in this clone; the next command takes the branch's.
-	 */
-	/**
-	 * Stores the copy on the branch and keeps the lease, before a command acts on GitHub, so another clone that takes the
-	 * pull request over finds the publisher secret that signed what it posted. Nothing posts when this fails.
+	 * Stores the copy on the branch and renews the lease, before each write a command makes to GitHub, so another clone
+	 * that takes the pull request over finds the publisher secret that signed what it posted, and a run that lost the
+	 * lease posts nothing more.
 	 */
 	async checkpoint(): Promise<void> {
 		const checkout = this.#checkout;
@@ -267,7 +264,7 @@ export class ChangesetStore {
 						});
 		if (pushed.kind !== "pushed" && pushed.kind !== "confirmed")
 			throw new CliError(
-				`melian publish could not store the pull request's storage on melian/state before posting: ${visibleText(pushed.reason)}; nothing was posted`,
+				`melian publish could not store the pull request's storage on melian/state before posting: ${visibleText(pushed.reason)}; nothing more was posted`,
 			);
 	}
 
@@ -280,6 +277,10 @@ export class ChangesetStore {
 		});
 	}
 
+	/**
+	 * Releases the copy, after the harness has closed the storage, storing it on the branch first when the command
+	 * wrote it. A store the branch refuses stays in this clone; the next command takes the branch's.
+	 */
 	async close(): Promise<void> {
 		const checkout = this.#checkout;
 		// A reservation's lease expires on its own if the branch is out of reach now.

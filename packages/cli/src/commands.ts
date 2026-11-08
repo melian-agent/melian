@@ -514,13 +514,14 @@ export async function publish(
 	const store = await ChangesetStore.write(io, changeset.repoRoot, changeset.id, undefined, { authoritative: true });
 	const { storage } = store;
 	// Only the publish task: a review a crash interrupted must not resume here and spend tokens on real models.
-	const publishHarness = await openPublishHarness(storage, idleModels(io.env), provider).catch(
-		async (error: unknown) => {
-			await storage.close(context).catch(() => {});
-			await store.close();
-			throw error;
-		},
-	);
+	// The lease is renewed before every post, so a run that stalled past it posts nothing over the run that took it.
+	const publishHarness = await openPublishHarness(storage, idleModels(io.env), provider, context, () =>
+		store.checkpoint(),
+	).catch(async (error: unknown) => {
+		await storage.close(context).catch(() => {});
+		await store.close();
+		throw error;
+	});
 	const { harness } = publishHarness;
 	try {
 		// A head that moved has no merge base here, and publishReview refuses it for the head before it reads this.
