@@ -160,7 +160,8 @@ describe("CLI walkthrough beside the review", { timeout: 60_000 }, () => {
 			await unlockModels!(["light-provider"]);
 		});
 		vi.spyOn(pipeline, "unlockCredentials").mockImplementation(async (_models, providers) => {
-			if (providers.includes("light-provider")) await new Promise((resolve) => setTimeout(resolve, 300));
+			// Above the 300 ms the assertion reads: a timer can end a millisecond early by Date.now, which spans use.
+			if (providers.includes("light-provider")) await new Promise((resolve) => setTimeout(resolve, 400));
 		});
 		let output = "";
 		const io = {
