@@ -206,6 +206,16 @@ describe("restatement links", () => {
 		expect(await findingsVersion(harness, id, elsewhere, context)).toBe(lapsing + 1);
 	});
 
+	it("lapses when a repeat of the root's dismissal records another severity", async () => {
+		await link({ [restated.id]: { from: root.id, kind: "inherited", dismissedAt: dismissal.at } });
+		const owner = await harness.root(context);
+		const later = { ...dismissal, at: "2026-11-09T00:00:00Z" };
+		expect(await owner.commit((tx) => dismissFinding(tx, id, root.id, later, at, "P3"), context)).toBeUndefined();
+		expect((await read())[restated.id]!.properties.status).toBe("new");
+		const { lifecycle } = (await harness.snapshot(FindingsDocument, id, context))!.items[root.id]!;
+		expect(lifecycle).toMatchObject({ dismissedSeverity: "P3", dismissedAt: later.at, history: [] });
+	});
+
 	it("bumps only the revisions that sighted a changed root or link to it", async () => {
 		const owner = await harness.root(context);
 		await owner.commit(async (tx) => {
