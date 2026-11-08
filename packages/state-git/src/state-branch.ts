@@ -400,7 +400,13 @@ export class StateBranch {
 			);
 		const index = StateIndex.parse(await gitOutput(this.#options.repoRoot, ["cat-file", "blob", indexEntry.sha]));
 		// Checked on every read, so neither a new changeset nor a cached copy is ever written under another key.
-		if (index.key !== undefined && index.key !== this.#seal.commitment)
+		// The first push writes the commitment, so a branch that has a tip and none was written by something else.
+		if (index.key === undefined)
+			throw new StateBranchError(
+				"invalidBranch",
+				"the state branch's index.json commits to no writers' key, as only a branch before its first push does",
+			);
+		if (index.key !== this.#seal.commitment)
 			throw new StateBranchError(
 				"invalidBranch",
 				"this clone's state key is not the key the branch was written under; check the writers' key in Melian's secrets file",

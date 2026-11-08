@@ -679,3 +679,28 @@ describe("Codex's review of 1785bc4", () => {
 		expect(remote.tip()).toBe(tip);
 	});
 });
+
+describe("Codex's review of 3e1df8b", () => {
+	it("refuses an existing branch whose index commits to no key, and moves nothing", async () => {
+		await (await remote.clone().branch().checkout(changeset)).push();
+		const bare = remote.bare;
+		const unkeyed = { ...(remote.index() as Record<string, unknown>) };
+		delete unkeyed.key;
+		const index = gitWith(bare, `${JSON.stringify(unkeyed)}\n`, "hash-object", "-w", "--stdin");
+		const changesets = gitIn(bare, "rev-parse", "refs/heads/melian/state:changesets");
+		const root = gitWith(bare, `100644 blob ${index}\tindex.json\n040000 tree ${changesets}\tchangesets\n`, "mktree");
+		gitIn(
+			bare,
+			"update-ref",
+			"refs/heads/melian/state",
+			gitIn(bare, "commit-tree", root, "-p", remote.tip()!, "-m", "unkeyed"),
+		);
+		const tip = remote.tip();
+		await expect(remote.clone().branch().checkout("pull-fedcba9876543210")).rejects.toMatchObject({
+			code: "invalidBranch",
+			message:
+				"the state branch's index.json commits to no writers' key, as only a branch before its first push does",
+		});
+		expect(remote.tip()).toBe(tip);
+	});
+});
