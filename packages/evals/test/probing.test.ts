@@ -429,7 +429,7 @@ describe("reviewMiss", { timeout: 60_000 }, () => {
 		}
 	});
 
-	it("trusts the base's standards as a review of the range does, and still plans at the level that probes", async () => {
+	it("trusts the base's standards as a review of the range does, and plans at the level that probes under a lower band", async () => {
 		const { repo, base } = buildGoldenRepository(golden("trust-boundary-probe-claim-lost-release"));
 		try {
 			const git = (...args: string[]) => {
@@ -439,7 +439,16 @@ describe("reviewMiss", { timeout: 60_000 }, () => {
 			};
 			git("checkout", "-q", "-b", "standards", base);
 			writeFileSync(join(repo, "AGENTS.md"), "Every workflow step fails closed.\n");
-			git("add", "AGENTS.md");
+			// A base that caps the lens below its level that probes, which the measurement still plans at.
+			const policy = join(repo, "melian.yaml");
+			writeFileSync(
+				policy,
+				readFileSync(policy, "utf8").replace(
+					"level: { floor: deep }",
+					"level: { floor: careful, ceiling: careful }",
+				),
+			);
+			git("add", "AGENTS.md", "melian.yaml");
 			git("commit", "-q", "-m", "standards");
 			const standards = git("rev-parse", "HEAD");
 			git("checkout", "-q", "feature");
