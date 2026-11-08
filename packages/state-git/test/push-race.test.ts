@@ -110,6 +110,14 @@ it("does not retry a push the remote refused for another reason", async () => {
 	});
 });
 
+it("never lets a fetch or push wait on a credential prompt", async () => {
+	environments.length = 0;
+	await (await remote.clone().branch().checkout(changeset)).push();
+	const network = environments.filter(({ command }) => command === "fetch" || command === "push");
+	expect(network.length).toBeGreaterThanOrEqual(4);
+	for (const { env } of network) expect(env).toMatchObject({ GIT_TERMINAL_PROMPT: "0" });
+});
+
 it("reads git's fetch and push output in the C locale, which git does not translate", async () => {
 	environments.length = 0;
 	await (await remote.clone().branch().checkout(changeset)).push();

@@ -68,3 +68,8 @@ describe("git with input it does not read", () => {
 		expect(result.code).not.toBe(0);
 	});
 });
+
+it("gives git an ended input when it is given none, so a command that reads it cannot wait forever", async () => {
+	const result = await git(repo, ["hash-object", "--stdin"]);
+	expect(result).toMatchObject({ code: 0, stdout: "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391\n" });
+}, 5_000);
