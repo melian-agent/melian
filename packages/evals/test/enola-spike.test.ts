@@ -21,7 +21,7 @@ afterEach(() => {
 it("measures a local analyser and reuses only queries for the same snapshot", async ({ skip }) => {
 	if (!existsSync("/usr/bin/time")) {
 		const reason = "/usr/bin/time is missing; install the time package to measure the spike";
-		console.warn(`skipped: ${reason}`);
+		process.stderr.write(`skipped: ${reason}\n`);
 		skip(reason);
 	}
 	repo = createRepository();
