@@ -215,6 +215,18 @@ describe("a dismissal carrying to a restatement", () => {
 		expect(state!.inherited?.[Revision.key(await revision())]).toBeUndefined();
 	});
 
+	it("lets the scripted verifier answer different by default for each dismissed finding it is shown", async () => {
+		await dismissedRoot();
+		pushElsewhere("other");
+		scriptConversations(fake, [
+			{ match: correctness, replies: [report(restatement), fauxAssistantMessage("Done.")] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+		const second = await review();
+		expect(second.verdict.status).toBe("findings");
+		expect(second.verdict.attention()).toHaveLength(1);
+	});
+
 	it("asks nothing and carries nothing when a change touches the root's region", async () => {
 		const root = await dismissedRoot();
 		writeFiles(repo, { "src/user.ts": user("boss", "\treturn user.manager.name + label + label;") });
