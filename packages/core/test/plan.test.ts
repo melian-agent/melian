@@ -1463,6 +1463,27 @@ describe("a lens route", () => {
 		expect(resolved.warnings().some((text) => text.startsWith("correctness runs"))).toBe(false);
 	});
 
+	it("still names each refused level of a preference route that has no credentials, after the credentials warning", () => {
+		const committed = { heavy: { model: opus, accept: [opus], acceptOverridden: false } };
+		const resolved = plan(
+			committed,
+			{ anthropic: "ANTHROPIC_API_KEY" },
+			{ lensRoutePreferences: { correctness: { model: gpt } } },
+		);
+		expect(resolved.lensRoute("correctness", "")?.status).toBe("uncredentialed");
+		const refusal = `lenses.correctness.route moves it from heavy to its own route, and models.heavy.acceptOverridden is false; the route runs ${gpt}, which models.heavy.accept does not list`;
+		const warnings = resolved.warnings();
+		const credentials = warnings.indexOf(
+			`correctness route: none of ${gpt} has credentials; log in with pi, set the provider's API key, or add a credential to melian.secrets.yaml`,
+		);
+		expect(credentials).toBeGreaterThanOrEqual(0);
+		expect(warnings.slice(credentials + 1, credentials + 3)).toEqual([
+			`correctness fails at careful: ${refusal}`,
+			`correctness fails at deep: ${refusal}`,
+		]);
+		expect(warnings.some((text) => text.startsWith("correctness fails at quick"))).toBe(false);
+	});
+
 	it("drops a moved route's fallbacks outside a guarded committed tier's accept, and fails a run that finished on one", () => {
 		const committed = { heavy: { model: opus, accept: [opus], acceptOverridden: false } };
 		const resolved = plan(committed, both, {

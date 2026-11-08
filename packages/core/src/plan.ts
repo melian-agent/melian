@@ -807,13 +807,6 @@ export class ReviewPlan {
 			const route = this.lensRoute(lens.name, lens.scope ?? "");
 			if (route === undefined) return ignored;
 			const named = `${label} route`;
-			if (route.status === "uncredentialed") {
-				return [
-					...ignored,
-					...unknown(named, route),
-					`${named}: ${route.reason}; log in with pi, set the provider's API key, or add a credential to melian.secrets.yaml`,
-				];
-			}
 			const failing = ReviewPlan.refusalOf(route);
 			if (failing !== undefined)
 				return [...ignored, ...unknown(named, route), `${named} fails every check: ${failing}`];
@@ -821,6 +814,14 @@ export class ReviewPlan {
 			const refused = judged.flatMap(({ entry, refusal }) =>
 				refusal === undefined ? [] : [`${label} fails at ${entry.level}: ${refusal}`],
 			);
+			if (route.status === "uncredentialed") {
+				return [
+					...ignored,
+					...unknown(named, route),
+					`${named}: ${route.reason}; log in with pi, set the provider's API key, or add a credential to melian.secrets.yaml`,
+					...refused,
+				];
+			}
 			const standing = judged.find(({ entry }) => entry.level === defaultScrutinyLevel)!;
 			const runs =
 				standing.refusal === undefined && standing.lineage !== undefined
