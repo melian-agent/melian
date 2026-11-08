@@ -114,6 +114,8 @@ type StoredVerdictState = {
 	walkthroughNotes?: Record<string, string>;
 	// Finished or replaced summariser attempts since the last success; pending tasks spend no attempt.
 	walkthroughAttempts?: Record<string, number>;
+	// The light route each walkthrough was written on, as `provider/model@thinking`; absent for one an older Melian stored.
+	walkthroughRoutes?: Record<string, string>;
 };
 
 class VerdictState {

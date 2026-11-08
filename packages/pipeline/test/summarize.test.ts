@@ -29,7 +29,7 @@ import { baseAndHead, isolatedGitEnv } from "./fixtures/repo.ts";
 
 let repo: string;
 let harness: Harness;
-const fake = () => createFakeModels({ models: [{ id: "scripted" }] });
+const fake = () => createFakeModels({ models: [{ id: "scripted" }, { id: "other" }] });
 let models: ReturnType<typeof fake>;
 let changeset: Changeset;
 let config: MelianConfig;
@@ -669,6 +669,38 @@ describe("walkthrough summaries", () => {
 			expect(auth).not.toHaveBeenCalled();
 			expect((await stored())?.walkthroughs).toBeUndefined();
 			expect((await stored())?.walkthroughNotes).toBeUndefined();
+		});
+		it("summarises again when the review's plan routes the walkthrough to another model, and not when it does not", async () => {
+			await withoutProvenance();
+			const revision = Revision.key(changeset.revision);
+			const routed = (id: string) =>
+				ReviewPlan.from({
+					tiers: [
+						{
+							tier: "light",
+							status: "routed",
+							models: [{ model: `${models.ref(id).provider}/${id}`, credential: "test" }],
+						},
+					],
+					lenses: [],
+				});
+			const seen: string[] = [];
+			const reply = (summary: string) => (_messages: unknown, model: string) => {
+				seen.push(model);
+				return success(summary);
+			};
+			scriptConversations(models, [
+				{
+					match: "You write Melian's walkthrough",
+					replies: [reply("Written on scripted."), reply("Written on other.")],
+				},
+			]);
+			await summarize({ origin: pullRequest, plan: routed("scripted") });
+			await summarize({ origin: pullRequest, plan: routed("scripted") });
+			expect(seen).toEqual(["scripted"]);
+			const doc = await summarize({ origin: pullRequest, plan: routed("other") });
+			expect(seen).toEqual(["scripted", "other"]);
+			expect(doc?.walkthroughs?.[revision]?.summary).toBe("Written on other.");
 		});
 		it("skips a range origin, whatever a stored provenance says", async () => {
 			const auth = vi.spyOn(models.models, "checkAuth");

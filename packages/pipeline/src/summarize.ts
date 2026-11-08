@@ -97,6 +97,9 @@ type SummaryInput = {
 	paths?: string[];
 };
 type SummaryCheckpoint = { phase: "spawn" } | { phase: "summarize"; child: ConversationId };
+
+const routeOf = ({ model, thinking }: { model: ModelReference; thinking?: ModelRoute["thinking"] }): string =>
+	`${model.provider}/${model.modelId}@${thinking ?? ""}`;
 export const SummaryTask = defineTask<SummaryInput, SummaryCheckpoint, string>({
 	name: "melian.summarize",
 	version: 2,
@@ -132,6 +135,10 @@ export const SummaryTask = defineTask<SummaryInput, SummaryCheckpoint, string>({
 				const document = await tx.doc(VerdictDocument, task.input.root);
 				if (result !== undefined && settled.status === "done") {
 					document.walkthroughs = { ...document.walkthroughs, [task.input.revision]: structuredClone(result) };
+					document.walkthroughRoutes = {
+						...document.walkthroughRoutes,
+						[task.input.revision]: routeOf(task.input),
+					};
 					if (document.walkthroughNotes !== undefined) delete document.walkthroughNotes[task.input.revision];
 					if (document.walkthroughAttempts !== undefined) delete document.walkthroughAttempts[task.input.revision];
 				} else {
@@ -277,13 +284,9 @@ export async function summarizeReview(options: {
 	try {
 		const conversation = await harness.root(context);
 		root = conversation;
-		const provenance = (await harness.snapshot(VerdictDocument, conversation.id, context))?.provenance?.[revision];
+		const stored = await harness.snapshot(VerdictDocument, conversation.id, context);
+		const provenance = stored?.provenance?.[revision];
 		if ((options.origin ?? provenance)?.kind !== "pull-request") return;
-		if (
-			!options.rerun &&
-			(await harness.snapshot(VerdictDocument, conversation.id, context))?.walkthroughs?.[revision] !== undefined
-		)
-			return;
 		const plan =
 			options.origin === undefined
 				? provenance?.plan === undefined
@@ -307,6 +310,14 @@ export async function summarizeReview(options: {
 				break;
 			}
 		}
+		const written =
+			stored?.walkthroughs?.[revision] === undefined ? undefined : (stored.walkthroughRoutes?.[revision] ?? "");
+		const wanted = model === undefined ? undefined : routeOf({ model, thinking: routes.light?.thinking });
+		// A walkthrough another route wrote is refreshed, as `rerun` refreshes one; an older Melian recorded no route.
+		const rerun =
+			options.rerun === true ||
+			(written !== undefined && written !== "" && written !== wanted && model !== undefined);
+		if (!rerun && written !== undefined) return;
 		if (model === undefined) {
 			note =
 				route === undefined
@@ -336,14 +347,14 @@ export async function summarizeReview(options: {
 			const spent =
 				((await harness.snapshot(VerdictDocument, conversation.id, context))?.walkthroughAttempts?.[revision] ??
 					0) + (uncounted ? 1 : 0);
-			if (attaches || options.rerun || spent < maxWalkthroughAttempts) await options.unlockModels([model.provider]);
+			if (attaches || rerun || spent < maxWalkthroughAttempts) await options.unlockModels([model.provider]);
 		}
 		const prompt = await WalkthroughPrompt.from(changeset).render();
 		const task = await conversation.commit(async (tx) => {
 			const index = await tx.doc(SummaryIndex, conversation.id);
 			const known = index.tasks[revision];
 			const document = await tx.doc(VerdictDocument, conversation.id);
-			if (!options.rerun && document.walkthroughs?.[revision] !== undefined) return undefined;
+			if (!rerun && document.walkthroughs?.[revision] !== undefined) return undefined;
 			if (await attachable(tx, known, [...undecided, "failed", "completed"])) {
 				if (index.counted[revision] === known) {
 					if (document.walkthroughAttempts !== undefined)
@@ -358,10 +369,9 @@ export async function summarizeReview(options: {
 			const previous = known === undefined ? undefined : await tx.task(known as TaskId);
 			if (previous?.state.status === "terminal" && ["failed", "completed"].includes(previous.state.outcome.status))
 				await countAttempt(tx, conversation.id, revision, known!);
-			if (!options.rerun && (document.walkthroughAttempts?.[revision] ?? 0) >= maxWalkthroughAttempts)
-				return undefined;
+			if (!rerun && (document.walkthroughAttempts?.[revision] ?? 0) >= maxWalkthroughAttempts) return undefined;
 			if (known !== undefined) await countAttempt(tx, conversation.id, revision, known);
-			if (options.rerun) document.walkthroughAttempts = { ...document.walkthroughAttempts, [revision]: 0 };
+			if (rerun) document.walkthroughAttempts = { ...document.walkthroughAttempts, [revision]: 0 };
 			const created = await tx.createTask(
 				SummaryTask,
 				{
