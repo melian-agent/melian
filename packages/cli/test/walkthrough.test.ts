@@ -119,6 +119,39 @@ describe("CLI walkthrough beside the review", { timeout: 60_000 }, () => {
 		expect(plan).toBeDefined();
 	});
 
+	it("times the wait for the walkthrough in no preparation step", async () => {
+		const reviewed = gate();
+		vi.spyOn(pipeline, "summarizeReview").mockImplementation(async () => {
+			await reviewed.opened;
+			await new Promise((resolve) => setTimeout(resolve, 1000));
+		});
+		const actual = pipeline.reviewChangeset;
+		vi.spyOn(pipeline, "reviewChangeset").mockImplementation(async (request) => {
+			const result = await actual(request);
+			reviewed.open();
+			return result;
+		});
+		let output = "";
+		const io = {
+			cwd: repo,
+			env,
+			stdout: (text: string) => {
+				output += text;
+			},
+			stderr: () => {},
+			color: false,
+		};
+
+		expect(await review(io, "#7", { rerun: false, json: true })).toBe(0);
+
+		const { telemetry } = JSON.parse(output) as {
+			telemetry: { prepare: { spans: { name: string; durationMs: number }[] } };
+		};
+		const read = telemetry.prepare.spans.find((span) => span.name === "verdict.read");
+		expect(read).toBeDefined();
+		expect(read!.durationMs).toBeLessThan(1000);
+	});
+
 	it("starts the walkthrough once the review returns when it never reached triage", async () => {
 		const summarize = vi.spyOn(pipeline, "summarizeReview").mockResolvedValue(undefined);
 		const actual = pipeline.reviewChangeset;
