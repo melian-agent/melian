@@ -2,13 +2,11 @@
 
 Status: ruled on 2026-11-08 by the maintainer, in the builder's session for plan step 37 ([issue #243](https://github.com/melian-agent/melian/issues/243)).
 
-Amends: [the review plan resolution](2026-10-05-review-plan-resolution.md), the sentence that a lens task is reused only for the same routes
-
 ## Context
 
 The review index keys each lens run by its lens, version and level, its thinking, its band, its escalation, and the models its route resolved to. A review whose run has the same key attaches to the stored task instead of asking a model again. The plan judges the run afresh, so its lineage reads the new plan.
 
-Melian's rounds on [pull request #339](https://github.com/melian-agent/melian/pull/339) found two inputs that never enter the key. The first is who set the route: a committed tier, a lens route, a preference file or `--model`. The second is which named credential the plan chose for each model. Example: a run on the committed `heavy` tier falls back to model B. A preference file then routes the lens to B, and the next review attaches to that run and records lineage moved by the preference file, though the stored run never moved. The review plan resolution decision said a task is reused only for the same routes, so the lineage always names the route that ran. Neither instance kept that promise, on `main` or on this branch.
+Melian's rounds on [pull request #339](https://github.com/melian-agent/melian/pull/339) found two inputs that never enter the key. The first is who set the route: a committed tier, a lens route, a preference file or `--model`. The second is which named credential the plan chose for each model. Example: a run on the committed `heavy` tier falls back to model B. A preference file then routes the lens to B, and the next review attaches to that run and records lineage moved by the preference file, though the stored run never moved. [The review plan resolution decision](2026-10-05-review-plan-resolution.md), since superseded, said a task is reused only for the same routes, so the lineage always names the route that ran, and `docs/design.md` still promised it. Neither instance kept that promise, on `main` or on this branch.
 
 ## Decision
 
