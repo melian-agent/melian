@@ -987,9 +987,9 @@ export class Lens {
 	 * level takes what it leaves out from the top level, so a lens that extends another and sets a top-level tier or
 	 * budget moves the levels that name none, and can leave `careful` on a lighter tier than `quick`, or allowing more
 	 * than `deep`. Triage will choose a level by how hard a lens should look, so a higher level that costs less inverts
-	 * its choice.
+	 * its choice. With `routed`, every level runs on the lens's own route, so only budgets compare.
 	 */
-	inversions(): string[] {
+	inversions(routed = false): string[] {
 		const declared = scrutinyLevels.flatMap((level) => {
 			const settings = this.levels[level];
 			return settings === undefined ? [] : [{ level, ...settings }];
@@ -997,7 +997,7 @@ export class Lens {
 		return declared.slice(1).flatMap((upper, index) => {
 			const lower = declared[index]!;
 			const tier =
-				tierOrder.indexOf(upper.tier) < tierOrder.indexOf(lower.tier)
+				!routed && tierOrder.indexOf(upper.tier) < tierOrder.indexOf(lower.tier)
 					? [`${upper.level} runs on ${upper.tier}, below ${lower.level}'s ${lower.tier}`]
 					: [];
 			const budgets = (["tokens", "tools"] as const).flatMap((budget) => {

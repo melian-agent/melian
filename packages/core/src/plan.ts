@@ -51,10 +51,9 @@ export type TierStatus = "routed" | "unrouted" | "uncredentialed" | "unavailable
 /** One model of a tier's route, and where its credentials come from, or `none`. */
 export type PlannedModel = { model: string; credential: string; family?: string };
 
-/** One tier of a {@link ReviewPlan}, as stored. */
-export type PlannedTier = {
-	tier: ModelTier;
-	/** The tier's requested reasoning level and the file that set it; absent when Pi keeps its default. */
+/** One route of a {@link ReviewPlan}, a tier's or a lens's, as stored. */
+export type PlannedRoute = {
+	/** The route's requested reasoning level and the file that set it; absent when Pi keeps its default. */
 	thinking?: ModelRoute["thinking"];
 	thinkingBy?: string;
 	/** A level outside committed policy, absent on older plans and unchanged levels. */
@@ -78,16 +77,25 @@ export type PlannedTier = {
 	unknown?: UnknownModel[];
 };
 
+/** One tier of a {@link ReviewPlan}, as stored. */
+export type PlannedTier = { tier: ModelTier } & PlannedRoute;
+
+/** The route of one lens that names its own, by the lens's name and the folder that defined it, as stored. */
+export type PlannedLensRoute = { lens: string; scope: string } & PlannedRoute;
+
 /** A route entry the catalogue does not hold; `provider` is its provider when the catalogue holds no model of it. */
 export type UnknownModel = { model: string; by: string; provider?: string };
 
 /**
  * One level of a lens: the tier it runs on, and, where a preference file moved it there, the tier the committed files
- * give it, whose route's policy still judges it, and the file that moved it.
+ * give it, whose route's policy still judges it, and the file that moved it. On a lens with its own route, `route` is
+ * set and the level runs on that route; `tier` is then the committed tier whose policy judges a route a preference file
+ * gave the lens, and `by` that file.
  */
 export type PlannedLevel = {
 	level: ScrutinyLevel;
 	tier: LensTier;
+	route?: true;
 	committed?: LensTier;
 	by?: string;
 };
@@ -97,7 +105,13 @@ export type PlannedLevel = {
  * empty for the root's and the built-ins: two folders may each define a lens of one name, on different tiers. Absent
  * from a plan stored before Melian kept it.
  */
-export type PlannedLens = { name: string; scope?: string; levels: PlannedLevel[] };
+export type PlannedLens = {
+	name: string;
+	scope?: string;
+	levels: PlannedLevel[];
+	/** A `lenses.<name>.tier` the lens's own route overrides, and the file that set it. */
+	ignored?: { tier: LensTier; by: string };
+};
 
 /** What the plan says of one lens check: why it must fail without counting, and the lineage it records. */
 export interface LensJudgement {
@@ -105,8 +119,21 @@ export interface LensJudgement {
 	readonly lineage?: CheckLineage;
 }
 
-/** A {@link ReviewPlan} as stored. */
-export type StoredPlan = { tiers: PlannedTier[]; lenses: PlannedLens[] };
+/** A {@link ReviewPlan} as stored. `lensRoutes` is absent when no lens names its own route. */
+export type StoredPlan = { tiers: PlannedTier[]; lenses: PlannedLens[]; lensRoutes?: PlannedLensRoute[] };
+
+// What resolving one route reads: the committed route that judges it, the effective one, the key messages name it by,
+// and the files that changed its models or its thinking.
+type RouteSource = {
+	readonly at: string;
+	readonly noun: string;
+	readonly tier: string;
+	readonly policy: ModelRoute | undefined;
+	readonly effective: ModelRoute | undefined;
+	readonly flag: string | undefined;
+	readonly overridden: string | undefined;
+	readonly thinkingBy: string | undefined;
+};
 
 /** One line `melian doctor` prints for a plan. */
 export interface PlanLine {
@@ -146,10 +173,12 @@ function listed(names: readonly string[]): string {
 export class ReviewPlan {
 	readonly tiers: readonly PlannedTier[];
 	readonly lenses: readonly PlannedLens[];
+	readonly lensRoutes: readonly PlannedLensRoute[];
 
 	private constructor(stored: StoredPlan) {
 		this.tiers = stored.tiers;
 		this.lenses = stored.lenses;
+		this.lensRoutes = stored.lensRoutes ?? [];
 	}
 
 	/** The plan a stored one describes, trusted as stored. */
@@ -169,7 +198,10 @@ export class ReviewPlan {
 	static resolve(input: PlanInput): ReviewPlan {
 		const lenses = ReviewPlan.lensesOf(input);
 		const tiers = modelTiers.map((tier) => ReviewPlan.resolveTier(tier, input));
-		return new ReviewPlan({ tiers, lenses });
+		const lensRoutes = lenses
+			.filter(({ levels }) => levels.some(({ route }) => route === true))
+			.map((lens) => ReviewPlan.resolveLensRoute(lens, input));
+		return new ReviewPlan({ tiers, lenses, ...(lensRoutes.length === 0 ? {} : { lensRoutes }) });
 	}
 
 	private static lensesOf({ config, routes, lenses, checks }: PlanInput): PlannedLens[] {
@@ -179,16 +211,32 @@ export class ReviewPlan {
 			const settings = Object.hasOwn(config.lenses, lens.name) ? config.lenses[lens.name] : undefined;
 			const key = `${lens.name}\0${lens.scope}`;
 			if (!named.has(lens.name) || settings?.enabled === false || planned.has(key)) continue;
+			const routed = settings?.route !== undefined;
+			const committedRoute = Object.hasOwn(routes.lensRoutes ?? {}, lens.name);
+			const retieredBy = Object.hasOwn(routes.retiered, lens.name) ? routes.retiered[lens.name]! : undefined;
 			const levels = scrutinyLevels.flatMap((level): PlannedLevel[] => {
 				const declared = lens.levels[level];
 				if (declared === undefined) return [];
-				const tier = settings?.tier ?? declared.tier;
 				const committed = Object.hasOwn(routes.lensTiers, lens.name) ? routes.lensTiers[lens.name]! : declared.tier;
+				if (routed && committedRoute) return [{ level, tier: declared.tier, route: true }];
+				if (routed) {
+					const by = routes.lensRouteBy?.[lens.name] ?? "a preference file";
+					return [{ level, tier: committed, route: true, by }];
+				}
+				const tier = settings?.tier ?? declared.tier;
 				if (committed === tier) return [{ level, tier }];
-				const by = Object.hasOwn(routes.retiered, lens.name) ? routes.retiered[lens.name]! : "a preference file";
-				return [{ level, tier, committed, by }];
+				return [{ level, tier, committed, by: retieredBy ?? "a preference file" }];
 			});
-			planned.set(key, { name: lens.name, scope: lens.scope, levels });
+			const ignored =
+				routed && settings?.tier !== undefined
+					? { tier: settings.tier, by: retieredBy ?? "melian.yaml" }
+					: undefined;
+			planned.set(key, {
+				name: lens.name,
+				scope: lens.scope,
+				levels,
+				...(ignored === undefined ? {} : { ignored }),
+			});
 		}
 		return [...planned.values()].sort(
 			(left, right) => left.name.localeCompare(right.name) || (left.scope ?? "").localeCompare(right.scope ?? ""),
@@ -196,12 +244,66 @@ export class ReviewPlan {
 	}
 
 	private static resolveTier(tier: ModelTier, input: PlanInput): PlannedTier {
-		const { config, routes, catalog, credentials } = input;
-		const policy: ModelRoute | undefined = routes.committed[tier];
-		const effective: ModelRoute | undefined = config.models[tier];
+		const { config, routes } = input;
+		const route = ReviewPlan.resolveRoute(
+			{
+				at: `models.${tier}`,
+				noun: `the ${tier} tier`,
+				tier,
+				policy: routes.committed[tier],
+				effective: config.models[tier],
+				flag: input.model !== undefined && lensTiers.includes(tier) ? input.model : undefined,
+				overridden: routes.overridden[tier],
+				thinkingBy: routes.thinking?.[tier],
+			},
+			input,
+		);
+		return { tier, ...route };
+	}
+
+	// A lens route resolves as a tier does. One the committed files set takes `acceptOverridden: false` and
+	// `unavailable: fail` from each committed tier its levels declare that sets them, unless it states its own, so a route
+	// never lifts a guard a maintainer put on the tier.
+	private static resolveLensRoute(lens: PlannedLens, input: PlanInput): PlannedLensRoute {
+		const { config, routes } = input;
+		const own = Object.hasOwn(routes.lensRoutes ?? {}, lens.name) ? routes.lensRoutes![lens.name] : undefined;
+		const guards = [...new Set(lens.levels.map(({ tier }) => tier))].map((tier) => routes.committed[tier]);
+		const policy: ModelRoute | undefined =
+			own === undefined
+				? undefined
+				: {
+						...own,
+						...(own.acceptOverridden === undefined && guards.some((guard) => guard?.acceptOverridden === false)
+							? { acceptOverridden: false }
+							: {}),
+						...(own.unavailable === undefined && guards.some((guard) => guard?.unavailable === "fail")
+							? { unavailable: "fail" as const }
+							: {}),
+					};
+		const at = `lenses.${lens.name}.route`;
+		const route = ReviewPlan.resolveRoute(
+			{
+				at,
+				noun: at,
+				tier: at,
+				policy,
+				effective: Object.hasOwn(config.lenses, lens.name) ? config.lenses[lens.name]!.route : undefined,
+				flag: input.model,
+				overridden: routes.lensRouteBy?.[lens.name],
+				thinkingBy: routes.lensRouteThinking?.[lens.name],
+			},
+			input,
+		);
+		return { lens: lens.name, scope: lens.scope ?? "", ...route };
+	}
+
+	private static resolveRoute(source: RouteSource, input: PlanInput): PlannedRoute {
+		const { catalog, credentials } = input;
+		const { at, policy, effective, flag } = source;
+		const tier = source.tier;
+		const parse = (name: string) => parseModelReference(name, tier, at);
 		const accept = policy?.accept ?? (policy?.model === undefined ? [] : [policy.model, ...(policy.fallbacks ?? [])]);
 		const wanted = policy?.model;
-		const flag = input.model !== undefined && lensTiers.includes(tier) ? input.model : undefined;
 		let by: string | undefined;
 		let route: readonly string[];
 		if (flag !== undefined) {
@@ -209,21 +311,21 @@ export class ReviewPlan {
 			by = "--model";
 		} else if (effective?.model !== undefined) {
 			route = [effective.model, ...(effective.fallbacks ?? [])];
-			by = routes.overridden[tier];
+			by = source.overridden;
 		} else {
 			route = [...new Set([...(effective?.accept ?? []), ...(effective?.fallbacks ?? [])])];
-			by = routes.overridden[tier];
+			by = source.overridden;
 		}
-		for (const name of [...route, ...accept]) parseModelReference(name, tier);
+		for (const name of [...route, ...accept]) parse(name);
 		const entry = (name: string) => {
-			const { provider, modelId } = parseModelReference(name, tier);
+			const { provider, modelId } = parse(name);
 			return catalog.find((model) => model.provider === provider && model.id === modelId);
 		};
 		const usable = (name: string) => entry(name) !== undefined && Object.hasOwn(credentials, entry(name)!.provider);
 		const planned = (names: readonly string[]) =>
 			names.map((model) => ({
 				model,
-				credential: credentials[parseModelReference(model, tier).provider] ?? "none",
+				credential: credentials[parse(model).provider] ?? "none",
 				...(entry(model) === undefined ? {} : { family: sameModel(entry(model)!.name).split(" ")[0]! }),
 			}));
 		const unknown: UnknownModel[] = [];
@@ -234,7 +336,7 @@ export class ReviewPlan {
 			...accept.map((each): [string, string] => [each, "melian.yaml"]),
 		]) {
 			if (input.partialCatalog === true) break;
-			const { provider } = parseModelReference(name, tier);
+			const { provider } = parse(name);
 			if (entry(name) !== undefined || unknown.some(({ model }) => model === name)) continue;
 			unknown.push({
 				model: name,
@@ -244,26 +346,25 @@ export class ReviewPlan {
 		}
 		const thinkingChanged = effective?.thinking !== policy?.thinking;
 		const base = {
-			tier,
 			...(thinkingChanged
 				? {
 						thinkingOverride: {
 							level: effective?.thinking ?? "unset",
 							wanted: policy?.thinking ?? "unset",
-							by: routes.thinking?.[tier] ?? "melian.yaml",
+							by: source.thinkingBy ?? "melian.yaml",
 						} satisfies CheckLineage["thinking"],
 					}
 				: {}),
 			...(effective?.thinking === undefined
 				? {}
-				: { thinking: effective.thinking, thinkingBy: routes.thinking?.[tier] ?? "melian.yaml" }),
+				: { thinking: effective.thinking, thinkingBy: source.thinkingBy ?? "melian.yaml" }),
 			...(unknown.length === 0 ? {} : { unknown }),
 			...(wanted === undefined ? {} : { wanted }),
 			...(accept.length === 0 ? {} : { accept: [...accept] }),
 			...(policy?.acceptOverridden === false ? { acceptOverridden: false as const } : {}),
 		};
 		if (route.length === 0 && accept.length === 0) {
-			return { ...base, status: "unrouted", models: [], reason: `no model is configured for the ${tier} tier` };
+			return { ...base, status: "unrouted", models: [], reason: `no model is configured for ${source.noun}` };
 		}
 		const accepted = (model: string) => accept.includes(model);
 		// The committed route stands for policy, so an accepted model with credentials, from the route or from accept,
@@ -282,12 +383,12 @@ export class ReviewPlan {
 				...base,
 				status: "unavailable",
 				models: [],
-				reason: `none of ${listed(accept)}, which models.${tier} accepts, has credentials, and models.${tier}.unavailable is fail`,
+				reason: `none of ${listed(accept)}, which ${at} accepts, has credentials, and ${at}.unavailable is fail`,
 			};
 		}
 		if (chosen.length === 0) {
 			const tried = by === undefined ? [...new Set([...route, ...accept])] : route;
-			const derived = by === undefined ? ReviewPlan.derive(tried, catalog, credentials, tier) : undefined;
+			const derived = by === undefined ? ReviewPlan.derive(tried, catalog, credentials, parse) : undefined;
 			if (derived === undefined) {
 				return {
 					...base,
@@ -310,8 +411,8 @@ export class ReviewPlan {
 					...(by === undefined ? {} : { by }),
 					outside: !accept.includes(chosen[0]!),
 					reason: thinkingChanged
-						? `models.${tier}.acceptOverridden is false, and ${base.thinkingOverride!.by} sets thinking ${effective?.thinking ?? "unset"}; committed policy wants ${policy.thinking ?? "unset"}`
-						: `models.${tier}.acceptOverridden is false, and ${by ?? "its route"} puts it on ${chosen[0]}, which models.${tier}.accept does not list`,
+						? `${at}.acceptOverridden is false, and ${base.thinkingOverride!.by} sets thinking ${effective?.thinking ?? "unset"}; committed policy wants ${policy.thinking ?? "unset"}`
+						: `${at}.acceptOverridden is false, and ${by ?? "its route"} puts it on ${chosen[0]}, which ${at}.accept does not list`,
 				};
 			}
 			chosen = kept;
@@ -335,11 +436,11 @@ export class ReviewPlan {
 		wanted: readonly string[],
 		catalog: readonly CatalogModel[],
 		credentials: Readonly<Record<string, string>>,
-		tier: ModelTier,
+		parse: (name: string) => { provider: string; modelId: string },
 	): string | undefined {
 		const covered = catalog.filter((model) => Object.hasOwn(credentials, model.provider));
 		const known = wanted.flatMap((name) => {
-			const { provider, modelId } = parseModelReference(name, tier);
+			const { provider, modelId } = parse(name);
 			const found = catalog.find((model) => model.provider === provider && model.id === modelId);
 			return found === undefined ? [] : [found];
 		});
@@ -370,6 +471,22 @@ export class ReviewPlan {
 	}
 
 	/**
+	 * The route of the lens `name` that the folder `scope` defined, where it names its own, as the plan resolved it. With
+	 * `level`, a route a preference file gave the lens keeps only the models its committed tier at that level accepts,
+	 * where that tier says `acceptOverridden: false`.
+	 */
+	lensRoute(name: string, scope: string, level?: ScrutinyLevel): PlannedLensRoute | undefined {
+		const route = this.lensRoutes.find((each) => each.lens === name && each.scope === scope);
+		const entry = this.lenses
+			.find((lens) => lens.name === name && (lens.scope ?? "") === scope)
+			?.levels.find((each) => each.level === level);
+		if (route === undefined || entry?.by === undefined) return route;
+		const { accept, acceptOverridden } = this.tier(entry.tier);
+		if (acceptOverridden !== false || accept === undefined) return route;
+		return { ...route, models: route.models.filter(({ model }) => accept.includes(model)) };
+	}
+
+	/**
 	 * The configuration's routes as the plan resolved them: each routed tier to its models, an uncredentialed tier to
 	 * the route it names, so the review says no model has credentials, and no route for a tier that is unrouted, or
 	 * whose checks fail without running.
@@ -396,7 +513,9 @@ export class ReviewPlan {
 						.filter((tier) => tier.status === "routed")
 				: [own];
 		const models = [...new Map(tiers.flatMap((tier) => tier.models).map((model) => [model.model, model])).values()];
-		const family = this.tiers.flatMap((tier) => tier.models).find((model) => model.model === finder)?.family;
+		const family = [...this.tiers, ...this.lensRoutes]
+			.flatMap((route) => route.models)
+			.find((model) => model.model === finder)?.family;
 		return models.sort(
 			(left, right) =>
 				Number(left.family === family || left.family === undefined) -
@@ -423,9 +542,11 @@ export class ReviewPlan {
 	/** Why a check on `tier` from the review's lens must fail without running, or `undefined` when it may run. */
 	refusal(tier: ModelTier): string | undefined {
 		const { status, reason } = this.tier(tier);
-		return status === "unavailable" || status === "refused" || (tier === "verifier" && status === "uncredentialed")
-			? reason
-			: undefined;
+		return tier === "verifier" && status === "uncredentialed" ? reason : ReviewPlan.refusalOf(this.tier(tier));
+	}
+
+	private static refusalOf({ status, reason }: PlannedRoute): string | undefined {
+		return status === "unavailable" || status === "refused" ? reason : undefined;
 	}
 
 	/** Why a check on `tier` runs on a model the committed route did not choose, or `undefined` when it does not. */
@@ -439,7 +560,7 @@ export class ReviewPlan {
 	// route put it there inside its own accept, when it is the model policy wants, or when there was no committed route
 	// to leave. A model outside accept always records, the committed route's own fallback included.
 	private static leaving(
-		policy: PlannedTier,
+		policy: PlannedRoute,
 		model: string,
 		by: string | undefined,
 		planned = policy,
@@ -482,37 +603,49 @@ export class ReviewPlan {
 		const lens = scope === undefined ? variants[0] : variants.find((each) => (each.scope ?? "") === scope);
 		const entry = lens?.levels.find((each) => each.level === level);
 		if (entry === undefined) return {};
-		return this.judgeLevel(name, entry, ran);
+		return this.judgeLevel(lens!, entry, ran);
 	}
 
-	private judgeLevel(name: string, entry: PlannedLevel, ran?: string): LensJudgement {
-		const planned = this.tier(entry.tier);
+	private judgeLevel(lens: PlannedLens, entry: PlannedLevel, ran?: string): LensJudgement {
+		const { name } = lens;
+		const route = entry.route === true ? this.lensRoute(name, lens.scope ?? "") : undefined;
+		if (entry.route === true && route === undefined) return {};
+		const planned: PlannedRoute = route ?? this.tier(entry.tier);
 		const model = ran ?? planned.models[0]?.model;
+		// A committed lens route is its own policy; a route a preference file gave the lens is judged by its committed tier.
+		const own = route !== undefined && entry.by === undefined;
 		const policyTier = entry.committed ?? entry.tier;
-		const policy = this.tier(policyTier);
+		const policy = own ? planned : this.tier(policyTier);
+		const at = own ? `lenses.${name}.route` : `models.${policyTier}`;
 		// A moved lens owes its model to two things: the file that moved it, and whatever routed the tier it moved to,
 		// a preference file, --model, a derivation, or the committed route itself.
 		const moved =
-			entry.committed === undefined
-				? undefined
-				: { by: entry.by ?? "a preference file", from: policyTier, to: entry.tier };
+			route !== undefined
+				? own
+					? undefined
+					: { by: entry.by!, from: policyTier, to: "lens route" }
+				: entry.committed === undefined
+					? undefined
+					: { by: entry.by ?? "a preference file", from: policyTier, to: entry.tier };
 		const by = moved === undefined ? planned.by : moved.by;
 		const left = model === undefined ? undefined : ReviewPlan.leaving(policy, model, by, planned);
 		const lineage: CheckLineage | undefined =
 			left === undefined || moved === undefined ? left : { ...left, by: planned.by ?? "melian.yaml", moved };
 		const outside =
 			policy.acceptOverridden === false && (lineage?.outside === true || lineage?.thinking !== undefined);
-		const unlisted = `which models.${policyTier}.accept does not list`;
+		const unlisted = `which ${at}.accept does not list`;
 		const why =
-			entry.committed === undefined
-				? `models.${policyTier}.acceptOverridden is false, and ${by ?? "its route"} puts it on ${model}, ${unlisted}`
-				: `lenses.${name}.tier moves it from ${policyTier} to ${entry.tier}, and models.${policyTier}.acceptOverridden is false; ${entry.tier} runs ${model}, ${unlisted}`;
+			moved === undefined
+				? `${at}.acceptOverridden is false, and ${by ?? "its route"} puts it on ${model}, ${unlisted}`
+				: route !== undefined
+					? `lenses.${name}.route moves it from ${policyTier} to its own route, and ${at}.acceptOverridden is false; the route runs ${model}, ${unlisted}`
+					: `lenses.${name}.tier moves it from ${policyTier} to ${entry.tier}, and ${at}.acceptOverridden is false; ${entry.tier} runs ${model}, ${unlisted}`;
 		const refusal =
-			this.refusal(entry.tier) ??
+			(route === undefined ? this.refusal(entry.tier) : ReviewPlan.refusalOf(route)) ??
 			(outside
 				? lineage?.thinking === undefined
 					? why
-					: `models.${policyTier}.acceptOverridden is false, and ${lineage.thinking.by} sets thinking ${lineage.thinking.level}; committed policy wants ${lineage.thinking.wanted}`
+					: `${at}.acceptOverridden is false, and ${lineage.thinking.by} sets thinking ${lineage.thinking.level}; committed policy wants ${lineage.thinking.wanted}`
 				: undefined);
 		return { ...(refusal === undefined ? {} : { refusal }), ...(lineage === undefined ? {} : { lineage }) };
 	}
@@ -561,7 +694,9 @@ export class ReviewPlan {
 	private used(every = false): Map<ModelTier, string[]> {
 		const used = new Map<ModelTier, string[]>();
 		for (const lens of this.lenses) {
-			const levels = lens.levels.filter(({ level }) => every || level === defaultScrutinyLevel);
+			const levels = lens.levels.filter(
+				({ level, route }) => route !== true && (every || level === defaultScrutinyLevel),
+			);
 			for (const tier of new Set(levels.map(({ tier }) => tier))) {
 				used.set(tier, [...(used.get(tier) ?? []), labelOf(lens)]);
 			}
@@ -580,8 +715,12 @@ export class ReviewPlan {
 				return status === "routed" ? models.map(({ model }) => model.slice(0, model.indexOf("/"))) : [];
 			},
 		);
+		const routed = this.lensRoutes.flatMap(({ status, models }) =>
+			status === "routed" ? models.map(({ model }) => model.slice(0, model.indexOf("/"))) : [],
+		);
 		return [
 			...new Set([
+				...routed,
 				...providers,
 				...(this.lenses.length === 0
 					? []
@@ -613,7 +752,7 @@ export class ReviewPlan {
 		const moved = this.lenses.flatMap((lens): string[] => {
 			const entry = lens.levels.find(({ level }) => level === defaultScrutinyLevel);
 			if (entry?.committed === undefined) return [];
-			const { refusal, lineage } = this.judgeLevel(lens.name, entry);
+			const { refusal, lineage } = this.judgeLevel(lens, entry);
 			if (refusal !== undefined) return [`${labelOf(lens)} fails: ${refusal}`];
 			if (lineage === undefined) return [];
 			return [`${labelOf(lens)} runs ${lineage.model}, ${ReviewPlan.lineageText(lineage)}`];
@@ -645,14 +784,50 @@ export class ReviewPlan {
 				`${tier} runs ${model}, which the committed route accepts, since ${planned.wanted} has no credentials`,
 			];
 		};
-		const tiers = this.tiers.flatMap((planned) => [
-			...(planned.unknown ?? []).map(
+		const unknown = (label: string, { unknown }: PlannedRoute) =>
+			(unknown ?? []).map(
 				({ model, by, provider }) =>
-					`${planned.tier}: ${model}, set by ${by}, is not a model the catalogue holds; ${provider === undefined ? "a newer pi-ai may hold it" : `it knows no provider ${provider}`}`,
-			),
-			...notice(planned),
-		]);
-		return [...tiers, ...moved];
+					`${label}: ${model}, set by ${by}, is not a model the catalogue holds; ${provider === undefined ? "a newer pi-ai may hold it" : `it knows no provider ${provider}`}`,
+			);
+		const tiers = this.tiers.flatMap((planned) => [...unknown(planned.tier, planned), ...notice(planned)]);
+		return [...tiers, ...moved, ...this.routeMessages(unknown)];
+	}
+
+	// What a maintainer should know of each lens route: its unknown models, a route that cannot run, each level a route
+	// is refused at, and a default level that runs off the committed route.
+	private routeMessages(unknown: (label: string, route: PlannedRoute) => string[]): string[] {
+		return this.lenses.flatMap((lens): string[] => {
+			const label = labelOf(lens);
+			const ignored =
+				lens.ignored === undefined
+					? []
+					: [
+							`${label}: lenses.${lens.name}.tier ${lens.ignored.tier}, set by ${lens.ignored.by}, is ignored, since the lens names its own route`,
+						];
+			const route = this.lensRoute(lens.name, lens.scope ?? "");
+			if (route === undefined) return ignored;
+			const named = `${label} route`;
+			if (route.status === "uncredentialed") {
+				return [
+					...ignored,
+					...unknown(named, route),
+					`${named}: ${route.reason}; log in with pi, set the provider's API key, or add a credential to melian.secrets.yaml`,
+				];
+			}
+			const failing = ReviewPlan.refusalOf(route);
+			if (failing !== undefined)
+				return [...ignored, ...unknown(named, route), `${named} fails every check: ${failing}`];
+			const judged = lens.levels.map((entry) => ({ entry, ...this.judgeLevel(lens, entry) }));
+			const refused = judged.flatMap(({ entry, refusal }) =>
+				refusal === undefined ? [] : [`${label} fails at ${entry.level}: ${refusal}`],
+			);
+			const standing = judged.find(({ entry }) => entry.level === defaultScrutinyLevel);
+			const runs =
+				standing?.refusal === undefined && standing?.lineage !== undefined
+					? [`${label} runs ${standing.lineage.model}, ${ReviewPlan.lineageText(standing.lineage)}`]
+					: [];
+			return [...ignored, ...unknown(named, route), ...refused, ...runs];
+		});
 	}
 
 	private verificationMessages(): PlanLine[] {
@@ -673,10 +848,10 @@ export class ReviewPlan {
 
 	private familyMessages(): PlanLine[] {
 		const own = this.tier("verifier");
-		const finders = [...this.used(true).keys()].flatMap((tier) => {
-			const models = this.tier(tier).models;
-			return models.map((finder) => ({ ...finder, primary: models[0]!.model }));
-		});
+		const finders = [
+			...[...this.used(true).keys()].map((tier) => this.tier(tier).models),
+			...this.lensRoutes.map(({ models }) => models),
+		].flatMap((models) => models.map((finder) => ({ ...finder, primary: models[0]!.model })));
 		const matches = finders.flatMap((finder) => {
 			const route = this.verifierRoute(finder.model);
 			const matching = route.filter((model) => model.family === finder.family);
@@ -755,6 +930,24 @@ export class ReviewPlan {
 					: `routed by ${by ?? "melian.yaml"}`;
 			lines.push({ state: "ok", text: visibleText(`${tier}: ${route}; ${origin}`) });
 		}
+		for (const lens of this.lenses) {
+			const route = this.lensRoute(lens.name, lens.scope ?? "");
+			if (route === undefined) continue;
+			const label = labelOf(lens);
+			if (route.thinking !== undefined) {
+				lines.push({
+					state: "ok",
+					text: visibleText(`${label} route thinking: ${route.thinking}; set by ${route.thinkingBy}`),
+				});
+			}
+			if (route.status !== "routed") continue;
+			const models = route.models.map(({ model, credential }) => `${model} with ${credential}`).join(", then ");
+			const origin =
+				route.by === "derived"
+					? "derived, since no model of the committed route has credentials"
+					: `routed by ${route.by ?? "melian.yaml"}`;
+			lines.push({ state: "ok", text: visibleText(`${label} route: ${models}; ${origin}`) });
+		}
 		if (this.lenses.length > 0 && this.tier("verifier").status !== "routed") {
 			const route = this.verifierRoute("")
 				.map(({ model, family }) => `${model} (${family ?? "unknown family"})`)
@@ -768,7 +961,13 @@ export class ReviewPlan {
 		};
 		const groups = new Map<string, string[]>();
 		for (const lens of this.lenses) {
-			const levels = lens.levels.map(({ level, tier }) => `${level} on ${tier} (${model(tier)})`).join(", ");
+			const route = this.lensRoute(lens.name, lens.scope ?? "");
+			const onRoute = route?.status === "routed" ? route.models[0]!.model : "no model";
+			const levels = lens.levels
+				.map(({ level, tier, route: routed }) =>
+					routed === true ? `${level} on lens route (${onRoute})` : `${level} on ${tier} (${model(tier)})`,
+				)
+				.join(", ");
 			groups.set(levels, [...(groups.get(levels) ?? []), labelOf(lens)]);
 		}
 		for (const [levels, names] of groups) {
@@ -789,6 +988,9 @@ export class ReviewPlan {
 		return {
 			tiers: this.tiers.map((tier) => structuredClone(tier)),
 			lenses: this.lenses.map((lens) => structuredClone(lens)),
+			...(this.lensRoutes.length === 0
+				? {}
+				: { lensRoutes: this.lensRoutes.map((route) => structuredClone(route)) }),
 		};
 	}
 }

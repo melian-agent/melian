@@ -142,12 +142,14 @@ async function planChecks(cwd: string, env: NodeJS.ProcessEnv, secrets: LoadedSe
 }
 
 // Triage will choose a level by how hard a lens should look, so a higher level that costs less inverts its choice.
-async function levelsCheck(cwd: string): Promise<Check | undefined> {
+async function levelsCheck(cwd: string, env: NodeJS.ProcessEnv): Promise<Check | undefined> {
 	const root = await git(cwd, ["rev-parse", "--show-toplevel"]).catch(() => undefined);
 	if (root === undefined) return undefined;
 	try {
+		const { config } = await loadConfig(root, { kind: "worktree", preferences: userFiles(env).config }, ".");
 		const inverted = (await Lens.load(root, { kind: "worktree" }, ["."])).flatMap((lens) => {
-			const found = lens.inversions();
+			const routed = Object.hasOwn(config.lenses, lens.name) && config.lenses[lens.name]!.route !== undefined;
+			const found = lens.inversions(routed);
 			return found.length === 0 ? [] : [`${lens.name}: ${found.join("; ")}`];
 		});
 		return inverted.length === 0
@@ -462,7 +464,7 @@ export async function doctor(io: Io, options: { readonly fetch?: typeof globalTh
 			await executableCheck(io.cwd, io.executable),
 			await cloneCheck(io.executable),
 			await stateCheck(io.cwd, io.env),
-			await levelsCheck(io.cwd),
+			await levelsCheck(io.cwd, io.env),
 			await staticCheck(io.cwd),
 			await mutationCheck(io.cwd, io.env),
 			await standardsCheck(io.cwd),

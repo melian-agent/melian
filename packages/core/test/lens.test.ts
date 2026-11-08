@@ -993,6 +993,20 @@ describe("Lens.select", () => {
 		expect(Lens.select([lens({})], config({ security: { paths: ["docs/**"] } }), ["src/a.ts"])).toEqual([]);
 	});
 
+	it("compares only budgets between the levels of a routed lens, which share its route", () => {
+		const inverted = lens({
+			levels: {
+				quick: { tier: "heavy", reads: "hunks", verify: false, budget: { findings: 2, tokens: 900 } },
+				careful: { tier: "light", reads: "hunks", verify: true, budget: { findings: 5, tokens: 500 } },
+			},
+		});
+		expect(inverted.inversions()).toEqual([
+			"careful runs on light, below quick's heavy",
+			"careful allows 500 tokens, fewer than quick's 900",
+		]);
+		expect(inverted.inversions(true)).toEqual(["careful allows 500 tokens, fewer than quick's 900"]);
+	});
+
 	it("ignores the tier of a lens that names its own route, so neither its levels nor its version move", () => {
 		const route = { model: "faux/routed" };
 		const [routed] = Lens.select([lens({})], config({ security: { tier: "heavy", route } }), ["src/a.ts"]);

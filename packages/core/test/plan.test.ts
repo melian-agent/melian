@@ -66,6 +66,8 @@ function plan(
 		catalog?: CatalogModel[];
 		partialCatalog?: boolean;
 		lenses?: Lens[];
+		lensRoutes?: Record<string, ModelRoute>;
+		lensRoutePreferences?: Record<string, ModelRoute>;
 	} = {},
 ): ReviewPlan {
 	const preferences = options.preferences ?? {};
@@ -75,22 +77,53 @@ function plan(
 	}
 	const retier = options.retier ?? {};
 	const committedTiers = options.committedTiers ?? {};
+	const committedRoutes = options.lensRoutes ?? {};
+	const preferredRoutes = options.lensRoutePreferences ?? {};
+	const routed = [...new Set([...Object.keys(committedRoutes), ...Object.keys(preferredRoutes)])];
+	const routeBy = Object.entries(preferredRoutes).filter(
+		([, route]) => route.model !== undefined || route.fallbacks !== undefined,
+	);
+	const routeThinking = routed.flatMap((name): [string, string][] =>
+		preferredRoutes[name]?.thinking !== undefined
+			? [[name, "melian.local.yaml"]]
+			: committedRoutes[name]?.thinking !== undefined
+				? [[name, "melian.yaml"]]
+				: [],
+	);
 	const input: PlanInput = {
 		config: {
 			...defaultConfig,
 			models: models as Routes,
-			lenses: {
-				...Object.fromEntries(
-					Object.entries({ ...committedTiers, ...retier }).map(([name, tier]) => [name, { tier }]),
-				),
-				...Object.fromEntries((options.disabled ?? []).map((name) => [name, { enabled: false }])),
-			},
+			lenses: Object.fromEntries(
+				[
+					...new Set([
+						...Object.keys(committedTiers),
+						...Object.keys(retier),
+						...routed,
+						...(options.disabled ?? []),
+					]),
+				].map((name) => [
+					name,
+					{
+						...(Object.hasOwn({ ...committedTiers, ...retier }, name)
+							? { tier: { ...committedTiers, ...retier }[name] }
+							: {}),
+						...(routed.includes(name) ? { route: { ...committedRoutes[name], ...preferredRoutes[name] } } : {}),
+						...((options.disabled ?? []).includes(name) ? { enabled: false } : {}),
+					},
+				]),
+			),
 		},
 		routes: {
 			committed,
 			overridden: Object.fromEntries(Object.keys(preferences).map((tier) => [tier, "melian.local.yaml"])),
 			lensTiers: committedTiers,
 			retiered: Object.fromEntries(Object.keys(retier).map((name) => [name, "melian.local.yaml"])),
+			...(Object.keys(committedRoutes).length === 0 ? {} : { lensRoutes: committedRoutes }),
+			...(routeBy.length === 0
+				? {}
+				: { lensRouteBy: Object.fromEntries(routeBy.map(([name]) => [name, "melian.local.yaml"])) }),
+			...(routeThinking.length === 0 ? {} : { lensRouteThinking: Object.fromEntries(routeThinking) }),
 		},
 		...(options.model === undefined ? {} : { model: options.model }),
 		catalog: options.catalog ?? catalog,
@@ -1242,4 +1275,215 @@ it("explains a retiered lens's model refusal when neither tier sets thinking", (
 	expect(resolved.judge("correctness", "careful").refusal).toBe(
 		`lenses.correctness.tier moves it from heavy to light, and models.heavy.acceptOverridden is false; light runs ${gpt}, which models.heavy.accept does not list`,
 	);
+});
+
+describe("a lens route", () => {
+	const both = { anthropic: "ANTHROPIC_API_KEY", openai: "OPENAI_API_KEY" };
+	const mini = "openai/gpt-5.4-mini";
+	const levels = (resolved: ReviewPlan) => resolved.lenses.find((lens) => lens.name === "correctness")?.levels;
+
+	it("runs every level on the route, so a routed lens whose own tiers are unrouted runs and draws no tier warning", () => {
+		const resolved = plan({}, { openai: "OPENAI_API_KEY" }, { lensRoutes: { correctness: { model: gpt } } });
+		expect(levels(resolved)).toEqual([
+			{ level: "quick", tier: "medium", route: true },
+			{ level: "careful", tier: "heavy", route: true },
+			{ level: "deep", tier: "heavy", route: true },
+		]);
+		expect(resolved.lensRoute("correctness", "")).toEqual({
+			lens: "correctness",
+			scope: "",
+			status: "routed",
+			models: [{ model: gpt, credential: "OPENAI_API_KEY", family: "gpt" }],
+			wanted: gpt,
+			accept: [gpt],
+		});
+		expect(resolved.lensRoute("correctness", "services")).toBeUndefined();
+		expect(resolved.lensRoute("tests", "")).toBeUndefined();
+		expect(resolved.judge("correctness", "careful")).toEqual({});
+		expect(resolved.warnings()).toEqual([fallbackWarning]);
+		expect(resolved.routes()).toEqual({});
+		expect(resolved.providers()).toEqual(["openai"]);
+	});
+
+	it("prints a route line, each level on the route, and the route's thinking for doctor", () => {
+		const resolved = plan({}, both, { lensRoutes: { correctness: { model: gpt, thinking: "high" } } });
+		const texts = resolved.lines().map(({ text }) => text);
+		expect(texts).toContain("correctness route thinking: high; set by melian.yaml");
+		expect(texts).toContain(`correctness route: ${gpt} with OPENAI_API_KEY; routed by melian.yaml`);
+		expect(texts).toContain(
+			`correctness: quick on lens route (${gpt}), careful on lens route (${gpt}), deep on lens route (${gpt})`,
+		);
+		expect(resolved.lensRoute("correctness", "")).toMatchObject({ thinking: "high", thinkingBy: "melian.yaml" });
+	});
+
+	it("says a lens route has no credentials, naming the lens", () => {
+		const resolved = plan({}, { nowhere: "NOWHERE_KEY" }, { lensRoutes: { correctness: { model: gpt } } });
+		expect(resolved.lensRoute("correctness", "")?.status).toBe("uncredentialed");
+		expect(resolved.warnings()).toContain(
+			`correctness route: none of ${gpt} has credentials; log in with pi, set the provider's API key, or add a credential to melian.secrets.yaml`,
+		);
+	});
+
+	it("inherits a guarded tier's acceptOverridden and unavailable from the tiers its levels declare, unless it states its own", () => {
+		const guarded = { heavy: { model: opus, accept: [opus], unavailable: "fail" as const, acceptOverridden: false } };
+		const inherited = plan(
+			guarded,
+			{ anthropic: "ANTHROPIC_API_KEY" },
+			{ lensRoutes: { correctness: { model: gpt } } },
+		);
+		expect(inherited.lensRoute("correctness", "")).toMatchObject({
+			status: "unavailable",
+			acceptOverridden: false,
+			reason: `none of ${gpt}, which lenses.correctness.route accepts, has credentials, and lenses.correctness.route.unavailable is fail`,
+		});
+		expect(inherited.judge("correctness", "careful").refusal).toBe(inherited.lensRoute("correctness", "")!.reason);
+		const own = plan(guarded, both, {
+			model: opus,
+			lensRoutes: { correctness: { model: gpt, acceptOverridden: true, unavailable: "derive" } },
+		});
+		expect(own.lensRoute("correctness", "")).toMatchObject({ status: "routed", by: "--model" });
+		expect(own.lensRoute("correctness", "")?.acceptOverridden).toBeUndefined();
+	});
+
+	it("inherits no guard from a tier none of its levels declares", () => {
+		const resolved = plan({ light: { model: opus, accept: [opus], acceptOverridden: false } }, both, {
+			model: opus,
+			lensRoutes: { correctness: { model: gpt } },
+		});
+		expect(resolved.lensRoute("correctness", "")).toMatchObject({ status: "routed", by: "--model" });
+	});
+
+	it("replaces every lens route with --model, and a guarded route refuses it unless its accept lists the model", () => {
+		const open = plan({}, both, { model: opus, lensRoutes: { correctness: { model: gpt } } });
+		expect(open.lensRoute("correctness", "")?.models.map(({ model }) => model)).toEqual([opus]);
+		expect(open.judge("correctness", "careful").lineage).toEqual({
+			model: opus,
+			wanted: gpt,
+			by: "--model",
+			outside: true,
+		});
+		const guarded = plan({}, both, {
+			model: opus,
+			lensRoutes: { correctness: { model: gpt, acceptOverridden: false } },
+		});
+		expect(guarded.judge("correctness", "careful").refusal).toBe(
+			`lenses.correctness.route.acceptOverridden is false, and --model puts it on ${opus}, which lenses.correctness.route.accept does not list`,
+		);
+		const listed = plan({}, both, {
+			model: opus,
+			lensRoutes: { correctness: { model: gpt, accept: [gpt, opus], acceptOverridden: false } },
+		});
+		expect(listed.judge("correctness", "careful").refusal).toBeUndefined();
+	});
+
+	it("records a preference file that changes a committed route, and the route's own guard applies to it", () => {
+		const resolved = plan({}, both, {
+			lensRoutes: { correctness: { model: gpt } },
+			lensRoutePreferences: { correctness: { model: opus } },
+		});
+		const lineage = { model: opus, wanted: gpt, by: "melian.local.yaml", outside: true };
+		expect(resolved.judge("correctness", "careful")).toEqual({ lineage });
+		expect(resolved.mark([{ name: "lens.correctness", status: "ran", level: "careful" }])[0]?.lineage).toEqual(
+			lineage,
+		);
+		expect(resolved.warnings()).toContain(
+			`correctness runs ${opus}, set by melian.local.yaml; the committed route wants ${gpt}, and does not accept ${opus}`,
+		);
+		const guarded = plan({}, both, {
+			lensRoutes: { correctness: { model: gpt, acceptOverridden: false } },
+			lensRoutePreferences: { correctness: { model: opus } },
+		});
+		expect(guarded.lensRoute("correctness", "")?.status).toBe("refused");
+		expect(guarded.judge("correctness", "careful").refusal).toBe(
+			`lenses.correctness.route.acceptOverridden is false, and melian.local.yaml puts it on ${opus}, which lenses.correctness.route.accept does not list`,
+		);
+	});
+
+	it("moves a lens a preference file routes, judging each level under its committed tier, and names each refused level", () => {
+		const committed = { heavy: { model: opus, accept: [opus], acceptOverridden: false } };
+		const resolved = plan(committed, both, { lensRoutePreferences: { correctness: { model: gpt } } });
+		expect(levels(resolved)).toEqual([
+			{ level: "quick", tier: "medium", route: true, by: "melian.local.yaml" },
+			{ level: "careful", tier: "heavy", route: true, by: "melian.local.yaml" },
+			{ level: "deep", tier: "heavy", route: true, by: "melian.local.yaml" },
+		]);
+		const refusal = `lenses.correctness.route moves it from heavy to its own route, and models.heavy.acceptOverridden is false; the route runs ${gpt}, which models.heavy.accept does not list`;
+		expect(resolved.judge("correctness", "careful")).toEqual({
+			refusal,
+			lineage: {
+				model: gpt,
+				wanted: opus,
+				by: "melian.local.yaml",
+				moved: { by: "melian.local.yaml", from: "heavy", to: "lens route" },
+				outside: true,
+			},
+		});
+		expect(resolved.judge("correctness", "quick")).toEqual({});
+		expect(resolved.warnings()).toEqual(
+			expect.arrayContaining([`correctness fails at careful: ${refusal}`, `correctness fails at deep: ${refusal}`]),
+		);
+		expect(resolved.warnings().some((text) => text.startsWith("correctness fails at quick"))).toBe(false);
+	});
+
+	it("drops a moved route's fallbacks outside a guarded committed tier's accept, and fails a run that finished on one", () => {
+		const committed = { heavy: { model: opus, accept: [opus], acceptOverridden: false } };
+		const resolved = plan(committed, both, {
+			lensRoutePreferences: { correctness: { model: opus, fallbacks: [gpt] } },
+		});
+		expect(resolved.lensRoute("correctness", "", "careful")?.models.map(({ model }) => model)).toEqual([opus]);
+		expect(resolved.lensRoute("correctness", "", "quick")?.models.map(({ model }) => model)).toEqual([opus, gpt]);
+		expect(resolved.lensRoute("correctness", "")?.models.map(({ model }) => model)).toEqual([opus, gpt]);
+		expect(resolved.judge("correctness", "careful").refusal).toBeUndefined();
+		const record = { name: "lens.correctness", status: "ran", level: "careful" } as const;
+		const [finished] = resolved.mark(
+			[record],
+			new Map([["correctness", [{ scope: "", version: "v", level: "careful" as const, model: gpt }]]]),
+		);
+		expect(finished).toMatchObject({
+			status: "failed",
+			reason: expect.stringContaining("the route runs openai/gpt-5.5"),
+		});
+	});
+
+	it("refuses a moved route whose thinking differs from a guarded committed tier's", () => {
+		const committed = { heavy: { model: opus, accept: [opus], acceptOverridden: false } };
+		const resolved = plan(committed, both, {
+			lensRoutePreferences: { correctness: { model: opus, thinking: "high" } },
+		});
+		expect(resolved.judge("correctness", "careful").refusal).toBe(
+			"models.heavy.acceptOverridden is false, and melian.local.yaml sets thinking high; committed policy wants unset",
+		);
+	});
+
+	it("names a lens tier it ignores, and the file that set it", () => {
+		const resolved = plan({}, both, {
+			retier: { correctness: "light" },
+			lensRoutes: { correctness: { model: gpt } },
+		});
+		expect(levels(resolved)?.map(({ tier }) => tier)).toEqual(["medium", "heavy", "heavy"]);
+		expect(resolved.lines()).toContainEqual({
+			state: "warn",
+			text: "correctness: lenses.correctness.tier light, set by melian.local.yaml, is ignored, since the lens names its own route",
+		});
+	});
+
+	it("reads a finder's family from a lens route for the verifier's order and its family warnings", () => {
+		const resolved = plan({ heavy: { model: gpt, fallbacks: [opus] } }, both, {
+			lensRoutes: { correctness: { model: mini } },
+		});
+		expect(resolved.verifierRoute(mini).map(({ model }) => model)).toEqual([opus, gpt]);
+		const same = plan({ heavy: { model: gpt } }, both, { lensRoutes: { correctness: { model: mini } } });
+		expect(same.warnings()).toContain(familyWarning);
+	});
+
+	it("survives its JSON, and a plan with no lens route stores none", () => {
+		const resolved = plan({}, both, { lensRoutes: { correctness: { model: gpt } } });
+		const stored = JSON.parse(JSON.stringify(resolved));
+		expect(stored.lensRoutes).toHaveLength(1);
+		expect(ReviewPlan.from(stored).lensRoute("correctness", "")).toEqual(resolved.lensRoute("correctness", ""));
+		expect(Object.keys(plan({}, both).toJSON())).toEqual(["tiers", "lenses"]);
+		expect(
+			ReviewPlan.from({ tiers: plan({}, both).toJSON().tiers, lenses: [] }).lensRoute("correctness", ""),
+		).toBeUndefined();
+	});
 });
