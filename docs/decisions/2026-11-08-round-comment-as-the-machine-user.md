@@ -12,10 +12,11 @@ The `melian round` workflow posted its comment as `github-actions[bot]`. Every w
 ## Decision
 
 - The report job posts, finds and edits the round's comment with `MELIAN_STATUS_TOKEN`, the token of the machine user `melian-status-bot`, which already sets `melian/review`. It reads the secret only through the `melian-round` Environment, whose deployment branches are the default branch alone. An empty secret fails the comment step before it posts, with the status step's error.
+- The comment and status steps hand the token to their `gh` writes alone. Each copies it into a shell variable and unsets it, so no Node script the step runs, which parses comments anyone can write, inherits it.
 - A rerun of the report job alone edits the comment whose marker names the run and whose author is `melian-status-bot`. A comment with that marker from any other login is never edited.
 - The report job's own `github.token` only reads: its `pull-requests` permission drops from `write` to `read`. Nothing in that job posts as `github-actions[bot]`.
 - A builder reads a round's comment only when the AGENTS.md check accepts it:
-  - its author is `melian-status-bot`;
+  - its author is `melian-status-bot`, by login and by account ID, 353727783, since a login can pass to another account once the first renames itself;
   - its run is a `workflow_dispatch` run of `.github/workflows/melian-round.yml` on the current default branch;
   - its marker names that run.
 - The check reads only the REST API. The marker still carries the run's nonce, but the check no longer reads it.
