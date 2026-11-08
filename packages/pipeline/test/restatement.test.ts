@@ -250,10 +250,10 @@ describe("a dismissal carrying to a restatement", () => {
 	// Review A waits on its lens run or its verifier until review B, which replaced that run, has finished; A must not
 	// then clear the links B recorded.
 	it.each([
-		{ name: "its verifier, under another lens selection", waitsOn: "verification", budget: 9, verifier: false },
-		{ name: "its lens run, before it asked a verifier", waitsOn: "task", budget: 9, verifier: false },
+		{ name: "its verifier by lens selection", waitsOn: "verification", budget: 9, verifier: false },
+		{ name: "its lens run before verification", waitsOn: "task", budget: 9, verifier: false },
 		{
-			name: "its verifier alone, under another verifier route",
+			name: "its verifier by verifier route",
 			waitsOn: "verification",
 			budget: undefined,
 			verifier: true,
