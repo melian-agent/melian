@@ -2,11 +2,13 @@
 
 Status: built for [issue #254](https://github.com/melian-agent/melian/issues/254).
 
+Amends: [Spans time a review's work between tasks](2026-10-24-review-spans.md), its rule that no span overlaps a task, for the walkthrough task alone.
+
 ## Problem
 
 The walkthrough summarises the change for the reader. It needs the change, not the verdict, yet `melian review` ran it only after adjudication. Each round on 2026-10-26 and 2026-10-27 ended with 13 to 16 seconds of walkthrough and nothing else running, by the prepare spans of [pull request #206](https://github.com/melian-agent/melian/pull/206).
 
-It waited for one reason: `summarizeReview` read the verdict's stored provenance to learn that the review was of a pull request and which plan routed its light model. Adjudication writes that provenance, so started any earlier, the summariser found none and did nothing.
+It waited for one reason: `summarizeReview` read the verdict's stored provenance. That told it the review was of a pull request, and which plan routed its light model. Adjudication writes that provenance, so started any earlier, the summariser found none and did nothing.
 
 ## Decision
 
@@ -19,6 +21,7 @@ It waited for one reason: `summarizeReview` read the verdict's stored provenance
 - After triage, not at the start, because a pending triage decision can replace a crashed review's lens selection. `summarizeReview` calls `harness.resume()`, which starts every pending task. Started before triage commits, it could resume a lens run that triage is about to replace, and that run would spend tokens. Once triage has decided, its commit and sweep have retired those tasks.
 - The host passes the plan the review is running under, the same object `reviewChangeset` stores in the provenance, so the summary still quotes the review's plan. A summary that a crash interrupted attaches to its task by revision on the next review, which passes that review's plan, as the provenance would.
 - The summariser already stores a note for every failure and never throws, so a failed walkthrough still leaves the verdict and the exit code alone.
+- The review's spans time its own steps, one at a time, so the walkthrough task now runs while they are open. That is the overlap this change is for, so the walkthrough task is the one task a span may overlap. The walkthrough's credential unlock is not timed as a span at all, so it never lands under an unrelated step. Every other task still waits with no span open.
 
 ## What this gives up
 
