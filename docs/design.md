@@ -21,8 +21,8 @@ Milestone 3, "Melian reviews pull requests on GitHub Actions", runs it there, an
 
 Each kind of collision has one mechanism, as [the coordination decision](decisions/2026-11-08-how-melian-coordinates.md) sets out:
 - Within one process, a Pi Durable commit serialises writers, and a writer proves ownership in the commit that writes. An in-memory queue serves only a resource that dies with its process.
-- Across processes or hosts on one changeset, core's `Lease` decides the writer. It holds an owner, a taken-at time, an expiry and a fencing generation that rises on every taking. Every write records its generation, and the store refuses an older one. The state branch and a clone's git directory hold leases.
-- A write to GitHub is idempotent and checked against GitHub first. `melian/review` carries the lease generation. The merge-group check decides by the highest generation among all the head's statuses, never the latest; only it writes the group's status; and it re-reads before writing.
+- Across processes or hosts on one changeset, core's `Lease` decides the writer. It holds an owner, a taken-at time, an expiry, an incarnation minted with the record, and a fencing generation that rises on every taking. Every write records its generation, and the store refuses an older one. The state branch and a clone's git directory hold leases.
+- A write to GitHub is idempotent and checked against GitHub first. `melian/review` carries the lease's incarnation and generation. The merge-group check keeps the head's statuses of the current incarnation and decides by the highest generation, never the latest; only it writes the group's status; and it re-reads before writing.
 - Lost, repeated or reordered events are reconciled to the state the authority implies.
 
 ## Non-goals

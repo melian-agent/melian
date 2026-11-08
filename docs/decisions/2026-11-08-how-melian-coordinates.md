@@ -1,5 +1,8 @@
 # How Melian coordinates concurrent work
 
+Amends: [melian/review on merge groups](2026-10-22-melian-review-on-merge-groups.md), which status the merge-group copy reads
+Amends: [an Actions round sets melian/review](2026-11-07-actions-round-sets-melian-review.md), the read-then-post window it accepts
+
 The maintainer ruled on 2026-11-08 to adopt it.
 
 ## Context
@@ -23,11 +26,11 @@ Two of these, #294 and #310, were built in parallel by different builders, and b
 Each kind of collision has one mechanism, and new code uses it.
 
 1. **Within one process, Pi Durable's commit is the serialisation point.** State that must survive a crash lives in Pi Durable documents, and a writer proves it still owns the work in the same commit that writes. This is what #294 does. A process-global resource that dies with the process, such as sandbox-runtime's manager, may use an in-memory queue, and records nothing durable.
-2. **Across processes or hosts on one changeset, a lease with a fencing generation decides the writer.** Core gains one `Lease` type. It names its holder (a run in a clone), when it was taken, when it expires, and a generation that rises every time the lease is taken. Taking a lease is a compare-and-set on the store that holds it. Every write made under a lease records the generation it was made with, and the store refuses a write whose generation is older than the store's latest. The lease is no lock: a holder that outlives its expiry can be raced, and the fencing generation is what keeps the older writer from overwriting the newer one. Two stores hold leases:
+2. **Across processes or hosts on one changeset, a lease with a fencing generation decides the writer.** Core gains one `Lease` type. It names its holder (a run in a clone), when it was taken, when it expires, an incarnation, and a generation that rises every time the lease is taken. The incarnation is a random identifier minted when the lease record is first created; a generation is comparable only within one incarnation, because a record that is disposed and created again starts its count afresh. Taking a lease is a compare-and-set on the store that holds it. Every write made under a lease records the generation it was made with, and the store refuses a write whose generation is older than the store's latest. The lease is no lock: a holder that outlives its expiry can be raced, and the fencing generation is what keeps the older writer from overwriting the newer one. Two stores hold leases:
    - the state branch, in `index.json`, with `--force-with-lease` as its compare-and-set, as #310 builds;
    - a clone's git common directory, for the static checks' worktrees, which move onto the same type in place of the pid-in-a-lock-reason form.
-3. **A write to an external system is idempotent and checked against that system before it is made.** GitHub takes no idempotency key, so publication keeps its signed markers, its `published` document and its re-read before each post. A status write carries the lease generation it was made under. GitHub keeps one slot per status context and accepts every write in it, so a generation in the status fences nothing by itself, and the gate must not trust whichever status is latest. Three rules make the generation decide:
-   - The merge-group check reads every `melian/review` status on the head, not the latest, and decides by the highest generation among them. A stale write that lands last is outranked by the newer generation it lost to.
+3. **A write to an external system is idempotent and checked against that system before it is made.** GitHub takes no idempotency key, so publication keeps its signed markers, its `published` document and its re-read before each post. A status write carries the lease incarnation and generation it was made under. GitHub keeps one slot per status context and accepts every write in it, so a generation in the status fences nothing by itself, and the gate must not trust whichever status is latest. Three rules make the generation decide:
+   - The merge-group check reads every `melian/review` status on the head, not the latest. It keeps only those whose incarnation matches the current lease record on the state branch, and decides by the highest generation among them. A stale write that lands last is outranked by the newer generation it lost to, and a status from a disposed record, whatever its generation, counts for nothing. With no lease record, or no status of its incarnation, the check fails closed.
    - Only the merge-group job writes the group commit's `melian/review`, once per group commit, so that slot has one writer.
    - The job re-reads the head's statuses just before it writes, and refuses when the highest generation changed since it decided.
 
