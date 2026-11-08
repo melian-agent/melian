@@ -262,12 +262,13 @@ function allowed(checkout: string, read: readonly string[]): readonly (readonly 
 // resolves it: folding `..` first would read `sub/..`, with `sub -> .`, as inside.
 function refuseLinksOut(tree: string): void {
 	const root = realpathSync.native(tree);
+	const install = statSync(join(root, "node_modules"), { throwIfNoEntry: false });
 	const pending = [root];
 	for (let directory = pending.pop(); directory !== undefined; directory = pending.pop()) {
 		for (const entry of readdirSync(directory, { withFileTypes: true })) {
 			const path = join(directory, entry.name);
 			if (entry.isDirectory()) pending.push(path);
-			else if (entry.isSymbolicLink() && !staysInside(root, path))
+			else if (entry.isSymbolicLink() && !staysInside(root, path, install))
 				throw new ProbeError(
 					"invalidProbe",
 					`the head's link ${relative(root, path)} leads outside its tree or into its node_modules`,
@@ -287,9 +288,9 @@ function entryAt(path: string): ReturnType<typeof lstatSync> {
 	}
 }
 
-// Each component resolves through realpath(3), which names it as the filesystem stores it: on one that ignores case,
-// `NODE_MODULES` comes back as the tree's `node_modules`, which the comparison below then sees.
-function staysInside(root: string, link: string): boolean {
+// The install is matched by its file identity, never its name: a filesystem that ignores case or folds Unicode opens
+// `NODE_MODULES` or `node_moduleſ` as the tree's `node_modules`, and realpath(3) on macOS keeps the spelling it was given.
+function staysInside(root: string, link: string, install: ReturnType<typeof statSync>): boolean {
 	const parts = readlinkSync(link).split("/");
 	let at = parts[0] === "" ? "/" : realpathSync.native(dirname(link));
 	for (const [index, part] of parts.entries()) {
@@ -312,9 +313,13 @@ function staysInside(root: string, link: string): boolean {
 		}
 	}
 	const inside = relative(root, at);
-	return (
-		inside !== "" && inside !== ".." && !inside.startsWith(`..${sep}`) && !inside.split(sep).includes("node_modules")
-	);
+	if (inside === "" || inside === ".." || inside.startsWith(`..${sep}`) || inside.split(sep).includes("node_modules"))
+		return false;
+	for (let up = at; up !== root; up = dirname(up)) {
+		const found = entryAt(up) === undefined ? undefined : statSync(up, { throwIfNoEntry: false });
+		if (install !== undefined && found?.dev === install.dev && found.ino === install.ino) return false;
+	}
+	return true;
 }
 
 // Writes the head's tracked tree into `tree` from a temporary repository that borrows the checkout's objects, then the
