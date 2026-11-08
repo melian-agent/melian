@@ -12,7 +12,7 @@ Status: accepted on 2026-11-08 under step 26's audit, [issue #238](https://githu
 - An unadjudicated report is pending and enters neither metric.
 - An external-only group whose valid reports all say `out-of-scope` stays outside Melian's recall denominator.
 - An empty denominator gives 1, with the raw counts beside it. Reviewers aggregate by name and case-folded login, ignoring version.
-- Earlier rounds stay in their statistics. Repeat candidates need two changesets, so two rounds of one change never qualify.
+- Earlier rounds stay in their statistics. Repeat candidates need two changesets, so rounds stored as revisions of one changeset never qualify. A round run from a detached worktree is a changeset of its own, so two detached rounds of one pull request can.
 - Withdrawing a finding leaves its history stored but removes it from that round's summaries.
 - A group with conflicting miss reasons uses the first in-scope reason in site order, falling back to `out-of-scope`. Each defect contributes one miss. Titles that normalise to no letters or digits do not form repeat clusters.
 - The drain counts each changeset once. At three or more comparisons, remaining debt keeps the drain due, including after a missed threshold. Local state cannot prove which backlog pull requests shipped or which live runs passed.
