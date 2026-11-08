@@ -603,4 +603,39 @@ describe("verification as each lens ends", () => {
 		expect(await waveTasks()).toHaveLength(1);
 		expect(asked).toHaveLength(1);
 	});
+
+	it("starts no wave beside a running one, even for a candidate no wave holds", async () => {
+		const asked: string[][] = [];
+		fastThenSlow(asked);
+		await review();
+		const root = await harness.root(context);
+		const entry = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[Revision.key(changeset.revision)]!;
+		const final = (await harness.getTask(entry.verification!.task as TaskId, context))!
+			.input as unknown as VerificationInput;
+		const candidate = final.candidates[0]!;
+		// A task created in a commit stays pending until the scheduler resumes, so the first wave is still unfinished.
+		const first = await startWave(
+			harness,
+			{ ...final, version: "held", candidates: [candidate] },
+			entry.task!,
+			context,
+		);
+		expect(first).toBeDefined();
+		// Another claim, so no wave holds the candidate, and only the unfinished wave can refuse it.
+		const other = {
+			...candidate,
+			key: "other",
+			state: {
+				...candidate.state,
+				claims: candidate.state.claims.map((claim) => ({ ...claim, id: "f".repeat(16) })),
+			},
+		};
+		expect(
+			await startWave(harness, { ...final, version: "held", candidates: [other] }, entry.task!, context),
+		).toBeUndefined();
+		await harness.waitForTask(first!, context);
+		expect(
+			await startWave(harness, { ...final, version: "held", candidates: [other] }, entry.task!, context),
+		).toBeDefined();
+	});
 });
