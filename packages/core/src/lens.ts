@@ -831,13 +831,14 @@ export class Lens {
 	 * lens is returned as it loaded.
 	 */
 	configured(settings: LensSettings | undefined): Lens {
-		const tier = settings?.route === undefined ? settings?.tier : undefined;
-		if (tier === undefined && settings?.paths === undefined) return this;
+		if (settings === undefined) return this;
+		const tier = settings.route === undefined ? settings.tier : undefined;
+		if (tier === undefined && settings.paths === undefined) return this;
 		return new Lens(
 			versioned({
 				...this.toJSON(),
 				levels: tier === undefined ? this.levels : retiered(this.levels, tier),
-				paths: settings?.paths ?? this.paths,
+				paths: settings.paths ?? this.paths,
 			}),
 		);
 	}
