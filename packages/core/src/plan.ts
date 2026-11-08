@@ -201,7 +201,7 @@ export class ReviewPlan {
 		const lensRoutes = lenses
 			.filter(({ levels }) => levels.some(({ route }) => route === true))
 			.map((lens) => ReviewPlan.resolveLensRoute(lens, input));
-		return new ReviewPlan({ tiers, lenses, ...(lensRoutes.length === 0 ? {} : { lensRoutes }) });
+		return new ReviewPlan({ tiers, lenses, lensRoutes });
 	}
 
 	private static lensesOf({ config, routes, lenses, checks }: PlanInput): PlannedLens[] {
@@ -228,7 +228,7 @@ export class ReviewPlan {
 				return [{ level, tier, committed, by: retieredBy ?? "a preference file" }];
 			});
 			const ignored =
-				routed && settings?.tier !== undefined
+				settings?.route !== undefined && settings.tier !== undefined
 					? { tier: settings.tier, by: retieredBy ?? "melian.yaml" }
 					: undefined;
 			planned.set(key, {
@@ -252,7 +252,7 @@ export class ReviewPlan {
 				tier,
 				policy: routes.committed[tier],
 				effective: config.models[tier],
-				flag: input.model !== undefined && lensTiers.includes(tier) ? input.model : undefined,
+				flag: lensTiers.includes(tier) ? input.model : undefined,
 				overridden: routes.overridden[tier],
 				thinkingBy: routes.thinking?.[tier],
 			},

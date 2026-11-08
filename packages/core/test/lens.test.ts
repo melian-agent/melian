@@ -1016,6 +1016,21 @@ describe("Lens.select", () => {
 		expect(inverted.inversions(true)).toEqual(["careful allows 500 tokens, fewer than quick's 900"]);
 	});
 
+	it("finds no tier inversion where each level runs on the same tier or a heavier one", () => {
+		for (const tiers of [
+			["light", "heavy"],
+			["medium", "medium"],
+		] as const) {
+			const ordered = lens({
+				levels: {
+					quick: { tier: tiers[0], reads: "hunks", verify: false, budget: { findings: 2 } },
+					careful: { tier: tiers[1], reads: "hunks", verify: true, budget: { findings: 5 } },
+				},
+			});
+			expect(ordered.inversions()).toEqual([]);
+		}
+	});
+
 	it("ignores the tier of a lens that names its own route, so neither its levels nor its version move", () => {
 		const route = { model: "faux/routed" };
 		const [routed] = Lens.select([lens({})], config({ security: { tier: "heavy", route } }), ["src/a.ts"]);

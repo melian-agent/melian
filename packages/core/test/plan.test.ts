@@ -1476,6 +1476,53 @@ describe("a lens route", () => {
 		expect(same.warnings()).toContain(familyWarning);
 	});
 
+	it("names a preference file it cannot name, and adds no ignored tier to a lens with none", () => {
+		const resolved = plan({}, both, { lensRoutePreferences: { correctness: { accept: [gpt] } } });
+		expect(levels(resolved)?.map(({ by }) => by)).toEqual([
+			"a preference file",
+			"a preference file",
+			"a preference file",
+		]);
+		expect(Object.keys(resolved.lenses[0]!)).toEqual(["name", "scope", "levels"]);
+	});
+
+	it("keeps a route that states unavailable: derive from a guarded tier's fail", () => {
+		const guarded = { heavy: { model: opus, accept: [opus], unavailable: "fail" as const } };
+		const resolved = plan(
+			guarded,
+			{ "amazon-bedrock": "AWS_PROFILE" },
+			{
+				lensRoutes: { correctness: { model: opus, unavailable: "derive" } },
+			},
+		);
+		expect(resolved.lensRoute("correctness", "")).toMatchObject({ status: "routed", by: "derived" });
+	});
+
+	it("keys a lens route by the folder that defined the lens", () => {
+		const root = lenses.find(({ name }) => name === "correctness")!;
+		const scoped = Lens.from({ ...root.toJSON(), scope: "services" });
+		const resolved = plan({}, both, { lenses: [scoped], lensRoutes: { correctness: { model: gpt } } });
+		expect(resolved.lensRoute("correctness", "services")).toMatchObject({ lens: "correctness", scope: "services" });
+		expect(resolved.lensRoute("correctness", "")).toBeUndefined();
+		expect(resolved.judge("correctness", "careful", undefined, "services")).toEqual({});
+	});
+
+	it("drops fallbacks by the routed lens's own level, beside a lens the route leaves alone", () => {
+		const committed = { heavy: { model: opus, accept: [opus], acceptOverridden: false } };
+		const resolved = plan(committed, both, {
+			checks: ["lens.contracts", "lens.correctness"],
+			lensRoutePreferences: { correctness: { model: opus, fallbacks: [gpt] } },
+		});
+		expect(resolved.lenses.map(({ name }) => name)).toEqual(["contracts", "correctness"]);
+		expect(resolved.lensRoute("correctness", "", "careful")?.models.map(({ model }) => model)).toEqual([opus]);
+	});
+
+	it("refuses a malformed accepted model under --model, even from a partial catalogue", () => {
+		expect(() =>
+			plan({ heavy: { model: opus, accept: ["no-slash"] } }, both, { model: gpt, partialCatalog: true }),
+		).toThrow(ModelRoutingError);
+	});
+
 	it("survives its JSON, and a plan with no lens route stores none", () => {
 		const resolved = plan({}, both, { lensRoutes: { correctness: { model: gpt } } });
 		const stored = JSON.parse(JSON.stringify(resolved));
