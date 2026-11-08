@@ -411,6 +411,8 @@ Problem: Biome and tsc read whatever files a head's configuration and sources le
 
 Solution: a Biome or tsc finding keeps its rule, place and severity, and its message is a fixed sentence naming the tool and the rule. `staticFindings` applies it, so no stored document, verdict, published review, lens or verifier sees the tool's text. A failed run keeps its exit code and a fixed sentence, never the tool's output. A check of each tool's configuration was tried first and dropped: eight routes past it turned up in one round. [The decision](decisions/2026-11-06-static-configuration-stays-in-the-checkout.md) records the routes, the cost, and the follow-ups for Enola and the mutation check.
 
+tsc's projects come from tsc. Problem: Melian read each `tsconfig.json`'s own `files`, `include` and `references`, so a project whose base supplied its `include` read as empty, and one whose base supplied only `references` read as clean. Solution: the runner asks `tsc --showConfig` for each project's effective files and references, refuses a project whose effective files resolve outside the worktree, and fails closed when tsc cannot answer. [The decision](decisions/2026-11-08-tsc-projects-from-effective-configuration.md) gives the rule.
+
 ### Tool provisioning
 
 The manifest and its quarantine are built. The verified tool cache is built; Enola's static check is built; the graph cache and caller input are built in milestone 2 (review of record). The container environment, Opengrep, and gitleaks are planned for milestone 3 (Actions host).
