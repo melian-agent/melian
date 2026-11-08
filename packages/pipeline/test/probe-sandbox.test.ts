@@ -230,6 +230,20 @@ console.log(JSON.stringify(out));
 				expect(seen[".npmrc"]).not.toContain("npm_FAKE");
 			});
 
+			it("cannot read through a tracked link into the live checkout or outside it", {
+				timeout: 60_000,
+			}, async () => {
+				symlinkSync(join(repository, ".npmrc"), join(repository, "into-checkout"));
+				symlinkSync(join(outside, "secret.txt"), join(repository, "out-link"));
+				symlinkSync("tracked.txt", join(repository, "in-link"));
+				const head = commit();
+				writeFileSync(join(repository, ".npmrc"), "//registry.npmjs.org/:_authToken=npm_FAKE0000000000000000\n");
+				const seen = await reads(["into-checkout", "out-link", "in-link"], head);
+				expect(seen["in-link"]).toBe("committed");
+				expect(seen["into-checkout"]).not.toContain("npm_FAKE");
+				expect(seen["out-link"]).not.toBe("secret");
+			});
+
 			it("reads a tracked file as committed, not as the reviewer modified it", { timeout: 60_000 }, async () => {
 				const head = commit();
 				writeFileSync(join(repository, "tracked.txt"), "modified\n");
