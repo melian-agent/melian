@@ -15,16 +15,16 @@ import {
 	overlapsSite,
 	proofAt,
 	type Restating,
-	readsProof,
+	reopens,
 } from "./findings.ts";
 import type { Context, ConversationId, Harness } from "./harness.ts";
-import { provingHunk, type ReviewState } from "./lens-tools.ts";
+import { overlapping, provingHunk, type ReviewState } from "./lens-tools.ts";
 import type { DismissedPredecessor } from "./verification.ts";
 
 /**
  * The dismissed findings a live lens defect at one revision may restate, by every condition Melian answers itself: the
- * root's rule and file, its dismissal standing at the revision, its region unchanged by git between the head that last
- * showed it and this one, and its proof holding the defect's. The verifier then judges sameness.
+ * root's rule and file, its dismissal standing at the revision, its region unchanged by git between the head it was
+ * dismissed at and this one, and its proof holding the defect's. The verifier then judges sameness.
  */
 export class Predecessors {
 	readonly #roots: readonly DismissedRoot[];
@@ -94,13 +94,13 @@ export class Predecessors {
 		const found: DismissedRoot[] = [];
 		for (const root of this.#roots) {
 			if (members.includes(root.id) || root.ruleId !== first.ruleId || root.path !== path) continue;
-			if (!this.#stands(root)) continue;
-			if (!proof.every((hunk) => root.accepted.some((each) => each.file === hunk.file && each.hash === hunk.hash)))
+			if (!proof.every((hunk) => root.proof.some((each) => each.file === hunk.file && each.hash === hunk.hash)))
 				continue;
 			const old = { startLine: root.line, endLine: root.endLine };
 			const map = await this.#map(root);
 			const mapped = map?.map(old);
 			if (map === undefined || mapped === undefined || !map.untouched(old, current)) continue;
+			if (!this.#stands(root, mapped)) continue;
 			const at = (span: LineSpan) => ({ path, ruleId: first.ruleId, line: span.startLine, endLine: span.endLine });
 			if (!overlapsSite(at(mapped), at(current))) continue;
 			found.push(root);
@@ -108,19 +108,19 @@ export class Predecessors {
 		return found;
 	}
 
-	// Whether the root's dismissal still stands at this revision, by the reopen rule its own sighting here would meet:
-	// every hunk a root's proof accepted is here, whatever cause its latest sighting cites, and otherwise an introduced
-	// root's accepted trigger is a hunk of its file here. A pre-existing root with no proof names no hunk, so the region
-	// alone decides.
-	#stands(root: DismissedRoot): boolean {
-		const hunks = this.#review.files.flatMap((file) => file.hunks);
-		if (readsProof(root.proof, root.cause))
-			return root.proof.every((each) =>
-				hunks.some((hunk) => provingHunk(hunk).file === each.file && provingHunk(hunk).hash === each.hash),
-			);
-		if (root.cause === "introduced")
-			return hunks.some((hunk) => hunk.file === root.path && snippetHash(hunk.added) === root.hash);
-		return true;
+	// Whether the root's dismissal still stands here, by the reopen rule a sighting of it as dismissed would meet here:
+	// its trigger is the hunk that introduces its mapped region.
+	#stands(root: DismissedRoot, region: LineSpan): boolean {
+		const { files } = this.#review;
+		const introducing = overlapping(
+			files.find((file) => file.path === root.path),
+			region.startLine,
+			region.endLine,
+		);
+		const trigger =
+			root.cause !== "introduced" ? root.hash : introducing === undefined ? "" : snippetHash(introducing.added);
+		const hunks = files.flatMap((file) => file.hunks.map(provingHunk));
+		return !reopens(root.hash, root.proof, root.cause, trigger, hunks);
 	}
 
 	#map(root: DismissedRoot): Promise<LineMap> | undefined {

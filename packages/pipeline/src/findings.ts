@@ -301,12 +301,6 @@ function reopenedAt(lifecycle: FindingLifecycle, revision: string): FindingLifec
 	};
 }
 
-// Whether a dismissal's reopen rule reads its proof rather than its trigger: any proof, unless a sighting cites a
-// trigger of its own. A sighting that cites fewer locations, or no cause, changes nothing.
-export function readsProof(proof: readonly ProvingHunk[], cause: Cause): boolean {
-	return proof.length > 0 && cause !== "introduced";
-}
-
 function dismissalChanged(
 	lifecycle: FindingLifecycle,
 	properties: ProducerFinding["properties"],
@@ -314,10 +308,23 @@ function dismissalChanged(
 ): boolean {
 	const accepted = lifecycle.dismissedTrigger!;
 	const proof = unionOf([...accepted.proof, ...(lifecycle.proof ?? [])]);
-	return readsProof(proof, properties.cause)
+	return reopens(accepted.hash, proof, properties.cause, triggerCode(properties.trigger), hunks);
+}
+
+// The reopen rule: a sighting of `cause` whose trigger hashes to `trigger`, at a revision of `hunks`, no longer meets
+// the trigger `hash` and `proof` a dismissal accepted. It reads the proof, if any, unless the sighting cites a trigger
+// of its own, so a sighting that cites fewer locations, or no cause, changes nothing.
+export function reopens(
+	hash: string,
+	proof: readonly ProvingHunk[],
+	cause: Cause,
+	trigger: string,
+	hunks: readonly ProvingHunk[] | undefined,
+): boolean {
+	return proof.length > 0 && cause !== "introduced"
 		? hunks !== undefined &&
 				proof.some((each) => !hunks.some((hunk) => hunk.file === each.file && hunk.hash === each.hash))
-		: accepted.hash !== triggerCode(properties.trigger);
+		: hash !== trigger;
 }
 
 // Attached tasks need no new reports, but their sightings must still meet the content the dismissal accepted.
@@ -907,7 +914,7 @@ export function overlapsSite(
 
 /**
  * A dismissal a restatement may inherit: a maintainer's, which recorded the severity it was made at and the content it
- * accepted, with the finding as its last sighting showed it.
+ * accepted, with the finding as the dismissed revision showed it. Later sightings never change it.
  */
 export type DismissedRoot = {
 	readonly id: string;
@@ -916,15 +923,14 @@ export type DismissedRoot = {
 	readonly cause: Cause;
 	readonly line: number;
 	readonly endLine: number;
-	// The revision that last sighted it, whose head its region is read at.
+	// The revision the dismissal was made at, whose head its region is read at.
 	readonly revision: string;
 	readonly dismissedAt: string;
 	// The dismissal's identity, which the link the verifier's answer records must still match.
 	readonly dismissal: string;
 	readonly severity: Severity;
-	// The accepted trigger's hash and proof, and that proof with every proof sighted since, which its reopen rule reads.
+	// The trigger's hash and proof the dismissal accepted, which its reopen rule reads.
 	readonly hash: string;
-	readonly accepted: readonly ProvingHunk[];
 	readonly proof: readonly ProvingHunk[];
 	// What the verifier is shown of it: its claim, never its dismissal.
 	readonly claim: { id: string; failureScenario?: string; evidence?: FindingProperties["evidence"] };
@@ -936,17 +942,12 @@ export function dismissedRoots(state: FindingsState): DismissedRoot[] {
 	return Object.keys(state.items)
 		.sort()
 		.flatMap((id) => {
-			const { lifecycle, sightings } = state.items[id]!;
-			const { status, dismissedSeverity, dismissedSighting, dismissedTrigger, dismissedAt, lastSeenRevision } =
-				lifecycle;
-			if (status !== "dismissed" || dismissedSeverity === undefined) return [];
-			// The last sighting's region, or, once a later run at that revision cleared it, the one the dismissal saw.
-			const last = sightings[lastSeenRevision];
-			const [revision, winner] =
-				last === undefined
-					? [dismissedSighting!.revision, dismissedSighting!.sighting]
-					: [lastSeenRevision, adjudicate(last).winner];
-			const finding = Finding.from({ ...winner, properties: { ...winner.properties, status: "new" } });
+			const { lifecycle } = state.items[id]!;
+			const { status, dismissedSeverity, dismissedSighting, dismissedTrigger, dismissedAt } = lifecycle;
+			// `dismissFinding` records the sighting beside the severity, the time and the accepted trigger.
+			if (status !== "dismissed" || dismissedSighting === undefined) return [];
+			const { revision, sighting } = dismissedSighting;
+			const finding = Finding.from({ ...sighting, properties: { ...sighting.properties, status: "new" } });
 			const [line, endLine] = finding.lines();
 			const { failureScenario, evidence } = finding.properties;
 			return [
@@ -958,13 +959,11 @@ export function dismissedRoots(state: FindingsState): DismissedRoot[] {
 					line,
 					endLine,
 					revision,
-					// `dismissFinding` records a severity only beside the time and the accepted trigger.
 					dismissedAt: dismissedAt!,
 					dismissal: identityOf(lifecycle)!,
-					severity: dismissedSeverity,
+					severity: dismissedSeverity!,
 					hash: dismissedTrigger!.hash,
-					accepted: unionOf(dismissedTrigger!.proof),
-					proof: unionOf([...dismissedTrigger!.proof, ...(lifecycle.proof ?? [])]),
+					proof: dismissedTrigger!.proof,
 					claim: {
 						id,
 						...(failureScenario === undefined ? {} : { failureScenario }),

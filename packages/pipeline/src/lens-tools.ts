@@ -830,7 +830,8 @@ export const lensListedTools = {
 	graph_callees: graphCallees,
 } as const;
 
-function overlapping(file: ReviewFile | undefined, startLine: number, endLine: number): ReviewHunk | undefined {
+// The hunk an introduced finding on `startLine` to `endLine` of `file` names as its trigger.
+export function overlapping(file: ReviewFile | undefined, startLine: number, endLine: number): ReviewHunk | undefined {
 	return file?.hunks.find(
 		(hunk) => hunk.newLines > 0 && startLine < hunk.newStart + hunk.newLines && endLine >= hunk.newStart,
 	);
