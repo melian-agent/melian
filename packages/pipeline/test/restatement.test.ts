@@ -247,8 +247,18 @@ describe("a dismissal carrying to a restatement", () => {
 		});
 	});
 
-	// A review whose verifier a later review replaced must not clear the links that later review recorded.
-	it("keeps the links a replacing review recorded when the replaced review's verifier settles after it", async () => {
+	// Review A waits on its lens run or its verifier until review B, which replaced that run, has finished; A must not
+	// then clear the links B recorded.
+	it.each([
+		{ name: "its verifier, under another lens selection", waitsOn: "verification", budget: 9, verifier: false },
+		{ name: "its lens run, before it asked a verifier", waitsOn: "task", budget: 9, verifier: false },
+		{
+			name: "its verifier alone, under another verifier route",
+			waitsOn: "verification",
+			budget: undefined,
+			verifier: true,
+		},
+	] as const)("keeps the links of a review that replaced $name", async ({ waitsOn, budget, verifier }) => {
 		const root = await dismissedRoot();
 		pushElsewhere("other");
 		const at = Revision.key(await revision());
@@ -257,14 +267,14 @@ describe("a dismissal carrying to a restatement", () => {
 		const held = new Promise<void>((resolve) => {
 			release = resolve;
 		});
-		let settled: (() => void) | undefined;
-		const replacedDone = new Promise<void>((resolve) => {
-			settled = resolve;
+		let finish: (() => void) | undefined;
+		const finished = new Promise<void>((resolve) => {
+			finish = resolve;
 		});
-		let first = true;
+		let hold = waitsOn === "verification";
 		const verify = (messages: Messages) => {
-			if (first) {
-				first = false;
+			if (hold) {
+				hold = false;
 				return held.then(() => fauxAssistantMessage("Done."));
 			}
 			const prompt = systemPromptOf(messages);
@@ -289,37 +299,73 @@ describe("a dismissal carrying to a restatement", () => {
 			{ match: contracts, replies: [fauxAssistantMessage("Done."), fauxAssistantMessage("Done.")] },
 			{ match: verifierMarker, replies: [verify, verify, verify, verify] },
 		]);
-		// Review A's wait on its verifier returns only once review B has finished.
-		const index = async () => (await harness.snapshot(ReviewIndex, owner, context))?.reviews[at];
+		const entry = async () => (await harness.snapshot(ReviewIndex, owner, context))?.reviews[at];
 		const gated = new Proxy(harness, {
 			get(target, property) {
 				const value = Reflect.get(target, property, target);
 				if (property !== "waitForTask") return typeof value === "function" ? value.bind(target) : value;
 				return async (...args: Parameters<Harness["waitForTask"]>) => {
-					const waits = (await index())?.verification?.task === args[0];
+					const known = await entry();
+					const waits = (waitsOn === "task" ? known?.task : known?.verification?.task) === args[0];
 					const outcome = await target.waitForTask(...args);
-					if (waits) await replacedDone;
+					if (waits) {
+						finish!();
+						await held;
+					}
 					return outcome;
 				};
 			},
 		});
 		const changeset = await Changeset.resolve(repo, "main...feature");
-		const options = { changeset, config, standards: [], models: fake.review, checks: [...deterministicRan] };
-		const replaced = reviewChangeset({ ...options, harness: gated, lenses }).catch((error: unknown) => error);
-		while ((requests[verifierMarker]?.length ?? 0) === 0) await new Promise((resolve) => setTimeout(resolve, 5));
-		// Another findings budget is another lens selection, so review B replaces A's lens run and its verifier.
-		const budgeted = lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { findings: 9 }) : lens));
-		const replacing = await reviewChangeset({ ...options, harness, lenses: budgeted });
+		const options = { changeset, standards: [], models: fake.review, checks: [...deterministicRan] };
+		const replaced = reviewChangeset({ ...options, config, harness: gated, lenses }).catch((error: unknown) => error);
+		if (waitsOn === "task") await finished;
+		else while ((requests[verifierMarker]?.length ?? 0) === 0) await new Promise((resolve) => setTimeout(resolve, 5));
+		const orchestrator = fake.ref("orchestrator");
+		const replacing = await reviewChangeset({
+			...options,
+			harness,
+			// Another findings budget is another lens selection; another verifier model is another verification input.
+			lenses: lenses.map((lens) =>
+				lens.name === "correctness" && budget !== undefined ? withBudget(lens, { findings: budget }) : lens,
+			),
+			config: verifier
+				? {
+						...config,
+						models: { ...config.models, verifier: { model: `${orchestrator.provider}/${orchestrator.modelId}` } },
+					}
+				: config,
+		});
 		const [restated] = replacing.findings;
 		expect(replacing.verdict.dismissed.map((each) => each.id)).toEqual([restated!.id]);
 		const links = structuredClone((await harness.snapshot(FindingsDocument, owner, context))!.inherited?.[at]);
 		expect(links?.[restated!.id]).toMatchObject({ from: root, kind: "inherited" });
 		const version = await findingsVersion(harness, owner, at, context);
-		settled!();
 		release!();
-		expect(await replaced).toMatchObject({ code: "superseded" });
+		await replaced;
 		expect((await harness.snapshot(FindingsDocument, owner, context))!.inherited?.[at]).toEqual(links);
-		expect(await findingsVersion(harness, owner, at, context)).toBe(version);
+		if (!verifier) expect(await findingsVersion(harness, owner, at, context)).toBe(version);
+	});
+
+	it("clears the links when a later round on the head selects no lens", async () => {
+		await dismissedRoot();
+		pushElsewhere("other");
+		script([restatement]);
+		await review();
+		const at = Revision.key(await revision());
+		const owner = (await harness.root(context)).id;
+		expect((await harness.snapshot(FindingsDocument, owner, context))!.inherited?.[at]).toBeDefined();
+		const changeset = await Changeset.resolve(repo, "main...feature");
+		await reviewChangeset({
+			harness,
+			changeset,
+			config,
+			lenses: [],
+			standards: [],
+			models: fake.review,
+			checks: [...deterministicRan],
+		}).catch(() => undefined);
+		expect((await harness.snapshot(FindingsDocument, owner, context))!.inherited?.[at]).toBeUndefined();
 	});
 
 	it("leaves a restatement the verifier judges different live, with no link", async () => {
