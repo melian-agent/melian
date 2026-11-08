@@ -844,7 +844,8 @@ async function routeOf(level: LevelRoute, review: ReviewModels): Promise<TierRou
 
 // The route one level of a lens runs on, keyed so that levels sharing a route resolve it once: the lens's own route
 // where it names one, as the plan resolved it for that level, or else its tier's. `on` names it in a message, and
-// `refused` says the plan refuses the level there.
+// `refused` says the plan refuses the level there. `source` names a planned lens route and what set it, since the
+// lineage a run records depends on them and not on its models alone; a tier's run has none.
 class LevelRoute {
 	readonly key: string;
 	readonly on: string;
@@ -853,6 +854,7 @@ class LevelRoute {
 	readonly noun: string;
 	readonly route: ModelRoute | undefined;
 	readonly refused: boolean;
+	readonly source: string | undefined;
 
 	private constructor(fields: Omit<LevelRoute, never>) {
 		this.key = fields.key;
@@ -862,6 +864,7 @@ class LevelRoute {
 		this.noun = fields.noun;
 		this.route = fields.route;
 		this.refused = fields.refused;
+		this.source = fields.source;
 	}
 
 	static of(lens: Lens, level: ScrutinyLevel, config: MelianConfig, plan: ReviewPlan | undefined): LevelRoute {
@@ -870,6 +873,9 @@ class LevelRoute {
 		if (plan !== undefined && planned !== undefined) {
 			const [first, ...rest] =
 				planned.status === "routed" || planned.status === "uncredentialed" ? planned.models : [];
+			const moved = plan.lenses
+				.find((each) => each.name === lens.name && (each.scope ?? "") === lens.scope)
+				?.levels.find((each) => each.level === level)?.by;
 			return new LevelRoute({
 				key: `${at} ${lens.scope} ${level}`,
 				on: at,
@@ -881,6 +887,11 @@ class LevelRoute {
 					...(first === undefined ? {} : { model: first.model, fallbacks: rest.map(({ model }) => model) }),
 				},
 				refused: plan.judge(lens.name, level, undefined, lens.scope).refusal !== undefined,
+				source: [
+					at,
+					...(planned.by === undefined ? [] : [`by ${planned.by}`]),
+					...(moved === undefined ? [] : [`moved by ${moved}`]),
+				].join(" "),
 			});
 		}
 		const own = Object.hasOwn(config.lenses, lens.name) ? config.lenses[lens.name]!.route : undefined;
@@ -893,6 +904,7 @@ class LevelRoute {
 				noun: at,
 				route: own,
 				refused: false,
+				source: undefined,
 			});
 		}
 		const { tier } = lens.level(level);
@@ -904,6 +916,7 @@ class LevelRoute {
 			noun: `the ${tier} tier`,
 			route: config.models[tier],
 			refused: plan?.refusal(tier) !== undefined,
+			source: undefined,
 		});
 	}
 }
@@ -1060,9 +1073,9 @@ function omit<T extends object, K extends keyof T>(value: T, key: K): Omit<T, K>
 	return rest;
 }
 
-// A review's lens selection as the review index keys it: each run's key and the route it resolved, with the band its
-// level was held to, the severity that escalates it, and the run a quick run escalates to, with its route, or why it
-// is capped. Problem: a selection of names alone let a review under another plan, such as one with --model or a
+// A review's lens selection as the review index keys it: each run's key and the route it resolved, with what set a lens
+// route, the band its level was held to, the severity that escalates it, and the run a quick run escalates to, with
+// its route, or why it is capped. Problem: a selection of names alone let a review under another plan, such as one with --model or a
 // changed preference file, attach to a lens task that ran on the old route, and one under a changed band or
 // `escalateAt` attach to a task that escalated under the old rule. Solution: each is part of the selection, so a
 // change to any of them runs the lenses again. A task an older Melian created names none of them.
@@ -1073,7 +1086,11 @@ function escalatesTo(escalation: NonNullable<LensRun["escalation"]>): string {
 	return `capped ${escalation.cap ?? "at its ceiling"}`;
 }
 
-function selectionOf(lenses: readonly LensRun[], escalateAt: Severity | undefined): string[] {
+function selectionOf(
+	lenses: readonly LensRun[],
+	escalateAt: Severity | undefined,
+	sourceOf: (key: string) => string | undefined,
+): string[] {
 	return lenses
 		.map((lens) =>
 			[
@@ -1083,6 +1100,7 @@ function selectionOf(lenses: readonly LensRun[], escalateAt: Severity | undefine
 				...(lens.band === undefined ? [] : [`band ${lens.band}`]),
 				...(escalateAt === undefined ? [] : [`escalateAt ${escalateAt}`]),
 				...(lens.escalation === undefined ? [] : [escalatesTo(lens.escalation)]),
+				...(sourceOf(lens.key) === undefined ? [] : [`route ${sourceOf(lens.key)}`]),
 				`on ${lens.route.map(modelName).join(", ")}`,
 			].join(" "),
 		)
@@ -1101,6 +1119,7 @@ function runsOf(lenses: readonly LensRun[]): LensRun[] {
 async function runLenses(
 	harness: Harness,
 	input: StoredLensTaskInput,
+	selection: readonly string[],
 	rerun: boolean,
 	context: Context,
 	refused: (key: string, model: string) => boolean = () => false,
@@ -1108,7 +1127,6 @@ async function runLenses(
 ): Promise<{ readonly result: LensResult | undefined; readonly ran: StoredLensTaskInput; readonly task: number }> {
 	const root = await harness.root(context);
 	const revision = Revision.key(input.revision);
-	const selection = selectionOf(input.lenses, input.escalateAt);
 	if (unlockModels !== undefined) {
 		// Live tasks were unlocked from their checkpoints before resume; finished tasks ask no model.
 		const known = (await harness.snapshot(ReviewIndex, root.id, context))?.reviews[revision];
@@ -1143,7 +1161,7 @@ async function runLenses(
 		await clearSightings(tx, root.id, revision, sources);
 		const created = await tx.createTask(LensTask, input, { ownership: { kind: "conversation" } });
 		replaced = known?.task;
-		index.reviews[revision] = { task: created, lenses: selection };
+		index.reviews[revision] = { task: created, lenses: [...selection] };
 		return created;
 	}, context);
 	// Before anything resumes the replaced run: it asks no model again and its reports no longer count, but a live
@@ -1207,6 +1225,7 @@ function lensFailed(
 async function callersFor(
 	harness: Harness,
 	input: StoredLensTaskInput,
+	selection: readonly string[],
 	task: number | undefined,
 	settledLenses: boolean,
 	{ notes, caveat }: Pick<StoredCallers, "notes" | "caveat">,
@@ -1215,7 +1234,6 @@ async function callersFor(
 ): Promise<CallerRecord> {
 	const root = await harness.root(context);
 	const revision = Revision.key(input.revision);
-	const selection = selectionOf(input.lenses, input.escalateAt);
 	const entryOf = async () => {
 		const entry = (await harness.snapshot(ReviewIndex, root.id, context))?.reviews[revision];
 		return entry?.lenses.join("\n") === selection.join("\n") ? entry : undefined;
@@ -1708,7 +1726,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	const bands = await bandsOf(covering, options);
 	spans.step("routes");
 	const { plan } = request;
-	const levelRoutes = new Map(
+	const levelRoutes = new Map<string, LevelRoute>(
 		covering.flatMap(({ lens }) =>
 			lens
 				.declaredLevels()
@@ -1996,6 +2014,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			}
 		: undefined;
 	const lensInput = new LensTaskInput(root, state, lenses, escalateAt, callersInput).toJSON();
+	const selection = selectionOf(lenses, escalateAt, (key) => levelRoutes.get(key)?.source);
 	spans.end();
 	const {
 		result: lensResult,
@@ -2006,6 +2025,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		: await runLenses(
 				harness,
 				lensInput,
+				selection,
 				options.rerun === true,
 				context,
 				(key, model) => {
@@ -2033,6 +2053,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	const callers = await callersFor(
 		harness,
 		lensInput,
+		selection,
 		lensTask,
 		lenses.length > 0 && lensResult !== undefined,
 		rendered ?? callersInput ?? { notes: callerNotes },
@@ -2275,7 +2296,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			const verifying = await startVerification(
 				harness,
 				verificationInput,
-				selectionOf(lenses, escalateAt),
+				selection,
 				options.rerun === true,
 				context,
 				(model) =>
@@ -2402,7 +2423,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	const adjudication = await startAdjudication(
 		harness,
 		input,
-		selectionOf(lenses, escalateAt),
+		selection,
 		verificationRefused,
 		JSON.stringify(checked?.identity ?? request.checkRun),
 		context,

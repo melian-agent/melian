@@ -994,6 +994,60 @@ describe("reviewChangeset with a lens route", () => {
 		});
 	});
 
+	it("runs a lens again when a preference route lands it on the model its tier's run finished on", async () => {
+		const models = { heavy: { model: "nowhere/opus", accept: ["nowhere/opus", backup] } };
+		const first = await routed({}, { models });
+		const second = await routed({}, { models, preferred: { correctness: { model: backup } } });
+		expect(first.answered.map(({ lens, model }) => `${lens} ${model}`).sort()).toEqual([
+			"contracts backup",
+			"correctness backup",
+		]);
+		expect(second.answered.map(({ lens, model }) => `${lens} ${model}`).sort()).toEqual([
+			"contracts backup",
+			"correctness backup",
+		]);
+		expect(second.review.verdict.ran?.find(({ name }) => name === "lens.correctness")?.lineage).toEqual({
+			model: backup,
+			wanted: "nowhere/opus",
+			by: "melian.local.yaml",
+			moved: { by: "melian.local.yaml", from: "heavy", to: "lens route" },
+			outside: false,
+		});
+		expect(second.selection.find((entry) => entry.startsWith("contracts@"))).toBe(
+			first.selection.find((entry) => entry.startsWith("contracts@")),
+		);
+		const correctnessOf = (selection: string[]) => selection.find((entry) => entry.startsWith("correctness@"));
+		expect(correctnessOf(first.selection)).toMatch(/ band quick-deep escalateAt P1 on faux\/backup$/);
+		expect(correctnessOf(second.selection)).toMatch(
+			/ escalateAt P1 route lenses\.correctness\.route by melian\.local\.yaml moved by melian\.local\.yaml on faux\/backup$/,
+		);
+	});
+
+	it("runs a lens again when a preference file moves its committed route onto the model that route fell to", async () => {
+		const routes = {
+			correctness: { model: "nowhere/opus", accept: ["nowhere/opus", backup] },
+			contracts: { model: heavy },
+		};
+		const first = await routed(routes);
+		const second = await routed(routes, { preferred: { correctness: { model: backup } } });
+		expect(first.answered.map(({ lens }) => lens).sort()).toEqual(["contracts", "correctness"]);
+		expect(first.review.verdict.ran?.find(({ name }) => name === "lens.correctness")?.lineage).toBeUndefined();
+		const correctnessOf = (selection: string[]) => selection.find((entry) => entry.startsWith("correctness@"));
+		expect(correctnessOf(first.selection)).toMatch(
+			/ escalateAt P1 route lenses\.correctness\.route on faux\/backup$/,
+		);
+		expect(correctnessOf(second.selection)).toMatch(
+			/ escalateAt P1 route lenses\.correctness\.route by melian\.local\.yaml on faux\/backup$/,
+		);
+		expect(second.answered.map(({ lens }) => lens).sort()).toEqual(["contracts", "correctness"]);
+		expect(second.review.verdict.ran?.find(({ name }) => name === "lens.correctness")?.lineage).toEqual({
+			model: backup,
+			wanted: "nowhere/opus",
+			by: "melian.local.yaml",
+			outside: false,
+		});
+	});
+
 	it("fails the review before any lens runs when a lens route reaches no model with credentials", async () => {
 		await expect(routed({ correctness: { model: "nowhere/opus" }, contracts: { model: heavy } })).rejects.toThrow(
 			"lens correctness may run from quick to deep, and no level there can run: quick runs on medium, and none of nowhere/opus is known with credentials",
