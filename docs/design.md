@@ -17,6 +17,14 @@ Milestone 3, "Melian reviews pull requests on GitHub Actions", runs it there, an
 - Run anywhere: locally, from a coding agent, in a persistent container, in GitHub Actions and equivalents.
 - Be configurable per repository and per folder, for large multi-service monorepos.
 
+## Coordinating concurrent work
+
+Each kind of collision has one mechanism, as [the coordination decision](decisions/2026-11-08-how-melian-coordinates.md) sets out:
+- Within one process, a Pi Durable commit serialises writers, and a writer proves ownership in the commit that writes. An in-memory queue serves only a resource that dies with its process.
+- Across processes or hosts on one changeset, core's `Lease` decides the writer. It holds an owner, a taken-at time, an expiry and a fencing generation that rises on every taking. Every write records its generation, and the store refuses an older one. The state branch and a clone's git directory hold leases.
+- A write to GitHub is idempotent and checked against GitHub first. `melian/review` carries the lease generation, and the merge-group check takes only the newest.
+- Lost, repeated or reordered events are reconciled to the state the authority implies.
+
 ## Non-goals
 
 - Replacing human judgement. Melian never merges and never fixes without being asked.

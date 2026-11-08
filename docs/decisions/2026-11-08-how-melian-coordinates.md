@@ -1,6 +1,6 @@
 # How Melian coordinates concurrent work
 
-Status: proposed, for the maintainer's ruling.
+The maintainer ruled on 2026-11-08 to adopt it.
 
 ## Context
 
