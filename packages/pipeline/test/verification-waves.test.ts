@@ -28,7 +28,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { defineTask, openSqliteStorage, type TaskId } from "../src/harness.ts";
 import { reviewFiles } from "../src/lens-tools.ts";
 import { ReviewIndex } from "../src/review-index.ts";
-import { startWave, type VerificationInput } from "../src/verification.ts";
+import { startVerification, startWave, type VerificationInput } from "../src/verification.ts";
 import { verifierMarker, verifierVersion } from "../src/verification-instructions.ts";
 import { VerificationWavesDocument } from "../src/verification-waves.ts";
 import { gitIn } from "./fixtures/repo.ts";
@@ -704,6 +704,25 @@ describe("verification as each lens ends", () => {
 		await Promise.all([review(), review()]);
 		expect(await waveTasks()).toHaveLength(1);
 		expect(asked).toHaveLength(1);
+	});
+
+	it("leaves a wave still pending when the final verification starts no authority to verify", async () => {
+		const asked: string[][] = [];
+		fastThenSlow(asked);
+		await review();
+		const root = await harness.root(context);
+		const revision = Revision.key(changeset.revision);
+		const entry = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!;
+		const final = (await harness.getTask(entry.verification!.task as TaskId, context))!
+			.input as unknown as VerificationInput;
+		await root.commit(async (tx) => {
+			delete (await tx.doc(ReviewIndex, root.id)).reviews[revision]!.verification;
+		}, context);
+		// Another review's watcher started this wave just before the final verification; it has not run yet.
+		const late = await startWave(harness, { ...final, version: "late" }, entry.task!, context);
+		expect(late).toBeDefined();
+		await startVerification(harness, final, entry.lenses, false, context);
+		expect((await harness.waitForTask(late!, context)).state.outcome).toEqual({ status: "completed", result: {} });
 	});
 
 	it("starts no wave beside a running one, even for a candidate no wave holds", async () => {

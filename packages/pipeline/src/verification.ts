@@ -308,10 +308,17 @@ export async function startVerification(
 				return previous.task as TaskId<VerificationResult>;
 		}
 		await clearVerifications(tx, input.root, Revision.key(input.revision), (claim) => !kept.has(claim));
-		// This task now decides every claim it clears, so no earlier wave stands for one, whatever route ran it.
-		for (const wave of (await tx.doc(VerificationWavesDocument, input.root)).reviews[Revision.key(input.revision)]
-			?.waves ?? [])
-			wave.candidates = wave.candidates.filter((candidate) => candidate.claims.every((claim) => kept.has(claim)));
+		// This task now decides every claim it clears, so no earlier wave stands for one, whatever route ran it, and a
+		// wave that has not finished, which another review's watcher may have started, loses its authority to write.
+		const waves = (await tx.doc(VerificationWavesDocument, input.root)).reviews[Revision.key(input.revision)];
+		if (waves !== undefined) {
+			const finished = [];
+			for (const wave of waves.waves)
+				if ((await tx.task(wave.task as TaskId))!.state.status === "terminal") finished.push(wave);
+			for (const wave of finished)
+				wave.candidates = wave.candidates.filter((candidate) => candidate.claims.every((claim) => kept.has(claim)));
+			waves.waves = finished;
+		}
 		const created = await tx.createTask(VerificationTask, input, { ownership: { kind: "conversation" } });
 		const { adjudication: __, ...entry } = known ?? { lenses: [...selection] };
 		index.reviews[Revision.key(input.revision)] = {
