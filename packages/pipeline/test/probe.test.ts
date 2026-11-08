@@ -159,6 +159,22 @@ describe("Probe.open", () => {
 		expect(left()).toEqual([]);
 	});
 
+	it("wraps a ProbeError the open raises unless it refuses the probe itself", async () => {
+		const late = new ProbeError("sandboxUnavailable", "the sandbox did not start within 120s");
+		const { sandbox } = passthrough({
+			open: async () => {
+				throw late;
+			},
+		});
+		const error = await refusal({ script: "" }, options(sandbox));
+		expect(error).toMatchObject({
+			code: "sandboxUnavailable",
+			message: "the probe could not start: ProbeError: the sandbox did not start within 120s",
+			cause: late,
+		});
+		expect(left()).toEqual([]);
+	});
+
 	it.each([
 		["../escape"],
 		["/absolute"],
