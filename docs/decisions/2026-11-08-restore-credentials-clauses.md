@@ -4,6 +4,8 @@ Amends: [2026-10-08-credentials-follow-concrete-task-routes.md](2026-10-08-crede
 
 Status: accepted on 2026-11-08 under step 26's audit, [issue #238](https://github.com/melian-agent/melian/issues/238).
 
+Where a clause below conflicts with any other active decision, including the decisions this file amends, that decision wins. These clauses fill gaps the partial supersessions left; they override nothing.
+
 [2026-10-05-review-plan-resolution.md](2026-10-05-review-plan-resolution.md) superseded [2026-10-04-review-plan-and-routes.md](2026-10-04-review-plan-and-routes.md) and [2026-10-04-credential-files.md](2026-10-04-credential-files.md) while changing two choices of each. [2026-10-06-named-bearer-credentials.md](2026-10-06-named-bearer-credentials.md) superseded the resolution decision for its API-key restriction alone. [2026-10-07-credential-commands-run-when-a-model-is-asked.md](2026-10-07-credential-commands-run-when-a-model-is-asked.md) superseded the bearer decision for its unlock timing alone. [2026-10-08-credentials-follow-concrete-task-routes.md](2026-10-08-credentials-follow-concrete-task-routes.md) and [2026-10-08-resumed-task-credential-providers.md](2026-10-08-resumed-task-credential-providers.md) each superseded the command decision for one part of how unlocking works. The index retired each target whole. The clauses below still hold on main; this file restates them and changes nothing.
 
 ## From [2026-10-04-review-plan-and-routes.md](2026-10-04-review-plan-and-routes.md)

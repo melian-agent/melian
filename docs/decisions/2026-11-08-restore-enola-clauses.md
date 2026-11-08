@@ -4,6 +4,8 @@ Amends: [2026-10-06-tool-metadata-offline.md](2026-10-06-tool-metadata-offline.m
 
 Status: accepted on 2026-11-08 under step 26's audit, [issue #238](https://github.com/melian-agent/melian/issues/238).
 
+Where a clause below conflicts with any other active decision, including the decisions this file amends, that decision wins. These clauses fill gaps the partial supersessions left; they override nothing.
+
 [2026-10-04-enola-caller-query.md](2026-10-04-enola-caller-query.md) superseded [2026-10-04-enola.md](2026-10-04-enola.md) while correcting only where constraint verdicts and callers come from. [2026-10-06-tool-manifest.md](2026-10-06-tool-manifest.md) superseded the caller-query decision to drop the fork. [2026-10-06-tool-metadata-offline.md](2026-10-06-tool-metadata-offline.md) superseded the manifest decision for a release-metadata lookup failure alone. The index retired each target whole. The clauses below still hold on main; this file restates them and changes nothing.
 
 ## From [2026-10-04-enola.md](2026-10-04-enola.md)

@@ -4,6 +4,8 @@ Amends: [2026-10-06-ledger-review-author.md](2026-10-06-ledger-review-author.md)
 
 Status: accepted on 2026-11-08 under step 26's audit, [issue #238](https://github.com/melian-agent/melian/issues/238).
 
+Where a clause below conflicts with any other active decision, including the decisions this file amends, that decision wins. These clauses fill gaps the partial supersessions left; they override nothing.
+
 [2026-10-05-ledger-publication-projection.md](2026-10-05-ledger-publication-projection.md) superseded [2026-10-04-review-ledger.md](2026-10-04-review-ledger.md) to change its configuration spelling, the stamp's plan and the prompt's grouping. [2026-10-05-ledger-recovery-and-bounds.md](2026-10-05-ledger-recovery-and-bounds.md) superseded both: the ledger decision for discovery, ownership, ordering and retained history, and the projection decision for its digest and summary failures. The two decisions this file amends then superseded the recovery decision for unrecorded ownership and for attempt accounting. The index retired each target whole. The clauses below still hold on main; this file restates them and changes nothing.
 
 ## From [2026-10-04-review-ledger.md](2026-10-04-review-ledger.md)

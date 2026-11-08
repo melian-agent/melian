@@ -4,6 +4,8 @@ Amends: [2026-10-07-design-lens-goldens-and-sources.md](2026-10-07-design-lens-g
 
 Status: accepted on 2026-11-08 under step 26's audit, [issue #238](https://github.com/melian-agent/melian/issues/238).
 
+Where a clause below conflicts with any other active decision, including the decisions this file amends, that decision wins. These clauses fill gaps the partial supersessions left; they override nothing.
+
 [The goldens and sources decision](2026-10-07-design-lens-goldens-and-sources.md) and [the base-text decision](2026-10-07-design-lens-judges-against-base.md) each superseded [the design lens decision](2026-10-07-design-lens.md) for a few points. [The active-base decision](2026-10-08-design-lens-active-decisions-at-base.md) superseded the base-text decision while keeping two of its rules, and [the Markdown decision](2026-10-08-decisions-package-markdown-on-mdast.md) superseded the active-base decision for its parser and filename rules alone. The index retired each target whole. The clauses below still hold on main. This file restates them and changes nothing.
 
 ## From [2026-10-07-design-lens.md](2026-10-07-design-lens.md)

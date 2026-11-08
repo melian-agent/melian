@@ -4,6 +4,8 @@ Amends: [2026-10-06-first-status-replay.md](2026-10-06-first-status-replay.md), 
 
 Status: accepted on 2026-11-08 under step 26's audit, [issue #238](https://github.com/melian-agent/melian/issues/238).
 
+Where a clause below conflicts with any other active decision, including the decisions this file amends, that decision wins. These clauses fill gaps the partial supersessions left; they override nothing.
+
 [2026-10-06-publisher-attribution-resume.md](2026-10-06-publisher-attribution-resume.md) superseded [2026-10-06-writer-trust-status.md](2026-10-06-writer-trust-status.md) to add the resume rules, and said it kept the rest. [2026-10-06-explicit-publication-trust.md](2026-10-06-explicit-publication-trust.md) superseded the attribution decision to make the trust policy explicit, and the decision this file amends superseded that one for a repeated first status. Each kept its target's other rules without restating them. The index retired each target whole. The clauses below still hold on main; this file restates them and changes nothing.
 
 ## From [2026-10-06-publisher-attribution-resume.md](2026-10-06-publisher-attribution-resume.md)

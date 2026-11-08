@@ -4,6 +4,8 @@ Amends: [2026-10-06-oversized-standards-carriers.md](2026-10-06-oversized-standa
 
 Status: accepted on 2026-11-08 under step 26's audit, [issue #238](https://github.com/melian-agent/melian/issues/238).
 
+Where a clause below conflicts with any other active decision, including the decisions this file amends, that decision wins. These clauses fill gaps the partial supersessions left; they override nothing.
+
 [The rendered cap](2026-10-06-rendered-standards-cap.md) superseded [the per-lens cap](2026-10-06-per-lens-standards-cap.md) while rebuilding its bound. [The oversized-carriers decision](2026-10-06-oversized-standards-carriers.md) then superseded the rendered cap for its individual-file failure rule only. [The provenance decision](2026-10-06-standards-trust-provenance.md) superseded [the worktree boundary](2026-10-06-worktree-standards-boundary.md) for how standards earn trust. The index retired each target whole. The clauses below still hold on main. This file restates them and changes nothing.
 
 ## From [2026-10-06-rendered-standards-cap.md](2026-10-06-rendered-standards-cap.md)

@@ -4,6 +4,8 @@ Amends: [2026-10-06-immutable-coverage-evidence.md](2026-10-06-immutable-coverag
 
 Status: accepted on 2026-11-08 under step 26's audit, [issue #238](https://github.com/melian-agent/melian/issues/238).
 
+Where a clause below conflicts with any other active decision, including the decisions this file amends, that decision wins. These clauses fill gaps the partial supersessions left; they override nothing.
+
 [Immutable coverage evidence](2026-10-06-immutable-coverage-evidence.md) superseded [coverage artifacts](2026-10-06-coverage-artifacts.md) for its cache layout and lookup alone. The index retired the target whole. The clauses below still hold on main. This file restates them and changes nothing.
 
 ## From [2026-10-06-coverage-artifacts.md](2026-10-06-coverage-artifacts.md)

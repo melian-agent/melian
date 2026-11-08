@@ -4,6 +4,8 @@ Amends: [2026-10-06-tool-cache-authentication.md](2026-10-06-tool-cache-authenti
 
 Status: accepted on 2026-11-08 under step 26's audit, [issue #238](https://github.com/melian-agent/melian/issues/238).
 
+Where a clause below conflicts with any other active decision, including the decisions this file amends, that decision wins. These clauses fill gaps the partial supersessions left; they override nothing.
+
 [2026-10-06-tool-cache-authentication.md](2026-10-06-tool-cache-authentication.md) and [2026-10-06-tool-cache-publication.md](2026-10-06-tool-cache-publication.md) each superseded [2026-10-06-tool-cache.md](2026-10-06-tool-cache.md) while changing one part of it: how a cached executable is authenticated, and how entries are published and repaired. The index retired the target whole. The clauses below still hold on main; this file restates them and changes nothing.
 
 ## From [2026-10-06-tool-cache.md](2026-10-06-tool-cache.md)
