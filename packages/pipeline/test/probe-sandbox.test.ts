@@ -230,18 +230,24 @@ console.log(JSON.stringify(out));
 				expect(seen[".npmrc"]).not.toContain("npm_FAKE");
 			});
 
-			it("cannot read through a tracked link into the live checkout or outside it", {
+			it("reads through a tracked link inside the tree, and never opens a head linking out of it", {
 				timeout: 60_000,
 			}, async () => {
-				symlinkSync(join(repository, ".npmrc"), join(repository, "into-checkout"));
-				symlinkSync(join(outside, "secret.txt"), join(repository, "out-link"));
 				symlinkSync("tracked.txt", join(repository, "in-link"));
-				const head = commit();
-				writeFileSync(join(repository, ".npmrc"), "//registry.npmjs.org/:_authToken=npm_FAKE0000000000000000\n");
-				const seen = await reads(["into-checkout", "out-link", "in-link"], head);
-				expect(seen["in-link"]).toBe("committed");
-				expect(seen["into-checkout"]).not.toContain("npm_FAKE");
-				expect(seen["out-link"]).not.toBe("secret");
+				expect((await reads(["in-link"], commit()))["in-link"]).toBe("committed");
+				for (const [name, target] of [
+					["into-checkout", join(repository, ".npmrc")],
+					["out-link", join(outside, "secret.txt")],
+				] as const) {
+					symlinkSync(target, join(repository, name));
+					const head = commit();
+					await expect(reads([name], head)).rejects.toMatchObject({
+						code: "invalidProbe",
+						message: `the head's link ${name} leads outside its tree or into its node_modules`,
+					});
+					rmSync(join(repository, name));
+					commit();
+				}
 			});
 
 			it("reads a tracked file as committed, not as the reviewer modified it", { timeout: 60_000 }, async () => {
@@ -505,6 +511,8 @@ flood();
 		it("imports a module from the head's worktree and calls it", { timeout: 60_000 }, async () => {
 			mkdirSync(join(worktree, "lib"));
 			writeFileSync(join(worktree, "lib", "sum.mjs"), "export function sum(a, b) { return a + b; }\n");
+			// The suite's live checkout links out, and a head that tracks such a link is refused.
+			rmSync(join(worktree, "escape"));
 			head = committed(worktree);
 			const script = `
 import { readFileSync } from "node:fs";

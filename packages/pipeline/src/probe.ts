@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { constants, existsSync, lstatSync, realpathSync, statSync } from "node:fs";
+import { constants, existsSync, lstatSync, readdirSync, readlinkSync, realpathSync, statSync } from "node:fs";
 import { cp, mkdir, mkdtemp, open as openFile, rm, writeFile } from "node:fs/promises";
 import { homedir, platform, tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, posix, relative, sep } from "node:path";
@@ -256,17 +256,52 @@ function allowed(checkout: string, read: readonly string[]): readonly (readonly 
 	});
 }
 
-// The tree holds the head's links, so a copy onto a path through one would write wherever the head chose, outside the
-// sandbox, before it starts.
-function throughLink(tree: string, entry: string): boolean {
-	let at = tree;
-	for (const part of entry.split("/")) {
-		at = join(at, part);
-		const stat = lstatSync(at, { throwIfNoEntry: false });
-		if (stat === undefined) return false;
-		if (stat.isSymbolicLink()) return true;
+// The head chooses its links, and setup writes into the tree as the reviewer, before the sandbox starts. A link that
+// leads outside the tree, to its root, or into a node_modules, where the install's links to the host land, would carry a
+// later write to the host, so a head holding one is refused. Each link resolves one component at a time, as the kernel
+// resolves it: folding `..` first would read `sub/..`, with `sub -> .`, as inside.
+function refuseLinksOut(tree: string): void {
+	const root = realpathSync(tree);
+	const pending = [root];
+	for (let directory = pending.pop(); directory !== undefined; directory = pending.pop()) {
+		for (const entry of readdirSync(directory, { withFileTypes: true })) {
+			const path = join(directory, entry.name);
+			if (entry.isDirectory()) pending.push(path);
+			else if (entry.isSymbolicLink() && !staysInside(root, path))
+				throw new ProbeError(
+					"invalidProbe",
+					`the head's link ${relative(root, path)} leads outside its tree or into its node_modules`,
+				);
+		}
 	}
-	return false;
+}
+
+function staysInside(root: string, link: string): boolean {
+	const parts = readlinkSync(link).split("/");
+	let at = parts[0] === "" ? "/" : realpathSync(dirname(link));
+	for (const [index, part] of parts.entries()) {
+		if (part === "" || part === ".") continue;
+		if (part === "..") {
+			at = dirname(at);
+			continue;
+		}
+		const next = join(at, part);
+		if (lstatSync(next, { throwIfNoEntry: false }) === undefined) {
+			// Nothing past a missing component can be resolved yet, and a `..` there could climb once it exists.
+			if (parts.slice(index + 1).includes("..")) return false;
+			at = join(next, ...parts.slice(index + 1));
+			break;
+		}
+		try {
+			at = realpathSync(next);
+		} catch {
+			return false;
+		}
+	}
+	const inside = relative(root, at);
+	return (
+		inside !== "" && inside !== ".." && !inside.startsWith(`..${sep}`) && !inside.split(sep).includes("node_modules")
+	);
 }
 
 // Writes the head's tracked tree into `tree` from a temporary repository that borrows the checkout's objects, then the
@@ -283,20 +318,21 @@ async function writeHead({ checkout, commit, entries }: PlannedHead, tree: strin
 		const at = { GIT_DIR: repository, GIT_WORK_TREE: tree };
 		await git(tree, ["read-tree", commit], repository, at);
 		await git(tree, ["checkout-index", "--all"], repository, at);
-		const installs: string[] = [];
-		for (const [entry, real] of entries) {
+		refuseLinksOut(tree);
+		const copies = entries.filter(([entry]) => entry !== "node_modules");
+		for (const [entry, real] of copies) {
 			const target = join(tree, entry);
-			if (throughLink(tree, entry))
-				throw new ProbeError("invalidProbe", `probe.read entry ${entry} leads through a link the head tracks`);
-			if (entry !== "node_modules") {
-				await mkdir(dirname(target), { recursive: true });
-				await cp(real, target, { recursive: true, verbatimSymlinks: true, force: true });
-			} else if (!existsSync(target)) {
-				const env = createNodeExecutionEnv(checkout);
-				const linked = await linkDependencies(env, backgroundContext, checkout, tree, repository, shell);
-				if ("failed" in linked) throw new ProbeError("invalidProbe", `the dependency install: ${linked.failed}`);
-				installs.push(...linked.linked.flatMap((path) => [path, realpathSync(path)]));
-			}
+			await mkdir(dirname(target), { recursive: true });
+			await cp(real, target, { recursive: true, verbatimSymlinks: true, force: true });
+		}
+		// A copy comes from the reviewer's checkout, and its links are kept as written.
+		if (copies.length > 0) refuseLinksOut(tree);
+		const installs: string[] = [];
+		if (entries.some(([entry]) => entry === "node_modules") && !existsSync(join(tree, "node_modules"))) {
+			const env = createNodeExecutionEnv(checkout);
+			const linked = await linkDependencies(env, backgroundContext, checkout, tree, repository, shell);
+			if ("failed" in linked) throw new ProbeError("invalidProbe", `the dependency install: ${linked.failed}`);
+			installs.push(...linked.linked.flatMap((path) => [path, realpathSync(path)]));
 		}
 		return [...new Set(installs)];
 	} catch (error) {

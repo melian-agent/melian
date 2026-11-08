@@ -460,12 +460,105 @@ describe("Probe.open with a head's allowlist", () => {
 			const error = await refusal({ script: "" }, options(sandbox, atHead([entry])));
 			expect(error).toMatchObject({
 				code: "invalidProbe",
-				message: `probe.read entry ${entry} leads through a link the head tracks`,
+				message: `the head's link ${entry.split("/")[0]} leads outside its tree or into its node_modules`,
 			});
 			expect(readdirSync(outside)).toEqual(["out.txt"]);
 			expect(readFileSync(join(outside, "out.txt"), "utf8")).toBe("canary\n");
 		},
 	);
+
+	// Commits the links `make` writes into the checkout, then removes them from the working tree, so the head holds them
+	// and the live checkout does not.
+	function headWithLinks(make: (at: string) => readonly string[]): void {
+		const made = make(checkout);
+		gitIn(checkout, "add", "--all");
+		gitIn(checkout, "commit", "--quiet", "-m", "links");
+		head = gitIn(checkout, "rev-parse", "HEAD");
+		for (const path of made) rmSync(join(checkout, path), { force: true });
+	}
+
+	const linkRefusal = (path: string) => ({
+		code: "invalidProbe",
+		message: `the head's link ${path} leads outside its tree or into its node_modules`,
+	});
+
+	it("refuses a head that links a workspace out of its tree, and writes nothing outside", async () => {
+		const { sandbox } = passthrough();
+		const outside = join(scratch, "outside");
+		mkdirSync(outside);
+		headWithLinks((at) => {
+			symlinkSync(outside, join(at, "foo"));
+			return ["foo"];
+		});
+		mkdirSync(join(checkout, "foo", "node_modules", "only-foo"), { recursive: true });
+		mkdirSync(join(checkout, "node_modules"));
+		symlinkSync("../foo", join(checkout, "node_modules", "foo"));
+		const error = await refusal({ script: "" }, options(sandbox, { head: { checkout, commit: head } }));
+		expect(error).toMatchObject(linkRefusal("foo"));
+		expect(readdirSync(outside)).toEqual([]);
+	});
+
+	it("refuses a head that links a workspace to its own root, and writes nothing into the install", async () => {
+		const { sandbox } = passthrough();
+		headWithLinks((at) => {
+			symlinkSync(".", join(at, "foo"));
+			return ["foo"];
+		});
+		mkdirSync(join(checkout, "foo", "node_modules", "dep"), { recursive: true });
+		mkdirSync(join(checkout, "node_modules", "dep"), { recursive: true });
+		symlinkSync("../foo", join(checkout, "node_modules", "foo"));
+		const error = await refusal({ script: "" }, options(sandbox, { head: { checkout, commit: head } }));
+		expect(error).toMatchObject(linkRefusal("foo"));
+		expect(readdirSync(join(checkout, "node_modules", "dep"))).toEqual([]);
+	});
+
+	it.each([
+		["an absolute link out", (at: string) => symlinkSync(join(scratch, "elsewhere"), join(at, "l"))],
+		["a dangling link into node_modules", (at: string) => symlinkSync("node_modules/x", join(at, "l"))],
+		["a link to node_modules itself", (at: string) => symlinkSync("node_modules", join(at, "l"))],
+		[
+			"a link that climbs out through a link to the root",
+			(at: string) => {
+				symlinkSync(".", join(at, "sub"));
+				symlinkSync("sub/..", join(at, "l"));
+			},
+		],
+		[
+			"a dangling link that climbs out past a missing directory",
+			(at: string) => symlinkSync("missing/../..", join(at, "l")),
+		],
+		[
+			"a link loop",
+			(at: string) => {
+				symlinkSync("m", join(at, "l"));
+				symlinkSync("l", join(at, "m"));
+			},
+		],
+	])("refuses a head holding %s", async (_, make) => {
+		const { sandbox } = passthrough();
+		headWithLinks((at) => {
+			make(at);
+			return [];
+		});
+		const error = await refusal({ script: "" }, options(sandbox, atHead([])));
+		expect(error.code).toBe("invalidProbe");
+		expect(error.message).toMatch(/^the head's link (l|m|sub) leads outside its tree or into its node_modules$/);
+	});
+
+	it("opens a head whose links stay inside its tree", async () => {
+		const { sandbox } = passthrough();
+		headWithLinks((at) => {
+			mkdirSync(join(at, "real"));
+			writeFileSync(join(at, "real", "file.txt"), "inside\n");
+			symlinkSync("real/file.txt", join(at, "file"));
+			symlinkSync("../real", join(at, "real", "self"));
+			symlinkSync("not-yet", join(at, "pending"));
+			return [];
+		});
+		const probe = await Probe.open({ script: "" }, options(sandbox, atHead([])));
+		expect(readFileSync(join(probe.policy.read[0]!, "file"), "utf8")).toBe("inside\n");
+		await probe.close();
+	});
 
 	it("links no install over a node_modules the head tracks", async () => {
 		const { sandbox } = passthrough();
