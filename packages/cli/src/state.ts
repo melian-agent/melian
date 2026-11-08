@@ -272,6 +272,7 @@ export class ChangesetStore {
 		repoRoot: string,
 		changeset: string,
 		directory?: string,
+		options: { readonly skipHeld?: boolean } = {},
 	): Promise<ChangesetStore | undefined> {
 		const location = await locate(repoRoot, changeset, io.env, directory);
 		if (location.kind === "sqlite") {
@@ -286,7 +287,14 @@ export class ChangesetStore {
 			holder: "reader",
 			validate,
 		});
-		const checkout = await branch.open(changeset).catch(ChangesetStore.#refusal);
+		const checkout = await branch.open(changeset).catch((error: unknown) => {
+			// A scan over many pull requests leaves out one another command holds, rather than fail over it.
+			if (!(error instanceof CopyInUse && options.skipHeld === true)) ChangesetStore.#refusal(error);
+			io.stderr(
+				`melian: skipped ${changeset}, which another melian command in this clone holds; its comparisons are left out\n`,
+			);
+			return undefined;
+		});
 		return checkout === undefined ? undefined : ChangesetStore.#opened(io, checkout);
 	}
 

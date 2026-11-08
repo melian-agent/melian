@@ -32,6 +32,7 @@ import {
 } from "../../github/test/fixtures/scenario.ts";
 import { LedgerDocument, PublisherDocument } from "../../pipeline/src/publish.ts";
 import type { Io } from "../src/commands.ts";
+import { ComparisonStores } from "../src/comparison-stores.ts";
 import * as repository from "../src/repository.ts";
 import { ChangesetStore } from "../src/state.ts";
 
@@ -689,5 +690,45 @@ describe("Codex's review of a4de0552", () => {
 		const again = await ChangesetStore.write(io(first), first, pullRequest);
 		expect(await readNotes(again)).toEqual(["after"]);
 		await again.close();
+	});
+});
+
+describe("the review of record at cf1e5d05", () => {
+	const other = pullRequestChangesetId("github", { owner: "melian-agent", name: "example" }, 8);
+
+	it("scans past a pull request another command in the clone holds, and says so", async () => {
+		const quiet = await ChangesetStore.write(io(first), first, pullRequest);
+		await writeNote(quiet, "seven");
+		await quiet.close();
+		const held = await ChangesetStore.write(io(first), first, other);
+		stderr.length = 0;
+		await expect(ComparisonStores.read(io(first))).resolves.toBeInstanceOf(ComparisonStores);
+		expect(stderr).toEqual([
+			`melian: skipped ${other}, which another melian command in this clone holds; its comparisons are left out\n`,
+		]);
+		await held.storage.close(context);
+		await held.close();
+	});
+
+	it("still fails a scan over a pull request whose copy lock is damaged", async () => {
+		const quiet = await ChangesetStore.write(io(first), first, other);
+		await writeNote(quiet, "eight");
+		await quiet.close();
+		const state = join(gitIn(first, "rev-parse", "--path-format=absolute", "--git-common-dir"), "melian", "state");
+		rmSync(join(state, `${other}.lock`));
+		mkdirSync(join(state, `${other}.lock`));
+		await expect(ComparisonStores.read(io(first))).rejects.toMatchObject({ code: "invalidCopy" });
+	});
+
+	it("still refuses the pull request a scan is about while another command holds it", async () => {
+		const held = await ChangesetStore.write(io(first), first, other);
+		await expect(
+			ComparisonStores.read(io(first), { repository: { owner: "melian-agent", name: "example" }, pullRequest: 8 }),
+		).rejects.toMatchObject({
+			name: "CliError",
+			message: `another melian process in this clone is working on ${other}; wait for it to finish`,
+		});
+		await held.storage.close(context);
+		await held.close();
 	});
 });

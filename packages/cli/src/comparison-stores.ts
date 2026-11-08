@@ -60,7 +60,11 @@ export class ComparisonStores {
 		}
 		for (const changeset of changesets) {
 			const sqlite = names.includes(`${changeset}.sqlite`);
-			const store = sqlite ? undefined : await ChangesetStore.read(io, repoRoot, changeset, directory);
+			const store = sqlite
+				? undefined
+				: await ChangesetStore.read(io, repoRoot, changeset, directory, {
+						skipHeld: changeset !== historyChangeset,
+					});
 			if (!sqlite && store === undefined) continue;
 			const storage = store?.storage ?? (await openStorage(join(directory, `${changeset}.sqlite`)));
 			try {
