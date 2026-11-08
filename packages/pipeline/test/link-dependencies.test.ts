@@ -11,6 +11,7 @@ function fakeEnv(tree: {
 	readonly links?: Readonly<Record<string, string>>;
 	readonly existing?: readonly string[];
 	readonly unreadable?: readonly string[];
+	readonly dangling?: readonly string[];
 	readonly writeFails?: boolean;
 }) {
 	const written: Record<string, string> = {};
@@ -28,8 +29,10 @@ function fakeEnv(tree: {
 			};
 		},
 		canonicalPath: async (path: string) => {
+			if (tree.dangling?.includes(path)) return fail(path);
 			const real = tree.links?.[path];
-			return real === undefined ? fail(path) : { ok: true as const, value: real };
+			if (real === undefined) throw new Error(`resolved ${path}, which is not a link`);
+			return { ok: true as const, value: real };
 		},
 		exists: async (path: string) =>
 			tree.unreadable?.includes(path)
@@ -73,6 +76,7 @@ describe("linkDependencies", () => {
 					{ name: "b", kind: "symlink" },
 					{ name: "hoisted", kind: "symlink" },
 					{ name: "away", kind: "symlink" },
+					{ name: "broken", kind: "symlink" },
 				],
 				"/repo/node_modules/@scope": [{ name: "pkg", kind: "directory" }],
 				"/repo/packages/b/node_modules": [{ name: "only-b", kind: "directory" }],
@@ -83,6 +87,7 @@ describe("linkDependencies", () => {
 				"/repo/node_modules/away": "/elsewhere/away",
 			},
 			existing: ["/repo/packages/b/node_modules", "/scratch/tree/packages/b"],
+			dangling: ["/repo/node_modules/broken"],
 		});
 		const sh = shell();
 		const result = await linkDependencies(env, context, checkout, root, scratch, sh.run);
@@ -100,6 +105,7 @@ describe("linkDependencies", () => {
 				"ln -s '/scratch/tree/packages/b' '/scratch/tree/node_modules/b'",
 				"ln -s '/repo/node_modules/hoisted' '/scratch/tree/node_modules/hoisted'",
 				"ln -s '/repo/node_modules/away' '/scratch/tree/node_modules/away'",
+				"ln -s '/repo/node_modules/broken' '/scratch/tree/node_modules/broken'",
 				"mkdir -p '/scratch/tree/packages/b/node_modules'",
 				"ln -s '/repo/packages/b/node_modules/only-b' '/scratch/tree/packages/b/node_modules/only-b'",
 			].join("\n")}\n`,
