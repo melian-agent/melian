@@ -155,7 +155,7 @@ describe("CLI walkthrough beside the review", { timeout: 60_000 }, () => {
 		expect(read!.durationMs).toBeLessThan(1000);
 	});
 
-	it("times the walkthrough's credential unlock in no preparation step", async () => {
+	it("times the walkthrough's credential unlock as a span of its own, in no preparation step", async () => {
 		vi.spyOn(pipeline, "summarizeReview").mockImplementation(async ({ unlockModels }) => {
 			await unlockModels!(["light-provider"]);
 		});
@@ -178,7 +178,9 @@ describe("CLI walkthrough beside the review", { timeout: 60_000 }, () => {
 		const { telemetry } = JSON.parse(output) as {
 			telemetry: { prepare: { spans: { name: string; durationMs: number }[] } };
 		};
-		expect(telemetry.prepare.spans.filter((span) => span.durationMs >= 300)).toEqual([]);
+		const slow = telemetry.prepare.spans.filter((span) => span.durationMs >= 300);
+		expect(slow).toEqual([expect.objectContaining({ name: "walkthrough.unlock" })]);
+		expect(slow[0]).not.toHaveProperty("parent");
 	});
 
 	it("times the wait for a failed review's walkthrough in no preparation step", async () => {

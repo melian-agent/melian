@@ -2,7 +2,7 @@
 
 Status: built for [issue #254](https://github.com/melian-agent/melian/issues/254).
 
-Amends: [Spans time a review's work between tasks](2026-10-24-review-spans.md), its rule that no span overlaps a task, for the walkthrough task alone.
+Amends: [Spans time a review's work between tasks](2026-10-24-review-spans.md), its rules that one step is open at a time and that no span overlaps a task, for the walkthrough alone.
 
 ## Problem
 
@@ -21,7 +21,8 @@ It waited for one reason: `summarizeReview` read the verdict's stored provenance
 - At the lens run, not at the start or after triage, because `summarizeReview` calls `harness.resume()`, which starts every pending task. Until the review has recorded its lens run, the index still names any run a crashed review left, and that run passes every ownership check. Started then, the walkthrough could resume that run on a superseded plan, and it would spend tokens and write sightings before the review aborted it. Once the review has recorded its own run and aborted the replaced one, nothing stale is left to resume. Melian's design lens found the earlier placement, after triage, open to this.
 - The host passes the plan the review is running under, the same object `reviewChangeset` stores in the provenance, so the summary still quotes the review's plan. A summary that a crash interrupted attaches to its task by revision on the next review, which passes that review's plan, as the provenance would.
 - The summariser already stores a note for every failure and never throws, so a failed walkthrough still leaves the verdict and the exit code alone.
-- The review's spans time its own steps, one at a time, so the walkthrough task now runs while they are open. That is the overlap this change is for, so the walkthrough task is the one task a span may overlap. The walkthrough's credential unlock is not timed as a span at all, so it never lands under an unrelated step. Every other task still waits with no span open.
+- The review's spans time its own steps, one at a time, so the walkthrough task now runs while they are open. That is the overlap this change is for, so the walkthrough task is the one task a span may overlap. Every other task still waits with no span open.
+- The walkthrough's credential unlock is a span of its own, `walkthrough.unlock`, recorded by `PrepareSpans.concurrent` with no parent. It may overlap any review step or task. Two rounds disagreed here: one found that timing the unlock under the open review step misattributed it, and the next found that leaving it untimed hid it. The maintainer ruled on 2026-11-08, in the builder's session, for a concurrent span.
 
 ## What this gives up
 

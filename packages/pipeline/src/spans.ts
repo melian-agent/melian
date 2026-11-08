@@ -81,6 +81,19 @@ export class PrepareSpans {
 		}
 	}
 
+	/**
+	 * Times `work` as a span of its own, with no parent, whether it settles or throws. It is for work that runs beside
+	 * the review's steps, such as the walkthrough's credential unlock, so it may overlap any step or task.
+	 */
+	async concurrent<T>(name: string, work: () => Promise<T>): Promise<T> {
+		const startedAt = this.#now();
+		try {
+			return await work();
+		} finally {
+			this.#push(name, startedAt);
+		}
+	}
+
 	/** Ends the open step and stores the record for `revision`, replacing an earlier review's. */
 	async record(harness: Harness, revision: string, context: Context): Promise<PrepareRecord> {
 		const endedAt = this.#now();
