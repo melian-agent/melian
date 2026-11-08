@@ -7,7 +7,7 @@ import { defineDoc } from "@melian-agent/pipeline";
 import { createSession } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { gitIn, isolatedGitEnv } from "../../core/test/fixtures/repo.ts";
-import { LeaseHeld, StateBranchError } from "../src/index.ts";
+import { CopyInUse, LeaseHeld, StateBranchError } from "../src/index.ts";
 import {
 	type Clone,
 	changeset,
@@ -1021,5 +1021,31 @@ describe("Codex's review of b231987", () => {
 		expect(await checkout.push({ keepLease: true })).toMatchObject({ kind: "pushed" });
 		expect(await reader.stored(changeset)).toBe(false);
 		await expect(remote.clone().branch().checkout(changeset)).rejects.toThrow(LeaseHeld);
+	});
+});
+
+describe("Codex's review of b231987, a reservation's lock", () => {
+	it("refuses a second reservation in the same clone while the first holds the changeset", async () => {
+		const clone = remote.clone();
+		const first = await clone.branch().reserve(changeset);
+		await expect(clone.branch().reserve(changeset)).rejects.toBeInstanceOf(CopyInUse);
+		await first.release();
+		const again = await clone.branch().reserve(changeset);
+		expect(again.generation).toBe(2);
+		await again.release();
+	});
+
+	it("refuses a checkout in the same clone while a reservation holds the changeset", async () => {
+		const clone = remote.clone();
+		const reservation = await clone.branch().reserve(changeset);
+		await expect(clone.branch().checkout(changeset)).rejects.toBeInstanceOf(CopyInUse);
+		await reservation.release();
+	});
+
+	it("releases the lock when the reservation is refused", async () => {
+		await storeNoted();
+		const clone = remote.clone();
+		await expect(clone.branch().reserve(changeset)).rejects.toMatchObject({ code: "storedElsewhere" });
+		(await clone.branch().checkout(changeset)).close();
 	});
 });

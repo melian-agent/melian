@@ -215,20 +215,28 @@ export class StateBranch {
 			throw new StateBranchError("invalidBranch", `"${changeset}" is not a changeset name`);
 		if (this.#seal === undefined)
 			throw new StateBranchError("invalidKey", "no writers' key is configured for the state branch");
+		// The copy's lock, as a checkout takes it, so no second command in this clone takes this run's lease over as a
+		// crashed run's.
+		const lock = await CopyLock.take(this.#options.directory, changeset);
 		let taken: Lease | undefined;
-		await this.#withRetry(async (index, stored) => {
-			if (stored(changeset) !== undefined)
-				throw new StateBranchError(
-					"storedElsewhere",
-					`melian/state holds ${changeset}, which another clone stored there`,
-				);
-			const held = index.lease(changeset);
-			if (held?.live(this.#now()) && held.holder.clone !== this.#options.holder)
-				throw new LeaseHeld(changeset, held);
-			taken = Lease.take(held, this.#holder, this.#now(), this.#options.leaseMs ?? defaultLeaseMs);
-			return { index: index.leased(changeset, taken), lease: taken };
-		});
-		return new StateReservation(this, changeset, taken!);
+		try {
+			await this.#withRetry(async (index, stored) => {
+				if (stored(changeset) !== undefined)
+					throw new StateBranchError(
+						"storedElsewhere",
+						`melian/state holds ${changeset}, which another clone stored there`,
+					);
+				const held = index.lease(changeset);
+				if (held?.live(this.#now()) && held.holder.clone !== this.#options.holder)
+					throw new LeaseHeld(changeset, held);
+				taken = Lease.take(held, this.#holder, this.#now(), this.#options.leaseMs ?? defaultLeaseMs);
+				return { index: index.leased(changeset, taken), lease: taken };
+			});
+		} catch (error) {
+			lock.release();
+			throw error;
+		}
+		return new StateReservation(this, changeset, taken!, lock);
 	}
 
 	/** @internal Renews a reservation's lease while it is still the latest and the branch still does not hold the changeset. */
@@ -628,11 +636,14 @@ export class StateReservation {
 	readonly changeset: string;
 	readonly lease: Lease;
 	readonly #branch: StateBranch;
+	readonly #lock: CopyLock;
 
-	constructor(branch: StateBranch, changeset: string, lease: Lease) {
+	/** @internal */
+	constructor(branch: StateBranch, changeset: string, lease: Lease, lock: CopyLock) {
 		this.#branch = branch;
 		this.changeset = changeset;
 		this.lease = lease;
+		this.#lock = lock;
 	}
 
 	/** The lease's generation the reservation holds, within its incarnation. */
@@ -645,8 +656,13 @@ export class StateReservation {
 		return this.#branch.confirmReservation(this.changeset, this.lease);
 	}
 
-	release(): Promise<void> {
-		return this.#branch.releaseReservation(this.changeset, this.lease);
+	/** Expires the lease, if it is still this run's, and lets another command in this clone take the changeset. */
+	async release(): Promise<void> {
+		try {
+			await this.#branch.releaseReservation(this.changeset, this.lease);
+		} finally {
+			this.#lock.release();
+		}
 	}
 }
 

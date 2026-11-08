@@ -193,7 +193,11 @@ export class ChangesetStore {
 			io.stderr(
 				`melian: ${changeset} keeps the SQLite storage it had before the state branch, in this clone alone\n`,
 			);
-		const store = new ChangesetStore(await openStorage(location.path), undefined, io);
+		const storage = await openStorage(location.path).catch(async (error: unknown) => {
+			await reservation?.release().catch(() => {});
+			throw error;
+		});
+		const store = new ChangesetStore(storage, undefined, io);
 		store.#reservation = reservation;
 		return store;
 	}
@@ -202,11 +206,13 @@ export class ChangesetStore {
 	// the pull request on the branch; from then on the two disagree, and publishing the older would replace the newer.
 	// So a publication from it holds the pull request's lease, which another clone's write then cannot take.
 	static async #reserve(io: Io, repoRoot: string, changeset: string): Promise<StateReservation> {
+		// The copies' directory, where a checkout of the pull request in this clone would take the same lock.
+		const directory = join(dirname(await storagePath(repoRoot, changeset, io.env, false)), "state");
 		const branch = new StateBranch({
 			repoRoot,
 			remote: "origin",
-			directory: join(repoRoot, ".git"),
-			holder: await holder(join(dirname(await storagePath(repoRoot, changeset, io.env, false)), "state")),
+			directory,
+			holder: await holder(directory),
 			key: await stateKey(repoRoot, io.env),
 		});
 		return branch.reserve(changeset).catch((error: unknown) => {

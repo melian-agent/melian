@@ -30,6 +30,7 @@ import {
 } from "../../github/test/fixtures/scenario.ts";
 import { LedgerDocument, PublisherDocument } from "../../pipeline/src/publish.ts";
 import type { Io } from "../src/commands.ts";
+import * as repository from "../src/repository.ts";
 import { ChangesetStore } from "../src/state.ts";
 
 const pullRequest = pullRequestChangesetId("github", { owner: "melian-agent", name: "example" }, 7);
@@ -542,6 +543,37 @@ describe("Codex's review of ff4b2e1", () => {
 		} finally {
 			vi.useRealTimers();
 		}
+	});
+
+	it("refuses a second publication of legacy SQLite storage in the same clone while the first holds it", async () => {
+		await legacyIn(first);
+		const store = await ChangesetStore.write(io(first), first, pullRequest, undefined, authoritative);
+		await expect(ChangesetStore.write(io(first), first, pullRequest, undefined, authoritative)).rejects.toMatchObject(
+			{
+				name: "CliError",
+				message: expect.stringMatching(
+					/^another melian process in this clone is working on pull-[0-9a-f]{16}; wait for it to finish$/,
+				),
+			},
+		);
+		await store.storage.close(context);
+		await store.close();
+		const again = await ChangesetStore.write(io(first), first, pullRequest, undefined, authoritative);
+		expect(index().changesets[pullRequest].lease.generation).toBe(2);
+		await again.storage.close(context);
+		await again.close();
+	});
+
+	it("releases the reservation when legacy SQLite storage cannot be opened", async () => {
+		await legacyIn(first);
+		vi.spyOn(repository, "openStorage").mockRejectedValueOnce(new Error("database disk image is malformed"));
+		await expect(ChangesetStore.write(io(first), first, pullRequest, undefined, authoritative)).rejects.toThrow(
+			/^database disk image is malformed$/,
+		);
+		expect(Date.parse(index().changesets[pullRequest].lease.expiresAt)).toBeLessThanOrEqual(Date.now());
+		const again = await ChangesetStore.write(io(first), first, pullRequest, undefined, authoritative);
+		await again.storage.close(context);
+		await again.close();
 	});
 
 	it("refuses to publish legacy SQLite storage without the writers' key", async () => {
