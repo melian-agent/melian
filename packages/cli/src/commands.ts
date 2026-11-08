@@ -403,6 +403,7 @@ export async function review(
 		);
 		return outcome.exitCode();
 	} catch (error) {
+		await walkthrough;
 		const timings = await reviewTimings(
 			reviewHarness,
 			storage,
@@ -426,7 +427,6 @@ export async function review(
 			);
 		throw error;
 	} finally {
-		await walkthrough;
 		await reviewHarness.close(context);
 	}
 }

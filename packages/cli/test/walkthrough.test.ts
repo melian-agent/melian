@@ -165,7 +165,7 @@ describe("CLI walkthrough beside the review", { timeout: 60_000 }, () => {
 		expect(summarize).toHaveBeenCalledOnce();
 	});
 
-	it("closes the storage only after a walkthrough a failed review started", async () => {
+	it("prints and closes the storage only after a walkthrough a failed review started", async () => {
 		const order: string[] = [];
 		vi.spyOn(pipeline, "summarizeReview").mockImplementation(async () => {
 			await new Promise((resolve) => setTimeout(resolve, 50));
@@ -183,11 +183,19 @@ describe("CLI walkthrough beside the review", { timeout: 60_000 }, () => {
 			order.push("closed");
 			return close.apply(this, args);
 		});
-		const io = { cwd: repo, env, stdout: () => {}, stderr: () => {}, color: false };
+		const io = {
+			cwd: repo,
+			env,
+			stdout: () => {
+				order.push("output");
+			},
+			stderr: () => {},
+			color: false,
+		};
 
-		await expect(review(io, "#7", { rerun: false })).rejects.toThrow("lenses broke");
+		await expect(review(io, "#7", { rerun: false, json: true })).rejects.toThrow("lenses broke");
 
-		expect(order).toEqual(["walkthrough ended", "closed"]);
+		expect(order).toEqual(["walkthrough ended", "output", "closed"]);
 	});
 });
 
