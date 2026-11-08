@@ -335,13 +335,15 @@ jobs:
     if: always() && needs.gate.result == 'success'
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 5
-    # The melian/review status is set with MELIAN_STATUS_TOKEN, a machine user's token for commit statuses alone, which
-    # only this Environment holds. The merge group copies a status only from a User with write permission, so no
-    # branch's copy of this workflow, posting as github-actions[bot], can set one it accepts. This job runs no head code.
+    # The round's comment and the melian/review status are written with MELIAN_STATUS_TOKEN, the machine user
+    # melian-status-bot's token for this repository's statuses, issues and pull requests, which only this Environment
+    # holds. Every workflow posts as github-actions[bot], so that login cannot tell this round from a branch's copy; the
+    # merge group copies a status only from a User with write permission, and a builder reads only melian-status-bot's
+    # comment. This job runs no head code.
     environment: melian-round
     permissions:
       contents: read
-      pull-requests: write
+      pull-requests: read
     steps:
       # A rerun of the report job alone checks out the run's first commit too, and runs its scripts with a token that can
       # write comments, so a rerun refuses the commits the round job does, before the checkout. A first attempt starts
@@ -402,6 +404,7 @@ jobs:
       - name: Comment on the pull request
         env:
           GH_TOKEN: ${{ github.token }}
+          STATUS_TOKEN: ${{ secrets.MELIAN_STATUS_TOKEN }}
           REPOSITORY: ${{ github.repository }}
           NUMBER: ${{ inputs.pull_request }}
           BASE: ${{ needs.gate.outputs.base }}
@@ -409,6 +412,9 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           RUN_ID: ${{ github.run_id }}
         run: |
+          # The token goes to the two gh writes alone: the node scripts below parse comments anyone can write.
+          token="$STATUS_TOKEN" && unset STATUS_TOKEN
+          if [ -z "$token" ]; then echo "::error::the melian-round Environment holds no MELIAN_STATUS_TOKEN"; exit 1; fi
           out="$RUNNER_TEMP/round"
           nonce=$(cat "$out/nonce" 2>/dev/null) || nonce=""
           # Read again just before posting: a push or a retarget during the round leaves findings for a revision the
@@ -419,16 +425,18 @@ jobs:
             --exit "$(cat "$out/exit" 2>/dev/null || echo none)" --run-url "$RUN_URL" --run-id "$RUN_ID" --nonce "$nonce" --base "$BASE" --head "$HEAD" \
             --merge-base "$(cat "$out/merge-base" 2>/dev/null || echo none)" \
             ${current_head:+--current-base "$current_base" --current-head "$current_head"} > "$RUNNER_TEMP/comment.md"
-          # A rerun of this job alone finds the comment this run already posted, by its marker and this job's identity, and
-          # updates it, so a post GitHub accepted before the job failed is never repeated. "Re-run all jobs" runs a new round
-          # with a new nonce and artefact, so it posts that round's own comment.
+          # A rerun of this job alone finds the comment this run already posted, by its marker and by melian-status-bot's
+          # login and account ID, 353727783, since a login can pass to another account. It updates that comment, so a post
+          # GitHub accepted before the job failed is never repeated. A comment with the same marker from any other account
+          # is never edited. "Re-run all jobs" runs a new round with a new nonce and artefact, so it posts that round's own
+          # comment.
           gh api --paginate "repos/$REPOSITORY/issues/$NUMBER/comments?per_page=100" \
-            --jq '.[] | {id, login: .user.login, body} | tojson' > "$RUNNER_TEMP/comments.jsonl"
-          own=$(node scripts/round-own-comment.mjs "$RUNNER_TEMP/comments.jsonl" "$RUN_ID" "$nonce" "github-actions[bot]")
+            --jq '.[] | select(.user.id == 353727783) | {id, login: .user.login, body} | tojson' > "$RUNNER_TEMP/comments.jsonl"
+          own=$(node scripts/round-own-comment.mjs "$RUNNER_TEMP/comments.jsonl" "$RUN_ID" "$nonce" "melian-status-bot")
           if [ -n "$own" ]; then
-            gh api -X PATCH "repos/$REPOSITORY/issues/comments/$own" -F "body=@$RUNNER_TEMP/comment.md" > /dev/null
+            GH_TOKEN="$token" gh api -X PATCH "repos/$REPOSITORY/issues/comments/$own" -F "body=@$RUNNER_TEMP/comment.md" > /dev/null
           else
-            gh pr comment "$NUMBER" --repo "$REPOSITORY" --body-file "$RUNNER_TEMP/comment.md"
+            GH_TOKEN="$token" gh api -X POST "repos/$REPOSITORY/issues/$NUMBER/comments" -F "body=@$RUNNER_TEMP/comment.md" > /dev/null
           fi
       # Read again just before setting it, as the comment does: a status names a head, and a pull request that moved
       # during the round shows a head no round reviewed, so it gets none.
@@ -445,6 +453,7 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           RUN_ID: ${{ github.run_id }}
         run: |
+          token="$STATUS_TOKEN" && unset STATUS_TOKEN
           out="$RUNNER_TEMP/round"
           current=$(gh api "repos/$REPOSITORY/pulls/$NUMBER" --jq '.base.sha + " " + .head.sha') || current=""
           read -r current_base current_head <<< "$current" || true
@@ -461,6 +470,6 @@ jobs:
             --trusted "$trusted" --latest "$latest" --pending "$PENDING" \
             ${current_head:+--current-base "$current_base" --current-head "$current_head"})
           case "$status" in "skip: "*) echo "${status#skip: }"; exit 0 ;; esac
-          if [ -z "$STATUS_TOKEN" ]; then echo "::error::the melian-round Environment holds no MELIAN_STATUS_TOKEN"; exit 1; fi
-          printf '%s' "$status" | GH_TOKEN="$STATUS_TOKEN" gh api -X POST "repos/$REPOSITORY/statuses/$HEAD" --input - > /dev/null
+          if [ -z "$token" ]; then echo "::error::the melian-round Environment holds no MELIAN_STATUS_TOKEN"; exit 1; fi
+          printf '%s' "$status" | GH_TOKEN="$token" gh api -X POST "repos/$REPOSITORY/statuses/$HEAD" --input - > /dev/null
           echo "melian/review on $HEAD: $(printf '%s' "$status" | jq -r '.state + ", " + .description')"

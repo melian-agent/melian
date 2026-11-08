@@ -1,5 +1,14 @@
 import { spawnSync } from "node:child_process";
-import { chmodSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+	chmodSync,
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readdirSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -683,15 +692,20 @@ describe("the melian round workflow", () => {
 			actions("secrets.CLAUDE_CODE_OAUTH_TOKEN"),
 			actions("secrets.CODEX_AUTH_B64"),
 			actions("secrets.MELIAN_STATUS_TOKEN"),
+			actions("secrets.MELIAN_STATUS_TOKEN"),
 		]);
 	});
 
-	it("reads the status token only in the step that sets melian/review, in a job of the melian-round Environment", () => {
+	it("reads the status token only in the steps that set melian/review or post the round's comment, in jobs of the melian-round Environment", () => {
 		const holding = steps.filter((step) => JSON.stringify(step).includes("secrets.MELIAN_STATUS_TOKEN"));
 		expect(holding.map((step) => [step.job, step.name, step.env.STATUS_TOKEN])).toEqual([
 			["pending", "Set melian/review to pending on the head", actions("secrets.MELIAN_STATUS_TOKEN")],
+			["report", "Comment on the pull request", actions("secrets.MELIAN_STATUS_TOKEN")],
 			["report", "Set melian/review on the reviewed head", actions("secrets.MELIAN_STATUS_TOKEN")],
 		]);
+		expect(workflow.jobs.report.steps.find((step) => step.name === "Comment on the pull request").env.GH_TOKEN).toBe(
+			actions("github.token"),
+		);
 		expect(workflow.jobs.report.environment).toBe("melian-round");
 		const { env } = workflow.jobs.report.steps.find((step) => step.name === "Set melian/review on the reviewed head");
 		expect(env).toEqual({
@@ -706,7 +720,8 @@ describe("the melian round workflow", () => {
 			RUN_URL: `${actions("github.server_url")}/${actions("github.repository")}/actions/runs/${actions("github.run_id")}`,
 			RUN_ID: actions("github.run_id"),
 		});
-		expect(workflow.jobs.report.permissions).toEqual({ contents: "read", "pull-requests": "write" });
+		// The job's own token only reads: melian-status-bot posts the comment, so nothing here posts as github-actions[bot].
+		expect(workflow.jobs.report.permissions).toEqual({ contents: "read", "pull-requests": "read" });
 	});
 
 	it("sets melian/review on the head the gate approved and the round reviewed, from the round's verdict", () => {
@@ -1033,14 +1048,15 @@ describe("the melian round workflow", () => {
 			const base = "b".repeat(40);
 			const head = "1".repeat(40);
 			const mergeBase = "e".repeat(40);
-			// A fake gh answers only the fresh read of the pull request, the comment listing, and the post, which it keeps.
+			// A fake gh answers only the fresh read of the pull request, the comment listing, and the post with the status token,
+			// which it keeps.
 			writeFileSync(
 				join(dir, "gh"),
 				[
 					"#!/bin/sh",
 					'if [ "$*" = "api repos/o/r/pulls/7 --jq .base.sha + \\" \\" + .head.sha" ]; then [ -n "$NOW" ] && echo "$NOW"; exit; fi',
 					'[ "$1 $2 $3" = "api --paginate repos/o/r/issues/7/comments?per_page=100" ] && exit 0',
-					'[ "$1 $2 $3 $4 $5 $6" = "pr comment 7 --repo o/r --body-file" ] && cp "$7" "$POSTED" && exit 0',
+					'[ "$1 $2 $3 $4 $5" = "api -X POST repos/o/r/issues/7/comments -F" ] && [ "$GH_TOKEN" = status-token ] && cp "$(printf %s "$6" | sed s/^body=@//)" "$POSTED" && exit 0',
 					"exit 1",
 					"",
 				].join("\n"),
@@ -1072,6 +1088,7 @@ describe("the melian round workflow", () => {
 						RUN_ID: "9",
 						NOW: now,
 						POSTED: posted,
+						STATUS_TOKEN: "status-token",
 					},
 				});
 				expect(ran.status, ran.stderr).toBe(0);
@@ -1099,22 +1116,25 @@ describe("the melian round workflow", () => {
 			const base = "b".repeat(40);
 			const head = "1".repeat(40);
 			const nonce = "0123456789abcdef0123456789abcdef";
+			const actions = { login: "github-actions[bot]", id: 41898282 };
 			const comments = [
+				{ id: 54, user: actions, body: `<!-- melian-round run:8 nonce:${nonce} -->\nan earlier run` },
+				{ id: 55, user: actions, body: `<!-- melian-round run:9 nonce:${nonce} -->\nany workflow` },
 				{
-					id: 54,
-					login: "github-actions[bot]",
-					body: `<!-- melian-round run:8 nonce:${nonce} -->\nan earlier run`,
+					id: 56,
+					user: { login: "melian-status-bot", id: 353727783 },
+					body: `<!-- melian-round run:9 nonce:${nonce} -->\nthis run`,
 				},
-				{ id: 55, login: "github-actions[bot]", body: `<!-- melian-round run:9 nonce:${nonce} -->\nthis run` },
 			];
-			// A fake gh answers only the fresh read, the listing, which holds this run's comment, and an edit of comment 55.
+			// A fake gh answers only the fresh read, the listing, which holds this run's comment, and an edit of comment 56
+			// with the status token.
 			writeFileSync(
 				join(dir, "gh"),
 				[
 					"#!/bin/sh",
 					'if [ "$*" = "api repos/o/r/pulls/7 --jq .base.sha + \\" \\" + .head.sha" ]; then echo "$NOW"; exit; fi',
-					'[ "$1 $2 $3" = "api --paginate repos/o/r/issues/7/comments?per_page=100" ] && printf "%s\\n" "$COMMENTS" && exit 0',
-					'[ "$1 $2 $3 $4 $5" = "api -X PATCH repos/o/r/issues/comments/55 -F" ] && cp "$(printf %s "$6" | sed s/^body=@//)" "$EDITED" && exit 0',
+					'[ "$1 $2 $3 $4" = "api --paginate repos/o/r/issues/7/comments?per_page=100 --jq" ] && printf "%s" "$COMMENTS" | jq -r "$5" && exit 0',
+					'[ "$1 $2 $3 $4 $5" = "api -X PATCH repos/o/r/issues/comments/56 -F" ] && [ "$GH_TOKEN" = status-token ] && cp "$(printf %s "$6" | sed s/^body=@//)" "$EDITED" && exit 0',
 					"exit 1",
 					"",
 				].join("\n"),
@@ -1144,14 +1164,173 @@ describe("the melian round workflow", () => {
 					RUN_URL: "https://example.test/run",
 					RUN_ID: "9",
 					NOW: `${base} ${head}`,
-					COMMENTS: comments.map((comment) => JSON.stringify(comment)).join("\n"),
+					COMMENTS: JSON.stringify(comments),
 					EDITED: join(dir, "edited.md"),
+					STATUS_TOKEN: "status-token",
 				},
 			});
 			expect([ran.status, ran.stderr]).toEqual([0, ""]);
 			expect(readFileSync(join(dir, "edited.md"), "utf8")).toBe(readFileSync(join(dir, "comment.md"), "utf8"));
 			expect(readFileSync(join(dir, "edited.md"), "utf8")).toMatch(
 				new RegExp(`^<!-- melian-round run:9 nonce:${nonce} -->\nMelian round on `),
+			);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("posts as melian-status-bot alone: it overwrites no other login's comment, and posts nothing without the token", () => {
+		const { run } = workflow.jobs.report.steps.find((step) => step.name === "Comment on the pull request");
+		const dir = mkdtempSync(join(tmpdir(), "round-workflow-"));
+		try {
+			const base = "b".repeat(40);
+			const head = "1".repeat(40);
+			const nonce = "0123456789abcdef0123456789abcdef";
+			// A fake gh answers the fresh read and the listing, and logs every write it is asked for with the token it saw.
+			writeFileSync(
+				join(dir, "gh"),
+				[
+					"#!/bin/sh",
+					'if [ "$*" = "api repos/o/r/pulls/7 --jq .base.sha + \\" \\" + .head.sha" ]; then echo "$NOW"; exit; fi',
+					'[ "$1 $2 $3 $4" = "api --paginate repos/o/r/issues/7/comments?per_page=100 --jq" ] && printf "%s" "$COMMENTS" | jq -r "$5" && exit 0',
+					'[ "$1 $2" = "api -X" ] && echo "$3 $4 $GH_TOKEN" >> "$WRITES" && exit 0',
+					"exit 1",
+					"",
+				].join("\n"),
+			);
+			chmodSync(join(dir, "gh"), 0o755);
+			const round = join(dir, "round");
+			mkdirSync(round);
+			writeFileSync(
+				join(round, "verdict.json"),
+				JSON.stringify({ status: "passed", blocking: false, findings: { block: [], acknowledge: [] }, notRun: [] }),
+			);
+			writeFileSync(join(round, "rounds.json"), JSON.stringify([{ base: "e".repeat(40), head }]));
+			writeFileSync(join(round, "exit"), "0\n");
+			writeFileSync(join(round, "merge-base"), `${"e".repeat(40)}\n`);
+			writeFileSync(join(round, "nonce"), `${nonce}\n`);
+			const writes = join(dir, "writes.log");
+			const step = (token, authors) => {
+				rmSync(writes, { force: true });
+				const comments = authors.map(([login, id], index) => ({
+					id: 60 + index,
+					user: { login, id },
+					body: `<!-- melian-round run:9 nonce:${nonce} -->\nsame marker`,
+				}));
+				const ran = spawnSync("bash", ["-e", "-c", run], {
+					cwd: fileURLToPath(new URL("..", import.meta.url)),
+					encoding: "utf8",
+					env: {
+						PATH: `${dir}:${process.env.PATH}`,
+						HOME: dir,
+						RUNNER_TEMP: dir,
+						REPOSITORY: "o/r",
+						NUMBER: "7",
+						BASE: base,
+						HEAD: head,
+						RUN_URL: "https://example.test/run",
+						RUN_ID: "9",
+						NOW: `${base} ${head}`,
+						COMMENTS: JSON.stringify(comments),
+						WRITES: writes,
+						GH_TOKEN: "github-token",
+						STATUS_TOKEN: token,
+					},
+				});
+				return [ran.status, ran.stdout, existsSync(writes) ? readFileSync(writes, "utf8") : ""];
+			};
+			expect(
+				step("status-token", [
+					["github-actions[bot]", 41898282],
+					["redbeard", 40684],
+				]),
+			).toEqual([0, "", "POST repos/o/r/issues/7/comments status-token\n"]);
+			// After a rename, another account holds the login: its planted comment is never edited, even under that login.
+			expect(
+				step("status-token", [
+					["melian-status-bot-renamed", 353727783],
+					["melian-status-bot", 999],
+				]),
+			).toEqual([0, "", "POST repos/o/r/issues/7/comments status-token\n"]);
+			expect(step("", [["melian-status-bot", 353727783]])).toEqual([
+				1,
+				"::error::the melian-round Environment holds no MELIAN_STATUS_TOKEN\n",
+				"",
+			]);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("hands the status token to the gh writes alone, never to a node script that reads comments or verdicts", () => {
+		const dir = mkdtempSync(join(tmpdir(), "round-workflow-"));
+		try {
+			const base = "b".repeat(40);
+			const head = "1".repeat(40);
+			const nonce = "0123456789abcdef0123456789abcdef";
+			// A wrapper node logs each script it ran with a status token in its environment, then runs the real node.
+			writeFileSync(
+				join(dir, "node"),
+				`#!/bin/sh\n[ -n "$STATUS_TOKEN" ] && echo "$1" >> "$NODE_SAW"\nexec ${JSON.stringify(process.execPath)} "$@"\n`,
+			);
+			chmodSync(join(dir, "node"), 0o755);
+			// A fake gh answers the reads both steps make, and logs every write with the token it saw.
+			writeFileSync(
+				join(dir, "gh"),
+				[
+					"#!/bin/sh",
+					'if [ "$*" = "api repos/o/r/pulls/7 --jq .base.sha + \\" \\" + .head.sha" ]; then echo "$NOW"; exit; fi',
+					'[ "$1 $2 $3" = "api --paginate repos/o/r/issues/7/comments?per_page=100" ] && exit 0',
+					'if [ "$1 $2 $3" = "api --paginate repos/o/r/commits/$HEAD/statuses?per_page=100" ]; then printf "%s" "$STATUSES" | jq -r "$5"; exit; fi',
+					'[ "$1 $2" = "api -X" ] && cat > /dev/null && echo "$3 $4 $GH_TOKEN" >> "$WRITES" && exit 0',
+					"exit 1",
+					"",
+				].join("\n"),
+			);
+			chmodSync(join(dir, "gh"), 0o755);
+			const round = join(dir, "round");
+			mkdirSync(round);
+			writeFileSync(
+				join(round, "verdict.json"),
+				JSON.stringify({ status: "passed", blocking: false, findings: { block: [], acknowledge: [] }, notRun: [] }),
+			);
+			writeFileSync(join(round, "rounds.json"), JSON.stringify([{ base: "e".repeat(40), head }]));
+			writeFileSync(join(round, "exit"), "0\n");
+			writeFileSync(join(round, "merge-base"), `${"e".repeat(40)}\n`);
+			writeFileSync(join(round, "nonce"), `${nonce}\n`);
+			const saw = join(dir, "saw.log");
+			const writes = join(dir, "writes.log");
+			for (const name of ["Comment on the pull request", "Set melian/review on the reviewed head"]) {
+				const { run } = workflow.jobs.report.steps.find((step) => step.name === name);
+				const ran = spawnSync("bash", ["-e", "-c", run], {
+					cwd: fileURLToPath(new URL("..", import.meta.url)),
+					encoding: "utf8",
+					env: {
+						PATH: `${dir}:${process.env.PATH}`,
+						HOME: dir,
+						RUNNER_TEMP: dir,
+						GITHUB_WORKSPACE: dir,
+						REPOSITORY: "o/r",
+						NUMBER: "7",
+						BASE: base,
+						HEAD: head,
+						RUN_URL: "https://example.test/run",
+						RUN_ID: "9",
+						NOW: `${base} ${head}`,
+						STATUSES: JSON.stringify([{ id: 77, context: "melian/review", state: "pending" }]),
+						PENDING: "77",
+						PULL_URL: "https://example.test/pull/7",
+						GH_TOKEN: "github-token",
+						STATUS_TOKEN: "status-token",
+						NODE_SAW: saw,
+						WRITES: writes,
+					},
+				});
+				expect(ran.status, `${name}: ${ran.stderr}`).toBe(0);
+			}
+			expect(existsSync(saw) ? readFileSync(saw, "utf8") : "").toBe("");
+			expect(readFileSync(writes, "utf8")).toBe(
+				`POST repos/o/r/issues/7/comments status-token\nPOST repos/o/r/statuses/${head} status-token\n`,
 			);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
