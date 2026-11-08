@@ -961,7 +961,6 @@ export async function recordInheritances(
 		const matches = dismissed.flatMap((from) => {
 			const lifecycle = state.items[from]?.lifecycle;
 			if (lifecycle?.status !== "dismissed" || lifecycle.dismissedSeverity === undefined) return [];
-			if (lifecycle.dismissedAt === undefined) return [];
 			const same = claims.every(
 				(claim) =>
 					state.items[claim.id]?.verifications?.[revision]?.[producerKey(claim.source)]?.[version]?.matches?.[
@@ -975,7 +974,8 @@ export async function recordInheritances(
 				.reduce<Severity>(stricter, "nit");
 			const fenced = severityRank[reported] < severityRank[lifecycle.dismissedSeverity];
 			const kind: Inheritance["kind"] = fenced || claims.some(floored) ? "proposed" : "inherited";
-			return [{ from, kind, dismissedAt: lifecycle.dismissedAt }];
+			// A dismissal records its time beside its severity.
+			return [{ from, kind, dismissedAt: lifecycle.dismissedAt! }];
 		});
 		const [latest] = matches.sort((a, b) => compareText(b.dismissedAt, a.dismissedAt) || compareText(a.from, b.from));
 		if (latest === undefined) continue;
