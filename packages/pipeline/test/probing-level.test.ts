@@ -1,4 +1,4 @@
-import { rmSync } from "node:fs";
+import { readdirSync, rmSync } from "node:fs";
 import {
 	Changeset,
 	type CheckRecord,
@@ -68,6 +68,13 @@ afterEach(async () => {
 	harness = undefined;
 	rmSync(repo, { recursive: true, force: true });
 });
+
+// Whether a probe is running in a tree of the head, asked while it runs: Probe starts every probe in its tree, and only
+// the head's holds files, the empty probe's that checks the sandbox none.
+function inHeadTree(command: string): boolean {
+	const tree = /^cd '([^']+\/tree)'/.exec(command)?.[1];
+	return tree !== undefined && readdirSync(tree).length > 0;
+}
 
 const planner = "Your role at this level: the attack planner";
 const prober = "You are the prober for the trust-boundary lens";
@@ -174,7 +181,12 @@ async function review(
 		{ match: prober, replies: scripts.prober },
 		...(scripts.others ?? []),
 	]);
-	const sandbox = unconfinedSandbox(options.rewrite);
+	// The head probes as they run, since a tree is gone once its probe ends.
+	const heads: string[] = [];
+	const sandbox = unconfinedSandbox((command) => {
+		if (inHeadTree(command)) heads.push(command);
+		return options.rewrite?.(command) ?? command;
+	});
 	storage = harness === undefined ? createMemoryStorage() : storage;
 	harness ??= await openReviewHarness(storage, fake.review, {
 		retry: false,
@@ -198,7 +210,7 @@ async function review(
 		...(plan === undefined ? {} : { plan }),
 		...(options.unlockModels === undefined ? {} : { unlockModels: options.unlockModels }),
 	});
-	return { run, requests, sandbox, changeset };
+	return { run, requests, sandbox, heads, changeset };
 }
 
 // The trust-boundary lens with its deep level's probe set to `probe`, and its other fields as loaded.
@@ -244,14 +256,14 @@ function withoutProbes(options: Parameters<typeof review>[1]) {
 
 describe("a level that probes", () => {
 	it("reports a finding only with a probe that failed, and the verifier judges the probe it ran again", async () => {
-		const { run, requests, sandbox } = await review({ planner: plan, prober: probing(failing) });
+		const { run, requests, heads } = await review({ planner: plan, prober: probing(failing) });
 		const { verdict } = await run;
 		const found = verdict.counted();
 		expect(found.map((each) => [each.properties.path, each.ruleId, each.properties.verification?.verdict])).toEqual([
 			["src/load.ts", "path-traversal", "confirmed"],
 		]);
-		// The empty probe that says probes run here, the prober's, and the verifier's rerun.
-		expect(sandbox.asked.filter(({ command }) => command.includes("melian-probe-head-"))).toHaveLength(2);
+		// The prober's probe and the verifier's rerun; the empty probe that says probes run here holds no head.
+		expect(heads).toHaveLength(2);
 		const verifier = requests["Melian adversarial verifier"]!;
 		const judged = systemPromptOf(verifier[0]!);
 		expect(judged).toContain("Claim c1 rests on probe p");
@@ -290,7 +302,7 @@ describe("a level that probes", () => {
 		let heads = 0;
 		const { run, requests } = await review(
 			{ planner: plan, prober: probing(failing) },
-			{ rewrite: (command) => (command.includes("melian-probe-head-") && ++heads > 1 ? "exit 0" : command) },
+			{ rewrite: (command) => (inHeadTree(command) && ++heads > 1 ? "exit 0" : command) },
 		);
 		const error = await run.then(
 			() => undefined,
@@ -764,7 +776,7 @@ describe("a level that probes", () => {
 		const fake = createFakeModels();
 		const first = await review({ planner: plan, prober: probing(failing) }, { fake });
 		await first.run;
-		const heads = () => first.sandbox.asked.filter(({ command }) => command.includes("melian-probe-head-")).length;
+		const heads = () => first.heads.length;
 		expect(heads()).toBe(2);
 		const again = await review({ planner: [], prober: [] }, { fake });
 		expect((await again.run).verdict.counted()).toHaveLength(1);
@@ -778,7 +790,7 @@ describe("a level that probes", () => {
 		const sandbox: ProbeSandbox = {
 			...base,
 			wrap: async (command, policy) => {
-				if (command.includes("melian-probe-head-") && ++heads === 2) throw new Error("the sandbox hiccuped");
+				if (inHeadTree(command) && ++heads === 2) throw new Error("the sandbox hiccuped");
 				return base.wrap(command, policy);
 			},
 		};
@@ -859,7 +871,7 @@ describe("a level that probes", () => {
 				prober: probing(failing),
 				others: [{ match: "Melian adversarial verifier", replies: [plausible, plausible] }],
 			},
-			{ rewrite: (command) => (command.includes("melian-probe-head-") && ++heads > 1 ? "exit 0" : command) },
+			{ rewrite: (command) => (inHeadTree(command) && ++heads > 1 ? "exit 0" : command) },
 		);
 		const { verdict } = await run;
 		expect(verdict.counted().map((each) => each.properties.verification?.verdict)).toEqual(["plausible"]);
@@ -981,7 +993,7 @@ describe("a level that probes", () => {
 				sandbox: {
 					...base,
 					wrap: async (command, policy) => {
-						if (command.includes("melian-probe-head-")) throw new Error("no seatbelt now");
+						if (inHeadTree(command)) throw new Error("no seatbelt now");
 						return base.wrap(command, policy);
 					},
 				},

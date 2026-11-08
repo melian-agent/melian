@@ -1,16 +1,5 @@
 import { execFileSync } from "node:child_process";
-import {
-	chmodSync,
-	existsSync,
-	lstatSync,
-	mkdirSync,
-	mkdtempSync,
-	readdirSync,
-	readFileSync,
-	readlinkSync,
-	realpathSync,
-	rmSync,
-} from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { unconfinedSandbox } from "@melian-agent/pipeline/testing";
@@ -20,7 +9,6 @@ import {
 	answerPrompt,
 	type ClaimProbe,
 	claimKey,
-	HeadTree,
 	headTreeLimits,
 	probeFailed,
 	proberInstructions,
@@ -32,7 +20,7 @@ import {
 	runHeadProbe,
 	type StoredProbeResult,
 } from "../src/probing.ts";
-import { commit, createRepository, gitIn, removeRepository, writeFiles } from "./fixtures/repo.ts";
+import { commit, createRepository, gitIn, removeRepository } from "./fixtures/repo.ts";
 
 // Each test's scratch in a directory of its own, so the trees other test files write never count as this one's.
 const original = process.env.TMPDIR;
@@ -52,7 +40,8 @@ afterEach(() => {
 
 const nonce = "0123456789abcdef01234567";
 const reviewer = { writer: { trusted: true, by: "reviewer" }, trustWriters: true } as const;
-const left = () => readdirSync(tmpdir()).filter((name) => name.startsWith("melian-probe-head-")).length;
+// What a probe left in this test's temporary directory, which nothing else writes.
+const left = () => readdirSync(tmpdir()).length;
 
 // A tree git would refuse to check out, naming `path`, built with mktree and committed.
 function crafted(path: string): string {
@@ -63,98 +52,51 @@ function crafted(path: string): string {
 	return gitIn(repo, "commit-tree", tree, "-m", "crafted");
 }
 
-describe("HeadTree", () => {
-	it("writes the head's blobs raw, with executable bits and links, and leaves submodules out", async () => {
-		writeFiles(repo, {
-			".gitattributes": "hidden export-ignore\nsubst export-subst\nfiltered filter=evil\ncrlf text eol=crlf\n",
-			hidden: "seen\n",
-			subst: "$Format:%H$\n",
-			filtered: "raw\n",
-			crlf: "a\nb\n",
-			"bin/run.sh": "#!/bin/sh\necho run\n",
-			"src/deep/file.ts": "export {};\n",
-		});
-		chmodSync(join(repo, "bin/run.sh"), 0o755);
-		gitIn(repo, "add", "--all");
-		gitIn(repo, "commit", "--quiet", "-m", "files");
-		gitIn(repo, "config", "filter.evil.smudge", "echo SMUDGED");
-		execFileSync("ln", ["-s", "../src/deep/file.ts", join(repo, "bin/link")]);
-		gitIn(repo, "add", "--all");
-		gitIn(repo, "update-index", "--add", "--cacheinfo", `160000,${gitIn(repo, "rev-parse", "HEAD")},sub`);
-		gitIn(repo, "commit", "--quiet", "-m", "link and submodule");
-		const tree = await HeadTree.open(repo, "HEAD");
-		try {
-			const at = (path: string) => join(tree.path, path);
-			expect(readFileSync(at("hidden"), "utf8")).toBe("seen\n");
-			expect(readFileSync(at("subst"), "utf8")).toBe("$Format:%H$\n");
-			expect(readFileSync(at("filtered"), "utf8")).toBe("raw\n");
-			expect(readFileSync(at("crlf"), "utf8")).toBe("a\nb\n");
-			expect(readFileSync(at("src/deep/file.ts"), "utf8")).toBe("export {};\n");
-			expect(lstatSync(at("bin/run.sh")).mode & 0o111).not.toBe(0);
-			expect(lstatSync(at("src/deep/file.ts")).mode & 0o111).toBe(0);
-			expect(readlinkSync(at("bin/link"))).toBe("../src/deep/file.ts");
-			expect(existsSync(at("sub"))).toBe(false);
-			expect(tree.install).toBeUndefined();
-			expect(existsSync(at("node_modules"))).toBe(false);
-		} finally {
-			await tree.close();
-		}
-		expect(existsSync(tree.path)).toBe(false);
-	});
-
-	it("links the checkout's install where the head tracks none, and leaves a tracked one alone", async () => {
-		commit(repo, { "src/a.ts": "export {};\n" });
-		mkdirSync(join(repo, "node_modules/dep"), { recursive: true });
-		const linked = await HeadTree.open(repo, "HEAD");
-		try {
-			expect(linked.install).toBe(realpathSync(join(repo, "node_modules")));
-			expect(readlinkSync(join(linked.path, "node_modules"))).toBe(linked.install);
-		} finally {
-			await linked.close();
-		}
-		commit(repo, { "node_modules/tracked/index.js": "export {};\n" });
-		const tracked = await HeadTree.open(repo, "HEAD");
-		try {
-			expect(tracked.install).toBeUndefined();
-			expect(lstatSync(join(tracked.path, "node_modules")).isDirectory()).toBe(true);
-			expect(readdirSync(join(tracked.path, "node_modules"))).toEqual(["tracked"]);
-		} finally {
-			await tracked.close();
-		}
-	});
-
-	it("leaves the install unlinked when the checkout's node_modules is no directory", async () => {
-		commit(repo, { "src/a.ts": "export {};\n" });
-		writeFiles(repo, { node_modules: "a file\n" });
-		const tree = await HeadTree.open(repo, "HEAD");
-		try {
-			expect(tree.install).toBeUndefined();
-			expect(existsSync(join(tree.path, "node_modules"))).toBe(false);
-		} finally {
-			await tree.close();
-		}
-	});
-
-	it("writes as many files and bytes as its limits allow, and refuses one past either", async () => {
+describe("a head's bound", () => {
+	it("runs a probe in a head of as many files and bytes as the limits allow, and refuses one past either", async () => {
 		commit(repo, { a: "12345", b: "678" });
-		const exact = await HeadTree.open(repo, "HEAD", { entries: 2, bytes: 8 });
-		await exact.close();
-		await expect(HeadTree.open(repo, "HEAD", { entries: 1, bytes: 8 })).rejects.toThrow(
-			"the head holds more than 1 files",
-		);
-		await expect(HeadTree.open(repo, "HEAD", { entries: 2, bytes: 7 })).rejects.toThrow(
-			"the head holds more than 7 bytes",
-		);
+		const head = gitIn(repo, "rev-parse", "HEAD");
+		const run = (limits: { entries: number; bytes: number }) =>
+			runHeadProbe(
+				{ script: "process.exit(0);\n" },
+				{ repoRoot: repo, head },
+				reviewer,
+				unconfinedSandbox(),
+				limits,
+			);
+		expect(await run({ entries: 2, bytes: 8 })).toMatchObject({ result: { exitCode: 0 } });
+		expect(await run({ entries: 1, bytes: 8 })).toEqual({ refused: "the head holds more than 1 files" });
+		expect(await run({ entries: 2, bytes: 7 })).toEqual({ refused: "the head holds more than 7 bytes" });
 		expect(headTreeLimits).toEqual({ entries: 100_000, bytes: 1024 * 1024 * 1024 });
 	});
 
-	it.each([".git", "..", ".", ".GIT"])("refuses a crafted tree that names %s", async (path) => {
+	it("counts a head's blobs only, not its trees or submodules", async () => {
+		commit(repo, { "src/deep/a": "1234" });
+		gitIn(repo, "update-index", "--add", "--cacheinfo", `160000,${gitIn(repo, "rev-parse", "HEAD")},sub`);
+		gitIn(repo, "commit", "--quiet", "-m", "submodule");
+		const run = await runHeadProbe(
+			{ script: "process.exit(0);\n" },
+			{ repoRoot: repo, head: "HEAD" },
+			reviewer,
+			unconfinedSandbox(),
+			{ entries: 1, bytes: 4 },
+		);
+		expect(run).toMatchObject({ result: { exitCode: 0 } });
+	});
+
+	it.each([".git", "..", ".", ".GIT"])("refuses a crafted tree that names %s, and leaves nothing", async (path) => {
 		const before = left();
-		await expect(HeadTree.open(repo, crafted(path))).rejects.toThrow("the head names a path that leaves its tree");
+		const run = await runHeadProbe(
+			{ script: "process.exit(0);\n" },
+			{ repoRoot: repo, head: crafted(path) },
+			reviewer,
+			unconfinedSandbox(),
+		);
+		expect(run).toHaveProperty("refused");
 		expect(left()).toBe(before);
 	});
 
-	it("refuses a crafted tree naming a blob git does not hold", async () => {
+	it("refuses a crafted tree naming a blob git does not hold, and leaves nothing", async () => {
 		const tree = execFileSync("git", ["mktree", "--missing"], {
 			cwd: repo,
 			input: `100644 blob ${"1".repeat(40)}\tgone\n`,
@@ -162,27 +104,14 @@ describe("HeadTree", () => {
 			.toString()
 			.trim();
 		const before = left();
-		await expect(HeadTree.open(repo, gitIn(repo, "commit-tree", tree, "-m", "missing"))).rejects.toThrow(
-			/git cat-file answered 1{40} missing/,
+		const run = await runHeadProbe(
+			{ script: "process.exit(0);\n" },
+			{ repoRoot: repo, head: gitIn(repo, "commit-tree", tree, "-m", "missing") },
+			reviewer,
+			unconfinedSandbox(),
 		);
+		expect(run).toHaveProperty("refused");
 		expect(left()).toBe(before);
-	});
-
-	it("refuses a crafted tree with two spellings of one name where the disk folds case", async () => {
-		const object = execFileSync("git", ["hash-object", "-w", "--stdin"], { cwd: repo, input: "x\n" })
-			.toString()
-			.trim();
-		const tree = execFileSync("git", ["mktree"], {
-			cwd: repo,
-			input: `100644 blob ${object}\tA\n100644 blob ${object}\ta\n`,
-		})
-			.toString()
-			.trim();
-		const head = gitIn(repo, "commit-tree", tree, "-m", "cased");
-		const folds = existsSync(join(repo.toUpperCase() === repo ? repo.toLowerCase() : repo.toUpperCase()));
-		const opened = HeadTree.open(repo, head);
-		if (folds) await expect(opened).rejects.toThrow("EEXIST");
-		else await (await opened).close();
 	});
 });
 
@@ -204,7 +133,7 @@ describe("runHeadProbe", () => {
 			result: { exitCode: 3, signal: null, output: "LEAK\n", truncated: false, timedOut: false },
 		});
 		expect("milliseconds" in run && run.milliseconds >= 0).toBe(true);
-		expect(sandbox.asked[0]!.command).toContain("melian-probe-head-");
+		expect(sandbox.asked[0]!.command).toMatch(/\/melian-probe-[^/]+\/tree'/);
 		expect(left()).toBe(before);
 	});
 
@@ -260,7 +189,7 @@ describe("runHeadProbe", () => {
 			),
 		).toMatchObject({ refused: expect.stringContaining("a probe file's path is relative") });
 		expect(await runHeadProbe({ script: "x" }, { repoRoot: repo, head: "0".repeat(40) }, reviewer)).toMatchObject({
-			refused: expect.stringContaining("ls-tree"),
+			refused: expect.stringContaining("rev-parse"),
 		});
 		expect(left()).toBe(before);
 	});
@@ -419,28 +348,7 @@ describe("the findings earlier reviews reported", () => {
 	});
 });
 
-describe("a head tree and its probe, past the simple cases", () => {
-	it("removes its tree once, and a second close is safe", async () => {
-		commit(repo, { a: "a\n" });
-		const tree = await HeadTree.open(repo, "HEAD");
-		await tree.close();
-		await expect(tree.close()).resolves.toBeUndefined();
-	});
-
-	it("has every file written when it opens", async () => {
-		commit(
-			repo,
-			Object.fromEntries(Array.from({ length: 300 }, (_, index) => [`d${index % 7}/f${index}.txt`, `${index}\n`])),
-		);
-		const tree = await HeadTree.open(repo, "HEAD");
-		try {
-			for (let index = 0; index < 300; index++)
-				expect(readFileSync(join(tree.path, `d${index % 7}/f${index}.txt`), "utf8")).toBe(`${index}\n`);
-		} finally {
-			await tree.close();
-		}
-	});
-
+describe("a head's probe, past the simple cases", () => {
 	it("reads the repository it names, whatever GIT_DIR the process holds", async () => {
 		commit(repo, { a: "mine\n" });
 		const head = gitIn(repo, "rev-parse", "HEAD");
@@ -449,12 +357,13 @@ describe("a head tree and its probe, past the simple cases", () => {
 		const was = process.env.GIT_DIR;
 		process.env.GIT_DIR = join(other, ".git");
 		try {
-			const tree = await HeadTree.open(repo, head);
-			try {
-				expect(readFileSync(join(tree.path, "a"), "utf8")).toBe("mine\n");
-			} finally {
-				await tree.close();
-			}
+			const run = await runHeadProbe(
+				{ script: 'import { readFileSync } from "node:fs";\nprocess.stdout.write(readFileSync("a", "utf8"));\n' },
+				{ repoRoot: repo, head },
+				reviewer,
+				unconfinedSandbox(),
+			);
+			expect(run).toMatchObject({ result: { output: "mine\n" } });
 		} finally {
 			if (was === undefined) delete process.env.GIT_DIR;
 			else process.env.GIT_DIR = was;
@@ -475,9 +384,15 @@ describe("a head tree and its probe, past the simple cases", () => {
 		})
 			.toString()
 			.trim();
-		await expect(HeadTree.open(repo, gitIn(repo, "commit-tree", outer, "-m", "nested"))).rejects.toThrow(
-			"the head names a path that leaves its tree: safe/..",
+		const before = left();
+		const run = await runHeadProbe(
+			{ script: "process.exit(0);\n" },
+			{ repoRoot: repo, head: gitIn(repo, "commit-tree", outer, "-m", "nested") },
+			reviewer,
+			unconfinedSandbox(),
 		);
+		expect(run).toHaveProperty("refused");
+		expect(left()).toBe(before);
 	});
 
 	it("lets the probe read the install it links, leaves no scratch, and times the run", async () => {
