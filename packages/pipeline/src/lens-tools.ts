@@ -1294,7 +1294,7 @@ export function runProbeTool(sandbox?: ProbeSandbox) {
 	return defineLensTool(
 		{
 			name: "run_probe",
-			// Each probe writes its head's tree before its sandbox starts, so one at a time bounds the scratch to one tree.
+			// Each probe writes its head's tree before its sandbox starts, so one at a time bounds a lens's scratch to one tree.
 			executionMode: "sequential",
 			description:
 				"Run a probe for one attack of the plan: a Node ES module, run as probe.mjs with your files beside it, in a read-only checkout of the head with no network. Exit 0 when the boundary holds and non-zero when the probe shows the defect. Returns the probe's ID, its exit, and its output.",
