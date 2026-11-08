@@ -863,6 +863,15 @@ describe("lowered sightings", () => {
 		expect(stored.properties).not.toHaveProperty("originalSeverity");
 	});
 
+	it("reads a lowered sighting as reported at the lens's severity, with its verification attached", async () => {
+		const { harness, root } = await open(createMemoryStorage());
+		await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
+		await judge(root, lowered);
+		const [reported] = await readFindings(harness, root.id, "rev1", context, { asReported: true });
+		expect(reported!.properties).toMatchObject({ severity: "P1", verification: lowered });
+		expect(reported!.properties).not.toHaveProperty("originalSeverity");
+	});
+
 	it("takes the highest severity among sightings of one ID after lowering, and names the original", async () => {
 		const { harness, root } = await open(createMemoryStorage());
 		const other = { check: "lens.contracts", version: "1" };
