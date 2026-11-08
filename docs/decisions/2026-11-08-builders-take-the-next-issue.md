@@ -13,4 +13,4 @@ A builder that finished sat idle until the coordinator noticed and briefed it. T
 - A builder starts when its pull request is in the merge queue, not when it merges. A queue ejection sends it back to that pull request first.
 - It skips an issue its session cannot carry out, such as one that needs the host's Melian store, live model credentials, or a machine it is not on. A cloud session cannot run `melian compare` against the host's store, so a comparison record issue waits for the host.
 - The claim rule decides between two builders that choose the same issue: the earliest writer's `Claim:` wins, and the other yields.
-- The coordinator may still assign an issue to a particular session. An assignment it records on the issue wins over a later self-selected claim.
+- The coordinator may still ask a session to take an issue. That session claims it as usual, and the claim rule still decides.
