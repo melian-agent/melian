@@ -6,4 +6,4 @@ export {
 	type StateBranchOptions,
 	StateCheckout,
 } from "./state-branch.ts";
-export { type Lease, StateBranchError, StateIndex } from "./state-index.ts";
+export { StateBranchError, StateIndex } from "./state-index.ts";

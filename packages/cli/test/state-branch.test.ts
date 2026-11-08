@@ -284,7 +284,7 @@ describe("ChangesetStore", () => {
 			await winner.close();
 			await loser.close();
 			expect(stderr).toEqual([
-				"melian: melian/state refused this command's storage: another run took the changeset's lease after this one's expired; this clone keeps it, and the next command carries on from the branch's copy\n",
+				"melian: melian/state refused this command's storage: another run took the changeset's lease, at generation 2, after this one's 1; this clone keeps it, and the next command carries on from the branch's copy\n",
 			]);
 			stderr.length = 0;
 			const resumed = await ChangesetStore.write(io(first), first, pullRequest);
@@ -360,7 +360,7 @@ describe("Codex's review of a35d88c", () => {
 		expect(await readNotes(read)).toEqual(["stored"]);
 		await read.close();
 		const index = JSON.parse(gitIn(origin, "cat-file", "blob", "refs/heads/melian/state:index.json"));
-		expect(index.changesets).toEqual({});
+		expect(Date.parse(index.changesets[pullRequest].lease.expiresAt)).toBeLessThanOrEqual(Date.now());
 	});
 });
 
@@ -414,12 +414,12 @@ describe("Codex's review of a0756fc", () => {
 		await writeNote(store, "secret");
 		await store.checkpoint();
 		expect(gitIn(origin, "ls-tree", "--name-only", "refs/heads/melian/state:changesets")).toBe(pullRequest);
-		const index = JSON.parse(gitIn(origin, "cat-file", "blob", "refs/heads/melian/state:index.json"));
-		expect(Object.keys(index.changesets)).toEqual([pullRequest]);
+		const index = () => JSON.parse(gitIn(origin, "cat-file", "blob", "refs/heads/melian/state:index.json"));
+		const held = index().changesets[pullRequest];
+		expect(held).toMatchObject({ lease: { generation: 1 }, written: 1 });
+		expect(Date.parse(held.lease.expiresAt)).toBeGreaterThan(Date.now());
 		await store.close();
-		expect(JSON.parse(gitIn(origin, "cat-file", "blob", "refs/heads/melian/state:index.json")).changesets).toEqual(
-			{},
-		);
+		expect(Date.parse(index().changesets[pullRequest].lease.expiresAt)).toBeLessThanOrEqual(Date.now());
 	});
 
 	it("refuses to post when the copy cannot be stored first", async () => {
@@ -449,7 +449,7 @@ describe("Codex's review of a0756fc", () => {
 			await expect(publishing.close()).rejects.toMatchObject({
 				name: "CliError",
 				message:
-					"GitHub has this publication, but melian/state did not take its storage: another run took the changeset's lease after this one's expired; this clone keeps it, and melian publish run again here stores it",
+					"GitHub has this publication, but melian/state did not take its storage: another run took the changeset's lease, at generation 2, after this one's 1; this clone keeps it, and melian publish run again here stores it",
 			});
 			await expect(ChangesetStore.read(io(first), first, pullRequest)).resolves.toBeDefined();
 		} finally {
