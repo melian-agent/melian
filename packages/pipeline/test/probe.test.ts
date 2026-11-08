@@ -903,6 +903,45 @@ console.log(JSON.stringify({ marker: readFileSync("marker", "utf8"), home: proce
 		await expect(probe.run()).rejects.toMatchObject({ code: "closed" });
 	});
 
+	it.each([
+		["settles", true],
+		["never settles", false],
+	])("holds the sandbox's session at close while a wrap past the setup bound %s", async (_, settles) => {
+		const order: string[] = [];
+		let settle!: (argv: never) => void;
+		const { sandbox } = passthrough({
+			wrap: () =>
+				new Promise<never>((resolve) => {
+					settle = resolve;
+				}),
+		});
+		sandbox.cleanup.mockImplementation(() => order.push("cleanup"));
+		sandbox.close.mockImplementation(async () => {
+			order.push("close");
+		});
+		const probe = await Probe.open({ script: "" }, options(sandbox));
+		vi.useFakeTimers({ toFake: ["setTimeout"] });
+		try {
+			const refused = expect(probe.run()).rejects.toMatchObject({ code: "sandboxUnavailable" });
+			await vi.advanceTimersByTimeAsync(probeLimits.setup);
+			await refused;
+			let closed = false;
+			const closing = probe.close().finally(() => {
+				closed = true;
+			});
+			// Real time, since only setTimeout is faked: an unwaited close removes its scratch in a few milliseconds.
+			for (const began = Date.now(); Date.now() - began < 200; )
+				await new Promise((resolve) => setImmediate(resolve));
+			expect({ closed, order }).toEqual({ closed: false, order: [] });
+			if (settles) settle(["/bin/true"] as never);
+			else await vi.advanceTimersByTimeAsync(probeLimits.setup);
+			expect(await closing).toEqual({ removed: true });
+		} finally {
+			vi.useRealTimers();
+		}
+		expect(order).toEqual(settles ? ["cleanup", "close"] : []);
+	});
+
 	it("keeps a settled run's result when the final stop fails, and still releases the sandbox", async () => {
 		const { sandbox } = passthrough();
 		const probe = await Probe.open({ script: "process.exit(3);" }, options(sandbox));
@@ -1031,6 +1070,29 @@ describe("Probe.availability", () => {
 		const silent = passthrough({ wrap: async () => ["/bin/sh", "-c", "exit 5"] as never });
 		expect(await Probe.availability(silent.sandbox)).toEqual({ available: false, reason: "an empty probe exited 5" });
 		expect(left()).toEqual([]);
+	});
+
+	it("is unavailable where an empty probe exits 0 but its teardown fails", async () => {
+		const stop = vi.spyOn(ProbeProcess.prototype, "stop").mockRejectedValue(new Error("ps failed"));
+		try {
+			expect(await Probe.availability(passthrough().sandbox)).toEqual({
+				available: false,
+				reason: "stopping an empty probe's processes failed: ps failed",
+			});
+		} finally {
+			stop.mockRestore();
+		}
+		const close = vi
+			.spyOn(Probe.prototype, "close")
+			.mockResolvedValue({ removed: false, leftover: "/tmp/melian-probe-x", reason: "EPERM: rmdir" });
+		try {
+			expect(await Probe.availability(passthrough().sandbox)).toEqual({
+				available: false,
+				reason: "an empty probe's scratch could not be removed: EPERM: rmdir",
+			});
+		} finally {
+			close.mockRestore();
+		}
 	});
 });
 
