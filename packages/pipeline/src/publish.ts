@@ -48,14 +48,15 @@ import { legacyKey, Round, RoundsDocument, RoundWriter } from "./rounds.ts";
 import { TaskTiming } from "./task-timing.ts";
 
 // Type aliases with mutable arrays, not core's interfaces: a document's value must satisfy Pi's JsonObject.
-// `dismissal` is set on a finding resolved because someone dismissed it, so its reply says why.
+// `dismissal` is set on a finding resolved because someone dismissed it, so its reply says why, and names the root an
+// inherited one came from.
 type PublishedEntry = {
 	ruleId: string;
 	path: string;
 	line: number;
 	revision: string;
 	thread?: string;
-	dismissal?: { by: string; reason: string; at: string };
+	dismissal?: { by: string; reason: string; at: string; inheritedFrom?: string };
 	addressedIn?: string;
 };
 

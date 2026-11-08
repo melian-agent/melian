@@ -122,6 +122,17 @@ export function describeDecision(by: DecidedBy, own: { readonly check: string; r
 	].join("; ");
 }
 
+/**
+ * Says a dismissal was inherited, for an author: ", inherited from 0123456789abcdef", the root's ID as `quote` gives it,
+ * or nothing for a dismissal someone made. It never names the root's dismisser.
+ */
+export function describeInheritance(
+	{ inheritedFrom }: { readonly inheritedFrom?: string },
+	quote: (text: string) => string = visibleText,
+): string {
+	return inheritedFrom === undefined ? "" : `, inherited from ${quote(inheritedFrom)}`;
+}
+
 const budgetNames: Readonly<Record<BudgetEnd["budget"], string>> = { tokens: "token", tools: "tool call" };
 
 /**

@@ -699,7 +699,8 @@ Only added lines take an inline comment. Problem: GitHub rejects the whole revie
 `verdict.reviewStatus()` maps an incomplete review to error first. Otherwise a counted block or unresolved acknowledgement gives failure.
 N, blocks and acknowledgements all read `counted()`, excluding lifted-only important pre-existing members.
 Failure descriptions count blocks and unresolved acknowledgements apart.
-Advisory-only findings pass; no counted findings says “Passed”, or “0 findings, N dismissed” while dismissals stand.
+Advisory-only findings pass; no counted findings says “Passed”, or “0 findings, N dismissed” while dismissals stand, with “, M inherited” for the M a restatement inherited.
+`Finding.render` shows an inherited dismissal as `Dismissed, inherited from <root>, at <time>: <reason>`, never as Melian's or the root's dismisser's, and a person's as `Dismissed by <dismisser> at <time>: <reason>`. `describeInheritance` gives every host the same words. A finding with `likelyDismissedAs` adds `likelyDismissalNotes()`, which names the root and `melian dismiss <range|#pr> <id> --reason <text>`.
 New and carried pre-existing opt-ins count as acknowledgements. `blocking` and review exit codes stay unchanged.
 The terminal, review body and ledger state the mapping and name `melian dismiss "#N"` for unresolved acknowledgements.
 `verdict.dismissals()` lists each dismissed report, including merged members and their own reasons.

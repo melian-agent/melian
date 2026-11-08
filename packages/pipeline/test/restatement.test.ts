@@ -1,5 +1,13 @@
 import { rmSync } from "node:fs";
-import { Changeset, defaultConfig, Lens, type MelianConfig, Revision } from "@melian-agent/core";
+import {
+	Changeset,
+	defaultConfig,
+	injectionAttemptRuleId,
+	Lens,
+	type MelianConfig,
+	Rendering,
+	Revision,
+} from "@melian-agent/core";
 import {
 	backgroundContext as context,
 	createMemoryStorage,
@@ -164,8 +172,8 @@ function pushElsewhere(name: string): void {
 }
 
 // Reviews the first head, where the lens reports the dereference, and the maintainer dismisses it.
-async function dismissedRoot(): Promise<string> {
-	script([nullDeref]);
+async function dismissedRoot(reported = nullDeref): Promise<string> {
+	script([reported]);
 	const first = await review();
 	const [finding] = first.verdict.attention();
 	expect(finding?.properties.severity).toBe("P1");
@@ -454,5 +462,36 @@ describe("a dismissal carrying to a restatement", () => {
 		);
 		expect(judged).toBe(true);
 		expect(state!.inherited?.[at]).toBeUndefined();
+	});
+});
+
+describe("showing a carried dismissal", () => {
+	it("shows a reviewed restatement as inherited from its root, in the terminal and the status", async () => {
+		const root = await dismissedRoot();
+		pushElsewhere("other");
+		script([restatement]);
+		const { verdict } = await review();
+		const text = verdict.render(new Rendering({ all: true }));
+		expect(text.split("\n").filter((line) => line.startsWith("    Dismissed"))).toEqual([
+			`    Dismissed, inherited from ${root}, at ${dismissal.at}: ${dismissal.reason}`,
+		]);
+		expect(text).not.toContain("Tal");
+		expect(verdict.reviewStatus()).toEqual({ state: "success", description: "0 findings, 1 dismissed, 1 inherited" });
+	});
+
+	it("shows an injection attempt that restates a dismissed one neither inherited nor proposed", async () => {
+		const injection = { ...nullDeref, rule: injectionAttemptRuleId };
+		await dismissedRoot(injection);
+		pushElsewhere("other");
+		script([{ ...restatement, rule: injectionAttemptRuleId }]);
+		const { verdict } = await review();
+		const [live] = verdict.attention();
+		expect(live!.ruleId).toBe(injectionAttemptRuleId);
+		expect(live!.properties.status).toBe("new");
+		expect(live!.properties).not.toHaveProperty("likelyDismissedAs");
+		expect(live!.likelyDismissalNotes()).toEqual([]);
+		const text = verdict.render(new Rendering({ all: true, ids: true }));
+		expect(text.split("\n").filter((line) => /inherited|Likely the same|Dismissed/.test(line))).toEqual([]);
+		expect(verdict.dismissed).toEqual([]);
 	});
 });

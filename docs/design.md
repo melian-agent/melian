@@ -328,7 +328,7 @@ Publishing from the CLI sets a commit status, context `melian/review`, because a
 A block or unresolved acknowledgement maps to `failure`, including a new or carried pre-existing opt-in.
 The description counts blocks and acknowledgements apart, over `verdict.counted()`.
 An advisory member lifted only under “Pre-existing, important” does not count.
-A complete review with neither passes; an empty counted set with dismissals reads `0 findings, N dismissed`.
+A complete review with neither passes; an empty counted set with dismissals reads `0 findings, N dismissed`, and `0 findings, N dismissed, M inherited` when M inherited a root's dismissal.
 `not-reviewed` maps to `error` with what did not run.
 With `trust.writers: false` in the committed root base policy, publication sets the existing trusted-host `error`.
 It still posts the review and ledger and exits 0.

@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import {
 	Changeset,
 	checksOfTier,
+	describeInheritance,
 	FindingsLog,
 	Lens,
 	loadConfig,
@@ -157,7 +158,7 @@ export class PublicationAttestations {
 					`  Revision ${visibleText(revision)}, round ${round}`,
 					...dismissals.map(
 						({ id, ruleId, path, dismissal }) =>
-							`  ${visibleText(id)} ${visibleText(ruleId)} in ${visibleText(path)}: by ${visibleText(dismissal?.by ?? "unknown")} at ${visibleText(dismissal?.at ?? "unknown")}: ${visibleText(dismissal?.reason ?? "No reason stored.")}`,
+							`  ${visibleText(id)} ${visibleText(ruleId)} in ${visibleText(path)}${describeInheritance(dismissal ?? {})}: ${dismissal?.inheritedFrom === undefined ? `by ${visibleText(dismissal?.by ?? "unknown")} ` : ""}at ${visibleText(dismissal?.at ?? "unknown")}: ${visibleText(dismissal?.reason ?? "No reason stored.")}`,
 					),
 					"",
 				].join("\n");

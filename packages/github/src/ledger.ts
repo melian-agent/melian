@@ -1,5 +1,6 @@
 import { createHash, createHmac } from "node:crypto";
 import {
+	describeInheritance,
 	type LedgerDraft,
 	type LedgerHistory,
 	type LedgerRound,
@@ -250,17 +251,19 @@ export class Ledger {
 						.dismissals()
 						.map(
 							({ id, ruleId, dismissal }) =>
-								`- ${prose(id)} ${code(visibleText(ruleId))}: ${prose(dismissal?.reason ?? "No reason stored.")}`,
+								`- ${prose(id)} ${code(visibleText(ruleId))}${describeInheritance(dismissal ?? {}, code)}: ${prose(dismissal?.reason ?? "No reason stored.")}`,
 						),
 				].join("\n\n"),
 			);
+		// A closed finding's record keeps only the reason; the round's verdict says whether the dismissal was inherited.
+		const inherited = new Map(verdict.dismissals().map(({ id, dismissal }) => [id, dismissal ?? {}]));
 		if (current.resolved.length > 0)
 			parts.push(
 				[
 					"### Closed findings",
 					...current.resolved.map(
 						({ id, commit, reason }) =>
-							`- ${prose(id)}: ${reason === undefined ? `Addressed in commit ${commit.slice(0, 12)}` : `Dismissed: ${prose(reason)}`}`,
+							`- ${prose(id)}: ${reason === undefined ? `Addressed in commit ${commit.slice(0, 12)}` : `Dismissed${describeInheritance(inherited.get(id) ?? {}, code)}: ${prose(reason)}`}`,
 					),
 				].join("\n\n"),
 			);
@@ -284,7 +287,7 @@ export class Ledger {
 				: ` ${finding.properties.severity}, lowered from ${lowered.from}: ${prose(lowered.reason)}`;
 		return [
 			`${code(visibleText(finding.properties.path))}:${start}${end === start ? "" : `-${end}`} — ${code(visibleText(finding.ruleId))} (${finding.properties.resolution}): ${prose(finding.properties.explanation.what)}${severity}`,
-			...finding.trustFloorNotes().map(prose),
+			...[...finding.trustFloorNotes(), ...finding.likelyDismissalNotes()].map(prose),
 		].join(" ");
 	}
 

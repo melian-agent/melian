@@ -16,6 +16,7 @@ import { isLensFile, melianPaths } from "./paths.ts";
 import type { DiffLines, Placement } from "./publication.ts";
 import {
 	describeDecision,
+	describeInheritance,
 	evidenceLines,
 	messageContinuation,
 	plural,
@@ -1204,7 +1205,7 @@ export class Finding {
 		return [
 			`  ${[rendering.paint(severityColor[severity], first!), ...rest].join(" | ")}`,
 			...reports,
-			...this.trustFloorNotes().map((line) => `    ${prose(line, "      ")}`),
+			...[...this.trustFloorNotes(), ...this.likelyDismissalNotes()].map((line) => `    ${prose(line, "      ")}`),
 			...(decidedBy === undefined || !rendering.decided
 				? []
 				: [`    Decided by: ${prose(describeDecision(decidedBy, own), "      ")}`]),
@@ -1240,8 +1241,15 @@ export class Finding {
 		const { dismissal, pastDismissals = [] } = this.properties;
 		const said = ({ by, at, reason }: { by: string; at: string; reason: string }) =>
 			`by ${visibleText(by)} at ${visibleText(at)}: ${prose(reason, "      ")}`;
+		const mark = rendering.show(outcomeMarks.dismissed);
 		return [
-			...(dismissal === undefined ? [] : [`    ${rendering.show(outcomeMarks.dismissed)} ${said(dismissal)}`]),
+			...(dismissal === undefined
+				? []
+				: dismissal.inheritedFrom === undefined
+					? [`    ${mark} ${said(dismissal)}`]
+					: [
+							`    ${mark}${describeInheritance(dismissal)}, at ${visibleText(dismissal.at)}: ${prose(dismissal.reason, "      ")}`,
+						]),
 			...pastDismissals.map((past) => {
 				const ended =
 					past.replacedAt === undefined
@@ -1701,6 +1709,18 @@ export class Finding {
 			const sighting = this.#claim(claim, this);
 			return claim.verification === undefined ? sighting : sighting.verifiedAs(claim.verification);
 		});
+	}
+
+	/**
+	 * Plain text naming the dismissed finding this one likely restates, and the command that accepts the match, for
+	 * hosts to escape in their own format; none when it has no likely root.
+	 */
+	likelyDismissalNotes(): string[] {
+		const { likelyDismissedAs, id } = this.properties;
+		if (likelyDismissedAs === undefined) return [];
+		return [
+			`Likely the same as dismissed finding ${likelyDismissedAs.id}. To accept the match, run melian dismiss <range|#pr> ${id} --reason <text>.`,
+		];
 	}
 
 	/** Plain text explanations of the protected judgements, for hosts to escape in their own format. */

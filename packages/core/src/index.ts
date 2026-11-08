@@ -312,6 +312,7 @@ export {
 export {
 	describeBudgetEnd,
 	describeDecision,
+	describeInheritance,
 	describeLineage,
 	Rendering,
 	type TerminalRenderOptions,

@@ -771,9 +771,15 @@ export class Verdict {
 			};
 		}
 		if (shown === 0) {
+			const inherited = this.dismissed.filter(
+				(finding) => finding.properties.dismissal?.inheritedFrom !== undefined,
+			).length;
 			return {
 				state: "success",
-				description: this.dismissed.length === 0 ? "Passed" : `0 findings, ${this.dismissed.length} dismissed`,
+				description:
+					this.dismissed.length === 0
+						? "Passed"
+						: `0 findings, ${this.dismissed.length} dismissed${inherited === 0 ? "" : `, ${inherited} inherited`}`,
 			};
 		}
 		return { state: "success", description: `${count(shown, "finding")}, none blocking` };
