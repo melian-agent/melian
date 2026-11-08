@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { constants, existsSync, lstatSync, readdirSync, readlinkSync, realpathSync, statSync } from "node:fs";
-import { cp, mkdir, mkdtemp, open as openFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, open as openFile, rm, rmdir, writeFile } from "node:fs/promises";
 import { homedir, platform, tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, posix, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -336,9 +336,12 @@ async function writeHead({ checkout, commit, entries }: PlannedHead, tree: strin
 		const at = { GIT_DIR: repository, GIT_WORK_TREE: tree };
 		await git(tree, ["read-tree", commit], repository, at);
 		await git(tree, ["checkout-index", "--all"], repository, at);
-		// The install's directory exists before the walks, so a link to another spelling of it resolves to it.
-		const linking = entries.some(([entry]) => entry === "node_modules") && !existsSync(join(tree, "node_modules"));
-		if (linking) await mkdir(join(tree, "node_modules"));
+		// The install's directory exists before the walks, so a link to another spelling of it resolves to it, and an empty
+		// one goes again when nothing is linked in.
+		const install = join(tree, "node_modules");
+		const made = entryAt(install) === undefined;
+		if (made) await mkdir(install);
+		const linking = made && entries.some(([entry]) => entry === "node_modules");
 		refuseLinksOut(tree);
 		const copies = entries.filter(([entry]) => entry !== "node_modules");
 		for (const [entry, real] of copies) {
@@ -354,7 +357,7 @@ async function writeHead({ checkout, commit, entries }: PlannedHead, tree: strin
 			const linked = await linkDependencies(env, backgroundContext, checkout, tree, repository, shell);
 			if ("failed" in linked) throw new ProbeError("invalidProbe", `the dependency install: ${linked.failed}`);
 			installs.push(...linked.linked.flatMap((path) => [path, realpathSync(path)]));
-		}
+		} else if (made) await rmdir(install).catch(() => undefined);
 		return [...new Set(installs)];
 	} catch (error) {
 		if (error instanceof ProbeError) throw error;
