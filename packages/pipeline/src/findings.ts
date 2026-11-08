@@ -880,9 +880,9 @@ export function dismissedRoots(state: FindingsState): DismissedRoot[] {
 		.flatMap((id) => {
 			const { lifecycle, sightings } = state.items[id]!;
 			const { status, dismissedSeverity, dismissedTrigger, dismissedAt, lastSeenRevision } = lifecycle;
+			// A cleared run can leave the last-seen revision with no sighting, and then no region to map.
 			const last = sightings[lastSeenRevision];
-			if (status !== "dismissed" || dismissedSeverity === undefined || dismissedTrigger === undefined) return [];
-			if (dismissedAt === undefined || last === undefined || Object.keys(last).length === 0) return [];
+			if (status !== "dismissed" || dismissedSeverity === undefined || last === undefined) return [];
 			const { winner } = adjudicate(last);
 			const finding = Finding.from({ ...winner, properties: { ...winner.properties, status: "new" } });
 			const [line, endLine] = finding.lines();
@@ -896,10 +896,11 @@ export function dismissedRoots(state: FindingsState): DismissedRoot[] {
 					line,
 					endLine,
 					revision: lastSeenRevision,
-					dismissedAt,
+					// `dismissFinding` records a severity only beside the time and the accepted trigger.
+					dismissedAt: dismissedAt!,
 					severity: dismissedSeverity,
-					hash: dismissedTrigger.hash,
-					proof: unionOf([...dismissedTrigger.proof, ...(lifecycle.proof ?? [])]),
+					hash: dismissedTrigger!.hash,
+					proof: unionOf([...dismissedTrigger!.proof, ...(lifecycle.proof ?? [])]),
 					...(failureScenario === undefined ? {} : { failureScenario }),
 					...(evidence === undefined ? {} : { evidence: structuredClone(evidence) }),
 				},

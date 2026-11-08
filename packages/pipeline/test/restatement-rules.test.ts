@@ -22,6 +22,8 @@ import {
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+	clearSightings,
+	dismissedRoots,
 	FindingsDocument,
 	overlapsSite,
 	type Restating,
@@ -580,4 +582,39 @@ it("reads two sightings as one site only for one path and rule on overlapping li
 	expect(overlapsSite(site, { ...site, line: 1, endLine: 4 })).toBe(false);
 	expect(overlapsSite(site, { ...site, path: "b.ts" })).toBe(false);
 	expect(overlapsSite(site, { ...site, ruleId: "other" })).toBe(false);
+});
+
+it("lists every maintainer's dismissal with a recorded severity, in ID order, and nothing else", async () => {
+	const [one, two, live, legacy, cleared] = ["one", "two", "live", "legacy", "cleared"].map((snippet) =>
+		lens({ snippet }),
+	);
+	const roots = [one!, two!].sort((a, b) => (a.id < b.id ? 1 : -1));
+	await commit(async (tx) => {
+		for (const each of [...roots, live!, legacy!, cleared!]) await upsertFinding(tx, root, each, "base..first");
+		for (const each of roots) await dismissFinding(tx, root, each.id, dismissal, "base..first", "P2");
+		await dismissFinding(tx, root, legacy!.id, dismissal, "base..first");
+		await upsertFinding(tx, root, cleared!, "base..second");
+		await dismissFinding(tx, root, cleared!.id, dismissal, "base..second", "P2");
+		await clearSightings(tx, root, "base..second", [correctness]);
+	});
+	const state = (await harness.snapshot(FindingsDocument, root, context))!;
+	const expected = [...roots]
+		.sort((a, b) => (a.id < b.id ? -1 : 1))
+		.map((each) => ({
+			id: each.id,
+			ruleId: "fail-open",
+			path: "a.ts",
+			cause: "pre-existing",
+			line: 5,
+			endLine: 5,
+			revision: "base..first",
+			dismissedAt: dismissal.at,
+			severity: "P2",
+			hash: state.items[each.id]!.lifecycle.dismissedTrigger!.hash,
+			proof: [],
+			failureScenario: "A cold run reads a cached kill.",
+			evidence: each.properties.evidence,
+		}));
+	expect(Object.keys(state.items).slice(0, 2)).not.toEqual(expected.map((each) => each.id));
+	expect(dismissedRoots(state)).toEqual(expected);
 });
