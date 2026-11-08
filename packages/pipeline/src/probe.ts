@@ -698,6 +698,7 @@ export class Probe {
 		let truncated = false;
 		let child: ProbeProcess | undefined;
 		let argv: readonly string[] | undefined;
+		let outcome: ProbeResult | undefined;
 		try {
 			// Starting the sandbox is bounded apart from the run, so wrapping the command cannot hang unbounded before the
 			// probe's own time limit begins.
@@ -747,12 +748,18 @@ export class Probe {
 			// A cut at the output limit can fall inside a multi-byte character; decode only up to the last whole one.
 			const output = new TextDecoder().decode(truncated ? bytes.subarray(0, completeUtf8(bytes)) : bytes);
 			const result = { exitCode: exit.code, signal: exit.signal, output, truncated, timedOut: exit.timedOut };
-			return exit.error === undefined ? result : { ...result, error: exit.error };
+			outcome = exit.error === undefined ? result : { ...result, error: exit.error };
 		} finally {
-			await child?.stop();
+			const stopped = await child?.stop().then(
+				() => undefined,
+				(error: unknown) => (error instanceof Error ? error.message : String(error)),
+			);
 			if (argv !== undefined) this.#sandbox.cleanup();
 			this.#running = false;
+			// A run that settled keeps its result, with the failed stop as its error unless it already holds one.
+			if (outcome !== undefined && stopped !== undefined) outcome = { ...outcome, error: outcome.error ?? stopped };
 		}
+		return outcome;
 	}
 
 	/**

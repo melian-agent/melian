@@ -810,6 +810,20 @@ console.log(JSON.stringify({ marker: readFileSync("marker", "utf8"), home: proce
 		await expect(probe.run()).rejects.toMatchObject({ code: "closed" });
 	});
 
+	it("keeps a settled run's result when the final stop fails, and still releases the sandbox", async () => {
+		const { sandbox } = passthrough();
+		const probe = await Probe.open({ script: "process.exit(3);" }, options(sandbox));
+		const stop = vi.spyOn(ProbeProcess.prototype, "stop").mockRejectedValue(new Error("ps failed"));
+		try {
+			expect(await probe.run()).toMatchObject({ exitCode: 3, timedOut: false, error: "ps failed" });
+			expect(sandbox.cleanup).toHaveBeenCalledOnce();
+			expect((await probe.run()).exitCode).toBe(3);
+		} finally {
+			stop.mockRestore();
+			await probe.close();
+		}
+	});
+
 	it("refuses to run when the sandbox refuses the wrap, and runs nothing", async () => {
 		const { sandbox } = passthrough({
 			wrap: async () => {
