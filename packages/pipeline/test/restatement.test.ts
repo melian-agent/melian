@@ -347,6 +347,21 @@ describe("a dismissal carrying to a restatement", () => {
 		if (!verifier) expect(await findingsVersion(harness, owner, at, context)).toBe(version);
 	});
 
+	it("clears the links when a later round on the head has no verifier with credentials", async () => {
+		await dismissedRoot();
+		pushElsewhere("other");
+		script([restatement]);
+		await review();
+		const at = Revision.key(await revision());
+		const owner = (await harness.root(context)).id;
+		expect((await harness.snapshot(ReviewIndex, owner, context))!.reviews[at]!.verification).toBeDefined();
+		expect((await harness.snapshot(FindingsDocument, owner, context))!.inherited?.[at]).toBeDefined();
+		script([restatement]);
+		config = { ...config, models: { ...config.models, verifier: { model: "faux/absent" } } };
+		await review().catch(() => undefined);
+		expect((await harness.snapshot(FindingsDocument, owner, context))!.inherited?.[at]).toBeUndefined();
+	});
+
 	it("clears the links when a later round on the head selects no lens", async () => {
 		await dismissedRoot();
 		pushElsewhere("other");
