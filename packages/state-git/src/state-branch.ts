@@ -1,6 +1,7 @@
 import { createCipheriv, createDecipheriv, createHmac, randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
-import { mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { git, gitFailure, gitOutput, gitOutputBytes, Lease, type LeaseHolder } from "@melian-agent/core";
@@ -422,9 +423,23 @@ export class StateBranch {
 			);
 		const names = found.map((entry) => entry.name).sort();
 		if (names.length === 0) return "none";
+		const plain = await Promise.all(names.map((name) => readFile(join(directory, name))));
+		// Pi's storage opens exactly what is pushed, from a copy of its own, so a torn or damaged read never lands.
+		const captured = await mkdtemp(join(tmpdir(), "melian-state-"));
+		try {
+			await Promise.all(names.map((name, i) => writeFile(join(captured, name), plain[i]!)));
+			await this.#options.validate(captured).catch((error: unknown) => {
+				throw new StateBranchError(
+					"invalidCopy",
+					`this clone's copy of ${changeset} does not open in Pi's storage, so Melian will not push it: ${error instanceof Error ? error.message : String(error)}`,
+				);
+			});
+		} finally {
+			await rm(captured, { recursive: true, force: true });
+		}
 		const shas: string[] = [];
-		for (const name of names) {
-			const sealed = this.#sealer.seal(`${changeset}/${name}`, await readFile(join(directory, name)));
+		for (const [i, name] of names.entries()) {
+			const sealed = this.#sealer.seal(`${changeset}/${name}`, plain[i]!);
 			shas.push((await this.#git(["hash-object", "-w", "--stdin"], sealed)).trim());
 		}
 		const tree = names.map((name, i) => mktreeLine({ mode: "100644", type: "blob", sha: shas[i]!, name })).join("");

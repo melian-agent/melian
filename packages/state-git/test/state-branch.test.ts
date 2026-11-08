@@ -714,7 +714,8 @@ describe("what the mutation inventory found untested", () => {
 
 	it("seals a file and commits to a key exactly as this format's first version does", async () => {
 		const key = Buffer.alloc(32, 1);
-		const checkout = await remote.clone({ key }).branch().checkout(changeset);
+		// The vector's file is not Pi's, so this clone's storage accepts any copy.
+		const checkout = await remote.clone({ key, validate: async () => {} }).branch().checkout(changeset);
 		writeFileSync(join(checkout.directory, "main.jsonl"), "melian\n");
 		await checkout.push();
 		const sealed = execFileSync("git", ["cat-file", "blob", `${remote.stored()}:main.jsonl`], { cwd: remote.bare });
@@ -1140,5 +1141,24 @@ describe("Codex's review of 94ad27eb", () => {
 		const second = await clone.branch().checkout(changeset);
 		expect(second.setAside).toBeUndefined();
 		expect(await notes(await storageOf(second))).toEqual(["unpushed"]);
+	});
+});
+
+describe("Codex's review of a4de0552", () => {
+	it("refuses to push a copy Pi's storage cannot open, and moves nothing", async () => {
+		const checkout = await remote.clone().branch().checkout(changeset);
+		await note(await storageOf(checkout), "stored");
+		const sidecar = readdirSync(checkout.directory).find((name) => name.startsWith("doc-"))!;
+		rmSync(join(checkout.directory, sidecar));
+		const tip = remote.tip();
+		await expect(checkout.push()).rejects.toMatchObject({
+			code: "invalidCopy",
+			message: expect.stringMatching(
+				new RegExp(
+					`^this clone's copy of ${changeset} does not open in Pi's storage, so Melian will not push it: `,
+				),
+			),
+		});
+		expect(remote.tip()).toBe(tip);
 	});
 });

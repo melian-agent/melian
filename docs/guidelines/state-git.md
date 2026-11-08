@@ -13,7 +13,7 @@ The state-git package keeps a changeset's Pi storage on the repository's `melian
 
 ## The layout
 
-The branch's root holds `index.json` and `changesets/<id>/`. A clone keeps `<directory>/<id>/` for each changeset it works on, beside `<id>.synced`, which names the branch's tree the copy last matched, `<id>.lock`, and any `<id>.set-aside-<time>/` a moved branch displaced. A checkout keeps the copy only when it still holds the synced tree whole: its main log starts with the tree's, and `StateBranchOptions.validate`, which the CLI implements with Pi's own storage, opens it. Otherwise it sets the copy aside and restores the branch's. Fetch and push run with no credential prompt and with git's low-speed limit, so an unanswered prompt or a stalled transfer reads as an unreachable branch.
+The branch's root holds `index.json` and `changesets/<id>/`. A clone keeps `<directory>/<id>/` for each changeset it works on, beside `<id>.synced`, which names the branch's tree the copy last matched, `<id>.lock`, and any `<id>.set-aside-<time>/` a moved branch displaced. A checkout keeps the copy only when it still holds the synced tree whole: its main log starts with the tree's, and `StateBranchOptions.validate`, which the CLI implements with Pi's own storage, opens it. Otherwise it sets the copy aside and restores the branch's. A push reads every file of the copy once, has `validate` open exactly those bytes from a directory of their own, and refuses with `invalidCopy` a copy that does not open, so nothing Pi cannot read reaches the branch. Fetch and push run with no credential prompt and with git's low-speed limit, so an unanswered prompt or a stalled transfer reads as an unreachable branch.
 
 ## Tests
 
