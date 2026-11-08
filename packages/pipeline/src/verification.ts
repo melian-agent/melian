@@ -308,6 +308,10 @@ export async function startVerification(
 				return previous.task as TaskId<VerificationResult>;
 		}
 		await clearVerifications(tx, input.root, Revision.key(input.revision), (claim) => !kept.has(claim));
+		// This task now decides every claim it clears, so no earlier wave stands for one, whatever route ran it.
+		for (const wave of (await tx.doc(VerificationWavesDocument, input.root)).reviews[Revision.key(input.revision)]
+			?.waves ?? [])
+			wave.candidates = wave.candidates.filter((candidate) => candidate.claims.every((claim) => kept.has(claim)));
 		const created = await tx.createTask(VerificationTask, input, { ownership: { kind: "conversation" } });
 		const { adjudication: __, ...entry } = known ?? { lenses: [...selection] };
 		index.reviews[Revision.key(input.revision)] = {
@@ -345,7 +349,9 @@ export async function startWave(
 	const revision = Revision.key(input.revision);
 	await unlockModels?.(input.candidates.flatMap((candidate) => candidate.route.map((model) => model.provider)));
 	return root.commit(async (tx) => {
-		if ((await tx.doc(ReviewIndex, root.id)).reviews[revision]?.task !== lensTask) return undefined;
+		const indexed = (await tx.doc(ReviewIndex, root.id)).reviews[revision];
+		// Once the final verification owns the revision, a wave would clear what it decided.
+		if (indexed?.task !== lensTask || indexed.verification !== undefined) return undefined;
 		const entry = await VerificationWaves.open(tx, root.id, revision, lensTask);
 		// Another review watching the same lens task may have started a wave since this one read the document, so the
 		// one-wave rule and freshness are decided here, in the commit that adds the wave.

@@ -285,6 +285,47 @@ describe("verification as each lens ends", () => {
 			]?.waves ?? []
 		).map((wave) => wave.task);
 
+	it("verifies again under a route it ran before, once another route's verification has replaced that wave's", async () => {
+		const asked: string[][] = [];
+		fastThenSlow(asked);
+		await review();
+		expect(asked).toHaveLength(1);
+		const routed = (id: string) => {
+			const options = reviewOptions();
+			const model = fake.ref(id);
+			return {
+				...options,
+				config: {
+					...options.config,
+					models: { ...options.config.models, verifier: { model: `${model.provider}/${model.modelId}` } },
+				},
+			};
+		};
+		scriptConversations(fake, [
+			verifier(
+				asked,
+				() => undefined,
+				() => "plausible",
+			),
+		]);
+		await reviewChangeset(routed("backup"));
+		expect(asked).toHaveLength(2);
+		scriptConversations(fake, [
+			verifier(
+				asked,
+				() => undefined,
+				() => "confirmed",
+			),
+		]);
+		const result = await reviewChangeset(routed("judge"));
+		expect(asked).toHaveLength(3);
+		const judge = fake.ref("judge");
+		expect(result.findings[0]!.properties.verification).toMatchObject({
+			verdict: "confirmed",
+			model: `${judge.provider}/${judge.modelId}`,
+		});
+	});
+
 	it("reuses a wave's outcome on rerun once the index has lost the final verification", async () => {
 		const asked: string[][] = [];
 		fastThenSlow(asked);
@@ -674,6 +715,13 @@ describe("verification as each lens ends", () => {
 		const final = (await harness.getTask(entry.verification!.task as TaskId, context))!
 			.input as unknown as VerificationInput;
 		const candidate = final.candidates[0]!;
+		// No wave starts once a final verification owns the revision.
+		expect(
+			await startWave(harness, { ...final, version: "late", candidates: [candidate] }, entry.task!, context),
+		).toBeUndefined();
+		await root.commit(async (tx) => {
+			delete (await tx.doc(ReviewIndex, root.id)).reviews[Revision.key(changeset.revision)]!.verification;
+		}, context);
 		// A finished wave before the unfinished one, so only the latest wave decides.
 		const earlier = await startWave(
 			harness,
