@@ -85,26 +85,17 @@ describe("restatement links", () => {
 		expect(after!.items[other.id]!.lifecycle).not.toHaveProperty("dismissedSeverity");
 	});
 
-	it("keeps a severity a repeated dismissal now records, without adding history", async () => {
+	it("changes nothing when the same dismisser repeats the same dismissal, whatever severity it now shows", async () => {
 		const owner = await harness.root(context);
-		const version = await findingsVersion(harness, id, at, context);
 		await owner.commit(async (tx) => {
 			await dismissFinding(tx, id, other.id, dismissal, at);
 		}, context);
-		const replaced = await owner.commit((tx) => dismissFinding(tx, id, other.id, dismissal, at, "P3"), context);
-		expect(replaced).toBeUndefined();
-		const state = await harness.snapshot(FindingsDocument, id, context);
-		expect(state!.items[other.id]!.lifecycle).toMatchObject({ dismissedSeverity: "P3", history: [] });
-		expect(await findingsVersion(harness, id, at, context)).toBe(version + 2);
-		const again = await owner.commit((tx) => dismissFinding(tx, id, other.id, dismissal, at, "P3"), context);
-		expect(again).toBeUndefined();
-		expect(await findingsVersion(harness, id, at, context)).toBe(version + 2);
-		// A repeat that names no severity keeps the one recorded.
-		await owner.commit((tx) => dismissFinding(tx, id, other.id, dismissal, at), context);
-		expect(
-			(await harness.snapshot(FindingsDocument, id, context))!.items[other.id]!.lifecycle.dismissedSeverity,
-		).toBe("P3");
-		expect(await findingsVersion(harness, id, at, context)).toBe(version + 2);
+		const before = (await harness.snapshot(FindingsDocument, id, context))!;
+		for (const severity of ["P3", undefined] as const) {
+			const again = await owner.commit((tx) => dismissFinding(tx, id, other.id, dismissal, at, severity), context);
+			expect(again).toBeUndefined();
+			expect(await harness.snapshot(FindingsDocument, id, context)).toEqual(before);
+		}
 	});
 
 	it("replaces a dismissal's severity with the new one, or none, when it is dismissed again", async () => {
@@ -206,14 +197,14 @@ describe("restatement links", () => {
 		expect(await findingsVersion(harness, id, elsewhere, context)).toBe(lapsing + 1);
 	});
 
-	it("lapses when a repeat of the root's dismissal records another severity", async () => {
+	it("changes nothing, and keeps the link, when the root's dismissal is repeated at another severity", async () => {
 		await link({ [restated.id]: { from: root.id, kind: "inherited", dismissedAt: dismissal.at } });
 		const owner = await harness.root(context);
+		const before = (await harness.snapshot(FindingsDocument, id, context))!;
 		const later = { ...dismissal, at: "2026-11-09T00:00:00Z" };
 		expect(await owner.commit((tx) => dismissFinding(tx, id, root.id, later, at, "P3"), context)).toBeUndefined();
-		expect((await read())[restated.id]!.properties.status).toBe("new");
-		const { lifecycle } = (await harness.snapshot(FindingsDocument, id, context))!.items[root.id]!;
-		expect(lifecycle).toMatchObject({ dismissedSeverity: "P3", dismissedAt: later.at, history: [] });
+		expect(await harness.snapshot(FindingsDocument, id, context)).toEqual(before);
+		expect((await read())[restated.id]!.properties.status).toBe("dismissed");
 	});
 
 	it("bumps only the revisions that sighted a changed root or link to it", async () => {
