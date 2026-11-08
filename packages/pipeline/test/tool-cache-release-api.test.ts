@@ -36,12 +36,14 @@ function listing(assets: unknown[]): string {
 	return JSON.stringify({ tag_name: "v0.0.1", assets });
 }
 
-// Each route answers only the request it is asked: the right credential, media type and redirect mode.
+// Each route answers only the request it is asked: the right credential, media type and redirect mode. No URL is
+// asked three times, so a retry that never ends fails instead of hanging.
 function host(routes: Record<string, Route>): { calls: Call[]; fetch: ToolFetch } {
 	const calls: Call[] = [];
 	return {
 		calls,
 		fetch: async (url, options) => {
+			if (calls.filter((call) => call.url === url).length === 2) throw new Error(`third request for ${url}`);
 			calls.push({ url, options });
 			const route = routes[url];
 			if (route === undefined) throw new Error(`unexpected request ${url}`);
