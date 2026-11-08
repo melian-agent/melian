@@ -13,7 +13,11 @@ const changesetsTree = "changesets";
 // Pi's JSONL storage writes exactly these: its main log and one sidecar per document and task.
 const storageFile = /^(?:main|(?:doc|task)-(?:0|[1-9]\d*))\.jsonl$/;
 const changesetName = /^[a-z0-9][a-z0-9-]{0,63}$/;
-const attemptsLimit = 3;
+// A push that lost a race waits a random time below a bound that doubles from `backoffMs` up to `backoffCapMs`, so
+// writers on other changesets that collided spread out instead of colliding again.
+const attemptsLimit = 10;
+const backoffMs = 50;
+const backoffCapMs = 1000;
 const defaultLeaseMs = 2 * 60 * 60 * 1000;
 const sealVersion = 1;
 const sqliteBusy = 5;
@@ -142,13 +146,24 @@ export class CopyLock {
 
 	static async take(directory: string, changeset: string): Promise<CopyLock> {
 		await mkdir(directory, { recursive: true });
-		const database = new DatabaseSync(join(directory, `${changeset}.lock`), { timeout: 0 });
+		const path = join(directory, `${changeset}.lock`);
+		const damaged = (error: unknown) =>
+			new StateBranchError(
+				"invalidCopy",
+				`this clone's copy lock ${path} cannot be taken: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		let database: DatabaseSync;
+		try {
+			database = new DatabaseSync(path, { timeout: 0 });
+		} catch (error) {
+			throw damaged(error);
+		}
 		try {
 			database.exec("BEGIN EXCLUSIVE");
 		} catch (error) {
 			database.close();
 			if ((error as { errcode?: number }).errcode === sqliteBusy) throw new CopyInUse(changeset);
-			throw error;
+			throw damaged(error);
 		}
 		return new CopyLock(database);
 	}
@@ -373,6 +388,17 @@ export class StateBranch {
 			// A copy this build cannot read is refused before the lease goes over it.
 			const tree = onBranch(changeset);
 			if (tree !== undefined) await this.#open(changeset, tree);
+			// A copy stored on the branch, which the branch no longer holds, means the branch lost it; starting afresh would
+			// read the changeset in part.
+			const synced = await readFile(join(this.#options.directory, `${changeset}.synced`), "utf8").then(
+				(text) => text.trim(),
+				() => "none",
+			);
+			if (tree === undefined && synced !== "none")
+				throw new StateBranchError(
+					"invalidBranch",
+					`this clone's copy of ${changeset} was stored on melian/state as ${synced}, which the branch no longer holds; Melian keeps the copy rather than start ${changeset} afresh`,
+				);
 			taken = Lease.take(held, this.#holder, this.#now(), this.#options.leaseMs ?? defaultLeaseMs);
 			return { index: index.leased(changeset, taken), lease: taken };
 		});
@@ -557,7 +583,8 @@ export class StateBranch {
 				next.tree,
 				message,
 			);
-			if (await this.#push(commit, tip)) {
+			const lost = await this.#push(commit, tip);
+			if (lost === undefined) {
 				const after = new Map(changesets);
 				if (next.tree !== undefined)
 					after.set(next.tree.changeset, {
@@ -569,7 +596,9 @@ export class StateBranch {
 				return { tip: commit, stored: (id) => after.get(id)?.sha };
 			}
 			if (attempt === attemptsLimit)
-				throw new StateBranchError("pushFailed", `the state branch moved under ${attemptsLimit} pushes in a row`);
+				throw new StateBranchError("pushFailed", `${lost} under ${attemptsLimit} pushes in a row`);
+			const bound = Math.min(backoffCapMs, backoffMs * 2 ** attempt);
+			await new Promise((resolve) => setTimeout(resolve, Math.random() * bound));
 		}
 	}
 
@@ -667,7 +696,8 @@ export class StateBranch {
 	}
 
 	// True when the remote took the commit; false when it refused because the branch is no longer at `tip`.
-	async #push(commit: string, tip: string | undefined): Promise<boolean> {
+	// Answers undefined when the push landed, or why it lost a race another run's push won.
+	async #push(commit: string, tip: string | undefined): Promise<string | undefined> {
 		const args = [
 			"push",
 			"--porcelain",
@@ -676,13 +706,13 @@ export class StateBranch {
 			`--force-with-lease=${branch}:${tip ?? ""}`,
 		];
 		const result = await git(this.#options.repoRoot, args, { env: untranslated });
-		if (result.code === 0) return true;
+		if (result.code === 0) return undefined;
 		// The lease names the tip this run fetched, so "stale info" means another run pushed since; the branch's ref the
 		// remote could not lock is another run's push to it landing at the same moment. Git versions word that rejection's
 		// porcelain line differently, so the remote's own error decides it; the push names no other ref.
 		const line = result.stdout.split("\n").find((each) => each.startsWith(`!\t${commit}:${branch}\t`));
-		if (line?.includes("[rejected] (stale info)") || result.stderr.includes(`cannot lock ref '${branch}'`))
-			return false;
+		if (line?.includes("[rejected] (stale info)")) return "the state branch moved";
+		if (result.stderr.includes(`cannot lock ref '${branch}'`)) return "the remote could not lock melian/state";
 		throw new StateBranchError("pushFailed", `git push of melian/state failed: ${result.stderr.trim()}`);
 	}
 }

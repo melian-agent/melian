@@ -3,7 +3,7 @@ import { randomBytes } from "node:crypto";
 import { chmodSync, mkdirSync, readdirSync, readFileSync, rmSync, truncateSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { defineDoc } from "@melian-agent/pipeline";
+import { defineDoc, openJsonlStorage } from "@melian-agent/pipeline";
 import { createSession } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { gitIn, isolatedGitEnv } from "../../core/test/fixtures/repo.ts";
@@ -19,6 +19,9 @@ import {
 	replaceChangeset,
 	storageOf,
 } from "./fixtures/state.ts";
+
+// Every test here runs git against real repositories, which takes seconds on a loaded host.
+vi.setConfig({ testTimeout: 60_000 });
 
 let remote: Remote;
 
@@ -1181,5 +1184,71 @@ describe("Codex's review of 853b4a2d", () => {
 			message: `this clone's copy of ${changeset} no longer holds the branch's tree whole, as Pi's storage reads it, so Melian will not push it`,
 		});
 		expect(remote.stored()).toBe(stored);
+	});
+});
+
+describe("the review of record at 853b4a2d", () => {
+	it.each([
+		[
+			"holding what is not a database",
+			(lock: string) =>
+				writeFileSync(lock, "not a database, but long enough to be read as one's header\n".repeat(4)),
+		],
+		["that is a directory", (lock: string) => mkdirSync(lock)],
+	])("names a copy lock %s, with a code", async (_name, damage) => {
+		const clone = remote.clone();
+		mkdirSync(clone.directory, { recursive: true });
+		const lock = join(clone.directory, `${changeset}.lock`);
+		damage(lock);
+		await expect(clone.branch().checkout(changeset)).rejects.toMatchObject({
+			code: "invalidCopy",
+			message: expect.stringMatching(
+				new RegExp(`^this clone's copy lock ${lock.replaceAll(/[.*+?^$()|[\]\\{}]/g, "\\$&")} cannot be taken: `),
+			),
+		});
+	});
+
+	it("refuses a copy synced with a tree when the branch was deleted since, and keeps the copy", async () => {
+		const clone = remote.clone();
+		const first = await clone.branch().checkout(changeset);
+		await note(await storageOf(first), "stored");
+		await first.push();
+		first.close();
+		const synced = readFileSync(`${first.directory}.synced`, "utf8").trim();
+		gitIn(remote.bare, "update-ref", "-d", "refs/heads/melian/state");
+		await expect(clone.branch().checkout(changeset)).rejects.toMatchObject({
+			code: "invalidBranch",
+			message: `this clone's copy of ${changeset} was stored on melian/state as ${synced}, which the branch no longer holds; Melian keeps the copy rather than start ${changeset} afresh`,
+		});
+		expect(remote.tip()).toBeUndefined();
+		expect(await notes(await openJsonlStorage(first.directory, context))).toEqual(["stored"]);
+	});
+
+	it("refuses a copy synced with a tree on a remote that never had the branch", async () => {
+		const clone = remote.clone();
+		const directory = join(clone.directory, changeset);
+		mkdirSync(directory, { recursive: true });
+		writeFileSync(`${directory}.synced`, "4b825dc642cb6eb9a060e54bf8d69288fbee4904\n");
+		await expect(clone.branch().checkout(changeset)).rejects.toMatchObject({ code: "invalidBranch" });
+		expect(remote.tip()).toBeUndefined();
+		expect(readdirSync(clone.directory).sort()).toEqual([`${changeset}`, `${changeset}.lock`, `${changeset}.synced`]);
+	});
+
+	it.each([1, 2, 3])("lets six writers on six changesets of six clones all store, round %i", async () => {
+		const ids = Array.from({ length: 6 }, (_, i) => `pull-${String(i).padStart(16, "0")}`);
+		const clones = ids.map(() => remote.clone());
+		const results = await Promise.all(
+			ids.map(async (id, i) => {
+				const checkout = await clones[i]!.branch().checkout(id);
+				await note(await storageOf(checkout), id);
+				const pushed = await checkout.push();
+				checkout.close();
+				return pushed.kind;
+			}),
+		);
+		expect(results).toEqual(ids.map(() => "pushed"));
+		expect(gitIn(remote.bare, "ls-tree", "--name-only", "refs/heads/melian/state:changesets").split("\n")).toEqual(
+			ids,
+		);
 	});
 });

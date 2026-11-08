@@ -4,6 +4,9 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { isolatedGitEnv } from "../../core/test/fixtures/repo.ts";
 import { changeset, note, Remote, storageOf } from "./fixtures/state.ts";
 
+// Every test here runs git against real repositories, which takes seconds on a loaded host.
+vi.setConfig({ testTimeout: 60_000 });
+
 vi.mock("node:fs/promises", { spy: true });
 
 let remote: Remote;

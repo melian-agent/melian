@@ -3,6 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { isolatedGitEnv } from "../../core/test/fixtures/repo.ts";
 import { changeset, context, Remote, storageOf } from "./fixtures/state.ts";
 
+// Every test here runs git against real repositories, which takes seconds on a loaded host.
+vi.setConfig({ testTimeout: 60_000 });
+
 beforeEach(() => {
 	for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
 });
