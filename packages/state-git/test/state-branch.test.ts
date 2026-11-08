@@ -1156,12 +1156,30 @@ describe("Codex's review of a4de0552", () => {
 		const tip = remote.tip();
 		await expect(checkout.push()).rejects.toMatchObject({
 			code: "invalidCopy",
-			message: expect.stringMatching(
-				new RegExp(
-					`^this clone's copy of ${changeset} does not open in Pi's storage, so Melian will not push it: `,
-				),
-			),
+			message: `this clone's copy of ${changeset} no longer holds the branch's tree whole, as Pi's storage reads it, so Melian will not push it`,
 		});
 		expect(remote.tip()).toBe(tip);
+	});
+});
+
+describe("Codex's review of 853b4a2d", () => {
+	it.each([
+		["its main log", (name: string) => name === "main.jsonl"],
+		["a document sidecar", (name: string) => name.startsWith("doc-")],
+	])("refuses to push a copy that lost %s after checkout, and leaves the branch's", async (_name, lost) => {
+		const clone = remote.clone();
+		const first = await clone.branch().checkout(changeset);
+		await note(await storageOf(first), "stored");
+		await first.push();
+		first.close();
+		const stored = remote.stored();
+		const second = await clone.branch().checkout(changeset);
+		await note(await storageOf(second), "since");
+		rmSync(join(second.directory, readdirSync(second.directory).find(lost)!));
+		await expect(second.push()).rejects.toMatchObject({
+			code: "invalidCopy",
+			message: `this clone's copy of ${changeset} no longer holds the branch's tree whole, as Pi's storage reads it, so Melian will not push it`,
+		});
+		expect(remote.stored()).toBe(stored);
 	});
 });

@@ -416,7 +416,7 @@ export class StateBranch {
 	}
 
 	/** @internal Seals the changeset's directory into the clone's object database and names its tree, or "none" for no files. */
-	async snapshot(changeset: string, directory: string): Promise<string> {
+	async snapshot(changeset: string, directory: string, synced: string): Promise<string> {
 		const found = await readdir(directory, { withFileTypes: true });
 		const stray = found.find((entry) => !entry.isFile() || !storageFile.test(entry.name));
 		if (stray !== undefined)
@@ -427,16 +427,16 @@ export class StateBranch {
 		const names = found.map((entry) => entry.name).sort();
 		if (names.length === 0) return "none";
 		const plain = await Promise.all(names.map((name) => readFile(join(directory, name))));
-		// Pi's storage opens exactly what is pushed, from a copy of its own, so a torn or damaged read never lands.
+		// Exactly what is pushed, judged from a directory of its own, so neither later damage to the copy nor a torn read
+		// replaces the branch's tree.
 		const captured = await mkdtemp(join(tmpdir(), "melian-state-"));
 		try {
 			await Promise.all(names.map((name, i) => writeFile(join(captured, name), plain[i]!)));
-			await this.#options.validate(captured).catch((error: unknown) => {
+			if (!(await this.intact(changeset, synced, captured)))
 				throw new StateBranchError(
 					"invalidCopy",
-					`this clone's copy of ${changeset} does not open in Pi's storage, so Melian will not push it: ${error instanceof Error ? error.message : String(error)}`,
+					`this clone's copy of ${changeset} no longer holds the branch's tree whole, as Pi's storage reads it, so Melian will not push it`,
 				);
-			});
 		} finally {
 			await rm(captured, { recursive: true, force: true });
 		}
@@ -834,7 +834,7 @@ export class StateCheckout {
 			// Only a checkout that reached the branch holds a lease, and an unreached one returned above.
 			this.#lease!,
 			async () => {
-				tree = await this.#branch.snapshot(this.changeset, this.directory);
+				tree = await this.#branch.snapshot(this.changeset, this.directory, this.#synced);
 				return tree;
 			},
 			options.keepLease === true,
