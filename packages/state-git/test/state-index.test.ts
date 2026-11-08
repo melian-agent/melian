@@ -85,6 +85,11 @@ describe("StateIndex", () => {
 			"its key is not a commitment",
 		],
 		["a numeric key", JSON.stringify({ version: 1, key: 7, changesets: {} }), "its key is not a commitment"],
+		[
+			"a key that is a list holding a commitment",
+			JSON.stringify({ version: 1, key: ["f".repeat(64)], changesets: {} }),
+			"its key is not a commitment",
+		],
 		["changesets of null", indexOf(null), "its changesets are not an object"],
 		["a record of null", indexOf({ a: null }), "the record of a is not an object"],
 		[

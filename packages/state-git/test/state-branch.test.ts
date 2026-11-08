@@ -299,7 +299,8 @@ describe("what the branch holds", () => {
 		expect(error).toBeInstanceOf(StateBranchError);
 		expect(error).toMatchObject({
 			code: "fetchFailed",
-			message: expect.stringMatching(/^git fetch of melian\/state failed: /),
+			// git's own error, without the newline it ends with.
+			message: expect.stringMatching(/^git fetch of melian\/state failed: \S[\s\S]*\S$/),
 		});
 	});
 });
@@ -1092,5 +1093,28 @@ describe("the mutation inventory at f6872a26", () => {
 		await note(await storageOf(first), "stored");
 		await first.push();
 		expect(gitIn(remote.bare, "rev-parse", `${remote.tip()}^`)).toBe(taken);
+	});
+
+	it("keeps its copy after a push another run's lease refused, when that run stored nothing", async () => {
+		const start = Date.parse("2026-11-08T00:00:00Z");
+		const hour = 60 * 60 * 1000;
+		const mine = remote.clone({ now: () => start });
+		const first = await mine.branch().checkout(changeset);
+		await note(await storageOf(first), "stored");
+		await first.push();
+		first.close();
+		const second = await mine.branch().checkout(changeset);
+		await note(await storageOf(second), "mine");
+		// Another clone takes the lease after this one's expires, and stores nothing.
+		await remote
+			.clone({ now: () => start + 3 * hour })
+			.branch()
+			.checkout(changeset);
+		expect(await second.push()).toMatchObject({ kind: "refused" });
+		second.close();
+		// The other clone's lease has expired, and the branch still holds the tree this copy grew from.
+		const again = await mine.branch({ now: () => start + 6 * hour }).checkout(changeset);
+		expect(again.setAside).toBeUndefined();
+		expect(await notes(await storageOf(again))).toEqual(["stored", "mine"]);
 	});
 });
