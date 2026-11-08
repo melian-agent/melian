@@ -22,6 +22,7 @@ import {
 	openHarness,
 	planInputs,
 	type Review,
+	ReviewHarness,
 	readFindings,
 	reviewChangeset,
 	type TaskId,
@@ -2623,6 +2624,48 @@ describe("verification ownership and budgets", () => {
 		);
 		expect((await harness.waitForTask(id, context)).state.outcome).toMatchObject({ status: "completed", result: {} });
 		expect(fake.provider.state.callCount).toBe(calls);
+	});
+	it("unlocks no provider for a candidate a live verification task reuses", async () => {
+		await harness.close(context);
+		const opened = await ReviewHarness.open(createMemoryStorage(), fake.review, { retry: false });
+		harness = opened.harness;
+		await harness.root(context, { agent: { model: fake.ref("finder") } });
+		const stored = await input();
+		const elsewhere = createFakeModels({ provider: "verifier-reused", models: [{ id: "reused" }] }, fake.review);
+		const entered = Promise.withResolvers<void>();
+		const release = Promise.withResolvers<void>();
+		scriptConversations(fake, [
+			{
+				match: verifierMarker,
+				replies: [
+					async (messages) => {
+						entered.resolve();
+						await release.promise;
+						return scriptVerifier(messages);
+					},
+					fauxAssistantMessage("Done."),
+				],
+			},
+		]);
+		const asked = stored.candidates[0]!;
+		const next: VerificationInput = {
+			...stored,
+			version: "reuse",
+			candidates: [{ ...asked, key: "reused", route: [elsewhere.ref("reused")] }, asked],
+			reused: { reused: { status: "done", model: "verifier-reused/reused" } },
+		};
+		const root = await harness.root(context);
+		const revision = Revision.key(changeset.revision);
+		const selection = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.lenses;
+		const id = (await startVerification(harness, next, selection, false, context))!;
+		const finished = harness.waitForTask(id, context);
+		try {
+			await entered.promise;
+			expect(await opened.resumedProviders(context)).toEqual([asked.route[0]!.provider]);
+		} finally {
+			release.resolve();
+			await finished;
+		}
 	});
 	it("moves a verifier the index no longer names to no fallback model", async () => {
 		const stored = await input();

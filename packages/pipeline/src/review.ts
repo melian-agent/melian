@@ -714,9 +714,12 @@ export class ReviewHarness {
 			if (record.kind === VerificationTask.definition.name) {
 				const input = record.input as unknown as VerificationInput;
 				const attempts = (checkpoint as { attempts?: Record<string, number> } | undefined)?.attempts;
-				return input.candidates.flatMap((candidate) =>
-					candidate.route.slice(attempts?.[candidate.key] ?? 0).map((model) => model.provider),
-				);
+				// A reused candidate has no conversation, so the task never calls its route.
+				return input.candidates
+					.filter((candidate) => input.reused?.[candidate.key] === undefined)
+					.flatMap((candidate) =>
+						candidate.route.slice(attempts?.[candidate.key] ?? 0).map((model) => model.provider),
+					);
 			}
 			if (record.kind === SummaryTask.definition.name) {
 				return [(record.input as unknown as { model: ModelReference }).model.provider];
