@@ -403,7 +403,7 @@ describe("finding the roots a defect may restate", () => {
 
 	beforeEach(() => {
 		repo = createRepository();
-		base = step(ten);
+		base = step(ten, { "b.ts": text(ten) });
 		h1 = step(withLine5());
 	});
 	afterEach(() => removeRepository(repo));
@@ -477,6 +477,12 @@ describe("finding the roots a defect may restate", () => {
 		expect(shown).toEqual([
 			{ id: found.id, failureScenario: found.properties.failureScenario, evidence: found.properties.evidence },
 		]);
+	});
+
+	it("offers a pre-existing root on its region alone", async () => {
+		const found = await dismissRoot(lens({ snippet: "line 8", startLine: 8 }));
+		const h2 = step(withLine5(), { "b.ts": "other\n" });
+		expect(await predecessorsAt(h2, lens({ snippet: "line 8 restated", startLine: 8 }))).toEqual([found.id]);
 	});
 
 	it("maps the region across lines added above it", async () => {
@@ -582,6 +588,10 @@ describe("finding the roots a defect may restate", () => {
 		const h2 = step([...ten.slice(0, 4), "changed 5 again", ...ten.slice(5)]);
 		expect(await predecessorsAt(h2, lens({ snippet: "line 8 again", startLine: 8 }))).toEqual([]);
 		expect(await predecessorsAt(h2, lens({ snippet: "line 9 again", startLine: 9 }))).toEqual([]);
+		// The same change made to another file is no hunk of the root's own.
+		const moved = step(ten, { "b.ts": text(withLine5()) });
+		expect(await predecessorsAt(moved, lens({ snippet: "line 8 moved", startLine: 8 }))).toEqual([]);
+		expect(await predecessorsAt(moved, lens({ snippet: "line 9 moved", startLine: 9 }))).toEqual([]);
 		// Unchanged, both stand.
 		const h3 = step(withLine5(), { "b.ts": "other\n" });
 		expect(await predecessorsAt(h3, lens({ snippet: "line 8 too", startLine: 8 }))).toEqual([introducedAt8.id]);
@@ -631,6 +641,9 @@ describe("finding the roots a defect may restate", () => {
 		const h2 = step([...withLine5().slice(0, 7), "changed 8", ...ten.slice(8)], { "b.ts": "other\n" });
 		// A restatement proved by one of the root's two accepted hunks.
 		expect(await predecessorsAt(h2, affected("line 10 again", 10, [five!]))).toEqual([both.id]);
+		// Once one of the two accepted hunks changes, the dismissal no longer stands.
+		const h4 = step([...withLine5().slice(0, 7), "changed 8 again", ...ten.slice(8)], { "b.ts": "other\n" });
+		expect(await predecessorsAt(h4, affected("line 10 later", 10, [five!]))).toEqual([]);
 		// A member proved by a hunk the root never accepted keeps the whole defect from it.
 		const h3 = step(["line 1", "changed 2", ...withLine5().slice(2, 7), "changed 8", ...ten.slice(8)], {
 			"b.ts": "other\n",
@@ -771,8 +784,7 @@ it("lists every maintainer's dismissal with a recorded severity, in ID order, an
 			hash: state.items[each.id]!.lifecycle.dismissedTrigger!.hash,
 			accepted: [],
 			proof: [],
-			failureScenario: "A cold run reads a cached kill.",
-			evidence: each.properties.evidence,
+			claim: { id: each.id, failureScenario: "A cold run reads a cached kill.", evidence: each.properties.evidence },
 		}));
 	expect(Object.keys(state.items).slice(0, 2)).not.toEqual(expected.map((each) => each.id));
 	expect(dismissedRoots(state)).toStrictEqual(expected);
@@ -811,7 +823,6 @@ it("names a root's failure scenario and evidence only when it has them, and keep
 	const state = (await harness.snapshot(FindingsDocument, root, context))!;
 	expect(state.items[affected(proof).id]!.lifecycle.status).toBe("dismissed");
 	const listed = Object.fromEntries(dismissedRoots(state).map((each) => [each.id, each]));
-	expect(Object.keys(listed[bare.id]!)).not.toContain("failureScenario");
-	expect(Object.keys(listed[bare.id]!)).not.toContain("evidence");
+	expect(listed[bare.id]!.claim).toStrictEqual({ id: bare.id });
 	expect(listed[affected(proof).id]).toMatchObject({ accepted: proof, proof: [...proof, ...later] });
 });

@@ -75,11 +75,7 @@ export class Predecessors {
 			if (map === undefined || mapped === undefined || !map.untouched(old, current)) continue;
 			const at = (span: LineSpan) => ({ path, ruleId: first.ruleId, line: span.startLine, endLine: span.endLine });
 			if (!overlapsSite(at(mapped), at(current))) continue;
-			found.push({
-				id: root.id,
-				...(root.failureScenario === undefined ? {} : { failureScenario: root.failureScenario }),
-				...(root.evidence === undefined ? {} : { evidence: structuredClone(root.evidence) }),
-			});
+			found.push(structuredClone(root.claim));
 		}
 		return found;
 	}
@@ -90,11 +86,8 @@ export class Predecessors {
 	#stands(root: DismissedRoot): boolean {
 		const hunks = this.#review.files.flatMap((file) => file.hunks);
 		if (root.cause === "affected")
-			return (
-				root.proof.length > 0 &&
-				root.proof.every((each) =>
-					hunks.some((hunk) => provingHunk(hunk).file === each.file && provingHunk(hunk).hash === each.hash),
-				)
+			return root.proof.every((each) =>
+				hunks.some((hunk) => provingHunk(hunk).file === each.file && provingHunk(hunk).hash === each.hash),
 			);
 		if (root.cause === "introduced")
 			return hunks.some((hunk) => hunk.file === root.path && snippetHash(hunk.added) === root.hash);

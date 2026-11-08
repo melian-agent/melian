@@ -869,8 +869,8 @@ export type DismissedRoot = {
 	readonly hash: string;
 	readonly accepted: readonly ProvingHunk[];
 	readonly proof: readonly ProvingHunk[];
-	readonly failureScenario?: string;
-	readonly evidence?: FindingProperties["evidence"];
+	// What the verifier is shown of it: its claim, never its dismissal.
+	readonly claim: { id: string; failureScenario?: string; evidence?: FindingProperties["evidence"] };
 };
 
 // Every finding a maintainer dismissed with a recorded severity and accepted content, in ID order. An inherited
@@ -903,8 +903,11 @@ export function dismissedRoots(state: FindingsState): DismissedRoot[] {
 					hash: dismissedTrigger!.hash,
 					accepted: unionOf(dismissedTrigger!.proof),
 					proof: unionOf([...dismissedTrigger!.proof, ...(lifecycle.proof ?? [])]),
-					...(failureScenario === undefined ? {} : { failureScenario }),
-					...(evidence === undefined ? {} : { evidence: structuredClone(evidence) }),
+					claim: {
+						id,
+						...(failureScenario === undefined ? {} : { failureScenario }),
+						...(evidence === undefined ? {} : { evidence: structuredClone(evidence) }),
+					},
 				},
 			];
 		});
