@@ -8,7 +8,7 @@
  * - `MELIAN_EVAL_MISSES`: a JSON file of misses, each `{ name, repo, base, head, file, rule }`, from
  *   `melian compare stats`; without it only the goldens run.
  * - `MELIAN_EVAL_GOLDEN`: one probing golden instead of every one whose name starts `trust-boundary-probe-`.
- * - `MELIAN_EVAL_VERIFIER_MODEL`: the verifier's route; the committed one otherwise.
+ * - `MELIAN_EVAL_VERIFIER_MODEL`: the verifier's route, `provider/model`, which every combination's reviews share.
  * - `MELIAN_EVAL_PROBE_OUT`: a file to write the results to as JSON.
  *
  * Exits 2 before touching a provider for a malformed setting, and 1 when any review failed.
@@ -18,7 +18,7 @@
 import { writeFileSync } from "node:fs";
 import { liveModels } from "./credentials.ts";
 import { loadGoldens, runGolden, selectGoldens } from "./goldens.ts";
-import { loadMisses, measureProbing, parseCombinations, reviewMiss } from "./probing.ts";
+import { loadMisses, measureProbing, parseCombinations, reviewMiss, verifierRoute } from "./probing.ts";
 
 if (process.env.MELIAN_EVAL_LIVE !== "1") {
 	console.error("Live evals call real models and spend tokens. Set MELIAN_EVAL_LIVE=1 to run them.");
@@ -37,6 +37,7 @@ function settings() {
 		passes,
 		goldens: selectGoldens(probing, process.env.MELIAN_EVAL_GOLDEN),
 		misses: misses === undefined || misses === "" ? [] : loadMisses(misses),
+		verifier: verifierRoute(process.env.MELIAN_EVAL_VERIFIER_MODEL),
 	};
 }
 try {
@@ -47,7 +48,7 @@ try {
 }
 
 const models = await liveModels(process.cwd());
-const verifierModel = process.env.MELIAN_EVAL_VERIFIER_MODEL;
+const verifierModel = setup.verifier;
 const results = await measureProbing(
 	setup.combinations,
 	setup.goldens,
@@ -60,7 +61,7 @@ const results = await measureProbing(
 				kind: "live",
 				models,
 				probing,
-				...(verifierModel === undefined ? {} : { verifierModel }),
+				verifierModel,
 			});
 			return { ...run, milliseconds: Date.now() - began };
 		},
@@ -69,5 +70,6 @@ const results = await measureProbing(
 	console.log,
 );
 const out = process.env.MELIAN_EVAL_PROBE_OUT;
-if (out !== undefined && out !== "") writeFileSync(out, `${JSON.stringify(results, null, "\t")}\n`);
+if (out !== undefined && out !== "")
+	writeFileSync(out, `${JSON.stringify({ verifier: verifierModel, results }, null, "\t")}\n`);
 process.exit(results.some((result) => result.goldens.failed + result.misses.failed > 0) ? 1 : 0);

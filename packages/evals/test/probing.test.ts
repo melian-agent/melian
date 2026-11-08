@@ -471,5 +471,13 @@ describe("probing-live.ts", () => {
 		});
 		expect(golden.status).toBe(2);
 		expect(golden.stderr).toContain("No golden is named clean-rename");
+		// Every combination's verdicts come from one fixed verifier, so a planner never picks its own judge.
+		const one = { MELIAN_EVAL_LIVE: "1", MELIAN_EVAL_PROBE_ROUTES: "same=a/x", MELIAN_EVAL_PROBE_PASSES: "1" };
+		const judge = run({ ...one, MELIAN_EVAL_GOLDEN: "trust-boundary-probe-claim-lost-release" });
+		expect(judge.status).toBe(2);
+		expect(judge.stderr).toContain("MELIAN_EVAL_VERIFIER_MODEL must name one verifier route");
+		const malformed = run({ ...one, MELIAN_EVAL_VERIFIER_MODEL: "judge" });
+		expect(malformed.status).toBe(2);
+		expect(malformed.stderr).toContain("MELIAN_EVAL_VERIFIER_MODEL must name one verifier route");
 	}, 60_000);
 });

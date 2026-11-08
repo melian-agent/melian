@@ -57,6 +57,19 @@ export function parseCombinations(text: string | undefined): ProbingCombination[
 	return combinations;
 }
 
+/**
+ * The one verifier route `MELIAN_EVAL_VERIFIER_MODEL` names, `provider/model`, for every combination's reviews. Throws
+ * for none or a malformed one: without it each planner's heavy route would also choose the judge of its own findings.
+ */
+export function verifierRoute(text: string | undefined): string {
+	const route = (text ?? "").trim();
+	if (!reference.test(route))
+		throw new Error(
+			"MELIAN_EVAL_VERIFIER_MODEL must name one verifier route, provider/model, so every combination has the same judge",
+		);
+	return route;
+}
+
 const text = Type.String({ minLength: 1 });
 
 /**

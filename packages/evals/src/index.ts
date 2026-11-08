@@ -33,6 +33,7 @@ export {
 	type ProbingRunners,
 	parseCombinations,
 	reviewMiss,
+	verifierRoute,
 } from "./probing.ts";
 export {
 	loadResolutionGoldens,
