@@ -1083,4 +1083,14 @@ describe("the mutation inventory at f6872a26", () => {
 			reason: "another run took the changeset's lease, at generation none, after this one's 1",
 		});
 	});
+
+	it("builds each commit on the tip it fetched, so the branch keeps its history", async () => {
+		const clone = remote.clone();
+		const first = await clone.branch().checkout(changeset);
+		const taken = remote.tip()!;
+		expect(gitIn(remote.bare, "rev-list", "--count", taken)).toBe("1");
+		await note(await storageOf(first), "stored");
+		await first.push();
+		expect(gitIn(remote.bare, "rev-parse", `${remote.tip()}^`)).toBe(taken);
+	});
 });
