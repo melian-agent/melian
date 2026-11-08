@@ -534,6 +534,19 @@ describe("Probe.open with a head's allowlist", () => {
 				symlinkSync("l", join(at, "m"));
 			},
 		],
+		[
+			"a dangling link that would climb back inside past a missing directory",
+			(at: string) => symlinkSync("missing/../x", join(at, "l")),
+		],
+		[
+			"a link into a loop below the tree's root",
+			(at: string) => {
+				mkdirSync(join(at, "sub"));
+				symlinkSync("n", join(at, "sub", "m"));
+				symlinkSync("m", join(at, "sub", "n"));
+				symlinkSync("sub/m", join(at, "l"));
+			},
+		],
 	])("refuses a head holding %s", async (_, make) => {
 		const { sandbox } = passthrough();
 		headWithLinks((at) => {
@@ -542,7 +555,32 @@ describe("Probe.open with a head's allowlist", () => {
 		});
 		const error = await refusal({ script: "" }, options(sandbox, atHead([])));
 		expect(error.code).toBe("invalidProbe");
-		expect(error.message).toMatch(/^the head's link (l|m|sub) leads outside its tree or into its node_modules$/);
+		expect(error.message).toMatch(
+			/^the head's link (l|m|sub|sub\/m|sub\/n) leads outside its tree or into its node_modules$/,
+		);
+	});
+
+	it("refuses a head whose link names a component too long to look up", async () => {
+		const { sandbox } = passthrough();
+		headWithLinks((at) => {
+			symlinkSync("x".repeat(300), join(at, "l"));
+			return [];
+		});
+		const error = await refusal({ script: "" }, options(sandbox, atHead([])));
+		expect(error.code).toBe("invalidProbe");
+		expect(error.message).toMatch(/^the head [0-9a-f]{40} could not be written from .*ENAMETOOLONG/);
+	});
+
+	it("opens a head that tracks node_modules as a dangling link inside its tree, and links no install", async () => {
+		const { sandbox } = passthrough();
+		headWithLinks((at) => {
+			symlinkSync("missing", join(at, "node_modules"));
+			return ["node_modules"];
+		});
+		mkdirSync(join(checkout, "node_modules"), { recursive: true });
+		const probe = await Probe.open({ script: "" }, options(sandbox, { head: { checkout, commit: head } }));
+		expect(probe.policy.read).not.toContain(join(checkout, "node_modules"));
+		await probe.close();
 	});
 
 	it("opens a head whose links stay inside its tree", async () => {
