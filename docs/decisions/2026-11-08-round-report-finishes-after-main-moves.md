@@ -23,7 +23,7 @@ That holds only when the round's check passed, and `report` runs under `always()
 
 ## What this gives up
 
-A workflow fix that lands during a round misses that round's report job. The round job's timeout bounds that at 150 minutes, plus the time the report job waits to start. A runner queue sets that wait, and so would any wait timer or required reviewer added to the `melian-round` Environment, since `report` declares it; today the Environment has neither, and the gate reads only its branch policy. A rerun or a fresh dispatch runs the fix.
+A workflow fix that lands during a round misses that round's report job. The round job's timeout bounds that at 150 minutes, plus the time the report job waits to start. A runner queue sets that wait, and so would any wait timer or required reviewer added to the `melian-round` Environment, since `report` declares it. The gate reads only the Environment's branch policy, so it would not refuse either. A rerun or a fresh dispatch runs the fix.
 
 ## The attacking review
 
