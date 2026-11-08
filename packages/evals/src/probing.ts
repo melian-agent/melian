@@ -104,8 +104,8 @@ export interface MeasuredRun {
 }
 
 /**
- * Reviews a miss's range under `routes`, with `trust-boundary` alone at `deep` and the rest of the policy the base's.
- * The base's policy is read but not handed to the review, so the configuration's band holds for every path.
+ * Reviews a miss's range under `routes`, with `trust-boundary` alone and the base's policy and standards, as a review of
+ * the range trusts them. Every level of `trust-boundary` is its `deep` level, so whatever band the policy gives, it probes.
  */
 export async function reviewMiss(
 	miss: Miss,
@@ -122,13 +122,17 @@ export async function reviewMiss(
 		...loaded,
 		tiers: { ...loaded.tiers, full: ["lens.trust-boundary"] },
 		stages: { ...loaded.stages, "pull-request": "full" },
-		lenses: { "trust-boundary": { level: { floor: "deep", ceiling: "deep" } } },
 		models: {
 			...loaded.models,
 			...(verifierModel === undefined ? {} : { verifier: { model: verifierModel } }),
 		},
 	};
-	const { lenses, config } = routedProbing(routes, await Lens.load(miss.repo, source, paths), scoped);
+	const routed = routedProbing(routes, await Lens.load(miss.repo, source, paths), scoped);
+	const lenses = routed.lenses.map((lens) => {
+		if (lens.name !== "trust-boundary") return lens;
+		const deep = lens.level("deep");
+		return Lens.from({ ...lens.toJSON(), levels: { quick: deep, careful: deep, deep } });
+	});
 	const storage = createMemoryStorage();
 	const harness = await openReviewHarness(storage, models, probeSandbox === undefined ? {} : { probeSandbox });
 	const began = Date.now();
@@ -136,8 +140,9 @@ export async function reviewMiss(
 		const { verdict } = await reviewChangeset({
 			harness,
 			changeset,
-			config,
+			config: routed.config,
 			lenses,
+			policy: source,
 			standards: await Standards.load(miss.repo, source, paths),
 			models,
 			writer: { trusted: true, by: "reviewer" },

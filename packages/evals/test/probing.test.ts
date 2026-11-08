@@ -25,6 +25,7 @@ import {
 	scriptConversations,
 	scriptLenses,
 	scriptVerifier,
+	systemPromptOf,
 	textOf,
 	unconfinedSandbox,
 } from "@melian-agent/pipeline/testing";
@@ -423,6 +424,55 @@ describe("reviewMiss", { timeout: 60_000 }, () => {
 			expect(run.milliseconds).toBeGreaterThanOrEqual(0);
 			expect(run.milliseconds).toBeLessThan(60_000);
 			expect(run.tokens).toBeGreaterThan(0);
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
+	it("trusts the base's standards as a review of the range does, and still plans at the level that probes", async () => {
+		const { repo, base } = buildGoldenRepository(golden("trust-boundary-probe-claim-lost-release"));
+		try {
+			const git = (...args: string[]) => {
+				const ran = spawnSync("git", ["-C", repo, "-c", "user.name=t", "-c", "user.email=t@example.com", ...args]);
+				if (ran.status !== 0) throw new Error(String(ran.stderr));
+				return String(ran.stdout).trim();
+			};
+			git("checkout", "-q", "-b", "standards", base);
+			writeFileSync(join(repo, "AGENTS.md"), "Every workflow step fails closed.\n");
+			git("add", "AGENTS.md");
+			git("commit", "-q", "-m", "standards");
+			const standards = git("rev-parse", "HEAD");
+			git("checkout", "-q", "feature");
+			git("merge", "-q", "--no-edit", "standards");
+			const fake = createFakeModels({ models: [{ id: "plan" }, { id: "probe" }] });
+			const prompts: string[] = [];
+			const empty = (messages: Parameters<typeof systemPromptOf>[0]) => {
+				prompts.push(systemPromptOf(messages));
+				return fauxAssistantMessage([fauxToolCall("record_plan", { attacks: [] })], { stopReason: "toolUse" });
+			};
+			scriptConversations(fake, [
+				{
+					match: "Your role at this level: the attack planner",
+					replies: [empty, fauxAssistantMessage("Planned 0.")],
+				},
+			]);
+			await reviewMiss(
+				{
+					name: "m",
+					repo,
+					base: standards,
+					head: "feature",
+					file: ".github/workflows/claim.yml",
+					rule: "fail-open",
+				},
+				fake.review,
+				{ planner: `${fake.ref("plan").provider}/plan`, prober: `${fake.ref("probe").provider}/probe` },
+				undefined,
+				unconfinedSandbox(),
+			);
+			expect(prompts).toHaveLength(1);
+			expect(prompts[0]).toContain("Every workflow step fails closed.");
+			expect(prompts[0]).not.toContain('label="standards"');
 		} finally {
 			rmSync(repo, { recursive: true, force: true });
 		}
