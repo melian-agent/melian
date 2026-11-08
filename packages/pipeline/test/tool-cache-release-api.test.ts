@@ -228,6 +228,29 @@ it("falls back to the public URL when the API body breaks after the download beg
 	expect(github.calls.map((call) => call.url)).toEqual([release, asset, pinned]);
 });
 
+it("counts release metadata across chunks, falling back at 4 MiB and one byte", async () => {
+	const body = Buffer.from(good.padEnd(metadataLimit + 1, " "));
+	const github = host({
+		[release]: (options) =>
+			options.headers?.authorization === `Bearer ${token}`
+				? new Response(
+						new ReadableStream<Uint8Array>({
+							start(controller) {
+								controller.enqueue(new Uint8Array(body.subarray(0, metadataLimit / 2)));
+								controller.enqueue(new Uint8Array(body.subarray(metadataLimit / 2)));
+								controller.close();
+							},
+						}),
+					)
+				: new Response("Bad credentials", { status: 401 }),
+		...served(42),
+		[pinned]: publicRoute(bytes),
+	});
+	const cache = await ToolCache.open(root, { fetch: github.fetch, token });
+	expect(await readFile(await cache.materialise(testTool(bytes), "darwin-arm64"), "utf8")).toBe("trusted");
+	expect(github.calls.map((call) => call.url)).toEqual([release, pinned]);
+});
+
 it("reads release metadata of exactly 4 MiB", async () => {
 	const github = host({
 		[release]: releaseRoute(good.padEnd(metadataLimit, " ")),
