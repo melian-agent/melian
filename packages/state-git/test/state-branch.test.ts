@@ -838,3 +838,21 @@ describe("Codex's review of 7a1764ec", () => {
 		expect(remote.tip()).toBe(tip);
 	});
 });
+
+describe("Codex's review of 7dd15b84", () => {
+	it.each([
+		["deleted", (path: string) => rmSync(path)],
+		["cut short", (path: string) => truncateSync(path, 5)],
+	])("restores the branch's copy over a document sidecar %s since it synced", async (_name, damage) => {
+		const clone = remote.clone();
+		const first = await clone.branch().checkout(changeset);
+		await note(await storageOf(first), "stored");
+		await first.push();
+		first.close();
+		const sidecar = readdirSync(first.directory).find((name) => name.startsWith("doc-"))!;
+		damage(join(first.directory, sidecar));
+		const second = await clone.branch().checkout(changeset);
+		expect(second.setAside).toEqual(expect.stringContaining(".set-aside-"));
+		expect(await notes(await storageOf(second))).toEqual(["stored"]);
+	});
+});
