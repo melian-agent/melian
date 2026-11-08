@@ -796,7 +796,14 @@ describe("walkthrough summaries", () => {
 				"No light model is configured.",
 			);
 		});
-		it("replaces a pending task on another light route rather than attach to it", async () => {
+		it.each([
+			{ change: "model", seeded: { modelId: "scripted" }, wanted: { modelId: "other" } },
+			{
+				change: "thinking level",
+				seeded: { modelId: "scripted", thinking: "low" as const },
+				wanted: { modelId: "scripted", thinking: "high" as const },
+			},
+		])("replaces a pending task on another light $change rather than attach to it", async ({ seeded, wanted }) => {
 			const revision = Revision.key(changeset.revision);
 			const root = await harness.root(context);
 			const stale = await root.commit(async (tx) => {
@@ -806,7 +813,8 @@ describe("walkthrough summaries", () => {
 						root: root.id,
 						revision,
 						prompt: "Summarise the change.",
-						model: models.ref("scripted"),
+						model: models.ref(seeded.modelId),
+						...("thinking" in seeded ? { thinking: seeded.thinking } : {}),
 						paths: ["src/a.ts"],
 					},
 					{ ownership: { kind: "conversation" } },
@@ -825,13 +833,22 @@ describe("walkthrough summaries", () => {
 					replies: [reply("Written on the new route."), reply("Written twice.")],
 				},
 			]);
-			const other = models.ref("other");
+			const light = models.ref(wanted.modelId);
+			const thinking = "thinking" in wanted ? wanted.thinking : undefined;
 			const doc = await summarize({
-				config: { ...config, models: { light: { model: `${other.provider}/${other.modelId}` } } },
+				config: {
+					...config,
+					models: {
+						light: {
+							model: `${light.provider}/${light.modelId}`,
+							...(thinking === undefined ? {} : { thinking }),
+						},
+					},
+				},
 			});
-			expect(asked).toEqual(["other"]);
+			expect(asked).toEqual([wanted.modelId]);
 			expect(doc?.walkthroughs?.[revision]?.summary).toBe("Written on the new route.");
-			expect(doc?.walkthroughRoutes?.[revision]).toBe(`${other.provider}/${other.modelId}@`);
+			expect(doc?.walkthroughRoutes?.[revision]).toBe(`${light.provider}/${light.modelId}@${thinking ?? ""}`);
 			const record = await harness.getTask(stale as TaskId, context);
 			expect(record?.state.status === "terminal" && record.state.outcome.status).toBe("aborted");
 		});
