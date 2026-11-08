@@ -277,10 +277,7 @@ export async function summarizeReview(options: {
 	try {
 		const conversation = await harness.root(context);
 		root = conversation;
-		const provenance =
-			options.origin === undefined
-				? (await harness.snapshot(VerdictDocument, conversation.id, context))?.provenance?.[revision]
-				: undefined;
+		const provenance = (await harness.snapshot(VerdictDocument, conversation.id, context))?.provenance?.[revision];
 		if ((options.origin ?? provenance)?.kind !== "pull-request") return;
 		if (
 			!options.rerun &&
