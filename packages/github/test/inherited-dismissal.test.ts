@@ -119,6 +119,10 @@ describe("an inherited dismissal beside a person's", () => {
 		expect(verdict.reviewStatus()).toEqual({ state: "success", description: "0 findings, 2 dismissed, 1 inherited" });
 		const alone = new Adjudication({ findings: [human], manifest: [], checks: [], config: defaultConfig });
 		expect(alone.adjudicate().reviewStatus()).toEqual({ state: "success", description: "0 findings, 1 dismissed" });
+		// A verdict stored before dismissals kept their record holds a dismissed finding with none.
+		const legacy = Finding.create({ ...input("src/legacy.ts"), status: "dismissed" });
+		const stored = new Adjudication({ findings: [legacy], manifest: [], checks: [], config: defaultConfig });
+		expect(stored.adjudicate().reviewStatus()).toEqual({ state: "success", description: "0 findings, 1 dismissed" });
 	});
 
 	it("says so in the reply in each thread, and names no dismisser in either", () => {
@@ -228,6 +232,7 @@ describe("an inherited dismissal beside a person's", () => {
 				reason: finding.properties.dismissal!.reason,
 			})),
 		};
+		round.resolved.push({ id: "fedcba9876543210", ruleId: "fixed", path: "src/fixed.ts", line: 1, commit: head });
 		const text = Ledger.from(
 			verdict,
 			{ rounds: [round] },
@@ -246,6 +251,7 @@ describe("an inherited dismissal beside a person's", () => {
 				"Closed findings",
 				`- ${human.id}: Dismissed: Every user here has a manager.`,
 				`- ${inherited.id}: Dismissed, inherited from \`${root}\`: The loader sets every manager.`,
+				`- fedcba9876543210: Addressed in commit ${short}`,
 			].join("\n\n"),
 		);
 		expect(text).not.toContain("Tal");
