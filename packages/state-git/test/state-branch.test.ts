@@ -62,6 +62,7 @@ describe("a changeset on the state branch", () => {
 						holder: { clone: "clone-2", run: expect.any(String) },
 						takenAt: expect.any(String),
 						expiresAt: expect.any(String),
+						incarnation: expect.stringMatching(/^[0-9a-f-]{36}$/),
 						generation: 2,
 					},
 					written: 1,
@@ -662,7 +663,7 @@ describe("the fencing generation", () => {
 		expect(second.generation).toBe(2);
 		await second.push();
 		expect(gitIn(remote.bare, "log", "-1", "--format=%s", "refs/heads/melian/state")).toMatch(
-			/^melian: run [0-9a-f-]{36}, generation 2$/,
+			/^melian: run [0-9a-f-]{36}, incarnation [0-9a-f-]{36}, generation 2$/,
 		);
 		expect(remote.index()).toMatchObject({ changesets: { [changeset]: { lease: { generation: 2 }, written: 2 } } });
 	});
@@ -700,6 +701,88 @@ describe("Codex's review of 3e1df8b", () => {
 			code: "invalidBranch",
 			message:
 				"the state branch's index.json commits to no writers' key, as only a branch before its first push does",
+		});
+		expect(remote.tip()).toBe(tip);
+	});
+});
+
+describe("the lease record's incarnation", () => {
+	// Commits an index whose record of the changeset `change` rewrote, as another store's writer could.
+	const rewrite = (change: (changesets: Record<string, { lease: Record<string, unknown> }>) => void) => {
+		const bare = remote.bare;
+		const index = remote.index() as { changesets: Record<string, { lease: Record<string, unknown> }> };
+		change(index.changesets);
+		const blob = gitWith(bare, `${JSON.stringify(index)}\n`, "hash-object", "-w", "--stdin");
+		const changesets = gitIn(bare, "rev-parse", "refs/heads/melian/state:changesets");
+		const root = gitWith(bare, `100644 blob ${blob}\tindex.json\n040000 tree ${changesets}\tchangesets\n`, "mktree");
+		gitIn(
+			bare,
+			"update-ref",
+			"refs/heads/melian/state",
+			gitIn(bare, "commit-tree", root, "-p", remote.tip()!, "-m", "rewritten"),
+		);
+	};
+	// Removes the changeset's record, as disposing of it would.
+	const dispose = () =>
+		rewrite((changesets) => {
+			delete changesets[changeset];
+		});
+
+	it("keeps its incarnation across takings, and gets a new one when the record is created afresh", async () => {
+		const clone = remote.clone();
+		const first = await clone.branch().checkout(changeset);
+		await first.push();
+		first.close();
+		const second = await clone.branch().checkout(changeset);
+		expect(second.incarnation).toBe(first.incarnation);
+		expect(second.generation).toBe(2);
+		await second.push();
+		second.close();
+		dispose();
+		const recreated = await clone.branch().checkout(changeset);
+		expect(recreated.incarnation).not.toBe(first.incarnation);
+		expect(recreated.generation).toBe(1);
+	});
+
+	it("refuses a write from a disposed record, though its generation is higher", async () => {
+		const start = Date.parse("2026-11-08T00:00:00Z");
+		const hour = 60 * 60 * 1000;
+		await (
+			await remote
+				.clone({ now: () => start })
+				.branch()
+				.checkout(changeset)
+		).push();
+		const stale = await remote
+			.clone({ now: () => start + 3 * hour })
+			.branch()
+			.checkout(changeset);
+		expect(stale.generation).toBe(2);
+		dispose();
+		const fresh = await remote
+			.clone({ now: () => start + 3 * hour })
+			.branch()
+			.checkout(changeset);
+		expect(fresh.generation).toBe(1);
+		const tip = remote.tip();
+		expect(await stale.push()).toEqual({
+			kind: "refused",
+			reason: `the changeset's lease record was created afresh, as incarnation ${fresh.incarnation}, after this one's ${stale.incarnation}`,
+		});
+		expect(remote.tip()).toBe(tip);
+	});
+
+	it("refuses a write whose holder and generation a record created afresh repeats", async () => {
+		const stale = await remote.clone().branch().checkout(changeset);
+		expect(stale.generation).toBe(1);
+		// The same run's lease, at the same generation, in a record created afresh: only the incarnation differs.
+		rewrite((changesets) => {
+			changesets[changeset]!.lease.incarnation = "afresh";
+		});
+		const tip = remote.tip();
+		expect(await stale.push()).toEqual({
+			kind: "refused",
+			reason: `the changeset's lease record was created afresh, as incarnation afresh, after this one's ${stale.incarnation}`,
 		});
 		expect(remote.tip()).toBe(tip);
 	});
