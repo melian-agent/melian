@@ -1011,14 +1011,15 @@ describe("the melian round workflow", () => {
 			const base = "b".repeat(40);
 			const head = "1".repeat(40);
 			const nonce = "0123456789abcdef0123456789abcdef";
+			const actions = { login: "github-actions[bot]", id: 41898282 };
 			const comments = [
+				{ id: 54, user: actions, body: `<!-- melian-round run:8 nonce:${nonce} -->\nan earlier run` },
+				{ id: 55, user: actions, body: `<!-- melian-round run:9 nonce:${nonce} -->\nany workflow` },
 				{
-					id: 54,
-					login: "github-actions[bot]",
-					body: `<!-- melian-round run:8 nonce:${nonce} -->\nan earlier run`,
+					id: 56,
+					user: { login: "melian-status-bot", id: 353727783 },
+					body: `<!-- melian-round run:9 nonce:${nonce} -->\nthis run`,
 				},
-				{ id: 55, login: "github-actions[bot]", body: `<!-- melian-round run:9 nonce:${nonce} -->\nany workflow` },
-				{ id: 56, login: "melian-status-bot", body: `<!-- melian-round run:9 nonce:${nonce} -->\nthis run` },
 			];
 			// A fake gh answers only the fresh read, the listing, which holds this run's comment, and an edit of comment 56
 			// with the status token.
@@ -1027,7 +1028,7 @@ describe("the melian round workflow", () => {
 				[
 					"#!/bin/sh",
 					'if [ "$*" = "api repos/o/r/pulls/7 --jq .base.sha + \\" \\" + .head.sha" ]; then echo "$NOW"; exit; fi',
-					'[ "$1 $2 $3" = "api --paginate repos/o/r/issues/7/comments?per_page=100" ] && printf "%s\\n" "$COMMENTS" && exit 0',
+					'[ "$1 $2 $3 $4" = "api --paginate repos/o/r/issues/7/comments?per_page=100 --jq" ] && printf "%s" "$COMMENTS" | jq -r "$5" && exit 0',
 					'[ "$1 $2 $3 $4 $5" = "api -X PATCH repos/o/r/issues/comments/56 -F" ] && [ "$GH_TOKEN" = status-token ] && cp "$(printf %s "$6" | sed s/^body=@//)" "$EDITED" && exit 0',
 					"exit 1",
 					"",
@@ -1058,7 +1059,7 @@ describe("the melian round workflow", () => {
 					RUN_URL: "https://example.test/run",
 					RUN_ID: "9",
 					NOW: `${base} ${head}`,
-					COMMENTS: comments.map((comment) => JSON.stringify(comment)).join("\n"),
+					COMMENTS: JSON.stringify(comments),
 					EDITED: join(dir, "edited.md"),
 					STATUS_TOKEN: "status-token",
 				},
@@ -1086,7 +1087,7 @@ describe("the melian round workflow", () => {
 				[
 					"#!/bin/sh",
 					'if [ "$*" = "api repos/o/r/pulls/7 --jq .base.sha + \\" \\" + .head.sha" ]; then echo "$NOW"; exit; fi',
-					'[ "$1 $2 $3" = "api --paginate repos/o/r/issues/7/comments?per_page=100" ] && printf "%s\\n" "$COMMENTS" && exit 0',
+					'[ "$1 $2 $3 $4" = "api --paginate repos/o/r/issues/7/comments?per_page=100 --jq" ] && printf "%s" "$COMMENTS" | jq -r "$5" && exit 0',
 					'[ "$1 $2" = "api -X" ] && echo "$3 $4 $GH_TOKEN" >> "$WRITES" && exit 0',
 					"exit 1",
 					"",
@@ -1104,11 +1105,11 @@ describe("the melian round workflow", () => {
 			writeFileSync(join(round, "merge-base"), `${"e".repeat(40)}\n`);
 			writeFileSync(join(round, "nonce"), `${nonce}\n`);
 			const writes = join(dir, "writes.log");
-			const step = (token, logins) => {
+			const step = (token, authors) => {
 				rmSync(writes, { force: true });
-				const comments = logins.map((login, index) => ({
+				const comments = authors.map(([login, id], index) => ({
 					id: 60 + index,
-					login,
+					user: { login, id },
 					body: `<!-- melian-round run:9 nonce:${nonce} -->\nsame marker`,
 				}));
 				const ran = spawnSync("bash", ["-e", "-c", run], {
@@ -1125,7 +1126,7 @@ describe("the melian round workflow", () => {
 						RUN_URL: "https://example.test/run",
 						RUN_ID: "9",
 						NOW: `${base} ${head}`,
-						COMMENTS: comments.map((comment) => JSON.stringify(comment)).join("\n"),
+						COMMENTS: JSON.stringify(comments),
 						WRITES: writes,
 						GH_TOKEN: "github-token",
 						STATUS_TOKEN: token,
@@ -1133,12 +1134,20 @@ describe("the melian round workflow", () => {
 				});
 				return [ran.status, ran.stdout, existsSync(writes) ? readFileSync(writes, "utf8") : ""];
 			};
-			expect(step("status-token", ["github-actions[bot]", "redbeard"])).toEqual([
-				0,
-				"",
-				"POST repos/o/r/issues/7/comments status-token\n",
-			]);
-			expect(step("", ["melian-status-bot"])).toEqual([
+			expect(
+				step("status-token", [
+					["github-actions[bot]", 41898282],
+					["redbeard", 40684],
+				]),
+			).toEqual([0, "", "POST repos/o/r/issues/7/comments status-token\n"]);
+			// After a rename, another account holds the login: its planted comment is never edited, even under that login.
+			expect(
+				step("status-token", [
+					["melian-status-bot-renamed", 353727783],
+					["melian-status-bot", 999],
+				]),
+			).toEqual([0, "", "POST repos/o/r/issues/7/comments status-token\n"]);
+			expect(step("", [["melian-status-bot", 353727783]])).toEqual([
 				1,
 				"::error::the melian-round Environment holds no MELIAN_STATUS_TOKEN\n",
 				"",

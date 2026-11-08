@@ -400,12 +400,13 @@ jobs:
             --exit "$(cat "$out/exit" 2>/dev/null || echo none)" --run-url "$RUN_URL" --run-id "$RUN_ID" --nonce "$nonce" --base "$BASE" --head "$HEAD" \
             --merge-base "$(cat "$out/merge-base" 2>/dev/null || echo none)" \
             ${current_head:+--current-base "$current_base" --current-head "$current_head"} > "$RUNNER_TEMP/comment.md"
-          # A rerun of this job alone finds the comment this run already posted, by its marker and melian-status-bot's login,
-          # and updates it, so a post GitHub accepted before the job failed is never repeated. A comment with the same marker
-          # from any other login is never edited. "Re-run all jobs" runs a new round with a new nonce and artefact, so it
-          # posts that round's own comment.
+          # A rerun of this job alone finds the comment this run already posted, by its marker and by melian-status-bot's
+          # login and account ID, 353727783, since a login can pass to another account. It updates that comment, so a post
+          # GitHub accepted before the job failed is never repeated. A comment with the same marker from any other account
+          # is never edited. "Re-run all jobs" runs a new round with a new nonce and artefact, so it posts that round's own
+          # comment.
           gh api --paginate "repos/$REPOSITORY/issues/$NUMBER/comments?per_page=100" \
-            --jq '.[] | {id, login: .user.login, body} | tojson' > "$RUNNER_TEMP/comments.jsonl"
+            --jq '.[] | select(.user.id == 353727783) | {id, login: .user.login, body} | tojson' > "$RUNNER_TEMP/comments.jsonl"
           own=$(node scripts/round-own-comment.mjs "$RUNNER_TEMP/comments.jsonl" "$RUN_ID" "$nonce" "melian-status-bot")
           if [ -n "$own" ]; then
             GH_TOKEN="$token" gh api -X PATCH "repos/$REPOSITORY/issues/comments/$own" -F "body=@$RUNNER_TEMP/comment.md" > /dev/null
