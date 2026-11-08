@@ -488,11 +488,70 @@ describe("Codex's review of a0756fc", () => {
 			{
 				name: "CliError",
 				message: expect.stringMatching(
-					new RegExp(
-						`^${pullRequest} has SQLite storage in this clone from before the state branch, and Melian cannot read melian/state to see whether another clone stored it there: git fetch of melian/state failed: `,
-					),
+					/^melian publish needs the pull request's storage from melian\/state, which this clone could not lease: git fetch of melian\/state failed: /,
 				),
 			},
 		);
+	});
+});
+
+describe("Codex's review of ff4b2e1", () => {
+	const authoritative = { authoritative: true } as const;
+	const legacyIn = async (repo: string) => {
+		const directory = join(gitIn(repo, "rev-parse", "--path-format=absolute", "--git-common-dir"), "melian");
+		mkdirSync(directory, { recursive: true });
+		await (await openSqliteStorage(join(directory, `${pullRequest}.sqlite`))).close(context);
+	};
+	const index = () => JSON.parse(gitIn(origin, "cat-file", "blob", "refs/heads/melian/state:index.json"));
+
+	it("holds the pull request's lease while legacy SQLite storage publishes, and releases it", async () => {
+		await legacyIn(first);
+		const store = await ChangesetStore.write(io(first), first, pullRequest, undefined, authoritative);
+		expect(index().changesets[pullRequest].lease.generation).toBe(1);
+		const other = clone();
+		await expect(ChangesetStore.write(io(other), other, pullRequest)).rejects.toMatchObject({
+			name: "CliError",
+			message: expect.stringMatching(/^another run holds pull-[0-9a-f]{16} on the state branch: /),
+		});
+		await store.checkpoint();
+		await store.storage.close(context);
+		await store.close();
+		expect(Date.parse(index().changesets[pullRequest].lease.expiresAt)).toBeLessThanOrEqual(Date.now());
+		expect(gitIn(origin, "ls-tree", "--name-only", "refs/heads/melian/state:changesets")).toBe("");
+	});
+
+	it("posts nothing from legacy SQLite storage once another clone stored a newer round after the check", async () => {
+		vi.useFakeTimers({ toFake: ["Date"] });
+		try {
+			vi.setSystemTime(new Date("2026-11-08T00:00:00Z"));
+			await legacyIn(first);
+			const legacy = await ChangesetStore.write(io(first), first, pullRequest, undefined, authoritative);
+			vi.setSystemTime(new Date("2026-11-08T03:00:00Z"));
+			const other = clone();
+			const newer = await ChangesetStore.write(io(other), other, pullRequest);
+			await writeNote(newer, "newer round");
+			await newer.close();
+			await expect(legacy.checkpoint()).rejects.toMatchObject({
+				name: "CliError",
+				message: expect.stringMatching(
+					/^melian publish could not store the pull request's storage on melian\/state before posting: another run took the changeset's lease, at generation 2, after this one's 1; nothing was posted$/,
+				),
+			});
+			await legacy.storage.close(context);
+			await legacy.close();
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("refuses to publish legacy SQLite storage without the writers' key", async () => {
+		await legacyIn(first);
+		await expect(
+			ChangesetStore.write(io(first, { [keyVariable]: "" }), first, pullRequest, undefined, authoritative),
+		).rejects.toMatchObject({
+			name: "CliError",
+			message:
+				"melian publish needs the pull request's storage from melian/state, which this clone could not lease: no writers' key is configured for the state branch; set the writers' key in a secrets file, and publish where the branch is in reach",
+		});
 	});
 });

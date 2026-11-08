@@ -784,3 +784,60 @@ describe("the fencing generation", () => {
 		expect(remote.index()).toMatchObject({ changesets: { [changeset]: { lease: { generation: 2 }, written: 2 } } });
 	});
 });
+
+describe("a reservation of a changeset the branch does not hold", () => {
+	const index = () =>
+		remote.index() as {
+			changesets: Record<string, { lease: { generation: number; expiresAt: string }; written?: number }>;
+		};
+
+	it("takes the lease without storing a copy, renews it on confirm, and releases it", async () => {
+		const reservation = await remote.clone().branch().reserve(changeset);
+		expect(reservation.generation).toBe(1);
+		expect(index().changesets[changeset]!.lease.generation).toBe(1);
+		expect(index().changesets[changeset]!.written).toBeUndefined();
+		expect(gitIn(remote.bare, "ls-tree", "--name-only", "refs/heads/melian/state:changesets")).toBe("");
+		expect(await reservation.confirm()).toEqual({ kind: "confirmed" });
+		await reservation.release();
+		expect(Date.parse(index().changesets[changeset]!.lease.expiresAt)).toBeLessThanOrEqual(Date.now());
+		expect(gitIn(remote.bare, "ls-tree", "--name-only", "refs/heads/melian/state:changesets")).toBe("");
+	});
+
+	it("refuses a changeset the branch holds", async () => {
+		await (await remote.clone().branch().checkout(changeset)).push();
+		await expect(remote.clone().branch().reserve(changeset)).rejects.toMatchObject({
+			code: "storedElsewhere",
+			message: `melian/state holds ${changeset}, which another clone stored there`,
+		});
+	});
+
+	it("refuses while another clone holds the lease", async () => {
+		await remote.clone().branch().checkout(changeset);
+		await expect(remote.clone().branch().reserve(changeset)).rejects.toBeInstanceOf(LeaseHeld);
+	});
+
+	it("is refused on confirm once another run took the lease, or stored the changeset", async () => {
+		const start = Date.parse("2026-11-08T00:00:00Z");
+		const reservation = await remote
+			.clone({ now: () => start })
+			.branch()
+			.reserve(changeset);
+		const later = await remote
+			.clone({ now: () => start + 3 * 60 * 60 * 1000 })
+			.branch()
+			.checkout(changeset);
+		expect(await reservation.confirm()).toEqual({
+			kind: "refused",
+			reason: "another run took the changeset's lease, at generation 2, after this one's 1",
+		});
+		await later.push();
+		expect(await reservation.confirm()).toMatchObject({ kind: "refused" });
+	});
+
+	it("needs the writers' key", async () => {
+		await expect(remote.clone({ key: undefined }).branch().reserve(changeset)).rejects.toMatchObject({
+			code: "invalidKey",
+			message: "no writers' key is configured for the state branch",
+		});
+	});
+});

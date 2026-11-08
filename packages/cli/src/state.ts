@@ -9,7 +9,14 @@ import {
 	openJsonlStorage,
 	type Storage,
 } from "@melian-agent/pipeline";
-import { CopyInUse, LeaseHeld, StateBranch, StateBranchError, type StateCheckout } from "@melian-agent/state-git";
+import {
+	CopyInUse,
+	LeaseHeld,
+	StateBranch,
+	StateBranchError,
+	type StateCheckout,
+	type StateReservation,
+} from "@melian-agent/state-git";
 import type { Io } from "./commands.ts";
 import { isScripted } from "./models.ts";
 import { CliError, openStorage, storagePath } from "./repository.ts";
@@ -89,6 +96,7 @@ export class ChangesetStore {
 	readonly #checkout: StateCheckout | undefined;
 	readonly #io: Io;
 	readonly #authoritative: boolean;
+	#reservation: StateReservation | undefined;
 
 	private constructor(storage: Storage, checkout: StateCheckout | undefined, io: Io, authoritative = false) {
 		this.storage = storage;
@@ -119,8 +127,11 @@ export class ChangesetStore {
 	): Promise<ChangesetStore> {
 		const location = await locate(repoRoot, changeset, io.env, directory);
 		if (location.kind === "sqlite") {
-			if (location.legacy && options.authoritative === true) await ChangesetStore.#alone(repoRoot, changeset);
-			return ChangesetStore.#sqlite(io, location, changeset);
+			const reservation =
+				location.legacy && options.authoritative === true
+					? await ChangesetStore.#reserve(io, repoRoot, changeset)
+					: undefined;
+			return ChangesetStore.#sqlite(io, location, changeset, reservation);
 		}
 		const branch = new StateBranch({
 			repoRoot,
@@ -176,34 +187,39 @@ export class ChangesetStore {
 		io: Io,
 		location: { readonly path: string; readonly legacy: boolean },
 		changeset: string,
+		reservation?: StateReservation,
 	): Promise<ChangesetStore> {
 		if (location.legacy)
 			io.stderr(
 				`melian: ${changeset} keeps the SQLite storage it had before the state branch, in this clone alone\n`,
 			);
-		return new ChangesetStore(await openStorage(location.path), undefined, io);
+		const store = new ChangesetStore(await openStorage(location.path), undefined, io);
+		store.#reservation = reservation;
+		return store;
 	}
 
 	// A clone's SQLite storage from before the state branch is the pull request's only copy until another clone stores
 	// the pull request on the branch; from then on the two disagree, and publishing the older would replace the newer.
-	static async #alone(repoRoot: string, changeset: string): Promise<void> {
+	// So a publication from it holds the pull request's lease, which another clone's write then cannot take.
+	static async #reserve(io: Io, repoRoot: string, changeset: string): Promise<StateReservation> {
 		const branch = new StateBranch({
 			repoRoot,
 			remote: "origin",
 			directory: join(repoRoot, ".git"),
-			holder: "reader",
+			holder: await holder(join(dirname(await storagePath(repoRoot, changeset, io.env, false)), "state")),
+			key: await stateKey(repoRoot, io.env),
 		});
-		const stored = await branch.stored(changeset).catch((error: unknown) => {
-			if (error instanceof StateBranchError)
+		return branch.reserve(changeset).catch((error: unknown) => {
+			if (error instanceof StateBranchError && error.code === "storedElsewhere")
 				throw new CliError(
-					`${changeset} has SQLite storage in this clone from before the state branch, and Melian cannot read melian/state to see whether another clone stored it there: ${visibleText(error.message)}`,
+					`${changeset} has SQLite storage in this clone from before the state branch, and melian/state holds the pull request too; publish it from a clone that holds the branch's copy`,
 				);
-			throw error;
+			if (error instanceof StateBranchError && error.code !== "invalidBranch")
+				throw new CliError(
+					`melian publish needs the pull request's storage from melian/state, which this clone could not lease: ${visibleText(error.message)}; set the writers' key in a secrets file, and publish where the branch is in reach`,
+				);
+			return ChangesetStore.#refusal(error);
 		});
-		if (stored)
-			throw new CliError(
-				`${changeset} has SQLite storage in this clone from before the state branch, and melian/state holds the pull request too; publish it from a clone that holds the branch's copy`,
-			);
 	}
 
 	static async #opened(io: Io, checkout: StateCheckout, authoritative = false): Promise<ChangesetStore> {
@@ -230,9 +246,20 @@ export class ChangesetStore {
 	 */
 	async checkpoint(): Promise<void> {
 		const checkout = this.#checkout;
-		if (checkout === undefined) return;
-		const pushed = await ChangesetStore.#push(checkout, { keepLease: true });
-		if (pushed.kind !== "pushed")
+		const pushed =
+			checkout !== undefined
+				? await ChangesetStore.#push(checkout, { keepLease: true })
+				: this.#reservation === undefined
+					? ({ kind: "pushed" } as const)
+					: await this.#reservation.confirm().catch((error: unknown) => {
+							if (
+								error instanceof StateBranchError &&
+								(error.code === "fetchFailed" || error.code === "pushFailed")
+							)
+								return { kind: "refused", reason: error.message } as const;
+							throw error;
+						});
+		if (pushed.kind !== "pushed" && pushed.kind !== "confirmed")
 			throw new CliError(
 				`melian publish could not store the pull request's storage on melian/state before posting: ${visibleText(pushed.reason)}; nothing was posted`,
 			);
@@ -249,7 +276,11 @@ export class ChangesetStore {
 
 	async close(): Promise<void> {
 		const checkout = this.#checkout;
-		if (checkout === undefined) return;
+		// A reservation's lease expires on its own if the branch is out of reach now.
+		if (checkout === undefined) {
+			await this.#reservation?.release().catch(() => {});
+			return;
+		}
 		try {
 			const pushed = await ChangesetStore.#push(checkout);
 			// GitHub already holds what an authoritative command posted, so a store left behind fails it.

@@ -201,6 +201,77 @@ export class StateBranch {
 		}
 	}
 
+	/**
+	 * Takes the lease of a changeset the branch does not hold, without storing a copy, for a command that works on
+	 * storage kept elsewhere, such as a clone's SQLite storage from before the state branch. Refuses when the branch
+	 * holds the changeset, or another clone holds a live lease.
+	 */
+	async reserve(changeset: string): Promise<StateReservation> {
+		if (!changesetName.test(changeset))
+			throw new StateBranchError("invalidBranch", `"${changeset}" is not a changeset name`);
+		if (this.#seal === undefined)
+			throw new StateBranchError("invalidKey", "no writers' key is configured for the state branch");
+		let generation = 0;
+		await this.#withRetry(async (index, stored) => {
+			if (stored(changeset) !== undefined)
+				throw new StateBranchError(
+					"storedElsewhere",
+					`melian/state holds ${changeset}, which another clone stored there`,
+				);
+			const held = index.lease(changeset);
+			if (held?.live(this.#now()) && held.holder.clone !== this.#options.holder)
+				throw new LeaseHeld(changeset, held);
+			const lease = Lease.take(held, this.#holder, this.#now(), this.#options.leaseMs ?? defaultLeaseMs);
+			generation = lease.generation;
+			return { index: index.leased(changeset, lease), generation };
+		});
+		return new StateReservation(this, changeset, generation);
+	}
+
+	/** @internal Renews a reservation's lease while it is still the latest and the branch still does not hold the changeset. */
+	async confirmReservation(
+		changeset: string,
+		generation: number,
+	): Promise<{ readonly kind: "confirmed" } | { readonly kind: "refused"; readonly reason: string }> {
+		try {
+			await this.#withRetry(async (index, stored) => {
+				const held = this.#fenced(index, changeset, generation);
+				if (stored(changeset) !== undefined)
+					throw new Refusal("another run stored the changeset since this one reserved it");
+				return {
+					index: index.leased(changeset, held.renewed(this.#now(), this.#options.leaseMs ?? defaultLeaseMs)),
+					generation,
+				};
+			});
+			return { kind: "confirmed" };
+		} catch (error) {
+			if (error instanceof Refusal) return { kind: "refused", reason: error.message };
+			throw error;
+		}
+	}
+
+	/** @internal Expires a reservation's lease, if it is still this run's. */
+	async releaseReservation(changeset: string, generation: number): Promise<void> {
+		try {
+			await this.#withRetry(async (index) => {
+				this.#fenced(index, changeset, generation);
+				return { index: index.released(changeset, this.#now()), generation };
+			});
+		} catch (error) {
+			if (!(error instanceof Refusal)) throw error;
+		}
+	}
+
+	// The fence: the changeset's lease, if this run's generation is still its latest.
+	#fenced(index: StateIndex, changeset: string, generation: number): Lease {
+		const held = index.lease(changeset);
+		if (held === undefined || !held.admits(generation) || !held.heldBy(this.#holder))
+			throw new Refusal(
+				`another run took the changeset's lease, at generation ${held?.generation ?? "none"}, after this one's ${generation}`,
+			);
+		return held;
+	}
+
 	/** Whether the branch holds the changeset, read without the writers' key. */
 	async stored(changeset: string): Promise<boolean> {
 		if (!changesetName.test(changeset))
@@ -269,12 +340,8 @@ export class StateBranch {
 	): Promise<PushResult> {
 		try {
 			const { tip } = await this.#withRetry(async (index, stored) => {
-				// The fence: a write lands only under the latest generation, so a run that outlived its lease is refused.
-				const held = index.lease(changeset);
-				if (held === undefined || !held.admits(generation) || !held.heldBy(this.#holder))
-					throw new Refusal(
-						`another run took the changeset's lease, at generation ${held?.generation ?? "none"}, after this one's ${generation}`,
-					);
+				// A write lands only under the latest generation, so a run that outlived its lease is refused.
+				const held = this.#fenced(index, changeset, generation);
 				if ((stored(changeset) ?? "none") !== synced)
 					throw new Refusal("another run pushed the changeset since this one fetched it");
 				const written = index.wrote(changeset);
@@ -501,6 +568,28 @@ export class StateBranch {
 }
 
 class Refusal extends Error {}
+
+/** A changeset's lease, held without a copy while a command works on storage the branch does not hold. */
+export class StateReservation {
+	readonly changeset: string;
+	readonly generation: number;
+	readonly #branch: StateBranch;
+
+	constructor(branch: StateBranch, changeset: string, generation: number) {
+		this.#branch = branch;
+		this.changeset = changeset;
+		this.generation = generation;
+	}
+
+	/** Renews the lease before the command acts, refused once another run took it or stored the changeset. */
+	confirm(): Promise<{ readonly kind: "confirmed" } | { readonly kind: "refused"; readonly reason: string }> {
+		return this.#branch.confirmReservation(this.changeset, this.generation);
+	}
+
+	release(): Promise<void> {
+		return this.#branch.releaseReservation(this.changeset, this.generation);
+	}
+}
 
 /**
  * One changeset of the state branch, leased to this run: its storage in this clone's copy, and the push that stores
