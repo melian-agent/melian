@@ -82,6 +82,38 @@ it("opens bundled pins without fetching and materialises an injected local archi
 	await expect(tools.binary("enola")).rejects.toMatchObject({ code: "toolFailed", message: "raw cache rejection" });
 });
 
+const releaseUrl = "https://api.github.com/repos/test/enola/releases/tags/v0.0.1";
+const assetUrl = "https://api.github.com/repos/test/enola/releases/assets/42";
+const publicUrl = "https://github.com/test/enola/releases/download/v0.0.1/enola.tar.gz";
+
+// Answers only the request a pin should make: release metadata and the asset for the expected token, or the public
+// URL with no headers when no token is expected.
+function provisioningHost(bytes: Buffer, authorization: string | undefined) {
+	return vi.fn(async (url: string, options: { headers?: Record<string, string> }) => {
+		const asked = options.headers?.authorization;
+		if (url === releaseUrl && authorization !== undefined && asked === authorization)
+			return new Response(JSON.stringify({ assets: [{ id: 42, browser_download_url: publicUrl }] }));
+		if (url === assetUrl && authorization !== undefined && asked === authorization)
+			return new Response(new Uint8Array(bytes));
+		if (url === publicUrl && authorization === undefined && options.headers === undefined)
+			return new Response(new Uint8Array(bytes));
+		return new Response("unexpected request", { status: 400 });
+	});
+}
+
+async function provision(env: NodeJS.ProcessEnv | undefined, download: ReturnType<typeof provisioningHost>) {
+	const { name: _name, ...pin } = testTool(toolArchive([{ name: "enola", text: "#!/bin/sh\necho local\n" }]));
+	const manifest = ToolManifest.parse(JSON.stringify({ format_version: 1, tools: { enola: pin }, misses: [] }));
+	const tools = await ToolProvisioning.open(repo, {
+		manifest,
+		root: join(repo, "cache"),
+		platform: "darwin-arm64",
+		fetch: download,
+		...(env === undefined ? {} : { env }),
+	});
+	return readFileSync(await tools.binary("enola"), "utf8");
+}
+
 it.each([
 	["GITHUB_TOKEN", { GITHUB_TOKEN: "fake-github-token", GH_TOKEN: "fake-gh-token" }, "Bearer fake-github-token"],
 	["GH_TOKEN", { GH_TOKEN: " fake-gh-token " }, "Bearer fake-gh-token"],
@@ -90,23 +122,22 @@ it.each([
 	["an empty environment", {}, undefined],
 ])("fetches through the release API with %s", async (_case, env, authorization) => {
 	const bytes = toolArchive([{ name: "enola", text: "#!/bin/sh\necho local\n" }]);
-	const { name: _name, ...pin } = testTool(bytes);
-	const manifest = ToolManifest.parse(JSON.stringify({ format_version: 1, tools: { enola: pin }, misses: [] }));
-	const download = vi.fn(
-		async (_url: string, _options: { headers?: Record<string, string> }) => new Response(new Uint8Array(bytes)),
+	const download = provisioningHost(bytes, authorization);
+	expect(await provision(env, download)).toBe("#!/bin/sh\necho local\n");
+	expect(download.mock.calls.map(([url]) => url)).toEqual(
+		authorization === undefined ? [publicUrl] : [releaseUrl, assetUrl],
 	);
-	const tools = await ToolProvisioning.open(repo, {
-		manifest,
-		root: join(repo, "cache"),
-		platform: "darwin-arm64",
-		fetch: download,
-		env,
-	});
-	await tools.binary("enola").catch(() => undefined);
-	expect(download.mock.calls[0]?.[0]).toBe(
-		authorization === undefined
-			? "https://github.com/test/enola/releases/download/v0.0.1/enola.tar.gz"
-			: "https://api.github.com/repos/test/enola/releases/tags/v0.0.1",
-	);
-	expect(download.mock.calls[0]?.[1].headers?.authorization).toBe(authorization);
+});
+
+it("reads the token from the process environment when no environment is given", async () => {
+	vi.stubEnv("GITHUB_TOKEN", "fake-process-token");
+	vi.stubEnv("GH_TOKEN", "");
+	try {
+		const bytes = toolArchive([{ name: "enola", text: "#!/bin/sh\necho local\n" }]);
+		const download = provisioningHost(bytes, "Bearer fake-process-token");
+		expect(await provision(undefined, download)).toBe("#!/bin/sh\necho local\n");
+		expect(download.mock.calls.map(([url]) => url)).toEqual([releaseUrl, assetUrl]);
+	} finally {
+		vi.unstubAllEnvs();
+	}
 });
