@@ -10,7 +10,7 @@ import {
 	resolveModelForTier,
 	type Walkthrough,
 } from "@melian-agent/core";
-import { type ReviewOrigin, VerdictDocument } from "./adjudication.ts";
+import { type ReviewOrigin, type StoredVerdictState, VerdictDocument } from "./adjudication.ts";
 import {
 	backgroundContext,
 	type Context,
@@ -100,6 +100,28 @@ type SummaryCheckpoint = { phase: "spawn" } | { phase: "summarize"; child: Conve
 
 const routeOf = ({ model, thinking }: { model: ModelReference; thinking?: ModelRoute["thinking"] }): string =>
 	`${model.provider}/${model.modelId}@${thinking ?? ""}`;
+
+/**
+ * The walkthrough a publication of `revision` posts: the stored one, unless the light route that wrote it is not the
+ * light route of the plan the revision's verdict was decided under. A review interrupted after its lenses start can
+ * leave a summary another plan's model wrote beside the earlier verdict. A summary an older Melian stored without its
+ * route, or a verdict stored without a plan, posts as before.
+ */
+export function publishedWalkthrough(
+	state: Pick<StoredVerdictState, "walkthroughs" | "walkthroughRoutes" | "provenance"> | undefined,
+	revision: string,
+): Walkthrough | undefined {
+	const walkthrough = state?.walkthroughs?.[revision];
+	const written = state?.walkthroughRoutes?.[revision];
+	const plan = state?.provenance?.[revision]?.plan;
+	if (walkthrough === undefined || written === undefined || plan === undefined) return walkthrough;
+	const routes = ReviewPlan.from(plan).routes();
+	const route = routes.light?.model === undefined ? undefined : resolveModelForTier("light", routes);
+	const planned = route === undefined ? [] : [route.model, ...route.fallbacks];
+	return planned.some((model) => routeOf({ model, thinking: routes.light?.thinking }) === written)
+		? walkthrough
+		: undefined;
+}
 export const SummaryTask = defineTask<SummaryInput, SummaryCheckpoint, string>({
 	name: "melian.summarize",
 	version: 2,

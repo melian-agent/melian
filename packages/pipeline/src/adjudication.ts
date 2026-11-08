@@ -105,7 +105,7 @@ type StoredDecision = { task: number; findingsVersion: number };
 
 // Each revision's verdict, keyed by `Revision.key` of its base and head, on the changeset's root conversation, with what
 // it was decided from and the task that decided it under the same key.
-type StoredVerdictState = {
+export type StoredVerdictState = {
 	verdicts: Record<string, StoredVerdict>;
 	provenance?: Record<string, StoredProvenance>;
 	decisions?: Record<string, StoredDecision>;

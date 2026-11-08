@@ -24,7 +24,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VerdictDocument } from "../src/adjudication.ts";
 import type { TaskId } from "../src/harness.ts";
-import { SummaryIndex, SummaryTask, summarizeExtension } from "../src/summarize.ts";
+import { publishedWalkthrough, SummaryIndex, SummaryTask, summarizeExtension } from "../src/summarize.ts";
 import { baseAndHead, isolatedGitEnv } from "./fixtures/repo.ts";
 
 let repo: string;
@@ -792,5 +792,84 @@ describe("walkthrough summaries", () => {
 				"No light model is configured.",
 			);
 		});
+	});
+});
+
+describe("the walkthrough publication posts", () => {
+	const revision = "base..head";
+	const walkthrough = { summary: "Changes a value.", files: [{ path: "src/a.ts", summary: "Changes a." }] };
+	const planned = (light: { model: string; thinking?: string }[]) => ({
+		kind: "pull-request" as const,
+		policy: "revision:base",
+		manifest: [],
+		lenses: [],
+		plan: {
+			tiers: [
+				{
+					tier: "light",
+					status: "routed",
+					models: light.map(({ model }) => ({ model, credential: "test" })),
+					...(light[0]?.thinking === undefined ? {} : { thinking: light[0].thinking }),
+				},
+			],
+			lenses: [],
+		},
+	});
+	it("is the stored one when the round's plan routes its light tier to the model that wrote it", () => {
+		const state = {
+			walkthroughs: { [revision]: walkthrough },
+			walkthroughRoutes: { [revision]: "faux/first@" },
+			provenance: { [revision]: planned([{ model: "faux/first" }]) },
+		};
+		expect(publishedWalkthrough(state as never, revision)).toEqual(walkthrough);
+	});
+	it("is the stored one when the model that wrote it is a fallback of the round's light tier", () => {
+		const state = {
+			walkthroughs: { [revision]: walkthrough },
+			walkthroughRoutes: { [revision]: "faux/second@" },
+			provenance: { [revision]: planned([{ model: "faux/first" }, { model: "faux/second" }]) },
+		};
+		expect(publishedWalkthrough(state as never, revision)).toEqual(walkthrough);
+	});
+	it("is none when another plan's light model wrote it", () => {
+		const state = {
+			walkthroughs: { [revision]: walkthrough },
+			walkthroughRoutes: { [revision]: "faux/other@" },
+			provenance: { [revision]: planned([{ model: "faux/first" }]) },
+		};
+		expect(publishedWalkthrough(state as never, revision)).toBeUndefined();
+	});
+	it("is none when the round's plan sets another thinking level", () => {
+		const state = {
+			walkthroughs: { [revision]: walkthrough },
+			walkthroughRoutes: { [revision]: "faux/first@low" },
+			provenance: { [revision]: planned([{ model: "faux/first", thinking: "high" }]) },
+		};
+		expect(publishedWalkthrough(state as never, revision)).toBeUndefined();
+	});
+	it("is the stored one when an older Melian recorded no route, or the round no plan", () => {
+		expect(
+			publishedWalkthrough(
+				{
+					walkthroughs: { [revision]: walkthrough },
+					provenance: { [revision]: planned([{ model: "faux/first" }]) },
+				} as never,
+				revision,
+			),
+		).toEqual(walkthrough);
+		expect(
+			publishedWalkthrough(
+				{
+					walkthroughs: { [revision]: walkthrough },
+					walkthroughRoutes: { [revision]: "faux/other@" },
+					provenance: { [revision]: { ...planned([]), plan: undefined } },
+				} as never,
+				revision,
+			),
+		).toEqual(walkthrough);
+	});
+	it("is none when nothing is stored", () => {
+		expect(publishedWalkthrough({} as never, revision)).toBeUndefined();
+		expect(publishedWalkthrough(undefined, revision)).toBeUndefined();
 	});
 });
