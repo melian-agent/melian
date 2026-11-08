@@ -17,6 +17,7 @@ import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { createInterface } from "node:readline";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { gitIn } from "../../core/test/fixtures/repo.ts";
 import { Probe, type ProbeInput, type ProbeOptions, type ProbeResult } from "../src/probe.ts";
 
 // Each attack runs a real probe under sandbox-runtime and must fail there. A probe that got through would do no harm: it
@@ -147,6 +148,41 @@ describe.skipIf(!availability.available && !required)(
 				}
 			},
 		);
+
+		it("cannot read a file git does not track in the worktree, such as a reviewer's .npmrc", {
+			timeout: 60_000,
+		}, async () => {
+			// The worktree is a real repository here, so git decides what it tracks. The token is fake.
+			const repository = realpathSync(mkdtempSync(join(tmpdir(), "melian-probe-repo-")));
+			try {
+				gitIn(repository, "init", "--quiet", "--initial-branch=main");
+				writeFileSync(join(repository, "tracked.txt"), "tracked\n");
+				gitIn(repository, "add", "tracked.txt");
+				gitIn(repository, "commit", "--quiet", "-m", "tracked");
+				writeFileSync(join(repository, ".npmrc"), "//registry.npmjs.org/:_authToken=npm_FAKE0000000000000000\n");
+				const probe = await Probe.open(
+					{
+						script: `
+import { readFileSync } from "node:fs";
+for (const path of ["tracked.txt", ".npmrc"]) {
+	try { console.log(path, readFileSync(path, "utf8").trim()); } catch (error) { console.log(path, error.code); }
+}
+`,
+					},
+					{ worktree: repository, writer: { trusted: true, by: "writer" }, trustWriters: true },
+				);
+				let result: ProbeResult;
+				try {
+					result = await probe.run();
+				} finally {
+					await probe.close();
+				}
+				expect(result.output).toContain("tracked.txt tracked\n");
+				expect(result.output).not.toContain("npm_FAKE");
+			} finally {
+				rmSync(repository, { recursive: true, force: true });
+			}
+		});
 
 		it("cannot write outside its scratch directory", { timeout: 60_000 }, async () => {
 			const name = `melian-probe-${randomBytes(6).toString("hex")}`;
