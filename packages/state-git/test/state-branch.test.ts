@@ -58,7 +58,13 @@ describe("a changeset on the state branch", () => {
 			key: expect.stringMatching(/^[0-9a-f]{64}$/),
 			changesets: {
 				[changeset]: {
-					lease: { run: expect.any(String), holder: "clone-2", heartbeat: expect.any(String), attempts: 1 },
+					lease: {
+						holder: { clone: "clone-2", run: expect.any(String) },
+						takenAt: expect.any(String),
+						expiresAt: expect.any(String),
+						generation: 2,
+					},
+					written: 1,
 				},
 			},
 		});
@@ -115,7 +121,7 @@ describe("the lease", () => {
 			);
 		expect(refusal).toBeInstanceOf(LeaseHeld);
 		expect((refusal as LeaseHeld).message).toMatch(
-			/^another run holds pull-0123456789abcdef on the state branch: run [0-9a-f-]{36} in clone clone-1, since 2026-11-07T00:00:00\.000Z; wait for it to finish, or for its lease to expire$/,
+			/^another run holds pull-0123456789abcdef on the state branch: run [0-9a-f-]{36} in clone clone-1, until 2026-11-07T02:00:00\.000Z; wait for it to finish, or for its lease to expire$/,
 		);
 		expect(remote.tip()).toBe(tip);
 		expect(late.has(changeset)).toBe(false);
@@ -132,7 +138,14 @@ describe("the lease", () => {
 			.checkout(changeset);
 		expect(remote.index()).toMatchObject({
 			changesets: {
-				[changeset]: { lease: { holder: "clone-2", heartbeat: "2026-11-07T02:00:00.000Z", attempts: 2 } },
+				[changeset]: {
+					lease: {
+						holder: { clone: "clone-2" },
+						takenAt: "2026-11-07T02:00:00.000Z",
+						expiresAt: "2026-11-07T04:00:00.000Z",
+						generation: 2,
+					},
+				},
 			},
 		});
 	});
@@ -143,14 +156,18 @@ describe("the lease", () => {
 		const rerun = clone.branch();
 		await rerun.checkout(changeset);
 		expect(remote.index()).toMatchObject({
-			changesets: { [changeset]: { lease: { run: rerun.run, holder: "clone-1", attempts: 2 } } },
+			changesets: { [changeset]: { lease: { holder: { clone: "clone-1", run: rerun.run }, generation: 2 } } },
 		});
 	});
 
 	it("is released by the push", async () => {
 		const checkout = await remote.clone().branch().checkout(changeset);
 		await checkout.push();
-		expect(remote.index()).toEqual({ version: 1, key: expect.stringMatching(/^[0-9a-f]{64}$/), changesets: {} });
+		const { changesets } = remote.index() as {
+			changesets: Record<string, { lease: { expiresAt: string }; written: number }>;
+		};
+		expect(changesets[changeset]!.written).toBe(1);
+		expect(Date.parse(changesets[changeset]!.lease.expiresAt)).toBeLessThanOrEqual(Date.now());
 	});
 });
 
@@ -173,7 +190,7 @@ describe("two runs racing one changeset", () => {
 
 		expect(await loser.push()).toEqual({
 			kind: "refused",
-			reason: "another run took the changeset's lease after this one's expired",
+			reason: "another run took the changeset's lease, at generation 2, after this one's 1",
 		});
 		expect(remote.tip()).toBe(won);
 		expect(await notes(await storageOf(loser))).toEqual(["lens A", "lens B"]);
@@ -504,7 +521,9 @@ describe("Codex's review of edc438b", () => {
 			.clone({ holder: "x".repeat(200) })
 			.branch()
 			.checkout(changeset);
-		expect(remote.index()).toMatchObject({ changesets: { [changeset]: { lease: { holder: "x".repeat(200) } } } });
+		expect(remote.index()).toMatchObject({
+			changesets: { [changeset]: { lease: { holder: { clone: "x".repeat(200) } } } },
+		});
 	});
 });
 
@@ -631,3 +650,20 @@ const GOLDEN = {
 	key: "07fcf6ff72e5a96a2ab8c8a51825709a0ba3096d8b984f37d04b87d60606c56b",
 	sealed: "0179f42154297f99b85f1a6d5af912a28f8e24aa9085d85478267ca04bbb4bf12357fcbd",
 };
+
+describe("the fencing generation", () => {
+	it("rises with every taking, and every write records the one it was made under", async () => {
+		const clone = remote.clone();
+		const first = await clone.branch().checkout(changeset);
+		expect(first.generation).toBe(1);
+		await first.push();
+		first.close();
+		const second = await clone.branch().checkout(changeset);
+		expect(second.generation).toBe(2);
+		await second.push();
+		expect(gitIn(remote.bare, "log", "-1", "--format=%s", "refs/heads/melian/state")).toMatch(
+			/^melian: run [0-9a-f-]{36}, generation 2$/,
+		);
+		expect(remote.index()).toMatchObject({ changesets: { [changeset]: { lease: { generation: 2 }, written: 2 } } });
+	});
+});

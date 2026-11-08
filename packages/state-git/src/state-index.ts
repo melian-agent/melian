@@ -1,10 +1,4 @@
-/** Who holds a changeset on the state branch: the run, the clone it runs in, when it took the lease, and how often. */
-export interface Lease {
-	readonly run: string;
-	readonly holder: string;
-	readonly heartbeat: string;
-	readonly attempts: number;
-}
+import { Lease, LeaseError, type StoredLease } from "@melian-agent/core";
 
 /**
  * Why the state branch cannot be used: it could not be fetched or pushed, it holds what this build cannot read, or this
@@ -21,39 +15,25 @@ export class StateBranchError extends Error {
 }
 
 const version = 1;
-const lengthLimit = 200;
-
-function text(value: unknown, field: string): string {
-	if (typeof value !== "string" || value.length === 0 || value.length > lengthLimit)
-		throw invalid(`its ${field} is not a short string`);
-	return value;
-}
 
 function invalid(reason: string): StateBranchError {
 	return new StateBranchError("invalidBranch", `the state branch's index.json cannot be read: ${reason}`);
 }
 
-function lease(value: unknown): Lease {
-	if (typeof value !== "object" || value === null) throw invalid("a lease is not an object");
-	const { run, holder, heartbeat, attempts } = value as Record<string, unknown>;
-	if (!Number.isSafeInteger(attempts) || (attempts as number) < 1) throw invalid("a lease's attempts is not a count");
-	if (Number.isNaN(Date.parse(text(heartbeat, "heartbeat")))) throw invalid("a lease's heartbeat is not a time");
-	return {
-		run: text(run, "run"),
-		holder: text(holder, "holder"),
-		heartbeat: heartbeat as string,
-		attempts: attempts as number,
-	};
-}
+// One changeset's record: its lease, taken or released, and the generation its latest write was made under.
+type ChangesetRecord = { readonly lease: Lease; readonly written: number | undefined };
 
-/** The state branch's `index.json`: one record per changeset another run may be working on. */
+/**
+ * The state branch's `index.json`: each changeset's lease, which a release expires but keeps, so the next taking's
+ * generation rises past it, and the generation of the changeset's latest write.
+ */
 export class StateIndex {
-	readonly #leases: ReadonlyMap<string, Lease>;
+	readonly #records: ReadonlyMap<string, ChangesetRecord>;
 	/** What the writers' key commits to, so a clone holding another key refuses rather than write under it. */
 	readonly key: string | undefined;
 
-	private constructor(leases: ReadonlyMap<string, Lease>, key: string | undefined) {
-		this.#leases = leases;
+	private constructor(records: ReadonlyMap<string, ChangesetRecord>, key: string | undefined) {
+		this.#records = records;
 		this.key = key;
 	}
 
@@ -77,36 +57,68 @@ export class StateIndex {
 			throw invalid("its changesets are not an object");
 		if (key !== undefined && (typeof key !== "string" || !/^[0-9a-f]{64}$/.test(key)))
 			throw invalid("its key is not a commitment");
-		const leases = new Map<string, Lease>();
+		const records = new Map<string, ChangesetRecord>();
 		for (const [id, record] of Object.entries(changesets)) {
 			if (typeof record !== "object" || record === null) throw invalid(`the record of ${id} is not an object`);
-			leases.set(id, lease((record as Record<string, unknown>).lease));
+			const { lease: stored, written } = record as Record<string, unknown>;
+			let lease: Lease;
+			try {
+				lease = Lease.parse(stored);
+			} catch (error) {
+				if (error instanceof LeaseError) throw invalid(`the lease of ${id}: ${error.message}`);
+				throw error;
+			}
+			if (
+				written !== undefined &&
+				(!Number.isSafeInteger(written) || (written as number) < 1 || (written as number) > lease.generation)
+			)
+				throw invalid(`the written generation of ${id} is not one its lease has reached`);
+			records.set(id, { lease, written: written as number | undefined });
 		}
-		return new StateIndex(leases, key);
+		return new StateIndex(records, key);
 	}
 
 	keyed(key: string): StateIndex {
-		return new StateIndex(this.#leases, key);
+		return new StateIndex(this.#records, key);
 	}
 
 	lease(changeset: string): Lease | undefined {
-		return this.#leases.get(changeset);
+		return this.#records.get(changeset)?.lease;
 	}
 
-	leased(changeset: string, held: Lease): StateIndex {
-		return new StateIndex(new Map([...this.#leases, [changeset, held]]), this.key);
+	/** The generation the changeset's latest write was made under. */
+	written(changeset: string): number | undefined {
+		return this.#records.get(changeset)?.written;
 	}
 
-	released(changeset: string): StateIndex {
-		const leases = new Map(this.#leases);
-		leases.delete(changeset);
-		return new StateIndex(leases, this.key);
+	leased(changeset: string, lease: Lease): StateIndex {
+		return this.#with(changeset, { lease, written: this.written(changeset) });
 	}
 
-	toJSON(): { version: number; key?: string; changesets: Record<string, { lease: Lease }> } {
-		const changesets: Record<string, { lease: Lease }> = {};
-		for (const [id, held] of [...this.#leases].sort(([a], [b]) => a.localeCompare(b)))
-			changesets[id] = { lease: held };
+	/** Records a write of the changeset under its current lease's generation. */
+	wrote(changeset: string): StateIndex {
+		const record = this.#records.get(changeset)!;
+		return this.#with(changeset, { lease: record.lease, written: record.lease.generation });
+	}
+
+	/** Expires the changeset's lease at `now`, keeping its generation. */
+	released(changeset: string, now: number): StateIndex {
+		const record = this.#records.get(changeset)!;
+		return this.#with(changeset, { lease: record.lease.released(now), written: record.written });
+	}
+
+	#with(changeset: string, record: ChangesetRecord): StateIndex {
+		return new StateIndex(new Map([...this.#records, [changeset, record]]), this.key);
+	}
+
+	toJSON(): {
+		version: number;
+		key?: string;
+		changesets: Record<string, { lease: StoredLease; written?: number }>;
+	} {
+		const changesets: Record<string, { lease: StoredLease; written?: number }> = {};
+		for (const [id, { lease, written }] of [...this.#records].sort(([a], [b]) => a.localeCompare(b)))
+			changesets[id] = { lease: lease.toJSON(), ...(written === undefined ? {} : { written }) };
 		return { version, ...(this.key === undefined ? {} : { key: this.key }), changesets };
 	}
 }
