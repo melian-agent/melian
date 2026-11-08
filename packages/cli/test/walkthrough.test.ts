@@ -97,7 +97,8 @@ describe("CLI walkthrough beside the review", { timeout: 60_000 }, () => {
 		vi.spyOn(pipeline, "reviewChangeset").mockImplementation(async (request) => {
 			const reviewed = await actual(request);
 			order.push("review ended");
-			released.open();
+			// Released well after the review returns, so output printed without waiting for it would come first.
+			setTimeout(released.open, 200);
 			return reviewed;
 		});
 		const io = {
