@@ -699,6 +699,33 @@ describe("finding the roots a defect may restate", () => {
 		expect(await predecessorsAt(h3, speaker, [member])).toEqual([]);
 	});
 
+	it("holds a restatement's proof to the root's own file, not an identical change elsewhere", async () => {
+		const both = step(withLine5(), { "b.ts": text(withLine5()) });
+		const { state, key } = await reviewOf(both);
+		const [inA, inB] = ["a.ts", "b.ts"].map(
+			(file) => state.files.flatMap((each) => each.hunks.map(provingHunk)).find((hunk) => hunk.file === file)!,
+		);
+		expect(inA!.hash).toBe(inB!.hash);
+		const affected = (snippet: string, hunk: ReturnType<typeof provingHunk>) =>
+			lens({
+				snippet,
+				startLine: 9,
+				cause: "affected",
+				evidence: [
+					{ file: hunk.file, startLine: 5, role: "cause", revision: "head", proves: true, snippet: "changed 5" },
+				],
+				trigger: { file: hunk.file, index: 0, snippet: "changed 5", proof: [hunk] },
+			});
+		const found = affected("line 9", inA!);
+		await commit(async (tx) => {
+			await upsertFinding(tx, root, found, key, [inA!, inB!]);
+			await dismissFinding(tx, root, found.id, dismissal, key, "P2");
+		});
+		const h2 = step(withLine5(), { "b.ts": text(withLine5()), "c.ts": "other\n" });
+		expect(await predecessorsAt(h2, affected("line 9 again", inA!))).toEqual([found.id]);
+		expect(await predecessorsAt(h2, affected("line 9 elsewhere", inB!))).toEqual([]);
+	});
+
 	it("offers an affected root only while every hunk its proof accepted is here, and holds the restatement's proof", async () => {
 		const { state } = await reviewOf(h1);
 		const proof = state.files.flatMap((file) => file.hunks.map(provingHunk));

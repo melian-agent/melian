@@ -42,11 +42,7 @@ export class Predecessors {
 		review: ReviewState,
 		context: Context,
 	): Promise<Predecessors> {
-		const state = (await reader.snapshot(FindingsDocument, root, context)) ?? {
-			revisions: [],
-			items: {},
-			versions: {},
-		};
+		const state = (await reader.snapshot(FindingsDocument, root, context)) ?? FindingsDocument.definition.initial();
 		return new Predecessors(dismissedRoots(state), (ids) => proofAt(state, ids, revision), review);
 	}
 
