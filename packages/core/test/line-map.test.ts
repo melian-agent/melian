@@ -189,14 +189,19 @@ describe("LineMap", () => {
 	it("leaves a symlink, a directory and a submodule unmapped, though git diffs each as text", async () => {
 		const before = commit({ "dir/only.ts": lines(...ten), target: "x\n" }, "base");
 		symlinkSync("target", join(repo, "link"));
+		symlinkSync("target", join(repo, "x 100644 y"));
 		gitIn(repo, "add", "-A");
 		gitIn(repo, "commit", "--quiet", "-m", "link");
 		const linked = gitIn(repo, "rev-parse", "HEAD").trim();
 		writeFiles(repo, { target: "y\n" });
 		rmSync(join(repo, "link"));
 		symlinkSync("elsewhere", join(repo, "link"));
+		rmSync(join(repo, "x 100644 y"));
+		symlinkSync("elsewhere", join(repo, "x 100644 y"));
 		const after = commit({ "dir/only.ts": lines("new 0", ...ten) }, "retarget");
 		expect((await mapOf(linked, after, "link")).mapped).toBe(false);
+		// A name holding a regular file's mode is still a symlink's name.
+		expect((await mapOf(linked, after, "x 100644 y")).mapped).toBe(false);
 		expect((await mapOf(before, after, "dir")).mapped).toBe(false);
 		gitIn(repo, "update-index", "--add", "--cacheinfo", `160000,${before},sub`);
 		gitIn(repo, "commit", "--quiet", "-m", "submodule");
