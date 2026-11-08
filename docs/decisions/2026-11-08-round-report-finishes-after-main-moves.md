@@ -12,12 +12,14 @@ Example: [pull request #294](https://github.com/melian-agent/melian/pull/294)'s 
 
 ## Decision
 
-- `report` carries on after the default branch moves, in a run's first attempt. It still refuses a rerun, with `run_attempt` above 1, whose commit the default branch has moved past.
+- `report` carries on after the default branch moves, in a run's first attempt whose round job passed its own check on the run's commit. It still refuses a rerun, with `run_attempt` above 1, whose commit the default branch has moved past.
 - `pending` and `round` keep the strict check. They start seconds after the gate, so a merge refuses them rarely, and cheaply, before any review.
 - Every job still refuses a run from any ref but the current default branch, whatever its attempt.
 - The report job refuses an attempt that is not a whole number above 0. It also refuses a default branch or head it cannot read; a head reads only as 40 hexadecimal digits. Each read fails closed.
 
-A first attempt's report is safe to run on its commit because of the job chain. `report` needs `round`, and `round` checked, as it started, that its commit was the default branch's head. So the code `report` runs was the reviewed default branch when the round began.
+A first attempt's report is safe to run on its commit because of the job chain. `report` needs `round`, and `round` checks, as it starts, that its commit is the default branch's head. So the code `report` runs was the reviewed default branch when the round began.
+
+That holds only when the round's check passed, and `report` runs under `always()`, so it also runs after `pending` refused the run or `round` was skipped. So `round` publishes the commit its check passed on, as the job output `checked`, from a step straight after the check. `report` carries on after a move only when that output is the run's commit. A run that `pending` refused, or whose round failed before the check, leaves the output empty, and the strict rule holds.
 
 ## What this gives up
 
@@ -32,5 +34,7 @@ A separate agent attacked the first ruling, under which every job's first attemp
 - **The premise.** The first ruling said the Environment admitted the commit at dispatch. The Environment matches the run's ref, not its commit, so it bounds no age. This decision bounds age through the job chain instead.
 - **No rerun gives `run_attempt` 1.** GitHub's documentation says the attempt starts at 1 and rises with each rerun: of all jobs, of failed jobs, or of one job. No step can change it before the check, since it comes from the `${{ }}` expression.
 - **Shell traps.** `[ "$ATTEMPT" -gt 1 ]` and `(( ATTEMPT > 1 ))` let an empty or non-numeric attempt through, and `(( ))` runs an injected `a[$(cmd)]`. The step matches the attempt against `^[1-9][0-9]*$` and compares it as text, and its test covers each of those inputs.
+
+Codex's adversarial review of the first build found the `always()` gap above. A run held in the queue reached `pending` after `main` moved. `pending` refused it, and `round` was skipped, but the first build's `report` still ran the old commit with a token that can write comments. The `checked` output closes it, and the step's test covers an empty and a wrong output.
 
 The agent also proposed bounding the report's age by reading, from the repository's activity, when the default branch left the run's commit. The maintainer chose the job chain's bound, which needs no new read.
