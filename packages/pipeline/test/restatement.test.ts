@@ -253,11 +253,11 @@ describe("a dismissal carrying to a restatement", () => {
 	});
 
 	it.each([
-		{ name: "omits a dismissed finding", matches: undefined, says: "missing" },
+		{ name: "omits a dismissed finding", matches: undefined, says: (root: string) => `; missing ${root}` },
 		{
 			name: "answers one it was not shown",
 			matches: { "0123456789abcdef": "same" },
-			says: "not listed 0123456789abcdef",
+			says: () => "; not listed 0123456789abcdef",
 		},
 	])("refuses a report that $name, judges nothing, and links nothing", async ({ matches, says }) => {
 		const root = await dismissedRoot();
@@ -285,10 +285,40 @@ describe("a dismissal carrying to a restatement", () => {
 			.filter((message) => message.role === "toolResult")
 			.map(textOf)
 			.join("\n");
-		expect(results).toContain(`matches must answer same or different for each dismissed finding listed, d1 ${root}`);
-		expect(results).toContain(says);
+		expect(results).toContain(
+			`matches must answer same or different for each dismissed finding listed, d1 ${root}, and no other${says(root)}\n`,
+		);
 		expect(second).toMatchObject({ code: "verifierFailed" });
 		const state = await harness.snapshot(FindingsDocument, (await harness.root(context)).id, context);
 		expect(state!.inherited?.[Revision.key(await revision())]).toBeUndefined();
+	});
+
+	it("refuses sameness answers from a verifier shown no dismissed finding", async () => {
+		const call = (messages: Messages) =>
+			messages.some((message) => message.role === "toolResult")
+				? fauxAssistantMessage("Done.")
+				: fauxAssistantMessage(
+						fauxToolCall("report_verdict", {
+							claim: "c1",
+							answers: { code: "yes", guard: "no", base: "no" },
+							verdict: "confirmed",
+							reason: "Traced.",
+							matches: { "0123456789abcdef": "same" },
+						}),
+						{ stopReason: "toolUse" },
+					);
+		const requests = scriptConversations(fake, [
+			{ match: correctness, replies: [report(nullDeref), fauxAssistantMessage("Done.")] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			{ match: verifierMarker, replies: [call, call, call] },
+		]);
+		await review().catch(() => undefined);
+		const results = requests[verifierMarker]!.flat()
+			.filter((message) => message.role === "toolResult")
+			.map(textOf)
+			.join("\n");
+		expect(results).toContain(
+			"matches must answer same or different for each dismissed finding listed, none here, and no other; not listed 0123456789abcdef\n",
+		);
 	});
 });
