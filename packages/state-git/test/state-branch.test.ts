@@ -464,17 +464,20 @@ describe("Codex's review of a7e009f", () => {
 		expect(stranger.has(changeset)).toBe(false);
 	});
 
-	it("refuses a file moved to another changeset or name on the branch", async () => {
+	it.each([
+		["another changeset", "pull-fedcba9876543210", "main.jsonl"],
+		["another name", changeset, "doc-1.jsonl"],
+	])("refuses an intact sealed file moved to %s on the branch", async (_name, id, name) => {
 		const checkout = await remote.clone().branch().checkout(changeset);
 		await note(await storageOf(checkout), "marker secret 0123");
 		await checkout.push();
+		// The sealed bytes exactly as stored, so only their place on the branch differs.
 		const main = gitIn(remote.bare, "rev-parse", `refs/heads/melian/state:changesets/${changeset}/main.jsonl`);
-		const moved = execFileSync("git", ["cat-file", "blob", main], { cwd: remote.bare, encoding: "latin1" });
-		replaceChangeset(remote, { "main.jsonl": moved }, "pull-fedcba9876543210");
-		await expect(remote.clone().branch().checkout("pull-fedcba9876543210")).rejects.toMatchObject({
+		const moved = execFileSync("git", ["cat-file", "blob", main], { cwd: remote.bare });
+		replaceChangeset(remote, { [name]: moved, ...(name === "main.jsonl" ? {} : { "main.jsonl": moved }) }, id);
+		await expect(remote.clone().branch().checkout(id)).rejects.toMatchObject({
 			code: "invalidBranch",
-			message:
-				"this clone's state key cannot read main.jsonl in pull-fedcba9876543210; the branch was written under another key, or the file was moved",
+			message: `this clone's state key cannot read ${name} in ${id}; the branch was written under another key, or the file was moved`,
 		});
 	});
 
