@@ -852,6 +852,33 @@ describe("walkthrough summaries", () => {
 			const record = await harness.getTask(stale as TaskId, context);
 			expect(record?.state.status === "terminal" && record.state.outcome.status).toBe("aborted");
 		});
+		it("charges no attempt for a pending task it aborts for another route", async () => {
+			const revision = Revision.key(changeset.revision);
+			const root = await harness.root(context);
+			await root.commit(async (tx) => {
+				(await tx.doc(VerdictDocument, root.id)).walkthroughAttempts = { [revision]: 1 };
+				const task = await tx.createTask(
+					SummaryTask,
+					{
+						root: root.id,
+						revision,
+						prompt: "Summarise the change.",
+						model: models.ref("scripted"),
+						paths: ["src/a.ts"],
+					},
+					{ ownership: { kind: "conversation" } },
+				);
+				(await tx.doc(SummaryIndex, root.id)).tasks[revision] = task;
+			}, context);
+			scriptConversations(models, [
+				{ match: "You write Melian's walkthrough", replies: [fauxAssistantMessage("No tool used.")] },
+			]);
+			const other = models.ref("other");
+			const doc = await summarize({
+				config: { ...config, models: { light: { model: `${other.provider}/${other.modelId}` } } },
+			});
+			expect(doc?.walkthroughAttempts).toEqual({ [revision]: 2 });
+		});
 		it("unlocks nothing for a pending task on another route once the attempts are spent", async () => {
 			const revision = Revision.key(changeset.revision);
 			const root = await harness.root(context);

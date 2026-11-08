@@ -660,6 +660,10 @@ export class ReviewHarness {
 		});
 		recorder.attach(harness);
 		await abortReplacedRuns(harness, context);
+		// A walkthrough never outlives its process: a review resolves its light route only later, and any wait before that
+		// would resume one on the old route. The summariser creates its own task.
+		for (const { record } of (await harness.inspect(context)).tasks)
+			if (record.kind === SummaryTask.definition.name) await harness.abortTask(record.id, context);
 		return new ReviewHarness(harness, checkout !== undefined);
 	}
 
@@ -694,9 +698,6 @@ export class ReviewHarness {
 					candidate.route.slice(attempts?.[candidate.key] ?? 0).map((model) => model.provider),
 				);
 			}
-			if (record.kind === SummaryTask.definition.name) {
-				return [(record.input as unknown as { model: ModelReference }).model.provider];
-			}
 			if (record.kind === decisionTaskName) {
 				const { key } = record.input as unknown as DecisionTaskInput;
 				const { decider } = JSON.parse(key) as { decider: string };
@@ -711,12 +712,7 @@ export class ReviewHarness {
 	async resumesModels(context: Context = backgroundContext): Promise<boolean> {
 		const { tasks } = await this.harness.inspect(context);
 		return tasks.some(({ record }) =>
-			[
-				LensTask.definition.name,
-				VerificationTask.definition.name,
-				decisionTaskName,
-				SummaryTask.definition.name,
-			].includes(record.kind),
+			[LensTask.definition.name, VerificationTask.definition.name, decisionTaskName].includes(record.kind),
 		);
 	}
 

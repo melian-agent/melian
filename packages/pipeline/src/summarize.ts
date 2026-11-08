@@ -368,7 +368,7 @@ export async function summarizeReview(options: {
 					![...undecided, "failed", "completed"].includes(record.state.outcome.status));
 			const uncounted =
 				record?.state.status === "terminal" &&
-				["failed", "completed"].includes(record.state.outcome.status) &&
+				record.state.outcome.status !== "aborted" &&
 				index?.counted[revision] !== known;
 			const spent =
 				((await harness.snapshot(VerdictDocument, conversation.id, context))?.walkthroughAttempts?.[revision] ??
@@ -394,10 +394,10 @@ export async function summarizeReview(options: {
 				}
 				return known as TaskId<string>;
 			}
-			if (previous?.state.status === "terminal" && ["failed", "completed"].includes(previous.state.outcome.status))
+			// An aborted walkthrough costs no attempt; one that ran to any other end does, before the cap reads the count.
+			if (previous?.state.status === "terminal" && previous.state.outcome.status !== "aborted")
 				await countAttempt(tx, conversation.id, revision, known!);
 			if (!rerun && (document.walkthroughAttempts?.[revision] ?? 0) >= maxWalkthroughAttempts) return undefined;
-			if (known !== undefined) await countAttempt(tx, conversation.id, revision, known);
 			if (rerun) document.walkthroughAttempts = { ...document.walkthroughAttempts, [revision]: 0 };
 			const created = await tx.createTask(
 				SummaryTask,

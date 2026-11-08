@@ -511,24 +511,32 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 		});
 	});
 
-	it("says a walkthrough task that has not finished resumes a model, and no task none", async () => {
+	it("aborts at open a walkthrough task an earlier process left, so it resumes no model", async () => {
+		const database = join(dir, "walkthrough.sqlite");
 		const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "light" }] });
-		const reopened = await ReviewHarness.open(createMemoryStorage(), fake.review, { retry: false });
+		const earlier = await openHarness(await openSqliteStorage(database), {
+			models: fake.models,
+			registry: createReviewRegistry(),
+		});
+		const root = await earlier.root(context, { agent: { model: fake.ref("orchestrator") } });
+		const task = await root.commit(
+			(tx) =>
+				tx.createTask(
+					SummaryTask,
+					{ root: root.id, revision: "r", prompt: "p", model: fake.ref("light"), paths: [] },
+					{ ownership: { kind: "conversation" } },
+				),
+			context,
+		);
+		await earlier.close(context);
+
+		const reopened = await ReviewHarness.open(await openSqliteStorage(database), fake.review, { retry: false });
 		harness = reopened.harness;
-		const root = await harness.root(context, { agent: { model: fake.ref("orchestrator") } });
 		expect(await reopened.resumesModels(context)).toBe(false);
 		expect(await reopened.resumedProviders(context)).toEqual([]);
-
-		await root.commit(async (tx) => {
-			await tx.createTask(
-				SummaryTask,
-				{ root: root.id, revision: "r", prompt: "p", model: fake.ref("light"), paths: [] },
-				{ ownership: { kind: "conversation" } },
-			);
-		}, context);
-
-		expect(await reopened.resumesModels(context)).toBe(true);
-		expect(await reopened.resumedProviders(context)).toEqual(["faux"]);
+		harness.resume();
+		const { state } = await harness.waitForTask(task, context);
+		expect(state.outcome.status).toBe("aborted");
 		expect(fake.provider.state.callCount).toBe(0);
 	});
 
