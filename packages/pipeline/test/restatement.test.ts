@@ -420,6 +420,36 @@ describe("a dismissal carrying to a restatement", () => {
 		]);
 	});
 
+	it("keeps as the root's claim the sighting of a lens the dismissed verdict selected", async () => {
+		script([nullDeref]);
+		const [shown] = (await review()).verdict.attention();
+		const owner = await harness.root(context);
+		// A sighting of the ID by a producer the review did not select, more severe, so it would win if it counted.
+		await owner.commit(async (tx) => {
+			const sightings = (await tx.doc(FindingsDocument, owner.id)).items[shown!.id]!.sightings[
+				Revision.key(await revision())
+			]!;
+			const [own] = Object.values(sightings);
+			sightings["lens.contracts@stale"] = JSON.parse(
+				JSON.stringify({
+					...own!,
+					properties: {
+						...own!.properties,
+						severity: "P0",
+						failureScenario: "A lens since dropped wrote this.",
+						source: { check: "lens.contracts", version: "stale" },
+					},
+				}),
+			);
+		}, context);
+		await recordDismissal({ harness, revision: await revision(), id: shown!.id, dismissal, repoRoot: repo });
+		const state = await harness.snapshot(FindingsDocument, owner.id, context);
+		expect(state!.items[shown!.id]!.lifecycle.dismissedSighting!.sighting.properties).toMatchObject({
+			failureScenario: nullDeref.failureScenario,
+			source: { check: "lens.correctness" },
+		});
+	});
+
 	it("lets the scripted verifier answer different by default for each dismissed finding it is shown", async () => {
 		await dismissedRoot();
 		pushElsewhere("other");

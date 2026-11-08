@@ -483,7 +483,8 @@ export async function replaceCheckFindings(
  * Marks a finding dismissed, and returns the dismissal it replaced, if it was dismissed already. A replaced dismissal
  * moves to the finding's history, so its reason is not lost; the same dismisser giving the same reason again changes
  * nothing when the accepted content also matches. The reason is stored without surrounding whitespace.
- * `revision` selects the accepted trigger, defaulting to the last sighting for direct callers.
+ * `revision` selects the accepted trigger, defaulting to the last sighting for direct callers, from the sightings of
+ * `producers`, the dismissed verdict's selection, or of every producer when absent.
  * Throws core's `FindingError`: `unknownFinding` if no finding has the ID, and `invalidDismissal` for a blank `by` or
  * `at`, or a reason core's `dismissalReason` refuses.
  */
@@ -494,6 +495,7 @@ export async function dismissFinding(
 	{ by, reason, at }: Dismissal,
 	revision?: string,
 	severity?: Severity,
+	producers?: readonly Producer[],
 ): Promise<Dismissal | undefined> {
 	const why = dismissalReason(reason);
 	for (const [field, value] of [
@@ -514,7 +516,11 @@ export async function dismissFinding(
 	}
 	const { status, dismissedBy, dismissedReason, dismissedAt, history } = record.lifecycle;
 	const accepting = revision ?? record.lifecycle.lastSeenRevision;
-	const atRevision = record.sightings[accepting]!;
+	// Only the sightings of the producers the dismissed verdict selected: a dropped lens's sighting was never shown.
+	const counts = selected(producers);
+	const atRevision = Object.fromEntries(
+		Object.entries(record.sightings[accepting]!).filter(([key, sighting]) => counts(key, sighting)),
+	);
 	const { winner } = adjudicate(atRevision);
 	const trigger = winner.properties.trigger;
 	const shown =
