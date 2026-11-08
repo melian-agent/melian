@@ -857,6 +857,38 @@ describe("a level that probes", () => {
 		expect(runs[0]).toHaveProperty("result");
 	});
 
+	it("judges a claim again once a refused rerun runs, so the verifier reads the run that reproduced it", async () => {
+		const fake = createFakeModels();
+		let heads = 0;
+		const base = unconfinedSandbox();
+		const sandbox: ProbeSandbox = {
+			...base,
+			wrap: async (command, policy) => {
+				if (inHeadTree(command) && ++heads === 2) throw new Error("the sandbox hiccuped");
+				return base.wrap(command, policy);
+			},
+		};
+		const judge: ScriptedReply = (messages) => {
+			if (messages.some((message) => message.role === "toolResult")) return fauxAssistantMessage("Judged.");
+			const prompt = systemPromptOf(messages);
+			const reproduced = prompt.includes("When Melian ran it again it failed");
+			return call("report_verdict", {
+				claim: /Claim (c[0-9]+) finding/.exec(prompt)![1]!,
+				answers: { code: "yes", guard: "no", base: "no" },
+				verdict: reproduced ? "confirmed" : "plausible",
+				reason: reproduced ? "The probe failed again." : "Melian could not run the probe again.",
+			});
+		};
+		const verifier = { match: "Melian adversarial verifier", replies: [judge, judge] };
+		const first = await review({ planner: plan, prober: probing(failing), others: [verifier] }, { fake, sandbox });
+		const verified = (verdict: Awaited<typeof first.run>["verdict"]) =>
+			verdict.counted().map((each) => each.properties.verification?.verdict);
+		expect(verified((await first.run).verdict)).toEqual(["plausible"]);
+		const again = await review({ planner: [], prober: [], others: [verifier] }, { fake });
+		expect(verified((await again.run).verdict)).toEqual(["confirmed"]);
+		expect(heads).toBe(3);
+	});
+
 	it("gives the verifier the probe of a finding whose prober failed after reporting it", async () => {
 		const reported = probing(failing).slice(0, 2);
 		const { run, requests } = await review({ planner: plan, prober: reported });

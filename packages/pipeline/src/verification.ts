@@ -269,7 +269,9 @@ export async function startVerification(
 			claims: candidate.state.claims.map(({ verification: __, ...claim }) => claim),
 		},
 	}));
-	const key = JSON.stringify({ root: input.root, revision, version: input.version, candidates });
+	// A rerun the sandbox refused runs again on a repeat review, so a verification attaches only to the reruns it read.
+	const reruns = (await harness.snapshot(ProbeReruns, input.root, context))?.runs[Revision.key(input.revision)] ?? {};
+	const key = JSON.stringify({ root: input.root, revision, version: input.version, candidates, reruns });
 	if (unlockModels !== undefined) {
 		// Live tasks were unlocked from their checkpoints before resume; finished tasks ask no model.
 		const previous = (await harness.snapshot(ReviewIndex, root.id, context))?.reviews[Revision.key(input.revision)]
