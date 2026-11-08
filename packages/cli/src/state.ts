@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { type LoadedSecrets, loadSecrets, type NamedCredential, userFiles, visibleText } from "@melian-agent/core";
+import { loadSecrets, stateKeyProvider, userFiles, visibleText } from "@melian-agent/core";
 import {
 	backgroundContext as context,
 	MelianCredentialStore,
@@ -23,13 +23,6 @@ import { isScripted } from "./models.ts";
 import { CliError, openStorage, storagePath } from "./repository.ts";
 
 /** The provider a secrets file names for the state branch's writers' key, which no model uses. */
-export const stateKeyProvider = "melian-state";
-
-/** The secrets files' credentials without the state key, for the model catalogue, which would refuse its provider. */
-export function modelCredentials(secrets: LoadedSecrets): readonly NamedCredential[] {
-	return secrets.credentials.filter((credential) => credential.provider !== stateKeyProvider);
-}
-
 // Where a changeset's storage lives: one SQLite file for a range, for scripted mode and for a pull request first
 // reviewed before the state branch, and this clone's copy of the branch's JSONL storage for any other pull request.
 type Location =

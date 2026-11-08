@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { loadSecrets, type NamedCredential, userFiles } from "@melian-agent/core";
+import { loadSecrets, modelCredentials, type NamedCredential, userFiles } from "@melian-agent/core";
 import { createReviewModels, type ReviewModels, unlockCredentials } from "@melian-agent/pipeline";
 
 const run = promisify(execFile);
@@ -11,7 +11,8 @@ export async function liveCredentials(
 	env: NodeJS.ProcessEnv = process.env,
 ): Promise<readonly NamedCredential[]> {
 	const { stdout } = await run("git", ["rev-parse", "--show-toplevel"], { cwd: from });
-	return (await loadSecrets(stdout.trim(), userFiles(env).secrets)).credentials;
+	// The state branch's writers' key is no model credential, and the catalogue refuses its provider.
+	return modelCredentials(await loadSecrets(stdout.trim(), userFiles(env).secrets));
 }
 
 // `reviewChangeset` runs no credential command itself; a host unlocks first, as the CLI does. A failing command then

@@ -48,6 +48,14 @@ export interface LoadedSecrets {
 	readonly warnings: readonly string[];
 }
 
+/** The provider a secrets file names for the state branch's writers' key, which is no model provider. */
+export const stateKeyProvider = "melian-state";
+
+/** The secrets files' credentials without the state key, for the model catalogue, which would refuse its provider. */
+export function modelCredentials(secrets: LoadedSecrets): readonly NamedCredential[] {
+	return secrets.credentials.filter((credential) => credential.provider !== stateKeyProvider);
+}
+
 // Why a command source in the file must be refused, or `undefined` when only the user running Melian could have
 // written it: theirs, readable and writable by no one else, in a directory no one else can replace it in. A command
 // runs on every review, so a file anyone else could have written, or swapped, must not hold one. git writes the files

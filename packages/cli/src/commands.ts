@@ -6,6 +6,7 @@ import {
 	loadConfig,
 	loadSecrets,
 	type MelianConfig,
+	modelCredentials,
 	type PullRequest,
 	Rendering,
 	type RepositoryPermission,
@@ -56,7 +57,7 @@ import {
 	Triage,
 } from "./models.ts";
 import { CliError, git } from "./repository.ts";
-import { ChangesetStore, modelCredentials } from "./state.ts";
+import { ChangesetStore } from "./state.ts";
 import { currentBase, fetchedPullRequest, gitHubFor, parseTarget, pullRequestChangeset } from "./target.ts";
 
 /** Where a command reads and writes: its working directory, environment, and output. */

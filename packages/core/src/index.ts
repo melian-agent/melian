@@ -344,8 +344,10 @@ export {
 	type CredentialValue,
 	type LoadedSecrets,
 	loadSecrets,
+	modelCredentials,
 	type NamedCredential,
 	secretsFileSchema,
+	stateKeyProvider,
 } from "./secrets.ts";
 export { openSource, type RepositorySource, SourceError, type SourceReader } from "./source.ts";
 export {

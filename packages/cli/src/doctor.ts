@@ -9,10 +9,12 @@ import {
 	loadConfig,
 	loadSecrets,
 	melianPaths,
+	modelCredentials,
 	resolutionOverrides,
 	StandardsInventory,
 	type StaticTool,
 	standardsLimits,
+	stateKeyProvider,
 	userFiles,
 	visibleText,
 } from "@melian-agent/core";
@@ -21,7 +23,6 @@ import { createReviewModels, piAuthPath, providersWithCredentials, staticToolSou
 import type { Io } from "./commands.ts";
 import { decisionProviderRefusal, reviewModels } from "./models.ts";
 import { git, stateDirectory, stateDirectoryVariable } from "./repository.ts";
-import { modelCredentials, stateKeyProvider } from "./state.ts";
 import { ToolInventory } from "./tools.ts";
 
 type Check = { readonly name: string; readonly state: "ok" | "warn" | "fail"; readonly detail: string };
