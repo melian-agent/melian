@@ -1059,7 +1059,7 @@ export const reportVerdict = defineTool({
 		const error = [...Value.Errors(reportVerdictSchema, args)][0];
 		if (error !== undefined)
 			throw new Error(
-				`report_verdict needs claim c1 (or another supplied label), answers { code, guard, base } each yes, no or unknown, verdict confirmed, plausible or refuted, reason (1–2000 characters), optional correction (1–2000 characters), and evidence locations { file, line, endLine?, role, revision? }. It takes an optional lower { severity, reason }, and matches { <dismissed finding ID>: same or different } when dismissed findings are listed: ${error.instancePath} ${error.message}`,
+				`report_verdict needs claim c1 (or another supplied label), answers { code, guard, base } each yes, no or unknown, verdict confirmed, plausible or refuted, reason (1–2000 characters), optional correction (1–2000 characters), and evidence locations { file, line, endLine?, role, revision? }, and matches { <dismissed finding ID>: same or different } for each dismissed finding listed. It takes an optional lower { severity, reason }: ${error.instancePath} ${error.message}`,
 			);
 		const prepared = args as ReportVerdictInput;
 		if (prepared.verdict === "refuted" && (prepared.evidence?.length ?? 0) === 0)
