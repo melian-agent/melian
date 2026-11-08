@@ -300,6 +300,12 @@ function reopenedAt(lifecycle: FindingLifecycle, revision: string): FindingLifec
 	};
 }
 
+// Whether a dismissal's reopen rule reads its proof rather than its trigger: any proof, unless a sighting cites a
+// trigger of its own. A sighting that cites fewer locations, or no cause, changes nothing.
+export function readsProof(proof: readonly ProvingHunk[], cause: Cause): boolean {
+	return proof.length > 0 && cause !== "introduced";
+}
+
 function dismissalChanged(
 	lifecycle: FindingLifecycle,
 	properties: ProducerFinding["properties"],
@@ -307,7 +313,7 @@ function dismissalChanged(
 ): boolean {
 	const accepted = lifecycle.dismissedTrigger!;
 	const proof = unionOf([...accepted.proof, ...(lifecycle.proof ?? [])]);
-	return proof.length > 0 && properties.cause !== "introduced"
+	return readsProof(proof, properties.cause)
 		? hunks !== undefined &&
 				proof.some((each) => !hunks.some((hunk) => hunk.file === each.file && hunk.hash === each.hash))
 		: accepted.hash !== triggerCode(properties.trigger);

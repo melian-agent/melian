@@ -797,6 +797,40 @@ describe("finding the roots a defect may restate", () => {
 		).toEqual([]);
 	});
 
+	it("holds an affected root to its proof after a later sighting cites no cause", async () => {
+		const { state, key } = await reviewOf(h1);
+		const proof = state.files.flatMap((file) => file.hunks.map(provingHunk));
+		const found = lens({
+			snippet: "line 8",
+			startLine: 8,
+			cause: "affected",
+			evidence: [
+				{ file: "a.ts", startLine: 5, role: "cause", revision: "head", proves: true, snippet: "changed 5" },
+			],
+			trigger: { file: "a.ts", index: 0, snippet: "changed 5", proof },
+		});
+		await commit(async (tx) => {
+			await upsertFinding(tx, root, found, key, proof);
+			await dismissFinding(tx, root, found.id, dismissal, key, "P2");
+		});
+		const h2 = step(withLine5(), { "b.ts": "other\n" });
+		const { state: second, key: later } = await reviewOf(h2);
+		const uncited = lens({ snippet: "line 8", startLine: 8 });
+		await commit((tx) =>
+			upsertFinding(
+				tx,
+				root,
+				uncited,
+				later,
+				second.files.flatMap((file) => file.hunks.map(provingHunk)),
+			),
+		);
+		const restated = lens({ snippet: "line 8\nline 9", startLine: 8, endLine: 9 });
+		expect(await predecessorsAt(h2, restated)).toEqual([found.id]);
+		const h3 = step([...ten.slice(0, 4), "changed 5 again", ...ten.slice(5)], { "b.ts": "other\n" });
+		expect(await predecessorsAt(h3, restated)).toEqual([]);
+	});
+
 	it.each([
 		{
 			name: "a line changed beside the root's region",
