@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { chmodSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { type Changeset, pullRequestChangesetId, Revision } from "@melian-agent/core";
 import { createGitHubProvider } from "@melian-agent/github";
@@ -193,6 +193,25 @@ const noteDoc = defineDoc({
 const branchTip = () => gitIn(origin, "rev-parse", "--verify", "--quiet", "refs/heads/melian/state");
 
 describe("ChangesetStore", () => {
+	it("restores the branch's copy over one whose document sidecar was deleted since it synced", async () => {
+		const store = await ChangesetStore.write(io(first), first, pullRequest);
+		await writeNote(store, "stored");
+		await store.storage.close(context);
+		await store.close();
+		const copy = join(
+			gitIn(first, "rev-parse", "--path-format=absolute", "--git-common-dir"),
+			"melian",
+			"state",
+			pullRequest,
+		);
+		rmSync(join(copy, readdirSync(copy).find((name) => name.startsWith("doc-"))!));
+		const again = await ChangesetStore.write(io(first), first, pullRequest);
+		expect(await readNotes(again)).toEqual(["stored"]);
+		await again.storage.close(context);
+		await again.close();
+		expect(stderr).toEqual([expect.stringMatching(/its copy is set aside at .*\.set-aside-\d+/)]);
+	});
+
 	it("refuses a pull request another clone holds, naming the run", async () => {
 		const held = await ChangesetStore.write(io(first), first, pullRequest);
 		const other = clone();

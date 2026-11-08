@@ -91,6 +91,12 @@ async function stateKey(repoRoot: string, env: NodeJS.ProcessEnv): Promise<Uint8
  * under the copy's lock: a command that writes it takes the branch's lease first and stores the copy back when it
  * closes, and a command that reads it touches no remote.
  */
+// Opens a copy with Pi's storage, which refuses one whose committed records are missing, so a damaged copy is set aside
+// for the branch's rather than pushed over it.
+async function validate(directory: string): Promise<void> {
+	await (await openJsonlStorage(directory, context)).close(context);
+}
+
 export class ChangesetStore {
 	readonly storage: Storage;
 	readonly #checkout: StateCheckout | undefined;
@@ -139,6 +145,7 @@ export class ChangesetStore {
 			directory: location.directory,
 			holder: await holder(location.directory),
 			key: await stateKey(repoRoot, io.env),
+			validate,
 		});
 		const checkout = await branch.checkout(changeset).catch(ChangesetStore.#refusal);
 		// A command that acts on GitHub needs the branch's latest copy: this clone's alone may lack a newer round that
@@ -178,7 +185,13 @@ export class ChangesetStore {
 		const location = await locate(repoRoot, changeset, io.env, directory);
 		if (location.kind === "sqlite")
 			return existsSync(location.path) ? ChangesetStore.#sqlite(io, location, changeset) : undefined;
-		const branch = new StateBranch({ repoRoot, remote: "origin", directory: location.directory, holder: "reader" });
+		const branch = new StateBranch({
+			repoRoot,
+			remote: "origin",
+			directory: location.directory,
+			holder: "reader",
+			validate,
+		});
 		const checkout = await branch.open(changeset).catch(ChangesetStore.#refusal);
 		return checkout === undefined ? undefined : ChangesetStore.#opened(io, checkout);
 	}
@@ -214,6 +227,7 @@ export class ChangesetStore {
 			directory,
 			holder: await holder(directory),
 			key: await stateKey(repoRoot, io.env),
+			validate,
 		});
 		return branch.reserve(changeset).catch((error: unknown) => {
 			if (error instanceof StateBranchError && error.code === "storedElsewhere")
