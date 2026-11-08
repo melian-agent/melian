@@ -48,6 +48,7 @@ describe("StateIndex", () => {
 	it.each([
 		["not JSON", "{", "it is not JSON"],
 		["not an object", "null", "it is not an object"],
+		["a number", "5", "it is not an object"],
 		["another version", indexOf({}, 2), "its version is 2, and this build of Melian reads version 1"],
 		[
 			"no version",
