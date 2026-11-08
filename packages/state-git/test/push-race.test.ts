@@ -9,6 +9,9 @@ import { changeset, note, notes, Remote, storageOf } from "./fixtures/state.ts";
 let moves = 0;
 const environments: { command: string; env: Readonly<Record<string, string>> | undefined }[] = [];
 let interloper: (() => Promise<void>) | undefined;
+// Answers the next push with the remote's lock error, worded as a newer git words it, as when another push created the
+// branch at the same moment.
+let lockedOnce = false;
 
 vi.mock("@melian-agent/core", async (original) => {
 	const actual = await original<typeof core>();
@@ -16,6 +19,17 @@ vi.mock("@melian-agent/core", async (original) => {
 		...actual,
 		git: async (cwd: string, args: readonly string[], options?: core.GitOptions) => {
 			environments.push({ command: args[0]!, env: options?.env });
+			if (args[0] === "push" && lockedOnce) {
+				lockedOnce = false;
+				const refspec = args.find((arg) => arg.endsWith(":refs/heads/melian/state"))!;
+				const reason = "cannot lock ref 'refs/heads/melian/state': reference already exists";
+				return {
+					code: 1,
+					stdout: `To remote\n!\t${refspec}\t[remote rejected] (${reason})\nDone\n`,
+					stdoutBytes: Buffer.from(""),
+					stderr: `remote: error: ${reason}\nerror: failed to push some refs to 'remote'\n`,
+				};
+			}
 			if (args[0] === "push" && moves > 0 && interloper !== undefined) {
 				moves--;
 				const run = interloper;
@@ -45,8 +59,17 @@ beforeEach(() => {
 afterEach(() => {
 	vi.unstubAllEnvs();
 	moves = 0;
+	lockedOnce = false;
 	interloper = undefined;
 	remote.close();
+});
+
+it("pushes again when the remote could not lock the branch, however the rejection is worded", async () => {
+	const checkout = await remote.clone().branch().checkout(changeset);
+	await note(await storageOf(checkout), "mine");
+	lockedOnce = true;
+	expect(await checkout.push()).toEqual({ kind: "pushed", commit: remote.tip() });
+	expect(await notes(await storageOf(await remote.clone().branch().checkout(changeset)))).toEqual(["mine"]);
 });
 
 it("pushes again from a fresh fetch when another changeset's push lands first", async () => {

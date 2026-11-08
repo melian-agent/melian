@@ -500,13 +500,11 @@ export class StateBranch {
 		];
 		const result = await git(this.#options.repoRoot, args, { env: untranslated });
 		if (result.code === 0) return true;
-		// The lease names the tip this run fetched, so "stale info" means another run pushed since; a ref the remote could
-		// not lock is another run's push to it landing at the same moment.
+		// The lease names the tip this run fetched, so "stale info" means another run pushed since; the branch's ref the
+		// remote could not lock is another run's push to it landing at the same moment. Git versions word that rejection's
+		// porcelain line differently, so the remote's own error decides it; the push names no other ref.
 		const line = result.stdout.split("\n").find((each) => each.startsWith(`!\t${commit}:${branch}\t`));
-		if (
-			line?.includes("[rejected] (stale info)") ||
-			(line?.includes("[remote rejected] (failed to update ref)") && result.stderr.includes("cannot lock ref"))
-		)
+		if (line?.includes("[rejected] (stale info)") || result.stderr.includes(`cannot lock ref '${branch}'`))
 			return false;
 		throw new StateBranchError("pushFailed", `git push of melian/state failed: ${result.stderr.trim()}`);
 	}
