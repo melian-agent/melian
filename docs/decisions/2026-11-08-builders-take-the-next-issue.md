@@ -10,7 +10,7 @@ A builder that finished sat idle until the coordinator noticed and briefed it. T
 
 ## The rule
 
-- A builder starts when its pull request is in the merge queue, not when it merges. A queue ejection sends it back to that pull request first.
+- A builder starts when its pull request is in the merge queue, not when it merges. If the queue then ejects that pull request, the builder comments `Released:` on the issue it took next and goes back to the ejected pull request. Another builder can then take the released issue, starting from any branch the first one pushed. A builder never holds a claim it isn't working on.
 - It skips an issue its session cannot carry out, such as one that needs the host's Melian store, live model credentials, or a machine it is not on. A cloud session cannot run `melian compare` against the host's store, so a comparison record issue waits for the host.
 - The claim rule decides between two builders that choose the same issue: the earliest writer's `Claim:` wins, and the other yields.
 - The coordinator may still ask a session to take an issue. That session claims it as usual, and the claim rule still decides.
