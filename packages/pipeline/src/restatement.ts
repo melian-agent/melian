@@ -8,7 +8,14 @@ import {
 	snippetHash,
 	VerificationState,
 } from "@melian-agent/core";
-import { type DismissedRoot, dismissedRoots, FindingsDocument, overlapsSite, proofAt } from "./findings.ts";
+import {
+	type DismissedRoot,
+	dismissedRoots,
+	FindingsDocument,
+	overlapsSite,
+	proofAt,
+	type Restating,
+} from "./findings.ts";
 import type { Context, ConversationId, Harness } from "./harness.ts";
 import { provingHunk, type ReviewState } from "./lens-tools.ts";
 import type { DismissedPredecessor } from "./verification.ts";
@@ -46,15 +53,36 @@ export class Predecessors {
 		return new Predecessors(dismissedRoots(state), (ids) => proofAt(state, ids, revision), review);
 	}
 
-	/** The roots `defect` may restate, as the verifier is shown them, in ID order; none for a defect that cannot inherit. */
-	async of(defect: Defect): Promise<DismissedPredecessor[]> {
+	/**
+	 * The roots `defect` may restate, as the verifier is shown them, in ID order, with what `recordInheritances` reads of
+	 * the defect; `undefined` when it has none.
+	 */
+	async of(defect: Defect): Promise<{ dismissed: DismissedPredecessor[]; restating: Restating } | undefined> {
+		const found = await this.#find(defect);
+		if (found.length === 0) return undefined;
+		const { claims } = VerificationState.from(defect.speaker);
+		return {
+			dismissed: found,
+			restating: {
+				members: Predecessors.#members(defect),
+				claims: claims.map(({ id, source, ruleId }) => ({ id, source, ruleId })),
+				dismissed: found.map(({ id }) => id),
+			},
+		};
+	}
+
+	static #members(defect: Defect): string[] {
+		return [defect.speaker.id, ...defect.members.map((member) => member.id)];
+	}
+
+	async #find(defect: Defect): Promise<DismissedPredecessor[]> {
 		const { speaker } = defect;
 		if (!defect.lensOnly()) return [];
 		const { claims } = VerificationState.from(speaker);
 		const [first] = claims;
 		if (first === undefined || claims.some((claim) => claim.ruleId !== first.ruleId)) return [];
 		if (first.ruleId === injectionAttemptRuleId) return [];
-		const members = [speaker.id, ...defect.members.map((member) => member.id)];
+		const members = Predecessors.#members(defect);
 		const [line, endLine] = speaker.lines();
 		const current = { startLine: line, endLine };
 		const path = speaker.properties.path;

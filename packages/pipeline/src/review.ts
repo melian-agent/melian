@@ -2137,13 +2137,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				designAtBase = { sections: sections.render(), files: sections.renderFiles() };
 			}
 		}
-		const dismissed = await predecessors.of(defect);
-		if (dismissed.length > 0)
-			restating.push({
-				members: [defect.speaker.id, ...defect.members.map((member) => member.id)],
-				claims: candidateState.claims.map(({ id, source, ruleId }) => ({ id, source, ruleId })),
-				dismissed: dismissed.map(({ id }) => id),
-			});
+		const restatement = await predecessors.of(defect);
+		if (restatement !== undefined) restating.push(restatement.restating);
 		candidates.push({
 			...(designClaim ? { decisionsAtBase, designAtBase } : {}),
 			key: defect.speaker.id,
@@ -2156,7 +2151,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				coReported: !defect.lensOnly(),
 				silent: defect.silentAt(configFor),
 			},
-			...(dismissed.length === 0 ? {} : { dismissed }),
+			...(restatement === undefined ? {} : { dismissed: restatement.dismissed }),
 		});
 	}
 	let verificationCheck: CheckRecord | undefined;

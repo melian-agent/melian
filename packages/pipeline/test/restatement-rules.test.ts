@@ -483,7 +483,7 @@ describe("finding the roots a defect may restate", () => {
 			.find((each) => [each.speaker.id, ...each.members.map((member) => member.id)].includes(restated.id));
 		expect(defect).toBeDefined();
 		const predecessors = await Predecessors.open(harness, root, key, state, context);
-		return (await predecessors.of(defect!)).map((each) => each.id);
+		return (await predecessors.of(defect!))?.dismissed.map((each) => each.id) ?? [];
 	}
 
 	it("offers a root of the same rule and file whose region git maps unchanged onto the restatement's", async () => {
@@ -494,7 +494,7 @@ describe("finding the roots a defect may restate", () => {
 		await commit((tx) => upsertFinding(tx, root, restated, key));
 		const findings = await readFindings(harness, root, key, context, { asReported: true });
 		const [defect] = new Merge(findings, defaultConfig, revision).defects();
-		const shown = await (await Predecessors.open(harness, root, key, state, context)).of(defect!);
+		const shown = (await (await Predecessors.open(harness, root, key, state, context)).of(defect!))?.dismissed;
 		expect(shown).toEqual([
 			{ id: found.id, failureScenario: found.properties.failureScenario, evidence: found.properties.evidence },
 		]);
@@ -523,7 +523,7 @@ describe("finding the roots a defect may restate", () => {
 		await commit((tx) => upsertFinding(tx, root, restated, lost));
 		const findings = await readFindings(harness, root, lost, context, { asReported: true });
 		const defect = new Merge(findings, defaultConfig).defects().find((each) => each.speaker.id === restated.id);
-		expect(await (await Predecessors.open(harness, root, lost, shown, context)).of(defect!)).toEqual([]);
+		expect(await (await Predecessors.open(harness, root, lost, shown, context)).of(defect!)).toBeUndefined();
 	});
 
 	it("maps the region across lines added above it", async () => {
@@ -566,7 +566,7 @@ describe("finding the roots a defect may restate", () => {
 		const { state, key, revision } = await reviewOf(h1);
 		const predecessors = await Predecessors.open(harness, root, key, state, context);
 		const [defect] = new Merge([introduced("changed 5", 5, 5)], defaultConfig, revision).defects();
-		expect(await predecessors.of(defect!)).toEqual([]);
+		expect(await predecessors.of(defect!)).toBeUndefined();
 	});
 
 	it("offers nothing to a defect a deterministic check also reported", async () => {
@@ -697,6 +697,35 @@ describe("finding the roots a defect may restate", () => {
 		const member = affected("line 10 member", 10, wider, contracts);
 		expect(await predecessorsAt(h3, lens({ snippet: "line 10 alone", startLine: 10 }))).toEqual([both.id]);
 		expect(await predecessorsAt(h3, speaker, [member])).toEqual([]);
+		// Merged with a member the root's proof holds, every member and every claim reaches the derivation.
+		const merged = lens({ ...affectedFields([five!]), snippet: "line 10 merged", startLine: 10, severity: "P1" });
+		const joined = affected("line 10 merged member", 10, [five!], contracts);
+		const h5 = step([...withLine5().slice(0, 7), "changed 8", ...ten.slice(8)], { "b.ts": "other\n", "c.ts": "x\n" });
+		const { state: second, key: at2, revision } = await reviewOf(h5);
+		await commit(async (tx) => {
+			for (const each of [merged, joined])
+				await upsertFinding(
+					tx,
+					root,
+					each,
+					at2,
+					second.files.flatMap((file) => file.hunks.map(provingHunk)),
+				);
+		});
+		const findings = await readFindings(harness, root, at2, context, { asReported: true });
+		const defect = new Merge(findings, defaultConfig, revision)
+			.defects()
+			.find((each) => each.speaker.id === merged.id)!;
+		expect(defect.members.map((each) => each.id)).toEqual([joined.id]);
+		const found = await (await Predecessors.open(harness, root, at2, second, context)).of(defect);
+		expect(found?.restating).toEqual({
+			members: [merged.id, joined.id],
+			claims: [
+				{ id: merged.id, source: correctness, ruleId: "fail-open" },
+				{ id: joined.id, source: contracts, ruleId: "fail-open" },
+			],
+			dismissed: [both.id],
+		});
 	});
 
 	it("holds a restatement's proof to the root's own file, not an identical change elsewhere", async () => {
@@ -810,7 +839,7 @@ describe("finding the roots a defect may restate", () => {
 		await commit((tx) => upsertFinding(tx, root, live, key));
 		const findings = await readFindings(harness, root, key, context, { asReported: true });
 		const [defect] = new Merge(findings, defaultConfig, revision).defects();
-		expect(await (await Predecessors.open(harness, root, key, state, context)).of(defect!)).toEqual([]);
+		expect(await (await Predecessors.open(harness, root, key, state, context)).of(defect!)).toBeUndefined();
 	});
 });
 

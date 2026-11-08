@@ -23,6 +23,7 @@ import {
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FindingsDocument } from "../src/findings.ts";
+import { ReviewIndex } from "../src/review-index.ts";
 import { verifierMarker } from "../src/verification-instructions.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines, writeFiles } from "./fixtures/repo.ts";
 import { twoLensTiers, withBudget } from "./fixtures/review-scenario.ts";
@@ -398,5 +399,60 @@ describe("a dismissal carrying to a restatement", () => {
 		expect(results).toContain(
 			`listed, d1 ${listed[0]}, d2 ${listed[1]}, and no other; missing ${listed[0]}, ${listed[1]}\n`,
 		);
+	});
+
+	it("keeps a candidate with no root out of the attach key, and puts the roots of one in it", async () => {
+		const verification = async () => {
+			const owner = (await harness.root(context)).id;
+			const index = await harness.snapshot(ReviewIndex, owner, context);
+			return index!.reviews[Revision.key(await revision())]!.verification!.input;
+		};
+		const root = await dismissedRoot();
+		expect(await verification()).not.toContain('"dismissed"');
+		pushElsewhere("other");
+		script([restatement]);
+		await review();
+		expect(await verification()).toContain(`"dismissed":[{"id":"${root}"`);
+	});
+
+	it("links nothing when the verifier did not finish, though one candidate was judged the same", async () => {
+		const root = await dismissedRoot();
+		pushElsewhere("other");
+		const unrelated = {
+			...nullDeref,
+			line: 3,
+			rule: "null-dereference",
+			failureScenario: "A user's manager field is read before it is set.",
+			evidence: [{ file: "src/user.ts", line: 3, role: "cause" }],
+		};
+		const verify = (messages: Messages) => {
+			const prompt = systemPromptOf(messages);
+			// Only the candidate shown the root is judged; the other is left unjudged, so the verifier fails.
+			if (!prompt.includes(`Dismissed d1 finding ${root}`)) return fauxAssistantMessage("Done.");
+			const claims = [...prompt.matchAll(/Claim c[1-9][0-9]* finding ([0-9a-f]+)/g)].map((m) => m[1]!);
+			return scriptVerifier(
+				messages,
+				Object.fromEntries(
+					claims.map((id) => [id, { verdict: "confirmed" as const, matches: { [root]: "same" } }]),
+				),
+			);
+		};
+		scriptConversations(fake, [
+			{ match: correctness, replies: [report(restatement), report(unrelated), fauxAssistantMessage("Done.")] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			{ match: verifierMarker, replies: [verify, verify, verify, verify, verify, verify] },
+		]);
+		const failed = await review().catch((error: { code?: string }) => error);
+		expect(failed).toMatchObject({ code: "verifierFailed" });
+		const owner = (await harness.root(context)).id;
+		const state = await harness.snapshot(FindingsDocument, owner, context);
+		const at = Revision.key(await revision());
+		const judged = Object.values(state!.items).some((item) =>
+			Object.values(item.verifications?.[at] ?? {}).some((records) =>
+				Object.values(records).some((record) => record.matches?.[root] === "same"),
+			),
+		);
+		expect(judged).toBe(true);
+		expect(state!.inherited?.[at]).toBeUndefined();
 	});
 });
