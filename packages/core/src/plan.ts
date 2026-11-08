@@ -220,7 +220,9 @@ export class ReviewPlan {
 				const committed = Object.hasOwn(routes.lensTiers, lens.name) ? routes.lensTiers[lens.name]! : declared.tier;
 				if (routed && committedRoute) return [{ level, tier: declared.tier, route: true }];
 				if (routed) {
-					const by = routes.lensRouteBy?.[lens.name] ?? "a preference file";
+					const by =
+						(Object.hasOwn(routes.lensRouteBy ?? {}, lens.name) ? routes.lensRouteBy![lens.name] : undefined) ??
+						"a preference file";
 					return [{ level, tier: committed, route: true, by }];
 				}
 				const tier = settings?.tier ?? declared.tier;
@@ -289,8 +291,10 @@ export class ReviewPlan {
 				policy,
 				effective: Object.hasOwn(config.lenses, lens.name) ? config.lenses[lens.name]!.route : undefined,
 				flag: input.model,
-				overridden: routes.lensRouteBy?.[lens.name],
-				thinkingBy: routes.lensRouteThinking?.[lens.name],
+				overridden: Object.hasOwn(routes.lensRouteBy ?? {}, lens.name) ? routes.lensRouteBy![lens.name] : undefined,
+				thinkingBy: Object.hasOwn(routes.lensRouteThinking ?? {}, lens.name)
+					? routes.lensRouteThinking![lens.name]
+					: undefined,
 			},
 			input,
 		);

@@ -1332,6 +1332,36 @@ describe("a lens route", () => {
 		expect(resolved.lines().some(({ text }) => text.includes("route thinking"))).toBe(false);
 	});
 
+	it("reads no Object.prototype member for a lens named constructor when another lens's route comes from a preference", () => {
+		const correctness = lenses.find((lens) => lens.name === "correctness")!;
+		const named = Lens.from({ ...correctness.toJSON(), name: "constructor" });
+		const resolved = plan({}, both, {
+			lenses: [named, correctness],
+			checks: ["lens.constructor", "lens.correctness"],
+			lensRoutes: { constructor: { model: gpt } },
+			lensRoutePreferences: { correctness: { model: opus, thinking: "high" } },
+		});
+		expect(resolved.lensRoute("constructor", "")).toEqual({
+			lens: "constructor",
+			scope: "",
+			status: "routed",
+			models: [{ model: gpt, credential: "OPENAI_API_KEY", family: "gpt" }],
+			wanted: gpt,
+			accept: [gpt],
+		});
+		expect(resolved.lenses.find((lens) => lens.name === "constructor")?.levels).toEqual([
+			{ level: "quick", tier: "medium", route: true },
+			{ level: "careful", tier: "heavy", route: true },
+			{ level: "deep", tier: "heavy", route: true },
+		]);
+		expect(resolved.lensRoute("correctness", "")).toMatchObject({
+			thinking: "high",
+			thinkingBy: "melian.local.yaml",
+			by: "melian.local.yaml",
+		});
+		expect(() => structuredClone(resolved.toJSON())).not.toThrow();
+	});
+
 	it("prints a route line, each level on the route, and the route's thinking for doctor", () => {
 		const resolved = plan({}, both, { lensRoutes: { correctness: { model: gpt, thinking: "high" } } });
 		const texts = resolved.lines().map(({ text }) => text);
