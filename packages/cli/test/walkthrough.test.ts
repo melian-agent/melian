@@ -179,6 +179,34 @@ describe("CLI walkthrough beside the review", { timeout: 60_000 }, () => {
 		expect(telemetry.prepare.spans.filter((span) => span.durationMs >= 300)).toEqual([]);
 	});
 
+	it("times the wait for a failed review's walkthrough in no preparation step", async () => {
+		vi.spyOn(pipeline, "summarizeReview").mockImplementation(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 500));
+		});
+		vi.spyOn(pipeline, "reviewChangeset").mockImplementation(async (request) => {
+			request.afterTriage?.();
+			throw new Error("lenses broke");
+		});
+		let output = "";
+		const io = {
+			cwd: repo,
+			env,
+			stdout: (text: string) => {
+				output += text;
+			},
+			stderr: () => {},
+			color: false,
+		};
+
+		await expect(review(io, "#7", { rerun: false, json: true })).rejects.toThrow("lenses broke");
+
+		const { telemetry } = JSON.parse(output) as {
+			telemetry: { prepare: { spans: { name: string; durationMs: number }[] } };
+		};
+		expect(telemetry.prepare.spans.length).toBeGreaterThan(0);
+		expect(telemetry.prepare.spans.filter((span) => span.durationMs >= 500)).toEqual([]);
+	});
+
 	it("starts the walkthrough once the review returns when it never reached triage", async () => {
 		const summarize = vi.spyOn(pipeline, "summarizeReview").mockResolvedValue(undefined);
 		const actual = pipeline.reviewChangeset;

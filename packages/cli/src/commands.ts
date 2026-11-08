@@ -404,6 +404,7 @@ export async function review(
 		);
 		return outcome.exitCode();
 	} catch (error) {
+		spans.end();
 		await walkthrough;
 		const timings = await reviewTimings(
 			reviewHarness,
