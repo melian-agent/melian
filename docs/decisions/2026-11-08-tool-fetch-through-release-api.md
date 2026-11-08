@@ -1,6 +1,6 @@
 # Pinned tools download through GitHub's release API when a token is set
 
-Amends: [The tool manifest](2026-10-06-tool-manifest.md), where a pin's bytes come from
+Amends: [Release metadata offline](2026-10-06-tool-metadata-offline.md), where a pin's bytes come from
 
 Status: accepted on 2026-11-08 by the maintainer, who set out the fix in [issue #345](https://github.com/melian-agent/melian/issues/345).
 
