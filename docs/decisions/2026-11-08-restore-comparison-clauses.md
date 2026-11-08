@@ -1,10 +1,10 @@
 # Restore the comparison clauses that partial supersessions retired
 
-Amends: [2026-10-07-silent-reviewer-needs-a-trace.md](2026-10-07-silent-reviewer-needs-a-trace.md), [2026-10-05-comparison-sites.md](2026-10-05-comparison-sites.md), [2026-10-06-comparison-refuses-superseded-verdict.md](2026-10-06-comparison-refuses-superseded-verdict.md) and [2026-10-07-comparison-prints-not-writes.md](2026-10-07-comparison-prints-not-writes.md), restoring clauses that partial `Supersedes:` lines retired.
+Restores clauses for [2026-10-07-silent-reviewer-needs-a-trace.md](2026-10-07-silent-reviewer-needs-a-trace.md), [2026-10-05-comparison-sites.md](2026-10-05-comparison-sites.md), [2026-10-06-comparison-refuses-superseded-verdict.md](2026-10-06-comparison-refuses-superseded-verdict.md) and [2026-10-07-comparison-prints-not-writes.md](2026-10-07-comparison-prints-not-writes.md): the active decisions the partial `Supersedes:` chains below ended in. It declares no graph edge, so each of them can be superseded on its own.
 
 Status: accepted on 2026-11-08 under step 26's audit, [issue #238](https://github.com/melian-agent/melian/issues/238).
 
-Where a clause below conflicts with any other active decision, including the decisions this file amends, that decision wins. These clauses fill gaps the partial supersessions left; they override nothing.
+Where a clause below conflicts with any other active decision, including the ones named above, that decision wins. These clauses fill gaps the partial supersessions left; they override nothing.
 
 [The review fixes](2026-10-05-comparison-review-fixes.md) superseded [the metrics decision](2026-10-05-comparison-metrics.md) for a few refinements. [The silent-reviewer decision](2026-10-07-silent-reviewer-needs-a-trace.md) then superseded the review fixes for one import rule. [The sites decision](2026-10-05-comparison-sites.md), [the superseded-verdict decision](2026-10-06-comparison-refuses-superseded-verdict.md) and [the prints-not-writes decision](2026-10-07-comparison-prints-not-writes.md) each superseded [the capability decision](2026-10-05-comparison-as-a-capability.md) for one part of it. The index retired each target whole. The clauses below still hold on main. This file restates them and changes nothing.
 

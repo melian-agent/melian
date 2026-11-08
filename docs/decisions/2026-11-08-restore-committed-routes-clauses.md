@@ -1,10 +1,10 @@
 # Restore the committed routes clauses that partial supersessions retired
 
-Amends: [2026-10-08-verifier-on-codex-subscription.md](2026-10-08-verifier-on-codex-subscription.md), restoring clauses that partial `Supersedes:` lines retired.
+Restores clauses for [2026-10-08-verifier-on-codex-subscription.md](2026-10-08-verifier-on-codex-subscription.md): the active decisions the partial `Supersedes:` chains below ended in. It declares no graph edge, so each of them can be superseded on its own.
 
 Status: accepted on 2026-11-08 under step 26's audit, [issue #238](https://github.com/melian-agent/melian/issues/238).
 
-Where a clause below conflicts with any other active decision, including the decisions this file amends, that decision wins. These clauses fill gaps the partial supersessions left; they override nothing.
+Where a clause below conflicts with any other active decision, including the ones named above, that decision wins. These clauses fill gaps the partial supersessions left; they override nothing.
 
 [2026-10-08-verifier-on-codex-subscription.md](2026-10-08-verifier-on-codex-subscription.md) superseded [2026-10-07-committed-routes.md](2026-10-07-committed-routes.md) while changing only the verifier's acceptance list and cross-family requirement. The index retired the target whole. The clauses below still hold on main; this file restates them and changes nothing.
 

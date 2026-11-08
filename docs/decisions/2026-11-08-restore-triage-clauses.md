@@ -1,10 +1,10 @@
 # Restore the triage clauses that partial supersessions retired
 
-Amends: [2026-10-06-triage-cut-input.md](2026-10-06-triage-cut-input.md) and [2026-10-06-triage-clears-superseded-verdict.md](2026-10-06-triage-clears-superseded-verdict.md), restoring clauses that partial `Supersedes:` lines retired.
+Restores clauses for [2026-10-06-triage-cut-input.md](2026-10-06-triage-cut-input.md) and [2026-10-06-triage-clears-superseded-verdict.md](2026-10-06-triage-clears-superseded-verdict.md): the active decisions the partial `Supersedes:` chains below ended in. It declares no graph edge, so each of them can be superseded on its own.
 
 Status: accepted on 2026-11-08 under step 26's audit, [issue #238](https://github.com/melian-agent/melian/issues/238).
 
-Where a clause below conflicts with any other active decision, including the decisions this file amends, that decision wins. These clauses fill gaps the partial supersessions left; they override nothing.
+Where a clause below conflicts with any other active decision, including the ones named above, that decision wins. These clauses fill gaps the partial supersessions left; they override nothing.
 
 [Triage as built](2026-10-05-triage-as-built.md) superseded [scrutiny levels](2026-10-04-scrutiny-levels.md) to change one sentence about escalation. [Cut input](2026-10-06-triage-cut-input.md) and [triage waits before lenses](2026-10-06-triage-waits-before-lenses.md) each superseded triage as built for one case. [Triage waits before adjudication](2026-10-06-triage-waits-before-adjudication.md) superseded the lens rule for adjudication alone, and [triage clears a superseded verdict](2026-10-06-triage-clears-superseded-verdict.md) superseded the adjudication rule for stored verdicts alone. The index retired each target whole. The clauses below still hold on main. This file restates them and changes nothing.
 

@@ -1,10 +1,10 @@
 # Restore the Enola clauses that partial supersessions retired
 
-Amends: [2026-10-06-tool-metadata-offline.md](2026-10-06-tool-metadata-offline.md), restoring clauses that partial `Supersedes:` lines retired.
+Restores clauses for [2026-10-06-tool-metadata-offline.md](2026-10-06-tool-metadata-offline.md): the active decisions the partial `Supersedes:` chains below ended in. It declares no graph edge, so each of them can be superseded on its own.
 
 Status: accepted on 2026-11-08 under step 26's audit, [issue #238](https://github.com/melian-agent/melian/issues/238).
 
-Where a clause below conflicts with any other active decision, including the decisions this file amends, that decision wins. These clauses fill gaps the partial supersessions left; they override nothing.
+Where a clause below conflicts with any other active decision, including the ones named above, that decision wins. These clauses fill gaps the partial supersessions left; they override nothing.
 
 [2026-10-04-enola-caller-query.md](2026-10-04-enola-caller-query.md) superseded [2026-10-04-enola.md](2026-10-04-enola.md) while correcting only where constraint verdicts and callers come from. [2026-10-06-tool-manifest.md](2026-10-06-tool-manifest.md) superseded the caller-query decision to drop the fork. [2026-10-06-tool-metadata-offline.md](2026-10-06-tool-metadata-offline.md) superseded the manifest decision for a release-metadata lookup failure alone. The index retired each target whole. The clauses below still hold on main; this file restates them and changes nothing.
 

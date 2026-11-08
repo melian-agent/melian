@@ -1,10 +1,10 @@
 # Restore the lens-boundaries clauses that partial supersessions retired
 
-Amends: [2026-10-05-deleted-guard-stays-with-correctness.md](2026-10-05-deleted-guard-stays-with-correctness.md) and [2026-10-08-every-findings-cap-leaves-review-not-reviewed.md](2026-10-08-every-findings-cap-leaves-review-not-reviewed.md), restoring clauses that partial `Supersedes:` lines retired.
+Restores clauses for [2026-10-05-deleted-guard-stays-with-correctness.md](2026-10-05-deleted-guard-stays-with-correctness.md) and [2026-10-08-every-findings-cap-leaves-review-not-reviewed.md](2026-10-08-every-findings-cap-leaves-review-not-reviewed.md): the active decisions the partial `Supersedes:` chains below ended in. It declares no graph edge, so each of them can be superseded on its own.
 
 Status: accepted on 2026-11-08 under step 26's audit, [issue #238](https://github.com/melian-agent/melian/issues/238).
 
-Where a clause below conflicts with any other active decision, including the decisions this file amends, that decision wins. These clauses fill gaps the partial supersessions left; they override nothing.
+Where a clause below conflicts with any other active decision, including the ones named above, that decision wins. These clauses fill gaps the partial supersessions left; they override nothing.
 
 [The deleted-guard decision](2026-10-05-deleted-guard-stays-with-correctness.md) superseded [the boundaries decision](2026-10-04-lens-backlog-boundaries.md) for its one sentence on a deleted throw. [The per-file hand-offs decision](2026-10-05-per-file-hand-offs.md) superseded the boundaries decision for its every-file hand-off rule, and [the durability lens decision](2026-10-05-durability-repository-lens.md) for its one-sided hand-off. [The capped-neighbour decision](2026-10-07-capped-neighbour-leaves-review-not-reviewed.md) superseded the per-file hand-offs for a handed defect a capped neighbour refuses. [The every-findings-cap decision](2026-10-08-every-findings-cap-leaves-review-not-reviewed.md) superseded the capped-neighbour decision for its rendered hand-off condition only. The index retired each target whole. The clauses below still hold on main. This file restates them and changes nothing.
 

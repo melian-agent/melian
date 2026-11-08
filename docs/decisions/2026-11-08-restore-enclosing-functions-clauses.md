@@ -1,10 +1,10 @@
 # Restore the enclosing functions clauses that partial supersessions retired
 
-Amends: [2026-10-08-ambiguous-function-boundaries.md](2026-10-08-ambiguous-function-boundaries.md), restoring clauses that partial `Supersedes:` lines retired.
+Restores clauses for [2026-10-08-ambiguous-function-boundaries.md](2026-10-08-ambiguous-function-boundaries.md): the active decisions the partial `Supersedes:` chains below ended in. It declares no graph edge, so each of them can be superseded on its own.
 
 Status: accepted on 2026-11-08 under step 26's audit, [issue #238](https://github.com/melian-agent/melian/issues/238).
 
-Where a clause below conflicts with any other active decision, including the decisions this file amends, that decision wins. These clauses fill gaps the partial supersessions left; they override nothing.
+Where a clause below conflicts with any other active decision, including the ones named above, that decision wins. These clauses fill gaps the partial supersessions left; they override nothing.
 
 [The boundaries decision](2026-10-08-ambiguous-function-boundaries.md) superseded [the enclosing functions decision](2026-10-07-enclosing-functions-in-the-change-prompt.md) to change only which callables a hunk on a shared boundary line carries. The index retired the target whole. The clauses below still hold on main. This file restates them and changes nothing.
 

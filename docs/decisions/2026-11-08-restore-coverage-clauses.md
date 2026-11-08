@@ -1,10 +1,10 @@
 # Restore the coverage clauses that partial supersessions retired
 
-Amends: [2026-10-06-immutable-coverage-evidence.md](2026-10-06-immutable-coverage-evidence.md), restoring clauses that partial `Supersedes:` lines retired.
+Restores clauses for [2026-10-06-immutable-coverage-evidence.md](2026-10-06-immutable-coverage-evidence.md): the active decisions the partial `Supersedes:` chains below ended in. It declares no graph edge, so each of them can be superseded on its own.
 
 Status: accepted on 2026-11-08 under step 26's audit, [issue #238](https://github.com/melian-agent/melian/issues/238).
 
-Where a clause below conflicts with any other active decision, including the decisions this file amends, that decision wins. These clauses fill gaps the partial supersessions left; they override nothing.
+Where a clause below conflicts with any other active decision, including the ones named above, that decision wins. These clauses fill gaps the partial supersessions left; they override nothing.
 
 [Immutable coverage evidence](2026-10-06-immutable-coverage-evidence.md) superseded [coverage artifacts](2026-10-06-coverage-artifacts.md) for its cache layout and lookup alone. The index retired the target whole. The clauses below still hold on main. This file restates them and changes nothing.
 
