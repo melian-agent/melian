@@ -100,10 +100,11 @@ it("authenticates GitHub metadata and visibly skips unavailable networking only 
 });
 
 it("asks again without a token GitHub refuses, outside CI only", async () => {
+	const warn = vi.spyOn(console, "warn");
 	const refusing = vi.fn(async (_url, options) =>
 		options.headers.Authorization ? new Response("bad credentials", { status: 401 }) : Response.json(release),
 	);
-	expect(await verifyReleases({ tools, token: "refused", ci: false, fetch: refusing })).toEqual([]);
+	expect(await verifyReleases({ tools, token: "refused", ci: false, note: vi.fn(), fetch: refusing })).toEqual([]);
 	expect(refusing.mock.calls.map(([, options]) => options.headers.Authorization)).toEqual([
 		"Bearer refused",
 		undefined,
@@ -124,6 +125,8 @@ it("asks again without a token GitHub refuses, outside CI only", async () => {
 	expect(await verifyReleases({ tools, token: "refused", ci: true, fetch: refusing })).toEqual([
 		"tool: release unverified: HTTP 401",
 	]);
+	expect(warn).not.toHaveBeenCalled();
+	warn.mockRestore();
 });
 
 it("sets the release gate status and prints only applicable age exceptions", { timeout: 60_000 }, () => {
