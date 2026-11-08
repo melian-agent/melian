@@ -13,18 +13,25 @@ export async function verifyReleases({
 	const failures = [];
 	for (const [name, tool] of Object.entries(tools)) {
 		try {
-			let response;
-			try {
-				response = await download(
+			const request = (bearer) =>
+				download(
 					`https://api.github.com/repos/${tool.source.repository}/releases/tags/${encodeURIComponent(tool.source.tag)}`,
 					{
 						signal: AbortSignal.timeout(30_000),
 						headers: {
 							"User-Agent": "melian-tool-manifest",
-							...(token ? { Authorization: `Bearer ${token}` } : {}),
+							...(bearer ? { Authorization: `Bearer ${bearer}` } : {}),
 						},
 					},
 				);
+			let response;
+			try {
+				response = await request(token);
+				// A cloud session's token can be refused by GitHub while the public endpoint still answers.
+				if (!ci && token && response.status === 401) {
+					note(`${name}: GitHub refused the token (HTTP 401); verifying without it`);
+					response = await request(undefined);
+				}
 			} catch {
 				if (ci) throw new Error("GitHub network unavailable; CI requires release verification");
 				note(`${name}: release verification skipped: GitHub network unavailable`);

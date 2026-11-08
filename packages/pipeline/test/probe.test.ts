@@ -764,7 +764,14 @@ console.log(JSON.stringify({ marker: readFileSync("marker", "utf8"), home: proce
 		expect(existsSync(root)).toBe(false);
 	});
 
-	it("leaves the scratch and reports it when the probe locked a directory cleanup must not touch", async () => {
+	it("leaves the scratch and reports it when the probe locked a directory cleanup must not touch", async ({
+		skip,
+	}) => {
+		if (process.getuid?.() === 0) {
+			const reason = "root's rm removes a mode-0 directory, so no lock can block cleanup as root";
+			process.stderr.write(`skipped: ${reason}\n`);
+			skip(reason);
+		}
 		const { sandbox } = passthrough();
 		const probe = await Probe.open(
 			{

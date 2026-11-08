@@ -630,6 +630,9 @@ function decisive(config: MelianConfig): Omit<MelianConfig, "output" | "publish"
 // text.
 const storedText = 2;
 
+// Raised when how Melian chooses tsc's projects changes, so no run of an earlier build is reused: 2 asks tsc --showConfig.
+const tscProjects = 2;
+
 // What decides a run's results: both commits, the tier, and the policy it ran under, with Melian's own tool pins, so a
 // build that pins another Enola does not take the finished run of an older one. Mutation testing adds the Stryker
 // version it would run, whether the checkout has an executable for it and where, and the host's decision on the head, so a
@@ -650,7 +653,16 @@ async function runIdentity(input: RunChecksInput, tier: string): Promise<Omit<Ru
 	const cold = mutating ? input.cold === true : undefined;
 	const policy = createHash("sha256")
 		.update(
-			canonical({ config: decisive(input.config), source: input.source, tools, stryker, writer, cold, storedText }),
+			canonical({
+				config: decisive(input.config),
+				source: input.source,
+				tools,
+				stryker,
+				writer,
+				cold,
+				storedText,
+				tscProjects,
+			}),
 		)
 		.digest("hex")
 		.slice(0, 16);
