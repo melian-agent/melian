@@ -1118,3 +1118,27 @@ describe("Codex's review of 7dd15b84", () => {
 		expect(await notes(await storageOf(second))).toEqual(["stored"]);
 	});
 });
+
+describe("Codex's review of 94ad27eb", () => {
+	it("sets aside a copy never pushed whose document sidecar was deleted, and starts afresh", async () => {
+		const clone = remote.clone();
+		const first = await clone.branch().checkout(changeset);
+		await note(await storageOf(first), "unpushed");
+		first.close();
+		const sidecar = readdirSync(first.directory).find((name) => name.startsWith("doc-"))!;
+		rmSync(join(first.directory, sidecar));
+		const second = await clone.branch().checkout(changeset);
+		expect(second.setAside).toEqual(expect.stringContaining(".set-aside-"));
+		expect(readdirSync(second.directory)).toEqual([]);
+	});
+
+	it("keeps a copy never pushed that Pi's storage opens", async () => {
+		const clone = remote.clone();
+		const first = await clone.branch().checkout(changeset);
+		await note(await storageOf(first), "unpushed");
+		first.close();
+		const second = await clone.branch().checkout(changeset);
+		expect(second.setAside).toBeUndefined();
+		expect(await notes(await storageOf(second))).toEqual(["unpushed"]);
+	});
+});
