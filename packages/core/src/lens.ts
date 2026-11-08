@@ -826,17 +826,18 @@ export class Lens {
 	}
 
 	/**
-	 * The lens as configuration's `settings` for it tune it: `tier` replaces the tier of every level and `paths` the
-	 * lens's own, which gives it another version. A band or `enabled` alone changes nothing the version hashes, so the
+	 * The lens as configuration's `settings` for it tune it: `tier` replaces the tier of every level, unless `route`
+	 * routes the lens, and `paths` the lens's own, which gives it another version. A band or `enabled` alone changes nothing the version hashes, so the
 	 * lens is returned as it loaded.
 	 */
 	configured(settings: LensSettings | undefined): Lens {
-		if (settings?.tier === undefined && settings?.paths === undefined) return this;
+		const tier = settings?.route === undefined ? settings?.tier : undefined;
+		if (tier === undefined && settings?.paths === undefined) return this;
 		return new Lens(
 			versioned({
 				...this.toJSON(),
-				levels: settings.tier === undefined ? this.levels : retiered(this.levels, settings.tier),
-				paths: settings.paths ?? this.paths,
+				levels: tier === undefined ? this.levels : retiered(this.levels, tier),
+				paths: settings?.paths ?? this.paths,
 			}),
 		);
 	}

@@ -992,6 +992,17 @@ describe("Lens.select", () => {
 		expect(retiered!.lens.version).not.toBe("000000000000");
 		expect(Lens.select([lens({})], config({ security: { paths: ["docs/**"] } }), ["src/a.ts"])).toEqual([]);
 	});
+
+	it("ignores the tier of a lens that names its own route, so neither its levels nor its version move", () => {
+		const route = { model: "faux/routed" };
+		const [routed] = Lens.select([lens({})], config({ security: { tier: "heavy", route } }), ["src/a.ts"]);
+		expect(routed!.lens).toEqual(lens({}));
+		const [narrowed] = Lens.select([lens({})], config({ security: { tier: "heavy", route, paths: ["src/**"] } }), [
+			"src/a.ts",
+		]);
+		expect(narrowed!.lens.levels).toEqual(lens({}).levels);
+		expect(narrowed!.lens.version).toBe(lens({}).configured({ paths: ["src/**"] }).version);
+	});
 });
 
 describe("Lens.renderInstructions", () => {
