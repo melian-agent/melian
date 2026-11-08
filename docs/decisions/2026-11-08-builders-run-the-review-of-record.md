@@ -17,3 +17,11 @@ What the coordinator gave the review was independence. It wrote each brief from 
 - The builder posts the report and its JSON unchanged, and fixes each finding with a failing test first. A disputed finding is answered on the pull request, never dropped.
 - The coordinator imports the JSON into the comparison record and spot-checks a sample of reviews. A spot check that finds a review was steered, or skipped what the brief requires, sends the pull request back for a fresh one.
 - The brief changes only through a pull request, so a builder never edits the instructions its own reviewer follows.
+
+## What this accepts
+
+The maintainer accepted these residuals on 2026-11-08 rather than close them with stricter inputs:
+
+- The reviewer reads the pull request's comments, which can include Melian's and Codex's findings. A review of record that repeats a Melian finding after reading it counts as independent agreement in the comparison record, so recall measured against it can read high.
+- The builder chooses the model by judging whether its own change is a trust surface. A missed trust implication gets Sonnet where Opus was due.
+- The coordinator's spot checks are the only control on both. A review the spot check finds steered, or run on the wrong model, is sent back for a fresh one.
