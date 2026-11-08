@@ -22,7 +22,7 @@ import {
 	textOf,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { FindingsDocument } from "../src/findings.ts";
+import { FindingsDocument, findingsVersion } from "../src/findings.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { verifierMarker } from "../src/verification-instructions.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines, writeFiles } from "./fixtures/repo.ts";
@@ -245,6 +245,81 @@ describe("a dismissal carrying to a restatement", () => {
 			at: dismissal.at,
 			inheritedFrom: root,
 		});
+	});
+
+	// A review whose verifier a later review replaced must not clear the links that later review recorded.
+	it("keeps the links a replacing review recorded when the replaced review's verifier settles after it", async () => {
+		const root = await dismissedRoot();
+		pushElsewhere("other");
+		const at = Revision.key(await revision());
+		const owner = (await harness.root(context)).id;
+		let release: (() => void) | undefined;
+		const held = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		let settled: (() => void) | undefined;
+		const replacedDone = new Promise<void>((resolve) => {
+			settled = resolve;
+		});
+		let first = true;
+		const verify = (messages: Messages) => {
+			if (first) {
+				first = false;
+				return held.then(() => fauxAssistantMessage("Done."));
+			}
+			const prompt = systemPromptOf(messages);
+			const claims = [...prompt.matchAll(/Claim c[1-9][0-9]* finding ([0-9a-f]+)/g)].map((m) => m[1]!);
+			return scriptVerifier(
+				messages,
+				Object.fromEntries(
+					claims.map((id) => [id, { verdict: "confirmed" as const, matches: { [root]: "same" } }]),
+				),
+			);
+		};
+		const requests = scriptConversations(fake, [
+			{
+				match: correctness,
+				replies: [
+					report(restatement),
+					fauxAssistantMessage("Done."),
+					report(restatement),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{ match: contracts, replies: [fauxAssistantMessage("Done."), fauxAssistantMessage("Done.")] },
+			{ match: verifierMarker, replies: [verify, verify, verify, verify] },
+		]);
+		// Review A's wait on its verifier returns only once review B has finished.
+		const index = async () => (await harness.snapshot(ReviewIndex, owner, context))?.reviews[at];
+		const gated = new Proxy(harness, {
+			get(target, property) {
+				const value = Reflect.get(target, property, target);
+				if (property !== "waitForTask") return typeof value === "function" ? value.bind(target) : value;
+				return async (...args: Parameters<Harness["waitForTask"]>) => {
+					const waits = (await index())?.verification?.task === args[0];
+					const outcome = await target.waitForTask(...args);
+					if (waits) await replacedDone;
+					return outcome;
+				};
+			},
+		});
+		const changeset = await Changeset.resolve(repo, "main...feature");
+		const options = { changeset, config, standards: [], models: fake.review, checks: [...deterministicRan] };
+		const replaced = reviewChangeset({ ...options, harness: gated, lenses }).catch((error: unknown) => error);
+		while ((requests[verifierMarker]?.length ?? 0) === 0) await new Promise((resolve) => setTimeout(resolve, 5));
+		// Another findings budget is another lens selection, so review B replaces A's lens run and its verifier.
+		const budgeted = lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { findings: 9 }) : lens));
+		const replacing = await reviewChangeset({ ...options, harness, lenses: budgeted });
+		const [restated] = replacing.findings;
+		expect(replacing.verdict.dismissed.map((each) => each.id)).toEqual([restated!.id]);
+		const links = structuredClone((await harness.snapshot(FindingsDocument, owner, context))!.inherited?.[at]);
+		expect(links?.[restated!.id]).toMatchObject({ from: root, kind: "inherited" });
+		const version = await findingsVersion(harness, owner, at, context);
+		settled!();
+		release!();
+		expect(await replaced).toMatchObject({ code: "superseded" });
+		expect((await harness.snapshot(FindingsDocument, owner, context))!.inherited?.[at]).toEqual(links);
+		expect(await findingsVersion(harness, owner, at, context)).toBe(version);
 	});
 
 	it("leaves a restatement the verifier judges different live, with no link", async () => {
