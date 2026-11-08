@@ -865,8 +865,9 @@ export type DismissedRoot = {
 	readonly revision: string;
 	readonly dismissedAt: string;
 	readonly severity: Severity;
-	// The accepted trigger's hash, and the accepted proof with every proof sighted since.
+	// The accepted trigger's hash and proof, and that proof with every proof sighted since, which its reopen rule reads.
 	readonly hash: string;
+	readonly accepted: readonly ProvingHunk[];
 	readonly proof: readonly ProvingHunk[];
 	readonly failureScenario?: string;
 	readonly evidence?: FindingProperties["evidence"];
@@ -900,6 +901,7 @@ export function dismissedRoots(state: FindingsState): DismissedRoot[] {
 					dismissedAt: dismissedAt!,
 					severity: dismissedSeverity,
 					hash: dismissedTrigger!.hash,
+					accepted: unionOf(dismissedTrigger!.proof),
 					proof: unionOf([...dismissedTrigger!.proof, ...(lifecycle.proof ?? [])]),
 					...(failureScenario === undefined ? {} : { failureScenario }),
 					...(evidence === undefined ? {} : { evidence: structuredClone(evidence) }),

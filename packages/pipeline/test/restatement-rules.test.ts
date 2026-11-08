@@ -611,10 +611,49 @@ it("lists every maintainer's dismissal with a recorded severity, in ID order, an
 			dismissedAt: dismissal.at,
 			severity: "P2",
 			hash: state.items[each.id]!.lifecycle.dismissedTrigger!.hash,
+			accepted: [],
 			proof: [],
 			failureScenario: "A cold run reads a cached kill.",
 			evidence: each.properties.evidence,
 		}));
 	expect(Object.keys(state.items).slice(0, 2)).not.toEqual(expected.map((each) => each.id));
-	expect(dismissedRoots(state)).toEqual(expected);
+	expect(dismissedRoots(state)).toStrictEqual(expected);
+});
+
+it("names a root's failure scenario and evidence only when it has them, and keeps its accepted proof apart", async () => {
+	const proof = [{ file: "a.ts", hash: "1".repeat(64) }];
+	const later = [{ file: "b.ts", hash: "2".repeat(64) }];
+	const bare = Finding.create({
+		rule: "guardrail/forbidden-paths",
+		file: "a.ts",
+		startLine: 1,
+		discriminator: "path",
+		severity: "P2",
+		cause: "introduced",
+		message: "Forbidden path.",
+		source: { check: "guardrails" },
+		explanation: { what: "What", whyHere: "Why", whatToDo: "Fix" },
+	});
+	const affected = (hunks: typeof proof) =>
+		lens({
+			snippet: "affected",
+			startLine: 8,
+			cause: "affected",
+			evidence: [{ file: "a.ts", startLine: 5, role: "cause", revision: "head", proves: true, snippet: "x" }],
+			trigger: { file: "a.ts", index: 0, snippet: "x", proof: hunks },
+		});
+	await commit(async (tx) => {
+		await upsertFinding(tx, root, bare, "base..first");
+		await dismissFinding(tx, root, bare.id, dismissal, "base..first", "P2");
+		await upsertFinding(tx, root, affected(proof), "base..first", proof);
+		await dismissFinding(tx, root, affected(proof).id, dismissal, "base..first", "P2");
+		// A later sighting proved by one more hunk, which does not reopen the dismissal, widens the proof alone.
+		await upsertFinding(tx, root, affected([...proof, ...later]), "base..second", [...proof, ...later]);
+	});
+	const state = (await harness.snapshot(FindingsDocument, root, context))!;
+	expect(state.items[affected(proof).id]!.lifecycle.status).toBe("dismissed");
+	const listed = Object.fromEntries(dismissedRoots(state).map((each) => [each.id, each]));
+	expect(Object.keys(listed[bare.id]!)).not.toContain("failureScenario");
+	expect(Object.keys(listed[bare.id]!)).not.toContain("evidence");
+	expect(listed[affected(proof).id]).toMatchObject({ accepted: proof, proof: [...proof, ...later] });
 });

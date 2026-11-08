@@ -67,7 +67,7 @@ export class Predecessors {
 		for (const root of this.#roots) {
 			if (members.includes(root.id) || root.ruleId !== first.ruleId || root.path !== path) continue;
 			if (!this.#stands(root)) continue;
-			if (!proof.every((hunk) => root.proof.some((each) => each.file === hunk.file && each.hash === hunk.hash)))
+			if (!proof.every((hunk) => root.accepted.some((each) => each.file === hunk.file && each.hash === hunk.hash)))
 				continue;
 			const old = { startLine: root.line, endLine: root.endLine };
 			const map = await this.#map(root);
