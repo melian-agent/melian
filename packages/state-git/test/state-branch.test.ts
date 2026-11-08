@@ -1,6 +1,16 @@
 import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, truncateSync, writeFileSync } from "node:fs";
+import {
+	chmodSync,
+	mkdirSync,
+	mkdtempSync,
+	readdirSync,
+	readFileSync,
+	rmSync,
+	statSync,
+	truncateSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -1147,5 +1157,22 @@ describe("the mutation inventory at f6872a26", () => {
 			"pull-0000000000000002",
 			"pull-0000000000000003",
 		]);
+	});
+
+	it("keeps this clone's decrypted copies where only its owner can read them", async () => {
+		const writer = await remote.clone().branch().checkout(changeset);
+		await note(await storageOf(writer), "marker secret 0123");
+		await writer.push();
+		const clone = remote.clone();
+		// A copies directory left readable by an older build is tightened too.
+		mkdirSync(clone.directory, { recursive: true, mode: 0o755 });
+		chmodSync(clone.directory, 0o755);
+		const checkout = await clone.branch().checkout(changeset);
+		const mode = (path: string) => statSync(path).mode & 0o777;
+		expect(mode(clone.directory)).toBe(0o700);
+		expect(mode(checkout.directory)).toBe(0o700);
+		expect(readdirSync(checkout.directory).map((name) => mode(join(checkout.directory, name)))).toEqual(
+			readdirSync(checkout.directory).map(() => 0o600),
+		);
 	});
 });

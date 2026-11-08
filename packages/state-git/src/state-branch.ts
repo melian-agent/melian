@@ -1,5 +1,5 @@
 import { createCipheriv, createDecipheriv, createHmac, randomUUID } from "node:crypto";
-import { mkdir, mkdtemp, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -144,7 +144,10 @@ class CopyLock {
 	}
 
 	static async take(directory: string, changeset: string): Promise<CopyLock> {
-		await mkdir(directory, { recursive: true });
+		// The copies hold decrypted storage, the publisher secret among it, so only this clone's owner may read them; a
+		// directory an older build left readable is tightened.
+		await mkdir(directory, { recursive: true, mode: 0o700 });
+		await chmod(directory, 0o700);
 		const path = join(directory, `${changeset}.lock`);
 		const damaged = (error: unknown) =>
 			new StateBranchError(
@@ -335,8 +338,8 @@ export class StateBranch {
 	/** @internal Writes a tree of the branch into a fresh directory, refusing anything Pi's storage would not write. */
 	async materialize(changeset: string, tree: string, directory: string): Promise<void> {
 		const opened = await this.#open(changeset, tree);
-		await mkdir(directory, { recursive: true });
-		for (const [name, plain] of opened) await writeFile(join(directory, name), plain);
+		await mkdir(directory, { recursive: true, mode: 0o700 });
+		for (const [name, plain] of opened) await writeFile(join(directory, name), plain, { mode: 0o600 });
 	}
 
 	/**
@@ -662,7 +665,7 @@ export class StateCheckout {
 			await rename(directory, setAside);
 		}
 		await rm(directory, { recursive: true, force: true });
-		if (onBranch === "none") await mkdir(directory, { recursive: true });
+		if (onBranch === "none") await mkdir(directory, { recursive: true, mode: 0o700 });
 		else await branch.materialize(changeset, onBranch, directory);
 		await writeFile(marker, `${onBranch}\n`);
 		return new StateCheckout(branch, changeset, onBranch, setAside, lock, lease);
