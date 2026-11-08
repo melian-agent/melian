@@ -326,6 +326,24 @@ describe("verification as each lens ends", () => {
 		});
 	});
 
+	it("starts no wave over a lens task that had already finished when the review began", async () => {
+		const asked: string[][] = [];
+		fastThenSlow(asked);
+		await review();
+		const root = await harness.root(context);
+		const revision = Revision.key(changeset.revision);
+		// The lenses' ends stay recorded, but no wave stands for their claims and no final verification owns them.
+		await root.commit(async (tx) => {
+			delete (await tx.doc(ReviewIndex, root.id)).reviews[revision]!.verification;
+			for (const wave of (await tx.doc(VerificationWavesDocument, root.id)).reviews[revision]!.waves)
+				wave.candidates = [];
+		}, context);
+		const waves = await waveTasks();
+		await review();
+		expect(await waveTasks()).toEqual(waves);
+		expect(asked).toHaveLength(2);
+	});
+
 	it("reuses a wave's outcome on rerun once the index has lost the final verification", async () => {
 		const asked: string[][] = [];
 		fastThenSlow(asked);
@@ -695,6 +713,8 @@ describe("verification as each lens ends", () => {
 		const before = asked.length;
 		const result = await review();
 		expect(asked.length).toBeGreaterThan(before);
+		// The lens task had finished, so the final step verifies again and no wave starts.
+		expect(await waveTasks()).toEqual([]);
 		expect(result.findings.map((finding) => finding.properties.verification?.verdict)).toEqual(["confirmed"]);
 	});
 
