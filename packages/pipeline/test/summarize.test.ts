@@ -702,6 +702,81 @@ describe("walkthrough summaries", () => {
 			expect(seen).toEqual(["scripted", "other"]);
 			expect(doc?.walkthroughs?.[revision]?.summary).toBe("Written on other.");
 		});
+		it("summarises again when only the light route's thinking level changes", async () => {
+			const asked: string[] = [];
+			scriptConversations(models, [
+				{
+					match: "You write Melian's walkthrough",
+					replies: [
+						(_messages: unknown, model: string) => {
+							asked.push(model);
+							return success("At low thinking.");
+						},
+						(_messages: unknown, model: string) => {
+							asked.push(model);
+							return success("At high thinking.");
+						},
+					],
+				},
+			]);
+			const light = config.models.light!;
+			await summarize({ config: { ...config, models: { light: { ...light, thinking: "low" } } } });
+			const doc = await summarize({ config: { ...config, models: { light: { ...light, thinking: "high" } } } });
+			expect(asked).toHaveLength(2);
+			expect(doc?.walkthroughs?.[Revision.key(changeset.revision)]?.summary).toBe("At high thinking.");
+		});
+		it("keeps a walkthrough an older Melian stored without its route, and asks no model", async () => {
+			const revision = Revision.key(changeset.revision);
+			const root = await harness.root(context);
+			await root.commit(async (tx) => {
+				(await tx.doc(VerdictDocument, root.id)).walkthroughs = {
+					[revision]: { summary: "Stored before routes.", files: [{ path: "src/a.ts", summary: "Changes a." }] },
+				};
+			}, context);
+			const before = models.provider.state.callCount;
+			const doc = await summarize({ origin: pullRequest });
+			expect(models.provider.state.callCount).toBe(before);
+			expect(doc?.walkthroughs?.[revision]?.summary).toBe("Stored before routes.");
+			expect(doc?.walkthroughNotes).toBeUndefined();
+		});
+		it("keeps a walkthrough another route wrote while no light model has credentials", async () => {
+			const revision = Revision.key(changeset.revision);
+			scriptConversations(models, [
+				{ match: "You write Melian's walkthrough", replies: [success("Written first.")] },
+			]);
+			await summarize();
+			const other = models.ref("other");
+			vi.spyOn(models.models, "checkAuth").mockResolvedValue(undefined);
+			const doc = await summarize({
+				config: { ...config, models: { light: { model: `${other.provider}/${other.modelId}` } } },
+			});
+			expect(doc?.walkthroughs?.[revision]?.summary).toBe("Written first.");
+			expect(doc?.walkthroughNotes?.[revision]).toBeUndefined();
+		});
+		it("counts a failed attempt on top of the attempts already spent", async () => {
+			const revision = Revision.key(changeset.revision);
+			const root = await harness.root(context);
+			await root.commit(async (tx) => {
+				(await tx.doc(VerdictDocument, root.id)).walkthroughAttempts = { [revision]: 1 };
+			}, context);
+			scriptConversations(models, [
+				{ match: "You write Melian's walkthrough", replies: [fauxAssistantMessage("No tool used.")] },
+			]);
+			const doc = await summarize();
+			expect(doc?.walkthroughAttempts).toEqual({ [revision]: 2 });
+		});
+		it("restarts the attempt count on a rerun for its own revision alone", async () => {
+			const revision = Revision.key(changeset.revision);
+			const root = await harness.root(context);
+			await root.commit(async (tx) => {
+				(await tx.doc(VerdictDocument, root.id)).walkthroughAttempts = { [revision]: 2, "other..revision": 2 };
+			}, context);
+			scriptConversations(models, [
+				{ match: "You write Melian's walkthrough", replies: [fauxAssistantMessage("No tool used.")] },
+			]);
+			const doc = await summarize({ rerun: true });
+			expect(doc?.walkthroughAttempts).toEqual({ [revision]: 1, "other..revision": 2 });
+		});
 		it("skips a range origin, whatever a stored provenance says", async () => {
 			const auth = vi.spyOn(models.models, "checkAuth");
 			await summarize({ origin: { kind: "range" } });
