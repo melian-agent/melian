@@ -1293,4 +1293,52 @@ describe("a level that probes", () => {
 		expect((await run).verdict.counted()).toHaveLength(1);
 		expect(judged[0]).toBe("claude-judge");
 	});
+
+	it("chooses the verifier against the prober's family for a finding whose prober failed after reporting it", async () => {
+		const fake = createFakeModels({
+			models: [
+				{ id: "plan", name: "Claude Planner" },
+				{ id: "probe", name: "GPT Prober" },
+				{ id: "claude-judge", name: "Claude Judge" },
+				{ id: "gpt-judge", name: "GPT Judge" },
+			],
+		});
+		const provider = fake.ref("plan").provider;
+		const judged: string[] = [];
+		const judge: ScriptedReply = (messages, model) => {
+			judged.push(model);
+			return scriptVerifier(messages);
+		};
+		const { run } = await review(
+			{
+				planner: plan,
+				prober: probing(failing).slice(0, 2),
+				others: [{ match: "Melian adversarial verifier", replies: [judge, judge] }],
+			},
+			{
+				fake,
+				lens: probingWith({ prober: "light" }),
+				config: {
+					models: {
+						heavy: { model: `${provider}/plan` },
+						light: { model: `${provider}/probe` },
+						verifier: { model: `${provider}/gpt-judge`, fallbacks: [`${provider}/claude-judge`] },
+					},
+				},
+				plan: async (config, lenses, models) => {
+					const { catalog, credentials } = await planInputs(models.review);
+					return ReviewPlan.resolve({
+						config,
+						routes: { committed: config.models, overridden: {}, lensTiers: {}, retiered: {} },
+						catalog,
+						credentials,
+						lenses,
+						checks: ["lens.trust-boundary"],
+					});
+				},
+			},
+		);
+		expect((await failure(run)).code).toBe("lensFailed");
+		expect(judged[0]).toBe("claude-judge");
+	});
 });

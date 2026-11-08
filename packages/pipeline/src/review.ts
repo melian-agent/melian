@@ -2515,11 +2515,12 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			return source.check === finderClaim.source.check && source.version === finderClaim.source.version;
 		})!;
 		const outcome = lensResult?.[run.key];
-		// A probing run's findings come from its prober, so the verifier is chosen against the prober's model.
+		// A probing run's findings come from its prober, so the verifier is chosen against the prober's model, and against
+		// its route when the run failed before naming the model it finished on.
 		const finder =
 			outcome?.status === "done" && (outcome.probing?.model ?? outcome.model) !== undefined
 				? (outcome.probing?.model ?? outcome.model)!
-				: modelName(run.route[0]!);
+				: modelName((run.probe?.route ?? run.route)[0]!);
 		let route = request.plan?.verifierRoute(finder).map(({ model }) => parseModelReference(model, "verifier"));
 		if (route === undefined) {
 			const configured = config.models.verifier;
