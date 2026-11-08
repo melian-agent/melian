@@ -600,13 +600,17 @@ console.log("ready");
 			// A host service a probe could reach over a pathname socket in the install, which the probe may read; on Linux
 			// the seccomp helper blocks the socket() call, on macOS the socket is not in allowUnixSockets. The probe reads a
 			// file beside the socket, so a refused connection is the socket rule's, not the filesystem's. The server records
-			// any connection; the probe must make none.
+			// any connection; the probe must make none. macOS refuses a socket path past 104 bytes, and its temporary
+			// directory alone takes about 50, so this test's checkout has a short name of its own.
 			let connections = 0;
-			const service = join(worktree, "node_modules", "service");
+			const checkout = realpathSync(mkdtempSync(join(tmpdir(), "m-")));
+			writeFileSync(join(checkout, ".gitignore"), "node_modules/\n");
+			const service = join(checkout, "node_modules", "s");
 			mkdirSync(service, { recursive: true });
-			const beside = join(service, "beside.txt");
+			const beside = join(service, "b.txt");
 			writeFileSync(beside, "readable\n");
-			const socketPath = join(service, "service.sock");
+			const socketPath = join(service, "s.sock");
+			expect(Buffer.byteLength(socketPath)).toBeLessThan(104);
 			const server = createServer((socket) => {
 				connections++;
 				socket.end();
@@ -628,13 +632,14 @@ const outcome = await new Promise((resolve) => {
 console.log(JSON.stringify({ beside: readFileSync(${JSON.stringify(beside)}, "utf8"), outcome }));
 process.exit(0);
 `;
-				const result = await probed({ script });
+				const result = await probed({ script }, { head: { checkout, commit: committed(checkout) } });
 				expect(result).toMatchObject({ exitCode: 0, timedOut: false });
 				expect(JSON.parse(result.output).beside).toBe("readable\n");
 				expect(JSON.parse(result.output).outcome).not.toBe("connected");
 				expect(connections).toBe(0);
 			} finally {
 				await new Promise((resolve) => server.close(resolve));
+				rmSync(checkout, { recursive: true, force: true });
 			}
 		});
 	},
