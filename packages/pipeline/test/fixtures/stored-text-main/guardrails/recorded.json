@@ -1,0 +1,99 @@
+{
+  "commit": "8921ccb4e208448ede620d44c279d1761173414b",
+  "tier": [
+    "guardrails"
+  ],
+  "mode": "parked",
+  "changeset": {
+    "kind": "range",
+    "id": "range-8fb67dfe2bac6ead",
+    "repoRoot": "/private/var/folders/db/mtn64lld7g971ck9kfq26xyc0000gn/T/melian-review-yZ6hF7",
+    "spec": {
+      "base": "main",
+      "head": "feature",
+      "mode": "threeDot"
+    },
+    "revision": {
+      "head": "9738efbd21a3e5bf3fabfd6753fd714c94ce4a34",
+      "base": "f647d095855000b7e79ee04bfe04abef5ccf6933",
+      "files": [
+        {
+          "status": "modified",
+          "path": "a.ts",
+          "oldMode": "100644",
+          "oldKind": "file",
+          "newMode": "100644",
+          "newKind": "file",
+          "binary": false,
+          "hunks": [
+            {
+              "file": "a.ts",
+              "index": 0,
+              "oldStart": 1,
+              "oldLines": 1,
+              "newStart": 1,
+              "newLines": 2,
+              "header": "@@ -1 +1,2 @@",
+              "text": "-export const n = 1;\n+const ghp_FAKEoutsideTOKEN281 = 1;\n+export const n: { ghp_FAKEoutsideTOKEN281: 1 } = 1;"
+            }
+          ]
+        }
+      ],
+      "policyFiles": []
+    }
+  },
+  "pending": 21,
+  "state": {
+    "owner": "melian-agent",
+    "repo": "example",
+    "login": "melian-user",
+    "pull": {
+      "number": 7,
+      "title": "Trim names",
+      "base": {
+        "ref": "main",
+        "sha": "f647d095855000b7e79ee04bfe04abef5ccf6933"
+      },
+      "head": {
+        "ref": "feature",
+        "sha": "9738efbd21a3e5bf3fabfd6753fd714c94ce4a34"
+      }
+    },
+    "lines": {
+      "a.ts": [
+        [
+          1,
+          2
+        ]
+      ]
+    },
+    "reviews": [],
+    "comments": [],
+    "ledgers": [],
+    "resolvedThreads": [],
+    "statuses": [],
+    "nextId": 1000,
+    "calls": [
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/pulls/7"
+      },
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/events"
+      },
+      {
+        "method": "GET",
+        "path": "/user"
+      },
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/collaborators/melian-user/permission"
+      },
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/collaborators/pr-author/permission"
+      }
+    ]
+  }
+}

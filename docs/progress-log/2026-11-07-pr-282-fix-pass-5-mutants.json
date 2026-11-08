@@ -1,0 +1,3202 @@
+{
+	"range": "origin/main...80872a2b; rows with inPass true are aaaa4a7f...80872a2b",
+	"mutants": [
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 559,
+			"column": 24,
+			"endLine": 588,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Verdict.publishable > leaves out the lists a verdict does not hold",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Verdict\\.publishable > leaves out the lists a verdict does not hold$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 561,
+			"column": 18,
+			"endLine": 561,
+			"endColumn": 84,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Verdict.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Verdict\\.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 562,
+			"column": 16,
+			"endLine": 577,
+			"endColumn": 6,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Verdict.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Verdict\\.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 563,
+			"column": 3,
+			"endLine": 563,
+			"endColumn": 61,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Verdict.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Verdict\\.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 563,
+			"column": 3,
+			"endLine": 563,
+			"endColumn": 61,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Verdict.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Verdict\\.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 563,
+			"column": 3,
+			"endLine": 563,
+			"endColumn": 61,
+			"mutatorName": "LogicalOperator",
+			"replacement": "each.name !== \"static.biome\" || each.name !== \"static.tsc\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Verdict.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Verdict\\.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 563,
+			"column": 3,
+			"endLine": 563,
+			"endColumn": 31,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Verdict.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Verdict\\.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 563,
+			"column": 3,
+			"endLine": 563,
+			"endColumn": 31,
+			"mutatorName": "EqualityOperator",
+			"replacement": "each.name === \"static.biome\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Verdict.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Verdict\\.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 563,
+			"column": 17,
+			"endLine": 563,
+			"endColumn": 31,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Verdict.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Verdict\\.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 563,
+			"column": 35,
+			"endLine": 563,
+			"endColumn": 61,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Verdict.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Verdict\\.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 563,
+			"column": 35,
+			"endLine": 563,
+			"endColumn": 61,
+			"mutatorName": "EqualityOperator",
+			"replacement": "each.name === \"static.tsc\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Verdict.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Verdict\\.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 563,
+			"column": 49,
+			"endLine": 563,
+			"endColumn": 61,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Verdict.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Verdict\\.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 565,
+			"column": 6,
+			"endLine": 577,
+			"endColumn": 6,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Verdict.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Verdict\\.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 568,
+			"column": 10,
+			"endLine": 568,
+			"endColumn": 36,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Verdict.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Verdict\\.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 568,
+			"column": 10,
+			"endLine": 568,
+			"endColumn": 36,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "new-test",
+			"evidence": "packages/core/test/publishable.test.ts > Verdict.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason",
+			"survivorClasses": [
+				"dropped-value"
+			],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Verdict\\.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 568,
+			"column": 10,
+			"endLine": 568,
+			"endColumn": 36,
+			"mutatorName": "EqualityOperator",
+			"replacement": "each.version !== undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Verdict.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Verdict\\.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 568,
+			"column": 44,
+			"endLine": 568,
+			"endColumn": 69,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Verdict.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Verdict\\.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 569,
+			"column": 10,
+			"endLine": 569,
+			"endColumn": 31,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Verdict.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Verdict\\.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 569,
+			"column": 10,
+			"endLine": 569,
+			"endColumn": 31,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Verdict.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Verdict\\.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 569,
+			"column": 10,
+			"endLine": 569,
+			"endColumn": 31,
+			"mutatorName": "EqualityOperator",
+			"replacement": "each.status !== \"ran\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Verdict.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Verdict\\.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 569,
+			"column": 26,
+			"endLine": 569,
+			"endColumn": 31,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Verdict.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Verdict\\.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 571,
+			"column": 9,
+			"endLine": 576,
+			"endColumn": 9,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Verdict.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Verdict\\.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 573,
+			"column": 10,
+			"endLine": 573,
+			"endColumn": 34,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Verdict.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Verdict\\.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 573,
+			"column": 10,
+			"endLine": 573,
+			"endColumn": 34,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Verdict.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Verdict\\.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 573,
+			"column": 10,
+			"endLine": 573,
+			"endColumn": 34,
+			"mutatorName": "EqualityOperator",
+			"replacement": "each.status !== \"failed\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Verdict.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Verdict\\.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 573,
+			"column": 26,
+			"endLine": 573,
+			"endColumn": 34,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Verdict.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Verdict\\.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 574,
+			"column": 13,
+			"endLine": 574,
+			"endColumn": 61,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Verdict.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Verdict\\.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 575,
+			"column": 13,
+			"endLine": 575,
+			"endColumn": 68,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Verdict.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Verdict\\.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 578,
+			"column": 22,
+			"endLine": 587,
+			"endColumn": 3,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Verdict.publishable > leaves out the lists a verdict does not hold",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Verdict\\.publishable > leaves out the lists a verdict does not hold$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 584,
+			"column": 7,
+			"endLine": 584,
+			"endColumn": 35,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Verdict.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Verdict\\.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 584,
+			"column": 7,
+			"endLine": 584,
+			"endColumn": 35,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Verdict.publishable > leaves out the lists a verdict does not hold",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Verdict\\.publishable > leaves out the lists a verdict does not hold$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 584,
+			"column": 7,
+			"endLine": 584,
+			"endColumn": 35,
+			"mutatorName": "EqualityOperator",
+			"replacement": "stored.refuted !== undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Verdict.publishable > leaves out the lists a verdict does not hold",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Verdict\\.publishable > leaves out the lists a verdict does not hold$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 584,
+			"column": 43,
+			"endLine": 584,
+			"endColumn": 83,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Verdict.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Verdict\\.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 586,
+			"column": 7,
+			"endLine": 586,
+			"endColumn": 31,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Verdict.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Verdict\\.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 586,
+			"column": 7,
+			"endLine": 586,
+			"endColumn": 31,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Verdict.publishable > leaves out the lists a verdict does not hold",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Verdict\\.publishable > leaves out the lists a verdict does not hold$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 586,
+			"column": 7,
+			"endLine": 586,
+			"endColumn": 31,
+			"mutatorName": "EqualityOperator",
+			"replacement": "stored.ran !== undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Verdict.publishable > leaves out the lists a verdict does not hold",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Verdict\\.publishable > leaves out the lists a verdict does not hold$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 586,
+			"column": 39,
+			"endLine": 586,
+			"endColumn": 69,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Verdict.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Verdict\\.publishable > makes every finding publishable and gives each Biome or tsc check that did not run a fixed reason$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 843,
+			"column": 93,
+			"endLine": 846,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > takes severity overrides from the tool's settings, and stores no resolution",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^staticFindings > takes severity overrides from the tool's settings, and stores no resolution$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 844,
+			"column": 25,
+			"endLine": 844,
+			"endColumn": 49,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reports a second result added beside an old one on the same lines as introduced",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^staticFindings > reports a second result added beside an old one on the same lines as introduced$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 844,
+			"column": 25,
+			"endLine": 844,
+			"endColumn": 49,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 844,
+			"column": 25,
+			"endLine": 844,
+			"endColumn": 49,
+			"mutatorName": "EqualityOperator",
+			"replacement": "check !== \"static.biome\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reports a second result added beside an old one on the same lines as introduced",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^staticFindings > reports a second result added beside an old one on the same lines as introduced$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 844,
+			"column": 35,
+			"endLine": 844,
+			"endColumn": 49,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 844,
+			"column": 52,
+			"endLine": 844,
+			"endColumn": 75,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 844,
+			"column": 53,
+			"endLine": 844,
+			"endColumn": 60,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 844,
+			"column": 62,
+			"endLine": 844,
+			"endColumn": 74,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 844,
+			"column": 78,
+			"endLine": 844,
+			"endColumn": 101,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reports a second result added beside an old one on the same lines as introduced",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^staticFindings > reports a second result added beside an old one on the same lines as introduced$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 844,
+			"column": 79,
+			"endLine": 844,
+			"endColumn": 84,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reports a second result added beside an old one on the same lines as introduced",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^staticFindings > reports a second result added beside an old one on the same lines as introduced$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 844,
+			"column": 86,
+			"endLine": 844,
+			"endColumn": 100,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reports a second result added beside an old one on the same lines as introduced",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^staticFindings > reports a second result added beside an old one on the same lines as introduced$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 845,
+			"column": 8,
+			"endLine": 845,
+			"endColumn": 127,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > takes severity overrides from the tool's settings, and stores no resolution",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^staticFindings > takes severity overrides from the tool's settings, and stores no resolution$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1308,
+			"column": 24,
+			"endLine": 1368,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > adds no optional field the finding lacks",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > adds no optional field the finding lacks$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1310,
+			"column": 6,
+			"endLine": 1310,
+			"endColumn": 70,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > adds no optional field the finding lacks",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > adds no optional field the finding lacks$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1310,
+			"column": 6,
+			"endLine": 1310,
+			"endColumn": 70,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > returns any other check's finding as it is",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > returns any other check's finding as it is$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1310,
+			"column": 6,
+			"endLine": 1310,
+			"endColumn": 70,
+			"mutatorName": "LogicalOperator",
+			"replacement": "source.check !== \"static.biome\" || source.check !== \"static.tsc\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > adds no optional field the finding lacks",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > adds no optional field the finding lacks$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1310,
+			"column": 6,
+			"endLine": 1310,
+			"endColumn": 37,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > writes Biome's own sentence for a Biome finding",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > writes Biome's own sentence for a Biome finding$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1310,
+			"column": 6,
+			"endLine": 1310,
+			"endColumn": 37,
+			"mutatorName": "EqualityOperator",
+			"replacement": "source.check === \"static.biome\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > returns any other check's finding as it is",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > returns any other check's finding as it is$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1310,
+			"column": 23,
+			"endLine": 1310,
+			"endColumn": 37,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > writes Biome's own sentence for a Biome finding",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > writes Biome's own sentence for a Biome finding$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1310,
+			"column": 41,
+			"endLine": 1310,
+			"endColumn": 70,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > adds no optional field the finding lacks",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > adds no optional field the finding lacks$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1310,
+			"column": 41,
+			"endLine": 1310,
+			"endColumn": 70,
+			"mutatorName": "EqualityOperator",
+			"replacement": "source.check === \"static.tsc\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > adds no optional field the finding lacks",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > adds no optional field the finding lacks$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1310,
+			"column": 58,
+			"endLine": 1310,
+			"endColumn": 70,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > adds no optional field the finding lacks",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > adds no optional field the finding lacks$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1312,
+			"column": 15,
+			"endLine": 1312,
+			"endColumn": 46,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > adds no optional field the finding lacks",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > adds no optional field the finding lacks$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1312,
+			"column": 15,
+			"endLine": 1312,
+			"endColumn": 46,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > writes Biome's own sentence for a Biome finding",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > writes Biome's own sentence for a Biome finding$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1312,
+			"column": 15,
+			"endLine": 1312,
+			"endColumn": 46,
+			"mutatorName": "EqualityOperator",
+			"replacement": "source.check !== \"static.biome\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > adds no optional field the finding lacks",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > adds no optional field the finding lacks$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1312,
+			"column": 32,
+			"endLine": 1312,
+			"endColumn": 46,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > writes Biome's own sentence for a Biome finding",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > writes Biome's own sentence for a Biome finding$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1312,
+			"column": 49,
+			"endLine": 1312,
+			"endColumn": 56,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > writes Biome's own sentence for a Biome finding",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > writes Biome's own sentence for a Biome finding$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1312,
+			"column": 59,
+			"endLine": 1312,
+			"endColumn": 64,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > adds no optional field the finding lacks",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > adds no optional field the finding lacks$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1316,
+			"column": 21,
+			"endLine": 1367,
+			"endColumn": 3,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > adds no optional field the finding lacks",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > adds no optional field the finding lacks$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1319,
+			"column": 12,
+			"endLine": 1319,
+			"endColumn": 26,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > adds no optional field the finding lacks",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > adds no optional field the finding lacks$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1321,
+			"column": 33,
+			"endLine": 1331,
+			"endColumn": 5,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > adds no optional field the finding lacks",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > adds no optional field the finding lacks$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1321,
+			"column": 90,
+			"endLine": 1331,
+			"endColumn": 4,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > adds no optional field the finding lacks",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > adds no optional field the finding lacks$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1322,
+			"column": 22,
+			"endLine": 1330,
+			"endColumn": 5,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > adds no optional field the finding lacks",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > adds no optional field the finding lacks$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1324,
+			"column": 13,
+			"endLine": 1329,
+			"endColumn": 6,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > adds no optional field the finding lacks",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > adds no optional field the finding lacks$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1326,
+			"column": 10,
+			"endLine": 1326,
+			"endColumn": 42,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > words a pre-existing result as one the base has too",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > words a pre-existing result as one the base has too$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1326,
+			"column": 10,
+			"endLine": 1326,
+			"endColumn": 42,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "new-test",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > adds no optional field the finding lacks",
+			"survivorClasses": [
+				"dropped-value"
+			],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > adds no optional field the finding lacks$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1326,
+			"column": 10,
+			"endLine": 1326,
+			"endColumn": 42,
+			"mutatorName": "EqualityOperator",
+			"replacement": "region.startColumn !== undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > words a pre-existing result as one the base has too",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > words a pre-existing result as one the base has too$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1326,
+			"column": 50,
+			"endLine": 1326,
+			"endColumn": 85,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > words a pre-existing result as one the base has too",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > words a pre-existing result as one the base has too$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1327,
+			"column": 10,
+			"endLine": 1327,
+			"endColumn": 38,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > words a pre-existing result as one the base has too",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > words a pre-existing result as one the base has too$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1327,
+			"column": 10,
+			"endLine": 1327,
+			"endColumn": 38,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "new-test",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > adds no optional field the finding lacks",
+			"survivorClasses": [
+				"dropped-value"
+			],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > adds no optional field the finding lacks$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1327,
+			"column": 10,
+			"endLine": 1327,
+			"endColumn": 38,
+			"mutatorName": "EqualityOperator",
+			"replacement": "region.endLine !== undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > words a pre-existing result as one the base has too",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > words a pre-existing result as one the base has too$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1327,
+			"column": 46,
+			"endLine": 1327,
+			"endColumn": 73,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > words a pre-existing result as one the base has too",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > words a pre-existing result as one the base has too$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1328,
+			"column": 10,
+			"endLine": 1328,
+			"endColumn": 40,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > words a pre-existing result as one the base has too",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > words a pre-existing result as one the base has too$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1328,
+			"column": 10,
+			"endLine": 1328,
+			"endColumn": 40,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "new-test",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > adds no optional field the finding lacks",
+			"survivorClasses": [
+				"dropped-value"
+			],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > adds no optional field the finding lacks$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1328,
+			"column": 10,
+			"endLine": 1328,
+			"endColumn": 40,
+			"mutatorName": "EqualityOperator",
+			"replacement": "region.endColumn !== undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > words a pre-existing result as one the base has too",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > words a pre-existing result as one the base has too$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1328,
+			"column": 48,
+			"endLine": 1328,
+			"endColumn": 79,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > words a pre-existing result as one the base has too",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > words a pre-existing result as one the base has too$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1332,
+			"column": 15,
+			"endLine": 1366,
+			"endColumn": 4,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > adds no optional field the finding lacks",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > adds no optional field the finding lacks$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1335,
+			"column": 8,
+			"endLine": 1335,
+			"endColumn": 32,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > words a pre-existing result as one the base has too",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > words a pre-existing result as one the base has too$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1335,
+			"column": 8,
+			"endLine": 1335,
+			"endColumn": 32,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "new-test",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > adds no optional field the finding lacks",
+			"survivorClasses": [
+				"dropped-value"
+			],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > adds no optional field the finding lacks$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1335,
+			"column": 8,
+			"endLine": 1335,
+			"endColumn": 32,
+			"mutatorName": "EqualityOperator",
+			"replacement": "occurrence !== undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > words a pre-existing result as one the base has too",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > words a pre-existing result as one the base has too$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1335,
+			"column": 40,
+			"endLine": 1335,
+			"endColumn": 54,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > words a pre-existing result as one the base has too",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > words a pre-existing result as one the base has too$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1338,
+			"column": 8,
+			"endLine": 1338,
+			"endColumn": 38,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > words a pre-existing result as one the base has too",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > words a pre-existing result as one the base has too$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1338,
+			"column": 8,
+			"endLine": 1338,
+			"endColumn": 38,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "new-test",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > adds no optional field the finding lacks",
+			"survivorClasses": [
+				"dropped-value"
+			],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > adds no optional field the finding lacks$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1338,
+			"column": 8,
+			"endLine": 1338,
+			"endColumn": 38,
+			"mutatorName": "EqualityOperator",
+			"replacement": "originalSeverity !== undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > words a pre-existing result as one the base has too",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > words a pre-existing result as one the base has too$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1338,
+			"column": 46,
+			"endLine": 1338,
+			"endColumn": 66,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > words a pre-existing result as one the base has too",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > words a pre-existing result as one the base has too$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1339,
+			"column": 8,
+			"endLine": 1339,
+			"endColumn": 32,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > words a pre-existing result as one the base has too",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > words a pre-existing result as one the base has too$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1339,
+			"column": 8,
+			"endLine": 1339,
+			"endColumn": 32,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "new-test",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > adds no optional field the finding lacks",
+			"survivorClasses": [
+				"dropped-value"
+			],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > adds no optional field the finding lacks$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1339,
+			"column": 8,
+			"endLine": 1339,
+			"endColumn": 32,
+			"mutatorName": "EqualityOperator",
+			"replacement": "resolution !== undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > words a pre-existing result as one the base has too",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > words a pre-existing result as one the base has too$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1339,
+			"column": 40,
+			"endLine": 1339,
+			"endColumn": 54,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > words a pre-existing result as one the base has too",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > words a pre-existing result as one the base has too$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1340,
+			"column": 8,
+			"endLine": 1340,
+			"endColumn": 31,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > words a pre-existing result as one the base has too",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > words a pre-existing result as one the base has too$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1340,
+			"column": 8,
+			"endLine": 1340,
+			"endColumn": 31,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > adds no optional field the finding lacks",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > adds no optional field the finding lacks$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1340,
+			"column": 8,
+			"endLine": 1340,
+			"endColumn": 31,
+			"mutatorName": "EqualityOperator",
+			"replacement": "decidedBy !== undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > adds no optional field the finding lacks",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > adds no optional field the finding lacks$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1342,
+			"column": 7,
+			"endLine": 1342,
+			"endColumn": 84,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > words a pre-existing result as one the base has too",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > words a pre-existing result as one the base has too$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1342,
+			"column": 20,
+			"endLine": 1342,
+			"endColumn": 82,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > words a pre-existing result as one the base has too",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > words a pre-existing result as one the base has too$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1344,
+			"column": 8,
+			"endLine": 1344,
+			"endColumn": 31,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > words a pre-existing result as one the base has too",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > words a pre-existing result as one the base has too$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1344,
+			"column": 8,
+			"endLine": 1344,
+			"endColumn": 31,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "new-test",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > adds no optional field the finding lacks",
+			"survivorClasses": [
+				"dropped-value"
+			],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > adds no optional field the finding lacks$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1344,
+			"column": 8,
+			"endLine": 1344,
+			"endColumn": 31,
+			"mutatorName": "EqualityOperator",
+			"replacement": "dismissal !== undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > words a pre-existing result as one the base has too",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > words a pre-existing result as one the base has too$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1344,
+			"column": 39,
+			"endLine": 1344,
+			"endColumn": 52,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > words a pre-existing result as one the base has too",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > words a pre-existing result as one the base has too$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1345,
+			"column": 8,
+			"endLine": 1345,
+			"endColumn": 36,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > words a pre-existing result as one the base has too",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > words a pre-existing result as one the base has too$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1345,
+			"column": 8,
+			"endLine": 1345,
+			"endColumn": 36,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "new-test",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > adds no optional field the finding lacks",
+			"survivorClasses": [
+				"dropped-value"
+			],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > adds no optional field the finding lacks$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1345,
+			"column": 8,
+			"endLine": 1345,
+			"endColumn": 36,
+			"mutatorName": "EqualityOperator",
+			"replacement": "pastDismissals !== undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > words a pre-existing result as one the base has too",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > words a pre-existing result as one the base has too$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1345,
+			"column": 44,
+			"endLine": 1345,
+			"endColumn": 62,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > words a pre-existing result as one the base has too",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > words a pre-existing result as one the base has too$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1346,
+			"column": 17,
+			"endLine": 1353,
+			"endColumn": 5,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > adds no optional field the finding lacks",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > adds no optional field the finding lacks$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1349,
+			"column": 6,
+			"endLine": 1349,
+			"endColumn": 28,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > words a pre-existing result as one the base has too",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > words a pre-existing result as one the base has too$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1349,
+			"column": 6,
+			"endLine": 1349,
+			"endColumn": 28,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > adds no optional field the finding lacks",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > adds no optional field the finding lacks$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1349,
+			"column": 6,
+			"endLine": 1349,
+			"endColumn": 28,
+			"mutatorName": "EqualityOperator",
+			"replacement": "cause !== \"introduced\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > adds no optional field the finding lacks",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > adds no optional field the finding lacks$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1349,
+			"column": 16,
+			"endLine": 1349,
+			"endColumn": 28,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > adds no optional field the finding lacks",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > adds no optional field the finding lacks$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1350,
+			"column": 9,
+			"endLine": 1350,
+			"endColumn": 90,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > adds no optional field the finding lacks",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > adds no optional field the finding lacks$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1351,
+			"column": 9,
+			"endLine": 1351,
+			"endColumn": 76,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > words a pre-existing result as one the base has too",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > words a pre-existing result as one the base has too$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1352,
+			"column": 15,
+			"endLine": 1352,
+			"endColumn": 77,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > adds no optional field the finding lacks",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > adds no optional field the finding lacks$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1355,
+			"column": 8,
+			"endLine": 1355,
+			"endColumn": 32,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > words a pre-existing result as one the base has too",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > words a pre-existing result as one the base has too$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1355,
+			"column": 8,
+			"endLine": 1355,
+			"endColumn": 32,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "new-test",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > adds no optional field the finding lacks",
+			"survivorClasses": [
+				"dropped-value"
+			],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > adds no optional field the finding lacks$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1355,
+			"column": 8,
+			"endLine": 1355,
+			"endColumn": 32,
+			"mutatorName": "EqualityOperator",
+			"replacement": "reportedBy !== undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > words a pre-existing result as one the base has too",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > words a pre-existing result as one the base has too$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1355,
+			"column": 40,
+			"endLine": 1355,
+			"endColumn": 54,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > words a pre-existing result as one the base has too",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > words a pre-existing result as one the base has too$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1356,
+			"column": 8,
+			"endLine": 1356,
+			"endColumn": 36,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > words a pre-existing result as one the base has too",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > words a pre-existing result as one the base has too$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1356,
+			"column": 8,
+			"endLine": 1356,
+			"endColumn": 36,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "new-test",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > adds no optional field the finding lacks",
+			"survivorClasses": [
+				"dropped-value"
+			],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > adds no optional field the finding lacks$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1356,
+			"column": 8,
+			"endLine": 1356,
+			"endColumn": 36,
+			"mutatorName": "EqualityOperator",
+			"replacement": "alsoReportedAs !== undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > words a pre-existing result as one the base has too",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > words a pre-existing result as one the base has too$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1356,
+			"column": 44,
+			"endLine": 1356,
+			"endColumn": 62,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > words a pre-existing result as one the base has too",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > words a pre-existing result as one the base has too$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1357,
+			"column": 8,
+			"endLine": 1357,
+			"endColumn": 33,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > words a pre-existing result as one the base has too",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > words a pre-existing result as one the base has too$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1357,
+			"column": 8,
+			"endLine": 1357,
+			"endColumn": 33,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > adds no optional field the finding lacks",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > adds no optional field the finding lacks$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1357,
+			"column": 8,
+			"endLine": 1357,
+			"endColumn": 33,
+			"mutatorName": "EqualityOperator",
+			"replacement": "otherClaims !== undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > adds no optional field the finding lacks",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > adds no optional field the finding lacks$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1359,
+			"column": 7,
+			"endLine": 1365,
+			"endColumn": 7,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > words a pre-existing result as one the base has too",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > words a pre-existing result as one the base has too$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1360,
+			"column": 36,
+			"endLine": 1364,
+			"endColumn": 9,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > words a pre-existing result as one the base has too",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > words a pre-existing result as one the base has too$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1360,
+			"column": 48,
+			"endLine": 1364,
+			"endColumn": 8,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/publishable.test.ts > Finding.publishable > words a pre-existing result as one the base has too",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^Finding\\.publishable > words a pre-existing result as one the base has too$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 386,
+			"column": 5,
+			"endLine": 391,
+			"endColumn": 5,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > keeps the same unlocated Enola result pre-existing",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^staticFindings > keeps the same unlocated Enola result pre-existing$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 388,
+			"column": 6,
+			"endLine": 388,
+			"endColumn": 40,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > identifies an unlocated Enola result by its message though the intent file has code on line 1",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^staticFindings > identifies an unlocated Enola result by its message though the intent file has code on line 1$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 388,
+			"column": 6,
+			"endLine": 388,
+			"endColumn": 40,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 388,
+			"column": 6,
+			"endLine": 388,
+			"endColumn": 40,
+			"mutatorName": "LogicalOperator",
+			"replacement": "tool === \"biome\" && tool === \"tsc\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 388,
+			"column": 6,
+			"endLine": 388,
+			"endColumn": 22,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 388,
+			"column": 6,
+			"endLine": 388,
+			"endColumn": 22,
+			"mutatorName": "EqualityOperator",
+			"replacement": "tool !== \"biome\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > identifies an unlocated Enola result by its message though the intent file has code on line 1",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^staticFindings > identifies an unlocated Enola result by its message though the intent file has code on line 1$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 388,
+			"column": 15,
+			"endLine": 388,
+			"endColumn": 22,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 388,
+			"column": 26,
+			"endLine": 388,
+			"endColumn": 40,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 388,
+			"column": 26,
+			"endLine": 388,
+			"endColumn": 40,
+			"mutatorName": "EqualityOperator",
+			"replacement": "tool !== \"tsc\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > identifies an unlocated Enola result by its message though the intent file has code on line 1",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^staticFindings > identifies an unlocated Enola result by its message though the intent file has code on line 1$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 388,
+			"column": 35,
+			"endLine": 388,
+			"endColumn": 40,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 389,
+			"column": 9,
+			"endLine": 389,
+			"endColumn": 70,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 389,
+			"column": 45,
+			"endLine": 389,
+			"endColumn": 68,
+			"mutatorName": "LogicalOperator",
+			"replacement": "region.startColumn && 1",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 406,
+			"column": 66,
+			"endLine": 415,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > keeps the same unlocated Enola result pre-existing",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^staticFindings > keeps the same unlocated Enola result pre-existing$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 407,
+			"column": 5,
+			"endLine": 407,
+			"endColumn": 39,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reports a second result added beside an old one on the same lines as introduced",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^staticFindings > reports a second result added beside an old one on the same lines as introduced$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 407,
+			"column": 5,
+			"endLine": 407,
+			"endColumn": 39,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > keeps the same unlocated Enola result pre-existing",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^staticFindings > keeps the same unlocated Enola result pre-existing$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 407,
+			"column": 5,
+			"endLine": 407,
+			"endColumn": 39,
+			"mutatorName": "LogicalOperator",
+			"replacement": "tool !== \"biome\" || tool !== \"tsc\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reports a second result added beside an old one on the same lines as introduced",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^staticFindings > reports a second result added beside an old one on the same lines as introduced$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 407,
+			"column": 5,
+			"endLine": 407,
+			"endColumn": 21,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 407,
+			"column": 5,
+			"endLine": 407,
+			"endColumn": 21,
+			"mutatorName": "EqualityOperator",
+			"replacement": "tool === \"biome\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > keeps the same unlocated Enola result pre-existing",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^staticFindings > keeps the same unlocated Enola result pre-existing$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 407,
+			"column": 14,
+			"endLine": 407,
+			"endColumn": 21,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 407,
+			"column": 25,
+			"endLine": 407,
+			"endColumn": 39,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reports a second result added beside an old one on the same lines as introduced",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^staticFindings > reports a second result added beside an old one on the same lines as introduced$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 407,
+			"column": 25,
+			"endLine": 407,
+			"endColumn": 39,
+			"mutatorName": "EqualityOperator",
+			"replacement": "tool === \"tsc\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > keeps the same unlocated Enola result pre-existing",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^staticFindings > keeps the same unlocated Enola result pre-existing$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 407,
+			"column": 34,
+			"endLine": 407,
+			"endColumn": 39,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reports a second result added beside an old one on the same lines as introduced",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^staticFindings > reports a second result added beside an old one on the same lines as introduced$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 408,
+			"column": 41,
+			"endLine": 413,
+			"endColumn": 3,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > fails rather than guess when a result's file cannot be read",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^staticFindings > fails rather than guess when a result's file cannot be read$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 408,
+			"column": 85,
+			"endLine": 413,
+			"endColumn": 2,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > fails rather than guess when a result's file cannot be read",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^staticFindings > fails rather than guess when a result's file cannot be read$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 410,
+			"column": 11,
+			"endLine": 412,
+			"endColumn": 3,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > takes severity overrides from the tool's settings, and stores no resolution",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^staticFindings > takes severity overrides from the tool's settings, and stores no resolution$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 414,
+			"column": 8,
+			"endLine": 414,
+			"endColumn": 55,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > fails rather than guess when a result's file cannot be read",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^staticFindings > fails rather than guess when a result's file cannot be read$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 414,
+			"column": 24,
+			"endLine": 414,
+			"endColumn": 53,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > fails rather than guess when a result's file cannot be read",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^staticFindings > fails rather than guess when a result's file cannot be read$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 414,
+			"column": 25,
+			"endLine": 414,
+			"endColumn": 52,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > fails rather than guess when a result's file cannot be read",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^staticFindings > fails rather than guess when a result's file cannot be read$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 436,
+			"column": 64,
+			"endLine": 436,
+			"endColumn": 99,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > keeps the same unlocated Enola result pre-existing",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^staticFindings > keeps the same unlocated Enola result pre-existing$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 436,
+			"column": 74,
+			"endLine": 436,
+			"endColumn": 99,
+			"mutatorName": "LogicalOperator",
+			"replacement": "renamed.get(path) && path",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > keeps the same unlocated Enola result pre-existing",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^staticFindings > keeps the same unlocated Enola result pre-existing$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 437,
+			"column": 64,
+			"endLine": 437,
+			"endColumn": 78,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > keeps the same unlocated Enola result pre-existing",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^staticFindings > keeps the same unlocated Enola result pre-existing$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 653,
+			"column": 13,
+			"endLine": 653,
+			"endColumn": 111,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/checks.test.ts > runChecks > reuses the run when only the display setting output.emoji changes",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^runChecks > reuses the run when only the display setting output\\.emoji changes$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 984,
+			"column": 19,
+			"endLine": 990,
+			"endColumn": 7,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-allowlist.test.ts > posts nothing of a verifier's reason on a Biome or tsc result",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^posts nothing of a verifier's reason on a Biome or tsc result$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 985,
+			"column": 26,
+			"endLine": 988,
+			"endColumn": 16,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-allowlist.test.ts > posts nothing of a verifier's reason on a Biome or tsc result",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^posts nothing of a verifier's reason on a Biome or tsc result$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 986,
+			"column": 8,
+			"endLine": 986,
+			"endColumn": 17,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "equivalent",
+			"evidence": "Each append to the ledger summarises every earlier round, so only the newest round keeps a verdict, and the ledger renders the newest from the draft's own verdict, which is already publishable; no store holds an earlier round with a verdict to map.",
+			"survivorClasses": [],
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 987,
+			"column": 11,
+			"endLine": 987,
+			"endColumn": 84,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-allowlist.test.ts > posts nothing of a verifier's reason on a Biome or tsc result",
+			"survivorClasses": [],
+			"run": {
+				"head": "80872a2b",
+				"pattern": "^posts nothing of a verifier's reason on a Biome or tsc result$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		}
+	],
+	"total": 167,
+	"omitted": 0,
+	"unmutated": [
+		{
+			"file": "packages/pipeline/src/static.ts",
+			"reason": "it sends process signals, and a mutant there could signal a process outside the run"
+		}
+	]
+}

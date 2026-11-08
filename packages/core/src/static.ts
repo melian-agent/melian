@@ -13,6 +13,7 @@ import {
 	type SarifLevel,
 	sarifLevelSchema,
 	snippetOccurrence,
+	withheldToolText,
 } from "./findings.ts";
 import { type CheckReport, guardrailLimits } from "./guardrails.ts";
 import { openSource, SourceError, type SourceReader } from "./source.ts";
@@ -378,9 +379,16 @@ async function identify(
 		const unlocated =
 			tool === "enola" && path === "enola-intent.yaml" && Object.keys(region).length === 1 && region.startLine === 1;
 		const byCode = !unlocated && text !== undefined && snippet !== undefined && normaliseSnippet(snippet) !== "";
+		// Biome's and tsc's messages are withheld, so a result with no code to go by is told apart by its place, and one the
+		// base lacks at that place is introduced.
 		const identity = byCode
 			? { snippet, occurrence: snippetOccurrence(text, snippet, { startLine: region.startLine, endLine }) }
-			: { discriminator: result.message.text };
+			: {
+					discriminator:
+						tool === "biome" || tool === "tsc"
+							? `line ${region.startLine}, column ${region.startColumn ?? 1}`
+							: result.message.text,
+				};
 		const id = findingId({ file: pathAtHead(path), rule, snippet: identity.snippet ?? "", ...identity });
 		const earlier = identified.get(id);
 		identified.set(
@@ -393,12 +401,26 @@ async function identify(
 	return identified;
 }
 
+// Biome and tsc quote whatever a head's configuration or sources lead them to, outside the checkout too, so a result
+// keeps its rule, place and level, never the tool's text or advice (issue #281).
+function withoutToolText(tool: StaticTool, log: ToolLog): ToolLog {
+	if (tool !== "biome" && tool !== "tsc") return log;
+	const results = log.runs[0].results.map(({ message: _, advice: __, ...result }) => ({
+		...result,
+		message: {
+			text: withheldToolText(checkOf(tool) as "static.biome" | "static.tsc", staticRuleId(tool, result.ruleId)),
+		},
+	}));
+	return { ...log, runs: [{ ...log.runs[0], results }] };
+}
+
 /**
  * Turns one tool's results at base and head into findings, matched across the two runs by finding identity, never by
  * line. A result's snippet is the full text of its lines at its own revision, read through git's object store, and its
  * occurrence is counted there, so code an edit above moved keeps its ID. A result at head absent at base is
  * `introduced`; one at both is `pre-existing`, which never blocks; one only at base was resolved and is not reported.
- * Severity follows {@link staticSeverity}. A finding carries no resolution: only adjudication writes one.
+ * Severity follows {@link staticSeverity}. A finding carries no resolution: only adjudication writes one. A Biome or tsc
+ * finding's message is a fixed sentence naming the tool and the rule, never the tool's own text.
  */
 export async function staticFindings(input: StaticFindingsInput): Promise<CheckReport> {
 	const { repoRoot, revision, tool } = input;
@@ -411,8 +433,8 @@ export async function staticFindings(input: StaticFindingsInput): Promise<CheckR
 		revision.files.flatMap((file) => (file.oldPath === undefined ? [] : [[file.oldPath, file.path] as const])),
 	);
 	const [base, head] = await Promise.all([
-		identify(tool, input.base, baseReader, (path) => renamed.get(path) ?? path),
-		identify(tool, input.head, headReader, (path) => path),
+		identify(tool, withoutToolText(tool, input.base), baseReader, (path) => renamed.get(path) ?? path),
+		identify(tool, withoutToolText(tool, input.head), headReader, (path) => path),
 	]);
 	const version = input.head.runs[0].tool.driver.version;
 	const findings: Finding[] = [];
@@ -426,7 +448,11 @@ export async function staticFindings(input: StaticFindingsInput): Promise<CheckR
 			untouched++;
 			continue;
 		}
-		const before = base.get(each.id);
+		// A Biome or tsc result placed by line and column, its code unreadable, cannot be told from a different result the
+		// change put at the same place, so one on a changed line is introduced.
+		const placed = (tool === "biome" || tool === "tsc") && each.snippet === undefined;
+		const before =
+			placed && revision.trigger(each.path, region.startLine, endLine) !== undefined ? undefined : base.get(each.id);
 		const severity = staticSeverity(tool, each.rule, each.result.level, input.settings.severity);
 		const sameLine = endLine === region.startLine;
 		// Results of one rule on one set of lines share an ID, so presence alone would hide a second error added beside

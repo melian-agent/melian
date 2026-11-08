@@ -1,0 +1,2991 @@
+{
+	"range": "origin/main...03dd30d5; rows with inPass true are 3a5098ab...03dd30d5",
+	"mutants": [
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 560,
+			"column": 23,
+			"endLine": 581,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > reads the checks that ran as well as those that did not",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > reads the checks that ran as well as those that did not$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 561,
+			"column": 24,
+			"endLine": 570,
+			"endColumn": 3,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > reads the checks that ran as well as those that did not",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > reads the checks that ran as well as those that did not$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 562,
+			"column": 3,
+			"endLine": 565,
+			"endColumn": 4,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > catches a finding or a failed run that carries a tool's text",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > catches a finding or a failed run that carries a tool's text$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 563,
+			"column": 4,
+			"endLine": 563,
+			"endColumn": 18,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > catches a finding or a failed run that carries a tool's text",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > catches a finding or a failed run that carries a tool's text$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 564,
+			"column": 4,
+			"endLine": 564,
+			"endColumn": 145,
+			"mutatorName": "Regex",
+			"replacement": "/biome exited with code -?\\d+ and (?:no report|a report); run biome lint at [0-9a-f]{12} to see why, since Melian keeps none of its stderr$/",
+			"claim": "equivalent",
+			"evidence": "The error has already been checked to start with 'biome exited with code', so a pattern without its start anchor matches the same strings.",
+			"survivorClasses": [],
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 564,
+			"column": 4,
+			"endLine": 564,
+			"endColumn": 145,
+			"mutatorName": "Regex",
+			"replacement": "/^biome exited with code -?\\d+ and (?:no report|a report); run biome lint at [0-9a-f]{12} to see why, since Melian keeps none of its stderr/",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > catches a finding or a failed run that carries a tool's text",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > catches a finding or a failed run that carries a tool's text$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 564,
+			"column": 4,
+			"endLine": 564,
+			"endColumn": 145,
+			"mutatorName": "Regex",
+			"replacement": "/^biome exited with code -\\d+ and (?:no report|a report); run biome lint at [0-9a-f]{12} to see why, since Melian keeps none of its stderr$/",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > passes the findings and failures this build writes, and other checks' failures",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > passes the findings and failures this build writes, and other checks' failures$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 564,
+			"column": 4,
+			"endLine": 564,
+			"endColumn": 145,
+			"mutatorName": "Regex",
+			"replacement": "/^biome exited with code -?\\d and (?:no report|a report); run biome lint at [0-9a-f]{12} to see why, since Melian keeps none of its stderr$/",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > passes the findings and failures this build writes, and other checks' failures",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > passes the findings and failures this build writes, and other checks' failures$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 564,
+			"column": 4,
+			"endLine": 564,
+			"endColumn": 145,
+			"mutatorName": "Regex",
+			"replacement": "/^biome exited with code -?\\D+ and (?:no report|a report); run biome lint at [0-9a-f]{12} to see why, since Melian keeps none of its stderr$/",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > passes the findings and failures this build writes, and other checks' failures",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > passes the findings and failures this build writes, and other checks' failures$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 564,
+			"column": 4,
+			"endLine": 564,
+			"endColumn": 145,
+			"mutatorName": "Regex",
+			"replacement": "/^biome exited with code -?\\d+ and (?:no report|a report); run biome lint at [0-9a-f] to see why, since Melian keeps none of its stderr$/",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > passes the findings and failures this build writes, and other checks' failures",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > passes the findings and failures this build writes, and other checks' failures$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 564,
+			"column": 4,
+			"endLine": 564,
+			"endColumn": 145,
+			"mutatorName": "Regex",
+			"replacement": "/^biome exited with code -?\\d+ and (?:no report|a report); run biome lint at [^0-9a-f]{12} to see why, since Melian keeps none of its stderr$/",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > passes the findings and failures this build writes, and other checks' failures",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > passes the findings and failures this build writes, and other checks' failures$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 566,
+			"column": 3,
+			"endLine": 569,
+			"endColumn": 4,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > reads the checks that ran as well as those that did not",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > reads the checks that ran as well as those that did not$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 567,
+			"column": 4,
+			"endLine": 567,
+			"endColumn": 16,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > reads the checks that ran as well as those that did not",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > reads the checks that ran as well as those that did not$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 568,
+			"column": 4,
+			"endLine": 568,
+			"endColumn": 137,
+			"mutatorName": "Regex",
+			"replacement": "/tsc exited with code -?\\d+ on ([^\\n:]+); run tsc --noEmit -p \\1 at [0-9a-f]{12} to see why, since Melian keeps none of its output$/",
+			"claim": "equivalent",
+			"evidence": "The error has already been checked to start with 'tsc exited with code', so a pattern without its start anchor matches the same strings.",
+			"survivorClasses": [],
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 568,
+			"column": 4,
+			"endLine": 568,
+			"endColumn": 137,
+			"mutatorName": "Regex",
+			"replacement": "/^tsc exited with code -?\\d+ on ([^\\n:]+); run tsc --noEmit -p \\1 at [0-9a-f]{12} to see why, since Melian keeps none of its output/",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > catches a finding or a failed run that carries a tool's text",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > catches a finding or a failed run that carries a tool's text$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 568,
+			"column": 4,
+			"endLine": 568,
+			"endColumn": 137,
+			"mutatorName": "Regex",
+			"replacement": "/^tsc exited with code -\\d+ on ([^\\n:]+); run tsc --noEmit -p \\1 at [0-9a-f]{12} to see why, since Melian keeps none of its output$/",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > passes the findings and failures this build writes, and other checks' failures",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > passes the findings and failures this build writes, and other checks' failures$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 568,
+			"column": 4,
+			"endLine": 568,
+			"endColumn": 137,
+			"mutatorName": "Regex",
+			"replacement": "/^tsc exited with code -?\\d on ([^\\n:]+); run tsc --noEmit -p \\1 at [0-9a-f]{12} to see why, since Melian keeps none of its output$/",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > passes the findings and failures this build writes, and other checks' failures",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > passes the findings and failures this build writes, and other checks' failures$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 568,
+			"column": 4,
+			"endLine": 568,
+			"endColumn": 137,
+			"mutatorName": "Regex",
+			"replacement": "/^tsc exited with code -?\\D+ on ([^\\n:]+); run tsc --noEmit -p \\1 at [0-9a-f]{12} to see why, since Melian keeps none of its output$/",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > passes the findings and failures this build writes, and other checks' failures",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > passes the findings and failures this build writes, and other checks' failures$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 568,
+			"column": 4,
+			"endLine": 568,
+			"endColumn": 137,
+			"mutatorName": "Regex",
+			"replacement": "/^tsc exited with code -?\\d+ on ([^\\n:]); run tsc --noEmit -p \\1 at [0-9a-f]{12} to see why, since Melian keeps none of its output$/",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > passes the findings and failures this build writes, and other checks' failures",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > passes the findings and failures this build writes, and other checks' failures$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 568,
+			"column": 4,
+			"endLine": 568,
+			"endColumn": 137,
+			"mutatorName": "Regex",
+			"replacement": "/^tsc exited with code -?\\d+ on ([\\n:]+); run tsc --noEmit -p \\1 at [0-9a-f]{12} to see why, since Melian keeps none of its output$/",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > passes the findings and failures this build writes, and other checks' failures",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > passes the findings and failures this build writes, and other checks' failures$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 568,
+			"column": 4,
+			"endLine": 568,
+			"endColumn": 137,
+			"mutatorName": "Regex",
+			"replacement": "/^tsc exited with code -?\\d+ on ([^\\n:]+); run tsc --noEmit -p \\1 at [0-9a-f] to see why, since Melian keeps none of its output$/",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > passes the findings and failures this build writes, and other checks' failures",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > passes the findings and failures this build writes, and other checks' failures$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 568,
+			"column": 4,
+			"endLine": 568,
+			"endColumn": 137,
+			"mutatorName": "Regex",
+			"replacement": "/^tsc exited with code -?\\d+ on ([^\\n:]+); run tsc --noEmit -p \\1 at [^0-9a-f]{12} to see why, since Melian keeps none of its output$/",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > passes the findings and failures this build writes, and other checks' failures",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > passes the findings and failures this build writes, and other checks' failures$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 571,
+			"column": 41,
+			"endLine": 579,
+			"endColumn": 3,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > reads the checks that ran as well as those that did not",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > reads the checks that ran as well as those that did not$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 573,
+			"column": 17,
+			"endLine": 573,
+			"endColumn": 34,
+			"mutatorName": "LogicalOperator",
+			"replacement": "check.error && \"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > reads the checks that ran as well as those that did not",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > reads the checks that ran as well as those that did not$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 573,
+			"column": 32,
+			"endLine": 573,
+			"endColumn": 34,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"Stryker was here!\"",
+			"claim": "equivalent",
+			"evidence": "A record without an error starts with neither tool's exit phrase, whether the stand-in is empty or any other text that does not start with it.",
+			"survivorClasses": [],
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 575,
+			"column": 4,
+			"endLine": 577,
+			"endColumn": 21,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > passes the findings and failures this build writes, and other checks' failures",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > passes the findings and failures this build writes, and other checks' failures$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 575,
+			"column": 4,
+			"endLine": 577,
+			"endColumn": 21,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > reads the checks that ran as well as those that did not",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > reads the checks that ran as well as those that did not$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 575,
+			"column": 4,
+			"endLine": 577,
+			"endColumn": 21,
+			"mutatorName": "LogicalOperator",
+			"replacement": "form !== undefined && error.startsWith(`${check.name.slice(\"static.\".length)} exited with code`) || !form.test(error)",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > passes the findings and failures this build writes, and other checks' failures",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > passes the findings and failures this build writes, and other checks' failures$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 575,
+			"column": 4,
+			"endLine": 576,
+			"endColumn": 78,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > passes the findings and failures this build writes, and other checks' failures",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > passes the findings and failures this build writes, and other checks' failures$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 575,
+			"column": 4,
+			"endLine": 576,
+			"endColumn": 78,
+			"mutatorName": "LogicalOperator",
+			"replacement": "form !== undefined || error.startsWith(`${check.name.slice(\"static.\".length)} exited with code`)",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > passes the findings and failures this build writes, and other checks' failures",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > passes the findings and failures this build writes, and other checks' failures$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 575,
+			"column": 4,
+			"endLine": 575,
+			"endColumn": 22,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > passes the findings and failures this build writes, and other checks' failures",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > passes the findings and failures this build writes, and other checks' failures$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 575,
+			"column": 4,
+			"endLine": 575,
+			"endColumn": 22,
+			"mutatorName": "EqualityOperator",
+			"replacement": "form === undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > reads the checks that ran as well as those that did not",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > reads the checks that ran as well as those that did not$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 576,
+			"column": 4,
+			"endLine": 576,
+			"endColumn": 78,
+			"mutatorName": "MethodExpression",
+			"replacement": "error.endsWith(`${check.name.slice(\"static.\".length)} exited with code`)",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > reads the checks that ran as well as those that did not",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > reads the checks that ran as well as those that did not$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 576,
+			"column": 21,
+			"endLine": 576,
+			"endColumn": 77,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > passes the findings and failures this build writes, and other checks' failures",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > passes the findings and failures this build writes, and other checks' failures$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 576,
+			"column": 24,
+			"endLine": 576,
+			"endColumn": 58,
+			"mutatorName": "MethodExpression",
+			"replacement": "check.name",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > reads the checks that ran as well as those that did not",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > reads the checks that ran as well as those that did not$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 576,
+			"column": 41,
+			"endLine": 576,
+			"endColumn": 50,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > reads the checks that ran as well as those that did not",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > reads the checks that ran as well as those that did not$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 577,
+			"column": 4,
+			"endLine": 577,
+			"endColumn": 21,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "form.test(error)",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > reads the checks that ran as well as those that did not",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > reads the checks that ran as well as those that did not$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 580,
+			"column": 9,
+			"endLine": 580,
+			"endColumn": 113,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > passes the findings and failures this build writes, and other checks' failures",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > passes the findings and failures this build writes, and other checks' failures$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 580,
+			"column": 9,
+			"endLine": 580,
+			"endColumn": 113,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > reads the checks that ran as well as those that did not",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > reads the checks that ran as well as those that did not$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 580,
+			"column": 9,
+			"endLine": 580,
+			"endColumn": 113,
+			"mutatorName": "LogicalOperator",
+			"replacement": "this.all().some(finding => finding.quotesTool()) && [...this.notRun, ...(this.ran ?? [])].some(exited)",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > reads the checks that ran as well as those that did not",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > reads the checks that ran as well as those that did not$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 580,
+			"column": 9,
+			"endLine": 580,
+			"endColumn": 59,
+			"mutatorName": "MethodExpression",
+			"replacement": "this.all().every(finding => finding.quotesTool())",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > passes the findings and failures this build writes, and other checks' failures",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > passes the findings and failures this build writes, and other checks' failures$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 580,
+			"column": 25,
+			"endLine": 580,
+			"endColumn": 58,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > catches a finding or a failed run that carries a tool's text",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > catches a finding or a failed run that carries a tool's text$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 580,
+			"column": 63,
+			"endLine": 580,
+			"endColumn": 113,
+			"mutatorName": "MethodExpression",
+			"replacement": "[...this.notRun, ...(this.ran ?? [])].every(exited)",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > catches a finding or a failed run that carries a tool's text",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > catches a finding or a failed run that carries a tool's text$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 580,
+			"column": 63,
+			"endLine": 580,
+			"endColumn": 100,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > reads the checks that ran as well as those that did not",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > reads the checks that ran as well as those that did not$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 580,
+			"column": 84,
+			"endLine": 580,
+			"endColumn": 98,
+			"mutatorName": "LogicalOperator",
+			"replacement": "this.ran && []",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > reads the checks that ran as well as those that did not",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > reads the checks that ran as well as those that did not$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 580,
+			"column": 96,
+			"endLine": 580,
+			"endColumn": 98,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"claim": "equivalent",
+			"evidence": "A verdict with no ran list yields a list holding one string; a string has no check name, so no failure form applies and it reads as clean, as the empty list does.",
+			"survivorClasses": [],
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 843,
+			"column": 93,
+			"endLine": 846,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Finding.quotesTool > leaves every other check's finding alone",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Finding\\.quotesTool > leaves every other check's finding alone$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 844,
+			"column": 25,
+			"endLine": 844,
+			"endColumn": 49,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Finding.quotesTool > reads the sentence for the finding's own tool and rule",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Finding\\.quotesTool > reads the sentence for the finding's own tool and rule$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 844,
+			"column": 25,
+			"endLine": 844,
+			"endColumn": 49,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Finding.quotesTool > reads the sentence for the finding's own tool and rule",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Finding\\.quotesTool > reads the sentence for the finding's own tool and rule$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 844,
+			"column": 25,
+			"endLine": 844,
+			"endColumn": 49,
+			"mutatorName": "EqualityOperator",
+			"replacement": "check !== \"static.biome\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reports a second result added beside an old one on the same lines as introduced",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^staticFindings > reports a second result added beside an old one on the same lines as introduced$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 844,
+			"column": 35,
+			"endLine": 844,
+			"endColumn": 49,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Finding.quotesTool > reads the sentence for the finding's own tool and rule",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Finding\\.quotesTool > reads the sentence for the finding's own tool and rule$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 844,
+			"column": 52,
+			"endLine": 844,
+			"endColumn": 75,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 844,
+			"column": 53,
+			"endLine": 844,
+			"endColumn": 60,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 844,
+			"column": 62,
+			"endLine": 844,
+			"endColumn": 74,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 844,
+			"column": 78,
+			"endLine": 844,
+			"endColumn": 101,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reports a second result added beside an old one on the same lines as introduced",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^staticFindings > reports a second result added beside an old one on the same lines as introduced$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 844,
+			"column": 79,
+			"endLine": 844,
+			"endColumn": 84,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reports a second result added beside an old one on the same lines as introduced",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^staticFindings > reports a second result added beside an old one on the same lines as introduced$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 844,
+			"column": 86,
+			"endLine": 844,
+			"endColumn": 100,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reports a second result added beside an old one on the same lines as introduced",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^staticFindings > reports a second result added beside an old one on the same lines as introduced$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 845,
+			"column": 8,
+			"endLine": 845,
+			"endColumn": 127,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Finding.quotesTool > leaves every other check's finding alone",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Finding\\.quotesTool > leaves every other check's finding alone$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 848,
+			"column": 23,
+			"endLine": 848,
+			"endColumn": 84,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > passes the findings and failures this build writes, and other checks' failures",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > passes the findings and failures this build writes, and other checks' failures$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 848,
+			"column": 54,
+			"endLine": 848,
+			"endColumn": 75,
+			"mutatorName": "Regex",
+			"replacement": "/[^.*+?^${}()|[\\]\\\\]/g",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > passes the findings and failures this build writes, and other checks' failures",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > passes the findings and failures this build writes, and other checks' failures$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 848,
+			"column": 77,
+			"endLine": 848,
+			"endColumn": 83,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > passes the findings and failures this build writes, and other checks' failures",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > passes the findings and failures this build writes, and other checks' failures$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1310,
+			"column": 23,
+			"endLine": 1324,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Finding.quotesTool > leaves every other check's finding alone",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Finding\\.quotesTool > leaves every other check's finding alone$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1312,
+			"column": 6,
+			"endLine": 1312,
+			"endColumn": 56,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Finding.quotesTool > reads the sentence for the finding's own tool and rule",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Finding\\.quotesTool > reads the sentence for the finding's own tool and rule$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1312,
+			"column": 6,
+			"endLine": 1312,
+			"endColumn": 56,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Finding.quotesTool > leaves every other check's finding alone",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Finding\\.quotesTool > leaves every other check's finding alone$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1312,
+			"column": 6,
+			"endLine": 1312,
+			"endColumn": 56,
+			"mutatorName": "LogicalOperator",
+			"replacement": "check !== \"static.biome\" || check !== \"static.tsc\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Finding.quotesTool > reads the sentence for the finding's own tool and rule",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Finding\\.quotesTool > reads the sentence for the finding's own tool and rule$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1312,
+			"column": 6,
+			"endLine": 1312,
+			"endColumn": 30,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Finding.quotesTool > reads the sentence for the finding's own tool and rule",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Finding\\.quotesTool > reads the sentence for the finding's own tool and rule$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1312,
+			"column": 6,
+			"endLine": 1312,
+			"endColumn": 30,
+			"mutatorName": "EqualityOperator",
+			"replacement": "check === \"static.biome\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Finding.quotesTool > leaves every other check's finding alone",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Finding\\.quotesTool > leaves every other check's finding alone$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1312,
+			"column": 16,
+			"endLine": 1312,
+			"endColumn": 30,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Finding.quotesTool > reads the sentence for the finding's own tool and rule",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Finding\\.quotesTool > reads the sentence for the finding's own tool and rule$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1312,
+			"column": 34,
+			"endLine": 1312,
+			"endColumn": 56,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Finding.quotesTool > reads the sentence for the finding's own tool and rule",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Finding\\.quotesTool > reads the sentence for the finding's own tool and rule$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1312,
+			"column": 34,
+			"endLine": 1312,
+			"endColumn": 56,
+			"mutatorName": "EqualityOperator",
+			"replacement": "check === \"static.tsc\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Finding.quotesTool > leaves every other check's finding alone",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Finding\\.quotesTool > leaves every other check's finding alone$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1312,
+			"column": 44,
+			"endLine": 1312,
+			"endColumn": 56,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Finding.quotesTool > reads the sentence for the finding's own tool and rule",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Finding\\.quotesTool > reads the sentence for the finding's own tool and rule$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1312,
+			"column": 65,
+			"endLine": 1312,
+			"endColumn": 70,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Finding.quotesTool > leaves every other check's finding alone",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Finding\\.quotesTool > leaves every other check's finding alone$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1315,
+			"column": 3,
+			"endLine": 1315,
+			"endColumn": 163,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Finding.quotesTool > reads the sentence for the finding's own tool and rule",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Finding\\.quotesTool > reads the sentence for the finding's own tool and rule$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1319,
+			"column": 3,
+			"endLine": 1322,
+			"endColumn": 86,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > passes the findings and failures this build writes, and other checks' failures",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > passes the findings and failures this build writes, and other checks' failures$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1319,
+			"column": 3,
+			"endLine": 1322,
+			"endColumn": 86,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Finding.quotesTool > reads the sentence for the finding's own tool and rule",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Finding\\.quotesTool > reads the sentence for the finding's own tool and rule$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1319,
+			"column": 3,
+			"endLine": 1322,
+			"endColumn": 86,
+			"mutatorName": "LogicalOperator",
+			"replacement": "(!message.test(this.message.text) || this.properties.explanation.what !== said) && discriminator !== undefined && !/^(?:line \\d+, column \\d+|beyond the base at [0-9a-f]{16})$/.test(discriminator)",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Finding.quotesTool > reads the sentence for the finding's own tool and rule",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Finding\\.quotesTool > reads the sentence for the finding's own tool and rule$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1319,
+			"column": 3,
+			"endLine": 1320,
+			"endColumn": 44,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Finding.quotesTool > reads the sentence for the finding's own tool and rule",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Finding\\.quotesTool > reads the sentence for the finding's own tool and rule$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1319,
+			"column": 3,
+			"endLine": 1320,
+			"endColumn": 44,
+			"mutatorName": "LogicalOperator",
+			"replacement": "!message.test(this.message.text) && this.properties.explanation.what !== said",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Finding.quotesTool > reads the sentence for the finding's own tool and rule",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Finding\\.quotesTool > reads the sentence for the finding's own tool and rule$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1319,
+			"column": 3,
+			"endLine": 1319,
+			"endColumn": 35,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "message.test(this.message.text)",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Finding.quotesTool > reads the sentence for the finding's own tool and rule",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Finding\\.quotesTool > reads the sentence for the finding's own tool and rule$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1320,
+			"column": 3,
+			"endLine": 1320,
+			"endColumn": 44,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Finding.quotesTool > catches a tool's text in the message, the explanation or the discriminator",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Finding\\.quotesTool > catches a tool's text in the message, the explanation or the discriminator$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1320,
+			"column": 3,
+			"endLine": 1320,
+			"endColumn": 44,
+			"mutatorName": "EqualityOperator",
+			"replacement": "this.properties.explanation.what === said",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Finding.quotesTool > catches a tool's text in the message, the explanation or the discriminator",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Finding\\.quotesTool > catches a tool's text in the message, the explanation or the discriminator$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1321,
+			"column": 4,
+			"endLine": 1322,
+			"endColumn": 85,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Finding.quotesTool > catches a tool's text in the message, the explanation or the discriminator",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Finding\\.quotesTool > catches a tool's text in the message, the explanation or the discriminator$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1321,
+			"column": 4,
+			"endLine": 1322,
+			"endColumn": 85,
+			"mutatorName": "LogicalOperator",
+			"replacement": "discriminator !== undefined || !/^(?:line \\d+, column \\d+|beyond the base at [0-9a-f]{16})$/.test(discriminator)",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > passes the findings and failures this build writes, and other checks' failures",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > passes the findings and failures this build writes, and other checks' failures$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1321,
+			"column": 4,
+			"endLine": 1321,
+			"endColumn": 31,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Verdict.quotesTool > passes the findings and failures this build writes, and other checks' failures",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Verdict\\.quotesTool > passes the findings and failures this build writes, and other checks' failures$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1321,
+			"column": 4,
+			"endLine": 1321,
+			"endColumn": 31,
+			"mutatorName": "EqualityOperator",
+			"replacement": "discriminator === undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Finding.quotesTool > catches a tool's text in the message, the explanation or the discriminator",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Finding\\.quotesTool > catches a tool's text in the message, the explanation or the discriminator$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1322,
+			"column": 4,
+			"endLine": 1322,
+			"endColumn": 85,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "/^(?:line \\d+, column \\d+|beyond the base at [0-9a-f]{16})$/.test(discriminator)",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Finding.quotesTool > catches a tool's text in the message, the explanation or the discriminator",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Finding\\.quotesTool > catches a tool's text in the message, the explanation or the discriminator$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1322,
+			"column": 5,
+			"endLine": 1322,
+			"endColumn": 65,
+			"mutatorName": "Regex",
+			"replacement": "/(?:line \\d+, column \\d+|beyond the base at [0-9a-f]{16})$/",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Finding.quotesTool > catches a tool's text in the message, the explanation or the discriminator",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Finding\\.quotesTool > catches a tool's text in the message, the explanation or the discriminator$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1322,
+			"column": 5,
+			"endLine": 1322,
+			"endColumn": 65,
+			"mutatorName": "Regex",
+			"replacement": "/^(?:line \\d+, column \\d+|beyond the base at [0-9a-f]{16})/",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Finding.quotesTool > catches a tool's text in the message, the explanation or the discriminator",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Finding\\.quotesTool > catches a tool's text in the message, the explanation or the discriminator$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1322,
+			"column": 5,
+			"endLine": 1322,
+			"endColumn": 65,
+			"mutatorName": "Regex",
+			"replacement": "/^(?:line \\d, column \\d+|beyond the base at [0-9a-f]{16})$/",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Finding.quotesTool > passes a Biome or tsc finding that holds only Melian's sentence, in each form Melian writes",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Finding\\.quotesTool > passes a Biome or tsc finding that holds only Melian's sentence, in each form Melian writes$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1322,
+			"column": 5,
+			"endLine": 1322,
+			"endColumn": 65,
+			"mutatorName": "Regex",
+			"replacement": "/^(?:line \\D+, column \\d+|beyond the base at [0-9a-f]{16})$/",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Finding.quotesTool > passes a Biome or tsc finding that holds only Melian's sentence, in each form Melian writes",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Finding\\.quotesTool > passes a Biome or tsc finding that holds only Melian's sentence, in each form Melian writes$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1322,
+			"column": 5,
+			"endLine": 1322,
+			"endColumn": 65,
+			"mutatorName": "Regex",
+			"replacement": "/^(?:line \\d+, column \\d|beyond the base at [0-9a-f]{16})$/",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Finding.quotesTool > passes a Biome or tsc finding that holds only Melian's sentence, in each form Melian writes",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Finding\\.quotesTool > passes a Biome or tsc finding that holds only Melian's sentence, in each form Melian writes$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1322,
+			"column": 5,
+			"endLine": 1322,
+			"endColumn": 65,
+			"mutatorName": "Regex",
+			"replacement": "/^(?:line \\d+, column \\D+|beyond the base at [0-9a-f]{16})$/",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Finding.quotesTool > passes a Biome or tsc finding that holds only Melian's sentence, in each form Melian writes",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Finding\\.quotesTool > passes a Biome or tsc finding that holds only Melian's sentence, in each form Melian writes$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1322,
+			"column": 5,
+			"endLine": 1322,
+			"endColumn": 65,
+			"mutatorName": "Regex",
+			"replacement": "/^(?:line \\d+, column \\d+|beyond the base at [0-9a-f])$/",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Finding.quotesTool > passes a Biome or tsc finding that holds only Melian's sentence, in each form Melian writes",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Finding\\.quotesTool > passes a Biome or tsc finding that holds only Melian's sentence, in each form Melian writes$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1322,
+			"column": 5,
+			"endLine": 1322,
+			"endColumn": 65,
+			"mutatorName": "Regex",
+			"replacement": "/^(?:line \\d+, column \\d+|beyond the base at [^0-9a-f]{16})$/",
+			"claim": "killed",
+			"evidence": "packages/core/test/quotes-tool.test.ts > Finding.quotesTool > passes a Biome or tsc finding that holds only Melian's sentence, in each form Melian writes",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^Finding\\.quotesTool > passes a Biome or tsc finding that holds only Melian's sentence, in each form Melian writes$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 386,
+			"column": 5,
+			"endLine": 391,
+			"endColumn": 5,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > keeps the same unlocated Enola result pre-existing",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^staticFindings > keeps the same unlocated Enola result pre-existing$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 388,
+			"column": 6,
+			"endLine": 388,
+			"endColumn": 40,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > identifies an unlocated Enola result by its message though the intent file has code on line 1",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^staticFindings > identifies an unlocated Enola result by its message though the intent file has code on line 1$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 388,
+			"column": 6,
+			"endLine": 388,
+			"endColumn": 40,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 388,
+			"column": 6,
+			"endLine": 388,
+			"endColumn": 40,
+			"mutatorName": "LogicalOperator",
+			"replacement": "tool === \"biome\" && tool === \"tsc\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 388,
+			"column": 6,
+			"endLine": 388,
+			"endColumn": 22,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 388,
+			"column": 6,
+			"endLine": 388,
+			"endColumn": 22,
+			"mutatorName": "EqualityOperator",
+			"replacement": "tool !== \"biome\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > identifies an unlocated Enola result by its message though the intent file has code on line 1",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^staticFindings > identifies an unlocated Enola result by its message though the intent file has code on line 1$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 388,
+			"column": 15,
+			"endLine": 388,
+			"endColumn": 22,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 388,
+			"column": 26,
+			"endLine": 388,
+			"endColumn": 40,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 388,
+			"column": 26,
+			"endLine": 388,
+			"endColumn": 40,
+			"mutatorName": "EqualityOperator",
+			"replacement": "tool !== \"tsc\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > identifies an unlocated Enola result by its message though the intent file has code on line 1",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^staticFindings > identifies an unlocated Enola result by its message though the intent file has code on line 1$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 388,
+			"column": 35,
+			"endLine": 388,
+			"endColumn": 40,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 389,
+			"column": 9,
+			"endLine": 389,
+			"endColumn": 70,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 389,
+			"column": 45,
+			"endLine": 389,
+			"endColumn": 68,
+			"mutatorName": "LogicalOperator",
+			"replacement": "region.startColumn && 1",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^staticFindings > reads a result in a file too large to read as introduced unless the base has one at the same place$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 406,
+			"column": 66,
+			"endLine": 415,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > keeps the same unlocated Enola result pre-existing",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^staticFindings > keeps the same unlocated Enola result pre-existing$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 407,
+			"column": 5,
+			"endLine": 407,
+			"endColumn": 39,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reports a second result added beside an old one on the same lines as introduced",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^staticFindings > reports a second result added beside an old one on the same lines as introduced$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 407,
+			"column": 5,
+			"endLine": 407,
+			"endColumn": 39,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > keeps the same unlocated Enola result pre-existing",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^staticFindings > keeps the same unlocated Enola result pre-existing$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 407,
+			"column": 5,
+			"endLine": 407,
+			"endColumn": 39,
+			"mutatorName": "LogicalOperator",
+			"replacement": "tool !== \"biome\" || tool !== \"tsc\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reports a second result added beside an old one on the same lines as introduced",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^staticFindings > reports a second result added beside an old one on the same lines as introduced$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 407,
+			"column": 5,
+			"endLine": 407,
+			"endColumn": 21,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 407,
+			"column": 5,
+			"endLine": 407,
+			"endColumn": 21,
+			"mutatorName": "EqualityOperator",
+			"replacement": "tool === \"biome\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > keeps the same unlocated Enola result pre-existing",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^staticFindings > keeps the same unlocated Enola result pre-existing$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 407,
+			"column": 14,
+			"endLine": 407,
+			"endColumn": 21,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^staticFindings > gives a Biome or tsc finding a fixed sentence for every text, and keeps Enola's own message$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 407,
+			"column": 25,
+			"endLine": 407,
+			"endColumn": 39,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reports a second result added beside an old one on the same lines as introduced",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^staticFindings > reports a second result added beside an old one on the same lines as introduced$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 407,
+			"column": 25,
+			"endLine": 407,
+			"endColumn": 39,
+			"mutatorName": "EqualityOperator",
+			"replacement": "tool === \"tsc\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > keeps the same unlocated Enola result pre-existing",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^staticFindings > keeps the same unlocated Enola result pre-existing$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 407,
+			"column": 34,
+			"endLine": 407,
+			"endColumn": 39,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > reports a second result added beside an old one on the same lines as introduced",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^staticFindings > reports a second result added beside an old one on the same lines as introduced$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 408,
+			"column": 41,
+			"endLine": 413,
+			"endColumn": 3,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > fails rather than guess when a result's file cannot be read",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^staticFindings > fails rather than guess when a result's file cannot be read$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 408,
+			"column": 73,
+			"endLine": 413,
+			"endColumn": 2,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > fails rather than guess when a result's file cannot be read",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^staticFindings > fails rather than guess when a result's file cannot be read$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 410,
+			"column": 11,
+			"endLine": 412,
+			"endColumn": 3,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > takes severity overrides from the tool's settings, and stores no resolution",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^staticFindings > takes severity overrides from the tool's settings, and stores no resolution$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 414,
+			"column": 8,
+			"endLine": 414,
+			"endColumn": 55,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > fails rather than guess when a result's file cannot be read",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^staticFindings > fails rather than guess when a result's file cannot be read$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 414,
+			"column": 24,
+			"endLine": 414,
+			"endColumn": 53,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > fails rather than guess when a result's file cannot be read",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^staticFindings > fails rather than guess when a result's file cannot be read$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 414,
+			"column": 25,
+			"endLine": 414,
+			"endColumn": 52,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > fails rather than guess when a result's file cannot be read",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^staticFindings > fails rather than guess when a result's file cannot be read$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 436,
+			"column": 64,
+			"endLine": 436,
+			"endColumn": 99,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > keeps the same unlocated Enola result pre-existing",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^staticFindings > keeps the same unlocated Enola result pre-existing$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 436,
+			"column": 74,
+			"endLine": 436,
+			"endColumn": 99,
+			"mutatorName": "LogicalOperator",
+			"replacement": "renamed.get(path) && path",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > keeps the same unlocated Enola result pre-existing",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^staticFindings > keeps the same unlocated Enola result pre-existing$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/core/src/static.ts",
+			"line": 437,
+			"column": 64,
+			"endLine": 437,
+			"endColumn": 78,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"claim": "killed",
+			"evidence": "packages/core/test/static.test.ts > staticFindings > keeps the same unlocated Enola result pre-existing",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^staticFindings > keeps the same unlocated Enola result pre-existing$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 653,
+			"column": 13,
+			"endLine": 653,
+			"endColumn": 111,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/checks.test.ts > runChecks > reuses the run when only the display setting output.emoji changes",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^runChecks > reuses the run when only the display setting output\\.emoji changes$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 709,
+			"column": 18,
+			"endLine": 709,
+			"endColumn": 57,
+			"mutatorName": "OptionalChaining",
+			"replacement": "(await read()).revisions[head].pending",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish.test.ts > publication planning recovery > reads a run only for the captured round (bound)",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^publication planning recovery > reads a run only for the captured round \\(bound\\)$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 711,
+			"column": 6,
+			"endLine": 713,
+			"endColumn": 47,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish.test.ts > publication planning recovery > asks only for round 3 after 2 planned rounds",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^publication planning recovery > asks only for round 3 after 2 planned rounds$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 711,
+			"column": 6,
+			"endLine": 713,
+			"endColumn": 47,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-stored-text.test.ts > drops a round an older build left pending with tsc's text, posting nothing, after a fresh review",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^drops a round an older build left pending with tsc's text, posting nothing, after a fresh review$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 711,
+			"column": 6,
+			"endLine": 713,
+			"endColumn": 47,
+			"mutatorName": "LogicalOperator",
+			"replacement": "held !== undefined && Verdict.from(held.verdict).quotesTool() || (await marked(held)).review === undefined",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish.test.ts > publication planning recovery > asks only for round 3 after 2 planned rounds",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^publication planning recovery > asks only for round 3 after 2 planned rounds$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 711,
+			"column": 6,
+			"endLine": 712,
+			"endColumn": 45,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish.test.ts > publication planning recovery > asks only for round 3 after 2 planned rounds",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^publication planning recovery > asks only for round 3 after 2 planned rounds$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 711,
+			"column": 6,
+			"endLine": 712,
+			"endColumn": 45,
+			"mutatorName": "LogicalOperator",
+			"replacement": "held !== undefined || Verdict.from(held.verdict).quotesTool()",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish.test.ts > publication planning recovery > asks only for round 3 after 2 planned rounds",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^publication planning recovery > asks only for round 3 after 2 planned rounds$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 711,
+			"column": 6,
+			"endLine": 711,
+			"endColumn": 24,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish.test.ts > publication planning recovery > asks only for round 3 after 2 planned rounds",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^publication planning recovery > asks only for round 3 after 2 planned rounds$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 711,
+			"column": 6,
+			"endLine": 711,
+			"endColumn": 24,
+			"mutatorName": "EqualityOperator",
+			"replacement": "held === undefined",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish.test.ts > publication planning recovery > asks only for round 3 after 2 planned rounds",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^publication planning recovery > asks only for round 3 after 2 planned rounds$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 713,
+			"column": 6,
+			"endLine": 713,
+			"endColumn": 47,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-stored-text.test.ts > recovers a round an older build posted before it died, and writes none of its tsc text again",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^recovers a round an older build posted before it died, and writes none of its tsc text again$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 713,
+			"column": 6,
+			"endLine": 713,
+			"endColumn": 47,
+			"mutatorName": "EqualityOperator",
+			"replacement": "(await marked(held)).review !== undefined",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-stored-text.test.ts > recovers a round an older build posted before it died, and writes none of its tsc text again",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^recovers a round an older build posted before it died, and writes none of its tsc text again$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 714,
+			"column": 9,
+			"endLine": 714,
+			"endColumn": 64,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish.test.ts > publication planning recovery > asks only for round 3 after 2 planned rounds",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^publication planning recovery > asks only for round 3 after 2 planned rounds$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 714,
+			"column": 9,
+			"endLine": 714,
+			"endColumn": 64,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-stored-text.test.ts > refuses to publish a review an older build decided, since its tsc tier kept a tool's text",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^refuses to publish a review an older build decided, since its tsc tier kept a tool's text$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 714,
+			"column": 9,
+			"endLine": 714,
+			"endColumn": 64,
+			"mutatorName": "LogicalOperator",
+			"replacement": "stale && Verdict.from(storedRound.verdict).quotesTool()",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-stored-text.test.ts > refuses to publish a review an older build decided, since its tsc tier kept a tool's text",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^refuses to publish a review an older build decided, since its tsc tier kept a tool's text$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 714,
+			"column": 66,
+			"endLine": 725,
+			"endColumn": 6,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-stored-text.test.ts > refuses to publish a review an older build decided, since its tsc tier kept a tool's text",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^refuses to publish a review an older build decided, since its tsc tier kept a tool's text$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 715,
+			"column": 21,
+			"endLine": 715,
+			"endColumn": 61,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-stored-text.test.ts > drops a round an older build left pending with tsc's text, posting nothing, after a fresh review",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^drops a round an older build left pending with tsc's text, posting nothing, after a fresh review$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 716,
+			"column": 41,
+			"endLine": 723,
+			"endColumn": 7,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-stored-text.test.ts > drops a round an older build left pending with tsc's text, posting nothing, after a fresh review",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^drops a round an older build left pending with tsc's text, posting nothing, after a fresh review$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 717,
+			"column": 11,
+			"endLine": 717,
+			"endColumn": 16,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-stored-text.test.ts > ends a publication an older build left pending, posting nothing, when its tsc tier kept a tool's text",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^ends a publication an older build left pending, posting nothing, when its tsc tier kept a tool's text$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 717,
+			"column": 11,
+			"endLine": 717,
+			"endColumn": 16,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-stored-text.test.ts > drops a round an older build left pending with tsc's text, posting nothing, after a fresh review",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^drops a round an older build left pending with tsc's text, posting nothing, after a fresh review$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 719,
+			"column": 14,
+			"endLine": 722,
+			"endColumn": 8,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-stored-text.test.ts > refuses to publish a review an older build decided, since its tsc tier kept a tool's text",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^refuses to publish a review an older build decided, since its tsc tier kept a tool's text$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 720,
+			"column": 16,
+			"endLine": 720,
+			"endColumn": 26,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-stored-text.test.ts > refuses to publish a review an older build decided, since its tsc tier kept a tool's text",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^refuses to publish a review an older build decided, since its tsc tier kept a tool's text$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 721,
+			"column": 17,
+			"endLine": 721,
+			"endColumn": 80,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-stored-text.test.ts > drops a round an older build left pending with tsc's text, posting nothing, after a fresh review",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^drops a round an older build left pending with tsc's text, posting nothing, after a fresh review$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 721,
+			"column": 27,
+			"endLine": 721,
+			"endColumn": 38,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-stored-text.test.ts > drops a round an older build left pending with tsc's text, posting nothing, after a fresh review",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^drops a round an older build left pending with tsc's text, posting nothing, after a fresh review$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 721,
+			"column": 48,
+			"endLine": 721,
+			"endColumn": 78,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-stored-text.test.ts > drops a round an older build left pending with tsc's text, posting nothing, after a fresh review",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^drops a round an older build left pending with tsc's text, posting nothing, after a fresh review$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 721,
+			"column": 56,
+			"endLine": 721,
+			"endColumn": 68,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-stored-text.test.ts > ends a publication an older build left pending, posting nothing, when its tsc tier kept a tool's text",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^ends a publication an older build left pending, posting nothing, when its tsc tier kept a tool's text$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": false
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 870,
+			"column": 12,
+			"endLine": 875,
+			"endColumn": 12,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-stored-text.test.ts > recovers a round an older build posted before it died, and writes none of its tsc text again",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^recovers a round an older build posted before it died, and writes none of its tsc text again$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 1293,
+			"column": 19,
+			"endLine": 1293,
+			"endColumn": 70,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/github/test/ledger.test.ts > ledger publication > refuses the ledger write when the head moves after the review posts",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^ledger publication > refuses the ledger write when the head moves after the review posts$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 1527,
+			"column": 6,
+			"endLine": 1527,
+			"endColumn": 42,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/github/test/ledger.test.ts > ledger publication > refuses the ledger write when the head moves after the review posts",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^ledger publication > refuses the ledger write when the head moves after the review posts$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 1527,
+			"column": 6,
+			"endLine": 1527,
+			"endColumn": 42,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-stored-text.test.ts > drops a round an older build left pending with tsc's text, posting nothing, after a fresh review",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^drops a round an older build left pending with tsc's text, posting nothing, after a fresh review$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 1527,
+			"column": 6,
+			"endLine": 1527,
+			"endColumn": 42,
+			"mutatorName": "MethodExpression",
+			"replacement": "result.reason.endsWith(olderBuild)",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-stored-text.test.ts > drops a round an older build left pending with tsc's text, posting nothing, after a fresh review",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^drops a round an older build left pending with tsc's text, posting nothing, after a fresh review$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 1528,
+			"column": 3,
+			"endLine": 1532,
+			"endColumn": 5,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-stored-text.test.ts > drops a round an older build left pending with tsc's text, posting nothing, after a fresh review",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^drops a round an older build left pending with tsc's text, posting nothing, after a fresh review$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 1529,
+			"column": 4,
+			"endLine": 1529,
+			"endColumn": 20,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-stored-text.test.ts > drops a round an older build left pending with tsc's text, posting nothing, after a fresh review",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^drops a round an older build left pending with tsc's text, posting nothing, after a fresh review$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		},
+		{
+			"file": "packages/pipeline/src/publish.ts",
+			"line": 1530,
+			"column": 4,
+			"endLine": 1530,
+			"endColumn": 122,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/publish-stored-text.test.ts > drops a round an older build left pending with tsc's text, posting nothing, after a fresh review",
+			"survivorClasses": [],
+			"run": {
+				"head": "03dd30d5",
+				"pattern": "^drops a round an older build left pending with tsc's text, posting nothing, after a fresh review$",
+				"collected": 1,
+				"result": "failed"
+			},
+			"inPass": true
+		}
+	],
+	"total": 158,
+	"omitted": 0,
+	"unmutated": [
+		{
+			"file": "packages/pipeline/src/static.ts",
+			"reason": "it sends process signals, and a mutant there could signal a process outside the run"
+		}
+	]
+}
