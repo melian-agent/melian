@@ -366,6 +366,16 @@ describe("Codex's review of d449ec6", () => {
 			(index: string, changesets: string) =>
 				`100644 blob ${index}\tindex.json\n040000 tree ${changesets}\tchangesets\n100644 blob ${index}\tledger.json\n`,
 		],
+		[
+			"the changesets tree under another name",
+			(index: string, changesets: string) =>
+				`040000 tree ${changesets}\tarchive\n100644 blob ${index}\tindex.json\n`,
+		],
+		[
+			"another blob in place of index.json",
+			(index: string, changesets: string) =>
+				`040000 tree ${changesets}\tchangesets\n100644 blob ${index}\tledger.json\n`,
+		],
 	])("refuses a branch with %s, and pushes nothing", async (_name, root) => {
 		await (await remote.clone().branch().checkout(changeset)).push();
 		const bare = remote.bare;
@@ -374,7 +384,12 @@ describe("Codex's review of d449ec6", () => {
 		const tree = gitWith(bare, root(index, changesets), "mktree");
 		const commit = gitIn(bare, "commit-tree", tree, "-p", remote.tip()!, "-m", "malformed");
 		gitIn(bare, "update-ref", "refs/heads/melian/state", commit);
-		await expect(remote.clone().branch().checkout(changeset)).rejects.toMatchObject({ code: "invalidBranch" });
+		// git's own listing of the root, as "<type> <name>".
+		const listing = gitIn(bare, "ls-tree", "--format=%(objecttype) %(path)", commit).split("\n");
+		await expect(remote.clone().branch().checkout(changeset)).rejects.toMatchObject({
+			code: "invalidBranch",
+			message: `the state branch's root holds ${JSON.stringify(listing)}, where this build reads only the blob index.json and the tree changesets`,
+		});
 		expect(remote.tip()).toBe(commit);
 	});
 
