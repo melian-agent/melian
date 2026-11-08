@@ -350,7 +350,7 @@ export async function startWave(
 		// Another review watching the same lens task may have started a wave since this one read the document, so the
 		// one-wave rule and freshness are decided here, in the commit that adds the wave.
 		const running = entry.waves.at(-1);
-		if (running !== undefined && (await tx.task(running.task as TaskId))?.state.status !== "terminal")
+		if (running !== undefined && (await tx.task(running.task as TaskId))!.state.status !== "terminal")
 			return undefined;
 		const waves = VerificationWaves.of(await tx.doc(VerificationWavesDocument, root.id), revision, lensTask);
 		const fresh = input.candidates.filter(
