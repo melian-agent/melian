@@ -840,3 +840,143 @@ export async function sightingVerification(
 		producerKey(source)
 	]?.[version];
 }
+
+// Whether two sightings of one rule in one file overlap, as a restatement of a defect worded afresh does: a run that
+// cites other lines of it hashes another snippet, and so another ID.
+export function overlapsSite(
+	a: Pick<SightedFinding, "path" | "ruleId" | "line" | "endLine">,
+	b: Pick<SightedFinding, "path" | "ruleId" | "line" | "endLine">,
+): boolean {
+	return a.path === b.path && a.ruleId === b.ruleId && a.line <= b.endLine && b.line <= a.endLine;
+}
+
+/**
+ * A dismissal a restatement may inherit: a maintainer's, which recorded the severity it was made at and the content it
+ * accepted, with the finding as its last sighting showed it.
+ */
+export type DismissedRoot = {
+	readonly id: string;
+	readonly ruleId: string;
+	readonly path: string;
+	readonly cause: Cause;
+	readonly line: number;
+	readonly endLine: number;
+	// The revision that last sighted it, whose head its region is read at.
+	readonly revision: string;
+	readonly dismissedAt: string;
+	readonly severity: Severity;
+	// The accepted trigger's hash, and the accepted proof with every proof sighted since.
+	readonly hash: string;
+	readonly proof: readonly ProvingHunk[];
+	readonly failureScenario?: string;
+	readonly evidence?: FindingProperties["evidence"];
+};
+
+// Every finding a maintainer dismissed with a recorded severity and accepted content, in ID order. An inherited
+// dismissal lives only in a revision's links, never in a lifecycle, so none of these is one.
+export function dismissedRoots(state: FindingsState): DismissedRoot[] {
+	return Object.keys(state.items)
+		.sort()
+		.flatMap((id) => {
+			const { lifecycle, sightings } = state.items[id]!;
+			const { status, dismissedSeverity, dismissedTrigger, dismissedAt, lastSeenRevision } = lifecycle;
+			const last = sightings[lastSeenRevision];
+			if (status !== "dismissed" || dismissedSeverity === undefined || dismissedTrigger === undefined) return [];
+			if (dismissedAt === undefined || last === undefined || Object.keys(last).length === 0) return [];
+			const { winner } = adjudicate(last);
+			const finding = Finding.from({ ...winner, properties: { ...winner.properties, status: "new" } });
+			const [line, endLine] = finding.lines();
+			const { failureScenario, evidence } = finding.properties;
+			return [
+				{
+					id,
+					ruleId: finding.ruleId,
+					path: finding.properties.path,
+					cause: finding.properties.cause,
+					line,
+					endLine,
+					revision: lastSeenRevision,
+					dismissedAt,
+					severity: dismissedSeverity,
+					hash: dismissedTrigger.hash,
+					proof: unionOf([...dismissedTrigger.proof, ...(lifecycle.proof ?? [])]),
+					...(failureScenario === undefined ? {} : { failureScenario }),
+					...(evidence === undefined ? {} : { evidence: structuredClone(evidence) }),
+				},
+			];
+		});
+}
+
+// The hunks the sightings of `ids` at `revision` proved, each once.
+export function proofAt(state: FindingsState, ids: readonly string[], revision: string): ProvingHunk[] {
+	return unionOf(
+		ids.flatMap((id) =>
+			Object.values(state.items[id]?.sightings[revision] ?? {}).flatMap((each) =>
+				proofOf(each.properties.cause, each.properties.trigger),
+			),
+		),
+	);
+}
+
+/** One candidate's restatement, as {@link recordInheritances} reads it. */
+export type Restating = {
+	// Every finding ID merged into the defect, each of which takes the link.
+	readonly members: readonly string[];
+	// The lens claims merged into it, each of which must be judged the same.
+	readonly claims: readonly { readonly id: string; readonly source: FindingSource; readonly ruleId: string }[];
+	// The roots the verifier was asked about.
+	readonly dismissed: readonly string[];
+};
+
+// Claims the trust floor protects: the verifier alone must not silence them, so a match only proposes.
+function floored(claim: Restating["claims"][number]): boolean {
+	return (
+		claim.source.check === "lens.trust-boundary" ||
+		claim.source.check === "lens.tests" ||
+		claim.ruleId === "untested-behaviour"
+	);
+}
+
+/**
+ * Replaces `revision`'s whole set of restatement links from the judgements `version` of the verifier stored there. A
+ * root is a match only when every claim's record answers `same` for it. A match whose highest reported severity, before
+ * any lowering, exceeds the root's recorded severity, or that holds a trust-floor claim, proposes rather than inherits.
+ * Among matches the latest dismissal wins, and every member of the defect takes its link. Returns whether the links
+ * changed, which bumps the revision's findings version.
+ */
+export async function recordInheritances(
+	tx: Tx,
+	root: ConversationId,
+	revision: string,
+	restating: readonly Restating[],
+	version: string,
+): Promise<boolean> {
+	const state = await tx.doc(FindingsDocument, root);
+	const links: Record<string, Inheritance> = {};
+	for (const { members, claims, dismissed } of restating) {
+		if (claims.length === 0) continue;
+		const matches = dismissed.flatMap((from) => {
+			const lifecycle = state.items[from]?.lifecycle;
+			if (lifecycle?.status !== "dismissed" || lifecycle.dismissedSeverity === undefined) return [];
+			if (lifecycle.dismissedAt === undefined) return [];
+			const same = claims.every(
+				(claim) =>
+					state.items[claim.id]?.verifications?.[revision]?.[producerKey(claim.source)]?.[version]?.matches?.[
+						from
+					] === "same",
+			);
+			if (!same) return [];
+			// The highest any lens reported, before a verifier lowered it: a stored sighting keeps the lens's own.
+			const reported = claims
+				.flatMap((claim) => sightingIn(state, revision, claim.id, claim.source)?.properties.severity ?? [])
+				.reduce<Severity>(stricter, "nit");
+			const fenced = severityRank[reported] < severityRank[lifecycle.dismissedSeverity];
+			const kind: Inheritance["kind"] = fenced || claims.some(floored) ? "proposed" : "inherited";
+			return [{ from, kind, dismissedAt: lifecycle.dismissedAt }];
+		});
+		const [latest] = matches.sort((a, b) => compareText(b.dismissedAt, a.dismissedAt) || compareText(a.from, b.from));
+		if (latest === undefined) continue;
+		for (const member of members) links[member] = latest;
+	}
+	return replaceInheritances(tx, root, revision, links);
+}

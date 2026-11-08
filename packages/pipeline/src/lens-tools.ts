@@ -149,6 +149,8 @@ export type LensPolicy = {
 	// co-reported the defect, and the severities the table in force at its path resolves silent. Absent from a verifier
 	// an older Melian created, which may lower nothing.
 	claims?: { label: string; id: string; source: FindingSource; fence?: { coReported: boolean; silent: Severity[] } }[];
+	// The dismissed findings a verifier judges every claim against for sameness, each by its label and ID.
+	dismissed?: { label: string; id: string }[];
 	// The level it runs at, which its findings' source names; absent from a lens an older Melian created, whose findings
 	// name the lens's version alone.
 	level?: ScrutinyLevel;
@@ -1057,7 +1059,7 @@ export const reportVerdict = defineTool({
 		const error = [...Value.Errors(reportVerdictSchema, args)][0];
 		if (error !== undefined)
 			throw new Error(
-				`report_verdict needs claim c1 (or another supplied label), answers { code, guard, base } each yes, no or unknown, verdict confirmed, plausible or refuted, reason (1–2000 characters), optional correction (1–2000 characters), and evidence locations { file, line, endLine?, role, revision? }. It takes an optional lower { severity, reason }: ${error.instancePath} ${error.message}`,
+				`report_verdict needs claim c1 (or another supplied label), answers { code, guard, base } each yes, no or unknown, verdict confirmed, plausible or refuted, reason (1–2000 characters), optional correction (1–2000 characters), and evidence locations { file, line, endLine?, role, revision? }. It takes an optional lower { severity, reason }, and matches { <dismissed finding ID>: same or different } when dismissed findings are listed: ${error.instancePath} ${error.message}`,
 			);
 		const prepared = args as ReportVerdictInput;
 		if (prepared.verdict === "refuted" && (prepared.evidence?.length ?? 0) === 0)
@@ -1074,6 +1076,21 @@ export const reportVerdict = defineTool({
 			if (claim === undefined) throw new Error("claim label was not supplied to this verifier");
 			if (args.verdict === "refuted" && (args.evidence?.length ?? 0) === 0)
 				throw new Error("a refuted verdict requires evidence locations");
+			// Pi hands prepareArguments no conversation, so the listed dismissed findings are checked here, before any write.
+			const listed = (lens.dismissed ?? []).map(({ id }) => id);
+			const answered = Object.keys(args.matches ?? {});
+			const missing = listed.filter((id) => !answered.includes(id));
+			const unlisted = answered.filter((id) => !listed.includes(id));
+			if (missing.length > 0 || unlisted.length > 0)
+				throw new Error(
+					`matches must answer same or different for each dismissed finding listed, ${
+						listed.length === 0
+							? "none here"
+							: (lens.dismissed ?? []).map(({ label, id }) => `${label} ${id}`).join(", ")
+					}, and no other${missing.length > 0 ? `; missing ${missing.join(", ")}` : ""}${
+						unlisted.length > 0 ? `; not listed ${unlisted.join(", ")}` : ""
+					}`,
+				);
 			const review = lens.revision;
 			const revision = Revision.from({
 				base: review.base,
@@ -1117,6 +1134,7 @@ export const reportVerdict = defineTool({
 					answers: { ...args.answers },
 					...(evidence.length === 0 ? {} : { evidence }),
 					...(lowers ? { lowered: { from: severity, to: args.lower!.severity, reason: args.lower!.reason } } : {}),
+					...(listed.length === 0 ? {} : { matches: { ...args.matches } }),
 					executor: "llm",
 					model: lens.model!,
 					version: lens.version,
