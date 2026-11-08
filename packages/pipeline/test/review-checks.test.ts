@@ -212,12 +212,16 @@ describe("review drives checks", { timeout: 60_000 }, () => {
 		fakeTool(
 			repo,
 			"tsc",
-			`if [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi\necho ran >> '${log}'\nexit 139`,
+			`if [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi\nif [ "$1" = "--showConfig" ]; then echo '{"files":["./a.ts"]}'; exit 0; fi\necho ran >> '${log}'\nexit 139`,
 		);
 		const first = await reviewChangeset(options);
 		expect(first.verdict.notRun.find(({ name }) => name === "static.tsc")!.status).toBe("failed");
 		const before = readFileSync(log, "utf8");
-		fakeTool(repo, "tsc", `if [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi\necho ran >> '${log}'`);
+		fakeTool(
+			repo,
+			"tsc",
+			`if [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi\nif [ "$1" = "--showConfig" ]; then echo '{"files":["./a.ts"]}'; exit 0; fi\necho ran >> '${log}'`,
+		);
 		expect((await reviewChangeset(options)).verdict.status).toBe("not-reviewed");
 		expect(readFileSync(log, "utf8")).toBe(before);
 		const rerun = await reviewChangeset({ ...options, rerun: true });
@@ -371,7 +375,7 @@ describe("review drives checks", { timeout: 60_000 }, () => {
 		fakeTool(
 			repo,
 			"tsc",
-			`if [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi\necho ran >> '${log.replaceAll("'", "'\\''")}'`,
+			`if [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi\nif [ "$1" = "--showConfig" ]; then echo '{"files":["./a.ts"]}'; exit 0; fi\necho ran >> '${log.replaceAll("'", "'\\''")}'`,
 		);
 		const ready = join(repo, "ready");
 		const child = spawn(

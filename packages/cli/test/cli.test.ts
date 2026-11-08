@@ -39,6 +39,7 @@ const goldens = Object.fromEntries(loadGoldens().map((golden) => [golden.name, g
 const gitEnv = {
 	GIT_CONFIG_GLOBAL: "/dev/null",
 	GIT_CONFIG_NOSYSTEM: "1",
+	GIT_CONFIG_COUNT: "0",
 	GIT_AUTHOR_NAME: "Melian Test",
 	GIT_AUTHOR_EMAIL: "test@melian.invalid",
 	GIT_COMMITTER_NAME: "Melian Test",
@@ -815,7 +816,8 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 				symlinkSync(join(outside, "leak.d.ts"), join(repo, "src/leak.d.ts"));
 				writeFileSync(join(repo, "src/b.ts"), "export const n: number = leaked;\n");
 			},
-			"tsc/TS2322",
+			// The link is one of the project's effective files, so Melian refuses the project before tsc runs.
+			"tsconfig.json resolves a file outside the checkout, so Melian ran no tsc on it",
 		],
 		[
 			"a committed tsconfig.json symlink to an outside project file",

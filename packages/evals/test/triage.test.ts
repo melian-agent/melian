@@ -356,6 +356,12 @@ const gitIn =
 	(args: string[]): string =>
 		execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
 
+// CI checks out the whole history, so a shallow clone there still fails closed, as the decisions require.
+function shallowSkip(git: (args: string[]) => string, env: NodeJS.ProcessEnv): string | undefined {
+	if (env.CI || git(["rev-parse", "--is-shallow-repository"]).trim() !== "true") return undefined;
+	return "this clone is shallow; run git fetch --unshallow to check questions.json's history";
+}
+
 function recordHistory(git: (args: string[]) => string): RecordedFingerprints[] {
 	try {
 		if (git(["rev-parse", "--is-shallow-repository"]).trim() !== "false")
@@ -415,11 +421,17 @@ function recordProblems(
 }
 
 describe("the triage question set's version", () => {
-	it("stands for the questions across every commit that recorded their version", async () => {
+	it("stands for the questions across every commit that recorded their version", async ({ skip }) => {
 		const recorded = JSON.parse(
 			readFileSync(join(triageDirectory, "questions.json"), "utf8"),
 		) as RecordedFingerprints;
 		const fingerprint = (await TriageQuestions.shipped(goldens[0]!)).fingerprint();
+		const reason = shallowSkip(gitIn(triageDirectory), process.env);
+		if (reason !== undefined) {
+			expect(recordProblems(recorded, triageQuestionSet.version, fingerprint, [])).toEqual([]);
+			process.stderr.write(`skipped: ${reason}\n`);
+			skip(reason);
+		}
 		expect(
 			recordProblems(recorded, triageQuestionSet.version, fingerprint, recordHistory(gitIn(triageDirectory))),
 		).toEqual([]);
@@ -465,6 +477,32 @@ describe("the triage question set's version", () => {
 			commit("add new version without rewriting history");
 			expect(recordProblems({ "1": "aaaa", "2": "bbbb" }, "2", "bbbb", recordHistory(git))).toEqual([]);
 			expect(git(["for-each-ref", "--format=%(refname)"]).trim()).toBe("refs/heads/snapshot");
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+
+	it("skips a shallow clone's history only when CI is unset, and fails it under CI", () => {
+		const root = mkdtempSync(join(tmpdir(), "melian-shallow-history-"));
+		const origin = join(root, "origin");
+		const shallow = join(root, "shallow");
+		const git = gitIn(origin);
+		try {
+			mkdirSync(join(origin, recordPath, ".."), { recursive: true });
+			git(["init", "--quiet", "--initial-branch=snapshot"]);
+			for (const version of ["1", "2"]) {
+				writeFileSync(join(origin, recordPath), `{"1":"aaaa"${version === "2" ? ',"2":"bbbb"' : ""}}`);
+				git(["add", "--all"]);
+				git(["-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "--quiet", "-m", version]);
+			}
+			execFileSync("git", ["clone", "--quiet", "--depth=1", `file://${origin}`, shallow], { stdio: "ignore" });
+			const clone = gitIn(shallow);
+			expect(shallowSkip(clone, {})).toBe(
+				"this clone is shallow; run git fetch --unshallow to check questions.json's history",
+			);
+			expect(shallowSkip(clone, { CI: "true" })).toBeUndefined();
+			expect(() => recordHistory(clone)).toThrow("history is shallow");
+			expect(shallowSkip(git, {})).toBeUndefined();
 		} finally {
 			rmSync(root, { recursive: true, force: true });
 		}

@@ -53,6 +53,9 @@ const tsconfig = JSON.stringify({
 	compilerOptions: { strict: true, noEmit: true, target: "ES2022", module: "NodeNext" },
 });
 
+// A fake tsc answers Melian's question about the project's effective files before its own run.
+const answerShowConfig = `if [ "$1" = "--showConfig" ]; then echo '{"files":["./a.ts"]}'; exit 0; fi`;
+
 function input(tool: StaticRunInput["tool"], commitId: string, timeout = 120): StaticRunInput {
 	return {
 		env: createNodeExecutionEnv(repo),
@@ -169,8 +172,11 @@ describe("runStaticTool with Melian's own tools", () => {
 			["TS2322", "b/index.ts", 1],
 		]);
 		expect(result.notes).toEqual(["tsc checked a/tsconfig.json, b/tsconfig.json, which tsconfig.json references."]);
-		const nothing = commit(repo, { "tsconfig.json": JSON.stringify({ files: [] }) });
-		await expect(runStaticTool(input("tsc", nothing), context)).rejects.toMatchObject({ code: "nothingToCheck" });
+		// tsc reports an empty files list as an error of the project itself, so that error is the finding.
+		const empty = commit(repo, { "tsconfig.json": JSON.stringify({ files: [] }) });
+		const emptied = await runStaticTool(input("tsc", empty), context);
+		if (emptied.status !== "ran") throw new Error(emptied.reason);
+		expect(results(emptied.log)).toEqual([["TS18002", "tsconfig.json", 1]]);
 	});
 
 	it("follows a tsconfig that links to a solution inside the checkout to the projects it references", {
@@ -214,19 +220,89 @@ describe("runStaticTool with Melian's own tools", () => {
 		expect(results(result.log)).toEqual([["TS2322", "a/index.ts", 1]]);
 	});
 
-	// As on main: Melian reads a project's own files and references, not those its base supplies, so this project is
-	// checked as it is and tsc finds nothing in it.
-	it("checks a tsconfig that extends a solution base as it is, as on main", { timeout: 60_000 }, async () => {
+	// tsc inherits no `references` through `extends`, so tsc -p and tsc -b check nothing here, and neither does Melian.
+	it("refuses a tsconfig whose only references come from its base, as tsc checks nothing there", {
+		timeout: 60_000,
+	}, async () => {
 		const head = commit(repo, {
 			"base.json": JSON.stringify({ files: [], references: [{ path: "./a" }] }),
 			"tsconfig.json": JSON.stringify({ extends: "./base.json" }),
 			"a/tsconfig.json": JSON.stringify({ compilerOptions: { strict: true, noEmit: true, composite: true } }),
 			"a/index.ts": lines("export const n: number = 'a';"),
 		});
+		await expect(runStaticTool(input("tsc", head), context)).rejects.toMatchObject({ code: "nothingToCheck" });
+	});
+
+	it("checks a project whose include comes from the base it extends", { timeout: 60_000 }, async () => {
+		const head = commit(repo, {
+			"base.json": JSON.stringify({ compilerOptions: { strict: true, noEmit: true }, include: ["src/**/*.ts"] }),
+			"tsconfig.json": JSON.stringify({ extends: "./base.json", files: [] }),
+			"src/a.ts": lines("export const n: number = 'a';"),
+		});
 		const result = await runStaticTool(input("tsc", head), context);
 		if (result.status !== "ran") throw new Error(result.reason);
-		expect(results(result.log)).toEqual([]);
+		expect(results(result.log)).toEqual([["TS2322", "src/a.ts", 1]]);
 		expect(result.notes).toEqual([]);
+	});
+
+	it("checks each project of a solution whose projects take their include from a shared base", {
+		timeout: 60_000,
+	}, async () => {
+		const project = JSON.stringify({ extends: "../base.json", files: [] });
+		const head = commit(repo, {
+			"base.json": JSON.stringify({
+				compilerOptions: { strict: true, noEmit: true, composite: true },
+				// biome-ignore lint/suspicious/noTemplateCurlyInString: tsc substitutes its own ${configDir} placeholder.
+				include: ["${configDir}/**/*.ts"],
+			}),
+			"tsconfig.json": JSON.stringify({ files: [], references: [{ path: "./a" }, { path: "./b" }] }),
+			"a/tsconfig.json": project,
+			"a/index.ts": lines("export const n: number = 'a';"),
+			"b/tsconfig.json": project,
+			"b/index.ts": lines("export const m: number = 'b';"),
+		});
+		const result = await runStaticTool(input("tsc", head), context);
+		if (result.status !== "ran") throw new Error(result.reason);
+		expect(results(result.log)).toEqual([
+			["TS2322", "a/index.ts", 1],
+			["TS2322", "b/index.ts", 1],
+		]);
+		expect(result.notes).toEqual(["tsc checked a/tsconfig.json, b/tsconfig.json, which tsconfig.json references."]);
+	});
+
+	it("refuses a project whose effective files lie outside the checkout, by extends or by a link", {
+		timeout: 60_000,
+	}, async () => {
+		const outside = join(repo, ".git", "outside");
+		writeFiles(outside, {
+			"base.json": JSON.stringify({ include: ["src/**/*.ts"] }),
+			"src/ghp_FAKEoutsideTOKEN312.ts": lines("export const n: number = 'a';"),
+		});
+		const refused = {
+			code: "toolFailed",
+			message: "tsconfig.json resolves a file outside the checkout, so Melian ran no tsc on it",
+		};
+		const extended = commit(repo, {
+			"tsconfig.json": JSON.stringify({ extends: join(outside, "base.json"), files: [] }),
+		});
+		await expect(runStaticTool(input("tsc", extended), context)).rejects.toMatchObject(refused);
+		symlinkSync(join(outside, "src"), join(repo, "linked"));
+		const linked = commit(repo, { "tsconfig.json": JSON.stringify({ include: ["linked/**/*.ts"] }) });
+		await expect(runStaticTool(input("tsc", linked), context)).rejects.toMatchObject(refused);
+	});
+
+	it("fails the check when tsc cannot resolve a referenced project's configuration", {
+		timeout: 60_000,
+	}, async () => {
+		const head = commit(repo, {
+			"tsconfig.json": JSON.stringify({ files: [], references: [{ path: "./missing.json" }] }),
+		});
+		await expect(runStaticTool(input("tsc", head), context)).rejects.toMatchObject({
+			code: "toolFailed",
+			message: expect.stringMatching(
+				/^tsc --showConfig exited with code 1 on missing\.json; run tsc --showConfig -p missing\.json at [0-9a-f]{12} to see why, since Melian keeps none of its output$/,
+			),
+		});
 	});
 
 	it("checks a referenced project in a folder whose name starts with two dots, and refuses one above the checkout", {
@@ -380,6 +456,40 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 		expectCheckoutUntouched();
 	});
 
+	it("fails the check when tsc --showConfig fails or answers anything but a configuration", {
+		timeout: 60_000,
+	}, async () => {
+		const head = commit(repo, { ".gitignore": lines("node_modules"), "tsconfig.json": tsconfig });
+		for (const [answer, code] of [
+			[`'{"files":["./a.ts"]}'`, 1],
+			["null", 0],
+			["'\"files\"'", 0],
+		] as const) {
+			fakeTool(
+				repo,
+				"tsc",
+				`if [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi\nif [ "$1" = "--showConfig" ]; then echo ${answer}; exit ${code}; fi`,
+			);
+			await expect(runStaticTool(input("tsc", head), context)).rejects.toMatchObject({
+				code: "toolFailed",
+				message: `tsc --showConfig exited with code ${code} on tsconfig.json; run tsc --showConfig -p tsconfig.json at ${head.slice(0, 12)} to see why, since Melian keeps none of its output`,
+			});
+		}
+	});
+
+	it("refuses an effective file above the worktree even when it does not exist", { timeout: 60_000 }, async () => {
+		const head = commit(repo, { ".gitignore": lines("node_modules"), "tsconfig.json": tsconfig });
+		fakeTool(
+			repo,
+			"tsc",
+			`if [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi\nif [ "$1" = "--showConfig" ]; then echo '{"files":["../nowhere.ts"]}'; exit 0; fi`,
+		);
+		await expect(runStaticTool(input("tsc", head), context)).rejects.toMatchObject({
+			code: "toolFailed",
+			message: "tsconfig.json resolves a file outside the checkout, so Melian ran no tsc on it",
+		});
+	});
+
 	it("runs the tool with PATH, HOME, TMPDIR, and LANG only, so no secret reaches it", {
 		timeout: 60_000,
 	}, async () => {
@@ -387,7 +497,11 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 		vi.stubEnv("NODE_V8_COVERAGE", "");
 		const head = commit(repo, { ".gitignore": lines("node_modules"), "tsconfig.json": tsconfig });
 		const seen = join(repo, ".git", "tool-env.txt");
-		fakeTool(repo, "tsc", `if [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi\nenv > '${seen}'`);
+		fakeTool(
+			repo,
+			"tsc",
+			`if [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi\n${answerShowConfig}\nenv > '${seen}'`,
+		);
 		await log("tsc", head);
 		const names = readFileSync(seen, "utf8")
 			.split("\n")
@@ -404,7 +518,11 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 		timeout: 60_000,
 	}, async () => {
 		const head = commit(repo, { ".gitignore": lines("node_modules"), "tsconfig.json": tsconfig });
-		fakeTool(repo, "tsc", 'if [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi\nsleep 30');
+		fakeTool(
+			repo,
+			"tsc",
+			`if [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi\n${answerShowConfig}\nsleep 30`,
+		);
 		const started = Date.now();
 		const error = await runStaticTool(input("tsc", head, 1), context).then(
 			() => undefined,
@@ -423,7 +541,7 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 			repo,
 			"tsc",
 			[
-				'if [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi',
+				`if [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi\n${answerShowConfig}`,
 				"echo \"node_modules/x/index.d.ts(1,1): error TS1005: ';' expected.\"",
 				"echo \"../elsewhere.ts(2,1): error TS1005: ';' expected.\"",
 				"exit 2",
@@ -444,7 +562,7 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 		fakeTool(
 			repo,
 			"tsc",
-			'if [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi\necho "out of memory"\nexit 134',
+			`if [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi\n${answerShowConfig}\necho "out of memory"\nexit 134`,
 		);
 		const error = await runStaticTool(input("tsc", head), context).then(
 			() => undefined,
@@ -464,7 +582,7 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 		fakeTool(
 			repo,
 			"tsc",
-			'if [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi\nrm -f ../tsc-0.out\nmkfifo ../tsc-0.out',
+			`if [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi\n${answerShowConfig}\nrm -f ../tsc-0.out\nmkfifo ../tsc-0.out`,
 		);
 		const error = await runStaticTool(input("tsc", head), context).then(
 			() => undefined,
@@ -479,7 +597,7 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 		fakeTool(
 			repo,
 			"tsc",
-			'if [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi\necho "out of memory"\nexit 134',
+			`if [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi\n${answerShowConfig}\necho "out of memory"\nexit 134`,
 		);
 		const env = createNodeExecutionEnv(repo);
 		const execute = env.exec.bind(env);
@@ -619,7 +737,11 @@ describe("runStaticTool and a worktree locked by pid 0", () => {
 describe("runStaticTool after a cancellation", () => {
 	it("removes its worktree even though the caller's context is cancelled", { timeout: 60_000 }, async () => {
 		const head = commit(repo, { ".gitignore": lines("node_modules"), "tsconfig.json": tsconfig });
-		fakeTool(repo, "tsc", 'if [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi\nsleep 30');
+		fakeTool(
+			repo,
+			"tsc",
+			`if [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi\n${answerShowConfig}\nsleep 30`,
+		);
 		const controller = new AbortController();
 		const cancellable = { abortSignal: controller.signal, value: () => undefined, toString: () => "cancellable" };
 		setTimeout(() => controller.abort(), 2_000);

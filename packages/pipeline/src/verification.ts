@@ -19,15 +19,7 @@ import {
 	reportVerdict,
 	type StoredBudgetEnd,
 } from "./lens-tools.ts";
-import {
-	type ClaimProbe,
-	claimKey,
-	ProbeReruns,
-	type ProbingEnvironment,
-	probeFailed,
-	renderProbeEvidence,
-	rerunKey,
-} from "./probing.ts";
+import { type ClaimProbe, claimKey, ProbeReruns, probeFailed, renderProbeEvidence, rerunKey } from "./probing.ts";
 import { lensExtension } from "./review.ts";
 import { ReviewIndex } from "./review-index.ts";
 import { quoteUntrusted } from "./untrusted.ts";
@@ -44,10 +36,9 @@ export type VerificationCandidate = {
 	designAtBase?: { sections: string; files: string };
 	// What a lowering of any claim is checked against; absent from a candidate an older Melian stored.
 	fence?: { coReported: boolean; silent: Severity[] };
-	// The probe each claim of a probing level rests on, by `claimKey`, and what probes run under. The review runs each
-	// again into `ProbeReruns` before the task starts. Absent from a candidate of a level that does not probe.
+	// The probe each claim of a probing level rests on, by `claimKey`, with what its own run ran probes under. The review
+	// runs each again into `ProbeReruns` before the task starts. Absent from a candidate of a level that does not probe.
 	probes?: Record<string, ClaimProbe>;
-	probing?: ProbingEnvironment;
 };
 export type VerificationInput = {
 	root: ConversationId;
