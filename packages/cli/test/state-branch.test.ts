@@ -363,3 +363,40 @@ describe("Codex's review of a35d88c", () => {
 		expect(index.changesets).toEqual({});
 	});
 });
+
+describe("Codex's review of 26338cc", () => {
+	it.each([
+		[
+			"no writers' key is set",
+			() => ({ env: { [keyVariable]: "" } }),
+			"no writers' key is configured for the state branch",
+		],
+		[
+			"the branch is out of reach",
+			() => {
+				rmSync(origin, { recursive: true, force: true });
+				return { env: {} };
+			},
+			"git fetch of melian/state failed: ",
+		],
+	])("refuses an authoritative store when %s, before any command can use it", async (_name, setup, reason) => {
+		const { env } = setup();
+		const error = await ChangesetStore.write(io(first, env), first, pullRequest, undefined, {
+			authoritative: true,
+		}).catch((caught: unknown) => caught);
+		expect(error).toMatchObject({
+			name: "CliError",
+			message: expect.stringContaining(
+				`melian publish needs the pull request's storage from melian/state, which this clone could not lease: ${reason}`,
+			),
+		});
+		await expect(ChangesetStore.read(io(first), first, pullRequest)).resolves.not.toBeUndefined();
+	});
+
+	it("opens an authoritative store when the branch is leased", async () => {
+		const store = await ChangesetStore.write(io(first), first, pullRequest, undefined, { authoritative: true });
+		await writeNote(store, "leased");
+		await store.close();
+		expect(stderr).toEqual([]);
+	});
+});

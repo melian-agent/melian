@@ -104,8 +104,17 @@ export class ChangesetStore {
 		return location.kind === "state" || existsSync(location.path);
 	}
 
-	/** Opens the changeset's storage for a command that writes it, creating it when absent. */
-	static async write(io: Io, repoRoot: string, changeset: string, directory?: string): Promise<ChangesetStore> {
+	/**
+	 * Opens the changeset's storage for a command that writes it, creating it when absent. An `authoritative` command
+	 * refuses a pull request's copy it could not lease from the state branch.
+	 */
+	static async write(
+		io: Io,
+		repoRoot: string,
+		changeset: string,
+		directory?: string,
+		options: { readonly authoritative?: boolean } = {},
+	): Promise<ChangesetStore> {
 		const location = await locate(repoRoot, changeset, io.env, directory);
 		if (location.kind === "sqlite") return ChangesetStore.#sqlite(io, location, changeset);
 		const branch = new StateBranch({
@@ -116,6 +125,14 @@ export class ChangesetStore {
 			key: await stateKey(repoRoot, io.env),
 		});
 		const checkout = await branch.checkout(changeset).catch(ChangesetStore.#refusal);
+		// A command that acts on GitHub needs the branch's latest copy: this clone's alone may lack a newer round that
+		// another clone pushed, and publishing it would replace that round's status.
+		if (options.authoritative === true && checkout.unreached !== undefined) {
+			checkout.close();
+			throw new CliError(
+				`melian publish needs the pull request's storage from melian/state, which this clone could not lease: ${visibleText(checkout.unreached)}; set the writers' key in a secrets file, and publish where the branch is in reach`,
+			);
+		}
 		if (checkout.unreached !== undefined)
 			io.stderr(
 				`melian: ${visibleText(checkout.unreached)}; this command works in this clone's copy of the pull request's storage, and a later command that reaches melian/state stores it\n`,

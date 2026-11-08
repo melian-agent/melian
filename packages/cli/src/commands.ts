@@ -511,7 +511,7 @@ export async function publish(
 	const { config } = await loadConfig(changeset.repoRoot, { kind: "revision", commit: pullRequest.base.sha }, ".");
 	// `publish.emoji` is the base's to say, and the base is known only once the pull request is read.
 	const provider = config.publish.emoji === "on" ? reader : await gitHubFor(io.cwd, io.env, { emoji: false });
-	const store = await ChangesetStore.write(io, changeset.repoRoot, changeset.id);
+	const store = await ChangesetStore.write(io, changeset.repoRoot, changeset.id, undefined, { authoritative: true });
 	const { storage } = store;
 	// Only the publish task: a review a crash interrupted must not resume here and spend tokens on real models.
 	const publishHarness = await openPublishHarness(storage, idleModels(io.env), provider).catch(

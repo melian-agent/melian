@@ -24,6 +24,7 @@ import { publish } from "../src/commands.ts";
 import { main } from "../src/main.ts";
 import * as repository from "../src/repository.ts";
 import { storagePath } from "../src/repository.ts";
+import { ChangesetStore } from "../src/state.ts";
 import * as targets from "../src/target.ts";
 
 afterEach(() => {
@@ -228,4 +229,10 @@ it("keeps the decided round's run after a rerun checks the head and then fails",
 	const { state } = await published(true, true, true);
 	expect(state.ledgers[0]!.body).toContain("Run details: 2.0 s");
 	expect(state.ledgers[0]!.body).not.toContain("check guardrails");
+});
+
+it("publishes only from storage it leased from the state branch", async () => {
+	const write = vi.spyOn(ChangesetStore, "write");
+	await published();
+	expect(write.mock.calls.filter((call) => call[4]?.authoritative === true)).toHaveLength(1);
 });
