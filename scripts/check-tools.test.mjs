@@ -99,6 +99,33 @@ it("authenticates GitHub metadata and visibly skips unavailable networking only 
 	).toHaveLength(1);
 });
 
+it("asks again without a token GitHub refuses, outside CI only", async () => {
+	const refusing = vi.fn(async (_url, options) =>
+		options.headers.Authorization ? new Response("bad credentials", { status: 401 }) : Response.json(release),
+	);
+	expect(await verifyReleases({ tools, token: "refused", ci: false, fetch: refusing })).toEqual([]);
+	expect(refusing.mock.calls.map(([, options]) => options.headers.Authorization)).toEqual([
+		"Bearer refused",
+		undefined,
+	]);
+	const note = vi.fn();
+	expect(await verifyReleases({ tools, token: "refused", ci: false, note, fetch: refusing })).toEqual([]);
+	expect(note).toHaveBeenCalledWith("tool: GitHub refused the token (HTTP 401); verifying without it");
+	const anonymous = vi.fn(async () => new Response("bad credentials", { status: 401 }));
+	const quiet = vi.fn();
+	expect(await verifyReleases({ tools, token: "", ci: false, note: quiet, fetch: anonymous })).toEqual([
+		"tool: release unverified: HTTP 401",
+	]);
+	expect(anonymous).toHaveBeenCalledTimes(1);
+	const accepting = vi.fn(async () => Response.json(release));
+	expect(await verifyReleases({ tools, token: "accepted", ci: false, note: quiet, fetch: accepting })).toEqual([]);
+	expect(accepting).toHaveBeenCalledTimes(1);
+	expect(quiet).not.toHaveBeenCalled();
+	expect(await verifyReleases({ tools, token: "refused", ci: true, fetch: refusing })).toEqual([
+		"tool: release unverified: HTTP 401",
+	]);
+});
+
 it("sets the release gate status and prints only applicable age exceptions", { timeout: 60_000 }, () => {
 	const directory = mkdtempSync(join(tmpdir(), "melian-release-entry-"));
 	try {
