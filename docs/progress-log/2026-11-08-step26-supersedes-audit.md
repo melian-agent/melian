@@ -96,7 +96,7 @@ The first table below gives every edge's verdict and reason. The second lists ev
 
 ## Dropped clauses
 
-99 whole clauses were dropped, and six restated clauses lost a part, marked `(part)`. Line numbers are in the source decision file. Clauses longer than 220 characters are cut.
+99 whole clauses were dropped. Six restated clauses lost a part, marked `(part)`; the maintainer's ruling restored one of those parts, the publishing-credentials clause, so five stay cut. The totals of 286 restated and 99 dropped count whole clauses and stand. Line numbers are in the source decision file. Clauses longer than 220 characters are cut.
 
 #### Conflicting (7)
 
