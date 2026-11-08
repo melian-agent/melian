@@ -78,6 +78,11 @@ export class StateIndex {
 		return new StateIndex(records, key);
 	}
 
+	/** Every changeset with a recorded write. */
+	writtenChangesets(): string[] {
+		return [...this.#records].filter(([, record]) => record.written !== undefined).map(([id]) => id);
+	}
+
 	keyed(key: string): StateIndex {
 		return new StateIndex(this.#records, key);
 	}

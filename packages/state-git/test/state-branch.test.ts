@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, rmSync, truncateSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineDoc } from "@melian-agent/pipeline";
@@ -783,6 +783,57 @@ describe("the lease record's incarnation", () => {
 		expect(await stale.push()).toEqual({
 			kind: "refused",
 			reason: `the changeset's lease record was created afresh, as incarnation afresh, after this one's ${stale.incarnation}`,
+		});
+		expect(remote.tip()).toBe(tip);
+	});
+});
+
+describe("Codex's review of 7a1764ec", () => {
+	it.each([
+		["deleted", (path: string) => rmSync(path)],
+		["cut short", (path: string) => truncateSync(path, 10)],
+	])("restores the branch's copy over a local main log %s since it synced", async (_name, damage) => {
+		const clone = remote.clone();
+		const first = await clone.branch().checkout(changeset);
+		await note(await storageOf(first), "stored");
+		await first.push();
+		first.close();
+		damage(join(first.directory, "main.jsonl"));
+		const second = await clone.branch().checkout(changeset);
+		expect(second.setAside).toEqual(expect.stringContaining(".set-aside-"));
+		expect(await notes(await storageOf(second))).toEqual(["stored"]);
+	});
+
+	it("keeps a local copy that has grown past the branch's", async () => {
+		const clone = remote.clone();
+		const first = await clone.branch().checkout(changeset);
+		await note(await storageOf(first), "stored");
+		await first.push();
+		await note(await storageOf(first), "since");
+		first.close();
+		const second = await clone.branch().checkout(changeset);
+		expect(second.setAside).toBeUndefined();
+		expect(await notes(await storageOf(second))).toEqual(["stored", "since"]);
+	});
+
+	it("refuses an index that records a write of a changeset the branch holds no tree for", async () => {
+		const first = await remote.clone().branch().checkout(changeset);
+		await note(await storageOf(first), "stored");
+		await first.push();
+		const bare = remote.bare;
+		const index = gitIn(bare, "rev-parse", "refs/heads/melian/state:index.json");
+		const empty = gitWith(bare, "", "mktree");
+		const root = gitWith(bare, `100644 blob ${index}\tindex.json\n040000 tree ${empty}\tchangesets\n`, "mktree");
+		gitIn(
+			bare,
+			"update-ref",
+			"refs/heads/melian/state",
+			gitIn(bare, "commit-tree", root, "-p", remote.tip()!, "-m", "dropped"),
+		);
+		const tip = remote.tip();
+		await expect(remote.clone().branch().checkout(changeset)).rejects.toMatchObject({
+			code: "invalidBranch",
+			message: `the state branch's index.json records a write of ${changeset}, whose tree the branch does not hold`,
 		});
 		expect(remote.tip()).toBe(tip);
 	});
