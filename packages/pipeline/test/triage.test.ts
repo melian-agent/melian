@@ -117,7 +117,7 @@ async function review(
 		origin?: ReviewOrigin;
 		rerun?: boolean;
 		unlockModels?: (providers: readonly string[]) => Promise<void>;
-		afterTriage?: () => void;
+		lensesStarted?: () => void;
 	} = {},
 ): Promise<Review> {
 	return reviewChangeset({
@@ -140,7 +140,7 @@ async function review(
 		...(options.origin === undefined ? {} : { origin: options.origin }),
 		...(options.rerun === undefined ? {} : { rerun: options.rerun }),
 		...(options.unlockModels === undefined ? {} : { unlockModels: options.unlockModels }),
-		...(options.afterTriage === undefined ? {} : { afterTriage: options.afterTriage }),
+		...(options.lensesStarted === undefined ? {} : { lensesStarted: options.lensesStarted }),
 	});
 }
 
@@ -420,7 +420,7 @@ describe("triage", () => {
 		expect(second.verdict).toEqual(first.verdict);
 	});
 
-	it("tells the host once triage has decided, before any lens asks a model", async () => {
+	it("tells the host once the lens run is recorded, after triage and before any lens asks a model", async () => {
 		const decider = choosing("quick");
 		await open(decider);
 		scriptConversations(fake, [{ match: correctness, replies: [done] }]);
@@ -428,7 +428,7 @@ describe("triage", () => {
 
 		await review({
 			decider,
-			afterTriage: () => seen.push({ asked: decider.requests.length, requests: fake.provider.state.callCount }),
+			lensesStarted: () => seen.push({ asked: decider.requests.length, requests: fake.provider.state.callCount }),
 		});
 
 		expect(seen).toEqual([{ asked: 1, requests: 0 }]);
@@ -440,9 +440,32 @@ describe("triage", () => {
 		scriptConversations(fake, [{ match: correctness, replies: [done] }]);
 		const requests: number[] = [];
 
-		await review({ afterTriage: () => requests.push(fake.provider.state.callCount) });
+		await review({ lensesStarted: () => requests.push(fake.provider.state.callCount) });
 
 		expect(requests).toEqual([0]);
+	});
+
+	it("tells the host only once the index names the run that replaces an earlier one", async () => {
+		await open();
+		scriptConversations(fake, [{ match: correctness, replies: [done, done] }]);
+		await review();
+		const root = await harness.root(context);
+		const first = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision()]!.task;
+		const named: unknown[] = [];
+
+		// A changed escalation severity is a new selection, so this review replaces the first one's lens run.
+		await review({
+			config: { ...config, triage: { ...config.triage, escalateAt: "P3" } },
+			lensesStarted: () => {
+				void harness
+					.snapshot(ReviewIndex, root.id, context)
+					.then((index) => named.push(index!.reviews[revision()]!.task));
+			},
+		});
+
+		const replacement = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision()]!.task;
+		expect(replacement).not.toBe(first);
+		expect(named).toEqual([replacement]);
 	});
 
 	it("runs every lens at careful without a decider, as before triage", async () => {

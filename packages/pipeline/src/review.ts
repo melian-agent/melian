@@ -939,10 +939,11 @@ interface ReviewSettings {
 	/** The chosen decider's providers, unlocked only before a triage task that may ask it. */
 	readonly triageProviders?: readonly string[];
 	/**
-	 * Called once triage has decided, or found nothing to ask, before any lens runs. A host starts work there that
-	 * needs the change but not the verdict, such as the walkthrough. A review that fails earlier never calls it.
+	 * Called once the review has recorded its lens run, and aborted any run it replaced, before it waits for that run.
+	 * A host starts work there that needs the change but not the verdict, such as the walkthrough; anything that resumes
+	 * the harness then cannot restart a replaced run. A review that runs no lens, or fails earlier, never calls it.
 	 */
-	readonly afterTriage?: () => void;
+	readonly lensesStarted?: () => void;
 	/**
 	 * Where the revision came from, recorded with the verdict. Only a `pull-request` review whose policy came from a
 	 * revision can be published. A range by default.
@@ -1043,6 +1044,7 @@ async function runLenses(
 	context: Context,
 	refused: (key: string, model: string) => boolean = () => false,
 	unlockModels?: (providers: readonly string[]) => Promise<void>,
+	started?: () => void,
 ): Promise<{ readonly result: LensResult | undefined; readonly ran: StoredLensTaskInput; readonly task: number }> {
 	const root = await harness.root(context);
 	const revision = Revision.key(input.revision);
@@ -1089,6 +1091,7 @@ async function runLenses(
 	if (replaced !== undefined && replaced !== taskId) {
 		await harness.abortTask(replaced as TaskId, context).catch(() => undefined);
 	}
+	started?.();
 	const forget = (index: ReviewIndexState) => {
 		if (index.reviews[revision]?.task === taskId) index.reviews = omit(index.reviews, revision);
 	};
@@ -1710,7 +1713,6 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					options.triageProviders ?? [],
 					unlockModels,
 				);
-	options.afterTriage?.();
 	spans.step("lenses.prepare");
 	const choices = new Map(
 		covering.map(({ lens }) => {
@@ -1935,6 +1937,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					return judged?.refusal !== undefined;
 				},
 				unlockModels,
+				request.lensesStarted,
 			);
 	// Escalation is settled from the runs the task stored, which decided it, never from this call's own computation.
 	const rule = new EscalationRule(ran.escalateAt ?? escalateAt);

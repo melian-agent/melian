@@ -95,6 +95,8 @@ describe("CLI walkthrough beside the review", { timeout: 60_000 }, () => {
 		});
 		const actual = pipeline.reviewChangeset;
 		vi.spyOn(pipeline, "reviewChangeset").mockImplementation(async (request) => {
+			// This repository runs no lens, so the wrapper calls the hook as reviewChangeset does once its lenses start.
+			request.lensesStarted?.();
 			const reviewed = await actual(request);
 			order.push("review ended");
 			// Released well after the review returns, so output printed without waiting for it would come first.
@@ -184,7 +186,7 @@ describe("CLI walkthrough beside the review", { timeout: 60_000 }, () => {
 			await new Promise((resolve) => setTimeout(resolve, 500));
 		});
 		vi.spyOn(pipeline, "reviewChangeset").mockImplementation(async (request) => {
-			request.afterTriage?.();
+			request.lensesStarted?.();
 			throw new Error("lenses broke");
 		});
 		let output = "";
@@ -211,7 +213,7 @@ describe("CLI walkthrough beside the review", { timeout: 60_000 }, () => {
 		const summarize = vi.spyOn(pipeline, "summarizeReview").mockResolvedValue(undefined);
 		const actual = pipeline.reviewChangeset;
 		vi.spyOn(pipeline, "reviewChangeset").mockImplementation(async (request) =>
-			actual({ ...request, afterTriage: () => {} }),
+			actual({ ...request, lensesStarted: () => {} }),
 		);
 		const io = { cwd: repo, env, stdout: () => {}, stderr: () => {}, color: false };
 
@@ -227,7 +229,7 @@ describe("CLI walkthrough beside the review", { timeout: 60_000 }, () => {
 			order.push("walkthrough ended");
 		});
 		vi.spyOn(pipeline, "reviewChangeset").mockImplementation(async (request) => {
-			request.afterTriage?.();
+			request.lensesStarted?.();
 			throw new Error("lenses broke");
 		});
 		const close = pipeline.ReviewHarness.prototype.close;

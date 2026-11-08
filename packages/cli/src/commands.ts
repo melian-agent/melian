@@ -334,7 +334,7 @@ export async function review(
 					spans,
 				)
 			: undefined;
-		// The walkthrough needs the change, not the verdict, so it runs beside the lenses once triage has decided.
+		// The walkthrough needs the change, not the verdict, so it runs beside the lenses once their run is recorded.
 		const summarize = () => {
 			if (target.kind !== "pullRequest" || options.walkthrough === false) return;
 			walkthrough ??= summarizeReview({
@@ -377,7 +377,7 @@ export async function review(
 				...(callers === undefined ? {} : { callers }),
 				rerun: options.rerun,
 				origin,
-				afterTriage: summarize,
+				lensesStarted: summarize,
 			}));
 		} catch (error) {
 			if (!(error instanceof ReviewError) || error.verdict === undefined) throw error;
