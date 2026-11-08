@@ -11,6 +11,7 @@ import {
 } from "@melian-agent/pipeline";
 import {
 	CopyInUse,
+	CopyLock,
 	LeaseHeld,
 	StateBranch,
 	StateBranchError,
@@ -187,6 +188,7 @@ export class ChangesetStore {
 	readonly #io: Io;
 	readonly #authoritative: boolean;
 	#reservation: StateReservation | undefined;
+	#lock: CopyLock | undefined;
 
 	private constructor(storage: Storage, checkout: StateCheckout | undefined, io: Io, authoritative = false) {
 		this.storage = storage;
@@ -217,11 +219,16 @@ export class ChangesetStore {
 	): Promise<ChangesetStore> {
 		const location = await locate(repoRoot, changeset, io.env, directory);
 		if (location.kind === "sqlite") {
+			// A publication's reservation holds the copy lock; any other command on legacy storage takes it alone.
 			const reservation =
 				location.legacy && options.authoritative === true
 					? await ChangesetStore.#reserve(io, repoRoot, changeset)
 					: undefined;
-			return ChangesetStore.#sqlite(io, location, changeset, reservation);
+			const lock =
+				location.legacy && reservation === undefined
+					? await ChangesetStore.#lockLegacy(location.path, changeset)
+					: undefined;
+			return ChangesetStore.#sqlite(io, location, changeset, reservation, lock);
 		}
 		const branch = new StateBranch({
 			repoRoot,
@@ -267,8 +274,11 @@ export class ChangesetStore {
 		directory?: string,
 	): Promise<ChangesetStore | undefined> {
 		const location = await locate(repoRoot, changeset, io.env, directory);
-		if (location.kind === "sqlite")
-			return existsSync(location.path) ? ChangesetStore.#sqlite(io, location, changeset) : undefined;
+		if (location.kind === "sqlite") {
+			if (!existsSync(location.path)) return undefined;
+			const lock = location.legacy ? await ChangesetStore.#lockLegacy(location.path, changeset) : undefined;
+			return ChangesetStore.#sqlite(io, location, changeset, undefined, lock);
+		}
 		const branch = new StateBranch({
 			repoRoot,
 			remote: "origin",
@@ -285,6 +295,7 @@ export class ChangesetStore {
 		location: { readonly path: string; readonly legacy: boolean },
 		changeset: string,
 		reservation?: StateReservation,
+		lock?: CopyLock,
 	): Promise<ChangesetStore> {
 		if (location.legacy)
 			io.stderr(
@@ -292,11 +303,19 @@ export class ChangesetStore {
 			);
 		const storage = await openStorage(location.path).catch(async (error: unknown) => {
 			await reservation?.release().catch(() => {});
+			lock?.release();
 			throw error;
 		});
 		const store = new ChangesetStore(storage, undefined, io);
 		store.#reservation = reservation;
+		store.#lock = lock;
 		return store;
+	}
+
+	// Legacy storage takes the lock in the copies' directory a checkout of the pull request would take, so no two
+	// commands in this clone open it at once.
+	static #lockLegacy(path: string, changeset: string): Promise<CopyLock> {
+		return CopyLock.take(join(dirname(path), "state"), changeset).catch(ChangesetStore.#refusal);
 	}
 
 	// A clone's SQLite storage from before the state branch is the pull request's only copy until another clone stores
@@ -387,6 +406,7 @@ export class ChangesetStore {
 		// A reservation's lease expires on its own if the branch is out of reach now.
 		if (checkout === undefined) {
 			await this.#reservation?.release().catch(() => {});
+			this.#lock?.release();
 			return;
 		}
 		try {

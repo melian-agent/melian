@@ -597,6 +597,47 @@ describe("Codex's review of ff4b2e1", () => {
 		await again.close();
 	});
 
+	it.each([
+		["a write", () => ChangesetStore.write(io(first), first, pullRequest)],
+		["a read", () => ChangesetStore.read(io(first), first, pullRequest)],
+	])("refuses %s of legacy SQLite storage in the same clone while a publication holds it", async (_name, open) => {
+		await legacyIn(first);
+		const publishing = await ChangesetStore.write(io(first), first, pullRequest, undefined, authoritative);
+		await expect(open()).rejects.toMatchObject({
+			name: "CliError",
+			message: `another melian process in this clone is working on ${pullRequest}; wait for it to finish`,
+		});
+		await publishing.storage.close(context);
+		await publishing.close();
+	});
+
+	it("refuses a publication of legacy SQLite storage while another command in the clone writes it, and lets it in after", async () => {
+		await legacyIn(first);
+		const writing = await ChangesetStore.write(io(first), first, pullRequest);
+		await expect(ChangesetStore.write(io(first), first, pullRequest, undefined, authoritative)).rejects.toMatchObject(
+			{
+				name: "CliError",
+				message: `another melian process in this clone is working on ${pullRequest}; wait for it to finish`,
+			},
+		);
+		await writing.storage.close(context);
+		await writing.close();
+		const publishing = await ChangesetStore.write(io(first), first, pullRequest, undefined, authoritative);
+		await publishing.storage.close(context);
+		await publishing.close();
+	});
+
+	it("releases the lock when legacy SQLite storage cannot be opened for another command", async () => {
+		await legacyIn(first);
+		vi.spyOn(repository, "openStorage").mockRejectedValueOnce(new Error("database disk image is malformed"));
+		await expect(ChangesetStore.write(io(first), first, pullRequest)).rejects.toThrow(
+			/^database disk image is malformed$/,
+		);
+		const again = await ChangesetStore.write(io(first), first, pullRequest);
+		await again.storage.close(context);
+		await again.close();
+	});
+
 	it("refuses to publish legacy SQLite storage without the writers' key", async () => {
 		await legacyIn(first);
 		await expect(

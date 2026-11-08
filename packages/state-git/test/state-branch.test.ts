@@ -715,7 +715,10 @@ describe("what the mutation inventory found untested", () => {
 	it("seals a file and commits to a key exactly as this format's first version does", async () => {
 		const key = Buffer.alloc(32, 1);
 		// The vector's file is not Pi's, so this clone's storage accepts any copy.
-		const checkout = await remote.clone({ key, validate: async () => {} }).branch().checkout(changeset);
+		const checkout = await remote
+			.clone({ key, validate: async () => {} })
+			.branch()
+			.checkout(changeset);
 		writeFileSync(join(checkout.directory, "main.jsonl"), "melian\n");
 		await checkout.push();
 		const sealed = execFileSync("git", ["cat-file", "blob", `${remote.stored()}:main.jsonl`], { cwd: remote.bare });

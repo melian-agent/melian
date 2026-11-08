@@ -1,5 +1,6 @@
 export {
 	CopyInUse,
+	CopyLock,
 	LeaseHeld,
 	type PushResult,
 	StateBranch,

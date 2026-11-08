@@ -127,10 +127,13 @@ export class CopyInUse extends Error {
 	}
 }
 
-// One process's hold on this clone's copy of a changeset: an exclusive SQLite transaction on a lock file beside it,
-// held until the checkout closes. SQLite's lock is the operating system's: the kernel frees it when the process dies,
-// and a stopped or stalled process keeps it, so nothing guesses from a clock and nothing is ever taken over.
-class CopyLock {
+/**
+ * One process's hold on this clone's copy of a changeset: an exclusive SQLite transaction on `<id>.lock` in the copies'
+ * directory, held until released. SQLite's lock is the operating system's: the kernel frees it when the process dies,
+ * and a stopped or stalled process keeps it, so nothing guesses from a clock and nothing is ever taken over. A checkout
+ * and a reservation take it; a host takes it directly for a changeset's storage kept outside the branch.
+ */
+export class CopyLock {
 	readonly #database: DatabaseSync;
 
 	private constructor(database: DatabaseSync) {
