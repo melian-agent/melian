@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import { readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -17,7 +18,12 @@ afterEach(() => {
 	if (repo) removeRepository(repo);
 });
 
-it("measures a local analyser and reuses only queries for the same snapshot", async () => {
+it("measures a local analyser and reuses only queries for the same snapshot", async ({ skip }) => {
+	if (!existsSync("/usr/bin/time")) {
+		const reason = "/usr/bin/time is missing; install the time package to measure the spike";
+		process.stderr.write(`skipped: ${reason}\n`);
+		skip(reason);
+	}
 	repo = createRepository();
 	vi.stubEnv("TMPDIR", repo);
 	vi.stubEnv("LANG", "C");
