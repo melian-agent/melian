@@ -415,7 +415,12 @@ export class ChangesetStore {
 			// GitHub already holds what an authoritative command posted, so a store left behind fails it.
 			if (this.#authoritative && pushed.kind !== "pushed")
 				throw new CliError(
-					`GitHub has this publication, but melian/state did not take its storage: ${visibleText(pushed.reason)}; this clone keeps it, and melian publish run again here stores it`,
+					`GitHub has this publication, but melian/state did not take its storage: ${visibleText(pushed.reason)}; ${
+						// A refused push means another run holds the pull request, and the next checkout takes the branch's copy.
+						pushed.kind === "refused"
+							? "that run holds the pull request now, so the next command in this clone sets this copy aside for the branch's"
+							: "this clone keeps it, and melian publish run again here stores it"
+					}`,
 				);
 			if (pushed.kind === "refused")
 				this.#io.stderr(

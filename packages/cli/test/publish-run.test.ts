@@ -283,3 +283,23 @@ it("posts nothing more once melian/state refuses the lease", async () => {
 	});
 	expect(writes).toBe(1);
 });
+
+it("reports a refused fence as the failure, not the store's close after it", async () => {
+	let checks = 0;
+	vi.spyOn(ChangesetStore.prototype, "checkpoint").mockImplementation(async () => {
+		if (++checks === 3) throw new repository.CliError("another run took the changeset's lease");
+	});
+	vi.spyOn(ChangesetStore.prototype, "close").mockRejectedValue(
+		new repository.CliError("GitHub has this publication, but melian/state did not take its storage"),
+	);
+	await expect(published()).rejects.toMatchObject({ code: "staleTarget" });
+});
+
+it("fails a publication that posted when its store is left behind", async () => {
+	vi.spyOn(ChangesetStore.prototype, "close").mockRejectedValue(
+		new repository.CliError("GitHub has this publication, but melian/state did not take its storage"),
+	);
+	await expect(published()).rejects.toThrow(
+		/^GitHub has this publication, but melian\/state did not take its storage$/,
+	);
+});

@@ -268,6 +268,8 @@ describe("ChangesetStore", () => {
 	it.each([
 		["too short", "ab".repeat(31)],
 		["base64 of 31 bytes", randomBytes(31).toString("base64")],
+		["too long", "ab".repeat(33)],
+		["base64 of 33 bytes", randomBytes(33).toString("base64")],
 		["not base64", "!".repeat(44)],
 	])("refuses a writers' key that is %s", async (_name, value) => {
 		await expect(ChangesetStore.write(io(first, { [keyVariable]: value }), first, pullRequest)).rejects.toMatchObject(
@@ -473,7 +475,7 @@ describe("Codex's review of a0756fc", () => {
 			await expect(publishing.close()).rejects.toMatchObject({
 				name: "CliError",
 				message:
-					"GitHub has this publication, but melian/state did not take its storage: another run took the changeset's lease, at generation 2, after this one's 1; this clone keeps it, and melian publish run again here stores it",
+					"GitHub has this publication, but melian/state did not take its storage: another run took the changeset's lease, at generation 2, after this one's 1; that run holds the pull request now, so the next command in this clone sets this copy aside for the branch's",
 			});
 			await expect(ChangesetStore.read(io(first), first, pullRequest)).resolves.toBeDefined();
 		} finally {

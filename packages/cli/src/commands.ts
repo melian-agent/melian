@@ -524,6 +524,7 @@ export async function publish(
 		throw error;
 	});
 	const { harness } = publishHarness;
+	let failed = false;
 	try {
 		// A head that moved has no merge base here, and publishReview refuses it for the head before it reads this.
 		const published = await publishReview({
@@ -561,11 +562,17 @@ export async function publish(
 		}
 		return 0;
 	} catch (error) {
+		failed = true;
 		if (error instanceof PublishError) io.stdout(new PublicationAttestations(error.attestations).render());
 		throw error;
 	} finally {
 		await publishHarness.close(context);
-		await store.close();
+		// The publication's own failure is the one to report; a store left behind after it is said beside it.
+		if (failed)
+			await store.close().catch((closing: unknown) => {
+				io.stderr(`melian: ${closing instanceof Error ? closing.message : String(closing)}\n`);
+			});
+		else await store.close();
 	}
 }
 
