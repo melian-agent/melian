@@ -22,7 +22,7 @@ import {
 	textOf,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { FindingsDocument, inheritedDismisser } from "../src/findings.ts";
+import { FindingsDocument } from "../src/findings.ts";
 import { verifierMarker } from "../src/verification-instructions.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines, writeFiles } from "./fixtures/repo.ts";
 import { twoLensTiers } from "./fixtures/review-scenario.ts";
@@ -185,7 +185,7 @@ describe("a dismissal carrying to a restatement", () => {
 		const [dismissed] = second.verdict.dismissed;
 		expect(dismissed!.id).toBe(restated!.id);
 		expect(dismissed!.properties.dismissal).toEqual({
-			by: inheritedDismisser,
+			by: "melian",
 			reason: dismissal.reason,
 			at: dismissal.at,
 			inheritedFrom: root,
@@ -245,7 +245,7 @@ describe("a dismissal carrying to a restatement", () => {
 		script([restatement]);
 		const third = await review();
 		expect(third.verdict.dismissed[0]!.properties.dismissal).toEqual({
-			by: inheritedDismisser,
+			by: "melian",
 			reason: replaced.reason,
 			at: replaced.at,
 			inheritedFrom: root,

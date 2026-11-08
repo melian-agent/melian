@@ -18,7 +18,6 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
 	FindingsDocument,
 	findingsVersion,
-	inheritedDismisser,
 	replaceInheritances,
 	sightingVerification,
 	upsertVerification,
@@ -120,7 +119,7 @@ describe("restatement links", () => {
 		const findings = await read();
 		expect(findings[restated.id]!.properties.status).toBe("dismissed");
 		expect(findings[restated.id]!.properties.dismissal).toEqual({
-			by: inheritedDismisser,
+			by: "melian",
 			reason: dismissal.reason,
 			at: dismissal.at,
 			inheritedFrom: root.id,
@@ -230,6 +229,22 @@ describe("restatement links", () => {
 		// A sighting that reopens nothing bumps only its own revision.
 		await owner.commit((tx) => upsertFinding(tx, id, root, "base..again"), context);
 		expect(await versions()).toEqual([linked + 1, unrelated]);
+	});
+
+	it("reads a link to a root the document no longer holds as no link", async () => {
+		await link({ [restated.id]: { from: "0123456789abcdef", kind: "inherited", dismissedAt: dismissal.at } });
+		expect((await read())[restated.id]!.properties.status).toBe("new");
+	});
+
+	it("compares links whatever order they are given in", async () => {
+		const links = {
+			[restated.id]: { from: root.id, kind: "inherited" as const, dismissedAt: dismissal.at },
+			[other.id]: { from: root.id, kind: "proposed" as const, dismissedAt: dismissal.at },
+		};
+		const reversed = Object.fromEntries(Object.entries(links).reverse());
+		expect(Object.keys(reversed)).not.toEqual(Object.keys(links));
+		expect(await link(links)).toBe(true);
+		expect(await link(reversed)).toBe(false);
 	});
 
 	it("replaces the whole map, bumping the version only when it changed", async () => {

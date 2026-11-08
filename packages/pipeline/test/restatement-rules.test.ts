@@ -1,4 +1,3 @@
-import { rmSync } from "node:fs";
 import {
 	Changeset,
 	defaultConfig,
@@ -24,6 +23,7 @@ import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
 	FindingsDocument,
+	overlapsSite,
 	type Restating,
 	recordInheritances,
 	replaceInheritances,
@@ -571,4 +571,13 @@ describe("finding the roots a defect may restate", () => {
 		const [defect] = new Merge(findings, defaultConfig, revision).defects();
 		expect(await (await Predecessors.open(harness, root, key, state, context)).of(defect!)).toEqual([]);
 	});
+});
+
+it("reads two sightings as one site only for one path and rule on overlapping lines", () => {
+	const site = { path: "a.ts", ruleId: "fail-open", line: 5, endLine: 6 };
+	expect(overlapsSite(site, { ...site, line: 6, endLine: 9 })).toBe(true);
+	expect(overlapsSite(site, { ...site, line: 7, endLine: 9 })).toBe(false);
+	expect(overlapsSite(site, { ...site, line: 1, endLine: 4 })).toBe(false);
+	expect(overlapsSite(site, { ...site, path: "b.ts" })).toBe(false);
+	expect(overlapsSite(site, { ...site, ruleId: "other" })).toBe(false);
 });

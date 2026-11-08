@@ -702,8 +702,8 @@ function standing(
 	lifecycle: FindingLifecycle,
 ): StoredInheritance | undefined {
 	if (link === undefined || lifecycle.status === "dismissed") return undefined;
-	const root = items[link.from]?.lifecycle;
-	return root?.status === "dismissed" && root.dismissedAt === link.dismissedAt ? link : undefined;
+	// A reopen drops the root's `dismissedAt` and a new dismissal replaces it, so either lapses the link.
+	return items[link.from]?.lifecycle.dismissedAt === link.dismissedAt ? link : undefined;
 }
 
 // An inherited dismissal carries the root's reason and time and never its dismisser; a proposal names the root.
