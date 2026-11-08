@@ -873,9 +873,6 @@ class LevelRoute {
 		if (plan !== undefined && planned !== undefined) {
 			const [first, ...rest] =
 				planned.status === "routed" || planned.status === "uncredentialed" ? planned.models : [];
-			const moved = plan.lenses
-				.find((each) => each.name === lens.name && (each.scope ?? "") === lens.scope)
-				?.levels.find((each) => each.level === level)?.by;
 			return new LevelRoute({
 				key: `${at} ${lens.scope} ${level}`,
 				on: at,
@@ -887,11 +884,7 @@ class LevelRoute {
 					...(first === undefined ? {} : { model: first.model, fallbacks: rest.map(({ model }) => model) }),
 				},
 				refused: plan.judge(lens.name, level, undefined, lens.scope).refusal !== undefined,
-				source: [
-					at,
-					...(planned.by === undefined ? [] : [`by ${planned.by}`]),
-					...(moved === undefined ? [] : [`moved by ${moved}`]),
-				].join(" "),
+				source: planned.by === undefined ? at : `${at} by ${planned.by}`,
 			});
 		}
 		const own = Object.hasOwn(config.lenses, lens.name) ? config.lenses[lens.name]!.route : undefined;

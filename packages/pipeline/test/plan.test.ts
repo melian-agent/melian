@@ -1019,7 +1019,7 @@ describe("reviewChangeset with a lens route", () => {
 		const correctnessOf = (selection: string[]) => selection.find((entry) => entry.startsWith("correctness@"));
 		expect(correctnessOf(first.selection)).toMatch(/ band quick-deep escalateAt P1 on faux\/backup$/);
 		expect(correctnessOf(second.selection)).toMatch(
-			/ escalateAt P1 route lenses\.correctness\.route by melian\.local\.yaml moved by melian\.local\.yaml on faux\/backup$/,
+			/ escalateAt P1 route lenses\.correctness\.route by melian\.local\.yaml on faux\/backup$/,
 		);
 	});
 
