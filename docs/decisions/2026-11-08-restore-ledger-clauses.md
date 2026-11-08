@@ -27,6 +27,7 @@ Status: accepted on 2026-11-08 under step 26's audit, [issue #238](https://githu
 - The walkthrough settings live under `publish.walkthrough`, not `publication.walkthrough`.
 - The stamp names the plan by a fingerprint of the recorded manifest, routes, levels, budgets and standards paths.
 - The summarise task runs in the review harness. Publishing reads its stored output.
+- Publishing never asks a model, so the GitHub provider's token is the only credential it uses.
 - A small sequence-diagram syntax allowlist keeps diagram text from becoming links or executable directives.
 - The agent prompt uses one fence containing every open finding. Its opening untrusted-data rule applies to all findings, and an agent can copy the whole block.
 
