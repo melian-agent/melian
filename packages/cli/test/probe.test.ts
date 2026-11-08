@@ -35,6 +35,8 @@ beforeEach(() => {
 	repo = realpathSync(mkdtempSync(join(tmpdir(), "melian-probe-cli-")));
 	gitIn(repo, "init", "--quiet", "--initial-branch=main");
 	writeFileSync(join(repo, "value.txt"), "from the checkout\n");
+	gitIn(repo, "add", "value.txt");
+	gitIn(repo, "commit", "--quiet", "-m", "base");
 	dir = join(repo, "probes", "first");
 	mkdirSync(join(dir, "fixture"), { recursive: true });
 });
@@ -366,6 +368,36 @@ fs.writeFileSync(stop + ".count", String(count));
 			expect(await melian(["probe", "probes/first", "--trust-head"])).toEqual({
 				status: 0,
 				stdout: "from the checkout\nfixture\n\\u001b[31m\nProbe: exited 0\n",
+				stderr: "",
+			});
+		});
+
+		it("copies in what the base policy's probe.read allows, and ignores the head's", {
+			timeout: 60_000,
+		}, async () => {
+			writeFileSync(join(repo, "melian.yaml"), "probe:\n  read: [base-allowed]\n");
+			gitIn(repo, "add", "melian.yaml");
+			gitIn(repo, "commit", "--quiet", "-m", "base policy");
+			gitIn(repo, "checkout", "--quiet", "-b", "head");
+			writeFileSync(join(repo, "melian.yaml"), "probe:\n  read: [base-allowed, head-allowed]\n");
+			gitIn(repo, "add", "melian.yaml");
+			gitIn(repo, "commit", "--quiet", "-m", "head policy");
+			for (const name of ["base-allowed", "head-allowed"]) {
+				mkdirSync(join(repo, name));
+				writeFileSync(join(repo, name, "x.txt"), `${name}\n`);
+			}
+			writeFileSync(
+				join(dir, "probe.mjs"),
+				[
+					'import { readFileSync } from "node:fs";',
+					'for (const name of ["base-allowed", "head-allowed"]) {',
+					'  try { console.log(readFileSync(name + "/x.txt", "utf8").trim()); } catch (error) { console.log(name, error.code); }',
+					"}",
+				].join("\n"),
+			);
+			expect(await melian(["probe", "probes/first", "--trust-head"])).toEqual({
+				status: 0,
+				stdout: "base-allowed\nhead-allowed ENOENT\nProbe: exited 0\n",
 				stderr: "",
 			});
 		});

@@ -149,39 +149,142 @@ describe.skipIf(!availability.available && !required)(
 			},
 		);
 
-		it("cannot read a file git does not track in the worktree, such as a reviewer's .npmrc", {
-			timeout: 60_000,
-		}, async () => {
-			// The worktree is a real repository here, so git decides what it tracks. The token is fake.
-			const repository = realpathSync(mkdtempSync(join(tmpdir(), "melian-probe-repo-")));
-			try {
+		describe("reads the head's tracked tree only", () => {
+			// Each test builds a scratch repository, so git decides what it tracks. Every credential is fake.
+			let repository: string;
+
+			beforeEach(() => {
+				repository = realpathSync(mkdtempSync(join(tmpdir(), "melian-probe-repo-")));
 				gitIn(repository, "init", "--quiet", "--initial-branch=main");
-				writeFileSync(join(repository, "tracked.txt"), "tracked\n");
-				gitIn(repository, "add", "tracked.txt");
-				gitIn(repository, "commit", "--quiet", "-m", "tracked");
-				writeFileSync(join(repository, ".npmrc"), "//registry.npmjs.org/:_authToken=npm_FAKE0000000000000000\n");
+				writeFileSync(join(repository, "tracked.txt"), "committed\n");
+			});
+
+			afterEach(() => {
+				rmSync(repository, { recursive: true, force: true });
+			});
+
+			function commit(): string {
+				gitIn(repository, "add", "--all");
+				gitIn(repository, "commit", "--quiet", "-m", "head");
+				return gitIn(repository, "rev-parse", "HEAD");
+			}
+
+			function headOptions(head: string, read?: readonly string[]): Partial<ProbeOptions> {
+				return { worktree: repository, ...(read === undefined || head === "" ? {} : {}) };
+			}
+
+			// Prints each path with what reading it gave: its trimmed text, or the error's code.
+			async function reads(
+				paths: readonly string[],
+				head: string,
+				more: { read?: readonly string[]; afterOpen?: () => void } = {},
+			): Promise<Record<string, string>> {
 				const probe = await Probe.open(
 					{
 						script: `
 import { readFileSync } from "node:fs";
-for (const path of ["tracked.txt", ".npmrc"]) {
-	try { console.log(path, readFileSync(path, "utf8").trim()); } catch (error) { console.log(path, error.code); }
+const out = {};
+for (const path of ${JSON.stringify(paths)}) {
+	try { out[path] = readFileSync(path, "utf8").trim(); } catch (error) { out[path] = error.code; }
 }
+console.log(JSON.stringify(out));
 `,
 					},
-					{ worktree: repository, writer: { trusted: true, by: "writer" }, trustWriters: true },
+					{
+						writer: { trusted: true, by: "writer" },
+						trustWriters: true,
+						...headOptions(head, more.read),
+					} as ProbeOptions,
 				);
 				let result: ProbeResult;
 				try {
+					more.afterOpen?.();
 					result = await probe.run();
 				} finally {
 					await probe.close();
 				}
-				expect(result.output).toContain("tracked.txt tracked\n");
-				expect(result.output).not.toContain("npm_FAKE");
-			} finally {
-				rmSync(repository, { recursive: true, force: true });
+				expect(result.exitCode, result.output).toBe(0);
+				return JSON.parse(result.output) as Record<string, string>;
 			}
+
+			it("cannot read a file git does not track, such as a reviewer's .npmrc", { timeout: 60_000 }, async () => {
+				const head = commit();
+				writeFileSync(join(repository, ".npmrc"), "//registry.npmjs.org/:_authToken=npm_FAKE0000000000000000\n");
+				const seen = await reads(["tracked.txt", ".npmrc"], head);
+				expect(seen["tracked.txt"]).toBe("committed");
+				expect(seen[".npmrc"]).not.toContain("npm_FAKE");
+			});
+
+			it("reads a tracked file as committed, not as the reviewer modified it", { timeout: 60_000 }, async () => {
+				const head = commit();
+				writeFileSync(join(repository, "tracked.txt"), "modified\n");
+				expect((await reads(["tracked.txt"], head))["tracked.txt"]).toBe("committed");
+			});
+
+			it("cannot read a file staged but not committed", { timeout: 60_000 }, async () => {
+				const head = commit();
+				writeFileSync(join(repository, "staged.txt"), "staged\n");
+				gitIn(repository, "add", "staged.txt");
+				expect((await reads(["staged.txt"], head))["staged.txt"]).not.toBe("staged");
+			});
+
+			it("cannot read a file created in the worktree after the probe opened", { timeout: 60_000 }, async () => {
+				const head = commit();
+				const seen = await reads(["late.txt"], head, {
+					afterOpen: () => writeFileSync(join(repository, "late.txt"), "late\n"),
+				});
+				expect(seen["late.txt"]).not.toBe("late");
+			});
+
+			it("cannot read a nested repository's .git/config", { timeout: 60_000 }, async () => {
+				const head = commit();
+				const nested = join(repository, "vendor", "inner");
+				mkdirSync(nested, { recursive: true });
+				gitIn(nested, "init", "--quiet");
+				gitIn(nested, "config", "credential.helper", "store --file=/fake/credentials");
+				expect((await reads(["vendor/inner/.git/config"], head))["vendor/inner/.git/config"]).not.toContain(
+					"credential",
+				);
+			});
+
+			it("reads the dependency install, but not an .npmrc or .git inside it", { timeout: 60_000 }, async () => {
+				writeFileSync(join(repository, ".gitignore"), "node_modules/\n");
+				const head = commit();
+				const pkg = join(repository, "node_modules", "pkg");
+				mkdirSync(join(pkg, ".git"), { recursive: true });
+				writeFileSync(join(pkg, "index.js"), "module.exports = 'pkg';\n");
+				writeFileSync(join(pkg, ".npmrc"), "//registry.npmjs.org/:_authToken=npm_FAKE0000000000000000\n");
+				writeFileSync(join(pkg, ".git", "config"), "[credential]\n\thelper = fake\n");
+				const seen = await reads(
+					["node_modules/pkg/index.js", "node_modules/pkg/.npmrc", "node_modules/pkg/.git/config"],
+					head,
+				);
+				expect(seen["node_modules/pkg/index.js"]).toBe("module.exports = 'pkg';");
+				expect(seen["node_modules/pkg/.npmrc"]).not.toContain("npm_FAKE");
+				expect(seen["node_modules/pkg/.git/config"]).not.toContain("credential");
+			});
+
+			it("reads a filtered file's stored blob, not what its smudge filter writes", { timeout: 60_000 }, async () => {
+				writeFileSync(join(repository, ".gitattributes"), "secret.txt filter=fake\n");
+				writeFileSync(join(repository, "secret.txt"), "stored\n");
+				const head = commit();
+				// A filter of the repository's own config, as a decrypting filter would be.
+				gitIn(repository, "config", "filter.fake.smudge", "sed s/stored/smudged/");
+				rmSync(join(repository, "secret.txt"));
+				gitIn(repository, "checkout", "--", "secret.txt");
+				expect((await reads(["secret.txt"], head))["secret.txt"]).toBe("stored");
+			});
+
+			it("copies an allowed untracked path in when the probe opens", { timeout: 60_000 }, async () => {
+				const head = commit();
+				mkdirSync(join(repository, "generated"));
+				writeFileSync(join(repository, "generated", "out.txt"), "at open\n");
+				const seen = await reads(["generated/out.txt"], head, {
+					read: ["generated"],
+					afterOpen: () => writeFileSync(join(repository, "generated", "out.txt"), "after open\n"),
+				});
+				expect(seen["generated/out.txt"]).toBe("at open");
+			});
 		});
 
 		it("cannot write outside its scratch directory", { timeout: 60_000 }, async () => {

@@ -14,6 +14,7 @@ import {
 import { homedir, tmpdir } from "node:os";
 import { dirname, join, sep } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { gitIn } from "../../core/test/fixtures/repo.ts";
 import {
 	completeUtf8,
 	nodeReads,
@@ -333,6 +334,55 @@ describe("Probe.open", () => {
 		const plain = await Probe.open({ script: "" }, options(sandbox));
 		expect(plain.policy.read[1]).toBe(node[0]);
 		await plain.close();
+	});
+});
+
+describe("Probe.open with a head's allowlist", () => {
+	let checkout: string;
+	let head: string;
+
+	beforeEach(() => {
+		checkout = join(scratch, "checkout");
+		mkdirSync(checkout);
+		gitIn(checkout, "init", "--quiet", "--initial-branch=main");
+		writeFileSync(join(checkout, "tracked.txt"), "tracked\n");
+		gitIn(checkout, "add", "--all");
+		gitIn(checkout, "commit", "--quiet", "-m", "head");
+		head = gitIn(checkout, "rev-parse", "HEAD");
+		mkdirSync(join(checkout, "generated"));
+		writeFileSync(join(checkout, "generated", "out.txt"), "out\n");
+	});
+
+	function atHead(read: readonly string[]): Partial<ProbeOptions> {
+		return { worktree: checkout, head: { checkout, commit: head, read } } as unknown as Partial<ProbeOptions>;
+	}
+
+	it("opens with an allowed path inside the checkout", async () => {
+		const { sandbox } = passthrough();
+		const probe = await Probe.open({ script: "" }, options(sandbox, atHead(["generated"])));
+		await probe.close();
+	});
+
+	it.each([
+		["an absolute path", () => "/etc"],
+		["a path through ..", () => "generated/../.."],
+		[
+			"a link that resolves outside the checkout",
+			() => {
+				symlinkSync(scratch, join(checkout, "out"));
+				return "out";
+			},
+		],
+		["the checkout itself", () => "."],
+	])("refuses %s in probe.read", async (_, entry) => {
+		const { sandbox } = passthrough();
+		const path = entry();
+		const error = await refusal({ script: "" }, options(sandbox, atHead(["generated", path])));
+		expect(error).toMatchObject({
+			code: "invalidProbe",
+			message: `probe.read may name only a relative path inside the checkout, not ${path}`,
+		});
+		expect(sandbox.open).not.toHaveBeenCalled();
 	});
 });
 
