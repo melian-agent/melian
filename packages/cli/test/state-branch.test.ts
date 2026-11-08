@@ -87,7 +87,8 @@ afterEach(() => {
 	for (const path of cleanups.splice(0)) rmSync(path, { recursive: true, force: true });
 });
 
-describe("a pull request's storage on the state branch", () => {
+// It reviews, publishes and dismisses over real git, with a push before every write to GitHub: seconds on a fast host.
+describe("a pull request's storage on the state branch", { timeout: 60_000 }, () => {
 	it("keeps the marker secret, the ledger comment and every dismissal for a fresh clone", async () => {
 		const fake = scenarioModels();
 		const state = pullRequestState();
