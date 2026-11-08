@@ -787,6 +787,13 @@ it("lists every maintainer's dismissal with a recorded severity, in ID order, an
 		for (const each of roots) await dismissFinding(tx, root, each.id, dismissal, "base..first", "P2");
 		await dismissFinding(tx, root, legacy!.id, dismissal, "base..first");
 		await upsertFinding(tx, root, lens({ snippet: "cleared", startLine: 7 }), "base..second");
+		// The higher of the two roots is sighted again at line 6, which leaves it dismissed and moves its last sighting.
+		await upsertFinding(
+			tx,
+			root,
+			lens({ snippet: roots[1]!.properties.evidence![0]!.snippet, startLine: 6 }),
+			"base..third",
+		);
 		await dismissFinding(tx, root, cleared!.id, dismissal, "base..second", "P2");
 		await clearSightings(tx, root, "base..second", [correctness]);
 	});
@@ -798,9 +805,9 @@ it("lists every maintainer's dismissal with a recorded severity, in ID order, an
 			ruleId: "fail-open",
 			path: "a.ts",
 			cause: "pre-existing",
-			line: each === cleared ? 7 : 5,
-			endLine: each === cleared ? 7 : 5,
-			revision: each === cleared ? "base..second" : "base..first",
+			line: each === cleared ? 7 : each === roots[1] ? 6 : 5,
+			endLine: each === cleared ? 7 : each === roots[1] ? 6 : 5,
+			revision: each === cleared ? "base..second" : each === roots[1] ? "base..third" : "base..first",
 			dismissedAt: dismissal.at,
 			severity: "P2",
 			hash: state.items[each.id]!.lifecycle.dismissedTrigger!.hash,
