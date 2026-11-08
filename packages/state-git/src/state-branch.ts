@@ -1,5 +1,6 @@
 import { createCipheriv, createDecipheriv, createHmac, randomUUID } from "node:crypto";
-import { mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { git, gitFailure, gitOutput, gitOutputBytes, Lease, type LeaseHolder } from "@melian-agent/core";
@@ -270,7 +271,7 @@ export class StateBranch {
 	}
 
 	/** @internal Seals the changeset's directory into the clone's object database and names its tree. */
-	async snapshot(changeset: string, directory: string): Promise<string> {
+	async snapshot(changeset: string, directory: string, synced: string): Promise<string> {
 		const found = await readdir(directory, { withFileTypes: true });
 		const stray = found.find((entry) => !entry.isFile() || !storageFile.test(entry.name));
 		if (stray !== undefined)
@@ -279,9 +280,23 @@ export class StateBranch {
 				`this clone's copy of ${directory.split("/").at(-1)} holds ${JSON.stringify(stray.name)}, which Pi's storage never writes, so Melian will not push part of it`,
 			);
 		const names = found.map((entry) => entry.name).sort();
+		const plain = await Promise.all(names.map((name) => readFile(join(directory, name))));
+		// Exactly what is pushed, judged from a directory of its own, so neither later damage to the copy nor a torn read
+		// replaces the branch's tree.
+		const captured = await mkdtemp(join(tmpdir(), "melian-state-"));
+		try {
+			await Promise.all(names.map((name, i) => writeFile(join(captured, name), plain[i]!)));
+			if (!(await this.intact(changeset, synced, captured)))
+				throw new StateBranchError(
+					"invalidCopy",
+					`this clone's copy of ${changeset} no longer holds the branch's tree whole, as Pi's storage reads it, so Melian will not push it`,
+				);
+		} finally {
+			await rm(captured, { recursive: true, force: true });
+		}
 		const shas: string[] = [];
-		for (const name of names) {
-			const sealed = this.#seal.seal(`${changeset}/${name}`, await readFile(join(directory, name)));
+		for (const [i, name] of names.entries()) {
+			const sealed = this.#seal.seal(`${changeset}/${name}`, plain[i]!);
 			shas.push((await this.#git(["hash-object", "-w", "--stdin"], sealed)).trim());
 		}
 		const tree = names.map((name, i) => mktreeLine({ mode: "100644", type: "blob", sha: shas[i]!, name })).join("");
@@ -618,7 +633,7 @@ export class StateCheckout {
 	async push(): Promise<PushResult> {
 		let tree = "";
 		const result = await this.#branch.push(this.changeset, this.#synced, this.#lease, async () => {
-			tree = await this.#branch.snapshot(this.changeset, this.directory);
+			tree = await this.#branch.snapshot(this.changeset, this.directory, this.#synced);
 			return tree;
 		});
 		if (result.kind === "pushed") await writeFile(`${this.directory}.synced`, `${tree}\n`);

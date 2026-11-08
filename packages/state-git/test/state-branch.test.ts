@@ -636,7 +636,8 @@ describe("what the mutation inventory found untested", () => {
 
 	it("seals a file and commits to a key exactly as this format's first version does", async () => {
 		const key = Buffer.alloc(32, 1);
-		const checkout = await remote.clone({ key }).branch().checkout(changeset);
+		// The vector's file is not Pi's, so this clone's storage accepts any copy.
+		const checkout = await remote.clone({ key, validate: async () => {} }).branch().checkout(changeset);
 		writeFileSync(join(checkout.directory, "main.jsonl"), "melian\n");
 		await checkout.push();
 		const sealed = execFileSync("git", ["cat-file", "blob", `${remote.stored()}:main.jsonl`], { cwd: remote.bare });
@@ -878,5 +879,27 @@ describe("Codex's review of 94ad27eb", () => {
 		const second = await clone.branch().checkout(changeset);
 		expect(second.setAside).toBeUndefined();
 		expect(await notes(await storageOf(second))).toEqual(["unpushed"]);
+	});
+});
+
+describe("Codex's review of 853b4a2d", () => {
+	it.each([
+		["its main log", (name: string) => name === "main.jsonl"],
+		["a document sidecar", (name: string) => name.startsWith("doc-")],
+	])("refuses to push a copy that lost %s after checkout, and leaves the branch's", async (_name, lost) => {
+		const clone = remote.clone();
+		const first = await clone.branch().checkout(changeset);
+		await note(await storageOf(first), "stored");
+		await first.push();
+		first.close();
+		const stored = remote.stored();
+		const second = await clone.branch().checkout(changeset);
+		await note(await storageOf(second), "since");
+		rmSync(join(second.directory, readdirSync(second.directory).find(lost)!));
+		await expect(second.push()).rejects.toMatchObject({
+			code: "invalidCopy",
+			message: `this clone's copy of ${changeset} no longer holds the branch's tree whole, as Pi's storage reads it, so Melian will not push it`,
+		});
+		expect(remote.stored()).toBe(stored);
 	});
 });
