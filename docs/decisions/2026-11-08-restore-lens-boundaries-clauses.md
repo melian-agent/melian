@@ -40,4 +40,4 @@ Status: accepted on 2026-11-08 under step 26's audit, [issue #238](https://githu
 ## From [2026-10-07-capped-neighbour-leaves-review-not-reviewed.md](2026-10-07-capped-neighbour-leaves-review-not-reviewed.md)
 
 - The `ended` record of a lens at its findings budget gives a reason naming the budget, and the lenses that could have handed it defects when there are any.
-- `handedBy` records that a hand-off instruction rendered for the neighbour, not that the handing lens found a defect, so the not-reviewed result is conservative.
+- `handedBy` records that a hand-off instruction rendered for the neighbour, not that the handing lens found a defect, so an `ended` reason may name a lens that handed nothing.

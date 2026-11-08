@@ -10,7 +10,7 @@ Status: accepted on 2026-11-08 under step 26's audit, [issue #238](https://githu
 
 - A lens declares levels in `LENS.md`, `quick`, `careful`, and `deep`, each setting the model tier, token and tool budgets, the finding cap, whether it reads enclosing functions or hunks only, and whether its candidates are verified.
 - When touched paths carry different bands, the highest floor and the lowest ceiling apply.
-- A local cap below the repository's floor is an override and records as one.
+- Planned, not built: a local file may cap a lens's level, and a cap below the repository's floor will be an override that its check records in its lineage. Until then the merged band lets the floor win where the ends cross.
 - A lens that declares no levels runs only at `careful`, and triage's question for it collapses to skip or run.
 - Escalation never exceeds the ceiling. A severe finding at the ceiling is reported with a note that escalation was capped.
 - The manifest records the level each check ran at.

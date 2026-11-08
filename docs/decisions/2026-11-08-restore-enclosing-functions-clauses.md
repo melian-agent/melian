@@ -17,9 +17,9 @@ Status: accepted on 2026-11-08 under step 26's audit, [issue #238](https://githu
 - The notes sit outside the attach key, as the blocks do.
 - A function's name keeps its first 200 bytes. The listing holds at most 100 entries and says how many more it left out.
 - Function bounds come from a line table that breaks only at LF, the numbering of git's hunks and of `read_file`.
-- The compiler reads text from git, never the working tree and never an author's path: the virtual files carry names the compiler chooses, so a path cannot reach it.
+- The compiler reads text from git, never the working tree and never an author's path: the virtual files carry synthetic names Melian assigns, `/melian-head/f<n>` with the file's extension, so a path cannot reach it.
 - The function text enters the prompt inside a `function` boundary with the review's nonce, as every line from the head does.
 - The fingerprint renders the prompt without the blocks, and `selectionOf` holds none. A repeat call attaches to the first call's lens task. That task's stored input carries the prompt that call rendered, blocks included, so the resumed lens keeps the first call's functions. A run also stores `unread`, the reason the first call could not read the functions, and the lens's record derives its note from the stored runs, never from the finishing call's read.
-- A changed function read on the same head does not re-run lenses, and `--rerun` does not refresh it.
+- A changed function read on the same head does not re-run lenses, and `--rerun` refreshes it only when a lens failed, since only then does it replace the lens task. A new head reads fresh.
 - A sweep with a heap finds each added line's innermost function in one pass over the file's sorted functions, so the cost is linear in lines and functions, never their product. Five caps bound the rest, and each leaves what it cuts to `read_file`: `anchorsPerFile` (5,000 added lines) and `callablesPerFile` (20,000 named functions) skip a file whole, `anchors` (20,000) and `callables` (100,000) skip a file that would take the files together past them, and `found` (2,000) stops taking functions. A skipped file carries no function, never a partial list.
 - `enclosing()` is memoised per review, so a lens and its escalated run hold the same `unread` reason.

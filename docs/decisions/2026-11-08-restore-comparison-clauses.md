@@ -12,7 +12,7 @@ Status: accepted on 2026-11-08 under step 26's audit, [issue #238](https://githu
 - An unadjudicated report is pending and enters neither metric.
 - An external-only group whose valid reports all say `out-of-scope` stays outside Melian's recall denominator.
 - An empty denominator gives 1, with the raw counts beside it. Reviewers aggregate by name and case-folded login, ignoring version.
-- Earlier rounds stay in their statistics. Repeat candidates need two changesets, so rounds stored as revisions of one changeset never qualify. A round run from a detached worktree is a changeset of its own, so two detached rounds of one pull request can.
+- Earlier rounds stay in their statistics. A repeat on a second pull request is a candidate check. `melian compare stats` counts changesets as a stand-in, so two detached rounds of one pull request can still show as a candidate: a known gap, not policy.
 - Withdrawing a finding leaves its history stored but removes it from that round's summaries.
 - A group with conflicting miss reasons uses the first in-scope reason in site order, falling back to `out-of-scope`. Each defect contributes one miss. Titles that normalise to no letters or digits do not form repeat clusters.
 - The drain counts each changeset once. At three or more comparisons, remaining debt keeps the drain due, including after a missed threshold. Local state cannot prove which backlog pull requests shipped or which live runs passed.
@@ -40,6 +40,6 @@ Status: accepted on 2026-11-08 under step 26's audit, [issue #238](https://githu
 - `melian compare adjudicate` records valid, noise, or duplicate, a severity, and for a valid miss one reason: `owned-missed`, `no-owner`, `needs-execution`, or `out-of-scope`. It records too whether a golden is owed and for which lens, with the git author and time, as a dismissal is.
 - `melian compare stats` gives recall and precision per reviewer, misses by reason, and repeat findings as candidate checks.
 - `melian compare backlog` lists owed goldens, and `melian compare export` renders today's markdown record from the stored document.
-- Every third comparison record is followed by a backlog pull request that ships at least two owed goldens and re-measures their lens.
+- Every third comparison record is followed by a backlog pull request that ships at least two owed goldens, or every owed golden when fewer remain, and re-measures each new golden's lens with a live run of three passes, as the drain rule in docs/guidelines/evals.md sets out.
 - A `needs-execution` miss is scope for the verifier, judged on whether it would have caught it, and for the tool manifest.
 - In a customer's repository the comparison stays in the maintainer's clone, and only an explicit export writes it anywhere.

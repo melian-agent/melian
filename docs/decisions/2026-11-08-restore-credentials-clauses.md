@@ -13,7 +13,7 @@ Status: accepted on 2026-11-08 under step 26's audit, [issue #238](https://githu
 - The plan routes each lens's finder, each candidate's verifier (a different family from its finder when available), and the walkthrough.
 - It routes no deduper in milestone 2: the mechanical merge by finding ID and across rules runs before verification, so one defect is verified once. Detecting duplicates by meaning on a decision model is milestone 4.
 - A route's `unavailable` key is `fail` or `derive`, default `derive`.
-- The outside-policy record a check keeps in its lineage appears in the CLI's output, `melian findings --json`, the review body, and uncollapsed at the top of the ledger.
+- The outside-policy record a check keeps in its lineage appears in the CLI's output, `melian findings --json`, and the review body, and, once it lands, uncollapsed at the top of the ledger.
 - In milestone 3, a host completing the manifest reruns a check that ran outside policy on a tier with `acceptOverridden: false`, instead of recording it failed.
 - Policy, routes included, is read from the base for a pull request. Preference files apply only to a range review on the checked-out commit; a pull-request review takes the base's routes, a derived route, or `--model`.
 
@@ -22,13 +22,13 @@ Status: accepted on 2026-11-08 under step 26's audit, [issue #238](https://githu
 - Credentials live in `melian.secrets.yaml`, git-ignored, mode 0600, beside the root `melian.yaml`, and in a user-level secrets file, so one file serves every repository an engineer works on.
 - Preferences live in `melian.local.yaml` per clone and in a user-level configuration file in the same directory, with `melian.yaml`'s schema. The per-clone file wins over the user-level one, and both win over the committed file.
 - A credential entry has a name, a provider, a type, and a value that is literal, an environment variable name, or a command, as Pi's store takes `!command`.
-- Committed policy may name credentials and environment variables, and nothing that executes.
+- Committed policy holds nothing that executes. Naming credentials and environment variables in a committed `melian.yaml` waits for the stacking rules of milestone 3's credential pool; today's schema has no key for either.
 - Resolution order: the secrets files, then Pi's store, then environment variables.
-- Routes and stacking rules name credentials and never contain them.
-- On Actions the secrets file arrives in one repository secret and the preferences file in a repository variable, which stays readable where a secret does not; each is optional.
+- Routes name models, never credentials. The stacking rules planned with milestone 3's credential pool will name credentials and never contain them.
+- On the Actions host planned for milestone 3, the secrets file will arrive in one repository secret and the preferences file in a repository variable, which stays readable where a secret does not; each will be optional.
 - The credential references in `melian.yaml` join the policy-change list.
 - `.gitignore` lists both local files.
-- GitHub masks a secret's whole value and not its substrings, so on Actions Melian registers every credential value with the `add-mask` command at startup, and the pool never puts a value in a message.
+- On the Actions host planned for milestone 3, Melian will register every credential value with the `add-mask` command at startup, since GitHub masks a secret's whole value and not its substrings, and the pool will never put a value in a message.
 - User documentation says, neutrally, that whether a subscription may be used in automation or shared across a team is a question for the provider's contract, and that Melian takes no position.
 
 ## From [2026-10-05-review-plan-resolution.md](2026-10-05-review-plan-resolution.md)

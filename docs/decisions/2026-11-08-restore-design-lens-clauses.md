@@ -27,4 +27,4 @@ Status: accepted on 2026-11-08 under step 26's audit, [issue #238](https://githu
 ## From [2026-10-07-design-lens-judges-against-base.md](2026-10-07-design-lens-judges-against-base.md)
 
 - A head-side edit to a decision is a change to judge. The lens reports a weakened trust, access, or fail-closed decision even when the decision file is edited alongside it, and quotes the base text it compared against.
-- A decision file the diff deletes or renames is the baseline for whatever replaced it.
+- A decision file the diff deletes or renames is read at its old path at base. When it is active there, it is the baseline for whatever replaced it; when it was already inactive, its active base successors are.

@@ -25,7 +25,7 @@ Five decisions superseded [the verifier as built](2026-10-05-verifier-as-built.m
 - Every report commit checks ownership and budget, even on replay. The strongest-verdict rule applies within one task.
 - The findings document holds optional verdict maps by revision, producer and verifier version beside sightings. Reads project the latest version onto each claim, and the strongest onto the merged finding. Clearing or replacing a sighting clears its verdicts.
 - A planned model optionally stores its family, derived from the catalogue name after removing the vendor prefix and parenthesised qualifier. Another family comes first, preserving order within each group. Provider unlocking includes verification. Doctor prints families and warns when verification falls back to lens tiers. The model flag still routes only lens tiers.
-- Refuted defects stay in an optional refuted group, outside publication and blocking counts. Terminal output reveals them with `--all`; JSON retains every claim. Comments show escaped judgements and corrections. `Verdict.verificationSummary` supplies counts for the future ledger.
+- Refuted defects stay in an optional refuted group, outside publication and blocking counts. Terminal output reveals them with `--all`; JSON retains every claim. Comments show escaped judgements and corrections. `Verdict.verificationSummary` supplies the counts the terminal verdict and the published review body show.
 - Scripted evals plant candidates through `report_finding` and use the durable verifier task. Live verifier runs require their own opt-in selector and accept a separate judge route.
 - A fake finder may join an existing opaque model collection through the testing entry. The root policy excludes the seeded corpus from lenses.
 
