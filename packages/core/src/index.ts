@@ -505,6 +505,7 @@ export {
 	VerificationState,
 	verificationAnswersSchema,
 	verificationBudget,
+	verificationMatchesSchema,
 	verificationQuestionSet,
 	verificationQuestions,
 	verificationSchema,

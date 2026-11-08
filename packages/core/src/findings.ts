@@ -88,7 +88,10 @@ export const findingExplanationSchema = Type.Object({ what: text, whyHere: text,
 export const findingSourceSchema = Type.Object({ check: text, version: Type.Optional(text) }, strict);
 
 /** The JSON Schema of a {@link FindingDismissal}. */
-export const findingDismissalSchema = Type.Object({ by: text, reason: text, at: text }, strict);
+export const findingDismissalSchema = Type.Object(
+	{ by: text, reason: text, at: text, inheritedFrom: Type.Optional(idSchema) },
+	strict,
+);
 
 /** The JSON Schema of an {@link AlsoReportedAs}. */
 export const alsoReportedAsSchema = Type.Object(
@@ -221,6 +224,7 @@ export const findingPropertiesSchema = Type.Object(
 		status: findingStatusSchema,
 		dismissal: Type.Optional(findingDismissalSchema),
 		pastDismissals: Type.Optional(Type.Array(pastDismissalSchema)),
+		likelyDismissedAs: Type.Optional(Type.Object({ id: idSchema }, strict)),
 		explanation: findingExplanationSchema,
 		source: findingSourceSchema,
 		reportedBy: Type.Optional(Type.Array(findingSourceSchema, { minItems: 1 })),

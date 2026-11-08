@@ -792,6 +792,8 @@ export class Verdict {
 			const {
 				dismissal: _,
 				pastDismissals: __,
+				// Issue #334 decides how an inheritance or a proposal changes the fingerprint; until then neither does.
+				likelyDismissedAs: ______,
 				decidedBy: ____,
 				guardrail: _____,
 				...properties

@@ -157,6 +157,17 @@ describe("the stored lowering and answers", () => {
 		);
 		expect(Value.Check(verificationSchema, { ...record, evidence: [] })).toBe(false);
 	});
+
+	it("holds a same or different answer per dismissed finding ID, and nothing else", () => {
+		expect(Value.Check(verificationSchema, { ...verification, matches: { "0123456789abcdef": "same" } })).toBe(true);
+		expect(Value.Check(verificationSchema, { ...verification, matches: { "0123456789abcdef": "different" } })).toBe(
+			true,
+		);
+		expect(Value.Check(verificationSchema, { ...verification, matches: { "0123456789abcdef": "maybe" } })).toBe(
+			false,
+		);
+		expect(Value.Check(verificationSchema, { ...verification, matches: { d1: "same" } })).toBe(false);
+	});
 });
 
 describe("the lowering fence", () => {
