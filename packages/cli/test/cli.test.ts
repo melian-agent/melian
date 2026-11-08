@@ -794,6 +794,81 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(review.stdout).toContain("biome/suspicious/noDoubleEquals");
 	});
 
+	// Issue #281: Biome and tsc quote files a head's configuration or sources lead them to, outside the checkout too.
+	const token = "ghp_FAKEoutsideTOKEN281";
+	const routes: [string, (repo: string, outside: string) => void, string | undefined][] = [
+		[
+			"a biome.json that extends an outside file",
+			(repo, outside) =>
+				writeFileSync(join(repo, "biome.json"), JSON.stringify({ extends: [join(outside, "environ.json")] })),
+			undefined,
+		],
+		[
+			"a tsconfig.json that extends an outside file",
+			(repo, outside) =>
+				writeFileSync(join(repo, "tsconfig.json"), JSON.stringify({ extends: join(outside, "environ.json") })),
+			undefined,
+		],
+		[
+			"a committed symlink to an outside declaration file",
+			(repo, outside) => {
+				symlinkSync(join(outside, "leak.d.ts"), join(repo, "src/leak.d.ts"));
+				writeFileSync(join(repo, "src/b.ts"), "export const n: number = leaked;\n");
+			},
+			"tsc/TS2322",
+		],
+		[
+			"a committed tsconfig.json symlink to an outside project file",
+			(repo, outside) => {
+				writeFileSync(join(outside, "tsconfig.json"), JSON.stringify({ files: [], references: [{ path: token }] }));
+				rmSync(join(repo, "tsconfig.json"));
+				symlinkSync(join(outside, "tsconfig.json"), join(repo, "tsconfig.json"));
+			},
+			undefined,
+		],
+		[
+			"a /// <reference> to an outside declaration file",
+			(repo, outside) =>
+				writeFileSync(
+					join(repo, "src/b.ts"),
+					`/// <reference path="${join(outside, "leak.d.ts")}" />\nexport const n: number = leaked;\n`,
+				),
+			"tsc/TS2322",
+		],
+	];
+	it.each(routes)(
+		"stores and prints nothing of an outside file reached through %s",
+		{
+			timeout: 120_000,
+		},
+		(_route, plant, rule) => {
+			const { repo, env: script } = staticCheckout("export const b: number = 2;\n");
+			const env = { ...script, MELIAN_STATE_DIR: join(scratch, "state") };
+			const outside = mkdtempSync(join(tmpdir(), "melian-outside-"));
+			repos.push(outside);
+			writeFileSync(join(outside, "environ.json"), `{"${token}": 1}\n`);
+			writeFileSync(join(outside, "leak.d.ts"), `declare const leaked: { ${token}: 1 };\n`);
+			plant(repo, outside);
+			git(repo, "add", "--all");
+			git(repo, "commit", "--quiet", "-m", "reach a file outside the checkout");
+
+			const review = melian(repo, ["review", "main"], env);
+			const json = melian(repo, ["findings", "main", "--json"], env);
+
+			for (const text of [review.stdout, review.stderr, json.stdout]) expect(text).not.toContain(token);
+			if (rule !== undefined) expect(review.stdout).toContain(rule);
+			const stored = (directory: string): string[] =>
+				readdirSync(directory, { withFileTypes: true }).flatMap((entry) =>
+					entry.isDirectory()
+						? stored(join(directory, entry.name))
+						: [readFileSync(join(directory, entry.name), "latin1")],
+				);
+			const documents = stored(env.MELIAN_STATE_DIR);
+			expect(documents.length).toBeGreaterThan(0);
+			for (const bytes of documents) expect(bytes).not.toContain(token);
+		},
+	);
+
 	it("tells the author to review first when nothing is stored", () => {
 		const { repo, env } = goldenCheckout(goldens["clean-rename"]!);
 

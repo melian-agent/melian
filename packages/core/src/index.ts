@@ -234,6 +234,7 @@ export {
 	sarifSchemaUri,
 	snippetHash,
 	snippetOccurrence,
+	withheldToolText,
 } from "./findings.ts";
 export {
 	type CheckReport,

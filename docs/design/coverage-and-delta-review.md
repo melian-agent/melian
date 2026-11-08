@@ -32,7 +32,7 @@ Coverage from a round is void, whole or in part, after a base change, a force pu
 
 ## The status
 
-`melian/review` passes when the ledger shows an empty delta and nothing above advisory is open. An incomplete ledger leaves the review not reviewed and the status `error`, naming the gaps. The merge-group job is unchanged. `melian publish` posts the current decided round; its body and the ledger comment say which lines the round reviewed and which rounds cover the diff. A carried finding has a sighting at the head, so it stays open with its thread.
+`melian/review` passes when the ledger shows an empty delta and nothing above advisory is open. An Actions round's status is the one exception, by the maintainer's ruling: it passes with acknowledge findings open, and the builder asks the maintainer to read them before queueing, as [the Actions status decision](../decisions/2026-11-07-actions-round-sets-melian-review.md) records. An incomplete ledger leaves the review not reviewed and the status `error`, naming the gaps. The merge-group job is unchanged. `melian publish` posts the current decided round; its body and the ledger comment say which lines the round reviewed and which rounds cover the diff. A carried finding has a sighting at the head, so it stays open with its thread.
 
 ## Round identity
 

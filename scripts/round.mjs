@@ -306,6 +306,56 @@ export class RoundComment {
 		}
 		return `${header}\n\n${fenced(quoted, budget)}`;
 	}
+
+	// The melian/review status for the head the gate approved, in the shape `melian publish` sets so the merge group
+	// copies it: the pull request as its target, and the base the round reviewed from as the description's suffix.
+	// `skip` says why none may be set: the pull request moved, so the status would name a head no round reviewed; or
+	// the head's latest melian/review, `latest` by ID, is not `pending`, the status this round's pending job set, so a
+	// later round or host has decided it since. IDs, not clocks: two clocks and one-second times cannot order them.
+	// `trusted` is the base policy's `trust.writers`, as publication reads it. Acknowledge findings do not fail it, by
+	// the maintainer's ruling: the builder asks the maintainer first.
+	status(pull, { trusted, latest, pending }) {
+		if (this.current !== undefined && (this.current.base !== this.base || this.current.head !== this.head))
+			return {
+				skip: "the pull request moved during the round, so no melian/review status is set; start a new round",
+			};
+		const id = /^[0-9]+$/;
+		if (id.test(latest) && id.test(pending) && latest !== pending)
+			return {
+				skip: "a newer melian/review status stands on this head, so this round sets none; start a new round, since rerunning failed jobs keeps the old pending status",
+			};
+		const known = /^[0-9a-f]{40}$/.test(this.mergeBase);
+		const base = known ? `; base ${this.mergeBase}` : "";
+		const set = (state, text) => ({
+			state,
+			context: "melian/review",
+			description: `${text}${base}`,
+			target_url: pull,
+		});
+		// Without this round's pending status, an earlier success could still be latest, so the round sets error. With it,
+		// a read that failed posts nothing: pending already blocks, and a newer status another writer set must stand.
+		if (!id.test(pending)) return set("error", "Not reviewed: no pending status from this round");
+		const stands = (why) => ({ skip: `${why}, so this round's pending status stands; start a new round` });
+		if (this.current === undefined) return stands("the pull request could not be read again");
+		if (latest !== pending) return stands("the head's statuses could not be read");
+		if (trusted !== true)
+			return set("error", "Not reviewed here: writers are not trusted; a trusted host sets this status");
+		if (
+			!known ||
+			this.reviewed === undefined ||
+			this.reviewed.head !== this.head ||
+			this.reviewed.base !== this.mergeBase
+		)
+			return set("error", "Not reviewed: the round reviewed another revision");
+		const verdict = this.verdict;
+		if (verdictProblem(verdict) !== undefined || exitFor(verdict) !== this.exitCode)
+			return set("error", "Not reviewed: the round's verdict could not be read");
+		if (verdict.status === "not-reviewed") return set("error", "Not reviewed: a check did not run");
+		const blocks = verdict.findings.block.length;
+		if (verdict.blocking) return set("failure", `Blocked by ${plural(blocks, "finding")}`);
+		const acknowledge = verdict.findings.acknowledge.length;
+		return set("success", acknowledge === 0 ? "Passed" : `Passed; ${plural(acknowledge, "finding")} to acknowledge`);
+	}
 }
 
 // `lines` in a three-backtick `text` code fence, at most `budget` characters long. A run of three or more backticks
