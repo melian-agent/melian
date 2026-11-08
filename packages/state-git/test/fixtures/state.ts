@@ -116,7 +116,7 @@ export async function notes(storage: Storage): Promise<readonly string[]> {
 }
 
 /** Runs git in `root` with `input` on its standard input. */
-export function gitWith(root: string, input: string, ...args: string[]): string {
+export function gitWith(root: string, input: string | Buffer, ...args: string[]): string {
 	return execFileSync("git", args, {
 		cwd: root,
 		env: { ...process.env, ...isolatedGitEnv },
@@ -129,7 +129,7 @@ export function gitWith(root: string, input: string, ...args: string[]): string 
  * Moves the remote's branch to a commit that replaces one changeset's files and keeps the index, as a writer that
  * ignores the lease, or an older build, would.
  */
-export function replaceChangeset(remote: Remote, files: Record<string, string>, id = changeset): void {
+export function replaceChangeset(remote: Remote, files: Record<string, string | Buffer>, id = changeset): void {
 	const bare = remote.bare;
 	const tip = remote.tip()!;
 	const blobs = Object.entries(files)

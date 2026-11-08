@@ -975,3 +975,56 @@ describe("the review of record at 853b4a2d", () => {
 		);
 	});
 });
+
+describe("the mutation inventory at f6872a26", () => {
+	// A sealed file the branch holds, as this clone's key wrote it.
+	const sealedOnBranch = async (plain: string): Promise<Buffer> => {
+		const checkout = await remote
+			.clone({ validate: async () => {} })
+			.branch()
+			.checkout(changeset);
+		writeFileSync(join(checkout.directory, "main.jsonl"), plain);
+		await checkout.push();
+		checkout.close();
+		return execFileSync("git", ["cat-file", "blob", `${remote.stored()}:main.jsonl`], { cwd: remote.bare });
+	};
+	const refusesOnBranch = async (sealed: Buffer) => {
+		replaceChangeset(remote, { "main.jsonl": sealed });
+		await expect(
+			remote
+				.clone({ validate: async () => {} })
+				.branch()
+				.checkout(changeset),
+		).rejects.toMatchObject({
+			code: "invalidBranch",
+			message: `this clone's state key cannot read main.jsonl in ${changeset}; the branch was written under another key, or the file was moved`,
+		});
+	};
+
+	it("refuses a sealed file of another format version, though the rest of it opens", async () => {
+		const sealed = await sealedOnBranch("melian\n");
+		await refusesOnBranch(Buffer.concat([Buffer.from([sealed[0]! + 1]), sealed.subarray(1)]));
+	});
+
+	it("refuses a sealed file too short to hold a whole authentication tag", async () => {
+		// Version, nonce and the first four bytes of an empty file's tag: GCM would check a four-byte tag.
+		const sealed = await sealedOnBranch("");
+		expect(sealed.length).toBe(29);
+		await refusesOnBranch(sealed.subarray(0, 17));
+	});
+
+	it("reads an empty file, which seals to exactly the header", async () => {
+		await sealedOnBranch("");
+		const checkout = await remote
+			.clone({ validate: async () => {} })
+			.branch()
+			.checkout(changeset);
+		expect(readFileSync(join(checkout.directory, "main.jsonl"), "utf8")).toBe("");
+	});
+
+	it("lets a checkout be closed twice", async () => {
+		const checkout = await remote.clone().branch().checkout(changeset);
+		checkout.close();
+		expect(() => checkout.close()).not.toThrow();
+	});
+});
