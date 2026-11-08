@@ -817,7 +817,7 @@ function checkNested(site: Site, layer: MelianYaml): void {
 		);
 	}
 	for (const [lens, settings] of Object.entries(layer.lenses ?? {})) {
-		const route = settings?.route;
+		const { route } = settings;
 		if (route === undefined) continue;
 		const set = Object.keys(route)[0];
 		const key = `lenses.${lens}.route${set === undefined ? "" : `.${set}`}`;
@@ -852,7 +852,7 @@ function checkPreference(site: Site, layer: MelianYaml): void {
 		);
 	}
 	for (const [lens, settings] of Object.entries(layer.lenses ?? {})) {
-		const key = routePolicyKeys.find((each) => settings?.route?.[each] !== undefined);
+		const key = routePolicyKeys.find((each) => settings.route?.[each] !== undefined);
 		if (key === undefined) continue;
 		throw configError(
 			"invalidValue",

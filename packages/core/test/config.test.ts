@@ -1346,3 +1346,80 @@ describe("a lens route", () => {
 		});
 	});
 });
+
+describe("a route error beside a nearer file", () => {
+	const local = (text: string[]) => writeFiles(repo, { "melian.local.yaml": lines(...text) });
+
+	it("names the file that set a tier's fallbacks with no model, past a nearer file that routes another tier", async () => {
+		writeFiles(repo, { "melian.yaml": lines("models:", "  heavy:", "    fallbacks: [openai/gpt]") });
+		for (const nearer of [
+			["models:", "  light:", "    model: clone/light"],
+			["triage:", "  escalateAt: P2"],
+		]) {
+			local(nearer);
+			const error = await rejection(loadConfig(repo, { kind: "worktree" }, "a.ts"));
+			expect(error).toMatchObject({ code: "invalidValue", file: "melian.yaml", key: "models.heavy.model" });
+			expect(error.message).toContain(`"models.heavy.fallbacks" has no model to follow`);
+		}
+	});
+
+	it("names the root that set a lens route with no model, past a nested file that sets none", async () => {
+		writeFiles(repo, { "melian.yaml": lines("lenses:", "  design:", "    route: { thinking: high }") });
+		for (const nested of [
+			["tiers:", "  fast: [guardrails]"],
+			["lenses:", "  tests: { tier: heavy }"],
+		]) {
+			writeFiles(repo, { "services/melian.yaml": lines(...nested) });
+			const error = await rejection(loadConfig(repo, { kind: "worktree" }, "services/a.ts"));
+			expect(error).toMatchObject({ code: "invalidValue", file: "melian.yaml", key: "lenses.design.route.model" });
+		}
+	});
+
+	it("names the preference file that set a lens route with no model, past a nearer one that sets none", async () => {
+		const home = temporaryDirectory();
+		try {
+			const user = join(home, "config.yaml");
+			writeFiles(home, { "config.yaml": lines("lenses:", "  design:", "    route: { thinking: high }") });
+			for (const nearer of [
+				["models:", "  light:", "    model: clone/light"],
+				["lenses:", "  tests: { tier: heavy }"],
+			]) {
+				local(nearer);
+				const error = await rejection(loadConfig(repo, { kind: "worktree", preferences: user }, "a.ts"));
+				expect(error).toMatchObject({ code: "invalidValue", file: user, key: "lenses.design.route.model" });
+			}
+		} finally {
+			removeDirectory(home);
+		}
+	});
+
+	it("names the root that set an empty lens accept, past a nested file that sets no lens", async () => {
+		writeFiles(repo, {
+			"melian.yaml": lines("lenses:", "  design:", "    route: { model: root/model, accept: [] }"),
+		});
+		for (const nested of [
+			["tiers:", "  fast: [guardrails]"],
+			["lenses:", "  tests: { tier: heavy }"],
+		]) {
+			writeFiles(repo, { "services/melian.yaml": lines(...nested) });
+			const error = await rejection(loadConfig(repo, { kind: "worktree" }, "services/a.ts"));
+			expect(error).toMatchObject({ code: "invalidValue", file: "melian.yaml", key: "lenses.design.route.accept" });
+		}
+	});
+
+	it("names the root that refused overrides on a lens route with no model, past a nested file that sets no lens", async () => {
+		writeFiles(repo, { "melian.yaml": lines("lenses:", "  design:", "    route: { acceptOverridden: false }") });
+		for (const nested of [
+			["tiers:", "  fast: [guardrails]"],
+			["lenses:", "  tests: { tier: heavy }"],
+		]) {
+			writeFiles(repo, { "services/melian.yaml": lines(...nested) });
+			const error = await rejection(loadConfig(repo, { kind: "worktree" }, "services/a.ts"));
+			expect(error).toMatchObject({
+				code: "invalidValue",
+				file: "melian.yaml",
+				key: "lenses.design.route.acceptOverridden",
+			});
+		}
+	});
+});
