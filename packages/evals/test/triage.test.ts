@@ -416,16 +416,17 @@ function recordProblems(
 
 describe("the triage question set's version", () => {
 	it("stands for the questions across every commit that recorded their version", async ({ skip }) => {
-		// CI checks out the whole history, so a shallow clone there still fails closed, as the decisions require.
-		if (!process.env.CI && gitIn(triageDirectory)(["rev-parse", "--is-shallow-repository"]).trim() === "true") {
-			const reason = "this clone is shallow; run git fetch --unshallow to check questions.json's history";
-			process.stderr.write(`skipped: ${reason}\n`);
-			skip(reason);
-		}
 		const recorded = JSON.parse(
 			readFileSync(join(triageDirectory, "questions.json"), "utf8"),
 		) as RecordedFingerprints;
 		const fingerprint = (await TriageQuestions.shipped(goldens[0]!)).fingerprint();
+		// CI checks out the whole history, so a shallow clone there still fails closed, as the decisions require.
+		if (!process.env.CI && gitIn(triageDirectory)(["rev-parse", "--is-shallow-repository"]).trim() === "true") {
+			expect(recordProblems(recorded, triageQuestionSet.version, fingerprint, [])).toEqual([]);
+			const reason = "this clone is shallow; run git fetch --unshallow to check questions.json's history";
+			process.stderr.write(`skipped: ${reason}\n`);
+			skip(reason);
+		}
 		expect(
 			recordProblems(recorded, triageQuestionSet.version, fingerprint, recordHistory(gitIn(triageDirectory))),
 		).toEqual([]);
