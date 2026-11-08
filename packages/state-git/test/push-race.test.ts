@@ -18,6 +18,8 @@ let interloper: (() => Promise<void>) | undefined;
 let locked = 0;
 // Answers the next push as git does when the remote refuses the credential: no porcelain line at all.
 let denied = false;
+// Answers the next hash-object as git does when the object database cannot be written.
+let unwritable = false;
 
 vi.mock("@melian-agent/core", async (original) => {
 	const actual = await original<typeof core>();
@@ -25,6 +27,15 @@ vi.mock("@melian-agent/core", async (original) => {
 		...actual,
 		git: async (cwd: string, args: readonly string[], options?: core.GitOptions) => {
 			environments.push({ command: args[0]!, env: options?.env });
+			if (args[0] === "hash-object" && unwritable) {
+				unwritable = false;
+				return {
+					code: 128,
+					stdout: "",
+					stdoutBytes: Buffer.from(""),
+					stderr: "error: insufficient permission for adding an object to repository database .git/objects\n",
+				};
+			}
 			if (args[0] === "push" && denied) {
 				denied = false;
 				return {
@@ -77,6 +88,7 @@ afterEach(() => {
 	moves = 0;
 	locked = 0;
 	denied = false;
+	unwritable = false;
 	interloper = undefined;
 	remote.close();
 });
@@ -191,4 +203,17 @@ it("names a push the remote refused with no porcelain line, as a refused credent
 		message:
 			"git push of melian/state failed: remote: Permission to melian-agent/melian.git denied to reader.\nfatal: unable to access 'remote': The requested URL returned error: 403",
 	});
+});
+
+it("fails a push whose objects cannot be written, rather than push a tree that names them", async () => {
+	const checkout = await remote.clone().branch().checkout(changeset);
+	await note(await storageOf(checkout), "mine");
+	const tip = remote.tip();
+	unwritable = true;
+	await expect(checkout.push()).rejects.toMatchObject({
+		code: "gitFailed",
+		message:
+			"git hash-object failed: error: insufficient permission for adding an object to repository database .git/objects",
+	});
+	expect(remote.tip()).toBe(tip);
 });

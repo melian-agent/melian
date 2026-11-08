@@ -625,9 +625,12 @@ describe("what the mutation inventory found untested", () => {
 	});
 
 	it("refuses an executable storage file on the branch", async () => {
-		await (await remote.clone().branch().checkout(changeset)).push();
+		// A file this clone's key sealed, so only its mode is wrong.
+		const writer = await remote.clone().branch().checkout(changeset);
+		await note(await storageOf(writer), "stored");
+		await writer.push();
 		const bare = remote.bare;
-		const blob = gitWith(bare, "", "hash-object", "-w", "--stdin");
+		const blob = gitIn(bare, "rev-parse", `${remote.stored()}:main.jsonl`);
 		const own = gitWith(bare, `100755 blob ${blob}\tmain.jsonl\n`, "mktree");
 		const index = gitIn(bare, "rev-parse", "refs/heads/melian/state:index.json");
 		const changesets = gitWith(bare, `040000 tree ${own}\t${changeset}\n`, "mktree");
@@ -638,7 +641,10 @@ describe("what the mutation inventory found untested", () => {
 			"refs/heads/melian/state",
 			gitIn(bare, "commit-tree", root, "-p", remote.tip()!, "-m", "m"),
 		);
-		await expect(remote.clone().branch().checkout(changeset)).rejects.toMatchObject({ code: "invalidBranch" });
+		await expect(remote.clone().branch().checkout(changeset)).rejects.toMatchObject({
+			code: "invalidBranch",
+			message: `the state branch holds "main.jsonl" in ${changeset}, which Melian never writes`,
+		});
 	});
 
 	it("seals a file and commits to a key exactly as this format's first version does", async () => {
@@ -1040,5 +1046,26 @@ describe("the mutation inventory at f6872a26", () => {
 		await checkout.push();
 		expect(readdirSync(scratch)).toEqual([]);
 		rmSync(scratch, { recursive: true, force: true });
+	});
+
+	it("says no lease is held when the changeset's record is gone before the push", async () => {
+		const checkout = await remote.clone().branch().checkout(changeset);
+		await note(await storageOf(checkout), "stored");
+		const bare = remote.bare;
+		const index = remote.index() as { changesets: Record<string, unknown> };
+		delete index.changesets[changeset];
+		const blob = gitWith(bare, `${JSON.stringify(index)}\n`, "hash-object", "-w", "--stdin");
+		const changesets = gitIn(bare, "rev-parse", "refs/heads/melian/state:changesets");
+		const root = gitWith(bare, `100644 blob ${blob}\tindex.json\n040000 tree ${changesets}\tchangesets\n`, "mktree");
+		gitIn(
+			bare,
+			"update-ref",
+			"refs/heads/melian/state",
+			gitIn(bare, "commit-tree", root, "-p", remote.tip()!, "-m", "x"),
+		);
+		expect(await checkout.push()).toEqual({
+			kind: "refused",
+			reason: "another run took the changeset's lease, at generation none, after this one's 1",
+		});
 	});
 });
