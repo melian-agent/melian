@@ -200,8 +200,23 @@ describe("a dismissal carrying to a restatement", () => {
 			.filter((message) => message.role === "user")
 			.map(textOf)
 			.join("\n");
-		expect(input).toMatch(/Dismissed d1\n<untrusted-[0-9a-f]+ label="findings">/);
-		expect(input).toContain(JSON.stringify(nullDeref.failureScenario).slice(1, -1));
+		const tag = input.match(/Dismissed d1\n<(untrusted-[0-9a-f]+) label="findings">/)?.[1];
+		const claim = {
+			failureScenario: nullDeref.failureScenario,
+			evidence: [
+				{
+					file: "src/user.ts",
+					startLine: 8,
+					role: "cause",
+					revision: "head",
+					proves: true,
+					snippet: "\treturn user.manager.name + label;",
+				},
+			],
+		};
+		expect(input.split("\n\n").find((block) => block.startsWith("Dismissed d1\n"))).toBe(
+			`Dismissed d1\n<${tag} label="findings">\n${JSON.stringify(claim)}\n</${tag}>`,
+		);
 		expect(`${prompt}\n${input}`).not.toContain(dismissal.reason);
 	});
 
