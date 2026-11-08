@@ -336,22 +336,33 @@ jobs:
       pull-requests: write
     steps:
       # A rerun of the report job alone checks out the run's first commit too, and runs its scripts with a token that can
-      # write comments, so it refuses the same commits the round job does, before the checkout.
-      - name: Refuse a commit the default branch has moved past
+      # write comments, so a rerun refuses the commits the round job does, before the checkout. A first attempt starts
+      # when its round ends, and the round job checked its commit was the default branch's head when it started, so the
+      # first attempt carries on after the branch moves. Otherwise a merge during the round lost the round's report.
+      - name: Refuse a rerun on a commit the default branch has moved past
         env:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
           REF: ${{ github.ref }}
           SHA: ${{ github.sha }}
+          ATTEMPT: ${{ github.run_attempt }}
         run: |
+          if ! [[ "$ATTEMPT" =~ ^[1-9][0-9]*$ ]]; then
+            echo "::error::this run's attempt, ${ATTEMPT:-empty}, is not a whole number above 0; start a new round"
+            exit 1
+          fi
           default=$(gh api "repos/$REPOSITORY" --jq .default_branch) || default=""
           if [ "$REF" != "refs/heads/$default" ]; then
             echo "::error::this run is from $REF, and the default branch is now ${default:-unreadable}; start a new round"
             exit 1
           fi
           current=$(gh api "repos/$REPOSITORY/branches/$default" --jq .commit.sha) || current=""
-          if [ "$current" != "$SHA" ]; then
-            echo "::error::the default branch is at ${current:-an unreadable commit}, not $SHA, which this run would build; start a new round"
+          if ! [[ "$current" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::the default branch is at an unreadable commit, not $SHA, which this run would build; start a new round"
+            exit 1
+          fi
+          if [ "$current" != "$SHA" ] && [ "$ATTEMPT" != 1 ]; then
+            echo "::error::the default branch is at $current, not $SHA, which this rerun would build; start a new round"
             exit 1
           fi
       # The whole history, so the status step reads the pull request's base policy, which the default branch contains.

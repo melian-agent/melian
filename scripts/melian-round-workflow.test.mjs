@@ -70,11 +70,15 @@ describe("the melian round workflow", () => {
 		});
 	});
 
-	it("refuses, in the pending and report jobs before anything else, the commit the round job refuses", () => {
+	it("refuses, in the pending job before anything else, the commit the round job refuses, and in the report job a rerun's", () => {
 		const name = "Refuse a commit the default branch has moved past";
 		const roundCheck = workflow.jobs.round.steps.find((step) => step.name === name);
-		expect(workflow.jobs.report.steps[0]).toEqual(roundCheck);
 		expect(workflow.jobs.pending.steps[0]).toEqual(roundCheck);
+		expect(workflow.jobs.report.steps[0]).toMatchObject({
+			name: "Refuse a rerun on a commit the default branch has moved past",
+			env: { ...roundCheck.env, ATTEMPT: actions("github.run_attempt") },
+		});
+		expect(Object.keys(workflow.jobs.report.steps[0].env)).toEqual([...Object.keys(roundCheck.env), "ATTEMPT"]);
 	});
 
 	it("lets the round run only on the default branch's current commit", () => {
@@ -137,6 +141,75 @@ describe("the melian round workflow", () => {
 				1,
 				`::error::the default branch is at an unreadable commit, not ${"a".repeat(40)}, which this run would build; start a new round\n`,
 			]);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("lets a first attempt's report run after the default branch moves, and refuses a rerun's", () => {
+		const { run, env } = workflow.jobs.report.steps[0];
+		const dir = mkdtempSync(join(tmpdir(), "round-workflow-"));
+		try {
+			writeFileSync(
+				join(dir, "gh"),
+				[
+					"#!/bin/sh",
+					'if [ "$*" = "api repos/o/r --jq .default_branch" ]; then [ -n "$NOW" ] && echo "$NOW"; exit; fi',
+					'[ "$NOW" != main ] && [ "$*" = "api repos/o/r/branches/main --jq .commit.sha" ] && echo "$SHA" && exit',
+					'[ "$*" = "api repos/o/r/branches/$NOW --jq .commit.sha" ] && [ -n "$CURRENT" ] && echo "$CURRENT"',
+					"",
+				].join("\n"),
+			);
+			chmodSync(join(dir, "gh"), 0o755);
+			const a = "a".repeat(40);
+			const b = "b".repeat(40);
+			const step = ({ attempt, current, branch = "main", ref = "refs/heads/main" }) => {
+				const result = spawnSync("bash", ["-e", "-c", run], {
+					encoding: "utf8",
+					env: {
+						PATH: `${dir}:${process.env.PATH}`,
+						REPOSITORY: "o/r",
+						REF: ref,
+						SHA: a,
+						ATTEMPT: attempt,
+						NOW: branch,
+						CURRENT: current,
+					},
+				});
+				return [result.status, result.stdout];
+			};
+			const refused = (message) => [1, `::error::${message}; start a new round\n`];
+			expect(step({ attempt: "1", current: a })).toEqual([0, ""]);
+			expect(step({ attempt: "1", current: b })).toEqual([0, ""]);
+			expect(env.ATTEMPT).toBe(actions("github.run_attempt"));
+			expect(step({ attempt: "2", current: a })).toEqual([0, ""]);
+			expect(step({ attempt: "2", current: b })).toEqual(
+				refused(`the default branch is at ${b}, not ${a}, which this rerun would build`),
+			);
+			expect(step({ attempt: "10", current: b })).toEqual(
+				refused(`the default branch is at ${b}, not ${a}, which this rerun would build`),
+			);
+			expect(step({ attempt: "1", current: a, branch: "trunk" })).toEqual(
+				refused("this run is from refs/heads/main, and the default branch is now trunk"),
+			);
+			expect(step({ attempt: "1", current: a, branch: "" })).toEqual(
+				refused("this run is from refs/heads/main, and the default branch is now unreadable"),
+			);
+			expect(step({ attempt: "1", current: "" })).toEqual(
+				refused(`the default branch is at an unreadable commit, not ${a}, which this run would build`),
+			);
+			expect(step({ attempt: "1", current: "c".repeat(39) })).toEqual(
+				refused(`the default branch is at an unreadable commit, not ${a}, which this run would build`),
+			);
+			expect(step({ attempt: "1", current: "c".repeat(41) })).toEqual(
+				refused(`the default branch is at an unreadable commit, not ${a}, which this run would build`),
+			);
+			for (const attempt of ["", "0", "01", "1.5", "x", "1 ", "a[$(touch injected)]"]) {
+				expect(step({ attempt, current: a })).toEqual(
+					refused(`this run's attempt, ${attempt || "empty"}, is not a whole number above 0`),
+				);
+			}
+			expect(readdirSync(process.cwd())).not.toContain("injected");
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}
