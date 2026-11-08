@@ -196,6 +196,8 @@ describe("the golden corpus", () => {
 			"trust-boundary-probe-claim-lost-release-clean",
 			"trust-boundary-probe-round-environ-leak",
 			"trust-boundary-probe-round-environ-leak-clean",
+			"trust-boundary-probe-syntax-check-outside-text",
+			"trust-boundary-probe-syntax-check-outside-text-clean",
 			"trust-boundary-secret-env",
 			"trust-boundary-terminal-escape",
 		]);
@@ -403,6 +405,8 @@ describe("a golden's standards and policy", () => {
 			"trust-boundary-probe-claim-lost-release-clean",
 			"trust-boundary-probe-round-environ-leak",
 			"trust-boundary-probe-round-environ-leak-clean",
+			"trust-boundary-probe-syntax-check-outside-text",
+			"trust-boundary-probe-syntax-check-outside-text-clean",
 		];
 		const tiered = copies.filter((copy) => !exempt.includes(basename(copy.parentPath)));
 		expect(tiered.length).toBeGreaterThan(0);

@@ -1,0 +1,75 @@
+{
+  "trust-boundary": [
+    {
+      "calls": [
+        {
+          "name": "record_plan",
+          "arguments": {
+            "attacks": [
+              {
+                "target": "src/syntax-check.mjs, the text a finding keeps from node --check",
+                "reason": "A committed link can point node --check at a file outside the checkout, and node quotes the line it failed on. The finding is stored and published, so nothing the tool quoted may reach it.",
+                "passing": "The stored and rendered finding names src/vendor.mjs and its rule, and the planted token appears in neither.",
+                "failing": "The stored or rendered finding quotes the planted token from the outside file."
+              }
+            ]
+          },
+          "expectToolResult": "recorded a plan of 1 attack"
+        }
+      ]
+    },
+    {
+      "text": "Planned 1 attack."
+    }
+  ],
+  "trust-boundary/prober": [
+    {
+      "calls": [
+        {
+          "name": "run_probe",
+          "arguments": {
+            "attack": 1,
+            "script": "// Attack 1: a head commits src/vendor.mjs as a link to a file outside the checkout. node --check follows it and quotes\n// the failing line, so a token on that line must not reach the stored and rendered finding.\nimport { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from \"node:fs\";\nimport { tmpdir } from \"node:os\";\nimport { join } from \"node:path\";\nimport { pathToFileURL } from \"node:url\";\n\nconst token = \"probe-secret-7d1e\";\nconst scratch = mkdtempSync(join(tmpdir(), \"outside-\"));\nconst outside = join(scratch, \"outside\");\nconst checkout = join(scratch, \"checkout\");\nmkdirSync(outside);\nmkdirSync(join(checkout, \"src\"), { recursive: true });\nwriteFileSync(join(outside, \"types.mjs\"), `export const token = \"${token}\" +;\\n`);\nsymlinkSync(join(outside, \"types.mjs\"), join(checkout, \"src\", \"vendor.mjs\"));\nwriteFileSync(join(checkout, \"src\", \"index.mjs\"), \"export const ok = 1;\\n\");\nconst check = await import(pathToFileURL(join(process.cwd(), \"src/syntax-check.mjs\")).href);\nconst findings = check.checkFindings(checkout);\nconst rendered = check.render(findings);\nconsole.log(`stored: ${JSON.stringify(findings)}\\nrendered:\\n${rendered}`);\nif (findings.length !== 1 || findings[0].file !== join(\"src\", \"vendor.mjs\")) process.exit(2);\nprocess.exit(JSON.stringify(findings).includes(token) || rendered.includes(token) ? 1 : 0);\n"
+          },
+          "expectToolResult": "failed: it exited 1"
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "report_finding",
+          "arguments": {
+            "file": "src/syntax-check.mjs",
+            "line": 40,
+            "rule": "secret-exposure",
+            "severity": "P1",
+            "explanation": {
+              "what": "The check keeps the source line node --check quotes in each finding's text, and a committed link points node --check at a file outside the checkout.",
+              "why": "The head decides which files the check runs on, links included, so the stored and published finding carries whatever the linked outside file holds.",
+              "fix": "Keep each finding's rule and place, and replace node's text with a fixed sentence naming the file to check by hand."
+            },
+            "failureScenario": "A head commits src/vendor.mjs as a link to a file outside the checkout whose first line holds a token and a syntax error. node --check follows the link and quotes that line, parseCheck keeps the quoted line in the finding's text, and the review stores and publishes the finding, so the token reaches the pull request.",
+            "evidence": [
+              {
+                "file": "src/syntax-check.mjs",
+                "line": 40,
+                "role": "cause"
+              },
+              {
+                "file": "src/syntax-check.mjs",
+                "line": 26,
+                "role": "context"
+              }
+            ],
+            "probe": "{{probe}}"
+          },
+          "expectToolResult": "recorded finding"
+        }
+      ]
+    },
+    {
+      "text": "Reported 1 finding."
+    }
+  ]
+}
