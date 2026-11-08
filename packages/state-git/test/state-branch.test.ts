@@ -1117,4 +1117,17 @@ describe("the mutation inventory at f6872a26", () => {
 		expect(again.setAside).toBeUndefined();
 		expect(await notes(await storageOf(again))).toEqual(["stored", "mine"]);
 	});
+
+	it("stops a fetch that runs past its deadline, whatever the transport, and names it", async () => {
+		const clone = remote.clone();
+		gitIn(clone.repoRoot, "config", "protocol.ext.allow", "always");
+		const start = Date.now();
+		await expect(
+			clone.branch({ remote: "ext::sh -c sleep% 10", transferMs: 500 }).checkout(changeset),
+		).rejects.toMatchObject({
+			code: "fetchFailed",
+			message: "git fetch of melian/state ran past its deadline of 500 ms",
+		});
+		expect(Date.now() - start).toBeLessThan(5000);
+	});
 });

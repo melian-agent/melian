@@ -18,6 +18,7 @@ const attemptsLimit = 10;
 const backoffMs = 50;
 const backoffCapMs = 1000;
 const defaultLeaseMs = 2 * 60 * 60 * 1000;
+const defaultTransferMs = 2 * 60 * 1000;
 const sealVersion = 1;
 const sqliteBusy = 5;
 // Git records who pushed the branch; the commits themselves need only some identity.
@@ -58,6 +59,8 @@ export interface StateBranchOptions {
 	readonly now?: () => number;
 	/** How long a lease stays live after it is taken. */
 	readonly leaseMs?: number;
+	/** How long a fetch or push of the branch may run before it is stopped, on any transport. Two minutes by default. */
+	readonly transferMs?: number;
 	/**
 	 * Opens the copy in `directory` with the storage that wrote it, and rejects when that storage finds it damaged. A
 	 * checkout keeps this clone's copy only when it opens; otherwise it sets the copy aside for the branch's.
@@ -406,6 +409,15 @@ export class StateBranch {
 		return this.#options.directory;
 	}
 
+	get #transferMs(): number {
+		return this.#options.transferMs ?? defaultTransferMs;
+	}
+
+	// A fetch or push, which reaches the remote, under its deadline.
+	#transfer(args: readonly string[]) {
+		return git(this.#options.repoRoot, args, { env: untranslated, deadlineMs: this.#transferMs });
+	}
+
 	#now(): number {
 		return (this.#options.now ?? Date.now)();
 	}
@@ -475,7 +487,12 @@ export class StateBranch {
 			this.#options.remote,
 			`+${branch}:${fetched}`,
 		];
-		const result = await git(this.#options.repoRoot, args, { env: untranslated });
+		const result = await this.#transfer(args);
+		if (result.timedOut === true)
+			throw new StateBranchError(
+				"fetchFailed",
+				`git fetch of melian/state ran past its deadline of ${this.#transferMs} ms`,
+			);
 		if (result.code !== 0) {
 			if (/couldn't find remote ref/i.test(result.stderr)) return undefined;
 			throw new StateBranchError("fetchFailed", `git fetch of melian/state failed: ${result.stderr.trim()}`);
@@ -567,7 +584,12 @@ export class StateBranch {
 			`${commit}:${branch}`,
 			`--force-with-lease=${branch}:${tip ?? ""}`,
 		];
-		const result = await git(this.#options.repoRoot, args, { env: untranslated });
+		const result = await this.#transfer(args);
+		if (result.timedOut === true)
+			throw new StateBranchError(
+				"pushFailed",
+				`git push of melian/state ran past its deadline of ${this.#transferMs} ms`,
+			);
 		if (result.code === 0) return undefined;
 		// The lease names the tip this run fetched, so "stale info" means another run pushed since; the branch's ref the
 		// remote could not lock is another run's push to it landing at the same moment. Git versions word that rejection's

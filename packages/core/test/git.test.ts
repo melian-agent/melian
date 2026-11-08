@@ -73,3 +73,20 @@ it("gives git an ended input when it is given none, so a command that reads it c
 	const result = await git(repo, ["hash-object", "--stdin"]);
 	expect(result).toMatchObject({ code: 0, stdout: "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391\n" });
 }, 5_000);
+
+describe("git with a deadline", () => {
+	// A transport that never answers, as a stalled remote does; it exits on its own after ten seconds.
+	const stalled = ["-c", "protocol.ext.allow=always", "fetch", "ext::sh -c sleep% 10"];
+
+	it("stops git once the deadline passes, and says it timed out", async () => {
+		const start = Date.now();
+		const result = await git(repo, stalled, { deadlineMs: 500 });
+		expect(result).toMatchObject({ code: -1, timedOut: true });
+		expect(Date.now() - start).toBeLessThan(5000);
+	});
+
+	it("leaves a command that ends in time as it is", async () => {
+		const result = await git(repo, ["rev-parse", "--is-inside-work-tree"], { deadlineMs: 10_000 });
+		expect(result).toEqual({ code: 0, stdout: "true\n", stdoutBytes: Buffer.from("true\n"), stderr: "" });
+	});
+});

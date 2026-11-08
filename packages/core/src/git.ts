@@ -10,14 +10,18 @@ export interface GitResult {
 	readonly stderr: string;
 	// Set when stdout reached `maxBytes` and git was stopped; `stdout` then holds the first `maxBytes` bytes.
 	readonly truncated?: boolean;
+	// Set when git ran past `deadlineMs` and was stopped; `code` is then -1.
+	readonly timedOut?: boolean;
 }
 
 /** How to run a Git command: a cap on its output, its standard input, and variables to add to its environment. */
 export interface GitOptions {
 	// Stop git once stdout reaches this many bytes.
 	readonly maxBytes?: number;
-	// Written to git's standard input, which otherwise stays open and empty.
+	// Written to git's standard input, which otherwise ends at once.
 	readonly input?: string | Uint8Array;
+	// Stop git once it has run this long, as a transfer that stalls on any transport needs.
+	readonly deadlineMs?: number;
 	// Set in git's environment after the repository-local variables are removed.
 	readonly env?: Readonly<Record<string, string>>;
 }
@@ -78,16 +82,28 @@ export function git(cwd: string, args: readonly string[], options: GitOptions = 
 				new ChangesetError("gitUnavailable", "git could not be started; is it installed and on PATH?", { cause }),
 			),
 		);
-		child.on("close", (code) => {
+		const finish = (code: number, timedOut: boolean) => {
+			clearTimeout(deadline);
 			const stdoutBytes = Buffer.concat(stdout);
 			resolve({
-				code: code ?? -1,
+				code,
 				stdout: stdoutBytes.toString("utf8"),
 				stdoutBytes,
 				stderr: Buffer.concat(stderr).toString("utf8"),
 				...(truncated ? { truncated } : {}),
+				...(timedOut ? { timedOut } : {}),
 			});
-		});
+		};
+		// Git's own process, by the pid spawn recorded. A transport git started, such as ssh, can hold the output pipes
+		// open after git stops, so the result does not wait for them; the transport ends on its own.
+		const deadline =
+			options.deadlineMs === undefined
+				? undefined
+				: setTimeout(() => {
+						child.kill();
+						finish(-1, true);
+					}, options.deadlineMs);
+		child.on("close", (code) => finish(code ?? -1, false));
 	});
 }
 

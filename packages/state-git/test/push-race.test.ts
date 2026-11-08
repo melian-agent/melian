@@ -11,7 +11,13 @@ vi.setConfig({ testTimeout: 60_000 });
 
 // Another run's push lands between this run's fetch and its push, as many times as `moves` says.
 let moves = 0;
-const environments: { command: string; env: Readonly<Record<string, string>> | undefined }[] = [];
+const environments: {
+	command: string;
+	env: Readonly<Record<string, string>> | undefined;
+	deadlineMs: number | undefined;
+}[] = [];
+// Answers the next push as git does when it ran past its deadline.
+let stalled = false;
 let interloper: (() => Promise<void>) | undefined;
 // Answers the next push with the remote's lock error, worded as a newer git words it, as when another push created the
 // branch at the same moment.
@@ -26,7 +32,11 @@ vi.mock("@melian-agent/core", async (original) => {
 	return {
 		...actual,
 		git: async (cwd: string, args: readonly string[], options?: core.GitOptions) => {
-			environments.push({ command: args[0]!, env: options?.env });
+			environments.push({ command: args[0]!, env: options?.env, deadlineMs: options?.deadlineMs });
+			if (args[0] === "push" && stalled) {
+				stalled = false;
+				return { code: -1, stdout: "", stdoutBytes: Buffer.from(""), stderr: "", timedOut: true };
+			}
 			if (args[0] === "hash-object" && unwritable) {
 				unwritable = false;
 				return {
@@ -89,6 +99,7 @@ afterEach(() => {
 	locked = 0;
 	denied = false;
 	unwritable = false;
+	stalled = false;
 	interloper = undefined;
 	remote.close();
 });
@@ -128,7 +139,9 @@ it("waits a random time below a bound that doubles to a second between lost race
 	vi.spyOn(Math, "random").mockReturnValue(0.5);
 	const delays: number[] = [];
 	const wait = globalThis.setTimeout;
+	// Only the waits between attempts, which are at most a second; git's deadline keeps its own timer.
 	vi.spyOn(globalThis, "setTimeout").mockImplementation(((callback: () => void, ms?: number) => {
+		if ((ms ?? 0) > 1000) return wait(callback, ms);
 		delays.push(ms ?? 0);
 		return wait(callback, 0);
 	}) as typeof setTimeout);
@@ -216,4 +229,20 @@ it("fails a push whose objects cannot be written, rather than push a tree that n
 			"git hash-object failed: error: insufficient permission for adding an object to repository database .git/objects",
 	});
 	expect(remote.tip()).toBe(tip);
+});
+
+it("gives every fetch and push a deadline of two minutes by default", async () => {
+	environments.length = 0;
+	await (await remote.clone().branch().checkout(changeset)).push();
+	const network = environments.filter(({ command }) => command === "fetch" || command === "push");
+	expect(network.length).toBeGreaterThanOrEqual(4);
+	expect(new Set(network.map(({ deadlineMs }) => deadlineMs))).toEqual(new Set([120_000]));
+});
+
+it("names a push that ran past its deadline", async () => {
+	stalled = true;
+	await expect(remote.clone().branch({ transferMs: 900 }).checkout(changeset)).rejects.toMatchObject({
+		code: "pushFailed",
+		message: "git push of melian/state ran past its deadline of 900 ms",
+	});
 });
