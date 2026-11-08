@@ -128,6 +128,12 @@ describe("LineMap", () => {
 		expect(map.untouched({ startLine: 3, endLine: 3 }, { startLine: 4, endLine: 4 })).toBe(false);
 	});
 
+	it("leaves a text file that turns binary unmapped", async () => {
+		const before = commit({ "a.ts": lines(...ten) }, "base");
+		const after = commit({ "a.ts": Buffer.from(`${lines(...ten)}\u0000\n`) }, "turns binary");
+		expect((await mapOf(before, after)).mapped).toBe(false);
+	});
+
 	it("leaves an unchanged -diff file unmapped when another path changes", async () => {
 		const before = commit({ "a.ts": lines(...ten), ".gitattributes": "a.ts -diff\n" }, "base");
 		const after = commit({ "b.ts": "other\n" }, "elsewhere");
