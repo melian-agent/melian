@@ -1,0 +1,1 @@
+Every job of the `melian round` workflow now runs on Blacksmith's `blacksmith-4vcpu-ubuntu-2404` runners, by the maintainer's ruling in fix pass 8 of [pull request #275](https://github.com/melian-agent/melian/pull/275).

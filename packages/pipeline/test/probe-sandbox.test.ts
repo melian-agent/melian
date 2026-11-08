@@ -1,10 +1,23 @@
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { once } from "node:events";
+import {
+	chmodSync,
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	realpathSync,
+	rmSync,
+	statSync,
+	symlinkSync,
+	writeFileSync,
+} from "node:fs";
 import { createServer, type Server } from "node:net";
 import { homedir, tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { createInterface } from "node:readline";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { gitIn } from "../../core/test/fixtures/repo.ts";
 import { Probe, type ProbeInput, type ProbeOptions, type ProbeResult } from "../src/probe.ts";
 
 // Each attack runs a real probe under sandbox-runtime and must fail there. A probe that got through would do no harm: it
@@ -17,6 +30,7 @@ const required = process.env.MELIAN_PROBE_SANDBOX === "1";
 const reason = availability.available ? "" : availability.reason;
 
 let worktree: string;
+let head: string;
 let outside: string;
 let markers: string[];
 
@@ -25,8 +39,8 @@ beforeEach(() => {
 	outside = realpathSync(mkdtempSync(join(tmpdir(), "melian-probe-outside-")));
 	markers = [];
 	writeFileSync(join(worktree, "AGENTS.md"), "inside\n");
-	mkdirSync(join(worktree, ".git"));
-	writeFileSync(join(worktree, ".git", "config"), "[credential]\n");
+	head = committed(worktree);
+	gitIn(worktree, "config", "credential.helper", "fake-store");
 	writeFileSync(join(worktree, ".env"), "TOKEN=x\n");
 	writeFileSync(join(outside, "secret.txt"), "secret\n");
 	symlinkSync(join(outside, "secret.txt"), join(worktree, "escape"));
@@ -38,13 +52,25 @@ afterEach(() => {
 	rmSync(outside, { recursive: true, force: true });
 });
 
-async function probed(input: ProbeInput, options: Partial<ProbeOptions> = {}): Promise<ProbeResult> {
-	const probe = await Probe.open(input, {
-		worktree,
+// Commits everything in `root`, making it a repository first, and returns the commit.
+function committed(root: string): string {
+	if (!existsSync(join(root, ".git"))) gitIn(root, "init", "--quiet", "--initial-branch=main");
+	gitIn(root, "add", "--all");
+	gitIn(root, "commit", "--quiet", "--allow-empty", "-m", "head");
+	return gitIn(root, "rev-parse", "HEAD");
+}
+
+function opened(input: ProbeInput, options: Partial<ProbeOptions> = {}): Promise<Probe> {
+	return Probe.open(input, {
+		head: { checkout: worktree, commit: head },
 		writer: { trusted: true, by: "writer" },
 		trustWriters: true,
 		...options,
 	});
+}
+
+async function probed(input: ProbeInput, options: Partial<ProbeOptions> = {}): Promise<ProbeResult> {
+	const probe = await opened(input, options);
 	try {
 		return await probe.run();
 	} finally {
@@ -77,12 +103,15 @@ function outcomes(result: ProbeResult): Record<string, string> {
 describe.skipIf(!availability.available && !required)(
 	`a probe under sandbox-runtime${reason ? ` (${reason})` : ""}`,
 	() => {
-		it("cannot read ~/.ssh, ~/.config, or anything outside the worktree", { timeout: 60_000 }, async () => {
+		it("cannot read ~/.ssh, ~/.config, the live worktree, or anything outside the head's tree", {
+			timeout: 60_000,
+		}, async () => {
 			const read = [
 				join(homedir(), ".ssh"),
 				join(homedir(), ".config"),
 				join(outside, "secret.txt"),
 				join(worktree, "escape"),
+				join(worktree, "AGENTS.md"),
 				outside,
 				join(worktree, ".git", "config"),
 				join(worktree, ".env"),
@@ -92,13 +121,199 @@ describe.skipIf(!availability.available && !required)(
 			const results = outcomes(
 				await probed({
 					script: attempts,
-					files: [
-						{ path: "targets.json", text: JSON.stringify({ read: [...read, join(worktree, "AGENTS.md")] }) },
-					],
+					files: [{ path: "targets.json", text: JSON.stringify({ read: [...read, "AGENTS.md"] }) }],
 				}),
 			);
-			expect(results[join(worktree, "AGENTS.md")]).toBe("read");
+			expect(results["AGENTS.md"]).toBe("read");
 			for (const path of read) expect(results[path], path).not.toBe("read");
+		});
+
+		it.each(["[ab]", "star*", "what?", "{c,d}"])(
+			"denies .env and .npmrc in a checkout named %j, whose glob characters do not widen the deny",
+			{ timeout: 60_000 },
+			async (name) => {
+				const named = realpathSync(mkdtempSync(join(tmpdir(), "melian-probe-glob-")));
+				const checkout = join(named, name);
+				mkdirSync(join(checkout, "node_modules", "pkg"), { recursive: true });
+				writeFileSync(join(checkout, ".gitignore"), "node_modules/\n");
+				writeFileSync(join(checkout, ".env"), "TOKEN=x\n");
+				writeFileSync(join(checkout, "AGENTS.md"), "inside\n");
+				writeFileSync(join(checkout, "node_modules", "pkg", "index.js"), "module.exports = 1;\n");
+				writeFileSync(
+					join(checkout, "node_modules", "pkg", ".npmrc"),
+					"//registry.npmjs.org/:_authToken=npm_FAKE\n",
+				);
+				const commit = committed(checkout);
+				const read = [".env", "AGENTS.md", "node_modules/pkg/index.js", "node_modules/pkg/.npmrc"];
+				try {
+					const results = outcomes(
+						await probed(
+							{ script: attempts, files: [{ path: "targets.json", text: JSON.stringify({ read }) }] },
+							{ head: { checkout, commit } },
+						),
+					);
+					expect(results).toEqual({
+						".env": expect.not.stringMatching(/^read$/),
+						"AGENTS.md": "read",
+						"node_modules/pkg/index.js": "read",
+						"node_modules/pkg/.npmrc": expect.not.stringMatching(/^read$/),
+					});
+				} finally {
+					rmSync(named, { recursive: true, force: true });
+				}
+			},
+		);
+
+		describe("reads the head's tracked tree only", () => {
+			// Each test builds a scratch repository, so git decides what it tracks. Every credential is fake.
+			let repository: string;
+
+			beforeEach(() => {
+				repository = realpathSync(mkdtempSync(join(tmpdir(), "melian-probe-repo-")));
+				gitIn(repository, "init", "--quiet", "--initial-branch=main");
+				writeFileSync(join(repository, "tracked.txt"), "committed\n");
+			});
+
+			afterEach(() => {
+				rmSync(repository, { recursive: true, force: true });
+			});
+
+			function commit(): string {
+				gitIn(repository, "add", "--all");
+				gitIn(repository, "commit", "--quiet", "-m", "head");
+				return gitIn(repository, "rev-parse", "HEAD");
+			}
+
+			function headOptions(commit: string, read?: readonly string[]): Partial<ProbeOptions> {
+				return { head: { checkout: repository, commit, ...(read === undefined ? {} : { read }) } };
+			}
+
+			// Prints each path with what reading it gave: its trimmed text, or the error's code.
+			async function reads(
+				paths: readonly string[],
+				head: string,
+				more: { read?: readonly string[]; afterOpen?: () => void } = {},
+			): Promise<Record<string, string>> {
+				const probe = await Probe.open(
+					{
+						script: `
+import { readFileSync } from "node:fs";
+const out = {};
+for (const path of ${JSON.stringify(paths)}) {
+	try { out[path] = readFileSync(path, "utf8").trim(); } catch (error) { out[path] = error.code; }
+}
+console.log(JSON.stringify(out));
+`,
+					},
+					{
+						writer: { trusted: true, by: "writer" },
+						trustWriters: true,
+						...headOptions(head, more.read),
+					},
+				);
+				let result: ProbeResult;
+				try {
+					more.afterOpen?.();
+					result = await probe.run();
+				} finally {
+					await probe.close();
+				}
+				expect(result.exitCode, result.output).toBe(0);
+				return JSON.parse(result.output) as Record<string, string>;
+			}
+
+			it("cannot read a file git does not track, such as a reviewer's .npmrc", { timeout: 60_000 }, async () => {
+				const head = commit();
+				writeFileSync(join(repository, ".npmrc"), "//registry.npmjs.org/:_authToken=npm_FAKE0000000000000000\n");
+				const seen = await reads(["tracked.txt", ".npmrc"], head);
+				expect(seen["tracked.txt"]).toBe("committed");
+				expect(seen[".npmrc"]).not.toContain("npm_FAKE");
+			});
+
+			it("cannot read through a tracked link into the live checkout or outside it", {
+				timeout: 60_000,
+			}, async () => {
+				symlinkSync(join(repository, ".npmrc"), join(repository, "into-checkout"));
+				symlinkSync(join(outside, "secret.txt"), join(repository, "out-link"));
+				symlinkSync("tracked.txt", join(repository, "in-link"));
+				const head = commit();
+				writeFileSync(join(repository, ".npmrc"), "//registry.npmjs.org/:_authToken=npm_FAKE0000000000000000\n");
+				const seen = await reads(["into-checkout", "out-link", "in-link"], head);
+				expect(seen["in-link"]).toBe("committed");
+				expect(seen["into-checkout"]).not.toContain("npm_FAKE");
+				expect(seen["out-link"]).not.toBe("secret");
+			});
+
+			it("reads a tracked file as committed, not as the reviewer modified it", { timeout: 60_000 }, async () => {
+				const head = commit();
+				writeFileSync(join(repository, "tracked.txt"), "modified\n");
+				expect((await reads(["tracked.txt"], head))["tracked.txt"]).toBe("committed");
+			});
+
+			it("cannot read a file staged but not committed", { timeout: 60_000 }, async () => {
+				const head = commit();
+				writeFileSync(join(repository, "staged.txt"), "staged\n");
+				gitIn(repository, "add", "staged.txt");
+				expect((await reads(["staged.txt"], head))["staged.txt"]).not.toBe("staged");
+			});
+
+			it("cannot read a file created in the worktree after the probe opened", { timeout: 60_000 }, async () => {
+				const head = commit();
+				const seen = await reads(["late.txt"], head, {
+					afterOpen: () => writeFileSync(join(repository, "late.txt"), "late\n"),
+				});
+				expect(seen["late.txt"]).not.toBe("late");
+			});
+
+			it("cannot read a nested repository's .git/config", { timeout: 60_000 }, async () => {
+				const head = commit();
+				const nested = join(repository, "vendor", "inner");
+				mkdirSync(nested, { recursive: true });
+				gitIn(nested, "init", "--quiet");
+				gitIn(nested, "config", "credential.helper", "store --file=/fake/credentials");
+				expect((await reads(["vendor/inner/.git/config"], head))["vendor/inner/.git/config"]).not.toContain(
+					"credential",
+				);
+			});
+
+			it("reads the dependency install, but not an .npmrc or .git inside it", { timeout: 60_000 }, async () => {
+				writeFileSync(join(repository, ".gitignore"), "node_modules/\n");
+				const head = commit();
+				const pkg = join(repository, "node_modules", "pkg");
+				mkdirSync(join(pkg, ".git"), { recursive: true });
+				writeFileSync(join(pkg, "index.js"), "module.exports = 'pkg';\n");
+				writeFileSync(join(pkg, ".npmrc"), "//registry.npmjs.org/:_authToken=npm_FAKE0000000000000000\n");
+				writeFileSync(join(pkg, ".git", "config"), "[credential]\n\thelper = fake\n");
+				const seen = await reads(
+					["node_modules/pkg/index.js", "node_modules/pkg/.npmrc", "node_modules/pkg/.git/config"],
+					head,
+				);
+				expect(seen["node_modules/pkg/index.js"]).toBe("module.exports = 'pkg';");
+				expect(seen["node_modules/pkg/.npmrc"]).not.toContain("npm_FAKE");
+				expect(seen["node_modules/pkg/.git/config"]).not.toContain("credential");
+			});
+
+			it("reads a filtered file's stored blob, not what its smudge filter writes", { timeout: 60_000 }, async () => {
+				writeFileSync(join(repository, ".gitattributes"), "secret.txt filter=fake\n");
+				writeFileSync(join(repository, "secret.txt"), "stored\n");
+				const head = commit();
+				// A filter of the repository's own config, as a decrypting filter would be.
+				gitIn(repository, "config", "filter.fake.smudge", "sed s/stored/smudged/");
+				rmSync(join(repository, "secret.txt"));
+				gitIn(repository, "checkout", "--", "secret.txt");
+				expect((await reads(["secret.txt"], head))["secret.txt"]).toBe("stored");
+			});
+
+			it("copies an allowed untracked path in when the probe opens", { timeout: 60_000 }, async () => {
+				const head = commit();
+				mkdirSync(join(repository, "generated"));
+				writeFileSync(join(repository, "generated", "out.txt"), "at open\n");
+				const seen = await reads(["generated/out.txt"], head, {
+					read: ["generated"],
+					afterOpen: () => writeFileSync(join(repository, "generated", "out.txt"), "after open\n"),
+				});
+				expect(seen["generated/out.txt"]).toBe("at open");
+			});
 		});
 
 		it("cannot write outside its scratch directory", { timeout: 60_000 }, async () => {
@@ -204,6 +419,73 @@ setInterval(() => {}, 1000);
 			expect(left.split("\n").filter((line) => line.includes(`sleep ${tag}`))).toEqual([]);
 		});
 
+		it("is bounded when a reparented grandchild holds stdout open past the deadline", {
+			timeout: 60_000,
+		}, async () => {
+			// The review's probe: `( exec /bin/sleep N ) &` leaves a grandchild holding stdout, so close never fires. The
+			// deadline must stop what it recorded and, after the grace, abandon the streams and return timedOut.
+			const script = `
+import { spawn } from "node:child_process";
+// Detached so it reparents away from the probe and keeps the inherited stdout open. It sleeps past the 2 s limit and
+// the grace, then ends by itself, so the test never has to signal it.
+spawn("/bin/sh", ["-c", "exec /bin/sleep 8"], { stdio: ["ignore", "inherit", "inherit"], detached: true }).unref();
+console.log("started");
+`;
+			const began = Date.now();
+			{
+				const result = await probed({ script }, { timeout: 2_000 });
+				// On macOS the grandchild escapes and holds stdout, so the run ends at the deadline and grace, timed out. On
+				// Linux bubblewrap's PID namespace dies with the probe and takes the grandchild with it, so the run ends
+				// on its own. Either way it returns within the bound, which is the property under test.
+				if (process.platform === "darwin") expect(result.timedOut).toBe(true);
+				expect(result.output).toContain("started");
+				expect(Date.now() - began).toBeLessThan(20_000);
+			}
+		});
+
+		it("ends a CPU-bound runner whose host died mid-probe, by its CPU limit", { timeout: 300_000 }, async () => {
+			// A probe that never yields never lets the runner's watchdog timer fire, so once the host is gone only a bound
+			// outside the event loop ends it. The script spins to 40 CPU seconds and then stops itself, so a run without the
+			// bound still ends; the runner's CPU limit is the timeout, grace and five seconds, 12 CPU seconds here.
+			const host = spawn(
+				process.execPath,
+				["--conditions=@melian-agent/source", join(import.meta.dirname, "fixtures", "probe-orphan.ts"), "40"],
+				{ stdio: ["ignore", "pipe", "inherit"] },
+			);
+			try {
+				const [line] = (await once(createInterface({ input: host.stdout! }), "line")) as [string];
+				const runner = JSON.parse(line) as { pid: number; start: string };
+				// The host is this test's own child, still unreaped, so its pid is still its own.
+				if (host.exitCode === null && host.signalCode === null) host.kill("SIGKILL");
+				let seconds = 0;
+				for (;;) {
+					const row = spawnSync("/bin/ps", ["-p", String(runner.pid), "-o", "lstart=,time="], {
+						encoding: "utf8",
+					});
+					const match = /^(\S+\s+\S+\s+\S+\s+\S+\s+\S+)\s+(\S+)\s*$/.exec(row.stdout.trim());
+					if (match === null || match[1] !== runner.start) break;
+					seconds = match[2]!.split(":").reduce((total, part) => total * 60 + Number(part), 0);
+					if (seconds > 25) break;
+					await new Promise((resolve) => setTimeout(resolve, 250));
+				}
+				expect(seconds).toBeLessThan(25);
+			} finally {
+				if (host.exitCode === null && host.signalCode === null) host.kill("SIGKILL");
+			}
+		});
+
+		it("carries a binary fixture as bytes, not decoded as UTF-8", { timeout: 60_000 }, async () => {
+			const bytes = new Uint8Array([0, 1, 2, 0xff, 0xfe, 0x80, 0xc3, 0x28, 10]);
+			const script = `
+import { readFileSync } from "node:fs";
+const got = readFileSync(new URL("./fixture.bin", import.meta.url));
+console.log(JSON.stringify([...got]));
+`;
+			const result = await probed({ script, files: [{ path: "fixture.bin", bytes }] });
+			expect(result).toMatchObject({ exitCode: 0, timedOut: false });
+			expect(JSON.parse(result.output)).toEqual([...bytes]);
+		});
+
 		it("is cut at its output limit and ended", { timeout: 60_000 }, async () => {
 			const script = `
 const block = "x".repeat(65536);
@@ -223,6 +505,7 @@ flood();
 		it("imports a module from the head's worktree and calls it", { timeout: 60_000 }, async () => {
 			mkdirSync(join(worktree, "lib"));
 			writeFileSync(join(worktree, "lib", "sum.mjs"), "export function sum(a, b) { return a + b; }\n");
+			head = committed(worktree);
 			const script = `
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -233,6 +516,111 @@ console.log(sum(a, b));
 `;
 			const result = await probed({ script, files: [{ path: "fixture/input.json", text: '{"a":2,"b":3}' }] });
 			expect(result).toEqual({ exitCode: 0, signal: null, output: "5\n", truncated: false, timedOut: false });
+		});
+
+		it("close() never follows a survivor's symlink swap into a host directory", { timeout: 120_000 }, async () => {
+			// The review's attack: a double-forked survivor loops `rmdir d; symlink(<outside>, d)` on a fixed scratch
+			// directory while close() cleans up. If close() chmodded or listed by path, it would turn the outside
+			// directory and its subdirectory 0700. Across many runs the outside modes must not change.
+			const outside = realpathSync(mkdtempSync(join(tmpdir(), "melian-probe-victim-")));
+			mkdirSync(join(outside, "sub"));
+			chmodSync(outside, 0o500);
+			chmodSync(join(outside, "sub"), 0o500);
+			const script = `
+import { spawn } from "node:child_process";
+// The fixed directories close() relaxes: the swap must race the very paths cleanup opens.
+const targets = [process.env.TMPDIR, process.env.HOME];
+// A detached survivor that keeps swapping a directory in the writable scratch for a symlink to the outside directory.
+const swap = targets.map((t) => "rm -rf '" + t + "' 2>/dev/null; ln -s '${outside}' '" + t + "' 2>/dev/null; sleep 0; rm -f '" + t + "' 2>/dev/null; mkdir '" + t + "' 2>/dev/null").join("; ");
+spawn("/bin/sh", ["-c", "end=$(( $(date +%s) + 30 )); while [ $(date +%s) -lt $end ]; do " + swap + "; done"], { stdio: "ignore", detached: true }).unref();
+console.log("ready");
+`;
+			try {
+				for (let run = 0; run < 8; run++) {
+					const probe = await opened({ script });
+					await probe.run();
+					await probe.close();
+				}
+				expect(statSync(outside).mode & 0o777).toBe(0o500);
+				expect(statSync(join(outside, "sub")).mode & 0o777).toBe(0o500);
+			} finally {
+				// The swapper ends by itself within 30 seconds; the test signals nothing.
+				chmodSync(outside, 0o700);
+				chmodSync(join(outside, "sub"), 0o700);
+				rmSync(outside, { recursive: true, force: true });
+			}
+		});
+
+		it("leaves the scratch and reports it when the probe makes a file immutable", { timeout: 60_000 }, async () => {
+			// chflags uchg makes unlink fail with EPERM; the failure must not replace the probe's result, and close()
+			// reports the leftover rather than throwing.
+			if (process.platform !== "darwin") return;
+			const probe = await opened({
+				script: `import { writeFileSync } from "node:fs"; import { execFileSync } from "node:child_process"; const f = process.env.TMPDIR + "/locked"; writeFileSync(f, "x"); execFileSync("/usr/bin/chflags", ["uchg", f]); console.log("locked");`,
+			});
+			const result = await probe.run();
+			expect(result).toMatchObject({ exitCode: 0, output: "locked\n" });
+			const scratch = dirname(probe.policy.write[0]!);
+			const cleanup = await probe.close();
+			expect(cleanup).toMatchObject({ removed: false, leftover: scratch });
+			expect(existsSync(scratch)).toBe(true);
+			// The leftover is the test's to remove.
+			spawnSync("/usr/bin/chflags", ["-R", "nouchg", scratch]);
+			rmSync(scratch, { recursive: true, force: true });
+		});
+
+		it("does not receive the reviewer's JAVA_TOOL_OPTIONS", { timeout: 60_000 }, async () => {
+			const canary = `CANARY_${randomBytes(8).toString("hex")}`;
+			const before = process.env.JAVA_TOOL_OPTIONS;
+			process.env.JAVA_TOOL_OPTIONS = `-Dsecret.token=${canary}`;
+			try {
+				const result = await probed({
+					script: 'console.log(JSON.stringify({ seen: process.env.JAVA_TOOL_OPTIONS ?? "" }));',
+				});
+				expect(result).toMatchObject({ exitCode: 0, timedOut: false });
+				// The value sandbox-runtime embeds in the wrapped command is dropped, so it reaches neither the probe's
+				// environment nor the command text.
+				expect(JSON.parse(result.output).seen).not.toContain(canary);
+				expect(result.output).not.toContain(canary);
+			} finally {
+				if (before === undefined) delete process.env.JAVA_TOOL_OPTIONS;
+				else process.env.JAVA_TOOL_OPTIONS = before;
+			}
+		});
+
+		it("cannot connect to a unix socket in the worktree", { timeout: 60_000 }, async () => {
+			// A host service a probe could reach over a pathname socket in the readable worktree; on Linux the seccomp
+			// helper blocks the socket() call, on macOS the socket is not in allowUnixSockets. The server records any
+			// connection; the probe must make none.
+			let connections = 0;
+			const socketPath = join(worktree, "service.sock");
+			const server = createServer((socket) => {
+				connections++;
+				socket.end();
+			});
+			await new Promise<void>((resolve, reject) => {
+				server.once("error", reject);
+				server.listen(socketPath, resolve);
+			});
+			try {
+				const script = `
+import { connect } from "node:net";
+const outcome = await new Promise((resolve) => {
+	const socket = connect(${JSON.stringify(socketPath)});
+	socket.once("connect", () => { socket.destroy(); resolve("connected"); });
+	socket.once("error", (error) => resolve(error.code ?? "error"));
+	setTimeout(() => { socket.destroy(); resolve("timeout"); }, 3000);
+});
+console.log(JSON.stringify({ outcome }));
+process.exit(0);
+`;
+				const result = await probed({ script });
+				expect(result).toMatchObject({ exitCode: 0, timedOut: false });
+				expect(JSON.parse(result.output).outcome).not.toBe("connected");
+				expect(connections).toBe(0);
+			} finally {
+				await new Promise((resolve) => server.close(resolve));
+			}
 		});
 	},
 );

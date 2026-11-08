@@ -75,6 +75,31 @@ function distinct(aliases: Aliases, left: string, right: string): boolean {
 	return declares(left, right) || declares(right, left);
 }
 
+// What a failed Biome or tsc check's error code means, in Melian's words.
+const failedReasons = new Map([
+	["nothingToCheck", "its project names no files, so the tool checked nothing"],
+	["timeout", "the tool ran past its timeout"],
+	["toolMissing", "the tool is not installed"],
+	["toolFailed", "the tool exited unexpectedly; run it at this commit to see why"],
+	["outputTooLarge", "the tool wrote more output than Melian reads"],
+	["invalidOutput", "the tool wrote output Melian cannot read"],
+	["worktreeFailed", "Melian could not check the revision out"],
+	["aborted", "the run was cancelled"],
+	["unreadable", "Melian could not read a file a result names"],
+	["noEnvironment", "no execution environment was available"],
+]);
+
+// Why a Biome or tsc check did not run, chosen from its error code or Melian's own skip forms; its stored text, which a
+// tool or a caller may have written, is never given back.
+function notRunReason(check: StoredCheckRecord): string {
+	const reason = check.reason ?? "";
+	if (check.status === "failed") return failedReasons.get(reason) ?? "the tool failed; Melian keeps none of its text";
+	if (reason === "no record") return "no run of it was recorded";
+	if (/^static\.(?:biome|tsc)\.enabled is false$/.test(reason)) return "it is turned off";
+	if (/^[0-9a-f]{40,64} has no \S/.test(reason)) return "the revision has no TypeScript project to check";
+	return "the tool did not run; Melian keeps none of its reason";
+}
+
 /**
  * One defect, as a verdict holds it: the finding that speaks for it, and the reports adjudication merged into that
  * finding, which a dismissal of the defect dismisses with it. A dismissed report of the defect that a live finding never
@@ -550,6 +575,34 @@ export class Verdict {
 	/** Whether the finding with `id` is listed under "Pre-existing, important", and as new or carried. */
 	importance(id: string): ImportantFinding["state"] | undefined {
 		return this.preExistingImportant?.find((member) => member.id === id)?.state;
+	}
+
+	/**
+	 * The verdict as publishing may render it: each finding as {@link Finding.publishable} gives it, and each Biome or
+	 * tsc check that did not run with a fixed reason for its status in place of its stored reason and error.
+	 */
+	publishable(): Verdict {
+		const stored = this.toJSON();
+		const finding = (each: StoredFinding) => Finding.from(each).publishable().toJSON();
+		const check = (each: StoredCheckRecord): StoredCheckRecord =>
+			each.name !== "static.biome" && each.name !== "static.tsc"
+				? each
+				: {
+						name: each.name,
+						status: each.status,
+						...(each.version === undefined ? {} : { version: each.version }),
+						...(each.status === "ran" ? {} : { reason: notRunReason(each) }),
+					};
+		return Verdict.from({
+			...stored,
+			findings: Object.fromEntries(
+				Object.entries(stored.findings).map(([resolution, group]) => [resolution, group.map(finding)]),
+			) as StoredVerdict["findings"],
+			dismissed: stored.dismissed.map(finding),
+			...(stored.refuted === undefined ? {} : { refuted: stored.refuted.map(finding) }),
+			notRun: stored.notRun.map(check),
+			...(stored.ran === undefined ? {} : { ran: stored.ran.map(check) }),
+		});
 	}
 
 	/** Every finding the verdict holds, by resolution, strictest first, then the dismissed ones. */

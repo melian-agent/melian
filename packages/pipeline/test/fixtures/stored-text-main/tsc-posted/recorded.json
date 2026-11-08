@@ -1,0 +1,189 @@
+{
+  "commit": "8921ccb4e208448ede620d44c279d1761173414b",
+  "tier": [
+    "static.tsc"
+  ],
+  "mode": "posted",
+  "changeset": {
+    "kind": "range",
+    "id": "range-8fb67dfe2bac6ead",
+    "repoRoot": "/private/var/folders/db/mtn64lld7g971ck9kfq26xyc0000gn/T/melian-review-BDeAnz",
+    "spec": {
+      "base": "main",
+      "head": "feature",
+      "mode": "threeDot"
+    },
+    "revision": {
+      "head": "08426f230708ecdf2008cbe6d24ee83f5f401571",
+      "base": "39747f52e2fdab8993fbd9e0e1be863d7afdd6b3",
+      "files": [
+        {
+          "status": "modified",
+          "path": "a.ts",
+          "oldMode": "100644",
+          "oldKind": "file",
+          "newMode": "100644",
+          "newKind": "file",
+          "binary": false,
+          "hunks": [
+            {
+              "file": "a.ts",
+              "index": 0,
+              "oldStart": 1,
+              "oldLines": 1,
+              "newStart": 1,
+              "newLines": 2,
+              "header": "@@ -1 +1,2 @@",
+              "text": "-export const n = 1;\n+const ghp_FAKEoutsideTOKEN281 = 1;\n+export const n: { ghp_FAKEoutsideTOKEN281: 1 } = 1;"
+            }
+          ]
+        }
+      ],
+      "policyFiles": []
+    }
+  },
+  "state": {
+    "owner": "melian-agent",
+    "repo": "example",
+    "login": "melian-user",
+    "pull": {
+      "number": 7,
+      "title": "Trim names",
+      "base": {
+        "ref": "main",
+        "sha": "39747f52e2fdab8993fbd9e0e1be863d7afdd6b3"
+      },
+      "head": {
+        "ref": "feature",
+        "sha": "08426f230708ecdf2008cbe6d24ee83f5f401571"
+      }
+    },
+    "lines": {
+      "a.ts": [
+        [
+          1,
+          2
+        ]
+      ]
+    },
+    "reviews": [
+      {
+        "id": 1001,
+        "user": {
+          "login": "melian-user"
+        },
+        "body": "<!-- melian:revision=08426f230708ecdf2008cbe6d24ee83f5f401571 verdict=0b3f5f0bbce1ab97 round=1 sig=df2ca3f624ccd520fb548fa19b502eea -->\nMelian reviewed `08426f230708`: **findings, blocking**.\n\n1 finding needs attention: 1 block.\n\n<details>\n<summary>Verification and status</summary>\n\nmelian/review: failure (1 finding, 1 blocking, 0 unresolved acknowledgements).\n\n</details>",
+        "commit_id": "08426f230708ecdf2008cbe6d24ee83f5f401571",
+        "event": "COMMENT"
+      }
+    ],
+    "comments": [
+      {
+        "path": "a.ts",
+        "line": 2,
+        "side": "RIGHT",
+        "body": "<!-- melian:revision=08426f230708ecdf2008cbe6d24ee83f5f401571 finding=03839d4c9742bef5 sig=ebf6b3acc152d9ef214273b4333c12eb -->\n🟠 P1 | ⛔ Blocks merge | 🧩 tsc | New in this change\n\n**Type 'number' is not assignable to type '{ ghp\\_FAKEoutsideTOKEN281: 1; }'.**\n\n**Why here:** tsc reports this at head but not at the base, so this change introduced it.\n\n**What to do:** Change the code so tsc no longer reports tsc/TS2322.\n\nRule `tsc/TS2322` | Finding `03839d4c9742bef5`",
+        "id": 1002,
+        "user": {
+          "login": "melian-user"
+        },
+        "pull_request_review_id": 1001
+      }
+    ],
+    "ledgers": [],
+    "resolvedThreads": [],
+    "statuses": [
+      {
+        "sha": "08426f230708ecdf2008cbe6d24ee83f5f401571",
+        "state": "failure",
+        "description": "1 finding, 1 blocking, 0 unresolved acknowledgements; base 39747f52e2fdab8993fbd9e0e1be863d7afdd6b3",
+        "context": "melian/review",
+        "creator": {
+          "login": "melian-user",
+          "type": "User"
+        }
+      }
+    ],
+    "nextId": 1003,
+    "calls": [
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/pulls/7"
+      },
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/events"
+      },
+      {
+        "method": "GET",
+        "path": "/user"
+      },
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/collaborators/melian-user/permission"
+      },
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/collaborators/pr-author/permission"
+      },
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/pulls/7"
+      },
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/events"
+      },
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/commits/08426f230708ecdf2008cbe6d24ee83f5f401571/statuses"
+      },
+      {
+        "method": "POST",
+        "path": "/repos/melian-agent/example/statuses/08426f230708ecdf2008cbe6d24ee83f5f401571",
+        "body": {
+          "state": "failure",
+          "description": "1 finding, 1 blocking, 0 unresolved acknowledgements; base 39747f52e2fdab8993fbd9e0e1be863d7afdd6b3",
+          "context": "melian/review"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/pulls/7/reviews"
+      },
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/pulls/7/comments"
+      },
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/pulls/7"
+      },
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/events"
+      },
+      {
+        "method": "POST",
+        "path": "/repos/melian-agent/example/pulls/7/reviews",
+        "body": {
+          "commit_id": "08426f230708ecdf2008cbe6d24ee83f5f401571",
+          "event": "COMMENT",
+          "body": "<!-- melian:revision=08426f230708ecdf2008cbe6d24ee83f5f401571 verdict=0b3f5f0bbce1ab97 round=1 sig=df2ca3f624ccd520fb548fa19b502eea -->\nMelian reviewed `08426f230708`: **findings, blocking**.\n\n1 finding needs attention: 1 block.\n\n<details>\n<summary>Verification and status</summary>\n\nmelian/review: failure (1 finding, 1 blocking, 0 unresolved acknowledgements).\n\n</details>",
+          "comments": [
+            {
+              "path": "a.ts",
+              "line": 2,
+              "side": "RIGHT",
+              "body": "<!-- melian:revision=08426f230708ecdf2008cbe6d24ee83f5f401571 finding=03839d4c9742bef5 sig=ebf6b3acc152d9ef214273b4333c12eb -->\n🟠 P1 | ⛔ Blocks merge | 🧩 tsc | New in this change\n\n**Type 'number' is not assignable to type '{ ghp\\_FAKEoutsideTOKEN281: 1; }'.**\n\n**Why here:** tsc reports this at head but not at the base, so this change introduced it.\n\n**What to do:** Change the code so tsc no longer reports tsc/TS2322.\n\nRule `tsc/TS2322` | Finding `03839d4c9742bef5`"
+            }
+          ]
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/repos/melian-agent/example/pulls/7/reviews/1001/comments"
+      }
+    ]
+  }
+}

@@ -113,11 +113,12 @@ it("a passing head whose review is abandoned after three refusals cannot enter a
 });
 
 it("a not-reviewed head whose description must be cut replaces an earlier success", async () => {
-	const reasonFor = (length: number) => "x".repeat(length - "Not reviewed: static.biome failed ()".length);
+	// A Biome or tsc check's reason is never published, so a guardrail failure carries the long reason.
+	const reasonFor = (length: number) => "x".repeat(length - "Not reviewed: guardrails failed ()".length);
 	const { state, base, head, group, publish, mergeGroup } = await scenario({
 		checks: [
-			{ name: "guardrails", status: "ran" },
-			{ name: "static.biome", status: "failed", reason: reasonFor(112) },
+			{ name: "guardrails", status: "failed", reason: reasonFor(112) },
+			{ name: "static.biome", status: "ran" },
 			{ name: "static.tsc", status: "ran" },
 		],
 	});
@@ -133,7 +134,7 @@ it("a not-reviewed head whose description must be cut replaces an earlier succes
 
 	await publish();
 
-	const description = `Not reviewed: static.biome failed (${reasonFor(112)})`;
+	const description = `Not reviewed: guardrails failed (${reasonFor(112)})`;
 	expect(description).toHaveLength(112);
 	expect(state.statuses.filter((status) => status.sha === head).at(-1)).toMatchObject({
 		state: "error",

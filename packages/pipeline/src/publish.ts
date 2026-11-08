@@ -707,7 +707,8 @@ function publishTask(provider: ReviewProvider) {
 					provider.beginPublish?.();
 					const verdict = Verdict.from(storedRound.verdict);
 					const current = verdict.fingerprint();
-					const status = publishedBy.trustedWriters ? verdict.reviewStatus() : untrustedWriterStatus;
+					// Everything the provider renders goes through `publishable`, so no Biome or tsc text reaches it.
+					const status = publishedBy.trustedWriters ? verdict.publishable().reviewStatus() : untrustedWriterStatus;
 					await postStatus(status);
 					// A pending round planned for another revision of this head, such as the pull request before a retarget,
 					// is dropped unless the provider already shows it, in which case the loop below records it as posted.
@@ -788,9 +789,9 @@ function publishTask(provider: ReviewProvider) {
 								base,
 								fingerprint: pending.fingerprint,
 								round: pending.round,
-								verdict: Verdict.from(verdictWithLegacyCaveats(pending.verdict)),
+								verdict: Verdict.from(verdictWithLegacyCaveats(pending.verdict)).publishable(),
 								findings: pending.post.map(({ finding, placement }) => ({
-									finding: Finding.from(finding),
+									finding: Finding.from(finding).publishable(),
 									placement,
 								})),
 								stillOpen: pending.stillOpen,
@@ -979,8 +980,14 @@ function publishTask(provider: ReviewProvider) {
 					const ledger = await provider.writeLedger({
 						pullRequest,
 						review: record.reviews.at(-1),
-						verdict,
-						publication: { rounds },
+						verdict: verdict.publishable(),
+						publication: {
+							rounds: rounds.map((round) =>
+								"verdict" in round
+									? { ...round, verdict: Verdict.from(round.verdict).publishable().toJSON() }
+									: round,
+							),
+						},
 						walkthrough: task.input.walkthrough ?? { enabled: true, collapsed: true, diagrams: true },
 						secret,
 						...(previousLedger === undefined ? {} : { recorded: previousLedger }),

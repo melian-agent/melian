@@ -466,9 +466,9 @@ async function writerTrust(provider: ReviewProvider, pullRequest: PullRequest): 
 	)
 		return { trusted: false, detail: "the head is from a fork" };
 	if (pullRequest.head.writerError !== undefined) return { trusted: false, detail: pullRequest.head.writerError };
-	const writer = pullRequest.head.pusher ?? pullRequest.author;
+	const writer = pullRequest.head.pusher;
 	if (writer === undefined)
-		return { trusted: false, detail: "the provider names no author for the pull request or pusher for its head" };
+		return { trusted: false, detail: "the provider names no pusher for the pull request's head" };
 	const permission = await provider.permission(writer);
 	if (writePermissions.some((each) => each === permission)) return { trusted: true, by: "writer" };
 	return {

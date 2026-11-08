@@ -1,4 +1,5 @@
 import {
+	Adjudication,
 	defaultConfig,
 	type FileResolution,
 	Finding,
@@ -104,33 +105,119 @@ describe("Finding.decision", () => {
 		expect(twice.decision(both)).toMatchObject({ resolution: "advisory", decidedBy: { check: "lens.security" } });
 	});
 
-	// The stated limit: sightings of one ID are merged before adjudication, at the highest severity. Step 21 of the plan,
-	// "Resolution per sighting", would resolve each at its own.
-	it("resolves one ID two lenses sighted at the highest severity, under the strictest of their policies", () => {
-		// lens.security sighted a P1 and lens.tests a P3; the findings document hands adjudication one P1 finding.
-		const merged = Finding.from({
-			...finding({ severity: "P1" }).toJSON(),
-			properties: {
-				...finding({ severity: "P1" }).properties,
-				reportedBy: [
-					{ check: "lens.security", version: "1" },
-					{ check: "lens.tests", version: "1" },
-				],
-			},
-		});
+	describe("one ID several lenses sighted", () => {
+		const claim = { failureScenario: "run('process.exit()') stops the server.", evidence: [cause] };
+		const sighting = (check: string, severity: FindingInput["severity"], rest: Partial<FindingInput> = {}) =>
+			finding({ ...claim, severity, source: { check, version: "1" }, ...rest });
+		// As the findings document merges sightings: the first speaks, and every producer is listed.
+		const merged = (sightings: Finding[], reportedBy = sightings.map((each) => each.properties.source)) => {
+			const [speaker] = sightings;
+			return Finding.from({
+				...speaker!.toJSON(),
+				properties: { ...speaker!.properties, ...speaker!.mergeClaims(sightings), reportedBy },
+			});
+		};
+		const security = sighting("lens.security", "P1");
+		// Each lens names its own version, so no claim matches a producer by version alone.
+		const tests = sighting("lens.tests", "P3", { source: { check: "lens.tests", version: "2" } });
 		const opposite = layered({
 			"melian.yaml": {
 				checks: { "lens.security": { P1: "silent", P3: "silent" }, "lens.tests": { P1: "block", P3: "silent" } },
 			},
 		});
-		// Each alone would be silent: security's P1, and tests' P3. Together the P1 meets the tests entry's P1.
-		expect(merged.decision(opposite)).toMatchObject({ resolution: "block", decidedBy: { check: "lens.tests" } });
-		const reversed = layered({
-			"melian.yaml": {
-				checks: { "lens.security": { P1: "block", P3: "silent" }, "lens.tests": { P1: "silent", P3: "silent" } },
-			},
+
+		it("resolves each sighting under its own check and severity", () => {
+			// Each alone is silent: security's P1 under its entry, and tests' P3 under its own.
+			expect(merged([security, tests]).decision(opposite)).toMatchObject({ resolution: "silent" });
+			const reversed = layered({
+				"melian.yaml": {
+					checks: { "lens.security": { P1: "block", P3: "silent" }, "lens.tests": { P1: "silent", P3: "block" } },
+				},
+			});
+			expect(merged([security, tests]).decision(reversed)).toMatchObject({
+				resolution: "block",
+				decidedBy: { check: "lens.security" },
+			});
+			const testsOnly = layered({ "melian.yaml": { checks: { "lens.security": { P1: "silent" } }, P3: "block" } });
+			expect(merged([security, tests]).decision(testsOnly)).toMatchObject({
+				resolution: "block",
+				decidedBy: { check: "lens.tests" },
+			});
+			// On a tie the sighting that speaks names what decided.
+			expect(merged([security, tests]).decision(layered({ "melian.yaml": { P1: "advisory" } }))).toMatchObject({
+				resolution: "advisory",
+				decidedBy: { check: "lens.security" },
+			});
 		});
-		expect(merged.decision(reversed)).toMatchObject({ resolution: "block", decidedBy: { check: "lens.security" } });
+
+		it("caps only the sighting no verifier judged", () => {
+			const judged = sighting("lens.security", "P1", { verification });
+			expect(merged([judged, tests]).decision(defaultConfig, { unverified: true })).toMatchObject({
+				resolution: "block",
+				decidedBy: { check: "lens.security" },
+			});
+			expect(merged([security, tests]).decision(defaultConfig, { unverified: true })).toMatchObject({
+				resolution: "advisory",
+				decidedBy: { cap: "unverified" },
+			});
+		});
+
+		it("leaves out a refuted sighting while another stands, and counts every one when none does", () => {
+			const refuted = { verification: { ...verification, verdict: "refuted" as const } };
+			const struck = sighting("lens.security", "P1", refuted);
+			expect(merged([struck, tests]).decision(defaultConfig)).toMatchObject({
+				resolution: "advisory",
+				decidedBy: { check: "lens.tests" },
+			});
+			const both = merged([struck, sighting("lens.tests", "P3", { ...refuted, source: tests.properties.source })]);
+			expect(both.capped(defaultConfig)).toMatchObject({
+				resolution: "block",
+				decidedBy: { check: "lens.security" },
+			});
+		});
+
+		it("keeps the merged severity for every producer when one left no claim of this ID", () => {
+			// With a claim for each producer, each sighting is silent; listed without one, as a finding stored before
+			// claims kept their severity, a producer resolves at the merged P1.
+			const silent = merged([security, tests], [security.properties.source, tests.properties.source]);
+			expect(silent.decision(opposite)).toMatchObject({ resolution: "silent" });
+			for (const reportedBy of [
+				[security.properties.source, tests.properties.source, { check: "lens.style", version: "1" }],
+				[security.properties.source, { check: "lens.tests", version: "3" }],
+			]) {
+				const unmatched = Finding.from({ ...silent.toJSON(), properties: { ...silent.properties, reportedBy } });
+				expect(unmatched.decision(opposite)).toMatchObject({
+					resolution: "block",
+					decidedBy: { check: "lens.tests" },
+				});
+			}
+			// A claim of another ID, or of a lens that never sighted this one, is no sighting of it.
+			const strays = [
+				{ ...tests.claims()[0]!, id: "0000000000000000", severity: "P0" as const },
+				{ ...tests.claims()[0]!, source: { check: "lens.style", version: "1" } },
+			];
+			for (const stray of strays) {
+				const noisy = Finding.from({
+					...silent.toJSON(),
+					properties: { ...silent.properties, otherClaims: [...(silent.properties.otherClaims ?? []), stray] },
+				});
+				expect(noisy.decision(opposite)).toMatchObject({ resolution: "silent" });
+			}
+		});
+
+		it("reads the merged defect's cause for each sighting", () => {
+			// Two lenses sight an old P1; Biome reports the same line as introduced at P3. The defect is an introduced P1.
+			const old = (check: string) => sighting(check, "P1", { cause: "pre-existing", evidence: undefined });
+			const lenses = merged([old("lens.security"), old("lens.tests")]);
+			const biome = finding({ rule: "biome/lint/noEval", severity: "P3", source: { check: "static.biome" } });
+			const verdict = new Adjudication({
+				findings: [lenses, biome],
+				config: { ...defaultConfig },
+				manifest: [],
+				checks: [],
+			}).adjudicate();
+			expect(verdict.findings.block.map((each) => each.id)).toEqual([lenses.id]);
+		});
 	});
 
 	it("sets the resolution and what decided it on a resolved copy, replacing any it carries", () => {
