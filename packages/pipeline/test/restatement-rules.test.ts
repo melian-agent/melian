@@ -186,6 +186,27 @@ describe("recording restatement links", () => {
 		expect(await links()).toBeUndefined();
 	});
 
+	it("links nothing for a claim the document does not hold, or one whose record holds no sameness answers", async () => {
+		await seed();
+		await judge(first.id, correctness, { [oldRoot.id]: "same" });
+		await derive([oldRoot.id], "v1", [
+			claims[0]!,
+			{ id: "0123456789abcdef", source: contracts, ruleId: "fail-open" },
+		]);
+		expect(await links()).toBeUndefined();
+		await commit((tx) =>
+			upsertVerification(tx, root, at, second.id, contracts, {
+				verdict: "confirmed",
+				reason: "Judged before Melian asked about sameness.",
+				executor: "llm",
+				model: "faux/judge",
+				version: "v1",
+			}),
+		);
+		await derive([oldRoot.id]);
+		expect(await links()).toBeUndefined();
+	});
+
 	it("revokes a link when a later round's judgement differs, or a new verifier version has judged nothing", async () => {
 		await seed();
 		await judge(first.id, correctness, { [oldRoot.id]: "same" });
