@@ -443,18 +443,23 @@ export type SandboxRuntime = Pick<
 	"isSupportedPlatform" | "checkDependencies" | "initialize" | "wrapWithSandboxArgv" | "cleanupAfterCommand" | "reset"
 >;
 
+// sandbox-runtime's manager is one per process, so every wrapper of one runtime shares its session count and queue; a
+// count of its own would let one wrapper's last close reset the manager under another's open probe.
+const sessionsOf = new WeakMap<SandboxRuntime, { count: number; queue: Promise<void> }>();
+
 /** sandbox-runtime as a {@link ProbeSandbox}. Its manager is one per process, so one session serves every open probe. */
 export class RuntimeSandbox implements ProbeSandbox {
 	readonly platform: "darwin" | "linux";
 	readonly #name: string;
 	readonly #runtime: SandboxRuntime;
-	#sessions = 0;
 	// open and close run one at a time on the shared manager, so a reset can never complete after a newer open tears its
 	// session down. Each call waits for the ones before it, and a thrown step does not poison the chain.
-	#queue: Promise<void> = Promise.resolve();
+	readonly #sessions: { count: number; queue: Promise<void> };
 
 	constructor(runtime: SandboxRuntime = SandboxManager, name: string = platform()) {
 		this.#runtime = runtime;
+		this.#sessions = sessionsOf.get(runtime) ?? { count: 0, queue: Promise.resolve() };
+		sessionsOf.set(runtime, this.#sessions);
 		this.#name = name;
 		this.platform = name === "darwin" ? "darwin" : "linux";
 	}
@@ -471,8 +476,8 @@ export class RuntimeSandbox implements ProbeSandbox {
 	}
 
 	#enqueue(step: () => Promise<void>): Promise<void> {
-		const run = this.#queue.then(step);
-		this.#queue = run.then(
+		const run = this.#sessions.queue.then(step);
+		this.#sessions.queue = run.then(
 			() => {},
 			() => {},
 		);
@@ -481,12 +486,12 @@ export class RuntimeSandbox implements ProbeSandbox {
 
 	open(): Promise<void> {
 		return this.#enqueue(async () => {
-			if (this.#sessions === 0)
+			if (this.#sessions.count === 0)
 				await this.#runtime.initialize({
 					network: { allowedDomains: [], deniedDomains: [] },
 					filesystem: { denyRead: [], allowRead: [], allowWrite: [], denyWrite: [] },
 				});
-			this.#sessions++;
+			this.#sessions.count++;
 		});
 	}
 
@@ -511,9 +516,9 @@ export class RuntimeSandbox implements ProbeSandbox {
 
 	close(): Promise<void> {
 		return this.#enqueue(async () => {
-			if (this.#sessions === 0) return;
-			this.#sessions--;
-			if (this.#sessions === 0) await this.#runtime.reset();
+			if (this.#sessions.count === 0) return;
+			this.#sessions.count--;
+			if (this.#sessions.count === 0) await this.#runtime.reset();
 		});
 	}
 }

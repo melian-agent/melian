@@ -1018,6 +1018,18 @@ describe("RuntimeSandbox", () => {
 		}
 	});
 
+	it("shares one session count among every wrapper of one runtime, so closing one never resets another's", async () => {
+		const { fake, names } = runtime();
+		const first = new RuntimeSandbox(fake, "linux");
+		const second = new RuntimeSandbox(fake, "linux");
+		await first.open();
+		await second.open();
+		await first.close();
+		expect(names().filter((name) => name === "initialize" || name === "reset")).toEqual(["initialize"]);
+		await second.close();
+		expect(names().filter((name) => name === "initialize" || name === "reset")).toEqual(["initialize", "reset"]);
+	});
+
 	it("serialises open and close so a reset never tears down a newer session", async () => {
 		const order: string[] = [];
 		const gap = () => new Promise((resolve) => setTimeout(resolve, 5));
