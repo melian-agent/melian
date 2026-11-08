@@ -128,12 +128,28 @@ describe("LineMap", () => {
 		expect(map.untouched({ startLine: 3, endLine: 3 }, { startLine: 4, endLine: 4 })).toBe(false);
 	});
 
-	it("leaves a file the base's attributes mark -diff unmapped, even when its text is unchanged", async () => {
-		const before = commit({ "a.ts": lines(...ten), ".gitattributes": "*.ts -diff\n" }, "base");
-		const after = commit({ "a.ts": lines("new 0", ...ten) }, "insert above");
+	it("leaves an unchanged -diff file unmapped when another path changes", async () => {
+		const before = commit({ "a.ts": lines(...ten), ".gitattributes": "a.ts -diff\n" }, "base");
+		const after = commit({ "b.ts": "other\n" }, "elsewhere");
 		const map = await mapOf(before, after);
 		expect(map.mapped).toBe(false);
 		expect(map.map({ startLine: 5, endLine: 5 })).toBeUndefined();
+	});
+
+	it("leaves a -diff file unmapped from a commit to itself", async () => {
+		const head = commit({ "a.ts": lines(...ten), ".gitattributes": "a.ts -diff\n" }, "base");
+		expect((await mapOf(head, head)).mapped).toBe(false);
+	});
+
+	it("leaves an unchanged binary file unmapped when another path changes", async () => {
+		const before = commit({ "a.ts": Buffer.from("line 1\nline\u0000 2\nline 3\n") }, "base");
+		const after = commit({ "b.ts": "other\n" }, "elsewhere");
+		expect((await mapOf(before, after)).mapped).toBe(false);
+	});
+
+	it("leaves a binary file unmapped from a commit to itself", async () => {
+		const head = commit({ "a.ts": Buffer.from("line 1\nline\u0000 2\nline 3\n") }, "base");
+		expect((await mapOf(head, head)).mapped).toBe(false);
 	});
 
 	it("reads attributes from the commit it is given, never the head's", async () => {
