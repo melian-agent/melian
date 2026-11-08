@@ -477,8 +477,9 @@ export class StateBranch {
 	}
 
 	async #fetch(): Promise<string | undefined> {
-		// A ref of this run's own, and no FETCH_HEAD, so runs on other changesets in this clone never contend for one.
-		const fetched = `refs/melian/state/${this.#run}`;
+		// A ref of this fetch's own, and no FETCH_HEAD, so neither runs on other changesets in this clone nor two operations
+		// of this run contend for one.
+		const fetched = `refs/melian/state/${this.#run}/${randomUUID()}`;
 		const args = [
 			"fetch",
 			"--quiet",

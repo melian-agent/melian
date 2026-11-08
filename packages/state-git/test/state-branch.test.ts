@@ -1130,4 +1130,19 @@ describe("the mutation inventory at f6872a26", () => {
 		});
 		expect(Date.now() - start).toBeLessThan(5000);
 	});
+
+	it.each([1, 2, 3])("checks two changesets out through one branch at once, round %i", async () => {
+		const writer = await remote.clone().branch().checkout(changeset);
+		await note(await storageOf(writer), "stored");
+		await writer.push();
+		const branch = remote.clone().branch();
+		const checkouts = await Promise.all(
+			["pull-0000000000000001", "pull-0000000000000002", "pull-0000000000000003"].map((id) => branch.checkout(id)),
+		);
+		expect(checkouts.map((checkout) => checkout.changeset)).toEqual([
+			"pull-0000000000000001",
+			"pull-0000000000000002",
+			"pull-0000000000000003",
+		]);
+	});
 });
