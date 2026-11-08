@@ -260,7 +260,7 @@ describe("built-in lenses", () => {
 		const selected = Lens.select(lenses, config, ["src/index.ts"]);
 		expect(Object.fromEntries(selected.map(({ lens }) => [lens.name, lens.version]))).toEqual({
 			contracts: "09ededbb98f8",
-			conventions: "05eb65cd6cea",
+			conventions: "e8bbc388d00b",
 			correctness: "b2f45160e156",
 			design: "0bf14d21f254",
 			"removed-behaviour": "1fb60bb9e3c3",
