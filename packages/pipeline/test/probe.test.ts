@@ -425,6 +425,32 @@ describe("Probe.open with a head's allowlist", () => {
 		await probe.close();
 	});
 
+	it.each([["generated"], ["generated/out.txt"], ["node_modules"]])(
+		"refuses %s in probe.read where the head tracks a link on its path, and writes nothing outside",
+		async (entry) => {
+			const { sandbox } = passthrough();
+			const outside = join(scratch, "outside");
+			mkdirSync(outside);
+			writeFileSync(join(outside, "out.txt"), "canary\n");
+			const live = entry.split("/")[0]!;
+			rmSync(join(checkout, live), { recursive: true, force: true });
+			symlinkSync(outside, join(checkout, live));
+			gitIn(checkout, "add", "--all");
+			gitIn(checkout, "commit", "--quiet", "-m", "link the allowed path out");
+			head = gitIn(checkout, "rev-parse", "HEAD");
+			rmSync(join(checkout, live));
+			mkdirSync(join(checkout, live));
+			writeFileSync(join(checkout, live, "out.txt"), "written by the copy\n");
+			const error = await refusal({ script: "" }, options(sandbox, atHead([entry])));
+			expect(error).toMatchObject({
+				code: "invalidProbe",
+				message: `probe.read entry ${entry} leads through a link the head tracks`,
+			});
+			expect(readdirSync(outside)).toEqual(["out.txt"]);
+			expect(readFileSync(join(outside, "out.txt"), "utf8")).toBe("canary\n");
+		},
+	);
+
 	it("links no install over a node_modules the head tracks", async () => {
 		const { sandbox } = passthrough();
 		mkdirSync(join(checkout, "node_modules"));

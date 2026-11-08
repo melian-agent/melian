@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { constants, existsSync, realpathSync, statSync } from "node:fs";
+import { constants, existsSync, lstatSync, realpathSync, statSync } from "node:fs";
 import { cp, mkdir, mkdtemp, open as openFile, rm, writeFile } from "node:fs/promises";
 import { homedir, platform, tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, posix, relative, sep } from "node:path";
@@ -256,6 +256,19 @@ function allowed(checkout: string, read: readonly string[]): readonly (readonly 
 	});
 }
 
+// The tree holds the head's links, so a copy onto a path through one would write wherever the head chose, outside the
+// sandbox, before it starts.
+function throughLink(tree: string, entry: string): boolean {
+	let at = tree;
+	for (const part of entry.split("/")) {
+		at = join(at, part);
+		const stat = lstatSync(at, { throwIfNoEntry: false });
+		if (stat === undefined) return false;
+		if (stat.isSymbolicLink()) return true;
+	}
+	return false;
+}
+
 // Writes the head's tracked tree into `tree` from a temporary repository that borrows the checkout's objects, then the
 // allowed paths. Returns the install directories the tree's links lead into, which the probe may read.
 async function writeHead({ checkout, commit, entries }: PlannedHead, tree: string): Promise<readonly string[]> {
@@ -273,6 +286,8 @@ async function writeHead({ checkout, commit, entries }: PlannedHead, tree: strin
 		const installs: string[] = [];
 		for (const [entry, real] of entries) {
 			const target = join(tree, entry);
+			if (throughLink(tree, entry))
+				throw new ProbeError("invalidProbe", `probe.read entry ${entry} leads through a link the head tracks`);
 			if (entry !== "node_modules") {
 				await mkdir(dirname(target), { recursive: true });
 				await cp(real, target, { recursive: true, verbatimSymlinks: true, force: true });
