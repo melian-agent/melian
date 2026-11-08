@@ -351,6 +351,19 @@ describe("a level that probes", () => {
 		expect(record.reason).toContain("it planned 1 attack and ran 0 probes in 0.0 s, and skipped 1 attack");
 	});
 
+	it("counts only the skipped attacks no probe answered, beside another the prober probed", async () => {
+		const { run } = await review({
+			planner: [call("record_plan", { attacks: [attack, attack] }), plan[1]!],
+			prober: [
+				call("skip_attack", { attack: 1, reason: "it needs the network" }),
+				call("run_probe", { attack: 2, script: passing }),
+				fauxAssistantMessage("Done."),
+			],
+		});
+		const { reason } = record((await run).verdict);
+		expect(reason).toMatch(/it planned 2 attacks and ran 1 probe in .+ s, and skipped 1 attack/);
+	});
+
 	it("runs no prober for an empty plan", async () => {
 		const { run, requests } = await review({
 			planner: [call("record_plan", { attacks: [] }), plan[1]!],
