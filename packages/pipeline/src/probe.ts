@@ -602,6 +602,9 @@ export class Probe {
 	readonly #sandbox: ProbeSandbox;
 	#closed = false;
 	#running = false;
+	// A wrap still running past its setup bound, released once it settles. close() waits for it before releasing the
+	// session, since a reset under it would let its late release take a newer probe's resources.
+	#lateWrap: Promise<void> | undefined;
 
 	private constructor(
 		scratch: string,
@@ -748,7 +751,7 @@ export class Probe {
 			// is released, a late one once it settles; a second release would take a running sandbox's mount points.
 			argv = await withBound(wrapped, probeLimits.setup, "the sandbox did not wrap the probe").catch(
 				(error: unknown) => {
-					wrapping.then(
+					this.#lateWrap = wrapping.then(
 						() => this.#sandbox.cleanup(),
 						() => {},
 					);
@@ -814,7 +817,14 @@ export class Probe {
 			// rm's force already treats a scratch someone else removed as gone, so any error here is a real leftover.
 			return { removed: false, leftover: this.#scratch, reason: (error as Error).message };
 		} finally {
-			await this.#sandbox.close();
+			// A wrap that never settles keeps the session: a leaked session is safe, a reset under a live wrap is not.
+			const settled =
+				this.#lateWrap === undefined ||
+				(await withBound(this.#lateWrap, probeLimits.setup, "the sandbox did not wrap the probe").then(
+					() => true,
+					() => false,
+				));
+			if (settled) await this.#sandbox.close();
 		}
 	}
 }
