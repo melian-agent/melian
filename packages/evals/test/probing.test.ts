@@ -16,6 +16,7 @@ import {
 	reviewMiss,
 	routedProbing,
 	runGolden,
+	verifierRoute,
 } from "@melian-agent/evals";
 import {
 	createFakeModels,
@@ -70,6 +71,15 @@ describe("MELIAN_EVAL_PROBE_ROUTES", () => {
 	});
 });
 
+describe("verifierRoute", () => {
+	it("reads one route, trimmed, and refuses none or one that is not provider/model", () => {
+		expect(verifierRoute("a/judge")).toBe("a/judge");
+		expect(verifierRoute(" a/judge ")).toBe("a/judge");
+		for (const text of [undefined, "", "judge", "a/"])
+			expect(() => verifierRoute(text)).toThrow("MELIAN_EVAL_VERIFIER_MODEL must name one verifier route");
+	});
+});
+
 describe("routedProbing", () => {
 	it("moves each level that probes to a prober on medium, and routes heavy and medium", async () => {
 		const lenses = await Lens.builtins();
@@ -77,8 +87,8 @@ describe("routedProbing", () => {
 		const trust = routed.lenses.find((lens) => lens.name === "trust-boundary")!;
 		expect(trust.level("deep").probe).toEqual({ prober: "medium" });
 		expect(trust.level("careful")).not.toHaveProperty("probe");
-		expect(routed.config.models.heavy).toEqual({ model: "a/plan" });
-		expect(routed.config.models.medium).toEqual({ model: "b/probe" });
+		expect(routed.config.models.heavy).toStrictEqual({ model: "a/plan" });
+		expect(routed.config.models.medium).toStrictEqual({ model: "b/probe" });
 	});
 
 	it("keeps each tier's reasoning level, and none of its other models, on the combination's routes", async () => {
@@ -320,6 +330,43 @@ describe("measureProbing's totals", () => {
 		} finally {
 			vi.useRealTimers();
 		}
+	});
+
+	it("counts nothing for a failed review that spent nothing, and scores the misses found as their share", async () => {
+		const lost = golden("trust-boundary-probe-claim-lost-release");
+		const miss: Miss = { name: "m", repo: "/r", base: "a", head: "b", file: "f", rule: "r" };
+		const hit = Finding.create({
+			rule: "r",
+			message: "m",
+			file: "f",
+			startLine: 1,
+			snippet: "x",
+			occurrence: 0,
+			cause: "introduced",
+			severity: "P1",
+			explanation: { what: "w", whyHere: "y", whatToDo: "d" },
+			source: { check: "lens.trust-boundary", version: "v@deep" },
+		});
+		let misses = 0;
+		const [result] = await measureProbing(
+			parseCombinations("x=a/b>c/d"),
+			[lost],
+			[miss, { ...miss, name: "n" }],
+			1,
+			{
+				golden: async () => {
+					throw new GoldenRunError(new Error("refused"), { spend: () => "nothing" } as never);
+				},
+				miss: async () => ({ findings: ++misses === 1 ? [hit] : [], tokens: 0, cost: 0, milliseconds: 0 }),
+			},
+			() => {},
+		);
+		expect(result).toMatchObject({
+			goldens: { precision: null, recall: null, failed: 1 },
+			misses: { found: 1, total: 2, recall: 0.5, failed: 0 },
+			tokens: 0,
+			cost: 0,
+		});
 	});
 
 	it("scores no misses as full recall", async () => {
