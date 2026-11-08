@@ -251,6 +251,14 @@ describe("reports of one claim", () => {
 		expect(after(stronger, weaker)).toEqual(stronger);
 	});
 
+	it("takes a later report's sameness answers, whichever verdict wins", () => {
+		const root = "0123456789abcdef";
+		const first = { ...verification, matches: { [root]: "same" } } as const;
+		const later = { ...verification, verdict: "plausible", matches: { [root]: "different" } } as const;
+		expect(after(first, later)).toEqual({ ...first, matches: { [root]: "different" } });
+		expect(after(first, verification)).toStrictEqual(verification);
+	});
+
 	it("lets a later equal report that weakens nothing replace the reason", () => {
 		const again = { ...lowered, reason: "Narrow, again." };
 		expect(after(lowered, again)).toEqual(again);

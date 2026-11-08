@@ -137,7 +137,7 @@ describe("recording restatement links", () => {
 		await judge(first.id, correctness, { [oldRoot.id]: "same" });
 		await judge(second.id, contracts, { [oldRoot.id]: "same" });
 		expect(await derive([oldRoot.id])).toBe(true);
-		const link = { from: oldRoot.id, kind: "inherited", dismissedAt: dismissal.at };
+		const link = { from: oldRoot.id, kind: "inherited", dismissal: expect.stringMatching(/^[0-9a-f]{16}$/) };
 		expect(await links()).toEqual({ [first.id]: link, [second.id]: link });
 		expect(await derive([oldRoot.id])).toBe(false);
 	});
@@ -150,6 +150,11 @@ describe("recording restatement links", () => {
 		await judge(second.id, contracts, { [oldRoot.id]: "different" });
 		await derive([oldRoot.id]);
 		expect(await links()).toBeUndefined();
+		// A root judged different beside one judged the same leaves the same one's link.
+		await judge(first.id, correctness, { [newRoot.id]: "different", [oldRoot.id]: "same" }, "v2");
+		await judge(second.id, contracts, { [newRoot.id]: "different", [oldRoot.id]: "same" }, "v2");
+		await derive([newRoot.id, oldRoot.id], "v2");
+		expect((await links())?.[first.id]?.from).toBe(oldRoot.id);
 	});
 
 	it("reads a claim's judgement only at this revision and under its own producer", async () => {
@@ -231,6 +236,8 @@ describe("recording restatement links", () => {
 		expect(await links()).toBeUndefined();
 		await derive(["0123456789abcdef"]);
 		expect(await links()).toBeUndefined();
+		await derive(["0123456789abcdef", oldRoot.id]);
+		expect((await links())?.[first.id]?.from).toBe(oldRoot.id);
 		await derive([oldRoot.id], "v1", []);
 		expect(await links()).toBeUndefined();
 	});
@@ -244,7 +251,11 @@ describe("recording restatement links", () => {
 		await judge(first.id, correctness, { [oldRoot.id]: "same" });
 		await judge(second.id, contracts, { [oldRoot.id]: "same" });
 		await derive([oldRoot.id]);
-		expect((await links())?.[first.id]).toEqual({ from: oldRoot.id, kind, dismissedAt: dismissal.at });
+		expect((await links())?.[first.id]).toEqual({
+			from: oldRoot.id,
+			kind,
+			dismissal: expect.stringMatching(/^[0-9a-f]{16}$/),
+		});
 	});
 
 	it("fences on the severity a lens reported, before the verifier lowered it", async () => {
@@ -274,8 +285,8 @@ describe("recording restatement links", () => {
 		await judge(second.id, contracts, { [oldRoot.id]: "same" });
 		await derive([oldRoot.id]);
 		expect(await links()).toEqual({
-			[first.id]: { from: oldRoot.id, kind: "proposed", dismissedAt: dismissal.at },
-			[second.id]: { from: oldRoot.id, kind: "proposed", dismissedAt: dismissal.at },
+			[first.id]: { from: oldRoot.id, kind: "proposed", dismissal: expect.stringMatching(/^[0-9a-f]{16}$/) },
+			[second.id]: { from: oldRoot.id, kind: "proposed", dismissal: expect.stringMatching(/^[0-9a-f]{16}$/) },
 		});
 	});
 
@@ -328,7 +339,11 @@ describe("recording restatement links", () => {
 			floored[1] = { id: moved.id, source: { check, version: "1@careful" }, ruleId: rule };
 		});
 		await derive([oldRoot.id], "v1", floored);
-		expect((await links())?.[first.id]).toEqual({ from: oldRoot.id, kind: "proposed", dismissedAt: dismissal.at });
+		expect((await links())?.[first.id]).toEqual({
+			from: oldRoot.id,
+			kind: "proposed",
+			dismissal: expect.stringMatching(/^[0-9a-f]{16}$/),
+		});
 	});
 
 	it("breaks a tie between roots dismissed at one time by the lower ID", async () => {
@@ -361,11 +376,15 @@ describe("recording restatement links", () => {
 		expect((await links())?.[first.id]).toEqual({
 			from: newRoot.id,
 			kind: "proposed",
-			dismissedAt: "2026-11-02T00:00:00Z",
+			dismissal: expect.stringMatching(/^[0-9a-f]{16}$/),
 		});
 		// With only the older root, the fence holds and it inherits.
 		await derive([oldRoot.id]);
-		expect((await links())?.[first.id]).toEqual({ from: oldRoot.id, kind: "inherited", dismissedAt: dismissal.at });
+		expect((await links())?.[first.id]).toEqual({
+			from: oldRoot.id,
+			kind: "inherited",
+			dismissal: expect.stringMatching(/^[0-9a-f]{16}$/),
+		});
 		// The newer root judged different leaves the older one.
 		for (const [id, source] of [
 			[first.id, correctness],
@@ -380,8 +399,8 @@ describe("recording restatement links", () => {
 		await seed();
 		await commit((tx) =>
 			replaceInheritances(tx, root, at, {
-				[first.id]: { from: oldRoot.id, kind: "inherited", dismissedAt: dismissal.at },
-				[second.id]: { from: oldRoot.id, kind: "inherited", dismissedAt: dismissal.at },
+				[first.id]: { from: oldRoot.id, kind: "inherited" },
+				[second.id]: { from: oldRoot.id, kind: "inherited" },
 			}),
 		);
 		const read = async () => (await readFindings(harness, root, at, context)).map((each) => each.properties.status);
@@ -795,6 +814,40 @@ describe("finding the roots a defect may restate", () => {
 				),
 			),
 		).toEqual([]);
+	});
+
+	it("holds an affected root to its proof after a later sighting cites no cause", async () => {
+		const { state, key } = await reviewOf(h1);
+		const proof = state.files.flatMap((file) => file.hunks.map(provingHunk));
+		const found = lens({
+			snippet: "line 8",
+			startLine: 8,
+			cause: "affected",
+			evidence: [
+				{ file: "a.ts", startLine: 5, role: "cause", revision: "head", proves: true, snippet: "changed 5" },
+			],
+			trigger: { file: "a.ts", index: 0, snippet: "changed 5", proof },
+		});
+		await commit(async (tx) => {
+			await upsertFinding(tx, root, found, key, proof);
+			await dismissFinding(tx, root, found.id, dismissal, key, "P2");
+		});
+		const h2 = step(withLine5(), { "b.ts": "other\n" });
+		const { state: second, key: later } = await reviewOf(h2);
+		const uncited = lens({ snippet: "line 8", startLine: 8 });
+		await commit((tx) =>
+			upsertFinding(
+				tx,
+				root,
+				uncited,
+				later,
+				second.files.flatMap((file) => file.hunks.map(provingHunk)),
+			),
+		);
+		const restated = lens({ snippet: "line 8\nline 9", startLine: 8, endLine: 9 });
+		expect(await predecessorsAt(h2, restated)).toEqual([found.id]);
+		const h3 = step([...ten.slice(0, 4), "changed 5 again", ...ten.slice(5)], { "b.ts": "other\n" });
+		expect(await predecessorsAt(h3, restated)).toEqual([]);
 	});
 
 	it.each([

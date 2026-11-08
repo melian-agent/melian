@@ -106,7 +106,7 @@ describe("restatement links", () => {
 	});
 
 	it("reads an inherited finding dismissed under the root's reason and time, never naming its dismisser", async () => {
-		expect(await link({ [restated.id]: { from: root.id, kind: "inherited", dismissedAt: dismissal.at } })).toBe(true);
+		expect(await link({ [restated.id]: { from: root.id, kind: "inherited" } })).toBe(true);
 		const findings = await read();
 		expect(findings[restated.id]!.properties.status).toBe("dismissed");
 		expect(findings[restated.id]!.properties.dismissal).toEqual({
@@ -120,7 +120,7 @@ describe("restatement links", () => {
 	});
 
 	it("reads a proposal live, naming the likely root", async () => {
-		await link({ [restated.id]: { from: root.id, kind: "proposed", dismissedAt: dismissal.at } });
+		await link({ [restated.id]: { from: root.id, kind: "proposed" } });
 		const findings = await read();
 		expect(findings[restated.id]!.properties.status).toBe("new");
 		expect(findings[restated.id]!.properties.dismissal).toBeUndefined();
@@ -129,8 +129,8 @@ describe("restatement links", () => {
 
 	it("applies no link to a read as reported, so candidates never flip between rounds", async () => {
 		await link({
-			[restated.id]: { from: root.id, kind: "inherited", dismissedAt: dismissal.at },
-			[other.id]: { from: root.id, kind: "proposed", dismissedAt: dismissal.at },
+			[restated.id]: { from: root.id, kind: "inherited" },
+			[other.id]: { from: root.id, kind: "proposed" },
 		});
 		const findings = await read(true);
 		expect(findings[restated.id]!.properties.status).toBe("new");
@@ -139,7 +139,7 @@ describe("restatement links", () => {
 	});
 
 	it("lets a finding's own dismissal speak before an inherited one", async () => {
-		await link({ [restated.id]: { from: root.id, kind: "inherited", dismissedAt: dismissal.at } });
+		await link({ [restated.id]: { from: root.id, kind: "inherited" } });
 		const owner = await harness.root(context);
 		const own = { by: "Ana <ana@melian.invalid>", reason: "Its own reason.", at: "2026-11-09T00:00:00Z" };
 		await owner.commit((tx) => dismissFinding(tx, id, restated.id, own, at), context);
@@ -147,14 +147,14 @@ describe("restatement links", () => {
 	});
 
 	it("lapses when the root's dismissal is replaced, or the root reopens, and bumps the inheritor's revision", async () => {
-		await link({ [restated.id]: { from: root.id, kind: "inherited", dismissedAt: dismissal.at } });
+		await link({ [restated.id]: { from: root.id, kind: "inherited" } });
 		const owner = await harness.root(context);
 		const elsewhere = "base..later";
 		// The root's sightings are all at `at`; a link recorded at another revision is bumped as the root changes.
 		await owner.commit(async (tx) => {
 			await upsertFinding(tx, id, restated, elsewhere);
 			await replaceInheritances(tx, id, elsewhere, {
-				[restated.id]: { from: root.id, kind: "inherited", dismissedAt: dismissal.at },
+				[restated.id]: { from: root.id, kind: "inherited" },
 			});
 		}, context);
 		const before = await findingsVersion(harness, id, elsewhere, context);
@@ -172,7 +172,7 @@ describe("restatement links", () => {
 		);
 		expect((await read())[restated.id]!.properties.status).toBe("new");
 		expect(await findingsVersion(harness, id, elsewhere, context)).toBe(before + 1);
-		await link({ [restated.id]: { from: root.id, kind: "inherited", dismissedAt: "2026-11-10T00:00:00Z" } });
+		await link({ [restated.id]: { from: root.id, kind: "inherited" } });
 		expect((await read())[restated.id]!.properties.status).toBe("dismissed");
 		const reopening = Finding.create({
 			rule: "fail-open",
@@ -197,8 +197,16 @@ describe("restatement links", () => {
 		expect(await findingsVersion(harness, id, elsewhere, context)).toBe(lapsing + 1);
 	});
 
+	it("lapses when the root's dismissal is replaced at the same time", async () => {
+		await link({ [restated.id]: { from: root.id, kind: "inherited" } });
+		const owner = await harness.root(context);
+		const replaced = { ...dismissal, reason: "Another reason." };
+		await owner.commit((tx) => dismissFinding(tx, id, root.id, replaced, at, "P1"), context);
+		expect((await read())[restated.id]!.properties.status).toBe("new");
+	});
+
 	it("changes nothing, and keeps the link, when the root's dismissal is repeated at another severity", async () => {
-		await link({ [restated.id]: { from: root.id, kind: "inherited", dismissedAt: dismissal.at } });
+		await link({ [restated.id]: { from: root.id, kind: "inherited" } });
 		const owner = await harness.root(context);
 		const before = (await harness.snapshot(FindingsDocument, id, context))!;
 		const later = { ...dismissal, at: "2026-11-09T00:00:00Z" };
@@ -210,15 +218,17 @@ describe("restatement links", () => {
 	it("bumps only the revisions that sighted a changed root or link to it", async () => {
 		const owner = await harness.root(context);
 		await owner.commit(async (tx) => {
+			// Each link must name a dismissed root, or the commit drops it.
+			await dismissFinding(tx, id, other.id, dismissal, at, "P2");
 			await upsertFinding(tx, id, other, "base..linked");
 			// One of the revision's two links names the root.
 			await replaceInheritances(tx, id, "base..linked", {
-				[other.id]: { from: root.id, kind: "inherited", dismissedAt: dismissal.at },
-				[restated.id]: { from: other.id, kind: "inherited", dismissedAt: dismissal.at },
+				[other.id]: { from: root.id, kind: "inherited" },
+				[restated.id]: { from: other.id, kind: "inherited" },
 			});
 			await upsertFinding(tx, id, restated, "base..unrelated");
 			await replaceInheritances(tx, id, "base..unrelated", {
-				[restated.id]: { from: other.id, kind: "inherited", dismissedAt: dismissal.at },
+				[restated.id]: { from: other.id, kind: "inherited" },
 			});
 		}, context);
 		const versions = async () =>
@@ -234,15 +244,24 @@ describe("restatement links", () => {
 		expect(await versions()).toEqual([linked + 1, unrelated]);
 	});
 
-	it("reads a link to a root the document no longer holds as no link", async () => {
-		await link({ [restated.id]: { from: "0123456789abcdef", kind: "inherited", dismissedAt: dismissal.at } });
+	it("reads a link to a root the document no longer holds, or never dismissed, as no link", async () => {
+		await link({ [restated.id]: { from: "0123456789abcdef", kind: "inherited" } });
+		expect((await read())[restated.id]!.properties.status).toBe("new");
+		await link({ [restated.id]: { from: other.id, kind: "inherited" } });
+		expect((await read())[restated.id]!.properties.status).toBe("new");
+		// A reopened root loses its record once its last sighting goes, though a link to it is stored.
+		await link({ [restated.id]: { from: root.id, kind: "inherited" } });
+		const owner = await harness.root(context);
+		await owner.commit(async (tx) => {
+			delete (await tx.doc(FindingsDocument, id)).items[root.id];
+		}, context);
 		expect((await read())[restated.id]!.properties.status).toBe("new");
 	});
 
 	it("compares links whatever order they are given in", async () => {
 		const links = {
-			[restated.id]: { from: root.id, kind: "inherited" as const, dismissedAt: dismissal.at },
-			[other.id]: { from: root.id, kind: "proposed" as const, dismissedAt: dismissal.at },
+			[restated.id]: { from: root.id, kind: "inherited" as const },
+			[other.id]: { from: root.id, kind: "proposed" as const },
 		};
 		const reversed = Object.fromEntries(Object.entries(links).reverse());
 		expect(Object.keys(reversed)).not.toEqual(Object.keys(links));
@@ -252,14 +271,14 @@ describe("restatement links", () => {
 
 	it("replaces the whole map, bumping the version only when it changed", async () => {
 		const start = await findingsVersion(harness, id, at, context);
-		const links = { [restated.id]: { from: root.id, kind: "inherited" as const, dismissedAt: dismissal.at } };
+		const links = { [restated.id]: { from: root.id, kind: "inherited" as const } };
 		expect(await link(links)).toBe(true);
 		expect(await link({ ...links })).toBe(false);
 		expect(await findingsVersion(harness, id, at, context)).toBe(start + 1);
-		expect(await link({ [other.id]: { from: root.id, kind: "proposed", dismissedAt: dismissal.at } })).toBe(true);
+		expect(await link({ [other.id]: { from: root.id, kind: "proposed" } })).toBe(true);
 		const state = await harness.snapshot(FindingsDocument, id, context);
 		expect(state!.inherited).toEqual({
-			[at]: { [other.id]: { from: root.id, kind: "proposed", dismissedAt: dismissal.at } },
+			[at]: { [other.id]: { from: root.id, kind: "proposed", dismissal: expect.stringMatching(/^[0-9a-f]{16}$/) } },
 		});
 		expect(await link({})).toBe(true);
 		expect((await harness.snapshot(FindingsDocument, id, context))!.inherited).toEqual({});

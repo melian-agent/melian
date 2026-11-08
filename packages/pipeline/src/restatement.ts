@@ -15,6 +15,7 @@ import {
 	overlapsSite,
 	proofAt,
 	type Restating,
+	readsProof,
 } from "./findings.ts";
 import type { Context, ConversationId, Harness } from "./harness.ts";
 import { provingHunk, type ReviewState } from "./lens-tools.ts";
@@ -108,11 +109,12 @@ export class Predecessors {
 	}
 
 	// Whether the root's dismissal still stands at this revision, by the reopen rule its own sighting here would meet:
-	// an introduced root's accepted trigger is a hunk of its file here, and every hunk an affected root's proof accepted
-	// is here. A pre-existing root names no hunk, so the region alone decides.
+	// every hunk a root's proof accepted is here, whatever cause its latest sighting cites, and otherwise an introduced
+	// root's accepted trigger is a hunk of its file here. A pre-existing root with no proof names no hunk, so the region
+	// alone decides.
 	#stands(root: DismissedRoot): boolean {
 		const hunks = this.#review.files.flatMap((file) => file.hunks);
-		if (root.cause === "affected")
+		if (readsProof(root.proof, root.cause))
 			return root.proof.every((each) =>
 				hunks.some((hunk) => provingHunk(hunk).file === each.file && provingHunk(hunk).hash === each.hash),
 			);

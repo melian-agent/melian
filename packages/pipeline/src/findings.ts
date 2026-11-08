@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
 	type Cause,
 	dismissalReason,
@@ -75,8 +76,8 @@ type FindingRecord = {
 // `versions` counts, per revision, the writes that could change what a read of it returns: a sighting there, or a
 // lifecycle change of a finding sighted there. Adjudication's input carries it, so a dismissal decides afresh.
 // A restatement's link to a root: a finding at one revision inherits the root's dismissal, or names it as a likely
-// match. It holds while the root's own dismissal, made at `dismissedAt`, stands.
-type StoredInheritance = { from: string; kind: "inherited" | "proposed"; dismissedAt: string };
+// match. It holds while the root's dismissal is the one `dismissal` identifies, by `identityOf`.
+type StoredInheritance = { from: string; kind: "inherited" | "proposed"; dismissal: string };
 
 // `inherited` holds, per revision, each restatement's link, which every review round replaces whole.
 type FindingsState = {
@@ -300,6 +301,12 @@ function reopenedAt(lifecycle: FindingLifecycle, revision: string): FindingLifec
 	};
 }
 
+// Whether a dismissal's reopen rule reads its proof rather than its trigger: any proof, unless a sighting cites a
+// trigger of its own. A sighting that cites fewer locations, or no cause, changes nothing.
+export function readsProof(proof: readonly ProvingHunk[], cause: Cause): boolean {
+	return proof.length > 0 && cause !== "introduced";
+}
+
 function dismissalChanged(
 	lifecycle: FindingLifecycle,
 	properties: ProducerFinding["properties"],
@@ -307,7 +314,7 @@ function dismissalChanged(
 ): boolean {
 	const accepted = lifecycle.dismissedTrigger!;
 	const proof = unionOf([...accepted.proof, ...(lifecycle.proof ?? [])]);
-	return proof.length > 0 && properties.cause !== "introduced"
+	return readsProof(proof, properties.cause)
 		? hunks !== undefined &&
 				proof.some((each) => !hunks.some((hunk) => hunk.file === each.file && hunk.hash === each.hash))
 		: accepted.hash !== triggerCode(properties.trigger);
@@ -483,7 +490,8 @@ export async function replaceCheckFindings(
  * Marks a finding dismissed, and returns the dismissal it replaced, if it was dismissed already. A replaced dismissal
  * moves to the finding's history, so its reason is not lost; the same dismisser giving the same reason again changes
  * nothing when the accepted content also matches. The reason is stored without surrounding whitespace.
- * `revision` selects the accepted trigger, defaulting to the last sighting for direct callers.
+ * `revision` selects the accepted trigger, defaulting to the last sighting for direct callers, from the sightings of
+ * `producers`, the dismissed verdict's selection, or of every producer when absent.
  * Throws core's `FindingError`: `unknownFinding` if no finding has the ID, and `invalidDismissal` for a blank `by` or
  * `at`, or a reason core's `dismissalReason` refuses.
  */
@@ -494,6 +502,7 @@ export async function dismissFinding(
 	{ by, reason, at }: Dismissal,
 	revision?: string,
 	severity?: Severity,
+	producers?: readonly Producer[],
 ): Promise<Dismissal | undefined> {
 	const why = dismissalReason(reason);
 	for (const [field, value] of [
@@ -514,7 +523,11 @@ export async function dismissFinding(
 	}
 	const { status, dismissedBy, dismissedReason, dismissedAt, history } = record.lifecycle;
 	const accepting = revision ?? record.lifecycle.lastSeenRevision;
-	const atRevision = record.sightings[accepting]!;
+	// Only the sightings of the producers the dismissed verdict selected: a dropped lens's sighting was never shown.
+	const counts = selected(producers);
+	const atRevision = Object.fromEntries(
+		Object.entries(record.sightings[accepting]!).filter(([key, sighting]) => counts(key, sighting)),
+	);
 	const { winner } = adjudicate(atRevision);
 	const trigger = winner.properties.trigger;
 	const shown =
@@ -722,8 +735,24 @@ function standing(
 	lifecycle: FindingLifecycle,
 ): StoredInheritance | undefined {
 	if (link === undefined || lifecycle.status === "dismissed") return undefined;
-	// A reopen drops the root's `dismissedAt` and a new dismissal replaces it, so either lapses the link.
-	return items[link.from]?.lifecycle.dismissedAt === link.dismissedAt ? link : undefined;
+	const root = items[link.from]?.lifecycle;
+	return root !== undefined && identityOf(root) === link.dismissal ? link : undefined;
+}
+
+// The identity of a lifecycle's dismissal: a reopen or any replacement changes it, and an identical repeat, which
+// writes nothing, keeps it.
+function identityOf({
+	status,
+	dismissedBy,
+	dismissedReason,
+	dismissedAt,
+	dismissedSeverity,
+	dismissedSighting,
+	dismissedTrigger,
+}: FindingLifecycle): string | undefined {
+	if (status !== "dismissed") return undefined;
+	const fields = [dismissedBy, dismissedReason, dismissedAt, dismissedSeverity, dismissedSighting, dismissedTrigger];
+	return createHash("sha256").update(JSON.stringify(fields)).digest("hex").slice(0, 16);
 }
 
 // An inherited dismissal carries the root's reason and time and never its dismisser; a proposal names the root.
@@ -738,7 +767,7 @@ function linked(
 		dismissal: {
 			by: inheritedDismisser,
 			reason: root.dismissedReason!,
-			at: link.dismissedAt,
+			at: root.dismissedAt!,
 			inheritedFrom: link.from,
 		},
 	};
@@ -747,12 +776,13 @@ function linked(
 /** Who an inherited dismissal names as its dismisser: Melian, never the person who dismissed the root. */
 export const inheritedDismisser = "melian";
 
-/** A restatement's link to its root, as {@link replaceInheritances} records it. */
-export type Inheritance = StoredInheritance;
+/** A restatement's link to its root, as {@link replaceInheritances} takes it. */
+export type Inheritance = Omit<StoredInheritance, "dismissal">;
 
 /**
  * Makes `links` the whole of `revision`'s restatement links, by finding ID, and bumps the revision's findings version
- * when they changed. Returns whether they did.
+ * when they changed. Returns whether they did. Each link binds to the root's dismissal as it stands in this commit, and
+ * a link to a root with none is dropped.
  */
 export async function replaceInheritances(
 	tx: Tx,
@@ -765,7 +795,12 @@ export async function replaceInheritances(
 	const sorted = Object.fromEntries(
 		Object.keys(links)
 			.sort()
-			.map((id) => [id, { from: links[id]!.from, kind: links[id]!.kind, dismissedAt: links[id]!.dismissedAt }]),
+			.flatMap((id) => {
+				const { from, kind } = links[id]!;
+				const lifecycle = state.items[from]?.lifecycle;
+				const dismissal = lifecycle === undefined ? undefined : identityOf(lifecycle);
+				return dismissal === undefined ? [] : [[id, { from, kind, dismissal }]];
+			}),
 	);
 	if (JSON.stringify(before) === JSON.stringify(sorted)) return false;
 	const { [revision]: _, ...rest } = state.inherited ?? {};
@@ -1003,11 +1038,11 @@ export async function recordInheritances(
 			const fenced = severityRank[reported] < severityRank[lifecycle.dismissedSeverity];
 			const kind: Inheritance["kind"] = fenced || claims.some(floored) ? "proposed" : "inherited";
 			// A dismissal records its time beside its severity.
-			return [{ from, kind, dismissedAt: lifecycle.dismissedAt! }];
+			return [{ from, kind, at: lifecycle.dismissedAt! }];
 		});
-		const [latest] = matches.sort((a, b) => compareText(b.dismissedAt, a.dismissedAt) || compareText(a.from, b.from));
+		const [latest] = matches.sort((a, b) => compareText(b.at, a.at) || compareText(a.from, b.from));
 		if (latest === undefined) continue;
-		for (const member of members) links[member] = latest;
+		for (const member of members) links[member] = { from: latest.from, kind: latest.kind };
 	}
 	return replaceInheritances(tx, root, revision, links);
 }

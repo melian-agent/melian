@@ -162,6 +162,7 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 				dismissal,
 				revision,
 				found.speaker.properties.severity,
+				previous.producers,
 			);
 			if (report === own) replaced = before;
 		}
