@@ -1,0 +1,164 @@
+{
+	"head": "0ec07987",
+	"enumerated": {
+		"mutants": [],
+		"total": 0,
+		"omitted": 0,
+		"unmutated": []
+	},
+	"hand": [
+		{
+			"mutant": "comment: posts without the token",
+			"file": ".github/workflows/melian-round.yml",
+			"from": "          token=\"$STATUS_TOKEN\" && unset STATUS_TOKEN\n          if [ -z \"$token\" ]; then echo \"::error::the melian-round Environment holds no MELIAN_STATUS_TOKEN\"; exit 1; fi\n          out=\"$RUNNER_TEMP/round\"\n          nonce=",
+			"to": "          token=\"$STATUS_TOKEN\" && unset STATUS_TOKEN\n          out=\"$RUNNER_TEMP/round\"\n          nonce=",
+			"test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts as melian-status-bot alone: it overwrites no other login's comment, and posts nothing without the token",
+			"collected": 1,
+			"killed": true
+		},
+		{
+			"mutant": "comment: edits github-actions[bot]'s marked comment",
+			"file": ".github/workflows/melian-round.yml",
+			"from": "\"$RUN_ID\" \"$nonce\" \"melian-status-bot\")",
+			"to": "\"$RUN_ID\" \"$nonce\" \"github-actions[bot]\")",
+			"test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > edits the comment this run already posted rather than post a second",
+			"collected": 1,
+			"killed": true
+		},
+		{
+			"mutant": "comment: edits with github.token",
+			"file": ".github/workflows/melian-round.yml",
+			"from": "GH_TOKEN=\"$token\" gh api -X PATCH",
+			"to": "gh api -X PATCH",
+			"test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > edits the comment this run already posted rather than post a second",
+			"collected": 1,
+			"killed": true
+		},
+		{
+			"mutant": "comment: posts with github.token",
+			"file": ".github/workflows/melian-round.yml",
+			"from": "GH_TOKEN=\"$token\" gh api -X POST \"repos/$REPOSITORY/issues/$NUMBER/comments\"",
+			"to": "gh api -X POST \"repos/$REPOSITORY/issues/$NUMBER/comments\"",
+			"test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts the moved notice when the pull request moved during the round, from a fresh read",
+			"collected": 1,
+			"killed": true
+		},
+		{
+			"mutant": "comment: step never reads the secret",
+			"file": ".github/workflows/melian-round.yml",
+			"from": "          GH_TOKEN: ${{ github.token }}\n          STATUS_TOKEN: ${{ secrets.MELIAN_STATUS_TOKEN }}\n          REPOSITORY: ${{ github.repository }}\n          NUMBER: ${{ inputs.pull_request }}\n          BASE: ${{ needs.gate.outputs.base }}\n          HEAD: ${{ needs.gate.outputs.head }}\n          RUN_URL:",
+			"to": "          GH_TOKEN: ${{ github.token }}\n          REPOSITORY: ${{ github.repository }}\n          NUMBER: ${{ inputs.pull_request }}\n          BASE: ${{ needs.gate.outputs.base }}\n          HEAD: ${{ needs.gate.outputs.head }}\n          RUN_URL:",
+			"test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > reads the status token only in the steps that set melian/review or post the round's comment, in jobs of the melian-round Environment",
+			"collected": 1,
+			"killed": true
+		},
+		{
+			"mutant": "comment: step posts with the secret as its own GH_TOKEN",
+			"file": ".github/workflows/melian-round.yml",
+			"from": "      - name: Comment on the pull request\n        env:\n          GH_TOKEN: ${{ github.token }}",
+			"to": "      - name: Comment on the pull request\n        env:\n          GH_TOKEN: ${{ secrets.MELIAN_STATUS_TOKEN }}",
+			"test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > reads the status token only in the steps that set melian/review or post the round's comment, in jobs of the melian-round Environment",
+			"collected": 1,
+			"killed": true
+		},
+		{
+			"mutant": "report: job token writes pull requests",
+			"file": ".github/workflows/melian-round.yml",
+			"from": "    environment: melian-round\n    permissions:\n      contents: read\n      pull-requests: read\n    steps:\n      # A rerun of the report job alone",
+			"to": "    environment: melian-round\n    permissions:\n      contents: read\n      pull-requests: write\n    steps:\n      # A rerun of the report job alone",
+			"test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > reads the status token only in the steps that set melian/review or post the round's comment, in jobs of the melian-round Environment",
+			"collected": 1,
+			"killed": true
+		},
+		{
+			"mutant": "check: reads github-actions[bot]'s comment",
+			"file": "AGENTS.md",
+			"from": "--jq 'select(.user.login == \"melian-status-bot\" and .user.id == 353727783) | .body')",
+			"to": "--jq 'select(.user.login == \"github-actions[bot]\") | .body')",
+			"test": "scripts/round-comment-check.test.mjs > the round comment check in AGENTS.md > reads a comment melian-status-bot posted, whose marker names the run",
+			"collected": 1,
+			"killed": true
+		},
+		{
+			"mutant": "check: reads any login's comment",
+			"file": "AGENTS.md",
+			"from": "--jq 'select(.user.login == \"melian-status-bot\" and .user.id == 353727783) | .body')",
+			"to": "--jq '.body')",
+			"test": "scripts/round-comment-check.test.mjs > the round comment check in AGENTS.md > refuses the same comment from github-actions[bot], which any workflow's token can post",
+			"collected": 1,
+			"killed": true
+		},
+		{
+			"mutant": "check: marker run ID matched as a prefix",
+			"file": "AGENTS.md",
+			"from": "\"<!-- melian-round run:$id nonce:\"*)",
+			"to": "\"<!-- melian-round run:$id\"*)",
+			"test": "scripts/round-comment-check.test.mjs > the round comment check in AGENTS.md > refuses melian-status-bot's comment when its marker names another run",
+			"collected": 1,
+			"killed": true
+		},
+		{
+			"mutant": "check: marker not read",
+			"file": "AGENTS.md",
+			"from": "  case \"$body\" in \"<!-- melian-round run:$id nonce:\"*) echo \"comment $comment is run $id's\"; exit 0 ;; esac",
+			"to": "  [ -n \"$body\" ] && echo \"comment $comment is run $id's\" && exit 0",
+			"test": "scripts/round-comment-check.test.mjs > the round comment check in AGENTS.md > refuses melian-status-bot's comment when its marker names another run",
+			"collected": 1,
+			"killed": true
+		},
+		{
+			"mutant": "check: account ID not required",
+			"file": "AGENTS.md",
+			"from": "and .user.id == 353727783) | .body')",
+			"to": ") | .body')",
+			"test": "scripts/round-comment-check.test.mjs > the round comment check in AGENTS.md > refuses a comment from another account that took melian-status-bot's login",
+			"collected": 1,
+			"killed": true
+		},
+		{
+			"mutant": "comment: token left in the scripts' environment",
+			"file": ".github/workflows/melian-round.yml",
+			"from": "          token=\"$STATUS_TOKEN\" && unset STATUS_TOKEN\n          if [ -z \"$token\" ]; then echo \"::error::the melian-round Environment holds no MELIAN_STATUS_TOKEN\"; exit 1; fi\n          out=\"$RUNNER_TEMP/round\"\n          nonce=",
+			"to": "          token=\"$STATUS_TOKEN\"\n          if [ -z \"$token\" ]; then echo \"::error::the melian-round Environment holds no MELIAN_STATUS_TOKEN\"; exit 1; fi\n          out=\"$RUNNER_TEMP/round\"\n          nonce=",
+			"test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > hands the status token to the gh writes alone, never to a node script that reads comments or verdicts",
+			"collected": 1,
+			"killed": true
+		},
+		{
+			"mutant": "status: token left in the scripts' environment",
+			"file": ".github/workflows/melian-round.yml",
+			"from": "          token=\"$STATUS_TOKEN\" && unset STATUS_TOKEN\n          out=\"$RUNNER_TEMP/round\"\n          current=",
+			"to": "          token=\"$STATUS_TOKEN\"\n          out=\"$RUNNER_TEMP/round\"\n          current=",
+			"test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > hands the status token to the gh writes alone, never to a node script that reads comments or verdicts",
+			"collected": 1,
+			"killed": true
+		},
+		{
+			"mutant": "status: posts with the unset variable",
+			"file": ".github/workflows/melian-round.yml",
+			"from": "GH_TOKEN=\"$token\" gh api -X POST \"repos/$REPOSITORY/statuses/$HEAD\" --input -",
+			"to": "GH_TOKEN=\"$STATUS_TOKEN\" gh api -X POST \"repos/$REPOSITORY/statuses/$HEAD\" --input -",
+			"test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > hands the status token to the gh writes alone, never to a node script that reads comments or verdicts",
+			"collected": 1,
+			"killed": true
+		},
+		{
+			"mutant": "rerun: listing keeps every account's comments",
+			"file": ".github/workflows/melian-round.yml",
+			"from": "select(.user.id == 353727783) | {id, login: .user.login, body}",
+			"to": "{id, login: .user.login, body}",
+			"test": "scripts/melian-round-workflow.test.mjs > the melian round workflow > posts as melian-status-bot alone: it overwrites no other login's comment, and posts nothing without the token",
+			"collected": 1,
+			"killed": true
+		},
+		{
+			"mutant": "check: login not required",
+			"file": "AGENTS.md",
+			"from": "select(.user.login == \"melian-status-bot\" and .user.id == 353727783)",
+			"to": "select(.user.id == 353727783)",
+			"test": "scripts/round-comment-check.test.mjs > the round comment check in AGENTS.md > refuses a comment from the bot's account under another login, such as after a rename",
+			"collected": 1,
+			"killed": true
+		}
+	]
+}
