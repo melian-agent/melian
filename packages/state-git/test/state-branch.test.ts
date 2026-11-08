@@ -20,6 +20,9 @@ import {
 	storageOf,
 } from "./fixtures/state.ts";
 
+// Every test here runs git against real repositories, which takes seconds on a loaded host.
+vi.setConfig({ testTimeout: 60_000 });
+
 let remote: Remote;
 
 // Checks the changeset out in a child process that exits without closing it, as a crashed review does.
@@ -637,7 +640,10 @@ describe("what the mutation inventory found untested", () => {
 	it("seals a file and commits to a key exactly as this format's first version does", async () => {
 		const key = Buffer.alloc(32, 1);
 		// The vector's file is not Pi's, so this clone's storage accepts any copy.
-		const checkout = await remote.clone({ key, validate: async () => {} }).branch().checkout(changeset);
+		const checkout = await remote
+			.clone({ key, validate: async () => {} })
+			.branch()
+			.checkout(changeset);
 		writeFileSync(join(checkout.directory, "main.jsonl"), "melian\n");
 		await checkout.push();
 		const sealed = execFileSync("git", ["cat-file", "blob", `${remote.stored()}:main.jsonl`], { cwd: remote.bare });
@@ -901,5 +907,25 @@ describe("Codex's review of 853b4a2d", () => {
 			message: `this clone's copy of ${changeset} no longer holds the branch's tree whole, as Pi's storage reads it, so Melian will not push it`,
 		});
 		expect(remote.stored()).toBe(stored);
+	});
+});
+
+describe("the review of record at 853b4a2d", () => {
+	it.each([1, 2, 3])("lets six writers on six changesets of six clones all store, round %i", async () => {
+		const ids = Array.from({ length: 6 }, (_, i) => `pull-${String(i).padStart(16, "0")}`);
+		const clones = ids.map(() => remote.clone());
+		const results = await Promise.all(
+			ids.map(async (id, i) => {
+				const checkout = await clones[i]!.branch().checkout(id);
+				await note(await storageOf(checkout), id);
+				const pushed = await checkout.push();
+				checkout.close();
+				return pushed.kind;
+			}),
+		);
+		expect(results).toEqual(ids.map(() => "pushed"));
+		expect(gitIn(remote.bare, "ls-tree", "--name-only", "refs/heads/melian/state:changesets").split("\n")).toEqual(
+			ids,
+		);
 	});
 });
