@@ -481,8 +481,8 @@ export class ReviewPlan {
 			.find((lens) => lens.name === name && (lens.scope ?? "") === scope)
 			?.levels.find((each) => each.level === level);
 		if (route === undefined || entry?.by === undefined) return route;
-		const { accept, acceptOverridden } = this.tier(entry.tier);
-		if (acceptOverridden !== false || accept === undefined) return route;
+		const { accept = [], acceptOverridden } = this.tier(entry.tier);
+		if (acceptOverridden !== false) return route;
 		return { ...route, models: route.models.filter(({ model }) => accept.includes(model)) };
 	}
 
@@ -821,9 +821,9 @@ export class ReviewPlan {
 			const refused = judged.flatMap(({ entry, refusal }) =>
 				refusal === undefined ? [] : [`${label} fails at ${entry.level}: ${refusal}`],
 			);
-			const standing = judged.find(({ entry }) => entry.level === defaultScrutinyLevel);
+			const standing = judged.find(({ entry }) => entry.level === defaultScrutinyLevel)!;
 			const runs =
-				standing?.refusal === undefined && standing?.lineage !== undefined
+				standing.refusal === undefined && standing.lineage !== undefined
 					? [`${label} runs ${standing.lineage.model}, ${ReviewPlan.lineageText(standing.lineage)}`]
 					: [];
 			return [...ignored, ...unknown(named, route), ...refused, ...runs];

@@ -1277,6 +1277,32 @@ it("explains a retiered lens's model refusal when neither tier sets thinking", (
 	);
 });
 
+describe("a tier's refusal", () => {
+	it("refuses only a tier policy fails, or a verifier without credentials", () => {
+		const resolved = plan(
+			{ heavy: { model: "nowhere/opus" }, verifier: { model: "nowhere/judge" } },
+			{ openai: "key" },
+		);
+		expect(resolved.tier("light").status).toBe("unrouted");
+		expect(resolved.refusal("light")).toBeUndefined();
+		expect(resolved.tier("heavy").status).toBe("uncredentialed");
+		expect(resolved.refusal("heavy")).toBeUndefined();
+		expect(resolved.refusal("verifier")).toBe("none of nowhere/judge has credentials");
+	});
+
+	it("names the committed route a guarded lens left, on a model its route does not list", () => {
+		const resolved = plan({ heavy: { model: opus, accept: [opus], acceptOverridden: false } }, { anthropic: "key" });
+		const [record] = resolved.mark(
+			[{ name: "lens.correctness", status: "ran", level: "careful" }],
+			new Map([["correctness", [{ scope: "", version: "v", level: "careful" as const, model: gpt }]]]),
+		);
+		expect(record).toMatchObject({
+			status: "failed",
+			reason: `models.heavy.acceptOverridden is false, and its route puts it on ${gpt}, which models.heavy.accept does not list`,
+		});
+	});
+});
+
 describe("a lens route", () => {
 	const both = { anthropic: "ANTHROPIC_API_KEY", openai: "OPENAI_API_KEY" };
 	const mini = "openai/gpt-5.4-mini";
@@ -1303,6 +1329,7 @@ describe("a lens route", () => {
 		expect(resolved.warnings()).toEqual([fallbackWarning]);
 		expect(resolved.routes()).toEqual({});
 		expect(resolved.providers()).toEqual(["openai"]);
+		expect(resolved.lines().some(({ text }) => text.includes("route thinking"))).toBe(false);
 	});
 
 	it("prints a route line, each level on the route, and the route's thinking for doctor", () => {
@@ -1322,6 +1349,12 @@ describe("a lens route", () => {
 		expect(resolved.warnings()).toContain(
 			`correctness route: none of ${gpt} has credentials; log in with pi, set the provider's API key, or add a credential to melian.secrets.yaml`,
 		);
+		expect(resolved.providers()).toEqual([]);
+		expect(resolved.lines().some(({ text }) => text.includes("; routed by"))).toBe(false);
+		expect(resolved.lines()).toContainEqual({
+			state: "ok",
+			text: "correctness: quick on lens route (no model), careful on lens route (no model), deep on lens route (no model)",
+		});
 	});
 
 	it("inherits a guarded tier's acceptOverridden and unavailable from the tiers its levels declare, unless it states its own", () => {
@@ -1337,6 +1370,10 @@ describe("a lens route", () => {
 			reason: `none of ${gpt}, which lenses.correctness.route accepts, has credentials, and lenses.correctness.route.unavailable is fail`,
 		});
 		expect(inherited.judge("correctness", "careful").refusal).toBe(inherited.lensRoute("correctness", "")!.reason);
+		expect(inherited.warnings()).toContain(
+			`correctness route fails every check: ${inherited.lensRoute("correctness", "")!.reason}`,
+		);
+		expect(inherited.warnings().some((text) => text.startsWith("correctness fails at"))).toBe(false);
 		const own = plan(guarded, both, {
 			model: opus,
 			lensRoutes: { correctness: { model: gpt, acceptOverridden: true, unavailable: "derive" } },
@@ -1423,6 +1460,7 @@ describe("a lens route", () => {
 			expect.arrayContaining([`correctness fails at careful: ${refusal}`, `correctness fails at deep: ${refusal}`]),
 		);
 		expect(resolved.warnings().some((text) => text.startsWith("correctness fails at quick"))).toBe(false);
+		expect(resolved.warnings().some((text) => text.startsWith("correctness runs"))).toBe(false);
 	});
 
 	it("drops a moved route's fallbacks outside a guarded committed tier's accept, and fails a run that finished on one", () => {
@@ -1496,6 +1534,10 @@ describe("a lens route", () => {
 			},
 		);
 		expect(resolved.lensRoute("correctness", "")).toMatchObject({ status: "routed", by: "derived" });
+		expect(resolved.lines()).toContainEqual({
+			state: "ok",
+			text: "correctness route: amazon-bedrock/anthropic.claude-opus-5-5 with AWS_PROFILE; derived, since no model of the committed route has credentials",
+		});
 	});
 
 	it("keys a lens route by the folder that defined the lens", () => {
@@ -1505,6 +1547,68 @@ describe("a lens route", () => {
 		expect(resolved.lensRoute("correctness", "services")).toMatchObject({ lens: "correctness", scope: "services" });
 		expect(resolved.lensRoute("correctness", "")).toBeUndefined();
 		expect(resolved.judge("correctness", "careful", undefined, "services")).toEqual({});
+		const texts = resolved.lines().map(({ text }) => text);
+		expect(texts).toContain(`correctness in services/ route: ${gpt} with OPENAI_API_KEY; routed by melian.yaml`);
+		expect(texts).toContain(
+			`correctness in services/: quick on lens route (${gpt}), careful on lens route (${gpt}), deep on lens route (${gpt})`,
+		);
+		const thinking = plan({}, both, {
+			lenses: [scoped],
+			lensRoutes: { correctness: { model: gpt, thinking: "high" } },
+		});
+		expect(thinking.lines().map(({ text }) => text)).toContain(
+			"correctness in services/ route thinking: high; set by melian.yaml",
+		);
+		const uncredentialed = plan(
+			{},
+			{ nowhere: "NOWHERE_KEY" },
+			{
+				lenses: [scoped],
+				lensRoutes: { correctness: { model: gpt } },
+			},
+		);
+		expect(uncredentialed.warnings()).toContain(
+			`correctness in services/ route: none of ${gpt} has credentials; log in with pi, set the provider's API key, or add a credential to melian.secrets.yaml`,
+		);
+		const committed = { heavy: { model: opus, accept: [opus], acceptOverridden: false } };
+		const moved = plan(committed, both, {
+			lenses: [scoped],
+			lensRoutePreferences: { correctness: { model: opus, fallbacks: [gpt] } },
+		});
+		expect(moved.lensRoute("correctness", "services", "careful")?.models.map(({ model }) => model)).toEqual([opus]);
+	});
+
+	it("keeps a committed route's models at every level, and a moved route's under an unguarded tier", () => {
+		const guarded = { heavy: { model: opus, accept: [opus], acceptOverridden: false } };
+		const own = plan(guarded, both, {
+			lensRoutes: { correctness: { model: gpt, fallbacks: [mini], acceptOverridden: true } },
+		});
+		expect(own.lensRoute("correctness", "", "careful")?.models.map(({ model }) => model)).toEqual([gpt, mini]);
+		const open = plan({ heavy: { model: opus, accept: [opus] } }, both, {
+			lensRoutePreferences: { correctness: { model: opus, fallbacks: [gpt] } },
+		});
+		expect(open.lensRoute("correctness", "", "careful")?.models.map(({ model }) => model)).toEqual([opus, gpt]);
+	});
+
+	it("says a moved route runs off the committed route at its default level, by that level's committed tier", () => {
+		const resolved = plan({ heavy: { model: opus, accept: [opus] } }, both, {
+			lensRoutePreferences: { correctness: { model: gpt } },
+		});
+		expect(resolved.judge("correctness", "quick")).toEqual({});
+		expect(resolved.warnings()).toContain(
+			`correctness runs ${gpt}, moved from heavy to lens route by melian.local.yaml, whose route is set by melian.local.yaml; the committed route wants ${opus}, and does not accept ${gpt}`,
+		);
+	});
+
+	it("judges a stored plan whose routed lens lost its route as nothing", () => {
+		const committed = { heavy: { model: opus, accept: [opus], acceptOverridden: false } };
+		const resolved = plan(committed, both, {
+			preferences: { heavy: { model: gpt } },
+			lensRoutes: { correctness: { model: opus } },
+		});
+		expect(resolved.refusal("heavy")).toBeDefined();
+		const { lensRoutes: _, ...stored } = resolved.toJSON();
+		expect(ReviewPlan.from(stored).judge("correctness", "careful")).toEqual({});
 	});
 
 	it("drops fallbacks by the routed lens's own level, beside a lens the route leaves alone", () => {
