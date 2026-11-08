@@ -152,16 +152,20 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 		const reports = found.dismiss(id, options.only, apart);
 		const [own] = reports;
 		const dismissed = [...new Set(reports)].filter((report) => Object.hasOwn(recorded, report));
+		// The severity the verdict showed each report at, which bounds the restatements its dismissal may carry to.
+		const shown = new Map([
+			[found.speaker.id, found.speaker.properties.severity],
+			...found.members.map((member) => [member.id, member.severity] as const),
+		]);
 		let replaced: Dismissal | undefined;
 		for (const report of dismissed) {
-			// The severity the verdict showed, which bounds the restatements the dismissal may carry to.
 			const before = await dismissFinding(
 				tx,
 				root.id,
 				report,
 				dismissal,
 				revision,
-				found.speaker.properties.severity,
+				shown.get(report),
 				previous.producers,
 			);
 			if (report === own) replaced = before;
