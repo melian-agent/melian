@@ -277,10 +277,13 @@ describe("verification as each lens ends", () => {
 			),
 		]);
 	}
+	// A revision whose entry a verifier refusal deleted has no waves.
 	const waveTasks = async () =>
-		(await harness.snapshot(VerificationWavesDocument, (await harness.root(context)).id, context))!.reviews[
-			Revision.key(changeset.revision)
-		]!.waves.map((wave) => wave.task);
+		(
+			(await harness.snapshot(VerificationWavesDocument, (await harness.root(context)).id, context))?.reviews[
+				Revision.key(changeset.revision)
+			]?.waves ?? []
+		).map((wave) => wave.task);
 
 	it("reuses a wave's outcome on rerun once the index has lost the final verification", async () => {
 		const asked: string[][] = [];
