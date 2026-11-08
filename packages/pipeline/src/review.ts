@@ -2007,7 +2007,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			}
 		: undefined;
 	const lensInput = new LensTaskInput(root, state, lenses, escalateAt, callersInput).toJSON();
-	const selection = selectionOf(lenses, escalateAt, (key) => levelRoutes.get(key)?.source);
+	const selection = selectionOf(lenses, escalateAt, (key) => levelRoutes.get(key)!.source);
 	spans.end();
 	const {
 		result: lensResult,
