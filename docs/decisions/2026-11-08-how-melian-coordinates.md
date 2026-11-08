@@ -26,7 +26,12 @@ Each kind of collision has one mechanism, and new code uses it.
 2. **Across processes or hosts on one changeset, a lease with a fencing generation decides the writer.** Core gains one `Lease` type. It names its holder (a run in a clone), when it was taken, when it expires, and a generation that rises every time the lease is taken. Taking a lease is a compare-and-set on the store that holds it. Every write made under a lease records the generation it was made with, and the store refuses a write whose generation is older than the store's latest. The lease is no lock: a holder that outlives its expiry can be raced, and the fencing generation is what keeps the older writer from overwriting the newer one. Two stores hold leases:
    - the state branch, in `index.json`, with `--force-with-lease` as its compare-and-set, as #310 builds;
    - a clone's git common directory, for the static checks' worktrees, which move onto the same type in place of the pid-in-a-lock-reason form.
-3. **A write to an external system is idempotent and checked against that system before it is made.** GitHub takes no idempotency key, so publication keeps its signed markers, its `published` document and its re-read before each post. A status write carries the lease generation it was made under, and the merge-group copy of `melian/review` accepts a status only if its generation is the newest it can see for that head. That closes the race #308 accepts: an older Actions status can no longer replace a newer host publication, because the older one carries the older generation.
+3. **A write to an external system is idempotent and checked against that system before it is made.** GitHub takes no idempotency key, so publication keeps its signed markers, its `published` document and its re-read before each post. A status write carries the lease generation it was made under. GitHub keeps one slot per status context and accepts every write in it, so a generation in the status fences nothing by itself, and the gate must not trust whichever status is latest. Three rules make the generation decide:
+   - The merge-group check reads every `melian/review` status on the head, not the latest, and decides by the highest generation among them. A stale write that lands last is outranked by the newer generation it lost to.
+   - Only the merge-group job writes the group commit's `melian/review`, once per group commit, so that slot has one writer.
+   - The job re-reads the head's statuses just before it writes, and refuses when the highest generation changed since it decided.
+
+   That closes the race #308 accepts, between an older Actions status and a newer host publication. What remains is the moment between the job's re-read and its write; GitHub offers no compare-and-set, so the decision accepts that window.
 4. **Events that can be lost, repeated or reordered are handled by reconciling to the authority.** A handler recomputes the state the authority implies and makes the world match, as the claim workflow does, instead of applying each event as a delta.
 
 ## What this means for work in flight
@@ -39,4 +44,4 @@ Each kind of collision has one mechanism, and new code uses it.
 ## What this gives up
 
 - The lease is advisory between its expiry and the next write; the fencing generation, not the expiry, is the safety.
-- A store that offers no compare-and-set cannot hold a lease. GitHub commit statuses are such a store, which is why rule 3 fences by a generation the status carries, read back by the merge-group check, rather than by GitHub itself.
+- A store that offers no compare-and-set cannot hold a lease. GitHub commit statuses are such a store, so rule 3 fences by reading every status's generation and taking the highest, never the latest, and leaves the moment between the merge-group job's last re-read and its write unfenced.
