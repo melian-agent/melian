@@ -341,10 +341,15 @@ export function routedProbing(
 			) as LensLevels,
 		}),
 	);
+	// Each tier keeps its reasoning level, so the measurement runs the routes as they would ship, but no other model.
+	const routed = (tier: "heavy" | "medium", model: string) => {
+		const thinking = config.models[tier]?.thinking;
+		return { model, ...(thinking === undefined ? {} : { thinking }) };
+	};
 	const models = {
 		...config.models,
-		heavy: { model: routes.planner },
-		...(routes.prober === undefined ? {} : { medium: { model: routes.prober } }),
+		heavy: routed("heavy", routes.planner),
+		...(routes.prober === undefined ? {} : { medium: routed("medium", routes.prober) }),
 	};
 	return { lenses: moved, config: { ...config, models } };
 }

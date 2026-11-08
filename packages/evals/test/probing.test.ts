@@ -80,6 +80,20 @@ describe("routedProbing", () => {
 		expect(routed.config.models.medium).toEqual({ model: "b/probe" });
 	});
 
+	it("keeps each tier's reasoning level, and none of its other models, on the combination's routes", async () => {
+		const config = {
+			...defaultConfig,
+			models: {
+				...defaultConfig.models,
+				heavy: { model: "x/heavy", thinking: "low", fallbacks: ["x/other"] },
+				medium: { model: "x/medium", thinking: "high" },
+			},
+		} as typeof defaultConfig;
+		const routed = routedProbing({ planner: "a/plan", prober: "b/probe" }, await Lens.builtins(), config);
+		expect(routed.config.models.heavy).toEqual({ model: "a/plan", thinking: "low" });
+		expect(routed.config.models.medium).toEqual({ model: "b/probe", thinking: "high" });
+	});
+
 	it("drops every probe for the level without probes, and leaves medium as it was", async () => {
 		const routed = routedProbing({ planner: "a/plan" }, await Lens.builtins(), defaultConfig);
 		const trust = routed.lenses.find((lens) => lens.name === "trust-boundary")!;
