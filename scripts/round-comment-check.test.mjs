@@ -66,6 +66,11 @@ describe("the round comment check in AGENTS.md", () => {
 		expect(run(renamed)).toEqual([1, `comment ${bot.id} is not melian-status-bot's comment for run 42440138303\n`]);
 	});
 
+	it("refuses a comment from the bot's account under another login, such as after a rename", () => {
+		const renamed = { ...bot, user: { ...bot.user, login: "melian-status-bot-renamed" } };
+		expect(run(renamed)).toEqual([1, `comment ${bot.id} is not melian-status-bot's comment for run 42440138303\n`]);
+	});
+
 	it("refuses melian-status-bot's comment when its marker names another run", () => {
 		const other = { ...bot, body: bot.body.replace("run:42440138303 ", "run:424401383030 ") };
 		expect(other.body).not.toBe(bot.body);
