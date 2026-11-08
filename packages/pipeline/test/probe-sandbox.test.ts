@@ -588,12 +588,17 @@ console.log("ready");
 			}
 		});
 
-		it("cannot connect to a unix socket in the worktree", { timeout: 60_000 }, async () => {
-			// A host service a probe could reach over a pathname socket in the readable worktree; on Linux the seccomp
-			// helper blocks the socket() call, on macOS the socket is not in allowUnixSockets. The server records any
-			// connection; the probe must make none.
+		it("cannot connect to a unix socket in a path it may read", { timeout: 60_000 }, async () => {
+			// A host service a probe could reach over a pathname socket in the install, which the probe may read; on Linux
+			// the seccomp helper blocks the socket() call, on macOS the socket is not in allowUnixSockets. The probe reads a
+			// file beside the socket, so a refused connection is the socket rule's, not the filesystem's. The server records
+			// any connection; the probe must make none.
 			let connections = 0;
-			const socketPath = join(worktree, "service.sock");
+			const service = join(worktree, "node_modules", "service");
+			mkdirSync(service, { recursive: true });
+			const beside = join(service, "beside.txt");
+			writeFileSync(beside, "readable\n");
+			const socketPath = join(service, "service.sock");
 			const server = createServer((socket) => {
 				connections++;
 				socket.end();
@@ -605,17 +610,19 @@ console.log("ready");
 			try {
 				const script = `
 import { connect } from "node:net";
+import { readFileSync } from "node:fs";
 const outcome = await new Promise((resolve) => {
 	const socket = connect(${JSON.stringify(socketPath)});
 	socket.once("connect", () => { socket.destroy(); resolve("connected"); });
 	socket.once("error", (error) => resolve(error.code ?? "error"));
 	setTimeout(() => { socket.destroy(); resolve("timeout"); }, 3000);
 });
-console.log(JSON.stringify({ outcome }));
+console.log(JSON.stringify({ beside: readFileSync(${JSON.stringify(beside)}, "utf8"), outcome }));
 process.exit(0);
 `;
 				const result = await probed({ script });
 				expect(result).toMatchObject({ exitCode: 0, timedOut: false });
+				expect(JSON.parse(result.output).beside).toBe("readable\n");
 				expect(JSON.parse(result.output).outcome).not.toBe("connected");
 				expect(connections).toBe(0);
 			} finally {
