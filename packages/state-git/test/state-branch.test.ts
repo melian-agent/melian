@@ -911,6 +911,26 @@ describe("Codex's review of 853b4a2d", () => {
 });
 
 describe("the review of record at 853b4a2d", () => {
+	it.each([
+		[
+			"holding what is not a database",
+			(lock: string) =>
+				writeFileSync(lock, "not a database, but long enough to be read as one's header\n".repeat(4)),
+		],
+		["that is a directory", (lock: string) => mkdirSync(lock)],
+	])("names a copy lock %s, with a code", async (_name, damage) => {
+		const clone = remote.clone();
+		mkdirSync(clone.directory, { recursive: true });
+		const lock = join(clone.directory, `${changeset}.lock`);
+		damage(lock);
+		await expect(clone.branch().checkout(changeset)).rejects.toMatchObject({
+			code: "invalidCopy",
+			message: expect.stringMatching(
+				new RegExp(`^this clone's copy lock ${lock.replaceAll(/[.*+?^$()|[\]\\{}]/g, "\\$&")} cannot be taken: `),
+			),
+		});
+	});
+
 	it("refuses a copy synced with a tree when the branch was deleted since, and keeps the copy", async () => {
 		const clone = remote.clone();
 		const first = await clone.branch().checkout(changeset);

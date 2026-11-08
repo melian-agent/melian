@@ -142,13 +142,24 @@ class CopyLock {
 
 	static async take(directory: string, changeset: string): Promise<CopyLock> {
 		await mkdir(directory, { recursive: true });
-		const database = new DatabaseSync(join(directory, `${changeset}.lock`), { timeout: 0 });
+		const path = join(directory, `${changeset}.lock`);
+		const damaged = (error: unknown) =>
+			new StateBranchError(
+				"invalidCopy",
+				`this clone's copy lock ${path} cannot be taken: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		let database: DatabaseSync;
+		try {
+			database = new DatabaseSync(path, { timeout: 0 });
+		} catch (error) {
+			throw damaged(error);
+		}
 		try {
 			database.exec("BEGIN EXCLUSIVE");
 		} catch (error) {
 			database.close();
 			if ((error as { errcode?: number }).errcode === sqliteBusy) throw new CopyInUse(changeset);
-			throw error;
+			throw damaged(error);
 		}
 		return new CopyLock(database);
 	}
