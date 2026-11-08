@@ -944,9 +944,10 @@ export function dismissedRoots(state: FindingsState): DismissedRoot[] {
 		.sort()
 		.flatMap((id) => {
 			const { lifecycle } = state.items[id]!;
-			const { status, dismissedSeverity, dismissedSighting, dismissedTrigger, dismissedAt } = lifecycle;
-			// `dismissFinding` records the sighting beside the severity, the time and the accepted trigger.
-			if (status !== "dismissed" || dismissedSighting === undefined) return [];
+			const { dismissedSeverity, dismissedSighting, dismissedTrigger, dismissedAt } = lifecycle;
+			// `dismissFinding` records the sighting beside the severity, the time and the accepted trigger, and every reopen
+			// drops it.
+			if (dismissedSighting === undefined) return [];
 			const { revision, sighting } = dismissedSighting;
 			const finding = Finding.from({ ...sighting, properties: { ...sighting.properties, status: "new" } });
 			const [line, endLine] = finding.lines();

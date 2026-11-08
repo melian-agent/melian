@@ -1001,6 +1001,26 @@ describe("finding the roots a defect may restate", () => {
 			expect(await predecessors.of(defect!)).toBeUndefined();
 		});
 
+		it("reads an introduced root's trigger from the hunk of its own file", async () => {
+			const inB = (snippet: string) =>
+				introduced(snippet, 5, 5, {
+					file: "b.ts",
+					trigger: { file: "b.ts", index: 0, snippet: "b changed 5" },
+					evidence: [{ file: "b.ts", startLine: 5, role: "cause", revision: "head", snippet }],
+				});
+			const changedB = [...ten.slice(0, 4), "b changed 5", ...ten.slice(5)];
+			const h2 = step(withLine5(), { "b.ts": text(changedB) });
+			const found = inB("b changed 5");
+			const { key } = await reviewOf(h2);
+			await commit(async (tx) => {
+				await upsertFinding(tx, root, found, key);
+				await dismissFinding(tx, root, found.id, dismissal, key, "P2");
+			});
+			// a.ts holds a hunk at the root's lines too, with other text.
+			const h3 = step(withLine5(), { "b.ts": text(changedB), "c.ts": "other\n" });
+			expect(await predecessorsAt(h3, inB("b changed 5 again"))).toEqual([found.id]);
+		});
+
 		it("shows the verifier the claim the root was dismissed with, not a later sighting's", async () => {
 			const found = await dismissRoot();
 			const h2 = step(withLine5(), { "b.ts": "other\n" });
