@@ -53,7 +53,8 @@ export function git(cwd: string, args: readonly string[], options: GitOptions = 
 	return new Promise((resolve, reject) => {
 		// Melian only reads; optional locks would contend with an editor or a concurrent git.
 		const child = spawn("git", args, { cwd, env: { ...gitEnvironment(), ...options.env } });
-		if (options.input !== undefined) child.stdin.end(options.input);
+		// Git may exit before it reads its input, which ends the pipe with EPIPE; its exit code reports the failure.
+		if (options.input !== undefined) child.stdin.on("error", () => {}).end(options.input);
 		const stdout: Buffer[] = [];
 		const stderr: Buffer[] = [];
 		let size = 0;

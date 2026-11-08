@@ -17,7 +17,11 @@ const defaultLeaseMs = 2 * 60 * 60 * 1000;
 const sealVersion = 1;
 const sqliteBusy = 5;
 // Git records who pushed the branch; the commits themselves need only some identity.
+// Git translates what it prints, and Melian reads its fetch and push output to tell a missing branch or a lost race
+// from a failure, so every command runs in the C locale, which git never translates.
+const untranslated = { LC_ALL: "C", LANGUAGE: "C" };
 const identity = {
+	...untranslated,
 	GIT_AUTHOR_NAME: "Melian state",
 	GIT_AUTHOR_EMAIL: "state@melian.invalid",
 	GIT_COMMITTER_NAME: "Melian state",
@@ -314,15 +318,31 @@ export class StateBranch {
 				return StateCheckout.unreached(this, changeset, lock, error.message);
 			throw error;
 		}
-		return StateCheckout.restore(this, changeset, reached.stored(changeset), lock, reached.generation);
+		const { generation } = reached;
+		try {
+			return await StateCheckout.restore(this, changeset, reached.stored(changeset), lock, generation);
+		} catch (error) {
+			// The lease is taken, so a restore that failed would hold every other clone off until it expired.
+			const expired = await this.#expire(changeset, generation).then(
+				() => undefined,
+				(failure: unknown) => (failure instanceof Error ? failure.message : String(failure)),
+			);
+			if (expired === undefined || !(error instanceof Error)) throw error;
+			const until = new Date(this.#now() + (this.#options.leaseMs ?? defaultLeaseMs)).toISOString();
+			error.message = `${error.message}; the lease, generation ${generation}, stays on melian/state until ${until}, since expiring it failed: ${expired}`;
+			throw error;
+		}
 	}
 
 	async #reach(changeset: string): Promise<{ stored: (changeset: string) => string | undefined; generation: number }> {
 		let generation = 0;
-		const { stored } = await this.#withRetry(async (index) => {
+		const { stored } = await this.#withRetry(async (index, onBranch) => {
 			const held = index.lease(changeset);
 			if (held?.live(this.#now()) && held.holder.clone !== this.#options.holder)
 				throw new LeaseHeld(changeset, held);
+			// A copy this build cannot read is refused before the lease goes over it.
+			const tree = onBranch(changeset);
+			if (tree !== undefined) await this.#open(changeset, tree);
 			const lease = Lease.take(held, this.#holder, this.#now(), this.#options.leaseMs ?? defaultLeaseMs);
 			generation = lease.generation;
 			return { index: index.leased(changeset, lease) };
@@ -378,12 +398,19 @@ export class StateBranch {
 
 	/** @internal Writes a tree of the branch into a fresh directory, refusing anything Pi's storage would not write. */
 	async materialize(changeset: string, tree: string, directory: string): Promise<void> {
+		const opened = await this.#open(changeset, tree);
+		await mkdir(directory, { recursive: true });
+		for (const [name, plain] of opened) await writeFile(join(directory, name), plain);
+	}
+
+	// Every file of a changeset's tree, opened under the key, or a refusal naming the first this build cannot read.
+	async #open(changeset: string, tree: string): Promise<[string, Buffer][]> {
 		const files = entries(await gitOutputBytes(this.#options.repoRoot, ["ls-tree", "-z", tree]));
 		const stray = files.find((entry) => entry.mode !== "100644" || !storageFile.test(entry.name));
 		if (stray !== undefined)
 			throw new StateBranchError(
 				"invalidBranch",
-				`the state branch holds ${JSON.stringify(stray.name)} in ${directory.split("/").at(-1)}, which Melian never writes`,
+				`the state branch holds ${JSON.stringify(stray.name)} in ${changeset}, which Melian never writes`,
 			);
 		const opened: [string, Buffer][] = [];
 		for (const entry of files) {
@@ -396,8 +423,18 @@ export class StateBranch {
 				);
 			opened.push([entry.name, plain]);
 		}
-		await mkdir(directory, { recursive: true });
-		for (const [name, plain] of opened) await writeFile(join(directory, name), plain);
+		return opened;
+	}
+
+	// Expires the changeset's lease, if this run's generation is still its latest.
+	async #expire(changeset: string, generation: number): Promise<void> {
+		// A lease another run has since taken is not this run's to expire.
+		await this.#withRetry(async (index) => {
+			const held = index.lease(changeset);
+			if (held === undefined || !held.admits(generation) || !held.heldBy(this.#holder))
+				throw new Refusal("superseded");
+			return { index: index.released(changeset, this.#now()), generation };
+		});
 	}
 
 	// Only a checkout with a key reaches the branch, so every caller of this has one.
@@ -475,7 +512,7 @@ export class StateBranch {
 			this.#options.remote,
 			`+${branch}:${fetched}`,
 		];
-		const result = await git(this.#options.repoRoot, args);
+		const result = await git(this.#options.repoRoot, args, { env: untranslated });
 		if (result.code !== 0) {
 			if (/couldn't find remote ref/i.test(result.stderr)) return undefined;
 			throw new StateBranchError("fetchFailed", `git fetch of melian/state failed: ${result.stderr.trim()}`);
@@ -499,7 +536,13 @@ export class StateBranch {
 			);
 		const index = StateIndex.parse(await gitOutput(this.#options.repoRoot, ["cat-file", "blob", indexEntry.sha]));
 		// Checked on every read, so neither a new changeset nor a cached copy is ever written under another key.
-		if (index.key !== undefined && index.key !== this.#sealer.commitment)
+		// The first push writes the commitment, so a branch that has a tip and none was written by something else.
+		if (index.key === undefined)
+			throw new StateBranchError(
+				"invalidBranch",
+				"the state branch's index.json commits to no writers' key, as only a branch before its first push does",
+			);
+		if (index.key !== this.#sealer.commitment)
 			throw new StateBranchError(
 				"invalidBranch",
 				"this clone's state key is not the key the branch was written under; check the writers' key in Melian's secrets file",
@@ -553,7 +596,7 @@ export class StateBranch {
 			`${commit}:${branch}`,
 			`--force-with-lease=${branch}:${tip ?? ""}`,
 		];
-		const result = await git(this.#options.repoRoot, args);
+		const result = await git(this.#options.repoRoot, args, { env: untranslated });
 		if (result.code === 0) return true;
 		// The lease names the tip this run fetched, so "stale info" means another run pushed since; a ref the remote could
 		// not lock is another run's push to it landing at the same moment.
