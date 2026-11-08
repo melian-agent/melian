@@ -46,12 +46,18 @@ try {
 			tx,
 			root.id,
 			finding.id,
-			{ by: "Maintainer <maintainer@melian.invalid>", at: "2026-11-08T00:00:00Z", reason: "Cold runs never read it." },
+			{
+				by: "Maintainer <maintainer@melian.invalid>",
+				at: "2026-11-08T00:00:00Z",
+				reason: "Cold runs never read it.",
+			},
 			"base..accepted",
 		);
 	}, context);
 	const snapshot = await harness.snapshot(FindingsDocument, root.id, context);
-	process.stdout.write(`${JSON.stringify({ root: root.id, version: FindingsDocument.definition.version, findings: snapshot }, null, 2)}\n`);
+	process.stdout.write(
+		`${JSON.stringify({ root: root.id, version: FindingsDocument.definition.version, findings: snapshot }, null, 2)}\n`,
+	);
 } finally {
 	await harness.close(context);
 }
