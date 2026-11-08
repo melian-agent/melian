@@ -43,8 +43,8 @@ function host(routes: Record<string, Route>): { calls: Call[]; fetch: ToolFetch 
 	return {
 		calls,
 		fetch: async (url, options) => {
-			if (calls.filter((call) => call.url === url).length === 2) throw new Error(`third request for ${url}`);
 			calls.push({ url, options });
+			if (calls.filter((call) => call.url === url).length > 2) throw new Error(`third request for ${url}`);
 			const route = routes[url];
 			if (route === undefined) throw new Error(`unexpected request ${url}`);
 			return route(options);
