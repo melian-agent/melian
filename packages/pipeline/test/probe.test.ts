@@ -5,6 +5,7 @@ import {
 	mkdtempSync,
 	readdirSync,
 	readFileSync,
+	readlinkSync,
 	realpathSync,
 	rmSync,
 	statSync,
@@ -320,6 +321,7 @@ describe("Probe.open", () => {
 		const error = await refusal({ script: "" }, options(sandbox, { head: { checkout: worktree, commit: absent } }));
 		expect(error).toMatchObject({ code: "invalidProbe" });
 		expect(error.message).toMatch(new RegExp(`^the head ${absent} could not be written from ${worktree}: `));
+		expect(error.cause).toBeInstanceOf(Error);
 		expect(sandbox.open).not.toHaveBeenCalled();
 		expect(left()).toEqual([]);
 		// A SHA-256 repository's hash is a full hash too, so it gets as far as git.
@@ -412,6 +414,30 @@ describe("Probe.open with a head's allowlist", () => {
 		await probe.close();
 	});
 
+	it("copies an allowed path over the tracked tree, keeping its links as written", async () => {
+		const { sandbox } = passthrough();
+		writeFileSync(join(checkout, "tracked.txt"), "local\n");
+		symlinkSync("out.txt", join(checkout, "generated", "link"));
+		const probe = await Probe.open({ script: "" }, options(sandbox, atHead(["tracked.txt", "generated"])));
+		const tree = probe.policy.read[0]!;
+		expect(readFileSync(join(tree, "tracked.txt"), "utf8")).toBe("local\n");
+		expect(readlinkSync(join(tree, "generated", "link"))).toBe("out.txt");
+		await probe.close();
+	});
+
+	it("links no install over a node_modules the head tracks", async () => {
+		const { sandbox } = passthrough();
+		mkdirSync(join(checkout, "node_modules"));
+		writeFileSync(join(checkout, "node_modules", "kept.js"), "tracked\n");
+		gitIn(checkout, "add", "--all");
+		gitIn(checkout, "commit", "--quiet", "-m", "track node_modules");
+		head = gitIn(checkout, "rev-parse", "HEAD");
+		const probe = await Probe.open({ script: "" }, options(sandbox, { head: { checkout, commit: head } }));
+		expect(probe.policy.read).not.toContain(join(checkout, "node_modules"));
+		expect(readFileSync(join(probe.policy.read[0]!, "node_modules", "kept.js"), "utf8")).toBe("tracked\n");
+		await probe.close();
+	});
+
 	it.each([
 		["an absolute path", () => "/etc"],
 		["a path through ..", () => "generated/../.."],
@@ -419,6 +445,14 @@ describe("Probe.open with a head's allowlist", () => {
 			"a link that resolves outside the checkout",
 			() => {
 				symlinkSync(scratch, join(checkout, "out"));
+				return "out";
+			},
+		],
+		[
+			"a link to a directory beside the checkout",
+			() => {
+				mkdirSync(join(scratch, "beside"));
+				symlinkSync(join(scratch, "beside"), join(checkout, "out"));
 				return "out";
 			},
 		],
