@@ -792,6 +792,98 @@ describe("walkthrough summaries", () => {
 				"No light model is configured.",
 			);
 		});
+		it("replaces a pending task on another light route rather than attach to it", async () => {
+			const revision = Revision.key(changeset.revision);
+			const root = await harness.root(context);
+			const stale = await root.commit(async (tx) => {
+				const task = await tx.createTask(
+					SummaryTask,
+					{
+						root: root.id,
+						revision,
+						prompt: "Summarise the change.",
+						model: models.ref("scripted"),
+						paths: ["src/a.ts"],
+					},
+					{ ownership: { kind: "conversation" } },
+				);
+				(await tx.doc(SummaryIndex, root.id)).tasks[revision] = task;
+				return task;
+			}, context);
+			const asked: string[] = [];
+			const reply = (summary: string) => (_messages: unknown, model: string) => {
+				asked.push(model);
+				return success(summary);
+			};
+			scriptConversations(models, [
+				{
+					match: "You write Melian's walkthrough",
+					replies: [reply("Written on the new route."), reply("Written twice.")],
+				},
+			]);
+			const other = models.ref("other");
+			const doc = await summarize({
+				config: { ...config, models: { light: { model: `${other.provider}/${other.modelId}` } } },
+			});
+			expect(asked).toEqual(["other"]);
+			expect(doc?.walkthroughs?.[revision]?.summary).toBe("Written on the new route.");
+			expect(doc?.walkthroughRoutes?.[revision]).toBe(`${other.provider}/${other.modelId}@`);
+			const record = await harness.getTask(stale as TaskId, context);
+			expect(record?.state.status === "terminal" && record.state.outcome.status).toBe("aborted");
+		});
+		it("unlocks nothing for a pending task on another route once the attempts are spent", async () => {
+			const revision = Revision.key(changeset.revision);
+			const root = await harness.root(context);
+			await root.commit(async (tx) => {
+				(await tx.doc(VerdictDocument, root.id)).walkthroughAttempts = { [revision]: 2 };
+				const task = await tx.createTask(
+					SummaryTask,
+					{
+						root: root.id,
+						revision,
+						prompt: "Summarise the change.",
+						model: models.ref("scripted"),
+						paths: ["src/a.ts"],
+					},
+					{ ownership: { kind: "conversation" } },
+				);
+				const index = await tx.doc(SummaryIndex, root.id);
+				index.tasks[revision] = task;
+				index.counted[revision] = task;
+			}, context);
+			const unlockModels = vi.fn(async () => {});
+			const other = models.ref("other");
+			const before = models.provider.state.callCount;
+			await summarize({
+				config: { ...config, models: { light: { model: `${other.provider}/${other.modelId}` } } },
+				unlockModels,
+			});
+			expect(unlockModels).not.toHaveBeenCalled();
+			expect(models.provider.state.callCount).toBe(before);
+		});
+		it("attaches to a pending task on the light route it wants", async () => {
+			const revision = Revision.key(changeset.revision);
+			const root = await harness.root(context);
+			const pending = await root.commit(async (tx) => {
+				const task = await tx.createTask(
+					SummaryTask,
+					{
+						root: root.id,
+						revision,
+						prompt: "Summarise the change.",
+						model: models.ref("scripted"),
+						paths: ["src/a.ts"],
+					},
+					{ ownership: { kind: "conversation" } },
+				);
+				(await tx.doc(SummaryIndex, root.id)).tasks[revision] = task;
+				return task;
+			}, context);
+			scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
+			const doc = await summarize();
+			expect(doc?.walkthroughs?.[revision]?.summary).toBe("Changes a value.");
+			expect((await harness.snapshot(SummaryIndex, root.id, context))?.tasks[revision]).toBe(pending);
+		});
 	});
 });
 

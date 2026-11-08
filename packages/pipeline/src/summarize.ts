@@ -352,14 +352,18 @@ export async function summarizeReview(options: {
 			}, context);
 			return;
 		}
+		const index = await harness.snapshot(SummaryIndex, conversation.id, context);
+		const known = index?.tasks[revision];
+		const record = known === undefined ? undefined : await harness.getTask(known as TaskId, context);
+		const onRoute = record !== undefined && routeOf(record.input as unknown as SummaryInput) === wanted;
+		// The commit below refuses a task on another route, and Pi Durable allows no abort inside one.
+		if (record !== undefined && record.state.status !== "terminal" && !onRoute)
+			await harness.abortTask(record.id, context);
 		if (options.unlockModels !== undefined) {
-			// What the commit below decides, read ahead of it: a live task is attached to and will ask its model, and a
-			// new task is created unless the attempts are spent.
-			const index = await harness.snapshot(SummaryIndex, conversation.id, context);
-			const known = index?.tasks[revision];
-			const record = known === undefined ? undefined : await harness.getTask(known as TaskId, context);
+			// What the commit below decides, read ahead of it: a live task on the wanted route is attached to and will ask
+			// its model, and a new task is created unless the attempts are spent.
 			const attaches =
-				record !== undefined &&
+				onRoute &&
 				(record.state.status !== "terminal" ||
 					![...undecided, "failed", "completed"].includes(record.state.outcome.status));
 			const uncounted =
@@ -377,7 +381,9 @@ export async function summarizeReview(options: {
 			const known = index.tasks[revision];
 			const document = await tx.doc(VerdictDocument, conversation.id);
 			if (!rerun && document.walkthroughs?.[revision] !== undefined) return undefined;
-			if (await attachable(tx, known, [...undecided, "failed", "completed"])) {
+			const previous = known === undefined ? undefined : await tx.task(known as TaskId);
+			const onRoute = previous !== undefined && routeOf(previous.input as unknown as SummaryInput) === wanted;
+			if (onRoute && (await attachable(tx, known, [...undecided, "failed", "completed"]))) {
 				if (index.counted[revision] === known) {
 					if (document.walkthroughAttempts !== undefined)
 						document.walkthroughAttempts[revision] = Math.max(
@@ -388,7 +394,6 @@ export async function summarizeReview(options: {
 				}
 				return known as TaskId<string>;
 			}
-			const previous = known === undefined ? undefined : await tx.task(known as TaskId);
 			if (previous?.state.status === "terminal" && ["failed", "completed"].includes(previous.state.outcome.status))
 				await countAttempt(tx, conversation.id, revision, known!);
 			if (!rerun && (document.walkthroughAttempts?.[revision] ?? 0) >= maxWalkthroughAttempts) return undefined;
