@@ -27,7 +27,8 @@ import {
 	textOf,
 	unconfinedSandbox,
 } from "@melian-agent/pipeline/testing";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
+import { GoldenRunError } from "../src/run-error.ts";
 
 let scratch: string;
 beforeEach(() => {
@@ -199,7 +200,7 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 			{
 				label: "off",
 				passes: 2,
-				goldens: { precision: 1, recall: 1, failed: 2 },
+				goldens: { precision: null, recall: null, failed: 2 },
 				misses: { found: 0, total: 2, recall: 0, failed: 0 },
 			},
 		]);
@@ -210,13 +211,18 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 			"off pass 1 trust-boundary-probe-claim-lost-release-clean: no score (Error: provider down)",
 		);
 		expect(lines.at(-1)).toMatch(
-			/^off \(a\/x planning, no probes probing\): goldens precision 1\.00, recall 1\.00; misses recall 0\.00 \(0 of 2\); .* 2 failed$/,
+			/^off \(a\/x planning, no probes probing\): goldens incomplete; misses recall 0\.00 \(0 of 2\); .* 2 failed$/,
 		);
 	});
 });
 
 describe("measureProbing's totals", () => {
 	it("sums each pass's scores, misses and spend, and counts every failure", async () => {
+		// A clock that stands still, so the failed review's measured time is exactly 0.
+		vi.useFakeTimers({ toFake: ["Date"] });
+		onTestFinished(() => {
+			vi.useRealTimers();
+		});
 		const lost = golden("trust-boundary-probe-claim-lost-release");
 		const telemetry = {
 			total: { total: { totalTokens: 7, cost: { total: 0.25 } } },
@@ -257,7 +263,7 @@ describe("measureProbing's totals", () => {
 			routes: { planner: "a/b", prober: "c/d" },
 			passes: 2,
 			goldens: { precision: 1, recall: 0, failed: 0 },
-			misses: { found: 1, total: 4, recall: 0.25, failed: 1 },
+			misses: { found: 1, total: 4, recall: null, failed: 1 },
 			tokens: 2 * 7 + 3 * 3,
 			cost: 2 * 0.25 + 3 * 0.5,
 			milliseconds: 2 * 100 + 3 * 10,
@@ -269,8 +275,51 @@ describe("measureProbing's totals", () => {
 			"x pass 2 trust-boundary-probe-claim-lost-release: precision 1.00, recall 0.00, 7 tokens, 100 ms",
 			"x pass 2 m: missed, 0 reported, 3 tokens, $0.5, 10 ms",
 			"x pass 2 n: no result (Error: down)",
-			"x (a/b planning, c/d probing): goldens precision 1.00, recall 0.00; misses recall 0.25 (1 of 4); 23 tokens, $2.00, 0 s; 1 failed",
+			"x (a/b planning, c/d probing): goldens precision 1.00, recall 0.00; misses incomplete (1 of 4); 23 tokens, $2.00, 0 s; 1 failed",
 		]);
+	});
+
+	it("gives no headline score to a combination with a failed review, and counts that review's spend and time", async () => {
+		const lost = golden("trust-boundary-probe-claim-lost-release");
+		const paid = { total: { total: { totalTokens: 7, cost: { total: 0.25 } } }, spend: () => "7 tokens" } as never;
+		const miss: Miss = { name: "m", repo: "/r", base: "a", head: "b", file: "f", rule: "r" };
+		vi.useFakeTimers({ toFake: ["Date"] });
+		try {
+			const [failedGolden, failedMiss] = await measureProbing(
+				parseCombinations("golden=a/b>c/d;miss=a/b>e/f"),
+				[lost],
+				[miss],
+				1,
+				{
+					golden: async (_, routes) => {
+						vi.setSystemTime(Date.now() + 30);
+						if (routes.prober === "c/d") throw new GoldenRunError(new Error("down"), paid);
+						return { telemetry: paid, findings: [], milliseconds: 30 } as never;
+					},
+					miss: async (_, routes) => {
+						vi.setSystemTime(Date.now() + 20);
+						if (routes.prober === "e/f") throw new Error("gone");
+						return { findings: [], tokens: 3, cost: 0.5, milliseconds: 20 };
+					},
+				},
+				() => {},
+			);
+			expect(failedGolden).toMatchObject({
+				goldens: { precision: null, recall: null, failed: 1 },
+				misses: { recall: 0, failed: 0 },
+				tokens: 7 + 3,
+				cost: 0.25 + 0.5,
+				milliseconds: 30 + 20,
+			});
+			expect(failedMiss).toMatchObject({
+				goldens: { precision: 1, recall: 0, failed: 0 },
+				misses: { found: 0, total: 1, recall: null, failed: 1 },
+				tokens: 7,
+				milliseconds: 30 + 20,
+			});
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it("scores no misses as full recall", async () => {

@@ -22,6 +22,7 @@ import {
 import Type, { type Static } from "typebox";
 import Value from "typebox/value";
 import { type Golden, type GoldenRun, type ProbingRoutes, routedProbing, scoreCorpus, scoreGolden } from "./goldens.ts";
+import { GoldenRunError } from "./run-error.ts";
 
 /** One combination a measurement runs, by a label of its own, and its routes. */
 export interface ProbingCombination {
@@ -169,11 +170,12 @@ export interface CombinationResult {
 	readonly label: string;
 	readonly routes: ProbingRoutes;
 	readonly passes: number;
-	readonly goldens: { readonly precision: number; readonly recall: number; readonly failed: number };
+	/** The scores are `null` when any review failed, since what a failed review would have scored is unknown. */
+	readonly goldens: { readonly precision: number | null; readonly recall: number | null; readonly failed: number };
 	readonly misses: {
 		readonly found: number;
 		readonly total: number;
-		readonly recall: number;
+		readonly recall: number | null;
 		readonly failed: number;
 	};
 	readonly tokens: number;
@@ -190,7 +192,8 @@ export interface ProbingRunners {
 /**
  * Runs every combination over the goldens and the misses `passes` times each, and prints each review's score and spend
  * and each combination's totals: the goldens' corpus micro-average, the misses' recall, and the tokens, cost and
- * time. A review that throws counts as failed, prints why, and the rest still run.
+ * time. A review that throws counts as failed, prints why, and the rest still run. A combination with a failed review
+ * has no score where it failed, and its spend and time still count the failed review's.
  */
 export async function measureProbing(
 	combinations: readonly ProbingCombination[],
@@ -211,6 +214,7 @@ export async function measureProbing(
 		let milliseconds = 0;
 		for (let pass = 1; pass <= passes; pass++) {
 			for (const golden of goldens) {
+				const began = Date.now();
 				try {
 					const run = await runners.golden(golden, routes);
 					const score = scoreGolden(golden, run.findings);
@@ -225,10 +229,16 @@ export async function measureProbing(
 					);
 				} catch (error) {
 					goldenFailures++;
+					if (error instanceof GoldenRunError) {
+						tokens += error.telemetry.total?.total.totalTokens ?? 0;
+						cost += error.telemetry.total?.total.cost.total ?? 0;
+					}
+					milliseconds += Date.now() - began;
 					print(visibleText(`${label} pass ${pass} ${golden.name}: no score (${String(error)})`));
 				}
 			}
 			for (const miss of misses) {
+				const began = Date.now();
 				try {
 					const run = await runners.miss(miss, routes);
 					const hit = foundMiss(miss, run.findings);
@@ -243,6 +253,7 @@ export async function measureProbing(
 					);
 				} catch (error) {
 					missFailures++;
+					milliseconds += Date.now() - began;
 					print(visibleText(`${label} pass ${pass} ${miss.name}: no result (${String(error)})`));
 				}
 			}
@@ -253,8 +264,14 @@ export async function measureProbing(
 			label,
 			routes,
 			passes,
-			goldens: { ...corpus, failed: goldenFailures },
-			misses: { found, total, recall: total === 0 ? 1 : found / total, failed: missFailures },
+			goldens:
+				goldenFailures === 0 ? { ...corpus, failed: 0 } : { precision: null, recall: null, failed: goldenFailures },
+			misses: {
+				found,
+				total,
+				recall: missFailures > 0 ? null : total === 0 ? 1 : found / total,
+				failed: missFailures,
+			},
 			tokens,
 			cost,
 			milliseconds,
@@ -262,7 +279,7 @@ export async function measureProbing(
 		results.push(result);
 		print(
 			visibleText(
-				`${label} (${routes.planner} planning, ${routes.prober ?? "no probes"} probing): goldens precision ${corpus.precision.toFixed(2)}, recall ${corpus.recall.toFixed(2)}; misses recall ${result.misses.recall.toFixed(2)} (${found} of ${total}); ${tokens} tokens, $${cost.toFixed(2)}, ${(milliseconds / 1000).toFixed(0)} s; ${goldenFailures + missFailures} failed`,
+				`${label} (${routes.planner} planning, ${routes.prober ?? "no probes"} probing): goldens ${goldenFailures === 0 ? `precision ${corpus.precision.toFixed(2)}, recall ${corpus.recall.toFixed(2)}` : "incomplete"}; misses ${result.misses.recall === null ? "incomplete" : `recall ${result.misses.recall.toFixed(2)}`} (${found} of ${total}); ${tokens} tokens, $${cost.toFixed(2)}, ${(milliseconds / 1000).toFixed(0)} s; ${goldenFailures + missFailures} failed`,
 			),
 		);
 	}
