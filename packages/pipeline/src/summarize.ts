@@ -122,6 +122,22 @@ export function publishedWalkthrough(
 		? walkthrough
 		: undefined;
 }
+/**
+ * The note a publication of `revision` posts in place of a walkthrough: the stored note, or a fixed one when
+ * `publishedWalkthrough` drops a stored walkthrough another light route wrote.
+ */
+export function publishedWalkthroughNote(
+	state:
+		| Pick<StoredVerdictState, "walkthroughs" | "walkthroughNotes" | "walkthroughRoutes" | "provenance">
+		| undefined,
+	revision: string,
+): string | undefined {
+	const note = state?.walkthroughNotes?.[revision];
+	if (note !== undefined) return note;
+	return state?.walkthroughs?.[revision] !== undefined && publishedWalkthrough(state, revision) === undefined
+		? "No walkthrough available. Another light route wrote it."
+		: undefined;
+}
 export const SummaryTask = defineTask<SummaryInput, SummaryCheckpoint, string>({
 	name: "melian.summarize",
 	version: 2,

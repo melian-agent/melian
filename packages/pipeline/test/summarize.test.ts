@@ -24,7 +24,13 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VerdictDocument } from "../src/adjudication.ts";
 import type { TaskId } from "../src/harness.ts";
-import { publishedWalkthrough, SummaryIndex, SummaryTask, summarizeExtension } from "../src/summarize.ts";
+import {
+	publishedWalkthrough,
+	publishedWalkthroughNote,
+	SummaryIndex,
+	SummaryTask,
+	summarizeExtension,
+} from "../src/summarize.ts";
 import { baseAndHead, isolatedGitEnv } from "./fixtures/repo.ts";
 
 let repo: string;
@@ -877,6 +883,42 @@ describe("walkthrough summaries", () => {
 			const doc = await summarize({
 				config: { ...config, models: { light: { model: `${other.provider}/${other.modelId}` } } },
 			});
+			expect(doc?.walkthroughNotes?.[revision]).toBe(
+				"No walkthrough available. The summariser returned no summary.",
+			);
+			expect(doc?.walkthroughAttempts).toEqual({ [revision]: 2 });
+		});
+		it("charges no attempt for an indexed task that ended aborted, and unlocks the model it then asks", async () => {
+			const revision = Revision.key(changeset.revision);
+			const root = await harness.root(context);
+			const aborted = await root.commit(async (tx) => {
+				(await tx.doc(VerdictDocument, root.id)).walkthroughAttempts = { [revision]: 1 };
+				const task = await tx.createTask(
+					SummaryTask,
+					{
+						root: root.id,
+						revision,
+						prompt: "Summarise the change.",
+						model: models.ref("scripted"),
+						paths: ["src/a.ts"],
+					},
+					{ ownership: { kind: "conversation" } },
+				);
+				(await tx.doc(SummaryIndex, root.id)).tasks[revision] = task;
+				return task;
+			}, context);
+			await harness.abortTask(aborted, context);
+			harness.resume();
+			expect((await harness.waitForTask(aborted, context)).state.outcome.status).toBe("aborted");
+			scriptConversations(models, [
+				{ match: "You write Melian's walkthrough", replies: [fauxAssistantMessage("No tool used.")] },
+			]);
+			const unlockModels = vi.fn(async () => {});
+			const doc = await summarize({ unlockModels });
+			expect(unlockModels).toHaveBeenCalledTimes(1);
+			expect(doc?.walkthroughNotes?.[revision]).toBe(
+				"No walkthrough available. The summariser returned no summary.",
+			);
 			expect(doc?.walkthroughAttempts).toEqual({ [revision]: 2 });
 		});
 		it("unlocks nothing for a pending task on another route once the attempts are spent", async () => {
@@ -1032,5 +1074,30 @@ describe("the walkthrough publication posts", () => {
 	it("is none when nothing is stored", () => {
 		expect(publishedWalkthrough({} as never, revision)).toBeUndefined();
 		expect(publishedWalkthrough(undefined, revision)).toBeUndefined();
+	});
+	it.each([
+		["no state", undefined, undefined],
+		["no walkthrough and no note", {}, undefined],
+		["the stored note", { walkthroughNotes: { [revision]: "Stored note." } }, "Stored note."],
+		[
+			"no note beside a walkthrough it posts",
+			{
+				walkthroughs: { [revision]: walkthrough },
+				walkthroughRoutes: { [revision]: "faux/first@" },
+				provenance: { [revision]: planned([{ model: "faux/first" }]) },
+			},
+			undefined,
+		],
+		[
+			"the fixed note for a walkthrough another light route wrote",
+			{
+				walkthroughs: { [revision]: walkthrough },
+				walkthroughRoutes: { [revision]: "faux/other@" },
+				provenance: { [revision]: planned([{ model: "faux/first" }]) },
+			},
+			"No walkthrough available. Another light route wrote it.",
+		],
+	])("posts %s as its note", (_name, state, note) => {
+		expect(publishedWalkthroughNote(state as never, revision)).toBe(note);
 	});
 });

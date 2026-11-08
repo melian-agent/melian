@@ -45,7 +45,7 @@ import {
 import { modelsOf, type ReviewModels } from "./models.ts";
 import { ReviewIndex } from "./review-index.ts";
 import { legacyKey, Round, RoundsDocument, RoundWriter } from "./rounds.ts";
-import { publishedWalkthrough } from "./summarize.ts";
+import { publishedWalkthrough, publishedWalkthroughNote } from "./summarize.ts";
 import { TaskTiming } from "./task-timing.ts";
 
 // Type aliases with mutable arrays, not core's interfaces: a document's value must satisfy Pi's JsonObject.
@@ -970,11 +970,7 @@ function publishTask(provider: ReviewProvider) {
 					delete currentRound.walkthroughNote;
 					const posted = publishedWalkthrough(storedVerdict, revision);
 					if (posted !== undefined) currentRound.walkthrough = structuredClone(posted);
-					const note =
-						storedVerdict?.walkthroughNotes?.[revision] ??
-						(posted === undefined && storedVerdict?.walkthroughs?.[revision] !== undefined
-							? "No walkthrough available. Another light route wrote it."
-							: undefined);
+					const note = publishedWalkthroughNote(storedVerdict, revision);
 					if (note !== undefined) currentRound.walkthroughNote = note;
 					// A publish that could not read the run keeps the one an earlier publish of the round stored.
 					if (task.input.run?.roundId === target.roundId) currentRound.run = structuredClone(task.input.run);
