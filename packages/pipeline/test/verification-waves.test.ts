@@ -574,6 +574,67 @@ describe("verification as each lens ends", () => {
 		expect(events).toEqual(["contracts verified", "tests ended"]);
 	});
 
+	it("waits on a wave still running when the next lens ends, then starts the next wave before a slower lens ends", async () => {
+		lenses = [
+			...lenses,
+			(await Lens.load(repo, { kind: "revision", commit: gitIn(repo, "rev-parse", "main") }, ["src/user.ts"])).find(
+				(each) => each.name === "tests",
+			)!,
+		];
+		const contractsEnded = Promise.withResolvers<void>();
+		const second = Promise.withResolvers<void>();
+		const events: string[] = [];
+		let asked = 0;
+		const within = (promise: Promise<void>, ms: number) =>
+			Promise.race([promise, new Promise((resolve) => setTimeout(resolve, ms))]);
+		const judge: ScriptedReply = async (messages) => {
+			const claims = claimsIn(messages);
+			if (messages.some((message) => message.role === "toolResult")) {
+				if (asked === 2) {
+					events.push("contracts verified");
+					second.resolve();
+				}
+			} else if (++asked === 1) {
+				// The first wave is still judging when contracts ends.
+				await within(contractsEnded.promise, 2_000);
+				await new Promise((resolve) => setTimeout(resolve, 300));
+			}
+			return scriptVerifier(
+				messages,
+				Object.fromEntries(claims.map((id) => [id, { verdict: "confirmed" as const, reason: "Traced the code." }])),
+			);
+		};
+		scriptConversations(fake, [
+			{
+				match: lens("correctness").instructions,
+				replies: [report("null-dereference"), fauxAssistantMessage("Done.")],
+			},
+			{
+				match: lens("contracts").instructions,
+				replies: [
+					fauxAssistantMessage(fauxToolCall("report_finding", caller), { stopReason: "toolUse" }),
+					() => {
+						contractsEnded.resolve();
+						return fauxAssistantMessage("Done.");
+					},
+				],
+			},
+			{
+				match: lens("tests").instructions,
+				replies: [
+					async () => {
+						await within(second.promise, 4_000);
+						events.push("tests ended");
+						return fauxAssistantMessage("Done.");
+					},
+				],
+			},
+			{ match: verifierMarker, replies: Array.from({ length: 20 }, () => judge) },
+		]);
+		await review();
+		expect(events).toEqual(["contracts verified", "tests ended"]);
+	});
+
 	it("verifies again a claim whose wave outcome a verifier refusal cleared", async () => {
 		const asked: string[][] = [];
 		fastThenSlow(asked);
