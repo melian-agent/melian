@@ -437,6 +437,7 @@ export {
 	type ImportEdge,
 	type SymbolSite,
 } from "./graph-coverage.ts";
+export { Lease, LeaseError, type LeaseHolder, type StoredLease } from "./lease.ts";
 export {
 	type MutationReportInput,
 	type MutationSkipCause,
