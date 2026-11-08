@@ -1,6 +1,6 @@
 # A lens names its own model route
 
-Status: proposed for plan step 37 ([issue #243](https://github.com/melian-agent/melian/issues/243)). An attacking review on 2026-11-08 found ten breaks in its first form, and this form closes each. It awaits the maintainer's ruling, and changes nothing until it is accepted.
+Status: accepted on 2026-11-08 by the maintainer, in the builder's session for plan step 37 ([issue #243](https://github.com/melian-agent/melian/issues/243)). An attacking review on 2026-11-08 found ten breaks in the rule's first form, and this form closes each.
 
 Amends: [2026-10-24-design-lens-on-codex-route.md](2026-10-24-design-lens-on-codex-route.md), whose option C this is.
 
@@ -21,6 +21,12 @@ A lens level names a tier, and a tier's route serves every lens on it. One lens 
 9. **`melian doctor`.** It prints a `route` line for each routed lens beside the tier lines, and a level as `careful on lens route (openai-codex/gpt-5.6-sol)`. The inversion check compares only budgets between levels that share a route.
 10. **Melian's own policy.** The root `melian.yaml` gives `design` its route: `openai-codex/gpt-5.6-sol` at `thinking: high`, falling back to `anthropic/claude-opus-5-5`, accepting both. `models.medium` returns to Terra at `low` with the light route's fallbacks and `accept`, so every `quick` level keeps the model and effort it runs today. The `quick: { tier: light }` lines leave `contracts`, `conventions`, `correctness`, `removed-behaviour`, `tests` and `trust-boundary`. `durability`'s `quick` returns to `medium`. `design` drops `tier: medium` and keeps its tools, budget and body. The extension files stay where they still hold budgets.
 
+## The maintainer's rulings, 2026-11-08
+
+- The rule is accepted as written.
+- A committed lens route inherits a guarded tier's `acceptOverridden: false` and `unavailable: fail` unless it states its own, rather than the combination being a configuration error.
+- The eight lens versions rule 10 changes are accepted, with the rerun cost the consequences below describe.
+
 ## Why
 
 A route on the lens is the smallest unit that answers the problem: it moves one lens and nothing else. A sixth tier would solve one lens and touch every tier order, as the earlier decision says. A route per level would let one lens split across models, which no one has asked for, and would put a model choice into every level's identity.
@@ -30,7 +36,7 @@ Reusing the tier's resolution code keeps one rule for derive, fail and refusal. 
 ## Consequences
 
 - Behaviour stays the same for Melian's own rounds: `design` keeps Sol 5.6 at high, and each `quick` level keeps Terra at low.
-- Rule 10 changes eight lenses' versions, since their files change: the six that lose a `quick` line, `durability` and `design`. Every stored review runs those lenses again once, and per-version measurements start afresh.
+- Rule 10 changes eight lenses' versions, since their files change: the six that lose a `quick` line, `durability` and `design`. No stored verdict changes, and its findings and dismissals stand. The next review of a head Melian already reviewed finds no stored run of those eight lenses under their new versions, so it runs them again once. A new head runs every lens anyway. Measurements kept by lens version start a new series for the eight.
 - Triage changes at one edge. A contributor with no credentials for the light route's models today falls through to `medium`, Sol 5.6 or Opus. After the rule, `medium` repeats light's models, so triage falls through to `heavy`.
 - A verdict, round or adjudication written by this Melian cannot be read by an older one. This is the usual cost of a version bump.
 - A preference route on an unrouted lens is judged by its committed tier, so `acceptOverridden: false` on that tier still holds.
