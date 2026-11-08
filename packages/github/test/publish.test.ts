@@ -15,7 +15,7 @@ import {
 	recordDismissal,
 } from "@melian-agent/pipeline";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { PublishedDocument } from "../../pipeline/src/publish.ts";
+import { PublishedDocument, PublisherDocument } from "../../pipeline/src/publish.ts";
 import { type FakeState, fakeGitHub, posts } from "./fixtures/fake-github.ts";
 import {
 	emptyName,
@@ -1584,5 +1584,50 @@ describe("cross-head answer discovery", () => {
 			await expect(result).rejects.toMatchObject({ code: "failed" });
 			expect(state.resolvedThreads).toEqual([]);
 		}
+	});
+});
+
+describe("the hook before posting", () => {
+	const writes = (state: FakeState) => state.calls.filter(({ method }) => method !== "GET");
+
+	it("runs once the publisher secret is stored, before any write to GitHub", async () => {
+		const { github, changeset, state } = await reviewedRevisionOne();
+		const seen: { secret?: string; writes: number }[] = [];
+		await publishReview({
+			harness: harness!,
+			provider: github,
+			changeset,
+			pullRequest: await github.pullRequest(7),
+			base: changeset.revision.base,
+			trustedWriters: true,
+			beforePosting: async () => {
+				const root = (await harness!.root(context)).id;
+				seen.push({
+					secret: (await harness!.snapshot(PublisherDocument, root, context))?.secret,
+					writes: writes(state).length,
+				});
+			},
+		});
+		expect(seen).toEqual([{ secret: expect.stringMatching(/^[0-9a-f]{64}$/), writes: 0 }]);
+		expect(writes(state).length).toBeGreaterThan(0);
+	});
+
+	it("posts nothing when the hook rejects", async () => {
+		const { github, changeset, state } = await reviewedRevisionOne();
+		const refusal = new Error("the state branch refused the storage");
+		await expect(
+			publishReview({
+				harness: harness!,
+				provider: github,
+				changeset,
+				pullRequest: await github.pullRequest(7),
+				base: changeset.revision.base,
+				trustedWriters: true,
+				beforePosting: async () => {
+					throw refusal;
+				},
+			}),
+		).rejects.toBe(refusal);
+		expect(writes(state)).toEqual([]);
 	});
 });

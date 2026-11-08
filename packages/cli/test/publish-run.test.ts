@@ -236,3 +236,9 @@ it("publishes only from storage it leased from the state branch", async () => {
 	await published();
 	expect(write.mock.calls.filter((call) => call[4]?.authoritative === true)).toHaveLength(1);
 });
+
+it("stores the publication's storage before it posts", async () => {
+	const checkpoint = vi.spyOn(ChangesetStore.prototype, "checkpoint");
+	await published();
+	expect(checkpoint).toHaveBeenCalledTimes(1);
+});

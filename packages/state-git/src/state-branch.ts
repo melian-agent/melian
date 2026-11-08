@@ -201,6 +201,22 @@ export class StateBranch {
 		}
 	}
 
+	/** Whether the branch holds the changeset, read without the writers' key. */
+	async stored(changeset: string): Promise<boolean> {
+		if (!changesetName.test(changeset))
+			throw new StateBranchError("invalidBranch", `"${changeset}" is not a changeset name`);
+		const tip = await this.#fetch();
+		if (tip === undefined) return false;
+		const listing = await gitOutputBytes(this.#options.repoRoot, [
+			"ls-tree",
+			"-z",
+			tip,
+			"--",
+			`${changesetsTree}/${changeset}`,
+		]);
+		return listing.length > 0;
+	}
+
 	/**
 	 * Opens this clone's copy of the changeset under its lock, touching no remote, for a command that only reads it.
 	 * Answers undefined when this clone holds no copy.
@@ -246,7 +262,7 @@ export class StateBranch {
 	}
 
 	/** @internal */
-	async push(changeset: string, synced: string, tree: () => Promise<string>): Promise<PushResult> {
+	async push(changeset: string, synced: string, tree: () => Promise<string>, keepLease: boolean): Promise<PushResult> {
 		try {
 			const { tip } = await this.#withRetry(async (index, stored) => {
 				const held = index.lease(changeset);
@@ -254,7 +270,10 @@ export class StateBranch {
 					throw new Refusal("another run took the changeset's lease after this one's expired");
 				if ((stored(changeset) ?? "none") !== synced)
 					throw new Refusal("another run pushed the changeset since this one fetched it");
-				return { index: index.released(changeset), tree: { changeset, sha: await tree() } };
+				const next = keepLease
+					? index.leased(changeset, { ...held, heartbeat: this.#now() })
+					: index.released(changeset);
+				return { index: next, tree: { changeset, sha: await tree() } };
 			});
 			return { kind: "pushed", commit: tip };
 		} catch (error) {
@@ -483,7 +502,7 @@ export class StateCheckout {
 	/** Why this copy is not leased from the branch, when it is not: the branch was out of reach, or never asked. */
 	readonly unreached: string | undefined;
 	readonly #branch: StateBranch;
-	readonly #synced: string;
+	#synced: string;
 	readonly #lock: CopyLock;
 
 	private constructor(
@@ -552,17 +571,26 @@ export class StateCheckout {
 	}
 
 	/**
-	 * Stores this clone's copy on the branch and releases the lease. Close the storage opened over `directory` first. A push the branch refuses,
-	 * because another run moved the changeset, keeps the copy here; the next checkout sets it aside for the branch's.
+	 * Stores this clone's copy on the branch and releases the lease, or with `keepLease` keeps it for a later push. Close
+	 * the storage opened over `directory` first, or have nothing writing to it. A push the branch refuses, because
+	 * another run moved the changeset, keeps the copy here; the next checkout sets it aside for the branch's.
 	 */
-	async push(): Promise<PushResult> {
+	async push(options: { readonly keepLease?: boolean } = {}): Promise<PushResult> {
 		if (this.unreached !== undefined) return { kind: "unreached", reason: this.unreached };
 		let tree = "";
-		const result = await this.#branch.push(this.changeset, this.#synced, async () => {
-			tree = await this.#branch.snapshot(this.changeset, this.directory);
-			return tree;
-		});
-		if (result.kind === "pushed") await writeFile(`${this.directory}.synced`, `${tree}\n`);
+		const result = await this.#branch.push(
+			this.changeset,
+			this.#synced,
+			async () => {
+				tree = await this.#branch.snapshot(this.changeset, this.directory);
+				return tree;
+			},
+			options.keepLease === true,
+		);
+		if (result.kind === "pushed") {
+			await writeFile(`${this.directory}.synced`, `${tree}\n`);
+			this.#synced = tree;
+		}
 		return result;
 	}
 

@@ -400,3 +400,99 @@ describe("Codex's review of 26338cc", () => {
 		expect(stderr).toEqual([]);
 	});
 });
+
+describe("Codex's review of a0756fc", () => {
+	const authoritative = { authoritative: true } as const;
+	const legacyIn = async (repo: string) => {
+		const directory = join(gitIn(repo, "rev-parse", "--path-format=absolute", "--git-common-dir"), "melian");
+		mkdirSync(directory, { recursive: true });
+		await (await openSqliteStorage(join(directory, `${pullRequest}.sqlite`))).close(context);
+	};
+
+	it("stores the copy on the branch before posting, and keeps the lease", async () => {
+		const store = await ChangesetStore.write(io(first), first, pullRequest, undefined, authoritative);
+		await writeNote(store, "secret");
+		await store.checkpoint();
+		expect(gitIn(origin, "ls-tree", "--name-only", "refs/heads/melian/state:changesets")).toBe(pullRequest);
+		const index = JSON.parse(gitIn(origin, "cat-file", "blob", "refs/heads/melian/state:index.json"));
+		expect(Object.keys(index.changesets)).toEqual([pullRequest]);
+		await store.close();
+		expect(JSON.parse(gitIn(origin, "cat-file", "blob", "refs/heads/melian/state:index.json")).changesets).toEqual(
+			{},
+		);
+	});
+
+	it("refuses to post when the copy cannot be stored first", async () => {
+		const store = await ChangesetStore.write(io(first), first, pullRequest, undefined, authoritative);
+		rmSync(origin, { recursive: true, force: true });
+		await expect(store.checkpoint()).rejects.toMatchObject({
+			name: "CliError",
+			message: expect.stringMatching(
+				/^melian publish could not store the pull request's storage on melian\/state before posting: git fetch of melian\/state failed: .*; nothing was posted$/s,
+			),
+		});
+		await store.storage.close(context);
+		await store.close().catch(() => {});
+	});
+
+	it("fails a publication whose storage the branch refuses afterwards", async () => {
+		vi.useFakeTimers({ toFake: ["Date"] });
+		try {
+			vi.setSystemTime(new Date("2026-11-08T00:00:00Z"));
+			const publishing = await ChangesetStore.write(io(first), first, pullRequest, undefined, authoritative);
+			await writeNote(publishing, "posted");
+			vi.setSystemTime(new Date("2026-11-08T03:00:00Z"));
+			const other = clone();
+			const taker = await ChangesetStore.write(io(other), other, pullRequest);
+			await taker.storage.close(context);
+			await taker.close();
+			await expect(publishing.close()).rejects.toMatchObject({
+				name: "CliError",
+				message:
+					"GitHub has this publication, but melian/state did not take its storage: another run took the changeset's lease after this one's expired; this clone keeps it, and melian publish run again here stores it",
+			});
+			await expect(ChangesetStore.read(io(first), first, pullRequest)).resolves.toBeDefined();
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("refuses to publish legacy SQLite storage of a pull request the branch also holds", async () => {
+		const other = clone();
+		const branchCopy = await ChangesetStore.write(io(other), other, pullRequest);
+		await writeNote(branchCopy, "newer round");
+		await branchCopy.close();
+		await legacyIn(first);
+		await expect(ChangesetStore.write(io(first), first, pullRequest, undefined, authoritative)).rejects.toMatchObject(
+			{
+				name: "CliError",
+				message: `${pullRequest} has SQLite storage in this clone from before the state branch, and melian/state holds the pull request too; publish it from a clone that holds the branch's copy`,
+			},
+		);
+	});
+
+	it("publishes legacy SQLite storage of a pull request the branch does not hold", async () => {
+		await legacyIn(first);
+		const store = await ChangesetStore.write(io(first), first, pullRequest, undefined, authoritative);
+		await store.storage.close(context);
+		await store.close();
+		expect(stderr).toEqual([
+			`melian: ${pullRequest} keeps the SQLite storage it had before the state branch, in this clone alone\n`,
+		]);
+	});
+
+	it("refuses to publish legacy SQLite storage when it cannot read the branch", async () => {
+		await legacyIn(first);
+		rmSync(origin, { recursive: true, force: true });
+		await expect(ChangesetStore.write(io(first), first, pullRequest, undefined, authoritative)).rejects.toMatchObject(
+			{
+				name: "CliError",
+				message: expect.stringMatching(
+					new RegExp(
+						`^${pullRequest} has SQLite storage in this clone from before the state branch, and Melian cannot read melian/state to see whether another clone stored it there: git fetch of melian/state failed: `,
+					),
+				),
+			},
+		);
+	});
+});

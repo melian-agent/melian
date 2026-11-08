@@ -700,3 +700,51 @@ const GOLDEN = {
 	key: "07fcf6ff72e5a96a2ab8c8a51825709a0ba3096d8b984f37d04b87d60606c56b",
 	sealed: "0179f42154297f99b85f1a6d5af912a28f8e24aa9085d85478267ca04bbb4bf12357fcbd",
 };
+
+describe("storing a copy and keeping the lease", () => {
+	it("pushes the copy, keeps the lease, and lets the run push again", async () => {
+		const clone = remote.clone();
+		const checkout = await clone.branch().checkout(changeset);
+		await note(await storageOf(checkout), "before posting");
+		expect(await checkout.push({ keepLease: true })).toMatchObject({ kind: "pushed" });
+		expect((remote.index() as { changesets: Record<string, unknown> }).changesets[changeset]).toBeDefined();
+		const fresh = remote.clone({ now: () => Date.now() + 3 * 60 * 60 * 1000 });
+		const restored = await fresh.branch().checkout(changeset);
+		expect(await notes(await storageOf(restored))).toEqual(["before posting"]);
+		restored.close();
+	});
+
+	it("pushes again after keeping the lease, and then releases it", async () => {
+		const checkout = await remote.clone().branch().checkout(changeset);
+		await note(await storageOf(checkout), "first");
+		await checkout.push({ keepLease: true });
+		await note(await storageOf(checkout), "second");
+		expect(await checkout.push()).toMatchObject({ kind: "pushed" });
+		expect((remote.index() as { changesets: object }).changesets).toEqual({});
+		expect(await notes(await storageOf(await remote.clone().branch().checkout(changeset)))).toEqual([
+			"first",
+			"second",
+		]);
+	});
+});
+
+describe("whether the branch holds a changeset", () => {
+	it("answers from the branch alone, with no key", async () => {
+		const reader = remote.clone({ key: undefined }).branch();
+		expect(await reader.stored(changeset)).toBe(false);
+		await (await remote.clone().branch().checkout(changeset)).push();
+		expect(await reader.stored(changeset)).toBe(true);
+		expect(await reader.stored("pull-fedcba9876543210")).toBe(false);
+	});
+
+	it("names a fetch that fails", async () => {
+		await expect(
+			remote
+				.clone()
+				.branch({ remote: join(remote.root, "absent.git") })
+				.stored(changeset),
+		).rejects.toMatchObject({
+			code: "fetchFailed",
+		});
+	});
+});

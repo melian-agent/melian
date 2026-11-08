@@ -536,6 +536,7 @@ export async function publish(
 				enabled: options.walkthrough !== false && config.publish.walkthrough.enabled,
 			},
 			readRun: (roundId) => reviewRun(storage, roundId, io),
+			beforePosting: () => store.checkpoint(),
 		});
 		const parts = [
 			`${published.posted} new ${published.posted === 1 ? "finding" : "findings"}`,

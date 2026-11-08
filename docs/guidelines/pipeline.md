@@ -342,6 +342,8 @@ Open the harness with `DismissHarness.open(storage, models)`, which installs the
 
 ## Publishing
 
+`publishReview` takes `beforePosting`, which runs once the publisher secret and target are committed and before the first post, and a rejection posts nothing; the CLI stores the pull request's storage on `melian/state` there.
+
 `Publication.attestations` returns dismissal snapshots with revision and round identity for every posted or recovered round and the current ledger.
 Identical snapshots appear once. Resumed tasks contribute their snapshots before the new task’s.
 The version-5 publish task returns posted snapshots on stale-target exits too, including those from resumed tasks.

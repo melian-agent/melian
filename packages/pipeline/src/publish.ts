@@ -1178,6 +1178,11 @@ export interface PublishOptions {
 	readonly run?: StoredRunDetails;
 	/** Reads the snapshot of the round publication has captured and will validate again before posting. */
 	readonly readRun?: (roundId: string) => Promise<StoredRunDetails | undefined>;
+	/**
+	 * Runs once the publisher secret and target are stored, before the first post, so a host can store them where
+	 * another host will find them. A rejection posts nothing.
+	 */
+	readonly beforePosting?: () => Promise<void>;
 	readonly context?: Context;
 }
 
@@ -1440,6 +1445,7 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 		publisher.publishedBy = { ...publishedBy };
 		return target;
 	}, context);
+	await options.beforePosting?.();
 	harness.resume();
 	const unfinished = async () =>
 		(await harness.inspect(context)).tasks.filter((each) => each.record.kind === publishTaskName);
