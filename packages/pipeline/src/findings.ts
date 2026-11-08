@@ -919,6 +919,8 @@ export type DismissedRoot = {
 	// The revision that last sighted it, whose head its region is read at.
 	readonly revision: string;
 	readonly dismissedAt: string;
+	// The dismissal's identity, which the link the verifier's answer records must still match.
+	readonly dismissal: string;
 	readonly severity: Severity;
 	// The accepted trigger's hash and proof, and that proof with every proof sighted since, which its reopen rule reads.
 	readonly hash: string;
@@ -958,6 +960,7 @@ export function dismissedRoots(state: FindingsState): DismissedRoot[] {
 					revision,
 					// `dismissFinding` records a severity only beside the time and the accepted trigger.
 					dismissedAt: dismissedAt!,
+					dismissal: identityOf(lifecycle)!,
 					severity: dismissedSeverity,
 					hash: dismissedTrigger!.hash,
 					accepted: unionOf(dismissedTrigger!.proof),
@@ -989,8 +992,8 @@ export type Restating = {
 	readonly members: readonly string[];
 	// The lens claims merged into it, each of which must be judged the same.
 	readonly claims: readonly { readonly id: string; readonly source: FindingSource; readonly ruleId: string }[];
-	// The roots the verifier was asked about.
-	readonly dismissed: readonly string[];
+	// The roots the verifier was asked about, each with the identity of the dismissal it was shown.
+	readonly dismissed: readonly { readonly id: string; readonly dismissal: string }[];
 };
 
 // Claims the trust floor protects: the verifier alone must not silence them, so a match only proposes.
@@ -1020,9 +1023,10 @@ export async function recordInheritances(
 	const links: Record<string, Inheritance> = {};
 	for (const { members, claims, dismissed } of restating) {
 		if (claims.length === 0) continue;
-		const matches = dismissed.flatMap((from) => {
+		const matches = dismissed.flatMap(({ id: from, dismissal }) => {
 			const lifecycle = state.items[from]?.lifecycle;
-			if (lifecycle?.status !== "dismissed" || lifecycle.dismissedSeverity === undefined) return [];
+			// A dismissal replaced since the verifier was shown it is not the one it judged.
+			if (lifecycle === undefined || identityOf(lifecycle) !== dismissal) return [];
 			const same = claims.every(
 				(claim) =>
 					state.items[claim.id]?.verifications?.[revision]?.[producerKey(claim.source)]?.[version]?.matches?.[
@@ -1035,7 +1039,8 @@ export async function recordInheritances(
 				// Every claim judged the same has a record, and so a sighting.
 				.map((claim) => sightingIn(state, revision, claim.id, claim.source)!.properties.severity)
 				.reduce<Severity>(stricter, "nit");
-			const fenced = severityRank[reported] < severityRank[lifecycle.dismissedSeverity];
+			// Only a dismissal with a recorded severity is a root.
+			const fenced = severityRank[reported] < severityRank[lifecycle.dismissedSeverity!];
 			const kind: Inheritance["kind"] = fenced || claims.some(floored) ? "proposed" : "inherited";
 			// A dismissal records its time beside its severity.
 			return [{ from, kind, at: lifecycle.dismissedAt! }];
