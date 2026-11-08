@@ -45,6 +45,9 @@ type FindingLifecycle = {
 	// The severity the verdict showed when the dismissal was made; absent from one made before Melian kept it, which
 	// therefore never carries to a restatement.
 	dismissedSeverity?: Severity;
+	// The finding as the dismissed revision showed it, kept beside the severity: a later run of the same lens at that
+	// revision replaces its sighting, and a restatement still needs the root's region and claim.
+	dismissedSighting?: { revision: string; sighting: ProducerFinding };
 	firstSeenRevision: string;
 	lastSeenRevision: string;
 	history: StoredPastDismissal[];
@@ -273,7 +276,15 @@ function unionOf(proof: readonly StoredProvingHunk[]): StoredProvingHunk[] {
 }
 
 function reopenedAt(lifecycle: FindingLifecycle, revision: string): FindingLifecycle {
-	const { dismissedBy, dismissedReason, dismissedAt, dismissedTrigger: _, dismissedSeverity: __, ...kept } = lifecycle;
+	const {
+		dismissedBy,
+		dismissedReason,
+		dismissedAt,
+		dismissedTrigger: _,
+		dismissedSeverity: __,
+		dismissedSighting: ___,
+		...kept
+	} = lifecycle;
 	return {
 		...kept,
 		status: "new",
@@ -502,8 +513,21 @@ export async function dismissFinding(
 		throw new FindingError("unknownFinding", `no finding has ID ${id}`, { path: "/properties/id" });
 	}
 	const { status, dismissedBy, dismissedReason, dismissedAt, history } = record.lifecycle;
-	const atRevision = record.sightings[revision ?? record.lifecycle.lastSeenRevision]!;
-	const trigger = adjudicate(atRevision).winner.properties.trigger;
+	const accepting = revision ?? record.lifecycle.lastSeenRevision;
+	const atRevision = record.sightings[accepting]!;
+	const { winner } = adjudicate(atRevision);
+	const trigger = winner.properties.trigger;
+	const shown =
+		severity === undefined
+			? {}
+			: {
+					dismissedSeverity: severity,
+					dismissedSighting: {
+						revision: accepting,
+						// A commit's document view refuses structuredClone, so the copy goes through JSON.
+						sighting: JSON.parse(JSON.stringify(winner)) as ProducerFinding,
+					},
+				};
 	const proof = unionOf([
 		...(record.lifecycle.proof ?? []),
 		...Object.values(atRevision).flatMap((each) => proofOf(each.properties.cause, each.properties.trigger)),
@@ -517,7 +541,7 @@ export async function dismissFinding(
 		JSON.stringify(record.lifecycle.dismissedTrigger) === JSON.stringify(dismissedTrigger)
 	) {
 		if (severity === undefined || record.lifecycle.dismissedSeverity === severity) return undefined;
-		items[id] = { ...record, lifecycle: { ...record.lifecycle, dismissedSeverity: severity } };
+		items[id] = { ...record, lifecycle: { ...record.lifecycle, ...shown } };
 		bump(state, affectedBy(state, id, record));
 		return undefined;
 	}
@@ -525,11 +549,11 @@ export async function dismissFinding(
 		status === "dismissed"
 			? { by: dismissedBy ?? "", reason: dismissedReason ?? "", at: dismissedAt ?? "" }
 			: undefined;
-	const { dismissedSeverity: _, ...previous } = record.lifecycle;
+	const { dismissedSeverity: _, dismissedSighting: __, ...previous } = record.lifecycle;
 	const lifecycle: FindingLifecycle = {
 		...previous,
 		dismissedTrigger,
-		...(severity === undefined ? {} : { dismissedSeverity: severity }),
+		...shown,
 		proof,
 		status: "dismissed",
 		dismissedBy: by,
@@ -880,11 +904,15 @@ export function dismissedRoots(state: FindingsState): DismissedRoot[] {
 		.sort()
 		.flatMap((id) => {
 			const { lifecycle, sightings } = state.items[id]!;
-			const { status, dismissedSeverity, dismissedTrigger, dismissedAt, lastSeenRevision } = lifecycle;
-			// A cleared run can leave the last-seen revision with no sighting, and then no region to map.
+			const { status, dismissedSeverity, dismissedSighting, dismissedTrigger, dismissedAt, lastSeenRevision } =
+				lifecycle;
+			if (status !== "dismissed" || dismissedSeverity === undefined) return [];
+			// The last sighting's region, or, once a later run at that revision cleared it, the one the dismissal saw.
 			const last = sightings[lastSeenRevision];
-			if (status !== "dismissed" || dismissedSeverity === undefined || last === undefined) return [];
-			const { winner } = adjudicate(last);
+			const [revision, winner] =
+				last === undefined
+					? [dismissedSighting!.revision, dismissedSighting!.sighting]
+					: [lastSeenRevision, adjudicate(last).winner];
 			const finding = Finding.from({ ...winner, properties: { ...winner.properties, status: "new" } });
 			const [line, endLine] = finding.lines();
 			const { failureScenario, evidence } = finding.properties;
@@ -896,7 +924,7 @@ export function dismissedRoots(state: FindingsState): DismissedRoot[] {
 					cause: finding.properties.cause,
 					line,
 					endLine,
-					revision: lastSeenRevision,
+					revision,
 					// `dismissFinding` records a severity only beside the time and the accepted trigger.
 					dismissedAt: dismissedAt!,
 					severity: dismissedSeverity,

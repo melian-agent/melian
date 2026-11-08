@@ -25,7 +25,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FindingsDocument } from "../src/findings.ts";
 import { verifierMarker } from "../src/verification-instructions.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines, writeFiles } from "./fixtures/repo.ts";
-import { twoLensTiers } from "./fixtures/review-scenario.ts";
+import { twoLensTiers, withBudget } from "./fixtures/review-scenario.ts";
 
 const correctness = "You are the correctness reviewer";
 const contracts = "You are the contracts reviewer";
@@ -202,6 +202,33 @@ describe("a dismissal carrying to a restatement", () => {
 		expect(input).toMatch(/Dismissed d1\n<untrusted-[0-9a-f]+ label="findings">/);
 		expect(input).toContain(JSON.stringify(nullDeref.failureScenario).slice(1, -1));
 		expect(`${prompt}\n${input}`).not.toContain(dismissal.reason);
+	});
+
+	// Pull request #329: a second round on the same head, after the lens's version changed, worded the dismissed
+	// claim afresh at the same rule, file and line. The root's last-seen head is this head, so git maps an empty diff.
+	it("carries the dismissal to a restatement on the same head the root was dismissed at", async () => {
+		const root = await dismissedRoot();
+		// Another findings budget is another lens selection, so round two runs the lens again on this head, and its
+		// run replaces the sightings round one left there, the root's included.
+		lenses = lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { findings: 9 }) : lens));
+		const worded = {
+			...restatement,
+			explanation: { ...restatement.explanation, what: "managerName dereferences an optional manager." },
+		};
+		const requests = script([worded]);
+		const second = await review();
+		const [restated] = second.findings;
+		expect(restated!.id).not.toBe(root);
+		const state = await harness.snapshot(FindingsDocument, (await harness.root(context)).id, context);
+		expect(state!.items[root]!.sightings[Revision.key(await revision())]).toBeUndefined();
+		expect(systemPromptOf(requests[verifierMarker]!.at(-1)!)).toContain(`Dismissed d1 finding ${root}`);
+		expect(second.verdict.attention()).toEqual([]);
+		expect(second.verdict.dismissed.find((each) => each.id === restated!.id)!.properties.dismissal).toEqual({
+			by: "melian",
+			reason: dismissal.reason,
+			at: dismissal.at,
+			inheritedFrom: root,
+		});
 	});
 
 	it("leaves a restatement the verifier judges different live, with no link", async () => {

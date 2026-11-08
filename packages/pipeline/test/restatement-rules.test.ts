@@ -485,6 +485,26 @@ describe("finding the roots a defect may restate", () => {
 		expect(await predecessorsAt(h2, lens({ snippet: "line 8 restated", startLine: 8 }))).toEqual([found.id]);
 	});
 
+	it("offers a root at the very head it was dismissed at, through git's empty diff, and none when git cannot read it", async () => {
+		const found = await dismissRoot();
+		expect(await predecessorsAt(h1, introduced("changed 5", 5, 5, { source: contracts }))).toEqual([found.id]);
+		// A head git no longer holds, after a force push and a collection, at both ends.
+		const gone = "0123456789abcdef0123456789abcdef01234567";
+		const lost = Revision.key({ base, head: gone });
+		const missing = introduced("changed 5\nline 6 lost", 5, 6);
+		await commit(async (tx) => {
+			await upsertFinding(tx, root, missing, lost);
+			await dismissFinding(tx, root, missing.id, dismissal, lost, "P2");
+		});
+		const { state } = await reviewOf(h1);
+		const shown = { ...state, head: gone };
+		const restated = introduced("changed 5 lost", 5, 5);
+		await commit((tx) => upsertFinding(tx, root, restated, lost));
+		const findings = await readFindings(harness, root, lost, context, { asReported: true });
+		const defect = new Merge(findings, defaultConfig).defects().find((each) => each.speaker.id === restated.id);
+		expect(await (await Predecessors.open(harness, root, lost, shown, context)).of(defect!)).toEqual([]);
+	});
+
 	it("maps the region across lines added above it", async () => {
 		const found = await dismissRoot();
 		const h2 = step(["new 0", ...withLine5()]);
@@ -756,6 +776,8 @@ it("reads two sightings as one site only for one path and rule on overlapping li
 });
 
 it("lists every maintainer's dismissal with a recorded severity, in ID order, and nothing else", async () => {
+	// `cleared` is dismissed at its second revision, whose sighting a later run then clears: the dismissal's own copy
+	// of the sighting, at line 7, still gives its region.
 	const [one, two, live, legacy, cleared] = ["one", "two", "live", "legacy", "cleared"].map((snippet) =>
 		lens({ snippet }),
 	);
@@ -764,21 +786,21 @@ it("lists every maintainer's dismissal with a recorded severity, in ID order, an
 		for (const each of [...roots, live!, legacy!, cleared!]) await upsertFinding(tx, root, each, "base..first");
 		for (const each of roots) await dismissFinding(tx, root, each.id, dismissal, "base..first", "P2");
 		await dismissFinding(tx, root, legacy!.id, dismissal, "base..first");
-		await upsertFinding(tx, root, cleared!, "base..second");
+		await upsertFinding(tx, root, lens({ snippet: "cleared", startLine: 7 }), "base..second");
 		await dismissFinding(tx, root, cleared!.id, dismissal, "base..second", "P2");
 		await clearSightings(tx, root, "base..second", [correctness]);
 	});
 	const state = (await harness.snapshot(FindingsDocument, root, context))!;
-	const expected = [...roots]
+	const expected = [...roots, cleared!]
 		.sort((a, b) => (a.id < b.id ? -1 : 1))
 		.map((each) => ({
 			id: each.id,
 			ruleId: "fail-open",
 			path: "a.ts",
 			cause: "pre-existing",
-			line: 5,
-			endLine: 5,
-			revision: "base..first",
+			line: each === cleared ? 7 : 5,
+			endLine: each === cleared ? 7 : 5,
+			revision: each === cleared ? "base..second" : "base..first",
 			dismissedAt: dismissal.at,
 			severity: "P2",
 			hash: state.items[each.id]!.lifecycle.dismissedTrigger!.hash,
@@ -786,7 +808,8 @@ it("lists every maintainer's dismissal with a recorded severity, in ID order, an
 			proof: [],
 			claim: { id: each.id, failureScenario: "A cold run reads a cached kill.", evidence: each.properties.evidence },
 		}));
-	expect(Object.keys(state.items).slice(0, 2)).not.toEqual(expected.map((each) => each.id));
+	expect(state.items[cleared!.id]!.sightings["base..second"]).toBeUndefined();
+	expect(Object.keys(state.items).slice(0, 2)).not.toEqual(roots.map((each) => each.id).sort());
 	expect(dismissedRoots(state)).toStrictEqual(expected);
 });
 

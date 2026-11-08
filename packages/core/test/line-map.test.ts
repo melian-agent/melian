@@ -55,6 +55,18 @@ describe("LineMap", () => {
 		expect(map.untouched({ startLine: 3, endLine: 3 }, { startLine: 3, endLine: 3 })).toBe(true);
 	});
 
+	it("maps a span unchanged from a commit to itself, and fails closed when git cannot read that commit", async () => {
+		const head = commit({ "a.ts": lines(...ten) }, "base");
+		const same = await mapOf(head, head);
+		expect(same.mapped).toBe(true);
+		expect(same.map({ startLine: 4, endLine: 6 })).toEqual({ startLine: 4, endLine: 6 });
+		expect(same.untouched({ startLine: 4, endLine: 6 }, { startLine: 5, endLine: 5 })).toBe(true);
+		const gone = "0123456789abcdef0123456789abcdef01234567";
+		const missing = await mapOf(gone, gone, "a.ts", head);
+		expect(missing.mapped).toBe(false);
+		expect(missing.map({ startLine: 4, endLine: 6 })).toBeUndefined();
+	});
+
 	it("reads an insertion inside the old span as touching it", async () => {
 		const before = commit({ "a.ts": lines(...ten) }, "base");
 		const after = commit({ "a.ts": lines(...ten.slice(0, 5), "inserted", ...ten.slice(5)) }, "insert inside");
