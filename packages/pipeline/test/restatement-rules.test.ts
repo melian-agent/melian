@@ -150,6 +150,11 @@ describe("recording restatement links", () => {
 		await judge(second.id, contracts, { [oldRoot.id]: "different" });
 		await derive([oldRoot.id]);
 		expect(await links()).toBeUndefined();
+		// A root judged different beside one judged the same leaves the same one's link.
+		await judge(first.id, correctness, { [newRoot.id]: "different", [oldRoot.id]: "same" }, "v2");
+		await judge(second.id, contracts, { [newRoot.id]: "different", [oldRoot.id]: "same" }, "v2");
+		await derive([newRoot.id, oldRoot.id], "v2");
+		expect((await links())?.[first.id]?.from).toBe(oldRoot.id);
 	});
 
 	it("reads a claim's judgement only at this revision and under its own producer", async () => {
@@ -231,6 +236,8 @@ describe("recording restatement links", () => {
 		expect(await links()).toBeUndefined();
 		await derive(["0123456789abcdef"]);
 		expect(await links()).toBeUndefined();
+		await derive(["0123456789abcdef", oldRoot.id]);
+		expect((await links())?.[first.id]?.from).toBe(oldRoot.id);
 		await derive([oldRoot.id], "v1", []);
 		expect(await links()).toBeUndefined();
 	});

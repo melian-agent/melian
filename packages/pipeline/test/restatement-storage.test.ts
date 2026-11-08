@@ -218,6 +218,8 @@ describe("restatement links", () => {
 	it("bumps only the revisions that sighted a changed root or link to it", async () => {
 		const owner = await harness.root(context);
 		await owner.commit(async (tx) => {
+			// Each link must name a dismissed root, or the commit drops it.
+			await dismissFinding(tx, id, other.id, dismissal, at, "P2");
 			await upsertFinding(tx, id, other, "base..linked");
 			// One of the revision's two links names the root.
 			await replaceInheritances(tx, id, "base..linked", {
