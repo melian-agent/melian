@@ -1,7 +1,6 @@
 ---
 name: design
 extends: design
-tier: medium
 tools: [read_file, search, list_files, graph_definitions, graph_references, graph_impact, graph_callees]
 budget: { findings: 8, tokens: 3m, tools: 250 }
 ---
