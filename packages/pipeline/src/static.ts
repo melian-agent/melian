@@ -465,8 +465,7 @@ async function runTsc(
 			"nothingToCheck",
 			`tsc's effective configuration of ${project} lists no files and no references, so tsc checks nothing`,
 		);
-	if (projects.length === 0) throw nothing();
-	if (projects.length > 1 || projects[0]!.project !== project)
+	if (projects.some((each) => each.project !== project))
 		notes.push(`tsc checked ${projects.map(({ project }) => project).join(", ")}, which ${project} references.`);
 	const dropped: string[] = [];
 	const results: ToolLog["runs"][0]["results"] = [];

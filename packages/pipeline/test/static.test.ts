@@ -456,6 +456,40 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 		expectCheckoutUntouched();
 	});
 
+	it("fails the check when tsc --showConfig fails or answers anything but a configuration", {
+		timeout: 60_000,
+	}, async () => {
+		const head = commit(repo, { ".gitignore": lines("node_modules"), "tsconfig.json": tsconfig });
+		for (const [answer, code] of [
+			[`'{"files":["./a.ts"]}'`, 1],
+			["null", 0],
+			["'\"files\"'", 0],
+		] as const) {
+			fakeTool(
+				repo,
+				"tsc",
+				`if [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi\nif [ "$1" = "--showConfig" ]; then echo ${answer}; exit ${code}; fi`,
+			);
+			await expect(runStaticTool(input("tsc", head), context)).rejects.toMatchObject({
+				code: "toolFailed",
+				message: `tsc --showConfig exited with code ${code} on tsconfig.json; run tsc --showConfig -p tsconfig.json at ${head.slice(0, 12)} to see why, since Melian keeps none of its output`,
+			});
+		}
+	});
+
+	it("refuses an effective file above the worktree even when it does not exist", { timeout: 60_000 }, async () => {
+		const head = commit(repo, { ".gitignore": lines("node_modules"), "tsconfig.json": tsconfig });
+		fakeTool(
+			repo,
+			"tsc",
+			`if [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi\nif [ "$1" = "--showConfig" ]; then echo '{"files":["../nowhere.ts"]}'; exit 0; fi`,
+		);
+		await expect(runStaticTool(input("tsc", head), context)).rejects.toMatchObject({
+			code: "toolFailed",
+			message: "tsconfig.json resolves a file outside the checkout, so Melian ran no tsc on it",
+		});
+	});
+
 	it("runs the tool with PATH, HOME, TMPDIR, and LANG only, so no secret reaches it", {
 		timeout: 60_000,
 	}, async () => {
