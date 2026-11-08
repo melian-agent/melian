@@ -42,7 +42,9 @@ try {
 		policy: undefined,
 		config: defaultConfig,
 		manifest: ["lens.correctness"],
-		checks: [{ name: "lens.correctness", status: "ran", level: "careful" }],
+		checks: [
+			{ name: "lens.correctness", status: "ran", level: "careful", reason: "Callers unavailable: graph absent" },
+		],
 		findingsVersion: 0,
 		allowSkip: [],
 		producers: [],

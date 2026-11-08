@@ -38,7 +38,8 @@
         {
           "name": "lens.correctness",
           "status": "ran",
-          "level": "careful"
+          "level": "careful",
+          "reason": "Callers unavailable: graph absent"
         }
       ],
       "findingsVersion": 0,
@@ -141,7 +142,8 @@
           {
             "name": "lens.correctness",
             "status": "ran",
-            "level": "careful"
+            "level": "careful",
+            "reason": "Callers unavailable: graph absent"
           }
         ]
       }
@@ -258,7 +260,8 @@
             {
               "name": "lens.correctness",
               "status": "ran",
-              "level": "careful"
+              "level": "careful",
+              "reason": "Callers unavailable: graph absent"
             }
           ]
         },
