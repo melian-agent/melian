@@ -1596,9 +1596,11 @@ function lensCheck(
 // What a probing run did, for its record: the plan's size, the probes and their time, and the attacks it skipped.
 function probingNote(probing: ProbingOutcome): string {
 	if (probing.attacks === 0) return "its planner found no attack to probe";
+	// A probe that ran took some time, however fast the machine: never "0.0 s".
 	const seconds = (probing.milliseconds / 1000).toFixed(1);
+	const time = probing.probes > 0 && seconds === "0.0" ? "under 0.1" : seconds;
 	const skipped = probing.skipped === 0 ? "" : `, and skipped ${plural(probing.skipped, "attack")}`;
-	return `it planned ${plural(probing.attacks, "attack")} and ran ${plural(probing.probes, "probe")} in ${seconds} s${skipped}`;
+	return `it planned ${plural(probing.attacks, "attack")} and ran ${plural(probing.probes, "probe")} in ${time} s${skipped}`;
 }
 
 function lensRecord(

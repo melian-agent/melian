@@ -36,7 +36,7 @@ import {
 	textOf,
 	unconfinedSandbox,
 } from "@melian-agent/pipeline/testing";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { planInputs } from "../src/models.ts";
 import { ProbeReruns } from "../src/probing.ts";
 import { baseAndHead, gitIn, writeFiles } from "./fixtures/repo.ts";
@@ -281,7 +281,7 @@ describe("a level that probes", () => {
 		expect(systemPromptOf(probed)).not.toContain("You are the trust-boundary reviewer");
 		const record = verdict.ran!.find(({ name }) => name === "lens.trust-boundary")!;
 		expect(record).toMatchObject({ status: "ran", level: "deep" });
-		expect(record.reason).toMatch(/it planned 1 attack and ran 1 probe in [0-9]+\.[0-9] s/);
+		expect(record.reason).toMatch(/it planned 1 attack and ran 1 probe in (?:[0-9]+\.[0-9]|under 0\.1) s/);
 		// The planner records, then answers; the prober probes, reports and answers, with no reminder to either.
 		expect(requests[planner]).toHaveLength(2);
 		expect(lastResults(requests[planner]![1]!)).toMatch(/recorded a plan of 1 attack\b/);
@@ -1086,10 +1086,24 @@ describe("a level that probes", () => {
 	});
 
 	it("counts the probes' time in seconds", async () => {
-		const { run } = await review({ planner: plan, prober: probing(failing) });
+		const slow = `await new Promise((resolve) => setTimeout(resolve, 200));\n${failing}`;
+		const { run } = await review({ planner: plan, prober: probing(slow) });
 		const seconds = Number(/ran 1 probe in ([0-9.]+) s/.exec(record((await run).verdict).reason!)![1]);
-		expect(seconds).toBeGreaterThan(0);
+		expect(seconds).toBeGreaterThanOrEqual(0.2);
 		expect(seconds).toBeLessThan(60);
+	});
+
+	it("never says a probe that ran took no time", async () => {
+		// A clock that stands still times every probe at 0 ms, as a fast machine's rounding does.
+		vi.useFakeTimers({ toFake: ["Date"] });
+		try {
+			const { run } = await review({ planner: plan, prober: probing(failing) });
+			const { reason } = record((await run).verdict);
+			expect(reason).toContain("ran 1 probe in under 0.1 s");
+			expect(reason).not.toContain("0.0 s");
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it("gives a probing finding its probe beside another lens that reports in the same review", async () => {
