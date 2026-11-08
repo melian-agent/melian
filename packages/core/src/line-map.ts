@@ -39,9 +39,9 @@ function touches(side: Side, span: LineSpan): boolean {
 
 /**
  * How one file's lines moved between two commits, as git's zero-context diff says, with core's pinned diff flags and
- * renames off. A file git cannot diff as text, a `-diff` or binary file, a path that is not a regular file at both
- * commits, and any git failure, such as a missing object after a force push, leave the map unmapped: it then says no
- * span is untouched and maps nothing, never that nothing changed.
+ * renames off. Three cases leave the map unmapped: a file git cannot diff as text, such as a `-diff` or binary file; a
+ * path that is not a regular file at both commits; and any git failure, such as a missing object after a force push.
+ * An unmapped map says no span is untouched and maps nothing, never that nothing changed.
  */
 export class LineMap {
 	readonly #hunks: readonly Hunk[] | undefined;

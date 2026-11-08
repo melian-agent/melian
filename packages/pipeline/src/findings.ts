@@ -46,8 +46,8 @@ type FindingLifecycle = {
 	// The severity the verdict showed when the dismissal was made; absent from one made before Melian kept it, which
 	// therefore never carries to a restatement.
 	dismissedSeverity?: Severity;
-	// The finding as the dismissed revision showed it, kept beside the severity: a later run of the same lens at that
-	// revision replaces its sighting, and a restatement still needs the root's region and claim.
+	// The finding as the dismissed revision showed it, kept beside the severity. Inheritance reads the root's claim and
+	// region from it alone, so neither a later sighting nor a rerun that replaces this one moves what was dismissed.
 	dismissedSighting?: { revision: string; sighting: ProducerFinding };
 	firstSeenRevision: string;
 	lastSeenRevision: string;
@@ -87,8 +87,9 @@ type FindingsState = {
 	inherited?: Record<string, Record<string, StoredInheritance>>;
 };
 
-// Version 11 lets a dismissal record the severity it was made at, and a revision hold the restatements that inherit a
-// dismissal or name one as a likely match; a version 10 document holds neither and reads unchanged.
+// Version 11 lets a dismissal record the severity and sighting it was made at. It lets a revision hold its
+// restatements' links, each inheriting a dismissal or naming one as a likely match. A version 10 document holds
+// neither and reads unchanged.
 // Version 10 permits each merged claim to retain its reported severity. Version 9 ties dismissals to their accepted
 // trigger and proof; version 8 dismissals keep their former reopen rules.
 // Version 8 lets a guardrail sighting name the configured rules it matched, or its notice class, outside its ID; a

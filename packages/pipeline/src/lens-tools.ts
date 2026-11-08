@@ -1077,7 +1077,7 @@ export const reportVerdict = defineTool({
 			if (claim === undefined) throw new Error("claim label was not supplied to this verifier");
 			if (args.verdict === "refuted" && (args.evidence?.length ?? 0) === 0)
 				throw new Error("a refuted verdict requires evidence locations");
-			// Pi hands prepareArguments no conversation, so the listed dismissed findings are checked here, before any write.
+			// Pi hands prepareArguments no conversation, so this checks the listed dismissed findings, before any write.
 			const listed = (lens.dismissed ?? []).map(({ id }) => id);
 			const answered = Object.keys(args.matches ?? {});
 			const missing = listed.filter((id) => !answered.includes(id));

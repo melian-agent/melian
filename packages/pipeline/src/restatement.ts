@@ -22,9 +22,10 @@ import { overlapping, provingHunk, type ReviewState } from "./lens-tools.ts";
 import type { DismissedPredecessor } from "./verification.ts";
 
 /**
- * The dismissed findings a live lens defect at one revision may restate, by every condition Melian answers itself: the
- * root's rule and file, its dismissal standing at the revision, its region unchanged by git between the head it was
- * dismissed at and this one, and its proof holding the defect's. The verifier then judges sameness.
+ * The dismissed findings a live lens defect at one revision may restate, by every condition Melian answers itself. A
+ * root shares the defect's rule and file, and its dismissal stands at the revision. Git leaves its region unchanged
+ * between the head it was dismissed at and this one, and its proof holds the defect's. The verifier then judges
+ * sameness.
  */
 export class Predecessors {
 	readonly #roots: readonly DismissedRoot[];
@@ -51,7 +52,7 @@ export class Predecessors {
 		context: Context,
 	): Promise<Predecessors> {
 		const state = (await reader.snapshot(FindingsDocument, root, context)) ?? FindingsDocument.definition.initial();
-		// A root sighted at a revision whose review began after this one's would carry a later ruling backwards.
+		// A root dismissed at a revision whose review began after this one's would carry a later ruling backwards.
 		const at = state.revisions.indexOf(revision);
 		const roots = dismissedRoots(state).filter((each) => state.revisions.indexOf(each.revision) <= at);
 		return new Predecessors(roots, (ids) => proofAt(state, ids, revision), review);
@@ -108,8 +109,8 @@ export class Predecessors {
 		return found;
 	}
 
-	// Whether the root's dismissal still stands here, by the reopen rule a sighting of it as dismissed would meet here:
-	// its trigger is the hunk that introduces its mapped region.
+	// Whether the root's dismissal stands here: the lifecycle's reopen rule, applied to the trigger and proof it was
+	// dismissed with. An introduced root's trigger here is the hunk that introduces its mapped region.
 	#stands(root: DismissedRoot, region: LineSpan): boolean {
 		const { files } = this.#review;
 		const introducing = overlapping(

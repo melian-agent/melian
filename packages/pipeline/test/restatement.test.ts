@@ -221,11 +221,11 @@ describe("a dismissal carrying to a restatement", () => {
 	});
 
 	// Pull request #329: a second round on the same head, after the lens's version changed, worded the dismissed
-	// claim afresh at the same rule, file and line. The root's last-seen head is this head, so git maps an empty diff.
+	// claim afresh at the same rule, file and line. The root was dismissed at this head, so git maps an empty diff.
 	it("carries the dismissal to a restatement on the same head the root was dismissed at", async () => {
 		const root = await dismissedRoot();
-		// Another findings budget is another lens selection, so round two runs the lens again on this head, and its
-		// run replaces the sightings round one left there, the root's included.
+		// Another findings budget is another lens selection, so round two runs the lens again on this head. Its run
+		// replaces the sightings round one left there, the root's included.
 		lenses = lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { findings: 9 }) : lens));
 		const worded = {
 			...restatement,
