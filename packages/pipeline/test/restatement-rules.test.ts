@@ -172,6 +172,8 @@ describe("recording restatement links", () => {
 		await judge(second.id, contracts, { [oldRoot.id]: "same" });
 		await derive([]);
 		expect(await links()).toBeUndefined();
+		await derive(["0123456789abcdef"]);
+		expect(await links()).toBeUndefined();
 		await derive([oldRoot.id], "v1", []);
 		expect(await links()).toBeUndefined();
 	});
