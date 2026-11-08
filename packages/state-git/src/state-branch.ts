@@ -234,6 +234,17 @@ export class StateBranch {
 			// A copy this build cannot read is refused before the lease goes over it.
 			const tree = onBranch(changeset);
 			if (tree !== undefined) await this.#open(changeset, tree);
+			// A copy stored on the branch, which the branch no longer holds, means the branch lost it; starting afresh would
+			// read the changeset in part.
+			const synced = await readFile(join(this.#options.directory, `${changeset}.synced`), "utf8").then(
+				(text) => text.trim(),
+				() => "none",
+			);
+			if (tree === undefined && synced !== "none")
+				throw new StateBranchError(
+					"invalidBranch",
+					`this clone's copy of ${changeset} was stored on melian/state as ${synced}, which the branch no longer holds; Melian keeps the copy rather than start ${changeset} afresh`,
+				);
 			taken = Lease.take(held, this.#holder, this.#now(), this.#options.leaseMs ?? defaultLeaseMs);
 			return { index: index.leased(changeset, taken), lease: taken };
 		});
