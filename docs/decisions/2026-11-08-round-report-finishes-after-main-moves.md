@@ -14,7 +14,7 @@ Example: [pull request #294](https://github.com/melian-agent/melian/pull/294)'s 
 
 - `report` carries on after the default branch moves, in a run's first attempt whose round job passed its own check on the run's commit. It still refuses a rerun, with `run_attempt` above 1, whose commit the default branch has moved past.
 - `pending` and `round` keep the strict check. They start seconds after the gate, so a merge refuses them rarely, and cheaply, before any review.
-- Every job still refuses a run from any ref but the current default branch, whatever its attempt.
+- The gate refuses a run from any ref but the default branch its event names. Each job that holds a login refuses any ref but the repository's current default branch. Both hold whatever the attempt.
 - The report job refuses an attempt that is not a whole number above 0. It also refuses a default branch or head it cannot read; a head reads only as 40 hexadecimal digits. Each read fails closed.
 
 A first attempt's report is safe to run on its commit because of the job chain. `report` needs `round`, and `round` checks, as it starts, that its commit is the default branch's head. So the code `report` runs was the reviewed default branch when the round began.
@@ -23,7 +23,7 @@ That holds only when the round's check passed, and `report` runs under `always()
 
 ## What this gives up
 
-A workflow fix that lands during a round misses that round's report job. The round job's timeout bounds that at 150 minutes, plus the time the report job waits for a runner. A rerun or a fresh dispatch runs the fix.
+A workflow fix that lands during a round misses that round's report job. The round job's timeout bounds that at 150 minutes, plus the time the report job waits to start. A runner queue sets that wait, and so would any wait timer or required reviewer added to the `melian-round` Environment, since `report` declares it; today the Environment has neither, and the gate reads only its branch policy. A rerun or a fresh dispatch runs the fix.
 
 ## The attacking review
 

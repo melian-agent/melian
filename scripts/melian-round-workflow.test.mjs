@@ -123,6 +123,9 @@ describe("the melian round workflow", () => {
 						DEFAULT: "main",
 						NOW: branch,
 						CURRENT: current,
+						// A first attempt, which the report job lets carry on after a move; pending and round must not.
+						ATTEMPT: "1",
+						GITHUB_RUN_ATTEMPT: "1",
 					},
 				});
 			expect(step("a".repeat(40)).status).toBe(0);
