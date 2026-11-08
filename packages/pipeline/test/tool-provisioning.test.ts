@@ -57,6 +57,7 @@ it("opens bundled pins without fetching and materialises an injected local archi
 		manifest,
 		root: join(repo, "cache"),
 		platform: "darwin-arm64",
+		env: {},
 		fetch: download,
 	});
 	expect(tools.tool("enola").version).toBe("0.0.1");
@@ -67,6 +68,7 @@ it("opens bundled pins without fetching and materialises an injected local archi
 		manifest,
 		root: join(repo, "failed"),
 		platform: "darwin-arm64",
+		env: {},
 		fetch: async () => {
 			throw "local refusal";
 		},
@@ -78,4 +80,33 @@ it("opens bundled pins without fetching and materialises an injected local archi
 	});
 	vi.spyOn(tools.cache, "materialise").mockRejectedValueOnce("raw cache rejection");
 	await expect(tools.binary("enola")).rejects.toMatchObject({ code: "toolFailed", message: "raw cache rejection" });
+});
+
+it.each([
+	["GITHUB_TOKEN", { GITHUB_TOKEN: "fake-github-token", GH_TOKEN: "fake-gh-token" }, "Bearer fake-github-token"],
+	["GH_TOKEN", { GH_TOKEN: " fake-gh-token " }, "Bearer fake-gh-token"],
+	["GH_TOKEN past a blank GITHUB_TOKEN", { GITHUB_TOKEN: " ", GH_TOKEN: "fake-gh-token" }, "Bearer fake-gh-token"],
+	["no token", { GITHUB_TOKEN: "", GH_TOKEN: "" }, undefined],
+	["an empty environment", {}, undefined],
+])("fetches through the release API with %s", async (_case, env, authorization) => {
+	const bytes = toolArchive([{ name: "enola", text: "#!/bin/sh\necho local\n" }]);
+	const { name: _name, ...pin } = testTool(bytes);
+	const manifest = ToolManifest.parse(JSON.stringify({ format_version: 1, tools: { enola: pin }, misses: [] }));
+	const download = vi.fn(
+		async (_url: string, _options: { headers?: Record<string, string> }) => new Response(new Uint8Array(bytes)),
+	);
+	const tools = await ToolProvisioning.open(repo, {
+		manifest,
+		root: join(repo, "cache"),
+		platform: "darwin-arm64",
+		fetch: download,
+		env,
+	});
+	await tools.binary("enola").catch(() => undefined);
+	expect(download.mock.calls[0]?.[0]).toBe(
+		authorization === undefined
+			? "https://github.com/test/enola/releases/download/v0.0.1/enola.tar.gz"
+			: "https://api.github.com/repos/test/enola/releases/tags/v0.0.1",
+	);
+	expect(download.mock.calls[0]?.[1].headers?.authorization).toBe(authorization);
 });

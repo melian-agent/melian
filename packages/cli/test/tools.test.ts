@@ -42,6 +42,7 @@ it("lists readiness without downloading, verifies fetched pins and repairs a mis
 		manifest: ToolManifest.parse(JSON.stringify({ format_version: 1, tools: { [name]: pin }, misses: [] })),
 		root: join(repo, "cache"),
 		platform: "darwin-arm64",
+		env: {},
 		fetch: download,
 	});
 	const inventory = await ToolInventory.open(repo, {}, provisioning);
@@ -156,6 +157,7 @@ it("warns in doctor about a pin that is not fetched, and exits 0", async () => {
 		manifest: ToolManifest.parse(JSON.stringify({ format_version: 1, tools: { [name]: pin }, misses: [] })),
 		root: join(repo, "cache"),
 		platform: "darwin-arm64",
+		env: {},
 		fetch: vi.fn(async () => new Response(bytes)),
 	});
 	vi.spyOn(ToolInventory, "open").mockResolvedValue(await ToolInventory.open(repo, {}, provisioning));
@@ -196,6 +198,7 @@ it("renders control characters in a fetched executable path as visible text", as
 		manifest: ToolManifest.parse(JSON.stringify({ format_version: 1, tools: { [name]: pin }, misses: [] })),
 		root: await stateDirectory(repo, io.env),
 		platform: "darwin-arm64",
+		env: {},
 		fetch: async () => new Response(bytes),
 	});
 	const inventory = await ToolInventory.open(repo, io.env, provisioning);

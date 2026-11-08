@@ -119,6 +119,7 @@ exit 9
 		manifest,
 		root: join(repo, ".git", "melian"),
 		platform: "darwin-arm64",
+		env: {},
 		fetch: async () => new Response(bytes),
 	});
 }
