@@ -1,0 +1,3 @@
+# Learnings from the 2026-11-08 lanes
+
+AGENTS.md now counts a hand-run kill only when its named test passed on the unmutated head first. It also gains five learnings from the day's lanes: false kills from an environment-only failure, briefing an attacking review as tests against fakes, the release-download outage, lens budgets read from the base, and worktrees filling the disk. `docs/design/architecture.md` splits one overlong sentence, carried from a commit the [issue #259](https://github.com/melian-agent/melian/issues/259) lane made after its pull request merged. Docs only, fast-tracked by the maintainer without a local gate.
