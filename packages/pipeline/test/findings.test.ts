@@ -882,6 +882,23 @@ describe("lowered sightings", () => {
 		expect(tied!.lowered()).toEqual({ from: "P1", reason: "One caller validates." });
 	});
 
+	it("freezes as a dismissal's root the sighting a read after lowering speaks through", async () => {
+		const { harness, root } = await open(createMemoryStorage());
+		const other = { check: "lens.contracts", version: "1" };
+		await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
+		const second = Finding.create({ ...input, severity: "P2", source: other, failureScenario: "It fails." });
+		await root.commit((tx) => upsertFinding(tx, root.id, second, "rev1"), context);
+		await judge(root, lowered);
+		const dismissal = { by: "tal", reason: "constant input", at: "2026-10-03T00:00:00.000Z" };
+		await root.commit((tx) => dismissFinding(tx, root.id, evalFinding.id, dismissal, "rev1", "P2"), context);
+		const state = (await harness.snapshot(FindingsDocument, root.id, context))!;
+		expect(state.items[evalFinding.id]!.lifecycle.dismissedSighting!.sighting.properties).toMatchObject({
+			severity: "P2",
+			source: other,
+			failureScenario: "It fails.",
+		});
+	});
+
 	// Codex's H1 on pull request 131: the refuted sighting must not speak through the one that stands.
 	it("speaks through a standing sighting of one ID, with its own severity and prose, never a refuted one", async () => {
 		const { harness, root } = await open(createMemoryStorage());
