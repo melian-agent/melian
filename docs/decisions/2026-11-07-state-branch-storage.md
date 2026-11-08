@@ -38,7 +38,7 @@ Every file a push puts on the branch is sealed with AES-256-GCM under a subkey o
 
 ## Pushing and resuming
 
-A push stores this clone's copy of the changeset and releases the lease, in one commit. It is refused, and the copy stays as it is, when the lease is no longer this run's, or when the changeset's tree on the branch is not the one this clone last synced with. Either way another run has written the changeset.
+A push stores this clone's copy of the changeset and releases the lease, in one commit. It is refused, and the copy stays as it is, when the lease is no longer this run's, or when the changeset's tree on the branch is not the one this clone last synced with. Either way another run has written the changeset. A checkout keeps this clone's copy only when it still holds the synced tree whole, as Pi's own storage judges: two rounds of Codex's review each found a new kind of local damage the marker alone let through, so on 2026-11-08 the maintainer ruled that Pi, the authority on what it wrote, opens the copy before Melian keeps it, beside a check that its main log starts with the tree's, since Pi reads a missing main log as an empty store. The maintainer also ruled, that day, that git's own low-speed limit bounds a fetch or push, so a stalled transfer reads as an unreachable branch.
 
 The next checkout sees that the branch has moved past this clone's copy, sets the copy aside beside it and takes the branch's. The branch's copy decides what is done, so a resumed review attaches to the tasks the other run finished and redoes only what the branch lacks. Pi's JSONL log is one writer's history, so two copies are never merged.
 

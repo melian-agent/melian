@@ -50,6 +50,11 @@ export class Remote {
 	}
 }
 
+// Opens a copy with Pi's storage, as the CLI does, which refuses one whose committed records are missing.
+export async function validate(directory: string): Promise<void> {
+	await (await openJsonlStorage(directory, context)).close(context);
+}
+
 export class Clone {
 	readonly repoRoot: string;
 	readonly directory: string;
@@ -74,6 +79,7 @@ export class Clone {
 			directory: this.directory,
 			holder: this.holder,
 			key: this.#remote.key,
+			validate,
 			...this.#options,
 			...options,
 		});

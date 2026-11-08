@@ -18,8 +18,19 @@ const sealVersion = 1;
 const sqliteBusy = 5;
 // Git records who pushed the branch; the commits themselves need only some identity.
 // Git translates what it prints, and Melian reads its fetch and push output to tell a missing branch or a lost race
-// from a failure, so every command runs in the C locale, which git never translates.
-const untranslated = { LC_ALL: "C", LANGUAGE: "C" };
+// from a failure, so every command runs in the C locale, which git never translates. No command may prompt for
+// credentials, so a remote that asks for them fails the fetch or push rather than waits for an answer nobody gives.
+const untranslated = {
+	LC_ALL: "C",
+	LANGUAGE: "C",
+	GIT_TERMINAL_PROMPT: "0",
+	// Git's own limit: a transfer slower than a byte a second for a minute fails, so the branch reads as out of reach.
+	GIT_CONFIG_COUNT: "2",
+	GIT_CONFIG_KEY_0: "http.lowSpeedLimit",
+	GIT_CONFIG_VALUE_0: "1",
+	GIT_CONFIG_KEY_1: "http.lowSpeedTime",
+	GIT_CONFIG_VALUE_1: "60",
+};
 const identity = {
 	...untranslated,
 	GIT_AUTHOR_NAME: "Melian state",
@@ -43,6 +54,11 @@ export interface StateBranchOptions {
 	readonly now?: () => number;
 	/** How long a lease stays live after it is taken. */
 	readonly leaseMs?: number;
+	/**
+	 * Opens the copy in `directory` with the storage that wrote it, and rejects when that storage finds it damaged. A
+	 * checkout keeps this clone's copy only when it opens; otherwise it sets the copy aside for the branch's.
+	 */
+	readonly validate: (directory: string) => Promise<void>;
 }
 
 /** Another run holds the changeset's lease, so this one must not write it. */
@@ -423,14 +439,21 @@ export class StateBranch {
 	}
 
 	/**
-	 * @internal Whether the copy in `directory` still holds the tree's commits. Pi only appends to its main log, and trims
-	 * only a torn last line, so a copy that grew from the tree starts its main log with the tree's.
+	 * @internal Whether the copy in `directory` still holds the tree's commits, whole. Pi only appends to its main log,
+	 * and trims only a torn last line, so a copy that grew from the tree starts its main log with the tree's; Pi reads a
+	 * missing main log as an empty store, so this is checked first. Pi's own storage then judges the rest.
 	 */
-	async extends(changeset: string, tree: string, directory: string): Promise<boolean> {
+	async intact(changeset: string, tree: string, directory: string): Promise<boolean> {
 		const main = (await this.#open(changeset, tree)).find(([name]) => name === "main.jsonl")?.[1];
-		if (main === undefined) return true;
-		const local = await readFile(join(directory, "main.jsonl")).catch(() => undefined);
-		return local !== undefined && local.length >= main.length && local.subarray(0, main.length).equals(main);
+		if (main !== undefined) {
+			const local = await readFile(join(directory, "main.jsonl")).catch(() => undefined);
+			if (local === undefined || local.length < main.length || !local.subarray(0, main.length).equals(main))
+				return false;
+		}
+		return this.#options.validate(directory).then(
+			() => true,
+			() => false,
+		);
 	}
 
 	// Every file of a changeset's tree, opened under the key, or a refusal naming the first this build cannot read.
@@ -756,7 +779,7 @@ export class StateCheckout {
 		if (
 			local &&
 			synced === onBranch &&
-			(onBranch === "none" || (await branch.extends(changeset, onBranch, directory)))
+			(onBranch === "none" || (await branch.intact(changeset, onBranch, directory)))
 		)
 			return new StateCheckout(branch, changeset, onBranch, undefined, lock, lease);
 		let setAside: string | undefined;

@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { chmodSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type * as core from "@melian-agent/core";
@@ -101,6 +102,26 @@ it("does not retry a push the remote refused for another reason", async () => {
 	const checkout = await remote.clone().branch().checkout(changeset);
 	expect(checkout.unreached).toMatch(/^git push of melian\/state failed: [\s\S]*state branch is protected/);
 	expect(remote.tip()).toBeUndefined();
+});
+
+it("never lets a fetch or push wait on a credential prompt", async () => {
+	environments.length = 0;
+	await (await remote.clone().branch().checkout(changeset)).push();
+	const network = environments.filter(({ command }) => command === "fetch" || command === "push");
+	expect(network.length).toBeGreaterThanOrEqual(4);
+	for (const { env } of network) expect(env).toMatchObject({ GIT_TERMINAL_PROMPT: "0" });
+});
+
+it("has git abort a fetch or push that stalls for a minute", async () => {
+	environments.length = 0;
+	await (await remote.clone().branch().checkout(changeset)).push();
+	const network = environments.filter(({ command }) => command === "fetch" || command === "push");
+	expect(network.length).toBeGreaterThanOrEqual(4);
+	for (const { env } of network) {
+		const read = (key: string) =>
+			execFileSync("git", ["config", "--get", key], { env: { ...process.env, ...env }, encoding: "utf8" }).trim();
+		expect([read("http.lowSpeedLimit"), read("http.lowSpeedTime")]).toEqual(["1", "60"]);
+	}
 });
 
 it("reads git's fetch and push output in the C locale, which git does not translate", async () => {
