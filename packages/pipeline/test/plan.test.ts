@@ -966,7 +966,7 @@ describe("reviewChangeset with a lens route", () => {
 
 	it("fails the review before any lens runs when a lens route reaches no model with credentials", async () => {
 		await expect(routed({ correctness: { model: "nowhere/opus" }, contracts: { model: heavy } })).rejects.toThrow(
-			"lens correctness may run from quick to deep, and no level there can run",
+			"lens correctness may run from quick to deep, and no level there can run: quick runs on medium, and none of nowhere/opus is known with credentials",
 		);
 		expect(fake.provider.state.callCount).toBe(0);
 	});
