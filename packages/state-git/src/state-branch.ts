@@ -19,7 +19,17 @@ const sqliteBusy = 5;
 // Git translates what it prints, and Melian reads its fetch and push output to tell a missing branch or a lost race
 // from a failure, so every command runs in the C locale, which git never translates. No command may prompt for
 // credentials, so a remote that asks for them fails the fetch or push rather than waits for an answer nobody gives.
-const untranslated = { LC_ALL: "C", LANGUAGE: "C", GIT_TERMINAL_PROMPT: "0" };
+const untranslated = {
+	LC_ALL: "C",
+	LANGUAGE: "C",
+	GIT_TERMINAL_PROMPT: "0",
+	// Git's own limit: a transfer slower than a byte a second for a minute fails, so the branch reads as out of reach.
+	GIT_CONFIG_COUNT: "2",
+	GIT_CONFIG_KEY_0: "http.lowSpeedLimit",
+	GIT_CONFIG_VALUE_0: "1",
+	GIT_CONFIG_KEY_1: "http.lowSpeedTime",
+	GIT_CONFIG_VALUE_1: "60",
+};
 const identity = {
 	...untranslated,
 	GIT_AUTHOR_NAME: "Melian state",
