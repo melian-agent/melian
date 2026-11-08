@@ -863,25 +863,26 @@ export class Lens {
 	}
 
 	/**
-	 * The levels triage may choose for the lens: those it declares inside `band` whose model tier `routed` says reaches a
-	 * model with credentials, from `quick` to `deep`. Empty when none does, and the lens cannot run within its band.
+	 * The levels triage may choose for the lens: those it declares inside `band` whose route `routed` says reaches a
+	 * model with credentials, asked with each level's tier and the level, since a lens with its own route runs every
+	 * level on it, from `quick` to `deep`. Empty when none does, and the lens cannot run within its band.
 	 */
-	runnableLevels(band: LevelBand, routed: (tier: LensTier) => boolean): ScrutinyLevel[] {
-		return band.holds(this.declaredLevels()).filter((level) => routed(this.level(level).tier));
+	runnableLevels(band: LevelBand, routed: (tier: LensTier, level: ScrutinyLevel) => boolean): ScrutinyLevel[] {
+		return band.holds(this.declaredLevels()).filter((level) => routed(this.level(level).tier, level));
 	}
 
 	/**
 	 * Why the lens has no {@link Lens.runnableLevels} in `band`: each level the band holds, with why its tier reaches no
 	 * model as `unrouted` says, or that the lens declares none of the band's levels.
 	 */
-	unrunnable(band: LevelBand, unrouted: (tier: LensTier) => string | undefined): string {
+	unrunnable(band: LevelBand, unrouted: (tier: LensTier, level: ScrutinyLevel) => string | undefined): string {
 		const declared = this.declaredLevels();
 		const held = band.holds(declared);
 		if (held.length === 0) return `it declares none of them, only ${declared.join(", ")}`;
 		return held
 			.map((level) => {
 				const { tier } = this.level(level);
-				return `${level} runs on ${tier}, and ${unrouted(tier) ?? "it has no route"}`;
+				return `${level} runs on ${tier}, and ${unrouted(tier, level) ?? "it has no route"}`;
 			})
 			.join("; ");
 	}
