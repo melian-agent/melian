@@ -101,6 +101,8 @@ Run details are stored by the review round ID. Publication reads the snapshot of
 
 A finding is a SARIF result with Melian extension properties; this section sets out its schema, out-of-diff findings, and cross-revision diffing.
 
+A dismissal attaches to one finding ID. It carries to a later restatement of the same defect under a new ID only when the verifier judges each claim the same, git maps the region unchanged, and the restatement is no more severe. A trust-floor restatement proposes the match instead. [The decision](decisions/2026-11-08-dismissal-carries-to-restatement.md) sets out the rule.
+
 Details: [docs/design/findings.md](design/findings.md). How a finding reads, its emojis and its English are set by [the findings guideline](guidelines/findings.md), which step 35 builds.
 
 ## Lenses
