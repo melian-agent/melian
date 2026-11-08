@@ -567,4 +567,26 @@ describe("verification as each lens ends", () => {
 		await review();
 		expect(events).toEqual(["contracts verified", "tests ended"]);
 	});
+
+	it("verifies again a claim whose wave outcome a verifier refusal cleared", async () => {
+		const asked: string[][] = [];
+		fastThenSlow(asked);
+		await review();
+		expect(await waveTasks()).toHaveLength(1);
+		const options = reviewOptions();
+		const locked = fake.withoutCredentials("judge");
+		await expect(
+			reviewChangeset({
+				...options,
+				config: {
+					...options.config,
+					models: { ...options.config.models, verifier: { model: `${locked.provider}/${locked.modelId}` } },
+				},
+			}),
+		).rejects.toMatchObject({ code: "verifierFailed" });
+		const before = asked.length;
+		const result = await review();
+		expect(asked.length).toBeGreaterThan(before);
+		expect(result.findings.map((finding) => finding.properties.verification?.verdict)).toEqual(["confirmed"]);
+	});
 });

@@ -1219,6 +1219,8 @@ async function startAdjudication(
 		const deciding = { ...input };
 		if (verificationRefused) {
 			await clearVerifications(tx, input.root, revision);
+			// The waves' outcomes stood for the judgements just cleared, so no later review may reuse them.
+			delete (await tx.doc(VerificationWavesDocument, input.root)).reviews[revision];
 			deciding.findingsVersion = (await tx.doc(FindingsDocument, input.root)).versions[revision] ?? 0;
 			if (known?.verification !== undefined) known = omit(omit(known, "verification"), "adjudication");
 		}
