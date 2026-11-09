@@ -488,6 +488,37 @@ describe("a level that probes", () => {
 		expect(telemetry.stages.find((stage) => stage.role === "prober")!.probes).toMatchObject({ count: 1, limit: 300 });
 	});
 
+	it("runs a prober on its level's tier on the lens's own route, as its planner runs", async () => {
+		const fake = createFakeModels({ models: [{ id: "tiered" }, { id: "routed" }] });
+		const seen: string[] = [];
+		const on =
+			(role: string, reply: ScriptedReply): ScriptedReply =>
+			(messages, model) => {
+				seen.push(`${role} ${model}`);
+				return typeof reply === "function" ? reply(messages, model) : reply;
+			};
+		const { run } = await review(
+			{
+				planner: plan.map((reply) => on("planner", reply)),
+				prober: [on("prober", fauxAssistantMessage("Reported 0 findings."))],
+			},
+			{
+				fake,
+				config: {
+					models: { heavy: { model: `${fake.ref("tiered").provider}/tiered` } },
+					lenses: {
+						"trust-boundary": {
+							level: { floor: "deep" },
+							route: { model: `${fake.ref("routed").provider}/routed` },
+						},
+					},
+				},
+			},
+		);
+		await run;
+		expect([...new Set(seen)]).toEqual(["planner routed", "prober routed"]);
+	});
+
 	it("runs without probes when its prober's tier reaches no model, naming the tier", async () => {
 		const { run } = await withoutProbes({ lens: probingWith({ prober: "light" }) });
 		expect(record((await run).verdict).reason).toContain(
