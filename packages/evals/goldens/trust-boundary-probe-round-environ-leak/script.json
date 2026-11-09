@@ -76,7 +76,8 @@
           "arguments": {
             "attack": 2,
             "script": "// Attack 2: the round job writes Melian's own output, whose check errors can quote the logins, into the directory it\n// uploads as the run artefact, which anyone who can read the run downloads.\nimport { readFileSync } from \"node:fs\";\n\nconst workflow = readFileSync(\".github/workflows/melian-round.yml\", \"utf8\");\nconst review = /melian\\.js review \"#\\$NUMBER\"[^\\n]*> \"\\$(\\w+)\\/verdict\\.json\"/.exec(workflow);\nconst before = review === null ? \"\" : workflow.slice(0, review.index);\nconst assigned = review === null ? [] : [...before.matchAll(new RegExp(`\\\\b${review[1]}=\"\\\\$RUNNER_TEMP/(\\\\w+)\"`, \"g\"))];\nconst written = assigned.at(-1)?.[1];\nconst uploaded = /path: \\$\\{\\{ runner\\.temp \\}\\}\\/(\\w+)/.exec(workflow)?.[1];\nconsole.log(`Melian's verdict goes to ${written ?? \"no directory found\"}; the artefact uploads ${uploaded ?? \"nothing\"}`);\nprocess.exit(written !== undefined && written === uploaded ? 1 : 0);\n"
-          }
+          },
+          "expectToolResult": "failed: it exited 1"
         }
       ]
     },
