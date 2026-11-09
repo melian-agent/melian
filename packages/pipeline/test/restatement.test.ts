@@ -474,6 +474,65 @@ describe("a dismissal carrying to a restatement", () => {
 		},
 	);
 
+	it("binds each restatement a wave judged to its own root's dismissal", async () => {
+		const wrongResult = { ...nullDeref, rule: "wrong-result" };
+		script([nullDeref, wrongResult]);
+		const first = await review();
+		const roots = first.verdict.attention().map((each) => each.id);
+		expect(roots).toHaveLength(2);
+		for (const id of roots)
+			await recordDismissal({ harness, revision: await revision(), id, dismissal, repoRoot: repo });
+		pushElsewhere("other");
+		let judged!: () => void;
+		const waveJudged = new Promise<void>((resolve) => {
+			judged = resolve;
+		});
+		const verify = (messages: Messages) => {
+			if (messages.some((message) => message.role === "toolResult")) judged();
+			const prompt = systemPromptOf(messages);
+			const dismissed = [...prompt.matchAll(/Dismissed d[1-9][0-9]* finding ([0-9a-f]{16})/g)].map((m) => m[1]!);
+			const claims = [...prompt.matchAll(/Claim c[1-9][0-9]* finding ([0-9a-f]+)/g)].map((m) => m[1]!);
+			const matches = Object.fromEntries(dismissed.map((id) => [id, "same"]));
+			return scriptVerifier(
+				messages,
+				Object.fromEntries(claims.map((id) => [id, { verdict: "confirmed" as const, matches }])),
+			);
+		};
+		// Contracts ends once the wave has judged, so one wave holds both restatements and the final task reuses it.
+		scriptConversations(fake, [
+			{
+				match: correctness,
+				replies: [
+					report(restatement),
+					report({ ...restatement, rule: "wrong-result" }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{
+				match: contracts,
+				replies: [
+					async () => {
+						await Promise.race([waveJudged, new Promise((resolve) => setTimeout(resolve, 2_000))]);
+						return fauxAssistantMessage("Done.");
+					},
+				],
+			},
+			{ match: verifierMarker, replies: Array.from({ length: 8 }, () => verify) },
+		]);
+		const second = await review();
+		const owner = (await harness.root(context)).id;
+		const at = Revision.key(await revision());
+		const entry = (await harness.snapshot(ReviewIndex, owner, context))!.reviews[at]!;
+		const final = (await harness.getTask(entry.verification!.task as never, context))!.input as {
+			reused?: Record<string, unknown>;
+		};
+		expect(Object.keys(final.reused ?? {})).toHaveLength(2);
+		expect(second.verdict.attention()).toEqual([]);
+		expect(
+			Object.values((await harness.snapshot(FindingsDocument, owner, context))!.inherited?.[at] ?? {}),
+		).toHaveLength(2);
+	});
+
 	// The round on 14f2d16 (lens.durability): a call that crashed after its wave judged the root, and before its final
 	// step, leaves a retry nothing in memory to say which dismissal that wave was shown.
 	it("links nothing when the root's dismissal is replaced after a wave judged it and a retry reuses that wave", async () => {
