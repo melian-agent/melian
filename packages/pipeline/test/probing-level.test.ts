@@ -1353,6 +1353,51 @@ describe("a level that probes", () => {
 		expect(error.message).toContain(`tried ${provider}/first, ${provider}/second`);
 	});
 
+	it("fails a moved lens whose prober, on the lens's own tier, finished on a model the committed tier refuses", async () => {
+		const fake = createFakeModels({ models: [{ id: "plan" }, { id: "backup" }] });
+		const provider = fake.ref("plan").provider;
+		const [accepted, backup] = [`${provider}/plan`, `${provider}/backup`];
+		const committed = { model: accepted, accept: [accepted], acceptOverridden: false as const };
+		const overloaded = fauxAssistantMessage("", { stopReason: "error", errorMessage: "503 overloaded_error" });
+		const { run, requests } = await review(
+			// The prober's first request, on the accepted model, fails, so it goes on on the fallback.
+			{ planner: plan, prober: [() => overloaded, ...probing(failing)] },
+			{
+				fake,
+				config: {
+					// A preference file moves the lens to light, whose route starts inside heavy's accept and leaves it.
+					lenses: { "trust-boundary": { tier: "light", level: { floor: "deep" } } },
+					models: { heavy: committed, light: { model: accepted, fallbacks: [backup] } },
+				},
+				plan: async (config, lenses, models) => {
+					const { catalog, credentials } = await planInputs(models.review);
+					return ReviewPlan.resolve({
+						config,
+						routes: {
+							committed: { heavy: committed },
+							overridden: { light: "melian.local.yaml" },
+							lensTiers: {},
+							retiered: { "trust-boundary": "melian.local.yaml" },
+						},
+						catalog,
+						credentials,
+						lenses,
+						checks: ["lens.trust-boundary"],
+					});
+				},
+			},
+		);
+		// A failed lens leaves the review not reviewed, which rejects with the verdict.
+		const verdict = await run.then(
+			(done) => done.verdict,
+			(error: unknown) => (error as ReviewError).verdict!,
+		);
+		expect(requests[prober]).toHaveLength(4);
+		const ran = record(verdict);
+		expect(ran).toMatchObject({ status: "failed" });
+		expect(ran.reason).toContain("models.heavy.acceptOverridden is false");
+	});
+
 	it("chooses the verifier against the prober's family, which reported the finding, not the planner's", async () => {
 		const fake = createFakeModels({
 			models: [

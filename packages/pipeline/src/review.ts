@@ -210,6 +210,8 @@ interface LensRun {
 		readonly thinking?: ModelRoute["thinking"];
 		readonly instructions: string;
 		readonly environment: ProbingEnvironment;
+		// Present when the prober runs on its level's own tier, so it answers to the policy the plan judges that level by.
+		readonly onLevelTier?: true;
 	};
 }
 
@@ -2213,6 +2215,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				run: {
 					route: [...(routes.get(tier) as { route: ModelReference[] }).route],
 					...(thinking === undefined ? {} : { thinking }),
+					...(settings.probe!.prober === undefined ? { onLevelTier: true as const } : {}),
 					instructions: proberInstructions(lens.name, ruled.renderPolicy(level), timeout),
 					// Only a level whose probes may run reaches here, so the host has said whose head this is.
 					environment: {
@@ -2720,7 +2723,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		);
 	}, context);
 	spans.step("adjudication.prepare");
-	const checks =
+	const marked =
 		request.plan?.mark(
 			accounted.records(),
 			ranOn(
@@ -2728,6 +2731,22 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				lensResult,
 			),
 		) ?? accounted.records();
+	// A prober on its level's own tier answers to the policy the plan judges that level by, as its planner does, so a
+	// preference that moved the lens cannot carry the prober onto a model the committed tier refuses.
+	const proberRefusals = new Map<string, string>();
+	for (const { run } of settled) {
+		const outcome = lensResult?.[run.key];
+		const model = outcome?.status === "done" ? outcome.probing?.model : undefined;
+		if (run.probe?.onLevelTier !== true || model === undefined) continue;
+		const refusal = request.plan?.judge(run.name, run.level, model, run.coverage.scope).refusal;
+		if (refusal !== undefined) proberRefusals.set(`lens.${run.name} ${run.level}`, refusal);
+	}
+	const checks = marked.map((check) => {
+		const reason = proberRefusals.get(`${check.name} ${check.level}`);
+		return reason === undefined || check.status === "failed"
+			? check
+			: { ...check, status: "failed" as const, reason };
+	});
 	const lensRan = (key: string) => {
 		const outcome = lensResult?.[key];
 		return outcome?.status === "done" ? outcome : undefined;

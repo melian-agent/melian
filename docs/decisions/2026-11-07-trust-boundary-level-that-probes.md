@@ -28,7 +28,7 @@ The planner reads rulings from the base's decision files, through the same index
 
 ## What it gives up
 
-- The plan judges the level's own tier. A prober on another tier is refused when the plan refuses that tier, but a fallback model the prober finishes on is not judged against the tier's `accept`.
+- A prober on its level's own tier is judged on the model it finished on, against the policy the plan judges that level by, as its planner is, by the maintainer's ruling of 2026-11-09. A prober on another tier is refused when the plan refuses that tier, and under `acceptOverridden: false` the plan keeps only that tier's accepted models in its route, so it cannot fall back outside them.
 - Review coverage records what the planner read, not the prober's reads.
 - Each probe writes the head's tree afresh: about half a second for Melian's own 21 MB. A lens's probes run one at a time, so the scratch holds one tree for each lens whose level probes. Lenses run at once, so two such lenses hold two; no shipped level probes yet, and [issue #349](https://github.com/melian-agent/melian/issues/349) queues every probe in a process before a second one does.
 - A probing run's verifier is chosen against the model the run's prober finished on, or its route when the run failed first. A sighting names its lens, not whether the planner or the prober reported it, so an injection attempt the planner reports is judged against the prober's family too. The maintainer accepted that on 2026-11-08, in the builder's session, over recording the reporter on each sighting, which would change the findings document's stored shape.
