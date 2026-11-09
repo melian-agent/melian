@@ -20,6 +20,7 @@ beforeEach(() => {
 afterEach(() => {
 	// A module spied with `spy: true` keeps a test's implementation through restoreAllMocks.
 	vi.mocked(fsp.writeFile).mockReset();
+	vi.mocked(fsp.link).mockReset();
 	vi.restoreAllMocks();
 	vi.unstubAllEnvs();
 	remote.close();
@@ -129,4 +130,17 @@ it("gives two first checkouts of a copies directory the one clone ID, though the
 	const checkouts = await Promise.all(ids.map((id) => clone.branch().checkout(id)));
 	expect(checkouts.map((checkout) => checkout.changeset)).toEqual(ids);
 	expect(readFileSync(join(clone.directory, ".clone-id"), "utf8").trim()).toMatch(/^[0-9a-f-]{36}$/);
+});
+
+it("reports a failure to link the clone ID into place as itself, not as a missing ID", async () => {
+	vi.mocked(fsp.link).mockImplementation(async () => {
+		throw Object.assign(new Error("operation not permitted"), { code: "EPERM" });
+	});
+	const clone = remote.clone();
+	await expect(clone.branch().checkout(changeset)).rejects.toMatchObject({
+		code: "EPERM",
+		message: "operation not permitted",
+	});
+	vi.mocked(fsp.link).mockRestore();
+	expect(remote.tip()).toBeUndefined();
 });

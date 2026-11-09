@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import {
 	chmodSync,
 	existsSync,
@@ -1244,6 +1244,17 @@ describe("the mutation inventory at f6872a26", () => {
 		const clone = remote.clone();
 		mkdirSync(clone.directory, { recursive: true });
 		writeFileSync(join(clone.directory, ".clone-id"), "not an id\n");
+		await expect(clone.branch().checkout(changeset)).rejects.toMatchObject({
+			code: "invalidHolder",
+			message: `this clone's copies directory holds no clone ID at ${join(clone.directory, ".clone-id")}`,
+		});
+		expect(remote.tip()).toBeUndefined();
+	});
+
+	it("refuses a clone ID with more after it, rather than read its start", async () => {
+		const clone = remote.clone();
+		mkdirSync(clone.directory, { recursive: true });
+		writeFileSync(join(clone.directory, ".clone-id"), `${randomUUID()}x\n`);
 		await expect(clone.branch().checkout(changeset)).rejects.toMatchObject({
 			code: "invalidHolder",
 			message: `this clone's copies directory holds no clone ID at ${join(clone.directory, ".clone-id")}`,
