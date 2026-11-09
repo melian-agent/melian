@@ -75,6 +75,9 @@ function distinct(aliases: Aliases, left: string, right: string): boolean {
 	return declares(left, right) || declares(right, left);
 }
 
+// GitHub keeps 140 characters of a status, and publication appends "; base <40 hex>".
+const statusRoom = 140 - "; base ".length - 40;
+
 // What a failed Biome or tsc check's error code means, in Melian's words.
 const failedReasons = new Map([
 	["nothingToCheck", "its project names no files, so the tool checked nothing"],
@@ -771,16 +774,16 @@ export class Verdict {
 			};
 		}
 		if (shown === 0) {
-			const inherited = this.dismissed.filter(
-				(finding) => finding.properties.dismissal?.inheritedFrom !== undefined,
-			).length;
-			return {
-				state: "success",
-				description:
-					this.dismissed.length === 0
-						? "Passed"
-						: `0 findings, ${this.dismissed.length} dismissed${inherited === 0 ? "" : `, ${inherited} inherited`}`,
-			};
+			if (this.dismissed.length === 0) return { state: "success", description: "Passed" };
+			const description = `0 findings, ${this.dismissed.length} dismissed`;
+			const inherited = this.dismissed.flatMap(({ properties }) => properties.dismissal?.inheritedFrom ?? []);
+			if (inherited.length === 0) return { state: "success", description };
+			const roots = [...new Set(inherited)];
+			const naming = (named: number) =>
+				`${description}, ${inherited.length} inherited from ${roots.slice(0, named).join(", ")}${named === roots.length ? "" : ` and ${roots.length - named} more`}`;
+			let named = roots.length;
+			while (named > 1 && naming(named).length > statusRoom) named--;
+			return { state: "success", description: naming(named) };
 		}
 		return { state: "success", description: `${count(shown, "finding")}, none blocking` };
 	}

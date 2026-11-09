@@ -782,7 +782,10 @@ describe("showing a carried dismissal", () => {
 			`    Dismissed, inherited from ${root}, at ${dismissal.at}: ${dismissal.reason}`,
 		]);
 		expect(text).not.toContain("Tal");
-		expect(verdict.reviewStatus()).toEqual({ state: "success", description: "0 findings, 1 dismissed, 1 inherited" });
+		expect(verdict.reviewStatus()).toEqual({
+			state: "success",
+			description: `0 findings, 1 dismissed, 1 inherited from ${root}`,
+		});
 	});
 
 	it("shows an injection attempt that restates a dismissed one neither inherited nor proposed", async () => {

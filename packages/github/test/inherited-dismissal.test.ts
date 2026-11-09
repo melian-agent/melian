@@ -100,7 +100,7 @@ describe("an inherited dismissal beside a person's", () => {
 			[
 				"Verdict: passed",
 				"",
-				"melian/review: success (0 findings, 2 dismissed, 1 inherited).",
+				`melian/review: success (0 findings, 2 dismissed, 1 inherited from ${root}).`,
 				"",
 				"Dismissed: 2 findings",
 				"",
@@ -116,13 +116,52 @@ describe("an inherited dismissal beside a person's", () => {
 	});
 
 	it("says so in the published status", () => {
-		expect(verdict.reviewStatus()).toEqual({ state: "success", description: "0 findings, 2 dismissed, 1 inherited" });
+		expect(verdict.reviewStatus()).toEqual({
+			state: "success",
+			description: `0 findings, 2 dismissed, 1 inherited from ${root}`,
+		});
 		const alone = new Adjudication({ findings: [human], manifest: [], checks: [], config: defaultConfig });
 		expect(alone.adjudicate().reviewStatus()).toEqual({ state: "success", description: "0 findings, 1 dismissed" });
 		// A verdict stored before dismissals kept their record holds a dismissed finding with none.
 		const legacy = Finding.create({ ...input("src/legacy.ts"), status: "dismissed" });
 		const stored = new Adjudication({ findings: [legacy], manifest: [], checks: [], config: defaultConfig });
 		expect(stored.adjudicate().reviewStatus()).toEqual({ state: "success", description: "0 findings, 1 dismissed" });
+	});
+
+	it("names each root once, and as many as fit in what GitHub's status leaves beside the reviewed base", () => {
+		const status = (roots: readonly string[], people = 0) => {
+			const findings = [
+				...roots.map((from, index) =>
+					dismissed(`src/inherited-${index}.ts`, { ...inherited.properties.dismissal!, inheritedFrom: from }),
+				),
+				...Array.from({ length: people }, (_, index) =>
+					dismissed(`src/human-${index}.ts`, human.properties.dismissal!),
+				),
+			];
+			return new Adjudication({ findings, manifest: [], checks: [], config: defaultConfig })
+				.adjudicate()
+				.reviewStatus();
+		};
+		const id = (index: number) => index.toString(16).padStart(16, "0");
+		const many = (count: number, distinct: number) =>
+			Array.from({ length: count }, (_, index) => id(index % distinct));
+		expect(status([id(1), id(1), id(2)])).toEqual({
+			state: "success",
+			description: `0 findings, 3 dismissed, 3 inherited from ${id(1)}, ${id(2)}`,
+		});
+		// Three roots would take 94 characters, one past the 93 that "; base <40 hex>" leaves of GitHub's 140.
+		expect(status([id(1), id(2), id(3)])).toEqual({
+			state: "success",
+			description: `0 findings, 3 dismissed, 3 inherited from ${id(1)}, ${id(2)} and 1 more`,
+		});
+		const atBound = status(many(1000, 11)).description;
+		expect(atBound).toBe(`0 findings, 1000 dismissed, 1000 inherited from ${id(0)}, ${id(1)} and 9 more`);
+		expect(atBound).toHaveLength(93);
+		// The same two roots and "and 10 more" would take 94, so one root is named and the rest counted.
+		expect(status(many(1000, 12)).description).toBe(
+			`0 findings, 1000 dismissed, 1000 inherited from ${id(0)} and 11 more`,
+		);
+		expect(status([id(1)], 9).description).toBe(`0 findings, 10 dismissed, 1 inherited from ${id(1)}`);
 	});
 
 	it("says so in the reply in each thread, and names no dismisser in either", () => {
@@ -156,7 +195,7 @@ describe("an inherited dismissal beside a person's", () => {
 			[
 				`${marker(head, "verdict", verdict.fingerprint(), secret, { round: 1 })}\nMelian reviewed \`${short}\`: **passed**.`,
 				"No findings need attention.",
-				"<details>\n<summary>Verification and status</summary>\n\nmelian/review: success (0 findings, 2 dismissed, 1 inherited).\n\n</details>",
+				`<details>\n<summary>Verification and status</summary>\n\nmelian/review: success (0 findings, 2 dismissed, 1 inherited from ${root}).\n\n</details>`,
 				[
 					"<details>",
 					"<summary>2 dismissed, 2 reasons</summary>",
