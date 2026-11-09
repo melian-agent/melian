@@ -1398,6 +1398,31 @@ describe("a level that probes", () => {
 		expect(judged[0]).toBe("claude-judge");
 	});
 
+	it("judges a finding from a level without probes on its lens's route when no verifier route is named", async () => {
+		const judged: string[] = [];
+		const judge: ScriptedReply = (messages, model) => {
+			judged.push(model);
+			return scriptVerifier(messages);
+		};
+		const { probe: _, ...plain } = finding("p0");
+		const { run } = await review(
+			{
+				planner: [],
+				prober: [],
+				others: [
+					{ match: "Melian adversarial verifier", replies: [judge, judge] },
+					{
+						match: reviewer,
+						replies: [call("report_finding", plain), fauxAssistantMessage("Reported 1 finding.")],
+					},
+				],
+			},
+			{ lens: (lens) => lens },
+		);
+		expect((await run).verdict.counted()).toHaveLength(1);
+		expect(judged[0]).toBe("faux-1");
+	});
+
 	it("gives a raw harness's registry no sandbox but the one its review checks probes under", () => {
 		// @ts-expect-error A raw harness's review checks and reruns probes under sandbox-runtime, so its registry takes no other.
 		expect(createReviewRegistry(unconfinedSandbox())).toBeDefined();
