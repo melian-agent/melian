@@ -726,6 +726,67 @@ describe("verification as each lens ends", () => {
 		expect(asked).toHaveLength(1);
 	});
 
+	// Codex's adversarial review at e023f60: an earlier wave a later wave of the same review re-verified no longer stands,
+	// and that alone does not make the review superseded.
+	it("attaches to another review's final verification once a later wave of its own has re-verified its first", async () => {
+		let judged!: () => void;
+		const firstJudged = new Promise<void>((resolve) => {
+			judged = resolve;
+		});
+		const asked: string[][] = [];
+		const slow: ScriptedReply = async () => {
+			await Promise.race([firstJudged, new Promise((resolve) => setTimeout(resolve, 2_000))]);
+			return report("broken-caller");
+		};
+		scriptConversations(fake, [
+			{
+				match: lens("correctness").instructions,
+				replies: [report("null-dereference"), fauxAssistantMessage("Done.")],
+			},
+			{ match: lens("contracts").instructions, replies: [slow, fauxAssistantMessage("Done.")] },
+			verifier(
+				asked,
+				() => judged(),
+				() => "confirmed",
+			),
+		]);
+		const raw = harness;
+		const revision = Revision.key(changeset.revision);
+		let other: Promise<Review> | undefined;
+		const gated = new Proxy(raw, {
+			get(target, property) {
+				const value = Reflect.get(target, property, target);
+				if (property !== "waitForTask") return typeof value === "function" ? value.bind(target) : value;
+				return async (...args: Parameters<Harness["waitForTask"]>) => {
+					const outcome = await target.waitForTask(...args);
+					const waves = await waveTasks();
+					const entry = (await target.snapshot(ReviewIndex, (await target.root(context)).id, context))?.reviews[
+						revision
+					];
+					const lensTask =
+						entry?.task === undefined ? undefined : await target.getTask(entry.task as TaskId, context);
+					// Once this review's second wave and its lenses have settled, another review starts its final step first.
+					if (
+						other === undefined &&
+						waves.length === 2 &&
+						args[0] === waves[1] &&
+						lensTask?.state.status === "terminal"
+					) {
+						other = reviewChangeset({ ...reviewOptions(), harness: raw, checks: [] });
+						await other;
+					}
+					return outcome;
+				};
+			},
+		});
+		const result = await reviewChangeset({ ...reviewOptions(), harness: gated, checks: [] });
+		expect(other).toBeDefined();
+		const first = await other!;
+		expect(asked.map((claims) => claims.length)).toEqual([1, 2]);
+		expect(first.verdict.ran?.find((check) => check.name === "verifier")?.status).toBe("ran");
+		expect(result.verdict.ran?.find((check) => check.name === "verifier")?.status).toBe("ran");
+	});
+
 	it("starts no final verification that reuses a wave another review's final verification retired", async () => {
 		const asked: string[][] = [];
 		fastThenSlow(asked);

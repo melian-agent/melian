@@ -273,6 +273,8 @@ export async function startVerification(
 	context: Context,
 	refused: (model: string) => boolean = () => false,
 	unlockModels?: (providers: readonly string[]) => Promise<void>,
+	// The identities of the candidates the caller's own waves verified.
+	own: ReadonlySet<string> = new Set(),
 ): Promise<TaskId<VerificationResult> | undefined> {
 	const root = await harness.root(context);
 	const { nonce: _, ...revision } = input.revision;
@@ -335,7 +337,8 @@ export async function startVerification(
 			if (record !== undefined && (record.state.status !== "terminal" || (results !== undefined && !failed)))
 				return previous.task as TaskId<VerificationResult>;
 		}
-		// Another review's final task may have retired a wave this input reuses; its claims then hold no verdict.
+		// Another review's final task may have retired a wave this input reuses, or one the caller ran for a candidate it
+		// holds; that review then decides those claims.
 		const standing = VerificationWaves.of(
 			await tx.doc(VerificationWavesDocument, input.root),
 			Revision.key(input.revision),
@@ -343,7 +346,7 @@ export async function startVerification(
 		);
 		for (const candidate of input.candidates)
 			if (
-				input.reused?.[candidate.key] !== undefined &&
+				(input.reused?.[candidate.key] !== undefined || own.has(JSON.stringify(candidateIdentity(candidate)))) &&
 				standing.standing(
 					JSON.stringify(candidateIdentity(candidate)),
 					candidate.state.claims.map(claimKey),

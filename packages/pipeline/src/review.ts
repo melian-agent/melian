@@ -2289,13 +2289,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	let verificationCheck: CheckRecord | undefined;
 	let verificationRefused = false;
 	let verifying: TaskId<VerificationResult> | undefined;
-	// Another review's final task retired a wave this one started, so that review decides its claims, as it would had it
-	// replaced this review's final task.
-	const indexNow = await harness.snapshot(ReviewIndex, root, context);
-	const wavesNow = await harness.snapshot(VerificationWavesDocument, root, context);
-	const overtaken =
-		indexNow?.reviews[reviewed]?.verification !== undefined &&
-		startedWaves.some((wave) => !VerificationWaves.owns(indexNow, wavesNow, reviewed, wave));
+	let verifierSuperseded = false;
 	if (candidates.length === 0) {
 		const previous = (await harness.snapshot(ReviewIndex, root, context))?.reviews[reviewed]?.verification;
 		if (previous !== undefined) {
@@ -2320,8 +2314,6 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				reason: refusal ?? "the verifier has no model with credentials",
 				...(request.plan?.lineage("verifier") === undefined ? {} : { lineage: request.plan.lineage("verifier")! }),
 			};
-		} else if (overtaken) {
-			verificationCheck = { name: "verifier", status: "failed", version: verifierVersion, reason: "superseded" };
 		} else {
 			const reused: Record<string, VerificationResult[string]> = {};
 			for (const candidate of candidates) {
@@ -2359,6 +2351,12 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				candidates,
 				...(Object.keys(reused).length === 0 ? {} : { reused }),
 			};
+			const own = new Set<string>();
+			for (const wave of startedWaves)
+				for (const candidate of (
+					(await harness.getTask(wave as TaskId, context))!.input as unknown as VerificationInput
+				).candidates)
+					own.add(JSON.stringify(candidateIdentity(candidate)));
 			spans.end();
 			verifying = await startVerification(
 				harness,
@@ -2368,7 +2366,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				context,
 				verifierRefuses,
 				unlockModels,
+				own,
 			);
+			verifierSuperseded = verifying === undefined;
 			if (verifying === undefined)
 				verificationCheck = { name: "verifier", status: "failed", version: verifierVersion, reason: "superseded" };
 			else {
@@ -2432,7 +2432,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		const entry = (await tx.doc(ReviewIndex, root)).reviews[reviewed];
 		const selection = selectionOf(lenses, escalateAt);
 		if (selection.length > 0 && entry?.lenses.join("\n") !== selection.join("\n")) return;
-		if (overtaken || (verifying !== undefined && entry?.verification?.task !== verifying)) return;
+		if (verifierSuperseded || (verifying !== undefined && entry?.verification?.task !== verifying)) return;
 		await recordInheritances(
 			tx,
 			root,
