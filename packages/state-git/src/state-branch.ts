@@ -30,11 +30,15 @@ const untranslated = {
 	LANGUAGE: "C",
 	GIT_TERMINAL_PROMPT: "0",
 	// Git's own limit: a transfer slower than a byte a second for a minute fails, so the branch reads as out of reach.
-	GIT_CONFIG_COUNT: "2",
+	GIT_CONFIG_COUNT: "3",
 	GIT_CONFIG_KEY_0: "http.lowSpeedLimit",
 	GIT_CONFIG_VALUE_0: "1",
 	GIT_CONFIG_KEY_1: "http.lowSpeedTime",
 	GIT_CONFIG_VALUE_1: "60",
+	// No hook of the clone's runs: a head can supply them through core.hooksPath, and they would get the review's
+	// environment, its credentials among it.
+	GIT_CONFIG_KEY_2: "core.hooksPath",
+	GIT_CONFIG_VALUE_2: "/dev/null",
 };
 const identity = {
 	...untranslated,
@@ -363,7 +367,9 @@ export class StateBranch {
 
 	// Every file of a changeset's tree, opened under the key, or a refusal naming the first this build cannot read.
 	async #open(changeset: string, tree: string): Promise<[string, Buffer][]> {
-		const files = entries(await gitOutputBytes(this.#options.repoRoot, ["ls-tree", "-z", tree]));
+		const files = entries(
+			await gitOutputBytes(this.#options.repoRoot, ["ls-tree", "-z", tree], { env: untranslated }),
+		);
 		const stray = files.find((entry) => entry.mode !== "100644" || !storageFile.test(entry.name));
 		if (stray !== undefined)
 			throw new StateBranchError(
@@ -372,7 +378,9 @@ export class StateBranch {
 			);
 		const opened: [string, Buffer][] = [];
 		for (const entry of files) {
-			const sealed = await gitOutputBytes(this.#options.repoRoot, ["cat-file", "blob", entry.sha]);
+			const sealed = await gitOutputBytes(this.#options.repoRoot, ["cat-file", "blob", entry.sha], {
+				env: untranslated,
+			});
 			const plain = this.#seal.open(`${changeset}/${entry.name}`, sealed);
 			if (plain === undefined)
 				throw new StateBranchError(
@@ -501,8 +509,12 @@ export class StateBranch {
 			if (/couldn't find remote ref/i.test(result.stderr)) return undefined;
 			throw new StateBranchError("fetchFailed", `git fetch of melian/state failed: ${result.stderr.trim()}`);
 		}
-		const tip = (await gitOutput(this.#options.repoRoot, ["rev-parse", "--verify", `${fetched}^{commit}`])).trim();
-		await gitOutput(this.#options.repoRoot, ["update-ref", "-d", fetched]);
+		const tip = (
+			await gitOutput(this.#options.repoRoot, ["rev-parse", "--verify", `${fetched}^{commit}`], {
+				env: untranslated,
+			})
+		).trim();
+		await gitOutput(this.#options.repoRoot, ["update-ref", "-d", fetched], { env: untranslated });
 		return tip;
 	}
 
@@ -510,7 +522,7 @@ export class StateBranch {
 		if (tip === undefined) return { index: StateIndex.empty(), changesets: new Map() };
 		// A branch this build cannot read whole is refused, never read as empty: the next push would delete the rest. A
 		// git mode names its object's type: 100644 a plain blob, 040000 a tree.
-		const top = entries(await gitOutputBytes(this.#options.repoRoot, ["ls-tree", "-z", tip]));
+		const top = entries(await gitOutputBytes(this.#options.repoRoot, ["ls-tree", "-z", tip], { env: untranslated }));
 		const indexEntry = top.find((entry) => entry.name === indexFile);
 		const treeEntry = top.find((entry) => entry.name === changesetsTree);
 		if (top.length !== 2 || indexEntry?.mode !== "100644" || treeEntry?.mode !== "040000")
@@ -518,7 +530,9 @@ export class StateBranch {
 				"invalidBranch",
 				`the state branch's root holds ${JSON.stringify(top.map((entry) => `${entry.type} ${entry.name}`))}, where this build reads only the blob index.json and the tree changesets`,
 			);
-		const index = StateIndex.parse(await gitOutput(this.#options.repoRoot, ["cat-file", "blob", indexEntry.sha]));
+		const index = StateIndex.parse(
+			await gitOutput(this.#options.repoRoot, ["cat-file", "blob", indexEntry.sha], { env: untranslated }),
+		);
 		// Checked on every read, so neither a new changeset nor a cached copy is ever written under another key.
 		// The first push writes the commitment, so a branch that has a tip and none was written by something else.
 		if (index.key === undefined)
@@ -532,7 +546,9 @@ export class StateBranch {
 				"this clone's state key is not the key the branch was written under; check the writers' key in Melian's secrets file",
 			);
 		const changesets = new Map<string, Entry>();
-		for (const entry of entries(await gitOutputBytes(this.#options.repoRoot, ["ls-tree", "-z", treeEntry.sha]))) {
+		for (const entry of entries(
+			await gitOutputBytes(this.#options.repoRoot, ["ls-tree", "-z", treeEntry.sha], { env: untranslated }),
+		)) {
 			if (entry.mode !== "040000" || !changesetName.test(entry.name))
 				throw new StateBranchError(
 					"invalidBranch",

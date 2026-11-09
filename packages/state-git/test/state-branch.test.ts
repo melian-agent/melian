@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import {
 	chmodSync,
+	existsSync,
 	mkdirSync,
 	mkdtempSync,
 	readdirSync,
@@ -1174,5 +1175,21 @@ describe("the mutation inventory at f6872a26", () => {
 		expect(readdirSync(checkout.directory).map((name) => mode(join(checkout.directory, name)))).toEqual(
 			readdirSync(checkout.directory).map(() => 0o600),
 		);
+	});
+
+	it("runs no hook of the clone's, which a head can supply, while it fetches, pushes or moves a ref", async () => {
+		const clone = remote.clone();
+		const hooks = join(clone.repoRoot, ".hooks");
+		const marker = join(clone.repoRoot, "hook-ran");
+		mkdirSync(hooks);
+		for (const hook of ["pre-push", "reference-transaction", "post-checkout"]) {
+			writeFileSync(join(hooks, hook), `#!/bin/sh\necho ${hook} >> "${marker}"\n`);
+			chmodSync(join(hooks, hook), 0o755);
+		}
+		gitIn(clone.repoRoot, "config", "core.hooksPath", hooks);
+		const checkout = await clone.branch().checkout(changeset);
+		await note(await storageOf(checkout), "stored");
+		await checkout.push();
+		expect(existsSync(marker) ? readFileSync(marker, "utf8") : "").toBe("");
 	});
 });

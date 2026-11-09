@@ -144,15 +144,15 @@ export function requireGitVersion(cwd: string): Promise<void> {
 }
 
 /** Runs a read-only Git command in cwd with repository-local environment variables removed; failures carry Git's message. */
-export async function gitOutput(cwd: string, args: readonly string[]): Promise<string> {
-	const result = await git(cwd, args);
+export async function gitOutput(cwd: string, args: readonly string[], options: GitOptions = {}): Promise<string> {
+	const result = await git(cwd, args, options);
 	if (result.code !== 0) throw gitFailure(args, result);
 	return result.stdout;
 }
 
 /** Runs a read-only Git command as `gitOutput` does, and returns its output undecoded. */
-export async function gitOutputBytes(cwd: string, args: readonly string[]): Promise<Buffer> {
-	const result = await git(cwd, args);
+export async function gitOutputBytes(cwd: string, args: readonly string[], options: GitOptions = {}): Promise<Buffer> {
+	const result = await git(cwd, args, options);
 	if (result.code !== 0) throw gitFailure(args, result);
 	return result.stdoutBytes;
 }
