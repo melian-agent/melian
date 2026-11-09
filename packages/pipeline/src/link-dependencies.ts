@@ -26,11 +26,16 @@ export async function linkDependencies(
 	const commands: string[] = [];
 	const workspaces = new Set<string>();
 	const linked: string[] = [];
+	// The tree can hold the revision's own links, and one can come alive as an earlier command of this script makes its
+	// target. So each command refuses at the moment it runs: a directory is made only where no component below `root` is
+	// a link, and `ln -n` fails on a link already at its name rather than writing inside where it points.
 	const link = async (from: string, to: string): Promise<void> => {
 		const listed = await env.listDir(from, context);
 		if (!listed.ok) return;
 		linked.push(from);
-		commands.push(`mkdir -p ${quote(to)}`);
+		const below = posix.relative(root, to).split("/");
+		const steps = below.map((_, index) => posix.join(root, ...below.slice(0, index + 1)));
+		commands.push(...steps.map((step) => `test ! -L ${quote(step)} || exit 1`), `mkdir -p ${quote(to)}`);
 		for (const entry of listed.value) {
 			if (cacheDirectories.has(entry.name)) continue;
 			const source = posix.join(from, entry.name);
@@ -44,9 +49,9 @@ export async function linkDependencies(
 				real?.ok === true && real.value.startsWith(`${checkout}/`) ? real.value.slice(checkout.length + 1) : "";
 			if (inside !== "" && !inside.split("/").includes("node_modules")) {
 				workspaces.add(inside);
-				commands.push(`ln -s ${quote(posix.join(root, inside))} ${quote(target)}`);
+				commands.push(`ln -sn ${quote(posix.join(root, inside))} ${quote(target)}`);
 			} else {
-				commands.push(`ln -s ${quote(source)} ${quote(target)}`);
+				commands.push(`ln -sn ${quote(source)} ${quote(target)}`);
 			}
 		}
 	};
@@ -63,7 +68,7 @@ export async function linkDependencies(
 		}
 	}
 	const script = posix.join(scratch, "link.sh");
-	const written = await env.writeFile(script, `${commands.join("\n")}\n`, context);
+	const written = await env.writeFile(script, `set -e\n${commands.join("\n")}\n`, context);
 	if (!written.ok) return { failed: `could not write ${script}: ${written.error.message}` };
 	const result = await shell(`sh ${quote(script)}`);
 	if (result.code !== 0) return { failed: `linking dependencies failed: ${result.output}` };
