@@ -39,6 +39,8 @@ export interface StaticRunInput {
 	/** Trusted Enola policy commit, separate from the comparison base. Defaults to base, then commit. */
 	readonly policyCommit?: string;
 	readonly tools?: ToolProvisioning;
+	/** The host's environment, whose GitHub token downloads pinned tools. Never the head's; without it, no token. */
+	readonly environment?: NodeJS.ProcessEnv;
 	readonly tool: StaticTool;
 	readonly settings: StaticToolSettings | TscSettings | MutationSettings;
 	/** The change under review. Mutation testing mutates the lines it adds or edits, so `mutation` needs it. */
@@ -275,7 +277,8 @@ async function trackedFiles(run: Run, tree: string, listing: string, pathspec = 
 // `--version` would run the head's code. `installed` is the checkout's node_modules, or undefined when there is none
 // the runner may use; otherwise Melian's own tool runs.
 async function binaryFor(run: Run, installed: string | undefined): Promise<string> {
-	if (run.input.tool === "enola") return (await ToolProvisioning.open(run.input.repoRoot)).binary("enola");
+	if (run.input.tool === "enola")
+		return (await ToolProvisioning.open(run.input.repoRoot, { env: run.input.environment ?? {} })).binary("enola");
 	const { bin, melian } = toolBinaries[run.input.tool];
 	const own = installed === undefined ? undefined : posix.join(installed, ".bin", bin);
 	if (own !== undefined && (await run.exists(own))) return own;
@@ -528,7 +531,7 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 			}
 		}
 		if (tool === "enola") {
-			const tools = input.tools ?? (await ToolProvisioning.open(repoRoot));
+			const tools = input.tools ?? (await ToolProvisioning.open(repoRoot, { env: input.environment ?? {} }));
 			return await (await EnolaRun.open(run, root, scratch, tools)).check();
 		}
 		const files = await trackedFiles(run, root, posix.join(scratch, "files"));

@@ -1222,6 +1222,8 @@ async function reported(
 export const recordPlan = defineLensTool(
 	{
 		name: "record_plan",
+		// A later call replaces the plan, so calls in one turn run in order and the last one stands, on replay too.
+		executionMode: "sequential",
 		description:
 			"Record the attack plan, numbered in the order given: for each attack, what it aims at, why something untrusted might cross a boundary there, and what a probe that passes and one that fails would print. A later call replaces the plan.",
 		parameters: Type.Object(

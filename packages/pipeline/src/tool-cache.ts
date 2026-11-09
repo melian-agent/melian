@@ -3,12 +3,13 @@ import { constants } from "node:fs";
 import { chmod, lstat, mkdir, open, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { gunzipSync } from "node:zlib";
-import { ToolManifest, type ToolPin } from "@melian-agent/core";
+import { type ToolArtifact, ToolManifest, type ToolPin } from "@melian-agent/core";
 import { CacheScratch } from "./cache-scratch.ts";
 
 const archiveLimit = 128 * 1024 * 1024;
 const expandedLimit = 256 * 1024 * 1024;
 const binaryLimit = 96 * 1024 * 1024;
+const metadataLimit = 4 * 1024 * 1024;
 
 /** A pin could not be downloaded, verified, or safely extracted. */
 export class ToolCacheError extends Error {
@@ -24,7 +25,10 @@ export class ToolCacheError extends Error {
 export type ToolBinaryReceipt = { format_version: 1; archive: string; binary: string };
 
 /** A download seam. Tests return a local archive without contacting a release host. */
-export type ToolFetch = (url: string, options: { signal: AbortSignal }) => Promise<Response>;
+export type ToolFetch = (
+	url: string,
+	options: { signal: AbortSignal; headers?: Record<string, string>; redirect?: "manual" },
+) => Promise<Response>;
 
 /** A cache of verified binaries, shared with the graph cache's root. */
 export class ToolCache {
@@ -32,29 +36,42 @@ export class ToolCache {
 	readonly #fetch: ToolFetch;
 	readonly #windowDays: number;
 	readonly #scratch: CacheScratch;
-	private constructor(root: string, download: ToolFetch, windowDays: number, scratch: CacheScratch) {
+	readonly #token: string | undefined;
+	private constructor(
+		root: string,
+		download: ToolFetch,
+		windowDays: number,
+		scratch: CacheScratch,
+		token: string | undefined,
+	) {
 		this.root = root;
 		this.#fetch = download;
 		this.#windowDays = windowDays;
 		this.#scratch = scratch;
+		this.#token = token;
 	}
 
-	/** Opens a cache without fetching anything. */
-	static async open(root: string, options: { fetch?: ToolFetch; npmrc?: string } = {}): Promise<ToolCache> {
+	/** Opens a cache without fetching anything. A GitHub token routes downloads through the release API. */
+	static async open(
+		root: string,
+		options: { fetch?: ToolFetch; npmrc?: string; token?: string } = {},
+	): Promise<ToolCache> {
 		root = resolve(root);
 		const path = import.meta.url.endsWith(".ts") ? "../../../.npmrc" : "../release-policy.npmrc";
 		const npmrc = options.npmrc ?? (await readFile(new URL(path, import.meta.url), "utf8"));
 		const match = /^\s*min-release-age\s*=\s*(\d+(?:\.\d+)?)\s*$/m.exec(npmrc);
-		return new ToolCache(root, options.fetch ?? fetch, match ? Number(match[1]) : 2, await CacheScratch.open(root));
+		const windowDays = match ? Number(match[1]) : 2;
+		return new ToolCache(root, options.fetch ?? fetch, windowDays, await CacheScratch.open(root), options.token);
 	}
 
-	#pin(tool: ToolPin, platform: string): { directory: string; sha256: string; url: string; binary?: string } {
+	#pin(tool: ToolPin, platform: string): ToolArtifact & { directory: string; repository: string; tag: string } {
 		const { name, ...fields } = tool;
 		const manifest = ToolManifest.parse(JSON.stringify({ format_version: 1, tools: { [name]: fields }, misses: [] }));
 		const problems = manifest.check(Date.now(), this.#windowDays);
 		if (problems.length) throw new ToolCacheError("toolFailed", problems.join("; "));
 		const artifact = manifest.artifact(name, platform);
-		return { ...artifact, directory: join(this.root, "tools", name, tool.version, platform, artifact.sha256) };
+		const directory = join(this.root, "tools", name, tool.version, platform, artifact.sha256);
+		return { ...artifact, ...tool.source, directory };
 	}
 
 	/** Checks readiness without downloading or running the binary. */
@@ -90,7 +107,7 @@ export class ToolCache {
 			const staged = join(temporary, name);
 			await mkdir(staged);
 			const archive = join(staged, "archive");
-			await this.#download(pin.url, archive, pin.sha256);
+			await this.#fetchPin(pin, archive);
 			const bytes = await readFile(archive);
 			const binary = pin.binary === undefined ? bytes : this.#extract(bytes, pin.binary);
 			if (binary.length > binaryLimit) throw new ToolCacheError("outputTooLarge", "Tool binary exceeds 96 MiB");
@@ -192,8 +209,59 @@ export class ToolCache {
 		}
 	}
 
-	async #download(url: string, target: string, expected: string): Promise<void> {
-		const response = await this.#fetch(url, { signal: AbortSignal.timeout(120_000) });
+	// GitHub's public release URLs can fail while its API serves the same asset. The token goes to api.github.com
+	// alone, and the pinned SHA-256 decides either way, so a mismatch or an oversized body is refused, not retried.
+	async #fetchPin(pin: ToolArtifact & { repository: string; tag: string }, target: string): Promise<void> {
+		if (this.#token !== undefined) {
+			try {
+				return await this.#download(await this.#releaseAsset(pin, this.#token), target, pin.sha256);
+			} catch (cause) {
+				if (cause instanceof ToolCacheError && cause.code !== "toolFailed") throw cause;
+				await rm(target, { force: true });
+			}
+		}
+		await this.#download(await this.#fetch(pin.url, { signal: AbortSignal.timeout(120_000) }), target, pin.sha256);
+	}
+
+	async #releaseAsset(pin: { url: string; repository: string; tag: string }, token?: string): Promise<Response> {
+		const signal = AbortSignal.timeout(120_000);
+		const headers: Record<string, string> = {
+			"user-agent": "melian-tool-cache",
+			"x-github-api-version": "2022-11-28",
+		};
+		if (token !== undefined) headers.authorization = `Bearer ${token}`;
+		const releases = `https://api.github.com/repos/${pin.repository}/releases`;
+		const release = await this.#fetch(`${releases}/tags/${encodeURIComponent(pin.tag)}`, {
+			signal,
+			headers: { ...headers, accept: "application/vnd.github+json" },
+		});
+		// GitHub can refuse a cloud session's token while it still serves a public release anonymously.
+		if (release.status === 401 && token !== undefined) return this.#releaseAsset(pin);
+		if (!release.ok || !release.body)
+			throw new ToolCacheError("toolFailed", `Release API failed: HTTP ${release.status}`);
+		const chunks: Uint8Array[] = [];
+		let size = 0;
+		for await (const chunk of release.body) {
+			size += chunk.byteLength;
+			if (size > metadataLimit) throw new ToolCacheError("toolFailed", "Release metadata exceeds 4 MiB");
+			chunks.push(chunk);
+		}
+		const { assets } = JSON.parse(Buffer.concat(chunks).toString("utf8")) as {
+			assets: { id?: unknown; browser_download_url?: unknown }[];
+		};
+		const id = assets.find((asset) => asset.browser_download_url === pin.url)?.id;
+		if (!Number.isSafeInteger(id) || (id as number) < 1)
+			throw new ToolCacheError("toolFailed", "Release lists no asset at the pinned URL");
+		const asset = await this.#fetch(`${releases}/assets/${id}`, {
+			signal,
+			headers: { ...headers, accept: "application/octet-stream" },
+			redirect: "manual",
+		});
+		const location = asset.headers.get("location");
+		return location === null ? asset : this.#fetch(location, { signal });
+	}
+
+	async #download(response: Response, target: string, expected: string): Promise<void> {
 		if (!response.ok || !response.body)
 			throw new ToolCacheError("toolFailed", `Download failed: HTTP ${response.status}`);
 		const file = await open(target, "wx", 0o600);

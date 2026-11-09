@@ -39,6 +39,7 @@ import {
 	unconfinedSandbox,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { recordPlan } from "../src/lens-tools.ts";
 import { planInputs } from "../src/models.ts";
 import { ProbeReruns } from "../src/probing.ts";
 import { baseAndHead, gitIn, writeFiles } from "./fixtures/repo.ts";
@@ -887,6 +888,32 @@ describe("a level that probes", () => {
 		const again = await review({ planner: [], prober: [], others: [verifier] }, { fake });
 		expect(verified((await again.run).verdict)).toEqual(["confirmed"]);
 		expect(heads).toBe(3);
+	});
+
+	it("keeps the later of two plans recorded in one turn, so the prober answers the plan the planner meant", async () => {
+		const second = { ...attack, target: "src/load.ts loadAll()" };
+		const { run, requests } = await review({
+			planner: [
+				round([
+					["record_plan", { attacks: [attack] }],
+					["record_plan", { attacks: [attack, second] }],
+				]),
+				fauxAssistantMessage("Planned 2 attacks."),
+			],
+			prober: [
+				call("skip_attack", { attack: 1, reason: "r" }),
+				call("skip_attack", { attack: 2, reason: "r" }),
+				fauxAssistantMessage("Done."),
+			],
+		});
+		await run;
+		const plan = requests[prober]![0]!.filter((message) => message.role === "user")
+			.map(textOf)
+			.join("\n");
+		expect(plan).toContain("2 attacks");
+		expect(plan).toContain("src/load.ts loadAll()");
+		// In process the later call commits last either way; the order holds on a replay only because Pi runs them in turn.
+		expect(recordPlan.executionMode).toBe("sequential");
 	});
 
 	it("gives the verifier the probe of a finding whose prober failed after reporting it", async () => {
