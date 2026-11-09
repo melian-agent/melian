@@ -41,6 +41,8 @@ export type ProbeRecord = {
 type ProbingState = {
 	plan?: Attack[];
 	probes?: Record<string, ProbeRecord>;
+	// Each run_probe call's ID, recorded before its probe starts, so a refused probe counts toward the limit too.
+	attempts?: string[];
 	skips?: Record<string, string>;
 	findings?: Record<string, string>;
 };

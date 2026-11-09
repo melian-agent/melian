@@ -1511,6 +1511,43 @@ describe("a level that probes", () => {
 		expect(Object.keys(runs)).toHaveLength(1);
 	});
 
+	it("counts a refused probe toward a prober's limit, and refuses one past it without starting the sandbox", async () => {
+		const limits = probingLimits as { probes: number };
+		const probes = limits.probes;
+		limits.probes = 2;
+		onTestFinished(() => {
+			limits.probes = probes;
+		});
+		let wraps = 0;
+		const base = unconfinedSandbox();
+		const sandbox: ProbeSandbox = {
+			...base,
+			wrap: async (command, policy) => {
+				if (!inHeadTree(command)) return base.wrap(command, policy);
+				wraps++;
+				throw new Error("the sandbox refused");
+			},
+		};
+		const { run, requests } = await review(
+			{
+				planner: plan,
+				prober: [
+					call("run_probe", { attack: 1, script: passing }),
+					call("run_probe", { attack: 1, script: passing }),
+					call("run_probe", { attack: 1, script: passing }),
+					call("skip_attack", { attack: 1, reason: "r" }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{ sandbox },
+		);
+		await run;
+		expect(wraps).toBe(2);
+		expect(lastResults(requests[prober]![3]!)).toContain(
+			"a prober runs at most 2 probes; answer the attacks left with skip_attack",
+		);
+	});
+
 	it("gives a raw harness's registry no sandbox but the one its review checks probes under", () => {
 		// @ts-expect-error A raw harness's review checks and reruns probes under sandbox-runtime, so its registry takes no other.
 		expect(createReviewRegistry(unconfinedSandbox())).toBeDefined();
