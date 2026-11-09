@@ -405,7 +405,13 @@ export async function summarizeReview(options: {
 			const index = await tx.doc(SummaryIndex, conversation.id);
 			const known = index.tasks[revision];
 			const document = await tx.doc(VerdictDocument, conversation.id);
-			if (!rerun && document.walkthroughs?.[revision] !== undefined) return undefined;
+			// Decided again here: another call can store a walkthrough on another route after the reads above.
+			const stored =
+				document.walkthroughs?.[revision] === undefined
+					? undefined
+					: (document.walkthroughRoutes?.[revision] ?? "");
+			const refresh = rerun || (stored !== undefined && stored !== "" && stored !== wanted);
+			if (!refresh && stored !== undefined) return undefined;
 			const previous = known === undefined ? undefined : await tx.task(known as TaskId);
 			const onRoute =
 				previous !== undefined &&
@@ -425,8 +431,8 @@ export async function summarizeReview(options: {
 			// An aborted walkthrough costs no attempt; one that ran to any other end does, before the cap reads the count.
 			if (previous?.state.status === "terminal" && previous.state.outcome.status !== "aborted")
 				await countAttempt(tx, conversation.id, revision, known!);
-			if (!rerun && (document.walkthroughAttempts?.[revision] ?? 0) >= maxWalkthroughAttempts) return undefined;
-			if (rerun) document.walkthroughAttempts = { ...document.walkthroughAttempts, [revision]: 0 };
+			if (!refresh && (document.walkthroughAttempts?.[revision] ?? 0) >= maxWalkthroughAttempts) return undefined;
+			if (refresh) document.walkthroughAttempts = { ...document.walkthroughAttempts, [revision]: 0 };
 			const created = await tx.createTask(
 				SummaryTask,
 				{

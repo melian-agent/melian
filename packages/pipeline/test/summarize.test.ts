@@ -134,6 +134,34 @@ describe("walkthrough summaries", () => {
 		expect(doc?.walkthroughs?.[revision]).toBeUndefined();
 		expect(doc?.walkthroughRoutes?.[revision]).toBeUndefined();
 	});
+	it("writes its own walkthrough when another route's lands between its reads and its commit", async () => {
+		const revision = Revision.key(changeset.revision);
+		const root = await harness.root(context);
+		const asked: string[] = [];
+		scriptConversations(models, [
+			{
+				match: "You write Melian's walkthrough",
+				replies: [
+					(_messages: unknown, model: string) => {
+						asked.push(model);
+						return success("Written on the wanted route.");
+					},
+				],
+			},
+		]);
+		const doc = await summarize({
+			unlockModels: async () => {
+				await root.commit(async (tx) => {
+					const document = await tx.doc(VerdictDocument, root.id);
+					document.walkthroughs = { [revision]: { summary: "Written on another route.", files: [] } };
+					document.walkthroughRoutes = { [revision]: "faux/other@" };
+				}, context);
+			},
+		});
+		expect(asked).toEqual(["scripted"]);
+		expect(doc?.walkthroughs?.[revision]?.summary).toBe("Written on the wanted route.");
+		expect(doc?.walkthroughRoutes?.[revision]).toBe("faux/scripted@");
+	});
 	it("removes a walkthrough's route with the walkthrough when a rerun fails", async () => {
 		const revision = Revision.key(changeset.revision);
 		scriptConversations(models, [
