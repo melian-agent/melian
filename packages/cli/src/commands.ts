@@ -276,6 +276,7 @@ export async function review(
 	const reviewHarness = await openReviewHarness(storage, models, {
 		retry,
 		checkout: repoRoot,
+		environment: io.env,
 		...triage.harnessOptions(),
 	});
 	const { harness } = reviewHarness;
@@ -319,6 +320,7 @@ export async function review(
 					{
 						env: createNodeExecutionEnv(repoRoot),
 						repoRoot,
+						environment: io.env,
 						base: changeset.revision.base,
 						...(source.kind === "revision" ? { policyCommit: source.commit } : {}),
 						commit: changeset.revision.head,

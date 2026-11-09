@@ -65,6 +65,7 @@ fi
 		manifest: ToolManifest.parse(JSON.stringify({ format_version: 1, tools: { [name]: pin }, misses: [] })),
 		root: join(repo, "cache"),
 		platform: "darwin-arm64",
+		env: {},
 		fetch: async () => new Response(bytes),
 	});
 	vi.spyOn(ToolProvisioning, "open").mockResolvedValue(tools);

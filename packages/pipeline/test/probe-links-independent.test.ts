@@ -340,6 +340,28 @@ describe("names differing in letter case", () => {
 		},
 	);
 
+	// The review of record's R1: a workspace links to another workspace's nested install under another spelling, which
+	// dangles until dependency linking makes it. On a filesystem that folds case, foo's node_modules would then be made
+	// inside the reviewer's own install. Linux refuses it as well, since the link script stops at foo's link.
+	it("writes nothing into a workspace's nested install through a link to it spelled NODE_MODULES", async () => {
+		const commit = headWith((at) => {
+			mkdirSync(join(at, "packages", "bar"), { recursive: true });
+			writeFileSync(join(at, "packages", "bar", "index.js"), "bar\n");
+			symlinkSync("bar/NODE_MODULES/dep", join(at, "packages", "foo"));
+			writeFileSync(join(at, ".gitignore"), "node_modules\n");
+		});
+		unlinkSync(join(checkout, "packages", "foo"));
+		mkdirSync(join(checkout, "packages", "foo", "node_modules", "inner"), { recursive: true });
+		mkdirSync(join(checkout, "packages", "bar", "node_modules", "dep"), { recursive: true });
+		writeFileSync(join(checkout, "packages", "bar", "node_modules", "dep", "index.js"), "install\n");
+		mkdirSync(join(checkout, "node_modules"));
+		symlinkSync("../packages/foo", join(checkout, "node_modules", "foo"));
+		symlinkSync("../packages/bar", join(checkout, "node_modules", "bar"));
+		const result = await outcome(commit);
+		const install = readdirSync(join(checkout, "packages", "bar", "node_modules", "dep")).sort();
+		expect({ accepted: result.accepted, install }).toEqual({ accepted: false, install: ["index.js"] });
+	});
+
 	it("refuses a head tracking a link and a directory whose names differ only in case, and writes nothing outside", async () => {
 		const commit = headWith(() => {});
 		// The tree holds the link `D` beside a real directory `d`, built from objects, since this working tree cannot hold

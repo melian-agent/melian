@@ -1,6 +1,7 @@
 import {
 	chmodSync,
 	existsSync,
+	lstatSync,
 	mkdirSync,
 	mkdtempSync,
 	readdirSync,
@@ -327,6 +328,14 @@ describe("Probe.open", () => {
 		expect(sandbox.open).not.toHaveBeenCalled();
 	});
 
+	it("refuses a checkout that is a file", async () => {
+		const { sandbox } = passthrough();
+		const file = join(scratch, "file");
+		writeFileSync(file, "");
+		const error = await refusal({ script: "" }, options(sandbox, { head: { checkout: file, commit: head } }));
+		expect(error).toMatchObject({ code: "invalidProbe", message: `the checkout ${file} is not a directory` });
+	});
+
 	it("refuses a head that is not a full commit hash, or not a commit the checkout holds", async () => {
 		const { sandbox } = passthrough();
 		for (const commit of ["HEAD", head.slice(0, 39), `${head}0`, head.toUpperCase()]) {
@@ -534,6 +543,19 @@ describe("Probe.open with a head's allowlist", () => {
 				symlinkSync("l", join(at, "m"));
 			},
 		],
+		[
+			"a dangling link that would climb back inside past a missing directory",
+			(at: string) => symlinkSync("missing/../x", join(at, "l")),
+		],
+		[
+			"a link into a loop below the tree's root",
+			(at: string) => {
+				mkdirSync(join(at, "sub"));
+				symlinkSync("n", join(at, "sub", "m"));
+				symlinkSync("m", join(at, "sub", "n"));
+				symlinkSync("sub/m", join(at, "l"));
+			},
+		],
 	])("refuses a head holding %s", async (_, make) => {
 		const { sandbox } = passthrough();
 		headWithLinks((at) => {
@@ -542,7 +564,65 @@ describe("Probe.open with a head's allowlist", () => {
 		});
 		const error = await refusal({ script: "" }, options(sandbox, atHead([])));
 		expect(error.code).toBe("invalidProbe");
-		expect(error.message).toMatch(/^the head's link (l|m|sub) leads outside its tree or into its node_modules$/);
+		expect(error.message).toMatch(
+			/^the head's link (l|m|sub|sub\/m|sub\/n) leads outside its tree or into its node_modules$/,
+		);
+	});
+
+	it("refuses a head whose link names a component too long to look up", async () => {
+		const { sandbox } = passthrough();
+		headWithLinks((at) => {
+			symlinkSync("x".repeat(300), join(at, "l"));
+			return [];
+		});
+		const error = await refusal({ script: "" }, options(sandbox, atHead([])));
+		expect(error.code).toBe("invalidProbe");
+		expect(error.message).toMatch(/^the head [0-9a-f]{40} could not be written from .*ENAMETOOLONG/);
+	});
+
+	it("opens a head that tracks node_modules as a dangling link inside its tree, and links no install", async () => {
+		const { sandbox } = passthrough();
+		headWithLinks((at) => {
+			symlinkSync("missing", join(at, "node_modules"));
+			return ["node_modules"];
+		});
+		mkdirSync(join(checkout, "node_modules"), { recursive: true });
+		const probe = await Probe.open({ script: "" }, options(sandbox, { head: { checkout, commit: head } }));
+		expect(probe.policy.read).not.toContain(join(checkout, "node_modules"));
+		await probe.close();
+	});
+
+	it("links no install, and leaves no node_modules, when probe.read leaves it out", async () => {
+		const { sandbox } = passthrough();
+		mkdirSync(join(checkout, "node_modules", "dep"), { recursive: true });
+		const probe = await Probe.open({ script: "" }, options(sandbox, atHead([])));
+		expect(probe.policy.read).not.toContain(join(checkout, "node_modules"));
+		expect(existsSync(join(probe.policy.read[0]!, "node_modules"))).toBe(false);
+		await probe.close();
+	});
+
+	it("refuses an allowed copy holding a link out of the tree, which only the second walk sees", async () => {
+		const { sandbox } = passthrough();
+		const outside = join(scratch, "outside");
+		mkdirSync(outside);
+		symlinkSync(outside, join(checkout, "generated", "out"));
+		const error = await refusal({ script: "" }, options(sandbox, atHead(["generated"])));
+		expect(error).toMatchObject({
+			code: "invalidProbe",
+			message: "the head's link generated/out leads outside its tree or into its node_modules",
+		});
+		expect(readdirSync(outside)).toEqual([]);
+	});
+
+	it("links the install only for a node_modules entry, and links each entry rather than copying it", async () => {
+		const { sandbox } = passthrough();
+		mkdirSync(join(checkout, "node_modules", "dep"), { recursive: true });
+		const copied = await Probe.open({ script: "" }, options(sandbox, atHead(["generated"])));
+		expect(copied.policy.read).not.toContain(join(checkout, "node_modules"));
+		await copied.close();
+		const linked = await Probe.open({ script: "" }, options(sandbox, atHead(["generated", "node_modules"])));
+		expect(lstatSync(join(linked.policy.read[0]!, "node_modules", "dep")).isSymbolicLink()).toBe(true);
+		await linked.close();
 	});
 
 	it("opens a head whose links stay inside its tree", async () => {
@@ -940,6 +1020,44 @@ console.log(JSON.stringify({ marker: readFileSync("marker", "utf8"), home: proce
 			vi.useRealTimers();
 		}
 		expect(order).toEqual(settles ? ["cleanup", "close"] : []);
+	});
+
+	it("keeps the run's own failure when its wait and its final stop both fail", async () => {
+		const { sandbox } = passthrough();
+		const probe = await Probe.open({ script: "" }, options(sandbox));
+		const wait = vi.spyOn(ProbeProcess.prototype, "wait").mockRejectedValue(new Error("wait failed"));
+		const stop = vi.spyOn(ProbeProcess.prototype, "stop").mockRejectedValue(new Error("ps failed"));
+		try {
+			await expect(probe.run()).rejects.toThrow("wait failed");
+		} finally {
+			wait.mockRestore();
+			stop.mockRestore();
+			await probe.close();
+		}
+	});
+
+	it("bounds the probe's CPU time in whole seconds of its backstop", async () => {
+		const { sandbox, asked } = passthrough();
+		const probe = await Probe.open({ script: "" }, options(sandbox, { timeout: 2_000 }));
+		await probe.run();
+		await probe.close();
+		const seconds = Number(/ulimit -t (\d+) /.exec(asked[0]!.command)?.[1]);
+		expect(seconds).toBeGreaterThanOrEqual(2);
+		expect(seconds).toBeLessThanOrEqual(probeLimits.timeout.max / 1000);
+	});
+
+	it("cuts output that crosses its limit over several chunks", async () => {
+		const { sandbox } = passthrough();
+		const probe = await Probe.open(
+			{
+				script:
+					'for (let i = 0; i < 5; i++) { process.stdout.write("x".repeat(1000)); await new Promise((resolve) => setTimeout(resolve, 50)); }',
+			},
+			options(sandbox, { outputLimit: 2_500 }),
+		);
+		const result = await probe.run();
+		await probe.close();
+		expect(result).toMatchObject({ output: "x".repeat(2_500), truncated: true });
 	});
 
 	it("keeps a settled run's result when the final stop fails, and still releases the sandbox", async () => {

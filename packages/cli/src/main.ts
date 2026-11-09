@@ -71,9 +71,9 @@ Commands:
   mutants sample <inventory>
                          Print deterministic probes from a complete classified inventory. Exits 0 success, 1 refused.
   probe <dir> --trust-head [--timeout <seconds>] [--json]
-                         Run <dir>/probe.mjs, with the directory's other files beside it, in the checkout under the
-                         sandbox: no network, writes to its scratch alone, reads of the checkout, Node and the
-                         system alone. Exits 0 when it exits 0, 1 when it fails, times out or floods its output,
+                         Run <dir>/probe.mjs, with the directory's other files beside it, in the head's tracked tree
+                         under the sandbox: no network, writes to its scratch alone, reads of the tree, the install,
+                         Node and the system alone. Exits 0 when it exits 0, 1 when it fails, times out or floods its output,
                          2 when it cannot run here.
   doctor                 Check Node, git, credentials, model routes, tool readiness, the probe sandbox, and GitHub
                          access.

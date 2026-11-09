@@ -1,5 +1,10 @@
-import { describe, expect, it } from "vitest";
-import { backgroundContext as context, type ExecutionEnv } from "../src/harness.ts";
+import { execFile } from "node:child_process";
+import { mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, symlinkSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { promisify } from "node:util";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { backgroundContext as context, createNodeExecutionEnv, type ExecutionEnv } from "../src/harness.ts";
 import { linkDependencies } from "../src/link-dependencies.ts";
 
 type Entry = { readonly name: string; readonly kind: "file" | "directory" | "symlink" };
@@ -97,17 +102,24 @@ describe("linkDependencies", () => {
 		expect(sh.commands).toEqual(["sh '/scratch/link.sh'"]);
 		expect(written).toEqual({
 			"/scratch/link.sh": `${[
+				"set -e",
+				"test ! -L '/scratch/tree/node_modules' || exit 1",
 				"mkdir -p '/scratch/tree/node_modules'",
+				"test ! -L '/scratch/tree/node_modules' || exit 1",
+				"test ! -L '/scratch/tree/node_modules/@scope' || exit 1",
 				"mkdir -p '/scratch/tree/node_modules/@scope'",
-				"ln -s '/repo/node_modules/@scope/pkg' '/scratch/tree/node_modules/@scope/pkg'",
-				"ln -s '/repo/node_modules/@loose' '/scratch/tree/node_modules/@loose'",
-				"ln -s '/repo/node_modules/plain' '/scratch/tree/node_modules/plain'",
-				"ln -s '/scratch/tree/packages/b' '/scratch/tree/node_modules/b'",
-				"ln -s '/repo/node_modules/hoisted' '/scratch/tree/node_modules/hoisted'",
-				"ln -s '/repo/node_modules/away' '/scratch/tree/node_modules/away'",
-				"ln -s '/repo/node_modules/broken' '/scratch/tree/node_modules/broken'",
+				"ln -sn '/repo/node_modules/@scope/pkg' '/scratch/tree/node_modules/@scope/pkg'",
+				"ln -sn '/repo/node_modules/@loose' '/scratch/tree/node_modules/@loose'",
+				"ln -sn '/repo/node_modules/plain' '/scratch/tree/node_modules/plain'",
+				"ln -sn '/scratch/tree/packages/b' '/scratch/tree/node_modules/b'",
+				"ln -sn '/repo/node_modules/hoisted' '/scratch/tree/node_modules/hoisted'",
+				"ln -sn '/repo/node_modules/away' '/scratch/tree/node_modules/away'",
+				"ln -sn '/repo/node_modules/broken' '/scratch/tree/node_modules/broken'",
+				"test ! -L '/scratch/tree/packages' || exit 1",
+				"test ! -L '/scratch/tree/packages/b' || exit 1",
+				"test ! -L '/scratch/tree/packages/b/node_modules' || exit 1",
 				"mkdir -p '/scratch/tree/packages/b/node_modules'",
-				"ln -s '/repo/packages/b/node_modules/only-b' '/scratch/tree/packages/b/node_modules/only-b'",
+				"ln -sn '/repo/packages/b/node_modules/only-b' '/scratch/tree/packages/b/node_modules/only-b'",
 			].join("\n")}\n`,
 		});
 	});
@@ -133,14 +145,14 @@ describe("linkDependencies", () => {
 	it("writes an empty script for a checkout with no install", async () => {
 		const { env, written } = fakeEnv({ listings: {} });
 		expect(await linkDependencies(env, context, checkout, root, scratch, shell().run)).toEqual({ linked: [] });
-		expect(written).toEqual({ "/scratch/link.sh": "\n" });
+		expect(written).toEqual({ "/scratch/link.sh": "set -e\n\n" });
 	});
 
 	it("quotes a name holding a single quote", async () => {
 		const { env, written } = fakeEnv({ listings: { "/repo/node_modules": [{ name: "it's", kind: "directory" }] } });
 		await linkDependencies(env, context, checkout, root, scratch, shell().run);
 		expect(written["/scratch/link.sh"]).toContain(
-			"ln -s '/repo/node_modules/it'\\''s' '/scratch/tree/node_modules/it'\\''s'",
+			"ln -sn '/repo/node_modules/it'\\''s' '/scratch/tree/node_modules/it'\\''s'",
 		);
 	});
 
@@ -155,5 +167,50 @@ describe("linkDependencies", () => {
 		expect(await linkDependencies(env, context, checkout, root, scratch, shell(1, "ln: exists").run)).toEqual({
 			failed: "linking dependencies failed: ln: exists",
 		});
+	});
+});
+
+describe("linkDependencies on a real filesystem", () => {
+	let base: string;
+	let real: { checkout: string; tree: string; scratch: string; outside: string };
+	const run = (command: string) =>
+		promisify(execFile)("/bin/sh", ["-c", command]).then(
+			(done) => ({ code: 0, output: done.stdout }),
+			(error: { code?: number; stderr?: string }) => ({ code: error.code ?? 1, output: error.stderr ?? "" }),
+		);
+
+	beforeEach(() => {
+		base = realpathSync(mkdtempSync(join(tmpdir(), "melian-link-real-")));
+		real = {
+			checkout: join(base, "checkout"),
+			tree: join(base, "tree"),
+			scratch: join(base, "scratch"),
+			outside: join(base, "outside"),
+		};
+		for (const path of Object.values(real)) mkdirSync(path);
+		mkdirSync(join(real.checkout, "packages", "foo", "node_modules", "inner"), { recursive: true });
+		mkdirSync(join(real.checkout, "node_modules"));
+		symlinkSync("../packages/foo", join(real.checkout, "node_modules", "foo"));
+	});
+
+	afterEach(() => {
+		rmSync(base, { recursive: true, force: true });
+	});
+
+	const linked = () =>
+		linkDependencies(createNodeExecutionEnv(real.checkout), context, real.checkout, real.tree, real.scratch, run);
+
+	it("never makes a workspace's node_modules through a link in the tree", async () => {
+		mkdirSync(join(real.tree, "packages"));
+		symlinkSync(real.outside, join(real.tree, "packages", "foo"));
+		expect(await linked()).toMatchObject({ failed: expect.stringMatching(/^linking dependencies failed/) });
+		expect(readdirSync(real.outside)).toEqual([]);
+	});
+
+	it("never links an entry through a link already at its name", async () => {
+		mkdirSync(join(real.tree, "packages", "foo", "node_modules"), { recursive: true });
+		symlinkSync(real.outside, join(real.tree, "packages", "foo", "node_modules", "inner"));
+		expect(await linked()).toMatchObject({ failed: expect.stringMatching(/^linking dependencies failed/) });
+		expect(readdirSync(real.outside)).toEqual([]);
 	});
 });

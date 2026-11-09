@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { constants, existsSync, lstatSync, readdirSync, readlinkSync, realpathSync, statSync } from "node:fs";
-import { cp, mkdir, mkdtemp, open as openFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, open as openFile, rm, rmdir, writeFile } from "node:fs/promises";
 import { homedir, platform, tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, posix, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -262,12 +262,13 @@ function allowed(checkout: string, read: readonly string[]): readonly (readonly 
 // resolves it: folding `..` first would read `sub/..`, with `sub -> .`, as inside.
 function refuseLinksOut(tree: string): void {
 	const root = realpathSync.native(tree);
+	const install = statSync(join(root, "node_modules"), { throwIfNoEntry: false });
 	const pending = [root];
 	for (let directory = pending.pop(); directory !== undefined; directory = pending.pop()) {
 		for (const entry of readdirSync(directory, { withFileTypes: true })) {
 			const path = join(directory, entry.name);
 			if (entry.isDirectory()) pending.push(path);
-			else if (entry.isSymbolicLink() && !staysInside(root, path))
+			else if (entry.isSymbolicLink() && !staysInside(root, path, install))
 				throw new ProbeError(
 					"invalidProbe",
 					`the head's link ${relative(root, path)} leads outside its tree or into its node_modules`,
@@ -287,9 +288,9 @@ function entryAt(path: string): ReturnType<typeof lstatSync> {
 	}
 }
 
-// Each component resolves through realpath(3), which names it as the filesystem stores it: on one that ignores case,
-// `NODE_MODULES` comes back as the tree's `node_modules`, which the comparison below then sees.
-function staysInside(root: string, link: string): boolean {
+// The install is matched by its file identity, never its name: a filesystem that ignores case or folds Unicode opens
+// `NODE_MODULES` or `node_moduleſ` as the tree's `node_modules`, and realpath(3) on macOS keeps the spelling it was given.
+function staysInside(root: string, link: string, install: ReturnType<typeof statSync>): boolean {
 	const parts = readlinkSync(link).split("/");
 	let at = parts[0] === "" ? "/" : realpathSync.native(dirname(link));
 	for (const [index, part] of parts.entries()) {
@@ -312,9 +313,13 @@ function staysInside(root: string, link: string): boolean {
 		}
 	}
 	const inside = relative(root, at);
-	return (
-		inside !== "" && inside !== ".." && !inside.startsWith(`..${sep}`) && !inside.split(sep).includes("node_modules")
-	);
+	if (inside === "" || inside === ".." || inside.startsWith(`..${sep}`) || inside.split(sep).includes("node_modules"))
+		return false;
+	for (let up = at; up !== root; up = dirname(up)) {
+		const found = entryAt(up) === undefined ? undefined : statSync(up, { throwIfNoEntry: false });
+		if (install !== undefined && found?.dev === install.dev && found.ino === install.ino) return false;
+	}
+	return true;
 }
 
 // Writes the head's tracked tree into `tree` from a temporary repository that borrows the checkout's objects, then the
@@ -331,9 +336,12 @@ async function writeHead({ checkout, commit, entries }: PlannedHead, tree: strin
 		const at = { GIT_DIR: repository, GIT_WORK_TREE: tree };
 		await git(tree, ["read-tree", commit], repository, at);
 		await git(tree, ["checkout-index", "--all"], repository, at);
-		// The install's directory exists before the walks, so a link to another spelling of it resolves to it.
-		const linking = entries.some(([entry]) => entry === "node_modules") && !existsSync(join(tree, "node_modules"));
-		if (linking) await mkdir(join(tree, "node_modules"));
+		// The install's directory exists before the walks, so a link to another spelling of it resolves to it, and an empty
+		// one goes again when nothing is linked in.
+		const install = join(tree, "node_modules");
+		const made = entryAt(install) === undefined;
+		if (made) await mkdir(install);
+		const linking = made && entries.some(([entry]) => entry === "node_modules");
 		refuseLinksOut(tree);
 		const copies = entries.filter(([entry]) => entry !== "node_modules");
 		for (const [entry, real] of copies) {
@@ -349,7 +357,7 @@ async function writeHead({ checkout, commit, entries }: PlannedHead, tree: strin
 			const linked = await linkDependencies(env, backgroundContext, checkout, tree, repository, shell);
 			if ("failed" in linked) throw new ProbeError("invalidProbe", `the dependency install: ${linked.failed}`);
 			installs.push(...linked.linked.flatMap((path) => [path, realpathSync(path)]));
-		}
+		} else if (made) await rmdir(install).catch(() => undefined);
 		return [...new Set(installs)];
 	} catch (error) {
 		if (error instanceof ProbeError) throw error;
