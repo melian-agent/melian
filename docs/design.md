@@ -352,11 +352,11 @@ The status links to the [ledger](design/interaction-model.md#the-ledger).
 
 ## State storage
 
-SQLite storage for local runs was built in milestone 1. The orphan-branch backend is planned for milestone 3 (Actions host).
+SQLite storage for local runs was built in milestone 1. The orphan-branch backend's storage half was built in milestone 2, for [issue #244](https://github.com/melian-agent/melian/issues/244), before the Actions host.
 
 Pi Durable's `Storage` interface is one atomic `commit(writes)`, ID minting, a set of reads, and `close()`. It does no cross-process locking, so one process owns a storage at a time. Melian keeps one storage per changeset, whose root conversation is that changeset's history. The shipped JSONL backend writes an append-only `main.jsonl` with sidecars over a `FileSystem` abstraction.
 
-The orphan-branch backend, the default for Actions, wraps Pi's JSONL storage on a worktree of a `melian/state` branch rather than implementing the interface itself, and runs Pi's storage conformance suite. Each durable commit becomes a git commit and push. Each changeset's storage lives in its own subdirectory, which avoids conflicts and makes disposal on close a directory delete. The Actions concurrency group gives each changeset one writer. `--force-with-lease` detects a second writer that slips past it, but cannot merge that writer's commits into a harness already open. Push latency of about a second is acceptable against reviews that take minutes.
+The orphan-branch backend, the default for Actions, wraps Pi's JSONL storage on a `melian/state` branch rather than implementing the interface itself, and runs Pi's storage conformance suite. Its first half is built in `packages/state-git`: this clone keeps each changeset's JSONL storage in a plain directory, and a push writes it to the branch with git's plumbing, never a checkout, so two pull requests reviewed at once in one clone never rewrite each other's files. A lease in the branch's `index.json` gives each changeset one writer, every push names the tip it fetched with `--force-with-lease`, and a refused push keeps its copy until the next checkout takes the branch's. [The state branch decision](decisions/2026-11-07-state-branch-storage.md) records the format and the rules. Each changeset's storage lives in its own subdirectory, which avoids conflicts and makes disposal on close a directory delete. The Actions concurrency group gives each changeset one writer. `--force-with-lease` detects a second writer that slips past it, but cannot merge that writer's commits into a harness already open. Push latency of about a second is acceptable against reviews that take minutes.
 
 Alternative backends behind the same interface: SQLite in the Actions cache, object storage, Postgres, Cloudflare Durable Objects.
 
@@ -537,7 +537,7 @@ Match Pi's conventions unless there is a reason not to.
 | Decisions | `Decider` port in core; recorded and LLM fallback adapters in `packages/decisions`; Jev and Clef adapters (planned, milestone 4) |
 | Code graph | Enola v0.4.27, pinned from its official release; `enola check` for static constraints, `enola impact --json` for advisory caller input, contract artifacts for identity and the verified graph cache (built, milestone 2) |
 | Durability | pi-durable, exact-pinned, wrapped behind one module |
-| Storage | memory for tests, SQLite locally, SQLite on the server (planned), JSONL on the state branch for Actions (planned, milestone 3) |
+| Storage | memory for tests, SQLite locally, SQLite on the server (planned), JSONL on the state branch (`packages/state-git`, built; the CLI's use of it is in progress) |
 | Execution | Node environment locally, container environment for untrusted code (planned, milestone 3); probes under `@anthropic-ai/sandbox-runtime` |
 | GitHub | Octokit, GitHub App auth on server and Actions (planned), `gh` token locally; git by shelling out |
 | Telemetry | Durable transcript intervals and task-scoped deterministic timings (milestone 2 step 31); pi-telemetry deferred until Pi Durable passes a context |
@@ -545,7 +545,7 @@ Match Pi's conventions unless there is a reason not to.
 
 ## Package layout
 
-Laid out in milestone 1. `state-git/` and `pi-extension/` are skeletons that export only their package name. Milestone 2 filled `decisions/` with the recorded and LLM fallback adapters behind core's `Decider` port, milestone 3 fills `state-git/` with the state branch, and milestone 4 adds the Jev and Clef adapters. The Pi extension is not yet scheduled.
+Laid out in milestone 1. `pi-extension/` is a skeleton that exports only its package name. Milestone 2 filled `decisions/` with the recorded and LLM fallback adapters behind core's `Decider` port, and `state-git/` with the state branch, and milestone 4 adds the Jev and Clef adapters. The Pi extension is not yet scheduled.
 
 Packages publish under the `@melian-agent` npm scope. The Node floor is 22.19.0, the same as pi-durable, which needs it for default type stripping and the built-in SQLite module.
 
@@ -555,7 +555,7 @@ packages/
     lenses/      built-in lenses, shipped in the package
   pipeline/      Pi Durable orchestration
   github/        Octokit client and review publication
-  state-git/     orphan-branch storage backend and state branch helpers (skeleton)
+  state-git/     the state branch: each changeset's JSONL storage, the lease, and the push
   decisions/     Decider adapters, behind core's port
   cli/           the melian command
   pi-extension/  /melian command and Pi package manifest (skeleton)

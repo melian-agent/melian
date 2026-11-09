@@ -427,7 +427,7 @@ export {
 	type EnolaReference,
 } from "./enola-graph.ts";
 export { enolaPolicyPattern } from "./enola-paths.ts";
-export { gitOutput } from "./git.ts";
+export { type GitOptions, type GitResult, git, gitFailure, gitOutput, gitOutputBytes } from "./git.ts";
 export {
 	type GraphEntryState,
 	GraphError,
@@ -447,6 +447,7 @@ export {
 	type ImportEdge,
 	type SymbolSite,
 } from "./graph-coverage.ts";
+export { Lease, LeaseError, type LeaseHolder, type StoredLease } from "./lease.ts";
 export { LineMap, type LineMapSides, type LineSpan } from "./line-map.ts";
 export {
 	type MutationReportInput,
