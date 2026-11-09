@@ -3,7 +3,8 @@ import { mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync } from "node:
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { unconfinedSandbox } from "@melian-agent/pipeline/testing";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { Probe } from "../src/probe.ts";
 import {
 	type Attack,
 	answerPrompt,
@@ -135,6 +136,51 @@ describe("runHeadProbe", () => {
 		expect("milliseconds" in run && run.milliseconds >= 0).toBe(true);
 		expect(sandbox.asked[0]!.command).toMatch(/\/melian-probe-[^/]+\/tree'/);
 		expect(left()).toBe(before);
+	});
+
+	it("refuses a run whose processes could not be stopped, so it is no evidence", async () => {
+		commit(repo, { "a.txt": "a\n" });
+		const run = vi.spyOn(Probe.prototype, "run").mockResolvedValue({
+			exitCode: 1,
+			signal: null,
+			output: "",
+			truncated: false,
+			timedOut: false,
+			error: "ps failed",
+		});
+		try {
+			expect(
+				await runHeadProbe(
+					{ script: "process.exit(1);\n" },
+					{ repoRoot: repo, head: gitIn(repo, "rev-parse", "HEAD") },
+					reviewer,
+					unconfinedSandbox(),
+				),
+			).toEqual({ refused: "Melian could not stop the probe's processes: ps failed" });
+		} finally {
+			run.mockRestore();
+		}
+	});
+
+	it("refuses a run whose scratch could not be removed, so it is no evidence", async () => {
+		commit(repo, { "a.txt": "a\n" });
+		const close = Probe.prototype.close;
+		const leftover = vi.spyOn(Probe.prototype, "close").mockImplementation(async function (this: Probe) {
+			await close.call(this);
+			return { removed: false, leftover: "/tmp/melian-probe-x", reason: "EPERM: rmdir" };
+		});
+		try {
+			expect(
+				await runHeadProbe(
+					{ script: "process.exit(1);\n" },
+					{ repoRoot: repo, head: gitIn(repo, "rev-parse", "HEAD") },
+					reviewer,
+					unconfinedSandbox(),
+				),
+			).toEqual({ refused: "the probe's scratch could not be removed: EPERM: rmdir" });
+		} finally {
+			leftover.mockRestore();
+		}
 	});
 
 	it("keeps a probe's output to the probing limit, and cuts one past it", async () => {

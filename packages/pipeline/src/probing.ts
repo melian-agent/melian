@@ -1,7 +1,14 @@
 import { gitOutput, visibleText } from "@melian-agent/core";
 import type { WriterTrust } from "./checks.ts";
 import { defineDoc } from "./harness.ts";
-import { Probe, type ProbeFile, type ProbeResult, type ProbeSandbox, probeLimits } from "./probe.ts";
+import {
+	type CleanupOutcome,
+	Probe,
+	type ProbeFile,
+	type ProbeResult,
+	type ProbeSandbox,
+	probeLimits,
+} from "./probe.ts";
 import { quoteUntrusted } from "./untrusted.ts";
 
 /**
@@ -123,11 +130,16 @@ export async function runHeadProbe(
 		});
 		const started = Date.now();
 		let result: ProbeResult;
+		let cleanup: CleanupOutcome;
 		try {
 			result = await probe.run();
 		} finally {
-			await probe.close();
+			cleanup = await probe.close();
 		}
+		// A run that may have left a process or its scratch behind is no evidence, whatever it printed.
+		if (result.error !== undefined)
+			return { refused: `Melian could not stop the probe's processes: ${result.error}` };
+		if (!cleanup.removed) return { refused: `the probe's scratch could not be removed: ${cleanup.reason}` };
 		return { result: { ...result }, milliseconds: Date.now() - started };
 	} catch (error) {
 		return { refused: error instanceof Error ? error.message : String(error) };
