@@ -4,14 +4,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { git, gitFailure, gitOutput, gitOutputBytes, Lease, type LeaseHolder } from "@melian-agent/core";
-import { StateBranchError, StateIndex } from "./state-index.ts";
+import { changesetName, StateBranchError, StateIndex } from "./state-index.ts";
 
 const branch = "refs/heads/melian/state";
 const indexFile = "index.json";
 const changesetsTree = "changesets";
 // Pi's JSONL storage writes exactly these: its main log and one sidecar per document and task.
 const storageFile = /^(?:main|(?:doc|task)-(?:0|[1-9]\d*))\.jsonl$/;
-const changesetName = /^[a-z0-9][a-z0-9-]{0,63}$/;
 // A push that lost a race waits a random time below a bound that doubles from `backoffMs` up to `backoffCapMs`, so
 // writers on other changesets that collided spread out instead of colliding again.
 const attemptsLimit = 10;

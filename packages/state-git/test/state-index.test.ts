@@ -113,6 +113,26 @@ describe("StateIndex", () => {
 		],
 		["a record of null", indexOf({ a: null }), "the record of a is not an object"],
 		[
+			"a changeset named __proto__",
+			`{"version":1,"changesets":{"__proto__":${JSON.stringify({ lease: stored })}}}`,
+			'it holds a changeset named "__proto__", which no changeset can be named',
+		],
+		[
+			"a changeset whose name starts with a hyphen",
+			indexOf({ "-a": { lease: stored } }),
+			'it holds a changeset named "-a", which no changeset can be named',
+		],
+		[
+			"a changeset whose name is upper case",
+			indexOf({ A: { lease: stored } }),
+			'it holds a changeset named "A", which no changeset can be named',
+		],
+		[
+			"a changeset name one character past the limit",
+			indexOf({ ["a".repeat(65)]: { lease: stored } }),
+			`it holds a changeset named "${"a".repeat(65)}", which no changeset can be named`,
+		],
+		[
 			"a key with a commitment at its end",
 			JSON.stringify({ version: 1, key: `x${"f".repeat(64)}`, changesets: {} }),
 			"its key is not a commitment",
@@ -129,6 +149,10 @@ describe("StateIndex", () => {
 				message: `the state branch's index.json cannot be read: ${reason}`,
 			}),
 		);
+	});
+
+	it("reads a changeset name at the limit", () => {
+		expect(StateIndex.parse(indexOf({ ["a".repeat(64)]: { lease: stored } })).lease("a".repeat(64))).toBeDefined();
 	});
 
 	it("reads a written generation equal to its lease's", () => {
