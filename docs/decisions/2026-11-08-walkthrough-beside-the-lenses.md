@@ -6,6 +6,10 @@ Amends: [Spans time a review's work between tasks](2026-10-24-review-spans.md), 
 
 Amends: [A reasoning level per model tier](2026-10-19-tier-thinking-routes.md), its rule that the walkthrough's revision cache and rerun rules remain unchanged: a summary written on another light route or thinking level is written again.
 
+Amends: [Pending walkthroughs do not spend retry attempts](2026-10-06-walkthrough-settled-attempts.md), its rule that the next review resumes an indexed pending walkthrough: a review harness aborts every live walkthrough as it opens, and an aborted walkthrough costs no attempt. Within one process, a pending task on the wanted route still resumes before the limit is checked.
+
+Amends: [Resumed tasks unlock their stored providers](2026-10-08-resumed-task-credential-providers.md), its walkthrough clause: no walkthrough survives the harness's open, so none adds a provider to `ReviewHarness.resumedProviders()`.
+
 ## Problem
 
 The walkthrough summarises the change for the reader. It needs the change, not the verdict, yet `melian review` ran it only after adjudication. Each round on 2026-10-26 and 2026-10-27 ended with 13 to 16 seconds of walkthrough and nothing else running, by the prepare spans of [pull request #206](https://github.com/melian-agent/melian/pull/206).
