@@ -1272,8 +1272,10 @@ async function earlierFindings(
 	revision: string,
 	context: Context,
 ): Promise<EarlierFinding[]> {
-	const state = await harness.snapshot(FindingsDocument, root, context);
-	const previous = state?.revisions.filter((each) => each !== revision).at(-1);
+	const revisions = (await harness.snapshot(FindingsDocument, root, context))?.revisions ?? [];
+	// The revision reviewed before this one, never one reviewed after it; a revision new to the list follows the last.
+	const at = revisions.indexOf(revision);
+	const previous = at === -1 ? revisions.at(-1) : revisions[at - 1];
 	if (previous === undefined) return [];
 	return (await readFindings(harness, root, previous, context)).map((finding) => ({
 		severity: finding.properties.severity,
@@ -1324,15 +1326,14 @@ function omit<T extends object, K extends keyof T>(value: T, key: K): Omit<T, K>
 function escalatesTo(escalation: NonNullable<LensRun["escalation"]>): string {
 	const { next } = escalation;
 	if (next !== undefined)
-		return `escalates to ${next.key} (${next.route.map(modelName).join(", ")}) ${next.instructionFingerprint ?? ""}${next.thinking === undefined ? "" : ` thinking ${next.thinking}`}`;
+		return `escalates to ${next.key} (${next.route.map(modelName).join(", ")}) ${next.instructionFingerprint ?? ""}${next.thinking === undefined ? "" : ` thinking ${next.thinking}`}${next.probe === undefined ? "" : ` ${probesWith(next.probe)}`}`;
 	return `capped ${escalation.cap ?? "at its ceiling"}`;
 }
 
-// A probing run's prober route and what its probes run under, so a review with another prober or writer runs again.
+// A probing run's prober route and the whole environment its probes run under, so a review with another prober, writer,
+// time limit or grant runs again.
 function probesWith(probe: NonNullable<LensRun["probe"]>): string {
-	const { writer, trustWriters, timeout, read } = probe.environment;
-	const trust = writer.trusted ? `by ${writer.by}` : "untrusted";
-	return `probes ${trust}${trustWriters ? "" : " untrusted writers"} ${timeout ?? probeLimits.timeout.default}ms reading ${JSON.stringify(read)} with ${probe.route.map(modelName).join(", ")}${probe.thinking === undefined ? "" : ` thinking ${probe.thinking}`}`;
+	return `probes ${JSON.stringify(probe.environment)} with ${probe.route.map(modelName).join(", ")}${probe.thinking === undefined ? "" : ` thinking ${probe.thinking}`}`;
 }
 
 function selectionOf(lenses: readonly LensRun[], escalateAt: Severity | undefined): string[] {
@@ -2272,7 +2273,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 									standardsSource,
 								) +
 								baseline("0".repeat(24)) +
-								planning("0".repeat(24)),
+								// The planner's decisions and earlier findings move between reviews of one head, as caller context
+								// does, so they stay out of the key, and its role stays in.
+								(probing === undefined ? "" : `\n\n${plannerInstructions([])}`),
 							standards: reading.sections,
 							standardsOmitted: reading.omitted.length > 0,
 							source: standards instanceof Standards ? standards.source : null,

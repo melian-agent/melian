@@ -1557,6 +1557,87 @@ describe("a level that probes", () => {
 		expect(again.requests[planner]).toHaveLength(2);
 	});
 
+	it("runs a probing run a quick one escalates to again when probe.read changes, as a first run does", async () => {
+		const fake = createFakeModels();
+		const { probe: _, ...plain } = finding("p0");
+		const scripts = {
+			planner: [],
+			prober: probing(failing),
+			// The planner's script goes first, since its instructions hold the reviewer's too.
+			others: [
+				{ match: planner, replies: plan },
+				{ match: reviewer, replies: [call("report_finding", plain), fauxAssistantMessage("Reported 1 finding.")] },
+			],
+		};
+		const route = `${fake.ref().provider}/${fake.ref().modelId}`;
+		const careful = (lens: Lens) =>
+			Lens.from({ ...lens.toJSON(), levels: { ...lens.levels, careful: { ...lens.level("careful"), probe: {} } } });
+		// Triage sends the lens to quick, whose finding escalates it to careful, the level that probes.
+		const decider = new RecordedDecider(
+			{ triage: { version: "1", answers: { "trust-boundary": { distribution: { quick: 1 } } } } },
+			{ name: "recorded" },
+		);
+		const at = (read: string[]) => ({
+			fake,
+			decider,
+			lens: careful,
+			config: {
+				lenses: { "trust-boundary": { level: { floor: "quick" as const, ceiling: "careful" as const } } },
+				// Quick runs on medium, so it needs a route too.
+				models: { heavy: { model: route }, medium: { model: route } },
+				probe: { read },
+			},
+		});
+		const first = await review(scripts, at(["node_modules"]));
+		const done = await first.run;
+		expect(record(done.verdict)).toMatchObject({ level: "careful" });
+		expect(first.requests[reviewer]).toHaveLength(2);
+		expect(first.requests[planner]).toHaveLength(2);
+		const again = await review(scripts, at(["node_modules", "generated.txt"]));
+		await again.run;
+		expect(again.requests[planner]).toHaveLength(2);
+	});
+
+	it("plans from the findings of the revision before this one, never a later one", async () => {
+		const fake = createFakeModels();
+		const scripts = { planner: plan, prober: probing(failing) };
+		await (await review(scripts, { fake })).run;
+		const first = gitIn(repo, "rev-parse", "HEAD");
+		writeFiles(repo, { "src/other.ts": "export const other = 1;\n" });
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "later");
+		const later = await review(scripts, { fake });
+		await later.run;
+		expect(systemPromptOf(later.requests[planner]![0]!)).toContain("load reads any path");
+		gitIn(repo, "reset", "--quiet", "--hard", first);
+		const again = await review(scripts, { fake, config: { probe: { read: ["node_modules", "generated.txt"] } } });
+		await again.run;
+		expect(systemPromptOf(again.requests[planner]![0]!)).not.toContain("load reads any path");
+	});
+
+	it("attaches a repeat review of a head whose earlier revision's findings changed since", async () => {
+		const fake = createFakeModels();
+		const scripts = { planner: plan, prober: probing(failing) };
+		await (await review(scripts, { fake })).run;
+		const first = gitIn(repo, "rev-parse", "HEAD");
+		writeFiles(repo, { "src/other.ts": "export const other = 1;\n" });
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "later");
+		const later = gitIn(repo, "rev-parse", "HEAD");
+		await (await review(scripts, { fake })).run;
+		// The first revision is reviewed again under another grant and now reports nothing.
+		gitIn(repo, "reset", "--quiet", "--hard", first);
+		const quiet = {
+			planner: plan,
+			prober: [call("skip_attack", { attack: 1, reason: "r" }), fauxAssistantMessage("Done.")],
+		};
+		await (await review(quiet, { fake, config: { probe: { read: ["node_modules", "generated.txt"] } } })).run;
+		gitIn(repo, "reset", "--quiet", "--hard", later);
+		const again = await review(scripts, { fake });
+		await again.run;
+		expect(again.requests[planner] ?? []).toHaveLength(0);
+	});
+
 	it("tells apart two probe.read lists that join to the same text", async () => {
 		const fake = createFakeModels();
 		const scripts = { planner: plan, prober: probing(failing) };
