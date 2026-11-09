@@ -103,6 +103,23 @@ describe("a head's bound", () => {
 		expect(left()).toBe(before);
 	});
 
+	it("refuses a head whose tree git cannot list, saying what git said", async () => {
+		const missing = `tree ${"2".repeat(40)}\nauthor a <a@example.com> 0 +0000\ncommitter a <a@example.com> 0 +0000\n\nm\n`;
+		const head = execFileSync("git", ["hash-object", "-t", "commit", "-w", "--literally", "--stdin"], {
+			cwd: repo,
+			input: missing,
+		})
+			.toString()
+			.trim();
+		const run = await runHeadProbe(
+			{ script: "process.exit(0);\n" },
+			{ repoRoot: repo, head },
+			reviewer,
+			unconfinedSandbox(),
+		);
+		expect(run).toEqual({ refused: expect.stringMatching(/^git ls-tree failed: fatal: .*\S$/) });
+	});
+
 	it("refuses a crafted tree naming a blob git does not hold, and leaves nothing", async () => {
 		const tree = execFileSync("git", ["mktree", "--missing"], {
 			cwd: repo,
